@@ -34,13 +34,13 @@ var SanchoSidecarRef = container.MustParseSelector("gcr.io/some-project-162817/s
 func NewSanchoFastBuild(fixture pather) model.FastBuild {
 	return model.FastBuild{
 		BaseDockerfile: SanchoBaseDockerfile,
-		Mounts: []model.Mount{
-			model.Mount{
+		Syncs: []model.Sync{
+			model.Sync{
 				LocalPath:     fixture.Path(),
 				ContainerPath: "/go/src/github.com/windmilleng/sancho",
 			},
 		},
-		Runs: model.ToRuns("/", []model.Cmd{
+		Runs: model.ToRuns([]model.Cmd{
 			model.Cmd{Argv: []string{"go", "install", "github.com/windmilleng/sancho"}},
 		}),
 		Entrypoint: model.Cmd{Argv: []string{"/go/bin/sancho"}},

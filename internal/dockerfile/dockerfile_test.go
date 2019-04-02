@@ -96,44 +96,44 @@ RUN echo bye
 	assert.True(t, ok)
 }
 
-func TestDeriveMounts(t *testing.T) {
+func TestDeriveSyncs(t *testing.T) {
 	df := Dockerfile(`RUN echo 'hi'
 COPY foo /bar
 ADD /abs/bar /baz
 ADD ./beep/boop /blorp`)
 	context := "/context/dir"
-	mounts, err := df.BUGGY_DeriveMounts(context)
+	syncs, err := df.BUGGY_DeriveSyncs(context)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	expectedMounts := []model.Mount{
-		model.Mount{
+	expectedSyncs := []model.Sync{
+		model.Sync{
 			LocalPath:     path.Join(context, "foo"),
 			ContainerPath: "/bar",
 		},
-		model.Mount{
+		model.Sync{
 			LocalPath:     "/abs/bar",
 			ContainerPath: "/baz",
 		},
-		model.Mount{
+		model.Sync{
 			LocalPath:     path.Join(context, "beep/boop"),
 			ContainerPath: "/blorp",
 		},
 	}
-	assert.Equal(t, len(expectedMounts), len(mounts))
-	for _, m := range expectedMounts {
-		assert.Contains(t, mounts, m)
+	assert.Equal(t, len(expectedSyncs), len(syncs))
+	for _, s := range expectedSyncs {
+		assert.Contains(t, syncs, s)
 	}
 }
 
-func TestNoAddsToNoMounts(t *testing.T) {
+func TestNoAddsToNoSyncs(t *testing.T) {
 	df := Dockerfile(`RUN echo 'hi'`)
-	mounts, err := df.BUGGY_DeriveMounts("/context/dir")
+	syncs, err := df.BUGGY_DeriveSyncs("/context/dir")
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Empty(t, mounts)
+	assert.Empty(t, syncs)
 }
 
 func TestFindImages(t *testing.T) {

@@ -6,17 +6,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const BaseDir = "/base/directory"
+
 func TestNewLiveUpdate(t *testing.T) {
 	steps := []LiveUpdateStep{
-		LiveUpdateWorkDirStep("baz"),
 		LiveUpdateSyncStep{"foo", "bar"},
-		LiveUpdateRunStep{Cmd{[]string{"hello"}}, "goodbye"},
+		LiveUpdateRunStep{Cmd{[]string{"hello"}}, NewPathSet([]string{"goodbye"}, BaseDir)},
 		LiveUpdateRestartContainerStep{},
 	}
-	fullRebuildTriggers := []string{"quu", "qux"}
-	lu, err := NewLiveUpdate(
-		steps,
-		fullRebuildTriggers)
+	fullRebuildTriggers := NewPathSet([]string{"quu", "qux"}, BaseDir)
+	lu, err := NewLiveUpdate(steps, fullRebuildTriggers)
 	if !assert.NoError(t, err) {
 		return
 	}
@@ -24,18 +23,9 @@ func TestNewLiveUpdate(t *testing.T) {
 	assert.Equal(t, LiveUpdate{steps, fullRebuildTriggers}, lu)
 }
 
-func TestNewLiveUpdateWorkdirNotFirst(t *testing.T) {
-	steps := []LiveUpdateStep{LiveUpdateSyncStep{"foo", "bar"}, LiveUpdateWorkDirStep("baz")}
-	_, err := NewLiveUpdate(steps, []string{})
-	if !assert.Error(t, err) {
-		return
-	}
-	assert.Contains(t, err.Error(), "workdir is only valid as the first step")
-}
-
 func TestNewLiveUpdateRestartContainerNotLast(t *testing.T) {
 	steps := []LiveUpdateStep{LiveUpdateRestartContainerStep{}, LiveUpdateSyncStep{"foo", "bar"}}
-	_, err := NewLiveUpdate(steps, []string{})
+	_, err := NewLiveUpdate(steps, PathSet{})
 	if !assert.Error(t, err) {
 		return
 	}
@@ -44,7 +34,7 @@ func TestNewLiveUpdateRestartContainerNotLast(t *testing.T) {
 
 func TestNewLiveUpdateSyncAfterRun(t *testing.T) {
 	steps := append([]LiveUpdateStep{LiveUpdateRunStep{}, LiveUpdateSyncStep{"foo", "bar"}})
-	_, err := NewLiveUpdate(steps, []string{})
+	_, err := NewLiveUpdate(steps, PathSet{})
 	if !assert.Error(t, err) {
 		return
 	}

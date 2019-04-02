@@ -13,12 +13,12 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 )
 
-func TestStateToWebViewMultipleMounts(t *testing.T) {
+func TestStateToWebViewMultipleSyncs(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
 	}.WithImageTarget(model.ImageTarget{}.
 		WithBuildDetails(model.FastBuild{
-			Mounts: []model.Mount{
+			Syncs: []model.Sync{
 				{LocalPath: "/a/b"},
 				{LocalPath: "/a/b/c"},
 			},
@@ -107,7 +107,7 @@ func TestEmptyState(t *testing.T) {
 		Name: "foo",
 	}.WithImageTarget(model.ImageTarget{}.
 		WithBuildDetails(model.FastBuild{
-			Mounts: []model.Mount{
+			Syncs: []model.Sync{
 				{LocalPath: "/a/b"},
 				{LocalPath: "/a/b/c"},
 			},

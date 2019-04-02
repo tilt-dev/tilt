@@ -721,7 +721,7 @@ func TestStatusBarDCRebuild(t *testing.T) {
 				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusDown, testCID, "hellllo", now.Add(-5*time.Second)),
 				CurrentBuild: model.BuildRecord{
 					StartTime: now.Add(-5 * time.Second),
-					Reason:    model.BuildReasonFlagMountFiles,
+					Reason:    model.BuildReasonFlagChangedFiles,
 				},
 			},
 		},

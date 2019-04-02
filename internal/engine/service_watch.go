@@ -39,7 +39,7 @@ func (w *ServiceWatcher) needsWatch(st store.RStore) bool {
 			atLeastOneK8S = true
 		}
 	}
-	return atLeastOneK8S && state.WatchMounts && !w.watching
+	return atLeastOneK8S && state.WatchFiles && !w.watching
 }
 
 func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore) {

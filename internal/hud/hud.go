@@ -211,7 +211,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 					break
 				}
 				url := h.webURL
-				url.Path = fmt.Sprintf("/r/%s/log", r.Name)
+				url.Path = fmt.Sprintf("/r/%s", r.Name)
 				_ = browser.OpenURL(url.String())
 				break
 			}

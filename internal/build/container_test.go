@@ -73,7 +73,7 @@ ADD $some_variable_name /test.txt`)
 	f.assertFilesInImage(ref, expected)
 }
 
-func TestMount(t *testing.T) {
+func TestSync(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
@@ -81,12 +81,12 @@ func TestMount(t *testing.T) {
 	f.WriteFile("hi/hello", "hi hello")
 	f.WriteFile("sup", "my name is dan")
 
-	m := model.Mount{
+	s := model.Sync{
 		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
 
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{})
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{s}, model.EmptyMatcher, nil, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,18 +98,18 @@ func TestMount(t *testing.T) {
 	f.assertFilesInImage(ref, pcs)
 }
 
-func TestMountFileToDirectory(t *testing.T) {
+func TestSyncFileToDirectory(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
 	f.WriteFile("sup", "my name is dan")
 
-	m := model.Mount{
+	s := model.Sync{
 		LocalPath:     f.JoinPath("sup"),
 		ContainerPath: "/src/",
 	}
 
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{})
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{s}, model.EmptyMatcher, nil, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func TestMountFileToDirectory(t *testing.T) {
 	f.assertFilesInImage(ref, pcs)
 }
 
-func TestMultipleMounts(t *testing.T) {
+func TestMultipleSyncs(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
@@ -128,16 +128,16 @@ func TestMultipleMounts(t *testing.T) {
 	f.WriteFile("hi/hello", "hi hello")
 	f.WriteFile("bye/ciao/goodbye", "bye laterz")
 
-	m1 := model.Mount{
+	s1 := model.Sync{
 		LocalPath:     f.JoinPath("hi"),
 		ContainerPath: "/hello_there",
 	}
-	m2 := model.Mount{
+	s2 := model.Sync{
 		LocalPath:     f.JoinPath("bye"),
 		ContainerPath: "goodbye_there",
 	}
 
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m1, m2}, model.EmptyMatcher, nil, model.Cmd{})
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{s1, s2}, model.EmptyMatcher, nil, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +149,7 @@ func TestMultipleMounts(t *testing.T) {
 	f.assertFilesInImage(ref, pcs)
 }
 
-func TestMountCollisions(t *testing.T) {
+func TestSyncCollisions(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
@@ -157,18 +157,18 @@ func TestMountCollisions(t *testing.T) {
 	f.WriteFile("hi/hello", "hi hello")
 	f.WriteFile("bye/hello", "bye laterz")
 
-	// Mounting two files to the same place in the container -- expect the second mount
+	// Sync-ing two files to the same place in the container -- expect the second file
 	// to take precedence (file should contain "bye laterz")
-	m1 := model.Mount{
+	s1 := model.Sync{
 		LocalPath:     f.JoinPath("hi"),
 		ContainerPath: "/hello_there",
 	}
-	m2 := model.Mount{
+	s2 := model.Sync{
 		LocalPath:     f.JoinPath("bye"),
 		ContainerPath: "/hello_there",
 	}
 
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m1, m2}, model.EmptyMatcher, nil, model.Cmd{})
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{s1, s2}, model.EmptyMatcher, nil, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,7 +189,7 @@ func TestPush(t *testing.T) {
 	f.WriteFile("hi/hello", "hi hello")
 	f.WriteFile("sup", "my name is dan")
 
-	m := model.Mount{
+	s := model.Sync{
 		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
@@ -199,7 +199,7 @@ func TestPush(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, name, simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{})
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, name, simpleDockerfile, []model.Sync{s}, model.EmptyMatcher, nil, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +221,7 @@ func TestPushInvalid(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
-	m := model.Mount{
+	s := model.Sync{
 		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
@@ -229,7 +229,7 @@ func TestPushInvalid(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, name, simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{})
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, name, simpleDockerfile, []model.Sync{s}, model.EmptyMatcher, nil, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -245,11 +245,11 @@ func TestBuildOneRun(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
-	runs := model.ToRuns(f.Path(), []model.Cmd{
+	runs := model.ToRuns([]model.Cmd{
 		model.ToShellCmd("echo -n hello >> hi"),
 	})
 
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, model.EmptyMatcher, runs, model.Cmd{})
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{}, model.EmptyMatcher, runs, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,12 +264,12 @@ func TestBuildMultipleRuns(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
-	runs := model.ToRuns(f.Path(), []model.Cmd{
+	runs := model.ToRuns([]model.Cmd{
 		model.ToShellCmd("echo -n hello >> hi"),
 		model.ToShellCmd("echo -n sup >> hi2"),
 	})
 
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, model.EmptyMatcher, runs, model.Cmd{})
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{}, model.EmptyMatcher, runs, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -285,13 +285,13 @@ func TestBuildMultipleRunsRemoveFiles(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
-	runs := model.ToRuns(f.Path(), []model.Cmd{
+	runs := model.ToRuns([]model.Cmd{
 		model.Cmd{Argv: []string{"sh", "-c", "echo -n hello >> hi"}},
 		model.Cmd{Argv: []string{"sh", "-c", "echo -n sup >> hi2"}},
 		model.Cmd{Argv: []string{"sh", "-c", "rm hi"}},
 	})
 
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, model.EmptyMatcher, runs, model.Cmd{})
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{}, model.EmptyMatcher, runs, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -307,11 +307,11 @@ func TestBuildFailingRun(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
-	runs := model.ToRuns(f.Path(), []model.Cmd{
+	runs := model.ToRuns([]model.Cmd{
 		model.ToShellCmd("echo hello && exit 1"),
 	})
 
-	_, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{}, model.EmptyMatcher, runs, model.Cmd{})
+	_, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{}, model.EmptyMatcher, runs, model.Cmd{})
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "hello")
 
@@ -357,9 +357,6 @@ ENTRYPOINT ["sleep", "100000"]`)
 	}
 }
 
-// TODO(maia): test mount err cases
-// TODO(maia): tests for tar code
-
 func TestSelectiveAddFilesToExisting(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
@@ -368,14 +365,14 @@ func TestSelectiveAddFilesToExisting(t *testing.T) {
 	f.WriteFile("sup", "we should delete this file")
 	f.WriteFile("nested/sup", "we should delete this file (and the whole dir)")
 	f.WriteFile("unchanged", "should be unchanged")
-	mounts := []model.Mount{
-		model.Mount{
+	syncs := []model.Sync{
+		model.Sync{
 			LocalPath:     f.Path(),
 			ContainerPath: "/src",
 		},
 	}
 
-	existing, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, mounts, model.EmptyMatcher, nil, model.Cmd{})
+	existing, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, syncs, model.EmptyMatcher, nil, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -384,7 +381,7 @@ func TestSelectiveAddFilesToExisting(t *testing.T) {
 	f.Rm("sup")                            // delete a file
 	f.Rm("nested")                         // delete a directory
 	files := []string{"hi/hello", "sup", "nested"}
-	pms, err := FilesToPathMappings(f.JoinPaths(files), mounts)
+	pms, err := FilesToPathMappings(f.JoinPaths(files), syncs)
 	if err != nil {
 		f.t.Fatal("FilesToPathMappings:", err)
 	}
@@ -408,20 +405,20 @@ func TestExecRunsOnExisting(t *testing.T) {
 	defer f.teardown()
 
 	f.WriteFile("foo", "hello world")
-	m := model.Mount{
+	s := model.Sync{
 		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
 
-	existing, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{})
+	existing, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{s}, model.EmptyMatcher, nil, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	run := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
 
-	runs := model.ToRuns(f.Path(), []model.Cmd{run})
-	ref, err := f.b.BuildImageFromExisting(f.ctx, f.ps, existing, MountsToPathMappings([]model.Mount{m}), model.EmptyMatcher, runs)
+	runs := model.ToRuns([]model.Cmd{run})
+	ref, err := f.b.BuildImageFromExisting(f.ctx, f.ps, existing, SyncsToPathMappings([]model.Sync{s}), model.EmptyMatcher, runs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -438,13 +435,13 @@ func TestBuildImageFromExistingPreservesEntrypoint(t *testing.T) {
 	defer f.teardown()
 
 	f.WriteFile("foo", "hello world")
-	m := model.Mount{
+	s := model.Sync{
 		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
 	entrypoint := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
 
-	existing, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, nil, entrypoint)
+	existing, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{s}, model.EmptyMatcher, nil, entrypoint)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -453,7 +450,7 @@ func TestBuildImageFromExistingPreservesEntrypoint(t *testing.T) {
 	// will change the contents of `bar`
 	f.WriteFile("foo", "a whole new world")
 
-	ref, err := f.b.BuildImageFromExisting(f.ctx, f.ps, existing, MountsToPathMappings([]model.Mount{m}), model.EmptyMatcher, nil)
+	ref, err := f.b.BuildImageFromExisting(f.ctx, f.ps, existing, SyncsToPathMappings([]model.Sync{s}), model.EmptyMatcher, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -473,15 +470,15 @@ func TestBuildDockerWithRunsFromExistingPreservesEntrypoint(t *testing.T) {
 	defer f.teardown()
 
 	f.WriteFile("foo", "hello world")
-	m := model.Mount{
+	s := model.Sync{
 		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
 	run := model.ToShellCmd("echo -n hello >> /src/baz")
 	entrypoint := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
 
-	runs := model.ToRuns(f.Path(), []model.Cmd{run})
-	existing, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, runs, entrypoint)
+	runs := model.ToRuns([]model.Cmd{run})
+	existing, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{s}, model.EmptyMatcher, runs, entrypoint)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -490,7 +487,7 @@ func TestBuildDockerWithRunsFromExistingPreservesEntrypoint(t *testing.T) {
 	// will change the contents of `bar`
 	f.WriteFile("foo", "a whole new world")
 
-	ref, err := f.b.BuildImageFromExisting(f.ctx, f.ps, existing, MountsToPathMappings([]model.Mount{m}), model.EmptyMatcher, runs)
+	ref, err := f.b.BuildImageFromExisting(f.ctx, f.ps, existing, SyncsToPathMappings([]model.Sync{s}), model.EmptyMatcher, runs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -513,7 +510,7 @@ func TestUpdateInContainerE2E(t *testing.T) {
 	defer f.teardown()
 
 	f.WriteFile("delete_me", "will be deleted")
-	m := model.Mount{
+	s := model.Sync{
 		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
@@ -525,8 +522,8 @@ func TestUpdateInContainerE2E(t *testing.T) {
 	entrypoint := model.ToShellCmd(
 		"echo -n $(($(cat /src/startcount)+1)) > /src/startcount && sleep 210")
 
-	runs := model.ToRuns(f.Path(), []model.Cmd{initStartcount})
-	imgRef, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, runs, entrypoint)
+	runs := model.ToRuns([]model.Cmd{initStartcount})
+	imgRef, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{s}, model.EmptyMatcher, runs, entrypoint)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -561,13 +558,13 @@ func TestReapOneImage(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
-	m := model.Mount{
+	s := model.Sync{
 		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
 
 	df1 := simpleDockerfile
-	ref1, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), df1, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{})
+	ref1, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), df1, []model.Sync{s}, model.EmptyMatcher, nil, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -575,7 +572,7 @@ func TestReapOneImage(t *testing.T) {
 	label := dockerfile.Label("tilt.reaperTest")
 	f.b.extraLabels[label] = "1"
 	df2 := simpleDockerfile.Run(model.ToShellCmd("echo hi >> hi.txt"))
-	ref2, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), df2, []model.Mount{m}, model.EmptyMatcher, nil, model.Cmd{})
+	ref2, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), df2, []model.Sync{s}, model.EmptyMatcher, nil, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -596,20 +593,19 @@ func TestConditionalRunInRealDocker(t *testing.T) {
 	f.WriteFile("a.txt", "a")
 	f.WriteFile("b.txt", "b")
 
-	m := model.Mount{
+	s := model.Sync{
 		LocalPath:     f.Path(),
 		ContainerPath: "/src",
 	}
 	run1 := model.Run{
-		Cmd:           model.ToShellCmd("cat /src/a.txt >> /src/c.txt"),
-		Triggers:      []string{"a.txt"},
-		BaseDirectory: f.Path(),
+		Cmd:      model.ToShellCmd("cat /src/a.txt >> /src/c.txt"),
+		Triggers: model.NewPathSet([]string{"a.txt"}, f.Path()),
 	}
 	run2 := model.Run{
 		Cmd: model.ToShellCmd("cat /src/b.txt >> /src/d.txt"),
 	}
 
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Mount{m}, model.EmptyMatcher, []model.Run{run1, run2}, model.Cmd{})
+	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{s}, model.EmptyMatcher, []model.Run{run1, run2}, model.Cmd{})
 	if err != nil {
 		t.Fatal(err)
 	}

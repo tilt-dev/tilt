@@ -40,7 +40,7 @@ type dockerImageBuilder struct {
 
 type ImageBuilder interface {
 	BuildDockerfile(ctx context.Context, ps *PipelineState, ref reference.Named, df dockerfile.Dockerfile, buildPath string, filter model.PathMatcher, buildArgs map[string]string) (reference.NamedTagged, error)
-	BuildImageFromScratch(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile, mounts []model.Mount, filter model.PathMatcher, runs []model.Run, entrypoint model.Cmd) (reference.NamedTagged, error)
+	BuildImageFromScratch(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile, syncs []model.Sync, filter model.PathMatcher, runs []model.Run, entrypoint model.Cmd) (reference.NamedTagged, error)
 	BuildImageFromExisting(ctx context.Context, ps *PipelineState, existing reference.NamedTagged, paths []PathMapping, filter model.PathMatcher, runs []model.Run) (reference.NamedTagged, error)
 	PushImage(ctx context.Context, name reference.NamedTagged, writer io.Writer) (reference.NamedTagged, error)
 	TagImage(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
@@ -73,7 +73,7 @@ func (d *dockerImageBuilder) BuildDockerfile(ctx context.Context, ps *PipelineSt
 }
 
 func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile,
-	mounts []model.Mount, filter model.PathMatcher,
+	syncs []model.Sync, filter model.PathMatcher,
 	runs []model.Run, entrypoint model.Cmd) (reference.NamedTagged, error) {
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildImageFromScratch")
@@ -81,7 +81,7 @@ func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ps *Pipe
 
 	hasEntrypoint := !entrypoint.Empty()
 
-	paths := MountsToPathMappings(mounts)
+	paths := SyncsToPathMappings(syncs)
 	df := baseDockerfile
 	df, runs, err := d.addConditionalRuns(df, runs, paths)
 	if err != nil {
@@ -108,7 +108,7 @@ func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, ps *Pip
 
 	// Don't worry about conditional runs on incremental builds, they've
 	// already handled by the watch loop.
-	df, err := d.addMountsAndRemovedFiles(ctx, df, paths)
+	df, err := d.addSyncedAndRemovedFiles(ctx, df, paths)
 	if err != nil {
 		return nil, errors.Wrap(err, "BuildImageFromExisting")
 	}
@@ -130,7 +130,7 @@ func (d *dockerImageBuilder) applyLabels(df dockerfile.Dockerfile, buildMode doc
 func (d *dockerImageBuilder) addConditionalRuns(df dockerfile.Dockerfile, runs []model.Run, paths []PathMapping) (dockerfile.Dockerfile, []model.Run, error) {
 	consumed := 0
 	for _, run := range runs {
-		if run.Triggers == nil {
+		if run.Triggers.Empty() {
 			break
 		}
 
@@ -174,11 +174,11 @@ func (d *dockerImageBuilder) addConditionalRuns(df dockerfile.Dockerfile, runs [
 	return df, remainingRuns, nil
 }
 
-func (d *dockerImageBuilder) addMountsAndRemovedFiles(ctx context.Context, df dockerfile.Dockerfile, paths []PathMapping) (dockerfile.Dockerfile, error) {
+func (d *dockerImageBuilder) addSyncedAndRemovedFiles(ctx context.Context, df dockerfile.Dockerfile, paths []PathMapping) (dockerfile.Dockerfile, error) {
 	df = df.AddAll()
 	toRemove, err := MissingLocalPaths(ctx, paths)
 	if err != nil {
-		return "", errors.Wrap(err, "addMounts")
+		return "", errors.Wrap(err, "addSyncedAndRemovedFiles")
 	}
 
 	toRemovePaths := make([]string, len(toRemove))

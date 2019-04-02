@@ -60,6 +60,11 @@ func NewStoreForTesting() (st *Store, getActions func() []Action) {
 		mu.Lock()
 		defer mu.Unlock()
 		actions = append(actions, action)
+
+		errorAction, isErrorAction := action.(ErrorAction)
+		if isErrorAction {
+			s.PermanentError = errorAction.Error
+		}
 	})
 
 	getActions = func() []Action {
@@ -74,8 +79,8 @@ func (s *Store) AddSubscriber(sub Subscriber) {
 	s.subscribers.Add(sub)
 }
 
-func (s *Store) RemoveSubscriber(sub Subscriber) error {
-	return s.subscribers.Remove(sub)
+func (s *Store) RemoveSubscriber(ctx context.Context, sub Subscriber) error {
+	return s.subscribers.Remove(ctx, sub)
 }
 
 // Sends messages to all the subscribers asynchronously.
@@ -114,6 +119,8 @@ func (s *Store) Close() {
 }
 
 func (s *Store) Loop(ctx context.Context) error {
+	s.subscribers.Setup(ctx)
+	defer s.subscribers.TeardownAll(context.Background())
 
 	for {
 		select {
@@ -170,7 +177,7 @@ func (s *Store) maybeFinished() (bool, error) {
 		return false, nil
 	}
 
-	finished := !state.WatchMounts &&
+	finished := !state.WatchFiles &&
 		state.CompletedBuildCount == state.InitialBuildCount
 	return finished, nil
 }

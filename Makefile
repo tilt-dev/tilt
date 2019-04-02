@@ -67,7 +67,12 @@ shorttest:
 	go test -p $(GO_PARALLEL_JOBS) -tags 'skipcontainertests' -timeout 60s ./...
 
 integration:
-	go test -v -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 400s ./integration
+ifneq ($(CIRCLECI),true)
+		go test -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 500s ./integration
+else
+		mkdir -p test-results
+		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./integration -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 500s
+endif
 
 dev-js:
 	cd web && yarn install && yarn run start

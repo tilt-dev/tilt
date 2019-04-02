@@ -2764,6 +2764,11 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 						}
 						matcher.fb.checkMatchers(f, m, *dbInfo.FastBuild)
 					}
+				case model.LiveUpdate:
+					lu := image.MaybeLiveUpdateInfo()
+					if assert.NotNil(f.t, lu) {
+						assert.Equal(f.t, matcher, *lu)
+					}
 				default:
 					f.t.Fatalf("unknown dbHelper matcher: %T %v", matcher, matcher)
 				}
@@ -2814,6 +2819,11 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 					}
 
 					matcher.checkMatchers(f, m, *cbInfo.Fast)
+				case model.LiveUpdate:
+					lu := image.MaybeLiveUpdateInfo()
+					if assert.NotNil(f.t, lu) {
+						assert.Equal(f.t, matcher, *lu)
+					}
 				}
 			}
 
@@ -2863,12 +2873,11 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			}
 
 		case matchPathHelper:
-			// Make sure the path matches one of the mounts.
+			// Make sure the path matches one of the syncs.
 			isDep := false
 			path := f.JoinPath(opt.path)
 			for _, d := range m.LocalPaths() {
-				_, isChild := ospath.Child(d, path)
-				if isChild {
+				if ospath.IsChild(d, path) {
 					isDep = true
 				}
 			}
@@ -3180,24 +3189,27 @@ func fbWithCache(img imageHelper, cache string, opts ...interface{}) fbHelper {
 }
 
 func (fb fbHelper) checkMatchers(f *fixture, m model.Manifest, fbInfo model.FastBuild) {
-	mounts := fbInfo.Mounts
+	syncs := fbInfo.Syncs
 	runs := fbInfo.Runs
 	for _, matcher := range fb.matchers {
 		switch matcher := matcher.(type) {
 		case addHelper:
-			mount := mounts[0]
-			mounts = mounts[1:]
-			if mount.LocalPath != f.JoinPath(matcher.src) {
-				f.t.Fatalf("manifest %v mount %+v src: %q; expected %q", m.Name, mount, mount.LocalPath, f.JoinPath(matcher.src))
+			sync := syncs[0]
+			syncs = syncs[1:]
+			if sync.LocalPath != f.JoinPath(matcher.src) {
+				f.t.Fatalf("manifest %v sync %+v src: %q; expected %q", m.Name, sync, sync.LocalPath, f.JoinPath(matcher.src))
 			}
-			if mount.ContainerPath != matcher.dest {
-				f.t.Fatalf("manifest %v mount %+v dest: %q; expected %q", m.Name, mount, mount.ContainerPath, matcher.dest)
+			if sync.ContainerPath != matcher.dest {
+				f.t.Fatalf("manifest %v sync %+v dest: %q; expected %q", m.Name, sync, sync.ContainerPath, matcher.dest)
 			}
 		case runHelper:
 			run := runs[0]
 			runs = runs[1:]
 			assert.Equal(f.t, model.ToShellCmd(matcher.cmd), run.Cmd)
-			assert.Equal(f.t, matcher.triggers, run.Triggers)
+			assert.Equal(f.t, matcher.triggers, run.Triggers.Paths)
+			if !run.Triggers.Empty() {
+				assert.Equal(f.t, f.Path(), run.Triggers.BaseDirectory)
+			}
 		case hotReloadHelper:
 			assert.Equal(f.t, matcher.on, fbInfo.HotReload)
 		default:

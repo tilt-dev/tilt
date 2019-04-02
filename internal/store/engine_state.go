@@ -32,7 +32,7 @@ type EngineState struct {
 	ManifestTargets map[model.ManifestName]*ManifestTarget
 
 	CurrentlyBuilding model.ManifestName
-	WatchMounts       bool
+	WatchFiles        bool
 
 	// How many builds were queued on startup (i.e., how many manifests there were)
 	InitialBuildCount int
@@ -341,7 +341,7 @@ func (ms *ManifestState) HasPendingFileChanges() bool {
 func (ms *ManifestState) NextBuildReason() model.BuildReason {
 	reason := model.BuildReasonNone
 	if ms.HasPendingFileChanges() {
-		reason = reason.With(model.BuildReasonFlagMountFiles)
+		reason = reason.With(model.BuildReasonFlagChangedFiles)
 	}
 	if !ms.PendingManifestChange.IsZero() {
 		reason = reason.With(model.BuildReasonFlagConfig)
@@ -356,13 +356,13 @@ func (ms *ManifestState) NextBuildReason() model.BuildReason {
 }
 
 // Whether a change at the given time should trigger a build.
-// Used to determine if changes to mount files or config files
+// Used to determine if changes to synced files or config files
 // should kick off a new build.
 func (ms *ManifestState) IsPendingTime(t time.Time) bool {
 	return !t.IsZero() && t.After(ms.LastBuild().StartTime)
 }
 
-// Whether changes have been made to this Manifest's mount files
+// Whether changes have been made to this Manifest's synced files
 // or config since the last build.
 //
 // Returns:

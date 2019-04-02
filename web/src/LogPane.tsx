@@ -80,7 +80,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 
   render() {
     let log = this.props.log
-    if (log.length == 0) {
+    if (!log || log.length == 0) {
       return <p>No logs received</p>
     }
 

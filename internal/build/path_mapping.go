@@ -86,19 +86,19 @@ func FilterMappings(mappings []PathMapping, matcher model.PathMatcher) ([]PathMa
 }
 
 // FilesToPathMappings converts a list of absolute local filepaths into pathMappings (i.e.
-// associates local filepaths with their mounts and destination paths).
-func FilesToPathMappings(files []string, mounts []model.Mount) ([]PathMapping, error) {
-	pms, err := filesToPathMappings(files, mounts)
+// associates local filepaths with their syncs and destination paths).
+func FilesToPathMappings(files []string, syncs []model.Sync) ([]PathMapping, error) {
+	pms, err := filesToPathMappings(files, syncs)
 	if err != nil {
 		return pms, err
 	}
 	return pms, nil
 }
 
-func filesToPathMappings(files []string, mounts []model.Mount) ([]PathMapping, *PathMappingErr) {
+func filesToPathMappings(files []string, syncs []model.Sync) ([]PathMapping, *PathMappingErr) {
 	var pms []PathMapping
 	for _, f := range files {
-		pm, err := fileToPathMapping(f, mounts)
+		pm, err := fileToPathMapping(f, syncs)
 		if err != nil {
 			return nil, err
 		}
@@ -108,23 +108,23 @@ func filesToPathMappings(files []string, mounts []model.Mount) ([]PathMapping, *
 	return pms, nil
 }
 
-func fileToPathMapping(file string, mounts []model.Mount) (PathMapping, *PathMappingErr) {
-	for _, m := range mounts {
-		// Open Q: can you mount inside of mounts?! o_0
+func fileToPathMapping(file string, sync []model.Sync) (PathMapping, *PathMappingErr) {
+	for _, s := range sync {
+		// Open Q: can you sync files inside of syncs?! o_0
 		// TODO(maia): are symlinks etc. gonna kick our asses here? If so, will
 		// need ospath.RealChild -- but then can't deal with deleted local files.
-		relPath, isChild := ospath.Child(m.LocalPath, file)
+		relPath, isChild := ospath.Child(s.LocalPath, file)
 		if isChild {
-			localPathIsFile, err := isFile(m.LocalPath)
+			localPathIsFile, err := isFile(s.LocalPath)
 			if err != nil {
 				return PathMapping{}, pathMappingErrf("error stat'ing: %v", err)
 			}
 			var containerPath string
-			if endsWithSlash(m.ContainerPath) && localPathIsFile {
-				fileName := path.Base(m.LocalPath)
-				containerPath = filepath.Join(m.ContainerPath, fileName)
+			if endsWithSlash(s.ContainerPath) && localPathIsFile {
+				fileName := path.Base(s.LocalPath)
+				containerPath = filepath.Join(s.ContainerPath, fileName)
 			} else {
-				containerPath = filepath.Join(m.ContainerPath, relPath)
+				containerPath = filepath.Join(s.ContainerPath, relPath)
 			}
 			return PathMapping{
 				LocalPath:     file,
@@ -132,7 +132,7 @@ func fileToPathMapping(file string, mounts []model.Mount) (PathMapping, *PathMap
 			}, nil
 		}
 	}
-	return PathMapping{}, pathMappingErrf("file %s matches no mounts", file)
+	return PathMapping{}, pathMappingErrf("file %s matches no syncs", file)
 }
 
 func endsWithSlash(path string) bool {
@@ -148,17 +148,12 @@ func isFile(path string) (bool, error) {
 	return !mode.IsDir(), nil
 }
 
-func FileBelongsToMount(file string, mounts []model.Mount) bool {
-	_, err := fileToPathMapping(file, mounts)
-	return err == nil
-}
-
-func MountsToPathMappings(mounts []model.Mount) []PathMapping {
-	pms := make([]PathMapping, len(mounts))
-	for i, m := range mounts {
+func SyncsToPathMappings(syncs []model.Sync) []PathMapping {
+	pms := make([]PathMapping, len(syncs))
+	for i, s := range syncs {
 		pms[i] = PathMapping{
-			LocalPath:     m.LocalPath,
-			ContainerPath: m.ContainerPath,
+			LocalPath:     s.LocalPath,
+			ContainerPath: s.ContainerPath,
 		}
 	}
 	return pms
@@ -188,6 +183,14 @@ func PathMappingsToContainerPaths(mappings []PathMapping) []string {
 	res := make([]string, len(mappings))
 	for i, m := range mappings {
 		res[i] = m.ContainerPath
+	}
+	return res
+}
+
+func PathMappingsToLocalPaths(mappings []PathMapping) []string {
+	res := make([]string, len(mappings))
+	for i, m := range mappings {
+		res[i] = m.LocalPath
 	}
 	return res
 }

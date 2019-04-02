@@ -5,7 +5,7 @@ type BuildReason int
 const BuildReasonNone = BuildReason(0)
 
 const (
-	BuildReasonFlagMountFiles BuildReason = 1 << iota
+	BuildReasonFlagChangedFiles BuildReason = 1 << iota
 	BuildReasonFlagConfig
 
 	// See comments on NeedsRebuildFromCrash

@@ -108,7 +108,7 @@ func CreateFileChangeFilter(m IgnorableTarget) (model.PathMatcher, error) {
 }
 
 func CreateRunMatcher(r model.Run) (model.PathMatcher, error) {
-	dim, err := dockerignore.NewDockerPatternMatcher(r.BaseDirectory, r.Triggers)
+	dim, err := dockerignore.NewDockerPatternMatcher(r.Triggers.BaseDirectory, r.Triggers.Paths)
 	if err != nil {
 		return nil, err
 	}
@@ -147,6 +147,5 @@ func newDirectoryMatcher(dir string) (directoryMatcher, error) {
 }
 
 func (d directoryMatcher) Matches(p string, isDir bool) (bool, error) {
-	_, isChild := ospath.Child(d.dir, p)
-	return isChild, nil
+	return ospath.IsChild(d.dir, p), nil
 }

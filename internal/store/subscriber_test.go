@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -52,7 +53,7 @@ func TestRemoveSubscriber(t *testing.T) {
 	st.NotifySubscribers(ctx)
 	s.assertOnChangeCount(t, 1)
 
-	err := st.RemoveSubscriber(s)
+	err := st.RemoveSubscriber(ctx, s)
 	assert.NoError(t, err)
 	st.NotifySubscribers(ctx)
 	s.assertOnChangeCount(t, 0)
@@ -61,18 +62,53 @@ func TestRemoveSubscriber(t *testing.T) {
 func TestRemoveSubscriberNotFound(t *testing.T) {
 	st, _ := NewStoreForTesting()
 	s := newFakeSubscriber()
-	err := st.RemoveSubscriber(s)
+	ctx := context.Background()
+	err := st.RemoveSubscriber(ctx, s)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Subscriber not found")
 	}
 }
 
-type fakeSubscriber struct {
-	onChange chan onChangeCall
+func TestSubscriberTeardown(t *testing.T) {
+	st, _ := NewStoreForTesting()
+	ctx := context.Background()
+	s := newFakeSubscriber()
+	st.AddSubscriber(s)
+
+	go st.Dispatch(NewErrorAction(fmt.Errorf("fake error")))
+	err := st.Loop(ctx)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "fake error")
+	}
+
+	assert.Equal(t, 1, s.teardownCount)
 }
 
-func newFakeSubscriber() fakeSubscriber {
-	return fakeSubscriber{
+func TestSubscriberTeardownOnRemove(t *testing.T) {
+	st, _ := NewStoreForTesting()
+	ctx := context.Background()
+	s := newFakeSubscriber()
+	st.AddSubscriber(s)
+
+	go func() {
+		st.RemoveSubscriber(ctx, s)
+		st.Dispatch(NewErrorAction(fmt.Errorf("fake error")))
+	}()
+	err := st.Loop(ctx)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "fake error")
+	}
+
+	assert.Equal(t, 1, s.teardownCount)
+}
+
+type fakeSubscriber struct {
+	onChange      chan onChangeCall
+	teardownCount int
+}
+
+func newFakeSubscriber() *fakeSubscriber {
+	return &fakeSubscriber{
 		onChange: make(chan onChangeCall),
 	}
 }
@@ -81,7 +117,7 @@ type onChangeCall struct {
 	done chan bool
 }
 
-func (f fakeSubscriber) assertOnChangeCount(t *testing.T, count int) {
+func (f *fakeSubscriber) assertOnChangeCount(t *testing.T, count int) {
 	t.Helper()
 
 	for i := 0; i < count; i++ {
@@ -98,7 +134,7 @@ func (f fakeSubscriber) assertOnChangeCount(t *testing.T, count int) {
 	}
 }
 
-func (f fakeSubscriber) assertOnChange(t *testing.T) {
+func (f *fakeSubscriber) assertOnChange(t *testing.T) {
 	t.Helper()
 
 	select {
@@ -109,8 +145,12 @@ func (f fakeSubscriber) assertOnChange(t *testing.T) {
 	}
 }
 
-func (f fakeSubscriber) OnChange(ctx context.Context, st RStore) {
+func (f *fakeSubscriber) OnChange(ctx context.Context, st RStore) {
 	call := onChangeCall{done: make(chan bool)}
 	f.onChange <- call
 	<-call.done
+}
+
+func (f *fakeSubscriber) Teardown(ctx context.Context) {
+	f.teardownCount++
 }

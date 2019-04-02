@@ -194,7 +194,7 @@ func (s Script) Run(ctx context.Context) error {
 		defer s.cleanUp(newBackgroundContext(ctx), tlr.Manifests)
 
 		initAction := engine.InitAction{
-			WatchMounts:  true,
+			WatchFiles:   true,
 			Manifests:    tlr.Manifests,
 			TiltfilePath: tfPath,
 			Warnings:     tlr.Warnings,

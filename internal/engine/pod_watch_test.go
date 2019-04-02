@@ -101,7 +101,7 @@ func podNamed(name string) *corev1.Pod {
 
 func (f *pwFixture) addManifestWithSelectors(manifestName string, ls ...labels.Selector) {
 	state := f.store.LockMutableStateForTesting()
-	state.WatchMounts = true
+	state.WatchFiles = true
 	mt, err := newManifestTargetWithSelectors(model.Manifest{Name: model.ManifestName(manifestName)}, ls)
 	if err != nil {
 		f.t.Fatalf("error creating manifest target with selectors: %+v", err)

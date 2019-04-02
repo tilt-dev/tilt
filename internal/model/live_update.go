@@ -10,18 +10,14 @@ import (
 type LiveUpdate struct {
 	Steps []LiveUpdateStep
 
-	// When files matching any of these globs change, we should fall back to a full rebuild.
-	FullRebuildTriggers []string
+	// When files matching any of these paths change, we should fall back to a full rebuild.
+	FullRebuildTriggers PathSet
 }
 
-func NewLiveUpdate(steps []LiveUpdateStep, fullRebuildTriggers []string) (LiveUpdate, error) {
+func NewLiveUpdate(steps []LiveUpdateStep, fullRebuildTriggers PathSet) (LiveUpdate, error) {
 	seenRunStep := false
 	for i, step := range steps {
 		switch step.(type) {
-		case LiveUpdateWorkDirStep:
-			if i != 0 {
-				return LiveUpdate{}, errors.New("workdir is only valid as the first step")
-			}
 		case LiveUpdateSyncStep:
 			if seenRunStep {
 				return LiveUpdate{}, errors.New("all sync steps must precede all run steps")
@@ -41,11 +37,6 @@ type LiveUpdateStep interface {
 	liveUpdateStep()
 }
 
-// Specifies the in-container directory from which `Run` steps are executed
-type LiveUpdateWorkDirStep string
-
-func (l LiveUpdateWorkDirStep) liveUpdateStep() {}
-
 // Specifies that changes to local path `Source` should be synced to container path `Dest`
 type LiveUpdateSyncStep struct {
 	Source, Dest string
@@ -53,9 +44,8 @@ type LiveUpdateSyncStep struct {
 
 func (l LiveUpdateSyncStep) liveUpdateStep() {}
 
-// TODO(maia): s/Mount/Sync
-func (l LiveUpdateSyncStep) toMount() Mount {
-	return Mount{
+func (l LiveUpdateSyncStep) toSync() Sync {
+	return Sync{
 		LocalPath:     l.Source,
 		ContainerPath: l.Dest,
 	}
@@ -63,20 +53,16 @@ func (l LiveUpdateSyncStep) toMount() Mount {
 
 // Specifies that `Command` should be executed when any files in `Sync` steps have changed
 // If `Trigger` is non-empty, `Command` will only be executed when the local paths of changed files covered by
-// at least one `Sync` match the glob in `Trigger`.
+// at least one `Sync` match one of `PathSet.Paths` (evaluated relative to `PathSet.BaseDirectory`.
 type LiveUpdateRunStep struct {
-	Command Cmd
-	Trigger string
+	Command  Cmd
+	Triggers PathSet
 }
 
 func (l LiveUpdateRunStep) liveUpdateStep() {}
 
 func (l LiveUpdateRunStep) toRun() Run {
-	r := Run{Cmd: l.Command}
-	if l.Trigger != "" {
-		r = r.WithTriggers([]string{l.Trigger}) // TODO(maia): should be []string to match Run.Triggers
-	}
-	return r
+	return Run{Cmd: l.Command, Triggers: l.Triggers}
 }
 
 // Specifies that the container should be restarted when any files in `Sync` steps have changed.
@@ -84,20 +70,18 @@ type LiveUpdateRestartContainerStep struct{}
 
 func (l LiveUpdateRestartContainerStep) liveUpdateStep() {}
 
-// TODO(maia): s/Mount/Sync
-func (lu LiveUpdate) SyncSteps() []Mount {
-	var syncs []Mount
+func (lu LiveUpdate) SyncSteps() []Sync {
+	var syncs []Sync
 	for _, step := range lu.Steps {
 		switch step := step.(type) {
 		case LiveUpdateSyncStep:
-			syncs = append(syncs, step.toMount())
+			syncs = append(syncs, step.toSync())
 		}
 	}
 	return syncs
 }
 
 func (lu LiveUpdate) RunSteps() []Run {
-	// TODO(maia): populate run.BaseDirectory with Workdir (if given)
 	var runs []Run
 	for _, step := range lu.Steps {
 		switch step := step.(type) {
