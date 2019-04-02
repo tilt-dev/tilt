@@ -299,18 +299,18 @@ func (r *Renderer) renderResourceHeader(v view.View) rty.Component {
 	l.Add(rty.ColoredString("  RESOURCE NAME ", cLightText))
 	l.AddDynamic(rty.NewFillerString(' '))
 
-	k8sCell := rty.ColoredString(" DEPLOY", cLightText)
+	k8sCell := rty.ColoredString(" CONTAINER", cLightText)
 	l.Add(k8sCell)
 	l.Add(middotText())
 
 	buildCell := rty.NewMinLengthLayout(BuildDurCellMinWidth+BuildStatusCellMinWidth, rty.DirHor).
 		SetAlign(rty.AlignEnd).
-		Add(rty.ColoredString("BUILD STATUS", cLightText))
+		Add(rty.ColoredString("UPDATE STATUS ", cLightText))
 	l.Add(buildCell)
 	l.Add(middotText())
 	deployCell := rty.NewMinLengthLayout(DeployCellMinWidth+1, rty.DirHor).
 		SetAlign(rty.AlignEnd).
-		Add(rty.ColoredString("UPDATED ", cLightText))
+		Add(rty.ColoredString("AS OF ", cLightText))
 	l.Add(deployCell)
 	return rty.OneLine(l)
 }

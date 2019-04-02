@@ -95,6 +95,32 @@ it("opens sidebar on click", async () => {
   expect(sidebar.hasClass("is-open")).toBe(true)
 })
 
+it("doesn't re-render the sidebar when the logs change", async () => {
+  const hud = mount(emptyHUD())
+  let resourceView = oneResourceView()
+  hud.setState({ View: resourceView })
+  let oldDOMNode = hud.find(".Sidebar").getDOMNode()
+  resourceView.Resources[0].PodLog += "hello world\n"
+  hud.setState({ View: resourceView })
+  let newDOMNode = hud.find(".Sidebar").getDOMNode()
+
+  expect(oldDOMNode).toBe(newDOMNode)
+})
+
+it("does re-render the sidebar when the resource list changes", async () => {
+  const hud = mount(emptyHUD())
+
+  let resourceView = oneResourceView()
+  hud.setState({ View: resourceView })
+  let sidebarLinks = hud.find(".Sidebar Link")
+  expect(sidebarLinks).toHaveLength(2)
+
+  let newResourceView = twoResourceView()
+  hud.setState({ View: newResourceView })
+  sidebarLinks = hud.find(".Sidebar Link")
+  expect(sidebarLinks).toHaveLength(3)
+})
+
 function oneResourceView() {
   const ts = Date.now().toLocaleString()
   const resource = {
@@ -123,4 +149,60 @@ function oneResourceView() {
     PodLog: "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
   }
   return { Resources: [resource] }
+}
+
+function twoResourceView() {
+  const ts = Date.now().toLocaleString()
+  const vigoda = {
+    Name: "vigoda",
+    DirectoriesWatched: ["foo", "bar"],
+    LastDeployTime: ts,
+    BuildHistory: [
+      {
+        Edits: ["main.go", "cli.go"],
+        Error: "the build failed!",
+        FinishTime: ts,
+        StartTime: ts,
+      },
+    ],
+    PendingBuildEdits: ["main.go", "cli.go", "vigoda.go"],
+    PendingBuildSince: ts,
+    CurrentBuild: {
+      Edits: ["main.go"],
+      StartTime: ts,
+    },
+    PodName: "vigoda-pod",
+    PodCreationTime: ts,
+    PodStatus: "Running",
+    PodRestarts: 1,
+    Endpoints: ["1.2.3.4:8080"],
+    PodLog: "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
+  }
+
+  const snack = {
+    Name: "snack",
+    DirectoriesWatched: ["foo", "bar"],
+    LastDeployTime: ts,
+    BuildHistory: [
+      {
+        Edits: ["main.go", "cli.go"],
+        Error: "the build failed!",
+        FinishTime: ts,
+        StartTime: ts,
+      },
+    ],
+    PendingBuildEdits: ["main.go", "cli.go", "snack.go"],
+    PendingBuildSince: ts,
+    CurrentBuild: {
+      Edits: ["main.go"],
+      StartTime: ts,
+    },
+    PodName: "snack-pod",
+    PodCreationTime: ts,
+    PodStatus: "Running",
+    PodRestarts: 1,
+    Endpoints: ["1.2.3.4:8080"],
+    PodLog: "1\n2\n3\n4\nsnacks are great\n5\n6\n7\n8\n",
+  }
+  return { Resources: [vigoda, snack] }
 }

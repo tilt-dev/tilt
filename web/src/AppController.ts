@@ -76,6 +76,9 @@ class AppController {
     let timeout = Math.pow(2, this.tryConnectCount) * 1000
     let maxTimeout = 5 * 1000 // 5sec
     setTimeout(() => {
+      if (this.disposed) {
+        return
+      }
       let message = this.loadCount ? "Reconnecting…" : "Loading…"
       this.component.setAppState({
         View: null,

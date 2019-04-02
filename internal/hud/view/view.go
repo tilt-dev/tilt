@@ -85,9 +85,8 @@ type Resource struct {
 	// for a little while.
 	CrashLog string
 
-	IsTiltfile      bool
-	ShowBuildStatus bool // if true, we show status & time in 'Build Status'; else, "N/A"
-	CombinedLog     model.Log
+	IsTiltfile  bool
+	CombinedLog model.Log
 }
 
 func (r Resource) DockerComposeTarget() DCResourceInfo {
