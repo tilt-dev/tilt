@@ -111,14 +111,14 @@ class HUD extends Component<HudProps, HudState> {
     let isSidebarOpen = this.state.isSidebarOpen
     let statusItems = resources.map(res => new StatusItem(res))
     let sidebarItems = resources.map(res => new SidebarItem(res))
-    let SidebarRoute = function(props: RouteComponentProps<any>) {
+    let sidebarRoute = (props: RouteComponentProps<any>) => {
       let name = props.match.params.name
       return (
         <Sidebar selected={name} items={sidebarItems} isOpen={isSidebarOpen} />
       )
     }
 
-    let LogsRoute = (props: RouteComponentProps<any>) => {
+    let logsRoute = (props: RouteComponentProps<any>) => {
       let name = props.match.params ? props.match.params.name : ""
       let logs = ""
       if (view && name !== "") {
@@ -137,8 +137,17 @@ class HUD extends Component<HudProps, HudState> {
       <Router>
         <div className="HUD">
           <Switch>
-            <Route path="/r/:name" component={SidebarRoute} />
-            <Route component={SidebarRoute} />
+            <Route
+              path="/r/:name"
+              render={props => {
+                return sidebarRoute(props)
+              }}
+            />
+            <Route
+              render={props => {
+                return sidebarRoute(props)
+              }}
+            />
           </Switch>
 
           <Statusbar items={statusItems} toggleSidebar={this.toggleSidebar} />
@@ -148,7 +157,7 @@ class HUD extends Component<HudProps, HudState> {
               path="/"
               render={() => <LogPane log={combinedLog} />}
             />
-            <Route exact path="/r/:name" component={LogsRoute} />
+            <Route exact path="/r/:name" render={props => logsRoute(props)} />
             <Route exact path="/r/:name/k8s" render={() => <K8sViewPane />} />
             <Route
               exact
