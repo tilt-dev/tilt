@@ -5,7 +5,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -178,8 +178,7 @@ func injectImageDigestInUnstructured(entity K8sEntity, injectRef reference.Named
 func (e K8sEntity) HasImage(image container.RefSelector, imageJSONPaths []JSONPath) (bool, error) {
 	images, err := e.FindImages(imageJSONPaths)
 	if err != nil {
-		fmt.Printf("error in FindImages: %+v\n", err)
-		return false, err
+		return false, errors.Wrap(err, "HasImage")
 	}
 
 	for _, existingRef := range images {
