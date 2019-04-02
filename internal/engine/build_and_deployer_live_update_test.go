@@ -148,8 +148,8 @@ func TestLiveUpdateRunTriggerLocalContainer(t *testing.T) {
 
 	runs := []model.LiveUpdateRunStep{
 		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo hello")},
-		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo a"), Triggers: f.NewGlobset("a.txt")}, // matches changed file
-		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo b"), Triggers: f.NewGlobset("b.txt")}, // does NOT match changed file
+		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
+		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo b"), Triggers: f.NewPathSet("b.txt")}, // does NOT match changed file
 	}
 	lu := f.assembleLiveUpdate(SanchoSyncSteps(f), runs, true, nil)
 	tCase := testCase{
@@ -172,8 +172,8 @@ func TestLiveUpdateRunTriggerSynclet(t *testing.T) {
 
 	runs := []model.LiveUpdateRunStep{
 		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo hello")},
-		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo a"), Triggers: f.NewGlobset("a.txt")}, // matches changed file
-		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo b"), Triggers: f.NewGlobset("b.txt")}, // does NOT match changed file
+		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
+		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo b"), Triggers: f.NewPathSet("b.txt")}, // does NOT match changed file
 	}
 	lu := f.assembleLiveUpdate(SanchoSyncSteps(f), runs, true, nil)
 	tCase := testCase{
@@ -313,7 +313,7 @@ func (f *bdFixture) assembleLiveUpdate(syncs []model.LiveUpdateSyncStep, runs []
 	if shouldRestart {
 		steps = append(steps, model.LiveUpdateRestartContainerStep{})
 	}
-	lu, err := model.NewLiveUpdate(steps, f.NewGlobset(fullRebuildTriggers...))
+	lu, err := model.NewLiveUpdate(steps, f.NewPathSet(fullRebuildTriggers...))
 	if err != nil {
 		f.T().Fatal(err)
 	}

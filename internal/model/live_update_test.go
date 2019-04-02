@@ -11,10 +11,10 @@ const BaseDir = "/base/directory"
 func TestNewLiveUpdate(t *testing.T) {
 	steps := []LiveUpdateStep{
 		LiveUpdateSyncStep{"foo", "bar"},
-		LiveUpdateRunStep{Cmd{[]string{"hello"}}, NewGlobset([]string{"goodbye"}, BaseDir)},
+		LiveUpdateRunStep{Cmd{[]string{"hello"}}, NewPathSet([]string{"goodbye"}, BaseDir)},
 		LiveUpdateRestartContainerStep{},
 	}
-	fullRebuildTriggers := NewGlobset([]string{"quu", "qux"}, BaseDir)
+	fullRebuildTriggers := NewPathSet([]string{"quu", "qux"}, BaseDir)
 	lu, err := NewLiveUpdate(steps, fullRebuildTriggers)
 	if !assert.NoError(t, err) {
 		return
@@ -25,7 +25,7 @@ func TestNewLiveUpdate(t *testing.T) {
 
 func TestNewLiveUpdateRestartContainerNotLast(t *testing.T) {
 	steps := []LiveUpdateStep{LiveUpdateRestartContainerStep{}, LiveUpdateSyncStep{"foo", "bar"}}
-	_, err := NewLiveUpdate(steps, Globset{})
+	_, err := NewLiveUpdate(steps, PathSet{})
 	if !assert.Error(t, err) {
 		return
 	}
@@ -34,7 +34,7 @@ func TestNewLiveUpdateRestartContainerNotLast(t *testing.T) {
 
 func TestNewLiveUpdateSyncAfterRun(t *testing.T) {
 	steps := append([]LiveUpdateStep{LiveUpdateRunStep{}, LiveUpdateSyncStep{"foo", "bar"}})
-	_, err := NewLiveUpdate(steps, Globset{})
+	_, err := NewLiveUpdate(steps, PathSet{})
 	if !assert.Error(t, err) {
 		return
 	}

@@ -108,35 +108,12 @@ func CreateFileChangeFilter(m IgnorableTarget) (model.PathMatcher, error) {
 }
 
 func CreateRunMatcher(r model.Run) (model.PathMatcher, error) {
-	return CreateTriggerMatcher(r.Triggers.Globs, r.Triggers.BaseDirectory)
-}
-
-func CreateTriggerMatcher(triggers []string, baseDir string) (model.PathMatcher, error) {
-	dim, err := dockerignore.NewDockerPatternMatcher(baseDir, triggers)
+	dim, err := dockerignore.NewDockerPatternMatcher(r.Triggers.BaseDirectory, r.Triggers.Paths)
 	if err != nil {
 		return nil, err
 	}
 
 	return dim, nil
-}
-
-// AnyMatchGlobs returns true if any of the given filepaths match any of the given globs.
-func AnyMatchGlobs(paths []string, globs model.Globset) (bool, error) {
-	matcher, err := CreateTriggerMatcher(globs.Globs, globs.BaseDirectory)
-	if err != nil {
-		return false, err
-	}
-
-	for _, path := range paths {
-		match, err := matcher.Matches(path, false)
-		if err != nil {
-			return false, err
-		}
-		if match {
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 // Emacs temp files look like:

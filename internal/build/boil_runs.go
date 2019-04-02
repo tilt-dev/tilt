@@ -1,7 +1,6 @@
 package build
 
 import (
-	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -14,7 +13,7 @@ func BoilRuns(runs []model.Run, pathMappings []PathMapping) ([]model.Cmd, error)
 			continue
 		}
 
-		anyMatch, err := ignore.AnyMatchGlobs(localPaths, run.Triggers)
+		anyMatch, err := run.Triggers.AnyMatch(localPaths)
 		if err != nil {
 			return nil, err
 		}

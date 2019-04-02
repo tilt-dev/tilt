@@ -55,7 +55,7 @@ func TestBoilRunsOneTriggerFilesDontMatch(t *testing.T) {
 	runs := []model.Run{
 		model.Run{
 			Cmd:      model.ToShellCmd("echo hello"),
-			Triggers: model.NewGlobset(triggers, "/home/tilt/code/test"),
+			Triggers: model.NewPathSet(triggers, "/home/tilt/code/test"),
 		},
 	}
 
@@ -81,7 +81,7 @@ func TestBoilRunsOneTriggerMatchingFile(t *testing.T) {
 	runs := []model.Run{
 		model.Run{
 			Cmd:      model.ToShellCmd("echo world"),
-			Triggers: model.NewGlobset(triggers, "/home/tilt/code/test"),
+			Triggers: model.NewPathSet(triggers, "/home/tilt/code/test"),
 		},
 	}
 
@@ -102,6 +102,58 @@ func TestBoilRunsOneTriggerMatchingFile(t *testing.T) {
 	assert.ElementsMatch(t, expected, actual)
 }
 
+func TestBoilRunsTriggerMatchingAbsPath(t *testing.T) {
+	triggers := []string{"/home/tilt/code/test/bar"}
+	runs := []model.Run{
+		model.Run{
+			Cmd:      model.ToShellCmd("echo world"),
+			Triggers: model.NewPathSet(triggers, "/home/tilt/code/test"),
+		},
+	}
+
+	pathMappings := []PathMapping{
+		PathMapping{
+			LocalPath:     "/home/tilt/code/test/bar",
+			ContainerPath: "/src/bar",
+		},
+	}
+
+	expected := []model.Cmd{model.ToShellCmd("echo world")}
+
+	actual, err := BoilRuns(runs, pathMappings)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.ElementsMatch(t, expected, actual)
+}
+
+func TestBoilRunsTriggerNestedPathNoMatch(t *testing.T) {
+	triggers := []string{"bar"}
+	runs := []model.Run{
+		model.Run{
+			Cmd:      model.ToShellCmd("echo world"),
+			Triggers: model.NewPathSet(triggers, "/home/tilt/code/test"),
+		},
+	}
+
+	pathMappings := []PathMapping{
+		PathMapping{
+			LocalPath:     "/home/tilt/code/test/nested/bar",
+			ContainerPath: "/src/bar",
+		},
+	}
+
+	expected := []model.Cmd{}
+
+	actual, err := BoilRuns(runs, pathMappings)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.ElementsMatch(t, expected, actual)
+}
+
 func TestBoilRunsManyTriggersManyFiles(t *testing.T) {
 	wd := "/home/tilt/code/test"
 	triggers1 := []string{"foo"}
@@ -109,11 +161,11 @@ func TestBoilRunsManyTriggersManyFiles(t *testing.T) {
 	runs := []model.Run{
 		model.Run{
 			Cmd:      model.ToShellCmd("echo hello"),
-			Triggers: model.NewGlobset(triggers1, wd),
+			Triggers: model.NewPathSet(triggers1, wd),
 		},
 		model.Run{
 			Cmd:      model.ToShellCmd("echo world"),
-			Triggers: model.NewGlobset(triggers2, wd),
+			Triggers: model.NewPathSet(triggers2, wd),
 		},
 	}
 

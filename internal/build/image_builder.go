@@ -131,7 +131,7 @@ func (d *dockerImageBuilder) addConditionalRuns(df dockerfile.Dockerfile, runs [
 	consumed := 0
 	for _, run := range runs {
 		if run.Triggers.Empty() {
-			continue
+			break
 		}
 
 		matcher, err := ignore.CreateRunMatcher(run)

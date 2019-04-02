@@ -40,19 +40,19 @@ var stepSayHi = Run{Cmd: cmdSayHi}
 var stepSayBye = Run{Cmd: cmdSayBye}
 var stepSayHiTriggerFoo = Run{
 	Cmd:      cmdSayHi,
-	Triggers: NewGlobset([]string{"foo"}, "/src"),
+	Triggers: NewPathSet([]string{"foo"}, "/src"),
 }
 var stepSayHiTriggerBar = Run{
 	Cmd:      cmdSayHi,
-	Triggers: NewGlobset([]string{"bar"}, "/src"),
+	Triggers: NewPathSet([]string{"bar"}, "/src"),
 }
 var stepSayHiTriggerDirA = Run{
 	Cmd:      cmdSayHi,
-	Triggers: NewGlobset([]string{"foo"}, "/dirA"),
+	Triggers: NewPathSet([]string{"foo"}, "/dirA"),
 }
 var stepSayHiTriggerDirB = Run{
 	Cmd:      cmdSayHi,
-	Triggers: NewGlobset([]string{"foo"}, "/dirB"),
+	Triggers: NewPathSet([]string{"foo"}, "/dirB"),
 }
 
 var equalitytests = []struct {
