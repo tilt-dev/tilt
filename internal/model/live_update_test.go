@@ -9,7 +9,7 @@ import (
 func TestNewLiveUpdate(t *testing.T) {
 	steps := []LiveUpdateStep{
 		LiveUpdateSyncStep{"foo", "bar"},
-		LiveUpdateRunStep{Cmd{[]string{"hello"}}, []string{"goodbye"}},
+		LiveUpdateRunStep{Cmd{[]string{"hello"}}, NewPathSet([]string{"goodbye"}, "/home")},
 		LiveUpdateRestartContainerStep{},
 	}
 	fullRebuildTriggers := []string{"quu", "qux"}

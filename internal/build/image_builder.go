@@ -130,7 +130,7 @@ func (d *dockerImageBuilder) applyLabels(df dockerfile.Dockerfile, buildMode doc
 func (d *dockerImageBuilder) addConditionalRuns(df dockerfile.Dockerfile, runs []model.Run, paths []PathMapping) (dockerfile.Dockerfile, []model.Run, error) {
 	consumed := 0
 	for _, run := range runs {
-		if run.Triggers == nil {
+		if run.Triggers.Empty() {
 			break
 		}
 

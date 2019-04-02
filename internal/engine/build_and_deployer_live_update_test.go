@@ -29,9 +29,12 @@ type testCase struct {
 
 	// Synclet actions
 	expectSyncletUpdateContainerCount int
+	expectSyncletCommandCount         int
 	expectSyncletHotReload            bool
-	expectK8sDeploy                   bool
-	expectSyncletDeploy               bool
+
+	// k8s/deploy actions
+	expectK8sDeploy     bool
+	expectSyncletDeploy bool
 }
 
 func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
@@ -57,8 +60,10 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 	assert.Equal(t, tCase.expectDockerPushCount, f.docker.PushCount, "docker push")
 	assert.Equal(t, tCase.expectDockerCopyCount, f.docker.CopyCount, "docker copy")
 	assert.Equal(t, tCase.expectDockerExecCount, len(f.docker.ExecCalls), "docker exec")
-	assert.Equal(t, tCase.expectSyncletUpdateContainerCount, f.sCli.UpdateContainerCount, "synclet update container")
 	f.assertContainerRestarts(tCase.expectDockerRestartCount)
+
+	assert.Equal(t, tCase.expectSyncletUpdateContainerCount, f.sCli.UpdateContainerCount, "synclet update container")
+	assert.Equal(t, tCase.expectSyncletCommandCount, f.sCli.CommandsRunCount, "synclet commands run")
 	assert.Equal(t, tCase.expectSyncletHotReload, f.sCli.UpdateContainerHotReload, "synclet hot reload")
 
 	id := manifest.ImageTargetAt(0).ID()
@@ -84,7 +89,7 @@ func TestLiveUpdateDockerBuildLocalContainer(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	lu := assembleLiveUpdate(t, SanchoSyncSteps(f), SanchoRunSteps, true, nil)
+	lu := assembleLiveUpdate(t, SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"})
 	tCase := testCase{
 		env:                      k8s.EnvDockerDesktop,
 		baseManifest:             NewSanchoDockerBuildManifest(),
@@ -103,7 +108,7 @@ func TestLiveUpdateCustomBuildLocalContainer(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	lu := assembleLiveUpdate(t, SanchoSyncSteps(f), SanchoRunSteps, true, nil)
+	lu := assembleLiveUpdate(t, SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"})
 	tCase := testCase{
 		env:                      k8s.EnvDockerDesktop,
 		baseManifest:             NewSanchoCustomBuildManifest(f),
@@ -141,10 +146,11 @@ func TestLiveUpdateRunTriggerLocalContainer(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	runs := []model.LiveUpdateRunStep{{
-		Command:  model.ToShellCmd("echo hi"),
-		Triggers: []string{"b.txt"}, // does NOT match changed file
-	}}
+	runs := []model.LiveUpdateRunStep{
+		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo hello")},
+		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
+		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo b"), Triggers: f.NewPathSet("b.txt")}, // does NOT match changed file
+	}
 	lu := assembleLiveUpdate(t, SanchoSyncSteps(f), runs, true, nil)
 	tCase := testCase{
 		env:                      k8s.EnvDockerDesktop,
@@ -154,8 +160,31 @@ func TestLiveUpdateRunTriggerLocalContainer(t *testing.T) {
 		expectDockerBuildCount:   0,
 		expectDockerPushCount:    0,
 		expectDockerCopyCount:    1,
-		expectDockerExecCount:    0, // Run doesn't match changed file, so shouldn't exec
+		expectDockerExecCount:    2, // one run's triggers don't match -- should only exec the other two.
 		expectDockerRestartCount: 1,
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateRunTriggerSynclet(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	runs := []model.LiveUpdateRunStep{
+		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo hello")},
+		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
+		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo b"), Triggers: f.NewPathSet("b.txt")}, // does NOT match changed file
+	}
+	lu := assembleLiveUpdate(t, SanchoSyncSteps(f), runs, true, nil)
+	tCase := testCase{
+		env:                               k8s.EnvGKE,
+		baseManifest:                      NewSanchoDockerBuildManifest(),
+		liveUpdate:                        lu,
+		changedFile:                       "a.txt",
+		expectDockerBuildCount:            0,
+		expectDockerPushCount:             0,
+		expectSyncletUpdateContainerCount: 1,
+		expectSyncletCommandCount:         2, // one run's triggers don't match -- should only exec the other two.
 	}
 	runTestCase(t, f, tCase)
 }
@@ -173,6 +202,7 @@ func TestLiveUpdateDockerBuildSynclet(t *testing.T) {
 		expectDockerBuildCount:            0,
 		expectDockerPushCount:             0,
 		expectSyncletUpdateContainerCount: 1,
+		expectSyncletCommandCount:         1,
 		expectSyncletHotReload:            false,
 	}
 	runTestCase(t, f, tCase)
@@ -191,6 +221,7 @@ func TestLiveUpdateCustomBuildSynclet(t *testing.T) {
 		expectDockerBuildCount:            0,
 		expectDockerPushCount:             0,
 		expectSyncletUpdateContainerCount: 1,
+		expectSyncletCommandCount:         1,
 		expectSyncletHotReload:            false,
 	}
 	runTestCase(t, f, tCase)
@@ -209,6 +240,7 @@ func TestLiveUpdateHotReloadSynclet(t *testing.T) {
 		expectDockerBuildCount:            0,
 		expectDockerPushCount:             0,
 		expectSyncletUpdateContainerCount: 1,
+		expectSyncletCommandCount:         1,
 		expectSyncletHotReload:            true,
 	}
 	runTestCase(t, f, tCase)
@@ -228,6 +260,28 @@ func TestLiveUpdateDockerBuildDeploysSynclet(t *testing.T) {
 	}
 	runTestCase(t, f, tCase)
 }
+
+func _TestLiveUpdateLocalContainerFullBuildTrigger(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	defer f.TearDown()
+
+	lu := assembleLiveUpdate(t, SanchoSyncSteps(f), SanchoRunSteps, true, []string{"a.txt"})
+	tCase := testCase{
+		env:                      k8s.EnvDockerDesktop,
+		baseManifest:             NewSanchoDockerBuildManifest(),
+		liveUpdate:               lu,
+		changedFile:              "a.txt",
+		expectDockerBuildCount:   1,
+		expectDockerPushCount:    0,
+		expectDockerCopyCount:    0,
+		expectDockerExecCount:    0,
+		expectDockerRestartCount: 0,
+		expectK8sDeploy:          true,
+	}
+	runTestCase(t, f, tCase)
+}
+
+func _TestLiveUpdateSyncletFullBuildTrigger(t *testing.T) {}
 
 func assembleLiveUpdate(t *testing.T, syncs []model.LiveUpdateSyncStep, runs []model.LiveUpdateRunStep, shouldRestart bool, fullRebuildTriggers []string) model.LiveUpdate {
 	var steps []model.LiveUpdateStep

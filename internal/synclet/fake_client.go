@@ -13,6 +13,7 @@ import (
 // with a fake docker client inside it. But ¯\_(ツ)_/¯
 type FakeSyncletClient struct {
 	UpdateContainerCount         int
+	CommandsRunCount             int
 	UpdateContainerHotReload     bool
 	ClosedCount                  int
 	UpdateContainerErrorToReturn error
@@ -35,6 +36,7 @@ func (c *FakeSyncletClient) UpdateContainer(ctx context.Context, containerID con
 	}
 	c.UpdateContainerCount += 1
 	c.UpdateContainerHotReload = hotReload
+	c.CommandsRunCount += len(commands)
 	return nil
 }
 

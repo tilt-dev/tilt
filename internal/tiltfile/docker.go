@@ -493,8 +493,8 @@ func (b *fastBuild) run(thread *starlark.Thread, fn *starlark.Builtin, args star
 		triggers = []string{string(trigger)}
 	}
 
-	run := model.ToRun(b.s.absWorkingDir(), model.ToShellCmd(cmd))
-	run.Triggers = triggers
+	run := model.ToRun(model.ToShellCmd(cmd))
+	run = run.WithTriggers(triggers, b.s.absWorkingDir())
 
 	b.img.runs = append(b.img.runs, run)
 	return b, nil
