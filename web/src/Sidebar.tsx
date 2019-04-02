@@ -46,7 +46,7 @@ class Sidebar extends PureComponent<SidebarProps> {
     }
     let allItem = (
       <li>
-        <Link className={allItemClasses} to="/hud">
+        <Link className={allItemClasses} to="/">
           &nbsp;ALL
         </Link>
       </li>
