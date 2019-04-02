@@ -3207,7 +3207,7 @@ func (fb fbHelper) checkMatchers(f *fixture, m model.Manifest, fbInfo model.Fast
 			run := runs[0]
 			runs = runs[1:]
 			assert.Equal(f.t, model.ToShellCmd(matcher.cmd), run.Cmd)
-			assert.Equal(f.t, matcher.triggers, run.Triggers.Globs)
+			assert.Equal(f.t, matcher.triggers, run.Triggers.Paths)
 			if !run.Triggers.Empty() {
 				assert.Equal(f.t, f.Path(), run.Triggers.BaseDirectory)
 			}

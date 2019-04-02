@@ -55,7 +55,7 @@ func TestBoilRunsOneTriggerFilesDontMatch(t *testing.T) {
 	runs := []model.Run{
 		model.Run{
 			Cmd:      model.ToShellCmd("echo hello"),
-			Triggers: model.NewGlobset(triggers, "/home/tilt/code/test"),
+			Triggers: model.NewPathSet(triggers, "/home/tilt/code/test"),
 		},
 	}
 
@@ -81,7 +81,7 @@ func TestBoilRunsOneTriggerMatchingFile(t *testing.T) {
 	runs := []model.Run{
 		model.Run{
 			Cmd:      model.ToShellCmd("echo world"),
-			Triggers: model.NewGlobset(triggers, "/home/tilt/code/test"),
+			Triggers: model.NewPathSet(triggers, "/home/tilt/code/test"),
 		},
 	}
 
@@ -107,7 +107,7 @@ func TestBoilRunsOneTriggerMatchingAbsPath(t *testing.T) {
 	runs := []model.Run{
 		model.Run{
 			Cmd:      model.ToShellCmd("echo world"),
-			Triggers: model.NewGlobset(triggers, "/home/tilt/code/test"),
+			Triggers: model.NewPathSet(triggers, "/home/tilt/code/test"),
 		},
 	}
 
@@ -135,11 +135,11 @@ func TestBoilRunsManyTriggersManyFiles(t *testing.T) {
 	runs := []model.Run{
 		model.Run{
 			Cmd:      model.ToShellCmd("echo hello"),
-			Triggers: model.NewGlobset(triggers1, wd),
+			Triggers: model.NewPathSet(triggers1, wd),
 		},
 		model.Run{
 			Cmd:      model.ToShellCmd("echo world"),
-			Triggers: model.NewGlobset(triggers2, wd),
+			Triggers: model.NewPathSet(triggers2, wd),
 		},
 	}
 

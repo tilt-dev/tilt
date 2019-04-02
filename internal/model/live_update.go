@@ -10,7 +10,7 @@ import (
 type LiveUpdate struct {
 	Steps []LiveUpdateStep
 
-	// When files matching any of these globs change, we should fall back to a full rebuild.
+	// When files matching any of these paths change, we should fall back to a full rebuild.
 	FullRebuildTriggers []string
 }
 
@@ -53,10 +53,10 @@ func (l LiveUpdateSyncStep) toSync() Sync {
 
 // Specifies that `Command` should be executed when any files in `Sync` steps have changed
 // If `Trigger` is non-empty, `Command` will only be executed when the local paths of changed files covered by
-// at least one `Sync` match one of `Globset.Globs` (evaluated relative to `Globset.BaseDirectory`.
+// at least one `Sync` match one of `PathSet.Paths` (evaluated relative to `PathSet.BaseDirectory`.
 type LiveUpdateRunStep struct {
 	Command  Cmd
-	Triggers Globset
+	Triggers PathSet
 }
 
 func (l LiveUpdateRunStep) liveUpdateStep() {}

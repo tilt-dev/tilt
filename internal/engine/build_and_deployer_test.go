@@ -196,8 +196,8 @@ func TestContainerBuildLocalTriggeredRuns(t *testing.T) {
 	fb := iTarg.FastBuildInfo()
 	runs := []model.Run{
 		model.Run{Cmd: model.ToShellCmd("echo hello")},
-		model.Run{Cmd: model.ToShellCmd("echo a"), Triggers: f.NewGlobset("a.txt")}, // matches changed file
-		model.Run{Cmd: model.ToShellCmd("echo b"), Triggers: f.NewGlobset("b.txt")}, // does NOT match changed file
+		model.Run{Cmd: model.ToShellCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
+		model.Run{Cmd: model.ToShellCmd("echo b"), Triggers: f.NewPathSet("b.txt")}, // does NOT match changed file
 	}
 	fb.Runs = runs
 	iTarg = iTarg.WithBuildDetails(fb)
@@ -240,8 +240,8 @@ func TestContainerBuildSyncletTriggeredRuns(t *testing.T) {
 	fb := iTarg.FastBuildInfo()
 	runs := []model.Run{
 		model.Run{Cmd: model.ToShellCmd("echo hello")},
-		model.Run{Cmd: model.ToShellCmd("echo a"), Triggers: f.NewGlobset("a.txt")}, // matches changed file
-		model.Run{Cmd: model.ToShellCmd("echo b"), Triggers: f.NewGlobset("b.txt")}, // does NOT match changed file
+		model.Run{Cmd: model.ToShellCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
+		model.Run{Cmd: model.ToShellCmd("echo b"), Triggers: f.NewPathSet("b.txt")}, // does NOT match changed file
 	}
 	fb.Runs = runs
 	iTarg = iTarg.WithBuildDetails(fb)

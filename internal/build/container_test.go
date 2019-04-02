@@ -599,7 +599,7 @@ func TestConditionalRunInRealDocker(t *testing.T) {
 	}
 	run1 := model.Run{
 		Cmd:      model.ToShellCmd("cat /src/a.txt >> /src/c.txt"),
-		Triggers: model.NewGlobset([]string{"a.txt"}, f.Path()),
+		Triggers: model.NewPathSet([]string{"a.txt"}, f.Path()),
 	}
 	run2 := model.Run{
 		Cmd: model.ToShellCmd("cat /src/b.txt >> /src/d.txt"),

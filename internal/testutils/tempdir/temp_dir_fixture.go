@@ -122,8 +122,8 @@ func (f *TempDirFixture) TempDir(prefix string) string {
 	return name
 }
 
-func (f *TempDirFixture) NewGlobset(globs ...string) model.Globset {
-	return model.NewGlobset(globs, f.Path())
+func (f *TempDirFixture) NewPathSet(paths ...string) model.PathSet {
+	return model.NewPathSet(paths, f.Path())
 }
 
 func (f *TempDirFixture) TearDown() {

@@ -108,7 +108,7 @@ func CreateFileChangeFilter(m IgnorableTarget) (model.PathMatcher, error) {
 }
 
 func CreateRunMatcher(r model.Run) (model.PathMatcher, error) {
-	return CreateTriggerMatcher(r.Triggers.Globs, r.Triggers.BaseDirectory)
+	return CreateTriggerMatcher(r.Triggers.Paths, r.Triggers.BaseDirectory)
 }
 
 func CreateTriggerMatcher(triggers []string, baseDir string) (model.PathMatcher, error) {

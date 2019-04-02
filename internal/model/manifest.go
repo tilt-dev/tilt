@@ -188,33 +188,18 @@ type LocalGitRepo struct {
 
 func (LocalGitRepo) IsRepo() {}
 
-// A Globset stores one or more Globs, along with the director that should be evaluated relative to.
-type Globset struct {
-	Globs         []string
-	BaseDirectory string
-}
-
-func (gs Globset) Empty() bool { return len(gs.Globs) == 0 }
-
-func NewGlobset(globs []string, baseDir string) Globset {
-	return Globset{
-		Globs:         globs,
-		BaseDirectory: baseDir,
-	}
-}
-
 type Run struct {
 	// Required. The command to run.
 	Cmd Cmd
 	// Optional. If not specified, this command runs on every change.
 	// If specified, we only run the Cmd if the changed file matches a trigger.
-	Triggers Globset
+	Triggers PathSet
 }
 
-func (r Run) WithTriggers(globs []string, baseDir string) Run {
-	if len(globs) > 0 {
-		r.Triggers = Globset{
-			Globs:         globs,
+func (r Run) WithTriggers(paths []string, baseDir string) Run {
+	if len(paths) > 0 {
+		r.Triggers = PathSet{
+			Paths:         paths,
 			BaseDirectory: baseDir,
 		}
 	}

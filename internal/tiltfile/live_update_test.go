@@ -181,7 +181,7 @@ live_update('gcr.io/foo',
 				model.LiveUpdateSyncStep{Source: f.JoinPath("b"), Dest: "/c"},
 				model.LiveUpdateRunStep{
 					Command:  model.ToShellCmd("f"),
-					Triggers: f.NewGlobset("g", "h"),
+					Triggers: f.NewPathSet("g", "h"),
 				},
 				model.LiveUpdateRestartContainerStep{},
 			)

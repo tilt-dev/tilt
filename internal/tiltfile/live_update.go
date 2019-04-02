@@ -169,8 +169,8 @@ func (s *tiltfileState) liveUpdateStepToModel(l liveUpdateStep) (model.LiveUpdat
 	case liveUpdateRunStep:
 		return model.LiveUpdateRunStep{
 			Command: model.ToShellCmd(x.command),
-			Triggers: model.Globset{
-				Globs:         x.triggers,
+			Triggers: model.PathSet{
+				Paths:         x.triggers,
 				BaseDirectory: s.absWorkingDir(),
 			},
 		}, nil
