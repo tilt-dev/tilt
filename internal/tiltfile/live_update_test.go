@@ -134,20 +134,26 @@ live_update('gcr.io/bar',
 
 func TestLiveUpdateBuild(t *testing.T) {
 	type testCase struct {
-		name, buildCmd string
-		assert         func(f *fixture, expectedLu model.LiveUpdate)
+		name, tiltfileCode string
+		assert             func(f *fixture, expectedLu model.LiveUpdate)
 	}
 
 	dbManifestOpt := func(f *fixture, expectedLu model.LiveUpdate) {
-		f.assertNextManifest("foo", db(image("gcr.io/foo"), expectedLu))
+		f.assertNextManifest("foo", db(imageNormalized("foo"), expectedLu))
+	}
+	dbDefaultRegistryManifestOpt := func(f *fixture, expectedLu model.LiveUpdate) {
+		i := imageNormalized("foo")
+		i.deploymentRef = "gcr.io/foo"
+		f.assertNextManifest("foo", db(i, expectedLu))
 	}
 	cbManifestOpt := func(f *fixture, expectedLu model.LiveUpdate) {
-		f.assertNextManifest("foo", cb(image("gcr.io/foo"), expectedLu))
+		f.assertNextManifest("foo", cb(imageNormalized("foo"), expectedLu))
 	}
 
 	tests := []testCase{
-		{"docker_build", "docker_build('gcr.io/foo', 'foo')", dbManifestOpt},
-		{"custom_build", "custom_build('gcr.io/foo', 'docker build -t $TAG foo', ['foo'])", cbManifestOpt},
+		{"docker_build", "docker_build('foo', 'foo')", dbManifestOpt},
+		{"docker build w/ default registry", "docker_build('foo', 'foo')\ndefault_registry('gcr.io')\n", dbDefaultRegistryManifestOpt},
+		{"custom_build", "custom_build('foo', 'docker build -t $TAG foo', ['foo'])", cbManifestOpt},
 	}
 
 	for _, test := range tests {
@@ -155,19 +161,20 @@ func TestLiveUpdateBuild(t *testing.T) {
 			f := newFixture(t)
 			defer f.TearDown()
 
-			f.setupFoo()
+			f.dockerfile("foo/Dockerfile")
+			f.yaml("foo.yaml", deployment("foo", image("foo")))
 
 			tiltfile := fmt.Sprintf(`
 %s
 k8s_resource('foo', 'foo.yaml')
-live_update('gcr.io/foo',
+live_update('foo',
   [
 	sync('b', '/c'), # absolute dest
 	run('f', ['g', 'h']),
 	restart_container(),
   ],
   ['i', 'j']
-)`, test.buildCmd)
+)`, test.tiltfileCode)
 
 			f.file("Tiltfile", tiltfile)
 
