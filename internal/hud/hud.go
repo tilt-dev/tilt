@@ -156,7 +156,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 					break
 				}
 				url := h.webURL
-				url.Path = "/log"
+				url.Path = "/"
 				_ = browser.OpenURL(url.String())
 			case r == 'k':
 				h.activeScroller().Up()

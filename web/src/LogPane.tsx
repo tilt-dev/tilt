@@ -54,6 +54,9 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 
   componentWillUnmount() {
     window.removeEventListener("scroll", this.refreshAutoScroll)
+    if (this.scrollTimeout) {
+      clearTimeout(this.scrollTimeout)
+    }
   }
 
   refreshAutoScroll() {
