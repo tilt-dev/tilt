@@ -103,6 +103,8 @@ func filesToPathMappings(files []string, syncs []model.Sync) ([]PathMapping, *Pa
 		if err != nil {
 			return nil, err
 		}
+
+		// TODO(maia): note in return which files didn't match (for better logging)
 		if !pm.empty() {
 			pms = append(pms, pm)
 		}
