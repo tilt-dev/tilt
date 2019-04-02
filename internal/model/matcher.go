@@ -29,6 +29,17 @@ func (m fileMatcher) Matches(f string, isDir bool) (bool, error) {
 	return m.paths[f], nil
 }
 
+func NewRelativeSimpleFileMatcher(baseDir string, paths ...string) fileMatcher {
+	pathMap := make(map[string]bool, len(paths))
+	for _, path := range paths {
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(baseDir, path)
+		}
+		pathMap[path] = true
+	}
+	return fileMatcher{paths: pathMap}
+}
+
 func NewSimpleFileMatcher(paths ...string) (fileMatcher, error) {
 	pathMap := make(map[string]bool, len(paths))
 	for _, path := range paths {
@@ -64,6 +75,22 @@ func NewGlobMatcher(globs ...string) PathMatcher {
 	}
 
 	return ret
+}
+
+// AnyMatchGlobs returns true if any of the given filepaths match any of the given globs.
+func AnyMatchGlobs(paths []string, globs Globset) (bool, error) {
+	matcher := NewRelativeSimpleFileMatcher(globs.BaseDirectory, globs.Globs...)
+
+	for _, path := range paths {
+		match, err := matcher.Matches(path, false)
+		if err != nil {
+			return false, err
+		}
+		if match {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 type PatternMatcher interface {

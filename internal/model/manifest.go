@@ -188,9 +188,10 @@ type LocalGitRepo struct {
 
 func (LocalGitRepo) IsRepo() {}
 
+// A Globset stores one or more Globs, along with the director that should be evaluated relative to.
 type Globset struct {
 	Globs         []string
-	BaseDirectory string // Directory the globs are relative to
+	BaseDirectory string
 }
 
 func (gs Globset) Empty() bool { return len(gs.Globs) == 0 }
