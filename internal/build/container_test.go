@@ -245,7 +245,7 @@ func TestBuildOneRun(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
-	runs := model.ToRuns(f.Path(), []model.Cmd{
+	runs := model.ToRuns([]model.Cmd{
 		model.ToShellCmd("echo -n hello >> hi"),
 	})
 
@@ -264,7 +264,7 @@ func TestBuildMultipleRuns(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
-	runs := model.ToRuns(f.Path(), []model.Cmd{
+	runs := model.ToRuns([]model.Cmd{
 		model.ToShellCmd("echo -n hello >> hi"),
 		model.ToShellCmd("echo -n sup >> hi2"),
 	})
@@ -285,7 +285,7 @@ func TestBuildMultipleRunsRemoveFiles(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
-	runs := model.ToRuns(f.Path(), []model.Cmd{
+	runs := model.ToRuns([]model.Cmd{
 		model.Cmd{Argv: []string{"sh", "-c", "echo -n hello >> hi"}},
 		model.Cmd{Argv: []string{"sh", "-c", "echo -n sup >> hi2"}},
 		model.Cmd{Argv: []string{"sh", "-c", "rm hi"}},
@@ -307,7 +307,7 @@ func TestBuildFailingRun(t *testing.T) {
 	f := newDockerBuildFixture(t)
 	defer f.teardown()
 
-	runs := model.ToRuns(f.Path(), []model.Cmd{
+	runs := model.ToRuns([]model.Cmd{
 		model.ToShellCmd("echo hello && exit 1"),
 	})
 
@@ -417,7 +417,7 @@ func TestExecRunsOnExisting(t *testing.T) {
 
 	run := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
 
-	runs := model.ToRuns(f.Path(), []model.Cmd{run})
+	runs := model.ToRuns([]model.Cmd{run})
 	ref, err := f.b.BuildImageFromExisting(f.ctx, f.ps, existing, SyncsToPathMappings([]model.Sync{s}), model.EmptyMatcher, runs)
 	if err != nil {
 		t.Fatal(err)
@@ -477,7 +477,7 @@ func TestBuildDockerWithRunsFromExistingPreservesEntrypoint(t *testing.T) {
 	run := model.ToShellCmd("echo -n hello >> /src/baz")
 	entrypoint := model.ToShellCmd("echo -n foo contains: $(cat /src/foo) >> /src/bar")
 
-	runs := model.ToRuns(f.Path(), []model.Cmd{run})
+	runs := model.ToRuns([]model.Cmd{run})
 	existing, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{s}, model.EmptyMatcher, runs, entrypoint)
 	if err != nil {
 		t.Fatal(err)
@@ -522,7 +522,7 @@ func TestUpdateInContainerE2E(t *testing.T) {
 	entrypoint := model.ToShellCmd(
 		"echo -n $(($(cat /src/startcount)+1)) > /src/startcount && sleep 210")
 
-	runs := model.ToRuns(f.Path(), []model.Cmd{initStartcount})
+	runs := model.ToRuns([]model.Cmd{initStartcount})
 	imgRef, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{s}, model.EmptyMatcher, runs, entrypoint)
 	if err != nil {
 		t.Fatal(err)
@@ -598,9 +598,8 @@ func TestConditionalRunInRealDocker(t *testing.T) {
 		ContainerPath: "/src",
 	}
 	run1 := model.Run{
-		Cmd:           model.ToShellCmd("cat /src/a.txt >> /src/c.txt"),
-		Triggers:      []string{"a.txt"},
-		BaseDirectory: f.Path(),
+		Cmd:      model.ToShellCmd("cat /src/a.txt >> /src/c.txt"),
+		Triggers: model.NewPathSet([]string{"a.txt"}, f.Path()),
 	}
 	run2 := model.Run{
 		Cmd: model.ToShellCmd("cat /src/b.txt >> /src/d.txt"),

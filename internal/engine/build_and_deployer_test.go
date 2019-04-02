@@ -186,6 +186,91 @@ func TestContainerBuildSynclet(t *testing.T) {
 	assert.False(t, f.sCli.UpdateContainerHotReload)
 }
 
+func TestContainerBuildLocalTriggeredRuns(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	defer f.TearDown()
+
+	changed := f.WriteFile("a.txt", "a")
+	manifest := NewSanchoFastBuildManifest(f)
+	iTarg := manifest.ImageTargetAt(0)
+	fb := iTarg.FastBuildInfo()
+	runs := []model.Run{
+		model.Run{Cmd: model.ToShellCmd("echo hello")},
+		model.Run{Cmd: model.ToShellCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
+		model.Run{Cmd: model.ToShellCmd("echo b"), Triggers: f.NewPathSet("b.txt")}, // does NOT match changed file
+	}
+	fb.Runs = runs
+	iTarg = iTarg.WithBuildDetails(fb)
+	manifest = manifest.WithImageTarget(iTarg)
+
+	targets := buildTargets(manifest)
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
+	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if f.docker.BuildCount != 0 {
+		t.Errorf("Expected no docker build, actual: %d", f.docker.BuildCount)
+	}
+	if f.docker.PushCount != 0 {
+		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
+	}
+	if f.docker.CopyCount != 1 {
+		t.Errorf("Expected 1 copy to docker container call, actual: %d", f.docker.CopyCount)
+	}
+	if len(f.docker.ExecCalls) != 2 {
+		t.Errorf("Expected 2 exec in container calls, actual: %d", len(f.docker.ExecCalls))
+	}
+	f.assertContainerRestarts(1)
+
+	id := manifest.ImageTargetAt(0).ID()
+	_, hasResult := result[id]
+	assert.True(t, hasResult)
+	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
+}
+
+func TestContainerBuildSyncletTriggeredRuns(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	changed := f.WriteFile("a.txt", "a")
+	manifest := NewSanchoFastBuildManifest(f)
+	iTarg := manifest.ImageTargetAt(0)
+	fb := iTarg.FastBuildInfo()
+	runs := []model.Run{
+		model.Run{Cmd: model.ToShellCmd("echo hello")},
+		model.Run{Cmd: model.ToShellCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
+		model.Run{Cmd: model.ToShellCmd("echo b"), Triggers: f.NewPathSet("b.txt")}, // does NOT match changed file
+	}
+	fb.Runs = runs
+	iTarg = iTarg.WithBuildDetails(fb)
+	manifest = manifest.WithImageTarget(iTarg)
+
+	targets := buildTargets(manifest)
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
+	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if f.docker.BuildCount != 0 {
+		t.Errorf("Expected no docker build, actual: %d", f.docker.BuildCount)
+	}
+	if f.docker.PushCount != 0 {
+		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
+	}
+	if f.sCli.UpdateContainerCount != 1 {
+		t.Errorf("Expected 1 synclet containerUpdate, actual: %d", f.sCli.UpdateContainerCount)
+	}
+	if f.sCli.CommandsRunCount != 2 {
+		t.Errorf("Expected 2 commands run by the synclet, actual: %d", f.sCli.CommandsRunCount)
+	}
+
+	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
+	assert.False(t, f.sCli.UpdateContainerHotReload)
+}
+
 func TestContainerBuildSyncletHotReload(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()

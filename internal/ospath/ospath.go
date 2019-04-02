@@ -32,6 +32,11 @@ func Child(dir string, file string) (string, bool) {
 	}
 }
 
+func IsChild(dir string, file string) bool {
+	_, ret := Child(dir, file)
+	return ret
+}
+
 func RealChild(dir string, file string) (string, bool, error) {
 	realDir, err := RealAbs(dir)
 	if err != nil {

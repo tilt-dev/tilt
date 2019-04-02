@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/monochromegane/go-gitignore"
+
 	"github.com/windmilleng/tilt/internal/ospath"
 )
 
@@ -22,8 +23,7 @@ type gitIgnoreTester struct {
 }
 
 func (i *gitIgnoreTester) Matches(f string, isDir bool) (bool, error) {
-	_, isChild := ospath.Child(i.repoRoot, f)
-	if !isChild {
+	if !ospath.IsChild(i.repoRoot, f) {
 		return false, nil
 	}
 

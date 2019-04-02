@@ -192,14 +192,19 @@ type Run struct {
 	// Required. The command to run.
 	Cmd Cmd
 	// Optional. If not specified, this command runs on every change.
-	// If specified, we only run the Cmd if the trigger matches the changed file.
-	Triggers []string
-	// Directory the Triggers are relative to
-	BaseDirectory string
+	// If specified, we only run the Cmd if the changed file matches a trigger.
+	Triggers PathSet
 }
 
-func (r Run) WithTriggers(triggers []string) Run {
-	r.Triggers = triggers
+func (r Run) WithTriggers(paths []string, baseDir string) Run {
+	if len(paths) > 0 {
+		r.Triggers = PathSet{
+			Paths:         paths,
+			BaseDirectory: baseDir,
+		}
+	} else {
+		r.Triggers = PathSet{}
+	}
 	return r
 }
 
@@ -278,14 +283,14 @@ func ToShellCmds(cmds []string) []Cmd {
 	return res
 }
 
-func ToRun(cwd string, cmd Cmd) Run {
-	return Run{BaseDirectory: cwd, Cmd: cmd}
+func ToRun(cmd Cmd) Run {
+	return Run{Cmd: cmd}
 }
 
-func ToRuns(cwd string, cmds []Cmd) []Run {
+func ToRuns(cmds []Cmd) []Run {
 	res := make([]Run, len(cmds))
 	for i, cmd := range cmds {
-		res[i] = ToRun(cwd, cmd)
+		res[i] = ToRun(cmd)
 	}
 	return res
 }

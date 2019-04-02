@@ -47,7 +47,7 @@ func (ws WebsocketSubscriber) Stream(ctx context.Context, store *store.Store) {
 	ws.OnChange(ctx, store)
 
 	<-done
-	_ = store.RemoveSubscriber(ws)
+	_ = store.RemoveSubscriber(context.Background(), ws)
 }
 
 func (ws WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore) {

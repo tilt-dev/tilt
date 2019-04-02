@@ -189,7 +189,19 @@ func (s *tiltfileState) maybeFastBuild(image *dockerImage) *model.FastBuild {
 func (s *tiltfileState) maybeLiveUpdate(image *dockerImage) (*model.LiveUpdate, error) {
 	if lu, ok := s.liveUpdates[image.configurationRef.RefFamiliarString()]; ok {
 		lu.matched = true
-		ret, err := liveUpdateToModel(*lu)
+		ret, err := s.liveUpdateToModel(*lu)
+
+		// if it's a docker build + live update, verify that all sync steps are from within the docker build context
+		if image.Type() == DockerBuild {
+			for _, step := range lu.steps {
+				if syncStep, ok := step.(model.LiveUpdateSyncStep); ok {
+					if !ospath.IsChild(image.dbBuildPath.path, syncStep.Source) {
+						return nil, fmt.Errorf("sync step source '%s' is not a child of docker build context '%s'", syncStep.Source, image.dbBuildPath.path)
+					}
+				}
+			}
+		}
+
 		return &ret, err
 	} else {
 		return nil, nil
@@ -481,8 +493,8 @@ func (b *fastBuild) run(thread *starlark.Thread, fn *starlark.Builtin, args star
 		triggers = []string{string(trigger)}
 	}
 
-	run := model.ToRun(b.s.absWorkingDir(), model.ToShellCmd(cmd))
-	run.Triggers = triggers
+	run := model.ToRun(model.ToShellCmd(cmd))
+	run = run.WithTriggers(triggers, b.s.absWorkingDir())
 
 	b.img.runs = append(b.img.runs, run)
 	return b, nil

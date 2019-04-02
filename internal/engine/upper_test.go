@@ -851,8 +851,7 @@ k8s_resource('foobar', 'snack.yaml')
 
 	f.withManifestTarget(name, func(mt store.ManifestTarget) {
 		expectedRuns := []model.Run{{
-			Cmd:           model.ToShellCmd("changed"),
-			BaseDirectory: f.Path(),
+			Cmd: model.ToShellCmd("changed"),
 		}}
 		assert.Equal(t, expectedRuns, mt.Manifest.ImageTargetAt(0).FastBuildInfo().Runs)
 	})
@@ -1954,6 +1953,7 @@ func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	// recorded on manifest state
 	f.withManifestState(m.ManifestName(), func(st store.ManifestState) {
 		assert.Contains(t, st.DCResourceState().Log(), expected)
+		assert.Equal(t, 1, strings.Count(st.CombinedLog.String(), expected))
 	})
 }
 
@@ -2248,7 +2248,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	pm := NewProfilerManager()
 	sCli := synclet.NewFakeSyncletClient()
 	sm := NewSyncletManagerForTests(k8s, sCli)
-	hudsc := server.ProvideHeadsUpServerController(0, server.HeadsUpServer{}, nil)
+	hudsc := server.ProvideHeadsUpServerController(0, server.HeadsUpServer{}, server.NewFakeAssetServer())
 	upper := NewUpper(ctx, fakeHud, pw, sw, st, plm, pfc, fwm, bc, ic, gybc, cc, dcw, dclm, pm, sm, ar, hudsc)
 
 	go func() {

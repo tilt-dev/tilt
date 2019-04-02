@@ -5,6 +5,8 @@ import { mount } from "enzyme"
 import { RouteComponentProps } from "react-router-dom"
 import { UnregisterCallback, Href } from "history"
 
+// NOTE(dmiller) 4-02-19 this function is currently unused but I'm going to keep it around.
+// I have a feeling that it will come in handy later.
 function getMockRouterProps<P>(data: P) {
   var location = {
     hash: "",
@@ -51,14 +53,7 @@ function getMockRouterProps<P>(data: P) {
 }
 
 const emptyHUD = () => {
-  let props = getMockRouterProps({})
-  return (
-    <HUD
-      history={props.history}
-      location={props.location}
-      match={props.match}
-    />
-  )
+  return <HUD />
 }
 
 it("renders without crashing", () => {
