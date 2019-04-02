@@ -54,9 +54,8 @@ func TestBoilRunsOneTriggerFilesDontMatch(t *testing.T) {
 	triggers := []string{"bar"}
 	runs := []model.Run{
 		model.Run{
-			Cmd:           model.ToShellCmd("echo hello"),
-			Triggers:      triggers,
-			BaseDirectory: "/home/tilt/code/test",
+			Cmd:      model.ToShellCmd("echo hello"),
+			Triggers: model.NewPathSet(triggers, "/home/tilt/code/test"),
 		},
 	}
 
@@ -81,9 +80,8 @@ func TestBoilRunsOneTriggerMatchingFile(t *testing.T) {
 	triggers := []string{"bar"}
 	runs := []model.Run{
 		model.Run{
-			Cmd:           model.ToShellCmd("echo world"),
-			Triggers:      triggers,
-			BaseDirectory: "/home/tilt/code/test",
+			Cmd:      model.ToShellCmd("echo world"),
+			Triggers: model.NewPathSet(triggers, "/home/tilt/code/test"),
 		},
 	}
 
@@ -104,20 +102,70 @@ func TestBoilRunsOneTriggerMatchingFile(t *testing.T) {
 	assert.ElementsMatch(t, expected, actual)
 }
 
+func TestBoilRunsTriggerMatchingAbsPath(t *testing.T) {
+	triggers := []string{"/home/tilt/code/test/bar"}
+	runs := []model.Run{
+		model.Run{
+			Cmd:      model.ToShellCmd("echo world"),
+			Triggers: model.NewPathSet(triggers, "/home/tilt/code/test"),
+		},
+	}
+
+	pathMappings := []PathMapping{
+		PathMapping{
+			LocalPath:     "/home/tilt/code/test/bar",
+			ContainerPath: "/src/bar",
+		},
+	}
+
+	expected := []model.Cmd{model.ToShellCmd("echo world")}
+
+	actual, err := BoilRuns(runs, pathMappings)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.ElementsMatch(t, expected, actual)
+}
+
+func TestBoilRunsTriggerNestedPathNoMatch(t *testing.T) {
+	triggers := []string{"bar"}
+	runs := []model.Run{
+		model.Run{
+			Cmd:      model.ToShellCmd("echo world"),
+			Triggers: model.NewPathSet(triggers, "/home/tilt/code/test"),
+		},
+	}
+
+	pathMappings := []PathMapping{
+		PathMapping{
+			LocalPath:     "/home/tilt/code/test/nested/bar",
+			ContainerPath: "/src/bar",
+		},
+	}
+
+	expected := []model.Cmd{}
+
+	actual, err := BoilRuns(runs, pathMappings)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.ElementsMatch(t, expected, actual)
+}
+
 func TestBoilRunsManyTriggersManyFiles(t *testing.T) {
 	wd := "/home/tilt/code/test"
 	triggers1 := []string{"foo"}
 	triggers2 := []string{"bar"}
 	runs := []model.Run{
 		model.Run{
-			Cmd:           model.ToShellCmd("echo hello"),
-			Triggers:      triggers1,
-			BaseDirectory: wd,
+			Cmd:      model.ToShellCmd("echo hello"),
+			Triggers: model.NewPathSet(triggers1, wd),
 		},
 		model.Run{
-			Cmd:           model.ToShellCmd("echo world"),
-			Triggers:      triggers2,
-			BaseDirectory: wd,
+			Cmd:      model.ToShellCmd("echo world"),
+			Triggers: model.NewPathSet(triggers2, wd),
 		},
 	}
 

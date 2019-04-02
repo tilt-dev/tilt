@@ -29,6 +29,8 @@ func (m fileMatcher) Matches(f string, isDir bool) (bool, error) {
 	return m.paths[f], nil
 }
 
+// NewSimpleFileMatcher returns a matcher for the given paths; any relative paths
+// are converted to absolute (relative to cwd).
 func NewSimpleFileMatcher(paths ...string) (fileMatcher, error) {
 	pathMap := make(map[string]bool, len(paths))
 	for _, path := range paths {
@@ -41,6 +43,51 @@ func NewSimpleFileMatcher(paths ...string) (fileMatcher, error) {
 		pathMap[path] = true
 	}
 	return fileMatcher{paths: pathMap}, nil
+}
+
+// NewRelativeFileMatcher returns a matcher for the given paths; any relative paths
+// are converted to absolute, relative to the given baseDir.
+func NewRelativeFileMatcher(baseDir string, paths ...string) fileMatcher {
+	pathMap := make(map[string]bool, len(paths))
+	for _, path := range paths {
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(baseDir, path)
+		}
+		pathMap[path] = true
+	}
+	return fileMatcher{paths: pathMap}
+}
+
+// A PathSet stores one or more filepaths, along with the directory that any
+// relative paths are relative to
+type PathSet struct {
+	Paths         []string
+	BaseDirectory string
+}
+
+func NewPathSet(paths []string, baseDir string) PathSet {
+	return PathSet{
+		Paths:         paths,
+		BaseDirectory: baseDir,
+	}
+}
+
+func (ps PathSet) Empty() bool { return len(ps.Paths) == 0 }
+
+// AnyMatch returns true if any of the given filepaths match any paths contained in the pathset.
+func (ps PathSet) AnyMatch(paths []string) (bool, error) {
+	matcher := NewRelativeFileMatcher(ps.BaseDirectory, ps.Paths...)
+
+	for _, path := range paths {
+		match, err := matcher.Matches(path, false)
+		if err != nil {
+			return false, err
+		}
+		if match {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 type globMatcher struct {

@@ -148,65 +148,107 @@ live_update('gcr.io/foo',
 	f.loadErrString("sync step source", f.JoinPath("bar"), f.JoinPath("foo"), "child", "docker build context")
 }
 
-func TestLiveUpdateBuild(t *testing.T) {
-	type testCase struct {
-		name, buildCmd string
-		assert         func(f *fixture, expectedLu model.LiveUpdate)
-	}
+func TestLiveUpdateDockerBuildUnqualifiedImageName(t *testing.T) {
+	f := newLiveUpdateFixture(t)
+	defer f.TearDown()
 
-	dbManifestOpt := func(f *fixture, expectedLu model.LiveUpdate) {
-		f.assertNextManifest("foo", db(image("gcr.io/foo"), expectedLu))
-	}
-	cbManifestOpt := func(f *fixture, expectedLu model.LiveUpdate) {
-		f.assertNextManifest("foo", cb(image("gcr.io/foo"), expectedLu))
-	}
+	f.tiltfileCode = "docker_build('foo', 'foo')"
+	f.init()
 
-	tests := []testCase{
-		{"docker_build", "docker_build('gcr.io/foo', 'foo')", dbManifestOpt},
-		{"custom_build", "custom_build('gcr.io/foo', 'docker build -t $TAG foo', ['foo'])", cbManifestOpt},
-	}
+	f.load("foo")
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			f := newFixture(t)
-			defer f.TearDown()
+	f.assertNextManifest("foo", db(imageNormalized("foo"), f.expectedLU))
+}
 
-			f.setupFoo()
+func TestLiveUpdateDockerBuildQualifiedImageName(t *testing.T) {
+	f := newLiveUpdateFixture(t)
+	defer f.TearDown()
 
-			tiltfile := fmt.Sprintf(`
+	f.tiltfileCode = "docker_build('gcr.io/foo', 'foo')"
+	f.configuredImageName = "gcr.io/foo"
+	f.init()
+
+	f.load("foo")
+
+	f.assertNextManifest("foo", db(image("gcr.io/foo"), f.expectedLU))
+}
+
+func TestLiveUpdateDockerBuildDefaultRegistry(t *testing.T) {
+	f := newLiveUpdateFixture(t)
+	defer f.TearDown()
+
+	f.tiltfileCode = `
+default_registry('gcr.io')
+docker_build('foo', 'foo')`
+	f.init()
+
+	f.load("foo")
+
+	i := imageNormalized("foo")
+	i.deploymentRef = "gcr.io/foo"
+	f.assertNextManifest("foo", db(i, f.expectedLU))
+}
+
+func TestLiveUpdateCustomBuild(t *testing.T) {
+	f := newLiveUpdateFixture(t)
+	defer f.TearDown()
+
+	f.tiltfileCode = "custom_build('foo', 'docker build -t $TAG foo', ['foo'])"
+	f.init()
+
+	f.load("foo")
+
+	f.assertNextManifest("foo", cb(imageNormalized("foo"), f.expectedLU))
+}
+
+type liveUpdateFixture struct {
+	*fixture
+
+	tiltfileCode        string
+	configuredImageName string
+	expectedLU          model.LiveUpdate
+}
+
+func (f *liveUpdateFixture) init() {
+	f.dockerfile("foo/Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image(f.configuredImageName)))
+
+	tiltfile := fmt.Sprintf(`
 %s
 k8s_resource('foo', 'foo.yaml')
-live_update('gcr.io/foo',
+live_update('%s',
   [
 	sync('foo/b', '/c'),
 	run('f', ['g', 'h']),
 	restart_container(),
   ],
   ['i', 'j']
-)`, test.buildCmd)
+)`, f.tiltfileCode, f.configuredImageName)
+	f.file("Tiltfile", tiltfile)
 
-			f.file("Tiltfile", tiltfile)
+}
 
-			f.load("foo")
-
-			f.assertNumManifests(1)
-
-			var steps []model.LiveUpdateStep
-
-			steps = append(steps,
-				model.LiveUpdateSyncStep{Source: f.JoinPath("foo/b"), Dest: "/c"},
-				model.LiveUpdateRunStep{
-					Command:  model.ToShellCmd("f"),
-					Triggers: []string{f.JoinPath("g"), f.JoinPath("h")},
-				},
-				model.LiveUpdateRestartContainerStep{},
-			)
-
-			lu := model.LiveUpdate{
-				Steps:               steps,
-				FullRebuildTriggers: []string{f.JoinPath("i"), f.JoinPath("j")},
-			}
-			test.assert(f, lu)
-		})
+func newLiveUpdateFixture(t *testing.T) *liveUpdateFixture {
+	f := &liveUpdateFixture{
+		fixture:             newFixture(t),
+		configuredImageName: "foo",
 	}
+
+	var steps []model.LiveUpdateStep
+
+	steps = append(steps,
+		model.LiveUpdateSyncStep{Source: f.JoinPath("foo", "b"), Dest: "/c"},
+		model.LiveUpdateRunStep{
+			Command:  model.ToShellCmd("f"),
+			Triggers: f.NewPathSet("g", "h"),
+		},
+		model.LiveUpdateRestartContainerStep{},
+	)
+
+	f.expectedLU = model.LiveUpdate{
+		Steps:               steps,
+		FullRebuildTriggers: f.NewPathSet("i", "j"),
+	}
+
+	return f
 }

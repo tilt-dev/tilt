@@ -63,8 +63,13 @@ var _ starlark.Value = liveUpdateRunStep{}
 var _ liveUpdateStep = liveUpdateRunStep{}
 
 func (l liveUpdateRunStep) String() string {
-	return fmt.Sprintf("run step: %s", strconv.Quote(l.command))
+	s := fmt.Sprintf("run step: %s", strconv.Quote(l.command))
+	if len(l.triggers) > 0 {
+		s = fmt.Sprintf("%s (triggers: %s)", s, strings.Join(l.triggers, "; "))
+	}
+	return s
 }
+
 func (l liveUpdateRunStep) Type() string { return "live_update_run_step" }
 func (l liveUpdateRunStep) Freeze()      {}
 func (l liveUpdateRunStep) Truth() starlark.Bool {
@@ -127,7 +132,7 @@ func (s *tiltfileState) liveUpdateRun(thread *starlark.Thread, fn *starlark.Buil
 	for _, t := range triggersSlice {
 		switch t2 := t.(type) {
 		case starlark.String:
-			triggerStrings = append(triggerStrings, s.absPath(string(t2)))
+			triggerStrings = append(triggerStrings, string(t2))
 		default:
 			return nil, fmt.Errorf("run cmd '%s' triggers contained value '%s' of type '%s'. it may only contain strings", command, t.String(), t.Type())
 		}
@@ -154,7 +159,7 @@ func (s *tiltfileState) liveUpdateRestartContainer(thread *starlark.Thread, fn *
 	return ret, nil
 }
 
-func liveUpdateStepToModel(l liveUpdateStep) (model.LiveUpdateStep, error) {
+func (s *tiltfileState) liveUpdateStepToModel(l liveUpdateStep) (model.LiveUpdateStep, error) {
 	switch x := l.(type) {
 	case liveUpdateSyncStep:
 		if !filepath.IsAbs(x.remotePath) {
@@ -163,8 +168,11 @@ func liveUpdateStepToModel(l liveUpdateStep) (model.LiveUpdateStep, error) {
 		return model.LiveUpdateSyncStep{Source: x.localPath, Dest: x.remotePath}, nil
 	case liveUpdateRunStep:
 		return model.LiveUpdateRunStep{
-			Command:  model.ToShellCmd(x.command),
-			Triggers: x.triggers,
+			Command: model.ToShellCmd(x.command),
+			Triggers: model.PathSet{
+				Paths:         x.triggers,
+				BaseDirectory: s.absWorkingDir(),
+			},
 		}, nil
 	case liveUpdateRestartContainerStep:
 		return model.LiveUpdateRestartContainerStep{}, nil
@@ -173,8 +181,8 @@ func liveUpdateStepToModel(l liveUpdateStep) (model.LiveUpdateStep, error) {
 	}
 }
 
-func liveUpdateToModel(l liveUpdateDef) (model.LiveUpdate, error) {
-	return model.NewLiveUpdate(l.steps, l.fullRebuildTriggers)
+func (s *tiltfileState) liveUpdateToModel(l liveUpdateDef) (model.LiveUpdate, error) {
+	return model.NewLiveUpdate(l.steps, model.NewPathSet(l.fullRebuildTriggers, s.absWorkingDir()))
 }
 
 func (s *tiltfileState) consumeLiveUpdateStep(stepToConsume liveUpdateStep) {
@@ -206,7 +214,7 @@ func (s *tiltfileState) liveUpdate(thread *starlark.Thread, fn *starlark.Builtin
 			return starlark.None, fmt.Errorf("'steps' must be a list of live update steps - got value '%v' of type '%s'", v.String(), v.Type())
 		}
 
-		ms, err := liveUpdateStepToModel(step)
+		ms, err := s.liveUpdateStepToModel(step)
 		if err != nil {
 			return starlark.None, err
 		}
@@ -221,7 +229,7 @@ func (s *tiltfileState) liveUpdate(thread *starlark.Thread, fn *starlark.Builtin
 		if !ok {
 			return starlark.None, fmt.Errorf("'full_rebuild_triggers' must only contain strings - got value '%v' of type '%s'", v.String(), v.Type())
 		}
-		frtStrings = append(frtStrings, s.absPath(string(str)))
+		frtStrings = append(frtStrings, string(str))
 	}
 
 	s.liveUpdates[dockerRef] = &liveUpdateDef{

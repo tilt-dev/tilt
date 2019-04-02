@@ -10,11 +10,11 @@ import (
 type LiveUpdate struct {
 	Steps []LiveUpdateStep
 
-	// When files matching any of these globs change, we should fall back to a full rebuild.
-	FullRebuildTriggers []string
+	// When files matching any of these paths change, we should fall back to a full rebuild.
+	FullRebuildTriggers PathSet
 }
 
-func NewLiveUpdate(steps []LiveUpdateStep, fullRebuildTriggers []string) (LiveUpdate, error) {
+func NewLiveUpdate(steps []LiveUpdateStep, fullRebuildTriggers PathSet) (LiveUpdate, error) {
 	seenRunStep := false
 	for i, step := range steps {
 		switch step.(type) {
@@ -44,7 +44,6 @@ type LiveUpdateSyncStep struct {
 
 func (l LiveUpdateSyncStep) liveUpdateStep() {}
 
-// TODO(maia): s/Sync/Sync
 func (l LiveUpdateSyncStep) toSync() Sync {
 	return Sync{
 		LocalPath:     l.Source,
@@ -54,10 +53,10 @@ func (l LiveUpdateSyncStep) toSync() Sync {
 
 // Specifies that `Command` should be executed when any files in `Sync` steps have changed
 // If `Trigger` is non-empty, `Command` will only be executed when the local paths of changed files covered by
-// at least one `Sync` match the glob in `Trigger`.
+// at least one `Sync` match one of `PathSet.Paths` (evaluated relative to `PathSet.BaseDirectory`.
 type LiveUpdateRunStep struct {
 	Command  Cmd
-	Triggers []string
+	Triggers PathSet
 }
 
 func (l LiveUpdateRunStep) liveUpdateStep() {}
