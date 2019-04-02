@@ -102,7 +102,7 @@ func TestBoilRunsOneTriggerMatchingFile(t *testing.T) {
 	assert.ElementsMatch(t, expected, actual)
 }
 
-func TestBoilRunsOneTriggerMatchingAbsPath(t *testing.T) {
+func TestBoilRunsTriggerMatchingAbsPath(t *testing.T) {
 	triggers := []string{"/home/tilt/code/test/bar"}
 	runs := []model.Run{
 		model.Run{
@@ -119,6 +119,32 @@ func TestBoilRunsOneTriggerMatchingAbsPath(t *testing.T) {
 	}
 
 	expected := []model.Cmd{model.ToShellCmd("echo world")}
+
+	actual, err := BoilRuns(runs, pathMappings)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.ElementsMatch(t, expected, actual)
+}
+
+func TestBoilRunsTriggerNestedPathNoMatch(t *testing.T) {
+	triggers := []string{"bar"}
+	runs := []model.Run{
+		model.Run{
+			Cmd:      model.ToShellCmd("echo world"),
+			Triggers: model.NewPathSet(triggers, "/home/tilt/code/test"),
+		},
+	}
+
+	pathMappings := []PathMapping{
+		PathMapping{
+			LocalPath:     "/home/tilt/code/test/nested/bar",
+			ContainerPath: "/src/bar",
+		},
+	}
+
+	expected := []model.Cmd{}
 
 	actual, err := BoilRuns(runs, pathMappings)
 	if err != nil {
