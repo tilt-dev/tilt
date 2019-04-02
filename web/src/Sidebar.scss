@@ -61,6 +61,6 @@
 .resLink--pending::before {
   color: $color-yellow;
 }
-.resLink--red::before {
+.resLink--error::before {
   color: $color-red;
 }
