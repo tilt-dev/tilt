@@ -132,72 +132,107 @@ live_update('gcr.io/bar',
 	f.loadErrString("run", "triggers", "'bar'", "contained value '4' of type 'int'. it may only contain strings")
 }
 
-func TestLiveUpdateBuild(t *testing.T) {
-	type testCase struct {
-		name, tiltfileCode string
-		assert             func(f *fixture, expectedLu model.LiveUpdate)
-	}
+func TestLiveUpdateDockerBuildUnqualifiedImageName(t *testing.T) {
+	f := newLiveUpdateFixture(t)
+	defer f.TearDown()
 
-	dbManifestOpt := func(f *fixture, expectedLu model.LiveUpdate) {
-		f.assertNextManifest("foo", db(imageNormalized("foo"), expectedLu))
-	}
-	dbDefaultRegistryManifestOpt := func(f *fixture, expectedLu model.LiveUpdate) {
-		i := imageNormalized("foo")
-		i.deploymentRef = "gcr.io/foo"
-		f.assertNextManifest("foo", db(i, expectedLu))
-	}
-	cbManifestOpt := func(f *fixture, expectedLu model.LiveUpdate) {
-		f.assertNextManifest("foo", cb(imageNormalized("foo"), expectedLu))
-	}
+	f.tiltfileCode = "docker_build('foo', 'foo')"
+	f.init()
 
-	tests := []testCase{
-		{"docker_build", "docker_build('foo', 'foo')", dbManifestOpt},
-		{"docker build w/ default registry", "docker_build('foo', 'foo')\ndefault_registry('gcr.io')\n", dbDefaultRegistryManifestOpt},
-		{"custom_build", "custom_build('foo', 'docker build -t $TAG foo', ['foo'])", cbManifestOpt},
-	}
+	f.load("foo")
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			f := newFixture(t)
-			defer f.TearDown()
+	f.assertNextManifest("foo", db(imageNormalized("foo"), f.expectedLU))
+}
 
-			f.dockerfile("foo/Dockerfile")
-			f.yaml("foo.yaml", deployment("foo", image("foo")))
+func TestLiveUpdateDockerBuildQualifiedImageName(t *testing.T) {
+	f := newLiveUpdateFixture(t)
+	defer f.TearDown()
 
-			tiltfile := fmt.Sprintf(`
+	f.tiltfileCode = "docker_build('gcr.io/foo', 'foo')"
+	f.configuredImageName = "gcr.io/foo"
+	f.init()
+
+	f.load("foo")
+
+	f.assertNextManifest("foo", db(image("gcr.io/foo"), f.expectedLU))
+}
+
+func TestLiveUpdateDockerBuildDefaultRegistry(t *testing.T) {
+	f := newLiveUpdateFixture(t)
+	defer f.TearDown()
+
+	f.tiltfileCode = `
+default_registry('gcr.io')
+docker_build('foo', 'foo')`
+	f.init()
+
+	f.load("foo")
+
+	i := imageNormalized("foo")
+	i.deploymentRef = "gcr.io/foo"
+	f.assertNextManifest("foo", db(i, f.expectedLU))
+}
+
+func TestLiveUpdateCustomBuild(t *testing.T) {
+	f := newLiveUpdateFixture(t)
+	defer f.TearDown()
+
+	f.tiltfileCode = "custom_build('foo', 'docker build -t $TAG foo', ['foo'])"
+	f.init()
+
+	f.load("foo")
+
+	f.assertNextManifest("foo", cb(imageNormalized("foo"), f.expectedLU))
+}
+
+type liveUpdateFixture struct {
+	*fixture
+
+	tiltfileCode        string
+	configuredImageName string
+	expectedLU          model.LiveUpdate
+}
+
+func (f *liveUpdateFixture) init() {
+	f.dockerfile("foo/Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image(f.configuredImageName)))
+
+	tiltfile := fmt.Sprintf(`
 %s
 k8s_resource('foo', 'foo.yaml')
-live_update('foo',
+live_update('%s',
   [
 	sync('b', '/c'), # absolute dest
 	run('f', ['g', 'h']),
 	restart_container(),
   ],
   ['i', 'j']
-)`, test.tiltfileCode)
+)`, f.tiltfileCode, f.configuredImageName)
+	f.file("Tiltfile", tiltfile)
 
-			f.file("Tiltfile", tiltfile)
+}
 
-			f.load("foo")
-
-			f.assertNumManifests(1)
-
-			var steps []model.LiveUpdateStep
-
-			steps = append(steps,
-				model.LiveUpdateSyncStep{Source: f.JoinPath("b"), Dest: "/c"},
-				model.LiveUpdateRunStep{
-					Command:  model.ToShellCmd("f"),
-					Triggers: []string{f.JoinPath("g"), f.JoinPath("h")},
-				},
-				model.LiveUpdateRestartContainerStep{},
-			)
-
-			lu := model.LiveUpdate{
-				Steps:               steps,
-				FullRebuildTriggers: []string{f.JoinPath("i"), f.JoinPath("j")},
-			}
-			test.assert(f, lu)
-		})
+func newLiveUpdateFixture(t *testing.T) *liveUpdateFixture {
+	f := &liveUpdateFixture{
+		fixture:             newFixture(t),
+		configuredImageName: "foo",
 	}
+
+	var steps []model.LiveUpdateStep
+
+	steps = append(steps,
+		model.LiveUpdateSyncStep{Source: f.JoinPath("b"), Dest: "/c"},
+		model.LiveUpdateRunStep{
+			Command:  model.ToShellCmd("f"),
+			Triggers: []string{f.JoinPath("g"), f.JoinPath("h")},
+		},
+		model.LiveUpdateRestartContainerStep{},
+	)
+
+	f.expectedLU = model.LiveUpdate{
+		Steps:               steps,
+		FullRebuildTriggers: []string{f.JoinPath("i"), f.JoinPath("j")},
+	}
+
+	return f
 }
