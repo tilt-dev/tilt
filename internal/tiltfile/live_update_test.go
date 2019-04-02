@@ -204,7 +204,7 @@ live_update('gcr.io/foo',
 
 			lu := model.LiveUpdate{
 				Steps:               steps,
-				FullRebuildTriggers: []string{f.JoinPath("i"), f.JoinPath("j")},
+				FullRebuildTriggers: f.NewPathSet("i", "j"),
 			}
 			test.assert(f, lu)
 		})
