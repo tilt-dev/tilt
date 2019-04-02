@@ -60,6 +60,10 @@ func NewRelativeFileMatcher(baseDir string, paths ...string) fileMatcher {
 
 // A PathSet stores one or more filepaths, along with the directory that any
 // relative paths are relative to
+// NOTE(maia): in its current usage (for LiveUpdate.Run.Triggers, LiveUpdate.FullRebuildTriggers)
+// this isn't strictly necessary, could just as easily convert paths to Abs when specified in
+// the Tiltfile--but leaving this code in place for now because it was already written and
+// may help with complicated future cases (glob support, etc.)
 type PathSet struct {
 	Paths         []string
 	BaseDirectory string

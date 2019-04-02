@@ -148,6 +148,22 @@ live_update('gcr.io/foo',
 	f.loadErrString("sync step source", f.JoinPath("bar"), f.JoinPath("foo"), "child", "docker build context")
 }
 
+func TestLiveUpdateRebuildTriggersOutsideOfDockerContext(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_resource('foo', 'foo.yaml')
+live_update('gcr.io/foo',
+  [sync('foo/bar', '/baz')],
+  ['bar'],
+)`)
+	f.loadErrString("full_rebuild_trigger", f.JoinPath("bar"), f.JoinPath("foo"), "child", "docker build context")
+}
+
 func TestLiveUpdateBuild(t *testing.T) {
 	type testCase struct {
 		name, buildCmd string
@@ -182,7 +198,7 @@ live_update('gcr.io/foo',
 	run('f', ['g', 'h']),
 	restart_container(),
   ],
-  ['i', 'j']
+  ['foo/i', 'foo/j']
 )`, test.buildCmd)
 
 			f.file("Tiltfile", tiltfile)
@@ -204,7 +220,7 @@ live_update('gcr.io/foo',
 
 			lu := model.LiveUpdate{
 				Steps:               steps,
-				FullRebuildTriggers: f.NewPathSet("i", "j"),
+				FullRebuildTriggers: f.NewPathSet("foo/i", "foo/j"),
 			}
 			test.assert(f, lu)
 		})
