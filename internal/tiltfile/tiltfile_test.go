@@ -14,7 +14,7 @@ import (
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -2731,12 +2731,12 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			if ref.Empty() {
 				f.t.Fatalf("manifest %v has no more image refs; expected %q", m.Name, opt.image.ref)
 			}
-			if ref.String() != opt.image.ref {
-				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.String(), opt.image.ref)
+			if !assert.Equal(f.t, opt.image.ref, ref.String(), "manifest %v image ref", m.Name) {
+				f.t.FailNow()
 			}
 
-			if image.DeploymentRef.String() != opt.image.deploymentRef {
-				f.t.Fatalf("manifest %v image injected ref: %q; expected %q", m.Name, image.DeploymentRef, opt.image.deploymentRef)
+			if !assert.Equal(f.t, opt.image.deploymentRef, image.DeploymentRef.String(), "manifest %v image injected ref", m.Name) {
+				f.t.FailNow()
 			}
 
 			if opt.cache != "" {
@@ -2794,8 +2794,8 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 		case cbHelper:
 			image := nextImageTarget()
 			ref := image.ConfigurationRef
-			if ref.RefName() != opt.image.ref {
-				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.RefName(), opt.image.ref)
+			if !assert.Equal(f.t, opt.image.ref, ref.String(), "manifest %v image ref", m.Name) {
+				f.t.FailNow()
 			}
 
 			if !image.IsCustomBuild() {
