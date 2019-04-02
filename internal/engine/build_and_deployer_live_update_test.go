@@ -302,6 +302,59 @@ func TestLiveUpdateSyncletFullBuildTrigger(t *testing.T) {
 	runTestCase(t, f, tCase)
 }
 
+func TestLiveUpdateLocalContainerChangedFileNotMatchingSyncFallsBack(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	defer f.TearDown()
+
+	steps := []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
+		Source: f.JoinPath("specific/directory"),
+		Dest:   "/go/src/github.com/windmilleng/sancho",
+	}}
+
+	lu := f.assembleLiveUpdate(steps, SanchoRunSteps, true, []string{"a.txt"})
+	tCase := testCase{
+		env:          k8s.EnvDockerDesktop,
+		baseManifest: NewSanchoDockerBuildManifestWithBuildPath(f.Path()),
+		liveUpdate:   lu,
+		changedFile:  f.JoinPath("a.txt"), // matches context but not sync'd directory
+
+		expectDockerBuildCount:   1, // we did a Docker build instead of an in-place update!
+		expectDockerPushCount:    0,
+		expectDockerCopyCount:    0,
+		expectDockerExecCount:    0,
+		expectDockerRestartCount: 0,
+		expectK8sDeploy:          true, // Because we fell back to image builder, we also did a k8s deploy
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateSyncletChangedFileNotMatchingSyncFallsBack(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	steps := []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
+		Source: f.JoinPath("specific/directory"),
+		Dest:   "/go/src/github.com/windmilleng/sancho",
+	}}
+
+	lu := f.assembleLiveUpdate(steps, SanchoRunSteps, true, []string{"a.txt"})
+	tCase := testCase{
+		env:          k8s.EnvGKE,
+		baseManifest: NewSanchoDockerBuildManifestWithBuildPath(f.Path()),
+		liveUpdate:   lu,
+		changedFile:  f.JoinPath("a.txt"), // matches context but not sync'd directory
+
+		expectDockerBuildCount:   1, // we did a Docker build instead of an in-place update!
+		expectDockerPushCount:    1,
+		expectDockerCopyCount:    0,
+		expectDockerExecCount:    0,
+		expectDockerRestartCount: 0,
+		expectK8sDeploy:          true, // because we fell back to image builder, we also did a k8s deploy
+		expectSyncletDeploy:      true, // (and expect that yaml to have contained the synclet)
+	}
+	runTestCase(t, f, tCase)
+}
+
 func (f *bdFixture) assembleLiveUpdate(syncs []model.LiveUpdateSyncStep, runs []model.LiveUpdateRunStep, shouldRestart bool, fullRebuildTriggers []string) model.LiveUpdate {
 	var steps []model.LiveUpdateStep
 	for _, sync := range syncs {

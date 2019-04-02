@@ -92,8 +92,8 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 			return store.BuildResultSet{}, err
 		}
 		if len(cfMappings) != len(cf) {
-			return nil, RedirectToNextBuilderf("one or more changed files do NOT match a LiveUpdate sync, " +
-				"so should perform a base build")
+			return nil, RedirectToNextBuilderf("one or more changed files do not match a LiveUpdate sync, " +
+				"so performing a full build")
 		}
 
 		// If any changed files match a FullRebuildTrigger, fall back to next BuildAndDeployer

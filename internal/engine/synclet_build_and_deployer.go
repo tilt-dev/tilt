@@ -59,27 +59,37 @@ func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store
 
 func (sbd *SyncletBuildAndDeployer) UpdateInCluster(ctx context.Context,
 	iTarget model.ImageTarget, state store.BuildState) (store.BuildResultSet, error) {
+	cf := state.FilesChanged()
+
 	var err error
-	var changedFiles []build.PathMapping
+	var cfMappings []build.PathMapping
 	var runs []model.Run
 	var hotReload bool
 
 	if fbInfo := iTarget.MaybeFastBuildInfo(); fbInfo != nil {
-		changedFiles, err = build.FilesToPathMappings(state.FilesChanged(), fbInfo.Syncs)
+		cfMappings, err = build.FilesToPathMappings(cf, fbInfo.Syncs)
 		if err != nil {
 			return store.BuildResultSet{}, err
 		}
+		if len(cfMappings) != len(cf) {
+			return nil, fmt.Errorf("failed to match one of more of changed files %v with a sync: %+v", cf, fbInfo.Syncs)
+		}
+
 		runs = fbInfo.Runs
 		hotReload = fbInfo.HotReload
 	}
 	if luInfo := iTarget.MaybeLiveUpdateInfo(); luInfo != nil {
-		changedFiles, err = build.FilesToPathMappings(state.FilesChanged(), luInfo.SyncSteps())
+		cfMappings, err = build.FilesToPathMappings(cf, luInfo.SyncSteps())
 		if err != nil {
 			return store.BuildResultSet{}, err
 		}
+		if len(cfMappings) != len(cf) {
+			return nil, RedirectToNextBuilderf("one or more changed files do not match a LiveUpdate sync, " +
+				"so performing a full build")
+		}
 
 		// If any changed files match a FullRebuildTrigger, fall back to next BuildAndDeployer
-		anyMatch, err := luInfo.FullRebuildTriggers.AnyMatch(build.PathMappingsToLocalPaths(changedFiles))
+		anyMatch, err := luInfo.FullRebuildTriggers.AnyMatch(build.PathMappingsToLocalPaths(cfMappings))
 		if err != nil {
 			return nil, err
 		}
@@ -91,7 +101,7 @@ func (sbd *SyncletBuildAndDeployer) UpdateInCluster(ctx context.Context,
 		runs = luInfo.RunSteps()
 		hotReload = !luInfo.ShouldRestart()
 	}
-	return sbd.updateInCluster(ctx, iTarget, state, changedFiles, runs, hotReload)
+	return sbd.updateInCluster(ctx, iTarget, state, cfMappings, runs, hotReload)
 }
 
 func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) (store.BuildResultSet, error) {
