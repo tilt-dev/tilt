@@ -6,9 +6,9 @@ import "./Statusbar.scss"
 const nbsp = "\u00a0"
 
 class StatusItem {
-  public warnings: Array<string> = []
+  public warningCount: number = 0
   public up: boolean = false
-  public error: string = ""
+  public hasError: boolean = false
   public name: string
 
   /**
@@ -19,7 +19,7 @@ class StatusItem {
 
     let buildHistory = res.BuildHistory || []
     let lastBuild = buildHistory[0]
-    this.warnings = (lastBuild && lastBuild.Warnings) || []
+    this.warningCount = ((lastBuild && lastBuild.Warnings) || []).length
 
     let runtimeStatus = res.RuntimeStatus
     let currentBuild = res.CurrentBuild
@@ -36,7 +36,7 @@ class StatusItem {
         !hasPendingBuild
     )
 
-    this.error = runtimeStatus === "error" ? lastBuildError : ""
+    this.hasError = !!lastBuildError || runtimeStatus == "error"
   }
 }
 
@@ -101,13 +101,13 @@ class Statusbar extends PureComponent<StatusBarProps> {
 
     let items = this.props.items
     items.forEach(item => {
-      if (item.error) {
+      if (item.hasError) {
         errorCount++
       }
       if (item.up) {
         upCount++
       }
-      warningCount += item.warnings.length
+      warningCount += item.warningCount
     })
 
     let itemCount = items.length
