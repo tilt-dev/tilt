@@ -108,11 +108,7 @@ func CreateFileChangeFilter(m IgnorableTarget) (model.PathMatcher, error) {
 }
 
 func CreateRunMatcher(r model.Run) (model.PathMatcher, error) {
-	return CreateTriggerMatcher(r.Triggers.Paths, r.Triggers.BaseDirectory)
-}
-
-func CreateTriggerMatcher(triggers []string, baseDir string) (model.PathMatcher, error) {
-	dim, err := dockerignore.NewDockerPatternMatcher(baseDir, triggers)
+	dim, err := dockerignore.NewDockerPatternMatcher(r.Triggers.BaseDirectory, r.Triggers.Paths)
 	if err != nil {
 		return nil, err
 	}
