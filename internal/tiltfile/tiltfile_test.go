@@ -2877,8 +2877,7 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			isDep := false
 			path := f.JoinPath(opt.path)
 			for _, d := range m.LocalPaths() {
-				_, isChild := ospath.Child(d, path)
-				if isChild {
+				if ospath.IsChild(d, path) {
 					isDep = true
 				}
 			}

@@ -147,6 +147,5 @@ func newDirectoryMatcher(dir string) (directoryMatcher, error) {
 }
 
 func (d directoryMatcher) Matches(p string, isDir bool) (bool, error) {
-	_, isChild := ospath.Child(d.dir, p)
-	return isChild, nil
+	return ospath.IsChild(d.dir, p), nil
 }

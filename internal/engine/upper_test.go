@@ -1953,6 +1953,7 @@ func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	// recorded on manifest state
 	f.withManifestState(m.ManifestName(), func(st store.ManifestState) {
 		assert.Contains(t, st.DCResourceState().Log(), expected)
+		assert.Equal(t, 1, strings.Count(st.CombinedLog.String(), expected))
 	})
 }
 

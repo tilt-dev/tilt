@@ -202,6 +202,8 @@ func (r Run) WithTriggers(paths []string, baseDir string) Run {
 			Paths:         paths,
 			BaseDirectory: baseDir,
 		}
+	} else {
+		r.Triggers = PathSet{}
 	}
 	return r
 }
