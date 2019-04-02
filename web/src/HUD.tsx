@@ -57,6 +57,9 @@ type HudState = {
 // The Main HUD view, as specified in
 // https://docs.google.com/document/d/1VNIGfpC4fMfkscboW0bjYYFJl07um_1tsFrbN-Fu3FI/edit#heading=h.l8mmnclsuxl1
 class HUD extends Component<HudProps, HudState> {
+  // NOTE(dmiller): this can't be named "isMounted" because that
+  // is a method that already exists on React.Component
+  private _isMounted = false
   private controller: AppController
 
   constructor(props: HudProps) {
@@ -82,10 +85,14 @@ class HUD extends Component<HudProps, HudState> {
 
   componentDidMount() {
     this.controller.createNewSocket()
+    this._isMounted = true
   }
 
   componentWillUnmount() {
-    this.controller.dispose()
+    if (this._isMounted) {
+      this.controller.dispose()
+    }
+    this._isMounted = false
   }
 
   setAppState(state: HudState) {
