@@ -76,7 +76,9 @@ class Sidebar extends PureComponent<SidebarProps> {
           {allItem}
           {listItems}
         </ul>
-        <button className="Sidebar-toggle" onClick={this.props.toggleSidebar}><ChevronSvg /> Collapse</button>
+        <button className="Sidebar-toggle" onClick={this.props.toggleSidebar}>
+          <ChevronSvg /> Collapse
+        </button>
       </nav>
     )
   }

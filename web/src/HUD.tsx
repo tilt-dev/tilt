@@ -115,7 +115,12 @@ class HUD extends Component<HudProps, HudState> {
     let sidebarRoute = (props: RouteComponentProps<any>) => {
       let name = props.match.params.name
       return (
-        <Sidebar selected={name} items={sidebarItems} isClosed={isSidebarClosed} toggleSidebar={toggleSidebar} />
+        <Sidebar
+          selected={name}
+          items={sidebarItems}
+          isClosed={isSidebarClosed}
+          toggleSidebar={toggleSidebar}
+        />
       )
     }
 
