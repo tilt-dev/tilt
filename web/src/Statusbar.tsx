@@ -42,7 +42,6 @@ class StatusItem {
 
 type StatusBarProps = {
   items: Array<any>
-  toggleSidebar: any
 }
 
 class Statusbar extends PureComponent<StatusBarProps> {
@@ -87,7 +86,7 @@ class Statusbar extends PureComponent<StatusBarProps> {
   upPanel(upCount: number, itemCount: number) {
     let upPanelClasses = "Statusbar-panel Statusbar-panel--up"
     let upPanel = (
-      <button className={upPanelClasses} onClick={this.props.toggleSidebar}>
+      <button className={upPanelClasses}>
         {upCount} / {itemCount} resources up <LogoSvg className="icon" />
       </button>
     )

@@ -3,11 +3,13 @@
 .Sidebar {
   width: $sidebar-width;
   max-width: $sidebar-maxWidth;
-  min-height: 100vh;
   margin-left: $spacing-unit;
   border-left: 2px solid $color-navy-light;
   box-sizing: border-box;
   position: fixed;
+  overflow-y: scroll;
+  top: 0;
+  bottom: $statusbar-height;
   right: 0;
   z-index: 900;
   background-color: $color-navy;
@@ -16,8 +18,9 @@
   font-size: $font-size;
 }
 .Sidebar.is-closed {
-  transform: translateX(120%);
+  transform: translateX(100%);
   transition: transform ease-in 200ms;
+  right: $spacing-unit * 1.5;
 }
 .Sidebar-header {
   color: $color-navy-light;
@@ -29,25 +32,62 @@
   list-style: none;
   margin: 0;
   padding: 0;
+  border-bottom: 1px solid $color-navy-light;
 }
+
+.Sidebar-toggle {
+  position: sticky;
+  bottom: 0;
+  background-color: $color-navy;
+  border: 0 none;
+  border-top: 1px solid $color-navy-light;
+  width: 100%;
+  color: inherit;
+  font-size: inherit;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  height: $sidebar-item;
+  margin: 0;
+  padding: 0;
+}
+
+.Sidebar-toggle svg {
+  fill: $color-white;
+  width: $spacing-unit * 1.5;
+  transform: rotate(180deg);
+}
+
+.Sidebar.is-closed .Sidebar-toggle svg {
+  transform: rotate(0);
+  transition-property: transform;
+  transition-duration: 0.2s;
+  transition-timing-function: ease-in;
+}
+
 .resLink {
   background-color: $color-navy;
-  color: white;
+  border-top: 1px solid $color-navy-light;
+  color: $color-white;
   transition: background-color 200ms ease, color 200ms ease;
   text-decoration: none;
-  display: block;
-  padding: $spacing-unit / 2;
-  padding-left: $spacing-unit;
+  display: flex;
+  align-items: center;
+  height: $sidebar-item;
 }
+
 .resLink.is-selected,
-.resLink:hover, {
+.resLink:hover {
   background-color: $color-navy-dark;
   color: $color-blue-light;
 }
+
 .resLink::before {
   content: "●";
-  padding-right: $spacing-unit / 4;
+  width: $spacing-unit * 1.5;
+  text-align: center;
 }
+
 .resLink--all::before {
   content: "";
   padding-right: $spacing-unit / 4;

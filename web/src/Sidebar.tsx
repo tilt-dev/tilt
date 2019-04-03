@@ -1,4 +1,5 @@
 import React, { PureComponent } from "react"
+import { ReactComponent as ChevronSvg } from "./assets/svg/chevron.svg"
 import { isZeroTime } from "./time"
 import { Link } from "react-router-dom"
 import "./Sidebar.scss"
@@ -31,6 +32,7 @@ type SidebarProps = {
   isClosed: boolean
   items: SidebarItem[]
   selected: string
+  toggleSidebar: any
 }
 
 class Sidebar extends PureComponent<SidebarProps> {
@@ -74,6 +76,7 @@ class Sidebar extends PureComponent<SidebarProps> {
           {allItem}
           {listItems}
         </ul>
+        <button className="Sidebar-toggle" onClick={this.props.toggleSidebar}><ChevronSvg /> Collapse</button>
       </nav>
     )
   }
