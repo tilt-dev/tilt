@@ -84,15 +84,15 @@ it("opens sidebar on click", async () => {
 
   let sidebar = hud.find(".Sidebar")
   expect(sidebar).toHaveLength(1)
-  expect(sidebar.hasClass("is-open")).toBe(false)
+  expect(sidebar.hasClass("is-closed")).toBe(false)
 
-  let button = hud.find("button.Statusbar-panel--up")
+  let button = hud.find("button.Sidebar-toggle")
   expect(button).toHaveLength(1)
   button.simulate("click")
 
   sidebar = hud.find(".Sidebar")
   expect(sidebar).toHaveLength(1)
-  expect(sidebar.hasClass("is-open")).toBe(true)
+  expect(sidebar.hasClass("is-closed")).toBe(true)
 })
 
 it("doesn't re-render the sidebar when the logs change", async () => {

@@ -8,7 +8,7 @@ it("renders empty resource list without crashing", () => {
   const tree = renderer
     .create(
       <MemoryRouter initialEntries={["/"]}>
-        <SideBar isClosed={true} items={[]} selected="" />
+        <SideBar isClosed={true} items={[]} selected="" toggleSidebar={null} />
       </MemoryRouter>
     )
     .toJSON()

@@ -45,7 +45,6 @@ exports[`StatusBar renders without crashing 1`] = `
   </div>
   <button
     className="Statusbar-panel Statusbar-panel--up"
-    onClick={null}
   >
     0
      / 

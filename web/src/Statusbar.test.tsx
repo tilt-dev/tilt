@@ -6,7 +6,7 @@ import Statusbar, { StatusItem } from "./Statusbar"
 describe("StatusBar", () => {
   it("renders without crashing", () => {
     const tree = renderer
-      .create(<Statusbar items={[]} toggleSidebar={null} />)
+      .create(<Statusbar items={[]} />)
       .toJSON()
 
     expect(tree).toMatchSnapshot()
