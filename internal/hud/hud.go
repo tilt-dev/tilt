@@ -142,16 +142,6 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 					h.currentViewState.AlertMessage = fmt.Sprintf("no urls for resource '%s' ¯\\_(ツ)_/¯", selected.Name)
 				}
 			case r == 'l': // Tilt [L]og
-				am := h.activeModal()
-				_, isLogModal := am.(logModal)
-				if !isLogModal {
-					// Close any existing non-log modal
-					if am != nil {
-						am.Close(&h.currentViewState)
-					}
-				}
-				h.currentViewState.CycleViewLogState()
-			case r == 'L':
 				if h.webURL.Empty() {
 					break
 				}
@@ -196,36 +186,22 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				h.activeScroller().Down()
 			}
 			h.refreshSelectedIndex()
-		case tcell.KeyEnter, tcell.KeyTab: // toggle log modal for selected resource
+		case tcell.KeyEnter:
 			if len(h.currentView.Resources) == 0 {
 				break
 			}
-			selectedIdx, r := h.selectedResource()
+			_, r := h.selectedResource()
 			if r.IsYAML() {
 				h.currentViewState.AlertMessage = fmt.Sprintf("YAML Resources don't have logs")
 				break
 			}
 
-			if ev.Key() == tcell.KeyTab {
-				if h.webURL.Empty() {
-					break
-				}
-				url := h.webURL
-				url.Path = fmt.Sprintf("/r/%s", r.Name)
-				_ = browser.OpenURL(url.String())
+			if h.webURL.Empty() {
 				break
 			}
-
-			am := h.activeModal()
-			if am == nil {
-				h.currentViewState.LogModal = view.LogModal{ResourceLogNumber: selectedIdx + 1}
-				h.activeModal().Bottom()
-			} else {
-				_, isLogModal := am.(logModal)
-				if isLogModal {
-					am.Close(&h.currentViewState)
-				}
-			}
+			url := h.webURL
+			url.Path = fmt.Sprintf("/r/%s/", r.Name)
+			_ = browser.OpenURL(url.String())
 		case tcell.KeyRight:
 			i, _ := h.selectedResource()
 			h.currentViewState.Resources[i].CollapseState = view.CollapseNo
