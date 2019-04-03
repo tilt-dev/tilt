@@ -201,6 +201,22 @@ func TestLiveUpdateCustomBuild(t *testing.T) {
 	f.assertNextManifest("foo", cb(imageNormalized("foo"), f.expectedLU))
 }
 
+func TestLiveUpdateRebuildTriggersOutsideOfDockerContext(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_resource('foo', 'foo.yaml')
+live_update('gcr.io/foo',
+  [sync('foo/bar', '/baz')],
+  ['bar'],
+)`)
+	f.loadErrString("full_rebuild_trigger", f.JoinPath("bar"), f.JoinPath("foo"), "child", "docker build context")
+}
+
 type liveUpdateFixture struct {
 	*fixture
 
@@ -222,7 +238,7 @@ live_update('%s',
 	run('f', ['g', 'h']),
 	restart_container(),
   ],
-  ['i', 'j']
+  ['foo/i', 'foo/j']
 )`, f.tiltfileCode, f.configuredImageName)
 	f.file("Tiltfile", tiltfile)
 
@@ -247,7 +263,7 @@ func newLiveUpdateFixture(t *testing.T) *liveUpdateFixture {
 
 	f.expectedLU = model.LiveUpdate{
 		Steps:               steps,
-		FullRebuildTriggers: f.NewPathSet("i", "j"),
+		FullRebuildTriggers: f.NewPathSet("foo/i", "foo/j"),
 	}
 
 	return f

@@ -191,13 +191,24 @@ func (s *tiltfileState) maybeLiveUpdate(image *dockerImage) (*model.LiveUpdate, 
 		lu.matched = true
 		ret, err := s.liveUpdateToModel(*lu)
 
-		// if it's a docker build + live update, verify that all sync steps are from within the docker build context
+		// if it's a docker build + live update, verify that all
+		// a) sync steps and
+		// b) full_rebuild_triggers
+		// are from within the docker build context
 		if image.Type() == DockerBuild {
 			for _, step := range lu.steps {
 				if syncStep, ok := step.(model.LiveUpdateSyncStep); ok {
 					if !ospath.IsChild(image.dbBuildPath.path, syncStep.Source) {
-						return nil, fmt.Errorf("sync step source '%s' is not a child of docker build context '%s'", syncStep.Source, image.dbBuildPath.path)
+						return nil, fmt.Errorf("sync step source '%s' is not a child of docker build context '%s'",
+							syncStep.Source, image.dbBuildPath.path)
 					}
+				}
+			}
+			for _, trigger := range lu.fullRebuildTriggers {
+				absTrigger := s.absPath(trigger)
+				if !ospath.IsChild(image.dbBuildPath.path, absTrigger) {
+					return nil, fmt.Errorf("full_rebuild_trigger '%s' is not a child of docker build context '%s'",
+						absTrigger, image.dbBuildPath.path)
 				}
 			}
 		}
