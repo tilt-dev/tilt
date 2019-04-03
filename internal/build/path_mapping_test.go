@@ -101,12 +101,11 @@ func TestFileToDirectoryPathMapping(t *testing.T) {
 	assert.ElementsMatch(t, expected, actual)
 }
 
-func TestFileNotInSync(t *testing.T) {
+func TestFileNotInSyncThrowsErr(t *testing.T) {
 	f := tempdir.NewTempDirFixture(t)
 	defer f.TearDown()
 
-	f.TouchFiles([]string{"sync1/fileA"})
-	files := []string{f.JoinPath("sync1/fileA"), f.JoinPath("not/synced/fileB")}
+	files := []string{f.JoinPath("not/synced/fileA")}
 
 	syncs := []model.Sync{
 		model.Sync{
@@ -115,18 +114,8 @@ func TestFileNotInSync(t *testing.T) {
 		},
 	}
 
-	actual, err := FilesToPathMappings(files, syncs)
-	if err != nil {
-		f.T().Fatal(err)
+	_, err := FilesToPathMappings(files, syncs)
+	if assert.NotNil(t, err, "expected error for file not matching any syncs") {
+		assert.Contains(t, err.Error(), "matches no syncs")
 	}
-
-	// Expect to get back a mapping for ONLY fileA (fileB isn't a child of our sync.LocalPath)
-	expected := []PathMapping{
-		PathMapping{
-			LocalPath:     filepath.Join(f.Path(), "sync1/fileA"),
-			ContainerPath: "/dest1/fileA",
-		},
-	}
-
-	assert.ElementsMatch(t, expected, actual)
 }
