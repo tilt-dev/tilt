@@ -1,7 +1,7 @@
 import React, { PureComponent } from "react"
 import { ReactComponent as ChevronSvg } from "./assets/svg/chevron.svg"
-import { isZeroTime } from "./time"
 import { Link } from "react-router-dom"
+import { combinedStatus } from "./status"
 import "./Sidebar.scss"
 
 class SidebarItem {
@@ -13,18 +13,7 @@ class SidebarItem {
    */
   constructor(res: any) {
     this.name = res.Name
-
-    let runtimeStatus = res.RuntimeStatus
-    let currentBuild = res.CurrentBuild
-    let hasCurrentBuild = Boolean(
-      currentBuild && !isZeroTime(currentBuild.StartTime)
-    )
-    let hasPendingBuild = !isZeroTime(res.PendingBuildSince)
-
-    this.status = runtimeStatus
-    if (hasCurrentBuild || hasPendingBuild) {
-      this.status = "pending"
-    }
+    this.status = combinedStatus(res)
   }
 }
 
