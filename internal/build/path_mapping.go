@@ -129,7 +129,7 @@ func fileToPathMapping(file string, sync []model.Sync) (PathMapping, error) {
 	// to the caller to decide whether this is expected or not.
 	// E.g. for LiveUpdate, this is an expected case; for FastBuild, it means
 	// something is wrong (as we only WATCH files/dirs specified by the sync's).
-	return PathMapping{}, pathMappingErrf("file %s matches no syncs", file)
+	return PathMapping{}, pathMappingErr(file, "File matches no syncs")
 }
 
 func endsWithSlash(path string) bool {
@@ -193,13 +193,17 @@ func PathMappingsToLocalPaths(mappings []PathMapping) []string {
 }
 
 type PathMappingErr struct {
-	s string
+	s    string
+	File string
 }
 
 func (e *PathMappingErr) Error() string { return e.s }
 
 var _ error = &PathMappingErr{}
 
-func pathMappingErrf(format string, a ...interface{}) *PathMappingErr {
-	return &PathMappingErr{s: fmt.Sprintf(format, a...)}
+func pathMappingErr(file string, msg string) *PathMappingErr {
+	return &PathMappingErr{
+		File: file,
+		s:    fmt.Sprintf("[File %s] %s", file, msg),
+	}
 }

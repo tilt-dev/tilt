@@ -328,6 +328,7 @@ func TestLiveUpdateLocalContainerChangedFileNotMatchingSyncFallsBack(t *testing.
 		expectDockerRestartCount: 0,
 		expectK8sDeploy:          true, // Because we fell back to image builder, we also did a k8s deploy
 	}
+	// check for unexpected err??
 	runTestCase(t, f, tCase)
 }
 

@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -68,36 +67,33 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 	if state.IsEmpty() {
 		return store.BuildResultSet{}, RedirectToNextBuilderf("prev. build state is empty; container build does not support initial deploy")
 	}
-	cf := state.FilesChanged()
 
-	var cfMappings []build.PathMapping
+	var changedFiles []build.PathMapping
 	var runs []model.Run
 	var hotReload bool
 
 	if fbInfo := iTarget.MaybeFastBuildInfo(); fbInfo != nil {
-		cfMappings, err = build.FilesToPathMappings(cf, fbInfo.Syncs)
+		changedFiles, err = build.FilesToPathMappings(state.FilesChanged(), fbInfo.Syncs)
 		if err != nil {
 			return store.BuildResultSet{}, err
 		}
-		if len(cfMappings) != len(cf) {
-			return nil, fmt.Errorf("failed to match one of more of changed files %v with a sync: %+v", cf, fbInfo.Syncs)
-		}
-
 		runs = fbInfo.Runs
 		hotReload = fbInfo.HotReload
 	}
 	if luInfo := iTarget.MaybeLiveUpdateInfo(); luInfo != nil {
-		cfMappings, err = build.FilesToPathMappings(cf, luInfo.SyncSteps())
+		changedFiles, err = build.FilesToPathMappings(state.FilesChanged(), luInfo.SyncSteps())
 		if err != nil {
+			if pmErr, ok := err.(*build.PathMappingErr); ok {
+				// expected error for this builder. One of more files don't match sync's;
+				// i.e. they're within the docker context but not within a sync; do a full image build.
+				return nil, RedirectToNextBuilderf(
+					"at least one file (%s) doesn't match a LiveUpdate sync, so performing a full build", pmErr.File)
+			}
 			return store.BuildResultSet{}, err
-		}
-		if len(cfMappings) != len(cf) {
-			return nil, RedirectToNextBuilderf("one or more changed files do not match a LiveUpdate sync, " +
-				"so performing a full build")
 		}
 
 		// If any changed files match a FullRebuildTrigger, fall back to next BuildAndDeployer
-		anyMatch, err := luInfo.FullRebuildTriggers.AnyMatch(build.PathMappingsToLocalPaths(cfMappings))
+		anyMatch, err := luInfo.FullRebuildTriggers.AnyMatch(build.PathMappingsToLocalPaths(changedFiles))
 		if err != nil {
 			return nil, err
 		}
@@ -109,7 +105,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		runs = luInfo.RunSteps()
 		hotReload = !luInfo.ShouldRestart()
 	}
-	return cbd.buildAndDeploy(ctx, iTarget, state, cfMappings, runs, hotReload)
+	return cbd.buildAndDeploy(ctx, iTarget, state, changedFiles, runs, hotReload)
 }
 
 func (cbd *LocalContainerBuildAndDeployer) buildAndDeploy(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) (store.BuildResultSet, error) {
