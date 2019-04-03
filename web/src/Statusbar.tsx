@@ -1,6 +1,6 @@
 import React, { PureComponent } from "react"
 import { ReactComponent as LogoSvg } from "./assets/svg/logo-imagemark.svg"
-import { isZeroTime } from "./time"
+import { combinedStatus } from "./status"
 import "./Statusbar.scss"
 
 const nbsp = "\u00a0"
@@ -21,22 +21,10 @@ class StatusItem {
     let lastBuild = buildHistory[0]
     this.warningCount = ((lastBuild && lastBuild.Warnings) || []).length
 
+    let status = combinedStatus(res)
     let runtimeStatus = res.RuntimeStatus
-    let currentBuild = res.CurrentBuild
-    let hasCurrentBuild = Boolean(
-      currentBuild && !isZeroTime(currentBuild.StartTime)
-    )
-    let hasPendingBuild = !isZeroTime(res.PendingBuildSince)
-    let lastBuildError: string = lastBuild ? lastBuild.Error : ""
-
-    this.up = Boolean(
-      runtimeStatus === "ok" &&
-        !hasCurrentBuild &&
-        !lastBuildError &&
-        !hasPendingBuild
-    )
-
-    this.hasError = !!lastBuildError || runtimeStatus == "error"
+    this.up = status == "ok"
+    this.hasError = status == "error"
   }
 }
 

@@ -13,43 +13,47 @@ describe("StatusBar", () => {
   })
 
   it("renders two items both errors", () => {
-    let items = twoResourceView().Resources.map(res => new StatusItem(res))
-    let statusbar = mount(<Statusbar items={items} toggleSidebar={null} />)
+    let items = twoResourceView().Resources.map((res: any) => {
+      res.CurrentBuild = {}
+      res.PendingBuildSince = ""
+      return new StatusItem(res)
+    })
+    let statusbar = mount(<Statusbar items={items} />)
     expect(statusbar.find(".Statusbar-panel--error").html()).toContain(
       "2 Errors"
     )
   })
 
   it("renders two items both errors snapshot", () => {
-    let items = twoResourceView().Resources.map(res => new StatusItem(res))
-    const tree = renderer
-      .create(<Statusbar items={items} toggleSidebar={null} />)
-      .toJSON()
+    let items = twoResourceView().Resources.map((res: any) => {
+      res.CurrentBuild = {}
+      res.PendingBuildSince = ""
+      return new StatusItem(res)
+    })
+    const tree = renderer.create(<Statusbar items={items} />).toJSON()
 
     expect(tree).toMatchSnapshot()
   })
 
   it("renders two items all ok snapshot", () => {
     let view = twoResourceView()
-    view.Resources.forEach(res => {
+    view.Resources.forEach((res: any) => {
       res.BuildHistory[0].Error = ""
     })
 
-    let items = view.Resources.map(res => new StatusItem(res))
-    const tree = renderer
-      .create(<Statusbar items={items} toggleSidebar={null} />)
-      .toJSON()
+    let items = view.Resources.map((res: any) => new StatusItem(res))
+    const tree = renderer.create(<Statusbar items={items} />).toJSON()
 
     expect(tree).toMatchSnapshot()
   })
 
   it("renders two items all ok", () => {
     let view = twoResourceView()
-    view.Resources.forEach(res => {
+    view.Resources.forEach((res: any) => {
       res.BuildHistory[0].Error = ""
     })
-    let items = view.Resources.map(res => new StatusItem(res))
-    let statusbar = mount(<Statusbar items={items} toggleSidebar={null} />)
+    let items = view.Resources.map((res: any) => new StatusItem(res))
+    let statusbar = mount(<Statusbar items={items} />)
     expect(statusbar.find(".Statusbar-panel--error").html()).toContain(
       "0 Errors"
     )

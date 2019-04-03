@@ -4,4 +4,4 @@ function isZeroTime(time: string) {
   return !time || time === zeroTime
 }
 
-export { isZeroTime }
+export { isZeroTime, zeroTime }

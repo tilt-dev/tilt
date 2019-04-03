@@ -48,7 +48,7 @@ function getMockRouterProps<P>(data: P) {
   return props
 }
 
-function oneResourceView() {
+function oneResource(): any {
   const ts = Date.now().toLocaleString()
   const resource = {
     Name: "vigoda",
@@ -74,37 +74,18 @@ function oneResourceView() {
     PodRestarts: 1,
     Endpoints: ["1.2.3.4:8080"],
     PodLog: "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
+    RuntimeStatus: "ok",
   }
-  return { Resources: [resource] }
+  return resource
 }
 
-function twoResourceView() {
+function oneResourceView(): any {
+  return { Resources: [oneResource()] }
+}
+
+function twoResourceView(): any {
   const ts = Date.now().toLocaleString()
-  const vigoda = {
-    Name: "vigoda",
-    DirectoriesWatched: ["foo", "bar"],
-    LastDeployTime: ts,
-    BuildHistory: [
-      {
-        Edits: ["main.go", "cli.go"],
-        Error: "the build failed!",
-        FinishTime: ts,
-        StartTime: ts,
-      },
-    ],
-    PendingBuildEdits: ["main.go", "cli.go", "vigoda.go"],
-    PendingBuildSince: ts,
-    CurrentBuild: {
-      Edits: ["main.go"],
-      StartTime: ts,
-    },
-    PodName: "vigoda-pod",
-    PodCreationTime: ts,
-    PodStatus: "Running",
-    PodRestarts: 1,
-    Endpoints: ["1.2.3.4:8080"],
-    PodLog: "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
-  }
+  const vigoda = oneResource()
 
   const snack = {
     Name: "snack",
@@ -130,9 +111,10 @@ function twoResourceView() {
     PodRestarts: 1,
     Endpoints: ["1.2.3.4:8080"],
     PodLog: "1\n2\n3\n4\nsnacks are great\n5\n6\n7\n8\n",
+    RuntimeStatus: "ok",
   }
   return { Resources: [vigoda, snack] }
 }
 
 it("loads ok", () => {})
-export { oneResourceView, twoResourceView, getMockRouterProps }
+export { oneResource, oneResourceView, twoResourceView, getMockRouterProps }
