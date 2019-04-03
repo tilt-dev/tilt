@@ -106,7 +106,7 @@ When you use a released version of Tilt, all the HTML, CSS, and JS assets are se
 [production bucket](https://console.cloud.google.com/storage/browser/tilt-static-assets).
 
 When you build Tilt from head, the Tilt binary will default to development mode.
-When you run Tilt, it will run a webpack dev server as a separate process on port 3000,
+When you run Tilt, it will run a webpack dev server as a separate process on port 46764,
 and reverse proxy all asset requests to the dev server.
 
 To manually control the assets served, you can use:
