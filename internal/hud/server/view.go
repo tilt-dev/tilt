@@ -188,4 +188,7 @@ var runtimeStatusMap = map[string]webview.RuntimeStatus{
 	string(dockercompose.StatusUp):     webview.RuntimeStatusOK,
 	string(dockercompose.StatusDown):   webview.RuntimeStatusError,
 	"Completed":                        webview.RuntimeStatusOK,
+
+	// If the runtime status hasn't shown up yet, we assume it's pending.
+	"": webview.RuntimeStatusPending,
 }
