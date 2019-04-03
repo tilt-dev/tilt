@@ -25,10 +25,12 @@ import (
 )
 
 const DefaultWebPort = 10350
+const DefaultWebDevPort = 3000
 
 var updateModeFlag string = string(engine.UpdateModeAuto)
 var webModeFlag model.WebMode = model.DefaultWebMode
 var webPort = 0
+var webDevPort = 0
 var logActionsFlag bool = false
 
 type upCmd struct {
@@ -58,6 +60,7 @@ func (c *upCmd) register() *cobra.Command {
 	cmd.Flags().BoolVar(&c.autoDeploy, "auto-deploy", true, "If false, tilt will wait on <spacebar> to trigger builds")
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
 	cmd.Flags().IntVar(&webPort, "port", DefaultWebPort, "Port for the Tilt HTTP server. Set to 0 to disable.")
+	cmd.Flags().IntVar(&webDevPort, "webdev-port", DefaultWebDevPort, "Port for the Tilt Dev Webpack server. Only applies when using --web-mode=local")
 	cmd.Flags().Lookup("logactions").Hidden = true
 	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
 	err := cmd.Flags().MarkHidden("image-tag-prefix")
@@ -178,6 +181,10 @@ func provideWebMode(b BuildInfo) (model.WebMode, error) {
 
 func provideWebPort() model.WebPort {
 	return model.WebPort(webPort)
+}
+
+func provideWebDevPort() model.WebDevPort {
+	return model.WebDevPort(webDevPort)
 }
 
 func provideWebURL(webPort model.WebPort) (model.WebURL, error) {

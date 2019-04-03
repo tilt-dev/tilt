@@ -54,6 +54,7 @@ var _ flag.Value = &emptyWebMode
 var _ pflag.Value = &emptyWebMode
 
 type WebPort int
+type WebDevPort int
 type WebURL url.URL
 
 func (u WebURL) String() string {

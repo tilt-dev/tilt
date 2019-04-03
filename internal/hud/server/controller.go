@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/network"
 	"github.com/windmilleng/tilt/internal/store"
 )
 
@@ -34,6 +35,13 @@ func (s *HeadsUpServerController) OnChange(ctx context.Context, st store.RStore)
 	}()
 
 	if s.initDone || s.port == 0 {
+		return
+	}
+
+	if !network.IsPortFree(int(s.port)) {
+		st.Dispatch(
+			store.NewErrorAction(
+				fmt.Errorf("Cannot start Tilt. Another process is already running on port %d. Use --port to set a custom port", s.port)))
 		return
 	}
 
