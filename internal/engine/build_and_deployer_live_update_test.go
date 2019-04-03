@@ -35,6 +35,10 @@ type testCase struct {
 	// k8s/deploy actions
 	expectK8sDeploy     bool
 	expectSyncletDeploy bool
+
+	// logs checks
+	logsContain     []string
+	logsDontContain []string
 }
 
 func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
@@ -86,6 +90,17 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 		assert.Equal(t, tCase.expectSyncletDeploy, strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName), "expected synclet-deploy = %t (deployed yaml was: %s)", tCase.expectSyncletDeploy, f.k8s.Yaml)
 	}
 
+	logsStr := f.logs.String()
+	if len(tCase.logsContain) > 0 {
+		for _, s := range tCase.logsContain {
+			assert.Contains(t, logsStr, s, "checking that logs contain expected string")
+		}
+	}
+	if len(tCase.logsDontContain) > 0 {
+		for _, s := range tCase.logsDontContain {
+			assert.NotContains(t, logsStr, s, "checking that logs do NOT contain string")
+		}
+	}
 }
 
 func TestLiveUpdateDockerBuildLocalContainer(t *testing.T) {
@@ -327,8 +342,10 @@ func TestLiveUpdateLocalContainerChangedFileNotMatchingSyncFallsBack(t *testing.
 		expectDockerExecCount:    0,
 		expectDockerRestartCount: 0,
 		expectK8sDeploy:          true, // Because we fell back to image builder, we also did a k8s deploy
+
+		logsContain:     []string{f.JoinPath("a.txt"), "doesn't match a LiveUpdate sync"},
+		logsDontContain: []string{"unexpected error"},
 	}
-	// check for unexpected err??
 	runTestCase(t, f, tCase)
 }
 
@@ -355,6 +372,9 @@ func TestLiveUpdateSyncletChangedFileNotMatchingSyncFallsBack(t *testing.T) {
 		expectDockerRestartCount: 0,
 		expectK8sDeploy:          true, // because we fell back to image builder, we also did a k8s deploy
 		expectSyncletDeploy:      true, // (and expect that yaml to have contained the synclet)
+
+		logsContain:     []string{f.JoinPath("a.txt"), "doesn't match a LiveUpdate sync"},
+		logsDontContain: []string{"unexpected error"},
 	}
 	runTestCase(t, f, tCase)
 }
@@ -382,6 +402,9 @@ func TestLiveUpdateSomeFilesMatchSyncSomeDontFallsBack(t *testing.T) {
 		expectDockerExecCount:    0,
 		expectDockerRestartCount: 0,
 		expectK8sDeploy:          true, // Because we fell back to image builder, we also did a k8s deploy
+
+		logsContain:     []string{f.JoinPath("a.txt"), "doesn't match a LiveUpdate sync"},
+		logsDontContain: []string{"unexpected error"},
 	}
 	runTestCase(t, f, tCase)
 }

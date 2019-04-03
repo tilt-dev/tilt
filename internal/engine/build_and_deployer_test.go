@@ -2,6 +2,7 @@ package engine
 
 import (
 	"archive/tar"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -803,6 +804,7 @@ type bdFixture struct {
 	bd     BuildAndDeployer
 	st     *store.Store
 	dcCli  *dockercompose.FakeDCClient
+	logs   *bytes.Buffer
 }
 
 func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
@@ -816,7 +818,8 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 			},
 		},
 	}
-	ctx := output.CtxForTest()
+	logs := new(bytes.Buffer)
+	ctx := output.ForkedCtxForTest(logs)
 	k8s := k8s.NewFakeK8sClient()
 	sCli := synclet.NewFakeSyncletClient()
 	mode := UpdateModeFlag(UpdateModeAuto)
@@ -838,6 +841,7 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 		bd:             bd,
 		st:             st,
 		dcCli:          dcc,
+		logs:           logs,
 	}
 }
 
