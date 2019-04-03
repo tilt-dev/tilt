@@ -18,9 +18,8 @@
   font-size: $font-size;
 }
 .Sidebar.is-closed {
-  transform: translateX(100%);
+  transform: translateX(calc(100% - #{$spacing-unit} * 1.5));
   transition: transform ease-in 200ms;
-  right: $spacing-unit * 1.5;
 }
 .Sidebar-header {
   color: $color-navy-light;
@@ -56,13 +55,13 @@
   fill: $color-white;
   width: $spacing-unit * 1.5;
   transform: rotate(180deg);
+  transition-property: transform;
+  transition-duration: 0.2s;
+  transition-timing-function: ease-in;
 }
 
 .Sidebar.is-closed .Sidebar-toggle svg {
   transform: rotate(0);
-  transition-property: transform;
-  transition-duration: 0.2s;
-  transition-timing-function: ease-in;
 }
 
 .resLink {

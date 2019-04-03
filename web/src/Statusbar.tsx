@@ -86,9 +86,9 @@ class Statusbar extends PureComponent<StatusBarProps> {
   upPanel(upCount: number, itemCount: number) {
     let upPanelClasses = "Statusbar-panel Statusbar-panel--up"
     let upPanel = (
-      <button className={upPanelClasses}>
+      <span className={upPanelClasses}>
         {upCount} / {itemCount} resources up <LogoSvg className="icon" />
-      </button>
+      </span>
     )
     return upPanel
   }
