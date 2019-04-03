@@ -27,7 +27,7 @@ import (
 const DefaultWebPort = 10350
 
 var updateModeFlag string = string(engine.UpdateModeAuto)
-var webModeFlag model.WebMode = model.ProdWebMode
+var webModeFlag model.WebMode = model.DefaultWebMode
 var webPort = 0
 var logActionsFlag bool = false
 
@@ -162,8 +162,18 @@ func provideLogActions() store.LogActionsFlag {
 	return store.LogActionsFlag(logActionsFlag)
 }
 
-func provideWebMode() model.WebMode {
-	return webModeFlag
+func provideWebMode(b BuildInfo) (model.WebMode, error) {
+	switch webModeFlag {
+	case model.LocalWebMode, model.ProdWebMode:
+		return webModeFlag, nil
+	case model.DefaultWebMode:
+		if b.Dev {
+			return model.LocalWebMode, nil
+		} else {
+			return model.ProdWebMode, nil
+		}
+	}
+	return "", fmt.Errorf("Unrecognized web mode: %s", webModeFlag)
 }
 
 func provideWebPort() model.WebPort {
