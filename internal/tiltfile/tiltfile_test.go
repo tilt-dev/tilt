@@ -653,7 +653,7 @@ k8s_yaml('pod_creator.yaml')
 	f.assertYAMLManifest("not-pod-creator")
 }
 
-func TestUnresourcedYamlGrouping(t *testing.T) {
+func TestUnresourcedYamlGroupingV1(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -674,6 +674,37 @@ func TestUnresourcedYamlGrouping(t *testing.T) {
 	)
 
 	f.file("Tiltfile", `k8s_yaml('all.yaml')`)
+	f.load()
+
+	f.assertNextManifest("deployment-a", deployment("deployment-a"))
+	f.assertNextManifest("deployment-b", deployment("deployment-b"), service("service-b"))
+	f.assertNextManifest("deployment-c", deployment("deployment-c"), service("service-c1"), service("service-c2"))
+	f.assertYAMLManifest("someSecret")
+}
+
+func TestUnresourcedYamlGroupingV2(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	labelsA := map[string]string{"keyA": "valueA"}
+	labelsB := map[string]string{"keyB": "valueB"}
+	labelsC := map[string]string{"keyC": "valueC"}
+	f.yaml("all.yaml",
+		deployment("deployment-a", withLabels(labelsA)),
+
+		deployment("deployment-b", withLabels(labelsB)),
+		service("service-b", withLabels(labelsB)),
+
+		deployment("deployment-c", withLabels(labelsC)),
+		service("service-c1", withLabels(labelsC)),
+		service("service-c2", withLabels(labelsC)),
+
+		secret("someSecret"),
+	)
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+k8s_yaml('all.yaml')`)
 	f.load()
 
 	f.assertNextManifest("deployment-a", deployment("deployment-a"))
@@ -1477,7 +1508,7 @@ func TestBlobErr(t *testing.T) {
 	f.loadErrString("for parameter 1: got int, want string")
 }
 
-func TestImageDependency(t *testing.T) {
+func TestImageDependencyV1(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -1494,6 +1525,25 @@ k8s_yaml('foo.yaml')
 	f.load()
 	m := f.assertNextManifest("image-b", deployment("foo"))
 	assert.Equal(t, []string{"gcr.io/image-a", "gcr.io/image-b"}, f.imageTargetNames(m))
+}
+
+func TestImageDependencyV2(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("imageA.dockerfile", "FROM golang:1.10")
+	f.file("imageB.dockerfile", "FROM gcr.io/image-a")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/image-b")))
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build('gcr.io/image-b', '.', dockerfile='imageB.dockerfile')
+docker_build('gcr.io/image-a', '.', dockerfile='imageA.dockerfile')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	f.assertNextManifest("foo", deployment("foo", image("gcr.io/image-a"), image("gcr.io/image-b")))
 }
 
 func TestImageDependencyCycle(t *testing.T) {
@@ -1625,7 +1675,7 @@ k8s_yaml('auth.yaml')
 	}, f.imageTargetNames(m))
 }
 
-func TestImagesWithSameName(t *testing.T) {
+func TestImagesWithSameNameAssemblyV1(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -1648,6 +1698,29 @@ k8s_yaml('app.yaml')
 		"docker.io/vandelay/app",
 		"docker.io/vandelay/app:jessie",
 	}, f.imageTargetNames(m))
+}
+
+func TestImagesWithSameNameAssemblyV2(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("app.dockerfile", "FROM golang:1.10")
+	f.file("app-jessie.dockerfile", "FROM golang:1.10-jessie")
+	f.yaml("app.yaml",
+		deployment("app", image("vandelay/app")),
+		deployment("app-jessie", image("vandelay/app:jessie")))
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build('vandelay/app', '.', dockerfile='app.dockerfile')
+docker_build('vandelay/app:jessie', '.', dockerfile='app-jessie.dockerfile')
+k8s_yaml('app.yaml')
+`)
+
+	f.load()
+
+	f.assertNextManifest("app", deployment("app", image("docker.io/vandelay/app")))
+	f.assertNextManifest("app-jessie", deployment("app-jessie", image("docker.io/vandelay/app:jessie")))
 }
 
 func TestImagesWithSameNameDifferentManifests(t *testing.T) {
@@ -1924,19 +1997,46 @@ docker_build('test/mycrd-env', 'env')
 	)
 }
 
+func TestConflictingWorkloadNames(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo1/Dockerfile")
+	f.dockerfile("foo2/Dockerfile")
+	f.yaml("foo1.yaml", deployment("foo", image("gcr.io/foo1"), namespace("ns1")))
+	f.yaml("foo2.yaml", deployment("foo", image("gcr.io/foo2"), namespace("ns2")))
+	f.gitInit("")
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+k8s_yaml(['foo1.yaml', 'foo2.yaml'])
+docker_build('gcr.io/foo1', 'foo1')
+docker_build('gcr.io/foo2', 'foo2')
+`)
+	f.load("foo:deployment:ns1", "foo:deployment:ns2")
+
+	f.assertNextManifest("foo:deployment:ns1", db(image("gcr.io/foo1")))
+	f.assertNextManifest("foo:deployment:ns2", db(image("gcr.io/foo2")))
+}
+
+type k8sKindTest struct {
+	name                 string
+	args                 string
+	expectMatch          bool
+	expectedError        string
+	preamble             string
+	expectedResourceName string
+}
+
 func TestK8SKind(t *testing.T) {
-	tests := []struct {
-		name          string
-		args          string
-		expectMatch   bool
-		expectedError string
-	}{
-		{"match kind", "'Environment', image_json_path='{.spec.runtime.image}'", true, ""},
-		{"don't match kind", "'fdas', image_json_path='{.spec.runtime.image}'", false, ""},
-		{"match apiVersion", "'Environment', image_json_path='{.spec.runtime.image}', api_version='fission.io/v1'", true, ""},
-		{"don't match apiVersion", "'Environment', image_json_path='{.spec.runtime.image}', api_version='fission.io/v2'", false, ""},
-		{"invalid kind regexp", "'*', image_json_path='{.spec.runtime.image}'", false, "error parsing kind regexp"},
-		{"invalid apiVersion regexp", "'Environment', api_version='*', image_json_path='{.spec.runtime.image}'", false, "error parsing apiVersion regexp"},
+	tests := []k8sKindTest{
+		{name: "match kind", args: "'Environment', image_json_path='{.spec.runtime.image}'", expectMatch: true},
+		{name: "don't match kind", args: "'fdas', image_json_path='{.spec.runtime.image}'", expectMatch: false},
+		{name: "match apiVersion", args: "'Environment', image_json_path='{.spec.runtime.image}', api_version='fission.io/v1'", expectMatch: true},
+		{name: "don't match apiVersion", args: "'Environment', image_json_path='{.spec.runtime.image}', api_version='fission.io/v2'"},
+		{name: "invalid kind regexp", args: "'*', image_json_path='{.spec.runtime.image}'", expectedError: "error parsing kind regexp"},
+		{name: "invalid apiVersion regexp", args: "'Environment', api_version='*', image_json_path='{.spec.runtime.image}'", expectedError: "error parsing apiVersion regexp"},
+		{name: "assembly version 2", args: "'Environment', image_json_path='{.spec.runtime.image}'", preamble: "k8s_resource_assembly_version(2)", expectMatch: true, expectedResourceName: "mycrd"},
 	}
 
 	for _, test := range tests {
@@ -1946,17 +2046,22 @@ func TestK8SKind(t *testing.T) {
 			f.setupCRD()
 			f.dockerfile("env/Dockerfile")
 			f.dockerfile("builder/Dockerfile")
-			f.file("Tiltfile", fmt.Sprintf(`k8s_yaml('crd.yaml')
+			f.file("Tiltfile", fmt.Sprintf(`%s
+k8s_yaml('crd.yaml')
 k8s_kind(%s)
 docker_build('test/mycrd-env', 'env')
-`, test.args))
+`, test.preamble, test.args))
 
 			if test.expectMatch {
 				if test.expectedError != "" {
 					t.Fatal("invalid test: cannot expect both match and error")
 				}
-				f.load("mycrd-env")
-				f.assertNextManifest("mycrd-env",
+				expectedResourceName := "mycrd-env"
+				if test.expectedResourceName != "" {
+					expectedResourceName = test.expectedResourceName
+				}
+				f.load(expectedResourceName)
+				f.assertNextManifest(expectedResourceName,
 					db(
 						image("docker.io/test/mycrd-env"),
 					),
@@ -2501,6 +2606,80 @@ k8s_resource('foo', 'foo.yaml')
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml", "hello")
 }
 
+func TestK8SResourceAssemblyVersionAfterYAML(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_resource('foo', 'foo.yaml')
+k8s_resource_assembly_version(2)
+`)
+
+	f.loadErrString("k8s_resource_assembly_version can only be called before introducing any k8s resources")
+}
+
+func TestK8SResourceWithAssemblyVersion2(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+k8s_resource('foo', 'foo.yaml')
+`)
+
+	f.loadErrString("k8s_resource: only supported with v1 k8s_resource_assembly_version")
+}
+
+func TestAssemblyVersion2Basic(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load("foo")
+
+	f.assertNextManifest("foo",
+		db(image("gcr.io/foo")),
+		deployment("foo"))
+
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "foo/Dockerfile")
+}
+
+func TestAssemblyVersion2TwoWorkloadsSameImage(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("bar.yaml", deployment("bar", image("gcr.io/foo")))
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml(['foo.yaml', 'bar.yaml'])
+`)
+
+	f.load("foo", "bar")
+
+	f.assertNextManifest("foo",
+		db(image("gcr.io/foo")),
+		deployment("foo"))
+	f.assertNextManifest("bar",
+		db(image("gcr.io/foo")),
+		deployment("bar"))
+
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "bar.yaml", "foo/Dockerfile")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
@@ -2576,6 +2755,9 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 						})
 					}
 					de.Spec.Template.Spec.Containers[i] = c
+				}
+				if e.namespace != "" {
+					de.Namespace = e.namespace
 				}
 				obj.Obj = de
 				objs[i] = obj
@@ -3004,11 +3186,20 @@ func secret(name string) secretHelper {
 	return secretHelper{name: name}
 }
 
+type namespaceHelper struct {
+	namespace string
+}
+
+func namespace(namespace string) namespaceHelper {
+	return namespaceHelper{namespace}
+}
+
 type deploymentHelper struct {
 	name           string
 	image          string
 	templateLabels map[string]string
 	envVars        []envVar
+	namespace      string
 }
 
 func deployment(name string, opts ...interface{}) deploymentHelper {
@@ -3021,6 +3212,8 @@ func deployment(name string, opts ...interface{}) deploymentHelper {
 			r.templateLabels = opt.labels
 		case envVarHelper:
 			r.envVars = opt.envVars
+		case namespaceHelper:
+			r.namespace = opt.namespace
 		default:
 			panic(fmt.Errorf("unexpected arg to deployment: %T %v", opt, opt))
 		}

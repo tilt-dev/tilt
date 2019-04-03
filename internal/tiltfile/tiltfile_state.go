@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/windmilleng/tilt/internal/k8s"
+
 	"github.com/windmilleng/tilt/internal/logger"
 
 	"github.com/docker/distribution/reference"
@@ -17,7 +19,6 @@ import (
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -46,6 +47,8 @@ type tiltfileState struct {
 	// JSON paths to images in k8s YAML (other than Container specs)
 	k8sImageJSONPaths map[k8sObjectSelector][]k8s.JSONPath
 
+	k8sResourceAssemblyVersion int
+
 	// for assembly
 	usedImages map[string]bool
 
@@ -67,17 +70,18 @@ type tiltfileState struct {
 func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, filename string) *tiltfileState {
 	lp := localPath{path: filename}
 	s := &tiltfileState{
-		ctx:               ctx,
-		filename:          localPath{path: filename},
-		dcCli:             dcCli,
-		buildIndex:        newBuildIndex(),
-		k8sByName:         make(map[string]*k8sResource),
-		k8sImageJSONPaths: make(map[k8sObjectSelector][]k8s.JSONPath),
-		configFiles:       []string{filename, tiltIgnorePath(filename)},
-		usedImages:        make(map[string]bool),
-		logger:            logger.Get(ctx),
-		builtinCallCounts: make(map[string]int),
-		liveUpdates:       make(map[string]*liveUpdateDef),
+		ctx:                        ctx,
+		filename:                   localPath{path: filename},
+		dcCli:                      dcCli,
+		buildIndex:                 newBuildIndex(),
+		k8sByName:                  make(map[string]*k8sResource),
+		k8sImageJSONPaths:          make(map[k8sObjectSelector][]k8s.JSONPath),
+		configFiles:                []string{filename, tiltIgnorePath(filename)},
+		usedImages:                 make(map[string]bool),
+		logger:                     logger.Get(ctx),
+		builtinCallCounts:          make(map[string]int),
+		liveUpdates:                make(map[string]*liveUpdateDef),
+		k8sResourceAssemblyVersion: 1,
 	}
 	s.filename = s.maybeAttachGitRepo(lp, filepath.Dir(lp.path))
 	return s
@@ -108,12 +112,13 @@ const (
 	dcResourceN    = "dc_resource"
 
 	// k8s functions
-	k8sYamlN          = "k8s_yaml"
-	filterYamlN       = "filter_yaml"
-	k8sResourceN      = "k8s_resource"
-	portForwardN      = "port_forward"
-	k8sKindN          = "k8s_kind"
-	k8sImageJSONPathN = "k8s_image_json_path"
+	k8sResourceAssemblyVersionN = "k8s_resource_assembly_version"
+	k8sYamlN                    = "k8s_yaml"
+	filterYamlN                 = "filter_yaml"
+	k8sResourceN                = "k8s_resource"
+	portForwardN                = "port_forward"
+	k8sKindN                    = "k8s_kind"
+	k8sImageJSONPathN           = "k8s_image_json_path"
 
 	// file functions
 	localGitRepoN = "local_git_repo"
@@ -166,6 +171,7 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 	addBuiltin(r, defaultRegistryN, s.defaultRegistry)
 	addBuiltin(r, dockerComposeN, s.dockerCompose)
 	addBuiltin(r, dcResourceN, s.dcResource)
+	addBuiltin(r, k8sResourceAssemblyVersionN, s.k8sResourceAssemblyVersionFn)
 	addBuiltin(r, k8sYamlN, s.k8sYaml)
 	addBuiltin(r, filterYamlN, s.filterYaml)
 	addBuiltin(r, k8sResourceN, s.k8sResource)
@@ -197,7 +203,12 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 		return resourceSet{}, nil, err
 	}
 
-	err = s.assembleK8s()
+	switch s.k8sResourceAssemblyVersion {
+	case 1:
+		err = s.assembleK8sV1()
+	case 2:
+		err = s.assembleK8sV2()
+	}
 	if err != nil {
 		return resourceSet{}, nil, err
 	}
@@ -269,7 +280,7 @@ func (s *tiltfileState) assembleDC() error {
 	return nil
 }
 
-func (s *tiltfileState) assembleK8s() error {
+func (s *tiltfileState) assembleK8sV1() error {
 	err := s.assembleK8sWithImages()
 	if err != nil {
 		return err
@@ -287,6 +298,80 @@ func (s *tiltfileState) assembleK8s() error {
 	}
 	return nil
 
+}
+
+func (s *tiltfileState) assembleK8sV2() error {
+	err := s.assembleK8sByWorkload()
+	if err != nil {
+		return err
+	}
+
+	err = s.assembleK8sUnresourced()
+	if err != nil {
+		return err
+	}
+
+	for _, r := range s.k8s {
+		if err := s.validateK8s(r); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *tiltfileState) assembleK8sByWorkload() error {
+	var workloads, rest []k8s.K8sEntity
+	for _, e := range s.k8sUnresourced {
+		isWorkload, err := s.isWorkload(e)
+		if err != nil {
+			return err
+		}
+		if isWorkload {
+			workloads = append(workloads, e)
+		} else {
+			rest = append(rest, e)
+		}
+	}
+	s.k8sUnresourced = rest
+
+	resourceNames, err := uniqueResourceNames(workloads)
+	if err != nil {
+		return err
+	}
+	for i, resourceName := range resourceNames {
+		workload := workloads[i]
+		res, err := s.makeK8sResource(resourceName)
+		if err != nil {
+			return err
+		}
+		err = res.addEntities([]k8s.K8sEntity{workload}, s.imageJSONPaths)
+		if err != nil {
+			return err
+		}
+
+		match, rest, err := k8s.FilterByMatchesPodTemplateSpec(workload, s.k8sUnresourced)
+		if err != nil {
+			return err
+		}
+
+		err = res.addEntities(match, s.imageJSONPaths)
+		if err != nil {
+			return err
+		}
+
+		s.k8sUnresourced = rest
+	}
+
+	return nil
+}
+
+func (s *tiltfileState) isWorkload(e k8s.K8sEntity) (bool, error) {
+	images, err := e.FindImages(s.imageJSONPaths(e))
+	if err != nil {
+		return false, err
+	} else {
+		return len(images) > 0, nil
+	}
 }
 
 // assembleK8sWithImages matches images we know how to build with any k8s entities
@@ -316,6 +401,7 @@ func (s *tiltfileState) assembleK8sWithImages() error {
 			return err
 		}
 	}
+
 	return nil
 }
 
