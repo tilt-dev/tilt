@@ -88,6 +88,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
+	provideWebDevPort,
 	server.ProvideHeadsUpServer,
 	server.ProvideAssetServer,
 	server.ProvideHeadsUpServerController,

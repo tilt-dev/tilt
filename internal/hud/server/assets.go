@@ -20,6 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/network"
 )
 
 type AssetServer interface {
@@ -30,6 +31,7 @@ type AssetServer interface {
 
 type devAssetServer struct {
 	http.Handler
+	port     model.WebDevPort
 	mu       sync.Mutex
 	cmd      *exec.Cmd
 	disposed bool
@@ -69,7 +71,7 @@ func (s *devAssetServer) start(ctx context.Context, stdout, stderr io.Writer) (*
 	logger.Get(ctx).Infof("Starting Tilt webpack server…")
 	cmd = exec.CommandContext(ctx, "yarn", "run", "start")
 	cmd.Dir = assetDir
-	cmd.Env = append(os.Environ(), "BROWSER=none")
+	cmd.Env = append(os.Environ(), "BROWSER=none", fmt.Sprintf("PORT=%d", s.port))
 
 	// yarn will spawn the dev server as a subproces, so set
 	// a process group id so we can murder them all.
@@ -94,6 +96,12 @@ func (s *devAssetServer) start(ctx context.Context, stdout, stderr io.Writer) (*
 }
 
 func (s *devAssetServer) Serve(ctx context.Context) error {
+	if !network.IsPortFree(int(s.port)) {
+		return fmt.Errorf("Cannot start Tilt dev webpack server. "+
+			"Another process is already running on port %d. "+
+			"Use --webdev-port to set a custom port", s.port)
+	}
+
 	stdout := bytes.NewBuffer(nil)
 	stderr := bytes.NewBuffer(nil)
 	cmd, err := s.start(ctx, stdout, stderr)
@@ -176,15 +184,16 @@ func NewFakeAssetServer() AssetServer {
 	return prodAssetServer{url: loc}
 }
 
-func ProvideAssetServer(ctx context.Context, webMode model.WebMode, webVersion model.WebVersion) (AssetServer, error) {
+func ProvideAssetServer(ctx context.Context, webMode model.WebMode, webVersion model.WebVersion, devPort model.WebDevPort) (AssetServer, error) {
 	if webMode == model.LocalWebMode {
-		loc, err := url.Parse("http://localhost:3000")
+		loc, err := url.Parse(fmt.Sprintf("http://localhost:%d", devPort))
 		if err != nil {
 			return nil, errors.Wrap(err, "ProvideAssetServer")
 		}
 
 		return &devAssetServer{
 			Handler: httputil.NewSingleHostReverseProxy(loc),
+			port:    devPort,
 		}, nil
 	}
 
