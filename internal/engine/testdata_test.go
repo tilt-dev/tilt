@@ -146,13 +146,17 @@ func NewSanchoSidecarDockerBuildImageTarget() model.ImageTarget {
 }
 
 func NewSanchoDockerBuildManifest() model.Manifest {
+	return NewSanchoDockerBuildManifestWithBuildPath("/path/to/build")
+}
+
+func NewSanchoDockerBuildManifestWithBuildPath(path string) model.Manifest {
 	return assembleK8sManifest(
 		model.Manifest{Name: "sancho"},
 		model.K8sTarget{YAML: SanchoYAML},
 		NewSanchoDockerBuildImageTarget().
 			WithBuildDetails(model.DockerBuild{
 				Dockerfile: SanchoDockerfile,
-				BuildPath:  "/path/to/build",
+				BuildPath:  path,
 			}))
 }
 

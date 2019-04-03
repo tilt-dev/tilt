@@ -75,6 +75,12 @@ func (sbd *SyncletBuildAndDeployer) UpdateInCluster(ctx context.Context,
 	if luInfo := iTarget.MaybeLiveUpdateInfo(); luInfo != nil {
 		changedFiles, err = build.FilesToPathMappings(state.FilesChanged(), luInfo.SyncSteps())
 		if err != nil {
+			if pmErr, ok := err.(*build.PathMappingErr); ok {
+				// expected error for this builder. One of more files don't match sync's;
+				// i.e. they're within the docker context but not within a sync; do a full image build.
+				return nil, RedirectToNextBuilderf(
+					"at least one file (%s) doesn't match a LiveUpdate sync, so performing a full build", pmErr.File)
+			}
 			return store.BuildResultSet{}, err
 		}
 
