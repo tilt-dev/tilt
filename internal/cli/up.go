@@ -25,7 +25,7 @@ import (
 )
 
 const DefaultWebPort = 10350
-const DefaultWebDevPort = 3000
+const DefaultWebDevPort = 46764
 
 var updateModeFlag string = string(engine.UpdateModeAuto)
 var webModeFlag model.WebMode = model.DefaultWebMode
