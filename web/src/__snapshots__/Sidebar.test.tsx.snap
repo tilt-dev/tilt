@@ -2,7 +2,7 @@
 
 exports[`renders empty resource list without crashing 1`] = `
 <nav
-  className="Sidebar is-open"
+  className="Sidebar is-closed"
 >
   <h2
     className="Sidebar-header"
@@ -22,5 +22,14 @@ exports[`renders empty resource list without crashing 1`] = `
       </a>
     </li>
   </ul>
+  <button
+    className="Sidebar-toggle"
+    onClick={null}
+  >
+    <svg>
+      chevron.svg
+    </svg>
+     Collapse
+  </button>
 </nav>
 `;

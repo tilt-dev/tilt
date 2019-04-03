@@ -1,4 +1,5 @@
 import React, { PureComponent } from "react"
+import { ReactComponent as ChevronSvg } from "./assets/svg/chevron.svg"
 import { isZeroTime } from "./time"
 import { Link } from "react-router-dom"
 import "./Sidebar.scss"
@@ -28,16 +29,17 @@ class SidebarItem {
 }
 
 type SidebarProps = {
-  isOpen: boolean
+  isClosed: boolean
   items: SidebarItem[]
   selected: string
+  toggleSidebar: any
 }
 
 class Sidebar extends PureComponent<SidebarProps> {
   render() {
     let classes = ["Sidebar"]
-    if (this.props.isOpen) {
-      classes.push("is-open")
+    if (this.props.isClosed) {
+      classes.push("is-closed")
     }
 
     let allItemClasses = "resLink resLink--all"
@@ -74,6 +76,9 @@ class Sidebar extends PureComponent<SidebarProps> {
           {allItem}
           {listItems}
         </ul>
+        <button className="Sidebar-toggle" onClick={this.props.toggleSidebar}>
+          <ChevronSvg /> Collapse
+        </button>
       </nav>
     )
   }

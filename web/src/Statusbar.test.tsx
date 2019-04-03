@@ -7,9 +7,7 @@ import { oneResourceView, twoResourceView } from "./testdata.test"
 
 describe("StatusBar", () => {
   it("renders without crashing", () => {
-    const tree = renderer
-      .create(<Statusbar items={[]} toggleSidebar={null} />)
-      .toJSON()
+    const tree = renderer.create(<Statusbar items={[]} />).toJSON()
 
     expect(tree).toMatchSnapshot()
   })

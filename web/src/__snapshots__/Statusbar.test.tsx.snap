@@ -163,9 +163,8 @@ exports[`StatusBar renders without crashing 1`] = `
   >
      
   </div>
-  <button
+  <span
     className="Statusbar-panel Statusbar-panel--up"
-    onClick={null}
   >
     0
      / 
@@ -176,6 +175,6 @@ exports[`StatusBar renders without crashing 1`] = `
     >
       logo-imagemark.svg
     </svg>
-  </button>
+  </span>
 </div>
 `;

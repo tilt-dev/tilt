@@ -35,19 +35,9 @@
   flex-grow: 1;
 }
 .Statusbar-panel--up {
-  font-size: $font-size-small;
-  color: $color-navy;
-  font-family: $font-family;
   width: $sidebar-width;
   max-width: $sidebar-maxWidth;
   justify-content: flex-end;
-  border-left: 2px solid $color-navy-light;
-  cursor: pointer;
-  background-color: $color-grey-lightest;
-  transition: background-color 300ms ease;
-}
-.Statusbar-panel--up:hover {
-  background-color: $color-grey-light;
 }
 .Statusbar-panel--up .icon {
   margin-left: $spacing-unit / 2;

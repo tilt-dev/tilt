@@ -3,6 +3,7 @@ $font-size: 20px;
 $font-size-small: 16px;
 $font-size-icon: 24px;
 
+$color-white: #ffffff;
 $color-green: #20BA31;
 $color-green-lightest: #70D37B;
 $color-blue: #03C7D3;
@@ -22,9 +23,9 @@ $color-green-light: #70D37B;
 $color-navy: #002F39;
 $color-navy-dark: #002125;
 $color-navy-light: #30545c;
-$opacity-light: 0.64;
 
 $spacing-unit:     32px;
 $sidebar-width: $spacing-unit * 10;
+$sidebar-item: $spacing-unit * 1.75;
 $sidebar-maxWidth: 25vw;
 $statusbar-height: $spacing-unit * 1.75;
