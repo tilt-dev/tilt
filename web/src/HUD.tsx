@@ -43,6 +43,11 @@ type Resource = {
   ShowBuildStatus: boolean
 }
 
+export enum ResourceView {
+  Log,
+  Preview,
+}
+
 type HudState = {
   Message: string
   View: {
@@ -51,7 +56,7 @@ type HudState = {
     LogTimestamps: boolean
     TiltfileErrorMessage: string
   } | null
-  isSidebarClosed: boolean
+  IsSidebarClosed: boolean
 }
 
 // The Main HUD view, as specified in
@@ -74,7 +79,7 @@ class HUD extends Component<HudProps, HudState> {
         LogTimestamps: false,
         TiltfileErrorMessage: "",
       },
-      isSidebarClosed: false,
+      IsSidebarClosed: false,
     }
 
     this.toggleSidebar = this.toggleSidebar.bind(this)
@@ -95,7 +100,7 @@ class HUD extends Component<HudProps, HudState> {
   toggleSidebar() {
     this.setState(prevState => {
       return Map(prevState)
-        .set("isSidebarClosed", !prevState.isSidebarClosed)
+        .set("IsSidebarClosed", !prevState.IsSidebarClosed)
         .toObject() as HudState // NOTE(dmiller): TypeScript doesn't seem to understand what's going on here so I added a type assertion.
     })
   }
@@ -108,7 +113,7 @@ class HUD extends Component<HudProps, HudState> {
       return <LoadingScreen message={message} />
     }
 
-    let isSidebarClosed = this.state.isSidebarClosed
+    let isSidebarClosed = this.state.IsSidebarClosed
     let toggleSidebar = this.toggleSidebar
     let statusItems = resources.map(res => new StatusItem(res))
     let sidebarItems = resources.map(res => new SidebarItem(res))
@@ -120,6 +125,19 @@ class HUD extends Component<HudProps, HudState> {
           items={sidebarItems}
           isClosed={isSidebarClosed}
           toggleSidebar={toggleSidebar}
+          resourceView={ResourceView.Log}
+        />
+      )
+    }
+    let sidebarPreviewRoute = (props: RouteComponentProps<any>) => {
+      let name = props.match.params.name
+      return (
+        <Sidebar
+          selected={name}
+          items={sidebarItems}
+          isClosed={isSidebarClosed}
+          toggleSidebar={toggleSidebar}
+          resourceView={ResourceView.Preview}
         />
       )
     }
@@ -143,6 +161,7 @@ class HUD extends Component<HudProps, HudState> {
       <Router>
         <div className="HUD">
           <Switch>
+            <Route path="/r/:name/preview" render={sidebarPreviewRoute} />}
             <Route path="/r/:name" render={sidebarRoute} />
             <Route render={sidebarRoute} />
           </Switch>

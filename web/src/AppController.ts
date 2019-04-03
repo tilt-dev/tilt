@@ -67,7 +67,7 @@ class AppController {
       this.component.setAppState({
         View: null,
         Message: "Disconnected…",
-        isSidebarClosed: false,
+        IsSidebarClosed: false,
       })
       this.createNewSocket()
       return
@@ -83,7 +83,7 @@ class AppController {
       this.component.setAppState({
         View: null,
         Message: message,
-        isSidebarClosed: false,
+        IsSidebarClosed: false,
       })
       this.createNewSocket()
     }, Math.min(maxTimeout, timeout))
