@@ -1696,17 +1696,6 @@ k8s_resource('foo', 'foo.yaml')
 func TestDir(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		os.Chdir(wd)
-	}()
-	err = os.Chdir(f.TempDirFixture.Path())
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	f.gitInit("")
 	f.yaml("config/foo.yaml", deployment("foo", image("gcr.io/foo")))
@@ -1721,17 +1710,6 @@ func TestDir(t *testing.T) {
 func TestDirRecursive(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		os.Chdir(wd)
-	}()
-	err = os.Chdir(f.TempDirFixture.Path())
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	f.gitInit("")
 	f.file("foo/bar", "bar")
@@ -2252,18 +2230,6 @@ func TestReadJSON(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		os.Chdir(wd)
-	}()
-	err = os.Chdir(f.TempDirFixture.Path())
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	f.setupFooAndBar()
 	f.file("options.json", `["foo", {"baz":["bar", "", 1, 2]}]`)
 	f.file("Tiltfile", `
@@ -2292,18 +2258,6 @@ func TestJSONDoesntExist(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		os.Chdir(wd)
-	}()
-	err = os.Chdir(f.TempDirFixture.Path())
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	f.setupFooAndBar()
 	f.file("Tiltfile", `
 result = read_json("dne.json")
@@ -2322,18 +2276,6 @@ k8s_resource(result[1]["baz"][0], 'bar.yaml')
 func TestMalformedJSON(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
-
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		os.Chdir(wd)
-	}()
-	err = os.Chdir(f.TempDirFixture.Path())
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	f.setupFooAndBar()
 	f.file("options.json", `["foo", {"baz":["bar", "", 1, 2]}`)

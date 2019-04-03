@@ -378,8 +378,8 @@ func (s *tiltfileState) listdir(thread *starlark.Thread, fn *starlark.Builtin, a
 	}
 	s.recordConfigFile(localPath.path)
 	var files []string
-	err = filepath.Walk(dir.GoString(), func(path string, info os.FileInfo, err error) error {
-		if path == dir.GoString() {
+	err = filepath.Walk(localPath.path, func(path string, info os.FileInfo, err error) error {
+		if path == localPath.path {
 			return nil
 		}
 		if !info.IsDir() {
