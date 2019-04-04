@@ -183,17 +183,8 @@ type ViewState struct {
 	Resources             []ResourceViewState
 	ProcessedLogByteCount int
 	AlertMessage          string
-	TabState              TabState
 	SelectedIndex         int
 }
-
-type TabState int
-
-const (
-	TabAllLog TabState = iota
-	TabBuildLog
-	TabPodLog
-)
 
 type CollapseState int
 

@@ -163,12 +163,6 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				dispatch(view.AppendToTriggerQueueAction{
 					Name: selected.Name,
 				})
-			case r == '1':
-				h.currentViewState.TabState = view.TabAllLog
-			case r == '2':
-				h.currentViewState.TabState = view.TabBuildLog
-			case r == '3':
-				h.currentViewState.TabState = view.TabPodLog
 			}
 		case tcell.KeyUp:
 			h.activeScroller().Up()
