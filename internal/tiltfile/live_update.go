@@ -13,25 +13,39 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-type liveUpdateDef struct {
-	imageName           string
-	steps               []model.LiveUpdateStep
-	fullRebuildTriggers []string
-
-	// whether this has been matched to a deployed image that we know how to build
-	matched bool
-}
-
 // when adding a new type of `liveUpdateStep`, make sure that any tiltfile functions that create them also call
 // `s.recordLiveUpdateStep`
 type liveUpdateStep interface {
 	starlark.Value
 	liveUpdateStep()
-	declarationPosition() syntax.Position
+	declarationPos() string
 }
 
+type liveUpdateFallBackOnStep struct {
+	files    []string
+	position syntax.Position
+}
+
+var _ starlark.Value = liveUpdateFallBackOnStep{}
+var _ liveUpdateStep = liveUpdateFallBackOnStep{}
+
+func (l liveUpdateFallBackOnStep) String() string {
+	return fmt.Sprintf("fall_back_on step: %v'", l.files)
+}
+func (l liveUpdateFallBackOnStep) Type() string         { return "live_update_fall_back_on_step" }
+func (l liveUpdateFallBackOnStep) Freeze()              {}
+func (l liveUpdateFallBackOnStep) Truth() starlark.Bool { return len(l.files) > 0 }
+func (l liveUpdateFallBackOnStep) Hash() (uint32, error) {
+	t := starlark.Tuple{}
+	for _, path := range l.files {
+		t = append(t, starlark.String(path))
+	}
+	return t.Hash()
+}
+func (l liveUpdateFallBackOnStep) liveUpdateStep()        {}
+func (l liveUpdateFallBackOnStep) declarationPos() string { return l.position.String() }
+
 type liveUpdateSyncStep struct {
-	// remotePath is potentially relative in this struct, because we don't know if there's a workDir
 	localPath, remotePath string
 	position              syntax.Position
 }
@@ -50,8 +64,8 @@ func (l liveUpdateSyncStep) Truth() starlark.Bool {
 func (l liveUpdateSyncStep) Hash() (uint32, error) {
 	return starlark.Tuple{starlark.String(l.localPath), starlark.String(l.remotePath)}.Hash()
 }
-func (l liveUpdateSyncStep) liveUpdateStep()                      {}
-func (l liveUpdateSyncStep) declarationPosition() syntax.Position { return l.position }
+func (l liveUpdateSyncStep) liveUpdateStep()        {}
+func (l liveUpdateSyncStep) declarationPos() string { return l.position.String() }
 
 type liveUpdateRunStep struct {
 	command  string
@@ -82,7 +96,7 @@ func (l liveUpdateRunStep) Hash() (uint32, error) {
 	}
 	return t.Hash()
 }
-func (l liveUpdateRunStep) declarationPosition() syntax.Position { return l.position }
+func (l liveUpdateRunStep) declarationPos() string { return l.position.String() }
 
 func (l liveUpdateRunStep) liveUpdateStep() {}
 
@@ -93,16 +107,40 @@ type liveUpdateRestartContainerStep struct {
 var _ starlark.Value = liveUpdateRestartContainerStep{}
 var _ liveUpdateStep = liveUpdateRestartContainerStep{}
 
-func (l liveUpdateRestartContainerStep) String() string                       { return "restart_container step" }
-func (l liveUpdateRestartContainerStep) Type() string                         { return "live_update_restart_container_step" }
-func (l liveUpdateRestartContainerStep) Freeze()                              {}
-func (l liveUpdateRestartContainerStep) Truth() starlark.Bool                 { return true }
-func (l liveUpdateRestartContainerStep) Hash() (uint32, error)                { return 0, nil }
-func (l liveUpdateRestartContainerStep) declarationPosition() syntax.Position { return l.position }
-func (l liveUpdateRestartContainerStep) liveUpdateStep()                      {}
+func (l liveUpdateRestartContainerStep) String() string         { return "restart_container step" }
+func (l liveUpdateRestartContainerStep) Type() string           { return "live_update_restart_container_step" }
+func (l liveUpdateRestartContainerStep) Freeze()                {}
+func (l liveUpdateRestartContainerStep) Truth() starlark.Bool   { return true }
+func (l liveUpdateRestartContainerStep) Hash() (uint32, error)  { return 0, nil }
+func (l liveUpdateRestartContainerStep) declarationPos() string { return l.position.String() }
+func (l liveUpdateRestartContainerStep) liveUpdateStep()        {}
 
 func (s *tiltfileState) recordLiveUpdateStep(step liveUpdateStep) {
-	s.unconsumedLiveUpdateSteps = append(s.unconsumedLiveUpdateSteps, step)
+	s.unconsumedLiveUpdateSteps[step.declarationPos()] = step
+}
+
+func (s *tiltfileState) liveUpdateFallBackOn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var files starlark.Value
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "paths", &files); err != nil {
+		return nil, err
+	}
+	filesSlice := starlarkValueOrSequenceToSlice(files)
+	var fileStrings []string
+	for _, f := range filesSlice {
+		switch fStr := f.(type) {
+		case starlark.String:
+			fileStrings = append(fileStrings, string(fStr))
+		default:
+			return nil, fmt.Errorf("fall_back_on step contained value '%s' of type '%s'. it may only contain strings", fStr, fStr.Type())
+		}
+	}
+
+	ret := liveUpdateFallBackOnStep{
+		files:    fileStrings,
+		position: thread.TopFrame().Position(),
+	}
+	s.recordLiveUpdateStep(ret)
+	return ret, nil
 }
 
 func (s *tiltfileState) liveUpdateSync(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -161,6 +199,8 @@ func (s *tiltfileState) liveUpdateRestartContainer(thread *starlark.Thread, fn *
 
 func (s *tiltfileState) liveUpdateStepToModel(l liveUpdateStep) (model.LiveUpdateStep, error) {
 	switch x := l.(type) {
+	case liveUpdateFallBackOnStep:
+		return model.LiveUpdateFallBackOnStep{Files: x.files}, nil
 	case liveUpdateSyncStep:
 		if !filepath.IsAbs(x.remotePath) {
 			return nil, fmt.Errorf("sync destination '%s' (%s) is not absolute", x.remotePath, x.position.String())
@@ -177,82 +217,52 @@ func (s *tiltfileState) liveUpdateStepToModel(l liveUpdateStep) (model.LiveUpdat
 	case liveUpdateRestartContainerStep:
 		return model.LiveUpdateRestartContainerStep{}, nil
 	default:
-		return nil, fmt.Errorf("internal error - unknown liveUpdateStep '%v' of type '%T', declared at %s", l, l, l.declarationPosition().String())
+		return nil, fmt.Errorf("internal error - unknown liveUpdateStep '%v' of type '%T', declared at %s", l, l, l.declarationPos())
 	}
 }
 
-func (s *tiltfileState) liveUpdateToModel(l liveUpdateDef) (model.LiveUpdate, error) {
-	return model.NewLiveUpdate(l.steps, model.NewPathSet(l.fullRebuildTriggers, s.absWorkingDir()))
-}
-
-func (s *tiltfileState) consumeLiveUpdateStep(stepToConsume liveUpdateStep) {
-	for i, step := range s.unconsumedLiveUpdateSteps {
-		if step.declarationPosition() == stepToConsume.declarationPosition() {
-			copy(s.unconsumedLiveUpdateSteps[i:], s.unconsumedLiveUpdateSteps[i+1:])
-			s.unconsumedLiveUpdateSteps = s.unconsumedLiveUpdateSteps[:len(s.unconsumedLiveUpdateSteps)-1]
-			break
-		}
-	}
-}
-
-func (s *tiltfileState) liveUpdate(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var dockerRef string
-	var steps, fullRebuildTriggers starlark.Value
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
-		"image", &dockerRef,
-		"steps", &steps,
-		"full_rebuild_triggers?", &fullRebuildTriggers,
-	); err != nil {
-		return nil, err
-	}
-
+func (s *tiltfileState) liveUpdateFromSteps(maybeSteps starlark.Value) (model.LiveUpdate, error) {
 	var modelSteps []model.LiveUpdateStep
-	stepSlice := starlarkValueOrSequenceToSlice(steps)
+	stepSlice := starlarkValueOrSequenceToSlice(maybeSteps)
+	var fallBackOn []string
+
 	for _, v := range stepSlice {
 		step, ok := v.(liveUpdateStep)
 		if !ok {
-			return starlark.None, fmt.Errorf("'steps' must be a list of live update steps - got value '%v' of type '%s'", v.String(), v.Type())
+			return model.LiveUpdate{}, fmt.Errorf("'steps' must be a list of live update steps - got value '%v' of type '%s'", v.String(), v.Type())
 		}
 
 		ms, err := s.liveUpdateStepToModel(step)
 		if err != nil {
-			return starlark.None, err
+			return model.LiveUpdate{}, err
 		}
 		s.consumeLiveUpdateStep(step)
-		modelSteps = append(modelSteps, ms)
-	}
 
-	frtSlice := starlarkValueOrSequenceToSlice(fullRebuildTriggers)
-	var frtStrings []string
-	for _, v := range frtSlice {
-		str, ok := v.(starlark.String)
-		if !ok {
-			return starlark.None, fmt.Errorf("'full_rebuild_triggers' must only contain strings - got value '%v' of type '%s'", v.String(), v.Type())
+		// HACK(maia): temporary hack for backwards compatibility/making this a smaller PR--
+		// use the existing LiveUpdate constructor. (Soon, we'll treat fall_back_on as
+		// just another step INTERNALLY too (instead of as a non-step property of a LiveUpdate).
+		if fallBackStep, ok := ms.(model.LiveUpdateFallBackOnStep); ok {
+			fallBackOn = append(fallBackOn, fallBackStep.Files...)
+		} else {
+			modelSteps = append(modelSteps, ms)
 		}
-		frtStrings = append(frtStrings, string(str))
 	}
 
-	s.liveUpdates[dockerRef] = &liveUpdateDef{
-		steps:               modelSteps,
-		fullRebuildTriggers: frtStrings,
-	}
-
-	return starlark.None, nil
+	return model.NewLiveUpdate(modelSteps, model.NewPathSet(fallBackOn, s.absWorkingDir()))
 }
 
-func (s *tiltfileState) validateLiveUpdates() error {
+func (s *tiltfileState) consumeLiveUpdateStep(stepToConsume liveUpdateStep) {
+	delete(s.unconsumedLiveUpdateSteps, stepToConsume.declarationPos())
+}
+
+func (s *tiltfileState) checkForUnconsumedLiveUpdateSteps() error {
 	if len(s.unconsumedLiveUpdateSteps) > 0 {
 		var errorStrings []string
 		for _, step := range s.unconsumedLiveUpdateSteps {
-			errorStrings = append(errorStrings, fmt.Sprintf("value '%s' of type '%s' declared at %s", step.String(), step.Type(), step.declarationPosition().String()))
+			errorStrings = append(errorStrings, fmt.Sprintf("value '%s' of type '%s' declared at %s", step.String(), step.Type(), step.declarationPos()))
 		}
-		return fmt.Errorf("live_update steps were created that were not used by any live_update: %s", strings.Join(errorStrings, ", "))
-	}
-
-	for k, v := range s.liveUpdates {
-		if !v.matched {
-			return fmt.Errorf("live_update was specified for '%s', but no built resource uses that image", k)
-		}
+		return fmt.Errorf("found %d live_update steps that were created but not used in a live_update: %s",
+			len(s.unconsumedLiveUpdateSteps), strings.Join(errorStrings, "\n\t"))
 	}
 
 	return nil

@@ -6,14 +6,12 @@
 default_registry(read_json('tilt_option.json', {})
                  .get('default_registry', 'gcr.io/windmill-test-containers/servantes'))
 
-docker_build('gcr.io/windmill-test-containers/integration/live-update', '.')
-live_update(
-    'gcr.io/windmill-test-containers/integration/live-update',
-    [
-        sync('.', '/go/src/github.com/windmilleng/integration/live_update'),
-        run('go install github.com/windmilleng/integration/live_update'),
-        restart_container(),
-    ]
+docker_build('gcr.io/windmill-test-containers/integration/live-update', '.',
+             live_update=[
+                 sync('.', '/go/src/github.com/windmilleng/integration/live_update'),
+                 run('go install github.com/windmilleng/integration/live_update'),
+                 restart_container(),
+             ]
 )
 
 k8s_resource('live-update', 'deploy.yaml')

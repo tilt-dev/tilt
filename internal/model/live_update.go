@@ -33,9 +33,18 @@ func NewLiveUpdate(steps []LiveUpdateStep, fullRebuildTriggers PathSet) (LiveUpd
 	return LiveUpdate{steps, fullRebuildTriggers}, nil
 }
 
+func (lu LiveUpdate) Empty() bool { return len(lu.Steps) == 0 }
+
 type LiveUpdateStep interface {
 	liveUpdateStep()
 }
+
+// Specifies that changes to any of the given files should cause the builder to fall back (i.e. do a full image build)
+type LiveUpdateFallBackOnStep struct {
+	Files []string
+}
+
+func (l LiveUpdateFallBackOnStep) liveUpdateStep() {}
 
 // Specifies that changes to local path `Source` should be synced to container path `Dest`
 type LiveUpdateSyncStep struct {

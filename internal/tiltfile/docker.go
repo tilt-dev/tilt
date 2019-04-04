@@ -40,6 +40,8 @@ type dockerImage struct {
 
 	dependencyIDs []model.TargetID
 	disablePush   bool
+
+	liveUpdate model.LiveUpdate
 }
 
 func (d *dockerImage) ID() model.TargetID {
@@ -73,7 +75,7 @@ func (d *dockerImage) Type() dockerImageBuildType {
 
 func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef string
-	var contextVal, dockerfilePathVal, buildArgs, cacheVal, dockerfileContentsVal starlark.Value
+	var contextVal, dockerfilePathVal, buildArgs, dockerfileContentsVal, cacheVal, liveUpdateVal starlark.Value
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
 		"context", &contextVal,
@@ -81,6 +83,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		"dockerfile?", &dockerfilePathVal,
 		"dockerfile_contents?", &dockerfileContentsVal,
 		"cache?", &cacheVal,
+		"live_update?", &liveUpdateVal,
 	); err != nil {
 		return nil, err
 	}
@@ -149,6 +152,10 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
+	liveUpdate, err := s.liveUpdateFromSteps(liveUpdateVal)
+	if err != nil {
+		return nil, errors.Wrap(err, "live_update")
+	}
 	r := &dockerImage{
 		dbDockerfilePath: dockerfilePath,
 		dbDockerfile:     dockerfile.Dockerfile(dockerfileContents),
@@ -156,6 +163,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		configurationRef: container.NewRefSelector(ref),
 		dbBuildArgs:      sba,
 		cachePaths:       cachePaths,
+		liveUpdate:       liveUpdate,
 	}
 	err = s.buildIndex.addImage(r)
 	if err != nil {
@@ -186,37 +194,35 @@ func (s *tiltfileState) maybeFastBuild(image *dockerImage) *model.FastBuild {
 	return &fb
 }
 
-func (s *tiltfileState) maybeLiveUpdate(image *dockerImage) (*model.LiveUpdate, error) {
-	if lu, ok := s.liveUpdates[image.configurationRef.RefFamiliarString()]; ok {
-		lu.matched = true
-		ret, err := s.liveUpdateToModel(*lu)
+func (s *tiltfileState) validatedLiveUpdate(image *dockerImage) (*model.LiveUpdate, error) {
+	lu := image.liveUpdate
+	if lu.Empty() {
+		return nil, nil
+	}
 
-		// if it's a docker build + live update, verify that all
-		// a) sync steps and
-		// b) full_rebuild_triggers
-		// are from within the docker build context
-		if image.Type() == DockerBuild {
-			for _, step := range lu.steps {
-				if syncStep, ok := step.(model.LiveUpdateSyncStep); ok {
-					if !ospath.IsChild(image.dbBuildPath.path, syncStep.Source) {
-						return nil, fmt.Errorf("sync step source '%s' is not a child of docker build context '%s'",
-							syncStep.Source, image.dbBuildPath.path)
-					}
-				}
-			}
-			for _, trigger := range lu.fullRebuildTriggers {
-				absTrigger := s.absPath(trigger)
-				if !ospath.IsChild(image.dbBuildPath.path, absTrigger) {
-					return nil, fmt.Errorf("full_rebuild_trigger '%s' is not a child of docker build context '%s'",
-						absTrigger, image.dbBuildPath.path)
+	// if it's a docker build + live update, verify that all
+	// a) sync steps and
+	// b) full_rebuild_triggers
+	// are from within the docker build context
+	if image.Type() == DockerBuild {
+		for _, step := range lu.Steps {
+			if syncStep, ok := step.(model.LiveUpdateSyncStep); ok {
+				if !ospath.IsChild(image.dbBuildPath.path, syncStep.Source) {
+					return nil, fmt.Errorf("sync step source '%s' is not a child of docker build context '%s'",
+						syncStep.Source, image.dbBuildPath.path)
 				}
 			}
 		}
-
-		return &ret, err
-	} else {
-		return nil, nil
+		for _, trigger := range lu.FullRebuildTriggers.Paths {
+			absTrigger := s.absPath(trigger)
+			if !ospath.IsChild(image.dbBuildPath.path, absTrigger) {
+				return nil, fmt.Errorf("fall_back_on path '%s' is not a child of docker build context '%s'",
+					absTrigger, image.dbBuildPath.path)
+			}
+		}
 	}
+
+	return &lu, nil
 }
 
 func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -225,6 +231,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	var deps *starlark.List
 	var tag string
 	var disablePush bool
+	var liveUpdateVal starlark.Value
 
 	err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
@@ -232,6 +239,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		"deps", &deps,
 		"tag?", &tag,
 		"disable_push?", &disablePush,
+		"live_update?", &liveUpdateVal,
 	)
 	if err != nil {
 		return nil, err
@@ -262,12 +270,18 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		localDeps = append(localDeps, p.path)
 	}
 
+	liveUpdate, err := s.liveUpdateFromSteps(liveUpdateVal)
+	if err != nil {
+		return nil, errors.Wrap(err, "live_update")
+	}
+
 	img := &dockerImage{
 		configurationRef: container.NewRefSelector(ref),
 		customCommand:    command,
 		customDeps:       localDeps,
 		customTag:        tag,
 		disablePush:      disablePush,
+		liveUpdate:       liveUpdate,
 	}
 
 	err = s.buildIndex.addImage(img)

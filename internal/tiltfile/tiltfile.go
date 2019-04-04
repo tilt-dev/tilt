@@ -119,7 +119,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 		}
 	}
 
-	err = s.validateLiveUpdates()
+	err = s.checkForUnconsumedLiveUpdateSteps()
 	if err != nil {
 		return TiltfileLoadResult{}, err
 	}
