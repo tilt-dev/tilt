@@ -61,8 +61,8 @@ type State struct {
 
 func (State) ResourceState() {}
 
-func (s State) Log() string {
-	return s.CurrentLog.String()
+func (s State) Log() model.Log {
+	return s.CurrentLog
 }
 
 func (s State) WithCurrentLog(l model.Log) State {

@@ -33,7 +33,7 @@ func (v *TabView) Build() rty.Component {
 	}
 	l := rty.NewConcatLayout(rty.DirHor)
 	log := rty.NewTextScrollLayout("log")
-	log.Add(rty.TextString(v.view.Log))
+	log.Add(rty.TextString(v.view.Log.String()))
 	l.Add(log)
 	return l
 }
@@ -41,7 +41,7 @@ func (v *TabView) Build() rty.Component {
 func (v *TabView) log() string {
 	switch v.tabState {
 	case view.TabAllLog:
-		return v.view.Log
+		return v.view.Log.String()
 
 	case view.TabBuildLog:
 		_, resource := selectedResource(v.view, v.viewState)
@@ -56,7 +56,7 @@ func (v *TabView) log() string {
 		if resource.ResourceInfo == nil {
 			return ""
 		}
-		return resource.ResourceInfo.RuntimeLog()
+		return resource.ResourceInfo.RuntimeLog().String()
 	}
 	return ""
 }

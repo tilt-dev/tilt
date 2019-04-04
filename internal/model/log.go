@@ -24,6 +24,10 @@ func (l Log) MarshalJSON() ([]byte, error) {
 	return json.Marshal(string(l.content))
 }
 
+func (l Log) Len() int {
+	return len(l.content)
+}
+
 func (l Log) String() string {
 	return string(l.content)
 }

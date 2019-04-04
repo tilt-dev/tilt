@@ -269,11 +269,12 @@ func (h *Hud) setView(ctx context.Context, view view.View) error {
 	h.refreshSelectedIndex()
 
 	// if the hud isn't running, make sure new logs are visible on stdout
-	if !h.isRunning && h.currentViewState.ProcessedLogByteCount < len(view.Log) {
-		fmt.Print(view.Log[h.currentViewState.ProcessedLogByteCount:])
+	logLen := view.Log.Len()
+	if !h.isRunning && h.currentViewState.ProcessedLogByteCount < logLen {
+		fmt.Print(view.Log.String()[h.currentViewState.ProcessedLogByteCount:])
 	}
 
-	h.currentViewState.ProcessedLogByteCount = len(view.Log)
+	h.currentViewState.ProcessedLogByteCount = logLen
 
 	return h.refresh(ctx)
 }

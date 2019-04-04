@@ -1069,7 +1069,7 @@ func TestPodEventOrdering(t *testing.T) {
 			})
 
 			f.WaitUntilManifestState("pod log seen", "fe", func(ms store.ManifestState) bool {
-				return strings.Contains(ms.MostRecentPod().Log(), "pod b log")
+				return strings.Contains(ms.MostRecentPod().Log().String(), "pod b log")
 			})
 
 			f.withManifestState("fe", func(ms store.ManifestState) {
@@ -1516,7 +1516,7 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 	f.podLog(name, "second string")
 
 	f.withManifestState(name, func(ms store.ManifestState) {
-		assert.Equal(t, "second string\n", ms.MostRecentPod().Log())
+		assert.Equal(t, "second string\n", ms.MostRecentPod().Log().String())
 	})
 
 	err := f.Stop()
@@ -1538,7 +1538,7 @@ func TestBuildResetsPodLog(t *testing.T) {
 	f.podLog(name, "first string")
 
 	f.withManifestState(name, func(ms store.ManifestState) {
-		assert.Equal(t, "first string\n", ms.MostRecentPod().Log())
+		assert.Equal(t, "first string\n", ms.MostRecentPod().Log().String())
 	})
 
 	f.upper.store.Dispatch(newTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a.go"))
@@ -1546,7 +1546,7 @@ func TestBuildResetsPodLog(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 
 	f.withManifestState(name, func(ms store.ManifestState) {
-		assert.Equal(t, "", ms.MostRecentPod().Log())
+		assert.Equal(t, "", ms.MostRecentPod().Log().String())
 		assert.Equal(t, ms.LastBuild().StartTime, ms.MostRecentPod().UpdateStartTime)
 	})
 }
@@ -1571,7 +1571,7 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 
 	// the third instance is still up, so we want to show the log from the last crashed pod plus the log from the current pod
 	f.withManifestState(name, func(ms store.ManifestState) {
-		assert.Equal(t, "second string\nthird string\n", ms.MostRecentPod().Log())
+		assert.Equal(t, "second string\nthird string\n", ms.MostRecentPod().Log().String())
 	})
 
 	err := f.Stop()
@@ -1600,7 +1600,7 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 
 	// The second instance is down, so we don't include the first instance's log
 	f.withManifestState(name, func(ms store.ManifestState) {
-		assert.Equal(t, "second string\n", ms.MostRecentPod().Log())
+		assert.Equal(t, "second string\n", ms.MostRecentPod().Log().String())
 	})
 
 	err := f.Stop()
@@ -1947,12 +1947,12 @@ func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 
 	f.WaitUntilManifestState("wait until manifest state has a log", m.ManifestName(), func(st store.ManifestState) bool {
-		return st.DCResourceState().Log() != ""
+		return !st.DCResourceState().Log().Empty()
 	})
 
 	// recorded on manifest state
 	f.withManifestState(m.ManifestName(), func(st store.ManifestState) {
-		assert.Contains(t, st.DCResourceState().Log(), expected)
+		assert.Contains(t, st.DCResourceState().Log().String(), expected)
 		assert.Equal(t, 1, strings.Count(st.CombinedLog.String(), expected))
 	})
 }
@@ -1971,7 +1971,7 @@ func TestDockerComposeFiltersRunLogs(t *testing.T) {
 
 	// recorded on manifest state
 	f.withManifestState(m.ManifestName(), func(st store.ManifestState) {
-		assert.NotContains(t, st.DCResourceState().Log(), expected)
+		assert.NotContains(t, st.DCResourceState().Log().String(), expected)
 	})
 }
 
