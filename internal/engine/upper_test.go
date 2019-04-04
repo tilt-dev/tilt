@@ -2075,6 +2075,7 @@ func TestEmptyTiltfile(t *testing.T) {
 	})
 	f.withState(func(st store.EngineState) {
 		assert.Contains(t, st.LastTiltfileBuild.Error.Error(), "No resources found. Check out ")
+		assert.Contains(t, st.TiltfileCombinedLog.String(), "No resources found. Check out ")
 	})
 }
 
