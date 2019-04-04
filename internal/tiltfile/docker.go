@@ -213,7 +213,7 @@ func (s *tiltfileState) validatedLiveUpdate(image *dockerImage) (*model.LiveUpda
 				}
 			}
 		}
-		for _, trigger := range lu.FullRebuildTriggers.Paths {
+		for _, trigger := range lu.FallBackOnFiles().Paths {
 			absTrigger := s.absPath(trigger)
 			if !ospath.IsChild(image.dbBuildPath.path, absTrigger) {
 				return nil, fmt.Errorf("fall_back_on path '%s' is not a child of docker build context '%s'",

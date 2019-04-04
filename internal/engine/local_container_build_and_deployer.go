@@ -93,7 +93,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		}
 
 		// If any changed files match a FullRebuildTrigger, fall back to next BuildAndDeployer
-		anyMatch, err := luInfo.FullRebuildTriggers.AnyMatch(build.PathMappingsToLocalPaths(changedFiles))
+		anyMatch, err := luInfo.FallBackOnFiles().AnyMatch(build.PathMappingsToLocalPaths(changedFiles))
 		if err != nil {
 			return nil, err
 		}

@@ -8,29 +8,35 @@ import (
 // 1. If there are Sync steps in `Steps`, files will be synced as specified.
 // 2. Any time we sync one or more files, all Run and RestartContainer steps will be evaluated.
 type LiveUpdate struct {
-	Steps []LiveUpdateStep
-
-	// When files matching any of these paths change, we should fall back to a full rebuild.
-	FullRebuildTriggers PathSet
+	Steps   []LiveUpdateStep
+	BaseDir string // directory where the LiveUpdate was initialized (we'll use this to eval. any relative paths)
 }
 
-func NewLiveUpdate(steps []LiveUpdateStep, fullRebuildTriggers PathSet) (LiveUpdate, error) {
+func NewLiveUpdate(steps []LiveUpdateStep, baseDir string) (LiveUpdate, error) {
 	seenRunStep := false
+	seenNonFallBackStep := false
 	for i, step := range steps {
 		switch step.(type) {
+		case LiveUpdateFallBackOnStep:
+			if seenNonFallBackStep {
+				return LiveUpdate{}, errors.New("all fall_back_on steps must precede all other steps")
+			}
 		case LiveUpdateSyncStep:
 			if seenRunStep {
 				return LiveUpdate{}, errors.New("all sync steps must precede all run steps")
 			}
+			seenNonFallBackStep = true
 		case LiveUpdateRunStep:
 			seenRunStep = true
+			seenNonFallBackStep = true
 		case LiveUpdateRestartContainerStep:
 			if i != len(steps)-1 {
 				return LiveUpdate{}, errors.New("restart container is only valid as the last step")
 			}
+			seenNonFallBackStep = true
 		}
 	}
-	return LiveUpdate{steps, fullRebuildTriggers}, nil
+	return LiveUpdate{steps, baseDir}, nil
 }
 
 func (lu LiveUpdate) Empty() bool { return len(lu.Steps) == 0 }
@@ -78,6 +84,17 @@ func (l LiveUpdateRunStep) toRun() Run {
 type LiveUpdateRestartContainerStep struct{}
 
 func (l LiveUpdateRestartContainerStep) liveUpdateStep() {}
+
+func (lu LiveUpdate) FallBackOnFiles() PathSet {
+	var files []string
+	for _, step := range lu.Steps {
+		switch step := step.(type) {
+		case LiveUpdateFallBackOnStep:
+			files = append(files, step.Files...)
+		}
+	}
+	return NewPathSet(files, lu.BaseDir)
+}
 
 func (lu LiveUpdate) SyncSteps() []Sync {
 	var syncs []Sync

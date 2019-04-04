@@ -236,6 +236,7 @@ func newLiveUpdateFixture(t *testing.T) *liveUpdateFixture {
 	var steps []model.LiveUpdateStep
 
 	steps = append(steps,
+		model.LiveUpdateFallBackOnStep{Files: []string{"foo/i", "foo/j"}},
 		model.LiveUpdateSyncStep{Source: f.JoinPath("foo", "b"), Dest: "/c"},
 		model.LiveUpdateRunStep{
 			Command:  model.ToShellCmd("f"),
@@ -245,8 +246,8 @@ func newLiveUpdateFixture(t *testing.T) *liveUpdateFixture {
 	)
 
 	f.expectedLU = model.LiveUpdate{
-		Steps:               steps,
-		FullRebuildTriggers: f.NewPathSet("foo/i", "foo/j"),
+		Steps:   steps,
+		BaseDir: f.Path(),
 	}
 
 	return f

@@ -409,8 +409,11 @@ func TestLiveUpdateSomeFilesMatchSyncSomeDontFallsBack(t *testing.T) {
 	runTestCase(t, f, tCase)
 }
 
-func (f *bdFixture) assembleLiveUpdate(syncs []model.LiveUpdateSyncStep, runs []model.LiveUpdateRunStep, shouldRestart bool, fullRebuildTriggers []string) model.LiveUpdate {
+func (f *bdFixture) assembleLiveUpdate(syncs []model.LiveUpdateSyncStep, runs []model.LiveUpdateRunStep, shouldRestart bool, fallBackOn []string) model.LiveUpdate {
 	var steps []model.LiveUpdateStep
+	if len(fallBackOn) > 0 {
+		steps = append(steps, model.LiveUpdateFallBackOnStep{Files: fallBackOn})
+	}
 	for _, sync := range syncs {
 		steps = append(steps, sync)
 	}
@@ -420,7 +423,7 @@ func (f *bdFixture) assembleLiveUpdate(syncs []model.LiveUpdateSyncStep, runs []
 	if shouldRestart {
 		steps = append(steps, model.LiveUpdateRestartContainerStep{})
 	}
-	lu, err := model.NewLiveUpdate(steps, f.NewPathSet(fullRebuildTriggers...))
+	lu, err := model.NewLiveUpdate(steps, f.Path())
 	if err != nil {
 		f.T().Fatal(err)
 	}
