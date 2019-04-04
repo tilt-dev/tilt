@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/karrick/godirwalk"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/model"
@@ -40,30 +41,29 @@ func (m PathMapping) prettyStr() string { return fmt.Sprintf("%s --> %s", m.Loca
 
 func (m PathMapping) Filter(matcher model.PathMatcher) ([]PathMapping, error) {
 	result := make([]PathMapping, 0)
-	err := filepath.Walk(m.LocalPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
+	err := godirwalk.Walk(m.LocalPath, &godirwalk.Options{
+		Callback: func(path string, info *godirwalk.Dirent) error {
+			match, err := matcher.Matches(path, info.IsDir())
+			if err != nil {
+				return err
+			}
 
-		match, err := matcher.Matches(path, info.IsDir())
-		if err != nil {
-			return err
-		}
+			if !match {
+				return nil
+			}
 
-		if !match {
+			rp, err := filepath.Rel(m.LocalPath, path)
+			if err != nil {
+				return err
+			}
+
+			result = append(result, PathMapping{
+				LocalPath:     path,
+				ContainerPath: filepath.Join(m.ContainerPath, rp),
+			})
 			return nil
-		}
-
-		rp, err := filepath.Rel(m.LocalPath, path)
-		if err != nil {
-			return err
-		}
-
-		result = append(result, PathMapping{
-			LocalPath:     path,
-			ContainerPath: filepath.Join(m.ContainerPath, rp),
-		})
-		return nil
+		},
+		Unsorted: true, // (optional) set true for faster yet non-deterministic enumeration (see godoc)
 	})
 
 	if err != nil {
