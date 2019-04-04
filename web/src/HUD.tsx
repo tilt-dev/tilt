@@ -162,7 +162,7 @@ class HUD extends Component<HudProps, HudState> {
       let endpoint = ""
       if (view && name !== "") {
         let r = view.Resources.find(r => r.Name === name)
-        endpoint = r ? r.Endpoints[0] : ""
+        endpoint = r ? r.Endpoints && r.Endpoints[0] : ""
       }
 
       return <PreviewPane endpoint={endpoint} isExpanded={isSidebarClosed} />
