@@ -90,7 +90,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 					PodName:     "vigoda-pod",
 					PodStatus:   "Running",
 					PodRestarts: 1,
-					PodLog:      "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
+					PodLog:      model.NewLog("1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n"),
 				},
 			},
 		},
@@ -137,7 +137,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 					PodCreationTime: ts,
 					PodStatus:       "Running",
 					PodRestarts:     1,
-					PodLog:          "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
+					PodLog:          model.NewLog("1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n"),
 				},
 			},
 		},
@@ -189,12 +189,12 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 					PodCreationTime: ts,
 					PodStatus:       "Running",
 					PodRestarts:     1,
-					PodLog: `abe vigoda is crashing
+					PodLog: model.NewLog(`abe vigoda is crashing
 oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo
 oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo nooooooooooo noooooooooooo nooooooooooo
 oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo
 oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo nooooooooooo noooooooooooo nooooooooooo nooooooooooo noooooooooooo nooooooooooo
-oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`,
+oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`),
 				},
 				Endpoints: []string{"1.2.3.4:8080"},
 			},
@@ -268,7 +268,7 @@ func TestRenderTiltLog(t *testing.T) {
 	rtf := newRendererTestFixture(t)
 
 	v := view.View{
-		Log:       strings.Repeat("abcdefg", 30),
+		Log:       model.NewLog(strings.Repeat("abcdefg", 30)),
 		Resources: nil,
 	}
 	vs := fakeViewState(0, view.CollapseNo)
@@ -344,7 +344,7 @@ func TestPodPending(t *testing.T) {
 				}},
 				ResourceInfo: view.K8SResourceInfo{
 					PodName:   "vigoda-pod",
-					PodLog:    "serving on 8080",
+					PodLog:    model.NewLog("serving on 8080"),
 					PodStatus: "",
 				},
 				LastDeployTime: ts,
@@ -383,7 +383,7 @@ func TestCrashingPodInlineCrashLog(t *testing.T) {
 				ResourceInfo: view.K8SResourceInfo{
 					PodName:            "vigoda-pod",
 					PodStatus:          "Error",
-					PodLog:             "Something's maybe wrong idk",
+					PodLog:             model.NewLog("Something's maybe wrong idk"),
 					PodUpdateStartTime: ts,
 					PodCreationTime:    ts.Add(-time.Minute),
 				},
@@ -413,7 +413,7 @@ func TestCrashingPodInlinePodLogIfNoCrashLog(t *testing.T) {
 				ResourceInfo: view.K8SResourceInfo{
 					PodName:            "vigoda-pod",
 					PodStatus:          "Error",
-					PodLog:             "Something's maybe wrong idk",
+					PodLog:             model.NewLog("Something's maybe wrong idk"),
 					PodUpdateStartTime: ts,
 					PodCreationTime:    ts.Add(-time.Minute),
 				},
@@ -443,7 +443,7 @@ func TestNonCrashingPodNoInlineCrashLog(t *testing.T) {
 				ResourceInfo: view.K8SResourceInfo{
 					PodName:            "vigoda-pod",
 					PodStatus:          "Running",
-					PodLog:             "Something's maybe wrong idk",
+					PodLog:             model.NewLog("Something's maybe wrong idk"),
 					PodUpdateStartTime: ts,
 					PodCreationTime:    ts.Add(-time.Minute),
 				},
@@ -488,10 +488,10 @@ func TestBrackets(t *testing.T) {
 	ts := time.Now().Add(-30 * time.Second)
 
 	v := view.View{
-		Log: `[build] This line should be prefixed with 'build'
+		Log: model.NewLog(`[build] This line should be prefixed with 'build'
 [hello world] This line should be prefixed with [hello world]
 [hello world] this line too
-`,
+`),
 		Resources: []view.Resource{
 			{
 				Name: "[vigoda]",
@@ -573,7 +573,7 @@ func TestStatusBarDCRebuild(t *testing.T) {
 		Resources: []view.Resource{
 			{
 				Name:         "snack",
-				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusDown, testCID, "hellllo", now.Add(-5*time.Second)),
+				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusDown, testCID, model.NewLog("hellllo"), now.Add(-5*time.Second)),
 				CurrentBuild: model.BuildRecord{
 					StartTime: now.Add(-5 * time.Second),
 					Reason:    model.BuildReasonFlagChangedFiles,
@@ -594,7 +594,7 @@ func TestDetectDCCrashExpanded(t *testing.T) {
 		Resources: []view.Resource{
 			{
 				Name:         "snack",
-				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusCrash, testCID, "hi im a crash", now.Add(-5*time.Second)),
+				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusCrash, testCID, model.NewLog("hi im a crash"), now.Add(-5*time.Second)),
 			},
 		},
 	}
@@ -611,7 +611,7 @@ func TestDetectDCCrashNotExpanded(t *testing.T) {
 		Resources: []view.Resource{
 			{
 				Name:         "snack",
-				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusCrash, testCID, "hi im a crash", now.Add(-5*time.Second)),
+				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusCrash, testCID, model.NewLog("hi im a crash"), now.Add(-5*time.Second)),
 			},
 		},
 	}
@@ -628,7 +628,7 @@ func TestDetectDCCrashAutoExpand(t *testing.T) {
 		Resources: []view.Resource{
 			{
 				Name:         "snack",
-				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusCrash, testCID, "hi im a crash", now.Add(-5*time.Second)),
+				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusCrash, testCID, model.NewLog("hi im a crash"), now.Add(-5*time.Second)),
 			},
 		},
 	}
@@ -745,16 +745,16 @@ func TestRenderTabView(t *testing.T) {
 				ResourceInfo: view.K8SResourceInfo{
 					PodName:         "vigoda-pod",
 					PodCreationTime: now,
-					PodLog:          "serving on 8080",
+					PodLog:          model.NewLog("serving on 8080"),
 					PodStatus:       "Running",
 				},
 				LastDeployTime: now,
 			},
 		},
 	}
-	v.Log = fmt.Sprintf("%s\n%s\n",
+	v.Log = model.NewLog(fmt.Sprintf("%s\n%s\n",
 		v.Resources[0].LastBuild().Log.String(),
-		v.Resources[0].ResourceInfo.RuntimeLog())
+		v.Resources[0].ResourceInfo.RuntimeLog()))
 
 	rtf.run("log tab default", 117, 20, v, vs)
 

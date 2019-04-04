@@ -210,7 +210,7 @@ func bestLogs(res view.Resource) string {
 		if (res.LastBuild().StartTime.Equal(k8sInfo.PodUpdateStartTime) ||
 			res.LastBuild().StartTime.Before(k8sInfo.PodCreationTime)) &&
 			!res.LastBuild().Log.Empty() {
-			return res.LastBuild().Log.String() + "\n" + res.ResourceInfo.RuntimeLog()
+			return res.LastBuild().Log.String() + "\n" + res.ResourceInfo.RuntimeLog().String()
 		}
 
 		// The last build finished, but the pod hasn't started yet.
@@ -226,7 +226,7 @@ func bestLogs(res view.Resource) string {
 		return res.LastBuild().Log.String()
 	}
 
-	return res.LastBuild().Log.String() + "\n" + res.ResourceInfo.RuntimeLog()
+	return res.LastBuild().Log.String() + "\n" + res.ResourceInfo.RuntimeLog().String()
 }
 
 func (r *Renderer) renderModal(fg rty.Component, bg rty.Component, fixed bool) rty.Component {

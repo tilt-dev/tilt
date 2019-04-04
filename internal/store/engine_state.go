@@ -550,14 +550,14 @@ func (p Pod) isAfter(p2 Pod) bool {
 // (e.g., we don't want to show the same panic 20x in a crash loop)
 // if the current pod has crashed, then just print the current pod
 // if the current pod is live, print the current pod plus the last pod
-func (p Pod) Log() string {
-	var podLog string
+func (p Pod) Log() model.Log {
+	var podLog model.Log
 	// if the most recent pod is up, then we want the log from the last run (if any), since it crashed
-	if p.ContainerReady {
-		podLog = p.PreRestartLog.String() + p.CurrentLog.String()
+	if p.ContainerReady && !p.PreRestartLog.Empty() {
+		podLog = model.NewLog(p.PreRestartLog.String() + p.CurrentLog.String())
 	} else {
 		// otherwise, the most recent pod has the crash itself, so just return itself
-		podLog = p.CurrentLog.String()
+		podLog = p.CurrentLog
 	}
 
 	return podLog
@@ -656,7 +656,6 @@ func StateToView(s EngineState) view.View {
 			CrashLog:           ms.CrashLog.String(),
 			Endpoints:          endpoints,
 			ResourceInfo:       resourceInfoView(mt),
-			CombinedLog:        ms.CombinedLog,
 		}
 
 		ret.Resources = append(ret.Resources, r)
@@ -693,7 +692,6 @@ func StateToView(s EngineState) view.View {
 		BuildHistory: []model.BuildRecord{
 			ltfb,
 		},
-		CombinedLog: s.TiltfileCombinedLog,
 	}
 	if !s.CurrentTiltfileBuild.Empty() {
 		tr.PendingBuildSince = s.CurrentTiltfileBuild.StartTime
@@ -712,7 +710,7 @@ func StateToView(s EngineState) view.View {
 	}
 	ret.Resources = append(ret.Resources, tr)
 
-	ret.Log = s.Log.String()
+	ret.Log = s.Log
 
 	return ret
 }

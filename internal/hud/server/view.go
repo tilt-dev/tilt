@@ -139,7 +139,7 @@ func StateToWebView(s store.EngineState) webview.View {
 	}
 	ret.Resources = append(ret.Resources, tr)
 
-	ret.Log = s.Log.String()
+	ret.Log = s.Log
 
 	return ret
 }

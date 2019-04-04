@@ -402,7 +402,7 @@ func (v *ResourceView) resourceExpandedRuntimeError() (rty.Component, bool) {
 	if isCrashing(v.res) {
 		runtimeLog := v.res.CrashLog
 		if runtimeLog == "" {
-			runtimeLog = v.res.ResourceInfo.RuntimeLog()
+			runtimeLog = v.res.ResourceInfo.RuntimeLog().String()
 		}
 		abbrevLog := abbreviateLog(runtimeLog)
 		for _, logLine := range abbrevLog {

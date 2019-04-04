@@ -10,7 +10,7 @@ import (
 
 type ResourceInfoView interface {
 	resourceInfoView()
-	RuntimeLog() string
+	RuntimeLog() model.Log
 	Status() string
 }
 
@@ -18,11 +18,11 @@ type DCResourceInfo struct {
 	ConfigPath      string
 	ContainerStatus dockercompose.Status
 	ContainerID     container.ID
-	Log             string
+	Log             model.Log
 	StartTime       time.Time
 }
 
-func NewDCResourceInfo(configPath string, status dockercompose.Status, cID container.ID, log string, startTime time.Time) DCResourceInfo {
+func NewDCResourceInfo(configPath string, status dockercompose.Status, cID container.ID, log model.Log, startTime time.Time) DCResourceInfo {
 	return DCResourceInfo{
 		ConfigPath:      configPath,
 		ContainerStatus: status,
@@ -34,9 +34,9 @@ func NewDCResourceInfo(configPath string, status dockercompose.Status, cID conta
 
 var _ ResourceInfoView = DCResourceInfo{}
 
-func (DCResourceInfo) resourceInfoView()         {}
-func (dcInfo DCResourceInfo) RuntimeLog() string { return dcInfo.Log }
-func (dcInfo DCResourceInfo) Status() string     { return string(dcInfo.ContainerStatus) }
+func (DCResourceInfo) resourceInfoView()            {}
+func (dcInfo DCResourceInfo) RuntimeLog() model.Log { return dcInfo.Log }
+func (dcInfo DCResourceInfo) Status() string        { return string(dcInfo.ContainerStatus) }
 
 type K8SResourceInfo struct {
 	PodName            string
@@ -44,15 +44,15 @@ type K8SResourceInfo struct {
 	PodUpdateStartTime time.Time
 	PodStatus          string
 	PodRestarts        int
-	PodLog             string
+	PodLog             model.Log
 	YAML               string
 }
 
 var _ ResourceInfoView = K8SResourceInfo{}
 
-func (K8SResourceInfo) resourceInfoView()          {}
-func (k8sInfo K8SResourceInfo) RuntimeLog() string { return k8sInfo.PodLog }
-func (k8sInfo K8SResourceInfo) Status() string     { return k8sInfo.PodStatus }
+func (K8SResourceInfo) resourceInfoView()             {}
+func (k8sInfo K8SResourceInfo) RuntimeLog() model.Log { return k8sInfo.PodLog }
+func (k8sInfo K8SResourceInfo) Status() string        { return k8sInfo.PodStatus }
 
 type YAMLResourceInfo struct {
 	K8sResources []string
@@ -60,9 +60,9 @@ type YAMLResourceInfo struct {
 
 var _ ResourceInfoView = YAMLResourceInfo{}
 
-func (YAMLResourceInfo) resourceInfoView()           {}
-func (yamlInfo YAMLResourceInfo) RuntimeLog() string { return "" }
-func (yamlInfo YAMLResourceInfo) Status() string     { return "" }
+func (YAMLResourceInfo) resourceInfoView()              {}
+func (yamlInfo YAMLResourceInfo) RuntimeLog() model.Log { return model.NewLog("") }
+func (yamlInfo YAMLResourceInfo) Status() string        { return "" }
 
 type Resource struct {
 	Name               model.ManifestName
@@ -85,8 +85,7 @@ type Resource struct {
 	// for a little while.
 	CrashLog string
 
-	IsTiltfile  bool
-	CombinedLog model.Log
+	IsTiltfile bool
 }
 
 func (r Resource) DockerComposeTarget() DCResourceInfo {
@@ -170,7 +169,7 @@ func (r Resource) IsCollapsed(rv ResourceViewState) bool {
 // Client should always hold this as a value struct, and copy it
 // whenever they need to mutate something.
 type View struct {
-	Log                  string
+	Log                  model.Log
 	Resources            []Resource
 	TiltfileErrorMessage string
 	TriggerMode          model.TriggerMode
