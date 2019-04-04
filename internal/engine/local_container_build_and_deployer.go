@@ -92,14 +92,14 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 			return store.BuildResultSet{}, err
 		}
 
-		// If any changed files match a FullRebuildTrigger, fall back to next BuildAndDeployer
+		// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
 		anyMatch, err := luInfo.FallBackOnFiles().AnyMatch(build.PathMappingsToLocalPaths(changedFiles))
 		if err != nil {
 			return nil, err
 		}
 		if anyMatch {
 			return store.BuildResultSet{}, RedirectToNextBuilderf(
-				"one or more changed files match a FullRebuildTrigger, so will not perform a LiveUpdate")
+				"one or more changed files match a FallBackOn file, so falling back to an image build")
 		}
 
 		runs = luInfo.RunSteps()

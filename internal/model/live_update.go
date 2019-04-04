@@ -5,6 +5,8 @@ import (
 )
 
 // Specifies how to update a running container.
+// 0. If any paths specified in a FallBackOn step have changed, fall back to an image build
+//    (i.e. don't do a LiveUpdate)
 // 1. If there are Sync steps in `Steps`, files will be synced as specified.
 // 2. Any time we sync one or more files, all Run and RestartContainer steps will be evaluated.
 type LiveUpdate struct {
@@ -85,6 +87,8 @@ type LiveUpdateRestartContainerStep struct{}
 
 func (l LiveUpdateRestartContainerStep) liveUpdateStep() {}
 
+// FallBackOnFiles returns a PathSet of files which, if any have changed, indicate
+// that we should fall back to an image build.
 func (lu LiveUpdate) FallBackOnFiles() PathSet {
 	var files []string
 	for _, step := range lu.Steps {
