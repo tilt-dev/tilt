@@ -15,27 +15,34 @@ type LiveUpdate struct {
 }
 
 func NewLiveUpdate(steps []LiveUpdateStep, baseDir string) (LiveUpdate, error) {
-	seenRunStep := false
+	// Check that all FallBackOn steps come at the beginning
+	// (Technically could do this in the loop below, but it's
+	// easier to reason about/modify this way.)
 	seenNonFallBackStep := false
-	for i, step := range steps {
+	for _, step := range steps {
 		switch step.(type) {
 		case LiveUpdateFallBackOnStep:
 			if seenNonFallBackStep {
 				return LiveUpdate{}, errors.New("all fall_back_on steps must precede all other steps")
 			}
+		default:
+			seenNonFallBackStep = true
+		}
+	}
+
+	seenRunStep := false
+	for i, step := range steps {
+		switch step.(type) {
 		case LiveUpdateSyncStep:
 			if seenRunStep {
 				return LiveUpdate{}, errors.New("all sync steps must precede all run steps")
 			}
-			seenNonFallBackStep = true
 		case LiveUpdateRunStep:
 			seenRunStep = true
-			seenNonFallBackStep = true
 		case LiveUpdateRestartContainerStep:
 			if i != len(steps)-1 {
 				return LiveUpdate{}, errors.New("restart container is only valid as the last step")
 			}
-			seenNonFallBackStep = true
 		}
 	}
 	return LiveUpdate{steps, baseDir}, nil
