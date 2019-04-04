@@ -82,22 +82,22 @@ docker_build('gcr.io/foo', 'foo',
 	f.loadErrString("'steps' must be a list of live update steps - got value '\"quu\"' of type 'string'")
 }
 
-// func TestLiveUpdateNonStringInFullBuildTriggers(t *testing.T) {
-// 	f := newFixture(t)
-// 	defer f.TearDown()
-//
-// 	f.setupFoo()
-//
-// 	f.file("Tiltfile", `
-// k8s_yaml('foo.yaml')
-// docker_build('gcr.io/foo', 'foo',
-//   live_update=[
-// 	fall_back_on(4),
-//     sync('bar', '/baz'),
-//   ],
-// )`)
-// 	f.loadErrString("'fall_back_on' must only contain strings - got value '4' of type 'int'")
-// }
+func TestLiveUpdateNonStringInFullBuildTriggers(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', 'foo',
+  live_update=[
+	fall_back_on(4),
+    sync('bar', '/baz'),
+  ],
+)`)
+	f.loadErrString("fall_back_on", "value '4' of type 'int'")
+}
 
 func TestLiveUpdateNonStringInRunTriggers(t *testing.T) {
 	f := newFixture(t)
@@ -184,21 +184,22 @@ func TestLiveUpdateCustomBuild(t *testing.T) {
 	f.assertNextManifest("foo", cb(imageNormalized("foo"), f.expectedLU))
 }
 
-// func TestLiveUpdateRebuildTriggersOutsideOfDockerContext(t *testing.T) {
-// 	f := newFixture(t)
-// 	defer f.TearDown()
-//
-// 	f.setupFoo()
-//
-// 	f.file("Tiltfile", `
-// docker_build('gcr.io/foo', 'foo')
-// k8s_resource('foo', 'foo.yaml')
-// live_update('gcr.io/foo',
-//   [sync('foo/bar', '/baz')],
-//   ['bar'],
-// )`)
-// 	f.loadErrString("full_rebuild_trigger", f.JoinPath("bar"), f.JoinPath("foo"), "child", "docker build context")
-// }
+func TestLiveUpdateRebuildTriggersOutsideOfDockerContext(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', 'foo',
+  live_update=[
+    fall_back_on('bar'),
+    sync('foo/bar', '/baz'),
+  ]
+)`)
+	f.loadErrString("fall_back_on", f.JoinPath("bar"), f.JoinPath("foo"), "child", "docker build context")
+}
 
 type liveUpdateFixture struct {
 	*fixture
@@ -213,7 +214,7 @@ func (f *liveUpdateFixture) init() {
 	f.yaml("foo.yaml", deployment("foo", image(f.configuredImageName)))
 
 	luSteps := `[
-    # fall_back_on(['foo/i', 'foo/j']),
+    fall_back_on(['foo/i', 'foo/j']),
 	sync('foo/b', '/c'),
 	run('f', ['g', 'h']),
 	restart_container(),

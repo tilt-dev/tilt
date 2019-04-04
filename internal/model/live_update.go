@@ -37,6 +37,13 @@ type LiveUpdateStep interface {
 	liveUpdateStep()
 }
 
+// Specifies that changes to any of the given files should cause the builder to fall back (i.e. do a full image build)
+type LiveUpdateFallBackOnStep struct {
+	Files []string
+}
+
+func (l LiveUpdateFallBackOnStep) liveUpdateStep() {}
+
 // Specifies that changes to local path `Source` should be synced to container path `Dest`
 type LiveUpdateSyncStep struct {
 	Source, Dest string

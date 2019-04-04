@@ -210,13 +210,13 @@ func (s *tiltfileState) validatedLiveUpdate(image *dockerImage) (*model.LiveUpda
 				}
 			}
 		}
-		// for _, trigger := range lu.fullRebuildTriggers {
-		// 	absTrigger := s.absPath(trigger)
-		// 	if !ospath.IsChild(image.dbBuildPath.path, absTrigger) {
-		// 		return nil, fmt.Errorf("full_rebuild_trigger '%s' is not a child of docker build context '%s'",
-		// 			absTrigger, image.dbBuildPath.path)
-		// 	}
-		// }
+		for _, trigger := range lu.FullRebuildTriggers.Paths {
+			absTrigger := s.absPath(trigger)
+			if !ospath.IsChild(image.dbBuildPath.path, absTrigger) {
+				return nil, fmt.Errorf("fall_back_on path '%s' is not a child of docker build context '%s'",
+					absTrigger, image.dbBuildPath.path)
+			}
+		}
 	}
 
 	return &lu, nil

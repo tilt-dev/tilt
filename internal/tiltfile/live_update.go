@@ -13,15 +13,6 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-type liveUpdateDef struct {
-	imageName           string
-	steps               []model.LiveUpdateStep
-	fullRebuildTriggers []string
-
-	// whether this has been matched to a deployed image that we know how to build
-	matched bool
-}
-
 // when adding a new type of `liveUpdateStep`, make sure that any tiltfile functions that create them also call
 // `s.recordLiveUpdateStep`
 type liveUpdateStep interface {
@@ -30,8 +21,31 @@ type liveUpdateStep interface {
 	declarationPosition() syntax.Position
 }
 
+type liveUpdateFallBackOnStep struct {
+	files    []string
+	position syntax.Position
+}
+
+var _ starlark.Value = liveUpdateFallBackOnStep{}
+var _ liveUpdateStep = liveUpdateFallBackOnStep{}
+
+func (l liveUpdateFallBackOnStep) String() string {
+	return fmt.Sprintf("fall_back_on step: %v'", l.files)
+}
+func (l liveUpdateFallBackOnStep) Type() string         { return "live_update_fall_back_on_step" }
+func (l liveUpdateFallBackOnStep) Freeze()              {}
+func (l liveUpdateFallBackOnStep) Truth() starlark.Bool { return len(l.files) > 0 }
+func (l liveUpdateFallBackOnStep) Hash() (uint32, error) {
+	t := starlark.Tuple{}
+	for _, path := range l.files {
+		t = append(t, starlark.String(path))
+	}
+	return t.Hash()
+}
+func (l liveUpdateFallBackOnStep) liveUpdateStep()                      {}
+func (l liveUpdateFallBackOnStep) declarationPosition() syntax.Position { return l.position }
+
 type liveUpdateSyncStep struct {
-	// remotePath is potentially relative in this struct, because we don't know if there's a workDir
 	localPath, remotePath string
 	position              syntax.Position
 }
@@ -105,6 +119,30 @@ func (s *tiltfileState) recordLiveUpdateStep(step liveUpdateStep) {
 	s.unconsumedLiveUpdateSteps = append(s.unconsumedLiveUpdateSteps, step)
 }
 
+func (s *tiltfileState) liveUpdateFallBackOn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var files starlark.Value
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "paths", &files); err != nil {
+		return nil, err
+	}
+	filesSlice := starlarkValueOrSequenceToSlice(files)
+	var fileStrings []string
+	for _, f := range filesSlice {
+		switch fStr := f.(type) {
+		case starlark.String:
+			fileStrings = append(fileStrings, string(fStr))
+		default:
+			return nil, fmt.Errorf("fall_back_on step contained value '%s' of type '%s'. it may only contain strings", fStr, fStr.Type())
+		}
+	}
+
+	ret := liveUpdateFallBackOnStep{
+		files:    fileStrings,
+		position: thread.TopFrame().Position(),
+	}
+	s.recordLiveUpdateStep(ret)
+	return ret, nil
+}
+
 func (s *tiltfileState) liveUpdateSync(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var localPath, remotePath string
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "local_path", &localPath, "remote_path", &remotePath); err != nil {
@@ -161,6 +199,8 @@ func (s *tiltfileState) liveUpdateRestartContainer(thread *starlark.Thread, fn *
 
 func (s *tiltfileState) liveUpdateStepToModel(l liveUpdateStep) (model.LiveUpdateStep, error) {
 	switch x := l.(type) {
+	case liveUpdateFallBackOnStep:
+		return model.LiveUpdateFallBackOnStep{Files: x.files}, nil
 	case liveUpdateSyncStep:
 		if !filepath.IsAbs(x.remotePath) {
 			return nil, fmt.Errorf("sync destination '%s' (%s) is not absolute", x.remotePath, x.position.String())
@@ -184,6 +224,8 @@ func (s *tiltfileState) liveUpdateStepToModel(l liveUpdateStep) (model.LiveUpdat
 func (s *tiltfileState) liveUpdateFromSteps(maybeSteps starlark.Value) (model.LiveUpdate, error) {
 	var modelSteps []model.LiveUpdateStep
 	stepSlice := starlarkValueOrSequenceToSlice(maybeSteps)
+	var fallBackOn []string
+
 	for _, v := range stepSlice {
 		step, ok := v.(liveUpdateStep)
 		if !ok {
@@ -195,21 +237,22 @@ func (s *tiltfileState) liveUpdateFromSteps(maybeSteps starlark.Value) (model.Li
 			return model.LiveUpdate{}, err
 		}
 		s.consumeLiveUpdateStep(step)
-		modelSteps = append(modelSteps, ms)
+
+		// HACK(maia): temporary hack for backwards compatibility/making this a smaller PR--
+		// use the existing LiveUpdate constructor. (Soon, we'll treat fall_back_on as
+		// just another step INTERNALLY too (instead of as a non-step property of a LiveUpdate).
+		if fallBackStep, ok := ms.(model.LiveUpdateFallBackOnStep); ok {
+			if len(fallBackOn) != 0 {
+				return model.LiveUpdate{}, fmt.Errorf("live_update: cannot specify more than one "+
+					"fall_back_on step. (already had step: %v; got second step: %v)", fallBackOn, fallBackStep.Files)
+			}
+			fallBackOn = fallBackStep.Files
+		} else {
+			modelSteps = append(modelSteps, ms)
+		}
 	}
 
-	// frtSlice := starlarkValueOrSequenceToSlice(fullRebuildTriggers)
-	// var frtStrings []string
-	// for _, v := range frtSlice {
-	// 	str, ok := v.(starlark.String)
-	// 	if !ok {
-	// 		return model.LiveUpdate{}, fmt.Errorf("'full_rebuild_triggers' must only contain strings - got value '%v' of type '%s'", v.String(), v.Type())
-	// 	}
-	// 	frtStrings = append(frtStrings, string(str))
-	// }
-
-	// TODO: attach full rebuild triggers somewhere
-	return model.NewLiveUpdate(modelSteps, model.PathSet{})
+	return model.NewLiveUpdate(modelSteps, model.NewPathSet(fallBackOn, s.absWorkingDir()))
 }
 
 func (s *tiltfileState) consumeLiveUpdateStep(stepToConsume liveUpdateStep) {
