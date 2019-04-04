@@ -154,7 +154,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 
 	liveUpdate, err := s.liveUpdateFromSteps(liveUpdateVal)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "live_update")
 	}
 	r := &dockerImage{
 		dbDockerfilePath: dockerfilePath,
@@ -272,7 +272,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 
 	liveUpdate, err := s.liveUpdateFromSteps(liveUpdateVal)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "live_update")
 	}
 
 	img := &dockerImage{

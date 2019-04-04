@@ -20,13 +20,13 @@ func NewLiveUpdate(steps []LiveUpdateStep, fullRebuildTriggers PathSet) (LiveUpd
 		switch step.(type) {
 		case LiveUpdateSyncStep:
 			if seenRunStep {
-				return LiveUpdate{}, errors.New("live_update: all sync steps must precede all run steps")
+				return LiveUpdate{}, errors.New("all sync steps must precede all run steps")
 			}
 		case LiveUpdateRunStep:
 			seenRunStep = true
 		case LiveUpdateRestartContainerStep:
 			if i != len(steps)-1 {
-				return LiveUpdate{}, errors.New("live_update: restart container is only valid as the last step")
+				return LiveUpdate{}, errors.New("restart container is only valid as the last step")
 			}
 		}
 	}
