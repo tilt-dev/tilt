@@ -40,6 +40,8 @@ type DockerComposeTarget struct {
 	ignoredLocalDirectories []string
 
 	dependencyIDs []TargetID
+
+	publishedPorts []int
 }
 
 // TODO(nick): This is a temporary hack until we figure out how we want
@@ -66,6 +68,15 @@ func (t DockerComposeTarget) LocalPaths() []string {
 		return []string{}
 	}
 	return []string{t.buildPath}
+}
+
+func (t DockerComposeTarget) PublishedPorts() []int {
+	return append([]int{}, t.publishedPorts...)
+}
+
+func (t DockerComposeTarget) WithPublishedPorts(ports []int) DockerComposeTarget {
+	t.publishedPorts = ports
+	return t
 }
 
 func (t DockerComposeTarget) WithBuildPath(buildPath string) DockerComposeTarget {

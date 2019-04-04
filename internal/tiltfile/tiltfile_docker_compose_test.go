@@ -16,7 +16,7 @@ services:
     build: ./foo
     command: sleep 100
     ports:
-      - "12312:12312"`
+      - "12312:80"`
 
 const configWithMounts = `version: '3.2'
 services:
@@ -31,7 +31,7 @@ services:
         source: baz
         target: /baz
     ports:
-      - "12312:12312"
+      - "12312:80"
 volumes:
   bar: {}
   baz: {}`
@@ -42,7 +42,7 @@ services:
     build: ./foo
     command: sleep 100
     ports:
-      - "12312:12312"
+      - "12312:80"
   bar:
     image: bar-image
     expose:
@@ -58,7 +58,7 @@ func (f *fixture) simpleConfigFooYAML() string {
   context: %s
 command: sleep 100
 ports:
-- 12312:12312/tcp`, f.JoinPath("foo"))
+- 12312:80/tcp`, f.JoinPath("foo"))
 }
 
 func TestDockerComposeManifest(t *testing.T) {
@@ -75,6 +75,7 @@ func TestDockerComposeManifest(t *testing.T) {
 		dcConfigPath(configPath),
 		dcYAMLRaw(f.simpleConfigFooYAML()),
 		dcDfRaw(simpleDockerfile),
+		dcPublishedPorts(12312),
 		// TODO(maia): assert m.tiltFilename
 	)
 
@@ -179,7 +180,7 @@ services:
     build: ./foo
     command: sleep 100
     ports:
-      - "12312:12312"`)
+      - "12312:80"`)
 	f.file("Tiltfile", fmt.Sprintf("docker_compose('%s')", configPath))
 
 	f.load("foo")
@@ -233,7 +234,7 @@ services:
       context: ./
     command: sleep 100
     ports:
-      - "12312:12312"`)
+      - "12312:80"`)
 	f.file("Tiltfile", "docker_compose('foo/docker-compose.yml')")
 	f.load("foo")
 	configPath := f.JoinPath("foo/docker-compose.yml")
@@ -242,6 +243,7 @@ services:
 		dcYAMLRaw(f.simpleConfigFooYAML()),
 		dcDfRaw(df),
 		dcLocalPaths([]string{f.JoinPath("foo")}),
+		dcPublishedPorts(12312),
 	)
 
 	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "foo/docker-compose.yml", "foo/Dockerfile"}
@@ -526,6 +528,8 @@ func (f *fixture) assertDcManifest(name string, opts ...interface{}) model.Manif
 			assert.Equal(f.t, strings.TrimSpace(opt.yaml), strings.TrimSpace(string(dcInfo.YAMLRaw)))
 		case dcDfRawHelper:
 			assert.Equal(f.t, strings.TrimSpace(opt.df), strings.TrimSpace(string(dcInfo.DfRaw)))
+		case dcPublishedPortsHelper:
+			assert.Equal(f.t, opt.ports, dcInfo.PublishedPorts())
 		default:
 			f.t.Fatalf("unexpected arg to assertDcManifest: %T %v", opt, opt)
 		}
@@ -563,4 +567,12 @@ type dcLocalPathsHelper struct {
 
 func dcLocalPaths(paths []string) dcLocalPathsHelper {
 	return dcLocalPathsHelper{paths: paths}
+}
+
+type dcPublishedPortsHelper struct {
+	ports []int
+}
+
+func dcPublishedPorts(ports ...int) dcPublishedPortsHelper {
+	return dcPublishedPortsHelper{ports: ports}
 }

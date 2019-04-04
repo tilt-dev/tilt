@@ -217,10 +217,12 @@ func (v *ResourceView) resourceExpandedDC() rty.Component {
 	l.Add(rty.TextString(" "))
 	l.AddDynamic(rty.NewFillerString(' '))
 
-	// TODO(maia): ports
-
 	st := v.res.DockerComposeTarget().StartTime
 	if !st.IsZero() {
+		if len(v.res.Endpoints) > 0 {
+			v.appendEndpoints(l)
+			l.Add(middotText())
+		}
 		l.Add(resourceTextAge(st))
 	}
 
@@ -266,10 +268,8 @@ func (v *ResourceView) resourceExpandedK8s() rty.Component {
 	}
 
 	if len(v.res.Endpoints) > 0 && !v.endpointsNeedSecondLine() {
-		for _, endpoint := range v.res.Endpoints {
-			l.Add(rty.TextString(endpoint))
-			l.Add(middotText())
-		}
+		v.appendEndpoints(l)
+		l.Add(middotText())
 	}
 
 	l.Add(resourceTextAge(k8sInfo.PodCreationTime))
@@ -303,6 +303,15 @@ func resourceTextAge(t time.Time) rty.Component {
 		Add(sb.Build())
 }
 
+func (v *ResourceView) appendEndpoints(l *rty.ConcatLayout) {
+	for i, endpoint := range v.res.Endpoints {
+		if i != 0 {
+			l.Add(middotText())
+		}
+		l.Add(rty.TextString(endpoint))
+	}
+}
+
 func (v *ResourceView) resourceExpandedEndpoints() rty.Component {
 	if !v.endpointsNeedSecondLine() {
 		return rty.NewConcatLayout(rty.DirVert)
@@ -310,13 +319,7 @@ func (v *ResourceView) resourceExpandedEndpoints() rty.Component {
 
 	l := rty.NewConcatLayout(rty.DirHor)
 	l.Add(resourceTextURLPrefix())
-
-	for i, endpoint := range v.res.Endpoints {
-		if i != 0 {
-			l.Add(middotText())
-		}
-		l.Add(rty.TextString(endpoint))
-	}
+	v.appendEndpoints(l)
 
 	return l
 }

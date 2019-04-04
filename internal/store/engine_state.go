@@ -578,6 +578,14 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {
 		return endpoints
 	}
 
+	publishedPorts := mt.Manifest.DockerComposeTarget().PublishedPorts()
+	if len(publishedPorts) > 0 {
+		for _, p := range publishedPorts {
+			endpoints = append(endpoints, fmt.Sprintf("http://localhost:%d/", p))
+		}
+		return endpoints
+	}
+
 	for _, u := range mt.State.LBs {
 		if u != nil {
 			endpoints = append(endpoints, u.String())

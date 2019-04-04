@@ -565,6 +565,28 @@ func TestBuildHistory(t *testing.T) {
 	rtf.run("multiple build history entries", 80, 20, v, vs)
 }
 
+func TestDockerComposeUpExpanded(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+
+	now := time.Now()
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name:         "snack",
+				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusUp, testCID, model.NewLog("hellllo"), now.Add(-5*time.Second)),
+				Endpoints:    []string{"http://localhost:3000"},
+				CurrentBuild: model.BuildRecord{
+					StartTime: now.Add(-5 * time.Second),
+					Reason:    model.BuildReasonFlagChangedFiles,
+				},
+			},
+		},
+	}
+
+	vs := fakeViewState(1, view.CollapseNo)
+	rtf.run("docker-compose up expanded", 80, 20, v, vs)
+}
+
 func TestStatusBarDCRebuild(t *testing.T) {
 	rtf := newRendererTestFixture(t)
 
