@@ -22,13 +22,14 @@ func TestLiveUpdateRestartContainerNotLast(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
-docker_build('gcr.io/foo', 'foo'
+k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', 'foo',
   live_update=[
     restart_container(),
     sync('foo', '/baz'),
   ]
 )`)
-	f.loadErrString("image build info for foo", "live_update", "restart container is only valid as the last step")
+	f.loadErrString("live_update", "restart container is only valid as the last step")
 }
 
 func TestLiveUpdateSyncRelDest(t *testing.T) {
@@ -38,6 +39,7 @@ func TestLiveUpdateSyncRelDest(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
 docker_build('gcr.io/foo', 'foo',
   live_update=[
     sync('foo', 'baz'),
@@ -53,13 +55,14 @@ func TestLiveUpdateRunBeforeSync(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
 docker_build('gcr.io/foo', 'foo',
   live_update=[
 	run('quu'),
     sync('foo', '/baz'),
   ]
 )`)
-	f.loadErrString("image build info for foo", "live_update", "all sync steps must precede all run steps")
+	f.loadErrString("live_update", "all sync steps must precede all run steps")
 }
 
 func TestLiveUpdateNonStepInSteps(t *testing.T) {
@@ -69,6 +72,7 @@ func TestLiveUpdateNonStepInSteps(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
 docker_build('gcr.io/foo', 'foo',
   live_update=[
     'quu',
@@ -85,6 +89,7 @@ func TestLiveUpdateNonStringInFullBuildTriggers(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
 docker_build('gcr.io/foo', 'foo',
   live_update=[
 	fall_back_on(4),
@@ -101,6 +106,7 @@ func TestLiveUpdateNonStringInRunTriggers(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
 docker_build('gcr.io/foo', 'foo',
   live_update=[
     run('bar', [4]),
@@ -116,6 +122,7 @@ func TestLiveUpdateSyncFilesOutsideOfDockerContext(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
 docker_build('gcr.io/foo', 'foo',
   live_update=[
     sync('bar', '/baz'),

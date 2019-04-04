@@ -53,7 +53,6 @@ type tiltfileState struct {
 	// count how many times each builtin is called, for analytics
 	builtinCallCounts map[string]int
 
-	liveUpdates map[string]*liveUpdateDef
 	// any LiveUpdate steps that have been created but not used by a LiveUpdate will cause an error, to ensure
 	// that users aren't accidentally using step-creating functions incorrectly
 	// it'd be appealing to store this as a map[liveUpdateStep]bool, but then things get weird if we have two steps
@@ -77,7 +76,6 @@ func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClie
 		usedImages:        make(map[string]bool),
 		logger:            logger.Get(ctx),
 		builtinCallCounts: make(map[string]int),
-		liveUpdates:       make(map[string]*liveUpdateDef),
 	}
 	s.filename = s.maybeAttachGitRepo(lp, filepath.Dir(lp.path))
 	return s
@@ -127,7 +125,6 @@ const (
 	readJSONN     = "read_json"
 
 	// live update functions
-	liveUpdateN       = "live_update"
 	syncN             = "sync"
 	runN              = "run"
 	restartContainerN = "restart_container"
@@ -181,7 +178,6 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 	addBuiltin(r, decodeJSONN, s.decodeJSON)
 	addBuiltin(r, readJSONN, s.readJson)
 
-	addBuiltin(r, liveUpdateN, s.liveUpdate)
 	addBuiltin(r, syncN, s.liveUpdateSync)
 	addBuiltin(r, runN, s.liveUpdateRun)
 	addBuiltin(r, restartContainerN, s.liveUpdateRestartContainer)
@@ -548,9 +544,9 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			DeploymentRef:    image.deploymentRef,
 		}.WithCachePaths(image.cachePaths)
 
-		lu, err := s.maybeLiveUpdate(image)
+		lu, err := s.validatedLiveUpdate(image)
 		if err != nil {
-			return nil, errors.Wrap(err, "error in live_update definition")
+			return nil, errors.Wrap(err, "live_update failed validation")
 		}
 
 		switch image.Type() {

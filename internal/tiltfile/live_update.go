@@ -181,8 +181,35 @@ func (s *tiltfileState) liveUpdateStepToModel(l liveUpdateStep) (model.LiveUpdat
 	}
 }
 
-func (s *tiltfileState) liveUpdateToModel(l liveUpdateDef) (model.LiveUpdate, error) {
-	return model.NewLiveUpdate(l.steps, model.NewPathSet(l.fullRebuildTriggers, s.absWorkingDir()))
+func (s *tiltfileState) liveUpdateFromSteps(maybeSteps starlark.Value) (model.LiveUpdate, error) {
+	var modelSteps []model.LiveUpdateStep
+	stepSlice := starlarkValueOrSequenceToSlice(maybeSteps)
+	for _, v := range stepSlice {
+		step, ok := v.(liveUpdateStep)
+		if !ok {
+			return model.LiveUpdate{}, fmt.Errorf("'steps' must be a list of live update steps - got value '%v' of type '%s'", v.String(), v.Type())
+		}
+
+		ms, err := s.liveUpdateStepToModel(step)
+		if err != nil {
+			return model.LiveUpdate{}, err
+		}
+		s.consumeLiveUpdateStep(step)
+		modelSteps = append(modelSteps, ms)
+	}
+
+	// frtSlice := starlarkValueOrSequenceToSlice(fullRebuildTriggers)
+	// var frtStrings []string
+	// for _, v := range frtSlice {
+	// 	str, ok := v.(starlark.String)
+	// 	if !ok {
+	// 		return model.LiveUpdate{}, fmt.Errorf("'full_rebuild_triggers' must only contain strings - got value '%v' of type '%s'", v.String(), v.Type())
+	// 	}
+	// 	frtStrings = append(frtStrings, string(str))
+	// }
+
+	// TODO: attach full rebuild triggers somewhere
+	return model.NewLiveUpdate(modelSteps, model.PathSet{})
 }
 
 func (s *tiltfileState) consumeLiveUpdateStep(stepToConsume liveUpdateStep) {
@@ -195,64 +222,13 @@ func (s *tiltfileState) consumeLiveUpdateStep(stepToConsume liveUpdateStep) {
 	}
 }
 
-func (s *tiltfileState) liveUpdate(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var dockerRef string
-	var steps, fullRebuildTriggers starlark.Value
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
-		"image", &dockerRef,
-		"steps", &steps,
-		"full_rebuild_triggers?", &fullRebuildTriggers,
-	); err != nil {
-		return nil, err
-	}
-
-	var modelSteps []model.LiveUpdateStep
-	stepSlice := starlarkValueOrSequenceToSlice(steps)
-	for _, v := range stepSlice {
-		step, ok := v.(liveUpdateStep)
-		if !ok {
-			return starlark.None, fmt.Errorf("'steps' must be a list of live update steps - got value '%v' of type '%s'", v.String(), v.Type())
-		}
-
-		ms, err := s.liveUpdateStepToModel(step)
-		if err != nil {
-			return starlark.None, err
-		}
-		s.consumeLiveUpdateStep(step)
-		modelSteps = append(modelSteps, ms)
-	}
-
-	frtSlice := starlarkValueOrSequenceToSlice(fullRebuildTriggers)
-	var frtStrings []string
-	for _, v := range frtSlice {
-		str, ok := v.(starlark.String)
-		if !ok {
-			return starlark.None, fmt.Errorf("'full_rebuild_triggers' must only contain strings - got value '%v' of type '%s'", v.String(), v.Type())
-		}
-		frtStrings = append(frtStrings, string(str))
-	}
-
-	s.liveUpdates[dockerRef] = &liveUpdateDef{
-		steps:               modelSteps,
-		fullRebuildTriggers: frtStrings,
-	}
-
-	return starlark.None, nil
-}
-
-func (s *tiltfileState) validateLiveUpdates() error {
+func (s *tiltfileState) checkForUnconsumedLiveUpdateSteps() error {
 	if len(s.unconsumedLiveUpdateSteps) > 0 {
 		var errorStrings []string
 		for _, step := range s.unconsumedLiveUpdateSteps {
 			errorStrings = append(errorStrings, fmt.Sprintf("value '%s' of type '%s' declared at %s", step.String(), step.Type(), step.declarationPosition().String()))
 		}
 		return fmt.Errorf("live_update steps were created that were not used by any live_update: %s", strings.Join(errorStrings, ", "))
-	}
-
-	for k, v := range s.liveUpdates {
-		if !v.matched {
-			return fmt.Errorf("live_update was specified for '%s', but no built resource uses that image", k)
-		}
 	}
 
 	return nil
