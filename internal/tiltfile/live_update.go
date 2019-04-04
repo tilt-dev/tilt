@@ -18,7 +18,7 @@ import (
 type liveUpdateStep interface {
 	starlark.Value
 	liveUpdateStep()
-	declarationPosition() syntax.Position
+	declarationPos() string
 }
 
 type liveUpdateFallBackOnStep struct {
@@ -42,8 +42,8 @@ func (l liveUpdateFallBackOnStep) Hash() (uint32, error) {
 	}
 	return t.Hash()
 }
-func (l liveUpdateFallBackOnStep) liveUpdateStep()                      {}
-func (l liveUpdateFallBackOnStep) declarationPosition() syntax.Position { return l.position }
+func (l liveUpdateFallBackOnStep) liveUpdateStep()        {}
+func (l liveUpdateFallBackOnStep) declarationPos() string { return l.position.String() }
 
 type liveUpdateSyncStep struct {
 	localPath, remotePath string
@@ -64,8 +64,8 @@ func (l liveUpdateSyncStep) Truth() starlark.Bool {
 func (l liveUpdateSyncStep) Hash() (uint32, error) {
 	return starlark.Tuple{starlark.String(l.localPath), starlark.String(l.remotePath)}.Hash()
 }
-func (l liveUpdateSyncStep) liveUpdateStep()                      {}
-func (l liveUpdateSyncStep) declarationPosition() syntax.Position { return l.position }
+func (l liveUpdateSyncStep) liveUpdateStep()        {}
+func (l liveUpdateSyncStep) declarationPos() string { return l.position.String() }
 
 type liveUpdateRunStep struct {
 	command  string
@@ -96,7 +96,7 @@ func (l liveUpdateRunStep) Hash() (uint32, error) {
 	}
 	return t.Hash()
 }
-func (l liveUpdateRunStep) declarationPosition() syntax.Position { return l.position }
+func (l liveUpdateRunStep) declarationPos() string { return l.position.String() }
 
 func (l liveUpdateRunStep) liveUpdateStep() {}
 
@@ -107,16 +107,16 @@ type liveUpdateRestartContainerStep struct {
 var _ starlark.Value = liveUpdateRestartContainerStep{}
 var _ liveUpdateStep = liveUpdateRestartContainerStep{}
 
-func (l liveUpdateRestartContainerStep) String() string                       { return "restart_container step" }
-func (l liveUpdateRestartContainerStep) Type() string                         { return "live_update_restart_container_step" }
-func (l liveUpdateRestartContainerStep) Freeze()                              {}
-func (l liveUpdateRestartContainerStep) Truth() starlark.Bool                 { return true }
-func (l liveUpdateRestartContainerStep) Hash() (uint32, error)                { return 0, nil }
-func (l liveUpdateRestartContainerStep) declarationPosition() syntax.Position { return l.position }
-func (l liveUpdateRestartContainerStep) liveUpdateStep()                      {}
+func (l liveUpdateRestartContainerStep) String() string         { return "restart_container step" }
+func (l liveUpdateRestartContainerStep) Type() string           { return "live_update_restart_container_step" }
+func (l liveUpdateRestartContainerStep) Freeze()                {}
+func (l liveUpdateRestartContainerStep) Truth() starlark.Bool   { return true }
+func (l liveUpdateRestartContainerStep) Hash() (uint32, error)  { return 0, nil }
+func (l liveUpdateRestartContainerStep) declarationPos() string { return l.position.String() }
+func (l liveUpdateRestartContainerStep) liveUpdateStep()        {}
 
 func (s *tiltfileState) recordLiveUpdateStep(step liveUpdateStep) {
-	s.unconsumedLiveUpdateSteps = append(s.unconsumedLiveUpdateSteps, step)
+	s.unconsumedLiveUpdateSteps[step.declarationPos()] = step
 }
 
 func (s *tiltfileState) liveUpdateFallBackOn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -217,7 +217,7 @@ func (s *tiltfileState) liveUpdateStepToModel(l liveUpdateStep) (model.LiveUpdat
 	case liveUpdateRestartContainerStep:
 		return model.LiveUpdateRestartContainerStep{}, nil
 	default:
-		return nil, fmt.Errorf("internal error - unknown liveUpdateStep '%v' of type '%T', declared at %s", l, l, l.declarationPosition().String())
+		return nil, fmt.Errorf("internal error - unknown liveUpdateStep '%v' of type '%T', declared at %s", l, l, l.declarationPos())
 	}
 }
 
@@ -252,22 +252,17 @@ func (s *tiltfileState) liveUpdateFromSteps(maybeSteps starlark.Value) (model.Li
 }
 
 func (s *tiltfileState) consumeLiveUpdateStep(stepToConsume liveUpdateStep) {
-	for i, step := range s.unconsumedLiveUpdateSteps {
-		if step.declarationPosition() == stepToConsume.declarationPosition() {
-			copy(s.unconsumedLiveUpdateSteps[i:], s.unconsumedLiveUpdateSteps[i+1:])
-			s.unconsumedLiveUpdateSteps = s.unconsumedLiveUpdateSteps[:len(s.unconsumedLiveUpdateSteps)-1]
-			break
-		}
-	}
+	delete(s.unconsumedLiveUpdateSteps, stepToConsume.declarationPos())
 }
 
 func (s *tiltfileState) checkForUnconsumedLiveUpdateSteps() error {
 	if len(s.unconsumedLiveUpdateSteps) > 0 {
 		var errorStrings []string
 		for _, step := range s.unconsumedLiveUpdateSteps {
-			errorStrings = append(errorStrings, fmt.Sprintf("value '%s' of type '%s' declared at %s", step.String(), step.Type(), step.declarationPosition().String()))
+			errorStrings = append(errorStrings, fmt.Sprintf("value '%s' of type '%s' declared at %s", step.String(), step.Type(), step.declarationPos()))
 		}
-		return fmt.Errorf("live_update steps were created that were not used by any live_update: %s", strings.Join(errorStrings, ", "))
+		return fmt.Errorf("found %d live_update steps that were created but not used in a live_update: %s",
+			len(s.unconsumedLiveUpdateSteps), strings.Join(errorStrings, "\n\t"))
 	}
 
 	return nil

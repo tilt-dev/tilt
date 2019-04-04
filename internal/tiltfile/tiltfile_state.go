@@ -55,9 +55,10 @@ type tiltfileState struct {
 
 	// any LiveUpdate steps that have been created but not used by a LiveUpdate will cause an error, to ensure
 	// that users aren't accidentally using step-creating functions incorrectly
+	// stored as a map of string(declarationPosition) -> step
 	// it'd be appealing to store this as a map[liveUpdateStep]bool, but then things get weird if we have two steps
 	// with the same hashcode (like, all restartcontainer steps)
-	unconsumedLiveUpdateSteps []liveUpdateStep
+	unconsumedLiveUpdateSteps map[string]liveUpdateStep
 
 	logger   logger.Logger
 	warnings []string
@@ -66,16 +67,17 @@ type tiltfileState struct {
 func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, filename string) *tiltfileState {
 	lp := localPath{path: filename}
 	s := &tiltfileState{
-		ctx:               ctx,
-		filename:          localPath{path: filename},
-		dcCli:             dcCli,
-		buildIndex:        newBuildIndex(),
-		k8sByName:         make(map[string]*k8sResource),
-		k8sImageJSONPaths: make(map[k8sObjectSelector][]k8s.JSONPath),
-		configFiles:       []string{filename, tiltIgnorePath(filename)},
-		usedImages:        make(map[string]bool),
-		logger:            logger.Get(ctx),
-		builtinCallCounts: make(map[string]int),
+		ctx:                       ctx,
+		filename:                  localPath{path: filename},
+		dcCli:                     dcCli,
+		buildIndex:                newBuildIndex(),
+		k8sByName:                 make(map[string]*k8sResource),
+		k8sImageJSONPaths:         make(map[k8sObjectSelector][]k8s.JSONPath),
+		configFiles:               []string{filename, tiltIgnorePath(filename)},
+		usedImages:                make(map[string]bool),
+		logger:                    logger.Get(ctx),
+		builtinCallCounts:         make(map[string]int),
+		unconsumedLiveUpdateSteps: make(map[string]liveUpdateStep),
 	}
 	s.filename = s.maybeAttachGitRepo(lp, filepath.Dir(lp.path))
 	return s
