@@ -39,9 +39,15 @@
   align-items: center;
   justify-content: center;
   border-bottom: 1px solid $color-navy-light;
+  transition: color $animation-timing ease;
 }
 .viewLink + .viewLink {
   border-left: 2px solid $color-navy-light;
+}
+.viewLink:hover {
+  background-color: $color-navy-dark;
+  color: $color-blue-light;
+  background-color: $color-navy;
 }
 .viewLink--is-selected {
   background-color: $color-navy;
