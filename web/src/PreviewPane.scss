@@ -4,9 +4,15 @@
   position: fixed;
   top: 0;
   left: 0;
-  right: $sidebar-width;
+  right: 0;
+  padding-right: $sidebar-width;
   bottom: $statusbar-height;
   background-color: $color-white;
+  transition: padding ease-out 200ms;
+}
+
+.PreviewPane--expanded {
+  padding-right: 0;
 }
 
 .PreviewPane iframe {

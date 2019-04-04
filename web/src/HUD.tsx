@@ -165,7 +165,7 @@ class HUD extends Component<HudProps, HudState> {
         endpoint = r ? r.Endpoints[0] : ""
       }
 
-      return <PreviewPane endpoint={endpoint} />
+      return <PreviewPane endpoint={endpoint} isExpanded={isSidebarClosed} />
     }
 
     return (
