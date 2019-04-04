@@ -94,7 +94,7 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 			err = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
 		}
 		if err != nil {
-			logger.Get(ctx).Infof(err.Error())
+			logger.Get(loadCtx).Infof(err.Error())
 		}
 		st.Dispatch(ConfigsReloadedAction{
 			Manifests:          tlr.Manifests,

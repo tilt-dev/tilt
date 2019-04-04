@@ -190,6 +190,10 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
+	if s.k8sResourceAssemblyVersion != 1 {
+		return starlark.None, fmt.Errorf("%s: only supported with v1 k8s_resource_assembly_version", fn.Name())
+	}
+
 	if name == "" {
 		return nil, fmt.Errorf("k8s_resource: name must not be empty")
 	}
@@ -591,4 +595,69 @@ func (s *tiltfileState) imageJSONPaths(e k8s.K8sEntity) []k8s.JSONPath {
 	}
 
 	return ret
+}
+
+func (s *tiltfileState) k8sResourceAssemblyVersionFn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var version int
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+		"version", &version,
+	); err != nil {
+		return nil, err
+	}
+
+	if len(s.k8sUnresourced) > 0 || len(s.k8s) > 0 {
+		return starlark.None, fmt.Errorf("%s can only be called before introducing any k8s resources", fn.Name())
+	}
+
+	if version < 1 || version > 2 {
+		return starlark.None, fmt.Errorf("invalid %s %d. Must be 1 or 2.", fn.Name(), version)
+	}
+
+	s.k8sResourceAssemblyVersion = version
+
+	return starlark.None, nil
+}
+
+func uniqueResourceNames(es []k8s.K8sEntity) ([]string, error) {
+	ret := make([]string, len(es))
+	// how many resources potentially map to a given name
+	counts := make(map[string]int)
+
+	// returns a list of potential names, in order of preference
+	potentialNames := func(e k8s.K8sEntity) []string {
+		components := []string{
+			e.Name(),
+			e.Kind.Kind,
+			e.Namespace().String(),
+			e.Kind.Group,
+		}
+		var ret []string
+		for i := 0; i < len(components); i++ {
+			ret = append(ret, strings.ToLower(strings.Join(components[:i+1], ":")))
+		}
+		return ret
+	}
+
+	// count how many entity want each potential name
+	for _, e := range es {
+		for _, name := range potentialNames(e) {
+			counts[name]++
+		}
+	}
+
+	// for each entity, take the shortest name that is uniquely wanted by that entity
+	for i, e := range es {
+		names := potentialNames(e)
+		for _, name := range names {
+			if counts[name] == 1 {
+				ret[i] = name
+				break
+			}
+		}
+		if ret[i] == "" {
+			return nil, fmt.Errorf("unable to find a unique resource name for '%s'", names[len(names)-1])
+		}
+	}
+
+	return ret, nil
 }
