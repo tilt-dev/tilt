@@ -33,6 +33,8 @@ func NewLiveUpdate(steps []LiveUpdateStep, fullRebuildTriggers PathSet) (LiveUpd
 	return LiveUpdate{steps, fullRebuildTriggers}, nil
 }
 
+func (lu LiveUpdate) Empty() bool { return len(lu.Steps) == 0 }
+
 type LiveUpdateStep interface {
 	liveUpdateStep()
 }

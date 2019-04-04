@@ -196,6 +196,9 @@ func (s *tiltfileState) maybeFastBuild(image *dockerImage) *model.FastBuild {
 
 func (s *tiltfileState) validatedLiveUpdate(image *dockerImage) (*model.LiveUpdate, error) {
 	lu := image.liveUpdate
+	if lu.Empty() {
+		return nil, nil
+	}
 
 	// if it's a docker build + live update, verify that all
 	// a) sync steps and
@@ -228,6 +231,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	var deps *starlark.List
 	var tag string
 	var disablePush bool
+	var liveUpdateVal starlark.Value
 
 	err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
@@ -235,6 +239,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		"deps", &deps,
 		"tag?", &tag,
 		"disable_push?", &disablePush,
+		"live_update?", &liveUpdateVal,
 	)
 	if err != nil {
 		return nil, err
@@ -265,12 +270,18 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		localDeps = append(localDeps, p.path)
 	}
 
+	liveUpdate, err := s.liveUpdateFromSteps(liveUpdateVal)
+	if err != nil {
+		return nil, err
+	}
+
 	img := &dockerImage{
 		configurationRef: container.NewRefSelector(ref),
 		customCommand:    command,
 		customDeps:       localDeps,
 		customTag:        tag,
 		disablePush:      disablePush,
+		liveUpdate:       liveUpdate,
 	}
 
 	err = s.buildIndex.addImage(img)

@@ -65,6 +65,23 @@ docker_build('gcr.io/foo', 'foo',
 	f.loadErrString("live_update", "all sync steps must precede all run steps")
 }
 
+func TestLiveUpdateMultipleFallBackSteps(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', 'foo',
+  live_update=[
+	fall_back_on('a'),
+    fall_back_on('b'),
+  ]
+)`)
+	f.loadErrString("live_update", "cannot specify more than one 'fall_back_on' step")
+}
+
 func TestLiveUpdateNonStepInSteps(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

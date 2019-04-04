@@ -244,7 +244,7 @@ func (s *tiltfileState) liveUpdateFromSteps(maybeSteps starlark.Value) (model.Li
 		if fallBackStep, ok := ms.(model.LiveUpdateFallBackOnStep); ok {
 			if len(fallBackOn) != 0 {
 				return model.LiveUpdate{}, fmt.Errorf("live_update: cannot specify more than one "+
-					"fall_back_on step. (already had step: %v; got second step: %v)", fallBackOn, fallBackStep.Files)
+					"'fall_back_on' step. (already had step: %v; got second step: %v)", fallBackOn, fallBackStep.Files)
 			}
 			fallBackOn = fallBackStep.Files
 		} else {
