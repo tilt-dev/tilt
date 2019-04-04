@@ -182,7 +182,6 @@ type ViewState struct {
 	ShowNarration         bool
 	NarrationMessage      string
 	Resources             []ResourceViewState
-	LogModal              LogModal
 	ProcessedLogByteCount int
 	AlertMessage          string
 	TabState              TabState
@@ -216,34 +215,6 @@ func (c CollapseState) IsCollapsed(defaultCollapse bool) bool {
 	}
 }
 
-func (vs *ViewState) CycleViewLogState() {
-	states := []TiltLogState{TiltLogPane, TiltLogHalfScreen, TiltLogFullScreen, TiltLogMinimized}
-	for i := range states {
-		if states[i] == vs.LogModal.TiltLog {
-			vs.LogModal.TiltLog = states[(i+1)%len(states)]
-			return
-		}
-	}
-	vs.LogModal.TiltLog = TiltLogFullScreen
-}
-
 type ResourceViewState struct {
 	CollapseState CollapseState
 }
-
-type LogModal struct {
-	// if non-0, which resource's log is currently shown in a modal (1-based index)
-	ResourceLogNumber int
-
-	// if we're showing the full tilt log output in a modal
-	TiltLog TiltLogState
-}
-
-type TiltLogState int
-
-const (
-	TiltLogPane TiltLogState = iota
-	TiltLogHalfScreen
-	TiltLogFullScreen
-	TiltLogMinimized
-)
