@@ -346,6 +346,8 @@ func (s *tiltfileState) assembleK8sByWorkload() error {
 			return err
 		}
 
+		// find any other entities that match the workload's labels (e.g., services),
+		// and move them from unresourced to this resource
 		match, rest, err := k8s.FilterByMatchesPodTemplateSpec(workload, s.k8sUnresourced)
 		if err != nil {
 			return err
