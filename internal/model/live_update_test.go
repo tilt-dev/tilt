@@ -40,3 +40,31 @@ func TestNewLiveUpdateSyncAfterRun(t *testing.T) {
 	}
 	assert.Contains(t, err.Error(), "all sync steps must precede all run steps")
 }
+
+func TestNewLiveUpdateFallBackOnStepsNotFirst(t *testing.T) {
+	steps := []LiveUpdateStep{
+		LiveUpdateFallBackOnStep{[]string{"a"}},
+		LiveUpdateSyncStep{"foo", "bar"},
+		LiveUpdateFallBackOnStep{[]string{"b", "c"}},
+		LiveUpdateSyncStep{"baz", "qux"},
+	}
+	_, err := NewLiveUpdate(steps, BaseDir)
+	if !assert.Error(t, err) {
+		return
+	}
+	assert.Contains(t, err.Error(), "all fall_back_on steps must precede all other steps")
+}
+
+func TestNewLiveUpdateFallBackOnFiles(t *testing.T) {
+	steps := []LiveUpdateStep{
+		LiveUpdateFallBackOnStep{[]string{"a"}},
+		LiveUpdateFallBackOnStep{[]string{"b", "c"}},
+		LiveUpdateFallBackOnStep{[]string{"d"}},
+	}
+	lu, err := NewLiveUpdate(steps, BaseDir)
+	if !assert.NoError(t, err) {
+		return
+	}
+	expectedFallBackFiles := NewPathSet([]string{"a", "b", "c", "d"}, BaseDir)
+	assert.Equal(t, expectedFallBackFiles, lu.FallBackOnFiles())
+}
