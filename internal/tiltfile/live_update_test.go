@@ -82,22 +82,22 @@ docker_build('gcr.io/foo', 'foo',
 	f.loadErrString("'steps' must be a list of live update steps - got value '\"quu\"' of type 'string'")
 }
 
-func TestLiveUpdateNonStringInFullBuildTriggers(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-
-	f.file("Tiltfile", `
-k8s_yaml('foo.yaml')
-docker_build('gcr.io/foo', 'foo',
-  live_update=[
-	fall_back_on(4),
-    sync('bar', '/baz'),
-  ],
-)`)
-	f.loadErrString("'fall_back_on' must only contain strings - got value '4' of type 'int'")
-}
+// func TestLiveUpdateNonStringInFullBuildTriggers(t *testing.T) {
+// 	f := newFixture(t)
+// 	defer f.TearDown()
+//
+// 	f.setupFoo()
+//
+// 	f.file("Tiltfile", `
+// k8s_yaml('foo.yaml')
+// docker_build('gcr.io/foo', 'foo',
+//   live_update=[
+// 	fall_back_on(4),
+//     sync('bar', '/baz'),
+//   ],
+// )`)
+// 	f.loadErrString("'fall_back_on' must only contain strings - got value '4' of type 'int'")
+// }
 
 func TestLiveUpdateNonStringInRunTriggers(t *testing.T) {
 	f := newFixture(t)
@@ -131,59 +131,59 @@ docker_build('gcr.io/foo', 'foo',
 	f.loadErrString("sync step source", f.JoinPath("bar"), f.JoinPath("foo"), "child", "docker build context")
 }
 
-// func TestLiveUpdateDockerBuildUnqualifiedImageName(t *testing.T) {
-// 	f := newLiveUpdateFixture(t)
-// 	defer f.TearDown()
-//
-// 	f.tiltfileCode = "docker_build('foo', 'foo')"
-// 	f.init()
-//
-// 	f.load("foo")
-//
-// 	f.assertNextManifest("foo", db(imageNormalized("foo"), f.expectedLU))
-// }
-//
-// func TestLiveUpdateDockerBuildQualifiedImageName(t *testing.T) {
-// 	f := newLiveUpdateFixture(t)
-// 	defer f.TearDown()
-//
-// 	f.tiltfileCode = "docker_build('gcr.io/foo', 'foo')"
-// 	f.configuredImageName = "gcr.io/foo"
-// 	f.init()
-//
-// 	f.load("foo")
-//
-// 	f.assertNextManifest("foo", db(image("gcr.io/foo"), f.expectedLU))
-// }
-//
-// func TestLiveUpdateDockerBuildDefaultRegistry(t *testing.T) {
-// 	f := newLiveUpdateFixture(t)
-// 	defer f.TearDown()
-//
-// 	f.tiltfileCode = `
-// default_registry('gcr.io')
-// docker_build('foo', 'foo')`
-// 	f.init()
-//
-// 	f.load("foo")
-//
-// 	i := imageNormalized("foo")
-// 	i.deploymentRef = "gcr.io/foo"
-// 	f.assertNextManifest("foo", db(i, f.expectedLU))
-// }
-//
-// func TestLiveUpdateCustomBuild(t *testing.T) {
-// 	f := newLiveUpdateFixture(t)
-// 	defer f.TearDown()
-//
-// 	f.tiltfileCode = "custom_build('foo', 'docker build -t $TAG foo', ['foo'])"
-// 	f.init()
-//
-// 	f.load("foo")
-//
-// 	f.assertNextManifest("foo", cb(imageNormalized("foo"), f.expectedLU))
-// }
-//
+func TestLiveUpdateDockerBuildUnqualifiedImageName(t *testing.T) {
+	f := newLiveUpdateFixture(t)
+	defer f.TearDown()
+
+	f.tiltfileCode = "docker_build('foo', 'foo', live_update=%s)"
+	f.init()
+
+	f.load("foo")
+
+	f.assertNextManifest("foo", db(imageNormalized("foo"), f.expectedLU))
+}
+
+func TestLiveUpdateDockerBuildQualifiedImageName(t *testing.T) {
+	f := newLiveUpdateFixture(t)
+	defer f.TearDown()
+
+	f.tiltfileCode = "docker_build('gcr.io/foo', 'foo', live_update=%s)"
+	f.configuredImageName = "gcr.io/foo"
+	f.init()
+
+	f.load("foo")
+
+	f.assertNextManifest("foo", db(image("gcr.io/foo"), f.expectedLU))
+}
+
+func TestLiveUpdateDockerBuildDefaultRegistry(t *testing.T) {
+	f := newLiveUpdateFixture(t)
+	defer f.TearDown()
+
+	f.tiltfileCode = `
+default_registry('gcr.io')
+docker_build('foo', 'foo', live_update=%s)`
+	f.init()
+
+	f.load("foo")
+
+	i := imageNormalized("foo")
+	i.deploymentRef = "gcr.io/foo"
+	f.assertNextManifest("foo", db(i, f.expectedLU))
+}
+
+func TestLiveUpdateCustomBuild(t *testing.T) {
+	f := newLiveUpdateFixture(t)
+	defer f.TearDown()
+
+	f.tiltfileCode = "custom_build('foo', 'docker build -t $TAG foo', ['foo'], live_update=%s)"
+	f.init()
+
+	f.load("foo")
+
+	f.assertNextManifest("foo", cb(imageNormalized("foo"), f.expectedLU))
+}
+
 // func TestLiveUpdateRebuildTriggersOutsideOfDockerContext(t *testing.T) {
 // 	f := newFixture(t)
 // 	defer f.TearDown()
@@ -212,19 +212,20 @@ func (f *liveUpdateFixture) init() {
 	f.dockerfile("foo/Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image(f.configuredImageName)))
 
-	tiltfile := fmt.Sprintf(`
-%s
-k8s_resource('foo', 'foo.yaml')
-live_update('%s',
-  [
+	luSteps := `[
+    # fall_back_on(['foo/i', 'foo/j']),
 	sync('foo/b', '/c'),
 	run('f', ['g', 'h']),
 	restart_container(),
-  ],
-  ['foo/i', 'foo/j']
-)`, f.tiltfileCode, f.configuredImageName)
+]`
+	codeToInsert := fmt.Sprintf(f.tiltfileCode, luSteps)
+	tiltfile := fmt.Sprintf(`
+k8s_yaml('foo.yaml')
+%s
+`, codeToInsert)
 	f.file("Tiltfile", tiltfile)
 
+	fmt.Println(tiltfile)
 }
 
 func newLiveUpdateFixture(t *testing.T) *liveUpdateFixture {
