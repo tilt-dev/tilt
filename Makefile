@@ -81,6 +81,10 @@ check-js:
 	cd web && yarn install
 	cd web && yarn run check
 
+build-js:
+	cd web && yarn install
+	cd web && yarn build
+
 test-js:
 	cd web && yarn install
 	cd web && CI=true yarn test

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go/build"
 	"io"
+	"mime"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -21,6 +22,7 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/network"
+	"github.com/windmilleng/tilt/internal/ospath"
 )
 
 type AssetServer interface {
@@ -176,6 +178,49 @@ func (s prodAssetServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	_, _ = io.Copy(w, outres.Body)
 }
 
+type precompiledAssetServer struct {
+	path string
+}
+
+func (s precompiledAssetServer) Teardown(ctx context.Context) {
+}
+
+// This doesn't actually do any setup right now.
+func (s precompiledAssetServer) Serve(ctx context.Context) error {
+	logger.Get(ctx).Verbosef("Serving Tilt production precompiled assets from %s", s.path)
+	<-ctx.Done()
+	return nil
+}
+
+func (s precompiledAssetServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	origPath := req.URL.Path
+	if !strings.HasPrefix(origPath, "/static/") {
+		// redirect everything to the main entry point.
+		origPath = "index.html"
+	}
+
+	contentPath := path.Join(s.path, origPath)
+	if !ospath.IsChild(s.path, contentPath) {
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(fmt.Sprintf("Access Forbidden: %s", contentPath)))
+		return
+
+	}
+
+	f, err := os.Open(contentPath)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(err.Error()))
+		return
+	}
+	defer func() {
+		_ = f.Close()
+	}()
+
+	w.Header().Add("Content-Type", mime.TypeByExtension(filepath.Ext(contentPath)))
+	_, _ = io.Copy(w, f)
+}
+
 func NewFakeAssetServer() AssetServer {
 	loc, err := url.Parse("https://fake.tilt.dev")
 	if err != nil {
@@ -197,6 +242,18 @@ func ProvideAssetServer(ctx context.Context, webMode model.WebMode, webVersion m
 		}, nil
 	}
 
+	if webMode == model.PrecompiledWebMode {
+		pkg, err := build.Default.Import("github.com/windmilleng/tilt/internal/hud/server", ".", build.FindOnly)
+		if err != nil {
+			return nil, fmt.Errorf("Precompiled JS not found on disk: %v", err)
+		}
+
+		buildDir := filepath.Join(pkg.Dir, "../../../web/build")
+		return precompiledAssetServer{
+			path: buildDir,
+		}, nil
+	}
+
 	if webMode == model.ProdWebMode {
 		loc, err := url.Parse(fmt.Sprintf("https://storage.googleapis.com/tilt-static-assets/%s", webVersion))
 		if err != nil {
@@ -207,7 +264,7 @@ func ProvideAssetServer(ctx context.Context, webMode model.WebMode, webVersion m
 		}, nil
 	}
 
-	return nil, fmt.Errorf("Unrecognized webMode: %s", webMode)
+	return nil, model.UnrecognizedWebModeError(string(webMode))
 }
 
 func copyHeader(dst, src http.Header) {

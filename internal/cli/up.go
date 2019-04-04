@@ -167,7 +167,7 @@ func provideLogActions() store.LogActionsFlag {
 
 func provideWebMode(b BuildInfo) (model.WebMode, error) {
 	switch webModeFlag {
-	case model.LocalWebMode, model.ProdWebMode:
+	case model.LocalWebMode, model.ProdWebMode, model.PrecompiledWebMode:
 		return webModeFlag, nil
 	case model.DefaultWebMode:
 		if b.Dev {
@@ -176,7 +176,7 @@ func provideWebMode(b BuildInfo) (model.WebMode, error) {
 			return model.ProdWebMode, nil
 		}
 	}
-	return "", fmt.Errorf("Unrecognized web mode: %s", webModeFlag)
+	return "", model.UnrecognizedWebModeError(string(webModeFlag))
 }
 
 func provideWebPort() model.WebPort {

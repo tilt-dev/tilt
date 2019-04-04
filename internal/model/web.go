@@ -23,8 +23,16 @@ const (
 	// By default, we serve the js locally in dev builds and from prod in released
 	// builds.
 	DefaultWebMode WebMode = "default"
-	LocalWebMode   WebMode = "local"
-	ProdWebMode    WebMode = "prod"
+
+	// Local webpack server
+	LocalWebMode WebMode = "local"
+
+	// Prod gcloud bucket
+	ProdWebMode WebMode = "prod"
+
+	// Precompiled with `make build-js`. This is an experimental mode
+	// we're playing around with to avoid the cost of webpack startup.
+	PrecompiledWebMode WebMode = "precompiled"
 )
 
 func (m *WebMode) String() string {
@@ -35,18 +43,26 @@ func (m *WebMode) Set(v string) error {
 	switch v {
 	case string(DefaultWebMode):
 		*m = DefaultWebMode
+	case string(PrecompiledWebMode):
+		*m = PrecompiledWebMode
 	case string(LocalWebMode):
 		*m = LocalWebMode
 	case string(ProdWebMode):
 		*m = ProdWebMode
 	default:
-		return fmt.Errorf("Unknown dev mode: %s", v)
+		return UnrecognizedWebModeError(v)
 	}
 	return nil
 }
 
 func (m *WebMode) Type() string {
 	return "WebMode"
+}
+
+func UnrecognizedWebModeError(v string) error {
+	return fmt.Errorf("Unrecognized web mode: %s. Allowed values: %s", v, []WebMode{
+		DefaultWebMode, LocalWebMode, ProdWebMode, PrecompiledWebMode,
+	})
 }
 
 var emptyWebMode = WebMode("")
