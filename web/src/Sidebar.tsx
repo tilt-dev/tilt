@@ -40,7 +40,7 @@ class Sidebar extends PureComponent<SidebarProps> {
     let allItem = (
       <li>
         <Link className={allItemClasses} to="/">
-          &nbsp;ALL
+          All
         </Link>
       </li>
     )
@@ -70,23 +70,38 @@ class Sidebar extends PureComponent<SidebarProps> {
       ? `/r/${this.props.selected}/preview`
       : "/preview"
 
+    let logResourceViewClasses = `viewLink ${this.props.resourceView ===
+      ResourceView.Log && "viewLink--is-selected"}`
+    let previewResourceViewClasses = `viewLink ${this.props.resourceView ===
+      ResourceView.Preview && "viewLink--is-selected"}`
+
+    let resourceViewLinks = (
+      <React.Fragment>
+        <Link className={logResourceViewClasses} to={logResourceViewURL}>
+          Logs
+        </Link>
+        <Link
+          className={previewResourceViewClasses}
+          to={previewResourceViewURL}
+        >
+          Preview
+        </Link>
+      </React.Fragment>
+    )
+
     return (
-      <div className={classes.join(" ")}>
-        <nav className="Sidebar-main">
-          <h2 className="Sidebar-header">RESOURCES:</h2>
+      <section className={classes.join(" ")}>
+        <nav className="Sidebar-view">{resourceViewLinks}</nav>
+        <nav className="Sidebar-resources">
           <ul className="Sidebar-list">
             {allItem}
             {listItems}
           </ul>
-          <button className="Sidebar-toggle" onClick={this.props.toggleSidebar}>
-            <ChevronSvg /> Collapse
-          </button>
         </nav>
-        <nav className="Sidebar-secondary">
-          <Link to={logResourceViewURL}>Logs</Link>
-          <Link to={previewResourceViewURL}>Preview</Link>
-        </nav>
-      </div>
+        <button className="Sidebar-toggle" onClick={this.props.toggleSidebar}>
+          <ChevronSvg /> Collapse
+        </button>
+      </section>
     )
   }
 }

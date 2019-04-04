@@ -1,17 +1,30 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`renders empty resource list without crashing 1`] = `
-<div
+<section
   className="Sidebar is-closed"
 >
   <nav
-    className="Sidebar-main"
+    className="Sidebar-view"
   >
-    <h2
-      className="Sidebar-header"
+    <a
+      className="viewLink false"
+      href="/"
+      onClick={[Function]}
     >
-      RESOURCES:
-    </h2>
+      Logs
+    </a>
+    <a
+      className="viewLink false"
+      href="/preview"
+      onClick={[Function]}
+    >
+      Preview
+    </a>
+  </nav>
+  <nav
+    className="Sidebar-resources"
+  >
     <ul
       className="Sidebar-list"
     >
@@ -21,35 +34,19 @@ exports[`renders empty resource list without crashing 1`] = `
           href="/"
           onClick={[Function]}
         >
-           ALL
+          All
         </a>
       </li>
     </ul>
-    <button
-      className="Sidebar-toggle"
-      onClick={null}
-    >
-      <svg>
-        chevron.svg
-      </svg>
-       Collapse
-    </button>
   </nav>
-  <nav
-    className="Sidebar-secondary"
+  <button
+    className="Sidebar-toggle"
+    onClick={null}
   >
-    <a
-      href="/"
-      onClick={[Function]}
-    >
-      Logs
-    </a>
-    <a
-      href="/preview"
-      onClick={[Function]}
-    >
-      Preview
-    </a>
-  </nav>
-</div>
+    <svg>
+      chevron.svg
+    </svg>
+     Collapse
+  </button>
+</section>
 `;

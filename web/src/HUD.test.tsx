@@ -65,11 +65,11 @@ it("does re-render the sidebar when the resource list changes", async () => {
 
   let resourceView = oneResourceView()
   hud.setState({ View: resourceView })
-  let sidebarLinks = hud.find(".Sidebar-main Link")
+  let sidebarLinks = hud.find(".Sidebar-resources Link")
   expect(sidebarLinks).toHaveLength(2)
 
   let newResourceView = twoResourceView()
   hud.setState({ View: newResourceView })
-  sidebarLinks = hud.find(".Sidebar-main Link")
+  sidebarLinks = hud.find(".Sidebar-resources Link")
   expect(sidebarLinks).toHaveLength(3)
 })
