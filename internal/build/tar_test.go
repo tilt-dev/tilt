@@ -62,8 +62,8 @@ func TestArchivePathsIfExists(t *testing.T) {
 	}
 	actual := tar.NewReader(ab.buf)
 	f.assertFilesInTar(actual, []expectedFile{
-		expectedFile{Path: "a", Contents: "a", AssertUidAndGidAreZero: true},
-		expectedFile{Path: "b", Missing: true},
+		expectedFile{Path: "/a", Contents: "a", AssertUidAndGidAreZero: true},
+		expectedFile{Path: "/b", Missing: true},
 	})
 	assert.Equal(t, ab.Paths(), []string{f.JoinPath("a")})
 }
@@ -123,11 +123,11 @@ func TestDontArchiveTiltfile(t *testing.T) {
 		actual,
 		[]testutils.ExpectedFile{
 			testutils.ExpectedFile{
-				Path:     "a",
+				Path:     "/a",
 				Contents: "a",
 			},
 			testutils.ExpectedFile{
-				Path:    "Tiltfile",
+				Path:    "/Tiltfile",
 				Missing: true,
 			},
 		},

@@ -14,6 +14,7 @@ import (
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"
 
+	"github.com/karrick/godirwalk"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
@@ -140,7 +141,45 @@ func (a *ArchiveBuilder) entriesForPath(ctx context.Context, source, dest string
 	}
 
 	sourceIsDir := sourceInfo.IsDir()
-	if sourceIsDir {
+	result := make([]archiveEntry, 0)
+	if !sourceIsDir {
+		matches, err := a.filter.Matches(source, false)
+		if err != nil {
+			return nil, err
+		} else if matches {
+			return result, err
+		}
+
+		linkname := ""
+		if sourceInfo.Mode()&os.ModeSymlink != 0 {
+			var err error
+			linkname, err = os.Readlink(source)
+			if err != nil {
+				return result, err
+			}
+		}
+
+		header, err := tar.FileInfoHeader(sourceInfo, linkname)
+		clearUIDAndGID(header)
+		if err != nil {
+			return result, errors.Wrapf(err, "%s: making header", source)
+		}
+
+		if strings.HasSuffix(dest, string(filepath.Separator)) {
+			header.Name = filepath.Join(dest, filepath.Base(source))
+		} else {
+			header.Name = dest
+		}
+
+		header.Name = filepath.Clean(header.Name)
+		result = append(result, archiveEntry{
+			path:   source,
+			info:   sourceInfo,
+			header: header,
+		})
+
+		return result, nil
+	} else {
 		// Make sure we can trim this off filenames to get valid relative filepaths
 		if !strings.HasSuffix(source, "/") {
 			source += "/"
@@ -149,54 +188,66 @@ func (a *ArchiveBuilder) entriesForPath(ctx context.Context, source, dest string
 
 	dest = strings.TrimPrefix(dest, "/")
 
-	result := make([]archiveEntry, 0)
-	err = filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return errors.Wrapf(err, "error walking to %s", path)
-		}
+	err = godirwalk.Walk(source, &godirwalk.Options{
+		Callback: func(path string, de *godirwalk.Dirent) error {
+			matches, err := a.filter.Matches(path, de.IsDir())
+			if err != nil {
+				return err
+			} else if matches {
+				return nil
+			}
 
-		matches, err := a.filter.Matches(path, info.IsDir())
-		if err != nil {
-			return err
-		} else if matches {
-			return nil
-		}
-
-		linkname := ""
-		if info.Mode()&os.ModeSymlink != 0 {
-			var err error
-			linkname, err = os.Readlink(path)
+			info, err := os.Lstat(path)
 			if err != nil {
 				return err
 			}
-		}
 
-		header, err := tar.FileInfoHeader(info, linkname)
-		clearUIDAndGID(header)
-		if err != nil {
-			return errors.Wrapf(err, "%s: making header", path)
-		}
+			linkname := ""
+			if info.Mode()&os.ModeSymlink != 0 {
+				var err error
+				linkname, err = os.Readlink(path)
+				if err != nil {
+					return err
+				}
 
-		if sourceIsDir {
-			// Name of file in tar should be relative to source directory...
-			header.Name = strings.TrimPrefix(path, source)
-			// ...and live inside `dest`
-			header.Name = filepath.Join(dest, header.Name)
-		} else if strings.HasSuffix(dest, string(filepath.Separator)) {
-			header.Name = filepath.Join(dest, filepath.Base(source))
-		} else {
-			header.Name = dest
-		}
+				symStat, err := os.Stat(path)
+				if err != nil {
+					return err
+				}
+				if symStat.IsDir() {
+					info = symStat
+				}
+			}
 
-		header.Name = filepath.Clean(header.Name)
-		result = append(result, archiveEntry{
-			path:   path,
-			info:   info,
-			header: header,
-		})
+			header, err := tar.FileInfoHeader(info, linkname)
+			clearUIDAndGID(header)
+			if err != nil {
+				return errors.Wrapf(err, "%s: making header", path)
+			}
 
-		return nil
+			if sourceIsDir {
+				// Name of file in tar should be relative to source directory...
+				header.Name = strings.TrimPrefix(path, source)
+				// ...and live inside `dest`
+				header.Name = filepath.Join(dest, header.Name)
+			} else if strings.HasSuffix(dest, string(filepath.Separator)) {
+				header.Name = filepath.Join(dest, filepath.Base(source))
+			} else {
+				header.Name = dest
+			}
+
+			header.Name = filepath.Clean(header.Name)
+			result = append(result, archiveEntry{
+				path:   path,
+				info:   info,
+				header: header,
+			})
+
+			return nil
+		},
+		Unsorted: true, // (optional) set true for faster yet non-deterministic enumeration (see godoc)
 	})
+
 	if err != nil {
 		return nil, err
 	}

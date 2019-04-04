@@ -564,11 +564,11 @@ ADD . /
 RUN ["go", "install", "github.com/windmilleng/sancho"]`,
 		},
 		expectedFile{
-			Path:     "go/src/github.com/windmilleng/sancho/a.txt",
+			Path:     "/go/src/github.com/windmilleng/sancho/a.txt",
 			Contents: "a",
 		},
 		expectedFile{
-			Path:     "go/src/github.com/windmilleng/sancho/b.txt",
+			Path:     "/go/src/github.com/windmilleng/sancho/b.txt",
 			Contents: "b",
 		},
 	})

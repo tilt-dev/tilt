@@ -83,7 +83,7 @@ func AssertFilesInTar(t testing.TB, tr *tar.Reader, expectedFiles []ExpectedFile
 		}
 
 		if expectedSymlink && header.Typeflag != tar.TypeSymlink {
-			t.Errorf("Path %q exists but is not a directory", expected.Path)
+			t.Errorf("Path %q exists but is not a symlink", expected.Path)
 			continue
 		}
 
