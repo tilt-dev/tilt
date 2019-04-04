@@ -7,19 +7,16 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/windmilleng/tilt/internal/k8s"
-
-	"github.com/windmilleng/tilt/internal/logger"
-
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/sliceutils"
-
+	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/sliceutils"
 )
 
 type resourceSet struct {
