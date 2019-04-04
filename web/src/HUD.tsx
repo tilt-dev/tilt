@@ -157,6 +157,17 @@ class HUD extends Component<HudProps, HudState> {
       combinedLog = view.Log
     }
 
+    let previewRoute = (props: RouteComponentProps<any>) => {
+      let name = props.match.params ? props.match.params.name : ""
+      let endpoint = ""
+      if (view && name !== "") {
+        let r = view.Resources.find(r => r.Name === name)
+        endpoint = r ? r.Endpoints[0] : ""
+      }
+
+      return <PreviewPane endpoint={endpoint} />
+    }
+
     return (
       <Router>
         <div className="HUD">
@@ -175,11 +186,7 @@ class HUD extends Component<HudProps, HudState> {
             />
             <Route exact path="/r/:name" render={logsRoute} />
             <Route exact path="/r/:name/k8s" render={() => <K8sViewPane />} />
-            <Route
-              exact
-              path="/r/:name/preview"
-              render={() => <PreviewPane />}
-            />
+            <Route exact path="/r/:name/preview" render={previewRoute} />
             <Route component={NoMatch} />
           </Switch>
         </div>

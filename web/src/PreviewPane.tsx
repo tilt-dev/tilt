@@ -1,8 +1,12 @@
-import React, { Component } from "react"
+import React, { PureComponent } from "react"
 
-class PreviewPane extends Component {
+type PreviewProps = {
+  endpoint: string
+}
+
+class PreviewPane extends PureComponent<PreviewProps> {
   render() {
-    return <div>I'm the preview pane!</div>
+    return <iframe src={this.props.endpoint} />
   }
 }
 
