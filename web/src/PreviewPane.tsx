@@ -1,4 +1,5 @@
 import React, { PureComponent } from "react"
+import "./PreviewPane.scss"
 
 type PreviewProps = {
   endpoint: string
@@ -6,7 +7,11 @@ type PreviewProps = {
 
 class PreviewPane extends PureComponent<PreviewProps> {
   render() {
-    return <iframe src={this.props.endpoint} />
+    return (
+      <section className="PreviewPane">
+        <iframe src={this.props.endpoint} />
+      </section>
+    )
   }
 }
 

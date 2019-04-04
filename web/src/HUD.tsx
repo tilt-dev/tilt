@@ -176,8 +176,6 @@ class HUD extends Component<HudProps, HudState> {
             <Route path="/r/:name" render={sidebarRoute} />
             <Route render={sidebarRoute} />
           </Switch>
-
-          <Statusbar items={statusItems} />
           <Switch>
             <Route
               exact
@@ -189,6 +187,7 @@ class HUD extends Component<HudProps, HudState> {
             <Route exact path="/r/:name/preview" render={previewRoute} />
             <Route component={NoMatch} />
           </Switch>
+          <Statusbar items={statusItems} />
         </div>
       </Router>
     )

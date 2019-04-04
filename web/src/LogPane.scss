@@ -1,14 +1,25 @@
 @import "constants.scss";
 
 .LogPane {
-  margin: $spacing-unit / 2;
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: $sidebar-width;
+  bottom: $statusbar-height;
+  padding: $spacing-unit / 2;
+  overflow-y: scroll;
   font-size: $font-size-small;
-  margin-bottom: $statusbar-height + $spacing-unit / 2;
 }
 @keyframes blink {
-  0% { opacity: 1 }
-  50% { opacity: 0 }
-  100% { opacity: 1 }
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 .logEnd {
   animation: blink 1s infinite;

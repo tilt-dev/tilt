@@ -4,7 +4,6 @@
   background-color: $color-navy;
   border-left: 2px solid $color-navy-light;
   width: $sidebar-width;
-  max-width: $sidebar-maxWidth;
   box-sizing: border-box;
   position: fixed;
   overflow-y: scroll;
@@ -25,6 +24,8 @@
 
 // Resource Views
 .Sidebar-view {
+  position: sticky;
+  top: 0;
   background-color: $color-navy-dark;
   display: flex;
 }

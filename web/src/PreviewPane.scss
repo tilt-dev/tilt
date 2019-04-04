@@ -1,0 +1,16 @@
+@import "constants";
+
+.PreviewPane {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: $sidebar-width;
+  bottom: $statusbar-height;
+  background-color: $color-white;
+}
+
+.PreviewPane iframe {
+  border: 0 none;
+  width: 100%;
+  height: 100%;
+}
