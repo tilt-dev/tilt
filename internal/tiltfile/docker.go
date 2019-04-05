@@ -134,13 +134,13 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 			return nil, err
 		}
 
-		bs, err := s.readFile(dockerfilePath)
+		bs, err := s.readFile(dockerfilePath, true)
 		if err != nil {
 			return nil, errors.Wrap(err, "error reading dockerfile")
 		}
 		dockerfileContents = string(bs)
 	} else {
-		bs, err := s.readFile(dockerfilePath)
+		bs, err := s.readFile(dockerfilePath, true)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error reading dockerfile")
 		}
@@ -363,7 +363,7 @@ func (s *tiltfileState) fastBuild(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, fmt.Errorf("Parsing %q: %v", dockerRef, err)
 	}
 
-	bs, err := s.readFile(baseDockerfilePath)
+	bs, err := s.readFile(baseDockerfilePath, true)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading dockerfile")
 	}

@@ -58,7 +58,7 @@ const (
 repo = local_git_repo('.')
 img = fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile')
 img.add(repo, '/src')
-k8s_resource('foobar', yaml='snack.yaml')
+k8s_yaml('snack.yaml')
 `
 	simpleYAML    = testyaml.SnackYaml
 	testContainer = "myTestContainer"
@@ -560,8 +560,9 @@ func TestMultipleChangesOnlyDeployOneManifest(t *testing.T) {
 fast_build("gcr.io/windmill-public-containers/servantes/snack", "Dockerfile1")
 fast_build("gcr.io/windmill-public-containers/servantes/doggos", "Dockerfile2")
 
-k8s_resource("baz", 'snack.yaml')
-k8s_resource("quux", 'doggos.yaml')
+k8s_yaml(['snack.yaml', 'doggos.yaml'])
+k8s_resource('snack', new_name='baz')
+k8s_resource('doggos', new_name='quux')
 `)
 	f.WriteFile("snack.yaml", simpleYAML)
 	f.WriteFile("Dockerfile1", `FROM iron/go:prod`)
@@ -618,7 +619,8 @@ func TestSecondResourceIsBuilt(t *testing.T) {
 	f.WriteFile("Tiltfile", `
 fast_build("gcr.io/windmill-public-containers/servantes/snack", "Dockerfile1")
 
-k8s_resource("baz", 'snack.yaml')  # rename "snack" --> "baz"
+k8s_yaml('snack.yaml')
+k8s_resource('snack', new_name='baz')  # rename "snack" --> "baz"
 `)
 	f.WriteFile("snack.yaml", simpleYAML)
 	f.WriteFile("Dockerfile1", `FROM iron/go:dev1`)
@@ -639,8 +641,9 @@ k8s_resource("baz", 'snack.yaml')  # rename "snack" --> "baz"
 fast_build("gcr.io/windmill-public-containers/servantes/snack", "Dockerfile1")
 fast_build("gcr.io/windmill-public-containers/servantes/doggos", "Dockerfile2")
 
-k8s_resource("baz", 'snack.yaml')  # rename "snack" --> "baz"
-k8s_resource("quux", 'doggos.yaml')  # rename "doggos" --> "quux"
+k8s_yaml(['snack.yaml', 'doggos.yaml'])
+k8s_resource('snack', new_name='baz')  # rename "snack" --> "baz"
+k8s_resource('doggos', new_name='quux')  # rename "doggos" --> "quux"
 `)
 
 	// Expect a build of quux, the new resource
@@ -661,7 +664,8 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
 r = local_git_repo('.')
 fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
   .add(r.path('src'), '.')
-k8s_resource('foobar', 'snack.yaml')`)
+k8s_yaml('snack.yaml')
+k8s_resource('snack', new_name='foobar')`)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
 	f.WriteFile("snack.yaml", simpleYAML)
 	f.WriteFile("src/main.go", "hello")
@@ -726,7 +730,7 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 	f.WaitUntil("manifest definition order hasn't changed", func(state store.EngineState) bool {
 		return len(state.ManifestDefinitionOrder) == 1
 	})
-	f.WaitUntilManifestState("LastError was cleared", "foobar", func(ms store.ManifestState) bool {
+	f.WaitUntilManifestState("LastError was cleared", "snack", func(ms store.ManifestState) bool {
 		return ms.LastBuild().Error == nil
 	})
 
@@ -742,7 +746,7 @@ func TestBreakManifest(t *testing.T) {
 	origTiltfile := `
 fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
 	.add(local_git_repo('./nested'), '.')  # Tiltfile is not synced
-k8s_resource('foobar', yaml='snack.yaml')`
+k8s_yaml('snack.yaml')`
 
 	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll sync.
 	f.WriteFile("Tiltfile", origTiltfile)
@@ -774,7 +778,7 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 	origTiltfile := `
 fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
 	.add(local_git_repo('./nested'), '.')  # Tiltfile is not synced
-k8s_resource('foobar', yaml='snack.yaml')`
+k8s_yaml('snack.yaml')`
 	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll sync.
 	f.WriteFile("Tiltfile", origTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
@@ -810,8 +814,7 @@ func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
 		return fmt.Sprintf(`fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
 	.add(local_git_repo('./nested'), '.') \
   .run('%s')
-k8s_resource('foobar', 'snack.yaml')
-
+k8s_yaml('snack.yaml')
 `, cmd)
 	}
 
@@ -826,7 +829,7 @@ k8s_resource('foobar', 'snack.yaml')
 		return state.CompletedBuildCount == 1
 	})
 
-	name := model.ManifestName("foobar")
+	name := model.ManifestName("snack")
 	// Second call: change Tiltfile, break manifest
 	f.WriteConfigFiles("Tiltfile", "borken")
 	f.WaitUntil("manifest load error", func(st store.EngineState) bool {

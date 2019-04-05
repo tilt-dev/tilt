@@ -160,7 +160,7 @@ func TestDockerComposeAndK8sNotSupported(t *testing.T) {
 	f.file("docker-compose.yml", simpleConfig)
 	tf := `docker_compose('docker-compose.yml')
 docker_build('gcr.io/foo', 'foo')
-k8s_resource('foo', 'foo.yaml')`
+k8s_yaml('foo.yaml')`
 	f.file("Tiltfile", tf)
 
 	f.loadErrString("can't declare both k8s " +
