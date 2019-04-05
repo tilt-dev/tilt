@@ -90,15 +90,29 @@ func TestSubscriberTeardownOnRemove(t *testing.T) {
 	s := newFakeSubscriber()
 	st.AddSubscriber(s)
 
+	errChan := make(chan error)
 	go func() {
-		st.RemoveSubscriber(ctx, s)
-		st.Dispatch(NewErrorAction(fmt.Errorf("fake error")))
+		err := st.Loop(ctx)
+		errChan <- err
 	}()
-	err := st.Loop(ctx)
+
+	// Make sure the loop has started.
+	st.NotifySubscribers(ctx)
+	s.assertOnChangeCount(t, 1)
+
+	// Remove the subscriber and make sure it doesn't get a change.
+	_ = st.RemoveSubscriber(ctx, s)
+	st.NotifySubscribers(ctx)
+	s.assertOnChangeCount(t, 0)
+
+	assert.Equal(t, 1, s.teardownCount)
+
+	st.Dispatch(NewErrorAction(fmt.Errorf("fake error")))
+
+	err := <-errChan
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "fake error")
 	}
-
 	assert.Equal(t, 1, s.teardownCount)
 }
 
