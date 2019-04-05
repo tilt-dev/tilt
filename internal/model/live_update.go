@@ -5,16 +5,31 @@ import (
 )
 
 // Specifies how to update a running container.
+// 0. If any paths specified in a FallBackOn step have changed, fall back to an image build
+//    (i.e. don't do a LiveUpdate)
 // 1. If there are Sync steps in `Steps`, files will be synced as specified.
 // 2. Any time we sync one or more files, all Run and RestartContainer steps will be evaluated.
 type LiveUpdate struct {
-	Steps []LiveUpdateStep
-
-	// When files matching any of these paths change, we should fall back to a full rebuild.
-	FullRebuildTriggers PathSet
+	Steps   []LiveUpdateStep
+	BaseDir string // directory where the LiveUpdate was initialized (we'll use this to eval. any relative paths)
 }
 
-func NewLiveUpdate(steps []LiveUpdateStep, fullRebuildTriggers PathSet) (LiveUpdate, error) {
+func NewLiveUpdate(steps []LiveUpdateStep, baseDir string) (LiveUpdate, error) {
+	// Check that all FallBackOn steps come at the beginning
+	// (Technically could do this in the loop below, but it's
+	// easier to reason about/modify this way.)
+	seenNonFallBackStep := false
+	for _, step := range steps {
+		switch step.(type) {
+		case LiveUpdateFallBackOnStep:
+			if seenNonFallBackStep {
+				return LiveUpdate{}, errors.New("all fall_back_on steps must precede all other steps")
+			}
+		default:
+			seenNonFallBackStep = true
+		}
+	}
+
 	seenRunStep := false
 	for i, step := range steps {
 		switch step.(type) {
@@ -30,7 +45,7 @@ func NewLiveUpdate(steps []LiveUpdateStep, fullRebuildTriggers PathSet) (LiveUpd
 			}
 		}
 	}
-	return LiveUpdate{steps, fullRebuildTriggers}, nil
+	return LiveUpdate{steps, baseDir}, nil
 }
 
 func (lu LiveUpdate) Empty() bool { return len(lu.Steps) == 0 }
@@ -78,6 +93,19 @@ func (l LiveUpdateRunStep) toRun() Run {
 type LiveUpdateRestartContainerStep struct{}
 
 func (l LiveUpdateRestartContainerStep) liveUpdateStep() {}
+
+// FallBackOnFiles returns a PathSet of files which, if any have changed, indicate
+// that we should fall back to an image build.
+func (lu LiveUpdate) FallBackOnFiles() PathSet {
+	var files []string
+	for _, step := range lu.Steps {
+		switch step := step.(type) {
+		case LiveUpdateFallBackOnStep:
+			files = append(files, step.Files...)
+		}
+	}
+	return NewPathSet(files, lu.BaseDir)
+}
 
 func (lu LiveUpdate) SyncSteps() []Sync {
 	var syncs []Sync

@@ -224,7 +224,6 @@ func (s *tiltfileState) liveUpdateStepToModel(l liveUpdateStep) (model.LiveUpdat
 func (s *tiltfileState) liveUpdateFromSteps(maybeSteps starlark.Value) (model.LiveUpdate, error) {
 	var modelSteps []model.LiveUpdateStep
 	stepSlice := starlarkValueOrSequenceToSlice(maybeSteps)
-	var fallBackOn []string
 
 	for _, v := range stepSlice {
 		step, ok := v.(liveUpdateStep)
@@ -238,17 +237,10 @@ func (s *tiltfileState) liveUpdateFromSteps(maybeSteps starlark.Value) (model.Li
 		}
 		s.consumeLiveUpdateStep(step)
 
-		// HACK(maia): temporary hack for backwards compatibility/making this a smaller PR--
-		// use the existing LiveUpdate constructor. (Soon, we'll treat fall_back_on as
-		// just another step INTERNALLY too (instead of as a non-step property of a LiveUpdate).
-		if fallBackStep, ok := ms.(model.LiveUpdateFallBackOnStep); ok {
-			fallBackOn = append(fallBackOn, fallBackStep.Files...)
-		} else {
-			modelSteps = append(modelSteps, ms)
-		}
+		modelSteps = append(modelSteps, ms)
 	}
 
-	return model.NewLiveUpdate(modelSteps, model.NewPathSet(fallBackOn, s.absWorkingDir()))
+	return model.NewLiveUpdate(modelSteps, s.absWorkingDir())
 }
 
 func (s *tiltfileState) consumeLiveUpdateStep(stepToConsume liveUpdateStep) {
