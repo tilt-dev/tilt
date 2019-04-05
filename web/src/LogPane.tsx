@@ -16,6 +16,7 @@ let AnsiLine = React.memo(function(props: AnsiLineProps) {
 type LogPaneProps = {
   log: string
   message?: string
+  isExpanded: boolean
 }
 type LogPaneState = {
   autoscroll: boolean
@@ -82,9 +83,15 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
   }
 
   render() {
+    let classes = `LogPane ${this.props.isExpanded ? "LogPane--expanded" : ""}`
+
     let log = this.props.log
     if (!log || log.length == 0) {
-      return <p>No logs received</p>
+      return (
+        <section className={classes}>
+          <p className="LogPane-empty">No logs received</p>
+        </section>
+      )
     }
 
     let els: Array<React.ReactElement> = []
@@ -106,7 +113,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       </div>
     )
 
-    return <div className="LogPane">{els}</div>
+    return <section className={classes}>{els}</section>
   }
 }
 

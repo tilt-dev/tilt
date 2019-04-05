@@ -1,22 +1,29 @@
 @import "constants";
 
 .PreviewPane {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  padding-right: $sidebar-width;
-  bottom: $statusbar-height;
+  width: 100%;
+  margin-right: $sidebar-width;
+  margin-bottom: $statusbar-height;
   background-color: $color-white;
-  transition: padding ease-out 200ms;
+  transition: margin ease $animation-timing;
+}
+
+.PreviewPane-empty {
+  color: $color-white;
+  background-color: transparent;
+  padding: $spacing-unit / 2;
+}
+.PreviewPane-empty a {
+  color: $color-white;
 }
 
 .PreviewPane--expanded {
-  padding-right: 0;
+  margin-right: 0;
 }
 
 .PreviewPane iframe {
   border: 0 none;
   width: 100%;
+  margin-right: $sidebar-width;
   height: 100%;
 }

@@ -1,31 +1,30 @@
 @import "constants";
 
 .Sidebar {
-  background-color: $color-navy;
-  border-left: 2px solid $color-navy-light;
-  width: $sidebar-width;
-  box-sizing: border-box;
   position: fixed;
-  overflow-y: scroll;
   top: 0;
   right: 0;
-  z-index: 900;
   bottom: $statusbar-height;
+  width: $sidebar-width;
+  background-color: $color-navy;
+  border-left: 2px solid $color-navy-light;
+  box-sizing: border-box;
+  overflow-y: scroll;
   transform: translateX(0%);
-  transition: transform ease-out 200ms;
+  transition: transform ease $animation-timing;
   font-size: $font-size;
   display: flex;
   flex-direction: column;
 }
 .Sidebar.is-closed {
   transform: translateX(calc(100% - #{$spacing-unit} * 1.5));
-  transition: transform ease-in 200ms;
 }
 
 // Resource Views
 .Sidebar-view {
   position: sticky;
   top: 0;
+  right: 0;
   background-color: $color-navy-dark;
   display: flex;
 }
@@ -45,11 +44,14 @@
   border-left: 2px solid $color-navy-light;
 }
 .viewLink:hover {
+  right: 0;
   background-color: $color-navy-dark;
   color: $color-blue-light;
+  right: 0;
   background-color: $color-navy;
 }
 .viewLink--is-selected {
+  right: 0;
   background-color: $color-navy;
   border-bottom: none;
 }
@@ -72,6 +74,7 @@
 .Sidebar-toggle {
   position: sticky;
   bottom: 0;
+  right: 0;
   background-color: $color-navy;
   border: 0 none;
   border-top: 1px solid $color-navy-light;
@@ -87,6 +90,7 @@
 }
 
 .resLink {
+  right: 0;
   background-color: $color-navy;
   border-bottom: 1px solid $color-navy-light;
   color: $color-white;
@@ -97,10 +101,12 @@
   height: $sidebar-item;
 }
 .resLink:hover {
+  right: 0;
   background-color: $color-navy-dark;
   color: $color-blue-light;
 }
 .resLink.is-selected {
+  right: 0;
   background-color: $color-white;
   color: $color-navy;
 }

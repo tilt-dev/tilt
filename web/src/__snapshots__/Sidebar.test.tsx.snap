@@ -8,14 +8,14 @@ exports[`renders empty resource list without crashing 1`] = `
     className="Sidebar-view"
   >
     <a
-      className="viewLink false"
+      className="viewLink viewLink--is-selected"
       href="/"
       onClick={[Function]}
     >
       Logs
     </a>
     <a
-      className="viewLink false"
+      className="viewLink "
       href="/preview"
       onClick={[Function]}
     >

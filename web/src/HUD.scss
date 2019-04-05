@@ -1,5 +1,8 @@
 @import "constants";
 
 .HUD {
-  height: 100vh;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-height: 100vh;
 }

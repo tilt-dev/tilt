@@ -70,10 +70,16 @@ class Sidebar extends PureComponent<SidebarProps> {
       ? `/r/${this.props.selected}/preview`
       : "/preview"
 
-    let logResourceViewClasses = `viewLink ${this.props.resourceView ===
-      ResourceView.Log && "viewLink--is-selected"}`
-    let previewResourceViewClasses = `viewLink ${this.props.resourceView ===
-      ResourceView.Preview && "viewLink--is-selected"}`
+    let logResourceViewClasses = `viewLink ${
+      this.props.resourceView === ResourceView.Log
+        ? "viewLink--is-selected"
+        : ""
+    }`
+    let previewResourceViewClasses = `viewLink ${
+      this.props.resourceView === ResourceView.Preview
+        ? "viewLink--is-selected"
+        : ""
+    }`
 
     let resourceViewLinks = (
       <React.Fragment>
