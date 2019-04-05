@@ -7,7 +7,7 @@ type props = {
 
 function LoadingScreen(props: props) {
   let message = props.message || "Loading…"
-  return <div className="LoadingScreen">{message}</div>
+  return <section className="LoadingScreen">{message}</section>
 }
 
 export default LoadingScreen

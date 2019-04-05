@@ -1,0 +1,29 @@
+@import "constants";
+
+.PreviewPane {
+  width: 100%;
+  margin-right: $sidebar-width;
+  margin-bottom: $statusbar-height;
+  background-color: $color-white;
+  transition: margin ease $animation-timing;
+}
+
+.PreviewPane-empty {
+  color: $color-white;
+  background-color: transparent;
+  padding: $spacing-unit / 2;
+}
+.PreviewPane-empty a {
+  color: $color-white;
+}
+
+.PreviewPane--expanded {
+  margin-right: 0;
+}
+
+.PreviewPane iframe {
+  border: 0 none;
+  width: 100%;
+  margin-right: $sidebar-width;
+  height: 100%;
+}

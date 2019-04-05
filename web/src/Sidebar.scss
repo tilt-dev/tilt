@@ -1,25 +1,64 @@
-@import 'constants';
+@import "constants";
 
 .Sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: $statusbar-height;
   width: $sidebar-width;
-  max-width: $sidebar-maxWidth;
-  margin-left: $spacing-unit;
+  background-color: $color-navy;
   border-left: 2px solid $color-navy-light;
   box-sizing: border-box;
-  position: fixed;
   overflow-y: scroll;
-  top: 0;
-  bottom: $statusbar-height;
-  right: 0;
-  z-index: 900;
-  background-color: $color-navy;
   transform: translateX(0%);
-  transition: transform ease-out 200ms;
+  transition: transform ease $animation-timing;
   font-size: $font-size;
+  display: flex;
+  flex-direction: column;
 }
 .Sidebar.is-closed {
   transform: translateX(calc(100% - #{$spacing-unit} * 1.5));
-  transition: transform ease-in 200ms;
+}
+
+// Resource Views
+.Sidebar-view {
+  position: sticky;
+  top: 0;
+  right: 0;
+  background-color: $color-navy-dark;
+  display: flex;
+}
+.viewLink {
+  box-sizing: border-box;
+  height: $sidebar-item * 1.5;
+  flex: 1 0 50%;
+  color: inherit;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid $color-navy-light;
+  transition: color $animation-timing ease;
+}
+.viewLink + .viewLink {
+  border-left: 2px solid $color-navy-light;
+}
+.viewLink:hover {
+  right: 0;
+  background-color: $color-navy-dark;
+  color: $color-blue-light;
+  right: 0;
+  background-color: $color-navy;
+}
+.viewLink--is-selected {
+  right: 0;
+  background-color: $color-navy;
+  border-bottom: none;
+}
+
+// Resource List
+.Sidebar-resources {
+  flex: 1 0 auto;
 }
 .Sidebar-header {
   color: $color-navy-light;
@@ -31,65 +70,53 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  border-bottom: 1px solid $color-navy-light;
 }
-
 .Sidebar-toggle {
   position: sticky;
   bottom: 0;
+  right: 0;
   background-color: $color-navy;
   border: 0 none;
   border-top: 1px solid $color-navy-light;
-  width: 100%;
   color: inherit;
   font-size: inherit;
   font-family: inherit;
   display: flex;
   align-items: center;
   height: $sidebar-item;
+  line-height: $sidebar-item;
   margin: 0;
   padding: 0;
 }
 
-.Sidebar-toggle svg {
-  fill: $color-white;
-  width: $spacing-unit * 1.5;
-  transform: rotate(180deg);
-  transition-property: transform;
-  transition-duration: 0.2s;
-  transition-timing-function: ease-in;
-}
-
-.Sidebar.is-closed .Sidebar-toggle svg {
-  transform: rotate(0);
-}
-
 .resLink {
+  right: 0;
   background-color: $color-navy;
-  border-top: 1px solid $color-navy-light;
+  border-bottom: 1px solid $color-navy-light;
   color: $color-white;
-  transition: background-color 200ms ease, color 200ms ease;
+  transition: color $animation-timing ease;
   text-decoration: none;
   display: flex;
   align-items: center;
   height: $sidebar-item;
 }
-
-.resLink.is-selected,
 .resLink:hover {
+  right: 0;
   background-color: $color-navy-dark;
   color: $color-blue-light;
 }
-
+.resLink.is-selected {
+  right: 0;
+  background-color: $color-white;
+  color: $color-navy;
+}
 .resLink::before {
   content: "●";
   width: $spacing-unit * 1.5;
   text-align: center;
 }
-
 .resLink--all::before {
   content: "";
-  padding-right: $spacing-unit / 4;
 }
 .resLink--ok::before {
   color: $color-green;
@@ -102,4 +129,17 @@
 }
 .resLink--error::before {
   color: $color-red;
+}
+
+// Collapse/Expand
+.Sidebar-toggle svg {
+  fill: $color-white;
+  width: $spacing-unit * 1.5;
+  transform: rotate(180deg);
+  transition-property: transform;
+  transition-duration: 0.2s;
+  transition-timing-function: ease-in;
+}
+.Sidebar.is-closed .Sidebar-toggle svg {
+  transform: rotate(0);
 }

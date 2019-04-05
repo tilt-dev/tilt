@@ -43,6 +43,11 @@ type Resource = {
   ShowBuildStatus: boolean
 }
 
+export enum ResourceView {
+  Log,
+  Preview,
+}
+
 type HudState = {
   Message: string
   View: {
@@ -51,7 +56,7 @@ type HudState = {
     LogTimestamps: boolean
     TiltfileErrorMessage: string
   } | null
-  isSidebarClosed: boolean
+  IsSidebarClosed: boolean
 }
 
 // The Main HUD view, as specified in
@@ -74,7 +79,7 @@ class HUD extends Component<HudProps, HudState> {
         LogTimestamps: false,
         TiltfileErrorMessage: "",
       },
-      isSidebarClosed: false,
+      IsSidebarClosed: false,
     }
 
     this.toggleSidebar = this.toggleSidebar.bind(this)
@@ -95,7 +100,7 @@ class HUD extends Component<HudProps, HudState> {
   toggleSidebar() {
     this.setState(prevState => {
       return Map(prevState)
-        .set("isSidebarClosed", !prevState.isSidebarClosed)
+        .set("IsSidebarClosed", !prevState.IsSidebarClosed)
         .toObject() as HudState // NOTE(dmiller): TypeScript doesn't seem to understand what's going on here so I added a type assertion.
     })
   }
@@ -108,7 +113,7 @@ class HUD extends Component<HudProps, HudState> {
       return <LoadingScreen message={message} />
     }
 
-    let isSidebarClosed = this.state.isSidebarClosed
+    let isSidebarClosed = this.state.IsSidebarClosed
     let toggleSidebar = this.toggleSidebar
     let statusItems = resources.map(res => new StatusItem(res))
     let sidebarItems = resources.map(res => new SidebarItem(res))
@@ -120,6 +125,19 @@ class HUD extends Component<HudProps, HudState> {
           items={sidebarItems}
           isClosed={isSidebarClosed}
           toggleSidebar={toggleSidebar}
+          resourceView={ResourceView.Log}
+        />
+      )
+    }
+    let sidebarPreviewRoute = (props: RouteComponentProps<any>) => {
+      let name = props.match.params.name
+      return (
+        <Sidebar
+          selected={name}
+          items={sidebarItems}
+          isClosed={isSidebarClosed}
+          toggleSidebar={toggleSidebar}
+          resourceView={ResourceView.Preview}
         />
       )
     }
@@ -131,7 +149,7 @@ class HUD extends Component<HudProps, HudState> {
         let r = view.Resources.find(r => r.Name === name)
         logs = r ? r.CombinedLog : ""
       }
-      return <LogPane log={logs} />
+      return <LogPane log={logs} isExpanded={isSidebarClosed} />
     }
 
     let combinedLog = ""
@@ -139,28 +157,37 @@ class HUD extends Component<HudProps, HudState> {
       combinedLog = view.Log
     }
 
+    let previewRoute = (props: RouteComponentProps<any>) => {
+      let name = props.match.params ? props.match.params.name : ""
+      let endpoint = ""
+      if (view && name !== "") {
+        let r = view.Resources.find(r => r.Name === name)
+        endpoint = r ? r.Endpoints && r.Endpoints[0] : ""
+      }
+
+      return <PreviewPane endpoint={endpoint} isExpanded={isSidebarClosed} />
+    }
+
     return (
       <Router>
         <div className="HUD">
           <Switch>
+            <Route path="/r/:name/preview" render={sidebarPreviewRoute} />}
             <Route path="/r/:name" render={sidebarRoute} />
             <Route render={sidebarRoute} />
           </Switch>
-
           <Statusbar items={statusItems} />
           <Switch>
             <Route
               exact
               path="/"
-              render={() => <LogPane log={combinedLog} />}
+              render={() => (
+                <LogPane log={combinedLog} isExpanded={isSidebarClosed} />
+              )}
             />
             <Route exact path="/r/:name" render={logsRoute} />
             <Route exact path="/r/:name/k8s" render={() => <K8sViewPane />} />
-            <Route
-              exact
-              path="/r/:name/preview"
-              render={() => <PreviewPane />}
-            />
+            <Route exact path="/r/:name/preview" render={previewRoute} />
             <Route component={NoMatch} />
           </Switch>
         </div>

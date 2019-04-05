@@ -1,16 +1,34 @@
 @import "constants.scss";
 
 .LogPane {
-  margin: $spacing-unit / 2;
+  width: 100%;
+  margin-right: $sidebar-width;
+  margin-bottom: $statusbar-height;
+  overflow-y: scroll;
+  padding: $spacing-unit / 2;
   font-size: $font-size-small;
-  margin-bottom: $statusbar-height + $spacing-unit / 2;
+  transition: margin ease $animation-timing;
 }
 @keyframes blink {
-  0% { opacity: 1 }
-  50% { opacity: 0 }
-  100% { opacity: 1 }
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 .logEnd {
   animation: blink 1s infinite;
   animation-timing-function: ease;
+}
+
+.LogPane--expanded {
+  margin-right: 0;
+}
+
+.LogPane-empty {
+  margin: 0;
 }

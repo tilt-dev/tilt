@@ -1,7 +1,8 @@
-@import 'constants';
+@import "constants";
 
 .HUD {
   display: flex;
-  background-color: $color-navy;
+  align-items: stretch;
+  width: 100%;
   min-height: 100vh;
 }
