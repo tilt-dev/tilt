@@ -166,7 +166,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 					PodRestarts:     0,
 				},
 				Endpoints: []string{"1.2.3.4:8080"},
-				CrashLog:  "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
+				CrashLog:  model.NewLog("1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n"),
 			},
 		},
 	}
@@ -372,7 +372,7 @@ func TestCrashingPodInlineCrashLog(t *testing.T) {
 			{
 				Name:      "vigoda",
 				Endpoints: []string{"1.2.3.4:8080"},
-				CrashLog:  "Definitely borken",
+				CrashLog:  model.NewLog("Definitely borken"),
 				BuildHistory: []model.BuildRecord{{
 					Log:        model.NewLog("Building (1/2)\nBuilding (2/2)\n"),
 					StartTime:  ts,
@@ -433,7 +433,7 @@ func TestNonCrashingPodNoInlineCrashLog(t *testing.T) {
 			{
 				Name:      "vigoda",
 				Endpoints: []string{"1.2.3.4:8080"},
-				CrashLog:  "Definitely borken",
+				CrashLog:  model.NewLog("Definitely borken"),
 				BuildHistory: []model.BuildRecord{{
 					Log:        model.NewLog("Building (1/2)\nBuilding (2/2)\n"),
 					StartTime:  ts,

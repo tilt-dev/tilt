@@ -178,51 +178,6 @@ func isCrashing(res view.Resource) bool {
 		res.IsDC() && res.DockerComposeTarget().Status() == string(dockercompose.StatusCrash)
 }
 
-func bestLogs(res view.Resource) string {
-	// A build is in progress, triggered by an explicit edit.
-	if res.CurrentBuild.StartTime.After(res.LastBuild().FinishTime) &&
-		!res.CurrentBuild.Reason.IsCrashOnly() {
-		return res.CurrentBuild.Log.String()
-	}
-
-	// A build is in progress, triggered by a pod crash.
-	if res.CurrentBuild.StartTime.After(res.LastBuild().FinishTime) &&
-		res.CurrentBuild.Reason.IsCrashOnly() {
-		return res.CrashLog + "\n\n" + res.CurrentBuild.Log.String()
-	}
-
-	// The last build was an error.
-	if res.LastBuild().Error != nil {
-		return res.LastBuild().Log.String()
-	}
-
-	if k8sInfo, ok := res.ResourceInfo.(view.K8SResourceInfo); ok {
-		// Two cases:
-		// 1) The last build finished before this pod started
-		// 2) This log is from an in-place container update.
-		// in either case, prepend them to pod logs.
-		if (res.LastBuild().StartTime.Equal(k8sInfo.PodUpdateStartTime) ||
-			res.LastBuild().StartTime.Before(k8sInfo.PodCreationTime)) &&
-			!res.LastBuild().Log.Empty() {
-			return res.LastBuild().Log.String() + "\n" + res.ResourceInfo.RuntimeLog().String()
-		}
-
-		// The last build finished, but the pod hasn't started yet.
-		// NOTE(maia): we truncate build state time down to the second b/c
-		// pod creation time is only precise to the second.
-		// TODO(maia): can compare expected/actual DeployID for more accuracy.
-		if res.LastBuild().StartTime.Truncate(time.Second).After(k8sInfo.PodCreationTime) {
-			return res.LastBuild().Log.String()
-		}
-	}
-
-	if res.IsTiltfile {
-		return res.LastBuild().Log.String()
-	}
-
-	return res.LastBuild().Log.String() + "\n" + res.ResourceInfo.RuntimeLog().String()
-}
-
 func (r *Renderer) renderModal(fg rty.Component, bg rty.Component, fixed bool) rty.Component {
 	return rty.NewModalLayout(bg, fg, .9, fixed)
 }

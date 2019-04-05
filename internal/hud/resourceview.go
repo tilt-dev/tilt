@@ -70,9 +70,9 @@ func statusColor(res view.Resource, triggerMode model.TriggerMode) tcell.Color {
 	if res.IsTiltfile {
 		if !res.CurrentBuild.Empty() {
 			return cPending
-		} else if res.CrashLog == "" {
+		} else if res.CrashLog.Empty() {
 			return cGood
-		} else if res.CrashLog != "" {
+		} else {
 			return cBad
 		}
 	}
@@ -403,9 +403,9 @@ func (v *ResourceView) resourceExpandedRuntimeError() (rty.Component, bool) {
 	pane := rty.NewConcatLayout(rty.DirVert)
 	ok := false
 	if isCrashing(v.res) {
-		runtimeLog := v.res.CrashLog
+		runtimeLog := v.res.CrashLog.Tail(abbreviatedLogLineCount).String()
 		if runtimeLog == "" {
-			runtimeLog = v.res.ResourceInfo.RuntimeLog().String()
+			runtimeLog = v.res.ResourceInfo.RuntimeLog().Tail(abbreviatedLogLineCount).String()
 		}
 		abbrevLog := abbreviateLog(runtimeLog)
 		for _, logLine := range abbrevLog {
@@ -421,7 +421,7 @@ func (v *ResourceView) resourceExpandedBuildError() (rty.Component, bool) {
 	ok := false
 
 	if v.res.LastBuild().Error != nil {
-		abbrevLog := abbreviateLog(v.res.LastBuild().Log.String())
+		abbrevLog := abbreviateLog(v.res.LastBuild().Log.Tail(abbreviatedLogLineCount).String())
 		for _, logLine := range abbrevLog {
 			pane.Add(rty.TextString(logLine))
 			ok = true
