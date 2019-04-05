@@ -13,12 +13,9 @@
   background-color: transparent;
   padding: $spacing-unit / 2;
 }
-.PreviewPane-empty a {
-  color: $color-white;
-}
 
 .PreviewPane--expanded {
-  margin-right: 0;
+  margin-right: $sidebar-collapsed-width;
 }
 
 .PreviewPane iframe {
