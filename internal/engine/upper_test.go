@@ -1571,7 +1571,9 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 
 	// the third instance is still up, so we want to show the log from the last crashed pod plus the log from the current pod
 	f.withManifestState(name, func(ms store.ManifestState) {
-		assert.Equal(t, "second string\nthird string\n", ms.MostRecentPod().Log().String())
+		assert.Equal(t, "third string\n", ms.MostRecentPod().Log().String())
+		assert.Contains(t, ms.CombinedLog.String(), "second string\n")
+		assert.Contains(t, ms.CombinedLog.String(), "third string\n")
 	})
 
 	err := f.Stop()

@@ -502,8 +502,6 @@ type Pod struct {
 
 	HasSynclet bool
 
-	// The log for the previously active pod, if any
-	PreRestartLog model.Log `testdiff:"ignore"`
 	// The log for the currently active pod, if any
 	CurrentLog model.Log `testdiff:"ignore"`
 
@@ -546,21 +544,8 @@ func (p Pod) isAfter(p2 Pod) bool {
 	return p.PodID > p2.PodID
 }
 
-// attempting to include the most recent crash, but no preceding crashes
-// (e.g., we don't want to show the same panic 20x in a crash loop)
-// if the current pod has crashed, then just print the current pod
-// if the current pod is live, print the current pod plus the last pod
 func (p Pod) Log() model.Log {
-	var podLog model.Log
-	// if the most recent pod is up, then we want the log from the last run (if any), since it crashed
-	if p.ContainerReady && !p.PreRestartLog.Empty() {
-		podLog = model.NewLog(p.PreRestartLog.String() + p.CurrentLog.String())
-	} else {
-		// otherwise, the most recent pod has the crash itself, so just return itself
-		podLog = p.CurrentLog
-	}
-
-	return podLog
+	return p.CurrentLog
 }
 
 func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {
@@ -734,7 +719,7 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 			PodUpdateStartTime: pod.UpdateStartTime,
 			PodStatus:          pod.Status,
 			PodRestarts:        pod.ContainerRestarts - pod.OldRestarts,
-			PodLog:             pod.Log(),
+			PodLog:             pod.CurrentLog,
 			YAML:               mt.Manifest.K8sTarget().YAML,
 		}
 	}

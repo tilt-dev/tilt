@@ -708,7 +708,6 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v
 	checkForPodCrash(ctx, state, ms, *podInfo)
 
 	if int(cStatus.RestartCount) > podInfo.ContainerRestarts {
-		podInfo.PreRestartLog = podInfo.CurrentLog
 		podInfo.CurrentLog = model.Log{}
 	}
 	podInfo.ContainerRestarts = int(cStatus.RestartCount)
