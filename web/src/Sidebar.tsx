@@ -66,9 +66,12 @@ class Sidebar extends PureComponent<SidebarProps> {
     let logResourceViewURL = this.props.selected
       ? `/r/${this.props.selected}`
       : "/"
-    let previewResourceViewURL = this.props.selected
-      ? `/r/${this.props.selected}/preview`
-      : "/preview"
+    let previewResourceViewURL = "/"
+    if (this.props.selected) {
+      previewResourceViewURL = `/r/${this.props.selected}/preview`
+    } else if (this.props.items.length) {
+      previewResourceViewURL = `/r/${this.props.items[0].name}/preview`
+    }
 
     let logResourceViewClasses = `viewLink ${
       this.props.resourceView === ResourceView.Log

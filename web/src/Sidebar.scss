@@ -9,7 +9,7 @@
   background-color: $color-navy;
   border-left: 2px solid $color-navy-light;
   box-sizing: border-box;
-  overflow-y: scroll;
+  overflow-y: auto;
   transform: translateX(0%);
   transition: transform ease $animation-timing;
   font-size: $font-size;
@@ -38,18 +38,17 @@
   align-items: center;
   justify-content: center;
   border-bottom: 1px solid $color-navy-light;
-  transition: color $animation-timing ease;
+  transition-property: color, background-color;
+  transition-duration: $animation-timing;
+  transition-timing-function: ease;
   @include button-text;
 }
 .viewLink + .viewLink {
   border-left: 2px solid $color-navy-light;
 }
 .viewLink:hover {
-  right: 0;
   background-color: $color-navy-dark;
   color: $color-blue-light;
-  right: 0;
-  background-color: $color-navy;
 }
 .viewLink--is-selected {
   right: 0;
@@ -71,11 +70,13 @@
   background-color: $color-navy;
   border-bottom: 1px solid $color-navy-light;
   color: $color-white;
-  transition: color $animation-timing ease;
   text-decoration: none;
   display: flex;
   align-items: center;
   height: $sidebar-item;
+  transition-property: color, background-color;
+  transition-duration: $animation-timing;
+  transition-timing-function: ease;
 }
 .resLink:hover {
   right: 0;
@@ -131,14 +132,23 @@
   padding: 0;
   @include button-text;
   line-height: $sidebar-item;
+  cursor: pointer;
+  transition-property: color, background-color;
+  transition-duration: $animation-timing;
+  transition-timing-function: ease;
 }
-.Sidebar-toggle svg {
+.Sidebar-toggle:hover {
+  background-color: $color-navy-dark;
+  color: $color-blue-light;
+}
+.Sidebar-toggle > svg {
   fill: $color-white;
   width: $spacing-unit * 1.5;
-  transition-property: transform;
-  transition-duration: 0.2s;
-  transition-timing-function: ease-in;
+  transition: transform $animation-timing ease-in, fill $animation-timing ease;
 }
-.Sidebar.is-closed .Sidebar-toggle svg {
+.Sidebar-toggle:hover > svg {
+  fill: $color-blue-light;
+}
+.Sidebar.is-closed .Sidebar-toggle > svg {
   transform: rotate(180deg);
 }

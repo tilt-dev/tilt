@@ -16,7 +16,7 @@ exports[`renders empty resource list without crashing 1`] = `
     </a>
     <a
       className="viewLink "
-      href="/preview"
+      href="/"
       onClick={[Function]}
     >
       Preview
