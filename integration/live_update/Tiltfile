@@ -14,4 +14,4 @@ docker_build('gcr.io/windmill-test-containers/integration/live-update', '.',
              ]
 )
 
-k8s_resource('live-update', 'deploy.yaml')
+k8s_yaml('deploy.yaml')
