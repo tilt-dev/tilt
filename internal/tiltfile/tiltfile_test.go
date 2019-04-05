@@ -2705,7 +2705,7 @@ k8s_resource('foo', new_name='bar')
 	f.loadErrString("'foo' to 'bar'", "already a resource with that name")
 }
 
-func TestK8SRsourceRenameConflictingNames(t *testing.T) {
+func TestK8SResourceRenameConflictingNames(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2724,6 +2724,20 @@ k8s_resource('foo:deployment:ns2', new_name='foo')
 
 	f.assertNextManifest("foo:deployment:ns1", db(image("gcr.io/foo1")))
 	f.assertNextManifest("foo", db(image("gcr.io/foo2")))
+}
+
+func TestMultipleK8SResourceOptionsForOneResource(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+k8s_resource('foo', port_forwards=8001)
+k8s_resource('foo', port_forwards=8000)
+`)
+	f.loadErrString("k8s_resource already called for foo")
 }
 
 type fixture struct {
