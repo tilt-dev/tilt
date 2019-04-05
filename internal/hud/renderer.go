@@ -72,9 +72,7 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 
 	l.Add(r.renderResourceHeader(v))
 	l.Add(r.renderResources(v, vs))
-	if !tabsEnabled() {
-		l.Add(renderPaneHeader(vs))
-	}
+	l.Add(renderPaneHeader(vs))
 	l.Add(r.renderLogPane(v, vs))
 	l.Add(r.renderFooter(v, keyLegend(v, vs)))
 
@@ -104,9 +102,6 @@ func (r *Renderer) maybeAddAlertModal(vs view.ViewState, layout rty.Component) r
 func (r *Renderer) renderLogPane(v view.View, vs view.ViewState) rty.Component {
 	tabView := NewTabView(v, vs)
 	height := 7
-	if tabsEnabled() {
-		height = 8
-	}
 	return rty.NewFixedSize(tabView.Build(), rty.GROW, height)
 }
 
