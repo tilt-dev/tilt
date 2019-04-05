@@ -7,6 +7,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/docker/distribution/reference"
@@ -119,12 +120,11 @@ type dcServiceConfig struct {
 	RawYAML []byte        // We store this to diff against when docker-compose.yml is edited to see if the manifest has changed
 	Build   dcBuildConfig `yaml:"build"`
 	Image   string        `yaml:"image"`
-	Volumes Volumes
+	Volumes Volumes       `yaml:"volumes"`
+	Ports   Ports         `yaml:"ports"`
 }
 
-type Volumes struct {
-	Volumes []Volume
-}
+type Volumes []Volume
 
 type Volume struct {
 	Source string
@@ -146,7 +146,59 @@ func (v *Volumes) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		switch a := volume.(type) {
 		case string:
 			parts := strings.Split(a, ":")
-			v.Volumes = append(v.Volumes, Volume{Source: parts[0]})
+			*v = append(*v, Volume{Source: parts[0]})
+		}
+	}
+
+	return nil
+}
+
+type Ports []Port
+type Port struct {
+	Published int `yaml:"published"`
+}
+
+func (p *Ports) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var sliceType []interface{}
+	err := unmarshal(&sliceType)
+	if err != nil {
+		return errors.Wrap(err, "unmarshalling ports")
+	}
+
+	for _, portSpec := range sliceType {
+		// Port syntax documented here:
+		// https://docs.docker.com/compose/compose-file/#ports
+		// ports aren't critical, so on any error we want to continue quietly.
+		//
+		// Fortunately, `docker-compose config` does a lot of normalization for us,
+		// like resolving port ranges and ensuring the protocol (tcp vs udp)
+		// is always included.
+		switch portSpec := portSpec.(type) {
+		case string:
+			withoutProtocol := strings.Split(portSpec, "/")[0]
+			parts := strings.Split(withoutProtocol, ":")
+			publishedPart := parts[0]
+			if len(parts) == 3 {
+				// For "127.0.0.1:3000:3000"
+				publishedPart = parts[1]
+			}
+			port, err := strconv.Atoi(publishedPart)
+			if err != nil {
+				continue
+			}
+			*p = append(*p, Port{Published: port})
+		case map[interface{}]interface{}:
+			var portStruct Port
+			b, err := yaml.Marshal(portSpec) // so we can unmarshal it again
+			if err != nil {
+				continue
+			}
+
+			err = yaml.Unmarshal(b, &portStruct)
+			if err != nil {
+				continue
+			}
+			*p = append(*p, portStruct)
 		}
 	}
 
@@ -209,7 +261,8 @@ type dcService struct {
 	ServiceConfig []byte
 	DfContents    []byte
 
-	DependencyIDs []model.TargetID
+	DependencyIDs  []model.TargetID
+	PublishedPorts []int
 }
 
 func (c dcConfig) GetService(name string) (dcService, error) {
@@ -229,8 +282,15 @@ func (c dcConfig) GetService(name string) (dcService, error) {
 	}
 
 	var mountedLocalDirs []string
-	for _, v := range svcConfig.Volumes.Volumes {
+	for _, v := range svcConfig.Volumes {
 		mountedLocalDirs = append(mountedLocalDirs, v.Source)
+	}
+
+	var publishedPorts []int
+	for _, portSpec := range svcConfig.Ports {
+		if portSpec.Published != 0 {
+			publishedPorts = append(publishedPorts, portSpec.Published)
+		}
 	}
 
 	svc := dcService{
@@ -239,7 +299,8 @@ func (c dcConfig) GetService(name string) (dcService, error) {
 		DfPath:           dfPath,
 		MountedLocalDirs: mountedLocalDirs,
 
-		ServiceConfig: svcConfig.RawYAML,
+		ServiceConfig:  svcConfig.RawYAML,
+		PublishedPorts: publishedPorts,
 	}
 
 	if svcConfig.Image != "" {
@@ -339,7 +400,9 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcConfigPath str
 		ConfigPath: dcConfigPath,
 		YAMLRaw:    service.ServiceConfig,
 		DfRaw:      service.DfContents,
-	}.WithDependencyIDs(service.DependencyIDs)
+	}.WithDependencyIDs(service.DependencyIDs).
+		WithPublishedPorts(service.PublishedPorts).
+		WithIgnoredLocalDirectories(service.MountedLocalDirs)
 
 	m := model.Manifest{
 		Name: model.ManifestName(service.Name),
@@ -362,8 +425,7 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcConfigPath str
 		localPaths = append(localPaths, s.localPathFromString(p))
 	}
 	dcInfo = dcInfo.WithRepos(reposForPaths(localPaths)).
-		WithTiltFilename(s.filename.path).
-		WithIgnoredLocalDirectories(service.MountedLocalDirs)
+		WithTiltFilename(s.filename.path)
 
 	m = m.WithDeployTarget(dcInfo)
 
