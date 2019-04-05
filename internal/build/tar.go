@@ -158,7 +158,11 @@ func (a *ArchiveBuilder) entriesForPath(ctx context.Context, source, dest string
 		matches, err := a.filter.Matches(path, info.IsDir())
 		if err != nil {
 			return err
-		} else if matches {
+		}
+		if matches {
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 
