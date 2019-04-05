@@ -17,7 +17,7 @@
   flex-direction: column;
 }
 .Sidebar.is-closed {
-  transform: translateX(calc(100% - #{$spacing-unit} * 1.5));
+  transform: translateX(calc(100% - #{$sidebar-collapsed-width}));
 }
 
 // Resource Views
@@ -39,6 +39,7 @@
   justify-content: center;
   border-bottom: 1px solid $color-navy-light;
   transition: color $animation-timing ease;
+  @include button-text;
 }
 .viewLink + .viewLink {
   border-left: 2px solid $color-navy-light;
@@ -59,34 +60,10 @@
 // Resource List
 .Sidebar-resources {
   flex: 1 0 auto;
-}
-.Sidebar-header {
-  color: $color-navy-light;
-  font-size: $font-size;
-  font-weight: normal;
-  margin: $spacing-unit / 2;
+  font-weight: bold;
 }
 .Sidebar-list {
   list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.Sidebar-toggle {
-  position: sticky;
-  bottom: 0;
-  right: 0;
-  background-color: $color-navy;
-  border: 0 none;
-  border-top: 1px solid $color-navy-light;
-  color: inherit;
-  font-size: inherit;
-  font-family: inherit;
-  display: flex;
-  align-items: center;
-  height: $sidebar-item;
-  line-height: $sidebar-item;
-  margin: 0;
-  padding: 0;
 }
 
 .resLink {
@@ -115,8 +92,13 @@
   width: $spacing-unit * 1.5;
   text-align: center;
 }
+.resLink--all {
+  text-transform: uppercase;
+}
 .resLink--all::before {
-  content: "";
+  content: "┌";
+  color: $color-grey-dark;
+  margin-top: -8px;
 }
 .resLink--ok::before {
   color: $color-green;
@@ -132,14 +114,31 @@
 }
 
 // Collapse/Expand
+.Sidebar-toggle {
+  position: sticky;
+  bottom: 0;
+  right: 0;
+  background-color: $color-navy;
+  border: 0 none;
+  border-top: 1px solid $color-navy-light;
+  color: inherit;
+  font-size: inherit;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  height: $sidebar-item;
+  margin: 0;
+  padding: 0;
+  @include button-text;
+  line-height: $sidebar-item;
+}
 .Sidebar-toggle svg {
   fill: $color-white;
   width: $spacing-unit * 1.5;
-  transform: rotate(180deg);
   transition-property: transform;
   transition-duration: 0.2s;
   transition-timing-function: ease-in;
 }
 .Sidebar.is-closed .Sidebar-toggle svg {
-  transform: rotate(0);
+  transform: rotate(180deg);
 }

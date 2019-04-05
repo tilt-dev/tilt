@@ -6,7 +6,6 @@
   margin-bottom: $statusbar-height;
   overflow-y: scroll;
   padding: $spacing-unit / 2;
-  font-size: $font-size-small;
   transition: margin ease $animation-timing;
 }
 @keyframes blink {
@@ -26,7 +25,7 @@
 }
 
 .LogPane--expanded {
-  margin-right: 0;
+  margin-right: $sidebar-collapsed-width;
 }
 
 .LogPane-empty {
