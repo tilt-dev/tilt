@@ -101,8 +101,7 @@ func (r *Renderer) maybeAddAlertModal(vs view.ViewState, layout rty.Component) r
 
 func (r *Renderer) renderLogPane(v view.View, vs view.ViewState) rty.Component {
 	tabView := NewTabView(v, vs)
-	height := 7
-	return rty.NewFixedSize(tabView.Build(), rty.GROW, height)
+	return tabView.Build()
 }
 
 func renderPaneHeader(vs view.ViewState) rty.Component {
