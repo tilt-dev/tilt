@@ -2077,7 +2077,8 @@ func TestEmptyTiltfile(t *testing.T) {
 	})
 	f.withState(func(st store.EngineState) {
 		assert.Contains(t, st.LastTiltfileBuild.Error.Error(), "No resources found. Check out ")
-		assert.Contains(t, st.TiltfileCombinedLog.String(), "No resources found. Check out ")
+		assertContainsOnce(t, st.TiltfileCombinedLog.String(), "No resources found. Check out ")
+		assertContainsOnce(t, st.LastTiltfileBuild.Log.String(), "No resources found. Check out ")
 	})
 }
 
@@ -2699,4 +2700,9 @@ func assertLineMatches(t *testing.T, lines []string, re *regexp.Regexp) {
 		}
 	}
 	t.Fatalf("Expected line to match: %s. Lines: %v", re.String(), lines)
+}
+
+func assertContainsOnce(t *testing.T, s string, val string) {
+	assert.Contains(t, s, val)
+	assert.Equal(t, 1, strings.Count(s, val), "Expected string to appear only once")
 }
