@@ -3,11 +3,14 @@ package tiltfile
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 
 	"github.com/pkg/errors"
@@ -275,9 +278,16 @@ func (s *tiltfileState) execLocalCmd(cmd string) (string, error) {
 	// TODO(nick): Should this also inject any docker.Env overrides?
 	c := exec.Command("sh", "-c", cmd)
 	c.Dir = filepath.Dir(s.filename.path)
-	out, err := c.Output()
+	stdoutString := &strings.Builder{}
+	stderrString := &strings.Builder{}
+	stdoutWriter := io.MultiWriter(stdoutString, s.logger.Writer(logger.InfoLvl))
+	stderrWriter := io.MultiWriter(stderrString, s.logger.Writer(logger.InfoLvl))
+	c.Stdout = stdoutWriter
+	c.Stderr = stderrWriter
+
+	err := c.Run()
 	if err != nil {
-		errorMessage := fmt.Sprintf("command '%v' failed.\nerror: '%v'\nstdout: '%v'", cmd, err, string(out))
+		errorMessage := fmt.Sprintf("command '%v' failed.\nerror: '%v'\nstdout: '%v'", cmd, err, stdoutString.String())
 		exitError, ok := err.(*exec.ExitError)
 		if ok {
 			errorMessage += fmt.Sprintf("\nstderr: '%v'", string(exitError.Stderr))
@@ -285,7 +295,7 @@ func (s *tiltfileState) execLocalCmd(cmd string) (string, error) {
 		return "", errors.New(errorMessage)
 	}
 
-	return string(out), nil
+	return stdoutString.String(), nil
 }
 
 func (s *tiltfileState) execLocalCmdArgv(argv ...string) (string, error) {

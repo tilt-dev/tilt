@@ -14,7 +14,7 @@ import (
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	"github.com/stretchr/testify/assert"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -388,6 +388,8 @@ k8s_yaml(yaml)
 `)
 
 	f.load()
+
+	f.assertLogContains("gcr.io/foo")
 
 	f.assertNextManifest("foo",
 		db(image("gcr.io/foo")),
@@ -2761,6 +2763,7 @@ type fixture struct {
 	ctx context.Context
 	t   *testing.T
 	*tempdir.TempDirFixture
+	out *bytes.Buffer
 
 	tfl TiltfileLoader
 	an  *analytics.MemoryAnalytics
@@ -2782,6 +2785,7 @@ func newFixture(t *testing.T) *fixture {
 		TempDirFixture: f,
 		an:             an,
 		tfl:            tfl,
+		out:            out,
 	}
 	return r
 }
@@ -3262,6 +3266,10 @@ func (f *fixture) entities(y string) []k8s.K8sEntity {
 		f.t.Fatal(err)
 	}
 	return es
+}
+
+func (f *fixture) assertLogContains(expected string) {
+	assert.True(f.t, strings.Contains(f.out.String(), expected))
 }
 
 type secretHelper struct {
