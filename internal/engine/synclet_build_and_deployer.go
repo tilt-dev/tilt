@@ -85,13 +85,13 @@ func (sbd *SyncletBuildAndDeployer) UpdateInCluster(ctx context.Context,
 		}
 
 		// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
-		anyMatch, err := luInfo.FallBackOnFiles().AnyMatch(build.PathMappingsToLocalPaths(changedFiles))
+		anyMatch, file, err := luInfo.FallBackOnFiles().AnyMatch(build.PathMappingsToLocalPaths(changedFiles))
 		if err != nil {
 			return nil, err
 		}
 		if anyMatch {
 			return store.BuildResultSet{}, RedirectToNextBuilderf(
-				"one or more changed files match a FallBackOn file, so falling back to an image build")
+				"detected change to FallBackOn file '%s', so falling back to an image build", file)
 		}
 
 		runs = luInfo.RunSteps()

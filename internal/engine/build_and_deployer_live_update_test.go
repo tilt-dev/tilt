@@ -279,7 +279,7 @@ func TestLiveUpdateDockerBuildDeploysSynclet(t *testing.T) {
 	runTestCase(t, f, tCase)
 }
 
-func TestLiveUpdateLocalContainerFullBuildTrigger(t *testing.T) {
+func TestLiveUpdateLocalContainerFallBackOn(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
@@ -295,11 +295,12 @@ func TestLiveUpdateLocalContainerFullBuildTrigger(t *testing.T) {
 		expectDockerExecCount:    0,
 		expectDockerRestartCount: 0,
 		expectK8sDeploy:          true, // Because we fell back to image builder, we also did a k8s deploy
+		logsContain:              []string{"detected change to FallBackOn file", f.JoinPath("a.txt")},
 	}
 	runTestCase(t, f, tCase)
 }
 
-func TestLiveUpdateSyncletFullBuildTrigger(t *testing.T) {
+func TestLiveUpdateSyncletFallBackOn(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
@@ -316,6 +317,7 @@ func TestLiveUpdateSyncletFullBuildTrigger(t *testing.T) {
 		expectDockerRestartCount: 0,
 		expectK8sDeploy:          true, // because we fell back to image builder, we also did a k8s deploy
 		expectSyncletDeploy:      true, // (and expect that yaml to have contained the synclet)
+		logsContain:              []string{"detected change to FallBackOn file", f.JoinPath("a.txt")},
 	}
 	runTestCase(t, f, tCase)
 }

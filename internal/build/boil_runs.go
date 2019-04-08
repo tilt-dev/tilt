@@ -13,7 +13,7 @@ func BoilRuns(runs []model.Run, pathMappings []PathMapping) ([]model.Cmd, error)
 			continue
 		}
 
-		anyMatch, err := run.Triggers.AnyMatch(localPaths)
+		anyMatch, _, err := run.Triggers.AnyMatch(localPaths)
 		if err != nil {
 			return nil, err
 		}
