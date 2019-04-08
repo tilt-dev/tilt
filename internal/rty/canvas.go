@@ -106,6 +106,7 @@ type SubCanvas struct {
 	height    int
 	highWater int
 	style     tcell.Style
+	needsFill bool
 }
 
 func newSubCanvas(del Canvas, startX int, startY int, width int, height int, style tcell.Style) (*SubCanvas, error) {
@@ -113,6 +114,17 @@ func newSubCanvas(del Canvas, startX int, startY int, width int, height int, sty
 	if height == GROW && delHeight != GROW {
 		return nil, fmt.Errorf("can't create a growing subcanvas from a non-growing subcanvas")
 	}
+
+	needsFill := true
+	delSubCanvas, ok := del.(*SubCanvas)
+	if ok {
+		// If this is a subcanvas of a subcanvas with the exact same style (or with
+		// only the foreground different), we already reset the canvas to the
+		// current style. No need to re-fill.
+		needsFill = style.Foreground(tcell.ColorDefault) !=
+			delSubCanvas.style.Foreground(tcell.ColorDefault)
+	}
+
 	r := &SubCanvas{
 		del:       del,
 		startX:    startX,
@@ -121,10 +133,13 @@ func newSubCanvas(del Canvas, startX int, startY int, width int, height int, sty
 		height:    height,
 		highWater: -1,
 		style:     style,
+		needsFill: needsFill,
 	}
-	err := r.fill(-1)
-	if err != nil {
-		return nil, err
+	if needsFill {
+		err := r.fill(-1)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return r, nil
 }
@@ -151,9 +166,11 @@ func (c *SubCanvas) SetContent(x int, y int, mainc rune, combc []rune, style tce
 	if c.height == GROW && y > c.highWater {
 		oldHighWater := c.highWater
 		c.highWater = y
-		err := c.fill(oldHighWater)
-		if err != nil {
-			return err
+		if c.needsFill {
+			err := c.fill(oldHighWater)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return c.del.SetContent(c.startX+x, c.startY+y, mainc, combc, style)

@@ -148,16 +148,6 @@ func (f renderFrame) RenderChild(c Component) int {
 	return height
 }
 
-func (f renderFrame) Style(style tcell.Style) (Writer, error) {
-	width, height := f.canvas.Size()
-	var err error
-	f.canvas, err = newSubCanvas(f.canvas, 0, 0, width, height, style)
-	if err != nil {
-		return nil, err
-	}
-	return f, nil
-}
-
 func (f renderFrame) RenderChildInTemp(c Component) Canvas {
 	width, _ := f.canvas.Size()
 	tmp := newTempCanvas(width, GROW, f.style)
