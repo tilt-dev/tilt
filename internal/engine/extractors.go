@@ -68,7 +68,7 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 
 		state := stateSet[iTarget.ID()]
 		if state.IsEmpty() {
-			return nil, RedirectToNextBuilderf("In-place build does not support initial deploy")
+			return nil, SilentRedirectToNextBuilderf("In-place build does not support initial deploy")
 		}
 
 		// If this image doesn't need to be built at all, we can skip it.
@@ -79,7 +79,7 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 		fbInfo := iTarget.MaybeFastBuildInfo()
 		luInfo := iTarget.MaybeLiveUpdateInfo()
 		if fbInfo == nil && luInfo == nil {
-			return nil, RedirectToNextBuilderf("In-place build requires either FastBuild or LiveUpdate")
+			return nil, SilentRedirectToNextBuilderf("In-place build requires either FastBuild or LiveUpdate")
 		}
 
 		// Now that we have fast build information, we know this CAN be updated in
@@ -87,7 +87,7 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 		// that would need to be updated.
 		deployInfo := state.DeployInfo
 		if deployInfo.Empty() {
-			return nil, RedirectToNextBuilderf("In-place build needs container info")
+			return nil, SilentRedirectToNextBuilderf("In-place build needs container info")
 		}
 		iTargets = append(iTargets, iTarget)
 	}

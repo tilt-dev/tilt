@@ -40,14 +40,14 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 	}
 
 	if len(iTargets) != 1 {
-		return store.BuildResultSet{}, RedirectToNextBuilderf("Local container builder needs exactly one image target")
+		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("Local container builder needs exactly one image target")
 	}
 
 	isDC := len(extractDockerComposeTargets(specs)) > 0
 	isK8s := len(extractK8sTargets(specs)) > 0
 	canLocalUpdate := isDC || (isK8s && cbd.env.IsLocalCluster())
 	if !canLocalUpdate {
-		return store.BuildResultSet{}, RedirectToNextBuilderf("Local container builder needs docker-compose or k8s cluster w/ local updates")
+		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("Local container builder needs docker-compose or k8s cluster w/ local updates")
 	}
 
 	iTarget := iTargets[0]
@@ -65,7 +65,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 
 	// LocalContainerBuildAndDeployer doesn't support initial build
 	if state.IsEmpty() {
-		return store.BuildResultSet{}, RedirectToNextBuilderf("prev. build state is empty; container build does not support initial deploy")
+		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("prev. build state is empty; container build does not support initial deploy")
 	}
 
 	var changedFiles []build.PathMapping
@@ -86,7 +86,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 			if pmErr, ok := err.(*build.PathMappingErr); ok {
 				// expected error for this builder. One of more files don't match sync's;
 				// i.e. they're within the docker context but not within a sync; do a full image build.
-				return nil, RedirectToNextBuilderf(
+				return nil, SilentRedirectToNextBuilderf(
 					"at least one file (%s) doesn't match a LiveUpdate sync, so performing a full build", pmErr.File)
 			}
 			return store.BuildResultSet{}, err
@@ -98,7 +98,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 			return nil, err
 		}
 		if anyMatch {
-			return store.BuildResultSet{}, RedirectToNextBuilderf(
+			return store.BuildResultSet{}, RedirectToNextBuilderInfof(
 				"detected change to FallBackOn file '%s', so falling back to an image build", file)
 		}
 

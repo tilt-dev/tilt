@@ -41,12 +41,12 @@ func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store
 	}
 
 	if len(iTargets) != 1 {
-		return store.BuildResultSet{}, RedirectToNextBuilderf("Synclet container builder needs exactly one image target")
+		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("Synclet container builder needs exactly one image target")
 	}
 
 	iTarget := iTargets[0]
 	if !isImageDeployedToK8s(iTarget, extractK8sTargets(specs)) {
-		return store.BuildResultSet{}, RedirectToNextBuilderf("Synclet container builder can only deploy to k8s")
+		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("Synclet container builder can only deploy to k8s")
 	}
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-BuildAndDeploy")
@@ -78,7 +78,7 @@ func (sbd *SyncletBuildAndDeployer) UpdateInCluster(ctx context.Context,
 			if pmErr, ok := err.(*build.PathMappingErr); ok {
 				// expected error for this builder. One of more files don't match sync's;
 				// i.e. they're within the docker context but not within a sync; do a full image build.
-				return nil, RedirectToNextBuilderf(
+				return nil, SilentRedirectToNextBuilderf(
 					"at least one file (%s) doesn't match a LiveUpdate sync, so performing a full build", pmErr.File)
 			}
 			return store.BuildResultSet{}, err
@@ -90,7 +90,7 @@ func (sbd *SyncletBuildAndDeployer) UpdateInCluster(ctx context.Context,
 			return nil, err
 		}
 		if anyMatch {
-			return store.BuildResultSet{}, RedirectToNextBuilderf(
+			return store.BuildResultSet{}, RedirectToNextBuilderInfof(
 				"detected change to FallBackOn file '%s', so falling back to an image build", file)
 		}
 
