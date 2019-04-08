@@ -63,11 +63,15 @@ func (s *devAssetServer) start(ctx context.Context, stdout, stderr io.Writer) (*
 	logger.Get(ctx).Infof("Installing Tilt NodeJS dependencies…")
 	cmd := exec.CommandContext(ctx, "yarn", "install")
 	cmd.Dir = assetDir
-	cmd.Stdout = logger.Get(ctx).Writer(logger.DebugLvl)
-	cmd.Stderr = logger.Get(ctx).Writer(logger.DebugLvl)
+	stdoutString := &strings.Builder{}
+	stderrString := &strings.Builder{}
+	stdoutWriter := io.MultiWriter(stdoutString, logger.Get(ctx).Writer(logger.DebugLvl))
+	stderrWriter := io.MultiWriter(stderrString, logger.Get(ctx).Writer(logger.DebugLvl))
+	cmd.Stdout = stdoutWriter
+	cmd.Stderr = stderrWriter
 	err = cmd.Run()
 	if err != nil {
-		return nil, errors.Wrap(err, "Installing Tilt webpack deps")
+		return nil, fmt.Errorf("Error installing Tilt webpack deps:\nstdout:\n%s\nstderr:\n%s\nerror: %s", stdoutString.String(), stderrString.String(), err)
 	}
 
 	logger.Get(ctx).Infof("Starting Tilt webpack server…")
