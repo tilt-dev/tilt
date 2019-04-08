@@ -766,6 +766,18 @@ docker_build('gcr.io/c', 'c')
 	f.assertNextManifest("deployment-c", deployment("deployment-c"), service("service-c1"), service("service-c2"))
 }
 
+func TestK8sResourceWithoutDockerBuild(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(1)
+k8s_resource('foo', yaml='foo.yaml', port_forwards=8000)	
+`)
+	f.loadResourceAssemblyV1()
+	f.assertNextManifest("foo", []model.PortForward{{LocalPort: 8000}})
+}
+
 func TestImplicitK8sResourceWithoutDockerBuild(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -2644,7 +2656,7 @@ func TestOldVersionOfResourceWithAssemblyV2(t *testing.T) {
 		args   string
 		reason string
 	}{
-		{"second arg yaml", "'foo.yaml'", "second arg was valid k8s yaml"},
+		{"second arg yaml", "'foo.yaml'", "second arg was a file containing a newline"},
 		{"kw yaml", "yaml='foo.yaml'", "called with kwarg \"yaml\", which is deprecated"},
 		{"kw image", "image='foo'", "called with kwarg \"image\", which is deprecated"},
 		{"kw name", "name='foo'", "called with kwarg \"name\", which is deprecated"},
@@ -2738,6 +2750,65 @@ k8s_resource('foo', port_forwards=8001)
 k8s_resource('foo', port_forwards=8000)
 `)
 	f.loadErrString("k8s_resource already called for foo")
+}
+
+// both match the same workload, but with different identifiers
+func TestMultipleK8SResourceOptionsForOneWorkload(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+k8s_resource('foo', port_forwards=8001)
+k8s_resource('foo:deployment', port_forwards=8000)
+`)
+	f.loadErrString("k8s_resource \"foo:deployment\"", "resource \"foo\" was already configured by k8s_resource")
+}
+
+func TestK8SResourceMatchesMultipleWorkloads(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.yaml("foo.yaml",
+		deployment("foo", image("gcr.io/foo"), namespace("ns1")),
+		deployment("foo", image("gcr.io/foo"), namespace("ns2")))
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+k8s_resource('foo', port_forwards=8000)
+`)
+
+	f.loadErrString("matched two resources", "foo:deployment:ns1", "foo:deployment:ns2")
+}
+
+func TestK8SResourceEmptyWorkloadSpecifier(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+k8s_resource('', port_forwards=8000)
+`)
+
+	f.loadErrString("workload must not be empty")
+}
+
+func TestK8SResourceMoreThan4PartsInWorkload(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+k8s_resource('foo:deployment:ns1:baz:quu', port_forwards=8000)
+`)
+
+	f.loadErrString("'foo:deployment:ns1:baz:quu' has more than 4 parts")
 }
 
 type fixture struct {

@@ -115,7 +115,6 @@ const (
 	k8sYamlN                    = "k8s_yaml"
 	filterYamlN                 = "filter_yaml"
 	k8sResourceN                = "k8s_resource"
-	k8sResourceOptionsN         = "k8s_resource_options"
 	portForwardN                = "port_forward"
 	k8sKindN                    = "k8s_kind"
 	k8sImageJSONPathN           = "k8s_image_json_path"

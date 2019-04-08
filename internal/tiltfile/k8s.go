@@ -1,7 +1,9 @@
 package tiltfile
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"sort"
 	"strconv"
 	"strings"
@@ -62,7 +64,7 @@ const deprecatedResourceAssemblyV2Warning = "k8s_resource_assembly is deprecated
 	"It will no longer be supported after 2019-05-01. " +
 	"See https://tilt.dev/resource_assembly_migration.html for information on how to migrate."
 
-// holds options passed to `k8s_resource_option` until assembly happens
+// holds options passed to `k8s_resource` until assembly happens
 type k8sResourceOptions struct {
 	// if non-empty, how to rename this resource
 	newName           string
@@ -113,7 +115,7 @@ func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, a
 		return nil, err
 	}
 
-	entities, err := s.yamlEntitiesFromSkylarkValueOrList(yamlValue, true)
+	entities, err := s.yamlEntitiesFromSkylarkValueOrList(yamlValue)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +152,7 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 		}
 	}
 
-	entities, err := s.yamlEntitiesFromSkylarkValueOrList(yamlValue, true)
+	entities, err := s.yamlEntitiesFromSkylarkValueOrList(yamlValue)
 	if err != nil {
 		return nil, err
 	}
@@ -219,10 +221,20 @@ func (s *tiltfileState) isProbablyV1K8SResourceCall(args starlark.Tuple, kwargs 
 	// check positional args
 	// check if the second arg is yaml (v1) instead of a resource name (v2)
 	if args.Len() >= 2 {
-		// `false` because this isn't actually a config file - we just want to test if it's valid k8s yaml and throw it away
-		_, err := s.yamlEntitiesFromSkylarkValueOrList(args[1], false)
-		if err == nil {
-			return true, "the second arg was valid k8s yaml, which is deprecated"
+		switch x := args[1].(type) {
+		case starlark.Sequence:
+			return true, "second arg was a sequence"
+		case *blob:
+			return true, "second arg was a blob"
+		case starlark.String:
+			bs, err := ioutil.ReadFile(s.localPathFromString(string(x)).path)
+			if err == nil {
+				if bytes.ContainsRune(bs, '\n') {
+					return true, "second arg was a file containing a newline"
+				}
+			}
+		default:
+			// this is invalid in both v1 and v2 syntax, so fall back and let v2 parsing error out
 		}
 	}
 
@@ -257,7 +269,7 @@ func (s *tiltfileState) k8sResourceV1(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
-	entities, err := s.yamlEntitiesFromSkylarkValueOrList(yamlValue, true)
+	entities, err := s.yamlEntitiesFromSkylarkValueOrList(yamlValue)
 	if err != nil {
 		return nil, err
 	}
@@ -515,11 +527,11 @@ func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 	return r, nil
 }
 
-func (s *tiltfileState) yamlEntitiesFromSkylarkValueOrList(v starlark.Value, recordConfigFiles bool) ([]k8s.K8sEntity, error) {
+func (s *tiltfileState) yamlEntitiesFromSkylarkValueOrList(v starlark.Value) ([]k8s.K8sEntity, error) {
 	values := starlarkValueOrSequenceToSlice(v)
 	var ret []k8s.K8sEntity
 	for _, value := range values {
-		entities, err := s.yamlEntitiesFromSkylarkValue(value, recordConfigFiles)
+		entities, err := s.yamlEntitiesFromSkylarkValue(value)
 		if err != nil {
 			return nil, err
 		}
@@ -537,7 +549,7 @@ func parseYAMLFromBlob(blob blob) ([]k8s.K8sEntity, error) {
 	return ret, nil
 }
 
-func (s *tiltfileState) yamlEntitiesFromSkylarkValue(v starlark.Value, recordConfigFiles bool) ([]k8s.K8sEntity, error) {
+func (s *tiltfileState) yamlEntitiesFromSkylarkValue(v starlark.Value) ([]k8s.K8sEntity, error) {
 	switch v := v.(type) {
 	case nil:
 		return nil, nil
@@ -548,7 +560,7 @@ func (s *tiltfileState) yamlEntitiesFromSkylarkValue(v starlark.Value, recordCon
 		if err != nil {
 			return nil, err
 		}
-		bs, err := s.readFile(yamlPath, recordConfigFiles)
+		bs, err := s.readFile(yamlPath)
 		if err != nil {
 			return nil, errors.Wrap(err, "error reading yaml file")
 		}

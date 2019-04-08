@@ -181,10 +181,8 @@ func (s *tiltfileState) recordConfigFile(f string) {
 	s.configFiles = sliceutils.AppendWithoutDupes(s.configFiles, f)
 }
 
-func (s *tiltfileState) readFile(p localPath, recordConfigFile bool) ([]byte, error) {
-	if recordConfigFile {
-		s.recordConfigFile(p.path)
-	}
+func (s *tiltfileState) readFile(p localPath) ([]byte, error) {
+	s.recordConfigFile(p.path)
 	return ioutil.ReadFile(p.path)
 }
 
@@ -218,7 +216,7 @@ func (s *tiltfileState) skylarkReadFile(thread *starlark.Thread, fn *starlark.Bu
 		return nil, fmt.Errorf("invalid type for path: %v", err)
 	}
 
-	bs, err := s.readFile(p, true)
+	bs, err := s.readFile(p)
 	if os.IsNotExist(err) {
 		bs = []byte(defaultReturn)
 	} else if err != nil {
@@ -434,7 +432,7 @@ func (s *tiltfileState) readJson(thread *starlark.Thread, fn *starlark.Builtin, 
 		return nil, fmt.Errorf("Argument 0 (path): %v", err)
 	}
 
-	contents, err := s.readFile(localPath, true)
+	contents, err := s.readFile(localPath)
 	if err != nil {
 		// Return the default value if the file doesn't exist AND a default value was given
 		if os.IsNotExist(err) && defaultValue != nil {
