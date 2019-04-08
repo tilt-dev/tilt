@@ -115,22 +115,6 @@ docker_build('gcr.io/foo', 'foo',
 	f.loadErrString("run", "triggers", "'bar'", "contained value '4' of type 'int'. it may only contain strings")
 }
 
-func TestLiveUpdateSyncFilesOutsideOfDockerContext(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-
-	f.file("Tiltfile", `
-k8s_yaml('foo.yaml')
-docker_build('gcr.io/foo', 'foo',
-  live_update=[
-    sync('bar', '/baz'),
-  ]
-)`)
-	f.loadErrString("sync step source", f.JoinPath("bar"), f.JoinPath("foo"), "child", "docker build context")
-}
-
 func TestLiveUpdateDockerBuildUnqualifiedImageName(t *testing.T) {
 	f := newLiveUpdateFixture(t)
 	defer f.TearDown()
@@ -184,7 +168,23 @@ func TestLiveUpdateCustomBuild(t *testing.T) {
 	f.assertNextManifest("foo", cb(imageNormalized("foo"), f.expectedLU))
 }
 
-func TestLiveUpdateRebuildTriggersOutsideOfDockerContext(t *testing.T) {
+func TestLiveUpdateSyncFilesOutsideOfDockerBuildContext(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', 'foo',
+  live_update=[
+    sync('bar', '/baz'),
+  ]
+)`)
+	f.loadErrString("sync step source", f.JoinPath("bar"), f.JoinPath("foo"), "child", "any watched filepaths")
+}
+
+func TestLiveUpdateFallBackTriggersOutsideOfDockerBuildContext(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -198,7 +198,40 @@ docker_build('gcr.io/foo', 'foo',
     sync('foo/bar', '/baz'),
   ]
 )`)
-	f.loadErrString("fall_back_on", f.JoinPath("bar"), f.JoinPath("foo"), "child", "docker build context")
+	f.loadErrString("fall_back_on", f.JoinPath("bar"), f.JoinPath("foo"), "child", "any watched filepaths")
+}
+
+func TestLiveUpdateSyncFilesOutsideOfCustomBuildDeps(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+custom_build('gcr.io/foo', 'docker build -t $TAG foo', ['./foo'],
+  live_update=[
+    sync('bar', '/baz'),
+  ]
+)`)
+	f.loadErrString("sync step source", f.JoinPath("bar"), f.JoinPath("foo"), "child", "any watched filepaths")
+}
+
+func TestLiveUpdateFallBackTriggersOutsideOfCustomBuildDeps(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+custom_build('gcr.io/foo', 'docker build -t $TAG foo', ['./foo'],
+  live_update=[
+    fall_back_on('bar'),
+    sync('foo/bar', '/baz'),
+  ]
+)`)
+	f.loadErrString("fall_back_on", f.JoinPath("bar"), f.JoinPath("foo"), "child", "any watched filepaths")
 }
 
 type liveUpdateFixture struct {
