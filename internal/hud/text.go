@@ -8,6 +8,11 @@ import (
 	"github.com/windmilleng/tilt/internal/rty"
 )
 
+// The most lines we can reasonably put in the log pane. If the log pane sticks
+// around in the long term, we might want to compute this dynamically based on
+// the window size.
+const mainLogLineCount = 50
+
 func deployTimeText(t time.Time) rty.Component {
 	sb := rty.NewStringBuilder()
 	if t.IsZero() {

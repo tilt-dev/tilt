@@ -60,3 +60,14 @@ func TestLog_Timestamps(t *testing.T) {
 	expected := "hello\n2019/03/06 12:34:56 bar\n2019/03/06 12:34:56 baz\n"
 	assert.Equal(t, expected, l.String())
 }
+
+func TestLogTail(t *testing.T) {
+	l := NewLog("1\n2\n3\n4\n5\n")
+	assert.Equal(t, "", l.Tail(0).String())
+	assert.Equal(t, "5\n", l.Tail(1).String())
+	assert.Equal(t, "4\n5\n", l.Tail(2).String())
+	assert.Equal(t, "3\n4\n5\n", l.Tail(3).String())
+	assert.Equal(t, "2\n3\n4\n5\n", l.Tail(4).String())
+	assert.Equal(t, "1\n2\n3\n4\n5\n", l.Tail(5).String())
+	assert.Equal(t, "1\n2\n3\n4\n5\n", l.Tail(6).String())
+}

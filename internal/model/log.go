@@ -58,6 +58,14 @@ func NewLog(s string) Log {
 	return Log{lines: linesFromString(s)}
 }
 
+// Get at most N lines from the tail of the log.
+func (l Log) Tail(n int) Log {
+	if len(l.lines) <= n {
+		return l
+	}
+	return Log{lines: l.lines[len(l.lines)-n:]}
+}
+
 func (l Log) MarshalJSON() ([]byte, error) {
 	return json.Marshal(l.String())
 }

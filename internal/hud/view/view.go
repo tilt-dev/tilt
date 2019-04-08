@@ -83,7 +83,7 @@ type Resource struct {
 
 	// If a pod had to be killed because it was crashing, we keep the old log around
 	// for a little while.
-	CrashLog string
+	CrashLog model.Log
 
 	IsTiltfile bool
 }
@@ -150,7 +150,7 @@ func (r Resource) DefaultCollapse() bool {
 
 	autoExpand = autoExpand ||
 		r.LastBuild().Error != nil ||
-		r.CrashLog != "" ||
+		!r.CrashLog.Empty() ||
 		r.LastBuild().Reason.Has(model.BuildReasonFlagCrash) ||
 		r.CurrentBuild.Reason.Has(model.BuildReasonFlagCrash) ||
 		r.PendingBuildReason.Has(model.BuildReasonFlagCrash)

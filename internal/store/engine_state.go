@@ -646,7 +646,7 @@ func StateToView(s EngineState) view.View {
 			PendingBuildSince:  pendingBuildSince,
 			PendingBuildReason: ms.NextBuildReason(),
 			CurrentBuild:       currentBuild,
-			CrashLog:           ms.CrashLog.String(),
+			CrashLog:           ms.CrashLog,
 			Endpoints:          endpoints,
 			ResourceInfo:       resourceInfoView(mt),
 		}
@@ -694,10 +694,10 @@ func StateToView(s EngineState) view.View {
 	if !s.LastTiltfileBuild.Empty() {
 		err := s.LastTiltfileBuild.Error
 		if err == nil && s.IsEmpty() {
-			tr.CrashLog = EmptyTiltfileMsg
+			tr.CrashLog = model.NewLog(EmptyTiltfileMsg)
 			ret.TiltfileErrorMessage = EmptyTiltfileMsg
 		} else if err != nil {
-			tr.CrashLog = err.Error()
+			tr.CrashLog = model.NewLog(err.Error())
 			ret.TiltfileErrorMessage = err.Error()
 		}
 	}

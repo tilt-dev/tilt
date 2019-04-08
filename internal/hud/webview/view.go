@@ -85,10 +85,6 @@ type Resource struct {
 	ResourceInfo  ResourceInfoView
 	RuntimeStatus RuntimeStatus
 
-	// If a pod had to be killed because it was crashing, we keep the old log around
-	// for a little while.
-	CrashLog string
-
 	IsTiltfile      bool
 	ShowBuildStatus bool // if true, we show status & time in 'Build Status'; else, "N/A"
 	CombinedLog     model.Log
