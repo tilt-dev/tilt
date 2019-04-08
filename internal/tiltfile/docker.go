@@ -200,26 +200,32 @@ func (s *tiltfileState) validatedLiveUpdate(image *dockerImage) (*model.LiveUpda
 		return nil, nil
 	}
 
-	// if it's a docker build + live update, verify that all
-	// a) sync steps and
-	// b) full_rebuild_triggers
-	// are from within the docker build context
+	var watchedPaths []string
 	if image.Type() == DockerBuild {
-		for _, step := range lu.Steps {
-			if syncStep, ok := step.(model.LiveUpdateSyncStep); ok {
-				if !ospath.IsChild(image.dbBuildPath.path, syncStep.Source) {
-					return nil, fmt.Errorf("sync step source '%s' is not a child of docker build context '%s'",
-						syncStep.Source, image.dbBuildPath.path)
-				}
-			}
+		watchedPaths = []string{image.dbBuildPath.path}
+	} else if image.Type() == CustomBuild {
+		watchedPaths = image.customDeps
+	} else {
+		// don't know how to do this check ¯\_(ツ)_/¯
+		return nil, nil
+	}
+
+	// Verify that all a) sync step src's and b) fall_back_on files are children of a watched path.
+	// (If not, we'll never even get "file changed" events for them--they're nonsensical input, throw an error.)
+	for _, sync := range lu.SyncSteps() {
+		if !ospath.IsChildOfOne(watchedPaths, sync.LocalPath) {
+			return nil, fmt.Errorf("sync step source '%s' is not a child of any watched filepaths (%v)",
+				sync.LocalPath, watchedPaths)
 		}
-		for _, trigger := range lu.FallBackOnFiles().Paths {
-			absTrigger := s.absPath(trigger)
-			if !ospath.IsChild(image.dbBuildPath.path, absTrigger) {
-				return nil, fmt.Errorf("fall_back_on path '%s' is not a child of docker build context '%s'",
-					absTrigger, image.dbBuildPath.path)
-			}
+	}
+
+	for _, path := range lu.FallBackOnFiles().Paths {
+		absPath := s.absPath(path)
+		if !ospath.IsChildOfOne(watchedPaths, absPath) {
+			return nil, fmt.Errorf("fall_back_on path '%s' is not a child of any watched filepaths (%v)",
+				absPath, watchedPaths)
 		}
+
 	}
 
 	return &lu, nil
