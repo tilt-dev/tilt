@@ -194,6 +194,11 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 	return r
 }
 
+func (s *tiltfileState) warn(w string) {
+	s.logger.Infof("WARNING: %s\n", w)
+	s.warnings = append(s.warnings, w)
+}
+
 func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 	err := s.assembleImages()
 	if err != nil {
@@ -222,8 +227,7 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 
 	err = s.buildIndex.assertAllMatched()
 	if err != nil {
-		s.logger.Infof("WARNING: %s\n", err)
-		s.warnings = append(s.warnings, err.Error())
+		s.warn(err.Error())
 	}
 
 	return resourceSet{
