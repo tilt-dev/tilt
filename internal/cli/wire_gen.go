@@ -37,7 +37,11 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	if err != nil {
 		return demo.Script{}, err
 	}
-	headsUpDisplay, err := hud.NewDefaultHeadsUpDisplay(renderer, webURL)
+	analytics, err := provideAnalytics()
+	if err != nil {
+		return demo.Script{}, err
+	}
+	headsUpDisplay, err := hud.NewDefaultHeadsUpDisplay(renderer, webURL, analytics)
 	if err != nil {
 		return demo.Script{}, err
 	}
@@ -95,10 +99,6 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 		return demo.Script{}, err
 	}
 	containerUpdater := build.NewContainerUpdater(cli)
-	analytics, err := provideAnalytics()
-	if err != nil {
-		return demo.Script{}, err
-	}
 	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, analytics, env)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(cli, labels)
@@ -154,7 +154,11 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	if err != nil {
 		return Threads{}, err
 	}
-	headsUpDisplay, err := hud.NewDefaultHeadsUpDisplay(renderer, webURL)
+	analytics, err := provideAnalytics()
+	if err != nil {
+		return Threads{}, err
+	}
+	headsUpDisplay, err := hud.NewDefaultHeadsUpDisplay(renderer, webURL, analytics)
 	if err != nil {
 		return Threads{}, err
 	}
@@ -212,10 +216,6 @@ func wireThreads(ctx context.Context) (Threads, error) {
 		return Threads{}, err
 	}
 	containerUpdater := build.NewContainerUpdater(cli)
-	analytics, err := provideAnalytics()
-	if err != nil {
-		return Threads{}, err
-	}
 	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, analytics, env)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(cli, labels)
