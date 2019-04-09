@@ -1,13 +1,14 @@
 import React, { PureComponent } from "react"
 import { ReactComponent as ChevronSvg } from "./assets/svg/chevron.svg"
 import { Link } from "react-router-dom"
-import { combinedStatus } from "./status"
+import { combinedStatus, warnings } from "./status"
 import "./Sidebar.scss"
 import { ResourceView } from "./HUD"
 
 class SidebarItem {
   name: string
   status: string
+  hasWarnings: boolean
 
   /**
    * Create a pared down SidebarItem from a ResourceView
@@ -15,6 +16,7 @@ class SidebarItem {
   constructor(res: any) {
     this.name = res.Name
     this.status = combinedStatus(res)
+    this.hasWarnings = warnings(res).length > 0
   }
 }
 
@@ -53,6 +55,9 @@ class Sidebar extends PureComponent<SidebarProps> {
       let classes = `resLink resLink--${item.status}`
       if (this.props.selected === item.name) {
         classes += " is-selected"
+      }
+      if (item.hasWarnings) {
+        classes += " has-warnings"
       }
       return (
         <li key={item.name}>

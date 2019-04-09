@@ -1,6 +1,6 @@
 import React, { PureComponent } from "react"
 import { ReactComponent as LogoSvg } from "./assets/svg/logo-imagemark.svg"
-import { combinedStatus } from "./status"
+import { combinedStatus, warnings } from "./status"
 import "./Statusbar.scss"
 
 const nbsp = "\u00a0"
@@ -16,10 +16,7 @@ class StatusItem {
    */
   constructor(res: any) {
     this.name = res.Name
-
-    let buildHistory = res.BuildHistory || []
-    let lastBuild = buildHistory[0]
-    this.warningCount = ((lastBuild && lastBuild.Warnings) || []).length
+    this.warningCount = warnings(res).length
 
     let status = combinedStatus(res)
     let runtimeStatus = res.RuntimeStatus
