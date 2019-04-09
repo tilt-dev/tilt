@@ -31,12 +31,13 @@ type tiltfileState struct {
 	dcCli    dockercompose.DockerComposeClient
 
 	// added to during execution
-	configFiles    []string
-	buildIndex     *buildIndex
-	k8s            []*k8sResource
-	k8sByName      map[string]*k8sResource
-	k8sUnresourced []k8s.K8sEntity
-	dc             dcResourceSet // currently only support one d-c.yml
+	configFiles        []string
+	buildIndex         *buildIndex
+	k8s                []*k8sResource
+	k8sByName          map[string]*k8sResource
+	k8sUnresourced     []k8s.K8sEntity
+	dc                 dcResourceSet // currently only support one d-c.yml
+	k8sResourceOptions map[string]k8sResourceOptions
 
 	// ensure that any pushed images are pushed instead to this registry, rewriting names if needed
 	defaultRegistryHost string
@@ -79,6 +80,7 @@ func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClie
 		builtinCallCounts:          make(map[string]int),
 		unconsumedLiveUpdateSteps:  make(map[string]liveUpdateStep),
 		k8sResourceAssemblyVersion: 1,
+		k8sResourceOptions:         make(map[string]k8sResourceOptions),
 	}
 	s.filename = s.maybeAttachGitRepo(lp, filepath.Dir(lp.path))
 	return s
@@ -305,6 +307,27 @@ func (s *tiltfileState) assembleK8sV2() error {
 	err = s.assembleK8sUnresourced()
 	if err != nil {
 		return err
+	}
+
+	for workload, opts := range s.k8sResourceOptions {
+		if r, ok := s.k8sByName[workload]; ok {
+			r.extraPodSelectors = opts.extraPodSelectors
+			r.portForwards = opts.portForwards
+			if opts.newName != "" && opts.newName != r.name {
+				if _, ok := s.k8sByName[opts.newName]; ok {
+					return fmt.Errorf("k8s_resource at %s specified to rename '%s' to '%s', but there is already a resource with that name", opts.tiltfilePosition.String(), r.name, opts.newName)
+				}
+				delete(s.k8sByName, r.name)
+				r.name = opts.newName
+				s.k8sByName[r.name] = r
+			}
+		} else {
+			var knownResources []string
+			for name := range s.k8sByName {
+				knownResources = append(knownResources, name)
+			}
+			return fmt.Errorf("k8s_resource at %s specified unknown resource '%s'. known resources: %s", opts.tiltfilePosition.String(), workload, strings.Join(knownResources, ", "))
+		}
 	}
 
 	for _, r := range s.k8s {
