@@ -137,6 +137,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				// open if we have multiple, or what path to default to on the opened manifest.
 				_, selected := h.selectedResource()
 				if len(selected.Endpoints) > 0 {
+					h.a.Incr("ui.interactions.open_preview", map[string]string{})
 					err := browser.OpenURL(selected.Endpoints[0])
 					if err != nil {
 						h.currentViewState.AlertMessage = fmt.Sprintf("error opening url '%s' for resource '%s': %v",
