@@ -30,7 +30,11 @@ type k8sResource struct {
 	// The name of this group, for display in the UX.
 	name string
 
-	// All k8s resources to be deployed.
+	// The single workload entity for this resource (only applies to v2 resource assembly)
+	hasWorkloadEntity bool
+	workloadEntity    k8s.K8sEntity
+
+	// All extra k8s resources to be deployed, beyond the workload entity.
 	entities []k8s.K8sEntity
 
 	// Image selectors that the user manually asked to be associated with this resource.
@@ -47,6 +51,18 @@ type k8sResource struct {
 	extraPodSelectors []labels.Selector
 
 	dependencyIDs []model.TargetID
+
+	// whether this resource has already had a k8sResourceOptions applied to it
+	k8sResourceOptionsApplied bool
+	appliedOptions            k8sResourceOptions
+}
+
+func (k k8sResource) Entities() []k8s.K8sEntity {
+	if k.hasWorkloadEntity {
+		return append([]k8s.K8sEntity{k.workloadEntity}, k.entities...)
+	} else {
+		return k.entities
+	}
 }
 
 const deprecatedResourceAssemblyV1Warning = "This Tiltfile is using k8s resource assembly version 1, which has been " +
@@ -67,9 +83,23 @@ func (r *k8sResource) addRefSelector(selector container.RefSelector) {
 	r.refSelectors = append(r.refSelectors, selector)
 }
 
+func (r *k8sResource) addWorkloadEntity(workload k8s.K8sEntity, imageJSONPaths func(e k8s.K8sEntity) []k8s.JSONPath) error {
+	if r.hasWorkloadEntity {
+		return fmt.Errorf("tried to add workload %q to resource %q, when it already has workload %q", workload.Name(), r.name, r.workloadEntity.Name())
+	}
+
+	r.hasWorkloadEntity = true
+	r.workloadEntity = workload
+
+	return r.addEntityImages([]k8s.K8sEntity{workload}, imageJSONPaths)
+}
+
 func (r *k8sResource) addEntities(entities []k8s.K8sEntity, imageJSONPaths func(e k8s.K8sEntity) []k8s.JSONPath) error {
 	r.entities = append(r.entities, entities...)
+	return r.addEntityImages(entities, imageJSONPaths)
+}
 
+func (r *k8sResource) addEntityImages(entities []k8s.K8sEntity, imageJSONPaths func(e k8s.K8sEntity) []k8s.JSONPath) error {
 	for _, entity := range entities {
 		images, err := entity.FindImages(imageJSONPaths(entity))
 		if err != nil {
@@ -734,4 +764,22 @@ func uniqueResourceNames(es []k8s.K8sEntity) ([]string, error) {
 	}
 
 	return ret, nil
+}
+
+func parseK8SObjectSelector(s string) (k8sObjectSelector, error) {
+	parts := strings.Split(s, ":")
+	if len(parts) == 0 {
+		return k8sObjectSelector{}, errors.New("k8s object selector cannot be empty")
+	}
+	if len(parts) > 4 {
+		return k8sObjectSelector{}, fmt.Errorf("k8s object selector '%s' has more than 4 parts", s)
+	}
+
+	for len(parts) < 4 {
+		parts = append(parts, "")
+	}
+
+	name, kind, namespace, apiVersion := parts[0], parts[1], parts[2], parts[3]
+
+	return newK8SObjectSelector(apiVersion, kind, name, namespace)
 }

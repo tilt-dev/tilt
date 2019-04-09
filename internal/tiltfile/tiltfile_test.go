@@ -2661,6 +2661,21 @@ k8s_yaml(['foo.yaml', 'bar.yaml'])
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "bar.yaml", "foo/Dockerfile")
 }
 
+func TestMultipleK8SResourceOptionsForOneResource(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+k8s_yaml('foo.yaml')
+k8s_resource('foo', port_forwards=8001)
+k8s_resource('foo', port_forwards=8000)
+`)
+	f.loadErrString("k8s_resource already called for foo")
+}
+
 func TestK8SResourceNoMatch(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -2672,7 +2687,7 @@ k8s_yaml('foo.yaml')
 k8s_resource('bar', new_name='baz')
 `)
 
-	f.loadErrString("specified unknown resource 'bar'. known resources: foo")
+	f.loadErrString("k8s_resource \"bar\"", "did not match any resources. known resources: foo")
 }
 
 func TestK8SResourceNewName(t *testing.T) {
@@ -2691,6 +2706,22 @@ k8s_resource('foo', new_name='bar')
 	f.assertNextManifest("bar", deployment("foo"))
 }
 
+func TestK8SResourceObjectIdentifier(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+k8s_yaml('foo.yaml')
+k8s_resource('foo:deployment:', new_name='bar')
+`)
+
+	f.load()
+	f.assertNumManifests(1)
+	f.assertNextManifest("bar", deployment("foo"))
+}
+
 func TestK8SResourceNewNameConflict(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -2702,7 +2733,7 @@ k8s_yaml(['foo.yaml', 'bar.yaml'])
 k8s_resource('foo', new_name='bar')
 `)
 
-	f.loadErrString("'foo' to 'bar'", "already a resource with that name")
+	f.loadErrString("k8s_resource \"foo\"", "specified to rename \"foo\" to \"bar\", but there is already a resource with that name")
 }
 
 func TestK8SResourceRenameConflictingNames(t *testing.T) {
@@ -2727,7 +2758,7 @@ k8s_resource('foo:deployment:ns2', new_name='foo')
 	f.assertNextManifest("foo", db(image("gcr.io/foo2")))
 }
 
-func TestMultipleK8SResourceOptionsForOneResource(t *testing.T) {
+func TestMultipleK8SResourceOptionsForOneIdentifier(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2740,6 +2771,39 @@ k8s_resource('foo', port_forwards=8001)
 k8s_resource('foo', port_forwards=8000)
 `)
 	f.loadErrString("k8s_resource already called for foo")
+}
+
+// both match the same workload, but with different identifiers
+func TestMultipleK8SResourceOptionsForOneWorkload(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+k8s_yaml('foo.yaml')
+k8s_resource('foo', port_forwards=8001)
+k8s_resource('foo:deployment', port_forwards=8000)
+`)
+	f.loadErrString("resource \"foo:deployment\"", "resource \"foo\" was already configured by k8s_resource")
+}
+
+func TestK8SResourceMatchesMultipleWorkloads(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.yaml("foo.yaml",
+		deployment("foo", image("gcr.io/foo"), namespace("ns1")),
+		deployment("foo", image("gcr.io/foo"), namespace("ns2")))
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+k8s_yaml('foo.yaml')
+k8s_resource('foo', port_forwards=8000)
+`)
+
+	f.loadErrString("matched two resources", "foo:deployment:ns1", "foo:deployment:ns2")
 }
 
 func TestK8SResourceEmptyWorkloadSpecifier(t *testing.T) {
@@ -2755,6 +2819,21 @@ k8s_resource('', port_forwards=8000)
 `)
 
 	f.loadErrString("workload must not be empty")
+}
+
+func TestK8SResourceMoreThan4PartsInWorkload(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+k8s_yaml('foo.yaml')
+k8s_resource('foo:deployment:ns1:baz:quu', port_forwards=8000)
+`)
+
+	f.loadErrString("'foo:deployment:ns1:baz:quu' has more than 4 parts")
 }
 
 type fixture struct {

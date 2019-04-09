@@ -309,25 +309,9 @@ func (s *tiltfileState) assembleK8sV2() error {
 		return err
 	}
 
-	for workload, opts := range s.k8sResourceOptions {
-		if r, ok := s.k8sByName[workload]; ok {
-			r.extraPodSelectors = opts.extraPodSelectors
-			r.portForwards = opts.portForwards
-			if opts.newName != "" && opts.newName != r.name {
-				if _, ok := s.k8sByName[opts.newName]; ok {
-					return fmt.Errorf("k8s_resource at %s specified to rename '%s' to '%s', but there is already a resource with that name", opts.tiltfilePosition.String(), r.name, opts.newName)
-				}
-				delete(s.k8sByName, r.name)
-				r.name = opts.newName
-				s.k8sByName[r.name] = r
-			}
-		} else {
-			var knownResources []string
-			for name := range s.k8sByName {
-				knownResources = append(knownResources, name)
-			}
-			return fmt.Errorf("k8s_resource at %s specified unknown resource '%s'. known resources: %s", opts.tiltfilePosition.String(), workload, strings.Join(knownResources, ", "))
-		}
+	err = s.applyK8sResourceOptions()
+	if err != nil {
+		return err
 	}
 
 	for _, r := range s.k8s {
@@ -363,7 +347,7 @@ func (s *tiltfileState) assembleK8sByWorkload() error {
 		if err != nil {
 			return err
 		}
-		err = res.addEntities([]k8s.K8sEntity{workload}, s.imageJSONPaths)
+		err = res.addWorkloadEntity(workload, s.imageJSONPaths)
 		if err != nil {
 			return err
 		}
@@ -393,6 +377,63 @@ func (s *tiltfileState) isWorkload(e k8s.K8sEntity) (bool, error) {
 	} else {
 		return len(images) > 0, nil
 	}
+}
+
+func (s *tiltfileState) applyK8sResourceOption(workload string, opts k8sResourceOptions) error {
+	sel, err := parseK8SObjectSelector(workload)
+	if err != nil {
+		return err
+	}
+
+	matched := false
+	var matchedRes *k8sResource
+	for _, r := range s.k8s {
+		if r.hasWorkloadEntity && sel.matches(r.workloadEntity) {
+			// ensure that we do not have multiple options per resource, or multiple resources per option
+			if matched {
+				return fmt.Errorf("matched two resources: %q and %q", matchedRes.name, r.name)
+			}
+			if r.k8sResourceOptionsApplied {
+				return fmt.Errorf("resource %q was already configured by k8s_resource at %s", r.name, r.appliedOptions.tiltfilePosition.String())
+			}
+
+			r.k8sResourceOptionsApplied = true
+			r.appliedOptions = opts
+			matched = true
+			matchedRes = r
+			r.extraPodSelectors = opts.extraPodSelectors
+			r.portForwards = opts.portForwards
+			if opts.newName != "" && opts.newName != r.name {
+				if _, ok := s.k8sByName[opts.newName]; ok {
+					return fmt.Errorf("specified to rename %q to %q, but there is already a resource with that name", r.name, opts.newName)
+				}
+				delete(s.k8sByName, r.name)
+				r.name = opts.newName
+				s.k8sByName[r.name] = r
+			}
+		}
+	}
+
+	if !matched {
+		var knownResources []string
+		for name := range s.k8sByName {
+			knownResources = append(knownResources, name)
+		}
+		return fmt.Errorf("did not match any resources. known resources: %s", strings.Join(knownResources, ", "))
+	}
+
+	return nil
+}
+
+func (s *tiltfileState) applyK8sResourceOptions() error {
+	for workload, opts := range s.k8sResourceOptions {
+		err := s.applyK8sResourceOption(workload, opts)
+		if err != nil {
+			return errors.Wrapf(err, "k8s_resource %q at %s", workload, opts.tiltfilePosition)
+		}
+	}
+
+	return nil
 }
 
 // assembleK8sWithImages matches images we know how to build with any k8s entities
@@ -455,7 +496,7 @@ func (s *tiltfileState) assembleK8sUnresourced() error {
 }
 
 func (s *tiltfileState) validateK8s(r *k8sResource) error {
-	if len(r.entities) == 0 {
+	if len(r.Entities()) == 0 {
 		if len(r.refSelectors) > 0 {
 			return fmt.Errorf("resource %q: could not find k8s entities matching "+
 				"image(s) %q; perhaps there's a typo?",
@@ -606,7 +647,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 			Name: mn,
 		}
 
-		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.portForwardsToDomain(r), r.extraPodSelectors, r.dependencyIDs)
+		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.Entities(), s.portForwardsToDomain(r), r.extraPodSelectors, r.dependencyIDs)
 		if err != nil {
 			return nil, err
 		}
@@ -758,6 +799,15 @@ type k8sObjectSelector struct {
 	namespace *regexp.Regexp
 }
 
+// change a regex to only match full strings
+func reAnchor(s string) string {
+	if s == "" {
+		return s
+	} else {
+		return fmt.Sprintf("^(?:%s)$", s)
+	}
+}
+
 // Creates a new k8sObjectSelector
 // If an arg is an empty string, it will become an empty regex that matches all input
 func newK8SObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
@@ -772,22 +822,22 @@ func newK8SObjectSelector(apiVersion string, kind string, name string, namespace
 		}
 	}
 
-	ret.apiVersion, err = regexp.Compile(makeCaseInsensitive(apiVersion))
+	ret.apiVersion, err = regexp.Compile(reAnchor(makeCaseInsensitive(apiVersion)))
 	if err != nil {
 		return k8sObjectSelector{}, errors.Wrap(err, "error parsing apiVersion regexp")
 	}
 
-	ret.kind, err = regexp.Compile(makeCaseInsensitive(kind))
+	ret.kind, err = regexp.Compile(reAnchor(makeCaseInsensitive(kind)))
 	if err != nil {
 		return k8sObjectSelector{}, errors.Wrap(err, "error parsing kind regexp")
 	}
 
-	ret.name, err = regexp.Compile(makeCaseInsensitive(name))
+	ret.name, err = regexp.Compile(reAnchor(makeCaseInsensitive(name)))
 	if err != nil {
 		return k8sObjectSelector{}, errors.Wrap(err, "error parsing name regexp")
 	}
 
-	ret.namespace, err = regexp.Compile(makeCaseInsensitive(namespace))
+	ret.namespace, err = regexp.Compile(reAnchor(makeCaseInsensitive(namespace)))
 	if err != nil {
 		return k8sObjectSelector{}, errors.Wrap(err, "error parsing namespace regexp")
 	}
