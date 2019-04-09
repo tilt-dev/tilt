@@ -5,13 +5,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
-
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
 func TestHandleAnalyticsEmptyRequest(t *testing.T) {
@@ -123,14 +122,12 @@ func TestHandleAnalyticsErrorsIfNotIncr(t *testing.T) {
 type serverFixture struct {
 	t *testing.T
 	s server.HeadsUpServer
-	a *fakeAnalytics
+	a *analytics.MemoryAnalytics
 }
 
 func newTestFixture(t *testing.T) *serverFixture {
 	st := store.NewStore(engine.UpperReducer, store.LogActionsFlag(false))
-	a := &fakeAnalytics{
-		increments: map[string]int{},
-	}
+	a := analytics.NewMemoryAnalytics()
 	s := server.ProvideHeadsUpServer(st, server.NewFakeAssetServer(), a)
 
 	return &serverFixture{
@@ -141,19 +138,12 @@ func newTestFixture(t *testing.T) *serverFixture {
 }
 
 func (f *serverFixture) assertIncrement(name string, count int) {
-	contains := assert.Contains(f.t, f.a.increments, name)
-	if contains {
-		assert.Equal(f.t, count, f.a.increments[name])
+	runningCount := 0
+	for _, c := range f.a.Counts {
+		if c.Name == name {
+			runningCount += c.N
+		}
 	}
-}
 
-type fakeAnalytics struct {
-	increments map[string]int
+	assert.Equalf(f.t, count, runningCount, "Expected the total count to be %d, got %d", count, runningCount)
 }
-
-func (a *fakeAnalytics) Count(name string, tags map[string]string, n int) {}
-func (a *fakeAnalytics) Incr(name string, tags map[string]string) {
-	a.increments[name]++
-}
-func (a *fakeAnalytics) Timer(name string, dur time.Duration, tags map[string]string) {}
-func (a *fakeAnalytics) Flush(timeout time.Duration)                                  {}
