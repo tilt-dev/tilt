@@ -12,9 +12,9 @@ import (
 )
 
 type analyticsPayload struct {
-	Verb string
-	Name string
-	Tags map[string]string
+	Verb string            `json:"verb"`
+	Name string            `json:"name"`
+	Tags map[string]string `json:"tags"`
 }
 
 type HeadsUpServer struct {
@@ -66,13 +66,13 @@ func (s HeadsUpServer) HandleAnalytics(w http.ResponseWriter, req *http.Request)
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&payloads)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("error parsing JSON payload: %v", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("error parsing JSON payload: %v", err), http.StatusBadRequest)
 		return
 	}
 
 	for _, p := range payloads {
 		if p.Verb != "incr" {
-			http.Error(w, "error parsing payloads: only incr verbs are supported", http.StatusInternalServerError)
+			http.Error(w, "error parsing payloads: only incr verbs are supported", http.StatusBadRequest)
 			return
 		}
 

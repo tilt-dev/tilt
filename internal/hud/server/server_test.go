@@ -38,7 +38,7 @@ func TestHandleAnalyticsEmptyRequest(t *testing.T) {
 func TestHandleAnalyticsRecordsIncr(t *testing.T) {
 	f := newTestFixture(t)
 
-	var jsonStr = []byte(`[{"Verb": "incr", "Name": "foo", "Tags": {}}]`)
+	var jsonStr = []byte(`[{"verb": "incr", "name": "foo", "tags": {}}]`)
 	req, err := http.NewRequest(http.MethodPost, "/api/analytics", bytes.NewBuffer(jsonStr))
 	if err != nil {
 		t.Fatal(err)
@@ -93,16 +93,16 @@ func TestHandleAnalyticsMalformedPayload(t *testing.T) {
 
 	handler.ServeHTTP(rr, req)
 
-	if status := rr.Code; status != http.StatusInternalServerError {
+	if status := rr.Code; status != http.StatusBadRequest {
 		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusInternalServerError)
+			status, http.StatusBadRequest)
 	}
 }
 
 func TestHandleAnalyticsErrorsIfNotIncr(t *testing.T) {
 	f := newTestFixture(t)
 
-	var jsonStr = []byte(`[{"Verb": "count", "Name": "foo", "Tags": {}}]`)
+	var jsonStr = []byte(`[{"verb": "count", "name": "foo", "tags": {}}]`)
 	req, err := http.NewRequest(http.MethodPost, "/api/analytics", bytes.NewBuffer(jsonStr))
 	if err != nil {
 		t.Fatal(err)
@@ -114,9 +114,9 @@ func TestHandleAnalyticsErrorsIfNotIncr(t *testing.T) {
 
 	handler.ServeHTTP(rr, req)
 
-	if status := rr.Code; status != http.StatusInternalServerError {
+	if status := rr.Code; status != http.StatusBadRequest {
 		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusInternalServerError)
+			status, http.StatusBadRequest)
 	}
 }
 
