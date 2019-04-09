@@ -741,6 +741,29 @@ func TestRenderEscapedNbsp(t *testing.T) {
 	rtf.run("escaped nbsp", 70, 20, v, plainVs)
 }
 
+func TestLineWrappingInInlineError(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+	vs := fakeViewState(1, view.CollapseNo)
+	lines := []string{}
+	for i := 0; i < 10; i++ {
+		lines = append(lines, fmt.Sprintf("line %d: %s", i, strings.Repeat("xxx ", 20)))
+	}
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name: "vigoda",
+				BuildHistory: []model.BuildRecord{{
+					FinishTime: time.Now(),
+					Error:      fmt.Errorf("failure"),
+					Log:        model.NewLog(strings.Join(lines, "\n")),
+				}},
+				ResourceInfo: view.K8SResourceInfo{},
+			},
+		},
+	}
+	rtf.run("line wrapping in inline error", 80, 40, v, vs)
+}
+
 type rendererTestFixture struct {
 	i rty.InteractiveTester
 }
