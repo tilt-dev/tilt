@@ -171,12 +171,24 @@ func (r Resource) IsCollapsed(rv ResourceViewState) bool {
 // Client should always hold this as a value struct, and copy it
 // whenever they need to mutate something.
 type View struct {
-	Log                  model.Log
-	Resources            []Resource
-	TiltfileErrorMessage string
-	TriggerMode          model.TriggerMode
-	IsProfiling          bool
-	LogTimestamps        bool
+	Log           model.Log
+	Resources     []Resource
+	TriggerMode   model.TriggerMode
+	IsProfiling   bool
+	LogTimestamps bool
+}
+
+func (v View) TiltfileErrorMessage() string {
+	for _, res := range v.Resources {
+		if res.Name == TiltfileResourceName {
+			err := res.LastBuild().Error
+			if err != nil {
+				return err.Error()
+			}
+			return ""
+		}
+	}
+	return ""
 }
 
 type ViewState struct {

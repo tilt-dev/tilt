@@ -54,7 +54,6 @@ type HudState = {
     Resources: Array<Resource>
     Log: string
     LogTimestamps: boolean
-    TiltfileErrorMessage: string
   } | null
   IsSidebarClosed: boolean
 }
@@ -77,7 +76,6 @@ class HUD extends Component<HudProps, HudState> {
         Resources: [],
         Log: "",
         LogTimestamps: false,
-        TiltfileErrorMessage: "",
       },
       IsSidebarClosed: false,
     }

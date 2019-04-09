@@ -91,42 +91,6 @@ func TestMostRecentPod(t *testing.T) {
 	assert.Equal(t, "pod-b", podSet.MostRecentPod().PodID.String())
 }
 
-func TestEmptyState(t *testing.T) {
-	es := newState([]model.Manifest{}, model.Manifest{})
-
-	v := StateToView(*es)
-	assert.Equal(t, "", v.TiltfileErrorMessage)
-
-	es.LastTiltfileBuild = model.BuildRecord{
-		StartTime:  time.Now(),
-		FinishTime: time.Now(),
-	}
-	v = StateToView(*es)
-	assert.Equal(t, EmptyTiltfileMsg, v.TiltfileErrorMessage)
-
-	yaml := "yamlyaml"
-	m := k8s.NewK8sOnlyManifestForTesting("GlobalYAML", yaml)
-	nes := newState([]model.Manifest{}, m)
-	nes.ConfigFiles = []string{"global.yaml"}
-	v = StateToView(*nes)
-	assert.Equal(t, "", v.TiltfileErrorMessage)
-
-	m2 := model.Manifest{
-		Name: "foo",
-	}.WithImageTarget(model.ImageTarget{}.
-		WithBuildDetails(model.FastBuild{
-			Syncs: []model.Sync{
-				{LocalPath: "/a/b"},
-				{LocalPath: "/a/b/c"},
-			},
-		}),
-	)
-
-	nes = newState([]model.Manifest{m2}, model.Manifest{})
-	v = StateToView(*nes)
-	assert.Equal(t, "", v.TiltfileErrorMessage)
-}
-
 func TestRelativeTiltfilePath(t *testing.T) {
 	es := newState([]model.Manifest{}, model.Manifest{})
 	wd, err := os.Getwd()

@@ -122,7 +122,7 @@ func (r *Renderer) renderStatusBar(v view.View) rty.Component {
 			errorCount++
 		}
 	}
-	if errorCount == 0 && v.TiltfileErrorMessage == "" {
+	if errorCount == 0 && v.TiltfileErrorMessage() == "" {
 		sb.Fg(cGood).Text("✓").Fg(tcell.ColorDefault).Fg(cText).Text(" OK").Fg(tcell.ColorDefault)
 	} else {
 		var errorCountMessage string
@@ -136,7 +136,7 @@ func (r *Renderer) renderStatusBar(v view.View) rty.Component {
 			errorCountMessage = fmt.Sprintf(" %d %s", errorCount, s)
 		}
 
-		if v.TiltfileErrorMessage != "" {
+		if v.TiltfileErrorMessage() != "" {
 			_, _ = tiltfileError.WriteString(" • Tiltfile error")
 		}
 		sb.Fg(cBad).Text("✖").Fg(tcell.ColorDefault).Fg(cText).Textf("%s%s", errorCountMessage, tiltfileError.String()).Fg(tcell.ColorDefault)

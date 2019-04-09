@@ -127,14 +127,6 @@ func StateToWebView(s store.EngineState) webview.View {
 	} else {
 		tr.LastDeployTime = s.LastTiltfileBuild.FinishTime
 	}
-	if !s.LastTiltfileBuild.Empty() {
-		err := s.LastTiltfileBuild.Error
-		if err == nil && s.IsEmpty() {
-			ret.TiltfileErrorMessage = store.EmptyTiltfileMsg
-		} else if err != nil {
-			ret.TiltfileErrorMessage = err.Error()
-		}
-	}
 	ret.Resources = append(ret.Resources, tr)
 
 	ret.Log = s.Log
