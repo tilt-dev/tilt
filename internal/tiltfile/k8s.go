@@ -733,11 +733,11 @@ func (s *tiltfileState) k8sResourceAssemblyVersionFn(thread *starlark.Thread, fn
 	}
 
 	if version == 1 {
-		s.warnings = append(s.warnings, deprecatedResourceAssemblyV1Warning)
+		s.warn(deprecatedResourceAssemblyV1Warning)
 	}
 
 	if version == 2 {
-		s.warnings = append(s.warnings, deprecatedResourceAssemblyV2Warning)
+		s.warn(deprecatedResourceAssemblyV2Warning)
 	}
 
 	s.k8sResourceAssemblyVersion = version
