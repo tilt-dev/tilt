@@ -34,7 +34,7 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.
 	}
 
 	if len(toRemove) > 0 {
-		l.Verbosef("Deleting %d files from container: %s", len(toRemove), cID.ShortStr())
+		l.Verbosef("Deleting %d file(s) from container: %s", len(toRemove), cID.ShortStr())
 		for _, pm := range toRemove {
 			l.Verbosef("- '%s' (matched local path: '%s')", pm.ContainerPath, pm.LocalPath)
 		}
@@ -57,7 +57,7 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.
 	}
 
 	if len(toArchive) > 0 {
-		l.Verbosef("Copying %d files to container: %s", len(toArchive), cID.ShortStr())
+		l.Verbosef("Copying %d file(s) to container: %s", len(toArchive), cID.ShortStr())
 		for _, pm := range toArchive {
 			l.Verbosef("- %s", pm.PrettyStr())
 		}

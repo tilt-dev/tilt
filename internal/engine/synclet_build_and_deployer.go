@@ -110,7 +110,7 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget
 	}
 
 	if len(toRemove) > 0 {
-		l.Verbosef("Will delete %d files:", len(toRemove))
+		l.Verbosef("Will delete %d file(s):", len(toRemove))
 		for _, pm := range toRemove {
 			l.Verbosef("- '%s' (matched local path: '%s')", pm.ContainerPath, pm.LocalPath)
 		}
@@ -131,7 +131,7 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget
 	archivePaths := ab.Paths()
 
 	if len(toArchive) > 0 {
-		l.Verbosef("Will copy %d files to container:", len(toArchive))
+		l.Verbosef("Will copy %d file(s) to container:", len(toArchive))
 		for _, pm := range toArchive {
 			l.Verbosef("- %s", pm.PrettyStr())
 		}
