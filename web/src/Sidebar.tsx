@@ -4,6 +4,7 @@ import { Link } from "react-router-dom"
 import { combinedStatus } from "./status"
 import "./Sidebar.scss"
 import { ResourceView } from "./HUD"
+import { incr } from "./analytics"
 
 class SidebarItem {
   name: string
@@ -47,7 +48,9 @@ class Sidebar extends PureComponent<SidebarProps> {
 
     let listItems = this.props.items.map(item => {
       let link = `/r/${item.name}`
+      let analyticsKey = "ui.interactions.logs"
       if (this.props.resourceView === ResourceView.Preview) {
+        analyticsKey = "ui.interactions.preview"
         link += "/preview"
       }
       let classes = `resLink resLink--${item.status}`
@@ -56,7 +59,7 @@ class Sidebar extends PureComponent<SidebarProps> {
       }
       return (
         <li key={item.name}>
-          <Link className={classes} to={link}>
+          <Link className={classes} to={link} onClick={_ => incr(analyticsKey)}>
             {item.name}
           </Link>
         </li>

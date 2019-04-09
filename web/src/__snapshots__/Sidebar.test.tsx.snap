@@ -50,3 +50,81 @@ exports[`renders empty resource list without crashing 1`] = `
   </button>
 </section>
 `;
+
+exports[`renders list of resources 1`] = `
+<section
+  className="Sidebar"
+>
+  <nav
+    className="Sidebar-view"
+  >
+    <a
+      className="viewLink viewLink--is-selected"
+      href="/"
+      onClick={[Function]}
+    >
+      Logs
+    </a>
+    <a
+      className="viewLink "
+      href="/r/foo/preview"
+      onClick={[Function]}
+    >
+      Preview
+    </a>
+  </nav>
+  <nav
+    className="Sidebar-resources"
+  >
+    <ul
+      className="Sidebar-list"
+    >
+      <li>
+        <a
+          className="resLink resLink--all is-selected"
+          href="/"
+          onClick={[Function]}
+        >
+          All
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--pending"
+          href="/r/foo"
+          onClick={[Function]}
+        >
+          foo
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--pending"
+          href="/r/bar"
+          onClick={[Function]}
+        >
+          bar
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--pending"
+          href="/r/baz"
+          onClick={[Function]}
+        >
+          baz
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <button
+    className="Sidebar-toggle"
+    onClick={null}
+  >
+    <svg>
+      chevron.svg
+    </svg>
+     Collapse
+  </button>
+</section>
+`;

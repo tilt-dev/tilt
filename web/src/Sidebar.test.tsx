@@ -22,3 +22,25 @@ it("renders empty resource list without crashing", () => {
 
   expect(tree).toMatchSnapshot()
 })
+
+it("renders list of resources", () => {
+  const tree = renderer
+    .create(
+      <MemoryRouter initialEntries={["/"]}>
+        <SideBar
+          isClosed={false}
+          items={[
+            { name: "foo", status: "pending" },
+            { name: "bar", status: "pending" },
+            { name: "baz", status: "pending" },
+          ]}
+          selected=""
+          toggleSidebar={null}
+          resourceView={ResourceView.Log}
+        />
+      </MemoryRouter>
+    )
+    .toJSON()
+
+  expect(tree).toMatchSnapshot()
+})
