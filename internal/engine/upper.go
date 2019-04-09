@@ -474,7 +474,7 @@ func handleConfigsReloaded(
 	status.Error = event.Err
 	status.Warnings = event.Warnings
 
-	setLastTiltfileBuild(state, status)
+	state.LastTiltfileBuild = status
 	state.CurrentTiltfileBuild = model.BuildRecord{}
 	if event.Err != nil {
 		// There was an error, so don't update status with the new, nonexistent state
@@ -708,7 +708,6 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v
 	checkForPodCrash(ctx, state, ms, *podInfo)
 
 	if int(cStatus.RestartCount) > podInfo.ContainerRestarts {
-		podInfo.PreRestartLog = podInfo.CurrentLog
 		podInfo.CurrentLog = model.Log{}
 	}
 	podInfo.ContainerRestarts = int(cStatus.RestartCount)
@@ -848,7 +847,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 			Warnings:   action.Warnings,
 			Reason:     model.BuildReasonFlagInit,
 		}
-		setLastTiltfileBuild(engineState, status)
+		engineState.LastTiltfileBuild = status
 
 		manifests := action.Manifests
 		for _, m := range manifests {
@@ -865,14 +864,6 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.GlobalYAMLState = store.NewYAMLManifestState()
 	engineState.WatchFiles = watchFiles
 	return nil
-}
-
-func setLastTiltfileBuild(state *store.EngineState, status model.BuildRecord) {
-	if status.Error != nil {
-		le := logEvent{time.Now(), []byte(fmt.Sprintf("%v\n", status.Error))}
-		status.Log = model.AppendLog(status.Log, le, state.LogTimestamps)
-	}
-	state.LastTiltfileBuild = status
 }
 
 func handleExitAction(state *store.EngineState, action hud.ExitAction) {

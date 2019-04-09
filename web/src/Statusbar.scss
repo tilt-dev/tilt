@@ -1,17 +1,17 @@
-@import 'constants';
+@import "constants";
 
 .Statusbar {
   position: fixed;
-  font-size: $font-size-small;
   left: 0;
+  right: 0;
   bottom: 0;
-  width: 100%;
   z-index: 1000;
   height: $statusbar-height;
   color: $color-navy;
   background-color: $color-grey-lightest;
   display: flex;
   align-items: center;
+  border-top: 1px solid $color-navy-dark;
 }
 .Statusbar-panel {
   padding: $spacing-unit / 4 $spacing-unit / 2;

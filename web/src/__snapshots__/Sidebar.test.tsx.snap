@@ -1,27 +1,44 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`renders empty resource list without crashing 1`] = `
-<nav
+<section
   className="Sidebar is-closed"
 >
-  <h2
-    className="Sidebar-header"
+  <nav
+    className="Sidebar-view"
   >
-    RESOURCES:
-  </h2>
-  <ul
-    className="Sidebar-list"
+    <a
+      className="viewLink viewLink--is-selected"
+      href="/"
+      onClick={[Function]}
+    >
+      Logs
+    </a>
+    <a
+      className="viewLink "
+      href="/"
+      onClick={[Function]}
+    >
+      Preview
+    </a>
+  </nav>
+  <nav
+    className="Sidebar-resources"
   >
-    <li>
-      <a
-        className="resLink resLink--all is-selected"
-        href="/"
-        onClick={[Function]}
-      >
-         ALL
-      </a>
-    </li>
-  </ul>
+    <ul
+      className="Sidebar-list"
+    >
+      <li>
+        <a
+          className="resLink resLink--all is-selected"
+          href="/"
+          onClick={[Function]}
+        >
+          All
+        </a>
+      </li>
+    </ul>
+  </nav>
   <button
     className="Sidebar-toggle"
     onClick={null}
@@ -31,5 +48,5 @@ exports[`renders empty resource list without crashing 1`] = `
     </svg>
      Collapse
   </button>
-</nav>
+</section>
 `;

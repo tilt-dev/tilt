@@ -32,9 +32,21 @@ func Child(dir string, file string) (string, bool) {
 	}
 }
 
+// IsChildOfOne returns true if the given file is a child of the given directory
 func IsChild(dir string, file string) bool {
 	_, ret := Child(dir, file)
 	return ret
+}
+
+// IsChildOfOne returns true if the given file is a child of (at least) one of
+// the given directories.
+func IsChildOfOne(dirs []string, file string) bool {
+	for _, dir := range dirs {
+		if IsChild(dir, file) {
+			return true
+		}
+	}
+	return false
 }
 
 func RealChild(dir string, file string) (string, bool, error) {

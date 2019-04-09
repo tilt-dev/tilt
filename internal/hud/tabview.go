@@ -20,7 +20,7 @@ func NewTabView(v view.View, vState view.ViewState) *TabView {
 func (v *TabView) Build() rty.Component {
 	l := rty.NewConcatLayout(rty.DirHor)
 	log := rty.NewTextScrollLayout("log")
-	log.Add(rty.TextString(v.view.Log.String()))
+	log.Add(rty.TextString(v.view.Log.Tail(mainLogLineCount).String()))
 	l.Add(log)
 	return l
 }

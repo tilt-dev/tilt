@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
@@ -74,7 +75,6 @@ func StateToWebView(s store.EngineState) webview.View {
 			PendingBuildSince:  pendingBuildSince,
 			PendingBuildReason: ms.NextBuildReason(),
 			CurrentBuild:       currentBuild,
-			CrashLog:           ms.CrashLog.String(),
 			Endpoints:          endpoints,
 			ResourceInfo:       resourceInfoView(mt),
 			ShowBuildStatus:    len(mt.Manifest.ImageTargets) > 0 || mt.Manifest.IsDC(),
@@ -113,7 +113,7 @@ func StateToWebView(s store.EngineState) webview.View {
 		ltfb.Log = s.CurrentTiltfileBuild.Log
 	}
 	tr := webview.Resource{
-		Name:         "(Tiltfile)",
+		Name:         view.TiltfileResourceName,
 		IsTiltfile:   true,
 		CurrentBuild: s.CurrentTiltfileBuild,
 		BuildHistory: []model.BuildRecord{
@@ -130,10 +130,8 @@ func StateToWebView(s store.EngineState) webview.View {
 	if !s.LastTiltfileBuild.Empty() {
 		err := s.LastTiltfileBuild.Error
 		if err == nil && s.IsEmpty() {
-			tr.CrashLog = store.EmptyTiltfileMsg
 			ret.TiltfileErrorMessage = store.EmptyTiltfileMsg
 		} else if err != nil {
-			tr.CrashLog = err.Error()
 			ret.TiltfileErrorMessage = err.Error()
 		}
 	}

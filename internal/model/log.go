@@ -1,9 +1,9 @@
 package model
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -12,28 +12,82 @@ import (
 // A render time of ~40ms was about when the interface started being noticeably laggy to me.
 const maxLogLengthInBytes = 120 * 1000
 
+const newlineByte = byte('\n')
+
+// All LogLines should end in a \n to be considered "complete".
+// We expect this will have more metadata over time about where the line came from.
+type logLine []byte
+
+func (l logLine) IsComplete() bool {
+	lineLen := len(l)
+	return lineLen > 0 && l[lineLen-1] == newlineByte
+}
+
+func (l logLine) Len() int {
+	return len(l)
+}
+
+func (l logLine) String() string {
+	return string(l)
+}
+
+func linesFromString(s string) []logLine {
+	return linesFromBytes([]byte(s))
+}
+
+func linesFromBytes(bs []byte) []logLine {
+	lines := []logLine{}
+	lastBreak := 0
+	for i, b := range bs {
+		if b == newlineByte {
+			lines = append(lines, bs[lastBreak:i+1])
+			lastBreak = i + 1
+		}
+	}
+	if lastBreak < len(bs) {
+		lines = append(lines, bs[lastBreak:])
+	}
+	return lines
+}
+
 type Log struct {
-	content []byte
+	lines []logLine
 }
 
 func NewLog(s string) Log {
-	return Log{[]byte(s)}
+	return Log{lines: linesFromString(s)}
+}
+
+// Get at most N lines from the tail of the log.
+func (l Log) Tail(n int) Log {
+	if len(l.lines) <= n {
+		return l
+	}
+	return Log{lines: l.lines[len(l.lines)-n:]}
 }
 
 func (l Log) MarshalJSON() ([]byte, error) {
-	return json.Marshal(string(l.content))
+	return json.Marshal(l.String())
 }
 
 func (l Log) Len() int {
-	return len(l.content)
+	result := 0
+	for _, line := range l.lines {
+		result += len(line)
+	}
+	return result
 }
 
 func (l Log) String() string {
-	return string(l.content)
+	lines := make([]string, len(l.lines))
+	for i, line := range l.lines {
+		lines[i] = line.String()
+	}
+	return strings.Join(lines, "")
 }
 
 func (l Log) Empty() bool {
-	return len(l.content) == 0
+	return l.Len() == 0
 }
 
 func timestampPrefix(ts time.Time) []byte {
@@ -45,24 +99,34 @@ func timestampPrefix(ts time.Time) []byte {
 // Performs truncation off the start of the log (at a newline) to ensure the resulting log is not
 // longer than `maxLogLengthInBytes`. (which maybe means a pedant would say this isn't strictly an `append`?)
 func AppendLog(l Log, le LogEvent, timestampsEnabled bool) Log {
-	content := l.content
-
-	// if we're starting a new line, we need a timestamp
-	if len(l.content) > 0 && l.content[len(l.content)-1] == '\n' && timestampsEnabled {
-		content = append(content, timestampPrefix(le.Time())...)
+	isStartingNewLine := len(l.lines) == 0 || l.lines[len(l.lines)-1].IsComplete()
+	addedLines := linesFromBytes(le.Message())
+	if len(addedLines) == 0 {
+		return l
 	}
-
-	b := le.Message()
 
 	if timestampsEnabled {
-		b = addTimestamps(b, le.Time())
+		ts := le.Time()
+		for i, line := range addedLines {
+			if i != 0 || isStartingNewLine {
+				addedLines[i] = append(timestampPrefix(ts), line...)
+			}
+		}
 	}
 
-	content = append(content, b...)
+	var newLines []logLine
+	if isStartingNewLine {
+		newLines = append(l.lines, addedLines...)
+	} else {
+		lastIndex := len(l.lines) - 1
+		newLastLine := append(l.lines[lastIndex], addedLines[0]...)
 
-	content = ensureMaxLength(content)
+		// We have to be a bit careful here to avoid mutating the original Log struct.
+		newLines = append(l.lines[0:lastIndex], newLastLine)
+		newLines = append(newLines, addedLines[1:]...)
+	}
 
-	return Log{content}
+	return Log{ensureMaxLength(newLines)}
 }
 
 type LogEvent interface {
@@ -70,34 +134,15 @@ type LogEvent interface {
 	Time() time.Time
 }
 
-func addTimestamps(bs []byte, ts time.Time) []byte {
-	// if the last char is a newline, temporarily remove it so that ReplaceAll doesn't get it
-	// (we don't want "foo\n" to turn into "foo\nTIMESTAMP")
-	endsInNewline := false
-	if len(bs) > 0 && bs[len(bs)-1] == '\n' {
-		endsInNewline = true
-		bs = bs[:len(bs)-1]
-	}
-
-	nl := []byte("\n")
-	p := append(nl, timestampPrefix(ts)...)
-	ret := bytes.ReplaceAll(bs, nl, p)
-
-	if endsInNewline {
-		ret = append(ret, '\n')
-	}
-	return ret
-}
-
-func ensureMaxLength(b []byte) []byte {
-	if len(b) > maxLogLengthInBytes {
-		for i := len(b) - maxLogLengthInBytes - 1; i < len(b); i++ {
-			if b[i] == '\n' {
-				b = b[i+1:]
-				break
-			}
+func ensureMaxLength(lines []logLine) []logLine {
+	bytesLeft := maxLogLengthInBytes
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := lines[i]
+		if line.Len() > bytesLeft {
+			return lines[i+1:]
 		}
+		bytesLeft -= line.Len()
 	}
 
-	return b
+	return lines
 }
