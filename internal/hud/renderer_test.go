@@ -664,7 +664,7 @@ func TestTiltfileResource(t *testing.T) {
 	v := view.View{
 		Resources: []view.Resource{
 			{
-				Name:       "(Tiltfile)",
+				Name:       view.TiltfileResourceName,
 				IsTiltfile: true,
 			},
 		},
@@ -680,7 +680,7 @@ func TestTiltfileResourceWithWarning(t *testing.T) {
 	v := view.View{
 		Resources: []view.Resource{
 			{
-				Name:       "(Tiltfile)",
+				Name:       view.TiltfileResourceName,
 				IsTiltfile: true,
 				BuildHistory: []model.BuildRecord{
 					{
@@ -706,7 +706,7 @@ func TestTiltfileResourcePending(t *testing.T) {
 	v := view.View{
 		Resources: []view.Resource{
 			{
-				Name:       "(Tiltfile)",
+				Name:       view.TiltfileResourceName,
 				IsTiltfile: true,
 				CurrentBuild: model.BuildRecord{
 					Edits:     []string{"Tiltfile"},

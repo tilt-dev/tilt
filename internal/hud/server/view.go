@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
@@ -112,7 +113,7 @@ func StateToWebView(s store.EngineState) webview.View {
 		ltfb.Log = s.CurrentTiltfileBuild.Log
 	}
 	tr := webview.Resource{
-		Name:         "(Tiltfile)",
+		Name:         view.TiltfileResourceName,
 		IsTiltfile:   true,
 		CurrentBuild: s.CurrentTiltfileBuild,
 		BuildHistory: []model.BuildRecord{
