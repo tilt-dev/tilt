@@ -123,7 +123,7 @@ func (v *ResourceView) titleTextName() rty.Component {
 	if color == cPending {
 		name = fmt.Sprintf("%s %s", v.res.Name, v.spinner())
 	}
-	if len(v.res.LastBuild().Warnings) > 0 {
+	if len(warnings(v.res)) > 0 {
 		name = fmt.Sprintf("%s %s", v.res.Name, "— Warning ⚠️")
 	}
 	sb.Fg(tcell.ColorDefault).Text(name)
@@ -380,8 +380,15 @@ func (v *ResourceView) resourceExpandedHistory() rty.Component {
 
 func (v *ResourceView) resourceExpandedError() rty.Component {
 	errPane, ok := v.resourceExpandedBuildError()
+	isWarnings := false
 	if !ok {
 		errPane, ok = v.resourceExpandedRuntimeError()
+	}
+	if !ok {
+		errPane, ok = v.resourceExpandedWarnings()
+		if ok {
+			isWarnings = true
+		}
 	}
 
 	if !ok {
@@ -389,7 +396,11 @@ func (v *ResourceView) resourceExpandedError() rty.Component {
 	}
 
 	l := rty.NewConcatLayout(rty.DirVert)
-	l.Add(rty.NewStringBuilder().Fg(cLightText).Text("ERROR:").Build())
+	if isWarnings {
+		l.Add(rty.NewStringBuilder().Fg(cLightText).Text("WARNINGS:").Build())
+	} else {
+		l.Add(rty.NewStringBuilder().Fg(cLightText).Text("ERROR:").Build())
+	}
 
 	indentPane := rty.NewConcatLayout(rty.DirHor)
 	indentPane.Add(rty.TextString(strings.Repeat(" ", 3)))
@@ -408,6 +419,19 @@ func (v *ResourceView) resourceExpandedRuntimeError() (rty.Component, bool) {
 			runtimeLog = v.res.ResourceInfo.RuntimeLog().Tail(abbreviatedLogLineCount).String()
 		}
 		abbrevLog := abbreviateLog(runtimeLog)
+		for _, logLine := range abbrevLog {
+			pane.Add(rty.TextString(logLine))
+			ok = true
+		}
+	}
+	return pane, ok
+}
+
+func (v *ResourceView) resourceExpandedWarnings() (rty.Component, bool) {
+	pane := rty.NewConcatLayout(rty.DirVert)
+	ok := false
+	if len(warnings(v.res)) > 0 {
+		abbrevLog := abbreviateLog(strings.Join(warnings(v.res), "\n"))
 		for _, logLine := range abbrevLog {
 			pane.Add(rty.TextString(logLine))
 			ok = true
