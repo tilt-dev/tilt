@@ -1,12 +1,12 @@
 package tiltfile
 
 import (
-	"bytes"
 	"fmt"
-	"io/ioutil"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/windmilleng/tilt/internal/sliceutils"
 
 	"go.starlark.net/syntax"
 
@@ -49,19 +49,8 @@ type k8sResource struct {
 	dependencyIDs []model.TargetID
 }
 
-const deprecatedK8SResourceWarning = "It looks like this tiltfile is using a deprecated version of k8s_resource. " +
-	"Add k8s_resource_assembly_version(1) to the top of your Tiltfile to proceed. " +
-	"Sorry for the inconvenience! " +
-	"It will no longer be supported after 2019-05-01. " +
-	"See https://tilt.dev/resource_assembly_migration.html for information on how to migrate."
-
-const deprecatedResourceAssemblyV1Warning = "k8s_resource_assembly v1 is deprecated. " +
-	"It will no longer be supported after 2019-05-01. " +
-	"See https://tilt.dev/resource_assembly_migration.html for information on how to migrate."
-
-const deprecatedResourceAssemblyV2Warning = "k8s_resource_assembly is deprecated. " +
-	"version 2 is the default, so you can simply remove this directive! " +
-	"It will no longer be supported after 2019-05-01. " +
+const deprecatedResourceAssemblyV1Warning = "This Tiltfile is using k8s resource assembly version 1, which has been " +
+	"deprecated. It will no longer be supported after 2019-04-17. Sorry for the inconvenience! " +
 	"See https://tilt.dev/resource_assembly_migration.html for information on how to migrate."
 
 // holds options passed to `k8s_resource` until assembly happens
@@ -202,49 +191,9 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 	}, nil
 }
 
-// v1 and v2 resource assembly both have a function named `k8s_resource`. They take different arguments.
-// The goal of `isProbablyV1K8SResourceCall` is to guess if a `k8s_resource` call is still using v1 arguments.
-func (s *tiltfileState) isProbablyV1K8SResourceCall(args starlark.Tuple, kwargs []starlark.Tuple) (result bool, reason string) {
-	// check kwargs
-	var k8sResourceV1OnlyNames = map[string]bool{
-		"name":  true,
-		"yaml":  true,
-		"image": true,
-	}
-	for _, item := range kwargs {
-		name := string(item[0].(starlark.String))
-		if _, ok := k8sResourceV1OnlyNames[name]; ok {
-			return true, fmt.Sprintf("it was called with kwarg %q, which is deprecated", name)
-		}
-	}
-
-	// check positional args
-	// check if the second arg is yaml (v1) instead of a resource name (v2)
-	if args.Len() >= 2 {
-		switch x := args[1].(type) {
-		case starlark.Sequence:
-			return true, "second arg was a sequence"
-		case *blob:
-			return true, "second arg was a blob"
-		case starlark.String:
-			bs, err := ioutil.ReadFile(s.localPathFromString(string(x)).path)
-			if err == nil {
-				if bytes.ContainsRune(bs, '\n') {
-					return true, "second arg was a file containing a newline"
-				}
-			}
-		default:
-			// this is invalid in both v1 and v2 syntax, so fall back and let v2 parsing error out
-		}
-	}
-
-	// we don't need to check the subsequent positional args because they can't include a third positional arg without
-	// including a second!
-
-	return false, ""
-}
-
 func (s *tiltfileState) k8sResourceV1(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	s.warnings = sliceutils.AppendWithoutDupes(s.warnings, deprecatedResourceAssemblyV1Warning)
+
 	var name string
 	var yamlValue starlark.Value
 	var imageVal starlark.Value
@@ -314,15 +263,17 @@ func (s *tiltfileState) k8sResourceV1(thread *starlark.Thread, fn *starlark.Buil
 }
 
 func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	if s.k8sResourceAssemblyVersion == 1 {
+	switch s.k8sResourceAssemblyVersion {
+	case 1:
 		return s.k8sResourceV1(thread, fn, args, kwargs)
+	case 2:
+		return s.k8sResourceV2(thread, fn, args, kwargs)
+	default:
+		return starlark.None, fmt.Errorf("invalid k8s resource assembly version: %v", s.k8sResourceAssemblyVersion)
 	}
+}
 
-	isProbablyV1, v1Reason := s.isProbablyV1K8SResourceCall(args, kwargs)
-	if isProbablyV1 {
-		return starlark.None, fmt.Errorf("%s\nIssue: %s", deprecatedK8SResourceWarning, v1Reason)
-	}
-
+func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var workload string
 	var newName string
 	var portForwardsVal starlark.Value
@@ -733,11 +684,7 @@ func (s *tiltfileState) k8sResourceAssemblyVersionFn(thread *starlark.Thread, fn
 	}
 
 	if version == 1 {
-		s.warn(deprecatedResourceAssemblyV1Warning)
-	}
-
-	if version == 2 {
-		s.warn(deprecatedResourceAssemblyV2Warning)
+		s.warnings = append(s.warnings, deprecatedResourceAssemblyV1Warning)
 	}
 
 	s.k8sResourceAssemblyVersion = version

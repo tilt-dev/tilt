@@ -55,6 +55,7 @@ func init() {
 
 const (
 	simpleTiltfile = `
+k8s_resource_assembly_version(2)
 repo = local_git_repo('.')
 img = fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile')
 img.add(repo, '/src')
@@ -557,6 +558,7 @@ func TestMultipleChangesOnlyDeployOneManifest(t *testing.T) {
 	defer f.TearDown()
 
 	f.WriteFile("Tiltfile", `
+k8s_resource_assembly_version(2)
 fast_build("gcr.io/windmill-public-containers/servantes/snack", "Dockerfile1")
 fast_build("gcr.io/windmill-public-containers/servantes/doggos", "Dockerfile2")
 
@@ -617,6 +619,7 @@ func TestSecondResourceIsBuilt(t *testing.T) {
 	defer f.TearDown()
 
 	f.WriteFile("Tiltfile", `
+k8s_resource_assembly_version(2)
 fast_build("gcr.io/windmill-public-containers/servantes/snack", "Dockerfile1")
 
 k8s_yaml('snack.yaml')
@@ -638,6 +641,7 @@ k8s_resource('snack', new_name='baz')  # rename "snack" --> "baz"
 
 	// Now add a second resource
 	f.WriteConfigFiles("Tiltfile", `
+k8s_resource_assembly_version(2)
 fast_build("gcr.io/windmill-public-containers/servantes/snack", "Dockerfile1")
 fast_build("gcr.io/windmill-public-containers/servantes/doggos", "Dockerfile2")
 
@@ -661,6 +665,7 @@ func TestNoOpChangeToDockerfile(t *testing.T) {
 	defer f.TearDown()
 
 	f.WriteFile("Tiltfile", `
+k8s_resource_assembly_version(2)
 r = local_git_repo('.')
 fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
   .add(r.path('src'), '.')
@@ -744,6 +749,7 @@ func TestBreakManifest(t *testing.T) {
 	defer f.TearDown()
 
 	origTiltfile := `
+k8s_resource_assembly_version(2)
 fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
 	.add(local_git_repo('./nested'), '.')  # Tiltfile is not synced
 k8s_yaml('snack.yaml')`
@@ -776,6 +782,7 @@ func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
 	defer f.TearDown()
 
 	origTiltfile := `
+k8s_resource_assembly_version(2)
 fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
 	.add(local_git_repo('./nested'), '.')  # Tiltfile is not synced
 k8s_yaml('snack.yaml')`
@@ -811,7 +818,9 @@ func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
 	defer f.TearDown()
 
 	tiltfileString := func(cmd string) string {
-		return fmt.Sprintf(`fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
+		return fmt.Sprintf(`
+k8s_resource_assembly_version(2)
+fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
 	.add(local_git_repo('./nested'), '.') \
   .run('%s')
 k8s_yaml('snack.yaml')

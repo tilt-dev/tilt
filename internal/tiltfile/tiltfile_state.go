@@ -79,7 +79,7 @@ func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClie
 		logger:                     logger.Get(ctx),
 		builtinCallCounts:          make(map[string]int),
 		unconsumedLiveUpdateSteps:  make(map[string]liveUpdateStep),
-		k8sResourceAssemblyVersion: 2,
+		k8sResourceAssemblyVersion: 1,
 		k8sResourceOptions:         make(map[string]k8sResourceOptions),
 	}
 	s.filename = s.maybeAttachGitRepo(lp, filepath.Dir(lp.path))
