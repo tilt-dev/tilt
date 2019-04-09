@@ -137,6 +137,10 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 		}
 	}
 
+	for _, w := range s.warnings {
+		s.logger.Infof("WARNING: %s\n", w)
+	}
+
 	s.logger.Infof("Successfully loaded Tiltfile")
 
 	tfl.reportTiltfileLoaded(s.builtinCallCounts)
