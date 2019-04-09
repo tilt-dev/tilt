@@ -584,6 +584,8 @@ func StateToView(s EngineState) view.View {
 		LogTimestamps: s.LogTimestamps,
 	}
 
+	ret.Resources = append(ret.Resources, tiltfileResourceView(s))
+
 	for _, name := range s.ManifestDefinitionOrder {
 		mt, ok := s.ManifestTargets[name]
 		if !ok {
@@ -672,6 +674,12 @@ func StateToView(s EngineState) view.View {
 		ret.Resources = append(ret.Resources, r)
 	}
 
+	ret.Log = s.Log
+
+	return ret
+}
+
+func tiltfileResourceView(s EngineState) view.Resource {
 	ltfb := s.LastTiltfileBuild
 	if !s.CurrentTiltfileBuild.Empty() {
 		ltfb.Log = s.CurrentTiltfileBuild.Log
@@ -695,11 +703,7 @@ func StateToView(s EngineState) view.View {
 			tr.CrashLog = model.NewLog(err.Error())
 		}
 	}
-	ret.Resources = append(ret.Resources, tr)
-
-	ret.Log = s.Log
-
-	return ret
+	return tr
 }
 
 func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {

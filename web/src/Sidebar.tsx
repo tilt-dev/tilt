@@ -9,6 +9,7 @@ class SidebarItem {
   name: string
   status: string
   hasWarnings: boolean
+  hasEndpoints: boolean
 
   /**
    * Create a pared down SidebarItem from a ResourceView
@@ -17,6 +18,7 @@ class SidebarItem {
     this.name = res.Name
     this.status = combinedStatus(res)
     this.hasWarnings = warnings(res).length > 0
+    this.hasEndpoints = (res.Endpoints || []).length
   }
 }
 
@@ -75,7 +77,16 @@ class Sidebar extends PureComponent<SidebarProps> {
     if (this.props.selected) {
       previewResourceViewURL = `/r/${this.props.selected}/preview`
     } else if (this.props.items.length) {
+      // Pick the first item with an endpoint, or default to the first item.
       previewResourceViewURL = `/r/${this.props.items[0].name}/preview`
+
+      for (let i = 0; i < this.props.items.length; i++) {
+        let item = this.props.items[i]
+        if (item.hasEndpoints) {
+          previewResourceViewURL = `/r/${item.name}/preview`
+          break
+        }
+      }
     }
 
     let logResourceViewClasses = `viewLink ${

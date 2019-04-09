@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -64,6 +65,16 @@ func (h *FakeHud) Update(v view.View, vs view.ViewState) error {
 	h.LastView = v
 	h.updates <- v
 	return nil
+}
+
+func (h *FakeHud) WaitUntilResource(t testing.TB, ctx context.Context, msg string, name model.ManifestName, isDone func(view.Resource) bool) {
+	h.WaitUntil(t, ctx, msg, func(view view.View) bool {
+		res, ok := view.Resource(name)
+		if !ok {
+			return false
+		}
+		return isDone(res)
+	})
 }
 
 func (h *FakeHud) WaitUntil(t testing.TB, ctx context.Context, msg string, isDone func(view.View) bool) {

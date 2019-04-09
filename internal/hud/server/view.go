@@ -15,6 +15,8 @@ import (
 func StateToWebView(s store.EngineState) webview.View {
 	ret := webview.View{}
 
+	ret.Resources = append(ret.Resources, tiltfileResourceView(s))
+
 	for _, name := range s.ManifestDefinitionOrder {
 		mt, ok := s.ManifestTargets[name]
 		if !ok {
@@ -108,6 +110,12 @@ func StateToWebView(s store.EngineState) webview.View {
 		ret.Resources = append(ret.Resources, r)
 	}
 
+	ret.Log = s.Log
+
+	return ret
+}
+
+func tiltfileResourceView(s store.EngineState) webview.Resource {
 	ltfb := s.LastTiltfileBuild
 	if !s.CurrentTiltfileBuild.Empty() {
 		ltfb.Log = s.CurrentTiltfileBuild.Log
@@ -127,11 +135,7 @@ func StateToWebView(s store.EngineState) webview.View {
 	} else {
 		tr.LastDeployTime = s.LastTiltfileBuild.FinishTime
 	}
-	ret.Resources = append(ret.Resources, tr)
-
-	ret.Log = s.Log
-
-	return ret
+	return tr
 }
 
 func resourceInfoView(mt *store.ManifestTarget) webview.ResourceInfoView {
