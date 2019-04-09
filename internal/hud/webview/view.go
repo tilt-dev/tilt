@@ -106,8 +106,7 @@ const (
 )
 
 type View struct {
-	Log                  model.Log
-	Resources            []Resource
-	TiltfileErrorMessage string
-	LogTimestamps        bool
+	Log           model.Log
+	Resources     []Resource
+	LogTimestamps bool
 }
