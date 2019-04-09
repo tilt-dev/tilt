@@ -36,7 +36,9 @@ type PathMapping struct {
 	ContainerPath string
 }
 
-func (m PathMapping) prettyStr() string { return fmt.Sprintf("%s --> %s", m.LocalPath, m.ContainerPath) }
+func (m PathMapping) PrettyStr() string {
+	return fmt.Sprintf("'%s' --> '%s'", m.LocalPath, m.ContainerPath)
+}
 
 func (m PathMapping) Filter(matcher model.PathMatcher) ([]PathMapping, error) {
 	result := make([]PathMapping, 0)
@@ -157,23 +159,23 @@ func SyncsToPathMappings(syncs []model.Sync) []PathMapping {
 }
 
 // Return all the path mappings for local paths that do not exist.
-func MissingLocalPaths(ctx context.Context, mappings []PathMapping) ([]PathMapping, error) {
+func MissingLocalPaths(ctx context.Context, mappings []PathMapping) (missing, rest []PathMapping, err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "MissingLocalPaths")
 	defer span.Finish()
-	result := make([]PathMapping, 0)
 	for _, mapping := range mappings {
 		_, err := os.Stat(mapping.LocalPath)
 		if err == nil {
+			rest = append(rest, mapping)
 			continue
 		}
 
 		if os.IsNotExist(err) {
-			result = append(result, mapping)
+			missing = append(missing, mapping)
 		} else {
-			return nil, errors.Wrap(err, "MissingLocalPaths")
+			return nil, nil, errors.Wrap(err, "MissingLocalPaths")
 		}
 	}
-	return result, nil
+	return missing, rest, nil
 }
 
 func PathMappingsToContainerPaths(mappings []PathMapping) []string {
