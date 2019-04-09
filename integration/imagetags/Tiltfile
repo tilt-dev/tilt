@@ -1,3 +1,4 @@
+k8s_resource_assembly_version(2)
 repo = 'gcr.io/windmill-test-containers'
 docker_build(repo + '/imagetags-common', 'common')
 docker_build(repo + '/imagetags-common:stretch', 'common-stretch')
