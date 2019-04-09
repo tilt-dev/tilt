@@ -75,6 +75,12 @@ type tiltfileLoader struct {
 
 var _ TiltfileLoader = &tiltfileLoader{}
 
+func printWarnings(s *tiltfileState) {
+	for _, w := range s.warnings {
+		s.logger.Infof("WARNING: %s\n", w)
+	}
+}
+
 // Load loads the Tiltfile in `filename`, and returns the manifests matching `matching`.
 func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool) (tlr TiltfileLoadResult, err error) {
 	absFilename, err := ospath.RealAbs(filename)
@@ -87,9 +93,13 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	}
 
 	s := newTiltfileState(ctx, tfl.dcCli, absFilename)
+	printedWarnings := false
 	defer func() {
 		tlr.ConfigFiles = s.configFiles
 		tlr.Warnings = s.warnings
+		if !printedWarnings {
+			printWarnings(s)
+		}
 	}()
 
 	s.logger.Infof("Beginning Tiltfile execution")
@@ -137,9 +147,8 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 		}
 	}
 
-	for _, w := range s.warnings {
-		s.logger.Infof("WARNING: %s\n", w)
-	}
+	printWarnings(s)
+	printedWarnings = true
 
 	s.logger.Infof("Successfully loaded Tiltfile")
 
