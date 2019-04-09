@@ -56,7 +56,7 @@ func (s HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s HeadsUpServer) HandleAnalytics(w http.ResponseWriter, req *http.Request) {
-	if req.Method != "POST" {
+	if req.Method != http.MethodPost {
 		http.Error(w, "must be POST request", http.StatusBadRequest)
 		return
 	}
