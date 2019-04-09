@@ -3,6 +3,7 @@ package hud
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
 // The main loop ensures the HUD updates at least this often
@@ -39,14 +41,16 @@ type Hud struct {
 	currentViewState view.ViewState
 	mu               sync.RWMutex
 	isRunning        bool
+	a                analytics.Analytics
 }
 
 var _ HeadsUpDisplay = (*Hud)(nil)
 
-func NewDefaultHeadsUpDisplay(renderer *Renderer, webURL model.WebURL) (HeadsUpDisplay, error) {
+func NewDefaultHeadsUpDisplay(renderer *Renderer, webURL model.WebURL, analytics analytics.Analytics) (HeadsUpDisplay, error) {
 	return &Hud{
 		r:      renderer,
 		webURL: webURL,
+		a:      analytics,
 	}, nil
 }
 
@@ -133,6 +137,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				// open if we have multiple, or what path to default to on the opened manifest.
 				_, selected := h.selectedResource()
 				if len(selected.Endpoints) > 0 {
+					h.a.Incr("ui.interactions.open_preview", map[string]string{})
 					err := browser.OpenURL(selected.Endpoints[0])
 					if err != nil {
 						h.currentViewState.AlertMessage = fmt.Sprintf("error opening url '%s' for resource '%s': %v",
@@ -195,6 +200,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			}
 			url := h.webURL
 			url.Path = fmt.Sprintf("/r/%s/", r.Name)
+			h.a.Incr("ui.interactions.open_log", map[string]string{"is_tiltfile": strconv.FormatBool(r.Name == view.TiltfileResourceName)})
 			_ = browser.OpenURL(url.String())
 		case tcell.KeyRight:
 			i, _ := h.selectedResource()

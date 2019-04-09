@@ -8,6 +8,8 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
+const TiltfileResourceName = "(Tiltfile)"
+
 type ResourceInfoView interface {
 	resourceInfoView()
 	RuntimeLog() model.Log

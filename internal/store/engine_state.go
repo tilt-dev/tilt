@@ -679,7 +679,7 @@ func StateToView(s EngineState) view.View {
 		ltfb.Log = s.CurrentTiltfileBuild.Log
 	}
 	tr := view.Resource{
-		Name:         "(Tiltfile)",
+		Name:         view.TiltfileResourceName,
 		IsTiltfile:   true,
 		CurrentBuild: s.CurrentTiltfileBuild,
 		BuildHistory: []model.BuildRecord{
