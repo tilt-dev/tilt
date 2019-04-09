@@ -30,6 +30,7 @@
 }
 .Statusbar-panel--warning .icon {
   color: $color-yellow;
+  margin-top: -5px;
 }
 .Statusbar-panel--spacer {
   flex-grow: 1;

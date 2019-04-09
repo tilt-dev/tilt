@@ -93,6 +93,13 @@
   width: $spacing-unit * 1.5;
   text-align: center;
 }
+.resLink.has-warnings::after {
+  content: "⚠";
+  margin-top: -5px;
+  margin-left: $spacing-unit / 2;
+  font-size: 30px;
+  color: $color-yellow;
+}
 .resLink--all {
   text-transform: uppercase;
 }

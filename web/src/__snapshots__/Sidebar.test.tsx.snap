@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`renders empty resource list without crashing 1`] = `
+exports[`sidebar renders empty resource list without crashing 1`] = `
 <section
   className="Sidebar is-closed"
 >

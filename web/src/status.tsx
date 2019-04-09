@@ -24,4 +24,10 @@ function combinedStatus(res: any): string {
   return runtimeStatus
 }
 
-export { combinedStatus }
+function warnings(res: any): string[] {
+  let buildHistory = res.BuildHistory || []
+  let lastBuild = buildHistory[0]
+  return (lastBuild && lastBuild.Warnings) || []
+}
+
+export { combinedStatus, warnings }
