@@ -1,0 +1,149 @@
+package server_test
+
+import (
+	"bytes"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/engine"
+	"github.com/windmilleng/tilt/internal/hud/server"
+	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/wmclient/pkg/analytics"
+)
+
+func TestHandleAnalyticsEmptyRequest(t *testing.T) {
+	f := newTestFixture(t)
+
+	var jsonStr = []byte(`[]`)
+	req, err := http.NewRequest(http.MethodPost, "/api/analytics", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.s.HandleAnalytics)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+}
+
+func TestHandleAnalyticsRecordsIncr(t *testing.T) {
+	f := newTestFixture(t)
+
+	var jsonStr = []byte(`[{"verb": "incr", "name": "foo", "tags": {}}]`)
+	req, err := http.NewRequest(http.MethodPost, "/api/analytics", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.s.HandleAnalytics)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+
+	f.assertIncrement("foo", 1)
+}
+
+func TestHandleAnalyticsNonPost(t *testing.T) {
+	f := newTestFixture(t)
+
+	req, err := http.NewRequest(http.MethodGet, "/api/analytics", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.s.HandleAnalytics)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+}
+
+func TestHandleAnalyticsMalformedPayload(t *testing.T) {
+	f := newTestFixture(t)
+
+	var jsonStr = []byte(`[{"Verb": ]`)
+	req, err := http.NewRequest(http.MethodPost, "/api/analytics", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.s.HandleAnalytics)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+}
+
+func TestHandleAnalyticsErrorsIfNotIncr(t *testing.T) {
+	f := newTestFixture(t)
+
+	var jsonStr = []byte(`[{"verb": "count", "name": "foo", "tags": {}}]`)
+	req, err := http.NewRequest(http.MethodPost, "/api/analytics", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.s.HandleAnalytics)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+}
+
+type serverFixture struct {
+	t *testing.T
+	s server.HeadsUpServer
+	a *analytics.MemoryAnalytics
+}
+
+func newTestFixture(t *testing.T) *serverFixture {
+	st := store.NewStore(engine.UpperReducer, store.LogActionsFlag(false))
+	a := analytics.NewMemoryAnalytics()
+	s := server.ProvideHeadsUpServer(st, server.NewFakeAssetServer(), a)
+
+	return &serverFixture{
+		t: t,
+		s: s,
+		a: a,
+	}
+}
+
+func (f *serverFixture) assertIncrement(name string, count int) {
+	runningCount := 0
+	for _, c := range f.a.Counts {
+		if c.Name == name {
+			runningCount += c.N
+		}
+	}
+
+	assert.Equalf(f.t, count, runningCount, "Expected the total count to be %d, got %d", count, runningCount)
+}

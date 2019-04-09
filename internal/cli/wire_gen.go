@@ -134,7 +134,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	if err != nil {
 		return demo.Script{}, err
 	}
-	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetServer)
+	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetServer, analytics)
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetServer)
 	upper := engine.NewUpper(ctx, headsUpDisplay, podWatcher, serviceWatcher, storeStore, podLogManager, portForwardController, watchManager, buildController, imageController, globalYAMLBuildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController)
 	script := demo.NewScript(upper, headsUpDisplay, client, env, storeStore, branch, runtime, tiltfileLoader)
@@ -251,7 +251,7 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	if err != nil {
 		return Threads{}, err
 	}
-	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetServer)
+	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetServer, analytics)
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetServer)
 	upper := engine.NewUpper(ctx, headsUpDisplay, podWatcher, serviceWatcher, storeStore, podLogManager, portForwardController, watchManager, buildController, imageController, globalYAMLBuildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController)
 	threads := provideThreads(headsUpDisplay, upper)

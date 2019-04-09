@@ -8,21 +8,31 @@ import (
 	"github.com/gorilla/mux"
 	_ "github.com/gorilla/websocket"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/wmclient/pkg/analytics"
 )
+
+type analyticsPayload struct {
+	Verb string            `json:"verb"`
+	Name string            `json:"name"`
+	Tags map[string]string `json:"tags"`
+}
 
 type HeadsUpServer struct {
 	store  *store.Store
 	router *mux.Router
+	a      analytics.Analytics
 }
 
-func ProvideHeadsUpServer(store *store.Store, assetServer AssetServer) HeadsUpServer {
+func ProvideHeadsUpServer(store *store.Store, assetServer AssetServer, analytics analytics.Analytics) HeadsUpServer {
 	r := mux.NewRouter().UseEncodedPath()
 	s := HeadsUpServer{
 		store:  store,
 		router: r,
+		a:      analytics,
 	}
 
 	r.HandleFunc("/api/view", s.ViewJSON)
+	r.HandleFunc("/api/analytics", s.HandleAnalytics)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
 	r.PathPrefix("/").Handler(assetServer)
 
@@ -42,5 +52,30 @@ func (s HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
 	err := json.NewEncoder(w).Encode(view)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error rendering view payload: %v", err), http.StatusInternalServerError)
+	}
+}
+
+func (s HeadsUpServer) HandleAnalytics(w http.ResponseWriter, req *http.Request) {
+	if req.Method != "POST" {
+		http.Error(w, "must be POST request", http.StatusBadRequest)
+		return
+	}
+
+	var payloads []analyticsPayload
+
+	decoder := json.NewDecoder(req.Body)
+	err := decoder.Decode(&payloads)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error parsing JSON payload: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, p := range payloads {
+		if p.Verb != "incr" {
+			http.Error(w, "error parsing payloads: only incr verbs are supported", http.StatusBadRequest)
+			return
+		}
+
+		s.a.Incr(p.Name, p.Tags)
 	}
 }
