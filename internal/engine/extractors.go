@@ -87,7 +87,7 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 		// that would need to be updated.
 		deployInfo := state.DeployInfo
 		if deployInfo.Empty() {
-			return nil, SilentRedirectToNextBuilderf("In-place build needs container info")
+			return nil, RedirectToNextBuilderInfof("don't have info for deployed container (often a result of the deployment not yet being ready)")
 		}
 		iTargets = append(iTargets, iTarget)
 	}
