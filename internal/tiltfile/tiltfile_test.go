@@ -2757,6 +2757,122 @@ k8s_resource('', port_forwards=8000)
 	f.loadErrString("workload must not be empty")
 }
 
+func TestWorkloadToResourceFunction(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+def wtrf(id):
+	return 'hello-' + id.name
+workload_to_resource_function(wtrf)
+k8s_resource('hello-foo', port_forwards=8000)
+`)
+
+	f.load()
+	f.assertNumManifests(1)
+	f.assertNextManifest("hello-foo", db(image("gcr.io/foo")), []model.PortForward{{LocalPort: 8000}})
+}
+
+func TestWorkloadToResourceFunctionConflict(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFooAndBar()
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build('gcr.io/foo', 'foo')
+docker_build('gcr.io/bar', 'bar')
+k8s_yaml(['foo.yaml', 'bar.yaml'])
+def wtrf(id):
+	return 'baz'
+workload_to_resource_function(wtrf)
+`)
+
+	f.loadErrString("workload_to_resource_function", "bar:deployment:default:apps", "foo:deployment:default:apps", "'baz'")
+}
+
+func TestWorkloadToResourceFunctionError(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+def wtrf(id):
+	return 1 + 'asdf'
+workload_to_resource_function(wtrf)
+k8s_resource('hello-foo', port_forwards=8000)
+`)
+
+	f.loadErrString("'foo:deployment:default:apps'", "unknown binary op: int + string", "Tiltfile:5:1", workloadToResourceFunctionN)
+}
+
+func TestWorkloadToResourceFunctionReturnsNonString(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+def wtrf(id):
+	return 1
+workload_to_resource_function(wtrf)
+k8s_resource('hello-foo', port_forwards=8000)
+`)
+
+	f.loadErrString("'foo:deployment:default:apps'", "invalid return value", "wanted: string. got: starlark.Int", "Tiltfile:5:1", workloadToResourceFunctionN)
+}
+
+func TestWorkloadToResourceFunctionTakesNoArgs(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+def wtrf():
+	return "hello"
+workload_to_resource_function(wtrf)
+k8s_resource('hello-foo', port_forwards=8000)
+`)
+
+	f.loadErrString("workload_to_resource_function arg must take 1 argument. wtrf takes 0")
+}
+
+func TestWorkloadToResourceFunctionTakesTwoArgs(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+def wtrf(a, b):
+	return "hello"
+workload_to_resource_function(wtrf)
+k8s_resource('hello-foo', port_forwards=8000)
+`)
+
+	f.loadErrString("workload_to_resource_function arg must take 1 argument. wtrf takes 2")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T

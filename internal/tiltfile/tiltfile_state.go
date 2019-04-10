@@ -46,6 +46,7 @@ type tiltfileState struct {
 	k8sImageJSONPaths map[k8sObjectSelector][]k8s.JSONPath
 
 	k8sResourceAssemblyVersion int
+	workloadToResourceFunction workloadToResourceFunction
 
 	// for assembly
 	usedImages map[string]bool
@@ -86,14 +87,16 @@ func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClie
 	return s
 }
 
-func (s *tiltfileState) exec() error {
-	thread := &starlark.Thread{
+func (s *tiltfileState) starlarkThread() *starlark.Thread {
+	return &starlark.Thread{
 		Print: func(_ *starlark.Thread, msg string) {
 			s.logger.Infof("%s", msg)
 		},
 	}
+}
 
-	_, err := starlark.ExecFile(thread, s.filename.path, nil, s.builtins())
+func (s *tiltfileState) exec() error {
+	_, err := starlark.ExecFile(s.starlarkThread(), s.filename.path, nil, s.builtins())
 	return err
 }
 
@@ -118,6 +121,7 @@ const (
 	portForwardN                = "port_forward"
 	k8sKindN                    = "k8s_kind"
 	k8sImageJSONPathN           = "k8s_image_json_path"
+	workloadToResourceFunctionN = "workload_to_resource_function"
 
 	// file functions
 	localGitRepoN = "local_git_repo"
@@ -177,6 +181,7 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 	addBuiltin(r, portForwardN, s.portForward)
 	addBuiltin(r, k8sKindN, s.k8sKind)
 	addBuiltin(r, k8sImageJSONPathN, s.k8sImageJsonPath)
+	addBuiltin(r, workloadToResourceFunctionN, s.workloadToResourceFunctionFn)
 	addBuiltin(r, localGitRepoN, s.localGitRepo)
 	addBuiltin(r, kustomizeN, s.kustomize)
 	addBuiltin(r, helmN, s.helm)
@@ -353,7 +358,7 @@ func (s *tiltfileState) assembleK8sByWorkload() error {
 	}
 	s.k8sUnresourced = rest
 
-	resourceNames, err := uniqueResourceNames(workloads)
+	resourceNames, err := s.calculateResourceNames(workloads)
 	if err != nil {
 		return err
 	}
@@ -361,7 +366,7 @@ func (s *tiltfileState) assembleK8sByWorkload() error {
 		workload := workloads[i]
 		res, err := s.makeK8sResource(resourceName)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "error making resource for workload %s", newK8SObjectID(workload))
 		}
 		err = res.addEntities([]k8s.K8sEntity{workload}, s.imageJSONPaths)
 		if err != nil {

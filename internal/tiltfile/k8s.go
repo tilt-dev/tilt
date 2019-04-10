@@ -464,6 +464,97 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 	return starlark.None, nil
 }
 
+func (s *tiltfileState) workloadToResourceFunctionFn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var wtrf *starlark.Function
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+		"func", &wtrf); err != nil {
+		return nil, err
+	}
+
+	workloadToResourceFunction, err := makeWorkloadToResourceFunction(wtrf)
+	if err != nil {
+		return starlark.None, err
+	}
+
+	s.workloadToResourceFunction = workloadToResourceFunction
+
+	return starlark.None, nil
+}
+
+type k8sObjectID struct {
+	name      string
+	kind      string
+	namespace string
+	group     string
+}
+
+func (k k8sObjectID) Attr(name string) (starlark.Value, error) {
+	switch name {
+	case "name":
+		return starlark.String(k.name), nil
+	case "kind":
+		return starlark.String(k.kind), nil
+	case "namespace":
+		return starlark.String(k.namespace), nil
+	case "group":
+		return starlark.String(k.group), nil
+	default:
+		return starlark.None, fmt.Errorf("%T has no attribute '%s'", k, name)
+	}
+}
+
+func (k k8sObjectID) AttrNames() []string {
+	return []string{"name", "kind", "namespace", "group"}
+}
+
+func (k k8sObjectID) String() string {
+	return strings.ToLower(fmt.Sprintf("%s:%s:%s:%s", k.name, k.kind, k.namespace, k.group))
+}
+
+func (k k8sObjectID) Type() string {
+	return "k8sObjectID"
+}
+
+func (k k8sObjectID) Freeze() {
+}
+
+func (k k8sObjectID) Truth() starlark.Bool {
+	return k.name != "" || k.kind != "" || k.namespace != "" || k.group != ""
+}
+
+func (k k8sObjectID) Hash() (uint32, error) {
+	return starlark.Tuple{starlark.String(k.name), starlark.String(k.kind), starlark.String(k.namespace), starlark.String(k.group)}.Hash()
+}
+
+var _ starlark.Value = k8sObjectID{}
+
+type workloadToResourceFunction struct {
+	fn  func(thread *starlark.Thread, id k8sObjectID) (string, error)
+	pos syntax.Position
+}
+
+func makeWorkloadToResourceFunction(f *starlark.Function) (workloadToResourceFunction, error) {
+	if f.NumParams() != 1 {
+		return workloadToResourceFunction{}, fmt.Errorf("%s arg must take 1 argument. %s takes %d", workloadToResourceFunctionN, f.Name(), f.NumParams())
+	}
+	fn := func(thread *starlark.Thread, id k8sObjectID) (string, error) {
+		ret, err := starlark.Call(thread, f, starlark.Tuple{id}, nil)
+		if err != nil {
+			return "", err
+		}
+		s, ok := ret.(starlark.String)
+		if !ok {
+			return "", fmt.Errorf("%s: invalid return value. wanted: string. got: %T", f.Name(), ret)
+		}
+		return string(s), nil
+	}
+
+	return workloadToResourceFunction{
+		fn:  fn,
+		pos: f.Position(),
+	}, nil
+}
+
 func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 	if s.k8sByName[name] != nil {
 		return nil, fmt.Errorf("k8s_resource named %q already exists", name)
@@ -692,6 +783,50 @@ func (s *tiltfileState) k8sResourceAssemblyVersionFn(thread *starlark.Thread, fn
 	return starlark.None, nil
 }
 
+func (s *tiltfileState) calculateResourceNames(workloads []k8s.K8sEntity) ([]string, error) {
+	if s.workloadToResourceFunction.fn != nil {
+		names, err := s.workloadToResourceFunctionNames(workloads)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error applying workload_to_resource_function %s", s.workloadToResourceFunction.pos.String())
+		}
+		return names, nil
+	} else {
+		return uniqueResourceNames(workloads)
+	}
+}
+
+// calculates names for workloads using s.workloadToResourceFunction
+func (s *tiltfileState) workloadToResourceFunctionNames(workloads []k8s.K8sEntity) ([]string, error) {
+	takenNames := make(map[string]k8s.K8sEntity)
+	ret := make([]string, len(workloads))
+	thread := s.starlarkThread()
+	for i, e := range workloads {
+		id := newK8SObjectID(e)
+		name, err := s.workloadToResourceFunction.fn(thread, id)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error determing resource name for '%s'", id.String())
+		}
+
+		if conflictingWorkload, ok := takenNames[name]; ok {
+			return nil, fmt.Errorf("both '%s' and '%s' mapped to resource name '%s'", newK8SObjectID(e).String(), newK8SObjectID(conflictingWorkload).String(), name)
+		}
+
+		ret[i] = name
+		takenNames[name] = e
+	}
+	return ret, nil
+}
+
+func newK8SObjectID(e k8s.K8sEntity) k8sObjectID {
+	return k8sObjectID{
+		name:      e.Name(),
+		kind:      e.Kind.Kind,
+		namespace: e.Namespace().String(),
+		group:     e.Kind.Group,
+	}
+}
+
+// calculates names for workloads by using the shortest uniquely matching identifiers
 func uniqueResourceNames(es []k8s.K8sEntity) ([]string, error) {
 	ret := make([]string, len(es))
 	// how many resources potentially map to a given name
