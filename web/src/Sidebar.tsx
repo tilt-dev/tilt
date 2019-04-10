@@ -4,7 +4,6 @@ import { Link } from "react-router-dom"
 import { combinedStatus } from "./status"
 import "./Sidebar.scss"
 import { ResourceView } from "./HUD"
-import { incr } from "./analytics"
 
 class SidebarItem {
   name: string
