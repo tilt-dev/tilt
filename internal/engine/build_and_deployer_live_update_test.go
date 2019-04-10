@@ -295,7 +295,7 @@ func TestLiveUpdateLocalContainerFallBackOn(t *testing.T) {
 		expectDockerExecCount:    0,
 		expectDockerRestartCount: 0,
 		expectK8sDeploy:          true, // Because we fell back to image builder, we also did a k8s deploy
-		logsContain:              []string{"detected change to FallBackOn file", f.JoinPath("a.txt")},
+		logsContain:              []string{"detected change to fall_back_on file", f.JoinPath("a.txt")},
 	}
 	runTestCase(t, f, tCase)
 }
@@ -317,7 +317,7 @@ func TestLiveUpdateSyncletFallBackOn(t *testing.T) {
 		expectDockerRestartCount: 0,
 		expectK8sDeploy:          true, // because we fell back to image builder, we also did a k8s deploy
 		expectSyncletDeploy:      true, // (and expect that yaml to have contained the synclet)
-		logsContain:              []string{"detected change to FallBackOn file", f.JoinPath("a.txt")},
+		logsContain:              []string{"detected change to fall_back_on file", f.JoinPath("a.txt")},
 	}
 	runTestCase(t, f, tCase)
 }

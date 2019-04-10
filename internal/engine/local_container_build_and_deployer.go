@@ -99,7 +99,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		}
 		if anyMatch {
 			return store.BuildResultSet{}, RedirectToNextBuilderInfof(
-				"detected change to FallBackOn file '%s', so falling back to an image build", file)
+				"detected change to fall_back_on file '%s'", file)
 		}
 
 		runs = luInfo.RunSteps()
