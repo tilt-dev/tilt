@@ -67,7 +67,7 @@ exports[`sidebar renders list of resources 1`] = `
     </a>
     <a
       className="viewLink "
-      href="/r/foo/preview"
+      href="/r/vigoda/preview"
       onClick={[Function]}
     >
       Preview
@@ -91,28 +91,19 @@ exports[`sidebar renders list of resources 1`] = `
       <li>
         <a
           className="resLink resLink--pending"
-          href="/r/foo"
+          href="/r/vigoda"
           onClick={[Function]}
         >
-          foo
+          vigoda
         </a>
       </li>
       <li>
         <a
           className="resLink resLink--pending"
-          href="/r/bar"
+          href="/r/snack"
           onClick={[Function]}
         >
-          bar
-        </a>
-      </li>
-      <li>
-        <a
-          className="resLink resLink--pending"
-          href="/r/baz"
-          onClick={[Function]}
-        >
-          baz
+          snack
         </a>
       </li>
     </ul>
