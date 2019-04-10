@@ -25,6 +25,8 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 )
 
+// TODO(nick): This should probably be in its own package, now
+// that it's shared.
 type AssetServer interface {
 	http.Handler
 	Serve(ctx context.Context) error

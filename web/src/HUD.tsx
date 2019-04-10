@@ -58,6 +58,11 @@ type HudState = {
 // The Main HUD view, as specified in
 // https://docs.google.com/document/d/1VNIGfpC4fMfkscboW0bjYYFJl07um_1tsFrbN-Fu3FI/edit#heading=h.l8mmnclsuxl1
 class HUD extends Component<HudProps, HudState> {
+  // The root of the HUD view, without the slash.
+  //
+  // TODO(nick): Update all the Link elements to draw from some LinkProvider
+  // that understands rootPath.
+  private rootPath: string
   private controller: AppController
   private history: History
   private unlisten: UnregisterCallback
@@ -65,10 +70,18 @@ class HUD extends Component<HudProps, HudState> {
   constructor(props: HudProps) {
     super(props)
 
-    this.controller = new AppController(
-      `ws://${window.location.host}/ws/view`,
-      this
-    )
+    let rootPath = ""
+    let url = `ws://${window.location.host}/ws/view`
+    let roomPath = new RegExp("^/view/(.+)$")
+    let roomMatch = roomPath.exec(window.location.pathname)
+    if (roomMatch) {
+      let roomId = roomMatch[1]
+      url = `ws://${window.location.host}/join/${roomId}`
+      rootPath = `/view/${roomId}`
+    }
+
+    this.controller = new AppController(url, this)
+    this.rootPath = rootPath
 
     this.history = createBrowserHistory()
     this.unlisten = () => {}
@@ -113,6 +126,13 @@ class HUD extends Component<HudProps, HudState> {
         .set("IsSidebarClosed", !prevState.IsSidebarClosed)
         .toObject() as HudState // NOTE(dmiller): TypeScript doesn't seem to understand what's going on here so I added a type assertion.
     })
+  }
+
+  path(relPath: string) {
+    if (relPath[0] != "/") {
+      throw new Error('relPath should start with "/", actual:' + relPath)
+    }
+    return this.rootPath + relPath
   }
 
   render() {
@@ -182,22 +202,34 @@ class HUD extends Component<HudProps, HudState> {
       <Router history={this.history}>
         <div className="HUD">
           <Switch>
-            <Route path="/r/:name/preview" render={sidebarPreviewRoute} />}
-            <Route path="/r/:name" render={sidebarRoute} />
+            <Route
+              path={this.path("/r/:name/preview")}
+              render={sidebarPreviewRoute}
+            />
+            }
+            <Route path={this.path("/r/:name")} render={sidebarRoute} />
             <Route render={sidebarRoute} />
           </Switch>
           <Statusbar items={statusItems} />
           <Switch>
             <Route
               exact
-              path="/"
+              path={this.path("/")}
               render={() => (
                 <LogPane log={combinedLog} isExpanded={isSidebarClosed} />
               )}
             />
-            <Route exact path="/r/:name" render={logsRoute} />
-            <Route exact path="/r/:name/k8s" render={() => <K8sViewPane />} />
-            <Route exact path="/r/:name/preview" render={previewRoute} />
+            <Route exact path={this.path("/r/:name")} render={logsRoute} />
+            <Route
+              exact
+              path={this.path("/r/:name/k8s")}
+              render={() => <K8sViewPane />}
+            />
+            <Route
+              exact
+              path={this.path("/r/:name/preview")}
+              render={previewRoute}
+            />
             <Route component={NoMatch} />
           </Switch>
         </div>
