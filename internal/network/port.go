@@ -6,17 +6,17 @@ import (
 )
 
 // Checks if no one is listening on the current TCP port.
-func IsPortFree(port int) bool {
+func IsPortFree(port int) error {
 	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", port))
 	if err != nil {
-		return false
+		return err
 	}
 
 	l, err := net.ListenTCP("tcp", addr)
 	if err != nil {
-		return false
+		return err
 	}
 	_ = l.Close()
 
-	return true
+	return err
 }

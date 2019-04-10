@@ -102,9 +102,10 @@ func (s *devAssetServer) start(ctx context.Context, stdout, stderr io.Writer) (*
 }
 
 func (s *devAssetServer) Serve(ctx context.Context) error {
-	if !network.IsPortFree(int(s.port)) {
-		return fmt.Errorf("Cannot start Tilt dev webpack server. "+
-			"Another process is already running on port %d. "+
+	err := network.IsPortFree(int(s.port))
+	if err != nil {
+		return errors.Wrapf(err, "Cannot start Tilt dev webpack server. "+
+			"Maybe another process is already running on port %d? "+
 			"Use --webdev-port to set a custom port", s.port)
 	}
 
