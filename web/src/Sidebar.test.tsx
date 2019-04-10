@@ -4,7 +4,7 @@ import renderer from "react-test-renderer"
 import { MemoryRouter } from "react-router"
 import Sidebar, { SidebarItem } from "./Sidebar"
 import { ResourceView } from "./HUD"
-import { oneResourceView } from "./testdata.test"
+import { oneResourceView, twoResourceView } from "./testdata.test"
 import { mount } from "enzyme"
 
 describe("sidebar", () => {
@@ -47,16 +47,16 @@ describe("sidebar", () => {
   })
 
   it("renders list of resources", () => {
+    let items = twoResourceView().Resources.map((res: any) => {
+      res.BuildHistory[0].Error = ""
+      return new SidebarItem(res)
+    })
     const tree = renderer
       .create(
         <MemoryRouter initialEntries={["/"]}>
           <Sidebar
             isClosed={false}
-            items={[
-              { name: "foo", status: "pending", hasWarnings: false },
-              { name: "bar", status: "pending", hasWarnings: false },
-              { name: "baz", status: "pending", hasWarnings: false },
-            ]}
+            items={items}
             selected=""
             toggleSidebar={null}
             resourceView={ResourceView.Log}
