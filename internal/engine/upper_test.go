@@ -940,7 +940,8 @@ func TestHudUpdated(t *testing.T) {
 	assert.Equal(t, nil, err)
 
 	assert.Equal(t, 2, len(f.hud.LastView.Resources))
-	rv := f.hud.LastView.Resources[0]
+	assert.Equal(t, view.TiltfileResourceName, f.hud.LastView.Resources[0].Name.String())
+	rv := f.hud.LastView.Resources[1]
 	assert.Equal(t, manifest.Name, model.ManifestName(rv.Name))
 	assert.Equal(t, f.Path(), rv.DirectoriesWatched[0])
 	f.assertAllBuildsConsumed()
@@ -1017,11 +1018,11 @@ func TestPodEvent(t *testing.T) {
 
 	f.podEvent(f.testPod("my-pod", "foobar", "CrashLoopBackOff", testContainer, time.Now()))
 
-	f.WaitUntilHUD("hud update", func(v view.View) bool {
-		return len(v.Resources) > 0 && v.Resources[0].K8SInfo().PodName == "my-pod"
+	f.WaitUntilHUDResource("hud update", "foobar", func(res view.Resource) bool {
+		return res.K8SInfo().PodName == "my-pod"
 	})
 
-	rv := f.hud.LastView.Resources[0]
+	rv := f.hudResource("foobar")
 	assert.Equal(t, "my-pod", rv.K8SInfo().PodName)
 	assert.Equal(t, "CrashLoopBackOff", rv.K8SInfo().PodStatus)
 
@@ -1338,16 +1339,16 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 
 	firstCreationTime := time.Now()
 	f.podEvent(f.testPod("my-pod", "foobar", "CrashLoopBackOff", testContainer, firstCreationTime))
-	f.WaitUntilHUD("hud update 1", func(v view.View) bool {
-		return len(v.Resources) > 0 && v.Resources[0].K8SInfo().PodStatus == "CrashLoopBackOff"
+	f.WaitUntilHUDResource("hud update crash", "foobar", func(res view.Resource) bool {
+		return res.K8SInfo().PodStatus == "CrashLoopBackOff"
 	})
 
 	f.podEvent(f.testPod("my-new-pod", "foobar", "Running", testContainer, firstCreationTime.Add(time.Minute*2)))
-	f.WaitUntilHUD("hud update 2", func(v view.View) bool {
-		return len(v.Resources) > 0 && v.Resources[0].K8SInfo().PodStatus == "Running"
+	f.WaitUntilHUDResource("hud update running", "foobar", func(res view.Resource) bool {
+		return res.K8SInfo().PodStatus == "Running"
 	})
 
-	rv := f.hud.LastView.Resources[0]
+	rv := f.hudResource("foobar")
 	assert.Equal(t, "my-new-pod", rv.K8SInfo().PodName)
 	assert.Equal(t, "Running", rv.K8SInfo().PodStatus)
 
@@ -1368,19 +1369,17 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 	creationTime := time.Now()
 	f.podEvent(f.testPod("my-pod", "foobar", "CrashLoopBackOff", testContainer, creationTime))
 
-	f.WaitUntilHUD("pod crashes", func(view view.View) bool {
-		rv := view.Resources[0]
-		return rv.K8SInfo().PodStatus == "CrashLoopBackOff"
+	f.WaitUntilHUDResource("pod crashes", "foobar", func(res view.Resource) bool {
+		return res.K8SInfo().PodStatus == "CrashLoopBackOff"
 	})
 
 	f.podEvent(f.testPod("my-pod", "foobar", "Running", testContainer, creationTime))
 
-	f.WaitUntilHUD("pod comes back", func(view view.View) bool {
-		rv := view.Resources[0]
-		return rv.K8SInfo().PodStatus == "Running"
+	f.WaitUntilHUDResource("pod comes back", "foobar", func(res view.Resource) bool {
+		return res.K8SInfo().PodStatus == "Running"
 	})
 
-	rv := f.hud.LastView.Resources[0]
+	rv := f.hudResource("foobar")
 	assert.Equal(t, "my-pod", rv.K8SInfo().PodName)
 	assert.Equal(t, "Running", rv.K8SInfo().PodStatus)
 
@@ -1404,8 +1403,8 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 
 	creationTime := time.Now()
 	f.podEvent(f.testPod("my-new-pod", "foobar", "CrashLoopBackOff", testContainer, creationTime))
-	f.WaitUntilHUD("hud update", func(v view.View) bool {
-		return len(v.Resources) > 0 && v.Resources[0].K8SInfo().PodStatus == "CrashLoopBackOff"
+	f.WaitUntilHUDResource("hud update", "foobar", func(res view.Resource) bool {
+		return res.K8SInfo().PodStatus == "CrashLoopBackOff"
 	})
 
 	f.podEvent(f.testPod("my-pod", "foobar", "Running", testContainer, creationTime.Add(time.Minute*-1)))
@@ -1414,7 +1413,7 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 	assert.NoError(t, f.Stop())
 	f.assertAllBuildsConsumed()
 
-	rv := f.hud.LastView.Resources[0]
+	rv := f.hudResource("foobar")
 	assert.Equal(t, "my-new-pod", rv.K8SInfo().PodName)
 	assert.Equal(t, "CrashLoopBackOff", rv.K8SInfo().PodStatus)
 }
@@ -2385,6 +2384,10 @@ func (f *testFixture) WaitUntilHUD(msg string, isDone func(view.View) bool) {
 	f.hud.WaitUntil(f.T(), f.ctx, msg, isDone)
 }
 
+func (f *testFixture) WaitUntilHUDResource(msg string, name model.ManifestName, isDone func(view.Resource) bool) {
+	f.hud.WaitUntilResource(f.T(), f.ctx, msg, name, isDone)
+}
+
 // Wait until the given engine state test passes.
 func (f *testFixture) WaitUntil(msg string, isDone func(store.EngineState) bool) {
 	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
@@ -2676,6 +2679,14 @@ func (f *testFixture) setBuildLogOutput(id model.TargetID, output string) {
 
 func (f *testFixture) setDCRunLogOutput(dc model.DockerComposeTarget, output <-chan string) {
 	f.dcc.RunLogOutput[dc.Name] = output
+}
+
+func (f *testFixture) hudResource(name model.ManifestName) view.Resource {
+	res, ok := f.hud.LastView.Resource(name)
+	if !ok {
+		f.T().Fatalf("Resource not found: %s", name)
+	}
+	return res
 }
 
 type fixtureSub struct {

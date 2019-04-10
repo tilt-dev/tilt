@@ -38,7 +38,7 @@ func TestStateToWebViewMultipleSyncs(t *testing.T) {
 		return
 	}
 
-	r := v.Resources[0]
+	r, _ := v.Resource(m.Name)
 	assert.Equal(t, []string{"d", "d/e"}, r.LastBuild().Edits)
 
 	sort.Strings(r.CurrentBuild.Edits)
@@ -57,9 +57,10 @@ func TestStateToWebViewPortForwards(t *testing.T) {
 	})
 	state := newState([]model.Manifest{m}, model.Manifest{})
 	v := StateToWebView(*state)
+	res, _ := v.Resource(m.Name)
 	assert.Equal(t,
 		[]string{"http://localhost:7000/", "http://localhost:8000/"},
-		v.Resources[0].Endpoints)
+		res.Endpoints)
 }
 
 func TestStateViewYAMLManifestNoYAML(t *testing.T) {
@@ -78,7 +79,7 @@ func TestStateViewYAMLManifestWithYAML(t *testing.T) {
 
 	assert.Equal(t, 2, len(v.Resources))
 
-	r := v.Resources[0]
+	r, _ := v.Resource(m.Name)
 	assert.Equal(t, nil, r.LastBuild().Error)
 	assert.Equal(t, []string{"global.yaml"}, r.DirectoriesWatched)
 }

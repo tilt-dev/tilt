@@ -192,6 +192,15 @@ func (v View) TiltfileErrorMessage() string {
 	return ""
 }
 
+func (v View) Resource(n model.ManifestName) (Resource, bool) {
+	for _, res := range v.Resources {
+		if res.Name == n {
+			return res, true
+		}
+	}
+	return Resource{}, false
+}
+
 type ViewState struct {
 	ShowNarration         bool
 	NarrationMessage      string

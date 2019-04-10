@@ -110,3 +110,12 @@ type View struct {
 	Resources     []Resource
 	LogTimestamps bool
 }
+
+func (v View) Resource(n model.ManifestName) (Resource, bool) {
+	for _, res := range v.Resources {
+		if res.Name == n {
+			return res, true
+		}
+	}
+	return Resource{}, false
+}
