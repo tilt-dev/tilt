@@ -716,3 +716,66 @@ func (ml *MinLengthLayout) Render(writer Writer, width int, height int) error {
 
 	return ml.inner.Render(writer, width, height)
 }
+
+type MaxLengthLayout struct {
+	del Component
+	dir Dir
+	max int
+}
+
+func NewMaxLengthLayout(del Component, dir Dir, max int) MaxLengthLayout {
+	return MaxLengthLayout{
+		del: del,
+		dir: dir,
+		max: max,
+	}
+}
+
+func (l MaxLengthLayout) Size(width int, height int) (int, int, error) {
+	width, height, err := l.del.Size(width, height)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	if l.dir == DirHor && width > l.max {
+		width = l.max
+	} else if l.dir == DirVert && height > l.max {
+		height = l.max
+	}
+	return width, height, nil
+}
+
+func (l MaxLengthLayout) Render(w Writer, width int, height int) error {
+	return l.del.Render(w, width, height)
+}
+
+// A tail layout renders the "end" of its contents rather than the beginning
+// when the contents overflow the box.
+type TailLayout struct {
+	del Component
+}
+
+var _ Component = TailLayout{}
+
+func NewTailLayout(del Component) TailLayout {
+	return TailLayout{del: del}
+}
+
+func (l TailLayout) Size(width int, height int) (int, int, error) {
+	return l.del.Size(width, height)
+}
+
+func (l TailLayout) Render(w Writer, width, height int) error {
+	// Measure the inner element.
+	canvas := w.RenderChildInTemp(l.del)
+	_, childHeight := canvas.Size()
+
+	// Truncate it if it's bigger than the available width.
+	lines := childHeight
+	diff := 0
+	if lines > height {
+		diff = lines - height
+		lines = height
+	}
+	return w.Embed(canvas, diff, lines)
+}

@@ -1,6 +1,7 @@
 package rty
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -12,7 +13,6 @@ func TestFlexLayoutOverflow(t *testing.T) {
 	sc := tcell.NewSimulationScreen("")
 	err := sc.Init()
 	assert.NoError(t, err)
-	sc.SetSize(8, 1)
 
 	r := NewRTY(sc)
 
@@ -86,7 +86,6 @@ func TestNestedConcatLayoutOverflow(t *testing.T) {
 	sc := tcell.NewSimulationScreen("")
 	err := sc.Init()
 	assert.NoError(t, err)
-	sc.SetSize(8, 1)
 
 	r := NewRTY(sc)
 
@@ -114,7 +113,6 @@ func TestMinWidthInNestedConcatLayoutOverflow(t *testing.T) {
 	sc := tcell.NewSimulationScreen("")
 	err := sc.Init()
 	assert.NoError(t, err)
-	sc.SetSize(8, 1)
 
 	r := NewRTY(sc)
 
@@ -132,4 +130,38 @@ func TestMinWidthInNestedConcatLayoutOverflow(t *testing.T) {
 
 	i := NewInteractiveTester(t, screen)
 	i.Run("min width concat text overflow", 8, 1, f2)
+}
+
+func TestTailLayout(t *testing.T) {
+	sc := tcell.NewSimulationScreen("")
+	err := sc.Init()
+	assert.NoError(t, err)
+
+	f := NewConcatLayout(DirVert)
+	for i := 0; i < 15; i++ {
+		f.Add(TextString(fmt.Sprintf("line %d text text", i)))
+	}
+
+	tail := NewBox(NewTailLayout(f))
+	i := NewInteractiveTester(t, screen)
+	i.Run("tail layout no overflow", 20, 20, tail)
+	i.Run("tail layout overflow-y", 20, 10, tail)
+	i.Run("tail layout overflow-x", 15, 40, tail)
+	i.Run("tail layout overflow-xy", 15, 10, tail)
+}
+
+func TestMaxLengthLayout(t *testing.T) {
+	sc := tcell.NewSimulationScreen("")
+	err := sc.Init()
+	assert.NoError(t, err)
+
+	f := NewConcatLayout(DirVert)
+	for i := 0; i < 15; i++ {
+		f.Add(TextString(fmt.Sprintf("line %d text text", i)))
+	}
+
+	box := NewBox(NewMaxLengthLayout(f, DirVert, 20))
+	i := NewInteractiveTester(t, screen)
+	i.Run("max layout no overflow", 20, 20, box)
+	i.Run("max layout overflow", 15, 40, box)
 }

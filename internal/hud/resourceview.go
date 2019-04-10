@@ -16,6 +16,7 @@ import (
 const DeployCellMinWidth = 8
 const BuildDurCellMinWidth = 7
 const BuildStatusCellMinWidth = 8
+const MaxInlineErrHeight = 6
 
 type ResourceView struct {
 	res         view.Resource
@@ -404,7 +405,10 @@ func (v *ResourceView) resourceExpandedError() rty.Component {
 
 	indentPane := rty.NewConcatLayout(rty.DirHor)
 	indentPane.Add(rty.TextString(strings.Repeat(" ", 3)))
-	indentPane.AddDynamic(errPane)
+
+	errPane = rty.NewTailLayout(errPane)
+	errPane = rty.NewMaxLengthLayout(errPane, rty.DirVert, MaxInlineErrHeight)
+	indentPane.Add(errPane)
 	l.Add(indentPane)
 
 	return l
