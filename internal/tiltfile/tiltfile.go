@@ -214,8 +214,6 @@ func starlarkValueOrSequenceToSlice(v starlark.Value) []starlark.Value {
 	} else {
 		return []starlark.Value{v}
 	}
-	//}
-	//return []starlark.Value{v}
 }
 
 func (tfl *tiltfileLoader) reportTiltfileLoaded(counts map[string]int) {
