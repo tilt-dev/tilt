@@ -170,6 +170,10 @@ func isInError(res view.Resource, triggerMode model.TriggerMode) bool {
 	return statusColor(res, triggerMode) == cBad
 }
 
+func warnings(res view.Resource) []string {
+	return res.LastBuild().Warnings
+}
+
 func isCrashing(res view.Resource) bool {
 	return (res.IsK8S() && res.K8SInfo().PodRestarts > 0) ||
 		res.LastBuild().Reason.Has(model.BuildReasonFlagCrash) ||
