@@ -30,3 +30,7 @@
 .LogPane-empty {
   margin: 0;
 }
+
+.LogPane code {
+  white-space: pre-wrap;
+}
