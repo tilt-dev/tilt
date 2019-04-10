@@ -45,26 +45,26 @@ describe("sidebar", () => {
     )
     expect(sidebar.find("li Link.has-warnings")).toHaveLength(1)
   })
-})
 
-it("renders list of resources", () => {
-  const tree = renderer
-    .create(
-      <MemoryRouter initialEntries={["/"]}>
-        <SideBar
-          isClosed={false}
-          items={[
-            { name: "foo", status: "pending" },
-            { name: "bar", status: "pending" },
-            { name: "baz", status: "pending" },
-          ]}
-          selected=""
-          toggleSidebar={null}
-          resourceView={ResourceView.Log}
-        />
-      </MemoryRouter>
-    )
-    .toJSON()
+  it("renders list of resources", () => {
+    const tree = renderer
+      .create(
+        <MemoryRouter initialEntries={["/"]}>
+          <Sidebar
+            isClosed={false}
+            items={[
+              { name: "foo", status: "pending", hasWarnings: false },
+              { name: "bar", status: "pending", hasWarnings: false },
+              { name: "baz", status: "pending", hasWarnings: false },
+            ]}
+            selected=""
+            toggleSidebar={null}
+            resourceView={ResourceView.Log}
+          />
+        </MemoryRouter>
+      )
+      .toJSON()
 
-  expect(tree).toMatchSnapshot()
+    expect(tree).toMatchSnapshot()
+  })
 })
