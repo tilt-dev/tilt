@@ -8,7 +8,7 @@ exports[`renders logs 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         hello
       </span>
@@ -18,7 +18,7 @@ exports[`renders logs 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         world
       </span>
@@ -28,7 +28,7 @@ exports[`renders logs 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         foo
       </span>
@@ -38,7 +38,7 @@ exports[`renders logs 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         bar
       </span>
@@ -60,7 +60,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         [32mStarting Tilt (v0.7.10-dev, built 2019-04-10)…
       </span>
@@ -70,7 +70,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Beginning Tiltfile execution
       </span>
@@ -80,7 +80,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"whoami"\`
       </span>
@@ -90,7 +90,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             Installing Tilt NodeJS dependencies…
       </span>
@@ -100,7 +100,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fe.yaml""\`
       </span>
@@ -110,7 +110,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/vigoda.yaml""\`
       </span>
@@ -120,7 +120,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/snack.yaml""\`
       </span>
@@ -130,7 +130,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/doggos.yaml""\`
       </span>
@@ -140,7 +140,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fortune.yaml""\`
       </span>
@@ -150,7 +150,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hypothesizer.yaml""\`
       </span>
@@ -160,7 +160,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/spoonerisms.yaml""\`
       </span>
@@ -170,7 +170,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/emoji.yaml""\`
       </span>
@@ -180,7 +180,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/words.yaml""\`
       </span>
@@ -190,7 +190,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/secrets.yaml""\`
       </span>
@@ -200,7 +200,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/job.yaml""\`
       </span>
@@ -210,7 +210,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/sleeper.yaml""\`
       </span>
@@ -220,7 +220,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hello_world.yaml""\`
       </span>
@@ -230,7 +230,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/tick.yaml""\`
       </span>
@@ -240,7 +240,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] WARNING: This Tiltfile is using k8s resource assembly version 1, which has been deprecated. It will no longer be supported after 2019-04-17. Sorry for the inconvenience! See https://tilt.dev/resource_assembly_migration.html for information on how to migrate.
       </span>
@@ -250,7 +250,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile]
       </span>
@@ -260,7 +260,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Successfully loaded Tiltfile
       </span>
@@ -270,23 +270,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Applying via kubectl
       </span>
@@ -299,33 +295,25 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         ──┤ Building: 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         hello-world
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
          ├──────────────────────────────────────────────
       </span>
@@ -335,23 +323,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 1/1 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Deploying
       </span>
@@ -361,23 +345,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Parsing Kubernetes config YAML
       </span>
@@ -387,23 +367,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Applying via kubectl
       </span>
@@ -416,23 +392,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 1 - 4.138s
       </span>
@@ -442,23 +414,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Done in: 4.138s
       </span>
@@ -474,33 +442,25 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         ──┤ Building: 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         echo-hi
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
          ├──────────────────────────────────────────────
       </span>
@@ -510,23 +470,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 1/1 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Deploying
       </span>
@@ -536,23 +492,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Parsing Kubernetes config YAML
       </span>
@@ -562,23 +514,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Applying via kubectl
       </span>
@@ -591,23 +539,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 1 - 0.556s
       </span>
@@ -617,23 +561,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Done in: 0.556s
       </span>
@@ -649,33 +589,25 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         ──┤ Building: 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         tick
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
          ├──────────────────────────────────────────────
       </span>
@@ -685,23 +617,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 1/1 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Deploying
       </span>
@@ -711,23 +639,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Parsing Kubernetes config YAML
       </span>
@@ -737,23 +661,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Applying via kubectl
       </span>
@@ -766,23 +686,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 1 - 0.450s
       </span>
@@ -792,23 +708,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Done in: 0.450s
       </span>
@@ -824,33 +736,25 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         ──┤ Building: 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         fe
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
          ├──────────────────────────────────────────────
       </span>
@@ -860,23 +764,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 1/3 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Building Dockerfile: [docker.io/library/fe]
       </span>
@@ -886,7 +786,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             Building Dockerfile:
       </span>
@@ -896,7 +796,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               FROM golang:1.10
       </span>
@@ -909,7 +809,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               RUN apt update && apt install -y unzip time make
       </span>
@@ -922,7 +822,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               ENV PROTOC_VERSION 3.5.1
       </span>
@@ -935,7 +835,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               RUN wget https://github.com/google/protobuf/releases/download/v\${PROTOC_VERSION}/protoc-\${PROTOC_VERSION}-linux-x86_64.zip &&         unzip protoc-\${PROTOC_VERSION}-linux-x86_64.zip -d protoc &&         mv protoc/bin/protoc /usr/bin/protoc
       </span>
@@ -948,7 +848,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               RUN go get github.com/golang/protobuf/protoc-gen-go
       </span>
@@ -961,7 +861,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               ADD . /go/src/github.com/windmilleng/servantes/fe
       </span>
@@ -971,7 +871,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               RUN go install github.com/windmilleng/servantes/fe
       </span>
@@ -981,7 +881,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               ENTRYPOINT /go/bin/fe
       </span>
@@ -997,23 +897,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Tarring context…
       </span>
@@ -1023,7 +919,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ Created tarball (size: 24 MB)
       </span>
@@ -1033,23 +929,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Building image
       </span>
@@ -1059,7 +951,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [1/6] FROM docker.io/library/golang:1.10
       </span>
@@ -1069,7 +961,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [2/6] RUN apt update && apt install -y unzip time make
       </span>
@@ -1079,7 +971,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [3/6] RUN wget https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip &&   unzip protoc-3.5.1-linux-x86_64.zip -d protoc &&   mv protoc/bin/protoc /usr/bin/protoc
       </span>
@@ -1089,7 +981,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [4/6] RUN go get github.com/golang/protobuf/protoc-gen-go
       </span>
@@ -1099,7 +991,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [5/6] ADD . /go/src/github.com/windmilleng/servantes/fe
       </span>
@@ -1109,7 +1001,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [6/6] RUN go install github.com/windmilleng/servantes/fe
       </span>
@@ -1122,23 +1014,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 2/3 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Pushing gcr.io/windmill-public-containers/servantes/fe:tilt-2540b7769f4b0e45
       </span>
@@ -1148,7 +1036,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ Skipping push
       </span>
@@ -1161,23 +1049,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 3/3 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Deploying
       </span>
@@ -1187,23 +1071,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Parsing Kubernetes config YAML
       </span>
@@ -1213,23 +1093,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Applying via kubectl
       </span>
@@ -1242,23 +1118,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 1 - 7.630s
       </span>
@@ -1268,23 +1140,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 2 - 0.000s
       </span>
@@ -1294,23 +1162,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 3 - 0.249s
       </span>
@@ -1320,23 +1184,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Done in: 7.880s
       </span>
@@ -1352,33 +1212,25 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         ──┤ Building: 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         vigoda
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
          ├──────────────────────────────────────────────
       </span>
@@ -1388,23 +1240,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 1/3 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Building Dockerfile: [docker.io/library/vigoda]
       </span>
@@ -1414,7 +1262,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             Building Dockerfile:
       </span>
@@ -1424,7 +1272,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               FROM golang:1.10
       </span>
@@ -1437,7 +1285,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               ADD . /go/src/github.com/windmilleng/servantes/vigoda
       </span>
@@ -1447,7 +1295,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               RUN go install github.com/windmilleng/servantes/vigoda
       </span>
@@ -1460,7 +1308,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               ENTRYPOINT /go/bin/vigoda
       </span>
@@ -1473,23 +1321,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Tarring context…
       </span>
@@ -1499,7 +1343,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ Created tarball (size: 8.7 kB)
       </span>
@@ -1509,23 +1353,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Building image
       </span>
@@ -1535,7 +1375,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [1/3] FROM docker.io/library/golang:1.10
       </span>
@@ -1545,7 +1385,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/vigoda
       </span>
@@ -1555,7 +1395,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [3/3] RUN go install github.com/windmilleng/servantes/vigoda
       </span>
@@ -1568,23 +1408,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 2/3 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Pushing gcr.io/windmill-public-containers/servantes/vigoda:tilt-2d369271c8091f68
       </span>
@@ -1594,7 +1430,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ Skipping push
       </span>
@@ -1607,23 +1443,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 3/3 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Deploying
       </span>
@@ -1633,23 +1465,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Parsing Kubernetes config YAML
       </span>
@@ -1659,23 +1487,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Applying via kubectl
       </span>
@@ -1688,23 +1512,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 1 - 1.017s
       </span>
@@ -1714,23 +1534,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 2 - 0.000s
       </span>
@@ -1740,23 +1556,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 3 - 0.168s
       </span>
@@ -1766,23 +1578,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Done in: 1.185s
       </span>
@@ -1798,33 +1606,25 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         ──┤ Building: 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         snack
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
          ├──────────────────────────────────────────────
       </span>
@@ -1834,23 +1634,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 1/3 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Building Dockerfile: [docker.io/library/snack]
       </span>
@@ -1860,7 +1656,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             Building Dockerfile:
       </span>
@@ -1870,7 +1666,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               FROM golang:1.10
       </span>
@@ -1883,7 +1679,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               ADD . /go/src/github.com/windmilleng/servantes/snack
       </span>
@@ -1893,7 +1689,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               RUN go install github.com/windmilleng/servantes/snack
       </span>
@@ -1906,7 +1702,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               ENTRYPOINT /go/bin/snack
       </span>
@@ -1919,23 +1715,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Tarring context…
       </span>
@@ -1945,7 +1737,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ Created tarball (size: 9.7 kB)
       </span>
@@ -1955,23 +1747,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Building image
       </span>
@@ -1981,7 +1769,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [1/3] FROM docker.io/library/golang:1.10
       </span>
@@ -1991,7 +1779,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             Starting Tilt webpack server…
       </span>
@@ -2001,7 +1789,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             fe          ┊ 2019/04/10 15:37:37 Starting Servantes FE on :8080
       </span>
@@ -2011,7 +1799,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/snack
       </span>
@@ -2021,7 +1809,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [3/3] RUN go install github.com/windmilleng/servantes/snack
       </span>
@@ -2034,23 +1822,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 2/3 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Pushing gcr.io/windmill-public-containers/servantes/snack:tilt-731280d503bbbcf5
       </span>
@@ -2060,7 +1844,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ Skipping push
       </span>
@@ -2073,23 +1857,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 3/3 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Deploying
       </span>
@@ -2099,23 +1879,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Parsing Kubernetes config YAML
       </span>
@@ -2125,23 +1901,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Applying via kubectl
       </span>
@@ -2154,23 +1926,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 1 - 2.878s
       </span>
@@ -2180,23 +1948,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 2 - 0.000s
       </span>
@@ -2206,23 +1970,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 3 - 0.322s
       </span>
@@ -2232,23 +1992,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Done in: 3.200s
       </span>
@@ -2264,33 +2020,25 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         ──┤ Building: 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         doggos
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
          ├──────────────────────────────────────────────
       </span>
@@ -2300,23 +2048,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 1/5 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Building Dockerfile: [docker.io/library/doggos]
       </span>
@@ -2326,7 +2070,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             Building Dockerfile:
       </span>
@@ -2336,7 +2080,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               FROM golang:1.10
       </span>
@@ -2349,7 +2093,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               ADD . /go/src/github.com/windmilleng/servantes/doggos
       </span>
@@ -2359,7 +2103,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               RUN go install github.com/windmilleng/servantes/doggos
       </span>
@@ -2372,7 +2116,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               ENTRYPOINT /go/bin/doggos
       </span>
@@ -2385,23 +2129,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Tarring context…
       </span>
@@ -2411,7 +2151,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ Created tarball (size: 7.7 kB)
       </span>
@@ -2421,23 +2161,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Building image
       </span>
@@ -2447,7 +2183,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             vigoda      ┊ 2019/04/10 15:37:39 Starting Vigoda Health Check Service on :8081
       </span>
@@ -2457,7 +2193,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [1/3] FROM docker.io/library/golang:1.10
       </span>
@@ -2467,7 +2203,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/doggos
       </span>
@@ -2477,7 +2213,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [3/3] RUN go install github.com/windmilleng/servantes/doggos
       </span>
@@ -2490,23 +2226,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 2/5 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Pushing gcr.io/windmill-public-containers/servantes/doggos:tilt-28a4e6fab0991d2f
       </span>
@@ -2516,7 +2248,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ Skipping push
       </span>
@@ -2529,23 +2261,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 3/5 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Building Dockerfile: [docker.io/library/sidecar]
       </span>
@@ -2555,7 +2283,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             Building Dockerfile:
       </span>
@@ -2565,7 +2293,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               FROM alpine
       </span>
@@ -2578,7 +2306,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               ADD loud_sidecar.sh /
       </span>
@@ -2588,7 +2316,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               ENTRYPOINT ["/loud_sidecar.sh"]
       </span>
@@ -2604,23 +2332,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Tarring context…
       </span>
@@ -2630,7 +2354,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ Created tarball (size: 4.6 kB)
       </span>
@@ -2640,23 +2364,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Building image
       </span>
@@ -2666,7 +2386,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             vigoda      ┊ 2019/04/10 15:37:41 Server status: All good
       </span>
@@ -2676,7 +2396,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [1/2] FROM docker.io/library/alpine
       </span>
@@ -2686,7 +2406,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [2/2] ADD loud_sidecar.sh /
       </span>
@@ -2699,23 +2419,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 4/5 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Pushing gcr.io/windmill-public-containers/servantes/sidecar:tilt-4fb31b5179f3ad01
       </span>
@@ -2725,7 +2441,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ Skipping push
       </span>
@@ -2738,23 +2454,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 5/5 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Deploying
       </span>
@@ -2764,23 +2476,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Parsing Kubernetes config YAML
       </span>
@@ -2790,23 +2498,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Applying via kubectl
       </span>
@@ -2819,23 +2523,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 1 - 1.629s
       </span>
@@ -2845,23 +2545,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 2 - 0.000s
       </span>
@@ -2871,23 +2567,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 3 - 2.024s
       </span>
@@ -2897,23 +2589,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 4 - 0.000s
       </span>
@@ -2923,23 +2611,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 5 - 0.218s
       </span>
@@ -2949,23 +2633,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Done in: 3.871s
       </span>
@@ -2981,33 +2661,25 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         ──┤ Building: 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         fortune
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
          ├──────────────────────────────────────────────
       </span>
@@ -3017,23 +2689,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 1/3 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Building Dockerfile: [docker.io/library/fortune]
       </span>
@@ -3043,7 +2711,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             Building Dockerfile:
       </span>
@@ -3053,7 +2721,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               FROM golang:1.10
       </span>
@@ -3066,7 +2734,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               RUN apt update && apt install -y unzip time make
       </span>
@@ -3079,7 +2747,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               ENV PROTOC_VERSION 3.5.1
       </span>
@@ -3092,7 +2760,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               RUN wget https://github.com/google/protobuf/releases/download/v\${PROTOC_VERSION}/protoc-\${PROTOC_VERSION}-linux-x86_64.zip &&         unzip protoc-\${PROTOC_VERSION}-linux-x86_64.zip -d protoc &&         mv protoc/bin/protoc /usr/bin/protoc
       </span>
@@ -3105,7 +2773,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               RUN go get github.com/golang/protobuf/protoc-gen-go
       </span>
@@ -3118,7 +2786,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               ADD . /go/src/github.com/windmilleng/servantes/fortune
       </span>
@@ -3128,7 +2796,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               RUN cd /go/src/github.com/windmilleng/servantes/fortune && make proto
       </span>
@@ -3138,7 +2806,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               RUN go install github.com/windmilleng/servantes/fortune
       </span>
@@ -3151,7 +2819,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               ENTRYPOINT /go/bin/fortune
       </span>
@@ -3167,23 +2835,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Tarring context…
       </span>
@@ -3193,7 +2857,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ Created tarball (size: 16 kB)
       </span>
@@ -3203,23 +2867,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Building image
       </span>
@@ -3229,7 +2889,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             snack       ┊ 2019/04/10 15:37:41 Starting Snack Service on :8083
       </span>
@@ -3239,7 +2899,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             vigoda      ┊ 2019/04/10 15:37:43 Server status: All good
       </span>
@@ -3249,7 +2909,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [1/7] FROM docker.io/library/golang:1.10
       </span>
@@ -3259,7 +2919,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [2/7] RUN apt update && apt install -y unzip time make
       </span>
@@ -3269,7 +2929,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [3/7] RUN wget https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip &&   unzip protoc-3.5.1-linux-x86_64.zip -d protoc &&   mv protoc/bin/protoc /usr/bin/protoc
       </span>
@@ -3279,7 +2939,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [4/7] RUN go get github.com/golang/protobuf/protoc-gen-go
       </span>
@@ -3289,7 +2949,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [5/7] ADD . /go/src/github.com/windmilleng/servantes/fortune
       </span>
@@ -3299,7 +2959,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [6/7] RUN cd /go/src/github.com/windmilleng/servantes/fortune && make proto
       </span>
@@ -3309,7 +2969,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [7/7] RUN go install github.com/windmilleng/servantes/fortune
       </span>
@@ -3322,23 +2982,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 2/3 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Pushing gcr.io/windmill-public-containers/servantes/fortune:tilt-7e4331cb0b073360
       </span>
@@ -3348,7 +3004,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ Skipping push
       </span>
@@ -3361,23 +3017,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 3/3 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Deploying
       </span>
@@ -3387,23 +3039,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Parsing Kubernetes config YAML
       </span>
@@ -3413,23 +3061,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Applying via kubectl
       </span>
@@ -3442,23 +3086,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 1 - 1.634s
       </span>
@@ -3468,23 +3108,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 2 - 0.000s
       </span>
@@ -3494,23 +3130,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 3 - 0.279s
       </span>
@@ -3520,23 +3152,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Done in: 1.914s
       </span>
@@ -3552,33 +3180,25 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         ──┤ Building: 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         hypothesizer
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
          ├──────────────────────────────────────────────
       </span>
@@ -3588,23 +3208,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 1/3 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Building Dockerfile: [docker.io/library/hypothesizer]
       </span>
@@ -3614,7 +3230,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             Building Dockerfile:
       </span>
@@ -3624,7 +3240,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               FROM python:3.6
       </span>
@@ -3637,7 +3253,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               ADD . /app
       </span>
@@ -3647,7 +3263,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               RUN cd /app && pip install -r requirements.txt
       </span>
@@ -3660,23 +3276,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Tarring context…
       </span>
@@ -3686,7 +3298,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ Created tarball (size: 6.1 kB)
       </span>
@@ -3696,23 +3308,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Building image
       </span>
@@ -3722,7 +3330,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             vigoda      ┊ 2019/04/10 15:37:45 Server status: All good
       </span>
@@ -3732,7 +3340,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [1/3] FROM docker.io/library/python:3.6@sha256:fcbf363c285f331894b33f2577e0426182b989c750133a989abaaa4edea324e9
       </span>
@@ -3742,7 +3350,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [2/3] ADD . /app
       </span>
@@ -3752,7 +3360,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [3/3] RUN cd /app && pip install -r requirements.txt
       </span>
@@ -3765,23 +3373,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 2/3 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Pushing gcr.io/windmill-public-containers/servantes/hypothesizer:tilt-e2e22b5b98437e29
       </span>
@@ -3791,7 +3395,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ Skipping push
       </span>
@@ -3804,23 +3408,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 3/3 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Deploying
       </span>
@@ -3830,23 +3430,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Parsing Kubernetes config YAML
       </span>
@@ -3856,23 +3452,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Applying via kubectl
       </span>
@@ -3885,23 +3477,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 1 - 2.119s
       </span>
@@ -3911,23 +3499,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 2 - 0.000s
       </span>
@@ -3937,23 +3521,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Step 3 - 0.517s
       </span>
@@ -3963,23 +3543,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Done in: 2.636s
       </span>
@@ -3995,33 +3571,25 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         ──┤ Building: 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         spoonerisms
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
          ├──────────────────────────────────────────────
       </span>
@@ -4031,23 +3599,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
         STEP 1/3 — 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Building Dockerfile: [docker.io/library/spoonerisms]
       </span>
@@ -4057,7 +3621,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             Building Dockerfile:
       </span>
@@ -4067,7 +3631,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               FROM node:10
       </span>
@@ -4080,7 +3644,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               ADD package.json /app/package.json
       </span>
@@ -4090,7 +3654,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               ADD yarn.lock /app/yarn.lock
       </span>
@@ -4100,7 +3664,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               RUN cd /app && yarn install
       </span>
@@ -4113,7 +3677,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               ADD src /app
       </span>
@@ -4126,7 +3690,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
               ENTRYPOINT [ "node", "/app/index.js" ]
       </span>
@@ -4142,23 +3706,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Tarring context…
       </span>
@@ -4168,7 +3728,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ Created tarball (size: 459 kB)
       </span>
@@ -4178,23 +3738,19 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             
       </span>
       <span
-        className={null}
-        style={
-          Object {
-            "color": "rgb(0, 0, 187)",
-          }
-        }
+        className="ansi-blue"
+        style={null}
       >
           │ 
       </span>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
         Building image
       </span>
@@ -4204,7 +3760,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Beginning Tiltfile execution
       </span>
@@ -4214,7 +3770,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"whoami"\`
       </span>
@@ -4224,7 +3780,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile]        HI
       </span>
@@ -4234,7 +3790,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fe.yaml""\`
       </span>
@@ -4244,7 +3800,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/vigoda.yaml""\`
       </span>
@@ -4254,7 +3810,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/snack.yaml""\`
       </span>
@@ -4264,7 +3820,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/doggos.yaml""\`
       </span>
@@ -4274,7 +3830,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fortune.yaml""\`
       </span>
@@ -4284,7 +3840,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hypothesizer.yaml""\`
       </span>
@@ -4294,7 +3850,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/spoonerisms.yaml""\`
       </span>
@@ -4304,7 +3860,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/emoji.yaml""\`
       </span>
@@ -4314,7 +3870,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/words.yaml""\`
       </span>
@@ -4324,7 +3880,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/secrets.yaml""\`
       </span>
@@ -4334,7 +3890,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/job.yaml""\`
       </span>
@@ -4344,7 +3900,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/sleeper.yaml""\`
       </span>
@@ -4354,7 +3910,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hello_world.yaml""\`
       </span>
@@ -4364,7 +3920,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/tick.yaml""\`
       </span>
@@ -4374,7 +3930,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             vigoda      ┊ 2019/04/10 15:37:47 Server status: All good
       </span>
@@ -4384,7 +3940,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] WARNING: This Tiltfile is using k8s resource assembly version 1, which has been deprecated. It will no longer be supported after 2019-04-17. Sorry for the inconvenience! See https://tilt.dev/resource_assembly_migration.html for information on how to migrate.
       </span>
@@ -4394,7 +3950,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile]
       </span>
@@ -4404,7 +3960,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             [Tiltfile] Successfully loaded Tiltfile
       </span>
@@ -4414,7 +3970,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             doggos      ┊ [doggos] 2019/04/10 15:37:45 Starting Doggos Service on :8083
       </span>
@@ -4424,7 +3980,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             doggos      ┊ [sidecar] I'm a loud sidecar! [Wed Apr 10 15:37:46 UTC 2019]
       </span>
@@ -4434,7 +3990,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             doggos      ┊ [sidecar] I'm a loud sidecar! [Wed Apr 10 15:37:48 UTC 2019]
       </span>
@@ -4444,7 +4000,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
             doggos      ┊ [doggos] 2019/04/10 15:37:49 Heartbeat
       </span>
@@ -4454,7 +4010,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [1/5] FROM docker.io/library/node:10
       </span>
@@ -4464,7 +4020,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [2/5] ADD package.json /app/package.json
       </span>
@@ -4474,7 +4030,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [3/5] ADD yarn.lock /app/yarn.lock
       </span>
@@ -4484,7 +4040,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [4/5] RUN cd /app && yarn install
       </span>
@@ -4494,7 +4050,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     <code>
       <span
         className={null}
-        style={Object {}}
+        style={null}
       >
                 ╎ [5/5] ADD src /app
       </span>
