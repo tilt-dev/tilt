@@ -138,7 +138,6 @@
   margin: 0;
   padding: 0;
   @include button-text;
-  line-height: $sidebar-item;
   cursor: pointer;
   transition-property: color, background-color;
   transition-duration: $animation-timing;
