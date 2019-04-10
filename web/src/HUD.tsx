@@ -7,7 +7,7 @@ import Statusbar, { StatusItem } from "./Statusbar"
 import LogPane from "./LogPane"
 import K8sViewPane from "./K8sViewPane"
 import PreviewPane from "./PreviewPane"
-import { Map as ImmMap } from "immutable"
+import { Map } from "immutable"
 import { Router, Route, Switch, RouteComponentProps } from "react-router-dom"
 import { createBrowserHistory, History, UnregisterCallback } from "history"
 import "./HUD.scss"
@@ -90,8 +90,7 @@ class HUD extends Component<HudProps, HudState> {
 
   componentWillMount() {
     this.unlisten = this.history.listen((location, action) => {
-      let tags: Map<string, string> = new Map()
-      tags.set("path", location.pathname)
+      let tags = { path: location.pathname }
       incr("ui.web.navigation", tags)
     })
   }
@@ -111,7 +110,7 @@ class HUD extends Component<HudProps, HudState> {
 
   toggleSidebar() {
     this.setState(prevState => {
-      return ImmMap(prevState)
+      return Map(prevState)
         .set("IsSidebarClosed", !prevState.IsSidebarClosed)
         .toObject() as HudState // NOTE(dmiller): TypeScript doesn't seem to understand what's going on here so I added a type assertion.
     })
