@@ -59,7 +59,7 @@ class Sidebar extends PureComponent<SidebarProps> {
       }
       return (
         <li key={item.name}>
-          <Link className={classes} to={link} onClick={_ => incr(analyticsKey)}>
+          <Link className={classes} to={link}>
             {item.name}
           </Link>
         </li>
