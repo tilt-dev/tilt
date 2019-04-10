@@ -32,6 +32,7 @@ var webModeFlag model.WebMode = model.DefaultWebMode
 var webPort = 0
 var webDevPort = 0
 var logActionsFlag bool = false
+var enableSail = false
 
 type upCmd struct {
 	watch       bool
@@ -61,6 +62,7 @@ func (c *upCmd) register() *cobra.Command {
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
 	cmd.Flags().IntVar(&webPort, "port", DefaultWebPort, "Port for the Tilt HTTP server. Set to 0 to disable.")
 	cmd.Flags().IntVar(&webDevPort, "webdev-port", DefaultWebDevPort, "Port for the Tilt Dev Webpack server. Only applies when using --web-mode=local")
+	cmd.Flags().BoolVar(&enableSail, "enable-sail", false, "Open a connection to the sail server on startup")
 	cmd.Flags().Lookup("logactions").Hidden = true
 	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
 	err := cmd.Flags().MarkHidden("image-tag-prefix")
@@ -68,6 +70,10 @@ func (c *upCmd) register() *cobra.Command {
 		panic(err)
 	}
 	err = cmd.Flags().MarkHidden("browser")
+	if err != nil {
+		panic(err)
+	}
+	err = cmd.Flags().MarkHidden("enable-sail")
 	if err != nil {
 		panic(err)
 	}
@@ -197,4 +203,17 @@ func provideWebURL(webPort model.WebPort) (model.WebURL, error) {
 		return model.WebURL{}, err
 	}
 	return model.WebURL(*url), nil
+}
+
+func provideSailURL() (model.SailURL, error) {
+	if !enableSail {
+		return model.SailURL{}, nil
+	}
+
+	url, err := url.Parse(fmt.Sprintf("ws://localhost:%d/", model.DefaultSailPort))
+	if err != nil {
+		return model.SailURL{}, err
+	}
+
+	return model.SailURL(*url), nil
 }

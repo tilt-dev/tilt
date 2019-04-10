@@ -28,7 +28,7 @@ proto: scripts/protocc/protocc.py
 # TODO(nick): We should have a release build that bakes in a particular
 # SYNCLET_IMAGE tag.
 install:
-	go install ./...
+	go install ./cmd/tilt/...
 
 install-dev:
 	@if ! [[ -e "$(SYNCLET_DEV_IMAGE_TAG_FILE)" ]]; then echo "No dev synclet found. Run make synclet-dev."; exit 1; fi
@@ -37,6 +37,9 @@ install-dev:
 # disable optimizations and inlining, to allow more complete information when attaching a debugger or capturing a profile
 install-debug:
 	go install -gcflags "all=-N -l" ./...
+
+install-sail:
+	go install ./cmd/sail/...
 
 define synclet-build-dev
 	echo $1 > $(SYNCLET_DEV_IMAGE_TAG_FILE)
