@@ -52,7 +52,7 @@ exports[`renders logs 1`] = `
 </section>
 `;
 
-exports[`renders logs with leading whitespace 1`] = `
+exports[`renders logs with leading whitespace and ANSI codes 1`] = `
 <section
   className="LogPane "
 >
