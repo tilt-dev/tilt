@@ -51,7 +51,7 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
 </section>
 `;
 
-exports[`renders list of resources 1`] = `
+exports[`sidebar renders list of resources 1`] = `
 <section
   className="Sidebar"
 >
