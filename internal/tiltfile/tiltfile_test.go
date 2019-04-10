@@ -389,7 +389,7 @@ k8s_yaml(yaml)
 
 	f.load()
 
-	f.assertLogContains("gcr.io/foo")
+	f.assertLogContains("        image: gcr.io/fo")
 
 	f.assertNextManifest("foo",
 		db(image("gcr.io/foo")),
@@ -779,7 +779,7 @@ func TestK8sResourceWithoutDockerBuild(t *testing.T) {
 	f.setupFoo()
 	f.file("Tiltfile", `
 k8s_resource_assembly_version(1)
-k8s_resource('foo', yaml='foo.yaml', port_forwards=8000)	
+k8s_resource('foo', yaml='foo.yaml', port_forwards=8000)
 `)
 	f.loadResourceAssemblyV1()
 	f.assertNextManifest("foo", []model.PortForward{{LocalPort: 8000}})
