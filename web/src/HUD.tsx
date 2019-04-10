@@ -8,13 +8,10 @@ import LogPane from "./LogPane"
 import K8sViewPane from "./K8sViewPane"
 import PreviewPane from "./PreviewPane"
 import { Map } from "immutable"
-import {
-  BrowserRouter as Router,
-  Route,
-  Switch,
-  RouteComponentProps,
-} from "react-router-dom"
+import { Router, Route, Switch, RouteComponentProps } from "react-router-dom"
+import { createBrowserHistory, History, UnregisterCallback } from "history"
 import "./HUD.scss"
+import { incr } from "./analytics"
 
 type HudProps = {}
 
@@ -62,6 +59,8 @@ type HudState = {
 // https://docs.google.com/document/d/1VNIGfpC4fMfkscboW0bjYYFJl07um_1tsFrbN-Fu3FI/edit#heading=h.l8mmnclsuxl1
 class HUD extends Component<HudProps, HudState> {
   private controller: AppController
+  private history: History
+  private unlisten: UnregisterCallback
 
   constructor(props: HudProps) {
     super(props)
@@ -70,6 +69,10 @@ class HUD extends Component<HudProps, HudState> {
       `ws://${window.location.host}/ws/view`,
       this
     )
+
+    this.history = createBrowserHistory()
+    this.unlisten = () => {}
+
     this.state = {
       Message: "",
       View: {
@@ -83,12 +86,20 @@ class HUD extends Component<HudProps, HudState> {
     this.toggleSidebar = this.toggleSidebar.bind(this)
   }
 
+  componentWillMount() {
+    this.unlisten = this.history.listen((location, action) => {
+      let tags = { path: location.pathname }
+      incr("ui.web.navigation", tags)
+    })
+  }
+
   componentDidMount() {
     this.controller.createNewSocket()
   }
 
   componentWillUnmount() {
     this.controller.dispose()
+    this.unlisten()
   }
 
   setAppState(state: HudState) {
@@ -167,7 +178,7 @@ class HUD extends Component<HudProps, HudState> {
     }
 
     return (
-      <Router>
+      <Router history={this.history}>
         <div className="HUD">
           <Switch>
             <Route path="/r/:name/preview" render={sidebarPreviewRoute} />}
