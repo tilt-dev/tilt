@@ -207,8 +207,18 @@ type ViewState struct {
 	Resources             []ResourceViewState
 	ProcessedLogByteCount int
 	AlertMessage          string
+	TabState              TabState
 	SelectedIndex         int
+	TiltLogState          TiltLogState
 }
+
+type TabState int
+
+const (
+	TabAllLog TabState = iota
+	TabBuildLog
+	TabPodLog
+)
 
 type CollapseState int
 
@@ -228,6 +238,25 @@ func (c CollapseState) IsCollapsed(defaultCollapse bool) bool {
 		return defaultCollapse
 	}
 }
+
+func (vs *ViewState) CycleViewLogState() {
+	states := []TiltLogState{TiltLogShort, TiltLogHalfScreen, TiltLogFullScreen}
+	for i := range states {
+		if states[i] == vs.TiltLogState {
+			vs.TiltLogState = states[(i+1)%len(states)]
+			return
+		}
+	}
+	vs.TiltLogState = TiltLogFullScreen
+}
+
+type TiltLogState int
+
+const (
+	TiltLogShort TiltLogState = iota
+	TiltLogHalfScreen
+	TiltLogFullScreen
+)
 
 type ResourceViewState struct {
 	CollapseState CollapseState

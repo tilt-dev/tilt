@@ -72,15 +72,32 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 
 	l.Add(r.renderResourceHeader(v))
 	l.Add(r.renderResources(v, vs))
-	l.Add(renderPaneHeader(vs))
 	l.Add(r.renderLogPane(v, vs))
 	l.Add(r.renderFooter(v, keyLegend(v, vs)))
 
 	var ret rty.Component = l
 
+	ret = r.maybeAddFullScreenLog(v, vs, ret)
+
 	ret = r.maybeAddAlertModal(vs, ret)
 
 	return ret
+}
+
+func (r *Renderer) maybeAddFullScreenLog(v view.View, vs view.ViewState, layout rty.Component) rty.Component {
+	if vs.TiltLogState == view.TiltLogFullScreen {
+		tabView := NewTabView(v, vs)
+
+		l := rty.NewConcatLayout(rty.DirVert)
+		sl := rty.NewTextScrollLayout("log")
+		l.Add(tabView.buildTabs())
+		sl.Add(rty.TextString(tabView.log()))
+		l.AddDynamic(sl)
+		l.Add(r.renderFooter(v, keyLegend(v, vs)))
+
+		layout = rty.NewModalLayout(layout, l, 1, true)
+	}
+	return layout
 }
 
 func (r *Renderer) maybeAddAlertModal(vs view.ViewState, layout rty.Component) rty.Component {
@@ -101,15 +118,25 @@ func (r *Renderer) maybeAddAlertModal(vs view.ViewState, layout rty.Component) r
 
 func (r *Renderer) renderLogPane(v view.View, vs view.ViewState) rty.Component {
 	tabView := NewTabView(v, vs)
-	return tabView.Build()
+	var height int
+	switch vs.TiltLogState {
+	case view.TiltLogShort:
+		height = 8
+	case view.TiltLogHalfScreen:
+		height = rty.GROW
+	case view.TiltLogFullScreen:
+		height = 1
+		// FullScreen is handled elsewhere, since it's no longer a pane
+		// but we have to set height to something non-0 or rty will blow up
+	}
+	return rty.NewFixedSize(tabView.Build(), rty.GROW, height)
 }
 
-func renderPaneHeader(vs view.ViewState) rty.Component {
-	s := "(l) open logs in browser"
+func renderPaneHeader() rty.Component {
+	s := "X: expand"
 	l := rty.NewLine()
-	l.Add(rty.NewFillerString('─'))
+	l.Add(rty.NewFillerString(' '))
 	l.Add(rty.TextString(fmt.Sprintf(" %s ", s)))
-	l.Add(rty.NewFillerString('─'))
 	return l
 }
 
