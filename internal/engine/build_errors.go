@@ -5,20 +5,28 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/logger"
 )
 
 // Nothing is on fire, this is an expected case like a container builder being
-// passed a build with no attached container. Don't need to show this to a user.
+// passed a build with no attached container.
+// `level` indicates at what log level this error should be shown to the user
 type RedirectToNextBuilder struct {
 	error
+	level logger.Level
 }
 
-func WrapRedirectToNextBuilder(err error) RedirectToNextBuilder {
-	return RedirectToNextBuilder{err}
+func WrapRedirectToNextBuilder(err error, level logger.Level) RedirectToNextBuilder {
+	return RedirectToNextBuilder{err, level}
 }
 
-func RedirectToNextBuilderf(msg string, a ...interface{}) RedirectToNextBuilder {
-	return RedirectToNextBuilder{fmt.Errorf(msg, a...)}
+func SilentRedirectToNextBuilderf(msg string, a ...interface{}) RedirectToNextBuilder {
+	// Only show to user in Debug mode
+	return RedirectToNextBuilder{fmt.Errorf(msg, a...), logger.DebugLvl}
+}
+
+func RedirectToNextBuilderInfof(msg string, a ...interface{}) RedirectToNextBuilder {
+	return RedirectToNextBuilder{fmt.Errorf(msg, a...), logger.InfoLvl}
 }
 
 var _ error = RedirectToNextBuilder{}

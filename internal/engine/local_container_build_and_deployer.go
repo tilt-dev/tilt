@@ -40,14 +40,14 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 	}
 
 	if len(iTargets) != 1 {
-		return store.BuildResultSet{}, RedirectToNextBuilderf("Local container builder needs exactly one image target")
+		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("Local container builder needs exactly one image target")
 	}
 
 	isDC := len(extractDockerComposeTargets(specs)) > 0
 	isK8s := len(extractK8sTargets(specs)) > 0
 	canLocalUpdate := isDC || (isK8s && cbd.env.IsLocalCluster())
 	if !canLocalUpdate {
-		return store.BuildResultSet{}, RedirectToNextBuilderf("Local container builder needs docker-compose or k8s cluster w/ local updates")
+		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("Local container builder needs docker-compose or k8s cluster w/ local updates")
 	}
 
 	iTarget := iTargets[0]
@@ -65,7 +65,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 
 	// LocalContainerBuildAndDeployer doesn't support initial build
 	if state.IsEmpty() {
-		return store.BuildResultSet{}, RedirectToNextBuilderf("prev. build state is empty; container build does not support initial deploy")
+		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("prev. build state is empty; container build does not support initial deploy")
 	}
 
 	var changedFiles []build.PathMapping
@@ -86,20 +86,20 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 			if pmErr, ok := err.(*build.PathMappingErr); ok {
 				// expected error for this builder. One of more files don't match sync's;
 				// i.e. they're within the docker context but not within a sync; do a full image build.
-				return nil, RedirectToNextBuilderf(
+				return nil, RedirectToNextBuilderInfof(
 					"at least one file (%s) doesn't match a LiveUpdate sync, so performing a full build", pmErr.File)
 			}
 			return store.BuildResultSet{}, err
 		}
 
 		// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
-		anyMatch, err := luInfo.FallBackOnFiles().AnyMatch(build.PathMappingsToLocalPaths(changedFiles))
+		anyMatch, file, err := luInfo.FallBackOnFiles().AnyMatch(build.PathMappingsToLocalPaths(changedFiles))
 		if err != nil {
 			return nil, err
 		}
 		if anyMatch {
-			return store.BuildResultSet{}, RedirectToNextBuilderf(
-				"one or more changed files match a FallBackOn file, so falling back to an image build")
+			return store.BuildResultSet{}, RedirectToNextBuilderInfof(
+				"detected change to fall_back_on file '%s'", file)
 		}
 
 		runs = luInfo.RunSteps()

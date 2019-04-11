@@ -78,20 +78,21 @@ func NewPathSet(paths []string, baseDir string) PathSet {
 
 func (ps PathSet) Empty() bool { return len(ps.Paths) == 0 }
 
-// AnyMatch returns true if any of the given filepaths match any paths contained in the pathset.
-func (ps PathSet) AnyMatch(paths []string) (bool, error) {
+// AnyMatch returns true if any of the given filepaths match any paths contained in the pathset
+// (along with the first path that matched).
+func (ps PathSet) AnyMatch(paths []string) (bool, string, error) {
 	matcher := NewRelativeFileMatcher(ps.BaseDirectory, ps.Paths...)
 
 	for _, path := range paths {
 		match, err := matcher.Matches(path, false)
 		if err != nil {
-			return false, err
+			return false, "", err
 		}
 		if match {
-			return true, nil
+			return true, path, nil
 		}
 	}
-	return false, nil
+	return false, "", nil
 }
 
 type globMatcher struct {

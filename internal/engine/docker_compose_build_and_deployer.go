@@ -57,7 +57,7 @@ func (bd *DockerComposeBuildAndDeployer) extract(specs []model.TargetSpec) ([]mo
 func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, currentState store.BuildStateSet) (store.BuildResultSet, error) {
 	iTargets, dcTargets := bd.extract(specs)
 	if len(dcTargets) != 1 {
-		return store.BuildResultSet{}, RedirectToNextBuilderf(
+		return store.BuildResultSet{}, SilentRedirectToNextBuilderf(
 			"DockerComposeBuildAndDeployer requires exactly one dcTarget (got %d)", len(dcTargets))
 	}
 	dcTarget := dcTargets[0]
