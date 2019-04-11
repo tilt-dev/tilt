@@ -169,6 +169,8 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget
 func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	podID k8s.PodID, namespace k8s.Namespace, containerID container.ID,
 	archive *bytes.Buffer, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-updateViaSynclet")
+	defer span.Finish()
 	sCli, err := sbd.sm.ClientForPod(ctx, podID, namespace)
 	if err != nil {
 		return err
@@ -184,6 +186,8 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 func (sbd *SyncletBuildAndDeployer) updateViaExec(ctx context.Context,
 	podID k8s.PodID, namespace k8s.Namespace, container container.Name,
 	archive *bytes.Buffer, archivePaths []string, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-updateViaExec")
+	defer span.Finish()
 	if !hotReload {
 		return fmt.Errorf("kubectl exec syncing is only supported with hotReload set to true")
 	}
