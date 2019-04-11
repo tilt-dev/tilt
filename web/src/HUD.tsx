@@ -89,7 +89,11 @@ class HUD extends Component<HudProps, HudState> {
   componentWillMount() {
     incr("ui.web.init", { ua: window.navigator.userAgent })
     this.unlisten = this.history.listen((location, _) => {
-      let tags = { path: location.pathname }
+      let isLog =
+        location.pathname.startsWith("/r/") &&
+        !location.pathname.endsWith("/preview")
+      let isPreview = location.pathname.endsWith("/preview")
+      let tags = { isLog: isLog.toString(), isPreview: isPreview.toString() }
       incr("ui.web.navigation", tags)
     })
   }
