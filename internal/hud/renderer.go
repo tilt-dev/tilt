@@ -90,7 +90,7 @@ func (r *Renderer) maybeAddFullScreenLog(v view.View, vs view.ViewState, layout 
 
 		l := rty.NewConcatLayout(rty.DirVert)
 		sl := rty.NewTextScrollLayout("log")
-		l.Add(tabView.buildTabs())
+		l.Add(tabView.buildTabs(true))
 		sl.Add(rty.TextString(tabView.log()))
 		l.AddDynamic(sl)
 		l.Add(r.renderFooter(v, keyLegend(v, vs)))
@@ -132,8 +132,14 @@ func (r *Renderer) renderLogPane(v view.View, vs view.ViewState) rty.Component {
 	return rty.NewFixedSize(tabView.Build(), rty.GROW, height)
 }
 
-func renderPaneHeader() rty.Component {
-	s := "X: expand"
+func renderPaneHeader(isMax bool) rty.Component {
+	var verb string
+	if isMax {
+		verb = "contract"
+	} else {
+		verb = "expand"
+	}
+	s := fmt.Sprintf("X: %s", verb)
 	l := rty.NewLine()
 	l.Add(rty.NewFillerString(' '))
 	l.Add(rty.TextString(fmt.Sprintf(" %s ", s)))

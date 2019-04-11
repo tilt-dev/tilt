@@ -6,6 +6,7 @@ import (
 	"github.com/gdamore/tcell"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/rty"
 )
 
@@ -25,7 +26,7 @@ func NewTabView(v view.View, vState view.ViewState) *TabView {
 
 func (v *TabView) Build() rty.Component {
 	l := rty.NewConcatLayout(rty.DirVert)
-	l.Add(v.buildTabs())
+	l.Add(v.buildTabs(false))
 
 	log := rty.NewTextScrollLayout("log")
 	log.Add(rty.TextString(v.log()))
@@ -35,38 +36,36 @@ func (v *TabView) Build() rty.Component {
 }
 
 func (v *TabView) log() string {
-	var ret string
+	var ret model.Log
 	switch v.tabState {
 	case view.TabAllLog:
-		ret = v.view.Log.String()
-
+		ret = v.view.Log
 	case view.TabBuildLog:
 		_, resource := selectedResource(v.view, v.viewState)
 		if !resource.CurrentBuild.Empty() {
-			ret = resource.CurrentBuild.Log.String()
+			ret = resource.CurrentBuild.Log
 		} else {
-			ret = resource.LastBuild().Log.String()
+			ret = resource.LastBuild().Log
 		}
-
 	case view.TabPodLog:
 		_, resource := selectedResource(v.view, v.viewState)
 		if resource.ResourceInfo != nil {
-			ret = resource.ResourceInfo.RuntimeLog().String()
+			ret = resource.ResourceInfo.RuntimeLog()
 		}
 	}
 
-	if ret == "" {
-		ret = "(no logs yet)"
+	if !ret.Empty() {
+		return ret.Tail(logLineCount).String()
+	} else {
+		return "(no logs received)"
 	}
-
-	return ret
 }
 
 func (v *TabView) buildTab(text string) rty.Component {
 	return rty.TextString(fmt.Sprintf(" %s ", text))
 }
 
-func (v *TabView) buildTabs() rty.Component {
+func (v *TabView) buildTabs(isMax bool) rty.Component {
 	l := rty.NewLine()
 	if v.tabState == view.TabAllLog {
 		l.Add(v.buildTab("1: ALL LOGS"))
@@ -86,7 +85,7 @@ func (v *TabView) buildTabs() rty.Component {
 		l.Add(v.buildTab("3: pod log"))
 	}
 	l.Add(rty.TextString("│ "))
-	l.Add(renderPaneHeader())
+	l.Add(renderPaneHeader(isMax))
 	result := rty.Bg(l, tcell.ColorWhiteSmoke)
 	result = rty.Fg(result, cText)
 	return result
