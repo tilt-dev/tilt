@@ -512,7 +512,7 @@ func (k k8sObjectID) String() string {
 }
 
 func (k k8sObjectID) Type() string {
-	return "k8sObjectID"
+	return "K8sObjectID"
 }
 
 func (k k8sObjectID) Freeze() {
