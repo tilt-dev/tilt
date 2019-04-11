@@ -50,8 +50,9 @@ type k8sResource struct {
 }
 
 const deprecatedResourceAssemblyV1Warning = "This Tiltfile is using k8s resource assembly version 1, which has been " +
-	"deprecated. It will no longer be supported after 2019-04-17. Sorry for the inconvenience! " +
-	"See https://tilt.dev/resource_assembly_migration.html for information on how to migrate."
+	"deprecated. Try adding `k8s_resource_assembly_version(2)` to the top of your Tiltfile. " +
+	"See https://docs.tilt.dev/resource_assembly_migration.html for more information. " +
+	"Version 1 will no longer be supported after 2019-04-17. Sorry for the inconvenience!"
 
 // holds options passed to `k8s_resource` until assembly happens
 type k8sResourceOptions struct {
