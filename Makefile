@@ -34,6 +34,10 @@ install-dev:
 	@if ! [[ -e "$(SYNCLET_DEV_IMAGE_TAG_FILE)" ]]; then echo "No dev synclet found. Run make synclet-dev."; exit 1; fi
 	go install -ldflags "-X 'github.com/windmilleng/tilt/internal/synclet/sidecar.SyncletTag=$$(<$(SYNCLET_DEV_IMAGE_TAG_FILE))'" ./...
 
+# disable optimizations and inlining, to allow more complete information when attaching a debugger or capturing a profile
+install-debug:
+	go install -gcflags "all=-N -l" ./...
+
 define synclet-build-dev
 	echo $1 > $(SYNCLET_DEV_IMAGE_TAG_FILE)
 	docker tag $(SYNCLET_IMAGE):dirty $(SYNCLET_IMAGE):$1
