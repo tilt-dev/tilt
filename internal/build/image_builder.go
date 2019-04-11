@@ -176,7 +176,7 @@ func (d *dockerImageBuilder) addConditionalRuns(df dockerfile.Dockerfile, runs [
 
 func (d *dockerImageBuilder) addSyncedAndRemovedFiles(ctx context.Context, df dockerfile.Dockerfile, paths []PathMapping) (dockerfile.Dockerfile, error) {
 	df = df.AddAll()
-	toRemove, err := MissingLocalPaths(ctx, paths)
+	toRemove, _, err := MissingLocalPaths(ctx, paths)
 	if err != nil {
 		return "", errors.Wrap(err, "addSyncedAndRemovedFiles")
 	}
@@ -294,7 +294,7 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 	// NOTE(maia): some people want to know what files we're adding (b/c `ADD . /` isn't descriptive)
 	if logger.Get(ctx).Level() >= logger.VerboseLvl {
 		for _, pm := range paths {
-			ps.Printf(ctx, pm.prettyStr())
+			ps.Printf(ctx, pm.PrettyStr())
 		}
 	}
 

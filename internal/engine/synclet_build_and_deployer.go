@@ -101,9 +101,26 @@ func (sbd *SyncletBuildAndDeployer) UpdateInCluster(ctx context.Context,
 }
 
 func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) (store.BuildResultSet, error) {
+	l := logger.Get(ctx)
+
+	// get files to rm
+	toRemove, toArchive, err := build.MissingLocalPaths(ctx, changedFiles)
+	if err != nil {
+		return store.BuildResultSet{}, errors.Wrap(err, "missingLocalPaths")
+	}
+
+	if len(toRemove) > 0 {
+		l.Infof("Will delete %d file(s):", len(toRemove))
+		for _, pm := range toRemove {
+			l.Infof("- '%s' (matched local path: '%s')", pm.ContainerPath, pm.LocalPath)
+		}
+	}
+
+	containerPathsToRm := build.PathMappingsToContainerPaths(toRemove)
+
 	// archive files to copy to container
 	ab := build.NewArchiveBuilder(ignore.CreateBuildContextFilter(iTarget))
-	err := ab.ArchivePathsIfExist(ctx, changedFiles)
+	err = ab.ArchivePathsIfExist(ctx, toArchive)
 	if err != nil {
 		return store.BuildResultSet{}, errors.Wrap(err, "archivePathsIfExists")
 	}
@@ -113,13 +130,12 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget
 	}
 	archivePaths := ab.Paths()
 
-	// get files to rm
-	toRemove, err := build.MissingLocalPaths(ctx, changedFiles)
-	if err != nil {
-		return store.BuildResultSet{}, errors.Wrap(err, "missingLocalPaths")
+	if len(toArchive) > 0 {
+		l.Infof("Will copy %d file(s) to container:", len(toArchive))
+		for _, pm := range toArchive {
+			l.Infof("- %s", pm.PrettyStr())
+		}
 	}
-	// TODO(maia): can refactor MissingLocalPaths to just return ContainerPaths?
-	containerPathsToRm := build.PathMappingsToContainerPaths(toRemove)
 
 	deployInfo := state.DeployInfo
 	cmds, err := build.BoilRuns(runs, changedFiles)

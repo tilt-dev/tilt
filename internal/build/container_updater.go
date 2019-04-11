@@ -25,11 +25,19 @@ func NewContainerUpdater(dCli docker.Client) *ContainerUpdater {
 func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.ID, paths []PathMapping, filter model.PathMatcher, runs []model.Cmd, hotReload bool, w io.Writer) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-UpdateInContainer")
 	defer span.Finish()
+	l := logger.Get(ctx)
 
 	// rm files from container
-	toRemove, err := MissingLocalPaths(ctx, paths)
+	toRemove, toArchive, err := MissingLocalPaths(ctx, paths)
 	if err != nil {
 		return errors.Wrap(err, "MissingLocalPaths")
+	}
+
+	if len(toRemove) > 0 {
+		l.Infof("Deleting %d file(s) from container: %s", len(toRemove), cID.ShortStr())
+		for _, pm := range toRemove {
+			l.Infof("- '%s' (matched local path: '%s')", pm.ContainerPath, pm.LocalPath)
+		}
 	}
 
 	err = r.RmPathsFromContainer(ctx, cID, toRemove)
@@ -39,7 +47,7 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.
 
 	// copy files to container
 	ab := NewArchiveBuilder(filter)
-	err = ab.ArchivePathsIfExist(ctx, paths)
+	err = ab.ArchivePathsIfExist(ctx, toArchive)
 	if err != nil {
 		return errors.Wrap(err, "archivePathsIfExists")
 	}
@@ -48,7 +56,12 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.
 		return err
 	}
 
-	logger.Get(ctx).Debugf("Copying files to container: %s", cID.ShortStr())
+	if len(toArchive) > 0 {
+		l.Infof("Copying %d file(s) to container: %s", len(toArchive), cID.ShortStr())
+		for _, pm := range toArchive {
+			l.Infof("- %s", pm.PrettyStr())
+		}
+	}
 
 	// TODO(maia): catch errors -- CopyToContainer doesn't return errors if e.g. it
 	// fails to write a file b/c of permissions =(
@@ -66,12 +79,12 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.
 	}
 
 	if hotReload {
-		logger.Get(ctx).Debugf("Hot reload on, skipping container restart: %s", cID.ShortStr())
+		l.Debugf("Hot reload on, skipping container restart: %s", cID.ShortStr())
 		return nil
 	}
 
 	// Restart container so that entrypoint restarts with the updated files etc.
-	logger.Get(ctx).Debugf("Restarting container: %s", cID.ShortStr())
+	l.Debugf("Restarting container: %s", cID.ShortStr())
 	err = r.dCli.ContainerRestartNoWait(ctx, cID.String())
 	if err != nil {
 		return errors.Wrap(err, "ContainerRestart")
@@ -83,8 +96,6 @@ func (r *ContainerUpdater) RmPathsFromContainer(ctx context.Context, cID contain
 	if len(paths) == 0 {
 		return nil
 	}
-
-	logger.Get(ctx).Debugf("Deleting %d files from container: %s", len(paths), cID.ShortStr())
 
 	out := bytes.NewBuffer(nil)
 	err := r.dCli.ExecInContainer(ctx, cID, model.Cmd{Argv: makeRmCmd(paths)}, out)
