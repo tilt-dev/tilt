@@ -31,7 +31,7 @@ func (e BuildInfo) empty() bool {
 	return e == BuildInfo{}
 }
 
-func (e BuildInfo) FullVersion() string {
+func (e BuildInfo) AnalyticsVersion() string {
 	if e.Dev {
 		return e.Version + "-dev"
 	}

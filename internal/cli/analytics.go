@@ -81,7 +81,7 @@ func initAnalytics(rootCmd *cobra.Command) error {
 
 func globalTags() map[string]string {
 	ret := map[string]string{
-		"version": buildInfo().FullVersion(),
+		"version": buildInfo().AnalyticsVersion(),
 		"os":      runtime.GOOS,
 	}
 
