@@ -73,7 +73,7 @@ make install
 ```
 
 ## Performance
-
+### Go Profile
 We use the built-in Go profiler to debug performance issues.
 
 When `tilt` is running, press `ctrl-p` to start the profile, and `ctrl-p` to stop it.
@@ -95,6 +95,36 @@ to open a special REPL that lets you explore the data.
 Type `web` in the REPL to see a CPU graph.
 
 For more information on pprof, see https://github.com/google/pprof/blob/master/doc/README.md.
+
+### Opentracing
+If you're trying to diagnose Tilt performance problems that lie somewhere between Tilt and your Kubernetes cluster or Tilt and Docker traces can be helpful. The easiest way to get started with Tilt's [opentracing](https://opentracing.io/) support is to use the [Jaeger all-in-one image](https://www.jaegertracing.io/docs/1.11/getting-started/#all-in-one).
+
+```
+$ docker run -d --name jaeger \
+  -e COLLECTOR_ZIPKIN_HTTP_PORT=9411 \
+  -p 5775:5775/udp \
+  -p 6831:6831/udp \
+  -p 6832:6832/udp \
+  -p 5778:5778 \
+  -p 16686:16686 \
+  -p 14268:14268 \
+  -p 9411:9411 \
+  jaegertracing/all-in-one:1.11
+```
+
+Then start Tilt with the following flags:
+
+```
+tilt up --trace --traceBackend jaeger
+```
+
+When Tilt starts one of the first lines in the log output should contain a trace ID, like so:
+
+```
+TraceID: 26256f1f6aa875e5
+```
+
+You can use the Jaeger UI (by default running on http://localhost:16686/) to query for this span and see all of the traces for the current Tilt run. These traces are made available immediately as you use Tilt. You don't need to wait until after Tilt has stopped to get access to the tracing data.
 
 ## Web UI
 
