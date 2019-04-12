@@ -10,4 +10,16 @@ const incr = (name: string, tags: Tags = {}): void => {
   })
 }
 
-export { incr }
+const pathToTag = (path: string): string => {
+  if (path.startsWith("/r/") && !path.endsWith("/preview")) {
+    return "log"
+  } else if (path.endsWith("/preview")) {
+    return "preview"
+  } else if (path == "/") {
+    return "all"
+  }
+
+  return "unknown"
+}
+
+export { incr, pathToTag }

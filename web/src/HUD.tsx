@@ -11,7 +11,7 @@ import { Map } from "immutable"
 import { Router, Route, Switch, RouteComponentProps } from "react-router-dom"
 import { createBrowserHistory, History, UnregisterCallback } from "history"
 import "./HUD.scss"
-import { incr } from "./analytics"
+import { incr, pathToTag } from "./analytics"
 
 type HudProps = {}
 
@@ -89,11 +89,7 @@ class HUD extends Component<HudProps, HudState> {
   componentWillMount() {
     incr("ui.web.init", { ua: window.navigator.userAgent })
     this.unlisten = this.history.listen((location, _) => {
-      let isLog =
-        location.pathname.startsWith("/r/") &&
-        !location.pathname.endsWith("/preview")
-      let isPreview = location.pathname.endsWith("/preview")
-      let tags = { isLog: isLog.toString(), isPreview: isPreview.toString() }
+      let tags = { type: pathToTag(location.pathname) }
       incr("ui.web.navigation", tags)
     })
   }
