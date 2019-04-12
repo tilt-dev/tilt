@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/whilp/git-urls"
+	giturls "github.com/whilp/git-urls"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
@@ -81,7 +81,7 @@ func initAnalytics(rootCmd *cobra.Command) error {
 
 func globalTags() map[string]string {
 	ret := map[string]string{
-		"version": buildInfo().Version,
+		"version": buildInfo().FullVersion(),
 		"os":      runtime.GOOS,
 	}
 

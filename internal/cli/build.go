@@ -31,6 +31,14 @@ func (e BuildInfo) empty() bool {
 	return e == BuildInfo{}
 }
 
+func (e BuildInfo) FullVersion() string {
+	if e.Dev {
+		return e.Version + "-dev"
+	}
+
+	return e.Version
+}
+
 var globalBuildInfo BuildInfo
 
 func SetBuildInfo(info BuildInfo) {
