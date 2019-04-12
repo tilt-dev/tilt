@@ -41,6 +41,7 @@ var tracerBackendTests = []struct {
 	{"windmill", Windmill, false},
 	{"lightstep", Lightstep, false},
 	{"foo", Windmill, true},
+	{"jaeger", Jaeger, false},
 }
 
 func TestStringToTracerBackend(t *testing.T) {

@@ -54,7 +54,7 @@ func Execute() {
 	globalFlags.BoolVarP(&debug, "debug", "d", false, "Enable debug logging")
 	globalFlags.BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
 	globalFlags.BoolVar(&trace, "trace", false, "Enable tracing")
-	globalFlags.StringVar(&traceType, "traceBackend", "windmill", "Which tracing backend to use. Valid values are: 'windmill', 'lightstep'")
+	globalFlags.StringVar(&traceType, "traceBackend", "windmill", "Which tracing backend to use. Valid values are: 'windmill', 'lightstep', 'jaeger'")
 	globalFlags.IntVar(&klogLevel, "klog", 0, "Enable Kubernetes API logging. Uses klog v-levels (0-4 are debug logs, 5-9 are tracing logs)")
 	err = globalFlags.MarkHidden("klog")
 	if err != nil {
