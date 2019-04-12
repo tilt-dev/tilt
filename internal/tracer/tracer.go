@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
+	"github.com/lightstep/lightstep-tracer-go"
 	"github.com/windmilleng/tilt/internal/logger"
 
 	"github.com/pkg/errors"
@@ -15,6 +17,13 @@ import (
 )
 
 const windmillTracerHostPort = "opentracing.windmill.build:9411"
+
+type TracerBackend int
+
+const (
+	Windmill TracerBackend = iota
+	Lightstep
+)
 
 type zipkinLogger struct {
 	ctx context.Context
@@ -27,24 +36,11 @@ func (zl zipkinLogger) Log(keyvals ...interface{}) error {
 
 var _ zipkin.Logger = zipkinLogger{}
 
-func Init(ctx context.Context) (func() error, error) {
-	collector, err := zipkin.NewHTTPCollector(fmt.Sprintf("http://%s/api/v1/spans", windmillTracerHostPort), zipkin.HTTPLogger(zipkinLogger{ctx}))
-
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to create zipkin collector")
+func Init(ctx context.Context, tracer TracerBackend) (func() error, error) {
+	if tracer == Lightstep {
+		return initLightStep(ctx)
 	}
-
-	recorder := zipkin.NewRecorder(collector, true, "0.0.0.0:0", "tilt")
-	tracer, err := zipkin.NewTracer(recorder)
-
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to create tracer")
-	}
-
-	opentracing.SetGlobalTracer(tracer)
-
-	return collector.Close, nil
-
+	return initWindmillZipkin(ctx)
 }
 
 func TraceID(ctx context.Context) (string, error) {
@@ -76,4 +72,52 @@ func TagStrToMap(tagStr string) map[string]string {
 		res[elems[0]] = elems[1]
 	}
 	return res
+}
+
+func StringToTracerBackend(s string) (TracerBackend, error) {
+	switch s {
+	case "windmill":
+		return Windmill, nil
+	case "lightstep":
+		return Lightstep, nil
+	default:
+		return Windmill, fmt.Errorf("Invalid Tracer backend: %s", s)
+	}
+}
+
+func initWindmillZipkin(ctx context.Context) (func() error, error) {
+	collector, err := zipkin.NewHTTPCollector(fmt.Sprintf("http://%s/api/v1/spans", windmillTracerHostPort), zipkin.HTTPLogger(zipkinLogger{ctx}))
+
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to create zipkin collector")
+	}
+
+	recorder := zipkin.NewRecorder(collector, true, "0.0.0.0:0", "tilt")
+	tracer, err := zipkin.NewTracer(recorder)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to create tracer")
+	}
+
+	opentracing.SetGlobalTracer(tracer)
+
+	return collector.Close, nil
+}
+
+func initLightStep(ctx context.Context) (func() error, error) {
+	token, ok := os.LookupEnv("LIGHTSTEP_ACCESS_TOKEN")
+	if !ok {
+		return nil, fmt.Errorf("No token found in the LIGHTSTEP_ACCESS_TOKEN environment variable")
+	}
+	lightstepTracer := lightstep.NewTracer(lightstep.Options{
+		AccessToken: token,
+	})
+
+	opentracing.SetGlobalTracer(lightstepTracer)
+
+	close := func() error {
+		lightstepTracer.Close(context.Background())
+		return nil
+	}
+	return close, nil
 }

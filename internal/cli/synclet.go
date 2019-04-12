@@ -46,7 +46,7 @@ func (sc *SyncletCmd) run() {
 		context.Background(),
 		logger.NewLogger(logLevel(sc.verbose, sc.debug), os.Stdout))
 
-	closer, err := tracer.Init(ctx)
+	closer, err := tracer.Init(ctx, tracer.Windmill)
 	if err != nil {
 		log.Fatalf("error initializing tracer: %v", err)
 	}

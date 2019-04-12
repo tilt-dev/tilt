@@ -20,6 +20,7 @@ import (
 var debug bool
 var verbose bool
 var trace bool
+var traceType string
 
 func logLevel(verbose, debug bool) logger.Level {
 	if debug {
@@ -53,6 +54,7 @@ func Execute() {
 	globalFlags.BoolVarP(&debug, "debug", "d", false, "Enable debug logging")
 	globalFlags.BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
 	globalFlags.BoolVar(&trace, "trace", false, "Enable tracing")
+	globalFlags.StringVar(&traceType, "traceBackend", "windmill", "Which tracing backend to use. Valid values are: 'windmill', 'lightstep'")
 	globalFlags.IntVar(&klogLevel, "klog", 0, "Enable Kubernetes API logging. Uses klog v-levels (0-4 are debug logs, 5-9 are tracing logs)")
 	err = globalFlags.MarkHidden("klog")
 	if err != nil {
@@ -77,8 +79,11 @@ func preCommand(ctx context.Context) (context.Context, func() error) {
 	ctx = logger.WithLogger(ctx, l)
 
 	if trace {
-		var err error
-		cleanup, err = tracer.Init(ctx)
+		backend, err := tracer.StringToTracerBackend(traceType)
+		if err != nil {
+			log.Printf("Warning: invalid tracer backend: %v", err)
+		}
+		cleanup, err = tracer.Init(ctx, backend)
 		if err != nil {
 			log.Printf("Warning: unable to initialize tracer: %s", err)
 		}
