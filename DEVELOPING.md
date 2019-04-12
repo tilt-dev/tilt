@@ -97,7 +97,7 @@ Type `web` in the REPL to see a CPU graph.
 For more information on pprof, see https://github.com/google/pprof/blob/master/doc/README.md.
 
 ### Opentracing
-If you're trying to diagnose Tilt performance problems that lie somewhere between Tilt and your Kubernetes cluster or Tilt and Docker traces can be helpful. The easiest way to get started with Tilt's [opentracing](https://opentracing.io/) support is to use the [Jaeger all-in-one image](https://www.jaegertracing.io/docs/1.11/getting-started/#all-in-one).
+If you're trying to diagnose Tilt performance problems that lie between Tilt and your Kubernetes cluster (or between Tilt and Docker) traces can be helpful. The easiest way to get started with Tilt's [opentracing](https://opentracing.io/) support is to use the [Jaeger all-in-one image](https://www.jaegertracing.io/docs/1.11/getting-started/#all-in-one).
 
 ```
 $ docker run -d --name jaeger \
