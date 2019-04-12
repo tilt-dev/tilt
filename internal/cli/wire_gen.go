@@ -137,11 +137,12 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	}
 	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetServer, analytics)
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetServer)
+	sailDialer := client.ProvideSailDialer()
 	sailURL, err := provideSailURL()
 	if err != nil {
 		return demo.Script{}, err
 	}
-	sailClient := client.ProvideSailClient(sailURL)
+	sailClient := client.ProvideSailClient(sailDialer, sailURL)
 	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, imageController, globalYAMLBuildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, sailClient)
 	upper := engine.NewUpper(ctx, storeStore, v2)
 	script := demo.NewScript(upper, headsUpDisplay, k8sClient, env, storeStore, branch, runtime, tiltfileLoader)
@@ -260,11 +261,12 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	}
 	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetServer, analytics)
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetServer)
+	sailDialer := client.ProvideSailDialer()
 	sailURL, err := provideSailURL()
 	if err != nil {
 		return Threads{}, err
 	}
-	sailClient := client.ProvideSailClient(sailURL)
+	sailClient := client.ProvideSailClient(sailDialer, sailURL)
 	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, imageController, globalYAMLBuildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, sailClient)
 	upper := engine.NewUpper(ctx, storeStore, v2)
 	threads := provideThreads(headsUpDisplay, upper)
@@ -459,7 +461,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
-	provideWebDevPort, server.ProvideHeadsUpServer, server.ProvideAssetServer, server.ProvideHeadsUpServerController, provideSailURL, client.ProvideSailClient, provideThreads, engine.NewKINDPusher,
+	provideWebDevPort, server.ProvideHeadsUpServer, server.ProvideAssetServer, server.ProvideHeadsUpServerController, provideSailURL, client.SailWireSet, provideThreads, engine.NewKINDPusher,
 )
 
 type Threads struct {
