@@ -92,6 +92,12 @@
   version = "v0.1.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/codahale/hdrhistogram"
+  packages = ["."]
+  revision = "3a0bb77429bd3a61596f5e8a3172445844342120"
+
+[[projects]]
   name = "github.com/containerd/containerd"
   packages = [
     ".",
@@ -838,6 +844,36 @@
   version = "v0.6.1"
 
 [[projects]]
+  name = "github.com/uber/jaeger-client-go"
+  packages = [
+    ".",
+    "config",
+    "internal/baggage",
+    "internal/baggage/remote",
+    "internal/spanlog",
+    "internal/throttler",
+    "internal/throttler/remote",
+    "log",
+    "rpcmetrics",
+    "thrift",
+    "thrift-gen/agent",
+    "thrift-gen/baggage",
+    "thrift-gen/jaeger",
+    "thrift-gen/sampling",
+    "thrift-gen/zipkincore",
+    "transport",
+    "utils"
+  ]
+  revision = "1a782e2da844727691fef1757c72eb190c2909f0"
+  version = "v2.15.0"
+
+[[projects]]
+  name = "github.com/uber/jaeger-lib"
+  packages = ["metrics"]
+  revision = "ed3a127ec5fef7ae9ea95b01b542c47fbd999ce5"
+  version = "v1.5.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/whilp/git-urls"
   packages = ["."]
@@ -1410,6 +1446,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "6fa34e2b4e825995c607dd812fe9f5ef9c4b8612c00726cb4567811457c17844"
+  inputs-digest = "f7557e8e0bdf980c49dbbf70fa9d6d08f5b067f893a1a75942f382c3f4c4ad05"
   solver-name = "gps-cdcl"
   solver-version = 1

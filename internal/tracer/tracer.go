@@ -7,13 +7,14 @@ import (
 	"os"
 	"strings"
 
-	"github.com/lightstep/lightstep-tracer-go"
-	"github.com/windmilleng/tilt/internal/logger"
-
 	"github.com/pkg/errors"
 
+	"github.com/lightstep/lightstep-tracer-go"
 	"github.com/opentracing/opentracing-go"
 	zipkin "github.com/openzipkin/zipkin-go-opentracing"
+	jaeger "github.com/uber/jaeger-client-go"
+	jaegercfg "github.com/uber/jaeger-client-go/config"
+	"github.com/windmilleng/tilt/internal/logger"
 )
 
 const windmillTracerHostPort = "opentracing.windmill.build:9411"
@@ -23,6 +24,7 @@ type TracerBackend int
 const (
 	Windmill TracerBackend = iota
 	Lightstep
+	Jaeger
 )
 
 type zipkinLogger struct {
@@ -37,10 +39,16 @@ func (zl zipkinLogger) Log(keyvals ...interface{}) error {
 var _ zipkin.Logger = zipkinLogger{}
 
 func Init(ctx context.Context, tracer TracerBackend) (func() error, error) {
-	if tracer == Lightstep {
+	switch tracer {
+	case Windmill:
+		return initWindmillZipkin(ctx)
+	case Lightstep:
 		return initLightStep(ctx)
+	case Jaeger:
+		return initJaeger(ctx)
+	default:
+		return nil, fmt.Errorf("Init: Invalid Tracer backend: %d", tracer)
 	}
-	return initWindmillZipkin(ctx)
 }
 
 func TraceID(ctx context.Context) (string, error) {
@@ -48,11 +56,16 @@ func TraceID(ctx context.Context) (string, error) {
 	if spanContext == nil {
 		return "", errors.New("cannot get traceid - there is no span context")
 	}
-	zipkinSpanContext, ok := spanContext.Context().(zipkin.SpanContext)
-	if !ok {
-		return "", errors.New("cannot get traceid - span context was not a zipkin span context")
+	switch t := spanContext.Context().(type) {
+	case zipkin.SpanContext:
+		return t.TraceID.ToHex(), nil
+	case lightstep.SpanContext:
+		return string(t.TraceID), nil
+	case jaeger.SpanContext:
+		return t.TraceID().String(), nil
+	default:
+		return "", errors.New("cannot get traceid - unknown span type")
 	}
-	return zipkinSpanContext.TraceID.ToHex(), nil
 }
 
 // TagStrToMap converts a user-passed string of tags of the form `key1=val1,key2=val2` to a map.
@@ -80,6 +93,8 @@ func StringToTracerBackend(s string) (TracerBackend, error) {
 		return Windmill, nil
 	case "lightstep":
 		return Lightstep, nil
+	case "jaeger":
+		return Jaeger, nil
 	default:
 		return Windmill, fmt.Errorf("Invalid Tracer backend: %s", s)
 	}
@@ -120,4 +135,15 @@ func initLightStep(ctx context.Context) (func() error, error) {
 		return nil
 	}
 	return close, nil
+}
+
+func initJaeger(ctx context.Context) (func() error, error) {
+	cfg := jaegercfg.Configuration{
+		Sampler: &jaegercfg.SamplerConfig{
+			Type:  "const",
+			Param: 1,
+		},
+	}
+	closer, err := cfg.InitGlobalTracer("tilt")
+	return closer.Close, err
 }
