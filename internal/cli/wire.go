@@ -76,6 +76,7 @@ var BaseWireSet = wire.NewSet(
 	wire.Bind(new(store.RStore), new(store.Store)),
 
 	provideBuildInfo,
+	engine.ProvideSubscribers,
 	engine.NewUpper,
 	provideAnalytics,
 	engine.ProvideAnalyticsReporter,

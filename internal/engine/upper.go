@@ -15,7 +15,6 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud"
-	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -66,28 +65,12 @@ func ProvideTimerMaker() timerMaker {
 	}
 }
 
-func NewUpper(ctx context.Context, hud hud.HeadsUpDisplay, pw *PodWatcher, sw *ServiceWatcher,
-	st *store.Store, plm *PodLogManager, pfc *PortForwardController, fwm *WatchManager, bc *BuildController,
-	ic *ImageController, gybc *GlobalYAMLBuildController, cc *ConfigsController,
-	dcw *DockerComposeEventWatcher, dclm *DockerComposeLogManager, pm *ProfilerManager,
-	sm SyncletManager, ar *AnalyticsReporter, hudsc *server.HeadsUpServerController) Upper {
-
-	st.AddSubscriber(bc)
-	st.AddSubscriber(hud)
-	st.AddSubscriber(pfc)
-	st.AddSubscriber(plm)
-	st.AddSubscriber(fwm)
-	st.AddSubscriber(pw)
-	st.AddSubscriber(sw)
-	st.AddSubscriber(ic)
-	st.AddSubscriber(gybc)
-	st.AddSubscriber(cc)
-	st.AddSubscriber(dcw)
-	st.AddSubscriber(dclm)
-	st.AddSubscriber(pm)
-	st.AddSubscriber(sm)
-	st.AddSubscriber(ar)
-	st.AddSubscriber(hudsc)
+func NewUpper(ctx context.Context, st *store.Store, subs []store.Subscriber) Upper {
+	// There's not really a good reason to add all the subscribers
+	// in NewUpper(), but it's as good a place as any.
+	for _, sub := range subs {
+		st.AddSubscriber(sub)
+	}
 
 	return Upper{
 		store: st,
