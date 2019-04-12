@@ -7,8 +7,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/tiltfile"
-
 	"github.com/docker/docker/api/types"
 	"github.com/google/wire"
 	"k8s.io/apimachinery/pkg/version"
@@ -23,7 +21,9 @@ import (
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/internal/tiltfile"
 )
 
 var K8sWireSet = wire.NewSet(
@@ -93,6 +93,9 @@ var BaseWireSet = wire.NewSet(
 	server.ProvideHeadsUpServer,
 	server.ProvideAssetServer,
 	server.ProvideHeadsUpServerController,
+
+	provideSailURL,
+	client.ProvideSailClient,
 
 	provideThreads,
 	engine.NewKINDPusher,
