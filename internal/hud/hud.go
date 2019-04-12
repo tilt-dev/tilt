@@ -11,10 +11,11 @@ import (
 	"github.com/pkg/browser"
 	"github.com/pkg/errors"
 
+	"github.com/windmilleng/wmclient/pkg/analytics"
+
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
 // The main loop ensures the HUD updates at least this often
@@ -113,6 +114,10 @@ func (h *Hud) Close() {
 	h.r.Reset()
 }
 
+func (h *Hud) recordInteraction(name string) {
+	h.a.Incr(fmt.Sprintf("ui.interactions.%s", name), map[string]string{})
+}
+
 func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.Action), ev tcell.Event) (done bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -137,7 +142,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				// open if we have multiple, or what path to default to on the opened manifest.
 				_, selected := h.selectedResource()
 				if len(selected.Endpoints) > 0 {
-					h.a.Incr("ui.interactions.open_preview", map[string]string{})
+					h.recordInteraction("open_preview")
 					err := browser.OpenURL(selected.Endpoints[0])
 					if err != nil {
 						h.currentViewState.AlertMessage = fmt.Sprintf("error opening url '%s' for resource '%s': %v",
@@ -163,11 +168,23 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				escape()
 			case r == 'R': // hidden key for recovering from printf junk during demos
 				h.r.screen.Sync()
+			case r == 'x':
+				h.recordInteraction("cycle_view_log_state")
+				h.currentViewState.CycleViewLogState()
 			case r == ' ': // [space] - trigger build for selected resource
 				_, selected := h.selectedResource()
 				dispatch(view.AppendToTriggerQueueAction{
 					Name: selected.Name,
 				})
+			case r == '1':
+				h.recordInteraction("tab_all_log")
+				h.currentViewState.TabState = view.TabAllLog
+			case r == '2':
+				h.recordInteraction("tab_build_log")
+				h.currentViewState.TabState = view.TabBuildLog
+			case r == '3':
+				h.recordInteraction("tab_pod_log")
+				h.currentViewState.TabState = view.TabPodLog
 			}
 		case tcell.KeyUp:
 			h.activeScroller().Up()

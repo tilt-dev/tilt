@@ -273,6 +273,12 @@ func TestRenderTiltLog(t *testing.T) {
 	vs := fakeViewState(0, view.CollapseNo)
 
 	rtf.run("tilt log", 70, 20, v, vs)
+
+	vs.TiltLogState = view.TiltLogHalfScreen
+	rtf.run("tilt log half screen", 70, 20, v, vs)
+
+	vs.TiltLogState = view.TiltLogFullScreen
+	rtf.run("tilt log full screen", 70, 20, v, vs)
 }
 
 func TestRenderNarrationMessage(t *testing.T) {
@@ -762,6 +768,48 @@ func TestLineWrappingInInlineError(t *testing.T) {
 		},
 	}
 	rtf.run("line wrapping in inline error", 80, 40, v, vs)
+}
+
+func TestRenderTabView(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+
+	vs := fakeViewState(1, view.CollapseAuto)
+	now := time.Now()
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name: "vigoda",
+				BuildHistory: []model.BuildRecord{{
+					StartTime:  now.Add(-time.Minute),
+					FinishTime: now,
+					Log: model.NewLog(`STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
+  │ Tarring context…
+  │ Applying via kubectl
+    ╎ Created tarball (size: 11 kB)
+  │ Building image
+`),
+				}},
+				ResourceInfo: view.K8SResourceInfo{
+					PodName:         "vigoda-pod",
+					PodCreationTime: now,
+					PodLog:          model.NewLog("serving on 8080"),
+					PodStatus:       "Running",
+				},
+				LastDeployTime: now,
+			},
+		},
+	}
+	v.Log = model.NewLog(fmt.Sprintf("%s\n%s\n",
+		v.Resources[0].LastBuild().Log.String(),
+		v.Resources[0].ResourceInfo.RuntimeLog()))
+
+	rtf.run("log tab default", 117, 20, v, vs)
+
+	vs.TabState = view.TabBuildLog
+	rtf.run("log tab build", 117, 20, v, vs)
+
+	vs.TabState = view.TabPodLog
+	rtf.run("log tab pod", 117, 20, v, vs)
 }
 
 type rendererTestFixture struct {
