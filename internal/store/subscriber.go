@@ -38,6 +38,7 @@ func (l *subscriberList) Add(s Subscriber) {
 
 	l.subscribers = append(l.subscribers, &subscriberEntry{
 		subscriber: s,
+		dirtyBit:   NewDirtyBit(),
 	})
 }
 
@@ -81,6 +82,8 @@ func (l *subscriberList) NotifyAll(ctx context.Context, store *Store) {
 	l.mu.Unlock()
 
 	for _, s := range subscribers {
+		s.dirtyBit.MarkDirty()
+
 		go s.notify(ctx, store)
 	}
 }
@@ -88,12 +91,20 @@ func (l *subscriberList) NotifyAll(ctx context.Context, store *Store) {
 type subscriberEntry struct {
 	subscriber Subscriber
 	mu         sync.Mutex
+	dirtyBit   *DirtyBit
 }
 
 func (e *subscriberEntry) notify(ctx context.Context, store *Store) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
+
+	startToken, isDirty := e.dirtyBit.StartBuildIfDirty()
+	if !isDirty {
+		return
+	}
+
 	e.subscriber.OnChange(ctx, store)
+	e.dirtyBit.FinishBuild(startToken)
 }
 
 func (e *subscriberEntry) maybeTeardown(ctx context.Context) {

@@ -30,10 +30,9 @@ func TestSubscriberInterleavedCalls(t *testing.T) {
 	call := <-s.onChange
 	st.NotifySubscribers(ctx)
 	st.NotifySubscribers(ctx)
+	time.Sleep(10 * time.Millisecond)
 	close(call.done)
 
-	call = <-s.onChange
-	close(call.done)
 	call = <-s.onChange
 	close(call.done)
 
