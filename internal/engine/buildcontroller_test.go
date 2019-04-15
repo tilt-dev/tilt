@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/tilt/internal/container"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
@@ -141,7 +141,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 		assert.Equal(t, testContainer, ms.ExpectedContainerID.String())
 	})
 
-	// Restart the pod with a new container id, to simulate a container liveUpdRestart.
+	// Restart the pod with a new container id, to simulate a container restart.
 	f.podEvent(f.testPod("pod-id", "fe", "Running", "funnyContainerID", time.Now()))
 	call = f.nextCall()
 	assert.True(t, call.oneState().DeployInfo.Empty())

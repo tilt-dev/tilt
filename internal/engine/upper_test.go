@@ -2537,7 +2537,7 @@ func (f *testFixture) restartPod() {
 	f.pod.Status.ContainerStatuses[0].RestartCount = restartCount
 	f.upper.store.Dispatch(PodChangeAction{f.pod})
 
-	f.WaitUntilManifestState("pod liveUpdRestart seen", "foobar", func(ms store.ManifestState) bool {
+	f.WaitUntilManifestState("pod restart seen", "foobar", func(ms store.ManifestState) bool {
 		return ms.MostRecentPod().ContainerRestarts == int(restartCount)
 	})
 }

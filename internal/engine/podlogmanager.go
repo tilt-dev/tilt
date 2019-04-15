@@ -77,7 +77,7 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 			shouldPrefix := len(containerInfos) > 1
 
 			for _, cInfo := range containerInfos {
-				// Key the log watcher by the container id, so we auto-liveUpdRestart the
+				// Key the log watcher by the container id, so we auto-restart the
 				// watching if the container crashes.
 				key := podLogKey{
 					podID: pod.PodID,
