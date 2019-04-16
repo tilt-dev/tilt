@@ -211,6 +211,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 	deployLabel := k8s.TiltDeployLabel(deployID)
 
 	var targetIDs []model.TargetID
+	injectedSynclet := false
 
 	for _, k8sTarget := range k8sTargets {
 		// TODO(nick): The parsed YAML should probably be a part of the model?
@@ -259,7 +260,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 				if replaced {
 					injectedDepIDs[depID] = true
 
-					if ibd.injectSynclet && needsSynclet {
+					if ibd.injectSynclet && needsSynclet && !injectedSynclet {
 						injectedRefSelector := container.NewRefSelector(ref).WithExactMatch()
 
 						var sidecarInjected bool
@@ -270,6 +271,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 						if !sidecarInjected {
 							return fmt.Errorf("Could not inject synclet: %v", e)
 						}
+						injectedSynclet = true
 					}
 				}
 			}

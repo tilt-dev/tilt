@@ -145,6 +145,13 @@ func NewSanchoSidecarDockerBuildImageTarget() model.ImageTarget {
 	return iTarget
 }
 
+func NewSanchoSidecarFastBuildImageTarget(f pather) model.ImageTarget {
+	iTarget := NewSanchoFastBuildImage(f)
+	iTarget.ConfigurationRef = SanchoSidecarRef
+	iTarget.DeploymentRef = SanchoSidecarRef.AsNamedOnly()
+	return iTarget
+}
+
 func NewSanchoDockerBuildManifest() model.Manifest {
 	return NewSanchoDockerBuildManifestWithBuildPath("/path/to/build")
 }

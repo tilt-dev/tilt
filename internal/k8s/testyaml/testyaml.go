@@ -392,6 +392,41 @@ spec:
   backoffLimit: 4
 `
 
+const MultipleContainersDeploymentYAML = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-deployment
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: client
+          image: dockerhub.io/client:0.1.0-dev
+          imagePullPolicy: Always
+          ports:
+          - name: http-client
+            containerPort: 9000
+            protocol: TCP
+        - name: backend
+          image: dockerhub.io/backend:0.1.0-dev
+          imagePullPolicy: Always
+          ports:
+          - name: http-backend
+            containerPort: 8000
+            protocol: TCP
+          volumeMounts:
+          - name: config
+            mountPath: /etc/backend
+            readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: fe-backend
+            items:
+            - key: config
+              path: config.yaml`
+
 const SyncletYAML = `apiVersion: apps/v1beta2
 kind: DaemonSet
 metadata:

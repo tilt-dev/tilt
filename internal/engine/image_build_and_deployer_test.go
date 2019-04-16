@@ -123,6 +123,38 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 }
 
+func TestDeployPodWithMultipleFastBuildImages(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+	f.ibd.injectSynclet = true
+
+	iTarget1 := NewSanchoFastBuildImage(f)
+	iTarget2 := NewSanchoSidecarFastBuildImageTarget(f)
+	kTarget := model.K8sTarget{Name: "sancho", YAML: testyaml.SanchoSidecarYAML}.
+		WithDependencyIDs([]model.TargetID{iTarget1.ID(), iTarget2.ID()})
+	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}
+
+	result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 2, f.docker.BuildCount)
+
+	expectedSanchoRef := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
+	assert.Equal(t, expectedSanchoRef, result[iTarget1.ID()].Image.String())
+	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSanchoRef),
+		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
+
+	expectedSidecarRef := "gcr.io/some-project-162817/sancho-sidecar:tilt-11cd0b38bc3ceb95"
+	assert.Equal(t, expectedSidecarRef, result[iTarget2.ID()].Image.String())
+	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSidecarRef),
+		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
+
+	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, "gcr.io/windmill-public-containers/tilt-synclet:"),
+		"Expected synclet to be injected once in YAML: %s", f.k8s.Yaml)
+}
+
 func TestDeployIDInjectedAndSent(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
