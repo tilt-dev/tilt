@@ -64,7 +64,7 @@ func (r *Room) AddFan(ctx context.Context, conn FanConn) {
 	r.addFan <- AddFanAction{fan: conn}
 
 	go func() {
-		for ctx.Err() != nil {
+		for ctx.Err() == nil {
 			// We need to read from the connection so that the websocket
 			// library handles control messages, but we can otherwise discard them.
 			if _, _, err := conn.NextReader(); err != nil {
