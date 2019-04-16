@@ -26,7 +26,7 @@ type LogPaneState = {
 
 class LogPane extends Component<LogPaneProps, LogPaneState> {
   private lastElement: HTMLDivElement | null = null
-  private scrollTimeout: NodeJS.Timeout | null = null
+  private rafID: number | null = null
 
   constructor(props: LogPaneProps) {
     super(props)
@@ -36,6 +36,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     }
 
     this.refreshAutoScroll = this.refreshAutoScroll.bind(this)
+    this.handleWheel = this.handleWheel.bind(this)
   }
 
   componentDidMount() {
@@ -44,6 +45,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     }
 
     window.addEventListener("scroll", this.refreshAutoScroll, { passive: true })
+    window.addEventListener("wheel", this.handleWheel, { passive: true })
   }
 
   componentDidUpdate() {
@@ -57,17 +59,24 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 
   componentWillUnmount() {
     window.removeEventListener("scroll", this.refreshAutoScroll)
-    if (this.scrollTimeout) {
-      clearTimeout(this.scrollTimeout)
+    window.removeEventListener("wheel", this.handleWheel)
+    if (this.rafID) {
+      clearTimeout(this.rafID)
     }
   }
 
-  refreshAutoScroll() {
-    if (this.scrollTimeout) {
-      clearTimeout(this.scrollTimeout)
+  private handleWheel(event: WheelEvent) {
+    if (event.deltaY < 0) {
+      this.setState({ autoscroll: false })
+    }
+  }
+
+  private refreshAutoScroll() {
+    if (this.rafID) {
+      cancelAnimationFrame(this.rafID)
     }
 
-    this.scrollTimeout = setTimeout(() => {
+    this.rafID = requestAnimationFrame(() => {
       let lastElInView = this.lastElement
         ? this.lastElement.getBoundingClientRect().bottom < window.innerHeight
         : false
@@ -81,7 +90,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       }
 
       this.setState({ autoscroll })
-    }, 250)
+    })
   }
 
   render() {
