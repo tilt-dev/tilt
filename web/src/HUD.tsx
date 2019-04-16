@@ -8,10 +8,17 @@ import LogPane from "./LogPane"
 import K8sViewPane from "./K8sViewPane"
 import PreviewPane from "./PreviewPane"
 import { Map } from "immutable"
-import { Router, Route, Switch, RouteComponentProps } from "react-router-dom"
+import {
+  Router,
+  Route,
+  Switch,
+  RouteComponentProps,
+  Link,
+} from "react-router-dom"
 import { createBrowserHistory, History, UnregisterCallback } from "history"
 import "./HUD.scss"
 import { incr, pathToTag } from "./analytics"
+import TabNav from "./TabNav"
 
 type HudProps = {}
 
@@ -171,6 +178,24 @@ class HUD extends Component<HudProps, HudState> {
         />
       )
     }
+    let tabNavRoute = (props: RouteComponentProps<any>) => {
+      return (
+        <TabNav
+          resourceName={props.match.params.name}
+          sidebarItems={sidebarItems}
+          resourceView={ResourceView.Log}
+        />
+      )
+    }
+    let tabNavPreviewRoute = (props: RouteComponentProps<any>) => {
+      return (
+        <TabNav
+          resourceName={props.match.params.name}
+          sidebarItems={sidebarItems}
+          resourceView={ResourceView.Preview}
+        />
+      )
+    }
 
     let logsRoute = (props: RouteComponentProps<any>) => {
       let name = props.match.params ? props.match.params.name : ""
@@ -201,6 +226,13 @@ class HUD extends Component<HudProps, HudState> {
     return (
       <Router history={this.history}>
         <div className="HUD">
+          <Switch>
+            <Route
+              path={this.path("/r/:name/preview")}
+              render={tabNavPreviewRoute}
+            />
+            <Route path={this.path("/r/:name")} render={tabNavRoute} />
+          </Switch>
           <Switch>
             <Route
               path={this.path("/r/:name/preview")}
