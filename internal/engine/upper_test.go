@@ -1620,6 +1620,59 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// This tests a bug that led to infinite redeploys:
+// 1. Crash rebuild
+// 2. Immediately do a container build, before we get the event with the new container ID in (1). This container build
+//    should *not* happen in the pre-(1) container ID. Whether it happens in the container from (1) or yields a fresh
+//    container build isn't too important
+func TestUpperBuildImmediatelyAfterCrashRebuild(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
+	manifest := f.newManifest("fe", []model.Sync{sync})
+	f.Start([]model.Manifest{manifest}, true)
+
+	call := f.nextCall()
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
+	assert.Equal(t, []string{}, call.oneState().FilesChanged())
+	f.waitForCompletedBuildCount(1)
+
+	f.b.nextBuildContainer = testContainer
+	f.podEvent(f.testPod("pod-id", "fe", "Running", testContainer, time.Now()))
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("main.go")}
+
+	call = f.nextCall()
+	assert.Equal(t, "pod-id", call.oneState().DeployInfo.PodID.String())
+	f.waitForCompletedBuildCount(2)
+	f.withManifestState("fe", func(ms store.ManifestState) {
+		assert.Equal(t, model.BuildReasonFlagChangedFiles, ms.LastBuild().Reason)
+		assert.Equal(t, testContainer, ms.ExpectedContainerID.String())
+	})
+
+	f.b.nextDeployID = testDeployID + 1
+	// Restart the pod with a new container id, to simulate a container restart.
+	f.podEvent(f.testPod("pod-id", "fe", "Running", "funnyContainerID", time.Now()))
+	call = f.nextCall()
+	assert.True(t, call.oneState().DeployInfo.Empty())
+	f.waitForCompletedBuildCount(3)
+
+	f.withManifestState("fe", func(ms store.ManifestState) {
+		assert.Equal(t, model.BuildReasonFlagCrash, ms.LastBuild().Reason)
+	})
+
+	// kick off another build
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("main2.go")}
+	call = f.nextCall()
+	// at this point we have not received a pod event for pod that was started by the crash-rebuild,
+	// so any known pod info would have to be invalid to use for a build and this buildstate should not have any deployinfo
+	assert.True(t, call.oneState().DeployInfo.Empty())
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+}
+
 func testService(serviceName string, manifestName string, ip string, port int) *v1.Service {
 	return &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
