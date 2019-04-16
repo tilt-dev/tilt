@@ -211,7 +211,6 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 	deployLabel := k8s.TiltDeployLabel(deployID)
 
 	var targetIDs []model.TargetID
-	injectedSynclet := false
 
 	for _, k8sTarget := range k8sTargets {
 		// TODO(nick): The parsed YAML should probably be a part of the model?
@@ -224,6 +223,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 		depIDs := k8sTarget.DependencyIDs()
 		injectedDepIDs := map[model.TargetID]bool{}
 		for _, e := range entities {
+			injectedSynclet := false
 			e, err = k8s.InjectLabels(e, []model.LabelPair{k8s.TiltRunLabel(), {Key: k8s.ManifestNameLabel, Value: k8sTarget.Name.String()}, deployLabel})
 			if err != nil {
 				return errors.Wrap(err, "deploy")
