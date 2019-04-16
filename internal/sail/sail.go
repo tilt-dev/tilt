@@ -2,7 +2,6 @@ package sail
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -11,6 +10,7 @@ import (
 	hudServer "github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/network"
 	"github.com/windmilleng/tilt/internal/sail/server"
 	"golang.org/x/sync/errgroup"
 )
@@ -46,7 +46,7 @@ func run(cmd *cobra.Command, args []string) {
 
 	ss := server.ProvideSailServer(assets)
 	httpServer := &http.Server{
-		Addr:    fmt.Sprintf(":%d", port),
+		Addr:    network.AllHostsBindAddr(int(port)),
 		Handler: http.DefaultServeMux,
 	}
 	http.Handle("/", ss.Router())

@@ -104,7 +104,8 @@ func (s *devAssetServer) start(ctx context.Context, stdout, stderr io.Writer) (*
 }
 
 func (s *devAssetServer) Serve(ctx context.Context) error {
-	err := network.IsPortFree(int(s.port))
+	// webpack binds to 0.0.0.0
+	err := network.IsBindAddrFree(network.AllHostsBindAddr(int(s.port)))
 	if err != nil {
 		return errors.Wrapf(err, "Cannot start Tilt dev webpack server. "+
 			"Maybe another process is already running on port %d? "+
