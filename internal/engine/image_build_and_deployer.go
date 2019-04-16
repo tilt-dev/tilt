@@ -223,6 +223,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 		depIDs := k8sTarget.DependencyIDs()
 		injectedDepIDs := map[model.TargetID]bool{}
 		for _, e := range entities {
+			injectedSynclet := false
 			e, err = k8s.InjectLabels(e, []model.LabelPair{k8s.TiltRunLabel(), {Key: k8s.ManifestNameLabel, Value: k8sTarget.Name.String()}, deployLabel})
 			if err != nil {
 				return errors.Wrap(err, "deploy")
@@ -259,7 +260,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 				if replaced {
 					injectedDepIDs[depID] = true
 
-					if ibd.injectSynclet && needsSynclet {
+					if ibd.injectSynclet && needsSynclet && !injectedSynclet {
 						injectedRefSelector := container.NewRefSelector(ref).WithExactMatch()
 
 						var sidecarInjected bool
@@ -270,6 +271,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 						if !sidecarInjected {
 							return fmt.Errorf("Could not inject synclet: %v", e)
 						}
+						injectedSynclet = true
 					}
 				}
 			}

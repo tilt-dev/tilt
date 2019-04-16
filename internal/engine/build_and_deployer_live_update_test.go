@@ -107,7 +107,10 @@ func TestLiveUpdateDockerBuildLocalContainer(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	lu := f.assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"})
+	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
+	if err != nil {
+		t.Fatal(err)
+	}
 	tCase := testCase{
 		env:                      k8s.EnvDockerDesktop,
 		baseManifest:             NewSanchoDockerBuildManifest(),
@@ -126,7 +129,10 @@ func TestLiveUpdateCustomBuildLocalContainer(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	lu := f.assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"})
+	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
+	if err != nil {
+		t.Fatal(err)
+	}
 	tCase := testCase{
 		env:                      k8s.EnvDockerDesktop,
 		baseManifest:             NewSanchoCustomBuildManifest(f),
@@ -145,7 +151,10 @@ func TestLiveUpdateHotReloadLocalContainer(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	lu := f.assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil)
+	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil, f)
+	if err != nil {
+		t.Fatal(err)
+	}
 	tCase := testCase{
 		env:                      k8s.EnvDockerDesktop,
 		baseManifest:             NewSanchoDockerBuildManifest(),
@@ -169,7 +178,10 @@ func TestLiveUpdateRunTriggerLocalContainer(t *testing.T) {
 		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
 		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo b"), Triggers: f.NewPathSet("b.txt")}, // does NOT match changed file
 	}
-	lu := f.assembleLiveUpdate(SanchoSyncSteps(f), runs, true, nil)
+	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), runs, true, nil, f)
+	if err != nil {
+		t.Fatal(err)
+	}
 	tCase := testCase{
 		env:                      k8s.EnvDockerDesktop,
 		baseManifest:             NewSanchoDockerBuildManifest(),
@@ -193,7 +205,10 @@ func TestLiveUpdateRunTriggerSynclet(t *testing.T) {
 		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
 		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo b"), Triggers: f.NewPathSet("b.txt")}, // does NOT match changed file
 	}
-	lu := f.assembleLiveUpdate(SanchoSyncSteps(f), runs, true, nil)
+	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), runs, true, nil, f)
+	if err != nil {
+		t.Fatal(err)
+	}
 	tCase := testCase{
 		env:                               k8s.EnvGKE,
 		baseManifest:                      NewSanchoDockerBuildManifest(),
@@ -211,7 +226,10 @@ func TestLiveUpdateDockerBuildSynclet(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	lu := f.assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, nil)
+	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, nil, f)
+	if err != nil {
+		t.Fatal(err)
+	}
 	tCase := testCase{
 		env:                               k8s.EnvGKE,
 		baseManifest:                      NewSanchoDockerBuildManifest(),
@@ -230,7 +248,10 @@ func TestLiveUpdateCustomBuildSynclet(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	lu := f.assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, nil)
+	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, nil, f)
+	if err != nil {
+		t.Fatal(err)
+	}
 	tCase := testCase{
 		env:                               k8s.EnvGKE,
 		baseManifest:                      NewSanchoCustomBuildManifest(f),
@@ -249,7 +270,10 @@ func TestLiveUpdateHotReloadSynclet(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	lu := f.assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil)
+	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil, f)
+	if err != nil {
+		t.Fatal(err)
+	}
 	tCase := testCase{
 		env:                               k8s.EnvGKE,
 		baseManifest:                      NewSanchoDockerBuildManifest(),
@@ -283,7 +307,10 @@ func TestLiveUpdateLocalContainerFallBackOn(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	lu := f.assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"a.txt"})
+	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"a.txt"}, f)
+	if err != nil {
+		t.Fatal(err)
+	}
 	tCase := testCase{
 		env:                      k8s.EnvDockerDesktop,
 		baseManifest:             NewSanchoDockerBuildManifest(),
@@ -304,7 +331,10 @@ func TestLiveUpdateSyncletFallBackOn(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	lu := f.assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"a.txt"})
+	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"a.txt"}, f)
+	if err != nil {
+		t.Fatal(err)
+	}
 	tCase := testCase{
 		env:                      k8s.EnvGKE,
 		baseManifest:             NewSanchoDockerBuildManifest(),
@@ -331,7 +361,10 @@ func TestLiveUpdateLocalContainerChangedFileNotMatchingSyncFallsBack(t *testing.
 		Dest:   "/go/src/github.com/windmilleng/sancho",
 	}}
 
-	lu := f.assembleLiveUpdate(steps, SanchoRunSteps, true, []string{"a.txt"})
+	lu, err := assembleLiveUpdate(steps, SanchoRunSteps, true, []string{"a.txt"}, f)
+	if err != nil {
+		t.Fatal(err)
+	}
 	tCase := testCase{
 		env:          k8s.EnvDockerDesktop,
 		baseManifest: NewSanchoDockerBuildManifestWithBuildPath(f.Path()),
@@ -360,7 +393,10 @@ func TestLiveUpdateSyncletChangedFileNotMatchingSyncFallsBack(t *testing.T) {
 		Dest:   "/go/src/github.com/windmilleng/sancho",
 	}}
 
-	lu := f.assembleLiveUpdate(steps, SanchoRunSteps, true, []string{"a.txt"})
+	lu, err := assembleLiveUpdate(steps, SanchoRunSteps, true, []string{"a.txt"}, f)
+	if err != nil {
+		t.Fatal(err)
+	}
 	tCase := testCase{
 		env:          k8s.EnvGKE,
 		baseManifest: NewSanchoDockerBuildManifestWithBuildPath(f.Path()),
@@ -390,7 +426,10 @@ func TestLiveUpdateSomeFilesMatchSyncSomeDontFallsBack(t *testing.T) {
 		Dest:   "/go/src/github.com/windmilleng/sancho",
 	}}
 
-	lu := f.assembleLiveUpdate(steps, SanchoRunSteps, true, []string{"a.txt"})
+	lu, err := assembleLiveUpdate(steps, SanchoRunSteps, true, []string{"a.txt"}, f)
+	if err != nil {
+		t.Fatal(err)
+	}
 	tCase := testCase{
 		env:          k8s.EnvDockerDesktop,
 		baseManifest: NewSanchoDockerBuildManifestWithBuildPath(f.Path()),
@@ -409,25 +448,4 @@ func TestLiveUpdateSomeFilesMatchSyncSomeDontFallsBack(t *testing.T) {
 		logsDontContain: []string{"unexpected error"},
 	}
 	runTestCase(t, f, tCase)
-}
-
-func (f *bdFixture) assembleLiveUpdate(syncs []model.LiveUpdateSyncStep, runs []model.LiveUpdateRunStep, shouldRestart bool, fallBackOn []string) model.LiveUpdate {
-	var steps []model.LiveUpdateStep
-	if len(fallBackOn) > 0 {
-		steps = append(steps, model.LiveUpdateFallBackOnStep{Files: fallBackOn})
-	}
-	for _, sync := range syncs {
-		steps = append(steps, sync)
-	}
-	for _, run := range runs {
-		steps = append(steps, run)
-	}
-	if shouldRestart {
-		steps = append(steps, model.LiveUpdateRestartContainerStep{})
-	}
-	lu, err := model.NewLiveUpdate(steps, f.Path())
-	if err != nil {
-		f.T().Fatal(err)
-	}
-	return lu
 }
