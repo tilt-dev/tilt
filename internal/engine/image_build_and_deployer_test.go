@@ -123,13 +123,19 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 }
 
-func TestDeployPodWithMultipleFastBuildImages(t *testing.T) {
+func TestDeployPodWithMultipleLiveUpdateImages(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 	f.ibd.injectSynclet = true
 
-	iTarget1 := NewSanchoFastBuildImage(f)
-	iTarget2 := NewSanchoSidecarFastBuildImageTarget(f)
+	iTarget1, err := NewSanchoLiveUpdateImageTarget(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	iTarget2, err := NewSanchoSidecarLiveUpdateImageTarget(f)
+	if err != nil {
+		t.Fatal(err)
+	}
 	kTarget := model.K8sTarget{Name: "sancho", YAML: testyaml.SanchoSidecarYAML}.
 		WithDependencyIDs([]model.TargetID{iTarget1.ID(), iTarget2.ID()})
 	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}

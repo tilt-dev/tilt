@@ -138,6 +138,26 @@ func NewSanchoDockerBuildImageTarget() model.ImageTarget {
 	})
 }
 
+func NewSanchoLiveUpdateImageTarget(f pather) (model.ImageTarget, error) {
+	syncs := []model.LiveUpdateSyncStep{
+		{
+			Source: f.Path(),
+			Dest:   "/go/src/github.com/windmilleng/sancho",
+		},
+	}
+	runs := []model.LiveUpdateRunStep{
+		{
+			Command: model.Cmd{Argv: []string{"go", "install", "github.com/windmilleng/sancho"}},
+		},
+	}
+
+	lu, err := assembleLiveUpdate(syncs, runs, true, []string{}, f)
+	if err != nil {
+		return model.ImageTarget{}, err
+	}
+	return imageTargetWithLiveUpdate(model.NewImageTarget(SanchoRef), lu), nil
+}
+
 func NewSanchoSidecarDockerBuildImageTarget() model.ImageTarget {
 	iTarget := NewSanchoDockerBuildImageTarget()
 	iTarget.ConfigurationRef = SanchoSidecarRef
@@ -150,6 +170,16 @@ func NewSanchoSidecarFastBuildImageTarget(f pather) model.ImageTarget {
 	iTarget.ConfigurationRef = SanchoSidecarRef
 	iTarget.DeploymentRef = SanchoSidecarRef.AsNamedOnly()
 	return iTarget
+}
+
+func NewSanchoSidecarLiveUpdateImageTarget(f pather) (model.ImageTarget, error) {
+	iTarget, err := NewSanchoLiveUpdateImageTarget(f)
+	if err != nil {
+		return model.ImageTarget{}, nil
+	}
+	iTarget.ConfigurationRef = SanchoSidecarRef
+	iTarget.DeploymentRef = SanchoSidecarRef.AsNamedOnly()
+	return iTarget, nil
 }
 
 func NewSanchoDockerBuildManifest() model.Manifest {
@@ -288,4 +318,31 @@ func assembleDCManifest(m model.Manifest, iTargets ...model.ImageTarget) model.M
 	return m.
 		WithImageTargets(iTargets).
 		WithDeployTarget(dc)
+}
+
+func assembleLiveUpdate(syncs []model.LiveUpdateSyncStep, runs []model.LiveUpdateRunStep, shouldRestart bool, fallBackOn []string, f pather) (model.LiveUpdate, error) {
+	var steps []model.LiveUpdateStep
+	if len(fallBackOn) > 0 {
+		steps = append(steps, model.LiveUpdateFallBackOnStep{Files: fallBackOn})
+	}
+	for _, sync := range syncs {
+		steps = append(steps, sync)
+	}
+	for _, run := range runs {
+		steps = append(steps, run)
+	}
+	if shouldRestart {
+		steps = append(steps, model.LiveUpdateRestartContainerStep{})
+	}
+	lu, err := model.NewLiveUpdate(steps, f.Path())
+	if err != nil {
+		return model.LiveUpdate{}, err
+	}
+	return lu, nil
+}
+
+func imageTargetWithLiveUpdate(i model.ImageTarget, lu model.LiveUpdate) model.ImageTarget {
+	db := i.DockerBuildInfo()
+	db.LiveUpdate = &lu
+	return i.WithBuildDetails(db)
 }
