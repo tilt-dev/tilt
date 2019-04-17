@@ -1156,6 +1156,110 @@ metadata:
   name: mynamespace
 `
 
+const RedisStatefulSetYAML = `
+# Modified from: redis/templates/redis-master-statefulset.yaml
+apiVersion: apps/v1beta2
+kind: StatefulSet
+metadata:
+  name: test-redis-master
+  labels:
+    app: redis
+    chart: redis-5.1.3
+    release: "test"
+    heritage: "Tiller"
+spec:
+  selector:
+    matchLabels:
+      release: "test"
+      role: master
+      app: redis
+  serviceName: test-redis-master
+  template:
+    metadata:
+      labels:
+        release: "test"
+        chart: redis-5.1.3
+        role: master
+        app: redis
+    spec:
+      securityContext:
+        fsGroup: 1001
+        runAsUser: 1001
+      serviceAccountName: "default"
+      containers:
+      - name: test-redis
+        image: "docker.io/bitnami/redis:4.0.12"
+        imagePullPolicy: "Always"
+        command:
+          - /run.sh
+
+        args:
+        - "--port"
+        - "$(REDIS_PORT)"
+        - "--requirepass"
+        - "$(REDIS_PASSWORD)"
+        - "--include"
+        - "/opt/bitnami/redis/etc/redis.conf"
+        - "--include"
+        - "/opt/bitnami/redis/etc/master.conf"
+        env:
+        - name: REDIS_REPLICATION_MODE
+          value: master
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: test-redis
+              key: redis-password
+        - name: REDIS_PORT
+          value: "6379"
+        ports:
+        - name: redis
+          containerPort: 6379
+        volumeMounts:
+        - name: health
+          mountPath: /health
+        - name: redis-data
+          mountPath: /data
+          subPath:
+        - name: config
+          mountPath: /opt/bitnami/redis/etc
+      initContainers:
+      - name: volume-permissions
+        image: "docker.io/bitnami/minideb:latest"
+        imagePullPolicy: "IfNotPresent"
+        command: ["/bin/chown", "-R", "1001:1001", "/data"]
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+          subPath:
+      volumes:
+      - name: health
+        configMap:
+          name: test-redis-health
+          defaultMode: 0755
+      - name: config
+        configMap:
+          name: test-redis
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+        labels:
+          app: "redis"
+          component: "master"
+          release: "test"
+          heritage: "Tiller"
+      spec:
+        accessModes:
+          - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: "8Gi"
+  updateStrategy:
+    type: RollingUpdate
+`
+
 func Deployment(name string, imageName string) string {
 	result := `
 apiVersion: apps/v1
