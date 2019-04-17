@@ -7,7 +7,7 @@ import { oneResourceView, twoResourceView } from "./testdata.test"
 import { SidebarItem } from "./Sidebar"
 
 it("doesn't crash with empty resource list", () => {
-  let sidebarItems = []
+  let sidebarItems: Array<SidebarItem> = []
   const tree = renderer
     .create(
       <MemoryRouter>
@@ -24,7 +24,7 @@ it("doesn't crash with empty resource list", () => {
 })
 
 it("previews resources", () => {
-  let sidebarItems = []
+  let sidebarItems: Array<SidebarItem> = []
   const tree = renderer
     .create(
       <MemoryRouter>
