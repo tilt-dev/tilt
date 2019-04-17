@@ -54,7 +54,6 @@ func NewRoom(conn SourceConn) *Room {
 		id:     RoomID(uuid.New().String()),
 		source: conn,
 		addFan: make(chan AddFanAction, 0),
-		fanOut: make(chan FanOutAction, 0),
 	}
 }
 
@@ -84,9 +83,11 @@ func (r *Room) Close() {
 // Receive messages from the source websocket and put them through the state loop.
 func (r *Room) ConsumeSource(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
+	fanOut := make(chan FanOutAction, 0)
 
 	go func() {
 		// Shutdown everything if the source shuts down
+		defer close(fanOut)
 		defer cancel()
 
 		for ctx.Err() == nil {
@@ -96,7 +97,7 @@ func (r *Room) ConsumeSource(ctx context.Context) error {
 				return
 			}
 
-			r.fanOut <- FanOutAction{messageType: messageType, data: data}
+			fanOut <- FanOutAction{messageType: messageType, data: data}
 		}
 	}()
 
@@ -109,10 +110,14 @@ func (r *Room) ConsumeSource(ctx context.Context) error {
 			}
 			_ = r.source.Close()
 
+			// Consume all the fan-out messages
+			for _ = range fanOut {
+			}
+
 			return ctx.Err()
 		case action := <-r.addFan:
 			r.fans = append(r.fans, action.fan)
-		case action := <-r.fanOut:
+		case action := <-fanOut:
 			for _, fan := range r.fans {
 				err := fan.WriteMessage(action.messageType, action.data)
 				if err != nil {
