@@ -5,24 +5,6 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
   className="Sidebar is-closed"
 >
   <nav
-    className="Sidebar-view"
-  >
-    <a
-      className="viewLink viewLink--is-selected"
-      href="/"
-      onClick={[Function]}
-    >
-      Logs
-    </a>
-    <a
-      className="viewLink "
-      href="/"
-      onClick={[Function]}
-    >
-      Preview
-    </a>
-  </nav>
-  <nav
     className="Sidebar-resources"
   >
     <ul
@@ -55,24 +37,6 @@ exports[`sidebar renders list of resources 1`] = `
 <section
   className="Sidebar"
 >
-  <nav
-    className="Sidebar-view"
-  >
-    <a
-      className="viewLink viewLink--is-selected"
-      href="/"
-      onClick={[Function]}
-    >
-      Logs
-    </a>
-    <a
-      className="viewLink "
-      href="/r/vigoda/preview"
-      onClick={[Function]}
-    >
-      Preview
-    </a>
-  </nav>
   <nav
     className="Sidebar-resources"
   >

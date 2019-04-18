@@ -3,7 +3,7 @@ import { ReactComponent as ChevronSvg } from "./assets/svg/chevron.svg"
 import { Link } from "react-router-dom"
 import { combinedStatus, warnings } from "./status"
 import "./Sidebar.scss"
-import { ResourceView } from "./HUD"
+import { ResourceView } from "./types"
 
 class SidebarItem {
   name: string
@@ -91,34 +91,8 @@ class Sidebar extends PureComponent<SidebarProps> {
       }
     }
 
-    let logResourceViewClasses = `viewLink ${
-      this.props.resourceView === ResourceView.Log
-        ? "viewLink--is-selected"
-        : ""
-    }`
-    let previewResourceViewClasses = `viewLink ${
-      this.props.resourceView === ResourceView.Preview
-        ? "viewLink--is-selected"
-        : ""
-    }`
-
-    let resourceViewLinks = (
-      <React.Fragment>
-        <Link className={logResourceViewClasses} to={logResourceViewURL}>
-          Logs
-        </Link>
-        <Link
-          className={previewResourceViewClasses}
-          to={previewResourceViewURL}
-        >
-          Preview
-        </Link>
-      </React.Fragment>
-    )
-
     return (
       <section className={classes.join(" ")}>
-        <nav className="Sidebar-view">{resourceViewLinks}</nav>
         <nav className="Sidebar-resources">
           <ul className="Sidebar-list">
             {allItem}

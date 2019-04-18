@@ -1,0 +1,52 @@
+@import "constants";
+
+.TabNav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding-right: $sidebar-width;
+  background-color: $color-navy-dark;
+  z-index: $z-tabnav;
+}
+
+.TabNav ul {
+  list-style: none;
+  display: flex;
+}
+
+.TabNav ul li:last-child {
+  border-right: 1px solid $color-navy-light;
+}
+
+.TabNav ul li + li {
+  border-left: 2px solid $color-navy-light;
+}
+
+.tabLink {
+  box-sizing: border-box;
+  height: $tabnav-height;
+  flex: 0 0 auto;
+  min-width: 10em;
+  color: inherit;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid $color-navy-light;
+  transition-property: color, background-color;
+  transition-duration: $animation-timing;
+  transition-timing-function: ease;
+  @include button-text;
+}
+
+.tabLink:hover {
+  background-color: $color-navy-dark;
+  color: $color-blue-light;
+}
+
+.tabLink--is-selected {
+  right: 0;
+  background-color: $color-navy;
+  border-bottom: none;
+}

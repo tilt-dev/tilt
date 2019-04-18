@@ -8,10 +8,18 @@ import LogPane from "./LogPane"
 import K8sViewPane from "./K8sViewPane"
 import PreviewPane from "./PreviewPane"
 import { Map } from "immutable"
-import { Router, Route, Switch, RouteComponentProps } from "react-router-dom"
+import {
+  Router,
+  Route,
+  Switch,
+  RouteComponentProps,
+  Link,
+} from "react-router-dom"
 import { createBrowserHistory, History, UnregisterCallback } from "history"
-import "./HUD.scss"
 import { incr, pathToTag } from "./analytics"
+import TabNav from "./TabNav"
+import "./HUD.scss"
+import { ResourceView } from "./types"
 
 type HudProps = {}
 
@@ -38,11 +46,6 @@ type Resource = {
   }
   RuntimeStatus: string
   ShowBuildStatus: boolean
-}
-
-export enum ResourceView {
-  Log,
-  Preview,
 }
 
 type HudState = {
@@ -128,6 +131,24 @@ class HUD extends Component<HudProps, HudState> {
     })
   }
 
+  getEndpointForName(name: string, resources: Array<SidebarItem>): string {
+    let endpoint = ""
+
+    if (name) {
+      endpoint = `/r/${name}/preview`
+    } else if (resources.length) {
+      // Pick the first item with an endpoint, or default to the first item
+      endpoint = `/r/${resources[0].name}/preview`
+      for (let r of resources) {
+        if (r.hasEndpoints) {
+          endpoint = `/r/${r.name}/preview`
+          break
+        }
+      }
+    }
+    return endpoint
+  }
+
   path(relPath: string) {
     if (relPath[0] != "/") {
       throw new Error('relPath should start with "/", actual:' + relPath)
@@ -172,8 +193,38 @@ class HUD extends Component<HudProps, HudState> {
       )
     }
 
+    let tabNavRoute = (props: RouteComponentProps<any>) => {
+      let name =
+        props.match.params && props.match.params.name
+          ? props.match.params.name
+          : ""
+      return (
+        <TabNav
+          logUrl={name === "" ? "/" : `/r/${name}`}
+          previewUrl={this.getEndpointForName(name, sidebarItems)}
+          resourceView={ResourceView.Log}
+        />
+      )
+    }
+    let tabNavPreviewRoute = (props: RouteComponentProps<any>) => {
+      let name =
+        props.match.params && props.match.params.name
+          ? props.match.params.name
+          : ""
+      return (
+        <TabNav
+          logUrl={name === "" ? "/" : `/r/${name}`}
+          previewUrl={this.getEndpointForName(name, sidebarItems)}
+          resourceView={ResourceView.Preview}
+        />
+      )
+    }
+
     let logsRoute = (props: RouteComponentProps<any>) => {
-      let name = props.match.params ? props.match.params.name : ""
+      let name =
+        props.match.params && props.match.params.name
+          ? props.match.params.name
+          : ""
       let logs = ""
       if (view && name !== "") {
         let r = view.Resources.find(r => r.Name === name)
@@ -201,6 +252,14 @@ class HUD extends Component<HudProps, HudState> {
     return (
       <Router history={this.history}>
         <div className="HUD">
+          <Switch>
+            <Route
+              path={this.path("/r/:name/preview")}
+              render={tabNavPreviewRoute}
+            />
+            <Route path={this.path("/r/:name")} render={tabNavRoute} />
+            <Route render={tabNavRoute} />
+          </Switch>
           <Switch>
             <Route
               path={this.path("/r/:name/preview")}

@@ -1,11 +1,10 @@
 import React from "react"
-import ReactDOM from "react-dom"
 import renderer from "react-test-renderer"
 import { MemoryRouter } from "react-router"
 import Sidebar, { SidebarItem } from "./Sidebar"
-import { ResourceView } from "./HUD"
 import { oneResourceView, twoResourceView } from "./testdata.test"
 import { mount } from "enzyme"
+import { ResourceView } from "./types"
 
 describe("sidebar", () => {
   it("renders empty resource list without crashing", () => {

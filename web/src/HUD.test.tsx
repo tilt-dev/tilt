@@ -73,3 +73,12 @@ it("does re-render the sidebar when the resource list changes", async () => {
   sidebarLinks = hud.find(".Sidebar-resources Link")
   expect(sidebarLinks).toHaveLength(3)
 })
+
+it("renders tab nav", () => {
+  const hud = mount(emptyHUD())
+
+  let resourceView = oneResourceView()
+  hud.setState({ View: resourceView })
+  let tabNavLinks = hud.find(".TabNav Link")
+  expect(tabNavLinks).toHaveLength(2)
+})
