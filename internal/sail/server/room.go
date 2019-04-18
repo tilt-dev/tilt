@@ -2,13 +2,16 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"log"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/windmilleng/tilt/internal/sail/types"
 )
 
+// TODO(maia): maybe put this in sail/types so can access from the client too?
 type RoomID string
 
 // A room where messages from a source are broadcast to all the followers.
@@ -56,6 +59,16 @@ func NewRoom() *Room {
 		secret: uuid.New().String(),
 		addFan: make(chan AddFanAction, 0),
 	}
+}
+
+// newRoomResponse returns json bytes containing all information about this room that we want
+// to return to the caller of the /new_room endpoint
+func (r *Room) newRoomResponse() ([]byte, error) {
+	info := types.RoomInfo{
+		RoomID: string(r.id),
+		Secret: r.secret,
+	}
+	return json.Marshal(info)
 }
 
 // Add a fan that consumes messages from the source.

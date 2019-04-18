@@ -2,16 +2,18 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"sync"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/sail/types"
 	"github.com/windmilleng/tilt/internal/store"
 )
 
@@ -98,14 +100,26 @@ func (s *SailClient) newRoom(ctx context.Context) (roomID, secret string, err er
 	addr := s.addr.Http()
 	header := make(http.Header)
 	header.Add("Origin", addr.String())
+
 	connectURL := addr
 	connectURL.Path = "/new_room"
 	resp, err := http.Get(connectURL.String())
 	if err != nil {
-		return "", "", err
+		return "", "", errors.Wrapf(err, "GET %s", connectURL.String())
 	}
-	spew.Dump(resp)
-	return "", "", nil
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", errors.Wrap(err, "reading /new_room response")
+	}
+
+	var roomInfo types.RoomInfo
+	err = json.Unmarshal(body, &roomInfo)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "unmarshaling json: %s", string(body))
+	}
+
+	return roomInfo.RoomID, roomInfo.Secret, nil
 }
 
 func (s *SailClient) shareToRoom(ctx context.Context) error {

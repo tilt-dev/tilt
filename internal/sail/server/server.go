@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 
@@ -54,7 +53,14 @@ func (s SailServer) newRoom(w http.ResponseWriter, req *http.Request) {
 
 	room := NewRoom()
 	s.rooms[room.id] = room
-	w.Write([]byte(room.id))
+
+	resp, err := room.newRoomResponse()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("error creating newRoom response: %v", err)))
+	}
+
+	w.Write(resp)
 	log.Printf("newRoom: %s", room.id)
 }
 
@@ -92,7 +98,6 @@ func (s SailServer) closeRoom(room *Room) {
 }
 
 func (s SailServer) connectRoom(w http.ResponseWriter, req *http.Request) {
-	spew.Dump(req)
 	conn, err := upgrader.Upgrade(w, req, nil)
 	if err != nil {
 		log.Printf("connectRoom: %v", err)
