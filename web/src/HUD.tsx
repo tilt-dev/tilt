@@ -194,7 +194,10 @@ class HUD extends Component<HudProps, HudState> {
     }
 
     let tabNavRoute = (props: RouteComponentProps<any>) => {
-      let name = props.match.params.name
+      let name =
+        props.match.params && props.match.params.name
+          ? props.match.params.name
+          : ""
       return (
         <TabNav
           logUrl={name === "" ? "/" : `/r/${name}`}
@@ -204,7 +207,10 @@ class HUD extends Component<HudProps, HudState> {
       )
     }
     let tabNavPreviewRoute = (props: RouteComponentProps<any>) => {
-      let name = props.match.params.name
+      let name =
+        props.match.params && props.match.params.name
+          ? props.match.params.name
+          : ""
       return (
         <TabNav
           logUrl={name === "" ? "/" : `/r/${name}`}
@@ -215,7 +221,10 @@ class HUD extends Component<HudProps, HudState> {
     }
 
     let logsRoute = (props: RouteComponentProps<any>) => {
-      let name = props.match.params ? props.match.params.name : ""
+      let name =
+        props.match.params && props.match.params.name
+          ? props.match.params.name
+          : ""
       let logs = ""
       if (view && name !== "") {
         let r = view.Resources.find(r => r.Name === name)
