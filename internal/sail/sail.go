@@ -96,6 +96,11 @@ func run(cmd *cobra.Command, args []string) {
 	})
 
 	g.Go(func() error {
+		<-ctx.Done()
+		return httpServer.Shutdown(context.Background())
+	})
+
+	g.Go(func() error {
 		defer cancel()
 		return assets.Serve(ctx)
 	})
