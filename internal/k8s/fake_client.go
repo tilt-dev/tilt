@@ -13,9 +13,10 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
-	"github.com/windmilleng/tilt/internal/container"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/watch"
+
+	"github.com/windmilleng/tilt/internal/container"
 )
 
 // A magic constant. If the docker client returns this constant, we always match

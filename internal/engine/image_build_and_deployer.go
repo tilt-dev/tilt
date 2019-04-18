@@ -16,8 +16,9 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
+
+	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"

@@ -7,6 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/docker/distribution/reference"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 

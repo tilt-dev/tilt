@@ -3,10 +3,10 @@ package sidecar
 import (
 	"fmt"
 
-	"github.com/windmilleng/tilt/internal/container"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	"k8s.io/api/core/v1"
+	"github.com/windmilleng/tilt/internal/container"
 )
 
 func syncletPrivileged() *bool {

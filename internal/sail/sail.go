@@ -8,11 +8,12 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
+
 	hudServer "github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/sail/server"
-	"golang.org/x/sync/errgroup"
 )
 
 var port = 0

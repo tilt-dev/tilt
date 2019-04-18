@@ -100,7 +100,8 @@ ensure:
 	dep ensure
 
 verify_gofmt:
-	bash -c 'diff <(go fmt ./...) <(echo -n)'
+	echo "testing goimports built from goimports commit $$(git -C "$$GOSRC/golang.org/x/tools/cmd/goimports/ show HEAD -q"))"
+	bash -c 'diff <(goimports -d -local github.com/windmilleng/tilt $$(go list -f {{.Dir}} ./... | grep -v /vendor/)) <(echo -n)'
 
 benchmark:
 	go test -run=XXX -bench=. ./...
@@ -115,6 +116,7 @@ wire:
 	wire ./internal/engine
 	wire ./internal/cli
 	wire ./internal/synclet
+	goimports -w -local github.com/windmilleng/tilt internal/*/wire_gen.go
 
 wire-check:
 	wire check ./internal/engine

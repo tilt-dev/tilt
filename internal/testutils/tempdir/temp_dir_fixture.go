@@ -7,8 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/wmclient/pkg/os/temp"
+
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 type TempDirFixture struct {

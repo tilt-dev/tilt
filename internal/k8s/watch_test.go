@@ -6,23 +6,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/model"
-
+	"github.com/stretchr/testify/assert"
+	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-
-	v1 "k8s.io/api/apps/v1"
-
 	"k8s.io/apimachinery/pkg/runtime"
-
-	"k8s.io/client-go/kubernetes/fake"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/tilt/internal/testutils/output"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
+
+	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
 func TestK8sClient_WatchPods(t *testing.T) {

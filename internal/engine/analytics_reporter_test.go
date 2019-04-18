@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	"github.com/windmilleng/tilt/internal/model"

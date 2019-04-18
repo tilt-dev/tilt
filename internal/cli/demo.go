@@ -6,9 +6,10 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/windmilleng/tilt/internal/demo"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/windmilleng/tilt/internal/demo"
 )
 
 type demoCmd struct {

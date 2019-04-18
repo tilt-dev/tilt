@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/google/wire"
+
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	"github.com/windmilleng/wmclient/pkg/dirs"
 

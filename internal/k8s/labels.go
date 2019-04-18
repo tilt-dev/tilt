@@ -4,8 +4,9 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
-	"github.com/windmilleng/tilt/internal/model"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 const TiltRunIDLabel = "tilt-runid"

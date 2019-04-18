@@ -9,6 +9,8 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -16,7 +18,6 @@ import (
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/synclet/proto"
 	"github.com/windmilleng/tilt/internal/tracer"
-	"google.golang.org/grpc"
 )
 
 type SyncletCmd struct {

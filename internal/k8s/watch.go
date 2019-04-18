@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tilt/internal/model"
 
 	v1 "k8s.io/api/core/v1"

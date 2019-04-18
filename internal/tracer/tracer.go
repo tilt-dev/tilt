@@ -14,6 +14,7 @@ import (
 	zipkin "github.com/openzipkin/zipkin-go-opentracing"
 	jaeger "github.com/uber/jaeger-client-go"
 	jaegercfg "github.com/uber/jaeger-client-go/config"
+
 	"github.com/windmilleng/tilt/internal/logger"
 )
 

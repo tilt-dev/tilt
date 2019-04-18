@@ -7,8 +7,10 @@ import (
 
 	"github.com/gorilla/mux"
 	_ "github.com/gorilla/websocket"
-	"github.com/windmilleng/tilt/internal/store"
+
 	"github.com/windmilleng/wmclient/pkg/analytics"
+
+	"github.com/windmilleng/tilt/internal/store"
 )
 
 type analyticsPayload struct {
