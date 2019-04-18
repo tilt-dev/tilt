@@ -15,6 +15,14 @@ func TestNoFile(t *testing.T) {
 	f.assertErrorContains("unable to find one of [kustomization.yaml kustomization.yml Kustomization] in directory ")
 }
 
+func TestTooManyFiles(t *testing.T) {
+	f := newKustomizeFixture(t)
+	f.tempdir.WriteFile("kustomization.yml", "")
+	f.tempdir.WriteFile("kustomization.yaml", "")
+
+	f.assertErrorContains("Found multiple kustomization files under")
+}
+
 func TestEmpty(t *testing.T) {
 	f := newKustomizeFixture(t)
 	kustomizeFile := ""

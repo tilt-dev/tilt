@@ -32,6 +32,7 @@ type configMapGenerator struct {
 	Files []string `yaml:"files"`
 }
 
+// Mostly taken from the [kustomize source code](https://github.com/kubernetes-sigs/kustomize/blob/ee68a9c450bc884b0d657fb7e3d62eb1ac59d14f/pkg/target/kusttarget.go#L97) itself.
 func loadKustFile(dir string) ([]byte, string, error) {
 	var content []byte
 	var path string
