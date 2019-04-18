@@ -15,18 +15,28 @@ class TabNav extends PureComponent<NavProps> {
     let previewIsSelected = this.props.resourceView == ResourceView.Preview
     return (
       <nav className="TabNav">
-        <Link
-          className={logIsSelected ? "viewLink--is-selected" : ""}
-          to={this.props.logUrl}
-        >
-          Logs
-        </Link>
-        <Link
-          className={previewIsSelected ? "viewLink--is-selected" : ""}
-          to={this.props.previewUrl}
-        >
-          Preview
-        </Link>
+        <ul>
+          <li>
+            <Link
+              className={`tabLink ${
+                logIsSelected ? "tabLink--is-selected" : ""
+              }`}
+              to={this.props.logUrl}
+            >
+              Logs
+            </Link>
+            </li>
+            <li>
+            <Link
+              className={`tabLink ${
+                previewIsSelected ? "tabLink--is-selected" : ""
+              }`}
+              to={this.props.previewUrl}
+            >
+              Preview
+            </Link>
+          </li>
+        </ul>
       </nav>
     )
   }

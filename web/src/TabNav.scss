@@ -4,15 +4,30 @@
   position: fixed;
   top: 0;
   left: 0;
+  right: 0;
+  padding-right: $sidebar-width;
   background-color: $color-navy-dark;
-  display: flex;
   z-index: $z-tabnav;
 }
 
-.viewLink {
+.TabNav ul {
+  list-style: none;
+  display: flex;
+}
+
+.TabNav ul li:last-child {
+  border-right: 1px solid $color-navy-light;
+}
+
+.TabNav ul li + li {
+  border-left: 2px solid $color-navy-light;
+}
+
+.tabLink {
   box-sizing: border-box;
-  height: $sidebar-item * 1.5;
-  flex: 1 0 50%;
+  height: $tabnav-height;
+  flex: 0 0 auto;
+  min-width: 10em;
   color: inherit;
   text-decoration: none;
   display: flex;
@@ -25,19 +40,13 @@
   @include button-text;
 }
 
-.viewLink + .viewLink {
-  border-left: 2px solid $color-navy-light;
-}
-
-.viewLink:hover {
+.tabLink:hover {
   background-color: $color-navy-dark;
   color: $color-blue-light;
 }
 
-.viewLink--is-selected {
+.tabLink--is-selected {
   right: 0;
   background-color: $color-navy;
   border-bottom: none;
 }
-
-

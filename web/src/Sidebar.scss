@@ -15,6 +15,7 @@
   font-size: $font-size;
   display: flex;
   flex-direction: column;
+  z-index: $z-sidebar;
 }
 .Sidebar.is-closed {
   transform: translateX(calc(100% - #{$sidebar-collapsed-width}));
