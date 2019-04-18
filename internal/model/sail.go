@@ -12,6 +12,16 @@ func (u SailURL) String() string {
 	return url.String()
 }
 
+func (u SailURL) Http() SailURL {
+	u.Scheme = "http"
+	return u
+}
+
+func (u SailURL) Ws() SailURL {
+	u.Scheme = "ws"
+	return u
+}
+
 func (u SailURL) Empty() bool {
 	return SailURL{} == u
 }

@@ -198,11 +198,11 @@ func provideWebURL(webPort model.WebPort) (model.WebURL, error) {
 		return model.WebURL{}, nil
 	}
 
-	url, err := url.Parse(fmt.Sprintf("http://localhost:%d/", webPort))
+	u, err := url.Parse(fmt.Sprintf("http://localhost:%d/", webPort))
 	if err != nil {
 		return model.WebURL{}, err
 	}
-	return model.WebURL(*url), nil
+	return model.WebURL(*u), nil
 }
 
 func provideSailURL() (model.SailURL, error) {
@@ -210,10 +210,11 @@ func provideSailURL() (model.SailURL, error) {
 		return model.SailURL{}, nil
 	}
 
-	url, err := url.Parse(fmt.Sprintf("ws://localhost:%d/", model.DefaultSailPort))
+	// Base SailUrl -- use .Http() and .Ws() methods as appropriate to set scheme
+	u, err := url.Parse(fmt.Sprintf("//localhost:%d/", model.DefaultSailPort))
 	if err != nil {
 		return model.SailURL{}, err
 	}
 
-	return model.SailURL(*url), nil
+	return model.SailURL(*u), nil
 }

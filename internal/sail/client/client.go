@@ -2,9 +2,11 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"sync"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/hud/webview"
@@ -84,12 +86,35 @@ func (s *SailClient) setConnection(ctx context.Context, conn SailConn) {
 }
 
 func (s *SailClient) Connect(ctx context.Context) error {
+	roomID, secret, err := s.newRoom(ctx)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("new room %s with secret %s", roomID, secret)
+	return nil
+}
+
+func (s *SailClient) newRoom(ctx context.Context) (roomID, secret string, err error) {
+	addr := s.addr.Http()
 	header := make(http.Header)
-	header.Add("Origin", s.addr.String())
+	header.Add("Origin", addr.String())
+	connectURL := addr
+	connectURL.Path = "/new_room"
+	resp, err := http.Get(connectURL.String())
+	if err != nil {
+		return "", "", err
+	}
+	spew.Dump(resp)
+	return "", "", nil
+}
+
+func (s *SailClient) shareToRoom(ctx context.Context) error {
+	header := make(http.Header)
+	header.Add("Origin", s.addr.Ws().String())
 
 	connectURL := s.addr
 	connectURL.Path = "/share"
-	conn, err := s.dialer.DialContext(ctx, connectURL.String(), header)
+	conn, err := s.dialer.DialContext(ctx, connectURL.Ws().String(), header)
 	if err != nil {
 		return err
 	}
