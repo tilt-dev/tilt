@@ -15,6 +15,7 @@ type RoomID string
 type Room struct {
 	// Immutable data
 	id     RoomID
+	secret string // used to authorize attempts to share to this room
 	source SourceConn
 	addFan chan AddFanAction
 	fanOut chan FanOutAction
@@ -49,10 +50,10 @@ type FanOutAction struct {
 	data        []byte
 }
 
-func NewRoom(conn SourceConn) *Room {
+func NewRoom() *Room {
 	return &Room{
 		id:     RoomID(uuid.New().String()),
-		source: conn,
+		secret: uuid.New().String(),
 		addFan: make(chan AddFanAction, 0),
 	}
 }

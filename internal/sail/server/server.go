@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 
@@ -34,7 +35,8 @@ func ProvideSailServer(assetServer hudServer.AssetServer) SailServer {
 		assetServer: assetServer,
 	}
 
-	r.HandleFunc("/share", s.startRoom)
+	r.HandleFunc("/new_room", s.newRoom)
+	r.HandleFunc("/share", s.connectRoom)
 	r.HandleFunc("/join/{roomID}", s.joinRoom)
 	r.HandleFunc("/view/{roomID}", s.viewRoom)
 	r.PathPrefix("/").Handler(assetServer)
@@ -46,14 +48,14 @@ func (s SailServer) Router() http.Handler {
 	return s.router
 }
 
-func (s SailServer) newRoom(conn *websocket.Conn) *Room {
+func (s SailServer) newRoom(w http.ResponseWriter, req *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	room := NewRoom(conn)
+	room := NewRoom()
 	s.rooms[room.id] = room
+	w.Write([]byte(room.id))
 	log.Printf("newRoom: %s", room.id)
-	return room
 }
 
 func (s SailServer) hasRoom(roomID RoomID) bool {
@@ -62,6 +64,22 @@ func (s SailServer) hasRoom(roomID RoomID) bool {
 
 	_, ok := s.rooms[roomID]
 	return ok
+}
+
+func (s SailServer) getRoomWithAuth(roomID RoomID, secret string) (*Room, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	room, ok := s.rooms[roomID]
+	if !ok {
+		return nil, fmt.Errorf("getRoomWithAuth: no room found with ID: %s", roomID)
+	}
+
+	if room.secret != secret {
+		return nil, fmt.Errorf("getRoomWithAuth: incorrect secret for room %s", roomID)
+	}
+
+	return room, nil
 }
 
 func (s SailServer) closeRoom(room *Room) {
@@ -73,14 +91,21 @@ func (s SailServer) closeRoom(room *Room) {
 	room.Close()
 }
 
-func (s SailServer) startRoom(w http.ResponseWriter, req *http.Request) {
+func (s SailServer) connectRoom(w http.ResponseWriter, req *http.Request) {
+	spew.Dump(req)
 	conn, err := upgrader.Upgrade(w, req, nil)
 	if err != nil {
-		log.Printf("startRoom: %v", err)
+		log.Printf("connectRoom: %v", err)
 		return
 	}
 
-	room := s.newRoom(conn)
+	room, err := s.getRoomWithAuth(RoomID("boop"), "shh")
+	if err != nil {
+		log.Printf("connectRoom: %v", err)
+		return
+	}
+	room.source = conn
+
 	err = room.ConsumeSource(req.Context())
 	if err != nil {
 		log.Printf("websocket closed: %v", err)
