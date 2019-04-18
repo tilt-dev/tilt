@@ -14,7 +14,8 @@ func Child(dir string, file string) (string, bool) {
 		return "", false
 	}
 
-	current := file
+	dir = filepath.Clean(dir)
+	current := filepath.Clean(file)
 	child := "."
 	for {
 		if dir == current {
