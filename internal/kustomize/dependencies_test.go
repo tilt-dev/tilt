@@ -12,7 +12,7 @@ import (
 func TestNoFile(t *testing.T) {
 	f := newKustomizeFixture(t)
 
-	f.assertErrorContains("kustomization.yaml: no such file or directory")
+	f.assertErrorContains("unable to find one of [kustomization.yaml kustomization.yml Kustomization] in directory ")
 }
 
 func TestEmpty(t *testing.T) {
