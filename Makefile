@@ -100,8 +100,12 @@ ensure:
 	dep ensure
 
 verify_gofmt:
-	echo "testing goimports built from goimports commit $$(git -C "$$GOSRC/golang.org/x/tools/cmd/goimports/ show HEAD -q"))"
-	bash -c 'diff <(goimports -d -local github.com/windmilleng/tilt $$(go list -f {{.Dir}} ./... | grep -v /vendor/)) <(echo -n)'
+	# echo "testing goimports built from goimports commit $$(git -C "$$GOSRC/golang.org/x/tools/cmd/goimports/ show HEAD -q"))"
+	$(eval DIFF := $(shell goimports -d -local github.com/windmilleng/tilt $(go list -f {{.Dir}} ./... | grep -v /vendor/)))
+	# ifneq ($(DIFF),)
+		# $(info goimports output '$(DIFF)')
+		# $(error goimports check failed)
+	# endif
 
 benchmark:
 	go test -run=XXX -bench=. ./...
