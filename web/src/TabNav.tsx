@@ -25,8 +25,8 @@ class TabNav extends PureComponent<NavProps> {
             >
               Logs
             </Link>
-            </li>
-            <li>
+          </li>
+          <li>
             <Link
               className={`tabLink ${
                 previewIsSelected ? "tabLink--is-selected" : ""
