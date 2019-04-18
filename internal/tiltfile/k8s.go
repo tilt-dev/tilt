@@ -316,7 +316,7 @@ func (s *tiltfileState) isProbablyK8SResourceV1Call(args starlark.Tuple, kwargs 
 func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	isV1, msg := s.isProbablyK8SResourceV1Call(args, kwargs)
 	if isV1 {
-		return starlark.None, fmt.Errorf("It looks like k8s_resource is being called with deprecated arguments: %s\n%s", msg, deprecatedResourceAssemblyV1Warning)
+		return starlark.None, fmt.Errorf("It looks like k8s_resource is being called with deprecated arguments: %s.\n\n%s", msg, deprecatedResourceAssemblyV1Warning)
 	}
 	var workload string
 	var newName string
