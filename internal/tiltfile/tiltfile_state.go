@@ -45,9 +45,9 @@ type tiltfileState struct {
 	// JSON paths to images in k8s YAML (other than Container specs)
 	k8sImageJSONPaths map[k8sObjectSelector][]k8s.JSONPath
 
-	k8sResourceAssemblyVersion int
+	k8sResourceAssemblyVersion       int
 	k8sResourceAssemblyVersionReason k8sResourceAssemblyVersionReason
-	workloadToResourceFunction workloadToResourceFunction
+	workloadToResourceFunction       workloadToResourceFunction
 
 	// for assembly
 	usedImages map[string]bool
