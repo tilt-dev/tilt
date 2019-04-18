@@ -21,6 +21,11 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
       </li>
     </ul>
   </nav>
+  <div
+    className="Sidebar-spacer"
+  >
+     
+  </div>
   <button
     className="Sidebar-toggle"
     onClick={null}
@@ -72,6 +77,11 @@ exports[`sidebar renders list of resources 1`] = `
       </li>
     </ul>
   </nav>
+  <div
+    className="Sidebar-spacer"
+  >
+     
+  </div>
   <button
     className="Sidebar-toggle"
     onClick={null}
