@@ -4,12 +4,16 @@ import { Link } from "react-router-dom"
 import { combinedStatus, warnings } from "./status"
 import "./Sidebar.scss"
 import { ResourceView } from "./types"
+import { isZeroTime } from "./time"
+import TimeAgo, { Unit, Suffix } from "react-timeago"
 
 class SidebarItem {
   name: string
   status: string
   hasWarnings: boolean
   hasEndpoints: boolean
+  lastDeployTime: string
+  pendingBuildSince: string
 
   /**
    * Create a pared down SidebarItem from a ResourceView
@@ -19,6 +23,11 @@ class SidebarItem {
     this.status = combinedStatus(res)
     this.hasWarnings = warnings(res).length > 0
     this.hasEndpoints = (res.Endpoints || []).length
+    this.lastDeployTime = res.LastDeployTime
+    this.pendingBuildSince = res.PendingBuildSince
+    // if (!isZeroTime(this.pendingBuildSince)) {
+    //   debugger
+    // }
   }
 }
 
@@ -63,18 +72,22 @@ class Sidebar extends PureComponent<SidebarProps> {
       if (item.hasWarnings) {
         classes += " has-warnings"
       }
+      let formatter = (
+        value: number,
+        unit: Unit,
+        suffix: Suffix,
+        epochMiliseconds: number
+      ) => value + " " + unit
       return (
         <li key={item.name}>
           <Link className={classes} to={link}>
-            {item.name}
+            <span>{item.name}</span>
+            <TimeAgo date={item.lastDeployTime} formatter={formatter} />
           </Link>
         </li>
       )
     })
 
-    let logResourceViewURL = this.props.selected
-      ? `/r/${this.props.selected}`
-      : "/"
     let previewResourceViewURL = "/"
     if (this.props.selected) {
       previewResourceViewURL = `/r/${this.props.selected}/preview`
