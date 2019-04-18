@@ -10,6 +10,7 @@ import enStrings from "react-timeago/lib/language-strings/en-short.js"
 // @ts-ignore
 import buildFormatter from "react-timeago/lib/formatters/buildFormatter"
 import { isZeroTime } from "./time"
+import PathBuilder from "./PathBuilder"
 
 class SidebarItem {
   name: string
@@ -38,10 +39,12 @@ type SidebarProps = {
   selected: string
   toggleSidebar: any
   resourceView: ResourceView
+  pathBuilder: PathBuilder
 }
 
 class Sidebar extends PureComponent<SidebarProps> {
   render() {
+    let pb = this.props.pathBuilder
     let classes = ["Sidebar"]
     if (this.props.isClosed) {
       classes.push("is-closed")
@@ -53,7 +56,7 @@ class Sidebar extends PureComponent<SidebarProps> {
     }
     let allItem = (
       <li>
-        <Link className={allItemClasses} to="/">
+        <Link className={allItemClasses} to={pb.path("/")}>
           All
         </Link>
       </li>
@@ -80,7 +83,7 @@ class Sidebar extends PureComponent<SidebarProps> {
 
       return (
         <li key={item.name}>
-          <Link className={classes} to={link}>
+          <Link className={classes} to={pb.path(link)}>
             <span className="resLink-name">{item.name}</span>
             <span>{hasBuilt ? timeAgo : ""}</span>
           </Link>
