@@ -14,7 +14,7 @@ import (
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	"github.com/stretchr/testify/assert"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -434,6 +434,26 @@ k8s_resource("the-deployment", "foo")
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "configMap.yaml", "deployment.yaml", "kustomization.yaml", "service.yaml")
 }
 
+func TestKustomization(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Kustomization", kustomizeFileText)
+	f.file("configMap.yaml", kustomizeConfigMapText)
+	f.file("deployment.yaml", kustomizeDeploymentText)
+	f.file("service.yaml", kustomizeServiceText)
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build("gcr.io/foo", "foo")
+k8s_yaml(kustomize("."))
+k8s_resource("the-deployment", "foo")
+`)
+	f.load()
+	f.assertNextManifest("foo", deployment("the-deployment"), numEntities(2))
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "configMap.yaml", "deployment.yaml", "Kustomization", "service.yaml")
+}
+
 func TestDockerBuildCache(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -777,7 +797,7 @@ func TestK8sResourceWithoutDockerBuild(t *testing.T) {
 	f.setupFoo()
 	f.file("Tiltfile", `
 k8s_resource_assembly_version(1)
-k8s_resource('foo', yaml='foo.yaml', port_forwards=8000)	
+k8s_resource('foo', yaml='foo.yaml', port_forwards=8000)
 `)
 	f.loadResourceAssemblyV1()
 	f.assertNextManifest("foo", []model.PortForward{{LocalPort: 8000}})

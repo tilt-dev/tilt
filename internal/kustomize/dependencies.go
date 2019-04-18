@@ -1,11 +1,18 @@
 package kustomize
 
 import (
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 
 	yaml "gopkg.in/yaml.v2"
 )
+
+var kustomizationFileNames = []string{
+	"kustomization.yaml",
+	"kustomization.yml",
+	"Kustomization",
+}
 
 // kustomization is the content of a kustomization.yaml file.
 type kustomization struct {
@@ -25,11 +32,37 @@ type configMapGenerator struct {
 	Files []string `yaml:"files"`
 }
 
+func loadKustFile(dir string) ([]byte, string, error) {
+	var content []byte
+	var path string
+	match := 0
+	for _, kf := range kustomizationFileNames {
+		p := filepath.Join(dir, kf)
+		c, err := ioutil.ReadFile(p)
+		if err == nil {
+			path = p
+			match += 1
+			content = c
+		}
+	}
+
+	switch match {
+	case 0:
+		return nil, "", fmt.Errorf(
+			"unable to find one of %v in directory '%s'",
+			kustomizationFileNames, dir)
+	case 1:
+		return content, path, nil
+	default:
+		return nil, "", fmt.Errorf(
+			"Found multiple kustomization files under: %s\n", dir)
+	}
+}
+
 func dependenciesForKustomization(dir string) ([]string, error) {
 	var deps []string
 
-	path := filepath.Join(dir, "kustomization.yaml")
-	buf, err := ioutil.ReadFile(path)
+	buf, path, err := loadKustFile(dir)
 	if err != nil {
 		return nil, err
 	}
