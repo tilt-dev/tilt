@@ -4,20 +4,26 @@ exports[`doesn't crash with empty resource list 1`] = `
 <nav
   className="TabNav"
 >
-  <a
-    className="viewLink--is-selected"
-    href="/r/foo"
-    onClick={[Function]}
-  >
-    Logs
-  </a>
-  <a
-    className=""
-    href="/r/foo/preview"
-    onClick={[Function]}
-  >
-    Preview
-  </a>
+  <ul>
+    <li>
+      <a
+        className="tabLink tabLink--is-selected"
+        href="/r/foo"
+        onClick={[Function]}
+      >
+        Logs
+      </a>
+    </li>
+    <li>
+      <a
+        className="tabLink "
+        href="/r/foo/preview"
+        onClick={[Function]}
+      >
+        Preview
+      </a>
+    </li>
+  </ul>
 </nav>
 `;
 
@@ -25,40 +31,25 @@ exports[`previews resources 1`] = `
 <nav
   className="TabNav"
 >
-  <a
-    className=""
-    href="/r/foo"
-    onClick={[Function]}
-  >
-    Logs
-  </a>
-  <a
-    className="viewLink--is-selected"
-    href="/r/foo/preview"
-    onClick={[Function]}
-  >
-    Preview
-  </a>
-</nav>
-`;
-
-exports[`previews the first resource that has an endpoint if nothing is selected 1`] = `
-<nav
-  className="TabNav"
->
-  <a
-    className=""
-    href="/"
-    onClick={[Function]}
-  >
-    Logs
-  </a>
-  <a
-    className="viewLink--is-selected"
-    href="/r/vigoda/preview"
-    onClick={[Function]}
-  >
-    Preview
-  </a>
+  <ul>
+    <li>
+      <a
+        className="tabLink "
+        href="/r/foo"
+        onClick={[Function]}
+      >
+        Logs
+      </a>
+    </li>
+    <li>
+      <a
+        className="tabLink tabLink--is-selected"
+        href="/r/foo/preview"
+        onClick={[Function]}
+      >
+        Preview
+      </a>
+    </li>
+  </ul>
 </nav>
 `;
