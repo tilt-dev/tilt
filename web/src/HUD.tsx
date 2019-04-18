@@ -131,6 +131,24 @@ class HUD extends Component<HudProps, HudState> {
     })
   }
 
+  getEndpointForName(name: string, resources: Array<SidebarItem>): string {
+    let endpoint = ""
+
+    if (name) {
+      endpoint = `/r/${name}/preview`
+    } else if (resources.length) {
+      // Pick the first item with an endpoint, or default to the first item
+      endpoint = `/r/${resources[0].name}/preview`
+      for (let r of resources) {
+        if (r.hasEndpoints) {
+          endpoint = `/r/${r.name}/preview`
+          break
+        }
+      }
+    }
+    return endpoint
+  }
+
   path(relPath: string) {
     if (relPath[0] != "/") {
       throw new Error('relPath should start with "/", actual:' + relPath)
@@ -174,20 +192,23 @@ class HUD extends Component<HudProps, HudState> {
         />
       )
     }
+
     let tabNavRoute = (props: RouteComponentProps<any>) => {
+      let name = props.match.params.name
       return (
         <TabNav
-          resourceName={props.match.params.name}
-          sidebarItems={sidebarItems}
+          logUrl={name === "" ? "/" : `/r/${name}`}
+          previewUrl={this.getEndpointForName(name, sidebarItems)}
           resourceView={ResourceView.Log}
         />
       )
     }
     let tabNavPreviewRoute = (props: RouteComponentProps<any>) => {
+      let name = props.match.params.name
       return (
         <TabNav
-          resourceName={props.match.params.name}
-          sidebarItems={sidebarItems}
+          logUrl={name === "" ? "/" : `/r/${name}`}
+          previewUrl={this.getEndpointForName(name, sidebarItems)}
           resourceView={ResourceView.Preview}
         />
       )
@@ -228,6 +249,7 @@ class HUD extends Component<HudProps, HudState> {
               render={tabNavPreviewRoute}
             />
             <Route path={this.path("/r/:name")} render={tabNavRoute} />
+            <Route render={tabNavRoute} />
           </Switch>
           <Switch>
             <Route

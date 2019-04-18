@@ -12,8 +12,8 @@ it("doesn't crash with empty resource list", () => {
     .create(
       <MemoryRouter>
         <TabNav
-          resourceName={"foo"}
-          sidebarItems={sidebarItems}
+          logUrl="/r/foo"
+          previewUrl="/r/foo/preview"
           resourceView={ResourceView.Log}
         />
       </MemoryRouter>
@@ -29,32 +29,8 @@ it("previews resources", () => {
     .create(
       <MemoryRouter>
         <TabNav
-          resourceName={"foo"}
-          sidebarItems={sidebarItems}
-          resourceView={ResourceView.Preview}
-        />
-      </MemoryRouter>
-    )
-    .toJSON()
-
-  expect(tree).toMatchSnapshot()
-})
-
-it("previews the first resource that has an endpoint if nothing is selected", () => {
-  let sidebarItems: Array<SidebarItem> = oneResourceView().Resources.map(
-    (res: any) => {
-      res.BuildHistory[0].Error = ""
-      res.BuildHistory[0].Warnings = ["warning"]
-      return new SidebarItem(res)
-    }
-  )
-
-  const tree = renderer
-    .create(
-      <MemoryRouter>
-        <TabNav
-          resourceName={""}
-          sidebarItems={sidebarItems}
+          logUrl="/r/foo"
+          previewUrl="/r/foo/preview"
           resourceView={ResourceView.Preview}
         />
       </MemoryRouter>
