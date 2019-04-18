@@ -274,6 +274,11 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 	}
 }
 
+// v1 syntax:
+// `k8s_resource(name, yaml='', image='', port_forwards=[], extra_pod_selectors=[])`
+// v2 syntax:
+// `k8s_resource(workload, new_name='', port_forwards=[], extra_pod_selectors=[])`
+// this function tries to tell if they're still using a v1 tiltfile after we made v2 the default
 func (s *tiltfileState) isProbablyK8SResourceV1Call(args starlark.Tuple, kwargs []starlark.Tuple) (bool, string) {
 	var k8sResourceV1OnlyNames = map[string]bool{
 		"name":  true,
@@ -295,6 +300,12 @@ func (s *tiltfileState) isProbablyK8SResourceV1Call(args starlark.Tuple, kwargs 
 			return true, "second arg was a sequence"
 		case *blob:
 			return true, "second arg was a blob"
+		// if a Tiltfile contains `k8s_resource('foo', 'foo.yaml')`
+		// in v1, the second arg is a yaml file name
+		// in v2, it's the new resource name
+		// We assume that if the second arg is a string that names a file that contains a newline, they're still on v1.
+		// This has a slight chance of false positive, e.g., if they want to rename their resource to 'foo.yaml' and
+		// also have a file named 'foo.yaml', but that seems sufficiently unlikely that it's not worth worrying about.
 		case starlark.String:
 			bs, err := ioutil.ReadFile(s.localPathFromString(string(x)).path)
 			if err == nil {
