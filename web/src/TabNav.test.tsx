@@ -1,10 +1,10 @@
 import React from "react"
 import renderer from "react-test-renderer"
 import TabNav from "./TabNav"
-import { ResourceView } from "./HUD"
 import { MemoryRouter } from "react-router"
 import { oneResourceView, twoResourceView } from "./testdata.test"
 import { SidebarItem } from "./Sidebar"
+import { ResourceView } from "./types"
 
 it("doesn't crash with empty resource list", () => {
   let sidebarItems: Array<SidebarItem> = []

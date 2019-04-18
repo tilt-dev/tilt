@@ -3,7 +3,7 @@ import { ReactComponent as ChevronSvg } from "./assets/svg/chevron.svg"
 import { Link } from "react-router-dom"
 import { combinedStatus, warnings } from "./status"
 import "./Sidebar.scss"
-import { ResourceView } from "./HUD"
+import { ResourceView } from "./types"
 
 class SidebarItem {
   name: string

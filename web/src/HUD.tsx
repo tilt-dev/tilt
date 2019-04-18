@@ -16,9 +16,10 @@ import {
   Link,
 } from "react-router-dom"
 import { createBrowserHistory, History, UnregisterCallback } from "history"
-import "./HUD.scss"
 import { incr, pathToTag } from "./analytics"
 import TabNav from "./TabNav"
+import "./HUD.scss"
+import { ResourceView } from "./types"
 
 type HudProps = {}
 
@@ -45,11 +46,6 @@ type Resource = {
   }
   RuntimeStatus: string
   ShowBuildStatus: boolean
-}
-
-export enum ResourceView {
-  Log,
-  Preview,
 }
 
 type HudState = {

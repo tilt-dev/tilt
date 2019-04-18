@@ -1,8 +1,9 @@
 import React, { PureComponent } from "react"
 import { Link } from "react-router-dom"
 import { SidebarItem } from "./Sidebar"
-import { ResourceView } from "./HUD"
+import { ResourceView } from "./types"
 import "./TabNav.scss"
+
 type NavProps = {
   resourceName: string
   sidebarItems: Array<SidebarItem>
