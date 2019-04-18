@@ -46,6 +46,7 @@ type tiltfileState struct {
 	k8sImageJSONPaths map[k8sObjectSelector][]k8s.JSONPath
 
 	k8sResourceAssemblyVersion int
+	k8sResourceAssemblyVersionReason k8sResourceAssemblyVersionReason
 	workloadToResourceFunction workloadToResourceFunction
 
 	// for assembly
@@ -66,6 +67,15 @@ type tiltfileState struct {
 	warnings []string
 }
 
+type k8sResourceAssemblyVersionReason int
+
+const (
+	// assembly version is just at the default; the user hasn't set anything
+	k8sResourceAssemblyVersionReasonDefault k8sResourceAssemblyVersionReason = iota
+	// the user has explicit set the assembly version
+	k8sResourceAssemblyVersionReasonExplicit
+)
+
 func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, filename string) *tiltfileState {
 	lp := localPath{path: filename}
 	s := &tiltfileState{
@@ -80,7 +90,7 @@ func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClie
 		logger:                     logger.Get(ctx),
 		builtinCallCounts:          make(map[string]int),
 		unconsumedLiveUpdateSteps:  make(map[string]liveUpdateStep),
-		k8sResourceAssemblyVersion: 1,
+		k8sResourceAssemblyVersion: 2,
 		k8sResourceOptions:         make(map[string]k8sResourceOptions),
 	}
 	s.filename = s.maybeAttachGitRepo(lp, filepath.Dir(lp.path))
@@ -331,7 +341,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 			for name := range s.k8sByName {
 				knownResources = append(knownResources, name)
 			}
-			return fmt.Errorf("k8s_resource at %s specified unknown resource '%s'. known resources: %s", opts.tiltfilePosition.String(), workload, strings.Join(knownResources, ", "))
+			return fmt.Errorf("k8s_resource at %s specified unknown resource '%s'. known resources: %s\n\nNote: Tilt's resource naming has recently changed. See https://docs.tilt.dev/resource_assembly_migration.html for more info.", opts.tiltfilePosition.String(), workload, strings.Join(knownResources, ", "))
 		}
 	}
 

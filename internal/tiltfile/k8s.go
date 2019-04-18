@@ -1,7 +1,9 @@
 package tiltfile
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"sort"
 	"strconv"
 	"strings"
@@ -50,9 +52,7 @@ type k8sResource struct {
 }
 
 const deprecatedResourceAssemblyV1Warning = "This Tiltfile is using k8s resource assembly version 1, which has been " +
-	"deprecated. Try adding `k8s_resource_assembly_version(2)` to the top of your Tiltfile. " +
-	"See https://docs.tilt.dev/resource_assembly_migration.html for more information. " +
-	"Version 1 will no longer be supported after 2019-04-17. Sorry for the inconvenience!"
+	"deprecated. See https://docs.tilt.dev/resource_assembly_migration.html for more information."
 
 // holds options passed to `k8s_resource` until assembly happens
 type k8sResourceOptions struct {
@@ -274,7 +274,50 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 	}
 }
 
+func (s *tiltfileState) isProbablyK8SResourceV1Call(args starlark.Tuple, kwargs []starlark.Tuple) (bool, string) {
+	var k8sResourceV1OnlyNames = map[string]bool{
+		"name":  true,
+		"yaml":  true,
+		"image": true,
+	}
+	for _, item := range kwargs {
+		name := string(item[0].(starlark.String))
+		if _, ok := k8sResourceV1OnlyNames[name]; ok {
+			return true, fmt.Sprintf("it was called with kwarg %q, which no longer exists", name)
+		}
+	}
+
+	// check positional args
+	// check if the second arg is yaml (v1) instead of a resource name (v2)
+	if args.Len() >= 2 {
+		switch x := args[1].(type) {
+		case starlark.Sequence:
+			return true, "second arg was a sequence"
+		case *blob:
+			return true, "second arg was a blob"
+		case starlark.String:
+			bs, err := ioutil.ReadFile(s.localPathFromString(string(x)).path)
+			if err == nil {
+				if bytes.ContainsRune(bs, '\n') {
+					return true, "second arg was a file containing a newline, which might be yaml, and can't be a valid resource name"
+				}
+			}
+		default:
+			// this is invalid in both v1 and v2 syntax, so fall back and let v2 parsing error out
+		}
+	}
+
+	// we don't need to check the subsequent positional args because they can't include a third positional arg without
+	// including a second!
+
+	return false, ""
+}
+
 func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	isV1, msg := s.isProbablyK8SResourceV1Call(args, kwargs)
+	if isV1 {
+		return starlark.None, fmt.Errorf("It looks like k8s_resource is being called with deprecated arguments: %s\n%s", msg, deprecatedResourceAssemblyV1Warning)
+	}
 	var workload string
 	var newName string
 	var portForwardsVal starlark.Value
@@ -780,6 +823,7 @@ func (s *tiltfileState) k8sResourceAssemblyVersionFn(thread *starlark.Thread, fn
 	}
 
 	s.k8sResourceAssemblyVersion = version
+	s.k8sResourceAssemblyVersionReason = k8sResourceAssemblyVersionReasonExplicit
 
 	return starlark.None, nil
 }
