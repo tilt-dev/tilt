@@ -39,6 +39,7 @@ If you want to run the tests:
 Other development commands:
 
 - **[wire](https://github.com/google/wire)**: `go get -u github.com/google/wire/cmd/wire` (to update generated dependency injection code)
+- **[goimports](https://godoc.org/golang.org/x/tools/cmd/goimports)**: `go get -u golang.org/x/tools/cmd/goimports` (to sort imports, IDE-specific installation instructions in the link)
 - Our Python scripts are in Python 3.6.0. To run them:
   - **[pyenv](https://github.com/pyenv/pyenv#installation)**
   - **python**: `pyenv install`

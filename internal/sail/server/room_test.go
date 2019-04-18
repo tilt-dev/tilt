@@ -84,7 +84,6 @@ func (f *fixture) addFan() *fakeFan {
 
 func (f *fixture) TearDown() {
 	f.cancel()
-	f.source.Close()
 	for err := range f.errCh {
 		if err != nil && err != context.Canceled {
 			f.t.Fatalf("ConsumeSource: %v", err)
@@ -143,8 +142,12 @@ func (f *fakeFan) nextMessage(t *testing.T) string {
 }
 
 func (f *fakeFan) WriteMessage(messageType int, data []byte) error {
-	f.dataCh <- string(data)
-	return nil
+	select {
+	case f.dataCh <- string(data):
+		return nil
+	case <-f.ctx.Done():
+		return f.ctx.Err()
+	}
 }
 
 func (f *fakeFan) NextReader() (int, io.Reader, error) {

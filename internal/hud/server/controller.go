@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/pkg/errors"
@@ -40,7 +39,7 @@ func (s *HeadsUpServerController) OnChange(ctx context.Context, st store.RStore)
 		return
 	}
 
-	err := network.IsPortFree(int(s.port))
+	err := network.IsBindAddrFree(network.LocalhostBindAddr(int(s.port)))
 	if err != nil {
 		st.Dispatch(
 			store.NewErrorAction(
@@ -49,7 +48,7 @@ func (s *HeadsUpServerController) OnChange(ctx context.Context, st store.RStore)
 	}
 
 	httpServer := &http.Server{
-		Addr:    fmt.Sprintf(":%d", s.port),
+		Addr:    network.LocalhostBindAddr(int(s.port)),
 		Handler: http.DefaultServeMux,
 	}
 	http.Handle("/", s.hudServer.Router())

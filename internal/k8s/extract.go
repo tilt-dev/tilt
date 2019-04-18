@@ -9,7 +9,7 @@ import (
 )
 
 func ExtractPods(obj interface{}) ([]*v1.PodSpec, error) {
-	extracted, err := extractPointersOf(obj, reflect.TypeOf(v1.PodSpec{}))
+	extracted, err := newExtractor(reflect.TypeOf(v1.PodSpec{})).extractPointersFrom(obj)
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +26,7 @@ func ExtractPods(obj interface{}) ([]*v1.PodSpec, error) {
 }
 
 func ExtractPodTemplateSpec(obj interface{}) ([]*v1.PodTemplateSpec, error) {
-	extracted, err := extractPointersOf(obj, reflect.TypeOf(v1.PodTemplateSpec{}))
+	extracted, err := newExtractor(reflect.TypeOf(v1.PodTemplateSpec{})).extractPointersFrom(obj)
 	if err != nil {
 		return nil, err
 	}
@@ -42,8 +42,10 @@ func ExtractPodTemplateSpec(obj interface{}) ([]*v1.PodTemplateSpec, error) {
 	return result, nil
 }
 
-func extractObjectMetas(obj interface{}) ([]*metav1.ObjectMeta, error) {
-	extracted, err := extractPointersOf(obj, reflect.TypeOf(metav1.ObjectMeta{}))
+func extractObjectMetas(obj interface{}, filter func(v reflect.Value) bool) ([]*metav1.ObjectMeta, error) {
+	extracted, err := newExtractor(reflect.TypeOf(metav1.ObjectMeta{})).
+		withFilter(filter).
+		extractPointersFrom(obj)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +62,7 @@ func extractObjectMetas(obj interface{}) ([]*metav1.ObjectMeta, error) {
 }
 
 func extractEnvVars(obj interface{}) ([]*v1.EnvVar, error) {
-	extracted, err := extractPointersOf(obj, reflect.TypeOf(v1.EnvVar{}))
+	extracted, err := newExtractor(reflect.TypeOf(v1.EnvVar{})).extractPointersFrom(obj)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +79,7 @@ func extractEnvVars(obj interface{}) ([]*v1.EnvVar, error) {
 }
 
 func extractContainers(obj interface{}) ([]*v1.Container, error) {
-	extracted, err := extractPointersOf(obj, reflect.TypeOf(v1.Container{}))
+	extracted, err := newExtractor(reflect.TypeOf(v1.Container{})).extractPointersFrom(obj)
 	if err != nil {
 		return nil, err
 	}
@@ -93,14 +95,38 @@ func extractContainers(obj interface{}) ([]*v1.Container, error) {
 	return result, nil
 }
 
-// Get pointers to all the container specs in this object.
-func extractPointersOf(obj interface{}, pType reflect.Type) ([]interface{}, error) {
+type extractor struct {
+	// The type we want to return pointers to
+	pType reflect.Type
+
+	// Return true to visit the value, or false to skip it.
+	filter func(v reflect.Value) bool
+}
+
+func newExtractor(pType reflect.Type) extractor {
+	return extractor{
+		pType:  pType,
+		filter: NoFilter,
+	}
+}
+
+func (e extractor) withFilter(f func(v reflect.Value) bool) extractor {
+	e.filter = f
+	return e
+}
+
+// Get pointers to all the pType structs in this object.
+func (e extractor) extractPointersFrom(obj interface{}) ([]interface{}, error) {
 	v := reflect.ValueOf(obj)
 	result := make([]interface{}, 0)
 
 	// Recursively iterate over the struct fields.
 	var extract func(v reflect.Value) error
 	extract = func(v reflect.Value) error {
+		if !e.filter(v) {
+			return nil
+		}
+
 		switch v.Kind() {
 		case reflect.Ptr, reflect.Interface:
 			if v.IsNil() {
@@ -109,7 +135,7 @@ func extractPointersOf(obj interface{}, pType reflect.Type) ([]interface{}, erro
 			return extract(v.Elem())
 
 		case reflect.Struct:
-			if v.Type() == pType {
+			if v.Type() == e.pType {
 				if !v.CanAddr() {
 					return fmt.Errorf("Error addressing: %v", v)
 				}
@@ -145,4 +171,8 @@ func extractPointersOf(obj interface{}, pType reflect.Type) ([]interface{}, erro
 		return nil, err
 	}
 	return result, nil
+}
+
+var NoFilter = func(v reflect.Value) bool {
+	return true
 }

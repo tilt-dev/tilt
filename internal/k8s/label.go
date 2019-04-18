@@ -1,6 +1,8 @@
 package k8s
 
 import (
+	"reflect"
+
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	v1 "k8s.io/api/core/v1"
@@ -45,7 +47,12 @@ func injectLabels(entity K8sEntity, labels []model.LabelPair, overwrite bool) (K
 		allowLabelChangesInExtDeploymentBeta1(obj)
 	}
 
-	metas, err := extractObjectMetas(&entity)
+	// Don't modify persistent volume claims
+	// because they're supposed to be immutable.
+	pvc := reflect.TypeOf(v1.PersistentVolumeClaim{})
+	metas, err := extractObjectMetas(&entity, func(v reflect.Value) bool {
+		return v.Type() != pvc
+	})
 	if err != nil {
 		return K8sEntity{}, err
 	}
@@ -152,7 +159,9 @@ func (e K8sEntity) SelectorMatchesLabels(labels map[string]string) bool {
 // MatchesMetadataLabels indicates whether the given label(s) are a subset
 // of metadata labels for the given entity.
 func (e K8sEntity) MatchesMetadataLabels(labels map[string]string) (bool, error) {
-	metas, err := extractObjectMetas(&e)
+	// TODO(nick): This doesn't seem right.
+	// This should only look at the top-level obj meta, not all of them.
+	metas, err := extractObjectMetas(&e, NoFilter)
 	if err != nil {
 		return false, err
 	}

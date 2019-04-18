@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/api/apps/v1beta2"
 
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/model"
@@ -132,6 +133,34 @@ func TestInjectLabelExtDeploymentBeta1(t *testing.T) {
 	assert.Contains(t, result, "matchLabels")
 	assert.Equal(t, 2, strings.Count(testyaml.SanchoBeta1YAML, "app: sancho"))
 	assert.Equal(t, 3, strings.Count(result, "app: sancho"))
+}
+
+func TestInjectStatefulSet(t *testing.T) {
+	entity := parseOneEntity(t, testyaml.RedisStatefulSetYAML)
+	newEntity, err := InjectLabels(entity, []model.LabelPair{
+		{
+			Key:   "tilt-runid",
+			Value: "deadbeef",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	podTmpl := newEntity.Obj.(*v1beta2.StatefulSet).Spec.Template
+	vcTmpl := newEntity.Obj.(*v1beta2.StatefulSet).Spec.VolumeClaimTemplates[0]
+
+	assert.Equal(t, "deadbeef", podTmpl.ObjectMeta.Labels["tilt-runid"])
+	assert.Equal(t, "", vcTmpl.ObjectMeta.Labels["tilt-runid"])
+
+	result, err := SerializeYAML([]K8sEntity{newEntity})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Only inject once: in the top-level metadata and the pod template,
+	// not the volume claim template
+	assert.Equal(t, 2, strings.Count(result, "tilt-runid: deadbeef"))
 }
 
 func TestSelectorMatchesLabels(t *testing.T) {
