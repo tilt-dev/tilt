@@ -32,9 +32,6 @@
   color: $color-yellow;
   margin-top: -5px;
 }
-.Statusbar-panel--spacer {
-  flex-grow: 1;
-}
 .Statusbar-panel--up {
   width: $sidebar-width;
   max-width: $sidebar-maxWidth;
@@ -44,4 +41,9 @@
   margin-left: $spacing-unit / 2;
   width: $spacing-unit;
   height: $spacing-unit;
+}
+.Statusbar-panel--statusMessage {
+  border-left: 1px dotted $color-navy;
+  padding-left: $spacing-unit/2;
+  flex-grow: 1;
 }
