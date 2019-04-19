@@ -79,7 +79,9 @@ class Sidebar extends PureComponent<SidebarProps> {
         <li key={item.name}>
           <Link className={classes} to={link}>
             <span className="resLink-name">{item.name}</span>
-            <TimeAgo date={item.lastDeployTime} formatter={formatter} />
+            <span>
+              <TimeAgo date={item.lastDeployTime} formatter={formatter} />
+            </span>
           </Link>
         </li>
       )

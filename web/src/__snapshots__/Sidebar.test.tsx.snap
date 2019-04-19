@@ -58,7 +58,19 @@ exports[`sidebar renders list of resources 1`] = `
           href="/r/vigoda"
           onClick={[Function]}
         >
-          vigoda
+          <span
+            className="resLink-name"
+          >
+            vigoda
+          </span>
+          <span>
+            <time
+              dateTime="1949-02-03T20:13:00.000Z"
+              title="1,555,703,078,853"
+            >
+              70yr
+            </time>
+          </span>
         </a>
       </li>
       <li>
@@ -67,7 +79,19 @@ exports[`sidebar renders list of resources 1`] = `
           href="/r/snack"
           onClick={[Function]}
         >
-          snack
+          <span
+            className="resLink-name"
+          >
+            snack
+          </span>
+          <span>
+            <time
+              dateTime="1949-02-03T20:13:00.000Z"
+              title="1,555,703,078,853"
+            >
+              70yr
+            </time>
+          </span>
         </a>
       </li>
     </ul>
