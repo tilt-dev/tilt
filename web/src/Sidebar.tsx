@@ -5,7 +5,7 @@ import { combinedStatus, warnings } from "./status"
 import "./Sidebar.scss"
 import { ResourceView } from "./types"
 import TimeAgo from "react-timeago"
-// @ts-iginore
+// @ts-ignore
 import enStrings from "react-timeago/lib/language-strings/en-short.js"
 // @ts-ignore
 import buildFormatter from "react-timeago/lib/formatters/buildFormatter"
