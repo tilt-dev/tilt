@@ -614,7 +614,7 @@ k8s_resource('foo', port_forwards=EXPR)
 				return
 			}
 
-			f.loadResourceAssemblyV1()
+			f.load()
 			f.assertNextManifest("foo",
 				c.expected,
 				db(image("gcr.io/foo")),
@@ -2629,11 +2629,63 @@ func TestK8SResourceAssemblyVersionAfterYAML(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
-k8s_resource('foo', 'foo.yaml')
+k8s_resource('foo', 'bar')
 k8s_resource_assembly_version(2)
 `)
 
 	f.loadErrString("k8s_resource_assembly_version can only be called before introducing any k8s resources")
+}
+
+func TestK8SResourceAssemblyK8SResourceYAMLNamedArg(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_resource('foo', yaml='bar')
+`)
+
+	f.loadErrString("kwarg \"yaml\"", "deprecated", "https://docs.tilt.dev/resource_assembly_migration.html")
+}
+
+func TestK8SResourceAssemblyK8SResourceImage(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_resource('foo', image='bar')
+`)
+
+	f.loadErrString("kwarg \"image\"", "deprecated", "https://docs.tilt.dev/resource_assembly_migration.html")
+}
+
+func TestK8SResourceAssemblyK8SResourceYAMLPositionalArg(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_resource('foo', 'foo.yaml')
+`)
+
+	f.loadErrString("second arg", "looks like a yaml file name", "deprecated", "https://docs.tilt.dev/resource_assembly_migration.html")
+}
+
+func TestK8SResourceAssemblyK8SResourceNameKeywordArg(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_resource('foo', name='bar')
+`)
+
+	f.loadErrString("kwarg \"name\"", "deprecated", "https://docs.tilt.dev/resource_assembly_migration.html")
 }
 
 func TestAssemblyVersion2Basic(t *testing.T) {
@@ -2692,7 +2744,7 @@ k8s_yaml('foo.yaml')
 k8s_resource('bar', new_name='baz')
 `)
 
-	f.loadErrString("specified unknown resource 'bar'. known resources: foo")
+	f.loadErrString("specified unknown resource 'bar'. known resources: foo", "https://docs.tilt.dev/resource_assembly_migration.html")
 }
 
 func TestK8SResourceNewName(t *testing.T) {
