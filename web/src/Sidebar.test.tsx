@@ -8,7 +8,8 @@ import { ResourceView } from "./types"
 
 describe("sidebar", () => {
   beforeAll(() => {
-    jest.spyOn(Date, "now").mockImplementation(() => 1555704712)
+    let oneMinuteAgo = new Date(Date.now() - 1000 * 60).getTime()
+    jest.spyOn(Date, "now").mockImplementation(() => oneMinuteAgo)
   })
   it("renders empty resource list without crashing", () => {
     const tree = renderer
