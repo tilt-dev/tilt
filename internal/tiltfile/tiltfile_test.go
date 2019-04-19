@@ -14,7 +14,7 @@ import (
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	"github.com/stretchr/testify/assert"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -2652,7 +2652,7 @@ func TestK8SResourceAssemblyK8SResourceYAMLPositionalArg(t *testing.T) {
 k8s_resource('foo', 'foo.yaml')
 `)
 
-	f.loadErrString("second arg", "file containing a newline", "deprecated", "https://docs.tilt.dev/resource_assembly_migration.html")
+	f.loadErrString("second arg", "looks like a yaml file name", "deprecated", "https://docs.tilt.dev/resource_assembly_migration.html")
 }
 
 func TestK8SResourceAssemblyK8SResourceNameKeywordArg(t *testing.T) {

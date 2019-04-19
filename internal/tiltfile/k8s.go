@@ -1,9 +1,7 @@
 package tiltfile
 
 import (
-	"bytes"
 	"fmt"
-	"io/ioutil"
 	"sort"
 	"strconv"
 	"strings"
@@ -303,15 +301,9 @@ func (s *tiltfileState) isProbablyK8SResourceV1Call(args starlark.Tuple, kwargs 
 		// if a Tiltfile contains `k8s_resource('foo', 'foo.yaml')`
 		// in v1, the second arg is a yaml file name
 		// in v2, it's the new resource name
-		// We assume that if the second arg is a string that names a file that contains a newline, they're still on v1.
-		// This has a slight chance of false positive, e.g., if they want to rename their resource to 'foo.yaml' and
-		// also have a file named 'foo.yaml', but that seems sufficiently unlikely that it's not worth worrying about.
 		case starlark.String:
-			bs, err := ioutil.ReadFile(s.localPathFromString(string(x)).path)
-			if err == nil {
-				if bytes.ContainsRune(bs, '\n') {
-					return true, "second arg was a file containing a newline, which might be yaml, and can't be a valid resource name"
-				}
+			if strings.HasSuffix(string(x), ".yaml") || strings.HasSuffix(string(x), ".yml") {
+				return true, "second arg looks like a yaml file name, not a resource name"
 			}
 		default:
 			// this is invalid in both v1 and v2 syntax, so fall back and let v2 parsing error out
