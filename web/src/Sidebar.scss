@@ -86,6 +86,20 @@
   color: $color-red;
 }
 
+.resLink-name {
+  flex: 1 0 auto;
+}
+.resLink time {
+  font-weight: normal;
+  color: $color-white;
+  opacity: 0.5;
+  margin-right: $spacing-unit / 2;
+}
+
+.resLink.is-selected time {
+  color: $color-navy;
+}
+
 // Collapse/Expand
 .Sidebar-toggle {
   position: sticky;

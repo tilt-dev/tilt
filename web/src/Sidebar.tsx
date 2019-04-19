@@ -4,8 +4,11 @@ import { Link } from "react-router-dom"
 import { combinedStatus, warnings } from "./status"
 import "./Sidebar.scss"
 import { ResourceView } from "./types"
-import { isZeroTime } from "./time"
 import TimeAgo, { Unit, Suffix } from "react-timeago"
+// @ts-ignore
+import enStrings from "react-timeago/lib/language-strings/en-short.js"
+// @ts-ignore
+import buildFormatter from "react-timeago/lib/formatters/buildFormatter"
 
 class SidebarItem {
   name: string
@@ -72,16 +75,13 @@ class Sidebar extends PureComponent<SidebarProps> {
       if (item.hasWarnings) {
         classes += " has-warnings"
       }
-      let formatter = (
-        value: number,
-        unit: Unit,
-        suffix: Suffix,
-        epochMiliseconds: number
-      ) => value + " " + unit
+
+      let formatter = buildFormatter(enStrings)
+
       return (
         <li key={item.name}>
           <Link className={classes} to={link}>
-            <span>{item.name}</span>
+            <span className="resLink-name">{item.name}</span>
             <TimeAgo date={item.lastDeployTime} formatter={formatter} />
           </Link>
         </li>
