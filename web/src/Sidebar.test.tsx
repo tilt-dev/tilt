@@ -7,6 +7,9 @@ import { mount } from "enzyme"
 import { ResourceView } from "./types"
 
 describe("sidebar", () => {
+  beforeAll(() => {
+    jest.spyOn(Date, "now").mockImplementation(() => 1555704712)
+  })
   it("renders empty resource list without crashing", () => {
     const tree = renderer
       .create(
