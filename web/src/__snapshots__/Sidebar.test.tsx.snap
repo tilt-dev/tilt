@@ -107,3 +107,68 @@ exports[`sidebar renders list of resources 1`] = `
   </button>
 </section>
 `;
+
+exports[`sidebar renders resources that haven't been built yet 1`] = `
+<section
+  className="Sidebar"
+>
+  <nav
+    className="Sidebar-resources"
+  >
+    <ul
+      className="Sidebar-list"
+    >
+      <li>
+        <a
+          className="resLink resLink--all is-selected"
+          href="/"
+          onClick={[Function]}
+        >
+          All
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--pending"
+          href="/r/vigoda"
+          onClick={[Function]}
+        >
+          <span
+            className="resLink-name"
+          >
+            vigoda
+          </span>
+          <span>
+            
+          </span>
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--pending"
+          href="/r/snack"
+          onClick={[Function]}
+        >
+          <span
+            className="resLink-name"
+          >
+            snack
+          </span>
+          <span>
+            
+          </span>
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <button
+    className="Sidebar-toggle"
+    onClick={null}
+  >
+    <svg>
+      chevron.svg
+    </svg>
+     Collapse
+  </button>
+</section>
+`;

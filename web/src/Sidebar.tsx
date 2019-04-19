@@ -9,6 +9,7 @@ import TimeAgo from "react-timeago"
 import enStrings from "react-timeago/lib/language-strings/en-short.js"
 // @ts-ignore
 import buildFormatter from "react-timeago/lib/formatters/buildFormatter"
+import { isZeroTime } from "./time"
 
 class SidebarItem {
   name: string
@@ -28,6 +29,7 @@ class SidebarItem {
     this.hasEndpoints = (res.Endpoints || []).length
     this.lastDeployTime = res.LastDeployTime
     this.pendingBuildSince = res.PendingBuildSince
+    debugger
   }
 }
 
@@ -74,14 +76,14 @@ class Sidebar extends PureComponent<SidebarProps> {
       }
 
       let formatter = buildFormatter(enStrings)
+      let hasBuilt = !isZeroTime(item.lastDeployTime)
+      let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
 
       return (
         <li key={item.name}>
           <Link className={classes} to={link}>
             <span className="resLink-name">{item.name}</span>
-            <span>
-              <TimeAgo date={item.lastDeployTime} formatter={formatter} />
-            </span>
+            <span>{hasBuilt ? timeAgo : ""}</span>
           </Link>
         </li>
       )
