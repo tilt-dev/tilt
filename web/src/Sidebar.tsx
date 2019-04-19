@@ -4,8 +4,8 @@ import { Link } from "react-router-dom"
 import { combinedStatus, warnings } from "./status"
 import "./Sidebar.scss"
 import { ResourceView } from "./types"
-import TimeAgo, { Unit, Suffix } from "react-timeago"
-// @ts-ignore
+import TimeAgo from "react-timeago"
+// @ts-iginore
 import enStrings from "react-timeago/lib/language-strings/en-short.js"
 // @ts-ignore
 import buildFormatter from "react-timeago/lib/formatters/buildFormatter"
@@ -28,9 +28,6 @@ class SidebarItem {
     this.hasEndpoints = (res.Endpoints || []).length
     this.lastDeployTime = res.LastDeployTime
     this.pendingBuildSince = res.PendingBuildSince
-    // if (!isZeroTime(this.pendingBuildSince)) {
-    //   debugger
-    // }
   }
 }
 
