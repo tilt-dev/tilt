@@ -5,12 +5,13 @@ import Sidebar, { SidebarItem } from "./Sidebar"
 import { oneResourceView, twoResourceView } from "./testdata.test"
 import { mount } from "enzyme"
 import { ResourceView } from "./types"
+import MockDate from "mockdate"
 
 describe("sidebar", () => {
-  beforeAll(() => {
-    let oneMinuteAgo = new Date(Date.now() - 1000 * 60).getTime()
-    jest.spyOn(Date, "now").mockImplementation(() => oneMinuteAgo)
+  beforeEach(() => {
+    MockDate.set("2018-1-1")
   })
+  afterEach(() => MockDate.reset())
   it("renders empty resource list without crashing", () => {
     const tree = renderer
       .create(
