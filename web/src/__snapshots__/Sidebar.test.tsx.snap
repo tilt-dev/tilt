@@ -65,10 +65,10 @@ exports[`sidebar renders list of resources 1`] = `
           </span>
           <span>
             <time
-              dateTime="1945-12-23T08:00:00.000Z"
-              title="1,514,782,800,000"
+              dateTime="1942-02-13T08:11:00.000Z"
+              title="1,482,363,367,071"
             >
-              72yr
+              75yr
             </time>
           </span>
         </a>
@@ -86,10 +86,10 @@ exports[`sidebar renders list of resources 1`] = `
           </span>
           <span>
             <time
-              dateTime="1945-12-23T08:00:00.000Z"
-              title="1,514,782,800,000"
+              dateTime="1942-02-13T08:11:00.000Z"
+              title="1,482,363,367,071"
             >
-              72yr
+              75yr
             </time>
           </span>
         </a>

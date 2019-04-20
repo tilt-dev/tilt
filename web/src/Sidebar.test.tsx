@@ -5,13 +5,11 @@ import Sidebar, { SidebarItem } from "./Sidebar"
 import { oneResourceView, twoResourceView } from "./testdata.test"
 import { mount } from "enzyme"
 import { ResourceView } from "./types"
-import MockDate from "mockdate"
 
 describe("sidebar", () => {
   beforeEach(() => {
-    MockDate.set("2018-1-1", 0)
+    Date.now = jest.fn(() => 1482363367071);
   })
-  afterEach(() => MockDate.reset())
   it("renders empty resource list without crashing", () => {
     const tree = renderer
       .create(
