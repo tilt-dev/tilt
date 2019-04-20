@@ -21,7 +21,6 @@
     "enzyme-adapter-react-16": "^1.11.2",
     "history": "^4.9.0",
     "immutable": "^4.0.0-rc.12",
-    "moment": "^2.24.0",
     "node-sass": "^4.11.0",
     "react": "^16.7.0",
     "react-dom": "^16.7.0",
