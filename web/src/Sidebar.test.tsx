@@ -8,7 +8,7 @@ import { ResourceView } from "./types"
 
 describe("sidebar", () => {
   beforeEach(() => {
-    Date.now = jest.fn(() => 1482363367071);
+    Date.now = jest.fn(() => 1482363367071)
   })
   it("renders empty resource list without crashing", () => {
     const tree = renderer
