@@ -29,7 +29,6 @@ class SidebarItem {
     this.hasEndpoints = (res.Endpoints || []).length
     this.lastDeployTime = res.LastDeployTime
     this.pendingBuildSince = res.PendingBuildSince
-    debugger
   }
 }
 
