@@ -7,6 +7,9 @@ import { mount } from "enzyme"
 import { ResourceView } from "./types"
 
 describe("sidebar", () => {
+  beforeEach(() => {
+    Date.now = jest.fn(() => 1482363367071)
+  })
   it("renders empty resource list without crashing", () => {
     const tree = renderer
       .create(
@@ -48,6 +51,28 @@ describe("sidebar", () => {
   it("renders list of resources", () => {
     let items = twoResourceView().Resources.map((res: any) => {
       res.BuildHistory[0].Error = ""
+      return new SidebarItem(res)
+    })
+    const tree = renderer
+      .create(
+        <MemoryRouter initialEntries={["/"]}>
+          <Sidebar
+            isClosed={false}
+            items={items}
+            selected=""
+            toggleSidebar={null}
+            resourceView={ResourceView.Log}
+          />
+        </MemoryRouter>
+      )
+      .toJSON()
+
+    expect(tree).toMatchSnapshot()
+  })
+
+  it("renders resources that haven't been built yet", () => {
+    let items = twoResourceView().Resources.map((res: any) => {
+      res.LastDeployTime = "0001-01-01T00:00:00Z"
       return new SidebarItem(res)
     })
     const tree = renderer
