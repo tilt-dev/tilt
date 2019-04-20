@@ -8,9 +8,6 @@ import { ResourceView } from "./types"
 import MockDate from "mockdate"
 
 describe("sidebar", () => {
-  jest.mock("moment", () => () => ({
-    format: () => "2018–01–30T12:34:56+00:00",
-  }))
   beforeEach(() => {
     MockDate.set("2018-1-1", 0)
   })

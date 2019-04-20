@@ -21,7 +21,6 @@
     "enzyme-adapter-react-16": "^1.11.2",
     "history": "^4.9.0",
     "immutable": "^4.0.0-rc.12",
-    "mockdate": "^2.0.2",
     "moment": "^2.24.0",
     "node-sass": "^4.11.0",
     "react": "^16.7.0",
@@ -52,6 +51,7 @@
     "not op_mini all"
   ],
   "devDependencies": {
-    "prettier": "1.16.4"
+    "prettier": "1.16.4",
+    "mockdate": "^2.0.2"
   }
 }
