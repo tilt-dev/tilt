@@ -5,8 +5,14 @@ import Sidebar, { SidebarItem } from "./Sidebar"
 import { oneResourceView, twoResourceView } from "./testdata.test"
 import { mount } from "enzyme"
 import { ResourceView } from "./types"
+import PathBuilder from "./PathBuilder"
+
+let pathBuilder = new PathBuilder("localhost", "/")
 
 describe("sidebar", () => {
+  beforeEach(() => {
+    Date.now = jest.fn(() => 1482363367071)
+  })
   it("renders empty resource list without crashing", () => {
     const tree = renderer
       .create(
@@ -17,6 +23,7 @@ describe("sidebar", () => {
             selected=""
             toggleSidebar={null}
             resourceView={ResourceView.Log}
+            pathBuilder={pathBuilder}
           />
         </MemoryRouter>
       )
@@ -39,6 +46,7 @@ describe("sidebar", () => {
           selected=""
           toggleSidebar={null}
           resourceView={ResourceView.Log}
+          pathBuilder={pathBuilder}
         />
       </MemoryRouter>
     )
@@ -59,6 +67,30 @@ describe("sidebar", () => {
             selected=""
             toggleSidebar={null}
             resourceView={ResourceView.Log}
+            pathBuilder={pathBuilder}
+          />
+        </MemoryRouter>
+      )
+      .toJSON()
+
+    expect(tree).toMatchSnapshot()
+  })
+
+  it("renders resources that haven't been built yet", () => {
+    let items = twoResourceView().Resources.map((res: any) => {
+      res.LastDeployTime = "0001-01-01T00:00:00Z"
+      return new SidebarItem(res)
+    })
+    const tree = renderer
+      .create(
+        <MemoryRouter initialEntries={["/"]}>
+          <Sidebar
+            isClosed={false}
+            items={items}
+            selected=""
+            toggleSidebar={null}
+            resourceView={ResourceView.Log}
+            pathBuilder={pathBuilder}
           />
         </MemoryRouter>
       )

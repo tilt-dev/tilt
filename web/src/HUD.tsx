@@ -7,6 +7,7 @@ import Statusbar, { StatusItem } from "./Statusbar"
 import LogPane from "./LogPane"
 import K8sViewPane from "./K8sViewPane"
 import PreviewPane from "./PreviewPane"
+import PathBuilder from "./PathBuilder"
 import { Map } from "immutable"
 import {
   Router,
@@ -62,10 +63,7 @@ type HudState = {
 // https://docs.google.com/document/d/1VNIGfpC4fMfkscboW0bjYYFJl07um_1tsFrbN-Fu3FI/edit#heading=h.l8mmnclsuxl1
 class HUD extends Component<HudProps, HudState> {
   // The root of the HUD view, without the slash.
-  //
-  // TODO(nick): Update all the Link elements to draw from some LinkProvider
-  // that understands rootPath.
-  private rootPath: string
+  private pathBuilder: PathBuilder
   private controller: AppController
   private history: History
   private unlisten: UnregisterCallback
@@ -73,19 +71,14 @@ class HUD extends Component<HudProps, HudState> {
   constructor(props: HudProps) {
     super(props)
 
-    let rootPath = ""
-    let url = `ws://${window.location.host}/ws/view`
-    let roomPath = new RegExp("^/view/(.+)$")
-    let roomMatch = roomPath.exec(window.location.pathname)
-    if (roomMatch) {
-      let roomId = roomMatch[1]
-      url = `ws://${window.location.host}/join/${roomId}`
-      rootPath = `/view/${roomId}`
-    }
-
-    this.controller = new AppController(url, this)
-    this.rootPath = rootPath
-
+    this.pathBuilder = new PathBuilder(
+      window.location.host,
+      window.location.pathname
+    )
+    this.controller = new AppController(
+      this.pathBuilder.getWebsocketUrl(),
+      this
+    )
     this.history = createBrowserHistory()
     this.unlisten = () => {}
 
@@ -150,10 +143,7 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   path(relPath: string) {
-    if (relPath[0] != "/") {
-      throw new Error('relPath should start with "/", actual:' + relPath)
-    }
-    return this.rootPath + relPath
+    return this.pathBuilder.path(relPath)
   }
 
   render() {
@@ -168,7 +158,7 @@ class HUD extends Component<HudProps, HudState> {
     let toggleSidebar = this.toggleSidebar
     let statusItems = resources.map(res => new StatusItem(res))
     let sidebarItems = resources.map(res => new SidebarItem(res))
-    let sidebarRoute = (props: RouteComponentProps<any>) => {
+    let sidebarHelper = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name = props.match.params.name
       return (
         <Sidebar
@@ -176,21 +166,16 @@ class HUD extends Component<HudProps, HudState> {
           items={sidebarItems}
           isClosed={isSidebarClosed}
           toggleSidebar={toggleSidebar}
-          resourceView={ResourceView.Log}
+          resourceView={t}
+          pathBuilder={this.pathBuilder}
         />
       )
     }
+    let sidebarRoute = (props: RouteComponentProps<any>) => {
+      return sidebarHelper(ResourceView.Log, props)
+    }
     let sidebarPreviewRoute = (props: RouteComponentProps<any>) => {
-      let name = props.match.params.name
-      return (
-        <Sidebar
-          selected={name}
-          items={sidebarItems}
-          isClosed={isSidebarClosed}
-          toggleSidebar={toggleSidebar}
-          resourceView={ResourceView.Preview}
-        />
-      )
+      return sidebarHelper(ResourceView.Preview, props)
     }
 
     let tabNavRoute = (props: RouteComponentProps<any>) => {

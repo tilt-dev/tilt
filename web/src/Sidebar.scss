@@ -86,11 +86,26 @@
   color: $color-red;
 }
 
+.resLink-name {
+  flex: 1 0 auto;
+}
+.resLink time {
+  font-weight: normal;
+  color: $color-white;
+  opacity: 0.5;
+  margin-right: $spacing-unit / 2;
+}
+
+.resLink.is-selected time {
+  color: $color-navy;
+}
+
 // Collapse/Expand
+.Sidebar-spacer {
+  flex-grow: 1;
+  height: 0;
+}
 .Sidebar-toggle {
-  position: sticky;
-  bottom: 0;
-  right: 0;
   background-color: $color-navy;
   border: 0 none;
   border-top: 1px solid $color-navy-light;
@@ -99,7 +114,7 @@
   font-family: inherit;
   display: flex;
   align-items: center;
-  height: $sidebar-item;
+  min-height: $sidebar-item;
   margin: 0;
   padding: 0;
   @include button-text;

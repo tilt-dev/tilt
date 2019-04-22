@@ -21,6 +21,11 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
       </li>
     </ul>
   </nav>
+  <div
+    className="Sidebar-spacer"
+  >
+     
+  </div>
   <button
     className="Sidebar-toggle"
     onClick={null}
@@ -58,7 +63,19 @@ exports[`sidebar renders list of resources 1`] = `
           href="/r/vigoda"
           onClick={[Function]}
         >
-          vigoda
+          <span
+            className="resLink-name"
+          >
+            vigoda
+          </span>
+          <span>
+            <time
+              dateTime="1942-02-13T08:11:00.000Z"
+              title="1,482,363,367,071"
+            >
+              75yr
+            </time>
+          </span>
         </a>
       </li>
       <li>
@@ -67,11 +84,98 @@ exports[`sidebar renders list of resources 1`] = `
           href="/r/snack"
           onClick={[Function]}
         >
-          snack
+          <span
+            className="resLink-name"
+          >
+            snack
+          </span>
+          <span>
+            <time
+              dateTime="1942-02-13T08:11:00.000Z"
+              title="1,482,363,367,071"
+            >
+              75yr
+            </time>
+          </span>
         </a>
       </li>
     </ul>
   </nav>
+  <div
+    className="Sidebar-spacer"
+  >
+     
+  </div>
+  <button
+    className="Sidebar-toggle"
+    onClick={null}
+  >
+    <svg>
+      chevron.svg
+    </svg>
+     Collapse
+  </button>
+</section>
+`;
+
+exports[`sidebar renders resources that haven't been built yet 1`] = `
+<section
+  className="Sidebar"
+>
+  <nav
+    className="Sidebar-resources"
+  >
+    <ul
+      className="Sidebar-list"
+    >
+      <li>
+        <a
+          className="resLink resLink--all is-selected"
+          href="/"
+          onClick={[Function]}
+        >
+          All
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--pending"
+          href="/r/vigoda"
+          onClick={[Function]}
+        >
+          <span
+            className="resLink-name"
+          >
+            vigoda
+          </span>
+          <span>
+            
+          </span>
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--pending"
+          href="/r/snack"
+          onClick={[Function]}
+        >
+          <span
+            className="resLink-name"
+          >
+            snack
+          </span>
+          <span>
+            
+          </span>
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <div
+    className="Sidebar-spacer"
+  >
+     
+  </div>
   <button
     className="Sidebar-toggle"
     onClick={null}
