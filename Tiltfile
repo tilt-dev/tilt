@@ -7,8 +7,8 @@ repo = local_git_repo('.')
 live_update = [
   sync('internal', '/go/src/github.com/windmilleng/tilt/internal'),
   sync('web', '/go/src/github.com/windmilleng/tilt/web'),
-  run('make build-js', trigger=['web']),
-  run('make install-sail', trigger=['internal']),
+  run('make build-js'),  # trigger=['web'] (when support directory/glob triggers)
+  run('make install-sail'),  # trigger=['internal'] (when support directory/glob triggers)
   restart_container(),
 ]
 docker_build('gcr.io/windmill-public-containers/sail',
