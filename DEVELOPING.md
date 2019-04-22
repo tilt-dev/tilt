@@ -30,7 +30,7 @@ If you want to run the tests:
 - **[docker](https://docs.docker.com/install/)** - Many of the `tilt` build steps do work inside of containers
   so that you don't need to install extra toolchains locally (e.g., the protobuf compiler).
 - **[kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)**
-- **[kustomize](https://github.com/kubernetes-sigs/kustomize)**: `go get -u sigs.k8s.io/kustomize`
+- **[kustomize 2.0 or higher](https://github.com/kubernetes-sigs/kustomize)**: `go get -u sigs.k8s.io/kustomize`
 - **[helm](https://docs.helm.sh/using_helm/#installing-helm)**
 - **[docker compose](https://docs.docker.com/compose/install/)**: NOTE: this doesn't need to be installed separately from Docker on macOS
 
