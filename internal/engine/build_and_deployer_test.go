@@ -845,6 +845,10 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 	}
 }
 
+func (f *bdFixture) NewPathSet(paths ...string) model.PathSet {
+	return model.NewPathSet(paths, f.Path())
+}
+
 func (f *bdFixture) deployInfo() store.DeployInfo {
 	return store.DeployInfo{
 		PodID:         "pod-id",
