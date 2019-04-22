@@ -8,7 +8,7 @@ import {
 import { combinedStatusMessage } from "./combinedStatusMessage"
 import { StatusItem } from "./Statusbar"
 
-describe("interesting resources", () => {
+describe("combined status message", () => {
   it("should show that there's one resource building", () => {
     let data = oneResourceBuilding()
     let resources = data.map(r => new StatusItem(r))

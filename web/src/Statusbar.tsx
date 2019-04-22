@@ -8,7 +8,6 @@ const nbsp = "\u00a0"
 
 type Build = {
   Error: {} | string | null
-  Edits: Array<string>
   StartTime: string
 }
 
