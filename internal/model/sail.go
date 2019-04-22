@@ -1,6 +1,8 @@
 package model
 
-import "net/url"
+import (
+	"net/url"
+)
 
 const DefaultSailPort = 10450
 
@@ -20,6 +22,14 @@ func (u SailURL) Http() SailURL {
 func (u SailURL) Ws() SailURL {
 	u.Scheme = "ws"
 	return u
+}
+
+func (u SailURL) WithQueryParam(key, value string) SailURL {
+	url := (*url.URL)(&u)
+	q := url.Query()
+	q.Set(key, value)
+	url.RawQuery = q.Encode()
+	return SailURL(*url)
 }
 
 func (u SailURL) Empty() bool {

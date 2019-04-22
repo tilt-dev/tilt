@@ -9,6 +9,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/windmilleng/tilt/internal/sail/types"
 
 	hudServer "github.com/windmilleng/tilt/internal/hud/server"
 )
@@ -104,7 +105,10 @@ func (s SailServer) connectRoom(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	room, err := s.getRoomWithAuth(RoomID("boop"), "shh")
+	roomID := req.URL.Query().Get(types.RoomIDKey)
+	secret := req.Header.Get(types.SecretKey)
+
+	room, err := s.getRoomWithAuth(RoomID(roomID), secret)
 	if err != nil {
 		log.Printf("connectRoom: %v", err)
 		return

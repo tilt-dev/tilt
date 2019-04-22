@@ -92,8 +92,9 @@ func (s *SailClient) Connect(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("new room %s with secret %s", roomID, secret)
-	return nil
+	fmt.Printf("new room %s with secret %s\n", roomID, secret)
+
+	return s.shareToRoom(ctx, roomID, secret)
 }
 
 func (s *SailClient) newRoom(ctx context.Context) (roomID, secret string, err error) {
@@ -122,12 +123,15 @@ func (s *SailClient) newRoom(ctx context.Context) (roomID, secret string, err er
 	return roomInfo.RoomID, roomInfo.Secret, nil
 }
 
-func (s *SailClient) shareToRoom(ctx context.Context) error {
+func (s *SailClient) shareToRoom(ctx context.Context, roomID, secret string) error {
 	header := make(http.Header)
 	header.Add("Origin", s.addr.Ws().String())
+	header.Add(types.SecretKey, secret)
 
 	connectURL := s.addr
 	connectURL.Path = "/share"
+	connectURL = connectURL.WithQueryParam(types.RoomIDKey, roomID)
+
 	conn, err := s.dialer.DialContext(ctx, connectURL.Ws().String(), header)
 	if err != nil {
 		return err
