@@ -1,0 +1,107 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`renders no errors 1`] = `
+<section
+  className="ErrorPane"
+>
+  <p>
+    No errors
+  </p>
+</section>
+`;
+
+exports[`renders one build error 1`] = `
+<section
+  className="ErrorPane"
+>
+  <ul>
+    <li>
+      <code>
+        <span
+          className={null}
+          style={null}
+        >
+          laa dee daa I'm an error
+        </span>
+      </code>
+      <code>
+        <span
+          className={null}
+          style={null}
+        >
+          for real I am
+        </span>
+      </code>
+    </li>
+  </ul>
+</section>
+`;
+
+exports[`renders one container start error 1`] = `
+<section
+  className="ErrorPane"
+>
+  <ul>
+    <li>
+      Eeeeek there is a problem
+    </li>
+  </ul>
+</section>
+`;
+
+exports[`renders one container start error 2`] = `
+<section
+  className="ErrorPane"
+>
+  <ul>
+    <li>
+      Eeeeek there is a problem
+    </li>
+  </ul>
+</section>
+`;
+
+exports[`renders one resource with two build errors 1`] = `
+<section
+  className="ErrorPane"
+>
+  <ul>
+    <li>
+      <code>
+        <span
+          className={null}
+          style={null}
+        >
+          laa dee daa I'm an error
+        </span>
+      </code>
+      <code>
+        <span
+          className={null}
+          style={null}
+        >
+          I'm serious
+        </span>
+      </code>
+    </li>
+    <li>
+      <code>
+        <span
+          className={null}
+          style={null}
+        >
+          laa dee daa I'm another error
+        </span>
+      </code>
+      <code>
+        <span
+          className={null}
+          style={null}
+        >
+          Better watch out
+        </span>
+      </code>
+    </li>
+  </ul>
+</section>
+`;

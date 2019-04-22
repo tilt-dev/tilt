@@ -6,6 +6,7 @@ import "./TabNav.scss"
 type NavProps = {
   previewUrl: string
   logUrl: string
+  errorsUrl: string
   resourceView: ResourceView
 }
 
@@ -13,6 +14,7 @@ class TabNav extends PureComponent<NavProps> {
   render() {
     let logIsSelected = this.props.resourceView == ResourceView.Log
     let previewIsSelected = this.props.resourceView == ResourceView.Preview
+    let errorsIsSelected = this.props.resourceView == ResourceView.Errors
     return (
       <nav className="TabNav">
         <ul>
@@ -34,6 +36,16 @@ class TabNav extends PureComponent<NavProps> {
               to={this.props.previewUrl}
             >
               Preview
+            </Link>
+          </li>
+          <li>
+            <Link
+              className={`tabLink ${
+                errorsIsSelected ? "tabLink--is-selected" : ""
+              }`}
+              to={this.props.errorsUrl}
+            >
+              Errors
             </Link>
           </li>
         </ul>

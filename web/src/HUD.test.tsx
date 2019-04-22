@@ -80,5 +80,5 @@ it("renders tab nav", () => {
   let resourceView = oneResourceView()
   hud.setState({ View: resourceView })
   let tabNavLinks = hud.find(".TabNav Link")
-  expect(tabNavLinks).toHaveLength(2)
+  expect(tabNavLinks).toHaveLength(3)
 })

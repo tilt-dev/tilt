@@ -1,0 +1,22 @@
+@import "constants";
+
+.ErrorPane {
+  margin-top: $tabnav-height;
+  margin-right: $sidebar-width;
+  margin-bottom: $statusbar-height;
+  padding: $spacing-unit / 2;
+}
+
+.ErrorPane ul {
+  list-style: none;
+}
+
+.ErrorPane li + li {
+  margin-top: $spacing-unit;
+  border-top: 2px solid $color-grey;
+  padding-top: $spacing-unit;
+}
+
+.ErrorPane code {
+  display: block;
+}
