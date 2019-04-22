@@ -10,7 +10,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/sliceutils"
 
-	pkgyaml "github.com/ghodss/yaml"
+	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
@@ -424,7 +424,7 @@ func (s *tiltfileState) readYaml(thread *starlark.Thread, fn *starlark.Builtin, 
 	}
 
 	var decodedJSON interface{}
-	err = pkgyaml.Unmarshal(contents, &decodedJSON)
+	err = yaml.Unmarshal(contents, &decodedJSON)
 	if err != nil {
 		return nil, fmt.Errorf("YAML to JSON conversion error: %v in %s", err, path.GoString)
 	}
