@@ -5,6 +5,9 @@ import Sidebar, { SidebarItem } from "./Sidebar"
 import { oneResourceView, twoResourceView } from "./testdata.test"
 import { mount } from "enzyme"
 import { ResourceView } from "./types"
+import PathBuilder from "./PathBuilder"
+
+let pathBuilder = new PathBuilder("localhost", "/")
 
 describe("sidebar", () => {
   beforeEach(() => {
@@ -20,6 +23,7 @@ describe("sidebar", () => {
             selected=""
             toggleSidebar={null}
             resourceView={ResourceView.Log}
+            pathBuilder={pathBuilder}
           />
         </MemoryRouter>
       )
@@ -42,6 +46,7 @@ describe("sidebar", () => {
           selected=""
           toggleSidebar={null}
           resourceView={ResourceView.Log}
+          pathBuilder={pathBuilder}
         />
       </MemoryRouter>
     )
@@ -62,6 +67,7 @@ describe("sidebar", () => {
             selected=""
             toggleSidebar={null}
             resourceView={ResourceView.Log}
+            pathBuilder={pathBuilder}
           />
         </MemoryRouter>
       )
@@ -84,6 +90,7 @@ describe("sidebar", () => {
             selected=""
             toggleSidebar={null}
             resourceView={ResourceView.Log}
+            pathBuilder={pathBuilder}
           />
         </MemoryRouter>
       )
