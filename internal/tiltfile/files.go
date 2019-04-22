@@ -12,6 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
+	"gopkg.in/yaml.v2"
 
 	"github.com/windmilleng/tilt/internal/kustomize"
 	"github.com/windmilleng/tilt/internal/ospath"
@@ -399,6 +400,66 @@ func (s *tiltfileState) listdir(thread *starlark.Thread, fn *starlark.Builtin, a
 	}
 
 	return starlark.NewList(ret), nil
+}
+
+func convert(m map[interface{}]interface{}) map[string]interface{} {
+	res := map[string]interface{}{}
+	for k, v := range m {
+		switch v2 := v.(type) {
+		case map[interface{}]interface{}:
+			res[fmt.Sprint(k)] = convert(v2)
+		default:
+			res[fmt.Sprint(k)] = v
+		}
+	}
+	return res
+}
+
+func (s *tiltfileState) readYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var path starlark.String
+	var defaultValue starlark.Value
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path, "default?", &defaultValue); err != nil {
+		return nil, err
+	}
+
+	localPath, err := s.localPathFromSkylarkValue(path)
+	if err != nil {
+		return nil, fmt.Errorf("Argument 0 (path): %v", err)
+	}
+
+	contents, err := s.readFile(localPath)
+	if err != nil {
+		// Return the default value if the file doesn't exist AND a default value was given
+		if os.IsNotExist(err) && defaultValue != nil {
+			return defaultValue, nil
+		}
+		return nil, err
+	}
+
+	var decodedYAML interface{}
+
+	if err := yaml.Unmarshal(contents, &decodedYAML); err != nil {
+		return nil, fmt.Errorf("YAML parsing error: %v in %s", err, path.GoString())
+	}
+
+	convertedYAML := convert(decodedYAML)
+
+	jsonString, err := json.Marshal(&convertedYAML)
+	if err != nil {
+		return nil, fmt.Errorf("YAML to JSON encoding error: %v in %s", err, path.GoString)
+	}
+
+	var decodedJSON interface{}
+
+	if err := json.Unmarshal(jsonString, &decodedJSON); err != nil {
+		return nil, fmt.Errorf("JSON parsing error: %v in %s", err, path.GoString())
+	}
+
+	v, err := convertJSONToStarlark(decodedJSON)
+	if err != nil {
+		return nil, fmt.Errorf("error converting JSON to Starlark: %v in %s", err, path.GoString())
+	}
+	return v, nil
 }
 
 func (s *tiltfileState) decodeJSON(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
