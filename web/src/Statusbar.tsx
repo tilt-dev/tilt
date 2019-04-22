@@ -2,14 +2,23 @@ import React, { PureComponent } from "react"
 import { ReactComponent as LogoSvg } from "./assets/svg/logo-imagemark.svg"
 import { combinedStatus, warnings } from "./status"
 import "./Statusbar.scss"
+import { combinedStatusMessage } from "./combinedStatusMessage"
 
 const nbsp = "\u00a0"
+
+type Build = {
+  Error: {} | string | null
+  StartTime: string
+}
 
 class StatusItem {
   public warningCount: number = 0
   public up: boolean = false
   public hasError: boolean = false
   public name: string
+  public currentBuild: Build
+  public lastBuild: Build | null
+  public podStatus: string
 
   /**
    * Create a pared down StatusItem from a ResourceView
@@ -19,14 +28,16 @@ class StatusItem {
     this.warningCount = warnings(res).length
 
     let status = combinedStatus(res)
-    let runtimeStatus = res.RuntimeStatus
     this.up = status == "ok"
     this.hasError = status == "error"
+    this.currentBuild = res.CurrentBuild
+    this.lastBuild = res.BuildHistory ? res.BuildHistory[0] : null
+    this.podStatus = res.ResourceInfo && res.ResourceInfo.PodStatus
   }
 }
 
 type StatusBarProps = {
-  items: Array<any>
+  items: Array<StatusItem>
 }
 
 class Statusbar extends PureComponent<StatusBarProps> {
@@ -103,7 +114,9 @@ class Statusbar extends PureComponent<StatusBarProps> {
       <div className="Statusbar">
         {errorPanel}
         {warningPanel}
-        <div className="Statusbar-panel Statusbar-panel--spacer">&nbsp;</div>
+        <p className="Statusbar-panel--statusMessage">
+          {combinedStatusMessage(this.props.items)}
+        </p>
         {upPanel}
       </div>
     )

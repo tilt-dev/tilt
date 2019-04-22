@@ -38,11 +38,11 @@ exports[`StatusBar renders two items all ok snapshot 1`] = `
       Warnings
     </span>
   </div>
-  <div
-    className="Statusbar-panel Statusbar-panel--spacer"
+  <p
+    className="Statusbar-panel--statusMessage"
   >
-     
-  </div>
+    Building: vigoda
+  </p>
   <span
     className="Statusbar-panel Statusbar-panel--up"
   >
@@ -97,11 +97,11 @@ exports[`StatusBar renders two items both errors snapshot 1`] = `
       Warnings
     </span>
   </div>
-  <div
-    className="Statusbar-panel Statusbar-panel--spacer"
+  <p
+    className="Statusbar-panel--statusMessage"
   >
-     
-  </div>
+    Build failed: vigoda
+  </p>
   <span
     className="Statusbar-panel Statusbar-panel--up"
   >
@@ -156,11 +156,11 @@ exports[`StatusBar renders without crashing 1`] = `
       Warnings
     </span>
   </div>
-  <div
-    className="Statusbar-panel Statusbar-panel--spacer"
+  <p
+    className="Statusbar-panel--statusMessage"
   >
-     
-  </div>
+    
+  </p>
   <span
     className="Statusbar-panel Statusbar-panel--up"
   >
