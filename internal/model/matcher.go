@@ -5,6 +5,7 @@ import (
 
 	"github.com/gobwas/glob"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/ospath"
 )
 
 type PathMatcher interface {
@@ -20,7 +21,7 @@ func (m emptyMatcher) Matches(f string, isDir bool) (bool, error) {
 
 var EmptyMatcher PathMatcher = emptyMatcher{}
 
-// A matcher that matches against a set of files.
+// A matcher that matches exactly against a set of files.
 type fileMatcher struct {
 	paths map[string]bool
 }
@@ -45,9 +46,36 @@ func NewSimpleFileMatcher(paths ...string) (fileMatcher, error) {
 	return fileMatcher{paths: pathMap}, nil
 }
 
-// NewRelativeFileMatcher returns a matcher for the given paths; any relative paths
-// are converted to absolute, relative to the given baseDir.
-func NewRelativeFileMatcher(baseDir string, paths ...string) fileMatcher {
+// This matcher will match a path if it is:
+// A. an exact match for one of matcher.paths, or
+// B. the child of a path in matcher.paths
+// e.g. if paths = {"foo.bar", "baz/"}, will match both
+// A. "foo.bar" (exact match), and
+// B. "baz/qux" (child of one of the paths)
+type fileOrChildMatcher struct {
+	paths map[string]bool
+}
+
+func (m fileOrChildMatcher) Matches(f string, isDir bool) (bool, error) {
+	// (A) Exact match
+	if m.paths[f] {
+		return true, nil
+	}
+
+	// (B) f is child of any of m.paths
+	for path := range m.paths {
+		if ospath.IsChild(path, f) {
+			return true, nil
+		}
+	}
+
+	return false, nil
+
+}
+
+// NewRelativeFileOrChildMatcher returns a matcher for the given paths (with any
+// relative paths converted to absolute, relative to the given baseDir).
+func NewRelativeFileOrChildMatcher(baseDir string, paths ...string) fileOrChildMatcher {
 	pathMap := make(map[string]bool, len(paths))
 	for _, path := range paths {
 		if !filepath.IsAbs(path) {
@@ -55,7 +83,7 @@ func NewRelativeFileMatcher(baseDir string, paths ...string) fileMatcher {
 		}
 		pathMap[path] = true
 	}
-	return fileMatcher{paths: pathMap}
+	return fileOrChildMatcher{paths: pathMap}
 }
 
 // A PathSet stores one or more filepaths, along with the directory that any
@@ -81,7 +109,7 @@ func (ps PathSet) Empty() bool { return len(ps.Paths) == 0 }
 // AnyMatch returns true if any of the given filepaths match any paths contained in the pathset
 // (along with the first path that matched).
 func (ps PathSet) AnyMatch(paths []string) (bool, string, error) {
-	matcher := NewRelativeFileMatcher(ps.BaseDirectory, ps.Paths...)
+	matcher := NewRelativeFileOrChildMatcher(ps.BaseDirectory, ps.Paths...)
 
 	for _, path := range paths {
 		match, err := matcher.Matches(path, false)

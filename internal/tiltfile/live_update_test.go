@@ -273,7 +273,7 @@ func newLiveUpdateFixture(t *testing.T) *liveUpdateFixture {
 		model.LiveUpdateSyncStep{Source: f.JoinPath("foo", "b"), Dest: "/c"},
 		model.LiveUpdateRunStep{
 			Command:  model.ToShellCmd("f"),
-			Triggers: f.NewPathSet("g", "h"),
+			Triggers: model.NewPathSet([]string{"g", "h"}, f.Path()),
 		},
 		model.LiveUpdateRestartContainerStep{},
 	)
