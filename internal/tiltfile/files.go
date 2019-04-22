@@ -10,9 +10,9 @@ import (
 
 	"github.com/windmilleng/tilt/internal/sliceutils"
 
+	pkgyaml "github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
-	"gopkg.in/yaml.v2"
 
 	"github.com/windmilleng/tilt/internal/kustomize"
 	"github.com/windmilleng/tilt/internal/ospath"
@@ -402,19 +402,6 @@ func (s *tiltfileState) listdir(thread *starlark.Thread, fn *starlark.Builtin, a
 	return starlark.NewList(ret), nil
 }
 
-func convert(m map[interface{}]interface{}) map[string]interface{} {
-	res := map[string]interface{}{}
-	for k, v := range m {
-		switch v2 := v.(type) {
-		case map[interface{}]interface{}:
-			res[fmt.Sprint(k)] = convert(v2)
-		default:
-			res[fmt.Sprint(k)] = v
-		}
-	}
-	return res
-}
-
 func (s *tiltfileState) readYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path starlark.String
 	var defaultValue starlark.Value
@@ -436,23 +423,10 @@ func (s *tiltfileState) readYaml(thread *starlark.Thread, fn *starlark.Builtin, 
 		return nil, err
 	}
 
-	var decodedYAML interface{}
-
-	if err := yaml.Unmarshal(contents, &decodedYAML); err != nil {
-		return nil, fmt.Errorf("YAML parsing error: %v in %s", err, path.GoString())
-	}
-
-	convertedYAML := convert(decodedYAML)
-
-	jsonString, err := json.Marshal(&convertedYAML)
-	if err != nil {
-		return nil, fmt.Errorf("YAML to JSON encoding error: %v in %s", err, path.GoString)
-	}
-
 	var decodedJSON interface{}
-
-	if err := json.Unmarshal(jsonString, &decodedJSON); err != nil {
-		return nil, fmt.Errorf("JSON parsing error: %v in %s", err, path.GoString())
+	err = pkgyaml.Unmarshal(contents, &decodedJSON)
+	if err != nil {
+		return nil, fmt.Errorf("YAML to JSON conversion error: %v in %s", err, path.GoString)
 	}
 
 	v, err := convertJSONToStarlark(decodedJSON)
@@ -517,6 +491,8 @@ func (s *tiltfileState) readJson(thread *starlark.Thread, fn *starlark.Builtin, 
 
 func convertJSONToStarlark(j interface{}) (starlark.Value, error) {
 	switch j := j.(type) {
+	case bool:
+		return starlark.Bool(j), nil
 	case string:
 		return starlark.String(j), nil
 	case float64:
