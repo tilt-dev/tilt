@@ -33,6 +33,7 @@ func TestBroadcast(t *testing.T) {
 }
 
 type fixture struct {
+	t      *testing.T
 	ctx    context.Context
 	cancel func()
 	client *SailClient
@@ -41,15 +42,16 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	ctx, cancel := context.WithCancel(output.CtxForTest())
-	url, err := url.Parse("ws://localhost:12345")
+	u, err := url.Parse("ws://localhost:12345")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	st, _ := store.NewStoreForTesting()
 
-	client := ProvideSailClient(fakeSailDialer{}, model.SailURL(*url))
+	client := ProvideSailClient(fakeSailDialer{}, model.SailURL(*u))
 	return &fixture{
+		t:      t,
 		ctx:    ctx,
 		cancel: cancel,
 		client: client,
@@ -58,6 +60,9 @@ func newFixture(t *testing.T) *fixture {
 }
 
 func (f *fixture) conn() *fakeSailConn {
+	if f.client.conn == nil {
+		f.t.Fatal("client.conn is unexpectedly nil")
+	}
 	return f.client.conn.(*fakeSailConn)
 }
 
