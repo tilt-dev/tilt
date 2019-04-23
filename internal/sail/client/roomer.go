@@ -11,6 +11,7 @@ import (
 	sailCommon "github.com/windmilleng/tilt/internal/sail/common"
 )
 
+// For injecting room creation logic (because the real way involves an HTTP request)
 type SailRoomer interface {
 	NewRoom(ctx context.Context) (roomID, secret string, err error)
 }
