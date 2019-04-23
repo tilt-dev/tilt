@@ -89,11 +89,6 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) e
 		}
 	}
 
-	// If the log level is at least verbose, we want to stream the output as
-	// it comes in. Otherwise, we only want to dump it at the end of there's
-	// an error.
-	var streamLevel logger.Level = logger.InfoLvl
-	streamLogs := b.logger.Level() >= streamLevel
 	for _, d := range b.vOrder {
 		vl, ok := b.vData[d]
 		if !ok {
@@ -111,16 +106,14 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) e
 
 		if vl.vertex.isError() {
 			b.logger.Infof("\n%sERROR IN: %s", buildPrefix, trimCmd(vl.vertex.name))
-			if !streamLogs {
-				err := b.flushLogs(b.logger.Writer(logger.InfoLvl), vl)
-				if err != nil {
-					return err
-				}
+			err := b.flushLogs(b.logger.Writer(logger.InfoLvl), vl)
+			if err != nil {
+				return err
 			}
 		}
 
-		if streamLogs && (vl.vertex.isRun() || vl.vertex.isStep()) {
-			err := b.flushLogs(b.logger.Writer(streamLevel), vl)
+		if vl.vertex.isRun() || vl.vertex.isStep() {
+			err := b.flushLogs(b.logger.Writer(logger.InfoLvl), vl)
 			if err != nil {
 				return err
 			}
