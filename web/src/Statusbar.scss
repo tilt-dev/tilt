@@ -7,11 +7,11 @@
   bottom: 0;
   z-index: $z-sidebar;
   height: $statusbar-height;
-  color: $color-navy;
-  background-color: $color-grey-lightest;
+  color: $color-gray;
+  background-color: $color-white;
   display: flex;
   align-items: center;
-  border-top: 1px solid $color-navy-dark;
+  border-top: 1px solid $color-gray-dark;
 }
 .Statusbar-panel {
   padding: $spacing-unit / 4 $spacing-unit / 2;
@@ -43,7 +43,7 @@
   height: $spacing-unit;
 }
 .Statusbar-panel--statusMessage {
-  border-left: 1px dotted $color-navy;
+  border-left: 1px dotted $color-gray;
   padding-left: $spacing-unit/2;
   flex-grow: 1;
 }
