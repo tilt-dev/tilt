@@ -15,6 +15,11 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
+const (
+	testRoomID = "some-room"
+	testSecret = "shh-very-secret"
+)
+
 func TestBroadcast(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -49,7 +54,7 @@ func newFixture(t *testing.T) *fixture {
 
 	st, _ := store.NewStoreForTesting()
 
-	client := ProvideSailClient(fakeSailDialer{}, model.SailURL(*u))
+	client := ProvideSailClient(model.SailURL(*u), fakeSailRoomer{}, fakeSailDialer{})
 	return &fixture{
 		t:      t,
 		ctx:    ctx,
@@ -70,8 +75,13 @@ func (f *fixture) TearDown() {
 	f.cancel()
 }
 
-type fakeSailDialer struct {
+type fakeSailRoomer struct{}
+
+func (r fakeSailRoomer) NewRoom(ctx context.Context) (roomID, secret string, err error) {
+	return testRoomID, testSecret, nil
 }
+
+type fakeSailDialer struct{}
 
 func (d fakeSailDialer) DialContext(ctx context.Context, addr string, headers http.Header) (SailConn, error) {
 	return &fakeSailConn{ctx: ctx}, nil

@@ -2,8 +2,6 @@ package client
 
 import (
 	"context"
-	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"sync"
 
@@ -18,15 +16,17 @@ import (
 
 type SailClient struct {
 	addr     model.SailURL
+	roomer   SailRoomer
 	dialer   SailDialer
 	conn     SailConn
 	mu       sync.Mutex
 	initDone bool
 }
 
-func ProvideSailClient(dialer SailDialer, addr model.SailURL) *SailClient {
+func ProvideSailClient(addr model.SailURL, roomer SailRoomer, dialer SailDialer) *SailClient {
 	return &SailClient{
 		addr:   addr,
+		roomer: roomer,
 		dialer: dialer,
 	}
 }
@@ -87,39 +87,13 @@ func (s *SailClient) setConnection(ctx context.Context, conn SailConn) {
 }
 
 func (s *SailClient) Connect(ctx context.Context) error {
-	roomID, secret, err := s.newRoom(ctx)
+	roomID, secret, err := s.roomer.NewRoom(ctx)
 	if err != nil {
 		return err
 	}
 	logger.Get(ctx).Infof("new room %s with secret %s\n", roomID, secret)
 
 	return s.shareToRoom(ctx, roomID, secret)
-}
-
-func (s *SailClient) newRoom(ctx context.Context) (roomID, secret string, err error) {
-	addr := s.addr.Http()
-	header := make(http.Header)
-	header.Add("Origin", addr.String())
-
-	connectURL := addr
-	connectURL.Path = "/new_room"
-	resp, err := http.Get(connectURL.String())
-	if err != nil {
-		return "", "", errors.Wrapf(err, "GET %s", connectURL.String())
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", "", errors.Wrap(err, "reading /new_room response")
-	}
-
-	var roomInfo sailCommon.RoomInfo
-	err = json.Unmarshal(body, &roomInfo)
-	if err != nil {
-		return "", "", errors.Wrapf(err, "unmarshaling json: %s", string(body))
-	}
-
-	return roomInfo.RoomID, roomInfo.Secret, nil
 }
 
 func (s *SailClient) shareToRoom(ctx context.Context, roomID, secret string) error {
