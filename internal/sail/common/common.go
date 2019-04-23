@@ -1,4 +1,4 @@
-package types
+package shared
 
 const (
 	SecretKey = "Secret"

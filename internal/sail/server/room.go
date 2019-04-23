@@ -8,10 +8,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/windmilleng/tilt/internal/sail/types"
+	sailCommon "github.com/windmilleng/tilt/internal/sail/common"
 )
 
-// TODO(maia): maybe put this in sail/types so can access from the client too?
+// TODO(maia): maybe put this in sail/common so can access from the client too?
 type RoomID string
 
 // A room where messages from a source are broadcast to all the followers.
@@ -64,7 +64,7 @@ func NewRoom() *Room {
 // newRoomResponse returns json bytes containing all information about this room that we want
 // to return to the caller of the /new_room endpoint
 func (r *Room) newRoomResponse() ([]byte, error) {
-	info := types.RoomInfo{
+	info := sailCommon.RoomInfo{
 		RoomID: string(r.id),
 		Secret: r.secret,
 	}

@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"sync"
@@ -13,7 +12,7 @@ import (
 	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/sail/types"
+	sailCommon "github.com/windmilleng/tilt/internal/sail/common"
 	"github.com/windmilleng/tilt/internal/store"
 )
 
@@ -92,7 +91,7 @@ func (s *SailClient) Connect(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("new room %s with secret %s\n", roomID, secret)
+	logger.Get(ctx).Infof("new room %s with secret %s\n", roomID, secret)
 
 	return s.shareToRoom(ctx, roomID, secret)
 }
@@ -114,7 +113,7 @@ func (s *SailClient) newRoom(ctx context.Context) (roomID, secret string, err er
 		return "", "", errors.Wrap(err, "reading /new_room response")
 	}
 
-	var roomInfo types.RoomInfo
+	var roomInfo sailCommon.RoomInfo
 	err = json.Unmarshal(body, &roomInfo)
 	if err != nil {
 		return "", "", errors.Wrapf(err, "unmarshaling json: %s", string(body))
@@ -126,11 +125,11 @@ func (s *SailClient) newRoom(ctx context.Context) (roomID, secret string, err er
 func (s *SailClient) shareToRoom(ctx context.Context, roomID, secret string) error {
 	header := make(http.Header)
 	header.Add("Origin", s.addr.Ws().String())
-	header.Add(types.SecretKey, secret)
+	header.Add(sailCommon.SecretKey, secret)
 
 	connectURL := s.addr
 	connectURL.Path = "/share"
-	connectURL = connectURL.WithQueryParam(types.RoomIDKey, roomID)
+	connectURL = connectURL.WithQueryParam(sailCommon.RoomIDKey, roomID)
 
 	conn, err := s.dialer.DialContext(ctx, connectURL.Ws().String(), header)
 	if err != nil {

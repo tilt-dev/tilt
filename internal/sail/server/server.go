@@ -9,9 +9,9 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	"github.com/windmilleng/tilt/internal/sail/types"
 
 	hudServer "github.com/windmilleng/tilt/internal/hud/server"
+	sailCommon "github.com/windmilleng/tilt/internal/sail/common"
 )
 
 var upgrader = websocket.Upgrader{
@@ -105,8 +105,8 @@ func (s SailServer) connectRoom(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	roomID := req.URL.Query().Get(types.RoomIDKey)
-	secret := req.Header.Get(types.SecretKey)
+	roomID := req.URL.Query().Get(sailCommon.RoomIDKey)
+	secret := req.Header.Get(sailCommon.SecretKey)
 
 	room, err := s.getRoomWithAuth(RoomID(roomID), secret)
 	if err != nil {
