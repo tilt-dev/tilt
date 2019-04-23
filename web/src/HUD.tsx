@@ -159,7 +159,7 @@ class HUD extends Component<HudProps, HudState> {
     let toggleSidebar = this.toggleSidebar
     let statusItems = resources.map(res => new StatusItem(res))
     let sidebarItems = resources.map(res => new SidebarItem(res))
-    let sidebarHelper = (t: ResourceView, props: RouteComponentProps<any>) => {
+    let sidebarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name = props.match.params.name
       return (
         <Sidebar
@@ -172,17 +172,8 @@ class HUD extends Component<HudProps, HudState> {
         />
       )
     }
-    let sidebarRoute = (props: RouteComponentProps<any>) => {
-      return sidebarHelper(ResourceView.Log, props)
-    }
-    let sidebarPreviewRoute = (props: RouteComponentProps<any>) => {
-      return sidebarHelper(ResourceView.Preview, props)
-    }
-    let sidebarErrorRoute = (props: RouteComponentProps<any>) => {
-      return sidebarHelper(ResourceView.Errors, props)
-    }
 
-    let tabNavRoute = (props: RouteComponentProps<any>) => {
+    let tabNavRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name =
         props.match.params && props.match.params.name
           ? props.match.params.name
@@ -192,35 +183,7 @@ class HUD extends Component<HudProps, HudState> {
           logUrl={name === "" ? "/" : `/r/${name}`}
           errorsUrl={name === "" ? "/errors" : `/r/${name}/errors`}
           previewUrl={this.getEndpointForName(name, sidebarItems)}
-          resourceView={ResourceView.Log}
-        />
-      )
-    }
-    let tabNavPreviewRoute = (props: RouteComponentProps<any>) => {
-      let name =
-        props.match.params && props.match.params.name
-          ? props.match.params.name
-          : ""
-      return (
-        <TabNav
-          logUrl={name === "" ? "/" : `/r/${name}`}
-          errorsUrl={name === "" ? "/errors" : `/r/${name}/errors`}
-          previewUrl={this.getEndpointForName(name, sidebarItems)}
-          resourceView={ResourceView.Preview}
-        />
-      )
-    }
-    let tabNavErrorRoute = (props: RouteComponentProps<any>) => {
-      let name =
-        props.match.params && props.match.params.name
-          ? props.match.params.name
-          : ""
-      return (
-        <TabNav
-          logUrl={name === "" ? "/" : `/r/${name}`}
-          errorsUrl={name === "" ? "/errors" : `/r/${name}/errors`}
-          previewUrl={this.getEndpointForName(name, sidebarItems)}
-          resourceView={ResourceView.Errors}
+          resourceView={t}
         />
       )
     }
@@ -269,29 +232,41 @@ class HUD extends Component<HudProps, HudState> {
           <Switch>
             <Route
               path={this.path("/r/:name/errors")}
-              render={tabNavErrorRoute}
+              render={tabNavRoute.bind(null, ResourceView.Errors)}
             />
             <Route
               path={this.path("/r/:name/preview")}
-              render={tabNavPreviewRoute}
+              render={tabNavRoute.bind(null, ResourceView.Preview)}
             />
-            <Route path={this.path("/r/:name")} render={tabNavRoute} />
-            <Route path={this.path("/errors")} render={tabNavErrorRoute} />
-            <Route render={tabNavRoute} />
+            <Route
+              path={this.path("/r/:name")}
+              render={tabNavRoute.bind(null, ResourceView.Log)}
+            />
+            <Route
+              path={this.path("/errors")}
+              render={tabNavRoute.bind(null, ResourceView.Errors)}
+            />
+            <Route render={tabNavRoute.bind(null, ResourceView.Log)} />
           </Switch>
           <Switch>
             <Route
               path={this.path("/r/:name/errors")}
-              render={sidebarErrorRoute}
+              render={sidebarRoute.bind(null, ResourceView.Errors)}
             />
-            <Route path={this.path("/errors")} render={sidebarErrorRoute} />
+            <Route
+              path={this.path("/errors")}
+              render={sidebarRoute.bind(null, ResourceView.Errors)}
+            />
             <Route
               path={this.path("/r/:name/preview")}
-              render={sidebarPreviewRoute}
+              render={sidebarRoute.bind(null, ResourceView.Preview)}
             />
             }
-            <Route path={this.path("/r/:name")} render={sidebarRoute} />
-            <Route render={sidebarRoute} />
+            <Route
+              path={this.path("/r/:name")}
+              render={sidebarRoute.bind(null, ResourceView.Log)}
+            />
+            <Route render={sidebarRoute.bind(null, ResourceView.Log)} />
           </Switch>
           <Statusbar items={statusItems} />
           <Switch>
