@@ -115,11 +115,13 @@ wire:
 	wire ./internal/engine
 	wire ./internal/cli
 	wire ./internal/synclet
+	wire ./internal/sail/client
 
 wire-check:
 	wire check ./internal/engine
 	wire check ./internal/cli
 	wire check ./internal/synclet
+	wire check ./internal/sail/client
 
 ci-container:
 	docker build -t gcr.io/windmill-public-containers/tilt-ci -f .circleci/Dockerfile .circleci
