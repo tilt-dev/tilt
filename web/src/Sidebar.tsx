@@ -54,9 +54,13 @@ class Sidebar extends PureComponent<SidebarProps> {
     if (!this.props.selected) {
       allItemClasses += " is-selected"
     }
+    let allLink =
+      this.props.resourceView === ResourceView.Errors
+        ? pb.path("/errors")
+        : pb.path("/")
     let allItem = (
       <li>
-        <Link className={allItemClasses} to={pb.path("/")}>
+        <Link className={allItemClasses} to={allLink}>
           All
         </Link>
       </li>
@@ -68,6 +72,9 @@ class Sidebar extends PureComponent<SidebarProps> {
       if (this.props.resourceView === ResourceView.Preview) {
         analyticsKey = "ui.interactions.preview"
         link += "/preview"
+      } else if (this.props.resourceView === ResourceView.Errors) {
+        analyticsKey = "ui.interactions.errors"
+        link += "/errors"
       }
       let classes = `resLink resLink--${item.status}`
       if (this.props.selected === item.name) {

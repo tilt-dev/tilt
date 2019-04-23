@@ -1,19 +1,6 @@
 import React, { Component, createRef } from "react"
-import Ansi from "ansi-to-react"
+import AnsiLine from "./AnsiLine"
 import "./LogPane.scss"
-
-type AnsiLineProps = {
-  line: string
-}
-let AnsiLine = React.memo(function(props: AnsiLineProps) {
-  return (
-    <div>
-      <Ansi linkify={false} useClasses={true}>
-        {props.line}
-      </Ansi>
-    </div>
-  )
-})
 
 type LogPaneProps = {
   log: string

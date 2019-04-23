@@ -21,6 +21,7 @@ import { incr, pathToTag } from "./analytics"
 import TabNav from "./TabNav"
 import "./HUD.scss"
 import { ResourceView } from "./types"
+import ErrorPane, { ErrorResource } from "./ErrorPane"
 
 type HudProps = {}
 
@@ -177,6 +178,9 @@ class HUD extends Component<HudProps, HudState> {
     let sidebarPreviewRoute = (props: RouteComponentProps<any>) => {
       return sidebarHelper(ResourceView.Preview, props)
     }
+    let sidebarErrorRoute = (props: RouteComponentProps<any>) => {
+      return sidebarHelper(ResourceView.Errors, props)
+    }
 
     let tabNavRoute = (props: RouteComponentProps<any>) => {
       let name =
@@ -186,6 +190,7 @@ class HUD extends Component<HudProps, HudState> {
       return (
         <TabNav
           logUrl={name === "" ? "/" : `/r/${name}`}
+          errorsUrl={name === "" ? "/errors" : `/r/${name}/errors`}
           previewUrl={this.getEndpointForName(name, sidebarItems)}
           resourceView={ResourceView.Log}
         />
@@ -199,8 +204,23 @@ class HUD extends Component<HudProps, HudState> {
       return (
         <TabNav
           logUrl={name === "" ? "/" : `/r/${name}`}
+          errorsUrl={name === "" ? "/errors" : `/r/${name}/errors`}
           previewUrl={this.getEndpointForName(name, sidebarItems)}
           resourceView={ResourceView.Preview}
+        />
+      )
+    }
+    let tabNavErrorRoute = (props: RouteComponentProps<any>) => {
+      let name =
+        props.match.params && props.match.params.name
+          ? props.match.params.name
+          : ""
+      return (
+        <TabNav
+          logUrl={name === "" ? "/" : `/r/${name}`}
+          errorsUrl={name === "" ? "/errors" : `/r/${name}/errors`}
+          previewUrl={this.getEndpointForName(name, sidebarItems)}
+          resourceView={ResourceView.Errors}
         />
       )
     }
@@ -234,18 +254,37 @@ class HUD extends Component<HudProps, HudState> {
       return <PreviewPane endpoint={endpoint} isExpanded={isSidebarClosed} />
     }
 
+    let errorRoute = (props: RouteComponentProps<any>) => {
+      let name = props.match.params ? props.match.params.name : ""
+      let er = resources.find(r => r.Name === name)
+      if (er) {
+        return <ErrorPane resources={[new ErrorResource(er)]} />
+      }
+      return <ErrorPane resources={[]} />
+    }
+
     return (
       <Router history={this.history}>
         <div className="HUD">
           <Switch>
             <Route
+              path={this.path("/r/:name/errors")}
+              render={tabNavErrorRoute}
+            />
+            <Route
               path={this.path("/r/:name/preview")}
               render={tabNavPreviewRoute}
             />
             <Route path={this.path("/r/:name")} render={tabNavRoute} />
+            <Route path={this.path("/errors")} render={tabNavErrorRoute} />
             <Route render={tabNavRoute} />
           </Switch>
           <Switch>
+            <Route
+              path={this.path("/r/:name/errors")}
+              render={sidebarErrorRoute}
+            />
+            <Route path={this.path("/errors")} render={sidebarErrorRoute} />
             <Route
               path={this.path("/r/:name/preview")}
               render={sidebarPreviewRoute}
@@ -263,12 +302,27 @@ class HUD extends Component<HudProps, HudState> {
                 <LogPane log={combinedLog} isExpanded={isSidebarClosed} />
               )}
             />
+            <Route
+              exact
+              path={this.path("/errors")}
+              render={() => (
+                <ErrorPane
+                  resources={resources.map(r => new ErrorResource(r))}
+                />
+              )}
+            />
             <Route exact path={this.path("/r/:name")} render={logsRoute} />
             <Route
               exact
               path={this.path("/r/:name/k8s")}
               render={() => <K8sViewPane />}
             />
+            <Route
+              exact
+              path={this.path("/r/:name/errors")}
+              render={errorRoute}
+            />
+            } />
             <Route
               exact
               path={this.path("/r/:name/preview")}

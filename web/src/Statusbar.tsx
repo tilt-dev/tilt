@@ -3,13 +3,9 @@ import { ReactComponent as LogoSvg } from "./assets/svg/logo-imagemark.svg"
 import { combinedStatus, warnings } from "./status"
 import "./Statusbar.scss"
 import { combinedStatusMessage } from "./combinedStatusMessage"
+import { Build } from "./types"
 
 const nbsp = "\u00a0"
-
-type Build = {
-  Error: {} | string | null
-  StartTime: string
-}
 
 class StatusItem {
   public warningCount: number = 0
