@@ -63,17 +63,18 @@ class ErrorPane extends PureComponent<ErrorsProps> {
           </li>
         )
       }
-      r.buildHistory.forEach((b, i) => {
-        if (b.Error !== null) {
+      if (r.buildHistory.length > 0) {
+        let lastBuild = r.buildHistory.slice(-1)[0]
+        if (lastBuild.Error !== null) {
           errorElements.push(
-            <li key={r.name + i}>
-              {b.Log.split("\n").map((l, j) => (
-                <AnsiLine key={"logLine" + j} line={l} />
+            <li key={"buildError" + r.name}>
+              {lastBuild.Log.split("\n").map((l, i) => (
+                <AnsiLine key={"logLine" + i} line={l} />
               ))}
             </li>
           )
         }
-      })
+      }
     })
 
     if (errorElements.length > 0) {

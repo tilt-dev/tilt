@@ -61,29 +61,11 @@ exports[`renders one container start error 2`] = `
 </section>
 `;
 
-exports[`renders one resource with two build errors 1`] = `
+exports[`renders the last build with an error 1`] = `
 <section
   className="ErrorPane"
 >
   <ul>
-    <li>
-      <code>
-        <span
-          className={null}
-          style={null}
-        >
-          laa dee daa I'm an error
-        </span>
-      </code>
-      <code>
-        <span
-          className={null}
-          style={null}
-        >
-          I'm serious
-        </span>
-      </code>
-    </li>
     <li>
       <code>
         <span

@@ -41,7 +41,7 @@ it("renders one build error", () => {
   expect(tree).toMatchSnapshot()
 })
 
-it("renders one resource with two build errors", () => {
+it("renders the last build with an error", () => {
   const ts = "1,555,970,585,039"
   let resources = [
     {
