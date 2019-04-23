@@ -53,6 +53,15 @@ class ErrorPane extends PureComponent<ErrorsProps> {
         errorElements.push(
           <li key={"resourceInfoError" + r.name}>{r.resourceInfo.podLog}</li>
         )
+      } else if (r.resourceInfo.podRestarts > 0) {
+        errorElements.push(
+          <li key={"resourceInfoPodCrash" + r.name}>
+            <p>{`${r.name} has container restarts: ${
+              r.resourceInfo.podRestarts
+            }.`}</p>
+            <p>{`Last log line: ${r.resourceInfo.podLog}`}</p>
+          </li>
+        )
       }
       r.buildHistory.forEach((b, i) => {
         if (b.Error !== null) {

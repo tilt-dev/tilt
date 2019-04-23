@@ -105,3 +105,20 @@ exports[`renders one resource with two build errors 1`] = `
   </ul>
 </section>
 `;
+
+exports[`shows that a container has restarted 1`] = `
+<section
+  className="ErrorPane"
+>
+  <ul>
+    <li>
+      <p>
+        foo has container restarts: 1.
+      </p>
+      <p>
+        Last log line: Eeeeek the container crashed
+      </p>
+    </li>
+  </ul>
+</section>
+`;

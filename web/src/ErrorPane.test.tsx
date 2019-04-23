@@ -101,7 +101,7 @@ it("renders one container start error", () => {
       Name: "foo",
       BuildHistory: [
         {
-          Log: "laa dee daa I'm an error\nI'm serious",
+          Log: "laa dee daa I'm not an error\nI'm serious",
           FinishTime: ts,
           Error: null,
         },
@@ -119,4 +119,31 @@ it("renders one container start error", () => {
     .create(<ErrorPane resources={resources.map(r => new ErrorResource(r))} />)
     .toJSON()
   expect(newTree).toMatchSnapshot()
+})
+
+it("shows that a container has restarted", () => {
+  const ts = "1,555,970,585,039"
+  const resources = [
+    {
+      Name: "foo",
+      BuildHistory: [
+        {
+          Log: "laa dee daa I'm not an error\nseriously",
+          FinishTime: ts,
+          Error: null,
+        },
+      ],
+      ResourceInfo: {
+        PodCreationTime: ts,
+        PodStatus: "ok",
+        PodRestarts: 1,
+        PodLog: "Eeeeek the container crashed",
+      },
+    },
+  ]
+
+  const tree = renderer
+    .create(<ErrorPane resources={resources.map(r => new ErrorResource(r))} />)
+    .toJSON()
+  expect(tree).toMatchSnapshot()
 })
