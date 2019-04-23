@@ -58,10 +58,10 @@ func (s SailServer) newRoom(w http.ResponseWriter, req *http.Request) {
 	resp, err := room.newRoomResponse()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf("error creating newRoom response: %v", err)))
+		_, _ = w.Write([]byte(fmt.Sprintf("error creating newRoom response: %v", err)))
 	}
 
-	w.Write(resp)
+	_, _ = w.Write(resp)
 	log.Printf("newRoom: %s", room.id)
 }
 
