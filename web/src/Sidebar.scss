@@ -7,7 +7,7 @@
   bottom: $statusbar-height;
   width: $sidebar-width;
   background-color: $color-gray;
-  border-left: 2px solid $color-off-white;
+  border-left: 2px solid $color-gray-lightest;
   box-sizing: border-box;
   overflow-y: auto;
   transform: translateX(0%);
@@ -16,7 +16,7 @@
   display: flex;
   flex-direction: column;
   z-index: $z-sidebar;
-  box-shadow: -2px 0px 10px 0px rgba(0, 43, 54, 0.5);
+  box-shadow: -2px 0px 10px 0px rgba($color-gray-dark, $translucent);
 }
 .Sidebar.is-closed {
   transform: translateX(calc(100% - #{$sidebar-collapsed-width}));
@@ -92,7 +92,7 @@
 }
 .resLink time {
   font-weight: normal;
-  color: $color-off-white;
+  color: $color-gray-lightest;
   margin-right: $spacing-unit / 2;
 }
 

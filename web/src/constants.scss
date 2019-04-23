@@ -9,10 +9,11 @@ $font-size-icon: 24px;
 // COLORS
 // Monochrome
 $color-white: #ffffff;
-$color-off-white: #93a1a1;
+$color-gray-lightest: #93a1a1;
 $color-gray-light: #586e75;
 $color-gray: #073642;
 $color-gray-dark: #002b36;
+$color-gray-darkest: #001b20;
 
 // Tilt Colors
 $color-green: #20ba31;
@@ -23,6 +24,8 @@ $color-purple: #6378ba;
 $color-red: #f6685c;
 $color-pink: #ef5aa0;
 $color-yellow: #fcb41e;
+
+$translucent: 0.3;
 
 // LAYOUT
 $spacing-unit: 32px;

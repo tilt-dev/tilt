@@ -7,6 +7,7 @@
   right: 0;
   padding-right: $sidebar-width;
   background-color: $color-gray-dark;
+  box-shadow: inset 0px -2px 10px 0px rgba($color-gray-darkest, $translucent);
   z-index: $z-tabnav;
 }
 
