@@ -20,7 +20,7 @@
 }
 
 .TabNav ul li + li {
-  border-left: 2px solid $color-gray-light;
+  border-left: 1px solid $color-gray-light;
 }
 
 .tabLink {
@@ -33,7 +33,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-bottom: 1px solid $color-gray-light;
   transition-property: color, background-color;
   transition-duration: $animation-timing;
   transition-timing-function: ease;
@@ -41,7 +40,6 @@
 }
 
 .tabLink:hover {
-  background-color: $color-gray-dark;
   color: $color-blue-light;
 }
 
