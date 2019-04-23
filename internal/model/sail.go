@@ -6,6 +6,16 @@ import (
 
 const DefaultSailPort = 10450
 
+const (
+	SailSecretKey = "Secret"
+	SailRoomIDKey = "room_id"
+)
+
+type SailRoomInfo struct {
+	RoomID string `json:"room_id"`
+	Secret string `json:"secret"`
+}
+
 type SailPort int
 type SailURL url.URL
 

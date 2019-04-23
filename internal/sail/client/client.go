@@ -10,7 +10,6 @@ import (
 	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
-	sailCommon "github.com/windmilleng/tilt/internal/sail/common"
 	"github.com/windmilleng/tilt/internal/store"
 )
 
@@ -99,11 +98,11 @@ func (s *SailClient) Connect(ctx context.Context) error {
 func (s *SailClient) shareToRoom(ctx context.Context, roomID, secret string) error {
 	header := make(http.Header)
 	header.Add("Origin", s.addr.Ws().String())
-	header.Add(sailCommon.SecretKey, secret)
+	header.Add(model.SailSecretKey, secret)
 
 	connectURL := s.addr
 	connectURL.Path = "/share"
-	connectURL = connectURL.WithQueryParam(sailCommon.RoomIDKey, roomID)
+	connectURL = connectURL.WithQueryParam(model.SailRoomIDKey, roomID)
 
 	conn, err := s.dialer.DialContext(ctx, connectURL.Ws().String(), header)
 	if err != nil {

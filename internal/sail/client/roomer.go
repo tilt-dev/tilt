@@ -8,7 +8,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/model"
-	sailCommon "github.com/windmilleng/tilt/internal/sail/common"
 )
 
 // For injecting room creation logic (because the real way involves an HTTP request)
@@ -22,8 +21,8 @@ type httpRoomer struct {
 
 func (r httpRoomer) NewRoom(ctx context.Context) (roomID, secret string, err error) {
 	u := r.addr.Http()
-	u.Path = "/new_room"
-	resp, err := http.Get(u.String())
+	u.Path = "/room"
+	resp, err := http.Post(u.String(), "text/plain", nil)
 	if err != nil {
 		return "", "", errors.Wrapf(err, "GET %s", u.String())
 	}
@@ -33,7 +32,7 @@ func (r httpRoomer) NewRoom(ctx context.Context) (roomID, secret string, err err
 		return "", "", errors.Wrap(err, "reading /new_room response")
 	}
 
-	var roomInfo sailCommon.RoomInfo
+	var roomInfo model.SailRoomInfo
 	err = json.Unmarshal(body, &roomInfo)
 	if err != nil {
 		return "", "", errors.Wrapf(err, "unmarshaling json: %s", string(body))

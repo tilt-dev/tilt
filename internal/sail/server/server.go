@@ -9,9 +9,9 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/windmilleng/tilt/internal/model"
 
 	hudServer "github.com/windmilleng/tilt/internal/hud/server"
-	sailCommon "github.com/windmilleng/tilt/internal/sail/common"
 )
 
 var upgrader = websocket.Upgrader{
@@ -35,7 +35,7 @@ func ProvideSailServer(assetServer hudServer.AssetServer) SailServer {
 		assetServer: assetServer,
 	}
 
-	r.HandleFunc("/new_room", s.newRoom)
+	r.HandleFunc("/room", s.newRoom) // currently expects only POST requests, in future this endpt. might do things other than create a new room
 	r.HandleFunc("/share", s.connectRoom)
 	r.HandleFunc("/join/{roomID}", s.joinRoom)
 	r.HandleFunc("/view/{roomID}", s.viewRoom)
@@ -105,12 +105,14 @@ func (s SailServer) connectRoom(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	roomID := req.URL.Query().Get(sailCommon.RoomIDKey)
-	secret := req.Header.Get(sailCommon.SecretKey)
+	roomID := req.URL.Query().Get(model.SailRoomIDKey)
+	secret := req.Header.Get(model.SailSecretKey)
 
 	room, err := s.getRoomWithAuth(RoomID(roomID), secret)
 	if err != nil {
 		log.Printf("connectRoom: %v", err)
+		w.WriteHeader(http.StatusForbidden) // TODO(maia): send 404 instead if room not found
+		_, _ = w.Write([]byte(fmt.Sprintf("error connecting to room %s: %v", roomID, err)))
 		return
 	}
 	room.source = conn
