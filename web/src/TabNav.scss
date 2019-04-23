@@ -6,7 +6,8 @@
   left: 0;
   right: 0;
   padding-right: $sidebar-width;
-  background-color: $color-navy-dark;
+  background-color: $color-gray-dark;
+  box-shadow: inset 0px -2px 10px 0px rgba($color-gray-darkest, $translucent);
   z-index: $z-tabnav;
 }
 
@@ -16,11 +17,11 @@
 }
 
 .TabNav ul li:last-child {
-  border-right: 1px solid $color-navy-light;
+  border-right: 1px solid $color-gray-light;
 }
 
 .TabNav ul li + li {
-  border-left: 2px solid $color-navy-light;
+  border-left: 1px solid $color-gray-light;
 }
 
 .tabLink {
@@ -33,7 +34,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-bottom: 1px solid $color-navy-light;
   transition-property: color, background-color;
   transition-duration: $animation-timing;
   transition-timing-function: ease;
@@ -41,12 +41,11 @@
 }
 
 .tabLink:hover {
-  background-color: $color-navy-dark;
   color: $color-blue-light;
 }
 
 .tabLink--is-selected {
   right: 0;
-  background-color: $color-navy;
+  background-color: $color-gray;
   border-bottom: none;
 }

@@ -6,8 +6,8 @@
   right: 0;
   bottom: $statusbar-height;
   width: $sidebar-width;
-  background-color: $color-navy;
-  border-left: 2px solid $color-navy-light;
+  background-color: $color-gray;
+  border-left: 2px solid $color-gray-lightest;
   box-sizing: border-box;
   overflow-y: auto;
   transform: translateX(0%);
@@ -16,6 +16,7 @@
   display: flex;
   flex-direction: column;
   z-index: $z-sidebar;
+  box-shadow: -2px 0px 10px 0px rgba($color-gray-dark, $translucent);
 }
 .Sidebar.is-closed {
   transform: translateX(calc(100% - #{$sidebar-collapsed-width}));
@@ -32,8 +33,8 @@
 
 .resLink {
   right: 0;
-  background-color: $color-navy;
-  border-bottom: 1px solid $color-navy-light;
+  background-color: $color-gray;
+  border-bottom: 1px solid $color-gray-light;
   color: $color-white;
   text-decoration: none;
   display: flex;
@@ -45,13 +46,13 @@
 }
 .resLink:hover {
   right: 0;
-  background-color: $color-navy-dark;
+  background-color: $color-gray-dark;
   color: $color-blue-light;
 }
 .resLink.is-selected {
   right: 0;
   background-color: $color-white;
-  color: $color-navy;
+  color: $color-gray;
 }
 .resLink::before {
   content: "●";
@@ -70,7 +71,7 @@
 }
 .resLink--all::before {
   content: "┌";
-  color: $color-grey-dark;
+  color: $color-gray-light;
   margin-top: -8px;
 }
 .resLink--ok::before {
@@ -80,7 +81,7 @@
   color: $color-green;
 }
 .resLink--pending::before {
-  color: $color-yellow;
+  color: $color-gray-light;
 }
 .resLink--error::before {
   color: $color-red;
@@ -91,13 +92,12 @@
 }
 .resLink time {
   font-weight: normal;
-  color: $color-white;
-  opacity: 0.5;
+  color: $color-gray-lightest;
   margin-right: $spacing-unit / 2;
 }
 
 .resLink.is-selected time {
-  color: $color-navy;
+  color: $color-gray;
 }
 
 // Collapse/Expand
@@ -106,9 +106,9 @@
   height: 0;
 }
 .Sidebar-toggle {
-  background-color: $color-navy;
+  background-color: $color-gray;
   border: 0 none;
-  border-top: 1px solid $color-navy-light;
+  border-top: 1px solid $color-gray-light;
   color: inherit;
   font-size: inherit;
   font-family: inherit;
@@ -124,7 +124,7 @@
   transition-timing-function: ease;
 }
 .Sidebar-toggle:hover {
-  background-color: $color-navy-dark;
+  background-color: $color-gray-dark;
   color: $color-blue-light;
 }
 .Sidebar-toggle > svg {
