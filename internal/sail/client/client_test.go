@@ -26,6 +26,7 @@ func TestBroadcast(t *testing.T) {
 
 	f.client.OnChange(f.ctx, f.store)
 
+	f.assertNewRoomCalls(1)
 	assert.Equal(t, 1, len(f.conn().json.(webview.View).Resources))
 	assert.Equal(t, view.TiltfileResourceName, f.conn().json.(webview.View).Resources[0].Name.String())
 
@@ -34,6 +35,7 @@ func TestBroadcast(t *testing.T) {
 	f.store.UnlockMutableState()
 
 	f.client.OnChange(f.ctx, f.store)
+	f.assertNewRoomCalls(1) // room already connected, shouldn't have any more NewRoom calls
 	assert.Equal(t, 2, len(f.conn().json.(webview.View).Resources))
 }
 
@@ -54,7 +56,7 @@ func newFixture(t *testing.T) *fixture {
 
 	st, _ := store.NewStoreForTesting()
 
-	client := ProvideSailClient(model.SailURL(*u), fakeSailRoomer{}, fakeSailDialer{})
+	client := ProvideSailClient(model.SailURL(*u), &fakeSailRoomer{}, fakeSailDialer{})
 	return &fixture{
 		t:      t,
 		ctx:    ctx,
@@ -71,13 +73,24 @@ func (f *fixture) conn() *fakeSailConn {
 	return f.client.conn.(*fakeSailConn)
 }
 
+func (f *fixture) assertNewRoomCalls(n int) {
+	fakeRoomer, ok := f.client.roomer.(*fakeSailRoomer)
+	if !ok {
+		f.t.Fatal("client.roomer is not of type fakeSailRoomer??")
+	}
+	assert.Equal(f.t, n, fakeRoomer.newRoomCalls, "expected %d calls to NewRoom, got %d", n, fakeRoomer.newRoomCalls)
+}
+
 func (f *fixture) TearDown() {
 	f.cancel()
 }
 
-type fakeSailRoomer struct{}
+type fakeSailRoomer struct {
+	newRoomCalls int
+}
 
-func (r fakeSailRoomer) NewRoom(ctx context.Context) (roomID, secret string, err error) {
+func (r *fakeSailRoomer) NewRoom(ctx context.Context) (roomID, secret string, err error) {
+	r.newRoomCalls += 1
 	return testRoomID, testSecret, nil
 }
 
