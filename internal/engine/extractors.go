@@ -60,6 +60,7 @@ func extractDockerComposeTargets(specs []model.TargetSpec) []model.DockerCompose
 // Extract image targets iff they can be updated in-place in a container.
 func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.BuildStateSet) ([]model.ImageTarget, error) {
 	iTargets := make([]model.ImageTarget, 0)
+	var anySkippedLiveUpdates bool
 	for _, spec := range specs {
 		iTarget, ok := spec.(model.ImageTarget)
 		if !ok {
@@ -71,14 +72,18 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 			return nil, SilentRedirectToNextBuilderf("In-place build does not support initial deploy")
 		}
 
+		fbInfo := iTarget.MaybeFastBuildInfo()
+		luInfo := iTarget.MaybeLiveUpdateInfo()
+		hasInPlaceUpdate := fbInfo != nil || luInfo != nil
+
 		// If this image doesn't need to be built at all, we can skip it.
 		if !state.NeedsImageBuild() {
+			// (But if it has in-place update instructions, note that we skipped it)
+			anySkippedLiveUpdates = anySkippedLiveUpdates || hasInPlaceUpdate
 			continue
 		}
 
-		fbInfo := iTarget.MaybeFastBuildInfo()
-		luInfo := iTarget.MaybeLiveUpdateInfo()
-		if fbInfo == nil && luInfo == nil {
+		if !hasInPlaceUpdate {
 			return nil, SilentRedirectToNextBuilderf("In-place build requires either FastBuild or LiveUpdate")
 		}
 
@@ -87,6 +92,14 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 		// that would need to be updated.
 		deployInfo := state.DeployInfo
 		if deployInfo.Empty() {
+			if anySkippedLiveUpdates {
+				// NOTE(maia): we currently only collect info for, and therefore only support
+				// live updates on, the first container of a pod. If we don't have container info
+				// for this LiveUpdate-able target, AND we've already seen another LiveUpdate-able
+				// target in this group, chances are we've got a resource with multiple containers
+				// worth of LiveUpdate instructions, which we don't support.
+				return nil, RedirectToNextBuilderInfof("don't have info for deployed container (NOTE: LiveUpdate is only supported for the first container on a pod. Need this feature? Let us know!)")
+			}
 			return nil, RedirectToNextBuilderInfof("don't have info for deployed container (often a result of the deployment not yet being ready)")
 		}
 		iTargets = append(iTargets, iTarget)
