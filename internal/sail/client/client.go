@@ -95,14 +95,14 @@ func (s *SailClient) Connect(ctx context.Context) error {
 	return s.shareToRoom(ctx, roomID, secret)
 }
 
-func (s *SailClient) shareToRoom(ctx context.Context, roomID, secret string) error {
+func (s *SailClient) shareToRoom(ctx context.Context, roomID model.RoomID, secret string) error {
 	header := make(http.Header)
 	header.Add("Origin", s.addr.Ws().String())
 	header.Add(model.SailSecretKey, secret)
 
 	connectURL := s.addr
 	connectURL.Path = "/share"
-	connectURL = connectURL.WithQueryParam(model.SailRoomIDKey, roomID)
+	connectURL = connectURL.WithQueryParam(model.SailRoomIDKey, string(roomID))
 
 	conn, err := s.dialer.DialContext(ctx, connectURL.Ws().String(), header)
 	if err != nil {

@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	testRoomID = "some-room"
+	testRoomID = model.RoomID("some-room")
 	testSecret = "shh-very-secret"
 )
 
@@ -89,7 +89,7 @@ type fakeSailRoomer struct {
 	newRoomCalls int
 }
 
-func (r *fakeSailRoomer) NewRoom(ctx context.Context) (roomID, secret string, err error) {
+func (r *fakeSailRoomer) NewRoom(ctx context.Context) (roomID model.RoomID, secret string, err error) {
 	r.newRoomCalls += 1
 	return testRoomID, testSecret, nil
 }

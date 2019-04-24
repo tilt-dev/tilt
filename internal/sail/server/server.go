@@ -21,7 +21,7 @@ var upgrader = websocket.Upgrader{
 
 type SailServer struct {
 	router      *mux.Router
-	rooms       map[RoomID]*Room
+	rooms       map[model.RoomID]*Room
 	mu          *sync.Mutex
 	assetServer hudServer.AssetServer
 }
@@ -30,7 +30,7 @@ func ProvideSailServer(assetServer hudServer.AssetServer) SailServer {
 	r := mux.NewRouter().UseEncodedPath()
 	s := SailServer{
 		router:      r,
-		rooms:       make(map[RoomID]*Room, 0),
+		rooms:       make(map[model.RoomID]*Room, 0),
 		mu:          &sync.Mutex{},
 		assetServer: assetServer,
 	}
@@ -65,7 +65,7 @@ func (s SailServer) newRoom(w http.ResponseWriter, req *http.Request) {
 	log.Printf("newRoom: %s", room.id)
 }
 
-func (s SailServer) hasRoom(roomID RoomID) bool {
+func (s SailServer) hasRoom(roomID model.RoomID) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -73,7 +73,7 @@ func (s SailServer) hasRoom(roomID RoomID) bool {
 	return ok
 }
 
-func (s SailServer) getRoomWithAuth(roomID RoomID, secret string) (*Room, error) {
+func (s SailServer) getRoomWithAuth(roomID model.RoomID, secret string) (*Room, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -108,7 +108,7 @@ func (s SailServer) connectRoom(w http.ResponseWriter, req *http.Request) {
 	roomID := req.URL.Query().Get(model.SailRoomIDKey)
 	secret := req.Header.Get(model.SailSecretKey)
 
-	room, err := s.getRoomWithAuth(RoomID(roomID), secret)
+	room, err := s.getRoomWithAuth(model.RoomID(roomID), secret)
 	if err != nil {
 		log.Printf("connectRoom: %v", err)
 		w.WriteHeader(http.StatusForbidden) // TODO(maia): send 404 instead if room not found
@@ -125,7 +125,7 @@ func (s SailServer) connectRoom(w http.ResponseWriter, req *http.Request) {
 	s.closeRoom(room)
 }
 
-func (s SailServer) addFanToRoom(ctx context.Context, roomID RoomID, conn *websocket.Conn) error {
+func (s SailServer) addFanToRoom(ctx context.Context, roomID model.RoomID, conn *websocket.Conn) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -141,7 +141,7 @@ func (s SailServer) addFanToRoom(ctx context.Context, roomID RoomID, conn *webso
 
 func (s SailServer) joinRoom(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	roomID := RoomID(vars["roomID"])
+	roomID := model.RoomID(vars["roomID"])
 	conn, err := upgrader.Upgrade(w, req, nil)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error upgrading websocket: %v", err), http.StatusInternalServerError)
@@ -157,7 +157,7 @@ func (s SailServer) joinRoom(w http.ResponseWriter, req *http.Request) {
 
 func (s SailServer) viewRoom(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	roomID := RoomID(vars["roomID"])
+	roomID := model.RoomID(vars["roomID"])
 	if !s.hasRoom(roomID) {
 		http.Error(w, fmt.Sprintf("Room not found: %q", roomID), http.StatusNotFound)
 		return
