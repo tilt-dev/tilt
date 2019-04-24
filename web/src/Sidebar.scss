@@ -33,7 +33,6 @@
 
 .resLink {
   right: 0;
-  background-color: $color-gray;
   border-bottom: 1px solid $color-gray-light;
   color: $color-white;
   text-decoration: none;
@@ -77,9 +76,6 @@
 .resLink--ok::before {
   color: $color-green;
 }
-.resLink--ok::before {
-  color: $color-green;
-}
 .resLink--pending::before {
   color: $color-gray-light;
 }
@@ -94,10 +90,6 @@
   font-weight: normal;
   color: $color-gray-lightest;
   margin-right: $spacing-unit / 2;
-}
-
-.resLink.is-selected time {
-  color: $color-gray;
 }
 
 // Collapse/Expand
