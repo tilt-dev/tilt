@@ -2945,6 +2945,64 @@ k8s_resource('hello-foo', port_forwards=8000)
 	f.loadErrString("workload_to_resource_function arg must take 1 argument. wtrf takes 2")
 }
 
+func TestImpossibleLiveUpdates(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("sancho/Dockerfile", "FROM golang:1.10")
+	f.file("sidecar/Dockerfile", "FROM golang:1.10")
+	f.file("sancho.yaml", testyaml.SanchoSidecarYAML) // two containers
+	f.file("Tiltfile", `
+k8s_yaml('sancho.yaml')
+docker_build('gcr.io/some-project-162817/sancho', './sancho')
+docker_build('gcr.io/some-project-162817/sancho-sidecar', './sidecar',
+  live_update=[restart_container()]
+)
+`)
+
+	f.loadAssertWarnings("Sorry, but Tilt only supports in-place updates for the first Tilt-built container on a pod, so we can't in-place update your image 'gcr.io/some-project-162817/sancho-sidecar'. If this is a feature you need, let us know!")
+}
+
+func TestImpossibleLiveUpdatesOKNoLiveUpdate(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("sancho/Dockerfile", "FROM golang:1.10")
+	f.file("sidecar/Dockerfile", "FROM golang:1.10")
+	f.file("sancho.yaml", testyaml.SanchoSidecarYAML) // two containers
+	f.file("Tiltfile", `
+k8s_yaml('sancho.yaml')
+docker_build('gcr.io/some-project-162817/sancho', './sancho')
+
+# no LiveUpdate on this so nothing meriting a warning
+docker_build('gcr.io/some-project-162817/sancho-sidecar', './sidecar')
+`)
+
+	// Expect no warnings!
+	f.load()
+}
+
+func TestImpossibleLiveUpdatesOKSecondContainerLiveUpdate(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("sancho/Dockerfile", "FROM golang:1.10")
+	f.file("sidecar/Dockerfile", "FROM golang:1.10")
+	f.file("sancho.yaml", testyaml.SanchoSidecarYAML) // two containers
+	f.file("Tiltfile", `
+k8s_yaml('sancho.yaml')
+
+# this is the second k8s container, but only the first image target, so should be OK
+docker_build('gcr.io/some-project-162817/sancho-sidecar', './sidecar')
+`)
+
+	// Expect no warnings!
+	f.load()
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T

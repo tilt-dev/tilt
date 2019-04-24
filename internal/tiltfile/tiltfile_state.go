@@ -633,12 +633,35 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 			return nil, errors.Wrapf(err, "getting image build info for %s", r.name)
 		}
 
+		s.checkForImpossibleLiveUpdates(iTargets)
 		m = m.WithImageTargets(iTargets)
 
 		result = append(result, m)
 	}
 
 	return result, nil
+}
+
+// checkForImpossibleLiveUpdates logs a warning if the group of image targets contains
+// any impossible LiveUpdates (or FastBuilds).
+//
+// Currently, we only collect container information for the first Tilt-built container
+// on the pod (b/c of how we assemble resources, this corresponds to the first image target).
+// We won't collect container info (including DeployInfo) on any subsequent containers
+// (i.e. subsequent image targets), so will never be able to LiveUpdate them.
+func (s *tiltfileState) checkForImpossibleLiveUpdates(iTargs []model.ImageTarget) {
+	if len(iTargs) <= 1 {
+		// nothing to worry about!
+		return
+	}
+	for _, iTarg := range iTargs[1:] {
+		if iTarg.MaybeFastBuildInfo() != nil || iTarg.MaybeLiveUpdateInfo() != nil {
+			// TODO(maia): s/in-place updates/live updates after we fully deprecate FastBuild
+			s.warnings = append(s.warnings, fmt.Sprintf("Sorry, but Tilt only supports in-place updates "+
+				"for the first Tilt-built container on a pod, so we can't in-place update your image '%s'. If this "+
+				"is a feature you need, let us know!", iTarg.DeploymentRef.String()))
+		}
+	}
 }
 
 // Grabs all image targets for the given references,
