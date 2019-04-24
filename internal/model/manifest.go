@@ -7,6 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/docker/distribution/reference"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 
@@ -30,6 +31,8 @@ type Manifest struct {
 
 	// Info needed to deploy. Can be k8s yaml, docker compose, etc.
 	deployTarget TargetSpec
+
+	UpdateMode UpdateMode
 }
 
 func (m Manifest) ID() TargetID {
@@ -334,3 +337,10 @@ func DeepEqual(x, y interface{}) bool {
 		selectorAllowUnexported,
 		dockerRefEqual)
 }
+
+type UpdateMode int
+
+const (
+	UpdateModeAuto   UpdateMode = iota
+	UpdateModeManual UpdateMode = iota
+)

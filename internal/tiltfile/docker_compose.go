@@ -60,10 +60,12 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var name string
 	var imageVal starlark.Value
+	var updateMode updateMode
 
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
 		"image", &imageVal, // in future this will be optional
+		"update_mode?", &updateMode,
 	); err != nil {
 		return nil, err
 	}
@@ -88,6 +90,8 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 	if err != nil {
 		return nil, err
 	}
+
+	svc.UpdateMode = updateMode
 
 	normalized, err := container.ParseNamed(imageRefAsStr)
 	if err != nil {
@@ -263,6 +267,8 @@ type dcService struct {
 
 	DependencyIDs  []model.TargetID
 	PublishedPorts []int
+
+	UpdateMode updateMode
 }
 
 func (c dcConfig) GetService(name string) (dcService, error) {
@@ -404,8 +410,13 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcConfigPath str
 		WithPublishedPorts(service.PublishedPorts).
 		WithIgnoredLocalDirectories(service.MountedLocalDirs)
 
+	um, err := starlarkUpdateModeToModel(s.updateModeForResource(service.UpdateMode))
+	if err != nil {
+		return model.Manifest{}, nil, err
+	}
 	m := model.Manifest{
-		Name: model.ManifestName(service.Name),
+		Name:       model.ManifestName(service.Name),
+		UpdateMode: um,
 	}.WithDeployTarget(dcInfo)
 
 	if service.DfPath == "" {

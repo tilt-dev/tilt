@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 
+	"go.starlark.net/syntax"
+
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
@@ -52,7 +54,7 @@ type tiltfileState struct {
 	// for assembly
 	usedImages map[string]bool
 
-	builtinsMap starlark.StringDict
+	predeclaredMap starlark.StringDict
 	// count how many times each builtin is called, for analytics
 	builtinCallCounts map[string]int
 
@@ -62,6 +64,10 @@ type tiltfileState struct {
 	// it'd be appealing to store this as a map[liveUpdateStep]bool, but then things get weird if we have two steps
 	// with the same hashcode (like, all restartcontainer steps)
 	unconsumedLiveUpdateSteps map[string]liveUpdateStep
+
+	updateMode updateMode
+	// for error reporting in case it's called twice
+	updateModeCallPosition syntax.Position
 
 	logger   logger.Logger
 	warnings []string
@@ -92,6 +98,7 @@ func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClie
 		unconsumedLiveUpdateSteps:  make(map[string]liveUpdateStep),
 		k8sResourceAssemblyVersion: 2,
 		k8sResourceOptions:         make(map[string]k8sResourceOptions),
+		updateMode:                 UpdateModeAuto,
 	}
 	s.filename = s.maybeAttachGitRepo(lp, filepath.Dir(lp.path))
 	return s
@@ -106,7 +113,7 @@ func (s *tiltfileState) starlarkThread() *starlark.Thread {
 }
 
 func (s *tiltfileState) exec() error {
-	_, err := starlark.ExecFile(s.starlarkThread(), s.filename.path, nil, s.builtins())
+	_, err := starlark.ExecFile(s.starlarkThread(), s.filename.path, nil, s.predeclared())
 	return err
 }
 
@@ -150,10 +157,71 @@ const (
 	runN              = "run"
 	restartContainerN = "restart_container"
 
+	// update mode
+	updateModeN       = "update_mode"
+	updateModeAutoN   = "UPDATE_MODE_AUTO"
+	updateModeManualN = "UPDATE_MODE_MANUAL"
+
 	// other functions
 	failN = "fail"
 	blobN = "blob"
 )
+
+type updateMode int
+
+func (u updateMode) String() string {
+	switch u {
+	case UpdateModeManual:
+		return updateModeManualN
+	case UpdateModeAuto:
+		return updateModeAutoN
+	default:
+		return fmt.Sprintf("unknown update mode with value %d", u)
+	}
+}
+
+func (u updateMode) Type() string {
+	return "UpdateMode"
+}
+
+func (u updateMode) Freeze() {
+	// noop
+}
+
+func (u updateMode) Truth() starlark.Bool {
+	return starlark.MakeInt(int(u)).Truth()
+}
+
+func (u updateMode) Hash() (uint32, error) {
+	return starlark.MakeInt(int(u)).Hash()
+}
+
+var _ starlark.Value = updateMode(0)
+
+const (
+	UpdateModeUnset  updateMode = iota
+	UpdateModeAuto   updateMode = iota
+	UpdateModeManual updateMode = iota
+)
+
+func (s *tiltfileState) updateModeForResource(resourceUpdateMode updateMode) updateMode {
+	if resourceUpdateMode != UpdateModeUnset {
+		return resourceUpdateMode
+	} else {
+		return s.updateMode
+	}
+}
+
+func starlarkUpdateModeToModel(updateMode updateMode) (model.UpdateMode, error) {
+	switch updateMode {
+	case UpdateModeManual:
+		return model.UpdateModeManual, nil
+	case UpdateModeAuto:
+		return model.UpdateModeAuto, nil
+	default:
+		return 0, fmt.Errorf("unknown updateMode %v", updateMode)
+	}
+}
 
 // count how many times each builtin is called, for analytics
 func (s *tiltfileState) makeBuiltinReporting(name string, f func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)) func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -163,9 +231,9 @@ func (s *tiltfileState) makeBuiltinReporting(name string, f func(thread *starlar
 	}
 }
 
-func (s *tiltfileState) builtins() starlark.StringDict {
-	if s.builtinsMap != nil {
-		return s.builtinsMap
+func (s *tiltfileState) predeclared() starlark.StringDict {
+	if s.predeclaredMap != nil {
+		return s.predeclaredMap
 	}
 
 	addBuiltin := func(r starlark.StringDict, name string, fn func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)) {
@@ -201,12 +269,16 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 	addBuiltin(r, decodeJSONN, s.decodeJSON)
 	addBuiltin(r, readJSONN, s.readJson)
 
+	addBuiltin(r, updateModeN, s.updateModeFn)
+	r[updateModeAutoN] = UpdateModeAuto
+	r[updateModeManualN] = UpdateModeManual
+
 	addBuiltin(r, fallBackOnN, s.liveUpdateFallBackOn)
 	addBuiltin(r, syncN, s.liveUpdateSync)
 	addBuiltin(r, runN, s.liveUpdateRun)
 	addBuiltin(r, restartContainerN, s.liveUpdateRestartContainer)
 
-	s.builtinsMap = r
+	s.predeclaredMap = r
 
 	return r
 }
@@ -328,6 +400,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 		if r, ok := s.k8sByName[workload]; ok {
 			r.extraPodSelectors = opts.extraPodSelectors
 			r.portForwards = opts.portForwards
+			r.updateMode = opts.updateMode
 			if opts.newName != "" && opts.newName != r.name {
 				if _, ok := s.k8sByName[opts.newName]; ok {
 					return fmt.Errorf("k8s_resource at %s specified to rename '%s' to '%s', but there is already a resource with that name", opts.tiltfilePosition.String(), r.name, opts.newName)
@@ -617,8 +690,13 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 	var result []model.Manifest
 	for _, r := range resources {
 		mn := model.ManifestName(r.name)
+		um, err := starlarkUpdateModeToModel(s.updateModeForResource(r.updateMode))
+		if err != nil {
+			return nil, err
+		}
 		m := model.Manifest{
-			Name: mn,
+			Name:       mn,
+			UpdateMode: um,
 		}
 
 		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.portForwardsToDomain(r), r.extraPodSelectors, r.dependencyIDs)
@@ -838,4 +916,21 @@ func (k k8sObjectSelector) matches(e k8s.K8sEntity) bool {
 		k.kind.MatchString(e.Kind.Kind) &&
 		k.name.MatchString(e.Name()) &&
 		k.namespace.MatchString(e.Namespace().String())
+}
+
+func (s *tiltfileState) updateModeFn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var updateMode updateMode
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "update_mode", &updateMode)
+	if err != nil {
+		return nil, err
+	}
+
+	if s.updateModeCallPosition.IsValid() {
+		return starlark.None, fmt.Errorf("%s can only be called once. It was already called at %s", fn.Name(), s.updateModeCallPosition.String())
+	}
+
+	s.updateMode = updateMode
+	s.updateModeCallPosition = thread.Caller().Position()
+
+	return starlark.None, nil
 }

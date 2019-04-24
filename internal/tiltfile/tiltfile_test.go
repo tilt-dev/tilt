@@ -3003,6 +3003,139 @@ docker_build('gcr.io/some-project-162817/sancho-sidecar', './sidecar')
 	f.load()
 }
 
+func TestUpdateModeK8S(t *testing.T) {
+	for _, testCase := range []struct {
+		name               string
+		globalSetting      updateMode
+		k8sResourceSetting updateMode
+		expectedUpdateMode model.UpdateMode
+	}{
+		{"default", UpdateModeUnset, UpdateModeUnset, model.UpdateModeAuto},
+		{"explicit global auto", UpdateModeAuto, UpdateModeUnset, model.UpdateModeAuto},
+		{"explicit global manual", UpdateModeManual, UpdateModeUnset, model.UpdateModeManual},
+		{"kr auto", UpdateModeUnset, UpdateModeUnset, model.UpdateModeAuto},
+		{"kr manual", UpdateModeUnset, UpdateModeManual, model.UpdateModeManual},
+		{"kr override auto", UpdateModeManual, UpdateModeAuto, model.UpdateModeAuto},
+		{"kr override manual", UpdateModeAuto, UpdateModeManual, model.UpdateModeManual},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+
+			f.setupFoo()
+
+			var globalUpdateModeDirective string
+			switch testCase.globalSetting {
+			case UpdateModeUnset:
+				globalUpdateModeDirective = ""
+			case UpdateModeManual:
+				globalUpdateModeDirective = "update_mode(UPDATE_MODE_MANUAL)"
+			case UpdateModeAuto:
+				globalUpdateModeDirective = "update_mode(UPDATE_MODE_AUTO)"
+			}
+
+			var k8sResourceDirective string
+			switch testCase.k8sResourceSetting {
+			case UpdateModeUnset:
+				k8sResourceDirective = ""
+			case UpdateModeManual:
+				k8sResourceDirective = "k8s_resource('foo', update_mode=UPDATE_MODE_MANUAL)"
+			case UpdateModeAuto:
+				k8sResourceDirective = "k8s_resource('foo', update_mode=UPDATE_MODE_AUTO)"
+			}
+
+			f.file("Tiltfile", fmt.Sprintf(`
+%s
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+%s
+`, globalUpdateModeDirective, k8sResourceDirective))
+
+			f.load()
+
+			f.assertNumManifests(1)
+			f.assertNextManifest("foo", testCase.expectedUpdateMode)
+		})
+	}
+}
+
+func TestUpdateModeDC(t *testing.T) {
+	for _, testCase := range []struct {
+		name               string
+		globalSetting      updateMode
+		dcResourceSetting  updateMode
+		expectedUpdateMode model.UpdateMode
+	}{
+		{"default", UpdateModeUnset, UpdateModeUnset, model.UpdateModeAuto},
+		{"explicit global auto", UpdateModeAuto, UpdateModeUnset, model.UpdateModeAuto},
+		{"explicit global manual", UpdateModeManual, UpdateModeUnset, model.UpdateModeManual},
+		{"dc auto", UpdateModeUnset, UpdateModeUnset, model.UpdateModeAuto},
+		{"dc manual", UpdateModeUnset, UpdateModeManual, model.UpdateModeManual},
+		{"dc override auto", UpdateModeManual, UpdateModeAuto, model.UpdateModeAuto},
+		{"dc override manual", UpdateModeAuto, UpdateModeManual, model.UpdateModeManual},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+
+			f.dockerfile("foo/Dockerfile")
+			f.file("docker-compose.yml", simpleConfig)
+
+			var globalUpdateModeDirective string
+			switch testCase.globalSetting {
+			case UpdateModeUnset:
+				globalUpdateModeDirective = ""
+			case UpdateModeManual:
+				globalUpdateModeDirective = "update_mode(UPDATE_MODE_MANUAL)"
+			case UpdateModeAuto:
+				globalUpdateModeDirective = "update_mode(UPDATE_MODE_AUTO)"
+			}
+
+			var dcResourceDirective string
+			switch testCase.dcResourceSetting {
+			case UpdateModeUnset:
+				dcResourceDirective = ""
+			case UpdateModeManual:
+				dcResourceDirective = "dc_resource('foo', 'gcr.io/foo', update_mode=UPDATE_MODE_MANUAL)"
+			case UpdateModeAuto:
+				dcResourceDirective = "dc_resource('foo', 'gcr.io/foo', update_mode=UPDATE_MODE_AUTO)"
+			}
+
+			f.file("Tiltfile", fmt.Sprintf(`
+%s
+docker_compose('docker-compose.yml')
+%s
+`, globalUpdateModeDirective, dcResourceDirective))
+
+			f.load()
+
+			f.assertNumManifests(1)
+			f.assertNextManifest("foo", testCase.expectedUpdateMode)
+		})
+	}
+}
+
+func TestUpdateModeInt(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+update_mode(1)
+`)
+	f.loadErrString("got int, want UpdateMode")
+}
+
+func TestMultipleUpdateMode(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+update_mode(UPDATE_MODE_MANUAL)
+update_mode(UPDATE_MODE_MANUAL)
+`)
+	f.loadErrString("update_mode can only be called once")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
@@ -3433,6 +3566,8 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 
 		case []model.PortForward:
 			assert.Equal(f.t, opt, m.K8sTarget().PortForwards)
+		case model.UpdateMode:
+			assert.Equal(f.t, opt, m.UpdateMode)
 		default:
 			f.t.Fatalf("unexpected arg to assertNextManifest: %T %v", opt, opt)
 		}
