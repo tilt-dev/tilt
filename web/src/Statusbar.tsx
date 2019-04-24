@@ -1,5 +1,5 @@
 import React, { PureComponent } from "react"
-import { ReactComponent as LogoSvg } from "./assets/svg/logo-imagemark.svg"
+import { ReactComponent as LogoSvg } from "./assets/svg/logo.svg"
 import { combinedStatus, warnings } from "./status"
 import "./Statusbar.scss"
 import { combinedStatusMessage } from "./combinedStatusMessage"

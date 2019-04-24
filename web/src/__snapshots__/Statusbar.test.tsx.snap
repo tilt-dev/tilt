@@ -53,7 +53,7 @@ exports[`StatusBar renders two items all ok snapshot 1`] = `
     <svg
       className="icon"
     >
-      logo-imagemark.svg
+      logo.svg
     </svg>
   </span>
 </div>
@@ -112,7 +112,7 @@ exports[`StatusBar renders two items both errors snapshot 1`] = `
     <svg
       className="icon"
     >
-      logo-imagemark.svg
+      logo.svg
     </svg>
   </span>
 </div>
@@ -171,7 +171,7 @@ exports[`StatusBar renders without crashing 1`] = `
     <svg
       className="icon"
     >
-      logo-imagemark.svg
+      logo.svg
     </svg>
   </span>
 </div>
