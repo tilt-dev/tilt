@@ -4,19 +4,36 @@
   margin-top: $tabnav-height;
   margin-right: $sidebar-width;
   margin-bottom: $statusbar-height;
-  padding: $spacing-unit / 2;
+  padding: $spacing-unit;
+  width: 100%;
 }
 
 .ErrorPane ul {
   list-style: none;
 }
 
-.ErrorPane li + li {
-  margin-top: $spacing-unit;
-  border-top: 2px solid $color-gray;
-  padding-top: $spacing-unit;
+.ErrorPane-item {
+  background-color: $color-gray-dark;
+  border: 1px dotted $color-gray-light;
+  padding: $spacing-unit;
+  border-radius: $spacing-unit / 4;
 }
 
-.ErrorPane code {
+.ErrorPane-item + .ErrorPane-item {
+  margin-top: $spacing-unit;
+}
+
+// Hide all lines by default
+.ErrorPane-item code {
   display: block;
+  white-space: pre-wrap;
+  height: 0;
+  opacity: 0;
+}
+
+// ...only show last few lines
+.ErrorPane-item code:nth-last-child(-n + 8) {
+  min-height: $spacing-unit / 2; // Respect blank lines
+  height: auto;
+  opacity: 1;
 }

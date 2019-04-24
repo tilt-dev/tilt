@@ -51,11 +51,13 @@ class ErrorPane extends PureComponent<ErrorsProps> {
         r.resourceInfo.podStatus === "CrashLoopBackOff"
       ) {
         errorElements.push(
-          <li key={"resourceInfoError" + r.name}>{r.resourceInfo.podLog}</li>
+          <li key={"resourceInfoError" + r.name} className="ErrorPane-item">
+            {r.resourceInfo.podLog}
+          </li>
         )
       } else if (r.resourceInfo.podRestarts > 0) {
         errorElements.push(
-          <li key={"resourceInfoPodCrash" + r.name}>
+          <li key={"resourceInfoPodCrash" + r.name} className="ErrorPane-item">
             <p>{`${r.name} has container restarts: ${
               r.resourceInfo.podRestarts
             }.`}</p>
@@ -67,7 +69,7 @@ class ErrorPane extends PureComponent<ErrorsProps> {
         let lastBuild = r.buildHistory.slice(-1)[0]
         if (lastBuild.Error !== null) {
           errorElements.push(
-            <li key={"buildError" + r.name}>
+            <li key={"buildError" + r.name} className="ErrorPane-item">
               {lastBuild.Log.split("\n").map((l, i) => (
                 <AnsiLine key={"logLine" + i} line={l} />
               ))}
