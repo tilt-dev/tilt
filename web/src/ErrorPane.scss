@@ -15,6 +15,10 @@
   text-align: center;
 }
 
+.ErrorPane-empty svg {
+  opacity: $translucent-ish;
+}
+
 .ErrorPane-empty p {
   margin-top: $spacing-unit / 4;
   font-family: $font-sans-serif;
