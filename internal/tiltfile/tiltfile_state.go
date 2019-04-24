@@ -170,7 +170,14 @@ const (
 type updateMode int
 
 func (u updateMode) String() string {
-	return starlark.MakeInt(int(u)).String()
+	switch u {
+	case UpdateModeManual:
+		return updateModeManualN
+	case UpdateModeAuto:
+		return updateModeAutoN
+	default:
+		return fmt.Sprintf("unknown update mode with value %d", u)
+	}
 }
 
 func (u updateMode) Type() string {
