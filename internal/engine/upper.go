@@ -816,10 +816,11 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 	ms.LBs[k8s.ServiceName(service.Name)] = action.URL
 }
 
-func handleDumpEngineStateAction(ctx context.Context, engineState *store.EngineState) error {
+func handleDumpEngineStateAction(ctx context.Context, engineState *store.EngineState) {
 	f, err := ioutil.TempFile("", "tilt-engine-state-*.txt")
 	if err != nil {
-		return errors.Wrap(err, "error creating temp file to write engine state to")
+		logger.Get(ctx).Infof("error creating temp file to write engine state: %v", err)
+		return
 	}
 
 	logger.Get(ctx).Infof("dumped tilt engine state to %q", f.Name())
@@ -827,10 +828,9 @@ func handleDumpEngineStateAction(ctx context.Context, engineState *store.EngineS
 
 	err = f.Close()
 	if err != nil {
-		return errors.Wrap(err, "error closing engine state temp file")
+		logger.Get(ctx).Infof("error closing engine state temp file: %v", err)
+		return
 	}
-
-	return nil
 }
 
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
