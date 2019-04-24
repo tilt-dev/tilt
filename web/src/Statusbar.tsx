@@ -4,6 +4,7 @@ import { combinedStatus, warnings } from "./status"
 import "./Statusbar.scss"
 import { combinedStatusMessage } from "./combinedStatusMessage"
 import { Build } from "./types"
+import mostRecentBuildToDisplay from "./mostRecentBuild"
 
 const nbsp = "\u00a0"
 
@@ -15,6 +16,9 @@ class StatusItem {
   public currentBuild: Build
   public lastBuild: Build | null
   public podStatus: string
+  public pendingBuildSince: string
+  public buildHistory: Array<Build>
+  public pendingBuildEdits: Array<string>
 
   /**
    * Create a pared down StatusItem from a ResourceView
@@ -27,8 +31,11 @@ class StatusItem {
     this.up = status == "ok"
     this.hasError = status == "error"
     this.currentBuild = res.CurrentBuild
+    this.buildHistory = res.BuildHistory
     this.lastBuild = res.BuildHistory ? res.BuildHistory[0] : null
     this.podStatus = res.ResourceInfo && res.ResourceInfo.PodStatus
+    this.pendingBuildSince = res.PendingBuildSince
+    this.pendingBuildEdits = res.PendingBuildEdits
   }
 }
 
@@ -106,6 +113,8 @@ class Statusbar extends PureComponent<StatusBarProps> {
     let warningPanel = this.warningPanel(warningCount)
     let upPanel = this.upPanel(upCount, itemCount)
 
+    let build = mostRecentBuildToDisplay(this.props.items)
+
     return (
       <div className="Statusbar">
         {errorPanel}
@@ -113,6 +122,13 @@ class Statusbar extends PureComponent<StatusBarProps> {
         <p className="Statusbar-panel--statusMessage">
           {combinedStatusMessage(this.props.items)}
         </p>
+        {build ? (
+          <p className="Statusbar-panel--lastEdit">
+            <span className="Statusbar-panel--lastEditMessage">Last Edit</span> {build.edits} ({build.name})
+          </p>
+        ) : (
+          ""
+        )}
         {upPanel}
       </div>
     )
