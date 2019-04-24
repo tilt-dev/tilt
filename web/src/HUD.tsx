@@ -56,7 +56,7 @@ type HudState = {
     Resources: Array<Resource>
     Log: string
     LogTimestamps: boolean
-    SailURL: string
+    SailUrl: string
   } | null
   IsSidebarClosed: boolean
 }
@@ -90,7 +90,7 @@ class HUD extends Component<HudProps, HudState> {
         Resources: [],
         Log: "",
         LogTimestamps: false,
-        SailURL: "",
+        SailUrl: "",
       },
       IsSidebarClosed: false,
     }
@@ -151,6 +151,7 @@ class HUD extends Component<HudProps, HudState> {
 
   render() {
     let view = this.state.View
+    let sailUrl = view ? view.SailUrl : ""
     let message = this.state.Message
     let resources = (view && view.Resources) || []
     if (!resources.length) {
@@ -175,7 +176,7 @@ class HUD extends Component<HudProps, HudState> {
       )
     }
 
-    let tabNavRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
+    let tabNavRoute = (t: ResourceView, sailUrl: string, props: RouteComponentProps<any>) => {
       let name =
         props.match.params && props.match.params.name
           ? props.match.params.name
@@ -186,6 +187,7 @@ class HUD extends Component<HudProps, HudState> {
           errorsUrl={name === "" ? "/errors" : `/r/${name}/errors`}
           previewUrl={this.getEndpointForName(name, sidebarItems)}
           resourceView={t}
+          sailUrl={sailUrl}
         />
       )
     }
@@ -234,21 +236,21 @@ class HUD extends Component<HudProps, HudState> {
           <Switch>
             <Route
               path={this.path("/r/:name/errors")}
-              render={tabNavRoute.bind(null, ResourceView.Errors)}
+              render={tabNavRoute.bind(null, ResourceView.Errors, sailUrl)}
             />
             <Route
               path={this.path("/r/:name/preview")}
-              render={tabNavRoute.bind(null, ResourceView.Preview)}
+              render={tabNavRoute.bind(null, ResourceView.Preview, sailUrl)}
             />
             <Route
               path={this.path("/r/:name")}
-              render={tabNavRoute.bind(null, ResourceView.Log)}
+              render={tabNavRoute.bind(null, ResourceView.Log, sailUrl)}
             />
             <Route
               path={this.path("/errors")}
-              render={tabNavRoute.bind(null, ResourceView.Errors)}
+              render={tabNavRoute.bind(null, ResourceView.Errors, sailUrl)}
             />
-            <Route render={tabNavRoute.bind(null, ResourceView.Log)} />
+            <Route render={tabNavRoute.bind(null, ResourceView.Log, sailUrl)} />
           </Switch>
           <Switch>
             <Route

@@ -8,6 +8,7 @@ type NavProps = {
   logUrl: string
   errorsUrl: string
   resourceView: ResourceView
+  sailUrl: string
 }
 
 class TabNav extends PureComponent<NavProps> {
