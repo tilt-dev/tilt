@@ -16,10 +16,27 @@
 }
 
 .ErrorPane-item {
+}
+
+.ErrorPane-item header {
+  background-color: $color-gray;
+  border: 1px solid $color-gray-light;
+  display: flex;
+  justify-content: space-between;
+  padding-top: $spacing-unit / 4;
+  padding-bottom: $spacing-unit / 4;
+  padding-left: $spacing-unit / 2;
+  padding-right: $spacing-unit / 2;
+}
+
+.ErrorPane-item section {
   background-color: $color-gray-dark;
-  border: 1px dotted $color-gray-light;
-  padding: $spacing-unit;
-  border-radius: $spacing-unit / 4;
+  border-bottom-left-radius: $spacing-unit / 4;
+  border-bottom-right-radius: $spacing-unit / 4;
+  border-left: 1px solid $color-gray-light;
+  border-right: 1px solid $color-gray-light;
+  border-bottom: 1px solid $color-gray-light;
+  padding: $spacing-unit / 2;
 }
 
 .ErrorPane-item + .ErrorPane-item {

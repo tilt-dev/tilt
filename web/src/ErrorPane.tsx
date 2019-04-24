@@ -1,6 +1,7 @@
 import React, { PureComponent } from "react"
 import { ReactComponent as LogoWorkmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
 import AnsiLine from "./AnsiLine"
+import TimeAgo from "react-timeago"
 import "./ErrorPane.scss"
 import { zeroTime } from "./time"
 import { Build } from "./types"
@@ -58,16 +59,24 @@ class ErrorPane extends PureComponent<ErrorsProps> {
       ) {
         errorElements.push(
           <li key={"resourceInfoError" + r.name} className="ErrorPane-item">
-            {r.resourceInfo.podLog}
+            <header>
+              <p>{r.name}</p>
+              <p>{r.resourceInfo.podCreationTime}</p>
+            </header>
+            <section>{r.resourceInfo.podLog}</section>
           </li>
         )
       } else if (r.resourceInfo.podRestarts > 0) {
         errorElements.push(
           <li key={"resourceInfoPodCrash" + r.name} className="ErrorPane-item">
-            <p>{`${r.name} has container restarts: ${
-              r.resourceInfo.podRestarts
-            }.`}</p>
-            <p>{`Last log line: ${r.resourceInfo.podLog}`}</p>
+            <header>
+              <p>{r.name}</p>
+              <p>{`Restarts: ${r.resourceInfo.podRestarts}`}</p>
+              <p>{r.resourceInfo.podCreationTime}</p>
+            </header>
+            <section>
+              <p>{`Last log line: ${r.resourceInfo.podLog}`}</p>
+            </section>
           </li>
         )
       }
@@ -76,9 +85,17 @@ class ErrorPane extends PureComponent<ErrorsProps> {
         if (lastBuild.Error !== null) {
           errorElements.push(
             <li key={"buildError" + r.name} className="ErrorPane-item">
-              {lastBuild.Log.split("\n").map((l, i) => (
-                <AnsiLine key={"logLine" + i} line={l} />
-              ))}
+              <header>
+                <p>{r.name}</p>
+                <p>
+                  <TimeAgo date={lastBuild.FinishTime} />
+                </p>
+              </header>
+              <section>
+                {lastBuild.Log.split("\n").map((l, i) => (
+                  <AnsiLine key={"logLine" + i} line={l} />
+                ))}
+              </section>
             </li>
           )
         }
