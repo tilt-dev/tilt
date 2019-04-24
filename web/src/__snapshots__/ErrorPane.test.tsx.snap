@@ -4,9 +4,16 @@ exports[`renders no errors 1`] = `
 <section
   className="ErrorPane"
 >
-  <p>
-    No errors
-  </p>
+  <section
+    className="ErrorPane-empty-message"
+  >
+    <svg>
+      logo-wordmark-gray.svg
+    </svg>
+    <h2>
+      No Errors Found
+    </h2>
+  </section>
 </section>
 `;
 
@@ -15,7 +22,9 @@ exports[`renders one build error 1`] = `
   className="ErrorPane"
 >
   <ul>
-    <li>
+    <li
+      className="ErrorPane-item"
+    >
       <code>
         <span
           className={null}
@@ -42,7 +51,9 @@ exports[`renders one container start error 1`] = `
   className="ErrorPane"
 >
   <ul>
-    <li>
+    <li
+      className="ErrorPane-item"
+    >
       Eeeeek there is a problem
     </li>
   </ul>
@@ -54,7 +65,9 @@ exports[`renders one container start error 2`] = `
   className="ErrorPane"
 >
   <ul>
-    <li>
+    <li
+      className="ErrorPane-item"
+    >
       Eeeeek there is a problem
     </li>
   </ul>
@@ -66,7 +79,9 @@ exports[`renders the last build with an error 1`] = `
   className="ErrorPane"
 >
   <ul>
-    <li>
+    <li
+      className="ErrorPane-item"
+    >
       <code>
         <span
           className={null}
@@ -93,7 +108,9 @@ exports[`shows that a container has restarted 1`] = `
   className="ErrorPane"
 >
   <ul>
-    <li>
+    <li
+      className="ErrorPane-item"
+    >
       <p>
         foo has container restarts: 1.
       </p>

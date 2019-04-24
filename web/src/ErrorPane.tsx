@@ -45,9 +45,9 @@ type ErrorsProps = {
 class ErrorPane extends PureComponent<ErrorsProps> {
   render() {
     let el: JSX.Element = (
-      <section className="ErrorPane-empty">
+      <section className="Pane-empty-message">
         <LogoWorkmarkSvg />
-        <p>No Errors Found</p>
+        <h2>No Errors Found</h2>
       </section>
     )
     let errorElements: Array<JSX.Element> = []
