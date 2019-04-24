@@ -121,7 +121,6 @@ func (s *Store) Close() {
 func (s *Store) Loop(ctx context.Context) error {
 	s.subscribers.Setup(ctx)
 	defer s.subscribers.TeardownAll(context.Background())
-
 	for {
 		select {
 		case <-ctx.Done():

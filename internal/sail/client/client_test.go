@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -39,12 +40,29 @@ func TestBroadcast(t *testing.T) {
 	assert.Equal(t, 2, len(f.conn().json.(webview.View).Resources))
 }
 
+func TestSailRoomConnectedAction(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	go f.store.Loop(f.ctx)
+	f.client.OnChange(f.ctx, f.store)
+
+	time.Sleep(10 * time.Millisecond)
+	for _, a := range f.getActions() {
+		if roomConn, ok := a.(SailRoomConnectedAction); ok {
+			assert.NoError(t, roomConn.Err)
+			assert.Equal(t, "http://localhost:12345/view/some-room", roomConn.ViewUrl)
+			break
+		}
+	}
+}
+
 type fixture struct {
-	t      *testing.T
-	ctx    context.Context
-	cancel func()
-	client *SailClient
-	store  *store.Store
+	t          *testing.T
+	ctx        context.Context
+	cancel     func()
+	client     *SailClient
+	store      *store.Store
+	getActions func() []store.Action
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -54,15 +72,16 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatal(err)
 	}
 
-	st, _ := store.NewStoreForTesting()
+	st, getActions := store.NewStoreForTesting()
 
 	client := ProvideSailClient(model.SailURL(*u), &fakeSailRoomer{}, fakeSailDialer{})
 	return &fixture{
-		t:      t,
-		ctx:    ctx,
-		cancel: cancel,
-		client: client,
-		store:  st,
+		t:          t,
+		ctx:        ctx,
+		cancel:     cancel,
+		client:     client,
+		store:      st,
+		getActions: getActions,
 	}
 }
 
