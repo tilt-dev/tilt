@@ -15,15 +15,17 @@ import (
 
 type SailClient struct {
 	addr     model.SailURL
+	roomer   SailRoomer
 	dialer   SailDialer
 	conn     SailConn
 	mu       sync.Mutex
 	initDone bool
 }
 
-func ProvideSailClient(dialer SailDialer, addr model.SailURL) *SailClient {
+func ProvideSailClient(addr model.SailURL, roomer SailRoomer, dialer SailDialer) *SailClient {
 	return &SailClient{
 		addr:   addr,
+		roomer: roomer,
 		dialer: dialer,
 	}
 }
@@ -84,12 +86,25 @@ func (s *SailClient) setConnection(ctx context.Context, conn SailConn) {
 }
 
 func (s *SailClient) Connect(ctx context.Context) error {
+	roomID, secret, err := s.roomer.NewRoom(ctx)
+	if err != nil {
+		return err
+	}
+	logger.Get(ctx).Infof("new room %s with secret %s\n", roomID, secret)
+
+	return s.shareToRoom(ctx, roomID, secret)
+}
+
+func (s *SailClient) shareToRoom(ctx context.Context, roomID, secret string) error {
 	header := make(http.Header)
-	header.Add("Origin", s.addr.String())
+	header.Add("Origin", s.addr.Ws().String())
+	header.Add(model.SailSecretKey, secret)
 
 	connectURL := s.addr
 	connectURL.Path = "/share"
-	conn, err := s.dialer.DialContext(ctx, connectURL.String(), header)
+	connectURL = connectURL.WithQueryParam(model.SailRoomIDKey, roomID)
+
+	conn, err := s.dialer.DialContext(ctx, connectURL.Ws().String(), header)
 	if err != nil {
 		return err
 	}

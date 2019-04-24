@@ -2,19 +2,23 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"log"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
+// TODO(maia): maybe put this in model/sail.go so can access from the client too?
 type RoomID string
 
 // A room where messages from a source are broadcast to all the followers.
 type Room struct {
 	// Immutable data
 	id     RoomID
+	secret string // used to authorize attempts to share to this room
 	source SourceConn
 	addFan chan AddFanAction
 	fanOut chan FanOutAction
@@ -49,12 +53,22 @@ type FanOutAction struct {
 	data        []byte
 }
 
-func NewRoom(conn SourceConn) *Room {
+func NewRoom() *Room {
 	return &Room{
 		id:     RoomID(uuid.New().String()),
-		source: conn,
+		secret: uuid.New().String(),
 		addFan: make(chan AddFanAction, 0),
 	}
+}
+
+// newRoomResponse returns json bytes containing all information about this room that we want
+// to return to the caller of the /new_room endpoint
+func (r *Room) newRoomResponse() ([]byte, error) {
+	info := model.SailRoomInfo{
+		RoomID: string(r.id),
+		Secret: r.secret,
+	}
+	return json.Marshal(info)
 }
 
 // Add a fan that consumes messages from the source.

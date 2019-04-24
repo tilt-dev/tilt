@@ -59,7 +59,8 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	ctx, cancel := context.WithCancel(context.Background())
 	source := newFakeSource(ctx)
-	room := NewRoom(source)
+	room := NewRoom()
+	room.source = source
 	errCh := make(chan error)
 	go func() {
 		errCh <- room.ConsumeSource(ctx)
