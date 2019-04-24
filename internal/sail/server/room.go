@@ -11,13 +11,10 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-// TODO(maia): maybe put this in model/sail.go so can access from the client too?
-type RoomID string
-
 // A room where messages from a source are broadcast to all the followers.
 type Room struct {
 	// Immutable data
-	id     RoomID
+	id     model.RoomID
 	secret string // used to authorize attempts to share to this room
 	source SourceConn
 	addFan chan AddFanAction
@@ -55,7 +52,7 @@ type FanOutAction struct {
 
 func NewRoom() *Room {
 	return &Room{
-		id:     RoomID(uuid.New().String()),
+		id:     model.RoomID(uuid.New().String()),
 		secret: uuid.New().String(),
 		addFan: make(chan AddFanAction, 0),
 	}
@@ -65,7 +62,7 @@ func NewRoom() *Room {
 // to return to the caller of the /new_room endpoint
 func (r *Room) newRoomResponse() ([]byte, error) {
 	info := model.SailRoomInfo{
-		RoomID: string(r.id),
+		RoomID: r.id,
 		Secret: r.secret,
 	}
 	return json.Marshal(info)

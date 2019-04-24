@@ -6,10 +6,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 const (
-	testRoomID = RoomID("some-room")
+	testRoomID = model.RoomID("some-room")
 	testSecret = "shh-very-secret"
 )
 

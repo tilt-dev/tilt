@@ -11,8 +11,10 @@ const (
 	SailRoomIDKey = "room_id"
 )
 
+type RoomID string
+
 type SailRoomInfo struct {
-	RoomID string `json:"room_id"`
+	RoomID RoomID `json:"room_id"`
 	Secret string `json:"secret"`
 }
 
