@@ -1,4 +1,5 @@
 import React, { PureComponent } from "react"
+import { ReactComponent as LogoWorkmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
 import AnsiLine from "./AnsiLine"
 import "./ErrorPane.scss"
 import { zeroTime } from "./time"
@@ -43,7 +44,12 @@ type ErrorsProps = {
 
 class ErrorPane extends PureComponent<ErrorsProps> {
   render() {
-    let el: JSX.Element = <p>No errors</p>
+    let el: JSX.Element = (
+      <section className="ErrorPane-empty">
+        <LogoWorkmarkSvg />
+        <p>No Errors Found</p>
+      </section>
+    )
     let errorElements: Array<JSX.Element> = []
     this.props.resources.forEach(r => {
       if (
