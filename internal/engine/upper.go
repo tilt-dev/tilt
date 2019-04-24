@@ -379,10 +379,10 @@ func handleLogTimestampsAction(state *store.EngineState, action hud.SetLogTimest
 
 func handleSailRoomConnectedAction(ctx context.Context, state *store.EngineState, action client.SailRoomConnectedAction) {
 	if action.Err != nil {
-		logger.Get(ctx).Infof("ERROR connecting Sail room: %v\n", action.Err)
-	} else {
-		logger.Get(ctx).Infof("Check out your Sail room: %s\n", action.ViewUrl)
+		logger.Get(ctx).Infof("Error connecting Sail room: %v\n", action.Err)
+		return
 	}
+	state.SailUrl = action.ViewUrl
 }
 
 func handleFSEvent(

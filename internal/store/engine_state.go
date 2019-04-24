@@ -75,6 +75,8 @@ type EngineState struct {
 	LastTiltfileBuild    model.BuildRecord
 	CurrentTiltfileBuild model.BuildRecord
 	TiltfileCombinedLog  model.Log
+
+	SailUrl string
 }
 
 func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.ManifestName {

@@ -56,6 +56,7 @@ type HudState = {
     Resources: Array<Resource>
     Log: string
     LogTimestamps: boolean
+    SailURL: string
   } | null
   IsSidebarClosed: boolean
 }
@@ -89,6 +90,7 @@ class HUD extends Component<HudProps, HudState> {
         Resources: [],
         Log: "",
         LogTimestamps: false,
+        SailURL: "",
       },
       IsSidebarClosed: false,
     }
