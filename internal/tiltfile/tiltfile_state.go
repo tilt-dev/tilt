@@ -733,7 +733,7 @@ func (s *tiltfileState) checkForImpossibleLiveUpdates(iTargs []model.ImageTarget
 		return
 	}
 	for _, iTarg := range iTargs[1:] {
-		if iTarg.MaybeFastBuildInfo() != nil || iTarg.MaybeLiveUpdateInfo() != nil {
+		if !iTarg.AnyFastBuildInfo().Empty() || !iTarg.AnyLiveUpdateInfo().Empty() {
 			// TODO(maia): s/in-place updates/live updates after we fully deprecate FastBuild
 			s.warnings = append(s.warnings, fmt.Sprintf("Sorry, but Tilt only supports in-place updates "+
 				"for the first Tilt-built container on a pod, so we can't in-place update your image '%s'. If this "+

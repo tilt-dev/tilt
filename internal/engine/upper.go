@@ -144,7 +144,7 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleBuildStarted(ctx, state, action)
 	case DeployIDAction:
 		handleDeployIDAction(ctx, state, action)
-	case LogAction:
+	case store.LogAction:
 		handleLogAction(state, action)
 	case GlobalYAMLApplyStartedAction:
 		handleGlobalYAMLApplyStarted(ctx, state, action)
@@ -723,7 +723,7 @@ func checkForPodCrash(ctx context.Context, state *store.EngineState, ms *store.M
 	ms.NeedsRebuildFromCrash = true
 	ms.ExpectedContainerID = ""
 	msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Name)
-	le := newLogEvent([]byte(msg + "\n"))
+	le := store.NewLogEvent([]byte(msg + "\n"))
 	if len(ms.BuildHistory) > 0 {
 		ms.BuildHistory[0].Log = model.AppendLog(ms.BuildHistory[0].Log, le, state.LogTimestamps)
 	}
@@ -802,7 +802,7 @@ func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
 	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, action, state.LogTimestamps)
 }
 
-func handleLogAction(state *store.EngineState, action LogAction) {
+func handleLogAction(state *store.EngineState, action store.LogAction) {
 	state.Log = model.AppendLog(state.Log, action, state.LogTimestamps)
 }
 
