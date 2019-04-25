@@ -109,6 +109,15 @@ func (m Manifest) WithDeployTarget(t TargetSpec) Manifest {
 	return m
 }
 
+func (m Manifest) TargetSpecs() []TargetSpec {
+	result := []TargetSpec{}
+	for _, t := range m.ImageTargets {
+		result = append(result, t)
+	}
+	result = append(result, m.deployTarget)
+	return result
+}
+
 func (m Manifest) IsImageDeployed(iTarget ImageTarget) bool {
 	id := iTarget.ID()
 	for _, depID := range m.DeployTarget().DependencyIDs() {

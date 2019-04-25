@@ -18,6 +18,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 )
 
@@ -713,7 +714,10 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 
 		m = m.WithImageTargets(iTargets)
 
-		s.checkForImpossibleLiveUpdates(m)
+		err = s.checkForImpossibleLiveUpdates(m)
+		if err != nil {
+			return nil, err
+		}
 
 		result = append(result, m)
 	}
@@ -728,8 +732,14 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 // on the pod (b/c of how we assemble resources, this corresponds to the first image target).
 // We won't collect container info (including DeployInfo) on any subsequent containers
 // (i.e. subsequent image targets), so will never be able to LiveUpdate them.
-func (s *tiltfileState) checkForImpossibleLiveUpdates(m model.Manifest) {
+func (s *tiltfileState) checkForImpossibleLiveUpdates(m model.Manifest) error {
 	seenDeployedImage := false
+
+	g, err := model.NewTargetGraph(m.TargetSpecs())
+	if err != nil {
+		return err
+	}
+
 	for _, iTarg := range m.ImageTargets {
 		isDeployed := m.IsImageDeployed(iTarg)
 		isFirstDeployedImage := false
@@ -757,9 +767,58 @@ func (s *tiltfileState) checkForImpossibleLiveUpdates(m model.Manifest) {
 				"is a feature you need, let us know!", iTarg.DeploymentRef.String()))
 
 			// Only emit the warning once
-			return
+			return nil
+		}
+
+		err = s.validateLiveUpdate(iTarg, g)
+		if err != nil {
+			return err
 		}
 	}
+	return nil
+}
+
+func (s *tiltfileState) validateLiveUpdate(iTarget model.ImageTarget, g model.TargetGraph) error {
+	lu := iTarget.AnyLiveUpdateInfo()
+	if lu.Empty() {
+		return nil
+	}
+
+	var watchedPaths []string
+	err := g.VisitTree(iTarget, func(t model.TargetSpec) error {
+		current, ok := t.(model.ImageTarget)
+		if !ok {
+			return nil
+		}
+
+		for _, dep := range current.Dependencies() {
+			watchedPaths = append(watchedPaths, dep)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	// Verify that all a) sync step src's and b) fall_back_on files are children of a watched path.
+	// (If not, we'll never even get "file changed" events for them--they're nonsensical input, throw an error.)
+	for _, sync := range lu.SyncSteps() {
+		if !ospath.IsChildOfOne(watchedPaths, sync.LocalPath) {
+			return fmt.Errorf("sync step source '%s' is not a child of any watched filepaths (%v)",
+				sync.LocalPath, watchedPaths)
+		}
+	}
+
+	for _, path := range lu.FallBackOnFiles().Paths {
+		absPath := s.absPath(path)
+		if !ospath.IsChildOfOne(watchedPaths, absPath) {
+			return fmt.Errorf("fall_back_on path '%s' is not a child of any watched filepaths (%v)",
+				absPath, watchedPaths)
+		}
+
+	}
+
+	return nil
 }
 
 // Grabs all image targets for the given references,
@@ -791,10 +850,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			DeploymentRef:    image.deploymentRef,
 		}.WithCachePaths(image.cachePaths)
 
-		lu, err := s.validatedLiveUpdate(image)
-		if err != nil {
-			return nil, errors.Wrap(err, "live_update failed validation")
-		}
+		lu := image.liveUpdate
 
 		switch image.Type() {
 		case DockerBuild:
@@ -861,7 +917,10 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 		}
 		m = m.WithImageTargets(iTargets)
 
-		s.checkForImpossibleLiveUpdates(m)
+		err = s.checkForImpossibleLiveUpdates(m)
+		if err != nil {
+			return nil, err
+		}
 
 		result = append(result, m)
 

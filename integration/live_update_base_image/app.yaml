@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: live-update-base-image
+  namespace: tilt-integration
+  labels:
+    app: live-update-base-image
+spec:
+  selector:
+    matchLabels:
+      app: live-update-base-image
+  template:
+    metadata:
+      labels:
+        app: live-update-base-image
+    spec:
+      containers:
+      - name: live-update-base-image
+        image: gcr.io/windmill-test-containers/live-update-base-image-app
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: "10m"
