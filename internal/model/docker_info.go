@@ -104,32 +104,32 @@ func (i ImageTarget) IsDockerBuild() bool {
 	return ok
 }
 
-func (i ImageTarget) MaybeLiveUpdateInfo() *LiveUpdate {
+func (i ImageTarget) AnyLiveUpdateInfo() LiveUpdate {
 	switch details := i.BuildDetails.(type) {
 	case DockerBuild:
 		return details.LiveUpdate
 	case CustomBuild:
 		return details.LiveUpdate
 	default:
-		return nil
+		return LiveUpdate{}
 	}
 }
 
-func (i ImageTarget) MaybeFastBuildInfo() *FastBuild {
+func (i ImageTarget) AnyFastBuildInfo() FastBuild {
 	switch details := i.BuildDetails.(type) {
 	case FastBuild:
-		return &details
+		return details
 	case DockerBuild:
 		return details.FastBuild
 	case CustomBuild:
 		return details.Fast
 	}
-	return nil
+	return FastBuild{}
 }
 
 // FastBuildInfo returns the TOP LEVEL BUILD DETAILS, if a FastBuild.
 // Does not return nested FastBuild details.
-func (i ImageTarget) FastBuildInfo() FastBuild {
+func (i ImageTarget) TopFastBuildInfo() FastBuild {
 	ret, _ := i.BuildDetails.(FastBuild)
 	return ret
 }
@@ -231,8 +231,8 @@ type DockerBuild struct {
 	Dockerfile string
 	BuildPath  string // the absolute path to the files
 	BuildArgs  DockerBuildArgs
-	FastBuild  *FastBuild  // Optionally, can use FastBuild to update this build in place.
-	LiveUpdate *LiveUpdate // Optionally, can use LiveUpdate to update this build in place.
+	FastBuild  FastBuild  // Optionally, can use FastBuild to update this build in place.
+	LiveUpdate LiveUpdate // Optionally, can use LiveUpdate to update this build in place.
 }
 
 func (DockerBuild) buildDetails() {}
@@ -262,8 +262,8 @@ type CustomBuild struct {
 	// export $EXPECTED_REF=name:expected_tag )
 	Tag string
 
-	Fast        *FastBuild
-	LiveUpdate  *LiveUpdate // Optionally, can use LiveUpdate to update this build in place.
+	Fast        FastBuild
+	LiveUpdate  LiveUpdate // Optionally, can use LiveUpdate to update this build in place.
 	DisablePush bool
 }
 

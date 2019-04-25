@@ -186,18 +186,11 @@ func (s *tiltfileState) fastBuildForImage(image *dockerImage) model.FastBuild {
 		HotReload:      image.hotReload,
 	}
 }
-func (s *tiltfileState) maybeFastBuild(image *dockerImage) *model.FastBuild {
-	fb := s.fastBuildForImage(image)
-	if fb.Empty() {
-		return nil
-	}
-	return &fb
-}
 
-func (s *tiltfileState) validatedLiveUpdate(image *dockerImage) (*model.LiveUpdate, error) {
+func (s *tiltfileState) validatedLiveUpdate(image *dockerImage) (model.LiveUpdate, error) {
 	lu := image.liveUpdate
 	if lu.Empty() {
-		return nil, nil
+		return lu, nil
 	}
 
 	var watchedPaths []string
@@ -207,14 +200,14 @@ func (s *tiltfileState) validatedLiveUpdate(image *dockerImage) (*model.LiveUpda
 		watchedPaths = image.customDeps
 	} else {
 		// don't know how to do this check ¯\_(ツ)_/¯
-		return nil, nil
+		return model.LiveUpdate{}, nil
 	}
 
 	// Verify that all a) sync step src's and b) fall_back_on files are children of a watched path.
 	// (If not, we'll never even get "file changed" events for them--they're nonsensical input, throw an error.)
 	for _, sync := range lu.SyncSteps() {
 		if !ospath.IsChildOfOne(watchedPaths, sync.LocalPath) {
-			return nil, fmt.Errorf("sync step source '%s' is not a child of any watched filepaths (%v)",
+			return model.LiveUpdate{}, fmt.Errorf("sync step source '%s' is not a child of any watched filepaths (%v)",
 				sync.LocalPath, watchedPaths)
 		}
 	}
@@ -222,13 +215,13 @@ func (s *tiltfileState) validatedLiveUpdate(image *dockerImage) (*model.LiveUpda
 	for _, path := range lu.FallBackOnFiles().Paths {
 		absPath := s.absPath(path)
 		if !ospath.IsChildOfOne(watchedPaths, absPath) {
-			return nil, fmt.Errorf("fall_back_on path '%s' is not a child of any watched filepaths (%v)",
+			return model.LiveUpdate{}, fmt.Errorf("fall_back_on path '%s' is not a child of any watched filepaths (%v)",
 				absPath, watchedPaths)
 		}
 
 	}
 
-	return &lu, nil
+	return lu, nil
 }
 
 func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

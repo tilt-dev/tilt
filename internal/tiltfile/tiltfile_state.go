@@ -782,7 +782,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				Dockerfile: image.dbDockerfile.String(),
 				BuildPath:  string(image.dbBuildPath.path),
 				BuildArgs:  image.dbBuildArgs,
-				FastBuild:  s.maybeFastBuild(image),
+				FastBuild:  s.fastBuildForImage(image),
 				LiveUpdate: lu,
 			})
 		case FastBuild:
@@ -796,7 +796,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				LiveUpdate:  lu,
 			}
 			if len(image.syncs) > 0 || len(image.runs) > 0 {
-				r.Fast = &model.FastBuild{
+				r.Fast = model.FastBuild{
 					Syncs:     s.syncsToDomain(image),
 					Runs:      image.runs,
 					HotReload: image.hotReload,

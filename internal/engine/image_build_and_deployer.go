@@ -146,7 +146,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		}
 
 		anyInPlaceBuild = anyInPlaceBuild ||
-			iTarget.MaybeFastBuildInfo() != nil || iTarget.MaybeLiveUpdateInfo() != nil
+			!iTarget.AnyFastBuildInfo().Empty() || !iTarget.AnyLiveUpdateInfo().Empty()
 		return store.NewImageBuildResult(iTarget.ID(), ref), nil
 	})
 	if err != nil {

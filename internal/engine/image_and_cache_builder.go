@@ -148,7 +148,7 @@ func (icb *imageAndCacheBuilder) baseDockerfile(fbInfo model.FastBuild,
 }
 
 func (icb *imageAndCacheBuilder) createCacheInputs(iTarget model.ImageTarget) build.CacheInputs {
-	baseDockerfile := dockerfile.Dockerfile(iTarget.FastBuildInfo().BaseDockerfile)
+	baseDockerfile := dockerfile.Dockerfile(iTarget.TopFastBuildInfo().BaseDockerfile)
 	if dbInfo, ok := iTarget.BuildDetails.(model.DockerBuild); ok {
 		df := dockerfile.Dockerfile(dbInfo.Dockerfile)
 		var ok bool

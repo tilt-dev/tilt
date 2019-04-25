@@ -72,7 +72,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 	var runs []model.Run
 	var hotReload bool
 
-	if fbInfo := iTarget.MaybeFastBuildInfo(); fbInfo != nil {
+	if fbInfo := iTarget.AnyFastBuildInfo(); !fbInfo.Empty() {
 		changedFiles, err = build.FilesToPathMappings(state.FilesChanged(), fbInfo.Syncs)
 		if err != nil {
 			return store.BuildResultSet{}, err
@@ -80,7 +80,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		runs = fbInfo.Runs
 		hotReload = fbInfo.HotReload
 	}
-	if luInfo := iTarget.MaybeLiveUpdateInfo(); luInfo != nil {
+	if luInfo := iTarget.AnyLiveUpdateInfo(); !luInfo.Empty() {
 		changedFiles, err = build.FilesToPathMappings(state.FilesChanged(), luInfo.SyncSteps())
 		if err != nil {
 			if pmErr, ok := err.(*build.PathMappingErr); ok {

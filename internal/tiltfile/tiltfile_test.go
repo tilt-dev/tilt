@@ -135,10 +135,18 @@ k8s_yaml('foo.yaml')
 
 	f.load("foo")
 
-	f.assertNextManifest("foo",
+	m := f.assertNextManifest("foo",
 		db(image("gcr.io/foo")),
 		deployment("foo"))
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+
+	iTarget := m.ImageTargetAt(0)
+
+	// Make sure there's no fast build / live update in the default case.
+	assert.True(t, iTarget.IsDockerBuild())
+	assert.False(t, iTarget.IsFastBuild())
+	assert.True(t, iTarget.AnyFastBuildInfo().Empty())
+	assert.True(t, iTarget.AnyLiveUpdateInfo().Empty())
 }
 
 // I.e. make sure that we handle de/normalization between `fooimage` <--> `docker.io/library/fooimage`
@@ -3400,22 +3408,21 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 				case nestedFBHelper:
 					dbInfo := image.DockerBuildInfo()
 					if matcher.fb == nil {
-						if dbInfo.FastBuild != nil {
+						if !dbInfo.FastBuild.Empty() {
 							f.t.Fatalf("expected docker build for manifest %v to have "+
 								"no nested fastbuild, but found one: %v", m.Name, dbInfo.FastBuild)
 						}
 					} else {
-						if dbInfo.FastBuild == nil {
+						if dbInfo.FastBuild.Empty() {
 							f.t.Fatalf("expected docker build for manifest %v to have "+
 								"nested fastbuild, but found none", m.Name)
 						}
-						matcher.fb.checkMatchers(f, m, *dbInfo.FastBuild)
+						matcher.fb.checkMatchers(f, m, dbInfo.FastBuild)
 					}
 				case model.LiveUpdate:
-					lu := image.MaybeLiveUpdateInfo()
-					if assert.NotNil(f.t, lu) {
-						assert.Equal(f.t, matcher, *lu)
-					}
+					lu := image.AnyLiveUpdateInfo()
+					assert.False(f.t, lu.Empty())
+					assert.Equal(f.t, matcher, lu)
 				default:
 					f.t.Fatalf("unknown dbHelper matcher: %T %v", matcher, matcher)
 				}
@@ -3437,7 +3444,7 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 				f.t.Fatalf("expected fast build but manifest %v has no fast build info", m.Name)
 			}
 
-			opt.checkMatchers(f, m, image.FastBuildInfo())
+			opt.checkMatchers(f, m, image.TopFastBuildInfo())
 		case cbHelper:
 			image := nextImageTarget()
 			ref := image.ConfigurationRef
@@ -3461,16 +3468,15 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 				case disablePushHelper:
 					assert.Equal(f.t, matcher.disabled, cbInfo.DisablePush)
 				case fbHelper:
-					if cbInfo.Fast == nil {
+					if cbInfo.Fast.Empty() {
 						f.t.Fatalf("Expected manifest %v to have fast build, but it didn't", m.Name)
 					}
 
-					matcher.checkMatchers(f, m, *cbInfo.Fast)
+					matcher.checkMatchers(f, m, cbInfo.Fast)
 				case model.LiveUpdate:
-					lu := image.MaybeLiveUpdateInfo()
-					if assert.NotNil(f.t, lu) {
-						assert.Equal(f.t, matcher, *lu)
-					}
+					lu := image.AnyLiveUpdateInfo()
+					assert.False(f.t, lu.Empty())
+					assert.Equal(f.t, matcher, lu)
 				}
 			}
 
