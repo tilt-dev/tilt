@@ -25,6 +25,13 @@
   border-left: 1px solid $color-gray;
 }
 
+.TabNav span#TabNav-container {
+  float: left;
+}
+
+.TabNav span#sail-url {
+  float: right;
+}
 .tabLink {
   box-sizing: border-box;
   height: $tabnav-height;

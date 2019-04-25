@@ -111,7 +111,9 @@ func StateToWebView(s store.EngineState) webview.View {
 	}
 
 	ret.Log = s.Log
-	ret.SailURL = s.SailUrl
+	// ~~ MAIA put this back ~~
+	// ret.SailURL = s.SailUrl
+	ret.SailURL = "www.url.com/sail-stuff"
 
 	return ret
 }
