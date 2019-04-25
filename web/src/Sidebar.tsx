@@ -12,6 +12,10 @@ import buildFormatter from "react-timeago/lib/formatters/buildFormatter"
 import { isZeroTime } from "./time"
 import PathBuilder from "./PathBuilder"
 
+/*
+We need to grab whether a resource has any pending build
+*/
+
 class SidebarItem {
   name: string
   status: string
