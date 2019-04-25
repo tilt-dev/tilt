@@ -4,35 +4,41 @@ exports[`previews resources 1`] = `
 <nav
   className="TabNav"
 >
-  <ul>
-    <li>
-      <a
-        className="tabLink "
-        href="/r/foo"
-        onClick={[Function]}
-      >
-        Logs
-      </a>
-    </li>
-    <li>
-      <a
-        className="tabLink tabLink--is-selected"
-        href="/r/foo/preview"
-        onClick={[Function]}
-      >
-        Preview
-      </a>
-    </li>
-    <li>
-      <a
-        className="tabLink "
-        href="/r/foo/errors"
-        onClick={[Function]}
-      >
-        Errors
-      </a>
-    </li>
-  </ul>
+  <div>
+    <span
+      id="TabNav-container"
+    >
+      <ul>
+        <li>
+          <a
+            className="tabLink "
+            href="/r/foo"
+            onClick={[Function]}
+          >
+            Logs
+          </a>
+        </li>
+        <li>
+          <a
+            className="tabLink tabLink--is-selected"
+            href="/r/foo/preview"
+            onClick={[Function]}
+          >
+            Preview
+          </a>
+        </li>
+        <li>
+          <a
+            className="tabLink "
+            href="/r/foo/errors"
+            onClick={[Function]}
+          >
+            Errors
+          </a>
+        </li>
+      </ul>
+    </span>
+  </div>
 </nav>
 `;
 
@@ -40,35 +46,41 @@ exports[`shows error pane 1`] = `
 <nav
   className="TabNav"
 >
-  <ul>
-    <li>
-      <a
-        className="tabLink "
-        href="/r/foo"
-        onClick={[Function]}
-      >
-        Logs
-      </a>
-    </li>
-    <li>
-      <a
-        className="tabLink "
-        href="/r/foo/preview"
-        onClick={[Function]}
-      >
-        Preview
-      </a>
-    </li>
-    <li>
-      <a
-        className="tabLink tabLink--is-selected"
-        href="/r/foo/errors"
-        onClick={[Function]}
-      >
-        Errors
-      </a>
-    </li>
-  </ul>
+  <div>
+    <span
+      id="TabNav-container"
+    >
+      <ul>
+        <li>
+          <a
+            className="tabLink "
+            href="/r/foo"
+            onClick={[Function]}
+          >
+            Logs
+          </a>
+        </li>
+        <li>
+          <a
+            className="tabLink "
+            href="/r/foo/preview"
+            onClick={[Function]}
+          >
+            Preview
+          </a>
+        </li>
+        <li>
+          <a
+            className="tabLink tabLink--is-selected"
+            href="/r/foo/errors"
+            onClick={[Function]}
+          >
+            Errors
+          </a>
+        </li>
+      </ul>
+    </span>
+  </div>
 </nav>
 `;
 
@@ -76,34 +88,92 @@ exports[`shows logs 1`] = `
 <nav
   className="TabNav"
 >
-  <ul>
-    <li>
+  <div>
+    <span
+      id="TabNav-container"
+    >
+      <ul>
+        <li>
+          <a
+            className="tabLink tabLink--is-selected"
+            href="/r/foo"
+            onClick={[Function]}
+          >
+            Logs
+          </a>
+        </li>
+        <li>
+          <a
+            className="tabLink "
+            href="/r/foo/preview"
+            onClick={[Function]}
+          >
+            Preview
+          </a>
+        </li>
+        <li>
+          <a
+            className="tabLink "
+            href="/r/foo/errors"
+            onClick={[Function]}
+          >
+            Errors
+          </a>
+        </li>
+      </ul>
+    </span>
+  </div>
+</nav>
+`;
+
+exports[`shows sail url 1`] = `
+<nav
+  className="TabNav"
+>
+  <div>
+    <span
+      id="TabNav-container"
+    >
+      <ul>
+        <li>
+          <a
+            className="tabLink "
+            href="/r/foo"
+            onClick={[Function]}
+          >
+            Logs
+          </a>
+        </li>
+        <li>
+          <a
+            className="tabLink "
+            href="/r/foo/preview"
+            onClick={[Function]}
+          >
+            Preview
+          </a>
+        </li>
+        <li>
+          <a
+            className="tabLink tabLink--is-selected"
+            href="/r/foo/errors"
+            onClick={[Function]}
+          >
+            Errors
+          </a>
+        </li>
+      </ul>
+    </span>
+    <span
+      id="sail-url"
+    >
+      Share this view! 
       <a
-        className="tabLink tabLink--is-selected"
-        href="/r/foo"
-        onClick={[Function]}
+        href="www.sail.dev/xyz"
       >
-        Logs
+        www.sail.dev/xyz
       </a>
-    </li>
-    <li>
-      <a
-        className="tabLink "
-        href="/r/foo/preview"
-        onClick={[Function]}
-      >
-        Preview
-      </a>
-    </li>
-    <li>
-      <a
-        className="tabLink "
-        href="/r/foo/errors"
-        onClick={[Function]}
-      >
-        Errors
-      </a>
-    </li>
-  </ul>
+    </span>
+  </div>
 </nav>
 `;

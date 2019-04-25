@@ -54,3 +54,21 @@ it("shows error pane", () => {
 
   expect(tree).toMatchSnapshot()
 })
+
+it("shows sail url", () => {
+    const tree = renderer
+        .create(
+            <MemoryRouter>
+                <TabNav
+                    logUrl="/r/foo"
+                    previewUrl="/r/foo/preview"
+                    errorsUrl="/r/foo/errors"
+                    resourceView={ResourceView.Errors}
+                    sailUrl="www.sail.dev/xyz"
+                />
+            </MemoryRouter>
+        )
+        .toJSON()
+
+    expect(tree).toMatchSnapshot()
+})
