@@ -219,7 +219,7 @@ func newPLMFixture(t *testing.T) *plmFixture {
 		if !ok {
 			t.Errorf("Expected action type PodLogAction. Actual: %T", action)
 		}
-		out.Write(podLog.logEvent.message)
+		out.Write(podLog.LogEvent.Message())
 	}
 
 	st := store.NewStore(store.Reducer(reducer), store.LogActionsFlag(false))

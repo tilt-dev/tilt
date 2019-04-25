@@ -21,8 +21,8 @@ func waitForAction(t testing.TB, typ reflect.Type, getActions func() []store.Act
 		for _, a := range actions {
 			if reflect.TypeOf(a) == typ {
 				return a
-			} else if la, ok := a.(LogAction); ok {
-				fmt.Println(string(la.logEvent.Message()))
+			} else if la, ok := a.(store.LogAction); ok {
+				fmt.Println(string(la.LogEvent.Message()))
 			}
 		}
 	}
