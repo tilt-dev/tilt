@@ -114,6 +114,13 @@ class Statusbar extends PureComponent<StatusBarProps> {
     let upPanel = this.upPanel(upCount, itemCount)
 
     let build = mostRecentBuildToDisplay(this.props.items)
+    let editMessage = ""
+    if (build && build.edits.length > 0) {
+      editMessage = build.edits[0]
+      if (build.edits.length > 1) {
+        editMessage += ` [+ ${build.edits.length - 1} more]`
+      }
+    }
 
     return (
       <div className="Statusbar">
@@ -124,8 +131,8 @@ class Statusbar extends PureComponent<StatusBarProps> {
         </p>
         {build ? (
           <p className="Statusbar-panel--lastEdit">
-            <span className="Statusbar-panel--lastEditMessage">Last Edit</span>{" "}
-            {build.edits} ({build.name})
+            <span className="Statusbar-panel--lastEditMessage">Last Edit</span>
+            {editMessage}
           </p>
         ) : (
           ""
