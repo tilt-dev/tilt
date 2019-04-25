@@ -194,7 +194,7 @@ func TestContainerBuildLocalTriggeredRuns(t *testing.T) {
 	changed := f.WriteFile("a.txt", "a")
 	manifest := NewSanchoFastBuildManifest(f)
 	iTarg := manifest.ImageTargetAt(0)
-	fb := iTarg.FastBuildInfo()
+	fb := iTarg.TopFastBuildInfo()
 	runs := []model.Run{
 		model.Run{Cmd: model.ToShellCmd("echo hello")},
 		model.Run{Cmd: model.ToShellCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
@@ -238,7 +238,7 @@ func TestContainerBuildSyncletTriggeredRuns(t *testing.T) {
 	changed := f.WriteFile("a.txt", "a")
 	manifest := NewSanchoFastBuildManifest(f)
 	iTarg := manifest.ImageTargetAt(0)
-	fb := iTarg.FastBuildInfo()
+	fb := iTarg.TopFastBuildInfo()
 	runs := []model.Run{
 		model.Run{Cmd: model.ToShellCmd("echo hello")},
 		model.Run{Cmd: model.ToShellCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
@@ -280,7 +280,7 @@ func TestContainerBuildSyncletHotReload(t *testing.T) {
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
 	manifest := NewSanchoFastBuildManifest(f)
 	iTarget := manifest.ImageTargetAt(0)
-	fbInfo := iTarget.FastBuildInfo()
+	fbInfo := iTarget.TopFastBuildInfo()
 	fbInfo.HotReload = true
 	manifest = manifest.WithImageTarget(iTarget.WithBuildDetails(fbInfo))
 	targets := buildTargets(manifest)

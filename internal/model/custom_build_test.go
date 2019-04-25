@@ -8,7 +8,7 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 )
 
-func TestMaybeFastBuildInfo(t *testing.T) {
+func TestAnyFastBuildInfo(t *testing.T) {
 	fb := FastBuild{
 		BaseDockerfile: "FROM alpine",
 		Entrypoint:     Cmd{[]string{"echo", "hi"}},
@@ -16,25 +16,42 @@ func TestMaybeFastBuildInfo(t *testing.T) {
 	cb := CustomBuild{
 		Command: "true",
 		Deps:    []string{"foo", "bar"},
-		Fast:    &fb,
+		Fast:    fb,
 	}
 	it := ImageTarget{
 		BuildDetails: cb,
 	}
-	bi := it.MaybeFastBuildInfo()
-	assert.Equal(t, fb, *bi)
+	bi := it.AnyFastBuildInfo()
+	assert.Equal(t, fb, bi)
 
 	it = ImageTarget{
 		BuildDetails: fb,
 	}
-	bi = it.MaybeFastBuildInfo()
-	assert.Equal(t, fb, *bi)
+	bi = it.AnyFastBuildInfo()
+	assert.Equal(t, fb, bi)
 
 	it = ImageTarget{
 		BuildDetails: DockerBuild{},
 	}
-	bi = it.MaybeFastBuildInfo()
-	assert.Nil(t, bi)
+	bi = it.AnyFastBuildInfo()
+	assert.True(t, bi.Empty())
+}
+
+func TestEmptyLiveUpdate(t *testing.T) {
+	lu, err := NewLiveUpdate(nil, "/base/dir")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cb := CustomBuild{
+		Command:    "true",
+		Deps:       []string{"foo", "bar"},
+		LiveUpdate: lu,
+	}
+	it := ImageTarget{
+		BuildDetails: cb,
+	}
+	bi := it.AnyLiveUpdateInfo()
+	assert.True(t, bi.Empty())
 }
 
 func TestValidate(t *testing.T) {

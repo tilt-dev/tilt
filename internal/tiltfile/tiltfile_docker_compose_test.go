@@ -340,8 +340,13 @@ dc_resource('foo', 'gcr.io/foo')
 	f.load()
 
 	m := f.assertNextManifest("foo", db(image("gcr.io/foo")))
-	assert.True(t, m.ImageTargetAt(0).IsDockerBuild())
-	assert.False(t, m.ImageTargetAt(0).IsFastBuild())
+	iTarget := m.ImageTargetAt(0)
+
+	// Make sure there's no fast build / live update in the default case.
+	assert.True(t, iTarget.IsDockerBuild())
+	assert.False(t, iTarget.IsFastBuild())
+	assert.True(t, iTarget.AnyFastBuildInfo().Empty())
+	assert.True(t, iTarget.AnyLiveUpdateInfo().Empty())
 
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	assert.Equal(t, m.DockerComposeTarget().ConfigPath, configPath)

@@ -527,13 +527,13 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 
 	// First call: with the old manifest
 	call := f.nextCall("old manifest")
-	assert.Equal(t, `FROM iron/go:prod`, call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:prod`, call.image().TopFastBuildInfo().BaseDockerfile)
 
 	f.WriteConfigFiles("Dockerfile", `FROM iron/go:dev`)
 
 	// Second call: new manifest!
 	call = f.nextCall("new manifest")
-	assert.Equal(t, "FROM iron/go:dev", call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "FROM iron/go:dev", call.image().TopFastBuildInfo().BaseDockerfile)
 	assert.Equal(t, testyaml.SnackYAMLPostConfig, call.k8s().YAML)
 
 	// Since the manifest changed, we cleared the previous build state to force an image build
@@ -543,7 +543,7 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 
 	// third call: new manifest should persist
 	call = f.nextCall("persist new manifest")
-	assert.Equal(t, "FROM iron/go:dev", call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "FROM iron/go:dev", call.image().TopFastBuildInfo().BaseDockerfile)
 
 	// Unchanged manifest --> we do NOT clear the build state
 	assert.True(t, call.oneState().HasImage())
@@ -575,11 +575,11 @@ k8s_resource('doggos', new_name='quux')
 
 	// First call: with the old manifests
 	call := f.nextCall("old manifest (baz)")
-	assert.Equal(t, `FROM iron/go:prod`, call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:prod`, call.image().TopFastBuildInfo().BaseDockerfile)
 	assert.Equal(t, "baz", string(call.k8s().Name))
 
 	call = f.nextCall("old manifest (quux)")
-	assert.Equal(t, `FROM iron/go:prod`, call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:prod`, call.image().TopFastBuildInfo().BaseDockerfile)
 	assert.Equal(t, "quux", string(call.k8s().Name))
 
 	// rewrite the dockerfiles
@@ -589,11 +589,11 @@ k8s_resource('doggos', new_name='quux')
 
 	// Now with the manifests from the config files
 	call = f.nextCall("manifest from config files (baz)")
-	assert.Equal(t, `FROM iron/go:dev1`, call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:dev1`, call.image().TopFastBuildInfo().BaseDockerfile)
 	assert.Equal(t, "baz", string(call.k8s().Name))
 
 	call = f.nextCall("manifest from config files (quux)")
-	assert.Equal(t, `FROM iron/go:dev2`, call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:dev2`, call.image().TopFastBuildInfo().BaseDockerfile)
 	assert.Equal(t, "quux", string(call.k8s().Name))
 
 	// Now change a dockerfile
@@ -634,7 +634,7 @@ k8s_resource('snack', new_name='baz')  # rename "snack" --> "baz"
 
 	// First call: with one resource
 	call := f.nextCall("old manifest (baz)")
-	assert.Equal(t, "FROM iron/go:dev1", call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "FROM iron/go:dev1", call.image().TopFastBuildInfo().BaseDockerfile)
 	assert.Equal(t, "baz", string(call.k8s().Name))
 
 	f.assertNoCall()
@@ -679,7 +679,7 @@ k8s_resource('snack', new_name='foobar')`)
 
 	// First call: with the old manifests
 	call := f.nextCall("old manifests")
-	assert.Equal(t, "FROM iron/go:dev1", call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "FROM iron/go:dev1", call.image().TopFastBuildInfo().BaseDockerfile)
 	assert.Equal(t, "foobar", string(call.k8s().Name))
 
 	f.WriteConfigFiles("Dockerfile", `FROM iron/go:dev1`)
@@ -719,7 +719,7 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 
 	// First call: init
 	call := f.nextCall("old manifest")
-	assert.Equal(t, `FROM iron/go:dev`, call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:dev`, call.image().TopFastBuildInfo().BaseDockerfile)
 
 	// Second call: error!
 	f.WriteConfigFiles("Tiltfile", "borken")
@@ -730,7 +730,7 @@ func TestRebuildDockerfileFailed(t *testing.T) {
 		"Dockerfile", `FROM iron/go:dev2`)
 
 	call = f.nextCall("fixed broken config")
-	assert.Equal(t, "FROM iron/go:dev2", call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "FROM iron/go:dev2", call.image().TopFastBuildInfo().BaseDockerfile)
 	assert.False(t, call.oneState().HasImage()) // we cleared the previous build state to force an image build
 	f.WaitUntil("manifest definition order hasn't changed", func(state store.EngineState) bool {
 		return len(state.ManifestDefinitionOrder) == 1
@@ -865,7 +865,7 @@ k8s_yaml('snack.yaml')
 		expectedRuns := []model.Run{{
 			Cmd: model.ToShellCmd("changed"),
 		}}
-		assert.Equal(t, expectedRuns, mt.Manifest.ImageTargetAt(0).FastBuildInfo().Runs)
+		assert.Equal(t, expectedRuns, mt.Manifest.ImageTargetAt(0).TopFastBuildInfo().Runs)
 	})
 }
 
@@ -1851,7 +1851,7 @@ func TestNewSyncsAreWatched(t *testing.T) {
 	})
 
 	f.WaitUntilManifest("has new syncs", "mani1", func(mt store.ManifestTarget) bool {
-		return len(mt.Manifest.ImageTargetAt(0).FastBuildInfo().Syncs) == 2
+		return len(mt.Manifest.ImageTargetAt(0).TopFastBuildInfo().Syncs) == 2
 	})
 
 	f.PollUntil("watches set up", func() bool {

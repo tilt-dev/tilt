@@ -104,7 +104,7 @@ func NewSanchoCustomBuildManifestWithFastBuild(fixture pather) model.Manifest {
 	cb := model.CustomBuild{
 		Command: "true",
 		Deps:    []string{fixture.JoinPath("app")},
-		Fast:    &fb,
+		Fast:    fb,
 	}
 
 	m := model.Manifest{Name: "sancho"}
@@ -208,7 +208,7 @@ func NewSanchoDockerBuildManifestWithNestedFastBuild(fixture pather) model.Manif
 	iTarg := manifest.ImageTargetAt(0)
 	fb := NewSanchoFastBuild(fixture)
 	sb := iTarg.DockerBuildInfo()
-	sb.FastBuild = &fb
+	sb.FastBuild = fb
 	iTarg = iTarg.WithBuildDetails(sb)
 	manifest = manifest.WithImageTarget(iTarg)
 	return manifest
@@ -343,6 +343,6 @@ func assembleLiveUpdate(syncs []model.LiveUpdateSyncStep, runs []model.LiveUpdat
 
 func imageTargetWithLiveUpdate(i model.ImageTarget, lu model.LiveUpdate) model.ImageTarget {
 	db := i.DockerBuildInfo()
-	db.LiveUpdate = &lu
+	db.LiveUpdate = lu
 	return i.WithBuildDetails(db)
 }

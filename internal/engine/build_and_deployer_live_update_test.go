@@ -54,7 +54,7 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 	manifest := tCase.baseManifest
 	iTarg := manifest.ImageTargetAt(0)
 	db := iTarg.DockerBuildInfo()
-	db.LiveUpdate = &tCase.liveUpdate
+	db.LiveUpdate = tCase.liveUpdate
 	manifest = manifest.WithImageTarget(iTarg.WithBuildDetails(db))
 	targets := buildTargets(manifest)
 
@@ -288,12 +288,35 @@ func TestLiveUpdateHotReloadSynclet(t *testing.T) {
 	runTestCase(t, f, tCase)
 }
 
-func TestLiveUpdateDockerBuildDeploysSynclet(t *testing.T) {
+func TestDockerBuildDoesNotDeploySynclet(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
+
 	tCase := testCase{
 		env:                    k8s.EnvGKE,
 		baseManifest:           NewSanchoDockerBuildManifest(),
+		changedFiles:           nil, // will use an empty BuildResultSet, i.e. treat this as first build
+		expectDockerBuildCount: 1,
+		expectDockerPushCount:  1,
+		expectK8sDeploy:        true,
+		expectSyncletDeploy:    false,
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateDockerBuildDeploysSynclet(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tCase := testCase{
+		env:                    k8s.EnvGKE,
+		baseManifest:           NewSanchoDockerBuildManifest(),
+		liveUpdate:             lu,
 		changedFiles:           nil, // will use an empty BuildResultSet, i.e. treat this as first build
 		expectDockerBuildCount: 1,
 		expectDockerPushCount:  1,
