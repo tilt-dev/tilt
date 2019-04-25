@@ -13,7 +13,7 @@ func NewLogActionLogger(ctx context.Context, dispatch func(action store.Action))
 	return logger.NewFuncLogger(l.SupportsColor(), l.Level(), func(level logger.Level, b []byte) error {
 		if l.Level() >= level {
 			dispatch(store.LogAction{
-				store.LogEvent{
+				LogEvent: store.LogEvent{
 					Timestamp: time.Now(),
 					Msg:       append([]byte{}, b...),
 				},
