@@ -176,11 +176,7 @@ class HUD extends Component<HudProps, HudState> {
       )
     }
 
-    let tabNavRoute = (
-      t: ResourceView,
-      sailUrl: string,
-      props: RouteComponentProps<any>
-    ) => {
+    let tabNavRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name =
         props.match.params && props.match.params.name
           ? props.match.params.name
@@ -240,21 +236,21 @@ class HUD extends Component<HudProps, HudState> {
           <Switch>
             <Route
               path={this.path("/r/:name/errors")}
-              render={tabNavRoute.bind(null, ResourceView.Errors, sailUrl)}
+              render={tabNavRoute.bind(null, ResourceView.Errors)}
             />
             <Route
               path={this.path("/r/:name/preview")}
-              render={tabNavRoute.bind(null, ResourceView.Preview, sailUrl)}
+              render={tabNavRoute.bind(null, ResourceView.Preview)}
             />
             <Route
               path={this.path("/r/:name")}
-              render={tabNavRoute.bind(null, ResourceView.Log, sailUrl)}
+              render={tabNavRoute.bind(null, ResourceView.Log)}
             />
             <Route
               path={this.path("/errors")}
-              render={tabNavRoute.bind(null, ResourceView.Errors, sailUrl)}
+              render={tabNavRoute.bind(null, ResourceView.Errors)}
             />
-            <Route render={tabNavRoute.bind(null, ResourceView.Log, sailUrl)} />
+            <Route render={tabNavRoute.bind(null, ResourceView.Log)} />
           </Switch>
           <Switch>
             <Route
