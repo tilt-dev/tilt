@@ -5,8 +5,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"reflect"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -46,13 +46,10 @@ func TestSailRoomConnectedAction(t *testing.T) {
 	go f.store.Loop(f.ctx)
 	f.client.OnChange(f.ctx, f.store)
 
-	time.Sleep(10 * time.Millisecond)
-	for _, a := range f.getActions() {
-		if roomConn, ok := a.(SailRoomConnectedAction); ok {
-			assert.NoError(t, roomConn.Err)
-			assert.Equal(t, "http://localhost:12345/view/some-room", roomConn.ViewURL)
-			break
-		}
+	a := store.WaitForAction(t, reflect.TypeOf(SailRoomConnectedAction{}), f.getActions)
+	if roomConn, ok := a.(SailRoomConnectedAction); ok {
+		assert.NoError(t, roomConn.Err)
+		assert.Equal(t, "http://localhost:12345/view/some-room", roomConn.ViewURL)
 	}
 }
 
