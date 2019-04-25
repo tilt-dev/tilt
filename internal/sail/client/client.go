@@ -15,7 +15,7 @@ import (
 )
 
 type SailRoomConnectedAction struct {
-	ViewUrl string // URL to view the Sail room
+	ViewURL string // URL to view the Sail room
 	Err     error
 }
 
@@ -110,7 +110,7 @@ func (s *SailClient) Connect(ctx context.Context, st store.RStore) error {
 	// Send back URL to surface to user for sharing
 	viewUrl := s.addr.Http()
 	viewUrl.Path = fmt.Sprintf("/view/%s", roomID)
-	st.Dispatch(SailRoomConnectedAction{ViewUrl: viewUrl.String()})
+	st.Dispatch(SailRoomConnectedAction{ViewURL: viewUrl.String()})
 
 	return nil
 }

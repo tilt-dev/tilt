@@ -50,7 +50,7 @@ func TestSailRoomConnectedAction(t *testing.T) {
 	for _, a := range f.getActions() {
 		if roomConn, ok := a.(SailRoomConnectedAction); ok {
 			assert.NoError(t, roomConn.Err)
-			assert.Equal(t, "http://localhost:12345/view/some-room", roomConn.ViewUrl)
+			assert.Equal(t, "http://localhost:12345/view/some-room", roomConn.ViewURL)
 			break
 		}
 	}

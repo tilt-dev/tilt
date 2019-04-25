@@ -382,7 +382,7 @@ func handleSailRoomConnectedAction(ctx context.Context, state *store.EngineState
 		logger.Get(ctx).Infof("Error connecting Sail room: %v\n", action.Err)
 		return
 	}
-	state.SailUrl = action.ViewUrl
+	state.SailURL = action.ViewURL
 }
 
 func handleFSEvent(

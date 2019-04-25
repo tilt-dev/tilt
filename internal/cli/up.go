@@ -210,7 +210,7 @@ func provideSailURL() (model.SailURL, error) {
 		return model.SailURL{}, nil
 	}
 
-	// Base SailUrl -- use .Http() and .Ws() methods as appropriate to set scheme
+	// Base SailURL -- use .Http() and .Ws() methods as appropriate to set scheme
 	u, err := url.Parse(fmt.Sprintf("//localhost:%d/", model.DefaultSailPort))
 	if err != nil {
 		return model.SailURL{}, err
