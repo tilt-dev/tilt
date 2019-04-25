@@ -124,7 +124,8 @@ class Statusbar extends PureComponent<StatusBarProps> {
         </p>
         {build ? (
           <p className="Statusbar-panel--lastEdit">
-            <span className="Statusbar-panel--lastEditMessage">Last Edit</span> {build.edits} ({build.name})
+            <span className="Statusbar-panel--lastEditMessage">Last Edit</span>{" "}
+            {build.edits} ({build.name})
           </p>
         ) : (
           ""
