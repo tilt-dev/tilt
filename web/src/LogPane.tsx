@@ -3,6 +3,8 @@ import { ReactComponent as LogoWorkmarkSvg } from "./assets/svg/logo-wordmark-gr
 import AnsiLine from "./AnsiLine"
 import "./LogPane.scss"
 
+const WHEEL_DEBOUNCE_MS = 250
+
 type LogPaneProps = {
   log: string
   message?: string
@@ -10,6 +12,7 @@ type LogPaneProps = {
 }
 type LogPaneState = {
   autoscroll: boolean
+  lastWheelEventTimeMs: number
 }
 
 class LogPane extends Component<LogPaneProps, LogPaneState> {
@@ -21,6 +24,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 
     this.state = {
       autoscroll: true,
+      lastWheelEventTimeMs: 0,
     }
 
     this.refreshAutoScroll = this.refreshAutoScroll.bind(this)
@@ -55,7 +59,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 
   private handleWheel(event: WheelEvent) {
     if (event.deltaY < 0) {
-      this.setState({ autoscroll: false })
+      this.setState({ autoscroll: false, lastWheelEventTimeMs: Date.now() })
     }
   }
 
@@ -77,7 +81,17 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
         autoscroll = lastElInView
       }
 
-      this.setState({ autoscroll })
+      this.setState(prevState => {
+        let lastWheelEventTimeMs = prevState.lastWheelEventTimeMs
+        if (lastWheelEventTimeMs) {
+          if (Date.now() - lastWheelEventTimeMs < WHEEL_DEBOUNCE_MS) {
+            return prevState
+          }
+          return { autoscroll: false, lastWheelEventTimeMs: 0 }
+        }
+
+        return { autoscroll, lastWheelEventTimeMs: 0 }
+      })
     })
   }
 
