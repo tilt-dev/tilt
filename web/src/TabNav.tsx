@@ -18,56 +18,55 @@ class TabNav extends PureComponent<NavProps> {
     let errorsIsSelected = this.props.resourceView == ResourceView.Errors
 
     let spans: Array<JSX.Element> = [
-      <span id="TabNav-container" key="TabNav">
-            <ul>
-              <li>
-                <Link
-                    className={`tabLink ${
-                        logIsSelected ? "tabLink--is-selected" : ""
-                        }`}
-                    to={this.props.logUrl}
-                >
-                  Logs
-                </Link>
-              </li>
-              <li>
-                <Link
-                    className={`tabLink ${
-                        previewIsSelected ? "tabLink--is-selected" : ""
-                        }`}
-                    to={this.props.previewUrl}
-                >
-                  Preview
-                </Link>
-              </li>
-              <li>
-                <Link
-                    className={`tabLink ${
-                        errorsIsSelected ? "tabLink--is-selected" : ""
-                        }`}
-                    to={this.props.errorsUrl}
-                >
-                  Errors
-                </Link>
-              </li>
-            </ul>
-          </span>
+      <span key="TabNav">
+        <ul>
+          <li>
+            <Link
+              className={`tabLink ${
+                logIsSelected ? "tabLink--is-selected" : ""
+              }`}
+              to={this.props.logUrl}
+            >
+              Logs
+            </Link>
+          </li>
+          <li>
+            <Link
+              className={`tabLink ${
+                previewIsSelected ? "tabLink--is-selected" : ""
+              }`}
+              to={this.props.previewUrl}
+            >
+              Preview
+            </Link>
+          </li>
+          <li>
+            <Link
+              className={`tabLink ${
+                errorsIsSelected ? "tabLink--is-selected" : ""
+              }`}
+              to={this.props.errorsUrl}
+            >
+              Errors
+            </Link>
+          </li>
+        </ul>
+      </span>,
     ]
 
     if (this.props.sailUrl) {
       spans.push(
-          <span id="sail-url" key="sail-url">
-            Share this view! <a href={this.props.sailUrl}>{this.props.sailUrl}</a>
-          </span>
+        <span className="TabNav-spacer" key="spacer">
+          &nbsp;
+        </span>
+      )
+      spans.push(
+        <span className="sail-url" key="sail-url">
+          Share this view! <a href={this.props.sailUrl}>{this.props.sailUrl}</a>
+        </span>
       )
     }
-    return (
-      <nav className="TabNav">
-        <div>
-          {spans}
-        </div>
-      </nav>
-    )
+    return <nav className="TabNav">{spans}</nav>
   }
 }
 

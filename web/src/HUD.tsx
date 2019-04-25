@@ -151,7 +151,7 @@ class HUD extends Component<HudProps, HudState> {
 
   render() {
     let view = this.state.View
-    let sailUrl = (view && view.SailURL) ? view.SailURL : ""
+    let sailUrl = view && view.SailURL ? view.SailURL : ""
     let message = this.state.Message
     let resources = (view && view.Resources) || []
     if (!resources.length) {
@@ -176,7 +176,11 @@ class HUD extends Component<HudProps, HudState> {
       )
     }
 
-    let tabNavRoute = (t: ResourceView, sailUrl: string, props: RouteComponentProps<any>) => {
+    let tabNavRoute = (
+      t: ResourceView,
+      sailUrl: string,
+      props: RouteComponentProps<any>
+    ) => {
       let name =
         props.match.params && props.match.params.name
           ? props.match.params.name
