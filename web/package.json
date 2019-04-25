@@ -27,8 +27,10 @@
     "react-router-dom": "^4.3.1",
     "react-scripts": "2.1.8",
     "react-select": "^2.4.2",
+    "react-spinners-kit": "^1.9.0",
     "react-test-renderer": "^16.7.0",
     "react-timeago": "^4.4.0",
+    "styled-components": "^4.2.0",
     "typescript": "^3.3.4000"
   },
   "scripts": {

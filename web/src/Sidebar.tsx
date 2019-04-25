@@ -11,6 +11,7 @@ import enStrings from "react-timeago/lib/language-strings/en-short.js"
 import buildFormatter from "react-timeago/lib/formatters/buildFormatter"
 import { isZeroTime } from "./time"
 import PathBuilder from "./PathBuilder"
+import { WhisperSpinner } from "react-spinners-kit";
 
 /*
 We need to grab whether a resource has any pending build
@@ -90,11 +91,13 @@ class Sidebar extends PureComponent<SidebarProps> {
 
       let formatter = buildFormatter(enStrings)
       let hasBuilt = !isZeroTime(item.lastDeployTime)
+      let willBuild = !isZeroTime(item.pendingBuildSince)
       let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
 
       return (
         <li key={item.name}>
           <Link className={classes} to={pb.path(link)}>
+            <WhisperSpinner loading={willBuild} frontColor="20ba31" size={10} />
             <span className="resLink-name">{item.name}</span>
             <span>{hasBuilt ? timeAgo : ""}</span>
           </Link>

@@ -77,7 +77,7 @@
   color: $color-green;
 }
 .resLink--pending::before {
-  color: $color-gray-light;
+  content: "";
 }
 .resLink--error::before {
   color: $color-red;
