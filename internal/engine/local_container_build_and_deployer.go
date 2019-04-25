@@ -34,12 +34,12 @@ func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater,
 }
 
 func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
-	iTargets, err := extractImageTargetsForLiveUpdates(specs, stateSet)
+	liveUpdateStateSet, err := extractImageTargetsForLiveUpdates(specs, stateSet)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
 
-	if len(iTargets) != 1 {
+	if len(liveUpdateStateSet) != 1 {
 		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("Local container builder needs exactly one image target")
 	}
 
@@ -50,7 +50,10 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("Local container builder needs docker-compose or k8s cluster w/ local updates")
 	}
 
-	iTarget := iTargets[0]
+	liveUpdateState := liveUpdateStateSet[0]
+	iTarget := liveUpdateState.iTarget
+	state := liveUpdateState.iTargetState
+	filesChanged := liveUpdateState.filesChanged
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-BuildAndDeploy")
 	span.SetTag("target", iTarget.ConfigurationRef.String())
@@ -60,8 +63,6 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 	defer func() {
 		cbd.analytics.Timer("build.container", time.Since(startTime), nil)
 	}()
-
-	state := stateSet[iTarget.ID()]
 
 	// LocalContainerBuildAndDeployer doesn't support initial build
 	if state.IsEmpty() {
@@ -73,7 +74,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 	var hotReload bool
 
 	if fbInfo := iTarget.AnyFastBuildInfo(); !fbInfo.Empty() {
-		changedFiles, err = build.FilesToPathMappings(state.FilesChanged(), fbInfo.Syncs)
+		changedFiles, err = build.FilesToPathMappings(filesChanged, fbInfo.Syncs)
 		if err != nil {
 			return store.BuildResultSet{}, err
 		}
@@ -81,7 +82,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		hotReload = fbInfo.HotReload
 	}
 	if luInfo := iTarget.AnyLiveUpdateInfo(); !luInfo.Empty() {
-		changedFiles, err = build.FilesToPathMappings(state.FilesChanged(), luInfo.SyncSteps())
+		changedFiles, err = build.FilesToPathMappings(filesChanged, luInfo.SyncSteps())
 		if err != nil {
 			if pmErr, ok := err.(*build.PathMappingErr); ok {
 				// expected error for this builder. One of more files don't match sync's;
@@ -105,15 +106,20 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		runs = luInfo.RunSteps()
 		hotReload = !luInfo.ShouldRestart()
 	}
-	return cbd.buildAndDeploy(ctx, iTarget, state, changedFiles, runs, hotReload)
+
+	err = cbd.buildAndDeploy(ctx, iTarget, state, changedFiles, runs, hotReload)
+	if err != nil {
+		return store.BuildResultSet{}, err
+	}
+	return liveUpdateState.createResultSet(), nil
 }
 
-func (cbd *LocalContainerBuildAndDeployer) buildAndDeploy(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) (store.BuildResultSet, error) {
+func (cbd *LocalContainerBuildAndDeployer) buildAndDeploy(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) error {
 	deployInfo := state.DeployInfo
 	logger.Get(ctx).Infof("  → Updating container…")
 	boiledSteps, err := build.BoilRuns(runs, changedFiles)
 	if err != nil {
-		return store.BuildResultSet{}, err
+		return err
 	}
 
 	// TODO - use PipelineState here when we actually do pipeline output for container builds
@@ -122,16 +128,10 @@ func (cbd *LocalContainerBuildAndDeployer) buildAndDeploy(ctx context.Context, i
 	err = cbd.cu.UpdateInContainer(ctx, deployInfo.ContainerID, changedFiles, ignore.CreateBuildContextFilter(iTarget), boiledSteps, hotReload, writer)
 	if err != nil {
 		if build.IsUserBuildFailure(err) {
-			return store.BuildResultSet{}, WrapDontFallBackError(err)
+			return WrapDontFallBackError(err)
 		}
-		return store.BuildResultSet{}, err
+		return err
 	}
 	logger.Get(ctx).Infof("  → Container updated!")
-
-	res := state.LastResult.ShallowCloneForContainerUpdate(state.FilesChangedSet)
-	res.ContainerID = deployInfo.ContainerID // the container we deployed on top of
-
-	resultSet := store.BuildResultSet{}
-	resultSet[iTarget.ID()] = res
-	return resultSet, nil
+	return nil
 }

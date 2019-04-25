@@ -43,10 +43,15 @@ type testCase struct {
 func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 	bs := f.createBuildStateSet(tCase.baseManifest, tCase.changedFiles)
 	manifest := tCase.baseManifest
-	iTarg := manifest.ImageTargetAt(0)
+
+	// Assume that the last image target is the deployed one.
+	iTargIdx := len(manifest.ImageTargets) - 1
+	iTarg := manifest.ImageTargetAt(iTargIdx)
+	assert.True(t, manifest.IsImageDeployed(iTarg))
+
 	db := iTarg.DockerBuildInfo()
 	db.LiveUpdate = tCase.liveUpdate
-	manifest = manifest.WithImageTarget(iTarg.WithBuildDetails(db))
+	manifest.ImageTargets[iTargIdx] = iTarg.WithBuildDetails(db)
 	targets := buildTargets(manifest)
 
 	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
@@ -64,7 +69,7 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 	assert.Equal(t, tCase.expectSyncletCommandCount, f.sCli.CommandsRunCount, "synclet commands run")
 	assert.Equal(t, tCase.expectSyncletHotReload, f.sCli.UpdateContainerHotReload, "synclet hot reload")
 
-	id := manifest.ImageTargetAt(0).ID()
+	id := manifest.ImageTargetAt(iTargIdx).ID()
 	_, hasResult := result[id]
 	assert.True(t, hasResult)
 
@@ -460,6 +465,86 @@ func TestLiveUpdateSomeFilesMatchSyncSomeDontFallsBack(t *testing.T) {
 
 		logsContain:     []string{f.JoinPath("a.txt"), "doesn't match a LiveUpdate sync"},
 		logsDontContain: []string{"unexpected error"},
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateInFirstImageOfImageDependency(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	defer f.TearDown()
+
+	steps := []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
+		Source: f.JoinPath("sancho-base"),
+		Dest:   "/go/src/github.com/windmilleng/sancho-base",
+	}}
+
+	lu, err := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tCase := testCase{
+		env:                      k8s.EnvDockerDesktop,
+		baseManifest:             NewSanchoDockerBuildMultiStageManifest(f),
+		liveUpdate:               lu,
+		changedFiles:             []string{"sancho-base/a.txt"},
+		expectDockerCopyCount:    1,
+		expectDockerExecCount:    1,
+		expectDockerRestartCount: 1,
+		logsContain:              []string{f.JoinPath("sancho-base/a.txt")},
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateInFirstImageOfImageDependencyWithoutSync(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	defer f.TearDown()
+
+	steps := []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
+		Source: f.JoinPath("sancho"),
+		Dest:   "/go/src/github.com/windmilleng/sancho",
+	}}
+
+	lu, err := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tCase := testCase{
+		env:                    k8s.EnvDockerDesktop,
+		baseManifest:           NewSanchoDockerBuildMultiStageManifest(f),
+		liveUpdate:             lu,
+		changedFiles:           []string{"sancho-base/a.txt"},
+		expectDockerBuildCount: 2,
+		expectK8sDeploy:        true,
+		logsContain:            []string{f.JoinPath("sancho-base/a.txt")},
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateInSecondImageOfImageDependency(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	defer f.TearDown()
+
+	steps := []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
+		Source: f.JoinPath("sancho"),
+		Dest:   "/go/src/github.com/windmilleng/sancho",
+	}}
+
+	lu, err := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tCase := testCase{
+		env:                      k8s.EnvDockerDesktop,
+		baseManifest:             NewSanchoDockerBuildMultiStageManifest(f),
+		liveUpdate:               lu,
+		changedFiles:             []string{"sancho/a.txt"},
+		expectDockerCopyCount:    1,
+		expectDockerExecCount:    1,
+		expectDockerRestartCount: 1,
+		logsContain:              []string{f.JoinPath("sancho/a.txt")},
 	}
 	runTestCase(t, f, tCase)
 }
