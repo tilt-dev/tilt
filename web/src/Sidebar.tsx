@@ -94,7 +94,7 @@ class Sidebar extends PureComponent<SidebarProps> {
       let willBuild = !isZeroTime(item.pendingBuildSince)
       // let willBuild = true
       let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
-      let iconClasses = `resIcon resIcon--${item.status}`
+      let iconClasses = `resLink-icon resLink--${item.status}`
 
       return (
         <li key={item.name}>
