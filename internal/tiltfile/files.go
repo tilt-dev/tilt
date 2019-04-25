@@ -426,12 +426,12 @@ func (s *tiltfileState) readYaml(thread *starlark.Thread, fn *starlark.Builtin, 
 	var decodedJSON interface{}
 	err = yaml.Unmarshal(contents, &decodedJSON)
 	if err != nil {
-		return nil, fmt.Errorf("YAML to JSON conversion error: %v in %s", err, path.GoString())
+		return nil, fmt.Errorf("error parsing YAML: %v in %s", err, path.GoString())
 	}
 
 	v, err := convertJSONToStarlark(decodedJSON)
 	if err != nil {
-		return nil, fmt.Errorf("error converting JSON to Starlark: %v in %s", err, path.GoString())
+		return nil, fmt.Errorf("error converting YAML to Starlark: %v in %s", err, path.GoString())
 	}
 	return v, nil
 }
