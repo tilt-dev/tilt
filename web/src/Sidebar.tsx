@@ -81,7 +81,7 @@ class Sidebar extends PureComponent<SidebarProps> {
         analyticsKey = "ui.interactions.errors"
         link += "/errors"
       }
-      let classes = `resLink resLink--${item.status}`
+      let classes = `resLink`
       if (this.props.selected === item.name) {
         classes += " is-selected"
       }
@@ -92,12 +92,14 @@ class Sidebar extends PureComponent<SidebarProps> {
       let formatter = buildFormatter(enStrings)
       let hasBuilt = !isZeroTime(item.lastDeployTime)
       let willBuild = !isZeroTime(item.pendingBuildSince)
+      // let willBuild = true
       let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
+      let iconClasses = `resIcon resIcon--${item.status}`
 
       return (
         <li key={item.name}>
           <Link className={classes} to={pb.path(link)}>
-            <WhisperSpinner loading={willBuild} frontColor="20ba31" size={10} />
+            <span className={iconClasses}>{willBuild ? <WhisperSpinner loading={true} frontColor="20ba31" size={20} /> : "•"}</span>
             <span className="resLink-name">{item.name}</span>
             <span>{hasBuilt ? timeAgo : ""}</span>
           </Link>

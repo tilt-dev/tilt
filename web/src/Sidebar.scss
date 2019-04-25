@@ -53,11 +53,6 @@
   background-color: $color-white;
   color: $color-gray;
 }
-.resLink::before {
-  content: "●";
-  width: $spacing-unit * 1.5;
-  text-align: center;
-}
 .resLink.has-warnings::after {
   content: "⚠";
   margin-top: -5px;
@@ -75,9 +70,6 @@
 }
 .resLink--ok::before {
   color: $color-green;
-}
-.resLink--pending::before {
-  content: "";
 }
 .resLink--error::before {
   color: $color-red;
