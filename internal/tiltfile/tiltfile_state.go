@@ -711,8 +711,9 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 			return nil, errors.Wrapf(err, "getting image build info for %s", r.name)
 		}
 
-		s.checkForImpossibleLiveUpdates(iTargets)
 		m = m.WithImageTargets(iTargets)
+
+		s.checkForImpossibleLiveUpdates(m)
 
 		result = append(result, m)
 	}
@@ -727,17 +728,36 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 // on the pod (b/c of how we assemble resources, this corresponds to the first image target).
 // We won't collect container info (including DeployInfo) on any subsequent containers
 // (i.e. subsequent image targets), so will never be able to LiveUpdate them.
-func (s *tiltfileState) checkForImpossibleLiveUpdates(iTargs []model.ImageTarget) {
-	if len(iTargs) <= 1 {
-		// nothing to worry about!
-		return
-	}
-	for _, iTarg := range iTargs[1:] {
-		if !iTarg.AnyFastBuildInfo().Empty() || !iTarg.AnyLiveUpdateInfo().Empty() {
+func (s *tiltfileState) checkForImpossibleLiveUpdates(m model.Manifest) {
+	seenDeployedImage := false
+	for _, iTarg := range m.ImageTargets {
+		isDeployed := m.IsImageDeployed(iTarg)
+		isFirstDeployedImage := false
+		if isDeployed && !seenDeployedImage {
+			isFirstDeployedImage = true
+			seenDeployedImage = true
+		}
+
+		// This check only applies to images with live updates.
+		isInPlaceUpdate := !iTarg.AnyFastBuildInfo().Empty() || !iTarg.AnyLiveUpdateInfo().Empty()
+		if !isInPlaceUpdate {
+			continue
+		}
+
+		// TODO(nick): If an undeployed base image has a live-update component, we
+		// should probably emit a different kind of warning.
+		if !isDeployed {
+			continue
+		}
+
+		if !isFirstDeployedImage {
 			// TODO(maia): s/in-place updates/live updates after we fully deprecate FastBuild
 			s.warnings = append(s.warnings, fmt.Sprintf("Sorry, but Tilt only supports in-place updates "+
 				"for the first Tilt-built container on a pod, so we can't in-place update your image '%s'. If this "+
 				"is a feature you need, let us know!", iTarg.DeploymentRef.String()))
+
+			// Only emit the warning once
+			return
 		}
 	}
 }
@@ -840,6 +860,8 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 			return nil, errors.Wrapf(err, "getting image build info for %s", svc.Name)
 		}
 		m = m.WithImageTargets(iTargets)
+
+		s.checkForImpossibleLiveUpdates(m)
 
 		result = append(result, m)
 

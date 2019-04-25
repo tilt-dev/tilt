@@ -1619,6 +1619,32 @@ k8s_yaml('foo.yaml')
 	f.assertNextManifest("foo", deployment("foo", image("gcr.io/image-a"), image("gcr.io/image-b")))
 }
 
+func TestImageDependencyLiveUpdate(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("message.txt", "Hello!")
+	f.file("imageA.dockerfile", "FROM golang:1.10")
+	f.file("imageB.dockerfile", `FROM gcr.io/image-a
+ADD message.txt /tmp/message.txt`)
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/image-b")))
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build('gcr.io/image-b', '.', dockerfile='imageB.dockerfile',
+             live_update=[sync('message.txt', '/tmp/message.txt')])
+docker_build('gcr.io/image-a', '.', dockerfile='imageA.dockerfile')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	m := f.assertNextManifest("foo",
+		deployment("foo", image("gcr.io/image-a"), image("gcr.io/image-b")))
+
+	assert.True(t, m.ImageTargetAt(0).AnyLiveUpdateInfo().Empty())
+	assert.False(t, m.ImageTargetAt(1).AnyLiveUpdateInfo().Empty())
+}
+
 func TestImageDependencyCycle(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
