@@ -99,7 +99,7 @@ class Sidebar extends PureComponent<SidebarProps> {
       return (
         <li key={item.name}>
           <Link className={classes} to={pb.path(link)}>
-            <span className={iconClasses}>{willBuild ? <WhisperSpinner loading={true} frontColor="20ba31" size={20} /> : "•"}</span>
+            <span className={iconClasses}>{willBuild ? <WhisperSpinner loading={true} frontColor="20ba31" size={40} /> : "•"}</span>
             <span className="resLink-name">{item.name}</span>
             <span>{hasBuilt ? timeAgo : ""}</span>
           </Link>
