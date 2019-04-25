@@ -162,7 +162,7 @@ func (w DockerComposeLogActionWriter) Write(p []byte) (n int, err error) {
 	}
 	w.store.Dispatch(DockerComposeLogAction{
 		ManifestName: w.manifestName,
-		logEvent:     newLogEvent(append([]byte{}, p...)),
+		LogEvent:     store.NewLogEvent(append([]byte{}, p...)),
 	})
 	return len(p), nil
 }

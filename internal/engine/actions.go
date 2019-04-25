@@ -38,25 +38,19 @@ func NewServiceChangeAction(service *v1.Service, url *url.URL) ServiceChangeActi
 }
 
 type BuildLogAction struct {
-	logEvent
+	store.LogEvent
 	ManifestName model.ManifestName
 }
 
 func (BuildLogAction) Action() {}
 
 type PodLogAction struct {
-	logEvent
+	store.LogEvent
 	ManifestName model.ManifestName
 	PodID        k8s.PodID
 }
 
 func (PodLogAction) Action() {}
-
-type LogAction struct {
-	logEvent
-}
-
-func (LogAction) Action() {}
 
 type DeployIDAction struct {
 	TargetID model.TargetID
@@ -181,34 +175,14 @@ type DockerComposeEventAction struct {
 func (DockerComposeEventAction) Action() {}
 
 type DockerComposeLogAction struct {
-	logEvent
+	store.LogEvent
 	ManifestName model.ManifestName
 }
 
 func (DockerComposeLogAction) Action() {}
 
 type TiltfileLogAction struct {
-	logEvent
+	store.LogEvent
 }
 
 func (TiltfileLogAction) Action() {}
-
-type logEvent struct {
-	ts      time.Time
-	message []byte
-}
-
-func (le logEvent) Time() time.Time {
-	return le.ts
-}
-
-func (le logEvent) Message() []byte {
-	return le.message
-}
-
-func newLogEvent(b []byte) logEvent {
-	return logEvent{
-		ts:      time.Now(),
-		message: b,
-	}
-}
