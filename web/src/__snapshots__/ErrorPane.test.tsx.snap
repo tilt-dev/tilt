@@ -4,9 +4,16 @@ exports[`renders no errors 1`] = `
 <section
   className="ErrorPane"
 >
-  <p>
-    No errors
-  </p>
+  <section
+    className="Pane-empty-message"
+  >
+    <svg>
+      logo-wordmark-gray.svg
+    </svg>
+    <h2>
+      No Errors Found
+    </h2>
+  </section>
 </section>
 `;
 
@@ -15,23 +22,40 @@ exports[`renders one build error 1`] = `
   className="ErrorPane"
 >
   <ul>
-    <li>
-      <code>
-        <span
-          className={null}
-          style={null}
-        >
-          laa dee daa I'm an error
-        </span>
-      </code>
-      <code>
-        <span
-          className={null}
-          style={null}
-        >
-          for real I am
-        </span>
-      </code>
+    <li
+      className="ErrorPane-item"
+    >
+      <header>
+        <p>
+          foo
+        </p>
+        <p>
+          <time
+            dateTime="1949-11-18T09:39:00.000Z"
+            title="1,555,970,585,039"
+          >
+            69 years ago
+          </time>
+        </p>
+      </header>
+      <section>
+        <code>
+          <span
+            className={null}
+            style={null}
+          >
+            laa dee daa I'm an error
+          </span>
+        </code>
+        <code>
+          <span
+            className={null}
+            style={null}
+          >
+            for real I am
+          </span>
+        </code>
+      </section>
     </li>
   </ul>
 </section>
@@ -42,8 +66,20 @@ exports[`renders one container start error 1`] = `
   className="ErrorPane"
 >
   <ul>
-    <li>
-      Eeeeek there is a problem
+    <li
+      className="ErrorPane-item"
+    >
+      <header>
+        <p>
+          foo
+        </p>
+        <p>
+          1,555,970,585,039
+        </p>
+      </header>
+      <section>
+        Eeeeek there is a problem
+      </section>
     </li>
   </ul>
 </section>
@@ -54,8 +90,20 @@ exports[`renders one container start error 2`] = `
   className="ErrorPane"
 >
   <ul>
-    <li>
-      Eeeeek there is a problem
+    <li
+      className="ErrorPane-item"
+    >
+      <header>
+        <p>
+          foo
+        </p>
+        <p>
+          1,555,970,585,039
+        </p>
+      </header>
+      <section>
+        Eeeeek there is a problem
+      </section>
     </li>
   </ul>
 </section>
@@ -66,23 +114,40 @@ exports[`renders the last build with an error 1`] = `
   className="ErrorPane"
 >
   <ul>
-    <li>
-      <code>
-        <span
-          className={null}
-          style={null}
-        >
-          laa dee daa I'm another error
-        </span>
-      </code>
-      <code>
-        <span
-          className={null}
-          style={null}
-        >
-          Better watch out
-        </span>
-      </code>
+    <li
+      className="ErrorPane-item"
+    >
+      <header>
+        <p>
+          foo
+        </p>
+        <p>
+          <time
+            dateTime="1949-11-18T09:39:00.000Z"
+            title="1,555,970,585,039"
+          >
+            69 years ago
+          </time>
+        </p>
+      </header>
+      <section>
+        <code>
+          <span
+            className={null}
+            style={null}
+          >
+            laa dee daa I'm another error
+          </span>
+        </code>
+        <code>
+          <span
+            className={null}
+            style={null}
+          >
+            Better watch out
+          </span>
+        </code>
+      </section>
     </li>
   </ul>
 </section>
@@ -93,13 +158,25 @@ exports[`shows that a container has restarted 1`] = `
   className="ErrorPane"
 >
   <ul>
-    <li>
-      <p>
-        foo has container restarts: 1.
-      </p>
-      <p>
-        Last log line: Eeeeek the container crashed
-      </p>
+    <li
+      className="ErrorPane-item"
+    >
+      <header>
+        <p>
+          foo
+        </p>
+        <p>
+          Restarts: 1
+        </p>
+        <p>
+          1,555,970,585,039
+        </p>
+      </header>
+      <section>
+        <p>
+          Last log line: Eeeeek the container crashed
+        </p>
+      </section>
     </li>
   </ul>
 </section>

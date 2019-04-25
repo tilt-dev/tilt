@@ -1,4 +1,5 @@
-import React, { Component, createRef } from "react"
+import React, { Component } from "react"
+import { ReactComponent as LogoWorkmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
 import AnsiLine from "./AnsiLine"
 import "./LogPane.scss"
 
@@ -87,7 +88,10 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     if (!log || log.length == 0) {
       return (
         <section className={classes}>
-          <p className="LogPane-empty">No logs received</p>
+          <section className="Pane-empty-message">
+            <LogoWorkmarkSvg />
+            <h2>No Logs Found</h2>
+          </section>
         </section>
       )
     }

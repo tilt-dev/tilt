@@ -35,10 +35,11 @@
 .LogPane code {
   display: block;
   white-space: pre-wrap;
+  min-height: $spacing-unit / 2; // Respect blank lines
 }
 
 .ansi-black {
-  color: $color-gray-dark;
+  color: $color-black;
 }
 .ansi-red {
   color: $color-red;

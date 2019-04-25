@@ -13,6 +13,8 @@
   color: $color-white;
   background-color: transparent;
   padding: $spacing-unit / 2;
+  display: flex;
+  justify-content: center;
 }
 
 .PreviewPane--expanded {

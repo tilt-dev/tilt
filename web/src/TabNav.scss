@@ -6,9 +6,10 @@
   left: 0;
   right: 0;
   padding-right: $sidebar-width;
-  background-color: $color-gray-dark;
-  box-shadow: inset 0px -2px 10px 0px rgba($color-gray-darkest, $translucent);
+  background-color: $color-gray-darkest;
+  box-shadow: inset 0px -2px 10px 0px rgba($color-black, $translucent);
   z-index: $z-tabnav;
+  color: $color-gray-light;
 }
 
 .TabNav ul {
@@ -17,11 +18,11 @@
 }
 
 .TabNav ul li:last-child {
-  border-right: 1px solid $color-gray-light;
+  border-right: 1px solid $color-gray;
 }
 
 .TabNav ul li + li {
-  border-left: 1px solid $color-gray-light;
+  border-left: 1px solid $color-gray;
 }
 
 .tabLink {
@@ -46,6 +47,7 @@
 
 .tabLink--is-selected {
   right: 0;
-  background-color: $color-gray;
+  background-color: $color-gray-dark;
+  color: $color-white;
   border-bottom: none;
 }
