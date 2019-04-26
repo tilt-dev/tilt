@@ -3,9 +3,12 @@ package engine
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
 	"strconv"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -167,6 +170,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleLogTimestampsAction(state, action)
 	case TiltfileLogAction:
 		handleTiltfileLogAction(ctx, state, action)
+	case hud.DumpEngineStateAction:
+		handleDumpEngineStateAction(ctx, state)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -809,6 +814,23 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 	}
 
 	ms.LBs[k8s.ServiceName(service.Name)] = action.URL
+}
+
+func handleDumpEngineStateAction(ctx context.Context, engineState *store.EngineState) {
+	f, err := ioutil.TempFile("", "tilt-engine-state-*.txt")
+	if err != nil {
+		logger.Get(ctx).Infof("error creating temp file to write engine state: %v", err)
+		return
+	}
+
+	logger.Get(ctx).Infof("dumped tilt engine state to %q", f.Name())
+	spew.Fdump(f, engineState)
+
+	err = f.Close()
+	if err != nil {
+		logger.Get(ctx).Infof("error closing engine state temp file: %v", err)
+		return
+	}
 }
 
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {

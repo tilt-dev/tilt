@@ -25,3 +25,8 @@ type SetLogTimestampsAction struct {
 }
 
 func (SetLogTimestampsAction) Action() {}
+
+type DumpEngineStateAction struct {
+}
+
+func (DumpEngineStateAction) Action() {}

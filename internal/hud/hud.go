@@ -233,6 +233,8 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			h.Close()
 			dispatch(NewExitAction(nil))
 			return true
+		case tcell.KeyCtrlD:
+			dispatch(DumpEngineStateAction{})
 		case tcell.KeyCtrlP:
 			if h.currentView.IsProfiling {
 				dispatch(StopProfilingAction{})
