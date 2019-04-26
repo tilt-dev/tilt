@@ -109,6 +109,16 @@ func (m Manifest) WithDeployTarget(t TargetSpec) Manifest {
 	return m
 }
 
+func (m Manifest) IsImageDeployed(iTarget ImageTarget) bool {
+	id := iTarget.ID()
+	for _, depID := range m.DeployTarget().DependencyIDs() {
+		if depID == id {
+			return true
+		}
+	}
+	return false
+}
+
 func (m Manifest) LocalPaths() []string {
 	// TODO(matt?) DC syncs should probably stored somewhere more consistent with Docker/Fast Build
 	switch di := m.deployTarget.(type) {
