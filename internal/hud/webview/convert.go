@@ -1,4 +1,4 @@
-package server
+package webview
 
 import (
 	"os"
@@ -6,14 +6,13 @@ import (
 
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
-	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
 )
 
-func StateToWebView(s store.EngineState) webview.View {
-	ret := webview.View{}
+func StateToWebView(s store.EngineState) View {
+	ret := View{}
 
 	ret.Resources = append(ret.Resources, tiltfileResourceView(s))
 
@@ -67,7 +66,7 @@ func StateToWebView(s store.EngineState) webview.View {
 		// "most interesting" pod that's crash looping, or show logs from all pods
 		// at once).
 		_, pendingBuildSince := ms.HasPendingChanges()
-		r := webview.Resource{
+		r := Resource{
 			Name:               name,
 			DirectoriesWatched: relWatchDirs,
 			PathsWatched:       relWatchPaths,
@@ -92,7 +91,7 @@ func StateToWebView(s store.EngineState) webview.View {
 		absWatches := append([]string{}, s.ConfigFiles...)
 		relWatches := ospath.TryAsCwdChildren(absWatches)
 
-		r := webview.Resource{
+		r := Resource{
 			Name:               s.GlobalYAML.ManifestName(),
 			DirectoriesWatched: relWatches,
 			CurrentBuild:       s.GlobalYAMLState.ActiveBuild(),
@@ -100,7 +99,7 @@ func StateToWebView(s store.EngineState) webview.View {
 				s.GlobalYAMLState.LastBuild(),
 			},
 			LastDeployTime: s.GlobalYAMLState.LastSuccessfulApplyTime,
-			ResourceInfo: webview.YAMLResourceInfo{
+			ResourceInfo: YAMLResourceInfo{
 				K8sResources: s.GlobalYAML.K8sTarget().ResourceNames,
 			},
 		}
@@ -117,12 +116,12 @@ func StateToWebView(s store.EngineState) webview.View {
 	return ret
 }
 
-func tiltfileResourceView(s store.EngineState) webview.Resource {
+func tiltfileResourceView(s store.EngineState) Resource {
 	ltfb := s.LastTiltfileBuild
 	if !s.CurrentTiltfileBuild.Empty() {
 		ltfb.Log = s.CurrentTiltfileBuild.Log
 	}
-	tr := webview.Resource{
+	tr := Resource{
 		Name:         view.TiltfileResourceName,
 		IsTiltfile:   true,
 		CurrentBuild: s.CurrentTiltfileBuild,
@@ -130,7 +129,7 @@ func tiltfileResourceView(s store.EngineState) webview.Resource {
 			ltfb,
 		},
 		CombinedLog:   s.TiltfileCombinedLog,
-		RuntimeStatus: webview.RuntimeStatusOK,
+		RuntimeStatus: RuntimeStatusOK,
 	}
 	if !s.CurrentTiltfileBuild.Empty() {
 		tr.PendingBuildSince = s.CurrentTiltfileBuild.StartTime
@@ -140,12 +139,12 @@ func tiltfileResourceView(s store.EngineState) webview.Resource {
 	return tr
 }
 
-func resourceInfoView(mt *store.ManifestTarget) webview.ResourceInfoView {
+func resourceInfoView(mt *store.ManifestTarget) ResourceInfoView {
 	if dcState, ok := mt.State.ResourceState.(dockercompose.State); ok {
-		return webview.NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPath, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
+		return NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPath, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
 	} else {
 		pod := mt.State.MostRecentPod()
-		return webview.K8SResourceInfo{
+		return K8SResourceInfo{
 			PodName:            pod.PodID.String(),
 			PodCreationTime:    pod.StartedAt,
 			PodUpdateStartTime: pod.UpdateStartTime,
@@ -157,34 +156,34 @@ func resourceInfoView(mt *store.ManifestTarget) webview.ResourceInfoView {
 	}
 }
 
-func runtimeStatus(res webview.ResourceInfoView) webview.RuntimeStatus {
+func runtimeStatus(res ResourceInfoView) RuntimeStatus {
 	// if we have no images to build, we have no runtime status monitoring.
-	_, isYAML := res.(webview.YAMLResourceInfo)
+	_, isYAML := res.(YAMLResourceInfo)
 	if isYAML {
-		return webview.RuntimeStatusOK
+		return RuntimeStatusOK
 	}
 
 	result, ok := runtimeStatusMap[res.Status()]
 	if !ok {
-		return webview.RuntimeStatusError
+		return RuntimeStatusError
 	}
 	return result
 }
 
-var runtimeStatusMap = map[string]webview.RuntimeStatus{
-	"Running":                          webview.RuntimeStatusOK,
-	"ContainerCreating":                webview.RuntimeStatusPending,
-	"Pending":                          webview.RuntimeStatusPending,
-	"PodInitializing":                  webview.RuntimeStatusPending,
-	"Error":                            webview.RuntimeStatusError,
-	"CrashLoopBackOff":                 webview.RuntimeStatusError,
-	"ErrImagePull":                     webview.RuntimeStatusError,
-	"ImagePullBackOff":                 webview.RuntimeStatusError,
-	string(dockercompose.StatusInProg): webview.RuntimeStatusPending,
-	string(dockercompose.StatusUp):     webview.RuntimeStatusOK,
-	string(dockercompose.StatusDown):   webview.RuntimeStatusError,
-	"Completed":                        webview.RuntimeStatusOK,
+var runtimeStatusMap = map[string]RuntimeStatus{
+	"Running":                          RuntimeStatusOK,
+	"ContainerCreating":                RuntimeStatusPending,
+	"Pending":                          RuntimeStatusPending,
+	"PodInitializing":                  RuntimeStatusPending,
+	"Error":                            RuntimeStatusError,
+	"CrashLoopBackOff":                 RuntimeStatusError,
+	"ErrImagePull":                     RuntimeStatusError,
+	"ImagePullBackOff":                 RuntimeStatusError,
+	string(dockercompose.StatusInProg): RuntimeStatusPending,
+	string(dockercompose.StatusUp):     RuntimeStatusOK,
+	string(dockercompose.StatusDown):   RuntimeStatusError,
+	"Completed":                        RuntimeStatusOK,
 
 	// If the runtime status hasn't shown up yet, we assume it's pending.
-	"": webview.RuntimeStatusPending,
+	"": RuntimeStatusPending,
 }

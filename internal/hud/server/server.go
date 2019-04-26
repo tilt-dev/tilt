@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/mux"
 	_ "github.com/gorilla/websocket"
 	"github.com/windmilleng/tilt/internal/assets"
+	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/wmclient/pkg/analytics"
@@ -50,7 +51,7 @@ func (s HeadsUpServer) Router() http.Handler {
 
 func (s HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
 	state := s.store.RLockState()
-	view := StateToWebView(state)
+	view := webview.StateToWebView(state)
 	s.store.RUnlockState()
 
 	w.Header().Set("Content-Type", "application/json")

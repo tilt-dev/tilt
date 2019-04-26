@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -157,7 +156,7 @@ func (s *SailClient) OnChange(ctx context.Context, st store.RStore) {
 	}
 
 	state := st.RLockState()
-	view := server.StateToWebView(state)
+	view := webview.StateToWebView(state)
 	st.RUnlockState()
 
 	s.broadcast(ctx, view)
