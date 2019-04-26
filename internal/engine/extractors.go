@@ -20,43 +20,6 @@ func extractImageAndK8sTargets(specs []model.TargetSpec) (iTargets []model.Image
 	return iTargets, kTargets
 }
 
-// Check to see if we have k8s targets.
-func extractK8sTargets(specs []model.TargetSpec) []model.K8sTarget {
-	kTargets := make([]model.K8sTarget, 0)
-	for _, spec := range specs {
-		t, ok := spec.(model.K8sTarget)
-		if !ok {
-			continue
-		}
-		kTargets = append(kTargets, t)
-	}
-	return kTargets
-}
-
-func extractImageTargets(specs []model.TargetSpec) []model.ImageTarget {
-	iTargets := make([]model.ImageTarget, 0)
-	for _, spec := range specs {
-		t, ok := spec.(model.ImageTarget)
-		if !ok {
-			continue
-		}
-		iTargets = append(iTargets, t)
-	}
-	return iTargets
-}
-
-func extractDockerComposeTargets(specs []model.TargetSpec) []model.DockerComposeTarget {
-	targets := make([]model.DockerComposeTarget, 0)
-	for _, spec := range specs {
-		t, ok := spec.(model.DockerComposeTarget)
-		if !ok {
-			continue
-		}
-		targets = append(targets, t)
-	}
-	return targets
-}
-
 // Extract image targets iff they can be updated in-place in a container.
 func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.BuildStateSet) ([]model.ImageTarget, error) {
 	iTargets := make([]model.ImageTarget, 0)

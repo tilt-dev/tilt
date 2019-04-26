@@ -45,7 +45,7 @@ func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store
 	}
 
 	iTarget := iTargets[0]
-	if !isImageDeployedToK8s(iTarget, extractK8sTargets(specs)) {
+	if !isImageDeployedToK8s(iTarget, model.ExtractK8sTargets(specs)) {
 		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("Synclet container builder can only deploy to k8s")
 	}
 

@@ -195,7 +195,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	}
 
 	result := store.BuildResultSet{}
-	for _, iTarget := range extractImageTargets(specs) {
+	for _, iTarget := range model.ExtractImageTargets(specs) {
 		var deployTarget model.TargetSpec
 		if !call.dc().Empty() {
 			if isImageDeployedToDC(iTarget, call.dc()) {

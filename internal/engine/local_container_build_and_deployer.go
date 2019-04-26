@@ -43,8 +43,8 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("Local container builder needs exactly one image target")
 	}
 
-	isDC := len(extractDockerComposeTargets(specs)) > 0
-	isK8s := len(extractK8sTargets(specs)) > 0
+	isDC := len(model.ExtractDockerComposeTargets(specs)) > 0
+	isK8s := len(model.ExtractK8sTargets(specs)) > 0
 	canLocalUpdate := isDC || (isK8s && cbd.env.IsLocalCluster())
 	if !canLocalUpdate {
 		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("Local container builder needs docker-compose or k8s cluster w/ local updates")
