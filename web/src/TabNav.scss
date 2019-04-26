@@ -10,6 +10,8 @@
   box-shadow: inset 0px -2px 10px 0px rgba($color-black, $translucent);
   z-index: $z-tabnav;
   color: $color-gray-light;
+  display: flex;
+  flex-direction: row;
 }
 
 .TabNav ul {
@@ -23,6 +25,16 @@
 
 .TabNav ul li + li {
   border-left: 1px solid $color-gray;
+}
+
+.TabNav span.sail-url {
+  padding: 1em;
+}
+
+// Collapse/Expand
+.TabNav-spacer {
+  flex-grow: 1;
+  height: 0;
 }
 
 .tabLink {

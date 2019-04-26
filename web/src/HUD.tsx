@@ -56,6 +56,7 @@ type HudState = {
     Resources: Array<Resource>
     Log: string
     LogTimestamps: boolean
+    SailURL: string
   } | null
   IsSidebarClosed: boolean
 }
@@ -89,6 +90,7 @@ class HUD extends Component<HudProps, HudState> {
         Resources: [],
         Log: "",
         LogTimestamps: false,
+        SailURL: "",
       },
       IsSidebarClosed: false,
     }
@@ -149,6 +151,7 @@ class HUD extends Component<HudProps, HudState> {
 
   render() {
     let view = this.state.View
+    let sailUrl = view && view.SailURL ? view.SailURL : ""
     let message = this.state.Message
     let resources = (view && view.Resources) || []
     if (!resources.length) {
@@ -184,6 +187,7 @@ class HUD extends Component<HudProps, HudState> {
           errorsUrl={name === "" ? "/errors" : `/r/${name}/errors`}
           previewUrl={this.getEndpointForName(name, sidebarItems)}
           resourceView={t}
+          sailUrl={sailUrl}
         />
       )
     }

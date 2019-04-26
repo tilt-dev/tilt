@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"sync"
 
@@ -12,6 +13,13 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 )
+
+type SailRoomConnectedAction struct {
+	ViewURL string // URL to view the Sail room
+	Err     error
+}
+
+func (SailRoomConnectedAction) Action() {}
 
 type SailClient struct {
 	addr     model.SailURL
@@ -85,14 +93,26 @@ func (s *SailClient) setConnection(ctx context.Context, conn SailConn) {
 	}()
 }
 
-func (s *SailClient) Connect(ctx context.Context) error {
+func (s *SailClient) Connect(ctx context.Context, st store.RStore) error {
 	roomID, secret, err := s.roomer.NewRoom(ctx)
 	if err != nil {
+		st.Dispatch(SailRoomConnectedAction{Err: err})
 		return err
 	}
 	logger.Get(ctx).Infof("new room %s with secret %s\n", roomID, secret)
 
-	return s.shareToRoom(ctx, roomID, secret)
+	err = s.shareToRoom(ctx, roomID, secret)
+	if err != nil {
+		st.Dispatch(SailRoomConnectedAction{Err: err})
+		return err
+	}
+
+	// Send back URL to surface to user for sharing
+	viewUrl := s.addr.Http()
+	viewUrl.Path = fmt.Sprintf("/view/%s", roomID)
+	st.Dispatch(SailRoomConnectedAction{ViewURL: viewUrl.String()})
+
+	return nil
 }
 
 func (s *SailClient) shareToRoom(ctx context.Context, roomID model.RoomID, secret string) error {
@@ -112,12 +132,12 @@ func (s *SailClient) shareToRoom(ctx context.Context, roomID model.RoomID, secre
 	return nil
 }
 
-func (s *SailClient) init(ctx context.Context) error {
+func (s *SailClient) init(ctx context.Context, st store.RStore) error {
 	if s.addr.Empty() {
 		return nil
 	}
 
-	return s.Connect(ctx)
+	return s.Connect(ctx, st)
 }
 
 func (s *SailClient) OnChange(ctx context.Context, st store.RStore) {
@@ -127,7 +147,7 @@ func (s *SailClient) OnChange(ctx context.Context, st store.RStore) {
 		// TODO(nick): To get an end-to-end connection working, we're just
 		// going to connect to the Sail server on startup. Eventually this
 		// should be changed to connect on user action.
-		err := s.init(ctx)
+		err := s.init(ctx, st)
 		if err != nil {
 			st.Dispatch(store.NewErrorAction(errors.Wrap(err, "SailClient")))
 		}

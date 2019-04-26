@@ -12,6 +12,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/sail/client"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
@@ -168,6 +169,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleStopProfilingAction(state)
 	case hud.SetLogTimestampsAction:
 		handleLogTimestampsAction(state, action)
+	case client.SailRoomConnectedAction:
+		handleSailRoomConnectedAction(ctx, state, action)
 	case TiltfileLogAction:
 		handleTiltfileLogAction(ctx, state, action)
 	case hud.DumpEngineStateAction:
@@ -377,6 +380,14 @@ func handleStartProfilingAction(state *store.EngineState) {
 
 func handleLogTimestampsAction(state *store.EngineState, action hud.SetLogTimestampsAction) {
 	state.LogTimestamps = action.Value
+}
+
+func handleSailRoomConnectedAction(ctx context.Context, state *store.EngineState, action client.SailRoomConnectedAction) {
+	if action.Err != nil {
+		logger.Get(ctx).Infof("Error connecting Sail room: %v\n", action.Err)
+		return
+	}
+	state.SailURL = action.ViewURL
 }
 
 func handleFSEvent(

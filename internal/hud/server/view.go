@@ -111,6 +111,7 @@ func StateToWebView(s store.EngineState) webview.View {
 	}
 
 	ret.Log = s.Log
+	ret.SailURL = s.SailURL
 
 	return ret
 }

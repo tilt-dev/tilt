@@ -8,6 +8,7 @@ type NavProps = {
   logUrl: string
   errorsUrl: string
   resourceView: ResourceView
+  sailUrl: string
 }
 
 class TabNav extends PureComponent<NavProps> {
@@ -15,8 +16,9 @@ class TabNav extends PureComponent<NavProps> {
     let logIsSelected = this.props.resourceView == ResourceView.Log
     let previewIsSelected = this.props.resourceView == ResourceView.Preview
     let errorsIsSelected = this.props.resourceView == ResourceView.Errors
-    return (
-      <nav className="TabNav">
+
+    let spans: Array<JSX.Element> = [
+      <span key="TabNav">
         <ul>
           <li>
             <Link
@@ -49,8 +51,22 @@ class TabNav extends PureComponent<NavProps> {
             </Link>
           </li>
         </ul>
-      </nav>
-    )
+      </span>,
+    ]
+
+    if (this.props.sailUrl) {
+      spans.push(
+        <span className="TabNav-spacer" key="spacer">
+          &nbsp;
+        </span>
+      )
+      spans.push(
+        <span className="sail-url" key="sail-url">
+          Share this view! <a href={this.props.sailUrl}>{this.props.sailUrl}</a>
+        </span>
+      )
+    }
+    return <nav className="TabNav">{spans}</nav>
   }
 }
 
