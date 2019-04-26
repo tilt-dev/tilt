@@ -131,10 +131,10 @@ func NewSanchoCustomBuildManifestWithPushDisabled(fixture pather) model.Manifest
 		model.NewImageTarget(SanchoRef).WithBuildDetails(cb))
 }
 
-func NewSanchoDockerBuildImageTarget() model.ImageTarget {
+func NewSanchoDockerBuildImageTarget(f pather) model.ImageTarget {
 	return model.NewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: SanchoDockerfile,
-		BuildPath:  "/path/to/build",
+		BuildPath:  f.Path(),
 	})
 }
 
@@ -158,8 +158,8 @@ func NewSanchoLiveUpdateImageTarget(f pather) (model.ImageTarget, error) {
 	return imageTargetWithLiveUpdate(model.NewImageTarget(SanchoRef), lu), nil
 }
 
-func NewSanchoSidecarDockerBuildImageTarget() model.ImageTarget {
-	iTarget := NewSanchoDockerBuildImageTarget()
+func NewSanchoSidecarDockerBuildImageTarget(f pather) model.ImageTarget {
+	iTarget := NewSanchoDockerBuildImageTarget(f)
 	iTarget.ConfigurationRef = SanchoSidecarRef
 	iTarget.DeploymentRef = SanchoSidecarRef.AsNamedOnly()
 	return iTarget
@@ -182,29 +182,21 @@ func NewSanchoSidecarLiveUpdateImageTarget(f pather) (model.ImageTarget, error) 
 	return iTarget, nil
 }
 
-func NewSanchoDockerBuildManifest() model.Manifest {
-	return NewSanchoDockerBuildManifestWithBuildPath("/path/to/build")
-}
-
-func NewSanchoDockerBuildManifestWithBuildPath(path string) model.Manifest {
+func NewSanchoDockerBuildManifest(f pather) model.Manifest {
 	return assembleK8sManifest(
 		model.Manifest{Name: "sancho"},
 		model.K8sTarget{YAML: SanchoYAML},
-		NewSanchoDockerBuildImageTarget().
-			WithBuildDetails(model.DockerBuild{
-				Dockerfile: SanchoDockerfile,
-				BuildPath:  path,
-			}))
+		NewSanchoDockerBuildImageTarget(f))
 }
 
-func NewSanchoDockerBuildManifestWithCache(paths []string) model.Manifest {
-	manifest := NewSanchoDockerBuildManifest()
+func NewSanchoDockerBuildManifestWithCache(f pather, paths []string) model.Manifest {
+	manifest := NewSanchoDockerBuildManifest(f)
 	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).WithCachePaths(paths))
 	return manifest
 }
 
 func NewSanchoDockerBuildManifestWithNestedFastBuild(fixture pather) model.Manifest {
-	manifest := NewSanchoDockerBuildManifest()
+	manifest := NewSanchoDockerBuildManifest(fixture)
 	iTarg := manifest.ImageTargetAt(0)
 	fb := NewSanchoFastBuild(fixture)
 	sb := iTarg.DockerBuildInfo()
@@ -241,7 +233,7 @@ ENTRYPOINT /go/bin/sancho
 func NewSanchoFastMultiStageManifest(fixture pather) model.Manifest {
 	baseImage := model.NewImageTarget(SanchoBaseRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: `FROM golang:1.10`,
-		BuildPath:  "/path/to/build",
+		BuildPath:  fixture.Path(),
 	})
 
 	fbInfo := NewSanchoFastBuild(fixture)
