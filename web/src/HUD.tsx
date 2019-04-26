@@ -56,6 +56,7 @@ type HudState = {
     Resources: Array<Resource>
     Log: string
     LogTimestamps: boolean
+    SailEnabled: boolean
     SailURL: string
   } | null
   IsSidebarClosed: boolean
@@ -90,6 +91,7 @@ class HUD extends Component<HudProps, HudState> {
         Resources: [],
         Log: "",
         LogTimestamps: false,
+        SailEnabled: false, // this isn't realllly the place for this info?
         SailURL: "",
       },
       IsSidebarClosed: false,
@@ -151,6 +153,7 @@ class HUD extends Component<HudProps, HudState> {
 
   render() {
     let view = this.state.View
+    let sailEnabled = view && view.SailEnabled ? view.SailEnabled : false
     let sailUrl = view && view.SailURL ? view.SailURL : ""
     let message = this.state.Message
     let resources = (view && view.Resources) || []
@@ -187,6 +190,7 @@ class HUD extends Component<HudProps, HudState> {
           errorsUrl={name === "" ? "/errors" : `/r/${name}/errors`}
           previewUrl={this.getEndpointForName(name, sidebarItems)}
           resourceView={t}
+          sailEnabled={sailEnabled}
           sailUrl={sailUrl}
         />
       )

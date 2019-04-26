@@ -31,6 +31,7 @@ it("previews resources", () => {
           previewUrl="/r/foo/preview"
           errorsUrl="/r/foo/errors"
           resourceView={ResourceView.Preview}
+          sailEnabled={false}
           sailUrl=""
         />
       </MemoryRouter>
@@ -49,6 +50,26 @@ it("shows error pane", () => {
           previewUrl="/r/foo/preview"
           errorsUrl="/r/foo/errors"
           resourceView={ResourceView.Errors}
+          sailEnabled={false}
+          sailUrl=""
+        />
+      </MemoryRouter>
+    )
+    .toJSON()
+
+  expect(tree).toMatchSnapshot()
+})
+
+it("shows sail share button", () => {
+  const tree = renderer
+    .create(
+      <MemoryRouter>
+        <TabNav
+          logUrl="/r/foo"
+          previewUrl="/r/foo/preview"
+          errorsUrl="/r/foo/errors"
+          resourceView={ResourceView.Errors}
+          sailEnabled={true}
           sailUrl=""
         />
       </MemoryRouter>
@@ -67,6 +88,7 @@ it("shows sail url", () => {
           previewUrl="/r/foo/preview"
           errorsUrl="/r/foo/errors"
           resourceView={ResourceView.Errors}
+          sailEnabled={true}
           sailUrl="www.sail.dev/xyz"
         />
       </MemoryRouter>

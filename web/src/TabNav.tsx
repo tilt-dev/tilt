@@ -8,6 +8,7 @@ type NavProps = {
   logUrl: string
   errorsUrl: string
   resourceView: ResourceView
+  sailEnabled: boolean
   sailUrl: string
 }
 
@@ -54,17 +55,25 @@ class TabNav extends PureComponent<NavProps> {
       </span>,
     ]
 
-    if (this.props.sailUrl) {
+    if (this.props.sailEnabled) {
       spans.push(
         <span className="TabNav-spacer" key="spacer">
           &nbsp;
         </span>
       )
-      spans.push(
-        <span className="sail-url" key="sail-url">
-          Share this view! <a href={this.props.sailUrl}>{this.props.sailUrl}</a>
-        </span>
-      )
+      if (this.props.sailUrl) {
+        spans.push(
+          <span className="sail-url" key="sail-url">
+            <a href={this.props.sailUrl}>Share this view!</a>
+          </span>
+        )
+      } else {
+        spans.push(
+          <span className="sail-url" key="sail-url">
+            <button type="button">Share me!</button>
+          </span>
+        )
+      }
     }
     return <nav className="TabNav">{spans}</nav>
   }
