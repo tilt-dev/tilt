@@ -13,7 +13,6 @@ import enStrings from "react-timeago/lib/language-strings/en-short.js"
 import buildFormatter from "react-timeago/lib/formatters/buildFormatter"
 import { isZeroTime } from "./time"
 import PathBuilder from "./PathBuilder"
-import { WhisperSpinner } from "react-spinners-kit"
 
 /*
 We need to grab whether a resource has any pending build
