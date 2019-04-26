@@ -8,7 +8,6 @@ import (
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 )
 
@@ -42,15 +41,7 @@ type testCase struct {
 }
 
 func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
-	var bs store.BuildStateSet
-	if len(tCase.changedFiles) > 0 {
-		changed := make([]string, len(tCase.changedFiles))
-		for i, file := range tCase.changedFiles {
-			changed[i] = f.WriteFile(file, "blah")
-		}
-		bs = resultToStateSet(alreadyBuiltSet, changed, f.deployInfo())
-	}
-
+	bs := f.createBuildStateSet(tCase.baseManifest, tCase.changedFiles)
 	manifest := tCase.baseManifest
 	iTarg := manifest.ImageTargetAt(0)
 	db := iTarg.DockerBuildInfo()
@@ -113,7 +104,7 @@ func TestLiveUpdateDockerBuildLocalContainer(t *testing.T) {
 	}
 	tCase := testCase{
 		env:                      k8s.EnvDockerDesktop,
-		baseManifest:             NewSanchoDockerBuildManifest(),
+		baseManifest:             NewSanchoDockerBuildManifest(f),
 		liveUpdate:               lu,
 		changedFiles:             []string{"a.txt"},
 		expectDockerBuildCount:   0,
@@ -137,7 +128,7 @@ func TestLiveUpdateCustomBuildLocalContainer(t *testing.T) {
 		env:                      k8s.EnvDockerDesktop,
 		baseManifest:             NewSanchoCustomBuildManifest(f),
 		liveUpdate:               lu,
-		changedFiles:             []string{"a.txt"},
+		changedFiles:             []string{"app/a.txt"},
 		expectDockerBuildCount:   0,
 		expectDockerPushCount:    0,
 		expectDockerCopyCount:    1,
@@ -157,7 +148,7 @@ func TestLiveUpdateHotReloadLocalContainer(t *testing.T) {
 	}
 	tCase := testCase{
 		env:                      k8s.EnvDockerDesktop,
-		baseManifest:             NewSanchoDockerBuildManifest(),
+		baseManifest:             NewSanchoDockerBuildManifest(f),
 		liveUpdate:               lu,
 		changedFiles:             []string{"a.txt"},
 		expectDockerBuildCount:   0,
@@ -184,7 +175,7 @@ func TestLiveUpdateRunTriggerLocalContainer(t *testing.T) {
 	}
 	tCase := testCase{
 		env:                      k8s.EnvDockerDesktop,
-		baseManifest:             NewSanchoDockerBuildManifest(),
+		baseManifest:             NewSanchoDockerBuildManifest(f),
 		liveUpdate:               lu,
 		changedFiles:             []string{"a.txt"},
 		expectDockerBuildCount:   0,
@@ -211,7 +202,7 @@ func TestLiveUpdateRunTriggerSynclet(t *testing.T) {
 	}
 	tCase := testCase{
 		env:                               k8s.EnvGKE,
-		baseManifest:                      NewSanchoDockerBuildManifest(),
+		baseManifest:                      NewSanchoDockerBuildManifest(f),
 		liveUpdate:                        lu,
 		changedFiles:                      []string{"a.txt"},
 		expectDockerBuildCount:            0,
@@ -232,7 +223,7 @@ func TestLiveUpdateDockerBuildSynclet(t *testing.T) {
 	}
 	tCase := testCase{
 		env:                               k8s.EnvGKE,
-		baseManifest:                      NewSanchoDockerBuildManifest(),
+		baseManifest:                      NewSanchoDockerBuildManifest(f),
 		liveUpdate:                        lu,
 		changedFiles:                      []string{"a.txt"},
 		expectDockerBuildCount:            0,
@@ -256,7 +247,7 @@ func TestLiveUpdateCustomBuildSynclet(t *testing.T) {
 		env:                               k8s.EnvGKE,
 		baseManifest:                      NewSanchoCustomBuildManifest(f),
 		liveUpdate:                        lu,
-		changedFiles:                      []string{"a.txt"},
+		changedFiles:                      []string{"app/a.txt"},
 		expectDockerBuildCount:            0,
 		expectDockerPushCount:             0,
 		expectSyncletUpdateContainerCount: 1,
@@ -276,7 +267,7 @@ func TestLiveUpdateHotReloadSynclet(t *testing.T) {
 	}
 	tCase := testCase{
 		env:                               k8s.EnvGKE,
-		baseManifest:                      NewSanchoDockerBuildManifest(),
+		baseManifest:                      NewSanchoDockerBuildManifest(f),
 		liveUpdate:                        lu,
 		changedFiles:                      []string{"a.txt"},
 		expectDockerBuildCount:            0,
@@ -294,7 +285,7 @@ func TestDockerBuildDoesNotDeploySynclet(t *testing.T) {
 
 	tCase := testCase{
 		env:                    k8s.EnvGKE,
-		baseManifest:           NewSanchoDockerBuildManifest(),
+		baseManifest:           NewSanchoDockerBuildManifest(f),
 		changedFiles:           nil, // will use an empty BuildResultSet, i.e. treat this as first build
 		expectDockerBuildCount: 1,
 		expectDockerPushCount:  1,
@@ -315,7 +306,7 @@ func TestLiveUpdateDockerBuildDeploysSynclet(t *testing.T) {
 
 	tCase := testCase{
 		env:                    k8s.EnvGKE,
-		baseManifest:           NewSanchoDockerBuildManifest(),
+		baseManifest:           NewSanchoDockerBuildManifest(f),
 		liveUpdate:             lu,
 		changedFiles:           nil, // will use an empty BuildResultSet, i.e. treat this as first build
 		expectDockerBuildCount: 1,
@@ -336,7 +327,7 @@ func TestLiveUpdateLocalContainerFallBackOn(t *testing.T) {
 	}
 	tCase := testCase{
 		env:                      k8s.EnvDockerDesktop,
-		baseManifest:             NewSanchoDockerBuildManifest(),
+		baseManifest:             NewSanchoDockerBuildManifest(f),
 		liveUpdate:               lu,
 		changedFiles:             []string{"a.txt"},
 		expectDockerBuildCount:   1, // we did a Docker build instead of an in-place update!
@@ -360,7 +351,7 @@ func TestLiveUpdateSyncletFallBackOn(t *testing.T) {
 	}
 	tCase := testCase{
 		env:                      k8s.EnvGKE,
-		baseManifest:             NewSanchoDockerBuildManifest(),
+		baseManifest:             NewSanchoDockerBuildManifest(f),
 		liveUpdate:               lu,
 		changedFiles:             []string{"a.txt"},
 		expectDockerBuildCount:   1, // we did a Docker build instead of an in-place update!
@@ -390,7 +381,7 @@ func TestLiveUpdateLocalContainerChangedFileNotMatchingSyncFallsBack(t *testing.
 	}
 	tCase := testCase{
 		env:          k8s.EnvDockerDesktop,
-		baseManifest: NewSanchoDockerBuildManifestWithBuildPath(f.Path()),
+		baseManifest: NewSanchoDockerBuildManifest(f),
 		liveUpdate:   lu,
 		changedFiles: []string{f.JoinPath("a.txt")}, // matches context but not sync'd directory
 
@@ -422,7 +413,7 @@ func TestLiveUpdateSyncletChangedFileNotMatchingSyncFallsBack(t *testing.T) {
 	}
 	tCase := testCase{
 		env:          k8s.EnvGKE,
-		baseManifest: NewSanchoDockerBuildManifestWithBuildPath(f.Path()),
+		baseManifest: NewSanchoDockerBuildManifest(f),
 		liveUpdate:   lu,
 		changedFiles: []string{f.JoinPath("a.txt")}, // matches context but not sync'd directory
 
@@ -455,7 +446,7 @@ func TestLiveUpdateSomeFilesMatchSyncSomeDontFallsBack(t *testing.T) {
 	}
 	tCase := testCase{
 		env:          k8s.EnvDockerDesktop,
-		baseManifest: NewSanchoDockerBuildManifestWithBuildPath(f.Path()),
+		baseManifest: NewSanchoDockerBuildManifest(f),
 		liveUpdate:   lu,
 		// One file matches a sync, one does not -- we should still fall back.
 		changedFiles: f.JoinPaths([]string{"specific/directory/i_match", "a.txt"}),
