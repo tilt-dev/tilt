@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -140,20 +141,17 @@ func (s *SailClient) init(ctx context.Context, st store.RStore) error {
 }
 
 func (s *SailClient) OnChange(ctx context.Context, st store.RStore) {
-	// ~~ TODO:
-	// if state.NeedsSailConnect: s.init(ctx, st)
+	if !s.initDone {
+		s.initDone = true
 
-	// if !s.initDone {
-	// 	s.initDone = true
-	//
-	// 	// TODO(nick): To get an end-to-end connection working, we're just
-	// 	// going to connect to the Sail server on startup. Eventually this
-	// 	// should be changed to connect on user action.
-	// 	err := s.init(ctx, st)
-	// 	if err != nil {
-	// 		st.Dispatch(store.NewErrorAction(errors.Wrap(err, "SailClient")))
-	// 	}
-	// }
+		// TODO(nick): To get an end-to-end connection working, we're just
+		// going to connect to the Sail server on startup. Eventually this
+		// should be changed to connect on user action.
+		err := s.init(ctx, st)
+		if err != nil {
+			st.Dispatch(store.NewErrorAction(errors.Wrap(err, "SailClient")))
+		}
+	}
 
 	if !s.isConnected() {
 		return

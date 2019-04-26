@@ -91,7 +91,7 @@ class HUD extends Component<HudProps, HudState> {
         Resources: [],
         Log: "",
         LogTimestamps: false,
-        SailEnabled: false, // this isn't realllly the place for this info?
+        SailEnabled: false,
         SailURL: "",
       },
       IsSidebarClosed: false,
