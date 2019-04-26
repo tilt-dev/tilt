@@ -26,10 +26,10 @@ type HeadsUpServer struct {
 	store   *store.Store
 	router  *mux.Router
 	a       analytics.Analytics
-	sailCli *client.SailClient
+	sailCli client.SailClient
 }
 
-func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics analytics.Analytics, sailCli *client.SailClient) HeadsUpServer {
+func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics analytics.Analytics, sailCli client.SailClient) HeadsUpServer {
 	r := mux.NewRouter().UseEncodedPath()
 	s := HeadsUpServer{
 		store:   store,
@@ -98,7 +98,7 @@ func (s HeadsUpServer) HandleSail(w http.ResponseWriter, req *http.Request) {
 
 	err := s.sailCli.Connect(ctx, s.store)
 	if err != nil {
-		s.store.Dispatch(store.NewErrorAction(errors.Wrap(err, "SailClient")))
+		s.store.Dispatch(store.NewErrorAction(errors.Wrap(err, "sailClient")))
 	}
 
 }

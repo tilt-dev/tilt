@@ -71,7 +71,7 @@ type fixture struct {
 	t          *testing.T
 	ctx        context.Context
 	cancel     func()
-	client     *SailClient
+	client     *sailClient
 	store      *store.Store
 	getActions func() []store.Action
 }
