@@ -64,6 +64,13 @@ exports[`sidebar renders list of resources 1`] = `
           onClick={[Function]}
         >
           <span
+            className="resLink-icon"
+          >
+            <svg>
+              dot-building.svg
+            </svg>
+          </span>
+          <span
             className="resLink-name"
           >
             vigoda
@@ -84,6 +91,13 @@ exports[`sidebar renders list of resources 1`] = `
           href="/r/snack"
           onClick={[Function]}
         >
+          <span
+            className="resLink-icon"
+          >
+            <svg>
+              dot-building.svg
+            </svg>
+          </span>
           <span
             className="resLink-name"
           >
@@ -144,6 +158,13 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           onClick={[Function]}
         >
           <span
+            className="resLink-icon"
+          >
+            <svg>
+              dot-building.svg
+            </svg>
+          </span>
+          <span
             className="resLink-name"
           >
             vigoda
@@ -159,6 +180,13 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           href="/r/snack"
           onClick={[Function]}
         >
+          <span
+            className="resLink-icon"
+          >
+            <svg>
+              dot-building.svg
+            </svg>
+          </span>
           <span
             className="resLink-name"
           >

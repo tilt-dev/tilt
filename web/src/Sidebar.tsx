@@ -1,5 +1,7 @@
 import React, { PureComponent } from "react"
 import { ReactComponent as ChevronSvg } from "./assets/svg/chevron.svg"
+import { ReactComponent as DotSvg } from "./assets/svg/dot.svg"
+import { ReactComponent as DotBuildingSvg } from "./assets/svg/dot-building.svg"
 import { Link } from "react-router-dom"
 import { combinedStatus, warnings } from "./status"
 import "./Sidebar.scss"
@@ -11,7 +13,7 @@ import enStrings from "react-timeago/lib/language-strings/en-short.js"
 import buildFormatter from "react-timeago/lib/formatters/buildFormatter"
 import { isZeroTime } from "./time"
 import PathBuilder from "./PathBuilder"
-import { WhisperSpinner } from "react-spinners-kit";
+import { WhisperSpinner } from "react-spinners-kit"
 
 /*
 We need to grab whether a resource has any pending build
@@ -81,7 +83,7 @@ class Sidebar extends PureComponent<SidebarProps> {
         analyticsKey = "ui.interactions.errors"
         link += "/errors"
       }
-      let classes = `resLink`
+      let classes = `resLink resLink--${item.status}`
       if (this.props.selected === item.name) {
         classes += " is-selected"
       }
@@ -94,12 +96,13 @@ class Sidebar extends PureComponent<SidebarProps> {
       let willBuild = !isZeroTime(item.pendingBuildSince)
       // let willBuild = true
       let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
-      let iconClasses = `resLink-icon resLink--${item.status}`
 
       return (
         <li key={item.name}>
           <Link className={classes} to={pb.path(link)}>
-            <span className={iconClasses}>{willBuild ? <WhisperSpinner loading={true} frontColor="20ba31" size={40} /> : "•"}</span>
+            <span className="resLink-icon">
+              {willBuild ? <DotBuildingSvg /> : <DotSvg />}
+            </span>
             <span className="resLink-name">{item.name}</span>
             <span>{hasBuilt ? timeAgo : ""}</span>
           </Link>

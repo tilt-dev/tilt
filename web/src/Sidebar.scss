@@ -68,14 +68,21 @@
   color: $color-gray-light;
   margin-top: -8px;
 }
-.resLink--ok {
-  color: $color-green;
+
+.resLink-icon {
+  width: $sidebar-item;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.resLink--pending {
-  color: $color-gray-light;
+.resLink--ok .resLink-icon {
+  fill: $color-green;
 }
-.resLink--error {
-  color: $color-red;
+.resLink--pending .resLink-icon {
+  fill: $color-gray-light;
+}
+.resLink--error .resLink-icon {
+  fill: $color-red;
 }
 .resLink-name {
   flex: 1 0 auto;
@@ -84,10 +91,6 @@
   font-weight: normal;
   color: $color-gray-lightest;
   margin-right: $spacing-unit / 2;
-}
-
-.resLink-icon {
-  font-size: 40px;
 }
 
 // Collapse/Expand
