@@ -9,6 +9,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/google/wire"
+	"github.com/windmilleng/tilt/internal/assets"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/tools/clientcmd/api"
 
@@ -91,7 +92,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebPort,
 	provideWebDevPort,
 	server.ProvideHeadsUpServer,
-	server.ProvideAssetServer,
+	assets.ProvideAssetServer,
 	server.ProvideHeadsUpServerController,
 
 	provideSailURL,

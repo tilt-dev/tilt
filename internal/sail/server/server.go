@@ -9,9 +9,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/model"
-
-	hudServer "github.com/windmilleng/tilt/internal/hud/server"
 )
 
 var upgrader = websocket.Upgrader{
@@ -23,10 +22,10 @@ type SailServer struct {
 	router      *mux.Router
 	rooms       map[model.RoomID]*Room
 	mu          *sync.Mutex
-	assetServer hudServer.AssetServer
+	assetServer assets.Server
 }
 
-func ProvideSailServer(assetServer hudServer.AssetServer) SailServer {
+func ProvideSailServer(assetServer assets.Server) SailServer {
 	r := mux.NewRouter().UseEncodedPath()
 	s := SailServer{
 		router:      r,

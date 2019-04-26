@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	hudServer "github.com/windmilleng/tilt/internal/hud/server"
+	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/network"
@@ -75,12 +75,12 @@ func run(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	assets, err := hudServer.ProvideAssetServer(ctx, mode, model.WebVersion("0.0.0"), provideWebDevPort())
+	assetServ, err := assets.ProvideAssetServer(ctx, mode, model.WebVersion("0.0.0"), provideWebDevPort())
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	ss := server.ProvideSailServer(assets)
+	ss := server.ProvideSailServer(assetServ)
 	httpServer := &http.Server{
 		Addr:    network.AllHostsBindAddr(int(port)),
 		Handler: http.DefaultServeMux,
@@ -102,13 +102,13 @@ func run(cmd *cobra.Command, args []string) {
 
 	g.Go(func() error {
 		defer cancel()
-		return assets.Serve(ctx)
+		return assetServ.Serve(ctx)
 	})
 
 	g.Go(func() error {
 		<-ctx.Done()
 		_ = httpServer.Shutdown(context.Background())
-		assets.Teardown(context.Background())
+		assetServ.Teardown(context.Background())
 		return nil
 	})
 

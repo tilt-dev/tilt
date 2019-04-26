@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/store"
@@ -128,7 +129,7 @@ type serverFixture struct {
 func newTestFixture(t *testing.T) *serverFixture {
 	st := store.NewStore(engine.UpperReducer, store.LogActionsFlag(false))
 	a := analytics.NewMemoryAnalytics()
-	s := server.ProvideHeadsUpServer(st, server.NewFakeAssetServer(), a)
+	s := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), a)
 
 	return &serverFixture{
 		t: t,
