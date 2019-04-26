@@ -12,7 +12,6 @@ import (
 	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
@@ -94,9 +93,7 @@ func (s HeadsUpServer) HandleSail(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	ctx := output.CtxForTest() // ~~ MAIA: get a real ctx in here or remove it from sailCli.Connect
-
-	err := s.sailCli.Connect(ctx, s.store)
+	err := s.sailCli.Connect(s.store)
 	if err != nil {
 		s.store.Dispatch(store.NewErrorAction(errors.Wrap(err, "sailClient")))
 	}

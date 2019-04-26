@@ -26,17 +26,17 @@ func TestBroadcast(t *testing.T) {
 	defer f.TearDown()
 
 	// Trying to broadcast before connecting does nothing
-	f.client.MaybeBroadcast(f.ctx, f.store)
+	f.client.MaybeBroadcast(f.store)
 	assert.Nil(t, f.client.conn)
 
 	// Initial connect
-	err := f.client.Connect(f.ctx, f.store)
+	err := f.client.Connect(f.store)
 	if err != nil {
 		t.Fatal(err)
 	}
 	f.assertNewRoomCalls(1)
 
-	f.client.MaybeBroadcast(f.ctx, f.store)
+	f.client.MaybeBroadcast(f.store)
 	assert.Equal(t, 1, len(f.conn().json.(webview.View).Resources))
 	assert.Equal(t, view.TiltfileResourceName, f.conn().json.(webview.View).Resources[0].Name.String())
 
@@ -45,7 +45,7 @@ func TestBroadcast(t *testing.T) {
 	state.UpsertManifestTarget(store.NewManifestTarget(model.Manifest{Name: "fe"}))
 	f.store.UnlockMutableState()
 
-	f.client.MaybeBroadcast(f.ctx, f.store)
+	f.client.MaybeBroadcast(f.store)
 	assert.Equal(t, 2, len(f.conn().json.(webview.View).Resources))
 	f.assertNewRoomCalls(1) // room already connected, shouldn't have any more NewRoom calls
 }
@@ -55,7 +55,7 @@ func TestSailRoomConnectedAction(t *testing.T) {
 	defer f.TearDown()
 	go f.store.Loop(f.ctx)
 
-	err := f.client.Connect(f.ctx, f.store)
+	err := f.client.Connect(f.store)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func newFixture(t *testing.T) *fixture {
 
 	st, getActions := store.NewStoreForTesting()
 
-	client := ProvideSailClient(model.SailURL(*u), &fakeSailRoomer{}, fakeSailDialer{})
+	client := ProvideSailClient(ctx, model.SailURL(*u), &fakeSailRoomer{}, fakeSailDialer{})
 	return &fixture{
 		t:          t,
 		ctx:        ctx,
@@ -119,7 +119,7 @@ type fakeSailRoomer struct {
 	newRoomCalls int
 }
 
-func (r *fakeSailRoomer) NewRoom(ctx context.Context) (roomID model.RoomID, secret string, err error) {
+func (r *fakeSailRoomer) NewRoom() (roomID model.RoomID, secret string, err error) {
 	r.newRoomCalls += 1
 	return testRoomID, testSecret, nil
 }
