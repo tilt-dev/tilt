@@ -19,7 +19,7 @@ import (
 // For distributed binaries, version is automatically baked
 // into the binary with goreleaser. If this doesn't get updated
 // on every release, it's often not that big a deal.
-const devVersion = "0.7.10"
+const devVersion = "0.8.1"
 
 type BuildInfo struct {
 	Version string
