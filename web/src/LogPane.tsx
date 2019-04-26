@@ -9,6 +9,8 @@ type LogPaneProps = {
   log: string
   message?: string
   isExpanded: boolean
+  podIDs: string[]
+  endpoints: string[]
 }
 type LogPaneState = {
   autoscroll: boolean
@@ -110,6 +112,17 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       )
     }
 
+    let resourceInfo: React.ReactElement
+
+    let endpoints = ""
+    if (this.props.endpoints) {
+      endpoints = this.props.endpoints.join(", ")
+    }
+    let podIDs = ""
+    if (this.props.podIDs) {
+      podIDs = this.props.podIDs.join(", ")
+    }
+
     let els: Array<React.ReactElement> = []
     let lines = log.split("\n")
     els = lines.map(
@@ -129,7 +142,17 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       </div>
     )
 
-    return <section className={classes}>{els}</section>
+    return (
+      <section className={classes}>
+        <section className="resourceInfo">
+          {endpoints !== "" ? <p>endpoints: {endpoints}</p> : ""}
+          {podIDs != "" ? <p>podID: {podIDs}</p> : ""}
+        </section>
+        <section className="logText">
+          <p>{els}</p>
+        </section>
+      </section>
+    )
   }
 }
 

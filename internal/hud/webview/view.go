@@ -78,6 +78,7 @@ type Resource struct {
 	PendingBuildSince  time.Time
 
 	Endpoints []string
+	PodIDs    []string
 
 	// TODO(nick): Remove ResourceInfoView. This is fundamentally a bad
 	// data structure for the webview because the webview loses the Go type

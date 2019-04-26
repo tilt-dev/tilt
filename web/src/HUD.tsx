@@ -33,6 +33,7 @@ type Resource = {
   CurrentBuild: any
   DirectoriesWatched: Array<any>
   Endpoints: Array<string>
+  PodIDs: Array<string>
   IsTiltfile: boolean
   LastDeployTime: string
   PathsWatched: Array<string>
@@ -198,11 +199,22 @@ class HUD extends Component<HudProps, HudState> {
           ? props.match.params.name
           : ""
       let logs = ""
+      let endpoints: Array<string> = []
+      let podIDs: Array<string> = []
       if (view && name !== "") {
         let r = view.Resources.find(r => r.Name === name)
         logs = r ? r.CombinedLog : ""
+        endpoints = r ? r.Endpoints : []
+        podIDs = r ? r.PodIDs : []
       }
-      return <LogPane log={logs} isExpanded={isSidebarClosed} />
+      return (
+        <LogPane
+          log={logs}
+          isExpanded={isSidebarClosed}
+          endpoints={endpoints}
+          podIDs={podIDs}
+        />
+      )
     }
 
     let combinedLog = ""
@@ -278,7 +290,12 @@ class HUD extends Component<HudProps, HudState> {
               exact
               path={this.path("/")}
               render={() => (
-                <LogPane log={combinedLog} isExpanded={isSidebarClosed} />
+                <LogPane
+                  log={combinedLog}
+                  isExpanded={isSidebarClosed}
+                  podIDs={[]}
+                  endpoints={[]}
+                />
               )}
             />
             <Route

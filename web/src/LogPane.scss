@@ -5,9 +5,14 @@
   margin-top: $tabnav-height;
   margin-right: $sidebar-width;
   margin-bottom: $statusbar-height;
-  padding: $spacing-unit / 2;
   transition: margin ease $animation-timing;
 }
+
+.logText {
+  margin-top: $resourceInfo-height;
+  padding: $spacing-unit / 2;
+}
+
 @keyframes blink {
   0% {
     opacity: 1;
@@ -61,4 +66,18 @@
 }
 .ansi-white {
   color: $color-white;
+}
+
+.resourceInfo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: $resourceInfo-height;
+  position: fixed;
+  background-color: $color-gray-dark;
+  left: 0;
+  right: 0;
+  padding: $spacing-unit / 2;
+  padding-right: $sidebar-width + $spacing-unit / 2;
+  border-bottom: 1px solid $color-gray-light;
 }
