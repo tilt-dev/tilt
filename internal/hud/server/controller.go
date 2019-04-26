@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/network"
 	"github.com/windmilleng/tilt/internal/store"
@@ -13,11 +14,11 @@ import (
 type HeadsUpServerController struct {
 	port        model.WebPort
 	hudServer   HeadsUpServer
-	assetServer AssetServer
+	assetServer assets.Server
 	initDone    bool
 }
 
-func ProvideHeadsUpServerController(port model.WebPort, hudServer HeadsUpServer, assetServer AssetServer) *HeadsUpServerController {
+func ProvideHeadsUpServerController(port model.WebPort, hudServer HeadsUpServer, assetServer assets.Server) *HeadsUpServerController {
 	return &HeadsUpServerController{
 		port:        port,
 		hudServer:   hudServer,

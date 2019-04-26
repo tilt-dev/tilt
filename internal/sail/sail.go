@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	hudServer "github.com/windmilleng/tilt/internal/hud/server"
+	assets2 "github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/network"
@@ -75,7 +75,7 @@ func run(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	assets, err := hudServer.ProvideAssetServer(ctx, mode, model.WebVersion("0.0.0"), provideWebDevPort())
+	assets, err := assets2.ProvideAssetServer(ctx, mode, model.WebVersion("0.0.0"), provideWebDevPort())
 	if err != nil {
 		log.Fatal(err)
 	}

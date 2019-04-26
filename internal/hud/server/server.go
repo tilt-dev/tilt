@@ -7,6 +7,7 @@ import (
 
 	"github.com/gorilla/mux"
 	_ "github.com/gorilla/websocket"
+	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 )
@@ -23,7 +24,7 @@ type HeadsUpServer struct {
 	a      analytics.Analytics
 }
 
-func ProvideHeadsUpServer(store *store.Store, assetServer AssetServer, analytics analytics.Analytics) HeadsUpServer {
+func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics analytics.Analytics) HeadsUpServer {
 	r := mux.NewRouter().UseEncodedPath()
 	s := HeadsUpServer{
 		store:  store,

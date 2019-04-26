@@ -9,6 +9,7 @@ import (
 	"context"
 	"github.com/docker/docker/api/types"
 	"github.com/google/wire"
+	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/demo"
@@ -131,12 +132,12 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	}
 	webVersion := provideWebVersion(cliBuildInfo)
 	modelWebDevPort := provideWebDevPort()
-	assetServer, err := server.ProvideAssetServer(ctx, webMode, webVersion, modelWebDevPort)
+	assetsServer, err := assets.ProvideAssetServer(ctx, webMode, webVersion, modelWebDevPort)
 	if err != nil {
 		return demo.Script{}, err
 	}
-	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetServer, analytics)
-	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetServer)
+	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics)
+	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer)
 	sailURL, err := provideSailURL()
 	if err != nil {
 		return demo.Script{}, err
@@ -256,12 +257,12 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	}
 	webVersion := provideWebVersion(cliBuildInfo)
 	modelWebDevPort := provideWebDevPort()
-	assetServer, err := server.ProvideAssetServer(ctx, webMode, webVersion, modelWebDevPort)
+	assetsServer, err := assets.ProvideAssetServer(ctx, webMode, webVersion, modelWebDevPort)
 	if err != nil {
 		return Threads{}, err
 	}
-	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetServer, analytics)
-	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetServer)
+	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics)
+	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer)
 	sailURL, err := provideSailURL()
 	if err != nil {
 		return Threads{}, err
@@ -463,7 +464,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
-	provideWebDevPort, server.ProvideHeadsUpServer, server.ProvideAssetServer, server.ProvideHeadsUpServerController, provideSailURL, client.SailWireSet, provideThreads, engine.NewKINDPusher,
+	provideWebDevPort, server.ProvideHeadsUpServer, assets.ProvideAssetServer, server.ProvideHeadsUpServerController, provideSailURL, client.SailWireSet, provideThreads, engine.NewKINDPusher,
 )
 
 type Threads struct {
