@@ -34,6 +34,7 @@ func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analyti
 
 	r.HandleFunc("/api/view", s.ViewJSON)
 	r.HandleFunc("/api/analytics", s.HandleAnalytics)
+	r.HandleFunc("/api/sail", s.HandleSail)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
 	r.PathPrefix("/").Handler(assetServer)
 
@@ -79,4 +80,13 @@ func (s HeadsUpServer) HandleAnalytics(w http.ResponseWriter, req *http.Request)
 
 		s.a.Incr(p.Name, p.Tags)
 	}
+}
+
+func (s HeadsUpServer) HandleSail(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		http.Error(w, "must be POST request", http.StatusBadRequest)
+		return
+	}
+
+	fmt.Println("okay i'll make your sail thing!")
 }

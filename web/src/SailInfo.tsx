@@ -7,6 +7,15 @@ type SailProps = {
 }
 
 class SailInfo extends PureComponent<SailProps> {
+  static newSailRoom() {
+    let url = `http://${window.location.host}/api/sail`
+
+    fetch(url, {
+      method: "post",
+      body: "",
+    })
+  }
+
   render() {
     if (this.props.sailEnabled) {
       if (this.props.sailUrl) {
@@ -19,7 +28,9 @@ class SailInfo extends PureComponent<SailProps> {
 
       return (
         <span className="SailInfo">
-          <button type="button">Share me!</button>
+          <button type="button" onClick={SailInfo.newSailRoom}>
+            Share me!
+          </button>
         </span>
       )
     }
