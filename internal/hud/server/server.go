@@ -7,10 +7,12 @@ import (
 
 	"github.com/gorilla/mux"
 	_ "github.com/gorilla/websocket"
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
@@ -92,5 +94,11 @@ func (s HeadsUpServer) HandleSail(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Println("okay i'll make your sail thing!")
+	ctx := output.CtxForTest() // ~~ MAIA: get a real ctx in here or remove it from sailCli.Connect
+
+	err := s.sailCli.Connect(ctx, s.store)
+	if err != nil {
+		s.store.Dispatch(store.NewErrorAction(errors.Wrap(err, "SailClient")))
+	}
+
 }

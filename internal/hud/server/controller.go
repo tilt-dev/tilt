@@ -31,6 +31,10 @@ func (s *HeadsUpServerController) Teardown(ctx context.Context) {
 }
 
 func (s *HeadsUpServerController) OnChange(ctx context.Context, st store.RStore) {
+	if s.hudServer.sailCli != nil {
+		s.hudServer.sailCli.MaybeBroadcast(ctx, st)
+	}
+
 	defer func() {
 		s.initDone = true
 	}()

@@ -25,26 +25,40 @@ func TestBroadcast(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.client.OnChange(f.ctx, f.store)
+	// Trying to broadcast before connecting does nothing
+	f.client.MaybeBroadcast(f.ctx, f.store)
+	assert.Nil(t, f.client.conn)
 
+	// Initial connect
+	err := f.client.Connect(f.ctx, f.store)
+	if err != nil {
+		t.Fatal(err)
+	}
 	f.assertNewRoomCalls(1)
+
+	f.client.MaybeBroadcast(f.ctx, f.store)
 	assert.Equal(t, 1, len(f.conn().json.(webview.View).Resources))
 	assert.Equal(t, view.TiltfileResourceName, f.conn().json.(webview.View).Resources[0].Name.String())
 
+	// Change state and broadcast again, see that number of resources updates to reflect new state
 	state := f.store.LockMutableStateForTesting()
 	state.UpsertManifestTarget(store.NewManifestTarget(model.Manifest{Name: "fe"}))
 	f.store.UnlockMutableState()
 
-	f.client.OnChange(f.ctx, f.store)
-	f.assertNewRoomCalls(1) // room already connected, shouldn't have any more NewRoom calls
+	f.client.MaybeBroadcast(f.ctx, f.store)
 	assert.Equal(t, 2, len(f.conn().json.(webview.View).Resources))
+	f.assertNewRoomCalls(1) // room already connected, shouldn't have any more NewRoom calls
 }
 
 func TestSailRoomConnectedAction(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 	go f.store.Loop(f.ctx)
-	f.client.OnChange(f.ctx, f.store)
+
+	err := f.client.Connect(f.ctx, f.store)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	a := store.WaitForAction(t, reflect.TypeOf(SailRoomConnectedAction{}), f.getActions)
 	if roomConn, ok := a.(SailRoomConnectedAction); ok {

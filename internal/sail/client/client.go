@@ -58,6 +58,17 @@ func (s *SailClient) isConnected() bool {
 	return s.conn != nil
 }
 
+func (s *SailClient) MaybeBroadcast(ctx context.Context, st store.RStore) {
+	if !s.isConnected() {
+		return
+	}
+
+	state := st.RLockState()
+	view := webview.StateToWebView(state)
+	st.RUnlockState()
+
+	s.broadcast(ctx, view)
+}
 func (s *SailClient) broadcast(ctx context.Context, view webview.View) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -92,6 +103,9 @@ func (s *SailClient) setConnection(ctx context.Context, conn SailConn) {
 }
 
 func (s *SailClient) Connect(ctx context.Context, st store.RStore) error {
+	if s.addr.Empty() {
+		return fmt.Errorf("tried to connect a SailClient with an empty address")
+	}
 	roomID, secret, err := s.roomer.NewRoom(ctx)
 	if err != nil {
 		st.Dispatch(SailRoomConnectedAction{Err: err})
@@ -128,38 +142,6 @@ func (s *SailClient) shareToRoom(ctx context.Context, roomID model.RoomID, secre
 	}
 	s.setConnection(ctx, conn)
 	return nil
-}
-
-func (s *SailClient) init(ctx context.Context, st store.RStore) error {
-	if s.addr.Empty() {
-		return nil
-	}
-
-	return s.Connect(ctx, st)
-}
-
-func (s *SailClient) OnChange(ctx context.Context, st store.RStore) {
-	// if !s.initDone {
-	// 	s.initDone = true
-	//
-	// 	// TODO(nick): To get an end-to-end connection working, we're just
-	// 	// going to connect to the Sail server on startup. Eventually this
-	// 	// should be changed to connect on user action.
-	// 	err := s.init(ctx, st)
-	// 	if err != nil {
-	// 		st.Dispatch(store.NewErrorAction(errors.Wrap(err, "SailClient")))
-	// 	}
-	// }
-
-	if !s.isConnected() {
-		return
-	}
-
-	state := st.RLockState()
-	view := webview.StateToWebView(state)
-	st.RUnlockState()
-
-	s.broadcast(ctx, view)
 }
 
 var _ store.SubscriberLifecycle = &SailClient{}
