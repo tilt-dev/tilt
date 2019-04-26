@@ -1,5 +1,4 @@
 import React, { PureComponent } from "react"
-import { Link } from "react-router-dom"
 import { ResourceView } from "./types"
 import "./TopBar.scss"
 import SailInfo from "./SailInfo"
