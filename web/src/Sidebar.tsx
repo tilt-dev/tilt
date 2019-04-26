@@ -83,19 +83,19 @@ class Sidebar extends PureComponent<SidebarProps> {
         analyticsKey = "ui.interactions.errors"
         link += "/errors"
       }
-      let classes = `resLink resLink--${item.status}`
+
+      let formatter = buildFormatter(enStrings)
+      let hasBuilt = !isZeroTime(item.lastDeployTime)
+      let willBuild = !isZeroTime(item.pendingBuildSince)
+      let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
+
+      let classes = `resLink resLink--${willBuild ? "building" : item.status}`
       if (this.props.selected === item.name) {
         classes += " is-selected"
       }
       if (item.hasWarnings) {
         classes += " has-warnings"
       }
-
-      let formatter = buildFormatter(enStrings)
-      let hasBuilt = !isZeroTime(item.lastDeployTime)
-      let willBuild = !isZeroTime(item.pendingBuildSince)
-      // let willBuild = true
-      let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
 
       return (
         <li key={item.name}>

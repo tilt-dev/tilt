@@ -59,7 +59,7 @@ exports[`sidebar renders list of resources 1`] = `
       </li>
       <li>
         <a
-          className="resLink resLink--pending"
+          className="resLink resLink--building"
           href="/r/vigoda"
           onClick={[Function]}
         >
@@ -87,7 +87,7 @@ exports[`sidebar renders list of resources 1`] = `
       </li>
       <li>
         <a
-          className="resLink resLink--pending"
+          className="resLink resLink--building"
           href="/r/snack"
           onClick={[Function]}
         >
@@ -153,7 +153,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
       </li>
       <li>
         <a
-          className="resLink resLink--pending"
+          className="resLink resLink--building"
           href="/r/vigoda"
           onClick={[Function]}
         >
@@ -176,7 +176,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
       </li>
       <li>
         <a
-          className="resLink resLink--pending"
+          className="resLink resLink--building"
           href="/r/snack"
           onClick={[Function]}
         >

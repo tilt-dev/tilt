@@ -78,6 +78,39 @@
 .resLink--ok .resLink-icon {
   fill: $color-green;
 }
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes shimmer {
+  0% {
+    background-position: -$sidebar-width 0;
+  }
+
+  100% {
+    background-position: $sidebar-width 0;
+  }
+}
+
+.resLink--building {
+  background-image: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba($color-gray-darkest, $translucent) 20%,
+    transparent 80%
+  );
+  animation: shimmer 1s infinite;
+  animation-timing-function: linear;
+}
+.resLink--building .resLink-icon {
+  fill: $color-gray-light;
+  animation: spin 1s infinite;
+  animation-timing-function: linear;
+}
 .resLink--pending .resLink-icon {
   fill: $color-gray-light;
 }
