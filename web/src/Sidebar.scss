@@ -66,7 +66,11 @@
 .resLink--all::before {
   content: "┌";
   color: $color-gray-light;
-  margin-top: -8px;
+  margin-top: -8px; // Visually center
+  width: $sidebar-item;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .resLink-icon {
