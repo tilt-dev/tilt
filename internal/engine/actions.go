@@ -106,6 +106,8 @@ type InitAction struct {
 	Warnings   []string
 
 	ExecuteTiltfile bool
+
+	EnableSail bool
 }
 
 func (InitAction) Action() {}
