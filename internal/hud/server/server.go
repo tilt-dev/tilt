@@ -3,12 +3,12 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/mux"
 	_ "github.com/gorilla/websocket"
-	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -108,7 +108,10 @@ func (s HeadsUpServer) HandleSail(w http.ResponseWriter, req *http.Request) {
 
 	err := s.sailCli.NewRoom(logger.WithLogger(req.Context(), l), s.store)
 	if err != nil {
-		s.store.Dispatch(store.NewErrorAction(errors.Wrap(err, "sailClient")))
+		log.Printf("sailClient.NewRoom: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(fmt.Sprintf("error creating new Sail room: %v", err)))
+		return
 	}
 
 }
