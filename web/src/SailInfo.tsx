@@ -21,7 +21,9 @@ class SailInfo extends PureComponent<SailProps> {
       if (this.props.sailUrl) {
         return (
           <span className="SailInfo">
-            <a href={this.props.sailUrl}>Share this view!</a>
+            <a target="_blank" href={this.props.sailUrl}>
+              Share this view!
+            </a>
           </span>
         )
       }

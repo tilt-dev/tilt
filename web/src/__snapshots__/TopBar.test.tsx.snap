@@ -46,6 +46,7 @@ exports[`shows sail share button 1`] = `
     className="SailInfo"
   >
     <button
+      onClick={[Function]}
       type="button"
     >
       Share me!
@@ -101,6 +102,7 @@ exports[`shows sail url 1`] = `
   >
     <a
       href="www.sail.dev/xyz"
+      target="_blank"
     >
       Share this view!
     </a>
