@@ -142,7 +142,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	}
 	sailRoomer := client.ProvideSailRoomer(sailURL)
 	sailDialer := client.ProvideSailDialer()
-	sailClient := client.ProvideSailClient(ctx, sailURL, sailRoomer, sailDialer)
+	sailClient := client.ProvideSailClient(sailURL, sailRoomer, sailDialer)
 	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics, sailClient)
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer)
 	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, imageController, globalYAMLBuildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController)
@@ -267,7 +267,7 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	}
 	sailRoomer := client.ProvideSailRoomer(sailURL)
 	sailDialer := client.ProvideSailDialer()
-	sailClient := client.ProvideSailClient(ctx, sailURL, sailRoomer, sailDialer)
+	sailClient := client.ProvideSailClient(sailURL, sailRoomer, sailDialer)
 	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics, sailClient)
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer)
 	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, imageController, globalYAMLBuildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController)

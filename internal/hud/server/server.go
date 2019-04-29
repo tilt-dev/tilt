@@ -93,7 +93,7 @@ func (s HeadsUpServer) HandleSail(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err := s.sailCli.Connect(s.store)
+	err := s.sailCli.Connect(req.Context(), s.store)
 	if err != nil {
 		s.store.Dispatch(store.NewErrorAction(errors.Wrap(err, "sailClient")))
 	}

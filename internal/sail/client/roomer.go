@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -11,14 +12,14 @@ import (
 
 // For injecting room creation logic (because the real way involves an HTTP request)
 type SailRoomer interface {
-	NewRoom() (roomID model.RoomID, secret string, err error)
+	NewRoom(ctx context.Context) (roomID model.RoomID, secret string, err error)
 }
 
 type httpRoomer struct {
 	addr model.SailURL
 }
 
-func (r httpRoomer) NewRoom() (roomID model.RoomID, secret string, err error) {
+func (r httpRoomer) NewRoom(ctx context.Context) (roomID model.RoomID, secret string, err error) {
 	u := r.addr.Http()
 	u.Path = "/room"
 	resp, err := http.Post(u.String(), "text/plain", nil)

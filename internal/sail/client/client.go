@@ -20,15 +20,14 @@ type SailRoomConnectedAction struct {
 func (SailRoomConnectedAction) Action() {}
 
 type SailClient interface {
-	MaybeBroadcast(st store.RStore)
-	Connect(st store.RStore) error
+	MaybeBroadcast(ctx context.Context, st store.RStore)
+	Connect(ctx context.Context, st store.RStore) error
 	Teardown(ctx context.Context)
 }
 
 var _ SailClient = &sailClient{}
 
 type sailClient struct {
-	ctx      context.Context
 	addr     model.SailURL
 	roomer   SailRoomer
 	dialer   SailDialer
@@ -37,9 +36,8 @@ type sailClient struct {
 	initDone bool
 }
 
-func ProvideSailClient(ctx context.Context, addr model.SailURL, roomer SailRoomer, dialer SailDialer) *sailClient {
+func ProvideSailClient(addr model.SailURL, roomer SailRoomer, dialer SailDialer) *sailClient {
 	return &sailClient{
-		ctx:    ctx,
 		addr:   addr,
 		roomer: roomer,
 		dialer: dialer,
@@ -68,7 +66,7 @@ func (s *sailClient) isConnected() bool {
 	return s.conn != nil
 }
 
-func (s *sailClient) MaybeBroadcast(st store.RStore) {
+func (s *sailClient) MaybeBroadcast(ctx context.Context, st store.RStore) {
 	if !s.isConnected() {
 		return
 	}
@@ -77,9 +75,9 @@ func (s *sailClient) MaybeBroadcast(st store.RStore) {
 	view := webview.StateToWebView(state)
 	st.RUnlockState()
 
-	s.broadcast(view)
+	s.broadcast(ctx, view)
 }
-func (s *sailClient) broadcast(view webview.View) {
+func (s *sailClient) broadcast(ctx context.Context, view webview.View) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.conn == nil {
@@ -88,11 +86,11 @@ func (s *sailClient) broadcast(view webview.View) {
 
 	err := s.conn.WriteJSON(view)
 	if err != nil {
-		logger.Get(s.ctx).Infof("broadcast(%s): %v", s.addr, err)
+		logger.Get(ctx).Infof("broadcast(%s): %v", s.addr, err)
 	}
 }
 
-func (s *sailClient) setConnection(conn SailConn) {
+func (s *sailClient) setConnection(ctx context.Context, conn SailConn) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.conn = conn
@@ -101,29 +99,29 @@ func (s *sailClient) setConnection(conn SailConn) {
 	go func() {
 		defer s.disconnect()
 
-		for s.ctx.Err() == nil {
+		for ctx.Err() == nil {
 			// We need to read from the connection so that the websocket
 			// library handles control messages, but we can otherwise discard them.
 			if _, _, err := conn.NextReader(); err != nil {
-				logger.Get(s.ctx).Infof("sailClient connection: %v", err)
+				logger.Get(ctx).Infof("sailClient connection: %v", err)
 				return
 			}
 		}
 	}()
 }
 
-func (s *sailClient) Connect(st store.RStore) error {
+func (s *sailClient) Connect(ctx context.Context, st store.RStore) error {
 	if s.addr.Empty() {
 		return fmt.Errorf("tried to connect a sailClient with an empty address")
 	}
-	roomID, secret, err := s.roomer.NewRoom()
+	roomID, secret, err := s.roomer.NewRoom(ctx)
 	if err != nil {
 		st.Dispatch(SailRoomConnectedAction{Err: err})
 		return err
 	}
-	logger.Get(s.ctx).Infof("new room %s with secret %s\n", roomID, secret)
+	logger.Get(ctx).Infof("new room %s with secret %s\n", roomID, secret)
 
-	err = s.shareToRoom(roomID, secret)
+	err = s.shareToRoom(ctx, roomID, secret)
 	if err != nil {
 		st.Dispatch(SailRoomConnectedAction{Err: err})
 		return err
@@ -137,7 +135,7 @@ func (s *sailClient) Connect(st store.RStore) error {
 	return nil
 }
 
-func (s *sailClient) shareToRoom(roomID model.RoomID, secret string) error {
+func (s *sailClient) shareToRoom(ctx context.Context, roomID model.RoomID, secret string) error {
 	header := make(http.Header)
 	header.Add("Origin", s.addr.Ws().String())
 	header.Add(model.SailSecretKey, secret)
@@ -146,11 +144,11 @@ func (s *sailClient) shareToRoom(roomID model.RoomID, secret string) error {
 	connectURL.Path = "/share"
 	connectURL = connectURL.WithQueryParam(model.SailRoomIDKey, string(roomID))
 
-	conn, err := s.dialer.DialContext(s.ctx, connectURL.Ws().String(), header)
+	conn, err := s.dialer.DialContext(ctx, connectURL.Ws().String(), header)
 	if err != nil {
 		return err
 	}
-	s.setConnection(conn)
+	s.setConnection(ctx, conn)
 	return nil
 }
 

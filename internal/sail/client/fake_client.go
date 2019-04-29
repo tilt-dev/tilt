@@ -17,11 +17,11 @@ func NewFakeSailClient() *FakeSailClient {
 	return &FakeSailClient{}
 }
 
-func (c *FakeSailClient) MaybeBroadcast(st store.RStore) {
+func (c *FakeSailClient) MaybeBroadcast(ctx context.Context, st store.RStore) {
 	c.MaybeBroadcastCalls += 1
 }
 
-func (c *FakeSailClient) Connect(st store.RStore) error {
+func (c *FakeSailClient) Connect(ctx context.Context, st store.RStore) error {
 	c.ConnectCalls += 1
 	return nil
 }
