@@ -74,12 +74,14 @@ func (kCli K8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan
 		AddFunc: func(obj interface{}) {
 			mObj, ok := obj.(*v1.Pod)
 			if ok {
+				FixContainerStatusImages(mObj)
 				ch <- mObj
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
 			mObj, ok := obj.(*v1.Pod)
 			if ok {
+				FixContainerStatusImages(mObj)
 				ch <- mObj
 			}
 		},
@@ -95,6 +97,7 @@ func (kCli K8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan
 			}
 
 			if oldPod != newPod {
+				FixContainerStatusImages(newPod)
 				ch <- newPod
 			}
 		},
