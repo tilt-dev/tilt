@@ -6,7 +6,7 @@ import (
 	"io"
 	"time"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 
@@ -38,7 +38,11 @@ func (k K8sClient) ContainerLogs(ctx context.Context, pID PodID, cName container
 }
 
 func (k K8sClient) PodByID(ctx context.Context, pID PodID, n Namespace) (*v1.Pod, error) {
-	return k.core.Pods(n.String()).Get(pID.String(), metav1.GetOptions{})
+	pod, err := k.core.Pods(n.String()).Get(pID.String(), metav1.GetOptions{})
+	if pod != nil {
+		FixContainerStatusImages(pod)
+	}
+	return pod, err
 }
 
 func PodIDFromPod(pod *v1.Pod) PodID {
