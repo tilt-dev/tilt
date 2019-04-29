@@ -871,6 +871,17 @@ func (f *bdFixture) assertContainerRestarts(count int) {
 
 func (f *bdFixture) createBuildStateSet(manifest model.Manifest, changedFiles []string) store.BuildStateSet {
 	bs := store.BuildStateSet{}
+
+	// If there are no changed files, the test wants a build state where
+	// nothing has ever been built.
+	//
+	// If there are changed files, the test wants a build state where
+	// everything has been built once. The changed files chould be
+	// attached to the appropriate build state.
+	if len(changedFiles) == 0 {
+		return bs
+	}
+
 	consumedFiles := make(map[string]bool)
 	for _, iTarget := range manifest.ImageTargets {
 		filesChangingImage := []string{}
@@ -890,13 +901,11 @@ func (f *bdFixture) createBuildStateSet(manifest model.Manifest, changedFiles []
 			}
 		}
 
-		if len(filesChangingImage) > 0 {
-			state := store.NewBuildState(alreadyBuilt, filesChangingImage)
-			if manifest.IsImageDeployed(iTarget) {
-				state = state.WithDeployTarget(f.deployInfo())
-			}
-			bs[iTarget.ID()] = state
+		state := store.NewBuildState(alreadyBuilt, filesChangingImage)
+		if manifest.IsImageDeployed(iTarget) {
+			state = state.WithDeployTarget(f.deployInfo())
 		}
+		bs[iTarget.ID()] = state
 	}
 
 	if len(consumedFiles) != len(changedFiles) {
