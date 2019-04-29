@@ -14,10 +14,6 @@ import buildFormatter from "react-timeago/lib/formatters/buildFormatter"
 import { isZeroTime } from "./time"
 import PathBuilder from "./PathBuilder"
 
-/*
-We need to grab whether a resource has any pending build
-*/
-
 class SidebarItem {
   name: string
   status: string
@@ -25,6 +21,7 @@ class SidebarItem {
   hasEndpoints: boolean
   lastDeployTime: string
   pendingBuildSince: string
+  currentBuildStartTime: string
 
   /**
    * Create a pared down SidebarItem from a ResourceView
@@ -36,6 +33,7 @@ class SidebarItem {
     this.hasEndpoints = (res.Endpoints || []).length
     this.lastDeployTime = res.LastDeployTime
     this.pendingBuildSince = res.PendingBuildSince
+    this.currentBuildStartTime = res.CurrentBuild.StartTime
   }
 }
 
@@ -86,9 +84,12 @@ class Sidebar extends PureComponent<SidebarProps> {
       let formatter = buildFormatter(enStrings)
       let hasBuilt = !isZeroTime(item.lastDeployTime)
       let willBuild = !isZeroTime(item.pendingBuildSince)
+      let building = !isZeroTime(item.currentBuildStartTime)
       let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
 
-      let classes = `resLink resLink--${willBuild ? "building" : item.status}`
+      let classes = `resLink resLink--${
+        willBuild || building ? "building" : item.status
+      }`
       if (this.props.selected === item.name) {
         classes += " is-selected"
       }
@@ -100,7 +101,7 @@ class Sidebar extends PureComponent<SidebarProps> {
         <li key={item.name}>
           <Link className={classes} to={pb.path(link)}>
             <span className="resLink-icon">
-              {willBuild ? <DotBuildingSvg /> : <DotSvg />}
+              {willBuild || building ? <DotBuildingSvg /> : <DotSvg />}
             </span>
             <span className="resLink-name">{item.name}</span>
             <span>{hasBuilt ? timeAgo : ""}</span>

@@ -66,7 +66,7 @@
 .resLink--all::before {
   content: "┌";
   color: $color-gray-light;
-  margin-top: -8px; // Visually center
+  margin-top: $spacing-unit / 4; // Visually center
   width: $sidebar-item;
   display: flex;
   align-items: center;
@@ -103,11 +103,12 @@
 .resLink--building {
   background-image: linear-gradient(
     to right,
-    transparent 0%,
-    rgba($color-gray-darkest, $translucent) 20%,
+    transparent 20%,
+    rgba($color-gray-darkest, $translucent) 40%,
+    rgba($color-gray-darkest, $translucent) 60%,
     transparent 80%
   );
-  animation: shimmer 1s infinite;
+  animation: shimmer 2s infinite;
   animation-timing-function: linear;
 }
 .resLink--building .resLink-icon {
