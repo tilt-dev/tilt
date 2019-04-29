@@ -20,9 +20,9 @@ type SailRoomConnectedAction struct {
 func (SailRoomConnectedAction) Action() {}
 
 type SailClient interface {
-	MaybeBroadcast(ctx context.Context, st store.RStore)
+	store.Subscriber
+
 	Connect(ctx context.Context, st store.RStore) error
-	Teardown(ctx context.Context)
 }
 
 var _ SailClient = &sailClient{}
@@ -66,7 +66,7 @@ func (s *sailClient) isConnected() bool {
 	return s.conn != nil
 }
 
-func (s *sailClient) MaybeBroadcast(ctx context.Context, st store.RStore) {
+func (s *sailClient) OnChange(ctx context.Context, st store.RStore) {
 	if !s.isConnected() {
 		return
 	}
@@ -77,6 +77,7 @@ func (s *sailClient) MaybeBroadcast(ctx context.Context, st store.RStore) {
 
 	s.broadcast(ctx, view)
 }
+
 func (s *sailClient) broadcast(ctx context.Context, view webview.View) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

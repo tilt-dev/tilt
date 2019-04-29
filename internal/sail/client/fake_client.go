@@ -7,8 +7,7 @@ import (
 )
 
 type FakeSailClient struct {
-	MaybeBroadcastCalls int
-	ConnectCalls        int
+	ConnectCalls int
 }
 
 var _ SailClient = &sailClient{}
@@ -17,13 +16,10 @@ func NewFakeSailClient() *FakeSailClient {
 	return &FakeSailClient{}
 }
 
-func (c *FakeSailClient) MaybeBroadcast(ctx context.Context, st store.RStore) {
-	c.MaybeBroadcastCalls += 1
-}
+func (c *FakeSailClient) OnChange(ctx context.Context, st store.RStore) {}
+func (c *FakeSailClient) Teardown(ctx context.Context)                  {}
 
 func (c *FakeSailClient) Connect(ctx context.Context, st store.RStore) error {
 	c.ConnectCalls += 1
 	return nil
 }
-
-func (c *FakeSailClient) Teardown(ctx context.Context) {}

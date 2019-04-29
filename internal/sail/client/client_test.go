@@ -21,12 +21,12 @@ const (
 	testSecret = "shh-very-secret"
 )
 
-func TestBroadcast(t *testing.T) {
+func TestConnectAndBroadcast(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
 	// Trying to broadcast before connecting does nothing
-	f.client.MaybeBroadcast(f.ctx, f.store)
+	f.client.OnChange(f.ctx, f.store)
 	assert.Nil(t, f.client.conn)
 
 	// Initial connect
@@ -36,7 +36,7 @@ func TestBroadcast(t *testing.T) {
 	}
 	f.assertNewRoomCalls(1)
 
-	f.client.MaybeBroadcast(f.ctx, f.store)
+	f.client.OnChange(f.ctx, f.store)
 	assert.Equal(t, 1, len(f.conn().json.(webview.View).Resources))
 	assert.Equal(t, view.TiltfileResourceName, f.conn().json.(webview.View).Resources[0].Name.String())
 
@@ -45,7 +45,7 @@ func TestBroadcast(t *testing.T) {
 	state.UpsertManifestTarget(store.NewManifestTarget(model.Manifest{Name: "fe"}))
 	f.store.UnlockMutableState()
 
-	f.client.MaybeBroadcast(f.ctx, f.store)
+	f.client.OnChange(f.ctx, f.store)
 	assert.Equal(t, 2, len(f.conn().json.(webview.View).Resources))
 	f.assertNewRoomCalls(1) // room already connected, shouldn't have any more NewRoom calls
 }
