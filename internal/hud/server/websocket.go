@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/gorilla/websocket"
@@ -52,7 +53,7 @@ func (ws WebsocketSubscriber) Stream(ctx context.Context, store *store.Store) {
 
 func (ws WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore) {
 	state := s.RLockState()
-	view := StateToWebView(state)
+	view := webview.StateToWebView(state)
 	s.RUnlockState()
 
 	err := ws.conn.WriteJSON(view)
