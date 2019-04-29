@@ -120,7 +120,6 @@ func (s *sailClient) Connect(ctx context.Context, st store.RStore) error {
 		st.Dispatch(SailRoomConnectedAction{Err: err})
 		return err
 	}
-	logger.Get(ctx).Infof("new room %s with secret %s\n", roomID, secret)
 
 	err = s.shareToRoom(ctx, roomID, secret)
 	if err != nil {

@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	_ "github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/hud/webview"
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/wmclient/pkg/analytics"
@@ -93,7 +95,18 @@ func (s HeadsUpServer) HandleSail(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err := s.sailCli.Connect(req.Context(), s.store)
+	// Request context doesn't have logger, just slap one on for now.
+	l := logger.NewFuncLogger(false, logger.DebugLvl, func(level logger.Level, b []byte) error {
+		s.store.Dispatch(store.LogAction{
+			LogEvent: store.LogEvent{
+				Timestamp: time.Now(),
+				Msg:       append([]byte{}, b...),
+			},
+		})
+		return nil
+	})
+
+	err := s.sailCli.Connect(logger.WithLogger(req.Context(), l), s.store)
 	if err != nil {
 		s.store.Dispatch(store.NewErrorAction(errors.Wrap(err, "sailClient")))
 	}
