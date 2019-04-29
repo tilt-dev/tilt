@@ -19,7 +19,7 @@ func NewFakeSailClient() *FakeSailClient {
 func (c *FakeSailClient) OnChange(ctx context.Context, st store.RStore) {}
 func (c *FakeSailClient) Teardown(ctx context.Context)                  {}
 
-func (c *FakeSailClient) Connect(ctx context.Context, st store.RStore) error {
+func (c *FakeSailClient) NewRoom(ctx context.Context, st store.RStore) error {
 	c.ConnectCalls += 1
 	return nil
 }
