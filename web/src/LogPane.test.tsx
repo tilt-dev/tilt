@@ -12,7 +12,7 @@ it("renders without crashing", () => {
       message="world"
       isExpanded={false}
       endpoints={[]}
-      podID={[]}
+      podID={""}
     />,
     div
   )
@@ -22,7 +22,7 @@ it("renders without crashing", () => {
 it("renders logs", () => {
   const log = "hello\nworld\nfoo\nbar"
   const tree = renderer
-    .create(<LogPane log={log} isExpanded={false} endpoints={[]} podID={[]} />)
+    .create(<LogPane log={log} isExpanded={false} endpoints={[]} podID={""} />)
     .toJSON()
 
   expect(tree).toMatchSnapshot()
@@ -360,7 +360,7 @@ it("renders logs with leading whitespace and ANSI codes", () => {
         ╎ [4/5] RUN cd /app && yarn install
         ╎ [5/5] ADD src /app`
   const tree = renderer
-    .create(<LogPane log={log} isExpanded={false} endpoints={[]} podID={[]} />)
+    .create(<LogPane log={log} isExpanded={false} endpoints={[]} podID={""} />)
     .toJSON()
 
   expect(tree).toMatchSnapshot()
