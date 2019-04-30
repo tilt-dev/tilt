@@ -45,4 +45,4 @@ type fakeAssetServer struct{}
 
 func (as fakeAssetServer) ServeHTTP(http.ResponseWriter, *http.Request) {}
 func (as fakeAssetServer) Serve(ctx context.Context) error              { return nil }
-func (as fakeAssetServer) Teardown(ctx context.Context)                 {}
+func (as fakeAssetServer) TearDown(ctx context.Context)                 {}

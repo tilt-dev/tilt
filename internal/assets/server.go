@@ -28,7 +28,7 @@ import (
 type Server interface {
 	http.Handler
 	Serve(ctx context.Context) error
-	Teardown(ctx context.Context)
+	TearDown(ctx context.Context)
 }
 
 type devServer struct {
@@ -39,7 +39,7 @@ type devServer struct {
 	disposed bool
 }
 
-func (s *devServer) Teardown(ctx context.Context) {
+func (s *devServer) TearDown(ctx context.Context) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -138,7 +138,7 @@ type prodServer struct {
 	url *url.URL
 }
 
-func (s prodServer) Teardown(ctx context.Context) {
+func (s prodServer) TearDown(ctx context.Context) {
 }
 
 // This doesn't actually do any setup right now.
@@ -188,7 +188,7 @@ type precompiledServer struct {
 	path string
 }
 
-func (s precompiledServer) Teardown(ctx context.Context) {
+func (s precompiledServer) TearDown(ctx context.Context) {
 }
 
 // This doesn't actually do any setup right now.

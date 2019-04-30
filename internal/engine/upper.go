@@ -73,7 +73,7 @@ func NewUpper(ctx context.Context, st *store.Store, subs []store.Subscriber) Upp
 	// There's not really a good reason to add all the subscribers
 	// in NewUpper(), but it's as good a place as any.
 	for _, sub := range subs {
-		st.AddSubscriber(sub)
+		st.AddSubscriber(ctx, sub)
 	}
 
 	return Upper{

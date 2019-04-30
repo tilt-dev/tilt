@@ -42,7 +42,7 @@ func (ws WebsocketSubscriber) Stream(ctx context.Context, store *store.Store) {
 		}
 	}()
 
-	store.AddSubscriber(ws)
+	store.AddSubscriber(ctx, ws)
 
 	// Fire a fake OnChange event to initialize the stream.
 	ws.OnChange(ctx, store)

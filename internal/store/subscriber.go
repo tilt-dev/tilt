@@ -17,13 +17,19 @@ type Subscriber interface {
 	OnChange(ctx context.Context, st RStore)
 }
 
-// Some subscribers need to do teardown.
-// Teardown holds the subscriber lock, so we expect it
-// to return quickly.
-// TODO(nick): A Setup method would also be useful for subscribers
-// that do one-time setup.
+// Some subscribers need to do SetUp or TearDown.
+// Both hold the subscriber lock, so should return quickly.
+type SetUpper interface {
+	SetUp(ctx context.Context)
+}
+type TearDowner interface {
+	TearDown(ctx context.Context)
+}
+
+// Convenience interface for subscriber fulfilling both SetUpper and TearDowner
 type SubscriberLifecycle interface {
-	Teardown(ctx context.Context)
+	SetUpper
+	TearDowner
 }
 
 type subscriberList struct {
@@ -32,14 +38,19 @@ type subscriberList struct {
 	mu          sync.Mutex
 }
 
-func (l *subscriberList) Add(s Subscriber) {
+func (l *subscriberList) Add(ctx context.Context, s Subscriber) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	l.subscribers = append(l.subscribers, &subscriberEntry{
+	e := &subscriberEntry{
 		subscriber: s,
 		dirtyBit:   NewDirtyBit(),
-	})
+	}
+	l.subscribers = append(l.subscribers, e)
+	if l.setup {
+		// the rest of the subscriberList has already been set up, so set up this subscriber directly
+		e.maybeSetUp(ctx)
+	}
 }
 
 func (l *subscriberList) Remove(ctx context.Context, s Subscriber) error {
@@ -59,10 +70,15 @@ func (l *subscriberList) Remove(ctx context.Context, s Subscriber) error {
 	return fmt.Errorf("Subscriber not found: %T: %+v", s, s)
 }
 
-func (l *subscriberList) Setup(ctx context.Context) {
+func (l *subscriberList) SetUp(ctx context.Context) {
 	l.mu.Lock()
+	subscribers := append([]*subscriberEntry{}, l.subscribers...)
 	l.setup = true
 	l.mu.Unlock()
+
+	for _, s := range subscribers {
+		s.maybeSetUp(ctx)
+	}
 }
 
 func (l *subscriberList) TeardownAll(ctx context.Context) {
@@ -107,11 +123,20 @@ func (e *subscriberEntry) notify(ctx context.Context, store *Store) {
 	e.dirtyBit.FinishBuild(startToken)
 }
 
-func (e *subscriberEntry) maybeTeardown(ctx context.Context) {
-	sl, ok := e.subscriber.(SubscriberLifecycle)
+func (e *subscriberEntry) maybeSetUp(ctx context.Context) {
+	s, ok := e.subscriber.(SetUpper)
 	if ok {
 		e.mu.Lock()
 		defer e.mu.Unlock()
-		sl.Teardown(ctx)
+		s.SetUp(ctx)
+	}
+}
+
+func (e *subscriberEntry) maybeTeardown(ctx context.Context) {
+	s, ok := e.subscriber.(TearDowner)
+	if ok {
+		e.mu.Lock()
+		defer e.mu.Unlock()
+		s.TearDown(ctx)
 	}
 }

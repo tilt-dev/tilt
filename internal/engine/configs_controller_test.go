@@ -89,7 +89,7 @@ func newCCFixture(t *testing.T) *ccFixture {
 	fc := testutils.NewRandomFakeClock()
 	cc.clock = fc.Clock()
 	ctx := output.CtxForTest()
-	st.AddSubscriber(cc)
+	st.AddSubscriber(ctx, cc)
 	go st.Loop(ctx)
 	return &ccFixture{
 		TempDirFixture: f,

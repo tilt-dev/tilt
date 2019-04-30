@@ -52,7 +52,7 @@ func ProvideSailClient(addr model.SailURL, roomer SailRoomer, dialer SailDialer)
 	}
 }
 
-func (s *sailClient) Teardown(ctx context.Context) {
+func (s *sailClient) TearDown(ctx context.Context) {
 	s.disconnect()
 }
 
@@ -188,4 +188,4 @@ func (s *sailClient) shareToRoom(ctx context.Context, roomID model.RoomID, secre
 	return nil
 }
 
-var _ store.SubscriberLifecycle = &sailClient{}
+var _ store.TearDowner = &sailClient{}

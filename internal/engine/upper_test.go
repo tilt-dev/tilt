@@ -2289,7 +2289,7 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	fSub := fixtureSub{ch: make(chan bool, 1000)}
 	st := store.NewStore(UpperReducer, store.LogActionsFlag(false))
-	st.AddSubscriber(fSub)
+	st.AddSubscriber(ctx, fSub)
 
 	plm := NewPodLogManager(k8s)
 	bc := NewBuildController(b)
