@@ -118,6 +118,10 @@ func (s *Store) Close() {
 	close(s.actionCh)
 }
 
+func (s *Store) SetUpSubscribersForTesting(ctx context.Context) {
+	s.subscribers.SetUp(ctx)
+}
+
 func (s *Store) Loop(ctx context.Context) error {
 	s.subscribers.SetUp(ctx)
 	defer s.subscribers.TeardownAll(context.Background())
