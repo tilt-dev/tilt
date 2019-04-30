@@ -114,15 +114,15 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 
     let podID = this.props.podID
     let podIDEl = podID && (
-      <p>
+      <div className="resourceInfo-item">
         <span className="label">Pod ID:</span>
         <pre>{podID}</pre>
-      </p>
+      </div>
     )
 
     let endpoints = this.props.endpoints
     let endpointsEl = endpoints.length > 0 && (
-      <p>
+      <div className="resourceInfo-item">
         <span className="label">
           Endpoint{endpoints.length > 1 ? "s" : ""}:
         </span>
@@ -131,7 +131,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
             {ep}
           </a>
         ))}
-      </p>
+      </div>
     )
 
     let logLines: Array<React.ReactElement> = []
