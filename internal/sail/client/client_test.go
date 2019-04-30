@@ -35,6 +35,7 @@ func TestConnectAndBroadcast(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.assertNewRoomCalls(1)
+	assert.NotNil(t, f.conn()) // connection is established (nothing sent down it yet)
 
 	f.client.OnChange(f.ctx, f.store)
 	assert.Equal(t, 1, len(f.conn().json.(webview.View).Resources))
@@ -86,6 +87,7 @@ func newFixture(t *testing.T) *fixture {
 	st, getActions := store.NewStoreForTesting()
 
 	client := ProvideSailClient(model.SailURL(*u), &fakeSailRoomer{}, fakeSailDialer{})
+	client.persistentCtx = ctx
 	return &fixture{
 		t:          t,
 		ctx:        ctx,
