@@ -47,6 +47,19 @@ func TestTwoFans(t *testing.T) {
 	assert.Equal(t, "goodbye", fanB.nextMessage(t))
 }
 
+func TestNewFanGetsMostRecentMessage(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.source.dataCh <- "hello"
+	f.source.dataCh <- "goodbye"
+	time.Sleep(10 * time.Millisecond)
+
+	fan := f.addFan()
+
+	assert.Equal(t, "goodbye", fan.nextMessage(t))
+}
+
 type fixture struct {
 	t      *testing.T
 	ctx    context.Context
@@ -128,7 +141,7 @@ type fakeFan struct {
 func newFakeFan(ctx context.Context) *fakeFan {
 	return &fakeFan{
 		ctx:    ctx,
-		dataCh: make(chan string),
+		dataCh: make(chan string, 0),
 	}
 }
 

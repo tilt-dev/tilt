@@ -21,7 +21,8 @@ type Room struct {
 	fanOut chan FanOutAction
 
 	// Mutable data, only read/written in the action loop.
-	fans []FanConn
+	fans       []FanConn
+	lastFanOut FanOutAction
 }
 
 // A websocket that we only read messages from
@@ -49,6 +50,8 @@ type FanOutAction struct {
 	messageType int
 	data        []byte
 }
+
+func (a FanOutAction) Empty() bool { return a.messageType == 0 && len(a.data) == 0 }
 
 func NewRoom() *Room {
 	return &Room{
@@ -107,7 +110,6 @@ func (r *Room) ConsumeSource(ctx context.Context) error {
 				log.Printf("ConsumeSource: %v", err)
 				return
 			}
-
 			fanOut <- FanOutAction{messageType: messageType, data: data}
 		}
 	}()
@@ -127,7 +129,18 @@ func (r *Room) ConsumeSource(ctx context.Context) error {
 
 			return ctx.Err()
 		case action := <-r.addFan:
-			r.fans = append(r.fans, action.fan)
+			fan := action.fan
+			r.fans = append(r.fans, fan)
+
+			// Make sure that the newly connected fan has some data.
+			// TODO: the more robust way to do this is for joiner to "request" an update
+			// (and have the request propagate back to Tilt)
+			if !r.lastFanOut.Empty() {
+				err := fan.WriteMessage(r.lastFanOut.messageType, r.lastFanOut.data)
+				if err != nil {
+					log.Printf("MostRecentAction to new fan: %v", err)
+				}
+			}
 		case action := <-fanOut:
 			for _, fan := range r.fans {
 				err := fan.WriteMessage(action.messageType, action.data)
@@ -135,6 +148,7 @@ func (r *Room) ConsumeSource(ctx context.Context) error {
 					log.Printf("Room Fan-out: %v", err)
 				}
 			}
+			r.lastFanOut = action
 		}
 	}
 }
