@@ -9,6 +9,8 @@ type LogPaneProps = {
   log: string
   message?: string
   isExpanded: boolean
+  podID: string
+  endpoints: string[]
 }
 type LogPaneState = {
   autoscroll: boolean
@@ -110,15 +112,37 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       )
     }
 
-    let els: Array<React.ReactElement> = []
+    let podID = this.props.podID
+    let podIDEl = podID && (
+      <div className="resourceInfo-item">
+        <span className="label">Pod ID:</span>
+        <pre>{podID}</pre>
+      </div>
+    )
+
+    let endpoints = this.props.endpoints
+    let endpointsEl = endpoints.length > 0 && (
+      <div className="resourceInfo-item">
+        <span className="label">
+          Endpoint{endpoints.length > 1 ? "s" : ""}:
+        </span>
+        {endpoints.map(ep => (
+          <a href={ep} target="_blank">
+            {ep}
+          </a>
+        ))}
+      </div>
+    )
+
+    let logLines: Array<React.ReactElement> = []
     let lines = log.split("\n")
-    els = lines.map(
+    logLines = lines.map(
       (line: string, i: number): React.ReactElement => {
         return <AnsiLine key={"logLine" + i} line={line} />
       }
     )
-    els.push(
-      <div
+    logLines.push(
+      <p
         key="logEnd"
         className="logEnd"
         ref={el => {
@@ -126,10 +150,20 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
         }}
       >
         &#9608;
-      </div>
+      </p>
     )
 
-    return <section className={classes}>{els}</section>
+    return (
+      <section className={classes}>
+        {(endpoints || podID) && (
+          <section className="resourceInfo">
+            {podIDEl}
+            {endpointsEl}
+          </section>
+        )}
+        <section className="logText">{logLines}</section>
+      </section>
+    )
   }
 }
 

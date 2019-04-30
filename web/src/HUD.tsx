@@ -9,13 +9,7 @@ import K8sViewPane from "./K8sViewPane"
 import PreviewPane from "./PreviewPane"
 import PathBuilder from "./PathBuilder"
 import { Map } from "immutable"
-import {
-  Router,
-  Route,
-  Switch,
-  RouteComponentProps,
-  Link,
-} from "react-router-dom"
+import { Router, Route, Switch, RouteComponentProps } from "react-router-dom"
 import { createBrowserHistory, History, UnregisterCallback } from "history"
 import { incr, pathToTag } from "./analytics"
 import TopBar from "./TopBar"
@@ -33,6 +27,7 @@ type Resource = {
   CurrentBuild: any
   DirectoriesWatched: Array<any>
   Endpoints: Array<string>
+  PodID: string
   IsTiltfile: boolean
   LastDeployTime: string
   PathsWatched: Array<string>
@@ -202,11 +197,22 @@ class HUD extends Component<HudProps, HudState> {
           ? props.match.params.name
           : ""
       let logs = ""
+      let endpoints: Array<string> = []
+      let podID: string = ""
       if (view && name !== "") {
         let r = view.Resources.find(r => r.Name === name)
-        logs = r ? r.CombinedLog : ""
+        logs = (r && r.CombinedLog) || ""
+        endpoints = (r && r.Endpoints) || []
+        podID = (r && r.PodID) || ""
       }
-      return <LogPane log={logs} isExpanded={isSidebarClosed} />
+      return (
+        <LogPane
+          log={logs}
+          isExpanded={isSidebarClosed}
+          endpoints={endpoints}
+          podID={podID}
+        />
+      )
     }
 
     let combinedLog = ""
@@ -282,7 +288,12 @@ class HUD extends Component<HudProps, HudState> {
               exact
               path={this.path("/")}
               render={() => (
-                <LogPane log={combinedLog} isExpanded={isSidebarClosed} />
+                <LogPane
+                  log={combinedLog}
+                  isExpanded={isSidebarClosed}
+                  podID={""}
+                  endpoints={[]}
+                />
               )}
             />
             <Route
