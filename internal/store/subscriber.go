@@ -38,14 +38,19 @@ type subscriberList struct {
 	mu          sync.Mutex
 }
 
-func (l *subscriberList) Add(s Subscriber) {
+func (l *subscriberList) Add(ctx context.Context, s Subscriber) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	l.subscribers = append(l.subscribers, &subscriberEntry{
+	e := &subscriberEntry{
 		subscriber: s,
 		dirtyBit:   NewDirtyBit(),
-	})
+	}
+	l.subscribers = append(l.subscribers, e)
+	if l.setup {
+		// the rest of the subscriberList has already been set up, so set up this subscriber directly
+		e.maybeSetUp(ctx)
+	}
 }
 
 func (l *subscriberList) Remove(ctx context.Context, s Subscriber) error {

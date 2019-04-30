@@ -57,7 +57,7 @@ func NewScript(upper engine.Upper, hud hud.HeadsUpDisplay, kClient k8s.Client,
 		runtime:        runtime,
 		tfl:            tfl,
 	}
-	st.AddSubscriber(s.podMonitor)
+	st.AddSubscriber(context.Background(), s.podMonitor)
 	return s
 }
 
