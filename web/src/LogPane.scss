@@ -56,9 +56,10 @@
   text-transform: uppercase;
   color: $color-gray-light;
   font-weight: bold;
+  margin-right: $spacing-unit / 4;
 }
 
-.resourceInfo div + div {
+.resourceInfo p + p {
   margin-left: $spacing-unit / 2;
   border-left: 1px dotted $color-gray-light;
   padding-left: $spacing-unit / 2;
@@ -69,9 +70,12 @@
   font-family: $font-monospace;
   user-select: all;
   white-space: pre-wrap;
-  padding-left: $spacing-unit / 4;
-  padding-right: $spacing-unit / 4;
   margin: 0;
+}
+
+.resourceInfo a + a,
+.resourceInfo pre + pre {
+  margin-left: $spacing-unit / 2;
 }
 
 .LogPane code {

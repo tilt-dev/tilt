@@ -4,7 +4,9 @@ exports[`renders logs 1`] = `
 <section
   className="LogPane "
 >
-  
+  <section
+    className="resourceInfo"
+  />
   <section
     className="logText"
   >
@@ -53,7 +55,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
 <section
   className="LogPane "
 >
-  
+  <section
+    className="resourceInfo"
+  />
   <section
     className="logText"
   >

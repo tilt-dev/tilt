@@ -112,35 +112,28 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       )
     }
 
-    let resourceInfo: React.ReactElement
-    let endpoints = ""
-    if (this.props.endpoints) {
-      endpoints = this.props.endpoints.join(", ")
-    }
-    let podIDs = ""
-    if (this.props.podIDs) {
-      podIDs = this.props.podIDs.join(", ")
-    }
-    let endpointSuffix =
-      this.props.endpoints && this.props.endpoints.length > 1 ? "s" : ""
-    let podIdSuffix =
-      this.props.podIDs && this.props.podIDs.length > 1 ? "s" : ""
+    let podIDs = this.props.podIDs
+    let podIDsEl = podIDs.length > 0 && (
+      <p>
+        <span className="label">Pod ID{podIDs.length > 1 ? "s" : ""}:</span>
+        {podIDs.map(id => (
+          <pre>{id}</pre>
+        ))}
+      </p>
+    )
 
-    let resourceInfoSection = (endpoints || podIDs) && (
-      <section className="resourceInfo">
-        {podIDs && (
-          <div>
-            <span className="label">Pod ID{podIdSuffix}:</span>
-            <pre>{podIDs}</pre>
-          </div>
-        )}
-        {endpoints && (
-          <div>
-            <span className="label">Endpoint{endpointSuffix}:</span>
-            <pre>{endpoints}</pre>
-          </div>
-        )}
-      </section>
+    let endpoints = this.props.endpoints
+    let endpointsEl = endpoints.length > 0 && (
+      <p>
+        <span className="label">
+          Endpoint{endpoints.length > 1 ? "s" : ""}:
+        </span>
+        {endpoints.map(ep => (
+          <a href={ep} target="_blank">
+            {ep}
+          </a>
+        ))}
+      </p>
     )
 
     let logLines: Array<React.ReactElement> = []
@@ -164,7 +157,12 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 
     return (
       <section className={classes}>
-        {resourceInfoSection}
+        {(endpoints || podIDs) && (
+          <section className="resourceInfo">
+            {podIDsEl}
+            {endpointsEl}
+          </section>
+        )}
         <section className="logText">{logLines}</section>
       </section>
     )
