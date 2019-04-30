@@ -1,4 +1,4 @@
-FROM golang:1.12
+FROM sail-with-go-cache
 WORKDIR /go/src/github.com/windmilleng/tilt
 
 RUN curl -sL https://deb.nodesource.com/setup_11.x | bash -

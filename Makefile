@@ -41,6 +41,13 @@ install-debug:
 install-sail:
 	go install ./cmd/sail/...
 
+build-sail-cache:
+	docker build . -t sail-with-go-cache -f deployments/sail.cache.dockerfile
+
+run-sail:
+	@if ! docker inspect --type=image sail-with-go-cache 2> /dev/null 1>/dev/null; then echo "Docker image sail-with-go-cache not found, run make build-sail-cache"; exit 1; fi
+	tilt up --port 10351 --webdev-port 46765
+
 define synclet-build-dev
 	echo $1 > $(SYNCLET_DEV_IMAGE_TAG_FILE)
 	docker tag $(SYNCLET_IMAGE):dirty $(SYNCLET_IMAGE):$1
