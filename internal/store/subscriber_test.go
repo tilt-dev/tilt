@@ -68,6 +68,17 @@ func TestRemoveSubscriberNotFound(t *testing.T) {
 	}
 }
 
+func TestSubscriberSetup(t *testing.T) {
+	st, _ := NewStoreForTesting()
+	ctx := context.Background()
+	s := newFakeSubscriber()
+	st.AddSubscriber(s)
+
+	st.subscribers.SetUp(ctx)
+
+	assert.Equal(t, 1, s.setupCount)
+}
+
 func TestSubscriberTeardown(t *testing.T) {
 	st, _ := NewStoreForTesting()
 	ctx := context.Background()
@@ -117,6 +128,7 @@ func TestSubscriberTeardownOnRemove(t *testing.T) {
 
 type fakeSubscriber struct {
 	onChange      chan onChangeCall
+	setupCount    int
 	teardownCount int
 }
 
@@ -164,6 +176,10 @@ func (f *fakeSubscriber) OnChange(ctx context.Context, st RStore) {
 	<-call.done
 }
 
-func (f *fakeSubscriber) Teardown(ctx context.Context) {
+func (f *fakeSubscriber) SetUp(ctx context.Context) {
+	f.setupCount++
+}
+
+func (f *fakeSubscriber) TearDown(ctx context.Context) {
 	f.teardownCount++
 }

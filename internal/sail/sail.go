@@ -108,7 +108,7 @@ func run(cmd *cobra.Command, args []string) {
 	g.Go(func() error {
 		<-ctx.Done()
 		_ = httpServer.Shutdown(context.Background())
-		assetServ.Teardown(context.Background())
+		assetServ.TearDown(context.Background())
 		return nil
 	})
 

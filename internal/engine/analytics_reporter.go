@@ -10,7 +10,7 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 )
 
-// How often to perodically report data for analytics while Tilt is running
+// How often to periodically report data for analytics while Tilt is running
 const analyticsReportingInterval = time.Hour * 1
 
 type AnalyticsReporter struct {
