@@ -207,9 +207,9 @@ class HUD extends Component<HudProps, HudState> {
       let podIDs: Array<string> = []
       if (view && name !== "") {
         let r = view.Resources.find(r => r.Name === name)
-        logs = r ? r.CombinedLog : ""
-        endpoints = r ? r.Endpoints : []
-        podIDs = r ? r.PodIDs : []
+        logs = (r && r.CombinedLog) || ""
+        endpoints = (r && r.Endpoints) || []
+        podIDs = (r && r.PodIDs) || []
       }
       return (
         <LogPane
