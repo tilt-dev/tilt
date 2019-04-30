@@ -16,36 +16,28 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
-var testRoomInfo = model.SailRoomInfo{
-	RoomID: model.RoomID("some-room"),
-	Secret: "shh-very-secret",
-}
-
-func TestNewRoomStoresRoomInfo(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	err := f.client.NewRoom(f.ctx, f.store)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	f.assertNewRoomCalls(1)
-	assert.Equal(t, testRoomInfo, f.client.roomInfo)
-}
+const (
+	testRoomID = model.RoomID("some-room")
+	testSecret = "shh-very-secret"
+)
 
 func TestConnectAndBroadcast(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	// Trying to broadcast without a room does nothing
+	// Trying to broadcast before connecting does nothing
 	f.client.OnChange(f.ctx, f.store)
 	assert.Nil(t, f.client.conn)
 
-	// Spoof new room creation -- OnChange should connect and broadcast
-	f.client.roomInfo = testRoomInfo
-	f.client.OnChange(f.ctx, f.store)
+	// Initial connect
+	err := f.client.Connect(f.ctx, f.store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.assertNewRoomCalls(1)
+	assert.NotNil(t, f.conn()) // connection is established (nothing sent down it yet)
 
+	f.client.OnChange(f.ctx, f.store)
 	assert.Equal(t, 1, len(f.conn().json.(webview.View).Resources))
 	assert.Equal(t, view.TiltfileResourceName, f.conn().json.(webview.View).Resources[0].Name.String())
 
@@ -56,6 +48,7 @@ func TestConnectAndBroadcast(t *testing.T) {
 
 	f.client.OnChange(f.ctx, f.store)
 	assert.Equal(t, 2, len(f.conn().json.(webview.View).Resources))
+	f.assertNewRoomCalls(1) // room already connected, shouldn't have any more NewRoom calls
 }
 
 func TestSailRoomConnectedAction(t *testing.T) {
@@ -63,8 +56,7 @@ func TestSailRoomConnectedAction(t *testing.T) {
 	defer f.TearDown()
 	go f.store.Loop(f.ctx)
 
-	f.client.roomInfo = testRoomInfo
-	err := f.client.ShareToRoom(f.ctx, f.store)
+	err := f.client.Connect(f.ctx, f.store)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,6 +87,7 @@ func newFixture(t *testing.T) *fixture {
 	st, getActions := store.NewStoreForTesting()
 
 	client := ProvideSailClient(model.SailURL(*u), &fakeSailRoomer{}, fakeSailDialer{})
+	client.persistentCtx = ctx
 	return &fixture{
 		t:          t,
 		ctx:        ctx,
@@ -128,9 +121,9 @@ type fakeSailRoomer struct {
 	newRoomCalls int
 }
 
-func (r *fakeSailRoomer) NewRoom(ctx context.Context) (info model.SailRoomInfo, err error) {
+func (r *fakeSailRoomer) NewRoom(ctx context.Context) (roomID model.RoomID, secret string, err error) {
 	r.newRoomCalls += 1
-	return testRoomInfo, nil
+	return testRoomID, testSecret, nil
 }
 
 type fakeSailDialer struct{}

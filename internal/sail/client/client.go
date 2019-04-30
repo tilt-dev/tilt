@@ -21,27 +21,20 @@ func (SailRoomConnectedAction) Action() {}
 
 type SailClient interface {
 	store.Subscriber
+	store.SubscriberLifecycle
 
-	NewRoom(ctx context.Context, st store.RStore) error
+	Connect(ctx context.Context, st store.RStore) error
 }
 
 var _ SailClient = &sailClient{}
 
 type sailClient struct {
-	addr   model.SailURL
-	roomer SailRoomer
-	dialer SailDialer
-	conn   SailConn
-	mu     sync.Mutex
-
-	roomInfo model.SailRoomInfo // Info for room this client is talking to
-}
-
-func (s *sailClient) RoomInfo() model.SailRoomInfo {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	return s.roomInfo
+	persistentCtx context.Context
+	addr          model.SailURL
+	roomer        SailRoomer
+	dialer        SailDialer
+	conn          SailConn
+	mu            sync.Mutex
 }
 
 func ProvideSailClient(addr model.SailURL, roomer SailRoomer, dialer SailDialer) *sailClient {
@@ -49,6 +42,12 @@ func ProvideSailClient(addr model.SailURL, roomer SailRoomer, dialer SailDialer)
 		addr:   addr,
 		roomer: roomer,
 		dialer: dialer,
+	}
+}
+
+func (s *sailClient) SetUp(ctx context.Context) {
+	if s.persistentCtx == nil {
+		s.persistentCtx = ctx
 	}
 }
 
@@ -60,15 +59,12 @@ func (s *sailClient) disconnect() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.roomInfo = model.SailRoomInfo{}
-
 	if s.conn == nil {
 		return
 	}
 
 	_ = s.conn.Close()
 	s.conn = nil
-
 }
 
 func (s *sailClient) isConnected() bool {
@@ -77,24 +73,9 @@ func (s *sailClient) isConnected() bool {
 	return s.conn != nil
 }
 
-func (s *sailClient) hasRoomInfo() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.roomInfo != model.SailRoomInfo{}
-}
-
 func (s *sailClient) OnChange(ctx context.Context, st store.RStore) {
-	if !s.hasRoomInfo() {
-		return
-	}
-
 	if !s.isConnected() {
-		err := s.ShareToRoom(ctx, st)
-		if err != nil {
-			logger.Get(ctx).Infof("sailClient.ShareToRoom(%s): %v", s.addr, err)
-			s.disconnect()
-			return
-		}
+		return
 	}
 
 	state := st.RLockState()
@@ -137,27 +118,19 @@ func (s *sailClient) setConnection(ctx context.Context, conn SailConn) {
 	}()
 }
 
-func (s *sailClient) NewRoom(ctx context.Context, st store.RStore) error {
+func (s *sailClient) Connect(ctx context.Context, st store.RStore) error {
 	if s.addr.Empty() {
 		return fmt.Errorf("tried to connect a sailClient with an empty address")
 	}
-	roomInfo, err := s.roomer.NewRoom(ctx)
+	roomID, secret, err := s.roomer.NewRoom(ctx)
 	if err != nil {
 		st.Dispatch(SailRoomConnectedAction{Err: err})
 		return err
 	}
 
-	// Attach room info to sailClient so we can connect to it later
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.roomInfo = roomInfo
-
-	return nil
-}
-
-func (s *sailClient) ShareToRoom(ctx context.Context, st store.RStore) error {
-	roomInfo := s.RoomInfo()
-	err := s.shareToRoom(ctx, roomInfo.RoomID, roomInfo.Secret)
+	// NOTE(maia): this call sets up the web socket, so it needs a long-lived ctx
+	// (can't just use the context from an HTTP request, as above).
+	err = s.shareToRoom(s.persistentCtx, roomID, secret)
 	if err != nil {
 		st.Dispatch(SailRoomConnectedAction{Err: err})
 		return err
@@ -165,7 +138,7 @@ func (s *sailClient) ShareToRoom(ctx context.Context, st store.RStore) error {
 
 	// Send back URL to surface to user for sharing
 	viewUrl := s.addr.Http()
-	viewUrl.Path = fmt.Sprintf("/view/%s", roomInfo.RoomID)
+	viewUrl.Path = fmt.Sprintf("/view/%s", roomID)
 	st.Dispatch(SailRoomConnectedAction{ViewURL: viewUrl.String()})
 
 	return nil
@@ -187,5 +160,3 @@ func (s *sailClient) shareToRoom(ctx context.Context, roomID model.RoomID, secre
 	s.setConnection(ctx, conn)
 	return nil
 }
-
-var _ store.TearDowner = &sailClient{}
