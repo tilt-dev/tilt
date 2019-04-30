@@ -129,14 +129,16 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     let resourceInfoSection = (endpoints || podIDs) && (
       <section className="resourceInfo">
         {podIDs && (
-          <p>
-            <span className="label">Pod ID{podIdSuffix}:</span> {podIDs}
-          </p>
+          <div>
+            <span className="label">Pod ID{podIdSuffix}:</span>
+            <pre>{podIDs}</pre>
+          </div>
         )}
         {endpoints && (
-          <p>
-            <span className="label">Endpoint{endpointSuffix}:</span> {endpoints}
-          </p>
+          <div>
+            <span className="label">Endpoint{endpointSuffix}:</span>
+            <pre>{endpoints}</pre>
+          </div>
         )}
       </section>
     )

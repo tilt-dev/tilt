@@ -58,10 +58,20 @@
   font-weight: bold;
 }
 
-.resourceInfo p + p {
+.resourceInfo div + div {
   margin-left: $spacing-unit / 2;
   border-left: 1px dotted $color-gray-light;
   padding-left: $spacing-unit / 2;
+}
+
+.resourceInfo pre {
+  display: inline-block;
+  font-family: $font-monospace;
+  user-select: all;
+  white-space: pre-wrap;
+  padding-left: $spacing-unit / 4;
+  padding-right: $spacing-unit / 4;
+  margin: 0;
 }
 
 .LogPane code {
