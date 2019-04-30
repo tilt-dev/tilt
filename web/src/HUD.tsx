@@ -186,9 +186,11 @@ class HUD extends Component<HudProps, HudState> {
           : ""
       return (
         <TopBar
-          logUrl={name === "" ? "/" : `/r/${name}`}
-          errorsUrl={name === "" ? "/errors" : `/r/${name}/errors`}
-          previewUrl={this.getEndpointForName(name, sidebarItems)}
+          logUrl={name === "" ? this.path("/") : this.path(`/r/${name}`)}
+          errorsUrl={
+            name === "" ? this.path("/errors") : this.path(`/r/${name}/errors`)
+          }
+          previewUrl={this.path(this.getEndpointForName(name, sidebarItems))}
           resourceView={t}
           sailEnabled={sailEnabled}
           sailUrl={sailUrl}
