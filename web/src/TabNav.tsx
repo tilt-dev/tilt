@@ -2,7 +2,6 @@ import React, { PureComponent } from "react"
 import { Link } from "react-router-dom"
 import { ResourceView } from "./types"
 import "./TabNav.scss"
-import SailInfo from "./SailInfo"
 
 type NavProps = {
   previewUrl: string

@@ -3,6 +3,9 @@ import renderer from "react-test-renderer"
 import { MemoryRouter } from "react-router"
 import { ResourceView } from "./types"
 import TopBar from "./TopBar"
+import PathBuilder from "./PathBuilder"
+
+let pathBuilder = new PathBuilder("localhost", "/")
 
 it("shows sail share button", () => {
   const tree = renderer
@@ -13,6 +16,7 @@ it("shows sail share button", () => {
           previewUrl="/r/foo/preview"
           errorsUrl="/r/foo/errors"
           resourceView={ResourceView.Errors}
+          pathBuilder={pathBuilder}
           sailEnabled={true}
           sailUrl=""
         />
@@ -32,6 +36,7 @@ it("shows sail url", () => {
           previewUrl="/r/foo/preview"
           errorsUrl="/r/foo/errors"
           resourceView={ResourceView.Errors}
+          pathBuilder={pathBuilder}
           sailEnabled={true}
           sailUrl="www.sail.dev/xyz"
         />

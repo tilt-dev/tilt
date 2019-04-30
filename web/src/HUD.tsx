@@ -190,6 +190,7 @@ class HUD extends Component<HudProps, HudState> {
           errorsUrl={name === "" ? "/errors" : `/r/${name}/errors`}
           previewUrl={this.getEndpointForName(name, sidebarItems)}
           resourceView={t}
+          pathBuilder={this.pathBuilder}
           sailEnabled={sailEnabled}
           sailUrl={sailUrl}
         />
