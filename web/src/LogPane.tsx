@@ -113,7 +113,6 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     }
 
     let resourceInfo: React.ReactElement
-
     let endpoints = ""
     if (this.props.endpoints) {
       endpoints = this.props.endpoints.join(", ")
@@ -122,16 +121,35 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     if (this.props.podIDs) {
       podIDs = this.props.podIDs.join(", ")
     }
+    let endpointSuffix =
+      this.props.endpoints && this.props.endpoints.length > 1 ? "s" : ""
+    let podIdSuffix =
+      this.props.podIDs && this.props.podIDs.length > 1 ? "s" : ""
 
-    let els: Array<React.ReactElement> = []
+    let resourceInfoSection = (endpoints || podIDs) && (
+      <section className="resourceInfo">
+        {endpoints && (
+          <p>
+            <span>Endpoint{endpointSuffix}:</span> {endpoints}
+          </p>
+        )}
+        {podIDs && (
+          <p>
+            <span>Pod ID{podIdSuffix}:</span> {podIDs}
+          </p>
+        )}
+      </section>
+    )
+
+    let logLines: Array<React.ReactElement> = []
     let lines = log.split("\n")
-    els = lines.map(
+    logLines = lines.map(
       (line: string, i: number): React.ReactElement => {
         return <AnsiLine key={"logLine" + i} line={line} />
       }
     )
-    els.push(
-      <div
+    logLines.push(
+      <p
         key="logEnd"
         className="logEnd"
         ref={el => {
@@ -139,18 +157,13 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
         }}
       >
         &#9608;
-      </div>
+      </p>
     )
 
     return (
       <section className={classes}>
-        <section className="resourceInfo">
-          {endpoints !== "" ? <p>endpoints: {endpoints}</p> : ""}
-          {podIDs != "" ? <p>podID: {podIDs}</p> : ""}
-        </section>
-        <section className="logText">
-          <p>{els}</p>
-        </section>
+        {resourceInfoSection}
+        <section className="logText">{logLines}</section>
       </section>
     )
   }
