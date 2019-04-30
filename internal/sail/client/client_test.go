@@ -21,9 +21,10 @@ var testRoomInfo = model.SailRoomInfo{
 	Secret: "shh-very-secret",
 }
 
-func TestNewRoomStoresRoomInfo(t *testing.T) {
+func TestNewRoom(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
+	go f.store.Loop(f.ctx)
 
 	err := f.client.NewRoom(f.ctx, f.store)
 	if err != nil {
@@ -32,6 +33,8 @@ func TestNewRoomStoresRoomInfo(t *testing.T) {
 
 	f.assertNewRoomCalls(1)
 	assert.Equal(t, testRoomInfo, f.client.roomInfo)
+
+	_ = store.WaitForAction(t, reflect.TypeOf(SailNewRoomAction{}), f.getActions)
 }
 
 func TestConnectAndBroadcast(t *testing.T) {

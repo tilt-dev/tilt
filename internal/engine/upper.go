@@ -170,6 +170,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleStopProfilingAction(state)
 	case hud.SetLogTimestampsAction:
 		handleLogTimestampsAction(state, action)
+	case client.SailNewRoomAction:
+		// nothing to handle, we just need to trigger OnChange
 	case client.SailRoomConnectedAction:
 		handleSailRoomConnectedAction(ctx, state, action)
 	case TiltfileLogAction:

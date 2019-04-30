@@ -12,6 +12,10 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 )
 
+type SailNewRoomAction struct{}
+
+func (SailNewRoomAction) Action() {}
+
 type SailRoomConnectedAction struct {
 	ViewURL string // URL to view the Sail room
 	Err     error
@@ -143,7 +147,6 @@ func (s *sailClient) NewRoom(ctx context.Context, st store.RStore) error {
 	}
 	roomInfo, err := s.roomer.NewRoom(ctx)
 	if err != nil {
-		st.Dispatch(SailRoomConnectedAction{Err: err})
 		return err
 	}
 
@@ -152,6 +155,7 @@ func (s *sailClient) NewRoom(ctx context.Context, st store.RStore) error {
 	defer s.mu.Unlock()
 	s.roomInfo = roomInfo
 
+	st.Dispatch(SailNewRoomAction{})
 	return nil
 }
 
