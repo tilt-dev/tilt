@@ -15,11 +15,9 @@ Tilt watches your files for edits, automatically builds your container images,
 and applies any changes to bring your environment
 up-to-date in real-time. Think `docker build && kubectl apply` or `docker-compose up`.
 
-The screencast below demonstrates what a typical Tilt session looks like:
-starting multiple microservices, making changes to them, and seeing any new errors
-or logs right in your terminal.
+## Watch: Tilt in Two Minutes
 
-[![screencast](assets/demothumb.png)](https://www.youtube.com/watch?v=MGeUUmdtdKA)
+[![screencast](assets/demothumb.png)](https://www.youtube.com/watch?v=1fS8K_Kn7yQ)
 
 ## Install Tilt
 
