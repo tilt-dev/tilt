@@ -24,7 +24,7 @@ func ProvideSubscribers(
 	sm SyncletManager,
 	ar *AnalyticsReporter,
 	hudsc *server.HeadsUpServerController,
-	sail *client.SailClient) []store.Subscriber {
+	sail client.SailClient) []store.Subscriber {
 	return []store.Subscriber{
 		hud,
 		pw,

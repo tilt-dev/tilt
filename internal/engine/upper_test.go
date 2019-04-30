@@ -18,6 +18,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/validation"
@@ -195,7 +196,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	}
 
 	result := store.BuildResultSet{}
-	for _, iTarget := range extractImageTargets(specs) {
+	for _, iTarget := range model.ExtractImageTargets(specs) {
 		var deployTarget model.TargetSpec
 		if !call.dc().Empty() {
 			if isImageDeployedToDC(iTarget, call.dc()) {
@@ -2135,7 +2136,7 @@ func TestDockerComposeBuildCompletedDoesntSetStatusIfNotSuccessful(t *testing.T)
 func TestEmptyTiltfile(t *testing.T) {
 	f := newTestFixture(t)
 	f.WriteFile("Tiltfile", "")
-	go f.upper.Start(f.ctx, []string{}, false, model.TriggerAuto, f.JoinPath("Tiltfile"), true)
+	go f.upper.Start(f.ctx, []string{}, false, model.TriggerAuto, f.JoinPath("Tiltfile"), true, false)
 	f.WaitUntil("build is set", func(st store.EngineState) bool {
 		return !st.LastTiltfileBuild.Empty()
 	})
@@ -2316,7 +2317,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	pm := NewProfilerManager()
 	sCli := synclet.NewFakeSyncletClient()
 	sm := NewSyncletManagerForTests(k8s, sCli)
-	hudsc := server.ProvideHeadsUpServerController(0, server.HeadsUpServer{}, server.NewFakeAssetServer())
+	hudsc := server.ProvideHeadsUpServerController(0, server.HeadsUpServer{}, assets.NewFakeServer())
 	subs := []store.Subscriber{
 		fakeHud, pw, sw, plm, pfc, fwm, bc, ic, gybc, cc, dcw, dclm, pm, sm, ar, hudsc,
 	}

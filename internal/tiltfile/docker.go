@@ -187,43 +187,6 @@ func (s *tiltfileState) fastBuildForImage(image *dockerImage) model.FastBuild {
 	}
 }
 
-func (s *tiltfileState) validatedLiveUpdate(image *dockerImage) (model.LiveUpdate, error) {
-	lu := image.liveUpdate
-	if lu.Empty() {
-		return lu, nil
-	}
-
-	var watchedPaths []string
-	if image.Type() == DockerBuild {
-		watchedPaths = []string{image.dbBuildPath.path}
-	} else if image.Type() == CustomBuild {
-		watchedPaths = image.customDeps
-	} else {
-		// don't know how to do this check ¯\_(ツ)_/¯
-		return model.LiveUpdate{}, nil
-	}
-
-	// Verify that all a) sync step src's and b) fall_back_on files are children of a watched path.
-	// (If not, we'll never even get "file changed" events for them--they're nonsensical input, throw an error.)
-	for _, sync := range lu.SyncSteps() {
-		if !ospath.IsChildOfOne(watchedPaths, sync.LocalPath) {
-			return model.LiveUpdate{}, fmt.Errorf("sync step source '%s' is not a child of any watched filepaths (%v)",
-				sync.LocalPath, watchedPaths)
-		}
-	}
-
-	for _, path := range lu.FallBackOnFiles().Paths {
-		absPath := s.absPath(path)
-		if !ospath.IsChildOfOne(watchedPaths, absPath) {
-			return model.LiveUpdate{}, fmt.Errorf("fall_back_on path '%s' is not a child of any watched filepaths (%v)",
-				absPath, watchedPaths)
-		}
-
-	}
-
-	return lu, nil
-}
-
 func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef string
 	var command string

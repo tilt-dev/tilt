@@ -1,4 +1,4 @@
-package server
+package assets
 
 import (
 	"bytes"
@@ -25,15 +25,13 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 )
 
-// TODO(nick): This should probably be in its own package, now
-// that it's shared.
-type AssetServer interface {
+type Server interface {
 	http.Handler
 	Serve(ctx context.Context) error
 	Teardown(ctx context.Context)
 }
 
-type devAssetServer struct {
+type devServer struct {
 	http.Handler
 	port     model.WebDevPort
 	mu       sync.Mutex
@@ -41,7 +39,7 @@ type devAssetServer struct {
 	disposed bool
 }
 
-func (s *devAssetServer) Teardown(ctx context.Context) {
+func (s *devServer) Teardown(ctx context.Context) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -53,7 +51,7 @@ func (s *devAssetServer) Teardown(ctx context.Context) {
 	s.disposed = true
 }
 
-func (s *devAssetServer) start(ctx context.Context, stdout, stderr io.Writer) (*exec.Cmd, error) {
+func (s *devServer) start(ctx context.Context, stdout, stderr io.Writer) (*exec.Cmd, error) {
 	myPkg, err := build.Default.Import("github.com/windmilleng/tilt/internal/hud/server", ".", build.FindOnly)
 	if err != nil {
 		return nil, errors.Wrap(err, "Could not locate Tilt source code")
@@ -103,7 +101,7 @@ func (s *devAssetServer) start(ctx context.Context, stdout, stderr io.Writer) (*
 	return cmd, nil
 }
 
-func (s *devAssetServer) Serve(ctx context.Context) error {
+func (s *devServer) Serve(ctx context.Context) error {
 	// webpack binds to 0.0.0.0
 	err := network.IsBindAddrFree(network.AllHostsBindAddr(int(s.port)))
 	if err != nil {
@@ -136,15 +134,15 @@ func (s *devAssetServer) Serve(ctx context.Context) error {
 		stdout.String(), stderr.String())
 }
 
-type prodAssetServer struct {
+type prodServer struct {
 	url *url.URL
 }
 
-func (s prodAssetServer) Teardown(ctx context.Context) {
+func (s prodServer) Teardown(ctx context.Context) {
 }
 
 // This doesn't actually do any setup right now.
-func (s prodAssetServer) Serve(ctx context.Context) error {
+func (s prodServer) Serve(ctx context.Context) error {
 	logger.Get(ctx).Verbosef("Serving Tilt production web assets from %s", s.url)
 	<-ctx.Done()
 	return nil
@@ -153,7 +151,7 @@ func (s prodAssetServer) Serve(ctx context.Context) error {
 // NOTE(nick): The reverse proxy in httputil makes the storage server 500 and I have no idea
 // why. But this only needs a very limited GET interface without query params,
 // so just make the request by hand.
-func (s prodAssetServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+func (s prodServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	outurl := *s.url
 	origPath := req.URL.Path
 	if !strings.HasPrefix(origPath, "/static/") {
@@ -186,21 +184,21 @@ func (s prodAssetServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	_, _ = io.Copy(w, outres.Body)
 }
 
-type precompiledAssetServer struct {
+type precompiledServer struct {
 	path string
 }
 
-func (s precompiledAssetServer) Teardown(ctx context.Context) {
+func (s precompiledServer) Teardown(ctx context.Context) {
 }
 
 // This doesn't actually do any setup right now.
-func (s precompiledAssetServer) Serve(ctx context.Context) error {
+func (s precompiledServer) Serve(ctx context.Context) error {
 	logger.Get(ctx).Verbosef("Serving Tilt production precompiled assets from %s", s.path)
 	<-ctx.Done()
 	return nil
 }
 
-func (s precompiledAssetServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+func (s precompiledServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	origPath := req.URL.Path
 	if !strings.HasPrefix(origPath, "/static/") {
 		// redirect everything to the main entry point.
@@ -229,22 +227,22 @@ func (s precompiledAssetServer) ServeHTTP(w http.ResponseWriter, req *http.Reque
 	_, _ = io.Copy(w, f)
 }
 
-func NewFakeAssetServer() AssetServer {
+func NewFakeServer() Server {
 	loc, err := url.Parse("https://fake.tilt.dev")
 	if err != nil {
 		panic(err)
 	}
-	return prodAssetServer{url: loc}
+	return prodServer{url: loc}
 }
 
-func ProvideAssetServer(ctx context.Context, webMode model.WebMode, webVersion model.WebVersion, devPort model.WebDevPort) (AssetServer, error) {
+func ProvideAssetServer(ctx context.Context, webMode model.WebMode, webVersion model.WebVersion, devPort model.WebDevPort) (Server, error) {
 	if webMode == model.LocalWebMode {
 		loc, err := url.Parse(fmt.Sprintf("http://localhost:%d", devPort))
 		if err != nil {
 			return nil, errors.Wrap(err, "ProvideAssetServer")
 		}
 
-		return &devAssetServer{
+		return &devServer{
 			Handler: httputil.NewSingleHostReverseProxy(loc),
 			port:    devPort,
 		}, nil
@@ -257,7 +255,7 @@ func ProvideAssetServer(ctx context.Context, webMode model.WebMode, webVersion m
 		}
 
 		buildDir := filepath.Join(pkg.Dir, "../../../web/build")
-		return precompiledAssetServer{
+		return precompiledServer{
 			path: buildDir,
 		}, nil
 	}
@@ -267,7 +265,7 @@ func ProvideAssetServer(ctx context.Context, webMode model.WebMode, webVersion m
 		if err != nil {
 			return nil, errors.Wrap(err, "ProvideAssetServer")
 		}
-		return prodAssetServer{
+		return prodServer{
 			url: loc,
 		}, nil
 	}

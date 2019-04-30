@@ -9,6 +9,7 @@ import (
 	"context"
 	"github.com/docker/docker/api/types"
 	"github.com/google/wire"
+	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/demo"
@@ -131,12 +132,10 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	}
 	webVersion := provideWebVersion(cliBuildInfo)
 	modelWebDevPort := provideWebDevPort()
-	assetServer, err := server.ProvideAssetServer(ctx, webMode, webVersion, modelWebDevPort)
+	assetsServer, err := assets.ProvideAssetServer(ctx, webMode, webVersion, modelWebDevPort)
 	if err != nil {
 		return demo.Script{}, err
 	}
-	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetServer, analytics)
-	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetServer)
 	sailURL, err := provideSailURL()
 	if err != nil {
 		return demo.Script{}, err
@@ -144,6 +143,8 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	sailRoomer := client.ProvideSailRoomer(sailURL)
 	sailDialer := client.ProvideSailDialer()
 	sailClient := client.ProvideSailClient(sailURL, sailRoomer, sailDialer)
+	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics, sailClient)
+	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer)
 	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, imageController, globalYAMLBuildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, sailClient)
 	upper := engine.NewUpper(ctx, storeStore, v2)
 	script := demo.NewScript(upper, headsUpDisplay, k8sClient, env, storeStore, branch, runtime, tiltfileLoader)
@@ -256,12 +257,10 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	}
 	webVersion := provideWebVersion(cliBuildInfo)
 	modelWebDevPort := provideWebDevPort()
-	assetServer, err := server.ProvideAssetServer(ctx, webMode, webVersion, modelWebDevPort)
+	assetsServer, err := assets.ProvideAssetServer(ctx, webMode, webVersion, modelWebDevPort)
 	if err != nil {
 		return Threads{}, err
 	}
-	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetServer, analytics)
-	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetServer)
 	sailURL, err := provideSailURL()
 	if err != nil {
 		return Threads{}, err
@@ -269,6 +268,8 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	sailRoomer := client.ProvideSailRoomer(sailURL)
 	sailDialer := client.ProvideSailDialer()
 	sailClient := client.ProvideSailClient(sailURL, sailRoomer, sailDialer)
+	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics, sailClient)
+	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer)
 	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, imageController, globalYAMLBuildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, sailClient)
 	upper := engine.NewUpper(ctx, storeStore, v2)
 	threads := provideThreads(headsUpDisplay, upper)
@@ -463,7 +464,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
-	provideWebDevPort, server.ProvideHeadsUpServer, server.ProvideAssetServer, server.ProvideHeadsUpServerController, provideSailURL, client.SailWireSet, provideThreads, engine.NewKINDPusher,
+	provideWebDevPort, server.ProvideHeadsUpServer, assets.ProvideAssetServer, server.ProvideHeadsUpServerController, provideSailURL, client.SailWireSet, provideThreads, engine.NewKINDPusher,
 )
 
 type Threads struct {

@@ -31,7 +31,7 @@ func TestDockerBuildWithCache(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	manifest := NewSanchoDockerBuildManifestWithCache([]string{"/root/.cache"})
+	manifest := NewSanchoDockerBuildManifestWithCache(f, []string{"/root/.cache"})
 	cache := "gcr.io/some-project-162817/sancho:tilt-cache-3de427a264f80719a58a9abd456487b3"
 	f.docker.Images[cache] = types.ImageInspect{}
 
@@ -99,8 +99,8 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	iTarget1 := NewSanchoDockerBuildImageTarget()
-	iTarget2 := NewSanchoSidecarDockerBuildImageTarget()
+	iTarget1 := NewSanchoDockerBuildImageTarget(f)
+	iTarget2 := NewSanchoSidecarDockerBuildImageTarget(f)
 	kTarget := model.K8sTarget{Name: "sancho", YAML: testyaml.SanchoSidecarYAML}.
 		WithDependencyIDs([]model.TargetID{iTarget1.ID(), iTarget2.ID()})
 	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}
@@ -165,7 +165,7 @@ func TestDeployIDInjectedAndSent(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	manifest := NewSanchoDockerBuildManifest()
+	manifest := NewSanchoDockerBuildManifest(f)
 
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
@@ -337,7 +337,7 @@ func TestKINDPush(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvKIND)
 	defer f.TearDown()
 
-	manifest := NewSanchoDockerBuildManifest()
+	manifest := NewSanchoDockerBuildManifest(f)
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
@@ -371,7 +371,7 @@ func TestDeployUsesInjectRef(t *testing.T) {
 		manifest       func(f pather) model.Manifest
 		expectedImages []string
 	}{
-		{"docker build", func(f pather) model.Manifest { return NewSanchoDockerBuildManifest() }, expectedImages},
+		{"docker build", func(f pather) model.Manifest { return NewSanchoDockerBuildManifest(f) }, expectedImages},
 		{"fast build", NewSanchoFastBuildManifest, expectedImages},
 		{"custom build", NewSanchoCustomBuildManifest, expectedImages},
 		{"fast multi stage", NewSanchoFastMultiStageManifest, append(expectedImages, "foo.com/sancho-base")},

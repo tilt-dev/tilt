@@ -1,5 +1,7 @@
 import React, { PureComponent } from "react"
 import { ReactComponent as ChevronSvg } from "./assets/svg/chevron.svg"
+import { ReactComponent as DotSvg } from "./assets/svg/dot.svg"
+import { ReactComponent as DotBuildingSvg } from "./assets/svg/dot-building.svg"
 import { Link } from "react-router-dom"
 import { combinedStatus, warnings } from "./status"
 import "./Sidebar.scss"
@@ -19,6 +21,7 @@ class SidebarItem {
   hasEndpoints: boolean
   lastDeployTime: string
   pendingBuildSince: string
+  currentBuildStartTime: string
 
   /**
    * Create a pared down SidebarItem from a ResourceView
@@ -30,6 +33,7 @@ class SidebarItem {
     this.hasEndpoints = (res.Endpoints || []).length
     this.lastDeployTime = res.LastDeployTime
     this.pendingBuildSince = res.PendingBuildSince
+    this.currentBuildStartTime = res.CurrentBuild.StartTime
   }
 }
 
@@ -76,7 +80,16 @@ class Sidebar extends PureComponent<SidebarProps> {
         analyticsKey = "ui.interactions.errors"
         link += "/errors"
       }
-      let classes = `resLink resLink--${item.status}`
+
+      let formatter = buildFormatter(enStrings)
+      let hasBuilt = !isZeroTime(item.lastDeployTime)
+      let willBuild = !isZeroTime(item.pendingBuildSince)
+      let building = !isZeroTime(item.currentBuildStartTime)
+      let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
+
+      let classes = `resLink resLink--${
+        willBuild || building ? "building" : item.status
+      }`
       if (this.props.selected === item.name) {
         classes += " is-selected"
       }
@@ -84,13 +97,12 @@ class Sidebar extends PureComponent<SidebarProps> {
         classes += " has-warnings"
       }
 
-      let formatter = buildFormatter(enStrings)
-      let hasBuilt = !isZeroTime(item.lastDeployTime)
-      let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
-
       return (
         <li key={item.name}>
           <Link className={classes} to={pb.path(link)}>
+            <span className="resLink-icon">
+              {willBuild || building ? <DotBuildingSvg /> : <DotSvg />}
+            </span>
             <span className="resLink-name">{item.name}</span>
             <span>{hasBuilt ? timeAgo : ""}</span>
           </Link>

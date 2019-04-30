@@ -3,7 +3,7 @@ package k8s
 import (
 	"fmt"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/stretchr/testify/assert"
@@ -27,6 +27,7 @@ func fakePod(podID PodID, imageID string) v1.Pod {
 			NodeName: "node1",
 			Containers: []v1.Container{
 				v1.Container{
+					Name:  "default",
 					Image: imageID,
 				},
 			},

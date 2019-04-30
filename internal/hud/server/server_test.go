@@ -7,8 +7,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud/server"
+	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 )
@@ -119,21 +121,45 @@ func TestHandleAnalyticsErrorsIfNotIncr(t *testing.T) {
 	}
 }
 
+func TestHandleSail(t *testing.T) {
+	f := newTestFixture(t)
+
+	req, err := http.NewRequest(http.MethodPost, "/api/sail", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.s.HandleSail)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+
+	assert.Equal(f.t, 1, f.sailCli.ConnectCalls)
+}
+
 type serverFixture struct {
-	t *testing.T
-	s server.HeadsUpServer
-	a *analytics.MemoryAnalytics
+	t       *testing.T
+	s       server.HeadsUpServer
+	a       *analytics.MemoryAnalytics
+	sailCli *client.FakeSailClient
 }
 
 func newTestFixture(t *testing.T) *serverFixture {
 	st := store.NewStore(engine.UpperReducer, store.LogActionsFlag(false))
 	a := analytics.NewMemoryAnalytics()
-	s := server.ProvideHeadsUpServer(st, server.NewFakeAssetServer(), a)
+	sailCli := client.NewFakeSailClient()
+	s := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), a, sailCli)
 
 	return &serverFixture{
-		t: t,
-		s: s,
-		a: a,
+		t:       t,
+		s:       s,
+		a:       a,
+		sailCli: sailCli,
 	}
 }
 

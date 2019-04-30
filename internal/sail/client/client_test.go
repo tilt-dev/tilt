@@ -16,27 +16,45 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
-const (
-	testRoomID = model.RoomID("some-room")
-	testSecret = "shh-very-secret"
-)
+var testRoomInfo = model.SailRoomInfo{
+	RoomID: model.RoomID("some-room"),
+	Secret: "shh-very-secret",
+}
 
-func TestBroadcast(t *testing.T) {
+func TestNewRoomStoresRoomInfo(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.client.OnChange(f.ctx, f.store)
+	err := f.client.NewRoom(f.ctx, f.store)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	f.assertNewRoomCalls(1)
+	assert.Equal(t, testRoomInfo, f.client.roomInfo)
+}
+
+func TestConnectAndBroadcast(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	// Trying to broadcast without a room does nothing
+	f.client.OnChange(f.ctx, f.store)
+	assert.Nil(t, f.client.conn)
+
+	// Spoof new room creation -- OnChange should connect and broadcast
+	f.client.roomInfo = testRoomInfo
+	f.client.OnChange(f.ctx, f.store)
+
 	assert.Equal(t, 1, len(f.conn().json.(webview.View).Resources))
 	assert.Equal(t, view.TiltfileResourceName, f.conn().json.(webview.View).Resources[0].Name.String())
 
+	// Change state and broadcast again, see that number of resources updates to reflect new state
 	state := f.store.LockMutableStateForTesting()
 	state.UpsertManifestTarget(store.NewManifestTarget(model.Manifest{Name: "fe"}))
 	f.store.UnlockMutableState()
 
 	f.client.OnChange(f.ctx, f.store)
-	f.assertNewRoomCalls(1) // room already connected, shouldn't have any more NewRoom calls
 	assert.Equal(t, 2, len(f.conn().json.(webview.View).Resources))
 }
 
@@ -44,7 +62,12 @@ func TestSailRoomConnectedAction(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 	go f.store.Loop(f.ctx)
-	f.client.OnChange(f.ctx, f.store)
+
+	f.client.roomInfo = testRoomInfo
+	err := f.client.ShareToRoom(f.ctx, f.store)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	a := store.WaitForAction(t, reflect.TypeOf(SailRoomConnectedAction{}), f.getActions)
 	if roomConn, ok := a.(SailRoomConnectedAction); ok {
@@ -57,7 +80,7 @@ type fixture struct {
 	t          *testing.T
 	ctx        context.Context
 	cancel     func()
-	client     *SailClient
+	client     *sailClient
 	store      *store.Store
 	getActions func() []store.Action
 }
@@ -105,9 +128,9 @@ type fakeSailRoomer struct {
 	newRoomCalls int
 }
 
-func (r *fakeSailRoomer) NewRoom(ctx context.Context) (roomID model.RoomID, secret string, err error) {
+func (r *fakeSailRoomer) NewRoom(ctx context.Context) (info model.SailRoomInfo, err error) {
 	r.newRoomCalls += 1
-	return testRoomID, testSecret, nil
+	return testRoomInfo, nil
 }
 
 type fakeSailDialer struct{}

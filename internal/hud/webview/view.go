@@ -110,7 +110,9 @@ type View struct {
 	Log           model.Log
 	Resources     []Resource
 	LogTimestamps bool
-	SailURL       string
+
+	SailEnabled bool
+	SailURL     string
 }
 
 func (v View) Resource(n model.ManifestName) (Resource, bool) {

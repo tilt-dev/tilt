@@ -10,7 +10,7 @@ all: check-go check-js test-js
 # This makes CI blow up frequently without out-of-memory errors.
 # Manually setting the number of parallel jobs helps fix this.
 # https://github.com/golang/go/issues/26186#issuecomment-435544512
-GO_PARALLEL_JOBS := 8
+GO_PARALLEL_JOBS := 4
 
 SYNCLET_IMAGE := gcr.io/windmill-public-containers/tilt-synclet
 SYNCLET_DEV_IMAGE_TAG_FILE := .synclet-dev-image-tag

@@ -3,10 +3,16 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	_ "github.com/gorilla/websocket"
+	"github.com/windmilleng/tilt/internal/assets"
+	"github.com/windmilleng/tilt/internal/hud/webview"
+	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 )
@@ -18,21 +24,24 @@ type analyticsPayload struct {
 }
 
 type HeadsUpServer struct {
-	store  *store.Store
-	router *mux.Router
-	a      analytics.Analytics
+	store   *store.Store
+	router  *mux.Router
+	a       analytics.Analytics
+	sailCli client.SailClient
 }
 
-func ProvideHeadsUpServer(store *store.Store, assetServer AssetServer, analytics analytics.Analytics) HeadsUpServer {
+func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics analytics.Analytics, sailCli client.SailClient) HeadsUpServer {
 	r := mux.NewRouter().UseEncodedPath()
 	s := HeadsUpServer{
-		store:  store,
-		router: r,
-		a:      analytics,
+		store:   store,
+		router:  r,
+		a:       analytics,
+		sailCli: sailCli,
 	}
 
 	r.HandleFunc("/api/view", s.ViewJSON)
 	r.HandleFunc("/api/analytics", s.HandleAnalytics)
+	r.HandleFunc("/api/sail", s.HandleSail)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
 	r.PathPrefix("/").Handler(assetServer)
 
@@ -45,7 +54,7 @@ func (s HeadsUpServer) Router() http.Handler {
 
 func (s HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
 	state := s.store.RLockState()
-	view := StateToWebView(state)
+	view := webview.StateToWebView(state)
 	s.store.RUnlockState()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -78,4 +87,31 @@ func (s HeadsUpServer) HandleAnalytics(w http.ResponseWriter, req *http.Request)
 
 		s.a.Incr(p.Name, p.Tags)
 	}
+}
+
+func (s HeadsUpServer) HandleSail(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		http.Error(w, "must be POST request", http.StatusBadRequest)
+		return
+	}
+
+	// Request context doesn't have logger, just slap one on for now.
+	l := logger.NewFuncLogger(false, logger.DebugLvl, func(level logger.Level, b []byte) error {
+		s.store.Dispatch(store.LogAction{
+			LogEvent: store.LogEvent{
+				Timestamp: time.Now(),
+				Msg:       append([]byte{}, b...),
+			},
+		})
+		return nil
+	})
+
+	err := s.sailCli.NewRoom(logger.WithLogger(req.Context(), l), s.store)
+	if err != nil {
+		log.Printf("sailClient.NewRoom: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(fmt.Sprintf("error creating new Sail room: %v", err)))
+		return
+	}
+
 }

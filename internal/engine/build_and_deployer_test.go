@@ -14,6 +14,7 @@ import (
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/docker/docker/api/types"
@@ -866,6 +867,53 @@ func (f *bdFixture) assertContainerRestarts(count int) {
 	}
 	assert.Equal(f.T(), expected, f.docker.RestartsByContainer,
 		"checking for expected # of container restarts")
+}
+
+func (f *bdFixture) createBuildStateSet(manifest model.Manifest, changedFiles []string) store.BuildStateSet {
+	bs := store.BuildStateSet{}
+
+	// If there are no changed files, the test wants a build state where
+	// nothing has ever been built.
+	//
+	// If there are changed files, the test wants a build state where
+	// everything has been built once. The changed files chould be
+	// attached to the appropriate build state.
+	if len(changedFiles) == 0 {
+		return bs
+	}
+
+	consumedFiles := make(map[string]bool)
+	for _, iTarget := range manifest.ImageTargets {
+		filesChangingImage := []string{}
+		for _, file := range changedFiles {
+			fullPath := f.JoinPath(file)
+			inDeps := false
+			for _, dep := range iTarget.Dependencies() {
+				if ospath.IsChild(dep, fullPath) {
+					inDeps = true
+					break
+				}
+			}
+
+			if inDeps {
+				filesChangingImage = append(filesChangingImage, f.WriteFile(file, "blah"))
+				consumedFiles[file] = true
+			}
+		}
+
+		state := store.NewBuildState(alreadyBuilt, filesChangingImage)
+		if manifest.IsImageDeployed(iTarget) {
+			state = state.WithDeployTarget(f.deployInfo())
+		}
+		bs[iTarget.ID()] = state
+	}
+
+	if len(consumedFiles) != len(changedFiles) {
+		f.T().Fatalf("testCase has files that weren't consumed by an image. "+
+			"Was that intentional?\nChangedFiles: %v\nConsumedFiles: %v\n",
+			changedFiles, consumedFiles)
+	}
+	return bs
 }
 
 func resultToStateSet(resultSet store.BuildResultSet, files []string, deploy store.DeployInfo) store.BuildStateSet {

@@ -59,10 +59,17 @@ exports[`sidebar renders list of resources 1`] = `
       </li>
       <li>
         <a
-          className="resLink resLink--pending"
+          className="resLink resLink--building"
           href="/r/vigoda"
           onClick={[Function]}
         >
+          <span
+            className="resLink-icon"
+          >
+            <svg>
+              dot-building.svg
+            </svg>
+          </span>
           <span
             className="resLink-name"
           >
@@ -80,10 +87,17 @@ exports[`sidebar renders list of resources 1`] = `
       </li>
       <li>
         <a
-          className="resLink resLink--pending"
+          className="resLink resLink--building"
           href="/r/snack"
           onClick={[Function]}
         >
+          <span
+            className="resLink-icon"
+          >
+            <svg>
+              dot-building.svg
+            </svg>
+          </span>
           <span
             className="resLink-name"
           >
@@ -139,10 +153,17 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
       </li>
       <li>
         <a
-          className="resLink resLink--pending"
+          className="resLink resLink--building"
           href="/r/vigoda"
           onClick={[Function]}
         >
+          <span
+            className="resLink-icon"
+          >
+            <svg>
+              dot-building.svg
+            </svg>
+          </span>
           <span
             className="resLink-name"
           >
@@ -155,10 +176,17 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
       </li>
       <li>
         <a
-          className="resLink resLink--pending"
+          className="resLink resLink--building"
           href="/r/snack"
           onClick={[Function]}
         >
+          <span
+            className="resLink-icon"
+          >
+            <svg>
+              dot-building.svg
+            </svg>
+          </span>
           <span
             className="resLink-name"
           >

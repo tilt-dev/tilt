@@ -18,7 +18,7 @@ import {
 } from "react-router-dom"
 import { createBrowserHistory, History, UnregisterCallback } from "history"
 import { incr, pathToTag } from "./analytics"
-import TabNav from "./TabNav"
+import TopBar from "./TopBar"
 import "./HUD.scss"
 import { ResourceView } from "./types"
 import ErrorPane, { ErrorResource } from "./ErrorPane"
@@ -57,6 +57,7 @@ type HudState = {
     Resources: Array<Resource>
     Log: string
     LogTimestamps: boolean
+    SailEnabled: boolean
     SailURL: string
   } | null
   IsSidebarClosed: boolean
@@ -91,6 +92,7 @@ class HUD extends Component<HudProps, HudState> {
         Resources: [],
         Log: "",
         LogTimestamps: false,
+        SailEnabled: false,
         SailURL: "",
       },
       IsSidebarClosed: false,
@@ -152,6 +154,7 @@ class HUD extends Component<HudProps, HudState> {
 
   render() {
     let view = this.state.View
+    let sailEnabled = view && view.SailEnabled ? view.SailEnabled : false
     let sailUrl = view && view.SailURL ? view.SailURL : ""
     let message = this.state.Message
     let resources = (view && view.Resources) || []
@@ -177,17 +180,18 @@ class HUD extends Component<HudProps, HudState> {
       )
     }
 
-    let tabNavRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
+    let topBarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name =
         props.match.params && props.match.params.name
           ? props.match.params.name
           : ""
       return (
-        <TabNav
+        <TopBar
           logUrl={name === "" ? "/" : `/r/${name}`}
           errorsUrl={name === "" ? "/errors" : `/r/${name}/errors`}
           previewUrl={this.getEndpointForName(name, sidebarItems)}
           resourceView={t}
+          sailEnabled={sailEnabled}
           sailUrl={sailUrl}
         />
       )
@@ -248,21 +252,21 @@ class HUD extends Component<HudProps, HudState> {
           <Switch>
             <Route
               path={this.path("/r/:name/errors")}
-              render={tabNavRoute.bind(null, ResourceView.Errors)}
+              render={topBarRoute.bind(null, ResourceView.Errors)}
             />
             <Route
               path={this.path("/r/:name/preview")}
-              render={tabNavRoute.bind(null, ResourceView.Preview)}
+              render={topBarRoute.bind(null, ResourceView.Preview)}
             />
             <Route
               path={this.path("/r/:name")}
-              render={tabNavRoute.bind(null, ResourceView.Log)}
+              render={topBarRoute.bind(null, ResourceView.Log)}
             />
             <Route
               path={this.path("/errors")}
-              render={tabNavRoute.bind(null, ResourceView.Errors)}
+              render={topBarRoute.bind(null, ResourceView.Errors)}
             />
-            <Route render={tabNavRoute.bind(null, ResourceView.Log)} />
+            <Route render={topBarRoute.bind(null, ResourceView.Log)} />
           </Switch>
           <Switch>
             <Route

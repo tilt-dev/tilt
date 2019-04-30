@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// Helpers for stubbing out the network connection in SailClient
+// Helpers for stubbing out the network connection in sailClient
 type SailDialer interface {
 	DialContext(ctx context.Context, addr string, headers http.Header) (SailConn, error)
 }
