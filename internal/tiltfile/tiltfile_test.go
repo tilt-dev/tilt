@@ -2519,8 +2519,7 @@ docker_build('gcr.io/bar', 'bar')
 if result['key2']['key4'] and result['key5'] == 3:
 		k8s_yaml(result['key2']['key3'] + '.yaml')
 `)
-	f.loadErrString("YAML to JSON conversion error: error converting YAML to JSON: yaml: line 7: found unexpected end of stream in options.yaml")
-	// f.loadErrString("YAML to JSON conversion error: error converting YAML to JSON: yaml: line 1: did not find expected ',' or ']' in options.json")
+	f.loadErrString("error parsing YAML: error converting YAML to JSON: yaml: line 7: found unexpected end of stream in options.yaml")
 }
 
 func TestReadJSON(t *testing.T) {
