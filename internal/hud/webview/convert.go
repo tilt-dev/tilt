@@ -61,10 +61,7 @@ func StateToWebView(s store.EngineState) View {
 
 		endpoints := store.ManifestTargetEndpoints(mt)
 
-		var podIDs []string
-		for id, _ := range ms.PodSet.Pods {
-			podIDs = append(podIDs, string(id))
-		}
+		podID := ms.MostRecentPod().PodID
 
 		// NOTE(nick): Right now, the UX is designed to show the output exactly one
 		// pod. A better UI might summarize the pods in other ways (e.g., show the
@@ -82,7 +79,7 @@ func StateToWebView(s store.EngineState) View {
 			PendingBuildReason: ms.NextBuildReason(),
 			CurrentBuild:       currentBuild,
 			Endpoints:          endpoints,
-			PodIDs:             podIDs,
+			PodID:              podID,
 			ResourceInfo:       resourceInfoView(mt),
 			ShowBuildStatus:    len(mt.Manifest.ImageTargets) > 0 || mt.Manifest.IsDC(),
 			CombinedLog:        ms.CombinedLog,

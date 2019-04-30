@@ -9,7 +9,7 @@ type LogPaneProps = {
   log: string
   message?: string
   isExpanded: boolean
-  podIDs: string[]
+  podID: string
   endpoints: string[]
 }
 type LogPaneState = {
@@ -112,13 +112,11 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       )
     }
 
-    let podIDs = this.props.podIDs
-    let podIDsEl = podIDs.length > 0 && (
+    let podID = this.props.podID
+    let podIDEl = podID && (
       <p>
-        <span className="label">Pod ID{podIDs.length > 1 ? "s" : ""}:</span>
-        {podIDs.map(id => (
-          <pre>{id}</pre>
-        ))}
+        <span className="label">Pod ID:</span>
+        <pre>{podID}</pre>
       </p>
     )
 
@@ -157,9 +155,9 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 
     return (
       <section className={classes}>
-        {(endpoints || podIDs) && (
+        {(endpoints || podID) && (
           <section className="resourceInfo">
-            {podIDsEl}
+            {podIDEl}
             {endpointsEl}
           </section>
         )}

@@ -5,6 +5,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -78,7 +79,7 @@ type Resource struct {
 	PendingBuildSince  time.Time
 
 	Endpoints []string
-	PodIDs    []string
+	PodID     k8s.PodID
 
 	// TODO(nick): Remove ResourceInfoView. This is fundamentally a bad
 	// data structure for the webview because the webview loses the Go type
