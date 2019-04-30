@@ -21,6 +21,7 @@ func (SailRoomConnectedAction) Action() {}
 
 type SailClient interface {
 	store.Subscriber
+	store.SubscriberLifecycle
 
 	NewRoom(ctx context.Context, st store.RStore) error
 }
@@ -28,6 +29,7 @@ type SailClient interface {
 var _ SailClient = &sailClient{}
 
 type sailClient struct {
+	ctx    context.Context
 	addr   model.SailURL
 	roomer SailRoomer
 	dialer SailDialer
@@ -49,6 +51,12 @@ func ProvideSailClient(addr model.SailURL, roomer SailRoomer, dialer SailDialer)
 		addr:   addr,
 		roomer: roomer,
 		dialer: dialer,
+	}
+}
+
+func (s *sailClient) SetUp(ctx context.Context) {
+	if s.ctx == nil {
+		s.ctx = ctx
 	}
 }
 
@@ -187,5 +195,3 @@ func (s *sailClient) shareToRoom(ctx context.Context, roomID model.RoomID, secre
 	s.setConnection(ctx, conn)
 	return nil
 }
-
-var _ store.TearDowner = &sailClient{}
