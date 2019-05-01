@@ -1,12 +1,12 @@
 import React, { PureComponent } from "react"
 import { ReactComponent as LogoSvg } from "./assets/svg/logo.svg"
+import { ReactComponent as ErrorSvg } from "./assets/svg/error.svg"
+import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
 import { combinedStatus, warnings } from "./status"
 import "./Statusbar.scss"
 import { combinedStatusMessage } from "./combinedStatusMessage"
 import { Build } from "./types"
 import mostRecentBuildToDisplay from "./mostRecentBuild"
-
-const nbsp = "\u00a0"
 
 class StatusItem {
   public warningCount: number = 0
@@ -44,52 +44,52 @@ type StatusBarProps = {
 }
 
 class Statusbar extends PureComponent<StatusBarProps> {
-  errorPanel(errorCount: number) {
-    let errorPanelClasses = "Statusbar-panel Statusbar-panel--error"
-    let icon = (
-      <span role="img" className="icon" aria-label="Error">
-        {errorCount > 0 ? "❌" : nbsp}
-      </span>
-    )
-    let message = (
-      <span>
-        {errorCount} {errorCount === 1 ? "Error" : "Errors"}
-      </span>
-    )
+  errorWarningPanel(errorCount: number, warningCount: number) {
     return (
-      <div className={errorPanelClasses}>
-        {icon}&nbsp;{message}
-      </div>
+      <section className="Statusbar-panel err-warn">
+        <div className="err-warn-item err-warn-item--error">
+          <ErrorSvg className={`icon ${errorCount > 0 ? "icon--error" : ""}`} />
+          <p>
+            <span className="count">{errorCount}</span> error
+            {errorCount === 1 ? "" : "s"}
+          </p>
+        </div>
+        <div className="err-warn-item">
+          <WarningSvg
+            className={`icon ${warningCount > 0 ? "icon--warning" : ""}`}
+          />
+          <p>
+            <span className="count">{warningCount}</span> warning
+            {warningCount === 1 ? "" : "s"}
+          </p>
+        </div>
+      </section>
     )
   }
 
-  warningPanel(warningCount: number) {
-    let warningPanelClasses = "Statusbar-panel Statusbar-panel--warning"
-    let icon = (
-      <span role="img" className="icon" aria-label="Warning">
-        {warningCount > 0 ? "▲" : nbsp}
-      </span>
-    )
-    let message = (
-      <span>
-        {warningCount} {warningCount === 1 ? "Warning" : "Warnings"}
-      </span>
-    )
+  progressPanel(upCount: number, itemCount: number) {
     return (
-      <div className={warningPanelClasses}>
-        {icon}&nbsp;{message}
-      </div>
+      <section className="Statusbar-panel progress">
+        <p>
+          <span className="current">{upCount}</span>/{itemCount} running
+        </p>
+        <LogoSvg className="icon--logo" />
+      </section>
     )
   }
 
-  upPanel(upCount: number, itemCount: number) {
-    let upPanelClasses = "Statusbar-panel Statusbar-panel--up"
-    let upPanel = (
-      <span className={upPanelClasses}>
-        {upCount} / {itemCount} resources up <LogoSvg className="icon" />
-      </span>
+  statusMessagePanel(build: any, editMessage: string) {
+    return (
+      <section className="Statusbar-panel statusMsg">
+        <p className="statusMsg-item">
+          {combinedStatusMessage(this.props.items)}
+        </p>
+        <p className="statusMsg-item statusMsg-item--last-edit">
+          <span className="label">Last Edit:</span>
+          <span className="file">{build ? editMessage : "—"}</span>
+        </p>
+      </section>
     )
-    return upPanel
   }
 
   render() {
@@ -107,11 +107,7 @@ class Statusbar extends PureComponent<StatusBarProps> {
       }
       warningCount += item.warningCount
     })
-
-    let itemCount = items.length
-    let errorPanel = this.errorPanel(errorCount)
-    let warningPanel = this.warningPanel(warningCount)
-    let upPanel = this.upPanel(upCount, itemCount)
+    let errorWarningPanel = this.errorWarningPanel(errorCount, warningCount)
 
     let build = mostRecentBuildToDisplay(this.props.items)
     let editMessage = ""
@@ -121,23 +117,16 @@ class Statusbar extends PureComponent<StatusBarProps> {
         editMessage += ` [+ ${build.edits.length - 1} more]`
       }
     }
+    let statusMessagePanel = this.statusMessagePanel(build, editMessage)
+
+    let resCount = items.length
+    let progressPanel = this.progressPanel(upCount, resCount)
 
     return (
       <div className="Statusbar">
-        {errorPanel}
-        {warningPanel}
-        <p className="Statusbar-panel--statusMessage">
-          {combinedStatusMessage(this.props.items)}
-        </p>
-        {build ? (
-          <p className="Statusbar-panel--lastEdit">
-            <span className="Statusbar-panel--lastEditMessage">Last Edit </span>
-            {editMessage}
-          </p>
-        ) : (
-          ""
-        )}
-        {upPanel}
+        {errorWarningPanel}
+        {statusMessagePanel}
+        {progressPanel}
       </div>
     )
   }

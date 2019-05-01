@@ -4,68 +4,88 @@ exports[`StatusBar renders two items all ok snapshot 1`] = `
 <div
   className="Statusbar"
 >
-  <div
-    className="Statusbar-panel Statusbar-panel--error"
+  <section
+    className="Statusbar-panel err-warn"
   >
-    <span
-      aria-label="Error"
-      className="icon"
-      role="img"
+    <div
+      className="err-warn-item err-warn-item--error"
     >
-       
-    </span>
-     
-    <span>
-      0
-       
-      Errors
-    </span>
-  </div>
-  <div
-    className="Statusbar-panel Statusbar-panel--warning"
-  >
-    <span
-      aria-label="Warning"
-      className="icon"
-      role="img"
+      <svg
+        className="icon "
+      >
+        error.svg
+      </svg>
+      <p>
+        <span
+          className="count"
+        >
+          0
+        </span>
+         error
+        s
+      </p>
+    </div>
+    <div
+      className="err-warn-item"
     >
-       
-    </span>
-     
-    <span>
-      0
-       
-      Warnings
-    </span>
-  </div>
-  <p
-    className="Statusbar-panel--statusMessage"
+      <svg
+        className="icon "
+      >
+        warning.svg
+      </svg>
+      <p>
+        <span
+          className="count"
+        >
+          0
+        </span>
+         warning
+        s
+      </p>
+    </div>
+  </section>
+  <section
+    className="Statusbar-panel statusMsg"
   >
-    Building: vigoda
-  </p>
-  <p
-    className="Statusbar-panel--lastEdit"
-  >
-    <span
-      className="Statusbar-panel--lastEditMessage"
+    <p
+      className="statusMsg-item"
     >
-      Last Edit 
-    </span>
-    main.go [+ 2 more]
-  </p>
-  <span
-    className="Statusbar-panel Statusbar-panel--up"
+      Building: vigoda
+    </p>
+    <p
+      className="statusMsg-item statusMsg-item--last-edit"
+    >
+      <span
+        className="label"
+      >
+        Last Edit:
+      </span>
+      <span
+        className="file"
+      >
+        main.go [+ 2 more]
+      </span>
+    </p>
+  </section>
+  <section
+    className="Statusbar-panel progress"
   >
-    0
-     / 
-    2
-     resources up 
+    <p>
+      <span
+        className="current"
+      >
+        0
+      </span>
+      /
+      2
+       running
+    </p>
     <svg
-      className="icon"
+      className="icon--logo"
     >
       logo.svg
     </svg>
-  </span>
+  </section>
 </div>
 `;
 
@@ -73,68 +93,88 @@ exports[`StatusBar renders two items both errors snapshot 1`] = `
 <div
   className="Statusbar"
 >
-  <div
-    className="Statusbar-panel Statusbar-panel--error"
+  <section
+    className="Statusbar-panel err-warn"
   >
-    <span
-      aria-label="Error"
-      className="icon"
-      role="img"
+    <div
+      className="err-warn-item err-warn-item--error"
     >
-      ❌
-    </span>
-     
-    <span>
+      <svg
+        className="icon icon--error"
+      >
+        error.svg
+      </svg>
+      <p>
+        <span
+          className="count"
+        >
+          2
+        </span>
+         error
+        s
+      </p>
+    </div>
+    <div
+      className="err-warn-item"
+    >
+      <svg
+        className="icon "
+      >
+        warning.svg
+      </svg>
+      <p>
+        <span
+          className="count"
+        >
+          0
+        </span>
+         warning
+        s
+      </p>
+    </div>
+  </section>
+  <section
+    className="Statusbar-panel statusMsg"
+  >
+    <p
+      className="statusMsg-item"
+    >
+      Build failed: vigoda
+    </p>
+    <p
+      className="statusMsg-item statusMsg-item--last-edit"
+    >
+      <span
+        className="label"
+      >
+        Last Edit:
+      </span>
+      <span
+        className="file"
+      >
+        main.go [+ 1 more]
+      </span>
+    </p>
+  </section>
+  <section
+    className="Statusbar-panel progress"
+  >
+    <p>
+      <span
+        className="current"
+      >
+        0
+      </span>
+      /
       2
-       
-      Errors
-    </span>
-  </div>
-  <div
-    className="Statusbar-panel Statusbar-panel--warning"
-  >
-    <span
-      aria-label="Warning"
-      className="icon"
-      role="img"
-    >
-       
-    </span>
-     
-    <span>
-      0
-       
-      Warnings
-    </span>
-  </div>
-  <p
-    className="Statusbar-panel--statusMessage"
-  >
-    Build failed: vigoda
-  </p>
-  <p
-    className="Statusbar-panel--lastEdit"
-  >
-    <span
-      className="Statusbar-panel--lastEditMessage"
-    >
-      Last Edit 
-    </span>
-    main.go [+ 1 more]
-  </p>
-  <span
-    className="Statusbar-panel Statusbar-panel--up"
-  >
-    0
-     / 
-    2
-     resources up 
+       running
+    </p>
     <svg
-      className="icon"
+      className="icon--logo"
     >
       logo.svg
     </svg>
-  </span>
+  </section>
 </div>
 `;
 
@@ -142,58 +182,87 @@ exports[`StatusBar renders without crashing 1`] = `
 <div
   className="Statusbar"
 >
-  <div
-    className="Statusbar-panel Statusbar-panel--error"
+  <section
+    className="Statusbar-panel err-warn"
   >
-    <span
-      aria-label="Error"
-      className="icon"
-      role="img"
+    <div
+      className="err-warn-item err-warn-item--error"
     >
-       
-    </span>
-     
-    <span>
-      0
-       
-      Errors
-    </span>
-  </div>
-  <div
-    className="Statusbar-panel Statusbar-panel--warning"
-  >
-    <span
-      aria-label="Warning"
-      className="icon"
-      role="img"
+      <svg
+        className="icon "
+      >
+        error.svg
+      </svg>
+      <p>
+        <span
+          className="count"
+        >
+          0
+        </span>
+         error
+        s
+      </p>
+    </div>
+    <div
+      className="err-warn-item"
     >
-       
-    </span>
-     
-    <span>
+      <svg
+        className="icon "
+      >
+        warning.svg
+      </svg>
+      <p>
+        <span
+          className="count"
+        >
+          0
+        </span>
+         warning
+        s
+      </p>
+    </div>
+  </section>
+  <section
+    className="Statusbar-panel statusMsg"
+  >
+    <p
+      className="statusMsg-item"
+    >
+      
+    </p>
+    <p
+      className="statusMsg-item statusMsg-item--last-edit"
+    >
+      <span
+        className="label"
+      >
+        Last Edit:
+      </span>
+      <span
+        className="file"
+      >
+        —
+      </span>
+    </p>
+  </section>
+  <section
+    className="Statusbar-panel progress"
+  >
+    <p>
+      <span
+        className="current"
+      >
+        0
+      </span>
+      /
       0
-       
-      Warnings
-    </span>
-  </div>
-  <p
-    className="Statusbar-panel--statusMessage"
-  >
-    
-  </p>
-  
-  <span
-    className="Statusbar-panel Statusbar-panel--up"
-  >
-    0
-     / 
-    0
-     resources up 
+       running
+    </p>
     <svg
-      className="icon"
+      className="icon--logo"
     >
       logo.svg
     </svg>
-  </span>
+  </section>
 </div>
 `;
