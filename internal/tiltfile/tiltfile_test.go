@@ -2438,6 +2438,90 @@ k8s_yaml(result[1]["baz"][0] + '.yaml')
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml", "bar/Dockerfile", "bar.yaml")
 }
 
+func TestReadYAML(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFooAndBar()
+	var document = `
+key1: foo
+key2:
+    key3: "bar"
+    key4: true
+key5: 3	
+`
+	f.file("options.yaml", document)
+
+	f.file("Tiltfile", `
+result = read_yaml("options.yaml")
+
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml(result['key1'] + '.yaml')
+docker_build('gcr.io/bar', 'bar')
+
+if result['key2']['key4'] and result['key5'] == 3:
+		k8s_yaml(result['key2']['key3'] + '.yaml')
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		db(image("gcr.io/foo")),
+		deployment("foo"))
+
+	f.assertNextManifest("bar",
+		db(image("gcr.io/bar")),
+		deployment("bar"))
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml", "bar/Dockerfile", "bar.yaml", "options.yaml")
+}
+
+func TestYAMLDoesntExist(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFooAndBar()
+	f.file("Tiltfile", `
+result = read_yaml("dne.yaml")
+
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml(result['key1'] + '.yaml')
+docker_build('gcr.io/bar', 'bar')
+
+if result['key2']['key4'] and result['key5'] == 3:
+		k8s_yaml(result['key2']['key3'] + '.yaml')
+`)
+	f.loadErrString("dne.yaml: no such file or directory")
+
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "dne.yaml")
+}
+
+func TestMalformedYAML(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFooAndBar()
+	var document = `
+key1: foo
+key2:
+    key3: "bar
+    key4: true
+key5: 3	
+`
+	f.file("options.yaml", document)
+
+	f.file("Tiltfile", `
+result = read_yaml("options.yaml")
+
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml(result['key1'] + '.yaml')
+docker_build('gcr.io/bar', 'bar')
+
+if result['key2']['key4'] and result['key5'] == 3:
+		k8s_yaml(result['key2']['key3'] + '.yaml')
+`)
+	f.loadErrString("error parsing YAML: error converting YAML to JSON: yaml: line 7: found unexpected end of stream in options.yaml")
+}
+
 func TestReadJSON(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
