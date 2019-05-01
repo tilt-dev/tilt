@@ -46,20 +46,30 @@ type StatusBarProps = {
 class Statusbar extends PureComponent<StatusBarProps> {
   errorWarningPanel(errorCount: number, warningCount: number) {
     return (
-      <section className="Statusbar-panel err-warn">
-        <div className="err-warn-item err-warn-item--error">
-          <ErrorSvg className={`icon ${errorCount > 0 ? "icon--error" : ""}`} />
+      <section className="Statusbar-panel Statusbar-errWarnPanel">
+        <div className="Statusbar-errWarnPanel-child">
+          <ErrorSvg
+            className={`Statusbar-errWarnPanel-icon ${
+              errorCount > 0 ? "Statusbar-errWarnPanel-icon--error" : ""
+            }`}
+          />
           <p>
-            <span className="count">{errorCount}</span> error
+            <span className="Statusbar-errWarnPanel-count Statusbar-errWarnPanel-count--error">
+              {errorCount}
+            </span>{" "}
+            error
             {errorCount === 1 ? "" : "s"}
           </p>
         </div>
-        <div className="err-warn-item">
+        <div className="Statusbar-errWarnPanel-child">
           <WarningSvg
-            className={`icon ${warningCount > 0 ? "icon--warning" : ""}`}
+            className={`Statusbar-errWarnPanel-icon ${
+              warningCount > 0 ? "Statusbar-errWarnPanel-icon--warning" : ""
+            }`}
           />
           <p>
-            <span className="count">{warningCount}</span> warning
+            <span className="Statusbar-errWarnPanel-count">{warningCount}</span>{" "}
+            warning
             {warningCount === 1 ? "" : "s"}
           </p>
         </div>
@@ -69,24 +79,24 @@ class Statusbar extends PureComponent<StatusBarProps> {
 
   progressPanel(upCount: number, itemCount: number) {
     return (
-      <section className="Statusbar-panel progress">
+      <section className="Statusbar-panel Statusbar-progressPanel">
         <p>
-          <span className="current">{upCount}</span>/{itemCount} running
+          <strong>{upCount}</strong>/{itemCount} running
         </p>
-        <LogoSvg className="icon--logo" />
+        <LogoSvg className="Statusbar-logo" />
       </section>
     )
   }
 
   statusMessagePanel(build: any, editMessage: string) {
     return (
-      <section className="Statusbar-panel statusMsg">
-        <p className="statusMsg-item">
+      <section className="Statusbar-panel Statusbar-statusMsgPanel">
+        <p className="Statusbar-statusMsgPanel-child">
           {combinedStatusMessage(this.props.items)}
         </p>
-        <p className="statusMsg-item statusMsg-item--last-edit">
-          <span className="label">Last Edit:</span>
-          <span className="file">{build ? editMessage : "—"}</span>
+        <p className="Statusbar-statusMsgPanel-child Statusbar-statusMsgPanel-child--lastEdit">
+          <span className="Statusbar-statusMsgPanel-label">Last Edit:</span>
+          <span>{build ? editMessage : "—"}</span>
         </p>
       </section>
     )

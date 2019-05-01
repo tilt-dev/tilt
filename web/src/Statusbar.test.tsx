@@ -20,7 +20,7 @@ describe("StatusBar", () => {
     })
     let statusbar = mount(<Statusbar items={items} />)
     expect(
-      statusbar.find(".Statusbar-panel .err-warn-item--error .count").html()
+      statusbar.find(".Statusbar-errWarnPanel-count--error").html()
     ).toContain("2")
   })
 
@@ -55,7 +55,7 @@ describe("StatusBar", () => {
     let items = view.Resources.map((res: any) => new StatusItem(res))
     let statusbar = mount(<Statusbar items={items} />)
     expect(
-      statusbar.find(".Statusbar-panel .err-warn-item--error .count").html()
+      statusbar.find(".Statusbar-errWarnPanel-count--error").html()
     ).toContain("0")
   })
 })

@@ -26,11 +26,11 @@
 }
 
 // Errors and Warnings
-.err-warn {
+.Statusbar-errWarnPanel {
   display: flex;
   align-items: stretch;
 }
-.err-warn-item {
+.Statusbar-errWarnPanel-child {
   display: flex;
   align-items: center;
   padding-left: $spacing-unit / 2;
@@ -38,31 +38,31 @@
   // Eyeball to make them the same width, and not change size when contents update
   min-width: $spacing-unit * 3.5;
 }
-.err-warn-item + .err-warn-item {
+.Statusbar-errWarnPanel-child + .Statusbar-errWarnPanel-child {
   border-left: 1px solid rgba($color-gray-lightest, $translucent);
 }
-.err-warn .count {
-  font-weight: bold;
-}
-.err-warn .icon {
+.Statusbar-errWarnPanel-icon {
   fill: $color-gray-lightest;
   opacity: $translucent;
   margin-right: $spacing-unit / 3;
   filter: drop-shadow(-1px 1px 0px rgba($color-gray-darkest, $translucent-ish));
 }
-.err-warn .icon--error {
+.Statusbar-errWarnPanel-icon--error {
   fill: $color-red;
   opacity: 1;
   filter: none;
 }
-.err-warn .icon--warning {
+.Statusbar-errWarnPanel-icon--warning {
   color: $color-yellow;
   opacity: 1;
   filter: none;
 }
+.Statusbar-errWarnPanel-count {
+  font-weight: bold;
+}
 
 // Status Message
-.statusMsg {
+.Statusbar-statusMsgPanel {
   flex-grow: 1;
   display: flex;
   justify-content: space-between;
@@ -70,7 +70,7 @@
   padding-right: $spacing-unit / 2;
 }
 
-.statusMsg-item--last-edit .label {
+.Statusbar-statusMsgPanel-label {
   text-transform: uppercase;
   font-size: $font-size-small;
   font-weight: bold;
@@ -79,14 +79,11 @@
 }
 
 // Progress
-.progress {
+.Statusbar-progressPanel {
   width: $sidebar-width;
   max-width: $sidebar-maxWidth;
   justify-content: space-between;
   display: flex;
   padding-left: $spacing-unit / 2;
   padding-right: $spacing-unit / 2;
-}
-.progress .current {
-  font-weight: bold;
 }
