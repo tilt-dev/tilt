@@ -423,13 +423,13 @@ func (s *tiltfileState) readYaml(thread *starlark.Thread, fn *starlark.Builtin, 
 		return nil, err
 	}
 
-	var decodedJSON interface{}
-	err = yaml.Unmarshal(contents, &decodedJSON)
+	var decodedYAML interface{}
+	err = yaml.Unmarshal(contents, &decodedYAML)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing YAML: %v in %s", err, path.GoString())
 	}
 
-	v, err := convertJSONToStarlark(decodedJSON)
+	v, err := convertStructuredDataToStarlark(decodedYAML)
 	if err != nil {
 		return nil, fmt.Errorf("error converting YAML to Starlark: %v in %s", err, path.GoString())
 	}
@@ -448,7 +448,7 @@ func (s *tiltfileState) decodeJSON(thread *starlark.Thread, fn *starlark.Builtin
 		return nil, fmt.Errorf("JSON parsing error: %v in %s", err, jsonString.GoString())
 	}
 
-	v, err := convertJSONToStarlark(decodedJSON)
+	v, err := convertStructuredDataToStarlark(decodedJSON)
 	if err != nil {
 		return nil, fmt.Errorf("error converting JSON to Starlark: %v in %s", err, jsonString.GoString())
 	}
@@ -482,14 +482,14 @@ func (s *tiltfileState) readJson(thread *starlark.Thread, fn *starlark.Builtin, 
 		return nil, fmt.Errorf("JSON parsing error: %v in %s", err, path.GoString())
 	}
 
-	v, err := convertJSONToStarlark(decodedJSON)
+	v, err := convertStructuredDataToStarlark(decodedJSON)
 	if err != nil {
 		return nil, fmt.Errorf("error converting JSON to Starlark: %v in %s", err, path.GoString())
 	}
 	return v, nil
 }
 
-func convertJSONToStarlark(j interface{}) (starlark.Value, error) {
+func convertStructuredDataToStarlark(j interface{}) (starlark.Value, error) {
 	switch j := j.(type) {
 	case bool:
 		return starlark.Bool(j), nil
@@ -501,7 +501,7 @@ func convertJSONToStarlark(j interface{}) (starlark.Value, error) {
 		listOfValues := []starlark.Value{}
 
 		for _, v := range j {
-			convertedValue, err := convertJSONToStarlark(v)
+			convertedValue, err := convertStructuredDataToStarlark(v)
 			if err != nil {
 				return nil, err
 			}
@@ -513,7 +513,7 @@ func convertJSONToStarlark(j interface{}) (starlark.Value, error) {
 		mapOfValues := &starlark.Dict{}
 
 		for k, v := range j {
-			convertedValue, err := convertJSONToStarlark(v)
+			convertedValue, err := convertStructuredDataToStarlark(v)
 			if err != nil {
 				return nil, err
 			}
