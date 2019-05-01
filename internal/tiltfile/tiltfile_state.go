@@ -151,6 +151,7 @@ const (
 	listdirN      = "listdir"
 	decodeJSONN   = "decode_json"
 	readJSONN     = "read_json"
+	readYAMLN     = "read_yaml"
 
 	// live update functions
 	fallBackOnN       = "fall_back_on"
@@ -269,6 +270,7 @@ func (s *tiltfileState) predeclared() starlark.StringDict {
 	addBuiltin(r, listdirN, s.listdir)
 	addBuiltin(r, decodeJSONN, s.decodeJSON)
 	addBuiltin(r, readJSONN, s.readJson)
+	addBuiltin(r, readYAMLN, s.readYaml)
 
 	addBuiltin(r, updateModeN, s.updateModeFn)
 	r[updateModeAutoN] = UpdateModeAuto
