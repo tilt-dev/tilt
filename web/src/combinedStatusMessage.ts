@@ -7,7 +7,7 @@ const combinedStatusMessage = (resources: Array<StatusItem>): string => {
   )
 
   if (buildingResources.length > 0) {
-    return "Building: " + buildingResources[0].name
+    return `Updating ${buildingResources[0].name}…`
   }
 
   let containerCrashedResources = resources.filter(

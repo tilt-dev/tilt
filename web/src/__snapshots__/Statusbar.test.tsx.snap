@@ -50,7 +50,7 @@ exports[`StatusBar renders two items all ok snapshot 1`] = `
     <p
       className="statusMsg-item"
     >
-      Building: vigoda
+      Updating vigoda…
     </p>
     <p
       className="statusMsg-item statusMsg-item--last-edit"
@@ -63,7 +63,7 @@ exports[`StatusBar renders two items all ok snapshot 1`] = `
       <span
         className="file"
       >
-        main.go [+ 2 more]
+        vigoda ‣ main.go[+2 more]
       </span>
     </p>
   </section>
@@ -152,7 +152,7 @@ exports[`StatusBar renders two items both errors snapshot 1`] = `
       <span
         className="file"
       >
-        main.go [+ 1 more]
+        vigoda ‣ main.go[+1 more]
       </span>
     </p>
   </section>

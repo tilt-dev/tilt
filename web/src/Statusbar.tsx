@@ -112,9 +112,9 @@ class Statusbar extends PureComponent<StatusBarProps> {
     let build = mostRecentBuildToDisplay(this.props.items)
     let editMessage = ""
     if (build && build.edits.length > 0) {
-      editMessage = build.edits[0]
+      editMessage = `${build.name} ‣ ${build.edits[0]}`
       if (build.edits.length > 1) {
-        editMessage += ` [+ ${build.edits.length - 1} more]`
+        editMessage += `[+${build.edits.length - 1} more]`
       }
     }
     let statusMessagePanel = this.statusMessagePanel(build, editMessage)

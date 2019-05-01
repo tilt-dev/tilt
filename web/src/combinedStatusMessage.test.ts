@@ -14,7 +14,7 @@ describe("combined status message", () => {
     let resources = data.map(r => new StatusItem(r))
     let actual = combinedStatusMessage(resources)
 
-    expect(actual).toBe("Building: snack")
+    expect(actual).toBe("Updating snack…")
   })
 
   it("should show the most recent resource that failed to build", () => {
