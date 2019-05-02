@@ -19,4 +19,4 @@ RUN make build-js
 ADD . .
 RUN make install-sail
 
-ENTRYPOINT sail --web-mode=precompiled
+ENTRYPOINT sail --web-mode=prod

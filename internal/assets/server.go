@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go/build"
 	"io"
+	"io/ioutil"
 	"mime"
 	"net/http"
 	"net/http/httputil"
@@ -170,7 +171,7 @@ func (s prodServer) Serve(ctx context.Context) error {
 // why. But this only needs a very limited GET interface without query params,
 // so just make the request by hand.
 func (s prodServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	outurl, _ := s.urlAndVersionForReq(req)
+	outurl, version := s.urlAndVersionForReq(req)
 	outreq, err := http.NewRequest("GET", outurl.String(), bytes.NewBuffer(nil))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -190,9 +191,14 @@ func (s prodServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		_ = outres.Body.Close()
 	}()
 
+	// In case we change the length of the response below, we don't want the browser to be mad
+	outres.Header.Del("Content-Length")
 	copyHeader(w.Header(), outres.Header)
+
 	w.WriteHeader(outres.StatusCode)
-	_, _ = io.Copy(w, outres.Body)
+	resBody, _ := ioutil.ReadAll(outres.Body)
+	resBodyWithVersion := s.injectVersion(resBody, version)
+	_, _ = w.Write(resBodyWithVersion)
 }
 
 func (s prodServer) urlAndVersionForReq(req *http.Request) (url.URL, string) {
@@ -217,6 +223,15 @@ func (s prodServer) urlAndVersionForReq(req *http.Request) (url.URL, string) {
 
 	u.Path = path.Join(u.Path, version, origPath)
 	return u, version
+}
+
+// injectVersion for version v1.2.3 updates all links to "/static/..." to instead point to "/v1.2.3/static/..."
+// We do this b/c asset index.html's may contain links to "/static/..." that don't specify the
+// version prefix, but leave it up to the asset server to resolve. Now that the asset server
+// may serve multiple versions at once, we need to specify.
+func (s prodServer) injectVersion(html []byte, version string) []byte {
+	newPrefix := fmt.Sprintf("/%s/static/", version)
+	return bytes.ReplaceAll(html, []byte("/static/"), []byte(newPrefix))
 }
 
 type precompiledServer struct {
