@@ -16,6 +16,7 @@ import TopBar from "./TopBar"
 import "./HUD.scss"
 import { ResourceView } from "./types"
 import ErrorPane, { ErrorResource } from "./ErrorPane"
+import PreviewList from "./PreviewList"
 
 type HudProps = {}
 
@@ -124,22 +125,12 @@ class HUD extends Component<HudProps, HudState> {
     })
   }
 
-  getEndpointForName(name: string, resources: Array<SidebarItem>): string {
-    let endpoint = ""
-
+  getPreviewForName(name: string, resources: Array<SidebarItem>): string {
     if (name) {
-      endpoint = `/r/${name}/preview`
-    } else if (resources.length) {
-      // Pick the first item with an endpoint, or default to the first item
-      endpoint = `/r/${resources[0].name}/preview`
-      for (let r of resources) {
-        if (r.hasEndpoints) {
-          endpoint = `/r/${r.name}/preview`
-          break
-        }
-      }
+      return `/r/${name}/preview`
     }
-    return endpoint
+
+    return `/preview`
   }
 
   path(relPath: string) {
@@ -185,7 +176,7 @@ class HUD extends Component<HudProps, HudState> {
           errorsUrl={
             name === "" ? this.path("/errors") : this.path(`/r/${name}/errors`)
           }
-          previewUrl={this.path(this.getEndpointForName(name, sidebarItems))}
+          previewUrl={this.path(this.getPreviewForName(name, sidebarItems))}
           resourceView={t}
           sailEnabled={sailEnabled}
           sailUrl={sailUrl}
@@ -230,6 +221,18 @@ class HUD extends Component<HudProps, HudState> {
         endpoint = r ? r.Endpoints && r.Endpoints[0] : ""
       }
 
+      if (view && endpoint === "") {
+        let resourceNamesWithEndpoints = view.Resources.filter(
+          r => r.Endpoints && r.Endpoints.length > 0
+        ).map(r => r.Name)
+        return (
+          <PreviewList
+            resourcesWithEndpoints={resourceNamesWithEndpoints}
+            pathBuilder={this.pathBuilder}
+          />
+        )
+      }
+
       return <PreviewPane endpoint={endpoint} isExpanded={isSidebarClosed} />
     }
 
@@ -255,6 +258,10 @@ class HUD extends Component<HudProps, HudState> {
               render={topBarRoute.bind(null, ResourceView.Preview)}
             />
             <Route
+              path={this.path("/preview")}
+              render={topBarRoute.bind(null, ResourceView.Preview)}
+            />
+            <Route
               path={this.path("/r/:name")}
               render={topBarRoute.bind(null, ResourceView.Log)}
             />
@@ -277,7 +284,10 @@ class HUD extends Component<HudProps, HudState> {
               path={this.path("/r/:name/preview")}
               render={sidebarRoute.bind(null, ResourceView.Preview)}
             />
-            }
+            <Route
+              path={this.path("/preview")}
+              render={sidebarRoute.bind(null, ResourceView.Preview)}
+            />
             <Route
               path={this.path("/r/:name")}
               render={sidebarRoute.bind(null, ResourceView.Log)}
@@ -307,6 +317,7 @@ class HUD extends Component<HudProps, HudState> {
                 />
               )}
             />
+            <Route exact path={this.path("/preview")} render={previewRoute} />
             <Route exact path={this.path("/r/:name")} render={logsRoute} />
             <Route
               exact
@@ -318,7 +329,6 @@ class HUD extends Component<HudProps, HudState> {
               path={this.path("/r/:name/errors")}
               render={errorRoute}
             />
-            } />
             <Route
               exact
               path={this.path("/r/:name/preview")}
