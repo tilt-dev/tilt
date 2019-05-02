@@ -15,7 +15,7 @@ const pathToTag = (path: string): string => {
     return "log"
   } else if (path.endsWith("/preview")) {
     return "preview"
-  } else if (path == "/") {
+  } else if (path === "/") {
     return "all"
   }
 

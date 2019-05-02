@@ -13,6 +13,7 @@ import enStrings from "react-timeago/lib/language-strings/en-short.js"
 import buildFormatter from "react-timeago/lib/formatters/buildFormatter"
 import { isZeroTime } from "./time"
 import PathBuilder from "./PathBuilder"
+import { incr } from "./analytics"
 
 class SidebarItem {
   name: string
@@ -80,6 +81,7 @@ class Sidebar extends PureComponent<SidebarProps> {
         analyticsKey = "ui.interactions.errors"
         link += "/errors"
       }
+      incr(analyticsKey)
 
       let formatter = buildFormatter(enStrings)
       let hasBuilt = !isZeroTime(item.lastDeployTime)

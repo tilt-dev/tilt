@@ -30,7 +30,7 @@ class PathBuilder {
   }
 
   path(relPath: string) {
-    if (relPath[0] != "/") {
+    if (relPath[0] !== "/") {
       throw new Error('relPath should start with "/", actual:' + relPath)
     }
     return this.rootPath() + relPath

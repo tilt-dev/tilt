@@ -101,7 +101,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     let classes = `LogPane ${this.props.isExpanded ? "LogPane--expanded" : ""}`
 
     let log = this.props.log
-    if (!log || log.length == 0) {
+    if (!log || log.length === 0) {
       return (
         <section className={classes}>
           <section className="Pane-empty-message">

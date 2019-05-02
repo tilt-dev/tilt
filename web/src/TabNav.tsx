@@ -2,7 +2,6 @@ import React, { PureComponent } from "react"
 import { Link } from "react-router-dom"
 import { ResourceView } from "./types"
 import "./TabNav.scss"
-import SailInfo from "./SailInfo"
 
 type NavProps = {
   previewUrl: string
@@ -13,9 +12,9 @@ type NavProps = {
 
 class TabNav extends PureComponent<NavProps> {
   render() {
-    let logIsSelected = this.props.resourceView == ResourceView.Log
-    let previewIsSelected = this.props.resourceView == ResourceView.Preview
-    let errorsIsSelected = this.props.resourceView == ResourceView.Errors
+    let logIsSelected = this.props.resourceView === ResourceView.Log
+    let previewIsSelected = this.props.resourceView === ResourceView.Preview
+    let errorsIsSelected = this.props.resourceView === ResourceView.Errors
 
     return (
       <nav className="TabNav">
