@@ -21,6 +21,7 @@ import (
 )
 
 type EngineState struct {
+	TiltBuildInfo model.TiltBuild
 	TiltStartTime time.Time
 
 	// saved so that we can render in order

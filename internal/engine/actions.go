@@ -100,6 +100,7 @@ type InitAction struct {
 	InitManifests      []model.ManifestName
 	TriggerMode        model.TriggerMode
 
+	TiltBuild  model.TiltBuild
 	StartTime  time.Time
 	FinishTime time.Time
 	Err        error

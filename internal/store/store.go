@@ -37,7 +37,7 @@ type Store struct {
 	logActions  bool
 
 	// TODO(nick): Define Subscribers and Reducers.
-	// The actionChan is an intermediate representation to make the transition easiser.
+	// The actionChan is an intermediate representation to make the transition easier.
 }
 
 func NewStore(reducer Reducer, logActions LogActionsFlag) *Store {

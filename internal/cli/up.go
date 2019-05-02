@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/klog"
@@ -147,7 +147,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	g.Go(func() error {
 		defer cancel()
-		return upper.Start(ctx, args, c.watch, triggerMode, c.fileName, c.hud, enableSail)
+		return upper.Start(ctx, args, threads.tiltBuild, c.watch, triggerMode, c.fileName, c.hud, enableSail)
 	})
 
 	err = g.Wait()
@@ -171,7 +171,7 @@ func provideLogActions() store.LogActionsFlag {
 	return store.LogActionsFlag(logActionsFlag)
 }
 
-func provideWebMode(b BuildInfo) (model.WebMode, error) {
+func provideWebMode(b model.TiltBuild) (model.WebMode, error) {
 	switch webModeFlag {
 	case model.LocalWebMode, model.ProdWebMode, model.PrecompiledWebMode:
 		return webModeFlag, nil

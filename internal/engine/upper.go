@@ -85,7 +85,7 @@ func (u Upper) Dispatch(action store.Action) {
 	u.store.Dispatch(action)
 }
 
-func (u Upper) Start(ctx context.Context, args []string, watch bool, triggerMode model.TriggerMode, fileName string, useActionWriter bool, enableSail bool) error {
+func (u Upper) Start(ctx context.Context, args []string, b model.TiltBuild, watch bool, triggerMode model.TriggerMode, fileName string, useActionWriter bool, enableSail bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Start")
 	defer span.Finish()
 
@@ -111,6 +111,7 @@ func (u Upper) Start(ctx context.Context, args []string, watch bool, triggerMode
 		ConfigFiles:     configFiles,
 		InitManifests:   manifestNames,
 		TriggerMode:     triggerMode,
+		TiltBuild:       b,
 		StartTime:       startTime,
 		FinishTime:      time.Now(),
 		ExecuteTiltfile: false,
@@ -847,6 +848,7 @@ func handleDumpEngineStateAction(ctx context.Context, engineState *store.EngineS
 
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
 	watchFiles := action.WatchFiles
+	engineState.TiltBuildInfo = action.TiltBuild
 	engineState.TiltStartTime = action.StartTime
 	engineState.TiltfilePath = action.TiltfilePath
 	engineState.TriggerMode = action.TriggerMode
