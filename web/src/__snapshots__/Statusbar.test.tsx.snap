@@ -4,68 +4,86 @@ exports[`StatusBar renders two items all ok snapshot 1`] = `
 <div
   className="Statusbar"
 >
-  <div
-    className="Statusbar-panel Statusbar-panel--error"
+  <section
+    className="Statusbar-panel Statusbar-errWarnPanel"
   >
-    <span
-      aria-label="Error"
-      className="icon"
-      role="img"
+    <div
+      className="Statusbar-errWarnPanel-child"
     >
-       
-    </span>
-     
-    <span>
-      0
-       
-      Errors
-    </span>
-  </div>
-  <div
-    className="Statusbar-panel Statusbar-panel--warning"
-  >
-    <span
-      aria-label="Warning"
-      className="icon"
-      role="img"
+      <svg
+        className="Statusbar-errWarnPanel-icon "
+      >
+        error.svg
+      </svg>
+      <p>
+        <span
+          className="Statusbar-errWarnPanel-count Statusbar-errWarnPanel-count--error"
+        >
+          0
+        </span>
+         
+        error
+        s
+      </p>
+    </div>
+    <div
+      className="Statusbar-errWarnPanel-child"
     >
-       
-    </span>
-     
-    <span>
-      0
-       
-      Warnings
-    </span>
-  </div>
-  <p
-    className="Statusbar-panel--statusMessage"
+      <svg
+        className="Statusbar-errWarnPanel-icon "
+      >
+        warning.svg
+      </svg>
+      <p>
+        <span
+          className="Statusbar-errWarnPanel-count"
+        >
+          0
+        </span>
+         
+        warning
+        s
+      </p>
+    </div>
+  </section>
+  <section
+    className="Statusbar-panel Statusbar-statusMsgPanel"
   >
-    Building: vigoda
-  </p>
-  <p
-    className="Statusbar-panel--lastEdit"
-  >
-    <span
-      className="Statusbar-panel--lastEditMessage"
+    <p
+      className="Statusbar-statusMsgPanel-child"
     >
-      Last Edit 
-    </span>
-    main.go [+ 2 more]
-  </p>
-  <span
-    className="Statusbar-panel Statusbar-panel--up"
+      Updating vigoda…
+    </p>
+    <p
+      className="Statusbar-statusMsgPanel-child Statusbar-statusMsgPanel-child--lastEdit"
+    >
+      <span
+        className="Statusbar-statusMsgPanel-label"
+      >
+        Last Edit:
+      </span>
+      <span>
+        vigoda ‣ main.go[+2 more]
+      </span>
+    </p>
+  </section>
+  <section
+    className="Statusbar-panel Statusbar-progressPanel"
   >
-    0
-     / 
-    2
-     resources up 
+    <p>
+      <strong>
+        0
+      </strong>
+      /
+      2
+       running
+    </p>
     <svg
-      className="icon"
+      className="Statusbar-logo"
     >
       logo.svg
     </svg>
-  </span>
+  </section>
 </div>
 `;
 
@@ -73,68 +91,86 @@ exports[`StatusBar renders two items both errors snapshot 1`] = `
 <div
   className="Statusbar"
 >
-  <div
-    className="Statusbar-panel Statusbar-panel--error"
+  <section
+    className="Statusbar-panel Statusbar-errWarnPanel"
   >
-    <span
-      aria-label="Error"
-      className="icon"
-      role="img"
+    <div
+      className="Statusbar-errWarnPanel-child"
     >
-      ❌
-    </span>
-     
-    <span>
+      <svg
+        className="Statusbar-errWarnPanel-icon Statusbar-errWarnPanel-icon--error"
+      >
+        error.svg
+      </svg>
+      <p>
+        <span
+          className="Statusbar-errWarnPanel-count Statusbar-errWarnPanel-count--error"
+        >
+          2
+        </span>
+         
+        error
+        s
+      </p>
+    </div>
+    <div
+      className="Statusbar-errWarnPanel-child"
+    >
+      <svg
+        className="Statusbar-errWarnPanel-icon "
+      >
+        warning.svg
+      </svg>
+      <p>
+        <span
+          className="Statusbar-errWarnPanel-count"
+        >
+          0
+        </span>
+         
+        warning
+        s
+      </p>
+    </div>
+  </section>
+  <section
+    className="Statusbar-panel Statusbar-statusMsgPanel"
+  >
+    <p
+      className="Statusbar-statusMsgPanel-child"
+    >
+      Build failed: vigoda
+    </p>
+    <p
+      className="Statusbar-statusMsgPanel-child Statusbar-statusMsgPanel-child--lastEdit"
+    >
+      <span
+        className="Statusbar-statusMsgPanel-label"
+      >
+        Last Edit:
+      </span>
+      <span>
+        vigoda ‣ main.go[+1 more]
+      </span>
+    </p>
+  </section>
+  <section
+    className="Statusbar-panel Statusbar-progressPanel"
+  >
+    <p>
+      <strong>
+        0
+      </strong>
+      /
       2
-       
-      Errors
-    </span>
-  </div>
-  <div
-    className="Statusbar-panel Statusbar-panel--warning"
-  >
-    <span
-      aria-label="Warning"
-      className="icon"
-      role="img"
-    >
-       
-    </span>
-     
-    <span>
-      0
-       
-      Warnings
-    </span>
-  </div>
-  <p
-    className="Statusbar-panel--statusMessage"
-  >
-    Build failed: vigoda
-  </p>
-  <p
-    className="Statusbar-panel--lastEdit"
-  >
-    <span
-      className="Statusbar-panel--lastEditMessage"
-    >
-      Last Edit 
-    </span>
-    main.go [+ 1 more]
-  </p>
-  <span
-    className="Statusbar-panel Statusbar-panel--up"
-  >
-    0
-     / 
-    2
-     resources up 
+       running
+    </p>
     <svg
-      className="icon"
+      className="Statusbar-logo"
     >
       logo.svg
     </svg>
-  </span>
+  </section>
 </div>
 `;
 
@@ -142,58 +178,85 @@ exports[`StatusBar renders without crashing 1`] = `
 <div
   className="Statusbar"
 >
-  <div
-    className="Statusbar-panel Statusbar-panel--error"
+  <section
+    className="Statusbar-panel Statusbar-errWarnPanel"
   >
-    <span
-      aria-label="Error"
-      className="icon"
-      role="img"
+    <div
+      className="Statusbar-errWarnPanel-child"
     >
-       
-    </span>
-     
-    <span>
-      0
-       
-      Errors
-    </span>
-  </div>
-  <div
-    className="Statusbar-panel Statusbar-panel--warning"
-  >
-    <span
-      aria-label="Warning"
-      className="icon"
-      role="img"
+      <svg
+        className="Statusbar-errWarnPanel-icon "
+      >
+        error.svg
+      </svg>
+      <p>
+        <span
+          className="Statusbar-errWarnPanel-count Statusbar-errWarnPanel-count--error"
+        >
+          0
+        </span>
+         
+        error
+        s
+      </p>
+    </div>
+    <div
+      className="Statusbar-errWarnPanel-child"
     >
-       
-    </span>
-     
-    <span>
+      <svg
+        className="Statusbar-errWarnPanel-icon "
+      >
+        warning.svg
+      </svg>
+      <p>
+        <span
+          className="Statusbar-errWarnPanel-count"
+        >
+          0
+        </span>
+         
+        warning
+        s
+      </p>
+    </div>
+  </section>
+  <section
+    className="Statusbar-panel Statusbar-statusMsgPanel"
+  >
+    <p
+      className="Statusbar-statusMsgPanel-child"
+    >
+      
+    </p>
+    <p
+      className="Statusbar-statusMsgPanel-child Statusbar-statusMsgPanel-child--lastEdit"
+    >
+      <span
+        className="Statusbar-statusMsgPanel-label"
+      >
+        Last Edit:
+      </span>
+      <span>
+        —
+      </span>
+    </p>
+  </section>
+  <section
+    className="Statusbar-panel Statusbar-progressPanel"
+  >
+    <p>
+      <strong>
+        0
+      </strong>
+      /
       0
-       
-      Warnings
-    </span>
-  </div>
-  <p
-    className="Statusbar-panel--statusMessage"
-  >
-    
-  </p>
-  
-  <span
-    className="Statusbar-panel Statusbar-panel--up"
-  >
-    0
-     / 
-    0
-     resources up 
+       running
+    </p>
     <svg
-      className="icon"
+      className="Statusbar-logo"
     >
       logo.svg
     </svg>
-  </span>
+  </section>
 </div>
 `;

@@ -19,9 +19,9 @@ describe("StatusBar", () => {
       return new StatusItem(res)
     })
     let statusbar = mount(<Statusbar items={items} />)
-    expect(statusbar.find(".Statusbar-panel--error").html()).toContain(
-      "2 Errors"
-    )
+    expect(
+      statusbar.find(".Statusbar-errWarnPanel-count--error").html()
+    ).toContain("2")
   })
 
   it("renders two items both errors snapshot", () => {
@@ -54,9 +54,9 @@ describe("StatusBar", () => {
     })
     let items = view.Resources.map((res: any) => new StatusItem(res))
     let statusbar = mount(<Statusbar items={items} />)
-    expect(statusbar.find(".Statusbar-panel--error").html()).toContain(
-      "0 Errors"
-    )
+    expect(
+      statusbar.find(".Statusbar-errWarnPanel-count--error").html()
+    ).toContain("0")
   })
 })
 
