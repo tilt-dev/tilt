@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	testUrl     = "https://fake.tilt.dev"
-	testVersion = model.WebVersion("v1.2.3")
-	version666  = model.WebVersion("v6.6.6")
+	testUrl        = "https://fake.tilt.dev"
+	versionDefault = model.WebVersion("v1.2.3")
+	version666     = model.WebVersion("v6.6.6")
 )
 
 func TestBuildUrlForReq(t *testing.T) {
@@ -56,7 +56,7 @@ func TestBuildUrlForReqWithVersionParamAndStaticPath(t *testing.T) {
 }
 
 func prodServerForTest(t *testing.T) prodServer {
-	s, err := newProdServer(testUrl, testVersion)
+	s, err := newProdServer(testUrl, versionDefault)
 	if err != nil {
 		t.Fatal(err)
 	}
