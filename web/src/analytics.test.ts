@@ -31,3 +31,15 @@ it("maps something weird to unknown", () => {
   let actual = pathToTag(path)
   expect(actual).toBe(expected)
 })
+
+it("maps errors to errors", () => {
+  let path = "/errors"
+  let expected = "errors"
+
+  let actual = pathToTag(path)
+  expect(actual).toBe(expected)
+
+  path = "/r/foo/errors"
+  actual = pathToTag(path)
+  expect(actual).toBe(expected)
+})
