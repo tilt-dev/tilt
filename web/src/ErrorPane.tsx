@@ -45,7 +45,7 @@ type ErrorsProps = {
 
 class ErrorPane extends PureComponent<ErrorsProps> {
   render() {
-    let el: JSX.Element = (
+    let el = (
       <section className="Pane-empty-message">
         <LogoWorkmarkSvg />
         <h2>No Errors Found</h2>
@@ -81,7 +81,7 @@ class ErrorPane extends PureComponent<ErrorsProps> {
         )
       }
       if (r.buildHistory.length > 0) {
-        let lastBuild = r.buildHistory.slice(-1)[0]
+        let lastBuild = r.buildHistory[0]
         if (lastBuild.Error !== null) {
           errorElements.push(
             <li key={"buildError" + r.name} className="ErrorPane-item">

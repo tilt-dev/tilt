@@ -48,12 +48,12 @@ it("renders the last build with an error", () => {
       Name: "foo",
       BuildHistory: [
         {
-          Log: "laa dee daa I'm an error\nI'm serious",
+          Log: "laa dee daa I'm another error\nBetter watch out",
           FinishTime: ts,
           Error: {},
         },
         {
-          Log: "laa dee daa I'm another error\nBetter watch out",
+          Log: "laa dee daa I'm an error\nI'm serious",
           FinishTime: ts,
           Error: {},
         },
