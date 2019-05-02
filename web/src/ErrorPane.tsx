@@ -1,5 +1,5 @@
 import React, { PureComponent } from "react"
-import { ReactComponent as LogoWorkmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
+import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
 import AnsiLine from "./AnsiLine"
 import TimeAgo from "react-timeago"
 import "./ErrorPane.scss"
@@ -47,7 +47,7 @@ class ErrorPane extends PureComponent<ErrorsProps> {
   render() {
     let el = (
       <section className="Pane-empty-message">
-        <LogoWorkmarkSvg />
+        <LogoWordmarkSvg />
         <h2>No Errors Found</h2>
       </section>
     )
