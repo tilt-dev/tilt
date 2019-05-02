@@ -28,8 +28,8 @@ class StatusItem {
     this.warningCount = warnings(res).length
 
     let status = combinedStatus(res)
-    this.up = status == "ok"
-    this.hasError = status == "error"
+    this.up = status === "ok"
+    this.hasError = status === "error"
     this.currentBuild = res.CurrentBuild
     this.buildHistory = res.BuildHistory
     this.lastBuild = res.BuildHistory ? res.BuildHistory[0] : null
