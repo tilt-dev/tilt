@@ -110,22 +110,6 @@ class Sidebar extends PureComponent<SidebarProps> {
       )
     })
 
-    let previewResourceViewURL = "/"
-    if (this.props.selected) {
-      previewResourceViewURL = `/r/${this.props.selected}/preview`
-    } else if (this.props.items.length) {
-      // Pick the first item with an endpoint, or default to the first item.
-      previewResourceViewURL = `/r/${this.props.items[0].name}/preview`
-
-      for (let i = 0; i < this.props.items.length; i++) {
-        let item = this.props.items[i]
-        if (item.hasEndpoints) {
-          previewResourceViewURL = `/r/${item.name}/preview`
-          break
-        }
-      }
-    }
-
     return (
       <section className={classes.join(" ")}>
         <nav className="Sidebar-resources">

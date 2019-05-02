@@ -1,0 +1,35 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`renders a list of resources that have endpoints 1`] = `
+<section
+  className="PreviewList"
+>
+  <p>
+    The following resources have preview endpoints:
+  </p>
+  <ul>
+    <li>
+      <a
+        href="/r/snack/preview"
+        onClick={[Function]}
+      >
+        snack
+      </a>
+    </li>
+    <li>
+      <a
+        href="/r/vigoda/preview"
+        onClick={[Function]}
+      >
+        vigoda
+      </a>
+    </li>
+  </ul>
+</section>
+`;
+
+exports[`renders a message if no resources have endpoint 1`] = `
+<p>
+  No resources found with endpoints!
+</p>
+`;
