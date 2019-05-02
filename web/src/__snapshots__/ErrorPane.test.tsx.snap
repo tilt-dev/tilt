@@ -34,7 +34,7 @@ exports[`renders one build error 1`] = `
             dateTime="1949-11-18T09:39:00.000Z"
             title="1,555,970,585,039"
           >
-            69 years ago
+            67 years ago
           </time>
         </p>
       </header>
@@ -126,7 +126,7 @@ exports[`renders the last build with an error 1`] = `
             dateTime="1949-11-18T09:39:00.000Z"
             title="1,555,970,585,039"
           >
-            69 years ago
+            67 years ago
           </time>
         </p>
       </header>

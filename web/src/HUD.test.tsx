@@ -9,6 +9,10 @@ const emptyHUD = () => {
   return <HUD />
 }
 
+beforeEach(() => {
+  Date.now = jest.fn(() => 1482363367071)
+})
+
 it("renders without crashing", () => {
   const div = document.createElement("div")
   ReactDOM.render(emptyHUD(), div)
