@@ -25,6 +25,9 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 )
 
+const prodAssetBucket = "https://storage.googleapis.com/tilt-static-assets/"
+const webVersionKey = "web_version"
+
 type Server interface {
 	http.Handler
 	Serve(ctx context.Context) error
@@ -135,15 +138,27 @@ func (s *devServer) Serve(ctx context.Context) error {
 }
 
 type prodServer struct {
-	url *url.URL
+	baseUrl        *url.URL
+	defaultVersion model.WebVersion
 }
 
+func newProdServer(baseUrl string, version model.WebVersion) (prodServer, error) {
+	loc, err := url.Parse(baseUrl)
+	if err != nil {
+		return prodServer{}, errors.Wrap(err, "ProvideAssetServer")
+	}
+	return prodServer{
+		baseUrl:        loc,
+		defaultVersion: version,
+	}, nil
+}
 func (s prodServer) TearDown(ctx context.Context) {
 }
 
 // This doesn't actually do any setup right now.
 func (s prodServer) Serve(ctx context.Context) error {
-	logger.Get(ctx).Verbosef("Serving Tilt production web assets from %s", s.url)
+	logger.Get(ctx).Verbosef("Serving Tilt production web assets from %s with default version %s",
+		s.baseUrl, s.defaultVersion)
 	<-ctx.Done()
 	return nil
 }
@@ -152,14 +167,7 @@ func (s prodServer) Serve(ctx context.Context) error {
 // why. But this only needs a very limited GET interface without query params,
 // so just make the request by hand.
 func (s prodServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	outurl := *s.url
-	origPath := req.URL.Path
-	if !strings.HasPrefix(origPath, "/static/") {
-		// redirect everything to the main entry point.
-		origPath = "index.html"
-	}
-
-	outurl.Path = path.Join(outurl.Path, origPath)
+	outurl := s.buildUrlForReq(req)
 	outreq, err := http.NewRequest("GET", outurl.String(), bytes.NewBuffer(nil))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -182,6 +190,23 @@ func (s prodServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	copyHeader(w.Header(), outres.Header)
 	w.WriteHeader(outres.StatusCode)
 	_, _ = io.Copy(w, outres.Body)
+}
+
+func (s prodServer) buildUrlForReq(req *http.Request) url.URL {
+	u := *s.baseUrl
+	origPath := req.URL.Path
+	if !strings.HasPrefix(origPath, "/static/") {
+		// redirect everything to the main entry point.
+		origPath = "index.html"
+	}
+
+	version := req.URL.Query().Get(webVersionKey)
+	if version == "" {
+		version = string(s.defaultVersion)
+	}
+
+	u.Path = path.Join(u.Path, version, origPath)
+	return u
 }
 
 type precompiledServer struct {
@@ -232,7 +257,7 @@ func NewFakeServer() Server {
 	if err != nil {
 		panic(err)
 	}
-	return prodServer{url: loc}
+	return prodServer{baseUrl: loc}
 }
 
 func ProvideAssetServer(ctx context.Context, webMode model.WebMode, webVersion model.WebVersion, devPort model.WebDevPort) (Server, error) {
@@ -261,13 +286,7 @@ func ProvideAssetServer(ctx context.Context, webMode model.WebMode, webVersion m
 	}
 
 	if webMode == model.ProdWebMode {
-		loc, err := url.Parse(fmt.Sprintf("https://storage.googleapis.com/tilt-static-assets/%s", webVersion))
-		if err != nil {
-			return nil, errors.Wrap(err, "ProvideAssetServer")
-		}
-		return prodServer{
-			url: loc,
-		}, nil
+		return newProdServer(prodAssetBucket, webVersion)
 	}
 
 	return nil, model.UnrecognizedWebModeError(string(webMode))
