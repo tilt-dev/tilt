@@ -11,10 +11,16 @@ const incr = (name: string, tags: Tags = {}): void => {
 }
 
 const pathToTag = (path: string): string => {
-  if (path.startsWith("/r/") && !path.endsWith("/preview")) {
+  if (
+    path.startsWith("/r/") &&
+    !path.endsWith("/preview") &&
+    !path.endsWith("/errors")
+  ) {
     return "log"
   } else if (path.endsWith("/preview")) {
     return "preview"
+  } else if (path.endsWith("/errors")) {
+    return "errors"
   } else if (path === "/") {
     return "all"
   }

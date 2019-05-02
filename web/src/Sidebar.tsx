@@ -73,12 +73,9 @@ class Sidebar extends PureComponent<SidebarProps> {
 
     let listItems = this.props.items.map(item => {
       let link = `/r/${item.name}`
-      let analyticsKey = "ui.interactions.logs"
       if (this.props.resourceView === ResourceView.Preview) {
-        analyticsKey = "ui.interactions.preview"
         link += "/preview"
       } else if (this.props.resourceView === ResourceView.Errors) {
-        analyticsKey = "ui.interactions.errors"
         link += "/errors"
       }
 
