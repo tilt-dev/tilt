@@ -71,7 +71,6 @@ func (s SailServer) newRoom(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Println("made new room with version:", newRoomReq.WebVersion)
 	room := NewRoom(newRoomReq.WebVersion)
 	s.rooms[room.id] = room
 
@@ -186,6 +185,8 @@ func (s SailServer) viewRoom(w http.ResponseWriter, req *http.Request) {
 
 	u := req.URL
 	u.Path = "/index.html"
+
+	// Request the correct version of assets
 	q := u.Query()
 	q.Set(assets.WebVersionKey, string(room.version))
 	u.RawQuery = q.Encode()

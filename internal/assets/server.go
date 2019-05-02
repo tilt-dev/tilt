@@ -30,7 +30,7 @@ import (
 const prodAssetBucket = "https://storage.googleapis.com/tilt-static-assets/"
 const WebVersionKey = "web_version"
 
-var versionRe = regexp.MustCompile(`/(v\d*\.\d*\.\d*)/.*`) // matches `/vx.y.z/`
+var versionRe = regexp.MustCompile(`/(v\d*\.\d*\.\d*)/.*`) // matches `/vA.B.C/...`
 
 type Server interface {
 	http.Handler
@@ -174,16 +174,14 @@ func (s prodServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	outurl, version := s.urlAndVersionForReq(req)
 	outreq, err := http.NewRequest("GET", outurl.String(), bytes.NewBuffer(nil))
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte(err.Error()))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	copyHeader(outreq.Header, req.Header)
 	outres, err := http.DefaultClient.Do(outreq)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte(err.Error()))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -212,7 +210,7 @@ func (s prodServer) urlAndVersionForReq(req *http.Request) (url.URL, string) {
 	}
 
 	if !(strings.HasPrefix(origPath, "/static/")) {
-		// redirect everything to the main entry point.
+		// redirect everything else to the main entry point.
 		origPath = "index.html"
 	}
 
@@ -225,7 +223,7 @@ func (s prodServer) urlAndVersionForReq(req *http.Request) (url.URL, string) {
 	return u, version
 }
 
-// injectVersion for version v1.2.3 updates all links to "/static/..." to instead point to "/v1.2.3/static/..."
+// injectVersion updates all links to "/static/..." to instead point to "/vA.B.C/static/..."
 // We do this b/c asset index.html's may contain links to "/static/..." that don't specify the
 // version prefix, but leave it up to the asset server to resolve. Now that the asset server
 // may serve multiple versions at once, we need to specify.
@@ -251,7 +249,7 @@ func (s precompiledServer) Serve(ctx context.Context) error {
 func (s precompiledServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	origPath := req.URL.Path
 	if !strings.HasPrefix(origPath, "/static/") {
-		// redirect everything to the main entry point.
+		// redirect everything else to the main entry point.
 		origPath = "index.html"
 	}
 
