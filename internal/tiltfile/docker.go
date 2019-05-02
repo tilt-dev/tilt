@@ -514,8 +514,7 @@ func reposForPaths(paths []localPath) []model.LocalGitRepo {
 
 		repoSet[repo.basePath] = true
 		result = append(result, model.LocalGitRepo{
-			LocalPath:         repo.basePath,
-			GitignoreContents: repo.gitignoreContents,
+			LocalPath: repo.basePath,
 		})
 	}
 

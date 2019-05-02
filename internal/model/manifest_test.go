@@ -130,44 +130,6 @@ var equalitytests = []struct {
 		true,
 	},
 	{
-		Manifest{}.WithImageTarget(ImageTarget{
-			repos: []LocalGitRepo{
-				LocalGitRepo{
-					LocalPath:         "/foo/baz",
-					GitignoreContents: "*.exe",
-				},
-			},
-		}),
-		Manifest{}.WithImageTarget(ImageTarget{
-			repos: []LocalGitRepo{
-				LocalGitRepo{
-					LocalPath:         "/foo/baz",
-					GitignoreContents: "*.so",
-				},
-			},
-		}),
-		false,
-	},
-	{
-		Manifest{}.WithImageTarget(ImageTarget{
-			repos: []LocalGitRepo{
-				LocalGitRepo{
-					LocalPath:         "/foo/baz",
-					GitignoreContents: "*.exe",
-				},
-			},
-		}),
-		Manifest{}.WithImageTarget(ImageTarget{
-			repos: []LocalGitRepo{
-				LocalGitRepo{
-					LocalPath:         "/foo/baz",
-					GitignoreContents: "*.exe",
-				},
-			},
-		}),
-		true,
-	},
-	{
 		Manifest{}.WithDeployTarget(K8sTarget{PortForwards: portFwd8000}),
 		Manifest{}.WithDeployTarget(K8sTarget{PortForwards: portFwd8001}),
 		false,

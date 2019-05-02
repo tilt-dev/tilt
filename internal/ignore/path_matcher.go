@@ -37,7 +37,7 @@ func CreateBuildContextFilter(m repoTarget) model.PathMatcher {
 		}
 	}
 	for _, r := range m.LocalRepos() {
-		gim, err := git.NewRepoIgnoreTester(context.Background(), r.LocalPath, r.GitignoreContents)
+		gim, err := git.NewRepoIgnoreTester(context.Background(), r.LocalPath)
 		if err == nil {
 			matchers = append(matchers, gim)
 		}
@@ -64,7 +64,7 @@ type IgnorableTarget interface {
 func CreateFileChangeFilter(m IgnorableTarget) (model.PathMatcher, error) {
 	matchers := []model.PathMatcher{}
 	for _, r := range m.LocalRepos() {
-		gim, err := git.NewRepoIgnoreTester(context.Background(), r.LocalPath, r.GitignoreContents)
+		gim, err := git.NewRepoIgnoreTester(context.Background(), r.LocalPath)
 		if err == nil {
 			matchers = append(matchers, gim)
 		}
@@ -87,7 +87,7 @@ func CreateFileChangeFilter(m IgnorableTarget) (model.PathMatcher, error) {
 	// temp/lock files.
 	//
 	// This isn't an ideal solution. In an ideal world, the user would put
-	// everything to ignore in their gitignore/dockerignore files. This is a
+	// everything to ignore in their tiltignore/dockerignore files. This is a
 	// stop-gap so they don't have a terrible experience if those files aren't
 	// there or aren't in the right places.
 	//
