@@ -8,6 +8,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 func TestNoFans(t *testing.T) {
@@ -72,7 +73,7 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	ctx, cancel := context.WithCancel(context.Background())
 	source := newFakeSource(ctx)
-	room := NewRoom()
+	room := NewRoom(model.WebVersion("v1.2.3"))
 	room.source = source
 	errCh := make(chan error)
 	go func() {

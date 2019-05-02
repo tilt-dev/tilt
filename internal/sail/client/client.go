@@ -122,7 +122,12 @@ func (s *sailClient) Connect(ctx context.Context, st store.RStore) error {
 	if s.addr.Empty() {
 		return fmt.Errorf("tried to connect a sailClient with an empty address")
 	}
-	roomID, secret, err := s.roomer.NewRoom(ctx)
+
+	state := st.RLockState()
+	version := state.TiltBuildInfo.WebVersion()
+	st.RUnlockState()
+
+	roomID, secret, err := s.roomer.NewRoom(ctx, version)
 	if err != nil {
 		st.Dispatch(SailRoomConnectedAction{Err: err})
 		return err

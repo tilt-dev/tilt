@@ -18,6 +18,10 @@ type SailRoomInfo struct {
 	Secret string `json:"secret"`
 }
 
+type SailNewRoomRequest struct {
+	WebVersion WebVersion `json:"web_version"`
+}
+
 type SailPort int
 type SailURL url.URL
 

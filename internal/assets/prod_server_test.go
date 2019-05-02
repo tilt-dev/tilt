@@ -71,7 +71,7 @@ func reqForTest(t *testing.T, path string, version model.WebVersion) *http.Reque
 
 	if version != "" {
 		q := u.Query()
-		q.Set(webVersionKey, string(version))
+		q.Set(WebVersionKey, string(version))
 		u.RawQuery = q.Encode()
 	}
 

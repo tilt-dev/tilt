@@ -26,7 +26,7 @@ import (
 )
 
 const prodAssetBucket = "https://storage.googleapis.com/tilt-static-assets/"
-const webVersionKey = "web_version"
+const WebVersionKey = "web_version"
 
 type Server interface {
 	http.Handler
@@ -200,7 +200,7 @@ func (s prodServer) buildUrlForReq(req *http.Request) url.URL {
 		origPath = "index.html"
 	}
 
-	version := req.URL.Query().Get(webVersionKey)
+	version := req.URL.Query().Get(WebVersionKey)
 	if version == "" {
 		version = string(s.defaultVersion)
 	}

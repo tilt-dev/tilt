@@ -14,11 +14,12 @@ import (
 // A room where messages from a source are broadcast to all the followers.
 type Room struct {
 	// Immutable data
-	id     model.RoomID
-	secret string // used to authorize attempts to share to this room
-	source SourceConn
-	addFan chan AddFanAction
-	fanOut chan FanOutAction
+	id      model.RoomID
+	secret  string // used to authorize attempts to share to this room
+	source  SourceConn
+	addFan  chan AddFanAction
+	fanOut  chan FanOutAction
+	version model.WebVersion // version of data feeding this room (+ version of assets to serve)
 
 	// Mutable data, only read/written in the action loop.
 	fans       []FanConn
@@ -53,11 +54,12 @@ type FanOutAction struct {
 
 func (a FanOutAction) Empty() bool { return a.messageType == 0 && len(a.data) == 0 }
 
-func NewRoom() *Room {
+func NewRoom(version model.WebVersion) *Room {
 	return &Room{
-		id:     model.RoomID(uuid.New().String()),
-		secret: uuid.New().String(),
-		addFan: make(chan AddFanAction, 0),
+		id:      model.RoomID(uuid.New().String()),
+		secret:  uuid.New().String(),
+		version: version,
+		addFan:  make(chan AddFanAction, 0),
 	}
 }
 

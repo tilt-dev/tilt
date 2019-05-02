@@ -109,8 +109,7 @@ func (s HeadsUpServer) HandleSail(w http.ResponseWriter, req *http.Request) {
 	err := s.sailCli.Connect(logger.WithLogger(req.Context(), l), s.store)
 	if err != nil {
 		log.Printf("sailClient.NewRoom: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte(fmt.Sprintf("error creating new Sail room: %v", err)))
+		http.Error(w, fmt.Sprintf("error creating new Sail room: %v", err), http.StatusInternalServerError)
 		return
 	}
 

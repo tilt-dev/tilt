@@ -2,7 +2,9 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"sync"
@@ -51,7 +53,26 @@ func (s SailServer) newRoom(w http.ResponseWriter, req *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	room := NewRoom()
+	if req.Method != http.MethodPost {
+		http.Error(w, "must be POST request", http.StatusBadRequest)
+		return
+	}
+
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error reading request: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	var newRoomReq model.SailNewRoomRequest
+	err = json.Unmarshal(body, &newRoomReq)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error unmarshaling request: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	fmt.Println("made new room with version:", newRoomReq.WebVersion)
+	room := NewRoom(newRoomReq.WebVersion)
 	s.rooms[room.id] = room
 
 	resp, err := room.newRoomResponse()
