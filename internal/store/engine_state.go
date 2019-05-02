@@ -255,8 +255,8 @@ type ManifestState struct {
 	ConfigFilesThatCausedChange []string
 }
 
-func NewState(b model.TiltBuild) *EngineState {
-	ret := &EngineState{TiltBuildInfo: b}
+func NewState() *EngineState {
+	ret := &EngineState{}
 	ret.Log = model.Log{}
 	ret.ManifestTargets = make(map[model.ManifestName]*ManifestTarget)
 	ret.PendingConfigFileChanges = make(map[string]time.Time)

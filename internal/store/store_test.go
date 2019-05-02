@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/tilt/internal/model"
 )
 
 func TestProcessActions(t *testing.T) {
@@ -66,7 +65,7 @@ type fixture struct {
 
 func newFixture(t *testing.T) fixture {
 	ctx, cancel := context.WithCancel(context.Background())
-	st := NewStore(TestReducer, model.TiltBuild{}, LogActionsFlag(false))
+	st := NewStore(TestReducer, LogActionsFlag(false))
 	return fixture{
 		t:      t,
 		store:  st,

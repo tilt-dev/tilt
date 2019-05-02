@@ -108,7 +108,7 @@ func TestRelativeTiltfilePath(t *testing.T) {
 }
 
 func newState(manifests []model.Manifest, YAMLManifest model.Manifest) *EngineState {
-	ret := NewState(model.TiltBuild{})
+	ret := NewState()
 	for _, m := range manifests {
 		ret.ManifestTargets[m.Name] = NewManifestTarget(m)
 		ret.ManifestDefinitionOrder = append(ret.ManifestDefinitionOrder, m.Name)

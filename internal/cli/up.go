@@ -147,7 +147,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	g.Go(func() error {
 		defer cancel()
-		return upper.Start(ctx, args, c.watch, triggerMode, c.fileName, c.hud, enableSail)
+		return upper.Start(ctx, args, threads.tiltBuild, c.watch, triggerMode, c.fileName, c.hud, enableSail)
 	})
 
 	err = g.Wait()

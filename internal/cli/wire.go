@@ -10,6 +10,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/google/wire"
 	"github.com/windmilleng/tilt/internal/assets"
+	"github.com/windmilleng/tilt/internal/model"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/tools/clientcmd/api"
 
@@ -113,12 +114,13 @@ func wireThreads(ctx context.Context) (Threads, error) {
 }
 
 type Threads struct {
-	hud   hud.HeadsUpDisplay
-	upper engine.Upper
+	hud       hud.HeadsUpDisplay
+	upper     engine.Upper
+	tiltBuild model.TiltBuild
 }
 
-func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper) Threads {
-	return Threads{h, upper}
+func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, b model.TiltBuild) Threads {
+	return Threads{h, upper, b}
 }
 
 func wireK8sClient(ctx context.Context) (k8s.Client, error) {
