@@ -81,7 +81,6 @@ class Sidebar extends PureComponent<SidebarProps> {
         analyticsKey = "ui.interactions.errors"
         link += "/errors"
       }
-      incr(analyticsKey)
 
       let formatter = buildFormatter(enStrings)
       let hasBuilt = !isZeroTime(item.lastDeployTime)
