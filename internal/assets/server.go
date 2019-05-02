@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"syscall"
@@ -27,6 +28,8 @@ import (
 
 const prodAssetBucket = "https://storage.googleapis.com/tilt-static-assets/"
 const WebVersionKey = "web_version"
+
+var versionRe = regexp.MustCompile(`/(v\d*\.\d*\.\d*)/.*`) // matches `/vx.y.z/`
 
 type Server interface {
 	http.Handler
@@ -167,7 +170,7 @@ func (s prodServer) Serve(ctx context.Context) error {
 // why. But this only needs a very limited GET interface without query params,
 // so just make the request by hand.
 func (s prodServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	outurl := s.buildUrlForReq(req)
+	outurl, _ := s.urlAndVersionForReq(req)
 	outreq, err := http.NewRequest("GET", outurl.String(), bytes.NewBuffer(nil))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -192,10 +195,17 @@ func (s prodServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	_, _ = io.Copy(w, outres.Body)
 }
 
-func (s prodServer) buildUrlForReq(req *http.Request) url.URL {
+func (s prodServer) urlAndVersionForReq(req *http.Request) (url.URL, string) {
 	u := *s.baseUrl
 	origPath := req.URL.Path
-	if !strings.HasPrefix(origPath, "/static/") {
+
+	if matches := versionRe.FindStringSubmatch(origPath); len(matches) > 1 {
+		// If url contains a version prefix, don't attach another version
+		u.Path = path.Join(u.Path, origPath)
+		return u, matches[1]
+	}
+
+	if !(strings.HasPrefix(origPath, "/static/")) {
 		// redirect everything to the main entry point.
 		origPath = "index.html"
 	}
@@ -206,7 +216,7 @@ func (s prodServer) buildUrlForReq(req *http.Request) url.URL {
 	}
 
 	u.Path = path.Join(u.Path, version, origPath)
-	return u
+	return u, version
 }
 
 type precompiledServer struct {

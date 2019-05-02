@@ -19,40 +19,63 @@ func TestBuildUrlForReq(t *testing.T) {
 	s := prodServerForTest(t)
 	expected := "https://fake.tilt.dev/v1.2.3/index.html"
 	req := reqForTest(t, "/", "")
-	actual := s.buildUrlForReq(req)
-	assert.Equal(t, expected, actual.String())
+	u, v := s.urlAndVersionForReq(req)
+	assert.Equal(t, expected, u.String())
+	assert.Equal(t, string(versionDefault), v)
 }
 
 func TestBuildUrlForReqRedirectsToIndex(t *testing.T) {
 	s := prodServerForTest(t)
 	expected := "https://fake.tilt.dev/v1.2.3/index.html"
 	req := reqForTest(t, "/some/random/path", "")
-	actual := s.buildUrlForReq(req)
-	assert.Equal(t, expected, actual.String())
+	u, v := s.urlAndVersionForReq(req)
+	assert.Equal(t, expected, u.String())
+	assert.Equal(t, string(versionDefault), v)
 }
 
 func TestBuildUrlForReqRespectsStatic(t *testing.T) {
 	s := prodServerForTest(t)
 	expected := "https://fake.tilt.dev/v1.2.3/static/stuff.html"
 	req := reqForTest(t, "/static/stuff.html", "")
-	actual := s.buildUrlForReq(req)
-	assert.Equal(t, expected, actual.String())
+	u, v := s.urlAndVersionForReq(req)
+	assert.Equal(t, expected, u.String())
+	assert.Equal(t, string(versionDefault), v)
+}
+
+func TestBuildUrlForReqRespectsVersion(t *testing.T) {
+	s := prodServerForTest(t)
+	expected := "https://fake.tilt.dev/v111.222.333/stuff.html"
+	req := reqForTest(t, "/v111.222.333/stuff.html", "")
+	u, v := s.urlAndVersionForReq(req)
+	assert.Equal(t, expected, u.String())
+	assert.Equal(t, "v111.222.333", v)
 }
 
 func TestBuildUrlForReqWithVersionParam(t *testing.T) {
 	s := prodServerForTest(t)
 	expected := "https://fake.tilt.dev/v6.6.6/index.html"
 	req := reqForTest(t, "/", version666)
-	actual := s.buildUrlForReq(req)
-	assert.Equal(t, expected, actual.String())
+	u, v := s.urlAndVersionForReq(req)
+	assert.Equal(t, expected, u.String())
+	assert.Equal(t, string(version666), v)
 }
 
 func TestBuildUrlForReqWithVersionParamAndStaticPath(t *testing.T) {
 	s := prodServerForTest(t)
 	expected := "https://fake.tilt.dev/v6.6.6/static/stuff.html"
 	req := reqForTest(t, "/static/stuff.html", version666)
-	actual := s.buildUrlForReq(req)
-	assert.Equal(t, expected, actual.String())
+	u, v := s.urlAndVersionForReq(req)
+	assert.Equal(t, expected, u.String())
+	assert.Equal(t, string(version666), v)
+}
+
+func TestBuildUrlForReqWithVersionParamAndVersionPrefix(t *testing.T) {
+	s := prodServerForTest(t)
+	expected := "https://fake.tilt.dev/v111.222.333/stuff.html"
+	req := reqForTest(t, "/v111.222.333/stuff.html", version666)
+	u, v := s.urlAndVersionForReq(req)
+	assert.Equal(t, expected, u.String())
+	assert.Equal(t, "v111.222.333", v)
 }
 
 func prodServerForTest(t *testing.T) prodServer {
