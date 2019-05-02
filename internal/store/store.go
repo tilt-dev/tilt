@@ -37,12 +37,12 @@ type Store struct {
 	logActions  bool
 
 	// TODO(nick): Define Subscribers and Reducers.
-	// The actionChan is an intermediate representation to make the transition easiser.
+	// The actionChan is an intermediate representation to make the transition easier.
 }
 
-func NewStore(reducer Reducer, logActions LogActionsFlag) *Store {
+func NewStore(reducer Reducer, tiltBuild model.TiltBuild, logActions LogActionsFlag) *Store {
 	return &Store{
-		state:       NewState(),
+		state:       NewState(tiltBuild),
 		reduce:      reducer,
 		actionQueue: &actionQueue{},
 		actionCh:    make(chan []Action),
@@ -72,7 +72,7 @@ func NewStoreForTesting() (st *Store, getActions func() []Action) {
 		defer mu.Unlock()
 		return append([]Action{}, actions...)
 	}
-	return NewStore(reducer, false), getActions
+	return NewStore(reducer, model.TiltBuild{}, false), getActions
 }
 
 func (s *Store) AddSubscriber(ctx context.Context, sub Subscriber) {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/windmilleng/tilt/internal/cli"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 // Magic variables set by goreleaser
@@ -10,7 +11,7 @@ var commit string
 var date string
 
 func main() {
-	cli.SetBuildInfo(cli.BuildInfo{
+	cli.SetTiltInfo(model.TiltBuild{
 		Version: version,
 		Date:    date,
 	})

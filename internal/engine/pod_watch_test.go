@@ -156,7 +156,7 @@ func newPWFixture(t *testing.T) *pwFixture {
 		t:       t,
 	}
 
-	st := store.NewStore(store.Reducer(ret.reducer), store.LogActionsFlag(false))
+	st := store.NewStore(store.Reducer(ret.reducer), model.TiltBuild{}, store.LogActionsFlag(false))
 	go st.Loop(ctx)
 
 	ret.store = st

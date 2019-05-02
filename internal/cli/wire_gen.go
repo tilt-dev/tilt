@@ -7,6 +7,8 @@ package cli
 
 import (
 	"context"
+	"time"
+
 	"github.com/docker/docker/api/types"
 	"github.com/google/wire"
 	"github.com/windmilleng/tilt/internal/assets"
@@ -26,15 +28,15 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/tools/clientcmd/api"
-	"time"
 )
 
 // Injectors from wire.go:
 
 func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) {
 	reducer := _wireReducerValue
+	buildInfo := provideTiltInfo()
 	storeLogActionsFlag := provideLogActions()
-	storeStore := store.NewStore(reducer, storeLogActionsFlag)
+	storeStore := store.NewStore(reducer, buildInfo, storeLogActionsFlag)
 	v := provideClock()
 	renderer := hud.NewRenderer(v)
 	modelWebPort := provideWebPort()
@@ -125,12 +127,11 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
 	analyticsReporter := engine.ProvideAnalyticsReporter(analytics, storeStore)
-	cliBuildInfo := provideBuildInfo()
-	webMode, err := provideWebMode(cliBuildInfo)
+	webMode, err := provideWebMode(buildInfo)
 	if err != nil {
 		return demo.Script{}, err
 	}
-	webVersion := provideWebVersion(cliBuildInfo)
+	webVersion := provideWebVersion(buildInfo)
 	modelWebDevPort := provideWebDevPort()
 	assetsServer, err := assets.ProvideAssetServer(ctx, webMode, webVersion, modelWebDevPort)
 	if err != nil {
@@ -173,8 +174,9 @@ func wireThreads(ctx context.Context) (Threads, error) {
 		return Threads{}, err
 	}
 	reducer := _wireReducerValue
+	buildInfo := provideTiltInfo()
 	storeLogActionsFlag := provideLogActions()
-	storeStore := store.NewStore(reducer, storeLogActionsFlag)
+	storeStore := store.NewStore(reducer, buildInfo, storeLogActionsFlag)
 	clientConfig := k8s.ProvideClientConfig()
 	config, err := k8s.ProvideKubeConfig(clientConfig)
 	if err != nil {
@@ -250,12 +252,11 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
 	analyticsReporter := engine.ProvideAnalyticsReporter(analytics, storeStore)
-	cliBuildInfo := provideBuildInfo()
-	webMode, err := provideWebMode(cliBuildInfo)
+	webMode, err := provideWebMode(buildInfo)
 	if err != nil {
 		return Threads{}, err
 	}
-	webVersion := provideWebVersion(cliBuildInfo)
+	webVersion := provideWebVersion(buildInfo)
 	modelWebDevPort := provideWebDevPort()
 	assetsServer, err := assets.ProvideAssetServer(ctx, webMode, webVersion, modelWebDevPort)
 	if err != nil {
@@ -460,8 +461,7 @@ func wireDownDeps(ctx context.Context) (DownDeps, error) {
 var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.DetectNodeIP, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientSet, k8s.ProvideRESTConfig, k8s.ProvidePortForwarder, k8s.ProvideConfigNamespace, k8s.ProvideKubectlRunner, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient)
 
 var BaseWireSet = wire.NewSet(
-	K8sWireSet, docker.ProvideDockerClient, docker.ProvideDockerVersion, docker.DefaultClient, wire.Bind(new(docker.Client), new(docker.Cli)), dockercompose.NewDockerComposeClient, build.NewImageReaper, tiltfile.ProvideTiltfileLoader, engine.DeployerWireSet, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, engine.NewPodWatcher, engine.NewServiceWatcher, engine.NewImageController, engine.NewConfigsController, engine.NewDockerComposeEventWatcher, engine.NewDockerComposeLogManager, engine.NewProfilerManager, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(store.Store)), provideBuildInfo, engine.ProvideSubscribers, engine.NewUpper, provideAnalytics, engine.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, provideWebVersion,
-	provideWebMode,
+	K8sWireSet, docker.ProvideDockerClient, docker.ProvideDockerVersion, docker.DefaultClient, wire.Bind(new(docker.Client), new(docker.Cli)), dockercompose.NewDockerComposeClient, build.NewImageReaper, tiltfile.ProvideTiltfileLoader, engine.DeployerWireSet, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, engine.NewPodWatcher, engine.NewServiceWatcher, engine.NewImageController, engine.NewConfigsController, engine.NewDockerComposeEventWatcher, engine.NewDockerComposeLogManager, engine.NewProfilerManager, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(store.Store)), provideTiltInfo, engine.ProvideSubscribers, engine.NewUpper, provideAnalytics, engine.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, provideWebVersion, provideWebMode,
 	provideWebURL,
 	provideWebPort,
 	provideWebDevPort, server.ProvideHeadsUpServer, assets.ProvideAssetServer, server.ProvideHeadsUpServerController, provideSailURL, client.SailWireSet, provideThreads, engine.NewKINDPusher,

@@ -10,6 +10,7 @@ import (
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud/server"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/wmclient/pkg/analytics"
@@ -150,7 +151,7 @@ type serverFixture struct {
 }
 
 func newTestFixture(t *testing.T) *serverFixture {
-	st := store.NewStore(engine.UpperReducer, store.LogActionsFlag(false))
+	st := store.NewStore(engine.UpperReducer, model.TiltBuild{}, store.LogActionsFlag(false))
 	a := analytics.NewMemoryAnalytics()
 	sailCli := client.NewFakeSailClient()
 	s := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), a, sailCli)

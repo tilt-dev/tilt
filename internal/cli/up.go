@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/klog"
@@ -171,7 +171,7 @@ func provideLogActions() store.LogActionsFlag {
 	return store.LogActionsFlag(logActionsFlag)
 }
 
-func provideWebMode(b BuildInfo) (model.WebMode, error) {
+func provideWebMode(b model.TiltBuild) (model.WebMode, error) {
 	switch webModeFlag {
 	case model.LocalWebMode, model.ProdWebMode, model.PrecompiledWebMode:
 		return webModeFlag, nil
