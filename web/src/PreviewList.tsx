@@ -14,8 +14,8 @@ class PreviewList extends PureComponent<PreviewListProps> {
     if (this.props.resourcesWithEndpoints.length === 0) {
       return <p>No resources found with endpoints!</p>
     }
-    let links = this.props.resourcesWithEndpoints.map((r, i) => (
-      <li key={r + i}>
+    let links = this.props.resourcesWithEndpoints.map(r => (
+      <li key={r}>
         <Link to={pb.path(`/r/${r}/preview`)}>{r}</Link>
       </li>
     ))
