@@ -277,31 +277,6 @@ RUN echo hi`
 	)
 }
 
-func TestDockerComposeHonorsGitIgnore(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	df := `FROM alpine
-
-ADD . /app
-COPY ./thing.go /stuff
-RUN echo hi`
-	f.file("foo/Dockerfile", df)
-
-	f.file("docker-compose.yml", simpleConfig)
-	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
-	f.gitInit(".")
-
-	f.file(".gitignore", "foo/tmp")
-
-	f.load("foo")
-
-	f.assertNextManifest("foo",
-		buildFilters("foo/tmp"),
-		fileChangeFilters("foo/tmp"),
-	)
-}
-
 func TestDockerComposeIgnoresFileChangesOnMountedVolumes(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

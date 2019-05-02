@@ -1482,32 +1482,6 @@ func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{sync})
-	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).
-		WithRepos([]model.LocalGitRepo{
-			{
-				LocalPath:         f.Path(),
-				GitignoreContents: "gignore.txt",
-			},
-		}))
-
-	f.Start([]model.Manifest{manifest}, true)
-
-	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
-
-	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("gignore.txt")}
-	f.assertNoCall("event for ignored file should not trigger build")
-
-	err := f.Stop()
-	assert.NoError(t, err)
-	f.assertAllBuildsConsumed()
-}
-
 func TestUpper_ShowErrorPodLog(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()

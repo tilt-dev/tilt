@@ -204,8 +204,7 @@ type Dockerignore struct {
 }
 
 type LocalGitRepo struct {
-	LocalPath         string
-	GitignoreContents string
+	LocalPath string
 }
 
 func (LocalGitRepo) IsRepo() {}

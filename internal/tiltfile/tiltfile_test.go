@@ -938,125 +938,6 @@ k8s_yaml('foo.yaml')
 	)
 }
 
-func TestGitignorePathFilter(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.gitInit("")
-	f.file(".gitignore", ".#*")
-	f.file("Dockerfile", "FROM golang:1.10")
-	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
-	f.file("Tiltfile", `
-docker_build('gcr.io/foo', '.')
-k8s_yaml('foo.yaml')
-`)
-
-	f.load("foo")
-	f.assertNextManifest("foo",
-		buildFilters(".#foo.yaml"),
-		fileChangeFilters(".#foo.yaml"),
-	)
-}
-
-func TestAncestorGitignorePathFilter(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-	f.file(".gitignore", ".#*")
-	f.file("Tiltfile", `
-docker_build('gcr.io/foo', 'foo')
-k8s_yaml('foo.yaml')
-`)
-
-	f.load("foo")
-	f.assertNextManifest("foo",
-		buildFilters("foo/.#foo.yaml"),
-		fileChangeFilters("foo/.#foo.yaml"),
-	)
-}
-
-func TestGitignorePathFilterTiltfileAboveRoot(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.gitInit("foo")
-	f.file("foo/.gitignore", ".#*")
-	f.file("foo/Dockerfile", "FROM golang:1.10")
-	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
-	f.file("Tiltfile", `
-docker_build('gcr.io/foo', 'foo')
-k8s_yaml('foo.yaml')
-`)
-
-	f.load("foo")
-	f.assertNextManifest("foo",
-		buildFilters("foo/.#foo.yaml"),
-		fileChangeFilters("foo/.#foo.yaml"),
-	)
-}
-
-func TestFastBuildGitignorePathFilter(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.gitInit("")
-	f.file(".gitignore", ".#*")
-	f.file("Dockerfile", "FROM golang:1.10")
-	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
-	f.file("Tiltfile", `
-k8s_yaml('foo.yaml')
-fast_build('gcr.io/foo', 'Dockerfile') \
-  .add('.', 'src/')
-`)
-
-	f.load("foo")
-	f.assertNextManifest("foo",
-		buildFilters(".#foo.yaml"),
-		fileChangeFilters(".#foo.yaml"),
-	)
-}
-
-func TestFastBuildAncestorGitignorePathFilter(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-	f.file(".gitignore", ".#*")
-	f.file("Tiltfile", `
-k8s_yaml('foo.yaml')
-fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add('foo', 'src/')
-`)
-
-	f.load("foo")
-	f.assertNextManifest("foo",
-		buildFilters("foo/.#foo.yaml"),
-		fileChangeFilters("foo/.#foo.yaml"),
-	)
-}
-
-func TestFastBuildGitignorePathFilterTiltfileAboveRoot(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.gitInit("foo")
-	f.file("foo/.gitignore", ".#*")
-	f.file("foo/Dockerfile", "FROM golang:1.10")
-	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
-	f.file("Tiltfile", `
-k8s_yaml('foo.yaml')
-fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add('foo', 'src/')
-`)
-
-	f.load("foo")
-	f.assertNextManifest("foo",
-		buildFilters("foo/.#foo.yaml"),
-		fileChangeFilters("foo/.#foo.yaml"),
-	)
-}
-
 func TestDockerignorePathFilter(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -2448,7 +2329,7 @@ key1: foo
 key2:
     key3: "bar"
     key4: true
-key5: 3	
+key5: 3
 `
 	f.file("options.yaml", document)
 
@@ -2505,7 +2386,7 @@ key1: foo
 key2:
     key3: "bar
     key4: true
-key5: 3	
+key5: 3
 `
 	f.file("options.yaml", document)
 

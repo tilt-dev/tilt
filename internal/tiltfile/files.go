@@ -19,8 +19,7 @@ import (
 )
 
 type gitRepo struct {
-	basePath          string
-	gitignoreContents string
+	basePath string
 }
 
 func (s *tiltfileState) newGitRepo(path string) (*gitRepo, error) {
@@ -34,12 +33,7 @@ func (s *tiltfileState) newGitRepo(path string) (*gitRepo, error) {
 		return nil, fmt.Errorf("%s isn't a valid git repo: it doesn't have a .git/ directory", absPath)
 	}
 
-	gitignoreContents, err := ioutil.ReadFile(filepath.Join(absPath, ".gitignore"))
-	if err != nil && !os.IsNotExist(err) {
-		return nil, err
-	}
-
-	return &gitRepo{basePath: absPath, gitignoreContents: string(gitignoreContents)}, nil
+	return &gitRepo{basePath: absPath}, nil
 }
 
 func (s *tiltfileState) localGitRepo(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -65,7 +59,7 @@ func (gr *gitRepo) Type() string {
 func (gr *gitRepo) Freeze() {}
 
 func (gr *gitRepo) Truth() starlark.Bool {
-	return gr.basePath != "" || gr.gitignoreContents != ""
+	return gr.basePath != ""
 }
 
 func (*gitRepo) Hash() (uint32, error) {
