@@ -21,7 +21,7 @@ import (
 )
 
 type EngineState struct {
-	BuildInfo     model.TiltBuild
+	TiltBuildInfo model.TiltBuild
 	TiltStartTime time.Time
 
 	// saved so that we can render in order
@@ -256,7 +256,7 @@ type ManifestState struct {
 }
 
 func NewState(b model.TiltBuild) *EngineState {
-	ret := &EngineState{BuildInfo: b}
+	ret := &EngineState{TiltBuildInfo: b}
 	ret.Log = model.Log{}
 	ret.ManifestTargets = make(map[model.ManifestName]*ManifestTarget)
 	ret.PendingConfigFileChanges = make(map[string]time.Time)
