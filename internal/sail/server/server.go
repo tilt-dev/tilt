@@ -178,11 +178,17 @@ func (s SailServer) joinRoom(w http.ResponseWriter, req *http.Request) {
 func (s SailServer) viewRoom(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	roomID := model.RoomID(vars["roomID"])
-	if !s.hasRoom(roomID) {
+	room, ok := s.rooms[roomID]
+	if !ok {
 		http.Error(w, fmt.Sprintf("Room not found: %q", roomID), http.StatusNotFound)
 		return
 	}
 
-	req.URL.Path = "/index.html"
+	u := req.URL
+	u.Path = "/index.html"
+	q := u.Query()
+	q.Set(assets.WebVersionKey, string(room.version))
+	u.RawQuery = q.Encode()
+
 	s.assetServer.ServeHTTP(w, req)
 }
