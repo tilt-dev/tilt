@@ -12,6 +12,7 @@ import (
 const (
 	testUrl     = "https://fake.tilt.dev"
 	testVersion = model.WebVersion("v1.2.3")
+	version666  = model.WebVersion("v6.6.6")
 )
 
 func TestBuildUrlForReq(t *testing.T) {
@@ -38,9 +39,21 @@ func TestBuildUrlForReqRespectsStatic(t *testing.T) {
 	assert.Equal(t, expected, actual.String())
 }
 
-func TestBuildUrlForReqWithVersionParam(t *testing.T) {}
+func TestBuildUrlForReqWithVersionParam(t *testing.T) {
+	s := prodServerForTest(t)
+	expected := "https://fake.tilt.dev/v6.6.6/index.html"
+	req := reqForTest(t, "/", version666)
+	actual := s.buildUrlForReq(req)
+	assert.Equal(t, expected, actual.String())
+}
 
-func TestBuildUrlForReqWithVersionParamAndStaticPath(t *testing.T) {}
+func TestBuildUrlForReqWithVersionParamAndStaticPath(t *testing.T) {
+	s := prodServerForTest(t)
+	expected := "https://fake.tilt.dev/v6.6.6/static/stuff.html"
+	req := reqForTest(t, "/static/stuff.html", version666)
+	actual := s.buildUrlForReq(req)
+	assert.Equal(t, expected, actual.String())
+}
 
 func prodServerForTest(t *testing.T) prodServer {
 	s, err := newProdServer(testUrl, testVersion)

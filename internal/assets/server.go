@@ -198,9 +198,14 @@ func (s prodServer) buildUrlForReq(req *http.Request) url.URL {
 	if !strings.HasPrefix(origPath, "/static/") {
 		// redirect everything to the main entry point.
 		origPath = "index.html"
-
 	}
-	u.Path = path.Join(u.Path, string(s.defaultVersion), origPath)
+
+	version := req.URL.Query().Get(webVersionKey)
+	if version == "" {
+		version = string(s.defaultVersion)
+	}
+
+	u.Path = path.Join(u.Path, version, origPath)
 	return u
 }
 
