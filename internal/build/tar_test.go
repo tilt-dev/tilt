@@ -194,6 +194,30 @@ func TestArchiveSymlink(t *testing.T) {
 	})
 }
 
+func TestArchiveException(t *testing.T) {
+	f := newFixture(t)
+	defer f.tearDown()
+
+	filter, err := dockerignore.NewDockerPatternMatcher(f.Path(), []string{"*", "!target"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ab := NewArchiveBuilder(filter)
+	defer ab.close()
+
+	f.WriteFile("target/foo.txt", "bar")
+
+	paths := []PathMapping{{LocalPath: f.Path(), ContainerPath: "/"}}
+
+	err = ab.ArchivePathsIfExist(f.ctx, paths)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	actual := tar.NewReader(ab.buf)
+	f.assertFileInTar(actual, expectedFile{Path: "target/foo.txt", Contents: "bar"})
+}
+
 type fixture struct {
 	*tempdir.TempDirFixture
 	t   *testing.T
