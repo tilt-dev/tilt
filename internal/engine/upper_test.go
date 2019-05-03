@@ -2284,7 +2284,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	realDcc := dockercompose.NewDockerComposeClient(docker.Env{})
 
-	tfl := tiltfile.ProvideTiltfileLoader(an, realDcc)
+	tfl := tiltfile.ProvideTiltfileLoader(an, realDcc, model.WebURL{})
 	cc := NewConfigsController(tfl)
 	dcw := NewDockerComposeEventWatcher(fakeDcc)
 	dclm := NewDockerComposeLogManager(fakeDcc)
@@ -2643,7 +2643,7 @@ func (f *testFixture) assertAllBuildsConsumed() {
 }
 
 func (f *testFixture) loadAndStart() {
-	tlr, err := f.tfl.Load(f.ctx, f.JoinPath(tiltfile.FileName), nil)
+	tlr, err := f.tfl.Load(f.ctx, f.JoinPath(tiltfile.FileName), nil, false)
 	if err != nil {
 		f.T().Fatal(err)
 	}
@@ -2692,7 +2692,7 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 
 	f.WriteFile("Tiltfile", `docker_compose('docker-compose.yml')`)
 
-	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil, false)
 	if err != nil {
 		f.T().Fatal(err)
 	}

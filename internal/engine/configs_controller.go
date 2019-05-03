@@ -15,7 +15,6 @@ type ConfigsController struct {
 	disabledForTesting bool
 	tfl                tiltfile.TiltfileLoader
 	clock              func() time.Time
-	activeBuild        bool
 }
 
 func NewConfigsController(tfl tiltfile.TiltfileLoader) *ConfigsController {
@@ -89,7 +88,7 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 
 		loadCtx := logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), multiWriter))
 
-		tlr, err := cc.tfl.Load(loadCtx, tiltfilePath, matching)
+		tlr, err := cc.tfl.Load(loadCtx, tiltfilePath, matching, !state.FirstTiltfileBuildCompleted)
 		if err == nil && len(tlr.Manifests) == 0 && tlr.Global.Empty() {
 			err = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
 		}

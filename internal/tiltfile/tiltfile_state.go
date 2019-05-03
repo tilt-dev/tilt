@@ -72,8 +72,6 @@ type tiltfileState struct {
 
 	logger   logger.Logger
 	warnings []string
-
-	openWebOnStart bool
 }
 
 type k8sResourceAssemblyVersionReason int
@@ -102,7 +100,6 @@ func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClie
 		k8sResourceAssemblyVersion: 2,
 		k8sResourceOptions:         make(map[string]k8sResourceOptions),
 		updateMode:                 UpdateModeAuto,
-		openWebOnStart:             false,
 	}
 	s.filename = s.maybeAttachGitRepo(lp, filepath.Dir(lp.path))
 	return s
@@ -168,9 +165,8 @@ const (
 	updateModeManualN = "UPDATE_MODE_MANUAL"
 
 	// other functions
-	failN             = "fail"
-	blobN             = "blob"
-	openWebUIOnStartN = "open_web_ui_on_start"
+	failN = "fail"
+	blobN = "blob"
 )
 
 type updateMode int
@@ -284,7 +280,6 @@ func (s *tiltfileState) predeclared() starlark.StringDict {
 	addBuiltin(r, syncN, s.liveUpdateSync)
 	addBuiltin(r, runN, s.liveUpdateRun)
 	addBuiltin(r, restartContainerN, s.liveUpdateRestartContainer)
-	addBuiltin(r, openWebUIOnStartN, s.openWebUIOnStart)
 
 	s.predeclaredMap = r
 
@@ -1020,10 +1015,5 @@ func (s *tiltfileState) updateModeFn(thread *starlark.Thread, fn *starlark.Built
 	s.updateMode = updateMode
 	s.updateModeCallPosition = thread.Caller().Position()
 
-	return starlark.None, nil
-}
-
-func (s *tiltfileState) openWebUIOnStart(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	s.openWebOnStart = true
 	return starlark.None, nil
 }

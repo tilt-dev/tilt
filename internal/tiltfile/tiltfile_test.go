@@ -909,7 +909,7 @@ docker_build('gcr.io/bar', 'bar')
 k8s_yaml('bar.yaml')
 `)
 
-	_, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"))
+	_, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"), false)
 	if assert.Error(t, err) {
 		assert.Equal(t, "Could not find resources: baz. Existing resources in Tiltfile: foo, bar", err.Error())
 	}
@@ -3135,18 +3135,6 @@ update_mode(UPDATE_MODE_MANUAL)
 	f.loadErrString("update_mode can only be called once")
 }
 
-func TestWebUIOpen(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.file("Tiltfile", `
-open_web_ui_on_start()
-`)
-
-	f.load()
-	f.assertOpenWebUIOnStart(true)
-}
-
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
@@ -3164,7 +3152,7 @@ func newFixture(t *testing.T) *fixture {
 	f := tempdir.NewTempDirFixture(t)
 	an := analytics.NewMemoryAnalytics()
 	dcc := dockercompose.NewDockerComposeClient(docker.Env{})
-	tfl := ProvideTiltfileLoader(an, dcc)
+	tfl := ProvideTiltfileLoader(an, dcc, model.WebURL{})
 
 	r := &fixture{
 		ctx:            ctx,
@@ -3288,7 +3276,7 @@ func (f *fixture) load(names ...string) {
 }
 
 func (f *fixture) loadResourceAssemblyV1(names ...string) {
-	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
+	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...), false)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -3299,7 +3287,7 @@ func (f *fixture) loadResourceAssemblyV1(names ...string) {
 // Load the manifests, expecting warnings.
 // Warnigns should be asserted later with assertWarnings
 func (f *fixture) loadAllowWarnings(names ...string) {
-	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
+	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...), false)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -3324,7 +3312,7 @@ func (f *fixture) loadAssertWarnings(warnings ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil, false)
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}
@@ -3644,10 +3632,6 @@ func (f *fixture) assertWarnings(warnings ...string) {
 	sort.Strings(expected)
 	sort.Strings(f.loadResult.Warnings)
 	assert.Equal(f.t, expected, f.loadResult.Warnings)
-}
-
-func (f *fixture) assertOpenWebUIOnStart(open bool) {
-	assert.Equal(f.t, open, f.loadResult.OpenWebUIOnStart)
 }
 
 func (f *fixture) entities(y string) []k8s.K8sEntity {
