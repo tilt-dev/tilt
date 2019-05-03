@@ -2,7 +2,6 @@ package tiltfile
 
 import (
 	"fmt"
-	"io/ioutil"
 	"path/filepath"
 
 	"github.com/docker/distribution/reference"
@@ -550,7 +549,7 @@ func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Bu
 	return starlark.None, nil
 }
 
-func dockerignoresForPaths(paths []string) []model.Dockerignore {
+func (s *tiltfileState) dockerignoresForPaths(paths []string) []model.Dockerignore {
 	var result []model.Dockerignore
 	dupeSet := map[string]bool{}
 
@@ -564,7 +563,7 @@ func dockerignoresForPaths(paths []string) []model.Dockerignore {
 			continue
 		}
 
-		contents, err := ioutil.ReadFile(filepath.Join(path, ".dockerignore"))
+		contents, err := s.readFile(s.localPathFromString(filepath.Join(path, ".dockerignore")))
 		if err != nil {
 			continue
 		}
@@ -596,5 +595,5 @@ func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Docker
 	}
 	paths = append(paths, image.dbBuildPath.path)
 
-	return dockerignoresForPaths(paths)
+	return s.dockerignoresForPaths(paths)
 }

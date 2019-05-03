@@ -79,7 +79,7 @@ func TestDockerComposeManifest(t *testing.T) {
 		// TODO(maia): assert m.tiltFilename
 	)
 
-	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "docker-compose.yml", "foo/Dockerfile"}
+	expectedConfFiles := []string{"Tiltfile", ".tiltignore", ".dockerignore", "docker-compose.yml", "foo/Dockerfile", "foo/.dockerignore"}
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
@@ -133,7 +133,7 @@ services:
 		// TODO(maia): assert m.tiltFilename
 	)
 
-	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "docker-compose.yml", "baz/alternate-Dockerfile"}
+	expectedConfFiles := []string{"Tiltfile", ".tiltignore", ".dockerignore", "docker-compose.yml", "baz/alternate-Dockerfile", "baz/.dockerignore"}
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
@@ -211,7 +211,7 @@ RUN echo hi`
 		// TODO(maia): assert m.tiltFilename
 	)
 
-	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "docker-compose.yml", "foo/Dockerfile"}
+	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "docker-compose.yml", "foo/Dockerfile", ".dockerignore", "foo/.dockerignore"}
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
@@ -246,7 +246,7 @@ services:
 		dcPublishedPorts(12312),
 	)
 
-	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "foo/docker-compose.yml", "foo/Dockerfile"}
+	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "foo/docker-compose.yml", "foo/Dockerfile", ".dockerignore", "foo/.dockerignore"}
 	f.assertConfigFiles(expectedConfFiles...)
 }
 

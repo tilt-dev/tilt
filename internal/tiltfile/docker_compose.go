@@ -429,7 +429,7 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcConfigPath str
 	paths := []string{path.Dir(service.DfPath), path.Dir(dcConfigPath)}
 	paths = append(paths, dcInfo.LocalPaths()...)
 
-	dcInfo = dcInfo.WithDockerignores(dockerignoresForPaths(append(paths, path.Dir(s.filename.path))))
+	dcInfo = dcInfo.WithDockerignores(s.dockerignoresForPaths(append(paths, path.Dir(s.filename.path))))
 
 	localPaths := []localPath{s.filename}
 	for _, p := range paths {

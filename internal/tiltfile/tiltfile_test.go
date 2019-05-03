@@ -119,7 +119,7 @@ k8s_resource('foo', 'foo.yaml')
 	f.assertNextManifest("foo",
 		db(image("gcr.io/foo")),
 		deployment("foo"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
 
 func TestSimple(t *testing.T) {
@@ -138,7 +138,7 @@ k8s_yaml('foo.yaml')
 	m := f.assertNextManifest("foo",
 		db(image("gcr.io/foo")),
 		deployment("foo"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 
 	iTarget := m.ImageTargetAt(0)
 
@@ -168,7 +168,7 @@ k8s_yaml('foo.yaml')
 	f.assertNextManifest("foo",
 		db(imageNormalized("fooimage")),
 		deployment("foo"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
 
 func TestExplicitDockerfileIsConfigFile(t *testing.T) {
@@ -181,7 +181,7 @@ docker_build('gcr.io/foo', 'foo', dockerfile='other/Dockerfile')
 k8s_yaml('foo.yaml')
 `)
 	f.load()
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "other/Dockerfile")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "other/Dockerfile", "foo/.dockerignore")
 }
 
 func TestExplicitDockerfileAsLocalPath(t *testing.T) {
@@ -195,7 +195,7 @@ docker_build('gcr.io/foo', 'foo', dockerfile=r.path('other/Dockerfile'))
 k8s_yaml('foo.yaml')
 `)
 	f.load()
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "other/Dockerfile")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "other/Dockerfile", "foo/.dockerignore")
 }
 
 func TestExplicitDockerfileContents(t *testing.T) {
@@ -207,7 +207,7 @@ docker_build('gcr.io/foo', 'foo', dockerfile_contents='FROM alpine')
 k8s_yaml('foo.yaml')
 `)
 	f.load()
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "foo/.dockerignore")
 	f.assertNextManifest("foo", db(image("gcr.io/foo")))
 }
 
@@ -222,7 +222,7 @@ docker_build('gcr.io/foo', 'foo', dockerfile_contents=df)
 k8s_yaml('foo.yaml')
 `)
 	f.load()
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "other/Dockerfile")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "other/Dockerfile", "foo/.dockerignore")
 	f.assertNextManifest("foo", db(image("gcr.io/foo")))
 }
 
@@ -255,7 +255,7 @@ k8s_yaml('foo.yaml')
 		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi"), hotReload(false)),
 		deployment("foo"),
 	)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
 
 func TestFastBuildHotReload(t *testing.T) {
@@ -275,7 +275,7 @@ k8s_yaml('foo.yaml')
 		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi"), hotReload(true)),
 		deployment("foo"),
 	)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
 
 func TestFastBuildPassedToResource(t *testing.T) {
@@ -294,7 +294,7 @@ k8s_yaml('foo.yaml')
 		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi")),
 		deployment("foo"),
 	)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
 
 func TestFastBuildValidates(t *testing.T) {
@@ -373,7 +373,7 @@ k8s_yaml('foo.yaml')
 		),
 		deployment("foo"),
 	)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
 
 func TestVerifiesGitRepo(t *testing.T) {
@@ -419,7 +419,7 @@ k8s_yaml(yaml)
 	f.assertNextManifest("foo",
 		db(image("gcr.io/foo")),
 		deployment("foo"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
 
 func TestKustomize(t *testing.T) {
@@ -439,7 +439,7 @@ k8s_resource("the-deployment", "foo")
 `)
 	f.load()
 	f.assertNextManifest("foo", deployment("the-deployment"), numEntities(2))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "configMap.yaml", "deployment.yaml", "kustomization.yaml", "service.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "configMap.yaml", "deployment.yaml", "kustomization.yaml", "service.yaml")
 }
 
 func TestKustomization(t *testing.T) {
@@ -459,7 +459,7 @@ k8s_resource("the-deployment", "foo")
 `)
 	f.load()
 	f.assertNextManifest("foo", deployment("the-deployment"), numEntities(2))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "configMap.yaml", "deployment.yaml", "Kustomization", "service.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "configMap.yaml", "deployment.yaml", "Kustomization", "service.yaml")
 }
 
 func TestDockerBuildCache(t *testing.T) {
@@ -648,7 +648,7 @@ docker_build('gcr.io/d', 'd')
 	f.assertNextManifest("c", db(image("gcr.io/c")), deployment("c"))
 	f.assertNextManifest("d", db(image("gcr.io/d")), deployment("d"))
 	f.assertNoYAMLManifest("")
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "all.yaml", "a/Dockerfile", "b/Dockerfile", "c/Dockerfile", "d/Dockerfile")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "all.yaml", "a/Dockerfile", "a/.dockerignore", "b/Dockerfile", "b/.dockerignore", "c/Dockerfile", "c/.dockerignore", "d/Dockerfile", "d/.dockerignore")
 }
 
 func TestExpandUnresourced(t *testing.T) {
@@ -893,7 +893,7 @@ k8s_yaml('bar.yaml')
 		db(image("gcr.io/foo")),
 		deployment("foo"))
 
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml", "bar/Dockerfile", "bar.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml")
 }
 
 func TestLoadTypoManifest(t *testing.T) {
@@ -1173,7 +1173,7 @@ if True:
 	f.assertNextManifest("foo",
 		db(image("gcr.io/foo")),
 		deployment("foo"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
 
 func TestTopLevelForLoop(t *testing.T) {
@@ -1867,7 +1867,7 @@ hfb.hot_reload()`
 
 	f.load("foo")
 	f.assertNumManifests(1)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "foo/.dockerignore")
 	f.assertNextManifest("foo",
 		cb(
 			image("gcr.io/foo"),
@@ -2316,7 +2316,7 @@ k8s_yaml(result[1]["baz"][0] + '.yaml')
 	f.assertNextManifest("bar",
 		db(image("gcr.io/bar")),
 		deployment("bar"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml", "bar/Dockerfile", "bar.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml")
 }
 
 func TestReadYAML(t *testing.T) {
@@ -2353,7 +2353,7 @@ if result['key2']['key4'] and result['key5'] == 3:
 	f.assertNextManifest("bar",
 		db(image("gcr.io/bar")),
 		deployment("bar"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml", "bar/Dockerfile", "bar.yaml", "options.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml", "options.yaml")
 }
 
 func TestYAMLDoesntExist(t *testing.T) {
@@ -2428,7 +2428,7 @@ k8s_yaml(result[1]["baz"][0] + '.yaml')
 	f.assertNextManifest("bar",
 		db(image("gcr.io/bar")),
 		deployment("bar"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml", "bar/Dockerfile", "bar.yaml", "options.json")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml", "options.json")
 }
 
 func TestJSONDoesntExist(t *testing.T) {
@@ -2509,7 +2509,7 @@ default_registry('bar.com')
 	f.assertNextManifest("foo",
 		db(image("gcr.io/foo").withInjectedRef("bar.com/gcr.io_foo")),
 		deployment("foo"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
 
 func TestDefaultRegistryTwoImagesOnlyDifferByTag(t *testing.T) {
@@ -2540,7 +2540,7 @@ default_registry('example.com')
 	f.assertNextManifest("baz",
 		db(image("gcr.io/foo:baz").withInjectedRef("example.com/gcr.io_foo")),
 		deployment("baz"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "bar/Dockerfile", "bar.yaml", "baz/Dockerfile", "baz.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml", "baz/Dockerfile", "baz/.dockerignore", "baz.yaml")
 }
 
 func TestDefaultRegistryWithDockerCompose(t *testing.T) {
@@ -2575,7 +2575,7 @@ k8s_yaml(str(result) + '.yaml')
 		db(image("gcr.io/foo")),
 		deployment("foo"))
 
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "this_file_does_not_exist", "foo.yaml", "foo/Dockerfile")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "this_file_does_not_exist", "foo.yaml", "foo/Dockerfile", "foo/.dockerignore")
 }
 
 func TestDefaultReadJSON(t *testing.T) {
@@ -2597,7 +2597,7 @@ k8s_yaml(str(result["name"]) + '.yaml')
 		db(image("gcr.io/foo")),
 		deployment("foo"))
 
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "this_file_does_not_exist", "foo.yaml", "foo/Dockerfile")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "this_file_does_not_exist", "foo.yaml", "foo/Dockerfile", "foo/.dockerignore")
 }
 
 func TestWatchFile(t *testing.T) {
@@ -2618,7 +2618,7 @@ k8s_yaml('foo.yaml')
 	f.assertNextManifest("foo",
 		db(image("gcr.io/foo")),
 		deployment("foo"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml", "hello")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "hello")
 }
 
 func TestK8SResourceAssemblyVersionAfterYAML(t *testing.T) {
@@ -2704,7 +2704,7 @@ k8s_yaml('foo.yaml')
 		db(image("gcr.io/foo")),
 		deployment("foo"))
 
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "foo/Dockerfile")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "foo/Dockerfile", "foo/.dockerignore")
 }
 
 func TestAssemblyVersion2TwoWorkloadsSameImage(t *testing.T) {
@@ -2729,7 +2729,7 @@ k8s_yaml(['foo.yaml', 'bar.yaml'])
 		db(image("gcr.io/foo")),
 		deployment("bar"))
 
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "bar.yaml", "foo/Dockerfile")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "bar.yaml", "foo/Dockerfile", "foo/.dockerignore")
 }
 
 func TestK8SResourceNoMatch(t *testing.T) {
