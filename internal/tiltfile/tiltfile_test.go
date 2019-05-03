@@ -3135,6 +3135,18 @@ update_mode(UPDATE_MODE_MANUAL)
 	f.loadErrString("update_mode can only be called once")
 }
 
+func TestWebUIOpen(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+open_web_ui_on_start()
+`)
+
+	f.load()
+	f.assertOpenWebUIOnStart(true)
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
@@ -3632,6 +3644,10 @@ func (f *fixture) assertWarnings(warnings ...string) {
 	sort.Strings(expected)
 	sort.Strings(f.loadResult.Warnings)
 	assert.Equal(f.t, expected, f.loadResult.Warnings)
+}
+
+func (f *fixture) assertOpenWebUIOnStart(open bool) {
+	assert.Equal(f.t, open, f.loadResult.OpenWebUIOnStart)
 }
 
 func (f *fixture) entities(y string) []k8s.K8sEntity {

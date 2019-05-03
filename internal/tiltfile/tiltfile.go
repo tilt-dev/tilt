@@ -69,8 +69,9 @@ func ProvideTiltfileLoader(analytics analytics.Analytics, dcCli dockercompose.Do
 }
 
 type tiltfileLoader struct {
-	analytics analytics.Analytics
-	dcCli     dockercompose.DockerComposeClient
+	analytics         analytics.Analytics
+	dcCli             dockercompose.DockerComposeClient
+	firstRunCompleted bool
 }
 
 var _ TiltfileLoader = &tiltfileLoader{}
@@ -162,6 +163,10 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 		return TiltfileLoadResult{}, errors.Wrapf(err, "error reading %s", tiltIgnorePath(filename))
 	}
 
+	if !tfl.firstRunCompleted {
+		// TODO(dmiller): open browser
+		tfl.firstRunCompleted = true
+	}
 	// TODO(maia): `yamlManifest` should be processed just like any
 	// other manifest (i.e. get rid of "global yaml" concept)
 	return TiltfileLoadResult{manifests, yamlManifest, s.configFiles, s.warnings, string(tiltIgnoreContents)}, err
