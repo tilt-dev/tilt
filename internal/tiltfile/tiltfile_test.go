@@ -909,7 +909,7 @@ docker_build('gcr.io/bar', 'bar')
 k8s_yaml('bar.yaml')
 `)
 
-	_, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"))
+	_, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"), false)
 	if assert.Error(t, err) {
 		assert.Equal(t, "Could not find resources: baz. Existing resources in Tiltfile: foo, bar", err.Error())
 	}
@@ -3152,7 +3152,7 @@ func newFixture(t *testing.T) *fixture {
 	f := tempdir.NewTempDirFixture(t)
 	an := analytics.NewMemoryAnalytics()
 	dcc := dockercompose.NewDockerComposeClient(docker.Env{})
-	tfl := ProvideTiltfileLoader(an, dcc)
+	tfl := ProvideTiltfileLoader(an, dcc, model.WebURL{})
 
 	r := &fixture{
 		ctx:            ctx,
@@ -3276,7 +3276,7 @@ func (f *fixture) load(names ...string) {
 }
 
 func (f *fixture) loadResourceAssemblyV1(names ...string) {
-	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
+	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...), false)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -3287,7 +3287,7 @@ func (f *fixture) loadResourceAssemblyV1(names ...string) {
 // Load the manifests, expecting warnings.
 // Warnigns should be asserted later with assertWarnings
 func (f *fixture) loadAllowWarnings(names ...string) {
-	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
+	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...), false)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -3312,7 +3312,7 @@ func (f *fixture) loadAssertWarnings(warnings ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil, false)
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}

@@ -468,6 +468,7 @@ func handleConfigsReloaded(
 	state *store.EngineState,
 	event ConfigsReloadedAction,
 ) {
+	state.FirstTiltfileBuildCompleted = true
 	manifests := event.Manifests
 
 	status := state.CurrentTiltfileBuild
