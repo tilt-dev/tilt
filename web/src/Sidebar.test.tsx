@@ -77,29 +77,29 @@ describe("sidebar", () => {
   })
 
   it("abbreviates durations under a minute", () => {
-      let items = [4, 9, 19, 29, 39, 49, 54].map(d => {
-          let res = oneResource()
-          res.Name = `resource${d}`
-          res.LastDeployTime = Date.now() - d * 1000
-          return new SidebarItem(res)
-      })
+    let items = [4, 9, 19, 29, 39, 49, 54].map(d => {
+      let res = oneResource()
+      res.Name = `resource${d}`
+      res.LastDeployTime = Date.now() - d * 1000
+      return new SidebarItem(res)
+    })
 
-      const tree = renderer
-          .create(
-              <MemoryRouter initialEntries={["/"]}>
-                  <Sidebar
-                      isClosed={false}
-                      items={items}
-                      selected=""
-                      toggleSidebar={null}
-                      resourceView={ResourceView.Log}
-                      pathBuilder={pathBuilder}
-                  />
-              </MemoryRouter>
-          )
-          .toJSON()
+    const tree = renderer
+      .create(
+        <MemoryRouter initialEntries={["/"]}>
+          <Sidebar
+            isClosed={false}
+            items={items}
+            selected=""
+            toggleSidebar={null}
+            resourceView={ResourceView.Log}
+            pathBuilder={pathBuilder}
+          />
+        </MemoryRouter>
+      )
+      .toJSON()
 
-      expect(tree).toMatchSnapshot()
+    expect(tree).toMatchSnapshot()
   })
 
   it("renders resources that haven't been built yet", () => {
