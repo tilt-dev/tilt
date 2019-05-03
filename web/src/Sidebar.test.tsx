@@ -11,7 +11,7 @@ let pathBuilder = new PathBuilder("localhost", "/")
 
 describe("sidebar", () => {
   beforeEach(() => {
-    Date.now = jest.fn(() => 1482363367071)
+    Date.now = jest.fn(() => Date.UTC(2017, 11, 21, 15, 36, 7, 0))
   })
   it("renders empty resource list without crashing", () => {
     const tree = renderer

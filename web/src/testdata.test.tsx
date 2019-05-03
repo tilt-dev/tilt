@@ -49,7 +49,7 @@ function getMockRouterProps<P>(data: P) {
 }
 
 function oneResource(): any {
-  const ts = Date.now().toLocaleString()
+  const ts = Date.now().valueOf()
   const resource = {
     Name: "vigoda",
     DirectoriesWatched: ["foo", "bar"],
@@ -80,7 +80,7 @@ function oneResource(): any {
 }
 
 function oneResourceNoErrors(): any {
-  const ts = Date.now().toLocaleString()
+  const ts = Date.now().valueOf()
   const resource = {
     Name: "vigoda",
     DirectoriesWatched: ["foo", "bar"],
@@ -112,13 +112,14 @@ function oneResourceView(): any {
 }
 
 function twoResourceView(): any {
-  const ts = Date.now().toLocaleString()
+  const time = Date.now()
+  const ts = time.valueOf()
   const vigoda = oneResource()
 
   const snack = {
     Name: "snack",
     DirectoriesWatched: ["foo", "bar"],
-    LastDeployTime: ts,
+    LastDeployTime: (time - 10000).valueOf(),
     BuildHistory: [
       {
         Edits: ["main.go", "cli.go"],

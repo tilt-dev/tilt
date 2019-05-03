@@ -6,7 +6,7 @@ import { Link } from "react-router-dom"
 import { combinedStatus, warnings } from "./status"
 import "./Sidebar.scss"
 import { ResourceView } from "./types"
-import TimeAgo from "react-timeago"
+import TimeAgo, {Formatter, Suffix, Unit} from "react-timeago"
 // @ts-ignore
 import enStrings from "react-timeago/lib/language-strings/en-short.js"
 // @ts-ignore
@@ -47,6 +47,22 @@ type SidebarProps = {
   pathBuilder: PathBuilder
 }
 
+let minutePlusFormatter = buildFormatter(enStrings)
+
+// for times less than a minute, we show buckets rather than precise times, so that we don't have a really noisy
+// UI with lots of moving things right after deploys
+function timeAgoFormatter(value: number, unit: Unit, suffix: Suffix, epochMilliseconds: Number, _nextFormatter?: Formatter, now?: any) {
+  if (unit == "second") {
+    for (let threshold of [5, 15, 30, 45]) {
+      if (value < threshold)
+        return `<${threshold}s`
+    }
+    return "<1m"
+  } else {
+    return minutePlusFormatter(value, unit, suffix, epochMilliseconds, _nextFormatter, now)
+  }
+}
+
 class Sidebar extends PureComponent<SidebarProps> {
   render() {
     let pb = this.props.pathBuilder
@@ -79,7 +95,7 @@ class Sidebar extends PureComponent<SidebarProps> {
         link += "/errors"
       }
 
-      let formatter = buildFormatter(enStrings)
+      let formatter = timeAgoFormatter
       let hasBuilt = !isZeroTime(item.lastDeployTime)
       let willBuild = !isZeroTime(item.pendingBuildSince)
       let building = !isZeroTime(item.currentBuildStartTime)
