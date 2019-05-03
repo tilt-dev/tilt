@@ -2,7 +2,7 @@ import React from "react"
 import renderer from "react-test-renderer"
 import { MemoryRouter } from "react-router"
 import Sidebar, { SidebarItem } from "./Sidebar"
-import { oneResourceView, twoResourceView } from "./testdata.test"
+import { oneResource, oneResourceView, twoResourceView } from "./testdata.test"
 import { mount } from "enzyme"
 import { ResourceView } from "./types"
 import PathBuilder from "./PathBuilder"
@@ -74,6 +74,32 @@ describe("sidebar", () => {
       .toJSON()
 
     expect(tree).toMatchSnapshot()
+  })
+
+  it("abbreviates durations under a minute", () => {
+      let items = [4, 9, 19, 29, 39, 49, 54].map(d => {
+          let res = oneResource()
+          res.Name = `resource${d}`
+          res.LastDeployTime = Date.now() - d * 1000
+          return new SidebarItem(res)
+      })
+
+      const tree = renderer
+          .create(
+              <MemoryRouter initialEntries={["/"]}>
+                  <Sidebar
+                      isClosed={false}
+                      items={items}
+                      selected=""
+                      toggleSidebar={null}
+                      resourceView={ResourceView.Log}
+                      pathBuilder={pathBuilder}
+                  />
+              </MemoryRouter>
+          )
+          .toJSON()
+
+      expect(tree).toMatchSnapshot()
   })
 
   it("renders resources that haven't been built yet", () => {
