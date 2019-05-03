@@ -30,7 +30,7 @@ import (
 const prodAssetBucket = "https://storage.googleapis.com/tilt-static-assets/"
 const WebVersionKey = "web_version"
 
-var versionRe = regexp.MustCompile(`/(v\d*\.\d*\.\d*)/.*`) // matches `/vA.B.C/...`
+var versionRe = regexp.MustCompile(`/(v\d+\.\d+\.\d+)/.*`) // matches `/vA.B.C/...`
 
 type Server interface {
 	http.Handler

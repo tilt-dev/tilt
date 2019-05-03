@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/pkg/errors"
@@ -35,15 +34,10 @@ func (r httpRoomer) NewRoom(ctx context.Context, version model.WebVersion) (room
 		return "", "", errors.Wrapf(err, "GET %s", u.String())
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", "", errors.Wrap(err, "reading /new_room response")
-	}
-
 	var roomInfo model.SailRoomInfo
-	err = json.Unmarshal(body, &roomInfo)
+	err = json.NewDecoder(resp.Body).Decode(&roomInfo)
 	if err != nil {
-		return "", "", errors.Wrapf(err, "unmarshaling json: %s", string(body))
+		return "", "", errors.Wrap(err, "json-decoding POST /room response body")
 	}
 
 	return roomInfo.RoomID, roomInfo.Secret, nil

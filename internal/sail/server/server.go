@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"sync"
@@ -58,16 +57,10 @@ func (s SailServer) newRoom(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	body, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("error reading request: %v", err), http.StatusBadRequest)
-		return
-	}
-
 	var newRoomReq model.SailNewRoomRequest
-	err = json.Unmarshal(body, &newRoomReq)
+	err := json.NewDecoder(req.Body).Decode(&newRoomReq)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("error unmarshaling request: %v", err), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("json-decoding request body: %v", err), http.StatusBadRequest)
 		return
 	}
 
