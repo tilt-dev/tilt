@@ -83,5 +83,5 @@ func provideTiltInfo() model.TiltBuild {
 }
 
 func provideWebVersion(b model.TiltBuild) model.WebVersion {
-	return model.WebVersion(fmt.Sprintf("v%s", b.Version))
+	return b.WebVersion()
 }

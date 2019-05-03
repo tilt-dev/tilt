@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go/build"
 	"io"
+	"io/ioutil"
 	"mime"
 	"net/http"
 	"net/http/httputil"
@@ -14,6 +15,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"syscall"
@@ -26,7 +28,9 @@ import (
 )
 
 const prodAssetBucket = "https://storage.googleapis.com/tilt-static-assets/"
-const webVersionKey = "web_version"
+const WebVersionKey = "web_version"
+
+var versionRe = regexp.MustCompile(`/(v\d+\.\d+\.\d+)/.*`) // matches `/vA.B.C/...`
 
 type Server interface {
 	http.Handler
@@ -167,19 +171,17 @@ func (s prodServer) Serve(ctx context.Context) error {
 // why. But this only needs a very limited GET interface without query params,
 // so just make the request by hand.
 func (s prodServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	outurl := s.buildUrlForReq(req)
+	outurl, version := s.urlAndVersionForReq(req)
 	outreq, err := http.NewRequest("GET", outurl.String(), bytes.NewBuffer(nil))
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte(err.Error()))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	copyHeader(outreq.Header, req.Header)
 	outres, err := http.DefaultClient.Do(outreq)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte(err.Error()))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -187,26 +189,47 @@ func (s prodServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		_ = outres.Body.Close()
 	}()
 
+	// In case we change the length of the response below, we don't want the browser to be mad
+	outres.Header.Del("Content-Length")
 	copyHeader(w.Header(), outres.Header)
+
 	w.WriteHeader(outres.StatusCode)
-	_, _ = io.Copy(w, outres.Body)
+	resBody, _ := ioutil.ReadAll(outres.Body)
+	resBodyWithVersion := s.injectVersion(resBody, version)
+	_, _ = w.Write(resBodyWithVersion)
 }
 
-func (s prodServer) buildUrlForReq(req *http.Request) url.URL {
+func (s prodServer) urlAndVersionForReq(req *http.Request) (url.URL, string) {
 	u := *s.baseUrl
 	origPath := req.URL.Path
-	if !strings.HasPrefix(origPath, "/static/") {
-		// redirect everything to the main entry point.
+
+	if matches := versionRe.FindStringSubmatch(origPath); len(matches) > 1 {
+		// If url contains a version prefix, don't attach another version
+		u.Path = path.Join(u.Path, origPath)
+		return u, matches[1]
+	}
+
+	if !(strings.HasPrefix(origPath, "/static/")) {
+		// redirect everything else to the main entry point.
 		origPath = "index.html"
 	}
 
-	version := req.URL.Query().Get(webVersionKey)
+	version := req.URL.Query().Get(WebVersionKey)
 	if version == "" {
 		version = string(s.defaultVersion)
 	}
 
 	u.Path = path.Join(u.Path, version, origPath)
-	return u
+	return u, version
+}
+
+// injectVersion updates all links to "/static/..." to instead point to "/vA.B.C/static/..."
+// We do this b/c asset index.html's may contain links to "/static/..." that don't specify the
+// version prefix, but leave it up to the asset server to resolve. Now that the asset server
+// may serve multiple versions at once, we need to specify.
+func (s prodServer) injectVersion(html []byte, version string) []byte {
+	newPrefix := fmt.Sprintf("/%s/static/", version)
+	return bytes.ReplaceAll(html, []byte("/static/"), []byte(newPrefix))
 }
 
 type precompiledServer struct {
@@ -226,7 +249,7 @@ func (s precompiledServer) Serve(ctx context.Context) error {
 func (s precompiledServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	origPath := req.URL.Path
 	if !strings.HasPrefix(origPath, "/static/") {
-		// redirect everything to the main entry point.
+		// redirect everything else to the main entry point.
 		origPath = "index.html"
 	}
 

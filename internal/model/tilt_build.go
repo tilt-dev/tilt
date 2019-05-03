@@ -1,5 +1,9 @@
 package model
 
+import (
+	"fmt"
+)
+
 // Information on the current built of the Tilt binary
 type TiltBuild struct {
 	Version string
@@ -17,4 +21,8 @@ func (b TiltBuild) AnalyticsVersion() string {
 	}
 
 	return b.Version
+}
+
+func (b TiltBuild) WebVersion() WebVersion {
+	return WebVersion(fmt.Sprintf("v%s", b.Version))
 }

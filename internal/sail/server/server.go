@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -51,7 +52,19 @@ func (s SailServer) newRoom(w http.ResponseWriter, req *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	room := NewRoom()
+	if req.Method != http.MethodPost {
+		http.Error(w, "must be POST request", http.StatusBadRequest)
+		return
+	}
+
+	var newRoomReq model.SailNewRoomRequest
+	err := json.NewDecoder(req.Body).Decode(&newRoomReq)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("json-decoding request body: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	room := NewRoom(newRoomReq.WebVersion)
 	s.rooms[room.id] = room
 
 	resp, err := room.newRoomResponse()
@@ -157,11 +170,19 @@ func (s SailServer) joinRoom(w http.ResponseWriter, req *http.Request) {
 func (s SailServer) viewRoom(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	roomID := model.RoomID(vars["roomID"])
-	if !s.hasRoom(roomID) {
+	room, ok := s.rooms[roomID]
+	if !ok {
 		http.Error(w, fmt.Sprintf("Room not found: %q", roomID), http.StatusNotFound)
 		return
 	}
 
-	req.URL.Path = "/index.html"
+	u := req.URL
+	u.Path = "/index.html"
+
+	// Request the correct version of assets
+	q := u.Query()
+	q.Set(assets.WebVersionKey, string(room.version))
+	u.RawQuery = q.Encode()
+
 	s.assetServer.ServeHTTP(w, req)
 }

@@ -51,6 +51,22 @@ func TestConnectAndBroadcast(t *testing.T) {
 	f.assertNewRoomCalls(1) // room already connected, shouldn't have any more NewRoom calls
 }
 
+func TestRoomConnectedWithVersion(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	state := f.store.LockMutableStateForTesting()
+	state.TiltBuildInfo = model.TiltBuild{Version: "1.2.3"}
+	f.store.UnlockMutableState()
+
+	err := f.client.Connect(f.ctx, f.store)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.assertNewRoomLastVersion(model.WebVersion("v1.2.3"))
+}
+
 func TestSailRoomConnectedAction(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -113,16 +129,27 @@ func (f *fixture) assertNewRoomCalls(n int) {
 	assert.Equal(f.t, n, fakeRoomer.newRoomCalls, "expected %d calls to NewRoom, got %d", n, fakeRoomer.newRoomCalls)
 }
 
+func (f *fixture) assertNewRoomLastVersion(v model.WebVersion) {
+	fakeRoomer, ok := f.client.roomer.(*fakeSailRoomer)
+	if !ok {
+		f.t.Fatal("client.roomer is not of type fakeSailRoomer??")
+	}
+	assert.Equal(f.t, v, fakeRoomer.newRoomLastVersion,
+		"expected most recent call NewRoom to be made with version %s, but got %v", v, fakeRoomer.newRoomLastVersion)
+}
+
 func (f *fixture) TearDown() {
 	f.cancel()
 }
 
 type fakeSailRoomer struct {
-	newRoomCalls int
+	newRoomCalls       int
+	newRoomLastVersion model.WebVersion
 }
 
-func (r *fakeSailRoomer) NewRoom(ctx context.Context) (roomID model.RoomID, secret string, err error) {
+func (r *fakeSailRoomer) NewRoom(ctx context.Context, version model.WebVersion) (roomID model.RoomID, secret string, err error) {
 	r.newRoomCalls += 1
+	r.newRoomLastVersion = version
 	return testRoomID, testSecret, nil
 }
 
