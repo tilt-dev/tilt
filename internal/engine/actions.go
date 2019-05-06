@@ -94,7 +94,7 @@ func NewBuildCompleteAction(result store.BuildResultSet, err error) BuildComplet
 type InitAction struct {
 	WatchFiles         bool
 	Manifests          []model.Manifest
-	GlobalYAMLManifest model.Manifest
+	GlobalYAMLManifest model.Manifest // ~~ rm this
 	TiltfilePath       string
 	ConfigFiles        []string
 	InitManifests      []model.ManifestName
