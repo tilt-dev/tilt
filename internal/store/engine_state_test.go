@@ -65,7 +65,7 @@ func TestStateToViewPortForwards(t *testing.T) {
 }
 
 func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
-	m := k8s.NewK8sOnlyManifestForTesting("yamlyaml", []string{"deployA, serviceA"})
+	m := k8s.NewK8sOnlyManifestForTesting("yamlyaml", []string{"deployA", "serviceB"})
 	state := newState([]model.Manifest{m})
 	v := StateToView(*state)
 
@@ -74,7 +74,7 @@ func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 	r, _ := v.Resource(m.Name)
 	assert.Equal(t, nil, r.LastBuild().Error)
 
-	expectedInfo := view.YAMLResourceInfo{K8sResources: []string{"deployA, serviceA"}}
+	expectedInfo := view.YAMLResourceInfo{K8sResources: []string{"deployA", "serviceB"}}
 	assert.Equal(t, expectedInfo, r.ResourceInfo)
 }
 
