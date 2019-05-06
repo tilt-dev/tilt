@@ -3343,8 +3343,8 @@ func (f *fixture) assertNoMoreManifests() {
 }
 
 // Helper func for asserting that the next manifest is Unresourced
-// k8s YAML containing the given resources.
-func (f *fixture) assertNextManifestUnresourced(resNames ...string) {
+// k8s YAML containing the given k8s entities.
+func (f *fixture) assertNextManifestUnresourced(expectedEntities ...string) {
 	next := f.assertNextManifest(model.UnresourcedYAMLManifestName.String())
 
 	entities, err := k8s.ParseYAML(bytes.NewBufferString(next.K8sTarget().YAML))
@@ -3354,7 +3354,7 @@ func (f *fixture) assertNextManifestUnresourced(resNames ...string) {
 	for i, e := range entities {
 		entityNames[i] = e.Name()
 	}
-	assert.Equal(f.t, resNames, entityNames)
+	assert.Equal(f.t, expectedEntities, entityNames)
 }
 
 // assert functions and helpers
