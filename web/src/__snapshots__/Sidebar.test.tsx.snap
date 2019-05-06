@@ -1,5 +1,239 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`sidebar abbreviates durations under a minute 1`] = `
+<section
+  className="Sidebar"
+>
+  <nav
+    className="Sidebar-resources"
+  >
+    <ul
+      className="Sidebar-list"
+    >
+      <li>
+        <a
+          className="resLink resLink--all is-selected"
+          href="/"
+          onClick={[Function]}
+        >
+          All
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--building"
+          href="/r/resource4"
+          onClick={[Function]}
+        >
+          <span
+            className="resLink-icon"
+          >
+            <svg>
+              dot-building.svg
+            </svg>
+          </span>
+          <span
+            className="resLink-name"
+          >
+            resource4
+          </span>
+          <span>
+            <time
+              dateTime="2017-12-21T15:36:03.000Z"
+              title="2017-12-21 15:36"
+            >
+              &lt;5s
+            </time>
+          </span>
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--building"
+          href="/r/resource9"
+          onClick={[Function]}
+        >
+          <span
+            className="resLink-icon"
+          >
+            <svg>
+              dot-building.svg
+            </svg>
+          </span>
+          <span
+            className="resLink-name"
+          >
+            resource9
+          </span>
+          <span>
+            <time
+              dateTime="2017-12-21T15:35:58.000Z"
+              title="2017-12-21 15:35"
+            >
+              &lt;15s
+            </time>
+          </span>
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--building"
+          href="/r/resource19"
+          onClick={[Function]}
+        >
+          <span
+            className="resLink-icon"
+          >
+            <svg>
+              dot-building.svg
+            </svg>
+          </span>
+          <span
+            className="resLink-name"
+          >
+            resource19
+          </span>
+          <span>
+            <time
+              dateTime="2017-12-21T15:35:48.000Z"
+              title="2017-12-21 15:35"
+            >
+              &lt;30s
+            </time>
+          </span>
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--building"
+          href="/r/resource29"
+          onClick={[Function]}
+        >
+          <span
+            className="resLink-icon"
+          >
+            <svg>
+              dot-building.svg
+            </svg>
+          </span>
+          <span
+            className="resLink-name"
+          >
+            resource29
+          </span>
+          <span>
+            <time
+              dateTime="2017-12-21T15:35:38.000Z"
+              title="2017-12-21 15:35"
+            >
+              &lt;30s
+            </time>
+          </span>
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--building"
+          href="/r/resource39"
+          onClick={[Function]}
+        >
+          <span
+            className="resLink-icon"
+          >
+            <svg>
+              dot-building.svg
+            </svg>
+          </span>
+          <span
+            className="resLink-name"
+          >
+            resource39
+          </span>
+          <span>
+            <time
+              dateTime="2017-12-21T15:35:28.000Z"
+              title="2017-12-21 15:35"
+            >
+              &lt;45s
+            </time>
+          </span>
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--building"
+          href="/r/resource49"
+          onClick={[Function]}
+        >
+          <span
+            className="resLink-icon"
+          >
+            <svg>
+              dot-building.svg
+            </svg>
+          </span>
+          <span
+            className="resLink-name"
+          >
+            resource49
+          </span>
+          <span>
+            <time
+              dateTime="2017-12-21T15:35:18.000Z"
+              title="2017-12-21 15:35"
+            >
+              &lt;1m
+            </time>
+          </span>
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--building"
+          href="/r/resource54"
+          onClick={[Function]}
+        >
+          <span
+            className="resLink-icon"
+          >
+            <svg>
+              dot-building.svg
+            </svg>
+          </span>
+          <span
+            className="resLink-name"
+          >
+            resource54
+          </span>
+          <span>
+            <time
+              dateTime="2017-12-21T15:35:13.000Z"
+              title="2017-12-21 15:35"
+            >
+              &lt;1m
+            </time>
+          </span>
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <div
+    className="Sidebar-spacer"
+  >
+     
+  </div>
+  <button
+    className="Sidebar-toggle"
+    onClick={null}
+  >
+    <svg>
+      chevron.svg
+    </svg>
+     Collapse
+  </button>
+</section>
+`;
+
 exports[`sidebar renders empty resource list without crashing 1`] = `
 <section
   className="Sidebar is-closed"
@@ -77,10 +311,10 @@ exports[`sidebar renders list of resources 1`] = `
           </span>
           <span>
             <time
-              dateTime="1942-02-13T08:11:00.000Z"
-              title="1,482,363,367,071"
+              dateTime="2017-12-21T15:36:07.000Z"
+              title="2017-12-21 15:36"
             >
-              75yr
+              &lt;5s
             </time>
           </span>
         </a>
@@ -105,10 +339,10 @@ exports[`sidebar renders list of resources 1`] = `
           </span>
           <span>
             <time
-              dateTime="1942-02-13T08:11:00.000Z"
-              title="1,482,363,367,071"
+              dateTime="2017-12-21T15:35:57.000Z"
+              title="2017-12-21 15:35"
             >
-              75yr
+              &lt;15s
             </time>
           </span>
         </a>
