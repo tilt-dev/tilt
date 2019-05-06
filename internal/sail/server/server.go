@@ -35,10 +35,21 @@ func ProvideSailServer(assetServer assets.Server) SailServer {
 		assetServer: assetServer,
 	}
 
-	r.HandleFunc("/room", s.newRoom) // currently expects only POST requests, in future this endpt. might do things other than create a new room
+	// Endpoints for the owner of the room.
+	//
+	// /room currently expects only POST requests, in future this endpt.
+	// might do things other than create a new room
+	r.HandleFunc("/room", s.newRoom)
 	r.HandleFunc("/share", s.connectRoom)
+
+	// Endpoints for following a room.
 	r.HandleFunc("/join/{roomID}", s.joinRoom)
 	r.HandleFunc("/view/{roomID}", s.viewRoom)
+
+	// All K8s servers should server a 200 on /, so
+	// that load balancers can do health checking.
+	r.HandleFunc("/", s.index)
+
 	r.PathPrefix("/").Handler(assetServer)
 
 	return s
@@ -185,4 +196,8 @@ func (s SailServer) viewRoom(w http.ResponseWriter, req *http.Request) {
 	u.RawQuery = q.Encode()
 
 	s.assetServer.ServeHTTP(w, req)
+}
+
+func (s SailServer) index(w http.ResponseWriter, req *http.Request) {
+	_, _ = w.Write([]byte("OK / Sail"))
 }

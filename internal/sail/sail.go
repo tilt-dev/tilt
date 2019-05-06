@@ -2,15 +2,14 @@ package sail
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	_ "github.com/improbable-eng/go-httpwares/logging/logrus"
-	_ "github.com/sirupsen/logrus"
+	http_logrus "github.com/improbable-eng/go-httpwares/logging/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -25,6 +24,7 @@ const DefaultWebDevPort = 10451
 var webModeFlag model.WebMode = model.DefaultWebMode
 var webDevPort = DefaultWebDevPort
 var port = model.DefaultSailPort
+var log = logrus.WithFields(logrus.Fields{})
 
 func Execute() {
 	rootCmd := &cobra.Command{
@@ -82,18 +82,20 @@ func run(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
+	logrus.SetFormatter(&logrus.JSONFormatter{})
+
 	ss := server.ProvideSailServer(assetServ)
 	httpServer := &http.Server{
 		Addr:    network.AllHostsBindAddr(int(port)),
 		Handler: http.DefaultServeMux,
 	}
-	http.Handle("/", ss.Router())
+	http.Handle("/", loggingHandler(ss.Router()))
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		defer cancel()
 
-		log.Printf("Sail server listening on %d\n", port)
+		log.Infof("Sail server listening on %d", port)
 		return httpServer.ListenAndServe()
 	})
 
@@ -118,6 +120,10 @@ func run(cmd *cobra.Command, args []string) {
 	if err != nil && err != context.Canceled {
 		log.Fatal(err)
 	}
+}
+
+func loggingHandler(handler http.Handler) http.Handler {
+	return http_logrus.Middleware(log)(handler)
 }
 
 func provideWebMode() (model.WebMode, error) {
