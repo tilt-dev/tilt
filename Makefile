@@ -149,6 +149,13 @@ synclet-release:
 release:
 	goreleaser --rm-dist
 
+deploy-sail:
+	$(eval TAG := $(shell date +built-%s))
+	docker build -t gcr.io/windmill-public-containers/sail:$(TAG) -f deployments/sail.dockerfile .
+	docker push gcr.io/windmill-public-containers/sail:$(TAG)
+	cat deployments/sail.yaml | sed 's!gcr.io/windmill-public-containers/sail!gcr.io/windmill-public-containers/sail:$(TAG)!g' | kubectl apply -f -
+	kubectl apply -f deployments/sail-networking.yaml
+
 prettier:
 	cd web && yarn install
 	cd web && yarn run prettier --write "src/**/*.ts*"
