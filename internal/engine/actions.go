@@ -159,7 +159,6 @@ func (ConfigsReloadStartedAction) Action() {}
 
 type ConfigsReloadedAction struct {
 	Manifests          []model.Manifest
-	GlobalYAML         model.Manifest
 	TiltIgnoreContents string
 	ConfigFiles        []string
 

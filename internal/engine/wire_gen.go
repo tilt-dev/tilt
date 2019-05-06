@@ -130,7 +130,6 @@ var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Valu
 	NewImageAndCacheBuilder,
 	DefaultBuildOrder, wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer,
 	ProvideUpdateMode,
-	NewGlobalYAMLBuildController,
 )
 
 var DeployerWireSetTest = wire.NewSet(

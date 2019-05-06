@@ -252,7 +252,8 @@ func TestUpper_Up(t *testing.T) {
 	defer f.upper.store.RUnlockState()
 	lines := strings.Split(state.ManifestTargets[manifest.Name].Status().LastBuild().Log.String(), "\n")
 	assertLineMatches(t, lines, regexp.MustCompile("fake building .*foobar"))
-	assert.Equal(t, gYaml, state.GlobalYAML)
+	t.Fatal("maia: fix me!")
+	// assert.Equal(t, gYaml, state.GlobalYAML)
 }
 
 func TestUpper_UpWatchError(t *testing.T) {
@@ -1754,32 +1755,6 @@ func TestUpper_PodLogs(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestInitWithGlobalYAML(t *testing.T) {
-	f := newTestFixture(t)
-	state := f.store.RLockState()
-	ym := k8s.NewK8sOnlyManifestForTesting("global", testyaml.BlorgBackendYAML)
-	state.GlobalYAML = ym
-	f.store.RUnlockState()
-	f.Start([]model.Manifest{}, true)
-	f.store.Dispatch(InitAction{
-		Manifests:          []model.Manifest{},
-		GlobalYAMLManifest: ym,
-		ExecuteTiltfile:    true,
-	})
-	f.WaitUntil("global YAML manifest gets set on init", func(st store.EngineState) bool {
-		return st.GlobalYAML.K8sTarget().YAML == testyaml.BlorgBackendYAML
-	})
-
-	newYM := k8s.NewK8sOnlyManifestForTesting("global", testyaml.BlorgJobYAML)
-	f.store.Dispatch(ConfigsReloadedAction{
-		GlobalYAML: newYM,
-	})
-
-	f.WaitUntil("global YAML manifest gets updated", func(st store.EngineState) bool {
-		return st.GlobalYAML.K8sTarget().YAML == testyaml.BlorgJobYAML
-	})
-}
-
 func TestInitSetsTiltfilePath(t *testing.T) {
 	f := newTestFixture(t)
 	f.Start([]model.Manifest{}, true)
@@ -2276,7 +2251,6 @@ func newTestFixture(t *testing.T) *testFixture {
 	fwm := NewWatchManager(watcher.newSub, timerMaker.maker())
 	pfc := NewPortForwardController(k8s)
 	ic := NewImageController(reaper)
-	gybc := NewGlobalYAMLBuildController(k8s)
 	an := analytics.NewMemoryAnalytics()
 	ar := ProvideAnalyticsReporter(an, st)
 
@@ -2293,7 +2267,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	sm := NewSyncletManagerForTests(k8s, sCli)
 	hudsc := server.ProvideHeadsUpServerController(0, server.HeadsUpServer{}, assets.NewFakeServer())
 	subs := []store.Subscriber{
-		fakeHud, pw, sw, plm, pfc, fwm, bc, ic, gybc, cc, dcw, dclm, pm, sm, ar, hudsc,
+		fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc,
 	}
 	upper := NewUpper(ctx, st, subs)
 

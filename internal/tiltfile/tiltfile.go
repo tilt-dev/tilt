@@ -22,7 +22,6 @@ import (
 
 const FileName = "Tiltfile"
 const TiltIgnoreFileName = ".tiltignore"
-const unresourcedName = "k8s_yaml"
 
 func init() {
 	resolve.AllowLambda = true
@@ -140,7 +139,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 
 	yamlManifest := model.Manifest{}
 	if len(unresourced) > 0 {
-		yamlManifest, err = k8s.NewK8sOnlyManifest(unresourcedName, unresourced)
+		yamlManifest, err = k8s.NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, unresourced)
 		if err != nil {
 			return TiltfileLoadResult{}, err
 		}

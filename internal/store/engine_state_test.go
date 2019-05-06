@@ -113,8 +113,9 @@ func newState(manifests []model.Manifest, YAMLManifest model.Manifest) *EngineSt
 		ret.ManifestTargets[m.Name] = NewManifestTarget(m)
 		ret.ManifestDefinitionOrder = append(ret.ManifestDefinitionOrder, m.Name)
 	}
-	ret.GlobalYAML = YAMLManifest
-	ret.GlobalYAMLState = NewYAMLManifestState()
+	// ret.GlobalYAML = YAMLManifest
+	// ret.GlobalYAMLState = NewYAMLManifestState()
+	panic("maia, implement me~")
 
 	return ret
 }

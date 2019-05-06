@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/windmilleng/tilt/internal/logger"
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 )
@@ -98,7 +97,6 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 		}
 		st.Dispatch(ConfigsReloadedAction{
 			Manifests:          tlr.Manifests,
-			GlobalYAML:         model.Manifest{}, // ~~ rm this
 			ConfigFiles:        tlr.ConfigFiles,
 			TiltIgnoreContents: tlr.TiltIgnoreContents,
 			StartTime:          startTime,
