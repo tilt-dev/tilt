@@ -90,28 +90,6 @@ func StateToWebView(s store.EngineState) View {
 		ret.Resources = append(ret.Resources, r)
 	}
 
-	// if s.GlobalYAML.K8sTarget().YAML != "" {
-	// 	absWatches := append([]string{}, s.ConfigFiles...)
-	// 	relWatches := ospath.TryAsCwdChildren(absWatches)
-	//
-	// 	r := Resource{
-	// 		Name:               s.GlobalYAML.ManifestName(),
-	// 		DirectoriesWatched: relWatches,
-	// 		CurrentBuild:       s.GlobalYAMLState.ActiveBuild(),
-	// 		BuildHistory: []model.BuildRecord{
-	// 			s.GlobalYAMLState.LastBuild(),
-	// 		},
-	// 		LastDeployTime: s.GlobalYAMLState.LastSuccessfulApplyTime,
-	// 		ResourceInfo: YAMLResourceInfo{
-	// 			K8sResources: s.GlobalYAML.K8sTarget().ResourceNames,
-	// 		},
-	// 	}
-	//
-	// 	r.RuntimeStatus = runtimeStatus(r.ResourceInfo)
-	//
-	// 	ret.Resources = append(ret.Resources, r)
-	// }
-
 	ret.Log = s.Log
 	ret.SailEnabled = s.SailEnabled
 	ret.SailURL = s.SailURL

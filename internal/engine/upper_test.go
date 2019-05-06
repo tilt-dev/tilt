@@ -233,12 +233,9 @@ func TestUpper_Up(t *testing.T) {
 	defer f.TearDown()
 	manifest := f.newManifest("foobar", nil)
 
-	gYaml := k8s.NewK8sOnlyManifestForTesting(model.ManifestName("my-global_yaml"),
-		testyaml.BlorgBackendYAML)
 	err := f.upper.Init(f.ctx, InitAction{
-		Manifests:          []model.Manifest{manifest},
-		GlobalYAMLManifest: gYaml,
-		ExecuteTiltfile:    true,
+		Manifests:       []model.Manifest{manifest},
+		ExecuteTiltfile: true,
 	})
 	close(f.b.calls)
 	assert.Nil(t, err)
@@ -252,8 +249,6 @@ func TestUpper_Up(t *testing.T) {
 	defer f.upper.store.RUnlockState()
 	lines := strings.Split(state.ManifestTargets[manifest.Name].Status().LastBuild().Log.String(), "\n")
 	assertLineMatches(t, lines, regexp.MustCompile("fake building .*foobar"))
-	t.Fatal("maia: fix me!")
-	// assert.Equal(t, gYaml, state.GlobalYAML)
 }
 
 func TestUpper_UpWatchError(t *testing.T) {

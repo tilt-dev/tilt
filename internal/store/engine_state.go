@@ -654,26 +654,6 @@ func StateToView(s EngineState) view.View {
 		ret.Resources = append(ret.Resources, r)
 	}
 
-	// if s.GlobalYAML.K8sTarget().YAML != "" {
-	// 	absWatches := append([]string{}, s.ConfigFiles...)
-	// 	relWatches := ospath.TryAsCwdChildren(absWatches)
-	//
-	// 	r := view.Resource{
-	// 		Name:               s.GlobalYAML.ManifestName(),
-	// 		DirectoriesWatched: relWatches,
-	// 		CurrentBuild:       s.GlobalYAMLState.ActiveBuild(),
-	// 		BuildHistory: []model.BuildRecord{
-	// 			s.GlobalYAMLState.LastBuild(),
-	// 		},
-	// 		LastDeployTime: s.GlobalYAMLState.LastSuccessfulApplyTime,
-	// 		ResourceInfo: view.YAMLResourceInfo{
-	// 			K8sResources: s.GlobalYAML.K8sTarget().ResourceNames,
-	// 		},
-	// 	}
-	//
-	// 	ret.Resources = append(ret.Resources, r)
-	// }
-
 	ret.Log = s.Log
 
 	return ret
