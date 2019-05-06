@@ -911,7 +911,8 @@ k8s_yaml('bar.yaml')
 
 	_, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"), false)
 	if assert.Error(t, err) {
-		assert.Equal(t, "Could not find resources: baz. Existing resources in Tiltfile: foo, bar", err.Error())
+		assert.Equal(t, `You specified some resources that could not be found: "baz"
+Is this a typo? Existing resources in Tiltfile: "foo", "bar"`, err.Error())
 	}
 }
 

@@ -682,8 +682,10 @@ func match(manifests []model.Manifest, matching map[string]bool) ([]model.Manife
 			}
 		}
 
-		return nil, fmt.Errorf("Could not find resources: %s. Existing resources in Tiltfile: %s",
-			strings.Join(missing, ", "), strings.Join(unmatchedNames, ", "))
+		return nil, fmt.Errorf(`You specified some resources that could not be found: %s
+Is this a typo? Existing resources in Tiltfile: %s`,
+			sliceutils.QuotedStringList(missing),
+			sliceutils.QuotedStringList(unmatchedNames))
 	}
 
 	return result, nil
