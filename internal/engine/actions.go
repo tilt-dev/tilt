@@ -92,13 +92,12 @@ func NewBuildCompleteAction(result store.BuildResultSet, err error) BuildComplet
 }
 
 type InitAction struct {
-	WatchFiles         bool
-	Manifests          []model.Manifest
-	GlobalYAMLManifest model.Manifest // ~~ rm this
-	TiltfilePath       string
-	ConfigFiles        []string
-	InitManifests      []model.ManifestName
-	TriggerMode        model.TriggerMode
+	WatchFiles    bool
+	Manifests     []model.Manifest
+	TiltfilePath  string
+	ConfigFiles   []string
+	InitManifests []model.ManifestName
+	TriggerMode   model.TriggerMode
 
 	TiltBuild  model.TiltBuild
 	StartTime  time.Time
@@ -129,16 +128,6 @@ type BuildStartedAction struct {
 }
 
 func (BuildStartedAction) Action() {}
-
-type GlobalYAMLApplyStartedAction struct{}
-
-func (GlobalYAMLApplyStartedAction) Action() {}
-
-type GlobalYAMLApplyCompleteAction struct {
-	Error error
-}
-
-func (GlobalYAMLApplyCompleteAction) Action() {}
 
 type HudStoppedAction struct {
 	err error
