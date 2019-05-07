@@ -181,6 +181,22 @@ func (f *fixture) TearDown() {
 		f.t.Fatal(err)
 	}
 
+	f.WaitUntil(f.ctx, "tilt-integration namespace torn down",
+		func() (string, error) {
+			cmd := exec.Command("kubectl", "get", "namespace", "tilt-integration")
+			out, err := cmd.CombinedOutput()
+			outstr := string(out)
+			if err != nil {
+				if strings.Contains(outstr, "NotFound") {
+					// The namespace was not found -- this is what we want!
+					return outstr, nil
+				}
+				return "", err
+			}
+
+			return string(out), nil
+		}, "NotFound")
+
 	for k, v := range f.originalFiles {
 		_ = ioutil.WriteFile(k, []byte(v), os.FileMode(0777))
 	}
