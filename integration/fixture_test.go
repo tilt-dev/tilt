@@ -101,9 +101,15 @@ func (f *fixture) tiltCmd(tiltArgs []string, outWriter io.Writer) *exec.Cmd {
 	return cmd
 }
 
-func (f *fixture) TiltUp(name string) {
+func (f *fixture) TiltUp(names ...string) {
+	args := []string{"up"}
+	if len(names) > 0 {
+		args = append(args, names...)
+	}
+	args = append(args, "--watch=false", "--debug", "--hud=false", "--port=0", "--image-tag-prefix="+imageTagPrefix)
+
 	out := bytes.NewBuffer(nil)
-	cmd := f.tiltCmd([]string{"up", name, "--watch=false", "--debug", "--hud=false", "--port=0", "--image-tag-prefix=" + imageTagPrefix}, out)
+	cmd := f.tiltCmd(args, out)
 	err := cmd.Run()
 	if err != nil {
 		f.t.Fatalf("Failed to up service: %v. Logs:\n%s", err, out.String())
