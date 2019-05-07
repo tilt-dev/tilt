@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -37,6 +38,8 @@ type ServiceName string
 type KubeContext string
 
 const DefaultNamespace = Namespace("default")
+
+var ForbiddenFieldsRe = regexp.MustCompile(`updates to .* are forbidden`)
 
 func (pID PodID) Empty() bool    { return pID.String() == "" }
 func (pID PodID) String() string { return string(pID) }
@@ -255,8 +258,7 @@ func (k K8sClient) ConnectedToCluster(ctx context.Context) error {
 // This should bias towards false positives (i.e., we think something is an
 // immutable field error when it's not).
 func maybeImmutableFieldStderr(stderr string) bool {
-	return strings.Contains(stderr, validation.FieldImmutableErrorMsg) ||
-		strings.Contains(stderr, "Forbidden")
+	return strings.Contains(stderr, validation.FieldImmutableErrorMsg) || ForbiddenFieldsRe.Match([]byte(stderr))
 }
 
 // Deletes all given entities.
