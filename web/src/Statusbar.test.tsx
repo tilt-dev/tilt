@@ -4,10 +4,17 @@ import renderer from "react-test-renderer"
 import Statusbar, { StatusItem } from "./Statusbar"
 import { mount } from "enzyme"
 import { oneResourceView, twoResourceView } from "./testdata.test"
+import { MemoryRouter } from "react-router"
 
 describe("StatusBar", () => {
   it("renders without crashing", () => {
-    const tree = renderer.create(<Statusbar items={[]} />).toJSON()
+    const tree = renderer
+      .create(
+        <MemoryRouter>
+          <Statusbar items={[]} errorsUrl="/errors" />
+        </MemoryRouter>
+      )
+      .toJSON()
 
     expect(tree).toMatchSnapshot()
   })
@@ -18,7 +25,11 @@ describe("StatusBar", () => {
       res.PendingBuildSince = ""
       return new StatusItem(res)
     })
-    let statusbar = mount(<Statusbar items={items} />)
+    let statusbar = mount(
+      <MemoryRouter>
+        <Statusbar items={items} errorsUrl="/errors" />
+      </MemoryRouter>
+    )
     expect(
       statusbar.find(".Statusbar-errWarnPanel-count--error").html()
     ).toContain("2")
@@ -30,7 +41,13 @@ describe("StatusBar", () => {
       res.PendingBuildSince = ""
       return new StatusItem(res)
     })
-    const tree = renderer.create(<Statusbar items={items} />).toJSON()
+    const tree = renderer
+      .create(
+        <MemoryRouter>
+          <Statusbar items={items} errorsUrl="/errors" />
+        </MemoryRouter>
+      )
+      .toJSON()
 
     expect(tree).toMatchSnapshot()
   })
@@ -42,7 +59,13 @@ describe("StatusBar", () => {
     })
 
     let items = view.Resources.map((res: any) => new StatusItem(res))
-    const tree = renderer.create(<Statusbar items={items} />).toJSON()
+    const tree = renderer
+      .create(
+        <MemoryRouter>
+          <Statusbar items={items} errorsUrl="/errors" />
+        </MemoryRouter>
+      )
+      .toJSON()
 
     expect(tree).toMatchSnapshot()
   })
@@ -53,7 +76,11 @@ describe("StatusBar", () => {
       res.BuildHistory[0].Error = ""
     })
     let items = view.Resources.map((res: any) => new StatusItem(res))
-    let statusbar = mount(<Statusbar items={items} />)
+    let statusbar = mount(
+      <MemoryRouter>
+        <Statusbar items={items} errorsUrl="/errors" />
+      </MemoryRouter>
+    )
     expect(
       statusbar.find(".Statusbar-errWarnPanel-count--error").html()
     ).toContain("0")
