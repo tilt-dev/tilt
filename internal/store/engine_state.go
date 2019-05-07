@@ -33,8 +33,9 @@ type EngineState struct {
 	CurrentlyBuilding model.ManifestName
 	WatchFiles        bool
 
-	// How many builds were queued on startup (i.e., how many manifests there were)
-	InitialBuildCount int
+	// How many builds were queued on startup (i.e., how many manifests there were
+	// after initial Tiltfile load)
+	InitialBuildsQueued int
 
 	// How many builds have been completed (pass or fail) since starting tilt
 	CompletedBuildCount int

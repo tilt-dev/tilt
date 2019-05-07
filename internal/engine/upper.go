@@ -229,7 +229,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	engineState.BuildControllerActionCount++
 
 	defer func() {
-		if engineState.CompletedBuildCount == engineState.InitialBuildCount {
+		if engineState.CompletedBuildCount == engineState.InitialBuildsQueued {
 			logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 		}
 	}()
@@ -439,6 +439,9 @@ func handleConfigsReloaded(
 ) {
 	state.FirstTiltfileBuildCompleted = true
 	manifests := event.Manifests
+	if state.InitialBuildsQueued == 0 {
+		state.InitialBuildsQueued = len(manifests)
+	}
 
 	status := state.CurrentTiltfileBuild
 	status.FinishTime = event.FinishTime
@@ -840,11 +843,10 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 			engineState.UpsertManifestTarget(store.NewManifestTarget(m))
 		}
 
-		engineState.InitialBuildCount = len(manifests)
+		engineState.InitialBuildsQueued = len(manifests)
 	} else {
 		// NOTE(dmiller): this kicks off a Tiltfile build
 		engineState.PendingConfigFileChanges[action.TiltfilePath] = time.Now()
-		engineState.InitialBuildCount = len(action.InitManifests)
 	}
 
 	engineState.WatchFiles = watchFiles
