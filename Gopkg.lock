@@ -628,6 +628,17 @@
   version = "v1.4.0"
 
 [[projects]]
+  digest = "1:c805a0558c867a671fc2dd1c6134b92a4d15c3fee5803abc70fdabdcb683ea0b"
+  name = "github.com/grpc-ecosystem/go-grpc-middleware"
+  packages = [
+    ".",
+    "tags",
+  ]
+  pruneopts = "UT"
+  revision = "c250d6563d4d4c20252cd865923440e829844f4e"
+  version = "v1.0.0"
+
+[[projects]]
   branch = "master"
   digest = "1:1a1206efd03a54d336dce7bb8719e74f2f8932f661cb9f57d5813a1d99c083d8"
   name = "github.com/grpc-ecosystem/grpc-opentracing"
@@ -661,6 +672,19 @@
   pruneopts = "UT"
   revision = "9f23e2d6bd2a77f959b2bf6acdbefd708a83a4a4"
   version = "v0.3.6"
+
+[[projects]]
+  branch = "master"
+  digest = "1:63224a53a3f1d13c83858672c603ac19fc3ed9e518ee7d96561f7129f73e3105"
+  name = "github.com/improbable-eng/go-httpwares"
+  packages = [
+    ".",
+    "logging",
+    "logging/logrus",
+    "logging/logrus/ctxlogrus",
+  ]
+  pruneopts = "UT"
+  revision = "33c6690a604c5e73b152aa22e9874288ba70d4be"
 
 [[projects]]
   digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
@@ -786,14 +810,6 @@
   pruneopts = "UT"
   revision = "4b7aa43c6742a2c18fdef89dd197aaae7dac7ccd"
   version = "1.0.1"
-
-[[projects]]
-  branch = "master"
-  digest = "1:e7a1af77ee190b4c4558142e769a6ab5df14e9f5768119f630128cff9060df54"
-  name = "github.com/monochromegane/go-gitignore"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "38717d0a108ca0e5af632cd6845ca77d45b50729"
 
 [[projects]]
   branch = "master"
@@ -981,12 +997,12 @@
   version = "v2.1.0"
 
 [[projects]]
-  digest = "1:d867dfa6751c8d7a435821ad3b736310c2ed68945d05b50fb9d23aee0540c8cc"
+  digest = "1:5f2aaa360f48d1711795bd88c7e45a38f86cf81e4bc01453d20983baa67e2d51"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
   pruneopts = "UT"
-  revision = "3e01752db0189b9157070a0e1668a620f9a85da2"
-  version = "v1.0.6"
+  revision = "f006c2ac4710855cf0f916dd6b77acf6b048dc6e"
+  version = "v1.0.3"
 
 [[projects]]
   digest = "1:645cabccbb4fa8aab25a956cbcbdf6a6845ca736b2c64e197ca7cbb9d210b939"
@@ -1735,6 +1751,7 @@
     "github.com/gorilla/mux",
     "github.com/gorilla/websocket",
     "github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc",
+    "github.com/improbable-eng/go-httpwares/logging/logrus",
     "github.com/lightstep/lightstep-tracer-go",
     "github.com/mattn/go-isatty",
     "github.com/moby/buildkit/api/services/control",
@@ -1744,7 +1761,6 @@
     "github.com/moby/buildkit/identity",
     "github.com/moby/buildkit/session",
     "github.com/moby/buildkit/session/auth/authprovider",
-    "github.com/monochromegane/go-gitignore",
     "github.com/opencontainers/go-digest",
     "github.com/opentracing/opentracing-go",
     "github.com/openzipkin/zipkin-go-opentracing",
@@ -1752,6 +1768,7 @@
     "github.com/pkg/errors",
     "github.com/rivo/tview",
     "github.com/schollz/closestmatch",
+    "github.com/sirupsen/logrus",
     "github.com/spf13/cobra",
     "github.com/spf13/pflag",
     "github.com/stretchr/testify/assert",
