@@ -48,6 +48,27 @@ func TestUpsertStatefulsetForbidden(t *testing.T) {
 	}
 }
 
+func TestUpsertToTerminatingNamespaceForbidden(t *testing.T) {
+	f := newClientTestFixture(t)
+	postgres, err := ParseYAMLFromString(testyaml.SanchoYAML)
+	assert.Nil(t, err)
+
+	// Bad error parsing used to result in us treating this error as an immutable
+	// field error. Make sure we treat it as what it is and bail out of `kubectl apply`
+	// rather than trying to --force
+	errStr := `Error from server (Forbidden): error when creating "STDIN": deployments.apps "sancho" is forbidden: unable to create new content in namespace sancho-ns because it is being terminated`
+	f.setStderr(errStr)
+
+	err = f.client.Upsert(f.ctx, postgres)
+	if assert.NotNil(t, err) {
+		assert.Contains(t, err.Error(), errStr)
+	}
+	if assert.Equal(t, 1, len(f.runner.calls)) {
+		assert.Equal(t, []string{"apply", "-f", "-"}, f.runner.calls[0].argv)
+	}
+
+}
+
 type call struct {
 	argv  []string
 	stdin string
