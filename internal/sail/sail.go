@@ -9,6 +9,8 @@ import (
 	"syscall"
 	"time"
 
+	_ "github.com/improbable-eng/go-httpwares/logging/logrus"
+	_ "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/logger"
