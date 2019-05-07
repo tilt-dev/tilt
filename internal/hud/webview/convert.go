@@ -2,6 +2,7 @@ package webview
 
 import (
 	"os"
+	"path/filepath"
 	"sort"
 
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -124,6 +125,9 @@ func tiltfileResourceView(s store.EngineState) Resource {
 	if !s.CurrentTiltfileBuild.Empty() {
 		ltfb.Log = s.CurrentTiltfileBuild.Log
 	}
+
+	ltfb.Edits = ospath.FileListDisplayNames([]string{filepath.Dir(s.TiltfilePath)}, ltfb.Edits)
+
 	tr := Resource{
 		Name:         view.TiltfileResourceName,
 		IsTiltfile:   true,
