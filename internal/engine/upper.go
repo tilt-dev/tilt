@@ -151,10 +151,6 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleDeployIDAction(ctx, state, action)
 	case store.LogAction:
 		handleLogAction(state, action)
-	case GlobalYAMLApplyStartedAction:
-		handleGlobalYAMLApplyStarted(ctx, state, action)
-	case GlobalYAMLApplyCompleteAction:
-		handleGlobalYAMLApplyComplete(ctx, state, action)
 	case ConfigsReloadStartedAction:
 		handleConfigsReloadStarted(ctx, state, action)
 	case ConfigsReloadedAction:
@@ -233,7 +229,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	engineState.BuildControllerActionCount++
 
 	defer func() {
-		if engineState.CompletedBuildCount == engineState.InitialBuildCount {
+		if engineState.CompletedBuildCount == engineState.InitialBuildsQueued {
 			logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 		}
 	}()
@@ -418,33 +414,6 @@ func handleFSEvent(
 	}
 }
 
-func handleGlobalYAMLApplyStarted(
-	ctx context.Context,
-	state *store.EngineState,
-	event GlobalYAMLApplyStartedAction,
-) {
-	state.GlobalYAMLState.CurrentApplyStartTime = time.Now()
-	state.GlobalYAMLState.LastError = nil
-}
-
-func handleGlobalYAMLApplyComplete(
-	ctx context.Context,
-	state *store.EngineState,
-	event GlobalYAMLApplyCompleteAction,
-) {
-	ms := state.GlobalYAMLState
-	ms.LastApplyStartTime = ms.CurrentApplyStartTime
-	ms.LastApplyFinishTime = time.Now()
-	ms.CurrentApplyStartTime = time.Time{}
-
-	ms.LastError = event.Error
-
-	if event.Error == nil {
-		ms.HasBeenDeployed = true
-		ms.LastSuccessfulApplyTime = time.Now()
-	}
-}
-
 func handleConfigsReloadStarted(
 	ctx context.Context,
 	state *store.EngineState,
@@ -470,6 +439,9 @@ func handleConfigsReloaded(
 ) {
 	state.FirstTiltfileBuildCompleted = true
 	manifests := event.Manifests
+	if state.InitialBuildsQueued == 0 {
+		state.InitialBuildsQueued = len(manifests)
+	}
 
 	status := state.CurrentTiltfileBuild
 	status.FinishTime = event.FinishTime
@@ -512,7 +484,6 @@ func handleConfigsReloaded(
 	// TODO(dmiller) handle deleting manifests
 	// TODO(maia): update ConfigsManifest with new ConfigFiles/update watches
 	state.ManifestDefinitionOrder = newDefOrder
-	state.GlobalYAML = event.GlobalYAML
 	state.ConfigFiles = event.ConfigFiles
 	state.TiltIgnoreContents = event.TiltIgnoreContents
 
@@ -817,7 +788,7 @@ func handleLogAction(state *store.EngineState, action store.LogAction) {
 func handleServiceEvent(ctx context.Context, state *store.EngineState, action ServiceChangeAction) {
 	service := action.Service
 	manifestName := model.ManifestName(service.ObjectMeta.Labels[k8s.ManifestNameLabel])
-	if manifestName == "" || manifestName == model.GlobalYAMLManifestName {
+	if manifestName == "" || manifestName == model.UnresourcedYAMLManifestName {
 		return
 	}
 
@@ -858,9 +829,6 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.SailEnabled = action.EnableSail
 
 	if action.ExecuteTiltfile {
-		engineState.GlobalYAML = action.GlobalYAMLManifest
-		engineState.GlobalYAMLState = store.NewYAMLManifestState()
-
 		status := model.BuildRecord{
 			StartTime:  action.StartTime,
 			FinishTime: action.FinishTime,
@@ -875,14 +843,12 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 			engineState.UpsertManifestTarget(store.NewManifestTarget(m))
 		}
 
-		engineState.InitialBuildCount = len(manifests)
+		engineState.InitialBuildsQueued = len(manifests)
 	} else {
 		// NOTE(dmiller): this kicks off a Tiltfile build
 		engineState.PendingConfigFileChanges[action.TiltfilePath] = time.Now()
-		engineState.InitialBuildCount = len(action.InitManifests)
 	}
 
-	engineState.GlobalYAMLState = store.NewYAMLManifestState()
 	engineState.WatchFiles = watchFiles
 	return nil
 }

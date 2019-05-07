@@ -22,7 +22,6 @@ import (
 
 const FileName = "Tiltfile"
 const TiltIgnoreFileName = ".tiltignore"
-const unresourcedName = "k8s_yaml"
 
 func init() {
 	resolve.AllowLambda = true
@@ -32,7 +31,6 @@ func init() {
 
 type TiltfileLoadResult struct {
 	Manifests          []model.Manifest
-	Global             model.Manifest
 	ConfigFiles        []string
 	Warnings           []string
 	TiltIgnoreContents string
@@ -44,7 +42,6 @@ type TiltfileLoader interface {
 
 type FakeTiltfileLoader struct {
 	Manifests   []model.Manifest
-	Global      model.Manifest
 	ConfigFiles []string
 	Warnings    []string
 	Err         error
@@ -59,7 +56,6 @@ func NewFakeTiltfileLoader() *FakeTiltfileLoader {
 func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool, openWebUI bool) (TiltfileLoadResult, error) {
 	return TiltfileLoadResult{
 		Manifests:   tfl.Manifests,
-		Global:      tfl.Global,
 		ConfigFiles: tfl.ConfigFiles,
 		Warnings:    tfl.Warnings,
 	}, tfl.Err
@@ -143,10 +139,11 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 
 	yamlManifest := model.Manifest{}
 	if len(unresourced) > 0 {
-		yamlManifest, err = k8s.NewK8sOnlyManifest(unresourcedName, unresourced)
+		yamlManifest, err = k8s.NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, unresourced)
 		if err != nil {
 			return TiltfileLoadResult{}, err
 		}
+		manifests = append(manifests, yamlManifest)
 	}
 
 	printWarnings(s)
@@ -168,9 +165,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 		return TiltfileLoadResult{}, errors.Wrapf(err, "error reading %s", tiltIgnorePath(filename))
 	}
 
-	// TODO(maia): `yamlManifest` should be processed just like any
-	// other manifest (i.e. get rid of "global yaml" concept)
-	return TiltfileLoadResult{manifests, yamlManifest, s.configFiles, s.warnings, string(tiltIgnoreContents)}, err
+	return TiltfileLoadResult{manifests, s.configFiles, s.warnings, string(tiltIgnoreContents)}, err
 }
 
 // .tiltignore sits next to Tiltfile

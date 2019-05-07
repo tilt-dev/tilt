@@ -517,9 +517,12 @@ func (s *tiltfileState) assembleK8sWithImages() error {
 	return nil
 }
 
-// assembleK8sUnresourced makes k8sResources for all unresourced k8s entities that will
-// result in pods (smartly grouping pod-creating entities with corresponding entities e.g.
-// services), and stores the resulting resource(s) on the tiltfileState.
+// assembleK8sUnresourced makes k8sResources for all k8s entities that:
+// a. are not already attached to a Tilt resource, and
+// b. will result in pods,
+// and stores the resulting resource(s) on the tiltfileState.
+// (We smartly grouping pod-creating entities with some kinds of
+// corresponding entities, e.g. services),
 func (s *tiltfileState) assembleK8sUnresourced() error {
 	withPodSpec, allRest, err := k8s.FilterByHasPodTemplateSpec(s.k8sUnresourced)
 	if err != nil {

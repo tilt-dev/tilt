@@ -647,7 +647,7 @@ docker_build('gcr.io/d', 'd')
 	f.assertNextManifest("b", db(image("gcr.io/b")), deployment("b"))
 	f.assertNextManifest("c", db(image("gcr.io/c")), deployment("c"))
 	f.assertNextManifest("d", db(image("gcr.io/d")), deployment("d"))
-	f.assertNoYAMLManifest("")
+	f.assertNoMoreManifests() // should be no unresourced yaml remaining
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "all.yaml", "a/Dockerfile", "a/.dockerignore", "b/Dockerfile", "b/.dockerignore", "c/Dockerfile", "c/.dockerignore", "d/Dockerfile", "d/.dockerignore")
 }
 
@@ -669,7 +669,7 @@ docker_build('gcr.io/a', 'a')
 
 	f.load()
 	f.assertNextManifest("a", db(image("gcr.io/a")), deployment("a"))
-	f.assertYAMLManifest("a-secret")
+	f.assertNextManifestUnresourced("a-secret")
 }
 
 func TestExpandExplicit(t *testing.T) {
@@ -704,7 +704,7 @@ k8s_yaml('pod_creator.yaml')
 	f.load()
 
 	f.assertNextManifest("pod-creator", deployment("pod-creator"))
-	f.assertYAMLManifest("not-pod-creator")
+	f.assertNextManifestUnresourced("not-pod-creator")
 }
 
 func TestUnresourcedYamlGroupingV1(t *testing.T) {
@@ -733,7 +733,7 @@ func TestUnresourcedYamlGroupingV1(t *testing.T) {
 	f.assertNextManifest("deployment-a", deployment("deployment-a"))
 	f.assertNextManifest("deployment-b", deployment("deployment-b"), service("service-b"))
 	f.assertNextManifest("deployment-c", deployment("deployment-c"), service("service-c1"), service("service-c2"))
-	f.assertYAMLManifest("someSecret")
+	f.assertNextManifestUnresourced("someSecret")
 }
 
 func TestUnresourcedYamlGroupingV2(t *testing.T) {
@@ -763,7 +763,7 @@ k8s_yaml('all.yaml')`)
 	f.assertNextManifest("deployment-a", deployment("deployment-a"))
 	f.assertNextManifest("deployment-b", deployment("deployment-b"), service("service-b"))
 	f.assertNextManifest("deployment-c", deployment("deployment-c"), service("service-c1"), service("service-c2"))
-	f.assertYAMLManifest("someSecret")
+	f.assertNextManifestUnresourced("someSecret")
 }
 
 func TestK8sGroupedWhenAddedToResource(t *testing.T) {
@@ -1218,7 +1218,7 @@ k8s_yaml(yml)
 
 	f.load()
 
-	f.assertYAMLManifest("release-name-helloworld-chart")
+	f.assertNextManifestUnresourced("release-name-helloworld-chart")
 	f.assertConfigFiles(
 		"Tiltfile",
 		".tiltignore",
@@ -1241,7 +1241,7 @@ k8s_yaml(yml)
 
 	f.load()
 
-	f.assertYAMLManifest("release-name-helloworld-chart")
+	f.assertNextManifestUnresourced("release-name-helloworld-chart")
 	f.assertConfigFiles(
 		"Tiltfile",
 		".tiltignore",
@@ -3332,21 +3332,30 @@ func (f *fixture) gitInit(path string) {
 	}
 }
 
-func (f *fixture) assertNoYAMLManifest(name string) {
-	assert.Equal(f.t, model.Manifest{}, f.loadResult.Global)
+func (f *fixture) assertNoMoreManifests() {
+	if len(f.loadResult.Manifests) != 0 {
+		names := make([]string, len(f.loadResult.Manifests))
+		for i, m := range f.loadResult.Manifests {
+			names[i] = m.Name.String()
+		}
+		f.t.Fatalf("expected no more manifests but found %d: %s",
+			len(names), strings.Join(names, ", "))
+	}
 }
 
-func (f *fixture) assertYAMLManifest(resNames ...string) {
-	assert.Equal(f.t, unresourcedName, f.loadResult.Global.ManifestName().String())
+// Helper func for asserting that the next manifest is Unresourced
+// k8s YAML containing the given k8s entities.
+func (f *fixture) assertNextManifestUnresourced(expectedEntities ...string) {
+	next := f.assertNextManifest(model.UnresourcedYAMLManifestName.String())
 
-	entities, err := k8s.ParseYAML(bytes.NewBufferString(f.loadResult.Global.K8sTarget().YAML))
+	entities, err := k8s.ParseYAML(bytes.NewBufferString(next.K8sTarget().YAML))
 	assert.NoError(f.t, err)
 
 	entityNames := make([]string, len(entities))
 	for i, e := range entities {
 		entityNames[i] = e.Name()
 	}
-	assert.Equal(f.t, resNames, entityNames)
+	assert.Equal(f.t, expectedEntities, entityNames)
 }
 
 // assert functions and helpers

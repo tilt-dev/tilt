@@ -92,6 +92,10 @@ func (m Manifest) IsK8s() bool {
 	return ok
 }
 
+func (m Manifest) IsUnresourcedYAMLManifest() bool {
+	return m.Name == UnresourcedYAMLManifestName
+}
+
 func (m Manifest) DeployTarget() TargetSpec {
 	return m.deployTarget
 }

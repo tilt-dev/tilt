@@ -33,8 +33,9 @@ type EngineState struct {
 	CurrentlyBuilding model.ManifestName
 	WatchFiles        bool
 
-	// How many builds were queued on startup (i.e., how many manifests there were)
-	InitialBuildCount int
+	// How many builds were queued on startup (i.e., how many manifests there were
+	// after initial Tiltfile load)
+	InitialBuildsQueued int
 
 	// How many builds have been completed (pass or fail) since starting tilt
 	CompletedBuildCount int
@@ -52,12 +53,6 @@ type EngineState struct {
 
 	// The full log stream for tilt. This might deserve gc or file storage at some point.
 	Log model.Log `testdiff:"ignore"`
-
-	// GlobalYAML is a special manifest that has no images, but has dependencies
-	// and a bunch of YAML that is deployed when those dependencies change.
-	// TODO(dmiller) in the future we may have many of these manifests, but for now it's a special case.
-	GlobalYAML      model.Manifest
-	GlobalYAMLState *YAMLManifestState
 
 	TiltfilePath             string
 	ConfigFiles              []string
@@ -187,7 +182,7 @@ func (e EngineState) RelativeTiltfilePath() (string, error) {
 }
 
 func (e EngineState) IsEmpty() bool {
-	return len(e.ManifestTargets) == 0 && e.GlobalYAML.Name == ""
+	return len(e.ManifestTargets) == 0
 }
 
 func (e EngineState) LastTiltfileError() error {
@@ -419,7 +414,7 @@ func NewYAMLManifestState() *YAMLManifestState {
 func (s *YAMLManifestState) TargetID() model.TargetID {
 	return model.TargetID{
 		Type: model.TargetTypeManifest,
-		Name: model.GlobalYAMLManifestName.TargetName(),
+		Name: model.UnresourcedYAMLManifestName.TargetName(),
 	}
 }
 
@@ -660,26 +655,6 @@ func StateToView(s EngineState) view.View {
 		ret.Resources = append(ret.Resources, r)
 	}
 
-	if s.GlobalYAML.K8sTarget().YAML != "" {
-		absWatches := append([]string{}, s.ConfigFiles...)
-		relWatches := ospath.TryAsCwdChildren(absWatches)
-
-		r := view.Resource{
-			Name:               s.GlobalYAML.ManifestName(),
-			DirectoriesWatched: relWatches,
-			CurrentBuild:       s.GlobalYAMLState.ActiveBuild(),
-			BuildHistory: []model.BuildRecord{
-				s.GlobalYAMLState.LastBuild(),
-			},
-			LastDeployTime: s.GlobalYAMLState.LastSuccessfulApplyTime,
-			ResourceInfo: view.YAMLResourceInfo{
-				K8sResources: s.GlobalYAML.K8sTarget().ResourceNames,
-			},
-		}
-
-		ret.Resources = append(ret.Resources, r)
-	}
-
 	ret.Log = s.Log
 
 	return ret
@@ -713,6 +688,12 @@ func tiltfileResourceView(s EngineState) view.Resource {
 }
 
 func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
+	if mt.Manifest.IsUnresourcedYAMLManifest() {
+		return view.YAMLResourceInfo{
+			K8sResources: mt.Manifest.K8sTarget().ResourceNames,
+		}
+	}
+
 	if dcState, ok := mt.State.ResourceState.(dockercompose.State); ok {
 		return view.NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPath, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
 	} else {

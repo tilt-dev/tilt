@@ -89,7 +89,7 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 		loadCtx := logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), multiWriter))
 
 		tlr, err := cc.tfl.Load(loadCtx, tiltfilePath, matching, !state.FirstTiltfileBuildCompleted)
-		if err == nil && len(tlr.Manifests) == 0 && tlr.Global.Empty() {
+		if err == nil && len(tlr.Manifests) == 0 {
 			err = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
 		}
 		if err != nil {
@@ -97,7 +97,6 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 		}
 		st.Dispatch(ConfigsReloadedAction{
 			Manifests:          tlr.Manifests,
-			GlobalYAML:         tlr.Global,
 			ConfigFiles:        tlr.ConfigFiles,
 			TiltIgnoreContents: tlr.TiltIgnoreContents,
 			StartTime:          startTime,

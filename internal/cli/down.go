@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/windmilleng/tilt/internal/engine"
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 )
@@ -49,11 +48,6 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 	if err != nil {
 		return errors.Wrap(err, "Parsing manifest YAML")
 	}
-	gyamlEntities, err := k8s.ParseYAMLFromString(tlr.Global.K8sTarget().YAML)
-	if err != nil {
-		return errors.Wrap(err, "Parsing global YAML")
-	}
-	entities = append(entities, gyamlEntities...)
 
 	err = downDeps.kClient.Delete(ctx, entities)
 	if err != nil {

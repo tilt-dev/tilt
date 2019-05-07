@@ -204,17 +204,19 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`),
 	v = view.View{
 		Resources: []view.Resource{
 			{
-				Name: "GlobalYAML",
+				Name: model.UnresourcedYAMLManifestName,
 				BuildHistory: []model.BuildRecord{{
 					FinishTime: ts,
 					StartTime:  ts.Add(-1400 * time.Millisecond),
 				}},
 				LastDeployTime: ts,
-				ResourceInfo:   view.YAMLResourceInfo{},
+				ResourceInfo: view.YAMLResourceInfo{
+					K8sResources: []string{"deployA", "serviceB"},
+				},
 			},
 		},
 	}
-	rtf.run("global yaml manifest", 70, 20, v, plainVs)
+	rtf.run("unresourced yaml manifest", 70, 20, v, plainVs)
 
 	alertVs := plainVs
 	alertVs.AlertMessage = "this is only a test"

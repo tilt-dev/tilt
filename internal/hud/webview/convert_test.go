@@ -24,7 +24,7 @@ func TestStateToWebViewMultipleSyncs(t *testing.T) {
 			},
 		}),
 	)
-	state := newState([]model.Manifest{m}, model.Manifest{})
+	state := newState([]model.Manifest{m})
 	ms := state.ManifestTargets[m.Name].State
 	ms.CurrentBuild.Edits = []string{"/a/b/d", "/a/b/c/d/e"}
 	ms.BuildHistory = []model.BuildRecord{
@@ -55,7 +55,7 @@ func TestStateToWebViewPortForwards(t *testing.T) {
 			{LocalPort: 7000, ContainerPort: 5001},
 		},
 	})
-	state := newState([]model.Manifest{m}, model.Manifest{})
+	state := newState([]model.Manifest{m})
 	v := StateToWebView(*state)
 	res, _ := v.Resource(m.Name)
 	assert.Equal(t,
@@ -63,29 +63,22 @@ func TestStateToWebViewPortForwards(t *testing.T) {
 		res.Endpoints)
 }
 
-func TestStateViewYAMLManifestNoYAML(t *testing.T) {
-	m := k8s.NewK8sOnlyManifestForTesting("GlobalYAML", "")
-	state := newState([]model.Manifest{}, m)
-	v := StateToWebView(*state)
-
-	assert.Equal(t, 1, len(v.Resources))
-}
-
-func TestStateViewYAMLManifestWithYAML(t *testing.T) {
-	m := k8s.NewK8sOnlyManifestForTesting("GlobalYAML", "yamlyaml")
-	state := newState([]model.Manifest{}, m)
-	state.ConfigFiles = []string{"global.yaml"}
+func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
+	m := k8s.NewK8sOnlyManifestForTesting("yamlyaml", []string{"deployA", "serviceB"})
+	state := newState([]model.Manifest{m})
 	v := StateToWebView(*state)
 
 	assert.Equal(t, 2, len(v.Resources))
 
 	r, _ := v.Resource(m.Name)
 	assert.Equal(t, nil, r.LastBuild().Error)
-	assert.Equal(t, []string{"global.yaml"}, r.DirectoriesWatched)
+
+	expectedInfo := YAMLResourceInfo{K8sResources: []string{"deployA", "serviceB"}}
+	assert.Equal(t, expectedInfo, r.ResourceInfo)
 }
 
 func TestRelativeTiltfilePath(t *testing.T) {
-	es := newState([]model.Manifest{}, model.Manifest{})
+	es := newState([]model.Manifest{})
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -99,14 +92,12 @@ func TestRelativeTiltfilePath(t *testing.T) {
 	assert.Equal(t, "Tiltfile", actual)
 }
 
-func newState(manifests []model.Manifest, YAMLManifest model.Manifest) *store.EngineState {
+func newState(manifests []model.Manifest) *store.EngineState {
 	ret := store.NewState()
 	for _, m := range manifests {
 		ret.ManifestTargets[m.Name] = store.NewManifestTarget(m)
 		ret.ManifestDefinitionOrder = append(ret.ManifestDefinitionOrder, m.Name)
 	}
-	ret.GlobalYAML = YAMLManifest
-	ret.GlobalYAMLState = store.NewYAMLManifestState()
 
 	return ret
 }
