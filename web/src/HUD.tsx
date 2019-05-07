@@ -294,7 +294,7 @@ class HUD extends Component<HudProps, HudState> {
             />
             <Route render={sidebarRoute.bind(null, ResourceView.Log)} />
           </Switch>
-          <Statusbar items={statusItems} />
+          <Statusbar items={statusItems} errorsUrl={this.path("/errors")} />
           <Switch>
             <Route
               exact

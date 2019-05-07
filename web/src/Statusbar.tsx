@@ -7,6 +7,7 @@ import "./Statusbar.scss"
 import { combinedStatusMessage } from "./combinedStatusMessage"
 import { Build } from "./types"
 import mostRecentBuildToDisplay from "./mostRecentBuild"
+import { Link } from "react-router-dom"
 
 class StatusItem {
   public warningCount: number = 0
@@ -41,6 +42,7 @@ class StatusItem {
 
 type StatusBarProps = {
   items: Array<StatusItem>
+  errorsUrl: string
 }
 
 class Statusbar extends PureComponent<StatusBarProps> {
@@ -57,8 +59,10 @@ class Statusbar extends PureComponent<StatusBarProps> {
             <span className="Statusbar-errWarnPanel-count Statusbar-errWarnPanel-count--error">
               {errorCount}
             </span>{" "}
-            error
-            {errorCount === 1 ? "" : "s"}
+            <Link to={this.props.errorsUrl}>
+              error
+              {errorCount === 1 ? "" : "s"}
+            </Link>
           </p>
         </div>
         <div className="Statusbar-errWarnPanel-child">
