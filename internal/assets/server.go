@@ -21,6 +21,7 @@ import (
 	"syscall"
 
 	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/network"
@@ -289,9 +290,18 @@ func ProvideAssetServer(ctx context.Context, webMode model.WebMode, webVersion m
 		if err != nil {
 			return nil, errors.Wrap(err, "ProvideAssetServer")
 		}
+		handler := httputil.NewSingleHostReverseProxy(loc)
+		handler.ErrorHandler = func(writer http.ResponseWriter, request *http.Request, e error) {
+			extra := ""
+			if strings.Contains(e.Error(), "connection refused") {
+				extra = `"connection refused" expected on startup in self-built Tilt. Refreshing in a few seconds.<meta http-equiv="refresh" content="2">`
+			}
+			response := fmt.Sprintf(`<html>Error talking to asset server:<pre>%s</pre><br>%s</html>`, e.Error(), extra)
+			_, _ = writer.Write([]byte(response))
+		}
 
 		return &devServer{
-			Handler: httputil.NewSingleHostReverseProxy(loc),
+			Handler: handler,
 			port:    devPort,
 		}, nil
 	}
