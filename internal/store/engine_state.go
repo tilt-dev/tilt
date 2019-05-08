@@ -76,6 +76,8 @@ type EngineState struct {
 	SailURL     string
 
 	FirstTiltfileBuildCompleted bool
+
+	LatestTiltReleaseVersion model.ReleaseVersion
 }
 
 func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.ManifestName {

@@ -18,16 +18,17 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/github"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -2151,6 +2152,39 @@ k8s_yaml('snack.yaml')`
 	})
 }
 
+func TestTiltVersionCheck(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	versions := []model.ReleaseVersion{
+		{
+			VersionNumber: "v1000.10.1",
+			PublishedAt:   time.Date(2019, 3, 10, 11, 12, 0, 0, time.UTC),
+		},
+		{
+			VersionNumber: "v1000.10.2",
+			PublishedAt:   time.Date(2019, 3, 12, 11, 12, 0, 0, time.UTC),
+		},
+	}
+
+	f.ghc.LatestReleaseErr = nil
+	f.ghc.LatestReleaseRet = versions[0]
+	f.tiltVersionCheckDelay = time.Millisecond
+
+	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Sync{sync})
+	f.Start([]model.Manifest{manifest}, true)
+
+	f.WaitUntil("latest version is updated the first time", func(state store.EngineState) bool {
+		return state.LatestTiltReleaseVersion == versions[0]
+	})
+
+	f.ghc.LatestReleaseRet = versions[1]
+	f.WaitUntil("latest version is updated the second time", func(state store.EngineState) bool {
+		return state.LatestTiltReleaseVersion == versions[1]
+	})
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
@@ -2208,6 +2242,8 @@ type testFixture struct {
 	cc                    *ConfigsController
 	dcc                   *dockercompose.FakeDCClient
 	tfl                   tiltfile.TiltfileLoader
+	ghc                   *github.FakeClient
+	tiltVersionCheckDelay time.Duration
 
 	onchangeCh chan bool
 }
@@ -2261,34 +2297,44 @@ func newTestFixture(t *testing.T) *testFixture {
 	sCli := synclet.NewFakeSyncletClient()
 	sm := NewSyncletManagerForTests(k8s, sCli)
 	hudsc := server.ProvideHeadsUpServerController(0, server.HeadsUpServer{}, assets.NewFakeServer())
-	subs := []store.Subscriber{
-		fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc,
+	ghc := &github.FakeClient{}
+
+	ret := &testFixture{
+		TempDirFixture:        f,
+		ctx:                   ctx,
+		cancel:                cancel,
+		b:                     b,
+		fsWatcher:             watcher,
+		timerMaker:            &timerMaker,
+		docker:                dockerClient,
+		hud:                   fakeHud,
+		log:                   log,
+		store:                 st,
+		bc:                    bc,
+		onchangeCh:            fSub.ch,
+		fwm:                   fwm,
+		cc:                    cc,
+		dcc:                   fakeDcc,
+		tfl:                   tfl,
+		ghc:                   ghc,
+		tiltVersionCheckDelay: versionCheckInterval,
 	}
-	upper := NewUpper(ctx, st, subs)
+
+	tiltVersionCheckTimerMaker := func(d time.Duration) <-chan time.Time {
+		return time.After(ret.tiltVersionCheckDelay)
+	}
+	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
+
+	subs := []store.Subscriber{
+		fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc, tvc,
+	}
+	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {
-		fakeHud.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
+		fakeHud.Run(ctx, ret.upper.Dispatch, hud.DefaultRefreshInterval)
 	}()
 
-	return &testFixture{
-		TempDirFixture: f,
-		ctx:            ctx,
-		cancel:         cancel,
-		upper:          upper,
-		b:              b,
-		fsWatcher:      watcher,
-		timerMaker:     &timerMaker,
-		docker:         dockerClient,
-		hud:            fakeHud,
-		log:            log,
-		store:          st,
-		bc:             bc,
-		onchangeCh:     fSub.ch,
-		fwm:            fwm,
-		cc:             cc,
-		dcc:            fakeDcc,
-		tfl:            tfl,
-	}
+	return ret
 }
 
 func (f *testFixture) Start(manifests []model.Manifest, watchFiles bool) {

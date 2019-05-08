@@ -177,3 +177,9 @@ type TiltfileLogAction struct {
 }
 
 func (TiltfileLogAction) Action() {}
+
+type LatestVersionAction struct {
+	Version model.ReleaseVersion
+}
+
+func (LatestVersionAction) Action() {}
