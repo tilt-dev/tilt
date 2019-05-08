@@ -98,3 +98,27 @@ it("renders tab nav", () => {
   let tabNavLinks = root.find(".TabNav Link")
   expect(tabNavLinks).toHaveLength(3)
 })
+
+it("renders number of errors in tabnav when no resource is selected", () => {
+  const root = mount(emptyHUD())
+  const hud = root.find(HUD)
+
+  let resourceView = twoResourceView()
+  hud.setState({ View: resourceView })
+  let errorTab = root.find(".tabLink--errors")
+  expect(errorTab.at(0).text()).toEqual("Errors (2)")
+})
+
+it("renders the number of errors a reosurce has in tabnav when a resource is selected", () => {
+  const root = mount(
+    <MemoryRouter initialEntries={["/r/vigoda"]}>
+      <HUD history={fakeHistory} />
+    </MemoryRouter>
+  )
+  const hud = root.find(HUD)
+
+  let resourceView = twoResourceView()
+  hud.setState({ View: resourceView })
+  let errorTab = root.find(".tabLink--errors")
+  expect(errorTab.at(0).text()).toEqual("Errors (1)")
+})
