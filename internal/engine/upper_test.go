@@ -251,6 +251,34 @@ func TestUpper_Up(t *testing.T) {
 	assertLineMatches(t, lines, regexp.MustCompile("fake building .*foobar"))
 }
 
+func TestUpper_WatchFalseNoManifestsExplicitlyNamed(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", simpleTiltfile)
+	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
+	f.WriteFile("snack.yaml", simpleYAML)
+
+	err := f.upper.Init(f.ctx, InitAction{
+		ExecuteTiltfile: false,
+		TiltfilePath:    f.JoinPath("Tiltfile"),
+		InitManifests:   nil, // equivalent to `tilt up --watch=false` (i.e. not specifying any manifest names)
+	})
+	close(f.b.calls)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var built []model.TargetID
+	for call := range f.b.calls {
+		built = append(built, call.k8s().ID())
+	}
+	if assert.Equal(t, 1, len(built)) {
+		assert.Equal(t, "snack", built[0].Name.String())
+	}
+}
+
 func TestUpper_UpWatchError(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
