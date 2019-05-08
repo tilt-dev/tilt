@@ -552,6 +552,22 @@
   version = "v0.2.0"
 
 [[projects]]
+  digest = "1:a9d2a46fc25a136a81f7bb71f77a85419afd63974e4dcb5b9abc637e0e7be9aa"
+  name = "github.com/google/go-github"
+  packages = ["github"]
+  pruneopts = "UT"
+  revision = "1fef44b9b427e6c43f92b2f20918e496c275393f"
+  version = "v25.0.2"
+
+[[projects]]
+  digest = "1:a63cff6b5d8b95638bfe300385d93b2a6d9d687734b863da8e09dc834510a690"
+  name = "github.com/google/go-querystring"
+  packages = ["query"]
+  pruneopts = "UT"
+  revision = "44c6ddd0a2342c386950e880b658017258da92fc"
+  version = "v1.0.0"
+
+[[projects]]
   branch = "master"
   digest = "1:3ee90c0d94da31b442dde97c99635aaafec68d0b8a3c12ee2075c6bdabeec6bb"
   name = "github.com/google/gofuzz"
@@ -1746,6 +1762,7 @@
     "github.com/golang/protobuf/proto",
     "github.com/google/go-cmp/cmp",
     "github.com/google/go-cmp/cmp/cmpopts",
+    "github.com/google/go-github/github",
     "github.com/google/uuid",
     "github.com/google/wire",
     "github.com/gorilla/mux",

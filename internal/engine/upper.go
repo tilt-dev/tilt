@@ -12,7 +12,6 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
-	"github.com/windmilleng/tilt/internal/sail/client"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
@@ -23,6 +22,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
@@ -173,6 +173,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleTiltfileLogAction(ctx, state, action)
 	case hud.DumpEngineStateAction:
 		handleDumpEngineStateAction(ctx, state)
+	case LatestVersionAction:
+		handleLatestVersionAction(state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -816,6 +818,10 @@ func handleDumpEngineStateAction(ctx context.Context, engineState *store.EngineS
 		logger.Get(ctx).Infof("error closing engine state temp file: %v", err)
 		return
 	}
+}
+
+func handleLatestVersionAction(state *store.EngineState, action LatestVersionAction) {
+	state.LatestTiltReleaseVersion = action.Version
 }
 
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {

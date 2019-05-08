@@ -9,11 +9,10 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/google/wire"
-	"github.com/windmilleng/tilt/internal/assets"
-	"github.com/windmilleng/tilt/internal/model"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/tools/clientcmd/api"
 
+	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/demo"
@@ -23,6 +22,7 @@ import (
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
@@ -68,6 +68,8 @@ var BaseWireSet = wire.NewSet(
 	engine.NewDockerComposeEventWatcher,
 	engine.NewDockerComposeLogManager,
 	engine.NewProfilerManager,
+	engine.NewGithubClientFactory,
+	engine.NewTiltVersionChecker,
 
 	provideClock,
 	hud.NewRenderer,
