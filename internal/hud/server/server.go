@@ -14,6 +14,7 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
@@ -42,6 +43,7 @@ func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analyti
 	r.HandleFunc("/api/view", s.ViewJSON)
 	r.HandleFunc("/api/analytics", s.HandleAnalytics)
 	r.HandleFunc("/api/sail", s.HandleSail)
+	r.HandleFunc("/api/control/reset_restarts", s.HandleResetRestarts)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
 	r.PathPrefix("/").Handler(assetServer)
 
@@ -113,4 +115,9 @@ func (s HeadsUpServer) HandleSail(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+}
+
+func (s HeadsUpServer) HandleResetRestarts(w http.ResponseWriter, req *http.Request) {
+	s.store.Dispatch(engine.NewResetRestartsAction("snack"))
+	
 }

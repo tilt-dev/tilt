@@ -91,6 +91,18 @@ func NewBuildCompleteAction(result store.BuildResultSet, err error) BuildComplet
 	}
 }
 
+type ResetRestartsAction struct {
+	ManifestName model.ManifestName
+}
+
+func (ResetRestartsAction) Action() {}
+
+func NewResetRestartsAction(name model.ManifestName) ResetRestartsAction {
+	return ResetRestartsAction{
+		ManifestName: name,
+	}
+}
+
 type InitAction struct {
 	WatchFiles    bool
 	Manifests     []model.Manifest
