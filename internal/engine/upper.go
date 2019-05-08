@@ -85,7 +85,7 @@ func (u Upper) Dispatch(action store.Action) {
 	u.store.Dispatch(action)
 }
 
-func (u Upper) Start(ctx context.Context, args []string, b model.TiltBuild, watch bool, triggerMode model.TriggerMode, fileName string, useActionWriter bool, enableSail bool) error {
+func (u Upper) Start(ctx context.Context, args []string, b model.TiltBuild, watch bool, triggerMode model.TriggerMode, fileName string, useActionWriter bool, sailMode model.SailMode) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Start")
 	defer span.Finish()
 
@@ -115,7 +115,7 @@ func (u Upper) Start(ctx context.Context, args []string, b model.TiltBuild, watc
 		StartTime:       startTime,
 		FinishTime:      time.Now(),
 		ExecuteTiltfile: false,
-		EnableSail:      enableSail,
+		EnableSail:      sailMode.IsEnabled(),
 	})
 }
 

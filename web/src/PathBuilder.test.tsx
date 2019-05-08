@@ -18,4 +18,10 @@ describe("PathBuilder", () => {
     expect(pb.getWebsocketUrl()).toEqual("ws://localhost/join/deadbeef")
     expect(pb.path("/")).toEqual("/view/deadbeef/")
   })
+
+  it("handles https", () => {
+    let pb = new PathBuilder("sail.tilt.dev", "/r/fe/preview")
+    expect(pb.getWebsocketUrl()).toEqual("wss://sail.tilt.dev/ws/view")
+    expect(pb.path("/")).toEqual("/")
+  })
 })
