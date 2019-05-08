@@ -32,9 +32,9 @@ exports[`shows sail share button 1`] = `
           href="/r/foo/errors"
           onClick={[Function]}
         >
-          Errors (
-          0
-          )
+          Errors
+           
+          
         </a>
       </li>
     </ul>
@@ -89,9 +89,9 @@ exports[`shows sail url 1`] = `
           href="/r/foo/errors"
           onClick={[Function]}
         >
-          Errors (
-          1
-          )
+          Errors
+           
+          (1)
         </a>
       </li>
     </ul>

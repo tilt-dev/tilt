@@ -17,6 +17,7 @@ class TabNav extends PureComponent<NavProps> {
     let previewIsSelected = this.props.resourceView === ResourceView.Preview
     let errorsIsSelected = this.props.resourceView === ResourceView.Errors
 
+    // The number of errors should be for the selected resource
     return (
       <nav className="TabNav">
         <ul>
@@ -47,7 +48,10 @@ class TabNav extends PureComponent<NavProps> {
               }`}
               to={this.props.errorsUrl}
             >
-              Errors ({this.props.numberOfErrors})
+              Errors{" "}
+              {this.props.numberOfErrors > 0
+                ? `(${this.props.numberOfErrors})`
+                : ""}
             </Link>
           </li>
         </ul>
