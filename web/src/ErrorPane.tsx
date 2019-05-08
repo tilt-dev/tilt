@@ -30,6 +30,25 @@ class ErrorResource {
       }
     }
   }
+
+  public hasError() {
+    return this.podStatusIsError() || this.podRestarted() || this.buildFailed()
+  }
+
+  public podStatusIsError() {
+    return (
+      this.resourceInfo.podStatus === "Error" ||
+      this.resourceInfo.podStatus === "CrashLoopBackOff"
+    )
+  }
+
+  public podRestarted() {
+    return this.resourceInfo.podRestarts > 0
+  }
+
+  public buildFailed() {
+    return this.buildHistory.length > 0 && this.buildHistory[0].Error !== null
+  }
 }
 
 type ResourceInfo = {
@@ -53,10 +72,7 @@ class ErrorPane extends PureComponent<ErrorsProps> {
     )
     let errorElements: Array<JSX.Element> = []
     this.props.resources.forEach(r => {
-      if (
-        r.resourceInfo.podStatus === "Error" ||
-        r.resourceInfo.podStatus === "CrashLoopBackOff"
-      ) {
+      if (r.podStatusIsError()) {
         errorElements.push(
           <li key={"resourceInfoError" + r.name} className="ErrorPane-item">
             <header>
@@ -66,7 +82,7 @@ class ErrorPane extends PureComponent<ErrorsProps> {
             <section>{r.resourceInfo.podLog}</section>
           </li>
         )
-      } else if (r.resourceInfo.podRestarts > 0) {
+      } else if (r.podRestarted()) {
         errorElements.push(
           <li key={"resourceInfoPodCrash" + r.name} className="ErrorPane-item">
             <header>
@@ -80,25 +96,23 @@ class ErrorPane extends PureComponent<ErrorsProps> {
           </li>
         )
       }
-      if (r.buildHistory.length > 0) {
+      if (r.buildFailed()) {
         let lastBuild = r.buildHistory[0]
-        if (lastBuild.Error !== null) {
-          errorElements.push(
-            <li key={"buildError" + r.name} className="ErrorPane-item">
-              <header>
-                <p>{r.name}</p>
-                <p>
-                  <TimeAgo date={lastBuild.FinishTime} />
-                </p>
-              </header>
-              <section>
-                {lastBuild.Log.split("\n").map((l, i) => (
-                  <AnsiLine key={"logLine" + i} line={l} />
-                ))}
-              </section>
-            </li>
-          )
-        }
+        errorElements.push(
+          <li key={"buildError" + r.name} className="ErrorPane-item">
+            <header>
+              <p>{r.name}</p>
+              <p>
+                <TimeAgo date={lastBuild.FinishTime} />
+              </p>
+            </header>
+            <section>
+              {lastBuild.Log.split("\n").map((l, i) => (
+                <AnsiLine key={"logLine" + i} line={l} />
+              ))}
+            </section>
+          </li>
+        )
       }
     })
 

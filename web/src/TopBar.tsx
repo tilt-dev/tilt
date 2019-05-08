@@ -11,6 +11,7 @@ type TopBarProps = {
   resourceView: ResourceView
   sailEnabled: boolean
   sailUrl: string
+  numberOfErrors: number
 }
 
 class TopBar extends PureComponent<TopBarProps> {
@@ -22,6 +23,7 @@ class TopBar extends PureComponent<TopBarProps> {
           logUrl={this.props.logUrl}
           errorsUrl={this.props.errorsUrl}
           resourceView={this.props.resourceView}
+          numberOfErrors={this.props.numberOfErrors}
         />
         <span className="TopBar-spacer">&nbsp;</span>
         <SailInfo

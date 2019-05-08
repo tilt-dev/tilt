@@ -13,6 +13,7 @@ it("shows logs", () => {
           previewUrl="/r/foo/preview"
           errorsUrl="/r/foo/errors"
           resourceView={ResourceView.Log}
+          numberOfErrors={0}
         />
       </MemoryRouter>
     )
@@ -30,6 +31,7 @@ it("previews resources", () => {
           previewUrl="/r/foo/preview"
           errorsUrl="/r/foo/errors"
           resourceView={ResourceView.Preview}
+          numberOfErrors={0}
         />
       </MemoryRouter>
     )
@@ -47,6 +49,25 @@ it("shows error pane", () => {
           previewUrl="/r/foo/preview"
           errorsUrl="/r/foo/errors"
           resourceView={ResourceView.Errors}
+          numberOfErrors={0}
+        />
+      </MemoryRouter>
+    )
+    .toJSON()
+
+  expect(tree).toMatchSnapshot()
+})
+
+it("shows the number of errors in the error tab", () => {
+  const tree = renderer
+    .create(
+      <MemoryRouter>
+        <TabNav
+          logUrl="/r/foo"
+          previewUrl="/r/foo/preview"
+          errorsUrl="/r/foo/errors"
+          resourceView={ResourceView.Errors}
+          numberOfErrors={27}
         />
       </MemoryRouter>
     )

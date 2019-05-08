@@ -180,6 +180,7 @@ class HUD extends Component<HudProps, HudState> {
           resourceView={t}
           sailEnabled={sailEnabled}
           sailUrl={sailUrl}
+          numberOfErrors={resourcesWithErrors.length}
         />
       )
     }
@@ -244,6 +245,8 @@ class HUD extends Component<HudProps, HudState> {
       }
       return <ErrorPane resources={[]} />
     }
+    let errorResources = resources.map(r => new ErrorResource(r))
+    let resourcesWithErrors = errorResources.filter(r => r.hasError())
 
     return (
       <Router history={this.history}>
@@ -311,11 +314,7 @@ class HUD extends Component<HudProps, HudState> {
             <Route
               exact
               path={this.path("/errors")}
-              render={() => (
-                <ErrorPane
-                  resources={resources.map(r => new ErrorResource(r))}
-                />
-              )}
+              render={() => <ErrorPane resources={errorResources} />}
             />
             <Route exact path={this.path("/preview")} render={previewRoute} />
             <Route exact path={this.path("/r/:name")} render={logsRoute} />

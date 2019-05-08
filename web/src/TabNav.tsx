@@ -8,6 +8,7 @@ type NavProps = {
   logUrl: string
   errorsUrl: string
   resourceView: ResourceView
+  numberOfErrors: number
 }
 
 class TabNav extends PureComponent<NavProps> {
@@ -46,7 +47,7 @@ class TabNav extends PureComponent<NavProps> {
               }`}
               to={this.props.errorsUrl}
             >
-              Errors
+              Errors ({this.props.numberOfErrors})
             </Link>
           </li>
         </ul>
