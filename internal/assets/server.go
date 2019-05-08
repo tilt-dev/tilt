@@ -294,7 +294,7 @@ func ProvideAssetServer(ctx context.Context, webMode model.WebMode, webVersion m
 		handler.ErrorHandler = func(writer http.ResponseWriter, request *http.Request, e error) {
 			extra := ""
 			if strings.Contains(e.Error(), "connection refused") {
-				extra = `"connection refused" expected on startup in self-built Tilt. Refreshing in a few seconds.<meta http-equiv="refresh" content="2">`
+				extra = `"connection refused" expected on startup with --web-mode=local. Refreshing in a few seconds.<meta http-equiv="refresh" content="2">`
 			}
 			response := fmt.Sprintf(`<html>Error talking to asset server:<pre>%s</pre><br>%s</html>`, e.Error(), extra)
 			_, _ = writer.Write([]byte(response))
