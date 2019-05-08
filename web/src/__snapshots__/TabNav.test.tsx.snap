@@ -25,7 +25,7 @@ exports[`previews resources 1`] = `
     </li>
     <li>
       <a
-        className="tabLink "
+        className="tabLink tabLink--errors "
         href="/r/foo/errors"
         onClick={[Function]}
       >
@@ -63,7 +63,7 @@ exports[`shows error pane 1`] = `
     </li>
     <li>
       <a
-        className="tabLink tabLink--is-selected"
+        className="tabLink tabLink--errors tabLink--is-selected"
         href="/r/foo/errors"
         onClick={[Function]}
       >
@@ -101,7 +101,7 @@ exports[`shows logs 1`] = `
     </li>
     <li>
       <a
-        className="tabLink "
+        className="tabLink tabLink--errors "
         href="/r/foo/errors"
         onClick={[Function]}
       >
@@ -139,7 +139,7 @@ exports[`shows the number of errors in the error tab 1`] = `
     </li>
     <li>
       <a
-        className="tabLink tabLink--is-selected"
+        className="tabLink tabLink--errors tabLink--is-selected"
         href="/r/foo/errors"
         onClick={[Function]}
       >

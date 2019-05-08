@@ -9,7 +9,7 @@ import K8sViewPane from "./K8sViewPane"
 import PreviewPane from "./PreviewPane"
 import PathBuilder from "./PathBuilder"
 import { Map } from "immutable"
-import { Router, Route, Switch, RouteComponentProps } from "react-router-dom"
+import { Route, Switch, RouteComponentProps } from "react-router-dom"
 import { createBrowserHistory, History, UnregisterCallback } from "history"
 import { incr, pathToTag } from "./analytics"
 import TopBar from "./TopBar"
@@ -18,7 +18,9 @@ import { ResourceView } from "./types"
 import ErrorPane, { ErrorResource } from "./ErrorPane"
 import PreviewList from "./PreviewList"
 
-type HudProps = {}
+type HudProps = {
+  history: History
+}
 
 type Resource = {
   Name: string
@@ -78,7 +80,7 @@ class HUD extends Component<HudProps, HudState> {
       this.pathBuilder.getWebsocketUrl(),
       this
     )
-    this.history = createBrowserHistory()
+    this.history = props.history
     this.unlisten = () => {}
 
     this.state = {
@@ -170,6 +172,16 @@ class HUD extends Component<HudProps, HudState> {
         props.match.params && props.match.params.name
           ? props.match.params.name
           : ""
+      let numErrors = 0
+      if (name !== "") {
+        let selectedResource = resources.find(r => r.Name === name)
+        let er = new ErrorResource(selectedResource)
+        if (er.hasError()) {
+          numErrors = 1
+        }
+      } else {
+        numErrors = resourcesWithErrors.length
+      }
       return (
         <TopBar
           logUrl={name === "" ? this.path("/") : this.path(`/r/${name}`)}
@@ -180,7 +192,7 @@ class HUD extends Component<HudProps, HudState> {
           resourceView={t}
           sailEnabled={sailEnabled}
           sailUrl={sailUrl}
-          numberOfErrors={resourcesWithErrors.length}
+          numberOfErrors={numErrors}
         />
       )
     }
@@ -249,94 +261,92 @@ class HUD extends Component<HudProps, HudState> {
     let resourcesWithErrors = errorResources.filter(r => r.hasError())
 
     return (
-      <Router history={this.history}>
-        <div className="HUD">
-          <Switch>
-            <Route
-              path={this.path("/r/:name/errors")}
-              render={topBarRoute.bind(null, ResourceView.Errors)}
-            />
-            <Route
-              path={this.path("/r/:name/preview")}
-              render={topBarRoute.bind(null, ResourceView.Preview)}
-            />
-            <Route
-              path={this.path("/preview")}
-              render={topBarRoute.bind(null, ResourceView.Preview)}
-            />
-            <Route
-              path={this.path("/r/:name")}
-              render={topBarRoute.bind(null, ResourceView.Log)}
-            />
-            <Route
-              path={this.path("/errors")}
-              render={topBarRoute.bind(null, ResourceView.Errors)}
-            />
-            <Route render={topBarRoute.bind(null, ResourceView.Log)} />
-          </Switch>
-          <Switch>
-            <Route
-              path={this.path("/r/:name/errors")}
-              render={sidebarRoute.bind(null, ResourceView.Errors)}
-            />
-            <Route
-              path={this.path("/errors")}
-              render={sidebarRoute.bind(null, ResourceView.Errors)}
-            />
-            <Route
-              path={this.path("/r/:name/preview")}
-              render={sidebarRoute.bind(null, ResourceView.Preview)}
-            />
-            <Route
-              path={this.path("/preview")}
-              render={sidebarRoute.bind(null, ResourceView.Preview)}
-            />
-            <Route
-              path={this.path("/r/:name")}
-              render={sidebarRoute.bind(null, ResourceView.Log)}
-            />
-            <Route render={sidebarRoute.bind(null, ResourceView.Log)} />
-          </Switch>
-          <Statusbar items={statusItems} errorsUrl={this.path("/errors")} />
-          <Switch>
-            <Route
-              exact
-              path={this.path("/")}
-              render={() => (
-                <LogPane
-                  log={combinedLog}
-                  isExpanded={isSidebarClosed}
-                  podID={""}
-                  endpoints={[]}
-                />
-              )}
-            />
-            <Route
-              exact
-              path={this.path("/errors")}
-              render={() => <ErrorPane resources={errorResources} />}
-            />
-            <Route exact path={this.path("/preview")} render={previewRoute} />
-            <Route exact path={this.path("/r/:name")} render={logsRoute} />
-            <Route
-              exact
-              path={this.path("/r/:name/k8s")}
-              render={() => <K8sViewPane />}
-            />
-            <Route
-              exact
-              path={this.path("/r/:name/errors")}
-              render={errorRoute}
-            />
-            <Route
-              exact
-              path={this.path("/r/:name/preview")}
-              render={previewRoute}
-            />
-            <Route component={NoMatch} />
-          </Switch>
-        </div>
-      </Router>
+      <div className="HUD">
+        <Switch>
+          <Route
+            path={this.path("/r/:name/errors")}
+            render={topBarRoute.bind(null, ResourceView.Errors)}
+          />
+          <Route
+            path={this.path("/r/:name/preview")}
+            render={topBarRoute.bind(null, ResourceView.Preview)}
+          />
+          <Route
+            path={this.path("/preview")}
+            render={topBarRoute.bind(null, ResourceView.Preview)}
+          />
+          <Route
+            path={this.path("/r/:name")}
+            render={topBarRoute.bind(null, ResourceView.Log)}
+          />
+          <Route
+            path={this.path("/errors")}
+            render={topBarRoute.bind(null, ResourceView.Errors)}
+          />
+          <Route render={topBarRoute.bind(null, ResourceView.Log)} />
+        </Switch>
+        <Switch>
+          <Route
+            path={this.path("/r/:name/errors")}
+            render={sidebarRoute.bind(null, ResourceView.Errors)}
+          />
+          <Route
+            path={this.path("/errors")}
+            render={sidebarRoute.bind(null, ResourceView.Errors)}
+          />
+          <Route
+            path={this.path("/r/:name/preview")}
+            render={sidebarRoute.bind(null, ResourceView.Preview)}
+          />
+          <Route
+            path={this.path("/preview")}
+            render={sidebarRoute.bind(null, ResourceView.Preview)}
+          />
+          <Route
+            path={this.path("/r/:name")}
+            render={sidebarRoute.bind(null, ResourceView.Log)}
+          />
+          <Route render={sidebarRoute.bind(null, ResourceView.Log)} />
+        </Switch>
+        <Statusbar items={statusItems} errorsUrl={this.path("/errors")} />
+        <Switch>
+          <Route
+            exact
+            path={this.path("/")}
+            render={() => (
+              <LogPane
+                log={combinedLog}
+                isExpanded={isSidebarClosed}
+                podID={""}
+                endpoints={[]}
+              />
+            )}
+          />
+          <Route
+            exact
+            path={this.path("/errors")}
+            render={() => <ErrorPane resources={errorResources} />}
+          />
+          <Route exact path={this.path("/preview")} render={previewRoute} />
+          <Route exact path={this.path("/r/:name")} render={logsRoute} />
+          <Route
+            exact
+            path={this.path("/r/:name/k8s")}
+            render={() => <K8sViewPane />}
+          />
+          <Route
+            exact
+            path={this.path("/r/:name/errors")}
+            render={errorRoute}
+          />
+          <Route
+            exact
+            path={this.path("/r/:name/preview")}
+            render={previewRoute}
+          />
+          <Route component={NoMatch} />
+        </Switch>
+      </div>
     )
   }
 }

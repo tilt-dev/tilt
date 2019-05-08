@@ -28,7 +28,7 @@ exports[`shows sail share button 1`] = `
       </li>
       <li>
         <a
-          className="tabLink tabLink--is-selected"
+          className="tabLink tabLink--errors tabLink--is-selected"
           href="/r/foo/errors"
           onClick={[Function]}
         >
@@ -85,7 +85,7 @@ exports[`shows sail url 1`] = `
       </li>
       <li>
         <a
-          className="tabLink tabLink--is-selected"
+          className="tabLink tabLink--errors tabLink--is-selected"
           href="/r/foo/errors"
           onClick={[Function]}
         >

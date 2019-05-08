@@ -43,7 +43,7 @@ class TabNav extends PureComponent<NavProps> {
           </li>
           <li>
             <Link
-              className={`tabLink ${
+              className={`tabLink tabLink--errors ${
                 errorsIsSelected ? "tabLink--is-selected" : ""
               }`}
               to={this.props.errorsUrl}

@@ -1,12 +1,18 @@
 import React from "react"
 import ReactDOM from "react-dom"
+import { MemoryRouter } from "react-router"
 import HUD from "./HUD"
 import { mount } from "enzyme"
-import { RouteComponentProps } from "react-router-dom"
 import { oneResourceView, twoResourceView } from "./testdata.test"
+import { createMemoryHistory } from "history"
 
+const fakeHistory = createMemoryHistory()
 const emptyHUD = () => {
-  return <HUD />
+  return (
+    <MemoryRouter initialEntries={["/"]}>
+      <HUD history={fakeHistory} />
+    </MemoryRouter>
+  )
 }
 
 beforeEach(() => {
@@ -20,69 +26,75 @@ it("renders without crashing", () => {
 })
 
 it("renders loading screen", async () => {
-  const hud = mount(emptyHUD())
-  expect(hud.html()).toEqual(expect.stringContaining("Loading"))
+  const root = mount(emptyHUD())
+  const hud = root.find(HUD)
+  expect(hud.text()).toEqual(expect.stringContaining("Loading"))
 
   hud.setState({ Message: "Disconnected" })
-  expect(hud.html()).toEqual(expect.stringContaining("Disconnected"))
+  expect(hud.text()).toEqual(expect.stringContaining("Disconnected"))
 })
 
 it("renders resource", async () => {
-  const hud = mount(emptyHUD())
+  const root = mount(emptyHUD())
+  const hud = root.find(HUD)
   hud.setState({ View: oneResourceView() })
-  expect(hud.html())
-  expect(hud.find(".Statusbar")).toHaveLength(1)
-  expect(hud.find(".Sidebar")).toHaveLength(1)
+  expect(root.find(".Statusbar")).toHaveLength(1)
+  expect(root.find(".Sidebar")).toHaveLength(1)
 })
 
 it("opens sidebar on click", async () => {
-  const hud = mount(emptyHUD())
+  const root = mount(emptyHUD())
+  const hud = root.find(HUD)
   hud.setState({ View: oneResourceView() })
 
-  let sidebar = hud.find(".Sidebar")
+  let sidebar = root.find(".Sidebar")
   expect(sidebar).toHaveLength(1)
   expect(sidebar.hasClass("is-closed")).toBe(false)
 
-  let button = hud.find("button.Sidebar-toggle")
+  let button = root.find("button.Sidebar-toggle")
   expect(button).toHaveLength(1)
   button.simulate("click")
 
-  sidebar = hud.find(".Sidebar")
+  sidebar = root.find(".Sidebar")
   expect(sidebar).toHaveLength(1)
   expect(sidebar.hasClass("is-closed")).toBe(true)
 })
 
 it("doesn't re-render the sidebar when the logs change", async () => {
-  const hud = mount(emptyHUD())
+  const root = mount(emptyHUD())
+  const hud = root.find(HUD)
+
   let resourceView = oneResourceView()
   hud.setState({ View: resourceView })
-  let oldDOMNode = hud.find(".Sidebar").getDOMNode()
+  let oldDOMNode = root.find(".Sidebar").getDOMNode()
   resourceView.Resources[0].PodLog += "hello world\n"
   hud.setState({ View: resourceView })
-  let newDOMNode = hud.find(".Sidebar").getDOMNode()
+  let newDOMNode = root.find(".Sidebar").getDOMNode()
 
   expect(oldDOMNode).toBe(newDOMNode)
 })
 
 it("does re-render the sidebar when the resource list changes", async () => {
-  const hud = mount(emptyHUD())
+  const root = mount(emptyHUD())
+  const hud = root.find(HUD)
 
   let resourceView = oneResourceView()
   hud.setState({ View: resourceView })
-  let sidebarLinks = hud.find(".Sidebar-resources Link")
+  let sidebarLinks = root.find(".Sidebar-resources Link")
   expect(sidebarLinks).toHaveLength(2)
 
   let newResourceView = twoResourceView()
   hud.setState({ View: newResourceView })
-  sidebarLinks = hud.find(".Sidebar-resources Link")
+  sidebarLinks = root.find(".Sidebar-resources Link")
   expect(sidebarLinks).toHaveLength(3)
 })
 
 it("renders tab nav", () => {
-  const hud = mount(emptyHUD())
+  const root = mount(emptyHUD())
+  const hud = root.find(HUD)
 
   let resourceView = oneResourceView()
   hud.setState({ View: resourceView })
-  let tabNavLinks = hud.find(".TabNav Link")
+  let tabNavLinks = root.find(".TabNav Link")
   expect(tabNavLinks).toHaveLength(3)
 })
