@@ -8,6 +8,7 @@ type NavProps = {
   logUrl: string
   errorsUrl: string
   resourceView: ResourceView
+  numberOfErrors: number
 }
 
 class TabNav extends PureComponent<NavProps> {
@@ -16,6 +17,7 @@ class TabNav extends PureComponent<NavProps> {
     let previewIsSelected = this.props.resourceView === ResourceView.Preview
     let errorsIsSelected = this.props.resourceView === ResourceView.Errors
 
+    // The number of errors should be for the selected resource
     return (
       <nav className="TabNav">
         <ul>
@@ -41,12 +43,15 @@ class TabNav extends PureComponent<NavProps> {
           </li>
           <li>
             <Link
-              className={`tabLink ${
+              className={`tabLink tabLink--errors ${
                 errorsIsSelected ? "tabLink--is-selected" : ""
               }`}
               to={this.props.errorsUrl}
             >
-              Errors
+              Errors{" "}
+              {this.props.numberOfErrors > 0
+                ? `(${this.props.numberOfErrors})`
+                : ""}
             </Link>
           </li>
         </ul>

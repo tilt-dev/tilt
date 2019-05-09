@@ -15,6 +15,7 @@ it("shows sail share button", () => {
           resourceView={ResourceView.Errors}
           sailEnabled={true}
           sailUrl=""
+          numberOfErrors={0}
         />
       </MemoryRouter>
     )
@@ -34,6 +35,7 @@ it("shows sail url", () => {
           resourceView={ResourceView.Errors}
           sailEnabled={true}
           sailUrl="www.sail.dev/xyz"
+          numberOfErrors={1}
         />
       </MemoryRouter>
     )
