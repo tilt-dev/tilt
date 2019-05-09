@@ -117,18 +117,6 @@ func (s HeadsUpServer) HandleSail(w http.ResponseWriter, req *http.Request) {
 
 }
 
-type ResetRestartsAction struct {
-	ManifestName model.ManifestName
-}
-
-func (ResetRestartsAction) Action() {}
-
-func NewResetRestartsAction(name model.ManifestName) ResetRestartsAction {
-	return ResetRestartsAction{
-		ManifestName: name,
-	}
-}
-
 func (s HeadsUpServer) HandleResetRestarts(w http.ResponseWriter, req *http.Request) {
 	names, ok := req.URL.Query()["name"]
 	if !ok || len(names[0]) < 1 {
@@ -140,6 +128,6 @@ func (s HeadsUpServer) HandleResetRestarts(w http.ResponseWriter, req *http.Requ
 	// we only want the single item.
 	name := names[0]
 
-	s.store.Dispatch(NewResetRestartsAction(model.ManifestName(name)))
+	s.store.Dispatch(store.NewResetRestartsAction(model.ManifestName(name)))
 	w.WriteHeader(http.StatusOK)
 }

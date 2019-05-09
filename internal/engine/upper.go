@@ -18,7 +18,6 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud"
-	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -146,7 +145,7 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleBuildLogAction(state, action)
 	case BuildCompleteAction:
 		err = handleBuildCompleted(ctx, state, action)
-	case server.ResetRestartsAction:
+	case store.ResetRestartsAction:
 		handleResetRestarts(ctx, state, action)
 	case BuildStartedAction:
 		handleBuildStarted(ctx, state, action)
@@ -225,7 +224,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	removeFromTriggerQueue(state, mn)
 }
 
-func handleResetRestarts(ctx context.Context, engineState *store.EngineState, a server.ResetRestartsAction) {
+func handleResetRestarts(ctx context.Context, engineState *store.EngineState, a store.ResetRestartsAction) {
 	mt, ok := engineState.ManifestTargets[a.ManifestName]
 	if !ok {
 		return

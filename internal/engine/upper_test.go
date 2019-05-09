@@ -2229,7 +2229,7 @@ func TestResetRestarts(t *testing.T) {
 		return st.State.MostRecentPod().ContainerRestarts == 1
 	})
 
-	f.store.Dispatch(server.NewResetRestartsAction(name))
+	f.store.Dispatch(store.NewResetRestartsAction(name))
 	f.WaitUntilManifest("records restart count", name, func(st store.ManifestTarget) bool {
 		return st.State.MostRecentPod().OldRestarts == 1 && st.State.MostRecentPod().ContainerRestarts == 1
 	})
