@@ -16,10 +16,14 @@ class PathBuilder {
   }
 
   getWebsocketUrl() {
-    if (this.roomId) {
-      return `ws://${this.host}/join/${this.roomId}`
+    let scheme = "wss"
+    if (this.host == "localhost") {
+      scheme = "ws"
     }
-    return `ws://${this.host}/ws/view`
+    if (this.roomId) {
+      return `${scheme}://${this.host}/join/${this.roomId}`
+    }
+    return `${scheme}://${this.host}/ws/view`
   }
 
   rootPath() {

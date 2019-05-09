@@ -136,7 +136,11 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	if err != nil {
 		return demo.Script{}, err
 	}
-	sailURL, err := provideSailURL()
+	sailMode, err := provideSailMode()
+	if err != nil {
+		return demo.Script{}, err
+	}
+	sailURL, err := provideSailURL(sailMode)
 	if err != nil {
 		return demo.Script{}, err
 	}
@@ -262,7 +266,11 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	if err != nil {
 		return Threads{}, err
 	}
-	sailURL, err := provideSailURL()
+	sailMode, err := provideSailMode()
+	if err != nil {
+		return Threads{}, err
+	}
+	sailURL, err := provideSailURL(sailMode)
 	if err != nil {
 		return Threads{}, err
 	}
@@ -275,7 +283,7 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	tiltVersionChecker := engine.NewTiltVersionChecker(githubClientFactory, timerMaker)
 	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, imageController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, sailClient, tiltVersionChecker)
 	upper := engine.NewUpper(ctx, storeStore, v2)
-	threads := provideThreads(headsUpDisplay, upper, tiltBuild)
+	threads := provideThreads(headsUpDisplay, upper, tiltBuild, sailMode)
 	return threads, nil
 }
 
@@ -472,17 +480,19 @@ var BaseWireSet = wire.NewSet(
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
-	provideWebDevPort, server.ProvideHeadsUpServer, assets.ProvideAssetServer, server.ProvideHeadsUpServerController, provideSailURL, client.SailWireSet, provideThreads, engine.NewKINDPusher,
+	provideWebDevPort, server.ProvideHeadsUpServer, assets.ProvideAssetServer, server.ProvideHeadsUpServerController, provideSailMode,
+	provideSailURL, client.SailWireSet, provideThreads, engine.NewKINDPusher,
 )
 
 type Threads struct {
 	hud       hud.HeadsUpDisplay
 	upper     engine.Upper
 	tiltBuild model.TiltBuild
+	sailMode  model.SailMode
 }
 
-func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, b model.TiltBuild) Threads {
-	return Threads{h, upper, b}
+func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, b model.TiltBuild, sailMode model.SailMode) Threads {
+	return Threads{h, upper, b, sailMode}
 }
 
 type DownDeps struct {

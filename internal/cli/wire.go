@@ -98,6 +98,7 @@ var BaseWireSet = wire.NewSet(
 	assets.ProvideAssetServer,
 	server.ProvideHeadsUpServerController,
 
+	provideSailMode,
 	provideSailURL,
 	client.SailWireSet,
 
@@ -119,10 +120,11 @@ type Threads struct {
 	hud       hud.HeadsUpDisplay
 	upper     engine.Upper
 	tiltBuild model.TiltBuild
+	sailMode  model.SailMode
 }
 
-func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, b model.TiltBuild) Threads {
-	return Threads{h, upper, b}
+func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, b model.TiltBuild, sailMode model.SailMode) Threads {
+	return Threads{h, upper, b, sailMode}
 }
 
 func wireK8sClient(ctx context.Context) (k8s.Client, error) {

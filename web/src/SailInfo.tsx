@@ -8,7 +8,7 @@ type SailProps = {
 
 class SailInfo extends PureComponent<SailProps> {
   static newSailRoom() {
-    let url = `http://${window.location.host}/api/sail`
+    let url = `//${window.location.host}/api/sail`
 
     fetch(url, {
       method: "post",
