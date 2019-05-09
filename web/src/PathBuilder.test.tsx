@@ -7,6 +7,11 @@ describe("PathBuilder", () => {
     expect(pb.path("/")).toEqual("/")
   })
 
+  it("handles ports", () => {
+    let pb = new PathBuilder("localhost:10350", "/r/fe/preview")
+    expect(pb.getWebsocketUrl()).toEqual("ws://localhost:10350/ws/view")
+  })
+
   it("handles room root links", () => {
     let pb = new PathBuilder("localhost", "/view/dead-beef")
     expect(pb.getWebsocketUrl()).toEqual("ws://localhost/join/dead-beef")
