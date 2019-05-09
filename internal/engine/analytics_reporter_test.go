@@ -13,18 +13,32 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 )
 
+var (
+	fb = model.FastBuild{HotReload: true}                                            // non-empty FastBuild
+	lu = model.LiveUpdate{Steps: []model.LiveUpdateStep{model.LiveUpdateSyncStep{}}} // non-empty LiveUpdate
+
+	imgTargDB       = model.ImageTarget{BuildDetails: model.DockerBuild{}}
+	imgTargFB       = model.ImageTarget{BuildDetails: fb}
+	imgTargDBWithFB = model.ImageTarget{BuildDetails: model.DockerBuild{FastBuild: fb}}
+	imgTargDBWithLU = model.ImageTarget{BuildDetails: model.DockerBuild{LiveUpdate: lu}}
+
+	kTarg = model.K8sTarget{}
+	dTarg = model.DockerComposeTarget{}
+)
+
 func TestAnalyticsReporter_Everything(t *testing.T) {
 	tf := newAnalyticsReporterTestFixture()
 
-	tf.addManifest(tf.nextManifest().WithImageTarget(model.ImageTarget{BuildDetails: model.FastBuild{}}))   // k8s, fastbuild
-	tf.addManifest(tf.nextManifest().WithImageTarget(model.ImageTarget{BuildDetails: model.DockerBuild{}})) // k8s
-	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))                                   // k8s, unbuilt
-	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))                                   // k8s, unbuilt
-	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))                                   // k8s, unbuilt
-	tf.addManifest(tf.nextManifest().WithDeployTarget(model.DockerComposeTarget{}))                         // dc
-	tf.addManifest(tf.nextManifest().WithDeployTarget(model.DockerComposeTarget{}))                         // dc
-	tf.addManifest(tf.nextManifest().WithDeployTarget(model.DockerComposeTarget{}))                         // dc
-	tf.addManifest(tf.nextManifest().WithDeployTarget(model.DockerComposeTarget{}))                         // dc
+	tf.addManifest(tf.nextManifest().WithImageTarget(imgTargFB))                               // fastbuild
+	tf.addManifest(tf.nextManifest().WithImageTarget(imgTargDB).WithDeployTarget(kTarg))       // k8s
+	tf.addManifest(tf.nextManifest().WithImageTarget(imgTargDBWithFB))                         // anyfastbuild
+	tf.addManifest(tf.nextManifest().WithImageTarget(imgTargDBWithLU))                         // liveupdate
+	tf.addManifest(tf.nextManifest().WithDeployTarget(kTarg))                                  // k8s, unbuilt
+	tf.addManifest(tf.nextManifest().WithDeployTarget(kTarg))                                  // k8s, unbuilt
+	tf.addManifest(tf.nextManifest().WithDeployTarget(kTarg))                                  // k8s, unbuilt
+	tf.addManifest(tf.nextManifest().WithDeployTarget(dTarg))                                  // dc
+	tf.addManifest(tf.nextManifest().WithDeployTarget(dTarg))                                  // dc
+	tf.addManifest(tf.nextManifest().WithImageTarget(imgTargDBWithLU).WithDeployTarget(dTarg)) // dc, liveupdate
 
 	state := tf.ar.store.LockMutableStateForTesting()
 	state.TiltStartTime = time.Now()
@@ -37,11 +51,13 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 
 	expectedTags := map[string]string{
 		"builds.completed_count":          "3",
-		"resource.count":                  "9",
-		"resource.dockercompose.count":    "4",
+		"resource.count":                  "10",
+		"resource.dockercompose.count":    "3",
 		"resource.unbuiltresources.count": "3",
 		"resource.fastbuild.count":        "1",
-		"resource.k8s.count":              "3",
+		"resource.anyfastbuild.count":     "2",
+		"resource.liveupdate.count":       "2",
+		"resource.k8s.count":              "4",
 		"tiltfile.error":                  "false",
 		"up.starttime":                    state.TiltStartTime.Format(time.RFC3339),
 	}
