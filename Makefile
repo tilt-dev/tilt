@@ -156,6 +156,13 @@ deploy-sail:
 	cat deployments/sail.yaml | sed 's!gcr.io/windmill-public-containers/sail!gcr.io/windmill-public-containers/sail:$(TAG)!g' | kubectl apply -f -
 	kubectl apply -f deployments/sail-networking.yaml
 
+deploy-sail-staging:
+	$(eval TAG := $(shell date +built-%s))
+	docker build -t gcr.io/windmill-public-containers/sail-staging:$(TAG) -f deployments/sail-staging.dockerfile .
+	docker push gcr.io/windmill-public-containers/sail-staging:$(TAG)
+	cat deployments/sail-staging.yaml | sed 's!gcr.io/windmill-public-containers/sail-staging!gcr.io/windmill-public-containers/sail-staging:$(TAG)!g' | kubectl apply -f -
+	kubectl apply -f deployments/sail-staging-networking.yaml
+
 prettier:
 	cd web && yarn install
 	cd web && yarn run prettier --write "src/**/*.ts*"

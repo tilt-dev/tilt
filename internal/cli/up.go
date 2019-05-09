@@ -62,7 +62,7 @@ func (c *upCmd) register() *cobra.Command {
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
 	cmd.Flags().IntVar(&webPort, "port", DefaultWebPort, "Port for the Tilt HTTP server. Set to 0 to disable.")
 	cmd.Flags().IntVar(&webDevPort, "webdev-port", DefaultWebDevPort, "Port for the Tilt Dev Webpack server. Only applies when using --web-mode=local")
-	cmd.Flags().Var(&sailModeFlag, "sail", "Enable sharing current state to a Sail server. Values: default, none, local, prod")
+	cmd.Flags().Var(&sailModeFlag, "sail", "Enable sharing current state to a Sail server. Values: default, none, local, prod, staging")
 	cmd.Flags().Lookup("logactions").Hidden = true
 	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
 	err := cmd.Flags().MarkHidden("image-tag-prefix")
@@ -187,7 +187,7 @@ func provideWebMode(b model.TiltBuild) (model.WebMode, error) {
 
 func provideSailMode() (model.SailMode, error) {
 	switch sailModeFlag {
-	case model.SailModeLocal, model.SailModeProd, model.SailModeDisabled:
+	case model.SailModeLocal, model.SailModeProd, model.SailModeStaging, model.SailModeDisabled:
 		return sailModeFlag, nil
 	case model.SailModeDefault:
 		// TODO(nick): This might eventually change in dev vs prod, but
@@ -225,6 +225,8 @@ func provideSailURL(mode model.SailMode) (model.SailURL, error) {
 
 	case model.SailModeProd:
 		urlString = "//sail.tilt.dev/"
+	case model.SailModeStaging:
+		urlString = "//sail-staging.tilt.dev/"
 	}
 
 	if urlString == "" {
