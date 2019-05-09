@@ -12,6 +12,7 @@ import (
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/wmclient/pkg/analytics"
@@ -42,6 +43,7 @@ func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analyti
 	r.HandleFunc("/api/view", s.ViewJSON)
 	r.HandleFunc("/api/analytics", s.HandleAnalytics)
 	r.HandleFunc("/api/sail", s.HandleSail)
+	r.HandleFunc("/api/control/reset_restarts", s.HandleResetRestarts)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
 	r.PathPrefix("/").Handler(assetServer)
 
@@ -113,4 +115,19 @@ func (s HeadsUpServer) HandleSail(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+}
+
+func (s HeadsUpServer) HandleResetRestarts(w http.ResponseWriter, req *http.Request) {
+	names, ok := req.URL.Query()["name"]
+	if !ok || len(names[0]) < 1 {
+		http.Error(w, "Must contain name parameter", http.StatusBadRequest)
+		return
+	}
+
+	// Query()["name"] will return an array of items,
+	// we only want the single item.
+	name := names[0]
+
+	s.store.Dispatch(store.NewResetRestartsAction(model.ManifestName(name)))
+	w.WriteHeader(http.StatusOK)
 }

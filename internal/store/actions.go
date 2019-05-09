@@ -2,6 +2,8 @@ package store
 
 import (
 	"time"
+
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 type ErrorAction struct {
@@ -37,5 +39,17 @@ func NewLogEvent(b []byte) LogEvent {
 	return LogEvent{
 		Timestamp: time.Now(),
 		Msg:       b,
+	}
+}
+
+type ResetRestartsAction struct {
+	ManifestName model.ManifestName
+}
+
+func (ResetRestartsAction) Action() {}
+
+func NewResetRestartsAction(name model.ManifestName) ResetRestartsAction {
+	return ResetRestartsAction{
+		ManifestName: name,
 	}
 }
