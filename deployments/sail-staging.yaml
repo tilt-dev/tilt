@@ -1,0 +1,26 @@
+# For now, the sail-staging configuration mostly duplicates the
+# sail configuration. It's probably not worthwhile right now
+# to factor them out into a kustomize config or helm chart.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sail-staging
+  labels:
+    app: sail-staging
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: sail-staging
+  template:
+    metadata:
+      labels:
+        app: sail-staging
+    spec:
+      containers:
+      - name: sail-staging
+        image: gcr.io/windmill-public-containers/sail-staging
+        ports:
+        - name: http
+          containerPort: 10450

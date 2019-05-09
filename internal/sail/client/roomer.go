@@ -31,7 +31,7 @@ func (r httpRoomer) NewRoom(ctx context.Context, version model.WebVersion) (room
 
 	resp, err := http.Post(u.String(), "text/plain", bytes.NewReader(reqJson))
 	if err != nil {
-		return "", "", errors.Wrapf(err, "GET %s", u.String())
+		return "", "", err
 	}
 
 	var roomInfo model.SailRoomInfo
