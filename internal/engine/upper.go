@@ -821,7 +821,7 @@ func handleDumpEngineStateAction(ctx context.Context, engineState *store.EngineS
 }
 
 func handleLatestVersionAction(state *store.EngineState, action LatestVersionAction) {
-	state.LatestTiltReleaseVersion = action.Version
+	state.LatestTiltBuild = action.Build
 }
 
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {

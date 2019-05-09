@@ -10,7 +10,7 @@ import (
 )
 
 type Client interface {
-	GetLatestRelease(ctx context.Context, org, repo string) (model.ReleaseVersion, error)
+	GetLatestRelease(ctx context.Context, org, repo string) (model.TiltBuild, error)
 }
 
 type ghClient struct {
@@ -23,14 +23,14 @@ func NewClient() Client {
 	}
 }
 
-func (cli ghClient) GetLatestRelease(ctx context.Context, org, repo string) (model.ReleaseVersion, error) {
+func (cli ghClient) GetLatestRelease(ctx context.Context, org, repo string) (model.TiltBuild, error) {
 	release, _, err := cli.client.Repositories.GetLatestRelease(ctx, org, repo)
 	if err != nil {
-		return model.ReleaseVersion{}, errors.Wrapf(err, "error getting release for %s/%s", org, repo)
+		return model.TiltBuild{}, errors.Wrapf(err, "error getting release for %s/%s", org, repo)
 	}
 
-	return model.ReleaseVersion{
-		VersionNumber: *release.Name,
-		PublishedAt:   release.PublishedAt.Time,
+	return model.TiltBuild{
+		Version: *release.Name,
+		Date:    release.PublishedAt.Time.Format("2006-01-02"),
 	}, nil
 }

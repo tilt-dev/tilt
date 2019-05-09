@@ -2184,14 +2184,14 @@ func TestTiltVersionCheck(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	versions := []model.ReleaseVersion{
+	versions := []model.TiltBuild{
 		{
-			VersionNumber: "v1000.10.1",
-			PublishedAt:   time.Date(2019, 3, 10, 11, 12, 0, 0, time.UTC),
+			Version: "v1000.10.1",
+			Date:    "2019-03-11",
 		},
 		{
-			VersionNumber: "v1000.10.2",
-			PublishedAt:   time.Date(2019, 3, 12, 11, 12, 0, 0, time.UTC),
+			Version: "v1000.10.2",
+			Date:    "2019-03-13",
 		},
 	}
 
@@ -2204,12 +2204,12 @@ func TestTiltVersionCheck(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	f.WaitUntil("latest version is updated the first time", func(state store.EngineState) bool {
-		return state.LatestTiltReleaseVersion == versions[0]
+		return state.LatestTiltBuild == versions[0]
 	})
 
 	f.ghc.LatestReleaseRet = versions[1]
 	f.WaitUntil("latest version is updated the second time", func(state store.EngineState) bool {
-		return state.LatestTiltReleaseVersion == versions[1]
+		return state.LatestTiltBuild == versions[1]
 	})
 }
 
