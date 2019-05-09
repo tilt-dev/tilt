@@ -17,7 +17,7 @@ class PathBuilder {
 
   getWebsocketUrl() {
     let scheme = "wss"
-    if (this.host == "localhost") {
+    if (this.host.indexOf("localhost") == 0) {
       scheme = "ws"
     }
     if (this.roomId) {
