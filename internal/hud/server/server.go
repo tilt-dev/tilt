@@ -130,6 +130,16 @@ func NewResetRestartsAction(name model.ManifestName) ResetRestartsAction {
 }
 
 func (s HeadsUpServer) HandleResetRestarts(w http.ResponseWriter, req *http.Request) {
-	s.store.Dispatch(NewResetRestartsAction("snack"))
+	names, ok := req.URL.Query()["name"]
+	if !ok || len(names[0]) < 1 {
+		http.Error(w, "Must contain name parameter", http.StatusBadRequest)
+		return
+	}
 
+	// Query()["name"] will return an array of items,
+	// we only want the single item.
+	name := names[0]
+
+	s.store.Dispatch(NewResetRestartsAction(model.ManifestName(name)))
+	w.WriteHeader(http.StatusOK)
 }
