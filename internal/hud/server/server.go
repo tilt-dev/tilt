@@ -12,9 +12,9 @@ import (
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
@@ -117,7 +117,19 @@ func (s HeadsUpServer) HandleSail(w http.ResponseWriter, req *http.Request) {
 
 }
 
+type ResetRestartsAction struct {
+	ManifestName model.ManifestName
+}
+
+func (ResetRestartsAction) Action() {}
+
+func NewResetRestartsAction(name model.ManifestName) ResetRestartsAction {
+	return ResetRestartsAction{
+		ManifestName: name,
+	}
+}
+
 func (s HeadsUpServer) HandleResetRestarts(w http.ResponseWriter, req *http.Request) {
-	s.store.Dispatch(engine.NewResetRestartsAction("snack"))
-	
+	s.store.Dispatch(NewResetRestartsAction("snack"))
+
 }
