@@ -2132,8 +2132,6 @@ docker_build('gcr.io/foo', 'foo')
 docker_build('gcr.io/foo-fetcher', 'foo-fetcher', match_in_env_vars=True)
 	`)
 	f.load("foo")
-	w := unusedImageWarning("gcr.io/foo-fetcher", []string{"gcr.io/foo", "docker.io/library/golang"})
-	f.loadAssertWarnings(w)
 	f.assertNextManifest("foo",
 		db(
 			image("gcr.io/foo"),
