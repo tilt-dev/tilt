@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"os"
 	"strconv"
 	"time"
 
@@ -15,13 +14,6 @@ import (
 // How often to periodically report data for analytics while Tilt is running
 const analyticsReportingInterval = time.Hour * 1
 
-const newAnalyticsFlag = "TILT_NEW_ANALYTICS"
-
-// TEMPORARY: check env to see if new-analytics flag is set
-func newAnalyticsOn() bool {
-	return os.Getenv(newAnalyticsFlag) != ""
-}
-
 type AnalyticsReporter struct {
 	a       analytics.Analytics
 	store   *store.Store
@@ -31,9 +23,6 @@ type AnalyticsReporter struct {
 
 func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore) {
 	if ar.started {
-		if newAnalyticsOn() {
-			ar.maybeSetNeedsNudge()
-		}
 		return
 	}
 
@@ -120,44 +109,4 @@ func (ar *AnalyticsReporter) report() {
 	stats["tiltfile.error"] = tiltfileIsInError
 
 	ar.a.Incr("up.running", stats)
-}
-
-func (ar *AnalyticsReporter) maybeSetNeedsNudge() {
-	if ar.needsNudge() {
-		ar.store.Dispatch(NeedsAnalyticsNudgeAction{})
-	}
-}
-
-// User needs nudge if:
-// a. has not opted into or out of analytics
-// b. at least one non-k8s manifest is (or has been) green
-func (ar *AnalyticsReporter) needsNudge() bool {
-	st := ar.store.RLockState()
-	defer ar.store.RUnlockState()
-
-	if st.NeedsAnalyticsNudge {
-		return true
-	}
-
-	if ar.opt != analytics.OptDefault {
-		// User has already made a choice
-		return false
-	}
-
-	manifestTargs := st.ManifestTargets
-	if len(manifestTargs) == 0 {
-		return false
-	}
-
-	for _, targ := range manifestTargs {
-		if targ.Manifest.IsUnresourcedYAMLManifest() {
-			continue
-		}
-
-		if !targ.State.LastSuccessfulDeployTime.IsZero() {
-			// At least one resource has at least one successful deploy
-			return true
-		}
-	}
-	return false
 }
