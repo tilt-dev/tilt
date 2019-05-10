@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 )
@@ -48,6 +49,43 @@ func (cc *ConfigsController) shouldBuild(state store.EngineState) bool {
 	return false
 }
 
+func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
+	initManifests []model.ManifestName, filesChanged map[string]bool, tiltfilePath string) {
+
+	startTime := cc.clock()
+	st.Dispatch(ConfigsReloadStartedAction{FilesChanged: filesChanged, StartTime: startTime})
+
+	matching := map[string]bool{}
+	for _, m := range initManifests {
+		matching[string(m)] = true
+	}
+
+	logWriter := logger.Get(ctx).Writer(logger.InfoLvl)
+	prefix := fmt.Sprintf("[%s] ", tiltfile.FileName)
+	prefixLogWriter := logger.NewPrefixedWriter(prefix, logWriter)
+	actionWriter := NewTiltfileLogWriter(st)
+	multiWriter := io.MultiWriter(prefixLogWriter, actionWriter)
+
+	loadCtx := logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), multiWriter))
+
+	tlr, err := cc.tfl.Load(loadCtx, tiltfilePath, matching)
+	if err == nil && len(tlr.Manifests) == 0 {
+		err = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
+	}
+	if err != nil {
+		logger.Get(loadCtx).Infof(err.Error())
+	}
+	st.Dispatch(ConfigsReloadedAction{
+		Manifests:          tlr.Manifests,
+		ConfigFiles:        tlr.ConfigFiles,
+		TiltIgnoreContents: tlr.TiltIgnoreContents,
+		StartTime:          startTime,
+		FinishTime:         cc.clock(),
+		Err:                err,
+		Warnings:           tlr.Warnings,
+	})
+}
+
 func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 	if cc.disabledForTesting {
 		return
@@ -66,43 +104,12 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 		filesChanged[k] = true
 	}
 
-	go func() {
-		startTime := cc.clock()
-		st.Dispatch(ConfigsReloadStartedAction{FilesChanged: filesChanged, StartTime: startTime})
+	tiltfilePath, err := state.RelativeTiltfilePath()
+	if err != nil {
+		st.Dispatch(NewErrorAction(err))
+		return
+	}
 
-		matching := map[string]bool{}
-		for _, m := range initManifests {
-			matching[string(m)] = true
-		}
-		tiltfilePath, err := state.RelativeTiltfilePath()
-		if err != nil {
-			st.Dispatch(NewErrorAction(err))
-			return
-		}
-
-		logWriter := logger.Get(ctx).Writer(logger.InfoLvl)
-		prefix := fmt.Sprintf("[%s] ", tiltfile.FileName)
-		prefixLogWriter := logger.NewPrefixedWriter(prefix, logWriter)
-		actionWriter := NewTiltfileLogWriter(st)
-		multiWriter := io.MultiWriter(prefixLogWriter, actionWriter)
-
-		loadCtx := logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), multiWriter))
-
-		tlr, err := cc.tfl.Load(loadCtx, tiltfilePath, matching, !state.FirstTiltfileBuildCompleted)
-		if err == nil && len(tlr.Manifests) == 0 {
-			err = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
-		}
-		if err != nil {
-			logger.Get(loadCtx).Infof(err.Error())
-		}
-		st.Dispatch(ConfigsReloadedAction{
-			Manifests:          tlr.Manifests,
-			ConfigFiles:        tlr.ConfigFiles,
-			TiltIgnoreContents: tlr.TiltIgnoreContents,
-			StartTime:          startTime,
-			FinishTime:         cc.clock(),
-			Err:                err,
-			Warnings:           tlr.Warnings,
-		})
-	}()
+	// Release the state lock and load the tiltfile in a separate goroutine
+	go cc.loadTiltfile(ctx, st, initManifests, filesChanged, tiltfilePath)
 }

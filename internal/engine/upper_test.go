@@ -2342,14 +2342,14 @@ func newTestFixture(t *testing.T) *testFixture {
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	realDcc := dockercompose.NewDockerComposeClient(docker.Env{})
 
-	tfl := tiltfile.ProvideTiltfileLoader(an, realDcc, model.WebURL{})
+	tfl := tiltfile.ProvideTiltfileLoader(an, realDcc)
 	cc := NewConfigsController(tfl)
 	dcw := NewDockerComposeEventWatcher(fakeDcc)
 	dclm := NewDockerComposeLogManager(fakeDcc)
 	pm := NewProfilerManager()
 	sCli := synclet.NewFakeSyncletClient()
 	sm := NewSyncletManagerForTests(k8s, sCli)
-	hudsc := server.ProvideHeadsUpServerController(0, server.HeadsUpServer{}, assets.NewFakeServer())
+	hudsc := server.ProvideHeadsUpServerController(0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ghc := &github.FakeClient{}
 
 	ret := &testFixture{
@@ -2711,7 +2711,7 @@ func (f *testFixture) assertAllBuildsConsumed() {
 }
 
 func (f *testFixture) loadAndStart() {
-	tlr, err := f.tfl.Load(f.ctx, f.JoinPath(tiltfile.FileName), nil, false)
+	tlr, err := f.tfl.Load(f.ctx, f.JoinPath(tiltfile.FileName), nil)
 	if err != nil {
 		f.T().Fatal(err)
 	}
@@ -2760,7 +2760,7 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 
 	f.WriteFile("Tiltfile", `docker_compose('docker-compose.yml')`)
 
-	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil, false)
+	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
 	if err != nil {
 		f.T().Fatal(err)
 	}

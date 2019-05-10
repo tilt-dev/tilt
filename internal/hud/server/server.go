@@ -25,15 +25,16 @@ type analyticsPayload struct {
 }
 
 type HeadsUpServer struct {
-	store   *store.Store
-	router  *mux.Router
-	a       analytics.Analytics
-	sailCli client.SailClient
+	store             *store.Store
+	router            *mux.Router
+	a                 analytics.Analytics
+	sailCli           client.SailClient
+	numWebsocketConns int32
 }
 
-func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics analytics.Analytics, sailCli client.SailClient) HeadsUpServer {
+func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics analytics.Analytics, sailCli client.SailClient) *HeadsUpServer {
 	r := mux.NewRouter().UseEncodedPath()
-	s := HeadsUpServer{
+	s := &HeadsUpServer{
 		store:   store,
 		router:  r,
 		a:       analytics,
@@ -50,11 +51,11 @@ func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analyti
 	return s
 }
 
-func (s HeadsUpServer) Router() http.Handler {
+func (s *HeadsUpServer) Router() http.Handler {
 	return s.router
 }
 
-func (s HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
+func (s *HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
 	state := s.store.RLockState()
 	view := webview.StateToWebView(state)
 	s.store.RUnlockState()
@@ -66,7 +67,7 @@ func (s HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s HeadsUpServer) HandleAnalytics(w http.ResponseWriter, req *http.Request) {
+func (s *HeadsUpServer) HandleAnalytics(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		http.Error(w, "must be POST request", http.StatusBadRequest)
 		return
@@ -91,7 +92,7 @@ func (s HeadsUpServer) HandleAnalytics(w http.ResponseWriter, req *http.Request)
 	}
 }
 
-func (s HeadsUpServer) HandleSail(w http.ResponseWriter, req *http.Request) {
+func (s *HeadsUpServer) HandleSail(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		http.Error(w, "must be POST request", http.StatusBadRequest)
 		return
@@ -117,7 +118,7 @@ func (s HeadsUpServer) HandleSail(w http.ResponseWriter, req *http.Request) {
 
 }
 
-func (s HeadsUpServer) HandleResetRestarts(w http.ResponseWriter, req *http.Request) {
+func (s *HeadsUpServer) HandleResetRestarts(w http.ResponseWriter, req *http.Request) {
 	names, ok := req.URL.Query()["name"]
 	if !ok || len(names[0]) < 1 {
 		http.Error(w, "Must contain name parameter", http.StatusBadRequest)

@@ -39,7 +39,7 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	tlr, err := downDeps.tfl.Load(ctx, c.fileName, nil, false)
+	tlr, err := downDeps.tfl.Load(ctx, c.fileName, nil)
 	if err != nil {
 		return err
 	}
