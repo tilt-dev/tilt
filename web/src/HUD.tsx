@@ -152,9 +152,9 @@ class HUD extends Component<HudProps, HudState> {
         if (this.state.View) {
           this.state.View.Resources.forEach(r => {
             fetch(
-              `//${window.location.host}/api/control/reset_restarts?name=${
-                r.Name
-              }`
+              this.pathBuilder.path(
+                `/api/control/reset_restarts?name=${r.Name}`
+              )
             )
           })
         }
