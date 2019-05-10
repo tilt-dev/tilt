@@ -124,9 +124,7 @@ func (ar *AnalyticsReporter) report() {
 
 func (ar *AnalyticsReporter) maybeSetNeedsNudge() {
 	if ar.needsNudge() {
-		st := ar.store.RLockState()
-		defer ar.store.RUnlockState()
-		st.NeedsAnalyticsNudge = true
+		ar.store.Dispatch(NeedsAnalyticsNudgeAction{})
 	}
 }
 
