@@ -3,7 +3,9 @@ package server
 import (
 	"context"
 	"net/http"
+	"sync/atomic"
 
+	"github.com/pkg/browser"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/model"
@@ -13,16 +15,19 @@ import (
 
 type HeadsUpServerController struct {
 	port        model.WebPort
-	hudServer   HeadsUpServer
+	hudServer   *HeadsUpServer
 	assetServer assets.Server
+	webURL      model.WebURL
+	webLoadDone bool
 	initDone    bool
 }
 
-func ProvideHeadsUpServerController(port model.WebPort, hudServer HeadsUpServer, assetServer assets.Server) *HeadsUpServerController {
+func ProvideHeadsUpServerController(port model.WebPort, hudServer *HeadsUpServer, assetServer assets.Server, webURL model.WebURL) *HeadsUpServerController {
 	return &HeadsUpServerController{
 		port:        port,
 		hudServer:   hudServer,
 		assetServer: assetServer,
+		webURL:      webURL,
 	}
 }
 
@@ -30,7 +35,34 @@ func (s *HeadsUpServerController) TearDown(ctx context.Context) {
 	s.assetServer.TearDown(ctx)
 }
 
+func (s *HeadsUpServerController) maybeOpenBrowser(st store.RStore) {
+	if s.webURL.Empty() || s.webLoadDone {
+		return
+	}
+
+	connCount := atomic.LoadInt32(&(s.hudServer.numWebsocketConns))
+	if connCount > 0 {
+		// Don't auto-open the web view. It's already opened.
+		s.webLoadDone = true
+		return
+	}
+
+	state := st.RLockState()
+	tiltfileCompleted := state.FirstTiltfileBuildCompleted
+	st.RUnlockState()
+
+	if tiltfileCompleted {
+		// We should probably dependency-inject a browser opener.
+		//
+		// It might also make sense to wait until the asset server is ready?
+		_ = browser.OpenURL(s.webURL.String())
+		s.webLoadDone = true
+	}
+}
+
 func (s *HeadsUpServerController) OnChange(ctx context.Context, st store.RStore) {
+	s.maybeOpenBrowser(st)
+
 	defer func() {
 		s.initDone = true
 	}()

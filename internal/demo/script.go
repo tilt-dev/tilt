@@ -185,8 +185,7 @@ func (s Script) Run(ctx context.Context) error {
 		}
 
 		tfPath := filepath.Join(dir, tiltfile.FileName)
-		// TODO(dmiller): should we open the web UI in the demo?
-		tlr, err := s.tfl.Load(ctx, tfPath, nil, false)
+		tlr, err := s.tfl.Load(ctx, tfPath, nil)
 		if err != nil {
 			return err
 		}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync/atomic"
 
 	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -74,13 +75,14 @@ func (ws WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore) {
 	}
 }
 
-func (s HeadsUpServer) ViewWebsocket(w http.ResponseWriter, req *http.Request) {
+func (s *HeadsUpServer) ViewWebsocket(w http.ResponseWriter, req *http.Request) {
 	conn, err := upgrader.Upgrade(w, req, nil)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error upgrading websocket: %v", err), http.StatusInternalServerError)
 		return
 	}
 
+	atomic.AddInt32(&s.numWebsocketConns, 1)
 	ws := NewWebsocketSubscriber(conn)
 
 	// TODO(nick): Handle clean shutdown when the server shuts down
@@ -91,6 +93,7 @@ func (s HeadsUpServer) ViewWebsocket(w http.ResponseWriter, req *http.Request) {
 	s.store.AddSubscriber(ctx, ws)
 
 	ws.Stream(ctx, s.store)
+	atomic.AddInt32(&s.numWebsocketConns, -1)
 }
 
 var _ store.TearDowner = WebsocketSubscriber{}

@@ -185,7 +185,7 @@ func TestResetRestartsNoParam(t *testing.T) {
 
 type serverFixture struct {
 	t       *testing.T
-	s       server.HeadsUpServer
+	s       *server.HeadsUpServer
 	a       *analytics.MemoryAnalytics
 	sailCli *client.FakeSailClient
 }

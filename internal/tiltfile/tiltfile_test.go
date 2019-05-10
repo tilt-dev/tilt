@@ -909,7 +909,7 @@ docker_build('gcr.io/bar', 'bar')
 k8s_yaml('bar.yaml')
 `)
 
-	_, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"), false)
+	_, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"))
 	if assert.Error(t, err) {
 		assert.Equal(t, `You specified some resources that could not be found: "baz"
 Is this a typo? Existing resources in Tiltfile: "foo", "bar"`, err.Error())
@@ -3153,7 +3153,7 @@ func newFixture(t *testing.T) *fixture {
 	f := tempdir.NewTempDirFixture(t)
 	an := analytics.NewMemoryAnalytics()
 	dcc := dockercompose.NewDockerComposeClient(docker.Env{})
-	tfl := ProvideTiltfileLoader(an, dcc, model.WebURL{})
+	tfl := ProvideTiltfileLoader(an, dcc)
 
 	r := &fixture{
 		ctx:            ctx,
@@ -3277,7 +3277,7 @@ func (f *fixture) load(names ...string) {
 }
 
 func (f *fixture) loadResourceAssemblyV1(names ...string) {
-	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...), false)
+	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -3288,7 +3288,7 @@ func (f *fixture) loadResourceAssemblyV1(names ...string) {
 // Load the manifests, expecting warnings.
 // Warnigns should be asserted later with assertWarnings
 func (f *fixture) loadAllowWarnings(names ...string) {
-	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...), false)
+	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -3313,7 +3313,7 @@ func (f *fixture) loadAssertWarnings(warnings ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil, false)
+	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}
