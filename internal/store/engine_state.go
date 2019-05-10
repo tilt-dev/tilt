@@ -79,6 +79,8 @@ type EngineState struct {
 
 	// from GitHub
 	LatestTiltBuild model.TiltBuild
+
+	NeedsAnalyticsNudge bool // TODO(maia): maybe this can convey more info, e.g. "there was error in /analytics/opt"
 }
 
 func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.ManifestName {

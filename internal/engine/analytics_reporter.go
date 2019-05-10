@@ -2,9 +2,11 @@ package engine
 
 import (
 	"context"
+	"os"
 	"strconv"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	"github.com/windmilleng/tilt/internal/store"
@@ -13,14 +15,25 @@ import (
 // How often to periodically report data for analytics while Tilt is running
 const analyticsReportingInterval = time.Hour * 1
 
+const newAnalyticsFlag = "TILT_NEW_ANALYTICS"
+
+// TEMPORARY: check env to see if new-analytics flag is set
+func newAnalyticsOn() bool {
+	return os.Getenv(newAnalyticsFlag) != ""
+}
+
 type AnalyticsReporter struct {
 	a       analytics.Analytics
 	store   *store.Store
 	started bool
+	opt     analytics.Opt
 }
 
 func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore) {
 	if ar.started {
+		if newAnalyticsOn() {
+			ar.maybeSetNeedsNudge()
+		}
 		return
 	}
 
@@ -30,6 +43,13 @@ func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore) {
 	// wait until state has been kinda initialized
 	if !state.TiltStartTime.IsZero() && state.LastTiltfileError() == nil {
 		ar.started = true
+
+		opt, err := analytics.OptStatus()
+		if err != nil {
+			logger.Get(ctx).Debugf("can't get analytics opt: %v", err)
+		}
+		ar.opt = opt
+
 		go func() {
 			for {
 				select {
@@ -46,7 +66,7 @@ func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore) {
 var _ store.Subscriber = &AnalyticsReporter{}
 
 func ProvideAnalyticsReporter(a analytics.Analytics, st *store.Store) *AnalyticsReporter {
-	return &AnalyticsReporter{a, st, false}
+	return &AnalyticsReporter{a: a, store: st, started: false}
 }
 
 func (ar *AnalyticsReporter) report() {
@@ -99,4 +119,46 @@ func (ar *AnalyticsReporter) report() {
 	stats["tiltfile.error"] = tiltfileIsInError
 
 	ar.a.Incr("up.running", stats)
+}
+
+func (ar *AnalyticsReporter) maybeSetNeedsNudge() {
+	if ar.needsNudge() {
+		st := ar.store.RLockState()
+		defer ar.store.RUnlockState()
+		st.NeedsAnalyticsNudge = true
+	}
+}
+
+// User needs nudge if:
+// a. has not opted into or out of analytics
+// b. at least one non-k8s manifest is (or has been) green
+func (ar *AnalyticsReporter) needsNudge() bool {
+	st := ar.store.RLockState()
+	defer ar.store.RUnlockState()
+
+	if st.NeedsAnalyticsNudge {
+		return true
+	}
+
+	if ar.opt != analytics.OptDefault {
+		// User has already made a choice
+		return false
+	}
+
+	manifestTargs := st.ManifestTargets
+	if len(manifestTargs) == 0 {
+		return false
+	}
+
+	for _, targ := range manifestTargs {
+		if targ.Manifest.IsUnresourcedYAMLManifest() {
+			continue
+		}
+
+		if !targ.State.LastSuccessfulDeployTime.IsZero() {
+			// A resource has been green at some point
+			return true
+		}
+	}
+	return false
 }

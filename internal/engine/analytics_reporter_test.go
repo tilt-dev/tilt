@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	"github.com/windmilleng/tilt/internal/model"
@@ -98,6 +99,42 @@ func TestAnalyticsReporter_TiltfileError(t *testing.T) {
 	tf.assertStats(t, expectedTags)
 }
 
+func TestNeedsNudge(t *testing.T) {
+	tf := newAnalyticsReporterTestFixture()
+
+	assert.False(t, tf.ar.needsNudge(), "no green manifests, expected needsNudge = false")
+
+	state := tf.ar.store.LockMutableStateForTesting()
+	state.NeedsAnalyticsNudge = true
+	tf.ar.store.UnlockMutableState()
+	assert.True(t, tf.ar.needsNudge(),
+		"st.NeedsAnalyticsNudge already true, shouldn't re-evaluate; expected needsNudge = true")
+	tf.ar.store.LockMutableStateForTesting()
+	state.NeedsAnalyticsNudge = false
+	tf.ar.store.UnlockMutableState()
+
+	k8sManifest := k8s.NewK8sOnlyManifestForTesting("yamlyaml", nil)
+	k8sTarg := store.NewManifestTarget(k8sManifest)
+	k8sTarg.State = &store.ManifestState{LastSuccessfulDeployTime: time.Now()}
+	tf.addManifestTarget(k8sTarg)
+	assert.False(t, tf.ar.needsNudge(),
+		"only green manifest is k8s_yaml, expected needsNudge = false")
+
+	serverManifest := model.Manifest{Name: "server"}
+	serverTarg := store.NewManifestTarget(serverManifest)
+	tf.addManifestTarget(serverTarg)
+	assert.False(t, tf.ar.needsNudge(),
+		"have non-k8s_yaml manifest but no successful builds, expected needsNudge = false")
+
+	serverTarg.State = &store.ManifestState{LastSuccessfulDeployTime: time.Now()}
+	assert.True(t, tf.ar.needsNudge(),
+		"have successfully built manifest, expected needsNudge = true")
+
+	tf.ar.opt = analytics.OptOut // Spoof user already opted out
+	assert.False(t, tf.ar.needsNudge(),
+		"user opted out of analytics, expected needsNudge = false")
+}
+
 type analyticsReporterTestFixture struct {
 	manifestCount int
 	ar            AnalyticsReporter
@@ -117,10 +154,14 @@ func newAnalyticsReporterTestFixture() *analyticsReporterTestFixture {
 	}
 }
 
-func (artf *analyticsReporterTestFixture) addManifest(m model.Manifest) {
+func (artf *analyticsReporterTestFixture) addManifestTarget(mt *store.ManifestTarget) {
 	state := artf.ar.store.LockMutableStateForTesting()
-	state.UpsertManifestTarget(store.NewManifestTarget(m))
+	state.UpsertManifestTarget(mt)
 	artf.ar.store.UnlockMutableState()
+}
+
+func (artf *analyticsReporterTestFixture) addManifest(m model.Manifest) {
+	artf.addManifestTarget(store.NewManifestTarget(m))
 }
 
 func (artf *analyticsReporterTestFixture) nextManifest() model.Manifest {
