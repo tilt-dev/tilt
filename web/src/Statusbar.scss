@@ -87,3 +87,29 @@
   padding-left: $spacing-unit / 2;
   padding-right: $spacing-unit / 2;
 }
+
+.Statusbar-updatePanel {
+  display: flex;
+  align-items: center;
+  padding-left: $spacing-unit / 2;
+  padding-right: $spacing-unit / 2;
+}
+
+.Statusbar-updatePanel-icon {
+  display: flex;
+}
+
+.Statusbar-updatePanel-outofdate-short {
+  stroke: $color-green;
+  fill: $color-green;
+}
+
+.Statusbar-updatePanel-outofdate-medium {
+  stroke: $color-yellow;
+  fill: $color-yellow;
+}
+
+.Statusbar-updatePanel-outofdate-long {
+  stroke: $color-red;
+  fill: $color-red;
+}

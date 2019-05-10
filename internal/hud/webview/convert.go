@@ -94,6 +94,8 @@ func StateToWebView(s store.EngineState) View {
 	ret.Log = s.Log
 	ret.SailEnabled = s.SailEnabled
 	ret.SailURL = s.SailURL
+	ret.RunningTiltBuild = s.TiltBuildInfo
+	ret.LatestTiltBuild = s.LatestTiltBuild
 
 	return ret
 }

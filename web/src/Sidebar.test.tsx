@@ -9,9 +9,14 @@ import PathBuilder from "./PathBuilder"
 
 let pathBuilder = new PathBuilder("localhost", "/")
 
+let realDateNow = Date.now
+
 describe("sidebar", () => {
   beforeEach(() => {
     Date.now = jest.fn(() => Date.UTC(2017, 11, 21, 15, 36, 7, 0))
+  })
+  afterEach(() => {
+    Date.now = realDateNow
   })
   it("renders empty resource list without crashing", () => {
     const tree = renderer

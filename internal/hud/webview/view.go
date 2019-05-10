@@ -114,6 +114,9 @@ type View struct {
 
 	SailEnabled bool
 	SailURL     string
+
+	RunningTiltBuild model.TiltBuild
+	LatestTiltBuild  model.TiltBuild
 }
 
 func (v View) Resource(n model.ManifestName) (Resource, bool) {
