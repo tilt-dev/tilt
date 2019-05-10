@@ -5,7 +5,7 @@ import { mount } from "enzyme"
 import { twoResourceView } from "./testdata.test"
 import { MemoryRouter } from "react-router"
 import { TiltBuild } from "./types"
-import moment from "moment"
+import moment, {Duration} from "moment"
 import { SinonFakeTimers, useFakeTimers } from "sinon"
 
 describe("StatusBar", () => {
@@ -190,7 +190,7 @@ describe("StatusBar", () => {
       statusbar.find(".Statusbar-updatePanel-outofdate-short").length
     ).toEqual(1)
 
-    clock.tick(4 * 24 * 3600 * 1000)
+    clock.tick(moment.duration(4, 'days').asMilliseconds())
 
     statusbar.update()
 

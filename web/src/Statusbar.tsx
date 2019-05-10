@@ -69,7 +69,7 @@ class UpdateNotification extends Component<
   }
 
   componentDidMount(): void {
-    this.timerID = setInterval(() => this.tick(), 3600 * 1000)
+    this.timerID = setInterval(() => this.tick(), moment.duration(1, 'hours').asMilliseconds())
   }
 
   componentWillUnmount(): void {
