@@ -6,13 +6,12 @@ import { twoResourceView } from "./testdata.test"
 import { MemoryRouter } from "react-router"
 import { TiltBuild } from "./types"
 import moment from "moment"
-import sinon from "ts-sinon"
-import { SinonFakeTimers } from "sinon"
+import { SinonFakeTimers, useFakeTimers } from "sinon"
 
 describe("StatusBar", () => {
   var clock: SinonFakeTimers
   beforeEach(() => {
-    clock = sinon.useFakeTimers()
+    clock = useFakeTimers()
   })
   afterEach(() => {
     clock.restore()

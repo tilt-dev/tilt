@@ -1307,11 +1307,6 @@
   dependencies:
     "@babel/types" "^7.3.0"
 
-"@types/chai@*":
-  version "4.1.7"
-  resolved "https://registry.yarnpkg.com/@types/chai/-/chai-4.1.7.tgz#1b8e33b61a8c09cbe1f85133071baa0dbf9fa71a"
-  integrity sha512-2Y8uPt0/jwjhQ6EiluT0XCri1Dbplr0ZxfFXUz+ye13gaqE8u5gL5ppao1JrUYr9cIip5S6MvQzBS7Kke7U9VA==
-
 "@types/cheerio@*":
   version "0.22.11"
   resolved "https://registry.yarnpkg.com/@types/cheerio/-/cheerio-0.22.11.tgz#61c0facf9636d14ba5f77fc65ed8913aa845d717"
@@ -1360,11 +1355,6 @@
   version "11.13.8"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-11.13.8.tgz#e5d71173c95533be9842b2c798978f095f912aab"
   integrity sha512-szA3x/3miL90ZJxUCzx9haNbK5/zmPieGraZEe4WI+3srN0eGLiT22NXeMHmyhNEopn+IrxqMc7wdVwvPl8meg==
-
-"@types/node@^11.9.0":
-  version "11.13.10"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-11.13.10.tgz#4df59e5966b56f512bac98898bcbee5067411f0f"
-  integrity sha512-leUNzbFTMX94TWaIKz8N15Chu55F9QSH+INKayQr5xpkasBQBRF3qQXfo3/dOnMU/dEIit+Y/SU8HyOjq++GwA==
 
 "@types/prop-types@*":
   version "15.7.1"
@@ -1445,15 +1435,7 @@
     "@types/prop-types" "*"
     csstype "^2.2.0"
 
-"@types/sinon-chai@^3.2.2":
-  version "3.2.2"
-  resolved "https://registry.yarnpkg.com/@types/sinon-chai/-/sinon-chai-3.2.2.tgz#5cfdbda70bae30f79a9423334af9e490e4cce793"
-  integrity sha512-5zSs2AslzyPZdOsbm2NRtuSNAI2aTWzNKOHa/GRecKo7a5efYD7qGcPxMZXQDayVXT2Vnd5waXxBvV31eCZqiA==
-  dependencies:
-    "@types/chai" "*"
-    "@types/sinon" "*"
-
-"@types/sinon@*", "@types/sinon@^7.0.5":
+"@types/sinon@^7.0.11":
   version "7.0.11"
   resolved "https://registry.yarnpkg.com/@types/sinon/-/sinon-7.0.11.tgz#6f28f005a36e779b7db0f1359b9fb9eef72aae88"
   integrity sha512-6ee09Ugx6GyEr0opUIakmxIWFNmqYPjkqa3/BuxCBokA0klsOLPgMD5K4q40lH7/yZVuJVzOfQpd7pipwjngkQ==
@@ -9650,7 +9632,7 @@ simple-swizzle@^0.2.2:
   dependencies:
     is-arrayish "^0.3.1"
 
-sinon@^7.2.3, sinon@^7.3.2:
+sinon@^7.3.2:
   version "7.3.2"
   resolved "https://registry.yarnpkg.com/sinon/-/sinon-7.3.2.tgz#82dba3a6d85f6d2181e1eca2c10d8657c2161f28"
   integrity sha512-thErC1z64BeyGiPvF8aoSg0LEnptSaWE7YhdWWbWXgelOyThent7uKOnnEh9zBxDbKixtr5dEko+ws1sZMuFMA==
@@ -10366,16 +10348,6 @@ ts-pnp@^1.0.0:
   version "1.1.2"
   resolved "https://registry.yarnpkg.com/ts-pnp/-/ts-pnp-1.1.2.tgz#be8e4bfce5d00f0f58e0666a82260c34a57af552"
   integrity sha512-f5Knjh7XCyRIzoC/z1Su1yLLRrPrFCgtUAh/9fCSP6NKbATwpOL1+idQVXQokK9GRFURn/jYPGPfegIctwunoA==
-
-ts-sinon@^1.0.17:
-  version "1.0.17"
-  resolved "https://registry.yarnpkg.com/ts-sinon/-/ts-sinon-1.0.17.tgz#00058feebccc366a0b122c5d94c56460e46d01de"
-  integrity sha512-fadvsAqJ1B8eJEgNu+QNdtBFiuK+c6pVpfdtBZzAIrzkn2y0ZzxbHGsbboX8zA5BKSPEYFIcJPgMXXgS2v2ipQ==
-  dependencies:
-    "@types/node" "^11.9.0"
-    "@types/sinon" "^7.0.5"
-    "@types/sinon-chai" "^3.2.2"
-    sinon "^7.2.3"
 
 tslib@^1.8.1, tslib@^1.9.0:
   version "1.9.3"
