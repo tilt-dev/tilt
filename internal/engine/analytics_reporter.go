@@ -44,6 +44,7 @@ func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore) {
 	if !state.TiltStartTime.IsZero() && state.LastTiltfileError() == nil {
 		ar.started = true
 
+		// TODO(maia): make sure to update ar.opt when user opts in/out from new flow
 		opt, err := analytics.OptStatus()
 		if err != nil {
 			logger.Get(ctx).Debugf("can't get analytics opt: %v", err)
@@ -156,7 +157,7 @@ func (ar *AnalyticsReporter) needsNudge() bool {
 		}
 
 		if !targ.State.LastSuccessfulDeployTime.IsZero() {
-			// A resource has been green at some point
+			// At least one resource has at least one successful deploy
 			return true
 		}
 	}
