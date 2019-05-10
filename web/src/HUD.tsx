@@ -149,8 +149,6 @@ class HUD extends Component<HudProps, HudState> {
   handlers() {
     return {
       clearSnackRestarts: (event: KeyboardEvent | undefined) => {
-        console.log("Clearing snack restarts!")
-        debugger
         if (this.state.View) {
           this.state.View.Resources.forEach(r => {
             fetch(
