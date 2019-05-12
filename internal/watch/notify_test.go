@@ -338,13 +338,14 @@ func TestWatchNonexistentDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	file := f.JoinPath("root", "parent", "a")
+	parent := f.JoinPath("parent")
+	file := f.JoinPath("parent", "a")
 
-	f.watch(file)
+	f.watch(parent)
 	f.fsync()
 	f.events = nil
 	f.WriteFile(file, "hello")
-	f.assertEvents(file)
+	f.assertEvents(parent, file)
 }
 
 type notifyFixture struct {
@@ -355,7 +356,6 @@ type notifyFixture struct {
 }
 
 func newNotifyFixture(t *testing.T) *notifyFixture {
-	SetLimitChecksEnabled(false)
 	notify, err := NewWatcher()
 	if err != nil {
 		t.Fatal(err)
@@ -434,12 +434,20 @@ F:
 }
 
 func (f *notifyFixture) tearDown() {
-	SetLimitChecksEnabled(true)
-
 	err := f.notify.Close()
 	if err != nil {
 		f.T().Fatal(err)
 	}
+
+	// drain channels from watcher
+	go func() {
+		for _ = range f.notify.Events() {
+		}
+	}()
+	go func() {
+		for _ = range f.notify.Errors() {
+		}
+	}()
 
 	f.TempDirFixture.TearDown()
 }
