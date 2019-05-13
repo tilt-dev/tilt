@@ -7,7 +7,7 @@ class AnalyticsNudge extends Component {
       <div className="AnalyticsNudge" key="AnalyticsNudge">
         <div>
           Congrats on your first Tilt resource 🎉 Help us help you: may we
-          collect anonymized data on your usage. (Read more{" "}
+          collect anonymized data on your usage? (Read more{" "}
           <a href="https://github.com/windmilleng/tilt#privacy" target="_blank">
             here
           </a>

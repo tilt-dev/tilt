@@ -314,7 +314,7 @@ exports[`sidebar renders analytics nudge 1`] = `
           className="AnalyticsNudge"
         >
           <div>
-            Congrats on your first Tilt resource 🎉 Help us help you: may we collect anonymized data on your usage. (Read more
+            Congrats on your first Tilt resource 🎉 Help us help you: may we collect anonymized data on your usage? (Read more
              
             <a
               href="https://github.com/windmilleng/tilt#privacy"
@@ -436,7 +436,7 @@ exports[`sidebar renders analytics nudge as third list item 1`] = `
           className="AnalyticsNudge"
         >
           <div>
-            Congrats on your first Tilt resource 🎉 Help us help you: may we collect anonymized data on your usage. (Read more
+            Congrats on your first Tilt resource 🎉 Help us help you: may we collect anonymized data on your usage? (Read more
              
             <a
               href="https://github.com/windmilleng/tilt#privacy"
