@@ -352,13 +352,19 @@ func TestWatchNonexistentDirectory(t *testing.T) {
 	}
 
 	if runtime.GOOS == "darwin" {
-		// we don't report newly created directories that were added
+		// for directories that were the root of an Add, we don't report creation, cf. watcher_darwin.go
 		f.assertEvents()
 	} else {
 		f.assertEvents(parent)
 	}
 	f.WriteFile(file, "hello")
-	f.assertEvents(file)
+
+	if runtime.GOOS == "darwin" {
+		// mac doesn't that return dir change as part of file creation
+		f.assertEvents(file)
+	} else {
+		f.assertEvents(parent, file)
+	}
 }
 
 // doesn't work on linux
