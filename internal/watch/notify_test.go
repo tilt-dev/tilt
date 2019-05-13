@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"runtime"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
@@ -344,8 +345,20 @@ func TestWatchNonexistentDirectory(t *testing.T) {
 	f.watch(parent)
 	f.fsync()
 	f.events = nil
+
+	err = os.Mkdir(parent, 0777)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if runtime.GOOS == "darwin" {
+		// we don't report newly created directories that were added
+		f.assertEvents()
+	} else {
+		f.assertEvents(parent)
+	}
 	f.WriteFile(file, "hello")
-	f.assertEvents(parent, file)
+	f.assertEvents(file)
 }
 
 type notifyFixture struct {
