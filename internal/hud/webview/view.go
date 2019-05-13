@@ -114,6 +114,8 @@ type View struct {
 
 	SailEnabled bool
 	SailURL     string
+
+	NeedsAnalyticsNudge bool
 }
 
 func (v View) Resource(n model.ManifestName) (Resource, bool) {

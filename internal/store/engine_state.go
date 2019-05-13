@@ -8,6 +8,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/docker/distribution/reference"
@@ -79,6 +80,9 @@ type EngineState struct {
 
 	// from GitHub
 	LatestTiltBuild model.TiltBuild
+
+	// Analytics Info
+	AnalyticsOpt analytics.Opt // TODO(maia): remember to update this when user opts in/out
 }
 
 func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.ManifestName {
