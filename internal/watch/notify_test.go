@@ -5,9 +5,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
-	"runtime"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
@@ -360,6 +360,32 @@ func TestWatchNonexistentDirectory(t *testing.T) {
 	f.WriteFile(file, "hello")
 	f.assertEvents(file)
 }
+
+// doesn't work on linux
+// func TestWatchNonexistentFileInNonexistentDirectory(t *testing.T) {
+// 	f := newNotifyFixture(t)
+// 	defer f.tearDown()
+
+// 	root := f.JoinPath("root")
+// 	err := os.Mkdir(root, 0777)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	parent := f.JoinPath("parent")
+// 	file := f.JoinPath("parent", "a")
+
+// 	f.watch(file)
+// 	f.assertEvents()
+
+// 	err = os.Mkdir(parent, 0777)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+
+// 	f.assertEvents()
+// 	f.WriteFile(file, "hello")
+// 	f.assertEvents(file)
+// }
 
 type notifyFixture struct {
 	*tempdir.TempDirFixture
