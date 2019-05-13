@@ -178,8 +178,6 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleDumpEngineStateAction(ctx, state)
 	case LatestVersionAction:
 		handleLatestVersionAction(state, action)
-	case NeedsAnalyticsNudgeAction:
-		handleNeedsAnalyticsNudgeAction(state)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}

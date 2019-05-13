@@ -117,14 +117,10 @@ func newAnalyticsReporterTestFixture() *analyticsReporterTestFixture {
 	}
 }
 
-func (artf *analyticsReporterTestFixture) addManifestTarget(mt *store.ManifestTarget) {
-	state := artf.ar.store.LockMutableStateForTesting()
-	state.UpsertManifestTarget(mt)
-	artf.ar.store.UnlockMutableState()
-}
-
 func (artf *analyticsReporterTestFixture) addManifest(m model.Manifest) {
-	artf.addManifestTarget(store.NewManifestTarget(m))
+	state := artf.ar.store.LockMutableStateForTesting()
+	state.UpsertManifestTarget(store.NewManifestTarget(m))
+	artf.ar.store.UnlockMutableState()
 }
 
 func (artf *analyticsReporterTestFixture) nextManifest() model.Manifest {

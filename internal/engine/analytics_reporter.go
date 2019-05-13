@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	"github.com/windmilleng/tilt/internal/store"
@@ -18,7 +17,6 @@ type AnalyticsReporter struct {
 	a       analytics.Analytics
 	store   *store.Store
 	started bool
-	opt     analytics.Opt
 }
 
 func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore) {
@@ -32,14 +30,6 @@ func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore) {
 	// wait until state has been kinda initialized
 	if !state.TiltStartTime.IsZero() && state.LastTiltfileError() == nil {
 		ar.started = true
-
-		// TODO(maia): make sure to update ar.opt when user opts in/out from new flow
-		opt, err := analytics.OptStatus()
-		if err != nil {
-			logger.Get(ctx).Debugf("can't get analytics opt: %v", err)
-		}
-		ar.opt = opt
-
 		go func() {
 			for {
 				select {
@@ -56,7 +46,7 @@ func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore) {
 var _ store.Subscriber = &AnalyticsReporter{}
 
 func ProvideAnalyticsReporter(a analytics.Analytics, st *store.Store) *AnalyticsReporter {
-	return &AnalyticsReporter{a: a, store: st, started: false}
+	return &AnalyticsReporter{a, st, false}
 }
 
 func (ar *AnalyticsReporter) report() {

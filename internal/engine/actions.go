@@ -183,7 +183,3 @@ type LatestVersionAction struct {
 }
 
 func (LatestVersionAction) Action() {}
-
-type NeedsAnalyticsNudgeAction struct{}
-
-func (NeedsAnalyticsNudgeAction) Action() {}
