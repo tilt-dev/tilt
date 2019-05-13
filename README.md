@@ -63,12 +63,14 @@ or check out the [feature roadmap](ROADMAP.md).
 ## Telemetry and Privacy
 We're a small company trying to make Tilt awesomer. We can do this better if we understand which features people are using and which bugs people are running into. Tilt can send telemetry data to https://events.windmill.build if you opt-in. You can do this in the web UI or by running `tilt analytics opt in`. It really helps us improve your experience.
 
-The data is meant to be about your use of Tilt (which Tiltfile or Web UI features do you use), not collecting data about you or your project. It's possible that some of the data we collect could include snippets of data about your project (e.g. that you have a service named `deathray-backend` or an error message that includes the string it failed to parse). We try to avoid this, but you should probably not opt-in if you're working on a classified project.
+The data is meant to be about your use of Tilt (e.g., which Tiltfile or Web UI features do you use), not collecting data about you or your project. It's possible that some of the data we collect could include snippets of data about your project (e.g. that you have a service named `deathray-backend` or an error message that includes the string it failed to parse). We try to avoid this, but you should probably not opt-in if you're working on a classified project.
 
-We will not resell or give away this data. (Data may be sent to third-parties, like Datadog,
+We will not resell or give away this data. (Data may be sent to third parties, like Datadog,
 but only to help us analyze the data.)
 
-You can change your mind at any time in the web UI or by running `tilt analytics opt out` and restarting Tilt.
+You can change your mind at any time by running `tilt analytics opt <in|out>` and restarting Tilt.
+
+Tilt connects to other online services for purposes like finding and downloading product updates and resources.
 
 ## License
 
