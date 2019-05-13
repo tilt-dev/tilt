@@ -339,7 +339,22 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, fmt.Errorf("Argument 0 (path): %v", err)
 	}
 
-	yaml, err := s.execLocalCmdArgv("helm", "template", localPath.path)
+	templates, err := ioutil.ReadDir(filepath.Join(localPath.path, "templates"))
+	if err != nil {
+		return nil, fmt.Errorf("Error reading chart template directory at %s: %v", localPath.path, err)
+	}
+
+	cmd := []string{"helm", "template", localPath.path}
+	for _, t := range templates {
+		name := t.Name()
+		if name == "tests" || name == "NOTES.txt" || filepath.Ext(name) == ".tpl" {
+			continue
+		}
+		cmd = append(cmd, "-x")
+		cmd = append(cmd, filepath.Join("templates", name))
+	}
+
+	yaml, err := s.execLocalCmdArgv(cmd...)
 	if err != nil {
 		return nil, err
 	}
