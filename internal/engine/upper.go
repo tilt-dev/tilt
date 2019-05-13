@@ -294,7 +294,6 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		}
 
 		ms.LastSuccessfulDeployTime = time.Now()
-		MaybeSetNeedsNudge(mt, engineState)
 
 		for id, result := range cb.Result {
 			ms.MutableBuildStatus(id).LastSuccessfulResult = result
@@ -948,8 +947,4 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action TiltfileLogAction) {
 	state.CurrentTiltfileBuild.Log = model.AppendLog(state.CurrentTiltfileBuild.Log, action, state.LogTimestamps)
 	state.TiltfileCombinedLog = model.AppendLog(state.TiltfileCombinedLog, action, state.LogTimestamps)
-}
-
-func handleNeedsAnalyticsNudgeAction(state *store.EngineState) {
-	state.NeedsAnalyticsNudge = true
 }
