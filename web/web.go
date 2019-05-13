@@ -20,7 +20,7 @@ func StaticPath() (string, error) {
 		if os.IsNotExist(err) {
 			return "", fmt.Errorf("Could not find Tilt web static files at path: %s", dir)
 		}
-		return "", fmt.Errorf("Coult not find Tilt web static files: %v", err)
+		return "", fmt.Errorf("Could not find Tilt web static files: %v", err)
 	}
 
 	return dir, nil
