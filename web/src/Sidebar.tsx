@@ -2,6 +2,7 @@ import React, { PureComponent } from "react"
 import { ReactComponent as ChevronSvg } from "./assets/svg/chevron.svg"
 import { ReactComponent as DotSvg } from "./assets/svg/dot.svg"
 import { ReactComponent as DotBuildingSvg } from "./assets/svg/dot-building.svg"
+import AnalyticsNudge from "./AnalyticsNudge"
 import { Link } from "react-router-dom"
 import { combinedStatus, warnings } from "./status"
 import "./Sidebar.scss"
@@ -41,6 +42,7 @@ class SidebarItem {
 type SidebarProps = {
   isClosed: boolean
   items: SidebarItem[]
+  needsNudge: boolean
   selected: string
   toggleSidebar: any
   resourceView: ResourceView
@@ -136,6 +138,19 @@ class Sidebar extends PureComponent<SidebarProps> {
         </li>
       )
     })
+
+    if (this.props.needsNudge) {
+      let nudgeItem = (
+        <li key="AnalyticsNudge">
+          <AnalyticsNudge />
+        </li>
+      )
+      if (listItems.length > 2) {
+        listItems.splice(2, 0, nudgeItem)
+      } else {
+        listItems.push(nudgeItem)
+      }
+    }
 
     return (
       <section className={classes.join(" ")}>
