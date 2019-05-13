@@ -13,6 +13,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/docker/cli/cli/config"
+	"github.com/docker/cli/opts"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/tlsconfig"
@@ -161,6 +162,11 @@ func ProvideEnv(ctx context.Context, env k8s.Env, runtime container.Runtime, min
 
 	host := os.Getenv("DOCKER_HOST")
 	if host != "" {
+		host, err := opts.ParseHost(true, host)
+		if err != nil {
+			return Env{}, errors.Wrap(err, "ProvideDockerEnv")
+		}
+
 		// If the docker host is set from the env, ignore all the variables
 		// from minikube/microk8s
 		result = Env{Host: host}

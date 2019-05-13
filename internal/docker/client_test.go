@@ -122,10 +122,10 @@ func TestProvideEnv(t *testing.T) {
 				"DOCKER_API_VERSION": "1.35",
 			},
 			osEnv: map[string]string{
-				"DOCKER_HOST": "registry.local:80",
+				"DOCKER_HOST": "tcp://registry.local:80",
 			},
 			expected: Env{
-				Host: "registry.local:80",
+				Host: "tcp://registry.local:80",
 			},
 		},
 		{
@@ -138,6 +138,21 @@ func TestProvideEnv(t *testing.T) {
 				"DOCKER_API_VERSION": "1.35",
 			},
 			expected: Env{},
+		},
+		{
+			env: k8s.EnvUnknown,
+			osEnv: map[string]string{
+				"DOCKER_TLS_VERIFY":  "1",
+				"DOCKER_HOST":        "localhost:2376",
+				"DOCKER_CERT_PATH":   "/home/nick/.minikube/certs",
+				"DOCKER_API_VERSION": "1.35",
+			},
+			expected: Env{
+				TLSVerify:  "1",
+				Host:       "tcp://localhost:2376",
+				CertPath:   "/home/nick/.minikube/certs",
+				APIVersion: "1.35",
+			},
 		},
 	}
 
