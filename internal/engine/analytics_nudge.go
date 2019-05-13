@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
 const newAnalyticsFlag = "TILT_NEW_ANALYTICS"
@@ -23,6 +24,11 @@ func MaybeSetNeedsNudge(mt *store.ManifestTarget, st *store.EngineState) {
 func maybeSetNeedsNudge(mt *store.ManifestTarget, st *store.EngineState) {
 	if st.NeedsAnalyticsNudge {
 		// already set
+		return
+	}
+
+	if st.AnalyticsOpt != analytics.OptDefault {
+		// already opted in/out
 		return
 	}
 

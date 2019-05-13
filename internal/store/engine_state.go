@@ -8,6 +8,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/docker/distribution/reference"
@@ -80,6 +81,8 @@ type EngineState struct {
 	// from GitHub
 	LatestTiltBuild model.TiltBuild
 
+	// Analytics Into
+	AnalyticsOpt        analytics.Opt
 	NeedsAnalyticsNudge bool // TODO(maia): maybe this can convey more info, e.g. "there was error in /analytics/opt"
 }
 

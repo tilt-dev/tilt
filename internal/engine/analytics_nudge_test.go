@@ -8,6 +8,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
 func TestNeedsNudgeK8sYaml(t *testing.T) {
@@ -59,4 +60,18 @@ func TestNeedsNudgeAlreadyNeedsNudge(t *testing.T) {
 	maybeSetNeedsNudge(targ, state)
 	assert.True(t, state.NeedsAnalyticsNudge,
 		"needsNudge already set, expected no change")
+}
+
+func TestNeedsNudgeAlreadyOpted(t *testing.T) {
+	st, _ := store.NewStoreForTesting()
+	state := st.LockMutableStateForTesting()
+	defer st.UnlockMutableState()
+
+	state.AnalyticsOpt = analytics.OptIn
+	m := model.Manifest{Name: "server"}
+	targ := store.NewManifestTarget(m)
+	targ.State = &store.ManifestState{LastSuccessfulDeployTime: time.Now()}
+	maybeSetNeedsNudge(targ, state)
+	assert.False(t, state.NeedsAnalyticsNudge,
+		"user already opted in, expected needsNudge = false")
 }
