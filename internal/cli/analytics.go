@@ -35,50 +35,52 @@ func initAnalytics(rootCmd *cobra.Command) error {
 		return err
 	}
 
+	rootCmd.AddCommand(analyticsCmd)
+	if webview.NewAnalyticsOn() {
+		return nil
+	}
+
 	status, err := analytics.OptStatus()
 	if err != nil {
 		return err
 	}
 
-	if !webview.NewAnalyticsOn() {
-		if status == analytics.OptDefault {
-			_, err := fmt.Fprintf(os.Stderr, "Send anonymized usage data to Windmill [y/n]? ")
+	if status == analytics.OptDefault {
+		_, err := fmt.Fprintf(os.Stderr, "Send anonymized usage data to Windmill [y/n]? ")
+		if err != nil {
+			return err
+		}
+
+		buf := bufio.NewReader(os.Stdin)
+		c, _, _ := buf.ReadRune()
+		if c == rune(0) || c == '\n' || c == 'y' || c == 'Y' {
+			err = analytics.SetOpt(analytics.OptIn)
 			if err != nil {
 				return err
 			}
 
-			buf := bufio.NewReader(os.Stdin)
-			c, _, _ := buf.ReadRune()
-			if c == rune(0) || c == '\n' || c == 'y' || c == 'Y' {
-				err = analytics.SetOpt(analytics.OptIn)
-				if err != nil {
-					return err
-				}
-
-				_, err = fmt.Fprintln(os.Stderr, "Thanks! Setting 'tilt analytics opt in'")
-				if err != nil {
-					return err
-				}
-			} else {
-				err = analytics.SetOpt(analytics.OptOut)
-				if err != nil {
-					return err
-				}
-
-				_, err = fmt.Fprintln(os.Stderr, "Thanks! Setting 'tilt analytics opt out'")
-				if err != nil {
-					return err
-				}
+			_, err = fmt.Fprintln(os.Stderr, "Thanks! Setting 'tilt analytics opt in'")
+			if err != nil {
+				return err
+			}
+		} else {
+			err = analytics.SetOpt(analytics.OptOut)
+			if err != nil {
+				return err
 			}
 
-			_, err = fmt.Fprintln(os.Stderr, "You set can update your privacy preferences later with 'tilt analytics'")
+			_, err = fmt.Fprintln(os.Stderr, "Thanks! Setting 'tilt analytics opt out'")
 			if err != nil {
 				return err
 			}
 		}
+
+		_, err = fmt.Fprintln(os.Stderr, "You set can update your privacy preferences later with 'tilt analytics'")
+		if err != nil {
+			return err
+		}
 	}
 
-	rootCmd.AddCommand(analyticsCmd)
 	return nil
 }
 
