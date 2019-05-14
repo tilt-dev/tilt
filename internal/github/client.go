@@ -2,6 +2,7 @@ package github
 
 import (
 	"context"
+	"strings"
 
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
@@ -30,7 +31,7 @@ func (cli ghClient) GetLatestRelease(ctx context.Context, org, repo string) (mod
 	}
 
 	return model.TiltBuild{
-		Version: *release.Name,
+		Version: strings.TrimPrefix(*release.Name, "v"),
 		Date:    release.PublishedAt.Time.Format("2006-01-02"),
 	}, nil
 }
