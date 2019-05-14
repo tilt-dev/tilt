@@ -193,7 +193,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaExec(ctx context.Context,
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-updateViaExec")
 	defer span.Finish()
 	if !hotReload {
-		return fmt.Errorf("kubectl exec syncing is only supported with hotReload set to true")
+		return fmt.Errorf("kubectl exec syncing is only supported on resources that don't use container_restart")
 	}
 	l := logger.Get(ctx)
 	w := l.Writer(logger.InfoLvl)
@@ -220,7 +220,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaExec(ctx context.Context,
 		}
 		l.Infof("updating %v files %v", len(archivePaths), filesToShow)
 		if err := sbd.kCli.Exec(ctx, podID, container, namespace,
-			[]string{"tar", "-x", "-f", "/dev/stdin"}, archive, w, w); err != nil {
+			[]string{"tar", "-C", "/", "-x", "-f", "/dev/stdin"}, archive, w, w); err != nil {
 			return err
 		}
 	}
