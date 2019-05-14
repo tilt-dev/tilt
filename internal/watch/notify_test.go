@@ -378,7 +378,7 @@ func TestWatchNonexistentDirectory(t *testing.T) {
 	f.WriteFile(file, "hello")
 
 	if runtime.GOOS == "darwin" {
-		// mac doesn't that return dir change as part of file creation
+		// mac doesn't return the dir change as part of file creation
 		f.assertEvents(file)
 	} else {
 		f.assertEvents(parent, file)
