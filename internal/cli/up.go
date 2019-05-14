@@ -35,12 +35,11 @@ var logActionsFlag bool = false
 var sailModeFlag model.SailMode = model.SailModeDefault
 
 type upCmd struct {
-	watch       bool
-	browserMode string
-	traceTags   string
-	hud         bool
-	autoDeploy  bool
-	fileName    string
+	watch      bool
+	traceTags  string
+	hud        bool
+	autoDeploy bool
+	fileName   string
 }
 
 func (c *upCmd) register() *cobra.Command {
@@ -50,7 +49,6 @@ func (c *upCmd) register() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&c.watch, "watch", true, "If true, services will be automatically rebuilt and redeployed when files change. Otherwise, each service will be started once.")
-	cmd.Flags().StringVar(&c.browserMode, "browser", "", "deprecated. TODO(nick): remove this flag")
 	cmd.Flags().Var(&webModeFlag, "web-mode", "Values: local, prod. Controls whether to use prod assets or a local dev server")
 	cmd.Flags().StringVar(&updateModeFlag, "update-mode", string(engine.UpdateModeAuto),
 		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", engine.AllUpdateModes))
@@ -66,10 +64,6 @@ func (c *upCmd) register() *cobra.Command {
 	cmd.Flags().Lookup("logactions").Hidden = true
 	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
 	err := cmd.Flags().MarkHidden("image-tag-prefix")
-	if err != nil {
-		panic(err)
-	}
-	err = cmd.Flags().MarkHidden("browser")
 	if err != nil {
 		panic(err)
 	}
