@@ -1226,6 +1226,18 @@ k8s_yaml(yml)
 	)
 }
 
+func TestHelmInvalidDirectory(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+yml = helm('helm')
+k8s_yaml(yml)
+`)
+
+	f.loadErrString("Expected to be able to read Helm templates in ")
+}
+
 func TestHelmFromRepoPath(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -3136,6 +3148,26 @@ update_mode(UPDATE_MODE_MANUAL)
 	f.loadErrString("update_mode can only be called once")
 }
 
+func TestHelmSkipsTests(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupHelmWithTest()
+	f.file("Tiltfile", `
+yml = helm('helm')
+k8s_yaml(yml)
+`)
+
+	f.load()
+
+	f.assertNextManifestUnresourced("release-name-helloworld-chart")
+	f.assertConfigFiles(
+		"Tiltfile",
+		".tiltignore",
+		"helm",
+	)
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
@@ -4009,6 +4041,11 @@ func (f *fixture) setupHelm() {
 	f.file("helm/templates/deployment.yaml", deploymentYAML)
 	f.file("helm/templates/ingress.yaml", ingressYAML)
 	f.file("helm/templates/service.yaml", serviceYAML)
+}
+
+func (f *fixture) setupHelmWithTest() {
+	f.setupHelm()
+	f.file("helm/templates/tests/test-mariadb-connection.yaml", helmTestYAML)
 }
 
 func (f *fixture) setupExtraPodSelectors(s string) {

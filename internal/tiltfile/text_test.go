@@ -195,3 +195,31 @@ spec:
     app: {{ template "helloworld-chart.name" . }}
     release: {{ .Release.Name }}
 `
+
+const helmTestYAML = `apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-credentials-test"
+  annotations:
+    "helm.sh/hook": test-success
+spec:
+  containers:
+  - name: {{ .Release.Name }}-credentials-test
+    image: foobar
+    env:
+      - name: MARIADB_HOST
+        value: name
+      - name: MARIADB_PORT
+        value: "3306"
+      - name: WORDPRESS_DATABASE_NAME
+        value: database
+      - name: WORDPRESS_DATABASE_USER
+        value: user
+      - name: WORDPRESS_DATABASE_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: name
+            key: mariadb-password
+    command: ["sh", "-c", "mysql --host=$MARIADB_HOST --port=$MARIADB_PORT --user=$WORDPRESS_DATABASE_USER --password=$WORDPRESS_DATABASE_PASSWORD"]
+  restartPolicy: Never
+`
