@@ -330,6 +330,24 @@ func TestWatchBothDirAndFile(t *testing.T) {
 	f.assertEvents(fileB)
 }
 
+func TestWatchNonexistentFileInNonexistentDirectoryCreatedSimultaneously(t *testing.T) {
+	f := newNotifyFixture(t)
+	defer f.tearDown()
+
+	root := f.JoinPath("root")
+	err := os.Mkdir(root, 0777)
+	if err != nil {
+		t.Fatal(err)
+	}
+	file := f.JoinPath("root", "parent", "a")
+
+	f.watch(file)
+	f.fsync()
+	f.events = nil
+	f.WriteFile(file, "hello")
+	f.assertEvents(file)
+}
+
 func TestWatchNonexistentDirectory(t *testing.T) {
 	f := newNotifyFixture(t)
 	defer f.tearDown()

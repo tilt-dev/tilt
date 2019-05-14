@@ -117,12 +117,12 @@ func (d *naiveNotify) Errors() chan error {
 func (d *naiveNotify) loop() {
 	defer close(d.wrappedEvents)
 	for e := range d.events {
-		if !d.shouldNotify(e.Name) {
-			continue
-		}
+		shouldNotify := d.shouldNotify(e.Name)
 
 		if e.Op&fsnotify.Create != fsnotify.Create {
-			d.wrappedEvents <- FileEvent{e.Name}
+			if shouldNotify {
+				d.wrappedEvents <- FileEvent{e.Name}
+			}
 			continue
 		}
 
@@ -132,17 +132,28 @@ func (d *naiveNotify) loop() {
 				return err
 			}
 
-			if !d.shouldNotify(path) {
-				return nil
+			if d.shouldNotify(path) {
+				d.wrappedEvents <- FileEvent{path}
 			}
-			d.wrappedEvents <- FileEvent{path}
 
 			// TODO(dmiller): symlinks 😭
-			if !mode.IsDir() {
-				return nil
+
+			shouldWatch := false
+			if mode.IsDir() {
+				// watch all directories
+				shouldWatch = true
+			} else {
+				// watch files that are explicitly named, but don't watch others
+				_, ok := d.notifyList[path]
+				if ok {
+					shouldWatch = true
+				}
 			}
-			if err = d.watcher.Add(path); err != nil {
-				log.Printf("Error watching path %s: %s", e.Name, err)
+			if shouldWatch {
+				err := d.watcher.Add(path)
+				if err != nil {
+					log.Printf("Error watching path %s: %s", e.Name, err)
+				}
 			}
 			return nil
 		}); err != nil {
