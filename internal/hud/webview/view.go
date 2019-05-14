@@ -115,6 +115,8 @@ type View struct {
 	SailEnabled bool
 	SailURL     string
 
+	NeedsAnalyticsNudge bool
+
 	RunningTiltBuild model.TiltBuild
 	LatestTiltBuild  model.TiltBuild
 }

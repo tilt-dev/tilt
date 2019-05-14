@@ -58,6 +58,7 @@ type HudState = {
     LogTimestamps: boolean
     SailEnabled: boolean
     SailURL: string
+    NeedsAnalyticsNudge: boolean
     RunningTiltBuild: TiltBuild
     LatestTiltBuild: TiltBuild
   } | null
@@ -95,6 +96,7 @@ class HUD extends Component<HudProps, HudState> {
         LogTimestamps: false,
         SailEnabled: false,
         SailURL: "",
+        NeedsAnalyticsNudge: false,
         RunningTiltBuild: {
           Version: "",
           Date: "",
@@ -179,6 +181,7 @@ class HUD extends Component<HudProps, HudState> {
     let view = this.state.View
     let sailEnabled = view && view.SailEnabled ? view.SailEnabled : false
     let sailUrl = view && view.SailURL ? view.SailURL : ""
+    let needsNudge = view ? view.NeedsAnalyticsNudge : false
     let message = this.state.Message
     let resources = (view && view.Resources) || []
     if (!resources.length) {
@@ -195,6 +198,7 @@ class HUD extends Component<HudProps, HudState> {
         <Sidebar
           selected={name}
           items={sidebarItems}
+          needsNudge={needsNudge}
           isClosed={isSidebarClosed}
           toggleSidebar={toggleSidebar}
           resourceView={t}
