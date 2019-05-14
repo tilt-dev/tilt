@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"go/build"
 	"io"
 	"io/ioutil"
 	"mime"
@@ -26,6 +25,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/network"
 	"github.com/windmilleng/tilt/internal/ospath"
+	"github.com/windmilleng/tilt/web"
 )
 
 const prodAssetBucket = "https://storage.googleapis.com/tilt-static-assets/"
@@ -60,13 +60,10 @@ func (s *devServer) TearDown(ctx context.Context) {
 }
 
 func (s *devServer) start(ctx context.Context, stdout, stderr io.Writer) (*exec.Cmd, error) {
-	myPkg, err := build.Default.Import("github.com/windmilleng/tilt/internal/hud/server", ".", build.FindOnly)
+	assetDir, err := web.StaticPath()
 	if err != nil {
-		return nil, errors.Wrap(err, "Could not locate Tilt source code")
+		return nil, err
 	}
-
-	myDir := myPkg.Dir
-	assetDir := filepath.Join(myDir, "..", "..", "..", "web")
 
 	logger.Get(ctx).Infof("Installing Tilt NodeJS dependencies…")
 	cmd := exec.CommandContext(ctx, "yarn", "install")
@@ -307,12 +304,12 @@ func ProvideAssetServer(ctx context.Context, webMode model.WebMode, webVersion m
 	}
 
 	if webMode == model.PrecompiledWebMode {
-		pkg, err := build.Default.Import("github.com/windmilleng/tilt/internal/hud/server", ".", build.FindOnly)
+		assetDir, err := web.StaticPath()
 		if err != nil {
-			return nil, fmt.Errorf("Precompiled JS not found on disk: %v", err)
+			return nil, fmt.Errorf("Precompiled JS: %v", err)
 		}
 
-		buildDir := filepath.Join(pkg.Dir, "../../../web/build")
+		buildDir := filepath.Join(assetDir, "build")
 		return precompiledServer{
 			path: buildDir,
 		}, nil
