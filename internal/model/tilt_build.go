@@ -4,8 +4,9 @@ import (
 	"fmt"
 )
 
-// Information on the current built of the Tilt binary
+// Information on a build of the Tilt binary
 type TiltBuild struct {
+	// Version w/o leading "v"
 	Version string
 	Date    string
 	Dev     bool
