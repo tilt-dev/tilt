@@ -48,6 +48,15 @@ Other development commands:
 
 ## Developing
 
+To check out Tilt for the first time, run:
+
+```
+go get -u github.com/windmilleng/tilt/cmd/tilt
+```
+
+The Go toolchain will checkout the Tilt repo somewhere on your GOPATH,
+usually under `~/go/src/github.com/windmilleng/tilt`. (See notes below if you're using Go modules).
+
 To run the fast test suite, run:
 
 ```
@@ -72,6 +81,14 @@ To install `tilt` on PATH, run
 ```
 make install
 ```
+
+## Go Modules
+
+Currently, Tilt will not work with Go modules. See [this issue](https://github.com/windmilleng/tilt/issues/1520)
+for more details.
+
+If you're building Tilt from source, you must build it in your GOPATH.
+
 
 ## Performance
 ### Go Profile
