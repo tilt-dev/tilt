@@ -27,7 +27,13 @@ function combinedStatus(res: any): string {
 function warnings(res: any): string[] {
   let buildHistory = res.BuildHistory || []
   let lastBuild = buildHistory[0]
-  return (lastBuild && lastBuild.Warnings) || []
+  let warnings = (lastBuild && lastBuild.Warnings) || []
+
+  if (res.ResourceInfo && res.ResourceInfo.PodRestarts > 0) {
+    warnings.push("Container restarted")
+  }
+
+  return warnings
 }
 
 export { combinedStatus, warnings }

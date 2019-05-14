@@ -1,6 +1,6 @@
 import { oneResource } from "./testdata.test"
 import { zeroTime } from "./time"
-import { combinedStatus } from "./status"
+import { combinedStatus, warnings } from "./status"
 
 function emptyResource() {
   let res = oneResource()
@@ -47,5 +47,23 @@ describe("combinedStatus", () => {
     res.BuildHistory = [{ StartTime: ts, Error: "error" }]
     res.RuntimeStatus = "ok"
     expect(combinedStatus(res)).toBe("error")
+  })
+
+  it("container restarts aren't errors", () => {
+    const ts = Date.now().toLocaleString()
+    let res = emptyResource()
+    res.BuildHistory = [{ StartTime: ts }]
+    res.RuntimeStatus = "ok"
+    res.ResourceInfo.PodRestarts = 1
+    expect(combinedStatus(res)).toBe("ok")
+  })
+
+  it("container restarts are warnings", () => {
+    const ts = Date.now().toLocaleString()
+    let res = emptyResource()
+    res.BuildHistory = [{ StartTime: ts }]
+    res.RuntimeStatus = "ok"
+    res.ResourceInfo.PodRestarts = 1
+    expect(warnings(res)).toEqual(["Container restarted"])
   })
 })
