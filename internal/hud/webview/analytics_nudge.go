@@ -10,12 +10,12 @@ import (
 const newAnalyticsFlag = "TILT_NEW_ANALYTICS"
 
 // TEMPORARY: check env to see if new-analytics flag is set
-func newAnalyticsOn() bool {
+func NewAnalyticsOn() bool {
 	return os.Getenv(newAnalyticsFlag) != ""
 }
 
 func NeedsNudge(st store.EngineState) bool {
-	if !newAnalyticsOn() {
+	if !NewAnalyticsOn() {
 		return false
 	}
 	return needsNudge(st)

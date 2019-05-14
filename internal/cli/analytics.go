@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 	giturls "github.com/whilp/git-urls"
+	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
@@ -39,39 +40,41 @@ func initAnalytics(rootCmd *cobra.Command) error {
 		return err
 	}
 
-	if status == analytics.OptDefault {
-		_, err := fmt.Fprintf(os.Stderr, "Send anonymized usage data to Windmill [y/n]? ")
-		if err != nil {
-			return err
-		}
-
-		buf := bufio.NewReader(os.Stdin)
-		c, _, _ := buf.ReadRune()
-		if c == rune(0) || c == '\n' || c == 'y' || c == 'Y' {
-			err = analytics.SetOpt(analytics.OptIn)
+	if !webview.NewAnalyticsOn() {
+		if status == analytics.OptDefault {
+			_, err := fmt.Fprintf(os.Stderr, "Send anonymized usage data to Windmill [y/n]? ")
 			if err != nil {
 				return err
 			}
 
-			_, err = fmt.Fprintln(os.Stderr, "Thanks! Setting 'tilt analytics opt in'")
-			if err != nil {
-				return err
-			}
-		} else {
-			err = analytics.SetOpt(analytics.OptOut)
-			if err != nil {
-				return err
+			buf := bufio.NewReader(os.Stdin)
+			c, _, _ := buf.ReadRune()
+			if c == rune(0) || c == '\n' || c == 'y' || c == 'Y' {
+				err = analytics.SetOpt(analytics.OptIn)
+				if err != nil {
+					return err
+				}
+
+				_, err = fmt.Fprintln(os.Stderr, "Thanks! Setting 'tilt analytics opt in'")
+				if err != nil {
+					return err
+				}
+			} else {
+				err = analytics.SetOpt(analytics.OptOut)
+				if err != nil {
+					return err
+				}
+
+				_, err = fmt.Fprintln(os.Stderr, "Thanks! Setting 'tilt analytics opt out'")
+				if err != nil {
+					return err
+				}
 			}
 
-			_, err = fmt.Fprintln(os.Stderr, "Thanks! Setting 'tilt analytics opt out'")
+			_, err = fmt.Fprintln(os.Stderr, "You set can update your privacy preferences later with 'tilt analytics'")
 			if err != nil {
 				return err
 			}
-		}
-
-		_, err = fmt.Fprintln(os.Stderr, "You set can update your privacy preferences later with 'tilt analytics'")
-		if err != nil {
-			return err
 		}
 	}
 
