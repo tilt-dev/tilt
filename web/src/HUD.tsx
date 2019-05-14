@@ -14,10 +14,11 @@ import { createBrowserHistory, History, UnregisterCallback } from "history"
 import { incr, pathToTag } from "./analytics"
 import TopBar from "./TopBar"
 import "./HUD.scss"
-import { ResourceView } from "./types"
+import { TiltBuild, ResourceView } from "./types"
 import ErrorPane, { ErrorResource } from "./ErrorPane"
 import PreviewList from "./PreviewList"
 import { HotKeys } from "react-hotkeys"
+import moment from "moment"
 
 type HudProps = {
   history: History
@@ -57,6 +58,8 @@ type HudState = {
     LogTimestamps: boolean
     SailEnabled: boolean
     SailURL: string
+    RunningTiltBuild: TiltBuild
+    LatestTiltBuild: TiltBuild
   } | null
   IsSidebarClosed: boolean
 }
@@ -92,6 +95,16 @@ class HUD extends Component<HudProps, HudState> {
         LogTimestamps: false,
         SailEnabled: false,
         SailURL: "",
+        RunningTiltBuild: {
+          Version: "",
+          Date: "",
+          Dev: false,
+        },
+        LatestTiltBuild: {
+          Version: "",
+          Date: "",
+          Dev: false,
+        },
       },
       IsSidebarClosed: false,
     }
@@ -283,6 +296,9 @@ class HUD extends Component<HudProps, HudState> {
     let errorResources = resources.map(r => new ErrorResource(r))
     let resourcesWithErrors = errorResources.filter(r => r.hasError())
 
+    let runningVersion = view && view.RunningTiltBuild
+    let latestVersion = view && view.LatestTiltBuild
+
     return (
       <HotKeys keyMap={this.keymap()} handlers={this.handlers()}>
         <div className="HUD">
@@ -332,7 +348,12 @@ class HUD extends Component<HudProps, HudState> {
             />
             <Route render={sidebarRoute.bind(null, ResourceView.Log)} />
           </Switch>
-          <Statusbar items={statusItems} errorsUrl={this.path("/errors")} />
+          <Statusbar
+            items={statusItems}
+            errorsUrl={this.path("/errors")}
+            runningVersion={runningVersion}
+            latestVersion={latestVersion}
+          />
           <Switch>
             <Route
               exact

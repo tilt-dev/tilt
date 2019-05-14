@@ -27,7 +27,6 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/tilt/internal/watch"
-	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
 // When we see a file change, wait this long to see if any other files have changed, and bundle all changes together.
@@ -849,12 +848,6 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.ConfigFiles = action.ConfigFiles
 	engineState.InitManifests = action.InitManifests
 	engineState.SailEnabled = action.EnableSail
-
-	opt, err := analytics.OptStatus()
-	if err != nil {
-		return errors.Wrap(err, "checking analytics opt in/out")
-	}
-	engineState.AnalyticsOpt = opt
 
 	if action.ExecuteTiltfile {
 		status := model.BuildRecord{

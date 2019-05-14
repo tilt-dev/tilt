@@ -92,35 +92,6 @@ func TestRelativeTiltfilePath(t *testing.T) {
 	assert.Equal(t, "Tiltfile", actual)
 }
 
-func TestNeedsNudgeSet(t *testing.T) {
-	state := newState(nil)
-	oldFlag := os.Getenv(newAnalyticsFlag)
-	defer func() { _ = os.Setenv(newAnalyticsFlag, oldFlag) }()
-
-	err := os.Setenv(newAnalyticsFlag, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	m := model.Manifest{Name: "server"}
-	targ := store.NewManifestTarget(m)
-	targ.State = &store.ManifestState{LastSuccessfulDeployTime: time.Now()}
-	state.UpsertManifestTarget(targ)
-
-	v := StateToWebView(*state)
-
-	assert.False(t, v.NeedsAnalyticsNudge,
-		"newAnalyticsFlag not set, so NeedsNudge should not be set")
-
-	err = os.Setenv(newAnalyticsFlag, "1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	v = StateToWebView(*state)
-	assert.True(t, v.NeedsAnalyticsNudge)
-
-}
-
 func newState(manifests []model.Manifest) *store.EngineState {
 	ret := store.NewState()
 	for _, m := range manifests {
