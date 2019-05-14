@@ -327,11 +327,15 @@ exports[`sidebar renders analytics nudge 1`] = `
           <div
             className="AnalyticsNudge-buttons"
           >
-            <button>
+            <button
+              onClick={[Function]}
+            >
               Yes!
             </button>
              
-            <button>
+            <button
+              onClick={[Function]}
+            >
               Nope!
             </button>
           </div>
@@ -449,11 +453,15 @@ exports[`sidebar renders analytics nudge as third list item 1`] = `
           <div
             className="AnalyticsNudge-buttons"
           >
-            <button>
+            <button
+              onClick={[Function]}
+            >
               Yes!
             </button>
              
-            <button>
+            <button
+              onClick={[Function]}
+            >
               Nope!
             </button>
           </div>
