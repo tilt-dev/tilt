@@ -6,6 +6,7 @@ import (
 
 // Information on the current built of the Tilt binary
 type TiltBuild struct {
+	// Version w/o leading "v"
 	Version string
 	Date    string
 	Dev     bool
