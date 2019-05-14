@@ -2,7 +2,7 @@ type Tags = { [key: string]: string }
 
 // Fire and forget all analytics events
 const incr = (name: string, tags: Tags = {}): void => {
-  let url = `//${window.location.host}/api/analytics`
+  let url = `//${window.location.host}/api/analytics/stat`
 
   fetch(url, {
     method: "post",

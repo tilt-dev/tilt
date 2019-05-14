@@ -18,10 +18,14 @@ import (
 	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
-type analyticsPayload struct {
+type analyticsStatPayload struct {
 	Verb string            `json:"verb"`
 	Name string            `json:"name"`
 	Tags map[string]string `json:"tags"`
+}
+
+type analyticsOptPayload struct {
+	Opt string `json:"opt"`
 }
 
 type HeadsUpServer struct {
@@ -42,7 +46,8 @@ func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analyti
 	}
 
 	r.HandleFunc("/api/view", s.ViewJSON)
-	r.HandleFunc("/api/analytics", s.HandleAnalytics)
+	r.HandleFunc("/api/analytics/opt", s.HandleAnalyticsOpt)
+	r.HandleFunc("/api/analytics/stat", s.HandleAnalyticsStat)
 	r.HandleFunc("/api/sail", s.HandleSail)
 	r.HandleFunc("/api/control/reset_restarts", s.HandleResetRestarts)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
@@ -67,13 +72,32 @@ func (s *HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *HeadsUpServer) HandleAnalytics(w http.ResponseWriter, req *http.Request) {
+func (s *HeadsUpServer) HandleAnalyticsOpt(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		http.Error(w, "must be POST request", http.StatusBadRequest)
 		return
 	}
 
-	var payloads []analyticsPayload
+	var payload analyticsOptPayload
+
+	decoder := json.NewDecoder(req.Body)
+	err := decoder.Decode(&payload)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error parsing JSON payload: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// TODO(maia): record user choice
+	_, _ = fmt.Fprintf(w, "👍 you sent: %s", payload.Opt)
+}
+
+func (s *HeadsUpServer) HandleAnalyticsStat(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		http.Error(w, "must be POST request", http.StatusBadRequest)
+		return
+	}
+
+	var payloads []analyticsStatPayload
 
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&payloads)

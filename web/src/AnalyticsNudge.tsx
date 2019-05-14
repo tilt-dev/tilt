@@ -2,6 +2,19 @@ import React, { Component } from "react"
 import "./AnalyticsNudge.scss"
 
 class AnalyticsNudge extends Component {
+  static analyticsOpt(optIn: boolean) {
+    let url = `//${window.location.host}/api/analytics/opt`
+
+    let payload = { opt: optIn ? "opt-in" : "opt-out" }
+
+    let j = JSON.stringify(payload)
+    console.log(j)
+
+    fetch(url, {
+      method: "post",
+      body: JSON.stringify(payload),
+    })
+  }
   render() {
     return (
       <div className="AnalyticsNudge" key="AnalyticsNudge">
@@ -14,7 +27,12 @@ class AnalyticsNudge extends Component {
           .)
         </div>
         <div className="AnalyticsNudge-buttons">
-          <button>Yes!</button> <button>Nope!</button>
+          <button onClick={() => AnalyticsNudge.analyticsOpt(true)}>
+            Yes!
+          </button>{" "}
+          <button onClick={() => AnalyticsNudge.analyticsOpt(false)}>
+            Nope!
+          </button>
         </div>
       </div>
     )
