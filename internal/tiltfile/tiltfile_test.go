@@ -1226,6 +1226,18 @@ k8s_yaml(yml)
 	)
 }
 
+func TestHelmInvalidDirectory(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+yml = helm('helm')
+k8s_yaml(yml)
+`)
+
+	f.loadErrString("Expected to be able to read Helm templates in ")
+}
+
 func TestHelmFromRepoPath(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

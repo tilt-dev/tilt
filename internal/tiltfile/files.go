@@ -342,7 +342,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 
 	templates, err := ioutil.ReadDir(filepath.Join(localPath.path, "templates"))
 	if err != nil {
-		return nil, fmt.Errorf("Expected to be able to read templates from %s, but got an error: %v", localPath.path, err)
+		return nil, fmt.Errorf("Expected to be able to read Helm templates in %s, but got an error: %v", localPath.path, err)
 	}
 
 	cmd := []string{"helm", "template", localPath.path}
