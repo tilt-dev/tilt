@@ -31,6 +31,7 @@ class ErrorResource {
     }
   }
 
+  // TODO(dmiller): pod restarts shouldn't be errors anymore
   public hasError() {
     return this.podStatusIsError() || this.podRestarted() || this.buildFailed()
   }
