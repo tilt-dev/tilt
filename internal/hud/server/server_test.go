@@ -36,7 +36,7 @@ func TestHandleAnalyticsEmptyRequest(t *testing.T) {
 	}
 }
 
-func TestHandleAnalyticsIncr(t *testing.T) {
+func TestHandleAnalyticsRecordsIncr(t *testing.T) {
 	f := newTestFixture(t)
 
 	var jsonStr = []byte(`[{"verb": "incr", "name": "foo", "tags": {}}]`)
