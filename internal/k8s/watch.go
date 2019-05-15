@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tilt/internal/model"
 
 	v1 "k8s.io/api/core/v1"
@@ -48,6 +49,43 @@ func (kCli K8sClient) makeWatcher(f watcherFactory, ls labels.Selector) (watch.I
 		// ugh, it still failed. return the original error.
 	}
 	return nil, fmt.Errorf("%s, Reason: %s, Code: %d", status.Message, status.Reason, status.Code)
+}
+
+func (kCli K8sClient) WatchEvents(ctx context.Context, ls labels.Selector) (<-chan *v1.Event, error) {
+	watcher, err := kCli.makeWatcher(func(ns string) watcher {
+		return kCli.core.Events(ns)
+	}, ls)
+	if err != nil {
+		return nil, errors.Wrap(err, "error watching k8s events")
+	}
+
+	ch := make(chan *v1.Event)
+
+	go func() {
+		for {
+			select {
+			case e, ok := <-watcher.ResultChan():
+				if !ok {
+					close(ch)
+					return
+				}
+				if e.Object == nil {
+					continue
+				}
+				ev, ok := e.Object.(*v1.Event)
+				if !ok {
+					continue
+				}
+				ch <- ev
+			case <-ctx.Done():
+				watcher.Stop()
+				close(ch)
+				return
+			}
+		}
+	}()
+
+	return ch, nil
 }
 
 func (kCli K8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan *v1.Pod, error) {

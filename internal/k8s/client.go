@@ -82,6 +82,8 @@ type Client interface {
 
 	WatchServices(ctx context.Context, lps []model.LabelPair) (<-chan *v1.Service, error)
 
+	WatchEvents(ctx context.Context, lps labels.Selector) (<-chan *v1.Event, error)
+
 	ConnectedToCluster(ctx context.Context) error
 
 	ContainerRuntime(ctx context.Context) container.Runtime
