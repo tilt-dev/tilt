@@ -3,7 +3,11 @@ import ReactDOM from "react-dom"
 import { MemoryRouter } from "react-router"
 import HUD from "./HUD"
 import { mount } from "enzyme"
-import { oneResourceView, twoResourceView } from "./testdata.test"
+import {
+  oneResourceView,
+  twoResourceView,
+  oneResourceNoErrors,
+} from "./testdata.test"
 import { createMemoryHistory } from "history"
 
 const fakeHistory = createMemoryHistory()
@@ -144,4 +148,13 @@ it("renders two errors for a resource that has pod restarts, a build failure and
   hud.setState({ View: resourceView })
   let errorTab = root.find(".tabLink--errors")
   expect(errorTab.at(0).text()).toEqual("Errors (2)")
+})
+
+it("renders no error count in tabnav if there are no errors", () => {
+  const root = mount(emptyHUD())
+  const hud = root.find(HUD)
+
+  hud.setState({ View: { Resources: [oneResourceNoErrors()] } })
+  let errorTab = root.find(".tabLink--errors")
+  expect(errorTab.at(0).text()).toEqual("Errors ")
 })

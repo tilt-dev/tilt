@@ -209,7 +209,7 @@ class HUD extends Component<HudProps, HudState> {
       } else {
         numErrors = resourcesWithErrors
           .map(er => er.numberOfAlerts())
-          .reduce((sum, current) => sum + current)
+          .reduce((sum, current) => sum + current, 0)
       }
       return (
         <TopBar
