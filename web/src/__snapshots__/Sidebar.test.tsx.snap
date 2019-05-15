@@ -332,7 +332,6 @@ exports[`sidebar renders analytics nudge 1`] = `
             >
               Yes!
             </button>
-             
             <button
               onClick={[Function]}
             >
@@ -458,7 +457,6 @@ exports[`sidebar renders analytics nudge as third list item 1`] = `
             >
               Yes!
             </button>
-             
             <button
               onClick={[Function]}
             >
