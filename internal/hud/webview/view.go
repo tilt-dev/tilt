@@ -116,6 +116,9 @@ type View struct {
 	SailURL     string
 
 	NeedsAnalyticsNudge bool
+
+	RunningTiltBuild model.TiltBuild
+	LatestTiltBuild  model.TiltBuild
 }
 
 func (v View) Resource(n model.ManifestName) (Resource, bool) {

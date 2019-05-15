@@ -11,3 +11,9 @@ export type Build = {
   FinishTime: string
   Edits: Array<string> | null
 }
+
+export type TiltBuild = {
+  Version: string
+  Date: string
+  Dev: boolean
+}
