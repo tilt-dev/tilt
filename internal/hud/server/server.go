@@ -33,16 +33,18 @@ type HeadsUpServer struct {
 	router            *mux.Router
 	a                 analytics.Analytics
 	sailCli           client.SailClient
+	opter             AnalyticsOpter
 	numWebsocketConns int32
 }
 
-func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics analytics.Analytics, sailCli client.SailClient) *HeadsUpServer {
+func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics analytics.Analytics, sailCli client.SailClient, opter AnalyticsOpter) *HeadsUpServer {
 	r := mux.NewRouter().UseEncodedPath()
 	s := &HeadsUpServer{
 		store:   store,
 		router:  r,
 		a:       analytics,
 		sailCli: sailCli,
+		opter:   opter,
 	}
 
 	r.HandleFunc("/api/view", s.ViewJSON)
@@ -87,8 +89,11 @@ func (s *HeadsUpServer) HandleAnalyticsOpt(w http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	// TODO(maia): record user choice
-	_, _ = fmt.Fprintf(w, "👍 you sent: %s", payload.Opt)
+	err = s.opter.SetOptStr(payload.Opt)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error setting opt '%s': %v", payload.Opt, err), http.StatusInternalServerError)
+		return
+	}
 }
 
 func (s *HeadsUpServer) HandleAnalytics(w http.ResponseWriter, req *http.Request) {

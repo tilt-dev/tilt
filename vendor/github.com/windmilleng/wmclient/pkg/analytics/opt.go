@@ -46,7 +46,9 @@ func OptStatus() (Opt, error) {
 	return OptDefault, nil
 }
 
-func SetOptStr(s string) error {
+// SetOptStr converts the given string into an Opt enum, and records that choice
+// as the users analytics decision, returning the Opt set (and any errors).
+func SetOptStr(s string) (Opt, error) {
 	choice := OptDefault
 	for k, v := range Choices {
 		if v == s {
@@ -58,7 +60,7 @@ func SetOptStr(s string) error {
 		}
 	}
 
-	return SetOpt(choice)
+	return choice, SetOpt(choice)
 }
 
 func SetOpt(c Opt) error {

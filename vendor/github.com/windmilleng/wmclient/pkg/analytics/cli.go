@@ -34,7 +34,7 @@ func analyticsOpt(_ *cobra.Command, args []string) (outerErr error) {
 		return fmt.Errorf("no choice given; pass it as first arg: <tool> analytics opt <choice>")
 	}
 	choiceStr := args[0]
-	err := SetOptStr(choiceStr)
+	_, err := SetOptStr(choiceStr)
 	if err != nil {
 		return err
 	}

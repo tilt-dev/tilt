@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -121,6 +122,97 @@ func TestHandleAnalyticsErrorsIfNotIncr(t *testing.T) {
 	}
 }
 
+func TestHandleAnalyticsOptIn(t *testing.T) {
+	f := newTestFixture(t)
+
+	var jsonStr = []byte(`{"opt": "opt-in"}`)
+	req, err := http.NewRequest(http.MethodPost, "/api/analytics_opt", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.s.HandleAnalyticsOpt)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+
+	if assert.Len(t, f.o.callStrs, 1) {
+		assert.Equal(t, "opt-in", f.o.callStrs[0])
+	}
+}
+
+func TestHandleAnalyticsOptNonPost(t *testing.T) {
+	f := newTestFixture(t)
+
+	req, err := http.NewRequest(http.MethodGet, "/api/analytics_opt", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.s.HandleAnalyticsOpt)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+}
+
+func TestHandleAnalyticsOptMalformedPayload(t *testing.T) {
+	f := newTestFixture(t)
+
+	var jsonStr = []byte(`{"opt":`)
+	req, err := http.NewRequest(http.MethodPost, "/api/analytics_opt", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.s.HandleAnalyticsOpt)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+}
+
+func TestHandleAnalyticsOptSetError(t *testing.T) {
+	f := newTestFixture(t)
+	f.o.nextErr = fmt.Errorf("oh nooooooooes")
+	var jsonStr = []byte(`{"opt": "opt-in"}`)
+	req, err := http.NewRequest(http.MethodPost, "/api/analytics_opt", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.s.HandleAnalyticsOpt)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusInternalServerError {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusInternalServerError)
+	}
+
+	if assert.Len(t, f.o.callStrs, 1) {
+		assert.Equal(t, "opt-in", f.o.callStrs[0])
+	}
+}
+
 func TestHandleSail(t *testing.T) {
 	f := newTestFixture(t)
 
@@ -188,19 +280,22 @@ type serverFixture struct {
 	s       *server.HeadsUpServer
 	a       *analytics.MemoryAnalytics
 	sailCli *client.FakeSailClient
+	o       *testOpter
 }
 
 func newTestFixture(t *testing.T) *serverFixture {
 	st := store.NewStore(engine.UpperReducer, store.LogActionsFlag(false))
 	a := analytics.NewMemoryAnalytics()
 	sailCli := client.NewFakeSailClient()
-	s := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), a, sailCli)
+	o := newTestOpter()
+	s := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), a, sailCli, o)
 
 	return &serverFixture{
 		t:       t,
 		s:       s,
 		a:       a,
 		sailCli: sailCli,
+		o:       o,
 	}
 }
 
@@ -213,4 +308,25 @@ func (f *serverFixture) assertIncrement(name string, count int) {
 	}
 
 	assert.Equalf(f.t, count, runningCount, "Expected the total count to be %d, got %d", count, runningCount)
+}
+
+type testOpter struct {
+	nextErr  error
+	callStrs []string
+}
+
+var _ server.AnalyticsOpter = &testOpter{}
+
+func newTestOpter() *testOpter { return &testOpter{} }
+
+func (o *testOpter) SetOptStr(s string) error {
+	o.callStrs = append(o.callStrs, s)
+
+	if o.nextErr != nil {
+		err := o.nextErr
+		o.nextErr = nil
+		return err
+	}
+
+	return nil
 }
