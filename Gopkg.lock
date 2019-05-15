@@ -1744,6 +1744,7 @@
     "github.com/docker/cli/cli/command",
     "github.com/docker/cli/cli/config",
     "github.com/docker/cli/cli/flags",
+    "github.com/docker/cli/opts",
     "github.com/docker/distribution/reference",
     "github.com/docker/docker/api/types",
     "github.com/docker/docker/api/types/container",
