@@ -14,6 +14,40 @@ func NewAnalyticsOn() bool {
 	return os.Getenv(newAnalyticsFlag) != ""
 }
 
+type Opter interface {
+	// OptStatus() (analytics.Opt, error)
+	SetOptStr(s string) (analytics.Opt, error)
+}
+
+type AnalyticsOptAction struct {
+	Opt analytics.Opt
+}
+
+func (AnalyticsOptAction) Action() {}
+
+type WriteToFileOpter struct {
+	st store.RStore
+}
+
+var _ Opter = &WriteToFileOpter{}
+
+func (*WriteToFileOpter) OptStatus() (analytics.Opt, error) {
+	return analytics.OptStatus()
+}
+
+func (o *WriteToFileOpter) SetOptStr(s string) (analytics.Opt, error) {
+	if !NewAnalyticsOn() {
+		return analytics.OptDefault, nil
+	}
+
+	choice, err := analytics.SetOptStr(s)
+	if err != nil {
+		return choice, err
+	}
+	o.st.Dispatch(AnalyticsOptAction{choice})
+	return choice, nil
+}
+
 func NeedsNudge(st store.EngineState) bool {
 	if !NewAnalyticsOn() {
 		return false

@@ -19,6 +19,7 @@ import (
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/view"
+	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -178,6 +179,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleDumpEngineStateAction(ctx, state)
 	case LatestVersionAction:
 		handleLatestVersionAction(state, action)
+	case webview.AnalyticsOptAction:
+		handleAnalyticsOptAction(state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -947,4 +950,8 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action TiltfileLogAction) {
 	state.CurrentTiltfileBuild.Log = model.AppendLog(state.CurrentTiltfileBuild.Log, action, state.LogTimestamps)
 	state.TiltfileCombinedLog = model.AppendLog(state.TiltfileCombinedLog, action, state.LogTimestamps)
+}
+
+func handleAnalyticsOptAction(state *store.EngineState, action webview.AnalyticsOptAction) {
+	state.AnalyticsOpt = action.Opt
 }
