@@ -137,4 +137,4 @@ class AlertPane extends PureComponent<AlertsProps> {
 }
 
 export default AlertPane
-export { AlertResource as ErrorResource }
+export { AlertResource }

@@ -15,7 +15,7 @@ import { incr, pathToTag } from "./analytics"
 import TopBar from "./TopBar"
 import "./HUD.scss"
 import { ResourceView } from "./types"
-import AlertPane, { ErrorResource } from "./ErrorPane"
+import AlertPane, { AlertResource } from "./ErrorPane"
 import PreviewList from "./PreviewList"
 import { HotKeys } from "react-hotkeys"
 
@@ -202,7 +202,7 @@ class HUD extends Component<HudProps, HudState> {
       let numAlerts = 0
       if (name !== "") {
         let selectedResource = resources.find(r => r.Name === name)
-        let er = new ErrorResource(selectedResource)
+        let er = new AlertResource(selectedResource)
         if (er.hasAlert()) {
           numAlerts = er.numberOfAlerts()
         }
@@ -282,12 +282,12 @@ class HUD extends Component<HudProps, HudState> {
       let name = props.match.params ? props.match.params.name : ""
       let er = resources.find(r => r.Name === name)
       if (er) {
-        return <AlertPane resources={[new ErrorResource(er)]} />
+        return <AlertPane resources={[new AlertResource(er)]} />
       }
       return <AlertPane resources={[]} />
     }
-    let errorResources = resources.map(r => new ErrorResource(r))
-    let resourcesWithAlerts = errorResources.filter(r => r.hasAlert())
+    let alertResources = resources.map(r => new AlertResource(r))
+    let resourcesWithAlerts = alertResources.filter(r => r.hasAlert())
 
     return (
       <HotKeys keyMap={this.keymap()} handlers={this.handlers()}>
@@ -355,7 +355,7 @@ class HUD extends Component<HudProps, HudState> {
             <Route
               exact
               path={this.path("/alerts")}
-              render={() => <AlertPane resources={errorResources} />}
+              render={() => <AlertPane resources={alertResources} />}
             />
             <Route exact path={this.path("/preview")} render={previewRoute} />
             <Route exact path={this.path("/r/:name")} render={logsRoute} />
