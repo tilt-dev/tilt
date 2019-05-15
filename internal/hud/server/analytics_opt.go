@@ -7,7 +7,6 @@ import (
 )
 
 type AnalyticsOpter interface {
-	// OptStatus() (analytics.Opt, error)
 	SetOptStr(s string) error
 }
 
@@ -25,10 +24,6 @@ var _ AnalyticsOpter = &WriteToFileOpter{}
 
 func ProvideAnalyticsOpter(st store.RStore) AnalyticsOpter {
 	return &WriteToFileOpter{st: st}
-}
-
-func (*WriteToFileOpter) OptStatus() (analytics.Opt, error) {
-	return analytics.OptStatus()
 }
 
 func (o *WriteToFileOpter) SetOptStr(s string) error {
