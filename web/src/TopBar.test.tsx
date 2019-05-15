@@ -11,11 +11,11 @@ it("shows sail share button", () => {
         <TopBar
           logUrl="/r/foo"
           previewUrl="/r/foo/preview"
-          errorsUrl="/r/foo/errors"
-          resourceView={ResourceView.Errors}
+          alertsUrl="/r/foo/alerts"
+          resourceView={ResourceView.Alerts}
           sailEnabled={true}
           sailUrl=""
-          numberOfErrors={0}
+          numberOfAlerts={0}
         />
       </MemoryRouter>
     )
@@ -31,11 +31,11 @@ it("shows sail url", () => {
         <TopBar
           logUrl="/r/foo"
           previewUrl="/r/foo/preview"
-          errorsUrl="/r/foo/errors"
-          resourceView={ResourceView.Errors}
+          alertsUrl="/r/foo/alerts"
+          resourceView={ResourceView.Alerts}
           sailEnabled={true}
           sailUrl="www.sail.dev/xyz"
-          numberOfErrors={1}
+          numberOfAlerts={1}
         />
       </MemoryRouter>
     )

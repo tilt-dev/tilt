@@ -91,8 +91,8 @@ class Sidebar extends PureComponent<SidebarProps> {
       allItemClasses += " is-selected"
     }
     let allLink =
-      this.props.resourceView === ResourceView.Errors
-        ? pb.path("/errors")
+      this.props.resourceView === ResourceView.Alerts
+        ? pb.path("/alerts")
         : pb.path("/")
     let allItem = (
       <li>
@@ -106,8 +106,8 @@ class Sidebar extends PureComponent<SidebarProps> {
       let link = `/r/${item.name}`
       if (this.props.resourceView === ResourceView.Preview) {
         link += "/preview"
-      } else if (this.props.resourceView === ResourceView.Errors) {
-        link += "/errors"
+      } else if (this.props.resourceView === ResourceView.Alerts) {
+        link += "/alerts"
       }
 
       let formatter = timeAgoFormatter

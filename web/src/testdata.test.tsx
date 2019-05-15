@@ -81,7 +81,7 @@ function oneResource(): any {
   return resource
 }
 
-function oneResourceNoErrors(): any {
+function oneResourceNoAlerts(): any {
   const ts = Date.now().valueOf()
   const resource = {
     Name: "vigoda",
@@ -1239,5 +1239,5 @@ export {
   oneResourceFailedToBuild,
   oneResourceCrashedOnStart,
   oneResourceBuilding,
-  oneResourceNoErrors,
+  oneResourceNoAlerts,
 }

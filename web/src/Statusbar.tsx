@@ -42,7 +42,7 @@ class StatusItem {
 
 type StatusBarProps = {
   items: Array<StatusItem>
-  errorsUrl: string
+  alertsUrl: string
 }
 
 class Statusbar extends PureComponent<StatusBarProps> {
@@ -59,7 +59,7 @@ class Statusbar extends PureComponent<StatusBarProps> {
             <span className="Statusbar-errWarnPanel-count Statusbar-errWarnPanel-count--error">
               {errorCount}
             </span>{" "}
-            <Link to={this.props.errorsUrl}>
+            <Link to={this.props.alertsUrl}>
               error
               {errorCount === 1 ? "" : "s"}
             </Link>
