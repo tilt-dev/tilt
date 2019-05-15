@@ -109,7 +109,7 @@ it("renders number of errors in tabnav when no resource is selected", () => {
   expect(errorTab.at(0).text()).toEqual("Errors (2)")
 })
 
-it("renders the number of errors a reosurce has in tabnav when a resource is selected", () => {
+it("renders the number of errors a resource has in tabnav when a resource is selected", () => {
   const root = mount(
     <MemoryRouter initialEntries={["/r/vigoda"]}>
       <HUD history={fakeHistory} />
@@ -121,4 +121,27 @@ it("renders the number of errors a reosurce has in tabnav when a resource is sel
   hud.setState({ View: resourceView })
   let errorTab = root.find(".tabLink--errors")
   expect(errorTab.at(0).text()).toEqual("Errors (1)")
+})
+
+it("renders two errors for a resource that has pod restarts and a build failure", () => {
+  const root = mount(emptyHUD())
+  const hud = root.find(HUD)
+
+  let resourceView = oneResourceView()
+  resourceView.Resources[0].ResourceInfo.PodRestarts = 1
+  hud.setState({ View: resourceView })
+  let errorTab = root.find(".tabLink--errors")
+  expect(errorTab.at(0).text()).toEqual("Errors (2)")
+})
+
+it("renders two errors for a resource that has pod restarts, a build failure and is in the error state", () => {
+  const root = mount(emptyHUD())
+  const hud = root.find(HUD)
+
+  let resourceView = oneResourceView()
+  resourceView.Resources[0].ResourceInfo.PodRestarts = 1
+  resourceView.Resources[0].RuntimeStatus = "CrashLoopBackoff"
+  hud.setState({ View: resourceView })
+  let errorTab = root.find(".tabLink--errors")
+  expect(errorTab.at(0).text()).toEqual("Errors (2)")
 })
