@@ -119,7 +119,7 @@ exports[`StatusBar renders two items all ok snapshot 1`] = `
         </span>
          
         <a
-          href="/errors"
+          href="/alerts"
           onClick={[Function]}
         >
           error
@@ -215,7 +215,7 @@ exports[`StatusBar renders two items both errors snapshot 1`] = `
         </span>
          
         <a
-          href="/errors"
+          href="/alerts"
           onClick={[Function]}
         >
           error
@@ -311,7 +311,7 @@ exports[`StatusBar renders without crashing 1`] = `
         </span>
          
         <a
-          href="/errors"
+          href="/alerts"
           onClick={[Function]}
         >
           error

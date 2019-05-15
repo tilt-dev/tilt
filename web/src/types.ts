@@ -1,7 +1,7 @@
 export enum ResourceView {
   Log,
   Preview,
-  Errors,
+  Alerts,
 }
 
 export type Build = {

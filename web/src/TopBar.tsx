@@ -7,11 +7,11 @@ import TabNav from "./TabNav"
 type TopBarProps = {
   previewUrl: string
   logUrl: string
-  errorsUrl: string
+  alertsUrl: string
   resourceView: ResourceView
   sailEnabled: boolean
   sailUrl: string
-  numberOfErrors: number
+  numberOfAlerts: number
 }
 
 class TopBar extends PureComponent<TopBarProps> {
@@ -21,9 +21,9 @@ class TopBar extends PureComponent<TopBarProps> {
         <TabNav
           previewUrl={this.props.previewUrl}
           logUrl={this.props.logUrl}
-          errorsUrl={this.props.errorsUrl}
+          alertsUrl={this.props.alertsUrl}
           resourceView={this.props.resourceView}
-          numberOfErrors={this.props.numberOfErrors}
+          numberOfAlerts={this.props.numberOfAlerts}
         />
         <span className="TopBar-spacer">&nbsp;</span>
         <SailInfo

@@ -15,7 +15,7 @@ import { incr, pathToTag } from "./analytics"
 import TopBar from "./TopBar"
 import "./HUD.scss"
 import { TiltBuild, ResourceView } from "./types"
-import ErrorPane, { ErrorResource } from "./ErrorPane"
+import AlertPane, { AlertResource } from "./ErrorPane"
 import PreviewList from "./PreviewList"
 import { HotKeys } from "react-hotkeys"
 
@@ -211,27 +211,29 @@ class HUD extends Component<HudProps, HudState> {
         props.match.params && props.match.params.name
           ? props.match.params.name
           : ""
-      let numErrors = 0
+      let numAlerts = 0
       if (name !== "") {
         let selectedResource = resources.find(r => r.Name === name)
-        let er = new ErrorResource(selectedResource)
-        if (er.hasError()) {
-          numErrors = 1
+        let er = new AlertResource(selectedResource)
+        if (er.hasAlert()) {
+          numAlerts = er.numberOfAlerts()
         }
       } else {
-        numErrors = resourcesWithErrors.length
+        numAlerts = resourcesWithAlerts
+          .map(er => er.numberOfAlerts())
+          .reduce((sum, current) => sum + current, 0)
       }
       return (
         <TopBar
           logUrl={name === "" ? this.path("/") : this.path(`/r/${name}`)}
-          errorsUrl={
-            name === "" ? this.path("/errors") : this.path(`/r/${name}/errors`)
+          alertsUrl={
+            name === "" ? this.path("/alerts") : this.path(`/r/${name}/alerts`)
           }
           previewUrl={this.path(this.getPreviewForName(name, sidebarItems))}
           resourceView={t}
           sailEnabled={sailEnabled}
           sailUrl={sailUrl}
-          numberOfErrors={numErrors}
+          numberOfAlerts={numAlerts}
         />
       )
     }
@@ -292,12 +294,12 @@ class HUD extends Component<HudProps, HudState> {
       let name = props.match.params ? props.match.params.name : ""
       let er = resources.find(r => r.Name === name)
       if (er) {
-        return <ErrorPane resources={[new ErrorResource(er)]} />
+        return <AlertPane resources={[new AlertResource(er)]} />
       }
-      return <ErrorPane resources={[]} />
+      return <AlertPane resources={[]} />
     }
-    let errorResources = resources.map(r => new ErrorResource(r))
-    let resourcesWithErrors = errorResources.filter(r => r.hasError())
+    let alertResources = resources.map(r => new AlertResource(r))
+    let resourcesWithAlerts = alertResources.filter(r => r.hasAlert())
 
     let runningVersion = view && view.RunningTiltBuild
     let latestVersion = view && view.LatestTiltBuild
@@ -307,8 +309,8 @@ class HUD extends Component<HudProps, HudState> {
         <div className="HUD">
           <Switch>
             <Route
-              path={this.path("/r/:name/errors")}
-              render={topBarRoute.bind(null, ResourceView.Errors)}
+              path={this.path("/r/:name/alerts")}
+              render={topBarRoute.bind(null, ResourceView.Alerts)}
             />
             <Route
               path={this.path("/r/:name/preview")}
@@ -323,19 +325,19 @@ class HUD extends Component<HudProps, HudState> {
               render={topBarRoute.bind(null, ResourceView.Log)}
             />
             <Route
-              path={this.path("/errors")}
-              render={topBarRoute.bind(null, ResourceView.Errors)}
+              path={this.path("/alerts")}
+              render={topBarRoute.bind(null, ResourceView.Alerts)}
             />
             <Route render={topBarRoute.bind(null, ResourceView.Log)} />
           </Switch>
           <Switch>
             <Route
-              path={this.path("/r/:name/errors")}
-              render={sidebarRoute.bind(null, ResourceView.Errors)}
+              path={this.path("/r/:name/alerts")}
+              render={sidebarRoute.bind(null, ResourceView.Alerts)}
             />
             <Route
-              path={this.path("/errors")}
-              render={sidebarRoute.bind(null, ResourceView.Errors)}
+              path={this.path("/alerts")}
+              render={sidebarRoute.bind(null, ResourceView.Alerts)}
             />
             <Route
               path={this.path("/r/:name/preview")}
@@ -353,7 +355,7 @@ class HUD extends Component<HudProps, HudState> {
           </Switch>
           <Statusbar
             items={statusItems}
-            errorsUrl={this.path("/errors")}
+            alertsUrl={this.path("/alerts")}
             runningVersion={runningVersion}
             latestVersion={latestVersion}
           />
@@ -372,8 +374,8 @@ class HUD extends Component<HudProps, HudState> {
             />
             <Route
               exact
-              path={this.path("/errors")}
-              render={() => <ErrorPane resources={errorResources} />}
+              path={this.path("/alerts")}
+              render={() => <AlertPane resources={alertResources} />}
             />
             <Route exact path={this.path("/preview")} render={previewRoute} />
             <Route exact path={this.path("/r/:name")} render={logsRoute} />
@@ -384,7 +386,7 @@ class HUD extends Component<HudProps, HudState> {
             />
             <Route
               exact
-              path={this.path("/r/:name/errors")}
+              path={this.path("/r/:name/alerts")}
               render={errorRoute}
             />
             <Route

@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 	giturls "github.com/whilp/git-urls"
+	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
@@ -32,6 +33,11 @@ func initAnalytics(rootCmd *cobra.Command) error {
 	analyticsService, analyticsCmd, err = analytics.Init(tiltAppName, options...)
 	if err != nil {
 		return err
+	}
+
+	rootCmd.AddCommand(analyticsCmd)
+	if webview.NewAnalyticsOn() {
+		return nil
 	}
 
 	status, err := analytics.OptStatus()
@@ -75,7 +81,6 @@ func initAnalytics(rootCmd *cobra.Command) error {
 		}
 	}
 
-	rootCmd.AddCommand(analyticsCmd)
 	return nil
 }
 

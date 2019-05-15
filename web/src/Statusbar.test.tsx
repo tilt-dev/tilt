@@ -18,7 +18,7 @@ describe("StatusBar", () => {
         <MemoryRouter>
           <Statusbar
             items={[]}
-            errorsUrl="/errors"
+            alertsUrl="/alerts"
             runningVersion={runningVersion}
             latestVersion={null}
           />
@@ -39,7 +39,7 @@ describe("StatusBar", () => {
       <MemoryRouter>
         <Statusbar
           items={items}
-          errorsUrl="/errors"
+          alertsUrl="/alerts"
           runningVersion={runningVersion}
           latestVersion={null}
         />
@@ -63,7 +63,7 @@ describe("StatusBar", () => {
         <MemoryRouter>
           <Statusbar
             items={items}
-            errorsUrl="/errors"
+            alertsUrl="/alerts"
             runningVersion={runningVersion}
             latestVersion={null}
           />
@@ -86,7 +86,7 @@ describe("StatusBar", () => {
         <MemoryRouter>
           <Statusbar
             items={items}
-            errorsUrl="/errors"
+            alertsUrl="/alerts"
             runningVersion={runningVersion}
             latestVersion={null}
           />
@@ -107,7 +107,7 @@ describe("StatusBar", () => {
       <MemoryRouter>
         <Statusbar
           items={items}
-          errorsUrl="/errors"
+          alertsUrl="/alerts"
           runningVersion={runningVersion}
           latestVersion={null}
         />
@@ -133,7 +133,7 @@ describe("StatusBar", () => {
         <MemoryRouter>
           <Statusbar
             items={items}
-            errorsUrl="/errors"
+            alertsUrl="/alerts"
             runningVersion={runningVersion}
             latestVersion={latestVersion}
           />
