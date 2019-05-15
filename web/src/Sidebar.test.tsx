@@ -30,7 +30,6 @@ describe("sidebar", () => {
           <Sidebar
             isClosed={true}
             items={[]}
-            needsNudge={false}
             selected=""
             toggleSidebar={null}
             resourceView={ResourceView.Log}
@@ -54,7 +53,6 @@ describe("sidebar", () => {
         <Sidebar
           isClosed={false}
           items={items}
-          needsNudge={false}
           selected=""
           toggleSidebar={null}
           resourceView={ResourceView.Log}
@@ -76,7 +74,6 @@ describe("sidebar", () => {
           <Sidebar
             isClosed={false}
             items={items}
-            needsNudge={false}
             selected=""
             toggleSidebar={null}
             resourceView={ResourceView.Log}
@@ -103,7 +100,6 @@ describe("sidebar", () => {
           <Sidebar
             isClosed={false}
             items={items}
-            needsNudge={false}
             selected=""
             toggleSidebar={null}
             resourceView={ResourceView.Log}
@@ -127,53 +123,6 @@ describe("sidebar", () => {
           <Sidebar
             isClosed={false}
             items={items}
-            needsNudge={false}
-            selected=""
-            toggleSidebar={null}
-            resourceView={ResourceView.Log}
-            pathBuilder={pathBuilder}
-          />
-        </MemoryRouter>
-      )
-      .toJSON()
-
-    expect(tree).toMatchSnapshot()
-  })
-
-  it("renders analytics nudge", () => {
-    let items = twoResourceView().Resources.map((res: any) => {
-      return new SidebarItem(res)
-    })
-    const tree = renderer
-      .create(
-        <MemoryRouter initialEntries={["/"]}>
-          <Sidebar
-            isClosed={false}
-            items={items}
-            needsNudge={true}
-            selected=""
-            toggleSidebar={null}
-            resourceView={ResourceView.Log}
-            pathBuilder={pathBuilder}
-          />
-        </MemoryRouter>
-      )
-      .toJSON()
-
-    expect(tree).toMatchSnapshot()
-  })
-
-  it("renders analytics nudge as third list item", () => {
-    let items = allResourcesOK().map((res: any) => {
-      return new SidebarItem(res)
-    })
-    const tree = renderer
-      .create(
-        <MemoryRouter initialEntries={["/"]}>
-          <Sidebar
-            isClosed={false}
-            items={items.slice(0, 6)}
-            needsNudge={true}
             selected=""
             toggleSidebar={null}
             resourceView={ResourceView.Log}

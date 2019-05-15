@@ -16,6 +16,7 @@ it("shows sail share button", () => {
           sailEnabled={true}
           sailUrl=""
           numberOfAlerts={0}
+          needsNudge={false}
         />
       </MemoryRouter>
     )
@@ -36,6 +37,7 @@ it("shows sail url", () => {
           sailEnabled={true}
           sailUrl="www.sail.dev/xyz"
           numberOfAlerts={1}
+          needsNudge={false}
         />
       </MemoryRouter>
     )

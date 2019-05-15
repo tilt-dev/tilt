@@ -1,12 +1,16 @@
 @import "constants";
 
 .AnalyticsNudge {
-  border-left: $sidebar-item solid #03c7d3;
   padding: $spacing-unit/4;
-  border-bottom: 1px solid $color-gray-light;
+  border: 1px solid $color-white;
+
+  display: none;
+}
+
+.is-visible {
+  display: block;
 }
 
 .AnalyticsNudge-buttons {
-  width: 100%;
   align-content: center;
 }
