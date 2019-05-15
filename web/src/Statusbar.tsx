@@ -9,7 +9,6 @@ import { combinedStatusMessage } from "./combinedStatusMessage"
 import { Build, TiltBuild } from "./types"
 import mostRecentBuildToDisplay from "./mostRecentBuild"
 import { Link } from "react-router-dom"
-import { classNames } from "react-select/lib/utils"
 
 class StatusItem {
   public warningCount: number = 0
@@ -49,7 +48,76 @@ type StatusBarProps = {
   latestVersion: TiltBuild | null
 }
 
-class Statusbar extends PureComponent<StatusBarProps> {
+type UpdateNotificationProps = {
+  newVersion: TiltBuild
+}
+
+type UpdateNotificationState = {
+  date: Date
+}
+
+class UpdateNotification extends Component<
+  UpdateNotificationProps,
+  UpdateNotificationState
+> {
+  timerID: NodeJS.Timeout | null
+
+  constructor(props: UpdateNotificationProps) {
+    super(props)
+    this.state = { date: new Date() }
+    this.timerID = null
+  }
+
+  componentDidMount(): void {
+    this.timerID = setInterval(
+      () => this.tick(),
+      moment.duration(1, "hours").asMilliseconds()
+    )
+  }
+
+  componentWillUnmount(): void {
+    if (this.timerID !== null) {
+      clearInterval(this.timerID)
+    }
+  }
+
+  tick() {
+    this.setState({ date: new Date() })
+  }
+
+  render() {
+    let daysSinceRelease = moment(this.state.date).diff(
+      this.props.newVersion.Date,
+      "days"
+    )
+    let classes = "Statusbar-updatePanel-icon"
+    if (daysSinceRelease < 4) {
+      classes += " Statusbar-updatePanel-outofdate-short"
+    } else if (daysSinceRelease < 7) {
+      classes += " Statusbar-updatePanel-outofdate-medium"
+    } else {
+      classes += " Statusbar-updatePanel-outofdate-long"
+    }
+
+    return (
+      <a href="https://docs.tilt.dev/upgrade.html" target="_blank">
+        <svg
+          viewBox="0 0 100 100"
+          width="24"
+          height="24"
+          xmlns="http://www.w3.org/2000/svg"
+          className={classes}
+        >
+          <title>Tilt Version {this.props.newVersion.Version} Available</title>
+          <circle cx="50" cy="50" r="50" />
+          <path d="M 35 80 V 55 H 15 L 50 15 L 85 55 H 65 V 80" fill="white" />
+        </svg>
+      </a>
+    )
+  }
+}
+
+class Statusbar extends Component<StatusBarProps> {
   errorWarningPanel(errorCount: number, warningCount: number) {
     return (
       <section className="Statusbar-panel Statusbar-errWarnPanel">
@@ -107,6 +175,24 @@ class Statusbar extends PureComponent<StatusBarProps> {
         </p>
       </section>
     )
+  }
+
+  updatePanel(
+    runningVersion: TiltBuild | null,
+    latestVersion: TiltBuild | null
+  ) {
+    if (
+      latestVersion &&
+      runningVersion &&
+      !runningVersion.Dev &&
+      runningVersion.Version != latestVersion.Version
+    ) {
+      return (
+        <section className="Statusbar-updatePanel">
+          <UpdateNotification newVersion={latestVersion} />
+        </section>
+      )
+    }
   }
 
   tiltPanel(runningVersion: TiltBuild | null, latestVersion: TiltBuild | null) {

@@ -129,18 +129,17 @@ describe("StatusBar", () => {
     let latestVersion = runningVersion
     latestVersion.Version = "10.0.0"
     const tree = renderer
-        .create(
-            <MemoryRouter>
-              <Statusbar
-                  items={items}
-                  errorsUrl="/errors"
-                  runningVersion={runningVersion}
-                  latestVersion={latestVersion}
-              />
-            </MemoryRouter>
-        )
-        .toJSON()
-
+      .create(
+        <MemoryRouter>
+          <Statusbar
+            items={items}
+            errorsUrl="/errors"
+            runningVersion={runningVersion}
+            latestVersion={latestVersion}
+          />
+        </MemoryRouter>
+      )
+      .toJSON()
 
     expect(tree).toMatchSnapshot()
   })
