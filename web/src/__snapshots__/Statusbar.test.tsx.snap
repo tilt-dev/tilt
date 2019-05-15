@@ -23,7 +23,7 @@ exports[`StatusBar renders an upgrade badge when the version is out of date 1`] 
         </span>
          
         <a
-          href="/errors"
+          href="/alerts"
           onClick={[Function]}
         >
           error
