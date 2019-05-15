@@ -14,12 +14,12 @@ const pathToTag = (path: string): string => {
   if (
     path.startsWith("/r/") &&
     !path.endsWith("/preview") &&
-    !path.endsWith("/errors")
+    !path.endsWith("/alerts")
   ) {
     return "log"
   } else if (path.endsWith("/preview")) {
     return "preview"
-  } else if (path.endsWith("/errors")) {
+  } else if (path.endsWith("/alerts")) {
     return "errors"
   } else if (path === "/") {
     return "all"

@@ -215,7 +215,7 @@ class HUD extends Component<HudProps, HudState> {
         <TopBar
           logUrl={name === "" ? this.path("/") : this.path(`/r/${name}`)}
           alertsUrl={
-            name === "" ? this.path("/errors") : this.path(`/r/${name}/errors`)
+            name === "" ? this.path("/alerts") : this.path(`/r/${name}/alerts`)
           }
           previewUrl={this.path(this.getPreviewForName(name, sidebarItems))}
           resourceView={t}
@@ -294,7 +294,7 @@ class HUD extends Component<HudProps, HudState> {
         <div className="HUD">
           <Switch>
             <Route
-              path={this.path("/r/:name/errors")}
+              path={this.path("/r/:name/alerts")}
               render={topBarRoute.bind(null, ResourceView.Alerts)}
             />
             <Route
@@ -310,18 +310,18 @@ class HUD extends Component<HudProps, HudState> {
               render={topBarRoute.bind(null, ResourceView.Log)}
             />
             <Route
-              path={this.path("/errors")}
+              path={this.path("/alerts")}
               render={topBarRoute.bind(null, ResourceView.Alerts)}
             />
             <Route render={topBarRoute.bind(null, ResourceView.Log)} />
           </Switch>
           <Switch>
             <Route
-              path={this.path("/r/:name/errors")}
+              path={this.path("/r/:name/alerts")}
               render={sidebarRoute.bind(null, ResourceView.Alerts)}
             />
             <Route
-              path={this.path("/errors")}
+              path={this.path("/alerts")}
               render={sidebarRoute.bind(null, ResourceView.Alerts)}
             />
             <Route
@@ -338,7 +338,7 @@ class HUD extends Component<HudProps, HudState> {
             />
             <Route render={sidebarRoute.bind(null, ResourceView.Log)} />
           </Switch>
-          <Statusbar items={statusItems} alertsUrl={this.path("/errors")} />
+          <Statusbar items={statusItems} alertsUrl={this.path("/alerts")} />
           <Switch>
             <Route
               exact
@@ -354,7 +354,7 @@ class HUD extends Component<HudProps, HudState> {
             />
             <Route
               exact
-              path={this.path("/errors")}
+              path={this.path("/alerts")}
               render={() => <AlertPane resources={errorResources} />}
             />
             <Route exact path={this.path("/preview")} render={previewRoute} />
@@ -366,7 +366,7 @@ class HUD extends Component<HudProps, HudState> {
             />
             <Route
               exact
-              path={this.path("/r/:name/errors")}
+              path={this.path("/r/:name/alerts")}
               render={errorRoute}
             />
             <Route

@@ -92,7 +92,7 @@ class Sidebar extends PureComponent<SidebarProps> {
     }
     let allLink =
       this.props.resourceView === ResourceView.Alerts
-        ? pb.path("/errors")
+        ? pb.path("/alerts")
         : pb.path("/")
     let allItem = (
       <li>
@@ -107,7 +107,7 @@ class Sidebar extends PureComponent<SidebarProps> {
       if (this.props.resourceView === ResourceView.Preview) {
         link += "/preview"
       } else if (this.props.resourceView === ResourceView.Alerts) {
-        link += "/errors"
+        link += "/alerts"
       }
 
       let formatter = timeAgoFormatter

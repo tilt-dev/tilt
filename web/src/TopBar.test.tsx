@@ -11,7 +11,7 @@ it("shows sail share button", () => {
         <TopBar
           logUrl="/r/foo"
           previewUrl="/r/foo/preview"
-          alertsUrl="/r/foo/errors"
+          alertsUrl="/r/foo/alerts"
           resourceView={ResourceView.Alerts}
           sailEnabled={true}
           sailUrl=""
@@ -31,7 +31,7 @@ it("shows sail url", () => {
         <TopBar
           logUrl="/r/foo"
           previewUrl="/r/foo/preview"
-          alertsUrl="/r/foo/errors"
+          alertsUrl="/r/foo/alerts"
           resourceView={ResourceView.Alerts}
           sailEnabled={true}
           sailUrl="www.sail.dev/xyz"

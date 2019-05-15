@@ -11,7 +11,7 @@ it("shows logs", () => {
         <TabNav
           logUrl="/r/foo"
           previewUrl="/r/foo/preview"
-          alertsUrl="/r/foo/errors"
+          alertsUrl="/r/foo/alerts"
           resourceView={ResourceView.Log}
           numberOfAlerts={0}
         />
@@ -29,7 +29,7 @@ it("previews resources", () => {
         <TabNav
           logUrl="/r/foo"
           previewUrl="/r/foo/preview"
-          alertsUrl="/r/foo/errors"
+          alertsUrl="/r/foo/alerts"
           resourceView={ResourceView.Preview}
           numberOfAlerts={0}
         />
@@ -47,7 +47,7 @@ it("shows error pane", () => {
         <TabNav
           logUrl="/r/foo"
           previewUrl="/r/foo/preview"
-          alertsUrl="/r/foo/errors"
+          alertsUrl="/r/foo/alerts"
           resourceView={ResourceView.Alerts}
           numberOfAlerts={0}
         />
@@ -65,7 +65,7 @@ it("shows the number of errors in the error tab", () => {
         <TabNav
           logUrl="/r/foo"
           previewUrl="/r/foo/preview"
-          alertsUrl="/r/foo/errors"
+          alertsUrl="/r/foo/alerts"
           resourceView={ResourceView.Alerts}
           numberOfAlerts={27}
         />
