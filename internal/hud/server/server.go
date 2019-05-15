@@ -24,6 +24,10 @@ type analyticsPayload struct {
 	Tags map[string]string `json:"tags"`
 }
 
+type analyticsOptPayload struct {
+	Opt string `json:"opt"`
+}
+
 type HeadsUpServer struct {
 	store             *store.Store
 	router            *mux.Router
@@ -43,6 +47,7 @@ func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analyti
 
 	r.HandleFunc("/api/view", s.ViewJSON)
 	r.HandleFunc("/api/analytics", s.HandleAnalytics)
+	r.HandleFunc("/api/analytics_opt", s.HandleAnalyticsOpt)
 	r.HandleFunc("/api/sail", s.HandleSail)
 	r.HandleFunc("/api/control/reset_restarts", s.HandleResetRestarts)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
@@ -65,6 +70,25 @@ func (s *HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error rendering view payload: %v", err), http.StatusInternalServerError)
 	}
+}
+
+func (s *HeadsUpServer) HandleAnalyticsOpt(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		http.Error(w, "must be POST request", http.StatusBadRequest)
+		return
+	}
+
+	var payload analyticsOptPayload
+
+	decoder := json.NewDecoder(req.Body)
+	err := decoder.Decode(&payload)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error parsing JSON payload: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// TODO(maia): record user choice
+	_, _ = fmt.Fprintf(w, "👍 you sent: %s", payload.Opt)
 }
 
 func (s *HeadsUpServer) HandleAnalytics(w http.ResponseWriter, req *http.Request) {
