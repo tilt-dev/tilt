@@ -10,6 +10,7 @@ import TimeAgo from "react-timeago"
 import { isZeroTime } from "./time"
 import PathBuilder from "./PathBuilder"
 import { timeAgoFormatter } from "./timeFormatters"
+import { AlertResource } from "./ErrorPane"
 
 class SidebarItem {
   name: string
@@ -19,6 +20,7 @@ class SidebarItem {
   lastDeployTime: string
   pendingBuildSince: string
   currentBuildStartTime: string
+  alertResource: AlertResource
 
   /**
    * Create a pared down SidebarItem from a ResourceView
@@ -31,6 +33,11 @@ class SidebarItem {
     this.lastDeployTime = res.LastDeployTime
     this.pendingBuildSince = res.PendingBuildSince
     this.currentBuildStartTime = res.CurrentBuild.StartTime
+    this.alertResource = new AlertResource(res)
+  }
+
+  numberOfAlerts(): number {
+    return this.alertResource.numberOfAlerts()
   }
 }
 
@@ -98,6 +105,11 @@ class Sidebar extends PureComponent<SidebarProps> {
               {willBuild || building ? <DotBuildingSvg /> : <DotSvg />}
             </span>
             <span className="resLink-name">{item.name}</span>
+            {item.numberOfAlerts() > 0 ? (
+              <span className="resLink-alertNum">{item.numberOfAlerts()}</span>
+            ) : (
+              ""
+            )}
             <span>{hasBuilt ? timeAgo : ""}</span>
           </Link>
         </li>
