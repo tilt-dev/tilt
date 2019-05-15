@@ -3,12 +3,9 @@ import "./AnalyticsNudge.scss"
 
 class AnalyticsNudge extends Component {
   static analyticsOpt(optIn: boolean) {
-    let url = `//${window.location.host}/api/analytics/opt`
+    let url = `//${window.location.host}/api/analytics_opt`
 
     let payload = { opt: optIn ? "opt-in" : "opt-out" }
-
-    let j = JSON.stringify(payload)
-    console.log(j)
 
     fetch(url, {
       method: "post",
@@ -29,7 +26,7 @@ class AnalyticsNudge extends Component {
         <div className="AnalyticsNudge-buttons">
           <button onClick={() => AnalyticsNudge.analyticsOpt(true)}>
             Yes!
-          </button>{" "}
+          </button>
           <button onClick={() => AnalyticsNudge.analyticsOpt(false)}>
             Nope!
           </button>

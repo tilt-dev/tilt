@@ -15,7 +15,7 @@ import (
 	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
-func TestHandleAnalyticsStatEmptyRequest(t *testing.T) {
+func TestHandleAnalyticsEmptyRequest(t *testing.T) {
 	f := newTestFixture(t)
 
 	var jsonStr = []byte(`[]`)
@@ -26,7 +26,7 @@ func TestHandleAnalyticsStatEmptyRequest(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.s.HandleAnalyticsStat)
+	handler := http.HandlerFunc(f.s.HandleAnalytics)
 
 	handler.ServeHTTP(rr, req)
 
@@ -36,7 +36,7 @@ func TestHandleAnalyticsStatEmptyRequest(t *testing.T) {
 	}
 }
 
-func TestHandleAnalyticsStatIncr(t *testing.T) {
+func TestHandleAnalyticsIncr(t *testing.T) {
 	f := newTestFixture(t)
 
 	var jsonStr = []byte(`[{"verb": "incr", "name": "foo", "tags": {}}]`)
@@ -47,7 +47,7 @@ func TestHandleAnalyticsStatIncr(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.s.HandleAnalyticsStat)
+	handler := http.HandlerFunc(f.s.HandleAnalytics)
 
 	handler.ServeHTTP(rr, req)
 
@@ -59,7 +59,7 @@ func TestHandleAnalyticsStatIncr(t *testing.T) {
 	f.assertIncrement("foo", 1)
 }
 
-func TestHandleAnalyticsStatNonPost(t *testing.T) {
+func TestHandleAnalyticsNonPost(t *testing.T) {
 	f := newTestFixture(t)
 
 	req, err := http.NewRequest(http.MethodGet, "/api/analytics", nil)
@@ -69,7 +69,7 @@ func TestHandleAnalyticsStatNonPost(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.s.HandleAnalyticsStat)
+	handler := http.HandlerFunc(f.s.HandleAnalytics)
 
 	handler.ServeHTTP(rr, req)
 
@@ -79,7 +79,7 @@ func TestHandleAnalyticsStatNonPost(t *testing.T) {
 	}
 }
 
-func TestHandleAnalyticsStatMalformedPayload(t *testing.T) {
+func TestHandleAnalyticsMalformedPayload(t *testing.T) {
 	f := newTestFixture(t)
 
 	var jsonStr = []byte(`[{"Verb": ]`)
@@ -90,7 +90,7 @@ func TestHandleAnalyticsStatMalformedPayload(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.s.HandleAnalyticsStat)
+	handler := http.HandlerFunc(f.s.HandleAnalytics)
 
 	handler.ServeHTTP(rr, req)
 
@@ -100,7 +100,7 @@ func TestHandleAnalyticsStatMalformedPayload(t *testing.T) {
 	}
 }
 
-func TestHandleAnalyticsStatErrorsIfNotIncr(t *testing.T) {
+func TestHandleAnalyticsErrorsIfNotIncr(t *testing.T) {
 	f := newTestFixture(t)
 
 	var jsonStr = []byte(`[{"verb": "count", "name": "foo", "tags": {}}]`)
@@ -111,7 +111,7 @@ func TestHandleAnalyticsStatErrorsIfNotIncr(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.s.HandleAnalyticsStat)
+	handler := http.HandlerFunc(f.s.HandleAnalytics)
 
 	handler.ServeHTTP(rr, req)
 
