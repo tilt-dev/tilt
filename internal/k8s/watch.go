@@ -72,6 +72,9 @@ func (kCli K8sClient) WatchEvents(ctx context.Context, ls labels.Selector) (<-ch
 				if e.Object == nil {
 					continue
 				}
+				if e.Type != watch.Added {
+					continue
+				}
 				ev, ok := e.Object.(*v1.Event)
 				if !ok {
 					continue

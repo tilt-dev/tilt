@@ -15,6 +15,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/windmilleng/wmclient/pkg/analytics"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud"
@@ -27,7 +29,6 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/tilt/internal/watch"
-	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
 // When we see a file change, wait this long to see if any other files have changed, and bundle all changes together.
@@ -140,6 +141,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handlePodChangeAction(ctx, state, action.Pod)
 	case ServiceChangeAction:
 		handleServiceEvent(ctx, state, action)
+	case K8SEventAction:
+		handleK8SEvent(ctx, state, action.Event)
 	case PodLogAction:
 		handlePodLogAction(state, action)
 	case BuildLogAction:
@@ -817,6 +820,10 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 	}
 
 	ms.LBs[k8s.ServiceName(service.Name)] = action.URL
+}
+
+func handleK8SEvent(ctx context.Context, state *store.EngineState, event *v1.Event) {
+	logger.Get(ctx).Infof("k8s event: %s", spew.Sdump(event))
 }
 
 func handleDumpEngineStateAction(ctx context.Context, engineState *store.EngineState) {
