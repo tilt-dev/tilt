@@ -6,7 +6,7 @@ import "./ErrorPane.scss"
 import { zeroTime } from "./time"
 import { Build } from "./types"
 
-class ErrorResource {
+class AlertResource {
   public name: string
   public buildHistory: Array<Build>
   public resourceInfo: ResourceInfo
@@ -31,8 +31,7 @@ class ErrorResource {
     }
   }
 
-  // TODO(dmiller): pod restarts shouldn't be errors anymore
-  public hasError() {
+  public hasAlert() {
     return this.podStatusIsError() || this.podRestarted() || this.buildFailed()
   }
 
@@ -71,16 +70,16 @@ type ResourceInfo = {
   podLog: string
 }
 
-type ErrorsProps = {
-  resources: Array<ErrorResource>
+type AlertsProps = {
+  resources: Array<AlertResource>
 }
 
-class ErrorPane extends PureComponent<ErrorsProps> {
+class AlertPane extends PureComponent<AlertsProps> {
   render() {
     let el = (
       <section className="Pane-empty-message">
         <LogoWordmarkSvg />
-        <h2>No Errors Found</h2>
+        <h2>No Alerts Found</h2>
       </section>
     )
     let errorElements: Array<JSX.Element> = []
@@ -137,5 +136,5 @@ class ErrorPane extends PureComponent<ErrorsProps> {
   }
 }
 
-export default ErrorPane
-export { ErrorResource }
+export default AlertPane
+export { AlertResource as ErrorResource }

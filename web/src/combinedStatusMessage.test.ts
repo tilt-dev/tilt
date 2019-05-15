@@ -2,8 +2,7 @@ import {
   oneResourceBuilding,
   oneResourceFailedToBuild,
   oneResourceCrashedOnStart,
-  oneResource,
-  oneResourceNoErrors,
+  oneResourceNoAlerts,
 } from "./testdata.test"
 import { combinedStatusMessage } from "./combinedStatusMessage"
 import { StatusItem } from "./Statusbar"
@@ -34,7 +33,7 @@ describe("combined status message", () => {
   })
 
   it("should show nothing if all is good", () => {
-    let resource = oneResourceNoErrors()
+    let resource = oneResourceNoAlerts()
     let data = [resource]
     let resources = data.map((r: any) => new StatusItem(r))
     let actual = combinedStatusMessage(resources)

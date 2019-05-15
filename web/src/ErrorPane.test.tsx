@@ -1,5 +1,5 @@
 import React from "react"
-import ErrorPane, { ErrorResource } from "./ErrorPane"
+import AlertPane, { ErrorResource } from "./ErrorPane"
 import renderer from "react-test-renderer"
 
 beforeEach(() => {
@@ -16,7 +16,7 @@ it("renders no errors", () => {
   ]
 
   const tree = renderer
-    .create(<ErrorPane resources={resources.map(r => new ErrorResource(r))} />)
+    .create(<AlertPane resources={resources.map(r => new ErrorResource(r))} />)
     .toJSON()
 
   expect(tree).toMatchSnapshot()
@@ -39,7 +39,7 @@ it("renders one build error", () => {
   ]
 
   const tree = renderer
-    .create(<ErrorPane resources={resources.map(r => new ErrorResource(r))} />)
+    .create(<AlertPane resources={resources.map(r => new ErrorResource(r))} />)
     .toJSON()
 
   expect(tree).toMatchSnapshot()
@@ -67,7 +67,7 @@ it("renders the last build with an error", () => {
   ]
 
   const tree = renderer
-    .create(<ErrorPane resources={resources.map(r => new ErrorResource(r))} />)
+    .create(<AlertPane resources={resources.map(r => new ErrorResource(r))} />)
     .toJSON()
 
   expect(tree).toMatchSnapshot()
@@ -95,7 +95,7 @@ it("renders one container start error", () => {
   ]
 
   const tree = renderer
-    .create(<ErrorPane resources={resources.map(r => new ErrorResource(r))} />)
+    .create(<AlertPane resources={resources.map(r => new ErrorResource(r))} />)
     .toJSON()
   expect(tree).toMatchSnapshot()
 
@@ -120,7 +120,7 @@ it("renders one container start error", () => {
   ]
 
   const newTree = renderer
-    .create(<ErrorPane resources={resources.map(r => new ErrorResource(r))} />)
+    .create(<AlertPane resources={resources.map(r => new ErrorResource(r))} />)
     .toJSON()
   expect(newTree).toMatchSnapshot()
 })
@@ -147,7 +147,7 @@ it("shows that a container has restarted", () => {
   ]
 
   const tree = renderer
-    .create(<ErrorPane resources={resources.map(r => new ErrorResource(r))} />)
+    .create(<AlertPane resources={resources.map(r => new ErrorResource(r))} />)
     .toJSON()
   expect(tree).toMatchSnapshot()
 })

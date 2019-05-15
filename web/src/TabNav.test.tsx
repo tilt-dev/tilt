@@ -11,9 +11,9 @@ it("shows logs", () => {
         <TabNav
           logUrl="/r/foo"
           previewUrl="/r/foo/preview"
-          errorsUrl="/r/foo/errors"
+          alertsUrl="/r/foo/errors"
           resourceView={ResourceView.Log}
-          numberOfErrors={0}
+          numberOfAlerts={0}
         />
       </MemoryRouter>
     )
@@ -29,9 +29,9 @@ it("previews resources", () => {
         <TabNav
           logUrl="/r/foo"
           previewUrl="/r/foo/preview"
-          errorsUrl="/r/foo/errors"
+          alertsUrl="/r/foo/errors"
           resourceView={ResourceView.Preview}
-          numberOfErrors={0}
+          numberOfAlerts={0}
         />
       </MemoryRouter>
     )
@@ -47,9 +47,9 @@ it("shows error pane", () => {
         <TabNav
           logUrl="/r/foo"
           previewUrl="/r/foo/preview"
-          errorsUrl="/r/foo/errors"
-          resourceView={ResourceView.Errors}
-          numberOfErrors={0}
+          alertsUrl="/r/foo/errors"
+          resourceView={ResourceView.Alerts}
+          numberOfAlerts={0}
         />
       </MemoryRouter>
     )
@@ -65,9 +65,9 @@ it("shows the number of errors in the error tab", () => {
         <TabNav
           logUrl="/r/foo"
           previewUrl="/r/foo/preview"
-          errorsUrl="/r/foo/errors"
-          resourceView={ResourceView.Errors}
-          numberOfErrors={27}
+          alertsUrl="/r/foo/errors"
+          resourceView={ResourceView.Alerts}
+          numberOfAlerts={27}
         />
       </MemoryRouter>
     )

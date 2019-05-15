@@ -11,7 +11,7 @@ exports[`renders no errors 1`] = `
       logo-wordmark-gray.svg
     </svg>
     <h2>
-      No Errors Found
+      No Alerts Found
     </h2>
   </section>
 </section>

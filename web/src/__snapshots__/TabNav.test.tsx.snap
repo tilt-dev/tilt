@@ -29,7 +29,7 @@ exports[`previews resources 1`] = `
         href="/r/foo/errors"
         onClick={[Function]}
       >
-        Errors
+        Alerts
          
         
       </a>
@@ -67,7 +67,7 @@ exports[`shows error pane 1`] = `
         href="/r/foo/errors"
         onClick={[Function]}
       >
-        Errors
+        Alerts
          
         
       </a>
@@ -105,7 +105,7 @@ exports[`shows logs 1`] = `
         href="/r/foo/errors"
         onClick={[Function]}
       >
-        Errors
+        Alerts
          
         
       </a>
@@ -143,7 +143,7 @@ exports[`shows the number of errors in the error tab 1`] = `
         href="/r/foo/errors"
         onClick={[Function]}
       >
-        Errors
+        Alerts
          
         (27)
       </a>
