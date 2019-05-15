@@ -43,9 +43,9 @@ func (tvc *TiltVersionChecker) OnChange(ctx context.Context, st store.RStore) {
 			version, err := tvc.client.GetLatestRelease(ctx, githubOrg, githubProject)
 			if err != nil {
 				logger.Get(ctx).Infof("error checking github for latest Tilt release: %s", err.Error())
-				continue
+			} else {
+				st.Dispatch(LatestVersionAction{version})
 			}
-			st.Dispatch(LatestVersionAction{version})
 			select {
 			case <-tvc.timerMaker(versionCheckInterval):
 			case <-ctx.Done():
