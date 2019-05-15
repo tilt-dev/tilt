@@ -91,7 +91,7 @@ func (s *HeadsUpServer) HandleAnalyticsOpt(w http.ResponseWriter, req *http.Requ
 
 	err = s.opter.SetOptStr(payload.Opt)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("error setting opt '%s': %v", payload.Opt, err), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("error setting opt '%s': %v", payload.Opt, err), http.StatusInternalServerError)
 		return
 	}
 }
