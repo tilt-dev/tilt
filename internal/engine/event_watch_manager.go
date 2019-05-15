@@ -41,8 +41,7 @@ func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore) {
 
 	m.watching = true
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	ctx, cancel := context.WithTimeout(ctx, watchTimeout)
 
 	ch, err := m.kClient.WatchEvents(ctx, k8s.TiltRunSelector())
 	if err != nil {
@@ -51,10 +50,12 @@ func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore) {
 		return
 	}
 
-	go m.dispatchEventsLoop(ctx, ch, st)
+	go m.dispatchEventsLoop(ctx, ch, st, cancel)
 }
 
-func (m *EventWatchManager) dispatchEventsLoop(ctx context.Context, ch <-chan *v1.Event, st store.RStore) {
+func (m *EventWatchManager) dispatchEventsLoop(ctx context.Context, ch <-chan *v1.Event, st store.RStore, cancel context.CancelFunc) {
+	defer cancel()
+
 	for {
 		select {
 		case event, ok := <-ch:

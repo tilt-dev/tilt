@@ -24,7 +24,8 @@ func ProvideSubscribers(
 	ar *AnalyticsReporter,
 	hudsc *server.HeadsUpServerController,
 	sail client.SailClient,
-	tvc *TiltVersionChecker) []store.Subscriber {
+	tvc *TiltVersionChecker,
+	ewm *EventWatchManager) []store.Subscriber {
 	return []store.Subscriber{
 		hud,
 		pw,
@@ -43,5 +44,6 @@ func ProvideSubscribers(
 		hudsc,
 		sail,
 		tvc,
+		ewm,
 	}
 }

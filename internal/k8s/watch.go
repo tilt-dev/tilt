@@ -58,34 +58,35 @@ func (kCli K8sClient) WatchEvents(ctx context.Context, ls labels.Selector) (<-ch
 	if err != nil {
 		return nil, errors.Wrap(err, "error watching k8s events")
 	}
+	watcher.Stop()
 
 	ch := make(chan *v1.Event)
 
-	go func() {
-		for {
-			select {
-			case e, ok := <-watcher.ResultChan():
-				if !ok {
-					close(ch)
-					return
-				}
-				if e.Object == nil {
-					continue
-				}
-				if e.Type != watch.Added {
-					continue
-				}
-				ev, ok := e.Object.(*v1.Event)
-				if !ok {
-					continue
-				}
-				ch <- ev
-			case <-ctx.Done():
-				watcher.Stop()
-				close(ch)
-				return
+	factory := informers.NewSharedInformerFactoryWithOptions(kCli.clientSet, 5*time.Second)
+	informer := factory.Core().V1().Events().Informer()
+
+	stopper := make(chan struct{})
+
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			mObj, ok := obj.(*v1.Event)
+			if ok {
+				ch <- mObj
 			}
-		}
+		},
+		UpdateFunc: func(oldObj interface{}, newObj interface{}) {
+			mObj, ok := newObj.(*v1.Event)
+			if ok {
+				ch <- mObj
+			}
+		},
+	})
+
+	go informer.Run(stopper)
+	// TODO(dmiller): is this right?
+	go func() {
+		<-ctx.Done()
+		close(stopper)
 	}()
 
 	return ch, nil
