@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/windmilleng/tilt/internal/hud/server"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -179,7 +178,7 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleDumpEngineStateAction(ctx, state)
 	case LatestVersionAction:
 		handleLatestVersionAction(state, action)
-	case server.AnalyticsOptAction:
+	case store.AnalyticsOptAction:
 		handleAnalyticsOptAction(state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
@@ -952,6 +951,6 @@ func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, acti
 	state.TiltfileCombinedLog = model.AppendLog(state.TiltfileCombinedLog, action, state.LogTimestamps)
 }
 
-func handleAnalyticsOptAction(state *store.EngineState, action server.AnalyticsOptAction) {
+func handleAnalyticsOptAction(state *store.EngineState, action store.AnalyticsOptAction) {
 	state.AnalyticsOpt = action.Opt
 }
