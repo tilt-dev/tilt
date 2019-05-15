@@ -97,6 +97,7 @@ var BaseWireSet = wire.NewSet(
 	server.ProvideHeadsUpServer,
 	assets.ProvideAssetServer,
 	server.ProvideHeadsUpServerController,
+	server.ProvideAnalyticsOpter,
 
 	provideSailMode,
 	provideSailURL,

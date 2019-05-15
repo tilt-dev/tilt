@@ -147,7 +147,8 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	sailRoomer := client.ProvideSailRoomer(sailURL)
 	sailDialer := client.ProvideSailDialer()
 	sailClient := client.ProvideSailClient(sailURL, sailRoomer, sailDialer)
-	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics, sailClient)
+	analyticsOpter := server.ProvideAnalyticsOpter(storeStore)
+	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics, sailClient, analyticsOpter)
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer, webURL)
 	githubClientFactory := engine.NewGithubClientFactory()
 	tiltVersionChecker := engine.NewTiltVersionChecker(githubClientFactory, timerMaker)
@@ -277,7 +278,8 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	sailRoomer := client.ProvideSailRoomer(sailURL)
 	sailDialer := client.ProvideSailDialer()
 	sailClient := client.ProvideSailClient(sailURL, sailRoomer, sailDialer)
-	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics, sailClient)
+	analyticsOpter := server.ProvideAnalyticsOpter(storeStore)
+	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics, sailClient, analyticsOpter)
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer, webURL)
 	githubClientFactory := engine.NewGithubClientFactory()
 	tiltVersionChecker := engine.NewTiltVersionChecker(githubClientFactory, timerMaker)
@@ -475,7 +477,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
-	provideWebDevPort, server.ProvideHeadsUpServer, assets.ProvideAssetServer, server.ProvideHeadsUpServerController, provideSailMode,
+	provideWebDevPort, server.ProvideHeadsUpServer, assets.ProvideAssetServer, server.ProvideHeadsUpServerController, server.ProvideAnalyticsOpter, provideSailMode,
 	provideSailURL, client.SailWireSet, provideThreads, engine.NewKINDPusher,
 )
 

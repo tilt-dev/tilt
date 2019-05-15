@@ -33,16 +33,18 @@ type HeadsUpServer struct {
 	router            *mux.Router
 	a                 analytics.Analytics
 	sailCli           client.SailClient
+	opter             AnalyticsOpter
 	numWebsocketConns int32
 }
 
-func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics analytics.Analytics, sailCli client.SailClient) *HeadsUpServer {
+func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics analytics.Analytics, sailCli client.SailClient, opter AnalyticsOpter) *HeadsUpServer {
 	r := mux.NewRouter().UseEncodedPath()
 	s := &HeadsUpServer{
 		store:   store,
 		router:  r,
 		a:       analytics,
 		sailCli: sailCli,
+		opter:   opter,
 	}
 
 	r.HandleFunc("/api/view", s.ViewJSON)

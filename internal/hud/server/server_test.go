@@ -194,7 +194,7 @@ func newTestFixture(t *testing.T) *serverFixture {
 	st := store.NewStore(engine.UpperReducer, store.LogActionsFlag(false))
 	a := analytics.NewMemoryAnalytics()
 	sailCli := client.NewFakeSailClient()
-	s := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), a, sailCli)
+	s := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), a, sailCli, newTestOpter(t))
 
 	return &serverFixture{
 		t:       t,
@@ -213,4 +213,26 @@ func (f *serverFixture) assertIncrement(name string, count int) {
 	}
 
 	assert.Equalf(f.t, count, runningCount, "Expected the total count to be %d, got %d", count, runningCount)
+}
+
+type testOpter struct {
+	t        *testing.T
+	nextErr  error
+	callStrs []string
+}
+
+var _ server.AnalyticsOpter = &testOpter{}
+
+func newTestOpter(t *testing.T) *testOpter { return &testOpter{t: t} }
+
+func (o *testOpter) SetOptStr(s string) error {
+	o.callStrs = append(o.callStrs, s)
+
+	if o.nextErr != nil {
+		err := o.nextErr
+		o.nextErr = nil
+		return err
+	}
+
+	return nil
 }
