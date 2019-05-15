@@ -22,8 +22,9 @@ func ProvideAnalyticsOpter(st store.RStore) AnalyticsOpter {
 	return &WriteToFileOpter{st: st}
 }
 
-// SetOptStr takes the string of the user's choice (should correspond to "opt-in" or "opt-out")
-// and records that choice on disk as dictated by the `analytics` package.
+// SetOptStr takes the string of the user's choice in re: sending analytics
+// (should correspond to "opt-in" or "opt-out") and records that choice on
+// disk as dictated by the `analytics` package.
 func (o *WriteToFileOpter) SetOptStr(s string) error {
 	if !webview.NewAnalyticsOn() {
 		return nil
