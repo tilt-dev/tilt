@@ -5,18 +5,8 @@ import { mount } from "enzyme"
 import { twoResourceView } from "./testdata.test"
 import { MemoryRouter } from "react-router"
 import { TiltBuild } from "./types"
-import moment from "moment"
-import { SinonFakeTimers, useFakeTimers } from "sinon"
 
 describe("StatusBar", () => {
-  var clock: SinonFakeTimers
-  beforeEach(() => {
-    clock = useFakeTimers()
-  })
-  afterEach(() => {
-    clock.restore()
-  })
-
   let runningVersion: TiltBuild = {
     Version: "v0.8.1",
     Date: "1970-01-01",
@@ -130,78 +120,29 @@ describe("StatusBar", () => {
     statusbar.unmount()
   })
 
-  test.each([2, 6, 10])(
-    "notifies of update with appropriate color when %d days old",
-    daysOld => {
-      let view = twoResourceView()
-      view.Resources.forEach((res: any) => {
-        res.BuildHistory[0].Error = ""
-      })
-      let items = view.Resources.map((res: any) => new StatusItem(res))
-
-      let latestVersion: TiltBuild = {
-        Version: "v0.10.0",
-        Date: moment(Date.now())
-          .subtract(daysOld, "days")
-          .format("YYYY-MM-DD"),
-        Dev: false,
-      }
-      const tree = renderer
-        .create(
-          <MemoryRouter>
-            <Statusbar
-              items={[]}
-              errorsUrl="/errors"
-              runningVersion={runningVersion}
-              latestVersion={latestVersion}
-            />
-          </MemoryRouter>
-        )
-        .toJSON()
-      expect(tree).toMatchSnapshot()
-    }
-  )
-
-  it("updates as time passes", () => {
+  it("renders an upgrade badge when the version is out of date", () => {
     let view = twoResourceView()
     view.Resources.forEach((res: any) => {
       res.BuildHistory[0].Error = ""
     })
     let items = view.Resources.map((res: any) => new StatusItem(res))
-    let latestVersion: TiltBuild = {
-      Version: "v0.10.0",
-      Date: moment(Date.now())
-        .subtract(1, "days")
-        .format("YYYY-MM-DD"),
-      Dev: false,
-    }
+    let latestVersion = runningVersion
+    latestVersion.Version = "10.0.0"
+    const tree = renderer
+        .create(
+            <MemoryRouter>
+              <Statusbar
+                  items={items}
+                  errorsUrl="/errors"
+                  runningVersion={runningVersion}
+                  latestVersion={latestVersion}
+              />
+            </MemoryRouter>
+        )
+        .toJSON()
 
-    let statusbar = mount(
-      <MemoryRouter>
-        <Statusbar
-          items={items}
-          errorsUrl="/errors"
-          runningVersion={runningVersion}
-          latestVersion={latestVersion}
-        />
-      </MemoryRouter>
-    )
-    expect(
-      statusbar.find(".Statusbar-updatePanel-outofdate-short").length
-    ).toEqual(1)
 
-    clock.tick(moment.duration(4, "days").asMilliseconds())
-
-    statusbar.update()
-
-    expect(
-      statusbar.find(".Statusbar-updatePanel-outofdate-short").length
-    ).toEqual(0)
-    expect(
-      statusbar.find(".Statusbar-updatePanel-outofdate-medium").length
-    ).toEqual(1)
-
-    statusbar.unmount()
+    expect(tree).toMatchSnapshot()
   })
 })
 

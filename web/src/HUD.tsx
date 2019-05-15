@@ -18,7 +18,6 @@ import { TiltBuild, ResourceView } from "./types"
 import ErrorPane, { ErrorResource } from "./ErrorPane"
 import PreviewList from "./PreviewList"
 import { HotKeys } from "react-hotkeys"
-import moment from "moment"
 
 type HudProps = {
   history: History

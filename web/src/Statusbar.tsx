@@ -1,15 +1,15 @@
-import React, {Component, ReactElement} from "react"
+import React, { Component, PureComponent, ReactElement } from "react"
 import { ReactComponent as LogoSvg } from "./assets/svg/logo.svg"
 import { ReactComponent as ErrorSvg } from "./assets/svg/error.svg"
 import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
+import { ReactComponent as UpdateAvailableSvg } from "./assets/svg/update-available.svg"
 import { combinedStatus, warnings } from "./status"
 import "./Statusbar.scss"
 import { combinedStatusMessage } from "./combinedStatusMessage"
 import { Build, TiltBuild } from "./types"
 import mostRecentBuildToDisplay from "./mostRecentBuild"
 import { Link } from "react-router-dom"
-import moment from "moment"
-import {classNames} from "react-select/lib/utils"
+import { classNames } from "react-select/lib/utils"
 
 class StatusItem {
   public warningCount: number = 0
@@ -49,69 +49,7 @@ type StatusBarProps = {
   latestVersion: TiltBuild | null
 }
 
-type UpdateNotificationProps = {
-  runningVersion: TiltBuild
-  newVersion: TiltBuild
-}
-
-type UpdateNotificationState = {
-  date: Date
-}
-
-class UpdateNotification extends Component<
-  UpdateNotificationProps,
-  UpdateNotificationState
-> {
-  timerID: NodeJS.Timeout | null
-
-  constructor(props: UpdateNotificationProps) {
-    super(props)
-    this.state = { date: new Date() }
-    this.timerID = null
-  }
-
-  componentDidMount(): void {
-    this.timerID = setInterval(
-      () => this.tick(),
-      moment.duration(1, "hours").asMilliseconds()
-    )
-  }
-
-  componentWillUnmount(): void {
-    if (this.timerID !== null) {
-      clearInterval(this.timerID)
-    }
-  }
-
-  tick() {
-    this.setState({ date: new Date() })
-  }
-
-  render() {
-    let text = [``, ``]
-    return (
-      <a href="https://docs.tilt.dev/upgrade.html" className="Statusbar-tiltPanel-link" target="_blank">
-        <p className="Statusbar-tiltPanel-upgradeTooltip">
-          ✨ Get Tilt {this.props.newVersion.Version}! ✨<br />
-          (You're running {this.props.runningVersion.Version})
-        </p>
-        {this.props.children}
-        <svg
-          viewBox="0 0 100 100"
-          width="12"
-          height="12"
-          xmlns="http://www.w3.org/2000/svg"
-          className="Statusbar-tiltPanel-updateIcon"
-        >
-          <circle cx="50" cy="50" r="50" />
-          <path d="M 40 80 V 45 H 15 L 50 15 L 85 45 H 60 V 80" fill="white" />
-        </svg>
-      </a>
-    )
-  }
-}
-
-class Statusbar extends Component<StatusBarProps> {
+class Statusbar extends PureComponent<StatusBarProps> {
   errorWarningPanel(errorCount: number, warningCount: number) {
     return (
       <section className="Statusbar-panel Statusbar-errWarnPanel">
@@ -171,10 +109,7 @@ class Statusbar extends Component<StatusBarProps> {
     )
   }
 
-  tiltPanel(
-    runningVersion: TiltBuild | null,
-    latestVersion: TiltBuild | null
-  ) {
+  tiltPanel(runningVersion: TiltBuild | null, latestVersion: TiltBuild | null) {
     let content: ReactElement = <LogoSvg className="Statusbar-logo" />
     if (
       latestVersion &&
@@ -182,15 +117,23 @@ class Statusbar extends Component<StatusBarProps> {
       !runningVersion.Dev &&
       runningVersion.Version != latestVersion.Version
     ) {
-      content = <UpdateNotification newVersion={latestVersion} runningVersion={runningVersion}>
-        {content}
-      </UpdateNotification>
+      content = (
+        <a
+          href="https://docs.tilt.dev/upgrade.html"
+          className="Statusbar-tiltPanel-link"
+          target="_blank"
+        >
+          <p className="Statusbar-tiltPanel-upgradeTooltip">
+            ✨ Get Tilt v{latestVersion.Version}! ✨<br />
+            (You're running v{runningVersion.Version})
+          </p>
+          {content}
+          <UpdateAvailableSvg />
+        </a>
+      )
     }
 
-    return <section className="Statusbar-tiltPanel">
-      {content}
-    </section>
-
+    return <section className="Statusbar-tiltPanel">{content}</section>
   }
 
   render() {
