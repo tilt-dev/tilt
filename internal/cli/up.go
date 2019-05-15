@@ -32,7 +32,8 @@ var webModeFlag model.WebMode = model.DefaultWebMode
 var webPort = 0
 var webDevPort = 0
 var logActionsFlag bool = false
-var sailModeFlag model.SailMode = model.SailModeDefault
+var sailEnabled bool = false
+var sailModeFlag model.SailMode = model.SailModeProd
 
 type upCmd struct {
 	watch      bool
@@ -60,14 +61,15 @@ func (c *upCmd) register() *cobra.Command {
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
 	cmd.Flags().IntVar(&webPort, "port", DefaultWebPort, "Port for the Tilt HTTP server. Set to 0 to disable.")
 	cmd.Flags().IntVar(&webDevPort, "webdev-port", DefaultWebDevPort, "Port for the Tilt Dev Webpack server. Only applies when using --web-mode=local")
-	cmd.Flags().Var(&sailModeFlag, "sail", "Enable sharing current state to a Sail server. Values: default, none, local, prod, staging")
+	cmd.Flags().BoolVar(&sailEnabled, "share", false, "Enable sharing current state to a remote server")
+	cmd.Flags().Var(&sailModeFlag, "share-mode", "Sets the server that we're sharing to. Values: none, default, local, prod, staging")
 	cmd.Flags().Lookup("logactions").Hidden = true
 	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
 	err := cmd.Flags().MarkHidden("image-tag-prefix")
 	if err != nil {
 		panic(err)
 	}
-	err = cmd.Flags().MarkHidden("sail")
+	err = cmd.Flags().MarkHidden("share-mode")
 	if err != nil {
 		panic(err)
 	}
@@ -180,6 +182,10 @@ func provideWebMode(b model.TiltBuild) (model.WebMode, error) {
 }
 
 func provideSailMode() (model.SailMode, error) {
+	if !sailEnabled {
+		return model.SailModeDisabled, nil
+	}
+
 	switch sailModeFlag {
 	case model.SailModeLocal, model.SailModeProd, model.SailModeStaging, model.SailModeDisabled:
 		return sailModeFlag, nil
