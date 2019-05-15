@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
@@ -99,6 +100,7 @@ type K8sClient struct {
 	portForwarder   PortForwarder
 	configNamespace Namespace
 	clientSet       kubernetes.Interface
+	dynamic         dynamic.Interface
 	runtimeAsync    *runtimeAsync
 }
 
@@ -136,6 +138,8 @@ func ProvideK8sClient(
 	browser.Stdout = writer
 	browser.Stderr = writer
 
+	di, err := dynamic.NewForConfig(restConfig)
+
 	return K8sClient{
 		env:             env,
 		kubectlRunner:   runner,
@@ -145,6 +149,7 @@ func ProvideK8sClient(
 		configNamespace: configNamespace,
 		clientSet:       clientset,
 		runtimeAsync:    runtimeAsync,
+		dynamic:         di,
 	}
 }
 
