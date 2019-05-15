@@ -50,6 +50,18 @@ class ErrorResource {
   public buildFailed() {
     return this.buildHistory.length > 0 && this.buildHistory[0].Error !== null
   }
+
+  public numberOfAlerts(): number {
+    let num = 0
+    if (this.podStatusIsError() || this.podRestarted()) {
+      num++
+    }
+    if (this.buildFailed()) {
+      num++
+    }
+
+    return num
+  }
 }
 
 type ResourceInfo = {

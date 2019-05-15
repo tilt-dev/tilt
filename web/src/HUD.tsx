@@ -204,10 +204,12 @@ class HUD extends Component<HudProps, HudState> {
         let selectedResource = resources.find(r => r.Name === name)
         let er = new ErrorResource(selectedResource)
         if (er.hasError()) {
-          numErrors = 1
+          numErrors = er.numberOfAlerts()
         }
       } else {
-        numErrors = resourcesWithErrors.length
+        numErrors = resourcesWithErrors
+          .map(er => er.numberOfAlerts())
+          .reduce((sum, current) => sum + current)
       }
       return (
         <TopBar
