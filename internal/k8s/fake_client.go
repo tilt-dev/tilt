@@ -13,9 +13,10 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
-	"github.com/windmilleng/tilt/internal/container"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/watch"
+
+	"github.com/windmilleng/tilt/internal/container"
 )
 
 // A magic constant. If the docker client returns this constant, we always match
@@ -57,6 +58,10 @@ type fakePodWatch struct {
 }
 
 func (c *FakeK8sClient) WatchServices(ctx context.Context, lps []model.LabelPair) (<-chan *v1.Service, error) {
+	return nil, nil
+}
+
+func (c *FakeK8sClient) WatchEvents(ctx context.Context, ls labels.Selector) (<-chan *v1.Event, error) {
 	return nil, nil
 }
 
