@@ -6,7 +6,7 @@ import { mount } from "enzyme"
 import {
   oneResourceView,
   twoResourceView,
-  oneResourceNoErrors,
+  oneResourceNoAlerts,
 } from "./testdata.test"
 import { createMemoryHistory } from "history"
 
@@ -154,7 +154,7 @@ it("renders no error count in tabnav if there are no errors", () => {
   const root = mount(emptyHUD())
   const hud = root.find(HUD)
 
-  hud.setState({ View: { Resources: [oneResourceNoErrors()] } })
+  hud.setState({ View: { Resources: [oneResourceNoAlerts()] } })
   let errorTab = root.find(".tabLink--errors")
-  expect(errorTab.at(0).text()).toEqual("Errors ")
+  expect(errorTab.at(0).text()).toEqual("Alerts ")
 })
