@@ -11,7 +11,7 @@ describe("StatusBar", () => {
     const tree = renderer
       .create(
         <MemoryRouter>
-          <Statusbar items={[]} errorsUrl="/errors" />
+          <Statusbar items={[]} alertsUrl="/alerts" />
         </MemoryRouter>
       )
       .toJSON()
@@ -27,7 +27,7 @@ describe("StatusBar", () => {
     })
     let statusbar = mount(
       <MemoryRouter>
-        <Statusbar items={items} errorsUrl="/errors" />
+        <Statusbar items={items} alertsUrl="/alerts" />
       </MemoryRouter>
     )
     expect(
@@ -44,7 +44,7 @@ describe("StatusBar", () => {
     const tree = renderer
       .create(
         <MemoryRouter>
-          <Statusbar items={items} errorsUrl="/errors" />
+          <Statusbar items={items} alertsUrl="/alerts" />
         </MemoryRouter>
       )
       .toJSON()
@@ -62,7 +62,7 @@ describe("StatusBar", () => {
     const tree = renderer
       .create(
         <MemoryRouter>
-          <Statusbar items={items} errorsUrl="/errors" />
+          <Statusbar items={items} alertsUrl="/alerts" />
         </MemoryRouter>
       )
       .toJSON()
@@ -78,7 +78,7 @@ describe("StatusBar", () => {
     let items = view.Resources.map((res: any) => new StatusItem(res))
     let statusbar = mount(
       <MemoryRouter>
-        <Statusbar items={items} errorsUrl="/errors" />
+        <Statusbar items={items} alertsUrl="/alerts" />
       </MemoryRouter>
     )
     expect(
