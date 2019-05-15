@@ -89,8 +89,11 @@ func (s *HeadsUpServer) HandleAnalyticsOpt(w http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	// TODO(maia): record user choice
-	_, _ = fmt.Fprintf(w, "👍 you sent: %s", payload.Opt)
+	err = s.opter.SetOptStr(payload.Opt)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error setting opt '%s': %v", payload.Opt, err), http.StatusBadRequest)
+		return
+	}
 }
 
 func (s *HeadsUpServer) HandleAnalytics(w http.ResponseWriter, req *http.Request) {
