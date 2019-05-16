@@ -36,7 +36,7 @@ func initAnalytics(rootCmd *cobra.Command) error {
 	var err error
 
 	options := []analytics.Option{}
-	options = append(options, analytics.WithGlobalTags(globalTags()))
+	options = append(options, analytics.WithGlobalTags(globalTags()), analytics.WithEnabled(true))
 	analyticsURL := os.Getenv(analyticsURLEnvVar)
 	if analyticsURL != "" {
 		options = append(options, analytics.WithReportURL(analyticsURL))
