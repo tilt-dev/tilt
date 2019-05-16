@@ -198,7 +198,7 @@ func TestOptIn(t *testing.T) {
 		metricName string
 	}{
 		{"in", func(a *TiltAnalytics) error { return a.OptIn() }, "analytics.opt.in"},
-		{"out", func(a *TiltAnalytics) error { return a.OptOut() }, "analytics.opt.out"},
+		{"out", func(a *TiltAnalytics) error { return a.OptOut() }, ""},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			ma := analytics.NewMemoryAnalytics()
@@ -210,11 +210,13 @@ func TestOptIn(t *testing.T) {
 			}
 
 			var expectedCounts []analytics.CountEvent
-			expectedCounts = append(expectedCounts, analytics.CountEvent{
-				Name: test.metricName,
-				Tags: map[string]string{},
-				N:    1,
-			})
+			if test.metricName != "" {
+				expectedCounts = append(expectedCounts, analytics.CountEvent{
+					Name: test.metricName,
+					Tags: map[string]string{},
+					N:    1,
+				})
+			}
 			assert.Equal(t, expectedCounts, ma.Counts)
 		})
 	}
