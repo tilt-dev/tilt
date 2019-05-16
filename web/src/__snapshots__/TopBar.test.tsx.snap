@@ -7,31 +7,33 @@ exports[`shows sail share button 1`] = `
   <div
     className="AnalyticsNudge"
   >
-    <span>
-      Congrats on your first Tilt resource 🎉 Opt into analytics? (Read more
-       
-      <a
-        href="https://github.com/windmilleng/tilt#privacy"
-        target="_blank"
+    <div>
+      <span>
+        Congrats on your first Tilt resource 🎉 Opt into analytics? (Read more
+         
+        <a
+          href="https://github.com/windmilleng/tilt#privacy"
+          target="_blank"
+        >
+          here
+        </a>
+        .) 
+      </span>
+      <span
+        className="AnalyticsNudge-buttons"
       >
-        here
-      </a>
-      .) 
-    </span>
-    <span
-      className="AnalyticsNudge-buttons"
-    >
-      <button
-        onClick={[Function]}
-      >
-        Yes!
-      </button>
-      <button
-        onClick={[Function]}
-      >
-        Nope!
-      </button>
-    </span>
+        <button
+          onClick={[Function]}
+        >
+          Yes!
+        </button>
+        <button
+          onClick={[Function]}
+        >
+          Nope!
+        </button>
+      </span>
+    </div>
   </div>
   <div
     className="TopBar-row"
@@ -97,31 +99,33 @@ exports[`shows sail url 1`] = `
   <div
     className="AnalyticsNudge"
   >
-    <span>
-      Congrats on your first Tilt resource 🎉 Opt into analytics? (Read more
-       
-      <a
-        href="https://github.com/windmilleng/tilt#privacy"
-        target="_blank"
+    <div>
+      <span>
+        Congrats on your first Tilt resource 🎉 Opt into analytics? (Read more
+         
+        <a
+          href="https://github.com/windmilleng/tilt#privacy"
+          target="_blank"
+        >
+          here
+        </a>
+        .) 
+      </span>
+      <span
+        className="AnalyticsNudge-buttons"
       >
-        here
-      </a>
-      .) 
-    </span>
-    <span
-      className="AnalyticsNudge-buttons"
-    >
-      <button
-        onClick={[Function]}
-      >
-        Yes!
-      </button>
-      <button
-        onClick={[Function]}
-      >
-        Nope!
-      </button>
-    </span>
+        <button
+          onClick={[Function]}
+        >
+          Yes!
+        </button>
+        <button
+          onClick={[Function]}
+        >
+          Nope!
+        </button>
+      </span>
+    </div>
   </div>
   <div
     className="TopBar-row"
