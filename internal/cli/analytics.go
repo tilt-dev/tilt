@@ -10,6 +10,8 @@ import (
 	"runtime"
 	"strings"
 
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
+
 	"github.com/spf13/cobra"
 	giturls "github.com/whilp/git-urls"
 	"github.com/windmilleng/wmclient/pkg/analytics"
@@ -21,7 +23,7 @@ const tiltAppName = "tilt"
 const disableAnalyticsEnvVar = "TILT_DISABLE_ANALYTICS"
 const analyticsURLEnvVar = "TILT_ANALYTICS_URL"
 
-var analyticsService analytics.Analytics
+var analyticsService *tiltanalytics.TiltAnalytics
 
 // Testing analytics locally:
 // (after `npm install http-echo-server -g`)
@@ -39,22 +41,28 @@ func initAnalytics(rootCmd *cobra.Command) error {
 	if analyticsURL != "" {
 		options = append(options, analytics.WithReportURL(analyticsURL))
 	}
-	if isAnalyticsDisabledFromEnv() {
-		options = append(options, analytics.WithEnabled(false))
-	}
-	analyticsService, analyticsCmd, err = analytics.Init(tiltAppName, options...)
+	backingAnalytics, analyticsCmd, err := analytics.Init(tiltAppName, options...)
 	if err != nil {
 		return err
 	}
 
 	rootCmd.AddCommand(analyticsCmd)
-	if webview.NewAnalyticsOn() {
-		return nil
+
+	var status analytics.Opt
+
+	if isAnalyticsDisabledFromEnv() {
+		status = analytics.OptOut
+	} else {
+		status, err = analytics.OptStatus()
+		if err != nil {
+			return err
+		}
 	}
 
-	status, err := analytics.OptStatus()
-	if err != nil {
-		return err
+	analyticsService = tiltanalytics.NewTiltAnalytics(status, analytics.SetOpt, backingAnalytics)
+
+	if webview.NewAnalyticsOn() {
+		return nil
 	}
 
 	if status == analytics.OptDefault {
