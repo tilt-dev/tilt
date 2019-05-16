@@ -117,7 +117,7 @@
   animation-timing-function: linear;
 }
 .resLink--pending .resLink-icon {
-  fill: $color-gray-light;
+  fill: $color-gray-lightest;
 }
 .resLink--error .resLink-icon {
   fill: $color-red;
@@ -125,7 +125,21 @@
 .resLink-name {
   flex: 1 0 auto;
 }
-.resLink time {
+.resLink-alertNum {
+  font-family: $font-sans-serif;
+  font-size: $font-size-smallest;
+  background-color: $color-gray-darkest;
+  color: $color-white;
+  border-radius: $sidebar-badge;
+  width: $sidebar-badge;
+  height: $sidebar-badge;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid $color-gray-light;
+  margin-right: $spacing-unit / 2;
+}
+.resLink-timeAgo {
   font-weight: normal;
   color: $color-gray-lightest;
   margin-right: $spacing-unit / 2;

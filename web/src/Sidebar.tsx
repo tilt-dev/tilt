@@ -110,7 +110,7 @@ class Sidebar extends PureComponent<SidebarProps> {
             ) : (
               ""
             )}
-            <span>{hasBuilt ? timeAgo : ""}</span>
+            <span className="resLink-timeAgo">{hasBuilt ? timeAgo : "—"}</span>
           </Link>
         </li>
       )
