@@ -197,7 +197,6 @@ class HUD extends Component<HudProps, HudState> {
         <Sidebar
           selected={name}
           items={sidebarItems}
-          needsNudge={needsNudge}
           isClosed={isSidebarClosed}
           toggleSidebar={toggleSidebar}
           resourceView={t}
@@ -234,6 +233,7 @@ class HUD extends Component<HudProps, HudState> {
           sailEnabled={sailEnabled}
           sailUrl={sailUrl}
           numberOfAlerts={numAlerts}
+          needsNudge={needsNudge}
         />
       )
     }
