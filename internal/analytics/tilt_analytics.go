@@ -64,7 +64,6 @@ func (ta *TiltAnalytics) OptIn() error {
 }
 
 func (ta *TiltAnalytics) OptOut() error {
-	ta.IncrIfUnopted("analytics.opt.out", map[string]string{})
 	ta.opt = analytics.OptOut
 	return ta.persistOpt(ta.opt)
 }

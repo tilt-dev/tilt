@@ -74,7 +74,7 @@ func initAnalytics(rootCmd *cobra.Command) error {
 		buf := bufio.NewReader(os.Stdin)
 		c, _, _ := buf.ReadRune()
 		if c == rune(0) || c == '\n' || c == 'y' || c == 'Y' {
-			err = analytics.SetOpt(analytics.OptIn)
+			err = analyticsService.OptIn()
 			if err != nil {
 				return err
 			}
@@ -84,7 +84,7 @@ func initAnalytics(rootCmd *cobra.Command) error {
 				return err
 			}
 		} else {
-			err = analytics.SetOpt(analytics.OptOut)
+			err = analyticsService.OptOut()
 			if err != nil {
 				return err
 			}
