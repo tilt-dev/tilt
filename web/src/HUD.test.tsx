@@ -110,7 +110,7 @@ it("renders number of errors in tabnav when no resource is selected", () => {
   let resourceView = twoResourceView()
   hud.setState({ View: resourceView })
   let errorTab = root.find(".tabLink--errors")
-  expect(errorTab.at(0).text()).toEqual("Alerts (2)")
+  expect(errorTab.at(0).text()).toEqual("Alerts2")
 })
 
 it("renders the number of errors a resource has in tabnav when a resource is selected", () => {
@@ -124,7 +124,7 @@ it("renders the number of errors a resource has in tabnav when a resource is sel
   let resourceView = twoResourceView()
   hud.setState({ View: resourceView })
   let errorTab = root.find(".tabLink--errors")
-  expect(errorTab.at(0).text()).toEqual("Alerts (1)")
+  expect(errorTab.at(0).text()).toEqual("Alerts1")
 })
 
 it("renders two errors for a resource that has pod restarts and a build failure", () => {
@@ -135,7 +135,7 @@ it("renders two errors for a resource that has pod restarts and a build failure"
   resourceView.Resources[0].ResourceInfo.PodRestarts = 1
   hud.setState({ View: resourceView })
   let errorTab = root.find(".tabLink--errors")
-  expect(errorTab.at(0).text()).toEqual("Alerts (2)")
+  expect(errorTab.at(0).text()).toEqual("Alerts2")
 })
 
 it("renders two errors for a resource that has pod restarts, a build failure and is in the error state", () => {
@@ -147,7 +147,7 @@ it("renders two errors for a resource that has pod restarts, a build failure and
   resourceView.Resources[0].RuntimeStatus = "CrashLoopBackoff"
   hud.setState({ View: resourceView })
   let errorTab = root.find(".tabLink--errors")
-  expect(errorTab.at(0).text()).toEqual("Alerts (2)")
+  expect(errorTab.at(0).text()).toEqual("Alerts2")
 })
 
 it("renders no error count in tabnav if there are no errors", () => {
@@ -156,5 +156,5 @@ it("renders no error count in tabnav if there are no errors", () => {
 
   hud.setState({ View: { Resources: [oneResourceNoAlerts()] } })
   let errorTab = root.find(".tabLink--errors")
-  expect(errorTab.at(0).text()).toEqual("Alerts ")
+  expect(errorTab.at(0).text()).toEqual("Alerts")
 })
