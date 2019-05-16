@@ -39,3 +39,17 @@
   color: $color-white;
   border-bottom: none;
 }
+
+.tabLink-alertBadge {
+  font-family: $font-sans-serif;
+  font-size: $font-size-smallest;
+  background-color: $color-white;
+  color: $color-gray-darkest;
+  width: $alert-badge;
+  height: $alert-badge;
+  border-radius: $alert-badge;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: $spacing-unit / 3;
+}
