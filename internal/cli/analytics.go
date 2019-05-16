@@ -12,14 +12,22 @@ import (
 
 	"github.com/spf13/cobra"
 	giturls "github.com/whilp/git-urls"
-	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/wmclient/pkg/analytics"
+
+	"github.com/windmilleng/tilt/internal/hud/webview"
 )
 
 const tiltAppName = "tilt"
 const disableAnalyticsEnvVar = "TILT_DISABLE_ANALYTICS"
+const analyticsURLEnvVar = "TILT_ANALYTICS_URL"
 
 var analyticsService analytics.Analytics
+
+// Testing analytics locally:
+// (after `npm install http-echo-server -g`)
+// In one window: `PORT=9988 http-echo-server`
+// In another: `TILT_ANALYTICS_URL=http://localhost:9988 tilt up`
+// Analytics requests will show up in the http-echo-server window.
 
 func initAnalytics(rootCmd *cobra.Command) error {
 	var analyticsCmd *cobra.Command
@@ -27,6 +35,10 @@ func initAnalytics(rootCmd *cobra.Command) error {
 
 	options := []analytics.Option{}
 	options = append(options, analytics.WithGlobalTags(globalTags()))
+	analyticsURL := os.Getenv(analyticsURLEnvVar)
+	if analyticsURL != "" {
+		options = append(options, analytics.WithReportURL(analyticsURL))
+	}
 	if isAnalyticsDisabledFromEnv() {
 		options = append(options, analytics.WithEnabled(false))
 	}
