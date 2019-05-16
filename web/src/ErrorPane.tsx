@@ -89,7 +89,9 @@ class AlertPane extends PureComponent<AlertsProps> {
           <li key={"resourceInfoError" + r.name} className="ErrorPane-item">
             <header>
               <p>{r.name}</p>
-              <p>{r.resourceInfo.podCreationTime}</p>
+              <p>
+                <TimeAgo date={r.resourceInfo.podCreationTime} />
+              </p>
             </header>
             <section>{r.resourceInfo.podLog}</section>
           </li>
@@ -100,7 +102,9 @@ class AlertPane extends PureComponent<AlertsProps> {
             <header>
               <p>{r.name}</p>
               <p>{`Restarts: ${r.resourceInfo.podRestarts}`}</p>
-              <p>{r.resourceInfo.podCreationTime}</p>
+              <p>
+                <TimeAgo date={r.resourceInfo.podCreationTime} />
+              </p>
             </header>
             <section>
               <p>{`Last log line: ${r.resourceInfo.podLog}`}</p>
