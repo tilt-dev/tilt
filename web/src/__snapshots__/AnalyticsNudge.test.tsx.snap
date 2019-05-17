@@ -59,21 +59,18 @@ exports[`shows failure message with response body 1`] = `
   className="AnalyticsNudge is-visible"
 >
   <p>
-    Oh no, something went wrong! Request failed with:
-    <div
-      className="AnalyticsNudge-err"
-    >
-      <span>
-        something is not right! something is quite wrong!
-      </span>
-    </div>
+    Oh no, something went wrong! Request failed with: 
+    <pre>
+      something is not right! something is quite wrong!
+    </pre>
+     (
     <a
       href="https://tilt.dev/contact"
       target="_blank"
     >
-      Contact us
+      contact us
     </a>
-    .
+    )
   </p>
   <span>
     <button

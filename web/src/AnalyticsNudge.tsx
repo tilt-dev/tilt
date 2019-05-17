@@ -1,7 +1,7 @@
 import React, { Component } from "react"
 import "./AnalyticsNudge.scss"
 
-const nudgeTimeoutMs = 5000 // 5 seconds
+const nudgeTimeoutMs = 4000 // 4 seconds
 const nudgeElem = (): JSX.Element => {
   return (
     <p>
@@ -36,14 +36,11 @@ const successOptOutElem = (): JSX.Element => {
 const errorElem = (respBody: string): JSX.Element => {
   return (
     <p>
-      Oh no, something went wrong! Request failed with:
-      <div className="AnalyticsNudge-err">
-        <span>{respBody}</span>
-      </div>
+      Oh no, something went wrong! Request failed with: <pre>{respBody}</pre> (
       <a href="https://tilt.dev/contact" target="_blank">
-        Contact us
+        contact us
       </a>
-      .
+      )
     </p>
   )
 }

@@ -16,6 +16,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  top: -100%;
+  transition: top $animation-timing ease;
 
   pre {
     display: inline;
@@ -24,7 +26,7 @@
 }
 
 .is-visible {
-  //display: block;
+  top: 0;
 }
 
 .AnalyticsNudge-button {
@@ -34,17 +36,10 @@
   @include button-text;
   border: 1px solid $color-gray-light;
   padding: $spacing-unit/3;
+  margin-left: $spacing-unit/2;
   min-width: $spacing-unit * 3;
 }
 
 .AnalyticsNudge-button + .AnalyticsNudge-button {
   margin-left: $spacing-unit/2;
-}
-.AnalyticsNudge-err {
-  margin: $spacing-unit;
-  span {
-    padding: $spacing-unit/2;
-    color: $color-black;
-    background: $color-gray-lightest;
-  }
 }
