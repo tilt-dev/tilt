@@ -12,7 +12,7 @@ exports[`shows sail share button 1`] = `
         Congrats on your first Tilt resource 🎉 Opt into analytics? (Read more
          
         <a
-          href="https://github.com/windmilleng/tilt#privacy"
+          href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
           target="_blank"
         >
           here
@@ -103,7 +103,7 @@ exports[`shows sail url 1`] = `
         Congrats on your first Tilt resource 🎉 Opt into analytics? (Read more
          
         <a
-          href="https://github.com/windmilleng/tilt#privacy"
+          href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
           target="_blank"
         >
           here

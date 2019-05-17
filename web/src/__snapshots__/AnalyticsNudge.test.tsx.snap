@@ -5,7 +5,7 @@ exports[`hidden if dismissed 1`] = `
   className="AnalyticsNudge"
 >
   <span>
-    Cool, got it! 👍
+    Thanks for opting out! [copy tbd]
   </span>
 </div>
 `;
@@ -19,7 +19,7 @@ exports[`hides nudge if !needsNudge and no state 1`] = `
       Congrats on your first Tilt resource 🎉 Opt into analytics? (Read more
        
       <a
-        href="https://github.com/windmilleng/tilt#privacy"
+        href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
         target="_blank"
       >
         here
@@ -44,21 +44,38 @@ exports[`hides nudge if !needsNudge and no state 1`] = `
 </div>
 `;
 
-exports[`shows failure message 1`] = `
+exports[`shows failure message with response body 1`] = `
 <div
   className="AnalyticsNudge is-visible"
 >
-  <span>
-    Oh no, something went wrong!
-     
-    <a
-      href="https://tilt.dev/contact"
-      target="_blank"
+  <div>
+    <span>
+      Oh no, something went wrong! Request failed with:
+      <div
+        className="AnalyticsNudge-err"
+      >
+        <span>
+          something is not right! something is quite wrong!
+        </span>
+      </div>
+      <a
+        href="https://tilt.dev/contact"
+        target="_blank"
+      >
+        Contact us
+      </a>
+      . 
+    </span>
+    <span
+      className="AnalyticsNudge-buttons"
     >
-      Get in touch
-    </a>
-    .
-  </span>
+      <button
+        onClick={[Function]}
+      >
+        Dismiss
+      </button>
+    </span>
+  </div>
 </div>
 `;
 
@@ -71,7 +88,7 @@ exports[`shows nudge if needsNudge 1`] = `
       Congrats on your first Tilt resource 🎉 Opt into analytics? (Read more
        
       <a
-        href="https://github.com/windmilleng/tilt#privacy"
+        href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
         target="_blank"
       >
         here
@@ -106,12 +123,22 @@ exports[`shows request-in-progress message 1`] = `
 </div>
 `;
 
-exports[`shows success message 1`] = `
+exports[`shows success message: opt in 1`] = `
 <div
   className="AnalyticsNudge is-visible"
 >
   <span>
-    Cool, got it! 👍
+    Thanks for opting in! [copy tbd]
+  </span>
+</div>
+`;
+
+exports[`shows success message: opt out 1`] = `
+<div
+  className="AnalyticsNudge is-visible"
+>
+  <span>
+    Thanks for opting out! [copy tbd]
   </span>
 </div>
 `;
