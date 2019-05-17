@@ -924,3 +924,7 @@ func uniqueResourceNames(es []k8s.K8sEntity) ([]string, error) {
 
 	return ret, nil
 }
+
+func (s *tiltfileState) k8sContext(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return starlark.String(s.kubeContext), nil
+}

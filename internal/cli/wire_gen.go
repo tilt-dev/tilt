@@ -119,7 +119,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
 	imageReaper := build.NewImageReaper(cli)
 	imageController := engine.NewImageController(imageReaper)
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics, dockerComposeClient)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics, dockerComposeClient, kubeContext)
 	configsController := engine.NewConfigsController(tiltfileLoader)
 	dockerComposeEventWatcher := engine.NewDockerComposeEventWatcher(dockerComposeClient)
 	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
@@ -250,7 +250,7 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
 	imageReaper := build.NewImageReaper(cli)
 	imageController := engine.NewImageController(imageReaper)
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics, dockerComposeClient)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics, dockerComposeClient, kubeContext)
 	configsController := engine.NewConfigsController(tiltfileLoader)
 	dockerComposeEventWatcher := engine.NewDockerComposeEventWatcher(dockerComposeClient)
 	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
@@ -463,7 +463,7 @@ func wireDownDeps(ctx context.Context) (DownDeps, error) {
 		return DownDeps{}, err
 	}
 	dockerComposeClient := dockercompose.NewDockerComposeClient(dockerEnv)
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics, dockerComposeClient)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics, dockerComposeClient, kubeContext)
 	downDeps := ProvideDownDeps(tiltfileLoader, dockerComposeClient, k8sClient)
 	return downDeps, nil
 }

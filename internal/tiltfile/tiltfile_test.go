@@ -3215,6 +3215,27 @@ k8s_yaml(yml)
 	)
 }
 
+func TestK8sContext(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+if k8s_context() != 'fake-context':
+  fail('bad context')
+k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', 'foo')
+`)
+
+	f.load()
+	f.assertNextManifest("foo",
+		db(image("gcr.io/foo")),
+		deployment("foo"))
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
+
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
@@ -3232,7 +3253,7 @@ func newFixture(t *testing.T) *fixture {
 	f := tempdir.NewTempDirFixture(t)
 	an := analytics.NewMemoryAnalytics()
 	dcc := dockercompose.NewDockerComposeClient(docker.Env{})
-	tfl := ProvideTiltfileLoader(an, dcc)
+	tfl := ProvideTiltfileLoader(an, dcc, "fake-context")
 
 	r := &fixture{
 		ctx:            ctx,

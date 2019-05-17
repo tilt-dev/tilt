@@ -29,9 +29,10 @@ type resourceSet struct {
 
 type tiltfileState struct {
 	// set at creation
-	ctx      context.Context
-	filename localPath
-	dcCli    dockercompose.DockerComposeClient
+	ctx         context.Context
+	filename    localPath
+	dcCli       dockercompose.DockerComposeClient
+	kubeContext k8s.KubeContext
 
 	// added to during execution
 	configFiles        []string
@@ -83,12 +84,13 @@ const (
 	k8sResourceAssemblyVersionReasonExplicit
 )
 
-func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, filename string) *tiltfileState {
+func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, filename string, kubeContext k8s.KubeContext) *tiltfileState {
 	lp := localPath{path: filename}
 	s := &tiltfileState{
 		ctx:                        ctx,
 		filename:                   localPath{path: filename},
 		dcCli:                      dcCli,
+		kubeContext:                kubeContext,
 		buildIndex:                 newBuildIndex(),
 		k8sByName:                  make(map[string]*k8sResource),
 		k8sImageJSONPaths:          make(map[k8sObjectSelector][]k8s.JSONPath),
@@ -140,6 +142,7 @@ const (
 	k8sKindN                    = "k8s_kind"
 	k8sImageJSONPathN           = "k8s_image_json_path"
 	workloadToResourceFunctionN = "workload_to_resource_function"
+	k8sContextN                 = "k8s_context"
 
 	// file functions
 	localGitRepoN = "local_git_repo"
@@ -262,6 +265,7 @@ func (s *tiltfileState) predeclared() starlark.StringDict {
 	addBuiltin(r, k8sKindN, s.k8sKind)
 	addBuiltin(r, k8sImageJSONPathN, s.k8sImageJsonPath)
 	addBuiltin(r, workloadToResourceFunctionN, s.workloadToResourceFunctionFn)
+	addBuiltin(r, k8sContextN, s.k8sContext)
 	addBuiltin(r, localGitRepoN, s.localGitRepo)
 	addBuiltin(r, kustomizeN, s.kustomize)
 	addBuiltin(r, helmN, s.helm)
