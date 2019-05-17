@@ -8,12 +8,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/wmclient/pkg/analytics"
+
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
 func TestHandleAnalyticsEmptyRequest(t *testing.T) {
@@ -142,9 +144,7 @@ func TestHandleAnalyticsOptIn(t *testing.T) {
 			status, http.StatusOK)
 	}
 
-	if assert.Len(t, f.o.callStrs, 1) {
-		assert.Equal(t, "opt-in", f.o.callStrs[0])
-	}
+	assert.Equal(t, []analytics.Opt{analytics.OptIn}, f.o.calls)
 }
 
 func TestHandleAnalyticsOptNonPost(t *testing.T) {
@@ -208,9 +208,7 @@ func TestHandleAnalyticsOptSetError(t *testing.T) {
 			status, http.StatusInternalServerError)
 	}
 
-	if assert.Len(t, f.o.callStrs, 1) {
-		assert.Equal(t, "opt-in", f.o.callStrs[0])
-	}
+	assert.Equal(t, []analytics.Opt{analytics.OptIn}, f.o.calls)
 }
 
 func TestHandleSail(t *testing.T) {
@@ -286,9 +284,10 @@ type serverFixture struct {
 func newTestFixture(t *testing.T) *serverFixture {
 	st := store.NewStore(engine.UpperReducer, store.LogActionsFlag(false))
 	a := analytics.NewMemoryAnalytics()
-	sailCli := client.NewFakeSailClient()
 	o := newTestOpter()
-	s := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), a, sailCli, o)
+	a, ta := tiltanalytics.NewMemoryTiltAnalytics(o)
+	sailCli := client.NewFakeSailClient()
+	s := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, sailCli)
 
 	return &serverFixture{
 		t:       t,
@@ -311,16 +310,16 @@ func (f *serverFixture) assertIncrement(name string, count int) {
 }
 
 type testOpter struct {
-	nextErr  error
-	callStrs []string
+	nextErr error
+	calls   []analytics.Opt
 }
 
-var _ server.AnalyticsOpter = &testOpter{}
+var _ tiltanalytics.AnalyticsOpter = &testOpter{}
 
 func newTestOpter() *testOpter { return &testOpter{} }
 
-func (o *testOpter) SetOptStr(s string) error {
-	o.callStrs = append(o.callStrs, s)
+func (o *testOpter) SetOpt(opt analytics.Opt) error {
+	o.calls = append(o.calls, opt)
 
 	if o.nextErr != nil {
 		err := o.nextErr

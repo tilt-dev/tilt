@@ -16,9 +16,10 @@ import (
 	"testing"
 	"time"
 
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
+
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -2335,14 +2336,14 @@ func newTestFixture(t *testing.T) *testFixture {
 	fwm := NewWatchManager(watcher.newSub, timerMaker.maker())
 	pfc := NewPortForwardController(k8s)
 	ic := NewImageController(reaper)
-	an := analytics.NewMemoryAnalytics()
-	ar := ProvideAnalyticsReporter(an, st)
+	_, ta := tiltanalytics.NewMemoryTiltAnalytics(tiltanalytics.NullOpter{})
+	ar := ProvideAnalyticsReporter(ta, st)
 
 	// TODO(nick): Why does this test use two different docker compose clients???
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	realDcc := dockercompose.NewDockerComposeClient(docker.Env{})
 
-	tfl := tiltfile.ProvideTiltfileLoader(an, realDcc)
+	tfl := tiltfile.ProvideTiltfileLoader(ta, realDcc)
 	cc := NewConfigsController(tfl)
 	dcw := NewDockerComposeEventWatcher(fakeDcc)
 	dclm := NewDockerComposeLogManager(fakeDcc)

@@ -31,6 +31,14 @@ var analyticsService *tiltanalytics.TiltAnalytics
 // In another: `TILT_ANALYTICS_URL=http://localhost:9988 tilt up`
 // Analytics requests will show up in the http-echo-server window.
 
+type analyticsOpter struct{}
+
+var _ tiltanalytics.AnalyticsOpter = analyticsOpter{}
+
+func (ao analyticsOpter) SetOpt(opt analytics.Opt) error {
+	return analytics.SetOpt(opt)
+}
+
 func initAnalytics(rootCmd *cobra.Command) error {
 	var analyticsCmd *cobra.Command
 	var err error
@@ -61,7 +69,7 @@ func initAnalytics(rootCmd *cobra.Command) error {
 		}
 	}
 
-	analyticsService = tiltanalytics.NewTiltAnalytics(status, analytics.SetOpt, backingAnalytics)
+	analyticsService = tiltanalytics.NewTiltAnalytics(status, analyticsOpter{}, backingAnalytics)
 
 	if webview.NewAnalyticsOn() {
 		return nil
@@ -76,7 +84,7 @@ func initAnalytics(rootCmd *cobra.Command) error {
 		buf := bufio.NewReader(os.Stdin)
 		c, _, _ := buf.ReadRune()
 		if c == rune(0) || c == '\n' || c == 'y' || c == 'Y' {
-			err = analyticsService.OptIn()
+			err = analyticsService.SetOpt(analytics.OptIn)
 			if err != nil {
 				return err
 			}
@@ -86,7 +94,7 @@ func initAnalytics(rootCmd *cobra.Command) error {
 				return err
 			}
 		} else {
-			err = analyticsService.OptOut()
+			err = analyticsService.SetOpt(analytics.OptOut)
 			if err != nil {
 				return err
 			}
@@ -160,7 +168,7 @@ func isAnalyticsDisabledFromEnv() bool {
 	return os.Getenv(disableAnalyticsEnvVar) != ""
 }
 
-func provideAnalytics() (analytics.Analytics, error) {
+func provideAnalytics() (*tiltanalytics.TiltAnalytics, error) {
 	if analyticsService == nil {
 		return nil, fmt.Errorf("internal error: no available analytics service")
 	}

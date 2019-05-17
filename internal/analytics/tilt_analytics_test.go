@@ -28,7 +28,7 @@ type optSetting struct {
 	opt analytics.Opt
 }
 
-func (os *optSetting) setOpt(opt analytics.Opt) error {
+func (os *optSetting) SetOpt(opt analytics.Opt) error {
 	os.opt = opt
 	return nil
 }
@@ -38,7 +38,7 @@ func TestCount(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ma := analytics.NewMemoryAnalytics()
 			os := &optSetting{}
-			a := NewTiltAnalytics(test.opt, os.setOpt, ma)
+			a := NewTiltAnalytics(test.opt, os, ma)
 			a.Count("foo", testTags, 1)
 			var expectedCounts []analytics.CountEvent
 			if test.expectRecord {
@@ -58,7 +58,7 @@ func TestIncr(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ma := analytics.NewMemoryAnalytics()
 			os := &optSetting{}
-			a := NewTiltAnalytics(test.opt, os.setOpt, ma)
+			a := NewTiltAnalytics(test.opt, os, ma)
 			a.Incr("foo", testTags)
 			var expectedCounts []analytics.CountEvent
 			if test.expectRecord {
@@ -78,7 +78,7 @@ func TestTimer(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ma := analytics.NewMemoryAnalytics()
 			os := &optSetting{}
-			a := NewTiltAnalytics(test.opt, os.setOpt, ma)
+			a := NewTiltAnalytics(test.opt, os, ma)
 			a.Timer("foo", time.Second, testTags)
 			var expectedTimes []analytics.TimeEvent
 			if test.expectRecord {
@@ -98,7 +98,7 @@ func TestIncrIfUnopted(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ma := analytics.NewMemoryAnalytics()
 			os := &optSetting{}
-			a := NewTiltAnalytics(test.opt, os.setOpt, ma)
+			a := NewTiltAnalytics(test.opt, os, ma)
 			a.IncrIfUnopted("foo")
 			var expectedCounts []analytics.CountEvent
 			if test.expectRecord {
@@ -115,19 +115,11 @@ func TestIncrIfUnopted(t *testing.T) {
 
 func analyticsViaTransition(t *testing.T, initialOpt, newOpt analytics.Opt) (*TiltAnalytics, *analytics.MemoryAnalytics) {
 	ma := analytics.NewMemoryAnalytics()
-	os := optSetting{}
-	a := NewTiltAnalytics(initialOpt, os.setOpt, ma)
-	switch newOpt {
-	case analytics.OptIn:
-		err := a.OptIn()
-		if err != nil {
-			assert.FailNow(t, err.Error())
-		}
-	case analytics.OptOut:
-		err := a.OptOut()
-		if err != nil {
-			assert.FailNow(t, err.Error())
-		}
+	os := &optSetting{}
+	a := NewTiltAnalytics(initialOpt, os, ma)
+	err := a.SetOpt(newOpt)
+	if !assert.NoError(t, err) {
+		assert.FailNow(t, err.Error())
 	}
 
 	if !assert.Equal(t, newOpt, os.opt) {
@@ -196,17 +188,17 @@ func TestOptTransitionIncrIfUnopted(t *testing.T) {
 func TestOptIn(t *testing.T) {
 	for _, test := range []struct {
 		name       string
-		f          func(a *TiltAnalytics) error
+		opt        analytics.Opt
 		metricName string
 	}{
-		{"in", func(a *TiltAnalytics) error { return a.OptIn() }, "analytics.opt.in"},
-		{"out", func(a *TiltAnalytics) error { return a.OptOut() }, ""},
+		{"in", analytics.OptIn, "analytics.opt.in"},
+		{"out", analytics.OptOut, ""},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			ma := analytics.NewMemoryAnalytics()
 			os := &optSetting{}
-			a := NewTiltAnalytics(analytics.OptDefault, os.setOpt, ma)
-			err := test.f(a)
+			a := NewTiltAnalytics(analytics.OptDefault, os, ma)
+			err := a.SetOpt(test.opt)
 			if !assert.NoError(t, err) {
 				t.FailNow()
 			}

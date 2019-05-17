@@ -12,15 +12,32 @@ import (
 // 2. Ignores all other calls from users who have not opted in.
 // 3. Allows opting in/out at runtime.
 type TiltAnalytics struct {
-	opt        analytics.Opt
-	persistOpt optPersister
-	a          analytics.Analytics
+	opt   analytics.Opt
+	opter AnalyticsOpter
+	a     analytics.Analytics
 }
 
-type optPersister func(analytics.Opt) error
+// An AnalyticsOpter can record a user's choice (opt-in or opt-out)
+// in re: Tilt recording analytics.
+type AnalyticsOpter interface {
+	SetOpt(opt analytics.Opt) error
+}
 
-func NewTiltAnalytics(opt analytics.Opt, setOpt optPersister, analytics analytics.Analytics) *TiltAnalytics {
-	return &TiltAnalytics{opt, setOpt, analytics}
+type NullOpter struct{}
+
+func (NullOpter) SetOpt(opt analytics.Opt) error {
+	return nil
+}
+
+var _ AnalyticsOpter = NullOpter{}
+
+func NewTiltAnalytics(opt analytics.Opt, opter AnalyticsOpter, analytics analytics.Analytics) *TiltAnalytics {
+	return &TiltAnalytics{opt, opter, analytics}
+}
+
+func NewMemoryTiltAnalytics(opter AnalyticsOpter) (*analytics.MemoryAnalytics, *TiltAnalytics) {
+	ma := analytics.NewMemoryAnalytics()
+	return ma, NewTiltAnalytics(analytics.OptIn, opter, ma)
 }
 
 func (ta *TiltAnalytics) Count(name string, tags map[string]string, n int) {
@@ -64,15 +81,13 @@ func (ta *TiltAnalytics) Flush(timeout time.Duration) {
 	ta.a.Flush(timeout)
 }
 
-func (ta *TiltAnalytics) OptIn() error {
-	ta.IncrIfUnopted("analytics.opt.in")
-	ta.opt = analytics.OptIn
-	return ta.persistOpt(ta.opt)
-}
-
-func (ta *TiltAnalytics) OptOut() error {
-	ta.opt = analytics.OptOut
-	return ta.persistOpt(ta.opt)
+func (ta *TiltAnalytics) SetOpt(opt analytics.Opt) error {
+	if opt == analytics.OptIn {
+		ta.IncrIfUnopted("analytics.opt.in")
+	}
+	// no logging on opt-out, because, well, opting out means the user just told us not to report data on them!
+	ta.opt = opt
+	return ta.opter.SetOpt(ta.opt)
 }
 
 var _ analytics.Analytics = &TiltAnalytics{}

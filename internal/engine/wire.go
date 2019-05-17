@@ -7,9 +7,9 @@ import (
 	"context"
 
 	"github.com/google/wire"
-	"github.com/windmilleng/wmclient/pkg/analytics"
 	"github.com/windmilleng/wmclient/pkg/dirs"
 
+	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -66,11 +66,10 @@ func provideBuildAndDeployer(
 	sCli synclet.SyncletClient,
 	dcc dockercompose.DockerComposeClient,
 	clock build.Clock,
-	kp KINDPusher) (BuildAndDeployer, error) {
+	kp KINDPusher,
+	analytics *analytics.TiltAnalytics) (BuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
-		analytics.NewMemoryAnalytics,
-		wire.Bind(new(analytics.Analytics), new(analytics.MemoryAnalytics)),
 		k8s.ProvideContainerRuntime,
 	)
 
@@ -84,11 +83,10 @@ func provideImageBuildAndDeployer(
 	env k8s.Env,
 	dir *dirs.WindmillDir,
 	clock build.Clock,
-	kp KINDPusher) (*ImageBuildAndDeployer, error) {
+	kp KINDPusher,
+	analytics *analytics.TiltAnalytics) (*ImageBuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
-		analytics.NewMemoryAnalytics,
-		wire.Bind(new(analytics.Analytics), new(analytics.MemoryAnalytics)),
 		wire.Value(UpdateModeFlag(UpdateModeAuto)),
 		k8s.ProvideContainerRuntime,
 	)
