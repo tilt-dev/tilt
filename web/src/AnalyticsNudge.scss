@@ -2,7 +2,7 @@
 
 .AnalyticsNudge {
   width: 100%;
-  height: $analyticsNudge-height;
+  min-height: $analyticsNudge-height;
   background-color: $color-gray-darkest;
   color: $color-white;
   padding: $spacing-unit / 2;
@@ -27,10 +27,19 @@
   //display: block;
 }
 
-.AnalyticsNudge-buttons {
+.AnalyticsNudge-button {
   align-content: center;
+  background-color: $color-gray-dark;
+  color: $color-white;
+  @include button-text;
+  border: 1px solid $color-gray-light;
+  padding: $spacing-unit/3;
+  min-width: $spacing-unit * 3;
 }
 
+.AnalyticsNudge-button + .AnalyticsNudge-button {
+  margin-left: $spacing-unit/2;
+}
 .AnalyticsNudge-err {
   margin: $spacing-unit;
   span {

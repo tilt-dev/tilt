@@ -12,7 +12,7 @@ const nudgeElem = (): JSX.Element => {
       >
         Read more
       </a>
-      .)
+      )
     </p>
   )
 }
@@ -122,8 +122,13 @@ class AnalyticsNudge extends Component<
           return (
             <>
               {successOptInElem()}
-              <span className="AnalyticsNudge-buttons">
-                <button onClick={() => this.dismiss()}>Dismiss</button>
+              <span>
+                <button
+                  className="AnalyticsNudge-button"
+                  onClick={() => this.dismiss()}
+                >
+                  Dismiss
+                </button>
               </span>
             </>
           )
@@ -132,8 +137,13 @@ class AnalyticsNudge extends Component<
         return (
           <>
             {successOptOutElem()}
-            <span className="AnalyticsNudge-buttons">
-              <button onClick={() => this.dismiss()}>Dismiss</button>
+            <span>
+              <button
+                className="AnalyticsNudge-button"
+                onClick={() => this.dismiss()}
+              >
+                Dismiss
+              </button>
             </span>
           </>
         )
@@ -142,8 +152,13 @@ class AnalyticsNudge extends Component<
           // Error calling the opt endpt.
           <>
             {errorElem(this.state.responseBody)}
-            <span className="AnalyticsNudge-buttons">
-              <button onClick={() => this.dismiss()}>Dismiss</button>
+            <span>
+              <button
+                className="AnalyticsNudge-button"
+                onClick={() => this.dismiss()}
+              >
+                Dismiss
+              </button>
             </span>
           </>
         )
@@ -157,12 +172,18 @@ class AnalyticsNudge extends Component<
     return (
       <>
         {nudgeElem()}
-        <span className="AnalyticsNudge-buttons">
-          <button onClick={() => this.analyticsOpt(true)}>
-            Yes, I want to help!
+        <span>
+          <button
+            className="AnalyticsNudge-button"
+            onClick={() => this.analyticsOpt(false)}
+          >
+            Nope
           </button>
-          <button onClick={() => this.analyticsOpt(false)}>
-            No, I'd rather not.
+          <button
+            className="AnalyticsNudge-button"
+            onClick={() => this.analyticsOpt(true)}
+          >
+            Yes!
           </button>
         </span>
       </>

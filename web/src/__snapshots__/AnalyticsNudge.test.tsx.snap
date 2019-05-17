@@ -12,10 +12,9 @@ exports[`hidden if dismissed 1`] = `
     </pre>
      in your terminal.
   </p>
-  <span
-    className="AnalyticsNudge-buttons"
-  >
+  <span>
     <button
+      className="AnalyticsNudge-button"
       onClick={[Function]}
     >
       Dismiss
@@ -36,20 +35,20 @@ exports[`hides nudge if !needsNudge and no state 1`] = `
     >
       Read more
     </a>
-    .)
+    )
   </p>
-  <span
-    className="AnalyticsNudge-buttons"
-  >
+  <span>
     <button
+      className="AnalyticsNudge-button"
       onClick={[Function]}
     >
-      Yes, I want to help!
+      Nope
     </button>
     <button
+      className="AnalyticsNudge-button"
       onClick={[Function]}
     >
-      No, I'd rather not.
+      Yes!
     </button>
   </span>
 </section>
@@ -76,10 +75,9 @@ exports[`shows failure message with response body 1`] = `
     </a>
     .
   </p>
-  <span
-    className="AnalyticsNudge-buttons"
-  >
+  <span>
     <button
+      className="AnalyticsNudge-button"
       onClick={[Function]}
     >
       Dismiss
@@ -100,20 +98,20 @@ exports[`shows nudge if needsNudge 1`] = `
     >
       Read more
     </a>
-    .)
+    )
   </p>
-  <span
-    className="AnalyticsNudge-buttons"
-  >
+  <span>
     <button
+      className="AnalyticsNudge-button"
       onClick={[Function]}
     >
-      Yes, I want to help!
+      Nope
     </button>
     <button
+      className="AnalyticsNudge-button"
       onClick={[Function]}
     >
-      No, I'd rather not.
+      Yes!
     </button>
   </span>
 </section>
@@ -140,10 +138,9 @@ exports[`shows success message: opt in 1`] = `
     </pre>
      in your terminal.)
   </p>
-  <span
-    className="AnalyticsNudge-buttons"
-  >
+  <span>
     <button
+      className="AnalyticsNudge-button"
       onClick={[Function]}
     >
       Dismiss
@@ -164,10 +161,9 @@ exports[`shows success message: opt out 1`] = `
     </pre>
      in your terminal.
   </p>
-  <span
-    className="AnalyticsNudge-buttons"
-  >
+  <span>
     <button
+      className="AnalyticsNudge-button"
       onClick={[Function]}
     >
       Dismiss
