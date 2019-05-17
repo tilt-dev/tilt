@@ -1,33 +1,84 @@
-import React, { PureComponent } from "react"
+import React, { Component } from "react"
 import "./AnalyticsNudge.scss"
-import { ResourceView } from "./types"
+
+const nudgeTimeoutMs = 3000 // 3 seconds
 
 type AnalyticsNudgeProps = {
   needsNudge: boolean
 }
 
-class AnalyticsNudge extends PureComponent<AnalyticsNudgeProps> {
-  static analyticsOpt(optIn: boolean) {
+type AnalyticsNudgeState = {
+  requestMade: boolean
+  responseCode: number
+  dismissed: boolean
+}
+
+class AnalyticsNudge extends Component<
+  AnalyticsNudgeProps,
+  AnalyticsNudgeState
+> {
+  constructor(props: AnalyticsNudgeProps) {
+    super(props)
+
+    this.state = {
+      requestMade: false,
+      responseCode: 0,
+      dismissed: false,
+    }
+  }
+
+  shouldShow(): boolean {
+    return (
+      this.props.needsNudge || (this.state.requestMade && !this.state.dismissed)
+    )
+  }
+  analyticsOpt(optIn: boolean) {
     let url = `//${window.location.host}/api/analytics_opt`
 
     let payload = { opt: optIn ? "opt-in" : "opt-out" }
 
+    this.setState({ requestMade: true })
+
     fetch(url, {
       method: "post",
       body: JSON.stringify(payload),
-    }).then(function(response) {
-      console.log("got response -->", response.status) // returns 200
+    }).then((response: Response) => {
+      this.setState({
+        responseCode: response.status,
+      })
+
+      // after 3s, dismiss the nudge
+      setTimeout(() => {
+        this.setState({ dismissed: true })
+      }, nudgeTimeoutMs)
     })
   }
-  render() {
-    let classes = ["AnalyticsNudge"]
-    if (this.props.needsNudge) {
-      // or if  already visible...
-      classes.push("is-visible")
+
+  messageElem(): JSX.Element {
+    if (this.state.responseCode) {
+      if (this.state.responseCode == 200) {
+        // Successfully called opt endpt.
+        return <span>Cool, got it! 👍</span>
+      } else {
+        return (
+          // error calling the opt endpt.
+          <span>
+            Oh no, something went wrong!{" "}
+            <a href="https://tilt.dev/contact" target="_blank">
+              Get in touch
+            </a>
+            .
+          </span>
+        )
+      }
     }
 
+    if (this.state.requestMade) {
+      // request in progress
+      return <span>Okay, we'll inform the robots...</span>
+    }
     return (
-      <div className={classes.join(" ")}>
+      <div>
         <span>
           Congrats on your first Tilt resource 🎉 Opt into analytics? (Read more{" "}
           <a href="https://github.com/windmilleng/tilt#privacy" target="_blank">
@@ -36,15 +87,20 @@ class AnalyticsNudge extends PureComponent<AnalyticsNudgeProps> {
           .)&nbsp;
         </span>
         <span className="AnalyticsNudge-buttons">
-          <button onClick={() => AnalyticsNudge.analyticsOpt(true)}>
-            Yes!
-          </button>
-          <button onClick={() => AnalyticsNudge.analyticsOpt(false)}>
-            Nope!
-          </button>
+          <button onClick={() => this.analyticsOpt(true)}>Yes!</button>
+          <button onClick={() => this.analyticsOpt(false)}>Nope!</button>
         </span>
       </div>
     )
+  }
+  render() {
+    let classes = ["AnalyticsNudge"]
+    if (this.shouldShow()) {
+      // or if already visible...
+      classes.push("is-visible")
+    }
+
+    return <div className={classes.join(" ")}>{this.messageElem()}</div>
   }
 }
 

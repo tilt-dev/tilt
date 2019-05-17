@@ -1,0 +1,117 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`hidden if dismissed 1`] = `
+<div
+  className="AnalyticsNudge"
+>
+  <span>
+    Cool, got it! 👍
+  </span>
+</div>
+`;
+
+exports[`hides nudge if !needsNudge and no state 1`] = `
+<div
+  className="AnalyticsNudge"
+>
+  <div>
+    <span>
+      Congrats on your first Tilt resource 🎉 Opt into analytics? (Read more
+       
+      <a
+        href="https://github.com/windmilleng/tilt#privacy"
+        target="_blank"
+      >
+        here
+      </a>
+      .) 
+    </span>
+    <span
+      className="AnalyticsNudge-buttons"
+    >
+      <button
+        onClick={[Function]}
+      >
+        Yes!
+      </button>
+      <button
+        onClick={[Function]}
+      >
+        Nope!
+      </button>
+    </span>
+  </div>
+</div>
+`;
+
+exports[`shows failure message 1`] = `
+<div
+  className="AnalyticsNudge is-visible"
+>
+  <span>
+    Oh no, something went wrong!
+     
+    <a
+      href="https://tilt.dev/contact"
+      target="_blank"
+    >
+      Get in touch
+    </a>
+    .
+  </span>
+</div>
+`;
+
+exports[`shows nudge if needsNudge 1`] = `
+<div
+  className="AnalyticsNudge is-visible"
+>
+  <div>
+    <span>
+      Congrats on your first Tilt resource 🎉 Opt into analytics? (Read more
+       
+      <a
+        href="https://github.com/windmilleng/tilt#privacy"
+        target="_blank"
+      >
+        here
+      </a>
+      .) 
+    </span>
+    <span
+      className="AnalyticsNudge-buttons"
+    >
+      <button
+        onClick={[Function]}
+      >
+        Yes!
+      </button>
+      <button
+        onClick={[Function]}
+      >
+        Nope!
+      </button>
+    </span>
+  </div>
+</div>
+`;
+
+exports[`shows request-in-progress message 1`] = `
+<div
+  className="AnalyticsNudge is-visible"
+>
+  <span>
+    Okay, we'll inform the robots...
+  </span>
+</div>
+`;
+
+exports[`shows success message 1`] = `
+<div
+  className="AnalyticsNudge is-visible"
+>
+  <span>
+    Cool, got it! 👍
+  </span>
+</div>
+`;
