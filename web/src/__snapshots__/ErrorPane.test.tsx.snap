@@ -34,7 +34,7 @@ exports[`renders one build error 1`] = `
             dateTime="1949-11-18T09:39:00.000Z"
             title="1,555,970,585,039"
           >
-            67 years ago
+            67yr
           </time>
         </p>
       </header>
@@ -74,7 +74,12 @@ exports[`renders one container start error 1`] = `
           foo
         </p>
         <p>
-          1,555,970,585,039
+          <time
+            dateTime="1949-11-18T09:39:00.000Z"
+            title="1,555,970,585,039"
+          >
+            67yr
+          </time>
         </p>
       </header>
       <section>
@@ -98,7 +103,12 @@ exports[`renders one container start error 2`] = `
           foo
         </p>
         <p>
-          1,555,970,585,039
+          <time
+            dateTime="1949-11-18T09:39:00.000Z"
+            title="1,555,970,585,039"
+          >
+            67yr
+          </time>
         </p>
       </header>
       <section>
@@ -126,7 +136,7 @@ exports[`renders the last build with an error 1`] = `
             dateTime="1949-11-18T09:39:00.000Z"
             title="1,555,970,585,039"
           >
-            67 years ago
+            67yr
           </time>
         </p>
       </header>
@@ -167,9 +177,6 @@ exports[`shows that a container has restarted 1`] = `
         </p>
         <p>
           Restarts: 1
-        </p>
-        <p>
-          1,555,970,585,039
         </p>
       </header>
       <section>
