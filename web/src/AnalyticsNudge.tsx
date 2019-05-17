@@ -4,7 +4,7 @@ import "./AnalyticsNudge.scss"
 const nudgeTimeoutMs = 5000 // 5 seconds
 const nudgeElem = (): JSX.Element => {
   return (
-    <span>
+    <p>
       Welcome to Tilt! Usage data helps us improve; will you contribute? (
       <a
         href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
@@ -12,31 +12,30 @@ const nudgeElem = (): JSX.Element => {
       >
         Read more
       </a>
-      .)&nbsp;
-    </span>
+      .)
+    </p>
   )
 }
 const reqInProgMsg = "Okay, making it so..."
 const successOptInElem = (): JSX.Element => {
   return (
-    <span>
+    <p>
       Thanks for helping us improve Tilt for you and everyone! (You can change
-      your mind by running <pre>tilt analytics opt out</pre> in your
-      terminal.)&nbsp;
-    </span>
+      your mind by running <pre>tilt analytics opt out</pre> in your terminal.)
+    </p>
   )
 }
 const successOptOutElem = (): JSX.Element => {
   return (
-    <span>
+    <p>
       Okay, opting you out of telemetry. If you change your mind, you can run{" "}
-      <pre>tilt analytics opt in</pre> in your terminal.&nbsp;
-    </span>
+      <pre>tilt analytics opt in</pre> in your terminal.
+    </p>
   )
 }
 const errorElem = (respBody: string): JSX.Element => {
   return (
-    <span>
+    <p>
       Oh no, something went wrong! Request failed with:
       <div className="AnalyticsNudge-err">
         <span>{respBody}</span>
@@ -44,8 +43,8 @@ const errorElem = (respBody: string): JSX.Element => {
       <a href="https://tilt.dev/contact" target="_blank">
         Contact us
       </a>
-      .&nbsp;
-    </span>
+      .
+    </p>
   )
 }
 
@@ -121,42 +120,42 @@ class AnalyticsNudge extends Component<
         if (this.state.optIn) {
           // User opted in
           return (
-            <div>
+            <>
               {successOptInElem()}
               <span className="AnalyticsNudge-buttons">
                 <button onClick={() => this.dismiss()}>Dismiss</button>
               </span>
-            </div>
+            </>
           )
         }
         // User opted out
         return (
-          <div>
+          <>
             {successOptOutElem()}
             <span className="AnalyticsNudge-buttons">
               <button onClick={() => this.dismiss()}>Dismiss</button>
             </span>
-          </div>
+          </>
         )
       } else {
         return (
           // Error calling the opt endpt.
-          <div>
+          <>
             {errorElem(this.state.responseBody)}
             <span className="AnalyticsNudge-buttons">
               <button onClick={() => this.dismiss()}>Dismiss</button>
             </span>
-          </div>
+          </>
         )
       }
     }
 
     if (this.state.requestMade) {
       // Request in progress
-      return <span>{reqInProgMsg}</span>
+      return <p>{reqInProgMsg}</p>
     }
     return (
-      <div>
+      <>
         {nudgeElem()}
         <span className="AnalyticsNudge-buttons">
           <button onClick={() => this.analyticsOpt(true)}>
@@ -166,7 +165,7 @@ class AnalyticsNudge extends Component<
             No, I'd rather not.
           </button>
         </span>
-      </div>
+      </>
     )
   }
   render() {
@@ -175,7 +174,7 @@ class AnalyticsNudge extends Component<
       classes.push("is-visible")
     }
 
-    return <div className={classes.join(" ")}>{this.messageElem()}</div>
+    return <section className={classes.join(" ")}>{this.messageElem()}</section>
   }
 }
 
