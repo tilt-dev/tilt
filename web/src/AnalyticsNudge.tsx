@@ -2,6 +2,38 @@ import React, { Component } from "react"
 import "./AnalyticsNudge.scss"
 
 const nudgeTimeoutMs = 3000 // 3 seconds
+let nudgeElem = (): JSX.Element => {
+  return (
+    <span>
+      Welcome to Tilt! To better support you, may we record anonymized data
+      about your usage? (
+      <a
+        href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
+        target="_blank"
+      >
+        read more
+      </a>
+      .)&nbsp;
+    </span>
+  )
+}
+const reqInProgMsg = "request in prog"
+const successOptInMsg = "yay you opted in"
+const successOptOutMsg = "whelp you opted out"
+let errorElem = (respBody: string): JSX.Element => {
+  return (
+    <span>
+      Oh no, something went wrong! Request failed with:
+      <div className="AnalyticsNudge-err">
+        <span>{respBody}</span>
+      </div>
+      <a href="https://tilt.dev/contact" target="_blank">
+        Contact us
+      </a>
+      .&nbsp;
+    </span>
+  )
+}
 
 type AnalyticsNudgeProps = {
   needsNudge: boolean
@@ -74,25 +106,16 @@ class AnalyticsNudge extends Component<
         // Successfully called opt endpt.
         if (this.state.optIn) {
           // User opted in
-          return <span>Thanks for opting in! [copy tbd]</span>
+          return <span>{successOptInMsg}</span>
         }
 
         // User opted out
-        return <span>Thanks for opting out! [copy tbd]</span>
+        return <span>{successOptOutMsg}</span>
       } else {
         return (
           // Error calling the opt endpt.
           <div>
-            <span>
-              Oh no, something went wrong! Request failed with:
-              <div className="AnalyticsNudge-err">
-                <span>{this.state.responseBody}</span>
-              </div>
-              <a href="https://tilt.dev/contact" target="_blank">
-                Contact us
-              </a>
-              .&nbsp;
-            </span>
+            {errorElem(this.state.responseBody)}
             <span className="AnalyticsNudge-buttons">
               <button onClick={() => this.dismiss()}>Dismiss</button>
             </span>
@@ -103,23 +126,14 @@ class AnalyticsNudge extends Component<
 
     if (this.state.requestMade) {
       // Request in progress
-      return <span>Okay, we'll inform the robots...</span>
+      return <span>{reqInProgMsg}</span>
     }
     return (
       <div>
-        <span>
-          Congrats on your first Tilt resource 🎉 Opt into analytics? (Read more{" "}
-          <a
-            href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
-            target="_blank"
-          >
-            here
-          </a>
-          .)&nbsp;
-        </span>
+        {nudgeElem()}
         <span className="AnalyticsNudge-buttons">
-          <button onClick={() => this.analyticsOpt(true)}>Yes!</button>
-          <button onClick={() => this.analyticsOpt(false)}>Nope!</button>
+          <button onClick={() => this.analyticsOpt(true)}>Yes</button>
+          <button onClick={() => this.analyticsOpt(false)}>No</button>
         </span>
       </div>
     )
