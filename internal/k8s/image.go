@@ -175,8 +175,12 @@ func injectImageDigestInUnstructured(entity K8sEntity, injectRef reference.Named
 }
 
 // HasImage indicates whether the given entity is tagged with the given image.
-func (e K8sEntity) HasImage(image container.RefSelector, imageJSONPaths []JSONPath) (bool, error) {
-	images, err := e.FindImages(imageJSONPaths)
+func (e K8sEntity) HasImage(image container.RefSelector, imageJSONPaths []JSONPath, inEnvVars bool) (bool, error) {
+	var envVarImages []container.RefSelector
+	if inEnvVars {
+		envVarImages = []container.RefSelector{image}
+	}
+	images, err := e.FindImages(imageJSONPaths, envVarImages)
 	if err != nil {
 		return false, errors.Wrap(err, "HasImage")
 	}
@@ -190,7 +194,7 @@ func (e K8sEntity) HasImage(image container.RefSelector, imageJSONPaths []JSONPa
 	return false, nil
 }
 
-func (e K8sEntity) FindImages(imageJSONPaths []JSONPath) ([]reference.Named, error) {
+func (e K8sEntity) FindImages(imageJSONPaths []JSONPath, envVarImages []container.RefSelector) ([]reference.Named, error) {
 	var result []reference.Named
 
 	// Look for images in instances of Container
@@ -225,6 +229,23 @@ func (e K8sEntity) FindImages(imageJSONPaths []JSONPath) ([]reference.Named, err
 			return nil, errors.Wrapf(err, "error parsing image '%s' at json path '%s'", image, path)
 		}
 		result = append(result, ref)
+	}
+
+	envVars, err := extractEnvVars(&obj)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, envVar := range envVars {
+		existingRef, err := container.ParseNamed(envVar.Value)
+		if err != nil || existingRef == nil {
+			continue
+		}
+		for _, img := range envVarImages {
+			if img.Matches(existingRef) {
+				result = append(result, existingRef)
+			}
+		}
 	}
 
 	return result, nil

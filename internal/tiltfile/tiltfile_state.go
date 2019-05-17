@@ -454,7 +454,7 @@ func (s *tiltfileState) assembleK8sByWorkload() error {
 		if err != nil {
 			return errors.Wrapf(err, "error making resource for workload %s", newK8SObjectID(workload))
 		}
-		err = res.addEntities([]k8s.K8sEntity{workload}, s.imageJSONPaths)
+		err = res.addEntities([]k8s.K8sEntity{workload}, s.imageJSONPaths, s.envVarImages())
 		if err != nil {
 			return err
 		}
@@ -466,7 +466,7 @@ func (s *tiltfileState) assembleK8sByWorkload() error {
 			return err
 		}
 
-		err = res.addEntities(match, s.imageJSONPaths)
+		err = res.addEntities(match, s.imageJSONPaths, s.envVarImages())
 		if err != nil {
 			return err
 		}
@@ -477,8 +477,20 @@ func (s *tiltfileState) assembleK8sByWorkload() error {
 	return nil
 }
 
+func (s *tiltfileState) envVarImages() []container.RefSelector {
+	var r []container.RefSelector
+	// explicitly don't care about order
+	for _, img := range s.buildIndex.images {
+		if !img.matchInEnvVars {
+			continue
+		}
+		r = append(r, img.configurationRef)
+	}
+	return r
+}
+
 func (s *tiltfileState) isWorkload(e k8s.K8sEntity) (bool, error) {
-	images, err := e.FindImages(s.imageJSONPaths(e))
+	images, err := e.FindImages(s.imageJSONPaths(e), s.envVarImages())
 	if err != nil {
 		return false, err
 	} else {
@@ -615,7 +627,7 @@ func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 	seen := make(map[string]bool)
 
 	for _, e := range s.k8sUnresourced {
-		images, err := e.FindImages(s.imageJSONPaths(e))
+		images, err := e.FindImages(s.imageJSONPaths(e), s.envVarImages())
 		if err != nil {
 			return nil, err
 		}
@@ -631,12 +643,12 @@ func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 
 // extractEntities extracts k8s entities matching the image ref and stores them on the dest k8sResource
 func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef container.RefSelector) error {
-	extracted, remaining, err := k8s.FilterByImage(s.k8sUnresourced, imageRef, s.imageJSONPaths)
+	extracted, remaining, err := k8s.FilterByImage(s.k8sUnresourced, imageRef, s.imageJSONPaths, false)
 	if err != nil {
 		return err
 	}
 
-	err = dest.addEntities(extracted, s.imageJSONPaths)
+	err = dest.addEntities(extracted, s.imageJSONPaths, s.envVarImages())
 	if err != nil {
 		return err
 	}
@@ -649,7 +661,7 @@ func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef container.Re
 			return err
 		}
 
-		err = dest.addEntities(match, s.imageJSONPaths)
+		err = dest.addEntities(match, s.imageJSONPaths, s.envVarImages())
 		if err != nil {
 			return err
 		}
