@@ -1,6 +1,8 @@
 import React, { Component } from "react"
 import "./AnalyticsNudge.scss"
 
+const nudgeTimeoutMs = 3000 // 3 seconds
+
 type AnalyticsNudgeProps = {
   needsNudge: boolean
 }
@@ -48,7 +50,7 @@ class AnalyticsNudge extends Component<
       // after 3s, dismiss the nudge
       setTimeout(() => {
         this.setState({ dismissed: true })
-      }, 3000)
+      }, nudgeTimeoutMs)
     })
   }
 
