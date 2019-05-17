@@ -40,17 +40,18 @@ $sidebar-item: $spacing-unit * 1.5;
 $alert-badge: $spacing-unit * 0.75;
 
 $tabnav-height: $sidebar-item * 1.5;
+
+$resourceInfo-height: $spacing-unit * 1.5;
+
 $statusbar-height: $spacing-unit * 1.5;
 $statusbar-tiltPanel-width: $spacing-unit * 1.75;
-$resourceInfo-height: $spacing-unit * 1.5;
 
+$analyticsNudge-height: $tabnav-height;
+
+$z-analyticsNudge: 2000;
 $z-statusbar: 1000;
-$resourceInfo-height: $spacing-unit * 1.5;
-
-$statusbar-height: $spacing-unit * 1.5;
-
 $z-sidebar: 1000;
-$z-topbar: 500;
+$z-topBar: 500;
 
 // MISC
 $animation-timing: 200ms;

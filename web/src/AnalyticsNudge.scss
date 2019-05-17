@@ -1,8 +1,16 @@
 @import "constants";
 
 .AnalyticsNudge {
-  padding: $spacing-unit/4;
-  border: 1px solid $color-white;
+  width: 100%;
+  height: $analyticsNudge-height;
+  background-color: $color-gray-darkest;
+  color: $color-white;
+  padding: $spacing-unit / 2;
+  box-sizing: border-box;
+  position: fixed;
+  z-index: $z-analyticsNudge;
+  border: 1px solid $color-gray-light;
+  box-shadow: 0px 3px 10px 0px rgba($color-gray-dark, $translucent-ish);
 
   // by default, it's hidden
   display: none;
