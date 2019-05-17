@@ -4,9 +4,25 @@ exports[`hidden if dismissed 1`] = `
 <div
   className="AnalyticsNudge"
 >
-  <span>
-    Got it, we won't send any data about your usage.
-  </span>
+  <div>
+    <span>
+      Okay, opting you out of telemetry. If you change your mind, you can run
+       
+      <pre>
+        tilt analytics opt in
+      </pre>
+       in your terminal. 
+    </span>
+    <span
+      className="AnalyticsNudge-buttons"
+    >
+      <button
+        onClick={[Function]}
+      >
+        Dismiss
+      </button>
+    </span>
+  </div>
 </div>
 `;
 
@@ -16,12 +32,12 @@ exports[`hides nudge if !needsNudge and no state 1`] = `
 >
   <div>
     <span>
-      Welcome to Tilt! To better support you, may we record anonymized data about your usage? (
+      Welcome to Tilt! Usage data helps us improve; will you contribute? (
       <a
         href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
         target="_blank"
       >
-        read more
+        Read more
       </a>
       .) 
     </span>
@@ -31,12 +47,12 @@ exports[`hides nudge if !needsNudge and no state 1`] = `
       <button
         onClick={[Function]}
       >
-        Yes
+        Yes, I want to help!
       </button>
       <button
         onClick={[Function]}
       >
-        No
+        No, I'd rather not.
       </button>
     </span>
   </div>
@@ -84,12 +100,12 @@ exports[`shows nudge if needsNudge 1`] = `
 >
   <div>
     <span>
-      Welcome to Tilt! To better support you, may we record anonymized data about your usage? (
+      Welcome to Tilt! Usage data helps us improve; will you contribute? (
       <a
         href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
         target="_blank"
       >
-        read more
+        Read more
       </a>
       .) 
     </span>
@@ -99,12 +115,12 @@ exports[`shows nudge if needsNudge 1`] = `
       <button
         onClick={[Function]}
       >
-        Yes
+        Yes, I want to help!
       </button>
       <button
         onClick={[Function]}
       >
-        No
+        No, I'd rather not.
       </button>
     </span>
   </div>
@@ -125,9 +141,24 @@ exports[`shows success message: opt in 1`] = `
 <div
   className="AnalyticsNudge is-visible"
 >
-  <span>
-    Thanks for opting in: you're helping us make Tilt a better experience for you and for all of our users!
-  </span>
+  <div>
+    <span>
+      Thanks for helping us improve Tilt for you and everyone! (You can change your mind by running 
+      <pre>
+        tilt analytics opt out
+      </pre>
+       in your terminal.) 
+    </span>
+    <span
+      className="AnalyticsNudge-buttons"
+    >
+      <button
+        onClick={[Function]}
+      >
+        Dismiss
+      </button>
+    </span>
+  </div>
 </div>
 `;
 
@@ -135,8 +166,24 @@ exports[`shows success message: opt out 1`] = `
 <div
   className="AnalyticsNudge is-visible"
 >
-  <span>
-    Got it, we won't send any data about your usage.
-  </span>
+  <div>
+    <span>
+      Okay, opting you out of telemetry. If you change your mind, you can run
+       
+      <pre>
+        tilt analytics opt in
+      </pre>
+       in your terminal. 
+    </span>
+    <span
+      className="AnalyticsNudge-buttons"
+    >
+      <button
+        onClick={[Function]}
+      >
+        Dismiss
+      </button>
+    </span>
+  </div>
 </div>
 `;
