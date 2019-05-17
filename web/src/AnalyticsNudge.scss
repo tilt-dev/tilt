@@ -4,7 +4,12 @@
   padding: $spacing-unit/4;
   border: 1px solid $color-white;
 
+  // by default, it's hidden
   display: none;
+  pre {
+    display: inline;
+    font-weight: bold;
+  }
 }
 
 .is-visible {

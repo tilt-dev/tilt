@@ -1,27 +1,40 @@
 import React, { Component } from "react"
 import "./AnalyticsNudge.scss"
 
-const nudgeTimeoutMs = 3000 // 3 seconds
-let nudgeElem = (): JSX.Element => {
+const nudgeTimeoutMs = 5000 // 5 seconds
+const nudgeElem = (): JSX.Element => {
   return (
     <span>
-      Welcome to Tilt! To better support you, may we record anonymized data
-      about your usage? (
+      Welcome to Tilt! Usage data helps us improve; will you contribute? (
       <a
         href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
         target="_blank"
       >
-        read more
+        Read more
       </a>
       .)&nbsp;
     </span>
   )
 }
 const reqInProgMsg = "Okay, making it so..."
-const successOptInMsg =
-  "Thanks for opting in: you're helping us make Tilt a better experience for you and for all of our users!"
-const successOptOutMsg = "Got it, we won't send any data about your usage."
-let errorElem = (respBody: string): JSX.Element => {
+const successOptInElem = (): JSX.Element => {
+  return (
+    <span>
+      Thanks for helping us improve Tilt for you and everyone! (You can change
+      your mind by running <pre>tilt analytics opt out</pre> in your
+      terminal.)&nbsp;
+    </span>
+  )
+}
+const successOptOutElem = (): JSX.Element => {
+  return (
+    <span>
+      Okay, opting you out of telemetry. If you change your mind, you can run{" "}
+      <pre>tilt analytics opt in</pre> in your terminal.&nbsp;
+    </span>
+  )
+}
+const errorElem = (respBody: string): JSX.Element => {
   return (
     <span>
       Oh no, something went wrong! Request failed with:
@@ -89,7 +102,7 @@ class AnalyticsNudge extends Component<
       })
 
       if (response.status == 200) {
-        // if we successfully recorded the choice, dismiss the nudge after 3s
+        // if we successfully recorded the choice, dismiss the nudge after a few seconds
         setTimeout(() => {
           this.setState({ dismissed: true })
         }, nudgeTimeoutMs)
@@ -107,11 +120,24 @@ class AnalyticsNudge extends Component<
         // Successfully called opt endpt.
         if (this.state.optIn) {
           // User opted in
-          return <span>{successOptInMsg}</span>
+          return (
+            <div>
+              {successOptInElem()}
+              <span className="AnalyticsNudge-buttons">
+                <button onClick={() => this.dismiss()}>Dismiss</button>
+              </span>
+            </div>
+          )
         }
-
         // User opted out
-        return <span>{successOptOutMsg}</span>
+        return (
+          <div>
+            {successOptOutElem()}
+            <span className="AnalyticsNudge-buttons">
+              <button onClick={() => this.dismiss()}>Dismiss</button>
+            </span>
+          </div>
+        )
       } else {
         return (
           // Error calling the opt endpt.
@@ -133,8 +159,12 @@ class AnalyticsNudge extends Component<
       <div>
         {nudgeElem()}
         <span className="AnalyticsNudge-buttons">
-          <button onClick={() => this.analyticsOpt(true)}>Yes</button>
-          <button onClick={() => this.analyticsOpt(false)}>No</button>
+          <button onClick={() => this.analyticsOpt(true)}>
+            Yes, I want to help!
+          </button>
+          <button onClick={() => this.analyticsOpt(false)}>
+            No, I'd rather not.
+          </button>
         </span>
       </div>
     )
