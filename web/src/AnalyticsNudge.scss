@@ -4,7 +4,12 @@
   padding: $spacing-unit/4;
   border: 1px solid $color-white;
 
+  // by default, it's hidden
   display: none;
+  pre {
+    display: inline;
+    font-weight: bold;
+  }
 }
 
 .is-visible {
@@ -13,4 +18,13 @@
 
 .AnalyticsNudge-buttons {
   align-content: center;
+}
+
+.AnalyticsNudge-err {
+  margin: $spacing-unit;
+  span {
+    padding: $spacing-unit/2;
+    color: $color-black;
+    background: $color-gray-lightest;
+  }
 }
