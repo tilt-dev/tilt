@@ -11,16 +11,23 @@ type AnalyticsNudgeState = {
   dismissed: boolean
 }
 
-// constructor for defaults?
-
 class AnalyticsNudge extends Component<
   AnalyticsNudgeProps,
   AnalyticsNudgeState
 > {
+  constructor(props: AnalyticsNudgeProps) {
+    super(props)
+
+    this.state = {
+      requestMade: false,
+      responseCode: 0,
+      dismissed: false,
+    }
+  }
+
   shouldShow(): boolean {
     return (
-      this.props.needsNudge ||
-      (this.state && this.state.requestMade && !this.state.dismissed)
+      this.props.needsNudge || (this.state.requestMade && !this.state.dismissed)
     )
   }
   analyticsOpt(optIn: boolean) {
@@ -46,7 +53,7 @@ class AnalyticsNudge extends Component<
   }
 
   messageElem(): JSX.Element {
-    if (this.state && this.state.responseCode) {
+    if (this.state.responseCode) {
       if (this.state.responseCode == 200) {
         // Successfully called opt endpt.
         return <span>Cool, got it! 👍</span>
@@ -64,7 +71,7 @@ class AnalyticsNudge extends Component<
       }
     }
 
-    if (this.state && this.state.requestMade) {
+    if (this.state.requestMade) {
       // request in progress
       return <span>Okay, we'll inform the robots...</span>
     }
