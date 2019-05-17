@@ -2342,7 +2342,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	realDcc := dockercompose.NewDockerComposeClient(docker.Env{})
 
-	tfl := tiltfile.ProvideTiltfileLoader(an, realDcc)
+	tfl := tiltfile.ProvideTiltfileLoader(an, realDcc, "fake-context")
 	cc := NewConfigsController(tfl)
 	dcw := NewDockerComposeEventWatcher(fakeDcc)
 	dclm := NewDockerComposeLogManager(fakeDcc)
