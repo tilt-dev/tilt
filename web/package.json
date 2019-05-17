@@ -16,8 +16,6 @@
     "@types/react-test-renderer": "^16.8.1",
     "@types/react-timeago": "^4.1.0",
     "ansi-to-react": "^5.0.0",
-    "enzyme": "^3.9.0",
-    "enzyme-adapter-react-16": "^1.11.2",
     "history": "^4.9.0",
     "immutable": "^4.0.0-rc.12",
     "node-sass": "^4.12.0",
@@ -50,9 +48,15 @@
     "not op_mini all"
   ],
   "devDependencies": {
-    "prettier": "1.16.4"
+    "prettier": "1.16.4",
+    "enzyme": "^3.9.0",
+    "enzyme-adapter-react-16": "^1.11.2",
+    "enzyme-to-json": "^3.3.5"
   },
   "engines": {
     "node": ">=11.0.0"
+  },
+  "jest": {
+    "snapshotSerializers": ["enzyme-to-json/serializer"]
   }
 }

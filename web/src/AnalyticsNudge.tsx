@@ -1,6 +1,5 @@
 import React, { Component } from "react"
 import "./AnalyticsNudge.scss"
-import { ResourceView } from "./types"
 
 type AnalyticsNudgeProps = {
   needsNudge: boolean
@@ -49,13 +48,24 @@ class AnalyticsNudge extends Component<
   messageElem(): JSX.Element {
     if (this.state && this.state.responseCode) {
       if (this.state.responseCode == 200) {
-        return <span>Okay yay!</span>
+        // Successfully called opt endpt.
+        return <span>Cool, got it! 👍</span>
       } else {
-        return <span>Oh no, something went wrong! hi@windmill.engineering</span>
+        return (
+          // error calling the opt endpt.
+          <span>
+            Oh no, something went wrong!{" "}
+            <a href="https://tilt.dev/contact" target="_blank">
+              Get in touch
+            </a>
+            .
+          </span>
+        )
       }
     }
 
     if (this.state && this.state.requestMade) {
+      // request in progress
       return <span>Okay, we'll inform the robots...</span>
     }
     return (
