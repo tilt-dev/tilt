@@ -14,3 +14,12 @@
 .AnalyticsNudge-buttons {
   align-content: center;
 }
+
+.AnalyticsNudge-err {
+  margin: $spacing-unit;
+  span {
+    padding: $spacing-unit/2;
+    color: $color-black;
+    background: $color-gray-lightest;
+  }
+}
