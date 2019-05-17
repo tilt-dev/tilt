@@ -24,6 +24,7 @@ const disableAnalyticsEnvVar = "TILT_DISABLE_ANALYTICS"
 const analyticsURLEnvVar = "TILT_ANALYTICS_URL"
 
 var analyticsService *tiltanalytics.TiltAnalytics
+var analyticsOpt = analytics.OptDefault
 
 // Testing analytics locally:
 // (after `npm install http-echo-server -g`)
@@ -58,24 +59,22 @@ func initAnalytics(rootCmd *cobra.Command) error {
 
 	rootCmd.AddCommand(analyticsCmd)
 
-	var status analytics.Opt
-
 	if isAnalyticsDisabledFromEnv() {
-		status = analytics.OptOut
+		analyticsOpt = analytics.OptOut
 	} else {
-		status, err = analytics.OptStatus()
+		analyticsOpt, err = analytics.OptStatus()
 		if err != nil {
 			return err
 		}
 	}
 
-	analyticsService = tiltanalytics.NewTiltAnalytics(status, analyticsOpter{}, backingAnalytics)
+	analyticsService = tiltanalytics.NewTiltAnalytics(analyticsOpt, analyticsOpter{}, backingAnalytics)
 
 	if webview.NewAnalyticsOn() {
 		return nil
 	}
 
-	if status == analytics.OptDefault {
+	if analyticsOpt == analytics.OptDefault {
 		_, err := fmt.Fprintf(os.Stderr, "Send anonymized usage data to Windmill [y/n]? ")
 		if err != nil {
 			return err

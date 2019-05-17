@@ -7,13 +7,8 @@ package cli
 
 import (
 	"context"
-	"time"
-
 	"github.com/docker/docker/api/types"
 	"github.com/google/wire"
-	"k8s.io/apimachinery/pkg/version"
-	"k8s.io/client-go/tools/clientcmd/api"
-
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
@@ -30,6 +25,9 @@ import (
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
+	"k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/tools/clientcmd/api"
+	"time"
 )
 
 // Injectors from wire.go:
@@ -153,7 +151,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer, webURL)
 	githubClientFactory := engine.NewGithubClientFactory()
 	tiltVersionChecker := engine.NewTiltVersionChecker(githubClientFactory, timerMaker)
-	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, imageController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, sailClient, tiltVersionChecker)
+	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, imageController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, sailClient, tiltVersionChecker, tiltAnalytics)
 	upper := engine.NewUpper(ctx, storeStore, v2)
 	script := demo.NewScript(upper, headsUpDisplay, k8sClient, env, storeStore, branch, runtime, tiltfileLoader)
 	return script, nil
@@ -283,7 +281,7 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer, webURL)
 	githubClientFactory := engine.NewGithubClientFactory()
 	tiltVersionChecker := engine.NewTiltVersionChecker(githubClientFactory, timerMaker)
-	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, imageController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, sailClient, tiltVersionChecker)
+	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, imageController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, sailClient, tiltVersionChecker, tiltAnalytics)
 	upper := engine.NewUpper(ctx, storeStore, v2)
 	threads := provideThreads(headsUpDisplay, upper, tiltBuild, sailMode)
 	return threads, nil
@@ -477,7 +475,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
-	provideWebDevPort, server.ProvideHeadsUpServer, assets.ProvideAssetServer, server.ProvideHeadsUpServerController, server.ProvideAnalyticsOpter, provideSailMode,
+	provideWebDevPort, server.ProvideHeadsUpServer, assets.ProvideAssetServer, server.ProvideHeadsUpServerController, provideSailMode,
 	provideSailURL, client.SailWireSet, provideThreads, engine.NewKINDPusher,
 )
 

@@ -95,11 +95,7 @@ func (s *HeadsUpServer) HandleAnalyticsOpt(w http.ResponseWriter, req *http.Requ
 		http.Error(w, fmt.Sprintf("error parsing opt '%s': %v", payload.Opt, err), http.StatusBadRequest)
 	}
 
-	err = s.a.SetOpt(opt)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("error setting opt '%s': %v", payload.Opt, err), http.StatusInternalServerError)
-		return
-	}
+	s.store.Dispatch(store.AnalyticsOptAction{Opt: opt})
 }
 
 func (s *HeadsUpServer) HandleAnalytics(w http.ResponseWriter, req *http.Request) {
