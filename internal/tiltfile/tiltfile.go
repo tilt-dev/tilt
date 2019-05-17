@@ -60,13 +60,14 @@ func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, matchi
 	}, tfl.Err
 }
 
-func ProvideTiltfileLoader(analytics analytics.Analytics, dcCli dockercompose.DockerComposeClient) TiltfileLoader {
-	return tiltfileLoader{analytics: analytics, dcCli: dcCli}
+func ProvideTiltfileLoader(analytics analytics.Analytics, dcCli dockercompose.DockerComposeClient, kubeContext k8s.KubeContext) TiltfileLoader {
+	return tiltfileLoader{analytics: analytics, dcCli: dcCli, kubeContext: kubeContext}
 }
 
 type tiltfileLoader struct {
-	analytics analytics.Analytics
-	dcCli     dockercompose.DockerComposeClient
+	analytics   analytics.Analytics
+	dcCli       dockercompose.DockerComposeClient
+	kubeContext k8s.KubeContext
 }
 
 var _ TiltfileLoader = &tiltfileLoader{}
@@ -88,7 +89,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 		return TiltfileLoadResult{ConfigFiles: []string{absFilename}}, err
 	}
 
-	s := newTiltfileState(ctx, tfl.dcCli, absFilename)
+	s := newTiltfileState(ctx, tfl.dcCli, absFilename, tfl.kubeContext)
 	printedWarnings := false
 	defer func() {
 		tlr.ConfigFiles = s.configFiles
