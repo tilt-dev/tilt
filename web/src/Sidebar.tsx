@@ -66,10 +66,19 @@ class Sidebar extends PureComponent<SidebarProps> {
       this.props.resourceView === ResourceView.Alerts
         ? pb.path("/alerts")
         : pb.path("/")
+    let totalAlerts = this.props.items
+      .map(i => i.alertResource.numberOfAlerts())
+      .reduce((sum, current) => sum + current, 0)
+
     let allItem = (
       <li>
         <Link className={allItemClasses} to={allLink}>
-          All
+          <span className="resLink--all-name">All</span>
+          {totalAlerts > 0 ? (
+            <span className="resLink-alertBadge">{totalAlerts}</span>
+          ) : (
+            ""
+          )}
         </Link>
       </li>
     )

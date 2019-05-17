@@ -138,6 +138,14 @@
   justify-content: center;
   margin-right: $spacing-unit / 2;
 }
+
+.resLink--all-name {
+  flex: 1;
+}
+
+.resLink--all .resLink-alertBadge {
+  align-items: right;
+}
 .resLink.is-selected .resLink-alertBadge {
   background-color: $color-gray-darkest;
   color: $color-white;
