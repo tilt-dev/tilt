@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"testing"
 	"time"
@@ -30,6 +31,23 @@ func TestOneFan(t *testing.T) {
 
 	assert.Equal(t, "hello", fan.nextMessage(t))
 	assert.Equal(t, "goodbye", fan.nextMessage(t))
+}
+
+func TestDisconnectOneFan(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	fan := f.addFan()
+
+	f.source.dataCh <- "hello"
+	assert.Equal(t, "hello", fan.nextMessage(t))
+
+	fan.readErrCh <- fmt.Errorf("disconnect")
+	time.Sleep(10 * time.Millisecond)
+
+	f.source.dataCh <- "goodbye"
+
+	fan.assertNoNextMessage(t)
 }
 
 func TestTwoFans(t *testing.T) {
@@ -109,7 +127,6 @@ func (f *fixture) TearDown() {
 type fakeSource struct {
 	ctx    context.Context
 	dataCh chan string
-	closed bool
 }
 
 func newFakeSource(ctx context.Context) *fakeSource {
@@ -129,20 +146,30 @@ func (s *fakeSource) ReadMessage() (int, []byte, error) {
 }
 
 func (f *fakeSource) Close() error {
-	f.closed = true
 	return nil
 }
 
 type fakeFan struct {
-	ctx    context.Context
-	dataCh chan string
-	closed bool
+	ctx       context.Context
+	dataCh    chan string
+	readErrCh chan error
 }
 
 func newFakeFan(ctx context.Context) *fakeFan {
 	return &fakeFan{
-		ctx:    ctx,
-		dataCh: make(chan string, 0),
+		ctx:       ctx,
+		dataCh:    make(chan string, 0),
+		readErrCh: make(chan error, 1),
+	}
+}
+
+func (f *fakeFan) assertNoNextMessage(t *testing.T) {
+	select {
+	case <-time.After(10 * time.Millisecond):
+	case data, ok := <-f.dataCh:
+		if ok {
+			t.Fatalf("Unexpected message: %v", data)
+		}
 	}
 }
 
@@ -166,12 +193,15 @@ func (f *fakeFan) WriteMessage(messageType int, data []byte) error {
 }
 
 func (f *fakeFan) NextReader() (int, io.Reader, error) {
-	<-f.ctx.Done()
-	return 0, nil, f.ctx.Err()
+	select {
+	case <-f.ctx.Done():
+		return 0, nil, f.ctx.Err()
+	case err := <-f.readErrCh:
+		return 0, nil, err
+	}
 }
 
 func (f *fakeFan) Close() error {
-	f.closed = true
 	close(f.dataCh)
 	return nil
 }

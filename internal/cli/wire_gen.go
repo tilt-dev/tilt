@@ -7,8 +7,13 @@ package cli
 
 import (
 	"context"
+	"time"
+
 	"github.com/docker/docker/api/types"
 	"github.com/google/wire"
+	"k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/tools/clientcmd/api"
+
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
@@ -25,9 +30,6 @@ import (
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
-	"k8s.io/apimachinery/pkg/version"
-	"k8s.io/client-go/tools/clientcmd/api"
-	"time"
 )
 
 // Injectors from wire.go:
@@ -119,7 +121,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
 	imageReaper := build.NewImageReaper(cli)
 	imageController := engine.NewImageController(imageReaper)
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, dockerComposeClient)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, dockerComposeClient, kubeContext)
 	configsController := engine.NewConfigsController(tiltfileLoader)
 	dockerComposeEventWatcher := engine.NewDockerComposeEventWatcher(dockerComposeClient)
 	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
@@ -249,7 +251,7 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
 	imageReaper := build.NewImageReaper(cli)
 	imageController := engine.NewImageController(imageReaper)
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, dockerComposeClient)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, dockerComposeClient, kubeContext)
 	configsController := engine.NewConfigsController(tiltfileLoader)
 	dockerComposeEventWatcher := engine.NewDockerComposeEventWatcher(dockerComposeClient)
 	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
@@ -461,7 +463,7 @@ func wireDownDeps(ctx context.Context) (DownDeps, error) {
 		return DownDeps{}, err
 	}
 	dockerComposeClient := dockercompose.NewDockerComposeClient(dockerEnv)
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, dockerComposeClient)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, dockerComposeClient, kubeContext)
 	downDeps := ProvideDownDeps(tiltfileLoader, dockerComposeClient, k8sClient)
 	return downDeps, nil
 }

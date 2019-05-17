@@ -270,6 +270,32 @@ spec:
         image: redis:latest
 `
 
+const SanchoImageInEnvYAML = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sancho
+  namespace: sancho-ns
+  labels:
+    app: sancho
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sancho
+  template:
+    metadata:
+      labels:
+        app: sancho
+    spec:
+      containers:
+      - name: sancho
+        image: gcr.io/some-project-162817/sancho
+        env:
+          - name: foo
+            value: gcr.io/some-project-162817/sancho2
+`
+
 const TracerYAML = `
 apiVersion: extensions/v1beta1
 kind: Deployment

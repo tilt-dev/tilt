@@ -16,7 +16,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           href="/"
           onClick={[Function]}
         >
-          All
+          <span
+            className="resLink--all-name"
+          >
+            All
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            7
+          </span>
         </a>
       </li>
       <li>
@@ -37,7 +46,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             resource4
           </span>
-          <span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
             <time
               dateTime="2017-12-21T15:36:03.000Z"
               title="2017-12-21 15:36"
@@ -65,7 +81,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             resource9
           </span>
-          <span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
             <time
               dateTime="2017-12-21T15:35:58.000Z"
               title="2017-12-21 15:35"
@@ -93,7 +116,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             resource19
           </span>
-          <span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
             <time
               dateTime="2017-12-21T15:35:48.000Z"
               title="2017-12-21 15:35"
@@ -121,7 +151,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             resource29
           </span>
-          <span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
             <time
               dateTime="2017-12-21T15:35:38.000Z"
               title="2017-12-21 15:35"
@@ -149,7 +186,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             resource39
           </span>
-          <span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
             <time
               dateTime="2017-12-21T15:35:28.000Z"
               title="2017-12-21 15:35"
@@ -177,7 +221,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             resource49
           </span>
-          <span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
             <time
               dateTime="2017-12-21T15:35:18.000Z"
               title="2017-12-21 15:35"
@@ -205,7 +256,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             resource54
           </span>
-          <span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
             <time
               dateTime="2017-12-21T15:35:13.000Z"
               title="2017-12-21 15:35"
@@ -250,7 +308,12 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
           href="/"
           onClick={[Function]}
         >
-          All
+          <span
+            className="resLink--all-name"
+          >
+            All
+          </span>
+          
         </a>
       </li>
     </ul>
@@ -288,7 +351,16 @@ exports[`sidebar renders list of resources 1`] = `
           href="/"
           onClick={[Function]}
         >
-          All
+          <span
+            className="resLink--all-name"
+          >
+            All
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            2
+          </span>
         </a>
       </li>
       <li>
@@ -309,7 +381,14 @@ exports[`sidebar renders list of resources 1`] = `
           >
             vigoda
           </span>
-          <span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
             <time
               dateTime="2017-12-21T15:36:07.000Z"
               title="2017-12-21 15:36"
@@ -337,7 +416,14 @@ exports[`sidebar renders list of resources 1`] = `
           >
             snack
           </span>
-          <span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
             <time
               dateTime="2017-12-21T15:35:57.000Z"
               title="2017-12-21 15:35"
@@ -382,7 +468,16 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           href="/"
           onClick={[Function]}
         >
-          All
+          <span
+            className="resLink--all-name"
+          >
+            All
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            2
+          </span>
         </a>
       </li>
       <li>
@@ -403,8 +498,15 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           >
             vigoda
           </span>
-          <span>
-            
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
+            —
           </span>
         </a>
       </li>
@@ -426,8 +528,15 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           >
             snack
           </span>
-          <span>
-            
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
+            —
           </span>
         </a>
       </li>

@@ -69,11 +69,11 @@ func (r *k8sResource) addRefSelector(selector container.RefSelector) {
 	r.refSelectors = append(r.refSelectors, selector)
 }
 
-func (r *k8sResource) addEntities(entities []k8s.K8sEntity, imageJSONPaths func(e k8s.K8sEntity) []k8s.JSONPath) error {
+func (r *k8sResource) addEntities(entities []k8s.K8sEntity, imageJSONPaths func(e k8s.K8sEntity) []k8s.JSONPath, envVarImages []container.RefSelector) error {
 	r.entities = append(r.entities, entities...)
 
 	for _, entity := range entities {
-		images, err := entity.FindImages(imageJSONPaths(entity))
+		images, err := entity.FindImages(imageJSONPaths(entity), envVarImages)
 		if err != nil {
 			return err
 		}
@@ -242,7 +242,7 @@ func (s *tiltfileState) k8sResourceV1(thread *starlark.Thread, fn *starlark.Buil
 		return nil, errors.Wrapf(err, "%s %q", fn.Name(), name)
 	}
 
-	err = r.addEntities(entities, s.imageJSONPaths)
+	err = r.addEntities(entities, s.imageJSONPaths, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -923,4 +923,8 @@ func uniqueResourceNames(es []k8s.K8sEntity) ([]string, error) {
 	}
 
 	return ret, nil
+}
+
+func (s *tiltfileState) k8sContext(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return starlark.String(s.kubeContext), nil
 }

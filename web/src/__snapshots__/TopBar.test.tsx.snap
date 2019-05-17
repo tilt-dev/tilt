@@ -7,31 +7,32 @@ exports[`shows sail share button 1`] = `
   <div
     className="AnalyticsNudge"
   >
-    <span>
-      Congrats on your first Tilt resource 🎉 Opt into analytics? (Read more
-       
-      <a
-        href="https://github.com/windmilleng/tilt#privacy"
-        target="_blank"
+    <div>
+      <span>
+        Welcome to Tilt! Usage data helps us improve; will you contribute? (
+        <a
+          href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
+          target="_blank"
+        >
+          Read more
+        </a>
+        .) 
+      </span>
+      <span
+        className="AnalyticsNudge-buttons"
       >
-        here
-      </a>
-      .) 
-    </span>
-    <span
-      className="AnalyticsNudge-buttons"
-    >
-      <button
-        onClick={[Function]}
-      >
-        Yes!
-      </button>
-      <button
-        onClick={[Function]}
-      >
-        Nope!
-      </button>
-    </span>
+        <button
+          onClick={[Function]}
+        >
+          Yes, I want to help!
+        </button>
+        <button
+          onClick={[Function]}
+        >
+          No, I'd rather not.
+        </button>
+      </span>
+    </div>
   </div>
   <div
     className="TopBar-row"
@@ -65,7 +66,6 @@ exports[`shows sail share button 1`] = `
             onClick={[Function]}
           >
             Alerts
-             
             
           </a>
         </li>
@@ -97,31 +97,32 @@ exports[`shows sail url 1`] = `
   <div
     className="AnalyticsNudge"
   >
-    <span>
-      Congrats on your first Tilt resource 🎉 Opt into analytics? (Read more
-       
-      <a
-        href="https://github.com/windmilleng/tilt#privacy"
-        target="_blank"
+    <div>
+      <span>
+        Welcome to Tilt! Usage data helps us improve; will you contribute? (
+        <a
+          href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
+          target="_blank"
+        >
+          Read more
+        </a>
+        .) 
+      </span>
+      <span
+        className="AnalyticsNudge-buttons"
       >
-        here
-      </a>
-      .) 
-    </span>
-    <span
-      className="AnalyticsNudge-buttons"
-    >
-      <button
-        onClick={[Function]}
-      >
-        Yes!
-      </button>
-      <button
-        onClick={[Function]}
-      >
-        Nope!
-      </button>
-    </span>
+        <button
+          onClick={[Function]}
+        >
+          Yes, I want to help!
+        </button>
+        <button
+          onClick={[Function]}
+        >
+          No, I'd rather not.
+        </button>
+      </span>
+    </div>
   </div>
   <div
     className="TopBar-row"
@@ -155,8 +156,11 @@ exports[`shows sail url 1`] = `
             onClick={[Function]}
           >
             Alerts
-             
-            (1)
+            <span
+              className="tabLink-alertBadge"
+            >
+              1
+            </span>
           </a>
         </li>
       </ul>

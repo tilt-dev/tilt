@@ -5,6 +5,7 @@ import TimeAgo from "react-timeago"
 import "./ErrorPane.scss"
 import { zeroTime } from "./time"
 import { Build } from "./types"
+import { timeAgoFormatter } from "./timeFormatters"
 
 class AlertResource {
   public name: string
@@ -76,6 +77,7 @@ type AlertsProps = {
 
 class AlertPane extends PureComponent<AlertsProps> {
   render() {
+    let formatter = timeAgoFormatter
     let el = (
       <section className="Pane-empty-message">
         <LogoWordmarkSvg />
@@ -89,7 +91,12 @@ class AlertPane extends PureComponent<AlertsProps> {
           <li key={"resourceInfoError" + r.name} className="ErrorPane-item">
             <header>
               <p>{r.name}</p>
-              <p>{r.resourceInfo.podCreationTime}</p>
+              <p>
+                <TimeAgo
+                  date={r.resourceInfo.podCreationTime}
+                  formatter={formatter}
+                />
+              </p>
             </header>
             <section>{r.resourceInfo.podLog}</section>
           </li>
@@ -100,7 +107,6 @@ class AlertPane extends PureComponent<AlertsProps> {
             <header>
               <p>{r.name}</p>
               <p>{`Restarts: ${r.resourceInfo.podRestarts}`}</p>
-              <p>{r.resourceInfo.podCreationTime}</p>
             </header>
             <section>
               <p>{`Last log line: ${r.resourceInfo.podLog}`}</p>
@@ -115,7 +121,7 @@ class AlertPane extends PureComponent<AlertsProps> {
             <header>
               <p>{r.name}</p>
               <p>
-                <TimeAgo date={lastBuild.FinishTime} />
+                <TimeAgo date={lastBuild.FinishTime} formatter={formatter} />
               </p>
             </header>
             <section>
