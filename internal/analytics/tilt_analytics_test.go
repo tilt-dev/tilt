@@ -14,6 +14,8 @@ type testCase struct {
 	expectRecord bool
 }
 
+var testTags = map[string]string{"bar": "baz"}
+
 func testCases(expectedWhenOptedIn, expectedWhenOptedOut, expectedWhenNoOpt bool) []testCase {
 	return []testCase{
 		{"opt in", analytics.OptIn, expectedWhenOptedIn},
@@ -37,12 +39,12 @@ func TestCount(t *testing.T) {
 			ma := analytics.NewMemoryAnalytics()
 			os := &optSetting{}
 			a := NewTiltAnalytics(test.opt, os.setOpt, ma)
-			a.Count("foo", map[string]string{}, 1)
+			a.Count("foo", testTags, 1)
 			var expectedCounts []analytics.CountEvent
 			if test.expectRecord {
 				expectedCounts = append(expectedCounts, analytics.CountEvent{
 					Name: "foo",
-					Tags: map[string]string{},
+					Tags: testTags,
 					N:    1,
 				})
 			}
@@ -57,12 +59,12 @@ func TestIncr(t *testing.T) {
 			ma := analytics.NewMemoryAnalytics()
 			os := &optSetting{}
 			a := NewTiltAnalytics(test.opt, os.setOpt, ma)
-			a.Incr("foo", map[string]string{})
+			a.Incr("foo", testTags)
 			var expectedCounts []analytics.CountEvent
 			if test.expectRecord {
 				expectedCounts = append(expectedCounts, analytics.CountEvent{
 					Name: "foo",
-					Tags: map[string]string{},
+					Tags: testTags,
 					N:    1,
 				})
 			}
@@ -77,12 +79,12 @@ func TestTimer(t *testing.T) {
 			ma := analytics.NewMemoryAnalytics()
 			os := &optSetting{}
 			a := NewTiltAnalytics(test.opt, os.setOpt, ma)
-			a.Timer("foo", time.Second, map[string]string{})
+			a.Timer("foo", time.Second, testTags)
 			var expectedTimes []analytics.TimeEvent
 			if test.expectRecord {
 				expectedTimes = append(expectedTimes, analytics.TimeEvent{
 					Name: "foo",
-					Tags: map[string]string{},
+					Tags: testTags,
 					Dur:  time.Second,
 				})
 			}
@@ -97,7 +99,7 @@ func TestIncrIfUnopted(t *testing.T) {
 			ma := analytics.NewMemoryAnalytics()
 			os := &optSetting{}
 			a := NewTiltAnalytics(test.opt, os.setOpt, ma)
-			a.IncrIfUnopted("foo", map[string]string{})
+			a.IncrIfUnopted("foo")
 			var expectedCounts []analytics.CountEvent
 			if test.expectRecord {
 				expectedCounts = append(expectedCounts, analytics.CountEvent{
@@ -132,7 +134,7 @@ func analyticsViaTransition(t *testing.T, initialOpt, newOpt analytics.Opt) (*Ti
 		t.FailNow()
 	}
 
-	// wipe out the reports of opt-in/out, since those are just setup for another test
+	// wipe out the reports of opt-in/out, since those are side effects of test setup, not the test itself
 	ma.Counts = nil
 
 	return a, ma
@@ -154,12 +156,12 @@ func TestOptTransitionIncr(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			a, ma := analyticsViaTransition(t, test.initialOpt, test.newOpt)
-			a.Incr("foo", map[string]string{})
+			a.Incr("foo", testTags)
 			var expectedCounts []analytics.CountEvent
 			if test.expectRecord {
 				expectedCounts = append(expectedCounts, analytics.CountEvent{
 					Name: "foo",
-					Tags: map[string]string{},
+					Tags: testTags,
 					N:    1,
 				})
 			}
@@ -177,7 +179,7 @@ func TestOptTransitionIncrIfUnopted(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			a, ma := analyticsViaTransition(t, test.initialOpt, test.newOpt)
-			a.IncrIfUnopted("foo", map[string]string{})
+			a.IncrIfUnopted("foo")
 			var expectedCounts []analytics.CountEvent
 			if test.expectRecord {
 				expectedCounts = append(expectedCounts, analytics.CountEvent{

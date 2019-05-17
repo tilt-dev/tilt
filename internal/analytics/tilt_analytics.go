@@ -35,13 +35,20 @@ func (ta *TiltAnalytics) Incr(name string, tags map[string]string) {
 	}
 }
 
-func (ta *TiltAnalytics) IncrIfUnopted(name string, tags map[string]string) {
+func (ta *TiltAnalytics) IncrIfUnopted(name string) {
 	if ta.opt == analytics.OptDefault {
-		ta.a.IncrAnonymous(name, tags)
+		ta.a.IncrAnonymous(name, map[string]string{})
 	}
 }
 
 func (ta *TiltAnalytics) IncrAnonymous(name string, tags map[string]string) {
+	// Q: This is confusing! Isn't IncrAnonymous only for OptDefault?
+	// A: ...well, that was why it was added. If you drop a random IncrAnonymous call somewhere else in the code
+	//    and nothing happens, would you be surprised? We could eliminate IncrIfUnopted and make IncrAnonymous
+	//    only run when opt == OptDefault, but then there's it feels weird that some methods only work if OptIn and
+	//    some only work if OptDefault, and it's not really clear from the names why.
+	//    By making IncrIfUnopted its own method, we go with the mental model of "IncrIfUnopted is explicit about its
+	//    relationship to opt, and all other methods only run on OptIn"
 	if ta.opt == analytics.OptIn {
 		ta.a.IncrAnonymous(name, tags)
 	}
@@ -58,7 +65,7 @@ func (ta *TiltAnalytics) Flush(timeout time.Duration) {
 }
 
 func (ta *TiltAnalytics) OptIn() error {
-	ta.IncrIfUnopted("analytics.opt.in", map[string]string{})
+	ta.IncrIfUnopted("analytics.opt.in")
 	ta.opt = analytics.OptIn
 	return ta.persistOpt(ta.opt)
 }

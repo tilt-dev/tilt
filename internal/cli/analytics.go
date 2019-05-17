@@ -36,6 +36,8 @@ func initAnalytics(rootCmd *cobra.Command) error {
 	var err error
 
 	options := []analytics.Option{}
+	// enabled: true because TiltAnalytics wraps the RemoteAnalytics and has its own guards for whether analytics
+	//   is enabled. When TiltAnalytics decides to pass a call through to RemoteAnalytics, it should always work.
 	options = append(options, analytics.WithGlobalTags(globalTags()), analytics.WithEnabled(true))
 	analyticsURL := os.Getenv(analyticsURLEnvVar)
 	if analyticsURL != "" {

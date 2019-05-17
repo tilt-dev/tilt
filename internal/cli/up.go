@@ -82,7 +82,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		"watch": fmt.Sprintf("%v", c.watch),
 		"mode":  string(updateModeFlag),
 	})
-	analyticsService.IncrIfUnopted("analytics.up.optdefault", map[string]string{})
+	analyticsService.IncrIfUnopted("analytics.up.optdefault")
 	defer analyticsService.Flush(time.Second)
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Up")
