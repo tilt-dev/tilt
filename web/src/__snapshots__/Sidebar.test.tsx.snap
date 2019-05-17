@@ -16,7 +16,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           href="/"
           onClick={[Function]}
         >
-          All
+          <span
+            className="resLink--all-name"
+          >
+            All
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            7
+          </span>
         </a>
       </li>
       <li>
@@ -299,7 +308,12 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
           href="/"
           onClick={[Function]}
         >
-          All
+          <span
+            className="resLink--all-name"
+          >
+            All
+          </span>
+          
         </a>
       </li>
     </ul>
@@ -337,7 +351,16 @@ exports[`sidebar renders list of resources 1`] = `
           href="/"
           onClick={[Function]}
         >
-          All
+          <span
+            className="resLink--all-name"
+          >
+            All
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            2
+          </span>
         </a>
       </li>
       <li>
@@ -445,7 +468,16 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           href="/"
           onClick={[Function]}
         >
-          All
+          <span
+            className="resLink--all-name"
+          >
+            All
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            2
+          </span>
         </a>
       </li>
       <li>
