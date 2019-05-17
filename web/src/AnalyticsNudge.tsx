@@ -75,7 +75,8 @@ class AnalyticsNudge extends Component<
 
   shouldShow(): boolean {
     return (
-      this.props.needsNudge || (this.state.requestMade && !this.state.dismissed)
+      (this.props.needsNudge && !this.state.dismissed) ||
+      (!this.state.dismissed && this.state.requestMade)
     )
   }
 
@@ -177,10 +178,10 @@ class AnalyticsNudge extends Component<
             Nope
           </button>
           <button
-            className="AnalyticsNudge-button"
+            className="AnalyticsNudge-button opt-in"
             onClick={() => this.analyticsOpt(true)}
           >
-            Yes!
+            I'm in
           </button>
         </span>
       </>

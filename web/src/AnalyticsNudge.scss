@@ -32,12 +32,16 @@
 .AnalyticsNudge-button {
   align-content: center;
   background-color: $color-gray-dark;
-  color: $color-white;
+  color: $color-gray-lightest;
   @include button-text;
   border: 1px solid $color-gray-light;
   padding: $spacing-unit/3;
   margin-left: $spacing-unit/2;
   min-width: $spacing-unit * 3;
+}
+
+.opt-in {
+  color: $color-green
 }
 
 .AnalyticsNudge-button + .AnalyticsNudge-button {

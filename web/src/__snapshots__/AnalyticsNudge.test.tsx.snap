@@ -23,7 +23,7 @@ exports[`hidden if dismissed 1`] = `
 </section>
 `;
 
-exports[`hides nudge if !needsNudge and no state 1`] = `
+exports[`hides nudge if !needsNudge and no request made 1`] = `
 <section
   className="AnalyticsNudge"
 >
@@ -45,10 +45,41 @@ exports[`hides nudge if !needsNudge and no state 1`] = `
       Nope
     </button>
     <button
+      className="AnalyticsNudge-button opt-in"
+      onClick={[Function]}
+    >
+      I'm in
+    </button>
+  </span>
+</section>
+`;
+
+exports[`hides nudge if dismissed, even if needsNudge = true 1`] = `
+<section
+  className="AnalyticsNudge"
+>
+  <p>
+    Welcome to Tilt! Usage data helps us improve; will you contribute? (
+    <a
+      href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
+      target="_blank"
+    >
+      Read more
+    </a>
+    )
+  </p>
+  <span>
+    <button
       className="AnalyticsNudge-button"
       onClick={[Function]}
     >
-      Yes!
+      Nope
+    </button>
+    <button
+      className="AnalyticsNudge-button opt-in"
+      onClick={[Function]}
+    >
+      I'm in
     </button>
   </span>
 </section>
@@ -105,10 +136,10 @@ exports[`shows nudge if needsNudge 1`] = `
       Nope
     </button>
     <button
-      className="AnalyticsNudge-button"
+      className="AnalyticsNudge-button opt-in"
       onClick={[Function]}
     >
-      Yes!
+      I'm in
     </button>
   </span>
 </section>
