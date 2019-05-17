@@ -5,7 +5,7 @@ exports[`hidden if dismissed 1`] = `
   className="AnalyticsNudge"
 >
   <span>
-    Thanks for opting out! [copy tbd]
+    Got it, we won't send any data about your usage.
   </span>
 </div>
 `;
@@ -16,13 +16,12 @@ exports[`hides nudge if !needsNudge and no state 1`] = `
 >
   <div>
     <span>
-      Congrats on your first Tilt resource 🎉 Opt into analytics? (Read more
-       
+      Welcome to Tilt! To better support you, may we record anonymized data about your usage? (
       <a
         href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
         target="_blank"
       >
-        here
+        read more
       </a>
       .) 
     </span>
@@ -32,12 +31,12 @@ exports[`hides nudge if !needsNudge and no state 1`] = `
       <button
         onClick={[Function]}
       >
-        Yes!
+        Yes
       </button>
       <button
         onClick={[Function]}
       >
-        Nope!
+        No
       </button>
     </span>
   </div>
@@ -85,13 +84,12 @@ exports[`shows nudge if needsNudge 1`] = `
 >
   <div>
     <span>
-      Congrats on your first Tilt resource 🎉 Opt into analytics? (Read more
-       
+      Welcome to Tilt! To better support you, may we record anonymized data about your usage? (
       <a
         href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
         target="_blank"
       >
-        here
+        read more
       </a>
       .) 
     </span>
@@ -101,12 +99,12 @@ exports[`shows nudge if needsNudge 1`] = `
       <button
         onClick={[Function]}
       >
-        Yes!
+        Yes
       </button>
       <button
         onClick={[Function]}
       >
-        Nope!
+        No
       </button>
     </span>
   </div>
@@ -118,7 +116,7 @@ exports[`shows request-in-progress message 1`] = `
   className="AnalyticsNudge is-visible"
 >
   <span>
-    Okay, we'll inform the robots...
+    Okay, making it so...
   </span>
 </div>
 `;
@@ -128,7 +126,7 @@ exports[`shows success message: opt in 1`] = `
   className="AnalyticsNudge is-visible"
 >
   <span>
-    Thanks for opting in! [copy tbd]
+    Thanks for opting in: you're helping us make Tilt a better experience for you and for all of our users!
   </span>
 </div>
 `;
@@ -138,7 +136,7 @@ exports[`shows success message: opt out 1`] = `
   className="AnalyticsNudge is-visible"
 >
   <span>
-    Thanks for opting out! [copy tbd]
+    Got it, we won't send any data about your usage.
   </span>
 </div>
 `;

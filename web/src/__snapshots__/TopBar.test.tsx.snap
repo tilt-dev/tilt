@@ -9,13 +9,12 @@ exports[`shows sail share button 1`] = `
   >
     <div>
       <span>
-        Congrats on your first Tilt resource 🎉 Opt into analytics? (Read more
-         
+        Welcome to Tilt! To better support you, may we record anonymized data about your usage? (
         <a
           href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
           target="_blank"
         >
-          here
+          read more
         </a>
         .) 
       </span>
@@ -25,12 +24,12 @@ exports[`shows sail share button 1`] = `
         <button
           onClick={[Function]}
         >
-          Yes!
+          Yes
         </button>
         <button
           onClick={[Function]}
         >
-          Nope!
+          No
         </button>
       </span>
     </div>
@@ -100,13 +99,12 @@ exports[`shows sail url 1`] = `
   >
     <div>
       <span>
-        Congrats on your first Tilt resource 🎉 Opt into analytics? (Read more
-         
+        Welcome to Tilt! To better support you, may we record anonymized data about your usage? (
         <a
           href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
           target="_blank"
         >
-          here
+          read more
         </a>
         .) 
       </span>
@@ -116,12 +114,12 @@ exports[`shows sail url 1`] = `
         <button
           onClick={[Function]}
         >
-          Yes!
+          Yes
         </button>
         <button
           onClick={[Function]}
         >
-          Nope!
+          No
         </button>
       </span>
     </div>

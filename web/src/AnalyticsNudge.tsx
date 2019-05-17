@@ -17,9 +17,10 @@ let nudgeElem = (): JSX.Element => {
     </span>
   )
 }
-const reqInProgMsg = "request in prog"
-const successOptInMsg = "yay you opted in"
-const successOptOutMsg = "whelp you opted out"
+const reqInProgMsg = "Okay, making it so..."
+const successOptInMsg =
+  "Thanks for opting in: you're helping us make Tilt a better experience for you and for all of our users!"
+const successOptOutMsg = "Got it, we won't send any data about your usage."
 let errorElem = (respBody: string): JSX.Element => {
   return (
     <span>
@@ -141,7 +142,6 @@ class AnalyticsNudge extends Component<
   render() {
     let classes = ["AnalyticsNudge"]
     if (this.shouldShow()) {
-      // or if already visible...
       classes.push("is-visible")
     }
 
