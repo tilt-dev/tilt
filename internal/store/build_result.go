@@ -55,6 +55,10 @@ func (b BuildResult) HasImage() bool {
 	return b.Image != nil
 }
 
+func (b BuildResult) IsInPlaceUpdate() bool {
+	return !b.ContainerID.Empty()
+}
+
 // Clone the build result and add new replaced files.
 // Does not do a deep clone of the underlying entities.
 func (b BuildResult) ShallowCloneForContainerUpdate(filesReplacedSet map[string]bool) BuildResult {
@@ -183,8 +187,8 @@ func (b BuildState) HasImage() bool {
 // If the image has already been built, and no files have been
 // changed since then, then we can re-use the previous result.
 func (b BuildState) NeedsImageBuild() bool {
-	alreadyBuilt := b.LastResult.HasImage()
-	return !alreadyBuilt || len(b.FilesChangedSet) > 0
+	lastBuildWasImgBuild := b.LastResult.HasImage() && !b.LastResult.IsInPlaceUpdate()
+	return !lastBuildWasImgBuild || len(b.FilesChangedSet) > 0
 }
 
 type BuildStateSet map[model.TargetID]BuildState

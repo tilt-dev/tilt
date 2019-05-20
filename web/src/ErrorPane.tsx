@@ -36,6 +36,10 @@ class AlertResource {
     return this.podStatusIsError() || this.podRestarted() || this.buildFailed()
   }
 
+  public crashRebuild() {
+    return this.buildHistory.length > 0 && this.buildHistory[0].IsCrashRebuild
+  }
+
   public podStatusIsError() {
     return (
       this.resourceInfo.podStatus === "Error" ||
@@ -53,7 +57,7 @@ class AlertResource {
 
   public numberOfAlerts(): number {
     let num = 0
-    if (this.podStatusIsError() || this.podRestarted()) {
+    if (this.podStatusIsError() || this.podRestarted() || this.crashRebuild()) {
       num++
     }
     if (this.buildFailed()) {
@@ -107,6 +111,21 @@ class AlertPane extends PureComponent<AlertsProps> {
             <header>
               <p>{r.name}</p>
               <p>{`Restarts: ${r.resourceInfo.podRestarts}`}</p>
+            </header>
+            <section>
+              <p>{`Last log line: ${r.resourceInfo.podLog}`}</p>
+            </section>
+          </li>
+        )
+      } else if (r.crashRebuild()) {
+        errorElements.push(
+          <li
+            key={"resourceInfoCrashRebuild" + r.name}
+            className="ErrorPane-item"
+          >
+            <header>
+              <p>{r.name}</p>
+              <p>Pod crashed!</p>
             </header>
             <section>
               <p>{`Last log line: ${r.resourceInfo.podLog}`}</p>

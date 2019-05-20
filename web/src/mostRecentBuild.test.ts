@@ -15,6 +15,7 @@ it("returns the most recent build if there are no pending builds", () => {
     StartTime: "2019-04-24T13:08:41.017623-04:00",
     FinishTime: "2019-04-24T13:08:42.926608-04:00",
     Log: "",
+    IsCrashRebuild: false,
   }
   let expectedTuple = {
     name: "snack",
@@ -30,6 +31,7 @@ it("returns the most recent build if there are no pending builds", () => {
         StartTime: "2019-04-24T13:08:39.017623-04:00",
         FinishTime: "2019-04-24T13:08:40.926608-04:00",
         Log: "",
+        IsCrashRebuild: false,
       },
       recent,
     ],
@@ -49,6 +51,7 @@ it("returns null if there are no pending builds and the most recent build has no
     StartTime: "2019-04-24T13:08:41.017623-04:00",
     FinishTime: "2019-04-24T13:08:42.926608-04:00",
     Log: "",
+    IsCrashRebuild: false,
   }
   let expectedTuple = {
     name: "snack",
@@ -64,6 +67,7 @@ it("returns null if there are no pending builds and the most recent build has no
         StartTime: "2019-04-24T13:08:39.017623-04:00",
         FinishTime: "2019-04-24T13:08:40.926608-04:00",
         Log: "",
+        IsCrashRebuild: false,
       },
       recent,
     ],
@@ -91,6 +95,7 @@ it("returns the pending build if there is one", () => {
         StartTime: "2019-04-24T13:08:39.017623-04:00",
         FinishTime: "2019-04-24T13:08:40.926608-04:00",
         Log: "",
+        IsCrashRebuild: false,
       },
     ],
     pendingBuildEdits: ["bar"],
