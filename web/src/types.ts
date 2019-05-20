@@ -10,7 +10,7 @@ export type Build = {
   Log: string
   FinishTime: string
   Edits: Array<string> | null
-  IsCrashOnly: boolean
+  IsCrashRebuild: boolean
 }
 
 export type TiltBuild = {

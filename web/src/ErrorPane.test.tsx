@@ -162,7 +162,7 @@ it("shows that a crash rebuild has occurred", () => {
           Log: "laa dee daa I'm not an error\nseriously",
           FinishTime: ts,
           Error: null,
-          IsCrashOnly: true,
+          IsCrashRebuild: true,
         },
       ],
       ResourceInfo: {

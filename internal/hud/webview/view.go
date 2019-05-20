@@ -67,13 +67,13 @@ func (yamlInfo YAMLResourceInfo) Status() string        { return "" }
 
 type BuildRecord struct {
 	model.BuildRecord
-	IsCrashOnly bool
+	IsCrashRebuild bool
 }
 
 func ToWebviewBuildRecord(br model.BuildRecord) BuildRecord {
 	return BuildRecord{
-		BuildRecord: br,
-		IsCrashOnly: br.Reason.IsCrashOnly(),
+		BuildRecord:    br,
+		IsCrashRebuild: br.Reason.IsCrashOnly(),
 	}
 }
 

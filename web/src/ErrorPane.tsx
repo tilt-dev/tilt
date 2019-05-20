@@ -37,7 +37,7 @@ class AlertResource {
   }
 
   public crashRebuild() {
-    return this.buildHistory.length > 0 && this.buildHistory[0].IsCrashOnly
+    return this.buildHistory.length > 0 && this.buildHistory[0].IsCrashRebuild
   }
 
   public podStatusIsError() {
