@@ -46,7 +46,7 @@ $resourceInfo-height: $spacing-unit * 1.5;
 $statusbar-height: $spacing-unit * 1.5;
 $statusbar-tiltPanel-width: $spacing-unit * 1.75;
 
-$analyticsNudge-height: $tabnav-height;
+$analyticsNudge-height: $tabnav-height * 1.5;
 
 $z-analyticsNudge: 2000;
 $z-statusbar: 1000;
