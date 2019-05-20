@@ -2,14 +2,22 @@ import React from "react"
 import AnalyticsNudge from "./AnalyticsNudge"
 import { shallow } from "enzyme"
 
-it("hides nudge if !needsNudge and no state", () => {
+it("shows nudge if needsNudge", () => {
+  const component = shallow(<AnalyticsNudge needsNudge={true} />)
+
+  expect(component).toMatchSnapshot()
+})
+
+it("hides nudge if !needsNudge and no request made", () => {
   const component = shallow(<AnalyticsNudge needsNudge={false} />)
 
   expect(component).toMatchSnapshot()
 })
 
-it("shows nudge if needsNudge", () => {
+it("hides nudge if dismissed, even if needsNudge = true", () => {
   const component = shallow(<AnalyticsNudge needsNudge={true} />)
+
+  component.setState({ dismissed: true })
 
   expect(component).toMatchSnapshot()
 })

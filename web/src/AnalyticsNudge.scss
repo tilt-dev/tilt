@@ -1,11 +1,24 @@
 @import "constants";
 
 .AnalyticsNudge {
-  padding: $spacing-unit/4;
-  border: 1px solid $color-white;
+  width: 100%;
+  min-height: $analyticsNudge-height;
+  background-color: $color-gray-darkest;
+  color: $color-white;
+  padding: $spacing-unit / 2;
+  box-sizing: border-box;
+  position: fixed;
+  z-index: $z-analyticsNudge;
+  border: 1px solid $color-gray-light;
+  box-shadow: 0px 3px 10px 0px rgba($color-gray-dark, $translucent-ish);
 
   // by default, it's hidden
-  display: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  top: -100%;
+  transition: top $animation-timing ease;
+
   pre {
     display: inline;
     font-weight: bold;
@@ -13,18 +26,24 @@
 }
 
 .is-visible {
-  display: block;
+  top: 0;
 }
 
-.AnalyticsNudge-buttons {
+.AnalyticsNudge-button {
   align-content: center;
+  background-color: $color-gray-dark;
+  color: $color-gray-lightest;
+  @include button-text;
+  border: 1px solid $color-gray-light;
+  padding: $spacing-unit/3;
+  margin-left: $spacing-unit/2;
+  min-width: $spacing-unit * 3;
 }
 
-.AnalyticsNudge-err {
-  margin: $spacing-unit;
-  span {
-    padding: $spacing-unit/2;
-    color: $color-black;
-    background: $color-gray-lightest;
-  }
+.opt-in {
+  color: $color-green
+}
+
+.AnalyticsNudge-button + .AnalyticsNudge-button {
+  margin-left: $spacing-unit/2;
 }
