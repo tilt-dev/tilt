@@ -2251,6 +2251,7 @@ func TestSetAnalyticsOpt(t *testing.T) {
 
 	f.Start([]model.Manifest{}, true, opt)
 	f.store.Dispatch(store.AnalyticsOptAction{Opt: analytics.OptOut})
+
 	f.WaitUntil("opted out", func(state store.EngineState) bool {
 		return state.AnalyticsOpt == analytics.OptOut
 	})
@@ -2259,8 +2260,12 @@ func TestSetAnalyticsOpt(t *testing.T) {
 		return state.AnalyticsOpt == analytics.OptIn
 	})
 
+	f.opter.waitUntilCount(t, 2)
+
 	err := f.Stop()
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 	assert.Equal(t, []analytics.Opt{analytics.OptOut, analytics.OptIn}, f.opter.calls)
 }
 
@@ -2304,11 +2309,34 @@ func makeFakeTimerMaker(t *testing.T) fakeTimerMaker {
 
 type testOpter struct {
 	calls []analytics.Opt
+	mu    sync.Mutex
 }
 
 func (to *testOpter) SetOpt(opt analytics.Opt) error {
+	to.mu.Lock()
+	defer to.mu.Unlock()
 	to.calls = append(to.calls, opt)
 	return nil
+}
+
+func (to *testOpter) waitUntilCount(t *testing.T, expectedCount int) {
+	timeout := time.After(time.Second)
+	for {
+		select {
+		case <-time.After(5 * time.Millisecond):
+			to.mu.Lock()
+			actualCount := len(to.calls)
+			to.mu.Unlock()
+			if actualCount == expectedCount {
+				return
+			}
+		case <-timeout:
+			to.mu.Lock()
+			actualCount := len(to.calls)
+			to.mu.Unlock()
+			assert.FailNow(t, "waiting for opt setting count to be %d. opt setting count is currently %d", expectedCount, actualCount)
+		}
+	}
 }
 
 type testFixture struct {
