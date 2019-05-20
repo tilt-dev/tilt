@@ -5,7 +5,7 @@ const nudgeTimeoutMs = 4000 // 4 seconds
 const nudgeElem = (): JSX.Element => {
   return (
     <p>
-      Welcome to Tilt! Usage data helps us improve; will you contribute? (
+      Welcome to Tilt! May we collect usage data to help us improve? (
       <a
         href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
         target="_blank"
