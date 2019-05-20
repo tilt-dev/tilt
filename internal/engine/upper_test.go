@@ -2250,11 +2250,11 @@ func TestSetAnalyticsOpt(t *testing.T) {
 	}
 
 	f.Start([]model.Manifest{}, true, opt)
-	f.store.Dispatch(store.AnalyticsOptAction{analytics.OptOut})
+	f.store.Dispatch(store.AnalyticsOptAction{Opt: analytics.OptOut})
 	f.WaitUntil("opted out", func(state store.EngineState) bool {
 		return state.AnalyticsOpt == analytics.OptOut
 	})
-	f.store.Dispatch(store.AnalyticsOptAction{analytics.OptIn})
+	f.store.Dispatch(store.AnalyticsOptAction{Opt: analytics.OptIn})
 	f.WaitUntil("opted in", func(state store.EngineState) bool {
 		return state.AnalyticsOpt == analytics.OptIn
 	})
