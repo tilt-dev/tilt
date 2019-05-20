@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/github"
@@ -42,7 +43,11 @@ func (tvc *TiltVersionChecker) OnChange(ctx context.Context, st store.RStore) {
 		for {
 			version, err := tvc.client.GetLatestRelease(ctx, githubOrg, githubProject)
 			if err != nil {
-				logger.Get(ctx).Infof("error checking github for latest Tilt release: %s", err.Error())
+				if strings.Contains(err.Error(), "API rate limit exceeded") {
+					logger.Get(ctx).Verbosef("error checking github for latest Tilt release: %v", err)
+				} else {
+					logger.Get(ctx).Infof("error checking github for latest Tilt release: %s", err.Error())
+				}
 			} else {
 				st.Dispatch(LatestVersionAction{version})
 			}

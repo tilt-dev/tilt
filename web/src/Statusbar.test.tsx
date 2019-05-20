@@ -143,6 +143,55 @@ describe("StatusBar", () => {
 
     expect(tree).toMatchSnapshot()
   })
+
+  it("does not render an upgrade badge when there is no latestVersion", () => {
+    let view = twoResourceView()
+    view.Resources.forEach((res: any) => {
+      res.BuildHistory[0].Error = ""
+    })
+    let items = view.Resources.map((res: any) => new StatusItem(res))
+    let latestVersion = { Version: "", Date: "", Dev: false }
+    const tree = renderer
+      .create(
+        <MemoryRouter>
+          <Statusbar
+            items={items}
+            alertsUrl="/alerts"
+            runningVersion={runningVersion}
+            latestVersion={latestVersion}
+          />
+        </MemoryRouter>
+      )
+      .toJSON()
+
+    expect(tree).toMatchSnapshot()
+  })
+
+  it("does not render an upgrade badge when runningVersion is dev", () => {
+    let view = twoResourceView()
+    view.Resources.forEach((res: any) => {
+      res.BuildHistory[0].Error = ""
+    })
+    let items = view.Resources.map((res: any) => new StatusItem(res))
+    let latestVersion = runningVersion
+    latestVersion.Version = "10.0.0"
+    let devRunningVersion = runningVersion
+    devRunningVersion.Dev = true
+    const tree = renderer
+      .create(
+        <MemoryRouter>
+          <Statusbar
+            items={items}
+            alertsUrl="/alerts"
+            runningVersion={devRunningVersion}
+            latestVersion={latestVersion}
+          />
+        </MemoryRouter>
+      )
+      .toJSON()
+
+    expect(tree).toMatchSnapshot()
+  })
 })
 
 describe("StatusItem", () => {
