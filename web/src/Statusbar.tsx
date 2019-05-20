@@ -111,8 +111,8 @@ class Statusbar extends PureComponent<StatusBarProps> {
   tiltPanel(runningVersion: TiltBuild | null, latestVersion: TiltBuild | null) {
     let content: ReactElement = <LogoSvg className="Statusbar-logo" />
     if (
-      latestVersion &&
-      runningVersion &&
+      latestVersion && latestVersion.Version &&
+      runningVersion && runningVersion.Version &&
       !runningVersion.Dev &&
       runningVersion.Version != latestVersion.Version
     ) {
