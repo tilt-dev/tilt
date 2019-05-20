@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"bufio"
 	"crypto/md5"
 	"encoding/base64"
 	"fmt"
@@ -15,8 +14,6 @@ import (
 	"github.com/spf13/cobra"
 	giturls "github.com/whilp/git-urls"
 	"github.com/windmilleng/wmclient/pkg/analytics"
-
-	"github.com/windmilleng/tilt/internal/hud/webview"
 )
 
 const tiltAppName = "tilt"
@@ -69,46 +66,6 @@ func initAnalytics(rootCmd *cobra.Command) error {
 	}
 
 	analyticsService = tiltanalytics.NewTiltAnalytics(analyticsOpt, analyticsOpter{}, backingAnalytics)
-
-	if webview.NewAnalyticsOn() {
-		return nil
-	}
-
-	if analyticsOpt == analytics.OptDefault {
-		_, err := fmt.Fprintf(os.Stderr, "Send anonymized usage data to Windmill [y/n]? ")
-		if err != nil {
-			return err
-		}
-
-		buf := bufio.NewReader(os.Stdin)
-		c, _, _ := buf.ReadRune()
-		if c == rune(0) || c == '\n' || c == 'y' || c == 'Y' {
-			err = analyticsService.SetOpt(analytics.OptIn)
-			if err != nil {
-				return err
-			}
-
-			_, err = fmt.Fprintln(os.Stderr, "Thanks! Setting 'tilt analytics opt in'")
-			if err != nil {
-				return err
-			}
-		} else {
-			err = analyticsService.SetOpt(analytics.OptOut)
-			if err != nil {
-				return err
-			}
-
-			_, err = fmt.Fprintln(os.Stderr, "Thanks! Setting 'tilt analytics opt out'")
-			if err != nil {
-				return err
-			}
-		}
-
-		_, err = fmt.Fprintln(os.Stderr, "You set can update your privacy preferences later with 'tilt analytics'")
-		if err != nil {
-			return err
-		}
-	}
 
 	return nil
 }
