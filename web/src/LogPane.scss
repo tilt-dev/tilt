@@ -37,7 +37,7 @@
   margin: 0;
 }
 
-.resourceInfo {
+.resourceBar {
   position: fixed;
   top: $tabnav-height;
   left: 0;
@@ -52,43 +52,38 @@
   border-bottom: 1px dotted $color-gray-light;
 }
 
-.resourceInfo-item {
+.resourceInfo {
   display: flex;
   align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
 }
-
-.resourceInfo-item + .resourceInfo-item {
+.resourceInfo + .resourceInfo {
   margin-left: $spacing-unit / 2;
   border-left: 1px dotted $color-gray-light;
   padding-left: $spacing-unit / 2;
 }
-
-.resourceInfo-item .label {
+.resourceInfo-label {
   text-transform: uppercase;
   color: $color-gray-light;
   font-weight: bold;
   margin-right: $spacing-unit / 4;
 }
-
-.resourceInfo-item a {
-  display: flex;
-  align-items: center;
-  text-decoration: none;
-}
-.resourceInfo-item a:hover {
-  text-decoration: underline;
-}
-
-.resourceInfo-item pre {
+.resourceInfo-value {
   display: inline-block;
   font-family: $font-monospace;
   user-select: all;
-  white-space: pre-wrap;
   margin: 0;
+  text-overflow: ellipsis;
+  overflow: hidden;
 }
-
-.resourceInfo-item a + a::before,
-.resourceInfo-item pre + pre::before {
+a.resourceInfo-value {
+  text-decoration: none;
+}
+a.resourceInfo-value:hover {
+  text-decoration: underline;
+}
+.resourceInfo-value + .resourceInfo-value::before {
   content: "";
   margin-left: $spacing-unit / 2;
   padding-left: $spacing-unit / 2;
