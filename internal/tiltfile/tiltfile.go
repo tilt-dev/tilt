@@ -11,8 +11,7 @@ import (
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/wmclient/pkg/analytics"
-
+	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
@@ -60,12 +59,12 @@ func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, matchi
 	}, tfl.Err
 }
 
-func ProvideTiltfileLoader(analytics analytics.Analytics, dcCli dockercompose.DockerComposeClient, kubeContext k8s.KubeContext) TiltfileLoader {
+func ProvideTiltfileLoader(analytics *analytics.TiltAnalytics, dcCli dockercompose.DockerComposeClient, kubeContext k8s.KubeContext) TiltfileLoader {
 	return tiltfileLoader{analytics: analytics, dcCli: dcCli, kubeContext: kubeContext}
 }
 
 type tiltfileLoader struct {
-	analytics   analytics.Analytics
+	analytics   *analytics.TiltAnalytics
 	dcCli       dockercompose.DockerComposeClient
 	kubeContext k8s.KubeContext
 }

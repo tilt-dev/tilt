@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
+	"github.com/windmilleng/tilt/internal/analytics"
 
-	"github.com/windmilleng/wmclient/pkg/analytics"
+	"github.com/opentracing/opentracing-go"
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/ignore"
@@ -20,12 +20,12 @@ var _ BuildAndDeployer = &LocalContainerBuildAndDeployer{}
 
 type LocalContainerBuildAndDeployer struct {
 	cu        *build.ContainerUpdater
-	analytics analytics.Analytics
+	analytics *analytics.TiltAnalytics
 	env       k8s.Env
 }
 
 func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater,
-	analytics analytics.Analytics, env k8s.Env) *LocalContainerBuildAndDeployer {
+	analytics *analytics.TiltAnalytics, env k8s.Env) *LocalContainerBuildAndDeployer {
 	return &LocalContainerBuildAndDeployer{
 		cu:        cu,
 		analytics: analytics,

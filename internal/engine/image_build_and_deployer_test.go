@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/analytics"
+
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/opencontainers/go-digest"
@@ -431,7 +433,8 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 	kClient := k8s.NewFakeK8sClient()
 	kp := &fakeKINDPusher{}
 	clock := fakeClock{time.Date(2019, 1, 1, 1, 1, 1, 1, time.UTC)}
-	ibd, err := provideImageBuildAndDeployer(ctx, docker, kClient, env, dir, clock, kp)
+	_, ta := analytics.NewMemoryTiltAnalytics(analytics.NullOpter{})
+	ibd, err := provideImageBuildAndDeployer(ctx, docker, kClient, env, dir, clock, kp, ta)
 	if err != nil {
 		t.Fatal(err)
 	}

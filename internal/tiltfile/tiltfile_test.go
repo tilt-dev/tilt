@@ -11,17 +11,15 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 
-	"github.com/windmilleng/wmclient/pkg/analytics"
-
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/yaml"
-
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
@@ -29,6 +27,7 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
+	"github.com/windmilleng/tilt/internal/yaml"
 )
 
 const simpleDockerfile = "FROM golang:1.10"
@@ -3251,9 +3250,9 @@ func newFixture(t *testing.T) *fixture {
 	out := new(bytes.Buffer)
 	ctx := output.ForkedCtxForTest(out)
 	f := tempdir.NewTempDirFixture(t)
-	an := analytics.NewMemoryAnalytics()
+	an, ta := tiltanalytics.NewMemoryTiltAnalytics(tiltanalytics.NullOpter{})
 	dcc := dockercompose.NewDockerComposeClient(docker.Env{})
-	tfl := ProvideTiltfileLoader(an, dcc, "fake-context")
+	tfl := ProvideTiltfileLoader(ta, dcc, "fake-context")
 
 	r := &fixture{
 		ctx:            ctx,

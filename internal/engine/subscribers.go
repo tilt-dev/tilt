@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/sail/client"
@@ -24,7 +25,8 @@ func ProvideSubscribers(
 	ar *AnalyticsReporter,
 	hudsc *server.HeadsUpServerController,
 	sail client.SailClient,
-	tvc *TiltVersionChecker) []store.Subscriber {
+	tvc *TiltVersionChecker,
+	ta *analytics.TiltAnalytics) []store.Subscriber {
 	return []store.Subscriber{
 		hud,
 		pw,
@@ -43,5 +45,6 @@ func ProvideSubscribers(
 		hudsc,
 		sail,
 		tvc,
+		ta,
 	}
 }

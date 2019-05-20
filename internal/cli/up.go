@@ -82,6 +82,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		"watch": fmt.Sprintf("%v", c.watch),
 		"mode":  string(updateModeFlag),
 	})
+	analyticsService.IncrIfUnopted("analytics.up.optdefault")
 	defer analyticsService.Flush(time.Second)
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Up")
@@ -143,7 +144,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	g.Go(func() error {
 		defer cancel()
-		return upper.Start(ctx, args, threads.tiltBuild, c.watch, triggerMode, c.fileName, c.hud, threads.sailMode)
+		return upper.Start(ctx, args, threads.tiltBuild, c.watch, triggerMode, c.fileName, c.hud, threads.sailMode, analyticsOpt)
 	})
 
 	err = g.Wait()
