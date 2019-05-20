@@ -65,14 +65,34 @@ func (YAMLResourceInfo) resourceInfoView()              {}
 func (yamlInfo YAMLResourceInfo) RuntimeLog() model.Log { return model.NewLog("") }
 func (yamlInfo YAMLResourceInfo) Status() string        { return "" }
 
+type BuildRecord struct {
+	model.BuildRecord
+	IsCrashOnly bool
+}
+
+func ToWebviewBuildRecord(br model.BuildRecord) BuildRecord {
+	return BuildRecord{
+		BuildRecord: br,
+		IsCrashOnly: br.Reason.IsCrashOnly(),
+	}
+}
+
+func ToWebviewBuildRecords(brs []model.BuildRecord) []BuildRecord {
+	ret := make([]BuildRecord, len(brs))
+	for i, br := range brs {
+		ret[i] = ToWebviewBuildRecord(br)
+	}
+	return ret
+}
+
 type Resource struct {
 	Name               model.ManifestName
 	DirectoriesWatched []string
 	PathsWatched       []string
 	LastDeployTime     time.Time
 
-	BuildHistory []model.BuildRecord
-	CurrentBuild model.BuildRecord
+	BuildHistory []BuildRecord
+	CurrentBuild BuildRecord
 
 	PendingBuildReason model.BuildReason
 	PendingBuildEdits  []string
@@ -92,9 +112,9 @@ type Resource struct {
 	CombinedLog     model.Log
 }
 
-func (r Resource) LastBuild() model.BuildRecord {
+func (r Resource) LastBuild() BuildRecord {
 	if len(r.BuildHistory) == 0 {
-		return model.BuildRecord{}
+		return BuildRecord{}
 	}
 	return r.BuildHistory[0]
 }

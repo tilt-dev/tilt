@@ -151,3 +151,30 @@ it("shows that a container has restarted", () => {
     .toJSON()
   expect(tree).toMatchSnapshot()
 })
+
+it("shows that a crash rebuild has occurred", () => {
+  const ts = "1,555,970,585,039"
+  const resources = [
+    {
+      Name: "foo",
+      BuildHistory: [
+        {
+          Log: "laa dee daa I'm not an error\nseriously",
+          FinishTime: ts,
+          Error: null,
+          IsCrashOnly: true,
+        },
+      ],
+      ResourceInfo: {
+        PodCreationTime: ts,
+        PodStatus: "ok",
+        PodLog: "Eeeeek the container crashed",
+      },
+    },
+  ]
+
+  const tree = renderer
+    .create(<AlertPane resources={resources.map(r => new AlertResource(r))} />)
+    .toJSON()
+  expect(tree).toMatchSnapshot()
+})
