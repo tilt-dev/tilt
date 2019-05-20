@@ -156,7 +156,7 @@ class HUD extends Component<HudProps, HudState> {
 
   keymap() {
     return {
-      clearSnackRestarts: "ctrl+shift+9",
+      clearSnackRestarts: "\\",
     }
   }
 
