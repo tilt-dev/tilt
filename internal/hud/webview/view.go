@@ -70,17 +70,17 @@ type BuildRecord struct {
 	IsCrashRebuild bool
 }
 
-func ToWebviewBuildRecord(br model.BuildRecord) BuildRecord {
+func ToWebViewBuildRecord(br model.BuildRecord) BuildRecord {
 	return BuildRecord{
 		BuildRecord:    br,
 		IsCrashRebuild: br.Reason.IsCrashOnly(),
 	}
 }
 
-func ToWebviewBuildRecords(brs []model.BuildRecord) []BuildRecord {
+func ToWebViewBuildRecords(brs []model.BuildRecord) []BuildRecord {
 	ret := make([]BuildRecord, len(brs))
 	for i, br := range brs {
-		ret[i] = ToWebviewBuildRecord(br)
+		ret[i] = ToWebViewBuildRecord(br)
 	}
 	return ret
 }
