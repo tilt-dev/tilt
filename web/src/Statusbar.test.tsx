@@ -150,19 +150,19 @@ describe("StatusBar", () => {
       res.BuildHistory[0].Error = ""
     })
     let items = view.Resources.map((res: any) => new StatusItem(res))
-    let latestVersion = {Version: "", Date: "", Dev: false}
+    let latestVersion = { Version: "", Date: "", Dev: false }
     const tree = renderer
-        .create(
-            <MemoryRouter>
-              <Statusbar
-                  items={items}
-                  alertsUrl="/alerts"
-                  runningVersion={runningVersion}
-                  latestVersion={latestVersion}
-              />
-            </MemoryRouter>
-        )
-        .toJSON()
+      .create(
+        <MemoryRouter>
+          <Statusbar
+            items={items}
+            alertsUrl="/alerts"
+            runningVersion={runningVersion}
+            latestVersion={latestVersion}
+          />
+        </MemoryRouter>
+      )
+      .toJSON()
 
     expect(tree).toMatchSnapshot()
   })
@@ -178,17 +178,17 @@ describe("StatusBar", () => {
     let devRunningVersion = runningVersion
     devRunningVersion.Dev = true
     const tree = renderer
-        .create(
-            <MemoryRouter>
-              <Statusbar
-                  items={items}
-                  alertsUrl="/alerts"
-                  runningVersion={devRunningVersion}
-                  latestVersion={latestVersion}
-              />
-            </MemoryRouter>
-        )
-        .toJSON()
+      .create(
+        <MemoryRouter>
+          <Statusbar
+            items={items}
+            alertsUrl="/alerts"
+            runningVersion={devRunningVersion}
+            latestVersion={latestVersion}
+          />
+        </MemoryRouter>
+      )
+      .toJSON()
 
     expect(tree).toMatchSnapshot()
   })
