@@ -1,8 +1,11 @@
 package analytics
 
 import (
+	"context"
 	"testing"
 	"time"
+
+	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/wmclient/pkg/analytics"
@@ -214,4 +217,28 @@ func TestOptIn(t *testing.T) {
 			assert.Equal(t, expectedCounts, ma.Counts)
 		})
 	}
+}
+
+type testOpter struct {
+	calls []analytics.Opt
+}
+
+func (t *testOpter) SetOpt(opt analytics.Opt) error {
+	t.calls = append(t.calls, opt)
+	return nil
+}
+
+var _ AnalyticsOpter = &testOpter{}
+
+func TestOnChange(t *testing.T) {
+	to := &testOpter{}
+	_, a := NewMemoryTiltAnalytics(to)
+	st, _ := store.NewStoreForTesting()
+	state := st.LockMutableStateForTesting()
+	state.AnalyticsOpt = analytics.OptOut
+	st.UnlockMutableState()
+	ctx := context.Background()
+	a.OnChange(ctx, st)
+
+	assert.Equal(t, []analytics.Opt{analytics.OptOut}, to.calls)
 }
