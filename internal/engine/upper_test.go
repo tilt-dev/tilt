@@ -2335,6 +2335,7 @@ func (to *testOpter) waitUntilCount(t *testing.T, expectedCount int) {
 			actualCount := len(to.calls)
 			to.mu.Unlock()
 			t.Errorf("waiting for opt setting count to be %d. opt setting count is currently %d", expectedCount, actualCount)
+			t.FailNow()
 		}
 	}
 }
@@ -2419,24 +2420,24 @@ func newTestFixture(t *testing.T) *testFixture {
 	sc := &client.FakeSailClient{}
 
 	ret := &testFixture{
-		TempDirFixture: f,
-		ctx:            ctx,
-		cancel:         cancel,
-		b:              b,
-		fsWatcher:      watcher,
-		timerMaker:     &timerMaker,
-		docker:         dockerClient,
-		hud:            fakeHud,
-		log:            log,
-		store:          st,
-		bc:             bc,
-		onchangeCh:     fSub.ch,
-		fwm:            fwm,
-		cc:             cc,
-		dcc:            fakeDcc,
-		tfl:            tfl,
-		ghc:            ghc,
-		opter:          to,
+		TempDirFixture:        f,
+		ctx:                   ctx,
+		cancel:                cancel,
+		b:                     b,
+		fsWatcher:             watcher,
+		timerMaker:            &timerMaker,
+		docker:                dockerClient,
+		hud:                   fakeHud,
+		log:                   log,
+		store:                 st,
+		bc:                    bc,
+		onchangeCh:            fSub.ch,
+		fwm:                   fwm,
+		cc:                    cc,
+		dcc:                   fakeDcc,
+		tfl:                   tfl,
+		ghc:                   ghc,
+		opter:                 to,
 		tiltVersionCheckDelay: versionCheckInterval,
 	}
 
