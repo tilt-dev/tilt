@@ -17,7 +17,7 @@ up-to-date in real-time. Think `docker build && kubectl apply` or `docker-compos
 
 ## Watch: Tilt in Two Minutes
 
-[![screencast](assets/demothumb.png)](https://www.youtube.com/watch?v=1fS8K_Kn7yQ)
+[![screencast](assets/demothumb.png)](https://www.youtube.com/watch?v=oSljj0zHd7U)
 
 ## Install Tilt
 
