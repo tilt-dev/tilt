@@ -2334,7 +2334,8 @@ func (to *testOpter) waitUntilCount(t *testing.T, expectedCount int) {
 			to.mu.Lock()
 			actualCount := len(to.calls)
 			to.mu.Unlock()
-			assert.FailNow(t, "waiting for opt setting count to be %d. opt setting count is currently %d", expectedCount, actualCount)
+			t.Errorf("waiting for opt setting count to be %d. opt setting count is currently %d", expectedCount, actualCount)
+			t.FailNow()
 		}
 	}
 }
