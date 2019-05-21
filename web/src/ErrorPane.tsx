@@ -79,6 +79,10 @@ type AlertsProps = {
   resources: Array<AlertResource>
 }
 
+function logToLines(s: string) {
+  return s.split("\n").map((l, i) => <AnsiLine key={"logLine" + i} line={l} />)
+}
+
 class AlertPane extends PureComponent<AlertsProps> {
   render() {
     let formatter = timeAgoFormatter
@@ -102,7 +106,7 @@ class AlertPane extends PureComponent<AlertsProps> {
                 />
               </p>
             </header>
-            <section>{r.resourceInfo.podLog}</section>
+            <section>{logToLines(r.resourceInfo.podLog)}</section>
           </li>
         )
       } else if (r.podRestarted()) {
@@ -112,9 +116,7 @@ class AlertPane extends PureComponent<AlertsProps> {
               <p>{r.name}</p>
               <p>{`Restarts: ${r.resourceInfo.podRestarts}`}</p>
             </header>
-            <section>
-              <p>{`Last log line: ${r.resourceInfo.podLog}`}</p>
-            </section>
+            <section>{logToLines(r.resourceInfo.podLog)}</section>
           </li>
         )
       } else if (r.crashRebuild()) {
@@ -127,9 +129,7 @@ class AlertPane extends PureComponent<AlertsProps> {
               <p>{r.name}</p>
               <p>Pod crashed!</p>
             </header>
-            <section>
-              <p>{`Last log line: ${r.resourceInfo.podLog}`}</p>
-            </section>
+            <section>{logToLines(r.resourceInfo.podLog)}</section>
           </li>
         )
       }
@@ -143,11 +143,7 @@ class AlertPane extends PureComponent<AlertsProps> {
                 <TimeAgo date={lastBuild.FinishTime} formatter={formatter} />
               </p>
             </header>
-            <section>
-              {lastBuild.Log.split("\n").map((l, i) => (
-                <AnsiLine key={"logLine" + i} line={l} />
-              ))}
-            </section>
+            <section>{logToLines(lastBuild.Log)}</section>
           </li>
         )
       }
