@@ -39,45 +39,6 @@ exports[`renders multiple lines of a crash log 1`] = `
 </section>
 `;
 
-exports[`renders multiple lines of a crash log 2`] = `
-<section
-  className="ErrorPane"
->
-  <ul>
-    <li
-      className="ErrorPane-item"
-    >
-      <header>
-        <p>
-          foo
-        </p>
-        <p>
-          Pod crashed!
-        </p>
-      </header>
-      <section>
-        <code>
-          <span
-            className={null}
-            style={null}
-          >
-            Eeeeek the container crashed
-          </span>
-        </code>
-        <code>
-          <span
-            className={null}
-            style={null}
-          >
-            no but really it crashed
-          </span>
-        </code>
-      </section>
-    </li>
-  </ul>
-</section>
-`;
-
 exports[`renders no errors 1`] = `
 <section
   className="ErrorPane"

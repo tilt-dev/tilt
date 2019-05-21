@@ -205,30 +205,3 @@ it("renders multiple lines of a crash log", () => {
     .toJSON()
   expect(tree).toMatchSnapshot()
 })
-
-it("renders multiple lines of a crash log", () => {
-  const ts = "1,555,970,585,039"
-  const resources = [
-    {
-      Name: "foo",
-      CrashLog: "Eeeeek the container crashed\nno but really it crashed",
-      BuildHistory: [
-        {
-          Log: "laa dee daa I'm not an error\nseriously",
-          FinishTime: ts,
-          Error: null,
-          IsCrashRebuild: true,
-        },
-      ],
-      ResourceInfo: {
-        PodCreationTime: ts,
-        PodStatus: "ok",
-      },
-    },
-  ]
-
-  const tree = renderer
-    .create(<AlertPane resources={resources.map(r => new AlertResource(r))} />)
-    .toJSON()
-  expect(tree).toMatchSnapshot()
-})
