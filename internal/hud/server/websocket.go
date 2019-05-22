@@ -69,7 +69,8 @@ func (ws WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore) {
 	view := webview.StateToWebView(state)
 
 	if view.NeedsAnalyticsNudge && !state.AnalyticsNudgeSurfaced {
-		// Nudge surfaced for the first time!
+		// If we're showing the nudge and no one's told the engine
+		// state about it yet... tell the engine state.
 		s.Dispatch(store.AnalyticsNudgeSurfacedAction{})
 	}
 	s.RUnlockState()

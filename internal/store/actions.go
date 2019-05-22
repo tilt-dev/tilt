@@ -61,9 +61,6 @@ type AnalyticsOptAction struct {
 
 func (AnalyticsOptAction) Action() {}
 
-// Indicates nudge surfaced for the first time
-type AnalyticsNudgeSurfacedAction struct {
-	Opt analytics.Opt
-}
+type AnalyticsNudgeSurfacedAction struct{}
 
 func (AnalyticsNudgeSurfacedAction) Action() {}

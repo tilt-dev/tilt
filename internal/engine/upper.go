@@ -966,6 +966,11 @@ func handleAnalyticsOptAction(state *store.EngineState, action store.AnalyticsOp
 	state.AnalyticsOpt = action.Opt
 }
 
+// The first time we hear that the analytics nudge was surfaced, record a metric.
+// We double check !state.AnalyticsNudgeSurfaced -- i.e. that the state doesn't
+// yet know that we've surfaced the nudge -- to ensure that we only record this
+// metric once (since it's an anonymous metric, we can't slice it by e.g. # unique
+// users, so the numbers need to be as accurate as possible).
 func handleAnalyticsNudgeSurfacedAction(ctx context.Context, state *store.EngineState) {
 	if !state.AnalyticsNudgeSurfaced {
 		tiltanalytics.Get(ctx).IncrIfUnopted("analytics.nudge.surfaced")
