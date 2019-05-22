@@ -30,34 +30,37 @@ func (o Opt) String() string {
 	return fmt.Sprintf("opt[%d]", o)
 }
 
+func ParseOpt(s string) (Opt, error) {
+	for k, v := range Choices {
+		// allow "<appName> analytics opt in" to work
+		if s == v || fmt.Sprintf("opt-%s", s) == v {
+			return k, nil
+		}
+	}
+
+	return OptDefault, fmt.Errorf("unknown analytics opt: %q", s)
+}
+
 func OptStatus() (Opt, error) {
 	txt, err := readChoiceFile()
 	if err != nil {
 		return OptDefault, err
 	}
 
-	switch txt {
-	case Choices[OptIn]:
-		return OptIn, nil
-	case Choices[OptOut]:
-		return OptOut, nil
+	// throw out invalid values
+	opt, err := ParseOpt(txt)
+	if err != nil {
+		opt = OptDefault
 	}
-
-	return OptDefault, nil
+	return opt, nil
 }
 
 // SetOptStr converts the given string into an Opt enum, and records that choice
 // as the users analytics decision, returning the Opt set (and any errors).
 func SetOptStr(s string) (Opt, error) {
-	choice := OptDefault
-	for k, v := range Choices {
-		if v == s {
-			choice = k
-		}
-		// allow "<appName> analytics opt in" to work
-		if v == "opt-"+s {
-			choice = k
-		}
+	choice, err := ParseOpt(s)
+	if err != nil {
+		return OptDefault, err
 	}
 
 	return choice, SetOpt(choice)

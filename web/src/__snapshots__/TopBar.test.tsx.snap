@@ -4,89 +4,55 @@ exports[`shows sail share button 1`] = `
 <div
   className="TopBar"
 >
-  <div
-    className="AnalyticsNudge"
+  <nav
+    className="TabNav"
   >
-    <span>
-      Congrats on your first Tilt resource 🎉 Opt into analytics? (Read more
-       
-      <a
-        href="https://github.com/windmilleng/tilt#privacy"
-        target="_blank"
-      >
-        here
-      </a>
-      .) 
-    </span>
-    <span
-      className="AnalyticsNudge-buttons"
-    >
-      <button
-        onClick={[Function]}
-      >
-        Yes!
-      </button>
-      <button
-        onClick={[Function]}
-      >
-        Nope!
-      </button>
-    </span>
-  </div>
-  <div
-    className="TopBar-row"
+    <ul>
+      <li>
+        <a
+          className="tabLink "
+          href="/r/foo"
+          onClick={[Function]}
+        >
+          Logs
+        </a>
+      </li>
+      <li>
+        <a
+          className="tabLink "
+          href="/r/foo/preview"
+          onClick={[Function]}
+        >
+          Preview
+        </a>
+      </li>
+      <li>
+        <a
+          className="tabLink tabLink--errors tabLink--is-selected"
+          href="/r/foo/alerts"
+          onClick={[Function]}
+        >
+          Alerts
+          
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <span
+    className="TopBar-spacer"
   >
-    <nav
-      className="TabNav"
+     
+  </span>
+  <span
+    className="SailInfo"
+  >
+    <button
+      onClick={[Function]}
+      type="button"
     >
-      <ul>
-        <li>
-          <a
-            className="tabLink "
-            href="/r/foo"
-            onClick={[Function]}
-          >
-            Logs
-          </a>
-        </li>
-        <li>
-          <a
-            className="tabLink "
-            href="/r/foo/preview"
-            onClick={[Function]}
-          >
-            Preview
-          </a>
-        </li>
-        <li>
-          <a
-            className="tabLink tabLink--errors tabLink--is-selected"
-            href="/r/foo/alerts"
-            onClick={[Function]}
-          >
-            Alerts
-             
-            
-          </a>
-        </li>
-      </ul>
-    </nav>
-    <span
-      className="TopBar-spacer"
-    >
-       
-    </span>
-    <span
-      className="SailInfo"
-    >
-      <button
-        onClick={[Function]}
-        type="button"
-      >
-        Share me!
-      </button>
-    </span>
-  </div>
+      Share me!
+    </button>
+  </span>
 </div>
 `;
 
@@ -94,88 +60,58 @@ exports[`shows sail url 1`] = `
 <div
   className="TopBar"
 >
-  <div
-    className="AnalyticsNudge"
+  <nav
+    className="TabNav"
   >
-    <span>
-      Congrats on your first Tilt resource 🎉 Opt into analytics? (Read more
-       
-      <a
-        href="https://github.com/windmilleng/tilt#privacy"
-        target="_blank"
-      >
-        here
-      </a>
-      .) 
-    </span>
-    <span
-      className="AnalyticsNudge-buttons"
-    >
-      <button
-        onClick={[Function]}
-      >
-        Yes!
-      </button>
-      <button
-        onClick={[Function]}
-      >
-        Nope!
-      </button>
-    </span>
-  </div>
-  <div
-    className="TopBar-row"
+    <ul>
+      <li>
+        <a
+          className="tabLink "
+          href="/r/foo"
+          onClick={[Function]}
+        >
+          Logs
+        </a>
+      </li>
+      <li>
+        <a
+          className="tabLink "
+          href="/r/foo/preview"
+          onClick={[Function]}
+        >
+          Preview
+        </a>
+      </li>
+      <li>
+        <a
+          className="tabLink tabLink--errors tabLink--is-selected"
+          href="/r/foo/alerts"
+          onClick={[Function]}
+        >
+          Alerts
+          <span
+            className="tabLink-alertBadge"
+          >
+            1
+          </span>
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <span
+    className="TopBar-spacer"
   >
-    <nav
-      className="TabNav"
+     
+  </span>
+  <span
+    className="SailInfo"
+  >
+    <a
+      href="www.sail.dev/xyz"
+      target="_blank"
     >
-      <ul>
-        <li>
-          <a
-            className="tabLink "
-            href="/r/foo"
-            onClick={[Function]}
-          >
-            Logs
-          </a>
-        </li>
-        <li>
-          <a
-            className="tabLink "
-            href="/r/foo/preview"
-            onClick={[Function]}
-          >
-            Preview
-          </a>
-        </li>
-        <li>
-          <a
-            className="tabLink tabLink--errors tabLink--is-selected"
-            href="/r/foo/alerts"
-            onClick={[Function]}
-          >
-            Alerts
-             
-            (1)
-          </a>
-        </li>
-      </ul>
-    </nav>
-    <span
-      className="TopBar-spacer"
-    >
-       
-    </span>
-    <span
-      className="SailInfo"
-    >
-      <a
-        href="www.sail.dev/xyz"
-        target="_blank"
-      >
-        Share this view!
-      </a>
-    </span>
-  </div>
+      Share this view!
+    </a>
+  </span>
 </div>
 `;

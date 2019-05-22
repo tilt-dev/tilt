@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
@@ -36,6 +37,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
@@ -1585,6 +1587,7 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 		assert.Equal(t, "third string\n", ms.MostRecentPod().Log().String())
 		assert.Contains(t, ms.CombinedLog.String(), "second string\n")
 		assert.Contains(t, ms.CombinedLog.String(), "third string\n")
+		assert.Equal(t, ms.CrashLog.String(), "second string\n")
 	})
 
 	err := f.Stop()
@@ -2109,7 +2112,7 @@ func TestDockerComposeBuildCompletedDoesntSetStatusIfNotSuccessful(t *testing.T)
 func TestEmptyTiltfile(t *testing.T) {
 	f := newTestFixture(t)
 	f.WriteFile("Tiltfile", "")
-	go f.upper.Start(f.ctx, []string{}, model.TiltBuild{}, false, model.TriggerAuto, f.JoinPath("Tiltfile"), true, model.SailModeDisabled)
+	go f.upper.Start(f.ctx, []string{}, model.TiltBuild{}, false, model.TriggerAuto, f.JoinPath("Tiltfile"), true, model.SailModeDisabled, analytics.OptIn)
 	f.WaitUntil("build is set", func(st store.EngineState) bool {
 		return !st.LastTiltfileBuild.Empty()
 	})
@@ -2238,6 +2241,35 @@ func TestResetRestarts(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestSetAnalyticsOpt(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	opt := func(ia InitAction) InitAction {
+		ia.AnalyticsOpt = analytics.OptIn
+		return ia
+	}
+
+	f.Start([]model.Manifest{}, true, opt)
+	f.store.Dispatch(store.AnalyticsOptAction{Opt: analytics.OptOut})
+
+	f.WaitUntil("opted out", func(state store.EngineState) bool {
+		return state.AnalyticsOpt == analytics.OptOut
+	})
+	f.store.Dispatch(store.AnalyticsOptAction{Opt: analytics.OptIn})
+	f.WaitUntil("opted in", func(state store.EngineState) bool {
+		return state.AnalyticsOpt == analytics.OptIn
+	})
+
+	f.opter.waitUntilCount(t, 2)
+
+	err := f.Stop()
+	if !assert.NoError(t, err) {
+		return
+	}
+	assert.Equal(t, []analytics.Opt{analytics.OptOut, analytics.OptIn}, f.opter.calls)
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
@@ -2276,6 +2308,39 @@ func makeFakeTimerMaker(t *testing.T) fakeTimerMaker {
 	return fakeTimerMaker{restTimerLock, maxTimerLock, t}
 }
 
+type testOpter struct {
+	calls []analytics.Opt
+	mu    sync.Mutex
+}
+
+func (to *testOpter) SetOpt(opt analytics.Opt) error {
+	to.mu.Lock()
+	defer to.mu.Unlock()
+	to.calls = append(to.calls, opt)
+	return nil
+}
+
+func (to *testOpter) waitUntilCount(t *testing.T, expectedCount int) {
+	timeout := time.After(time.Second)
+	for {
+		select {
+		case <-time.After(5 * time.Millisecond):
+			to.mu.Lock()
+			actualCount := len(to.calls)
+			to.mu.Unlock()
+			if actualCount == expectedCount {
+				return
+			}
+		case <-timeout:
+			to.mu.Lock()
+			actualCount := len(to.calls)
+			to.mu.Unlock()
+			t.Errorf("waiting for opt setting count to be %d. opt setting count is currently %d", expectedCount, actualCount)
+			t.FailNow()
+		}
+	}
+}
+
 type testFixture struct {
 	*tempdir.TempDirFixture
 	ctx                   context.Context
@@ -2296,6 +2361,7 @@ type testFixture struct {
 	dcc                   *dockercompose.FakeDCClient
 	tfl                   tiltfile.TiltfileLoader
 	ghc                   *github.FakeClient
+	opter                 *testOpter
 	tiltVersionCheckDelay time.Duration
 
 	onchangeCh chan bool
@@ -2335,14 +2401,15 @@ func newTestFixture(t *testing.T) *testFixture {
 	fwm := NewWatchManager(watcher.newSub, timerMaker.maker())
 	pfc := NewPortForwardController(k8s)
 	ic := NewImageController(reaper)
-	an := analytics.NewMemoryAnalytics()
-	ar := ProvideAnalyticsReporter(an, st)
+	to := &testOpter{}
+	_, ta := tiltanalytics.NewMemoryTiltAnalytics(to)
+	ar := ProvideAnalyticsReporter(ta, st)
 
 	// TODO(nick): Why does this test use two different docker compose clients???
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	realDcc := dockercompose.NewDockerComposeClient(docker.Env{})
 
-	tfl := tiltfile.ProvideTiltfileLoader(an, realDcc)
+	tfl := tiltfile.ProvideTiltfileLoader(ta, realDcc, "fake-context")
 	cc := NewConfigsController(tfl)
 	dcw := NewDockerComposeEventWatcher(fakeDcc)
 	dclm := NewDockerComposeLogManager(fakeDcc)
@@ -2351,6 +2418,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	sm := NewSyncletManagerForTests(k8s, sCli)
 	hudsc := server.ProvideHeadsUpServerController(0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ghc := &github.FakeClient{}
+	sc := &client.FakeSailClient{}
 
 	ret := &testFixture{
 		TempDirFixture:        f,
@@ -2370,6 +2438,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		dcc:                   fakeDcc,
 		tfl:                   tfl,
 		ghc:                   ghc,
+		opter:                 to,
 		tiltVersionCheckDelay: versionCheckInterval,
 	}
 
@@ -2378,9 +2447,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
 
-	subs := []store.Subscriber{
-		fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc, tvc,
-	}
+	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc, sc, tvc, ta)
 	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {
@@ -2390,8 +2457,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	return ret
 }
 
-func (f *testFixture) Start(manifests []model.Manifest, watchFiles bool) {
-	f.startWithInitManifests(nil, manifests, watchFiles)
+func (f *testFixture) Start(manifests []model.Manifest, watchFiles bool, initOptions ...initOption) {
+	f.startWithInitManifests(nil, manifests, watchFiles, initOptions...)
 }
 
 // Start ONLY the specified manifests and no others (e.g. if additional manifests
@@ -2405,14 +2472,20 @@ func (f *testFixture) StartOnly(manifests []model.Manifest, watchFiles bool) {
 }
 
 // Empty `initManifests` will run start ALL manifests
-func (f *testFixture) startWithInitManifests(initManifests []model.ManifestName, manifests []model.Manifest, watchFiles bool) {
-	f.Init(InitAction{
+func (f *testFixture) startWithInitManifests(initManifests []model.ManifestName, manifests []model.Manifest, watchFiles bool, initOptions ...initOption) {
+	ia := InitAction{
 		Manifests:       manifests,
 		WatchFiles:      watchFiles,
 		TiltfilePath:    f.JoinPath("Tiltfile"),
 		ExecuteTiltfile: true,
-	})
+	}
+	for _, o := range initOptions {
+		ia = o(ia)
+	}
+	f.Init(ia)
 }
+
+type initOption func(ia InitAction) InitAction
 
 func (f *testFixture) Init(action InitAction) {
 	if action.TiltfilePath == "" {

@@ -11,17 +11,15 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 
-	"github.com/windmilleng/wmclient/pkg/analytics"
-
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/yaml"
-
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
@@ -29,6 +27,7 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
+	"github.com/windmilleng/tilt/internal/yaml"
 )
 
 const simpleDockerfile = "FROM golang:1.10"
@@ -1759,6 +1758,7 @@ func TestImageRefSuggestion(t *testing.T) {
 docker_build('gcr.typo.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 `)
+
 	w := unusedImageWarning("gcr.typo.io/foo", []string{"gcr.io/foo", "docker.io/library/golang"})
 	f.loadAssertWarnings(w)
 }
@@ -2128,6 +2128,52 @@ k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_I
 			image("gcr.io/bar"),
 		),
 	)
+}
+
+func TestExtraImageLocationDeploymentEnvVarMatch(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.dockerfile("foo-fetcher/Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo"), withEnvVars("FETCHER_IMAGE", "gcr.io/foo-fetcher")))
+	f.gitInit("")
+
+	f.file("Tiltfile", `k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', 'foo')
+docker_build('gcr.io/foo-fetcher', 'foo-fetcher', match_in_env_vars=True)
+	`)
+	f.load("foo")
+	f.assertNextManifest("foo",
+		db(
+			image("gcr.io/foo"),
+		),
+		db(
+			image("gcr.io/foo-fetcher"),
+		),
+	)
+}
+
+func TestExtraImageLocationDeploymentEnvVarDoesntMatchIfNotSpecified(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.dockerfile("foo-fetcher/Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo"), withEnvVars("FETCHER_IMAGE", "gcr.io/foo-fetcher")))
+	f.gitInit("")
+
+	f.file("Tiltfile", `k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', 'foo')
+docker_build('gcr.io/foo-fetcher', 'foo-fetcher')
+	`)
+	f.loadAssertWarnings(unusedImageWarning("gcr.io/foo-fetcher", []string{"gcr.io/foo", "docker.io/library/golang"}))
+	f.assertNextManifest("foo",
+		db(
+			image("gcr.io/foo"),
+		),
+	)
+
 }
 
 func TestK8SImageJSONPathArgs(t *testing.T) {
@@ -3168,6 +3214,27 @@ k8s_yaml(yml)
 	)
 }
 
+func TestK8sContext(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+if k8s_context() != 'fake-context':
+  fail('bad context')
+k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', 'foo')
+`)
+
+	f.load()
+	f.assertNextManifest("foo",
+		db(image("gcr.io/foo")),
+		deployment("foo"))
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
+
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
@@ -3183,9 +3250,9 @@ func newFixture(t *testing.T) *fixture {
 	out := new(bytes.Buffer)
 	ctx := output.ForkedCtxForTest(out)
 	f := tempdir.NewTempDirFixture(t)
-	an := analytics.NewMemoryAnalytics()
+	an, ta := tiltanalytics.NewMemoryTiltAnalytics(tiltanalytics.NullOpter{})
 	dcc := dockercompose.NewDockerComposeClient(docker.Env{})
-	tfl := ProvideTiltfileLoader(an, dcc)
+	tfl := ProvideTiltfileLoader(ta, dcc, "fake-context")
 
 	r := &fixture{
 		ctx:            ctx,

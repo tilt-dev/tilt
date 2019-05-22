@@ -18,6 +18,7 @@ import { TiltBuild, ResourceView } from "./types"
 import AlertPane, { AlertResource } from "./ErrorPane"
 import PreviewList from "./PreviewList"
 import { HotKeys } from "react-hotkeys"
+import AnalyticsNudge from "./AnalyticsNudge"
 
 type HudProps = {
   history: History
@@ -156,7 +157,7 @@ class HUD extends Component<HudProps, HudState> {
 
   keymap() {
     return {
-      clearSnackRestarts: "ctrl+shift+9",
+      clearSnackRestarts: "\\",
     }
   }
 
@@ -233,7 +234,6 @@ class HUD extends Component<HudProps, HudState> {
           sailEnabled={sailEnabled}
           sailUrl={sailUrl}
           numberOfAlerts={numAlerts}
-          needsNudge={needsNudge}
         />
       )
     }
@@ -307,6 +307,7 @@ class HUD extends Component<HudProps, HudState> {
     return (
       <HotKeys keyMap={this.keymap()} handlers={this.handlers()}>
         <div className="HUD">
+          <AnalyticsNudge needsNudge={needsNudge} />
           <Switch>
             <Route
               path={this.path("/r/:name/alerts")}

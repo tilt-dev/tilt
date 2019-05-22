@@ -30,7 +30,6 @@ exports[`previews resources 1`] = `
         onClick={[Function]}
       >
         Alerts
-         
         
       </a>
     </li>
@@ -68,7 +67,6 @@ exports[`shows error pane 1`] = `
         onClick={[Function]}
       >
         Alerts
-         
         
       </a>
     </li>
@@ -106,7 +104,6 @@ exports[`shows logs 1`] = `
         onClick={[Function]}
       >
         Alerts
-         
         
       </a>
     </li>
@@ -144,8 +141,11 @@ exports[`shows the number of errors in the error tab 1`] = `
         onClick={[Function]}
       >
         Alerts
-         
-        (27)
+        <span
+          className="tabLink-alertBadge"
+        >
+          27
+        </span>
       </a>
     </li>
   </ul>

@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/windmilleng/wmclient/pkg/analytics"
+
 	"github.com/davecgh/go-spew/spew"
 
 	"github.com/opentracing/opentracing-go"
@@ -27,7 +29,6 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/tilt/internal/watch"
-	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
 // When we see a file change, wait this long to see if any other files have changed, and bundle all changes together.
@@ -86,7 +87,17 @@ func (u Upper) Dispatch(action store.Action) {
 	u.store.Dispatch(action)
 }
 
-func (u Upper) Start(ctx context.Context, args []string, b model.TiltBuild, watch bool, triggerMode model.TriggerMode, fileName string, useActionWriter bool, sailMode model.SailMode) error {
+func (u Upper) Start(
+	ctx context.Context,
+	args []string,
+	b model.TiltBuild,
+	watch bool,
+	triggerMode model.TriggerMode,
+	fileName string,
+	useActionWriter bool,
+	sailMode model.SailMode,
+	analyticsOpt analytics.Opt) error {
+
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Start")
 	defer span.Finish()
 
@@ -117,6 +128,7 @@ func (u Upper) Start(ctx context.Context, args []string, b model.TiltBuild, watc
 		FinishTime:      time.Now(),
 		ExecuteTiltfile: false,
 		EnableSail:      sailMode.IsEnabled(),
+		AnalyticsOpt:    analyticsOpt,
 	})
 }
 
@@ -701,6 +713,7 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v
 	checkForPodCrash(ctx, state, ms, *podInfo)
 
 	if int(cStatus.RestartCount) > podInfo.ContainerRestarts {
+		ms.CrashLog = podInfo.CurrentLog
 		podInfo.CurrentLog = model.Log{}
 	}
 	podInfo.ContainerRestarts = int(cStatus.RestartCount)
@@ -852,11 +865,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.InitManifests = action.InitManifests
 	engineState.SailEnabled = action.EnableSail
 
-	opt, err := analytics.OptStatus()
-	if err != nil {
-		return errors.Wrap(err, "checking analytics opt in/out")
-	}
-	engineState.AnalyticsOpt = opt
+	engineState.AnalyticsOpt = action.AnalyticsOpt
 
 	if action.ExecuteTiltfile {
 		status := model.BuildRecord{

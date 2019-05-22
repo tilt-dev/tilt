@@ -12,8 +12,10 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 
-	v1 "k8s.io/api/apps/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"k8s.io/client-go/kubernetes/fake"
@@ -41,7 +43,7 @@ func TestK8sClient_WatchPodsFilterNonPods(t *testing.T) {
 	pod := fakePod(PodID("abcd"), "efgh")
 	pods := []runtime.Object{&pod}
 
-	deployment := v1.Deployment{}
+	deployment := appsv1.Deployment{}
 	input := []runtime.Object{&deployment, &pod}
 	tf.runPods(input, pods)
 }
@@ -55,22 +57,22 @@ func TestK8sClient_WatchPodsLabelsPassed(t *testing.T) {
 func TestK8sClient_WatchServices(t *testing.T) {
 	tf := newWatchTestFixture(t)
 
-	pod1 := fakePod(PodID("abcd"), "efgh")
-	pod2 := fakePod(PodID("1234"), "hieruyge")
-	pod3 := fakePod(PodID("754"), "efgh")
-	pods := []runtime.Object{&pod1, &pod2, &pod3}
-	tf.runPods(pods, pods)
+	svc1 := fakeService("svc1")
+	svc2 := fakeService("svc2")
+	svc3 := fakeService("svc3")
+	svcs := []runtime.Object{&svc1, &svc2, &svc3}
+	tf.runServices(svcs, svcs)
 }
 
 func TestK8sClient_WatchServicesFilterNonServices(t *testing.T) {
 	tf := newWatchTestFixture(t)
 
-	pod := fakePod(PodID("abcd"), "efgh")
-	pods := []runtime.Object{&pod}
+	svc := fakeService("svc1")
+	svcs := []runtime.Object{&svc}
 
-	deployment := v1.Deployment{}
-	input := []runtime.Object{&deployment, &pod}
-	tf.runPods(input, pods)
+	deployment := appsv1.Deployment{}
+	input := []runtime.Object{&deployment, &svc}
+	tf.runServices(input, svcs)
 }
 
 func TestK8sClient_WatchServicesLabelsPassed(t *testing.T) {
@@ -94,13 +96,62 @@ func TestK8sClient_WatchPodsError(t *testing.T) {
 	}
 }
 
+func TestK8sClient_WatchPodsWithNamespaceRestriction(t *testing.T) {
+	tf := newWatchTestFixture(t)
+	tf.nsRestriction = "sandbox"
+	tf.kCli.configNamespace = "sandbox"
+
+	pod1 := fakePod(PodID("pod1"), "image1")
+	pod1.Namespace = "sandbox"
+
+	input := []runtime.Object{&pod1}
+	expected := []runtime.Object{&pod1}
+	tf.runPods(input, expected)
+}
+
+func TestK8sClient_WatchPodsBlockedByNamespaceRestriction(t *testing.T) {
+	tf := newWatchTestFixture(t)
+	tf.nsRestriction = "sandbox"
+	tf.kCli.configNamespace = ""
+
+	_, err := tf.kCli.WatchPods(tf.ctx, labels.Set{}.AsSelector())
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Code: 403")
+	}
+}
+
+func TestK8sClient_WatchServicesWithNamespaceRestriction(t *testing.T) {
+	tf := newWatchTestFixture(t)
+	tf.nsRestriction = "sandbox"
+	tf.kCli.configNamespace = "sandbox"
+
+	svc1 := fakeService("svc1")
+	svc1.Namespace = "sandbox"
+
+	input := []runtime.Object{&svc1}
+	expected := []runtime.Object{&svc1}
+	tf.runServices(input, expected)
+}
+
+func TestK8sClient_WatchServicesBlockedByNamespaceRestriction(t *testing.T) {
+	tf := newWatchTestFixture(t)
+	tf.nsRestriction = "sandbox"
+	tf.kCli.configNamespace = ""
+
+	_, err := tf.kCli.WatchServices(tf.ctx, nil)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Code: 403")
+	}
+}
+
 type watchTestFixture struct {
 	t                 *testing.T
-	kCli              Client
+	kCli              K8sClient
 	w                 *watch.FakeWatcher
 	watchRestrictions k8stesting.WatchRestrictions
 	ctx               context.Context
 	watchErr          error
+	nsRestriction     Namespace
 }
 
 func newWatchTestFixture(t *testing.T) *watchTestFixture {
@@ -114,6 +165,12 @@ func newWatchTestFixture(t *testing.T) *watchTestFixture {
 
 	wr := func(action k8stesting.Action) (handled bool, wi watch.Interface, err error) {
 		wa := action.(k8stesting.WatchAction)
+		nsRestriction := ret.nsRestriction
+		if !nsRestriction.Empty() && wa.GetNamespace() != nsRestriction.String() {
+			return true, nil, &apiErrors.StatusError{
+				ErrStatus: metav1.Status{Code: http.StatusForbidden},
+			}
+		}
 		ret.watchRestrictions = wa.GetWatchRestrictions()
 		if ret.watchErr != nil {
 			return true, nil, ret.watchErr
@@ -159,7 +216,7 @@ func (tf *watchTestFixture) runPods(input []runtime.Object, expectedOutput []run
 				observedPods = append(observedPods, pod)
 			}
 		case <-timeout:
-			tf.t.Fatal("test timed out")
+			tf.t.Fatalf("test timed out\nExpected pods: %v\nObserved pods: %v\n", expectedOutput, observedPods)
 		default:
 			if len(observedPods) == len(expectedOutput) {
 				done = true
@@ -225,4 +282,12 @@ func (tf *watchTestFixture) testServiceLabels(input []model.LabelPair, expectedL
 	}
 	expectedLabelSelector := labels.SelectorFromSet(ls)
 	assert.Equal(tf.t, expectedLabelSelector, tf.watchRestrictions.Labels)
+}
+
+func fakeService(name string) v1.Service {
+	return v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+	}
 }

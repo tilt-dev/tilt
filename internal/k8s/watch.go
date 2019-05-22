@@ -23,17 +23,17 @@ type watcher interface {
 	Watch(options metav1.ListOptions) (watch.Interface, error)
 }
 
-func (kCli K8sClient) makeWatcher(f watcherFactory, ls labels.Selector) (watch.Interface, error) {
+func (kCli K8sClient) makeWatcher(f watcherFactory, ls labels.Selector) (watch.Interface, Namespace, error) {
 	// passing "" gets us all namespaces
 	watcher, err := f("").Watch(metav1.ListOptions{LabelSelector: ls.String()})
 	if err == nil {
-		return watcher, nil
+		return watcher, "", nil
 	}
 
 	// If the request failed, we might be able to recover.
 	statusErr, isStatusErr := err.(*apiErrors.StatusError)
 	if !isStatusErr {
-		return nil, err
+		return nil, "", err
 	}
 
 	status := statusErr.ErrStatus
@@ -42,19 +42,19 @@ func (kCli K8sClient) makeWatcher(f watcherFactory, ls labels.Selector) (watch.I
 		// Let's narrow our request to just the config namespace, and see if that helps.
 		watcher, err := f(kCli.configNamespace.String()).Watch(metav1.ListOptions{LabelSelector: ls.String()})
 		if err == nil {
-			return watcher, nil
+			return watcher, kCli.configNamespace, nil
 		}
 
 		// ugh, it still failed. return the original error.
 	}
-	return nil, fmt.Errorf("%s, Reason: %s, Code: %d", status.Message, status.Reason, status.Code)
+	return nil, "", fmt.Errorf("%s, Reason: %s, Code: %d", status.Message, status.Reason, status.Code)
 }
 
 func (kCli K8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan *v1.Pod, error) {
 	// HACK(dmiller): There's no way to get errors out of an informer. See https://github.com/kubernetes/client-go/issues/155
 	// In the meantime, at least to get authorization and some other errors let's try to set up a watcher and then just
 	// throw it away.
-	watcher, err := kCli.makeWatcher(func(ns string) watcher {
+	watcher, ns, err := kCli.makeWatcher(func(ns string) watcher {
 		return kCli.core.Pods(ns)
 	}, ls)
 	if err != nil {
@@ -62,9 +62,16 @@ func (kCli K8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan
 	}
 	watcher.Stop()
 
-	factory := informers.NewSharedInformerFactoryWithOptions(kCli.clientSet, 5*time.Second, informers.WithTweakListOptions(func(o *metav1.ListOptions) {
+	options := []informers.SharedInformerOption{}
+	options = append(options, informers.WithTweakListOptions(func(o *metav1.ListOptions) {
 		o.LabelSelector = ls.String()
 	}))
+
+	if ns != "" {
+		options = append(options, informers.WithNamespace(ns.String()))
+	}
+
+	factory := informers.NewSharedInformerFactoryWithOptions(kCli.clientSet, 5*time.Second, options...)
 	informer := factory.Core().V1().Pods().Informer()
 
 	stopper := make(chan struct{})
@@ -121,7 +128,7 @@ func (kCli K8sClient) WatchServices(ctx context.Context, lps []model.LabelPair) 
 		ls[lp.Key] = lp.Value
 	}
 
-	watcher, err := kCli.makeWatcher(func(ns string) watcher {
+	watcher, _, err := kCli.makeWatcher(func(ns string) watcher {
 		return kCli.core.Services(ns)
 	}, ls.AsSelector())
 	if err != nil {

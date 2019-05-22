@@ -7,7 +7,7 @@
   bottom: $statusbar-height;
   width: $sidebar-width;
   background-color: $color-gray;
-  border-left: 2px solid $color-gray-lightest;
+  border-left: 1px solid rgba($color-white, $translucent-ish);
   box-sizing: border-box;
   overflow-y: auto;
   transform: translateX(0%);
@@ -53,12 +53,12 @@
   background-color: $color-white;
   color: $color-gray;
 }
-.resLink.has-warnings::after {
-  content: "⚠";
-  margin-top: -5px;
-  margin-left: $spacing-unit / 2;
-  font-size: 30px;
-  color: $color-yellow;
+.resLink.has-warnings::before {
+  content: "";
+  position: absolute;
+  width: 5px;
+  height: $sidebar-item;
+  background-color: $color-yellow;
 }
 .resLink--all {
   text-transform: uppercase;
@@ -117,7 +117,7 @@
   animation-timing-function: linear;
 }
 .resLink--pending .resLink-icon {
-  fill: $color-gray-light;
+  fill: $color-gray-lightest;
 }
 .resLink--error .resLink-icon {
   fill: $color-red;
@@ -125,7 +125,33 @@
 .resLink-name {
   flex: 1 0 auto;
 }
-.resLink time {
+.resLink-alertBadge {
+  font-family: $font-sans-serif;
+  font-size: $font-size-smallest;
+  background-color: $color-white;
+  color: $color-gray-darkest;
+  border-radius: $alert-badge;
+  width: $alert-badge;
+  height: $alert-badge;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: $spacing-unit / 2;
+}
+
+.resLink--all-name {
+  flex: 1;
+}
+
+.resLink--all .resLink-alertBadge {
+  align-items: right;
+}
+.resLink.is-selected .resLink-alertBadge {
+  background-color: $color-gray-darkest;
+  color: $color-white;
+}
+
+.resLink-timeAgo {
   font-weight: normal;
   color: $color-gray-lightest;
   margin-right: $spacing-unit / 2;

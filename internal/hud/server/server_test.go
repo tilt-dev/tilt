@@ -2,18 +2,20 @@ package server_test
 
 import (
 	"bytes"
-	"fmt"
+	"context"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/wmclient/pkg/analytics"
+
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/assets"
-	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
 func TestHandleAnalyticsEmptyRequest(t *testing.T) {
@@ -142,9 +144,8 @@ func TestHandleAnalyticsOptIn(t *testing.T) {
 			status, http.StatusOK)
 	}
 
-	if assert.Len(t, f.o.callStrs, 1) {
-		assert.Equal(t, "opt-in", f.o.callStrs[0])
-	}
+	action := store.WaitForAction(t, reflect.TypeOf(store.AnalyticsOptAction{}), f.getActions)
+	assert.Equal(t, store.AnalyticsOptAction{Opt: analytics.OptIn}, action)
 }
 
 func TestHandleAnalyticsOptNonPost(t *testing.T) {
@@ -185,31 +186,6 @@ func TestHandleAnalyticsOptMalformedPayload(t *testing.T) {
 	if status := rr.Code; status != http.StatusBadRequest {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusBadRequest)
-	}
-}
-
-func TestHandleAnalyticsOptSetError(t *testing.T) {
-	f := newTestFixture(t)
-	f.o.nextErr = fmt.Errorf("oh nooooooooes")
-	var jsonStr = []byte(`{"opt": "opt-in"}`)
-	req, err := http.NewRequest(http.MethodPost, "/api/analytics_opt", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.s.HandleAnalyticsOpt)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusInternalServerError {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusInternalServerError)
-	}
-
-	if assert.Len(t, f.o.callStrs, 1) {
-		assert.Equal(t, "opt-in", f.o.callStrs[0])
 	}
 }
 
@@ -276,26 +252,27 @@ func TestResetRestartsNoParam(t *testing.T) {
 }
 
 type serverFixture struct {
-	t       *testing.T
-	s       *server.HeadsUpServer
-	a       *analytics.MemoryAnalytics
-	sailCli *client.FakeSailClient
-	o       *testOpter
+	t          *testing.T
+	s          *server.HeadsUpServer
+	a          *analytics.MemoryAnalytics
+	sailCli    *client.FakeSailClient
+	getActions func() []store.Action
 }
 
 func newTestFixture(t *testing.T) *serverFixture {
-	st := store.NewStore(engine.UpperReducer, store.LogActionsFlag(false))
+	st, getActions := store.NewStoreForTesting()
+	go st.Loop(context.Background())
 	a := analytics.NewMemoryAnalytics()
+	a, ta := tiltanalytics.NewMemoryTiltAnalytics(tiltanalytics.NullOpter{})
 	sailCli := client.NewFakeSailClient()
-	o := newTestOpter()
-	s := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), a, sailCli, o)
+	s := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, sailCli)
 
 	return &serverFixture{
-		t:       t,
-		s:       s,
-		a:       a,
-		sailCli: sailCli,
-		o:       o,
+		t:          t,
+		s:          s,
+		a:          a,
+		sailCli:    sailCli,
+		getActions: getActions,
 	}
 }
 
@@ -308,25 +285,4 @@ func (f *serverFixture) assertIncrement(name string, count int) {
 	}
 
 	assert.Equalf(f.t, count, runningCount, "Expected the total count to be %d, got %d", count, runningCount)
-}
-
-type testOpter struct {
-	nextErr  error
-	callStrs []string
-}
-
-var _ server.AnalyticsOpter = &testOpter{}
-
-func newTestOpter() *testOpter { return &testOpter{} }
-
-func (o *testOpter) SetOptStr(s string) error {
-	o.callStrs = append(o.callStrs, s)
-
-	if o.nextErr != nil {
-		err := o.nextErr
-		o.nextErr = nil
-		return err
-	}
-
-	return nil
 }

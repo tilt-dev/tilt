@@ -8,20 +8,17 @@ import (
 	"time"
 
 	"github.com/docker/distribution/reference"
-
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/dockerfile"
-	"github.com/windmilleng/tilt/internal/store"
-
-	"github.com/pkg/errors"
-
 	"github.com/opentracing/opentracing-go"
-	"github.com/windmilleng/wmclient/pkg/analytics"
+	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 
+	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 )
 
@@ -51,7 +48,7 @@ type ImageBuildAndDeployer struct {
 	k8sClient     k8s.Client
 	env           k8s.Env
 	runtime       container.Runtime
-	analytics     analytics.Analytics
+	analytics     *analytics.TiltAnalytics
 	injectSynclet bool
 	clock         build.Clock
 	kp            KINDPusher
@@ -63,7 +60,7 @@ func NewImageBuildAndDeployer(
 	customBuilder build.CustomBuilder,
 	k8sClient k8s.Client,
 	env k8s.Env,
-	analytics analytics.Analytics,
+	analytics *analytics.TiltAnalytics,
 	updMode UpdateMode,
 	c build.Clock,
 	runtime container.Runtime,

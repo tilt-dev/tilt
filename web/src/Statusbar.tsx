@@ -112,7 +112,9 @@ class Statusbar extends PureComponent<StatusBarProps> {
     let content: ReactElement = <LogoSvg className="Statusbar-logo" />
     if (
       latestVersion &&
+      latestVersion.Version &&
       runningVersion &&
+      runningVersion.Version &&
       !runningVersion.Dev &&
       runningVersion.Version != latestVersion.Version
     ) {

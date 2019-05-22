@@ -5,8 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/windmilleng/wmclient/pkg/analytics"
-
+	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/store"
 )
 
@@ -14,7 +13,7 @@ import (
 const analyticsReportingInterval = time.Hour * 1
 
 type AnalyticsReporter struct {
-	a       analytics.Analytics
+	a       *analytics.TiltAnalytics
 	store   *store.Store
 	started bool
 }
@@ -45,7 +44,7 @@ func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore) {
 
 var _ store.Subscriber = &AnalyticsReporter{}
 
-func ProvideAnalyticsReporter(a analytics.Analytics, st *store.Store) *AnalyticsReporter {
+func ProvideAnalyticsReporter(a *analytics.TiltAnalytics, st *store.Store) *AnalyticsReporter {
 	return &AnalyticsReporter{a, st, false}
 }
 

@@ -74,16 +74,17 @@ func StateToWebView(s store.EngineState) View {
 			DirectoriesWatched: relWatchDirs,
 			PathsWatched:       relWatchPaths,
 			LastDeployTime:     ms.LastSuccessfulDeployTime,
-			BuildHistory:       buildHistory,
+			BuildHistory:       ToWebViewBuildRecords(buildHistory),
 			PendingBuildEdits:  pendingBuildEdits,
 			PendingBuildSince:  pendingBuildSince,
 			PendingBuildReason: ms.NextBuildReason(),
-			CurrentBuild:       currentBuild,
+			CurrentBuild:       ToWebViewBuildRecord(currentBuild),
 			Endpoints:          endpoints,
 			PodID:              podID,
 			ResourceInfo:       resourceInfoView(mt),
 			ShowBuildStatus:    len(mt.Manifest.ImageTargets) > 0 || mt.Manifest.IsDC(),
 			CombinedLog:        ms.CombinedLog,
+			CrashLog:           ms.CrashLog,
 		}
 
 		r.RuntimeStatus = runtimeStatus(r.ResourceInfo)
@@ -112,9 +113,9 @@ func tiltfileResourceView(s store.EngineState) Resource {
 	tr := Resource{
 		Name:         view.TiltfileResourceName,
 		IsTiltfile:   true,
-		CurrentBuild: s.CurrentTiltfileBuild,
-		BuildHistory: []model.BuildRecord{
-			ltfb,
+		CurrentBuild: ToWebViewBuildRecord(s.CurrentTiltfileBuild),
+		BuildHistory: []BuildRecord{
+			ToWebViewBuildRecord(ltfb),
 		},
 		CombinedLog:   s.TiltfileCombinedLog,
 		RuntimeStatus: RuntimeStatusOK,

@@ -46,6 +46,8 @@ func (pID PodID) String() string { return string(pID) }
 
 func (nID NodeID) String() string { return string(nID) }
 
+func (n Namespace) Empty() bool { return n == "" }
+
 func (n Namespace) String() string {
 	if n == "" {
 		return string(DefaultNamespace)

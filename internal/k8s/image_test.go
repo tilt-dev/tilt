@@ -243,19 +243,19 @@ func TestEntityHasImage(t *testing.T) {
 	img := container.MustParseSelector("gcr.io/blorg-dev/blorg-backend:devel-nick")
 	wrongImg := container.MustParseSelector("gcr.io/blorg-dev/wrong-app-whoops:devel-nick")
 
-	match, err := entities[0].HasImage(img, nil)
+	match, err := entities[0].HasImage(img, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.False(t, match, "service yaml should not match (does not contain image)")
 
-	match, err = entities[1].HasImage(img, nil)
+	match, err = entities[1].HasImage(img, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.True(t, match, "deployment yaml should match image %s", img.String())
 
-	match, err = entities[1].HasImage(wrongImg, nil)
+	match, err = entities[1].HasImage(wrongImg, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,11 +273,31 @@ func TestEntityHasImage(t *testing.T) {
 		t.Fatal(err)
 	}
 	imageJSONPaths := []JSONPath{jp}
-	match, err = e.HasImage(img, imageJSONPaths)
+	match, err = e.HasImage(img, imageJSONPaths, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.True(t, match, "CRD yaml should match image %s", img.String())
+
+	entities, err = ParseYAMLFromString(testyaml.SanchoImageInEnvYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	img = container.MustParseSelector("gcr.io/some-project-162817/sancho")
+	e = entities[0]
+	match, err = e.HasImage(img, nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.True(t, match, "deployment yaml should match image %s", img.String())
+	img2 := container.MustParseSelector("gcr.io/some-project-162817/sancho2")
+	e = entities[0]
+	match, err = e.HasImage(img2, nil, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.True(t, match, "CRD yaml should match image %s", img2.String())
+
 }
 
 func TestInjectDigestEnvVar(t *testing.T) {

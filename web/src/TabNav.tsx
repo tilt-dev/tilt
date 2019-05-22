@@ -48,10 +48,14 @@ class TabNav extends PureComponent<NavProps> {
               }`}
               to={this.props.alertsUrl}
             >
-              Alerts{" "}
-              {this.props.numberOfAlerts > 0
-                ? `(${this.props.numberOfAlerts})`
-                : ""}
+              Alerts
+              {this.props.numberOfAlerts > 0 ? (
+                <span className="tabLink-alertBadge">
+                  {this.props.numberOfAlerts}
+                </span>
+              ) : (
+                ""
+              )}
             </Link>
           </li>
         </ul>

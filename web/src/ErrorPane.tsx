@@ -5,34 +5,39 @@ import TimeAgo from "react-timeago"
 import "./ErrorPane.scss"
 import { zeroTime } from "./time"
 import { Build } from "./types"
+import { timeAgoFormatter } from "./timeFormatters"
 
 class AlertResource {
   public name: string
   public buildHistory: Array<Build>
   public resourceInfo: ResourceInfo
+  public crashLog: string
 
   constructor(resource: any) {
     this.name = resource.Name
     this.buildHistory = resource.BuildHistory
+    this.crashLog = resource.CrashLog
     if (resource.ResourceInfo) {
       this.resourceInfo = {
         podCreationTime: resource.ResourceInfo.PodCreationTime,
         podStatus: resource.ResourceInfo.PodStatus,
         podRestarts: resource.ResourceInfo.PodRestarts,
-        podLog: resource.ResourceInfo.PodLog,
       }
     } else {
       this.resourceInfo = {
         podCreationTime: zeroTime,
         podStatus: "",
         podRestarts: 0,
-        podLog: "",
       }
     }
   }
 
   public hasAlert() {
     return this.podStatusIsError() || this.podRestarted() || this.buildFailed()
+  }
+
+  public crashRebuild() {
+    return this.buildHistory.length > 0 && this.buildHistory[0].IsCrashRebuild
   }
 
   public podStatusIsError() {
@@ -52,7 +57,7 @@ class AlertResource {
 
   public numberOfAlerts(): number {
     let num = 0
-    if (this.podStatusIsError() || this.podRestarted()) {
+    if (this.podStatusIsError() || this.podRestarted() || this.crashRebuild()) {
       num++
     }
     if (this.buildFailed()) {
@@ -67,15 +72,19 @@ type ResourceInfo = {
   podCreationTime: string
   podStatus: string
   podRestarts: number
-  podLog: string
 }
 
 type AlertsProps = {
   resources: Array<AlertResource>
 }
 
+function logToLines(s: string) {
+  return s.split("\n").map((l, i) => <AnsiLine key={"logLine" + i} line={l} />)
+}
+
 class AlertPane extends PureComponent<AlertsProps> {
   render() {
+    let formatter = timeAgoFormatter
     let el = (
       <section className="Pane-empty-message">
         <LogoWordmarkSvg />
@@ -89,9 +98,14 @@ class AlertPane extends PureComponent<AlertsProps> {
           <li key={"resourceInfoError" + r.name} className="ErrorPane-item">
             <header>
               <p>{r.name}</p>
-              <p>{r.resourceInfo.podCreationTime}</p>
+              <p>
+                <TimeAgo
+                  date={r.resourceInfo.podCreationTime}
+                  formatter={formatter}
+                />
+              </p>
             </header>
-            <section>{r.resourceInfo.podLog}</section>
+            <section>{logToLines(r.crashLog)}</section>
           </li>
         )
       } else if (r.podRestarted()) {
@@ -100,11 +114,21 @@ class AlertPane extends PureComponent<AlertsProps> {
             <header>
               <p>{r.name}</p>
               <p>{`Restarts: ${r.resourceInfo.podRestarts}`}</p>
-              <p>{r.resourceInfo.podCreationTime}</p>
             </header>
-            <section>
-              <p>{`Last log line: ${r.resourceInfo.podLog}`}</p>
-            </section>
+            <section>{logToLines(r.crashLog)}</section>
+          </li>
+        )
+      } else if (r.crashRebuild()) {
+        errorElements.push(
+          <li
+            key={"resourceInfoCrashRebuild" + r.name}
+            className="ErrorPane-item"
+          >
+            <header>
+              <p>{r.name}</p>
+              <p>Pod crashed!</p>
+            </header>
+            <section>{logToLines(r.crashLog)}</section>
           </li>
         )
       }
@@ -115,14 +139,10 @@ class AlertPane extends PureComponent<AlertsProps> {
             <header>
               <p>{r.name}</p>
               <p>
-                <TimeAgo date={lastBuild.FinishTime} />
+                <TimeAgo date={lastBuild.FinishTime} formatter={formatter} />
               </p>
             </header>
-            <section>
-              {lastBuild.Log.split("\n").map((l, i) => (
-                <AnsiLine key={"logLine" + i} line={l} />
-              ))}
-            </section>
+            <section>{logToLines(lastBuild.Log)}</section>
           </li>
         )
       }

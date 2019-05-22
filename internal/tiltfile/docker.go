@@ -24,6 +24,7 @@ type dockerImage struct {
 	entrypoint         string
 	cachePaths         []string
 	hotReload          bool
+	matchInEnvVars     bool
 
 	dbDockerfilePath localPath
 	dbDockerfile     dockerfile.Dockerfile
@@ -75,6 +76,7 @@ func (d *dockerImage) Type() dockerImageBuildType {
 func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef string
 	var contextVal, dockerfilePathVal, buildArgs, dockerfileContentsVal, cacheVal, liveUpdateVal starlark.Value
+	var matchInEnvVars bool
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
 		"context", &contextVal,
@@ -83,6 +85,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		"dockerfile_contents?", &dockerfileContentsVal,
 		"cache?", &cacheVal,
 		"live_update?", &liveUpdateVal,
+		"match_in_env_vars?", &matchInEnvVars,
 	); err != nil {
 		return nil, err
 	}
@@ -163,6 +166,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		dbBuildArgs:      sba,
 		cachePaths:       cachePaths,
 		liveUpdate:       liveUpdate,
+		matchInEnvVars:   matchInEnvVars,
 	}
 	err = s.buildIndex.addImage(r)
 	if err != nil {
@@ -193,6 +197,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	var tag string
 	var disablePush bool
 	var liveUpdateVal starlark.Value
+	var matchInEnvVars bool
 
 	err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
@@ -201,6 +206,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		"tag?", &tag,
 		"disable_push?", &disablePush,
 		"live_update?", &liveUpdateVal,
+		"match_in_env_vars?", &matchInEnvVars,
 	)
 	if err != nil {
 		return nil, err
@@ -243,6 +249,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		customTag:        tag,
 		disablePush:      disablePush,
 		liveUpdate:       liveUpdate,
+		matchInEnvVars:   matchInEnvVars,
 	}
 
 	err = s.buildIndex.addImage(img)

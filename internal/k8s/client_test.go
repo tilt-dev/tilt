@@ -24,6 +24,20 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
+func TestEmptyNamespace(t *testing.T) {
+	var emptyNamespace Namespace
+	assert.True(t, emptyNamespace.Empty())
+	assert.True(t, emptyNamespace == "")
+	assert.Equal(t, "default", emptyNamespace.String())
+}
+
+func TestNotEmptyNamespace(t *testing.T) {
+	var ns Namespace = "x"
+	assert.False(t, ns.Empty())
+	assert.False(t, ns == "")
+	assert.Equal(t, "x", ns.String())
+}
+
 func TestUpsert(t *testing.T) {
 	f := newClientTestFixture(t)
 	postgres, err := ParseYAMLFromString(testyaml.PostgresYAML)
