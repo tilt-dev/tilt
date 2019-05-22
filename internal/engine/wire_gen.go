@@ -14,6 +14,7 @@ import (
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/wmclient/pkg/dirs"
@@ -95,7 +96,8 @@ func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	if err != nil {
 		return nil, err
 	}
-	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
+	level := provideKubectlLogLevelInfo()
+	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, level)
 	client := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
 	minikubeClient := minikube.ProvideMinikubeClient()
@@ -139,3 +141,7 @@ var DeployerWireSet = wire.NewSet(
 	DeployerBaseWireSet,
 	NewSyncletManager,
 )
+
+func provideKubectlLogLevelInfo() k8s.KubectlLogLevel {
+	return k8s.KubectlLogLevel(logger.InfoLvl)
+}

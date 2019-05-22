@@ -48,9 +48,3 @@ func (k realKubectlRunner) execWithStdin(ctx context.Context, args []string, std
 	err = c.Run()
 	return stdoutBuf.String(), stderrBuf.String(), err
 }
-
-func ProvideKubectlRunner(kubeContext KubeContext) kubectlRunner {
-	return realKubectlRunner{
-		kubeContext: kubeContext,
-	}
-}

@@ -63,7 +63,8 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	if err != nil {
 		return demo.Script{}, err
 	}
-	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
+	level := provideKubectlLogLevel()
+	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, level)
 	k8sClient := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	podWatcher := engine.NewPodWatcher(k8sClient)
 	nodeIP, err := k8s.DetectNodeIP(ctx, env)
@@ -193,7 +194,8 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	if err != nil {
 		return Threads{}, err
 	}
-	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
+	level := provideKubectlLogLevel()
+	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, level)
 	k8sClient := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	podWatcher := engine.NewPodWatcher(k8sClient)
 	nodeIP, err := k8s.DetectNodeIP(ctx, env)
@@ -287,24 +289,6 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	return threads, nil
 }
 
-func wireK8sClient(ctx context.Context) (k8s.Client, error) {
-	clientConfig := k8s.ProvideClientConfig()
-	config, err := k8s.ProvideKubeConfig(clientConfig)
-	if err != nil {
-		return nil, err
-	}
-	env := k8s.ProvideEnv(config)
-	portForwarder := k8s.ProvidePortForwarder()
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
-	kubeContext, err := k8s.ProvideKubeContext(config)
-	if err != nil {
-		return nil, err
-	}
-	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
-	k8sClient := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
-	return k8sClient, nil
-}
-
 func wireKubeContext(ctx context.Context) (k8s.KubeContext, error) {
 	clientConfig := k8s.ProvideClientConfig()
 	config, err := k8s.ProvideKubeConfig(clientConfig)
@@ -356,7 +340,8 @@ func wireRuntime(ctx context.Context) (container.Runtime, error) {
 	if err != nil {
 		return "", err
 	}
-	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
+	level := provideKubectlLogLevel()
+	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, level)
 	k8sClient := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, k8sClient)
 	return runtime, nil
@@ -392,7 +377,8 @@ func wireDockerVersion(ctx context.Context) (types.Version, error) {
 	if err != nil {
 		return types.Version{}, err
 	}
-	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
+	level := provideKubectlLogLevel()
+	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, level)
 	k8sClient := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, k8sClient)
 	minikubeClient := minikube.ProvideMinikubeClient()
@@ -424,7 +410,8 @@ func wireDockerEnv(ctx context.Context) (docker.Env, error) {
 	if err != nil {
 		return docker.Env{}, err
 	}
-	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
+	level := provideKubectlLogLevel()
+	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, level)
 	k8sClient := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, k8sClient)
 	minikubeClient := minikube.ProvideMinikubeClient()
@@ -452,7 +439,8 @@ func wireDownDeps(ctx context.Context) (DownDeps, error) {
 	if err != nil {
 		return DownDeps{}, err
 	}
-	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
+	level := provideKubectlLogLevel()
+	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, level)
 	k8sClient := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, k8sClient)
 	minikubeClient := minikube.ProvideMinikubeClient()
@@ -471,7 +459,8 @@ func wireDownDeps(ctx context.Context) (DownDeps, error) {
 var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.DetectNodeIP, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientSet, k8s.ProvideRESTConfig, k8s.ProvidePortForwarder, k8s.ProvideConfigNamespace, k8s.ProvideKubectlRunner, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient)
 
 var BaseWireSet = wire.NewSet(
-	K8sWireSet, docker.ProvideDockerClient, docker.ProvideDockerVersion, docker.DefaultClient, wire.Bind(new(docker.Client), new(docker.Cli)), dockercompose.NewDockerComposeClient, build.NewImageReaper, tiltfile.ProvideTiltfileLoader, engine.DeployerWireSet, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, engine.NewPodWatcher, engine.NewServiceWatcher, engine.NewImageController, engine.NewConfigsController, engine.NewDockerComposeEventWatcher, engine.NewDockerComposeLogManager, engine.NewProfilerManager, engine.NewGithubClientFactory, engine.NewTiltVersionChecker, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(store.Store)), provideTiltInfo, engine.ProvideSubscribers, engine.NewUpper, provideAnalytics, engine.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, provideWebVersion,
+	K8sWireSet,
+	provideKubectlLogLevel, docker.ProvideDockerClient, docker.ProvideDockerVersion, docker.DefaultClient, wire.Bind(new(docker.Client), new(docker.Cli)), dockercompose.NewDockerComposeClient, build.NewImageReaper, tiltfile.ProvideTiltfileLoader, engine.DeployerWireSet, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, engine.NewPodWatcher, engine.NewServiceWatcher, engine.NewImageController, engine.NewConfigsController, engine.NewDockerComposeEventWatcher, engine.NewDockerComposeLogManager, engine.NewProfilerManager, engine.NewGithubClientFactory, engine.NewTiltVersionChecker, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(store.Store)), provideTiltInfo, engine.ProvideSubscribers, engine.NewUpper, provideAnalytics, engine.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, provideWebVersion,
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
