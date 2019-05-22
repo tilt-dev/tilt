@@ -2,11 +2,11 @@
 
 exports[`renders multiple lines of a crash log 1`] = `
 <section
-  className="ErrorPane"
+  className="AlertPane"
 >
   <ul>
     <li
-      className="ErrorPane-item"
+      className="AlertPane-item"
     >
       <header>
         <p>
@@ -41,7 +41,7 @@ exports[`renders multiple lines of a crash log 1`] = `
 
 exports[`renders no errors 1`] = `
 <section
-  className="ErrorPane"
+  className="AlertPane"
 >
   <section
     className="Pane-empty-message"
@@ -58,11 +58,11 @@ exports[`renders no errors 1`] = `
 
 exports[`renders one build error 1`] = `
 <section
-  className="ErrorPane"
+  className="AlertPane"
 >
   <ul>
     <li
-      className="ErrorPane-item"
+      className="AlertPane-item"
     >
       <header>
         <p>
@@ -102,11 +102,11 @@ exports[`renders one build error 1`] = `
 
 exports[`renders one container start error 1`] = `
 <section
-  className="ErrorPane"
+  className="AlertPane"
 >
   <ul>
     <li
-      className="ErrorPane-item"
+      className="AlertPane-item"
     >
       <header>
         <p>
@@ -138,11 +138,11 @@ exports[`renders one container start error 1`] = `
 
 exports[`renders one container start error 2`] = `
 <section
-  className="ErrorPane"
+  className="AlertPane"
 >
   <ul>
     <li
-      className="ErrorPane-item"
+      className="AlertPane-item"
     >
       <header>
         <p>
@@ -174,11 +174,11 @@ exports[`renders one container start error 2`] = `
 
 exports[`renders the last build with an error 1`] = `
 <section
-  className="ErrorPane"
+  className="AlertPane"
 >
   <ul>
     <li
-      className="ErrorPane-item"
+      className="AlertPane-item"
     >
       <header>
         <p>
@@ -218,11 +218,11 @@ exports[`renders the last build with an error 1`] = `
 
 exports[`shows that a container has restarted 1`] = `
 <section
-  className="ErrorPane"
+  className="AlertPane"
 >
   <ul>
     <li
-      className="ErrorPane-item"
+      className="AlertPane-item"
     >
       <header>
         <p>
@@ -249,11 +249,11 @@ exports[`shows that a container has restarted 1`] = `
 
 exports[`shows that a crash rebuild has occurred 1`] = `
 <section
-  className="ErrorPane"
+  className="AlertPane"
 >
   <ul>
     <li
-      className="ErrorPane-item"
+      className="AlertPane-item"
     >
       <header>
         <p>
