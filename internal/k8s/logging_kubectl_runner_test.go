@@ -59,6 +59,29 @@ func TestLoggingKubectlRunnerStdin(t *testing.T) {
 	assert.Contains(t, l, `stdin: 'some yaml'`)
 }
 
+func TestLoggingKubectlRunnerStdinLogLevelNone(t *testing.T) {
+	f := newLoggingKubectlRunnerFixture()
+
+	input := "some yaml"
+	f.fakeRunner.stdout = "foo"
+	f.fakeRunner.stderr = "bar"
+	f.runner.logLevel = logger.NoneLvl
+	stdout, stderr, err := f.runner.execWithStdin(f.ctx, []string{"hello", "goodbye"}, strings.NewReader(input))
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	assert.Equal(t, []call{{
+		argv:  []string{"hello", "goodbye"},
+		stdin: input,
+	}}, f.fakeRunner.calls)
+
+	assert.Equal(t, "foo", stdout)
+	assert.Equal(t, "bar", stderr)
+
+	assert.Equal(t, "", f.log())
+}
+
 type loggingKubectlRunnerFixture struct {
 	runner     loggingKubectlRunner
 	fakeRunner *fakeKubectlRunner

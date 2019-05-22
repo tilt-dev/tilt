@@ -20,7 +20,7 @@ var _ kubectlRunner = loggingKubectlRunner{}
 
 func (k loggingKubectlRunner) logExecStart(ctx context.Context, args []string, stdin io.Reader) (newStdin io.Reader, err error) {
 	if k.logLevel == logger.NoneLvl {
-		return
+		return stdin, nil
 	}
 
 	s := fmt.Sprintf("Running: %q\n", append([]string{"kubectl"}, args...))
