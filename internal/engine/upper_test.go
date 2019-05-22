@@ -2402,6 +2402,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	ic := NewImageController(reaper)
 	to := &testOpter{}
 	_, ta := tiltanalytics.NewMemoryTiltAnalytics(to)
+	tas := NewTiltAnalyticsSubscriber(ta)
 	ar := ProvideAnalyticsReporter(ta, st)
 
 	// TODO(nick): Why does this test use two different docker compose clients???
@@ -2420,24 +2421,24 @@ func newTestFixture(t *testing.T) *testFixture {
 	sc := &client.FakeSailClient{}
 
 	ret := &testFixture{
-		TempDirFixture:        f,
-		ctx:                   ctx,
-		cancel:                cancel,
-		b:                     b,
-		fsWatcher:             watcher,
-		timerMaker:            &timerMaker,
-		docker:                dockerClient,
-		hud:                   fakeHud,
-		log:                   log,
-		store:                 st,
-		bc:                    bc,
-		onchangeCh:            fSub.ch,
-		fwm:                   fwm,
-		cc:                    cc,
-		dcc:                   fakeDcc,
-		tfl:                   tfl,
-		ghc:                   ghc,
-		opter:                 to,
+		TempDirFixture: f,
+		ctx:            ctx,
+		cancel:         cancel,
+		b:              b,
+		fsWatcher:      watcher,
+		timerMaker:     &timerMaker,
+		docker:         dockerClient,
+		hud:            fakeHud,
+		log:            log,
+		store:          st,
+		bc:             bc,
+		onchangeCh:     fSub.ch,
+		fwm:            fwm,
+		cc:             cc,
+		dcc:            fakeDcc,
+		tfl:            tfl,
+		ghc:            ghc,
+		opter:          to,
 		tiltVersionCheckDelay: versionCheckInterval,
 	}
 
@@ -2446,7 +2447,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
 
-	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc, sc, tvc, ta)
+	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc, sc, tvc, tas)
 	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {
