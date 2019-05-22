@@ -1587,6 +1587,7 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 		assert.Equal(t, "third string\n", ms.MostRecentPod().Log().String())
 		assert.Contains(t, ms.CombinedLog.String(), "second string\n")
 		assert.Contains(t, ms.CombinedLog.String(), "third string\n")
+		assert.Equal(t, ms.CrashLog.String(), "second string\n")
 	})
 
 	err := f.Stop()
