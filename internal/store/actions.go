@@ -60,3 +60,7 @@ type AnalyticsOptAction struct {
 }
 
 func (AnalyticsOptAction) Action() {}
+
+type AnalyticsNudgeSurfacedAction struct{}
+
+func (AnalyticsNudgeSurfacedAction) Action() {}

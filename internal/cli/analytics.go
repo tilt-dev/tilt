@@ -37,7 +37,7 @@ func (ao analyticsOpter) SetOpt(opt analytics.Opt) error {
 	return analytics.SetOpt(opt)
 }
 
-func initAnalytics(rootCmd *cobra.Command) error {
+func initAnalytics(rootCmd *cobra.Command) (*tiltanalytics.TiltAnalytics, error) {
 	var analyticsCmd *cobra.Command
 	var err error
 
@@ -51,7 +51,7 @@ func initAnalytics(rootCmd *cobra.Command) error {
 	}
 	backingAnalytics, analyticsCmd, err := analytics.Init(tiltAppName, options...)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	rootCmd.AddCommand(analyticsCmd)
@@ -61,13 +61,14 @@ func initAnalytics(rootCmd *cobra.Command) error {
 	} else {
 		analyticsOpt, err = analytics.OptStatus()
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
+	// TODO(maia): rm this global
 	analyticsService = tiltanalytics.NewTiltAnalytics(analyticsOpt, analyticsOpter{}, backingAnalytics)
 
-	return nil
+	return analyticsService, nil
 }
 
 func globalTags() map[string]string {
