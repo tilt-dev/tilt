@@ -82,7 +82,8 @@ type EngineState struct {
 	LatestTiltBuild model.TiltBuild
 
 	// Analytics Info
-	AnalyticsOpt analytics.Opt // TODO(maia): remember to update this when user opts in/out
+	AnalyticsOpt           analytics.Opt // changes to this field will propagate into the TiltAnalytics subscriber + we'll record them as user choice
+	AnalyticsNudgeSurfaced bool          // this flag is set the first time we show the analytics nudge to the user.
 }
 
 func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.ManifestName {
