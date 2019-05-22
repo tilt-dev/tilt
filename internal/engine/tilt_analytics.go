@@ -22,7 +22,7 @@ func (sub *TiltAnalyticsSubscriber) OnChange(ctx context.Context, st store.RStor
 	if state.AnalyticsOpt != sub.ta.Opt() {
 		err := sub.ta.SetOpt(state.AnalyticsOpt)
 		if err != nil {
-			logger.Get(ctx).Infof("error saving analytics opt-in status")
+			logger.Get(ctx).Infof("error saving analytics opt (tried to record opt: '%s')", state.AnalyticsOpt)
 		}
 	}
 }
