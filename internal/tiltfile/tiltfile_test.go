@@ -249,7 +249,7 @@ fast_build('gcr.io/foo', 'foo/Dockerfile') \
   .run("echo hi")
 k8s_yaml('foo.yaml')
 `)
-	f.load()
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo",
 		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi"), hotReload(false)),
 		deployment("foo"),
@@ -269,7 +269,7 @@ fast_build('gcr.io/foo', 'foo/Dockerfile') \
   .hot_reload()
 k8s_yaml('foo.yaml')
 `)
-	f.load()
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo",
 		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi"), hotReload(true)),
 		deployment("foo"),
@@ -288,7 +288,7 @@ fb = fast_build('gcr.io/foo', 'foo/Dockerfile') \
   .run("echo hi")
 k8s_yaml('foo.yaml')
 `)
-	f.load()
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo",
 		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi")),
 		deployment("foo"),
@@ -342,7 +342,7 @@ fastbar.add('local/path', 'remote/path')
 fastbar.run('echo hi')
 `)
 
-	f.load()
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo",
 		db(image("gcr.io/foo")),
 		deployment("foo"))
@@ -363,7 +363,7 @@ fast_build('gcr.io/foo', 'foo/Dockerfile') \
   .run("echo again", trigger='c')
 k8s_yaml('foo.yaml')
 `)
-	f.load()
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo",
 		fb(image("gcr.io/foo"),
 			add("foo", "src/"),
@@ -483,7 +483,7 @@ func TestFastBuildCache(t *testing.T) {
 k8s_yaml('foo.yaml')
 fast_build("gcr.io/foo", 'foo/Dockerfile', cache='/path/to/cache')
 `)
-	f.load()
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo", fbWithCache(image("gcr.io/foo"), "/path/to/cache"))
 }
 
@@ -544,7 +544,7 @@ fast_build('gcr.io/foo', 'foo/Dockerfile').add('./foo', '/foo')
 fast_build('gcr.io/bar', 'foo/Dockerfile').add('%s', '/bar')
 `, f.JoinPath("./bar")))
 
-	f.load()
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo", fb(image("gcr.io/foo"), add("foo", "/foo")))
 	f.assertNextManifest("bar", fb(image("gcr.io/bar"), add("bar", "/bar")))
 }
@@ -560,7 +560,7 @@ k8s_yaml('foo.yaml')
 fast_build('gcr.io/foo', 'foo/Dockerfile').add(repo.path('foo'), '/foo')
 `)
 
-	f.load()
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo", fb(image("gcr.io/foo"), add("foo", "/foo")))
 }
 
@@ -577,7 +577,7 @@ k8s_yaml('foo.yaml')
 fast_build('gcr.io/foo', 'foo/Dockerfile').add(repo, '/whole_repo')
 `)
 
-	f.load()
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo", fb(image("gcr.io/foo"), add(".", "/whole_repo")))
 }
 
@@ -995,7 +995,7 @@ fast_build('gcr.io/foo', 'foo/Dockerfile') \
   .run("echo hi")
 k8s_yaml('foo.yaml')
 `)
-	f.load("foo")
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo",
 		buildFilters("foo/a.txt"),
 		fileChangeFilters("foo/a.txt"),
@@ -1014,7 +1014,7 @@ fast_build('gcr.io/foo', 'foo/Dockerfile') \
   .run("echo hi")
 k8s_yaml('foo.yaml')
 `)
-	f.load("foo")
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo",
 		buildFilters("foo/a.txt"),
 		fileChangeFilters("foo/a.txt"),
@@ -1861,7 +1861,7 @@ k8s_yaml(blob('hi'))
 	f.loadErrString("from Tiltfile blob() call")
 }
 
-func TestCustomBuild(t *testing.T) {
+func TestCustomBuildWithFastBuild(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -1878,7 +1878,7 @@ hfb.hot_reload()`
 	f.setupFoo()
 	f.file("Tiltfile", tiltfile)
 
-	f.load("foo")
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNumManifests(1)
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "foo/.dockerignore")
 	f.assertNextManifest("foo",
