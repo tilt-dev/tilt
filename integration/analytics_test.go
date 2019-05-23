@@ -80,7 +80,7 @@ func restoreEnvVar(v envVarValue) error {
 }
 
 func (af *analyticsFixture) SetOpt(opt analytics.Opt) {
-	v := saveEnvVar(WindmillDirEnvVarName)
+	oldVal := saveEnvVar(WindmillDirEnvVarName)
 	err := os.Setenv(WindmillDirEnvVarName, af.tempDir.Path())
 	if err != nil {
 		af.t.Fatal(err)
@@ -89,7 +89,7 @@ func (af *analyticsFixture) SetOpt(opt analytics.Opt) {
 	if err != nil {
 		af.t.Fatal(err)
 	}
-	err = restoreEnvVar(v)
+	err = restoreEnvVar(oldVal)
 	if err != nil {
 		af.t.Fatal(err)
 	}
