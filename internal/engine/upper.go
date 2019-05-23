@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	"github.com/davecgh/go-spew/spew"
@@ -192,6 +193,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleLatestVersionAction(state, action)
 	case store.AnalyticsOptAction:
 		handleAnalyticsOptAction(state, action)
+	case store.AnalyticsNudgeSurfacedAction:
+		handleAnalyticsNudgeSurfacedAction(ctx, state)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -962,4 +965,16 @@ func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, acti
 
 func handleAnalyticsOptAction(state *store.EngineState, action store.AnalyticsOptAction) {
 	state.AnalyticsOpt = action.Opt
+}
+
+// The first time we hear that the analytics nudge was surfaced, record a metric.
+// We double check !state.AnalyticsNudgeSurfaced -- i.e. that the state doesn't
+// yet know that we've surfaced the nudge -- to ensure that we only record this
+// metric once (since it's an anonymous metric, we can't slice it by e.g. # unique
+// users, so the numbers need to be as accurate as possible).
+func handleAnalyticsNudgeSurfacedAction(ctx context.Context, state *store.EngineState) {
+	if !state.AnalyticsNudgeSurfaced {
+		tiltanalytics.Get(ctx).IncrIfUnopted("analytics.nudge.surfaced")
+		state.AnalyticsNudgeSurfaced = true
+	}
 }

@@ -14,6 +14,11 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 )
 
+const fastBuildDeprecationWarning = "FastBuild (`fast_build`; `add_fast_build`; " +
+	"`docker_build(...).add(...)`, etc.) will be deprecated soon; you can use Live " +
+	"Update instead! See https://docs.tilt.dev/live_update_tutorial.html for more " +
+	"information. If Live Update doesn't fit your use case, let us know."
+
 type dockerImage struct {
 	baseDockerfilePath localPath
 	baseDockerfile     dockerfile.Dockerfile
@@ -603,4 +608,15 @@ func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Docker
 	paths = append(paths, image.dbBuildPath.path)
 
 	return s.dockerignoresForPaths(paths)
+}
+
+func (s *tiltfileState) checkForFastBuilds(manifests []model.Manifest) {
+	for _, m := range manifests {
+		for _, iTarg := range m.ImageTargets {
+			if !iTarg.AnyFastBuildInfo().Empty() {
+				s.warnings = append(s.warnings, fastBuildDeprecationWarning)
+				return
+			}
+		}
+	}
 }

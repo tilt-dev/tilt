@@ -1,11 +1,7 @@
 package analytics
 
 import (
-	"context"
 	"time"
-
-	"github.com/windmilleng/tilt/internal/logger"
-	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/windmilleng/wmclient/pkg/analytics"
 )
@@ -44,6 +40,10 @@ func NewMemoryTiltAnalytics(opter AnalyticsOpter) (*analytics.MemoryAnalytics, *
 	return ma, NewTiltAnalytics(analytics.OptIn, opter, ma)
 }
 
+func (ta *TiltAnalytics) Opt() analytics.Opt {
+	return ta.opt
+
+}
 func (ta *TiltAnalytics) Count(name string, tags map[string]string, n int) {
 	if ta.opt == analytics.OptIn {
 		ta.a.Count(name, tags, n)
@@ -95,16 +95,3 @@ func (ta *TiltAnalytics) SetOpt(opt analytics.Opt) error {
 }
 
 var _ analytics.Analytics = &TiltAnalytics{}
-
-func (ta *TiltAnalytics) OnChange(ctx context.Context, st store.RStore) {
-	state := st.RLockState()
-	defer st.RUnlockState()
-	if state.AnalyticsOpt != ta.opt {
-		err := ta.SetOpt(state.AnalyticsOpt)
-		if err != nil {
-			logger.Get(ctx).Infof("error saving analytics opt-in status")
-		}
-	}
-}
-
-var _ store.Subscriber = &TiltAnalytics{}

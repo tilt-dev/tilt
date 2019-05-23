@@ -1,5 +1,5 @@
 import React from "react"
-import AlertPane, { AlertResource } from "./ErrorPane"
+import AlertPane, { AlertResource } from "./AlertPane"
 import renderer from "react-test-renderer"
 
 beforeEach(() => {

@@ -3,13 +3,13 @@ package k8s
 import (
 	"bytes"
 	"context"
-	"io"
 	"os/exec"
+	"strings"
 )
 
 type kubectlRunner interface {
 	exec(ctx context.Context, argv []string) (stdout string, stderr string, err error)
-	execWithStdin(ctx context.Context, argv []string, stdin io.Reader) (stdout string, stderr string, err error)
+	execWithStdin(ctx context.Context, argv []string, stdin string) (stdout string, stderr string, err error)
 }
 
 type realKubectlRunner struct {
@@ -35,10 +35,10 @@ func (k realKubectlRunner) exec(ctx context.Context, args []string) (stdout stri
 	return stdoutBuf.String(), stderrBuf.String(), err
 }
 
-func (k realKubectlRunner) execWithStdin(ctx context.Context, args []string, stdin io.Reader) (stdout string, stderr string, err error) {
+func (k realKubectlRunner) execWithStdin(ctx context.Context, args []string, stdin string) (stdout string, stderr string, err error) {
 	args = k.prependGlobalArgs(args)
 	c := exec.CommandContext(ctx, "kubectl", args...)
-	c.Stdin = stdin
+	c.Stdin = strings.NewReader(stdin)
 
 	stdoutBuf := &bytes.Buffer{}
 	stderrBuf := &bytes.Buffer{}
@@ -47,10 +47,4 @@ func (k realKubectlRunner) execWithStdin(ctx context.Context, args []string, std
 
 	err = c.Run()
 	return stdoutBuf.String(), stderrBuf.String(), err
-}
-
-func ProvideKubectlRunner(kubeContext KubeContext) kubectlRunner {
-	return realKubectlRunner{
-		kubeContext: kubeContext,
-	}
 }

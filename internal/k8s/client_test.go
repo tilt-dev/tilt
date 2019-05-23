@@ -3,11 +3,8 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"testing"
 
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -96,12 +93,8 @@ type fakeKubectlRunner struct {
 	calls []call
 }
 
-func (f *fakeKubectlRunner) execWithStdin(ctx context.Context, args []string, stdin io.Reader) (stdout string, stderr string, err error) {
-	b, err := ioutil.ReadAll(stdin)
-	if err != nil {
-		return "", "", errors.Wrap(err, "reading stdin")
-	}
-	f.calls = append(f.calls, call{argv: args, stdin: string(b)})
+func (f *fakeKubectlRunner) execWithStdin(ctx context.Context, args []string, stdin string) (stdout string, stderr string, err error) {
+	f.calls = append(f.calls, call{argv: args, stdin: stdin})
 
 	defer func() {
 		f.stdout = ""

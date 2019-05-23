@@ -16,6 +16,7 @@ import (
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/output"
@@ -166,6 +167,10 @@ func provideUpdateModeFlag() engine.UpdateModeFlag {
 
 func provideLogActions() store.LogActionsFlag {
 	return store.LogActionsFlag(logActionsFlag)
+}
+
+func provideKubectlLogLevel() k8s.KubectlLogLevel {
+	return k8s.KubectlLogLevel(klogLevel)
 }
 
 func provideWebMode(b model.TiltBuild) (model.WebMode, error) {
