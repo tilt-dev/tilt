@@ -6,6 +6,8 @@ package engine
 import (
 	"context"
 
+	"github.com/windmilleng/tilt/internal/logger"
+
 	"github.com/google/wire"
 	"github.com/windmilleng/wmclient/pkg/dirs"
 
@@ -94,6 +96,10 @@ func provideImageBuildAndDeployer(
 	return nil, nil
 }
 
+func provideKubectlLogLevelInfo() k8s.KubectlLogLevel {
+	return k8s.KubectlLogLevel(logger.InfoLvl)
+}
+
 func provideDockerComposeBuildAndDeployer(
 	ctx context.Context,
 	dcCli dockercompose.DockerComposeClient,
@@ -103,6 +109,7 @@ func provideDockerComposeBuildAndDeployer(
 		DeployerWireSetTest,
 		wire.Value(UpdateModeFlag(UpdateModeAuto)),
 		build.ProvideClock,
+		provideKubectlLogLevelInfo,
 
 		// EnvNone ensures that we get an exploding k8s client.
 		wire.Value(k8s.Env(k8s.EnvNone)),

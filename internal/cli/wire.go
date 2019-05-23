@@ -45,6 +45,7 @@ var K8sWireSet = wire.NewSet(
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet,
+	provideKubectlLogLevel,
 
 	docker.ProvideDockerClient,
 	docker.ProvideDockerVersion,
@@ -128,11 +129,6 @@ func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, b model.TiltBuild,
 	return Threads{h, upper, b, sailMode}
 }
 
-func wireK8sClient(ctx context.Context) (k8s.Client, error) {
-	wire.Build(K8sWireSet)
-	return nil, nil
-}
-
 func wireKubeContext(ctx context.Context) (k8s.KubeContext, error) {
 	wire.Build(K8sWireSet)
 	return "", nil
@@ -154,7 +150,10 @@ func wireNamespace(ctx context.Context) (k8s.Namespace, error) {
 }
 
 func wireRuntime(ctx context.Context) (container.Runtime, error) {
-	wire.Build(K8sWireSet)
+	wire.Build(
+		K8sWireSet,
+		provideKubectlLogLevel,
+	)
 	return "", nil
 }
 
