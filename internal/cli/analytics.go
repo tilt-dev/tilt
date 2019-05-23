@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"crypto/md5"
 	"encoding/base64"
 	"os"
@@ -120,8 +119,4 @@ func normalizeGitRemote(s string) string {
 
 func isAnalyticsDisabledFromEnv() bool {
 	return os.Getenv(disableAnalyticsEnvVar) != ""
-}
-
-func provideAnalytics(ctx context.Context) *tiltanalytics.TiltAnalytics {
-	return tiltanalytics.Get(ctx)
 }

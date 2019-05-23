@@ -30,12 +30,13 @@ func (c *downCmd) register() *cobra.Command {
 }
 
 func (c *downCmd) run(ctx context.Context, args []string) error {
-	analytics.Get(ctx).Incr("cmd.down", map[string]string{
+	a := analytics.Get(ctx)
+	a.Incr("cmd.down", map[string]string{
 		"count": fmt.Sprintf("%d", len(args)),
 	})
-	defer analytics.Get(ctx).Flush(time.Second)
+	defer a.Flush(time.Second)
 
-	downDeps, err := wireDownDeps(ctx)
+	downDeps, err := wireDownDeps(ctx, a)
 	if err != nil {
 		return err
 	}

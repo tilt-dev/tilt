@@ -97,7 +97,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		span.SetTag(k, v)
 	}
 
-	threads, err := wireThreads(ctx)
+	threads, err := wireThreads(ctx, a)
 	if err != nil {
 		return err
 	}
