@@ -43,10 +43,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) 
 	if err != nil {
 		return demo.Script{}, err
 	}
-	tiltAnalytics, err := provideAnalytics()
-	if err != nil {
-		return demo.Script{}, err
-	}
+	tiltAnalytics := provideAnalytics(ctx)
 	headsUpDisplay, err := hud.NewDefaultHeadsUpDisplay(renderer, webURL, tiltAnalytics)
 	if err != nil {
 		return demo.Script{}, err
@@ -172,10 +169,7 @@ func wireThreads(ctx context.Context) (Threads, error) {
 	if err != nil {
 		return Threads{}, err
 	}
-	tiltAnalytics, err := provideAnalytics()
-	if err != nil {
-		return Threads{}, err
-	}
+	tiltAnalytics := provideAnalytics(ctx)
 	headsUpDisplay, err := hud.NewDefaultHeadsUpDisplay(renderer, webURL, tiltAnalytics)
 	if err != nil {
 		return Threads{}, err
@@ -425,10 +419,7 @@ func wireDockerEnv(ctx context.Context) (docker.Env, error) {
 }
 
 func wireDownDeps(ctx context.Context) (DownDeps, error) {
-	tiltAnalytics, err := provideAnalytics()
-	if err != nil {
-		return DownDeps{}, err
-	}
+	tiltAnalytics := provideAnalytics(ctx)
 	clientConfig := k8s.ProvideClientConfig()
 	config, err := k8s.ProvideKubeConfig(clientConfig)
 	if err != nil {

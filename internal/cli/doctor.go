@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/windmilleng/tilt/internal/analytics"
 )
 
 type doctorCmd struct {
@@ -21,8 +22,8 @@ func (c *doctorCmd) register() *cobra.Command {
 }
 
 func (c *doctorCmd) run(ctx context.Context, args []string) error {
-	analyticsService.Incr("cmd.doctor", map[string]string{})
-	defer analyticsService.Flush(time.Second)
+	analytics.Get(ctx).Incr("cmd.doctor", map[string]string{})
+	defer analytics.Get(ctx).Flush(time.Second)
 
 	fmt.Printf("Tilt: %s\n", buildStamp())
 	fmt.Printf("System: %s-%s\n", runtime.GOOS, runtime.GOARCH)

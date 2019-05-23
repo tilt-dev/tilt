@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/demo"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -28,8 +29,8 @@ func (c *demoCmd) register() *cobra.Command {
 }
 
 func (c *demoCmd) run(ctx context.Context, args []string) error {
-	analyticsService.Incr("cmd.demo", map[string]string{})
-	defer analyticsService.Flush(time.Second)
+	analytics.Get(ctx).Incr("cmd.demo", map[string]string{})
+	defer analytics.Get(ctx).Flush(time.Second)
 
 	demo, err := wireDemo(ctx, demo.RepoBranch(c.branch))
 	if err != nil {

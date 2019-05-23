@@ -1,9 +1,9 @@
 package cli
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/base64"
-	"fmt"
 	"os"
 	"os/exec"
 	"runtime"
@@ -19,9 +19,6 @@ import (
 const tiltAppName = "tilt"
 const disableAnalyticsEnvVar = "TILT_DISABLE_ANALYTICS"
 const analyticsURLEnvVar = "TILT_ANALYTICS_URL"
-
-var analyticsService *tiltanalytics.TiltAnalytics
-var analyticsOpt = analytics.OptDefault
 
 // Testing analytics locally:
 // (after `npm install http-echo-server -g`)
@@ -56,6 +53,7 @@ func initAnalytics(rootCmd *cobra.Command) (*tiltanalytics.TiltAnalytics, error)
 
 	rootCmd.AddCommand(analyticsCmd)
 
+	var analyticsOpt analytics.Opt
 	if isAnalyticsDisabledFromEnv() {
 		analyticsOpt = analytics.OptOut
 	} else {
@@ -65,10 +63,9 @@ func initAnalytics(rootCmd *cobra.Command) (*tiltanalytics.TiltAnalytics, error)
 		}
 	}
 
-	// TODO(maia): rm this global
-	analyticsService = tiltanalytics.NewTiltAnalytics(analyticsOpt, analyticsOpter{}, backingAnalytics)
+	a := tiltanalytics.NewTiltAnalytics(analyticsOpt, analyticsOpter{}, backingAnalytics)
 
-	return analyticsService, nil
+	return a, nil
 }
 
 func globalTags() map[string]string {
@@ -125,9 +122,6 @@ func isAnalyticsDisabledFromEnv() bool {
 	return os.Getenv(disableAnalyticsEnvVar) != ""
 }
 
-func provideAnalytics() (*tiltanalytics.TiltAnalytics, error) {
-	if analyticsService == nil {
-		return nil, fmt.Errorf("internal error: no available analytics service")
-	}
-	return analyticsService, nil
+func provideAnalytics(ctx context.Context) *tiltanalytics.TiltAnalytics {
+	return tiltanalytics.Get(ctx)
 }

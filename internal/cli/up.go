@@ -13,6 +13,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"k8s.io/klog"
 
+	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud"
@@ -79,12 +80,13 @@ func (c *upCmd) register() *cobra.Command {
 }
 
 func (c *upCmd) run(ctx context.Context, args []string) error {
-	analyticsService.Incr("cmd.up", map[string]string{
+	a := analytics.Get(ctx)
+	a.Incr("cmd.up", map[string]string{
 		"watch": fmt.Sprintf("%v", c.watch),
 		"mode":  string(updateModeFlag),
 	})
-	analyticsService.IncrIfUnopted("analytics.up.optdefault")
-	defer analyticsService.Flush(time.Second)
+	a.IncrIfUnopted("analytics.up.optdefault")
+	defer a.Flush(time.Second)
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Up")
 	defer span.Finish()
@@ -145,7 +147,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	g.Go(func() error {
 		defer cancel()
-		return upper.Start(ctx, args, threads.tiltBuild, c.watch, triggerMode, c.fileName, c.hud, threads.sailMode, analyticsOpt)
+		return upper.Start(ctx, args, threads.tiltBuild, c.watch, triggerMode, c.fileName, c.hud, threads.sailMode, a.Opt())
 	})
 
 	err = g.Wait()
