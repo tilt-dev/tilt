@@ -611,12 +611,11 @@ func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Docker
 }
 
 func (s *tiltfileState) checkForFastBuilds(manifests []model.Manifest) {
-Loop:
 	for _, m := range manifests {
 		for _, iTarg := range m.ImageTargets {
 			if !iTarg.AnyFastBuildInfo().Empty() {
 				s.warnings = append(s.warnings, fastBuildDeprecationWarning)
-				break Loop
+				return
 			}
 		}
 	}
