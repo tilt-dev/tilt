@@ -4,9 +4,15 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"reflect"
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"github.com/windmilleng/tilt/internal/logger"
+
 	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tilt/internal/model"
 
 	v1 "k8s.io/api/core/v1"
@@ -159,6 +165,102 @@ func (kCli K8sClient) WatchServices(ctx context.Context, lps []model.LabelPair) 
 				close(ch)
 				return
 			}
+		}
+	}()
+
+	return ch, nil
+}
+
+func (kCli K8sClient) WatchEverything(ctx context.Context, lps []model.LabelPair) (<-chan watch.Event, error) {
+	ch := make(chan watch.Event)
+
+	ls := labels.Set{}
+	for _, lp := range lps {
+		ls[lp.Key] = lp.Value
+	}
+
+	var watchers []watch.Interface
+
+	_, resourceLists, err := kCli.clientSet.Discovery().ServerGroupsAndResources()
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting list of resource types")
+	}
+
+	var gvrs []schema.GroupVersionResource
+	for _, rl := range resourceLists {
+		// one might think we could use rl.GroupVersionKind().GroupVersion(), but that gave an empty `Group`
+		// for most resources (one specific example in case we revisit this: statefulsets)
+		rlGV, err := schema.ParseGroupVersion(rl.GroupVersion)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error parsing GroupVersion '%s'", rl.GroupVersion)
+		}
+		for _, r := range rl.APIResources {
+			isWatchable := false
+			for _, verb := range r.Verbs {
+				if verb == "watch" {
+					isWatchable = true
+					break
+				}
+			}
+			if !isWatchable {
+				continue
+			}
+			group := r.Group
+			if group == "" {
+				group = rlGV.Group
+			}
+			version := r.Version
+			if version == "" {
+				version = rlGV.Version
+			}
+			gvrs = append(gvrs, schema.GroupVersionResource{
+				Group:    group,
+				Version:  version,
+				Resource: r.Name,
+			})
+		}
+	}
+
+	for _, gvr := range gvrs {
+		watcher, _, err := kCli.makeWatcher(func(ns string) watcher {
+			return kCli.dynamic.Resource(gvr)
+		}, ls.AsSelector())
+
+		if err != nil {
+			return nil, errors.Wrapf(err, "error making watcher for resource '%s'", gvr.String())
+		}
+
+		watchers = append(watchers, watcher)
+	}
+
+	go func() {
+		selectCases := []reflect.SelectCase{
+			{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(ctx.Done())},
+		}
+		for _, w := range watchers {
+			selectCases = append(selectCases, reflect.SelectCase{
+				Dir:  reflect.SelectRecv,
+				Chan: reflect.ValueOf(w.ResultChan()),
+			})
+		}
+		logger.Get(ctx).Infof("starting watch")
+		for {
+			chosen, value, ok := reflect.Select(selectCases)
+			if chosen == 0 || !ok {
+				logger.Get(ctx).Infof("stopping watch.")
+				for _, w := range watchers {
+					w.Stop()
+				}
+				close(ch)
+				return
+			}
+
+			event := value.Interface().(watch.Event)
+			if event.Object == nil {
+				continue
+			}
+
+			ch <- event
 		}
 	}()
 

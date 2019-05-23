@@ -8,16 +8,15 @@ import (
 	"strconv"
 	"time"
 
-	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/wmclient/pkg/analytics"
-
 	"github.com/davecgh/go-spew/spew"
-
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	k8swatch "k8s.io/apimachinery/pkg/watch"
 
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud"
@@ -195,6 +194,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleAnalyticsOptAction(state, action)
 	case store.AnalyticsNudgeSurfacedAction:
 		handleAnalyticsNudgeSurfacedAction(ctx, state)
+	case UIDUpdateAction:
+		handleUIDUpdateAction(state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -661,6 +662,18 @@ func populateContainerStatus(ctx context.Context, manifest model.Manifest, podIn
 		})
 	}
 	podInfo.ContainerInfos = cInfos
+}
+
+func handleUIDUpdateAction(state *store.EngineState, action UIDUpdateAction) {
+	switch action.EventType {
+	case k8swatch.Added:
+		state.ObjectsByK8SUIDs[action.UID] = store.UIDMapValue{
+			Manifest: action.ManifestName,
+			Entity:   action.Entity,
+		}
+	case k8swatch.Deleted:
+		delete(state.ObjectsByK8SUIDs, action.UID)
+	}
 }
 
 func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v1.Pod) {

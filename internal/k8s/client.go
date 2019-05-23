@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/client-go/dynamic"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -35,6 +37,7 @@ type PodID string
 type NodeID string
 type ServiceName string
 type KubeContext string
+type UID string
 
 const DefaultNamespace = Namespace("default")
 
@@ -83,6 +86,8 @@ type Client interface {
 
 	WatchServices(ctx context.Context, lps []model.LabelPair) (<-chan *v1.Service, error)
 
+	WatchEverything(ctx context.Context, lps []model.LabelPair) (<-chan watch.Event, error)
+
 	ConnectedToCluster(ctx context.Context) error
 
 	ContainerRuntime(ctx context.Context) container.Runtime
@@ -99,6 +104,7 @@ type K8sClient struct {
 	configNamespace Namespace
 	clientSet       kubernetes.Interface
 	runtimeAsync    *runtimeAsync
+	dynamic         dynamic.Interface
 }
 
 var _ Client = K8sClient{}
@@ -130,6 +136,11 @@ func ProvideK8sClient(
 	core := clientset.CoreV1()
 	runtimeAsync := newRuntimeAsync(core)
 
+	di, err := dynamic.NewForConfig(restConfig)
+	if err != nil {
+		return &explodingClient{err: err}
+	}
+
 	// TODO(nick): I'm not happy about the way that pkg/browser uses global writers.
 	writer := logger.Get(ctx).Writer(logger.DebugLvl)
 	browser.Stdout = writer
@@ -144,6 +155,7 @@ func ProvideK8sClient(
 		configNamespace: configNamespace,
 		clientSet:       clientset,
 		runtimeAsync:    runtimeAsync,
+		dynamic:         di,
 	}
 }
 

@@ -6,8 +6,10 @@ import (
 	"reflect"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/types"
+
 	"github.com/pkg/errors"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -24,12 +26,16 @@ type K8sEntity struct {
 type k8sMeta interface {
 	GetName() string
 	GetNamespace() string
+	GetUID() types.UID
+	GetLabels() map[string]string
 }
 
 type emptyMeta struct{}
 
-func (emptyMeta) GetName() string      { return "" }
-func (emptyMeta) GetNamespace() string { return "" }
+func (emptyMeta) GetName() string              { return "" }
+func (emptyMeta) GetNamespace() string         { return "" }
+func (emptyMeta) GetUID() types.UID            { return "" }
+func (emptyMeta) GetLabels() map[string]string { return make(map[string]string) }
 
 var _ k8sMeta = emptyMeta{}
 var _ k8sMeta = &metav1.ObjectMeta{}
@@ -84,6 +90,14 @@ func (e K8sEntity) Namespace() Namespace {
 		return DefaultNamespace
 	}
 	return Namespace(n)
+}
+
+func (e K8sEntity) UID() UID {
+	return UID(e.meta().GetUID())
+}
+
+func (e K8sEntity) Labels() map[string]string {
+	return e.meta().GetLabels()
 }
 
 // Most entities can be updated once running, but a few cannot.
