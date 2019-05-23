@@ -363,7 +363,7 @@ docker_compose('docker-compose.yml')
 dc_resource('foo', 'gcr.io/foo')
 `)
 
-	f.load()
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	m := f.assertNextManifest("foo",
 		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi"), hotReload(false)))
 
