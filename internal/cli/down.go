@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/tiltfile"
@@ -29,12 +30,13 @@ func (c *downCmd) register() *cobra.Command {
 }
 
 func (c *downCmd) run(ctx context.Context, args []string) error {
-	analyticsService.Incr("cmd.down", map[string]string{
+	a := analytics.Get(ctx)
+	a.Incr("cmd.down", map[string]string{
 		"count": fmt.Sprintf("%d", len(args)),
 	})
-	defer analyticsService.Flush(time.Second)
+	defer a.Flush(time.Second)
 
-	downDeps, err := wireDownDeps(ctx)
+	downDeps, err := wireDownDeps(ctx, a)
 	if err != nil {
 		return err
 	}
