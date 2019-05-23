@@ -7,15 +7,18 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/windmilleng/wmclient/pkg/analytics"
+
 	"github.com/gorilla/mux"
 	_ "github.com/gorilla/websocket"
+
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
 type analyticsPayload struct {
@@ -31,12 +34,12 @@ type analyticsOptPayload struct {
 type HeadsUpServer struct {
 	store             *store.Store
 	router            *mux.Router
-	a                 analytics.Analytics
+	a                 *tiltanalytics.TiltAnalytics
 	sailCli           client.SailClient
 	numWebsocketConns int32
 }
 
-func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics analytics.Analytics, sailCli client.SailClient) *HeadsUpServer {
+func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics *tiltanalytics.TiltAnalytics, sailCli client.SailClient) *HeadsUpServer {
 	r := mux.NewRouter().UseEncodedPath()
 	s := &HeadsUpServer{
 		store:   store,
@@ -87,8 +90,12 @@ func (s *HeadsUpServer) HandleAnalyticsOpt(w http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	// TODO(maia): record user choice
-	_, _ = fmt.Fprintf(w, "👍 you sent: %s", payload.Opt)
+	opt, err := analytics.ParseOpt(payload.Opt)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error parsing opt '%s': %v", payload.Opt, err), http.StatusBadRequest)
+	}
+
+	s.store.Dispatch(store.AnalyticsOptAction{Opt: opt})
 }
 
 func (s *HeadsUpServer) HandleAnalytics(w http.ResponseWriter, req *http.Request) {

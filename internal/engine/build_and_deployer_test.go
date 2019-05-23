@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/analytics"
+
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -826,7 +828,8 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 	mode := UpdateModeFlag(UpdateModeAuto)
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	kp := &fakeKINDPusher{}
-	bd, err := provideBuildAndDeployer(ctx, docker, k8s, dir, env, mode, sCli, dcc, fakeClock{now: time.Unix(1551202573, 0)}, kp)
+	_, ta := analytics.NewMemoryTiltAnalytics(analytics.NullOpter{})
+	bd, err := provideBuildAndDeployer(ctx, docker, k8s, dir, env, mode, sCli, dcc, fakeClock{now: time.Unix(1551202573, 0)}, kp, ta)
 	if err != nil {
 		t.Fatal(err)
 	}

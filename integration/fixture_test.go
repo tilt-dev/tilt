@@ -1,3 +1,5 @@
+//+build integration
+
 package integration
 
 import (
@@ -38,6 +40,7 @@ type fixture struct {
 	logs          *bytes.Buffer
 	cmds          []*exec.Cmd
 	originalFiles map[string]string
+	tiltEnviron   map[string]string
 	tearingDown   bool
 }
 
@@ -56,6 +59,7 @@ func newFixture(t *testing.T, dir string) *fixture {
 		dir:           dir,
 		logs:          bytes.NewBuffer(nil),
 		originalFiles: make(map[string]string),
+		tiltEnviron:   map[string]string{"TILT_DISABLE_ANALYTICS": "true"},
 	}
 	f.installTilt()
 	return f
@@ -97,7 +101,10 @@ func (f *fixture) tiltCmd(tiltArgs []string, outWriter io.Writer) *exec.Cmd {
 	cmd := exec.CommandContext(f.ctx, "tilt", tiltArgs...)
 	cmd.Stdout = outWriter
 	cmd.Stderr = outWriter
-	cmd.Env = append(os.Environ(), "TILT_DISABLE_ANALYTICS=true")
+	cmd.Env = append(os.Environ())
+	for k, v := range f.tiltEnviron {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+	}
 	return cmd
 }
 

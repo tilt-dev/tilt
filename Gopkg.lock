@@ -514,20 +514,22 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:588beb9f80d2b0afddf05663b32d01c867da419458b560471d81cca0286e76b8"
+  branch = "master"
+  digest = "1:7ef6a56647e5419fac38bd654351e30ba0f3ccdfd38201cac905977a0c85c700"
   name = "github.com/golang/protobuf"
   packages = [
+    "jsonpb",
     "proto",
     "protoc-gen-go/descriptor",
     "ptypes",
     "ptypes/any",
     "ptypes/duration",
+    "ptypes/struct",
     "ptypes/timestamp",
     "ptypes/wrappers",
   ]
   pruneopts = "UT"
-  revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
-  version = "v1.2.0"
+  revision = "b285ee9cfc6c881bb20c0d8dc73370ea9b9ec90f"
 
 [[projects]]
   branch = "master"
@@ -644,15 +646,19 @@
   version = "v1.4.0"
 
 [[projects]]
-  digest = "1:c805a0558c867a671fc2dd1c6134b92a4d15c3fee5803abc70fdabdcb683ea0b"
+  branch = "master"
+  digest = "1:536a21652ced4d5de20d8702e79be206b7fc29fbae8bf18d7ea524ebff905159"
   name = "github.com/grpc-ecosystem/go-grpc-middleware"
   packages = [
     ".",
+    "logging",
+    "logging/logrus",
+    "logging/logrus/ctxlogrus",
     "tags",
+    "tags/logrus",
   ]
   pruneopts = "UT"
-  revision = "c250d6563d4d4c20252cd865923440e829844f4e"
-  version = "v1.0.0"
+  revision = "cfaf5686ec79ff8344257723b6f5ba1ae0ffeb4d"
 
 [[projects]]
   branch = "master"
@@ -709,6 +715,22 @@
   pruneopts = "UT"
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
   version = "v1.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:0a00b2537beacde5f2f5ebec11684f8e98fb23c2ed798a948461d82356dc7491"
+  name = "github.com/jinzhu/gorm"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "b7156195f7f3415f97c20abbd6aff894b847fee8"
+
+[[projects]]
+  branch = "master"
+  digest = "1:fd97437fbb6b7dce04132cf06775bd258cce305c44add58eb55ca86c6c325160"
+  name = "github.com/jinzhu/inflection"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "04140366298a54a039076d798123ffa108fff46c"
 
 [[projects]]
   digest = "1:3e551bbb3a7c0ab2a2bf4660e7fcad16db089fdcfbb44b0199e62838038623ea"
@@ -1135,7 +1157,20 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:ed39a6c301e5d16c82cafc73fe605cc1ea2555ecdf908f070c52b58e3cb7b63c"
+  digest = "1:2db8022071f959b0d03a13c9450ad414b6a4a2095189fc6ac2f6635df62a82c4"
+  name = "github.com/windmilleng/windmill"
+  packages = [
+    "logging",
+    "server/wmservice",
+    "stats",
+    "stats/server",
+  ]
+  pruneopts = "UT"
+  revision = "dd0f29d6215432eb4cbcec7ceb752abb8ada319b"
+
+[[projects]]
+  branch = "master"
+  digest = "1:f406dab9a970d5b54192b455510ab574f96f999c62d089fd4882d7ba2a67c7b5"
   name = "github.com/windmilleng/wmclient"
   packages = [
     "pkg/analytics",
@@ -1144,7 +1179,7 @@
     "pkg/os/temp",
   ]
   pruneopts = "UT"
-  revision = "7ee652d5293faba12e5416c032c223610a851848"
+  revision = "81c69f0a54c09b08c2d496b3bcd1cf438be4a606"
 
 [[projects]]
   digest = "1:2ae8314c44cd413cfdb5b1df082b350116dd8d2fff973e62c01b285b7affd89e"
@@ -1796,6 +1831,8 @@
     "github.com/whilp/git-urls",
     "github.com/windmilleng/fsevents",
     "github.com/windmilleng/fsnotify",
+    "github.com/windmilleng/windmill/stats",
+    "github.com/windmilleng/windmill/stats/server",
     "github.com/windmilleng/wmclient/pkg/analytics",
     "github.com/windmilleng/wmclient/pkg/dirs",
     "github.com/windmilleng/wmclient/pkg/os/temp",

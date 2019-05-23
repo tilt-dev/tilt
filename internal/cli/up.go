@@ -16,6 +16,7 @@ import (
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/output"
@@ -82,6 +83,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		"watch": fmt.Sprintf("%v", c.watch),
 		"mode":  string(updateModeFlag),
 	})
+	analyticsService.IncrIfUnopted("analytics.up.optdefault")
 	defer analyticsService.Flush(time.Second)
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Up")
@@ -143,7 +145,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	g.Go(func() error {
 		defer cancel()
-		return upper.Start(ctx, args, threads.tiltBuild, c.watch, triggerMode, c.fileName, c.hud, threads.sailMode)
+		return upper.Start(ctx, args, threads.tiltBuild, c.watch, triggerMode, c.fileName, c.hud, threads.sailMode, analyticsOpt)
 	})
 
 	err = g.Wait()
@@ -165,6 +167,10 @@ func provideUpdateModeFlag() engine.UpdateModeFlag {
 
 func provideLogActions() store.LogActionsFlag {
 	return store.LogActionsFlag(logActionsFlag)
+}
+
+func provideKubectlLogLevel() k8s.KubectlLogLevel {
+	return k8s.KubectlLogLevel(klogLevel)
 }
 
 func provideWebMode(b model.TiltBuild) (model.WebMode, error) {

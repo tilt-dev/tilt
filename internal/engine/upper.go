@@ -9,14 +9,13 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
-	"github.com/windmilleng/wmclient/pkg/analytics"
-
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud"
@@ -87,7 +86,17 @@ func (u Upper) Dispatch(action store.Action) {
 	u.store.Dispatch(action)
 }
 
-func (u Upper) Start(ctx context.Context, args []string, b model.TiltBuild, watch bool, triggerMode model.TriggerMode, fileName string, useActionWriter bool, sailMode model.SailMode) error {
+func (u Upper) Start(
+	ctx context.Context,
+	args []string,
+	b model.TiltBuild,
+	watch bool,
+	triggerMode model.TriggerMode,
+	fileName string,
+	useActionWriter bool,
+	sailMode model.SailMode,
+	analyticsOpt analytics.Opt) error {
+
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Start")
 	defer span.Finish()
 
@@ -118,6 +127,7 @@ func (u Upper) Start(ctx context.Context, args []string, b model.TiltBuild, watc
 		FinishTime:      time.Now(),
 		ExecuteTiltfile: false,
 		EnableSail:      sailMode.IsEnabled(),
+		AnalyticsOpt:    analyticsOpt,
 	})
 }
 
@@ -181,6 +191,10 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleDumpEngineStateAction(ctx, state)
 	case LatestVersionAction:
 		handleLatestVersionAction(state, action)
+	case store.AnalyticsOptAction:
+		handleAnalyticsOptAction(state, action)
+	case store.AnalyticsNudgeSurfacedAction:
+		handleAnalyticsNudgeSurfacedAction(ctx, state)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -702,6 +716,7 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v
 	checkForPodCrash(ctx, state, ms, *podInfo)
 
 	if int(cStatus.RestartCount) > podInfo.ContainerRestarts {
+		ms.CrashLog = podInfo.CurrentLog
 		podInfo.CurrentLog = model.Log{}
 	}
 	podInfo.ContainerRestarts = int(cStatus.RestartCount)
@@ -857,11 +872,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.InitManifests = action.InitManifests
 	engineState.SailEnabled = action.EnableSail
 
-	opt, err := analytics.OptStatus()
-	if err != nil {
-		return errors.Wrap(err, "checking analytics opt in/out")
-	}
-	engineState.AnalyticsOpt = opt
+	engineState.AnalyticsOpt = action.AnalyticsOpt
 
 	if action.ExecuteTiltfile {
 		status := model.BuildRecord{
@@ -954,4 +965,20 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action TiltfileLogAction) {
 	state.CurrentTiltfileBuild.Log = model.AppendLog(state.CurrentTiltfileBuild.Log, action, state.LogTimestamps)
 	state.TiltfileCombinedLog = model.AppendLog(state.TiltfileCombinedLog, action, state.LogTimestamps)
+}
+
+func handleAnalyticsOptAction(state *store.EngineState, action store.AnalyticsOptAction) {
+	state.AnalyticsOpt = action.Opt
+}
+
+// The first time we hear that the analytics nudge was surfaced, record a metric.
+// We double check !state.AnalyticsNudgeSurfaced -- i.e. that the state doesn't
+// yet know that we've surfaced the nudge -- to ensure that we only record this
+// metric once (since it's an anonymous metric, we can't slice it by e.g. # unique
+// users, so the numbers need to be as accurate as possible).
+func handleAnalyticsNudgeSurfacedAction(ctx context.Context, state *store.EngineState) {
+	if !state.AnalyticsNudgeSurfaced {
+		tiltanalytics.Get(ctx).IncrIfUnopted("analytics.nudge.surfaced")
+		state.AnalyticsNudgeSurfaced = true
+	}
 }

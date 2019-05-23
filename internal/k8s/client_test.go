@@ -3,11 +3,8 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"testing"
 
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,6 +20,20 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/testutils/output"
 )
+
+func TestEmptyNamespace(t *testing.T) {
+	var emptyNamespace Namespace
+	assert.True(t, emptyNamespace.Empty())
+	assert.True(t, emptyNamespace == "")
+	assert.Equal(t, "default", emptyNamespace.String())
+}
+
+func TestNotEmptyNamespace(t *testing.T) {
+	var ns Namespace = "x"
+	assert.False(t, ns.Empty())
+	assert.False(t, ns == "")
+	assert.Equal(t, "x", ns.String())
+}
 
 func TestUpsert(t *testing.T) {
 	f := newClientTestFixture(t)
@@ -82,12 +93,8 @@ type fakeKubectlRunner struct {
 	calls []call
 }
 
-func (f *fakeKubectlRunner) execWithStdin(ctx context.Context, args []string, stdin io.Reader) (stdout string, stderr string, err error) {
-	b, err := ioutil.ReadAll(stdin)
-	if err != nil {
-		return "", "", errors.Wrap(err, "reading stdin")
-	}
-	f.calls = append(f.calls, call{argv: args, stdin: string(b)})
+func (f *fakeKubectlRunner) execWithStdin(ctx context.Context, args []string, stdin string) (stdout string, stderr string, err error) {
+	f.calls = append(f.calls, call{argv: args, stdin: stdin})
 
 	defer func() {
 		f.stdout = ""

@@ -14,10 +14,11 @@ import { createBrowserHistory, History, UnregisterCallback } from "history"
 import { incr, pathToTag } from "./analytics"
 import TopBar from "./TopBar"
 import "./HUD.scss"
-import { ResourceView } from "./types"
-import AlertPane, { AlertResource } from "./ErrorPane"
+import { TiltBuild, ResourceView } from "./types"
+import AlertPane, { AlertResource } from "./AlertPane"
 import PreviewList from "./PreviewList"
 import { HotKeys } from "react-hotkeys"
+import AnalyticsNudge from "./AnalyticsNudge"
 
 type HudProps = {
   history: History
@@ -58,6 +59,8 @@ type HudState = {
     SailEnabled: boolean
     SailURL: string
     NeedsAnalyticsNudge: boolean
+    RunningTiltBuild: TiltBuild
+    LatestTiltBuild: TiltBuild
   } | null
   IsSidebarClosed: boolean
 }
@@ -94,6 +97,16 @@ class HUD extends Component<HudProps, HudState> {
         SailEnabled: false,
         SailURL: "",
         NeedsAnalyticsNudge: false,
+        RunningTiltBuild: {
+          Version: "",
+          Date: "",
+          Dev: false,
+        },
+        LatestTiltBuild: {
+          Version: "",
+          Date: "",
+          Dev: false,
+        },
       },
       IsSidebarClosed: false,
     }
@@ -144,7 +157,7 @@ class HUD extends Component<HudProps, HudState> {
 
   keymap() {
     return {
-      clearSnackRestarts: "ctrl+shift+9",
+      clearSnackRestarts: "\\",
     }
   }
 
@@ -185,7 +198,6 @@ class HUD extends Component<HudProps, HudState> {
         <Sidebar
           selected={name}
           items={sidebarItems}
-          needsNudge={needsNudge}
           isClosed={isSidebarClosed}
           toggleSidebar={toggleSidebar}
           resourceView={t}
@@ -289,9 +301,13 @@ class HUD extends Component<HudProps, HudState> {
     let alertResources = resources.map(r => new AlertResource(r))
     let resourcesWithAlerts = alertResources.filter(r => r.hasAlert())
 
+    let runningVersion = view && view.RunningTiltBuild
+    let latestVersion = view && view.LatestTiltBuild
+
     return (
       <HotKeys keyMap={this.keymap()} handlers={this.handlers()}>
         <div className="HUD">
+          <AnalyticsNudge needsNudge={needsNudge} />
           <Switch>
             <Route
               path={this.path("/r/:name/alerts")}
@@ -338,7 +354,12 @@ class HUD extends Component<HudProps, HudState> {
             />
             <Route render={sidebarRoute.bind(null, ResourceView.Log)} />
           </Switch>
-          <Statusbar items={statusItems} alertsUrl={this.path("/alerts")} />
+          <Statusbar
+            items={statusItems}
+            alertsUrl={this.path("/alerts")}
+            runningVersion={runningVersion}
+            latestVersion={latestVersion}
+          />
           <Switch>
             <Route
               exact

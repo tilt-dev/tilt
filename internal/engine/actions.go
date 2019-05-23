@@ -4,6 +4,8 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/windmilleng/wmclient/pkg/analytics"
+
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -118,6 +120,8 @@ type InitAction struct {
 	ExecuteTiltfile bool
 
 	EnableSail bool
+
+	AnalyticsOpt analytics.Opt
 }
 
 func (InitAction) Action() {}

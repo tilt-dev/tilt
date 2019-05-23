@@ -2,17 +2,20 @@ package server_test
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/wmclient/pkg/analytics"
+
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/assets"
-	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
 func TestHandleAnalyticsEmptyRequest(t *testing.T) {
@@ -121,6 +124,71 @@ func TestHandleAnalyticsErrorsIfNotIncr(t *testing.T) {
 	}
 }
 
+func TestHandleAnalyticsOptIn(t *testing.T) {
+	f := newTestFixture(t)
+
+	var jsonStr = []byte(`{"opt": "opt-in"}`)
+	req, err := http.NewRequest(http.MethodPost, "/api/analytics_opt", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.s.HandleAnalyticsOpt)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+
+	action := store.WaitForAction(t, reflect.TypeOf(store.AnalyticsOptAction{}), f.getActions)
+	assert.Equal(t, store.AnalyticsOptAction{Opt: analytics.OptIn}, action)
+}
+
+func TestHandleAnalyticsOptNonPost(t *testing.T) {
+	f := newTestFixture(t)
+
+	req, err := http.NewRequest(http.MethodGet, "/api/analytics_opt", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.s.HandleAnalyticsOpt)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+}
+
+func TestHandleAnalyticsOptMalformedPayload(t *testing.T) {
+	f := newTestFixture(t)
+
+	var jsonStr = []byte(`{"opt":`)
+	req, err := http.NewRequest(http.MethodPost, "/api/analytics_opt", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.s.HandleAnalyticsOpt)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+}
+
 func TestHandleSail(t *testing.T) {
 	f := newTestFixture(t)
 
@@ -184,23 +252,27 @@ func TestResetRestartsNoParam(t *testing.T) {
 }
 
 type serverFixture struct {
-	t       *testing.T
-	s       *server.HeadsUpServer
-	a       *analytics.MemoryAnalytics
-	sailCli *client.FakeSailClient
+	t          *testing.T
+	s          *server.HeadsUpServer
+	a          *analytics.MemoryAnalytics
+	sailCli    *client.FakeSailClient
+	getActions func() []store.Action
 }
 
 func newTestFixture(t *testing.T) *serverFixture {
-	st := store.NewStore(engine.UpperReducer, store.LogActionsFlag(false))
+	st, getActions := store.NewStoreForTesting()
+	go st.Loop(context.Background())
 	a := analytics.NewMemoryAnalytics()
+	a, ta := tiltanalytics.NewMemoryTiltAnalytics(tiltanalytics.NullOpter{})
 	sailCli := client.NewFakeSailClient()
-	s := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), a, sailCli)
+	s := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, sailCli)
 
 	return &serverFixture{
-		t:       t,
-		s:       s,
-		a:       a,
-		sailCli: sailCli,
+		t:          t,
+		s:          s,
+		a:          a,
+		sailCli:    sailCli,
+		getActions: getActions,
 	}
 }
 

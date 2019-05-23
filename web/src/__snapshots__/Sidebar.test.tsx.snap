@@ -16,7 +16,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           href="/"
           onClick={[Function]}
         >
-          All
+          <span
+            className="resLink--all-name"
+          >
+            All
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            7
+          </span>
         </a>
       </li>
       <li>
@@ -37,7 +46,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             resource4
           </span>
-          <span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
             <time
               dateTime="2017-12-21T15:36:03.000Z"
               title="2017-12-21 15:36"
@@ -65,7 +81,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             resource9
           </span>
-          <span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
             <time
               dateTime="2017-12-21T15:35:58.000Z"
               title="2017-12-21 15:35"
@@ -93,7 +116,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             resource19
           </span>
-          <span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
             <time
               dateTime="2017-12-21T15:35:48.000Z"
               title="2017-12-21 15:35"
@@ -121,7 +151,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             resource29
           </span>
-          <span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
             <time
               dateTime="2017-12-21T15:35:38.000Z"
               title="2017-12-21 15:35"
@@ -149,7 +186,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             resource39
           </span>
-          <span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
             <time
               dateTime="2017-12-21T15:35:28.000Z"
               title="2017-12-21 15:35"
@@ -177,7 +221,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             resource49
           </span>
-          <span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
             <time
               dateTime="2017-12-21T15:35:18.000Z"
               title="2017-12-21 15:35"
@@ -205,374 +256,19 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             resource54
           </span>
-          <span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
             <time
               dateTime="2017-12-21T15:35:13.000Z"
               title="2017-12-21 15:35"
             >
               &lt;1m
-            </time>
-          </span>
-        </a>
-      </li>
-    </ul>
-  </nav>
-  <div
-    className="Sidebar-spacer"
-  >
-     
-  </div>
-  <button
-    className="Sidebar-toggle"
-    onClick={null}
-  >
-    <svg>
-      chevron.svg
-    </svg>
-     Collapse
-  </button>
-</section>
-`;
-
-exports[`sidebar renders analytics nudge 1`] = `
-<section
-  className="Sidebar"
->
-  <nav
-    className="Sidebar-resources"
-  >
-    <ul
-      className="Sidebar-list"
-    >
-      <li>
-        <a
-          className="resLink resLink--all is-selected"
-          href="/"
-          onClick={[Function]}
-        >
-          All
-        </a>
-      </li>
-      <li>
-        <a
-          className="resLink resLink--building"
-          href="/r/vigoda"
-          onClick={[Function]}
-        >
-          <span
-            className="resLink-icon"
-          >
-            <svg>
-              dot-building.svg
-            </svg>
-          </span>
-          <span
-            className="resLink-name"
-          >
-            vigoda
-          </span>
-          <span>
-            <time
-              dateTime="2017-12-21T15:36:07.000Z"
-              title="2017-12-21 15:36"
-            >
-              &lt;5s
-            </time>
-          </span>
-        </a>
-      </li>
-      <li>
-        <a
-          className="resLink resLink--building"
-          href="/r/snack"
-          onClick={[Function]}
-        >
-          <span
-            className="resLink-icon"
-          >
-            <svg>
-              dot-building.svg
-            </svg>
-          </span>
-          <span
-            className="resLink-name"
-          >
-            snack
-          </span>
-          <span>
-            <time
-              dateTime="2017-12-21T15:35:57.000Z"
-              title="2017-12-21 15:35"
-            >
-              &lt;15s
-            </time>
-          </span>
-        </a>
-      </li>
-      <li>
-        <div
-          className="AnalyticsNudge"
-        >
-          <div>
-            Congrats on your first Tilt resource 🎉 Help us help you: may we collect anonymized data on your usage? (Read more
-             
-            <a
-              href="https://github.com/windmilleng/tilt#privacy"
-              target="_blank"
-            >
-              here
-            </a>
-            .)
-          </div>
-          <div
-            className="AnalyticsNudge-buttons"
-          >
-            <button
-              onClick={[Function]}
-            >
-              Yes!
-            </button>
-            <button
-              onClick={[Function]}
-            >
-              Nope!
-            </button>
-          </div>
-        </div>
-      </li>
-    </ul>
-  </nav>
-  <div
-    className="Sidebar-spacer"
-  >
-     
-  </div>
-  <button
-    className="Sidebar-toggle"
-    onClick={null}
-  >
-    <svg>
-      chevron.svg
-    </svg>
-     Collapse
-  </button>
-</section>
-`;
-
-exports[`sidebar renders analytics nudge as third list item 1`] = `
-<section
-  className="Sidebar"
->
-  <nav
-    className="Sidebar-resources"
-  >
-    <ul
-      className="Sidebar-list"
-    >
-      <li>
-        <a
-          className="resLink resLink--all is-selected"
-          href="/"
-          onClick={[Function]}
-        >
-          All
-        </a>
-      </li>
-      <li>
-        <a
-          className="resLink resLink--ok"
-          href="/r/(Tiltfile)"
-          onClick={[Function]}
-        >
-          <span
-            className="resLink-icon"
-          >
-            <svg>
-              dot.svg
-            </svg>
-          </span>
-          <span
-            className="resLink-name"
-          >
-            (Tiltfile)
-          </span>
-          <span>
-            <time
-              dateTime="2019-04-22T14:59:53.903Z"
-              title="2019-04-22T10:59:53.903047-04:00"
-            >
-              1yr
-            </time>
-          </span>
-        </a>
-      </li>
-      <li>
-        <a
-          className="resLink resLink--ok"
-          href="/r/fe"
-          onClick={[Function]}
-        >
-          <span
-            className="resLink-icon"
-          >
-            <svg>
-              dot.svg
-            </svg>
-          </span>
-          <span
-            className="resLink-name"
-          >
-            fe
-          </span>
-          <span>
-            <time
-              dateTime="2019-04-22T15:00:01.337Z"
-              title="2019-04-22T11:00:01.337285-04:00"
-            >
-              1yr
-            </time>
-          </span>
-        </a>
-      </li>
-      <li>
-        <div
-          className="AnalyticsNudge"
-        >
-          <div>
-            Congrats on your first Tilt resource 🎉 Help us help you: may we collect anonymized data on your usage? (Read more
-             
-            <a
-              href="https://github.com/windmilleng/tilt#privacy"
-              target="_blank"
-            >
-              here
-            </a>
-            .)
-          </div>
-          <div
-            className="AnalyticsNudge-buttons"
-          >
-            <button
-              onClick={[Function]}
-            >
-              Yes!
-            </button>
-            <button
-              onClick={[Function]}
-            >
-              Nope!
-            </button>
-          </div>
-        </div>
-      </li>
-      <li>
-        <a
-          className="resLink resLink--ok"
-          href="/r/vigoda"
-          onClick={[Function]}
-        >
-          <span
-            className="resLink-icon"
-          >
-            <svg>
-              dot.svg
-            </svg>
-          </span>
-          <span
-            className="resLink-name"
-          >
-            vigoda
-          </span>
-          <span>
-            <time
-              dateTime="2019-04-22T15:00:02.810Z"
-              title="2019-04-22T11:00:02.810113-04:00"
-            >
-              1yr
-            </time>
-          </span>
-        </a>
-      </li>
-      <li>
-        <a
-          className="resLink resLink--ok"
-          href="/r/snack"
-          onClick={[Function]}
-        >
-          <span
-            className="resLink-icon"
-          >
-            <svg>
-              dot.svg
-            </svg>
-          </span>
-          <span
-            className="resLink-name"
-          >
-            snack
-          </span>
-          <span>
-            <time
-              dateTime="2019-04-22T15:00:04.242Z"
-              title="2019-04-22T11:00:04.242586-04:00"
-            >
-              1yr
-            </time>
-          </span>
-        </a>
-      </li>
-      <li>
-        <a
-          className="resLink resLink--ok"
-          href="/r/doggos"
-          onClick={[Function]}
-        >
-          <span
-            className="resLink-icon"
-          >
-            <svg>
-              dot.svg
-            </svg>
-          </span>
-          <span
-            className="resLink-name"
-          >
-            doggos
-          </span>
-          <span>
-            <time
-              dateTime="2019-04-22T15:00:07.804Z"
-              title="2019-04-22T11:00:07.804953-04:00"
-            >
-              1yr
-            </time>
-          </span>
-        </a>
-      </li>
-      <li>
-        <a
-          className="resLink resLink--ok"
-          href="/r/fortune"
-          onClick={[Function]}
-        >
-          <span
-            className="resLink-icon"
-          >
-            <svg>
-              dot.svg
-            </svg>
-          </span>
-          <span
-            className="resLink-name"
-          >
-            fortune
-          </span>
-          <span>
-            <time
-              dateTime="2019-04-22T15:00:09.205Z"
-              title="2019-04-22T11:00:09.205571-04:00"
-            >
-              1yr
             </time>
           </span>
         </a>
@@ -612,7 +308,12 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
           href="/"
           onClick={[Function]}
         >
-          All
+          <span
+            className="resLink--all-name"
+          >
+            All
+          </span>
+          
         </a>
       </li>
     </ul>
@@ -650,7 +351,16 @@ exports[`sidebar renders list of resources 1`] = `
           href="/"
           onClick={[Function]}
         >
-          All
+          <span
+            className="resLink--all-name"
+          >
+            All
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            2
+          </span>
         </a>
       </li>
       <li>
@@ -671,7 +381,14 @@ exports[`sidebar renders list of resources 1`] = `
           >
             vigoda
           </span>
-          <span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
             <time
               dateTime="2017-12-21T15:36:07.000Z"
               title="2017-12-21 15:36"
@@ -699,7 +416,14 @@ exports[`sidebar renders list of resources 1`] = `
           >
             snack
           </span>
-          <span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
             <time
               dateTime="2017-12-21T15:35:57.000Z"
               title="2017-12-21 15:35"
@@ -744,7 +468,16 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           href="/"
           onClick={[Function]}
         >
-          All
+          <span
+            className="resLink--all-name"
+          >
+            All
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            2
+          </span>
         </a>
       </li>
       <li>
@@ -765,8 +498,15 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           >
             vigoda
           </span>
-          <span>
-            
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
+            —
           </span>
         </a>
       </li>
@@ -788,8 +528,15 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           >
             snack
           </span>
-          <span>
-            
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
+            —
           </span>
         </a>
       </li>

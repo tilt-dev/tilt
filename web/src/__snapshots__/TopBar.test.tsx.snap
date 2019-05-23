@@ -33,7 +33,6 @@ exports[`shows sail share button 1`] = `
           onClick={[Function]}
         >
           Alerts
-           
           
         </a>
       </li>
@@ -90,8 +89,11 @@ exports[`shows sail url 1`] = `
           onClick={[Function]}
         >
           Alerts
-           
-          (1)
+          <span
+            className="tabLink-alertBadge"
+          >
+            1
+          </span>
         </a>
       </li>
     </ul>

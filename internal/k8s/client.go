@@ -1,7 +1,6 @@
 package k8s
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -46,6 +45,8 @@ func (pID PodID) Empty() bool    { return pID.String() == "" }
 func (pID PodID) String() string { return string(pID) }
 
 func (nID NodeID) String() string { return string(nID) }
+
+func (n Namespace) Empty() bool { return n == "" }
 
 func (n Namespace) String() string {
 	if n == "" {
@@ -293,9 +294,8 @@ func (k K8sClient) actOnEntities(ctx context.Context, cmdArgs []string, entities
 	if err != nil {
 		return "", "", errors.Wrapf(err, "serializeYaml for kubectl %s", cmdArgs)
 	}
-	stdin := bytes.NewReader([]byte(rawYAML))
 
-	return k.kubectlRunner.execWithStdin(ctx, args, stdin)
+	return k.kubectlRunner.execWithStdin(ctx, args, rawYAML)
 }
 
 func ProvideServerVersion(clientSet *kubernetes.Clientset) (*version.Info, error) {

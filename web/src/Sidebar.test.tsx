@@ -14,9 +14,14 @@ import PathBuilder from "./PathBuilder"
 
 let pathBuilder = new PathBuilder("localhost", "/")
 
+let realDateNow = Date.now
+
 describe("sidebar", () => {
   beforeEach(() => {
     Date.now = jest.fn(() => Date.UTC(2017, 11, 21, 15, 36, 7, 0))
+  })
+  afterEach(() => {
+    Date.now = realDateNow
   })
   it("renders empty resource list without crashing", () => {
     const tree = renderer
@@ -25,7 +30,6 @@ describe("sidebar", () => {
           <Sidebar
             isClosed={true}
             items={[]}
-            needsNudge={false}
             selected=""
             toggleSidebar={null}
             resourceView={ResourceView.Log}
@@ -49,7 +53,6 @@ describe("sidebar", () => {
         <Sidebar
           isClosed={false}
           items={items}
-          needsNudge={false}
           selected=""
           toggleSidebar={null}
           resourceView={ResourceView.Log}
@@ -71,7 +74,6 @@ describe("sidebar", () => {
           <Sidebar
             isClosed={false}
             items={items}
-            needsNudge={false}
             selected=""
             toggleSidebar={null}
             resourceView={ResourceView.Log}
@@ -98,7 +100,6 @@ describe("sidebar", () => {
           <Sidebar
             isClosed={false}
             items={items}
-            needsNudge={false}
             selected=""
             toggleSidebar={null}
             resourceView={ResourceView.Log}
@@ -122,53 +123,6 @@ describe("sidebar", () => {
           <Sidebar
             isClosed={false}
             items={items}
-            needsNudge={false}
-            selected=""
-            toggleSidebar={null}
-            resourceView={ResourceView.Log}
-            pathBuilder={pathBuilder}
-          />
-        </MemoryRouter>
-      )
-      .toJSON()
-
-    expect(tree).toMatchSnapshot()
-  })
-
-  it("renders analytics nudge", () => {
-    let items = twoResourceView().Resources.map((res: any) => {
-      return new SidebarItem(res)
-    })
-    const tree = renderer
-      .create(
-        <MemoryRouter initialEntries={["/"]}>
-          <Sidebar
-            isClosed={false}
-            items={items}
-            needsNudge={true}
-            selected=""
-            toggleSidebar={null}
-            resourceView={ResourceView.Log}
-            pathBuilder={pathBuilder}
-          />
-        </MemoryRouter>
-      )
-      .toJSON()
-
-    expect(tree).toMatchSnapshot()
-  })
-
-  it("renders analytics nudge as third list item", () => {
-    let items = allResourcesOK().map((res: any) => {
-      return new SidebarItem(res)
-    })
-    const tree = renderer
-      .create(
-        <MemoryRouter initialEntries={["/"]}>
-          <Sidebar
-            isClosed={false}
-            items={items.slice(0, 6)}
-            needsNudge={true}
             selected=""
             toggleSidebar={null}
             resourceView={ResourceView.Log}

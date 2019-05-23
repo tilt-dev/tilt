@@ -11,8 +11,7 @@ import (
 	"github.com/pkg/browser"
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/wmclient/pkg/analytics"
-
+	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
@@ -42,12 +41,12 @@ type Hud struct {
 	currentViewState view.ViewState
 	mu               sync.RWMutex
 	isRunning        bool
-	a                analytics.Analytics
+	a                *analytics.TiltAnalytics
 }
 
 var _ HeadsUpDisplay = (*Hud)(nil)
 
-func NewDefaultHeadsUpDisplay(renderer *Renderer, webURL model.WebURL, analytics analytics.Analytics) (HeadsUpDisplay, error) {
+func NewDefaultHeadsUpDisplay(renderer *Renderer, webURL model.WebURL, analytics *analytics.TiltAnalytics) (HeadsUpDisplay, error) {
 	return &Hud{
 		r:      renderer,
 		webURL: webURL,

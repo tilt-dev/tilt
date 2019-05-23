@@ -1,11 +1,12 @@
-import React, { PureComponent } from "react"
+import React, { Component, PureComponent, ReactElement } from "react"
 import { ReactComponent as LogoSvg } from "./assets/svg/logo.svg"
 import { ReactComponent as ErrorSvg } from "./assets/svg/error.svg"
 import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
+import { ReactComponent as UpdateAvailableSvg } from "./assets/svg/update-available.svg"
 import { combinedStatus, warnings } from "./status"
 import "./Statusbar.scss"
 import { combinedStatusMessage } from "./combinedStatusMessage"
-import { Build } from "./types"
+import { Build, TiltBuild } from "./types"
 import mostRecentBuildToDisplay from "./mostRecentBuild"
 import { Link } from "react-router-dom"
 
@@ -43,6 +44,8 @@ class StatusItem {
 type StatusBarProps = {
   items: Array<StatusItem>
   alertsUrl: string
+  runningVersion: TiltBuild | null
+  latestVersion: TiltBuild | null
 }
 
 class Statusbar extends PureComponent<StatusBarProps> {
@@ -87,7 +90,6 @@ class Statusbar extends PureComponent<StatusBarProps> {
         <p>
           <strong>{upCount}</strong>/{itemCount} running
         </p>
-        <LogoSvg className="Statusbar-logo" />
       </section>
     )
   }
@@ -104,6 +106,35 @@ class Statusbar extends PureComponent<StatusBarProps> {
         </p>
       </section>
     )
+  }
+
+  tiltPanel(runningVersion: TiltBuild | null, latestVersion: TiltBuild | null) {
+    let content: ReactElement = <LogoSvg className="Statusbar-logo" />
+    if (
+      latestVersion &&
+      latestVersion.Version &&
+      runningVersion &&
+      runningVersion.Version &&
+      !runningVersion.Dev &&
+      runningVersion.Version != latestVersion.Version
+    ) {
+      content = (
+        <a
+          href="https://docs.tilt.dev/upgrade.html"
+          className="Statusbar-tiltPanel-link"
+          target="_blank"
+        >
+          <p className="Statusbar-tiltPanel-upgradeTooltip">
+            ✨ Get Tilt v{latestVersion.Version}! ✨<br />
+            (You're running v{runningVersion.Version})
+          </p>
+          {content}
+          <UpdateAvailableSvg />
+        </a>
+      )
+    }
+
+    return <section className="Statusbar-tiltPanel">{content}</section>
   }
 
   render() {
@@ -136,11 +167,17 @@ class Statusbar extends PureComponent<StatusBarProps> {
     let resCount = items.length
     let progressPanel = this.progressPanel(upCount, resCount)
 
+    let tiltPanel = this.tiltPanel(
+      this.props.runningVersion,
+      this.props.latestVersion
+    )
+
     return (
       <div className="Statusbar">
         {errorWarningPanel}
         {statusMessagePanel}
         {progressPanel}
+        {tiltPanel}
       </div>
     )
   }

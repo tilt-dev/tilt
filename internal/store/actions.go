@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
 type ErrorAction struct {
@@ -53,3 +54,13 @@ func NewResetRestartsAction(name model.ManifestName) ResetRestartsAction {
 		ManifestName: name,
 	}
 }
+
+type AnalyticsOptAction struct {
+	Opt analytics.Opt
+}
+
+func (AnalyticsOptAction) Action() {}
+
+type AnalyticsNudgeSurfacedAction struct{}
+
+func (AnalyticsNudgeSurfacedAction) Action() {}

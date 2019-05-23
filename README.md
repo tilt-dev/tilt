@@ -17,7 +17,7 @@ up-to-date in real-time. Think `docker build && kubectl apply` or `docker-compos
 
 ## Watch: Tilt in Two Minutes
 
-[![screencast](assets/demothumb.png)](https://www.youtube.com/watch?v=1fS8K_Kn7yQ)
+[![screencast](assets/demothumb.png)](https://www.youtube.com/watch?v=oSljj0zHd7U)
 
 ## Install Tilt
 
@@ -60,26 +60,17 @@ To make changes to Tilt, read the [developer guide](DEVELOPING.md).
 For bugs and feature requests, file an [issue](https://github.com/windmilleng/tilt/issues)
 or check out the [feature roadmap](ROADMAP.md).
 
-## Privacy
+## Telemetry and Privacy
+We're a small company trying to make Tilt awesomer. We can do this better if we understand which features people are using and which bugs people are running into. You can enable sending telemetry data to https://events.windmill.build in the UI or by running `tilt analytics opt in`. It really helps us!
 
-This tool can send usage reports to https://events.windmill.build, to help us
-understand what features people use. We only report on which `tilt` commands
-run and how long they run for.
+The data is meant to be about your use of Tilt (e.g., which Tiltfile or Web UI features do you use), not collecting data about you or your project. It's possible that some of the data we collect could include snippets of data about your project (e.g. that you have a service named `deathray-backend` or an error message that includes the string it failed to parse). We try to avoid this, but you should probably not opt-in if you're working on a classified project.
 
-You can enable usage reports by running
+We will not resell or give away this data. (Data may be sent to third parties, like Datadog,
+but only to help us analyze the data.)
 
-```
-tilt analytics opt in
-```
+You can change your mind at any time by running `tilt analytics opt <in|out>` and restarting Tilt. Until you make a choice, Tilt will send a minimal amount of data (this helps us improve the installation/opting flow).
 
-(and disable them by running `tilt analytics opt out`.)
-
-We do not report any personally identifiable information. We do not report any
-identifiable data about your code.
-
-We do not share this data with anyone who is not an employee of Windmill
-Engineering. Data may be sent to third-party service providers like Datadog,
-but only to help us analyze the data.
+Tilt connects to other online services for purposes like finding and downloading product updates and resources.
 
 ## License
 

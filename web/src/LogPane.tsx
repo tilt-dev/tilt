@@ -114,20 +114,20 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 
     let podID = this.props.podID
     let podIDEl = podID && (
-      <div className="resourceInfo-item">
-        <span className="label">Pod ID:</span>
-        <pre>{podID}</pre>
+      <div className="resourceInfo">
+        <div className="resourceInfo-label">Pod ID:</div>
+        <div className="resourceInfo-value">{podID}</div>
       </div>
     )
 
     let endpoints = this.props.endpoints
     let endpointsEl = endpoints.length > 0 && (
-      <div className="resourceInfo-item">
-        <span className="label">
+      <div className="resourceInfo">
+        <div className="resourceInfo-label">
           Endpoint{endpoints.length > 1 ? "s" : ""}:
-        </span>
+        </div>
         {endpoints.map(ep => (
-          <a href={ep} target="_blank">
+          <a className="resourceInfo-value" href={ep} target="_blank">
             {ep}
           </a>
         ))}
@@ -156,7 +156,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     return (
       <section className={classes}>
         {(endpoints || podID) && (
-          <section className="resourceInfo">
+          <section className="resourceBar">
             {podIDEl}
             {endpointsEl}
           </section>

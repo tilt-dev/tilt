@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
@@ -101,12 +103,14 @@ func TestAnalyticsReporter_TiltfileError(t *testing.T) {
 type analyticsReporterTestFixture struct {
 	manifestCount int
 	ar            AnalyticsReporter
+	ma            *analytics.MemoryAnalytics
 }
 
 func newAnalyticsReporterTestFixture() *analyticsReporterTestFixture {
 	st, _ := store.NewStoreForTesting()
+	ma, a := tiltanalytics.NewMemoryTiltAnalytics(tiltanalytics.NullOpter{})
 	ar := AnalyticsReporter{
-		a:       analytics.NewMemoryAnalytics(),
+		a:       a,
 		store:   st,
 		started: false,
 	}
@@ -114,6 +118,7 @@ func newAnalyticsReporterTestFixture() *analyticsReporterTestFixture {
 	return &analyticsReporterTestFixture{
 		manifestCount: 0,
 		ar:            ar,
+		ma:            ma,
 	}
 }
 
@@ -135,8 +140,6 @@ func (artf *analyticsReporterTestFixture) run() {
 }
 
 func (artf *analyticsReporterTestFixture) assertStats(t *testing.T, expectedTags map[string]string) {
-	ma := artf.ar.a.(*analytics.MemoryAnalytics)
-
 	expectedCounts := []analytics.CountEvent{{Name: "up.running", N: 1, Tags: expectedTags}}
-	assert.Equal(t, expectedCounts, ma.Counts)
+	assert.Equal(t, expectedCounts, artf.ma.Counts)
 }

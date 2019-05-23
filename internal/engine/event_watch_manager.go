@@ -41,8 +41,6 @@ func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore) {
 
 	m.watching = true
 
-	ctx, cancel := context.WithTimeout(ctx, watchTimeout)
-
 	ch, err := m.kClient.WatchEvents(ctx, k8s.TiltRunSelector())
 	if err != nil {
 		err = errors.Wrap(err, "Error watching k8s events. Are you connected to kubernetes?\n")
@@ -50,12 +48,10 @@ func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore) {
 		return
 	}
 
-	go m.dispatchEventsLoop(ctx, ch, st, cancel)
+	go m.dispatchEventsLoop(ctx, ch, st)
 }
 
-func (m *EventWatchManager) dispatchEventsLoop(ctx context.Context, ch <-chan *v1.Event, st store.RStore, cancel context.CancelFunc) {
-	defer cancel()
-
+func (m *EventWatchManager) dispatchEventsLoop(ctx context.Context, ch <-chan *v1.Event, st store.RStore) {
 	for {
 		select {
 		case event, ok := <-ch:

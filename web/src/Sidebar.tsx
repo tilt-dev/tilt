@@ -2,19 +2,15 @@ import React, { PureComponent } from "react"
 import { ReactComponent as ChevronSvg } from "./assets/svg/chevron.svg"
 import { ReactComponent as DotSvg } from "./assets/svg/dot.svg"
 import { ReactComponent as DotBuildingSvg } from "./assets/svg/dot-building.svg"
-import AnalyticsNudge from "./AnalyticsNudge"
 import { Link } from "react-router-dom"
 import { combinedStatus, warnings } from "./status"
 import "./Sidebar.scss"
 import { ResourceView } from "./types"
-import TimeAgo, { Formatter, Suffix, Unit } from "react-timeago"
-// @ts-ignore
-import enStrings from "react-timeago/lib/language-strings/en-short.js"
-// @ts-ignore
-import buildFormatter from "react-timeago/lib/formatters/buildFormatter"
+import TimeAgo from "react-timeago"
 import { isZeroTime } from "./time"
 import PathBuilder from "./PathBuilder"
-import { incr } from "./analytics"
+import { timeAgoFormatter } from "./timeFormatters"
+import { AlertResource } from "./AlertPane"
 
 class SidebarItem {
   name: string
@@ -24,6 +20,7 @@ class SidebarItem {
   lastDeployTime: string
   pendingBuildSince: string
   currentBuildStartTime: string
+  alertResource: AlertResource
 
   /**
    * Create a pared down SidebarItem from a ResourceView
@@ -36,46 +33,21 @@ class SidebarItem {
     this.lastDeployTime = res.LastDeployTime
     this.pendingBuildSince = res.PendingBuildSince
     this.currentBuildStartTime = res.CurrentBuild.StartTime
+    this.alertResource = new AlertResource(res)
+  }
+
+  numberOfAlerts(): number {
+    return this.alertResource.numberOfAlerts()
   }
 }
 
 type SidebarProps = {
   isClosed: boolean
   items: SidebarItem[]
-  needsNudge: boolean
   selected: string
   toggleSidebar: any
   resourceView: ResourceView
   pathBuilder: PathBuilder
-}
-
-let minutePlusFormatter = buildFormatter(enStrings)
-
-// for times less than a minute, we show buckets rather than precise times, so that we don't have a really noisy
-// UI with lots of moving things right after deploys
-function timeAgoFormatter(
-  value: number,
-  unit: Unit,
-  suffix: Suffix,
-  epochMilliseconds: Number,
-  _nextFormatter?: Formatter,
-  now?: any
-) {
-  if (unit === "second") {
-    for (let threshold of [5, 15, 30, 45]) {
-      if (value < threshold) return `<${threshold}s`
-    }
-    return "<1m"
-  } else {
-    return minutePlusFormatter(
-      value,
-      unit,
-      suffix,
-      epochMilliseconds,
-      _nextFormatter,
-      now
-    )
-  }
 }
 
 class Sidebar extends PureComponent<SidebarProps> {
@@ -94,10 +66,19 @@ class Sidebar extends PureComponent<SidebarProps> {
       this.props.resourceView === ResourceView.Alerts
         ? pb.path("/alerts")
         : pb.path("/")
+    let totalAlerts = this.props.items
+      .map(i => i.alertResource.numberOfAlerts())
+      .reduce((sum, current) => sum + current, 0)
+
     let allItem = (
       <li>
         <Link className={allItemClasses} to={allLink}>
-          All
+          <span className="resLink--all-name">All</span>
+          {totalAlerts > 0 ? (
+            <span className="resLink-alertBadge">{totalAlerts}</span>
+          ) : (
+            ""
+          )}
         </Link>
       </li>
     )
@@ -133,24 +114,18 @@ class Sidebar extends PureComponent<SidebarProps> {
               {willBuild || building ? <DotBuildingSvg /> : <DotSvg />}
             </span>
             <span className="resLink-name">{item.name}</span>
-            <span>{hasBuilt ? timeAgo : ""}</span>
+            {item.numberOfAlerts() > 0 ? (
+              <span className="resLink-alertBadge">
+                {item.numberOfAlerts()}
+              </span>
+            ) : (
+              ""
+            )}
+            <span className="resLink-timeAgo">{hasBuilt ? timeAgo : "—"}</span>
           </Link>
         </li>
       )
     })
-
-    if (this.props.needsNudge) {
-      let nudgeItem = (
-        <li key="AnalyticsNudge">
-          <AnalyticsNudge />
-        </li>
-      )
-      if (listItems.length > 2) {
-        listItems.splice(2, 0, nudgeItem)
-      } else {
-        listItems.push(nudgeItem)
-      }
-    }
 
     return (
       <section className={classes.join(" ")}>

@@ -1,5 +1,293 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`StatusBar does not render an upgrade badge when runningVersion is dev 1`] = `
+<div
+  className="Statusbar"
+>
+  <section
+    className="Statusbar-panel Statusbar-errWarnPanel"
+  >
+    <div
+      className="Statusbar-errWarnPanel-child"
+    >
+      <svg
+        className="Statusbar-errWarnPanel-icon "
+      >
+        error.svg
+      </svg>
+      <p>
+        <span
+          className="Statusbar-errWarnPanel-count Statusbar-errWarnPanel-count--error"
+        >
+          0
+        </span>
+         
+        <a
+          href="/alerts"
+          onClick={[Function]}
+        >
+          error
+          s
+        </a>
+      </p>
+    </div>
+    <div
+      className="Statusbar-errWarnPanel-child"
+    >
+      <svg
+        className="Statusbar-errWarnPanel-icon "
+      >
+        warning.svg
+      </svg>
+      <p>
+        <span
+          className="Statusbar-errWarnPanel-count"
+        >
+          0
+        </span>
+         
+        warning
+        s
+      </p>
+    </div>
+  </section>
+  <section
+    className="Statusbar-panel Statusbar-statusMsgPanel"
+  >
+    <p
+      className="Statusbar-statusMsgPanel-child"
+    >
+      Updating vigoda…
+    </p>
+    <p
+      className="Statusbar-statusMsgPanel-child Statusbar-statusMsgPanel-child--lastEdit"
+    >
+      <span
+        className="Statusbar-statusMsgPanel-label"
+      >
+        Last Edit:
+      </span>
+      <span>
+        vigoda ‣ main.go[+2 more]
+      </span>
+    </p>
+  </section>
+  <section
+    className="Statusbar-panel Statusbar-progressPanel"
+  >
+    <p>
+      <strong>
+        0
+      </strong>
+      /
+      2
+       running
+    </p>
+  </section>
+  <section
+    className="Statusbar-tiltPanel"
+  >
+    <svg
+      className="Statusbar-logo"
+    >
+      logo.svg
+    </svg>
+  </section>
+</div>
+`;
+
+exports[`StatusBar does not render an upgrade badge when there is no latestVersion 1`] = `
+<div
+  className="Statusbar"
+>
+  <section
+    className="Statusbar-panel Statusbar-errWarnPanel"
+  >
+    <div
+      className="Statusbar-errWarnPanel-child"
+    >
+      <svg
+        className="Statusbar-errWarnPanel-icon "
+      >
+        error.svg
+      </svg>
+      <p>
+        <span
+          className="Statusbar-errWarnPanel-count Statusbar-errWarnPanel-count--error"
+        >
+          0
+        </span>
+         
+        <a
+          href="/alerts"
+          onClick={[Function]}
+        >
+          error
+          s
+        </a>
+      </p>
+    </div>
+    <div
+      className="Statusbar-errWarnPanel-child"
+    >
+      <svg
+        className="Statusbar-errWarnPanel-icon "
+      >
+        warning.svg
+      </svg>
+      <p>
+        <span
+          className="Statusbar-errWarnPanel-count"
+        >
+          0
+        </span>
+         
+        warning
+        s
+      </p>
+    </div>
+  </section>
+  <section
+    className="Statusbar-panel Statusbar-statusMsgPanel"
+  >
+    <p
+      className="Statusbar-statusMsgPanel-child"
+    >
+      Updating vigoda…
+    </p>
+    <p
+      className="Statusbar-statusMsgPanel-child Statusbar-statusMsgPanel-child--lastEdit"
+    >
+      <span
+        className="Statusbar-statusMsgPanel-label"
+      >
+        Last Edit:
+      </span>
+      <span>
+        vigoda ‣ main.go[+2 more]
+      </span>
+    </p>
+  </section>
+  <section
+    className="Statusbar-panel Statusbar-progressPanel"
+  >
+    <p>
+      <strong>
+        0
+      </strong>
+      /
+      2
+       running
+    </p>
+  </section>
+  <section
+    className="Statusbar-tiltPanel"
+  >
+    <svg
+      className="Statusbar-logo"
+    >
+      logo.svg
+    </svg>
+  </section>
+</div>
+`;
+
+exports[`StatusBar renders an upgrade badge when the version is out of date 1`] = `
+<div
+  className="Statusbar"
+>
+  <section
+    className="Statusbar-panel Statusbar-errWarnPanel"
+  >
+    <div
+      className="Statusbar-errWarnPanel-child"
+    >
+      <svg
+        className="Statusbar-errWarnPanel-icon "
+      >
+        error.svg
+      </svg>
+      <p>
+        <span
+          className="Statusbar-errWarnPanel-count Statusbar-errWarnPanel-count--error"
+        >
+          0
+        </span>
+         
+        <a
+          href="/alerts"
+          onClick={[Function]}
+        >
+          error
+          s
+        </a>
+      </p>
+    </div>
+    <div
+      className="Statusbar-errWarnPanel-child"
+    >
+      <svg
+        className="Statusbar-errWarnPanel-icon "
+      >
+        warning.svg
+      </svg>
+      <p>
+        <span
+          className="Statusbar-errWarnPanel-count"
+        >
+          0
+        </span>
+         
+        warning
+        s
+      </p>
+    </div>
+  </section>
+  <section
+    className="Statusbar-panel Statusbar-statusMsgPanel"
+  >
+    <p
+      className="Statusbar-statusMsgPanel-child"
+    >
+      Updating vigoda…
+    </p>
+    <p
+      className="Statusbar-statusMsgPanel-child Statusbar-statusMsgPanel-child--lastEdit"
+    >
+      <span
+        className="Statusbar-statusMsgPanel-label"
+      >
+        Last Edit:
+      </span>
+      <span>
+        vigoda ‣ main.go[+2 more]
+      </span>
+    </p>
+  </section>
+  <section
+    className="Statusbar-panel Statusbar-progressPanel"
+  >
+    <p>
+      <strong>
+        0
+      </strong>
+      /
+      2
+       running
+    </p>
+  </section>
+  <section
+    className="Statusbar-tiltPanel"
+  >
+    <svg
+      className="Statusbar-logo"
+    >
+      logo.svg
+    </svg>
+  </section>
+</div>
+`;
+
 exports[`StatusBar renders two items all ok snapshot 1`] = `
 <div
   className="Statusbar"
@@ -83,6 +371,10 @@ exports[`StatusBar renders two items all ok snapshot 1`] = `
       2
        running
     </p>
+  </section>
+  <section
+    className="Statusbar-tiltPanel"
+  >
     <svg
       className="Statusbar-logo"
     >
@@ -175,6 +467,10 @@ exports[`StatusBar renders two items both errors snapshot 1`] = `
       2
        running
     </p>
+  </section>
+  <section
+    className="Statusbar-tiltPanel"
+  >
     <svg
       className="Statusbar-logo"
     >
@@ -267,6 +563,10 @@ exports[`StatusBar renders without crashing 1`] = `
       0
        running
     </p>
+  </section>
+  <section
+    className="Statusbar-tiltPanel"
+  >
     <svg
       className="Statusbar-logo"
     >
