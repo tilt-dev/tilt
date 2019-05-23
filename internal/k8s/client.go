@@ -1,7 +1,6 @@
 package k8s
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -288,9 +287,8 @@ func (k K8sClient) actOnEntities(ctx context.Context, cmdArgs []string, entities
 	if err != nil {
 		return "", "", errors.Wrapf(err, "serializeYaml for kubectl %s", cmdArgs)
 	}
-	stdin := bytes.NewReader([]byte(rawYAML))
 
-	return k.kubectlRunner.execWithStdin(ctx, args, stdin)
+	return k.kubectlRunner.execWithStdin(ctx, args, rawYAML)
 }
 
 func ProvideServerVersion(clientSet *kubernetes.Clientset) (*version.Info, error) {

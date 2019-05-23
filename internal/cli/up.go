@@ -170,11 +170,7 @@ func provideLogActions() store.LogActionsFlag {
 }
 
 func provideKubectlLogLevel() k8s.KubectlLogLevel {
-	if klogLevel > 0 {
-		return k8s.KubectlLogLevel(logger.InfoLvl)
-	} else {
-		return k8s.KubectlLogLevel(logger.NoneLvl)
-	}
+	return k8s.KubectlLogLevel(klogLevel)
 }
 
 func provideWebMode(b model.TiltBuild) (model.WebMode, error) {
