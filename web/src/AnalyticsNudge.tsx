@@ -1,7 +1,7 @@
 import React, { Component } from "react"
 import "./AnalyticsNudge.scss"
 
-const nudgeTimeoutMs = 4000 // 4 seconds
+const nudgeTimeoutMs = 15000
 const nudgeElem = (): JSX.Element => {
   return (
     <p>
