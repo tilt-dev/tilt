@@ -67,6 +67,12 @@ func (ws WebsocketSubscriber) Stream(ctx context.Context, store *store.Store) {
 func (ws WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore) {
 	state := s.RLockState()
 	view := webview.StateToWebView(state)
+
+	if view.NeedsAnalyticsNudge && !state.AnalyticsNudgeSurfaced {
+		// If we're showing the nudge and no one's told the engine
+		// state about it yet... tell the engine state.
+		s.Dispatch(store.AnalyticsNudgeSurfacedAction{})
+	}
 	s.RUnlockState()
 
 	err := ws.conn.WriteJSON(view)

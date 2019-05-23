@@ -10,7 +10,7 @@ import TimeAgo from "react-timeago"
 import { isZeroTime } from "./time"
 import PathBuilder from "./PathBuilder"
 import { timeAgoFormatter } from "./timeFormatters"
-import { AlertResource } from "./ErrorPane"
+import { AlertResource } from "./AlertPane"
 
 class SidebarItem {
   name: string

@@ -2,7 +2,7 @@ import React, { PureComponent } from "react"
 import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
 import AnsiLine from "./AnsiLine"
 import TimeAgo from "react-timeago"
-import "./ErrorPane.scss"
+import "./AlertPane.scss"
 import { zeroTime } from "./time"
 import { Build } from "./types"
 import { timeAgoFormatter } from "./timeFormatters"
@@ -95,7 +95,7 @@ class AlertPane extends PureComponent<AlertsProps> {
     this.props.resources.forEach(r => {
       if (r.podStatusIsError()) {
         errorElements.push(
-          <li key={"resourceInfoError" + r.name} className="ErrorPane-item">
+          <li key={"resourceInfoError" + r.name} className="AlertPane-item">
             <header>
               <p>{r.name}</p>
               <p>
@@ -110,7 +110,7 @@ class AlertPane extends PureComponent<AlertsProps> {
         )
       } else if (r.podRestarted()) {
         errorElements.push(
-          <li key={"resourceInfoPodCrash" + r.name} className="ErrorPane-item">
+          <li key={"resourceInfoPodCrash" + r.name} className="AlertPane-item">
             <header>
               <p>{r.name}</p>
               <p>{`Restarts: ${r.resourceInfo.podRestarts}`}</p>
@@ -122,7 +122,7 @@ class AlertPane extends PureComponent<AlertsProps> {
         errorElements.push(
           <li
             key={"resourceInfoCrashRebuild" + r.name}
-            className="ErrorPane-item"
+            className="AlertPane-item"
           >
             <header>
               <p>{r.name}</p>
@@ -135,7 +135,7 @@ class AlertPane extends PureComponent<AlertsProps> {
       if (r.buildFailed()) {
         let lastBuild = r.buildHistory[0]
         errorElements.push(
-          <li key={"buildError" + r.name} className="ErrorPane-item">
+          <li key={"buildError" + r.name} className="AlertPane-item">
             <header>
               <p>{r.name}</p>
               <p>
@@ -152,7 +152,7 @@ class AlertPane extends PureComponent<AlertsProps> {
       el = <ul>{errorElements}</ul>
     }
 
-    return <section className="ErrorPane">{el}</section>
+    return <section className="AlertPane">{el}</section>
   }
 }
 

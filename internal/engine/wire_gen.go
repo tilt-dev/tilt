@@ -96,8 +96,8 @@ func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	if err != nil {
 		return nil, err
 	}
-	level := provideKubectlLogLevelInfo()
-	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, level)
+	int2 := provideKubectlLogLevelInfo()
+	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, int2)
 	client := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
 	minikubeClient := minikube.ProvideMinikubeClient()

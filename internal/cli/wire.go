@@ -84,6 +84,7 @@ var BaseWireSet = wire.NewSet(
 	engine.ProvideSubscribers,
 	engine.NewUpper,
 	provideAnalytics,
+	engine.NewTiltAnalyticsSubscriber,
 	engine.ProvideAnalyticsReporter,
 	provideUpdateModeFlag,
 	engine.NewWatchManager,

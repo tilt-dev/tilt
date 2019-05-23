@@ -2403,6 +2403,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	ic := NewImageController(reaper)
 	to := &testOpter{}
 	_, ta := tiltanalytics.NewMemoryTiltAnalytics(to)
+	tas := NewTiltAnalyticsSubscriber(ta)
 	ar := ProvideAnalyticsReporter(ta, st)
 
 	// TODO(nick): Why does this test use two different docker compose clients???
@@ -2447,7 +2448,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
 
-	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc, sc, tvc, ta)
+	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc, sc, tvc, tas)
 	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {
