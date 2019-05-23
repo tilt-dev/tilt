@@ -103,10 +103,6 @@ func TestOptedIn(t *testing.T) {
 
 	f.TiltUp("oneup")
 
-	// ForwardPort will fail if all the pods are not ready.
-	//
-	// We can't use the normal Tilt-managed forwards here because
-	// Tilt doesn't setup forwards when --watch=false.
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 	f.WaitForAllPodsReady(ctx, "app=oneup")
@@ -131,10 +127,6 @@ func TestOptedOut(t *testing.T) {
 
 	f.TiltUp("oneup")
 
-	// ForwardPort will fail if all the pods are not ready.
-	//
-	// We can't use the normal Tilt-managed forwards here because
-	// Tilt doesn't setup forwards when --watch=false.
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 	f.WaitForAllPodsReady(ctx, "app=oneup")
@@ -155,20 +147,22 @@ func TestOptDefault(t *testing.T) {
 
 	f.TiltUp("oneup")
 
-	// ForwardPort will fail if all the pods are not ready.
-	//
-	// We can't use the normal Tilt-managed forwards here because
-	// Tilt doesn't setup forwards when --watch=false.
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 	f.WaitForAllPodsReady(ctx, "app=oneup")
 
-	assert.Equal(t, 1, len(f.mss.ma.Counts))
-	c := f.mss.ma.Counts[0]
-	var tagKeys []string
-	for k := range c.Tags {
-		tagKeys = append(tagKeys, k)
+	var metricNames []string
+
+	for _, c := range f.mss.ma.Counts {
+		var tagKeys []string
+		for k := range c.Tags {
+			tagKeys = append(tagKeys, k)
+		}
+		// optdefault is not allowed to send any tags other than time
+		assert.Equal(t, []string{"time"}, tagKeys)
+
+		metricNames = append(metricNames, c.Name)
 	}
-	assert.Equal(t, []string{"time"}, tagKeys)
-	assert.Equal(t, "tilt.analytics.up.optdefault", c.Name)
+
+	assert.Contains(t, metricNames, "tilt.analytics.up.optdefault")
 }
