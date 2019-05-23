@@ -39,6 +39,16 @@ func NewServiceChangeAction(service *v1.Service, url *url.URL) ServiceChangeActi
 	return ServiceChangeAction{Service: service, URL: url}
 }
 
+type K8SEventAction struct {
+	Event *v1.Event
+}
+
+func (K8SEventAction) Action() {}
+
+func NewK8SEventAction(event *v1.Event) K8SEventAction {
+	return K8SEventAction{event}
+}
+
 type BuildLogAction struct {
 	store.LogEvent
 	ManifestName model.ManifestName

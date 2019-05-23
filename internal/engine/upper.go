@@ -152,6 +152,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handlePodChangeAction(ctx, state, action.Pod)
 	case ServiceChangeAction:
 		handleServiceEvent(ctx, state, action)
+	case K8SEventAction:
+		handleK8SEvent(ctx, state, action.Event)
 	case PodLogAction:
 		handlePodLogAction(state, action)
 	case BuildLogAction:
@@ -848,6 +850,10 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 	}
 
 	ms.LBs[k8s.ServiceName(service.Name)] = action.URL
+}
+
+func handleK8SEvent(ctx context.Context, state *store.EngineState, event *v1.Event) {
+	logger.Get(ctx).Infof("k8s event: %s", spew.Sdump(event))
 }
 
 func handleDumpEngineStateAction(ctx context.Context, engineState *store.EngineState) {

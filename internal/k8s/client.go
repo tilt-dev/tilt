@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
@@ -86,6 +87,8 @@ type Client interface {
 
 	WatchServices(ctx context.Context, lps []model.LabelPair) (<-chan *v1.Service, error)
 
+	WatchEvents(ctx context.Context, lps labels.Selector) (<-chan *v1.Event, error)
+
 	WatchEverything(ctx context.Context, lps []model.LabelPair) (<-chan watch.Event, error)
 
 	ConnectedToCluster(ctx context.Context) error
@@ -103,6 +106,7 @@ type K8sClient struct {
 	portForwarder   PortForwarder
 	configNamespace Namespace
 	clientSet       kubernetes.Interface
+	dynamic         dynamic.Interface
 	runtimeAsync    *runtimeAsync
 	dynamic         dynamic.Interface
 }
@@ -145,6 +149,8 @@ func ProvideK8sClient(
 	writer := logger.Get(ctx).Writer(logger.DebugLvl)
 	browser.Stdout = writer
 	browser.Stderr = writer
+
+	di, err := dynamic.NewForConfig(restConfig)
 
 	return K8sClient{
 		env:             env,

@@ -56,6 +56,47 @@ func (kCli K8sClient) makeWatcher(f watcherFactory, ls labels.Selector) (watch.I
 	return nil, "", fmt.Errorf("%s, Reason: %s, Code: %d", status.Message, status.Reason, status.Code)
 }
 
+func (kCli K8sClient) WatchEvents(ctx context.Context, ls labels.Selector) (<-chan *v1.Event, error) {
+	watcher, err := kCli.makeWatcher(func(ns string) watcher {
+		return kCli.core.Events(ns)
+	}, ls)
+	if err != nil {
+		return nil, errors.Wrap(err, "error watching k8s events")
+	}
+	watcher.Stop()
+
+	ch := make(chan *v1.Event)
+
+	factory := informers.NewSharedInformerFactoryWithOptions(kCli.clientSet, 5*time.Second)
+	informer := factory.Core().V1().Events().Informer()
+
+	stopper := make(chan struct{})
+
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			mObj, ok := obj.(*v1.Event)
+			if ok {
+				ch <- mObj
+			}
+		},
+		UpdateFunc: func(oldObj interface{}, newObj interface{}) {
+			mObj, ok := newObj.(*v1.Event)
+			if ok {
+				ch <- mObj
+			}
+		},
+	})
+
+	go informer.Run(stopper)
+	// TODO(dmiller): is this right?
+	go func() {
+		<-ctx.Done()
+		close(stopper)
+	}()
+
+	return ch, nil
+}
+
 func (kCli K8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan *v1.Pod, error) {
 	// HACK(dmiller): There's no way to get errors out of an informer. See https://github.com/kubernetes/client-go/issues/155
 	// In the meantime, at least to get authorization and some other errors let's try to set up a watcher and then just

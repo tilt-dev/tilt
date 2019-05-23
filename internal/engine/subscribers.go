@@ -26,6 +26,7 @@ func ProvideSubscribers(
 	sail client.SailClient,
 	tvc *TiltVersionChecker,
 	ta *TiltAnalyticsSubscriber,
+	ewm *EventWatchManager,
 	umm *UIDMapManager) []store.Subscriber {
 	return []store.Subscriber{
 		hud,
@@ -46,6 +47,7 @@ func ProvideSubscribers(
 		sail,
 		tvc,
 		ta,
+		ewm,
 		umm,
 	}
 }
