@@ -47,12 +47,14 @@ func TestUIDMapManager(t *testing.T) {
 	})
 
 	expectedAction := UIDUpdateAction{
-		UID:          e.UID(),
+		UID:          k8s.UID("foobar"),
 		EventType:    watch.Added,
 		ManifestName: "doggos",
 		Entity:       k8s.K8sEntity{Obj: e.Obj, Kind: e.Kind},
 	}
 
+	// FIXME:
+	// find a good way to set the entity's UID to "foobar"
 	f.assertObservedUIDUpdateActions(expectedAction)
 }
 

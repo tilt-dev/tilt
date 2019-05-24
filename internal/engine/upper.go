@@ -853,7 +853,20 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 }
 
 func handleK8SEvent(ctx context.Context, state *store.EngineState, event *v1.Event) {
-	logger.Get(ctx).Infof("k8s event: %s", spew.Sdump(event))
+	v, ok := state.ObjectsByK8SUIDs[k8s.UID(event.InvolvedObject.UID)]
+	if !ok {
+		return
+	}
+
+	if event.Type == "Warning" {
+		// TODO: log this to the manifest's log as well
+		logger.Get(ctx).Infof("event received for %s: %s:%s:%s: %s",
+			v.Manifest,
+			v.Entity.Name(),
+			v.Entity.Namespace(),
+			v.Entity.Kind,
+			event.Message)
+	}
 }
 
 func handleDumpEngineStateAction(ctx context.Context, engineState *store.EngineState) {

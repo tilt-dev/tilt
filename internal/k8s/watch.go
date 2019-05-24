@@ -57,7 +57,7 @@ func (kCli K8sClient) makeWatcher(f watcherFactory, ls labels.Selector) (watch.I
 }
 
 func (kCli K8sClient) WatchEvents(ctx context.Context, ls labels.Selector) (<-chan *v1.Event, error) {
-	watcher, err := kCli.makeWatcher(func(ns string) watcher {
+	watcher, _, err := kCli.makeWatcher(func(ns string) watcher {
 		return kCli.core.Events(ns)
 	}, ls)
 	if err != nil {
@@ -212,40 +212,36 @@ func (kCli K8sClient) WatchServices(ctx context.Context, lps []model.LabelPair) 
 	return ch, nil
 }
 
-func (kCli K8sClient) WatchEverything(ctx context.Context, lps []model.LabelPair) (<-chan watch.Event, error) {
-	ch := make(chan watch.Event)
-
-	ls := labels.Set{}
-	for _, lp := range lps {
-		ls[lp.Key] = lp.Value
+func isWatchable(r metav1.APIResource) bool {
+	for _, v := range r.Verbs {
+		if v == "watch" {
+			return true
+		}
 	}
+	return false
+}
 
-	var watchers []watch.Interface
-
+func (kCli K8sClient) watchableGroupVersionResources() ([]schema.GroupVersionResource, error) {
 	_, resourceLists, err := kCli.clientSet.Discovery().ServerGroupsAndResources()
 	if err != nil {
 		return nil, errors.Wrapf(err, "error getting list of resource types")
 	}
 
-	var gvrs []schema.GroupVersionResource
+	var ret []schema.GroupVersionResource
+
 	for _, rl := range resourceLists {
-		// one might think we could use rl.GroupVersionKind().GroupVersion(), but that gave an empty `Group`
-		// for most resources (one specific example in case we revisit this: statefulsets)
+		// one might think it'd be cleaner to use rl.GroupVersionKind().GroupVersion()
+		// empirically, but that returns an empty `Group` for most resources
+		// (one specific example in case we revisit this: statefulsets)
 		rlGV, err := schema.ParseGroupVersion(rl.GroupVersion)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error parsing GroupVersion '%s'", rl.GroupVersion)
 		}
 		for _, r := range rl.APIResources {
-			isWatchable := false
-			for _, verb := range r.Verbs {
-				if verb == "watch" {
-					isWatchable = true
-					break
-				}
-			}
-			if !isWatchable {
+			if !isWatchable(r) {
 				continue
 			}
+			// per comments on r.Group/r.Version: empty implies the value of the containing ResourceList
 			group := r.Group
 			if group == "" {
 				group = rlGV.Group
@@ -254,7 +250,7 @@ func (kCli K8sClient) WatchEverything(ctx context.Context, lps []model.LabelPair
 			if version == "" {
 				version = rlGV.Version
 			}
-			gvrs = append(gvrs, schema.GroupVersionResource{
+			ret = append(ret, schema.GroupVersionResource{
 				Group:    group,
 				Version:  version,
 				Resource: r.Name,
@@ -262,6 +258,23 @@ func (kCli K8sClient) WatchEverything(ctx context.Context, lps []model.LabelPair
 		}
 	}
 
+	return ret, nil
+}
+
+func (kCli K8sClient) WatchEverything(ctx context.Context, lps []model.LabelPair) (<-chan watch.Event, error) {
+	ls := labels.Set{}
+	for _, lp := range lps {
+		ls[lp.Key] = lp.Value
+	}
+
+	// there is no API to watch *everything*, but there is an API to watch everything of a given type
+	// so we'll get the list of watchable types and make a watcher for each
+	gvrs, err := kCli.watchableGroupVersionResources()
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting list of watchable GroupVersionResources")
+	}
+
+	var watchers []watch.Interface
 	for _, gvr := range gvrs {
 		watcher, _, err := kCli.makeWatcher(func(ns string) watcher {
 			return kCli.dynamic.Resource(gvr)
@@ -274,36 +287,55 @@ func (kCli K8sClient) WatchEverything(ctx context.Context, lps []model.LabelPair
 		watchers = append(watchers, watcher)
 	}
 
-	go func() {
-		selectCases := []reflect.SelectCase{
-			{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(ctx.Done())},
-		}
-		for _, w := range watchers {
-			selectCases = append(selectCases, reflect.SelectCase{
-				Dir:  reflect.SelectRecv,
-				Chan: reflect.ValueOf(w.ResultChan()),
-			})
-		}
-		logger.Get(ctx).Infof("starting watch")
-		for {
-			chosen, value, ok := reflect.Select(selectCases)
-			if chosen == 0 || !ok {
-				logger.Get(ctx).Infof("stopping watch.")
-				for _, w := range watchers {
-					w.Stop()
-				}
-				close(ch)
-				return
-			}
+	ch := make(chan watch.Event)
 
-			event := value.Interface().(watch.Event)
-			if event.Object == nil {
-				continue
-			}
-
-			ch <- event
-		}
-	}()
+	go watchEverythingLoop(ctx, ch, watchers, gvrs)
 
 	return ch, nil
+}
+
+func watchEverythingLoop(ctx context.Context, ch chan<- watch.Event, watchers []watch.Interface, gvrs []schema.GroupVersionResource) {
+	var selectCases []reflect.SelectCase
+	for _, w := range watchers {
+		selectCases = append(selectCases, reflect.SelectCase{
+			Dir:  reflect.SelectRecv,
+			Chan: reflect.ValueOf(w.ResultChan()),
+		})
+	}
+
+	selectCases = append(selectCases, reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(ctx.Done())})
+
+	for {
+		chosen, value, ok := reflect.Select(selectCases)
+		// the last selectCase is ctx.Done
+		if chosen == len(selectCases)-1 || !ok {
+			if !ok {
+				// XXX DEBUG
+				// for some reason, we're getting ok = false for fission resources (e.g. fission.io/v1, Resource=environments)
+				// This happens after running tilt for 10-20 seconds
+				// My current hypotheses:
+				// 1. A misunderstanding on my part of what the third return value from `reflect.Select` indicates
+				// 2. A bug in the watch implementation for fission CRDs
+				// 3. A misunderstanding of how the watch API is to be used (maybe periodic closes are to be expected,
+				//    and we should just restart the watch? AFAIK, we haven't seen this with our existing watches,
+				//    but, then again our logging allowed this to exist unnoticed for quite some time:
+				//    https://github.com/windmilleng/tilt/pull/1647. I feel like we would have noticed this with pods,
+				//    though.
+				// 4. Maybe setting up 100+ watches taxes the system and causes it to drop connections
+				logger.Get(ctx).Infof("DEBUG: ok was false for %v", gvrs[chosen])
+			}
+			for _, w := range watchers {
+				w.Stop()
+			}
+			close(ch)
+			return
+		}
+
+		event := value.Interface().(watch.Event)
+		if event.Object == nil {
+			continue
+		}
+
+		ch <- event
+	}
 }

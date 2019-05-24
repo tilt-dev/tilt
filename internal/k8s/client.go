@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/client-go/dynamic"
-
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -108,7 +106,6 @@ type K8sClient struct {
 	clientSet       kubernetes.Interface
 	dynamic         dynamic.Interface
 	runtimeAsync    *runtimeAsync
-	dynamic         dynamic.Interface
 }
 
 var _ Client = K8sClient{}
@@ -149,8 +146,6 @@ func ProvideK8sClient(
 	writer := logger.Get(ctx).Writer(logger.DebugLvl)
 	browser.Stdout = writer
 	browser.Stderr = writer
-
-	di, err := dynamic.NewForConfig(restConfig)
 
 	return K8sClient{
 		env:             env,
