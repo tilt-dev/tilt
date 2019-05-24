@@ -8,16 +8,14 @@ import (
 	"strconv"
 	"time"
 
-	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/wmclient/pkg/analytics"
-
 	"github.com/davecgh/go-spew/spew"
-
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud"
@@ -743,6 +741,7 @@ func checkForPodCrash(ctx context.Context, state *store.EngineState, ms *store.M
 		ms.BuildHistory[0].Log = model.AppendLog(ms.BuildHistory[0].Log, le, state.LogTimestamps)
 	}
 	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, le, state.LogTimestamps)
+	ms.CombinedLog = model.AppendLog(ms.CombinedLog, le, state.LogTimestamps)
 	logger.Get(ctx).Infof("%s", msg)
 }
 
