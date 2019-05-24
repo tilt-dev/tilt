@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -117,7 +118,7 @@ var _ Client = &Cli{}
 
 type Cli struct {
 	*client.Client
-	supportsBuildkit bool
+	builderVersion types.BuilderVersion
 
 	creds     dockerCreds
 	initError error
@@ -210,16 +211,16 @@ func ProvideDockerVersion(ctx context.Context, client *client.Client) (types.Ver
 	return v, err
 }
 
-func DefaultClient(ctx context.Context, d *client.Client, serverVersion types.Version) (*Cli, error) {
+func DefaultClient(ctx context.Context, d *client.Client, serverVersion types.Version, builderVersion types.BuilderVersion) (*Cli, error) {
 	if !SupportedVersion(serverVersion) {
 		return nil, fmt.Errorf("Tilt requires a Docker server newer than %s. Current Docker server: %s",
 			minDockerVersion, serverVersion.APIVersion)
 	}
 
 	cli := &Cli{
-		Client:           d,
-		supportsBuildkit: SupportsBuildkit(serverVersion),
-		initDone:         make(chan bool),
+		Client:         d,
+		builderVersion: builderVersion,
+		initDone:       make(chan bool),
 	}
 
 	go cli.backgroundInit(ctx)
@@ -235,6 +236,28 @@ func SupportedVersion(v types.Version) bool {
 	}
 
 	return version.GTE(minDockerVersion)
+}
+
+func ProvideDockerBuilderVersion(v types.Version) (types.BuilderVersion, error) {
+	// If the user has explicitly chosen to enable/disable buildkit, respect that.
+	buildkitEnv := os.Getenv("DOCKER_BUILDKIT")
+	if buildkitEnv != "" {
+		buildkitEnabled, err := strconv.ParseBool(buildkitEnv)
+		if err != nil {
+			// This error message is copied from Docker, for consistency.
+			return "", errors.Wrap(err, "DOCKER_BUILDKIT environment variable expects boolean value")
+		}
+		if buildkitEnabled {
+			return types.BuilderBuildKit, nil
+
+		}
+		return types.BuilderV1, nil
+	}
+
+	if SupportsBuildkit(v) {
+		return types.BuilderBuildKit, nil
+	}
+	return types.BuilderV1, nil
 }
 
 // Sadly, certain versions of docker return an error if the client requests
@@ -332,7 +355,7 @@ type dockerCreds struct {
 func (c *Cli) initCreds(ctx context.Context) dockerCreds {
 	creds := dockerCreds{}
 
-	if c.supportsBuildkit {
+	if c.builderVersion == types.BuilderBuildKit {
 		session, _ := session.NewSession(ctx, "tilt", sessionSharedKey)
 		if session != nil {
 			session.Allow(authprovider.NewDockerAuthProvider())
@@ -391,12 +414,7 @@ func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options Bu
 	}
 
 	opts := types.ImageBuildOptions{}
-	if c.supportsBuildkit {
-		opts.Version = types.BuilderBuildKit
-	} else {
-		opts.Version = types.BuilderV1
-	}
-
+	opts.Version = c.builderVersion
 	opts.AuthConfigs = c.creds.authConfigs
 	opts.SessionID = c.creds.sessionID
 	opts.Remove = options.Remove
