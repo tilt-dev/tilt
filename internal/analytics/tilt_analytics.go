@@ -12,9 +12,10 @@ import (
 // 2. Ignores all other calls from users who have not opted in.
 // 3. Allows opting in/out at runtime.
 type TiltAnalytics struct {
-	opt   analytics.Opt
-	opter AnalyticsOpter
-	a     analytics.Analytics
+	opt         analytics.Opt
+	opter       AnalyticsOpter
+	a           analytics.Analytics
+	tiltVersion string
 }
 
 // An AnalyticsOpter can record a user's choice (opt-in or opt-out)
@@ -31,13 +32,13 @@ func (NullOpter) SetOpt(opt analytics.Opt) error {
 
 var _ AnalyticsOpter = NullOpter{}
 
-func NewTiltAnalytics(opt analytics.Opt, opter AnalyticsOpter, analytics analytics.Analytics) *TiltAnalytics {
-	return &TiltAnalytics{opt, opter, analytics}
+func NewTiltAnalytics(opt analytics.Opt, opter AnalyticsOpter, analytics analytics.Analytics, tiltVersion string) *TiltAnalytics {
+	return &TiltAnalytics{opt, opter, analytics, tiltVersion}
 }
 
-func NewMemoryTiltAnalytics(opter AnalyticsOpter) (*analytics.MemoryAnalytics, *TiltAnalytics) {
+func NewMemoryTiltAnalyticsForTest(opter AnalyticsOpter) (*analytics.MemoryAnalytics, *TiltAnalytics) {
 	ma := analytics.NewMemoryAnalytics()
-	return ma, NewTiltAnalytics(analytics.OptIn, opter, ma)
+	return ma, NewTiltAnalytics(analytics.OptIn, opter, ma, "v0.0.0")
 }
 
 func (ta *TiltAnalytics) Opt() analytics.Opt {
@@ -58,7 +59,7 @@ func (ta *TiltAnalytics) Incr(name string, tags map[string]string) {
 
 func (ta *TiltAnalytics) IncrIfUnopted(name string) {
 	if ta.opt == analytics.OptDefault {
-		ta.a.IncrAnonymous(name, map[string]string{})
+		ta.a.IncrAnonymous(name, map[string]string{"version": ta.tiltVersion})
 	}
 }
 

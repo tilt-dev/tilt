@@ -263,7 +263,7 @@ func newTestFixture(t *testing.T) *serverFixture {
 	st, getActions := store.NewStoreForTesting()
 	go st.Loop(context.Background())
 	a := analytics.NewMemoryAnalytics()
-	a, ta := tiltanalytics.NewMemoryTiltAnalytics(tiltanalytics.NullOpter{})
+	a, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
 	sailCli := client.NewFakeSailClient()
 	s := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, sailCli)
 

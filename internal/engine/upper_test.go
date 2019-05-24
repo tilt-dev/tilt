@@ -2402,7 +2402,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	pfc := NewPortForwardController(k8s)
 	ic := NewImageController(reaper)
 	to := &testOpter{}
-	_, ta := tiltanalytics.NewMemoryTiltAnalytics(to)
+	_, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(to)
 	tas := NewTiltAnalyticsSubscriber(ta)
 	ar := ProvideAnalyticsReporter(ta, st)
 
@@ -2422,24 +2422,24 @@ func newTestFixture(t *testing.T) *testFixture {
 	sc := &client.FakeSailClient{}
 
 	ret := &testFixture{
-		TempDirFixture:        f,
-		ctx:                   ctx,
-		cancel:                cancel,
-		b:                     b,
-		fsWatcher:             watcher,
-		timerMaker:            &timerMaker,
-		docker:                dockerClient,
-		hud:                   fakeHud,
-		log:                   log,
-		store:                 st,
-		bc:                    bc,
-		onchangeCh:            fSub.ch,
-		fwm:                   fwm,
-		cc:                    cc,
-		dcc:                   fakeDcc,
-		tfl:                   tfl,
-		ghc:                   ghc,
-		opter:                 to,
+		TempDirFixture: f,
+		ctx:            ctx,
+		cancel:         cancel,
+		b:              b,
+		fsWatcher:      watcher,
+		timerMaker:     &timerMaker,
+		docker:         dockerClient,
+		hud:            fakeHud,
+		log:            log,
+		store:          st,
+		bc:             bc,
+		onchangeCh:     fSub.ch,
+		fwm:            fwm,
+		cc:             cc,
+		dcc:            fakeDcc,
+		tfl:            tfl,
+		ghc:            ghc,
+		opter:          to,
 		tiltVersionCheckDelay: versionCheckInterval,
 	}
 

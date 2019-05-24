@@ -62,7 +62,7 @@ func initAnalytics(rootCmd *cobra.Command) (*tiltanalytics.TiltAnalytics, error)
 		}
 	}
 
-	a := tiltanalytics.NewTiltAnalytics(analyticsOpt, analyticsOpter{}, backingAnalytics)
+	a := tiltanalytics.NewTiltAnalytics(analyticsOpt, analyticsOpter{}, backingAnalytics, provideTiltInfo().AnalyticsVersion())
 
 	return a, nil
 }

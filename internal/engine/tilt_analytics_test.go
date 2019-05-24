@@ -12,7 +12,7 @@ import (
 
 func TestOnChange(t *testing.T) {
 	to := &testOpter{}
-	_, a := tiltanalytics.NewMemoryTiltAnalytics(to)
+	_, a := tiltanalytics.NewMemoryTiltAnalyticsForTest(to)
 	tas := NewTiltAnalyticsSubscriber(a)
 	st, _ := store.NewStoreForTesting()
 	state := st.LockMutableStateForTesting()

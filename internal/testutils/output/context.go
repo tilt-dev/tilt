@@ -15,7 +15,7 @@ func CtxForTest() context.Context {
 	l := logger.NewLogger(logger.DebugLvl, os.Stdout)
 	ctx := logger.WithLogger(context.Background(), l)
 
-	_, a := analytics.NewMemoryTiltAnalytics(analytics.NullOpter{})
+	_, a := analytics.NewMemoryTiltAnalyticsForTest(analytics.NullOpter{})
 	ctx = analytics.WithAnalytics(ctx, a)
 
 	return ctx
