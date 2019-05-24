@@ -121,7 +121,7 @@ func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity) error 
 	if c.UpsertError != nil {
 		return c.UpsertError
 	}
-	yaml, err := SerializeYAML(entities)
+	yaml, err := SerializeSpecYAML(entities)
 	if err != nil {
 		return errors.Wrap(err, "kubectl apply")
 	}
@@ -130,7 +130,7 @@ func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity) error 
 }
 
 func (c *FakeK8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
-	yaml, err := SerializeYAML(entities)
+	yaml, err := SerializeSpecYAML(entities)
 	if err != nil {
 		return errors.Wrap(err, "kubectl delete")
 	}

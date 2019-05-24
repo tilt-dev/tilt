@@ -13,7 +13,7 @@ func BenchmarkParseUnparseSingle(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		_, err = SerializeYAML(entities)
+		_, err = SerializeSpecYAML(entities)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -30,7 +30,7 @@ func BenchmarkParseUnparseLonger(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		_, err = SerializeYAML(entities)
+		_, err = SerializeSpecYAML(entities)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -48,7 +48,7 @@ func BenchmarkParseUnparseLongest(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		_, err = SerializeYAML(entities)
+		_, err = SerializeSpecYAML(entities)
 		if err != nil {
 			b.Fatal(err)
 		}

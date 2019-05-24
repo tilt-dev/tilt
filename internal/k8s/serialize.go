@@ -7,9 +7,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer/json"
-	"k8s.io/apimachinery/pkg/util/yaml"
+	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes/scheme"
+	yamlEncoder "sigs.k8s.io/yaml"
 )
 
 func ParseYAMLFromString(yaml string) ([]K8sEntity, error) {
@@ -22,7 +22,7 @@ func ParseYAMLFromString(yaml string) ([]K8sEntity, error) {
 // https://github.com/kubernetes/cli-runtime/blob/d6a36215b15f83b94578f2ffce5d00447972e8ae/pkg/genericclioptions/resource/visitor.go#L583
 func ParseYAML(k8sYaml io.Reader) ([]K8sEntity, error) {
 	reader := bufio.NewReader(k8sYaml)
-	decoder := yaml.NewYAMLOrJSONDecoder(reader, 4096)
+	decoder := yamlDecoder.NewYAMLOrJSONDecoder(reader, 4096)
 
 	result := make([]K8sEntity, 0)
 	for {
@@ -71,14 +71,34 @@ func ParseYAML(k8sYaml io.Reader) ([]K8sEntity, error) {
 	return result, nil
 }
 
-func SerializeYAML(decoded []K8sEntity) (string, error) {
-	yamlSerializer := json.NewYAMLSerializer(json.DefaultMetaFactory, scheme.Scheme, scheme.Scheme)
+// Serializes the provided K8s object as YAML to the given writer.
+//
+// By convention, all K8s objects contain ObjectMetadata, Spec, and Status.
+// This only serializes the metadata and spec, skipping the status.
+func serializeSpec(obj runtime.Object, w io.Writer) error {
+	json, err := specJSONIterator.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	data, err := yamlEncoder.JSONToYAML(json)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(data)
+	return err
+}
+
+// Serializes the provided K8s objects as YAML.
+//
+// By convention, all K8s objects contain ObjectMetadata, Spec, and Status.
+// This only serializes the metadata and spec, skipping the status.
+func SerializeSpecYAML(decoded []K8sEntity) (string, error) {
 	buf := bytes.NewBuffer(nil)
 	for i, obj := range decoded {
 		if i != 0 {
 			buf.Write([]byte("\n---\n"))
 		}
-		err := yamlSerializer.Encode(obj.Obj, buf)
+		err := serializeSpec(obj.Obj, buf)
 		if err != nil {
 			return "", err
 		}

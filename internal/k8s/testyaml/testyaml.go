@@ -694,7 +694,6 @@ const (
 const SnackYAMLPostConfig = `apiVersion: apps/v1
 kind: Deployment
 metadata:
-  creationTimestamp: null
   labels:
     app: snack
   name: snack
@@ -705,7 +704,6 @@ spec:
   strategy: {}
   template:
     metadata:
-      creationTimestamp: null
       labels:
         app: snack
     spec:
@@ -715,7 +713,6 @@ spec:
         image: gcr.io/windmill-public-containers/servantes/snack
         name: snack
         resources: {}
-status: {}
 `
 
 const SecretName = "mysecret"
@@ -1312,3 +1309,19 @@ spec:
 	result = strings.Replace(result, "IMAGE", imageName, -1)
 	return result
 }
+
+const PodDisruptionBudgetYAML = `
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    app: zookeeper
+  name: infra-kafka-zookeeper
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: zookeeper
+      component: server
+      release: infra-kafka
+`

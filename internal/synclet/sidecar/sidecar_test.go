@@ -26,7 +26,7 @@ func TestInjectSyncletSidecar(t *testing.T) {
 		t.Errorf("Expected replacement in:\n%s", testyaml.SanchoYAML)
 	}
 
-	result, err := k8s.SerializeYAML([]k8s.K8sEntity{newEntity})
+	result, err := k8s.SerializeSpecYAML([]k8s.K8sEntity{newEntity})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestInjectSyncletSidecarMultipleContainers(t *testing.T) {
 		t.Errorf("Expected replacement in:\n%s", testyaml.MultipleContainersDeploymentYAML)
 	}
 
-	result, err := k8s.SerializeYAML([]k8s.K8sEntity{newEntity})
+	result, err := k8s.SerializeSpecYAML([]k8s.K8sEntity{newEntity})
 	if err != nil {
 		t.Fatal(err)
 	}

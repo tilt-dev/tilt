@@ -12,7 +12,7 @@ func NewTarget(
 	portForwards []model.PortForward,
 	extraPodSelectors []labels.Selector,
 	dependencyIDs []model.TargetID) (model.K8sTarget, error) {
-	yaml, err := SerializeYAML(entities)
+	yaml, err := SerializeSpecYAML(entities)
 	if err != nil {
 		return model.K8sTarget{}, err
 	}

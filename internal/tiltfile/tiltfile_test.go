@@ -3352,7 +3352,7 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 		}
 	}
 
-	s, err := k8s.SerializeYAML(entityObjs)
+	s, err := k8s.SerializeSpecYAML(entityObjs)
 	if err != nil {
 		f.t.Fatal(err)
 	}

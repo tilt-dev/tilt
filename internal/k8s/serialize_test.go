@@ -25,7 +25,7 @@ func TestTracerYAML(t *testing.T) {
 		t.Errorf("Unexpected entities: %+v", entities)
 	}
 
-	result, err := SerializeYAML(entities)
+	result, err := SerializeSpecYAML(entities)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestSanchoYAML(t *testing.T) {
 		t.Errorf("Unexpected entities: %+v", entities)
 	}
 
-	result, err := SerializeYAML(entities)
+	result, err := SerializeSpecYAML(entities)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestHelmGeneratedRedisYAML(t *testing.T) {
 }
 
 func TestCRDYAML(t *testing.T) {
-	entities := MustParseYAMLFromString(t, testyaml.CRDYAML)
+	entities := assertRoundTripYAML(t, testyaml.CRDYAML)
 	assert.Equal(t, 2, len(entities))
 
 	kinds := []string{}
@@ -91,12 +91,26 @@ func TestCRDYAML(t *testing.T) {
 		"projects.example.martin-helmich.de",
 		"example-project",
 	}, names)
+}
 
-	result, err := SerializeYAML(entities)
+func TestPodDisruptionBudgetYAML(t *testing.T) {
+	// Old versions of Tilt would print the PodDisruptionBudgetStatus, which
+	// is not correct and leads to errors. See:
+	// https://github.com/windmilleng/tilt/issues/1667
+	entities := assertRoundTripYAML(t, testyaml.PodDisruptionBudgetYAML)
+	assert.Equal(t, 1, len(entities))
+}
+
+// Assert that parsing the YAML and re-serializing it produces the same result.
+// Returns the parsed entities.
+func assertRoundTripYAML(t *testing.T, yaml string) []K8sEntity {
+	entities := MustParseYAMLFromString(t, yaml)
+	result, err := SerializeSpecYAML(entities)
 	if err != nil {
 		t.Fatal(err)
 	}
-	expected := strings.TrimSpace(testyaml.CRDYAML)
+	expected := strings.TrimSpace(yaml)
 	result = strings.TrimSpace(result)
 	assert.Equal(t, expected, result)
+	return entities
 }
