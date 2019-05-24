@@ -61,7 +61,7 @@ func (ec *explodingClient) WatchServices(ctx context.Context, lps []model.LabelP
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) WatchEvents(ctx context.Context, lps labels.Selector) (<-chan *v1.Event, error) {
+func (ec *explodingClient) WatchEvents(ctx context.Context) (<-chan *v1.Event, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 

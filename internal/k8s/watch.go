@@ -56,10 +56,13 @@ func (kCli K8sClient) makeWatcher(f watcherFactory, ls labels.Selector) (watch.I
 	return nil, "", fmt.Errorf("%s, Reason: %s, Code: %d", status.Message, status.Reason, status.Code)
 }
 
-func (kCli K8sClient) WatchEvents(ctx context.Context, ls labels.Selector) (<-chan *v1.Event, error) {
+func (kCli K8sClient) WatchEvents(ctx context.Context) (<-chan *v1.Event, error) {
+	// HACK(dmiller): There's no way to get errors out of an informer. See https://github.com/kubernetes/client-go/issues/155
+	// In the meantime, at least to get authorization and some other errors let's try to set up a watcher and then just
+	// throw it away.
 	watcher, _, err := kCli.makeWatcher(func(ns string) watcher {
 		return kCli.core.Events(ns)
-	}, ls)
+	}, labels.Everything())
 	if err != nil {
 		return nil, errors.Wrap(err, "error watching k8s events")
 	}
@@ -221,6 +224,7 @@ func isWatchable(r metav1.APIResource) bool {
 	return false
 }
 
+// Get all GroupVersionResources in the cluster that support watching
 func (kCli K8sClient) watchableGroupVersionResources() ([]schema.GroupVersionResource, error) {
 	_, resourceLists, err := kCli.clientSet.Discovery().ServerGroupsAndResources()
 	if err != nil {

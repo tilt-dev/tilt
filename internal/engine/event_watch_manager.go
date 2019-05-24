@@ -41,7 +41,7 @@ func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore) {
 
 	m.watching = true
 
-	ch, err := m.kClient.WatchEvents(ctx, k8s.TiltRunSelector())
+	ch, err := m.kClient.WatchEvents(ctx)
 	if err != nil {
 		err = errors.Wrap(err, "Error watching k8s events. Are you connected to kubernetes?\n")
 		st.Dispatch(NewErrorAction(err))

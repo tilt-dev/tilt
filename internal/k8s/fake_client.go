@@ -106,7 +106,7 @@ func (c *FakeK8sClient) WatchServices(ctx context.Context, lps []model.LabelPair
 	return ch, nil
 }
 
-func (c *FakeK8sClient) WatchEvents(ctx context.Context, ls labels.Selector) (<-chan *v1.Event, error) {
+func (c *FakeK8sClient) WatchEvents(ctx context.Context) (<-chan *v1.Event, error) {
 	return nil, nil
 }
 
