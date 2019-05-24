@@ -3250,7 +3250,7 @@ func newFixture(t *testing.T) *fixture {
 	out := new(bytes.Buffer)
 	ctx := output.ForkedCtxForTest(out)
 	f := tempdir.NewTempDirFixture(t)
-	an, ta := tiltanalytics.NewMemoryTiltAnalytics(tiltanalytics.NullOpter{})
+	an, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
 	dcc := dockercompose.NewDockerComposeClient(docker.Env{})
 	tfl := ProvideTiltfileLoader(ta, dcc, "fake-context")
 

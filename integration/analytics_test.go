@@ -158,8 +158,8 @@ func TestOptDefault(t *testing.T) {
 		for k := range c.Tags {
 			tagKeys = append(tagKeys, k)
 		}
-		// optdefault is not allowed to send any tags other than time
-		assert.Equal(t, []string{"time"}, tagKeys)
+		// optdefault is not allowed to send any tags other than time & version
+		assert.ElementsMatch(t, []string{"time", "version"}, tagKeys)
 
 		metricNames = append(metricNames, c.Name)
 	}

@@ -2402,7 +2402,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	pfc := NewPortForwardController(k8s)
 	ic := NewImageController(reaper)
 	to := &testOpter{}
-	_, ta := tiltanalytics.NewMemoryTiltAnalytics(to)
+	_, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(to)
 	tas := NewTiltAnalyticsSubscriber(ta)
 	ar := ProvideAnalyticsReporter(ta, st)
 
