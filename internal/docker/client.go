@@ -238,7 +238,7 @@ func SupportedVersion(v types.Version) bool {
 	return version.GTE(minDockerVersion)
 }
 
-func ProvideDockerBuilderVersion(v types.Version) (types.BuilderVersion, error) {
+func ProvideDockerBuilderVersion(v types.Version, env k8s.Env) (types.BuilderVersion, error) {
 	// If the user has explicitly chosen to enable/disable buildkit, respect that.
 	buildkitEnv := os.Getenv("DOCKER_BUILDKIT")
 	if buildkitEnv != "" {
@@ -254,7 +254,7 @@ func ProvideDockerBuilderVersion(v types.Version) (types.BuilderVersion, error) 
 		return types.BuilderV1, nil
 	}
 
-	if SupportsBuildkit(v) {
+	if SupportsBuildkit(v, env) {
 		return types.BuilderBuildKit, nil
 	}
 	return types.BuilderV1, nil
@@ -265,7 +265,14 @@ func ProvideDockerBuilderVersion(v types.Version) (types.BuilderVersion, error) 
 //
 // Inferred from release notes
 // https://docs.docker.com/engine/release-notes/
-func SupportsBuildkit(v types.Version) bool {
+func SupportsBuildkit(v types.Version, env k8s.Env) bool {
+	if env == k8s.EnvMinikube {
+		// Buildkit for Minikube is currently busted. Follow
+		// https://github.com/kubernetes/minikube/issues/4143
+		// for updates.
+		return false
+	}
+
 	version, err := semver.ParseTolerant(v.APIVersion)
 	if err != nil {
 		// If the server version doesn't parse, disable buildkit

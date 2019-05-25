@@ -15,25 +15,27 @@ import (
 
 type buildkitTestCase struct {
 	v        types.Version
+	env      k8s.Env
 	expected bool
 }
 
 func TestSupportsBuildkit(t *testing.T) {
 	cases := []buildkitTestCase{
-		{types.Version{APIVersion: "1.37", Experimental: true}, false},
-		{types.Version{APIVersion: "1.37", Experimental: false}, false},
-		{types.Version{APIVersion: "1.38", Experimental: true}, true},
-		{types.Version{APIVersion: "1.38", Experimental: false}, false},
-		{types.Version{APIVersion: "1.39", Experimental: true}, true},
-		{types.Version{APIVersion: "1.39", Experimental: false}, true},
-		{types.Version{APIVersion: "1.40", Experimental: true}, true},
-		{types.Version{APIVersion: "1.40", Experimental: false}, true},
-		{types.Version{APIVersion: "garbage", Experimental: false}, false},
+		{types.Version{APIVersion: "1.37", Experimental: true}, k8s.EnvGKE, false},
+		{types.Version{APIVersion: "1.37", Experimental: false}, k8s.EnvGKE, false},
+		{types.Version{APIVersion: "1.38", Experimental: true}, k8s.EnvGKE, true},
+		{types.Version{APIVersion: "1.38", Experimental: false}, k8s.EnvGKE, false},
+		{types.Version{APIVersion: "1.39", Experimental: true}, k8s.EnvGKE, true},
+		{types.Version{APIVersion: "1.39", Experimental: false}, k8s.EnvGKE, true},
+		{types.Version{APIVersion: "1.40", Experimental: true}, k8s.EnvGKE, true},
+		{types.Version{APIVersion: "1.40", Experimental: false}, k8s.EnvGKE, true},
+		{types.Version{APIVersion: "garbage", Experimental: false}, k8s.EnvGKE, false},
+		{types.Version{APIVersion: "1.39", Experimental: true}, k8s.EnvMinikube, false},
 	}
 
 	for i, c := range cases {
 		t.Run(fmt.Sprintf("Case%d", i), func(t *testing.T) {
-			assert.Equal(t, c.expected, SupportsBuildkit(c.v))
+			assert.Equal(t, c.expected, SupportsBuildkit(c.v, c.env))
 		})
 	}
 }
@@ -60,15 +62,20 @@ func TestProvideBuilderVersion(t *testing.T) {
 			defer os.Setenv("DOCKER_BUILDKIT", "")
 
 			v, err := ProvideDockerBuilderVersion(
-				types.Version{APIVersion: c.v})
+				types.Version{APIVersion: c.v}, k8s.EnvGKE)
 			assert.NoError(t, err)
 			assert.Equal(t, c.expected, v)
 		})
 	}
 }
 
+type versionTestCase struct {
+	v        types.Version
+	expected bool
+}
+
 func TestSupported(t *testing.T) {
-	cases := []buildkitTestCase{
+	cases := []versionTestCase{
 		{types.Version{APIVersion: "1.22"}, false},
 		{types.Version{APIVersion: "1.23"}, true},
 		{types.Version{APIVersion: "1.39"}, true},

@@ -95,7 +95,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	if err != nil {
 		return demo.Script{}, err
 	}
-	builderVersion, err := docker.ProvideDockerBuilderVersion(version)
+	builderVersion, err := docker.ProvideDockerBuilderVersion(version, env)
 	if err != nil {
 		return demo.Script{}, err
 	}
@@ -227,7 +227,7 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	if err != nil {
 		return Threads{}, err
 	}
-	builderVersion, err := docker.ProvideDockerBuilderVersion(version)
+	builderVersion, err := docker.ProvideDockerBuilderVersion(version, env)
 	if err != nil {
 		return Threads{}, err
 	}
@@ -483,7 +483,7 @@ func wireDockerBuilderVersion(ctx context.Context) (types.BuilderVersion, error)
 	if err != nil {
 		return "", err
 	}
-	builderVersion, err := docker.ProvideDockerBuilderVersion(typesVersion)
+	builderVersion, err := docker.ProvideDockerBuilderVersion(typesVersion, env)
 	if err != nil {
 		return "", err
 	}

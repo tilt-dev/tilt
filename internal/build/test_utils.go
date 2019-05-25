@@ -49,8 +49,9 @@ func (c fakeClock) Now() time.Time { return c.now }
 
 func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	ctx := output.CtxForTest()
+	env := k8s.EnvGKE
 
-	dEnv, err := docker.ProvideEnv(ctx, k8s.EnvGKE, wmcontainer.RuntimeDocker, minikube.FakeClient{})
+	dEnv, err := docker.ProvideEnv(ctx, env, wmcontainer.RuntimeDocker, minikube.FakeClient{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +66,7 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 		t.Fatal(err)
 	}
 
-	builderVersion, err := docker.ProvideDockerBuilderVersion(version)
+	builderVersion, err := docker.ProvideDockerBuilderVersion(version, env)
 	if err != nil {
 		t.Fatal(err)
 	}
