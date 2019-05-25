@@ -38,6 +38,35 @@ func TestSupportsBuildkit(t *testing.T) {
 	}
 }
 
+type builderVersionTestCase struct {
+	v        string
+	bkEnv    string
+	expected types.BuilderVersion
+}
+
+func TestProvideBuilderVersion(t *testing.T) {
+	cases := []builderVersionTestCase{
+		{"1.37", "", types.BuilderV1},
+		{"1.37", "0", types.BuilderV1},
+		{"1.37", "1", types.BuilderBuildKit},
+		{"1.40", "", types.BuilderBuildKit},
+		{"1.40", "0", types.BuilderV1},
+		{"1.40", "1", types.BuilderBuildKit},
+	}
+
+	for i, c := range cases {
+		t.Run(fmt.Sprintf("Case%d", i), func(t *testing.T) {
+			os.Setenv("DOCKER_BUILDKIT", c.bkEnv)
+			defer os.Setenv("DOCKER_BUILDKIT", "")
+
+			v, err := ProvideDockerBuilderVersion(
+				types.Version{APIVersion: c.v})
+			assert.NoError(t, err)
+			assert.Equal(t, c.expected, v)
+		})
+	}
+}
+
 func TestSupported(t *testing.T) {
 	cases := []buildkitTestCase{
 		{types.Version{APIVersion: "1.22"}, false},

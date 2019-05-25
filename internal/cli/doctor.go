@@ -52,6 +52,9 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 		printField("Version", dockerVersion.APIVersion, err)
 	}
 
+	builderVersion, err := wireDockerBuilderVersion(ctx)
+	printField("Builder", builderVersion, err)
+
 	fmt.Println("---")
 	fmt.Println("Kubernetes")
 

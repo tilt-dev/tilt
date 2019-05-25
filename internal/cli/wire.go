@@ -51,6 +51,7 @@ var BaseWireSet = wire.NewSet(
 
 	docker.ProvideDockerClient,
 	docker.ProvideDockerVersion,
+	docker.ProvideDockerBuilderVersion,
 	docker.DefaultClient,
 	wire.Bind(new(docker.Client), new(docker.Cli)),
 
@@ -176,6 +177,11 @@ func wireDockerEnv(ctx context.Context) (docker.Env, error) {
 func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics) (DownDeps, error) {
 	wire.Build(BaseWireSet, ProvideDownDeps)
 	return DownDeps{}, nil
+}
+
+func wireDockerBuilderVersion(ctx context.Context) (types.BuilderVersion, error) {
+	wire.Build(BaseWireSet)
+	return "", nil
 }
 
 type DownDeps struct {
