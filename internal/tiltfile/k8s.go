@@ -171,11 +171,11 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 		rest = append(rest, r...)
 	}
 
-	matchingStr, err := k8s.SerializeYAML(match)
+	matchingStr, err := k8s.SerializeSpecYAML(match)
 	if err != nil {
 		return nil, err
 	}
-	restStr, err := k8s.SerializeYAML(rest)
+	restStr, err := k8s.SerializeSpecYAML(rest)
 	if err != nil {
 		return nil, err
 	}

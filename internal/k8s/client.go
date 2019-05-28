@@ -283,7 +283,7 @@ func (k K8sClient) actOnEntities(ctx context.Context, cmdArgs []string, entities
 	args := append([]string{}, cmdArgs...)
 	args = append(args, "-f", "-")
 
-	rawYAML, err := SerializeYAML(entities)
+	rawYAML, err := SerializeSpecYAML(entities)
 	if err != nil {
 		return "", "", errors.Wrapf(err, "serializeYaml for kubectl %s", cmdArgs)
 	}

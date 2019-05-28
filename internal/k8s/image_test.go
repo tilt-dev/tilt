@@ -37,7 +37,7 @@ func TestInjectDigestSanchoYAML(t *testing.T) {
 		t.Errorf("Expected replaced: true. Actual: %v", replaced)
 	}
 
-	result, err := SerializeYAML([]K8sEntity{newEntity})
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestInjectDigestDoesNotMutateOriginal(t *testing.T) {
 		t.Errorf("Expected replaced: true. Actual: %v", replaced)
 	}
 
-	result, err := SerializeYAML([]K8sEntity{entity})
+	result, err := SerializeSpecYAML([]K8sEntity{entity})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestInjectImagePullPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := SerializeYAML([]K8sEntity{newEntity})
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func TestInjectImagePullPolicy(t *testing.T) {
 		t.Errorf("image does not have correct pull policy: %s", result)
 	}
 
-	serializedOrigEntity, err := SerializeYAML([]K8sEntity{entity})
+	serializedOrigEntity, err := SerializeSpecYAML([]K8sEntity{entity})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +122,7 @@ func TestInjectImagePullPolicyDoesNotMutateOriginal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := SerializeYAML([]K8sEntity{entity})
+	result, err := SerializeSpecYAML([]K8sEntity{entity})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +173,7 @@ func TestInjectDigestBlorgBackendYAML(t *testing.T) {
 		t.Errorf("Expected replaced: true. Actual: %v", replaced)
 	}
 
-	result, err := SerializeYAML([]K8sEntity{newEntity})
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +224,7 @@ func TestInjectSyncletImage(t *testing.T) {
 		t.Errorf("Expected replacement in:\n%s", testyaml.SyncletYAML)
 	}
 
-	result, err := SerializeYAML([]K8sEntity{newEntity})
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -330,7 +330,7 @@ func TestInjectDigestEnvVar(t *testing.T) {
 		t.Errorf("Expected replaced: true. Actual: %v", replaced)
 	}
 
-	result, err := SerializeYAML([]K8sEntity{newEntity})
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -366,7 +366,7 @@ func testInjectDigestCRD(t *testing.T, yaml string, expectedDigestPrefix string)
 		t.Errorf("Expected replaced: true. Actual: %v", replaced)
 	}
 
-	result, err := SerializeYAML([]K8sEntity{newEntity})
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
 	if err != nil {
 		t.Fatal(err)
 	}
