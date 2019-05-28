@@ -22,6 +22,10 @@ func NewEventWatchManager(kClient k8s.Client) *EventWatchManager {
 }
 
 func (m *EventWatchManager) needsWatch(st store.RStore) bool {
+	if !k8sEventsFeatureFlagOn() {
+		return false
+	}
+
 	state := st.RLockState()
 	defer st.RUnlockState()
 
