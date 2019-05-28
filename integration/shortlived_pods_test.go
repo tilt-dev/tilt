@@ -19,8 +19,10 @@ func TestShortlivedPods(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
-	f.WaitForAllPodsInPhase(ctx, "app=shortlived-pod", []v1.PodPhase{v1.PodSucceeded})
+	f.WaitForAllPodsInPhase(ctx, "app=shortlived-pod", []v1.PodPhase{v1.PodSucceeded, v1.PodFailed})
 	f.KillProcs()
 
-	assert.Contains(t, f.logs.String(), "this is a successful job")
+	out := f.logs.String()
+	assert.Contains(t, out, "this is a successful job")
+	assert.Contains(t, out, "this job will fail")
 }

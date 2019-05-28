@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: shortlived-pod
+  name: shortlived-pod-success
   namespace: tilt-integration
   labels:
     app: shortlived-pod
@@ -15,6 +15,26 @@ spec:
         - name: echohi
           image: alpine
           command: ["sh", "-c", "echo this is a successful job"]
+      restartPolicy: Never
+  backoffLimit: 4
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: shortlived-pod-fail
+  namespace: tilt-integration
+  labels:
+    app: shortlived-pod
+spec:
+  template:
+    metadata:
+      labels:
+        app: shortlived-pod
+    spec:
+      containers:
+        - name: echohi
+          image: alpine
+          command: ["sh", "-c", "echo this job will fail && false"]
       restartPolicy: Never
   backoffLimit: 4
 
