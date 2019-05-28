@@ -1,0 +1,20 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: shortlived-pod
+  namespace: tilt-integration
+  labels:
+    app: shortlived-pod
+spec:
+  template:
+    metadata:
+      labels:
+        app: shortlived-pod
+    spec:
+      containers:
+        - name: echohi
+          image: alpine
+          command: ["sh", "-c", "echo this is a successful job"]
+      restartPolicy: Never
+  backoffLimit: 4
+

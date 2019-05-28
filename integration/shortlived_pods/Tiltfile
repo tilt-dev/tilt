@@ -1,0 +1,6 @@
+# -*- mode: Python -*-
+
+default_registry(read_json('tilt_option.json', {})
+                 .get('default_registry', 'gcr.io/windmill-test-containers/servantes'))
+
+k8s_yaml('shortlived_pods.yaml')
