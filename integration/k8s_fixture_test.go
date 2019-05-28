@@ -78,7 +78,7 @@ func (f *k8sFixture) WaitForAllPodsInPhase(ctx context.Context, selector string,
 }
 
 // Checks that all pods are in the given phase
-// Returns the output (for diagnostics) and the name of the pods in one of the given phases.
+// Returns the output (for diagnostics) and the name of the pods in the given phase.
 func (f *k8sFixture) AllPodsInPhase(ctx context.Context, selector string, phase v1.PodPhase) (bool, string, []string) {
 	cmd := exec.Command("kubectl", "get", "pods",
 		namespaceFlag, "--selector="+selector, "-o=template",

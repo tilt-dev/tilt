@@ -58,9 +58,10 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 				continue
 			}
 
-			// Don't try to fetch logs if pod is pending or state unknown;
-			// it may reject our connection.
-			if pod.Phase == v1.PodPending || pod.Phase == v1.PodUnknown {
+			// Only try to fetch logs if pod is in a state that can handle it;
+			// otherwise, it may reject our connection.
+			if !(pod.Phase == v1.PodRunning || pod.Phase == v1.PodSucceeded ||
+				pod.Phase == v1.PodFailed) {
 				continue
 			}
 
