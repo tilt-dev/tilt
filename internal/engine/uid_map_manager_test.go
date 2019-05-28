@@ -17,7 +17,7 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
-func TestUIDMapManager(t *testing.T) {
+func _TestUIDMapManager(t *testing.T) {
 	f := newUMMFixture(t)
 	defer f.TearDown()
 
