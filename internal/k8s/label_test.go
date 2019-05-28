@@ -24,7 +24,7 @@ func TestInjectLabelPod(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := SerializeYAML([]K8sEntity{newEntity})
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestInjectLabelDeployment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := SerializeYAML([]K8sEntity{newEntity})
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestInjectLabelDeploymentBeta1(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := SerializeYAML([]K8sEntity{newEntity})
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +97,7 @@ func TestInjectLabelDeploymentBeta2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := SerializeYAML([]K8sEntity{newEntity})
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +122,7 @@ func TestInjectLabelExtDeploymentBeta1(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := SerializeYAML([]K8sEntity{newEntity})
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +153,7 @@ func TestInjectStatefulSet(t *testing.T) {
 	assert.Equal(t, "deadbeef", podTmpl.ObjectMeta.Labels["tilt-runid"])
 	assert.Equal(t, "", vcTmpl.ObjectMeta.Labels["tilt-runid"])
 
-	result, err := SerializeYAML([]K8sEntity{newEntity})
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
 	if err != nil {
 		t.Fatal(err)
 	}

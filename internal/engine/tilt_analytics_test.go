@@ -5,14 +5,15 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/wmclient/pkg/analytics"
+
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
 func TestOnChange(t *testing.T) {
 	to := &testOpter{}
-	_, a := tiltanalytics.NewMemoryTiltAnalytics(to)
+	_, a := tiltanalytics.NewMemoryTiltAnalyticsForTest(to)
 	tas := NewTiltAnalyticsSubscriber(a)
 	st, _ := store.NewStoreForTesting()
 	state := st.LockMutableStateForTesting()
@@ -21,5 +22,5 @@ func TestOnChange(t *testing.T) {
 	ctx := context.Background()
 	tas.OnChange(ctx, st)
 
-	assert.Equal(t, []analytics.Opt{analytics.OptOut}, to.calls)
+	assert.Equal(t, []analytics.Opt{analytics.OptOut}, to.Calls())
 }

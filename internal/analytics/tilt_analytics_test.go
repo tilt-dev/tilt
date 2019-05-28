@@ -8,6 +8,8 @@ import (
 	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
+const versionTest = "v0.0.0"
+
 type testCase struct {
 	name         string
 	opt          analytics.Opt
@@ -38,7 +40,7 @@ func TestCount(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ma := analytics.NewMemoryAnalytics()
 			os := &optSetting{}
-			a := NewTiltAnalytics(test.opt, os, ma)
+			a := NewTiltAnalytics(test.opt, os, ma, versionTest)
 			a.Count("foo", testTags, 1)
 			var expectedCounts []analytics.CountEvent
 			if test.expectRecord {
@@ -58,7 +60,7 @@ func TestIncr(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ma := analytics.NewMemoryAnalytics()
 			os := &optSetting{}
-			a := NewTiltAnalytics(test.opt, os, ma)
+			a := NewTiltAnalytics(test.opt, os, ma, versionTest)
 			a.Incr("foo", testTags)
 			var expectedCounts []analytics.CountEvent
 			if test.expectRecord {
@@ -78,7 +80,7 @@ func TestTimer(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ma := analytics.NewMemoryAnalytics()
 			os := &optSetting{}
-			a := NewTiltAnalytics(test.opt, os, ma)
+			a := NewTiltAnalytics(test.opt, os, ma, versionTest)
 			a.Timer("foo", time.Second, testTags)
 			var expectedTimes []analytics.TimeEvent
 			if test.expectRecord {
@@ -98,13 +100,13 @@ func TestIncrIfUnopted(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ma := analytics.NewMemoryAnalytics()
 			os := &optSetting{}
-			a := NewTiltAnalytics(test.opt, os, ma)
+			a := NewTiltAnalytics(test.opt, os, ma, versionTest)
 			a.IncrIfUnopted("foo")
 			var expectedCounts []analytics.CountEvent
 			if test.expectRecord {
 				expectedCounts = append(expectedCounts, analytics.CountEvent{
 					Name: "foo",
-					Tags: map[string]string{},
+					Tags: map[string]string{"version": versionTest},
 					N:    1,
 				})
 			}
@@ -116,7 +118,7 @@ func TestIncrIfUnopted(t *testing.T) {
 func analyticsViaTransition(t *testing.T, initialOpt, newOpt analytics.Opt) (*TiltAnalytics, *analytics.MemoryAnalytics) {
 	ma := analytics.NewMemoryAnalytics()
 	os := &optSetting{}
-	a := NewTiltAnalytics(initialOpt, os, ma)
+	a := NewTiltAnalytics(initialOpt, os, ma, versionTest)
 	err := a.SetOpt(newOpt)
 	if !assert.NoError(t, err) {
 		assert.FailNow(t, err.Error())
@@ -197,7 +199,7 @@ func TestOptIn(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ma := analytics.NewMemoryAnalytics()
 			os := &optSetting{}
-			a := NewTiltAnalytics(analytics.OptDefault, os, ma)
+			a := NewTiltAnalytics(analytics.OptDefault, os, ma, versionTest)
 			err := a.SetOpt(test.opt)
 			if !assert.NoError(t, err) {
 				t.FailNow()
@@ -207,7 +209,7 @@ func TestOptIn(t *testing.T) {
 			if test.metricName != "" {
 				expectedCounts = append(expectedCounts, analytics.CountEvent{
 					Name: test.metricName,
-					Tags: map[string]string{},
+					Tags: map[string]string{"version": versionTest},
 					N:    1,
 				})
 			}

@@ -480,7 +480,7 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 	kClient := k8s.NewFakeK8sClient()
 	kp := &fakeKINDPusher{}
 	clock := fakeClock{time.Date(2019, 1, 1, 1, 1, 1, 1, time.UTC)}
-	_, ta := analytics.NewMemoryTiltAnalytics(analytics.NullOpter{})
+	_, ta := analytics.NewMemoryTiltAnalyticsForTest(analytics.NullOpter{})
 	ibd, err := provideImageBuildAndDeployer(ctx, docker, kClient, env, dir, clock, kp, ta)
 	if err != nil {
 		t.Fatal(err)

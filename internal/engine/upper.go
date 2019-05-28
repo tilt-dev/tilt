@@ -758,6 +758,7 @@ func checkForPodCrash(ctx context.Context, state *store.EngineState, ms *store.M
 		ms.BuildHistory[0].Log = model.AppendLog(ms.BuildHistory[0].Log, le, state.LogTimestamps)
 	}
 	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, le, state.LogTimestamps)
+	ms.CombinedLog = model.AppendLog(ms.CombinedLog, le, state.LogTimestamps)
 	logger.Get(ctx).Infof("%s", msg)
 }
 

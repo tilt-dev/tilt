@@ -2252,10 +2252,14 @@ func TestSetAnalyticsOpt(t *testing.T) {
 
 	f.Start([]model.Manifest{}, true, opt)
 	f.store.Dispatch(store.AnalyticsOptAction{Opt: analytics.OptOut})
-
 	f.WaitUntil("opted out", func(state store.EngineState) bool {
 		return state.AnalyticsOpt == analytics.OptOut
 	})
+
+	// if we don't wait for 1 here, it's possible the state flips to out and back to in before the subscriber sees it,
+	// and we end up with no events
+	f.opter.waitUntilCount(t, 1)
+
 	f.store.Dispatch(store.AnalyticsOptAction{Opt: analytics.OptIn})
 	f.WaitUntil("opted in", func(state store.EngineState) bool {
 		return state.AnalyticsOpt == analytics.OptIn
@@ -2267,7 +2271,7 @@ func TestSetAnalyticsOpt(t *testing.T) {
 	if !assert.NoError(t, err) {
 		return
 	}
-	assert.Equal(t, []analytics.Opt{analytics.OptOut, analytics.OptIn}, f.opter.calls)
+	assert.Equal(t, []analytics.Opt{analytics.OptOut, analytics.OptIn}, f.opter.Calls())
 }
 
 type fakeTimerMaker struct {
@@ -2320,21 +2324,23 @@ func (to *testOpter) SetOpt(opt analytics.Opt) error {
 	return nil
 }
 
+func (to *testOpter) Calls() []analytics.Opt {
+	to.mu.Lock()
+	defer to.mu.Unlock()
+	return append([]analytics.Opt{}, to.calls...)
+}
+
 func (to *testOpter) waitUntilCount(t *testing.T, expectedCount int) {
 	timeout := time.After(time.Second)
 	for {
 		select {
 		case <-time.After(5 * time.Millisecond):
-			to.mu.Lock()
-			actualCount := len(to.calls)
-			to.mu.Unlock()
+			actualCount := len(to.Calls())
 			if actualCount == expectedCount {
 				return
 			}
 		case <-timeout:
-			to.mu.Lock()
-			actualCount := len(to.calls)
-			to.mu.Unlock()
+			actualCount := len(to.Calls())
 			t.Errorf("waiting for opt setting count to be %d. opt setting count is currently %d", expectedCount, actualCount)
 			t.FailNow()
 		}
@@ -2402,7 +2408,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	pfc := NewPortForwardController(k8s)
 	ic := NewImageController(reaper)
 	to := &testOpter{}
-	_, ta := tiltanalytics.NewMemoryTiltAnalytics(to)
+	_, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(to)
 	tas := NewTiltAnalyticsSubscriber(ta)
 	ar := ProvideAnalyticsReporter(ta, st)
 

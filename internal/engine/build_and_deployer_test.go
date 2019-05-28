@@ -828,7 +828,7 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 	mode := UpdateModeFlag(UpdateModeAuto)
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	kp := &fakeKINDPusher{}
-	_, ta := analytics.NewMemoryTiltAnalytics(analytics.NullOpter{})
+	_, ta := analytics.NewMemoryTiltAnalyticsForTest(analytics.NullOpter{})
 	bd, err := provideBuildAndDeployer(ctx, docker, k8s, dir, env, mode, sCli, dcc, fakeClock{now: time.Unix(1551202573, 0)}, kp, ta)
 	if err != nil {
 		t.Fatal(err)
