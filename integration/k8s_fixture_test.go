@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/user"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -20,6 +22,13 @@ import (
 
 type k8sFixture struct {
 	*fixture
+
+	token string
+	cert  string
+
+	oldKubeConfigPerms os.FileMode
+	oldKubeConfigPath  string
+	oldKubeConfig      string
 }
 
 func newK8sFixture(t *testing.T, dir string) *k8sFixture {
@@ -27,7 +36,9 @@ func newK8sFixture(t *testing.T, dir string) *k8sFixture {
 
 	kf := &k8sFixture{fixture: f}
 	kf.CreateNamespaceIfNecessary()
+	kf.CreateUser()
 	kf.ClearNamespace()
+	kf.getOldKubeConfig()
 	return kf
 }
 
@@ -168,8 +179,115 @@ func (f *k8sFixture) ClearNamespace() {
 	f.ClearResource("services")
 }
 
+func (f *k8sFixture) getOldKubeConfig() {
+	usr, _ := user.Current()
+	dir := usr.HomeDir
+	kubeConfigPath := filepath.Join(dir, ".kube", "config")
+
+	old, err := ioutil.ReadFile(kubeConfigPath)
+	if err != nil {
+		f.t.Fatalf("Error reading KUBECONFIG: %v", err)
+	}
+	info, err := os.Stat(kubeConfigPath)
+	if err != nil {
+		f.t.Fatalf("Error stat'ing KUBECONFIG: %v", err)
+	}
+
+	f.oldKubeConfigPath = kubeConfigPath
+	f.oldKubeConfigPerms = info.Mode()
+	f.oldKubeConfig = string(old)
+}
+
+func (f *k8sFixture) maybeRestoreOldKubeConfig() {
+	if f.oldKubeConfig != "" {
+		err := ioutil.WriteFile(f.oldKubeConfigPath, []byte(f.oldKubeConfig), f.oldKubeConfigPerms)
+		if err != nil {
+			f.t.Fatalf("Error restoring old KUBECONFIG: %v", err)
+		}
+	}
+}
+
+func (f *k8sFixture) CreateUser() {
+	outWriter := bytes.NewBuffer(nil)
+	cmd := exec.CommandContext(f.ctx, "kubectl", "apply", "-f", "access.yaml")
+	cmd.Stdout = outWriter
+	cmd.Stderr = outWriter
+	cmd.Dir = packageDir
+	err := cmd.Run()
+	if err != nil {
+		f.t.Fatalf("Error creating user: %v. Logs:\n%s", err, outWriter.String())
+	}
+}
+
+func (f *k8sFixture) getSecrets() {
+	outWriter := bytes.NewBuffer(nil)
+	cmdStr := `kubectl get secrets -n tilt-integration -o json | jq -r '.items[] | select(.metadata.name | startswith("tilt-integration-user-token-")) | .data.token'`
+	cmd := exec.CommandContext(f.ctx, "bash", "-c", cmdStr)
+	cmd.Stderr = outWriter
+	cmd.Dir = packageDir
+	token, err := cmd.Output()
+	if err != nil {
+		f.t.Fatalf("Error getting secrets: %v. Cmd: %s", err, cmdStr)
+	}
+
+	cmdStr = `kubectl get secrets -n tilt-integration -o json | jq -r '.items[] | select(.metadata.name | startswith("tilt-integration-user-token-")) | .data["ca.crt"]'`
+	cmd = exec.CommandContext(f.ctx, "bash", "-c", cmdStr)
+	cmd.Stderr = outWriter
+	cmd.Dir = packageDir
+	cert, err := cmd.Output()
+	if err != nil {
+		f.t.Fatalf("Error getting secrets: %v. Cmd: %s", err, cmdStr)
+	}
+
+	f.token = string(token)
+	f.cert = string(cert)
+}
+
+func (f *k8sFixture) SetRestrictedCredentials() {
+	f.getSecrets()
+
+	err := ioutil.WriteFile("/tmp/cert", []byte(f.cert), 0644)
+	if err != nil {
+		f.t.Fatalf("Error writing cert: %v", err)
+	}
+	outWriter := bytes.NewBuffer(nil)
+	cmd := exec.CommandContext(f.ctx, "kubectl", "config", "set-credentials", "tilt-integration-user", "--client-certificate=/tmp/cert", fmt.Sprintf("--token=%s", f.token))
+	cmd.Stdout = outWriter
+	cmd.Stderr = outWriter
+	err = cmd.Run()
+	if err != nil {
+		f.t.Fatalf("Error setting credentials: %v", err)
+	}
+
+	cmd = exec.CommandContext(f.ctx, "kubectl", "config", "current-context")
+	cmd.Stderr = outWriter
+	cmd.Dir = packageDir
+	currentContext, err := cmd.Output()
+	if err != nil {
+		f.t.Fatalf("Error getting current context: %v", err)
+	}
+
+	cmdStr := fmt.Sprintf(`kubectl config view -o json | jq -r '.contexts[] | select(.name == "%s") | .context.cluster'`, strings.TrimSpace(string(currentContext)))
+	cmd = exec.CommandContext(f.ctx, "bash", "-c", cmdStr)
+	cmd.Stderr = outWriter
+	cmd.Dir = packageDir
+	currentCluster, err := cmd.Output()
+	if err != nil {
+		f.t.Fatalf("Error getting current cluster: %v. Cmd: %s", err, cmdStr)
+	}
+
+	cmd = exec.CommandContext(f.ctx, "kubectl", "config", "set-cluster", string(currentCluster), "--certificate-authority=/tmp/cert")
+	cmd.Stdout = outWriter
+	cmd.Stderr = outWriter
+	err = cmd.Run()
+	if err != nil {
+		f.t.Fatalf("Error setting cluster certificate: %v", err)
+	}
+}
+
 func (f *k8sFixture) TearDown() {
 	f.StartTearDown()
 	f.ClearNamespace()
+	f.maybeRestoreOldKubeConfig()
 	f.fixture.TearDown()
 }
