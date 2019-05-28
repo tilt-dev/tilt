@@ -4,12 +4,12 @@ metadata:
   name: shortlived-pod-success
   namespace: tilt-integration
   labels:
-    app: shortlived-pod
+    app: shortlived-pod-success
 spec:
   template:
     metadata:
       labels:
-        app: shortlived-pod
+        app: shortlived-pod-success
     spec:
       containers:
         - name: echohi
@@ -24,12 +24,12 @@ metadata:
   name: shortlived-pod-fail
   namespace: tilt-integration
   labels:
-    app: shortlived-pod
+    app: shortlived-pod-fail
 spec:
   template:
     metadata:
       labels:
-        app: shortlived-pod
+        app: shortlived-pod-fail
     spec:
       containers:
         - name: echohi

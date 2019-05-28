@@ -19,7 +19,8 @@ func TestShortlivedPods(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
-	f.WaitForAllPodsInPhase(ctx, "app=shortlived-pod", []v1.PodPhase{v1.PodSucceeded, v1.PodFailed})
+	f.WaitForAllPodsInPhase(ctx, "app=shortlived-pod-fail", v1.PodFailed)
+	f.WaitForAllPodsInPhase(ctx, "app=shortlived-pod-success", v1.PodSucceeded)
 	f.KillProcs()
 
 	out := f.logs.String()
