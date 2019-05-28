@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
 )
 
 type k8sFixture struct {
@@ -54,12 +55,16 @@ func (f *k8sFixture) CurlUntil(ctx context.Context, url string, expectedContents
 	}, expectedContents)
 }
 
-// Waits until all pods matching the selector are ready.
+// Waits until all pods matching the selector are ready (i.e. phase = "Running")
 // At least one pod must match.
 // Returns the names of the ready pods.
 func (f *k8sFixture) WaitForAllPodsReady(ctx context.Context, selector string) []string {
+	return f.WaitForAllPodsInPhase(ctx, selector, v1.PodRunning)
+}
+
+func (f *k8sFixture) WaitForAllPodsInPhase(ctx context.Context, selector string, phase v1.PodPhase) []string {
 	for {
-		allPodsReady, output, podNames := f.AllPodsReady(ctx, selector)
+		allPodsReady, output, podNames := f.AllPodsInPhase(ctx, selector, phase)
 		if allPodsReady {
 			return podNames
 		}
@@ -72,8 +77,9 @@ func (f *k8sFixture) WaitForAllPodsReady(ctx context.Context, selector string) [
 	}
 }
 
-// Returns the output (for diagnostics) and the name of the ready pods.
-func (f *k8sFixture) AllPodsReady(ctx context.Context, selector string) (bool, string, []string) {
+// Checks that all pods are in the given phase
+// Returns the output (for diagnostics) and the name of the pods in the given phase.
+func (f *k8sFixture) AllPodsInPhase(ctx context.Context, selector string, phase v1.PodPhase) (bool, string, []string) {
 	cmd := exec.Command("kubectl", "get", "pods",
 		namespaceFlag, "--selector="+selector, "-o=template",
 		"--template", "{{range .items}}{{.metadata.name}} {{.status.phase}}{{println}}{{end}}")
@@ -85,7 +91,7 @@ func (f *k8sFixture) AllPodsReady(ctx context.Context, selector string) (bool, s
 	outStr := string(out)
 	lines := strings.Split(outStr, "\n")
 	podNames := []string{}
-	hasOneRunningPod := false
+	hasOneMatchingPod := false
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -97,16 +103,21 @@ func (f *k8sFixture) AllPodsReady(ctx context.Context, selector string) (bool, s
 			f.t.Fatalf("Unexpected output of kubect get pods: %s", outStr)
 		}
 
-		name, phase := elements[0], elements[1]
-		if phase == "Running" {
-			hasOneRunningPod = true
-		} else {
+		name, actualPhase := elements[0], elements[1]
+		var matchedPhase bool
+		if actualPhase == string(phase) {
+			matchedPhase = true
+			hasOneMatchingPod = true
+
+		}
+
+		if !matchedPhase {
 			return false, outStr, nil
 		}
 
 		podNames = append(podNames, name)
 	}
-	return hasOneRunningPod, outStr, podNames
+	return hasOneMatchingPod, outStr, podNames
 }
 
 func (f *k8sFixture) ForwardPort(name string, portMap string) {

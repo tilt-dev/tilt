@@ -7,13 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/api/core/v1"
-
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
+	"k8s.io/api/core/v1"
 )
 
 // Collects logs from deployed containers.
@@ -59,9 +58,10 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 				continue
 			}
 
-			// Only fetch pod logs if the pod is running.
-			// Otherwise it will reject our connection.
-			if pod.Phase != v1.PodRunning {
+			// Only try to fetch logs if pod is in a state that can handle it;
+			// otherwise, it may reject our connection.
+			if !(pod.Phase == v1.PodRunning || pod.Phase == v1.PodSucceeded ||
+				pod.Phase == v1.PodFailed) {
 				continue
 			}
 
