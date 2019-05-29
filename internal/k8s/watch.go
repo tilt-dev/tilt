@@ -10,10 +10,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/model"
 
 	"github.com/pkg/errors"
-
-	"github.com/windmilleng/tilt/internal/model"
 
 	v1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -117,6 +116,7 @@ func (kCli K8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan
 		o.LabelSelector = ls.String()
 	}))
 
+	logger.Get(ctx).Infof("DERP namespace: %s", ns)
 	if ns != "" {
 		options = append(options, informers.WithNamespace(ns.String()))
 	}

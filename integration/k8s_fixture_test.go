@@ -236,13 +236,14 @@ func (f *k8sFixture) getSecrets() {
 	cmd = exec.CommandContext(f.ctx, "bash", "-c", cmdStr)
 	cmd.Stderr = outWriter
 	cmd.Dir = packageDir
-	cert, err := cmd.Output()
+	certBytes, err := cmd.Output()
 	if err != nil {
 		f.t.Fatalf("Error getting secrets: %v. Cmd: %s", err, cmdStr)
 	}
 
 	f.token = string(token)
-	f.cert = string(cert)
+	cert := strings.TrimSpace(string(certBytes))
+	f.cert = cert
 }
 
 func (f *k8sFixture) SetRestrictedCredentials() {
@@ -253,7 +254,7 @@ func (f *k8sFixture) SetRestrictedCredentials() {
 		f.t.Fatalf("Error writing cert: %v", err)
 	}
 	outWriter := bytes.NewBuffer(nil)
-	cmd := exec.CommandContext(f.ctx, "kubectl", "config", "set-credentials", "tilt-integration-user", "--client-certificate=/tmp/cert", fmt.Sprintf("--token=%s", f.token))
+	cmd := exec.CommandContext(f.ctx, "kubectl", "config", "set-credentials", "tilt-integration-user", "--client-key=/tmp/cert", fmt.Sprintf("--token=%s", f.token))
 	cmd.Stdout = outWriter
 	cmd.Stderr = outWriter
 	err = cmd.Run()
@@ -264,12 +265,14 @@ func (f *k8sFixture) SetRestrictedCredentials() {
 	cmd = exec.CommandContext(f.ctx, "kubectl", "config", "current-context")
 	cmd.Stderr = outWriter
 	cmd.Dir = packageDir
-	currentContext, err := cmd.Output()
+	currentContextBytes, err := cmd.Output()
 	if err != nil {
 		f.t.Fatalf("Error getting current context: %v", err)
 	}
 
-	cmd = exec.CommandContext(f.ctx, "kubectl", "config", "set-context", string(currentContext), "--user=tilt-integration-user")
+	currentContext := strings.TrimSpace(string(currentContextBytes))
+
+	cmd = exec.CommandContext(f.ctx, "kubectl", "config", "set-context", currentContext, "--user=tilt-integration-user")
 	cmd.Stdout = outWriter
 	cmd.Stderr = outWriter
 	err = cmd.Run()
@@ -281,18 +284,32 @@ func (f *k8sFixture) SetRestrictedCredentials() {
 	cmd = exec.CommandContext(f.ctx, "bash", "-c", cmdStr)
 	cmd.Stderr = outWriter
 	cmd.Dir = packageDir
-	currentCluster, err := cmd.Output()
+	currentClusterBytes, err := cmd.Output()
 	if err != nil {
 		f.t.Fatalf("Error getting current cluster: %v. Cmd: %s", err, cmdStr)
 	}
+	currentCluster := strings.TrimSpace(string(currentClusterBytes))
+	fmt.Println("DERP currentCluster: ")
+	fmt.Println(currentCluster)
 
-	cmd = exec.CommandContext(f.ctx, "kubectl", "config", "set-cluster", string(currentCluster), "--certificate-authority=/tmp/cert")
+	cmd = exec.CommandContext(f.ctx, "kubectl", "config", "set-cluster", currentCluster, "--certificate-authority=/tmp/cert", "--namespace=tilt-namespace")
 	cmd.Stdout = outWriter
 	cmd.Stderr = outWriter
 	err = cmd.Run()
 	if err != nil {
 		f.t.Fatalf("Error setting cluster certificate: %v", err)
 	}
+
+	fmt.Println("New KUBECONFIG:")
+	cmd = exec.CommandContext(f.ctx, "kubectl", "config", "view")
+	cmd.Stderr = outWriter
+	cmd.Dir = packageDir
+	newConfig, err := cmd.Output()
+	if err != nil {
+		f.t.Fatalf("Error getting new config: %v", err)
+	}
+	fmt.Println(string(newConfig))
+
 }
 
 func (f *k8sFixture) TearDown() {
