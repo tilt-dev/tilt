@@ -274,4 +274,5 @@ func (f *k8sFixture) TearDown() {
 	f.StartTearDown()
 	f.ClearNamespace()
 	f.fixture.TearDown()
+	f.tempDir.TearDown()
 }
