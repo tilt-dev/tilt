@@ -267,6 +267,14 @@ func (f *k8sFixture) SetRestrictedCredentials() {
 		f.t.Fatalf("Error getting current context: %v", err)
 	}
 
+	cmd = exec.CommandContext(f.ctx, "kubectl", "config", "set-context", string(currentContext), "--user=tilt-integration-user")
+	cmd.Stdout = outWriter
+	cmd.Stderr = outWriter
+	err = cmd.Run()
+	if err != nil {
+		f.t.Fatalf("Error setting context user: %v", err)
+	}
+
 	cmdStr := fmt.Sprintf(`kubectl config view -o json | jq -r '.contexts[] | select(.name == "%s") | .context.cluster'`, strings.TrimSpace(string(currentContext)))
 	cmd = exec.CommandContext(f.ctx, "bash", "-c", cmdStr)
 	cmd.Stderr = outWriter
