@@ -1,4 +1,4 @@
-//+build integration
+// +build integration
 
 package integration
 
@@ -172,15 +172,18 @@ func (f *fixture) StartTearDown() {
 	f.tearingDown = true
 }
 
-func (f *fixture) TearDown() {
-	f.StartTearDown()
-
+func (f *fixture) KillProcs() {
 	for _, cmd := range f.cmds {
 		process := cmd.Process
 		if process != nil {
 			process.Kill()
 		}
 	}
+}
+func (f *fixture) TearDown() {
+	f.StartTearDown()
+
+	f.KillProcs()
 
 	cmd := f.tiltCmd([]string{"down"}, os.Stdout)
 	err := cmd.Run()

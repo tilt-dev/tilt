@@ -1806,6 +1806,7 @@
     "github.com/gorilla/websocket",
     "github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc",
     "github.com/improbable-eng/go-httpwares/logging/logrus",
+    "github.com/json-iterator/go",
     "github.com/lightstep/lightstep-tracer-go",
     "github.com/mattn/go-isatty",
     "github.com/moby/buildkit/api/services/control",
@@ -1815,6 +1816,7 @@
     "github.com/moby/buildkit/identity",
     "github.com/moby/buildkit/session",
     "github.com/moby/buildkit/session/auth/authprovider",
+    "github.com/modern-go/reflect2",
     "github.com/opencontainers/go-digest",
     "github.com/opentracing/opentracing-go",
     "github.com/openzipkin/zipkin-go-opentracing",
@@ -1861,7 +1863,6 @@
     "k8s.io/apimachinery/pkg/labels",
     "k8s.io/apimachinery/pkg/runtime",
     "k8s.io/apimachinery/pkg/runtime/schema",
-    "k8s.io/apimachinery/pkg/runtime/serializer/json",
     "k8s.io/apimachinery/pkg/types",
     "k8s.io/apimachinery/pkg/util/sets",
     "k8s.io/apimachinery/pkg/util/yaml",
@@ -1886,6 +1887,7 @@
     "k8s.io/client-go/util/jsonpath",
     "k8s.io/klog",
     "k8s.io/kubernetes/pkg/kubectl/scheme",
+    "sigs.k8s.io/yaml",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
