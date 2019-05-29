@@ -54,7 +54,6 @@ func (e K8sEntity) meta() k8sMeta {
 }
 
 func (e K8sEntity) maybeUnstructuredMeta() *unstructured.Unstructured {
-	// TODO(maia): can i just straight return?
 	unstruct, isUnstructured := e.Obj.(*unstructured.Unstructured)
 	if isUnstructured {
 		return unstruct
