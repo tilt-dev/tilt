@@ -36,7 +36,7 @@ func newK8sFixture(t *testing.T, dir string) *k8sFixture {
 
 	kf := &k8sFixture{fixture: f}
 	kf.CreateNamespaceIfNecessary()
-	kf.CreateUser()
+	kf.createUser()
 	kf.ClearNamespace()
 	kf.getOldKubeConfig()
 	return kf
@@ -207,7 +207,7 @@ func (f *k8sFixture) maybeRestoreOldKubeConfig() {
 	}
 }
 
-func (f *k8sFixture) CreateUser() {
+func (f *k8sFixture) createUser() {
 	outWriter := bytes.NewBuffer(nil)
 	cmd := exec.CommandContext(f.ctx, "kubectl", "apply", "-f", "access.yaml")
 	cmd.Stdout = outWriter
