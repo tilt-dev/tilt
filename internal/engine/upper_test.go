@@ -2426,6 +2426,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	hudsc := server.ProvideHeadsUpServerController(0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ghc := &github.FakeClient{}
 	sc := &client.FakeSailClient{}
+	ewm := NewEventWatchManager(k8s)
+	umm := NewUIDMapManager(k8s)
 
 	ret := &testFixture{
 		TempDirFixture:        f,
@@ -2454,7 +2456,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
 
-	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc, sc, tvc, tas)
+	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc, sc, tvc, tas, ewm, umm)
 	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {

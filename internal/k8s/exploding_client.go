@@ -7,11 +7,12 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/model"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/watch"
+
+	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 var _ Client = &explodingClient{}
@@ -57,6 +58,14 @@ func (ec *explodingClient) WatchPods(ctx context.Context, lps labels.Selector) (
 }
 
 func (ec *explodingClient) WatchServices(ctx context.Context, lps []model.LabelPair) (<-chan *v1.Service, error) {
+	return nil, errors.Wrap(ec.err, "could not set up k8s client")
+}
+
+func (ec *explodingClient) WatchEvents(ctx context.Context) (<-chan *v1.Event, error) {
+	return nil, errors.Wrap(ec.err, "could not set up k8s client")
+}
+
+func (ec *explodingClient) WatchEverything(ctx context.Context, lps []model.LabelPair) (<-chan watch.Event, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 

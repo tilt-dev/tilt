@@ -67,6 +67,7 @@ var BaseWireSet = wire.NewSet(
 	engine.NewBuildController,
 	engine.NewPodWatcher,
 	engine.NewServiceWatcher,
+	engine.NewEventWatchManager,
 	engine.NewImageController,
 	engine.NewConfigsController,
 	engine.NewDockerComposeEventWatcher,
@@ -74,6 +75,7 @@ var BaseWireSet = wire.NewSet(
 	engine.NewProfilerManager,
 	engine.NewGithubClientFactory,
 	engine.NewTiltVersionChecker,
+	engine.NewUIDMapManager,
 
 	provideClock,
 	hud.NewRenderer,

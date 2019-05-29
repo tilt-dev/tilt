@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/windmilleng/wmclient/pkg/analytics"
-
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -37,6 +37,16 @@ func (ServiceChangeAction) Action() {}
 
 func NewServiceChangeAction(service *v1.Service, url *url.URL) ServiceChangeAction {
 	return ServiceChangeAction{Service: service, URL: url}
+}
+
+type K8SEventAction struct {
+	Event *v1.Event
+}
+
+func (K8SEventAction) Action() {}
+
+func NewK8SEventAction(event *v1.Event) K8SEventAction {
+	return K8SEventAction{event}
 }
 
 type BuildLogAction struct {
@@ -187,3 +197,12 @@ type LatestVersionAction struct {
 }
 
 func (LatestVersionAction) Action() {}
+
+type UIDUpdateAction struct {
+	UID          k8s.UID
+	EventType    watch.EventType
+	ManifestName model.ManifestName
+	Entity       k8s.K8sEntity
+}
+
+func (UIDUpdateAction) Action() {}

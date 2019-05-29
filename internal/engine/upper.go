@@ -14,6 +14,7 @@ import (
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	k8swatch "k8s.io/apimachinery/pkg/watch"
 
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
@@ -151,6 +152,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handlePodChangeAction(ctx, state, action.Pod)
 	case ServiceChangeAction:
 		handleServiceEvent(ctx, state, action)
+	case K8SEventAction:
+		handleK8SEvent(ctx, state, action.Event)
 	case PodLogAction:
 		handlePodLogAction(state, action)
 	case BuildLogAction:
@@ -193,6 +196,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleAnalyticsOptAction(state, action)
 	case store.AnalyticsNudgeSurfacedAction:
 		handleAnalyticsNudgeSurfacedAction(ctx, state)
+	case UIDUpdateAction:
+		handleUIDUpdateAction(state, action)
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -661,6 +666,18 @@ func populateContainerStatus(ctx context.Context, manifest model.Manifest, podIn
 	podInfo.ContainerInfos = cInfos
 }
 
+func handleUIDUpdateAction(state *store.EngineState, action UIDUpdateAction) {
+	switch action.EventType {
+	case k8swatch.Added:
+		state.ObjectsByK8SUIDs[action.UID] = store.UIDMapValue{
+			Manifest: action.ManifestName,
+			Entity:   action.Entity,
+		}
+	case k8swatch.Deleted:
+		delete(state.ObjectsByK8SUIDs, action.UID)
+	}
+}
+
 func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v1.Pod) {
 	mt, podInfo := ensureManifestTargetWithPod(state, pod)
 	if mt == nil || podInfo == nil {
@@ -834,6 +851,23 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 	}
 
 	ms.LBs[k8s.ServiceName(service.Name)] = action.URL
+}
+
+func handleK8SEvent(ctx context.Context, state *store.EngineState, event *v1.Event) {
+	v, ok := state.ObjectsByK8SUIDs[k8s.UID(event.InvolvedObject.UID)]
+	if !ok {
+		return
+	}
+
+	if event.Type == "Warning" {
+		// TODO: log this to the manifest's log as well
+		logger.Get(ctx).Infof("event received for %s: %s:%s:%s: %s",
+			v.Manifest,
+			v.Entity.Name(),
+			v.Entity.Namespace(),
+			v.Entity.Kind,
+			event.Message)
+	}
 }
 
 func handleDumpEngineStateAction(ctx context.Context, engineState *store.EngineState) {

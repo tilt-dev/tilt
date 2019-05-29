@@ -51,6 +51,9 @@ type FakeK8sClient struct {
 	serviceWatcherMu sync.Mutex
 	serviceWatches   []fakeServiceWatch
 
+	everythingWatcherMu sync.Mutex
+	everythingWatches   []fakeEverythingWatch
+
 	UpsertError error
 	Runtime     container.Runtime
 }
@@ -63,6 +66,11 @@ type fakeServiceWatch struct {
 type fakePodWatch struct {
 	ls labels.Selector
 	ch chan *v1.Pod
+}
+
+type fakeEverythingWatch struct {
+	ls labels.Selector
+	ch chan watch.Event
 }
 
 func (c *FakeK8sClient) EmitService(ls labels.Selector, s *v1.Service) {
@@ -98,8 +106,43 @@ func (c *FakeK8sClient) WatchServices(ctx context.Context, lps []model.LabelPair
 	return ch, nil
 }
 
-func (c *FakeK8sClient) WatchEvents(ctx context.Context, ls labels.Selector) (<-chan *v1.Event, error) {
+func (c *FakeK8sClient) WatchEvents(ctx context.Context) (<-chan *v1.Event, error) {
 	return nil, nil
+}
+
+// emits an event to chans returned by WatchEverything
+func (c *FakeK8sClient) EmitEverything(ls labels.Selector, e watch.Event) {
+	c.everythingWatcherMu.Lock()
+	defer c.everythingWatcherMu.Unlock()
+	for _, w := range c.everythingWatches {
+		if SelectorEqual(ls, w.ls) {
+			w.ch <- e
+		}
+	}
+}
+
+func (c *FakeK8sClient) WatchEverything(ctx context.Context, lps []model.LabelPair) (<-chan watch.Event, error) {
+	c.everythingWatcherMu.Lock()
+	ch := make(chan watch.Event, 20)
+	ls := LabelPairsToSelector(lps)
+	c.everythingWatches = append(c.everythingWatches, fakeEverythingWatch{ls, ch})
+	c.everythingWatcherMu.Unlock()
+
+	go func() {
+		// when ctx is canceled, remove the label selector from the list of watched label selectors
+		<-ctx.Done()
+		c.everythingWatcherMu.Lock()
+		var newWatches []fakeEverythingWatch
+		for _, e := range c.everythingWatches {
+			if !SelectorEqual(e.ls, ls) {
+				newWatches = append(newWatches, e)
+			}
+		}
+		c.everythingWatches = newWatches
+		c.everythingWatcherMu.Unlock()
+	}()
+	return ch, nil
+
 }
 
 func (c *FakeK8sClient) WatchedSelectors() []labels.Selector {
