@@ -116,7 +116,6 @@ func (kCli K8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan
 		o.LabelSelector = ls.String()
 	}))
 
-	logger.Get(ctx).Infof("DERP namespace: %s", ns)
 	if ns != "" {
 		options = append(options, informers.WithNamespace(ns.String()))
 	}
