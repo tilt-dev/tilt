@@ -33,6 +33,7 @@ If you want to run the tests:
 - **[kustomize 2.0 or higher](https://github.com/kubernetes-sigs/kustomize)**: `go get -u sigs.k8s.io/kustomize`
 - **[helm](https://docs.helm.sh/using_helm/#installing-helm)**
 - **[docker compose](https://docs.docker.com/compose/install/)**: NOTE: this doesn't need to be installed separately from Docker on macOS
+- **[jq](https://stedolan.github.io/jq/download/)**
 
 ## Optional Prereqs
 
