@@ -182,6 +182,8 @@ func (f *k8sFixture) ClearNamespace() {
 func (f *k8sFixture) getOldKubeConfig() {
 	usr, _ := user.Current()
 	dir := usr.HomeDir
+	// NOTE(dmiller): this assumes that your kube config exists in the default location, and is the one currently being used.
+	// This is true in CI and on my machine, but is not universally true for anyone who might want to run this test on their machine.
 	kubeConfigPath := filepath.Join(dir, ".kube", "config")
 
 	old, err := ioutil.ReadFile(kubeConfigPath)
