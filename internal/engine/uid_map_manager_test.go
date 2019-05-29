@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -17,7 +18,7 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
-func _TestUIDMapManager(t *testing.T) {
+func TestUIDMapManager(t *testing.T) {
 	f := newUMMFixture(t)
 	defer f.TearDown()
 
@@ -34,6 +35,8 @@ func _TestUIDMapManager(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error injecting manifest label: %v", err)
 	}
+
+	k8s.SetUIDForTest(t, &e, "foobar")
 
 	f.addManifest(e.Name())
 
@@ -53,8 +56,6 @@ func _TestUIDMapManager(t *testing.T) {
 		Entity:       k8s.K8sEntity{Obj: e.Obj, Kind: e.Kind},
 	}
 
-	// FIXME:
-	// find a good way to set the entity's UID to "foobar"
 	f.assertObservedUIDUpdateActions(expectedAction)
 }
 
@@ -75,6 +76,10 @@ type ummFixture struct {
 	cancel     func()
 	store      *store.Store
 	getActions func() []store.Action
+
+	// old value of k8sEventsFeatureFlag env var, for teardown
+	// TODO(maia): remove this when we remove the feature flag
+	oldFeatureFlagVal string
 }
 
 func newUMMFixture(t *testing.T) *ummFixture {
@@ -84,12 +89,15 @@ func newUMMFixture(t *testing.T) *ummFixture {
 	ctx, cancel := context.WithCancel(ctx)
 
 	ret := &ummFixture{
-		kClient: kClient,
-		umm:     NewUIDMapManager(kClient),
-		ctx:     ctx,
-		cancel:  cancel,
-		t:       t,
+		kClient:           kClient,
+		umm:               NewUIDMapManager(kClient),
+		ctx:               ctx,
+		cancel:            cancel,
+		t:                 t,
+		oldFeatureFlagVal: os.Getenv(k8sEventsFeatureFlag),
 	}
+
+	os.Setenv(k8sEventsFeatureFlag, "true")
 
 	ret.store, ret.getActions = store.NewStoreForTesting()
 	go ret.store.Loop(ctx)
@@ -98,6 +106,7 @@ func newUMMFixture(t *testing.T) *ummFixture {
 }
 
 func (f *ummFixture) TearDown() {
+	_ = os.Setenv(k8sEventsFeatureFlag, f.oldFeatureFlagVal)
 	f.cancel()
 }
 

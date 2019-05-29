@@ -79,7 +79,11 @@ func (m *UIDMapManager) dispatchUIDsLoop(ctx context.Context, ch <-chan watch.Ev
 				continue
 			}
 
-			st.Dispatch(UIDUpdateAction{ke.UID(), e.Type, model.ManifestName(manifestName), ke})
+			st.Dispatch(UIDUpdateAction{
+				UID:          ke.UID(),
+				EventType:    e.Type,
+				ManifestName: model.ManifestName(manifestName),
+				Entity:       ke})
 		}
 	}
 }

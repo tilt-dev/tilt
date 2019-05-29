@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"reflect"
 	"strings"
+	"testing"
 
 	"k8s.io/apimachinery/pkg/types"
 
@@ -41,21 +42,37 @@ var _ k8sMeta = emptyMeta{}
 var _ k8sMeta = &metav1.ObjectMeta{}
 
 func (e K8sEntity) meta() k8sMeta {
-	unstructured, isUnstructured := e.Obj.(*unstructured.Unstructured)
-	if isUnstructured {
-		return unstructured
+	if unstruct := e.maybeUnstructuredMeta(); unstruct != nil {
+		return unstruct
 	}
 
+	if structured, _ := e.maybeStructuredMeta(); structured != nil {
+		return structured
+	}
+
+	return emptyMeta{}
+}
+
+func (e K8sEntity) maybeUnstructuredMeta() *unstructured.Unstructured {
+	// TODO(maia): can i just straight return?
+	unstruct, isUnstructured := e.Obj.(*unstructured.Unstructured)
+	if isUnstructured {
+		return unstruct
+	}
+	return nil
+}
+
+func (e K8sEntity) maybeStructuredMeta() (meta *metav1.ObjectMeta, fieldIndex int) {
 	objVal := reflect.ValueOf(e.Obj)
 	if objVal.Kind() == reflect.Ptr {
 		if objVal.IsNil() {
-			return emptyMeta{}
+			return nil, -1
 		}
 		objVal = objVal.Elem()
 	}
 
 	if objVal.Kind() != reflect.Struct {
-		return emptyMeta{}
+		return nil, -1
 	}
 
 	// Find a field with type ObjectMeta
@@ -75,9 +92,34 @@ func (e K8sEntity) meta() k8sMeta {
 			continue
 		}
 
-		return &metadata
+		return &metadata, i
 	}
-	return emptyMeta{}
+	return nil, -1
+}
+
+func SetUIDForTest(t *testing.T, e *K8sEntity, UID string) {
+	unstruct := e.maybeUnstructuredMeta()
+	if unstruct != nil {
+		t.Fatal("SetUIDForTesting not yet implemented for unstructured metadata")
+	}
+
+	structured, i := e.maybeStructuredMeta()
+	if structured == nil {
+		t.Fatalf("Cannot set UID -- entity has neither unstructured nor structured metadata. k8s entity: %+v", e)
+	}
+
+	structured.SetUID(types.UID(UID))
+	objVal := reflect.ValueOf(e.Obj)
+	if objVal.Kind() == reflect.Ptr {
+		if objVal.IsNil() {
+			t.Fatalf("Cannot set UID -- e.Obj is a pointer. k8s entity: %+v", e)
+		}
+		objVal = objVal.Elem()
+	}
+
+	fieldVal := objVal.Field(i)
+	metaVal := reflect.ValueOf(*structured)
+	fieldVal.Set(metaVal)
 }
 
 func (e K8sEntity) Name() string {
