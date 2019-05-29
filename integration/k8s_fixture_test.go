@@ -18,27 +18,27 @@ import (
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+
+	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
 type k8sFixture struct {
 	*fixture
+	tempDir *tempdir.TempDirFixture
 
-	token string
-	cert  string
-
-	oldKubeConfigPerms os.FileMode
-	oldKubeConfigPath  string
-	oldKubeConfig      string
+	token                 string
+	cert                  string
+	usingOverriddenConfig bool
 }
 
 func newK8sFixture(t *testing.T, dir string) *k8sFixture {
 	f := newFixture(t, dir)
+	td := tempdir.NewTempDirFixture(t)
 
-	kf := &k8sFixture{fixture: f}
+	kf := &k8sFixture{fixture: f, tempDir: td}
 	kf.CreateNamespaceIfNecessary()
 	kf.createUser()
 	kf.ClearNamespace()
-	kf.getOldKubeConfig()
 	return kf
 }
 
@@ -137,6 +137,9 @@ func (f *k8sFixture) ForwardPort(name string, portMap string) {
 	cmd := exec.CommandContext(f.ctx, "kubectl", "port-forward", namespaceFlag, name, portMap)
 	cmd.Stdout = outWriter
 	cmd.Stderr = outWriter
+	if f.usingOverriddenConfig {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("KUBECONFIG=%s", f.tempDir.JoinPath("config")))
+	}
 	err := cmd.Start()
 	if err != nil {
 		f.t.Fatal(err)
@@ -154,6 +157,9 @@ func (f *k8sFixture) ForwardPort(name string, portMap string) {
 func (f *k8sFixture) ClearResource(name string) {
 	outWriter := bytes.NewBuffer(nil)
 	cmd := exec.CommandContext(f.ctx, "kubectl", "delete", name, namespaceFlag, "--all")
+	if f.usingOverriddenConfig {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("KUBECONFIG=%s", f.tempDir.JoinPath("config")))
+	}
 	cmd.Stdout = outWriter
 	cmd.Stderr = outWriter
 	err := cmd.Run()
@@ -165,6 +171,9 @@ func (f *k8sFixture) ClearResource(name string) {
 func (f *k8sFixture) CreateNamespaceIfNecessary() {
 	outWriter := bytes.NewBuffer(nil)
 	cmd := exec.CommandContext(f.ctx, "kubectl", "apply", "-f", "namespace.yaml")
+	if f.usingOverriddenConfig {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("KUBECONFIG=%s", f.tempDir.JoinPath("config")))
+	}
 	cmd.Stdout = outWriter
 	cmd.Stderr = outWriter
 	cmd.Dir = packageDir
@@ -179,154 +188,90 @@ func (f *k8sFixture) ClearNamespace() {
 	f.ClearResource("services")
 }
 
-func (f *k8sFixture) getOldKubeConfig() {
-	usr, _ := user.Current()
-	dir := usr.HomeDir
-	// NOTE(dmiller): this assumes that your kube config exists in the default location, and is the one currently being used.
-	// This is true in CI and on my machine, but is not universally true for anyone who might want to run this test on their machine.
-	kubeConfigPath := filepath.Join(dir, ".kube", "config")
+func (f *k8sFixture) setupNewKubeConfig() {
+	kubeConfigPath, exists := os.LookupEnv("KUBECONFIG")
+	if !exists {
+		usr, _ := user.Current()
+		dir := usr.HomeDir
+		kubeConfigPath = filepath.Join(dir, ".kube", "config")
+	}
 
-	old, err := ioutil.ReadFile(kubeConfigPath)
+	current, err := ioutil.ReadFile(kubeConfigPath)
 	if err != nil {
 		f.t.Fatalf("Error reading KUBECONFIG: %v", err)
 	}
-	info, err := os.Stat(kubeConfigPath)
-	if err != nil {
-		f.t.Fatalf("Error stat'ing KUBECONFIG: %v", err)
-	}
 
-	f.oldKubeConfigPath = kubeConfigPath
-	f.oldKubeConfigPerms = info.Mode()
-	f.oldKubeConfig = string(old)
-}
-
-func (f *k8sFixture) maybeRestoreOldKubeConfig() {
-	if f.oldKubeConfig != "" {
-		err := ioutil.WriteFile(f.oldKubeConfigPath, []byte(f.oldKubeConfig), f.oldKubeConfigPerms)
-		if err != nil {
-			f.t.Fatalf("Error restoring old KUBECONFIG: %v", err)
-		}
-	}
+	f.tempDir.WriteFile("config", string(current))
+	f.usingOverriddenConfig = true
 }
 
 func (f *k8sFixture) createUser() {
+	f.runCommandSilently("kubectl", "apply", "-f", "access.yaml")
+}
+
+func (f *k8sFixture) runCommandSilently(name string, arg ...string) {
 	outWriter := bytes.NewBuffer(nil)
-	cmd := exec.CommandContext(f.ctx, "kubectl", "apply", "-f", "access.yaml")
+	cmd := exec.CommandContext(f.ctx, name, arg...)
 	cmd.Stdout = outWriter
 	cmd.Stderr = outWriter
 	cmd.Dir = packageDir
+	if f.usingOverriddenConfig {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("KUBECONFIG=%s", f.tempDir.JoinPath("config")))
+	}
 	err := cmd.Run()
 	if err != nil {
-		f.t.Fatalf("Error creating user: %v. Logs:\n%s", err, outWriter.String())
+		f.t.Fatalf("Error running command silently %s %v: %v", name, arg, err)
 	}
 }
 
-func (f *k8sFixture) getSecrets() {
+func (f *k8sFixture) runCommandGetOutput(cmdStr string) string {
 	outWriter := bytes.NewBuffer(nil)
-	cmdStr := `kubectl get secrets -n tilt-integration -o json | jq -r '.items[] | select(.metadata.name | startswith("tilt-integration-user-token-")) | .data.token'`
 	cmd := exec.CommandContext(f.ctx, "bash", "-c", cmdStr)
 	cmd.Stderr = outWriter
 	cmd.Dir = packageDir
-	token, err := cmd.Output()
-	if err != nil {
-		f.t.Fatalf("Error getting secrets: %v. Cmd: %s", err, cmdStr)
+	if f.usingOverriddenConfig {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("KUBECONFIG=%s", f.tempDir.JoinPath("config")))
 	}
+	output, err := cmd.Output()
+	if err != nil {
+		f.t.Fatalf("Error running command with output %s: %v", cmdStr, err)
+	}
+
+	return strings.TrimSpace(string(output))
+}
+
+func (f *k8sFixture) getSecrets() {
+	cmdStr := `kubectl get secrets -n tilt-integration -o json | jq -r '.items[] | select(.metadata.name | startswith("tilt-integration-user-token-")) | .data.token'`
+	token := f.runCommandGetOutput(cmdStr)
 
 	cmdStr = `kubectl get secrets -n tilt-integration -o json | jq -r '.items[] | select(.metadata.name | startswith("tilt-integration-user-token-")) | .data["ca.crt"]'`
-	cmd = exec.CommandContext(f.ctx, "bash", "-c", cmdStr)
-	cmd.Stderr = outWriter
-	cmd.Dir = packageDir
-	certBytes, err := cmd.Output()
-	if err != nil {
-		f.t.Fatalf("Error getting secrets: %v. Cmd: %s", err, cmdStr)
-	}
+	cert := f.runCommandGetOutput(cmdStr)
 
-	f.token = strings.TrimSpace(string(token))
-	cert := strings.TrimSpace(string(certBytes))
+	f.token = token
 	f.cert = cert
 }
 
 func (f *k8sFixture) SetRestrictedCredentials() {
+	f.setupNewKubeConfig()
+	f.createUser()
 	f.getSecrets()
 
-	outWriter := bytes.NewBuffer(nil)
-	cmd := exec.CommandContext(f.ctx, "kubectl", "config", "set-credentials", "tilt-integration-user", fmt.Sprintf("--token=%s", f.token))
-	cmd.Stdout = outWriter
-	cmd.Stderr = outWriter
-	err := cmd.Run()
-	if err != nil {
-		f.t.Fatalf("Error setting credentials: %v", err)
-	}
+	f.runCommandSilently("kubectl", "config", "set-credentials", "tilt-integration-user", fmt.Sprintf("--token=%s", f.token))
+	f.runCommandSilently("kubectl", "config", "set", "users.tilt-integration-user.client-key-data", f.cert)
 
-	cmd = exec.CommandContext(f.ctx, "kubectl", "config", "set", "users.tilt-integration-user.client-key-data", f.cert)
-	cmd.Stdout = outWriter
-	cmd.Stderr = outWriter
-	err = cmd.Run()
-	if err != nil {
-		f.t.Fatalf("Error setting client-key-data: %v", err)
-	}
+	currentContext := f.runCommandGetOutput("kubectl config current-context")
 
-	cmd = exec.CommandContext(f.ctx, "kubectl", "config", "current-context")
-	cmd.Stderr = outWriter
-	cmd.Dir = packageDir
-	currentContextBytes, err := cmd.Output()
-	if err != nil {
-		f.t.Fatalf("Error getting current context: %v", err)
-	}
+	f.runCommandSilently("kubectl", "config", "set-context", currentContext, "--user=tilt-integration-user", "--namespace=tilt-integration")
 
-	currentContext := strings.TrimSpace(string(currentContextBytes))
+	cmdStr := fmt.Sprintf(`kubectl config view -o json | jq -r '.contexts[] | select(.name == "%s") | .context.cluster'`, currentContext)
+	currentCluster := f.runCommandGetOutput(cmdStr)
 
-	cmd = exec.CommandContext(f.ctx, "kubectl", "config", "set-context", currentContext, "--user=tilt-integration-user", "--namespace=tilt-integration")
-	cmd.Stdout = outWriter
-	cmd.Stderr = outWriter
-	err = cmd.Run()
-	if err != nil {
-		f.t.Fatalf("Error setting context user: %v", err)
-	}
-
-	cmdStr := fmt.Sprintf(`kubectl config view -o json | jq -r '.contexts[] | select(.name == "%s") | .context.cluster'`, strings.TrimSpace(string(currentContext)))
-	cmd = exec.CommandContext(f.ctx, "bash", "-c", cmdStr)
-	cmd.Stderr = outWriter
-	cmd.Dir = packageDir
-	currentClusterBytes, err := cmd.Output()
-	if err != nil {
-		f.t.Fatalf("Error getting current cluster: %v. Cmd: %s", err, cmdStr)
-	}
-	currentCluster := strings.TrimSpace(string(currentClusterBytes))
-
-	cmd = exec.CommandContext(f.ctx, "kubectl", "config", "set", fmt.Sprintf("clusters.%s.certificate-authority-data", currentCluster), f.cert)
-	cmd.Stdout = outWriter
-	cmd.Stderr = outWriter
-	cmd.Dir = packageDir
-	err = cmd.Run()
-	if err != nil {
-		f.t.Fatalf("Error setting cluster certificate-authority-data: %v", err)
-	}
-
-	cmd = exec.CommandContext(f.ctx, "kubectl", "config", "unset", fmt.Sprintf("clusters.%s.certificate-authority", currentCluster))
-	cmd.Stdout = outWriter
-	cmd.Stderr = outWriter
-	cmd.Dir = packageDir
-	err = cmd.Run()
-	if err != nil {
-		f.t.Fatalf("Error unsetting cluster certificate-authority: %v", err)
-	}
-
-	fmt.Println("New KUBECONFIG:")
-	cmd = exec.CommandContext(f.ctx, "kubectl", "config", "view")
-	cmd.Stderr = outWriter
-	cmd.Dir = packageDir
-	newConfig, err := cmd.Output()
-	if err != nil {
-		f.t.Fatalf("Error getting new config: %v", err)
-	}
-	fmt.Println(string(newConfig))
-
+	f.runCommandSilently("kubectl", "config", "set", fmt.Sprintf("clusters.%s.certificate-authority-data", currentCluster), f.cert)
+	f.runCommandSilently("kubectl", "config", "unset", fmt.Sprintf("clusters.%s.certificate-authority", currentCluster))
 }
 
 func (f *k8sFixture) TearDown() {
 	f.StartTearDown()
 	f.ClearNamespace()
-	f.maybeRestoreOldKubeConfig()
 	f.fixture.TearDown()
 }
