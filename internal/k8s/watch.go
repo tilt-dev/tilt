@@ -311,27 +311,28 @@ func watchEverythingLoop(ctx context.Context, ch chan<- watch.Event, watchers []
 
 	for {
 		chosen, value, ok := reflect.Select(selectCases)
+
 		// the last selectCase is ctx.Done
-		if chosen == len(selectCases)-1 || !ok {
-			if !ok {
-				// XXX DEBUG
-				// for some reason, we're getting ok = false for fission resources (e.g. fission.io/v1, Resource=environments)
-				// This happens after running tilt for 10-20 seconds
-				// My current hypotheses:
-				// 1. A misunderstanding on my part of what the third return value from `reflect.Select` indicates
-				// 2. A bug in the watch implementation for fission CRDs
-				// 3. A misunderstanding of how the watch API is to be used (maybe periodic closes are to be expected,
-				//    and we should just restart the watch? AFAIK, we haven't seen this with our existing watches,
-				//    but, then again our logging allowed this to exist unnoticed for quite some time:
-				//    https://github.com/windmilleng/tilt/pull/1647. I feel like we would have noticed this with pods,
-				//    though.
-				// 4. Maybe setting up 100+ watches taxes the system and causes it to drop connections
-				logger.Get(ctx).Infof("DEBUG: ok was false for %v", gvrs[chosen])
-			}
-			for _, w := range watchers {
-				w.Stop()
-			}
-			close(ch)
+		if chosen == len(selectCases)-1 {
+			cleanUp(ch, watchers)
+			return
+		}
+
+		if !ok {
+			// XXX DEBUG
+			// for some reason, we're getting ok = false for fission resources (e.g. fission.io/v1, Resource=environments)
+			// This happens after running tilt for 10-20 seconds
+			// My current hypotheses:
+			// 1. A misunderstanding on my part of what the third return value from `reflect.Select` indicates
+			// 2. A bug in the watch implementation for fission CRDs
+			// 3. A misunderstanding of how the watch API is to be used (maybe periodic closes are to be expected,
+			//    and we should just restart the watch? AFAIK, we haven't seen this with our existing watches,
+			//    but, then again our logging allowed this to exist unnoticed for quite some time:
+			//    https://github.com/windmilleng/tilt/pull/1647. I feel like we would have noticed this with pods,
+			//    though.
+			// 4. Maybe setting up 100+ watches taxes the system and causes it to drop connections
+			logger.Get(ctx).Infof("DEBUG: ok was false for %v", gvrs[chosen])
+			cleanUp(ch, watchers)
 			return
 		}
 
@@ -342,4 +343,12 @@ func watchEverythingLoop(ctx context.Context, ch chan<- watch.Event, watchers []
 
 		ch <- event
 	}
+}
+
+func cleanUp(ch chan<- watch.Event, watchers []watch.Interface) {
+	for _, w := range watchers {
+		w.Stop()
+	}
+	close(ch)
+	return
 }
