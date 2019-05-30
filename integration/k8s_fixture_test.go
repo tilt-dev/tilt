@@ -202,6 +202,7 @@ func (f *k8sFixture) setupNewKubeConfig() {
 	}
 
 	f.tempDir.WriteFile("config", string(current))
+	f.fixture.tiltEnviron["KUBECONFIG"] = f.tempDir.JoinPath("config")
 	f.usingOverriddenConfig = true
 }
 
@@ -255,7 +256,6 @@ func (f *k8sFixture) SetRestrictedCredentials() {
 	f.setupNewKubeConfig()
 	f.createUser()
 	f.getSecrets()
-	f.fixture.tiltEnviron["KUBECONFIG"] = f.tempDir.JoinPath("config")
 
 	f.runCommandSilently("kubectl", "config", "set-credentials", "tilt-integration-user", fmt.Sprintf("--token=%s", f.token))
 	f.runCommandSilently("kubectl", "config", "set", "users.tilt-integration-user.client-key-data", f.cert)
