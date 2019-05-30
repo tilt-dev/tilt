@@ -17,13 +17,17 @@ class PathBuilder {
 
   getWebsocketUrl() {
     let scheme = "wss"
-    if (this.host.indexOf("localhost") == 0) {
+    if (this.isLocal()) {
       scheme = "ws"
     }
     if (this.roomId) {
       return `${scheme}://${this.host}/join/${this.roomId}`
     }
     return `${scheme}://${this.host}/ws/view`
+  }
+
+  isLocal() {
+    return this.host.indexOf("localhost") == 0
   }
 
   rootPath() {

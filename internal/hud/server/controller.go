@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"sync/atomic"
+	"time"
 
 	"github.com/pkg/browser"
 	"github.com/pkg/errors"
@@ -12,6 +13,10 @@ import (
 	"github.com/windmilleng/tilt/internal/network"
 	"github.com/windmilleng/tilt/internal/store"
 )
+
+// The amount of time to wait for a reconnection before restarting the browser
+// window.
+const reconnectDur = 2 * time.Second
 
 type HeadsUpServerController struct {
 	port        model.WebPort
@@ -35,13 +40,17 @@ func (s *HeadsUpServerController) TearDown(ctx context.Context) {
 	s.assetServer.TearDown(ctx)
 }
 
+func (s *HeadsUpServerController) isWebsocketConnected() bool {
+	connCount := atomic.LoadInt32(&(s.hudServer.numWebsocketConns))
+	return connCount > 0
+}
+
 func (s *HeadsUpServerController) maybeOpenBrowser(st store.RStore) {
 	if s.webURL.Empty() || s.webLoadDone {
 		return
 	}
 
-	connCount := atomic.LoadInt32(&(s.hudServer.numWebsocketConns))
-	if connCount > 0 {
+	if s.isWebsocketConnected() {
 		// Don't auto-open the web view. It's already opened.
 		s.webLoadDone = true
 		return
@@ -49,14 +58,31 @@ func (s *HeadsUpServerController) maybeOpenBrowser(st store.RStore) {
 
 	state := st.RLockState()
 	tiltfileCompleted := state.FirstTiltfileBuildCompleted
+	startTime := state.TiltStartTime
 	st.RUnlockState()
 
+	// Only open the webview if the Tiltfile has completed.
 	if tiltfileCompleted {
-		// We should probably dependency-inject a browser opener.
-		//
-		// It might also make sense to wait until the asset server is ready?
-		_ = browser.OpenURL(s.webURL.String())
 		s.webLoadDone = true
+
+		// Make sure we wait at least `reconnectDur` before opening the browser, to
+		// give any open pages time to reconnect. Do this on a goroutine so we don't
+		// hold the lock.
+		go func() {
+			runDur := time.Since(startTime)
+			if runDur < reconnectDur {
+				time.Sleep(reconnectDur - runDur)
+			}
+
+			if s.isWebsocketConnected() {
+				return
+			}
+
+			// We should probably dependency-inject a browser opener.
+			//
+			// It might also make sense to wait until the asset server is ready?
+			_ = browser.OpenURL(s.webURL.String())
+		}()
 	}
 }
 
