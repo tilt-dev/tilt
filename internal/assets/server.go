@@ -31,6 +31,23 @@ import (
 const prodAssetBucket = "https://storage.googleapis.com/tilt-static-assets/"
 const WebVersionKey = "web_version"
 
+const errorBodyStyle = `
+  font-family: Inconsolata, monospace;
+  background-color: #002b36;
+  color: #ffffff;
+  font-size: 20px;
+  line-height: 1.5;
+  margin: 0;
+`
+const errorDivStyle = `
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+`
+
 var versionRe = regexp.MustCompile(`/(v\d+\.\d+\.\d+)/.*`) // matches `/vA.B.C/...`
 
 type Server interface {
@@ -290,10 +307,21 @@ func ProvideAssetServer(ctx context.Context, webMode model.WebMode, webVersion m
 		handler := httputil.NewSingleHostReverseProxy(loc)
 		handler.ErrorHandler = func(writer http.ResponseWriter, request *http.Request, e error) {
 			extra := ""
+			extraHead := ""
 			if strings.Contains(e.Error(), "connection refused") {
-				extra = `"connection refused" expected on startup with --web-mode=local. Refreshing in a few seconds.<meta http-equiv="refresh" content="2">`
+				extra = `"connection refused" expected on startup with --web-mode=local. Refreshing in a few seconds.`
+				extraHead = `<meta http-equiv="refresh" content="2">`
 			}
-			response := fmt.Sprintf(`<html>Error talking to asset server:<pre>%s</pre><br>%s</html>`, e.Error(), extra)
+			response := fmt.Sprintf(`
+<html>
+  <head>%s</head>
+  <body style="%s">
+    <div style="%s">
+      Error talking to asset server:<pre>%s</pre>
+      <br>%s
+    </div>
+  </body>
+</html>`, extraHead, errorBodyStyle, errorDivStyle, e.Error(), extra)
 			_, _ = writer.Write([]byte(response))
 		}
 
