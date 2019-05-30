@@ -138,9 +138,6 @@ func (f *k8sFixture) ForwardPort(name string, portMap string) {
 	cmd := exec.CommandContext(f.ctx, "kubectl", "port-forward", namespaceFlag, name, portMap)
 	cmd.Stdout = outWriter
 	cmd.Stderr = outWriter
-	if f.usingOverriddenConfig {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("KUBECONFIG=%s", f.tempDir.JoinPath("config")))
-	}
 	err := cmd.Start()
 	if err != nil {
 		f.t.Fatal(err)
@@ -158,9 +155,6 @@ func (f *k8sFixture) ForwardPort(name string, portMap string) {
 func (f *k8sFixture) ClearResource(name string) {
 	outWriter := bytes.NewBuffer(nil)
 	cmd := exec.CommandContext(f.ctx, "kubectl", "delete", name, namespaceFlag, "--all")
-	if f.usingOverriddenConfig {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("KUBECONFIG=%s", f.tempDir.JoinPath("config")))
-	}
 	cmd.Stdout = outWriter
 	cmd.Stderr = outWriter
 	err := cmd.Run()
@@ -172,9 +166,6 @@ func (f *k8sFixture) ClearResource(name string) {
 func (f *k8sFixture) CreateNamespaceIfNecessary() {
 	outWriter := bytes.NewBuffer(nil)
 	cmd := exec.CommandContext(f.ctx, "kubectl", "apply", "-f", "namespace.yaml")
-	if f.usingOverriddenConfig {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("KUBECONFIG=%s", f.tempDir.JoinPath("config")))
-	}
 	cmd.Stdout = outWriter
 	cmd.Stderr = outWriter
 	cmd.Dir = packageDir
