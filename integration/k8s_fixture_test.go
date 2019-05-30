@@ -5,6 +5,7 @@ package integration
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -244,12 +245,16 @@ func (f *k8sFixture) runCommandGetOutput(cmdStr string) string {
 
 func (f *k8sFixture) getSecrets() {
 	cmdStr := `kubectl get secrets -n tilt-integration -o json | jq -r '.items[] | select(.metadata.name | startswith("tilt-integration-user-token-")) | .data.token'`
-	token := f.runCommandGetOutput(cmdStr)
+	tokenBase64 := f.runCommandGetOutput(cmdStr)
+	tokenBytes, err := base64.StdEncoding.DecodeString(tokenBase64)
+	if err != nil {
+		f.t.Fatalf("Unable to decode token: %v", err)
+	}
 
 	cmdStr = `kubectl get secrets -n tilt-integration -o json | jq -r '.items[] | select(.metadata.name | startswith("tilt-integration-user-token-")) | .data["ca.crt"]'`
 	cert := f.runCommandGetOutput(cmdStr)
 
-	f.token = token
+	f.token = string(tokenBytes)
 	f.cert = cert
 }
 
