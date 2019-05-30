@@ -152,8 +152,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handlePodChangeAction(ctx, state, action.Pod)
 	case ServiceChangeAction:
 		handleServiceEvent(ctx, state, action)
-	case K8SEventAction:
-		handleK8SEvent(ctx, state, action.Event)
+	case store.K8SEventAction:
+		handleK8SEvent(ctx, state, action)
 	case PodLogAction:
 		handlePodLogAction(state, action)
 	case BuildLogAction:
@@ -853,20 +853,23 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 	ms.LBs[k8s.ServiceName(service.Name)] = action.URL
 }
 
-func handleK8SEvent(ctx context.Context, state *store.EngineState, event *v1.Event) {
-	v, ok := state.ObjectsByK8SUIDs[k8s.UID(event.InvolvedObject.UID)]
+func handleK8SEvent(ctx context.Context, state *store.EngineState, action store.K8SEventAction) {
+	evt := action.Event
+	v, ok := state.ObjectsByK8SUIDs[k8s.UID(evt.InvolvedObject.UID)]
 	if !ok {
 		return
 	}
 
-	if event.Type == "Warning" {
-		// TODO: log this to the manifest's log as well
-		logger.Get(ctx).Infof("event received for %s: %s:%s:%s: %s",
-			v.Manifest,
-			v.Entity.Name(),
-			v.Entity.Namespace(),
-			v.Entity.Kind,
-			event.Message)
+	if evt.Type == "Warning" {
+		ms, ok := state.ManifestState(v.Manifest)
+		if !ok {
+			return
+		}
+
+		ms.CombinedLog = model.AppendLog(ms.CombinedLog, action, state.LogTimestamps)
+		logger.Get(ctx).Infof("%s%s", logPrefix(ms.Name.String()), action.MessageRaw())
+
+		// TODO(maia): ms.k8sWarnEvents = append(ms.k8sWarnEvents...)
 	}
 }
 
