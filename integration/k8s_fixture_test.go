@@ -204,7 +204,6 @@ func (f *k8sFixture) setupNewKubeConfig() {
 
 	f.tempDir.WriteFile("config", string(current))
 	f.fixture.tiltEnviron["KUBECONFIG"] = f.tempDir.JoinPath("config")
-	f.fixture.tiltEnviron["TILT_K8S_EVENTS"] = "true"
 	f.usingOverriddenConfig = true
 }
 
