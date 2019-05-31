@@ -869,7 +869,7 @@ func handleK8SEvent(ctx context.Context, state *store.EngineState, action store.
 		ms.CombinedLog = model.AppendLog(ms.CombinedLog, action, state.LogTimestamps)
 		logger.Get(ctx).Infof("%s%s", logPrefix(ms.Name.String()), action.MessageRaw())
 
-		// TODO(maia): ms.k8sWarnEvents = append(ms.k8sWarnEvents...)
+		ms.K8sWarnEvents = append(ms.K8sWarnEvents, k8s.NewEventWithEntity(evt, v.Entity))
 	}
 }
 
