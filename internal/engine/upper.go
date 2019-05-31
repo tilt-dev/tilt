@@ -860,7 +860,7 @@ func handleK8SEvent(ctx context.Context, state *store.EngineState, action store.
 		return
 	}
 
-	if evt.Type == "Warning" {
+	if evt.Type != "Normal" {
 		ms, ok := state.ManifestState(v.Manifest)
 		if !ok {
 			return

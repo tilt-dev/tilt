@@ -1830,13 +1830,58 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 		l := ms.CombinedLog.String()
 		return strings.Contains(l, "something has happened zomg")
 	})
-	// TODO(maia): test global log
+
+	assert.Contains(t, f.log.String(), "something has happened zomg", "event message not in global log")
 
 	err := f.Stop()
 	assert.NoError(t, err)
 }
 
-// todo: only record warnings
+func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	oldFlagVal := os.Getenv(k8sEventsFeatureFlag)
+	_ = os.Setenv(k8sEventsFeatureFlag, "true")
+	defer os.Setenv(k8sEventsFeatureFlag, oldFlagVal)
+
+	entityUID := "someEntity"
+	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
+
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName(e.Name())
+	manifest := f.newManifest(string(name), []model.Sync{sync})
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	ls := k8s.TiltRunSelector()
+	f.kClient.EmitEverything(ls, k8swatch.Event{
+		Type:   k8swatch.Added,
+		Object: e.Obj,
+	})
+
+	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
+		_, ok := st.ObjectsByK8SUIDs[k8s.UID(entityUID)]
+		return ok
+	})
+
+	normalEvt := &v1.Event{
+		InvolvedObject: v1.ObjectReference{UID: types.UID(entityUID)},
+		Message:        "all systems are go",
+		Type:           "Normal", // we should NOT log this message
+	}
+	f.kClient.EmitEvent(f.ctx, normalEvt)
+
+	time.Sleep(10 * time.Millisecond)
+	f.withManifestState(name, func(ms store.ManifestState) {
+		assert.NotContains(t, ms.CombinedLog.String(), "all systems are go",
+			"message for event of type 'normal' should not appear in log")
+	})
+
+	err := f.Stop()
+	assert.NoError(t, err)
+}
 
 func TestK8sEventLogTimestamp(t *testing.T) {
 	f := newTestFixture(t)
@@ -1871,7 +1916,7 @@ func TestK8sEventLogTimestamp(t *testing.T) {
 		return ok
 	})
 
-	ts := time.Now().Add(time.Hour * 36) // the future; timestamp that won't otherwise appear in our log
+	ts := time.Now().Add(time.Hour * 36) // the future, i.e. timestamp that won't otherwise appear in our log
 
 	warnEvt := &v1.Event{
 		InvolvedObject: v1.ObjectReference{UID: types.UID(entityUID)},
@@ -2545,25 +2590,25 @@ func newTestFixture(t *testing.T) *testFixture {
 	umm := NewUIDMapManager(k8s)
 
 	ret := &testFixture{
-		TempDirFixture: f,
-		ctx:            ctx,
-		cancel:         cancel,
-		b:              b,
-		fsWatcher:      watcher,
-		timerMaker:     &timerMaker,
-		docker:         dockerClient,
-		kClient:        k8s,
-		hud:            fakeHud,
-		log:            log,
-		store:          st,
-		bc:             bc,
-		onchangeCh:     fSub.ch,
-		fwm:            fwm,
-		cc:             cc,
-		dcc:            fakeDcc,
-		tfl:            tfl,
-		ghc:            ghc,
-		opter:          to,
+		TempDirFixture:        f,
+		ctx:                   ctx,
+		cancel:                cancel,
+		b:                     b,
+		fsWatcher:             watcher,
+		timerMaker:            &timerMaker,
+		docker:                dockerClient,
+		kClient:               k8s,
+		hud:                   fakeHud,
+		log:                   log,
+		store:                 st,
+		bc:                    bc,
+		onchangeCh:            fSub.ch,
+		fwm:                   fwm,
+		cc:                    cc,
+		dcc:                   fakeDcc,
+		tfl:                   tfl,
+		ghc:                   ghc,
+		opter:                 to,
 		tiltVersionCheckDelay: versionCheckInterval,
 	}
 
