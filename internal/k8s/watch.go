@@ -294,10 +294,6 @@ func (kCli K8sClient) watchableGroupVersionResources(ctx context.Context) ([]sch
 		}
 	}
 
-	if len(ret) == 0 {
-		return nil, fmt.Errorf("Unable to watch any resources: do you have sufficient permissions to watch resources?")
-	}
-
 	return ret, nil
 }
 
@@ -312,6 +308,9 @@ func (kCli K8sClient) WatchEverything(ctx context.Context, lps []model.LabelPair
 	gvrs, err := kCli.watchableGroupVersionResources(ctx)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error getting list of watchable GroupVersionResources")
+	}
+	if len(gvrs) == 0 {
+		return nil, fmt.Errorf("Unable to watch any resources: do you have sufficient permissions to watch resources?")
 	}
 
 	var watchers []watch.Interface

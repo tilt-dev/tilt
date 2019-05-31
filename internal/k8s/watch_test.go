@@ -149,7 +149,7 @@ func TestK8sClient_WatchEverything(t *testing.T) {
 	// NOTE(dmiller): because we don't add any resources in to the
 	// fake clientset that we set up in `newWatchTestFixture` `ServerGroupsAndResources()`
 	// returns an empty list, which triggers the following error
-	tf.watchEverythingExpectError("error getting list of watchable GroupVersionResources: Unable to watch any resources: do you have sufficient permissions to watch resources?")
+	tf.watchEverythingExpectError("Unable to watch any resources: do you have sufficient permissions to watch resources?")
 }
 
 type watchTestFixture struct {
