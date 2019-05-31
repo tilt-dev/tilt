@@ -16,6 +16,9 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/apimachinery/pkg/types"
+	k8swatch "k8s.io/apimachinery/pkg/watch"
+
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/wmclient/pkg/analytics"
@@ -1782,6 +1785,160 @@ func TestUpper_PodLogs(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
+	f := newTestFixture(t).EnableK8sEvents()
+	defer f.TearDown()
+
+	entityUID := "someEntity"
+	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
+
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName(e.Name())
+	manifest := f.newManifest(string(name), []model.Sync{sync})
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	ls := k8s.TiltRunSelector()
+	f.kClient.EmitEverything(ls, k8swatch.Event{
+		Type:   k8swatch.Added,
+		Object: e.Obj,
+	})
+
+	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
+		_, ok := st.ObjectsByK8SUIDs[k8s.UID(entityUID)]
+		return ok
+	})
+
+	warnEvt := &v1.Event{
+		InvolvedObject: v1.ObjectReference{UID: types.UID(entityUID)},
+		Message:        "something has happened zomg",
+		Type:           "Warning",
+	}
+	f.kClient.EmitEvent(f.ctx, warnEvt)
+
+	var warnEvts []k8s.EventWithEntity
+	f.WaitUntil("event message appears in manifest log", func(st store.EngineState) bool {
+		ms, ok := st.ManifestState(name)
+		if !ok {
+			t.Fatalf("Manifest %s not found in state", name)
+		}
+
+		warnEvts = ms.K8sWarnEvents
+		return strings.Contains(ms.CombinedLog.String(), "something has happened zomg")
+	})
+
+	assert.Contains(t, f.log.String(), "something has happened zomg", "event message not in global log")
+
+	if assert.Len(t, warnEvts, 1, "expect ms.K8sWarnEvents to contain 1 event") {
+		// Make sure we recorded the event on the manifest state
+		evt := warnEvts[0]
+		assert.Equal(t, evt.Event.Message, "something has happened zomg")
+		assert.Equal(t, evt.Entity.Name(), name.String())
+	}
+
+	err := f.Stop()
+	assert.NoError(t, err)
+}
+
+func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
+	f := newTestFixture(t).EnableK8sEvents()
+	defer f.TearDown()
+
+	entityUID := "someEntity"
+	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
+
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName(e.Name())
+	manifest := f.newManifest(string(name), []model.Sync{sync})
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	ls := k8s.TiltRunSelector()
+	f.kClient.EmitEverything(ls, k8swatch.Event{
+		Type:   k8swatch.Added,
+		Object: e.Obj,
+	})
+
+	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
+		_, ok := st.ObjectsByK8SUIDs[k8s.UID(entityUID)]
+		return ok
+	})
+
+	normalEvt := &v1.Event{
+		InvolvedObject: v1.ObjectReference{UID: types.UID(entityUID)},
+		Message:        "all systems are go",
+		Type:           "Normal", // we should NOT log this message
+	}
+	f.kClient.EmitEvent(f.ctx, normalEvt)
+
+	time.Sleep(10 * time.Millisecond)
+	f.withManifestState(name, func(ms store.ManifestState) {
+		assert.NotContains(t, ms.CombinedLog.String(), "all systems are go",
+			"message for event of type 'normal' should not appear in log")
+
+		assert.Len(t, ms.K8sWarnEvents, 0, "expect ms.K8sWarnEvents to be empty")
+	})
+
+	err := f.Stop()
+	assert.NoError(t, err)
+}
+
+func TestK8sEventLogTimestamp(t *testing.T) {
+	f := newTestFixture(t).EnableK8sEvents()
+	defer f.TearDown()
+
+	st := f.store.LockMutableStateForTesting()
+	st.LogTimestamps = true
+	f.store.UnlockMutableState()
+
+	entityUID := "someEntity"
+	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
+
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName(e.Name())
+	manifest := f.newManifest(string(name), []model.Sync{sync})
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	ls := k8s.TiltRunSelector()
+	f.kClient.EmitEverything(ls, k8swatch.Event{
+		Type:   k8swatch.Added,
+		Object: e.Obj,
+	})
+
+	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
+		_, ok := st.ObjectsByK8SUIDs[k8s.UID(entityUID)]
+		return ok
+	})
+
+	ts := time.Now().Add(time.Hour * 36) // the future, i.e. timestamp that won't otherwise appear in our log
+
+	warnEvt := &v1.Event{
+		InvolvedObject: v1.ObjectReference{UID: types.UID(entityUID)},
+		Message:        "something has happened zomg",
+		LastTimestamp:  metav1.Time{Time: ts},
+		Type:           "Warning",
+	}
+	f.kClient.EmitEvent(f.ctx, warnEvt)
+
+	tsPrefix := model.TimestampPrefix(ts)
+	f.WaitUntil("event message appears in manifest log", func(st store.EngineState) bool {
+		ms, ok := st.ManifestState(name)
+		if !ok {
+			t.Fatalf("Manifest %s not found in state", name)
+		}
+
+		l := ms.CombinedLog.String()
+		return strings.Contains(l, "something has happened zomg") && strings.Contains(l, string(tsPrefix))
+	})
+
+	err := f.Stop()
+	assert.NoError(t, err)
+}
+
 func TestInitSetsTiltfilePath(t *testing.T) {
 	f := newTestFixture(t)
 	f.Start([]model.Manifest{}, true)
@@ -2356,6 +2513,7 @@ type testFixture struct {
 	fsWatcher             *fakeMultiWatcher
 	timerMaker            *fakeTimerMaker
 	docker                *docker.FakeClient
+	kClient               *k8s.FakeK8sClient
 	hud                   *hud.FakeHud
 	createManifestsResult chan error
 	log                   *bufsync.ThreadSafeBuffer
@@ -2369,6 +2527,11 @@ type testFixture struct {
 	ghc                   *github.FakeClient
 	opter                 *testOpter
 	tiltVersionCheckDelay time.Duration
+
+	// old value of k8sEventsFeatureFlag env var, for teardown
+	// if nil, no reset needed.
+	// TODO(maia): rm when we unflag this
+	oldK8sEventsFeatureFlagVal *string
 
 	onchangeCh chan bool
 }
@@ -2437,6 +2600,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		fsWatcher:             watcher,
 		timerMaker:            &timerMaker,
 		docker:                dockerClient,
+		kClient:               k8s,
 		hud:                   fakeHud,
 		log:                   log,
 		store:                 st,
@@ -2464,6 +2628,15 @@ func newTestFixture(t *testing.T) *testFixture {
 	}()
 
 	return ret
+}
+
+func (f *testFixture) EnableK8sEvents() *testFixture {
+	oldVal := os.Getenv(k8sEventsFeatureFlag)
+	f.oldK8sEventsFeatureFlagVal = &oldVal
+
+	_ = os.Setenv(k8sEventsFeatureFlag, "true")
+
+	return f
 }
 
 func (f *testFixture) Start(manifests []model.Manifest, watchFiles bool, initOptions ...initOption) {
@@ -2745,6 +2918,11 @@ func (f *testFixture) TearDown() {
 	f.TempDirFixture.TearDown()
 	close(f.fsWatcher.events)
 	close(f.fsWatcher.errors)
+
+	if f.oldK8sEventsFeatureFlagVal != nil {
+		_ = os.Setenv(k8sEventsFeatureFlag, *f.oldK8sEventsFeatureFlagVal)
+	}
+
 	f.cancel()
 }
 

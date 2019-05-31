@@ -22,21 +22,7 @@ func TestUIDMapManager(t *testing.T) {
 	f := newUMMFixture(t)
 	defer f.TearDown()
 
-	es, err := k8s.ParseYAMLFromString(testyaml.DoggosDeploymentYaml)
-	if err != nil {
-		t.Fatalf("error parsing doggos yaml: %v", err)
-	}
-
-	e := es[0]
-	e, err = k8s.InjectLabels(e, []model.LabelPair{{
-		Key:   k8s.ManifestNameLabel,
-		Value: e.Name(),
-	}})
-	if err != nil {
-		t.Fatalf("error injecting manifest label: %v", err)
-	}
-
-	k8s.SetUIDForTest(t, &e, "foobar")
+	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, "foobar")
 
 	f.addManifest(e.Name())
 
@@ -57,6 +43,30 @@ func TestUIDMapManager(t *testing.T) {
 	}
 
 	f.assertObservedUIDUpdateActions(expectedAction)
+}
+
+func entityWithUID(t *testing.T, yaml string, uid string) k8s.K8sEntity {
+	es, err := k8s.ParseYAMLFromString(yaml)
+	if err != nil {
+		t.Fatalf("error parsing yaml: %v", err)
+	}
+
+	if len(es) != 1 {
+		t.Fatalf("expected exactly 1 k8s entity from yaml, got %d", len(es))
+	}
+
+	e := es[0]
+	e, err = k8s.InjectLabels(e, []model.LabelPair{{
+		Key:   k8s.ManifestNameLabel,
+		Value: e.Name(),
+	}})
+	if err != nil {
+		t.Fatalf("error injecting manifest label: %v", err)
+	}
+
+	k8s.SetUIDForTest(t, &e, uid)
+
+	return e
 }
 
 func (f *ummFixture) addManifest(manifestName string) {

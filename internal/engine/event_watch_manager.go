@@ -63,7 +63,7 @@ func (m *EventWatchManager) dispatchEventsLoop(ctx context.Context, ch <-chan *v
 				return
 			}
 
-			st.Dispatch(NewK8SEventAction(event))
+			st.Dispatch(store.NewK8SEventAction(event))
 		case <-ctx.Done():
 			return
 		}
