@@ -54,6 +54,8 @@ type FakeK8sClient struct {
 	everythingWatcherMu sync.Mutex
 	everythingWatches   []fakeEverythingWatch
 
+	eventsCh chan *v1.Event
+
 	UpsertError error
 	Runtime     container.Runtime
 }
@@ -107,7 +109,18 @@ func (c *FakeK8sClient) WatchServices(ctx context.Context, lps []model.LabelPair
 }
 
 func (c *FakeK8sClient) WatchEvents(ctx context.Context) (<-chan *v1.Event, error) {
-	return nil, nil
+	if c.eventsCh == nil {
+		c.eventsCh = make(chan *v1.Event, 10)
+		go func() {
+			<-ctx.Done()
+			close(c.eventsCh)
+		}()
+	}
+	return c.eventsCh, nil
+}
+
+func (c *FakeK8sClient) EmitEvent(ctx context.Context, evt *v1.Event) {
+	c.eventsCh <- evt
 }
 
 // emits an event to chans returned by WatchEverything

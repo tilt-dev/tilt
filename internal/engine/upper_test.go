@@ -16,6 +16,9 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/apimachinery/pkg/types"
+	k8swatch "k8s.io/apimachinery/pkg/watch"
+
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/wmclient/pkg/analytics"
@@ -1782,6 +1785,58 @@ func TestUpper_PodLogs(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	oldFlagVal := os.Getenv(k8sEventsFeatureFlag)
+	_ = os.Setenv(k8sEventsFeatureFlag, "true")
+	defer os.Setenv(k8sEventsFeatureFlag, oldFlagVal)
+
+	entityUID := "someEntity"
+	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
+
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName(e.Name())
+	manifest := f.newManifest(string(name), []model.Sync{sync})
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	ls := k8s.TiltRunSelector()
+	f.kClient.EmitEverything(ls, k8swatch.Event{
+		Type:   k8swatch.Added,
+		Object: e.Obj,
+	})
+
+	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
+		_, ok := st.ObjectsByK8SUIDs[k8s.UID(entityUID)]
+		return ok
+	})
+
+	warnEvt := &v1.Event{
+		InvolvedObject: v1.ObjectReference{UID: types.UID(entityUID)},
+		Message:        "something has happened zomg",
+		FirstTimestamp: metav1.Time{}, // todo
+		LastTimestamp:  metav1.Time{}, // todo
+		Type:           "Warning",
+	}
+	f.kClient.EmitEvent(f.ctx, warnEvt)
+
+	f.WaitUntil("event message appears in manifest log", func(st store.EngineState) bool {
+		ms, ok := st.ManifestState(name)
+		if !ok {
+			t.Fatalf("Manifest %s not found in state", name)
+		}
+
+		return strings.Contains(ms.CombinedLog.String(), "something has happened zomg")
+	})
+	// TODO(maia): test global log
+
+	err := f.Stop()
+	assert.NoError(t, err)
+}
+
 func TestInitSetsTiltfilePath(t *testing.T) {
 	f := newTestFixture(t)
 	f.Start([]model.Manifest{}, true)
@@ -2356,6 +2411,7 @@ type testFixture struct {
 	fsWatcher             *fakeMultiWatcher
 	timerMaker            *fakeTimerMaker
 	docker                *docker.FakeClient
+	kClient               *k8s.FakeK8sClient
 	hud                   *hud.FakeHud
 	createManifestsResult chan error
 	log                   *bufsync.ThreadSafeBuffer
@@ -2437,6 +2493,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		fsWatcher:             watcher,
 		timerMaker:            &timerMaker,
 		docker:                dockerClient,
+		kClient:               k8s,
 		hud:                   fakeHud,
 		log:                   log,
 		store:                 st,
