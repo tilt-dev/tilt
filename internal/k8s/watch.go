@@ -14,12 +14,14 @@ import (
 
 	"github.com/pkg/errors"
 
+	authorizationv1 "k8s.io/api/authorization/v1"
 	v1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/informers"
+	authorizationv1client "k8s.io/client-go/kubernetes/typed/authorization/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -214,23 +216,48 @@ func (kCli K8sClient) WatchServices(ctx context.Context, lps []model.LabelPair) 
 	return ch, nil
 }
 
-func isWatchable(r metav1.APIResource) bool {
+func (kCli K8sClient) isWatchable(ctx context.Context, auth authorizationv1client.AuthorizationV1Interface, r metav1.APIResource, gv schema.GroupVersion) (bool, error) {
+	// NOTE(maia): verb IS accounted for below, but this is an easy way to pare down the # of calls we make
+	var hasWatchVerb bool
 	for _, v := range r.Verbs {
 		if v == "watch" {
-			return true
+			hasWatchVerb = true
 		}
 	}
-	return false
+	if !hasWatchVerb {
+		return false, nil
+	}
+
+	// Based on `kubectl auth can-i`: https://github.com/kubernetes/kubernetes/blob/master/pkg/kubectl/cmd/auth/cani.go#L234
+	sar := &authorizationv1.SelfSubjectAccessReview{
+		Spec: authorizationv1.SelfSubjectAccessReviewSpec{
+			ResourceAttributes: &authorizationv1.ResourceAttributes{
+				Namespace: kCli.configNamespace.String(),
+				Verb:      "watch",
+				Group:     gv.Group,
+				Resource:  r.Name,
+			},
+		},
+	}
+
+	resp, err := auth.SelfSubjectAccessReviews().Create(sar)
+	if err != nil {
+		return false, err
+	}
+
+	return resp.Status.Allowed, nil
 }
 
 // Get all GroupVersionResources in the cluster that support watching
-func (kCli K8sClient) watchableGroupVersionResources() ([]schema.GroupVersionResource, error) {
+func (kCli K8sClient) watchableGroupVersionResources(ctx context.Context) ([]schema.GroupVersionResource, error) {
 	_, resourceLists, err := kCli.clientSet.Discovery().ServerGroupsAndResources()
 	if err != nil {
 		return nil, errors.Wrapf(err, "error getting list of resource types")
 	}
 
 	var ret []schema.GroupVersionResource
+
+	authCli := kCli.clientSet.AuthorizationV1()
 
 	for _, rl := range resourceLists {
 		// one might think it'd be cleaner to use rl.GroupVersionKind().GroupVersion()
@@ -241,9 +268,15 @@ func (kCli K8sClient) watchableGroupVersionResources() ([]schema.GroupVersionRes
 			return nil, errors.Wrapf(err, "error parsing GroupVersion '%s'", rl.GroupVersion)
 		}
 		for _, r := range rl.APIResources {
-			if !isWatchable(r) {
+			watchable, err := kCli.isWatchable(ctx, authCli, r, rlGV)
+			if err != nil {
+				logger.Get(ctx).Infof("ERROR setting up watch for '%s.%s': %v", r.Name, rlGV.String(), err)
+			}
+
+			if !watchable {
 				continue
 			}
+
 			// per comments on r.Group/r.Version: empty implies the value of the containing ResourceList
 			group := r.Group
 			if group == "" {
@@ -272,7 +305,7 @@ func (kCli K8sClient) WatchEverything(ctx context.Context, lps []model.LabelPair
 
 	// there is no API to watch *everything*, but there is an API to watch everything of a given type
 	// so we'll get the list of watchable types and make a watcher for each
-	gvrs, err := kCli.watchableGroupVersionResources()
+	gvrs, err := kCli.watchableGroupVersionResources(ctx)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error getting list of watchable GroupVersionResources")
 	}
