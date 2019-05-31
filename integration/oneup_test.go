@@ -11,6 +11,7 @@ import (
 func TestOneUp(t *testing.T) {
 	f := newK8sFixture(t, "oneup")
 	defer f.TearDown()
+	f.SetRestrictedCredentials()
 
 	f.TiltUp("oneup")
 

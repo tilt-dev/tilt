@@ -5,28 +5,40 @@ package integration
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
+	"os/user"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+
+	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
 type k8sFixture struct {
 	*fixture
+	tempDir *tempdir.TempDirFixture
+
+	token                 string
+	cert                  string
+	usingOverriddenConfig bool
 }
 
 func newK8sFixture(t *testing.T, dir string) *k8sFixture {
 	f := newFixture(t, dir)
+	td := tempdir.NewTempDirFixture(t)
 
-	kf := &k8sFixture{fixture: f}
+	kf := &k8sFixture{fixture: f, tempDir: td}
 	kf.CreateNamespaceIfNecessary()
+	kf.createUser()
 	kf.ClearNamespace()
 	return kf
 }
@@ -168,8 +180,97 @@ func (f *k8sFixture) ClearNamespace() {
 	f.ClearResource("services")
 }
 
+func (f *k8sFixture) setupNewKubeConfig() {
+	kubeConfigPath, exists := os.LookupEnv("KUBECONFIG")
+	if !exists {
+		usr, _ := user.Current()
+		dir := usr.HomeDir
+		kubeConfigPath = filepath.Join(dir, ".kube", "config")
+	}
+
+	current, err := ioutil.ReadFile(kubeConfigPath)
+	if err != nil {
+		f.t.Fatalf("Error reading KUBECONFIG: %v", err)
+	}
+
+	f.tempDir.WriteFile("config", string(current))
+	f.fixture.tiltEnviron["KUBECONFIG"] = f.tempDir.JoinPath("config")
+	f.fixture.tiltEnviron["TILT_K8S_EVENTS"] = "true"
+	f.usingOverriddenConfig = true
+}
+
+func (f *k8sFixture) createUser() {
+	f.runCommandSilently("kubectl", "apply", "-f", "access.yaml")
+}
+
+func (f *k8sFixture) runCommandSilently(name string, arg ...string) {
+	outWriter := bytes.NewBuffer(nil)
+	cmd := exec.CommandContext(f.ctx, name, arg...)
+	cmd.Stdout = outWriter
+	cmd.Stderr = outWriter
+	cmd.Dir = packageDir
+	if f.usingOverriddenConfig {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("KUBECONFIG=%s", f.tempDir.JoinPath("config")))
+	}
+	err := cmd.Run()
+	if err != nil {
+		f.t.Fatalf("Error running command silently %s %v: %v", name, arg, err)
+	}
+}
+
+func (f *k8sFixture) runCommandGetOutput(cmdStr string) string {
+	outWriter := bytes.NewBuffer(nil)
+	cmd := exec.CommandContext(f.ctx, "bash", "-c", cmdStr)
+	cmd.Stderr = outWriter
+	cmd.Dir = packageDir
+	if f.usingOverriddenConfig {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("KUBECONFIG=%s", f.tempDir.JoinPath("config")))
+	}
+	output, err := cmd.Output()
+	if err != nil {
+		f.t.Fatalf("Error running command with output %s: %v", cmdStr, err)
+	}
+
+	return strings.TrimSpace(string(output))
+}
+
+func (f *k8sFixture) getSecrets() {
+	cmdStr := `kubectl get secrets -n tilt-integration -o json | jq -r '.items[] | select(.metadata.name | startswith("tilt-integration-user-token-")) | .data.token'`
+	tokenBase64 := f.runCommandGetOutput(cmdStr)
+	tokenBytes, err := base64.StdEncoding.DecodeString(tokenBase64)
+	if err != nil {
+		f.t.Fatalf("Unable to decode token: %v", err)
+	}
+
+	cmdStr = `kubectl get secrets -n tilt-integration -o json | jq -r '.items[] | select(.metadata.name | startswith("tilt-integration-user-token-")) | .data["ca.crt"]'`
+	cert := f.runCommandGetOutput(cmdStr)
+
+	f.token = string(tokenBytes)
+	f.cert = cert
+}
+
+func (f *k8sFixture) SetRestrictedCredentials() {
+	f.setupNewKubeConfig()
+	f.createUser()
+	f.getSecrets()
+
+	f.runCommandSilently("kubectl", "config", "set-credentials", "tilt-integration-user", fmt.Sprintf("--token=%s", f.token))
+	f.runCommandSilently("kubectl", "config", "set", "users.tilt-integration-user.client-key-data", f.cert)
+
+	currentContext := f.runCommandGetOutput("kubectl config current-context")
+
+	f.runCommandSilently("kubectl", "config", "set-context", currentContext, "--user=tilt-integration-user", "--namespace=tilt-integration")
+
+	cmdStr := fmt.Sprintf(`kubectl config view -o json | jq -r '.contexts[] | select(.name == "%s") | .context.cluster'`, currentContext)
+	currentCluster := f.runCommandGetOutput(cmdStr)
+
+	f.runCommandSilently("kubectl", "config", "set", fmt.Sprintf("clusters.%s.certificate-authority-data", currentCluster), f.cert)
+	f.runCommandSilently("kubectl", "config", "unset", fmt.Sprintf("clusters.%s.certificate-authority", currentCluster))
+}
+
 func (f *k8sFixture) TearDown() {
 	f.StartTearDown()
 	f.ClearNamespace()
 	f.fixture.TearDown()
+	f.tempDir.TearDown()
 }
