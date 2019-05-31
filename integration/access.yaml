@@ -6,7 +6,7 @@ metadata:
   namespace: tilt-integration
 
 ---
-kind: Role
+kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: tilt-integration-user-full-access
@@ -22,7 +22,7 @@ rules:
   verbs: ["*"]
 
 ---
-kind: RoleBinding
+kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: tilt-integration-user-view
@@ -33,5 +33,5 @@ subjects:
   namespace: tilt-integration
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: Role
+  kind: ClusterRole
   name: tilt-integration-user-full-access
