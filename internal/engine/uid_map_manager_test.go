@@ -48,7 +48,7 @@ func TestUIDMapManager(t *testing.T) {
 func entityWithUID(t *testing.T, yaml string, uid string) k8s.K8sEntity {
 	es, err := k8s.ParseYAMLFromString(yaml)
 	if err != nil {
-		t.Fatalf("error parsing doggos yaml: %v", err)
+		t.Fatalf("error parsing yaml: %v", err)
 	}
 
 	if len(es) != 1 {
