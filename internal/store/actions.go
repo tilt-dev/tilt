@@ -64,7 +64,7 @@ func (kEvt K8SEventAction) Message() []byte {
 }
 
 func (kEvt K8SEventAction) MessageRaw() string {
-	// todo(maia): obj reference, namespace, etc.
+	// TODO(maia): obj reference, namespace, etc.
 	return fmt.Sprintf("[K8S EVENT] %s", kEvt.Event.Message)
 }
 
