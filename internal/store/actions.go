@@ -64,8 +64,16 @@ func (kEvt K8SEventAction) Message() []byte {
 }
 
 func (kEvt K8SEventAction) MessageRaw() string {
-	// TODO(maia): obj reference, namespace, etc.
-	return fmt.Sprintf("[K8S EVENT] %s", kEvt.Event.Message)
+	return fmt.Sprintf("[K8S EVENT: %s] %s",
+		objRefHumanReadable(kEvt.Event.InvolvedObject), kEvt.Event.Message)
+}
+
+func objRefHumanReadable(obj v1.ObjectReference) string {
+	s := fmt.Sprintf("%s/%s %s", obj.APIVersion, obj.Kind, obj.Name)
+	if obj.Namespace != "default" {
+		s += fmt.Sprintf(" (ns: %s)", obj.Namespace)
+	}
+	return s
 }
 
 type ResetRestartsAction struct {
