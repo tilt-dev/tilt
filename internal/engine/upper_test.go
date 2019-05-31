@@ -1817,8 +1817,6 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 	warnEvt := &v1.Event{
 		InvolvedObject: v1.ObjectReference{UID: types.UID(entityUID)},
 		Message:        "something has happened zomg",
-		FirstTimestamp: metav1.Time{}, // todo
-		LastTimestamp:  metav1.Time{}, // todo
 		Type:           "Warning",
 	}
 	f.kClient.EmitEvent(f.ctx, warnEvt)
@@ -1829,9 +1827,70 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 			t.Fatalf("Manifest %s not found in state", name)
 		}
 
-		return strings.Contains(ms.CombinedLog.String(), "something has happened zomg")
+		l := ms.CombinedLog.String()
+		return strings.Contains(l, "something has happened zomg")
 	})
 	// TODO(maia): test global log
+
+	err := f.Stop()
+	assert.NoError(t, err)
+}
+
+// todo: only record warnings
+
+func TestK8sEventLogTimestamp(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	oldFlagVal := os.Getenv(k8sEventsFeatureFlag)
+	_ = os.Setenv(k8sEventsFeatureFlag, "true")
+	defer os.Setenv(k8sEventsFeatureFlag, oldFlagVal)
+
+	st := f.store.LockMutableStateForTesting()
+	st.LogTimestamps = true
+	f.store.UnlockMutableState()
+
+	entityUID := "someEntity"
+	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
+
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName(e.Name())
+	manifest := f.newManifest(string(name), []model.Sync{sync})
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	ls := k8s.TiltRunSelector()
+	f.kClient.EmitEverything(ls, k8swatch.Event{
+		Type:   k8swatch.Added,
+		Object: e.Obj,
+	})
+
+	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
+		_, ok := st.ObjectsByK8SUIDs[k8s.UID(entityUID)]
+		return ok
+	})
+
+	ts := time.Now().Add(time.Hour * 36) // the future; timestamp that won't otherwise appear in our log
+
+	warnEvt := &v1.Event{
+		InvolvedObject: v1.ObjectReference{UID: types.UID(entityUID)},
+		Message:        "something has happened zomg",
+		LastTimestamp:  metav1.Time{Time: ts},
+		Type:           "Warning",
+	}
+	f.kClient.EmitEvent(f.ctx, warnEvt)
+
+	tsPrefix := model.TimestampPrefix(ts)
+	f.WaitUntil("event message appears in manifest log", func(st store.EngineState) bool {
+		ms, ok := st.ManifestState(name)
+		if !ok {
+			t.Fatalf("Manifest %s not found in state", name)
+		}
+
+		l := ms.CombinedLog.String()
+		return strings.Contains(l, "something has happened zomg") && strings.Contains(l, string(tsPrefix))
+	})
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -2486,25 +2545,25 @@ func newTestFixture(t *testing.T) *testFixture {
 	umm := NewUIDMapManager(k8s)
 
 	ret := &testFixture{
-		TempDirFixture:        f,
-		ctx:                   ctx,
-		cancel:                cancel,
-		b:                     b,
-		fsWatcher:             watcher,
-		timerMaker:            &timerMaker,
-		docker:                dockerClient,
-		kClient:               k8s,
-		hud:                   fakeHud,
-		log:                   log,
-		store:                 st,
-		bc:                    bc,
-		onchangeCh:            fSub.ch,
-		fwm:                   fwm,
-		cc:                    cc,
-		dcc:                   fakeDcc,
-		tfl:                   tfl,
-		ghc:                   ghc,
-		opter:                 to,
+		TempDirFixture: f,
+		ctx:            ctx,
+		cancel:         cancel,
+		b:              b,
+		fsWatcher:      watcher,
+		timerMaker:     &timerMaker,
+		docker:         dockerClient,
+		kClient:        k8s,
+		hud:            fakeHud,
+		log:            log,
+		store:          st,
+		bc:             bc,
+		onchangeCh:     fSub.ch,
+		fwm:            fwm,
+		cc:             cc,
+		dcc:            fakeDcc,
+		tfl:            tfl,
+		ghc:            ghc,
+		opter:          to,
 		tiltVersionCheckDelay: versionCheckInterval,
 	}
 

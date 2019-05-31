@@ -90,7 +90,7 @@ func (l Log) Empty() bool {
 	return l.Len() == 0
 }
 
-func timestampPrefix(ts time.Time) []byte {
+func TimestampPrefix(ts time.Time) []byte {
 	t := ts.Format("2006/01/02 15:04:05")
 	return []byte(fmt.Sprintf("%s ", t))
 }
@@ -109,7 +109,7 @@ func AppendLog(l Log, le LogEvent, timestampsEnabled bool) Log {
 		ts := le.Time()
 		for i, line := range addedLines {
 			if i != 0 || isStartingNewLine {
-				addedLines[i] = append(timestampPrefix(ts), line...)
+				addedLines[i] = append(TimestampPrefix(ts), line...)
 			}
 		}
 	}
