@@ -2,10 +2,12 @@ package k8s
 
 import (
 	"context"
+	"net/http"
 	"sync"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/logger"
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
@@ -30,8 +32,19 @@ func (r *runtimeAsync) Runtime(ctx context.Context) container.Runtime {
 		})
 		if err != nil {
 			logger.Get(ctx).Debugf("Error fetching nodes: %v", err)
+
+			statusErr, isStatusErr := err.(*apiErrors.StatusError)
+			if isStatusErr {
+				status := statusErr.ErrStatus
+				if status.Code == http.StatusForbidden {
+					logger.Get(ctx).Infof(
+						"ERROR: Tilt could not read your node configuration\n"+
+							"  Ask your Kubernetes admin for access to run `kubectl get nodes`.\n"+
+							"  Detail: %v", err)
+				}
+			}
 		}
-		if len(nodeList.Items) == 0 {
+		if nodeList == nil || len(nodeList.Items) == 0 {
 			return
 		}
 

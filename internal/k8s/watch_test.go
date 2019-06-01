@@ -8,7 +8,6 @@ import (
 
 	"github.com/windmilleng/tilt/internal/model"
 
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 
@@ -83,13 +82,7 @@ func TestK8sClient_WatchServicesLabelsPassed(t *testing.T) {
 
 func TestK8sClient_WatchPodsError(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	tf.watchErr = &errors.StatusError{
-		ErrStatus: metav1.Status{
-			Message: "unknown",
-			Reason:  "Forbidden",
-			Code:    http.StatusForbidden,
-		},
-	}
+	tf.watchErr = newForbiddenError()
 	_, err := tf.kCli.WatchPods(tf.ctx, labels.Set{}.AsSelector())
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Forbidden")
