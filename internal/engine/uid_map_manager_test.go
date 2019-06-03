@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-
 	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/stretchr/testify/assert"
@@ -18,34 +17,104 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
-func TestUIDMapManager(t *testing.T) {
+func TestUIDMapManager_needsWatchNoK8s(t *testing.T) {
 	f := newUMMFixture(t)
 	defer f.TearDown()
 
 	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, "foobar")
 
-	f.addManifest(e.Name())
-
+	// No k8s manifests on the state, so OnChange shouldn't do anything --
+	// when we emit an event, we do NOT expect to see an action dispatched,
+	// since no watch should have been started.
 	f.umm.OnChange(f.ctx, f.store)
 
 	ls := k8s.TiltRunSelector()
-
 	f.kClient.EmitEverything(ls, watch.Event{
 		Type:   watch.Added,
 		Object: e.Obj,
 	})
 
-	expectedAction := UIDUpdateAction{
-		UID:          k8s.UID("foobar"),
-		EventType:    watch.Added,
-		ManifestName: "doggos",
-		Entity:       k8s.K8sEntity{Obj: e.Obj, Kind: e.Kind},
-	}
+	f.assertNoUIDUpdateActions()
+}
 
-	f.assertObservedUIDUpdateActions(expectedAction)
+func TestUIDMapManager_dispatchesAction(t *testing.T) {
+	UID := "foobar"
+	eWithManifestLabels := entityWithUID(t, testyaml.DoggosDeploymentYaml, UID)
+	eNoManifestLabels := entityWithUIDAndMaybeManifestLabel(t, testyaml.DoggosDeploymentYaml, UID, false)
+
+	for _, test := range []struct {
+		name           string
+		watchType      watch.EventType
+		entity         k8s.K8sEntity
+		eventHasObject bool
+		expectAction   bool
+	}{
+		{
+			name:           "type = Added",
+			watchType:      watch.Added,
+			entity:         eWithManifestLabels,
+			eventHasObject: true,
+			expectAction:   true,
+		},
+		{
+			name:           "no action for type = Modified",
+			watchType:      watch.Modified,
+			entity:         eWithManifestLabels,
+			eventHasObject: true,
+			expectAction:   false,
+		},
+		{
+			name:           "no action for nil object",
+			watchType:      watch.Added,
+			entity:         eWithManifestLabels,
+			eventHasObject: false,
+			expectAction:   false,
+		},
+		{
+			name:           "no action for entity without tilt manifest label",
+			watchType:      watch.Added,
+			entity:         eNoManifestLabels,
+			eventHasObject: false,
+			expectAction:   false,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			f := newUMMFixture(t)
+			defer f.TearDown()
+
+			f.addManifest(test.entity.Name())
+
+			f.umm.OnChange(f.ctx, f.store)
+
+			ls := k8s.TiltRunSelector()
+
+			evt := &watch.Event{Type: test.watchType}
+			if test.eventHasObject {
+				evt.Object = test.entity.Obj
+			}
+			f.kClient.EmitEverything(ls, *evt)
+
+			if test.expectAction {
+				expectedAction := UIDUpdateAction{
+					UID:          k8s.UID(UID),
+					EventType:    test.watchType,
+					ManifestName: model.ManifestName(test.entity.Name()),
+					Entity:       k8s.K8sEntity{Obj: eWithManifestLabels.Obj, Kind: eWithManifestLabels.Kind},
+				}
+
+				f.assertObservedUIDUpdateActions(expectedAction)
+			} else {
+				f.assertNoUIDUpdateActions()
+			}
+		})
+	}
 }
 
 func entityWithUID(t *testing.T, yaml string, uid string) k8s.K8sEntity {
+	return entityWithUIDAndMaybeManifestLabel(t, yaml, uid, true)
+}
+
+func entityWithUIDAndMaybeManifestLabel(t *testing.T, yaml string, uid string, withManifestLabel bool) k8s.K8sEntity {
 	es, err := k8s.ParseYAMLFromString(yaml)
 	if err != nil {
 		t.Fatalf("error parsing yaml: %v", err)
@@ -56,12 +125,14 @@ func entityWithUID(t *testing.T, yaml string, uid string) k8s.K8sEntity {
 	}
 
 	e := es[0]
-	e, err = k8s.InjectLabels(e, []model.LabelPair{{
-		Key:   k8s.ManifestNameLabel,
-		Value: e.Name(),
-	}})
-	if err != nil {
-		t.Fatalf("error injecting manifest label: %v", err)
+	if withManifestLabel {
+		e, err = k8s.InjectLabels(e, []model.LabelPair{{
+			Key:   k8s.ManifestNameLabel,
+			Value: e.Name(),
+		}})
+		if err != nil {
+			t.Fatalf("error injecting manifest label: %v", err)
+		}
 	}
 
 	k8s.SetUIDForTest(t, &e, uid)
@@ -120,7 +191,17 @@ func (f *ummFixture) TearDown() {
 	f.cancel()
 }
 
+func (f *ummFixture) assertNoUIDUpdateActions() {
+	f.assertObservedUIDUpdateActions()
+}
+
 func (f *ummFixture) assertObservedUIDUpdateActions(expectedActions ...UIDUpdateAction) {
+	if len(expectedActions) == 0 {
+		// assert no UID update actions -- sleep briefly
+		// to give any actions a chance to get into the queue
+		time.Sleep(10 * time.Millisecond)
+	}
+
 	start := time.Now()
 	for time.Since(start) < 200*time.Millisecond {
 		actions := f.getActions()
@@ -137,7 +218,6 @@ func (f *ummFixture) assertObservedUIDUpdateActions(expectedActions ...UIDUpdate
 		}
 		observedActions = append(observedActions, sca)
 	}
-	if !assert.Equal(f.t, expectedActions, observedActions) {
-		f.t.FailNow()
-	}
+
+	assert.Equal(f.t, expectedActions, observedActions)
 }
