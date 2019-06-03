@@ -155,28 +155,6 @@ class HUD extends Component<HudProps, HudState> {
     return this.pathBuilder.path(relPath)
   }
 
-  keymap() {
-    return {
-      clearSnackRestarts: "\\",
-    }
-  }
-
-  handlers() {
-    return {
-      clearSnackRestarts: (event: KeyboardEvent | undefined) => {
-        if (this.state.View) {
-          this.state.View.Resources.forEach(r => {
-            fetch(
-              this.pathBuilder.path(
-                `/api/control/reset_restarts?name=${r.Name}`
-              )
-            )
-          })
-        }
-      },
-    }
-  }
-
   render() {
     let view = this.state.View
     let sailEnabled = view && view.SailEnabled ? view.SailEnabled : false
@@ -305,100 +283,98 @@ class HUD extends Component<HudProps, HudState> {
     let latestVersion = view && view.LatestTiltBuild
 
     return (
-      <HotKeys keyMap={this.keymap()} handlers={this.handlers()}>
-        <div className="HUD">
-          <AnalyticsNudge needsNudge={needsNudge} />
-          <Switch>
-            <Route
-              path={this.path("/r/:name/alerts")}
-              render={topBarRoute.bind(null, ResourceView.Alerts)}
-            />
-            <Route
-              path={this.path("/r/:name/preview")}
-              render={topBarRoute.bind(null, ResourceView.Preview)}
-            />
-            <Route
-              path={this.path("/preview")}
-              render={topBarRoute.bind(null, ResourceView.Preview)}
-            />
-            <Route
-              path={this.path("/r/:name")}
-              render={topBarRoute.bind(null, ResourceView.Log)}
-            />
-            <Route
-              path={this.path("/alerts")}
-              render={topBarRoute.bind(null, ResourceView.Alerts)}
-            />
-            <Route render={topBarRoute.bind(null, ResourceView.Log)} />
-          </Switch>
-          <Switch>
-            <Route
-              path={this.path("/r/:name/alerts")}
-              render={sidebarRoute.bind(null, ResourceView.Alerts)}
-            />
-            <Route
-              path={this.path("/alerts")}
-              render={sidebarRoute.bind(null, ResourceView.Alerts)}
-            />
-            <Route
-              path={this.path("/r/:name/preview")}
-              render={sidebarRoute.bind(null, ResourceView.Preview)}
-            />
-            <Route
-              path={this.path("/preview")}
-              render={sidebarRoute.bind(null, ResourceView.Preview)}
-            />
-            <Route
-              path={this.path("/r/:name")}
-              render={sidebarRoute.bind(null, ResourceView.Log)}
-            />
-            <Route render={sidebarRoute.bind(null, ResourceView.Log)} />
-          </Switch>
-          <Statusbar
-            items={statusItems}
-            alertsUrl={this.path("/alerts")}
-            runningVersion={runningVersion}
-            latestVersion={latestVersion}
+      <div className="HUD">
+        <AnalyticsNudge needsNudge={needsNudge} />
+        <Switch>
+          <Route
+            path={this.path("/r/:name/alerts")}
+            render={topBarRoute.bind(null, ResourceView.Alerts)}
           />
-          <Switch>
-            <Route
-              exact
-              path={this.path("/")}
-              render={() => (
-                <LogPane
-                  log={combinedLog}
-                  isExpanded={isSidebarClosed}
-                  podID={""}
-                  endpoints={[]}
-                />
-              )}
-            />
-            <Route
-              exact
-              path={this.path("/alerts")}
-              render={() => <AlertPane resources={alertResources} />}
-            />
-            <Route exact path={this.path("/preview")} render={previewRoute} />
-            <Route exact path={this.path("/r/:name")} render={logsRoute} />
-            <Route
-              exact
-              path={this.path("/r/:name/k8s")}
-              render={() => <K8sViewPane />}
-            />
-            <Route
-              exact
-              path={this.path("/r/:name/alerts")}
-              render={errorRoute}
-            />
-            <Route
-              exact
-              path={this.path("/r/:name/preview")}
-              render={previewRoute}
-            />
-            <Route component={NoMatch} />
-          </Switch>
-        </div>
-      </HotKeys>
+          <Route
+            path={this.path("/r/:name/preview")}
+            render={topBarRoute.bind(null, ResourceView.Preview)}
+          />
+          <Route
+            path={this.path("/preview")}
+            render={topBarRoute.bind(null, ResourceView.Preview)}
+          />
+          <Route
+            path={this.path("/r/:name")}
+            render={topBarRoute.bind(null, ResourceView.Log)}
+          />
+          <Route
+            path={this.path("/alerts")}
+            render={topBarRoute.bind(null, ResourceView.Alerts)}
+          />
+          <Route render={topBarRoute.bind(null, ResourceView.Log)} />
+        </Switch>
+        <Switch>
+          <Route
+            path={this.path("/r/:name/alerts")}
+            render={sidebarRoute.bind(null, ResourceView.Alerts)}
+          />
+          <Route
+            path={this.path("/alerts")}
+            render={sidebarRoute.bind(null, ResourceView.Alerts)}
+          />
+          <Route
+            path={this.path("/r/:name/preview")}
+            render={sidebarRoute.bind(null, ResourceView.Preview)}
+          />
+          <Route
+            path={this.path("/preview")}
+            render={sidebarRoute.bind(null, ResourceView.Preview)}
+          />
+          <Route
+            path={this.path("/r/:name")}
+            render={sidebarRoute.bind(null, ResourceView.Log)}
+          />
+          <Route render={sidebarRoute.bind(null, ResourceView.Log)} />
+        </Switch>
+        <Statusbar
+          items={statusItems}
+          alertsUrl={this.path("/alerts")}
+          runningVersion={runningVersion}
+          latestVersion={latestVersion}
+        />
+        <Switch>
+          <Route
+            exact
+            path={this.path("/")}
+            render={() => (
+              <LogPane
+                log={combinedLog}
+                isExpanded={isSidebarClosed}
+                podID={""}
+                endpoints={[]}
+              />
+            )}
+          />
+          <Route
+            exact
+            path={this.path("/alerts")}
+            render={() => <AlertPane resources={alertResources} />}
+          />
+          <Route exact path={this.path("/preview")} render={previewRoute} />
+          <Route exact path={this.path("/r/:name")} render={logsRoute} />
+          <Route
+            exact
+            path={this.path("/r/:name/k8s")}
+            render={() => <K8sViewPane />}
+          />
+          <Route
+            exact
+            path={this.path("/r/:name/alerts")}
+            render={errorRoute}
+          />
+          <Route
+            exact
+            path={this.path("/r/:name/preview")}
+            render={previewRoute}
+          />
+          <Route component={NoMatch} />
+        </Switch>
+      </div>
     )
   }
 }
