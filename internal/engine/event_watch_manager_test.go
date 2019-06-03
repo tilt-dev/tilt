@@ -40,6 +40,9 @@ func TestEventWatchManager_needsWatchNoK8s(t *testing.T) {
 		Message: "hello world",
 	}
 
+	// No k8s manifests on the state, so OnChange shouldn't do anything --
+	// when we emit an event, we do NOT expect to see an action dispatched,
+	// since no watch should have been started.
 	f.ewm.OnChange(f.ctx, f.store)
 	f.kClient.EmitEvent(f.ctx, evt)
 	f.assertNoK8sEventActions()
