@@ -160,8 +160,6 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleBuildLogAction(state, action)
 	case BuildCompleteAction:
 		err = handleBuildCompleted(ctx, state, action)
-	case store.ResetRestartsAction:
-		handleResetRestarts(ctx, state, action)
 	case BuildStartedAction:
 		handleBuildStarted(ctx, state, action)
 	case DeployIDAction:
@@ -243,19 +241,6 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 
 	state.CurrentlyBuilding = mn
 	removeFromTriggerQueue(state, mn)
-}
-
-func handleResetRestarts(ctx context.Context, engineState *store.EngineState, a store.ResetRestartsAction) {
-	mt, ok := engineState.ManifestTargets[a.ManifestName]
-	if !ok {
-		return
-	}
-
-	ms := mt.State
-	for _, pod := range ms.PodSet.Pods {
-		// # of pod restarts from old code (shouldn't be reflected in HUD)
-		pod.OldRestarts = pod.ContainerRestarts
-	}
 }
 
 func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, cb BuildCompleteAction) error {
