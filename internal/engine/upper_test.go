@@ -1939,6 +1939,50 @@ func TestK8sEventLogTimestamp(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestUIDMapDeleteUID(t *testing.T) {
+	f := newTestFixture(t).EnableK8sEvents()
+	defer f.TearDown()
+
+	st := f.store.LockMutableStateForTesting()
+	st.LogTimestamps = true
+	f.store.UnlockMutableState()
+
+	entityUID := "someEntity"
+	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
+
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName(e.Name())
+	manifest := f.newManifest(string(name), []model.Sync{sync})
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	ls := k8s.TiltRunSelector()
+	f.kClient.EmitEverything(ls, k8swatch.Event{
+		Type:   k8swatch.Added,
+		Object: e.Obj,
+	})
+
+	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
+		_, ok := st.ObjectsByK8SUIDs[k8s.UID(entityUID)]
+		return ok
+	})
+
+	f.kClient.EmitEverything(ls, k8swatch.Event{
+		Type:   k8swatch.Deleted,
+		Object: e.Obj,
+	})
+
+	time.Sleep(10 * time.Millisecond)
+
+	f.withState(func(st store.EngineState) {
+		_, ok := st.ObjectsByK8SUIDs[k8s.UID(entityUID)]
+		assert.False(t, ok, "entry for UID should have been removed from map")
+	})
+	err := f.Stop()
+	assert.NoError(t, err)
+}
+
 func TestInitSetsTiltfilePath(t *testing.T) {
 	f := newTestFixture(t)
 	f.Start([]model.Manifest{}, true)
@@ -2593,25 +2637,25 @@ func newTestFixture(t *testing.T) *testFixture {
 	umm := NewUIDMapManager(k8s)
 
 	ret := &testFixture{
-		TempDirFixture: f,
-		ctx:            ctx,
-		cancel:         cancel,
-		b:              b,
-		fsWatcher:      watcher,
-		timerMaker:     &timerMaker,
-		docker:         dockerClient,
-		kClient:        k8s,
-		hud:            fakeHud,
-		log:            log,
-		store:          st,
-		bc:             bc,
-		onchangeCh:     fSub.ch,
-		fwm:            fwm,
-		cc:             cc,
-		dcc:            fakeDcc,
-		tfl:            tfl,
-		ghc:            ghc,
-		opter:          to,
+		TempDirFixture:        f,
+		ctx:                   ctx,
+		cancel:                cancel,
+		b:                     b,
+		fsWatcher:             watcher,
+		timerMaker:            &timerMaker,
+		docker:                dockerClient,
+		kClient:               k8s,
+		hud:                   fakeHud,
+		log:                   log,
+		store:                 st,
+		bc:                    bc,
+		onchangeCh:            fSub.ch,
+		fwm:                   fwm,
+		cc:                    cc,
+		dcc:                   fakeDcc,
+		tfl:                   tfl,
+		ghc:                   ghc,
+		opter:                 to,
 		tiltVersionCheckDelay: versionCheckInterval,
 	}
 

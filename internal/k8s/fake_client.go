@@ -120,7 +120,8 @@ func (c *FakeK8sClient) WatchEvents(ctx context.Context) (<-chan *v1.Event, erro
 }
 
 func (c *FakeK8sClient) EmitEvent(ctx context.Context, evt *v1.Event) {
-	c.eventsCh <- evt
+	// Do this async so it doesn't block if we haven't set up watch on this channel yet.
+	go func() { c.eventsCh <- evt }()
 }
 
 // emits an event to chans returned by WatchEverything
