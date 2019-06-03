@@ -17,7 +17,6 @@ import "./HUD.scss"
 import { TiltBuild, ResourceView } from "./types"
 import AlertPane, { AlertResource } from "./AlertPane"
 import PreviewList from "./PreviewList"
-import { HotKeys } from "react-hotkeys"
 import AnalyticsNudge from "./AnalyticsNudge"
 
 type HudProps = {
