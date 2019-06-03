@@ -144,6 +144,14 @@ func TestK8sClient_WatchServicesBlockedByNamespaceRestriction(t *testing.T) {
 	}
 }
 
+func TestK8sClient_WatchEverything(t *testing.T) {
+	tf := newWatchTestFixture(t)
+	// NOTE(dmiller): because we don't add any resources in to the
+	// fake clientset that we set up in `newWatchTestFixture` `ServerGroupsAndResources()`
+	// returns an empty list, which triggers the following error
+	tf.watchEverythingExpectError("Unable to watch any resources: do you have sufficient permissions to watch resources?")
+}
+
 type watchTestFixture struct {
 	t                 *testing.T
 	kCli              K8sClient
@@ -257,6 +265,11 @@ func (tf *watchTestFixture) runServices(input []runtime.Object, expectedOutput [
 	}
 
 	assert.Equal(tf.t, expectedOutput, observedServices)
+}
+
+func (tf *watchTestFixture) watchEverythingExpectError(expectedErr string) {
+	_, err := tf.kCli.WatchEverything(tf.ctx, []model.LabelPair{})
+	assert.EqualError(tf.t, err, expectedErr)
 }
 
 func (tf *watchTestFixture) testPodLabels(input labels.Set, expectedLabels labels.Set) {
