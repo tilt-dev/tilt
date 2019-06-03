@@ -159,7 +159,7 @@ func (s Script) Run(ctx context.Context) error {
 		return nil
 	}
 
-	l := engine.NewLogActionLogger(ctx, s.store.Dispatch)
+	l := store.NewLogActionLogger(ctx, s.store.Dispatch)
 	out := l.Writer(logger.InfoLvl)
 	ctx = logger.WithLogger(ctx, l)
 	ctx, cancel := context.WithCancel(ctx)

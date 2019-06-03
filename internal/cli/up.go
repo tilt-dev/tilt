@@ -97,25 +97,27 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		span.SetTag(k, v)
 	}
 
-	threads, err := wireThreads(ctx, a)
-	if err != nil {
-		return err
-	}
-
-	upper := threads.upper
-	h := threads.hud
-
-	l := engine.NewLogActionLogger(ctx, upper.Dispatch)
-	ctx = logger.WithLogger(ctx, l)
-
-	log.SetOutput(l.Writer(logger.InfoLvl))
-	klog.SetOutput(l.Writer(logger.InfoLvl))
+	deferred := logger.NewDeferredLogger(ctx)
+	ctx = redirectLogs(ctx, deferred)
 
 	logOutput(fmt.Sprintf("Starting Tilt (%s)…", buildStamp()))
 
 	if isAnalyticsDisabledFromEnv() {
 		logOutput("Tilt analytics manually disabled by environment")
 	}
+
+	threads, err := wireThreads(ctx, a)
+	if err != nil {
+		deferred.SetOutput(deferred.Original())
+		return err
+	}
+
+	upper := threads.upper
+	h := threads.hud
+
+	l := store.NewLogActionLogger(ctx, upper.Dispatch)
+	deferred.SetOutput(l)
+	ctx = redirectLogs(ctx, l)
 
 	if trace {
 		traceID, err := tracer.TraceID(ctx)
@@ -156,6 +158,13 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	} else {
 		return nil
 	}
+}
+
+func redirectLogs(ctx context.Context, l logger.Logger) context.Context {
+	ctx = logger.WithLogger(ctx, l)
+	log.SetOutput(l.Writer(logger.InfoLvl))
+	klog.SetOutput(l.Writer(logger.InfoLvl))
+	return ctx
 }
 
 func logOutput(s string) {
