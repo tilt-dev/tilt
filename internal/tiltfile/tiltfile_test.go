@@ -3247,7 +3247,7 @@ docker_build('gcr.io/foo', '.', ignore="*.txt")
 k8s_yaml('foo.yaml')
 `)
 
-	f.load("foo")
+	f.load()
 	f.assertNextManifest("foo",
 		buildFilters("a.txt"),
 		fileChangeFilters("a.txt"),
@@ -3268,7 +3268,7 @@ docker_build('gcr.io/foo', '.', ignore=["*.txt", "*.md"])
 k8s_yaml('foo.yaml')
 `)
 
-	f.load("foo")
+	f.load()
 	f.assertNextManifest("foo",
 		buildFilters("a.txt"),
 		buildFilters("a.md"),
