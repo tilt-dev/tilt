@@ -3239,42 +3239,44 @@ func TestDockerbuildIgnoreAsString(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.dockerfile("foo/Dockerfile")
-	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
-
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
 	f.file("Tiltfile", `
 k8s_resource_assembly_version(2)
-docker_build('fooimage', 'foo', ignore="package.json")
+docker_build('gcr.io/foo', '.', ignore="*.txt")
 k8s_yaml('foo.yaml')
 `)
 
 	f.load()
-
 	f.assertNextManifest("foo",
-		db(imageNormalized("fooimage")),
-		deployment("foo"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
+		buildFilters("a.txt"),
+		fileChangeFilters("a.txt"),
+		buildMatches("txt.a"),
+		fileChangeMatches("txt.a"),
+	)
 }
 
 func TestDockerbuildIgnoreAsArray(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.dockerfile("foo/Dockerfile")
-	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
-
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
 	f.file("Tiltfile", `
 k8s_resource_assembly_version(2)
-docker_build('fooimage', 'foo', ignore=["package.json", "**/ignore.txt"])
+docker_build('gcr.io/foo', '.', ignore=["*.txt", "*.md"])
 k8s_yaml('foo.yaml')
 `)
 
 	f.load()
-
 	f.assertNextManifest("foo",
-		db(imageNormalized("fooimage")),
-		deployment("foo"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
+		buildFilters("a.txt"),
+		buildFilters("a.md"),
+		fileChangeFilters("a.txt"),
+		fileChangeFilters("a.md"),
+		buildMatches("txt.a"),
+		fileChangeMatches("txt.a"),
+	)
 }
 
 func TestDockerbuildInvalidIgnore(t *testing.T) {

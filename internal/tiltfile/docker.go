@@ -3,6 +3,7 @@ package tiltfile
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
@@ -576,9 +577,10 @@ func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Bu
 	return starlark.None, nil
 }
 
-func (s *tiltfileState) dockerignoresForPaths(paths []string) []model.Dockerignore {
+func (s *tiltfileState) dockerignoresFromPathsAndIgnores(paths []string, ignores []string) []model.Dockerignore {
 	var result []model.Dockerignore
 	dupeSet := map[string]bool{}
+	ignoreContents := ignoresToDockerignoreContents(ignores)
 
 	for _, path := range paths {
 		if path == "" || dupeSet[path] {
@@ -589,6 +591,11 @@ func (s *tiltfileState) dockerignoresForPaths(paths []string) []model.Dockerigno
 		if !ospath.IsDir(path) {
 			continue
 		}
+
+		result = append(result, model.Dockerignore{
+			LocalPath: path,
+			Contents:  ignoreContents,
+		})
 
 		contents, err := s.readFile(s.localPathFromString(filepath.Join(path, ".dockerignore")))
 		if err != nil {
@@ -602,6 +609,17 @@ func (s *tiltfileState) dockerignoresForPaths(paths []string) []model.Dockerigno
 	}
 
 	return result
+}
+
+func ignoresToDockerignoreContents(ignores []string) string {
+	var output strings.Builder
+
+	for _, ignore := range ignores {
+		output.WriteString(ignore)
+		output.WriteString("\n")
+	}
+
+	return output.String()
 }
 
 func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Dockerignore {
@@ -622,7 +640,7 @@ func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Docker
 	}
 	paths = append(paths, image.dbBuildPath.path)
 
-	return s.dockerignoresForPaths(paths)
+	return s.dockerignoresFromPathsAndIgnores(paths, image.ignores)
 }
 
 func (s *tiltfileState) checkForFastBuilds(manifests []model.Manifest) {
