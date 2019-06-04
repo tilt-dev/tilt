@@ -1786,7 +1786,7 @@ func TestUpper_PodLogs(t *testing.T) {
 }
 
 func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
-	f := newTestFixture(t).EnableK8sEvents()
+	f := newTestFixture(t)
 	defer f.TearDown()
 
 	entityUID := "someEntity"
@@ -1842,7 +1842,7 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 }
 
 func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
-	f := newTestFixture(t).EnableK8sEvents()
+	f := newTestFixture(t)
 	defer f.TearDown()
 
 	entityUID := "someEntity"
@@ -1869,7 +1869,7 @@ func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
 }
 
 func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
-	f := newTestFixture(t).EnableK8sEvents()
+	f := newTestFixture(t)
 	defer f.TearDown()
 
 	entityUID := "someEntity"
@@ -1913,7 +1913,7 @@ func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
 }
 
 func TestK8sEventLogTimestamp(t *testing.T) {
-	f := newTestFixture(t).EnableK8sEvents()
+	f := newTestFixture(t)
 	defer f.TearDown()
 
 	st := f.store.LockMutableStateForTesting()
@@ -1967,7 +1967,7 @@ func TestK8sEventLogTimestamp(t *testing.T) {
 }
 
 func TestUIDMapDeleteUID(t *testing.T) {
-	f := newTestFixture(t).EnableK8sEvents()
+	f := newTestFixture(t)
 	defer f.TearDown()
 
 	st := f.store.LockMutableStateForTesting()
@@ -2572,11 +2572,6 @@ type testFixture struct {
 	opter                 *testOpter
 	tiltVersionCheckDelay time.Duration
 
-	// old value of k8sEventsFeatureFlag env var, for teardown
-	// if nil, no reset needed.
-	// TODO(maia): rm when we unflag this
-	oldK8sEventsFeatureFlagVal *string
-
 	onchangeCh chan bool
 }
 
@@ -2637,25 +2632,25 @@ func newTestFixture(t *testing.T) *testFixture {
 	umm := NewUIDMapManager(k8s)
 
 	ret := &testFixture{
-		TempDirFixture:        f,
-		ctx:                   ctx,
-		cancel:                cancel,
-		b:                     b,
-		fsWatcher:             watcher,
-		timerMaker:            &timerMaker,
-		docker:                dockerClient,
-		kClient:               k8s,
-		hud:                   fakeHud,
-		log:                   log,
-		store:                 st,
-		bc:                    bc,
-		onchangeCh:            fSub.ch,
-		fwm:                   fwm,
-		cc:                    cc,
-		dcc:                   fakeDcc,
-		tfl:                   tfl,
-		ghc:                   ghc,
-		opter:                 to,
+		TempDirFixture: f,
+		ctx:            ctx,
+		cancel:         cancel,
+		b:              b,
+		fsWatcher:      watcher,
+		timerMaker:     &timerMaker,
+		docker:         dockerClient,
+		kClient:        k8s,
+		hud:            fakeHud,
+		log:            log,
+		store:          st,
+		bc:             bc,
+		onchangeCh:     fSub.ch,
+		fwm:            fwm,
+		cc:             cc,
+		dcc:            fakeDcc,
+		tfl:            tfl,
+		ghc:            ghc,
+		opter:          to,
 		tiltVersionCheckDelay: versionCheckInterval,
 	}
 
@@ -2672,15 +2667,6 @@ func newTestFixture(t *testing.T) *testFixture {
 	}()
 
 	return ret
-}
-
-func (f *testFixture) EnableK8sEvents() *testFixture {
-	oldVal := os.Getenv(k8sEventsFeatureFlag)
-	f.oldK8sEventsFeatureFlagVal = &oldVal
-
-	_ = os.Setenv(k8sEventsFeatureFlag, "true")
-
-	return f
 }
 
 func (f *testFixture) Start(manifests []model.Manifest, watchFiles bool, initOptions ...initOption) {
@@ -2963,10 +2949,6 @@ func (f *testFixture) TearDown() {
 	f.kClient.TearDown()
 	close(f.fsWatcher.events)
 	close(f.fsWatcher.errors)
-
-	if f.oldK8sEventsFeatureFlagVal != nil {
-		_ = os.Setenv(k8sEventsFeatureFlag, *f.oldK8sEventsFeatureFlagVal)
-	}
 
 	f.cancel()
 }

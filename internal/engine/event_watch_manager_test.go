@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -73,10 +72,6 @@ type ewmFixture struct {
 	cancel     func()
 	store      *store.Store
 	getActions func() []store.Action
-
-	// old value of k8sEventsFeatureFlag env var, for teardown
-	// TODO(maia): remove this when we remove the feature flag
-	oldFeatureFlagVal string
 }
 
 func newEWMFixture(t *testing.T) *ewmFixture {
@@ -86,15 +81,12 @@ func newEWMFixture(t *testing.T) *ewmFixture {
 	ctx, cancel := context.WithCancel(ctx)
 
 	ret := &ewmFixture{
-		kClient:           kClient,
-		ewm:               NewEventWatchManager(kClient),
-		ctx:               ctx,
-		cancel:            cancel,
-		t:                 t,
-		oldFeatureFlagVal: os.Getenv(k8sEventsFeatureFlag),
+		kClient: kClient,
+		ewm:     NewEventWatchManager(kClient),
+		ctx:     ctx,
+		cancel:  cancel,
+		t:       t,
 	}
-
-	os.Setenv(k8sEventsFeatureFlag, "true")
 
 	ret.store, ret.getActions = store.NewStoreForTesting()
 	go ret.store.Loop(ctx)
@@ -104,8 +96,6 @@ func newEWMFixture(t *testing.T) *ewmFixture {
 
 func (f *ewmFixture) TearDown() {
 	f.kClient.TearDown()
-
-	_ = os.Setenv(k8sEventsFeatureFlag, f.oldFeatureFlagVal)
 	f.cancel()
 }
 
