@@ -299,6 +299,7 @@ func (f *plmFixture) ConsumeLogActionsUntil(expected string) {
 
 func (f *plmFixture) TearDown() {
 	f.cancel()
+	f.kClient.TearDown()
 	f.TempDirFixture.TearDown()
 }
 

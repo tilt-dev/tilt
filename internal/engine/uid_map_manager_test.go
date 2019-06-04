@@ -2,12 +2,13 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-
 	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/stretchr/testify/assert"
@@ -18,34 +19,119 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
-func TestUIDMapManager(t *testing.T) {
+func TestUIDMapManager_needsWatchNoK8s(t *testing.T) {
 	f := newUMMFixture(t)
 	defer f.TearDown()
 
 	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, "foobar")
 
-	f.addManifest(e.Name())
-
+	// No k8s manifests on the state, so OnChange shouldn't do anything --
+	// when we emit an event, we do NOT expect to see an action dispatched,
+	// since no watch should have been started.
 	f.umm.OnChange(f.ctx, f.store)
 
 	ls := k8s.TiltRunSelector()
-
 	f.kClient.EmitEverything(ls, watch.Event{
 		Type:   watch.Added,
 		Object: e.Obj,
 	})
 
-	expectedAction := UIDUpdateAction{
-		UID:          k8s.UID("foobar"),
-		EventType:    watch.Added,
-		ManifestName: "doggos",
-		Entity:       k8s.K8sEntity{Obj: e.Obj, Kind: e.Kind},
-	}
+	f.assertNoActions()
+}
 
-	f.assertObservedUIDUpdateActions(expectedAction)
+func TestUIDMapManager_dispatchesAction(t *testing.T) {
+	UID := "foobar"
+	eWithManifestLabels := entityWithUID(t, testyaml.DoggosDeploymentYaml, UID)
+	eNoManifestLabels := entityWithUIDAndMaybeManifestLabel(t, testyaml.DoggosDeploymentYaml, UID, false)
+
+	for _, test := range []struct {
+		name           string
+		watchType      watch.EventType
+		entity         k8s.K8sEntity
+		eventHasObject bool
+		expectAction   bool
+	}{
+		{
+			name:           "type = Added",
+			watchType:      watch.Added,
+			entity:         eWithManifestLabels,
+			eventHasObject: true,
+			expectAction:   true,
+		},
+		{
+			name:           "no action for type = Modified",
+			watchType:      watch.Modified,
+			entity:         eWithManifestLabels,
+			eventHasObject: true,
+			expectAction:   false,
+		},
+		{
+			name:           "no action for nil object",
+			watchType:      watch.Added,
+			entity:         eWithManifestLabels,
+			eventHasObject: false,
+			expectAction:   false,
+		},
+		{
+			name:           "no action for entity without tilt manifest label",
+			watchType:      watch.Added,
+			entity:         eNoManifestLabels,
+			eventHasObject: false,
+			expectAction:   false,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			f := newUMMFixture(t)
+			defer f.TearDown()
+
+			f.addManifest(test.entity.Name())
+
+			f.umm.OnChange(f.ctx, f.store)
+
+			ls := k8s.TiltRunSelector()
+
+			evt := &watch.Event{Type: test.watchType}
+			if test.eventHasObject {
+				evt.Object = test.entity.Obj
+			}
+			f.kClient.EmitEverything(ls, *evt)
+
+			if test.expectAction {
+				expectedAction := UIDUpdateAction{
+					UID:          k8s.UID(UID),
+					EventType:    test.watchType,
+					ManifestName: model.ManifestName(test.entity.Name()),
+					Entity:       k8s.K8sEntity{Obj: eWithManifestLabels.Obj, Kind: eWithManifestLabels.Kind},
+				}
+
+				f.assertActions(expectedAction)
+			} else {
+				f.assertNoActions()
+			}
+		})
+	}
+}
+
+func TestUIDMapManager_watchError(t *testing.T) {
+	f := newUMMFixture(t)
+	defer f.TearDown()
+
+	err := fmt.Errorf("oh noes")
+	f.kClient.EverythingWatchErr = err
+	f.addManifest("someK8sEntity")
+
+	f.umm.OnChange(f.ctx, f.store)
+
+	expectedErr := errors.Wrap(err, "Error watching for uids\n")
+	expected := store.ErrorAction{Error: expectedErr}
+	f.assertActions(expected)
 }
 
 func entityWithUID(t *testing.T, yaml string, uid string) k8s.K8sEntity {
+	return entityWithUIDAndMaybeManifestLabel(t, yaml, uid, true)
+}
+
+func entityWithUIDAndMaybeManifestLabel(t *testing.T, yaml string, uid string, withManifestLabel bool) k8s.K8sEntity {
 	es, err := k8s.ParseYAMLFromString(yaml)
 	if err != nil {
 		t.Fatalf("error parsing yaml: %v", err)
@@ -56,12 +142,14 @@ func entityWithUID(t *testing.T, yaml string, uid string) k8s.K8sEntity {
 	}
 
 	e := es[0]
-	e, err = k8s.InjectLabels(e, []model.LabelPair{{
-		Key:   k8s.ManifestNameLabel,
-		Value: e.Name(),
-	}})
-	if err != nil {
-		t.Fatalf("error injecting manifest label: %v", err)
+	if withManifestLabel {
+		e, err = k8s.InjectLabels(e, []model.LabelPair{{
+			Key:   k8s.ManifestNameLabel,
+			Value: e.Name(),
+		}})
+		if err != nil {
+			t.Fatalf("error injecting manifest label: %v", err)
+		}
 	}
 
 	k8s.SetUIDForTest(t, &e, uid)
@@ -116,28 +204,45 @@ func newUMMFixture(t *testing.T) *ummFixture {
 }
 
 func (f *ummFixture) TearDown() {
+	f.kClient.TearDown()
 	_ = os.Setenv(k8sEventsFeatureFlag, f.oldFeatureFlagVal)
 	f.cancel()
 }
 
-func (f *ummFixture) assertObservedUIDUpdateActions(expectedActions ...UIDUpdateAction) {
+func (f *ummFixture) assertNoActions() {
+	f.assertActions()
+}
+
+func (f *ummFixture) assertActions(expected ...store.Action) {
 	start := time.Now()
 	for time.Since(start) < 200*time.Millisecond {
 		actions := f.getActions()
-		if len(actions) == len(expectedActions) {
+		if len(actions) >= len(expected) {
 			break
 		}
 	}
 
-	var observedActions []UIDUpdateAction
-	for _, a := range f.getActions() {
-		sca, ok := a.(UIDUpdateAction)
-		if !ok {
-			f.t.Fatalf("got non-%T: %v", UIDUpdateAction{}, a)
-		}
-		observedActions = append(observedActions, sca)
-	}
-	if !assert.Equal(f.t, expectedActions, observedActions) {
+	// Make extra sure we didn't get any extra actions
+	time.Sleep(10 * time.Millisecond)
+
+	// NOTE(maia): this test will break if this the code ever returns other
+	// correct-but-incidental-to-this-test actions, but for now it's fine.
+	actual := f.getActions()
+	if !assert.Len(f.t, actual, len(expected)) {
 		f.t.FailNow()
+	}
+
+	for i, a := range actual {
+		switch exp := expected[i].(type) {
+		case store.ErrorAction:
+			// Special case -- we can't just assert.Equal b/c pointer equality stuff
+			act, ok := a.(store.ErrorAction)
+			if !ok {
+				f.t.Fatalf("got non-%T: %v", store.ErrorAction{}, a)
+			}
+			assert.Equal(f.t, exp.Error.Error(), act.Error.Error())
+		default:
+			assert.Equal(f.t, expected[i], a)
+		}
 	}
 }

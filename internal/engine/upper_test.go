@@ -1841,6 +1841,33 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
+	f := newTestFixture(t).EnableK8sEvents()
+	defer f.TearDown()
+
+	entityUID := "someEntity"
+	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
+
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName(e.Name())
+	manifest := f.newManifest(string(name), []model.Sync{sync})
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	warnEvt := &v1.Event{
+		InvolvedObject: v1.ObjectReference{UID: types.UID(entityUID)},
+		Message:        "something has happened zomg",
+		Type:           "Warning",
+	}
+	f.kClient.EmitEvent(f.ctx, warnEvt)
+
+	time.Sleep(10 * time.Millisecond)
+
+	assert.NotContains(t, f.log.String(), "something has happened zomg",
+		"should not log event message b/c it doesn't have a UID -> Manifest mapping")
+}
+
 func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
 	f := newTestFixture(t).EnableK8sEvents()
 	defer f.TearDown()
@@ -1935,6 +1962,48 @@ func TestK8sEventLogTimestamp(t *testing.T) {
 		return strings.Contains(l, "something has happened zomg") && strings.Contains(l, string(tsPrefix))
 	})
 
+	err := f.Stop()
+	assert.NoError(t, err)
+}
+
+func TestUIDMapDeleteUID(t *testing.T) {
+	f := newTestFixture(t).EnableK8sEvents()
+	defer f.TearDown()
+
+	st := f.store.LockMutableStateForTesting()
+	st.LogTimestamps = true
+	f.store.UnlockMutableState()
+
+	entityUID := "someEntity"
+	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
+
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName(e.Name())
+	manifest := f.newManifest(string(name), []model.Sync{sync})
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	ls := k8s.TiltRunSelector()
+	f.kClient.EmitEverything(ls, k8swatch.Event{
+		Type:   k8swatch.Added,
+		Object: e.Obj,
+	})
+
+	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
+		_, ok := st.ObjectsByK8SUIDs[k8s.UID(entityUID)]
+		return ok
+	})
+
+	f.kClient.EmitEverything(ls, k8swatch.Event{
+		Type:   k8swatch.Deleted,
+		Object: e.Obj,
+	})
+
+	f.WaitUntil("entry for UID removed from map", func(st store.EngineState) bool {
+		_, ok := st.ObjectsByK8SUIDs[k8s.UID(entityUID)]
+		return !ok
+	})
 	err := f.Stop()
 	assert.NoError(t, err)
 }
@@ -2891,6 +2960,7 @@ func (f *testFixture) LogLines() []string {
 
 func (f *testFixture) TearDown() {
 	f.TempDirFixture.TearDown()
+	f.kClient.TearDown()
 	close(f.fsWatcher.events)
 	close(f.fsWatcher.errors)
 

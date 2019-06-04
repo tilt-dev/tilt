@@ -297,6 +297,9 @@ func (kCli K8sClient) watchableGroupVersionResources(ctx context.Context) ([]sch
 	return ret, nil
 }
 
+// WatchEverything sets up watches for every resource in the k8s cluster (that we have permission to watch).
+// (In practice, we use the resulting events only for noting when new object UIDs are added/deleted, and
+// use other type-specific watches for keeping track of pods, services, etc.)
 func (kCli K8sClient) WatchEverything(ctx context.Context, lps []model.LabelPair) (<-chan watch.Event, error) {
 	ls := labels.Set{}
 	for _, lp := range lps {
@@ -354,7 +357,7 @@ func watchEverythingLoop(ctx context.Context, ch chan<- watch.Event, watchers []
 		}
 
 		if !ok {
-			// XXX DEBUG
+			// TODO: Possible bug for CRDs here! Notes:
 			// for some reason, we're getting ok = false for fission resources (e.g. fission.io/v1, Resource=environments)
 			// This happens after running tilt for 10-20 seconds
 			// My current hypotheses:

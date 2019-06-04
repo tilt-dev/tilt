@@ -53,8 +53,10 @@ type FakeK8sClient struct {
 
 	everythingWatcherMu sync.Mutex
 	everythingWatches   []fakeEverythingWatch
+	EverythingWatchErr  error
 
-	eventsCh chan *v1.Event
+	eventsCh       chan *v1.Event
+	EventsWatchErr error
 
 	UpsertError error
 	Runtime     container.Runtime
@@ -109,13 +111,12 @@ func (c *FakeK8sClient) WatchServices(ctx context.Context, lps []model.LabelPair
 }
 
 func (c *FakeK8sClient) WatchEvents(ctx context.Context) (<-chan *v1.Event, error) {
-	if c.eventsCh == nil {
-		c.eventsCh = make(chan *v1.Event, 10)
-		go func() {
-			<-ctx.Done()
-			close(c.eventsCh)
-		}()
+	if c.EventsWatchErr != nil {
+		err := c.EventsWatchErr
+		c.EventsWatchErr = nil
+		return nil, err
 	}
+
 	return c.eventsCh, nil
 }
 
@@ -135,6 +136,12 @@ func (c *FakeK8sClient) EmitEverything(ls labels.Selector, e watch.Event) {
 }
 
 func (c *FakeK8sClient) WatchEverything(ctx context.Context, lps []model.LabelPair) (<-chan watch.Event, error) {
+	if c.EverythingWatchErr != nil {
+		err := c.EverythingWatchErr
+		c.EverythingWatchErr = nil
+		return nil, err
+	}
+
 	c.everythingWatcherMu.Lock()
 	ch := make(chan watch.Event, 20)
 	ls := LabelPairsToSelector(lps)
@@ -203,6 +210,13 @@ func (c *FakeK8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-ch
 func NewFakeK8sClient() *FakeK8sClient {
 	return &FakeK8sClient{
 		PodLogsByPodAndContainer: make(map[PodAndCName]BufferCloser),
+		eventsCh:                 make(chan *v1.Event, 10),
+	}
+}
+
+func (c *FakeK8sClient) TearDown() {
+	if c.eventsCh != nil {
+		close(c.eventsCh)
 	}
 }
 

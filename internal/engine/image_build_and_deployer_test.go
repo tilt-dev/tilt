@@ -496,6 +496,11 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 	}
 }
 
+func (f *ibdFixture) TearDown() {
+	f.k8s.TearDown()
+	f.TempDirFixture.TearDown()
+}
+
 type fakeKINDPusher struct {
 	pushCount int
 }

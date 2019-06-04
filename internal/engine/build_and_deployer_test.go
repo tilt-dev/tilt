@@ -849,6 +849,11 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 	}
 }
 
+func (f *bdFixture) TearDown() {
+	f.k8s.TearDown()
+	f.TempDirFixture.TearDown()
+}
+
 func (f *bdFixture) NewPathSet(paths ...string) model.PathSet {
 	return model.NewPathSet(paths, f.Path())
 }
