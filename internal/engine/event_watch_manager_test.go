@@ -2,10 +2,12 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
@@ -27,10 +29,25 @@ func TestEventWatchManager_dispatchesEvent(t *testing.T) {
 
 	f.ewm.OnChange(f.ctx, f.store)
 	f.kClient.EmitEvent(f.ctx, evt)
-	expectedAction := store.K8SEventAction{Event: evt}
-	f.assertObservedK8sEventActions(expectedAction)
-
+	expected := store.K8SEventAction{Event: evt}
+	f.assertActions(expected)
 }
+
+func TestEventWatchManager_watchError(t *testing.T) {
+	f := newEWMFixture(t)
+	defer f.TearDown()
+
+	err := fmt.Errorf("oh noes")
+	f.kClient.EventsWatchErr = err
+	f.addManifest("someK8sManifest")
+
+	f.ewm.OnChange(f.ctx, f.store)
+
+	expectedErr := errors.Wrap(err, "Error watching k8s events\n")
+	expected := store.ErrorAction{Error: expectedErr}
+	f.assertActions(expected)
+}
+
 func TestEventWatchManager_needsWatchNoK8s(t *testing.T) {
 	f := newEWMFixture(t)
 	defer f.TearDown()
@@ -45,7 +62,7 @@ func TestEventWatchManager_needsWatchNoK8s(t *testing.T) {
 	// since no watch should have been started.
 	f.ewm.OnChange(f.ctx, f.store)
 	f.kClient.EmitEvent(f.ctx, evt)
-	f.assertNoK8sEventActions()
+	f.assertNoActions()
 }
 
 type ewmFixture struct {
@@ -99,13 +116,13 @@ func (f *ewmFixture) addManifest(manifestName string) {
 	f.store.UnlockMutableState()
 }
 
-func (f *ewmFixture) assertNoK8sEventActions() {
-	f.assertObservedK8sEventActions()
+func (f *ewmFixture) assertNoActions() {
+	f.assertActions()
 }
 
-func (f *ewmFixture) assertObservedK8sEventActions(expectedActions ...store.K8SEventAction) {
-	if len(expectedActions) == 0 {
-		// assert no k8s event actions -- sleep briefly
+func (f *ewmFixture) assertActions(expected ...store.Action) {
+	if len(expected) == 0 {
+		// assert no actions -- sleep briefly
 		// to give any actions a chance to get into the queue
 		time.Sleep(10 * time.Millisecond)
 	}
@@ -113,19 +130,29 @@ func (f *ewmFixture) assertObservedK8sEventActions(expectedActions ...store.K8SE
 	start := time.Now()
 	for time.Since(start) < 200*time.Millisecond {
 		actions := f.getActions()
-		if len(actions) == len(expectedActions) {
+		if len(actions) >= len(expected) {
 			break
 		}
 	}
 
-	var observedActions []store.K8SEventAction
-	for _, a := range f.getActions() {
-		sca, ok := a.(store.K8SEventAction)
-		if !ok {
-			f.t.Fatalf("got non-%T: %v", store.K8SEventAction{}, a)
-		}
-		observedActions = append(observedActions, sca)
+	// NOTE(maia): this test will break if this the code ever returns other
+	// correct-but-incidental-to-this-test actions, but for now it's fine.
+	actual := f.getActions()
+	if !assert.Len(f.t, actual, len(expected)) {
+		f.t.FailNow()
 	}
 
-	assert.Equal(f.t, expectedActions, observedActions)
+	for i, a := range actual {
+		switch exp := expected[i].(type) {
+		case store.ErrorAction:
+			// Special case -- we can't just assert.Equal b/c pointer equality stuff
+			act, ok := a.(store.ErrorAction)
+			if !ok {
+				f.t.Fatalf("got non-%T: %v", store.ErrorAction{}, a)
+			}
+			assert.Equal(f.t, exp.Error.Error(), act.Error.Error())
+		default:
+			assert.Equal(f.t, expected[i], a)
+		}
+	}
 }

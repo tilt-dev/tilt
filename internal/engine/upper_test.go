@@ -1841,6 +1841,33 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
+	f := newTestFixture(t).EnableK8sEvents()
+	defer f.TearDown()
+
+	entityUID := "someEntity"
+	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
+
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName(e.Name())
+	manifest := f.newManifest(string(name), []model.Sync{sync})
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	warnEvt := &v1.Event{
+		InvolvedObject: v1.ObjectReference{UID: types.UID(entityUID)},
+		Message:        "something has happened zomg",
+		Type:           "Warning",
+	}
+	f.kClient.EmitEvent(f.ctx, warnEvt)
+
+	time.Sleep(10 * time.Millisecond)
+
+	assert.NotContains(t, f.log.String(), "something has happened zomg",
+		"should not log event message b/c it doesn't have a UID -> Manifest mapping")
+}
+
 func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
 	f := newTestFixture(t).EnableK8sEvents()
 	defer f.TearDown()

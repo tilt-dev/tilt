@@ -2,10 +2,12 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"k8s.io/apimachinery/pkg/watch"
 
@@ -34,7 +36,7 @@ func TestUIDMapManager_needsWatchNoK8s(t *testing.T) {
 		Object: e.Obj,
 	})
 
-	f.assertNoUIDUpdateActions()
+	f.assertNoActions()
 }
 
 func TestUIDMapManager_dispatchesAction(t *testing.T) {
@@ -102,12 +104,27 @@ func TestUIDMapManager_dispatchesAction(t *testing.T) {
 					Entity:       k8s.K8sEntity{Obj: eWithManifestLabels.Obj, Kind: eWithManifestLabels.Kind},
 				}
 
-				f.assertObservedUIDUpdateActions(expectedAction)
+				f.assertActions(expectedAction)
 			} else {
-				f.assertNoUIDUpdateActions()
+				f.assertNoActions()
 			}
 		})
 	}
+}
+
+func TestUIDMapManager_watchError(t *testing.T) {
+	f := newUMMFixture(t)
+	defer f.TearDown()
+
+	err := fmt.Errorf("oh noes")
+	f.kClient.EverythingWatchErr = err
+	f.addManifest("someK8sEntity")
+
+	f.umm.OnChange(f.ctx, f.store)
+
+	expectedErr := errors.Wrap(err, "Error watching for uids\n")
+	expected := store.ErrorAction{Error: expectedErr}
+	f.assertActions(expected)
 }
 
 func entityWithUID(t *testing.T, yaml string, uid string) k8s.K8sEntity {
@@ -191,13 +208,13 @@ func (f *ummFixture) TearDown() {
 	f.cancel()
 }
 
-func (f *ummFixture) assertNoUIDUpdateActions() {
-	f.assertObservedUIDUpdateActions()
+func (f *ummFixture) assertNoActions() {
+	f.assertActions()
 }
 
-func (f *ummFixture) assertObservedUIDUpdateActions(expectedActions ...UIDUpdateAction) {
-	if len(expectedActions) == 0 {
-		// assert no UID update actions -- sleep briefly
+func (f *ummFixture) assertActions(expected ...store.Action) {
+	if len(expected) == 0 {
+		// assert no actions -- sleep briefly
 		// to give any actions a chance to get into the queue
 		time.Sleep(10 * time.Millisecond)
 	}
@@ -205,19 +222,29 @@ func (f *ummFixture) assertObservedUIDUpdateActions(expectedActions ...UIDUpdate
 	start := time.Now()
 	for time.Since(start) < 200*time.Millisecond {
 		actions := f.getActions()
-		if len(actions) == len(expectedActions) {
+		if len(actions) >= len(expected) {
 			break
 		}
 	}
 
-	var observedActions []UIDUpdateAction
-	for _, a := range f.getActions() {
-		sca, ok := a.(UIDUpdateAction)
-		if !ok {
-			f.t.Fatalf("got non-%T: %v", UIDUpdateAction{}, a)
-		}
-		observedActions = append(observedActions, sca)
+	// NOTE(maia): this test will break if this the code ever returns other
+	// correct-but-incidental-to-this-test actions, but for now it's fine.
+	actual := f.getActions()
+	if !assert.Len(f.t, actual, len(expected)) {
+		f.t.FailNow()
 	}
 
-	assert.Equal(f.t, expectedActions, observedActions)
+	for i, a := range actual {
+		switch exp := expected[i].(type) {
+		case store.ErrorAction:
+			// Special case -- we can't just assert.Equal b/c pointer equality stuff
+			act, ok := a.(store.ErrorAction)
+			if !ok {
+				f.t.Fatalf("got non-%T: %v", store.ErrorAction{}, a)
+			}
+			assert.Equal(f.t, exp.Error.Error(), act.Error.Error())
+		default:
+			assert.Equal(f.t, expected[i], a)
+		}
+	}
 }

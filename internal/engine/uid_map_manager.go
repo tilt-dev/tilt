@@ -45,7 +45,7 @@ func (m *UIDMapManager) OnChange(ctx context.Context, st store.RStore) {
 
 	ch, err := m.kCli.WatchEverything(ctx, []model.LabelPair{k8s.TiltRunLabel()})
 	if err != nil {
-		err = errors.Wrap(err, "Error watching for uids. Are you connected to kubernetes?\n")
+		err = errors.Wrap(err, "Error watching for uids\n")
 		st.Dispatch(NewErrorAction(err))
 		return
 	}

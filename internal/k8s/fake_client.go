@@ -53,8 +53,10 @@ type FakeK8sClient struct {
 
 	everythingWatcherMu sync.Mutex
 	everythingWatches   []fakeEverythingWatch
+	EverythingWatchErr  error
 
-	eventsCh chan *v1.Event
+	eventsCh       chan *v1.Event
+	EventsWatchErr error
 
 	UpsertError error
 	Runtime     container.Runtime
@@ -109,6 +111,12 @@ func (c *FakeK8sClient) WatchServices(ctx context.Context, lps []model.LabelPair
 }
 
 func (c *FakeK8sClient) WatchEvents(ctx context.Context) (<-chan *v1.Event, error) {
+	if c.EventsWatchErr != nil {
+		err := c.EventsWatchErr
+		c.EventsWatchErr = nil
+		return nil, err
+	}
+
 	if c.eventsCh == nil {
 		c.eventsCh = make(chan *v1.Event, 10)
 		go func() {
@@ -120,8 +128,7 @@ func (c *FakeK8sClient) WatchEvents(ctx context.Context) (<-chan *v1.Event, erro
 }
 
 func (c *FakeK8sClient) EmitEvent(ctx context.Context, evt *v1.Event) {
-	// Do this async so it doesn't block if we haven't set up watch on this channel yet.
-	go func() { c.eventsCh <- evt }()
+	c.eventsCh <- evt
 }
 
 // emits an event to chans returned by WatchEverything
@@ -136,6 +143,12 @@ func (c *FakeK8sClient) EmitEverything(ls labels.Selector, e watch.Event) {
 }
 
 func (c *FakeK8sClient) WatchEverything(ctx context.Context, lps []model.LabelPair) (<-chan watch.Event, error) {
+	if c.EverythingWatchErr != nil {
+		err := c.EverythingWatchErr
+		c.EverythingWatchErr = nil
+		return nil, err
+	}
+
 	c.everythingWatcherMu.Lock()
 	ch := make(chan watch.Event, 20)
 	ls := LabelPairsToSelector(lps)

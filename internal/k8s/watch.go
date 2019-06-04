@@ -354,7 +354,7 @@ func watchEverythingLoop(ctx context.Context, ch chan<- watch.Event, watchers []
 		}
 
 		if !ok {
-			// XXX DEBUG
+			// TODO: Possible bug for CRDs here! Notes:
 			// for some reason, we're getting ok = false for fission resources (e.g. fission.io/v1, Resource=environments)
 			// This happens after running tilt for 10-20 seconds
 			// My current hypotheses:
