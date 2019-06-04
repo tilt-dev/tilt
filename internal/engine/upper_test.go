@@ -2985,6 +2985,7 @@ func (f *testFixture) LogLines() []string {
 
 func (f *testFixture) TearDown() {
 	f.TempDirFixture.TearDown()
+	f.kClient.TearDown()
 	close(f.fsWatcher.events)
 	close(f.fsWatcher.errors)
 

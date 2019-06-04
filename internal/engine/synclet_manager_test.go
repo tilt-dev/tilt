@@ -80,5 +80,6 @@ func newSMFixture(t *testing.T) *smFixture {
 
 func (f *smFixture) TearDown() {
 	f.cancel()
+	f.kCli.TearDown()
 	f.TempDirFixture.TearDown()
 }

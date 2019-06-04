@@ -117,13 +117,6 @@ func (c *FakeK8sClient) WatchEvents(ctx context.Context) (<-chan *v1.Event, erro
 		return nil, err
 	}
 
-	if c.eventsCh == nil {
-		c.eventsCh = make(chan *v1.Event, 10)
-		go func() {
-			<-ctx.Done()
-			close(c.eventsCh)
-		}()
-	}
 	return c.eventsCh, nil
 }
 
@@ -217,6 +210,13 @@ func (c *FakeK8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-ch
 func NewFakeK8sClient() *FakeK8sClient {
 	return &FakeK8sClient{
 		PodLogsByPodAndContainer: make(map[PodAndCName]BufferCloser),
+		eventsCh:                 make(chan *v1.Event, 10),
+	}
+}
+
+func (c *FakeK8sClient) TearDown() {
+	if c.eventsCh != nil {
+		close(c.eventsCh)
 	}
 }
 

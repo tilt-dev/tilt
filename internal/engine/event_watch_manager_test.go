@@ -103,6 +103,8 @@ func newEWMFixture(t *testing.T) *ewmFixture {
 }
 
 func (f *ewmFixture) TearDown() {
+	f.kClient.TearDown()
+
 	_ = os.Setenv(k8sEventsFeatureFlag, f.oldFeatureFlagVal)
 	f.cancel()
 }

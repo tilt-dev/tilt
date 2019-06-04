@@ -104,6 +104,7 @@ func newSWFixture(t *testing.T) *swFixture {
 }
 
 func (f *swFixture) TearDown() {
+	f.kClient.TearDown()
 	f.cancel()
 }
 
