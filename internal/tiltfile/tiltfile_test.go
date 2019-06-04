@@ -3235,6 +3235,64 @@ docker_build('gcr.io/foo', 'foo')
 
 }
 
+func TestDockerbuildIgnoreAsString(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build('fooimage', 'foo', ignore="package.json")
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		db(imageNormalized("fooimage")),
+		deployment("foo"))
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
+}
+
+func TestDockerbuildIgnoreAsArray(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build('fooimage', 'foo', ignore=["package.json", "**/ignore.txt"])
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		db(imageNormalized("fooimage")),
+		deployment("foo"))
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
+}
+
+func TestDockerbuildInvalidIgnore(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build('fooimage', 'foo', ignore=[127])
+k8s_yaml('foo.yaml')
+`)
+
+	f.loadErrString("ignores must be a string or a sequence of strings; found a starlark.Int")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
