@@ -580,6 +580,7 @@ func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Bu
 func (s *tiltfileState) dockerignoresFromPathsAndIgnores(paths []string, ignores []string) []model.Dockerignore {
 	var result []model.Dockerignore
 	dupeSet := map[string]bool{}
+	ignoreContents := ignoresToDockerignoreContents(ignores)
 
 	for _, path := range paths {
 		if path == "" || dupeSet[path] {
@@ -593,7 +594,7 @@ func (s *tiltfileState) dockerignoresFromPathsAndIgnores(paths []string, ignores
 
 		result = append(result, model.Dockerignore{
 			LocalPath: path,
-			Contents:  ignoresToDockerignoreContents(ignores),
+			Contents:  ignoreContents,
 		})
 
 		contents, err := s.readFile(s.localPathFromString(filepath.Join(path, ".dockerignore")))
