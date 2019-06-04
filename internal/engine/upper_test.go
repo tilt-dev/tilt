@@ -2000,11 +2000,9 @@ func TestUIDMapDeleteUID(t *testing.T) {
 		Object: e.Obj,
 	})
 
-	time.Sleep(10 * time.Millisecond)
-
-	f.withState(func(st store.EngineState) {
+	f.WaitUntil("entry for UID removed from map", func(st store.EngineState) bool {
 		_, ok := st.ObjectsByK8SUIDs[k8s.UID(entityUID)]
-		assert.False(t, ok, "entry for UID should have been removed from map")
+		return !ok
 	})
 	err := f.Stop()
 	assert.NoError(t, err)

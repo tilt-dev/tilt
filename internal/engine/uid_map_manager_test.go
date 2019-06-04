@@ -213,12 +213,6 @@ func (f *ummFixture) assertNoActions() {
 }
 
 func (f *ummFixture) assertActions(expected ...store.Action) {
-	if len(expected) == 0 {
-		// assert no actions -- sleep briefly
-		// to give any actions a chance to get into the queue
-		time.Sleep(10 * time.Millisecond)
-	}
-
 	start := time.Now()
 	for time.Since(start) < 200*time.Millisecond {
 		actions := f.getActions()
@@ -226,6 +220,9 @@ func (f *ummFixture) assertActions(expected ...store.Action) {
 			break
 		}
 	}
+
+	// Make extra sure we didn't get any extra actions
+	time.Sleep(10 * time.Millisecond)
 
 	// NOTE(maia): this test will break if this the code ever returns other
 	// correct-but-incidental-to-this-test actions, but for now it's fine.
