@@ -30,6 +30,7 @@ type dockerImage struct {
 	cachePaths         []string
 	hotReload          bool
 	matchInEnvVars     bool
+	ignores            []string
 
 	dbDockerfilePath localPath
 	dbDockerfile     dockerfile.Dockerfile
@@ -80,7 +81,7 @@ func (d *dockerImage) Type() dockerImageBuildType {
 
 func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef string
-	var contextVal, dockerfilePathVal, buildArgs, dockerfileContentsVal, cacheVal, liveUpdateVal starlark.Value
+	var contextVal, dockerfilePathVal, buildArgs, dockerfileContentsVal, cacheVal, liveUpdateVal, ignoreVal starlark.Value
 	var matchInEnvVars bool
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
@@ -91,6 +92,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		"cache?", &cacheVal,
 		"live_update?", &liveUpdateVal,
 		"match_in_env_vars?", &matchInEnvVars,
+		"ignore?", &ignoreVal,
 	); err != nil {
 		return nil, err
 	}
@@ -163,6 +165,18 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	if err != nil {
 		return nil, errors.Wrap(err, "live_update")
 	}
+
+	starlarkIgnores := starlarkValueOrSequenceToSlice(ignoreVal)
+	var ignores []string
+	for _, v := range starlarkIgnores {
+		switch val := v.(type) {
+		case starlark.String:
+			ignores = append(ignores, val.GoString())
+		default:
+			return nil, fmt.Errorf("ignores must be a string or a sequence of strings; found a %T", val)
+		}
+	}
+
 	r := &dockerImage{
 		dbDockerfilePath: dockerfilePath,
 		dbDockerfile:     dockerfile.Dockerfile(dockerfileContents),
@@ -172,6 +186,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		cachePaths:       cachePaths,
 		liveUpdate:       liveUpdate,
 		matchInEnvVars:   matchInEnvVars,
+		ignores:          ignores,
 	}
 	err = s.buildIndex.addImage(r)
 	if err != nil {
