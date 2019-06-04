@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 )
@@ -74,18 +73,6 @@ func objRefHumanReadable(obj v1.ObjectReference) string {
 		s += fmt.Sprintf(" (ns: %s)", obj.Namespace)
 	}
 	return s
-}
-
-type ResetRestartsAction struct {
-	ManifestName model.ManifestName
-}
-
-func (ResetRestartsAction) Action() {}
-
-func NewResetRestartsAction(name model.ManifestName) ResetRestartsAction {
-	return ResetRestartsAction{
-		ManifestName: name,
-	}
 }
 
 type AnalyticsOptAction struct {

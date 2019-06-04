@@ -210,47 +210,6 @@ func TestHandleSail(t *testing.T) {
 	assert.Equal(f.t, 1, f.sailCli.ConnectCalls)
 }
 
-func TestResetRestarts(t *testing.T) {
-	f := newTestFixture(t)
-
-	req, err := http.NewRequest(http.MethodGet, "/api/control/reset_restarts", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	q := req.URL.Query()
-	q.Add("name", "foo")
-	req.URL.RawQuery = q.Encode()
-
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.s.HandleResetRestarts)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
-}
-
-func TestResetRestartsNoParam(t *testing.T) {
-	f := newTestFixture(t)
-
-	req, err := http.NewRequest(http.MethodGet, "/api/control/reset_restarts", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.s.HandleResetRestarts)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
-	}
-}
-
 type serverFixture struct {
 	t          *testing.T
 	s          *server.HeadsUpServer

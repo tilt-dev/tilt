@@ -2372,31 +2372,6 @@ func TestTiltVersionCheck(t *testing.T) {
 		return state.LatestTiltBuild == versions[1]
 	})
 }
-func TestResetRestarts(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	name := model.ManifestName("foobar")
-	manifest := f.newManifest(name.String(), []model.Sync{sync})
-
-	f.Start([]model.Manifest{manifest}, true)
-	f.waitForCompletedBuildCount(1)
-
-	f.startPod(name)
-	f.restartPod()
-	f.WaitUntilManifest("records restart count", name, func(st store.ManifestTarget) bool {
-		return st.State.MostRecentPod().ContainerRestarts == 1
-	})
-
-	f.store.Dispatch(store.NewResetRestartsAction(name))
-	f.WaitUntilManifest("records restart count", name, func(st store.ManifestTarget) bool {
-		return st.State.MostRecentPod().OldRestarts == 1 && st.State.MostRecentPod().ContainerRestarts == 1
-	})
-
-	err := f.Stop()
-	assert.NoError(t, err)
-}
 
 func TestSetAnalyticsOpt(t *testing.T) {
 	f := newTestFixture(t)
