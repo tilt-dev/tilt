@@ -3295,6 +3295,88 @@ k8s_yaml('foo.yaml')
 	f.loadErrString("ignores must be a string or a sequence of strings; found a starlark.Int")
 }
 
+func TestDockerbuildOnly(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', '.', only="myservice/**")
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	f.assertNextManifest("foo",
+		buildFilters("otherservice/bar"),
+		fileChangeFilters("otherservice/bar"),
+		buildMatches("myservice/bar"),
+		fileChangeMatches("myservice/bar"),
+	)
+}
+
+func TestDockerbuildOnlyAsArray(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', '.', only=["common/**", "myservice/**"])
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	f.assertNextManifest("foo",
+		buildFilters("otherservice/bar"),
+		fileChangeFilters("otherservice/bar"),
+		buildMatches("myservice/bar"),
+		fileChangeMatches("myservice/bar"),
+		buildMatches("common/bar"),
+		fileChangeMatches("common/bar"),
+	)
+}
+
+func TestDockerbuildInvalidOnly(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build('fooimage', 'foo', only=[127])
+k8s_yaml('foo.yaml')
+`)
+
+	f.loadErrString("only must be a string or a sequence of strings; found a starlark.Int")
+}
+
+func TestDockerbuildOnlyAndIgnore(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', '.', ignore="**/*.md", only=["common/**", "myservice/**"])
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	f.assertNextManifest("foo",
+		buildFilters("otherservice/bar"),
+		fileChangeFilters("otherservice/bar"),
+		buildFilters("myservice/README.md"),
+		fileChangeFilters("myservice/README.md"),
+		buildMatches("myservice/bar"),
+		fileChangeMatches("myservice/bar"),
+		buildMatches("common/bar"),
+		fileChangeMatches("common/bar"),
+	)
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
