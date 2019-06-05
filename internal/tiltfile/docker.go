@@ -572,7 +572,7 @@ func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Bu
 		return nil, err
 	}
 
-	s.defaultRegistryHost = dr
+	s.defaultRegistryHost = container.Registry(dr)
 
 	return starlark.None, nil
 }
