@@ -96,6 +96,7 @@ a.resourceInfo-value:hover {
   display: block;
   white-space: pre-wrap;
   min-height: $spacing-unit / 2; // Respect blank lines
+  line-height: 1.25;
 }
 
 // Log Colors
