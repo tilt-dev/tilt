@@ -174,6 +174,10 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	for _, v := range starlarkIgnores {
 		switch val := v.(type) {
 		case starlark.String:
+			goString := val.GoString()
+			if strings.Contains(goString, "\n") {
+				return nil, fmt.Errorf("ignores cannot contain newlines; found ignore: %q", goString)
+			}
 			ignores = append(ignores, val.GoString())
 		default:
 			return nil, fmt.Errorf("ignores must be a string or a sequence of strings; found a %T", val)
@@ -185,6 +189,10 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	for _, v := range starlarkOnlys {
 		switch val := v.(type) {
 		case starlark.String:
+			goString := val.GoString()
+			if strings.Contains(goString, "\n") {
+				return nil, fmt.Errorf("only cannot contain newlines; found only: %q", goString)
+			}
 			onlys = append(onlys, val.GoString())
 		default:
 			return nil, fmt.Errorf("only must be a string or a sequence of strings; found a %T", val)

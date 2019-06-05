@@ -3377,6 +3377,76 @@ k8s_yaml('foo.yaml')
 	)
 }
 
+// if the same file is ignored and included, the ignore takes precedence
+func TestDockerbuildOnlyAndIgnoreSameFile(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', '.', ignore="common/README.md", only="common/README.md")
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	f.assertNextManifest("foo",
+		buildFilters("common/README.md"),
+		fileChangeFilters("common/README.md"),
+	)
+}
+
+// If an only rule starts with a !, we assume that path starts with a !
+// We don't do a double negative
+func TestDockerbuildOnlyHasException(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', '.', only="!myservice/**")
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	f.assertNextManifest("foo",
+		buildFilters("otherservice/bar"),
+		fileChangeFilters("otherservice/bar"),
+		buildMatches("!myservice/bar"),
+		fileChangeMatches("!myservice/bar"),
+	)
+}
+
+// What if you have \n in strings?
+// That's hard to make work easily, so let's just throw an error
+func TestDockerbuildIgnoreWithNewline(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', '.', ignore="\nweirdfile.txt")
+k8s_yaml('foo.yaml')
+`)
+
+	f.loadErrString(`ignores cannot contain newlines; found ignore: "\nweirdfile.txt`)
+}
+func TestDockerbuildOnlyWithNewline(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', '.', only="\nweirdfile.txt")
+k8s_yaml('foo.yaml')
+`)
+
+	f.loadErrString(`only cannot contain newlines; found only: "\nweirdfile.txt`)
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
