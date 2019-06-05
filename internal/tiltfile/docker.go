@@ -641,14 +641,14 @@ func ignoresToDockerignoreContents(ignores []string) string {
 	return output.String()
 }
 
-func onlysToDockerignoreContents(ignores []string) string {
-	if len(ignores) == 0 {
+func onlysToDockerignoreContents(onlys []string) string {
+	if len(onlys) == 0 {
 		return ""
 	}
 	var output strings.Builder
 	output.WriteString("**\n")
 
-	for _, ignore := range ignores {
+	for _, ignore := range onlys {
 		output.WriteString("!")
 		output.WriteString(ignore)
 		output.WriteString("\n")
