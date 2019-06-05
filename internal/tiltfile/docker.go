@@ -233,6 +233,7 @@ func (s *tiltfileState) fastBuildForImage(image *dockerImage) model.FastBuild {
 	}
 }
 
+// TODO(dmiller): support context filters (like `only` and `ignore` on `docker_build`)
 func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef string
 	var command string
