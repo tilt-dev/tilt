@@ -93,6 +93,9 @@ type Client interface {
 
 	ContainerRuntime(ctx context.Context) container.Runtime
 
+	// Some clusters support a private image registry that we can push to.
+	PrivateRegistry(ctx context.Context) container.Registry
+
 	Exec(ctx context.Context, podID PodID, cName container.Name, n Namespace, cmd []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error
 }
 
@@ -106,6 +109,7 @@ type K8sClient struct {
 	clientSet       kubernetes.Interface
 	dynamic         dynamic.Interface
 	runtimeAsync    *runtimeAsync
+	registryAsync   *registryAsync
 }
 
 var _ Client = K8sClient{}
@@ -136,6 +140,7 @@ func ProvideK8sClient(
 
 	core := clientset.CoreV1()
 	runtimeAsync := newRuntimeAsync(core)
+	registryAsync := newRegistryAsync(env, core)
 
 	di, err := dynamic.NewForConfig(restConfig)
 	if err != nil {
@@ -156,6 +161,7 @@ func ProvideK8sClient(
 		configNamespace: configNamespace,
 		clientSet:       clientset,
 		runtimeAsync:    runtimeAsync,
+		registryAsync:   registryAsync,
 		dynamic:         di,
 	}
 }

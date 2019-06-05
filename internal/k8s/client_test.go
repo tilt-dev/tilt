@@ -153,12 +153,14 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 
 	core := cs.CoreV1()
 	runtimeAsync := newRuntimeAsync(core)
+	registryAsync := newRegistryAsync(EnvUnknown, core)
 	ret.client = K8sClient{
 		env:           EnvUnknown,
 		kubectlRunner: ret.runner,
 		core:          core,
 		portForwarder: fakePortForwarder,
 		runtimeAsync:  runtimeAsync,
+		registryAsync: registryAsync,
 	}
 	return ret
 }

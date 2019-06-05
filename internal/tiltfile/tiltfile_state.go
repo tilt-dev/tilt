@@ -44,7 +44,7 @@ type tiltfileState struct {
 	k8sResourceOptions map[string]k8sResourceOptions
 
 	// ensure that any pushed images are pushed instead to this registry, rewriting names if needed
-	defaultRegistryHost string
+	defaultRegistryHost container.Registry
 
 	// JSON paths to images in k8s YAML (other than Container specs)
 	k8sImageJSONPaths map[k8sObjectSelector][]k8s.JSONPath
