@@ -3,6 +3,7 @@ package engine
 import (
 	"sync"
 
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/watch"
 )
@@ -23,7 +24,7 @@ func newFakeMultiWatcher() *fakeMultiWatcher {
 	return r
 }
 
-func (w *fakeMultiWatcher) newSub() (watch.Notify, error) {
+func (w *fakeMultiWatcher) newSub(_ logger.Logger) (watch.Notify, error) {
 	subCh := make(chan watch.FileEvent)
 	errorCh := make(chan error)
 	w.mu.Lock()
