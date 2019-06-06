@@ -32,6 +32,7 @@ class AlertResource {
     }
   }
 
+  // TODO(dmiller): unify this and the render path in to one codepath, `getAlertElements`, and just use the length of that here
   public hasAlert() {
     return (
       this.podStatusIsError() ||
@@ -76,7 +77,7 @@ class AlertResource {
 
   public warnings(): Array<string> {
     if (this.buildHistory.length > 0) {
-      return this.buildHistory[0].Warnings ? this.buildHistory[0].Warnings : []
+      return this.buildHistory[0].Warnings || []
     }
 
     return []
