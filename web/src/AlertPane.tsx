@@ -170,7 +170,7 @@ class AlertPane extends PureComponent<AlertsProps> {
                 <TimeAgo date={lastBuild.FinishTime} formatter={formatter} />
               </p>
             </header>
-            <section>{w}</section>
+            <section>{logToLines(w)}</section>
           </li>
         )
       })

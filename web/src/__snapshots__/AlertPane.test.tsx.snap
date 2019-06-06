@@ -260,7 +260,14 @@ exports[`renders warnings 1`] = `
         </p>
       </header>
       <section>
-        Hi I'm a warning
+        <code>
+          <span
+            className={null}
+            style={null}
+          >
+            Hi I'm a warning
+          </span>
+        </code>
       </section>
     </li>
   </ul>
