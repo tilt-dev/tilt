@@ -11,6 +11,7 @@ export type Build = {
   FinishTime: string
   Edits: Array<string> | null
   IsCrashRebuild: boolean
+  Warnings: Array<string> | null
 }
 
 export type TiltBuild = {
