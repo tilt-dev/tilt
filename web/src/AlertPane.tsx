@@ -32,14 +32,8 @@ class AlertResource {
     }
   }
 
-  // TODO(dmiller): unify this and the render path in to one codepath, `getAlertElements`, and just use the length of that here
   public hasAlert() {
-    return (
-      this.podStatusIsError() ||
-      this.podRestarted() ||
-      this.buildFailed() ||
-      this.warnings().length > 0
-    )
+    return alertElements([this]).length > 0
   }
 
   public crashRebuild() {
@@ -62,17 +56,7 @@ class AlertResource {
   }
 
   public numberOfAlerts(): number {
-    let num = 0
-    if (this.podStatusIsError() || this.podRestarted() || this.crashRebuild()) {
-      num++
-    }
-    if (this.buildFailed()) {
-      num++
-    }
-
-    num += this.warnings().length
-
-    return num
+    return alertElements([this]).length
   }
 
   public warnings(): Array<string> {
@@ -98,87 +82,93 @@ function logToLines(s: string) {
   return s.split("\n").map((l, i) => <AnsiLine key={"logLine" + i} line={l} />)
 }
 
+function alertElements(resources: Array<AlertResource>) {
+  let formatter = timeAgoFormatter
+  let alertElements: Array<JSX.Element> = []
+  resources.forEach(r => {
+    if (r.podStatusIsError()) {
+      alertElements.push(
+        <li key={"resourceInfoError" + r.name} className="AlertPane-item">
+          <header>
+            <p>{r.name}</p>
+            <p>
+              <TimeAgo
+                date={r.resourceInfo.podCreationTime}
+                formatter={formatter}
+              />
+            </p>
+          </header>
+          <section>{logToLines(r.crashLog || "")}</section>
+        </li>
+      )
+    } else if (r.podRestarted()) {
+      alertElements.push(
+        <li key={"resourceInfoPodCrash" + r.name} className="AlertPane-item">
+          <header>
+            <p>{r.name}</p>
+            <p>{`Restarts: ${r.resourceInfo.podRestarts}`}</p>
+          </header>
+          <section>{logToLines(r.crashLog || "")}</section>
+        </li>
+      )
+    } else if (r.crashRebuild()) {
+      alertElements.push(
+        <li
+          key={"resourceInfoCrashRebuild" + r.name}
+          className="AlertPane-item"
+        >
+          <header>
+            <p>{r.name}</p>
+            <p>Pod crashed!</p>
+          </header>
+          <section>{logToLines(r.crashLog || "")}</section>
+        </li>
+      )
+    }
+    let lastBuild = r.buildHistory[0]
+    if (r.buildFailed()) {
+      alertElements.push(
+        <li key={"buildError" + r.name} className="AlertPane-item">
+          <header>
+            <p>{r.name}</p>
+            <p>
+              <TimeAgo date={lastBuild.FinishTime} formatter={formatter} />
+            </p>
+          </header>
+          <section>{logToLines(lastBuild.Log || "")}</section>
+        </li>
+      )
+    }
+    r.warnings().forEach((w, i) => {
+      alertElements.push(
+        <li key={"warning" + r.name + i} className="AlertPane-item">
+          <header>
+            <p>{r.name}</p>
+            <p>
+              <TimeAgo date={lastBuild.FinishTime} formatter={formatter} />
+            </p>
+          </header>
+          <section>{logToLines(w)}</section>
+        </li>
+      )
+    })
+  })
+
+  return alertElements
+}
+
 class AlertPane extends PureComponent<AlertsProps> {
   render() {
-    let formatter = timeAgoFormatter
     let el = (
       <section className="Pane-empty-message">
         <LogoWordmarkSvg />
         <h2>No Alerts Found</h2>
       </section>
     )
-    let errorElements: Array<JSX.Element> = []
-    this.props.resources.forEach(r => {
-      if (r.podStatusIsError()) {
-        errorElements.push(
-          <li key={"resourceInfoError" + r.name} className="AlertPane-item">
-            <header>
-              <p>{r.name}</p>
-              <p>
-                <TimeAgo
-                  date={r.resourceInfo.podCreationTime}
-                  formatter={formatter}
-                />
-              </p>
-            </header>
-            <section>{logToLines(r.crashLog)}</section>
-          </li>
-        )
-      } else if (r.podRestarted()) {
-        errorElements.push(
-          <li key={"resourceInfoPodCrash" + r.name} className="AlertPane-item">
-            <header>
-              <p>{r.name}</p>
-              <p>{`Restarts: ${r.resourceInfo.podRestarts}`}</p>
-            </header>
-            <section>{logToLines(r.crashLog)}</section>
-          </li>
-        )
-      } else if (r.crashRebuild()) {
-        errorElements.push(
-          <li
-            key={"resourceInfoCrashRebuild" + r.name}
-            className="AlertPane-item"
-          >
-            <header>
-              <p>{r.name}</p>
-              <p>Pod crashed!</p>
-            </header>
-            <section>{logToLines(r.crashLog)}</section>
-          </li>
-        )
-      }
-      let lastBuild = r.buildHistory[0]
-      if (r.buildFailed()) {
-        errorElements.push(
-          <li key={"buildError" + r.name} className="AlertPane-item">
-            <header>
-              <p>{r.name}</p>
-              <p>
-                <TimeAgo date={lastBuild.FinishTime} formatter={formatter} />
-              </p>
-            </header>
-            <section>{logToLines(lastBuild.Log)}</section>
-          </li>
-        )
-      }
-      r.warnings().forEach((w, i) => {
-        errorElements.push(
-          <li key={"warning" + r.name + i} className="AlertPane-item">
-            <header>
-              <p>{r.name}</p>
-              <p>
-                <TimeAgo date={lastBuild.FinishTime} formatter={formatter} />
-              </p>
-            </header>
-            <section>{logToLines(w)}</section>
-          </li>
-        )
-      })
-    })
 
-    if (errorElements.length > 0) {
-      el = <ul>{errorElements}</ul>
+    let alerts = alertElements(this.props.resources)
+    if (alerts.length > 0) {
+      el = <ul>{alerts}</ul>
     }
 
     return <section className="AlertPane">{el}</section>
