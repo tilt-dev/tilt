@@ -33,7 +33,12 @@ class AlertResource {
   }
 
   public hasAlert() {
-    return this.podStatusIsError() || this.podRestarted() || this.buildFailed()
+    return (
+      this.podStatusIsError() ||
+      this.podRestarted() ||
+      this.buildFailed() ||
+      this.warnings().length > 0
+    )
   }
 
   public crashRebuild() {
@@ -64,7 +69,17 @@ class AlertResource {
       num++
     }
 
+    num += this.warnings().length
+
     return num
+  }
+
+  public warnings(): Array<string> {
+    if (this.buildHistory.length > 0) {
+      return this.buildHistory[0].Warnings ? this.buildHistory[0].Warnings : []
+    }
+
+    return []
   }
 }
 
@@ -132,8 +147,8 @@ class AlertPane extends PureComponent<AlertsProps> {
           </li>
         )
       }
+      let lastBuild = r.buildHistory[0]
       if (r.buildFailed()) {
-        let lastBuild = r.buildHistory[0]
         errorElements.push(
           <li key={"buildError" + r.name} className="AlertPane-item">
             <header>
@@ -146,6 +161,19 @@ class AlertPane extends PureComponent<AlertsProps> {
           </li>
         )
       }
+      r.warnings().forEach((w, i) => {
+        errorElements.push(
+          <li key={"warning" + r.name + i} className="AlertPane-item">
+            <header>
+              <p>{r.name}</p>
+              <p>
+                <TimeAgo date={lastBuild.FinishTime} formatter={formatter} />
+              </p>
+            </header>
+            <section>{w}</section>
+          </li>
+        )
+      })
     })
 
     if (errorElements.length > 0) {
