@@ -32,7 +32,10 @@ type watcher interface {
 
 type gvrWithNamespaced struct {
 	schema.GroupVersionResource
-	namespaced bool // if true, this resource can exist within a namespace; if false, cluster-wide
+
+	// if true, this resource can exist within a namespace; if false, resource is cluster-wide
+	// e.g. pods ARE namespaced; nodes are NOT namespaced
+	namespaced bool
 }
 
 func (kCli K8sClient) makeWatcher(f watcherFactory, ls labels.Selector) (watch.Interface, Namespace, error) {
@@ -64,7 +67,6 @@ func (kCli K8sClient) makeWatcher(f watcherFactory, ls labels.Selector) (watch.I
 
 		watcher, err := w.Watch(metav1.ListOptions{LabelSelector: ls.String()})
 		if err == nil {
-			fmt.Println("👌")
 			return watcher, kCli.configNamespace, nil
 		}
 
@@ -337,9 +339,7 @@ func (kCli K8sClient) WatchEverything(ctx context.Context, lps []model.LabelPair
 	}
 
 	var watchers []watch.Interface
-	fmt.Printf("🔎 found %d watchable gvrs\n", len(gvrs))
 	for _, gvr := range gvrs {
-		fmt.Println("👀 making watcher for", gvr.String())
 		watcher, _, err := kCli.makeWatcher(func(ns string) watcher {
 			// doesn't make sense to watch a given ns for a non-namespaced resource, don't try.
 			if ns != "" && !gvr.namespaced {
