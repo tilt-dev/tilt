@@ -30,9 +30,22 @@ type watcher interface {
 	Watch(options metav1.ListOptions) (watch.Interface, error)
 }
 
+type gvrWithNamespaced struct {
+	schema.GroupVersionResource
+
+	// if true, this resource can exist within a namespace; if false, resource is cluster-wide
+	// e.g. pods ARE namespaced; nodes are NOT namespaced
+	namespaced bool
+}
+
 func (kCli K8sClient) makeWatcher(f watcherFactory, ls labels.Selector) (watch.Interface, Namespace, error) {
 	// passing "" gets us all namespaces
-	watcher, err := f("").Watch(metav1.ListOptions{LabelSelector: ls.String()})
+	w := f("")
+	if w == nil {
+		return nil, "", nil
+	}
+
+	watcher, err := w.Watch(metav1.ListOptions{LabelSelector: ls.String()})
 	if err == nil {
 		return watcher, "", nil
 	}
@@ -47,7 +60,12 @@ func (kCli K8sClient) makeWatcher(f watcherFactory, ls labels.Selector) (watch.I
 	if status.Code == http.StatusForbidden {
 		// If this is a forbidden error, maybe the user just isn't allowed to watch this namespace.
 		// Let's narrow our request to just the config namespace, and see if that helps.
-		watcher, err := f(kCli.configNamespace.String()).Watch(metav1.ListOptions{LabelSelector: ls.String()})
+		w := f(kCli.configNamespace.String())
+		if w == nil {
+			return nil, "", nil
+		}
+
+		watcher, err := w.Watch(metav1.ListOptions{LabelSelector: ls.String()})
 		if err == nil {
 			return watcher, kCli.configNamespace, nil
 		}
@@ -71,7 +89,7 @@ func (kCli K8sClient) WatchEvents(ctx context.Context) (<-chan *v1.Event, error)
 
 	ch := make(chan *v1.Event)
 
-	factory := informers.NewSharedInformerFactoryWithOptions(kCli.clientSet, 5*time.Second)
+	factory := informers.NewSharedInformerFactoryWithOptions(kCli.clientSet, 5*time.Second, informers.WithNamespace(kCli.configNamespace.String()))
 	informer := factory.Core().V1().Events().Informer()
 
 	stopper := make(chan struct{})
@@ -235,6 +253,7 @@ func (kCli K8sClient) isWatchable(ctx context.Context, auth authorizationv1clien
 				Namespace: kCli.configNamespace.String(),
 				Verb:      "watch",
 				Group:     gv.Group,
+				Version:   gv.Version,
 				Resource:  r.Name,
 			},
 		},
@@ -249,13 +268,13 @@ func (kCli K8sClient) isWatchable(ctx context.Context, auth authorizationv1clien
 }
 
 // Get all GroupVersionResources in the cluster that support watching
-func (kCli K8sClient) watchableGroupVersionResources(ctx context.Context) ([]schema.GroupVersionResource, error) {
+func (kCli K8sClient) watchableGroupVersionResources(ctx context.Context) ([]gvrWithNamespaced, error) {
 	_, resourceLists, err := kCli.clientSet.Discovery().ServerGroupsAndResources()
 	if err != nil {
 		return nil, errors.Wrapf(err, "error getting list of resource types")
 	}
 
-	var ret []schema.GroupVersionResource
+	var ret []gvrWithNamespaced
 
 	authCli := kCli.clientSet.AuthorizationV1()
 
@@ -286,10 +305,13 @@ func (kCli K8sClient) watchableGroupVersionResources(ctx context.Context) ([]sch
 			if version == "" {
 				version = rlGV.Version
 			}
-			ret = append(ret, schema.GroupVersionResource{
-				Group:    group,
-				Version:  version,
-				Resource: r.Name,
+			ret = append(ret, gvrWithNamespaced{
+				GroupVersionResource: schema.GroupVersionResource{
+					Group:    group,
+					Version:  version,
+					Resource: r.Name,
+				},
+				namespaced: r.Namespaced,
 			})
 		}
 	}
@@ -319,14 +341,20 @@ func (kCli K8sClient) WatchEverything(ctx context.Context, lps []model.LabelPair
 	var watchers []watch.Interface
 	for _, gvr := range gvrs {
 		watcher, _, err := kCli.makeWatcher(func(ns string) watcher {
-			return kCli.dynamic.Resource(gvr)
+			// doesn't make sense to watch a given ns for a non-namespaced resource, don't try.
+			if ns != "" && !gvr.namespaced {
+				return nil
+			}
+			nri := kCli.dynamic.Resource(gvr.GroupVersionResource)
+			return nri.Namespace(ns)
 		}, ls.AsSelector())
 
 		if err != nil {
 			return nil, errors.Wrapf(err, "error making watcher for resource '%s'", gvr.String())
 		}
-
-		watchers = append(watchers, watcher)
+		if watcher != nil {
+			watchers = append(watchers, watcher)
+		}
 	}
 
 	ch := make(chan watch.Event)
@@ -336,7 +364,7 @@ func (kCli K8sClient) WatchEverything(ctx context.Context, lps []model.LabelPair
 	return ch, nil
 }
 
-func watchEverythingLoop(ctx context.Context, ch chan<- watch.Event, watchers []watch.Interface, gvrs []schema.GroupVersionResource) {
+func watchEverythingLoop(ctx context.Context, ch chan<- watch.Event, watchers []watch.Interface, gvrs []gvrWithNamespaced) {
 	var selectCases []reflect.SelectCase
 	for _, w := range watchers {
 		selectCases = append(selectCases, reflect.SelectCase{
