@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strings"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -12,7 +11,7 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 // Collects logs from deployed containers.
@@ -160,36 +159,21 @@ func (m *PodLogManager) consumeLogs(watch PodLogWatch, st store.RStore) {
 		_ = readCloser.Close()
 	}()
 
-	logWriter := logger.Get(watch.ctx).Writer(logger.InfoLvl)
-	prefix := logPrefix(name.String())
-	prefixLogWriter := logger.NewPrefixedWriter(prefix, logWriter)
-	actionWriter := PodLogActionWriter{
+	var actionWriter io.Writer = PodLogActionWriter{
 		store:        st,
 		manifestName: name,
 		podID:        pID,
 	}
-	multiWriter := io.MultiWriter(prefixLogWriter, actionWriter)
 	if watch.shouldPrefix {
-		prefix = fmt.Sprintf("[%s] ", watch.cName)
-		multiWriter = logger.NewPrefixedWriter(prefix, multiWriter)
+		prefix := fmt.Sprintf("[%s] ", watch.cName)
+		actionWriter = logger.NewPrefixedWriter(prefix, actionWriter)
 	}
 
-	_, err = io.Copy(multiWriter, NewHardCancelReader(watch.ctx, readCloser))
+	_, err = io.Copy(actionWriter, NewHardCancelReader(watch.ctx, readCloser))
 	if err != nil && watch.ctx.Err() == nil {
 		logger.Get(watch.ctx).Infof("Error streaming %s logs: %v", name, err)
 		return
 	}
-}
-
-func logPrefix(n string) string {
-	max := 12
-	spaces := ""
-	if len(n) > max {
-		n = n[:max-1] + "…"
-	} else {
-		spaces = strings.Repeat(" ", max-len(n))
-	}
-	return fmt.Sprintf("%s%s┊ ", n, spaces)
 }
 
 type PodLogWatch struct {
@@ -219,9 +203,8 @@ type PodLogActionWriter struct {
 
 func (w PodLogActionWriter) Write(p []byte) (n int, err error) {
 	w.store.Dispatch(PodLogAction{
-		PodID:        w.podID,
-		ManifestName: w.manifestName,
-		LogEvent:     store.NewLogEvent(append([]byte{}, p...)),
+		PodID:    w.podID,
+		LogEvent: store.NewLogEvent(w.manifestName, p),
 	})
 	return len(p), nil
 }

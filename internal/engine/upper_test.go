@@ -1107,9 +1107,8 @@ func TestPodEventOrdering(t *testing.T) {
 			}
 
 			f.upper.store.Dispatch(PodLogAction{
-				ManifestName: "fe",
-				PodID:        k8s.PodIDFromPod(podBNow),
-				LogEvent:     store.NewLogEvent([]byte("pod b log\n")),
+				PodID:    k8s.PodIDFromPod(podBNow),
+				LogEvent: store.NewLogEvent("fe", []byte("pod b log\n")),
 			})
 
 			f.WaitUntilManifestState("pod log seen", "fe", func(ms store.ManifestState) bool {
@@ -1828,7 +1827,9 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 		return strings.Contains(ms.CombinedLog.String(), "something has happened zomg")
 	})
 
-	assert.Contains(t, f.log.String(), "something has happened zomg", "event message not in global log")
+	f.withState(func(st store.EngineState) {
+		assert.Contains(t, st.Log.String(), "something has happened zomg", "event message not in global log")
+	})
 
 	if assert.Len(t, warnEvts, 1, "expect ms.K8sWarnEvents to contain 1 event") {
 		// Make sure we recorded the event on the manifest state
@@ -2195,7 +2196,9 @@ func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 
 	// recorded in global log
-	assert.Contains(t, f.LogLines(), expected)
+	f.withState(func(st store.EngineState) {
+		assert.Contains(t, st.Log.String(), expected)
+	})
 
 	// recorded on manifest state
 	f.withManifestState(m.ManifestName(), func(st store.ManifestState) {
@@ -2920,9 +2923,8 @@ func (f *testFixture) startPod(manifestName model.ManifestName) {
 
 func (f *testFixture) podLog(manifestName model.ManifestName, s string) {
 	f.upper.store.Dispatch(PodLogAction{
-		ManifestName: manifestName,
-		PodID:        k8s.PodID(f.pod.Name),
-		LogEvent:     store.NewLogEvent([]byte(s + "\n")),
+		PodID:    k8s.PodID(f.pod.Name),
+		LogEvent: store.NewLogEvent(manifestName, []byte(s+"\n")),
 	})
 
 	f.WaitUntilManifestState("pod log seen", manifestName, func(ms store.ManifestState) bool {

@@ -193,7 +193,7 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 			store:        st,
 			manifestName: entry.name,
 		}
-		ctx = logger.CtxWithForkedOutput(ctx, actionWriter)
+		ctx := logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), actionWriter))
 
 		filesChanged := entry.buildStateSet.FilesChanged()
 		st.Dispatch(BuildStartedAction{
@@ -256,8 +256,7 @@ type BuildLogActionWriter struct {
 
 func (w BuildLogActionWriter) Write(p []byte) (n int, err error) {
 	w.store.Dispatch(BuildLogAction{
-		ManifestName: w.manifestName,
-		LogEvent:     store.NewLogEvent(append([]byte{}, p...)),
+		LogEvent: store.NewLogEvent(w.manifestName, p),
 	})
 	return len(p), nil
 }

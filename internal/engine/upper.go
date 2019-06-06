@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
@@ -138,6 +139,11 @@ func (u Upper) Init(ctx context.Context, action InitAction) error {
 }
 
 var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineState, action store.Action) {
+	logAction, isLogAction := action.(store.LogAction)
+	if isLogAction {
+		handleLogAction(state, logAction)
+	}
+
 	var err error
 	switch action := action.(type) {
 	case InitAction:
@@ -164,8 +170,6 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleBuildStarted(ctx, state, action)
 	case DeployIDAction:
 		handleDeployIDAction(ctx, state, action)
-	case store.LogAction:
-		handleLogAction(state, action)
 	case ConfigsReloadStartedAction:
 		handleConfigsReloadStarted(ctx, state, action)
 	case ConfigsReloadedAction:
@@ -196,6 +200,9 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleAnalyticsNudgeSurfacedAction(ctx, state)
 	case UIDUpdateAction:
 		handleUIDUpdateAction(state, action)
+	case store.LogEvent:
+		// handled as a LogAction, do nothing
+
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -738,13 +745,12 @@ func checkForPodCrash(ctx context.Context, state *store.EngineState, ms *store.M
 	ms.NeedsRebuildFromCrash = true
 	ms.ExpectedContainerID = ""
 	msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Name)
-	le := store.NewLogEvent([]byte(msg + "\n"))
+	le := store.NewLogEvent(ms.Name, []byte(msg+"\n"))
 	if len(ms.BuildHistory) > 0 {
-		ms.BuildHistory[0].Log = model.AppendLog(ms.BuildHistory[0].Log, le, state.LogTimestamps)
+		ms.BuildHistory[0].Log = model.AppendLog(ms.BuildHistory[0].Log, le, state.LogTimestamps, nil)
 	}
-	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, le, state.LogTimestamps)
-	ms.CombinedLog = model.AppendLog(ms.CombinedLog, le, state.LogTimestamps)
-	logger.Get(ctx).Infof("%s", msg)
+	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, le, state.LogTimestamps, nil)
+	handleLogAction(state, le)
 }
 
 // If there's more than one pod, prune the deleting/dead ones so
@@ -775,15 +781,12 @@ func prunePods(ms *store.ManifestState) {
 }
 
 func handlePodLogAction(state *store.EngineState, action PodLogAction) {
-	manifestName := action.ManifestName
+	manifestName := action.Source()
 	ms, ok := state.ManifestState(manifestName)
-
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.
 		return
 	}
-
-	ms.CombinedLog = model.AppendLog(ms.CombinedLog, action, state.LogTimestamps)
 
 	podID := action.PodID
 	if !ms.PodSet.ContainsID(podID) {
@@ -802,24 +805,55 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 	}
 
 	podInfo := ms.PodSet.Pods[podID]
-	podInfo.CurrentLog = model.AppendLog(podInfo.CurrentLog, action, state.LogTimestamps)
+	podInfo.CurrentLog = model.AppendLog(podInfo.CurrentLog, action, state.LogTimestamps, nil)
 }
 
 func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
-	manifestName := action.ManifestName
+	manifestName := action.Source()
 	ms, ok := state.ManifestState(manifestName)
-
 	if !ok || state.CurrentlyBuilding != manifestName {
 		// This is OK. The user could have edited the manifest recently.
 		return
 	}
 
-	ms.CombinedLog = model.AppendLog(ms.CombinedLog, action, state.LogTimestamps)
-	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, action, state.LogTimestamps)
+	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, action, state.LogTimestamps, nil)
 }
 
 func handleLogAction(state *store.EngineState, action store.LogAction) {
-	state.Log = model.AppendLog(state.Log, action, state.LogTimestamps)
+	manifestName := action.Source()
+	alreadyHasSourcePrefix := false
+	if _, isDCLog := action.(DockerComposeLogAction); isDCLog {
+		// DockerCompose logs are prefixed by the docker-compose engine
+		alreadyHasSourcePrefix = true
+	}
+
+	var allLogPrefix []byte
+	if manifestName != "" && !alreadyHasSourcePrefix {
+		allLogPrefix = sourcePrefix(manifestName)
+	}
+
+	state.Log = model.AppendLog(state.Log, action, state.LogTimestamps, allLogPrefix)
+	if manifestName == "" {
+		return
+	}
+
+	ms, ok := state.ManifestState(manifestName)
+	if !ok {
+		// This is OK. The user could have edited the manifest recently.
+		return
+	}
+	ms.CombinedLog = model.AppendLog(ms.CombinedLog, action, state.LogTimestamps, nil)
+}
+
+func sourcePrefix(n model.ManifestName) []byte {
+	max := 12
+	spaces := ""
+	if len(n) > max {
+		n = n[:max-1] + "…"
+	} else {
+		spaces = strings.Repeat(" ", max-len(n))
+	}
+	return []byte(fmt.Sprintf("%s%s┊ ", n, spaces))
 }
 
 func handleServiceEvent(ctx context.Context, state *store.EngineState, action ServiceChangeAction) {
@@ -831,7 +865,6 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 
 	ms, ok := state.ManifestState(manifestName)
 	if !ok {
-		logger.Get(ctx).Infof("error: got notified of service for unknown manifest '%s'", manifestName)
 		return
 	}
 
@@ -846,14 +879,12 @@ func handleK8SEvent(ctx context.Context, state *store.EngineState, action store.
 	}
 
 	if evt.Type != "Normal" {
+		handleLogAction(state, action.ToLogAction(v.Manifest))
+
 		ms, ok := state.ManifestState(v.Manifest)
 		if !ok {
 			return
 		}
-
-		ms.CombinedLog = model.AppendLog(ms.CombinedLog, action, state.LogTimestamps)
-		logger.Get(ctx).Infof("%s%s", logPrefix(ms.Name.String()), action.MessageRaw())
-
 		ms.K8sWarnEvents = append(ms.K8sWarnEvents, k8s.NewEventWithEntity(evt, v.Entity))
 	}
 }
@@ -930,7 +961,6 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 	ms, ok := engineState.ManifestState(model.ManifestName(mn))
 	if !ok {
 		// No corresponding manifest, nothing to do
-		logger.Get(ctx).Infof("event for unrecognized manifest %s", mn)
 		return
 	}
 
@@ -966,22 +996,20 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 }
 
 func handleDockerComposeLogAction(state *store.EngineState, action DockerComposeLogAction) {
-	manifestName := action.ManifestName
+	manifestName := action.Source()
 	ms, ok := state.ManifestState(manifestName)
-
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.
 		return
 	}
 
 	dcState, _ := ms.ResourceState.(dockercompose.State)
-	ms.ResourceState = dcState.WithCurrentLog(model.AppendLog(dcState.CurrentLog, action, state.LogTimestamps))
-	ms.CombinedLog = model.AppendLog(ms.CombinedLog, action, state.LogTimestamps)
+	ms.ResourceState = dcState.WithCurrentLog(model.AppendLog(dcState.CurrentLog, action, state.LogTimestamps, nil))
 }
 
 func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action TiltfileLogAction) {
-	state.CurrentTiltfileBuild.Log = model.AppendLog(state.CurrentTiltfileBuild.Log, action, state.LogTimestamps)
-	state.TiltfileCombinedLog = model.AppendLog(state.TiltfileCombinedLog, action, state.LogTimestamps)
+	state.CurrentTiltfileBuild.Log = model.AppendLog(state.CurrentTiltfileBuild.Log, action, state.LogTimestamps, nil)
+	state.TiltfileCombinedLog = model.AppendLog(state.TiltfileCombinedLog, action, state.LogTimestamps, nil)
 }
 
 func handleAnalyticsOptAction(state *store.EngineState, action store.AnalyticsOptAction) {
