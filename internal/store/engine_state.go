@@ -85,7 +85,7 @@ type EngineState struct {
 	AnalyticsOpt           analytics.Opt // changes to this field will propagate into the TiltAnalytics subscriber + we'll record them as user choice
 	AnalyticsNudgeSurfaced bool          // this flag is set the first time we show the analytics nudge to the user.
 
-	ObjectsByK8SUIDs map[k8s.UID]UIDMapValue
+	ObjectsByK8sUIDs map[k8s.UID]UIDMapValue
 }
 
 type UIDMapValue struct {
@@ -274,7 +274,7 @@ func NewState() *EngineState {
 	ret.Log = model.Log{}
 	ret.ManifestTargets = make(map[model.ManifestName]*ManifestTarget)
 	ret.PendingConfigFileChanges = make(map[string]time.Time)
-	ret.ObjectsByK8SUIDs = make(map[k8s.UID]UIDMapValue)
+	ret.ObjectsByK8sUIDs = make(map[k8s.UID]UIDMapValue)
 	return ret
 }
 
@@ -716,7 +716,7 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 		return view.NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPath, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
 	} else {
 		pod := mt.State.MostRecentPod()
-		return view.K8SResourceInfo{
+		return view.K8sResourceInfo{
 			PodName:            pod.PodID.String(),
 			PodCreationTime:    pod.StartedAt,
 			PodUpdateStartTime: pod.UpdateStartTime,

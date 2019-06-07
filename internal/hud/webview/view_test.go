@@ -39,7 +39,7 @@ func assertCanMarshal(t *testing.T, v reflect.Type, owner reflect.Type) {
 			// ok
 			return
 		case "webview.ResourceInfoView":
-			assertCanMarshal(t, reflect.TypeOf(K8SResourceInfo{}), v)
+			assertCanMarshal(t, reflect.TypeOf(K8sResourceInfo{}), v)
 			assertCanMarshal(t, reflect.TypeOf(DCResourceInfo{}), v)
 			assertCanMarshal(t, reflect.TypeOf(YAMLResourceInfo{}), v)
 			return
