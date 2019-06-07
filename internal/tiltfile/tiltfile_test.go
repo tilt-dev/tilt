@@ -3061,12 +3061,12 @@ docker_build('gcr.io/some-project-162817/sancho-sidecar', './sidecar')
 	f.load()
 }
 
-func TestUpdateModeK8S(t *testing.T) {
+func TestTriggerModeK8S(t *testing.T) {
 	for _, testCase := range []struct {
-		name               string
-		globalSetting      triggerMode
-		k8sResourceSetting triggerMode
-		expectedUpdateMode model.UpdateMode
+		name                string
+		globalSetting       triggerMode
+		k8sResourceSetting  triggerMode
+		expectedTriggerMode model.UpdateMode
 	}{
 		{"default", TriggerModeUnset, TriggerModeUnset, model.UpdateModeAuto},
 		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, model.UpdateModeAuto},
@@ -3082,14 +3082,14 @@ func TestUpdateModeK8S(t *testing.T) {
 
 			f.setupFoo()
 
-			var globalUpdateModeDirective string
+			var globalTriggerModeDirective string
 			switch testCase.globalSetting {
 			case TriggerModeUnset:
-				globalUpdateModeDirective = ""
+				globalTriggerModeDirective = ""
 			case TriggerModeManual:
-				globalUpdateModeDirective = "update_mode(UPDATE_MODE_MANUAL)"
+				globalTriggerModeDirective = "trigger_mode(TRIGGER_MODE_MANUAL)"
 			case TriggerModeAuto:
-				globalUpdateModeDirective = "update_mode(UPDATE_MODE_AUTO)"
+				globalTriggerModeDirective = "trigger_mode(TRIGGER_MODE_AUTO)"
 			}
 
 			var k8sResourceDirective string
@@ -3097,9 +3097,9 @@ func TestUpdateModeK8S(t *testing.T) {
 			case TriggerModeUnset:
 				k8sResourceDirective = ""
 			case TriggerModeManual:
-				k8sResourceDirective = "k8s_resource('foo', update_mode=UPDATE_MODE_MANUAL)"
+				k8sResourceDirective = "k8s_resource('foo', trigger_mode=TRIGGER_MODE_MANUAL)"
 			case TriggerModeAuto:
-				k8sResourceDirective = "k8s_resource('foo', update_mode=UPDATE_MODE_AUTO)"
+				k8sResourceDirective = "k8s_resource('foo', trigger_mode=TRIGGER_MODE_AUTO)"
 			}
 
 			f.file("Tiltfile", fmt.Sprintf(`
@@ -3107,22 +3107,22 @@ func TestUpdateModeK8S(t *testing.T) {
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 %s
-`, globalUpdateModeDirective, k8sResourceDirective))
+`, globalTriggerModeDirective, k8sResourceDirective))
 
 			f.load()
 
 			f.assertNumManifests(1)
-			f.assertNextManifest("foo", testCase.expectedUpdateMode)
+			f.assertNextManifest("foo", testCase.expectedTriggerMode)
 		})
 	}
 }
 
-func TestUpdateModeDC(t *testing.T) {
+func TestTriggerModeDC(t *testing.T) {
 	for _, testCase := range []struct {
-		name               string
-		globalSetting      triggerMode
-		dcResourceSetting  triggerMode
-		expectedUpdateMode model.UpdateMode
+		name                string
+		globalSetting       triggerMode
+		dcResourceSetting   triggerMode
+		expectedTriggerMode model.UpdateMode
 	}{
 		{"default", TriggerModeUnset, TriggerModeUnset, model.UpdateModeAuto},
 		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, model.UpdateModeAuto},
@@ -3139,14 +3139,14 @@ func TestUpdateModeDC(t *testing.T) {
 			f.dockerfile("foo/Dockerfile")
 			f.file("docker-compose.yml", simpleConfig)
 
-			var globalUpdateModeDirective string
+			var globalTriggerModeDirective string
 			switch testCase.globalSetting {
 			case TriggerModeUnset:
-				globalUpdateModeDirective = ""
+				globalTriggerModeDirective = ""
 			case TriggerModeManual:
-				globalUpdateModeDirective = "update_mode(UPDATE_MODE_MANUAL)"
+				globalTriggerModeDirective = "trigger_mode(TRIGGER_MODE_MANUAL)"
 			case TriggerModeAuto:
-				globalUpdateModeDirective = "update_mode(UPDATE_MODE_AUTO)"
+				globalTriggerModeDirective = "trigger_mode(TRIGGER_MODE_AUTO)"
 			}
 
 			var dcResourceDirective string
@@ -3154,44 +3154,44 @@ func TestUpdateModeDC(t *testing.T) {
 			case TriggerModeUnset:
 				dcResourceDirective = ""
 			case TriggerModeManual:
-				dcResourceDirective = "dc_resource('foo', 'gcr.io/foo', update_mode=UPDATE_MODE_MANUAL)"
+				dcResourceDirective = "dc_resource('foo', 'gcr.io/foo', trigger_mode=TRIGGER_MODE_MANUAL)"
 			case TriggerModeAuto:
-				dcResourceDirective = "dc_resource('foo', 'gcr.io/foo', update_mode=UPDATE_MODE_AUTO)"
+				dcResourceDirective = "dc_resource('foo', 'gcr.io/foo', trigger_mode=TRIGGER_MODE_AUTO)"
 			}
 
 			f.file("Tiltfile", fmt.Sprintf(`
 %s
 docker_compose('docker-compose.yml')
 %s
-`, globalUpdateModeDirective, dcResourceDirective))
+`, globalTriggerModeDirective, dcResourceDirective))
 
 			f.load()
 
 			f.assertNumManifests(1)
-			f.assertNextManifest("foo", testCase.expectedUpdateMode)
+			f.assertNextManifest("foo", testCase.expectedTriggerMode)
 		})
 	}
 }
 
-func TestUpdateModeInt(t *testing.T) {
+func TestTriggerModeInt(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
 	f.file("Tiltfile", `
-update_mode(1)
+trigger_mode(1)
 `)
 	f.loadErrString("got int, want TriggerMode")
 }
 
-func TestMultipleUpdateMode(t *testing.T) {
+func TestMultipleTriggerMode(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
 	f.file("Tiltfile", `
-update_mode(UPDATE_MODE_MANUAL)
-update_mode(UPDATE_MODE_MANUAL)
+trigger_mode(TRIGGER_MODE_MANUAL)
+trigger_mode(TRIGGER_MODE_MANUAL)
 `)
-	f.loadErrString("update_mode can only be called once")
+	f.loadErrString("trigger_mode can only be called once")
 }
 
 func TestHelmSkipsTests(t *testing.T) {
