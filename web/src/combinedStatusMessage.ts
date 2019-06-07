@@ -8,7 +8,6 @@ import {
 } from "./constants"
 
 const combinedStatusMessage = (resources: Array<StatusItem>): string => {
-  debugger
   let buildingResources = resources.filter(
     r => !isZeroTime(r.currentBuild.StartTime)
   )

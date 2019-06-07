@@ -13,22 +13,26 @@ exports[`renders logs 1`] = `
       <div
         className="resourceInfo-label"
       >
-        Pod ID:
-      </div>
-      <div
-        className="resourceInfo-value"
-      >
-        foobar
-      </div>
-      <div
-        className="resourceInfo-label"
-      >
         Pod Status:
       </div>
       <div
         className="resourceInfo-value"
       >
         Running
+      </div>
+    </div>
+    <div
+      className="resourceInfo"
+    >
+      <div
+        className="resourceInfo-label"
+      >
+        Pod ID:
+      </div>
+      <div
+        className="resourceInfo-value"
+      >
+        foobar
       </div>
     </div>
   </section>
@@ -89,22 +93,26 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       <div
         className="resourceInfo-label"
       >
-        Pod ID:
-      </div>
-      <div
-        className="resourceInfo-value"
-      >
-        foobar
-      </div>
-      <div
-        className="resourceInfo-label"
-      >
         Pod Status:
       </div>
       <div
         className="resourceInfo-value"
       >
         Running
+      </div>
+    </div>
+    <div
+      className="resourceInfo"
+    >
+      <div
+        className="resourceInfo-label"
+      >
+        Pod ID:
+      </div>
+      <div
+        className="resourceInfo-value"
+      >
+        foobar
       </div>
     </div>
   </section>
