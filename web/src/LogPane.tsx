@@ -11,6 +11,7 @@ type LogPaneProps = {
   isExpanded: boolean
   podID: string
   endpoints: string[]
+  podStatus: string
 }
 type LogPaneState = {
   autoscroll: boolean
@@ -113,11 +114,18 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     }
 
     let podID = this.props.podID
+    let podStatus = this.props.podStatus
     let podIDEl = podID && (
-      <div className="resourceInfo">
-        <div className="resourceInfo-label">Pod ID:</div>
-        <div className="resourceInfo-value">{podID}</div>
-      </div>
+      <>
+        <div className="resourceInfo">
+          <div className="resourceInfo-label">Pod Status:</div>
+          <div className="resourceInfo-value">{podStatus}</div>
+        </div>
+        <div className="resourceInfo">
+          <div className="resourceInfo-label">Pod ID:</div>
+          <div className="resourceInfo-value">{podID}</div>
+        </div>
+      </>
     )
 
     let endpoints = this.props.endpoints

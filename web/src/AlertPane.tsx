@@ -6,6 +6,11 @@ import "./AlertPane.scss"
 import { zeroTime } from "./time"
 import { Build } from "./types"
 import { timeAgoFormatter } from "./timeFormatters"
+import {
+  podStatusError,
+  podStatusCrashLoopBackOff,
+  podStatusImagePullBackOff,
+} from "./constants"
 
 class AlertResource {
   public name: string
@@ -41,9 +46,11 @@ class AlertResource {
   }
 
   public podStatusIsError() {
+    let podStatus = this.resourceInfo.podStatus
     return (
-      this.resourceInfo.podStatus === "Error" ||
-      this.resourceInfo.podStatus === "CrashLoopBackOff"
+      podStatus === podStatusError ||
+      podStatus === podStatusCrashLoopBackOff ||
+      podStatus === podStatusImagePullBackOff
     )
   }
 
@@ -87,6 +94,13 @@ function alertElements(resources: Array<AlertResource>) {
   let alertElements: Array<JSX.Element> = []
   resources.forEach(r => {
     if (r.podStatusIsError()) {
+      let podStatus = r.resourceInfo.podStatus
+      let msg = ""
+      if (podStatus === "Error" || podStatus === "CrashLoopBackOff") {
+        msg = r.crashLog
+      } else {
+        msg = `Pod has status ${podStatus}`
+      }
       alertElements.push(
         <li key={"resourceInfoError" + r.name} className="AlertPane-item">
           <header>
@@ -98,7 +112,7 @@ function alertElements(resources: Array<AlertResource>) {
               />
             </p>
           </header>
-          <section>{logToLines(r.crashLog || "")}</section>
+          <section>{logToLines(msg)}</section>
         </li>
       )
     } else if (r.podRestarted()) {

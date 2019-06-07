@@ -3,6 +3,8 @@ import {
   oneResourceFailedToBuild,
   oneResourceCrashedOnStart,
   oneResourceNoAlerts,
+  oneResourceErrImgPull,
+  oneResourceImagePullBackOff,
 } from "./testdata.test"
 import { combinedStatusMessage } from "./combinedStatusMessage"
 import { StatusItem } from "./Statusbar"
@@ -39,5 +41,20 @@ describe("combined status message", () => {
     let actual = combinedStatusMessage(resources)
 
     expect(actual).toBe("")
+  })
+
+  it("should show a pod's status message if it is image pull back off or err img pull", () => {
+    let resource = oneResourceImagePullBackOff()
+    let data = [resource]
+    let resources = data.map((r: any) => new StatusItem(r))
+    let actual = combinedStatusMessage(resources)
+
+    expect(actual).toBe("vigoda has pod with status ImagePullBackOff")
+
+    data = [oneResourceErrImgPull()]
+    resources = data.map((r: any) => new StatusItem(r))
+    actual = combinedStatusMessage(resources)
+
+    expect(actual).toBe("vigoda has pod with status ErrImagePull")
   })
 })
