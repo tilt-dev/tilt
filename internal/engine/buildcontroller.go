@@ -79,6 +79,11 @@ func nextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 	for _, mt := range targets {
 		ok, newTime := mt.State.HasPendingChangesBefore(earliest)
 		if ok {
+			if mt.Manifest.TriggerMode == model.TriggerModeManual {
+				// Don't trigger update of a manual manifest just b/c if has
+				// pending changes; must come through the TriggerQueue, above.
+				continue
+			}
 			choice = mt
 			earliest = newTime
 		}

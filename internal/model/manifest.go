@@ -116,6 +116,11 @@ func (m Manifest) WithDeployTarget(t TargetSpec) Manifest {
 	return m
 }
 
+func (m Manifest) WithTriggerMode(mode TriggerMode) Manifest {
+	m.TriggerMode = mode
+	return m
+}
+
 func (m Manifest) TargetSpecs() []TargetSpec {
 	result := []TargetSpec{}
 	for _, t := range m.ImageTargets {
