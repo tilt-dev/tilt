@@ -85,6 +85,7 @@ func StateToWebView(s store.EngineState) View {
 			ShowBuildStatus:    len(mt.Manifest.ImageTargets) > 0 || mt.Manifest.IsDC(),
 			CombinedLog:        ms.CombinedLog,
 			CrashLog:           ms.CrashLog,
+			TriggerMode:        mt.Manifest.TriggerMode,
 		}
 
 		r.RuntimeStatus = runtimeStatus(r.ResourceInfo)

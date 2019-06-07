@@ -90,6 +90,7 @@ type Resource struct {
 	DirectoriesWatched []string
 	PathsWatched       []string
 	LastDeployTime     time.Time
+	TriggerMode        model.TriggerMode
 
 	BuildHistory []BuildRecord
 	CurrentBuild BuildRecord
