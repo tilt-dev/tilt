@@ -48,7 +48,7 @@ type k8sResource struct {
 
 	dependencyIDs []model.TargetID
 
-	updateMode updateMode
+	triggerMode triggerMode
 }
 
 const deprecatedResourceAssemblyV1Warning = "This Tiltfile is using k8s resource assembly version 1, which has been " +
@@ -60,7 +60,7 @@ type k8sResourceOptions struct {
 	newName           string
 	portForwards      []portForward
 	extraPodSelectors []labels.Selector
-	updateMode        updateMode
+	triggerMode       triggerMode
 	tiltfilePosition  syntax.Position
 	consumed          bool
 }
@@ -328,14 +328,14 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 	var newName string
 	var portForwardsVal starlark.Value
 	var extraPodSelectorsVal starlark.Value
-	var updateMode updateMode
+	var triggerMode triggerMode
 
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"workload", &workload,
 		"new_name?", &newName,
 		"port_forwards?", &portForwardsVal,
 		"extra_pod_selectors?", &extraPodSelectorsVal,
-		"update_mode?", &updateMode,
+		"trigger_mode?", &triggerMode,
 	); err != nil {
 		return nil, err
 	}
@@ -363,7 +363,7 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		portForwards:      portForwards,
 		extraPodSelectors: extraPodSelectors,
 		tiltfilePosition:  thread.Caller().Position(),
-		updateMode:        updateMode,
+		triggerMode:       triggerMode,
 	}
 
 	return starlark.None, nil

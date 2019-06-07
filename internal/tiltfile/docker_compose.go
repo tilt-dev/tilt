@@ -60,12 +60,12 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var name string
 	var imageVal starlark.Value
-	var updateMode updateMode
+	var triggerMode triggerMode
 
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
 		"image", &imageVal, // in future this will be optional
-		"update_mode?", &updateMode,
+		"trigger_mode?", &triggerMode,
 	); err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 		return nil, err
 	}
 
-	svc.UpdateMode = updateMode
+	svc.TriggerMode = triggerMode
 
 	normalized, err := container.ParseNamed(imageRefAsStr)
 	if err != nil {
@@ -268,7 +268,7 @@ type dcService struct {
 	DependencyIDs  []model.TargetID
 	PublishedPorts []int
 
-	UpdateMode updateMode
+	TriggerMode triggerMode
 }
 
 func (c dcConfig) GetService(name string) (dcService, error) {
@@ -410,7 +410,7 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcConfigPath str
 		WithPublishedPorts(service.PublishedPorts).
 		WithIgnoredLocalDirectories(service.MountedLocalDirs)
 
-	um, err := starlarkUpdateModeToModel(s.updateModeForResource(service.UpdateMode))
+	um, err := starlarkTriggerModeToModel(s.triggerModeForResource(service.TriggerMode))
 	if err != nil {
 		return model.Manifest{}, nil, err
 	}
