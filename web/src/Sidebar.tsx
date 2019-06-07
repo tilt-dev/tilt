@@ -1,20 +1,19 @@
 import React, { PureComponent } from "react"
 import { ReactComponent as ChevronSvg } from "./assets/svg/chevron.svg"
-import { ReactComponent as DotSvg } from "./assets/svg/dot.svg"
-import { ReactComponent as DotBuildingSvg } from "./assets/svg/dot-building.svg"
 import { Link } from "react-router-dom"
 import { combinedStatus, warnings } from "./status"
 import "./Sidebar.scss"
-import { ResourceView, TriggerMode } from "./types"
+import { ResourceView, TriggerMode, RuntimeStatus } from "./types"
 import TimeAgo from "react-timeago"
 import { isZeroTime } from "./time"
 import PathBuilder from "./PathBuilder"
 import { timeAgoFormatter } from "./timeFormatters"
 import { AlertResource } from "./AlertPane"
+import SidebarIcon from "./SidebarIcon"
 
 class SidebarItem {
   name: string
-  status: string
+  status: RuntimeStatus
   hasWarnings: boolean
   hasEndpoints: boolean
   lastDeployTime: string
@@ -95,26 +94,28 @@ class Sidebar extends PureComponent<SidebarProps> {
 
       let formatter = timeAgoFormatter
       let hasBuilt = !isZeroTime(item.lastDeployTime)
-      let willBuild = !isZeroTime(item.pendingBuildSince)
       let building = !isZeroTime(item.currentBuildStartTime)
       let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
 
-      let classes = `resLink resLink--${
-        willBuild || building ? "building" : item.status
-      }`
+      let classes = "resLink"
+      if (building) {
+        classes += " resLink--building"
+      }
+
       if (this.props.selected === item.name) {
         classes += " is-selected"
       }
-      if (item.hasWarnings) {
-        classes += " has-warnings"
-      }
-
       return (
         <li key={item.name}>
           <Link className={classes} to={pb.path(link)}>
-            <span className="resLink-icon">
-              {willBuild || building ? <DotBuildingSvg /> : <DotSvg />}
-            </span>
+            <div className="sidebarIcon">
+              <SidebarIcon
+                status={item.status}
+                triggerMode={item.triggerMode}
+                hasWarning={item.hasWarnings}
+                isBuilding={building}
+              />
+            </div>
             <span className="resLink-name">{item.name}</span>
             {item.numberOfAlerts() > 0 ? (
               <span className="resLink-alertBadge">

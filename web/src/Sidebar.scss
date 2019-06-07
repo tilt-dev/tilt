@@ -73,14 +73,11 @@
   justify-content: center;
 }
 
-.resLink-icon {
+.sidebarIcon {
   width: $sidebar-item;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-.resLink--ok .resLink-icon {
-  fill: $color-green;
 }
 @keyframes spin {
   from {
@@ -100,6 +97,18 @@
   }
 }
 
+@keyframes glow {
+  0% {
+    opacity: $translucent;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: $translucent;
+  }
+}
+
 .resLink--building {
   background-image: linear-gradient(
     to right,
@@ -111,17 +120,7 @@
   animation: shimmer 2s infinite;
   animation-timing-function: linear;
 }
-.resLink--building .resLink-icon {
-  fill: $color-gray-light;
-  animation: spin 1s infinite;
-  animation-timing-function: linear;
-}
-.resLink--pending .resLink-icon {
-  fill: $color-gray-lightest;
-}
-.resLink--error .resLink-icon {
-  fill: $color-red;
-}
+
 .resLink-name {
   flex: 1 0 auto;
 }

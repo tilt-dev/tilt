@@ -5,7 +5,7 @@ export enum ResourceView {
 }
 
 export enum TriggerMode {
-  TriggerModeauto,
+  TriggerModeAuto,
   TriggerModeManual,
 }
 
@@ -23,4 +23,10 @@ export type TiltBuild = {
   Version: string
   Date: string
   Dev: boolean
+}
+
+export enum RuntimeStatus {
+  Ok = "ok",
+  Pending = "pending",
+  Error = "error",
 }
