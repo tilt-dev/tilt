@@ -55,6 +55,6 @@ describe("combined status message", () => {
     resources = data.map((r: any) => new StatusItem(r))
     actual = combinedStatusMessage(resources)
 
-    expect(actual).toBe("vigoda has pod with status ErrImgPull")
+    expect(actual).toBe("vigoda has pod with status ErrImagePull")
   })
 })

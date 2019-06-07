@@ -5,7 +5,7 @@ const colorGreyDark = "#606060"
 const podStatusError = "Error"
 const podStatusCrashLoopBackOff = "CrashLoopBackOff"
 const podStatusImagePullBackOff = "ImagePullBackOff"
-const podStatusErrImgPull = "ErrImgPull"
+const podStatusErrImgPull = "ErrImagePull"
 
 export {
   colorGreyDark,
