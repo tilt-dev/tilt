@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/hud/server"
 
 	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/watch"
@@ -172,7 +172,7 @@ func TestBuildControllerManualTrigger(t *testing.T) {
 	f.nextCall()
 	f.waitForCompletedBuildCount(1)
 
-	f.store.Dispatch(view.AppendToTriggerQueueAction{Name: mName})
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: mName})
 	f.assertNoCall("manifest has no pending changes, so shouldn't build even if we try to trigger it")
 
 	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("main.go")}
@@ -181,7 +181,7 @@ func TestBuildControllerManualTrigger(t *testing.T) {
 	})
 	f.assertNoCall("even tho there are pending changes, manual manifest shouldn't build w/o explicit trigger")
 
-	f.store.Dispatch(view.AppendToTriggerQueueAction{Name: mName})
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: mName})
 	call := f.nextCall()
 	assert.Equal(t, []string{f.JoinPath("main.go")}, call.oneState().FilesChanged())
 	f.waitForCompletedBuildCount(2)

@@ -12,6 +12,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -21,7 +22,6 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud"
-	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -176,7 +176,7 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleDockerComposeEvent(ctx, state, action)
 	case DockerComposeLogAction:
 		handleDockerComposeLogAction(state, action)
-	case view.AppendToTriggerQueueAction:
+	case server.AppendToTriggerQueueAction:
 		appendToTriggerQueue(state, action.Name)
 	case hud.StartProfilingAction:
 		handleStartProfilingAction(state)
