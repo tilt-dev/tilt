@@ -415,8 +415,8 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcConfigPath str
 		return model.Manifest{}, nil, err
 	}
 	m := model.Manifest{
-		Name:       model.ManifestName(service.Name),
-		UpdateMode: um,
+		Name:        model.ManifestName(service.Name),
+		TriggerMode: um,
 	}.WithDeployTarget(dcInfo)
 
 	if service.DfPath == "" {

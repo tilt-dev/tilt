@@ -360,7 +360,7 @@ func handleDeployIDAction(ctx context.Context, state *store.EngineState, action 
 }
 
 func appendToTriggerQueue(state *store.EngineState, mn model.ManifestName) {
-	if state.TriggerMode != model.TriggerManual {
+	if state.TriggerMode != model.TriggerModeManual {
 		return
 	}
 

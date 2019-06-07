@@ -3066,15 +3066,15 @@ func TestTriggerModeK8S(t *testing.T) {
 		name                string
 		globalSetting       triggerMode
 		k8sResourceSetting  triggerMode
-		expectedTriggerMode model.UpdateMode
+		expectedTriggerMode model.TriggerMode
 	}{
-		{"default", TriggerModeUnset, TriggerModeUnset, model.UpdateModeAuto},
-		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, model.UpdateModeAuto},
-		{"explicit global manual", TriggerModeManual, TriggerModeUnset, model.UpdateModeManual},
-		{"kr auto", TriggerModeUnset, TriggerModeUnset, model.UpdateModeAuto},
-		{"kr manual", TriggerModeUnset, TriggerModeManual, model.UpdateModeManual},
-		{"kr override auto", TriggerModeManual, TriggerModeAuto, model.UpdateModeAuto},
-		{"kr override manual", TriggerModeAuto, TriggerModeManual, model.UpdateModeManual},
+		{"default", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
+		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, model.TriggerModeAuto},
+		{"explicit global manual", TriggerModeManual, TriggerModeUnset, model.TriggerModeManual},
+		{"kr auto", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
+		{"kr manual", TriggerModeUnset, TriggerModeManual, model.TriggerModeManual},
+		{"kr override auto", TriggerModeManual, TriggerModeAuto, model.TriggerModeAuto},
+		{"kr override manual", TriggerModeAuto, TriggerModeManual, model.TriggerModeManual},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			f := newFixture(t)
@@ -3122,15 +3122,15 @@ func TestTriggerModeDC(t *testing.T) {
 		name                string
 		globalSetting       triggerMode
 		dcResourceSetting   triggerMode
-		expectedTriggerMode model.UpdateMode
+		expectedTriggerMode model.TriggerMode
 	}{
-		{"default", TriggerModeUnset, TriggerModeUnset, model.UpdateModeAuto},
-		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, model.UpdateModeAuto},
-		{"explicit global manual", TriggerModeManual, TriggerModeUnset, model.UpdateModeManual},
-		{"dc auto", TriggerModeUnset, TriggerModeUnset, model.UpdateModeAuto},
-		{"dc manual", TriggerModeUnset, TriggerModeManual, model.UpdateModeManual},
-		{"dc override auto", TriggerModeManual, TriggerModeAuto, model.UpdateModeAuto},
-		{"dc override manual", TriggerModeAuto, TriggerModeManual, model.UpdateModeManual},
+		{"default", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
+		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, model.TriggerModeAuto},
+		{"explicit global manual", TriggerModeManual, TriggerModeUnset, model.TriggerModeManual},
+		{"dc auto", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
+		{"dc manual", TriggerModeUnset, TriggerModeManual, model.TriggerModeManual},
+		{"dc override auto", TriggerModeManual, TriggerModeAuto, model.TriggerModeAuto},
+		{"dc override manual", TriggerModeAuto, TriggerModeManual, model.TriggerModeManual},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			f := newFixture(t)
@@ -3884,8 +3884,8 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 
 		case []model.PortForward:
 			assert.Equal(f.t, opt, m.K8sTarget().PortForwards)
-		case model.UpdateMode:
-			assert.Equal(f.t, opt, m.UpdateMode)
+		case model.TriggerMode:
+			assert.Equal(f.t, opt, m.TriggerMode)
 		default:
 			f.t.Fatalf("unexpected arg to assertNextManifest: %T %v", opt, opt)
 		}

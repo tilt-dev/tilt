@@ -32,7 +32,10 @@ type Manifest struct {
 	// Info needed to deploy. Can be k8s yaml, docker compose, etc.
 	deployTarget TargetSpec
 
-	UpdateMode UpdateMode
+	// How updates are triggered:
+	// - automatically, when we detect a change
+	// - manually, when the user tells us to
+	TriggerMode TriggerMode
 }
 
 func (m Manifest) ID() TargetID {
@@ -359,10 +362,3 @@ func DeepEqual(x, y interface{}) bool {
 		selectorAllowUnexported,
 		dockerRefEqual)
 }
-
-type UpdateMode int
-
-const (
-	UpdateModeAuto   UpdateMode = iota
-	UpdateModeManual UpdateMode = iota
-)

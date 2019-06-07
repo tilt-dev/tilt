@@ -220,12 +220,12 @@ func (s *tiltfileState) triggerModeForResource(resourceTriggerMode triggerMode) 
 	}
 }
 
-func starlarkTriggerModeToModel(triggerMode triggerMode) (model.UpdateMode, error) {
+func starlarkTriggerModeToModel(triggerMode triggerMode) (model.TriggerMode, error) {
 	switch triggerMode {
 	case TriggerModeManual:
-		return model.UpdateModeManual, nil
+		return model.TriggerModeManual, nil
 	case TriggerModeAuto:
-		return model.UpdateModeAuto, nil
+		return model.TriggerModeAuto, nil
 	default:
 		return 0, fmt.Errorf("unknown triggerMode %v", triggerMode)
 	}
@@ -717,13 +717,13 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 	var result []model.Manifest
 	for _, r := range resources {
 		mn := model.ManifestName(r.name)
-		um, err := starlarkTriggerModeToModel(s.triggerModeForResource(r.triggerMode))
+		tm, err := starlarkTriggerModeToModel(s.triggerModeForResource(r.triggerMode))
 		if err != nil {
 			return nil, err
 		}
 		m := model.Manifest{
-			Name:       mn,
-			UpdateMode: um,
+			Name:        mn,
+			TriggerMode: tm,
 		}
 
 		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.portForwardsToDomain(r), r.extraPodSelectors, r.dependencyIDs)
