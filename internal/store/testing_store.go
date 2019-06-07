@@ -54,7 +54,7 @@ func WaitForAction(t testing.TB, typ reflect.Type, getActions func() []Action) A
 			if reflect.TypeOf(a) == typ {
 				return a
 			} else if la, ok := a.(LogAction); ok {
-				fmt.Println(string(la.LogEvent.Message()))
+				fmt.Println(string(la.Message()))
 			}
 		}
 	}

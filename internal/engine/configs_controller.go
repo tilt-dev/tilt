@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/logger"
@@ -60,13 +59,8 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 		matching[string(m)] = true
 	}
 
-	logWriter := logger.Get(ctx).Writer(logger.InfoLvl)
-	prefix := fmt.Sprintf("[%s] ", tiltfile.FileName)
-	prefixLogWriter := logger.NewPrefixedWriter(prefix, logWriter)
 	actionWriter := NewTiltfileLogWriter(st)
-	multiWriter := io.MultiWriter(prefixLogWriter, actionWriter)
-
-	loadCtx := logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), multiWriter))
+	loadCtx := logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), actionWriter))
 
 	tlr, err := cc.tfl.Load(loadCtx, tiltfilePath, matching)
 	if err == nil && len(tlr.Manifests) == 0 {

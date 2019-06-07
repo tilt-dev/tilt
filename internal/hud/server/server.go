@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
@@ -129,12 +128,7 @@ func (s *HeadsUpServer) HandleSail(w http.ResponseWriter, req *http.Request) {
 
 	// Request context doesn't have logger, just slap one on for now.
 	l := logger.NewFuncLogger(false, logger.DebugLvl, func(level logger.Level, b []byte) error {
-		s.store.Dispatch(store.LogAction{
-			LogEvent: store.LogEvent{
-				Timestamp: time.Now(),
-				Msg:       append([]byte{}, b...),
-			},
-		})
+		s.store.Dispatch(store.NewGlobalLogEvent(b))
 		return nil
 	})
 
