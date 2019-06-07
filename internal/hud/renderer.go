@@ -208,7 +208,7 @@ func warnings(res view.Resource) []string {
 }
 
 func isCrashing(res view.Resource) bool {
-	return (res.IsK8S() && res.K8SInfo().PodRestarts > 0) ||
+	return (res.IsK8s() && res.K8sInfo().PodRestarts > 0) ||
 		res.LastBuild().Reason.Has(model.BuildReasonFlagCrash) ||
 		res.CurrentBuild.Reason.Has(model.BuildReasonFlagCrash) ||
 		res.PendingBuildReason.Has(model.BuildReasonFlagCrash) ||

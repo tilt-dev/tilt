@@ -72,18 +72,18 @@ func NewGlobalLogEvent(b []byte) LogEvent {
 	}
 }
 
-type K8SEventAction struct {
+type K8sEventAction struct {
 	Event *v1.Event
 }
 
-func (K8SEventAction) Action() {}
+func (K8sEventAction) Action() {}
 
-func NewK8SEventAction(event *v1.Event) K8SEventAction {
-	return K8SEventAction{event}
+func NewK8sEventAction(event *v1.Event) K8sEventAction {
+	return K8sEventAction{event}
 }
 
-func (kEvt K8SEventAction) ToLogAction(mn model.ManifestName) LogAction {
-	msg := fmt.Sprintf("[K8S EVENT: %s] %s\n",
+func (kEvt K8sEventAction) ToLogAction(mn model.ManifestName) LogAction {
+	msg := fmt.Sprintf("[K8s EVENT: %s] %s\n",
 		objRefHumanReadable(kEvt.Event.InvolvedObject), kEvt.Event.Message)
 
 	return LogEvent{

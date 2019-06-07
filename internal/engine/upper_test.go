@@ -1050,12 +1050,12 @@ func TestPodEvent(t *testing.T) {
 	f.podEvent(f.testPod("my-pod", "foobar", "CrashLoopBackOff", testContainer, time.Now()))
 
 	f.WaitUntilHUDResource("hud update", "foobar", func(res view.Resource) bool {
-		return res.K8SInfo().PodName == "my-pod"
+		return res.K8sInfo().PodName == "my-pod"
 	})
 
 	rv := f.hudResource("foobar")
-	assert.Equal(t, "my-pod", rv.K8SInfo().PodName)
-	assert.Equal(t, "CrashLoopBackOff", rv.K8SInfo().PodStatus)
+	assert.Equal(t, "my-pod", rv.K8sInfo().PodName)
+	assert.Equal(t, "CrashLoopBackOff", rv.K8sInfo().PodStatus)
 
 	assert.NoError(t, f.Stop())
 	f.assertAllBuildsConsumed()
@@ -1370,17 +1370,17 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 	firstCreationTime := time.Now()
 	f.podEvent(f.testPod("my-pod", "foobar", "CrashLoopBackOff", testContainer, firstCreationTime))
 	f.WaitUntilHUDResource("hud update crash", "foobar", func(res view.Resource) bool {
-		return res.K8SInfo().PodStatus == "CrashLoopBackOff"
+		return res.K8sInfo().PodStatus == "CrashLoopBackOff"
 	})
 
 	f.podEvent(f.testPod("my-new-pod", "foobar", "Running", testContainer, firstCreationTime.Add(time.Minute*2)))
 	f.WaitUntilHUDResource("hud update running", "foobar", func(res view.Resource) bool {
-		return res.K8SInfo().PodStatus == "Running"
+		return res.K8sInfo().PodStatus == "Running"
 	})
 
 	rv := f.hudResource("foobar")
-	assert.Equal(t, "my-new-pod", rv.K8SInfo().PodName)
-	assert.Equal(t, "Running", rv.K8SInfo().PodStatus)
+	assert.Equal(t, "my-new-pod", rv.K8sInfo().PodName)
+	assert.Equal(t, "Running", rv.K8sInfo().PodStatus)
 
 	assert.NoError(t, f.Stop())
 	f.assertAllBuildsConsumed()
@@ -1400,18 +1400,18 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 	f.podEvent(f.testPod("my-pod", "foobar", "CrashLoopBackOff", testContainer, creationTime))
 
 	f.WaitUntilHUDResource("pod crashes", "foobar", func(res view.Resource) bool {
-		return res.K8SInfo().PodStatus == "CrashLoopBackOff"
+		return res.K8sInfo().PodStatus == "CrashLoopBackOff"
 	})
 
 	f.podEvent(f.testPod("my-pod", "foobar", "Running", testContainer, creationTime))
 
 	f.WaitUntilHUDResource("pod comes back", "foobar", func(res view.Resource) bool {
-		return res.K8SInfo().PodStatus == "Running"
+		return res.K8sInfo().PodStatus == "Running"
 	})
 
 	rv := f.hudResource("foobar")
-	assert.Equal(t, "my-pod", rv.K8SInfo().PodName)
-	assert.Equal(t, "Running", rv.K8SInfo().PodStatus)
+	assert.Equal(t, "my-pod", rv.K8sInfo().PodName)
+	assert.Equal(t, "Running", rv.K8sInfo().PodStatus)
 
 	err := f.Stop()
 	if err != nil {
@@ -1434,7 +1434,7 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 	creationTime := time.Now()
 	f.podEvent(f.testPod("my-new-pod", "foobar", "CrashLoopBackOff", testContainer, creationTime))
 	f.WaitUntilHUDResource("hud update", "foobar", func(res view.Resource) bool {
-		return res.K8SInfo().PodStatus == "CrashLoopBackOff"
+		return res.K8sInfo().PodStatus == "CrashLoopBackOff"
 	})
 
 	f.podEvent(f.testPod("my-pod", "foobar", "Running", testContainer, creationTime.Add(time.Minute*-1)))
@@ -1444,8 +1444,8 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 	f.assertAllBuildsConsumed()
 
 	rv := f.hudResource("foobar")
-	assert.Equal(t, "my-new-pod", rv.K8SInfo().PodName)
-	assert.Equal(t, "CrashLoopBackOff", rv.K8SInfo().PodStatus)
+	assert.Equal(t, "my-new-pod", rv.K8sInfo().PodName)
+	assert.Equal(t, "CrashLoopBackOff", rv.K8sInfo().PodStatus)
 }
 
 func TestPodContainerStatus(t *testing.T) {
@@ -1805,7 +1805,7 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 	})
 
 	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
-		_, ok := st.ObjectsByK8SUIDs[k8s.UID(entityUID)]
+		_, ok := st.ObjectsByK8sUIDs[k8s.UID(entityUID)]
 		return ok
 	})
 
@@ -1890,7 +1890,7 @@ func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
 	})
 
 	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
-		_, ok := st.ObjectsByK8SUIDs[k8s.UID(entityUID)]
+		_, ok := st.ObjectsByK8sUIDs[k8s.UID(entityUID)]
 		return ok
 	})
 
@@ -1938,7 +1938,7 @@ func TestK8sEventLogTimestamp(t *testing.T) {
 	})
 
 	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
-		_, ok := st.ObjectsByK8SUIDs[k8s.UID(entityUID)]
+		_, ok := st.ObjectsByK8sUIDs[k8s.UID(entityUID)]
 		return ok
 	})
 
@@ -1992,7 +1992,7 @@ func TestUIDMapDeleteUID(t *testing.T) {
 	})
 
 	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
-		_, ok := st.ObjectsByK8SUIDs[k8s.UID(entityUID)]
+		_, ok := st.ObjectsByK8sUIDs[k8s.UID(entityUID)]
 		return ok
 	})
 
@@ -2002,7 +2002,7 @@ func TestUIDMapDeleteUID(t *testing.T) {
 	})
 
 	f.WaitUntil("entry for UID removed from map", func(st store.EngineState) bool {
-		_, ok := st.ObjectsByK8SUIDs[k8s.UID(entityUID)]
+		_, ok := st.ObjectsByK8sUIDs[k8s.UID(entityUID)]
 		return !ok
 	})
 	err := f.Stop()

@@ -158,8 +158,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handlePodChangeAction(ctx, state, action.Pod)
 	case ServiceChangeAction:
 		handleServiceEvent(ctx, state, action)
-	case store.K8SEventAction:
-		handleK8SEvent(ctx, state, action)
+	case store.K8sEventAction:
+		handleK8sEvent(ctx, state, action)
 	case PodLogAction:
 		handlePodLogAction(state, action)
 	case BuildLogAction:
@@ -661,12 +661,12 @@ func populateContainerStatus(ctx context.Context, manifest model.Manifest, podIn
 func handleUIDUpdateAction(state *store.EngineState, action UIDUpdateAction) {
 	switch action.EventType {
 	case k8swatch.Added:
-		state.ObjectsByK8SUIDs[action.UID] = store.UIDMapValue{
+		state.ObjectsByK8sUIDs[action.UID] = store.UIDMapValue{
 			Manifest: action.ManifestName,
 			Entity:   action.Entity,
 		}
 	case k8swatch.Deleted:
-		delete(state.ObjectsByK8SUIDs, action.UID)
+		delete(state.ObjectsByK8sUIDs, action.UID)
 	}
 }
 
@@ -871,9 +871,9 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 	ms.LBs[k8s.ServiceName(service.Name)] = action.URL
 }
 
-func handleK8SEvent(ctx context.Context, state *store.EngineState, action store.K8SEventAction) {
+func handleK8sEvent(ctx context.Context, state *store.EngineState, action store.K8sEventAction) {
 	evt := action.Event
-	v, ok := state.ObjectsByK8SUIDs[k8s.UID(evt.InvolvedObject.UID)]
+	v, ok := state.ObjectsByK8sUIDs[k8s.UID(evt.InvolvedObject.UID)]
 	if !ok {
 		return
 	}
