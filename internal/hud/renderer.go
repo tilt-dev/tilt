@@ -193,7 +193,7 @@ func keyLegend(v view.View, vs view.ViewState) string {
 	defaultKeys := "Browse (↓ ↑), Expand (→) ┊ (enter) log, (b)rowser ┊ (ctrl-C) quit  "
 	if vs.AlertMessage != "" {
 		return "Tilt (l)og ┊ (esc) close alert "
-	} else if v.TriggerMode == model.TriggerManual {
+	} else if v.TriggerMode == model.TriggerModeManual {
 		return "Build (space) ┊ " + defaultKeys
 	}
 	return defaultKeys

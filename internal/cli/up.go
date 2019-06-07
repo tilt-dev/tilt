@@ -142,9 +142,9 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		})
 	}
 
-	triggerMode := model.TriggerAuto
+	triggerMode := model.TriggerModeAuto
 	if !c.autoDeploy {
-		triggerMode = model.TriggerManual
+		triggerMode = model.TriggerModeManual
 	}
 
 	g.Go(func() error {

@@ -67,9 +67,12 @@ type tiltfileState struct {
 	// with the same hashcode (like, all restartcontainer steps)
 	unconsumedLiveUpdateSteps map[string]liveUpdateStep
 
-	updateMode updateMode
+	// global trigger mode -- will be the default for all manifests (tho user can still explicitly set
+	// triggerMode for a specific manifest)
+	triggerMode triggerMode
+
 	// for error reporting in case it's called twice
-	updateModeCallPosition syntax.Position
+	triggerModeCallPosition syntax.Position
 
 	logger   logger.Logger
 	warnings []string
@@ -101,7 +104,7 @@ func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClie
 		unconsumedLiveUpdateSteps:  make(map[string]liveUpdateStep),
 		k8sResourceAssemblyVersion: 2,
 		k8sResourceOptions:         make(map[string]k8sResourceOptions),
-		updateMode:                 UpdateModeAuto,
+		triggerMode:                TriggerModeAuto,
 	}
 	s.filename = s.maybeAttachGitRepo(lp, filepath.Dir(lp.path))
 	return s
@@ -162,69 +165,69 @@ const (
 	runN              = "run"
 	restartContainerN = "restart_container"
 
-	// update mode
-	updateModeN       = "update_mode"
-	updateModeAutoN   = "UPDATE_MODE_AUTO"
-	updateModeManualN = "UPDATE_MODE_MANUAL"
+	// trigger mode
+	triggerModeN       = "trigger_mode"
+	triggerModeAutoN   = "TRIGGER_MODE_AUTO"
+	triggerModeManualN = "TRIGGER_MODE_MANUAL"
 
 	// other functions
 	failN = "fail"
 	blobN = "blob"
 )
 
-type updateMode int
+type triggerMode int
 
-func (u updateMode) String() string {
-	switch u {
-	case UpdateModeManual:
-		return updateModeManualN
-	case UpdateModeAuto:
-		return updateModeAutoN
+func (m triggerMode) String() string {
+	switch m {
+	case TriggerModeManual:
+		return triggerModeManualN
+	case TriggerModeAuto:
+		return triggerModeAutoN
 	default:
-		return fmt.Sprintf("unknown update mode with value %d", u)
+		return fmt.Sprintf("unknown trigger mode with value %d", m)
 	}
 }
 
-func (u updateMode) Type() string {
-	return "UpdateMode"
+func (t triggerMode) Type() string {
+	return "TriggerMode"
 }
 
-func (u updateMode) Freeze() {
+func (t triggerMode) Freeze() {
 	// noop
 }
 
-func (u updateMode) Truth() starlark.Bool {
-	return starlark.MakeInt(int(u)).Truth()
+func (t triggerMode) Truth() starlark.Bool {
+	return starlark.MakeInt(int(t)).Truth()
 }
 
-func (u updateMode) Hash() (uint32, error) {
-	return starlark.MakeInt(int(u)).Hash()
+func (t triggerMode) Hash() (uint32, error) {
+	return starlark.MakeInt(int(t)).Hash()
 }
 
-var _ starlark.Value = updateMode(0)
+var _ starlark.Value = triggerMode(0)
 
 const (
-	UpdateModeUnset  updateMode = iota
-	UpdateModeAuto   updateMode = iota
-	UpdateModeManual updateMode = iota
+	TriggerModeUnset  triggerMode = iota
+	TriggerModeAuto   triggerMode = iota
+	TriggerModeManual triggerMode = iota
 )
 
-func (s *tiltfileState) updateModeForResource(resourceUpdateMode updateMode) updateMode {
-	if resourceUpdateMode != UpdateModeUnset {
-		return resourceUpdateMode
+func (s *tiltfileState) triggerModeForResource(resourceTriggerMode triggerMode) triggerMode {
+	if resourceTriggerMode != TriggerModeUnset {
+		return resourceTriggerMode
 	} else {
-		return s.updateMode
+		return s.triggerMode
 	}
 }
 
-func starlarkUpdateModeToModel(updateMode updateMode) (model.UpdateMode, error) {
-	switch updateMode {
-	case UpdateModeManual:
-		return model.UpdateModeManual, nil
-	case UpdateModeAuto:
-		return model.UpdateModeAuto, nil
+func starlarkTriggerModeToModel(triggerMode triggerMode) (model.TriggerMode, error) {
+	switch triggerMode {
+	case TriggerModeManual:
+		return model.TriggerModeManual, nil
+	case TriggerModeAuto:
+		return model.TriggerModeAuto, nil
 	default:
-		return 0, fmt.Errorf("unknown updateMode %v", updateMode)
+		return 0, fmt.Errorf("unknown triggerMode %v", triggerMode)
 	}
 }
 
@@ -276,9 +279,9 @@ func (s *tiltfileState) predeclared() starlark.StringDict {
 	addBuiltin(r, readJSONN, s.readJson)
 	addBuiltin(r, readYAMLN, s.readYaml)
 
-	addBuiltin(r, updateModeN, s.updateModeFn)
-	r[updateModeAutoN] = UpdateModeAuto
-	r[updateModeManualN] = UpdateModeManual
+	addBuiltin(r, triggerModeN, s.triggerModeFn)
+	r[triggerModeAutoN] = TriggerModeAuto
+	r[triggerModeManualN] = TriggerModeManual
 
 	addBuiltin(r, fallBackOnN, s.liveUpdateFallBackOn)
 	addBuiltin(r, syncN, s.liveUpdateSync)
@@ -407,7 +410,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 		if r, ok := s.k8sByName[workload]; ok {
 			r.extraPodSelectors = opts.extraPodSelectors
 			r.portForwards = opts.portForwards
-			r.updateMode = opts.updateMode
+			r.triggerMode = opts.triggerMode
 			if opts.newName != "" && opts.newName != r.name {
 				if _, ok := s.k8sByName[opts.newName]; ok {
 					return fmt.Errorf("k8s_resource at %s specified to rename '%s' to '%s', but there is already a resource with that name", opts.tiltfilePosition.String(), r.name, opts.newName)
@@ -714,13 +717,13 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 	var result []model.Manifest
 	for _, r := range resources {
 		mn := model.ManifestName(r.name)
-		um, err := starlarkUpdateModeToModel(s.updateModeForResource(r.updateMode))
+		tm, err := starlarkTriggerModeToModel(s.triggerModeForResource(r.triggerMode))
 		if err != nil {
 			return nil, err
 		}
 		m := model.Manifest{
-			Name:       mn,
-			UpdateMode: um,
+			Name:        mn,
+			TriggerMode: tm,
 		}
 
 		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.portForwardsToDomain(r), r.extraPodSelectors, r.dependencyIDs)
@@ -1022,19 +1025,19 @@ func (k k8sObjectSelector) matches(e k8s.K8sEntity) bool {
 		k.namespace.MatchString(e.Namespace().String())
 }
 
-func (s *tiltfileState) updateModeFn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var updateMode updateMode
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "update_mode", &updateMode)
+func (s *tiltfileState) triggerModeFn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var triggerMode triggerMode
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "trigger_mode", &triggerMode)
 	if err != nil {
 		return nil, err
 	}
 
-	if s.updateModeCallPosition.IsValid() {
-		return starlark.None, fmt.Errorf("%s can only be called once. It was already called at %s", fn.Name(), s.updateModeCallPosition.String())
+	if s.triggerModeCallPosition.IsValid() {
+		return starlark.None, fmt.Errorf("%s can only be called once. It was already called at %s", fn.Name(), s.triggerModeCallPosition.String())
 	}
 
-	s.updateMode = updateMode
-	s.updateModeCallPosition = thread.Caller().Position()
+	s.triggerMode = triggerMode
+	s.triggerModeCallPosition = thread.Caller().Position()
 
 	return starlark.None, nil
 }

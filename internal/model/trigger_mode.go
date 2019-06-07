@@ -2,7 +2,10 @@ package model
 
 type TriggerMode int
 
+// How builds are triggered (per manifest or globally):
 const (
-	TriggerAuto TriggerMode = iota
-	TriggerManual
+	// Automatically, whenever we detect a change, or
+	TriggerModeAuto TriggerMode = iota
+	// Manually (i.e. only when the user tells us to update)
+	TriggerModeManual
 )

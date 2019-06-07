@@ -165,7 +165,7 @@ func TestBuildControllerManualTrigger(t *testing.T) {
 	f.Init(InitAction{
 		Manifests:       []model.Manifest{manifest},
 		WatchFiles:      true,
-		TriggerMode:     model.TriggerManual,
+		TriggerMode:     model.TriggerModeManual,
 		ExecuteTiltfile: true,
 	})
 
