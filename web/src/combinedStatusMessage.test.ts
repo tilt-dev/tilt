@@ -43,7 +43,7 @@ describe("combined status message", () => {
     expect(actual).toBe("")
   })
 
-  it("should show a pod's status message if it is image pull back off of err img pull", () => {
+  it("should show a pod's status message if it is image pull back off or err img pull", () => {
     let resource = oneResourceImagePullBackOff()
     let data = [resource]
     let resources = data.map((r: any) => new StatusItem(r))
