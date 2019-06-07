@@ -14,7 +14,7 @@ import { createBrowserHistory, History, UnregisterCallback } from "history"
 import { incr, pathToTag } from "./analytics"
 import TopBar from "./TopBar"
 import "./HUD.scss"
-import { TiltBuild, ResourceView } from "./types"
+import { TiltBuild, ResourceView, TriggerMode } from "./types"
 import AlertPane, { AlertResource } from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
@@ -48,6 +48,7 @@ type Resource = {
   }
   RuntimeStatus: string
   ShowBuildStatus: boolean
+  TriggerMode: TriggerMode
 }
 
 type HudState = {

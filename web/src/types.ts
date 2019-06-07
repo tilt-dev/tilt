@@ -4,6 +4,11 @@ export enum ResourceView {
   Alerts,
 }
 
+export enum TriggerMode {
+  TriggerModeauto,
+  TriggerModeManual,
+}
+
 export type Build = {
   Error: {} | string | null
   StartTime: string

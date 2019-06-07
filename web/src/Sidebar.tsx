@@ -5,7 +5,7 @@ import { ReactComponent as DotBuildingSvg } from "./assets/svg/dot-building.svg"
 import { Link } from "react-router-dom"
 import { combinedStatus, warnings } from "./status"
 import "./Sidebar.scss"
-import { ResourceView } from "./types"
+import { ResourceView, TriggerMode } from "./types"
 import TimeAgo from "react-timeago"
 import { isZeroTime } from "./time"
 import PathBuilder from "./PathBuilder"
@@ -21,6 +21,7 @@ class SidebarItem {
   pendingBuildSince: string
   currentBuildStartTime: string
   alertResource: AlertResource
+  triggerMode: TriggerMode
 
   /**
    * Create a pared down SidebarItem from a ResourceView
@@ -34,6 +35,7 @@ class SidebarItem {
     this.pendingBuildSince = res.PendingBuildSince
     this.currentBuildStartTime = res.CurrentBuild.StartTime
     this.alertResource = new AlertResource(res)
+    this.triggerMode = res.TriggerMode
   }
 
   numberOfAlerts(): number {
