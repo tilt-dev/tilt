@@ -151,7 +151,7 @@ func (r *Renderer) renderStatusBar(v view.View) rty.Component {
 	sb.Text(" ") // Indent
 	errorCount := 0
 	for _, res := range v.Resources {
-		if isInError(res, v.TriggerMode) {
+		if isInError(res) {
 			errorCount++
 		}
 	}
@@ -193,14 +193,12 @@ func keyLegend(v view.View, vs view.ViewState) string {
 	defaultKeys := "Browse (↓ ↑), Expand (→) ┊ (enter) log, (b)rowser ┊ (ctrl-C) quit  "
 	if vs.AlertMessage != "" {
 		return "Tilt (l)og ┊ (esc) close alert "
-	} else if v.TriggerMode == model.TriggerModeManual {
-		return "Build (space) ┊ " + defaultKeys
 	}
 	return defaultKeys
 }
 
-func isInError(res view.Resource, triggerMode model.TriggerMode) bool {
-	return statusColor(res, triggerMode) == cBad
+func isInError(res view.Resource) bool {
+	return statusColor(res) == cBad
 }
 
 func warnings(res view.Resource) []string {
@@ -266,7 +264,7 @@ func (r *Renderer) renderResources(v view.View, vs view.ViewState) rty.Component
 
 	if len(rs) > 0 {
 		for i, res := range rs {
-			l.Add(r.renderResource(res, vs.Resources[i], v.TriggerMode, selectedResource == res.Name.String()))
+			l.Add(r.renderResource(res, vs.Resources[i], res.TriggerMode, selectedResource == res.Name.String()))
 		}
 	}
 

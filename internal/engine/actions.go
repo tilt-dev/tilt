@@ -97,7 +97,6 @@ type InitAction struct {
 	TiltfilePath  string
 	ConfigFiles   []string
 	InitManifests []model.ManifestName
-	TriggerMode   model.TriggerMode
 
 	TiltBuild  model.TiltBuild
 	StartTime  time.Time

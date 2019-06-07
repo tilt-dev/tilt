@@ -68,7 +68,7 @@ func nextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 		}
 	}
 
-	if state.TriggerMode == model.TriggerModeManual && len(state.TriggerQueue) > 0 {
+	if len(state.TriggerQueue) > 0 {
 		mn := state.TriggerQueue[0]
 		mt, ok := state.ManifestTargets[mn]
 		if ok {
@@ -76,13 +76,11 @@ func nextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 		}
 	}
 
-	if state.TriggerMode == model.TriggerModeAuto {
-		for _, mt := range targets {
-			ok, newTime := mt.State.HasPendingChangesBefore(earliest)
-			if ok {
-				choice = mt
-				earliest = newTime
-			}
+	for _, mt := range targets {
+		ok, newTime := mt.State.HasPendingChangesBefore(earliest)
+		if ok {
+			choice = mt
+			earliest = newTime
 		}
 	}
 
