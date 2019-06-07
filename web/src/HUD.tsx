@@ -44,6 +44,7 @@ type Resource = {
     PodRestarts: number
     PodUpdateStartTime: string
     YAML: string
+    PodStatus: string
   }
   RuntimeStatus: string
   ShowBuildStatus: boolean
@@ -222,12 +223,14 @@ class HUD extends Component<HudProps, HudState> {
           : ""
       let logs = ""
       let endpoints: Array<string> = []
-      let podID: string = ""
+      let podID = ""
+      let podStatus = ""
       if (view && name !== "") {
         let r = view.Resources.find(r => r.Name === name)
         logs = (r && r.CombinedLog) || ""
         endpoints = (r && r.Endpoints) || []
         podID = (r && r.PodID) || ""
+        podStatus = (r && r.ResourceInfo && r.ResourceInfo.PodStatus) || ""
       }
       return (
         <LogPane
@@ -235,6 +238,7 @@ class HUD extends Component<HudProps, HudState> {
           isExpanded={isSidebarClosed}
           endpoints={endpoints}
           podID={podID}
+          podStatus={podStatus}
         />
       )
     }
@@ -346,6 +350,7 @@ class HUD extends Component<HudProps, HudState> {
                 isExpanded={isSidebarClosed}
                 podID={""}
                 endpoints={[]}
+                podStatus={""}
               />
             )}
           />

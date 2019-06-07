@@ -1,5 +1,6 @@
 import { RouteComponentProps } from "react-router-dom"
 import { UnregisterCallback, Href } from "history"
+import { podStatusImagePullBackOff, podStatusErrImgPull } from "./constants"
 
 // NOTE(dmiller) 4-02-19 this function is currently unused but I'm going to keep it around.
 // I have a feeling that it will come in handy later.
@@ -102,6 +103,66 @@ function oneResourceNoAlerts(): any {
       PodName: "vigoda-pod",
       PodCreationTime: ts,
       PodStatus: "Running",
+      PodRestarts: 0,
+      PodLog: "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
+    },
+    Endpoints: ["1.2.3.4:8080"],
+    RuntimeStatus: "ok",
+  }
+  return resource
+}
+
+function oneResourceImagePullBackOff(): any {
+  const ts = Date.now().valueOf()
+  const resource = {
+    Name: "vigoda",
+    DirectoriesWatched: ["foo", "bar"],
+    LastDeployTime: ts,
+    BuildHistory: [
+      {
+        Edits: ["main.go", "cli.go"],
+        Error: null,
+        FinishTime: ts,
+        StartTime: ts,
+      },
+    ],
+    PendingBuildEdits: ["main.go", "cli.go", "vigoda.go"],
+    PendingBuildSince: ts,
+    CurrentBuild: {},
+    ResourceInfo: {
+      PodName: "vigoda-pod",
+      PodCreationTime: ts,
+      PodStatus: podStatusImagePullBackOff,
+      PodRestarts: 0,
+      PodLog: "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
+    },
+    Endpoints: ["1.2.3.4:8080"],
+    RuntimeStatus: "ok",
+  }
+  return resource
+}
+
+function oneResourceErrImgPull(): any {
+  const ts = Date.now().valueOf()
+  const resource = {
+    Name: "vigoda",
+    DirectoriesWatched: ["foo", "bar"],
+    LastDeployTime: ts,
+    BuildHistory: [
+      {
+        Edits: ["main.go", "cli.go"],
+        Error: null,
+        FinishTime: ts,
+        StartTime: ts,
+      },
+    ],
+    PendingBuildEdits: ["main.go", "cli.go", "vigoda.go"],
+    PendingBuildSince: ts,
+    CurrentBuild: {},
+    ResourceInfo: {
+      PodName: "vigoda-pod",
+      PodCreationTime: ts,
+      PodStatus: podStatusErrImgPull,
       PodRestarts: 0,
       PodLog: "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
     },
@@ -1240,4 +1301,6 @@ export {
   oneResourceCrashedOnStart,
   oneResourceBuilding,
   oneResourceNoAlerts,
+  oneResourceImagePullBackOff,
+  oneResourceErrImgPull,
 }

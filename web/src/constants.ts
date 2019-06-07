@@ -1,5 +1,17 @@
 // Duplicated styles from constants.scss
+const colorGreyDarkest = "#434343"
+const colorGreyDark = "#606060"
 
-let colorGreyDarkest = "#434343"
-let colorGreyDark = "#606060"
-export { colorGreyDark, colorGreyDarkest }
+const podStatusError = "Error"
+const podStatusCrashLoopBackOff = "CrashLoopBackOff"
+const podStatusImagePullBackOff = "ImagePullBackOff"
+const podStatusErrImgPull = "ErrImgPull"
+
+export {
+  colorGreyDark,
+  colorGreyDarkest,
+  podStatusError,
+  podStatusCrashLoopBackOff,
+  podStatusImagePullBackOff,
+  podStatusErrImgPull,
+}

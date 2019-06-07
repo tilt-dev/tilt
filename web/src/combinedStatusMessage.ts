@@ -1,7 +1,14 @@
 import { isZeroTime } from "./time"
 import { StatusItem } from "./Statusbar"
+import {
+  podStatusCrashLoopBackOff,
+  podStatusError,
+  podStatusImagePullBackOff,
+  podStatusErrImgPull,
+} from "./constants"
 
 const combinedStatusMessage = (resources: Array<StatusItem>): string => {
+  debugger
   let buildingResources = resources.filter(
     r => !isZeroTime(r.currentBuild.StartTime)
   )
@@ -11,7 +18,9 @@ const combinedStatusMessage = (resources: Array<StatusItem>): string => {
   }
 
   let containerCrashedResources = resources.filter(
-    r => r.podStatus === "CrashLoopBackOff"
+    r =>
+      r.podStatus === podStatusCrashLoopBackOff ||
+      r.podStatus === podStatusError
   )
   if (containerCrashedResources.length > 0) {
     return "Container crashed: " + containerCrashedResources[0].name
@@ -23,6 +32,16 @@ const combinedStatusMessage = (resources: Array<StatusItem>): string => {
 
   if (resourcesWithBuildErrors.length > 0) {
     return "Build failed: " + resourcesWithBuildErrors[0].name
+  }
+
+  let resourcesWithInterestingPodStatuses = resources.filter(
+    r =>
+      r.podStatus === podStatusImagePullBackOff ||
+      r.podStatus === podStatusErrImgPull
+  )
+  if (resourcesWithInterestingPodStatuses.length > 0) {
+    let r = resourcesWithInterestingPodStatuses[0]
+    return `${r.name} has pod with status ${r.podStatus}`
   }
 
   return ""

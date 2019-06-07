@@ -7,7 +7,30 @@ exports[`renders logs 1`] = `
   <section
     className="resourceBar"
   >
-    
+    <div
+      className="resourceInfo"
+    >
+      <div
+        className="resourceInfo-label"
+      >
+        Pod ID:
+      </div>
+      <div
+        className="resourceInfo-value"
+      >
+        foobar
+      </div>
+      <div
+        className="resourceInfo-label"
+      >
+        Pod Status:
+      </div>
+      <div
+        className="resourceInfo-value"
+      >
+        Running
+      </div>
+    </div>
   </section>
   <section
     className="logText"
@@ -60,7 +83,30 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
   <section
     className="resourceBar"
   >
-    
+    <div
+      className="resourceInfo"
+    >
+      <div
+        className="resourceInfo-label"
+      >
+        Pod ID:
+      </div>
+      <div
+        className="resourceInfo-value"
+      >
+        foobar
+      </div>
+      <div
+        className="resourceInfo-label"
+      >
+        Pod Status:
+      </div>
+      <div
+        className="resourceInfo-value"
+      >
+        Running
+      </div>
+    </div>
   </section>
   <section
     className="logText"
