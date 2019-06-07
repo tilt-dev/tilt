@@ -111,7 +111,21 @@ func TestNeedsNudgeSet(t *testing.T) {
 
 	v = StateToWebView(*state)
 	assert.True(t, v.NeedsAnalyticsNudge)
+}
 
+func TestTriggerMode(t *testing.T) {
+	state := newState(nil)
+	m := model.Manifest{Name: "server"}
+	targ := store.NewManifestTarget(m)
+	targ.Manifest.TriggerMode = model.TriggerModeManual
+	targ.State = &store.ManifestState{}
+	state.UpsertManifestTarget(targ)
+
+	v := StateToWebView(*state)
+	assert.Equal(t, 2, len(v.Resources))
+
+	newM, _ := v.Resource(model.ManifestName("server"))
+	assert.Equal(t, model.TriggerModeManual, newM.TriggerMode)
 }
 
 func newState(manifests []model.Manifest) *store.EngineState {
