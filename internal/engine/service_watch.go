@@ -29,13 +29,13 @@ func (w *ServiceWatcher) needsWatch(st store.RStore) bool {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	atLeastOneK8S := false
+	atLeastOneK8s := false
 	for _, m := range state.Manifests() {
 		if m.IsK8s() {
-			atLeastOneK8S = true
+			atLeastOneK8s = true
 		}
 	}
-	return atLeastOneK8S && state.WatchFiles && !w.watching
+	return atLeastOneK8s && state.WatchFiles && !w.watching
 }
 
 func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore) {

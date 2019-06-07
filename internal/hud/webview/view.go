@@ -39,7 +39,7 @@ func (DCResourceInfo) resourceInfoView()            {}
 func (dcInfo DCResourceInfo) RuntimeLog() model.Log { return dcInfo.Log }
 func (dcInfo DCResourceInfo) Status() string        { return string(dcInfo.ContainerStatus) }
 
-type K8SResourceInfo struct {
+type K8sResourceInfo struct {
 	PodName            string
 	PodCreationTime    time.Time
 	PodUpdateStartTime time.Time
@@ -49,11 +49,11 @@ type K8SResourceInfo struct {
 	YAML               string
 }
 
-var _ ResourceInfoView = K8SResourceInfo{}
+var _ ResourceInfoView = K8sResourceInfo{}
 
-func (K8SResourceInfo) resourceInfoView()             {}
-func (k8sInfo K8SResourceInfo) RuntimeLog() model.Log { return k8sInfo.PodLog }
-func (k8sInfo K8SResourceInfo) Status() string        { return k8sInfo.PodStatus }
+func (K8sResourceInfo) resourceInfoView()             {}
+func (k8sInfo K8sResourceInfo) RuntimeLog() model.Log { return k8sInfo.PodLog }
+func (k8sInfo K8sResourceInfo) Status() string        { return k8sInfo.PodStatus }
 
 type YAMLResourceInfo struct {
 	K8sResources []string

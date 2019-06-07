@@ -4,7 +4,7 @@ import "os"
 
 // TODO(maia): remove this when feature is merged
 
-const k8sEventsFeatureFlag = "TILT_K8S_EVENTS"
+const k8sEventsFeatureFlag = "TILT_K8s_EVENTS"
 
 // TEMPORARY: check env to see if feature flag is set
 func k8sEventsFeatureFlagOn() bool {

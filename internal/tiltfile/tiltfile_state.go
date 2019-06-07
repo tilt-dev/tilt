@@ -459,7 +459,7 @@ func (s *tiltfileState) assembleK8sByWorkload() error {
 		workload := workloads[i]
 		res, err := s.makeK8sResource(resourceName)
 		if err != nil {
-			return errors.Wrapf(err, "error making resource for workload %s", newK8SObjectID(workload))
+			return errors.Wrapf(err, "error making resource for workload %s", newK8sObjectID(workload))
 		}
 		err = res.addEntities([]k8s.K8sEntity{workload}, s.imageJSONPaths, s.envVarImages())
 		if err != nil {
@@ -983,7 +983,7 @@ type k8sObjectSelector struct {
 
 // Creates a new k8sObjectSelector
 // If an arg is an empty string, it will become an empty regex that matches all input
-func newK8SObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
+func newK8sObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
 	ret := k8sObjectSelector{}
 	var err error
 
