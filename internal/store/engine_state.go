@@ -63,7 +63,6 @@ type EngineState struct {
 	// InitManifests is the list of manifest names that we were told to init from the CLI.
 	InitManifests []model.ManifestName
 
-	TriggerMode  model.TriggerMode
 	TriggerQueue []model.ManifestName
 
 	LogTimestamps bool
@@ -598,7 +597,6 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {
 
 func StateToView(s EngineState) view.View {
 	ret := view.View{
-		TriggerMode:   s.TriggerMode,
 		IsProfiling:   s.IsProfiling,
 		LogTimestamps: s.LogTimestamps,
 	}
@@ -660,6 +658,7 @@ func StateToView(s EngineState) view.View {
 			DirectoriesWatched: relWatchDirs,
 			PathsWatched:       relWatchPaths,
 			LastDeployTime:     ms.LastSuccessfulDeployTime,
+			TriggerMode:        mt.Manifest.TriggerMode,
 			BuildHistory:       buildHistory,
 			PendingBuildEdits:  pendingBuildEdits,
 			PendingBuildSince:  pendingBuildSince,

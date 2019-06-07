@@ -170,11 +170,6 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			case r == 'x':
 				h.recordInteraction("cycle_view_log_state")
 				h.currentViewState.CycleViewLogState()
-			case r == ' ': // [space] - trigger build for selected resource
-				_, selected := h.selectedResource()
-				dispatch(view.AppendToTriggerQueueAction{
-					Name: selected.Name,
-				})
 			case r == '1':
 				h.recordInteraction("tab_all_log")
 				h.currentViewState.TabState = view.TabAllLog

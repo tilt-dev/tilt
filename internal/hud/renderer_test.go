@@ -361,14 +361,14 @@ func TestPodPending(t *testing.T) {
 	vs := fakeViewState(1, view.CollapseAuto)
 
 	rtf.run("pending pod no status", 80, 20, v, vs)
-	assert.Equal(t, cPending, statusColor(v.Resources[0], model.TriggerModeAuto))
+	assert.Equal(t, cPending, statusColor(v.Resources[0]))
 
 	v.Resources[0].ResourceInfo = view.K8sResourceInfo{
 		PodCreationTime: ts,
 		PodStatus:       "Pending",
 	}
 	rtf.run("pending pod pending status", 80, 20, v, vs)
-	assert.Equal(t, cPending, statusColor(v.Resources[0], model.TriggerModeAuto))
+	assert.Equal(t, cPending, statusColor(v.Resources[0]))
 }
 
 func TestCrashingPodInlineCrashLog(t *testing.T) {
@@ -524,12 +524,12 @@ func TestPendingBuildInManualTriggerMode(t *testing.T) {
 	rtf := newRendererTestFixture(t)
 	ts := time.Now().Add(-30 * time.Second)
 	v := view.View{
-		TriggerMode: model.TriggerModeManual,
 		Resources: []view.Resource{
 			{
 				Name:              "vigoda",
 				PendingBuildSince: ts.Add(-5 * time.Second),
 				PendingBuildEdits: []string{"main.go"},
+				TriggerMode:       model.TriggerModeManual,
 				ResourceInfo:      view.K8sResourceInfo{},
 			},
 		},

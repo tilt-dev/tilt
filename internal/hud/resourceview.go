@@ -67,7 +67,7 @@ func (v *ResourceView) resourceTitle() rty.Component {
 	return rty.OneLine(l)
 }
 
-func statusColor(res view.Resource, triggerMode model.TriggerMode) tcell.Color {
+func statusColor(res view.Resource) tcell.Color {
 	if res.IsTiltfile {
 		if !res.CurrentBuild.Empty() {
 			return cPending
@@ -81,7 +81,7 @@ func statusColor(res view.Resource, triggerMode model.TriggerMode) tcell.Color {
 	if !res.CurrentBuild.Empty() && !res.CurrentBuild.Reason.IsCrashOnly() {
 		return cPending
 	} else if !res.PendingBuildSince.IsZero() && !res.PendingBuildReason.IsCrashOnly() {
-		if triggerMode == model.TriggerModeAuto {
+		if res.TriggerMode == model.TriggerModeAuto {
 			return cPending
 		} else {
 			return cLightText
@@ -116,7 +116,7 @@ func (v *ResourceView) titleTextName() rty.Component {
 		p = "▶"
 	}
 
-	color := statusColor(v.res, v.triggerMode)
+	color := statusColor(v.res)
 	sb.Text(p)
 	sb.Fg(color).Textf(" ● ")
 

@@ -71,6 +71,7 @@ type Resource struct {
 	DirectoriesWatched []string
 	PathsWatched       []string
 	LastDeployTime     time.Time
+	TriggerMode        model.TriggerMode
 
 	BuildHistory []model.BuildRecord
 	CurrentBuild model.BuildRecord
@@ -174,7 +175,6 @@ func (r Resource) IsCollapsed(rv ResourceViewState) bool {
 type View struct {
 	Log           model.Log
 	Resources     []Resource
-	TriggerMode   model.TriggerMode
 	IsProfiling   bool
 	LogTimestamps bool
 }

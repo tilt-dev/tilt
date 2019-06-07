@@ -93,7 +93,6 @@ func (u Upper) Start(
 	args []string,
 	b model.TiltBuild,
 	watch bool,
-	triggerMode model.TriggerMode,
 	fileName string,
 	useActionWriter bool,
 	sailMode model.SailMode,
@@ -123,7 +122,6 @@ func (u Upper) Start(
 		TiltfilePath:    absTfPath,
 		ConfigFiles:     configFiles,
 		InitManifests:   manifestNames,
-		TriggerMode:     triggerMode,
 		TiltBuild:       b,
 		StartTime:       startTime,
 		FinishTime:      time.Now(),
@@ -367,10 +365,6 @@ func handleDeployIDAction(ctx context.Context, state *store.EngineState, action 
 }
 
 func appendToTriggerQueue(state *store.EngineState, mn model.ManifestName) {
-	if state.TriggerMode != model.TriggerModeManual {
-		return
-	}
-
 	ms, ok := state.ManifestState(mn)
 	if !ok {
 		return
@@ -915,7 +909,6 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.TiltBuildInfo = action.TiltBuild
 	engineState.TiltStartTime = action.StartTime
 	engineState.TiltfilePath = action.TiltfilePath
-	engineState.TriggerMode = action.TriggerMode
 	engineState.ConfigFiles = action.ConfigFiles
 	engineState.InitManifests = action.InitManifests
 	engineState.SailEnabled = action.EnableSail
