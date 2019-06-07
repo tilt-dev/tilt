@@ -2571,6 +2571,26 @@ default_registry('bar.com')
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
 
+func TestPrivateRegistry(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.kCli.Registry = "localhost:32000"
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+default_registry('bar.com')
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		db(image("gcr.io/foo").withInjectedRef("localhost:32000/gcr.io_foo")),
+		deployment("foo"))
+}
+
 func TestDefaultRegistryTwoImagesOnlyDifferByTag(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -3451,6 +3471,7 @@ type fixture struct {
 	ctx context.Context
 	t   *testing.T
 	*tempdir.TempDirFixture
+	kCli *k8s.FakeK8sClient
 
 	tfl TiltfileLoader
 	an  *analytics.MemoryAnalytics
@@ -3464,7 +3485,8 @@ func newFixture(t *testing.T) *fixture {
 	f := tempdir.NewTempDirFixture(t)
 	an, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
 	dcc := dockercompose.NewDockerComposeClient(docker.Env{})
-	tfl := ProvideTiltfileLoader(ta, dcc, "fake-context")
+	kCli := k8s.NewFakeK8sClient()
+	tfl := ProvideTiltfileLoader(ta, kCli, dcc, "fake-context")
 
 	r := &fixture{
 		ctx:            ctx,
@@ -3472,6 +3494,7 @@ func newFixture(t *testing.T) *fixture {
 		TempDirFixture: f,
 		an:             an,
 		tfl:            tfl,
+		kCli:           kCli,
 	}
 	return r
 }

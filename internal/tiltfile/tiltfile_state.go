@@ -29,10 +29,11 @@ type resourceSet struct {
 
 type tiltfileState struct {
 	// set at creation
-	ctx         context.Context
-	filename    localPath
-	dcCli       dockercompose.DockerComposeClient
-	kubeContext k8s.KubeContext
+	ctx             context.Context
+	filename        localPath
+	dcCli           dockercompose.DockerComposeClient
+	kubeContext     k8s.KubeContext
+	privateRegistry container.Registry
 
 	// added to during execution
 	configFiles        []string
@@ -87,13 +88,14 @@ const (
 	k8sResourceAssemblyVersionReasonExplicit
 )
 
-func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, filename string, kubeContext k8s.KubeContext) *tiltfileState {
+func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, filename string, kubeContext k8s.KubeContext, privateRegistry container.Registry) *tiltfileState {
 	lp := localPath{path: filename}
 	s := &tiltfileState{
 		ctx:                        ctx,
 		filename:                   localPath{path: filename},
 		dcCli:                      dcCli,
 		kubeContext:                kubeContext,
+		privateRegistry:            privateRegistry,
 		buildIndex:                 newBuildIndex(),
 		k8sByName:                  make(map[string]*k8sResource),
 		k8sImageJSONPaths:          make(map[k8sObjectSelector][]k8s.JSONPath),
@@ -331,9 +333,17 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 }
 
 func (s *tiltfileState) assembleImages() error {
+	registry := s.defaultRegistryHost
+	if s.privateRegistry != "" {
+		// If we've found a private registry in the cluster at run-time,
+		// use that instead of the one in the tiltfile
+		s.logger.Infof("Auto-detected private registry from environment: %s", s.privateRegistry)
+		registry = s.privateRegistry
+	}
+
 	for _, imageBuilder := range s.buildIndex.images {
 		var err error
-		imageBuilder.deploymentRef, err = container.ReplaceRegistry(s.defaultRegistryHost, imageBuilder.configurationRef)
+		imageBuilder.deploymentRef, err = container.ReplaceRegistry(registry, imageBuilder.configurationRef)
 		if err != nil {
 			return err
 		}
