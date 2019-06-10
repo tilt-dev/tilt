@@ -1,4 +1,4 @@
-package view
+package server
 
 import "github.com/windmilleng/tilt/internal/model"
 
