@@ -15,23 +15,49 @@ import (
 const microk8sRegistryNamespace = "container-registry"
 const microk8sRegistryName = "registry"
 
-type registryAsync struct {
-	env      Env
-	core     apiv1.CoreV1Interface
-	registry container.Registry
-	once     sync.Once
+type RuntimeSource interface {
+	Runtime(ctx context.Context) container.Runtime
 }
 
-func newRegistryAsync(env Env, core apiv1.CoreV1Interface) *registryAsync {
+type NaiveRuntimeSource struct {
+	runtime container.Runtime
+}
+
+func NewNaiveRuntimeSource(r container.Runtime) NaiveRuntimeSource {
+	return NaiveRuntimeSource{runtime: r}
+}
+
+func (s NaiveRuntimeSource) Runtime(ctx context.Context) container.Runtime {
+	return s.runtime
+}
+
+type registryAsync struct {
+	env           Env
+	core          apiv1.CoreV1Interface
+	runtimeSource RuntimeSource
+	registry      container.Registry
+	once          sync.Once
+}
+
+func newRegistryAsync(env Env, core apiv1.CoreV1Interface, runtimeSource RuntimeSource) *registryAsync {
 	return &registryAsync{
-		env:  env,
-		core: core,
+		env:           env,
+		core:          core,
+		runtimeSource: runtimeSource,
 	}
 }
 
 func (r *registryAsync) Registry(ctx context.Context) container.Registry {
 	r.once.Do(func() {
+		// Right now, we only recognize the microk8s private registry.
 		if r.env != EnvMicroK8s {
+			return
+		}
+
+		// If Microk8s is using the docker runtime, we can just use the microk8s docker daemon
+		// instead of the registry.
+		runtime := r.runtimeSource.Runtime(ctx)
+		if runtime == container.RuntimeDocker {
 			return
 		}
 
