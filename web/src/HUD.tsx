@@ -14,7 +14,7 @@ import { createBrowserHistory, History, UnregisterCallback } from "history"
 import { incr, pathToTag } from "./analytics"
 import TopBar from "./TopBar"
 import "./HUD.scss"
-import { TiltBuild, ResourceView } from "./types"
+import { TiltBuild, ResourceView, TriggerMode } from "./types"
 import AlertPane, { AlertResource } from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
@@ -44,9 +44,11 @@ type Resource = {
     PodRestarts: number
     PodUpdateStartTime: string
     YAML: string
+    PodStatus: string
   }
   RuntimeStatus: string
   ShowBuildStatus: boolean
+  TriggerMode: TriggerMode
 }
 
 type HudState = {
@@ -222,12 +224,14 @@ class HUD extends Component<HudProps, HudState> {
           : ""
       let logs = ""
       let endpoints: Array<string> = []
-      let podID: string = ""
+      let podID = ""
+      let podStatus = ""
       if (view && name !== "") {
         let r = view.Resources.find(r => r.Name === name)
         logs = (r && r.CombinedLog) || ""
         endpoints = (r && r.Endpoints) || []
         podID = (r && r.PodID) || ""
+        podStatus = (r && r.ResourceInfo && r.ResourceInfo.PodStatus) || ""
       }
       return (
         <LogPane
@@ -235,6 +239,7 @@ class HUD extends Component<HudProps, HudState> {
           isExpanded={isSidebarClosed}
           endpoints={endpoints}
           podID={podID}
+          podStatus={podStatus}
         />
       )
     }
@@ -346,6 +351,7 @@ class HUD extends Component<HudProps, HudState> {
                 isExpanded={isSidebarClosed}
                 podID={""}
                 endpoints={[]}
+                podStatus={""}
               />
             )}
           />

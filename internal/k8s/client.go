@@ -140,7 +140,7 @@ func ProvideK8sClient(
 
 	core := clientset.CoreV1()
 	runtimeAsync := newRuntimeAsync(core)
-	registryAsync := newRegistryAsync(env, core)
+	registryAsync := newRegistryAsync(env, core, runtimeAsync)
 
 	di, err := dynamic.NewForConfig(restConfig)
 	if err != nil {

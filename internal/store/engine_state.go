@@ -63,7 +63,6 @@ type EngineState struct {
 	// InitManifests is the list of manifest names that we were told to init from the CLI.
 	InitManifests []model.ManifestName
 
-	TriggerMode  model.TriggerMode
 	TriggerQueue []model.ManifestName
 
 	LogTimestamps bool
@@ -85,7 +84,7 @@ type EngineState struct {
 	AnalyticsOpt           analytics.Opt // changes to this field will propagate into the TiltAnalytics subscriber + we'll record them as user choice
 	AnalyticsNudgeSurfaced bool          // this flag is set the first time we show the analytics nudge to the user.
 
-	ObjectsByK8SUIDs map[k8s.UID]UIDMapValue
+	ObjectsByK8sUIDs map[k8s.UID]UIDMapValue
 }
 
 type UIDMapValue struct {
@@ -274,7 +273,7 @@ func NewState() *EngineState {
 	ret.Log = model.Log{}
 	ret.ManifestTargets = make(map[model.ManifestName]*ManifestTarget)
 	ret.PendingConfigFileChanges = make(map[string]time.Time)
-	ret.ObjectsByK8SUIDs = make(map[k8s.UID]UIDMapValue)
+	ret.ObjectsByK8sUIDs = make(map[k8s.UID]UIDMapValue)
 	return ret
 }
 
@@ -598,7 +597,6 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {
 
 func StateToView(s EngineState) view.View {
 	ret := view.View{
-		TriggerMode:   s.TriggerMode,
 		IsProfiling:   s.IsProfiling,
 		LogTimestamps: s.LogTimestamps,
 	}
@@ -660,6 +658,7 @@ func StateToView(s EngineState) view.View {
 			DirectoriesWatched: relWatchDirs,
 			PathsWatched:       relWatchPaths,
 			LastDeployTime:     ms.LastSuccessfulDeployTime,
+			TriggerMode:        mt.Manifest.TriggerMode,
 			BuildHistory:       buildHistory,
 			PendingBuildEdits:  pendingBuildEdits,
 			PendingBuildSince:  pendingBuildSince,
@@ -716,7 +715,7 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 		return view.NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPath, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
 	} else {
 		pod := mt.State.MostRecentPod()
-		return view.K8SResourceInfo{
+		return view.K8sResourceInfo{
 			PodName:            pod.PodID.String(),
 			PodCreationTime:    pod.StartedAt,
 			PodUpdateStartTime: pod.UpdateStartTime,

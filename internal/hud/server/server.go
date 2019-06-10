@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	"github.com/gorilla/mux"
@@ -30,6 +30,10 @@ type analyticsOptPayload struct {
 	Opt string `json:"opt"`
 }
 
+type triggerPayload struct {
+	ManifestNames []string `json:"manifest_names"`
+}
+
 type HeadsUpServer struct {
 	store             *store.Store
 	router            *mux.Router
@@ -51,6 +55,7 @@ func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analyti
 	r.HandleFunc("/api/analytics", s.HandleAnalytics)
 	r.HandleFunc("/api/analytics_opt", s.HandleAnalyticsOpt)
 	r.HandleFunc("/api/sail", s.HandleSail)
+	r.HandleFunc("/api/trigger", s.HandleTrigger)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
 	r.PathPrefix("/").Handler(assetServer)
 
@@ -129,12 +134,7 @@ func (s *HeadsUpServer) HandleSail(w http.ResponseWriter, req *http.Request) {
 
 	// Request context doesn't have logger, just slap one on for now.
 	l := logger.NewFuncLogger(false, logger.DebugLvl, func(level logger.Level, b []byte) error {
-		s.store.Dispatch(store.LogAction{
-			LogEvent: store.LogEvent{
-				Timestamp: time.Now(),
-				Msg:       append([]byte{}, b...),
-			},
-		})
+		s.store.Dispatch(store.NewGlobalLogEvent(b))
 		return nil
 	})
 
@@ -145,4 +145,50 @@ func (s *HeadsUpServer) HandleSail(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+}
+
+func (s *HeadsUpServer) HandleTrigger(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		http.Error(w, "must be POST request", http.StatusBadRequest)
+		return
+	}
+
+	var payload triggerPayload
+
+	decoder := json.NewDecoder(req.Body)
+	err := decoder.Decode(&payload)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error parsing JSON payload: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	if len(payload.ManifestNames) != 1 {
+		http.Error(w, fmt.Sprintf("/api/trigger currently supports exactly one manifest name, got %d", len(payload.ManifestNames)), http.StatusBadRequest)
+		return
+	}
+
+	err = MaybeSendToTriggerQueue(s.store, payload.ManifestNames[0])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+}
+
+func MaybeSendToTriggerQueue(st store.RStore, name string) error {
+	mName := model.ManifestName(name)
+
+	state := st.RLockState()
+	m, ok := state.Manifest(mName)
+	st.RUnlockState()
+
+	if !ok {
+		return fmt.Errorf("no manifest found with name '%s'", mName)
+	}
+
+	if m.TriggerMode != model.TriggerModeManual {
+		return fmt.Errorf("can only trigger updates for manifests of TriggerModeManual")
+	}
+
+	st.Dispatch(AppendToTriggerQueueAction{Name: mName})
+	return nil
 }

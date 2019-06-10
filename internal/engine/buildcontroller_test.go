@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/hud/server"
 
 	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/watch"
@@ -159,35 +159,44 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 func TestBuildControllerManualTrigger(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	mName := model.ManifestName("foobar")
 
 	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("fe", []model.Sync{sync})
+	manifest := f.newManifest(mName.String(), []model.Sync{sync}).WithTriggerMode(model.TriggerModeManual)
 	f.Init(InitAction{
 		Manifests:       []model.Manifest{manifest},
 		WatchFiles:      true,
-		TriggerMode:     model.TriggerManual,
 		ExecuteTiltfile: true,
 	})
 
 	f.nextCall()
 	f.waitForCompletedBuildCount(1)
 
-	f.store.Dispatch(view.AppendToTriggerQueueAction{Name: "fe"})
-	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("main.go")}
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: mName})
+	f.assertNoCall("manifest has no pending changes, so shouldn't build even if we try to trigger it")
 
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("main.go")}
 	f.WaitUntil("pending change appears", func(st store.EngineState) bool {
 		return len(st.BuildStatus(manifest.ImageTargetAt(0).ID()).PendingFileChanges) > 0
 	})
+	f.assertNoCall("even tho there are pending changes, manual manifest shouldn't build w/o explicit trigger")
 
-	// We don't expect a call because the trigger happened before the file event
-	// came in.
-	f.assertNoCall()
-
-	f.store.Dispatch(view.AppendToTriggerQueueAction{Name: "fe"})
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: mName})
 	call := f.nextCall()
 	assert.Equal(t, []string{f.JoinPath("main.go")}, call.oneState().FilesChanged())
 	f.waitForCompletedBuildCount(2)
+
+	f.WaitUntil("manifest removed from queue", func(st store.EngineState) bool {
+		for _, mn := range st.TriggerQueue {
+			if mn == mName {
+				return false
+			}
+		}
+		return true
+	})
 }
+
+// Test with some manual and some auto
 
 // any manifests without image targets should be deployed before any manifests WITH image targets
 func TestBuildControllerNoBuildManifestsFirst(t *testing.T) {

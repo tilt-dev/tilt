@@ -5,6 +5,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/logger"
 
 	"github.com/stretchr/testify/assert"
@@ -29,7 +30,7 @@ func TestRegistryFound(t *testing.T) {
 	})
 
 	core := cs.CoreV1()
-	registryAsync := newRegistryAsync(EnvMicroK8s, core)
+	registryAsync := newRegistryAsync(EnvMicroK8s, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
 
 	out := &bytes.Buffer{}
 	l := logger.NewLogger(logger.InfoLvl, out)
@@ -45,7 +46,7 @@ func TestRegistryNotFound(t *testing.T) {
 	})
 
 	core := cs.CoreV1()
-	registryAsync := newRegistryAsync(EnvMicroK8s, core)
+	registryAsync := newRegistryAsync(EnvMicroK8s, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
 
 	out := &bytes.Buffer{}
 	l := logger.NewLogger(logger.InfoLvl, out)

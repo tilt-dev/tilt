@@ -28,7 +28,7 @@ func TestEventWatchManager_dispatchesEvent(t *testing.T) {
 
 	f.ewm.OnChange(f.ctx, f.store)
 	f.kClient.EmitEvent(f.ctx, evt)
-	expected := store.K8SEventAction{Event: evt}
+	expected := store.K8sEventAction{Event: evt}
 	f.assertActions(expected)
 }
 

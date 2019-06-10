@@ -68,7 +68,7 @@ func nextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 		}
 	}
 
-	if state.TriggerMode == model.TriggerManual && len(state.TriggerQueue) > 0 {
+	if len(state.TriggerQueue) > 0 {
 		mn := state.TriggerQueue[0]
 		mt, ok := state.ManifestTargets[mn]
 		if ok {
@@ -76,13 +76,16 @@ func nextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 		}
 	}
 
-	if state.TriggerMode == model.TriggerAuto {
-		for _, mt := range targets {
-			ok, newTime := mt.State.HasPendingChangesBefore(earliest)
-			if ok {
-				choice = mt
-				earliest = newTime
+	for _, mt := range targets {
+		ok, newTime := mt.State.HasPendingChangesBefore(earliest)
+		if ok {
+			if mt.Manifest.TriggerMode == model.TriggerModeManual {
+				// Don't trigger update of a manual manifest just b/c if has
+				// pending changes; must come through the TriggerQueue, above.
+				continue
 			}
+			choice = mt
+			earliest = newTime
 		}
 	}
 
@@ -193,7 +196,7 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 			store:        st,
 			manifestName: entry.name,
 		}
-		ctx = logger.CtxWithForkedOutput(ctx, actionWriter)
+		ctx := logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), actionWriter))
 
 		filesChanged := entry.buildStateSet.FilesChanged()
 		st.Dispatch(BuildStartedAction{
@@ -256,8 +259,7 @@ type BuildLogActionWriter struct {
 
 func (w BuildLogActionWriter) Write(p []byte) (n int, err error) {
 	w.store.Dispatch(BuildLogAction{
-		ManifestName: w.manifestName,
-		LogEvent:     store.NewLogEvent(append([]byte{}, p...)),
+		LogEvent: store.NewLogEvent(w.manifestName, p),
 	})
 	return len(p), nil
 }

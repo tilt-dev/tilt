@@ -1050,12 +1050,12 @@ func TestPodEvent(t *testing.T) {
 	f.podEvent(f.testPod("my-pod", "foobar", "CrashLoopBackOff", testContainer, time.Now()))
 
 	f.WaitUntilHUDResource("hud update", "foobar", func(res view.Resource) bool {
-		return res.K8SInfo().PodName == "my-pod"
+		return res.K8sInfo().PodName == "my-pod"
 	})
 
 	rv := f.hudResource("foobar")
-	assert.Equal(t, "my-pod", rv.K8SInfo().PodName)
-	assert.Equal(t, "CrashLoopBackOff", rv.K8SInfo().PodStatus)
+	assert.Equal(t, "my-pod", rv.K8sInfo().PodName)
+	assert.Equal(t, "CrashLoopBackOff", rv.K8sInfo().PodStatus)
 
 	assert.NoError(t, f.Stop())
 	f.assertAllBuildsConsumed()
@@ -1107,9 +1107,8 @@ func TestPodEventOrdering(t *testing.T) {
 			}
 
 			f.upper.store.Dispatch(PodLogAction{
-				ManifestName: "fe",
-				PodID:        k8s.PodIDFromPod(podBNow),
-				LogEvent:     store.NewLogEvent([]byte("pod b log\n")),
+				PodID:    k8s.PodIDFromPod(podBNow),
+				LogEvent: store.NewLogEvent("fe", []byte("pod b log\n")),
 			})
 
 			f.WaitUntilManifestState("pod log seen", "fe", func(ms store.ManifestState) bool {
@@ -1371,17 +1370,17 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 	firstCreationTime := time.Now()
 	f.podEvent(f.testPod("my-pod", "foobar", "CrashLoopBackOff", testContainer, firstCreationTime))
 	f.WaitUntilHUDResource("hud update crash", "foobar", func(res view.Resource) bool {
-		return res.K8SInfo().PodStatus == "CrashLoopBackOff"
+		return res.K8sInfo().PodStatus == "CrashLoopBackOff"
 	})
 
 	f.podEvent(f.testPod("my-new-pod", "foobar", "Running", testContainer, firstCreationTime.Add(time.Minute*2)))
 	f.WaitUntilHUDResource("hud update running", "foobar", func(res view.Resource) bool {
-		return res.K8SInfo().PodStatus == "Running"
+		return res.K8sInfo().PodStatus == "Running"
 	})
 
 	rv := f.hudResource("foobar")
-	assert.Equal(t, "my-new-pod", rv.K8SInfo().PodName)
-	assert.Equal(t, "Running", rv.K8SInfo().PodStatus)
+	assert.Equal(t, "my-new-pod", rv.K8sInfo().PodName)
+	assert.Equal(t, "Running", rv.K8sInfo().PodStatus)
 
 	assert.NoError(t, f.Stop())
 	f.assertAllBuildsConsumed()
@@ -1401,18 +1400,18 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 	f.podEvent(f.testPod("my-pod", "foobar", "CrashLoopBackOff", testContainer, creationTime))
 
 	f.WaitUntilHUDResource("pod crashes", "foobar", func(res view.Resource) bool {
-		return res.K8SInfo().PodStatus == "CrashLoopBackOff"
+		return res.K8sInfo().PodStatus == "CrashLoopBackOff"
 	})
 
 	f.podEvent(f.testPod("my-pod", "foobar", "Running", testContainer, creationTime))
 
 	f.WaitUntilHUDResource("pod comes back", "foobar", func(res view.Resource) bool {
-		return res.K8SInfo().PodStatus == "Running"
+		return res.K8sInfo().PodStatus == "Running"
 	})
 
 	rv := f.hudResource("foobar")
-	assert.Equal(t, "my-pod", rv.K8SInfo().PodName)
-	assert.Equal(t, "Running", rv.K8SInfo().PodStatus)
+	assert.Equal(t, "my-pod", rv.K8sInfo().PodName)
+	assert.Equal(t, "Running", rv.K8sInfo().PodStatus)
 
 	err := f.Stop()
 	if err != nil {
@@ -1435,7 +1434,7 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 	creationTime := time.Now()
 	f.podEvent(f.testPod("my-new-pod", "foobar", "CrashLoopBackOff", testContainer, creationTime))
 	f.WaitUntilHUDResource("hud update", "foobar", func(res view.Resource) bool {
-		return res.K8SInfo().PodStatus == "CrashLoopBackOff"
+		return res.K8sInfo().PodStatus == "CrashLoopBackOff"
 	})
 
 	f.podEvent(f.testPod("my-pod", "foobar", "Running", testContainer, creationTime.Add(time.Minute*-1)))
@@ -1445,8 +1444,8 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 	f.assertAllBuildsConsumed()
 
 	rv := f.hudResource("foobar")
-	assert.Equal(t, "my-new-pod", rv.K8SInfo().PodName)
-	assert.Equal(t, "CrashLoopBackOff", rv.K8SInfo().PodStatus)
+	assert.Equal(t, "my-new-pod", rv.K8sInfo().PodName)
+	assert.Equal(t, "CrashLoopBackOff", rv.K8sInfo().PodStatus)
 }
 
 func TestPodContainerStatus(t *testing.T) {
@@ -1806,7 +1805,7 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 	})
 
 	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
-		_, ok := st.ObjectsByK8SUIDs[k8s.UID(entityUID)]
+		_, ok := st.ObjectsByK8sUIDs[k8s.UID(entityUID)]
 		return ok
 	})
 
@@ -1828,7 +1827,9 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 		return strings.Contains(ms.CombinedLog.String(), "something has happened zomg")
 	})
 
-	assert.Contains(t, f.log.String(), "something has happened zomg", "event message not in global log")
+	f.withState(func(st store.EngineState) {
+		assert.Contains(t, st.Log.String(), "something has happened zomg", "event message not in global log")
+	})
 
 	if assert.Len(t, warnEvts, 1, "expect ms.K8sWarnEvents to contain 1 event") {
 		// Make sure we recorded the event on the manifest state
@@ -1889,7 +1890,7 @@ func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
 	})
 
 	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
-		_, ok := st.ObjectsByK8SUIDs[k8s.UID(entityUID)]
+		_, ok := st.ObjectsByK8sUIDs[k8s.UID(entityUID)]
 		return ok
 	})
 
@@ -1937,7 +1938,7 @@ func TestK8sEventLogTimestamp(t *testing.T) {
 	})
 
 	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
-		_, ok := st.ObjectsByK8SUIDs[k8s.UID(entityUID)]
+		_, ok := st.ObjectsByK8sUIDs[k8s.UID(entityUID)]
 		return ok
 	})
 
@@ -1991,7 +1992,7 @@ func TestUIDMapDeleteUID(t *testing.T) {
 	})
 
 	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
-		_, ok := st.ObjectsByK8SUIDs[k8s.UID(entityUID)]
+		_, ok := st.ObjectsByK8sUIDs[k8s.UID(entityUID)]
 		return ok
 	})
 
@@ -2001,7 +2002,7 @@ func TestUIDMapDeleteUID(t *testing.T) {
 	})
 
 	f.WaitUntil("entry for UID removed from map", func(st store.EngineState) bool {
-		_, ok := st.ObjectsByK8SUIDs[k8s.UID(entityUID)]
+		_, ok := st.ObjectsByK8sUIDs[k8s.UID(entityUID)]
 		return !ok
 	})
 	err := f.Stop()
@@ -2195,7 +2196,9 @@ func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 
 	// recorded in global log
-	assert.Contains(t, f.LogLines(), expected)
+	f.withState(func(st store.EngineState) {
+		assert.Contains(t, st.Log.String(), expected)
+	})
 
 	// recorded on manifest state
 	f.withManifestState(m.ManifestName(), func(st store.ManifestState) {
@@ -2338,7 +2341,7 @@ func TestDockerComposeBuildCompletedDoesntSetStatusIfNotSuccessful(t *testing.T)
 func TestEmptyTiltfile(t *testing.T) {
 	f := newTestFixture(t)
 	f.WriteFile("Tiltfile", "")
-	go f.upper.Start(f.ctx, []string{}, model.TiltBuild{}, false, model.TriggerAuto, f.JoinPath("Tiltfile"), true, model.SailModeDisabled, analytics.OptIn)
+	go f.upper.Start(f.ctx, []string{}, model.TiltBuild{}, false, f.JoinPath("Tiltfile"), true, model.SailModeDisabled, analytics.OptIn)
 	f.WaitUntil("build is set", func(st store.EngineState) bool {
 		return !st.LastTiltfileBuild.Empty()
 	})
@@ -2618,7 +2621,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	realDcc := dockercompose.NewDockerComposeClient(docker.Env{})
 
-	tfl := tiltfile.ProvideTiltfileLoader(ta, realDcc, "fake-context")
+	tfl := tiltfile.ProvideTiltfileLoader(ta, k8s, realDcc, "fake-context")
 	cc := NewConfigsController(tfl)
 	dcw := NewDockerComposeEventWatcher(fakeDcc)
 	dclm := NewDockerComposeLogManager(fakeDcc)
@@ -2906,9 +2909,8 @@ func (f *testFixture) startPod(manifestName model.ManifestName) {
 
 func (f *testFixture) podLog(manifestName model.ManifestName, s string) {
 	f.upper.store.Dispatch(PodLogAction{
-		ManifestName: manifestName,
-		PodID:        k8s.PodID(f.pod.Name),
-		LogEvent:     store.NewLogEvent([]byte(s + "\n")),
+		PodID:    k8s.PodID(f.pod.Name),
+		LogEvent: store.NewLogEvent(manifestName, []byte(s+"\n")),
 	})
 
 	f.WaitUntilManifestState("pod log seen", manifestName, func(ms store.ManifestState) bool {

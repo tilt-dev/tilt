@@ -2004,7 +2004,7 @@ type k8sKindTest struct {
 	expectedResourceName string
 }
 
-func TestK8SKind(t *testing.T) {
+func TestK8sKind(t *testing.T) {
 	tests := []k8sKindTest{
 		{name: "match kind", args: "'Environment', image_json_path='{.spec.runtime.image}'", expectMatch: true},
 		{name: "don't match kind", args: "'fdas', image_json_path='{.spec.runtime.image}'", expectMatch: false},
@@ -2056,7 +2056,7 @@ docker_build('test/mycrd-env', 'env')
 	}
 }
 
-func TestK8SKindImageJSONPathPositional(t *testing.T) {
+func TestK8sKindImageJSONPathPositional(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 	f.setupCRD()
@@ -2176,7 +2176,7 @@ docker_build('gcr.io/foo-fetcher', 'foo-fetcher')
 
 }
 
-func TestK8SImageJSONPathArgs(t *testing.T) {
+func TestK8sImageJSONPathArgs(t *testing.T) {
 	tests := []struct {
 		name          string
 		args          string
@@ -2342,7 +2342,7 @@ docker_build('web/api', '', dockerfile='')
 	f.loadErrString("error reading dockerfile")
 }
 
-func TestK8SYamlEmptyArg(t *testing.T) {
+func TestK8sYamlEmptyArg(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 	f.file("Tiltfile", `
@@ -2571,6 +2571,26 @@ default_registry('bar.com')
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
 
+func TestPrivateRegistry(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.kCli.Registry = "localhost:32000"
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+default_registry('bar.com')
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		db(image("gcr.io/foo").withInjectedRef("localhost:32000/gcr.io_foo")),
+		deployment("foo"))
+}
+
 func TestDefaultRegistryTwoImagesOnlyDifferByTag(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -2680,7 +2700,7 @@ k8s_yaml('foo.yaml')
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "hello")
 }
 
-func TestK8SResourceAssemblyVersionAfterYAML(t *testing.T) {
+func TestK8sResourceAssemblyVersionAfterYAML(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2694,7 +2714,7 @@ k8s_resource_assembly_version(2)
 	f.loadErrString("k8s_resource_assembly_version can only be called before introducing any k8s resources")
 }
 
-func TestK8SResourceAssemblyK8SResourceYAMLNamedArg(t *testing.T) {
+func TestK8sResourceAssemblyK8sResourceYAMLNamedArg(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2707,7 +2727,7 @@ k8s_resource('foo', yaml='bar')
 	f.loadErrString("kwarg \"yaml\"", "deprecated", "https://docs.tilt.dev/resource_assembly_migration.html")
 }
 
-func TestK8SResourceAssemblyK8SResourceImage(t *testing.T) {
+func TestK8sResourceAssemblyK8sResourceImage(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2720,7 +2740,7 @@ k8s_resource('foo', image='bar')
 	f.loadErrString("kwarg \"image\"", "deprecated", "https://docs.tilt.dev/resource_assembly_migration.html")
 }
 
-func TestK8SResourceAssemblyK8SResourceYAMLPositionalArg(t *testing.T) {
+func TestK8sResourceAssemblyK8sResourceYAMLPositionalArg(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2733,7 +2753,7 @@ k8s_resource('foo', 'foo.yaml')
 	f.loadErrString("second arg", "looks like a yaml file name", "deprecated", "https://docs.tilt.dev/resource_assembly_migration.html")
 }
 
-func TestK8SResourceAssemblyK8SResourceNameKeywordArg(t *testing.T) {
+func TestK8sResourceAssemblyK8sResourceNameKeywordArg(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2791,7 +2811,7 @@ k8s_yaml(['foo.yaml', 'bar.yaml'])
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "bar.yaml", "foo/Dockerfile", "foo/.dockerignore")
 }
 
-func TestK8SResourceNoMatch(t *testing.T) {
+func TestK8sResourceNoMatch(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2805,7 +2825,7 @@ k8s_resource('bar', new_name='baz')
 	f.loadErrString("specified unknown resource 'bar'. known resources: foo", "https://docs.tilt.dev/resource_assembly_migration.html")
 }
 
-func TestK8SResourceNewName(t *testing.T) {
+func TestK8sResourceNewName(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2821,7 +2841,7 @@ k8s_resource('foo', new_name='bar')
 	f.assertNextManifest("bar", deployment("foo"))
 }
 
-func TestK8SResourceNewNameConflict(t *testing.T) {
+func TestK8sResourceNewNameConflict(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2835,7 +2855,7 @@ k8s_resource('foo', new_name='bar')
 	f.loadErrString("'foo' to 'bar'", "already a resource with that name")
 }
 
-func TestK8SResourceRenameConflictingNames(t *testing.T) {
+func TestK8sResourceRenameConflictingNames(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2857,7 +2877,7 @@ k8s_resource('foo:deployment:ns2', new_name='foo')
 	f.assertNextManifest("foo", db(image("gcr.io/foo2")))
 }
 
-func TestMultipleK8SResourceOptionsForOneResource(t *testing.T) {
+func TestMultipleK8sResourceOptionsForOneResource(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2872,7 +2892,7 @@ k8s_resource('foo', port_forwards=8000)
 	f.loadErrString("k8s_resource already called for foo")
 }
 
-func TestK8SResourceEmptyWorkloadSpecifier(t *testing.T) {
+func TestK8sResourceEmptyWorkloadSpecifier(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -3061,20 +3081,20 @@ docker_build('gcr.io/some-project-162817/sancho-sidecar', './sidecar')
 	f.load()
 }
 
-func TestUpdateModeK8S(t *testing.T) {
+func TestTriggerModeK8S(t *testing.T) {
 	for _, testCase := range []struct {
-		name               string
-		globalSetting      updateMode
-		k8sResourceSetting updateMode
-		expectedUpdateMode model.UpdateMode
+		name                string
+		globalSetting       triggerMode
+		k8sResourceSetting  triggerMode
+		expectedTriggerMode model.TriggerMode
 	}{
-		{"default", UpdateModeUnset, UpdateModeUnset, model.UpdateModeAuto},
-		{"explicit global auto", UpdateModeAuto, UpdateModeUnset, model.UpdateModeAuto},
-		{"explicit global manual", UpdateModeManual, UpdateModeUnset, model.UpdateModeManual},
-		{"kr auto", UpdateModeUnset, UpdateModeUnset, model.UpdateModeAuto},
-		{"kr manual", UpdateModeUnset, UpdateModeManual, model.UpdateModeManual},
-		{"kr override auto", UpdateModeManual, UpdateModeAuto, model.UpdateModeAuto},
-		{"kr override manual", UpdateModeAuto, UpdateModeManual, model.UpdateModeManual},
+		{"default", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
+		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, model.TriggerModeAuto},
+		{"explicit global manual", TriggerModeManual, TriggerModeUnset, model.TriggerModeManual},
+		{"kr auto", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
+		{"kr manual", TriggerModeUnset, TriggerModeManual, model.TriggerModeManual},
+		{"kr override auto", TriggerModeManual, TriggerModeAuto, model.TriggerModeAuto},
+		{"kr override manual", TriggerModeAuto, TriggerModeManual, model.TriggerModeManual},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			f := newFixture(t)
@@ -3082,24 +3102,24 @@ func TestUpdateModeK8S(t *testing.T) {
 
 			f.setupFoo()
 
-			var globalUpdateModeDirective string
+			var globalTriggerModeDirective string
 			switch testCase.globalSetting {
-			case UpdateModeUnset:
-				globalUpdateModeDirective = ""
-			case UpdateModeManual:
-				globalUpdateModeDirective = "update_mode(UPDATE_MODE_MANUAL)"
-			case UpdateModeAuto:
-				globalUpdateModeDirective = "update_mode(UPDATE_MODE_AUTO)"
+			case TriggerModeUnset:
+				globalTriggerModeDirective = ""
+			case TriggerModeManual:
+				globalTriggerModeDirective = "trigger_mode(TRIGGER_MODE_MANUAL)"
+			case TriggerModeAuto:
+				globalTriggerModeDirective = "trigger_mode(TRIGGER_MODE_AUTO)"
 			}
 
 			var k8sResourceDirective string
 			switch testCase.k8sResourceSetting {
-			case UpdateModeUnset:
+			case TriggerModeUnset:
 				k8sResourceDirective = ""
-			case UpdateModeManual:
-				k8sResourceDirective = "k8s_resource('foo', update_mode=UPDATE_MODE_MANUAL)"
-			case UpdateModeAuto:
-				k8sResourceDirective = "k8s_resource('foo', update_mode=UPDATE_MODE_AUTO)"
+			case TriggerModeManual:
+				k8sResourceDirective = "k8s_resource('foo', trigger_mode=TRIGGER_MODE_MANUAL)"
+			case TriggerModeAuto:
+				k8sResourceDirective = "k8s_resource('foo', trigger_mode=TRIGGER_MODE_AUTO)"
 			}
 
 			f.file("Tiltfile", fmt.Sprintf(`
@@ -3107,30 +3127,30 @@ func TestUpdateModeK8S(t *testing.T) {
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 %s
-`, globalUpdateModeDirective, k8sResourceDirective))
+`, globalTriggerModeDirective, k8sResourceDirective))
 
 			f.load()
 
 			f.assertNumManifests(1)
-			f.assertNextManifest("foo", testCase.expectedUpdateMode)
+			f.assertNextManifest("foo", testCase.expectedTriggerMode)
 		})
 	}
 }
 
-func TestUpdateModeDC(t *testing.T) {
+func TestTriggerModeDC(t *testing.T) {
 	for _, testCase := range []struct {
-		name               string
-		globalSetting      updateMode
-		dcResourceSetting  updateMode
-		expectedUpdateMode model.UpdateMode
+		name                string
+		globalSetting       triggerMode
+		dcResourceSetting   triggerMode
+		expectedTriggerMode model.TriggerMode
 	}{
-		{"default", UpdateModeUnset, UpdateModeUnset, model.UpdateModeAuto},
-		{"explicit global auto", UpdateModeAuto, UpdateModeUnset, model.UpdateModeAuto},
-		{"explicit global manual", UpdateModeManual, UpdateModeUnset, model.UpdateModeManual},
-		{"dc auto", UpdateModeUnset, UpdateModeUnset, model.UpdateModeAuto},
-		{"dc manual", UpdateModeUnset, UpdateModeManual, model.UpdateModeManual},
-		{"dc override auto", UpdateModeManual, UpdateModeAuto, model.UpdateModeAuto},
-		{"dc override manual", UpdateModeAuto, UpdateModeManual, model.UpdateModeManual},
+		{"default", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
+		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, model.TriggerModeAuto},
+		{"explicit global manual", TriggerModeManual, TriggerModeUnset, model.TriggerModeManual},
+		{"dc auto", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
+		{"dc manual", TriggerModeUnset, TriggerModeManual, model.TriggerModeManual},
+		{"dc override auto", TriggerModeManual, TriggerModeAuto, model.TriggerModeAuto},
+		{"dc override manual", TriggerModeAuto, TriggerModeManual, model.TriggerModeManual},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			f := newFixture(t)
@@ -3139,59 +3159,59 @@ func TestUpdateModeDC(t *testing.T) {
 			f.dockerfile("foo/Dockerfile")
 			f.file("docker-compose.yml", simpleConfig)
 
-			var globalUpdateModeDirective string
+			var globalTriggerModeDirective string
 			switch testCase.globalSetting {
-			case UpdateModeUnset:
-				globalUpdateModeDirective = ""
-			case UpdateModeManual:
-				globalUpdateModeDirective = "update_mode(UPDATE_MODE_MANUAL)"
-			case UpdateModeAuto:
-				globalUpdateModeDirective = "update_mode(UPDATE_MODE_AUTO)"
+			case TriggerModeUnset:
+				globalTriggerModeDirective = ""
+			case TriggerModeManual:
+				globalTriggerModeDirective = "trigger_mode(TRIGGER_MODE_MANUAL)"
+			case TriggerModeAuto:
+				globalTriggerModeDirective = "trigger_mode(TRIGGER_MODE_AUTO)"
 			}
 
 			var dcResourceDirective string
 			switch testCase.dcResourceSetting {
-			case UpdateModeUnset:
+			case TriggerModeUnset:
 				dcResourceDirective = ""
-			case UpdateModeManual:
-				dcResourceDirective = "dc_resource('foo', 'gcr.io/foo', update_mode=UPDATE_MODE_MANUAL)"
-			case UpdateModeAuto:
-				dcResourceDirective = "dc_resource('foo', 'gcr.io/foo', update_mode=UPDATE_MODE_AUTO)"
+			case TriggerModeManual:
+				dcResourceDirective = "dc_resource('foo', 'gcr.io/foo', trigger_mode=TRIGGER_MODE_MANUAL)"
+			case TriggerModeAuto:
+				dcResourceDirective = "dc_resource('foo', 'gcr.io/foo', trigger_mode=TRIGGER_MODE_AUTO)"
 			}
 
 			f.file("Tiltfile", fmt.Sprintf(`
 %s
 docker_compose('docker-compose.yml')
 %s
-`, globalUpdateModeDirective, dcResourceDirective))
+`, globalTriggerModeDirective, dcResourceDirective))
 
 			f.load()
 
 			f.assertNumManifests(1)
-			f.assertNextManifest("foo", testCase.expectedUpdateMode)
+			f.assertNextManifest("foo", testCase.expectedTriggerMode)
 		})
 	}
 }
 
-func TestUpdateModeInt(t *testing.T) {
+func TestTriggerModeInt(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
 	f.file("Tiltfile", `
-update_mode(1)
+trigger_mode(1)
 `)
-	f.loadErrString("got int, want UpdateMode")
+	f.loadErrString("got int, want TriggerMode")
 }
 
-func TestMultipleUpdateMode(t *testing.T) {
+func TestMultipleTriggerMode(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
 	f.file("Tiltfile", `
-update_mode(UPDATE_MODE_MANUAL)
-update_mode(UPDATE_MODE_MANUAL)
+trigger_mode(TRIGGER_MODE_MANUAL)
+trigger_mode(TRIGGER_MODE_MANUAL)
 `)
-	f.loadErrString("update_mode can only be called once")
+	f.loadErrString("trigger_mode can only be called once")
 }
 
 func TestHelmSkipsTests(t *testing.T) {
@@ -3451,6 +3471,7 @@ type fixture struct {
 	ctx context.Context
 	t   *testing.T
 	*tempdir.TempDirFixture
+	kCli *k8s.FakeK8sClient
 
 	tfl TiltfileLoader
 	an  *analytics.MemoryAnalytics
@@ -3464,7 +3485,8 @@ func newFixture(t *testing.T) *fixture {
 	f := tempdir.NewTempDirFixture(t)
 	an, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
 	dcc := dockercompose.NewDockerComposeClient(docker.Env{})
-	tfl := ProvideTiltfileLoader(ta, dcc, "fake-context")
+	kCli := k8s.NewFakeK8sClient()
+	tfl := ProvideTiltfileLoader(ta, kCli, dcc, "fake-context")
 
 	r := &fixture{
 		ctx:            ctx,
@@ -3472,6 +3494,7 @@ func newFixture(t *testing.T) *fixture {
 		TempDirFixture: f,
 		an:             an,
 		tfl:            tfl,
+		kCli:           kCli,
 	}
 	return r
 }
@@ -3884,8 +3907,8 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 
 		case []model.PortForward:
 			assert.Equal(f.t, opt, m.K8sTarget().PortForwards)
-		case model.UpdateMode:
-			assert.Equal(f.t, opt, m.UpdateMode)
+		case model.TriggerMode:
+			assert.Equal(f.t, opt, m.TriggerMode)
 		default:
 			f.t.Fatalf("unexpected arg to assertNextManifest: %T %v", opt, opt)
 		}

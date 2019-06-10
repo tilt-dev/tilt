@@ -179,7 +179,8 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 	// teardown. it's ok if we get a file event twice.
 	newWatches := make(map[model.TargetID]targetNotifyCancel)
 	for _, target := range setup {
-		watcher, err := w.fsWatcherMaker()
+		logger := store.NewLogActionLogger(ctx, st.Dispatch)
+		watcher, err := w.fsWatcherMaker(logger)
 		if err != nil {
 			st.Dispatch(NewErrorAction(err))
 			continue

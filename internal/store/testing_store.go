@@ -54,12 +54,31 @@ func WaitForAction(t testing.TB, typ reflect.Type, getActions func() []Action) A
 			if reflect.TypeOf(a) == typ {
 				return a
 			} else if la, ok := a.(LogAction); ok {
-				fmt.Println(string(la.LogEvent.Message()))
+				fmt.Println(string(la.Message()))
 			}
 		}
 	}
 	t.Fatalf("timed out waiting for action of type %s. Saw the following actions while waiting: %+v",
 		typ.Name(),
 		getActions())
+	return nil
+}
+
+// for use by tests (with a real channel-based store, NOT a TestingStore). Assert that
+// we don't see an action of the given type
+func AssertNoActionOfType(t testing.TB, typ reflect.Type, getActions func() []Action) Action {
+	start := time.Now()
+	timeout := 150 * time.Millisecond
+
+	for time.Since(start) < timeout {
+		actions := getActions()
+		for _, a := range actions {
+			if reflect.TypeOf(a) == typ {
+				t.Fatalf("Found action of type %s where none was expected: %+v", typ.Name(), a)
+			} else if la, ok := a.(LogAction); ok {
+				fmt.Println(string(la.Message()))
+			}
+		}
+	}
 	return nil
 }

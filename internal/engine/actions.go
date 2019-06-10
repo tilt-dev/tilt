@@ -41,15 +41,13 @@ func NewServiceChangeAction(service *v1.Service, url *url.URL) ServiceChangeActi
 
 type BuildLogAction struct {
 	store.LogEvent
-	ManifestName model.ManifestName
 }
 
 func (BuildLogAction) Action() {}
 
 type PodLogAction struct {
 	store.LogEvent
-	ManifestName model.ManifestName
-	PodID        k8s.PodID
+	PodID k8s.PodID
 }
 
 func (PodLogAction) Action() {}
@@ -99,7 +97,6 @@ type InitAction struct {
 	TiltfilePath  string
 	ConfigFiles   []string
 	InitManifests []model.ManifestName
-	TriggerMode   model.TriggerMode
 
 	TiltBuild  model.TiltBuild
 	StartTime  time.Time
@@ -171,7 +168,6 @@ func (DockerComposeEventAction) Action() {}
 
 type DockerComposeLogAction struct {
 	store.LogEvent
-	ManifestName model.ManifestName
 }
 
 func (DockerComposeLogAction) Action() {}

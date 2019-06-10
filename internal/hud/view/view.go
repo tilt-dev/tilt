@@ -40,7 +40,7 @@ func (DCResourceInfo) resourceInfoView()            {}
 func (dcInfo DCResourceInfo) RuntimeLog() model.Log { return dcInfo.Log }
 func (dcInfo DCResourceInfo) Status() string        { return string(dcInfo.ContainerStatus) }
 
-type K8SResourceInfo struct {
+type K8sResourceInfo struct {
 	PodName            string
 	PodCreationTime    time.Time
 	PodUpdateStartTime time.Time
@@ -50,11 +50,11 @@ type K8SResourceInfo struct {
 	YAML               string
 }
 
-var _ ResourceInfoView = K8SResourceInfo{}
+var _ ResourceInfoView = K8sResourceInfo{}
 
-func (K8SResourceInfo) resourceInfoView()             {}
-func (k8sInfo K8SResourceInfo) RuntimeLog() model.Log { return k8sInfo.PodLog }
-func (k8sInfo K8SResourceInfo) Status() string        { return k8sInfo.PodStatus }
+func (K8sResourceInfo) resourceInfoView()             {}
+func (k8sInfo K8sResourceInfo) RuntimeLog() model.Log { return k8sInfo.PodLog }
+func (k8sInfo K8sResourceInfo) Status() string        { return k8sInfo.PodStatus }
 
 type YAMLResourceInfo struct {
 	K8sResources []string
@@ -71,6 +71,7 @@ type Resource struct {
 	DirectoriesWatched []string
 	PathsWatched       []string
 	LastDeployTime     time.Time
+	TriggerMode        model.TriggerMode
 
 	BuildHistory []model.BuildRecord
 	CurrentBuild model.BuildRecord
@@ -109,13 +110,13 @@ func (r Resource) IsDC() bool {
 	return ok
 }
 
-func (r Resource) K8SInfo() K8SResourceInfo {
-	ret, _ := r.ResourceInfo.(K8SResourceInfo)
+func (r Resource) K8sInfo() K8sResourceInfo {
+	ret, _ := r.ResourceInfo.(K8sResourceInfo)
 	return ret
 }
 
-func (r Resource) IsK8S() bool {
-	_, ok := r.ResourceInfo.(K8SResourceInfo)
+func (r Resource) IsK8s() bool {
+	_, ok := r.ResourceInfo.(K8sResourceInfo)
 	return ok
 }
 
@@ -138,7 +139,7 @@ func (r Resource) LastBuild() model.BuildRecord {
 
 func (r Resource) DefaultCollapse() bool {
 	autoExpand := false
-	if k8sInfo, ok := r.ResourceInfo.(K8SResourceInfo); ok {
+	if k8sInfo, ok := r.ResourceInfo.(K8sResourceInfo); ok {
 		autoExpand = k8sInfo.PodRestarts > 0 || k8sInfo.PodStatus == "CrashLoopBackoff" || k8sInfo.PodStatus == "Error"
 	}
 
@@ -174,7 +175,6 @@ func (r Resource) IsCollapsed(rv ResourceViewState) bool {
 type View struct {
 	Log           model.Log
 	Resources     []Resource
-	TriggerMode   model.TriggerMode
 	IsProfiling   bool
 	LogTimestamps bool
 }

@@ -85,6 +85,7 @@ func StateToWebView(s store.EngineState) View {
 			ShowBuildStatus:    len(mt.Manifest.ImageTargets) > 0 || mt.Manifest.IsDC(),
 			CombinedLog:        ms.CombinedLog,
 			CrashLog:           ms.CrashLog,
+			TriggerMode:        mt.Manifest.TriggerMode,
 		}
 
 		r.RuntimeStatus = runtimeStatus(r.ResourceInfo)
@@ -138,7 +139,7 @@ func resourceInfoView(mt *store.ManifestTarget) ResourceInfoView {
 		return NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPath, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
 	} else {
 		pod := mt.State.MostRecentPod()
-		return K8SResourceInfo{
+		return K8sResourceInfo{
 			PodName:            pod.PodID.String(),
 			PodCreationTime:    pod.StartedAt,
 			PodUpdateStartTime: pod.UpdateStartTime,

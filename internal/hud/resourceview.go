@@ -67,7 +67,7 @@ func (v *ResourceView) resourceTitle() rty.Component {
 	return rty.OneLine(l)
 }
 
-func statusColor(res view.Resource, triggerMode model.TriggerMode) tcell.Color {
+func statusColor(res view.Resource) tcell.Color {
 	if res.IsTiltfile {
 		if !res.CurrentBuild.Empty() {
 			return cPending
@@ -81,7 +81,7 @@ func statusColor(res view.Resource, triggerMode model.TriggerMode) tcell.Color {
 	if !res.CurrentBuild.Empty() && !res.CurrentBuild.Reason.IsCrashOnly() {
 		return cPending
 	} else if !res.PendingBuildSince.IsZero() && !res.PendingBuildReason.IsCrashOnly() {
-		if triggerMode == model.TriggerAuto {
+		if res.TriggerMode == model.TriggerModeAuto {
 			return cPending
 		} else {
 			return cLightText
@@ -116,7 +116,7 @@ func (v *ResourceView) titleTextName() rty.Component {
 		p = "▶"
 	}
 
-	color := statusColor(v.res, v.triggerMode)
+	color := statusColor(v.res)
 	sb.Text(p)
 	sb.Fg(color).Textf(" ● ")
 
@@ -135,14 +135,14 @@ func (v *ResourceView) titleText() rty.Component {
 	switch i := v.res.ResourceInfo.(type) {
 	case view.DCResourceInfo:
 		return titleTextDC(i)
-	case view.K8SResourceInfo:
+	case view.K8sResourceInfo:
 		return titleTextK8s(i)
 	default:
 		return nil
 	}
 }
 
-func titleTextK8s(k8sInfo view.K8SResourceInfo) rty.Component {
+func titleTextK8s(k8sInfo view.K8sResourceInfo) rty.Component {
 	status := k8sInfo.PodStatus
 	if status == "" {
 		status = "Pending"
@@ -185,7 +185,7 @@ func (v *ResourceView) resourceExpanded() rty.Component {
 	switch v.res.ResourceInfo.(type) {
 	case view.DCResourceInfo:
 		return v.resourceExpandedDC()
-	case view.K8SResourceInfo:
+	case view.K8sResourceInfo:
 		return v.resourceExpandedK8s()
 	case view.YAMLResourceInfo:
 		return v.resourceExpandedYAML()
@@ -245,14 +245,14 @@ func (v *ResourceView) endpointsNeedSecondLine() bool {
 	if len(v.res.Endpoints) > 1 {
 		return true
 	}
-	if v.res.IsK8S() && v.res.K8SInfo().PodRestarts > 0 && len(v.res.Endpoints) == 1 {
+	if v.res.IsK8s() && v.res.K8sInfo().PodRestarts > 0 && len(v.res.Endpoints) == 1 {
 		return true
 	}
 	return false
 }
 
 func (v *ResourceView) resourceExpandedK8s() rty.Component {
-	k8sInfo := v.res.K8SInfo()
+	k8sInfo := v.res.K8sInfo()
 	if k8sInfo.PodName == "" {
 		return rty.EmptyLayout
 	}
@@ -277,14 +277,14 @@ func (v *ResourceView) resourceExpandedK8s() rty.Component {
 	return rty.OneLine(l)
 }
 
-func resourceTextPodName(k8sInfo view.K8SResourceInfo) rty.Component {
+func resourceTextPodName(k8sInfo view.K8sResourceInfo) rty.Component {
 	sb := rty.NewStringBuilder()
 	sb.Fg(cLightText).Text("K8S POD: ")
 	sb.Fg(tcell.ColorDefault).Text(k8sInfo.PodName)
 	return sb.Build()
 }
 
-func resourceTextPodRestarts(k8sInfo view.K8SResourceInfo) rty.Component {
+func resourceTextPodRestarts(k8sInfo view.K8sResourceInfo) rty.Component {
 	s := "restarts"
 	if k8sInfo.PodRestarts == 1 {
 		s = "restart"

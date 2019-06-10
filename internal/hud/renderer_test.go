@@ -30,7 +30,7 @@ func TestRender(t *testing.T) {
 			{
 				Name:               "foo",
 				DirectoriesWatched: []string{"bar"},
-				ResourceInfo:       view.K8SResourceInfo{},
+				ResourceInfo:       view.K8sResourceInfo{},
 			},
 		},
 	}
@@ -48,7 +48,7 @@ func TestRender(t *testing.T) {
 					Error:      fmt.Errorf("oh no the build failed"),
 					Log:        model.NewLog("1\n2\n3\nthe compiler did not understand!\n5\n6\n7\n8\n"),
 				}},
-				ResourceInfo: view.K8SResourceInfo{},
+				ResourceInfo: view.K8sResourceInfo{},
 			},
 		},
 	}
@@ -74,7 +74,7 @@ src/github.com/windmilleng/servantes/snack/main.go:16:36: syntax error: unexpect
 
 ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/windmilleng/servantes/snack]: exit code 2`),
 				}},
-				ResourceInfo: view.K8SResourceInfo{},
+				ResourceInfo: view.K8sResourceInfo{},
 			},
 		},
 	}
@@ -85,7 +85,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 			{
 				Name:      "a-a-a-aaaaabe vigoda",
 				Endpoints: []string{"1.2.3.4:8080"},
-				ResourceInfo: view.K8SResourceInfo{
+				ResourceInfo: view.K8sResourceInfo{
 					PodName:     "vigoda-pod",
 					PodStatus:   "Running",
 					PodRestarts: 1,
@@ -105,7 +105,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 					Error: fmt.Errorf("broken go code!"),
 					Log:   model.NewLog("mashing keys is not a good way to generate code"),
 				}},
-				ResourceInfo: view.K8SResourceInfo{},
+				ResourceInfo: view.K8sResourceInfo{},
 			},
 		},
 	}
@@ -131,7 +131,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 					StartTime: ts,
 				},
 				Endpoints: []string{"1.2.3.4:8080"},
-				ResourceInfo: view.K8SResourceInfo{
+				ResourceInfo: view.K8sResourceInfo{
 					PodName:         "vigoda-pod",
 					PodCreationTime: ts,
 					PodStatus:       "Running",
@@ -159,7 +159,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 					StartTime: ts,
 					Reason:    model.BuildReasonFlagCrash,
 				},
-				ResourceInfo: view.K8SResourceInfo{
+				ResourceInfo: view.K8sResourceInfo{
 					PodName:         "vigoda-pod",
 					PodCreationTime: ts,
 					PodStatus:       "Running",
@@ -183,7 +183,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 					FinishTime: ts,
 					StartTime:  ts.Add(-1400 * time.Millisecond),
 				}},
-				ResourceInfo: view.K8SResourceInfo{
+				ResourceInfo: view.K8sResourceInfo{
 					PodName:         "vigoda-pod",
 					PodCreationTime: ts,
 					PodStatus:       "Running",
@@ -230,7 +230,7 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`),
 					StartTime: ts.Add(-5 * time.Second),
 					Edits:     []string{"main.go"},
 				},
-				ResourceInfo: view.K8SResourceInfo{},
+				ResourceInfo: view.K8sResourceInfo{},
 			},
 		},
 	}
@@ -242,7 +242,7 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`),
 				Name:              "vigoda",
 				PendingBuildSince: ts.Add(-5 * time.Second),
 				PendingBuildEdits: []string{"main.go"},
-				ResourceInfo:      view.K8SResourceInfo{},
+				ResourceInfo:      view.K8sResourceInfo{},
 			},
 		},
 	}
@@ -256,7 +256,7 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`),
 				BuildHistory: []model.BuildRecord{{
 					Edits: []string{"abbot.go", "costello.go", "harold.go"},
 				}},
-				ResourceInfo: view.K8SResourceInfo{},
+				ResourceInfo: view.K8sResourceInfo{},
 			},
 		},
 	}
@@ -303,7 +303,7 @@ func TestAutoCollapseModes(t *testing.T) {
 			{
 				Name:               "vigoda",
 				DirectoriesWatched: []string{"bar"},
-				ResourceInfo:       view.K8SResourceInfo{},
+				ResourceInfo:       view.K8sResourceInfo{},
 			},
 		},
 	}
@@ -317,7 +317,7 @@ func TestAutoCollapseModes(t *testing.T) {
 					Error:      fmt.Errorf("oh no the build failed"),
 					Log:        model.NewLog("1\n2\n3\nthe compiler did not understand!\n5\n6\n7\n8\n"),
 				}},
-				ResourceInfo: view.K8SResourceInfo{},
+				ResourceInfo: view.K8sResourceInfo{},
 			},
 		},
 	}
@@ -349,7 +349,7 @@ func TestPodPending(t *testing.T) {
   │ Building image
 `),
 				}},
-				ResourceInfo: view.K8SResourceInfo{
+				ResourceInfo: view.K8sResourceInfo{
 					PodName:   "vigoda-pod",
 					PodLog:    model.NewLog("serving on 8080"),
 					PodStatus: "",
@@ -361,14 +361,14 @@ func TestPodPending(t *testing.T) {
 	vs := fakeViewState(1, view.CollapseAuto)
 
 	rtf.run("pending pod no status", 80, 20, v, vs)
-	assert.Equal(t, cPending, statusColor(v.Resources[0], model.TriggerAuto))
+	assert.Equal(t, cPending, statusColor(v.Resources[0]))
 
-	v.Resources[0].ResourceInfo = view.K8SResourceInfo{
+	v.Resources[0].ResourceInfo = view.K8sResourceInfo{
 		PodCreationTime: ts,
 		PodStatus:       "Pending",
 	}
 	rtf.run("pending pod pending status", 80, 20, v, vs)
-	assert.Equal(t, cPending, statusColor(v.Resources[0], model.TriggerAuto))
+	assert.Equal(t, cPending, statusColor(v.Resources[0]))
 }
 
 func TestCrashingPodInlineCrashLog(t *testing.T) {
@@ -387,7 +387,7 @@ func TestCrashingPodInlineCrashLog(t *testing.T) {
 					FinishTime: ts,
 					Reason:     model.BuildReasonFlagCrash,
 				}},
-				ResourceInfo: view.K8SResourceInfo{
+				ResourceInfo: view.K8sResourceInfo{
 					PodName:            "vigoda-pod",
 					PodStatus:          "Error",
 					PodLog:             model.NewLog("Something's maybe wrong idk"),
@@ -417,7 +417,7 @@ func TestCrashingPodInlinePodLogIfNoCrashLog(t *testing.T) {
 					FinishTime: ts,
 					Reason:     model.BuildReasonFlagCrash,
 				}},
-				ResourceInfo: view.K8SResourceInfo{
+				ResourceInfo: view.K8sResourceInfo{
 					PodName:            "vigoda-pod",
 					PodStatus:          "Error",
 					PodLog:             model.NewLog("Something's maybe wrong idk"),
@@ -447,7 +447,7 @@ func TestNonCrashingPodNoInlineCrashLog(t *testing.T) {
 					StartTime:  ts,
 					FinishTime: ts,
 				}},
-				ResourceInfo: view.K8SResourceInfo{
+				ResourceInfo: view.K8sResourceInfo{
 					PodName:            "vigoda-pod",
 					PodStatus:          "Running",
 					PodLog:             model.NewLog("Something's maybe wrong idk"),
@@ -476,7 +476,7 @@ func TestCompletedPod(t *testing.T) {
 					StartTime:  ts,
 					FinishTime: ts,
 				}},
-				ResourceInfo: view.K8SResourceInfo{
+				ResourceInfo: view.K8sResourceInfo{
 					PodName:            "vigoda-pod",
 					PodStatus:          "Completed",
 					PodUpdateStartTime: ts,
@@ -506,7 +506,7 @@ func TestBrackets(t *testing.T) {
 					StartTime:  ts,
 					FinishTime: ts,
 				}},
-				ResourceInfo: view.K8SResourceInfo{
+				ResourceInfo: view.K8sResourceInfo{
 					PodName:         "vigoda-pod",
 					PodStatus:       "Running",
 					PodCreationTime: ts,
@@ -524,13 +524,13 @@ func TestPendingBuildInManualTriggerMode(t *testing.T) {
 	rtf := newRendererTestFixture(t)
 	ts := time.Now().Add(-30 * time.Second)
 	v := view.View{
-		TriggerMode: model.TriggerManual,
 		Resources: []view.Resource{
 			{
 				Name:              "vigoda",
 				PendingBuildSince: ts.Add(-5 * time.Second),
 				PendingBuildEdits: []string{"main.go"},
-				ResourceInfo:      view.K8SResourceInfo{},
+				TriggerMode:       model.TriggerModeManual,
+				ResourceInfo:      view.K8sResourceInfo{},
 			},
 		},
 	}
@@ -558,7 +558,7 @@ func TestBuildHistory(t *testing.T) {
 						FinishTime: ts.Add(-2 * time.Minute).Add(5 * time.Second),
 					},
 				},
-				ResourceInfo: view.K8SResourceInfo{
+				ResourceInfo: view.K8sResourceInfo{
 					PodName:            "vigoda-pod",
 					PodStatus:          "Running",
 					PodUpdateStartTime: ts,
@@ -742,7 +742,7 @@ func TestRenderEscapedNbsp(t *testing.T) {
 					Error:      fmt.Errorf("oh no the build failed"),
 					Log:        model.NewLog("\xa0 NBSP!"),
 				}},
-				ResourceInfo: view.K8SResourceInfo{},
+				ResourceInfo: view.K8sResourceInfo{},
 			},
 		},
 	}
@@ -765,7 +765,7 @@ func TestLineWrappingInInlineError(t *testing.T) {
 					Error:      fmt.Errorf("failure"),
 					Log:        model.NewLog(strings.Join(lines, "\n")),
 				}},
-				ResourceInfo: view.K8SResourceInfo{},
+				ResourceInfo: view.K8sResourceInfo{},
 			},
 		},
 	}
@@ -791,7 +791,7 @@ func TestRenderTabView(t *testing.T) {
   │ Building image
 `),
 				}},
-				ResourceInfo: view.K8SResourceInfo{
+				ResourceInfo: view.K8sResourceInfo{
 					PodName:         "vigoda-pod",
 					PodCreationTime: now,
 					PodLog:          model.NewLog("serving on 8080"),

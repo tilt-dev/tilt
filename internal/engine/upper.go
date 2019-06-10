@@ -6,11 +6,13 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -20,7 +22,6 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud"
-	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -54,14 +55,14 @@ type Upper struct {
 	store *store.Store
 }
 
-type FsWatcherMaker func() (watch.Notify, error)
+type FsWatcherMaker func(l logger.Logger) (watch.Notify, error)
 type ServiceWatcherMaker func(context.Context, *store.Store) error
 type PodWatcherMaker func(context.Context, *store.Store) error
 type timerMaker func(d time.Duration) <-chan time.Time
 
 func ProvideFsWatcherMaker() FsWatcherMaker {
-	return func() (watch.Notify, error) {
-		return watch.NewWatcher()
+	return func(l logger.Logger) (watch.Notify, error) {
+		return watch.NewWatcher(l)
 	}
 }
 
@@ -92,7 +93,6 @@ func (u Upper) Start(
 	args []string,
 	b model.TiltBuild,
 	watch bool,
-	triggerMode model.TriggerMode,
 	fileName string,
 	useActionWriter bool,
 	sailMode model.SailMode,
@@ -122,7 +122,6 @@ func (u Upper) Start(
 		TiltfilePath:    absTfPath,
 		ConfigFiles:     configFiles,
 		InitManifests:   manifestNames,
-		TriggerMode:     triggerMode,
 		TiltBuild:       b,
 		StartTime:       startTime,
 		FinishTime:      time.Now(),
@@ -138,6 +137,11 @@ func (u Upper) Init(ctx context.Context, action InitAction) error {
 }
 
 var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineState, action store.Action) {
+	logAction, isLogAction := action.(store.LogAction)
+	if isLogAction {
+		handleLogAction(state, logAction)
+	}
+
 	var err error
 	switch action := action.(type) {
 	case InitAction:
@@ -152,8 +156,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handlePodChangeAction(ctx, state, action.Pod)
 	case ServiceChangeAction:
 		handleServiceEvent(ctx, state, action)
-	case store.K8SEventAction:
-		handleK8SEvent(ctx, state, action)
+	case store.K8sEventAction:
+		handleK8sEvent(ctx, state, action)
 	case PodLogAction:
 		handlePodLogAction(state, action)
 	case BuildLogAction:
@@ -164,8 +168,6 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleBuildStarted(ctx, state, action)
 	case DeployIDAction:
 		handleDeployIDAction(ctx, state, action)
-	case store.LogAction:
-		handleLogAction(state, action)
 	case ConfigsReloadStartedAction:
 		handleConfigsReloadStarted(ctx, state, action)
 	case ConfigsReloadedAction:
@@ -174,7 +176,7 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleDockerComposeEvent(ctx, state, action)
 	case DockerComposeLogAction:
 		handleDockerComposeLogAction(state, action)
-	case view.AppendToTriggerQueueAction:
+	case server.AppendToTriggerQueueAction:
 		appendToTriggerQueue(state, action.Name)
 	case hud.StartProfilingAction:
 		handleStartProfilingAction(state)
@@ -196,6 +198,9 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleAnalyticsNudgeSurfacedAction(ctx, state)
 	case UIDUpdateAction:
 		handleUIDUpdateAction(state, action)
+	case store.LogEvent:
+		// handled as a LogAction, do nothing
+
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -360,10 +365,6 @@ func handleDeployIDAction(ctx context.Context, state *store.EngineState, action 
 }
 
 func appendToTriggerQueue(state *store.EngineState, mn model.ManifestName) {
-	if state.TriggerMode != model.TriggerManual {
-		return
-	}
-
 	ms, ok := state.ManifestState(mn)
 	if !ok {
 		return
@@ -654,12 +655,12 @@ func populateContainerStatus(ctx context.Context, manifest model.Manifest, podIn
 func handleUIDUpdateAction(state *store.EngineState, action UIDUpdateAction) {
 	switch action.EventType {
 	case k8swatch.Added:
-		state.ObjectsByK8SUIDs[action.UID] = store.UIDMapValue{
+		state.ObjectsByK8sUIDs[action.UID] = store.UIDMapValue{
 			Manifest: action.ManifestName,
 			Entity:   action.Entity,
 		}
 	case k8swatch.Deleted:
-		delete(state.ObjectsByK8SUIDs, action.UID)
+		delete(state.ObjectsByK8sUIDs, action.UID)
 	}
 }
 
@@ -738,13 +739,12 @@ func checkForPodCrash(ctx context.Context, state *store.EngineState, ms *store.M
 	ms.NeedsRebuildFromCrash = true
 	ms.ExpectedContainerID = ""
 	msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Name)
-	le := store.NewLogEvent([]byte(msg + "\n"))
+	le := store.NewLogEvent(ms.Name, []byte(msg+"\n"))
 	if len(ms.BuildHistory) > 0 {
-		ms.BuildHistory[0].Log = model.AppendLog(ms.BuildHistory[0].Log, le, state.LogTimestamps)
+		ms.BuildHistory[0].Log = model.AppendLog(ms.BuildHistory[0].Log, le, state.LogTimestamps, nil)
 	}
-	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, le, state.LogTimestamps)
-	ms.CombinedLog = model.AppendLog(ms.CombinedLog, le, state.LogTimestamps)
-	logger.Get(ctx).Infof("%s", msg)
+	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, le, state.LogTimestamps, nil)
+	handleLogAction(state, le)
 }
 
 // If there's more than one pod, prune the deleting/dead ones so
@@ -775,15 +775,12 @@ func prunePods(ms *store.ManifestState) {
 }
 
 func handlePodLogAction(state *store.EngineState, action PodLogAction) {
-	manifestName := action.ManifestName
+	manifestName := action.Source()
 	ms, ok := state.ManifestState(manifestName)
-
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.
 		return
 	}
-
-	ms.CombinedLog = model.AppendLog(ms.CombinedLog, action, state.LogTimestamps)
 
 	podID := action.PodID
 	if !ms.PodSet.ContainsID(podID) {
@@ -802,24 +799,55 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 	}
 
 	podInfo := ms.PodSet.Pods[podID]
-	podInfo.CurrentLog = model.AppendLog(podInfo.CurrentLog, action, state.LogTimestamps)
+	podInfo.CurrentLog = model.AppendLog(podInfo.CurrentLog, action, state.LogTimestamps, nil)
 }
 
 func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
-	manifestName := action.ManifestName
+	manifestName := action.Source()
 	ms, ok := state.ManifestState(manifestName)
-
 	if !ok || state.CurrentlyBuilding != manifestName {
 		// This is OK. The user could have edited the manifest recently.
 		return
 	}
 
-	ms.CombinedLog = model.AppendLog(ms.CombinedLog, action, state.LogTimestamps)
-	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, action, state.LogTimestamps)
+	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, action, state.LogTimestamps, nil)
 }
 
 func handleLogAction(state *store.EngineState, action store.LogAction) {
-	state.Log = model.AppendLog(state.Log, action, state.LogTimestamps)
+	manifestName := action.Source()
+	alreadyHasSourcePrefix := false
+	if _, isDCLog := action.(DockerComposeLogAction); isDCLog {
+		// DockerCompose logs are prefixed by the docker-compose engine
+		alreadyHasSourcePrefix = true
+	}
+
+	var allLogPrefix []byte
+	if manifestName != "" && !alreadyHasSourcePrefix {
+		allLogPrefix = sourcePrefix(manifestName)
+	}
+
+	state.Log = model.AppendLog(state.Log, action, state.LogTimestamps, allLogPrefix)
+	if manifestName == "" {
+		return
+	}
+
+	ms, ok := state.ManifestState(manifestName)
+	if !ok {
+		// This is OK. The user could have edited the manifest recently.
+		return
+	}
+	ms.CombinedLog = model.AppendLog(ms.CombinedLog, action, state.LogTimestamps, nil)
+}
+
+func sourcePrefix(n model.ManifestName) []byte {
+	max := 12
+	spaces := ""
+	if len(n) > max {
+		n = n[:max-1] + "…"
+	} else {
+		spaces = strings.Repeat(" ", max-len(n))
+	}
+	return []byte(fmt.Sprintf("%s%s┊ ", n, spaces))
 }
 
 func handleServiceEvent(ctx context.Context, state *store.EngineState, action ServiceChangeAction) {
@@ -831,29 +859,26 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 
 	ms, ok := state.ManifestState(manifestName)
 	if !ok {
-		logger.Get(ctx).Infof("error: got notified of service for unknown manifest '%s'", manifestName)
 		return
 	}
 
 	ms.LBs[k8s.ServiceName(service.Name)] = action.URL
 }
 
-func handleK8SEvent(ctx context.Context, state *store.EngineState, action store.K8SEventAction) {
+func handleK8sEvent(ctx context.Context, state *store.EngineState, action store.K8sEventAction) {
 	evt := action.Event
-	v, ok := state.ObjectsByK8SUIDs[k8s.UID(evt.InvolvedObject.UID)]
+	v, ok := state.ObjectsByK8sUIDs[k8s.UID(evt.InvolvedObject.UID)]
 	if !ok {
 		return
 	}
 
 	if evt.Type != "Normal" {
+		handleLogAction(state, action.ToLogAction(v.Manifest))
+
 		ms, ok := state.ManifestState(v.Manifest)
 		if !ok {
 			return
 		}
-
-		ms.CombinedLog = model.AppendLog(ms.CombinedLog, action, state.LogTimestamps)
-		logger.Get(ctx).Infof("%s%s", logPrefix(ms.Name.String()), action.MessageRaw())
-
 		ms.K8sWarnEvents = append(ms.K8sWarnEvents, k8s.NewEventWithEntity(evt, v.Entity))
 	}
 }
@@ -884,7 +909,6 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.TiltBuildInfo = action.TiltBuild
 	engineState.TiltStartTime = action.StartTime
 	engineState.TiltfilePath = action.TiltfilePath
-	engineState.TriggerMode = action.TriggerMode
 	engineState.ConfigFiles = action.ConfigFiles
 	engineState.InitManifests = action.InitManifests
 	engineState.SailEnabled = action.EnableSail
@@ -930,7 +954,6 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 	ms, ok := engineState.ManifestState(model.ManifestName(mn))
 	if !ok {
 		// No corresponding manifest, nothing to do
-		logger.Get(ctx).Infof("event for unrecognized manifest %s", mn)
 		return
 	}
 
@@ -966,22 +989,20 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 }
 
 func handleDockerComposeLogAction(state *store.EngineState, action DockerComposeLogAction) {
-	manifestName := action.ManifestName
+	manifestName := action.Source()
 	ms, ok := state.ManifestState(manifestName)
-
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.
 		return
 	}
 
 	dcState, _ := ms.ResourceState.(dockercompose.State)
-	ms.ResourceState = dcState.WithCurrentLog(model.AppendLog(dcState.CurrentLog, action, state.LogTimestamps))
-	ms.CombinedLog = model.AppendLog(ms.CombinedLog, action, state.LogTimestamps)
+	ms.ResourceState = dcState.WithCurrentLog(model.AppendLog(dcState.CurrentLog, action, state.LogTimestamps, nil))
 }
 
 func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action TiltfileLogAction) {
-	state.CurrentTiltfileBuild.Log = model.AppendLog(state.CurrentTiltfileBuild.Log, action, state.LogTimestamps)
-	state.TiltfileCombinedLog = model.AppendLog(state.TiltfileCombinedLog, action, state.LogTimestamps)
+	state.CurrentTiltfileBuild.Log = model.AppendLog(state.CurrentTiltfileBuild.Log, action, state.LogTimestamps, nil)
+	state.TiltfileCombinedLog = model.AppendLog(state.TiltfileCombinedLog, action, state.LogTimestamps, nil)
 }
 
 func handleAnalyticsOptAction(state *store.EngineState, action store.AnalyticsOptAction) {

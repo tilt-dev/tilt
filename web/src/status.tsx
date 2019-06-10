@@ -28,6 +28,7 @@ function warnings(res: any): string[] {
   let buildHistory = res.BuildHistory || []
   let lastBuild = buildHistory[0]
   let warnings = (lastBuild && lastBuild.Warnings) || []
+  warnings = Array.from(warnings)
 
   if (res.ResourceInfo && res.ResourceInfo.PodRestarts > 0) {
     warnings.push("Container restarted")

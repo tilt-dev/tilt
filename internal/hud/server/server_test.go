@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
@@ -29,7 +30,7 @@ func TestHandleAnalyticsEmptyRequest(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.s.HandleAnalytics)
+	handler := http.HandlerFunc(f.serv.HandleAnalytics)
 
 	handler.ServeHTTP(rr, req)
 
@@ -50,7 +51,7 @@ func TestHandleAnalyticsRecordsIncr(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.s.HandleAnalytics)
+	handler := http.HandlerFunc(f.serv.HandleAnalytics)
 
 	handler.ServeHTTP(rr, req)
 
@@ -72,7 +73,7 @@ func TestHandleAnalyticsNonPost(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.s.HandleAnalytics)
+	handler := http.HandlerFunc(f.serv.HandleAnalytics)
 
 	handler.ServeHTTP(rr, req)
 
@@ -93,7 +94,7 @@ func TestHandleAnalyticsMalformedPayload(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.s.HandleAnalytics)
+	handler := http.HandlerFunc(f.serv.HandleAnalytics)
 
 	handler.ServeHTTP(rr, req)
 
@@ -114,7 +115,7 @@ func TestHandleAnalyticsErrorsIfNotIncr(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.s.HandleAnalytics)
+	handler := http.HandlerFunc(f.serv.HandleAnalytics)
 
 	handler.ServeHTTP(rr, req)
 
@@ -135,7 +136,7 @@ func TestHandleAnalyticsOptIn(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.s.HandleAnalyticsOpt)
+	handler := http.HandlerFunc(f.serv.HandleAnalyticsOpt)
 
 	handler.ServeHTTP(rr, req)
 
@@ -158,7 +159,7 @@ func TestHandleAnalyticsOptNonPost(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.s.HandleAnalyticsOpt)
+	handler := http.HandlerFunc(f.serv.HandleAnalyticsOpt)
 
 	handler.ServeHTTP(rr, req)
 
@@ -179,7 +180,7 @@ func TestHandleAnalyticsOptMalformedPayload(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.s.HandleAnalyticsOpt)
+	handler := http.HandlerFunc(f.serv.HandleAnalyticsOpt)
 
 	handler.ServeHTTP(rr, req)
 
@@ -198,7 +199,7 @@ func TestHandleSail(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.s.HandleSail)
+	handler := http.HandlerFunc(f.serv.HandleSail)
 
 	handler.ServeHTTP(rr, req)
 
@@ -210,11 +211,155 @@ func TestHandleSail(t *testing.T) {
 	assert.Equal(f.t, 1, f.sailCli.ConnectCalls)
 }
 
+func TestHandleTriggerReturnsError(t *testing.T) {
+	f := newTestFixture(t)
+
+	var jsonStr = []byte(`{"manifest_names":["foo"]}`)
+	req, err := http.NewRequest(http.MethodPost, "/api/trigger", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.serv.HandleTrigger)
+
+	handler.ServeHTTP(rr, req)
+
+	// Expect maybeSendToTriggerQueue to fail: make sure we reply to the HTTP request
+	// with an error when this happens
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+	assert.Contains(t, rr.Body.String(), "no manifest found with name")
+}
+
+func TestHandleTriggerTooManyManifestNames(t *testing.T) {
+	f := newTestFixture(t)
+
+	var jsonStr = []byte(`{"manifest_names":["foo", "bar"]}`)
+	req, err := http.NewRequest(http.MethodPost, "/api/trigger", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.serv.HandleTrigger)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+	assert.Contains(t, rr.Body.String(), "currently supports exactly one manifest name, got 2")
+}
+
+func TestHandleTriggerNonPost(t *testing.T) {
+	f := newTestFixture(t)
+
+	req, err := http.NewRequest(http.MethodGet, "/api/trigger", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.serv.HandleTrigger)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+	assert.Contains(t, rr.Body.String(), "must be POST request")
+}
+
+func TestHandleTriggerMalformedPayload(t *testing.T) {
+	f := newTestFixture(t)
+
+	var jsonStr = []byte(`{"manifest_names":`)
+	req, err := http.NewRequest(http.MethodPost, "/api/trigger", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.serv.HandleTrigger)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+	assert.Contains(t, rr.Body.String(), "error parsing JSON")
+}
+
+func TestMaybeSendToTriggerQueue(t *testing.T) {
+	f := newTestFixture(t)
+
+	mt := store.ManifestTarget{
+		Manifest: model.Manifest{
+			Name:        "foobar",
+			TriggerMode: model.TriggerModeManual,
+		},
+	}
+	state := f.st.LockMutableStateForTesting()
+	state.UpsertManifestTarget(&mt)
+	f.st.UnlockMutableState()
+
+	err := server.MaybeSendToTriggerQueue(f.st, "foobar")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a := store.WaitForAction(t, reflect.TypeOf(server.AppendToTriggerQueueAction{}), f.getActions)
+	action, ok := a.(server.AppendToTriggerQueueAction)
+	if !ok {
+		t.Fatalf("Action was not of type 'AppendToTriggerQueueAction': %+v", action)
+	}
+	assert.Equal(t, "foobar", action.Name.String())
+}
+
+func TestMaybeSendToTriggerQueue_noManifestWithName(t *testing.T) {
+	f := newTestFixture(t)
+
+	err := server.MaybeSendToTriggerQueue(f.st, "foobar")
+
+	assert.EqualError(t, err, "no manifest found with name 'foobar'")
+	store.AssertNoActionOfType(t, reflect.TypeOf(server.AppendToTriggerQueueAction{}), f.getActions)
+}
+
+func TestMaybeSendToTriggerQueue_notManualManifest(t *testing.T) {
+	f := newTestFixture(t)
+
+	mt := store.ManifestTarget{
+		Manifest: model.Manifest{
+			Name:        "foobar",
+			TriggerMode: model.TriggerModeAuto,
+		},
+	}
+	state := f.st.LockMutableStateForTesting()
+	state.UpsertManifestTarget(&mt)
+	f.st.UnlockMutableState()
+
+	err := server.MaybeSendToTriggerQueue(f.st, "foobar")
+
+	assert.EqualError(t, err, "can only trigger updates for manifests of TriggerModeManual")
+	store.AssertNoActionOfType(t, reflect.TypeOf(server.AppendToTriggerQueueAction{}), f.getActions)
+}
+
 type serverFixture struct {
 	t          *testing.T
-	s          *server.HeadsUpServer
+	serv       *server.HeadsUpServer
 	a          *analytics.MemoryAnalytics
 	sailCli    *client.FakeSailClient
+	st         *store.Store
 	getActions func() []store.Action
 }
 
@@ -224,13 +369,14 @@ func newTestFixture(t *testing.T) *serverFixture {
 	a := analytics.NewMemoryAnalytics()
 	a, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
 	sailCli := client.NewFakeSailClient()
-	s := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, sailCli)
+	serv := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, sailCli)
 
 	return &serverFixture{
 		t:          t,
-		s:          s,
+		serv:       serv,
 		a:          a,
 		sailCli:    sailCli,
+		st:         st,
 		getActions: getActions,
 	}
 }

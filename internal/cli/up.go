@@ -38,11 +38,10 @@ var sailEnabled bool = false
 var sailModeFlag model.SailMode = model.SailModeProd
 
 type upCmd struct {
-	watch      bool
-	traceTags  string
-	hud        bool
-	autoDeploy bool
-	fileName   string
+	watch     bool
+	traceTags string
+	hud       bool
+	fileName  string
 }
 
 func (c *upCmd) register() *cobra.Command {
@@ -59,7 +58,6 @@ func (c *upCmd) register() *cobra.Command {
 	cmd.Flags().StringVar(&build.ImageTagPrefix, "image-tag-prefix", build.ImageTagPrefix,
 		"For integration tests. Customize the image tag prefix so tests can write to a public registry")
 	cmd.Flags().BoolVar(&c.hud, "hud", true, "If true, tilt will open in HUD mode.")
-	cmd.Flags().BoolVar(&c.autoDeploy, "auto-deploy", true, "If false, tilt will wait on <spacebar> to trigger builds")
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
 	cmd.Flags().IntVar(&webPort, "port", DefaultWebPort, "Port for the Tilt HTTP server. Set to 0 to disable.")
 	cmd.Flags().IntVar(&webDevPort, "webdev-port", DefaultWebDevPort, "Port for the Tilt Dev Webpack server. Only applies when using --web-mode=local")
@@ -142,14 +140,9 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		})
 	}
 
-	triggerMode := model.TriggerAuto
-	if !c.autoDeploy {
-		triggerMode = model.TriggerManual
-	}
-
 	g.Go(func() error {
 		defer cancel()
-		return upper.Start(ctx, args, threads.tiltBuild, c.watch, triggerMode, c.fileName, c.hud, threads.sailMode, a.Opt())
+		return upper.Start(ctx, args, threads.tiltBuild, c.watch, c.fileName, c.hud, threads.sailMode, a.Opt())
 	})
 
 	err = g.Wait()
