@@ -31,7 +31,7 @@ type analyticsOptPayload struct {
 }
 
 type triggerPayload struct {
-	ManifestName string `json:"manifest_name"`
+	ManifestNames []string `json:"manifest_names"`
 }
 
 type HeadsUpServer struct {
@@ -162,7 +162,12 @@ func (s *HeadsUpServer) HandleTrigger(w http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	err = MaybeSendToTriggerQueue(s.store, payload.ManifestName)
+	if len(payload.ManifestNames) != 1 {
+		http.Error(w, fmt.Sprintf("/api/trigger currently supports exactly one manifest name, got %d", len(payload.ManifestNames)), http.StatusBadRequest)
+		return
+	}
+
+	err = MaybeSendToTriggerQueue(s.store, payload.ManifestNames[0])
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

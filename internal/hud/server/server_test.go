@@ -214,7 +214,7 @@ func TestHandleSail(t *testing.T) {
 func TestHandleTriggerReturnsError(t *testing.T) {
 	f := newTestFixture(t)
 
-	var jsonStr = []byte(`{"manifest_name":"foo"`)
+	var jsonStr = []byte(`{"manifest_names":["foo"]}`)
 	req, err := http.NewRequest(http.MethodPost, "/api/trigger", bytes.NewBuffer(jsonStr))
 	if err != nil {
 		t.Fatal(err)
@@ -226,12 +226,35 @@ func TestHandleTriggerReturnsError(t *testing.T) {
 
 	handler.ServeHTTP(rr, req)
 
-	// Expect maybeSendToTrigerQueue to fail: make sure we reply to the HTTP request
+	// Expect maybeSendToTriggerQueue to fail: make sure we reply to the HTTP request
 	// with an error when this happens
 	if status := rr.Code; status != http.StatusBadRequest {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusBadRequest)
 	}
+	assert.Contains(t, rr.Body.String(), "no manifest found with name")
+}
+
+func TestHandleTriggerTooManyManifestNames(t *testing.T) {
+	f := newTestFixture(t)
+
+	var jsonStr = []byte(`{"manifest_names":["foo", "bar"]}`)
+	req, err := http.NewRequest(http.MethodPost, "/api/trigger", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.serv.HandleTrigger)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+	assert.Contains(t, rr.Body.String(), "currently supports exactly one manifest name, got 2")
 }
 
 func TestHandleTriggerNonPost(t *testing.T) {
@@ -252,12 +275,13 @@ func TestHandleTriggerNonPost(t *testing.T) {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusBadRequest)
 	}
+	assert.Contains(t, rr.Body.String(), "must be POST request")
 }
 
 func TestHandleTriggerMalformedPayload(t *testing.T) {
 	f := newTestFixture(t)
 
-	var jsonStr = []byte(`{"manifest_name":`)
+	var jsonStr = []byte(`{"manifest_names":`)
 	req, err := http.NewRequest(http.MethodPost, "/api/trigger", bytes.NewBuffer(jsonStr))
 	if err != nil {
 		t.Fatal(err)
@@ -273,6 +297,7 @@ func TestHandleTriggerMalformedPayload(t *testing.T) {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusBadRequest)
 	}
+	assert.Contains(t, rr.Body.String(), "error parsing JSON")
 }
 
 func TestMaybeSendToTriggerQueue(t *testing.T) {
@@ -293,7 +318,12 @@ func TestMaybeSendToTriggerQueue(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	store.WaitForAction(t, reflect.TypeOf(server.AppendToTriggerQueueAction{}), f.getActions)
+	a := store.WaitForAction(t, reflect.TypeOf(server.AppendToTriggerQueueAction{}), f.getActions)
+	action, ok := a.(server.AppendToTriggerQueueAction)
+	if !ok {
+		t.Fatalf("Action was not of type 'AppendToTriggerQueueAction': %+v", action)
+	}
+	assert.Equal(t, "foobar", action.Name.String())
 }
 
 func TestMaybeSendToTriggerQueue_noManifestWithName(t *testing.T) {
