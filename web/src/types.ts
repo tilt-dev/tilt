@@ -25,7 +25,7 @@ export type TiltBuild = {
   Dev: boolean
 }
 
-export enum RuntimeStatus {
+export enum ResourceStatus {
   Ok = "ok",
   Pending = "pending",
   Error = "error",

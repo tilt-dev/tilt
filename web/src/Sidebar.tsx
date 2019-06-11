@@ -3,7 +3,7 @@ import { ReactComponent as ChevronSvg } from "./assets/svg/chevron.svg"
 import { Link } from "react-router-dom"
 import { combinedStatus, warnings } from "./status"
 import "./Sidebar.scss"
-import { ResourceView, TriggerMode, RuntimeStatus } from "./types"
+import { ResourceView, TriggerMode, ResourceStatus } from "./types"
 import TimeAgo from "react-timeago"
 import { isZeroTime } from "./time"
 import PathBuilder from "./PathBuilder"
@@ -13,7 +13,7 @@ import SidebarIcon from "./SidebarIcon"
 
 class SidebarItem {
   name: string
-  status: RuntimeStatus
+  status: ResourceStatus
   hasWarnings: boolean
   hasEndpoints: boolean
   lastDeployTime: string

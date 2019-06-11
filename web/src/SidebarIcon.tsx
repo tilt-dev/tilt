@@ -1,10 +1,10 @@
 import React, { PureComponent } from "react"
-import { TriggerMode, RuntimeStatus } from "./types"
+import { TriggerMode, ResourceStatus } from "./types"
 import { Color } from "./constants"
 
 type SidebarIconProps = {
   triggerMode: TriggerMode
-  status: RuntimeStatus
+  status: ResourceStatus
   hasWarning: boolean
   isBuilding: boolean
 }
@@ -21,9 +21,9 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
   render() {
     let props = this.props
     let fill = Color.green
-    if (props.status === RuntimeStatus.Pending) {
+    if (props.status === ResourceStatus.Pending) {
       fill = Color.gray
-    } else if (props.status === RuntimeStatus.Error) {
+    } else if (props.status === ResourceStatus.Error) {
       fill = Color.red
     } else if (props.hasWarning) {
       fill = Color.yellow
@@ -42,7 +42,7 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
       return this.dotAutoBuilding(fill)
     }
 
-    if (props.status === RuntimeStatus.Pending) {
+    if (props.status === ResourceStatus.Pending) {
       return this.dotAutoPending(fill)
     }
 

@@ -1,7 +1,7 @@
 import React from "react"
 import { mount } from "enzyme"
 import SidebarIcon, { IconType } from "./SidebarIcon"
-import { RuntimeStatus, TriggerMode } from "./types"
+import { ResourceStatus, TriggerMode } from "./types"
 import { Color } from "./constants"
 
 type Ignore = boolean
@@ -9,7 +9,7 @@ type Ignore = boolean
 const cases: Array<
   [
     string,
-    RuntimeStatus,
+    ResourceStatus,
     boolean,
     boolean,
     TriggerMode,
@@ -19,7 +19,7 @@ const cases: Array<
 > = [
   [
     "auto mode, building with any status or warning state → small loader",
-    RuntimeStatus.Pending,
+    ResourceStatus.Pending,
     false,
     true,
     TriggerMode.TriggerModeAuto,
@@ -28,7 +28,7 @@ const cases: Array<
   ],
   [
     "manual mode, building with any status or warning state → loader",
-    RuntimeStatus.Ok,
+    ResourceStatus.Ok,
     false,
     true,
     TriggerMode.TriggerModeAuto,
@@ -37,7 +37,7 @@ const cases: Array<
   ],
   [
     "auto mode, status ok and no warning → small green dot",
-    RuntimeStatus.Ok,
+    ResourceStatus.Ok,
     false,
     false,
     TriggerMode.TriggerModeAuto,
@@ -46,7 +46,7 @@ const cases: Array<
   ],
   [
     "manual mode, status ok and no warning → green ring",
-    RuntimeStatus.Ok,
+    ResourceStatus.Ok,
     false,
     false,
     TriggerMode.TriggerModeManual,
@@ -55,7 +55,7 @@ const cases: Array<
   ],
   [
     "auto mode, status error and no warning → small red dot",
-    RuntimeStatus.Error,
+    ResourceStatus.Error,
     false,
     false,
     TriggerMode.TriggerModeAuto,
@@ -64,7 +64,7 @@ const cases: Array<
   ],
   [
     "manual mode, status error and no warning → red ring",
-    RuntimeStatus.Error,
+    ResourceStatus.Error,
     false,
     false,
     TriggerMode.TriggerModeManual,
@@ -73,7 +73,7 @@ const cases: Array<
   ],
   [
     "auto mode, status error with warnings → small red dot",
-    RuntimeStatus.Error,
+    ResourceStatus.Error,
     true,
     false,
     TriggerMode.TriggerModeAuto,
@@ -82,7 +82,7 @@ const cases: Array<
   ],
   [
     "manual mode, status error with warnings → red ring",
-    RuntimeStatus.Error,
+    ResourceStatus.Error,
     true,
     false,
     TriggerMode.TriggerModeManual,
@@ -91,7 +91,7 @@ const cases: Array<
   ],
   [
     "auto mode, status ok with warning → small yellow dot",
-    RuntimeStatus.Ok,
+    ResourceStatus.Ok,
     true,
     false,
     TriggerMode.TriggerModeAuto,
@@ -100,7 +100,7 @@ const cases: Array<
   ],
   [
     "manual mode, status ok with warning → yellow ring",
-    RuntimeStatus.Ok,
+    ResourceStatus.Ok,
     true,
     false,
     TriggerMode.TriggerModeManual,
@@ -109,7 +109,7 @@ const cases: Array<
   ],
   [
     "auto mode, status pending and no warnings → small glowing ring",
-    RuntimeStatus.Pending,
+    ResourceStatus.Pending,
     false,
     false,
     TriggerMode.TriggerModeAuto,
@@ -118,7 +118,7 @@ const cases: Array<
   ],
   [
     "auto mode, status pending with warnings → small glowing ring",
-    RuntimeStatus.Pending,
+    ResourceStatus.Pending,
     true,
     false,
     TriggerMode.TriggerModeAuto,
@@ -127,7 +127,7 @@ const cases: Array<
   ],
   [
     "manual mode, status pending and no warnings → glowing ring",
-    RuntimeStatus.Pending,
+    ResourceStatus.Pending,
     false,
     false,
     TriggerMode.TriggerModeManual,
@@ -136,7 +136,7 @@ const cases: Array<
   ],
   [
     "manual mode, status pending with warnings → glowing ring",
-    RuntimeStatus.Pending,
+    ResourceStatus.Pending,
     true,
     false,
     TriggerMode.TriggerModeManual,
