@@ -1,15 +1,19 @@
 // Duplicated styles from constants.scss
-const colorGreyDarkest = "#434343"
-const colorGreyDark = "#606060"
+export enum Color {
+  green = "#20ba31",
+  red = "#f6685c",
+  yellow = "#fcb41e",
+  white = "#ffffff",
+  gray = "#93a1a1",
+}
 
+// Pod Status
 const podStatusError = "Error"
 const podStatusCrashLoopBackOff = "CrashLoopBackOff"
 const podStatusImagePullBackOff = "ImagePullBackOff"
 const podStatusErrImgPull = "ErrImagePull"
 
 export {
-  colorGreyDark,
-  colorGreyDarkest,
   podStatusError,
   podStatusCrashLoopBackOff,
   podStatusImagePullBackOff,
