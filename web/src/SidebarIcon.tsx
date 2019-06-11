@@ -1,6 +1,11 @@
 import React, { PureComponent } from "react"
 import { TriggerMode, ResourceStatus } from "./types"
 import { Color } from "./constants"
+import { ReactComponent as ManualSvg } from "./assets/svg/indicator-manual.svg"
+import { ReactComponent as ManualBuildingSvg } from "./assets/svg/indicator-manual-building.svg"
+import { ReactComponent as AutoSvg } from "./assets/svg/indicator-auto.svg"
+import { ReactComponent as AutoPendingSvg } from "./assets/svg/indicator-auto-pending.svg"
+import { ReactComponent as AutoBuildingSvg } from "./assets/svg/indicator-auto-building.svg"
 
 type SidebarIconProps = {
   triggerMode: TriggerMode
@@ -21,9 +26,8 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
   render() {
     let props = this.props
     let fill = Color.green
-    if (props.status === ResourceStatus.Pending) {
-      fill = Color.gray
-    } else if (props.status === ResourceStatus.Error) {
+
+    if (props.status === ResourceStatus.Error) {
       fill = Color.red
     } else if (props.hasWarning) {
       fill = Color.yellow
@@ -39,7 +43,7 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
   renderAuto(fill: Color) {
     let props = this.props
     if (props.isBuilding) {
-      return this.dotAutoBuilding(fill)
+      return this.dotAutoBuilding()
     }
 
     if (props.status === ResourceStatus.Pending) {
@@ -52,25 +56,14 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
   renderManual(fill: Color) {
     let props = this.props
     if (props.isBuilding) {
-      return this.dotManualBuilding(fill)
+      return this.dotManualBuilding()
     }
 
-    return this.dotManualPending(fill)
+    return this.dotManual(fill)
   }
 
   dotAuto(fill: Color) {
-    return (
-      <svg
-        className={`${IconType.DotAuto} auto`}
-        height="10"
-        viewBox="0 0 10 10"
-        width="10"
-        xmlns="http://www.w3.org/2000/svg"
-        fill={fill}
-      >
-        <rect fillRule="evenodd" height="10" rx="5" width="10" />
-      </svg>
-    )
+    return <AutoSvg className={`${IconType.DotAuto} auto`} fill={fill} />
   }
 
   dotAutoPending(fill: Color) {
@@ -78,82 +71,43 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
       animation: "glow 1s linear infinite",
     }
     return (
-      <svg
+      <AutoPendingSvg
         className={`${IconType.DotAutoPending} auto`}
-        height="10"
-        viewBox="0 0 10 10"
-        width="10"
-        xmlns="http://www.w3.org/2000/svg"
+        fill={fill}
         style={style}
-      >
-        <rect
-          height="7.988"
-          rx="3.994"
-          stroke={Color.gray}
-          strokeWidth="2"
-          width="8"
-          x="1"
-          y="1"
-        />
-      </svg>
+        stroke={Color.gray}
+      />
     )
   }
 
-  dotAutoBuilding(fill: Color) {
+  dotAutoBuilding() {
     let style = {
       animation: "spin 1s linear infinite",
     }
     return (
-      <svg
+      <AutoBuildingSvg
         className={`${IconType.DotAutoBuilding} auto`}
-        height="10"
-        viewBox="0 0 10 10"
-        width="10"
-        xmlns="http://www.w3.org/2000/svg"
-        fill={fill}
+        fill={Color.gray}
         style={style}
-      >
-        <path
-          d="m9.65354132 6.83246601-1.85421206-.75144721c.12960419-.33538852.20067074-.69990442.20067074-1.0810188 0-1.65685425-1.34314575-3-3-3s-3 1.34314575-3 3 1.34314575 3 3 3c.25896905 0 .51027414-.03281333.74998437-.09450909l.37116491 1.96832235c-.360418.08256902-.73568991.12618674-1.12114928.12618674-2.76142375 0-5-2.23857625-5-5s2.23857625-5 5-5 5 2.23857625 5 5c0 .64686359-.12283756 1.26503693-.34645868 1.83246601z"
-          fillRule="evenodd"
-        />
-      </svg>
+      />
     )
   }
 
-  dotManualPending(fill: Color) {
-    return (
-      <svg
-        className={`${IconType.DotManual} manual`}
-        height="24"
-        viewBox="0 0 24 24"
-        width="24"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          d="m12 24c-6.627417 0-12-5.372583-12-12s5.372583-12 12-12 12 5.372583 12 12-5.372583 12-12 12zm0-3c4.9705627 0 9-4.0294373 9-9 0-4.97056275-4.0294373-9-9-9-4.97056275 0-9 4.02943725-9 9 0 4.9705627 4.02943725 9 9 9z"
-          fillRule="evenodd"
-          fill={fill}
-        />
-      </svg>
-    )
+  dotManual(fill: Color) {
+    return <ManualSvg className={`${IconType.DotManual} auto`} fill={fill} />
   }
 
-  dotManualBuilding(fill: Color) {
+  dotManualBuilding() {
+    let style = {
+      animation: "spin 1s linear infinite",
+    }
+
     return (
-      <svg
-        className={`${IconType.DotManualBuilding} manual`}
-        height="24"
-        viewBox="0 0 24 24"
-        width="24"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          d="m24 12h-3c0-4.97056275-4.0294373-9-9-9-4.97056275 0-9 4.02943725-9 9 0 4.9705627 4.02943725 9 9 9v3c-6.627417 0-12-5.372583-12-12s5.372583-12 12-12 12 5.372583 12 12z"
-          fill={fill}
-          fillRule="evenodd"
-        />
-      </svg>
+      <ManualBuildingSvg
+        className={`${IconType.DotManualBuilding} auto`}
+        fill={Color.gray}
+        style={style}
+      />
     )
   }
 }
