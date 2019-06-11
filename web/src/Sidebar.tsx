@@ -10,6 +10,8 @@ import PathBuilder from "./PathBuilder"
 import { timeAgoFormatter } from "./timeFormatters"
 import { AlertResource } from "./AlertPane"
 import SidebarIcon from "./SidebarIcon"
+import SidebarTriggerButton from "./SidebarTriggerButton"
+import { ReactComponent as triggerButton } from "./assets/svg/trigger.svg"
 
 class SidebarItem {
   name: string
@@ -96,13 +98,14 @@ class Sidebar extends PureComponent<SidebarProps> {
       let hasBuilt = !isZeroTime(item.lastDeployTime)
       let building = !isZeroTime(item.currentBuildStartTime)
       let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
+      let isSelected = this.props.selected === item.name
 
       let classes = "resLink"
       if (building) {
         classes += " resLink--building"
       }
 
-      if (this.props.selected === item.name) {
+      if (isSelected) {
         classes += " is-selected"
       }
       return (
@@ -114,6 +117,11 @@ class Sidebar extends PureComponent<SidebarProps> {
                 triggerMode={item.triggerMode}
                 hasWarning={item.hasWarnings}
                 isBuilding={building}
+              />
+              <SidebarTriggerButton
+                isSelected={isSelected}
+                resourceName={item.name}
+                triggerMode={item.triggerMode}
               />
             </div>
             <span className="resLink-name">{item.name}</span>
