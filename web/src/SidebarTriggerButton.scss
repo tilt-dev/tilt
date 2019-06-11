@@ -1,0 +1,23 @@
+@import "constants";
+
+.SidebarTriggerButton {
+  position: absolute;
+  background-color: transparent;
+  border: 0 none;
+  height: $sidebar-item;
+  width: $sidebar-item;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  fill: $color-white;
+  opacity: $translucent-ish;
+  cursor: pointer;
+}
+
+.SidebarTriggerButton.isSelected {
+  fill: $color-gray-dark;
+}
+
+.SidebarTriggerButton:hover {
+  opacity: 1;
+}
