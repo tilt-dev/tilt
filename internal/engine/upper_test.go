@@ -2450,20 +2450,11 @@ func TestSetAnalyticsOpt(t *testing.T) {
 	defer f.TearDown()
 
 	opt := func(ia InitAction) InitAction {
-		ia.AnalyticsOpt = analytics.OptIn
+		ia.AnalyticsOpt = analytics.OptDefault
 		return ia
 	}
 
 	f.Start([]model.Manifest{}, true, opt)
-	f.store.Dispatch(store.AnalyticsOptAction{Opt: analytics.OptOut})
-	f.WaitUntil("opted out", func(state store.EngineState) bool {
-		return state.AnalyticsOpt == analytics.OptOut
-	})
-
-	// if we don't wait for 1 here, it's possible the state flips to out and back to in before the subscriber sees it,
-	// and we end up with no events
-	f.opter.waitUntilCount(t, 1)
-
 	f.store.Dispatch(store.AnalyticsOptAction{Opt: analytics.OptIn})
 	f.WaitUntil("opted in", func(state store.EngineState) bool {
 		return state.AnalyticsOpt == analytics.OptIn
@@ -2471,11 +2462,23 @@ func TestSetAnalyticsOpt(t *testing.T) {
 
 	f.opter.waitUntilCount(t, 2)
 
+	f.store.Dispatch(store.AnalyticsOptAction{Opt: analytics.OptOut})
+	f.WaitUntil("opted out", func(state store.EngineState) bool {
+		return state.AnalyticsOpt == analytics.OptOut
+	})
+
+	f.opter.waitUntilCount(t, 3)
+
 	err := f.Stop()
 	if !assert.NoError(t, err) {
 		return
 	}
-	assert.Equal(t, []analytics.Opt{analytics.OptOut, analytics.OptIn}, f.opter.Calls())
+	assert.Equal(t, []analytics.Opt{analytics.OptDefault, analytics.OptIn, analytics.OptOut}, f.opter.Calls())
+	assert.Equal(t, []analytics.CountEvent{{
+		Name: "analytics.opt.in",
+		Tags: map[string]string{"version": "v0.0.0"},
+		N:    1,
+	}}, f.ma.Counts)
 }
 
 type fakeTimerMaker struct {
@@ -2574,6 +2577,7 @@ type testFixture struct {
 	ghc                   *github.FakeClient
 	opter                 *testOpter
 	tiltVersionCheckDelay time.Duration
+	ma                    *analytics.MemoryAnalytics
 
 	// old value of k8sEventsFeatureFlag env var, for teardown
 	// if nil, no reset needed.
@@ -2618,9 +2622,11 @@ func newTestFixture(t *testing.T) *testFixture {
 	pfc := NewPortForwardController(k8s)
 	ic := NewImageController(reaper)
 	to := &testOpter{}
-	_, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(to)
+	ma, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(to)
 	tas := NewTiltAnalyticsSubscriber(ta)
 	ar := ProvideAnalyticsReporter(ta, st)
+
+	ctx = tiltanalytics.WithAnalytics(ctx, ta)
 
 	// TODO(nick): Why does this test use two different docker compose clients???
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
@@ -2660,6 +2666,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		ghc:                   ghc,
 		opter:                 to,
 		tiltVersionCheckDelay: versionCheckInterval,
+		ma:                    ma,
 	}
 
 	tiltVersionCheckTimerMaker := func(d time.Duration) <-chan time.Time {
@@ -2746,6 +2753,7 @@ func (f *testFixture) Init(action InitAction) {
 
 func (f *testFixture) Stop() error {
 	f.cancel()
+	f.ma.Flush(time.Millisecond)
 	err := <-f.createManifestsResult
 	if err == context.Canceled {
 		return nil
