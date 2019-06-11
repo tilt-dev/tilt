@@ -40,20 +40,13 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             <svg
               className="dotAutoBuilding auto"
               fill="#93a1a1"
-              height="10"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
                 }
               }
-              viewBox="0 0 10 10"
-              width="10"
-              xmlns="http://www.w3.org/2000/svg"
             >
-              <path
-                d="m9.65354132 6.83246601-1.85421206-.75144721c.12960419-.33538852.20067074-.69990442.20067074-1.0810188 0-1.65685425-1.34314575-3-3-3s-3 1.34314575-3 3 1.34314575 3 3 3c.25896905 0 .51027414-.03281333.74998437-.09450909l.37116491 1.96832235c-.360418.08256902-.73568991.12618674-1.12114928.12618674-2.76142375 0-5-2.23857625-5-5s2.23857625-5 5-5 5 2.23857625 5 5c0 .64686359-.12283756 1.26503693-.34645868 1.83246601z"
-                fillRule="evenodd"
-              />
+              indicator-auto-building.svg
             </svg>
           </div>
           <span
@@ -90,20 +83,13 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             <svg
               className="dotAutoBuilding auto"
               fill="#93a1a1"
-              height="10"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
                 }
               }
-              viewBox="0 0 10 10"
-              width="10"
-              xmlns="http://www.w3.org/2000/svg"
             >
-              <path
-                d="m9.65354132 6.83246601-1.85421206-.75144721c.12960419-.33538852.20067074-.69990442.20067074-1.0810188 0-1.65685425-1.34314575-3-3-3s-3 1.34314575-3 3 1.34314575 3 3 3c.25896905 0 .51027414-.03281333.74998437-.09450909l.37116491 1.96832235c-.360418.08256902-.73568991.12618674-1.12114928.12618674-2.76142375 0-5-2.23857625-5-5s2.23857625-5 5-5 5 2.23857625 5 5c0 .64686359-.12283756 1.26503693-.34645868 1.83246601z"
-                fillRule="evenodd"
-              />
+              indicator-auto-building.svg
             </svg>
           </div>
           <span
@@ -140,20 +126,13 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             <svg
               className="dotAutoBuilding auto"
               fill="#93a1a1"
-              height="10"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
                 }
               }
-              viewBox="0 0 10 10"
-              width="10"
-              xmlns="http://www.w3.org/2000/svg"
             >
-              <path
-                d="m9.65354132 6.83246601-1.85421206-.75144721c.12960419-.33538852.20067074-.69990442.20067074-1.0810188 0-1.65685425-1.34314575-3-3-3s-3 1.34314575-3 3 1.34314575 3 3 3c.25896905 0 .51027414-.03281333.74998437-.09450909l.37116491 1.96832235c-.360418.08256902-.73568991.12618674-1.12114928.12618674-2.76142375 0-5-2.23857625-5-5s2.23857625-5 5-5 5 2.23857625 5 5c0 .64686359-.12283756 1.26503693-.34645868 1.83246601z"
-                fillRule="evenodd"
-              />
+              indicator-auto-building.svg
             </svg>
           </div>
           <span
@@ -190,20 +169,13 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             <svg
               className="dotAutoBuilding auto"
               fill="#93a1a1"
-              height="10"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
                 }
               }
-              viewBox="0 0 10 10"
-              width="10"
-              xmlns="http://www.w3.org/2000/svg"
             >
-              <path
-                d="m9.65354132 6.83246601-1.85421206-.75144721c.12960419-.33538852.20067074-.69990442.20067074-1.0810188 0-1.65685425-1.34314575-3-3-3s-3 1.34314575-3 3 1.34314575 3 3 3c.25896905 0 .51027414-.03281333.74998437-.09450909l.37116491 1.96832235c-.360418.08256902-.73568991.12618674-1.12114928.12618674-2.76142375 0-5-2.23857625-5-5s2.23857625-5 5-5 5 2.23857625 5 5c0 .64686359-.12283756 1.26503693-.34645868 1.83246601z"
-                fillRule="evenodd"
-              />
+              indicator-auto-building.svg
             </svg>
           </div>
           <span
@@ -240,20 +212,13 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             <svg
               className="dotAutoBuilding auto"
               fill="#93a1a1"
-              height="10"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
                 }
               }
-              viewBox="0 0 10 10"
-              width="10"
-              xmlns="http://www.w3.org/2000/svg"
             >
-              <path
-                d="m9.65354132 6.83246601-1.85421206-.75144721c.12960419-.33538852.20067074-.69990442.20067074-1.0810188 0-1.65685425-1.34314575-3-3-3s-3 1.34314575-3 3 1.34314575 3 3 3c.25896905 0 .51027414-.03281333.74998437-.09450909l.37116491 1.96832235c-.360418.08256902-.73568991.12618674-1.12114928.12618674-2.76142375 0-5-2.23857625-5-5s2.23857625-5 5-5 5 2.23857625 5 5c0 .64686359-.12283756 1.26503693-.34645868 1.83246601z"
-                fillRule="evenodd"
-              />
+              indicator-auto-building.svg
             </svg>
           </div>
           <span
@@ -290,20 +255,13 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             <svg
               className="dotAutoBuilding auto"
               fill="#93a1a1"
-              height="10"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
                 }
               }
-              viewBox="0 0 10 10"
-              width="10"
-              xmlns="http://www.w3.org/2000/svg"
             >
-              <path
-                d="m9.65354132 6.83246601-1.85421206-.75144721c.12960419-.33538852.20067074-.69990442.20067074-1.0810188 0-1.65685425-1.34314575-3-3-3s-3 1.34314575-3 3 1.34314575 3 3 3c.25896905 0 .51027414-.03281333.74998437-.09450909l.37116491 1.96832235c-.360418.08256902-.73568991.12618674-1.12114928.12618674-2.76142375 0-5-2.23857625-5-5s2.23857625-5 5-5 5 2.23857625 5 5c0 .64686359-.12283756 1.26503693-.34645868 1.83246601z"
-                fillRule="evenodd"
-              />
+              indicator-auto-building.svg
             </svg>
           </div>
           <span
@@ -340,20 +298,13 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             <svg
               className="dotAutoBuilding auto"
               fill="#93a1a1"
-              height="10"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
                 }
               }
-              viewBox="0 0 10 10"
-              width="10"
-              xmlns="http://www.w3.org/2000/svg"
             >
-              <path
-                d="m9.65354132 6.83246601-1.85421206-.75144721c.12960419-.33538852.20067074-.69990442.20067074-1.0810188 0-1.65685425-1.34314575-3-3-3s-3 1.34314575-3 3 1.34314575 3 3 3c.25896905 0 .51027414-.03281333.74998437-.09450909l.37116491 1.96832235c-.360418.08256902-.73568991.12618674-1.12114928.12618674-2.76142375 0-5-2.23857625-5-5s2.23857625-5 5-5 5 2.23857625 5 5c0 .64686359-.12283756 1.26503693-.34645868 1.83246601z"
-                fillRule="evenodd"
-              />
+              indicator-auto-building.svg
             </svg>
           </div>
           <span
@@ -480,20 +431,13 @@ exports[`sidebar renders list of resources 1`] = `
             <svg
               className="dotAutoBuilding auto"
               fill="#93a1a1"
-              height="10"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
                 }
               }
-              viewBox="0 0 10 10"
-              width="10"
-              xmlns="http://www.w3.org/2000/svg"
             >
-              <path
-                d="m9.65354132 6.83246601-1.85421206-.75144721c.12960419-.33538852.20067074-.69990442.20067074-1.0810188 0-1.65685425-1.34314575-3-3-3s-3 1.34314575-3 3 1.34314575 3 3 3c.25896905 0 .51027414-.03281333.74998437-.09450909l.37116491 1.96832235c-.360418.08256902-.73568991.12618674-1.12114928.12618674-2.76142375 0-5-2.23857625-5-5s2.23857625-5 5-5 5 2.23857625 5 5c0 .64686359-.12283756 1.26503693-.34645868 1.83246601z"
-                fillRule="evenodd"
-              />
+              indicator-auto-building.svg
             </svg>
           </div>
           <span
@@ -530,20 +474,13 @@ exports[`sidebar renders list of resources 1`] = `
             <svg
               className="dotAutoBuilding auto"
               fill="#93a1a1"
-              height="10"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
                 }
               }
-              viewBox="0 0 10 10"
-              width="10"
-              xmlns="http://www.w3.org/2000/svg"
             >
-              <path
-                d="m9.65354132 6.83246601-1.85421206-.75144721c.12960419-.33538852.20067074-.69990442.20067074-1.0810188 0-1.65685425-1.34314575-3-3-3s-3 1.34314575-3 3 1.34314575 3 3 3c.25896905 0 .51027414-.03281333.74998437-.09450909l.37116491 1.96832235c-.360418.08256902-.73568991.12618674-1.12114928.12618674-2.76142375 0-5-2.23857625-5-5s2.23857625-5 5-5 5 2.23857625 5 5c0 .64686359-.12283756 1.26503693-.34645868 1.83246601z"
-                fillRule="evenodd"
-              />
+              indicator-auto-building.svg
             </svg>
           </div>
           <span
@@ -627,20 +564,13 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             <svg
               className="dotAutoBuilding auto"
               fill="#93a1a1"
-              height="10"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
                 }
               }
-              viewBox="0 0 10 10"
-              width="10"
-              xmlns="http://www.w3.org/2000/svg"
             >
-              <path
-                d="m9.65354132 6.83246601-1.85421206-.75144721c.12960419-.33538852.20067074-.69990442.20067074-1.0810188 0-1.65685425-1.34314575-3-3-3s-3 1.34314575-3 3 1.34314575 3 3 3c.25896905 0 .51027414-.03281333.74998437-.09450909l.37116491 1.96832235c-.360418.08256902-.73568991.12618674-1.12114928.12618674-2.76142375 0-5-2.23857625-5-5s2.23857625-5 5-5 5 2.23857625 5 5c0 .64686359-.12283756 1.26503693-.34645868 1.83246601z"
-                fillRule="evenodd"
-              />
+              indicator-auto-building.svg
             </svg>
           </div>
           <span
@@ -672,20 +602,13 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             <svg
               className="dotAutoBuilding auto"
               fill="#93a1a1"
-              height="10"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
                 }
               }
-              viewBox="0 0 10 10"
-              width="10"
-              xmlns="http://www.w3.org/2000/svg"
             >
-              <path
-                d="m9.65354132 6.83246601-1.85421206-.75144721c.12960419-.33538852.20067074-.69990442.20067074-1.0810188 0-1.65685425-1.34314575-3-3-3s-3 1.34314575-3 3 1.34314575 3 3 3c.25896905 0 .51027414-.03281333.74998437-.09450909l.37116491 1.96832235c-.360418.08256902-.73568991.12618674-1.12114928.12618674-2.76142375 0-5-2.23857625-5-5s2.23857625-5 5-5 5 2.23857625 5 5c0 .64686359-.12283756 1.26503693-.34645868 1.83246601z"
-                fillRule="evenodd"
-              />
+              indicator-auto-building.svg
             </svg>
           </div>
           <span
@@ -763,16 +686,14 @@ exports[`sidebar renders resources with manual trigger mode 1`] = `
           >
             <svg
               className="dotManualBuilding manual"
-              height="24"
-              viewBox="0 0 24 24"
-              width="24"
-              xmlns="http://www.w3.org/2000/svg"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
             >
-              <path
-                d="m24 12h-3c0-4.97056275-4.0294373-9-9-9-4.97056275 0-9 4.02943725-9 9 0 4.9705627 4.02943725 9 9 9v3c-6.627417 0-12-5.372583-12-12s5.372583-12 12-12 12 5.372583 12 12z"
-                fill="#93a1a1"
-                fillRule="evenodd"
-              />
+              indicator-manual-building.svg
             </svg>
           </div>
           <span
@@ -808,16 +729,14 @@ exports[`sidebar renders resources with manual trigger mode 1`] = `
           >
             <svg
               className="dotManualBuilding manual"
-              height="24"
-              viewBox="0 0 24 24"
-              width="24"
-              xmlns="http://www.w3.org/2000/svg"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
             >
-              <path
-                d="m24 12h-3c0-4.97056275-4.0294373-9-9-9-4.97056275 0-9 4.02943725-9 9 0 4.9705627 4.02943725 9 9 9v3c-6.627417 0-12-5.372583-12-12s5.372583-12 12-12 12 5.372583 12 12z"
-                fill="#93a1a1"
-                fillRule="evenodd"
-              />
+              indicator-manual-building.svg
             </svg>
           </div>
           <span

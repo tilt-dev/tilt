@@ -158,11 +158,11 @@ test.each(cases)(
     )
 
     const triggerClass =
-      triggerMode === TriggerMode.TriggerModeAuto ? ".auto" : ".manual"
+      triggerMode === TriggerMode.TriggerModeAuto ? "svg.auto" : "svg.manual"
     expect(root.find(triggerClass)).toHaveLength(1)
 
     if (fillColor !== false) {
-      expect(root.find(`SidebarIcon [fill="${fillColor}"]`)).toHaveLength(1)
+      expect(root.find(`svg[fill="${fillColor}"]`)).toHaveLength(1)
     }
 
     if (iconType !== false) {

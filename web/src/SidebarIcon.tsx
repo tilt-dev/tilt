@@ -47,7 +47,7 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
     }
 
     if (props.status === ResourceStatus.Pending) {
-      return this.dotAutoPending(fill)
+      return this.dotAutoPending()
     }
 
     return this.dotAuto(fill)
@@ -66,14 +66,13 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
     return <AutoSvg className={`${IconType.DotAuto} auto`} fill={fill} />
   }
 
-  dotAutoPending(fill: Color) {
+  dotAutoPending() {
     let style = {
       animation: "glow 1s linear infinite",
     }
     return (
       <AutoPendingSvg
         className={`${IconType.DotAutoPending} auto`}
-        fill={fill}
         style={style}
         stroke={Color.gray}
       />
@@ -94,7 +93,7 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
   }
 
   dotManual(fill: Color) {
-    return <ManualSvg className={`${IconType.DotManual} auto`} fill={fill} />
+    return <ManualSvg className={`${IconType.DotManual} manual`} fill={fill} />
   }
 
   dotManualBuilding() {
@@ -104,7 +103,7 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
 
     return (
       <ManualBuildingSvg
-        className={`${IconType.DotManualBuilding} auto`}
+        className={`${IconType.DotManualBuilding} manual`}
         fill={Color.gray}
         style={style}
       />
