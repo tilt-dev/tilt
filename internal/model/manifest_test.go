@@ -311,6 +311,16 @@ var equalitytests = []struct {
 		}),
 		false,
 	},
+	{
+		Manifest{TriggerMode: TriggerModeManual},
+		Manifest{TriggerMode: TriggerModeManual},
+		true,
+	},
+	{
+		Manifest{TriggerMode: TriggerModeAuto},
+		Manifest{TriggerMode: TriggerModeManual},
+		false,
+	},
 }
 
 func TestManifestEquality(t *testing.T) {

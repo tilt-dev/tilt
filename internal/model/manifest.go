@@ -177,7 +177,7 @@ func (m Manifest) Validate() error {
 }
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
-	primitivesMatch := m1.Name == m2.Name
+	primitivesMatch := m1.Name == m2.Name && m1.TriggerMode == m2.TriggerMode
 	dockerEqual := DeepEqual(m1.ImageTargets, m2.ImageTargets)
 
 	dc1 := m1.DockerComposeTarget()
