@@ -230,11 +230,11 @@ func TestBuildQueueOrdering(t *testing.T) {
 	})
 	f.assertNoCall("even tho there are pending changes, manual manifest shouldn't build w/o explicit trigger")
 
-	f.store.Dispatch(view.AppendToTriggerQueueAction{Name: "manifest1"})
-	f.store.Dispatch(view.AppendToTriggerQueueAction{Name: "manifest2"})
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest1"})
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest2"})
 	time.Sleep(10 * time.Millisecond)
-	f.store.Dispatch(view.AppendToTriggerQueueAction{Name: "manifest3"})
-	f.store.Dispatch(view.AppendToTriggerQueueAction{Name: "manifest4"})
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest3"})
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest4"})
 
 	for i, _ := range manifests {
 		expName := fmt.Sprintf("manifest%d", i+1)
@@ -287,13 +287,13 @@ func TestBuildQueueAndAutobuildOrdering(t *testing.T) {
 	})
 	f.assertNoCall("even tho there are pending changes, manual manifest shouldn't build w/o explicit trigger")
 
-	f.store.Dispatch(view.AppendToTriggerQueueAction{Name: "manifest1"})
-	f.store.Dispatch(view.AppendToTriggerQueueAction{Name: "manifest2"})
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest1"})
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest2"})
 	// make our one auto-trigger manifest build - should be evaluated LAST, after
 	// all the manual manifests waiting in the queue
 	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("dirAuto/main.go")}
-	f.store.Dispatch(view.AppendToTriggerQueueAction{Name: "manifest3"})
-	f.store.Dispatch(view.AppendToTriggerQueueAction{Name: "manifest4"})
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest3"})
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest4"})
 
 	for i, _ := range manifests {
 		call := f.nextCall()
