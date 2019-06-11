@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -196,7 +197,117 @@ func TestBuildControllerManualTrigger(t *testing.T) {
 	})
 }
 
-// Test with some manual and some auto
+func TestBuildQueueOrdering(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
+	m1 := f.newManifest("manifest1", []model.Sync{sync}).WithTriggerMode(model.TriggerModeManual)
+	m2 := f.newManifest("manifest2", []model.Sync{sync}).WithTriggerMode(model.TriggerModeManual)
+	m3 := f.newManifest("manifest3", []model.Sync{sync}).WithTriggerMode(model.TriggerModeManual)
+	m4 := f.newManifest("manifest4", []model.Sync{sync}).WithTriggerMode(model.TriggerModeManual)
+
+	// attach to state in different order than we plan to trigger them
+	manifests := []model.Manifest{m4, m2, m3, m1}
+	f.Init(InitAction{
+		Manifests:       manifests,
+		WatchFiles:      true,
+		ExecuteTiltfile: true,
+	})
+
+	// Wait for initial build
+	for _, _ = range manifests {
+		f.nextCall()
+	}
+	f.waitForCompletedBuildCount(len(manifests))
+
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("main.go")}
+	f.WaitUntil("pending change appears", func(st store.EngineState) bool {
+		return len(st.BuildStatus(m1.ImageTargetAt(0).ID()).PendingFileChanges) > 0 &&
+			len(st.BuildStatus(m2.ImageTargetAt(0).ID()).PendingFileChanges) > 0 &&
+			len(st.BuildStatus(m3.ImageTargetAt(0).ID()).PendingFileChanges) > 0 &&
+			len(st.BuildStatus(m4.ImageTargetAt(0).ID()).PendingFileChanges) > 0
+	})
+	f.assertNoCall("even tho there are pending changes, manual manifest shouldn't build w/o explicit trigger")
+
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest1"})
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest2"})
+	time.Sleep(10 * time.Millisecond)
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest3"})
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest4"})
+
+	for i, _ := range manifests {
+		expName := fmt.Sprintf("manifest%d", i+1)
+		call := f.nextCall()
+		imgID := call.image().ID().String()
+		if assert.True(t, strings.HasSuffix(imgID, expName),
+			"expected to get manifest '%s' but instead got: '%s' (checking suffix for manifest name)", expName, imgID) {
+			assert.Equal(t, []string{f.JoinPath("main.go")}, call.oneState().FilesChanged(),
+				"for manifest '%s", expName)
+		}
+	}
+	f.waitForCompletedBuildCount(2 * len(manifests))
+}
+
+func TestBuildQueueAndAutobuildOrdering(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	// changes to this dir. will register with our manual manifests
+	syncDirManual := model.Sync{LocalPath: f.JoinPath("dirManual/"), ContainerPath: "/go"}
+	// changes to this dir. will register with our automatic manifests
+	syncDirAuto := model.Sync{LocalPath: f.JoinPath("dirAuto/"), ContainerPath: "/go"}
+
+	m1 := f.newManifest("manifest1", []model.Sync{syncDirManual}).WithTriggerMode(model.TriggerModeManual)
+	m2 := f.newManifest("manifest2", []model.Sync{syncDirManual}).WithTriggerMode(model.TriggerModeManual)
+	m3 := f.newManifest("manifest3", []model.Sync{syncDirManual}).WithTriggerMode(model.TriggerModeManual)
+	m4 := f.newManifest("manifest4", []model.Sync{syncDirManual}).WithTriggerMode(model.TriggerModeManual)
+	m5 := f.newManifest("manifest5", []model.Sync{syncDirAuto}).WithTriggerMode(model.TriggerModeAuto)
+
+	// attach to state in different order than we plan to trigger them
+	manifests := []model.Manifest{m5, m4, m2, m3, m1}
+	f.Init(InitAction{
+		Manifests:       manifests,
+		WatchFiles:      true,
+		ExecuteTiltfile: true,
+	})
+
+	// Wait for initial build
+	for _, _ = range manifests {
+		f.nextCall()
+	}
+	f.waitForCompletedBuildCount(len(manifests))
+
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("dirManual/main.go")}
+	f.WaitUntil("pending change appears", func(st store.EngineState) bool {
+		return len(st.BuildStatus(m1.ImageTargetAt(0).ID()).PendingFileChanges) > 0 &&
+			len(st.BuildStatus(m2.ImageTargetAt(0).ID()).PendingFileChanges) > 0 &&
+			len(st.BuildStatus(m3.ImageTargetAt(0).ID()).PendingFileChanges) > 0 &&
+			len(st.BuildStatus(m4.ImageTargetAt(0).ID()).PendingFileChanges) > 0
+	})
+	f.assertNoCall("even tho there are pending changes, manual manifest shouldn't build w/o explicit trigger")
+
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest1"})
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest2"})
+	// make our one auto-trigger manifest build - should be evaluated LAST, after
+	// all the manual manifests waiting in the queue
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("dirAuto/main.go")}
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest3"})
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest4"})
+
+	for i, _ := range manifests {
+		call := f.nextCall()
+		assert.True(t, strings.HasSuffix(call.image().ID().String(), fmt.Sprintf("manifest%d", i+1)))
+
+		if i < 4 {
+			assert.Equal(t, []string{f.JoinPath("dirManual/main.go")}, call.oneState().FilesChanged(), "for manifest %d", i+1)
+		} else {
+			// the automatic manifest
+			assert.Equal(t, []string{f.JoinPath("dirAuto/main.go")}, call.oneState().FilesChanged(), "for manifest %d", i+1)
+		}
+	}
+	f.waitForCompletedBuildCount(2 * len(manifests))
+}
 
 // any manifests without image targets should be deployed before any manifests WITH image targets
 func TestBuildControllerNoBuildManifestsFirst(t *testing.T) {

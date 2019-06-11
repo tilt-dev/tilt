@@ -34,13 +34,21 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           href="/r/resource4"
           onClick={[Function]}
         >
-          <span
-            className="resLink-icon"
+          <div
+            className="sidebarIcon"
           >
-            <svg>
-              dot-building.svg
+            <svg
+              className="dotAutoBuilding auto"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-building.svg
             </svg>
-          </span>
+          </div>
           <span
             className="resLink-name"
           >
@@ -69,13 +77,21 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           href="/r/resource9"
           onClick={[Function]}
         >
-          <span
-            className="resLink-icon"
+          <div
+            className="sidebarIcon"
           >
-            <svg>
-              dot-building.svg
+            <svg
+              className="dotAutoBuilding auto"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-building.svg
             </svg>
-          </span>
+          </div>
           <span
             className="resLink-name"
           >
@@ -104,13 +120,21 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           href="/r/resource19"
           onClick={[Function]}
         >
-          <span
-            className="resLink-icon"
+          <div
+            className="sidebarIcon"
           >
-            <svg>
-              dot-building.svg
+            <svg
+              className="dotAutoBuilding auto"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-building.svg
             </svg>
-          </span>
+          </div>
           <span
             className="resLink-name"
           >
@@ -139,13 +163,21 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           href="/r/resource29"
           onClick={[Function]}
         >
-          <span
-            className="resLink-icon"
+          <div
+            className="sidebarIcon"
           >
-            <svg>
-              dot-building.svg
+            <svg
+              className="dotAutoBuilding auto"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-building.svg
             </svg>
-          </span>
+          </div>
           <span
             className="resLink-name"
           >
@@ -174,13 +206,21 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           href="/r/resource39"
           onClick={[Function]}
         >
-          <span
-            className="resLink-icon"
+          <div
+            className="sidebarIcon"
           >
-            <svg>
-              dot-building.svg
+            <svg
+              className="dotAutoBuilding auto"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-building.svg
             </svg>
-          </span>
+          </div>
           <span
             className="resLink-name"
           >
@@ -209,13 +249,21 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           href="/r/resource49"
           onClick={[Function]}
         >
-          <span
-            className="resLink-icon"
+          <div
+            className="sidebarIcon"
           >
-            <svg>
-              dot-building.svg
+            <svg
+              className="dotAutoBuilding auto"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-building.svg
             </svg>
-          </span>
+          </div>
           <span
             className="resLink-name"
           >
@@ -244,13 +292,21 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           href="/r/resource54"
           onClick={[Function]}
         >
-          <span
-            className="resLink-icon"
+          <div
+            className="sidebarIcon"
           >
-            <svg>
-              dot-building.svg
+            <svg
+              className="dotAutoBuilding auto"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-building.svg
             </svg>
-          </span>
+          </div>
           <span
             className="resLink-name"
           >
@@ -369,13 +425,21 @@ exports[`sidebar renders list of resources 1`] = `
           href="/r/vigoda"
           onClick={[Function]}
         >
-          <span
-            className="resLink-icon"
+          <div
+            className="sidebarIcon"
           >
-            <svg>
-              dot-building.svg
+            <svg
+              className="dotAutoBuilding auto"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-building.svg
             </svg>
-          </span>
+          </div>
           <span
             className="resLink-name"
           >
@@ -404,13 +468,21 @@ exports[`sidebar renders list of resources 1`] = `
           href="/r/snack"
           onClick={[Function]}
         >
-          <span
-            className="resLink-icon"
+          <div
+            className="sidebarIcon"
           >
-            <svg>
-              dot-building.svg
+            <svg
+              className="dotAutoBuilding auto"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-building.svg
             </svg>
-          </span>
+          </div>
           <span
             className="resLink-name"
           >
@@ -486,13 +558,21 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           href="/r/vigoda"
           onClick={[Function]}
         >
-          <span
-            className="resLink-icon"
+          <div
+            className="sidebarIcon"
           >
-            <svg>
-              dot-building.svg
+            <svg
+              className="dotAutoBuilding auto"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-building.svg
             </svg>
-          </span>
+          </div>
           <span
             className="resLink-name"
           >
@@ -516,13 +596,21 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           href="/r/snack"
           onClick={[Function]}
         >
-          <span
-            className="resLink-icon"
+          <div
+            className="sidebarIcon"
           >
-            <svg>
-              dot-building.svg
+            <svg
+              className="dotAutoBuilding auto"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-building.svg
             </svg>
-          </span>
+          </div>
           <span
             className="resLink-name"
           >
@@ -537,6 +625,139 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             className="resLink-timeAgo"
           >
             —
+          </span>
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <div
+    className="Sidebar-spacer"
+  >
+     
+  </div>
+  <button
+    className="Sidebar-toggle"
+    onClick={null}
+  >
+    <svg>
+      chevron.svg
+    </svg>
+     Collapse
+  </button>
+</section>
+`;
+
+exports[`sidebar renders resources with manual trigger mode 1`] = `
+<section
+  className="Sidebar"
+>
+  <nav
+    className="Sidebar-resources"
+  >
+    <ul
+      className="Sidebar-list"
+    >
+      <li>
+        <a
+          className="resLink resLink--all is-selected"
+          href="/"
+          onClick={[Function]}
+        >
+          <span
+            className="resLink--all-name"
+          >
+            All
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            2
+          </span>
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--building"
+          href="/r/vigoda"
+          onClick={[Function]}
+        >
+          <div
+            className="sidebarIcon"
+          >
+            <svg
+              className="dotManualBuilding manual"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-manual-building.svg
+            </svg>
+          </div>
+          <span
+            className="resLink-name"
+          >
+            vigoda
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
+            <time
+              dateTime="2017-12-21T15:36:07.000Z"
+              title="2017-12-21 15:36"
+            >
+              &lt;5s
+            </time>
+          </span>
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--building"
+          href="/r/snack"
+          onClick={[Function]}
+        >
+          <div
+            className="sidebarIcon"
+          >
+            <svg
+              className="dotManualBuilding manual"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-manual-building.svg
+            </svg>
+          </div>
+          <span
+            className="resLink-name"
+          >
+            snack
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
+            <time
+              dateTime="2017-12-21T15:35:57.000Z"
+              title="2017-12-21 15:35"
+            >
+              &lt;15s
+            </time>
           </span>
         </a>
       </li>
