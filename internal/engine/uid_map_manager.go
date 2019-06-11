@@ -21,10 +21,6 @@ func NewUIDMapManager(kCli k8s.Client) *UIDMapManager {
 }
 
 func (m *UIDMapManager) needsWatch(st store.RStore) bool {
-	if !k8sEventsFeatureFlagOn() {
-		return false
-	}
-
 	state := st.RLockState()
 	defer st.RUnlockState()
 

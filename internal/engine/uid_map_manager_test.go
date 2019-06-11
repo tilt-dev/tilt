@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -174,10 +173,6 @@ type ummFixture struct {
 	cancel     func()
 	store      *store.Store
 	getActions func() []store.Action
-
-	// old value of k8sEventsFeatureFlag env var, for teardown
-	// TODO(maia): remove this when we remove the feature flag
-	oldFeatureFlagVal string
 }
 
 func newUMMFixture(t *testing.T) *ummFixture {
@@ -187,15 +182,12 @@ func newUMMFixture(t *testing.T) *ummFixture {
 	ctx, cancel := context.WithCancel(ctx)
 
 	ret := &ummFixture{
-		kClient:           kClient,
-		umm:               NewUIDMapManager(kClient),
-		ctx:               ctx,
-		cancel:            cancel,
-		t:                 t,
-		oldFeatureFlagVal: os.Getenv(k8sEventsFeatureFlag),
+		kClient: kClient,
+		umm:     NewUIDMapManager(kClient),
+		ctx:     ctx,
+		cancel:  cancel,
+		t:       t,
 	}
-
-	os.Setenv(k8sEventsFeatureFlag, "true")
 
 	ret.store, ret.getActions = store.NewStoreForTesting()
 	go ret.store.Loop(ctx)
@@ -205,7 +197,6 @@ func newUMMFixture(t *testing.T) *ummFixture {
 
 func (f *ummFixture) TearDown() {
 	f.kClient.TearDown()
-	_ = os.Setenv(k8sEventsFeatureFlag, f.oldFeatureFlagVal)
 	f.cancel()
 }
 
