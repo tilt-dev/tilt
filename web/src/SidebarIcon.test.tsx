@@ -131,8 +131,8 @@ const cases: Array<
     false,
     false,
     TriggerMode.TriggerModeManual,
-    false,
-    IconType.DotManual,
+    Color.gray,
+    IconType.DotManualPending,
   ],
   [
     "manual mode, status pending with warnings → glowing ring",
@@ -140,8 +140,8 @@ const cases: Array<
     true,
     false,
     TriggerMode.TriggerModeManual,
-    false,
-    IconType.DotManual,
+    Color.gray,
+    IconType.DotManualPending,
   ],
 ]
 

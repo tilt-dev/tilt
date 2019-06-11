@@ -1,5 +1,5 @@
 import React, { PureComponent } from "react"
-import { TriggerMode, ResourceStatus } from "./types"
+import { TriggerMode, ResourceStatus, Build } from "./types"
 import { Color } from "./constants"
 import { ReactComponent as ManualSvg } from "./assets/svg/indicator-manual.svg"
 import { ReactComponent as ManualBuildingSvg } from "./assets/svg/indicator-manual-building.svg"
@@ -12,6 +12,8 @@ type SidebarIconProps = {
   status: ResourceStatus
   hasWarning: boolean
   isBuilding: boolean
+  isDirty: boolean
+  lastBuild: Build | null
 }
 
 export enum IconType {
@@ -19,6 +21,7 @@ export enum IconType {
   DotAutoPending = "dotAutoPending",
   DotAutoBuilding = "dotAutoBuilding",
   DotManual = "dotManual",
+  DotManualPending = "dotManualPending",
   DotManualBuilding = "dotManualBuilding",
 }
 
@@ -31,6 +34,8 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
       fill = Color.red
     } else if (props.hasWarning) {
       fill = Color.yellow
+    } else if (props.isDirty && props.lastBuild && props.lastBuild.Error) {
+      fill = Color.red
     }
 
     if (props.triggerMode === TriggerMode.TriggerModeManual) {
@@ -57,6 +62,14 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
     let props = this.props
     if (props.isBuilding) {
       return this.dotManualBuilding()
+    }
+
+    if (props.isDirty) {
+      return this.dotManual(fill)
+    }
+
+    if (props.status === ResourceStatus.Pending) {
+      return this.dotManualPending()
     }
 
     return this.dotManual(fill)
@@ -94,6 +107,20 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
 
   dotManual(fill: Color) {
     return <ManualSvg className={`${IconType.DotManual} manual`} fill={fill} />
+  }
+
+  dotManualPending() {
+    let style = {
+      animation: "glow 1s linear infinite",
+    }
+
+    return (
+      <ManualSvg
+        className={`${IconType.DotManualPending} manual`}
+        style={style}
+        fill={Color.gray}
+      />
+    )
   }
 
   dotManualBuilding() {

@@ -7,6 +7,7 @@ import {
   oneResourceView,
   twoResourceView,
   allResourcesOK,
+  oneResourceManualTriggerDirty,
 } from "./testdata.test"
 import { mount } from "enzyme"
 import { ResourceView, TriggerMode } from "./types"
@@ -119,6 +120,28 @@ describe("sidebar", () => {
       res.TriggerMode = TriggerMode.TriggerModeManual
       return new SidebarItem(res)
     })
+    const tree = renderer
+      .create(
+        <MemoryRouter initialEntries={["/"]}>
+          <Sidebar
+            isClosed={false}
+            items={items}
+            selected=""
+            toggleSidebar={null}
+            resourceView={ResourceView.Log}
+            pathBuilder={pathBuilder}
+          />
+        </MemoryRouter>
+      )
+      .toJSON()
+
+    expect(tree).toMatchSnapshot()
+  })
+
+  it("renders * next to dirty manual trigger mode resources", () => {
+    let items = oneResourceManualTriggerDirty().map(
+      (i: any) => new SidebarItem(i)
+    )
     const tree = renderer
       .create(
         <MemoryRouter initialEntries={["/"]}>

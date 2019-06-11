@@ -35,7 +35,7 @@ type Resource = {
   IsTiltfile: boolean
   LastDeployTime: string
   PathsWatched: Array<string>
-  PendingBuildEdits: any
+  PendingBuildEdits: Array<string>
   PendingBuildReason: number
   ResourceInfo: {
     PodCreationTime: string
@@ -49,6 +49,7 @@ type Resource = {
   RuntimeStatus: string
   ShowBuildStatus: boolean
   TriggerMode: TriggerMode
+  HasPendingChanges: boolean
 }
 
 type HudState = {
