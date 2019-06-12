@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -104,6 +105,7 @@ type WatchManager struct {
 	timerMaker         timerMaker
 	tiltIgnoreContents string
 	disabledForTesting bool
+	mu                 sync.Mutex
 }
 
 func NewWatchManager(watcherMaker FsWatcherMaker, timerMaker timerMaker) *WatchManager {
@@ -168,6 +170,9 @@ func watchRulesMatch(w1, w2 WatchableTarget) bool {
 }
 
 func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
 	setup, teardown := w.diff(ctx, st)
 
 	state := st.RLockState()

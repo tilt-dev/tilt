@@ -2059,6 +2059,8 @@ func TestNewSyncsAreWatched(t *testing.T) {
 	})
 
 	f.PollUntil("watches set up", func() bool {
+		f.fwm.mu.Lock()
+		defer f.fwm.mu.Unlock()
 		watches, ok := f.fwm.targetWatches[m2.ImageTargetAt(0).ID()]
 		if !ok {
 			return false
@@ -2726,6 +2728,8 @@ func (f *testFixture) Init(action InitAction) {
 	})
 
 	f.PollUntil("watches set up", func() bool {
+		f.fwm.mu.Lock()
+		defer f.fwm.mu.Unlock()
 		return !watchFiles || len(f.fwm.targetWatches) == len(watchableTargetsForManifests(manifests))
 	})
 }
