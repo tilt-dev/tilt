@@ -29,12 +29,14 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
   render() {
     let props = this.props
     let fill = Color.green
+    let dirtyBuildWithError =
+      props.isDirty && props.lastBuild && props.lastBuild.Error
 
     if (props.status === ResourceStatus.Error) {
       fill = Color.red
     } else if (props.hasWarning) {
       fill = Color.yellow
-    } else if (props.isDirty && props.lastBuild && props.lastBuild.Error) {
+    } else if (dirtyBuildWithError) {
       fill = Color.red
     }
 
