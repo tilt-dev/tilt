@@ -834,8 +834,7 @@ k8s_yaml('snack.yaml')`
 
 	f.loadAndStart()
 
-	// First call: with the old manifests
-	_ = f.nextCall("initial call")
+	_ = f.nextCall("initial build")
 	f.WaitUntilManifest("manifest has triggerMode = auto (default)", "snack", func(mt store.ManifestTarget) bool {
 		return mt.Manifest.TriggerMode == model.TriggerModeAuto
 	})
@@ -849,6 +848,53 @@ trigger_mode(TRIGGER_MODE_MANUAL)`, origTiltfile)
 	f.assertNoCall("A change to TriggerMode shouldn't trigger an update (doesn't invalidate current build)")
 	f.WaitUntilManifest("triggerMode has changed on manifest", "snack", func(mt store.ManifestTarget) bool {
 		return mt.Manifest.TriggerMode == model.TriggerModeManual
+	})
+
+	err := f.Stop()
+	assert.Nil(t, err)
+	f.assertAllBuildsConsumed()
+}
+
+func TestConfigChange_ManifestWithPendingChangesBuildsIfTriggerModeChangedToAuto(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	baseTiltfile := `trigger_mode(%s)
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile') 
+k8s_yaml('snack.yaml')`
+	triggerManualTiltfile := fmt.Sprintf(baseTiltfile, "TRIGGER_MODE_MANUAL")
+	f.WriteFile("Tiltfile", triggerManualTiltfile)
+	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
+	f.WriteFile("snack.yaml", simpleYAML)
+
+	f.loadAndStart()
+
+	// First call: with the old manifests
+	_ = f.nextCall("initial build")
+	var imageTargetID model.TargetID
+	f.WaitUntilManifest("manifest has triggerMode = auto (default)", "snack", func(mt store.ManifestTarget) bool {
+		imageTargetID = mt.Manifest.ImageTargetAt(0).ID() // grab for later
+		return mt.Manifest.TriggerMode == model.TriggerModeManual
+	})
+
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("src/main.go")}
+	f.WaitUntil("pending change appears", func(st store.EngineState) bool {
+		return len(st.BuildStatus(imageTargetID).PendingFileChanges) > 0
+	})
+	f.assertNoCall("even tho there are pending changes, manual manifest shouldn't build w/o explicit trigger")
+
+	// Update Tiltfile to change the trigger mode of the manifest
+	triggerAutoTiltfile := fmt.Sprintf(baseTiltfile, "TRIGGER_MODE_AUTO")
+	f.WriteConfigFiles("Tiltfile", triggerAutoTiltfile)
+
+	call := f.nextCall("manifest updated b/c it's now TriggerModeAuto")
+	assert.True(t, call.oneState().HasImage(),
+		"we did NOT clear the build state (b/c a change to Manifest.TriggerMode does NOT invalidate the build")
+	f.WaitUntilManifest("triggerMode has changed on manifest", "snack", func(mt store.ManifestTarget) bool {
+		return mt.Manifest.TriggerMode == model.TriggerModeAuto
+	})
+	f.WaitUntil("manifest is no longer in trigger queue", func(st store.EngineState) bool {
+		return len(st.TriggerQueue) == 0
 	})
 
 	err := f.Stop()
