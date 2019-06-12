@@ -87,10 +87,6 @@ func (ta *TiltAnalytics) Flush(timeout time.Duration) {
 }
 
 func (ta *TiltAnalytics) SetOpt(opt analytics.Opt) error {
-	if opt == analytics.OptIn {
-		ta.IncrIfUnopted("analytics.opt.in")
-	}
-	// no logging on opt-out, because, well, opting out means the user just told us not to report data on them!
 	ta.opt = opt
 	return ta.opter.SetOpt(ta.opt)
 }

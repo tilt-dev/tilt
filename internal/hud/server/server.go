@@ -6,16 +6,15 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/wmclient/pkg/analytics"
-
 	"github.com/gorilla/mux"
 	_ "github.com/gorilla/websocket"
+	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 )
@@ -96,6 +95,11 @@ func (s *HeadsUpServer) HandleAnalyticsOpt(w http.ResponseWriter, req *http.Requ
 	opt, err := analytics.ParseOpt(payload.Opt)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error parsing opt '%s': %v", payload.Opt, err), http.StatusBadRequest)
+	}
+
+	// only logging on opt-in, because, well, opting out means the user just told us not to report data on them!
+	if opt == analytics.OptIn {
+		s.a.IncrIfUnopted("analytics.opt.in")
 	}
 
 	s.store.Dispatch(store.AnalyticsOptAction{Opt: opt})

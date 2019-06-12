@@ -187,37 +187,6 @@ func TestOptTransitionIncrIfUnopted(t *testing.T) {
 	}
 }
 
-func TestOptIn(t *testing.T) {
-	for _, test := range []struct {
-		name       string
-		opt        analytics.Opt
-		metricName string
-	}{
-		{"in", analytics.OptIn, "analytics.opt.in"},
-		{"out", analytics.OptOut, ""},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			ma := analytics.NewMemoryAnalytics()
-			os := &optSetting{}
-			a := NewTiltAnalytics(analytics.OptDefault, os, ma, versionTest)
-			err := a.SetOpt(test.opt)
-			if !assert.NoError(t, err) {
-				t.FailNow()
-			}
-
-			var expectedCounts []analytics.CountEvent
-			if test.metricName != "" {
-				expectedCounts = append(expectedCounts, analytics.CountEvent{
-					Name: test.metricName,
-					Tags: map[string]string{"version": versionTest},
-					N:    1,
-				})
-			}
-			assert.Equal(t, expectedCounts, ma.Counts)
-		})
-	}
-}
-
 type testOpter struct {
 	calls []analytics.Opt
 }
