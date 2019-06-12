@@ -3,14 +3,31 @@ import { mount } from "enzyme"
 import SidebarTriggerButton from "./SidebarTriggerButton"
 import { TriggerMode } from "./types"
 
-it("renders trigger button in manual mode", () => {
-  const root = mount(
-    <SidebarTriggerButton
-      isSelected={true}
-      resourceName="doggos"
-      triggerMode={TriggerMode.TriggerModeManual}
-    />
-  )
+describe("SidebarTriggerButtoon", () => {
+  beforeEach(() => {
+    fetchMock.resetMocks()
+  })
 
-  expect(root.find(".SidebarTriggerButton")).toHaveLength(1)
+  it("POSTs to endpoint when clicked", () => {
+    fetchMock.mockResponse(JSON.stringify({}))
+
+    const root = mount(
+      <SidebarTriggerButton
+        isSelected={true}
+        resourceName="doggos"
+        triggerMode={TriggerMode.TriggerModeManual}
+      />
+    )
+
+    let element = root.find(".SidebarTriggerButton")
+    expect(element).toHaveLength(1)
+    element.simulate("click")
+
+    expect(fetchMock.mock.calls.length).toEqual(1)
+    expect(fetchMock.mock.calls[0][0]).toEqual("//localhost/api/trigger")
+    expect(fetchMock.mock.calls[0][1].method).toEqual("post")
+    expect(fetchMock.mock.calls[0][1].body).toEqual(
+      JSON.stringify({ manifest_names: ["doggos"] })
+    )
+  })
 })
