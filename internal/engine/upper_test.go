@@ -822,7 +822,38 @@ k8s_yaml('snack.yaml')
 }
 
 func TestConfigChange_TriggerModeChangePropagatesButDoesntInvalidateBuild(t *testing.T) {
-	// TODO
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	origTiltfile := `
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile') 
+k8s_yaml('snack.yaml')`
+	f.WriteFile("Tiltfile", origTiltfile)
+	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
+	f.WriteFile("snack.yaml", simpleYAML)
+
+	f.loadAndStart()
+
+	// First call: with the old manifests
+	_ = f.nextCall("initial call")
+	f.WaitUntilManifest("manifest has triggerMode = auto (default)", "snack", func(mt store.ManifestTarget) bool {
+		return mt.Manifest.TriggerMode == model.TriggerModeAuto
+	})
+
+	// Update Tiltfile to change the trigger mode of the manifest
+	tiltfileWithTriggerMode := fmt.Sprintf(`%s
+
+trigger_mode(TRIGGER_MODE_MANUAL)`, origTiltfile)
+	f.WriteConfigFiles("Tiltfile", tiltfileWithTriggerMode)
+
+	f.assertNoCall("A change to TriggerMode shouldn't trigger an update (doesn't invalidate current build)")
+	f.WaitUntilManifest("triggerMode has changed on manifest", "snack", func(mt store.ManifestTarget) bool {
+		return mt.Manifest.TriggerMode == model.TriggerModeManual
+	})
+
+	err := f.Stop()
+	assert.Nil(t, err)
+	f.assertAllBuildsConsumed()
 }
 
 func TestDockerRebuildWithChangedFiles(t *testing.T) {
