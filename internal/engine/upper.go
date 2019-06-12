@@ -494,10 +494,11 @@ func handleConfigsReloaded(
 		newDefOrder[i] = m.ManifestName()
 
 		configFilesThatChanged := state.LastTiltfileBuild.Edits
-		if !m.Equal(mt.Manifest) {
-			mt.Manifest = m
-
-			// Manifest has changed, ensure we do an image build so that we apply the changes
+		old := mt.Manifest
+		mt.Manifest = m
+		if model.ChangesInvalidateBuild(old, m) {
+			// Manifest has changed such that the current build is invalid;
+			// ensure we do an image build so that we apply the changes
 			state := mt.State
 			state.BuildStatuses = make(map[model.TargetID]*store.BuildStatus)
 			state.PendingManifestChange = time.Now()

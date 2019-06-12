@@ -691,17 +691,13 @@ k8s_resource('doggos', new_name='quux')  # rename "doggos" --> "quux"
 	f.assertAllBuildsConsumed()
 }
 
-func TestNoOpChangeToDockerfile(t *testing.T) {
+func TestConfigChange_NoOpChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
 	f.WriteFile("Tiltfile", `
-k8s_resource_assembly_version(2)
-r = local_git_repo('.')
-fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
-  .add(r.path('src'), '.')
-k8s_yaml('snack.yaml')
-k8s_resource('snack', new_name='foobar')`)
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile') 
+k8s_yaml('snack.yaml')`)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
 	f.WriteFile("snack.yaml", simpleYAML)
 	f.WriteFile("src/main.go", "hello")
@@ -709,83 +705,40 @@ k8s_resource('snack', new_name='foobar')`)
 	f.loadAndStart()
 
 	// First call: with the old manifests
-	call := f.nextCall("old manifests")
-	assert.Equal(t, "FROM iron/go:dev1", call.image().TopFastBuildInfo().BaseDockerfile)
-	assert.Equal(t, "foobar", string(call.k8s().Name))
+	call := f.nextCall("initial call")
+	assert.Equal(t, "FROM iron/go:dev1", call.image().DockerBuildInfo().Dockerfile)
+	assert.Equal(t, "snack", string(call.k8s().Name))
 
+	// Write same contents to Dockerfile -- an "edit" event for a config file,
+	// but it doesn't change the manifest at all.
 	f.WriteConfigFiles("Dockerfile", `FROM iron/go:dev1`)
-
-	// The dockerfile hasn't changed, so there shouldn't be any builds.
-	f.assertNoCall()
-
-	changed := f.WriteFile("src/main.go", "goodbye")
-	f.fsWatcher.events <- watch.FileEvent{Path: changed}
+	f.assertNoCall("Dockerfile hasn't changed, so there shouldn't be any builds")
 
 	// Second call: Editing the Dockerfile means we have to reevaluate the Tiltfile.
 	// Editing the random file means we have to do a rebuild. BUT! The Dockerfile
 	// hasn't changed, so the manifest hasn't changed, so we can do an incremental build.
-	call = f.nextCall("incremental build despite edited config file")
-	assert.Equal(t, "foobar", string(call.k8s().Name))
+	changed := f.WriteFile("src/main.go", "goodbye")
+	f.fsWatcher.events <- watch.FileEvent{Path: changed}
+
+	call = f.nextCall("build from file change")
+	assert.Equal(t, "snack", string(call.k8s().Name))
 	assert.ElementsMatch(t, []string{
 		f.JoinPath("src/main.go"),
 	}, call.oneState().FilesChanged())
-
-	// Unchanged manifest --> we do NOT clear the build state
-	assert.True(t, call.oneState().HasImage())
+	assert.True(t, call.oneState().HasImage(), "Unchanged manifest --> we do NOT clear the build state")
 
 	err := f.Stop()
 	assert.Nil(t, err)
 	f.assertAllBuildsConsumed()
 }
 
-func TestRebuildDockerfileFailed(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	f.WriteFile("Tiltfile", simpleTiltfile)
-	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
-	f.WriteFile("snack.yaml", simpleYAML)
-
-	f.loadAndStart()
-
-	// First call: init
-	call := f.nextCall("old manifest")
-	assert.Equal(t, `FROM iron/go:dev`, call.image().TopFastBuildInfo().BaseDockerfile)
-
-	// Second call: error!
-	f.WriteConfigFiles("Tiltfile", "borken")
-	f.assertNoCall("Tiltfile error should prevent BuildAndDeploy from being called")
-
-	// Third call: fix
-	f.WriteConfigFiles("Tiltfile", simpleTiltfile,
-		"Dockerfile", `FROM iron/go:dev2`)
-
-	call = f.nextCall("fixed broken config")
-	assert.Equal(t, "FROM iron/go:dev2", call.image().TopFastBuildInfo().BaseDockerfile)
-	assert.False(t, call.oneState().HasImage()) // we cleared the previous build state to force an image build
-	f.WaitUntil("manifest definition order hasn't changed", func(state store.EngineState) bool {
-		return len(state.ManifestDefinitionOrder) == 1
-	})
-	f.WaitUntilManifestState("LastError was cleared", "snack", func(ms store.ManifestState) bool {
-		return ms.LastBuild().Error == nil
-	})
-
-	err := f.Stop()
-	assert.Nil(t, err)
-	f.assertAllBuildsConsumed()
-}
-
-func TestBreakManifest(t *testing.T) {
+func TestConfigChange_TiltfileErrorAndFixWithNoChanges(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
 	origTiltfile := `
-k8s_resource_assembly_version(2)
-fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
-	.add(local_git_repo('./nested'), '.')  # Tiltfile is not synced
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile') 
 k8s_yaml('snack.yaml')`
-
-	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll sync.
 	f.WriteFile("Tiltfile", origTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 	f.WriteFile("snack.yaml", simpleYAML)
@@ -797,45 +750,14 @@ k8s_yaml('snack.yaml')`
 
 	// Second call: change Tiltfile, break manifest
 	f.WriteConfigFiles("Tiltfile", "borken")
+	f.WaitUntil("tiltfile error set", func(st store.EngineState) bool {
+		return st.LastTiltfileError() != nil
+	})
 	f.assertNoCall("Tiltfile error should prevent BuildAndDeploy from being called")
-
-	f.WaitUntil("error set", func(st store.EngineState) bool {
-		return st.LastTiltfileError() != nil
-	})
-
-	f.withState(func(es store.EngineState) {
-		assert.Equal(t, "", nextManifestNameToBuild(es).String())
-	})
-}
-
-func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	origTiltfile := `
-k8s_resource_assembly_version(2)
-fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
-	.add(local_git_repo('./nested'), '.')  # Tiltfile is not synced
-k8s_yaml('snack.yaml')`
-	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll sync.
-	f.WriteFile("Tiltfile", origTiltfile)
-	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
-	f.WriteFile("snack.yaml", simpleYAML)
-
-	f.loadAndStart()
-
-	// First call: all is well
-	_ = f.nextCall("first call")
-
-	// Second call: change Tiltfile, break manifest
-	f.WriteConfigFiles("Tiltfile", "borken")
-	f.WaitUntil("state is broken", func(st store.EngineState) bool {
-		return st.LastTiltfileError() != nil
-	})
 
 	// Third call: put Tiltfile back. No change to manifest or to synced files, so expect no build.
 	f.WriteConfigFiles("Tiltfile", origTiltfile)
-	f.WaitUntil("state is restored", func(st store.EngineState) bool {
+	f.WaitUntil("tiltfile error cleared", func(st store.EngineState) bool {
 		return st.LastTiltfileError() == nil
 	})
 
@@ -844,60 +766,140 @@ k8s_yaml('snack.yaml')`
 	})
 }
 
-func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
+func TestConfigChange_TiltfileErrorAndFixWithFileChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	tiltfileString := func(cmd string) string {
+	tiltfileWithCmd := func(cmd string) string {
 		return fmt.Sprintf(`
-k8s_resource_assembly_version(2)
-fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
-	.add(local_git_repo('./nested'), '.') \
-  .run('%s')
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile',
+    live_update=[
+        sync('./src', '/src'),
+        run('%s')
+    ]
+)
 k8s_yaml('snack.yaml')
 `, cmd)
 	}
 
-	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll sync.
-	f.WriteFile("Tiltfile", tiltfileString("original"))
+	f.WriteFile("Tiltfile", tiltfileWithCmd("original"))
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 	f.WriteFile("snack.yaml", simpleYAML)
 
 	f.loadAndStart()
 
-	f.WaitUntil("first build finished", func(state store.EngineState) bool {
-		return state.CompletedBuildCount == 1
-	})
+	// First call: all is well
+	_ = f.nextCall("first call")
 
-	name := model.ManifestName("snack")
 	// Second call: change Tiltfile, break manifest
 	f.WriteConfigFiles("Tiltfile", "borken")
-	f.WaitUntil("manifest load error", func(st store.EngineState) bool {
+	f.WaitUntil("tiltfile error set", func(st store.EngineState) bool {
 		return st.LastTiltfileError() != nil
 	})
 
-	f.withState(func(state store.EngineState) {
-		assert.Equal(t, 1, state.CompletedBuildCount)
-	})
+	f.assertNoCall("Tiltfile error should prevent BuildAndDeploy from being called")
 
 	// Third call: put Tiltfile back. manifest changed, so expect a build
-	f.WriteConfigFiles("Tiltfile", tiltfileString("changed"))
+	f.WriteConfigFiles("Tiltfile", tiltfileWithCmd("changed"))
 
-	f.WaitUntil("second build finished", func(state store.EngineState) bool {
-		return state.CompletedBuildCount == 2
+	call := f.nextCall("fixed broken config and rebuilt manifest")
+	assert.False(t, call.oneState().HasImage(),
+		"expected this call to have NO image (since we should have cleared it to force an image build)")
+
+	f.WaitUntil("tiltfile error cleared", func(state store.EngineState) bool {
+		return state.LastTiltfileError() == nil
 	})
 
-	f.withState(func(state store.EngineState) {
-		assert.Equal(t, "", nextManifestNameToBuild(state).String())
-		assert.NoError(t, state.LastTiltfileError())
+	f.withManifestTarget("snack", func(mt store.ManifestTarget) {
+		expectedCmd := model.ToShellCmd("changed")
+		assert.Equal(t, expectedCmd, mt.Manifest.ImageTargetAt(0).AnyLiveUpdateInfo().RunSteps()[0].Cmd,
+			"Tiltfile change should have propagated to manifest")
 	})
 
-	f.withManifestTarget(name, func(mt store.ManifestTarget) {
-		expectedRuns := []model.Run{{
-			Cmd: model.ToShellCmd("changed"),
-		}}
-		assert.Equal(t, expectedRuns, mt.Manifest.ImageTargetAt(0).TopFastBuildInfo().Runs)
+	err := f.Stop()
+	assert.Nil(t, err)
+	f.assertAllBuildsConsumed()
+}
+
+func TestConfigChange_TriggerModeChangePropagatesButDoesntInvalidateBuild(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	origTiltfile := `
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile') 
+k8s_yaml('snack.yaml')`
+	f.WriteFile("Tiltfile", origTiltfile)
+	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
+	f.WriteFile("snack.yaml", simpleYAML)
+
+	f.loadAndStart()
+
+	_ = f.nextCall("initial build")
+	f.WaitUntilManifest("manifest has triggerMode = auto (default)", "snack", func(mt store.ManifestTarget) bool {
+		return mt.Manifest.TriggerMode == model.TriggerModeAuto
 	})
+
+	// Update Tiltfile to change the trigger mode of the manifest
+	tiltfileWithTriggerMode := fmt.Sprintf(`%s
+
+trigger_mode(TRIGGER_MODE_MANUAL)`, origTiltfile)
+	f.WriteConfigFiles("Tiltfile", tiltfileWithTriggerMode)
+
+	f.assertNoCall("A change to TriggerMode shouldn't trigger an update (doesn't invalidate current build)")
+	f.WaitUntilManifest("triggerMode has changed on manifest", "snack", func(mt store.ManifestTarget) bool {
+		return mt.Manifest.TriggerMode == model.TriggerModeManual
+	})
+
+	err := f.Stop()
+	assert.Nil(t, err)
+	f.assertAllBuildsConsumed()
+}
+
+func TestConfigChange_ManifestWithPendingChangesBuildsIfTriggerModeChangedToAuto(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	baseTiltfile := `trigger_mode(%s)
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile') 
+k8s_yaml('snack.yaml')`
+	triggerManualTiltfile := fmt.Sprintf(baseTiltfile, "TRIGGER_MODE_MANUAL")
+	f.WriteFile("Tiltfile", triggerManualTiltfile)
+	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
+	f.WriteFile("snack.yaml", simpleYAML)
+
+	f.loadAndStart()
+
+	// First call: with the old manifests
+	_ = f.nextCall("initial build")
+	var imageTargetID model.TargetID
+	f.WaitUntilManifest("manifest has triggerMode = auto (default)", "snack", func(mt store.ManifestTarget) bool {
+		imageTargetID = mt.Manifest.ImageTargetAt(0).ID() // grab for later
+		return mt.Manifest.TriggerMode == model.TriggerModeManual
+	})
+
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("src/main.go")}
+	f.WaitUntil("pending change appears", func(st store.EngineState) bool {
+		return len(st.BuildStatus(imageTargetID).PendingFileChanges) > 0
+	})
+	f.assertNoCall("even tho there are pending changes, manual manifest shouldn't build w/o explicit trigger")
+
+	// Update Tiltfile to change the trigger mode of the manifest
+	triggerAutoTiltfile := fmt.Sprintf(baseTiltfile, "TRIGGER_MODE_AUTO")
+	f.WriteConfigFiles("Tiltfile", triggerAutoTiltfile)
+
+	call := f.nextCall("manifest updated b/c it's now TriggerModeAuto")
+	assert.True(t, call.oneState().HasImage(),
+		"we did NOT clear the build state (b/c a change to Manifest.TriggerMode does NOT invalidate the build")
+	f.WaitUntilManifest("triggerMode has changed on manifest", "snack", func(mt store.ManifestTarget) bool {
+		return mt.Manifest.TriggerMode == model.TriggerModeAuto
+	})
+	f.WaitUntil("manifest is no longer in trigger queue", func(st store.EngineState) bool {
+		return len(st.TriggerQueue) == 0
+	})
+
+	err := f.Stop()
+	assert.Nil(t, err)
+	f.assertAllBuildsConsumed()
 }
 
 func TestDockerRebuildWithChangedFiles(t *testing.T) {
