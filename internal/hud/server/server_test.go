@@ -7,14 +7,15 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/hud/server"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 )
@@ -128,6 +129,11 @@ func TestHandleAnalyticsErrorsIfNotIncr(t *testing.T) {
 func TestHandleAnalyticsOptIn(t *testing.T) {
 	f := newTestFixture(t)
 
+	err := f.ta.SetOpt(analytics.OptDefault)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	var jsonStr = []byte(`{"opt": "opt-in"}`)
 	req, err := http.NewRequest(http.MethodPost, "/api/analytics_opt", bytes.NewBuffer(jsonStr))
 	if err != nil {
@@ -147,6 +153,14 @@ func TestHandleAnalyticsOptIn(t *testing.T) {
 
 	action := store.WaitForAction(t, reflect.TypeOf(store.AnalyticsOptAction{}), f.getActions)
 	assert.Equal(t, store.AnalyticsOptAction{Opt: analytics.OptIn}, action)
+
+	f.a.Flush(time.Millisecond)
+
+	assert.Equal(t, []analytics.CountEvent{{
+		Name: "analytics.opt.in",
+		Tags: map[string]string{"version": "v0.0.0"},
+		N:    1,
+	}}, f.a.Counts)
 }
 
 func TestHandleAnalyticsOptNonPost(t *testing.T) {
@@ -358,6 +372,7 @@ type serverFixture struct {
 	t          *testing.T
 	serv       *server.HeadsUpServer
 	a          *analytics.MemoryAnalytics
+	ta         *tiltanalytics.TiltAnalytics
 	sailCli    *client.FakeSailClient
 	st         *store.Store
 	getActions func() []store.Action
@@ -375,6 +390,7 @@ func newTestFixture(t *testing.T) *serverFixture {
 		t:          t,
 		serv:       serv,
 		a:          a,
+		ta:         ta,
 		sailCli:    sailCli,
 		st:         st,
 		getActions: getActions,

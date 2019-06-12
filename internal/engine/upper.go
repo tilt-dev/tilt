@@ -12,6 +12,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -21,7 +22,6 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud"
-	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -193,7 +193,7 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 	case LatestVersionAction:
 		handleLatestVersionAction(state, action)
 	case store.AnalyticsOptAction:
-		handleAnalyticsOptAction(ctx, state, action)
+		handleAnalyticsOptAction(state, action)
 	case store.AnalyticsNudgeSurfacedAction:
 		handleAnalyticsNudgeSurfacedAction(ctx, state)
 	case UIDUpdateAction:
@@ -1005,11 +1005,7 @@ func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, acti
 	state.TiltfileCombinedLog = model.AppendLog(state.TiltfileCombinedLog, action, state.LogTimestamps, nil)
 }
 
-func handleAnalyticsOptAction(ctx context.Context, state *store.EngineState, action store.AnalyticsOptAction) {
-	// only logging on opt-in, because, well, opting out means the user just told us not to report data on them!
-	if action.Opt == analytics.OptIn {
-		tiltanalytics.Get(ctx).IncrIfUnopted("analytics.opt.in")
-	}
+func handleAnalyticsOptAction(state *store.EngineState, action store.AnalyticsOptAction) {
 	state.AnalyticsOpt = action.Opt
 }
 
