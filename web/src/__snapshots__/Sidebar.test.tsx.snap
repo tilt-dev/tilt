@@ -77,6 +77,9 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               &lt;5s
             </time>
           </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
       <li>
@@ -128,6 +131,9 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               &lt;15s
             </time>
           </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
       <li>
@@ -179,6 +185,9 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               &lt;30s
             </time>
           </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
       <li>
@@ -230,6 +239,9 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               &lt;30s
             </time>
           </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
       <li>
@@ -281,6 +293,9 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               &lt;45s
             </time>
           </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
       <li>
@@ -332,6 +347,9 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               &lt;1m
             </time>
           </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
       <li>
@@ -382,6 +400,136 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               &lt;1m
             </time>
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <div
+    className="Sidebar-spacer"
+  >
+     
+  </div>
+  <button
+    className="Sidebar-toggle"
+    onClick={null}
+  >
+    <svg>
+      chevron.svg
+    </svg>
+     Collapse
+  </button>
+</section>
+`;
+
+exports[`sidebar renders * next to dirty manual trigger mode resources 1`] = `
+<section
+  className="Sidebar"
+>
+  <nav
+    className="Sidebar-resources"
+  >
+    <ul
+      className="Sidebar-list"
+    >
+      <li>
+        <a
+          className="resLink resLink--all is-selected"
+          href="/"
+          onClick={[Function]}
+        >
+          <span
+            className="resLink--all-name"
+          >
+            All
+          </span>
+          
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink"
+          href="/r/(Tiltfile)"
+          onClick={[Function]}
+        >
+          <div
+            className="sidebarIcon"
+          >
+            <svg
+              className="dotAuto auto"
+              fill="#20ba31"
+            >
+              indicator-auto.svg
+            </svg>
+          </div>
+          <span
+            className="resLink-name"
+          >
+            (Tiltfile)
+          </span>
+          
+          <span
+            className="resLink-timeAgo"
+          >
+            <time
+              dateTime="2019-06-12T16:33:27.831Z"
+              title="2019-06-12T12:33:27.831613-04:00"
+            >
+              1yr
+            </time>
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink"
+          href="/r/snack"
+          onClick={[Function]}
+        >
+          <div
+            className="sidebarIcon"
+          >
+            <svg
+              className="dotManual manual"
+              fill="#20ba31"
+            >
+              indicator-manual.svg
+            </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
+          </div>
+          <span
+            className="resLink-name"
+          >
+            snack
+          </span>
+          
+          <span
+            className="resLink-timeAgo"
+          >
+            <time
+              dateTime="2019-06-12T16:33:48.331Z"
+              title="2019-06-12T12:33:48.331048-04:00"
+            >
+              1yr
+            </time>
+          </span>
+          <span
+            className="resLink-isDirty"
+          >
+            *
           </span>
         </a>
       </li>
@@ -524,6 +672,9 @@ exports[`sidebar renders list of resources 1`] = `
               &lt;5s
             </time>
           </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
       <li>
@@ -575,6 +726,9 @@ exports[`sidebar renders list of resources 1`] = `
               &lt;15s
             </time>
           </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
     </ul>
@@ -668,6 +822,9 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           >
             —
           </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
       <li>
@@ -714,6 +871,9 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           >
             —
           </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
     </ul>
@@ -812,6 +972,9 @@ exports[`sidebar renders resources with manual trigger mode 1`] = `
               &lt;5s
             </time>
           </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
       <li>
@@ -863,6 +1026,9 @@ exports[`sidebar renders resources with manual trigger mode 1`] = `
               &lt;15s
             </time>
           </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
     </ul>

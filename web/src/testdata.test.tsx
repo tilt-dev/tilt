@@ -1290,6 +1290,106 @@ function oneResourceCrashedOnStart(): any {
   ]
 }
 
+function oneResourceManualTriggerDirty(): any {
+  return [
+    {
+      Name: "(Tiltfile)",
+      DirectoriesWatched: null,
+      PathsWatched: null,
+      LastDeployTime: "2019-06-12T12:33:27.831613-04:00",
+      TriggerMode: 0,
+      BuildHistory: [
+        {
+          Edits: ["Tiltfile"],
+          Error: null,
+          Warnings: null,
+          StartTime: "2019-06-12T12:33:27.439018-04:00",
+          FinishTime: "2019-06-12T12:33:27.831613-04:00",
+          Reason: 2,
+          Log:
+            'Beginning Tiltfile execution\nRunning `"whoami"`\nRunning `"m4 -Dvarowner=dan \\"deploy/fe.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/vigoda.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/snack.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/doggos.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/fortune.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/hypothesizer.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/spoonerisms.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/emoji.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/words.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/secrets.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/job.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/sleeper.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/hello_world.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/tick.yaml\\""`\nSuccessfully loaded Tiltfile\n',
+          IsCrashRebuild: false,
+        },
+      ],
+      CurrentBuild: {
+        Edits: null,
+        Error: null,
+        Warnings: null,
+        StartTime: "0001-01-01T00:00:00Z",
+        FinishTime: "0001-01-01T00:00:00Z",
+        Reason: 0,
+        Log: "",
+        IsCrashRebuild: false,
+      },
+      PendingBuildReason: 0,
+      PendingBuildEdits: null,
+      PendingBuildSince: "0001-01-01T00:00:00Z",
+      HasPendingChanges: false,
+      Endpoints: null,
+      PodID: "",
+      ResourceInfo: null,
+      RuntimeStatus: "ok",
+      IsTiltfile: true,
+      ShowBuildStatus: false,
+      CombinedLog:
+        'Beginning Tiltfile execution\nRunning `"whoami"`\nRunning `"m4 -Dvarowner=dan \\"deploy/fe.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/vigoda.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/snack.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/doggos.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/fortune.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/hypothesizer.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/spoonerisms.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/emoji.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/words.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/secrets.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/job.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/sleeper.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/hello_world.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/tick.yaml\\""`\nSuccessfully loaded Tiltfile\n',
+      CrashLog: "",
+    },
+    {
+      Name: "snack",
+      DirectoriesWatched: ["snack"],
+      PathsWatched: ["Tiltfile"],
+      LastDeployTime: "2019-06-12T12:33:48.331048-04:00",
+      TriggerMode: 1,
+      BuildHistory: [
+        {
+          Edits: null,
+          Error: null,
+          Warnings: null,
+          StartTime: "2019-06-12T12:33:42.848866-04:00",
+          FinishTime: "2019-06-12T12:33:48.331046-04:00",
+          Reason: 8,
+          Log:
+            "\n\u001b[34m──┤ Building: \u001b[0msnack\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/snack]\nBuilding Dockerfile:\n  FROM golang:1.10\n  \n  ADD . /go/src/github.com/windmilleng/servantes/snack\n  RUN go install github.com/windmilleng/servantes/snack\n  \n  ENTRYPOINT /go/bin/snack\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 10 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/3] FROM docker.io/library/golang:1.10@sha256:6d5e79878a3e4f1b30b7aa4d24fb6ee6184e905a9b172fc72593935633be4c46\n    ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/snack\n    ╎ [3/3] RUN go install github.com/windmilleng/servantes/snack\n\n\u001b[34mSTEP 2/3 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/snack:tilt-fcf849b0f0bc9396\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/3 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 5.314s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 0.168s\n\u001b[34m  │ \u001b[0mDone in: 5.482s \n\n",
+          IsCrashRebuild: false,
+        },
+      ],
+      CurrentBuild: {
+        Edits: null,
+        Error: null,
+        Warnings: null,
+        StartTime: "0001-01-01T00:00:00Z",
+        FinishTime: "0001-01-01T00:00:00Z",
+        Reason: 0,
+        Log: "",
+        IsCrashRebuild: false,
+      },
+      PendingBuildReason: 1,
+      PendingBuildEdits: ["hi"],
+      PendingBuildSince: "2019-06-12T12:36:05.292424-04:00",
+      HasPendingChanges: true,
+      Endpoints: null,
+      PodID: "dan-snack-85c688bffb-txf7z",
+      ResourceInfo: {
+        PodName: "dan-snack-85c688bffb-txf7z",
+        PodCreationTime: "2019-06-12T12:33:48-04:00",
+        PodUpdateStartTime: "0001-01-01T00:00:00Z",
+        PodStatus: "Running",
+        PodRestarts: 0,
+        PodLog: "2019/06/12 16:33:49 Starting Snack Service on :8083\n",
+        YAML:
+          "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  labels:\n    app: snack\n    owner: dan\n  name: dan-snack\nspec:\n  selector:\n    matchLabels:\n      app: snack\n      owner: dan\n  strategy: {}\n  template:\n    metadata:\n      labels:\n        app: snack\n        owner: dan\n        tier: web\n    spec:\n      containers:\n      - command:\n        - /go/bin/snack\n        env:\n        - name: TEMPLATE_DIR\n          value: /go/src/github.com/windmilleng/servantes/snack/web/templates\n        image: snack\n        name: snack\n        ports:\n        - containerPort: 8083\n        resources:\n          requests:\n            cpu: 10m\n",
+      },
+      RuntimeStatus: "ok",
+      IsTiltfile: false,
+      ShowBuildStatus: true,
+      CombinedLog:
+        "\n\u001b[34m──┤ Building: \u001b[0msnack\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/snack]\nBuilding Dockerfile:\n  FROM golang:1.10\n  \n  ADD . /go/src/github.com/windmilleng/servantes/snack\n  RUN go install github.com/windmilleng/servantes/snack\n  \n  ENTRYPOINT /go/bin/snack\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 10 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/3] FROM docker.io/library/golang:1.10@sha256:6d5e79878a3e4f1b30b7aa4d24fb6ee6184e905a9b172fc72593935633be4c46\n    ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/snack\n    ╎ [3/3] RUN go install github.com/windmilleng/servantes/snack\n\n\u001b[34mSTEP 2/3 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/snack:tilt-fcf849b0f0bc9396\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/3 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 5.314s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 0.168s\n\u001b[34m  │ \u001b[0mDone in: 5.482s \n\n2019/06/12 16:33:49 Starting Snack Service on :8083\n",
+      CrashLog: "",
+    },
+  ]
+}
+
 it("loads ok", () => {})
 export {
   oneResource,
@@ -1303,4 +1403,5 @@ export {
   oneResourceNoAlerts,
   oneResourceImagePullBackOff,
   oneResourceErrImgPull,
+  oneResourceManualTriggerDirty,
 }

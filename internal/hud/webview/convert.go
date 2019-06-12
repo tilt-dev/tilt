@@ -68,7 +68,7 @@ func StateToWebView(s store.EngineState) View {
 		// pod. A better UI might summarize the pods in other ways (e.g., show the
 		// "most interesting" pod that's crash looping, or show logs from all pods
 		// at once).
-		_, pendingBuildSince := ms.HasPendingChanges()
+		hasPendingChanges, pendingBuildSince := ms.HasPendingChanges()
 		r := Resource{
 			Name:               name,
 			DirectoriesWatched: relWatchDirs,
@@ -86,6 +86,7 @@ func StateToWebView(s store.EngineState) View {
 			CombinedLog:        ms.CombinedLog,
 			CrashLog:           ms.CrashLog,
 			TriggerMode:        mt.Manifest.TriggerMode,
+			HasPendingChanges:  hasPendingChanges,
 		}
 
 		r.RuntimeStatus = runtimeStatus(r.ResourceInfo)

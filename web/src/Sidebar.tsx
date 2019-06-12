@@ -3,7 +3,7 @@ import { ReactComponent as ChevronSvg } from "./assets/svg/chevron.svg"
 import { Link } from "react-router-dom"
 import { combinedStatus, warnings } from "./status"
 import "./Sidebar.scss"
-import { ResourceView, TriggerMode, ResourceStatus } from "./types"
+import { ResourceView, TriggerMode, ResourceStatus, Build } from "./types"
 import TimeAgo from "react-timeago"
 import { isZeroTime } from "./time"
 import PathBuilder from "./PathBuilder"
@@ -11,7 +11,6 @@ import { timeAgoFormatter } from "./timeFormatters"
 import { AlertResource } from "./AlertPane"
 import SidebarIcon from "./SidebarIcon"
 import SidebarTriggerButton from "./SidebarTriggerButton"
-import { ReactComponent as triggerButton } from "./assets/svg/trigger.svg"
 
 class SidebarItem {
   name: string
@@ -23,6 +22,8 @@ class SidebarItem {
   currentBuildStartTime: string
   alertResource: AlertResource
   triggerMode: TriggerMode
+  hasPendingChanges: boolean
+  lastBuild: Build | null = null
 
   /**
    * Create a pared down SidebarItem from a ResourceView
@@ -37,6 +38,11 @@ class SidebarItem {
     this.currentBuildStartTime = res.CurrentBuild.StartTime
     this.alertResource = new AlertResource(res)
     this.triggerMode = res.TriggerMode
+    this.hasPendingChanges = res.HasPendingChanges
+    let buildHistory = res.BuildHistory || []
+    if (buildHistory.length > 0) {
+      this.lastBuild = buildHistory[0]
+    }
   }
 
   numberOfAlerts(): number {
@@ -70,7 +76,7 @@ class Sidebar extends PureComponent<SidebarProps> {
         ? pb.path("/alerts")
         : pb.path("/")
     let totalAlerts = this.props.items
-      .map(i => i.alertResource.numberOfAlerts())
+      .map(i => i.numberOfAlerts())
       .reduce((sum, current) => sum + current, 0)
 
     let allItem = (
@@ -99,6 +105,8 @@ class Sidebar extends PureComponent<SidebarProps> {
       let building = !isZeroTime(item.currentBuildStartTime)
       let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
       let isSelected = this.props.selected === item.name
+      let isManualTriggerMode =
+        item.triggerMode === TriggerMode.TriggerModeManual
 
       let classes = "resLink"
       if (building) {
@@ -117,6 +125,8 @@ class Sidebar extends PureComponent<SidebarProps> {
                 triggerMode={item.triggerMode}
                 hasWarning={item.hasWarnings}
                 isBuilding={building}
+                isDirty={item.hasPendingChanges}
+                lastBuild={item.lastBuild}
               />
               <SidebarTriggerButton
                 isSelected={isSelected}
@@ -133,6 +143,9 @@ class Sidebar extends PureComponent<SidebarProps> {
               ""
             )}
             <span className="resLink-timeAgo">{hasBuilt ? timeAgo : "—"}</span>
+            <span className="resLink-isDirty">
+              {item.hasPendingChanges && isManualTriggerMode ? "*" : null}
+            </span>
           </Link>
         </li>
       )

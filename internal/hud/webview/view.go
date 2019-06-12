@@ -98,6 +98,7 @@ type Resource struct {
 	PendingBuildReason model.BuildReason
 	PendingBuildEdits  []string
 	PendingBuildSince  time.Time
+	HasPendingChanges  bool
 
 	Endpoints []string
 	PodID     k8s.PodID
