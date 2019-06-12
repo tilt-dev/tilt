@@ -495,18 +495,14 @@ func handleConfigsReloaded(
 
 		configFilesThatChanged := state.LastTiltfileBuild.Edits
 		old := mt.Manifest
-		if !m.Equal(old) {
-			old := mt.Manifest
-			mt.Manifest = m
-
-			if model.ChangesInvalidateBuild(old, m) {
-				// Manifest has changed such that the current build is invalid;
-				// ensure we do an image build so that we apply the changes
-				state := mt.State
-				state.BuildStatuses = make(map[model.TargetID]*store.BuildStatus)
-				state.PendingManifestChange = time.Now()
-				state.ConfigFilesThatCausedChange = configFilesThatChanged
-			}
+		mt.Manifest = m
+		if model.ChangesInvalidateBuild(old, m) {
+			// Manifest has changed such that the current build is invalid;
+			// ensure we do an image build so that we apply the changes
+			state := mt.State
+			state.BuildStatuses = make(map[model.TargetID]*store.BuildStatus)
+			state.PendingManifestChange = time.Now()
+			state.ConfigFilesThatCausedChange = configFilesThatChanged
 		}
 		state.UpsertManifestTarget(mt)
 	}
