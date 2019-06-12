@@ -48,6 +48,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               indicator-auto-building.svg
             </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
           </div>
           <span
             className="resLink-name"
@@ -91,6 +99,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               indicator-auto-building.svg
             </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
           </div>
           <span
             className="resLink-name"
@@ -134,6 +150,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               indicator-auto-building.svg
             </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
           </div>
           <span
             className="resLink-name"
@@ -177,6 +201,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               indicator-auto-building.svg
             </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
           </div>
           <span
             className="resLink-name"
@@ -220,6 +252,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               indicator-auto-building.svg
             </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
           </div>
           <span
             className="resLink-name"
@@ -263,6 +303,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               indicator-auto-building.svg
             </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
           </div>
           <span
             className="resLink-name"
@@ -306,6 +354,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               indicator-auto-building.svg
             </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
           </div>
           <span
             className="resLink-name"
@@ -439,6 +495,14 @@ exports[`sidebar renders list of resources 1`] = `
             >
               indicator-auto-building.svg
             </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
           </div>
           <span
             className="resLink-name"
@@ -482,6 +546,14 @@ exports[`sidebar renders list of resources 1`] = `
             >
               indicator-auto-building.svg
             </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
           </div>
           <span
             className="resLink-name"
@@ -572,6 +644,14 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             >
               indicator-auto-building.svg
             </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
           </div>
           <span
             className="resLink-name"
@@ -610,6 +690,14 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             >
               indicator-auto-building.svg
             </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
           </div>
           <span
             className="resLink-name"
@@ -695,6 +783,14 @@ exports[`sidebar renders resources with manual trigger mode 1`] = `
             >
               indicator-manual-building.svg
             </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
           </div>
           <span
             className="resLink-name"
@@ -738,6 +834,14 @@ exports[`sidebar renders resources with manual trigger mode 1`] = `
             >
               indicator-manual-building.svg
             </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
           </div>
           <span
             className="resLink-name"
