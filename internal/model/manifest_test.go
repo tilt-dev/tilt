@@ -56,30 +56,39 @@ var stepSayHiTriggerDirB = Run{
 }
 
 var equalitytests = []struct {
-	m1       Manifest
-	m2       Manifest
-	expected bool
+	name                string
+	m1                  Manifest
+	m2                  Manifest
+	expectedEqual       bool
+	expectedInvalidates bool
 }{
 	{
+		"empty manifests equal",
 		Manifest{},
 		Manifest{},
 		true,
+		false,
 	},
 	{
+		"FastBuild.BaseDockerfile unequal",
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
 			FastBuild{BaseDockerfile: "FROM node"})),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
 			FastBuild{BaseDockerfile: "FROM nope"})),
 		false,
+		true,
 	},
 	{
+		"FastBuild.BaseDockerfile equal",
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
 			FastBuild{BaseDockerfile: "FROM node"})),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
 			FastBuild{BaseDockerfile: "FROM node"})),
 		true,
+		false,
 	},
 	{
+		"FastBuild.Entrypoint equal",
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
 			FastBuild{
 				Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
@@ -89,8 +98,10 @@ var equalitytests = []struct {
 				Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
 			})),
 		true,
+		false,
 	},
 	{
+		"FastBuild.BaseDockerfile unequal",
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
 			FastBuild{
 				Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
@@ -100,46 +111,60 @@ var equalitytests = []struct {
 				Entrypoint: Cmd{Argv: []string{"bash", "-c", "echo hi"}},
 			})),
 		false,
+		true,
 	},
 	{
+		"FastBuild.Syncs equal",
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
 			FastBuild{Syncs: []Sync{sync1}})),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
 			FastBuild{Syncs: []Sync{sync1}})),
 		true,
+		false,
 	},
 	{
+		"FastBuild.Syncs unequal (same elem, diff sync)",
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
 			FastBuild{Syncs: []Sync{sync1}})),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
 			FastBuild{Syncs: []Sync{sync2}})),
 		false,
+		true,
 	},
 	{
+		"FastBuild.Syncs unequal (mismatched numbers)",
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
 			FastBuild{Syncs: []Sync{sync1}})),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
 			FastBuild{Syncs: []Sync{sync1, sync2}})),
 		false,
+		true,
 	},
 	{
+		"FastBuild.Syncs nil/empty array equal",
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
 			FastBuild{Syncs: nil})),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
 			FastBuild{Syncs: []Sync{}})),
 		true,
-	},
-	{
-		Manifest{}.WithDeployTarget(K8sTarget{PortForwards: portFwd8000}),
-		Manifest{}.WithDeployTarget(K8sTarget{PortForwards: portFwd8001}),
 		false,
 	},
 	{
+		"PortForwards unequal",
 		Manifest{}.WithDeployTarget(K8sTarget{PortForwards: portFwd8000}),
-		Manifest{}.WithDeployTarget(K8sTarget{PortForwards: portFwd8000}),
+		Manifest{}.WithDeployTarget(K8sTarget{PortForwards: portFwd8001}),
+		false,
 		true,
 	},
 	{
+		"PortForwards equal",
+		Manifest{}.WithDeployTarget(K8sTarget{PortForwards: portFwd8000}),
+		Manifest{}.WithDeployTarget(K8sTarget{PortForwards: portFwd8000}),
+		true,
+		false,
+	},
+	{
+		"FastBuild.Runs equal",
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
 			FastBuild{Runs: []Run{stepSayHi}},
 		)),
@@ -147,8 +172,10 @@ var equalitytests = []struct {
 			FastBuild{Runs: []Run{stepSayHi}},
 		)),
 		true,
+		false,
 	},
 	{
+		"FastBuild.Runs unequal",
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
 			FastBuild{Runs: []Run{stepSayHi}},
 		)),
@@ -156,8 +183,10 @@ var equalitytests = []struct {
 			FastBuild{Runs: []Run{stepSayBye}},
 		)),
 		false,
+		true,
 	},
 	{
+		"FastBuild.Runs with trigger equal",
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
 			FastBuild{Runs: []Run{stepSayHiTriggerFoo}},
 		)),
@@ -165,16 +194,20 @@ var equalitytests = []struct {
 			FastBuild{Runs: []Run{stepSayHiTriggerFoo}},
 		)),
 		true,
+		false,
 	},
 	{
+		"FastBuild.Runs with trigger unequal",
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
 			FastBuild{Runs: []Run{stepSayHiTriggerFoo}},
 		)),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
 			FastBuild{Runs: []Run{stepSayHiTriggerBar}})),
 		false,
+		true,
 	},
 	{
+		"FastBuild.Runs trigger with diff base dirs unequal",
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
 			FastBuild{Runs: []Run{stepSayHiTriggerDirA}},
 		)),
@@ -182,118 +215,164 @@ var equalitytests = []struct {
 			FastBuild{Runs: []Run{stepSayHiTriggerDirB}},
 		)),
 		false,
+		true,
 	},
 	{
+		"DockerBuild.Dockerfile unequal",
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{Dockerfile: "FROM foo"})),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{Dockerfile: "FROM bar"})),
 		false,
-	},
-	{
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{Dockerfile: "FROM foo"})),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{Dockerfile: "FROM foo"})),
 		true,
 	},
 	{
+		"DockerBuild.Dockerfile equal",
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{Dockerfile: "FROM foo"})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{Dockerfile: "FROM foo"})),
+		true,
+		false,
+	},
+	{
+		"DockerBuild.BuildPath unequal",
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{BuildPath: "foo/bar"})),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{BuildPath: "foo/bar/baz"})),
 		false,
-	},
-	{
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{BuildPath: "foo/bar"})),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{BuildPath: "foo/bar"})),
 		true,
 	},
 	{
+		"DockerBuild.BuildPath equal",
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{BuildPath: "foo/bar"})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{BuildPath: "foo/bar"})),
+		true,
+		false,
+	},
+	{
+		"DockerBuild.BuildArgs unequal",
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{BuildArgs: buildArgs1})),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{BuildArgs: buildArgs2})),
 		false,
-	},
-	{
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{BuildArgs: buildArgs1})),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{BuildArgs: buildArgs1})),
 		true,
 	},
 	{
+		"DockerBuild.BuildArgs equal",
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{BuildArgs: buildArgs1})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{BuildArgs: buildArgs1})),
+		true,
+		false,
+	},
+	{
+		"ImageTarget.cachePaths unequal",
 		Manifest{}.WithImageTarget(ImageTarget{cachePaths: []string{"foo"}}),
 		Manifest{}.WithImageTarget(ImageTarget{cachePaths: []string{"bar"}}),
 		false,
-	},
-	{
-		Manifest{}.WithImageTarget(ImageTarget{cachePaths: []string{"foo"}}),
-		Manifest{}.WithImageTarget(ImageTarget{cachePaths: []string{"foo"}}),
 		true,
 	},
 	{
+		"ImageTarget.cachePaths equal",
+		Manifest{}.WithImageTarget(ImageTarget{cachePaths: []string{"foo"}}),
+		Manifest{}.WithImageTarget(ImageTarget{cachePaths: []string{"foo"}}),
+		true,
+		false,
+	},
+	{
+		"ImageTarget.ConfigurationRef unequal",
 		Manifest{}.WithImageTarget(ImageTarget{ConfigurationRef: img1}),
 		Manifest{}.WithImageTarget(ImageTarget{ConfigurationRef: img2}),
 		false,
-	},
-	{
-		Manifest{}.WithImageTarget(ImageTarget{ConfigurationRef: img1}),
-		Manifest{}.WithImageTarget(ImageTarget{ConfigurationRef: img1}),
 		true,
 	},
 	{
+		"ImageTarget.ConfigurationRef equal",
+		Manifest{}.WithImageTarget(ImageTarget{ConfigurationRef: img1}),
+		Manifest{}.WithImageTarget(ImageTarget{ConfigurationRef: img1}),
+		true,
+		false,
+	},
+	{
+		"ImageTarget.DeploymentRef unequal",
 		Manifest{}.WithImageTarget(ImageTarget{DeploymentRef: img1.AsNamedOnly()}),
 		Manifest{}.WithImageTarget(ImageTarget{DeploymentRef: img2.AsNamedOnly()}),
 		false,
-	},
-	{
-		Manifest{}.WithImageTarget(ImageTarget{DeploymentRef: img1.AsNamedOnly()}),
-		Manifest{}.WithImageTarget(ImageTarget{DeploymentRef: img1.AsNamedOnly()}),
 		true,
 	},
 	{
+		"ImageTarget.DeploymentRef equal",
+		Manifest{}.WithImageTarget(ImageTarget{DeploymentRef: img1.AsNamedOnly()}),
+		Manifest{}.WithImageTarget(ImageTarget{DeploymentRef: img1.AsNamedOnly()}),
+		true,
+		false,
+	},
+	{
+		"ImageTarget.DockerIgnores unequal",
 		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{"a", "b"}}}),
 		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{"b", "a"}}}),
 		false,
-	},
-	{
-		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{"a", "b"}}}),
-		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{"a", "b"}}}),
 		true,
 	},
 	{
+		"ImageTarget.DockerIgnores equal",
+		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{"a", "b"}}}),
+		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{"a", "b"}}}),
+		true,
+		false,
+	},
+	{
+		"DockerCompose.ConfigPath equal",
 		Manifest{}.WithDeployTarget(DockerComposeTarget{ConfigPath: "/src/docker-compose.yml"}),
 		Manifest{}.WithDeployTarget(DockerComposeTarget{ConfigPath: "/src/docker-compose.yml"}),
 		true,
+		false,
 	},
 	{
+		"DockerCompose.ConfigPath unequal",
 		Manifest{}.WithDeployTarget(DockerComposeTarget{ConfigPath: "/src/docker-compose1.yml"}),
 		Manifest{}.WithDeployTarget(DockerComposeTarget{ConfigPath: "/src/docker-compose2.yml"}),
 		false,
-	},
-	{
-		Manifest{}.WithDeployTarget(DockerComposeTarget{YAMLRaw: []byte("hello world")}),
-		Manifest{}.WithDeployTarget(DockerComposeTarget{YAMLRaw: []byte("hello world")}),
 		true,
 	},
 	{
+		"DockerCompose.YAMLRaw equal",
+		Manifest{}.WithDeployTarget(DockerComposeTarget{YAMLRaw: []byte("hello world")}),
+		Manifest{}.WithDeployTarget(DockerComposeTarget{YAMLRaw: []byte("hello world")}),
+		true,
+		false,
+	},
+	{
+		"DockerCompose.YAMLRaw unequal",
 		Manifest{}.WithDeployTarget(DockerComposeTarget{YAMLRaw: []byte("hello world")}),
 		Manifest{}.WithDeployTarget(DockerComposeTarget{YAMLRaw: []byte("goodbye world")}),
 		false,
-	},
-	{
-		Manifest{}.WithDeployTarget(DockerComposeTarget{DfRaw: []byte("hello world")}),
-		Manifest{}.WithDeployTarget(DockerComposeTarget{DfRaw: []byte("hello world")}),
 		true,
 	},
 	{
+		"DockerCompose.DfRaw equal",
+		Manifest{}.WithDeployTarget(DockerComposeTarget{DfRaw: []byte("hello world")}),
+		Manifest{}.WithDeployTarget(DockerComposeTarget{DfRaw: []byte("hello world")}),
+		true,
+		false,
+	},
+	{
+		"DockerCompose.DfRaw unequal",
 		Manifest{}.WithDeployTarget(DockerComposeTarget{DfRaw: []byte("hello world")}),
 		Manifest{}.WithDeployTarget(DockerComposeTarget{DfRaw: []byte("goodbye world")}),
 		false,
-	},
-	{
-		Manifest{}.WithDeployTarget(K8sTarget{YAML: "hello world"}),
-		Manifest{}.WithDeployTarget(K8sTarget{YAML: "hello world"}),
 		true,
 	},
 	{
+		"k8s.YAML equal",
 		Manifest{}.WithDeployTarget(K8sTarget{YAML: "hello world"}),
-		Manifest{}.WithDeployTarget(K8sTarget{YAML: "goodbye world"}),
+		Manifest{}.WithDeployTarget(K8sTarget{YAML: "hello world"}),
+		true,
 		false,
 	},
 	{
+		"k8s.YAML unequal",
+		Manifest{}.WithDeployTarget(K8sTarget{YAML: "hello world"}),
+		Manifest{}.WithDeployTarget(K8sTarget{YAML: "goodbye world"}),
+		false,
+		true,
+	},
+	{
+		"k8s.ExtraPodSelectors equal",
 		Manifest{}.WithDeployTarget(K8sTarget{
 			ExtraPodSelectors: []labels.Selector{labels.Set{"foo": "bar"}.AsSelector()},
 		}),
@@ -301,8 +380,10 @@ var equalitytests = []struct {
 			ExtraPodSelectors: []labels.Selector{labels.Set{"foo": "bar"}.AsSelector()},
 		}),
 		true,
+		false,
 	},
 	{
+		"k8s.ExtraPodSelectors unequal",
 		Manifest{}.WithDeployTarget(K8sTarget{
 			ExtraPodSelectors: []labels.Selector{labels.Set{"foo": "bar"}.AsSelector()},
 		}),
@@ -310,25 +391,50 @@ var equalitytests = []struct {
 			ExtraPodSelectors: []labels.Selector{labels.Set{"foo": "baz"}.AsSelector()},
 		}),
 		false,
-	},
-	{
-		Manifest{TriggerMode: TriggerModeManual},
-		Manifest{TriggerMode: TriggerModeManual},
 		true,
 	},
 	{
+		"TriggerMode equal",
+		Manifest{TriggerMode: TriggerModeManual},
+		Manifest{TriggerMode: TriggerModeManual},
+		true,
+		false,
+	},
+	{
+		"TriggerMode unequal",
 		Manifest{TriggerMode: TriggerModeAuto},
 		Manifest{TriggerMode: TriggerModeManual},
 		false,
+		false,
+	},
+	{
+		"Name equal",
+		Manifest{Name: "foo"},
+		Manifest{Name: "bar"},
+		false,
+		false,
+	},
+	{
+		"Name & k8s YAML unequal",
+		Manifest{Name: "foo"}.WithDeployTarget(K8sTarget{YAML: "hello world"}),
+		Manifest{Name: "bar"}.WithDeployTarget(K8sTarget{YAML: "goodbye world"}),
+		false,
+		true,
 	},
 }
 
 func TestManifestEquality(t *testing.T) {
 	for i, c := range equalitytests {
-		actual := c.m1.Equal(c.m2)
+		actualEqual := c.m1.Equal(c.m2)
 
-		if actual != c.expected {
-			t.Errorf("Test case #%d: Expected %+v == %+v to be %t, but got %t", i, c.m1, c.m2, c.expected, actual)
+		if actualEqual != c.expectedEqual {
+			t.Errorf("Test case %s (#%d): Expected %+v == %+v to be %t, but got %t", c.name, i, c.m1, c.m2, c.expectedEqual, actualEqual)
+		}
+
+		actualInvalidates := ChangesInvalidateBuild(c.m1, c.m2)
+
+		if actualInvalidates != c.expectedInvalidates {
+			t.Errorf("Test case %s (#%d): Expected %+v => %+v InvalidatesBuild = %t, but got %t", c.name, i, c.m1, c.m2, c.expectedInvalidates, actualInvalidates)
 		}
 	}
 }
