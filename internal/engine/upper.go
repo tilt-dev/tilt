@@ -1006,7 +1006,7 @@ func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, acti
 }
 
 func handleAnalyticsOptAction(ctx context.Context, state *store.EngineState, action store.AnalyticsOptAction) {
-	// no logging on opt-out, because, well, opting out means the user just told us not to report data on them!
+	// only logging on opt-in, because, well, opting out means the user just told us not to report data on them!
 	if action.Opt == analytics.OptIn {
 		tiltanalytics.Get(ctx).IncrIfUnopted("analytics.opt.in")
 	}

@@ -2460,6 +2460,8 @@ func TestSetAnalyticsOpt(t *testing.T) {
 		return state.AnalyticsOpt == analytics.OptIn
 	})
 
+	// wait for the subscriber to process the opt-in state before opting out again
+	// else, batched actions might prevent the subscriber from ever seeing the opt-in
 	f.opter.waitUntilCount(t, 2)
 
 	f.store.Dispatch(store.AnalyticsOptAction{Opt: analytics.OptOut})
