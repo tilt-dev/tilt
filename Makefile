@@ -102,7 +102,6 @@ ensure:
 	dep ensure
 
 verify_goimports:
-	# echo "testing goimports built from goimports commit $$(git -C "$$GOSRC/golang.org/x/tools/cmd/goimports/ show HEAD -q"))"
 	# any files printed here need to be formatted by `goimports $(GOIMPORTS_LOCAL_ARG)`
 	bash -c 'diff <(goimports -l $(GOIMPORTS_LOCAL_ARG) $$(go list -f {{.Dir}} ./...)) <(echo -n)'
 
