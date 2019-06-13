@@ -6,28 +6,25 @@ import (
 	"testing"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/model"
-
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/labels"
-
+	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
-
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
-
-	"k8s.io/client-go/kubernetes/fake"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
+
+	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
 func TestK8sClient_WatchPods(t *testing.T) {
 	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
 
 	pod1 := fakePod(PodID("abcd"), "efgh")
 	pod2 := fakePod(PodID("1234"), "hieruyge")
@@ -38,6 +35,7 @@ func TestK8sClient_WatchPods(t *testing.T) {
 
 func TestK8sClient_WatchPodsFilterNonPods(t *testing.T) {
 	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
 
 	pod := fakePod(PodID("abcd"), "efgh")
 	pods := []runtime.Object{&pod}
@@ -49,12 +47,15 @@ func TestK8sClient_WatchPodsFilterNonPods(t *testing.T) {
 
 func TestK8sClient_WatchPodsLabelsPassed(t *testing.T) {
 	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
+
 	ls := labels.Set{"foo": "bar", "baz": "quu"}
 	tf.testPodLabels(ls, ls)
 }
 
 func TestK8sClient_WatchServices(t *testing.T) {
 	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
 
 	svc1 := fakeService("svc1")
 	svc2 := fakeService("svc2")
@@ -65,6 +66,7 @@ func TestK8sClient_WatchServices(t *testing.T) {
 
 func TestK8sClient_WatchServicesFilterNonServices(t *testing.T) {
 	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
 
 	svc := fakeService("svc1")
 	svcs := []runtime.Object{&svc}
@@ -76,12 +78,16 @@ func TestK8sClient_WatchServicesFilterNonServices(t *testing.T) {
 
 func TestK8sClient_WatchServicesLabelsPassed(t *testing.T) {
 	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
+
 	lps := []model.LabelPair{{Key: "foo", Value: "bar"}, {Key: "baz", Value: "quu"}}
 	tf.testServiceLabels(lps, lps)
 }
 
 func TestK8sClient_WatchPodsError(t *testing.T) {
 	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
+
 	tf.watchErr = newForbiddenError()
 	_, err := tf.kCli.WatchPods(tf.ctx, labels.Set{}.AsSelector())
 	if assert.Error(t, err) {
@@ -91,6 +97,8 @@ func TestK8sClient_WatchPodsError(t *testing.T) {
 
 func TestK8sClient_WatchPodsWithNamespaceRestriction(t *testing.T) {
 	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
+
 	tf.nsRestriction = "sandbox"
 	tf.kCli.configNamespace = "sandbox"
 
@@ -104,6 +112,8 @@ func TestK8sClient_WatchPodsWithNamespaceRestriction(t *testing.T) {
 
 func TestK8sClient_WatchPodsBlockedByNamespaceRestriction(t *testing.T) {
 	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
+
 	tf.nsRestriction = "sandbox"
 	tf.kCli.configNamespace = ""
 
@@ -115,6 +125,8 @@ func TestK8sClient_WatchPodsBlockedByNamespaceRestriction(t *testing.T) {
 
 func TestK8sClient_WatchServicesWithNamespaceRestriction(t *testing.T) {
 	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
+
 	tf.nsRestriction = "sandbox"
 	tf.kCli.configNamespace = "sandbox"
 
@@ -128,6 +140,8 @@ func TestK8sClient_WatchServicesWithNamespaceRestriction(t *testing.T) {
 
 func TestK8sClient_WatchServicesBlockedByNamespaceRestriction(t *testing.T) {
 	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
+
 	tf.nsRestriction = "sandbox"
 	tf.kCli.configNamespace = ""
 
@@ -139,10 +153,38 @@ func TestK8sClient_WatchServicesBlockedByNamespaceRestriction(t *testing.T) {
 
 func TestK8sClient_WatchEverything(t *testing.T) {
 	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
+
 	// NOTE(dmiller): because we don't add any resources in to the
 	// fake clientset that we set up in `newWatchTestFixture` `ServerGroupsAndResources()`
 	// returns an empty list, which triggers the following error
 	tf.watchEverythingExpectError("Unable to watch any resources: do you have sufficient permissions to watch resources?")
+}
+
+func TestK8sClient_WatchEvents(t *testing.T) {
+	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
+
+	event1 := fakeEvent("event1", "hello1", 1)
+	event2 := fakeEvent("event2", "hello2", 2)
+	event3 := fakeEvent("event3", "hello3", 3)
+	events := []runtime.Object{&event1, &event2, &event3}
+	tf.runEvents(events, events)
+}
+
+func TestK8sClient_WatchEventsUpdate(t *testing.T) {
+	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
+
+	event1 := fakeEvent("event1", "hello1", 1)
+	event2 := fakeEvent("event2", "hello2", 1)
+	event1b := fakeEvent("event1", "hello1", 1)
+	event3 := fakeEvent("event3", "hello3", 1)
+	event2b := fakeEvent("event2", "hello2", 2)
+	emittedEvents := []runtime.Object{&event1, &event2, &event1b, &event3, &event2b}
+	// we shouldn't see the update for 1b because its count didn't change
+	expectedEvents := []runtime.Object{&event1, &event2, &event3, &event2b}
+	tf.runEvents(emittedEvents, expectedEvents)
 }
 
 type watchTestFixture struct {
@@ -153,6 +195,7 @@ type watchTestFixture struct {
 	ctx               context.Context
 	watchErr          error
 	nsRestriction     Namespace
+	cancel            context.CancelFunc
 }
 
 func newWatchTestFixture(t *testing.T) *watchTestFixture {
@@ -160,7 +203,7 @@ func newWatchTestFixture(t *testing.T) *watchTestFixture {
 
 	c := fake.NewSimpleClientset()
 
-	ret.ctx = output.CtxForTest()
+	ret.ctx, ret.cancel = context.WithCancel(output.CtxForTest())
 
 	ret.w = watch.NewFakeWithChanSize(10, false)
 
@@ -190,6 +233,10 @@ func newWatchTestFixture(t *testing.T) *watchTestFixture {
 	}
 
 	return ret
+}
+
+func (tf *watchTestFixture) TearDown() {
+	tf.cancel()
 }
 
 func (tf *watchTestFixture) runPods(input []runtime.Object, expectedOutput []runtime.Object) {
@@ -260,6 +307,44 @@ func (tf *watchTestFixture) runServices(input []runtime.Object, expectedOutput [
 	assert.Equal(tf.t, expectedOutput, observedServices)
 }
 
+func (tf *watchTestFixture) runEvents(input []runtime.Object, expectedOutput []runtime.Object) {
+	for _, o := range input {
+		tf.w.Add(o)
+	}
+
+	tf.w.Stop()
+
+	ch, err := tf.kCli.WatchEvents(tf.ctx)
+	if !assert.NoError(tf.t, err) {
+		return
+	}
+
+	var observedEvents []runtime.Object
+
+	timeout := time.After(500 * time.Millisecond)
+	done := false
+	for !done {
+		select {
+		case event, ok := <-ch:
+			if !ok {
+				done = true
+			} else {
+				observedEvents = append(observedEvents, event)
+			}
+		case <-timeout:
+			tf.t.Fatalf("test timed out\nExpected events: %v\nObserved events: %v\n", expectedOutput, observedEvents)
+		case <-time.After(10 * time.Millisecond):
+			// if we haven't seen any events for 10ms, assume we're done
+			// ideally we'd always be exiting from ch closing, but it's not currently clear how to do that via informer
+			done = true
+		}
+	}
+
+	// TODO(matt) - using ElementsMatch instead of Equal because, for some reason, events do not always come out in the
+	// same order we feed them in. I'm punting on figuring out why for now.
+	assert.ElementsMatch(tf.t, expectedOutput, observedEvents)
+}
+
 func (tf *watchTestFixture) watchEverythingExpectError(expectedErr string) {
 	_, err := tf.kCli.WatchEverything(tf.ctx, []model.LabelPair{})
 	assert.EqualError(tf.t, err, expectedErr)
@@ -295,5 +380,15 @@ func fakeService(name string) v1.Service {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
+	}
+}
+
+func fakeEvent(name string, message string, count int) v1.Event {
+	return v1.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Message: message,
+		Count:   int32(count),
 	}
 }
