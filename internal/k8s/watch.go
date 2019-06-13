@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"reflect"
 	"time"
 
 	"github.com/pkg/errors"
@@ -13,13 +12,14 @@ import (
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/informers"
 	authorizationv1client "k8s.io/client-go/kubernetes/typed/authorization/v1"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 )
@@ -345,80 +345,42 @@ func (kCli K8sClient) WatchEverything(ctx context.Context, lps []model.LabelPair
 		return nil, fmt.Errorf("Unable to watch any resources: do you have sufficient permissions to watch resources?")
 	}
 
-	var watchers []watch.Interface
-	for _, gvr := range gvrs {
-		watcher, _, err := kCli.makeWatcher(func(ns string) watcher {
-			// doesn't make sense to watch a given ns for a non-namespaced resource, don't try.
-			if ns != "" && !gvr.namespaced {
-				return nil
-			}
-			nri := kCli.dynamic.Resource(gvr.GroupVersionResource)
-			return nri.Namespace(ns)
-		}, ls.AsSelector())
-
-		if err != nil {
-			return nil, errors.Wrapf(err, "error making watcher for resource '%s'", gvr.String())
-		}
-		if watcher != nil {
-			watchers = append(watchers, watcher)
-		}
-	}
-
 	ch := make(chan watch.Event)
 
-	go watchEverythingLoop(ctx, ch, watchers, gvrs)
+	for _, gvr := range gvrs {
+		informer := dynamicinformer.NewDynamicSharedInformerFactory(kCli.dynamic, 0).ForResource(gvr.GroupVersionResource).Informer()
+		informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				ro := obj.(runtime.Object)
+				ch <- watch.Event{
+					Type:   watch.Added,
+					Object: ro,
+				}
+			},
+			UpdateFunc: func(oldObj, newObj interface{}) {
+				ro := newObj.(runtime.Object)
+				ch <- watch.Event{
+					Type:   watch.Modified,
+					Object: ro,
+				}
+			},
+			DeleteFunc: func(obj interface{}) {
+				ro := obj.(runtime.Object)
+				ch <- watch.Event{
+					Type:   watch.Deleted,
+					Object: ro,
+				}
+			},
+		})
+		stopCh := make(chan struct{})
+		go informer.Run(stopCh)
+		go func() {
+			<-ctx.Done()
+			close(stopCh)
+		}()
+	}
 
 	return ch, nil
-}
-
-func watchEverythingLoop(ctx context.Context, ch chan<- watch.Event, watchers []watch.Interface, gvrs []gvrWithNamespaced) {
-	var selectCases []reflect.SelectCase
-	for _, w := range watchers {
-		selectCases = append(selectCases, reflect.SelectCase{
-			Dir:  reflect.SelectRecv,
-			Chan: reflect.ValueOf(w.ResultChan()),
-		})
-	}
-
-	selectCases = append(selectCases, reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(ctx.Done())})
-
-	for {
-		chosen, value, ok := reflect.Select(selectCases)
-
-		// the last selectCase is ctx.Done
-		if chosen == len(selectCases)-1 {
-			cleanUp(ch, watchers)
-			return
-		}
-
-		if !ok {
-			// TODO: Possible bug for CRDs here! Notes:
-			// for some reason, we're getting ok = false for fission resources (e.g. fission.io/v1, Resource=environments)
-			// This happens after running tilt for 10-20 seconds
-			// My current hypotheses:
-			// 1. A misunderstanding on my part of what the third return value from `reflect.Select` indicates
-			// 2. A bug in the watch implementation for fission CRDs
-			// 3. A misunderstanding of how the watch API is to be used (maybe periodic closes are to be expected,
-			//    and we should just restart the watch? AFAIK, we haven't seen this with our existing watches,
-			//    but, then again our logging allowed this to exist unnoticed for quite some time:
-			//    https://github.com/windmilleng/tilt/pull/1647. I feel like we would have noticed this with pods,
-			//    though.
-			// 4. Maybe setting up 100+ watches taxes the system and causes it to drop connections
-			logger.Get(ctx).Infof("Failed watching K8S objects of type %v. This shouldn't happen. Please report a bug at: https://github.com/windmilleng/tilt/issues", gvrs[chosen])
-			analytics.Get(ctx).Incr("dynamic.watcher.closed", map[string]string{})
-			gvrs = append(gvrs[:chosen], gvrs[chosen+1:]...)
-			selectCases = append(selectCases[:chosen], selectCases[chosen+1:]...)
-			watchers = append(watchers[:chosen], watchers[chosen+1:]...)
-			continue
-		}
-
-		event := value.Interface().(watch.Event)
-		if event.Object == nil {
-			continue
-		}
-
-		ch <- event
-	}
 }
 
 func cleanUp(ch chan<- watch.Event, watchers []watch.Interface) {
