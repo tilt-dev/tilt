@@ -7,22 +7,21 @@ import (
 	"reflect"
 	"time"
 
-	"k8s.io/apimachinery/pkg/runtime/schema"
-
-	"github.com/windmilleng/tilt/internal/logger"
-	"github.com/windmilleng/tilt/internal/model"
-
 	"github.com/pkg/errors"
-
 	authorizationv1 "k8s.io/api/authorization/v1"
 	v1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/informers"
 	authorizationv1client "k8s.io/client-go/kubernetes/typed/authorization/v1"
 	"k8s.io/client-go/tools/cache"
+
+	"github.com/windmilleng/tilt/internal/analytics"
+	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 type watcherFactory func(namespace string) watcher
@@ -397,9 +396,12 @@ func watchEverythingLoop(ctx context.Context, ch chan<- watch.Event, watchers []
 			//    https://github.com/windmilleng/tilt/pull/1647. I feel like we would have noticed this with pods,
 			//    though.
 			// 4. Maybe setting up 100+ watches taxes the system and causes it to drop connections
-			logger.Get(ctx).Infof("DEBUG: ok was false for %v", gvrs[chosen])
-			cleanUp(ch, watchers)
-			return
+			logger.Get(ctx).Infof("Failed watching K8S objects of type %v. This shouldn't happen. Please report a bug at: https://github.com/windmilleng/tilt/issues", gvrs[chosen])
+			analytics.Get(ctx).Incr("dynamic.watcher.closed", map[string]string{})
+			gvrs = append(gvrs[:chosen], gvrs[chosen+1:]...)
+			selectCases = append(selectCases[:chosen], selectCases[chosen+1:]...)
+			watchers = append(watchers[:chosen], watchers[chosen+1:]...)
+			continue
 		}
 
 		event := value.Interface().(watch.Event)
