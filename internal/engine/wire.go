@@ -7,15 +7,15 @@ import (
 	"context"
 
 	"github.com/google/wire"
-
-	"github.com/windmilleng/wmclient/pkg/analytics"
 	"github.com/windmilleng/wmclient/pkg/dirs"
 
+	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/internal/synclet"
 )
@@ -45,7 +45,6 @@ var DeployerBaseWireSet = wire.NewSet(
 	wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)),
 	NewCompositeBuildAndDeployer,
 	ProvideUpdateMode,
-	NewGlobalYAMLBuildController,
 )
 
 var DeployerWireSetTest = wire.NewSet(
@@ -68,11 +67,10 @@ func provideBuildAndDeployer(
 	sCli synclet.SyncletClient,
 	dcc dockercompose.DockerComposeClient,
 	clock build.Clock,
-	kp KINDPusher) (BuildAndDeployer, error) {
+	kp KINDPusher,
+	analytics *analytics.TiltAnalytics) (BuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
-		analytics.NewMemoryAnalytics,
-		wire.Bind(new(analytics.Analytics), new(analytics.MemoryAnalytics)),
 		k8s.ProvideContainerRuntime,
 	)
 
@@ -86,16 +84,19 @@ func provideImageBuildAndDeployer(
 	env k8s.Env,
 	dir *dirs.WindmillDir,
 	clock build.Clock,
-	kp KINDPusher) (*ImageBuildAndDeployer, error) {
+	kp KINDPusher,
+	analytics *analytics.TiltAnalytics) (*ImageBuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
-		analytics.NewMemoryAnalytics,
-		wire.Bind(new(analytics.Analytics), new(analytics.MemoryAnalytics)),
 		wire.Value(UpdateModeFlag(UpdateModeAuto)),
 		k8s.ProvideContainerRuntime,
 	)
 
 	return nil, nil
+}
+
+func provideKubectlLogLevelInfo() k8s.KubectlLogLevel {
+	return k8s.KubectlLogLevel(logger.InfoLvl)
 }
 
 func provideDockerComposeBuildAndDeployer(
@@ -107,6 +108,7 @@ func provideDockerComposeBuildAndDeployer(
 		DeployerWireSetTest,
 		wire.Value(UpdateModeFlag(UpdateModeAuto)),
 		build.ProvideClock,
+		provideKubectlLogLevelInfo,
 
 		// EnvNone ensures that we get an exploding k8s client.
 		wire.Value(k8s.Env(k8s.EnvNone)),

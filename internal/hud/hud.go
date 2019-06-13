@@ -11,8 +11,7 @@ import (
 	"github.com/pkg/browser"
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/wmclient/pkg/analytics"
-
+	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
@@ -42,12 +41,12 @@ type Hud struct {
 	currentViewState view.ViewState
 	mu               sync.RWMutex
 	isRunning        bool
-	a                analytics.Analytics
+	a                *analytics.TiltAnalytics
 }
 
 var _ HeadsUpDisplay = (*Hud)(nil)
 
-func NewDefaultHeadsUpDisplay(renderer *Renderer, webURL model.WebURL, analytics analytics.Analytics) (HeadsUpDisplay, error) {
+func NewDefaultHeadsUpDisplay(renderer *Renderer, webURL model.WebURL, analytics *analytics.TiltAnalytics) (HeadsUpDisplay, error) {
 	return &Hud{
 		r:      renderer,
 		webURL: webURL,
@@ -171,11 +170,6 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			case r == 'x':
 				h.recordInteraction("cycle_view_log_state")
 				h.currentViewState.CycleViewLogState()
-			case r == ' ': // [space] - trigger build for selected resource
-				_, selected := h.selectedResource()
-				dispatch(view.AppendToTriggerQueueAction{
-					Name: selected.Name,
-				})
 			case r == '1':
 				h.recordInteraction("tab_all_log")
 				h.currentViewState.TabState = view.TabAllLog
@@ -233,6 +227,8 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			h.Close()
 			dispatch(NewExitAction(nil))
 			return true
+		case tcell.KeyCtrlD:
+			dispatch(DumpEngineStateAction{})
 		case tcell.KeyCtrlP:
 			if h.currentView.IsProfiling {
 				dispatch(StopProfilingAction{})

@@ -14,7 +14,7 @@ func NewTiltfileLogWriter(s store.RStore) *tiltfileLogWriter {
 
 func (w *tiltfileLogWriter) Write(p []byte) (n int, err error) {
 	w.store.Dispatch(TiltfileLogAction{
-		logEvent: newLogEvent(append([]byte{}, p...)),
+		LogEvent: store.NewGlobalLogEvent(p),
 	})
 	return len(p), nil
 }

@@ -2,8 +2,8 @@ package tiltfile
 
 import (
 	"fmt"
-	"io/ioutil"
 	"path/filepath"
+	"strings"
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
@@ -15,6 +15,11 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 )
 
+const fastBuildDeprecationWarning = "FastBuild (`fast_build`; `add_fast_build`; " +
+	"`docker_build(...).add(...)`, etc.) will be deprecated soon; you can use Live " +
+	"Update instead! See https://docs.tilt.dev/live_update_tutorial.html for more " +
+	"information. If Live Update doesn't fit your use case, let us know."
+
 type dockerImage struct {
 	baseDockerfilePath localPath
 	baseDockerfile     dockerfile.Dockerfile
@@ -25,6 +30,9 @@ type dockerImage struct {
 	entrypoint         string
 	cachePaths         []string
 	hotReload          bool
+	matchInEnvVars     bool
+	ignores            []string
+	onlys              []string
 
 	dbDockerfilePath localPath
 	dbDockerfile     dockerfile.Dockerfile
@@ -75,7 +83,8 @@ func (d *dockerImage) Type() dockerImageBuildType {
 
 func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef string
-	var contextVal, dockerfilePathVal, buildArgs, dockerfileContentsVal, cacheVal, liveUpdateVal starlark.Value
+	var contextVal, dockerfilePathVal, buildArgs, dockerfileContentsVal, cacheVal, liveUpdateVal, ignoreVal, onlyVal starlark.Value
+	var matchInEnvVars bool
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
 		"context", &contextVal,
@@ -84,6 +93,9 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		"dockerfile_contents?", &dockerfileContentsVal,
 		"cache?", &cacheVal,
 		"live_update?", &liveUpdateVal,
+		"match_in_env_vars?", &matchInEnvVars,
+		"ignore?", &ignoreVal,
+		"only?", &onlyVal,
 	); err != nil {
 		return nil, err
 	}
@@ -156,6 +168,37 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	if err != nil {
 		return nil, errors.Wrap(err, "live_update")
 	}
+
+	starlarkIgnores := starlarkValueOrSequenceToSlice(ignoreVal)
+	var ignores []string
+	for _, v := range starlarkIgnores {
+		switch val := v.(type) {
+		case starlark.String:
+			goString := val.GoString()
+			if strings.Contains(goString, "\n") {
+				return nil, fmt.Errorf("ignores cannot contain newlines; found ignore: %q", goString)
+			}
+			ignores = append(ignores, val.GoString())
+		default:
+			return nil, fmt.Errorf("ignores must be a string or a sequence of strings; found a %T", val)
+		}
+	}
+
+	starlarkOnlys := starlarkValueOrSequenceToSlice(onlyVal)
+	var onlys []string
+	for _, v := range starlarkOnlys {
+		switch val := v.(type) {
+		case starlark.String:
+			goString := val.GoString()
+			if strings.Contains(goString, "\n") {
+				return nil, fmt.Errorf("only cannot contain newlines; found only: %q", goString)
+			}
+			onlys = append(onlys, val.GoString())
+		default:
+			return nil, fmt.Errorf("only must be a string or a sequence of strings; found a %T", val)
+		}
+	}
+
 	r := &dockerImage{
 		dbDockerfilePath: dockerfilePath,
 		dbDockerfile:     dockerfile.Dockerfile(dockerfileContents),
@@ -164,6 +207,9 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		dbBuildArgs:      sba,
 		cachePaths:       cachePaths,
 		liveUpdate:       liveUpdate,
+		matchInEnvVars:   matchInEnvVars,
+		ignores:          ignores,
+		onlys:            onlys,
 	}
 	err = s.buildIndex.addImage(r)
 	if err != nil {
@@ -186,51 +232,8 @@ func (s *tiltfileState) fastBuildForImage(image *dockerImage) model.FastBuild {
 		HotReload:      image.hotReload,
 	}
 }
-func (s *tiltfileState) maybeFastBuild(image *dockerImage) *model.FastBuild {
-	fb := s.fastBuildForImage(image)
-	if fb.Empty() {
-		return nil
-	}
-	return &fb
-}
 
-func (s *tiltfileState) validatedLiveUpdate(image *dockerImage) (*model.LiveUpdate, error) {
-	lu := image.liveUpdate
-	if lu.Empty() {
-		return nil, nil
-	}
-
-	var watchedPaths []string
-	if image.Type() == DockerBuild {
-		watchedPaths = []string{image.dbBuildPath.path}
-	} else if image.Type() == CustomBuild {
-		watchedPaths = image.customDeps
-	} else {
-		// don't know how to do this check ¯\_(ツ)_/¯
-		return nil, nil
-	}
-
-	// Verify that all a) sync step src's and b) fall_back_on files are children of a watched path.
-	// (If not, we'll never even get "file changed" events for them--they're nonsensical input, throw an error.)
-	for _, sync := range lu.SyncSteps() {
-		if !ospath.IsChildOfOne(watchedPaths, sync.LocalPath) {
-			return nil, fmt.Errorf("sync step source '%s' is not a child of any watched filepaths (%v)",
-				sync.LocalPath, watchedPaths)
-		}
-	}
-
-	for _, path := range lu.FallBackOnFiles().Paths {
-		absPath := s.absPath(path)
-		if !ospath.IsChildOfOne(watchedPaths, absPath) {
-			return nil, fmt.Errorf("fall_back_on path '%s' is not a child of any watched filepaths (%v)",
-				absPath, watchedPaths)
-		}
-
-	}
-
-	return &lu, nil
-}
-
+// TODO(dmiller): support context filters (like `only` and `ignore` on `docker_build`)
 func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef string
 	var command string
@@ -238,6 +241,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	var tag string
 	var disablePush bool
 	var liveUpdateVal starlark.Value
+	var matchInEnvVars bool
 
 	err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
@@ -246,6 +250,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		"tag?", &tag,
 		"disable_push?", &disablePush,
 		"live_update?", &liveUpdateVal,
+		"match_in_env_vars?", &matchInEnvVars,
 	)
 	if err != nil {
 		return nil, err
@@ -288,6 +293,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		customTag:        tag,
 		disablePush:      disablePush,
 		liveUpdate:       liveUpdate,
+		matchInEnvVars:   matchInEnvVars,
 	}
 
 	err = s.buildIndex.addImage(img)
@@ -558,8 +564,7 @@ func reposForPaths(paths []localPath) []model.LocalGitRepo {
 
 		repoSet[repo.basePath] = true
 		result = append(result, model.LocalGitRepo{
-			LocalPath:         repo.basePath,
-			GitignoreContents: repo.gitignoreContents,
+			LocalPath: repo.basePath,
 		})
 	}
 
@@ -590,14 +595,16 @@ func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Bu
 		return nil, err
 	}
 
-	s.defaultRegistryHost = dr
+	s.defaultRegistryHost = container.Registry(dr)
 
 	return starlark.None, nil
 }
 
-func dockerignoresForPaths(paths []string) []model.Dockerignore {
+func (s *tiltfileState) dockerignoresFromPathsAndContextFilters(paths []string, ignores []string, onlys []string) []model.Dockerignore {
 	var result []model.Dockerignore
 	dupeSet := map[string]bool{}
+	ignoreContents := ignoresToDockerignoreContents(ignores)
+	onlyContents := onlysToDockerignoreContents(onlys)
 
 	for _, path := range paths {
 		if path == "" || dupeSet[path] {
@@ -609,7 +616,16 @@ func dockerignoresForPaths(paths []string) []model.Dockerignore {
 			continue
 		}
 
-		contents, err := ioutil.ReadFile(filepath.Join(path, ".dockerignore"))
+		result = append(result, model.Dockerignore{
+			LocalPath: path,
+			Contents:  ignoreContents,
+		})
+		result = append(result, model.Dockerignore{
+			LocalPath: path,
+			Contents:  onlyContents,
+		})
+
+		contents, err := s.readFile(s.localPathFromString(filepath.Join(path, ".dockerignore")))
 		if err != nil {
 			continue
 		}
@@ -621,6 +637,33 @@ func dockerignoresForPaths(paths []string) []model.Dockerignore {
 	}
 
 	return result
+}
+
+func ignoresToDockerignoreContents(ignores []string) string {
+	var output strings.Builder
+
+	for _, ignore := range ignores {
+		output.WriteString(ignore)
+		output.WriteString("\n")
+	}
+
+	return output.String()
+}
+
+func onlysToDockerignoreContents(onlys []string) string {
+	if len(onlys) == 0 {
+		return ""
+	}
+	var output strings.Builder
+	output.WriteString("**\n")
+
+	for _, ignore := range onlys {
+		output.WriteString("!")
+		output.WriteString(ignore)
+		output.WriteString("\n")
+	}
+
+	return output.String()
 }
 
 func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Dockerignore {
@@ -641,5 +684,16 @@ func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Docker
 	}
 	paths = append(paths, image.dbBuildPath.path)
 
-	return dockerignoresForPaths(paths)
+	return s.dockerignoresFromPathsAndContextFilters(paths, image.ignores, image.onlys)
+}
+
+func (s *tiltfileState) checkForFastBuilds(manifests []model.Manifest) {
+	for _, m := range manifests {
+		for _, iTarg := range m.ImageTargets {
+			if !iTarg.AnyFastBuildInfo().Empty() {
+				s.warnings = append(s.warnings, fastBuildDeprecationWarning)
+				return
+			}
+		}
+	}
 }

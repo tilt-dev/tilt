@@ -1,4 +1,5 @@
 import React, { PureComponent } from "react"
+import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
 import "./PreviewPane.scss"
 
 type PreviewProps = {
@@ -19,12 +20,15 @@ class PreviewPane extends PureComponent<PreviewProps> {
       content = <iframe src={this.props.endpoint} />
     } else {
       content = (
-        <section>
-          <h2>No endpoint found</h2>
+        <section className="Pane-empty-message">
+          <LogoWordmarkSvg />
+          <h2>No Endpoint Found</h2>
           <p>
-            If this is a resource that can be previewed in the browser, the{" "}
-            <a href="https://docs.tilt.dev/tutorial.html">Tilt Tutorial</a> has
-            more on setting up port forwarding.
+            If this is a resource that can be previewed in the browser, <br />
+            the <a href="https://docs.tilt.dev/tutorial.html">
+              Tilt Tutorial
+            </a>{" "}
+            has more on setting up port forwarding.
           </p>
         </section>
       )

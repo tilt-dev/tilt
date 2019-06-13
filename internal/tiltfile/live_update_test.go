@@ -184,6 +184,41 @@ docker_build('gcr.io/foo', 'foo',
 	f.loadErrString("sync step source", f.JoinPath("bar"), f.JoinPath("foo"), "child", "any watched filepaths")
 }
 
+func TestLiveUpdateSyncFilesImageDep(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("a/message.txt", "message")
+	f.file("imageA.dockerfile", `FROM golang:1.10
+ADD message.txt /src/message.txt
+`)
+	f.file("imageB.dockerfile", "FROM gcr.io/image-a")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/image-b")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/image-b', 'b', dockerfile='imageB.dockerfile',
+             live_update=[
+               sync('a/message.txt', '/src/message.txt'),
+             ])
+docker_build('gcr.io/image-a', 'a', dockerfile='imageA.dockerfile')
+k8s_yaml('foo.yaml')
+`)
+	f.load()
+
+	lu := model.LiveUpdate{
+		Steps: []model.LiveUpdateStep{
+			model.LiveUpdateSyncStep{
+				Source: f.JoinPath("a/message.txt"),
+				Dest:   "/src/message.txt",
+			},
+		},
+		BaseDir: f.Path(),
+	}
+	f.assertNextManifest("foo",
+		db(image("gcr.io/image-a")),
+		db(image("gcr.io/image-b"), lu))
+}
+
 func TestLiveUpdateFallBackTriggersOutsideOfDockerBuildContext(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -273,7 +308,7 @@ func newLiveUpdateFixture(t *testing.T) *liveUpdateFixture {
 		model.LiveUpdateSyncStep{Source: f.JoinPath("foo", "b"), Dest: "/c"},
 		model.LiveUpdateRunStep{
 			Command:  model.ToShellCmd("f"),
-			Triggers: f.NewPathSet("g", "h"),
+			Triggers: model.NewPathSet([]string{"g", "h"}, f.Path()),
 		},
 		model.LiveUpdateRestartContainerStep{},
 	)

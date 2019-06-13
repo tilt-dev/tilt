@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/demo"
 )
 
@@ -29,10 +30,11 @@ func (c *demoCmd) register() *cobra.Command {
 }
 
 func (c *demoCmd) run(ctx context.Context, args []string) error {
-	analyticsService.Incr("cmd.demo", map[string]string{})
-	defer analyticsService.Flush(time.Second)
+	a := analytics.Get(ctx)
+	a.Incr("cmd.demo", map[string]string{})
+	defer a.Flush(time.Second)
 
-	demo, err := wireDemo(ctx, demo.RepoBranch(c.branch))
+	demo, err := wireDemo(ctx, demo.RepoBranch(c.branch), a)
 	if err != nil {
 		return err
 	}

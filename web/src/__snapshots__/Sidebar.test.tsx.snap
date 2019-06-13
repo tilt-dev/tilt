@@ -1,27 +1,9 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`sidebar renders empty resource list without crashing 1`] = `
+exports[`sidebar abbreviates durations under a minute 1`] = `
 <section
-  className="Sidebar is-closed"
+  className="Sidebar"
 >
-  <nav
-    className="Sidebar-view"
-  >
-    <a
-      className="viewLink viewLink--is-selected"
-      href="/"
-      onClick={[Function]}
-    >
-      Logs
-    </a>
-    <a
-      className="viewLink "
-      href="/"
-      onClick={[Function]}
-    >
-      Preview
-    </a>
-  </nav>
   <nav
     className="Sidebar-resources"
   >
@@ -34,11 +16,573 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
           href="/"
           onClick={[Function]}
         >
-          All
+          <span
+            className="resLink--all-name"
+          >
+            All
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            7
+          </span>
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--building"
+          href="/r/resource4"
+          onClick={[Function]}
+        >
+          <div
+            className="sidebarIcon"
+          >
+            <svg
+              className="dotAutoBuilding auto"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-building.svg
+            </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
+          </div>
+          <span
+            className="resLink-name"
+          >
+            resource4
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
+            <time
+              dateTime="2017-12-21T15:36:03.000Z"
+              title="2017-12-21 15:36"
+            >
+              &lt;5s
+            </time>
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--building"
+          href="/r/resource9"
+          onClick={[Function]}
+        >
+          <div
+            className="sidebarIcon"
+          >
+            <svg
+              className="dotAutoBuilding auto"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-building.svg
+            </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
+          </div>
+          <span
+            className="resLink-name"
+          >
+            resource9
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
+            <time
+              dateTime="2017-12-21T15:35:58.000Z"
+              title="2017-12-21 15:35"
+            >
+              &lt;15s
+            </time>
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--building"
+          href="/r/resource19"
+          onClick={[Function]}
+        >
+          <div
+            className="sidebarIcon"
+          >
+            <svg
+              className="dotAutoBuilding auto"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-building.svg
+            </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
+          </div>
+          <span
+            className="resLink-name"
+          >
+            resource19
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
+            <time
+              dateTime="2017-12-21T15:35:48.000Z"
+              title="2017-12-21 15:35"
+            >
+              &lt;30s
+            </time>
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--building"
+          href="/r/resource29"
+          onClick={[Function]}
+        >
+          <div
+            className="sidebarIcon"
+          >
+            <svg
+              className="dotAutoBuilding auto"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-building.svg
+            </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
+          </div>
+          <span
+            className="resLink-name"
+          >
+            resource29
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
+            <time
+              dateTime="2017-12-21T15:35:38.000Z"
+              title="2017-12-21 15:35"
+            >
+              &lt;30s
+            </time>
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--building"
+          href="/r/resource39"
+          onClick={[Function]}
+        >
+          <div
+            className="sidebarIcon"
+          >
+            <svg
+              className="dotAutoBuilding auto"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-building.svg
+            </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
+          </div>
+          <span
+            className="resLink-name"
+          >
+            resource39
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
+            <time
+              dateTime="2017-12-21T15:35:28.000Z"
+              title="2017-12-21 15:35"
+            >
+              &lt;45s
+            </time>
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--building"
+          href="/r/resource49"
+          onClick={[Function]}
+        >
+          <div
+            className="sidebarIcon"
+          >
+            <svg
+              className="dotAutoBuilding auto"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-building.svg
+            </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
+          </div>
+          <span
+            className="resLink-name"
+          >
+            resource49
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
+            <time
+              dateTime="2017-12-21T15:35:18.000Z"
+              title="2017-12-21 15:35"
+            >
+              &lt;1m
+            </time>
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--building"
+          href="/r/resource54"
+          onClick={[Function]}
+        >
+          <div
+            className="sidebarIcon"
+          >
+            <svg
+              className="dotAutoBuilding auto"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-building.svg
+            </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
+          </div>
+          <span
+            className="resLink-name"
+          >
+            resource54
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
+            <time
+              dateTime="2017-12-21T15:35:13.000Z"
+              title="2017-12-21 15:35"
+            >
+              &lt;1m
+            </time>
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
     </ul>
   </nav>
+  <div
+    className="Sidebar-spacer"
+  >
+     
+  </div>
+  <button
+    className="Sidebar-toggle"
+    onClick={null}
+  >
+    <svg>
+      chevron.svg
+    </svg>
+     Collapse
+  </button>
+</section>
+`;
+
+exports[`sidebar renders * next to dirty manual trigger mode resources 1`] = `
+<section
+  className="Sidebar"
+>
+  <nav
+    className="Sidebar-resources"
+  >
+    <ul
+      className="Sidebar-list"
+    >
+      <li>
+        <a
+          className="resLink resLink--all is-selected"
+          href="/"
+          onClick={[Function]}
+        >
+          <span
+            className="resLink--all-name"
+          >
+            All
+          </span>
+          
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink"
+          href="/r/(Tiltfile)"
+          onClick={[Function]}
+        >
+          <div
+            className="sidebarIcon"
+          >
+            <svg
+              className="dotAuto auto"
+              fill="#20ba31"
+            >
+              indicator-auto.svg
+            </svg>
+          </div>
+          <span
+            className="resLink-name"
+          >
+            (Tiltfile)
+          </span>
+          
+          <span
+            className="resLink-timeAgo"
+          >
+            <time
+              dateTime="2019-06-12T16:33:27.831Z"
+              title="2019-06-12T12:33:27.831613-04:00"
+            >
+              1yr
+            </time>
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink"
+          href="/r/snack"
+          onClick={[Function]}
+        >
+          <div
+            className="sidebarIcon"
+          >
+            <svg
+              className="dotManual manual"
+              fill="#20ba31"
+            >
+              indicator-manual.svg
+            </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
+          </div>
+          <span
+            className="resLink-name"
+          >
+            snack
+          </span>
+          
+          <span
+            className="resLink-timeAgo"
+          >
+            <time
+              dateTime="2019-06-12T16:33:48.331Z"
+              title="2019-06-12T12:33:48.331048-04:00"
+            >
+              1yr
+            </time>
+          </span>
+          <span
+            className="resLink-isDirty"
+          >
+            *
+          </span>
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <div
+    className="Sidebar-spacer"
+  >
+     
+  </div>
+  <button
+    className="Sidebar-toggle"
+    onClick={null}
+  >
+    <svg>
+      chevron.svg
+    </svg>
+     Collapse
+  </button>
+</section>
+`;
+
+exports[`sidebar renders empty resource list without crashing 1`] = `
+<section
+  className="Sidebar is-closed"
+>
+  <nav
+    className="Sidebar-resources"
+  >
+    <ul
+      className="Sidebar-list"
+    >
+      <li>
+        <a
+          className="resLink resLink--all is-selected"
+          href="/"
+          onClick={[Function]}
+        >
+          <span
+            className="resLink--all-name"
+          >
+            All
+          </span>
+          
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <div
+    className="Sidebar-spacer"
+  >
+     
+  </div>
   <button
     className="Sidebar-toggle"
     onClick={null}
@@ -56,23 +600,160 @@ exports[`sidebar renders list of resources 1`] = `
   className="Sidebar"
 >
   <nav
-    className="Sidebar-view"
+    className="Sidebar-resources"
   >
-    <a
-      className="viewLink viewLink--is-selected"
-      href="/"
-      onClick={[Function]}
+    <ul
+      className="Sidebar-list"
     >
-      Logs
-    </a>
-    <a
-      className="viewLink "
-      href="/r/vigoda/preview"
-      onClick={[Function]}
-    >
-      Preview
-    </a>
+      <li>
+        <a
+          className="resLink resLink--all is-selected"
+          href="/"
+          onClick={[Function]}
+        >
+          <span
+            className="resLink--all-name"
+          >
+            All
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            2
+          </span>
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--building"
+          href="/r/vigoda"
+          onClick={[Function]}
+        >
+          <div
+            className="sidebarIcon"
+          >
+            <svg
+              className="dotAutoBuilding auto"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-building.svg
+            </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
+          </div>
+          <span
+            className="resLink-name"
+          >
+            vigoda
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
+            <time
+              dateTime="2017-12-21T15:36:07.000Z"
+              title="2017-12-21 15:36"
+            >
+              &lt;5s
+            </time>
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--building"
+          href="/r/snack"
+          onClick={[Function]}
+        >
+          <div
+            className="sidebarIcon"
+          >
+            <svg
+              className="dotAutoBuilding auto"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-building.svg
+            </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
+          </div>
+          <span
+            className="resLink-name"
+          >
+            snack
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
+            <time
+              dateTime="2017-12-21T15:35:57.000Z"
+              title="2017-12-21 15:35"
+            >
+              &lt;15s
+            </time>
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
+        </a>
+      </li>
+    </ul>
   </nav>
+  <div
+    className="Sidebar-spacer"
+  >
+     
+  </div>
+  <button
+    className="Sidebar-toggle"
+    onClick={null}
+  >
+    <svg>
+      chevron.svg
+    </svg>
+     Collapse
+  </button>
+</section>
+`;
+
+exports[`sidebar renders resources that haven't been built yet 1`] = `
+<section
+  className="Sidebar"
+>
   <nav
     className="Sidebar-resources"
   >
@@ -85,29 +766,278 @@ exports[`sidebar renders list of resources 1`] = `
           href="/"
           onClick={[Function]}
         >
-          All
+          <span
+            className="resLink--all-name"
+          >
+            All
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            2
+          </span>
         </a>
       </li>
       <li>
         <a
-          className="resLink resLink--pending"
+          className="resLink resLink--building"
           href="/r/vigoda"
           onClick={[Function]}
         >
-          vigoda
+          <div
+            className="sidebarIcon"
+          >
+            <svg
+              className="dotAutoBuilding auto"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-building.svg
+            </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
+          </div>
+          <span
+            className="resLink-name"
+          >
+            vigoda
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
+            —
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
       <li>
         <a
-          className="resLink resLink--pending"
+          className="resLink resLink--building"
           href="/r/snack"
           onClick={[Function]}
         >
-          snack
+          <div
+            className="sidebarIcon"
+          >
+            <svg
+              className="dotAutoBuilding auto"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-building.svg
+            </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
+          </div>
+          <span
+            className="resLink-name"
+          >
+            snack
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
+            —
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
     </ul>
   </nav>
+  <div
+    className="Sidebar-spacer"
+  >
+     
+  </div>
+  <button
+    className="Sidebar-toggle"
+    onClick={null}
+  >
+    <svg>
+      chevron.svg
+    </svg>
+     Collapse
+  </button>
+</section>
+`;
+
+exports[`sidebar renders resources with manual trigger mode 1`] = `
+<section
+  className="Sidebar"
+>
+  <nav
+    className="Sidebar-resources"
+  >
+    <ul
+      className="Sidebar-list"
+    >
+      <li>
+        <a
+          className="resLink resLink--all is-selected"
+          href="/"
+          onClick={[Function]}
+        >
+          <span
+            className="resLink--all-name"
+          >
+            All
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            2
+          </span>
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--building"
+          href="/r/vigoda"
+          onClick={[Function]}
+        >
+          <div
+            className="sidebarIcon"
+          >
+            <svg
+              className="dotManualBuilding manual"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-manual-building.svg
+            </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
+          </div>
+          <span
+            className="resLink-name"
+          >
+            vigoda
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
+            <time
+              dateTime="2017-12-21T15:36:07.000Z"
+              title="2017-12-21 15:36"
+            >
+              &lt;5s
+            </time>
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink resLink--building"
+          href="/r/snack"
+          onClick={[Function]}
+        >
+          <div
+            className="sidebarIcon"
+          >
+            <svg
+              className="dotManualBuilding manual"
+              fill="#93a1a1"
+              style={
+                Object {
+                  "animation": "spin 1s linear infinite",
+                }
+              }
+            >
+              indicator-manual-building.svg
+            </svg>
+            <button
+              className="SidebarTriggerButton "
+              onClick={[Function]}
+            >
+              <svg>
+                trigger.svg
+              </svg>
+            </button>
+          </div>
+          <span
+            className="resLink-name"
+          >
+            snack
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo"
+          >
+            <time
+              dateTime="2017-12-21T15:35:57.000Z"
+              title="2017-12-21 15:35"
+            >
+              &lt;15s
+            </time>
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <div
+    className="Sidebar-spacer"
+  >
+     
+  </div>
   <button
     className="Sidebar-toggle"
     onClick={null}

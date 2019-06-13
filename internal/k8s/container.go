@@ -44,6 +44,8 @@ func WaitForContainerReady(ctx context.Context, client Client, pod *v1.Pod, ref 
 				continue
 			}
 
+			FixContainerStatusImages(pod)
+
 			cStatus, err := waitForContainerReadyHelper(pod, ref)
 			if err != nil {
 				return v1.ContainerStatus{}, err
@@ -97,6 +99,39 @@ func IsUnschedulable(pod v1.PodStatus) (bool, string) {
 		}
 	}
 	return false, ""
+}
+
+// Kubernetes has a bug where the image ref in the container status
+// can be wrong (though this does not mean the container is running
+// unexpected code)
+//
+// Repro steps:
+// 1) Create an image and give it two different tags (A and B)
+// 2) Deploy Pods with both A and B in the pod spec
+// 3) The PodStatus will choose A or B for both pods.
+//
+// More details here:
+// https://github.com/kubernetes/kubernetes/issues/51017
+//
+// For Tilt, it's pretty important that the image tag is correct (for matching
+// purposes). To work around this bug, we change the image reference in
+// ContainerStatus to match the ContainerSpec.
+func FixContainerStatusImages(pod *v1.Pod) {
+	refsByContainerName := make(map[string]string)
+	for _, c := range pod.Spec.Containers {
+		if c.Name != "" {
+			refsByContainerName[c.Name] = c.Image
+		}
+	}
+	for i, cs := range pod.Status.ContainerStatuses {
+		image, ok := refsByContainerName[cs.Name]
+		if !ok {
+			continue
+		}
+
+		cs.Image = image
+		pod.Status.ContainerStatuses[i] = cs
+	}
 }
 
 func ContainerMatching(pod *v1.Pod, ref container.RefSelector) (v1.ContainerStatus, error) {

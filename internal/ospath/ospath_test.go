@@ -60,6 +60,17 @@ func TestInvalidDir(t *testing.T) {
 	f.assertChild("", "random", "")
 }
 
+func TestDirTrailingSlash(t *testing.T) {
+	f := NewOspathFixture(t)
+	defer f.TearDown()
+
+	f.TouchFiles([]string{"some/dir/file"})
+
+	// Should work regardless of whether directory has trailing slash
+	f.assertChild("some/dir", "some/dir/file", "file")
+	f.assertChild("some/dir/", "some/dir/file", "file")
+}
+
 func TestTryAsCwdChildren(t *testing.T) {
 	f := NewOspathFixture(t)
 	defer f.TearDown()

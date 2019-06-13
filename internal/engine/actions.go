@@ -4,7 +4,9 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -38,25 +40,17 @@ func NewServiceChangeAction(service *v1.Service, url *url.URL) ServiceChangeActi
 }
 
 type BuildLogAction struct {
-	logEvent
-	ManifestName model.ManifestName
+	store.LogEvent
 }
 
 func (BuildLogAction) Action() {}
 
 type PodLogAction struct {
-	logEvent
-	ManifestName model.ManifestName
-	PodID        k8s.PodID
+	store.LogEvent
+	PodID k8s.PodID
 }
 
 func (PodLogAction) Action() {}
-
-type LogAction struct {
-	logEvent
-}
-
-func (LogAction) Action() {}
 
 type DeployIDAction struct {
 	TargetID model.TargetID
@@ -98,20 +92,23 @@ func NewBuildCompleteAction(result store.BuildResultSet, err error) BuildComplet
 }
 
 type InitAction struct {
-	WatchFiles         bool
-	Manifests          []model.Manifest
-	GlobalYAMLManifest model.Manifest
-	TiltfilePath       string
-	ConfigFiles        []string
-	InitManifests      []model.ManifestName
-	TriggerMode        model.TriggerMode
+	WatchFiles    bool
+	Manifests     []model.Manifest
+	TiltfilePath  string
+	ConfigFiles   []string
+	InitManifests []model.ManifestName
 
+	TiltBuild  model.TiltBuild
 	StartTime  time.Time
 	FinishTime time.Time
 	Err        error
 	Warnings   []string
 
 	ExecuteTiltfile bool
+
+	EnableSail bool
+
+	AnalyticsOpt analytics.Opt
 }
 
 func (InitAction) Action() {}
@@ -133,16 +130,6 @@ type BuildStartedAction struct {
 
 func (BuildStartedAction) Action() {}
 
-type GlobalYAMLApplyStartedAction struct{}
-
-func (GlobalYAMLApplyStartedAction) Action() {}
-
-type GlobalYAMLApplyCompleteAction struct {
-	Error error
-}
-
-func (GlobalYAMLApplyCompleteAction) Action() {}
-
 type HudStoppedAction struct {
 	err error
 }
@@ -162,7 +149,6 @@ func (ConfigsReloadStartedAction) Action() {}
 
 type ConfigsReloadedAction struct {
 	Manifests          []model.Manifest
-	GlobalYAML         model.Manifest
 	TiltIgnoreContents string
 	ConfigFiles        []string
 
@@ -181,34 +167,28 @@ type DockerComposeEventAction struct {
 func (DockerComposeEventAction) Action() {}
 
 type DockerComposeLogAction struct {
-	logEvent
-	ManifestName model.ManifestName
+	store.LogEvent
 }
 
 func (DockerComposeLogAction) Action() {}
 
 type TiltfileLogAction struct {
-	logEvent
+	store.LogEvent
 }
 
 func (TiltfileLogAction) Action() {}
 
-type logEvent struct {
-	ts      time.Time
-	message []byte
+type LatestVersionAction struct {
+	Build model.TiltBuild
 }
 
-func (le logEvent) Time() time.Time {
-	return le.ts
+func (LatestVersionAction) Action() {}
+
+type UIDUpdateAction struct {
+	UID          k8s.UID
+	EventType    watch.EventType
+	ManifestName model.ManifestName
+	Entity       k8s.K8sEntity
 }
 
-func (le logEvent) Message() []byte {
-	return le.message
-}
-
-func newLogEvent(b []byte) logEvent {
-	return logEvent{
-		ts:      time.Now(),
-		message: b,
-	}
-}
+func (UIDUpdateAction) Action() {}

@@ -9,21 +9,21 @@ import (
 	"context"
 
 	"github.com/google/wire"
-	"github.com/windmilleng/wmclient/pkg/analytics"
-	"github.com/windmilleng/wmclient/pkg/dirs"
-
+	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/internal/synclet"
+	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 // Injectors from wire.go:
 
-func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode UpdateModeFlag, sCli synclet.SyncletClient, dcc dockercompose.DockerComposeClient, clock build.Clock, kp KINDPusher) (BuildAndDeployer, error) {
+func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode UpdateModeFlag, sCli synclet.SyncletClient, dcc dockercompose.DockerComposeClient, clock build.Clock, kp KINDPusher, analytics2 *analytics.TiltAnalytics) (BuildAndDeployer, error) {
 	syncletManager := NewSyncletManagerForTests(kClient, sCli)
 	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
 	engineUpdateMode, err := ProvideUpdateMode(updateMode, env, runtime)
@@ -32,8 +32,7 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 	}
 	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(syncletManager, kClient, engineUpdateMode)
 	containerUpdater := build.NewContainerUpdater(docker2)
-	memoryAnalytics := analytics.NewMemoryAnalytics()
-	localContainerBuildAndDeployer := NewLocalContainerBuildAndDeployer(containerUpdater, memoryAnalytics, env)
+	localContainerBuildAndDeployer := NewLocalContainerBuildAndDeployer(containerUpdater, analytics2, env)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
@@ -44,7 +43,7 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 		return nil, err
 	}
 	execCustomBuilder := build.NewExecCustomBuilder(docker2, dockerEnv, clock)
-	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, kClient, env, memoryAnalytics, engineUpdateMode, clock, runtime, kp)
+	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, kClient, env, analytics2, engineUpdateMode, clock, runtime, kp)
 	engineImageAndCacheBuilder := NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, engineUpdateMode)
 	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcc, docker2, engineImageAndCacheBuilder, clock)
 	buildOrder := DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, env, engineUpdateMode, runtime)
@@ -56,7 +55,7 @@ var (
 	_wireLabelsValue = dockerfile.Labels{}
 )
 
-func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, env k8s.Env, dir *dirs.WindmillDir, clock build.Clock, kp KINDPusher) (*ImageBuildAndDeployer, error) {
+func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, env k8s.Env, dir *dirs.WindmillDir, clock build.Clock, kp KINDPusher, analytics2 *analytics.TiltAnalytics) (*ImageBuildAndDeployer, error) {
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
@@ -68,13 +67,12 @@ func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kC
 		return nil, err
 	}
 	execCustomBuilder := build.NewExecCustomBuilder(docker2, dockerEnv, clock)
-	memoryAnalytics := analytics.NewMemoryAnalytics()
 	updateModeFlag := _wireUpdateModeFlagValue
 	updateMode, err := ProvideUpdateMode(updateModeFlag, env, runtime)
 	if err != nil {
 		return nil, err
 	}
-	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, kClient, env, memoryAnalytics, updateMode, clock, runtime, kp)
+	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, kClient, env, analytics2, updateMode, clock, runtime, kp)
 	return imageBuildAndDeployer, nil
 }
 
@@ -99,7 +97,8 @@ func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	if err != nil {
 		return nil, err
 	}
-	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext)
+	int2 := provideKubectlLogLevelInfo()
+	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, int2)
 	client := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
 	minikubeClient := minikube.ProvideMinikubeClient()
@@ -132,7 +131,6 @@ var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Valu
 	NewImageAndCacheBuilder,
 	DefaultBuildOrder, wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer,
 	ProvideUpdateMode,
-	NewGlobalYAMLBuildController,
 )
 
 var DeployerWireSetTest = wire.NewSet(
@@ -144,3 +142,7 @@ var DeployerWireSet = wire.NewSet(
 	DeployerBaseWireSet,
 	NewSyncletManager,
 )
+
+func provideKubectlLogLevelInfo() k8s.KubectlLogLevel {
+	return k8s.KubectlLogLevel(logger.InfoLvl)
+}

@@ -1,0 +1,117 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`shows sail share button 1`] = `
+<div
+  className="TopBar"
+>
+  <nav
+    className="TabNav"
+  >
+    <ul>
+      <li>
+        <a
+          className="tabLink "
+          href="/r/foo"
+          onClick={[Function]}
+        >
+          Logs
+        </a>
+      </li>
+      <li>
+        <a
+          className="tabLink "
+          href="/r/foo/preview"
+          onClick={[Function]}
+        >
+          Preview
+        </a>
+      </li>
+      <li>
+        <a
+          className="tabLink tabLink--errors tabLink--is-selected"
+          href="/r/foo/alerts"
+          onClick={[Function]}
+        >
+          Alerts
+          
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <span
+    className="TopBar-spacer"
+  >
+     
+  </span>
+  <span
+    className="SailInfo"
+  >
+    <button
+      onClick={[Function]}
+      type="button"
+    >
+      Share me!
+    </button>
+  </span>
+</div>
+`;
+
+exports[`shows sail url 1`] = `
+<div
+  className="TopBar"
+>
+  <nav
+    className="TabNav"
+  >
+    <ul>
+      <li>
+        <a
+          className="tabLink "
+          href="/r/foo"
+          onClick={[Function]}
+        >
+          Logs
+        </a>
+      </li>
+      <li>
+        <a
+          className="tabLink "
+          href="/r/foo/preview"
+          onClick={[Function]}
+        >
+          Preview
+        </a>
+      </li>
+      <li>
+        <a
+          className="tabLink tabLink--errors tabLink--is-selected"
+          href="/r/foo/alerts"
+          onClick={[Function]}
+        >
+          Alerts
+          <span
+            className="tabLink-alertBadge"
+          >
+            1
+          </span>
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <span
+    className="TopBar-spacer"
+  >
+     
+  </span>
+  <span
+    className="SailInfo"
+  >
+    <a
+      href="www.sail.dev/xyz"
+      target="_blank"
+    >
+      Share this view!
+    </a>
+  </span>
+</div>
+`;

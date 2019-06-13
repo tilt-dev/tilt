@@ -1,14 +1,14 @@
 package cli
 
 import (
-	"bufio"
 	"crypto/md5"
 	"encoding/base64"
-	"fmt"
 	"os"
 	"os/exec"
 	"runtime"
 	"strings"
+
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 
 	"github.com/spf13/cobra"
 	giturls "github.com/whilp/git-urls"
@@ -18,71 +18,59 @@ import (
 
 const tiltAppName = "tilt"
 const disableAnalyticsEnvVar = "TILT_DISABLE_ANALYTICS"
+const analyticsURLEnvVar = "TILT_ANALYTICS_URL"
 
-var analyticsService analytics.Analytics
+// Testing analytics locally:
+// (after `npm install http-echo-server -g`)
+// In one window: `PORT=9988 http-echo-server`
+// In another: `TILT_ANALYTICS_URL=http://localhost:9988 tilt up`
+// Analytics requests will show up in the http-echo-server window.
 
-func initAnalytics(rootCmd *cobra.Command) error {
+type analyticsOpter struct{}
+
+var _ tiltanalytics.AnalyticsOpter = analyticsOpter{}
+
+func (ao analyticsOpter) SetOpt(opt analytics.Opt) error {
+	return analytics.SetOpt(opt)
+}
+
+func initAnalytics(rootCmd *cobra.Command) (*tiltanalytics.TiltAnalytics, error) {
 	var analyticsCmd *cobra.Command
 	var err error
 
 	options := []analytics.Option{}
-	options = append(options, analytics.WithGlobalTags(globalTags()))
-	if isAnalyticsDisabledFromEnv() {
-		options = append(options, analytics.WithEnabled(false))
+	// enabled: true because TiltAnalytics wraps the RemoteAnalytics and has its own guards for whether analytics
+	//   is enabled. When TiltAnalytics decides to pass a call through to RemoteAnalytics, it should always work.
+	options = append(options, analytics.WithGlobalTags(globalTags()), analytics.WithEnabled(true))
+	analyticsURL := os.Getenv(analyticsURLEnvVar)
+	if analyticsURL != "" {
+		options = append(options, analytics.WithReportURL(analyticsURL))
 	}
-	analyticsService, analyticsCmd, err = analytics.Init(tiltAppName, options...)
+	backingAnalytics, analyticsCmd, err := analytics.Init(tiltAppName, options...)
 	if err != nil {
-		return err
-	}
-
-	status, err := analytics.OptStatus()
-	if err != nil {
-		return err
-	}
-
-	if status == analytics.OptDefault {
-		_, err := fmt.Fprintf(os.Stderr, "Send anonymized usage data to Windmill [y/n]? ")
-		if err != nil {
-			return err
-		}
-
-		buf := bufio.NewReader(os.Stdin)
-		c, _, _ := buf.ReadRune()
-		if c == rune(0) || c == '\n' || c == 'y' || c == 'Y' {
-			err = analytics.SetOpt(analytics.OptIn)
-			if err != nil {
-				return err
-			}
-
-			_, err = fmt.Fprintln(os.Stderr, "Thanks! Setting 'tilt analytics opt in'")
-			if err != nil {
-				return err
-			}
-		} else {
-			err = analytics.SetOpt(analytics.OptOut)
-			if err != nil {
-				return err
-			}
-
-			_, err = fmt.Fprintln(os.Stderr, "Thanks! Setting 'tilt analytics opt out'")
-			if err != nil {
-				return err
-			}
-		}
-
-		_, err = fmt.Fprintln(os.Stderr, "You set can update your privacy preferences later with 'tilt analytics'")
-		if err != nil {
-			return err
-		}
+		return nil, err
 	}
 
 	rootCmd.AddCommand(analyticsCmd)
-	return nil
+
+	var analyticsOpt analytics.Opt
+	if isAnalyticsDisabledFromEnv() {
+		analyticsOpt = analytics.OptOut
+	} else {
+		analyticsOpt, err = analytics.OptStatus()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	a := tiltanalytics.NewTiltAnalytics(analyticsOpt, analyticsOpter{}, backingAnalytics, provideTiltInfo().AnalyticsVersion())
+
+	return a, nil
 }
 
 func globalTags() map[string]string {
 	ret := map[string]string{
-		"version": buildInfo().AnalyticsVersion(),
+		"version": provideTiltInfo().AnalyticsVersion(),
 		"os":      runtime.GOOS,
 	}
 
@@ -132,11 +120,4 @@ func normalizeGitRemote(s string) string {
 
 func isAnalyticsDisabledFromEnv() bool {
 	return os.Getenv(disableAnalyticsEnvVar) != ""
-}
-
-func provideAnalytics() (analytics.Analytics, error) {
-	if analyticsService == nil {
-		return nil, fmt.Errorf("internal error: no available analytics service")
-	}
-	return analyticsService, nil
 }

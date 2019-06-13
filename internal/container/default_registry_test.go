@@ -8,7 +8,7 @@ import (
 )
 
 var namedTaggedTestCases = []struct {
-	defaultRegistry string
+	defaultRegistry Registry
 	name            string
 	expected        string
 }{
@@ -17,7 +17,7 @@ var namedTaggedTestCases = []struct {
 }
 
 var namedTestCases = []struct {
-	defaultRegistry string
+	defaultRegistry Registry
 	name            string
 	expected        string
 }{

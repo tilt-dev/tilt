@@ -10,12 +10,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"
-
-	opentracing "github.com/opentracing/opentracing-go"
 )
 
 type ArchiveBuilder struct {
@@ -161,9 +160,6 @@ func (a *ArchiveBuilder) entriesForPath(ctx context.Context, source, dest string
 			return err
 		}
 		if matches {
-			if info.IsDir() {
-				return filepath.SkipDir
-			}
 			return nil
 		}
 

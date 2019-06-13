@@ -34,3 +34,11 @@ func TiltDeployLabel(dID model.DeployID) model.LabelPair {
 func TiltRunSelector() labels.Selector {
 	return labels.Set{TiltRunIDLabel: TiltRunID}.AsSelector()
 }
+
+func LabelPairsToSelector(lps []model.LabelPair) labels.Selector {
+	ls := labels.Set{}
+	for _, lp := range lps {
+		ls[lp.Key] = lp.Value
+	}
+	return ls.AsSelector()
+}

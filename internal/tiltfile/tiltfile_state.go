@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 
+	"go.starlark.net/syntax"
+
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
@@ -16,6 +18,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 )
 
@@ -26,9 +29,11 @@ type resourceSet struct {
 
 type tiltfileState struct {
 	// set at creation
-	ctx      context.Context
-	filename localPath
-	dcCli    dockercompose.DockerComposeClient
+	ctx             context.Context
+	filename        localPath
+	dcCli           dockercompose.DockerComposeClient
+	kubeContext     k8s.KubeContext
+	privateRegistry container.Registry
 
 	// added to during execution
 	configFiles        []string
@@ -40,18 +45,19 @@ type tiltfileState struct {
 	k8sResourceOptions map[string]k8sResourceOptions
 
 	// ensure that any pushed images are pushed instead to this registry, rewriting names if needed
-	defaultRegistryHost string
+	defaultRegistryHost container.Registry
 
 	// JSON paths to images in k8s YAML (other than Container specs)
 	k8sImageJSONPaths map[k8sObjectSelector][]k8s.JSONPath
 
-	k8sResourceAssemblyVersion int
-	workloadToResourceFunction workloadToResourceFunction
+	k8sResourceAssemblyVersion       int
+	k8sResourceAssemblyVersionReason k8sResourceAssemblyVersionReason
+	workloadToResourceFunction       workloadToResourceFunction
 
 	// for assembly
 	usedImages map[string]bool
 
-	builtinsMap starlark.StringDict
+	predeclaredMap starlark.StringDict
 	// count how many times each builtin is called, for analytics
 	builtinCallCounts map[string]int
 
@@ -62,16 +68,34 @@ type tiltfileState struct {
 	// with the same hashcode (like, all restartcontainer steps)
 	unconsumedLiveUpdateSteps map[string]liveUpdateStep
 
+	// global trigger mode -- will be the default for all manifests (tho user can still explicitly set
+	// triggerMode for a specific manifest)
+	triggerMode triggerMode
+
+	// for error reporting in case it's called twice
+	triggerModeCallPosition syntax.Position
+
 	logger   logger.Logger
 	warnings []string
 }
 
-func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, filename string) *tiltfileState {
+type k8sResourceAssemblyVersionReason int
+
+const (
+	// assembly version is just at the default; the user hasn't set anything
+	k8sResourceAssemblyVersionReasonDefault k8sResourceAssemblyVersionReason = iota
+	// the user has explicit set the assembly version
+	k8sResourceAssemblyVersionReasonExplicit
+)
+
+func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, filename string, kubeContext k8s.KubeContext, privateRegistry container.Registry) *tiltfileState {
 	lp := localPath{path: filename}
 	s := &tiltfileState{
 		ctx:                        ctx,
 		filename:                   localPath{path: filename},
 		dcCli:                      dcCli,
+		kubeContext:                kubeContext,
+		privateRegistry:            privateRegistry,
 		buildIndex:                 newBuildIndex(),
 		k8sByName:                  make(map[string]*k8sResource),
 		k8sImageJSONPaths:          make(map[k8sObjectSelector][]k8s.JSONPath),
@@ -80,8 +104,9 @@ func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClie
 		logger:                     logger.Get(ctx),
 		builtinCallCounts:          make(map[string]int),
 		unconsumedLiveUpdateSteps:  make(map[string]liveUpdateStep),
-		k8sResourceAssemblyVersion: 1,
+		k8sResourceAssemblyVersion: 2,
 		k8sResourceOptions:         make(map[string]k8sResourceOptions),
+		triggerMode:                TriggerModeAuto,
 	}
 	s.filename = s.maybeAttachGitRepo(lp, filepath.Dir(lp.path))
 	return s
@@ -96,7 +121,7 @@ func (s *tiltfileState) starlarkThread() *starlark.Thread {
 }
 
 func (s *tiltfileState) exec() error {
-	_, err := starlark.ExecFile(s.starlarkThread(), s.filename.path, nil, s.builtins())
+	_, err := starlark.ExecFile(s.starlarkThread(), s.filename.path, nil, s.predeclared())
 	return err
 }
 
@@ -122,6 +147,7 @@ const (
 	k8sKindN                    = "k8s_kind"
 	k8sImageJSONPathN           = "k8s_image_json_path"
 	workloadToResourceFunctionN = "workload_to_resource_function"
+	k8sContextN                 = "k8s_context"
 
 	// file functions
 	localGitRepoN = "local_git_repo"
@@ -133,6 +159,7 @@ const (
 	listdirN      = "listdir"
 	decodeJSONN   = "decode_json"
 	readJSONN     = "read_json"
+	readYAMLN     = "read_yaml"
 
 	// live update functions
 	fallBackOnN       = "fall_back_on"
@@ -140,10 +167,71 @@ const (
 	runN              = "run"
 	restartContainerN = "restart_container"
 
+	// trigger mode
+	triggerModeN       = "trigger_mode"
+	triggerModeAutoN   = "TRIGGER_MODE_AUTO"
+	triggerModeManualN = "TRIGGER_MODE_MANUAL"
+
 	// other functions
 	failN = "fail"
 	blobN = "blob"
 )
+
+type triggerMode int
+
+func (m triggerMode) String() string {
+	switch m {
+	case TriggerModeManual:
+		return triggerModeManualN
+	case TriggerModeAuto:
+		return triggerModeAutoN
+	default:
+		return fmt.Sprintf("unknown trigger mode with value %d", m)
+	}
+}
+
+func (t triggerMode) Type() string {
+	return "TriggerMode"
+}
+
+func (t triggerMode) Freeze() {
+	// noop
+}
+
+func (t triggerMode) Truth() starlark.Bool {
+	return starlark.MakeInt(int(t)).Truth()
+}
+
+func (t triggerMode) Hash() (uint32, error) {
+	return starlark.MakeInt(int(t)).Hash()
+}
+
+var _ starlark.Value = triggerMode(0)
+
+const (
+	TriggerModeUnset  triggerMode = iota
+	TriggerModeAuto   triggerMode = iota
+	TriggerModeManual triggerMode = iota
+)
+
+func (s *tiltfileState) triggerModeForResource(resourceTriggerMode triggerMode) triggerMode {
+	if resourceTriggerMode != TriggerModeUnset {
+		return resourceTriggerMode
+	} else {
+		return s.triggerMode
+	}
+}
+
+func starlarkTriggerModeToModel(triggerMode triggerMode) (model.TriggerMode, error) {
+	switch triggerMode {
+	case TriggerModeManual:
+		return model.TriggerModeManual, nil
+	case TriggerModeAuto:
+		return model.TriggerModeAuto, nil
+	default:
+		return 0, fmt.Errorf("unknown triggerMode %v", triggerMode)
+	}
+}
 
 // count how many times each builtin is called, for analytics
 func (s *tiltfileState) makeBuiltinReporting(name string, f func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)) func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -153,9 +241,9 @@ func (s *tiltfileState) makeBuiltinReporting(name string, f func(thread *starlar
 	}
 }
 
-func (s *tiltfileState) builtins() starlark.StringDict {
-	if s.builtinsMap != nil {
-		return s.builtinsMap
+func (s *tiltfileState) predeclared() starlark.StringDict {
+	if s.predeclaredMap != nil {
+		return s.predeclaredMap
 	}
 
 	addBuiltin := func(r starlark.StringDict, name string, fn func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)) {
@@ -182,6 +270,7 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 	addBuiltin(r, k8sKindN, s.k8sKind)
 	addBuiltin(r, k8sImageJSONPathN, s.k8sImageJsonPath)
 	addBuiltin(r, workloadToResourceFunctionN, s.workloadToResourceFunctionFn)
+	addBuiltin(r, k8sContextN, s.k8sContext)
 	addBuiltin(r, localGitRepoN, s.localGitRepo)
 	addBuiltin(r, kustomizeN, s.kustomize)
 	addBuiltin(r, helmN, s.helm)
@@ -190,13 +279,18 @@ func (s *tiltfileState) builtins() starlark.StringDict {
 	addBuiltin(r, listdirN, s.listdir)
 	addBuiltin(r, decodeJSONN, s.decodeJSON)
 	addBuiltin(r, readJSONN, s.readJson)
+	addBuiltin(r, readYAMLN, s.readYaml)
+
+	addBuiltin(r, triggerModeN, s.triggerModeFn)
+	r[triggerModeAutoN] = TriggerModeAuto
+	r[triggerModeManualN] = TriggerModeManual
 
 	addBuiltin(r, fallBackOnN, s.liveUpdateFallBackOn)
 	addBuiltin(r, syncN, s.liveUpdateSync)
 	addBuiltin(r, runN, s.liveUpdateRun)
 	addBuiltin(r, restartContainerN, s.liveUpdateRestartContainer)
 
-	s.builtinsMap = r
+	s.predeclaredMap = r
 
 	return r
 }
@@ -239,9 +333,17 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 }
 
 func (s *tiltfileState) assembleImages() error {
+	registry := s.defaultRegistryHost
+	if s.privateRegistry != "" {
+		// If we've found a private registry in the cluster at run-time,
+		// use that instead of the one in the tiltfile
+		s.logger.Infof("Auto-detected private registry from environment: %s", s.privateRegistry)
+		registry = s.privateRegistry
+	}
+
 	for _, imageBuilder := range s.buildIndex.images {
 		var err error
-		imageBuilder.deploymentRef, err = container.ReplaceRegistry(s.defaultRegistryHost, imageBuilder.configurationRef)
+		imageBuilder.deploymentRef, err = container.ReplaceRegistry(registry, imageBuilder.configurationRef)
 		if err != nil {
 			return err
 		}
@@ -318,6 +420,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 		if r, ok := s.k8sByName[workload]; ok {
 			r.extraPodSelectors = opts.extraPodSelectors
 			r.portForwards = opts.portForwards
+			r.triggerMode = opts.triggerMode
 			if opts.newName != "" && opts.newName != r.name {
 				if _, ok := s.k8sByName[opts.newName]; ok {
 					return fmt.Errorf("k8s_resource at %s specified to rename '%s' to '%s', but there is already a resource with that name", opts.tiltfilePosition.String(), r.name, opts.newName)
@@ -331,7 +434,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 			for name := range s.k8sByName {
 				knownResources = append(knownResources, name)
 			}
-			return fmt.Errorf("k8s_resource at %s specified unknown resource '%s'. known resources: %s", opts.tiltfilePosition.String(), workload, strings.Join(knownResources, ", "))
+			return fmt.Errorf("k8s_resource at %s specified unknown resource '%s'. known resources: %s\n\nNote: Tilt's resource naming has recently changed. See https://docs.tilt.dev/resource_assembly_migration.html for more info.", opts.tiltfilePosition.String(), workload, strings.Join(knownResources, ", "))
 		}
 	}
 
@@ -366,9 +469,9 @@ func (s *tiltfileState) assembleK8sByWorkload() error {
 		workload := workloads[i]
 		res, err := s.makeK8sResource(resourceName)
 		if err != nil {
-			return errors.Wrapf(err, "error making resource for workload %s", newK8SObjectID(workload))
+			return errors.Wrapf(err, "error making resource for workload %s", newK8sObjectID(workload))
 		}
-		err = res.addEntities([]k8s.K8sEntity{workload}, s.imageJSONPaths)
+		err = res.addEntities([]k8s.K8sEntity{workload}, s.imageJSONPaths, s.envVarImages())
 		if err != nil {
 			return err
 		}
@@ -380,7 +483,7 @@ func (s *tiltfileState) assembleK8sByWorkload() error {
 			return err
 		}
 
-		err = res.addEntities(match, s.imageJSONPaths)
+		err = res.addEntities(match, s.imageJSONPaths, s.envVarImages())
 		if err != nil {
 			return err
 		}
@@ -391,8 +494,20 @@ func (s *tiltfileState) assembleK8sByWorkload() error {
 	return nil
 }
 
+func (s *tiltfileState) envVarImages() []container.RefSelector {
+	var r []container.RefSelector
+	// explicitly don't care about order
+	for _, img := range s.buildIndex.images {
+		if !img.matchInEnvVars {
+			continue
+		}
+		r = append(r, img.configurationRef)
+	}
+	return r
+}
+
 func (s *tiltfileState) isWorkload(e k8s.K8sEntity) (bool, error) {
-	images, err := e.FindImages(s.imageJSONPaths(e))
+	images, err := e.FindImages(s.imageJSONPaths(e), s.envVarImages())
 	if err != nil {
 		return false, err
 	} else {
@@ -431,9 +546,12 @@ func (s *tiltfileState) assembleK8sWithImages() error {
 	return nil
 }
 
-// assembleK8sUnresourced makes k8sResources for all unresourced k8s entities that will
-// result in pods (smartly grouping pod-creating entities with corresponding entities e.g.
-// services), and stores the resulting resource(s) on the tiltfileState.
+// assembleK8sUnresourced makes k8sResources for all k8s entities that:
+// a. are not already attached to a Tilt resource, and
+// b. will result in pods,
+// and stores the resulting resource(s) on the tiltfileState.
+// (We smartly grouping pod-creating entities with some kinds of
+// corresponding entities, e.g. services),
 func (s *tiltfileState) assembleK8sUnresourced() error {
 	withPodSpec, allRest, err := k8s.FilterByHasPodTemplateSpec(s.k8sUnresourced)
 	if err != nil {
@@ -526,7 +644,7 @@ func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 	seen := make(map[string]bool)
 
 	for _, e := range s.k8sUnresourced {
-		images, err := e.FindImages(s.imageJSONPaths(e))
+		images, err := e.FindImages(s.imageJSONPaths(e), s.envVarImages())
 		if err != nil {
 			return nil, err
 		}
@@ -542,12 +660,12 @@ func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 
 // extractEntities extracts k8s entities matching the image ref and stores them on the dest k8sResource
 func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef container.RefSelector) error {
-	extracted, remaining, err := k8s.FilterByImage(s.k8sUnresourced, imageRef, s.imageJSONPaths)
+	extracted, remaining, err := k8s.FilterByImage(s.k8sUnresourced, imageRef, s.imageJSONPaths, false)
 	if err != nil {
 		return err
 	}
 
-	err = dest.addEntities(extracted, s.imageJSONPaths)
+	err = dest.addEntities(extracted, s.imageJSONPaths, s.envVarImages())
 	if err != nil {
 		return err
 	}
@@ -560,7 +678,7 @@ func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef container.Re
 			return err
 		}
 
-		err = dest.addEntities(match, s.imageJSONPaths)
+		err = dest.addEntities(match, s.imageJSONPaths, s.envVarImages())
 		if err != nil {
 			return err
 		}
@@ -596,8 +714,10 @@ func match(manifests []model.Manifest, matching map[string]bool) ([]model.Manife
 			}
 		}
 
-		return nil, fmt.Errorf("Could not find resources: %s. Existing resources in Tiltfile: %s",
-			strings.Join(missing, ", "), strings.Join(unmatchedNames, ", "))
+		return nil, fmt.Errorf(`You specified some resources that could not be found: %s
+Is this a typo? Existing resources in Tiltfile: %s`,
+			sliceutils.QuotedStringList(missing),
+			sliceutils.QuotedStringList(unmatchedNames))
 	}
 
 	return result, nil
@@ -607,8 +727,13 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 	var result []model.Manifest
 	for _, r := range resources {
 		mn := model.ManifestName(r.name)
+		tm, err := starlarkTriggerModeToModel(s.triggerModeForResource(r.triggerMode))
+		if err != nil {
+			return nil, err
+		}
 		m := model.Manifest{
-			Name: mn,
+			Name:        mn,
+			TriggerMode: tm,
 		}
 
 		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.portForwardsToDomain(r), r.extraPodSelectors, r.dependencyIDs)
@@ -625,10 +750,111 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 
 		m = m.WithImageTargets(iTargets)
 
+		err = s.checkForImpossibleLiveUpdates(m)
+		if err != nil {
+			return nil, err
+		}
+
 		result = append(result, m)
 	}
 
 	return result, nil
+}
+
+// checkForImpossibleLiveUpdates logs a warning if the group of image targets contains
+// any impossible LiveUpdates (or FastBuilds).
+//
+// Currently, we only collect container information for the first Tilt-built container
+// on the pod (b/c of how we assemble resources, this corresponds to the first image target).
+// We won't collect container info (including DeployInfo) on any subsequent containers
+// (i.e. subsequent image targets), so will never be able to LiveUpdate them.
+func (s *tiltfileState) checkForImpossibleLiveUpdates(m model.Manifest) error {
+	seenDeployedImage := false
+
+	g, err := model.NewTargetGraph(m.TargetSpecs())
+	if err != nil {
+		return err
+	}
+
+	for _, iTarg := range m.ImageTargets {
+		isDeployed := m.IsImageDeployed(iTarg)
+		isFirstDeployedImage := false
+		if isDeployed && !seenDeployedImage {
+			isFirstDeployedImage = true
+			seenDeployedImage = true
+		}
+
+		// This check only applies to images with live updates.
+		isInPlaceUpdate := !iTarg.AnyFastBuildInfo().Empty() || !iTarg.AnyLiveUpdateInfo().Empty()
+		if !isInPlaceUpdate {
+			continue
+		}
+
+		// TODO(nick): If an undeployed base image has a live-update component, we
+		// should probably emit a different kind of warning.
+		if !isDeployed {
+			continue
+		}
+
+		if !isFirstDeployedImage {
+			// TODO(maia): s/in-place updates/live updates after we fully deprecate FastBuild
+			s.warnings = append(s.warnings, fmt.Sprintf("Sorry, but Tilt only supports in-place updates "+
+				"for the first Tilt-built container on a pod, so we can't in-place update your image '%s'. If this "+
+				"is a feature you need, let us know!", iTarg.DeploymentRef.String()))
+
+			// Only emit the warning once
+			return nil
+		}
+
+		err = s.validateLiveUpdate(iTarg, g)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *tiltfileState) validateLiveUpdate(iTarget model.ImageTarget, g model.TargetGraph) error {
+	lu := iTarget.AnyLiveUpdateInfo()
+	if lu.Empty() {
+		return nil
+	}
+
+	var watchedPaths []string
+	err := g.VisitTree(iTarget, func(t model.TargetSpec) error {
+		current, ok := t.(model.ImageTarget)
+		if !ok {
+			return nil
+		}
+
+		for _, dep := range current.Dependencies() {
+			watchedPaths = append(watchedPaths, dep)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	// Verify that all a) sync step src's and b) fall_back_on files are children of a watched path.
+	// (If not, we'll never even get "file changed" events for them--they're nonsensical input, throw an error.)
+	for _, sync := range lu.SyncSteps() {
+		if !ospath.IsChildOfOne(watchedPaths, sync.LocalPath) {
+			return fmt.Errorf("sync step source '%s' is not a child of any watched filepaths (%v)",
+				sync.LocalPath, watchedPaths)
+		}
+	}
+
+	for _, path := range lu.FallBackOnFiles().Paths {
+		absPath := s.absPath(path)
+		if !ospath.IsChildOfOne(watchedPaths, absPath) {
+			return fmt.Errorf("fall_back_on path '%s' is not a child of any watched filepaths (%v)",
+				absPath, watchedPaths)
+		}
+
+	}
+
+	return nil
 }
 
 // Grabs all image targets for the given references,
@@ -660,10 +886,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			DeploymentRef:    image.deploymentRef,
 		}.WithCachePaths(image.cachePaths)
 
-		lu, err := s.validatedLiveUpdate(image)
-		if err != nil {
-			return nil, errors.Wrap(err, "live_update failed validation")
-		}
+		lu := image.liveUpdate
 
 		switch image.Type() {
 		case DockerBuild:
@@ -671,7 +894,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				Dockerfile: image.dbDockerfile.String(),
 				BuildPath:  string(image.dbBuildPath.path),
 				BuildArgs:  image.dbBuildArgs,
-				FastBuild:  s.maybeFastBuild(image),
+				FastBuild:  s.fastBuildForImage(image),
 				LiveUpdate: lu,
 			})
 		case FastBuild:
@@ -685,7 +908,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				LiveUpdate:  lu,
 			}
 			if len(image.syncs) > 0 || len(image.runs) > 0 {
-				r.Fast = &model.FastBuild{
+				r.Fast = model.FastBuild{
 					Syncs:     s.syncsToDomain(image),
 					Runs:      image.runs,
 					HotReload: image.hotReload,
@@ -730,6 +953,11 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 		}
 		m = m.WithImageTargets(iTargets)
 
+		err = s.checkForImpossibleLiveUpdates(m)
+		if err != nil {
+			return nil, err
+		}
+
 		result = append(result, m)
 
 		// TODO(maia): might get config files from dc.yml that are overridden by imageTarget :-/
@@ -765,7 +993,7 @@ type k8sObjectSelector struct {
 
 // Creates a new k8sObjectSelector
 // If an arg is an empty string, it will become an empty regex that matches all input
-func newK8SObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
+func newK8sObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
 	ret := k8sObjectSelector{}
 	var err error
 
@@ -805,4 +1033,21 @@ func (k k8sObjectSelector) matches(e k8s.K8sEntity) bool {
 		k.kind.MatchString(e.Kind.Kind) &&
 		k.name.MatchString(e.Name()) &&
 		k.namespace.MatchString(e.Namespace().String())
+}
+
+func (s *tiltfileState) triggerModeFn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var triggerMode triggerMode
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "trigger_mode", &triggerMode)
+	if err != nil {
+		return nil, err
+	}
+
+	if s.triggerModeCallPosition.IsValid() {
+		return starlark.None, fmt.Errorf("%s can only be called once. It was already called at %s", fn.Name(), s.triggerModeCallPosition.String())
+	}
+
+	s.triggerMode = triggerMode
+	s.triggerModeCallPosition = thread.Caller().Position()
+
+	return starlark.None, nil
 }

@@ -3,11 +3,8 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"testing"
 
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,6 +20,20 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/testutils/output"
 )
+
+func TestEmptyNamespace(t *testing.T) {
+	var emptyNamespace Namespace
+	assert.True(t, emptyNamespace.Empty())
+	assert.True(t, emptyNamespace == "")
+	assert.Equal(t, "default", emptyNamespace.String())
+}
+
+func TestNotEmptyNamespace(t *testing.T) {
+	var ns Namespace = "x"
+	assert.False(t, ns.Empty())
+	assert.False(t, ns == "")
+	assert.Equal(t, "x", ns.String())
+}
 
 func TestUpsert(t *testing.T) {
 	f := newClientTestFixture(t)
@@ -48,6 +59,27 @@ func TestUpsertStatefulsetForbidden(t *testing.T) {
 	}
 }
 
+func TestUpsertToTerminatingNamespaceForbidden(t *testing.T) {
+	f := newClientTestFixture(t)
+	postgres, err := ParseYAMLFromString(testyaml.SanchoYAML)
+	assert.Nil(t, err)
+
+	// Bad error parsing used to result in us treating this error as an immutable
+	// field error. Make sure we treat it as what it is and bail out of `kubectl apply`
+	// rather than trying to --force
+	errStr := `Error from server (Forbidden): error when creating "STDIN": deployments.apps "sancho" is forbidden: unable to create new content in namespace sancho-ns because it is being terminated`
+	f.setStderr(errStr)
+
+	err = f.client.Upsert(f.ctx, postgres)
+	if assert.NotNil(t, err) {
+		assert.Contains(t, err.Error(), errStr)
+	}
+	if assert.Equal(t, 1, len(f.runner.calls)) {
+		assert.Equal(t, []string{"apply", "-f", "-"}, f.runner.calls[0].argv)
+	}
+
+}
+
 type call struct {
 	argv  []string
 	stdin string
@@ -61,12 +93,8 @@ type fakeKubectlRunner struct {
 	calls []call
 }
 
-func (f *fakeKubectlRunner) execWithStdin(ctx context.Context, args []string, stdin io.Reader) (stdout string, stderr string, err error) {
-	b, err := ioutil.ReadAll(stdin)
-	if err != nil {
-		return "", "", errors.Wrap(err, "reading stdin")
-	}
-	f.calls = append(f.calls, call{argv: args, stdin: string(b)})
+func (f *fakeKubectlRunner) execWithStdin(ctx context.Context, args []string, stdin string) (stdout string, stderr string, err error) {
+	f.calls = append(f.calls, call{argv: args, stdin: stdin})
 
 	defer func() {
 		f.stdout = ""
@@ -125,7 +153,15 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 
 	core := cs.CoreV1()
 	runtimeAsync := newRuntimeAsync(core)
-	ret.client = K8sClient{EnvUnknown, ret.runner, core, nil, fakePortForwarder, "", nil, runtimeAsync}
+	registryAsync := newRegistryAsync(EnvUnknown, core, runtimeAsync)
+	ret.client = K8sClient{
+		env:           EnvUnknown,
+		kubectlRunner: ret.runner,
+		core:          core,
+		portForwarder: fakePortForwarder,
+		runtimeAsync:  runtimeAsync,
+		registryAsync: registryAsync,
+	}
 	return ret
 }
 

@@ -62,7 +62,7 @@ func (f *ccFixture) run() ConfigsReloadedAction {
 
 	f.st.NotifySubscribers(f.ctx)
 
-	a := waitForAction(f.T(), reflect.TypeOf(ConfigsReloadedAction{}), f.getActions)
+	a := store.WaitForAction(f.T(), reflect.TypeOf(ConfigsReloadedAction{}), f.getActions)
 	cra, ok := a.(ConfigsReloadedAction)
 	if !ok {
 		f.T().Fatalf("didn't get an action of type %T", ConfigsReloadedAction{})
@@ -89,7 +89,7 @@ func newCCFixture(t *testing.T) *ccFixture {
 	fc := testutils.NewRandomFakeClock()
 	cc.clock = fc.Clock()
 	ctx := output.CtxForTest()
-	st.AddSubscriber(cc)
+	st.AddSubscriber(ctx, cc)
 	go st.Loop(ctx)
 	return &ccFixture{
 		TempDirFixture: f,

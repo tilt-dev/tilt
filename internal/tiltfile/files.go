@@ -7,9 +7,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/windmilleng/tilt/internal/sliceutils"
 
+	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
@@ -18,8 +20,7 @@ import (
 )
 
 type gitRepo struct {
-	basePath          string
-	gitignoreContents string
+	basePath string
 }
 
 func (s *tiltfileState) newGitRepo(path string) (*gitRepo, error) {
@@ -33,12 +34,7 @@ func (s *tiltfileState) newGitRepo(path string) (*gitRepo, error) {
 		return nil, fmt.Errorf("%s isn't a valid git repo: it doesn't have a .git/ directory", absPath)
 	}
 
-	gitignoreContents, err := ioutil.ReadFile(filepath.Join(absPath, ".gitignore"))
-	if err != nil && !os.IsNotExist(err) {
-		return nil, err
-	}
-
-	return &gitRepo{basePath: absPath, gitignoreContents: string(gitignoreContents)}, nil
+	return &gitRepo{basePath: absPath}, nil
 }
 
 func (s *tiltfileState) localGitRepo(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -64,7 +60,7 @@ func (gr *gitRepo) Type() string {
 func (gr *gitRepo) Freeze() {}
 
 func (gr *gitRepo) Truth() starlark.Bool {
-	return gr.basePath != "" || gr.gitignoreContents != ""
+	return gr.basePath != ""
 }
 
 func (*gitRepo) Hash() (uint32, error) {
@@ -344,7 +340,22 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, fmt.Errorf("Argument 0 (path): %v", err)
 	}
 
-	yaml, err := s.execLocalCmdArgv("helm", "template", localPath.path)
+	templates, err := ioutil.ReadDir(filepath.Join(localPath.path, "templates"))
+	if err != nil {
+		return nil, fmt.Errorf("Expected to be able to read Helm templates in %s, but got an error: %v", localPath.path, err)
+	}
+
+	cmd := []string{"helm", "template", localPath.path}
+	for _, t := range templates {
+		name := t.Name()
+		if name == "tests" || name == "NOTES.txt" || strings.HasPrefix(name, "_") {
+			continue
+		}
+		cmd = append(cmd, "-x")
+		cmd = append(cmd, filepath.Join("templates", name))
+	}
+
+	yaml, err := s.execLocalCmdArgv(cmd...)
 	if err != nil {
 		return nil, err
 	}
@@ -401,6 +412,40 @@ func (s *tiltfileState) listdir(thread *starlark.Thread, fn *starlark.Builtin, a
 	return starlark.NewList(ret), nil
 }
 
+func (s *tiltfileState) readYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var path starlark.String
+	var defaultValue starlark.Value
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path, "default?", &defaultValue); err != nil {
+		return nil, err
+	}
+
+	localPath, err := s.localPathFromSkylarkValue(path)
+	if err != nil {
+		return nil, fmt.Errorf("Argument 0 (path): %v", err)
+	}
+
+	contents, err := s.readFile(localPath)
+	if err != nil {
+		// Return the default value if the file doesn't exist AND a default value was given
+		if os.IsNotExist(err) && defaultValue != nil {
+			return defaultValue, nil
+		}
+		return nil, err
+	}
+
+	var decodedYAML interface{}
+	err = yaml.Unmarshal(contents, &decodedYAML)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing YAML: %v in %s", err, path.GoString())
+	}
+
+	v, err := convertStructuredDataToStarlark(decodedYAML)
+	if err != nil {
+		return nil, fmt.Errorf("error converting YAML to Starlark: %v in %s", err, path.GoString())
+	}
+	return v, nil
+}
+
 func (s *tiltfileState) decodeJSON(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var jsonString starlark.String
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "json", &jsonString); err != nil {
@@ -413,7 +458,7 @@ func (s *tiltfileState) decodeJSON(thread *starlark.Thread, fn *starlark.Builtin
 		return nil, fmt.Errorf("JSON parsing error: %v in %s", err, jsonString.GoString())
 	}
 
-	v, err := convertJSONToStarlark(decodedJSON)
+	v, err := convertStructuredDataToStarlark(decodedJSON)
 	if err != nil {
 		return nil, fmt.Errorf("error converting JSON to Starlark: %v in %s", err, jsonString.GoString())
 	}
@@ -447,15 +492,17 @@ func (s *tiltfileState) readJson(thread *starlark.Thread, fn *starlark.Builtin, 
 		return nil, fmt.Errorf("JSON parsing error: %v in %s", err, path.GoString())
 	}
 
-	v, err := convertJSONToStarlark(decodedJSON)
+	v, err := convertStructuredDataToStarlark(decodedJSON)
 	if err != nil {
 		return nil, fmt.Errorf("error converting JSON to Starlark: %v in %s", err, path.GoString())
 	}
 	return v, nil
 }
 
-func convertJSONToStarlark(j interface{}) (starlark.Value, error) {
+func convertStructuredDataToStarlark(j interface{}) (starlark.Value, error) {
 	switch j := j.(type) {
+	case bool:
+		return starlark.Bool(j), nil
 	case string:
 		return starlark.String(j), nil
 	case float64:
@@ -464,7 +511,7 @@ func convertJSONToStarlark(j interface{}) (starlark.Value, error) {
 		listOfValues := []starlark.Value{}
 
 		for _, v := range j {
-			convertedValue, err := convertJSONToStarlark(v)
+			convertedValue, err := convertStructuredDataToStarlark(v)
 			if err != nil {
 				return nil, err
 			}
@@ -476,7 +523,7 @@ func convertJSONToStarlark(j interface{}) (starlark.Value, error) {
 		mapOfValues := &starlark.Dict{}
 
 		for k, v := range j {
-			convertedValue, err := convertJSONToStarlark(v)
+			convertedValue, err := convertStructuredDataToStarlark(v)
 			if err != nil {
 				return nil, err
 			}

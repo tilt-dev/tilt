@@ -13,6 +13,27 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 )
 
+func TestFixContainerStatusImages(t *testing.T) {
+	pod := fakePod(expectedPod, blorgDevImgStr)
+	pod.Status = v1.PodStatus{
+		ContainerStatuses: []v1.ContainerStatus{
+			{
+				Name:  "default",
+				Image: blorgDevImgStr + "v2",
+				Ready: true,
+			},
+		},
+	}
+
+	assert.NotEqual(t,
+		pod.Spec.Containers[0].Image,
+		pod.Status.ContainerStatuses[0].Image)
+	FixContainerStatusImages(&pod)
+	assert.Equal(t,
+		pod.Spec.Containers[0].Image,
+		pod.Status.ContainerStatuses[0].Image)
+}
+
 func TestWaitForContainerAlreadyAlive(t *testing.T) {
 	f := newClientTestFixture(t)
 

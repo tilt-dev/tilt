@@ -108,3 +108,11 @@ func newDepTarget(name string, deps ...string) ImageTarget {
 	}
 	return NewImageTarget(ref).WithDependencyIDs(depIDs)
 }
+
+func newK8sTarget(name string, deps ...string) K8sTarget {
+	depIDs := make([]TargetID, len(deps))
+	for i, dep := range deps {
+		depIDs[i] = ImageID(container.MustParseSelector(dep))
+	}
+	return K8sTarget{Name: TargetName(name)}.WithDependencyIDs(depIDs)
+}

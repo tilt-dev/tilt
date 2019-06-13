@@ -1,6 +1,6 @@
 .PHONY: all proto install lint test test-go check-js test-js integration wire-check wire ensure check-go
 
-check-go: lint errcheck verify_gofmt wire-check test-go
+check-go: lint errcheck verify_goimports wire-check test-go
 all: check-go check-js test-js
 
 # There are 2 Go bugs that cause problems on CI:
@@ -10,12 +10,14 @@ all: check-go check-js test-js
 # This makes CI blow up frequently without out-of-memory errors.
 # Manually setting the number of parallel jobs helps fix this.
 # https://github.com/golang/go/issues/26186#issuecomment-435544512
-GO_PARALLEL_JOBS := 8
+GO_PARALLEL_JOBS := 4
 
 SYNCLET_IMAGE := gcr.io/windmill-public-containers/tilt-synclet
 SYNCLET_DEV_IMAGE_TAG_FILE := .synclet-dev-image-tag
 
 CIRCLECI := $(if $(CIRCLECI),$(CIRCLECI),false)
+
+GOIMPORTS_LOCAL_ARG := -local github.com/windmill/tilt
 
 scripts/protocc/protocc.py: scripts/protocc
 	git submodule init
@@ -99,13 +101,10 @@ test-js:
 ensure:
 	dep ensure
 
-verify_gofmt:
+verify_goimports:
 	# echo "testing goimports built from goimports commit $$(git -C "$$GOSRC/golang.org/x/tools/cmd/goimports/ show HEAD -q"))"
-	$(eval DIFF := $(shell goimports -d -local github.com/windmilleng/tilt $(go list -f {{.Dir}} ./... | grep -v /vendor/)))
-	# ifneq ($(DIFF),)
-		# $(info goimports output '$(DIFF)')
-		# $(error goimports check failed)
-	# endif
+	# any files printed here need to be formatted by `goimports $(GOIMPORTS_LOCAL_ARG)`
+	bash -c 'diff <(goimports -l $(GOIMPORTS_LOCAL_ARG) $$(go list -f {{.Dir}} ./...)) <(echo -n)'
 
 benchmark:
 	go test -run=XXX -bench=. ./...
@@ -116,16 +115,15 @@ errcheck:
 timing: install
 	./scripts/timing.py
 
+WIRE_PATHS = engine cli synclet sail/client
 wire:
-	wire ./internal/engine
-	wire ./internal/cli
-	wire ./internal/synclet
-	goimports -w -local github.com/windmilleng/tilt internal/*/wire_gen.go
+	$(foreach path,$(WIRE_PATHS),wire ./internal/$(path) && goimports -w $(GOIMPORTS_LOCAL_ARG) internal/$(path) &&) true
 
 wire-check:
 	wire check ./internal/engine
 	wire check ./internal/cli
 	wire check ./internal/synclet
+	wire check ./internal/sail/client
 
 ci-container:
 	docker build -t gcr.io/windmill-public-containers/tilt-ci -f .circleci/Dockerfile .circleci
@@ -152,6 +150,20 @@ synclet-release:
 
 release:
 	goreleaser --rm-dist
+
+deploy-sail:
+	$(eval TAG := $(shell date +built-%s))
+	docker build -t gcr.io/windmill-public-containers/sail:$(TAG) -f deployments/sail.dockerfile .
+	docker push gcr.io/windmill-public-containers/sail:$(TAG)
+	cat deployments/sail.yaml | sed 's!gcr.io/windmill-public-containers/sail!gcr.io/windmill-public-containers/sail:$(TAG)!g' | kubectl apply -f -
+	kubectl apply -f deployments/sail-networking.yaml
+
+deploy-sail-staging:
+	$(eval TAG := $(shell date +built-%s))
+	docker build -t gcr.io/windmill-public-containers/sail-staging:$(TAG) -f deployments/sail-staging.dockerfile .
+	docker push gcr.io/windmill-public-containers/sail-staging:$(TAG)
+	cat deployments/sail-staging.yaml | sed 's!gcr.io/windmill-public-containers/sail-staging!gcr.io/windmill-public-containers/sail-staging:$(TAG)!g' | kubectl apply -f -
+	kubectl apply -f deployments/sail-staging-networking.yaml
 
 prettier:
 	cd web && yarn install

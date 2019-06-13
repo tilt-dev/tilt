@@ -57,7 +57,7 @@ func NewScript(upper engine.Upper, hud hud.HeadsUpDisplay, kClient k8s.Client,
 		runtime:        runtime,
 		tfl:            tfl,
 	}
-	st.AddSubscriber(s.podMonitor)
+	st.AddSubscriber(context.Background(), s.podMonitor)
 	return s
 }
 
@@ -159,7 +159,7 @@ func (s Script) Run(ctx context.Context) error {
 		return nil
 	}
 
-	l := engine.NewLogActionLogger(ctx, s.store.Dispatch)
+	l := store.NewLogActionLogger(ctx, s.store.Dispatch)
 	out := l.Writer(logger.InfoLvl)
 	ctx = logger.WithLogger(ctx, l)
 	ctx, cancel := context.WithCancel(ctx)
@@ -185,7 +185,6 @@ func (s Script) Run(ctx context.Context) error {
 		}
 
 		tfPath := filepath.Join(dir, tiltfile.FileName)
-		// TODO(dmiller): not this?
 		tlr, err := s.tfl.Load(ctx, tfPath, nil)
 		if err != nil {
 			return err

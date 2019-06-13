@@ -47,12 +47,12 @@ type k8sResource struct {
 	extraPodSelectors []labels.Selector
 
 	dependencyIDs []model.TargetID
+
+	triggerMode triggerMode
 }
 
 const deprecatedResourceAssemblyV1Warning = "This Tiltfile is using k8s resource assembly version 1, which has been " +
-	"deprecated. Try adding `k8s_resource_assembly_version(2)` to the top of your Tiltfile. " +
-	"See https://docs.tilt.dev/resource_assembly_migration.html for more information. " +
-	"Version 1 will no longer be supported after 2019-04-17. Sorry for the inconvenience!"
+	"deprecated. See https://docs.tilt.dev/resource_assembly_migration.html for more information."
 
 // holds options passed to `k8s_resource` until assembly happens
 type k8sResourceOptions struct {
@@ -60,6 +60,7 @@ type k8sResourceOptions struct {
 	newName           string
 	portForwards      []portForward
 	extraPodSelectors []labels.Selector
+	triggerMode       triggerMode
 	tiltfilePosition  syntax.Position
 	consumed          bool
 }
@@ -68,11 +69,11 @@ func (r *k8sResource) addRefSelector(selector container.RefSelector) {
 	r.refSelectors = append(r.refSelectors, selector)
 }
 
-func (r *k8sResource) addEntities(entities []k8s.K8sEntity, imageJSONPaths func(e k8s.K8sEntity) []k8s.JSONPath) error {
+func (r *k8sResource) addEntities(entities []k8s.K8sEntity, imageJSONPaths func(e k8s.K8sEntity) []k8s.JSONPath, envVarImages []container.RefSelector) error {
 	r.entities = append(r.entities, entities...)
 
 	for _, entity := range entities {
-		images, err := entity.FindImages(imageJSONPaths(entity))
+		images, err := entity.FindImages(imageJSONPaths(entity), envVarImages)
 		if err != nil {
 			return err
 		}
@@ -147,7 +148,7 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 		return nil, err
 	}
 
-	k, err := newK8SObjectSelector(apiVersion, kind, name, namespace)
+	k, err := newK8sObjectSelector(apiVersion, kind, name, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -170,11 +171,11 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 		rest = append(rest, r...)
 	}
 
-	matchingStr, err := k8s.SerializeYAML(match)
+	matchingStr, err := k8s.SerializeSpecYAML(match)
 	if err != nil {
 		return nil, err
 	}
-	restStr, err := k8s.SerializeYAML(rest)
+	restStr, err := k8s.SerializeSpecYAML(rest)
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +242,7 @@ func (s *tiltfileState) k8sResourceV1(thread *starlark.Thread, fn *starlark.Buil
 		return nil, errors.Wrapf(err, "%s %q", fn.Name(), name)
 	}
 
-	err = r.addEntities(entities, s.imageJSONPaths)
+	err = r.addEntities(entities, s.imageJSONPaths, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -274,17 +275,67 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 	}
 }
 
+// v1 syntax:
+// `k8s_resource(name, yaml='', image='', port_forwards=[], extra_pod_selectors=[])`
+// v2 syntax:
+// `k8s_resource(workload, new_name='', port_forwards=[], extra_pod_selectors=[])`
+// this function tries to tell if they're still using a v1 tiltfile after we made v2 the default
+func (s *tiltfileState) isProbablyK8sResourceV1Call(args starlark.Tuple, kwargs []starlark.Tuple) (bool, string) {
+	var k8sResourceV1OnlyNames = map[string]bool{
+		"name":  true,
+		"yaml":  true,
+		"image": true,
+	}
+	for _, item := range kwargs {
+		name := string(item[0].(starlark.String))
+		if _, ok := k8sResourceV1OnlyNames[name]; ok {
+			return true, fmt.Sprintf("it was called with kwarg %q, which no longer exists", name)
+		}
+	}
+
+	// check positional args
+	// check if the second arg is yaml (v1) instead of a resource name (v2)
+	if args.Len() >= 2 {
+		switch x := args[1].(type) {
+		case starlark.Sequence:
+			return true, "second arg was a sequence"
+		case *blob:
+			return true, "second arg was a blob"
+		// if a Tiltfile contains `k8s_resource('foo', 'foo.yaml')`
+		// in v1, the second arg is a yaml file name
+		// in v2, it's the new resource name
+		case starlark.String:
+			if strings.HasSuffix(string(x), ".yaml") || strings.HasSuffix(string(x), ".yml") {
+				return true, "second arg looks like a yaml file name, not a resource name"
+			}
+		default:
+			// this is invalid in both v1 and v2 syntax, so fall back and let v2 parsing error out
+		}
+	}
+
+	// we don't need to check the subsequent positional args because they can't include a third positional arg without
+	// including a second!
+
+	return false, ""
+}
+
 func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	isV1, msg := s.isProbablyK8sResourceV1Call(args, kwargs)
+	if isV1 {
+		return starlark.None, fmt.Errorf("It looks like k8s_resource is being called with deprecated arguments: %s.\n\n%s", msg, deprecatedResourceAssemblyV1Warning)
+	}
 	var workload string
 	var newName string
 	var portForwardsVal starlark.Value
 	var extraPodSelectorsVal starlark.Value
+	var triggerMode triggerMode
 
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"workload", &workload,
 		"new_name?", &newName,
 		"port_forwards?", &portForwardsVal,
 		"extra_pod_selectors?", &extraPodSelectorsVal,
+		"trigger_mode?", &triggerMode,
 	); err != nil {
 		return nil, err
 	}
@@ -312,6 +363,7 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		portForwards:      portForwards,
 		extraPodSelectors: extraPodSelectors,
 		tiltfilePosition:  thread.Caller().Position(),
+		triggerMode:       triggerMode,
 	}
 
 	return starlark.None, nil
@@ -423,7 +475,7 @@ func (s *tiltfileState) k8sImageJsonPath(thread *starlark.Thread, fn *starlark.B
 		return nil, err
 	}
 
-	k, err := newK8SObjectSelector(apiVersion, kind, name, namespace)
+	k, err := newK8sObjectSelector(apiVersion, kind, name, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -455,7 +507,7 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 		return nil, err
 	}
 
-	k, err := newK8SObjectSelector(apiVersion, kind, "", "")
+	k, err := newK8sObjectSelector(apiVersion, kind, "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -780,6 +832,7 @@ func (s *tiltfileState) k8sResourceAssemblyVersionFn(thread *starlark.Thread, fn
 	}
 
 	s.k8sResourceAssemblyVersion = version
+	s.k8sResourceAssemblyVersionReason = k8sResourceAssemblyVersionReasonExplicit
 
 	return starlark.None, nil
 }
@@ -802,14 +855,14 @@ func (s *tiltfileState) workloadToResourceFunctionNames(workloads []k8s.K8sEntit
 	ret := make([]string, len(workloads))
 	thread := s.starlarkThread()
 	for i, e := range workloads {
-		id := newK8SObjectID(e)
+		id := newK8sObjectID(e)
 		name, err := s.workloadToResourceFunction.fn(thread, id)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error determing resource name for '%s'", id.String())
 		}
 
 		if conflictingWorkload, ok := takenNames[name]; ok {
-			return nil, fmt.Errorf("both '%s' and '%s' mapped to resource name '%s'", newK8SObjectID(e).String(), newK8SObjectID(conflictingWorkload).String(), name)
+			return nil, fmt.Errorf("both '%s' and '%s' mapped to resource name '%s'", newK8sObjectID(e).String(), newK8sObjectID(conflictingWorkload).String(), name)
 		}
 
 		ret[i] = name
@@ -818,7 +871,7 @@ func (s *tiltfileState) workloadToResourceFunctionNames(workloads []k8s.K8sEntit
 	return ret, nil
 }
 
-func newK8SObjectID(e k8s.K8sEntity) k8sObjectID {
+func newK8sObjectID(e k8s.K8sEntity) k8sObjectID {
 	return k8sObjectID{
 		name:      e.Name(),
 		kind:      e.Kind.Kind,
@@ -870,4 +923,8 @@ func uniqueResourceNames(es []k8s.K8sEntity) ([]string, error) {
 	}
 
 	return ret, nil
+}
+
+func (s *tiltfileState) k8sContext(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return starlark.String(s.kubeContext), nil
 }

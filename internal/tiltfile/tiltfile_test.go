@@ -11,17 +11,15 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 
-	"github.com/windmilleng/wmclient/pkg/analytics"
-
 	"github.com/stretchr/testify/assert"
+	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/yaml"
-
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
@@ -29,6 +27,7 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
+	"github.com/windmilleng/tilt/internal/yaml"
 )
 
 const simpleDockerfile = "FROM golang:1.10"
@@ -119,7 +118,7 @@ k8s_resource('foo', 'foo.yaml')
 	f.assertNextManifest("foo",
 		db(image("gcr.io/foo")),
 		deployment("foo"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
 
 func TestSimple(t *testing.T) {
@@ -135,10 +134,18 @@ k8s_yaml('foo.yaml')
 
 	f.load("foo")
 
-	f.assertNextManifest("foo",
+	m := f.assertNextManifest("foo",
 		db(image("gcr.io/foo")),
 		deployment("foo"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
+
+	iTarget := m.ImageTargetAt(0)
+
+	// Make sure there's no fast build / live update in the default case.
+	assert.True(t, iTarget.IsDockerBuild())
+	assert.False(t, iTarget.IsFastBuild())
+	assert.True(t, iTarget.AnyFastBuildInfo().Empty())
+	assert.True(t, iTarget.AnyLiveUpdateInfo().Empty())
 }
 
 // I.e. make sure that we handle de/normalization between `fooimage` <--> `docker.io/library/fooimage`
@@ -160,7 +167,7 @@ k8s_yaml('foo.yaml')
 	f.assertNextManifest("foo",
 		db(imageNormalized("fooimage")),
 		deployment("foo"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
 
 func TestExplicitDockerfileIsConfigFile(t *testing.T) {
@@ -173,7 +180,7 @@ docker_build('gcr.io/foo', 'foo', dockerfile='other/Dockerfile')
 k8s_yaml('foo.yaml')
 `)
 	f.load()
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "other/Dockerfile")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "other/Dockerfile", "foo/.dockerignore")
 }
 
 func TestExplicitDockerfileAsLocalPath(t *testing.T) {
@@ -187,7 +194,7 @@ docker_build('gcr.io/foo', 'foo', dockerfile=r.path('other/Dockerfile'))
 k8s_yaml('foo.yaml')
 `)
 	f.load()
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "other/Dockerfile")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "other/Dockerfile", "foo/.dockerignore")
 }
 
 func TestExplicitDockerfileContents(t *testing.T) {
@@ -199,7 +206,7 @@ docker_build('gcr.io/foo', 'foo', dockerfile_contents='FROM alpine')
 k8s_yaml('foo.yaml')
 `)
 	f.load()
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "foo/.dockerignore")
 	f.assertNextManifest("foo", db(image("gcr.io/foo")))
 }
 
@@ -214,7 +221,7 @@ docker_build('gcr.io/foo', 'foo', dockerfile_contents=df)
 k8s_yaml('foo.yaml')
 `)
 	f.load()
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "other/Dockerfile")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "other/Dockerfile", "foo/.dockerignore")
 	f.assertNextManifest("foo", db(image("gcr.io/foo")))
 }
 
@@ -242,12 +249,12 @@ fast_build('gcr.io/foo', 'foo/Dockerfile') \
   .run("echo hi")
 k8s_yaml('foo.yaml')
 `)
-	f.load()
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo",
 		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi"), hotReload(false)),
 		deployment("foo"),
 	)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
 
 func TestFastBuildHotReload(t *testing.T) {
@@ -262,12 +269,12 @@ fast_build('gcr.io/foo', 'foo/Dockerfile') \
   .hot_reload()
 k8s_yaml('foo.yaml')
 `)
-	f.load()
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo",
 		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi"), hotReload(true)),
 		deployment("foo"),
 	)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
 
 func TestFastBuildPassedToResource(t *testing.T) {
@@ -281,12 +288,12 @@ fb = fast_build('gcr.io/foo', 'foo/Dockerfile') \
   .run("echo hi")
 k8s_yaml('foo.yaml')
 `)
-	f.load()
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo",
 		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi")),
 		deployment("foo"),
 	)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
 
 func TestFastBuildValidates(t *testing.T) {
@@ -335,7 +342,7 @@ fastbar.add('local/path', 'remote/path')
 fastbar.run('echo hi')
 `)
 
-	f.load()
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo",
 		db(image("gcr.io/foo")),
 		deployment("foo"))
@@ -356,7 +363,7 @@ fast_build('gcr.io/foo', 'foo/Dockerfile') \
   .run("echo again", trigger='c')
 k8s_yaml('foo.yaml')
 `)
-	f.load()
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo",
 		fb(image("gcr.io/foo"),
 			add("foo", "src/"),
@@ -365,7 +372,7 @@ k8s_yaml('foo.yaml')
 		),
 		deployment("foo"),
 	)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
 
 func TestVerifiesGitRepo(t *testing.T) {
@@ -411,7 +418,7 @@ k8s_yaml(yaml)
 	f.assertNextManifest("foo",
 		db(image("gcr.io/foo")),
 		deployment("foo"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
 
 func TestKustomize(t *testing.T) {
@@ -431,7 +438,27 @@ k8s_resource("the-deployment", "foo")
 `)
 	f.load()
 	f.assertNextManifest("foo", deployment("the-deployment"), numEntities(2))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "configMap.yaml", "deployment.yaml", "kustomization.yaml", "service.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "configMap.yaml", "deployment.yaml", "kustomization.yaml", "service.yaml")
+}
+
+func TestKustomization(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Kustomization", kustomizeFileText)
+	f.file("configMap.yaml", kustomizeConfigMapText)
+	f.file("deployment.yaml", kustomizeDeploymentText)
+	f.file("service.yaml", kustomizeServiceText)
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build("gcr.io/foo", "foo")
+k8s_yaml(kustomize("."))
+k8s_resource("the-deployment", "foo")
+`)
+	f.load()
+	f.assertNextManifest("foo", deployment("the-deployment"), numEntities(2))
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "configMap.yaml", "deployment.yaml", "Kustomization", "service.yaml")
 }
 
 func TestDockerBuildCache(t *testing.T) {
@@ -456,7 +483,7 @@ func TestFastBuildCache(t *testing.T) {
 k8s_yaml('foo.yaml')
 fast_build("gcr.io/foo", 'foo/Dockerfile', cache='/path/to/cache')
 `)
-	f.load()
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo", fbWithCache(image("gcr.io/foo"), "/path/to/cache"))
 }
 
@@ -517,7 +544,7 @@ fast_build('gcr.io/foo', 'foo/Dockerfile').add('./foo', '/foo')
 fast_build('gcr.io/bar', 'foo/Dockerfile').add('%s', '/bar')
 `, f.JoinPath("./bar")))
 
-	f.load()
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo", fb(image("gcr.io/foo"), add("foo", "/foo")))
 	f.assertNextManifest("bar", fb(image("gcr.io/bar"), add("bar", "/bar")))
 }
@@ -533,7 +560,7 @@ k8s_yaml('foo.yaml')
 fast_build('gcr.io/foo', 'foo/Dockerfile').add(repo.path('foo'), '/foo')
 `)
 
-	f.load()
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo", fb(image("gcr.io/foo"), add("foo", "/foo")))
 }
 
@@ -550,7 +577,7 @@ k8s_yaml('foo.yaml')
 fast_build('gcr.io/foo', 'foo/Dockerfile').add(repo, '/whole_repo')
 `)
 
-	f.load()
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo", fb(image("gcr.io/foo"), add(".", "/whole_repo")))
 }
 
@@ -594,7 +621,7 @@ k8s_resource('foo', port_forwards=EXPR)
 				return
 			}
 
-			f.loadResourceAssemblyV1()
+			f.load()
 			f.assertNextManifest("foo",
 				c.expected,
 				db(image("gcr.io/foo")),
@@ -619,8 +646,8 @@ docker_build('gcr.io/d', 'd')
 	f.assertNextManifest("b", db(image("gcr.io/b")), deployment("b"))
 	f.assertNextManifest("c", db(image("gcr.io/c")), deployment("c"))
 	f.assertNextManifest("d", db(image("gcr.io/d")), deployment("d"))
-	f.assertNoYAMLManifest("")
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "all.yaml", "a/Dockerfile", "b/Dockerfile", "c/Dockerfile", "d/Dockerfile")
+	f.assertNoMoreManifests() // should be no unresourced yaml remaining
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "all.yaml", "a/Dockerfile", "a/.dockerignore", "b/Dockerfile", "b/.dockerignore", "c/Dockerfile", "c/.dockerignore", "d/Dockerfile", "d/.dockerignore")
 }
 
 func TestExpandUnresourced(t *testing.T) {
@@ -641,7 +668,7 @@ docker_build('gcr.io/a', 'a')
 
 	f.load()
 	f.assertNextManifest("a", db(image("gcr.io/a")), deployment("a"))
-	f.assertYAMLManifest("a-secret")
+	f.assertNextManifestUnresourced("a-secret")
 }
 
 func TestExpandExplicit(t *testing.T) {
@@ -676,7 +703,7 @@ k8s_yaml('pod_creator.yaml')
 	f.load()
 
 	f.assertNextManifest("pod-creator", deployment("pod-creator"))
-	f.assertYAMLManifest("not-pod-creator")
+	f.assertNextManifestUnresourced("not-pod-creator")
 }
 
 func TestUnresourcedYamlGroupingV1(t *testing.T) {
@@ -705,7 +732,7 @@ func TestUnresourcedYamlGroupingV1(t *testing.T) {
 	f.assertNextManifest("deployment-a", deployment("deployment-a"))
 	f.assertNextManifest("deployment-b", deployment("deployment-b"), service("service-b"))
 	f.assertNextManifest("deployment-c", deployment("deployment-c"), service("service-c1"), service("service-c2"))
-	f.assertYAMLManifest("someSecret")
+	f.assertNextManifestUnresourced("someSecret")
 }
 
 func TestUnresourcedYamlGroupingV2(t *testing.T) {
@@ -735,7 +762,7 @@ k8s_yaml('all.yaml')`)
 	f.assertNextManifest("deployment-a", deployment("deployment-a"))
 	f.assertNextManifest("deployment-b", deployment("deployment-b"), service("service-b"))
 	f.assertNextManifest("deployment-c", deployment("deployment-c"), service("service-c1"), service("service-c2"))
-	f.assertYAMLManifest("someSecret")
+	f.assertNextManifestUnresourced("someSecret")
 }
 
 func TestK8sGroupedWhenAddedToResource(t *testing.T) {
@@ -777,7 +804,7 @@ func TestK8sResourceWithoutDockerBuild(t *testing.T) {
 	f.setupFoo()
 	f.file("Tiltfile", `
 k8s_resource_assembly_version(1)
-k8s_resource('foo', yaml='foo.yaml', port_forwards=8000)	
+k8s_resource('foo', yaml='foo.yaml', port_forwards=8000)
 `)
 	f.loadResourceAssemblyV1()
 	f.assertNextManifest("foo", []model.PortForward{{LocalPort: 8000}})
@@ -865,7 +892,7 @@ k8s_yaml('bar.yaml')
 		db(image("gcr.io/foo")),
 		deployment("foo"))
 
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml", "bar/Dockerfile", "bar.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml")
 }
 
 func TestLoadTypoManifest(t *testing.T) {
@@ -883,7 +910,8 @@ k8s_yaml('bar.yaml')
 
 	_, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"))
 	if assert.Error(t, err) {
-		assert.Equal(t, "Could not find resources: baz. Existing resources in Tiltfile: foo, bar", err.Error())
+		assert.Equal(t, `You specified some resources that could not be found: "baz"
+Is this a typo? Existing resources in Tiltfile: "foo", "bar"`, err.Error())
 	}
 }
 
@@ -907,125 +935,6 @@ k8s_yaml('foo.yaml')
 		fileChangeMatches("Tiltfile"),
 		buildMatches("foo.yaml"),
 		fileChangeMatches("foo.yaml"),
-	)
-}
-
-func TestGitignorePathFilter(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.gitInit("")
-	f.file(".gitignore", ".#*")
-	f.file("Dockerfile", "FROM golang:1.10")
-	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
-	f.file("Tiltfile", `
-docker_build('gcr.io/foo', '.')
-k8s_yaml('foo.yaml')
-`)
-
-	f.load("foo")
-	f.assertNextManifest("foo",
-		buildFilters(".#foo.yaml"),
-		fileChangeFilters(".#foo.yaml"),
-	)
-}
-
-func TestAncestorGitignorePathFilter(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-	f.file(".gitignore", ".#*")
-	f.file("Tiltfile", `
-docker_build('gcr.io/foo', 'foo')
-k8s_yaml('foo.yaml')
-`)
-
-	f.load("foo")
-	f.assertNextManifest("foo",
-		buildFilters("foo/.#foo.yaml"),
-		fileChangeFilters("foo/.#foo.yaml"),
-	)
-}
-
-func TestGitignorePathFilterTiltfileAboveRoot(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.gitInit("foo")
-	f.file("foo/.gitignore", ".#*")
-	f.file("foo/Dockerfile", "FROM golang:1.10")
-	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
-	f.file("Tiltfile", `
-docker_build('gcr.io/foo', 'foo')
-k8s_yaml('foo.yaml')
-`)
-
-	f.load("foo")
-	f.assertNextManifest("foo",
-		buildFilters("foo/.#foo.yaml"),
-		fileChangeFilters("foo/.#foo.yaml"),
-	)
-}
-
-func TestFastBuildGitignorePathFilter(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.gitInit("")
-	f.file(".gitignore", ".#*")
-	f.file("Dockerfile", "FROM golang:1.10")
-	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
-	f.file("Tiltfile", `
-k8s_yaml('foo.yaml')
-fast_build('gcr.io/foo', 'Dockerfile') \
-  .add('.', 'src/')
-`)
-
-	f.load("foo")
-	f.assertNextManifest("foo",
-		buildFilters(".#foo.yaml"),
-		fileChangeFilters(".#foo.yaml"),
-	)
-}
-
-func TestFastBuildAncestorGitignorePathFilter(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-	f.file(".gitignore", ".#*")
-	f.file("Tiltfile", `
-k8s_yaml('foo.yaml')
-fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add('foo', 'src/')
-`)
-
-	f.load("foo")
-	f.assertNextManifest("foo",
-		buildFilters("foo/.#foo.yaml"),
-		fileChangeFilters("foo/.#foo.yaml"),
-	)
-}
-
-func TestFastBuildGitignorePathFilterTiltfileAboveRoot(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.gitInit("foo")
-	f.file("foo/.gitignore", ".#*")
-	f.file("foo/Dockerfile", "FROM golang:1.10")
-	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
-	f.file("Tiltfile", `
-k8s_yaml('foo.yaml')
-fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add('foo', 'src/')
-`)
-
-	f.load("foo")
-	f.assertNextManifest("foo",
-		buildFilters("foo/.#foo.yaml"),
-		fileChangeFilters("foo/.#foo.yaml"),
 	)
 }
 
@@ -1086,7 +995,7 @@ fast_build('gcr.io/foo', 'foo/Dockerfile') \
   .run("echo hi")
 k8s_yaml('foo.yaml')
 `)
-	f.load("foo")
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo",
 		buildFilters("foo/a.txt"),
 		fileChangeFilters("foo/a.txt"),
@@ -1105,7 +1014,7 @@ fast_build('gcr.io/foo', 'foo/Dockerfile') \
   .run("echo hi")
 k8s_yaml('foo.yaml')
 `)
-	f.load("foo")
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo",
 		buildFilters("foo/a.txt"),
 		fileChangeFilters("foo/a.txt"),
@@ -1264,7 +1173,7 @@ if True:
 	f.assertNextManifest("foo",
 		db(image("gcr.io/foo")),
 		deployment("foo"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
 
 func TestTopLevelForLoop(t *testing.T) {
@@ -1308,12 +1217,24 @@ k8s_yaml(yml)
 
 	f.load()
 
-	f.assertYAMLManifest("release-name-helloworld-chart")
+	f.assertNextManifestUnresourced("release-name-helloworld-chart")
 	f.assertConfigFiles(
 		"Tiltfile",
 		".tiltignore",
 		"helm",
 	)
+}
+
+func TestHelmInvalidDirectory(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+yml = helm('helm')
+k8s_yaml(yml)
+`)
+
+	f.loadErrString("Expected to be able to read Helm templates in ")
 }
 
 func TestHelmFromRepoPath(t *testing.T) {
@@ -1331,7 +1252,7 @@ k8s_yaml(yml)
 
 	f.load()
 
-	f.assertYAMLManifest("release-name-helloworld-chart")
+	f.assertNextManifestUnresourced("release-name-helloworld-chart")
 	f.assertConfigFiles(
 		"Tiltfile",
 		".tiltignore",
@@ -1591,6 +1512,32 @@ k8s_yaml('foo.yaml')
 	f.assertNextManifest("foo", deployment("foo", image("gcr.io/image-a"), image("gcr.io/image-b")))
 }
 
+func TestImageDependencyLiveUpdate(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("message.txt", "Hello!")
+	f.file("imageA.dockerfile", "FROM golang:1.10")
+	f.file("imageB.dockerfile", `FROM gcr.io/image-a
+ADD message.txt /tmp/message.txt`)
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/image-b")))
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build('gcr.io/image-b', '.', dockerfile='imageB.dockerfile',
+             live_update=[sync('message.txt', '/tmp/message.txt')])
+docker_build('gcr.io/image-a', '.', dockerfile='imageA.dockerfile')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	m := f.assertNextManifest("foo",
+		deployment("foo", image("gcr.io/image-a"), image("gcr.io/image-b")))
+
+	assert.True(t, m.ImageTargetAt(0).AnyLiveUpdateInfo().Empty())
+	assert.False(t, m.ImageTargetAt(1).AnyLiveUpdateInfo().Empty())
+}
+
 func TestImageDependencyCycle(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -1811,6 +1758,7 @@ func TestImageRefSuggestion(t *testing.T) {
 docker_build('gcr.typo.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 `)
+
 	w := unusedImageWarning("gcr.typo.io/foo", []string{"gcr.io/foo", "docker.io/library/golang"})
 	f.loadAssertWarnings(w)
 }
@@ -1913,7 +1861,7 @@ k8s_yaml(blob('hi'))
 	f.loadErrString("from Tiltfile blob() call")
 }
 
-func TestCustomBuild(t *testing.T) {
+func TestCustomBuildWithFastBuild(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -1930,9 +1878,9 @@ hfb.hot_reload()`
 	f.setupFoo()
 	f.file("Tiltfile", tiltfile)
 
-	f.load("foo")
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNumManifests(1)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "foo/.dockerignore")
 	f.assertNextManifest("foo",
 		cb(
 			image("gcr.io/foo"),
@@ -2056,7 +2004,7 @@ type k8sKindTest struct {
 	expectedResourceName string
 }
 
-func TestK8SKind(t *testing.T) {
+func TestK8sKind(t *testing.T) {
 	tests := []k8sKindTest{
 		{name: "match kind", args: "'Environment', image_json_path='{.spec.runtime.image}'", expectMatch: true},
 		{name: "don't match kind", args: "'fdas', image_json_path='{.spec.runtime.image}'", expectMatch: false},
@@ -2108,7 +2056,7 @@ docker_build('test/mycrd-env', 'env')
 	}
 }
 
-func TestK8SKindImageJSONPathPositional(t *testing.T) {
+func TestK8sKindImageJSONPathPositional(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 	f.setupCRD()
@@ -2182,7 +2130,53 @@ k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_I
 	)
 }
 
-func TestK8SImageJSONPathArgs(t *testing.T) {
+func TestExtraImageLocationDeploymentEnvVarMatch(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.dockerfile("foo-fetcher/Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo"), withEnvVars("FETCHER_IMAGE", "gcr.io/foo-fetcher")))
+	f.gitInit("")
+
+	f.file("Tiltfile", `k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', 'foo')
+docker_build('gcr.io/foo-fetcher', 'foo-fetcher', match_in_env_vars=True)
+	`)
+	f.load("foo")
+	f.assertNextManifest("foo",
+		db(
+			image("gcr.io/foo"),
+		),
+		db(
+			image("gcr.io/foo-fetcher"),
+		),
+	)
+}
+
+func TestExtraImageLocationDeploymentEnvVarDoesntMatchIfNotSpecified(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.dockerfile("foo-fetcher/Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo"), withEnvVars("FETCHER_IMAGE", "gcr.io/foo-fetcher")))
+	f.gitInit("")
+
+	f.file("Tiltfile", `k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', 'foo')
+docker_build('gcr.io/foo-fetcher', 'foo-fetcher')
+	`)
+	f.loadAssertWarnings(unusedImageWarning("gcr.io/foo-fetcher", []string{"gcr.io/foo", "docker.io/library/golang"}))
+	f.assertNextManifest("foo",
+		db(
+			image("gcr.io/foo"),
+		),
+	)
+
+}
+
+func TestK8sImageJSONPathArgs(t *testing.T) {
 	tests := []struct {
 		name          string
 		args          string
@@ -2348,7 +2342,7 @@ docker_build('web/api', '', dockerfile='')
 	f.loadErrString("error reading dockerfile")
 }
 
-func TestK8SYamlEmptyArg(t *testing.T) {
+func TestK8sYamlEmptyArg(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 	f.file("Tiltfile", `
@@ -2381,7 +2375,91 @@ k8s_yaml(result[1]["baz"][0] + '.yaml')
 	f.assertNextManifest("bar",
 		db(image("gcr.io/bar")),
 		deployment("bar"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml", "bar/Dockerfile", "bar.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml")
+}
+
+func TestReadYAML(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFooAndBar()
+	var document = `
+key1: foo
+key2:
+    key3: "bar"
+    key4: true
+key5: 3
+`
+	f.file("options.yaml", document)
+
+	f.file("Tiltfile", `
+result = read_yaml("options.yaml")
+
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml(result['key1'] + '.yaml')
+docker_build('gcr.io/bar', 'bar')
+
+if result['key2']['key4'] and result['key5'] == 3:
+		k8s_yaml(result['key2']['key3'] + '.yaml')
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		db(image("gcr.io/foo")),
+		deployment("foo"))
+
+	f.assertNextManifest("bar",
+		db(image("gcr.io/bar")),
+		deployment("bar"))
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml", "options.yaml")
+}
+
+func TestYAMLDoesntExist(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFooAndBar()
+	f.file("Tiltfile", `
+result = read_yaml("dne.yaml")
+
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml(result['key1'] + '.yaml')
+docker_build('gcr.io/bar', 'bar')
+
+if result['key2']['key4'] and result['key5'] == 3:
+		k8s_yaml(result['key2']['key3'] + '.yaml')
+`)
+	f.loadErrString("dne.yaml: no such file or directory")
+
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "dne.yaml")
+}
+
+func TestMalformedYAML(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFooAndBar()
+	var document = `
+key1: foo
+key2:
+    key3: "bar
+    key4: true
+key5: 3
+`
+	f.file("options.yaml", document)
+
+	f.file("Tiltfile", `
+result = read_yaml("options.yaml")
+
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml(result['key1'] + '.yaml')
+docker_build('gcr.io/bar', 'bar')
+
+if result['key2']['key4'] and result['key5'] == 3:
+		k8s_yaml(result['key2']['key3'] + '.yaml')
+`)
+	f.loadErrString("error parsing YAML: error converting YAML to JSON: yaml: line 7: found unexpected end of stream in options.yaml")
 }
 
 func TestReadJSON(t *testing.T) {
@@ -2409,7 +2487,7 @@ k8s_yaml(result[1]["baz"][0] + '.yaml')
 	f.assertNextManifest("bar",
 		db(image("gcr.io/bar")),
 		deployment("bar"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml", "bar/Dockerfile", "bar.yaml", "options.json")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml", "options.json")
 }
 
 func TestJSONDoesntExist(t *testing.T) {
@@ -2490,7 +2568,27 @@ default_registry('bar.com')
 	f.assertNextManifest("foo",
 		db(image("gcr.io/foo").withInjectedRef("bar.com/gcr.io_foo")),
 		deployment("foo"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
+}
+
+func TestPrivateRegistry(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.kCli.Registry = "localhost:32000"
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+default_registry('bar.com')
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		db(image("gcr.io/foo").withInjectedRef("localhost:32000/gcr.io_foo")),
+		deployment("foo"))
 }
 
 func TestDefaultRegistryTwoImagesOnlyDifferByTag(t *testing.T) {
@@ -2521,7 +2619,7 @@ default_registry('example.com')
 	f.assertNextManifest("baz",
 		db(image("gcr.io/foo:baz").withInjectedRef("example.com/gcr.io_foo")),
 		deployment("baz"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "bar/Dockerfile", "bar.yaml", "baz/Dockerfile", "baz.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml", "baz/Dockerfile", "baz/.dockerignore", "baz.yaml")
 }
 
 func TestDefaultRegistryWithDockerCompose(t *testing.T) {
@@ -2556,7 +2654,7 @@ k8s_yaml(str(result) + '.yaml')
 		db(image("gcr.io/foo")),
 		deployment("foo"))
 
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "this_file_does_not_exist", "foo.yaml", "foo/Dockerfile")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "this_file_does_not_exist", "foo.yaml", "foo/Dockerfile", "foo/.dockerignore")
 }
 
 func TestDefaultReadJSON(t *testing.T) {
@@ -2578,7 +2676,7 @@ k8s_yaml(str(result["name"]) + '.yaml')
 		db(image("gcr.io/foo")),
 		deployment("foo"))
 
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "this_file_does_not_exist", "foo.yaml", "foo/Dockerfile")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "this_file_does_not_exist", "foo.yaml", "foo/Dockerfile", "foo/.dockerignore")
 }
 
 func TestWatchFile(t *testing.T) {
@@ -2599,10 +2697,50 @@ k8s_yaml('foo.yaml')
 	f.assertNextManifest("foo",
 		db(image("gcr.io/foo")),
 		deployment("foo"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo.yaml", "hello")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "hello")
 }
 
-func TestK8SResourceAssemblyVersionAfterYAML(t *testing.T) {
+func TestK8sResourceAssemblyVersionAfterYAML(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_resource('foo', 'bar')
+k8s_resource_assembly_version(2)
+`)
+
+	f.loadErrString("k8s_resource_assembly_version can only be called before introducing any k8s resources")
+}
+
+func TestK8sResourceAssemblyK8sResourceYAMLNamedArg(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_resource('foo', yaml='bar')
+`)
+
+	f.loadErrString("kwarg \"yaml\"", "deprecated", "https://docs.tilt.dev/resource_assembly_migration.html")
+}
+
+func TestK8sResourceAssemblyK8sResourceImage(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_resource('foo', image='bar')
+`)
+
+	f.loadErrString("kwarg \"image\"", "deprecated", "https://docs.tilt.dev/resource_assembly_migration.html")
+}
+
+func TestK8sResourceAssemblyK8sResourceYAMLPositionalArg(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2610,10 +2748,22 @@ func TestK8SResourceAssemblyVersionAfterYAML(t *testing.T) {
 
 	f.file("Tiltfile", `
 k8s_resource('foo', 'foo.yaml')
-k8s_resource_assembly_version(2)
 `)
 
-	f.loadErrString("k8s_resource_assembly_version can only be called before introducing any k8s resources")
+	f.loadErrString("second arg", "looks like a yaml file name", "deprecated", "https://docs.tilt.dev/resource_assembly_migration.html")
+}
+
+func TestK8sResourceAssemblyK8sResourceNameKeywordArg(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_resource('foo', name='bar')
+`)
+
+	f.loadErrString("kwarg \"name\"", "deprecated", "https://docs.tilt.dev/resource_assembly_migration.html")
 }
 
 func TestAssemblyVersion2Basic(t *testing.T) {
@@ -2633,7 +2783,7 @@ k8s_yaml('foo.yaml')
 		db(image("gcr.io/foo")),
 		deployment("foo"))
 
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "foo/Dockerfile")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "foo/Dockerfile", "foo/.dockerignore")
 }
 
 func TestAssemblyVersion2TwoWorkloadsSameImage(t *testing.T) {
@@ -2658,10 +2808,10 @@ k8s_yaml(['foo.yaml', 'bar.yaml'])
 		db(image("gcr.io/foo")),
 		deployment("bar"))
 
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "bar.yaml", "foo/Dockerfile")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "bar.yaml", "foo/Dockerfile", "foo/.dockerignore")
 }
 
-func TestK8SResourceNoMatch(t *testing.T) {
+func TestK8sResourceNoMatch(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2672,10 +2822,10 @@ k8s_yaml('foo.yaml')
 k8s_resource('bar', new_name='baz')
 `)
 
-	f.loadErrString("specified unknown resource 'bar'. known resources: foo")
+	f.loadErrString("specified unknown resource 'bar'. known resources: foo", "https://docs.tilt.dev/resource_assembly_migration.html")
 }
 
-func TestK8SResourceNewName(t *testing.T) {
+func TestK8sResourceNewName(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2691,7 +2841,7 @@ k8s_resource('foo', new_name='bar')
 	f.assertNextManifest("bar", deployment("foo"))
 }
 
-func TestK8SResourceNewNameConflict(t *testing.T) {
+func TestK8sResourceNewNameConflict(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2705,7 +2855,7 @@ k8s_resource('foo', new_name='bar')
 	f.loadErrString("'foo' to 'bar'", "already a resource with that name")
 }
 
-func TestK8SResourceRenameConflictingNames(t *testing.T) {
+func TestK8sResourceRenameConflictingNames(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2727,7 +2877,7 @@ k8s_resource('foo:deployment:ns2', new_name='foo')
 	f.assertNextManifest("foo", db(image("gcr.io/foo2")))
 }
 
-func TestMultipleK8SResourceOptionsForOneResource(t *testing.T) {
+func TestMultipleK8sResourceOptionsForOneResource(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2742,7 +2892,7 @@ k8s_resource('foo', port_forwards=8000)
 	f.loadErrString("k8s_resource already called for foo")
 }
 
-func TestK8SResourceEmptyWorkloadSpecifier(t *testing.T) {
+func TestK8sResourceEmptyWorkloadSpecifier(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2873,10 +3023,455 @@ k8s_resource('hello-foo', port_forwards=8000)
 	f.loadErrString("workload_to_resource_function arg must take 1 argument. wtrf takes 2")
 }
 
+func TestImpossibleLiveUpdates(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("sancho/Dockerfile", "FROM golang:1.10")
+	f.file("sidecar/Dockerfile", "FROM golang:1.10")
+	f.file("sancho.yaml", testyaml.SanchoSidecarYAML) // two containers
+	f.file("Tiltfile", `
+k8s_yaml('sancho.yaml')
+docker_build('gcr.io/some-project-162817/sancho', './sancho')
+docker_build('gcr.io/some-project-162817/sancho-sidecar', './sidecar',
+  live_update=[restart_container()]
+)
+`)
+
+	f.loadAssertWarnings("Sorry, but Tilt only supports in-place updates for the first Tilt-built container on a pod, so we can't in-place update your image 'gcr.io/some-project-162817/sancho-sidecar'. If this is a feature you need, let us know!")
+}
+
+func TestImpossibleLiveUpdatesOKNoLiveUpdate(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("sancho/Dockerfile", "FROM golang:1.10")
+	f.file("sidecar/Dockerfile", "FROM golang:1.10")
+	f.file("sancho.yaml", testyaml.SanchoSidecarYAML) // two containers
+	f.file("Tiltfile", `
+k8s_yaml('sancho.yaml')
+docker_build('gcr.io/some-project-162817/sancho', './sancho')
+
+# no LiveUpdate on this so nothing meriting a warning
+docker_build('gcr.io/some-project-162817/sancho-sidecar', './sidecar')
+`)
+
+	// Expect no warnings!
+	f.load()
+}
+
+func TestImpossibleLiveUpdatesOKSecondContainerLiveUpdate(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("sancho/Dockerfile", "FROM golang:1.10")
+	f.file("sidecar/Dockerfile", "FROM golang:1.10")
+	f.file("sancho.yaml", testyaml.SanchoSidecarYAML) // two containers
+	f.file("Tiltfile", `
+k8s_yaml('sancho.yaml')
+
+# this is the second k8s container, but only the first image target, so should be OK
+docker_build('gcr.io/some-project-162817/sancho-sidecar', './sidecar')
+`)
+
+	// Expect no warnings!
+	f.load()
+}
+
+func TestTriggerModeK8S(t *testing.T) {
+	for _, testCase := range []struct {
+		name                string
+		globalSetting       triggerMode
+		k8sResourceSetting  triggerMode
+		expectedTriggerMode model.TriggerMode
+	}{
+		{"default", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
+		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, model.TriggerModeAuto},
+		{"explicit global manual", TriggerModeManual, TriggerModeUnset, model.TriggerModeManual},
+		{"kr auto", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
+		{"kr manual", TriggerModeUnset, TriggerModeManual, model.TriggerModeManual},
+		{"kr override auto", TriggerModeManual, TriggerModeAuto, model.TriggerModeAuto},
+		{"kr override manual", TriggerModeAuto, TriggerModeManual, model.TriggerModeManual},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+
+			f.setupFoo()
+
+			var globalTriggerModeDirective string
+			switch testCase.globalSetting {
+			case TriggerModeUnset:
+				globalTriggerModeDirective = ""
+			case TriggerModeManual:
+				globalTriggerModeDirective = "trigger_mode(TRIGGER_MODE_MANUAL)"
+			case TriggerModeAuto:
+				globalTriggerModeDirective = "trigger_mode(TRIGGER_MODE_AUTO)"
+			}
+
+			var k8sResourceDirective string
+			switch testCase.k8sResourceSetting {
+			case TriggerModeUnset:
+				k8sResourceDirective = ""
+			case TriggerModeManual:
+				k8sResourceDirective = "k8s_resource('foo', trigger_mode=TRIGGER_MODE_MANUAL)"
+			case TriggerModeAuto:
+				k8sResourceDirective = "k8s_resource('foo', trigger_mode=TRIGGER_MODE_AUTO)"
+			}
+
+			f.file("Tiltfile", fmt.Sprintf(`
+%s
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+%s
+`, globalTriggerModeDirective, k8sResourceDirective))
+
+			f.load()
+
+			f.assertNumManifests(1)
+			f.assertNextManifest("foo", testCase.expectedTriggerMode)
+		})
+	}
+}
+
+func TestTriggerModeDC(t *testing.T) {
+	for _, testCase := range []struct {
+		name                string
+		globalSetting       triggerMode
+		dcResourceSetting   triggerMode
+		expectedTriggerMode model.TriggerMode
+	}{
+		{"default", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
+		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, model.TriggerModeAuto},
+		{"explicit global manual", TriggerModeManual, TriggerModeUnset, model.TriggerModeManual},
+		{"dc auto", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
+		{"dc manual", TriggerModeUnset, TriggerModeManual, model.TriggerModeManual},
+		{"dc override auto", TriggerModeManual, TriggerModeAuto, model.TriggerModeAuto},
+		{"dc override manual", TriggerModeAuto, TriggerModeManual, model.TriggerModeManual},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+
+			f.dockerfile("foo/Dockerfile")
+			f.file("docker-compose.yml", simpleConfig)
+
+			var globalTriggerModeDirective string
+			switch testCase.globalSetting {
+			case TriggerModeUnset:
+				globalTriggerModeDirective = ""
+			case TriggerModeManual:
+				globalTriggerModeDirective = "trigger_mode(TRIGGER_MODE_MANUAL)"
+			case TriggerModeAuto:
+				globalTriggerModeDirective = "trigger_mode(TRIGGER_MODE_AUTO)"
+			}
+
+			var dcResourceDirective string
+			switch testCase.dcResourceSetting {
+			case TriggerModeUnset:
+				dcResourceDirective = ""
+			case TriggerModeManual:
+				dcResourceDirective = "dc_resource('foo', 'gcr.io/foo', trigger_mode=TRIGGER_MODE_MANUAL)"
+			case TriggerModeAuto:
+				dcResourceDirective = "dc_resource('foo', 'gcr.io/foo', trigger_mode=TRIGGER_MODE_AUTO)"
+			}
+
+			f.file("Tiltfile", fmt.Sprintf(`
+%s
+docker_compose('docker-compose.yml')
+%s
+`, globalTriggerModeDirective, dcResourceDirective))
+
+			f.load()
+
+			f.assertNumManifests(1)
+			f.assertNextManifest("foo", testCase.expectedTriggerMode)
+		})
+	}
+}
+
+func TestTriggerModeInt(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+trigger_mode(1)
+`)
+	f.loadErrString("got int, want TriggerMode")
+}
+
+func TestMultipleTriggerMode(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+trigger_mode(TRIGGER_MODE_MANUAL)
+trigger_mode(TRIGGER_MODE_MANUAL)
+`)
+	f.loadErrString("trigger_mode can only be called once")
+}
+
+func TestHelmSkipsTests(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupHelmWithTest()
+	f.file("Tiltfile", `
+yml = helm('helm')
+k8s_yaml(yml)
+`)
+
+	f.load()
+
+	f.assertNextManifestUnresourced("release-name-helloworld-chart")
+	f.assertConfigFiles(
+		"Tiltfile",
+		".tiltignore",
+		"helm",
+	)
+}
+
+func TestK8sContext(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+if k8s_context() != 'fake-context':
+  fail('bad context')
+k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', 'foo')
+`)
+
+	f.load()
+	f.assertNextManifest("foo",
+		db(image("gcr.io/foo")),
+		deployment("foo"))
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
+
+}
+
+func TestDockerbuildIgnoreAsString(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build('gcr.io/foo', '.', ignore="*.txt")
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	f.assertNextManifest("foo",
+		buildFilters("a.txt"),
+		fileChangeFilters("a.txt"),
+		buildMatches("txt.a"),
+		fileChangeMatches("txt.a"),
+	)
+}
+
+func TestDockerbuildIgnoreAsArray(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build('gcr.io/foo', '.', ignore=["*.txt", "*.md"])
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	f.assertNextManifest("foo",
+		buildFilters("a.txt"),
+		buildFilters("a.md"),
+		fileChangeFilters("a.txt"),
+		fileChangeFilters("a.md"),
+		buildMatches("txt.a"),
+		fileChangeMatches("txt.a"),
+	)
+}
+
+func TestDockerbuildInvalidIgnore(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build('fooimage', 'foo', ignore=[127])
+k8s_yaml('foo.yaml')
+`)
+
+	f.loadErrString("ignores must be a string or a sequence of strings; found a starlark.Int")
+}
+
+func TestDockerbuildOnly(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', '.', only="myservice/**")
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	f.assertNextManifest("foo",
+		buildFilters("otherservice/bar"),
+		fileChangeFilters("otherservice/bar"),
+		buildMatches("myservice/bar"),
+		fileChangeMatches("myservice/bar"),
+	)
+}
+
+func TestDockerbuildOnlyAsArray(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', '.', only=["common/**", "myservice/**"])
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	f.assertNextManifest("foo",
+		buildFilters("otherservice/bar"),
+		fileChangeFilters("otherservice/bar"),
+		buildMatches("myservice/bar"),
+		fileChangeMatches("myservice/bar"),
+		buildMatches("common/bar"),
+		fileChangeMatches("common/bar"),
+	)
+}
+
+func TestDockerbuildInvalidOnly(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build('fooimage', 'foo', only=[127])
+k8s_yaml('foo.yaml')
+`)
+
+	f.loadErrString("only must be a string or a sequence of strings; found a starlark.Int")
+}
+
+func TestDockerbuildOnlyAndIgnore(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', '.', ignore="**/*.md", only=["common/**", "myservice/**"])
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	f.assertNextManifest("foo",
+		buildFilters("otherservice/bar"),
+		fileChangeFilters("otherservice/bar"),
+		buildFilters("myservice/README.md"),
+		fileChangeFilters("myservice/README.md"),
+		buildMatches("myservice/bar"),
+		fileChangeMatches("myservice/bar"),
+		buildMatches("common/bar"),
+		fileChangeMatches("common/bar"),
+	)
+}
+
+// if the same file is ignored and included, the ignore takes precedence
+func TestDockerbuildOnlyAndIgnoreSameFile(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', '.', ignore="common/README.md", only="common/README.md")
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	f.assertNextManifest("foo",
+		buildFilters("common/README.md"),
+		fileChangeFilters("common/README.md"),
+	)
+}
+
+// If an only rule starts with a !, we assume that path starts with a !
+// We don't do a double negative
+func TestDockerbuildOnlyHasException(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', '.', only="!myservice/**")
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	f.assertNextManifest("foo",
+		buildFilters("otherservice/bar"),
+		fileChangeFilters("otherservice/bar"),
+		buildMatches("!myservice/bar"),
+		fileChangeMatches("!myservice/bar"),
+	)
+}
+
+// What if you have \n in strings?
+// That's hard to make work easily, so let's just throw an error
+func TestDockerbuildIgnoreWithNewline(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', '.', ignore="\nweirdfile.txt")
+k8s_yaml('foo.yaml')
+`)
+
+	f.loadErrString(`ignores cannot contain newlines; found ignore: "\nweirdfile.txt`)
+}
+func TestDockerbuildOnlyWithNewline(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', '.', only="\nweirdfile.txt")
+k8s_yaml('foo.yaml')
+`)
+
+	f.loadErrString(`only cannot contain newlines; found only: "\nweirdfile.txt`)
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
 	*tempdir.TempDirFixture
+	kCli *k8s.FakeK8sClient
 
 	tfl TiltfileLoader
 	an  *analytics.MemoryAnalytics
@@ -2888,9 +3483,10 @@ func newFixture(t *testing.T) *fixture {
 	out := new(bytes.Buffer)
 	ctx := output.ForkedCtxForTest(out)
 	f := tempdir.NewTempDirFixture(t)
-	an := analytics.NewMemoryAnalytics()
+	an, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
 	dcc := dockercompose.NewDockerComposeClient(docker.Env{})
-	tfl := ProvideTiltfileLoader(an, dcc)
+	kCli := k8s.NewFakeK8sClient()
+	tfl := ProvideTiltfileLoader(ta, kCli, dcc, "fake-context")
 
 	r := &fixture{
 		ctx:            ctx,
@@ -2898,6 +3494,7 @@ func newFixture(t *testing.T) *fixture {
 		TempDirFixture: f,
 		an:             an,
 		tfl:            tfl,
+		kCli:           kCli,
 	}
 	return r
 }
@@ -2990,7 +3587,7 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 		}
 	}
 
-	s, err := k8s.SerializeYAML(entityObjs)
+	s, err := k8s.SerializeSpecYAML(entityObjs)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -3069,21 +3666,30 @@ func (f *fixture) gitInit(path string) {
 	}
 }
 
-func (f *fixture) assertNoYAMLManifest(name string) {
-	assert.Equal(f.t, model.Manifest{}, f.loadResult.Global)
+func (f *fixture) assertNoMoreManifests() {
+	if len(f.loadResult.Manifests) != 0 {
+		names := make([]string, len(f.loadResult.Manifests))
+		for i, m := range f.loadResult.Manifests {
+			names[i] = m.Name.String()
+		}
+		f.t.Fatalf("expected no more manifests but found %d: %s",
+			len(names), strings.Join(names, ", "))
+	}
 }
 
-func (f *fixture) assertYAMLManifest(resNames ...string) {
-	assert.Equal(f.t, unresourcedName, f.loadResult.Global.ManifestName().String())
+// Helper func for asserting that the next manifest is Unresourced
+// k8s YAML containing the given k8s entities.
+func (f *fixture) assertNextManifestUnresourced(expectedEntities ...string) {
+	next := f.assertNextManifest(model.UnresourcedYAMLManifestName.String())
 
-	entities, err := k8s.ParseYAML(bytes.NewBufferString(f.loadResult.Global.K8sTarget().YAML))
+	entities, err := k8s.ParseYAML(bytes.NewBufferString(next.K8sTarget().YAML))
 	assert.NoError(f.t, err)
 
 	entityNames := make([]string, len(entities))
 	for i, e := range entities {
 		entityNames[i] = e.Name()
 	}
-	assert.Equal(f.t, resNames, entityNames)
+	assert.Equal(f.t, expectedEntities, entityNames)
 }
 
 // assert functions and helpers
@@ -3137,22 +3743,21 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 				case nestedFBHelper:
 					dbInfo := image.DockerBuildInfo()
 					if matcher.fb == nil {
-						if dbInfo.FastBuild != nil {
+						if !dbInfo.FastBuild.Empty() {
 							f.t.Fatalf("expected docker build for manifest %v to have "+
 								"no nested fastbuild, but found one: %v", m.Name, dbInfo.FastBuild)
 						}
 					} else {
-						if dbInfo.FastBuild == nil {
+						if dbInfo.FastBuild.Empty() {
 							f.t.Fatalf("expected docker build for manifest %v to have "+
 								"nested fastbuild, but found none", m.Name)
 						}
-						matcher.fb.checkMatchers(f, m, *dbInfo.FastBuild)
+						matcher.fb.checkMatchers(f, m, dbInfo.FastBuild)
 					}
 				case model.LiveUpdate:
-					lu := image.MaybeLiveUpdateInfo()
-					if assert.NotNil(f.t, lu) {
-						assert.Equal(f.t, matcher, *lu)
-					}
+					lu := image.AnyLiveUpdateInfo()
+					assert.False(f.t, lu.Empty())
+					assert.Equal(f.t, matcher, lu)
 				default:
 					f.t.Fatalf("unknown dbHelper matcher: %T %v", matcher, matcher)
 				}
@@ -3174,7 +3779,7 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 				f.t.Fatalf("expected fast build but manifest %v has no fast build info", m.Name)
 			}
 
-			opt.checkMatchers(f, m, image.FastBuildInfo())
+			opt.checkMatchers(f, m, image.TopFastBuildInfo())
 		case cbHelper:
 			image := nextImageTarget()
 			ref := image.ConfigurationRef
@@ -3198,16 +3803,15 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 				case disablePushHelper:
 					assert.Equal(f.t, matcher.disabled, cbInfo.DisablePush)
 				case fbHelper:
-					if cbInfo.Fast == nil {
+					if cbInfo.Fast.Empty() {
 						f.t.Fatalf("Expected manifest %v to have fast build, but it didn't", m.Name)
 					}
 
-					matcher.checkMatchers(f, m, *cbInfo.Fast)
+					matcher.checkMatchers(f, m, cbInfo.Fast)
 				case model.LiveUpdate:
-					lu := image.MaybeLiveUpdateInfo()
-					if assert.NotNil(f.t, lu) {
-						assert.Equal(f.t, matcher, *lu)
-					}
+					lu := image.AnyLiveUpdateInfo()
+					assert.False(f.t, lu.Empty())
+					assert.Equal(f.t, matcher, lu)
 				}
 			}
 
@@ -3303,6 +3907,8 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 
 		case []model.PortForward:
 			assert.Equal(f.t, opt, m.K8sTarget().PortForwards)
+		case model.TriggerMode:
+			assert.Equal(f.t, opt, m.TriggerMode)
 		default:
 			f.t.Fatalf("unexpected arg to assertNextManifest: %T %v", opt, opt)
 		}
@@ -3737,6 +4343,11 @@ func (f *fixture) setupHelm() {
 	f.file("helm/templates/deployment.yaml", deploymentYAML)
 	f.file("helm/templates/ingress.yaml", ingressYAML)
 	f.file("helm/templates/service.yaml", serviceYAML)
+}
+
+func (f *fixture) setupHelmWithTest() {
+	f.setupHelm()
+	f.file("helm/templates/tests/test-mariadb-connection.yaml", helmTestYAML)
 }
 
 func (f *fixture) setupExtraPodSelectors(s string) {

@@ -31,6 +31,11 @@ type Manifest struct {
 
 	// Info needed to deploy. Can be k8s yaml, docker compose, etc.
 	deployTarget TargetSpec
+
+	// How updates are triggered:
+	// - automatically, when we detect a change
+	// - manually, when the user tells us to
+	TriggerMode TriggerMode
 }
 
 func (m Manifest) ID() TargetID {
@@ -90,6 +95,10 @@ func (m Manifest) IsK8s() bool {
 	return ok
 }
 
+func (m Manifest) IsUnresourcedYAMLManifest() bool {
+	return m.Name == UnresourcedYAMLManifestName
+}
+
 func (m Manifest) DeployTarget() TargetSpec {
 	return m.deployTarget
 }
@@ -105,6 +114,30 @@ func (m Manifest) WithDeployTarget(t TargetSpec) Manifest {
 	}
 	m.deployTarget = t
 	return m
+}
+
+func (m Manifest) WithTriggerMode(mode TriggerMode) Manifest {
+	m.TriggerMode = mode
+	return m
+}
+
+func (m Manifest) TargetSpecs() []TargetSpec {
+	result := []TargetSpec{}
+	for _, t := range m.ImageTargets {
+		result = append(result, t)
+	}
+	result = append(result, m.deployTarget)
+	return result
+}
+
+func (m Manifest) IsImageDeployed(iTarget ImageTarget) bool {
+	id := iTarget.ID()
+	for _, depID := range m.DeployTarget().DependencyIDs() {
+		if depID == id {
+			return true
+		}
+	}
+	return false
 }
 
 func (m Manifest) LocalPaths() []string {
@@ -144,7 +177,23 @@ func (m Manifest) Validate() error {
 }
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
-	primitivesMatch := m1.Name == m2.Name
+	primitivesEq, dockerEq, k8sEq, dcEq := m1.fieldGroupsEqual(m2)
+	return primitivesEq && dockerEq && k8sEq && dcEq
+}
+
+// ChangesInvalidateBuild checks whether the changes from old => new manifest
+// invalidate our build of the old one; i.e. if we're replacing `old` with `new`,
+// should we perform a full rebuild?
+func ChangesInvalidateBuild(old, new Manifest) bool {
+	_, dockerEq, k8sEq, dcEq := old.fieldGroupsEqual(new)
+
+	// We only need to update for this manifest if any of the field-groups
+	// affecting build+deploy have changed (i.e. a change in primitives doesn't matter)
+	return !dockerEq || !k8sEq || !dcEq
+
+}
+func (m1 Manifest) fieldGroupsEqual(m2 Manifest) (primitivesEq, dockerEq, k8sEq, dcEq bool) {
+	primitivesMatch := m1.Name == m2.Name && m1.TriggerMode == m2.TriggerMode
 	dockerEqual := DeepEqual(m1.ImageTargets, m2.ImageTargets)
 
 	dc1 := m1.DockerComposeTarget()
@@ -155,10 +204,7 @@ func (m1 Manifest) Equal(m2 Manifest) bool {
 	k8s2 := m2.K8sTarget()
 	k8sEqual := DeepEqual(k8s1, k8s2)
 
-	return primitivesMatch &&
-		dockerEqual &&
-		dockerComposeEqual &&
-		k8sEqual
+	return primitivesMatch, dockerEqual, dockerComposeEqual, k8sEqual
 }
 
 func (m Manifest) ManifestName() ManifestName {
@@ -183,8 +229,7 @@ type Dockerignore struct {
 }
 
 type LocalGitRepo struct {
-	LocalPath         string
-	GitignoreContents string
+	LocalPath string
 }
 
 func (LocalGitRepo) IsRepo() {}

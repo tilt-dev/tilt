@@ -15,14 +15,14 @@ jobs:
 
   build-js:
     docker:
-      - image: circleci/node:8
+      - image: circleci/node:11
     steps:
       - checkout
       - run: make check-js test-js
 
   build-integration:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:2e6dfd42f24f9948be029bf57289331e3aea7b3d34cd35c6dbe44aeca3790588
+      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:38635a2b7f755340f8e3bf1b635d465e39cc574fc8fd60e44a87ffc1a4e66e69
     working_directory: /go/src/github.com/windmilleng/tilt
     steps:
       - checkout
@@ -76,7 +76,7 @@ jobs:
       - run: curl --silent --show-error --location --fail --retry 3 --output /tmp/helm.tar.gz  https://storage.googleapis.com/kubernetes-helm/helm-v2.12.1-darwin-amd64.tar.gz &&
              tar -xz -C /tmp -f /tmp/helm.tar.gz &&
              mv /tmp/darwin-amd64/helm /usr/local/bin/helm
-      - run: curl -sSL "https://github.com/gotestyourself/gotestsum/releases/download/v0.3.3/gotestsum_0.3.3_darwin_amd64.tar.gz" | sudo tar -xz -C /usr/local/bin gotestsum 
+      - run: curl -sSL "https://github.com/gotestyourself/gotestsum/releases/download/v0.3.3/gotestsum_0.3.3_darwin_amd64.tar.gz" | sudo tar -xz -C /usr/local/bin gotestsum
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.
       - run: mkdir -p test-results

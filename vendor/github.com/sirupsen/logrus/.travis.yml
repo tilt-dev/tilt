@@ -1,7 +1,9 @@
 language: go
 go:
-  - 1.9.x
-  - 1.10.x
+  - 1.6.x
+  - 1.7.x
+  - 1.8.x
+  - tip
 env:
   - GOMAXPROCS=4 GORACE=halt_on_error=1
 install:

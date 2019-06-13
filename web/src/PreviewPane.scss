@@ -2,6 +2,7 @@
 
 .PreviewPane {
   width: 100%;
+  margin-top: $tabnav-height;
   margin-right: $sidebar-width;
   margin-bottom: $statusbar-height;
   background-color: $color-white;
@@ -12,6 +13,8 @@
   color: $color-white;
   background-color: transparent;
   padding: $spacing-unit / 2;
+  display: flex;
+  justify-content: center;
 }
 
 .PreviewPane--expanded {

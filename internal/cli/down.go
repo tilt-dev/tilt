@@ -8,8 +8,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/engine"
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 )
@@ -30,12 +30,13 @@ func (c *downCmd) register() *cobra.Command {
 }
 
 func (c *downCmd) run(ctx context.Context, args []string) error {
-	analyticsService.Incr("cmd.down", map[string]string{
+	a := analytics.Get(ctx)
+	a.Incr("cmd.down", map[string]string{
 		"count": fmt.Sprintf("%d", len(args)),
 	})
-	defer analyticsService.Flush(time.Second)
+	defer a.Flush(time.Second)
 
-	downDeps, err := wireDownDeps(ctx)
+	downDeps, err := wireDownDeps(ctx, a)
 	if err != nil {
 		return err
 	}
@@ -49,11 +50,6 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 	if err != nil {
 		return errors.Wrap(err, "Parsing manifest YAML")
 	}
-	gyamlEntities, err := k8s.ParseYAMLFromString(tlr.Global.K8sTarget().YAML)
-	if err != nil {
-		return errors.Wrap(err, "Parsing global YAML")
-	}
-	entities = append(entities, gyamlEntities...)
 
 	err = downDeps.kClient.Delete(ctx, entities)
 	if err != nil {

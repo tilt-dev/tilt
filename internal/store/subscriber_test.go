@@ -13,7 +13,7 @@ func TestSubscriber(t *testing.T) {
 	st, _ := NewStoreForTesting()
 	ctx := context.Background()
 	s := newFakeSubscriber()
-	st.AddSubscriber(s)
+	st.AddSubscriber(ctx, s)
 
 	st.NotifySubscribers(ctx)
 	call := <-s.onChange
@@ -24,7 +24,7 @@ func TestSubscriberInterleavedCalls(t *testing.T) {
 	st, _ := NewStoreForTesting()
 	ctx := context.Background()
 	s := newFakeSubscriber()
-	st.AddSubscriber(s)
+	st.AddSubscriber(ctx, s)
 
 	st.NotifySubscribers(ctx)
 	call := <-s.onChange
@@ -43,12 +43,34 @@ func TestSubscriberInterleavedCalls(t *testing.T) {
 	}
 }
 
+func TestAddSubscriberToAlreadySetUpListCallsSetUp(t *testing.T) {
+	st, _ := NewStoreForTesting()
+	ctx := context.Background()
+	st.subscribers.SetUp(ctx)
+
+	s := newFakeSubscriber()
+	st.AddSubscriber(ctx, s)
+
+	assert.Equal(t, 1, s.setupCount)
+}
+
+func TestAddSubscriberBeforeSetupNoop(t *testing.T) {
+	st, _ := NewStoreForTesting()
+	ctx := context.Background()
+
+	s := newFakeSubscriber()
+	st.AddSubscriber(ctx, s)
+
+	// We haven't called SetUp on subscriber list as a whole, so won't call it on a new individual subscriber
+	assert.Equal(t, 0, s.setupCount)
+}
+
 func TestRemoveSubscriber(t *testing.T) {
 	st, _ := NewStoreForTesting()
 	ctx := context.Background()
 	s := newFakeSubscriber()
 
-	st.AddSubscriber(s)
+	st.AddSubscriber(ctx, s)
 	st.NotifySubscribers(ctx)
 	s.assertOnChangeCount(t, 1)
 
@@ -68,11 +90,22 @@ func TestRemoveSubscriberNotFound(t *testing.T) {
 	}
 }
 
+func TestSubscriberSetup(t *testing.T) {
+	st, _ := NewStoreForTesting()
+	ctx := context.Background()
+	s := newFakeSubscriber()
+	st.AddSubscriber(ctx, s)
+
+	st.subscribers.SetUp(ctx)
+
+	assert.Equal(t, 1, s.setupCount)
+}
+
 func TestSubscriberTeardown(t *testing.T) {
 	st, _ := NewStoreForTesting()
 	ctx := context.Background()
 	s := newFakeSubscriber()
-	st.AddSubscriber(s)
+	st.AddSubscriber(ctx, s)
 
 	go st.Dispatch(NewErrorAction(fmt.Errorf("fake error")))
 	err := st.Loop(ctx)
@@ -87,7 +120,7 @@ func TestSubscriberTeardownOnRemove(t *testing.T) {
 	st, _ := NewStoreForTesting()
 	ctx := context.Background()
 	s := newFakeSubscriber()
-	st.AddSubscriber(s)
+	st.AddSubscriber(ctx, s)
 
 	errChan := make(chan error)
 	go func() {
@@ -117,6 +150,7 @@ func TestSubscriberTeardownOnRemove(t *testing.T) {
 
 type fakeSubscriber struct {
 	onChange      chan onChangeCall
+	setupCount    int
 	teardownCount int
 }
 
@@ -164,6 +198,10 @@ func (f *fakeSubscriber) OnChange(ctx context.Context, st RStore) {
 	<-call.done
 }
 
-func (f *fakeSubscriber) Teardown(ctx context.Context) {
+func (f *fakeSubscriber) SetUp(ctx context.Context) {
+	f.setupCount++
+}
+
+func (f *fakeSubscriber) TearDown(ctx context.Context) {
 	f.teardownCount++
 }

@@ -199,6 +199,45 @@ func TestContainerPrefixes(t *testing.T) {
 	f.AssertOutputDoesNotContain(cNameNoPrefix.String())
 }
 
+func TestLogsByPodPhase(t *testing.T) {
+	for _, test := range []struct {
+		phase      v1.PodPhase
+		expectLogs bool
+	}{
+		{v1.PodPending, false},
+		{v1.PodRunning, true},
+		{v1.PodSucceeded, true},
+		{v1.PodFailed, true},
+		{v1.PodUnknown, false},
+	} {
+		t.Run(string(test.phase), func(t *testing.T) {
+			f := newPLMFixture(t)
+			defer f.TearDown()
+
+			f.kClient.SetLogsForPodContainer(podID, cName, "hello world!")
+
+			state := f.store.LockMutableStateForTesting()
+			state.WatchFiles = true
+			state.UpsertManifestTarget(newManifestTargetWithPod(
+				model.Manifest{Name: "server"},
+				store.Pod{
+					PodID:         podID,
+					ContainerName: cName,
+					ContainerID:   cID,
+					Phase:         test.phase,
+				}))
+			f.store.UnlockMutableState()
+
+			f.plm.OnChange(f.ctx, f.store)
+			if test.expectLogs {
+				f.AssertOutputContains("hello world!")
+			} else {
+				f.AssertOutputDoesNotContain("hello world!")
+			}
+		})
+	}
+}
+
 type plmFixture struct {
 	*tempdir.TempDirFixture
 	ctx     context.Context
@@ -219,7 +258,7 @@ func newPLMFixture(t *testing.T) *plmFixture {
 		if !ok {
 			t.Errorf("Expected action type PodLogAction. Actual: %T", action)
 		}
-		out.Write(podLog.logEvent.message)
+		out.Write(podLog.LogEvent.Message())
 	}
 
 	st := store.NewStore(store.Reducer(reducer), store.LogActionsFlag(false))
@@ -260,6 +299,7 @@ func (f *plmFixture) ConsumeLogActionsUntil(expected string) {
 
 func (f *plmFixture) TearDown() {
 	f.cancel()
+	f.kClient.TearDown()
 	f.TempDirFixture.TearDown()
 }
 
@@ -271,6 +311,7 @@ func (f *plmFixture) AssertOutputContains(s string) {
 }
 
 func (f *plmFixture) AssertOutputDoesNotContain(s string) {
+	time.Sleep(10 * time.Millisecond)
 	assert.NotContains(f.T(), f.out.String(), s)
 }
 

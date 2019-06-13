@@ -1,11 +1,11 @@
 package k8s
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
@@ -35,13 +36,18 @@ type PodID string
 type NodeID string
 type ServiceName string
 type KubeContext string
+type UID string
 
 const DefaultNamespace = Namespace("default")
+
+var ForbiddenFieldsRe = regexp.MustCompile(`updates to .* are forbidden`)
 
 func (pID PodID) Empty() bool    { return pID.String() == "" }
 func (pID PodID) String() string { return string(pID) }
 
 func (nID NodeID) String() string { return string(nID) }
+
+func (n Namespace) Empty() bool { return n == "" }
 
 func (n Namespace) String() string {
 	if n == "" {
@@ -79,9 +85,16 @@ type Client interface {
 
 	WatchServices(ctx context.Context, lps []model.LabelPair) (<-chan *v1.Service, error)
 
+	WatchEvents(ctx context.Context) (<-chan *v1.Event, error)
+
+	WatchEverything(ctx context.Context, lps []model.LabelPair) (<-chan watch.Event, error)
+
 	ConnectedToCluster(ctx context.Context) error
 
 	ContainerRuntime(ctx context.Context) container.Runtime
+
+	// Some clusters support a private image registry that we can push to.
+	PrivateRegistry(ctx context.Context) container.Registry
 
 	Exec(ctx context.Context, podID PodID, cName container.Name, n Namespace, cmd []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error
 }
@@ -94,7 +107,9 @@ type K8sClient struct {
 	portForwarder   PortForwarder
 	configNamespace Namespace
 	clientSet       kubernetes.Interface
+	dynamic         dynamic.Interface
 	runtimeAsync    *runtimeAsync
+	registryAsync   *registryAsync
 }
 
 var _ Client = K8sClient{}
@@ -125,6 +140,12 @@ func ProvideK8sClient(
 
 	core := clientset.CoreV1()
 	runtimeAsync := newRuntimeAsync(core)
+	registryAsync := newRegistryAsync(env, core, runtimeAsync)
+
+	di, err := dynamic.NewForConfig(restConfig)
+	if err != nil {
+		return &explodingClient{err: err}
+	}
 
 	// TODO(nick): I'm not happy about the way that pkg/browser uses global writers.
 	writer := logger.Get(ctx).Writer(logger.DebugLvl)
@@ -140,6 +161,8 @@ func ProvideK8sClient(
 		configNamespace: configNamespace,
 		clientSet:       clientset,
 		runtimeAsync:    runtimeAsync,
+		registryAsync:   registryAsync,
+		dynamic:         di,
 	}
 }
 
@@ -255,8 +278,7 @@ func (k K8sClient) ConnectedToCluster(ctx context.Context) error {
 // This should bias towards false positives (i.e., we think something is an
 // immutable field error when it's not).
 func maybeImmutableFieldStderr(stderr string) bool {
-	return strings.Contains(stderr, validation.FieldImmutableErrorMsg) ||
-		strings.Contains(stderr, "Forbidden")
+	return strings.Contains(stderr, validation.FieldImmutableErrorMsg) || ForbiddenFieldsRe.Match([]byte(stderr))
 }
 
 // Deletes all given entities.
@@ -280,13 +302,12 @@ func (k K8sClient) actOnEntities(ctx context.Context, cmdArgs []string, entities
 	args := append([]string{}, cmdArgs...)
 	args = append(args, "-f", "-")
 
-	rawYAML, err := SerializeYAML(entities)
+	rawYAML, err := SerializeSpecYAML(entities)
 	if err != nil {
 		return "", "", errors.Wrapf(err, "serializeYaml for kubectl %s", cmdArgs)
 	}
-	stdin := bytes.NewReader([]byte(rawYAML))
 
-	return k.kubectlRunner.execWithStdin(ctx, args, stdin)
+	return k.kubectlRunner.execWithStdin(ctx, args, rawYAML)
 }
 
 func ProvideServerVersion(clientSet *kubernetes.Clientset) (*version.Info, error) {

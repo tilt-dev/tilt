@@ -16,7 +16,6 @@ func ProvideSubscribers(
 	fwm *WatchManager,
 	bc *BuildController,
 	ic *ImageController,
-	gybc *GlobalYAMLBuildController,
 	cc *ConfigsController,
 	dcw *DockerComposeEventWatcher,
 	dclm *DockerComposeLogManager,
@@ -24,7 +23,11 @@ func ProvideSubscribers(
 	sm SyncletManager,
 	ar *AnalyticsReporter,
 	hudsc *server.HeadsUpServerController,
-	sail *client.SailClient) []store.Subscriber {
+	sail client.SailClient,
+	tvc *TiltVersionChecker,
+	ta *TiltAnalyticsSubscriber,
+	ewm *EventWatchManager,
+	umm *UIDMapManager) []store.Subscriber {
 	return []store.Subscriber{
 		hud,
 		pw,
@@ -34,7 +37,6 @@ func ProvideSubscribers(
 		fwm,
 		bc,
 		ic,
-		gybc,
 		cc,
 		dcw,
 		dclm,
@@ -43,5 +45,9 @@ func ProvideSubscribers(
 		ar,
 		hudsc,
 		sail,
+		tvc,
+		ta,
+		ewm,
+		umm,
 	}
 }

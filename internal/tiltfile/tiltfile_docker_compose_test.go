@@ -79,7 +79,7 @@ func TestDockerComposeManifest(t *testing.T) {
 		// TODO(maia): assert m.tiltFilename
 	)
 
-	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "docker-compose.yml", "foo/Dockerfile"}
+	expectedConfFiles := []string{"Tiltfile", ".tiltignore", ".dockerignore", "docker-compose.yml", "foo/Dockerfile", "foo/.dockerignore"}
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
@@ -133,7 +133,7 @@ services:
 		// TODO(maia): assert m.tiltFilename
 	)
 
-	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "docker-compose.yml", "baz/alternate-Dockerfile"}
+	expectedConfFiles := []string{"Tiltfile", ".tiltignore", ".dockerignore", "docker-compose.yml", "baz/alternate-Dockerfile", "baz/.dockerignore"}
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
@@ -211,7 +211,7 @@ RUN echo hi`
 		// TODO(maia): assert m.tiltFilename
 	)
 
-	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "docker-compose.yml", "foo/Dockerfile"}
+	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "docker-compose.yml", "foo/Dockerfile", ".dockerignore", "foo/.dockerignore"}
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
@@ -246,7 +246,7 @@ services:
 		dcPublishedPorts(12312),
 	)
 
-	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "foo/docker-compose.yml", "foo/Dockerfile"}
+	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "foo/docker-compose.yml", "foo/Dockerfile", ".dockerignore", "foo/.dockerignore"}
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
@@ -272,31 +272,6 @@ RUN echo hi`
 	f.assertNextManifest("foo",
 		buildFilters("foo/tmp2"),
 		fileChangeFilters("foo/tmp2"),
-		buildFilters("foo/tmp"),
-		fileChangeFilters("foo/tmp"),
-	)
-}
-
-func TestDockerComposeHonorsGitIgnore(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	df := `FROM alpine
-
-ADD . /app
-COPY ./thing.go /stuff
-RUN echo hi`
-	f.file("foo/Dockerfile", df)
-
-	f.file("docker-compose.yml", simpleConfig)
-	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
-	f.gitInit(".")
-
-	f.file(".gitignore", "foo/tmp")
-
-	f.load("foo")
-
-	f.assertNextManifest("foo",
 		buildFilters("foo/tmp"),
 		fileChangeFilters("foo/tmp"),
 	)
@@ -340,8 +315,13 @@ dc_resource('foo', 'gcr.io/foo')
 	f.load()
 
 	m := f.assertNextManifest("foo", db(image("gcr.io/foo")))
-	assert.True(t, m.ImageTargetAt(0).IsDockerBuild())
-	assert.False(t, m.ImageTargetAt(0).IsFastBuild())
+	iTarget := m.ImageTargetAt(0)
+
+	// Make sure there's no fast build / live update in the default case.
+	assert.True(t, iTarget.IsDockerBuild())
+	assert.False(t, iTarget.IsFastBuild())
+	assert.True(t, iTarget.AnyFastBuildInfo().Empty())
+	assert.True(t, iTarget.AnyLiveUpdateInfo().Empty())
 
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	assert.Equal(t, m.DockerComposeTarget().ConfigPath, configPath)
@@ -383,7 +363,7 @@ docker_compose('docker-compose.yml')
 dc_resource('foo', 'gcr.io/foo')
 `)
 
-	f.load()
+	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	m := f.assertNextManifest("foo",
 		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi"), hotReload(false)))
 

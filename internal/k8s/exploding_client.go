@@ -61,12 +61,24 @@ func (ec *explodingClient) WatchServices(ctx context.Context, lps []model.LabelP
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
+func (ec *explodingClient) WatchEvents(ctx context.Context) (<-chan *v1.Event, error) {
+	return nil, errors.Wrap(ec.err, "could not set up k8s client")
+}
+
+func (ec *explodingClient) WatchEverything(ctx context.Context, lps []model.LabelPair) (<-chan watch.Event, error) {
+	return nil, errors.Wrap(ec.err, "could not set up k8s client")
+}
+
 func (ec *explodingClient) ConnectedToCluster(ctx context.Context) error {
 	return errors.Wrap(ec.err, "could not set up k8s client")
 }
 
 func (ec *explodingClient) ContainerRuntime(ctx context.Context) container.Runtime {
 	return container.RuntimeUnknown
+}
+
+func (ec *explodingClient) PrivateRegistry(ctx context.Context) container.Registry {
+	return ""
 }
 
 func (ec *explodingClient) Exec(ctx context.Context, podID PodID, cName container.Name, n Namespace, cmd []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {

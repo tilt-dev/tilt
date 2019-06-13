@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/analytics"
+
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/opencontainers/go-digest"
@@ -31,7 +33,7 @@ func TestDockerBuildWithCache(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	manifest := NewSanchoDockerBuildManifestWithCache([]string{"/root/.cache"})
+	manifest := NewSanchoDockerBuildManifestWithCache(f, []string{"/root/.cache"})
 	cache := "gcr.io/some-project-162817/sancho:tilt-cache-3de427a264f80719a58a9abd456487b3"
 	f.docker.Images[cache] = types.ImageInspect{}
 
@@ -99,8 +101,8 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	iTarget1 := NewSanchoDockerBuildImageTarget()
-	iTarget2 := NewSanchoSidecarDockerBuildImageTarget()
+	iTarget1 := NewSanchoDockerBuildImageTarget(f)
+	iTarget2 := NewSanchoSidecarDockerBuildImageTarget(f)
 	kTarget := model.K8sTarget{Name: "sancho", YAML: testyaml.SanchoSidecarYAML}.
 		WithDependencyIDs([]model.TargetID{iTarget1.ID(), iTarget2.ID()})
 	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}
@@ -165,7 +167,7 @@ func TestDeployIDInjectedAndSent(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	manifest := NewSanchoDockerBuildManifest()
+	manifest := NewSanchoDockerBuildManifest(f)
 
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
@@ -212,6 +214,54 @@ func TestNoImageTargets(t *testing.T) {
 	expectedLabelStr := fmt.Sprintf("%s: %s", k8s.ManifestNameLabel, targName)
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedLabelStr),
 		"Expected \"%s\"image to appear once in YAML: %s", expectedLabelStr, f.k8s.Yaml)
+}
+
+func TestImageIsClean(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	manifest := NewSanchoDockerBuildManifest(f)
+	iTargetID1 := manifest.ImageTargets[0].ID()
+	result1 := store.NewImageBuildResult(iTargetID1, container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"))
+
+	stateSet := store.BuildStateSet{
+		iTargetID1: store.NewBuildState(result1, []string{}),
+	}
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Expect no build or push, b/c image is clean (i.e. last build was an image build and
+	// no file changes since).
+	assert.Equal(t, 0, f.docker.BuildCount)
+	assert.Equal(t, 0, f.docker.PushCount)
+}
+
+func TestImageIsDirtyAfterContainerBuild(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	manifest := NewSanchoDockerBuildManifest(f)
+	iTargetID1 := manifest.ImageTargets[0].ID()
+	result1 := store.BuildResult{
+		TargetID:    iTargetID1,
+		Image:       container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"),
+		ContainerID: container.ID("12345"),
+	}
+
+	stateSet := store.BuildStateSet{
+		iTargetID1: store.NewBuildState(result1, []string{}),
+	}
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Expect build + push; last result has a container ID, which implies that it was an in-place
+	// update, so the current state of this manifest is NOT reflected in an existing image.
+	assert.Equal(t, 1, f.docker.BuildCount)
+	assert.Equal(t, 1, f.docker.PushCount)
 }
 
 func TestMultiStageDockerBuild(t *testing.T) {
@@ -337,7 +387,7 @@ func TestKINDPush(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvKIND)
 	defer f.TearDown()
 
-	manifest := NewSanchoDockerBuildManifest()
+	manifest := NewSanchoDockerBuildManifest(f)
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
@@ -371,7 +421,7 @@ func TestDeployUsesInjectRef(t *testing.T) {
 		manifest       func(f pather) model.Manifest
 		expectedImages []string
 	}{
-		{"docker build", func(f pather) model.Manifest { return NewSanchoDockerBuildManifest() }, expectedImages},
+		{"docker build", func(f pather) model.Manifest { return NewSanchoDockerBuildManifest(f) }, expectedImages},
 		{"fast build", NewSanchoFastBuildManifest, expectedImages},
 		{"custom build", NewSanchoCustomBuildManifest, expectedImages},
 		{"fast multi stage", NewSanchoFastMultiStageManifest, append(expectedImages, "foo.com/sancho-base")},
@@ -410,7 +460,6 @@ func TestDeployUsesInjectRef(t *testing.T) {
 			assert.ElementsMatch(t, test.expectedImages, observedImages)
 		})
 	}
-
 }
 
 type ibdFixture struct {
@@ -431,7 +480,8 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 	kClient := k8s.NewFakeK8sClient()
 	kp := &fakeKINDPusher{}
 	clock := fakeClock{time.Date(2019, 1, 1, 1, 1, 1, 1, time.UTC)}
-	ibd, err := provideImageBuildAndDeployer(ctx, docker, kClient, env, dir, clock, kp)
+	_, ta := analytics.NewMemoryTiltAnalyticsForTest(analytics.NullOpter{})
+	ibd, err := provideImageBuildAndDeployer(ctx, docker, kClient, env, dir, clock, kp, ta)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -444,6 +494,11 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 		st:             store.NewTestingStore(),
 		kp:             kp,
 	}
+}
+
+func (f *ibdFixture) TearDown() {
+	f.k8s.TearDown()
+	f.TempDirFixture.TearDown()
 }
 
 type fakeKINDPusher struct {

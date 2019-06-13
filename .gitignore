@@ -19,7 +19,8 @@ tilt_option.json
 *.out
 
 # Text editor stuff
-.idea
+.idea/*
+
 
 # Generated yaml (from synclet deploy)
 *.generated.yaml

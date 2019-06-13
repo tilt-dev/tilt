@@ -37,7 +37,7 @@ func TestInjectDigestSanchoYAML(t *testing.T) {
 		t.Errorf("Expected replaced: true. Actual: %v", replaced)
 	}
 
-	result, err := SerializeYAML([]K8sEntity{newEntity})
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestInjectDigestDoesNotMutateOriginal(t *testing.T) {
 		t.Errorf("Expected replaced: true. Actual: %v", replaced)
 	}
 
-	result, err := SerializeYAML([]K8sEntity{entity})
+	result, err := SerializeSpecYAML([]K8sEntity{entity})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestInjectImagePullPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := SerializeYAML([]K8sEntity{newEntity})
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func TestInjectImagePullPolicy(t *testing.T) {
 		t.Errorf("image does not have correct pull policy: %s", result)
 	}
 
-	serializedOrigEntity, err := SerializeYAML([]K8sEntity{entity})
+	serializedOrigEntity, err := SerializeSpecYAML([]K8sEntity{entity})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +122,7 @@ func TestInjectImagePullPolicyDoesNotMutateOriginal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := SerializeYAML([]K8sEntity{entity})
+	result, err := SerializeSpecYAML([]K8sEntity{entity})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +173,7 @@ func TestInjectDigestBlorgBackendYAML(t *testing.T) {
 		t.Errorf("Expected replaced: true. Actual: %v", replaced)
 	}
 
-	result, err := SerializeYAML([]K8sEntity{newEntity})
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +224,7 @@ func TestInjectSyncletImage(t *testing.T) {
 		t.Errorf("Expected replacement in:\n%s", testyaml.SyncletYAML)
 	}
 
-	result, err := SerializeYAML([]K8sEntity{newEntity})
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,19 +243,19 @@ func TestEntityHasImage(t *testing.T) {
 	img := container.MustParseSelector("gcr.io/blorg-dev/blorg-backend:devel-nick")
 	wrongImg := container.MustParseSelector("gcr.io/blorg-dev/wrong-app-whoops:devel-nick")
 
-	match, err := entities[0].HasImage(img, nil)
+	match, err := entities[0].HasImage(img, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.False(t, match, "service yaml should not match (does not contain image)")
 
-	match, err = entities[1].HasImage(img, nil)
+	match, err = entities[1].HasImage(img, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.True(t, match, "deployment yaml should match image %s", img.String())
 
-	match, err = entities[1].HasImage(wrongImg, nil)
+	match, err = entities[1].HasImage(wrongImg, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,11 +273,31 @@ func TestEntityHasImage(t *testing.T) {
 		t.Fatal(err)
 	}
 	imageJSONPaths := []JSONPath{jp}
-	match, err = e.HasImage(img, imageJSONPaths)
+	match, err = e.HasImage(img, imageJSONPaths, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.True(t, match, "CRD yaml should match image %s", img.String())
+
+	entities, err = ParseYAMLFromString(testyaml.SanchoImageInEnvYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	img = container.MustParseSelector("gcr.io/some-project-162817/sancho")
+	e = entities[0]
+	match, err = e.HasImage(img, nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.True(t, match, "deployment yaml should match image %s", img.String())
+	img2 := container.MustParseSelector("gcr.io/some-project-162817/sancho2")
+	e = entities[0]
+	match, err = e.HasImage(img2, nil, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.True(t, match, "CRD yaml should match image %s", img2.String())
+
 }
 
 func TestInjectDigestEnvVar(t *testing.T) {
@@ -310,7 +330,7 @@ func TestInjectDigestEnvVar(t *testing.T) {
 		t.Errorf("Expected replaced: true. Actual: %v", replaced)
 	}
 
-	result, err := SerializeYAML([]K8sEntity{newEntity})
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -346,7 +366,7 @@ func testInjectDigestCRD(t *testing.T, yaml string, expectedDigestPrefix string)
 		t.Errorf("Expected replaced: true. Actual: %v", replaced)
 	}
 
-	result, err := SerializeYAML([]K8sEntity{newEntity})
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
 	if err != nil {
 		t.Fatal(err)
 	}

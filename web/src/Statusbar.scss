@@ -5,43 +5,137 @@
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 1000;
+  z-index: $z-statusbar;
   height: $statusbar-height;
-  color: $color-navy;
-  background-color: $color-grey-lightest;
+  background-color: $color-white;
+  color: $color-gray;
   display: flex;
-  align-items: center;
-  border-top: 1px solid $color-navy-dark;
+  align-items: stretch;
+  border-top: 1px solid $color-gray-darkest;
+  border-bottom: 1px solid $color-gray-darkest;
+  box-sizing: border-box;
+  white-space: nowrap;
 }
+
 .Statusbar-panel {
-  padding: $spacing-unit / 4 $spacing-unit / 2;
   display: flex;
   align-items: center;
-  background: transparent;
-  border: none;
-  height: 100%;
-  min-width: $spacing-unit * 3;
+  box-sizing: border-box;
 }
-.Statusbar-panel .icon {
-  font-size: $font-size-icon;
+.Statusbar-panel + .Statusbar-panel {
+  border-left: 1px dashed $color-gray-lightest;
 }
-.Statusbar-panel--error .icon {
-  color: $color-red;
+
+// Errors and Warnings
+.Statusbar-errWarnPanel {
+  display: flex;
+  align-items: stretch;
 }
-.Statusbar-panel--warning .icon {
-  color: $color-yellow;
-  margin-top: -5px;
+.Statusbar-errWarnPanel-child {
+  display: flex;
+  align-items: center;
+  padding-left: $spacing-unit / 2;
+  padding-right: $spacing-unit / 2;
+  // Eyeball to make them the same width, and not change size when contents update
+  min-width: $spacing-unit * 3.5;
 }
-.Statusbar-panel--spacer {
+.Statusbar-errWarnPanel-child + .Statusbar-errWarnPanel-child {
+  border-left: 1px solid rgba($color-gray-lightest, $translucent);
+}
+.Statusbar-errWarnPanel-icon {
+  fill: $color-gray-lightest;
+  opacity: $translucent;
+  margin-right: $spacing-unit / 3;
+  filter: drop-shadow(-1px 1px 0px rgba($color-gray-darkest, $translucent-ish));
+}
+.Statusbar-errWarnPanel-icon--error {
+  fill: $color-red;
+  opacity: 1;
+  filter: none;
+}
+.Statusbar-errWarnPanel-icon--warning {
+  fill: $color-yellow;
+  opacity: 1;
+  filter: none;
+}
+.Statusbar-errWarnPanel-count {
+  font-weight: bold;
+}
+
+// Status Message
+.Statusbar-statusMsgPanel {
   flex-grow: 1;
+  display: flex;
+  justify-content: space-between;
+  padding-left: $spacing-unit / 2;
+  padding-right: $spacing-unit / 2;
 }
-.Statusbar-panel--up {
-  width: $sidebar-width;
+
+.Statusbar-statusMsgPanel-label {
+  text-transform: uppercase;
+  font-size: $font-size-small;
+  font-weight: bold;
+  color: $color-gray-lightest;
+  margin-right: $spacing-unit / 4;
+}
+
+// Progress
+.Statusbar-progressPanel {
+  width: $sidebar-width - $statusbar-tiltPanel-width;
   max-width: $sidebar-maxWidth;
-  justify-content: flex-end;
+  justify-content: space-between;
+  display: flex;
+  padding-left: $spacing-unit / 2;
+  box-sizing: border-box;
 }
-.Statusbar-panel--up .icon {
-  margin-left: $spacing-unit / 2;
-  width: $spacing-unit;
-  height: $spacing-unit;
+
+// Tilt Logo and Update
+.Statusbar-tiltPanel {
+  display: flex;
+  align-items: center;
+  padding-left: $spacing-unit / 2;
+  padding-right: $spacing-unit / 2;
+  height: $statusbar-height;
+  width: $statusbar-tiltPanel-width;
+  box-sizing: border-box;
+}
+
+.Statusbar-tiltPanel-updateIcon {
+  display: flex;
+  position: absolute;
+  outline: $color-white;
+  transition: transform $animation-timing ease;
+  margin-left: -6px;
+  margin-top: -6px;
+}
+
+.Statusbar-tiltPanel-link {
+  display: flex;
+}
+
+.Statusbar-tiltPanel-upgradeTooltip {
+  position: absolute;
+  right: 0;
+  width: $sidebar-width;
+  height: 2 * $statusbar-height;
+  top: -2 * $statusbar-height;
+  background: $color-gray-dark;
+  color: $color-white;
+  border: 2px solid $color-white;
+  padding: $spacing-unit / 3;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity $animation-timing ease;
+}
+
+.Statusbar-tiltPanel-link:hover .Statusbar-tiltPanel-upgradeTooltip {
+  opacity: 1;
+}
+
+.Statusbar-tiltPanel-link:hover .Statusbar-tiltPanel-updateIcon {
+  transform: rotate(180deg);
 }

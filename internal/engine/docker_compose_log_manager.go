@@ -120,18 +120,11 @@ func (m *DockerComposeLogManager) consumeLogs(watch dockerComposeLogWatch, st st
 		_ = readCloser.Close()
 	}()
 
-	// TODO(maia): docker-compose already prefixes logs, but maybe we want to roll
-	// our own (as in PodWatchManager) cuz it's prettier?
-	globalLogWriter := DockerComposeGlobalLogWriter{
-		writer: logger.Get(watch.ctx).Writer(logger.InfoLvl),
-	}
 	actionWriter := DockerComposeLogActionWriter{
 		store:        st,
 		manifestName: name,
 	}
-	multiWriter := io.MultiWriter(globalLogWriter, actionWriter)
-
-	_, err = io.Copy(multiWriter, NewHardCancelReader(watch.ctx, readCloser))
+	_, err = io.Copy(actionWriter, NewHardCancelReader(watch.ctx, readCloser))
 	if err != nil && watch.ctx.Err() == nil {
 		logger.Get(watch.ctx).Debugf("Error streaming %s logs: %v", name, err)
 		return
@@ -161,8 +154,7 @@ func (w DockerComposeLogActionWriter) Write(p []byte) (n int, err error) {
 		return len(p), nil
 	}
 	w.store.Dispatch(DockerComposeLogAction{
-		ManifestName: w.manifestName,
-		logEvent:     newLogEvent(append([]byte{}, p...)),
+		LogEvent: store.NewLogEvent(w.manifestName, p),
 	})
 	return len(p), nil
 }
@@ -171,16 +163,4 @@ var _ store.Subscriber = &DockerComposeLogManager{}
 
 func shouldFilterDCLog(p []byte) bool {
 	return bytes.HasPrefix(p, []byte("Attaching to "))
-}
-
-type DockerComposeGlobalLogWriter struct {
-	writer io.Writer
-}
-
-func (w DockerComposeGlobalLogWriter) Write(p []byte) (n int, err error) {
-	if shouldFilterDCLog(p) {
-		return len(p), nil
-	}
-
-	return w.writer.Write(p)
 }

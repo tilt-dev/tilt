@@ -1,27 +1,21 @@
-import React, { Component, createRef } from "react"
-import Ansi from "ansi-to-react"
+import React, { Component } from "react"
+import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
+import AnsiLine from "./AnsiLine"
 import "./LogPane.scss"
 
-type AnsiLineProps = {
-  line: string
-}
-let AnsiLine = React.memo(function(props: AnsiLineProps) {
-  return (
-    <div>
-      <Ansi linkify={false} useClasses={true}>
-        {props.line}
-      </Ansi>
-    </div>
-  )
-})
+const WHEEL_DEBOUNCE_MS = 250
 
 type LogPaneProps = {
   log: string
   message?: string
   isExpanded: boolean
+  podID: string
+  endpoints: string[]
+  podStatus: string
 }
 type LogPaneState = {
   autoscroll: boolean
+  lastWheelEventTimeMs: number
 }
 
 class LogPane extends Component<LogPaneProps, LogPaneState> {
@@ -33,6 +27,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 
     this.state = {
       autoscroll: true,
+      lastWheelEventTimeMs: 0,
     }
 
     this.refreshAutoScroll = this.refreshAutoScroll.bind(this)
@@ -67,7 +62,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 
   private handleWheel(event: WheelEvent) {
     if (event.deltaY < 0) {
-      this.setState({ autoscroll: false })
+      this.setState({ autoscroll: false, lastWheelEventTimeMs: Date.now() })
     }
   }
 
@@ -89,7 +84,17 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
         autoscroll = lastElInView
       }
 
-      this.setState({ autoscroll })
+      this.setState(prevState => {
+        let lastWheelEventTimeMs = prevState.lastWheelEventTimeMs
+        if (lastWheelEventTimeMs) {
+          if (Date.now() - lastWheelEventTimeMs < WHEEL_DEBOUNCE_MS) {
+            return prevState
+          }
+          return { autoscroll: false, lastWheelEventTimeMs: 0 }
+        }
+
+        return { autoscroll, lastWheelEventTimeMs: 0 }
+      })
     })
   }
 
@@ -97,23 +102,55 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     let classes = `LogPane ${this.props.isExpanded ? "LogPane--expanded" : ""}`
 
     let log = this.props.log
-    if (!log || log.length == 0) {
+    if (!log || log.length === 0) {
       return (
         <section className={classes}>
-          <p className="LogPane-empty">No logs received</p>
+          <section className="Pane-empty-message">
+            <LogoWordmarkSvg />
+            <h2>No Logs Found</h2>
+          </section>
         </section>
       )
     }
 
-    let els: Array<React.ReactElement> = []
+    let podID = this.props.podID
+    let podStatus = this.props.podStatus
+    let podIDEl = podID && (
+      <>
+        <div className="resourceInfo">
+          <div className="resourceInfo-label">Pod Status:</div>
+          <div className="resourceInfo-value">{podStatus}</div>
+        </div>
+        <div className="resourceInfo">
+          <div className="resourceInfo-label">Pod ID:</div>
+          <div className="resourceInfo-value">{podID}</div>
+        </div>
+      </>
+    )
+
+    let endpoints = this.props.endpoints
+    let endpointsEl = endpoints.length > 0 && (
+      <div className="resourceInfo">
+        <div className="resourceInfo-label">
+          Endpoint{endpoints.length > 1 ? "s" : ""}:
+        </div>
+        {endpoints.map(ep => (
+          <a className="resourceInfo-value" href={ep} target="_blank">
+            {ep}
+          </a>
+        ))}
+      </div>
+    )
+
+    let logLines: Array<React.ReactElement> = []
     let lines = log.split("\n")
-    els = lines.map(
+    logLines = lines.map(
       (line: string, i: number): React.ReactElement => {
         return <AnsiLine key={"logLine" + i} line={line} />
       }
     )
-    els.push(
-      <div
+    logLines.push(
+      <p
         key="logEnd"
         className="logEnd"
         ref={el => {
@@ -121,10 +158,20 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
         }}
       >
         &#9608;
-      </div>
+      </p>
     )
 
-    return <section className={classes}>{els}</section>
+    return (
+      <section className={classes}>
+        {(endpoints || podID) && (
+          <section className="resourceBar">
+            {podIDEl}
+            {endpointsEl}
+          </section>
+        )}
+        <section className="logText">{logLines}</section>
+      </section>
+    )
   }
 }
 

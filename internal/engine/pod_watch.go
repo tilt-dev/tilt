@@ -53,11 +53,11 @@ func (w *PodWatcher) diff(ctx context.Context, st store.RStore) (setup []PodWatc
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	atLeastOneK8S := false
+	atLeastOneK8s := false
 	var neededWatches []PodWatch
 	for _, m := range state.Manifests() {
 		if m.IsK8s() {
-			atLeastOneK8S = true
+			atLeastOneK8s = true
 			for _, ls := range m.K8sTarget().ExtraPodSelectors {
 				if !ls.Empty() {
 					neededWatches = append(neededWatches, PodWatch{labels: ls})
@@ -65,7 +65,7 @@ func (w *PodWatcher) diff(ctx context.Context, st store.RStore) (setup []PodWatc
 			}
 		}
 	}
-	if atLeastOneK8S {
+	if atLeastOneK8s {
 		neededWatches = append(neededWatches, PodWatch{labels: k8s.TiltRunSelector()})
 	}
 

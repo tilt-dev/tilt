@@ -1,0 +1,56 @@
+@import "constants";
+
+.AlertPane {
+  margin-top: $tabnav-height;
+  margin-right: $sidebar-width;
+  margin-bottom: $statusbar-height;
+  padding: $spacing-unit / 2;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.AlertPane ul {
+  list-style: none;
+  width: 100%;
+}
+
+.AlertPane-item header {
+  background-color: $color-gray;
+  border: 1px solid $color-gray-light;
+  display: flex;
+  justify-content: space-between;
+  padding-top: $spacing-unit / 4;
+  padding-bottom: $spacing-unit / 4;
+  padding-left: $spacing-unit / 2;
+  padding-right: $spacing-unit / 2;
+}
+
+.AlertPane-item section {
+  background-color: $color-gray-dark;
+  border-bottom-left-radius: $spacing-unit / 4;
+  border-bottom-right-radius: $spacing-unit / 4;
+  border-left: 1px solid $color-gray-light;
+  border-right: 1px solid $color-gray-light;
+  border-bottom: 1px solid $color-gray-light;
+  padding: $spacing-unit / 2;
+}
+
+.AlertPane-item + .AlertPane-item {
+  margin-top: $spacing-unit;
+}
+
+// Hide all lines by default
+.AlertPane-item code {
+  display: block;
+  white-space: pre-wrap;
+  height: 0;
+  opacity: 0;
+}
+
+// ...only show last few lines
+.AlertPane-item code:nth-last-child(-n + 8) {
+  min-height: $spacing-unit / 2; // Respect blank lines
+  height: auto;
+  opacity: 1;
+}

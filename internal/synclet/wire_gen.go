@@ -30,7 +30,11 @@ func WireSynclet(ctx context.Context, env k8s.Env, runtime container.Runtime) (*
 	if err != nil {
 		return nil, err
 	}
-	cli, err := docker.DefaultClient(ctx, clientClient, version)
+	builderVersion, err := docker.ProvideDockerBuilderVersion(version, env)
+	if err != nil {
+		return nil, err
+	}
+	cli, err := docker.DefaultClient(ctx, clientClient, version, builderVersion)
 	if err != nil {
 		return nil, err
 	}

@@ -27,6 +27,7 @@ func fakePod(podID PodID, imageID string) v1.Pod {
 			NodeName: "node1",
 			Containers: []v1.Container{
 				v1.Container{
+					Name:  "default",
 					Image: imageID,
 				},
 			},

@@ -1,15 +1,26 @@
-import React, { PureComponent } from "react"
-import { ReactComponent as LogoSvg } from "./assets/svg/logo-imagemark.svg"
+import React, { Component, PureComponent, ReactElement } from "react"
+import { ReactComponent as LogoSvg } from "./assets/svg/logo.svg"
+import { ReactComponent as ErrorSvg } from "./assets/svg/error.svg"
+import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
+import { ReactComponent as UpdateAvailableSvg } from "./assets/svg/update-available.svg"
 import { combinedStatus, warnings } from "./status"
 import "./Statusbar.scss"
-
-const nbsp = "\u00a0"
+import { combinedStatusMessage } from "./combinedStatusMessage"
+import { Build, TiltBuild } from "./types"
+import mostRecentBuildToDisplay from "./mostRecentBuild"
+import { Link } from "react-router-dom"
 
 class StatusItem {
   public warningCount: number = 0
   public up: boolean = false
   public hasError: boolean = false
   public name: string
+  public currentBuild: Build
+  public lastBuild: Build | null
+  public podStatus: string
+  public pendingBuildSince: string
+  public buildHistory: Array<Build>
+  public pendingBuildEdits: Array<string>
 
   /**
    * Create a pared down StatusItem from a ResourceView
@@ -19,63 +30,111 @@ class StatusItem {
     this.warningCount = warnings(res).length
 
     let status = combinedStatus(res)
-    let runtimeStatus = res.RuntimeStatus
-    this.up = status == "ok"
-    this.hasError = status == "error"
+    this.up = status === "ok"
+    this.hasError = status === "error"
+    this.currentBuild = res.CurrentBuild
+    this.buildHistory = res.BuildHistory
+    this.lastBuild = res.BuildHistory ? res.BuildHistory[0] : null
+    this.podStatus = res.ResourceInfo && res.ResourceInfo.PodStatus
+    this.pendingBuildSince = res.PendingBuildSince
+    this.pendingBuildEdits = res.PendingBuildEdits
   }
 }
 
 type StatusBarProps = {
-  items: Array<any>
+  items: Array<StatusItem>
+  alertsUrl: string
+  runningVersion: TiltBuild | null
+  latestVersion: TiltBuild | null
 }
 
 class Statusbar extends PureComponent<StatusBarProps> {
-  errorPanel(errorCount: number) {
-    let errorPanelClasses = "Statusbar-panel Statusbar-panel--error"
-    let icon = (
-      <span role="img" className="icon" aria-label="Error">
-        {errorCount > 0 ? "❌" : nbsp}
-      </span>
-    )
-    let message = (
-      <span>
-        {errorCount} {errorCount === 1 ? "Error" : "Errors"}
-      </span>
-    )
+  errorWarningPanel(errorCount: number, warningCount: number) {
     return (
-      <div className={errorPanelClasses}>
-        {icon}&nbsp;{message}
-      </div>
+      <section className="Statusbar-panel Statusbar-errWarnPanel">
+        <div className="Statusbar-errWarnPanel-child">
+          <ErrorSvg
+            className={`Statusbar-errWarnPanel-icon ${
+              errorCount > 0 ? "Statusbar-errWarnPanel-icon--error" : ""
+            }`}
+          />
+          <p>
+            <span className="Statusbar-errWarnPanel-count Statusbar-errWarnPanel-count--error">
+              {errorCount}
+            </span>{" "}
+            <Link to={this.props.alertsUrl}>
+              error
+              {errorCount === 1 ? "" : "s"}
+            </Link>
+          </p>
+        </div>
+        <div className="Statusbar-errWarnPanel-child">
+          <WarningSvg
+            className={`Statusbar-errWarnPanel-icon ${
+              warningCount > 0 ? "Statusbar-errWarnPanel-icon--warning" : ""
+            }`}
+          />
+          <p>
+            <span className="Statusbar-errWarnPanel-count">{warningCount}</span>{" "}
+            warning
+            {warningCount === 1 ? "" : "s"}
+          </p>
+        </div>
+      </section>
     )
   }
 
-  warningPanel(warningCount: number) {
-    let warningPanelClasses = "Statusbar-panel Statusbar-panel--warning"
-    let icon = (
-      <span role="img" className="icon" aria-label="Warning">
-        {warningCount > 0 ? "▲" : nbsp}
-      </span>
-    )
-    let message = (
-      <span>
-        {warningCount} {warningCount === 1 ? "Warning" : "Warnings"}
-      </span>
-    )
+  progressPanel(upCount: number, itemCount: number) {
     return (
-      <div className={warningPanelClasses}>
-        {icon}&nbsp;{message}
-      </div>
+      <section className="Statusbar-panel Statusbar-progressPanel">
+        <p>
+          <strong>{upCount}</strong>/{itemCount} running
+        </p>
+      </section>
     )
   }
 
-  upPanel(upCount: number, itemCount: number) {
-    let upPanelClasses = "Statusbar-panel Statusbar-panel--up"
-    let upPanel = (
-      <span className={upPanelClasses}>
-        {upCount} / {itemCount} resources up <LogoSvg className="icon" />
-      </span>
+  statusMessagePanel(build: any, editMessage: string) {
+    return (
+      <section className="Statusbar-panel Statusbar-statusMsgPanel">
+        <p className="Statusbar-statusMsgPanel-child">
+          {combinedStatusMessage(this.props.items)}
+        </p>
+        <p className="Statusbar-statusMsgPanel-child Statusbar-statusMsgPanel-child--lastEdit">
+          <span className="Statusbar-statusMsgPanel-label">Last Edit:</span>
+          <span>{build ? editMessage : "—"}</span>
+        </p>
+      </section>
     )
-    return upPanel
+  }
+
+  tiltPanel(runningVersion: TiltBuild | null, latestVersion: TiltBuild | null) {
+    let content: ReactElement = <LogoSvg className="Statusbar-logo" />
+    if (
+      latestVersion &&
+      latestVersion.Version &&
+      runningVersion &&
+      runningVersion.Version &&
+      !runningVersion.Dev &&
+      runningVersion.Version != latestVersion.Version
+    ) {
+      content = (
+        <a
+          href="https://docs.tilt.dev/upgrade.html"
+          className="Statusbar-tiltPanel-link"
+          target="_blank"
+        >
+          <p className="Statusbar-tiltPanel-upgradeTooltip">
+            ✨ Get Tilt v{latestVersion.Version}! ✨<br />
+            (You're running v{runningVersion.Version})
+          </p>
+          {content}
+          <UpdateAvailableSvg />
+        </a>
+      )
+    }
+
+    return <section className="Statusbar-tiltPanel">{content}</section>
   }
 
   render() {
@@ -93,18 +152,32 @@ class Statusbar extends PureComponent<StatusBarProps> {
       }
       warningCount += item.warningCount
     })
+    let errorWarningPanel = this.errorWarningPanel(errorCount, warningCount)
 
-    let itemCount = items.length
-    let errorPanel = this.errorPanel(errorCount)
-    let warningPanel = this.warningPanel(warningCount)
-    let upPanel = this.upPanel(upCount, itemCount)
+    let build = mostRecentBuildToDisplay(this.props.items)
+    let editMessage = ""
+    if (build && build.edits.length > 0) {
+      editMessage = `${build.name} ‣ ${build.edits[0]}`
+      if (build.edits.length > 1) {
+        editMessage += `[+${build.edits.length - 1} more]`
+      }
+    }
+    let statusMessagePanel = this.statusMessagePanel(build, editMessage)
+
+    let resCount = items.length
+    let progressPanel = this.progressPanel(upCount, resCount)
+
+    let tiltPanel = this.tiltPanel(
+      this.props.runningVersion,
+      this.props.latestVersion
+    )
 
     return (
       <div className="Statusbar">
-        {errorPanel}
-        {warningPanel}
-        <div className="Statusbar-panel Statusbar-panel--spacer">&nbsp;</div>
-        {upPanel}
+        {errorWarningPanel}
+        {statusMessagePanel}
+        {progressPanel}
+        {tiltPanel}
       </div>
     )
   }

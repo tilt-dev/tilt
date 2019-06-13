@@ -73,8 +73,16 @@ class AppController {
       return
     }
 
-    let timeout = Math.pow(2, this.tryConnectCount) * 1000
-    let maxTimeout = 5 * 1000 // 5sec
+    let backoff = Math.pow(2, this.tryConnectCount) * 1000
+    let maxTimeout = 10 * 1000 // 10sec
+    let isLocal = this.url.indexOf("ws://localhost") == 0
+    if (isLocal) {
+      // if this is a local connection, max out at 1.5sec.
+      // this makes it a bit easier to detect when a window is already open.
+      maxTimeout = 1500
+    }
+    let timeout = Math.min(maxTimeout, backoff)
+
     setTimeout(() => {
       if (this.disposed) {
         return
@@ -86,7 +94,7 @@ class AppController {
         IsSidebarClosed: false,
       })
       this.createNewSocket()
-    }, Math.min(maxTimeout, timeout))
+    }, timeout)
   }
 }
 

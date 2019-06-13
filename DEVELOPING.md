@@ -30,9 +30,10 @@ If you want to run the tests:
 - **[docker](https://docs.docker.com/install/)** - Many of the `tilt` build steps do work inside of containers
   so that you don't need to install extra toolchains locally (e.g., the protobuf compiler).
 - **[kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)**
-- **[kustomize](https://github.com/kubernetes-sigs/kustomize)**: `go get -u sigs.k8s.io/kustomize`
+- **[kustomize 2.0 or higher](https://github.com/kubernetes-sigs/kustomize)**: `go get -u sigs.k8s.io/kustomize`
 - **[helm](https://docs.helm.sh/using_helm/#installing-helm)**
 - **[docker compose](https://docs.docker.com/compose/install/)**: NOTE: this doesn't need to be installed separately from Docker on macOS
+- **[jq](https://stedolan.github.io/jq/download/)**
 
 ## Optional Prereqs
 
@@ -47,6 +48,15 @@ Other development commands:
     - `git clone git://github.com/concordusapps/pyenv-implict.git ~/.pyenv/plugins/pyenv-implict`
 
 ## Developing
+
+To check out Tilt for the first time, run:
+
+```
+go get -u github.com/windmilleng/tilt/cmd/tilt
+```
+
+The Go toolchain will checkout the Tilt repo somewhere on your GOPATH,
+usually under `~/go/src/github.com/windmilleng/tilt`. (See notes below if you're using Go modules).
 
 To run the fast test suite, run:
 
@@ -72,6 +82,14 @@ To install `tilt` on PATH, run
 ```
 make install
 ```
+
+## Go Modules
+
+Currently, Tilt will not work with Go modules. See [this issue](https://github.com/windmilleng/tilt/issues/1520)
+for more details.
+
+If you're building Tilt from source, you must build it in your GOPATH.
+
 
 ## Performance
 ### Go Profile
@@ -160,6 +178,39 @@ To run the server on an alternate port (e.g. 8001):
 ```
 tilt up --port=8001
 ```
+
+## Tilt Sharing
+
+Tilt has an experimental mode for sharing your Tilt view with other people. All sharing is public.
+
+To enable this feature, run:
+
+```
+tilt up --share
+```
+
+A new button will show up in the Tilt web UI that lets you create a new shareable URL.
+
+When you click the "Share" button, Tilt will send its entire state to this
+public URL. You can then send this URL to your friends (e.g., via a Slack
+message). The URL will be at https://sail.tilt.dev/.
+
+The hub server that coordinates sharing is called Sail.
+If you want to make changes to the sail server, you can run it locally.
+
+```
+make install-sail
+sail
+```
+
+Then tell Tilt to use the local Sail server as the sharing hub.
+
+```
+tilt up --share --share-mode=local
+```
+
+There is also a staging instance of the Sail server, for testing that changes
+work on HTTPS. This is less common.
 
 ## Documentation
 

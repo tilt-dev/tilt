@@ -270,6 +270,32 @@ spec:
         image: redis:latest
 `
 
+const SanchoImageInEnvYAML = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sancho
+  namespace: sancho-ns
+  labels:
+    app: sancho
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sancho
+  template:
+    metadata:
+      labels:
+        app: sancho
+    spec:
+      containers:
+      - name: sancho
+        image: gcr.io/some-project-162817/sancho
+        env:
+          - name: foo
+            value: gcr.io/some-project-162817/sancho2
+`
+
 const TracerYAML = `
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -668,7 +694,6 @@ const (
 const SnackYAMLPostConfig = `apiVersion: apps/v1
 kind: Deployment
 metadata:
-  creationTimestamp: null
   labels:
     app: snack
   name: snack
@@ -679,7 +704,6 @@ spec:
   strategy: {}
   template:
     metadata:
-      creationTimestamp: null
       labels:
         app: snack
     spec:
@@ -689,7 +713,6 @@ spec:
         image: gcr.io/windmill-public-containers/servantes/snack
         name: snack
         resources: {}
-status: {}
 `
 
 const SecretName = "mysecret"
@@ -1286,3 +1309,19 @@ spec:
 	result = strings.Replace(result, "IMAGE", imageName, -1)
 	return result
 }
+
+const PodDisruptionBudgetYAML = `
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    app: zookeeper
+  name: infra-kafka-zookeeper
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: zookeeper
+      component: server
+      release: infra-kafka
+`

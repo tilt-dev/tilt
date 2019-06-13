@@ -16,6 +16,9 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/apimachinery/pkg/types"
+	k8swatch "k8s.io/apimachinery/pkg/watch"
+
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/wmclient/pkg/analytics"
@@ -23,10 +26,13 @@ import (
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
+	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/github"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -34,6 +40,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
@@ -195,7 +202,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	}
 
 	result := store.BuildResultSet{}
-	for _, iTarget := range extractImageTargets(specs) {
+	for _, iTarget := range model.ExtractImageTargets(specs) {
 		var deployTarget model.TargetSpec
 		if !call.dc().Empty() {
 			if isImageDeployedToDC(iTarget, call.dc()) {
@@ -232,12 +239,9 @@ func TestUpper_Up(t *testing.T) {
 	defer f.TearDown()
 	manifest := f.newManifest("foobar", nil)
 
-	gYaml := k8s.NewK8sOnlyManifestForTesting(model.ManifestName("my-global_yaml"),
-		testyaml.BlorgBackendYAML)
 	err := f.upper.Init(f.ctx, InitAction{
-		Manifests:          []model.Manifest{manifest},
-		GlobalYAMLManifest: gYaml,
-		ExecuteTiltfile:    true,
+		Manifests:       []model.Manifest{manifest},
+		ExecuteTiltfile: true,
 	})
 	close(f.b.calls)
 	assert.Nil(t, err)
@@ -251,7 +255,34 @@ func TestUpper_Up(t *testing.T) {
 	defer f.upper.store.RUnlockState()
 	lines := strings.Split(state.ManifestTargets[manifest.Name].Status().LastBuild().Log.String(), "\n")
 	assertLineMatches(t, lines, regexp.MustCompile("fake building .*foobar"))
-	assert.Equal(t, gYaml, state.GlobalYAML)
+}
+
+func TestUpper_WatchFalseNoManifestsExplicitlyNamed(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", simpleTiltfile)
+	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
+	f.WriteFile("snack.yaml", simpleYAML)
+
+	err := f.upper.Init(f.ctx, InitAction{
+		ExecuteTiltfile: false,
+		TiltfilePath:    f.JoinPath("Tiltfile"),
+		InitManifests:   nil, // equivalent to `tilt up --watch=false` (i.e. not specifying any manifest names)
+	})
+	close(f.b.calls)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var built []model.TargetID
+	for call := range f.b.calls {
+		built = append(built, call.k8s().ID())
+	}
+	if assert.Equal(t, 1, len(built)) {
+		assert.Equal(t, "snack", built[0].Name.String())
+	}
 }
 
 func TestUpper_UpWatchError(t *testing.T) {
@@ -527,13 +558,13 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 
 	// First call: with the old manifest
 	call := f.nextCall("old manifest")
-	assert.Equal(t, `FROM iron/go:prod`, call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:prod`, call.image().TopFastBuildInfo().BaseDockerfile)
 
 	f.WriteConfigFiles("Dockerfile", `FROM iron/go:dev`)
 
 	// Second call: new manifest!
 	call = f.nextCall("new manifest")
-	assert.Equal(t, "FROM iron/go:dev", call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "FROM iron/go:dev", call.image().TopFastBuildInfo().BaseDockerfile)
 	assert.Equal(t, testyaml.SnackYAMLPostConfig, call.k8s().YAML)
 
 	// Since the manifest changed, we cleared the previous build state to force an image build
@@ -543,7 +574,7 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 
 	// third call: new manifest should persist
 	call = f.nextCall("persist new manifest")
-	assert.Equal(t, "FROM iron/go:dev", call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "FROM iron/go:dev", call.image().TopFastBuildInfo().BaseDockerfile)
 
 	// Unchanged manifest --> we do NOT clear the build state
 	assert.True(t, call.oneState().HasImage())
@@ -575,11 +606,11 @@ k8s_resource('doggos', new_name='quux')
 
 	// First call: with the old manifests
 	call := f.nextCall("old manifest (baz)")
-	assert.Equal(t, `FROM iron/go:prod`, call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:prod`, call.image().TopFastBuildInfo().BaseDockerfile)
 	assert.Equal(t, "baz", string(call.k8s().Name))
 
 	call = f.nextCall("old manifest (quux)")
-	assert.Equal(t, `FROM iron/go:prod`, call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:prod`, call.image().TopFastBuildInfo().BaseDockerfile)
 	assert.Equal(t, "quux", string(call.k8s().Name))
 
 	// rewrite the dockerfiles
@@ -589,11 +620,11 @@ k8s_resource('doggos', new_name='quux')
 
 	// Now with the manifests from the config files
 	call = f.nextCall("manifest from config files (baz)")
-	assert.Equal(t, `FROM iron/go:dev1`, call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:dev1`, call.image().TopFastBuildInfo().BaseDockerfile)
 	assert.Equal(t, "baz", string(call.k8s().Name))
 
 	call = f.nextCall("manifest from config files (quux)")
-	assert.Equal(t, `FROM iron/go:dev2`, call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:dev2`, call.image().TopFastBuildInfo().BaseDockerfile)
 	assert.Equal(t, "quux", string(call.k8s().Name))
 
 	// Now change a dockerfile
@@ -634,7 +665,7 @@ k8s_resource('snack', new_name='baz')  # rename "snack" --> "baz"
 
 	// First call: with one resource
 	call := f.nextCall("old manifest (baz)")
-	assert.Equal(t, "FROM iron/go:dev1", call.image().FastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "FROM iron/go:dev1", call.image().TopFastBuildInfo().BaseDockerfile)
 	assert.Equal(t, "baz", string(call.k8s().Name))
 
 	f.assertNoCall()
@@ -660,17 +691,13 @@ k8s_resource('doggos', new_name='quux')  # rename "doggos" --> "quux"
 	f.assertAllBuildsConsumed()
 }
 
-func TestNoOpChangeToDockerfile(t *testing.T) {
+func TestConfigChange_NoOpChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
 	f.WriteFile("Tiltfile", `
-k8s_resource_assembly_version(2)
-r = local_git_repo('.')
-fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
-  .add(r.path('src'), '.')
-k8s_yaml('snack.yaml')
-k8s_resource('snack', new_name='foobar')`)
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile') 
+k8s_yaml('snack.yaml')`)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
 	f.WriteFile("snack.yaml", simpleYAML)
 	f.WriteFile("src/main.go", "hello")
@@ -678,83 +705,40 @@ k8s_resource('snack', new_name='foobar')`)
 	f.loadAndStart()
 
 	// First call: with the old manifests
-	call := f.nextCall("old manifests")
-	assert.Equal(t, "FROM iron/go:dev1", call.image().FastBuildInfo().BaseDockerfile)
-	assert.Equal(t, "foobar", string(call.k8s().Name))
+	call := f.nextCall("initial call")
+	assert.Equal(t, "FROM iron/go:dev1", call.image().DockerBuildInfo().Dockerfile)
+	assert.Equal(t, "snack", string(call.k8s().Name))
 
+	// Write same contents to Dockerfile -- an "edit" event for a config file,
+	// but it doesn't change the manifest at all.
 	f.WriteConfigFiles("Dockerfile", `FROM iron/go:dev1`)
-
-	// The dockerfile hasn't changed, so there shouldn't be any builds.
-	f.assertNoCall()
-
-	changed := f.WriteFile("src/main.go", "goodbye")
-	f.fsWatcher.events <- watch.FileEvent{Path: changed}
+	f.assertNoCall("Dockerfile hasn't changed, so there shouldn't be any builds")
 
 	// Second call: Editing the Dockerfile means we have to reevaluate the Tiltfile.
 	// Editing the random file means we have to do a rebuild. BUT! The Dockerfile
 	// hasn't changed, so the manifest hasn't changed, so we can do an incremental build.
-	call = f.nextCall("incremental build despite edited config file")
-	assert.Equal(t, "foobar", string(call.k8s().Name))
+	changed := f.WriteFile("src/main.go", "goodbye")
+	f.fsWatcher.events <- watch.FileEvent{Path: changed}
+
+	call = f.nextCall("build from file change")
+	assert.Equal(t, "snack", string(call.k8s().Name))
 	assert.ElementsMatch(t, []string{
 		f.JoinPath("src/main.go"),
 	}, call.oneState().FilesChanged())
-
-	// Unchanged manifest --> we do NOT clear the build state
-	assert.True(t, call.oneState().HasImage())
+	assert.True(t, call.oneState().HasImage(), "Unchanged manifest --> we do NOT clear the build state")
 
 	err := f.Stop()
 	assert.Nil(t, err)
 	f.assertAllBuildsConsumed()
 }
 
-func TestRebuildDockerfileFailed(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	f.WriteFile("Tiltfile", simpleTiltfile)
-	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
-	f.WriteFile("snack.yaml", simpleYAML)
-
-	f.loadAndStart()
-
-	// First call: init
-	call := f.nextCall("old manifest")
-	assert.Equal(t, `FROM iron/go:dev`, call.image().FastBuildInfo().BaseDockerfile)
-
-	// Second call: error!
-	f.WriteConfigFiles("Tiltfile", "borken")
-	f.assertNoCall("Tiltfile error should prevent BuildAndDeploy from being called")
-
-	// Third call: fix
-	f.WriteConfigFiles("Tiltfile", simpleTiltfile,
-		"Dockerfile", `FROM iron/go:dev2`)
-
-	call = f.nextCall("fixed broken config")
-	assert.Equal(t, "FROM iron/go:dev2", call.image().FastBuildInfo().BaseDockerfile)
-	assert.False(t, call.oneState().HasImage()) // we cleared the previous build state to force an image build
-	f.WaitUntil("manifest definition order hasn't changed", func(state store.EngineState) bool {
-		return len(state.ManifestDefinitionOrder) == 1
-	})
-	f.WaitUntilManifestState("LastError was cleared", "snack", func(ms store.ManifestState) bool {
-		return ms.LastBuild().Error == nil
-	})
-
-	err := f.Stop()
-	assert.Nil(t, err)
-	f.assertAllBuildsConsumed()
-}
-
-func TestBreakManifest(t *testing.T) {
+func TestConfigChange_TiltfileErrorAndFixWithNoChanges(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
 	origTiltfile := `
-k8s_resource_assembly_version(2)
-fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
-	.add(local_git_repo('./nested'), '.')  # Tiltfile is not synced
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile') 
 k8s_yaml('snack.yaml')`
-
-	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll sync.
 	f.WriteFile("Tiltfile", origTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 	f.WriteFile("snack.yaml", simpleYAML)
@@ -766,45 +750,14 @@ k8s_yaml('snack.yaml')`
 
 	// Second call: change Tiltfile, break manifest
 	f.WriteConfigFiles("Tiltfile", "borken")
+	f.WaitUntil("tiltfile error set", func(st store.EngineState) bool {
+		return st.LastTiltfileError() != nil
+	})
 	f.assertNoCall("Tiltfile error should prevent BuildAndDeploy from being called")
-
-	f.WaitUntil("error set", func(st store.EngineState) bool {
-		return st.LastTiltfileError() != nil
-	})
-
-	f.withState(func(es store.EngineState) {
-		assert.Equal(t, "", nextManifestNameToBuild(es).String())
-	})
-}
-
-func TestBreakAndUnbreakManifestWithNoChange(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	origTiltfile := `
-k8s_resource_assembly_version(2)
-fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
-	.add(local_git_repo('./nested'), '.')  # Tiltfile is not synced
-k8s_yaml('snack.yaml')`
-	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll sync.
-	f.WriteFile("Tiltfile", origTiltfile)
-	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
-	f.WriteFile("snack.yaml", simpleYAML)
-
-	f.loadAndStart()
-
-	// First call: all is well
-	_ = f.nextCall("first call")
-
-	// Second call: change Tiltfile, break manifest
-	f.WriteConfigFiles("Tiltfile", "borken")
-	f.WaitUntil("state is broken", func(st store.EngineState) bool {
-		return st.LastTiltfileError() != nil
-	})
 
 	// Third call: put Tiltfile back. No change to manifest or to synced files, so expect no build.
 	f.WriteConfigFiles("Tiltfile", origTiltfile)
-	f.WaitUntil("state is restored", func(st store.EngineState) bool {
+	f.WaitUntil("tiltfile error cleared", func(st store.EngineState) bool {
 		return st.LastTiltfileError() == nil
 	})
 
@@ -813,60 +766,140 @@ k8s_yaml('snack.yaml')`
 	})
 }
 
-func TestBreakAndUnbreakManifestWithChange(t *testing.T) {
+func TestConfigChange_TiltfileErrorAndFixWithFileChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	tiltfileString := func(cmd string) string {
+	tiltfileWithCmd := func(cmd string) string {
 		return fmt.Sprintf(`
-k8s_resource_assembly_version(2)
-fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile') \
-	.add(local_git_repo('./nested'), '.') \
-  .run('%s')
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile',
+    live_update=[
+        sync('./src', '/src'),
+        run('%s')
+    ]
+)
 k8s_yaml('snack.yaml')
 `, cmd)
 	}
 
-	f.MkdirAll("nested/.git") // Spoof a git directory -- this is what we'll sync.
-	f.WriteFile("Tiltfile", tiltfileString("original"))
+	f.WriteFile("Tiltfile", tiltfileWithCmd("original"))
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
 	f.WriteFile("snack.yaml", simpleYAML)
 
 	f.loadAndStart()
 
-	f.WaitUntil("first build finished", func(state store.EngineState) bool {
-		return state.CompletedBuildCount == 1
-	})
+	// First call: all is well
+	_ = f.nextCall("first call")
 
-	name := model.ManifestName("snack")
 	// Second call: change Tiltfile, break manifest
 	f.WriteConfigFiles("Tiltfile", "borken")
-	f.WaitUntil("manifest load error", func(st store.EngineState) bool {
+	f.WaitUntil("tiltfile error set", func(st store.EngineState) bool {
 		return st.LastTiltfileError() != nil
 	})
 
-	f.withState(func(state store.EngineState) {
-		assert.Equal(t, 1, state.CompletedBuildCount)
-	})
+	f.assertNoCall("Tiltfile error should prevent BuildAndDeploy from being called")
 
 	// Third call: put Tiltfile back. manifest changed, so expect a build
-	f.WriteConfigFiles("Tiltfile", tiltfileString("changed"))
+	f.WriteConfigFiles("Tiltfile", tiltfileWithCmd("changed"))
 
-	f.WaitUntil("second build finished", func(state store.EngineState) bool {
-		return state.CompletedBuildCount == 2
+	call := f.nextCall("fixed broken config and rebuilt manifest")
+	assert.False(t, call.oneState().HasImage(),
+		"expected this call to have NO image (since we should have cleared it to force an image build)")
+
+	f.WaitUntil("tiltfile error cleared", func(state store.EngineState) bool {
+		return state.LastTiltfileError() == nil
 	})
 
-	f.withState(func(state store.EngineState) {
-		assert.Equal(t, "", nextManifestNameToBuild(state).String())
-		assert.NoError(t, state.LastTiltfileError())
+	f.withManifestTarget("snack", func(mt store.ManifestTarget) {
+		expectedCmd := model.ToShellCmd("changed")
+		assert.Equal(t, expectedCmd, mt.Manifest.ImageTargetAt(0).AnyLiveUpdateInfo().RunSteps()[0].Cmd,
+			"Tiltfile change should have propagated to manifest")
 	})
 
-	f.withManifestTarget(name, func(mt store.ManifestTarget) {
-		expectedRuns := []model.Run{{
-			Cmd: model.ToShellCmd("changed"),
-		}}
-		assert.Equal(t, expectedRuns, mt.Manifest.ImageTargetAt(0).FastBuildInfo().Runs)
+	err := f.Stop()
+	assert.Nil(t, err)
+	f.assertAllBuildsConsumed()
+}
+
+func TestConfigChange_TriggerModeChangePropagatesButDoesntInvalidateBuild(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	origTiltfile := `
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile') 
+k8s_yaml('snack.yaml')`
+	f.WriteFile("Tiltfile", origTiltfile)
+	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
+	f.WriteFile("snack.yaml", simpleYAML)
+
+	f.loadAndStart()
+
+	_ = f.nextCall("initial build")
+	f.WaitUntilManifest("manifest has triggerMode = auto (default)", "snack", func(mt store.ManifestTarget) bool {
+		return mt.Manifest.TriggerMode == model.TriggerModeAuto
 	})
+
+	// Update Tiltfile to change the trigger mode of the manifest
+	tiltfileWithTriggerMode := fmt.Sprintf(`%s
+
+trigger_mode(TRIGGER_MODE_MANUAL)`, origTiltfile)
+	f.WriteConfigFiles("Tiltfile", tiltfileWithTriggerMode)
+
+	f.assertNoCall("A change to TriggerMode shouldn't trigger an update (doesn't invalidate current build)")
+	f.WaitUntilManifest("triggerMode has changed on manifest", "snack", func(mt store.ManifestTarget) bool {
+		return mt.Manifest.TriggerMode == model.TriggerModeManual
+	})
+
+	err := f.Stop()
+	assert.Nil(t, err)
+	f.assertAllBuildsConsumed()
+}
+
+func TestConfigChange_ManifestWithPendingChangesBuildsIfTriggerModeChangedToAuto(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	baseTiltfile := `trigger_mode(%s)
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile') 
+k8s_yaml('snack.yaml')`
+	triggerManualTiltfile := fmt.Sprintf(baseTiltfile, "TRIGGER_MODE_MANUAL")
+	f.WriteFile("Tiltfile", triggerManualTiltfile)
+	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
+	f.WriteFile("snack.yaml", simpleYAML)
+
+	f.loadAndStart()
+
+	// First call: with the old manifests
+	_ = f.nextCall("initial build")
+	var imageTargetID model.TargetID
+	f.WaitUntilManifest("manifest has triggerMode = auto (default)", "snack", func(mt store.ManifestTarget) bool {
+		imageTargetID = mt.Manifest.ImageTargetAt(0).ID() // grab for later
+		return mt.Manifest.TriggerMode == model.TriggerModeManual
+	})
+
+	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("src/main.go")}
+	f.WaitUntil("pending change appears", func(st store.EngineState) bool {
+		return len(st.BuildStatus(imageTargetID).PendingFileChanges) > 0
+	})
+	f.assertNoCall("even tho there are pending changes, manual manifest shouldn't build w/o explicit trigger")
+
+	// Update Tiltfile to change the trigger mode of the manifest
+	triggerAutoTiltfile := fmt.Sprintf(baseTiltfile, "TRIGGER_MODE_AUTO")
+	f.WriteConfigFiles("Tiltfile", triggerAutoTiltfile)
+
+	call := f.nextCall("manifest updated b/c it's now TriggerModeAuto")
+	assert.True(t, call.oneState().HasImage(),
+		"we did NOT clear the build state (b/c a change to Manifest.TriggerMode does NOT invalidate the build")
+	f.WaitUntilManifest("triggerMode has changed on manifest", "snack", func(mt store.ManifestTarget) bool {
+		return mt.Manifest.TriggerMode == model.TriggerModeAuto
+	})
+	f.WaitUntil("manifest is no longer in trigger queue", func(st store.EngineState) bool {
+		return len(st.TriggerQueue) == 0
+	})
+
+	err := f.Stop()
+	assert.Nil(t, err)
+	f.assertAllBuildsConsumed()
 }
 
 func TestDockerRebuildWithChangedFiles(t *testing.T) {
@@ -1019,12 +1052,12 @@ func TestPodEvent(t *testing.T) {
 	f.podEvent(f.testPod("my-pod", "foobar", "CrashLoopBackOff", testContainer, time.Now()))
 
 	f.WaitUntilHUDResource("hud update", "foobar", func(res view.Resource) bool {
-		return res.K8SInfo().PodName == "my-pod"
+		return res.K8sInfo().PodName == "my-pod"
 	})
 
 	rv := f.hudResource("foobar")
-	assert.Equal(t, "my-pod", rv.K8SInfo().PodName)
-	assert.Equal(t, "CrashLoopBackOff", rv.K8SInfo().PodStatus)
+	assert.Equal(t, "my-pod", rv.K8sInfo().PodName)
+	assert.Equal(t, "CrashLoopBackOff", rv.K8sInfo().PodStatus)
 
 	assert.NoError(t, f.Stop())
 	f.assertAllBuildsConsumed()
@@ -1076,9 +1109,8 @@ func TestPodEventOrdering(t *testing.T) {
 			}
 
 			f.upper.store.Dispatch(PodLogAction{
-				ManifestName: "fe",
-				PodID:        k8s.PodIDFromPod(podBNow),
-				logEvent:     newLogEvent([]byte("pod b log\n")),
+				PodID:    k8s.PodIDFromPod(podBNow),
+				LogEvent: store.NewLogEvent("fe", []byte("pod b log\n")),
 			})
 
 			f.WaitUntilManifestState("pod log seen", "fe", func(ms store.ManifestState) bool {
@@ -1340,17 +1372,17 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 	firstCreationTime := time.Now()
 	f.podEvent(f.testPod("my-pod", "foobar", "CrashLoopBackOff", testContainer, firstCreationTime))
 	f.WaitUntilHUDResource("hud update crash", "foobar", func(res view.Resource) bool {
-		return res.K8SInfo().PodStatus == "CrashLoopBackOff"
+		return res.K8sInfo().PodStatus == "CrashLoopBackOff"
 	})
 
 	f.podEvent(f.testPod("my-new-pod", "foobar", "Running", testContainer, firstCreationTime.Add(time.Minute*2)))
 	f.WaitUntilHUDResource("hud update running", "foobar", func(res view.Resource) bool {
-		return res.K8SInfo().PodStatus == "Running"
+		return res.K8sInfo().PodStatus == "Running"
 	})
 
 	rv := f.hudResource("foobar")
-	assert.Equal(t, "my-new-pod", rv.K8SInfo().PodName)
-	assert.Equal(t, "Running", rv.K8SInfo().PodStatus)
+	assert.Equal(t, "my-new-pod", rv.K8sInfo().PodName)
+	assert.Equal(t, "Running", rv.K8sInfo().PodStatus)
 
 	assert.NoError(t, f.Stop())
 	f.assertAllBuildsConsumed()
@@ -1370,18 +1402,18 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 	f.podEvent(f.testPod("my-pod", "foobar", "CrashLoopBackOff", testContainer, creationTime))
 
 	f.WaitUntilHUDResource("pod crashes", "foobar", func(res view.Resource) bool {
-		return res.K8SInfo().PodStatus == "CrashLoopBackOff"
+		return res.K8sInfo().PodStatus == "CrashLoopBackOff"
 	})
 
 	f.podEvent(f.testPod("my-pod", "foobar", "Running", testContainer, creationTime))
 
 	f.WaitUntilHUDResource("pod comes back", "foobar", func(res view.Resource) bool {
-		return res.K8SInfo().PodStatus == "Running"
+		return res.K8sInfo().PodStatus == "Running"
 	})
 
 	rv := f.hudResource("foobar")
-	assert.Equal(t, "my-pod", rv.K8SInfo().PodName)
-	assert.Equal(t, "Running", rv.K8SInfo().PodStatus)
+	assert.Equal(t, "my-pod", rv.K8sInfo().PodName)
+	assert.Equal(t, "Running", rv.K8sInfo().PodStatus)
 
 	err := f.Stop()
 	if err != nil {
@@ -1404,7 +1436,7 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 	creationTime := time.Now()
 	f.podEvent(f.testPod("my-new-pod", "foobar", "CrashLoopBackOff", testContainer, creationTime))
 	f.WaitUntilHUDResource("hud update", "foobar", func(res view.Resource) bool {
-		return res.K8SInfo().PodStatus == "CrashLoopBackOff"
+		return res.K8sInfo().PodStatus == "CrashLoopBackOff"
 	})
 
 	f.podEvent(f.testPod("my-pod", "foobar", "Running", testContainer, creationTime.Add(time.Minute*-1)))
@@ -1414,8 +1446,8 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 	f.assertAllBuildsConsumed()
 
 	rv := f.hudResource("foobar")
-	assert.Equal(t, "my-new-pod", rv.K8SInfo().PodName)
-	assert.Equal(t, "CrashLoopBackOff", rv.K8SInfo().PodStatus)
+	assert.Equal(t, "my-new-pod", rv.K8sInfo().PodName)
+	assert.Equal(t, "CrashLoopBackOff", rv.K8sInfo().PodStatus)
 }
 
 func TestPodContainerStatus(t *testing.T) {
@@ -1474,32 +1506,6 @@ func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 
 	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("dignore.txt")}
-	f.assertNoCall("event for ignored file should not trigger build")
-
-	err := f.Stop()
-	assert.NoError(t, err)
-	f.assertAllBuildsConsumed()
-}
-
-func TestUpper_WatchGitIgnoredFiles(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{sync})
-	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).
-		WithRepos([]model.LocalGitRepo{
-			{
-				LocalPath:         f.Path(),
-				GitignoreContents: "gignore.txt",
-			},
-		}))
-
-	f.Start([]model.Manifest{manifest}, true)
-
-	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
-
-	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("gignore.txt")}
 	f.assertNoCall("event for ignored file should not trigger build")
 
 	err := f.Stop()
@@ -1585,6 +1591,7 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 		assert.Equal(t, "third string\n", ms.MostRecentPod().Log().String())
 		assert.Contains(t, ms.CombinedLog.String(), "second string\n")
 		assert.Contains(t, ms.CombinedLog.String(), "third string\n")
+		assert.Equal(t, ms.CrashLog.String(), "second string\n")
 	})
 
 	err := f.Stop()
@@ -1779,30 +1786,229 @@ func TestUpper_PodLogs(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestInitWithGlobalYAML(t *testing.T) {
+func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 	f := newTestFixture(t)
-	state := f.store.RLockState()
-	ym := k8s.NewK8sOnlyManifestForTesting("global", testyaml.BlorgBackendYAML)
-	state.GlobalYAML = ym
-	f.store.RUnlockState()
-	f.Start([]model.Manifest{}, true)
-	f.store.Dispatch(InitAction{
-		Manifests:          []model.Manifest{},
-		GlobalYAMLManifest: ym,
-		ExecuteTiltfile:    true,
-	})
-	f.WaitUntil("global YAML manifest gets set on init", func(st store.EngineState) bool {
-		return st.GlobalYAML.K8sTarget().YAML == testyaml.BlorgBackendYAML
+	defer f.TearDown()
+
+	entityUID := "someEntity"
+	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
+
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName(e.Name())
+	manifest := f.newManifest(string(name), []model.Sync{sync})
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	ls := k8s.TiltRunSelector()
+	f.kClient.EmitEverything(ls, k8swatch.Event{
+		Type:   k8swatch.Added,
+		Object: e.Obj,
 	})
 
-	newYM := k8s.NewK8sOnlyManifestForTesting("global", testyaml.BlorgJobYAML)
-	f.store.Dispatch(ConfigsReloadedAction{
-		GlobalYAML: newYM,
+	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
+		_, ok := st.ObjectsByK8sUIDs[k8s.UID(entityUID)]
+		return ok
 	})
 
-	f.WaitUntil("global YAML manifest gets updated", func(st store.EngineState) bool {
-		return st.GlobalYAML.K8sTarget().YAML == testyaml.BlorgJobYAML
+	warnEvt := &v1.Event{
+		InvolvedObject: v1.ObjectReference{UID: types.UID(entityUID)},
+		Message:        "something has happened zomg",
+		Type:           "Warning",
+	}
+	f.kClient.EmitEvent(f.ctx, warnEvt)
+
+	var warnEvts []k8s.EventWithEntity
+	f.WaitUntil("event message appears in manifest log", func(st store.EngineState) bool {
+		ms, ok := st.ManifestState(name)
+		if !ok {
+			t.Fatalf("Manifest %s not found in state", name)
+		}
+
+		warnEvts = ms.K8sWarnEvents
+		return strings.Contains(ms.CombinedLog.String(), "something has happened zomg")
 	})
+
+	f.withState(func(st store.EngineState) {
+		assert.Contains(t, st.Log.String(), "something has happened zomg", "event message not in global log")
+	})
+
+	if assert.Len(t, warnEvts, 1, "expect ms.K8sWarnEvents to contain 1 event") {
+		// Make sure we recorded the event on the manifest state
+		evt := warnEvts[0]
+		assert.Equal(t, evt.Event.Message, "something has happened zomg")
+		assert.Equal(t, evt.Entity.Name(), name.String())
+	}
+
+	err := f.Stop()
+	assert.NoError(t, err)
+}
+
+func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	entityUID := "someEntity"
+	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
+
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName(e.Name())
+	manifest := f.newManifest(string(name), []model.Sync{sync})
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	warnEvt := &v1.Event{
+		InvolvedObject: v1.ObjectReference{UID: types.UID(entityUID)},
+		Message:        "something has happened zomg",
+		Type:           "Warning",
+	}
+	f.kClient.EmitEvent(f.ctx, warnEvt)
+
+	time.Sleep(10 * time.Millisecond)
+
+	assert.NotContains(t, f.log.String(), "something has happened zomg",
+		"should not log event message b/c it doesn't have a UID -> Manifest mapping")
+}
+
+func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	entityUID := "someEntity"
+	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
+
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName(e.Name())
+	manifest := f.newManifest(string(name), []model.Sync{sync})
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	ls := k8s.TiltRunSelector()
+	f.kClient.EmitEverything(ls, k8swatch.Event{
+		Type:   k8swatch.Added,
+		Object: e.Obj,
+	})
+
+	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
+		_, ok := st.ObjectsByK8sUIDs[k8s.UID(entityUID)]
+		return ok
+	})
+
+	normalEvt := &v1.Event{
+		InvolvedObject: v1.ObjectReference{UID: types.UID(entityUID)},
+		Message:        "all systems are go",
+		Type:           "Normal", // we should NOT log this message
+	}
+	f.kClient.EmitEvent(f.ctx, normalEvt)
+
+	time.Sleep(10 * time.Millisecond)
+	f.withManifestState(name, func(ms store.ManifestState) {
+		assert.NotContains(t, ms.CombinedLog.String(), "all systems are go",
+			"message for event of type 'normal' should not appear in log")
+
+		assert.Len(t, ms.K8sWarnEvents, 0, "expect ms.K8sWarnEvents to be empty")
+	})
+
+	err := f.Stop()
+	assert.NoError(t, err)
+}
+
+func TestK8sEventLogTimestamp(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	st := f.store.LockMutableStateForTesting()
+	st.LogTimestamps = true
+	f.store.UnlockMutableState()
+
+	entityUID := "someEntity"
+	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
+
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName(e.Name())
+	manifest := f.newManifest(string(name), []model.Sync{sync})
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	ls := k8s.TiltRunSelector()
+	f.kClient.EmitEverything(ls, k8swatch.Event{
+		Type:   k8swatch.Added,
+		Object: e.Obj,
+	})
+
+	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
+		_, ok := st.ObjectsByK8sUIDs[k8s.UID(entityUID)]
+		return ok
+	})
+
+	ts := time.Now().Add(time.Hour * 36) // the future, i.e. timestamp that won't otherwise appear in our log
+
+	warnEvt := &v1.Event{
+		InvolvedObject: v1.ObjectReference{UID: types.UID(entityUID)},
+		Message:        "something has happened zomg",
+		LastTimestamp:  metav1.Time{Time: ts},
+		Type:           "Warning",
+	}
+	f.kClient.EmitEvent(f.ctx, warnEvt)
+
+	tsPrefix := model.TimestampPrefix(ts)
+	f.WaitUntil("event message appears in manifest log", func(st store.EngineState) bool {
+		ms, ok := st.ManifestState(name)
+		if !ok {
+			t.Fatalf("Manifest %s not found in state", name)
+		}
+
+		l := ms.CombinedLog.String()
+		return strings.Contains(l, "something has happened zomg") && strings.Contains(l, string(tsPrefix))
+	})
+
+	err := f.Stop()
+	assert.NoError(t, err)
+}
+
+func TestUIDMapDeleteUID(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	st := f.store.LockMutableStateForTesting()
+	st.LogTimestamps = true
+	f.store.UnlockMutableState()
+
+	entityUID := "someEntity"
+	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
+
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName(e.Name())
+	manifest := f.newManifest(string(name), []model.Sync{sync})
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	ls := k8s.TiltRunSelector()
+	f.kClient.EmitEverything(ls, k8swatch.Event{
+		Type:   k8swatch.Added,
+		Object: e.Obj,
+	})
+
+	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
+		_, ok := st.ObjectsByK8sUIDs[k8s.UID(entityUID)]
+		return ok
+	})
+
+	f.kClient.EmitEverything(ls, k8swatch.Event{
+		Type:   k8swatch.Deleted,
+		Object: e.Obj,
+	})
+
+	f.WaitUntil("entry for UID removed from map", func(st store.EngineState) bool {
+		_, ok := st.ObjectsByK8sUIDs[k8s.UID(entityUID)]
+		return !ok
+	})
+	err := f.Stop()
+	assert.NoError(t, err)
 }
 
 func TestInitSetsTiltfilePath(t *testing.T) {
@@ -1851,10 +2057,12 @@ func TestNewSyncsAreWatched(t *testing.T) {
 	})
 
 	f.WaitUntilManifest("has new syncs", "mani1", func(mt store.ManifestTarget) bool {
-		return len(mt.Manifest.ImageTargetAt(0).FastBuildInfo().Syncs) == 2
+		return len(mt.Manifest.ImageTargetAt(0).TopFastBuildInfo().Syncs) == 2
 	})
 
 	f.PollUntil("watches set up", func() bool {
+		f.fwm.mu.Lock()
+		defer f.fwm.mu.Unlock()
 		watches, ok := f.fwm.targetWatches[m2.ImageTargetAt(0).ID()]
 		if !ok {
 			return false
@@ -1992,7 +2200,9 @@ func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 
 	// recorded in global log
-	assert.Contains(t, f.LogLines(), expected)
+	f.withState(func(st store.EngineState) {
+		assert.Contains(t, st.Log.String(), expected)
+	})
 
 	// recorded on manifest state
 	f.withManifestState(m.ManifestName(), func(st store.ManifestState) {
@@ -2135,7 +2345,7 @@ func TestDockerComposeBuildCompletedDoesntSetStatusIfNotSuccessful(t *testing.T)
 func TestEmptyTiltfile(t *testing.T) {
 	f := newTestFixture(t)
 	f.WriteFile("Tiltfile", "")
-	go f.upper.Start(f.ctx, []string{}, false, model.TriggerAuto, f.JoinPath("Tiltfile"), true)
+	go f.upper.Start(f.ctx, []string{}, model.TiltBuild{}, false, f.JoinPath("Tiltfile"), true, model.SailModeDisabled, analytics.OptIn)
 	f.WaitUntil("build is set", func(st store.EngineState) bool {
 		return !st.LastTiltfileBuild.Empty()
 	})
@@ -2206,6 +2416,72 @@ k8s_yaml('snack.yaml')`
 	})
 }
 
+func TestTiltVersionCheck(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	versions := []model.TiltBuild{
+		{
+			Version: "v1000.10.1",
+			Date:    "2019-03-11",
+		},
+		{
+			Version: "v1000.10.2",
+			Date:    "2019-03-13",
+		},
+	}
+
+	f.ghc.LatestReleaseErr = nil
+	f.ghc.LatestReleaseRet = versions[0]
+	f.tiltVersionCheckDelay = time.Millisecond
+
+	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
+	manifest := f.newManifest("foobar", []model.Sync{sync})
+	f.Start([]model.Manifest{manifest}, true)
+
+	f.WaitUntil("latest version is updated the first time", func(state store.EngineState) bool {
+		return state.LatestTiltBuild == versions[0]
+	})
+
+	f.ghc.LatestReleaseRet = versions[1]
+	f.WaitUntil("latest version is updated the second time", func(state store.EngineState) bool {
+		return state.LatestTiltBuild == versions[1]
+	})
+}
+
+func TestSetAnalyticsOpt(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	opt := func(ia InitAction) InitAction {
+		ia.AnalyticsOpt = analytics.OptIn
+		return ia
+	}
+
+	f.Start([]model.Manifest{}, true, opt)
+	f.store.Dispatch(store.AnalyticsOptAction{Opt: analytics.OptOut})
+	f.WaitUntil("opted out", func(state store.EngineState) bool {
+		return state.AnalyticsOpt == analytics.OptOut
+	})
+
+	// if we don't wait for 1 here, it's possible the state flips to out and back to in before the subscriber sees it,
+	// and we end up with no events
+	f.opter.waitUntilCount(t, 1)
+
+	f.store.Dispatch(store.AnalyticsOptAction{Opt: analytics.OptIn})
+	f.WaitUntil("opted in", func(state store.EngineState) bool {
+		return state.AnalyticsOpt == analytics.OptIn
+	})
+
+	f.opter.waitUntilCount(t, 2)
+
+	err := f.Stop()
+	if !assert.NoError(t, err) {
+		return
+	}
+	assert.Equal(t, []analytics.Opt{analytics.OptOut, analytics.OptIn}, f.opter.Calls())
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
@@ -2244,6 +2520,41 @@ func makeFakeTimerMaker(t *testing.T) fakeTimerMaker {
 	return fakeTimerMaker{restTimerLock, maxTimerLock, t}
 }
 
+type testOpter struct {
+	calls []analytics.Opt
+	mu    sync.Mutex
+}
+
+func (to *testOpter) SetOpt(opt analytics.Opt) error {
+	to.mu.Lock()
+	defer to.mu.Unlock()
+	to.calls = append(to.calls, opt)
+	return nil
+}
+
+func (to *testOpter) Calls() []analytics.Opt {
+	to.mu.Lock()
+	defer to.mu.Unlock()
+	return append([]analytics.Opt{}, to.calls...)
+}
+
+func (to *testOpter) waitUntilCount(t *testing.T, expectedCount int) {
+	timeout := time.After(time.Second)
+	for {
+		select {
+		case <-time.After(5 * time.Millisecond):
+			actualCount := len(to.Calls())
+			if actualCount == expectedCount {
+				return
+			}
+		case <-timeout:
+			actualCount := len(to.Calls())
+			t.Errorf("waiting for opt setting count to be %d. opt setting count is currently %d", expectedCount, actualCount)
+			t.FailNow()
+		}
+	}
+}
+
 type testFixture struct {
 	*tempdir.TempDirFixture
 	ctx                   context.Context
@@ -2253,6 +2564,7 @@ type testFixture struct {
 	fsWatcher             *fakeMultiWatcher
 	timerMaker            *fakeTimerMaker
 	docker                *docker.FakeClient
+	kClient               *k8s.FakeK8sClient
 	hud                   *hud.FakeHud
 	createManifestsResult chan error
 	log                   *bufsync.ThreadSafeBuffer
@@ -2263,6 +2575,9 @@ type testFixture struct {
 	cc                    *ConfigsController
 	dcc                   *dockercompose.FakeDCClient
 	tfl                   tiltfile.TiltfileLoader
+	ghc                   *github.FakeClient
+	opter                 *testOpter
+	tiltVersionCheckDelay time.Duration
 
 	onchangeCh chan bool
 }
@@ -2288,7 +2603,7 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	fSub := fixtureSub{ch: make(chan bool, 1000)}
 	st := store.NewStore(UpperReducer, store.LogActionsFlag(false))
-	st.AddSubscriber(fSub)
+	st.AddSubscriber(ctx, fSub)
 
 	plm := NewPodLogManager(k8s)
 	bc := NewBuildController(b)
@@ -2301,54 +2616,68 @@ func newTestFixture(t *testing.T) *testFixture {
 	fwm := NewWatchManager(watcher.newSub, timerMaker.maker())
 	pfc := NewPortForwardController(k8s)
 	ic := NewImageController(reaper)
-	gybc := NewGlobalYAMLBuildController(k8s)
-	an := analytics.NewMemoryAnalytics()
-	ar := ProvideAnalyticsReporter(an, st)
+	to := &testOpter{}
+	_, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(to)
+	tas := NewTiltAnalyticsSubscriber(ta)
+	ar := ProvideAnalyticsReporter(ta, st)
 
 	// TODO(nick): Why does this test use two different docker compose clients???
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	realDcc := dockercompose.NewDockerComposeClient(docker.Env{})
 
-	tfl := tiltfile.ProvideTiltfileLoader(an, realDcc)
+	tfl := tiltfile.ProvideTiltfileLoader(ta, k8s, realDcc, "fake-context")
 	cc := NewConfigsController(tfl)
 	dcw := NewDockerComposeEventWatcher(fakeDcc)
 	dclm := NewDockerComposeLogManager(fakeDcc)
 	pm := NewProfilerManager()
 	sCli := synclet.NewFakeSyncletClient()
 	sm := NewSyncletManagerForTests(k8s, sCli)
-	hudsc := server.ProvideHeadsUpServerController(0, server.HeadsUpServer{}, server.NewFakeAssetServer())
-	subs := []store.Subscriber{
-		fakeHud, pw, sw, plm, pfc, fwm, bc, ic, gybc, cc, dcw, dclm, pm, sm, ar, hudsc,
+	hudsc := server.ProvideHeadsUpServerController(0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
+	ghc := &github.FakeClient{}
+	sc := &client.FakeSailClient{}
+	ewm := NewEventWatchManager(k8s)
+	umm := NewUIDMapManager(k8s)
+
+	ret := &testFixture{
+		TempDirFixture:        f,
+		ctx:                   ctx,
+		cancel:                cancel,
+		b:                     b,
+		fsWatcher:             watcher,
+		timerMaker:            &timerMaker,
+		docker:                dockerClient,
+		kClient:               k8s,
+		hud:                   fakeHud,
+		log:                   log,
+		store:                 st,
+		bc:                    bc,
+		onchangeCh:            fSub.ch,
+		fwm:                   fwm,
+		cc:                    cc,
+		dcc:                   fakeDcc,
+		tfl:                   tfl,
+		ghc:                   ghc,
+		opter:                 to,
+		tiltVersionCheckDelay: versionCheckInterval,
 	}
-	upper := NewUpper(ctx, st, subs)
+
+	tiltVersionCheckTimerMaker := func(d time.Duration) <-chan time.Time {
+		return time.After(ret.tiltVersionCheckDelay)
+	}
+	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
+
+	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc, sc, tvc, tas, ewm, umm)
+	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {
-		fakeHud.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
+		fakeHud.Run(ctx, ret.upper.Dispatch, hud.DefaultRefreshInterval)
 	}()
 
-	return &testFixture{
-		TempDirFixture: f,
-		ctx:            ctx,
-		cancel:         cancel,
-		upper:          upper,
-		b:              b,
-		fsWatcher:      watcher,
-		timerMaker:     &timerMaker,
-		docker:         dockerClient,
-		hud:            fakeHud,
-		log:            log,
-		store:          st,
-		bc:             bc,
-		onchangeCh:     fSub.ch,
-		fwm:            fwm,
-		cc:             cc,
-		dcc:            fakeDcc,
-		tfl:            tfl,
-	}
+	return ret
 }
 
-func (f *testFixture) Start(manifests []model.Manifest, watchFiles bool) {
-	f.startWithInitManifests(nil, manifests, watchFiles)
+func (f *testFixture) Start(manifests []model.Manifest, watchFiles bool, initOptions ...initOption) {
+	f.startWithInitManifests(nil, manifests, watchFiles, initOptions...)
 }
 
 // Start ONLY the specified manifests and no others (e.g. if additional manifests
@@ -2362,14 +2691,20 @@ func (f *testFixture) StartOnly(manifests []model.Manifest, watchFiles bool) {
 }
 
 // Empty `initManifests` will run start ALL manifests
-func (f *testFixture) startWithInitManifests(initManifests []model.ManifestName, manifests []model.Manifest, watchFiles bool) {
-	f.Init(InitAction{
+func (f *testFixture) startWithInitManifests(initManifests []model.ManifestName, manifests []model.Manifest, watchFiles bool, initOptions ...initOption) {
+	ia := InitAction{
 		Manifests:       manifests,
 		WatchFiles:      watchFiles,
 		TiltfilePath:    f.JoinPath("Tiltfile"),
 		ExecuteTiltfile: true,
-	})
+	}
+	for _, o := range initOptions {
+		ia = o(ia)
+	}
+	f.Init(ia)
 }
+
+type initOption func(ia InitAction) InitAction
 
 func (f *testFixture) Init(action InitAction) {
 	if action.TiltfilePath == "" {
@@ -2395,6 +2730,8 @@ func (f *testFixture) Init(action InitAction) {
 	})
 
 	f.PollUntil("watches set up", func() bool {
+		f.fwm.mu.Lock()
+		defer f.fwm.mu.Unlock()
 		return !watchFiles || len(f.fwm.targetWatches) == len(watchableTargetsForManifests(manifests))
 	})
 }
@@ -2578,9 +2915,8 @@ func (f *testFixture) startPod(manifestName model.ManifestName) {
 
 func (f *testFixture) podLog(manifestName model.ManifestName, s string) {
 	f.upper.store.Dispatch(PodLogAction{
-		ManifestName: manifestName,
-		PodID:        k8s.PodID(f.pod.Name),
-		logEvent:     newLogEvent([]byte(s + "\n")),
+		PodID:    k8s.PodID(f.pod.Name),
+		LogEvent: store.NewLogEvent(manifestName, []byte(s+"\n")),
 	})
 
 	f.WaitUntilManifestState("pod log seen", manifestName, func(ms store.ManifestState) bool {
@@ -2618,8 +2954,10 @@ func (f *testFixture) LogLines() []string {
 
 func (f *testFixture) TearDown() {
 	f.TempDirFixture.TearDown()
+	f.kClient.TearDown()
 	close(f.fsWatcher.events)
 	close(f.fsWatcher.errors)
+
 	f.cancel()
 }
 

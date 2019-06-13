@@ -2,11 +2,17 @@
 
 .LogPane {
   width: 100%;
+  margin-top: $tabnav-height;
   margin-right: $sidebar-width;
   margin-bottom: $statusbar-height;
-  padding: $spacing-unit / 2;
   transition: margin ease $animation-timing;
 }
+
+.logText {
+  margin-top: $resourceInfo-height;
+  padding: $spacing-unit / 2;
+}
+
 @keyframes blink {
   0% {
     opacity: 1;
@@ -31,9 +37,68 @@
   margin: 0;
 }
 
-.LogPane code {
-  white-space: pre-wrap;
+.resourceBar {
+  position: fixed;
+  top: $tabnav-height;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  height: $resourceInfo-height;
+  background-color: $color-gray-dark;
+  padding-left: $spacing-unit / 2;
+  padding-right: $sidebar-width + $spacing-unit / 2;
+  border-bottom: 1px dotted $color-gray-light;
 }
+
+.resourceInfo {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.resourceInfo + .resourceInfo {
+  margin-left: $spacing-unit / 2;
+  border-left: 1px dotted $color-gray-light;
+  padding-left: $spacing-unit / 2;
+}
+.resourceInfo-label {
+  text-transform: uppercase;
+  color: $color-gray-light;
+  font-weight: bold;
+  margin-right: $spacing-unit / 4;
+}
+.resourceInfo-value {
+  display: inline-block;
+  font-family: $font-monospace;
+  user-select: all;
+  margin: 0;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+a.resourceInfo-value {
+  text-decoration: none;
+}
+a.resourceInfo-value:hover {
+  text-decoration: underline;
+}
+.resourceInfo-value + .resourceInfo-value::before {
+  content: "";
+  margin-left: $spacing-unit / 2;
+  padding-left: $spacing-unit / 2;
+  height: $spacing-unit / 2;
+  display: inline-block;
+  border-left: 1px solid $color-gray-light;
+}
+
+.LogPane code {
+  display: block;
+  white-space: pre-wrap;
+  min-height: $spacing-unit / 2; // Respect blank lines
+}
+
+// Log Colors
 
 .ansi-black {
   color: $color-black;

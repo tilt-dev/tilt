@@ -19,42 +19,24 @@ import (
 // For distributed binaries, version is automatically baked
 // into the binary with goreleaser. If this doesn't get updated
 // on every release, it's often not that big a deal.
-const devVersion = "0.7.10"
+const devVersion = "0.8.8"
 
-type BuildInfo struct {
-	Version string
-	Date    string
-	Dev     bool
+var globalTiltInfo model.TiltBuild
+
+func SetTiltInfo(info model.TiltBuild) {
+	globalTiltInfo = info
 }
 
-func (e BuildInfo) empty() bool {
-	return e == BuildInfo{}
-}
-
-func (e BuildInfo) AnalyticsVersion() string {
-	if e.Dev {
-		return e.Version + "-dev"
-	}
-
-	return e.Version
-}
-
-var globalBuildInfo BuildInfo
-
-func SetBuildInfo(info BuildInfo) {
-	globalBuildInfo = info
-}
-
-func buildInfo() BuildInfo {
-	info := globalBuildInfo
-	if info.empty() {
-		return defaultBuildInfo()
+func tiltInfo() model.TiltBuild {
+	info := globalTiltInfo
+	if info.Empty() {
+		return defaultTiltInfo()
 	}
 	return info
 }
 
 func buildStamp() string {
-	info := buildInfo()
+	info := tiltInfo()
 	version := info.Version
 	date := info.Date
 	timeIndex := strings.Index(date, "T")
@@ -88,18 +70,18 @@ func defaultBuildDate() string {
 }
 
 // Returns a build datestamp in the format 2018-08-30
-func defaultBuildInfo() BuildInfo {
-	return BuildInfo{
+func defaultTiltInfo() model.TiltBuild {
+	return model.TiltBuild{
 		Date:    defaultBuildDate(),
 		Version: devVersion,
 		Dev:     true,
 	}
 }
 
-func provideBuildInfo() BuildInfo {
-	return buildInfo()
+func provideTiltInfo() model.TiltBuild {
+	return tiltInfo()
 }
 
-func provideWebVersion(b BuildInfo) model.WebVersion {
-	return model.WebVersion(fmt.Sprintf("v%s", b.Version))
+func provideWebVersion(b model.TiltBuild) model.WebVersion {
+	return b.WebVersion()
 }

@@ -165,6 +165,7 @@ func newPWFixture(t *testing.T) *pwFixture {
 }
 
 func (f *pwFixture) TearDown() {
+	f.kClient.TearDown()
 	f.cancel()
 }
 

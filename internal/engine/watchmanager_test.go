@@ -50,27 +50,6 @@ func TestWatchManager_Dockerignore(t *testing.T) {
 	assert.NotContains(t, targetFilesChangedActionsToPaths(actions), "bar/baz")
 }
 
-func TestWatchManager_Gitignore(t *testing.T) {
-	f := newWMFixture(t)
-	defer f.TearDown()
-
-	wd, err := os.Getwd()
-	if !assert.NoError(t, err) {
-		return
-	}
-
-	target := model.DockerComposeTarget{Name: "foo"}.
-		WithRepos([]model.LocalGitRepo{{LocalPath: wd, GitignoreContents: "bar"}}).
-		WithBuildPath(".")
-	f.SetManifestTarget(target)
-
-	f.ChangeFile(t, "bar")
-
-	actions := f.Stop(t)
-
-	assert.NotContains(t, targetFilesChangedActionsToPaths(actions), "bar")
-}
-
 func TestWatchManager_WatchesReappliedOnDockerComposeSyncChange(t *testing.T) {
 	f := newWMFixture(t)
 	defer f.TearDown()
@@ -96,29 +75,6 @@ func TestWatchManager_WatchesReappliedOnDockerIgnoreChange(t *testing.T) {
 	target := model.DockerComposeTarget{Name: "foo"}.
 		WithBuildPath(".")
 	f.SetManifestTarget(target.WithDockerignores([]model.Dockerignore{{LocalPath: ".", Contents: "bar"}}))
-	f.SetManifestTarget(target)
-
-	f.ChangeFile(t, "bar")
-
-	actions := f.Stop(t)
-
-	// not asserting exact contents because we can end up with duplicates since the old watch loop isn't stopped
-	// until after the new watch loop is started
-	assert.Contains(t, targetFilesChangedActionsToPaths(actions), "bar")
-}
-
-func TestWatchManager_WatchesReappliedOnGitIgnoreChange(t *testing.T) {
-	f := newWMFixture(t)
-	defer f.TearDown()
-
-	wd, err := os.Getwd()
-	if !assert.NoError(t, err) {
-		return
-	}
-
-	target := model.DockerComposeTarget{Name: "foo"}.
-		WithBuildPath(".")
-	f.SetManifestTarget(target.WithRepos([]model.LocalGitRepo{{LocalPath: wd, GitignoreContents: "bar"}}))
 	f.SetManifestTarget(target)
 
 	f.ChangeFile(t, "bar")

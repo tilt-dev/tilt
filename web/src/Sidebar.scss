@@ -6,8 +6,8 @@
   right: 0;
   bottom: $statusbar-height;
   width: $sidebar-width;
-  background-color: $color-navy;
-  border-left: 2px solid $color-navy-light;
+  background-color: $color-gray;
+  border-left: 1px solid rgba($color-white, $translucent-ish);
   box-sizing: border-box;
   overflow-y: auto;
   transform: translateX(0%);
@@ -15,45 +15,11 @@
   font-size: $font-size;
   display: flex;
   flex-direction: column;
+  z-index: $z-sidebar;
+  box-shadow: -2px 0px 10px 0px rgba($color-gray-dark, $translucent);
 }
 .Sidebar.is-closed {
   transform: translateX(calc(100% - #{$sidebar-collapsed-width}));
-}
-
-// Resource Views
-.Sidebar-view {
-  position: sticky;
-  top: 0;
-  right: 0;
-  background-color: $color-navy-dark;
-  display: flex;
-}
-.viewLink {
-  box-sizing: border-box;
-  height: $sidebar-item * 1.5;
-  flex: 1 0 50%;
-  color: inherit;
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-bottom: 1px solid $color-navy-light;
-  transition-property: color, background-color;
-  transition-duration: $animation-timing;
-  transition-timing-function: ease;
-  @include button-text;
-}
-.viewLink + .viewLink {
-  border-left: 2px solid $color-navy-light;
-}
-.viewLink:hover {
-  background-color: $color-navy-dark;
-  color: $color-blue-light;
-}
-.viewLink--is-selected {
-  right: 0;
-  background-color: $color-navy;
-  border-bottom: none;
 }
 
 // Resource List
@@ -67,8 +33,7 @@
 
 .resLink {
   right: 0;
-  background-color: $color-navy;
-  border-bottom: 1px solid $color-navy-light;
+  border-bottom: 1px solid $color-gray-light;
   color: $color-white;
   text-decoration: none;
   display: flex;
@@ -80,61 +45,132 @@
 }
 .resLink:hover {
   right: 0;
-  background-color: $color-navy-dark;
+  background-color: $color-gray-dark;
   color: $color-blue-light;
 }
 .resLink.is-selected {
   right: 0;
   background-color: $color-white;
-  color: $color-navy;
+  color: $color-gray;
 }
-.resLink::before {
-  content: "●";
-  width: $spacing-unit * 1.5;
-  text-align: center;
-}
-.resLink.has-warnings::after {
-  content: "⚠";
-  margin-top: -5px;
-  margin-left: $spacing-unit / 2;
-  font-size: 30px;
-  color: $color-yellow;
+.resLink.has-warnings::before {
+  content: "";
+  position: absolute;
+  width: 5px;
+  height: $sidebar-item;
+  background-color: $color-yellow;
 }
 .resLink--all {
   text-transform: uppercase;
 }
 .resLink--all::before {
   content: "┌";
-  color: $color-grey-dark;
-  margin-top: -8px;
+  color: $color-gray-light;
+  margin-top: $spacing-unit / 4; // Visually center
+  width: $sidebar-item;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.resLink--ok::before {
-  color: $color-green;
+
+.sidebarIcon {
+  width: $sidebar-item;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.resLink--ok::before {
-  color: $color-green;
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
-.resLink--pending::before {
-  color: $color-yellow;
+@keyframes shimmer {
+  0% {
+    background-position: -$sidebar-width 0;
+  }
+
+  100% {
+    background-position: $sidebar-width 0;
+  }
 }
-.resLink--error::before {
-  color: $color-red;
+
+@keyframes glow {
+  0% {
+    opacity: $translucent;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: $translucent;
+  }
+}
+
+.resLink--building {
+  background-image: linear-gradient(
+    to right,
+    transparent 20%,
+    rgba($color-gray-darkest, $translucent) 40%,
+    rgba($color-gray-darkest, $translucent) 60%,
+    transparent 80%
+  );
+  animation: shimmer 2s infinite;
+  animation-timing-function: linear;
+}
+
+.resLink-name {
+  flex: 1 0 auto;
+}
+.resLink-alertBadge {
+  font-family: $font-sans-serif;
+  font-size: $font-size-smallest;
+  background-color: $color-white;
+  color: $color-gray-darkest;
+  border-radius: $alert-badge;
+  width: $alert-badge;
+  height: $alert-badge;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: $spacing-unit / 2;
+}
+
+.resLink--all-name {
+  flex: 1;
+}
+
+.resLink--all .resLink-alertBadge {
+  align-items: right;
+}
+.resLink.is-selected .resLink-alertBadge {
+  background-color: $color-gray-darkest;
+  color: $color-white;
+}
+
+.resLink-timeAgo {
+  font-weight: normal;
+  color: $color-gray-lightest;
+  margin-right: $spacing-unit / 2;
 }
 
 // Collapse/Expand
+.Sidebar-spacer {
+  flex-grow: 1;
+  height: 0;
+}
 .Sidebar-toggle {
-  position: sticky;
-  bottom: 0;
-  right: 0;
-  background-color: $color-navy;
+  background-color: $color-gray;
   border: 0 none;
-  border-top: 1px solid $color-navy-light;
+  border-top: 1px solid $color-gray-light;
   color: inherit;
   font-size: inherit;
   font-family: inherit;
   display: flex;
   align-items: center;
-  height: $sidebar-item;
+  min-height: $sidebar-item;
   margin: 0;
   padding: 0;
   @include button-text;
@@ -144,7 +180,7 @@
   transition-timing-function: ease;
 }
 .Sidebar-toggle:hover {
-  background-color: $color-navy-dark;
+  background-color: $color-gray-dark;
   color: $color-blue-light;
 }
 .Sidebar-toggle > svg {

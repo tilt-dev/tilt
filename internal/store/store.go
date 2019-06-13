@@ -37,7 +37,7 @@ type Store struct {
 	logActions  bool
 
 	// TODO(nick): Define Subscribers and Reducers.
-	// The actionChan is an intermediate representation to make the transition easiser.
+	// The actionChan is an intermediate representation to make the transition easier.
 }
 
 func NewStore(reducer Reducer, logActions LogActionsFlag) *Store {
@@ -75,8 +75,8 @@ func NewStoreForTesting() (st *Store, getActions func() []Action) {
 	return NewStore(reducer, false), getActions
 }
 
-func (s *Store) AddSubscriber(sub Subscriber) {
-	s.subscribers.Add(sub)
+func (s *Store) AddSubscriber(ctx context.Context, sub Subscriber) {
+	s.subscribers.Add(ctx, sub)
 }
 
 func (s *Store) RemoveSubscriber(ctx context.Context, sub Subscriber) error {
@@ -118,8 +118,12 @@ func (s *Store) Close() {
 	close(s.actionCh)
 }
 
+func (s *Store) SetUpSubscribersForTesting(ctx context.Context) {
+	s.subscribers.SetUp(ctx)
+}
+
 func (s *Store) Loop(ctx context.Context) error {
-	s.subscribers.Setup(ctx)
+	s.subscribers.SetUp(ctx)
 	defer s.subscribers.TeardownAll(context.Background())
 
 	for {
@@ -178,7 +182,7 @@ func (s *Store) maybeFinished() (bool, error) {
 	}
 
 	finished := !state.WatchFiles &&
-		state.CompletedBuildCount == state.InitialBuildCount
+		state.CompletedBuildCount == state.InitialBuildsQueued
 	return finished, nil
 }
 

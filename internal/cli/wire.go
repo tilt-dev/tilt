@@ -7,11 +7,14 @@ import (
 	"context"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/analytics"
+
 	"github.com/docker/docker/api/types"
 	"github.com/google/wire"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/tools/clientcmd/api"
 
+	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/demo"
@@ -21,6 +24,7 @@ import (
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
@@ -43,9 +47,11 @@ var K8sWireSet = wire.NewSet(
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet,
+	provideKubectlLogLevel,
 
 	docker.ProvideDockerClient,
 	docker.ProvideDockerVersion,
+	docker.ProvideDockerBuilderVersion,
 	docker.DefaultClient,
 	wire.Bind(new(docker.Client), new(docker.Cli)),
 
@@ -61,11 +67,15 @@ var BaseWireSet = wire.NewSet(
 	engine.NewBuildController,
 	engine.NewPodWatcher,
 	engine.NewServiceWatcher,
+	engine.NewEventWatchManager,
 	engine.NewImageController,
 	engine.NewConfigsController,
 	engine.NewDockerComposeEventWatcher,
 	engine.NewDockerComposeLogManager,
 	engine.NewProfilerManager,
+	engine.NewGithubClientFactory,
+	engine.NewTiltVersionChecker,
+	engine.NewUIDMapManager,
 
 	provideClock,
 	hud.NewRenderer,
@@ -75,10 +85,10 @@ var BaseWireSet = wire.NewSet(
 	store.NewStore,
 	wire.Bind(new(store.RStore), new(store.Store)),
 
-	provideBuildInfo,
+	provideTiltInfo,
 	engine.ProvideSubscribers,
 	engine.NewUpper,
-	provideAnalytics,
+	engine.NewTiltAnalyticsSubscriber,
 	engine.ProvideAnalyticsReporter,
 	provideUpdateModeFlag,
 	engine.NewWatchManager,
@@ -91,9 +101,10 @@ var BaseWireSet = wire.NewSet(
 	provideWebPort,
 	provideWebDevPort,
 	server.ProvideHeadsUpServer,
-	server.ProvideAssetServer,
+	assets.ProvideAssetServer,
 	server.ProvideHeadsUpServerController,
 
+	provideSailMode,
 	provideSailURL,
 	client.SailWireSet,
 
@@ -101,28 +112,25 @@ var BaseWireSet = wire.NewSet(
 	engine.NewKINDPusher,
 )
 
-func wireDemo(ctx context.Context, branch demo.RepoBranch) (demo.Script, error) {
+func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics *analytics.TiltAnalytics) (demo.Script, error) {
 	wire.Build(BaseWireSet, demo.NewScript, build.ProvideClock)
 	return demo.Script{}, nil
 }
 
-func wireThreads(ctx context.Context) (Threads, error) {
+func wireThreads(ctx context.Context, analytics *analytics.TiltAnalytics) (Threads, error) {
 	wire.Build(BaseWireSet, build.ProvideClock)
 	return Threads{}, nil
 }
 
 type Threads struct {
-	hud   hud.HeadsUpDisplay
-	upper engine.Upper
+	hud       hud.HeadsUpDisplay
+	upper     engine.Upper
+	tiltBuild model.TiltBuild
+	sailMode  model.SailMode
 }
 
-func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper) Threads {
-	return Threads{h, upper}
-}
-
-func wireK8sClient(ctx context.Context) (k8s.Client, error) {
-	wire.Build(K8sWireSet)
-	return nil, nil
+func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, b model.TiltBuild, sailMode model.SailMode) Threads {
+	return Threads{h, upper, b, sailMode}
 }
 
 func wireKubeContext(ctx context.Context) (k8s.KubeContext, error) {
@@ -146,7 +154,10 @@ func wireNamespace(ctx context.Context) (k8s.Namespace, error) {
 }
 
 func wireRuntime(ctx context.Context) (container.Runtime, error) {
-	wire.Build(K8sWireSet)
+	wire.Build(
+		K8sWireSet,
+		provideKubectlLogLevel,
+	)
 	return "", nil
 }
 
@@ -165,9 +176,14 @@ func wireDockerEnv(ctx context.Context) (docker.Env, error) {
 	return docker.Env{}, nil
 }
 
-func wireDownDeps(ctx context.Context) (DownDeps, error) {
+func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics) (DownDeps, error) {
 	wire.Build(BaseWireSet, ProvideDownDeps)
 	return DownDeps{}, nil
+}
+
+func wireDockerBuilderVersion(ctx context.Context) (types.BuilderVersion, error) {
+	wire.Build(BaseWireSet)
+	return "", nil
 }
 
 type DownDeps struct {

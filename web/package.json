@@ -14,19 +14,19 @@
     "@types/react-router-dom": "^4.3.1",
     "@types/react-select": "^2.0.15",
     "@types/react-test-renderer": "^16.8.1",
+    "@types/react-timeago": "^4.1.0",
     "ansi-to-react": "^5.0.0",
-    "enzyme": "^3.9.0",
-    "enzyme-adapter-react-16": "^1.11.2",
     "history": "^4.9.0",
     "immutable": "^4.0.0-rc.12",
-    "node-sass": "^4.11.0",
+    "node-sass": "^4.12.0",
     "react": "^16.7.0",
     "react-dom": "^16.7.0",
     "react-helmet": "^5.2.0",
     "react-router-dom": "^4.3.1",
-    "react-scripts": "2.1.8",
+    "react-scripts": "3.0.0",
     "react-select": "^2.4.2",
     "react-test-renderer": "^16.7.0",
+    "react-timeago": "^4.4.0",
     "typescript": "^3.3.4000"
   },
   "scripts": {
@@ -47,6 +47,18 @@
     "not op_mini all"
   ],
   "devDependencies": {
+    "enzyme": "^3.9.0",
+    "enzyme-adapter-react-16": "^1.11.2",
+    "enzyme-to-json": "^3.3.5",
+    "jest-fetch-mock": "^2.1.2",
     "prettier": "1.16.4"
+  },
+  "engines": {
+    "node": ">=11.0.0"
+  },
+  "jest": {
+    "snapshotSerializers": [
+      "enzyme-to-json/serializer"
+    ]
   }
 }

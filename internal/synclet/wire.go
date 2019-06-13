@@ -20,6 +20,7 @@ func WireSynclet(ctx context.Context, env k8s.Env, runtime container.Runtime) (*
 		docker.ProvideEnv,
 		docker.ProvideDockerClient,
 		docker.ProvideDockerVersion,
+		docker.ProvideDockerBuilderVersion,
 		docker.DefaultClient,
 		wire.Bind(new(docker.Client), new(docker.Cli)),
 

@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/tracer"
 
@@ -38,17 +39,18 @@ func Execute() {
 		Short: "tilt creates Kubernetes Live Deploys that reflect changes seconds after they’re made",
 	}
 
-	err := initAnalytics(rootCmd)
+	a, err := initAnalytics(rootCmd)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
-	addCommand(rootCmd, &upCmd{})
-	addCommand(rootCmd, &doctorCmd{})
-	addCommand(rootCmd, &downCmd{})
-	addCommand(rootCmd, &demoCmd{})
-	addCommand(rootCmd, &versionCmd{})
+	addCommand(rootCmd, &upCmd{}, a)
+	addCommand(rootCmd, &dockerCmd{}, a)
+	addCommand(rootCmd, &doctorCmd{}, a)
+	addCommand(rootCmd, &downCmd{}, a)
+	addCommand(rootCmd, &demoCmd{}, a)
+	addCommand(rootCmd, &versionCmd{}, a)
 
 	globalFlags := rootCmd.PersistentFlags()
 	globalFlags.BoolVarP(&debug, "debug", "d", false, "Enable debug logging")
@@ -72,11 +74,12 @@ type tiltCmd interface {
 	run(ctx context.Context, args []string) error
 }
 
-func preCommand(ctx context.Context) (context.Context, func() error) {
+func preCommand(ctx context.Context, a *analytics.TiltAnalytics) (context.Context, func() error) {
 	cleanup := func() error { return nil }
 	initKlog()
 	l := logger.NewLogger(logLevel(verbose, debug), os.Stdout)
 	ctx = logger.WithLogger(ctx, l)
+	ctx = analytics.WithAnalytics(ctx, a)
 
 	if trace {
 		backend, err := tracer.StringToTracerBackend(traceType)
@@ -113,10 +116,10 @@ func preCommand(ctx context.Context) (context.Context, func() error) {
 	return ctx, cleanup
 }
 
-func addCommand(parent *cobra.Command, child tiltCmd) {
+func addCommand(parent *cobra.Command, child tiltCmd, a *analytics.TiltAnalytics) {
 	cobraChild := child.register()
 	cobraChild.Run = func(_ *cobra.Command, args []string) {
-		ctx, cleanup := preCommand(context.Background())
+		ctx, cleanup := preCommand(context.Background(), a)
 
 		err := child.run(ctx, args)
 

@@ -11,8 +11,7 @@ import (
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/wmclient/pkg/analytics"
-
+	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
@@ -21,7 +20,6 @@ import (
 
 const FileName = "Tiltfile"
 const TiltIgnoreFileName = ".tiltignore"
-const unresourcedName = "k8s_yaml"
 
 func init() {
 	resolve.AllowLambda = true
@@ -31,7 +29,6 @@ func init() {
 
 type TiltfileLoadResult struct {
 	Manifests          []model.Manifest
-	Global             model.Manifest
 	ConfigFiles        []string
 	Warnings           []string
 	TiltIgnoreContents string
@@ -43,7 +40,6 @@ type TiltfileLoader interface {
 
 type FakeTiltfileLoader struct {
 	Manifests   []model.Manifest
-	Global      model.Manifest
 	ConfigFiles []string
 	Warnings    []string
 	Err         error
@@ -58,19 +54,29 @@ func NewFakeTiltfileLoader() *FakeTiltfileLoader {
 func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool) (TiltfileLoadResult, error) {
 	return TiltfileLoadResult{
 		Manifests:   tfl.Manifests,
-		Global:      tfl.Global,
 		ConfigFiles: tfl.ConfigFiles,
 		Warnings:    tfl.Warnings,
 	}, tfl.Err
 }
 
-func ProvideTiltfileLoader(analytics analytics.Analytics, dcCli dockercompose.DockerComposeClient) TiltfileLoader {
-	return tiltfileLoader{analytics: analytics, dcCli: dcCli}
+func ProvideTiltfileLoader(
+	analytics *analytics.TiltAnalytics,
+	kCli k8s.Client,
+	dcCli dockercompose.DockerComposeClient,
+	kubeContext k8s.KubeContext) TiltfileLoader {
+	return tiltfileLoader{
+		analytics:   analytics,
+		kCli:        kCli,
+		dcCli:       dcCli,
+		kubeContext: kubeContext,
+	}
 }
 
 type tiltfileLoader struct {
-	analytics analytics.Analytics
-	dcCli     dockercompose.DockerComposeClient
+	analytics   *analytics.TiltAnalytics
+	kCli        k8s.Client
+	dcCli       dockercompose.DockerComposeClient
+	kubeContext k8s.KubeContext
 }
 
 var _ TiltfileLoader = &tiltfileLoader{}
@@ -92,7 +98,8 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 		return TiltfileLoadResult{ConfigFiles: []string{absFilename}}, err
 	}
 
-	s := newTiltfileState(ctx, tfl.dcCli, absFilename)
+	privateRegistry := tfl.kCli.PrivateRegistry(ctx)
+	s := newTiltfileState(ctx, tfl.dcCli, absFilename, tfl.kubeContext, privateRegistry)
 	printedWarnings := false
 	defer func() {
 		tlr.ConfigFiles = s.configFiles
@@ -134,6 +141,8 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 		return TiltfileLoadResult{}, err
 	}
 
+	s.checkForFastBuilds(manifests)
+
 	manifests, err = match(manifests, matching)
 	if err != nil {
 		return TiltfileLoadResult{}, err
@@ -141,10 +150,11 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 
 	yamlManifest := model.Manifest{}
 	if len(unresourced) > 0 {
-		yamlManifest, err = k8s.NewK8sOnlyManifest(unresourcedName, unresourced)
+		yamlManifest, err = k8s.NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, unresourced)
 		if err != nil {
 			return TiltfileLoadResult{}, err
 		}
+		manifests = append(manifests, yamlManifest)
 	}
 
 	printWarnings(s)
@@ -162,9 +172,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 		return TiltfileLoadResult{}, errors.Wrapf(err, "error reading %s", tiltIgnorePath(filename))
 	}
 
-	// TODO(maia): `yamlManifest` should be processed just like any
-	// other manifest (i.e. get rid of "global yaml" concept)
-	return TiltfileLoadResult{manifests, yamlManifest, s.configFiles, s.warnings, string(tiltIgnoreContents)}, err
+	return TiltfileLoadResult{manifests, s.configFiles, s.warnings, string(tiltIgnoreContents)}, err
 }
 
 // .tiltignore sits next to Tiltfile

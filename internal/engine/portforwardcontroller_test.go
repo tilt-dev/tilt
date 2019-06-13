@@ -111,3 +111,8 @@ func newPLCFixture(t *testing.T) *plcFixture {
 		plc:            plc,
 	}
 }
+
+func (f *plcFixture) TearDown() {
+	f.kCli.TearDown()
+	f.TempDirFixture.TearDown()
+}

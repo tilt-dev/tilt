@@ -7,13 +7,21 @@ import Statusbar, { StatusItem } from "./Statusbar"
 import LogPane from "./LogPane"
 import K8sViewPane from "./K8sViewPane"
 import PreviewPane from "./PreviewPane"
+import PathBuilder from "./PathBuilder"
 import { Map } from "immutable"
-import { Router, Route, Switch, RouteComponentProps } from "react-router-dom"
+import { Route, Switch, RouteComponentProps } from "react-router-dom"
 import { createBrowserHistory, History, UnregisterCallback } from "history"
-import "./HUD.scss"
 import { incr, pathToTag } from "./analytics"
+import TopBar from "./TopBar"
+import "./HUD.scss"
+import { TiltBuild, ResourceView, TriggerMode } from "./types"
+import AlertPane, { AlertResource } from "./AlertPane"
+import PreviewList from "./PreviewList"
+import AnalyticsNudge from "./AnalyticsNudge"
 
-type HudProps = {}
+type HudProps = {
+  history: History
+}
 
 type Resource = {
   Name: string
@@ -23,10 +31,11 @@ type Resource = {
   CurrentBuild: any
   DirectoriesWatched: Array<any>
   Endpoints: Array<string>
+  PodID: string
   IsTiltfile: boolean
   LastDeployTime: string
   PathsWatched: Array<string>
-  PendingBuildEdits: any
+  PendingBuildEdits: Array<string>
   PendingBuildReason: number
   ResourceInfo: {
     PodCreationTime: string
@@ -35,14 +44,12 @@ type Resource = {
     PodRestarts: number
     PodUpdateStartTime: string
     YAML: string
+    PodStatus: string
   }
   RuntimeStatus: string
   ShowBuildStatus: boolean
-}
-
-export enum ResourceView {
-  Log,
-  Preview,
+  TriggerMode: TriggerMode
+  HasPendingChanges: boolean
 }
 
 type HudState = {
@@ -51,6 +58,11 @@ type HudState = {
     Resources: Array<Resource>
     Log: string
     LogTimestamps: boolean
+    SailEnabled: boolean
+    SailURL: string
+    NeedsAnalyticsNudge: boolean
+    RunningTiltBuild: TiltBuild
+    LatestTiltBuild: TiltBuild
   } | null
   IsSidebarClosed: boolean
 }
@@ -59,10 +71,7 @@ type HudState = {
 // https://docs.google.com/document/d/1VNIGfpC4fMfkscboW0bjYYFJl07um_1tsFrbN-Fu3FI/edit#heading=h.l8mmnclsuxl1
 class HUD extends Component<HudProps, HudState> {
   // The root of the HUD view, without the slash.
-  //
-  // TODO(nick): Update all the Link elements to draw from some LinkProvider
-  // that understands rootPath.
-  private rootPath: string
+  private pathBuilder: PathBuilder
   private controller: AppController
   private history: History
   private unlisten: UnregisterCallback
@@ -70,20 +79,15 @@ class HUD extends Component<HudProps, HudState> {
   constructor(props: HudProps) {
     super(props)
 
-    let rootPath = ""
-    let url = `ws://${window.location.host}/ws/view`
-    let roomPath = new RegExp("^/view/(.+)$")
-    let roomMatch = roomPath.exec(window.location.pathname)
-    if (roomMatch) {
-      let roomId = roomMatch[1]
-      url = `ws://${window.location.host}/join/${roomId}`
-      rootPath = `/view/${roomId}`
-    }
-
-    this.controller = new AppController(url, this)
-    this.rootPath = rootPath
-
-    this.history = createBrowserHistory()
+    this.pathBuilder = new PathBuilder(
+      window.location.host,
+      window.location.pathname
+    )
+    this.controller = new AppController(
+      this.pathBuilder.getWebsocketUrl(),
+      this
+    )
+    this.history = props.history
     this.unlisten = () => {}
 
     this.state = {
@@ -92,6 +96,19 @@ class HUD extends Component<HudProps, HudState> {
         Resources: [],
         Log: "",
         LogTimestamps: false,
+        SailEnabled: false,
+        SailURL: "",
+        NeedsAnalyticsNudge: false,
+        RunningTiltBuild: {
+          Version: "",
+          Date: "",
+          Dev: false,
+        },
+        LatestTiltBuild: {
+          Version: "",
+          Date: "",
+          Dev: false,
+        },
       },
       IsSidebarClosed: false,
     }
@@ -128,15 +145,23 @@ class HUD extends Component<HudProps, HudState> {
     })
   }
 
-  path(relPath: string) {
-    if (relPath[0] != "/") {
-      throw new Error('relPath should start with "/", actual:' + relPath)
+  getPreviewForName(name: string, resources: Array<SidebarItem>): string {
+    if (name) {
+      return `/r/${name}/preview`
     }
-    return this.rootPath + relPath
+
+    return `/preview`
+  }
+
+  path(relPath: string) {
+    return this.pathBuilder.path(relPath)
   }
 
   render() {
     let view = this.state.View
+    let sailEnabled = view && view.SailEnabled ? view.SailEnabled : false
+    let sailUrl = view && view.SailURL ? view.SailURL : ""
+    let needsNudge = view ? view.NeedsAnalyticsNudge : false
     let message = this.state.Message
     let resources = (view && view.Resources) || []
     if (!resources.length) {
@@ -147,7 +172,7 @@ class HUD extends Component<HudProps, HudState> {
     let toggleSidebar = this.toggleSidebar
     let statusItems = resources.map(res => new StatusItem(res))
     let sidebarItems = resources.map(res => new SidebarItem(res))
-    let sidebarRoute = (props: RouteComponentProps<any>) => {
+    let sidebarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name = props.match.params.name
       return (
         <Sidebar
@@ -155,31 +180,69 @@ class HUD extends Component<HudProps, HudState> {
           items={sidebarItems}
           isClosed={isSidebarClosed}
           toggleSidebar={toggleSidebar}
-          resourceView={ResourceView.Log}
+          resourceView={t}
+          pathBuilder={this.pathBuilder}
         />
       )
     }
-    let sidebarPreviewRoute = (props: RouteComponentProps<any>) => {
-      let name = props.match.params.name
+
+    let topBarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
+      let name =
+        props.match.params && props.match.params.name
+          ? props.match.params.name
+          : ""
+      let numAlerts = 0
+      if (name !== "") {
+        let selectedResource = resources.find(r => r.Name === name)
+        let er = new AlertResource(selectedResource)
+        if (er.hasAlert()) {
+          numAlerts = er.numberOfAlerts()
+        }
+      } else {
+        numAlerts = resourcesWithAlerts
+          .map(er => er.numberOfAlerts())
+          .reduce((sum, current) => sum + current, 0)
+      }
       return (
-        <Sidebar
-          selected={name}
-          items={sidebarItems}
-          isClosed={isSidebarClosed}
-          toggleSidebar={toggleSidebar}
-          resourceView={ResourceView.Preview}
+        <TopBar
+          logUrl={name === "" ? this.path("/") : this.path(`/r/${name}`)}
+          alertsUrl={
+            name === "" ? this.path("/alerts") : this.path(`/r/${name}/alerts`)
+          }
+          previewUrl={this.path(this.getPreviewForName(name, sidebarItems))}
+          resourceView={t}
+          sailEnabled={sailEnabled}
+          sailUrl={sailUrl}
+          numberOfAlerts={numAlerts}
         />
       )
     }
 
     let logsRoute = (props: RouteComponentProps<any>) => {
-      let name = props.match.params ? props.match.params.name : ""
+      let name =
+        props.match.params && props.match.params.name
+          ? props.match.params.name
+          : ""
       let logs = ""
+      let endpoints: Array<string> = []
+      let podID = ""
+      let podStatus = ""
       if (view && name !== "") {
         let r = view.Resources.find(r => r.Name === name)
-        logs = r ? r.CombinedLog : ""
+        logs = (r && r.CombinedLog) || ""
+        endpoints = (r && r.Endpoints) || []
+        podID = (r && r.PodID) || ""
+        podStatus = (r && r.ResourceInfo && r.ResourceInfo.PodStatus) || ""
       }
-      return <LogPane log={logs} isExpanded={isSidebarClosed} />
+      return (
+        <LogPane
+          log={logs}
+          isExpanded={isSidebarClosed}
+          endpoints={endpoints}
+          podID={podID}
+          podStatus={podStatus}
+        />
+      )
     }
 
     let combinedLog = ""
@@ -195,45 +258,129 @@ class HUD extends Component<HudProps, HudState> {
         endpoint = r ? r.Endpoints && r.Endpoints[0] : ""
       }
 
+      if (view && endpoint === "") {
+        let resourceNamesWithEndpoints = view.Resources.filter(
+          r => r.Endpoints && r.Endpoints.length > 0
+        ).map(r => r.Name)
+        return (
+          <PreviewList
+            resourcesWithEndpoints={resourceNamesWithEndpoints}
+            pathBuilder={this.pathBuilder}
+          />
+        )
+      }
+
       return <PreviewPane endpoint={endpoint} isExpanded={isSidebarClosed} />
     }
 
+    let errorRoute = (props: RouteComponentProps<any>) => {
+      let name = props.match.params ? props.match.params.name : ""
+      let er = resources.find(r => r.Name === name)
+      if (er) {
+        return <AlertPane resources={[new AlertResource(er)]} />
+      }
+      return <AlertPane resources={[]} />
+    }
+    let alertResources = resources.map(r => new AlertResource(r))
+    let resourcesWithAlerts = alertResources.filter(r => r.hasAlert())
+
+    let runningVersion = view && view.RunningTiltBuild
+    let latestVersion = view && view.LatestTiltBuild
+
     return (
-      <Router history={this.history}>
-        <div className="HUD">
-          <Switch>
-            <Route
-              path={this.path("/r/:name/preview")}
-              render={sidebarPreviewRoute}
-            />
-            }
-            <Route path={this.path("/r/:name")} render={sidebarRoute} />
-            <Route render={sidebarRoute} />
-          </Switch>
-          <Statusbar items={statusItems} />
-          <Switch>
-            <Route
-              exact
-              path={this.path("/")}
-              render={() => (
-                <LogPane log={combinedLog} isExpanded={isSidebarClosed} />
-              )}
-            />
-            <Route exact path={this.path("/r/:name")} render={logsRoute} />
-            <Route
-              exact
-              path={this.path("/r/:name/k8s")}
-              render={() => <K8sViewPane />}
-            />
-            <Route
-              exact
-              path={this.path("/r/:name/preview")}
-              render={previewRoute}
-            />
-            <Route component={NoMatch} />
-          </Switch>
-        </div>
-      </Router>
+      <div className="HUD">
+        <AnalyticsNudge needsNudge={needsNudge} />
+        <Switch>
+          <Route
+            path={this.path("/r/:name/alerts")}
+            render={topBarRoute.bind(null, ResourceView.Alerts)}
+          />
+          <Route
+            path={this.path("/r/:name/preview")}
+            render={topBarRoute.bind(null, ResourceView.Preview)}
+          />
+          <Route
+            path={this.path("/preview")}
+            render={topBarRoute.bind(null, ResourceView.Preview)}
+          />
+          <Route
+            path={this.path("/r/:name")}
+            render={topBarRoute.bind(null, ResourceView.Log)}
+          />
+          <Route
+            path={this.path("/alerts")}
+            render={topBarRoute.bind(null, ResourceView.Alerts)}
+          />
+          <Route render={topBarRoute.bind(null, ResourceView.Log)} />
+        </Switch>
+        <Switch>
+          <Route
+            path={this.path("/r/:name/alerts")}
+            render={sidebarRoute.bind(null, ResourceView.Alerts)}
+          />
+          <Route
+            path={this.path("/alerts")}
+            render={sidebarRoute.bind(null, ResourceView.Alerts)}
+          />
+          <Route
+            path={this.path("/r/:name/preview")}
+            render={sidebarRoute.bind(null, ResourceView.Preview)}
+          />
+          <Route
+            path={this.path("/preview")}
+            render={sidebarRoute.bind(null, ResourceView.Preview)}
+          />
+          <Route
+            path={this.path("/r/:name")}
+            render={sidebarRoute.bind(null, ResourceView.Log)}
+          />
+          <Route render={sidebarRoute.bind(null, ResourceView.Log)} />
+        </Switch>
+        <Statusbar
+          items={statusItems}
+          alertsUrl={this.path("/alerts")}
+          runningVersion={runningVersion}
+          latestVersion={latestVersion}
+        />
+        <Switch>
+          <Route
+            exact
+            path={this.path("/")}
+            render={() => (
+              <LogPane
+                log={combinedLog}
+                isExpanded={isSidebarClosed}
+                podID={""}
+                endpoints={[]}
+                podStatus={""}
+              />
+            )}
+          />
+          <Route
+            exact
+            path={this.path("/alerts")}
+            render={() => <AlertPane resources={alertResources} />}
+          />
+          <Route exact path={this.path("/preview")} render={previewRoute} />
+          <Route exact path={this.path("/r/:name")} render={logsRoute} />
+          <Route
+            exact
+            path={this.path("/r/:name/k8s")}
+            render={() => <K8sViewPane />}
+          />
+          <Route
+            exact
+            path={this.path("/r/:name/alerts")}
+            render={errorRoute}
+          />
+          <Route
+            exact
+            path={this.path("/r/:name/preview")}
+            render={previewRoute}
+          />
+          <Route component={NoMatch} />
+        </Switch>
+      </div>
     )
   }
 }

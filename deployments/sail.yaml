@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sail
+  labels:
+    app: sail
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: sail
+  template:
+    metadata:
+      labels:
+        app: sail
+    spec:
+      containers:
+      - name: sail
+        image: gcr.io/windmill-public-containers/sail
+        ports:
+        - name: http
+          containerPort: 10450

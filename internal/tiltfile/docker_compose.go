@@ -60,10 +60,12 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var name string
 	var imageVal starlark.Value
+	var triggerMode triggerMode
 
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
 		"image", &imageVal, // in future this will be optional
+		"trigger_mode?", &triggerMode,
 	); err != nil {
 		return nil, err
 	}
@@ -88,6 +90,8 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 	if err != nil {
 		return nil, err
 	}
+
+	svc.TriggerMode = triggerMode
 
 	normalized, err := container.ParseNamed(imageRefAsStr)
 	if err != nil {
@@ -263,6 +267,8 @@ type dcService struct {
 
 	DependencyIDs  []model.TargetID
 	PublishedPorts []int
+
+	TriggerMode triggerMode
 }
 
 func (c dcConfig) GetService(name string) (dcService, error) {
@@ -404,8 +410,13 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcConfigPath str
 		WithPublishedPorts(service.PublishedPorts).
 		WithIgnoredLocalDirectories(service.MountedLocalDirs)
 
+	um, err := starlarkTriggerModeToModel(s.triggerModeForResource(service.TriggerMode))
+	if err != nil {
+		return model.Manifest{}, nil, err
+	}
 	m := model.Manifest{
-		Name: model.ManifestName(service.Name),
+		Name:        model.ManifestName(service.Name),
+		TriggerMode: um,
 	}.WithDeployTarget(dcInfo)
 
 	if service.DfPath == "" {
@@ -417,8 +428,9 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcConfigPath str
 
 	paths := []string{path.Dir(service.DfPath), path.Dir(dcConfigPath)}
 	paths = append(paths, dcInfo.LocalPaths()...)
+	paths = append(paths, path.Dir(s.filename.path))
 
-	dcInfo = dcInfo.WithDockerignores(dockerignoresForPaths(append(paths, path.Dir(s.filename.path))))
+	dcInfo = dcInfo.WithDockerignores(s.dockerignoresFromPathsAndContextFilters(paths, []string{}, []string{}))
 
 	localPaths := []localPath{s.filename}
 	for _, p := range paths {

@@ -45,11 +45,27 @@ type FakeK8sClient struct {
 	LastForwardPortPodID      PodID
 	LastForwardPortRemotePort int
 
-	watcherMu sync.Mutex
-	watches   []fakePodWatch
+	podWatcherMu sync.Mutex
+	podWatches   []fakePodWatch
+
+	serviceWatcherMu sync.Mutex
+	serviceWatches   []fakeServiceWatch
+
+	everythingWatcherMu sync.Mutex
+	everythingWatches   []fakeEverythingWatch
+	EverythingWatchErr  error
+
+	eventsCh       chan *v1.Event
+	EventsWatchErr error
 
 	UpsertError error
 	Runtime     container.Runtime
+	Registry    container.Registry
+}
+
+type fakeServiceWatch struct {
+	ls labels.Selector
+	ch chan *v1.Service
 }
 
 type fakePodWatch struct {
@@ -57,24 +73,113 @@ type fakePodWatch struct {
 	ch chan *v1.Pod
 }
 
+type fakeEverythingWatch struct {
+	ls labels.Selector
+	ch chan watch.Event
+}
+
+func (c *FakeK8sClient) EmitService(ls labels.Selector, s *v1.Service) {
+	c.podWatcherMu.Lock()
+	defer c.podWatcherMu.Unlock()
+	for _, w := range c.serviceWatches {
+		if SelectorEqual(ls, w.ls) {
+			w.ch <- s
+		}
+	}
+}
+
 func (c *FakeK8sClient) WatchServices(ctx context.Context, lps []model.LabelPair) (<-chan *v1.Service, error) {
-	return nil, nil
+	c.serviceWatcherMu.Lock()
+	ch := make(chan *v1.Service, 20)
+	ls := LabelPairsToSelector(lps)
+	c.serviceWatches = append(c.serviceWatches, fakeServiceWatch{ls, ch})
+	c.serviceWatcherMu.Unlock()
+
+	go func() {
+		// when ctx is canceled, remove the label selector from the list of watched label selectors
+		<-ctx.Done()
+		c.serviceWatcherMu.Lock()
+		var newWatches []fakeServiceWatch
+		for _, e := range c.serviceWatches {
+			if !SelectorEqual(e.ls, ls) {
+				newWatches = append(newWatches, e)
+			}
+		}
+		c.serviceWatches = newWatches
+		c.serviceWatcherMu.Unlock()
+	}()
+	return ch, nil
+}
+
+func (c *FakeK8sClient) WatchEvents(ctx context.Context) (<-chan *v1.Event, error) {
+	if c.EventsWatchErr != nil {
+		err := c.EventsWatchErr
+		c.EventsWatchErr = nil
+		return nil, err
+	}
+
+	return c.eventsCh, nil
+}
+
+func (c *FakeK8sClient) EmitEvent(ctx context.Context, evt *v1.Event) {
+	c.eventsCh <- evt
+}
+
+// emits an event to chans returned by WatchEverything
+func (c *FakeK8sClient) EmitEverything(ls labels.Selector, e watch.Event) {
+	c.everythingWatcherMu.Lock()
+	defer c.everythingWatcherMu.Unlock()
+	for _, w := range c.everythingWatches {
+		if SelectorEqual(ls, w.ls) {
+			w.ch <- e
+		}
+	}
+}
+
+func (c *FakeK8sClient) WatchEverything(ctx context.Context, lps []model.LabelPair) (<-chan watch.Event, error) {
+	if c.EverythingWatchErr != nil {
+		err := c.EverythingWatchErr
+		c.EverythingWatchErr = nil
+		return nil, err
+	}
+
+	c.everythingWatcherMu.Lock()
+	ch := make(chan watch.Event, 20)
+	ls := LabelPairsToSelector(lps)
+	c.everythingWatches = append(c.everythingWatches, fakeEverythingWatch{ls, ch})
+	c.everythingWatcherMu.Unlock()
+
+	go func() {
+		// when ctx is canceled, remove the label selector from the list of watched label selectors
+		<-ctx.Done()
+		c.everythingWatcherMu.Lock()
+		var newWatches []fakeEverythingWatch
+		for _, e := range c.everythingWatches {
+			if !SelectorEqual(e.ls, ls) {
+				newWatches = append(newWatches, e)
+			}
+		}
+		c.everythingWatches = newWatches
+		c.everythingWatcherMu.Unlock()
+	}()
+	return ch, nil
+
 }
 
 func (c *FakeK8sClient) WatchedSelectors() []labels.Selector {
-	c.watcherMu.Lock()
-	defer c.watcherMu.Unlock()
+	c.podWatcherMu.Lock()
+	defer c.podWatcherMu.Unlock()
 	var ret []labels.Selector
-	for _, w := range c.watches {
+	for _, w := range c.podWatches {
 		ret = append(ret, w.ls)
 	}
 	return ret
 }
 
 func (c *FakeK8sClient) EmitPod(ls labels.Selector, p *v1.Pod) {
-	c.watcherMu.Lock()
-	defer c.watcherMu.Unlock()
-	for _, w := range c.watches {
+	c.podWatcherMu.Lock()
+	defer c.podWatcherMu.Unlock()
+	for _, w := range c.podWatches {
 		if SelectorEqual(ls, w.ls) {
 			w.ch <- p
 		}
@@ -82,23 +187,23 @@ func (c *FakeK8sClient) EmitPod(ls labels.Selector, p *v1.Pod) {
 }
 
 func (c *FakeK8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan *v1.Pod, error) {
-	c.watcherMu.Lock()
+	c.podWatcherMu.Lock()
 	ch := make(chan *v1.Pod, 20)
-	c.watches = append(c.watches, fakePodWatch{ls, ch})
-	c.watcherMu.Unlock()
+	c.podWatches = append(c.podWatches, fakePodWatch{ls, ch})
+	c.podWatcherMu.Unlock()
 
 	go func() {
 		// when ctx is canceled, remove the label selector from the list of watched label selectors
 		<-ctx.Done()
-		c.watcherMu.Lock()
+		c.podWatcherMu.Lock()
 		var newWatches []fakePodWatch
-		for _, e := range c.watches {
+		for _, e := range c.podWatches {
 			if !SelectorEqual(e.ls, ls) {
 				newWatches = append(newWatches, e)
 			}
 		}
-		c.watches = newWatches
-		c.watcherMu.Unlock()
+		c.podWatches = newWatches
+		c.podWatcherMu.Unlock()
 	}()
 	return ch, nil
 }
@@ -106,6 +211,13 @@ func (c *FakeK8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-ch
 func NewFakeK8sClient() *FakeK8sClient {
 	return &FakeK8sClient{
 		PodLogsByPodAndContainer: make(map[PodAndCName]BufferCloser),
+		eventsCh:                 make(chan *v1.Event, 10),
+	}
+}
+
+func (c *FakeK8sClient) TearDown() {
+	if c.eventsCh != nil {
+		close(c.eventsCh)
 	}
 }
 
@@ -117,7 +229,7 @@ func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity) error 
 	if c.UpsertError != nil {
 		return c.UpsertError
 	}
-	yaml, err := SerializeYAML(entities)
+	yaml, err := SerializeSpecYAML(entities)
 	if err != nil {
 		return errors.Wrap(err, "kubectl apply")
 	}
@@ -126,7 +238,7 @@ func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity) error 
 }
 
 func (c *FakeK8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
-	yaml, err := SerializeYAML(entities)
+	yaml, err := SerializeSpecYAML(entities)
 	if err != nil {
 		return errors.Wrap(err, "kubectl delete")
 	}
@@ -215,6 +327,10 @@ func (c *FakeK8sClient) ContainerRuntime(ctx context.Context) container.Runtime 
 		return c.Runtime
 	}
 	return container.RuntimeDocker
+}
+
+func (c *FakeK8sClient) PrivateRegistry(ctx context.Context) container.Registry {
+	return c.Registry
 }
 
 func (c *FakeK8sClient) Exec(ctx context.Context, podID PodID, cName container.Name, n Namespace, cmd []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {

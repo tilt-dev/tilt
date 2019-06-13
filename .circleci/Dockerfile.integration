@@ -18,7 +18,7 @@ RUN set -ex \
 RUN curl -L "https://github.com/docker/compose/releases/download/1.23.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose \
   && chmod a+x /usr/local/bin/docker-compose \
   && docker-compose version
-  
+
 # Install kubectl client
 RUN apt update && apt install -y apt-transport-https \
   && curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - \
@@ -62,3 +62,5 @@ RUN apt install -y curl ca-certificates git liblz4-tool rsync socat \
 
 # install gotestsum
 RUN go get gotest.tools/gotestsum
+
+RUN apt install -y jq

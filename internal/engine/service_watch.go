@@ -2,19 +2,15 @@ package engine
 
 import (
 	"context"
-	"time"
-
-	v1 "k8s.io/api/core/v1"
 
 	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 )
-
-var watchTimeout = 10 * time.Second
 
 type ServiceWatcher struct {
 	kCli     k8s.Client
@@ -33,13 +29,13 @@ func (w *ServiceWatcher) needsWatch(st store.RStore) bool {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	atLeastOneK8S := false
+	atLeastOneK8s := false
 	for _, m := range state.Manifests() {
 		if m.IsK8s() {
-			atLeastOneK8S = true
+			atLeastOneK8s = true
 		}
 	}
-	return atLeastOneK8S && state.WatchFiles && !w.watching
+	return atLeastOneK8s && state.WatchFiles && !w.watching
 }
 
 func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore) {
@@ -48,9 +44,7 @@ func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore) {
 	}
 	w.watching = true
 
-	ctx2, cancel := context.WithTimeout(ctx, watchTimeout)
-	defer cancel()
-	ch, err := w.kCli.WatchServices(ctx2, []model.LabelPair{k8s.TiltRunLabel()})
+	ch, err := w.kCli.WatchServices(ctx, []model.LabelPair{k8s.TiltRunLabel()})
 	if err != nil {
 		err = errors.Wrap(err, "Error watching services. Are you connected to kubernetes?\n")
 		st.Dispatch(NewErrorAction(err))

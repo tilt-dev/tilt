@@ -1,6 +1,10 @@
 package sliceutils
 
-import "sort"
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
 
 // Deduplicate and sort a slice of strings.
 func DedupedAndSorted(slice []string) (result []string) {
@@ -14,6 +18,15 @@ func DedupedAndSorted(slice []string) (result []string) {
 	}
 	sort.Strings(result)
 	return result
+}
+
+// Quote each string in the list and separate them by commas.
+func QuotedStringList(list []string) string {
+	result := make([]string, len(list))
+	for i, s := range list {
+		result[i] = fmt.Sprintf("%q", s)
+	}
+	return strings.Join(result, ", ")
 }
 
 func StringSliceEquals(a, b []string) bool {

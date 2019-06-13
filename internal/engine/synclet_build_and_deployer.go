@@ -35,17 +35,18 @@ func NewSyncletBuildAndDeployer(sm SyncletManager, kCli k8s.Client, updateMode U
 }
 
 func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
-	iTargets, err := extractImageTargetsForLiveUpdates(specs, stateSet)
+	liveUpdateStateSet, err := extractImageTargetsForLiveUpdates(specs, stateSet)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
 
-	if len(iTargets) != 1 {
+	if len(liveUpdateStateSet) != 1 {
 		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("Synclet container builder needs exactly one image target")
 	}
 
-	iTarget := iTargets[0]
-	if !isImageDeployedToK8s(iTarget, extractK8sTargets(specs)) {
+	liveUpdateState := liveUpdateStateSet[0]
+	iTarget := liveUpdateState.iTarget
+	if !isImageDeployedToK8s(iTarget, model.ExtractK8sTargets(specs)) {
 		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("Synclet container builder can only deploy to k8s")
 	}
 
@@ -53,27 +54,30 @@ func (sbd *SyncletBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store
 	span.SetTag("target", iTarget.ConfigurationRef.String())
 	defer span.Finish()
 
-	state := stateSet[iTarget.ID()]
-	return sbd.UpdateInCluster(ctx, iTarget, state)
+	return sbd.UpdateInCluster(ctx, liveUpdateState)
 }
 
 func (sbd *SyncletBuildAndDeployer) UpdateInCluster(ctx context.Context,
-	iTarget model.ImageTarget, state store.BuildState) (store.BuildResultSet, error) {
+	liveUpdateState liveUpdateStateTree) (store.BuildResultSet, error) {
 	var err error
-	var changedFiles []build.PathMapping
+	var changedMappings []build.PathMapping
 	var runs []model.Run
 	var hotReload bool
 
-	if fbInfo := iTarget.MaybeFastBuildInfo(); fbInfo != nil {
-		changedFiles, err = build.FilesToPathMappings(state.FilesChanged(), fbInfo.Syncs)
+	iTarget := liveUpdateState.iTarget
+	state := liveUpdateState.iTargetState
+	filesChanged := liveUpdateState.filesChanged
+
+	if fbInfo := iTarget.AnyFastBuildInfo(); !fbInfo.Empty() {
+		changedMappings, err = build.FilesToPathMappings(filesChanged, fbInfo.Syncs)
 		if err != nil {
 			return store.BuildResultSet{}, err
 		}
 		runs = fbInfo.Runs
 		hotReload = fbInfo.HotReload
 	}
-	if luInfo := iTarget.MaybeLiveUpdateInfo(); luInfo != nil {
-		changedFiles, err = build.FilesToPathMappings(state.FilesChanged(), luInfo.SyncSteps())
+	if luInfo := iTarget.AnyLiveUpdateInfo(); !luInfo.Empty() {
+		changedMappings, err = build.FilesToPathMappings(filesChanged, luInfo.SyncSteps())
 		if err != nil {
 			if pmErr, ok := err.(*build.PathMappingErr); ok {
 				// expected error for this builder. One of more files don't match sync's;
@@ -85,7 +89,7 @@ func (sbd *SyncletBuildAndDeployer) UpdateInCluster(ctx context.Context,
 		}
 
 		// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
-		anyMatch, file, err := luInfo.FallBackOnFiles().AnyMatch(build.PathMappingsToLocalPaths(changedFiles))
+		anyMatch, file, err := luInfo.FallBackOnFiles().AnyMatch(build.PathMappingsToLocalPaths(changedMappings))
 		if err != nil {
 			return nil, err
 		}
@@ -97,16 +101,21 @@ func (sbd *SyncletBuildAndDeployer) UpdateInCluster(ctx context.Context,
 		runs = luInfo.RunSteps()
 		hotReload = !luInfo.ShouldRestart()
 	}
-	return sbd.updateInCluster(ctx, iTarget, state, changedFiles, runs, hotReload)
+
+	err = sbd.updateInCluster(ctx, iTarget, state, changedMappings, runs, hotReload)
+	if err != nil {
+		return store.BuildResultSet{}, err
+	}
+	return liveUpdateState.createResultSet(), nil
 }
 
-func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) (store.BuildResultSet, error) {
+func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, changedMappings []build.PathMapping, runs []model.Run, hotReload bool) error {
 	l := logger.Get(ctx)
 
 	// get files to rm
-	toRemove, toArchive, err := build.MissingLocalPaths(ctx, changedFiles)
+	toRemove, toArchive, err := build.MissingLocalPaths(ctx, changedMappings)
 	if err != nil {
-		return store.BuildResultSet{}, errors.Wrap(err, "missingLocalPaths")
+		return errors.Wrap(err, "missingLocalPaths")
 	}
 
 	if len(toRemove) > 0 {
@@ -122,11 +131,11 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget
 	ab := build.NewArchiveBuilder(ignore.CreateBuildContextFilter(iTarget))
 	err = ab.ArchivePathsIfExist(ctx, toArchive)
 	if err != nil {
-		return store.BuildResultSet{}, errors.Wrap(err, "archivePathsIfExists")
+		return errors.Wrap(err, "archivePathsIfExists")
 	}
 	archive, err := ab.BytesBuffer()
 	if err != nil {
-		return store.BuildResultSet{}, err
+		return err
 	}
 	archivePaths := ab.Paths()
 
@@ -138,9 +147,9 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget
 	}
 
 	deployInfo := state.DeployInfo
-	cmds, err := build.BoilRuns(runs, changedFiles)
+	cmds, err := build.BoilRuns(runs, changedMappings)
 	if err != nil {
-		return store.BuildResultSet{}, err
+		return err
 	}
 
 	// TODO(dbentley): it would be even better to check if the pod has the sidecar
@@ -148,22 +157,17 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget
 		if err := sbd.updateViaExec(ctx,
 			deployInfo.PodID, deployInfo.Namespace, deployInfo.ContainerName,
 			archive, archivePaths, containerPathsToRm, cmds, hotReload); err != nil {
-			return store.BuildResultSet{}, err
+			return err
 		}
 	} else {
 		if err := sbd.updateViaSynclet(ctx,
 			deployInfo.PodID, deployInfo.Namespace, deployInfo.ContainerID,
 			archive, containerPathsToRm, cmds, hotReload); err != nil {
-			return store.BuildResultSet{}, err
+			return err
 		}
 	}
 
-	res := state.LastResult.ShallowCloneForContainerUpdate(state.FilesChangedSet)
-	res.ContainerID = deployInfo.ContainerID // the container we deployed on top of
-
-	resultSet := store.BuildResultSet{}
-	resultSet[iTarget.ID()] = res
-	return resultSet, nil
+	return nil
 }
 
 func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
@@ -189,7 +193,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaExec(ctx context.Context,
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-updateViaExec")
 	defer span.Finish()
 	if !hotReload {
-		return fmt.Errorf("kubectl exec syncing is only supported with hotReload set to true")
+		return fmt.Errorf("kubectl exec syncing is only supported on resources that don't use container_restart")
 	}
 	l := logger.Get(ctx)
 	w := l.Writer(logger.InfoLvl)
@@ -216,7 +220,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaExec(ctx context.Context,
 		}
 		l.Infof("updating %v files %v", len(archivePaths), filesToShow)
 		if err := sbd.kCli.Exec(ctx, podID, container, namespace,
-			[]string{"tar", "-x", "-f", "/dev/stdin"}, archive, w, w); err != nil {
+			[]string{"tar", "-C", "/", "-x", "-f", "/dev/stdin"}, archive, w, w); err != nil {
 			return err
 		}
 	}

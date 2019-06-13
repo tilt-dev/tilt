@@ -12,7 +12,7 @@ func NewTarget(
 	portForwards []model.PortForward,
 	extraPodSelectors []labels.Selector,
 	dependencyIDs []model.TargetID) (model.K8sTarget, error) {
-	yaml, err := SerializeYAML(entities)
+	yaml, err := SerializeSpecYAML(entities)
 	if err != nil {
 		return model.K8sTarget{}, err
 	}
@@ -39,7 +39,11 @@ func NewK8sOnlyManifest(name model.ManifestName, entities []K8sEntity) (model.Ma
 	return model.Manifest{Name: name}.WithDeployTarget(kTarget), nil
 }
 
-func NewK8sOnlyManifestForTesting(name model.ManifestName, yaml string) model.Manifest {
-	return model.Manifest{Name: name}.
-		WithDeployTarget(model.K8sTarget{Name: name.TargetName(), YAML: yaml})
+func NewK8sOnlyManifestForTesting(yaml string, entityNames []string) model.Manifest {
+	return model.Manifest{Name: model.UnresourcedYAMLManifestName}.
+		WithDeployTarget(model.K8sTarget{
+			Name:          model.UnresourcedYAMLManifestName.TargetName(),
+			YAML:          yaml,
+			ResourceNames: entityNames,
+		})
 }

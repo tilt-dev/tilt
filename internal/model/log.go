@@ -90,7 +90,7 @@ func (l Log) Empty() bool {
 	return l.Len() == 0
 }
 
-func timestampPrefix(ts time.Time) []byte {
+func TimestampPrefix(ts time.Time) []byte {
 	t := ts.Format("2006/01/02 15:04:05")
 	return []byte(fmt.Sprintf("%s ", t))
 }
@@ -98,7 +98,7 @@ func timestampPrefix(ts time.Time) []byte {
 // Returns a new instance of `Log` with content equal to `b` appended to the end of `l`
 // Performs truncation off the start of the log (at a newline) to ensure the resulting log is not
 // longer than `maxLogLengthInBytes`. (which maybe means a pedant would say this isn't strictly an `append`?)
-func AppendLog(l Log, le LogEvent, timestampsEnabled bool) Log {
+func AppendLog(l Log, le LogEvent, timestampsEnabled bool, prefix []byte) Log {
 	isStartingNewLine := len(l.lines) == 0 || l.lines[len(l.lines)-1].IsComplete()
 	addedLines := linesFromBytes(le.Message())
 	if len(addedLines) == 0 {
@@ -109,7 +109,15 @@ func AppendLog(l Log, le LogEvent, timestampsEnabled bool) Log {
 		ts := le.Time()
 		for i, line := range addedLines {
 			if i != 0 || isStartingNewLine {
-				addedLines[i] = append(timestampPrefix(ts), line...)
+				addedLines[i] = append(TimestampPrefix(ts), line...)
+			}
+		}
+	}
+
+	if len(prefix) > 0 {
+		for i, line := range addedLines {
+			if i != 0 || isStartingNewLine {
+				addedLines[i] = append(prefix, line...)
 			}
 		}
 	}

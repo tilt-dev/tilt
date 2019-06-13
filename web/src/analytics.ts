@@ -2,7 +2,7 @@ type Tags = { [key: string]: string }
 
 // Fire and forget all analytics events
 const incr = (name: string, tags: Tags = {}): void => {
-  let url = `http://${window.location.host}/api/analytics`
+  let url = `//${window.location.host}/api/analytics`
 
   fetch(url, {
     method: "post",
@@ -11,11 +11,17 @@ const incr = (name: string, tags: Tags = {}): void => {
 }
 
 const pathToTag = (path: string): string => {
-  if (path.startsWith("/r/") && !path.endsWith("/preview")) {
+  if (
+    path.startsWith("/r/") &&
+    !path.endsWith("/preview") &&
+    !path.endsWith("/alerts")
+  ) {
     return "log"
   } else if (path.endsWith("/preview")) {
     return "preview"
-  } else if (path == "/") {
+  } else if (path.endsWith("/alerts")) {
+    return "errors"
+  } else if (path === "/") {
     return "all"
   }
 
