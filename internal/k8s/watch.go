@@ -103,7 +103,15 @@ func (kCli K8sClient) WatchEvents(ctx context.Context) (<-chan *v1.Event, error)
 		UpdateFunc: func(oldObj interface{}, newObj interface{}) {
 			mObj, ok := newObj.(*v1.Event)
 			if ok {
-				ch <- mObj
+				oldObj, ok := oldObj.(*v1.Event)
+				// the informer regularly gives us updates for events where cmp.Equal(oldObj, newObj) returns true.
+				// we have not investigated why it does this, but these updates seem to always be spurious and
+				// uninteresting.
+				// we could check cmp.Equal here, but really, `Count` is probably the only reason we even care about
+				// updates at all.
+				if !ok || oldObj.Count < mObj.Count {
+					ch <- mObj
+				}
 			}
 		},
 	})
