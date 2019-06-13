@@ -10,46 +10,17 @@ import PreviewPane from "./PreviewPane"
 import PathBuilder from "./PathBuilder"
 import { Map } from "immutable"
 import { Route, Switch, RouteComponentProps } from "react-router-dom"
-import { createBrowserHistory, History, UnregisterCallback } from "history"
+import { History, UnregisterCallback } from "history"
 import { incr, pathToTag } from "./analytics"
 import TopBar from "./TopBar"
 import "./HUD.scss"
-import { TiltBuild, ResourceView, TriggerMode } from "./types"
+import { TiltBuild, ResourceView, Resource } from "./types"
 import AlertPane, { AlertResource } from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
 
 type HudProps = {
   history: History
-}
-
-type Resource = {
-  Name: string
-  CombinedLog: string
-  BuildHistory: Array<any>
-  CrashLog: string
-  CurrentBuild: any
-  DirectoriesWatched: Array<any>
-  Endpoints: Array<string>
-  PodID: string
-  IsTiltfile: boolean
-  LastDeployTime: string
-  PathsWatched: Array<string>
-  PendingBuildEdits: Array<string>
-  PendingBuildReason: number
-  ResourceInfo: {
-    PodCreationTime: string
-    PodLog: string
-    PodName: string
-    PodRestarts: number
-    PodUpdateStartTime: string
-    YAML: string
-    PodStatus: string
-  }
-  RuntimeStatus: string
-  ShowBuildStatus: boolean
-  TriggerMode: TriggerMode
-  HasPendingChanges: boolean
 }
 
 type HudState = {

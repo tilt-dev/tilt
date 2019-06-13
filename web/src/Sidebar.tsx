@@ -3,7 +3,7 @@ import { ReactComponent as ChevronSvg } from "./assets/svg/chevron.svg"
 import { Link } from "react-router-dom"
 import { combinedStatus, warnings } from "./status"
 import "./Sidebar.scss"
-import { ResourceView, TriggerMode, ResourceStatus, Build } from "./types"
+import { ResourceView, TriggerMode, RuntimeStatus, Build } from "./types"
 import TimeAgo from "react-timeago"
 import { isZeroTime } from "./time"
 import PathBuilder from "./PathBuilder"
@@ -14,7 +14,7 @@ import SidebarTriggerButton from "./SidebarTriggerButton"
 
 class SidebarItem {
   name: string
-  status: ResourceStatus
+  status: RuntimeStatus
   hasWarnings: boolean
   hasEndpoints: boolean
   lastDeployTime: string
@@ -30,7 +30,7 @@ class SidebarItem {
    */
   constructor(res: any) {
     this.name = res.Name
-    this.status = combinedStatus(res)
+    this.status = combinedStatus(res.RuntimeStatus)
     this.hasWarnings = warnings(res).length > 0
     this.hasEndpoints = (res.Endpoints || []).length
     this.lastDeployTime = res.LastDeployTime

@@ -1,12 +1,12 @@
 import { isZeroTime } from "./time"
-import { ResourceStatus } from "./types"
+import { RuntimeStatus, ResourceStatus, Resource } from "./types"
 
 // A combination of runtime status and build status over a resource view.
 // 1) If there's a current or pending build, this is "pending".
 // 2) Otherwise, if there's a build error or runtime error, this is "error".
 // 3) Otherwise, we fallback to runtime status.
-function combinedStatus(res: any): ResourceStatus {
-  let runtimeStatus: ResourceStatus = res.RuntimeStatus
+function combinedStatus(res: any): RuntimeStatus {
+  let runtimeStatus: RuntimeStatus = res.RuntimeStatus
   let currentBuild = res.CurrentBuild
   let hasCurrentBuild = Boolean(
     currentBuild && !isZeroTime(currentBuild.StartTime)
@@ -17,10 +17,10 @@ function combinedStatus(res: any): ResourceStatus {
   let lastBuildError = lastBuild ? lastBuild.Error : ""
 
   if (hasCurrentBuild || hasPendingBuild) {
-    return ResourceStatus.Pending
+    return RuntimeStatus.Pending
   }
   if (lastBuildError) {
-    return ResourceStatus.Error
+    return RuntimeStatus.Error
   }
   return runtimeStatus
 }
@@ -38,4 +38,8 @@ function warnings(res: any): string[] {
   return warnings
 }
 
-export { combinedStatus, warnings }
+function tiltStatus(res: Resource): ResourceStatus {
+  return ResourceStatus.Building
+}
+
+export { combinedStatus, warnings, tiltStatus }

@@ -1,6 +1,11 @@
 import { RouteComponentProps } from "react-router-dom"
 import { UnregisterCallback, Href } from "history"
 import { podStatusImagePullBackOff, podStatusErrImgPull } from "./constants"
+import { Resource, TriggerMode } from "./types"
+
+type view = {
+  Resources: Array<Resource>
+}
 
 // NOTE(dmiller) 4-02-19 this function is currently unused but I'm going to keep it around.
 // I have a feeling that it will come in handy later.
@@ -49,9 +54,9 @@ function getMockRouterProps<P>(data: P) {
   return props
 }
 
-function oneResource(): any {
-  const ts = Date.now().valueOf()
-  const resource = {
+function oneResource(): Resource {
+  const ts = new Date(Date.now()).toISOString()
+  const resource: Resource = {
     Name: "vigoda",
     DirectoriesWatched: ["foo", "bar"],
     LastDeployTime: ts,
@@ -65,6 +70,7 @@ function oneResource(): any {
     ],
     PendingBuildEdits: ["main.go", "cli.go", "vigoda.go"],
     PendingBuildSince: ts,
+    PendingBuildReason: 0,
     CurrentBuild: {
       Edits: ["main.go"],
       StartTime: ts,
@@ -76,8 +82,18 @@ function oneResource(): any {
       PodRestarts: 0,
       Endpoints: ["1.2.3.4:8080"],
       PodLog: "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
+      PodUpdateStartTime: ts,
+      YAML: "",
     },
     RuntimeStatus: "ok",
+    CombinedLog: "",
+    CrashLog: "",
+    TriggerMode: TriggerMode.TriggerModeAuto,
+    HasPendingChanges: false,
+    Endpoints: [],
+    PodID: "",
+    IsTiltfile: false,
+    PathsWatched: [],
   }
   return resource
 }
@@ -172,19 +188,19 @@ function oneResourceErrImgPull(): any {
   return resource
 }
 
-function oneResourceView(): any {
+function oneResourceView(): view {
   return { Resources: [oneResource()] }
 }
 
-function twoResourceView(): any {
+function twoResourceView(): view {
   const time = Date.now()
-  const ts = time.valueOf()
+  const ts = new Date(time).toISOString()
   const vigoda = oneResource()
 
-  const snack = {
+  const snack: Resource = {
     Name: "snack",
     DirectoriesWatched: ["foo", "bar"],
-    LastDeployTime: (time - 10000).valueOf(),
+    LastDeployTime: new Date(time - 10000).toISOString(),
     BuildHistory: [
       {
         Edits: ["main.go", "cli.go"],
@@ -199,13 +215,26 @@ function twoResourceView(): any {
       Edits: ["main.go"],
       StartTime: ts,
     },
-    PodName: "snack-pod",
-    PodCreationTime: ts,
-    PodStatus: "Running",
-    PodRestarts: 0,
     Endpoints: ["1.2.3.4:8080"],
-    PodLog: "1\n2\n3\n4\nsnacks are great\n5\n6\n7\n8\n",
     RuntimeStatus: "ok",
+    TriggerMode: TriggerMode.TriggerModeAuto,
+    CombinedLog: "",
+    CrashLog: "",
+    IsTiltfile: false,
+    PodID: "",
+    PathsWatched: [],
+    PendingBuildReason: 0,
+    ResourceInfo: {
+      PodStatus: "Running",
+      PodRestarts: 0,
+      PodCreationTime: "",
+      PodLog: "",
+      PodName: "snack",
+      PodUpdateStartTime: "",
+      YAML: "",
+      Endpoints: [],
+    },
+    HasPendingChanges: false,
   }
   return { Resources: [vigoda, snack] }
 }
