@@ -2,7 +2,7 @@ version: 2
 jobs:
   build-linux:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:e6a2a7810140dc5d42fed8a9bcd1fba78c7ed6951981d86266120e31f820a050
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:715d57e55849eadeb27afc48f4b5b8a48d48af1b58337b9af061d99629ca57d7
     working_directory: /go/src/github.com/windmilleng/tilt
     steps:
       - checkout
