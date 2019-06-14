@@ -350,3 +350,34 @@ func TestBuildControllerNoBuildManifestsFirst(t *testing.T) {
 	}
 	assert.Equal(t, expectedBuildOrder, observedBuildOrder)
 }
+
+func TestBuildControllerUnresourcedYAMLFirst(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
+	manifests := []model.Manifest{
+		f.newManifest("built1", []model.Sync{sync}),
+		f.newManifest("built2", []model.Sync{sync}),
+		f.newManifest("built3", []model.Sync{sync}),
+		f.newManifest("built4", []model.Sync{sync}),
+	}
+
+	manifests = append(manifests, assembleK8sManifest(model.Manifest{Name: model.UnresourcedYAMLManifestName}, model.K8sTarget{YAML: "fake-yaml"}))
+	f.Start(manifests, true)
+
+	var observedBuildOrder []string
+	for i := 0; i < len(manifests); i++ {
+		call := f.nextCall()
+		observedBuildOrder = append(observedBuildOrder, call.k8s().Name.String())
+	}
+
+	expectedBuildOrder := []string{
+		model.UnresourcedYAMLManifestName.String(),
+		"built1",
+		"built2",
+		"built3",
+		"built4",
+	}
+	assert.Equal(t, expectedBuildOrder, observedBuildOrder)
+}

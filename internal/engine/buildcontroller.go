@@ -40,9 +40,12 @@ func nextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 		return nil
 	}
 
-	// put no-build manifests first since they're more likely to be
-	// 1. fast and 2. dependencies of other services (e.g., redis)
+	// unresourced YAML goes first
 	targets := append([]*store.ManifestTarget{}, state.Targets()...)
+	findUnresourcedYAMLAndPutItFirst(targets)
+
+	// put no-build manifests next since they're more likely to be
+	// 1. fast and 2. dependencies of other services (e.g., redis)
 	sort.Sort(newNoBuildsManifestsFirst(targets))
 
 	// First, go through all the manifests in order.
@@ -90,6 +93,19 @@ func nextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 	}
 
 	return choice
+}
+
+func findUnresourcedYAMLAndPutItFirst(input []*store.ManifestTarget) {
+	for i := range input {
+		if input[i].Manifest.ManifestName() == model.UnresourcedYAMLManifestName {
+			found := input[i]
+			// Remove found
+			input = append(input[:i], input[i+1:]...)
+			// put it at the beginning
+			input = append([]*store.ManifestTarget{found}, input...)
+			break
+		}
+	}
 }
 
 type noBuildManifestsFirst struct {
