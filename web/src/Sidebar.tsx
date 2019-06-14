@@ -88,6 +88,8 @@ class Sidebar extends PureComponent<SidebarProps> {
           ) : (
             ""
           )}
+          <span className="resLink-timeAgo empty">—</span>
+          <span className="resLink-isDirty" />
         </Link>
       </li>
     )
@@ -118,6 +120,12 @@ class Sidebar extends PureComponent<SidebarProps> {
       }
       return (
         <li key={item.name}>
+          <SidebarTriggerButton
+            isSelected={isSelected}
+            resourceName={item.name}
+            isReady={item.hasPendingChanges && !building}
+            triggerMode={item.triggerMode}
+          />
           <Link className={classes} to={pb.path(link)}>
             <div className="sidebarIcon">
               <SidebarIcon
@@ -128,13 +136,10 @@ class Sidebar extends PureComponent<SidebarProps> {
                 isDirty={item.hasPendingChanges}
                 lastBuild={item.lastBuild}
               />
-              <SidebarTriggerButton
-                isSelected={isSelected}
-                resourceName={item.name}
-                triggerMode={item.triggerMode}
-              />
             </div>
-            <span className="resLink-name">{item.name}</span>
+            <p className="resLink-name" title={item.name}>
+              {item.name}
+            </p>
             {item.numberOfAlerts() > 0 ? (
               <span className="resLink-alertBadge">
                 {item.numberOfAlerts()}
@@ -142,7 +147,9 @@ class Sidebar extends PureComponent<SidebarProps> {
             ) : (
               ""
             )}
-            <span className="resLink-timeAgo">{hasBuilt ? timeAgo : "—"}</span>
+            <span className={`resLink-timeAgo ${hasBuilt ? "" : "empty"}`}>
+              {hasBuilt ? timeAgo : "—"}
+            </span>
             <span className="resLink-isDirty">
               {item.hasPendingChanges && isManualTriggerMode ? "*" : null}
             </span>

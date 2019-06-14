@@ -1,6 +1,9 @@
 @import "constants";
 
 .SidebarTriggerButton {
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-image: url(assets/svg/trigger-button-disabled.svg);
   position: absolute;
   background-color: transparent;
   border: 0 none;
@@ -9,15 +12,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  fill: $color-white;
-  opacity: $translucent-ish;
+}
+
+.SidebarTriggerButton.isReady {
+  background-image: url(assets/svg/trigger-button.svg);
   cursor: pointer;
 }
 
-.SidebarTriggerButton.isSelected {
-  fill: $color-gray-dark;
+.SidebarTriggerButton.isReady:active {
+  background-image: url(assets/svg/trigger-button-down.svg);
 }
 
-.SidebarTriggerButton:hover {
-  opacity: 1;
+.SidebarTriggerButton.isReady.isSelected {
+  background-image: url(assets/svg/trigger-button-inverted.svg);
+}
+
+.SidebarTriggerButton.isReady.isSelected:active {
+  background-image: url(assets/svg/trigger-button-inverted-down.svg);
 }

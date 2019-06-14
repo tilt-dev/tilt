@@ -6,8 +6,8 @@
   right: 0;
   bottom: $statusbar-height;
   width: $sidebar-width;
-  background-color: $color-gray;
-  border-left: 1px solid rgba($color-white, $translucent-ish);
+  background-color: $color-gray-dark;
+  border-left: 1px solid $color-gray-light;
   box-sizing: border-box;
   overflow-y: auto;
   transform: translateX(0%);
@@ -15,8 +15,8 @@
   font-size: $font-size;
   display: flex;
   flex-direction: column;
+  box-shadow: -1px 0px 6px 0px $color-gray-darkest;
   z-index: $z-sidebar;
-  box-shadow: -2px 0px 10px 0px rgba($color-gray-dark, $translucent);
 }
 .Sidebar.is-closed {
   transform: translateX(calc(100% - #{$sidebar-collapsed-width}));
@@ -33,36 +33,38 @@
 
 .resLink {
   right: 0;
-  border-bottom: 1px solid $color-gray-light;
+  border-bottom: 1px solid rgba($color-gray-lightest, $translucent);
   color: $color-white;
+  background-color: $color-gray;
   text-decoration: none;
   display: flex;
   align-items: center;
   height: $sidebar-item;
-  transition-property: color, background-color;
+  transition-property: color;
   transition-duration: $animation-timing;
-  transition-timing-function: ease;
+  transition-timing-function: linear;
 }
 .resLink:hover {
-  right: 0;
-  background-color: $color-gray-dark;
+  background-color: rgba($color-gray-dark, $translucent);
   color: $color-blue-light;
 }
 .resLink.is-selected {
-  right: 0;
   background-color: $color-white;
   color: $color-gray;
 }
-.resLink.has-warnings::before {
-  content: "";
-  position: absolute;
-  width: 5px;
-  height: $sidebar-item;
-  background-color: $color-yellow;
+
+.resLink--building {
+  background: repeating-linear-gradient(
+    225deg,
+    rgba($color-gray-light, $translucent),
+    rgba($color-gray-light, $translucent) 1px,
+    rgba(0, 0, 0, 0) 1px,
+    rgba(0, 0, 0, 0) 6px
+  );
+  background-size: 200% 200%;
+  animation: barberpole 8s linear infinite;
 }
-.resLink--all {
-  text-transform: uppercase;
-}
+
 .resLink--all::before {
   content: "┌";
   color: $color-gray-light;
@@ -73,57 +75,25 @@
   justify-content: center;
 }
 
+.resLink--all-name {
+  text-transform: uppercase;
+  flex: 1;
+}
+
 .sidebarIcon {
   width: $sidebar-item;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-@keyframes shimmer {
-  0% {
-    background-position: -$sidebar-width 0;
-  }
-
-  100% {
-    background-position: $sidebar-width 0;
-  }
-}
-
-@keyframes glow {
-  0% {
-    opacity: $translucent;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    opacity: $translucent;
-  }
-}
-
-.resLink--building {
-  background-image: linear-gradient(
-    to right,
-    transparent 20%,
-    rgba($color-gray-darkest, $translucent) 40%,
-    rgba($color-gray-darkest, $translucent) 60%,
-    transparent 80%
-  );
-  animation: shimmer 2s infinite;
-  animation-timing-function: linear;
-}
 
 .resLink-name {
-  flex: 1 0 auto;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
 .resLink-alertBadge {
   font-family: $font-sans-serif;
   font-size: $font-size-smallest;
@@ -138,22 +108,29 @@
   margin-right: $spacing-unit / 2;
 }
 
-.resLink--all-name {
-  flex: 1;
-}
-
-.resLink--all .resLink-alertBadge {
-  align-items: right;
-}
 .resLink.is-selected .resLink-alertBadge {
   background-color: $color-gray-darkest;
   color: $color-white;
 }
 
 .resLink-timeAgo {
+  min-width: $spacing-unit * 0.8;
+  text-align: right;
   font-weight: normal;
-  color: $color-gray-lightest;
-  margin-right: $spacing-unit / 2;
+  color: rgba($color-white, $translucent-ish);
+}
+
+.resLink.is-selected .resLink-timeAgo {
+  color: $color-gray;
+}
+
+.resLink-timeAgo.empty {
+  color: rgba($color-white, $translucent) !important;
+}
+
+.resLink-isDirty {
+  min-width: $spacing-unit * 0.8;
+  text-align: center;
 }
 
 // Collapse/Expand
@@ -161,6 +138,7 @@
   flex-grow: 1;
   height: 0;
 }
+
 .Sidebar-toggle {
   background-color: $color-gray;
   border: 0 none;
@@ -193,4 +171,32 @@
 }
 .Sidebar.is-closed .Sidebar-toggle > svg {
   transform: rotate(180deg);
+}
+
+// Animations
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes glow {
+  0% {
+    fill-opacity: $translucent;
+  }
+  50% {
+    fill-opacity: $translucent-ish;
+  }
+  100% {
+    fill-opacity: $translucent;
+  }
+}
+
+@keyframes barberpole {
+  100% {
+    background-position: 100% 100%;
+  }
 }
