@@ -23,17 +23,16 @@ function combinedStatus(res: Resource): RuntimeStatus {
     return RuntimeStatus.Error
   }
 
-  if (status === RuntimeStatus.Error) {
-    return RuntimeStatus.Error
+  switch (status) {
+    case RuntimeStatus.Error:
+      return RuntimeStatus.Error
+    case RuntimeStatus.Pending:
+      return RuntimeStatus.Pending
+    case RuntimeStatus.Ok:
+      return RuntimeStatus.Ok
+    default:
+      return RuntimeStatus.Unknown
   }
-  if (status === RuntimeStatus.Pending) {
-    return RuntimeStatus.Pending
-  }
-  if (status === RuntimeStatus.Ok) {
-    return RuntimeStatus.Ok
-  }
-
-  return RuntimeStatus.Unknown
 }
 
 function warnings(res: any): string[] {
