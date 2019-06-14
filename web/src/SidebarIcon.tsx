@@ -89,7 +89,6 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
       <AutoPendingSvg
         className={`${IconType.DotAutoPending} auto`}
         style={style}
-        stroke={Color.gray}
       />
     )
   }
@@ -101,7 +100,6 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
     return (
       <AutoBuildingSvg
         className={`${IconType.DotAutoBuilding} auto`}
-        fill={Color.gray}
         style={style}
       />
     )
@@ -120,7 +118,7 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
       <ManualSvg
         className={`${IconType.DotManualPending} manual`}
         style={style}
-        fill={Color.gray}
+        fill={Color.white}
       />
     )
   }
@@ -133,7 +131,6 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
     return (
       <ManualBuildingSvg
         className={`${IconType.DotManualBuilding} manual`}
-        fill={Color.gray}
         style={style}
       />
     )

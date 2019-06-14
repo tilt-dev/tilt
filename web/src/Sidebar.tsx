@@ -118,6 +118,14 @@ class Sidebar extends PureComponent<SidebarProps> {
       }
       return (
         <li key={item.name}>
+          <SidebarTriggerButton
+            isSelected={isSelected}
+            resourceName={item.name}
+            hasPendingChanges={item.hasPendingChanges}
+            isBuilding={building}
+            triggerMode={item.triggerMode}
+          />
+
           <Link className={classes} to={pb.path(link)}>
             <div className="sidebarIcon">
               <SidebarIcon
@@ -127,11 +135,6 @@ class Sidebar extends PureComponent<SidebarProps> {
                 isBuilding={building}
                 isDirty={item.hasPendingChanges}
                 lastBuild={item.lastBuild}
-              />
-              <SidebarTriggerButton
-                isSelected={isSelected}
-                resourceName={item.name}
-                triggerMode={item.triggerMode}
               />
             </div>
             <span className="resLink-name">{item.name}</span>

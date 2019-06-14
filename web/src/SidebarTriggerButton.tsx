@@ -5,6 +5,8 @@ import "./SidebarTriggerButton.scss"
 
 type SidebarTriggerButtonProps = {
   resourceName: string
+  hasPendingChanges: boolean
+  isBuilding: boolean
   triggerMode: TriggerMode
   isSelected: boolean
 }
@@ -34,12 +36,10 @@ export default class SidebarTriggerButton extends PureComponent<
     return (
       <button
         onClick={() => triggerUpdate(props.resourceName)}
-        className={`SidebarTriggerButton ${
-          props.isSelected ? "isSelected" : ""
+        className={`SidebarTriggerButton ${props.isSelected ? "isSelected" : ""}
+          ${props.hasPendingChanges && !props.isBuilding ? "isReady" : ""}
         }`}
-      >
-        <TriggerSvg />
-      </button>
+      />
     )
   }
 }

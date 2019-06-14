@@ -39,7 +39,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             <svg
               className="dotAutoBuilding auto"
-              fill="#93a1a1"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -85,7 +84,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             <svg
               className="dotAutoBuilding auto"
-              fill="#93a1a1"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -131,7 +129,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             <svg
               className="dotAutoBuilding auto"
-              fill="#93a1a1"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -177,7 +174,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             <svg
               className="dotAutoBuilding auto"
-              fill="#93a1a1"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -223,7 +219,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             <svg
               className="dotAutoBuilding auto"
-              fill="#93a1a1"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -269,7 +264,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             <svg
               className="dotAutoBuilding auto"
-              fill="#93a1a1"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -315,7 +309,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             <svg
               className="dotAutoBuilding auto"
-              fill="#93a1a1"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -578,7 +571,6 @@ exports[`sidebar renders list of resources 1`] = `
           >
             <svg
               className="dotAutoBuilding auto"
-              fill="#93a1a1"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -624,7 +616,6 @@ exports[`sidebar renders list of resources 1`] = `
           >
             <svg
               className="dotAutoBuilding auto"
-              fill="#93a1a1"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -717,7 +708,6 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           >
             <svg
               className="dotAutoBuilding auto"
-              fill="#93a1a1"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -758,7 +748,6 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           >
             <svg
               className="dotAutoBuilding auto"
-              fill="#93a1a1"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -846,7 +835,6 @@ exports[`sidebar renders resources with manual trigger mode 1`] = `
           >
             <svg
               className="dotManualBuilding manual"
-              fill="#93a1a1"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -900,7 +888,6 @@ exports[`sidebar renders resources with manual trigger mode 1`] = `
           >
             <svg
               className="dotManualBuilding manual"
-              fill="#93a1a1"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
