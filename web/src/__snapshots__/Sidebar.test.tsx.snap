@@ -26,6 +26,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             7
           </span>
+          <span
+            className="resLink-timeAgo empty"
+          >
+            —
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
       <li>
@@ -48,18 +56,19 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               indicator-auto-building.svg
             </svg>
           </div>
-          <span
+          <p
             className="resLink-name"
+            title="resource4"
           >
             resource4
-          </span>
+          </p>
           <span
             className="resLink-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo"
+            className="resLink-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:36:03.000Z"
@@ -93,18 +102,19 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               indicator-auto-building.svg
             </svg>
           </div>
-          <span
+          <p
             className="resLink-name"
+            title="resource9"
           >
             resource9
-          </span>
+          </p>
           <span
             className="resLink-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo"
+            className="resLink-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:35:58.000Z"
@@ -138,18 +148,19 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               indicator-auto-building.svg
             </svg>
           </div>
-          <span
+          <p
             className="resLink-name"
+            title="resource19"
           >
             resource19
-          </span>
+          </p>
           <span
             className="resLink-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo"
+            className="resLink-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:35:48.000Z"
@@ -183,18 +194,19 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               indicator-auto-building.svg
             </svg>
           </div>
-          <span
+          <p
             className="resLink-name"
+            title="resource29"
           >
             resource29
-          </span>
+          </p>
           <span
             className="resLink-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo"
+            className="resLink-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:35:38.000Z"
@@ -228,18 +240,19 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               indicator-auto-building.svg
             </svg>
           </div>
-          <span
+          <p
             className="resLink-name"
+            title="resource39"
           >
             resource39
-          </span>
+          </p>
           <span
             className="resLink-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo"
+            className="resLink-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:35:28.000Z"
@@ -273,18 +286,19 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               indicator-auto-building.svg
             </svg>
           </div>
-          <span
+          <p
             className="resLink-name"
+            title="resource49"
           >
             resource49
-          </span>
+          </p>
           <span
             className="resLink-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo"
+            className="resLink-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:35:18.000Z"
@@ -318,18 +332,19 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               indicator-auto-building.svg
             </svg>
           </div>
-          <span
+          <p
             className="resLink-name"
+            title="resource54"
           >
             resource54
-          </span>
+          </p>
           <span
             className="resLink-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo"
+            className="resLink-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:35:13.000Z"
@@ -384,6 +399,14 @@ exports[`sidebar renders * next to dirty manual trigger mode resources 1`] = `
             All
           </span>
           
+          <span
+            className="resLink-timeAgo empty"
+          >
+            —
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
       <li>
@@ -402,14 +425,15 @@ exports[`sidebar renders * next to dirty manual trigger mode resources 1`] = `
               indicator-auto.svg
             </svg>
           </div>
-          <span
+          <p
             className="resLink-name"
+            title="(Tiltfile)"
           >
             (Tiltfile)
-          </span>
+          </p>
           
           <span
-            className="resLink-timeAgo"
+            className="resLink-timeAgo "
           >
             <time
               dateTime="2019-06-12T16:33:27.831Z"
@@ -424,6 +448,12 @@ exports[`sidebar renders * next to dirty manual trigger mode resources 1`] = `
         </a>
       </li>
       <li>
+        <button
+          className="SidebarTriggerButton 
+          isReady
+        }"
+          onClick={[Function]}
+        />
         <a
           className="resLink"
           href="/r/snack"
@@ -438,23 +468,16 @@ exports[`sidebar renders * next to dirty manual trigger mode resources 1`] = `
             >
               indicator-manual.svg
             </svg>
-            <button
-              className="SidebarTriggerButton "
-              onClick={[Function]}
-            >
-              <svg>
-                trigger.svg
-              </svg>
-            </button>
           </div>
-          <span
+          <p
             className="resLink-name"
+            title="snack"
           >
             snack
-          </span>
+          </p>
           
           <span
-            className="resLink-timeAgo"
+            className="resLink-timeAgo "
           >
             <time
               dateTime="2019-06-12T16:33:48.331Z"
@@ -511,6 +534,14 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
             All
           </span>
           
+          <span
+            className="resLink-timeAgo empty"
+          >
+            —
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
     </ul>
@@ -558,6 +589,14 @@ exports[`sidebar renders list of resources 1`] = `
           >
             2
           </span>
+          <span
+            className="resLink-timeAgo empty"
+          >
+            —
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
       <li>
@@ -580,18 +619,19 @@ exports[`sidebar renders list of resources 1`] = `
               indicator-auto-building.svg
             </svg>
           </div>
-          <span
+          <p
             className="resLink-name"
+            title="vigoda"
           >
             vigoda
-          </span>
+          </p>
           <span
             className="resLink-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo"
+            className="resLink-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:36:07.000Z"
@@ -625,18 +665,19 @@ exports[`sidebar renders list of resources 1`] = `
               indicator-auto-building.svg
             </svg>
           </div>
-          <span
+          <p
             className="resLink-name"
+            title="snack"
           >
             snack
-          </span>
+          </p>
           <span
             className="resLink-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo"
+            className="resLink-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:35:57.000Z"
@@ -695,6 +736,14 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           >
             2
           </span>
+          <span
+            className="resLink-timeAgo empty"
+          >
+            —
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
       <li>
@@ -717,18 +766,19 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
               indicator-auto-building.svg
             </svg>
           </div>
-          <span
+          <p
             className="resLink-name"
+            title="vigoda"
           >
             vigoda
-          </span>
+          </p>
           <span
             className="resLink-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo"
+            className="resLink-timeAgo empty"
           >
             —
           </span>
@@ -757,18 +807,19 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
               indicator-auto-building.svg
             </svg>
           </div>
-          <span
+          <p
             className="resLink-name"
+            title="snack"
           >
             snack
-          </span>
+          </p>
           <span
             className="resLink-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo"
+            className="resLink-timeAgo empty"
           >
             —
           </span>
@@ -822,9 +873,23 @@ exports[`sidebar renders resources with manual trigger mode 1`] = `
           >
             2
           </span>
+          <span
+            className="resLink-timeAgo empty"
+          >
+            —
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
       <li>
+        <button
+          className="SidebarTriggerButton 
+          
+        }"
+          onClick={[Function]}
+        />
         <a
           className="resLink resLink--building"
           href="/r/vigoda"
@@ -843,27 +908,20 @@ exports[`sidebar renders resources with manual trigger mode 1`] = `
             >
               indicator-manual-building.svg
             </svg>
-            <button
-              className="SidebarTriggerButton "
-              onClick={[Function]}
-            >
-              <svg>
-                trigger.svg
-              </svg>
-            </button>
           </div>
-          <span
+          <p
             className="resLink-name"
+            title="vigoda"
           >
             vigoda
-          </span>
+          </p>
           <span
             className="resLink-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo"
+            className="resLink-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:36:07.000Z"
@@ -878,6 +936,12 @@ exports[`sidebar renders resources with manual trigger mode 1`] = `
         </a>
       </li>
       <li>
+        <button
+          className="SidebarTriggerButton 
+          
+        }"
+          onClick={[Function]}
+        />
         <a
           className="resLink resLink--building"
           href="/r/snack"
@@ -896,27 +960,20 @@ exports[`sidebar renders resources with manual trigger mode 1`] = `
             >
               indicator-manual-building.svg
             </svg>
-            <button
-              className="SidebarTriggerButton "
-              onClick={[Function]}
-            >
-              <svg>
-                trigger.svg
-              </svg>
-            </button>
           </div>
-          <span
+          <p
             className="resLink-name"
+            title="snack"
           >
             snack
-          </span>
+          </p>
           <span
             className="resLink-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo"
+            className="resLink-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:35:57.000Z"
