@@ -1,6 +1,6 @@
 // +build windows
 
-// Copyright 2016 The TCell Authors
+// Copyright 2019 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -283,7 +283,6 @@ func (s *cScreen) doCursor() {
 	x, y := s.curx, s.cury
 
 	if x < 0 || y < 0 || x >= s.w || y >= s.h {
-		s.setCursorPos(0, 0)
 		s.hideCursor()
 	} else {
 		s.setCursorPos(x, y)
@@ -787,7 +786,9 @@ func (s *cScreen) draw() {
 			if len(combc) != 0 {
 				wcs = append(wcs, utf16.Encode(combc)...)
 			}
-			s.cells.SetDirty(x, y, false)
+			for dx := 0; dx < width; dx++ {
+				s.cells.SetDirty(x+dx, y, false)
+			}
 			x += width - 1
 		}
 		s.writeString(lx, ly, lstyle, wcs)
@@ -880,13 +881,13 @@ func (s *cScreen) resize() {
 	s.w = w
 	s.h = h
 
+	s.setBufferSize(w, h)
+
 	r := rect{0, 0, int16(w - 1), int16(h - 1)}
 	procSetConsoleWindowInfo.Call(
 		uintptr(s.out),
 		uintptr(1),
 		uintptr(unsafe.Pointer(&r)))
-
-	s.setBufferSize(w, h)
 
 	s.PostEvent(NewEventResize(w, h))
 }
