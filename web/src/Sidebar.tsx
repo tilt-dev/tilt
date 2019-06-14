@@ -123,8 +123,7 @@ class Sidebar extends PureComponent<SidebarProps> {
           <SidebarTriggerButton
             isSelected={isSelected}
             resourceName={item.name}
-            hasPendingChanges={item.hasPendingChanges}
-            isBuilding={building}
+            isReady={item.hasPendingChanges && !building}
             triggerMode={item.triggerMode}
           />
           <Link className={classes} to={pb.path(link)}>
