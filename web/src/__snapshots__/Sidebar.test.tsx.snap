@@ -48,14 +48,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               indicator-auto-building.svg
             </svg>
-            <button
-              className="SidebarTriggerButton "
-              onClick={[Function]}
-            >
-              <svg>
-                trigger.svg
-              </svg>
-            </button>
           </div>
           <span
             className="resLink-name"
@@ -72,7 +64,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             <time
               dateTime="2017-12-21T15:36:03.000Z"
-              title="2017-12-21 15:36"
+              title="2017-12-21T15:36:03.000Z"
             >
               &lt;5s
             </time>
@@ -102,14 +94,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               indicator-auto-building.svg
             </svg>
-            <button
-              className="SidebarTriggerButton "
-              onClick={[Function]}
-            >
-              <svg>
-                trigger.svg
-              </svg>
-            </button>
           </div>
           <span
             className="resLink-name"
@@ -126,7 +110,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             <time
               dateTime="2017-12-21T15:35:58.000Z"
-              title="2017-12-21 15:35"
+              title="2017-12-21T15:35:58.000Z"
             >
               &lt;15s
             </time>
@@ -156,14 +140,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               indicator-auto-building.svg
             </svg>
-            <button
-              className="SidebarTriggerButton "
-              onClick={[Function]}
-            >
-              <svg>
-                trigger.svg
-              </svg>
-            </button>
           </div>
           <span
             className="resLink-name"
@@ -180,7 +156,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             <time
               dateTime="2017-12-21T15:35:48.000Z"
-              title="2017-12-21 15:35"
+              title="2017-12-21T15:35:48.000Z"
             >
               &lt;30s
             </time>
@@ -210,14 +186,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               indicator-auto-building.svg
             </svg>
-            <button
-              className="SidebarTriggerButton "
-              onClick={[Function]}
-            >
-              <svg>
-                trigger.svg
-              </svg>
-            </button>
           </div>
           <span
             className="resLink-name"
@@ -234,7 +202,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             <time
               dateTime="2017-12-21T15:35:38.000Z"
-              title="2017-12-21 15:35"
+              title="2017-12-21T15:35:38.000Z"
             >
               &lt;30s
             </time>
@@ -264,14 +232,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               indicator-auto-building.svg
             </svg>
-            <button
-              className="SidebarTriggerButton "
-              onClick={[Function]}
-            >
-              <svg>
-                trigger.svg
-              </svg>
-            </button>
           </div>
           <span
             className="resLink-name"
@@ -288,7 +248,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             <time
               dateTime="2017-12-21T15:35:28.000Z"
-              title="2017-12-21 15:35"
+              title="2017-12-21T15:35:28.000Z"
             >
               &lt;45s
             </time>
@@ -318,14 +278,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               indicator-auto-building.svg
             </svg>
-            <button
-              className="SidebarTriggerButton "
-              onClick={[Function]}
-            >
-              <svg>
-                trigger.svg
-              </svg>
-            </button>
           </div>
           <span
             className="resLink-name"
@@ -342,7 +294,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             <time
               dateTime="2017-12-21T15:35:18.000Z"
-              title="2017-12-21 15:35"
+              title="2017-12-21T15:35:18.000Z"
             >
               &lt;1m
             </time>
@@ -372,14 +324,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               indicator-auto-building.svg
             </svg>
-            <button
-              className="SidebarTriggerButton "
-              onClick={[Function]}
-            >
-              <svg>
-                trigger.svg
-              </svg>
-            </button>
           </div>
           <span
             className="resLink-name"
@@ -396,7 +340,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             <time
               dateTime="2017-12-21T15:35:13.000Z"
-              title="2017-12-21 15:35"
+              title="2017-12-21T15:35:13.000Z"
             >
               &lt;1m
             </time>
@@ -643,14 +587,6 @@ exports[`sidebar renders list of resources 1`] = `
             >
               indicator-auto-building.svg
             </svg>
-            <button
-              className="SidebarTriggerButton "
-              onClick={[Function]}
-            >
-              <svg>
-                trigger.svg
-              </svg>
-            </button>
           </div>
           <span
             className="resLink-name"
@@ -667,7 +603,7 @@ exports[`sidebar renders list of resources 1`] = `
           >
             <time
               dateTime="2017-12-21T15:36:07.000Z"
-              title="2017-12-21 15:36"
+              title="2017-12-21T15:36:07.000Z"
             >
               &lt;5s
             </time>
@@ -697,14 +633,6 @@ exports[`sidebar renders list of resources 1`] = `
             >
               indicator-auto-building.svg
             </svg>
-            <button
-              className="SidebarTriggerButton "
-              onClick={[Function]}
-            >
-              <svg>
-                trigger.svg
-              </svg>
-            </button>
           </div>
           <span
             className="resLink-name"
@@ -721,7 +649,7 @@ exports[`sidebar renders list of resources 1`] = `
           >
             <time
               dateTime="2017-12-21T15:35:57.000Z"
-              title="2017-12-21 15:35"
+              title="2017-12-21T15:35:57.000Z"
             >
               &lt;15s
             </time>
@@ -798,14 +726,6 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             >
               indicator-auto-building.svg
             </svg>
-            <button
-              className="SidebarTriggerButton "
-              onClick={[Function]}
-            >
-              <svg>
-                trigger.svg
-              </svg>
-            </button>
           </div>
           <span
             className="resLink-name"
@@ -847,14 +767,6 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             >
               indicator-auto-building.svg
             </svg>
-            <button
-              className="SidebarTriggerButton "
-              onClick={[Function]}
-            >
-              <svg>
-                trigger.svg
-              </svg>
-            </button>
           </div>
           <span
             className="resLink-name"
@@ -967,7 +879,7 @@ exports[`sidebar renders resources with manual trigger mode 1`] = `
           >
             <time
               dateTime="2017-12-21T15:36:07.000Z"
-              title="2017-12-21 15:36"
+              title="2017-12-21T15:36:07.000Z"
             >
               &lt;5s
             </time>
@@ -1021,7 +933,7 @@ exports[`sidebar renders resources with manual trigger mode 1`] = `
           >
             <time
               dateTime="2017-12-21T15:35:57.000Z"
-              title="2017-12-21 15:35"
+              title="2017-12-21T15:35:57.000Z"
             >
               &lt;15s
             </time>

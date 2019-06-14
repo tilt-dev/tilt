@@ -1,5 +1,5 @@
 import React, { PureComponent } from "react"
-import { TriggerMode, ResourceStatus, Build } from "./types"
+import { TriggerMode, RuntimeStatus, Build } from "./types"
 import { Color } from "./constants"
 import { ReactComponent as ManualSvg } from "./assets/svg/indicator-manual.svg"
 import { ReactComponent as ManualBuildingSvg } from "./assets/svg/indicator-manual-building.svg"
@@ -9,7 +9,7 @@ import { ReactComponent as AutoBuildingSvg } from "./assets/svg/indicator-auto-b
 
 type SidebarIconProps = {
   triggerMode: TriggerMode
-  status: ResourceStatus
+  status: RuntimeStatus
   hasWarning: boolean
   isBuilding: boolean
   isDirty: boolean
@@ -32,7 +32,7 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
     let dirtyBuildWithError =
       props.isDirty && props.lastBuild && props.lastBuild.Error
 
-    if (props.status === ResourceStatus.Error) {
+    if (props.status === RuntimeStatus.Error) {
       fill = Color.red
     } else if (props.hasWarning) {
       fill = Color.yellow
@@ -53,7 +53,7 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
       return this.dotAutoBuilding()
     }
 
-    if (props.status === ResourceStatus.Pending) {
+    if (props.status === RuntimeStatus.Pending) {
       return this.dotAutoPending()
     }
 
@@ -70,7 +70,7 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
       return this.dotManual(fill)
     }
 
-    if (props.status === ResourceStatus.Pending) {
+    if (props.status === RuntimeStatus.Pending) {
       return this.dotManualPending()
     }
 

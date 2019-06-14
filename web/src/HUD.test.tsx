@@ -71,7 +71,7 @@ it("doesn't re-render the sidebar when the logs change", async () => {
   let resourceView = oneResourceView()
   hud.setState({ View: resourceView })
   let oldDOMNode = root.find(".Sidebar").getDOMNode()
-  resourceView.Resources[0].PodLog += "hello world\n"
+  resourceView.Resources[0].ResourceInfo.PodLog += "hello world\n"
   hud.setState({ View: resourceView })
   let newDOMNode = root.find(".Sidebar").getDOMNode()
 

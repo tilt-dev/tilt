@@ -10,7 +10,7 @@ import {
   oneResourceManualTriggerDirty,
 } from "./testdata.test"
 import { mount } from "enzyme"
-import { ResourceView, TriggerMode } from "./types"
+import { ResourceView, TriggerMode, Resource } from "./types"
 import PathBuilder from "./PathBuilder"
 
 let pathBuilder = new PathBuilder("localhost", "/")
@@ -44,7 +44,7 @@ describe("sidebar", () => {
   })
 
   it("renders list of resources", () => {
-    let items = twoResourceView().Resources.map((res: any) => {
+    let items = twoResourceView().Resources.map((res: Resource) => {
       res.BuildHistory[0].Error = ""
       return new SidebarItem(res)
     })
@@ -70,7 +70,7 @@ describe("sidebar", () => {
     let items = [4, 9, 19, 29, 39, 49, 54].map(d => {
       let res = oneResource()
       res.Name = `resource${d}`
-      res.LastDeployTime = Date.now() - d * 1000
+      res.LastDeployTime = new Date(Date.now() - d * 1000).toISOString()
       return new SidebarItem(res)
     })
 
