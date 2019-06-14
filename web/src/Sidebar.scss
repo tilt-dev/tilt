@@ -6,8 +6,8 @@
   right: 0;
   bottom: $statusbar-height;
   width: $sidebar-width;
-  background-color: $color-gray;
-  border-left: 1px solid rgba($color-white, $translucent-ish);
+  background-color: $color-gray-dark;
+  border-left: 1px solid $color-gray-light;
   box-sizing: border-box;
   overflow-y: auto;
   transform: translateX(0%);
@@ -15,8 +15,8 @@
   font-size: $font-size;
   display: flex;
   flex-direction: column;
+  box-shadow: -1px 0px 6px 0px $color-gray-darkest;
   z-index: $z-sidebar;
-  box-shadow: -2px 0px 10px 0px rgba($color-gray-dark, $translucent);
 }
 .Sidebar.is-closed {
   transform: translateX(calc(100% - #{$sidebar-collapsed-width}));
@@ -33,23 +33,22 @@
 
 .resLink {
   right: 0;
-  border-bottom: 1px solid $color-gray-light;
+  border-bottom: 1px solid rgba($color-gray-lightest, $translucent);
   color: $color-white;
+  background-color: $color-gray;
   text-decoration: none;
   display: flex;
   align-items: center;
   height: $sidebar-item;
-  transition-property: color, background-color;
+  transition-property: color;
   transition-duration: $animation-timing;
-  transition-timing-function: ease;
+  transition-timing-function: linear;
 }
 .resLink:hover {
-  right: 0;
-  background-color: $color-gray-dark;
+  background-color: rgba($color-gray-dark, $translucent);
   color: $color-blue-light;
 }
 .resLink.is-selected {
-  right: 0;
   background-color: $color-white;
   color: $color-gray;
 }
@@ -89,7 +88,10 @@
 }
 
 .resLink-name {
-  flex: 1 0 auto;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .resLink-alertBadge {
@@ -112,9 +114,23 @@
 }
 
 .resLink-timeAgo {
+  min-width: $spacing-unit * 0.8;
+  text-align: right;
   font-weight: normal;
-  color: $color-gray-lightest;
-  margin-right: $spacing-unit / 2;
+  color: rgba($color-white, $translucent-ish);
+}
+
+.resLink.is-selected .resLink-timeAgo {
+  color: $color-gray;
+}
+
+.resLink-timeAgo.empty {
+  color: rgba($color-white, $translucent) !important;
+}
+
+.resLink-isDirty {
+  min-width: $spacing-unit * 0.8;
+  text-align: center;
 }
 
 // Collapse/Expand
