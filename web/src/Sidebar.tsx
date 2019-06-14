@@ -30,7 +30,7 @@ class SidebarItem {
    */
   constructor(res: any) {
     this.name = res.Name
-    this.status = combinedStatus(res.RuntimeStatus)
+    this.status = combinedStatus(res)
     this.hasWarnings = warnings(res).length > 0
     this.hasEndpoints = (res.Endpoints || []).length
     this.lastDeployTime = res.LastDeployTime

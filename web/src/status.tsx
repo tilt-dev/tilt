@@ -5,8 +5,8 @@ import { RuntimeStatus, ResourceStatus, Resource } from "./types"
 // 1) If there's a current or pending build, this is "pending".
 // 2) Otherwise, if there's a build error or runtime error, this is "error".
 // 3) Otherwise, we fallback to runtime status.
-function combinedStatus(res: any): RuntimeStatus {
-  let runtimeStatus: RuntimeStatus = res.RuntimeStatus
+function combinedStatus(res: Resource): RuntimeStatus {
+  let status = res.RuntimeStatus
   let currentBuild = res.CurrentBuild
   let hasCurrentBuild = Boolean(
     currentBuild && !isZeroTime(currentBuild.StartTime)
@@ -22,7 +22,18 @@ function combinedStatus(res: any): RuntimeStatus {
   if (lastBuildError) {
     return RuntimeStatus.Error
   }
-  return runtimeStatus
+
+  if (status === RuntimeStatus.Error) {
+    return RuntimeStatus.Error
+  }
+  if (status === RuntimeStatus.Pending) {
+    return RuntimeStatus.Pending
+  }
+  if (status === RuntimeStatus.Ok) {
+    return RuntimeStatus.Ok
+  }
+
+  return RuntimeStatus.Unknown
 }
 
 function warnings(res: any): string[] {
