@@ -99,10 +99,8 @@ func findUnresourcedYAMLAndPutItFirst(input []*store.ManifestTarget) {
 	for i := range input {
 		if input[i].Manifest.ManifestName() == model.UnresourcedYAMLManifestName {
 			found := input[i]
-			// Remove found
-			input = append(input[:i], input[i+1:]...)
-			// put it at the beginning
-			input = append([]*store.ManifestTarget{found}, input...)
+			copy(input[1:], append(input[:i], input[i+1:]...))
+			input[0] = found
 			break
 		}
 	}
