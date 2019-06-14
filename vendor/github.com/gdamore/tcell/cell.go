@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2019 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -15,7 +15,7 @@
 package tcell
 
 import (
-	"github.com/mattn/go-runewidth"
+	runewidth "github.com/mattn/go-runewidth"
 )
 
 type cell struct {
@@ -49,16 +49,6 @@ func (cb *CellBuffer) SetContent(x int, y int,
 		c := &cb.cells[(y*cb.w)+x]
 
 		c.currComb = append([]rune{}, combc...)
-		i := 0
-		for i < len(c.currComb) {
-			r := c.currComb[i]
-			if runewidth.RuneWidth(r) != 0 {
-				// not a combining character, yank it
-				c.currComb = append(c.currComb[:i-1], c.currComb[i+1:]...)
-				continue
-			}
-			i++
-		}
 
 		if c.currMain != mainc {
 			c.width = runewidth.RuneWidth(mainc)
@@ -175,12 +165,13 @@ func (cb *CellBuffer) Resize(w, h int) {
 
 // Fill fills the entire cell buffer array with the specified character
 // and style.  Normally choose ' ' to clear the screen.  This API doesn't
-// support combining characters.
+// support combining characters, or characters with a width larger than one.
 func (cb *CellBuffer) Fill(r rune, style Style) {
 	for i := range cb.cells {
 		c := &cb.cells[i]
 		c.currMain = r
 		c.currComb = nil
 		c.currStyle = style
+		c.width = 1
 	}
 }

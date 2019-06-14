@@ -26,6 +26,7 @@ import (
 	"golang.org/x/text/transform"
 
 	"github.com/gdamore/tcell/terminfo"
+	"github.com/gdamore/tcell/terminfo/dynamic"
 )
 
 // NewTerminfoScreen returns a Screen that uses the stock TTY interface
@@ -39,7 +40,11 @@ import (
 func NewTerminfoScreen() (Screen, error) {
 	ti, e := terminfo.LookupTerminfo(os.Getenv("TERM"))
 	if e != nil {
-		return nil, e
+		ti, _, e = dynamic.LoadTerminfo(os.Getenv("TERM"))
+		if e != nil {
+			return nil, e
+		}
+		terminfo.AddTerminfo(ti)
 	}
 	t := &tScreen{ti: ti}
 
@@ -74,6 +79,8 @@ type tScreen struct {
 	cells     CellBuffer
 	in        *os.File
 	out       *os.File
+	buffering bool // true if we are collecting writes to buf instead of sending directly to out
+	buf       bytes.Buffer
 	curstyle  Style
 	style     Style
 	evch      chan Event
@@ -614,7 +621,7 @@ func (t *tScreen) drawCell(x, y int) int {
 		width = 1
 		str = " "
 	}
-	io.WriteString(t.out, str)
+	t.writeString(str)
 	t.cx += width
 	t.cells.SetDirty(x, y, false)
 	if width > 1 {
@@ -649,8 +656,26 @@ func (t *tScreen) showCursor() {
 	t.cy = y
 }
 
+// writeString sends a string to the terminal. The string is sent as-is and
+// this function does not expand inline padding indications (of the form
+// $<[delay]> where [delay] is msec). In order to have these expanded, use
+// TPuts. If the screen is "buffering", the string is collected in a buffer,
+// with the intention that the entire buffer be sent to the terminal in one
+// write operation at some point later.
+func (t *tScreen) writeString(s string) {
+	if t.buffering {
+		io.WriteString(&t.buf, s)
+	} else {
+		io.WriteString(t.out, s)
+	}
+}
+
 func (t *tScreen) TPuts(s string) {
-	t.ti.TPuts(t.out, s, t.baud)
+	if t.buffering {
+		t.ti.TPuts(&t.buf, s, t.baud)
+	} else {
+		t.ti.TPuts(t.out, s, t.baud)
+	}
 }
 
 func (t *tScreen) Show() {
@@ -686,6 +711,12 @@ func (t *tScreen) draw() {
 	t.cx = -1
 	t.cy = -1
 
+	t.buf.Reset()
+	t.buffering = true
+	defer func() {
+		t.buffering = false
+	}()
+
 	// hide the cursor while we move stuff around
 	t.hideCursor()
 
@@ -710,6 +741,8 @@ func (t *tScreen) draw() {
 
 	// restore the cursor
 	t.showCursor()
+
+	t.buf.WriteTo(t.out)
 }
 
 func (t *tScreen) EnableMouse() {
@@ -858,7 +891,10 @@ func (t *tScreen) clip(x, y int) (int, int) {
 	return x, y
 }
 
-func (t *tScreen) postMouseEvent(x, y, btn int) {
+// buildMouseEvent returns an event based on the supplied coordinates and button
+// state. Note that the screen's mouse button state is updated based on the
+// input to this function (i.e. it mutates the receiver).
+func (t *tScreen) buildMouseEvent(x, y, btn int) *EventMouse {
 
 	// XTerm mouse events only report at most one button at a time,
 	// which may include a wheel button.  Wheel motion events are
@@ -914,8 +950,7 @@ func (t *tScreen) postMouseEvent(x, y, btn int) {
 	// to the screen in that case.
 	x, y = t.clip(x, y)
 
-	ev := NewEventMouse(x, y, button, mod)
-	t.PostEvent(ev)
+	return NewEventMouse(x, y, button, mod)
 }
 
 // parseSgrMouse attempts to locate an SGR mouse record at the start of the
@@ -923,7 +958,7 @@ func (t *tScreen) postMouseEvent(x, y, btn int) {
 // be removed from the buffer.  It returns true, false if the buffer might
 // contain such an event, but more bytes are necessary (partial match), and
 // false, false if the content is definitely *not* an SGR mouse record.
-func (t *tScreen) parseSgrMouse(buf *bytes.Buffer) (bool, bool) {
+func (t *tScreen) parseSgrMouse(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 
 	b := buf.Bytes()
 
@@ -1031,7 +1066,7 @@ func (t *tScreen) parseSgrMouse(buf *bytes.Buffer) (bool, bool) {
 				buf.ReadByte()
 				i--
 			}
-			t.postMouseEvent(x, y, btn)
+			*evs = append(*evs, t.buildMouseEvent(x, y, btn))
 			return true, true
 		}
 	}
@@ -1042,7 +1077,7 @@ func (t *tScreen) parseSgrMouse(buf *bytes.Buffer) (bool, bool) {
 
 // parseXtermMouse is like parseSgrMouse, but it parses a legacy
 // X11 mouse record.
-func (t *tScreen) parseXtermMouse(buf *bytes.Buffer) (bool, bool) {
+func (t *tScreen) parseXtermMouse(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 
 	b := buf.Bytes()
 
@@ -1084,14 +1119,14 @@ func (t *tScreen) parseXtermMouse(buf *bytes.Buffer) (bool, bool) {
 				buf.ReadByte()
 				i--
 			}
-			t.postMouseEvent(x, y, btn)
+			*evs = append(*evs, t.buildMouseEvent(x, y, btn))
 			return true, true
 		}
 	}
 	return true, false
 }
 
-func (t *tScreen) parseFunctionKey(buf *bytes.Buffer) (bool, bool) {
+func (t *tScreen) parseFunctionKey(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 	b := buf.Bytes()
 	partial := false
 	for e, k := range t.keycodes {
@@ -1110,8 +1145,7 @@ func (t *tScreen) parseFunctionKey(buf *bytes.Buffer) (bool, bool) {
 				mod |= ModAlt
 				t.escaped = false
 			}
-			ev := NewEventKey(k.key, r, mod)
-			t.PostEvent(ev)
+			*evs = append(*evs, NewEventKey(k.key, r, mod))
 			for i := 0; i < len(esc); i++ {
 				buf.ReadByte()
 			}
@@ -1124,7 +1158,7 @@ func (t *tScreen) parseFunctionKey(buf *bytes.Buffer) (bool, bool) {
 	return partial, false
 }
 
-func (t *tScreen) parseRune(buf *bytes.Buffer) (bool, bool) {
+func (t *tScreen) parseRune(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 	b := buf.Bytes()
 	if b[0] >= ' ' && b[0] <= 0x7F {
 		// printable ASCII easy to deal with -- no encodings
@@ -1133,8 +1167,7 @@ func (t *tScreen) parseRune(buf *bytes.Buffer) (bool, bool) {
 			mod = ModAlt
 			t.escaped = false
 		}
-		ev := NewEventKey(KeyRune, rune(b[0]), mod)
-		t.PostEvent(ev)
+		*evs = append(*evs, NewEventKey(KeyRune, rune(b[0]), mod))
 		buf.ReadByte()
 		return true, true
 	}
@@ -1159,8 +1192,7 @@ func (t *tScreen) parseRune(buf *bytes.Buffer) (bool, bool) {
 					mod = ModAlt
 					t.escaped = false
 				}
-				ev := NewEventKey(KeyRune, r, mod)
-				t.PostEvent(ev)
+				*evs = append(*evs, NewEventKey(KeyRune, r, mod))
 			}
 			for nin > 0 {
 				buf.ReadByte()
@@ -1174,6 +1206,19 @@ func (t *tScreen) parseRune(buf *bytes.Buffer) (bool, bool) {
 }
 
 func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
+	evs := t.collectEventsFromInput(buf, expire)
+
+	for _, ev := range evs {
+		t.PostEventWait(ev)
+	}
+}
+
+// Return an array of Events extracted from the supplied buffer. This is done
+// while holding the screen's lock - the events can then be queued for
+// application processing with the lock released.
+func (t *tScreen) collectEventsFromInput(buf *bytes.Buffer, expire bool) []Event {
+
+	res := make([]Event, 0, 20)
 
 	t.Lock()
 	defer t.Unlock()
@@ -1182,18 +1227,18 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 		b := buf.Bytes()
 		if len(b) == 0 {
 			buf.Reset()
-			return
+			return res
 		}
 
 		partials := 0
 
-		if part, comp := t.parseRune(buf); comp {
+		if part, comp := t.parseRune(buf, &res); comp {
 			continue
 		} else if part {
 			partials++
 		}
 
-		if part, comp := t.parseFunctionKey(buf); comp {
+		if part, comp := t.parseFunctionKey(buf, &res); comp {
 			continue
 		} else if part {
 			partials++
@@ -1203,13 +1248,13 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 		// mouse support
 
 		if t.ti.Mouse != "" {
-			if part, comp := t.parseXtermMouse(buf); comp {
+			if part, comp := t.parseXtermMouse(buf, &res); comp {
 				continue
 			} else if part {
 				partials++
 			}
 
-			if part, comp := t.parseSgrMouse(buf); comp {
+			if part, comp := t.parseSgrMouse(buf, &res); comp {
 				continue
 			} else if part {
 				partials++
@@ -1219,8 +1264,7 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 		if partials == 0 || expire {
 			if b[0] == '\x1b' {
 				if len(b) == 1 {
-					ev := NewEventKey(KeyEsc, 0, ModNone)
-					t.PostEvent(ev)
+					res = append(res, NewEventKey(KeyEsc, 0, ModNone))
 					t.escaped = false
 				} else {
 					t.escaped = true
@@ -1238,8 +1282,7 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 				t.escaped = false
 				mod = ModAlt
 			}
-			ev := NewEventKey(KeyRune, rune(by), mod)
-			t.PostEvent(ev)
+			res = append(res, NewEventKey(KeyRune, rune(by), mod))
 			continue
 		}
 
@@ -1247,6 +1290,8 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 		// some more
 		break
 	}
+
+	return res
 }
 
 func (t *tScreen) mainLoop() {

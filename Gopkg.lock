@@ -448,15 +448,16 @@
   revision = "b23993cbb6353f0e6aa98d0ee318a34728f628b9"
 
 [[projects]]
-  digest = "1:00b9cce210566117aff926677c005aeaea6c85374e67bdcb72783af237c48f97"
+  branch = "master"
+  digest = "1:fb2c53586c4f2fd2567396caf6981514ca370d0108e996c572a98e511356f733"
   name = "github.com/gdamore/tcell"
   packages = [
     ".",
     "terminfo",
+    "terminfo/dynamic",
   ]
   pruneopts = "UT"
-  revision = "de7e78efa4a71b3f36c7154989c529dbdf9ae623"
-  version = "v1.1.0"
+  revision = "ca8fb5bcc94b37b52eb8508d3ed8753e4762e83f"
 
 [[projects]]
   digest = "1:2cd7915ab26ede7d95b8749e6b1f933f1c6d5398030684e6505940a10f31cfda"
@@ -1851,6 +1852,7 @@
     "k8s.io/api/apps/v1",
     "k8s.io/api/apps/v1beta1",
     "k8s.io/api/apps/v1beta2",
+    "k8s.io/api/authorization/v1",
     "k8s.io/api/core/v1",
     "k8s.io/api/extensions/v1beta1",
     "k8s.io/apimachinery/pkg/api/errors",
@@ -1873,6 +1875,7 @@
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/kubernetes/fake",
     "k8s.io/client-go/kubernetes/scheme",
+    "k8s.io/client-go/kubernetes/typed/authorization/v1",
     "k8s.io/client-go/kubernetes/typed/core/v1",
     "k8s.io/client-go/plugin/pkg/client/auth",
     "k8s.io/client-go/plugin/pkg/client/auth/gcp",
