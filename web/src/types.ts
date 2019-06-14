@@ -30,6 +30,7 @@ export enum RuntimeStatus {
   Ok = "ok",
   Pending = "pending",
   Error = "error",
+  Unknown = "unknown",
 }
 
 // What is the status of the resource with respect to Tilt

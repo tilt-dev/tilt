@@ -194,6 +194,17 @@ const cases: Array<
     true,
     buildWithError,
   ],
+  [
+    "manual mode, status error, not dirty, with last build in error → red ring",
+    RuntimeStatus.Error,
+    false,
+    false,
+    TriggerMode.TriggerModeManual,
+    Color.red,
+    IconType.DotManual,
+    false,
+    buildWithError,
+  ],
 ]
 
 test.each(cases)(
