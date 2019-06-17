@@ -2,6 +2,7 @@ package dockerfile
 
 import (
 	"github.com/docker/distribution/reference"
+
 	"github.com/windmilleng/tilt/internal/container"
 )
 

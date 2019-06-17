@@ -3,13 +3,14 @@ package k8s
 import (
 	"reflect"
 
-	"github.com/windmilleng/tilt/internal/model"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	v1 "k8s.io/api/core/v1"
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 func makeLabelSet(lps []model.LabelPair) labels.Set {

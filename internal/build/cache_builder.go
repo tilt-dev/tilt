@@ -9,6 +9,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/logger"

@@ -5,11 +5,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/stretchr/testify/assert"
 	"k8s.io/api/apps/v1beta2"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 func TestInjectLabelPod(t *testing.T) {

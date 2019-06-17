@@ -11,12 +11,13 @@ import (
 	http_logrus "github.com/improbable-eng/go-httpwares/logging/logrus"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/network"
 	"github.com/windmilleng/tilt/internal/sail/server"
-	"golang.org/x/sync/errgroup"
 )
 
 const DefaultWebDevPort = 10451

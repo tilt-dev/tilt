@@ -22,6 +22,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
+
 	"github.com/windmilleng/wmclient/pkg/dirs"
 
 	"github.com/windmilleng/tilt/internal/docker"

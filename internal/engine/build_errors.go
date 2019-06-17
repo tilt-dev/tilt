@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tilt/internal/logger"
 )
 

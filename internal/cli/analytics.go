@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 	giturls "github.com/whilp/git-urls"
+
 	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 

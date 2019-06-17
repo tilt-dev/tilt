@@ -1,6 +1,6 @@
 .PHONY: all proto install lint test test-go check-js test-js integration wire-check wire ensure check-go
 
-check-go: lint errcheck verify_gofmt wire-check test-go
+check-go: lint errcheck verify_goimports wire-check test-go
 all: check-go check-js test-js
 
 # There are 2 Go bugs that cause problems on CI:
@@ -16,6 +16,8 @@ SYNCLET_IMAGE := gcr.io/windmill-public-containers/tilt-synclet
 SYNCLET_DEV_IMAGE_TAG_FILE := .synclet-dev-image-tag
 
 CIRCLECI := $(if $(CIRCLECI),$(CIRCLECI),false)
+
+GOIMPORTS_LOCAL_ARG := -local github.com/windmill/tilt
 
 scripts/protocc/protocc.py: scripts/protocc
 	git submodule init
@@ -99,8 +101,9 @@ test-js:
 ensure:
 	dep ensure
 
-verify_gofmt:
-	bash -c 'diff <(go fmt ./...) <(echo -n)'
+verify_goimports:
+	# any files printed here need to be formatted by `goimports $(GOIMPORTS_LOCAL_ARG)`
+	bash -c 'diff <(goimports -l $(GOIMPORTS_LOCAL_ARG) $$(go list -f {{.Dir}} ./...)) <(echo -n)'
 
 benchmark:
 	go test -run=XXX -bench=. ./...
@@ -111,11 +114,9 @@ errcheck:
 timing: install
 	./scripts/timing.py
 
+WIRE_PATHS = engine cli synclet sail/client
 wire:
-	wire ./internal/engine
-	wire ./internal/cli
-	wire ./internal/synclet
-	wire ./internal/sail/client
+	$(foreach path,$(WIRE_PATHS),wire ./internal/$(path) && goimports -w $(GOIMPORTS_LOCAL_ARG) internal/$(path) &&) true
 
 wire-check:
 	wire check ./internal/engine

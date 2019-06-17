@@ -7,6 +7,8 @@ package cli
 
 import (
 	"context"
+	"time"
+
 	"github.com/docker/docker/api/types"
 	"github.com/google/wire"
 	"github.com/windmilleng/tilt/internal/analytics"
@@ -28,7 +30,6 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/tools/clientcmd/api"
-	"time"
 )
 
 // Injectors from wire.go:
