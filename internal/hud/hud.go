@@ -362,24 +362,22 @@ func selectedResource(view view.View, state view.ViewState) (i int, resource vie
 var _ store.Subscriber = &Hud{}
 
 func writeHeapProfile(ctx context.Context) {
-	go func() {
-		f, err := os.Create("tilt.heap_profile")
-		if err != nil {
-			logger.Get(ctx).Infof("error creating file for heap profile: %v", err)
-			return
-		}
-		runtime.GC()
-		logger.Get(ctx).Infof("writing heap profile to %s", f.Name())
-		err = pprof.WriteHeapProfile(f)
-		if err != nil {
-			logger.Get(ctx).Infof("error writing heap profile: %v", err)
-			return
-		}
-		err = f.Close()
-		if err != nil {
-			logger.Get(ctx).Infof("error closing file for heap profile: %v", err)
-			return
-		}
-		logger.Get(ctx).Infof("wrote heap profile to %s", f.Name())
-	}()
+	f, err := os.Create("tilt.heap_profile")
+	if err != nil {
+		logger.Get(ctx).Infof("error creating file for heap profile: %v", err)
+		return
+	}
+	runtime.GC()
+	logger.Get(ctx).Infof("writing heap profile to %s", f.Name())
+	err = pprof.WriteHeapProfile(f)
+	if err != nil {
+		logger.Get(ctx).Infof("error writing heap profile: %v", err)
+		return
+	}
+	err = f.Close()
+	if err != nil {
+		logger.Get(ctx).Infof("error closing file for heap profile: %v", err)
+		return
+	}
+	logger.Get(ctx).Infof("wrote heap profile to %s", f.Name())
 }
