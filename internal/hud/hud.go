@@ -3,9 +3,14 @@ package hud
 import (
 	"context"
 	"fmt"
+	"os"
+	"runtime"
+	"runtime/pprof"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/windmilleng/tilt/internal/logger"
 
 	"github.com/gdamore/tcell"
 	"github.com/pkg/browser"
@@ -236,7 +241,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				dispatch(StartProfilingAction{})
 			}
 		case tcell.KeyCtrlO:
-			dispatch(HeapProfileAction{})
+			go writeHeapProfile(ctx)
 		case tcell.KeyCtrlT:
 			dispatch(SetLogTimestampsAction{!h.currentView.LogTimestamps})
 		}
@@ -355,3 +360,26 @@ func selectedResource(view view.View, state view.ViewState) (i int, resource vie
 }
 
 var _ store.Subscriber = &Hud{}
+
+func writeHeapProfile(ctx context.Context) {
+	go func() {
+		f, err := os.Create("tilt.heap_profile")
+		if err != nil {
+			logger.Get(ctx).Infof("error creating file for heap profile: %v", err)
+			return
+		}
+		runtime.GC()
+		logger.Get(ctx).Infof("writing heap profile to %s", f.Name())
+		err = pprof.WriteHeapProfile(f)
+		if err != nil {
+			logger.Get(ctx).Infof("error writing heap profile: %v", err)
+			return
+		}
+		err = f.Close()
+		if err != nil {
+			logger.Get(ctx).Infof("error closing file for heap profile: %v", err)
+			return
+		}
+		logger.Get(ctx).Infof("wrote heap profile to %s", f.Name())
+	}()
+}

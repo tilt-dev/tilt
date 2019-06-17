@@ -20,10 +20,6 @@ type StopProfilingAction struct {
 
 func (StopProfilingAction) Action() {}
 
-type HeapProfileAction struct{}
-
-func (HeapProfileAction) Action() {}
-
 type SetLogTimestampsAction struct {
 	Value bool
 }
