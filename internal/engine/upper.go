@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
+	"runtime"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"time"
@@ -12,7 +15,6 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
-	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -22,6 +24,7 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud"
+	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -182,6 +185,8 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleStartProfilingAction(state)
 	case hud.StopProfilingAction:
 		handleStopProfilingAction(state)
+	case hud.HeapProfileAction:
+		handleHeapProfileAction(ctx)
 	case hud.SetLogTimestampsAction:
 		handleLogTimestampsAction(state, action)
 	case client.SailRoomConnectedAction:
@@ -398,6 +403,29 @@ func handleStopProfilingAction(state *store.EngineState) {
 
 func handleStartProfilingAction(state *store.EngineState) {
 	state.IsProfiling = true
+}
+
+func handleHeapProfileAction(ctx context.Context) {
+	go func() {
+		f, err := os.Create("tilt.heap_profile")
+		if err != nil {
+			logger.Get(ctx).Infof("error creating file for heap profile: %v", err)
+			return
+		}
+		runtime.GC()
+		logger.Get(ctx).Infof("writing heap profile to %s", f.Name())
+		err = pprof.WriteHeapProfile(f)
+		if err != nil {
+			logger.Get(ctx).Infof("error writing heap profile: %v", err)
+			return
+		}
+		err = f.Close()
+		if err != nil {
+			logger.Get(ctx).Infof("error closing file for heap profile: %v", err)
+			return
+		}
+		logger.Get(ctx).Infof("wrote heap profile to %s", f.Name())
+	}()
 }
 
 func handleLogTimestampsAction(state *store.EngineState, action hud.SetLogTimestampsAction) {
