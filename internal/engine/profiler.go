@@ -6,6 +6,7 @@ import (
 	"runtime/pprof"
 
 	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/store"
 )
