@@ -86,6 +86,7 @@ func (f *fixture) WaitUntil(ctx context.Context, msg string, fun func() (string,
 
 		select {
 		case <-ctx.Done():
+			f.KillProcs()
 			f.t.Fatalf("Timed out waiting for expected result (%s)\n"+
 				"Expected: %s\n"+
 				"Actual: %s\n"+
@@ -117,8 +118,7 @@ func (f *fixture) TiltUp(name string) {
 	}
 }
 
-func (f *fixture) TiltWatch() {
-	cmd := f.tiltCmd([]string{"up", "--debug", "--hud=false", "--port=0"}, os.Stdout)
+func (f *fixture) runInBackground(cmd *exec.Cmd) {
 	err := cmd.Start()
 	if err != nil {
 		f.t.Fatal(err)
@@ -130,17 +130,14 @@ func (f *fixture) TiltWatch() {
 	}()
 }
 
+func (f *fixture) TiltWatch() {
+	cmd := f.tiltCmd([]string{"up", "--debug", "--hud=false", "--port=0"}, os.Stdout)
+	f.runInBackground(cmd)
+}
+
 func (f *fixture) TiltWatchExec() {
 	cmd := f.tiltCmd([]string{"up", "--debug", "--hud=false", "--port=0", "--update-mode", "exec"}, os.Stdout)
-	err := cmd.Start()
-	if err != nil {
-		f.t.Fatal(err)
-	}
-
-	f.cmds = append(f.cmds, cmd)
-	go func() {
-		_ = cmd.Wait()
-	}()
+	f.runInBackground(cmd)
 }
 
 func (f *fixture) ReplaceContents(fileBaseName, original, replacement string) {
