@@ -29,22 +29,14 @@ type DockerComposeClient interface {
 }
 
 type cmdDCClient struct {
-	// NOTE(nick): In an ideal world, we would detect if the user was using
-	// docker-compose or kubernetes as an orchestration engine, and use that to
-	// choose an appropriate docker-client. But the docker-client is wired up
-	// at start-time.
-	//
-	// So for now, we need docker-compose to use the same docker client as
-	// everybody else, even if it's a weird docker client (like the docker client
-	// that lives in minikube).
 	env docker.Env
 }
 
 // TODO(dmiller): we might want to make this take a path to the docker-compose config so we don't
 // have to keep passing it in.
-func NewDockerComposeClient(env docker.Env) DockerComposeClient {
+func NewDockerComposeClient(env docker.LocalEnv) DockerComposeClient {
 	return &cmdDCClient{
-		env: env,
+		env: docker.Env(env),
 	}
 }
 

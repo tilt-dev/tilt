@@ -1,0 +1,122 @@
+package docker
+
+import (
+	"context"
+	"fmt"
+	"os"
+
+	"github.com/docker/cli/opts"
+	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/minikube"
+)
+
+// See notes on CreateClientOpts. These environment variables are standard docker env configs.
+type Env struct {
+	Host       string
+	APIVersion string
+	TLSVerify  string
+	CertPath   string
+}
+
+// Serializes this back to environment variables for os.Environ
+func (e Env) AsEnviron() []string {
+	vars := []string{}
+	if e.Host != "" {
+		vars = append(vars, fmt.Sprintf("DOCKER_HOST=%s", e.Host))
+	}
+	if e.APIVersion != "" {
+		vars = append(vars, fmt.Sprintf("DOCKER_API_VERSION=%s", e.APIVersion))
+	}
+	if e.CertPath != "" {
+		vars = append(vars, fmt.Sprintf("DOCKER_CERT_PATH=%s", e.CertPath))
+	}
+	if e.TLSVerify != "" {
+		vars = append(vars, fmt.Sprintf("DOCKER_TLS_VERIFY=%s", e.TLSVerify))
+	}
+	return vars
+}
+
+// Tell wire to create two docker envs: one for the local CLI and one for the in-cluster CLI.
+type ClusterEnv Env
+type LocalEnv Env
+
+func ProvideLocalEnv(ctx context.Context) (LocalEnv, error) {
+	result, err := overlayOSEnvVars(Env{})
+	return LocalEnv(result), err
+}
+
+func ProvideClusterEnv(ctx context.Context, env k8s.Env, runtime container.Runtime, minikubeClient minikube.Client) (ClusterEnv, error) {
+	result := Env{}
+
+	if runtime == container.RuntimeDocker {
+		if env == k8s.EnvMinikube {
+			// If we're running Minikube with a docker runtime, talk to Minikube's docker socket.
+			envMap, err := minikubeClient.DockerEnv(ctx)
+			if err != nil {
+				return ClusterEnv{}, errors.Wrap(err, "ProvideDockerEnv")
+			}
+
+			host := envMap["DOCKER_HOST"]
+			if host != "" {
+				result.Host = host
+			}
+
+			apiVersion := envMap["DOCKER_API_VERSION"]
+			if apiVersion != "" {
+				result.APIVersion = apiVersion
+			}
+
+			certPath := envMap["DOCKER_CERT_PATH"]
+			if certPath != "" {
+				result.CertPath = certPath
+			}
+
+			tlsVerify := envMap["DOCKER_TLS_VERIFY"]
+			if tlsVerify != "" {
+				result.TLSVerify = tlsVerify
+			}
+		} else if env == k8s.EnvMicroK8s {
+			// If we're running Microk8s with a docker runtime, talk to Microk8s's docker socket.
+			result.Host = microK8sDockerHost
+		}
+	}
+
+	resultEnv, err := overlayOSEnvVars(Env(result))
+	if err != nil {
+		return ClusterEnv{}, err
+	}
+	return ClusterEnv(resultEnv), nil
+}
+
+func overlayOSEnvVars(result Env) (Env, error) {
+	host := os.Getenv("DOCKER_HOST")
+	if host != "" {
+		host, err := opts.ParseHost(true, host)
+		if err != nil {
+			return Env{}, errors.Wrap(err, "ProvideDockerEnv")
+		}
+
+		// If the docker host is set from the env, ignore all the variables
+		// from minikube/microk8s
+		result = Env{Host: host}
+	}
+
+	apiVersion := os.Getenv("DOCKER_API_VERSION")
+	if apiVersion != "" {
+		result.APIVersion = apiVersion
+	}
+
+	certPath := os.Getenv("DOCKER_CERT_PATH")
+	if certPath != "" {
+		result.CertPath = certPath
+	}
+
+	tlsVerify := os.Getenv("DOCKER_TLS_VERIFY")
+	if tlsVerify != "" {
+		result.TLSVerify = tlsVerify
+	}
+
+	return result, nil
+}

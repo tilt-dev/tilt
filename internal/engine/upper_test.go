@@ -696,7 +696,7 @@ func TestConfigChange_NoOpChange(t *testing.T) {
 	defer f.TearDown()
 
 	f.WriteFile("Tiltfile", `
-docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile') 
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile')
 k8s_yaml('snack.yaml')`)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
 	f.WriteFile("snack.yaml", simpleYAML)
@@ -737,7 +737,7 @@ func TestConfigChange_TiltfileErrorAndFixWithNoChanges(t *testing.T) {
 	defer f.TearDown()
 
 	origTiltfile := `
-docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile') 
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile')
 k8s_yaml('snack.yaml')`
 	f.WriteFile("Tiltfile", origTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
@@ -826,7 +826,7 @@ func TestConfigChange_TriggerModeChangePropagatesButDoesntInvalidateBuild(t *tes
 	defer f.TearDown()
 
 	origTiltfile := `
-docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile') 
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile')
 k8s_yaml('snack.yaml')`
 	f.WriteFile("Tiltfile", origTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
@@ -860,7 +860,7 @@ func TestConfigChange_ManifestWithPendingChangesBuildsIfTriggerModeChangedToAuto
 	defer f.TearDown()
 
 	baseTiltfile := `trigger_mode(%s)
-docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile') 
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile')
 k8s_yaml('snack.yaml')`
 	triggerManualTiltfile := fmt.Sprintf(baseTiltfile, "TRIGGER_MODE_MANUAL")
 	f.WriteFile("Tiltfile", triggerManualTiltfile)
@@ -2628,7 +2628,7 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	// TODO(nick): Why does this test use two different docker compose clients???
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
-	realDcc := dockercompose.NewDockerComposeClient(docker.Env{})
+	realDcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
 
 	tfl := tiltfile.ProvideTiltfileLoader(ta, k8s, realDcc, "fake-context")
 	cc := NewConfigsController(tfl)

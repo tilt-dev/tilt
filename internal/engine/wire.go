@@ -26,7 +26,6 @@ var DeployerBaseWireSet = wire.NewSet(
 	wire.Value(UpperReducer),
 
 	minikube.ProvideMinikubeClient,
-	docker.ProvideEnv,
 	build.DefaultImageBuilder,
 	build.NewCacheBuilder,
 	build.NewDockerImageBuilder,

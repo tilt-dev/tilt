@@ -34,26 +34,23 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 	fmt.Println("---")
 	fmt.Println("Docker")
 
-	dockerEnv, err := wireDockerEnv(ctx)
+	client, err := wireDockerClusterClient(ctx)
 	if err != nil {
 		printField("Host", nil, err)
 	} else {
+		dockerEnv := client.Env()
 		host := dockerEnv.Host
 		if host == "" {
 			host = "[default]"
 		}
 		printField("Host", host, err)
-	}
 
-	dockerVersion, err := wireDockerVersion(ctx)
-	if err != nil {
-		printField("Version", "", err)
-	} else {
-		printField("Version", dockerVersion.APIVersion, err)
-	}
+		version := client.ServerVersion()
+		printField("Version", version.APIVersion, nil)
 
-	builderVersion, err := wireDockerBuilderVersion(ctx)
-	printField("Builder", builderVersion, err)
+		builderVersion := client.BuilderVersion()
+		printField("Builder", builderVersion, nil)
+	}
 
 	fmt.Println("---")
 	fmt.Println("Kubernetes")

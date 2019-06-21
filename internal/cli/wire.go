@@ -9,7 +9,6 @@ import (
 
 	"github.com/windmilleng/tilt/internal/analytics"
 
-	"github.com/docker/docker/api/types"
 	"github.com/google/wire"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -49,11 +48,7 @@ var BaseWireSet = wire.NewSet(
 	K8sWireSet,
 	provideKubectlLogLevel,
 
-	docker.ProvideDockerClient,
-	docker.ProvideDockerVersion,
-	docker.ProvideDockerBuilderVersion,
-	docker.DefaultClient,
-	wire.Bind(new(docker.Client), new(docker.Cli)),
+	docker.ClusterWireSet,
 
 	dockercompose.NewDockerComposeClient,
 
@@ -166,24 +161,14 @@ func wireK8sVersion(ctx context.Context) (*version.Info, error) {
 	return nil, nil
 }
 
-func wireDockerVersion(ctx context.Context) (types.Version, error) {
+func wireDockerClusterClient(ctx context.Context) (docker.ClusterClient, error) {
 	wire.Build(BaseWireSet)
-	return types.Version{}, nil
-}
-
-func wireDockerEnv(ctx context.Context) (docker.Env, error) {
-	wire.Build(BaseWireSet)
-	return docker.Env{}, nil
+	return nil, nil
 }
 
 func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics) (DownDeps, error) {
 	wire.Build(BaseWireSet, ProvideDownDeps)
 	return DownDeps{}, nil
-}
-
-func wireDockerBuilderVersion(ctx context.Context) (types.BuilderVersion, error) {
-	wire.Build(BaseWireSet)
-	return "", nil
 }
 
 type DownDeps struct {

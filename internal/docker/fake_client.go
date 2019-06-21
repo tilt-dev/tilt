@@ -106,6 +106,16 @@ func NewFakeClient() *FakeClient {
 	}
 }
 
+func (c *FakeClient) Env() Env {
+	return Env{}
+}
+func (c *FakeClient) BuilderVersion() types.BuilderVersion {
+	return types.BuilderV1
+}
+func (c *FakeClient) ServerVersion() types.Version {
+	return types.Version{}
+}
+
 func (c *FakeClient) SetContainerListOutput(output map[string][]types.Container) {
 	c.ContainerListOutput = output
 }

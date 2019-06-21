@@ -19,14 +19,12 @@ type CustomBuilder interface {
 
 type ExecCustomBuilder struct {
 	dCli  docker.Client
-	env   docker.Env
 	clock Clock
 }
 
-func NewExecCustomBuilder(dCli docker.Client, env docker.Env, clock Clock) *ExecCustomBuilder {
+func NewExecCustomBuilder(dCli docker.Client, clock Clock) *ExecCustomBuilder {
 	return &ExecCustomBuilder{
 		dCli:  dCli,
-		env:   env,
 		clock: clock,
 	}
 }
@@ -48,7 +46,7 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, comm
 	l.Infof("EXPECTED_REF=%s", expectedRef.String())
 	env := append(os.Environ(), fmt.Sprintf("EXPECTED_REF=%s", expectedRef.String()))
 
-	for _, e := range b.env.AsEnviron() {
+	for _, e := range b.dCli.Env().AsEnviron() {
 		env = append(env, e)
 		l.Infof("%s", e)
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/analytics"
+	"github.com/windmilleng/tilt/internal/docker"
 )
 
 type dockerCmd struct {
@@ -31,21 +32,19 @@ func (c *dockerCmd) run(ctx context.Context, args []string) error {
 	a.Incr("cmd.docker", map[string]string{})
 	defer a.Flush(time.Second)
 
-	dockerEnv, err := wireDockerEnv(ctx)
+	client, err := wireDockerClusterClient(ctx)
 	if err != nil {
-		return errors.Wrap(err, "wireDockerEnv")
+		return errors.Wrap(err, "wireDockerClusterClient")
 	}
 
-	builder, err := wireDockerBuilderVersion(ctx)
-	if err != nil {
-		return errors.Wrap(err, "wireDockerBuilderVersion")
-	}
+	dockerEnv := client.Env()
+	builder := client.BuilderVersion()
 
 	buildkitEnv := "DOCKER_BUILDKIT=0"
 	if builder == types.BuilderBuildKit {
 		buildkitEnv = "DOCKER_BUILDKIT=1"
 	}
-	env := append([]string{buildkitEnv}, dockerEnv.AsEnviron()...)
+	env := append([]string{buildkitEnv}, docker.Env(dockerEnv).AsEnviron()...)
 	fmt.Fprintf(os.Stderr,
 		"Running Docker command as:\n%s docker %s\n---\n",
 		strings.Join(env, " "),

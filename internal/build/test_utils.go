@@ -52,27 +52,12 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	ctx := output.CtxForTest()
 	env := k8s.EnvGKE
 
-	dEnv, err := docker.ProvideEnv(ctx, env, wmcontainer.RuntimeDocker, minikube.FakeClient{})
+	dEnv, err := docker.ProvideClusterEnv(ctx, env, wmcontainer.RuntimeDocker, minikube.FakeClient{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	cli, err := docker.ProvideDockerClient(ctx, dEnv)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	version, err := docker.ProvideDockerVersion(ctx, cli)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	builderVersion, err := docker.ProvideDockerBuilderVersion(version, env)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	dCli, err := docker.DefaultClient(ctx, cli, version, builderVersion)
+	dCli, err := docker.NewDockerClient(ctx, docker.Env(dEnv), env)
 	if err != nil {
 		t.Fatal(err)
 	}

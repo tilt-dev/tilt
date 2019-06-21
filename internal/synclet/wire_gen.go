@@ -10,34 +10,20 @@ import (
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/minikube"
 )
 
 // Injectors from wire.go:
 
-func WireSynclet(ctx context.Context, env k8s.Env, runtime container.Runtime) (*Synclet, error) {
-	client := minikube.ProvideMinikubeClient()
-	dockerEnv, err := docker.ProvideEnv(ctx, env, runtime, client)
+func WireSynclet(ctx context.Context, runtime container.Runtime) (*Synclet, error) {
+	localEnv, err := docker.ProvideLocalEnv(ctx)
 	if err != nil {
 		return nil, err
 	}
-	clientClient, err := docker.ProvideDockerClient(ctx, dockerEnv)
+	localClient, err := docker.ProvideLocalCli(ctx, localEnv)
 	if err != nil {
 		return nil, err
 	}
-	version, err := docker.ProvideDockerVersion(ctx, clientClient)
-	if err != nil {
-		return nil, err
-	}
-	builderVersion, err := docker.ProvideDockerBuilderVersion(version, env)
-	if err != nil {
-		return nil, err
-	}
-	cli, err := docker.DefaultClient(ctx, clientClient, version, builderVersion)
-	if err != nil {
-		return nil, err
-	}
-	synclet := NewSynclet(cli)
+	client := docker.ProvideLocalAsDefault(localClient)
+	synclet := NewSynclet(client)
 	return synclet, nil
 }
