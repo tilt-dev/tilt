@@ -295,6 +295,17 @@ func (s *tiltfileState) predeclared() starlark.StringDict {
 	return r
 }
 
+// Returns the current orchestrator.
+//
+// Note that assemble() will eventually error out if this has
+// both DC and K8s resources.
+func (s *tiltfileState) orchestrator() model.Orchestrator {
+	if !s.dc.Empty() {
+		return model.OrchestratorDC
+	}
+	return model.OrchestratorK8s
+}
+
 func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 	err := s.assembleImages()
 	if err != nil {
@@ -334,7 +345,7 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 
 func (s *tiltfileState) assembleImages() error {
 	registry := s.defaultRegistryHost
-	if s.privateRegistry != "" {
+	if s.orchestrator() == model.OrchestratorK8s && s.privateRegistry != "" {
 		// If we've found a private registry in the cluster at run-time,
 		// use that instead of the one in the tiltfile
 		s.logger.Infof("Auto-detected private registry from environment: %s", s.privateRegistry)

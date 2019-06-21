@@ -2591,6 +2591,31 @@ k8s_yaml('foo.yaml')
 		deployment("foo"))
 }
 
+func TestPrivateRegistryDockerCompose(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.kCli.Registry = "localhost:32000"
+
+	f.setupFoo()
+	f.file("docker-compose.yml", `version: '3'
+services:
+  foo:
+    image: gcr.io/foo
+`)
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+docker_compose('docker-compose.yml')
+`)
+
+	f.load()
+
+	// Assert that when we use a docker-compose orchestrator, we don't
+	// use the k8s private registry.
+	f.assertNextManifest("foo",
+		db(image("gcr.io/foo")))
+}
+
 func TestDefaultRegistryTwoImagesOnlyDifferByTag(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
