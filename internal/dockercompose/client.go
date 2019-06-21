@@ -183,7 +183,7 @@ func (c *cmdDCClient) dcOutput(ctx context.Context, configPath string, args ...s
 
 	output, err := cmd.Output()
 	if err != nil {
-		errorMessage := fmt.Sprintf("command 'docker-compose %q' failed.\nerror: '%v'\nstdout: '%v'", args, err, string(output))
+		errorMessage := fmt.Sprintf("command %q failed.\nerror: %v\nstdout: %q", cmd.Args, err, string(output))
 		if err, ok := err.(*exec.ExitError); ok {
 			errorMessage += fmt.Sprintf("\nstderr: '%v'", string(err.Stderr))
 		}
@@ -196,7 +196,7 @@ func FormatError(cmd *exec.Cmd, stdout []byte, err error) error {
 	if err == nil {
 		return nil
 	}
-	errorMessage := fmt.Sprintf("command '%q %q' failed.\nerror: '%v'\n", cmd.Path, cmd.Args, err)
+	errorMessage := fmt.Sprintf("command %q failed.\nerror: %v\n", cmd.Args, err)
 	if len(stdout) > 0 {
 		errorMessage += fmt.Sprintf("\nstdout: '%v'", string(stdout))
 	}

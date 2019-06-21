@@ -273,10 +273,10 @@ func (s *tiltfileState) execLocalCmd(cmd string) (string, error) {
 	c.Dir = filepath.Dir(s.filename.path)
 	out, err := c.Output()
 	if err != nil {
-		errorMessage := fmt.Sprintf("command '%v' failed.\nerror: '%v'\nstdout: '%v'", cmd, err, string(out))
+		errorMessage := fmt.Sprintf("command %q failed.\nerror: %v\nstdout: %q", cmd, err, string(out))
 		exitError, ok := err.(*exec.ExitError)
 		if ok {
-			errorMessage += fmt.Sprintf("\nstderr: '%v'", string(exitError.Stderr))
+			errorMessage += fmt.Sprintf("\nstderr: %q", string(exitError.Stderr))
 		}
 		return "", errors.New(errorMessage)
 	}
@@ -289,10 +289,10 @@ func (s *tiltfileState) execLocalCmdArgv(argv ...string) (string, error) {
 	c.Dir = filepath.Dir(s.filename.path)
 	out, err := c.Output()
 	if err != nil {
-		errorMessage := fmt.Sprintf("command '%v' failed.\nerror: '%v'\nstdout: '%v'", argv, err, string(out))
+		errorMessage := fmt.Sprintf("command %q failed.\nerror: %v\nstdout: %q", argv, err, string(out))
 		exitError, ok := err.(*exec.ExitError)
 		if ok {
-			errorMessage += fmt.Sprintf("\nstderr: '%v'", string(exitError.Stderr))
+			errorMessage += fmt.Sprintf("\nstderr: %q", string(exitError.Stderr))
 		}
 		return "", errors.New(errorMessage)
 	}
