@@ -65,6 +65,10 @@ type Client interface {
 
 	ServerVersion() types.Version
 
+	// Set the orchestrator we're talking to. This is only relevant to switchClient,
+	// which can talk to either the Local or in-cluster docker daemon.
+	SetOrchestrator(orc model.Orchestrator)
+
 	ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error)
 	ContainerRestartNoWait(ctx context.Context, containerID string) error
 	CopyToContainerRoot(ctx context.Context, container string, content io.Reader) error
@@ -332,6 +336,7 @@ func (c *Cli) backgroundInit(ctx context.Context) {
 	close(c.initDone)
 }
 
+func (c *Cli) SetOrchestrator(orc model.Orchestrator) {}
 func (c *Cli) Env() Env {
 	return c.env
 }

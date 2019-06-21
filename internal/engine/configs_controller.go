@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
@@ -14,13 +15,15 @@ import (
 type ConfigsController struct {
 	disabledForTesting bool
 	tfl                tiltfile.TiltfileLoader
+	dockerClient       docker.Client
 	clock              func() time.Time
 }
 
-func NewConfigsController(tfl tiltfile.TiltfileLoader) *ConfigsController {
+func NewConfigsController(tfl tiltfile.TiltfileLoader, dockerClient docker.Client) *ConfigsController {
 	return &ConfigsController{
-		tfl:   tfl,
-		clock: time.Now,
+		tfl:          tfl,
+		dockerClient: dockerClient,
+		clock:        time.Now,
 	}
 }
 
@@ -69,6 +72,11 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 	if err != nil {
 		logger.Get(loadCtx).Infof(err.Error())
 	}
+
+	if tlr.Orchestrator() != model.OrchestratorUnknown {
+		cc.dockerClient.SetOrchestrator(tlr.Orchestrator())
+	}
+
 	st.Dispatch(ConfigsReloadedAction{
 		Manifests:          tlr.Manifests,
 		ConfigFiles:        tlr.ConfigFiles,

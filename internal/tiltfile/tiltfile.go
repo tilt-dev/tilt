@@ -34,6 +34,17 @@ type TiltfileLoadResult struct {
 	TiltIgnoreContents string
 }
 
+func (r TiltfileLoadResult) Orchestrator() model.Orchestrator {
+	for _, manifest := range r.Manifests {
+		if manifest.IsK8s() {
+			return model.OrchestratorK8s
+		} else if manifest.IsDC() {
+			return model.OrchestratorDC
+		}
+	}
+	return model.OrchestratorUnknown
+}
+
 type TiltfileLoader interface {
 	Load(ctx context.Context, filename string, matching map[string]bool) (TiltfileLoadResult, error)
 }
