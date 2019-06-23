@@ -16,6 +16,7 @@ func TestGitIgnoreTester_GitDirMatches(t *testing.T) {
 	defer tf.TearDown()
 
 	tf.AssertResult(tf.JoinPath(0, ".git", "foo", "bar"), true, false)
+	tf.AssertResult(tf.JoinPath(0, ".gitlab-ci.yml"), false, false)
 }
 
 type testFixture struct {

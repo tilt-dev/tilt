@@ -2,6 +2,7 @@ package git
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"strings"
 )
@@ -18,7 +19,14 @@ func (r repoIgnoreTester) Matches(f string, isDir bool) (bool, error) {
 		return false, err
 	}
 
-	if strings.HasPrefix(absPath, filepath.Join(r.repoRoot, ".git/")) {
+	// match everything inside the .git/ directory
+	gitPath := fmt.Sprintf("%s/", filepath.Join(r.repoRoot, ".git"))
+	if strings.HasPrefix(absPath, gitPath) {
+		return true, nil
+	}
+
+	// match the .git directory itself
+	if strings.HasSuffix(absPath, ".git") {
 		return true, nil
 	}
 
