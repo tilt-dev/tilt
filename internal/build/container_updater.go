@@ -52,7 +52,7 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.
 	if err != nil {
 		return errors.Wrap(err, "archivePathsIfExists")
 	}
-	archive, err := ab.BytesBuffer()
+	reader, err := ab.Reader()
 	if err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.
 
 	// TODO(maia): catch errors -- CopyToContainer doesn't return errors if e.g. it
 	// fails to write a file b/c of permissions =(
-	err = r.dCli.CopyToContainerRoot(ctx, cID.String(), bytes.NewReader(archive.Bytes()))
+	err = r.dCli.CopyToContainerRoot(ctx, cID.String(), reader)
 	if err != nil {
 		return err
 	}
