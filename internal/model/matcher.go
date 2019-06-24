@@ -5,6 +5,7 @@ import (
 
 	"github.com/gobwas/glob"
 	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tilt/internal/ospath"
 )
 

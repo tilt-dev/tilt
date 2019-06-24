@@ -11,6 +11,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+
 	"github.com/windmilleng/tilt/internal/analytics"
 )
 

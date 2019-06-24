@@ -17,7 +17,7 @@ SYNCLET_DEV_IMAGE_TAG_FILE := .synclet-dev-image-tag
 
 CIRCLECI := $(if $(CIRCLECI),$(CIRCLECI),false)
 
-GOIMPORTS_LOCAL_ARG := -local github.com/windmill/tilt
+GOIMPORTS_LOCAL_ARG := -local github.com/windmilleng/tilt
 
 scripts/protocc/protocc.py: scripts/protocc
 	git submodule init

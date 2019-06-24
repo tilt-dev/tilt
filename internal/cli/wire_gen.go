@@ -11,6 +11,9 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/google/wire"
+	"k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/tools/clientcmd/api"
+
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/build"
@@ -28,8 +31,6 @@ import (
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
-	"k8s.io/apimachinery/pkg/version"
-	"k8s.io/client-go/tools/clientcmd/api"
 )
 
 // Injectors from wire.go:

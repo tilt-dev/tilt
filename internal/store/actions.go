@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
+
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 type ErrorAction struct {

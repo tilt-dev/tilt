@@ -12,11 +12,12 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
-	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	k8swatch "k8s.io/apimachinery/pkg/watch"
+
+	"github.com/windmilleng/tilt/internal/hud/server"
 
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
