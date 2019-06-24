@@ -1880,7 +1880,7 @@ hfb.hot_reload()`
 
 	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNumManifests(1)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "foo/.dockerignore")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "foo/.dockerignore", ".dockerignore")
 	f.assertNextManifest("foo",
 		cb(
 			image("gcr.io/foo"),
@@ -1913,7 +1913,7 @@ custom_build(
 
 	f.load("foo")
 	f.assertNumManifests(1)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", ".dockerignore")
 	f.assertNextManifest("foo",
 		cb(
 			image("gcr.io/foo"),
@@ -1941,7 +1941,7 @@ hfb = custom_build(
 
 	f.load("foo")
 	f.assertNumManifests(1)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", ".dockerignore")
 	f.assertNextManifest("foo",
 		cb(
 			image("gcr.io/foo"),
@@ -3490,6 +3490,48 @@ k8s_yaml('foo.yaml')
 `)
 
 	f.loadErrString(`only cannot contain newlines; found only: "\nweirdfile.txt`)
+}
+
+// Custom Build Ignores(Single file)
+func TestCustomBuildIgnoresSingular(t *testing.T) {
+	f := newFixture(t)
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+custom_build('gcr.io/foo', 'docker build -t $EXPECTED_REF foo',
+  ['foo'], ignore="foo/a.txt")
+k8s_yaml('foo.yaml')
+`) // custom build doesnt support globs for dependencies
+	f.load()
+
+	f.assertNextManifest("foo",
+		buildFilters("foo/a.txt"),
+		fileChangeFilters("foo/a.txt"),
+		buildMatches("foo/txt.a"),
+		fileChangeMatches("foo/txt.a"),
+	)
+}
+
+// Custom Build Ignores(Multiple files)
+func TestCustomBuildIgnoresMultiple(t *testing.T) {
+	f := newFixture(t)
+	f.setupFoo()
+
+	f.file("Tiltfile", `k8s_resource_assembly_version(2)
+custom_build('gcr.io/foo', 'docker build -t $EXPECTED_REF foo',
+ ['foo'], ignore=["foo/a.txt", "foo/a.md"])
+k8s_yaml('foo.yaml')
+`)
+	f.load()
+	f.assertNextManifest("foo",
+		buildFilters("foo/a.txt"),
+		buildFilters("foo/a.md"),
+		fileChangeFilters("foo/a.txt"),
+		fileChangeFilters("foo/a.md"),
+		buildMatches("foo/txt.a"),
+		fileChangeMatches("foo/txt.a"),
+	)
 }
 
 type fixture struct {

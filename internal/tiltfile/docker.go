@@ -232,15 +232,13 @@ func (s *tiltfileState) fastBuildForImage(image *dockerImage) model.FastBuild {
 		HotReload:      image.hotReload,
 	}
 }
-
-// TODO(dmiller): support context filters (like `only` and `ignore` on `docker_build`)
 func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef string
 	var command string
 	var deps *starlark.List
 	var tag string
 	var disablePush bool
-	var liveUpdateVal starlark.Value
+	var liveUpdateVal, ignoreVal starlark.Value
 	var matchInEnvVars bool
 
 	err := starlark.UnpackArgs(fn.Name(), args, kwargs,
@@ -251,6 +249,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		"disable_push?", &disablePush,
 		"live_update?", &liveUpdateVal,
 		"match_in_env_vars?", &matchInEnvVars,
+		"ignore?", &ignoreVal, // added parameters for ignore
 	)
 	if err != nil {
 		return nil, err
@@ -286,6 +285,21 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, errors.Wrap(err, "live_update")
 	}
 
+	// parsing ignore values to strings to be added to dockerimage struct
+	tempIgnores := starlarkValueOrSequenceToSlice(ignoreVal)
+	var ignores []string
+	for _, v := range tempIgnores {
+		switch val := v.(type) {
+		case starlark.String:
+			goString := val.GoString()
+			if strings.Contains(goString, "\n") {
+				return nil, fmt.Errorf("ignores cannot contain newlines; found ignore: %q", goString)
+			}
+			ignores = append(ignores, val.GoString())
+		default:
+			return nil, fmt.Errorf("ignores must be a string or a sequence of strings; found a %T", val)
+		}
+	}
 	img := &dockerImage{
 		configurationRef: container.NewRefSelector(ref),
 		customCommand:    command,
@@ -294,6 +308,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		disablePush:      disablePush,
 		liveUpdate:       liveUpdate,
 		matchInEnvVars:   matchInEnvVars,
+		ignores:          ignores,
 	}
 
 	err = s.buildIndex.addImage(img)
@@ -682,8 +697,12 @@ func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Docker
 			paths = append(paths, repo.basePath)
 		}
 	}
-	paths = append(paths, image.dbBuildPath.path)
-
+	switch image.Type() {
+	case DockerBuild:
+		paths = append(paths, image.dbBuildPath.path)
+	case CustomBuild:
+		paths = append(paths, filepath.Dir(s.filename.path))
+	}
 	return s.dockerignoresFromPathsAndContextFilters(paths, image.ignores, image.onlys)
 }
 
