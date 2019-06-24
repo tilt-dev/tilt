@@ -107,13 +107,21 @@ func (a *ArchiveBuilder) ArchivePathsIfExist(ctx context.Context, paths []PathMa
 	return nil
 }
 
-func (a *ArchiveBuilder) BytesBuffer() (*bytes.Buffer, error) {
+func (a *ArchiveBuilder) bytesBuffer() (*bytes.Buffer, error) {
 	err := a.close()
 	if err != nil {
 		return nil, err
 	}
 
 	return a.buf, nil
+}
+
+func (a *ArchiveBuilder) Reader() (io.Reader, error) {
+	return a.bytesBuffer()
+}
+
+func (a *ArchiveBuilder) Writer() (io.Writer, error) {
+	return a.bytesBuffer()
 }
 
 // Local paths that were archived
@@ -242,7 +250,7 @@ func (a *ArchiveBuilder) len() int {
 	return a.buf.Len()
 }
 
-func tarContextAndUpdateDf(ctx context.Context, df dockerfile.Dockerfile, paths []PathMapping, filter model.PathMatcher) (*bytes.Buffer, error) {
+func tarContextAndUpdateDf(ctx context.Context, df dockerfile.Dockerfile, paths []PathMapping, filter model.PathMatcher) (io.Reader, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-tarContextAndUpdateDf")
 	defer span.Finish()
 
@@ -257,16 +265,16 @@ func tarContextAndUpdateDf(ctx context.Context, df dockerfile.Dockerfile, paths 
 		return nil, errors.Wrap(err, "archiveDf")
 	}
 
-	return ab.BytesBuffer()
+	return ab.bytesBuffer()
 }
 
-func tarDfOnly(ctx context.Context, df dockerfile.Dockerfile) (*bytes.Buffer, error) {
+func tarDfOnly(ctx context.Context, df dockerfile.Dockerfile) (io.Reader, error) {
 	ab := NewArchiveBuilder(model.EmptyMatcher)
 	err := ab.archiveDf(ctx, df)
 	if err != nil {
 		return nil, errors.Wrap(err, "tarDfOnly")
 	}
-	return ab.BytesBuffer()
+	return ab.bytesBuffer()
 }
 
 // Dedupe the entries with last-entry-wins semantics.

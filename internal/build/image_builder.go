@@ -8,8 +8,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/dustin/go-humanize"
-
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/ignore"
@@ -302,10 +300,6 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 	if err != nil {
 		return nil, err
 	}
-
-	// TODO(Han): Extend output to print without newline
-	ps.Printf(ctx, "Created tarball (size: %s)",
-		humanize.Bytes(uint64(archive.Len())))
 
 	ps.StartBuildStep(ctx, "Building image")
 	spanBuild, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuild")

@@ -1,13 +1,15 @@
 package engine
 
 import (
-	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+
+	"io/ioutil"
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
@@ -133,7 +135,7 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget
 	if err != nil {
 		return errors.Wrap(err, "archivePathsIfExists")
 	}
-	archive, err := ab.BytesBuffer()
+	archive, err := ab.Reader()
 	if err != nil {
 		return err
 	}
@@ -172,7 +174,7 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget
 
 func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	podID k8s.PodID, namespace k8s.Namespace, containerID container.ID,
-	archive *bytes.Buffer, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
+	archive io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-updateViaSynclet")
 	defer span.Finish()
 	sCli, err := sbd.sm.ClientForPod(ctx, podID, namespace)
@@ -180,7 +182,12 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 		return err
 	}
 
-	err = sCli.UpdateContainer(ctx, containerID, archive.Bytes(), filesToDelete, cmds, hotReload)
+	archiveBytes, err := ioutil.ReadAll(archive)
+	if err != nil {
+		return err
+	}
+
+	err = sCli.UpdateContainer(ctx, containerID, archiveBytes, filesToDelete, cmds, hotReload)
 	if err != nil && build.IsUserBuildFailure(err) {
 		return WrapDontFallBackError(err)
 	}
@@ -189,7 +196,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 
 func (sbd *SyncletBuildAndDeployer) updateViaExec(ctx context.Context,
 	podID k8s.PodID, namespace k8s.Namespace, container container.Name,
-	archive *bytes.Buffer, archivePaths []string, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
+	archive io.Reader, archivePaths []string, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-updateViaExec")
 	defer span.Finish()
 	if !hotReload {
