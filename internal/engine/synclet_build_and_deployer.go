@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -9,6 +8,8 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+
+	"io/ioutil"
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
@@ -171,12 +172,6 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget
 	return nil
 }
 
-func streamToByte(stream io.Reader) []byte {
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(stream)
-	return buf.Bytes()
-}
-
 func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 	podID k8s.PodID, namespace k8s.Namespace, containerID container.ID,
 	archive io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
@@ -187,7 +182,12 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 		return err
 	}
 
-	err = sCli.UpdateContainer(ctx, containerID, streamToByte(archive), filesToDelete, cmds, hotReload)
+	archiveBytes, err := ioutil.ReadAll(archive)
+	if err != nil {
+		return err
+	}
+
+	err = sCli.UpdateContainer(ctx, containerID, archiveBytes, filesToDelete, cmds, hotReload)
 	if err != nil && build.IsUserBuildFailure(err) {
 		return WrapDontFallBackError(err)
 	}
