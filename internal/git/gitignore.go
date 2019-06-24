@@ -26,7 +26,7 @@ func (r repoIgnoreTester) Matches(f string, isDir bool) (bool, error) {
 	}
 
 	// match the .git directory itself
-	if strings.HasSuffix(absPath, ".git") {
+	if filepath.Base(absPath) == ".git" {
 		return true, nil
 	}
 
