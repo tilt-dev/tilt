@@ -5,6 +5,7 @@ import {
   oneResourceNoAlerts,
   oneResourceErrImgPull,
   oneResourceImagePullBackOff,
+  oneResourceUnrecognizedError,
 } from "./testdata.test"
 import { combinedStatusMessage } from "./combinedStatusMessage"
 import { StatusItem } from "./Statusbar"
@@ -43,18 +44,27 @@ describe("combined status message", () => {
     expect(actual).toBe("")
   })
 
-  it("should show a pod's status message if it is image pull back off or err img pull", () => {
-    let resource = oneResourceImagePullBackOff()
-    let data = [resource]
+  it("should show a pod's status message if it is image pull back off", () => {
+    let data = [oneResourceImagePullBackOff()]
     let resources = data.map((r: any) => new StatusItem(r))
     let actual = combinedStatusMessage(resources)
 
     expect(actual).toBe("vigoda has pod with status ImagePullBackOff")
+  })
 
-    data = [oneResourceErrImgPull()]
-    resources = data.map((r: any) => new StatusItem(r))
-    actual = combinedStatusMessage(resources)
+  it("should show a pod's status message if it is ErrImagePull", () => {
+    let data = [oneResourceErrImgPull()]
+    let resources = data.map((r: any) => new StatusItem(r))
+    let actual = combinedStatusMessage(resources)
 
     expect(actual).toBe("vigoda has pod with status ErrImagePull")
+  })
+
+  it("should show a pod's status message if it is an unrecognized error", () => {
+    let data = [oneResourceUnrecognizedError()]
+    let resources = data.map((r: any) => new StatusItem(r))
+    let actual = combinedStatusMessage(resources)
+
+    expect(actual).toBe("vigoda has pod with status GarbleError")
   })
 })

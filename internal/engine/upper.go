@@ -671,6 +671,7 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v
 	podInfo.Deleting = pod.DeletionTimestamp != nil
 	podInfo.Phase = pod.Status.Phase
 	podInfo.Status = podStatusToString(*pod)
+	podInfo.StatusMessages = podStatusErrorMessages(*pod)
 
 	defer prunePods(ms)
 

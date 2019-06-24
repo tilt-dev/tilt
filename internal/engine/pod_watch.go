@@ -126,50 +126,102 @@ func podStatusToString(pod v1.Pod) string {
 		reason = pod.Status.Reason
 	}
 
-	initializing := false
-	for i := range pod.Status.InitContainerStatuses {
-		container := pod.Status.InitContainerStatuses[i]
+	for i, container := range pod.Status.InitContainerStatuses {
+		state := container.State
+
 		switch {
-		case container.State.Terminated != nil && container.State.Terminated.ExitCode == 0:
+		case state.Terminated != nil && state.Terminated.ExitCode == 0:
 			continue
-		case container.State.Terminated != nil:
+		case state.Terminated != nil:
 			// initialization is failed
-			if len(container.State.Terminated.Reason) == 0 {
-				if container.State.Terminated.Signal != 0 {
-					reason = fmt.Sprintf("Init:Signal:%d", container.State.Terminated.Signal)
+			if len(state.Terminated.Reason) == 0 {
+				if state.Terminated.Signal != 0 {
+					reason = fmt.Sprintf("Init:Signal:%d", state.Terminated.Signal)
 				} else {
-					reason = fmt.Sprintf("Init:ExitCode:%d", container.State.Terminated.ExitCode)
+					reason = fmt.Sprintf("Init:ExitCode:%d", state.Terminated.ExitCode)
 				}
 			} else {
-				reason = "Init:" + container.State.Terminated.Reason
+				reason = "Init:" + state.Terminated.Reason
 			}
-			initializing = true
-		case container.State.Waiting != nil && len(container.State.Waiting.Reason) > 0 && container.State.Waiting.Reason != "PodInitializing":
-			reason = "Init:" + container.State.Waiting.Reason
-			initializing = true
+		case state.Waiting != nil && len(state.Waiting.Reason) > 0 && state.Waiting.Reason != "PodInitializing":
+			reason = "Init:" + state.Waiting.Reason
 		default:
 			reason = fmt.Sprintf("Init:%d/%d", i, len(pod.Spec.InitContainers))
-			initializing = true
 		}
 		break
 	}
-	if !initializing {
-		for i := len(pod.Status.ContainerStatuses) - 1; i >= 0; i-- {
-			container := pod.Status.ContainerStatuses[i]
 
-			if container.State.Waiting != nil && container.State.Waiting.Reason != "" {
-				reason = container.State.Waiting.Reason
-			} else if container.State.Terminated != nil && container.State.Terminated.Reason != "" {
-				reason = container.State.Terminated.Reason
-			} else if container.State.Terminated != nil && container.State.Terminated.Reason == "" {
-				if container.State.Terminated.Signal != 0 {
-					reason = fmt.Sprintf("Signal:%d", container.State.Terminated.Signal)
-				} else {
-					reason = fmt.Sprintf("ExitCode:%d", container.State.Terminated.ExitCode)
-				}
+	if isPodStillInitializing(pod) {
+		return reason
+	}
+
+	for i := len(pod.Status.ContainerStatuses) - 1; i >= 0; i-- {
+		container := pod.Status.ContainerStatuses[i]
+		state := container.State
+
+		if state.Waiting != nil && state.Waiting.Reason != "" {
+			reason = state.Waiting.Reason
+		} else if state.Terminated != nil && state.Terminated.Reason != "" {
+			reason = state.Terminated.Reason
+		} else if state.Terminated != nil && state.Terminated.Reason == "" {
+			if state.Terminated.Signal != 0 {
+				reason = fmt.Sprintf("Signal:%d", state.Terminated.Signal)
+			} else {
+				reason = fmt.Sprintf("ExitCode:%d", state.Terminated.ExitCode)
 			}
 		}
 	}
 
 	return reason
+}
+
+// Pull out interesting error messages from the pod status
+func podStatusErrorMessages(pod v1.Pod) []string {
+	result := []string{}
+	if isPodStillInitializing(pod) {
+		for _, container := range pod.Status.InitContainerStatuses {
+			result = append(result, containerStatusErrorMessages(container)...)
+		}
+	}
+	for i := len(pod.Status.ContainerStatuses) - 1; i >= 0; i-- {
+		container := pod.Status.ContainerStatuses[i]
+		result = append(result, containerStatusErrorMessages(container)...)
+	}
+	return result
+}
+
+func containerStatusErrorMessages(container v1.ContainerStatus) []string {
+	result := []string{}
+	state := container.State
+	if state.Waiting != nil {
+		lastState := container.LastTerminationState
+		if lastState.Terminated != nil &&
+			lastState.Terminated.ExitCode != 0 &&
+			lastState.Terminated.Message != "" {
+			result = append(result, lastState.Terminated.Message)
+		}
+
+		// If we're in CrashLoopBackOff mode, also include the error message
+		// so we know when the pod will get rescheduled.
+		if state.Waiting.Message != "" && state.Waiting.Reason == "CrashLoopBackOff" {
+			result = append(result, state.Waiting.Message)
+		}
+	} else if state.Terminated != nil &&
+		state.Terminated.ExitCode != 0 &&
+		state.Terminated.Message != "" {
+		result = append(result, state.Terminated.Message)
+	}
+
+	return result
+}
+
+func isPodStillInitializing(pod v1.Pod) bool {
+	for _, container := range pod.Status.InitContainerStatuses {
+		state := container.State
+		isFinished := state.Terminated != nil && state.Terminated.ExitCode == 0
+		if !isFinished {
+			return true
+		}
+	}
+	return false
 }

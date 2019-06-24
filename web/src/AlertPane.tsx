@@ -6,11 +6,7 @@ import "./AlertPane.scss"
 import { zeroTime } from "./time"
 import { Build } from "./types"
 import { timeAgoFormatter } from "./timeFormatters"
-import {
-  podStatusError,
-  podStatusCrashLoopBackOff,
-  podStatusImagePullBackOff,
-} from "./constants"
+import { podStatusIsCrash, podStatusIsError } from "./constants"
 
 class AlertResource {
   public name: string
@@ -23,15 +19,18 @@ class AlertResource {
     this.buildHistory = resource.BuildHistory
     this.crashLog = resource.CrashLog
     if (resource.ResourceInfo) {
+      let info = resource.ResourceInfo
       this.resourceInfo = {
-        podCreationTime: resource.ResourceInfo.PodCreationTime,
-        podStatus: resource.ResourceInfo.PodStatus,
-        podRestarts: resource.ResourceInfo.PodRestarts,
+        podCreationTime: info.PodCreationTime,
+        podStatus: info.PodStatus,
+        podStatusMessage: info.PodStatusMessage || "",
+        podRestarts: info.PodRestarts,
       }
     } else {
       this.resourceInfo = {
         podCreationTime: zeroTime,
         podStatus: "",
+        podStatusMessage: "",
         podRestarts: 0,
       }
     }
@@ -47,11 +46,8 @@ class AlertResource {
 
   public podStatusIsError() {
     let podStatus = this.resourceInfo.podStatus
-    return (
-      podStatus === podStatusError ||
-      podStatus === podStatusCrashLoopBackOff ||
-      podStatus === podStatusImagePullBackOff
-    )
+    let podStatusMessage = this.resourceInfo.podStatusMessage
+    return podStatusIsError(podStatus) || podStatusMessage
   }
 
   public podRestarted() {
@@ -78,6 +74,7 @@ class AlertResource {
 type ResourceInfo = {
   podCreationTime: string
   podStatus: string
+  podStatusMessage: string
   podRestarts: number
 }
 
@@ -95,12 +92,14 @@ function alertElements(resources: Array<AlertResource>) {
   resources.forEach(r => {
     if (r.podStatusIsError()) {
       let podStatus = r.resourceInfo.podStatus
+      let podStatusMessage = r.resourceInfo.podStatusMessage
       let msg = ""
-      if (podStatus === "Error" || podStatus === "CrashLoopBackOff") {
+      if (podStatusIsCrash(podStatus)) {
         msg = r.crashLog
-      } else {
-        msg = `Pod has status ${podStatus}`
       }
+
+      msg = msg || podStatusMessage || `Pod has status ${podStatus}`
+
       alertElements.push(
         <li key={"resourceInfoError" + r.name} className="AlertPane-item">
           <header>

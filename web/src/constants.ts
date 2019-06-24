@@ -12,10 +12,22 @@ const podStatusError = "Error"
 const podStatusCrashLoopBackOff = "CrashLoopBackOff"
 const podStatusImagePullBackOff = "ImagePullBackOff"
 const podStatusErrImgPull = "ErrImagePull"
+const podStatusRunError = "RunContainerError"
+const podStatusStartError = "StartError"
 
-export {
-  podStatusError,
-  podStatusCrashLoopBackOff,
-  podStatusImagePullBackOff,
-  podStatusErrImgPull,
+function podStatusIsCrash(status: string) {
+  return status === podStatusError || status === podStatusCrashLoopBackOff
 }
+
+function podStatusIsError(status: string) {
+  return (
+    status === podStatusError ||
+    status === podStatusCrashLoopBackOff ||
+    status === podStatusImagePullBackOff ||
+    status === podStatusErrImgPull ||
+    status === podStatusRunError ||
+    status === podStatusStartError
+  )
+}
+
+export { podStatusIsCrash, podStatusIsError }

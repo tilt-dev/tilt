@@ -44,6 +44,7 @@ type K8sResourceInfo struct {
 	PodCreationTime    time.Time
 	PodUpdateStartTime time.Time
 	PodStatus          string
+	PodStatusMessage   string
 	PodRestarts        int
 	PodLog             model.Log
 	YAML               string

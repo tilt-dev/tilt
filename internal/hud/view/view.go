@@ -140,7 +140,7 @@ func (r Resource) LastBuild() model.BuildRecord {
 func (r Resource) DefaultCollapse() bool {
 	autoExpand := false
 	if k8sInfo, ok := r.ResourceInfo.(K8sResourceInfo); ok {
-		autoExpand = k8sInfo.PodRestarts > 0 || k8sInfo.PodStatus == "CrashLoopBackoff" || k8sInfo.PodStatus == "Error"
+		autoExpand = k8sInfo.PodRestarts > 0 || k8sInfo.PodStatus == "CrashLoopBackOff" || k8sInfo.PodStatus == "Error"
 	}
 
 	if r.IsYAML() {

@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -145,6 +146,7 @@ func resourceInfoView(mt *store.ManifestTarget) ResourceInfoView {
 			PodCreationTime:    pod.StartedAt,
 			PodUpdateStartTime: pod.UpdateStartTime,
 			PodStatus:          pod.Status,
+			PodStatusMessage:   strings.Join(pod.StatusMessages, "\n"),
 			PodRestarts:        pod.ContainerRestarts - pod.OldRestarts,
 			PodLog:             pod.Log(),
 			YAML:               mt.Manifest.K8sTarget().YAML,
@@ -175,6 +177,8 @@ var runtimeStatusMap = map[string]RuntimeStatus{
 	"CrashLoopBackOff":                 RuntimeStatusError,
 	"ErrImagePull":                     RuntimeStatusError,
 	"ImagePullBackOff":                 RuntimeStatusError,
+	"RunContainerError":                RuntimeStatusError,
+	"StartError":                       RuntimeStatusError,
 	string(dockercompose.StatusInProg): RuntimeStatusPending,
 	string(dockercompose.StatusUp):     RuntimeStatusOK,
 	string(dockercompose.StatusDown):   RuntimeStatusError,

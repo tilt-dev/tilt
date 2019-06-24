@@ -506,6 +506,9 @@ type Pod struct {
 	Status    string
 	Phase     v1.PodPhase
 
+	// Error messages from the pod state if it's in an error state.
+	StatusMessages []string
+
 	// Set when we get ready to replace a pod. We may do the update in-place.
 	UpdateStartTime time.Time
 
