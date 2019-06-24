@@ -8,11 +8,10 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
-	"os/user"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -27,9 +26,9 @@ type k8sFixture struct {
 	*fixture
 	tempDir *tempdir.TempDirFixture
 
-	token                 string
-	cert                  string
-	usingOverriddenConfig bool
+	token          string
+	cert           string
+	kubeconfigPath string
 }
 
 func newK8sFixture(t *testing.T, dir string) *k8sFixture {
@@ -38,7 +37,6 @@ func newK8sFixture(t *testing.T, dir string) *k8sFixture {
 
 	kf := &k8sFixture{fixture: f, tempDir: td}
 	kf.CreateNamespaceIfNecessary()
-	kf.createUser()
 	kf.ClearNamespace()
 	return kf
 }
@@ -181,26 +179,17 @@ func (f *k8sFixture) ClearNamespace() {
 }
 
 func (f *k8sFixture) setupNewKubeConfig() {
-	kubeConfigPath, exists := os.LookupEnv("KUBECONFIG")
-	if !exists {
-		usr, _ := user.Current()
-		dir := usr.HomeDir
-		kubeConfigPath = filepath.Join(dir, ".kube", "config")
-	}
-
-	current, err := ioutil.ReadFile(kubeConfigPath)
+	cmd := exec.CommandContext(f.ctx, "kubectl", "config", "view", "--minify")
+	current, err := cmd.Output()
 	if err != nil {
 		f.t.Fatalf("Error reading KUBECONFIG: %v", err)
 	}
 
-	f.tempDir.WriteFile("config", string(current))
-	f.fixture.tiltEnviron["KUBECONFIG"] = f.tempDir.JoinPath("config")
+	f.kubeconfigPath = f.tempDir.JoinPath("config")
+	f.tempDir.WriteFile(f.kubeconfigPath, string(current))
+	f.fixture.tiltEnviron["KUBECONFIG"] = f.kubeconfigPath
 	f.fixture.tiltEnviron["TILT_K8S_EVENTS"] = "true"
-	f.usingOverriddenConfig = true
-}
-
-func (f *k8sFixture) createUser() {
-	f.runCommandSilently("kubectl", "apply", "-f", "access.yaml")
+	log.Printf("New kubeconfig: %s", f.kubeconfigPath)
 }
 
 func (f *k8sFixture) runCommandSilently(name string, arg ...string) {
@@ -209,8 +198,8 @@ func (f *k8sFixture) runCommandSilently(name string, arg ...string) {
 	cmd.Stdout = outWriter
 	cmd.Stderr = outWriter
 	cmd.Dir = packageDir
-	if f.usingOverriddenConfig {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("KUBECONFIG=%s", f.tempDir.JoinPath("config")))
+	if f.kubeconfigPath != "" {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("KUBECONFIG=%s", f.kubeconfigPath))
 	}
 	err := cmd.Run()
 	if err != nil {
@@ -223,8 +212,8 @@ func (f *k8sFixture) runCommandGetOutput(cmdStr string) string {
 	cmd := exec.CommandContext(f.ctx, "bash", "-c", cmdStr)
 	cmd.Stderr = outWriter
 	cmd.Dir = packageDir
-	if f.usingOverriddenConfig {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("KUBECONFIG=%s", f.tempDir.JoinPath("config")))
+	if f.kubeconfigPath != "" {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("KUBECONFIG=%s", f.kubeconfigPath))
 	}
 	output, err := cmd.Output()
 	if err != nil {
@@ -250,9 +239,14 @@ func (f *k8sFixture) getSecrets() {
 }
 
 func (f *k8sFixture) SetRestrictedCredentials() {
-	f.setupNewKubeConfig()
-	f.createUser()
+	// docker-for-desktop has a default binding that gives service accounts access to everything.
+	// See: https://github.com/docker/for-mac/issues/3694
+	f.runCommandSilently("kubectl", "delete", "clusterrolebinding", "docker-for-desktop-binding", "--ignore-not-found")
+	f.runCommandSilently("kubectl", "apply", "-f", "service-account.yaml")
+	f.runCommandSilently("kubectl", "apply", "-f", "access.yaml")
 	f.getSecrets()
+
+	f.setupNewKubeConfig()
 
 	f.runCommandSilently("kubectl", "config", "set-credentials", "tilt-integration-user", fmt.Sprintf("--token=%s", f.token))
 	f.runCommandSilently("kubectl", "config", "set", "users.tilt-integration-user.client-key-data", f.cert)
