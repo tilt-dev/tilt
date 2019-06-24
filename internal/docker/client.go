@@ -14,7 +14,6 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/docker/cli/cli/config"
-	"github.com/docker/cli/opts"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/tlsconfig"
@@ -27,35 +26,8 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
-	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/internal/model"
 )
-
-// See notes on CreateClientOpts. These environment variables are standard docker env configs.
-type Env struct {
-	Host       string
-	APIVersion string
-	TLSVerify  string
-	CertPath   string
-}
-
-// Serializes this back to environment variables for os.Environ
-func (e Env) AsEnviron() []string {
-	vars := []string{}
-	if e.Host != "" {
-		vars = append(vars, fmt.Sprintf("DOCKER_HOST=%s", e.Host))
-	}
-	if e.APIVersion != "" {
-		vars = append(vars, fmt.Sprintf("DOCKER_API_VERSION=%s", e.APIVersion))
-	}
-	if e.CertPath != "" {
-		vars = append(vars, fmt.Sprintf("DOCKER_CERT_PATH=%s", e.CertPath))
-	}
-	if e.TLSVerify != "" {
-		vars = append(vars, fmt.Sprintf("DOCKER_TLS_VERIFY=%s", e.TLSVerify))
-	}
-	return vars
-}
 
 // Version info
 // https://docs.docker.com/develop/sdk/#api-version-matrix
@@ -83,6 +55,16 @@ var sessionSharedKey = identity.NewID()
 
 // Create an interface so this can be mocked out.
 type Client interface {
+	// If you'd like to call this Docker instance in a separate process, these
+	// are the environment variables you'll need to do so.
+	Env() Env
+
+	// If you'd like to call this Docker instance in a separate process, this
+	// is the default builder version you want (buildkit or legacy)
+	BuilderVersion() types.BuilderVersion
+
+	ServerVersion() types.Version
+
 	ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error)
 	ContainerRestartNoWait(ctx context.Context, containerID string) error
 	CopyToContainerRoot(ctx context.Context, container string, content io.Reader) error
@@ -119,107 +101,44 @@ var _ Client = &Cli{}
 type Cli struct {
 	*client.Client
 	builderVersion types.BuilderVersion
+	serverVersion  types.Version
 
 	creds     dockerCreds
 	initError error
 	initDone  chan bool
+	env       Env
 }
 
-func ProvideEnv(ctx context.Context, env k8s.Env, runtime container.Runtime, minikubeClient minikube.Client) (Env, error) {
-	result := Env{}
-
-	if runtime == container.RuntimeDocker {
-		if env == k8s.EnvMinikube {
-			// If we're running Minikube with a docker runtime, talk to Minikube's docker socket.
-			envMap, err := minikubeClient.DockerEnv(ctx)
-			if err != nil {
-				return Env{}, errors.Wrap(err, "ProvideDockerEnv")
-			}
-
-			host := envMap["DOCKER_HOST"]
-			if host != "" {
-				result.Host = host
-			}
-
-			apiVersion := envMap["DOCKER_API_VERSION"]
-			if apiVersion != "" {
-				result.APIVersion = apiVersion
-			}
-
-			certPath := envMap["DOCKER_CERT_PATH"]
-			if certPath != "" {
-				result.CertPath = certPath
-			}
-
-			tlsVerify := envMap["DOCKER_TLS_VERIFY"]
-			if tlsVerify != "" {
-				result.TLSVerify = tlsVerify
-			}
-		} else if env == k8s.EnvMicroK8s {
-			// If we're running Microk8s with a docker runtime, talk to Microk8s's docker socket.
-			result.Host = microK8sDockerHost
-		}
-	}
-
-	host := os.Getenv("DOCKER_HOST")
-	if host != "" {
-		host, err := opts.ParseHost(true, host)
-		if err != nil {
-			return Env{}, errors.Wrap(err, "ProvideDockerEnv")
-		}
-
-		// If the docker host is set from the env, ignore all the variables
-		// from minikube/microk8s
-		result = Env{Host: host}
-	}
-
-	apiVersion := os.Getenv("DOCKER_API_VERSION")
-	if apiVersion != "" {
-		result.APIVersion = apiVersion
-	}
-
-	certPath := os.Getenv("DOCKER_CERT_PATH")
-	if certPath != "" {
-		result.CertPath = certPath
-	}
-
-	tlsVerify := os.Getenv("DOCKER_TLS_VERIFY")
-	if tlsVerify != "" {
-		result.TLSVerify = tlsVerify
-	}
-
-	return result, nil
-}
-
-func ProvideDockerClient(ctx context.Context, env Env) (*client.Client, error) {
+func NewDockerClient(ctx context.Context, env Env, kEnv k8s.Env) (*Cli, error) {
 	opts, err := CreateClientOpts(ctx, env)
 	if err != nil {
-		return nil, errors.Wrap(err, "ProvideDockerClient")
+		return nil, errors.Wrap(err, "NewDockerClient")
 	}
 	d, err := client.NewClientWithOpts(opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, "ProvideDockerClient")
+		return nil, errors.Wrap(err, "NewDockerClient")
 	}
-	return d, nil
-}
 
-func ProvideDockerVersion(ctx context.Context, client *client.Client) (types.Version, error) {
-	v, err := client.ServerVersion(ctx)
+	serverVersion, err := d.ServerVersion(ctx)
 	if err != nil {
-		return types.Version{}, errors.Wrap(err, "ProvideDockerVersion")
+		return nil, errors.Wrap(err, "NewDockerVersion")
 	}
-	return v, err
-}
 
-func DefaultClient(ctx context.Context, d *client.Client, serverVersion types.Version, builderVersion types.BuilderVersion) (*Cli, error) {
 	if !SupportedVersion(serverVersion) {
 		return nil, fmt.Errorf("Tilt requires a Docker server newer than %s. Current Docker server: %s",
 			minDockerVersion, serverVersion.APIVersion)
 	}
 
+	builderVersion, err := getDockerBuilderVersion(serverVersion, kEnv)
+	if err != nil {
+		return nil, errors.Wrap(err, "NewDockerVersion")
+	}
+
 	cli := &Cli{
 		Client:         d,
+		env:            env,
 		builderVersion: builderVersion,
+		serverVersion:  serverVersion,
 		initDone:       make(chan bool),
 	}
 
@@ -238,7 +157,7 @@ func SupportedVersion(v types.Version) bool {
 	return version.GTE(minDockerVersion)
 }
 
-func ProvideDockerBuilderVersion(v types.Version, env k8s.Env) (types.BuilderVersion, error) {
+func getDockerBuilderVersion(v types.Version, env k8s.Env) (types.BuilderVersion, error) {
 	// If the user has explicitly chosen to enable/disable buildkit, respect that.
 	buildkitEnv := os.Getenv("DOCKER_BUILDKIT")
 	if buildkitEnv != "" {
@@ -411,6 +330,18 @@ func (c *Cli) backgroundInit(ctx context.Context) {
 	}
 
 	close(c.initDone)
+}
+
+func (c *Cli) Env() Env {
+	return c.env
+}
+
+func (c *Cli) BuilderVersion() types.BuilderVersion {
+	return c.builderVersion
+}
+
+func (c *Cli) ServerVersion() types.Version {
+	return c.serverVersion
 }
 
 func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error) {

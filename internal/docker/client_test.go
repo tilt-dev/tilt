@@ -62,7 +62,7 @@ func TestProvideBuilderVersion(t *testing.T) {
 			os.Setenv("DOCKER_BUILDKIT", c.bkEnv)
 			defer os.Setenv("DOCKER_BUILDKIT", "")
 
-			v, err := ProvideDockerBuilderVersion(
+			v, err := getDockerBuilderVersion(
 				types.Version{APIVersion: c.v}, k8s.EnvGKE)
 			assert.NoError(t, err)
 			assert.Equal(t, c.expected, v)
@@ -208,9 +208,9 @@ func TestProvideEnv(t *testing.T) {
 			}()
 
 			mkClient := minikube.FakeClient{DockerEnvMap: c.mkEnv}
-			actual, err := ProvideEnv(context.Background(), c.env, c.runtime, mkClient)
+			actual, err := ProvideClusterEnv(context.Background(), c.env, c.runtime, mkClient)
 			if assert.NoError(t, err) {
-				assert.Equal(t, c.expected, actual)
+				assert.Equal(t, c.expected, Env(actual))
 			}
 		})
 	}

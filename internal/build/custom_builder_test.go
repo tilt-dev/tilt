@@ -69,7 +69,7 @@ func newFakeCustomBuildFixture(t *testing.T) *fakeCustomBuildFixture {
 		now: time.Unix(1551202573, 0),
 	}
 
-	cb := NewExecCustomBuilder(dCli, docker.Env{}, clock)
+	cb := NewExecCustomBuilder(dCli, clock)
 
 	f := &fakeCustomBuildFixture{
 		t:    t,
