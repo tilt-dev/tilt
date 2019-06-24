@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/windmilleng/tilt/internal/hud/server"
 
 	"github.com/windmilleng/tilt/internal/container"

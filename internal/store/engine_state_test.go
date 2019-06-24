@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/windmilleng/tilt/internal/hud/view"
 
 	"github.com/windmilleng/tilt/internal/k8s"

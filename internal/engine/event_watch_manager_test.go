@@ -9,11 +9,12 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils/output"
-	v1 "k8s.io/api/core/v1"
 )
 
 func TestEventWatchManager_dispatchesEvent(t *testing.T) {

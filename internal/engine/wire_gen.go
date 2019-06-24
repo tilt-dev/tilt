@@ -9,6 +9,8 @@ import (
 	"context"
 
 	"github.com/google/wire"
+	"github.com/windmilleng/wmclient/pkg/dirs"
+
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/docker"
@@ -18,7 +20,6 @@ import (
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/internal/synclet"
-	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
 // Injectors from wire.go:

@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"k8s.io/apimachinery/pkg/watch"
+
+	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 
 	"github.com/stretchr/testify/assert"
 

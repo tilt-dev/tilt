@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/logger"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
+
+	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/logger"
 )
 
 const microk8sRegistryNamespace = "container-registry"
