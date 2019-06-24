@@ -48,7 +48,7 @@ var BaseWireSet = wire.NewSet(
 	K8sWireSet,
 	provideKubectlLogLevel,
 
-	docker.ClusterWireSet,
+	docker.SwitchWireSet,
 
 	dockercompose.NewDockerComposeClient,
 

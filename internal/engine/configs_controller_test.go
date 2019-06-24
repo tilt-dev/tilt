@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils"
@@ -85,7 +86,7 @@ func newCCFixture(t *testing.T) *ccFixture {
 	f := tempdir.NewTempDirFixture(t)
 	st, getActions := store.NewStoreForTesting()
 	tfl := tiltfile.NewFakeTiltfileLoader()
-	cc := NewConfigsController(tfl)
+	cc := NewConfigsController(tfl, docker.NewFakeClient())
 	fc := testutils.NewRandomFakeClock()
 	cc.clock = fc.Clock()
 	ctx := output.CtxForTest()

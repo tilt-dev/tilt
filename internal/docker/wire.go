@@ -11,6 +11,15 @@ func ProvideClusterAsDefault(cli ClusterClient) Client {
 
 // Bind a docker client that can either talk to the in-cluster
 // Docker daemon or to the local Docker daemon.
+var SwitchWireSet = wire.NewSet(
+	ProvideClusterCli,
+	ProvideLocalCli,
+	ProvideSwitchCli,
+	ProvideLocalEnv,
+	ProvideClusterEnv,
+	wire.Bind(new(Client), new(switchCli)))
+
+// Bind a docker client that talks to the in-cluster Docker daemon.
 var ClusterWireSet = wire.NewSet(
 	ProvideClusterCli,
 	ProvideLocalCli,

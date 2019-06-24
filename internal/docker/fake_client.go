@@ -106,6 +106,7 @@ func NewFakeClient() *FakeClient {
 	}
 }
 
+func (c *FakeClient) SetOrchestrator(orc model.Orchestrator) {}
 func (c *FakeClient) Env() Env {
 	return Env{}
 }
