@@ -7,6 +7,7 @@ import (
 
 	"github.com/docker/cli/opts"
 	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/minikube"
