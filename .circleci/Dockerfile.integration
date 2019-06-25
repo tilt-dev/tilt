@@ -25,42 +25,21 @@ RUN apt update && apt install -y apt-transport-https \
   && touch /etc/apt/sources.list.d/kubernetes.list \
   && echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" | tee -a /etc/apt/sources.list.d/kubernetes.list \
   && apt update && apt install -y kubectl
-
-# Install gcloud.
-# Adapted from https://github.com/GoogleCloudPlatform/cloud-sdk-docker/blob/master/Dockerfile
-ENV CLOUD_SDK_VERSION=219.0.1
-RUN apt-get -qqy update && apt-get install -qqy \
-        curl \
-        gcc \
-        python-dev \
-        python-setuptools \
-        apt-transport-https \
-        lsb-release \
-        openssh-client \
-        git \
-        gnupg \
-    && easy_install -U pip && \
-    pip install -U crcmod   && \
-    export CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)" && \
-    echo "deb https://packages.cloud.google.com/apt $CLOUD_SDK_REPO main" > /etc/apt/sources.list.d/google-cloud-sdk.list && \
-    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - && \
-    apt-get update && \
-    apt-get install -y google-cloud-sdk=${CLOUD_SDK_VERSION}-0 && \
-    gcloud config set core/disable_usage_reporting true && \
-    gcloud config set component_manager/disable_update_check true && \
-    gcloud config set metrics/environment github_docker_image && \
-    gcloud --version
-
-# Install cluster script, which downloads the necessary containers.
-# The dind-based kubernetes cluster uses socat to do port-forwarding
+  # Install cluster script, which downloads the necessary containers.
+  
+# Grab a script from the DIND kubernetes cluster that uses socat to do port-forwarding
 ENV KUBEADM_SHA=30a2033581adf53161fe1cdc76f1550193927db4
-ADD https://raw.githubusercontent.com/kubernetes-sigs/kubeadm-dind-cluster/${KUBEADM_SHA}/fixed/dind-cluster-v1.12.sh ./dind-cluster.sh
 ADD https://raw.githubusercontent.com/kubernetes-sigs/kubeadm-dind-cluster/${KUBEADM_SHA}/build/portforward.sh .
 RUN apt install -y curl ca-certificates git liblz4-tool rsync socat \
-  && chmod a+x /go/dind-cluster.sh \
   && chmod a+x /go/portforward.sh
 
 # install gotestsum
 RUN go get gotest.tools/gotestsum
 
-RUN apt install -y jq
+# install jq
+RUN apt update && apt install -y jq
+
+# install Kind (Kubernetes in Docker)
+RUN curl -Lo ./kind-linux-amd64 https://github.com/kubernetes-sigs/kind/releases/download/v0.3.0/kind-linux-amd64 \
+  && chmod +x ./kind-linux-amd64 \
+  && mv ./kind-linux-amd64 /go/bin/kind

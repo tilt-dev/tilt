@@ -22,32 +22,23 @@ jobs:
 
   build-integration:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:38635a2b7f755340f8e3bf1b635d465e39cc574fc8fd60e44a87ffc1a4e66e69
+      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:e5170fc182c0284a57d9bdbc18ee39548ff053c5152b68089d2d60a503774cd5
     working_directory: /go/src/github.com/windmilleng/tilt
     steps:
       - checkout
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker
-      - run: if [[ -z ${GCLOUD_SERVICE_KEY} ]]; then echo "Integration tests only run for users with commit access (since they use gcloud creds)"; false; fi
-      - run: echo ${GCLOUD_SERVICE_KEY} > ${HOME}/gcloud-service-key.json
-      # NOTE(nick): Integration tests currently push images to windmill-test-containers,
-      # so we need to use a gcloud service account.
-      # I'm not super happy with this solution. I'd prefer we ran a local registry.
-      # But this is hard to coordinate effectively.
-      - run: |
-          gcloud auth activate-service-account --key-file=${HOME}/gcloud-service-key.json
-          gcloud --quiet config set project ${GOOGLE_PROJECT_ID}
-          gcloud --quiet config set compute/zone ${GOOGLE_COMPUTE_ZONE}
-          gcloud auth configure-docker
-      # Cleaning is helpful when running with the local circleci toolchain
-      - run: /go/dind-cluster.sh clean
+      # Delete any existing clusters, for `circleci local execute` mode
+      - run: kind delete cluster || exit 0 
       - run: docker kill portforward || exit 0
       - run: docker rm portforward || exit 0
       - run: /go/portforward.sh start
-      - run: DIND_PORT_FORWARDER_WAIT=1 DIND_PORT_FORWARDER="/go/portforward.sh" NUM_NODES=1 /go/dind-cluster.sh up
-      - run: /go/portforward.sh -wait $(/go/dind-cluster.sh apiserver-port) &&
+      - run: kind create cluster
+      - run: "export KUBECONFIG=$(kind get kubeconfig-path) &&
+             export APISERVER_PORT=$(kubectl config view -o jsonpath='{.clusters[].cluster.server}' | cut -d: -f 3 -) &&
+             /go/portforward.sh -wait $APISERVER_PORT &&
              kubectl get nodes &&
-             make integration
+             make integration"
       - store_test_results:
           path: test-results
 
