@@ -1,5 +1,8 @@
 FROM python:alpine
 
+# TODO(nick): remove this when we have fixed GNU/busybox tar incompatibilites
+RUN apk add tar
+
 COPY --from=gcr.io/windmill-test-containers/live-update-base-image-common /usr/src/common/regular /app/message.txt
 
 WORKDIR /app
