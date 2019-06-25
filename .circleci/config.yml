@@ -28,6 +28,7 @@ jobs:
       - checkout
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker
+      - run: if [[ -z ${GCLOUD_SERVICE_KEY} ]]; then echo Integration tests only run for users with commit access (since they use gcloud creds); false; fi
       - run: echo ${GCLOUD_SERVICE_KEY} > ${HOME}/gcloud-service-key.json
       # NOTE(nick): Integration tests currently push images to windmill-test-containers,
       # so we need to use a gcloud service account.
