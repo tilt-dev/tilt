@@ -6,12 +6,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"go/build"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -19,16 +19,17 @@ import (
 
 var packageDir string
 var imageTagPrefix string
+var installed bool
 
 const namespaceFlag = "-n=tilt-integration"
 
 func init() {
-	pkg, err := build.Default.Import("github.com/windmilleng/tilt/integration", ".", build.FindOnly)
-	if err != nil {
-		panic(fmt.Sprintf("Could not find integration test source code: %v", err))
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		panic(fmt.Errorf("Could not locate path to Tilt integration tests"))
 	}
 
-	packageDir = pkg.Dir
+	packageDir = filepath.Dir(file)
 	imageTagPrefix = fmt.Sprintf("tilt-T-%x-", time.Now().Unix())
 }
 
@@ -59,9 +60,23 @@ func newFixture(t *testing.T, dir string) *fixture {
 		dir:           dir,
 		logs:          bytes.NewBuffer(nil),
 		originalFiles: make(map[string]string),
-		tiltEnviron:   map[string]string{"TILT_DISABLE_ANALYTICS": "true"},
+		tiltEnviron: map[string]string{
+			"TILT_DISABLE_ANALYTICS": "true",
+			"TILT_K8S_EVENTS":        "true",
+		},
 	}
-	f.installTilt()
+
+	if !installed {
+		// Install tilt on the first test run.
+		f.installTilt()
+
+		// Delete the namespace when the test starts,
+		// to make sure nothing is left over from previous tests.
+		f.deleteNamespace()
+
+		installed = true
+	}
+
 	return f
 }
 
@@ -70,6 +85,14 @@ func (f *fixture) installTilt() {
 	err := cmd.Run()
 	if err != nil {
 		f.t.Fatalf("Building tilt: %v", err)
+	}
+}
+
+func (f *fixture) deleteNamespace() {
+	cmd := exec.CommandContext(f.ctx, "kubectl", "delete", "namespace", "tilt-integration", "--ignore-not-found")
+	err := cmd.Run()
+	if err != nil {
+		f.t.Fatalf("Deleting namespace tilt-integration: %v", err)
 	}
 }
 

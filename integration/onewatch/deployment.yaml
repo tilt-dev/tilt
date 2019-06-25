@@ -17,6 +17,5 @@ spec:
       containers:
       - name: onewatch
         image: gcr.io/windmill-test-containers/integration/onewatch
-        command: ["/go/bin/onewatch"]
         ports:
         - containerPort: 8000

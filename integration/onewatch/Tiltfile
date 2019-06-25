@@ -2,8 +2,11 @@
 
 k8s_yaml('deployment.yaml')
 repo = local_git_repo('../../')
-img = fast_build('gcr.io/windmill-test-containers/integration/onewatch',
-                 'Dockerfile',
-                 entrypoint='/go/bin/onewatch')
-img.add('.', '/go/src/github.com/windmilleng/tilt/integration/onewatch')
-img.run('go install github.com/windmilleng/tilt/integration/onewatch')
+docker_build('gcr.io/windmill-test-containers/integration/onewatch',
+             '.',
+             dockerfile='Dockerfile',
+             live_update=[
+               sync('.', '/go/src/github.com/windmilleng/tilt/integration/onewatch'),
+               run('go install github.com/windmilleng/tilt/integration/onewatch'),
+               run('./restart.sh'),
+             ])

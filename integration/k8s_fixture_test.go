@@ -188,7 +188,6 @@ func (f *k8sFixture) setupNewKubeConfig() {
 	f.kubeconfigPath = f.tempDir.JoinPath("config")
 	f.tempDir.WriteFile(f.kubeconfigPath, string(current))
 	f.fixture.tiltEnviron["KUBECONFIG"] = f.kubeconfigPath
-	f.fixture.tiltEnviron["TILT_K8S_EVENTS"] = "true"
 	log.Printf("New kubeconfig: %s", f.kubeconfigPath)
 }
 
