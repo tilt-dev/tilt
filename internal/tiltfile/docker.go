@@ -38,10 +38,9 @@ type dockerImage struct {
 	dbDockerfile     dockerfile.Dockerfile
 	dbBuildPath      localPath
 	dbBuildArgs      model.DockerBuildArgs
-
-	customCommand string
-	customDeps    []string
-	customTag     string
+	customCommand    string
+	customDeps       []string
+	customTag        string
 
 	// Whether this has been matched up yet to a deploy resource.
 	matched bool
@@ -169,34 +168,14 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, errors.Wrap(err, "live_update")
 	}
 
-	starlarkIgnores := starlarkValueOrSequenceToSlice(ignoreVal)
-	var ignores []string
-	for _, v := range starlarkIgnores {
-		switch val := v.(type) {
-		case starlark.String:
-			goString := val.GoString()
-			if strings.Contains(goString, "\n") {
-				return nil, fmt.Errorf("ignores cannot contain newlines; found ignore: %q", goString)
-			}
-			ignores = append(ignores, val.GoString())
-		default:
-			return nil, fmt.Errorf("ignores must be a string or a sequence of strings; found a %T", val)
-		}
+	ignores, error := parseValuesToStrings(ignoreVal, "ignore")
+	if error != nil {
+		return nil, error
 	}
 
-	starlarkOnlys := starlarkValueOrSequenceToSlice(onlyVal)
-	var onlys []string
-	for _, v := range starlarkOnlys {
-		switch val := v.(type) {
-		case starlark.String:
-			goString := val.GoString()
-			if strings.Contains(goString, "\n") {
-				return nil, fmt.Errorf("only cannot contain newlines; found only: %q", goString)
-			}
-			onlys = append(onlys, val.GoString())
-		default:
-			return nil, fmt.Errorf("only must be a string or a sequence of strings; found a %T", val)
-		}
+	onlys, error2 := parseValuesToStrings(onlyVal, "only")
+	if error2 != nil {
+		return nil, error2
 	}
 
 	r := &dockerImage{
@@ -249,7 +228,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		"disable_push?", &disablePush,
 		"live_update?", &liveUpdateVal,
 		"match_in_env_vars?", &matchInEnvVars,
-		"ignore?", &ignoreVal, // added parameters for ignore
+		"ignore?", &ignoreVal,
 	)
 	if err != nil {
 		return nil, err
@@ -285,21 +264,11 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, errors.Wrap(err, "live_update")
 	}
 
-	// parsing ignore values to strings to be added to dockerimage struct
-	tempIgnores := starlarkValueOrSequenceToSlice(ignoreVal)
-	var ignores []string
-	for _, v := range tempIgnores {
-		switch val := v.(type) {
-		case starlark.String:
-			goString := val.GoString()
-			if strings.Contains(goString, "\n") {
-				return nil, fmt.Errorf("ignores cannot contain newlines; found ignore: %q", goString)
-			}
-			ignores = append(ignores, val.GoString())
-		default:
-			return nil, fmt.Errorf("ignores must be a string or a sequence of strings; found a %T", val)
-		}
+	ignores, error := parseValuesToStrings(ignoreVal, "ignore")
+	if error != nil {
+		return nil, error
 	}
+
 	img := &dockerImage{
 		configurationRef: container.NewRefSelector(ref),
 		customCommand:    command,
@@ -365,6 +334,25 @@ func (b *customBuild) addFastBuild(thread *starlark.Thread, fn *starlark.Builtin
 	return &fastBuild{s: b.s, img: b.img}, nil
 }
 
+func parseValuesToStrings(value starlark.Value, s string) ([]string, error) {
+
+	tempIgnores := starlarkValueOrSequenceToSlice(value)
+	var ignores []string
+	for _, v := range tempIgnores {
+		switch val := v.(type) {
+		case starlark.String: // for singular string
+			goString := val.GoString()
+			if strings.Contains(goString, "\n") {
+				return nil, fmt.Errorf(s+" cannot contain newlines; found "+s+": %q", goString)
+			}
+			ignores = append(ignores, val.GoString())
+		default:
+			return nil, fmt.Errorf(s+" must be a string or a sequence of strings; found a %T", val)
+		}
+	}
+	return ignores, nil
+
+}
 func (s *tiltfileState) fastBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 
 	var dockerRef, entrypoint string
@@ -701,7 +689,7 @@ func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Docker
 	case DockerBuild:
 		paths = append(paths, image.dbBuildPath.path)
 	case CustomBuild:
-		paths = append(paths, filepath.Dir(s.filename.path))
+		paths = append(paths, image.customDeps...)
 	}
 	return s.dockerignoresFromPathsAndContextFilters(paths, image.ignores, image.onlys)
 }
