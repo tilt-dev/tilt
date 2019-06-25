@@ -15,7 +15,35 @@ func TestGitIgnoreTester_GitDirMatches(t *testing.T) {
 	tf := newTestFixture(t)
 	defer tf.TearDown()
 
-	tf.AssertResult(tf.JoinPath(0, ".git", "foo", "bar"), true, false)
+	tests := []struct {
+		description string
+		path        []string
+		expectMatch bool
+		expectError bool
+	}{
+		{
+			description: "a file in the .git directory",
+			path:        []string{".git", "foo", "bar"},
+			expectMatch: true,
+			expectError: false,
+		},
+		{
+			description: "a .gitlab-ci.yml file",
+			path:        []string{".gitlab-ci.yml"},
+			expectMatch: false,
+			expectError: false,
+		},
+		{
+			description: "a foo.git file",
+			path:        []string{"foo.git"},
+			expectMatch: false,
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		tf.AssertResult(tt.description, tf.JoinPath(0, tt.path...), tt.expectMatch, tt.expectError)
+	}
 }
 
 type testFixture struct {
@@ -51,15 +79,17 @@ func (tf *testFixture) JoinPath(repoNum int, path ...string) string {
 	return tf.repoRoots[repoNum].JoinPath(path...)
 }
 
-func (tf *testFixture) AssertResult(path string, expectedMatches bool, expectError bool) {
-	isIgnored, err := tf.tester.Matches(path, false)
-	if expectError {
-		assert.Error(tf.t, err)
-	} else {
-		if assert.NoError(tf.t, err) {
-			assert.Equal(tf.t, expectedMatches, isIgnored)
+func (tf *testFixture) AssertResult(description, path string, expectedMatches bool, expectError bool) {
+	tf.t.Run(description, func(t *testing.T) {
+		isIgnored, err := tf.tester.Matches(path, false)
+		if expectError {
+			assert.Error(t, err)
+		} else {
+			if assert.NoError(t, err) {
+				assert.Equal(t, expectedMatches, isIgnored)
+			}
 		}
-	}
+	})
 }
 
 func (tf *testFixture) TearDown() {
