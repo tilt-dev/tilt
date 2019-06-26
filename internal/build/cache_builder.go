@@ -108,7 +108,7 @@ func (b CacheBuilder) CreateCacheFrom(ctx context.Context, inputs CacheInputs, s
 	// Create a Dockerfile that copies directories from the sourceRef
 	// and puts them in a standalone image.
 	df := b.makeCacheDockerfile(inputs.BaseDockerfile, sourceRef, inputs.CachePaths)
-	dockerCtx, err := tarDfOnly(ctx, df)
+	dockerCtx, err := TarDfOnly(ctx, df)
 	if err != nil {
 		return errors.Wrap(err, "CreateCacheFrom")
 	}

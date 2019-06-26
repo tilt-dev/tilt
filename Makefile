@@ -1,4 +1,4 @@
-.PHONY: all proto install lint test test-go check-js test-js integration wire-check wire ensure check-go
+.PHONY: all proto install lint test test-go check-js test-js integration wire-check wire ensure check-go goimports
 
 check-go: lint errcheck verify_goimports wire-check test-go
 all: check-go check-js test-js
@@ -100,6 +100,9 @@ test-js:
 
 ensure:
 	dep ensure
+
+goimports:
+	goimports -w -l $(GOIMPORTS_LOCAL_ARG) $$(go list -f {{.Dir}} ./...)
 
 verify_goimports:
 	# any files printed here need to be formatted by `goimports $(GOIMPORTS_LOCAL_ARG)`
