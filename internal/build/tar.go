@@ -268,7 +268,7 @@ func tarContextAndUpdateDf(ctx context.Context, df dockerfile.Dockerfile, paths 
 	return ab.bytesBuffer()
 }
 
-func tarDfOnly(ctx context.Context, df dockerfile.Dockerfile) (io.Reader, error) {
+func TarDfOnly(ctx context.Context, df dockerfile.Dockerfile) (io.Reader, error) {
 	ab := NewArchiveBuilder(model.EmptyMatcher)
 	err := ab.archiveDf(ctx, df)
 	if err != nil {
