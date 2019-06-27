@@ -1,14 +1,16 @@
 package build
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/opencontainers/go-digest"
+	controlapi "github.com/moby/buildkit/api/services/control"
 
 	"github.com/windmilleng/tilt/internal/logger"
 )
@@ -18,276 +20,60 @@ import (
 var WriteGoldenMaster = "0"
 
 type buildkitTestCase struct {
-	name     string
-	level    logger.Level
-	vertices []*vertex
-	logs     []*vertexLog
+	name         string
+	level        logger.Level
+	responsePath string
 }
 
-var digests = []digest.Digest{
-	"sha8234234546454",
-	"sha1234234234234",
-	"sha82342xxxx454",
-}
-
-var shCmdVertexNames = []string{
-	"/bin/sh -c make",
-	`/bin/sh -c (>&2 echo "hi")`,
-	"docker-image://docker.io/blah",
-}
-
-var stepVertexNames = []string{
-	"[1/2] RUN make",
-	`[2/2] RUN echo "hi"`,
-	"docker-image://docker.io/blah",
-}
-
-func buildkitTestCase1() buildkitTestCase {
-	return buildkitTestCase{
-		name:  "echo-hi-error",
-		level: logger.InfoLvl,
-		vertices: []*vertex{
-			{
-				digest: digests[0],
-				name:   shCmdVertexNames[0],
-				error:  "",
-			},
-			{
-				digest:  digests[0],
-				name:    shCmdVertexNames[0],
-				error:   "",
-				started: true,
-			},
-			{
-				digest:    digests[0],
-				name:      shCmdVertexNames[0],
-				error:     "",
-				started:   true,
-				completed: true,
-			},
-			{
-				digest: digests[1],
-				name:   shCmdVertexNames[1],
-				error:  "",
-			},
-			{
-				digest:  digests[1],
-				name:    shCmdVertexNames[1],
-				error:   "",
-				started: true,
-			},
-			{
-				digest:    digests[1],
-				name:      shCmdVertexNames[1],
-				error:     "context canceled",
-				started:   true,
-				completed: true,
-			},
-			{
-				digest: digests[2],
-				name:   shCmdVertexNames[2],
-				error:  "",
-			},
-			{
-				digest:  digests[2],
-				name:    shCmdVertexNames[2],
-				error:   "",
-				started: true,
-			},
-			{
-				digest:    digests[1],
-				name:      shCmdVertexNames[1],
-				error:     "",
-				started:   true,
-				completed: true,
-			},
-		},
-		logs: []*vertexLog{
-			{
-				vertex: digests[1],
-				msg:    []byte("hi"),
-			},
-			{
-				vertex: digests[0],
-				msg:    []byte(""),
-			},
-		},
+func (c buildkitTestCase) readResponse(reader io.Reader) ([]controlapi.StatusResponse, error) {
+	result := make([]controlapi.StatusResponse, 0)
+	decoder := json.NewDecoder(reader)
+	for decoder.More() {
+		var resp controlapi.StatusResponse
+		err := decoder.Decode(&resp)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, resp)
 	}
-}
-
-func buildkitTestCase2() buildkitTestCase {
-	return buildkitTestCase{
-		name:  "echo-hi-success",
-		level: logger.InfoLvl,
-		vertices: []*vertex{
-			{
-				digest: digests[0],
-				name:   shCmdVertexNames[0],
-				error:  "",
-			},
-			{
-				digest:  digests[0],
-				name:    shCmdVertexNames[0],
-				error:   "",
-				started: true,
-			},
-			{
-				digest:    digests[0],
-				name:      shCmdVertexNames[0],
-				error:     "",
-				started:   true,
-				completed: true,
-			},
-			{
-				digest: digests[1],
-				name:   shCmdVertexNames[1],
-				error:  "",
-			},
-			{
-				digest:  digests[1],
-				name:    shCmdVertexNames[1],
-				error:   "",
-				started: true,
-			},
-			{
-				digest:    digests[1],
-				name:      shCmdVertexNames[1],
-				error:     "",
-				started:   true,
-				completed: true,
-			},
-			{
-				digest: digests[2],
-				name:   shCmdVertexNames[2],
-				error:  "",
-			},
-			{
-				digest:  digests[2],
-				name:    shCmdVertexNames[2],
-				error:   "",
-				started: true,
-			},
-			{
-				digest:    digests[1],
-				name:      shCmdVertexNames[1],
-				error:     "",
-				started:   true,
-				completed: true,
-			},
-		},
-		logs: []*vertexLog{
-			{
-				vertex: digests[1],
-				msg:    []byte("hi"),
-			},
-			{
-				vertex: digests[0],
-				msg:    []byte(""),
-			},
-		},
-	}
-}
-
-func buildkitTestCase3() buildkitTestCase {
-	c := buildkitTestCase2()
-	c.name = "echo-hi-success-verbose"
-	c.level = logger.VerboseLvl
-	return c
-}
-
-func buildkitTestCase4() buildkitTestCase {
-	return buildkitTestCase{
-		name:  "docker-18.09-output",
-		level: logger.InfoLvl,
-		vertices: []*vertex{
-			{
-				digest: digests[0],
-				name:   stepVertexNames[0],
-				error:  "",
-			},
-			{
-				digest:  digests[0],
-				name:    stepVertexNames[0],
-				error:   "",
-				started: true,
-			},
-			{
-				digest:    digests[0],
-				name:      stepVertexNames[0],
-				error:     "",
-				started:   true,
-				completed: true,
-			},
-			{
-				digest: digests[1],
-				name:   stepVertexNames[1],
-				error:  "",
-			},
-			{
-				digest:  digests[1],
-				name:    stepVertexNames[1],
-				error:   "",
-				started: true,
-			},
-			{
-				digest:    digests[1],
-				name:      stepVertexNames[1],
-				error:     "context canceled",
-				started:   true,
-				completed: true,
-			},
-			{
-				digest: digests[2],
-				name:   stepVertexNames[2],
-				error:  "",
-			},
-			{
-				digest:  digests[2],
-				name:    stepVertexNames[2],
-				error:   "",
-				started: true,
-			},
-			{
-				digest:    digests[1],
-				name:      stepVertexNames[1],
-				error:     "",
-				started:   true,
-				completed: true,
-			},
-		},
-		logs: []*vertexLog{
-			{
-				vertex: digests[1],
-				msg:    []byte("hi"),
-			},
-			{
-				vertex: digests[0],
-				msg:    []byte("hello"),
-			},
-		},
-	}
+	return result, nil
 }
 
 func TestBuildkitPrinter(t *testing.T) {
 	cases := []buildkitTestCase{
-		buildkitTestCase1(),
-		buildkitTestCase2(),
-		buildkitTestCase3(),
-		buildkitTestCase4(),
+		{"echo-hi-success", logger.InfoLvl, "echo-hi-success.response.txt"},
+		{"echo-hi-success-verbose", logger.VerboseLvl, "echo-hi-success.response.txt"},
+		{"echo-hi-failure", logger.InfoLvl, "echo-hi-failure.response.txt"},
+		{"echo-hi-failure-verbose", logger.InfoLvl, "echo-hi-failure.response.txt"},
 	}
 
+	base := t.Name()
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			output := &strings.Builder{}
-			logger := logger.NewLogger(c.level, output)
-			p := newBuildkitPrinter(logger)
-			err := p.parseAndPrint(c.vertices, c.logs)
+			fullPath := fmt.Sprintf("testdata/%s/%s", base, c.responsePath)
+			f, err := os.Open(fullPath)
 			if err != nil {
 				t.Fatal(err)
 			}
 
+			responses, err := c.readResponse(f)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			output := &strings.Builder{}
+			logger := logger.NewLogger(c.level, output)
+			p := newBuildkitPrinter(logger)
+
+			for _, resp := range responses {
+				err := p.parseAndPrint(toVertexes(resp))
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+
 			d1 := []byte(output.String())
-			gmPath := fmt.Sprintf("testdata/%s_master", t.Name())
+			gmPath := fmt.Sprintf("testdata/%s.master.txt", t.Name())
 			if WriteGoldenMaster == "1" {
 				err := os.MkdirAll(filepath.Dir(gmPath), 0777)
 				if err != nil {

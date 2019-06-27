@@ -1,5 +1,0 @@
-    ╎ RUNNING: make
-    ╎ RUNNING: (>&2 echo "hi")
-
-    ╎ ERROR IN: (>&2 echo "hi")
-    ╎   → hi

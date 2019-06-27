@@ -1,6 +1,0 @@
-    ╎ [1/2] RUN make
-    ╎   → hello
-    ╎ [2/2] RUN echo "hi"
-
-    ╎ ERROR IN: [2/2] RUN echo "hi"
-    ╎   → hi
