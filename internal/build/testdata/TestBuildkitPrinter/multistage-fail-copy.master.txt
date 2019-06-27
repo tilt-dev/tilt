@@ -1,0 +1,2 @@
+
+    ╎ ERROR IN: [stage-1 2/3] COPY --from=builder /dest/hi.txt /src/hi.txt

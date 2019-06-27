@@ -11,3 +11,12 @@ buildkitapi > $DIR/echo-hi-success.response.txt
 
 cd $DIR/echo-hi-failure
 buildkitapi > $DIR/echo-hi-failure.response.txt
+
+cd $DIR/multistage-success
+buildkitapi > $DIR/multistage-success.response.txt
+
+cd $DIR/multistage-fail-run
+buildkitapi > $DIR/multistage-fail-run.response.txt
+
+cd $DIR/multistage-fail-copy
+buildkitapi > $DIR/multistage-fail-copy.response.txt
