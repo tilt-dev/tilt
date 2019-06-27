@@ -1941,7 +1941,7 @@ hfb = custom_build(
 
 	f.load("foo")
 	f.assertNumManifests(1)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "foo/.dockerignore") //deps
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "foo/.dockerignore")
 	f.assertNextManifest("foo",
 		cb(
 			image("gcr.io/foo"),

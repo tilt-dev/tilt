@@ -334,7 +334,7 @@ func (b *customBuild) addFastBuild(thread *starlark.Thread, fn *starlark.Builtin
 	return &fastBuild{s: b.s, img: b.img}, nil
 }
 
-func parseValuesToStrings(value starlark.Value, s string) ([]string, error) {
+func parseValuesToStrings(value starlark.Value, param string) ([]string, error) {
 
 	tempIgnores := starlarkValueOrSequenceToSlice(value)
 	var ignores []string
@@ -343,11 +343,11 @@ func parseValuesToStrings(value starlark.Value, s string) ([]string, error) {
 		case starlark.String: // for singular string
 			goString := val.GoString()
 			if strings.Contains(goString, "\n") {
-				return nil, fmt.Errorf(s+" cannot contain newlines; found "+s+": %q", goString)
+				return nil, fmt.Errorf(param+" cannot contain newlines; found "+param+": %q", goString)
 			}
 			ignores = append(ignores, val.GoString())
 		default:
-			return nil, fmt.Errorf(s+" must be a string or a sequence of strings; found a %T", val)
+			return nil, fmt.Errorf(param+" must be a string or a sequence of strings; found a %T", val)
 		}
 	}
 	return ignores, nil
