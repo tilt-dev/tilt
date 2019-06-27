@@ -11,10 +11,22 @@
 #   To restart the container:
 #   ./restart.sh
 
+set -euo pipefail
+
+process_id=""
+
+trap quit TERM INT
+
+quit() {
+  if [ -n "$process_id" ]; then
+    kill $process_id
+  fi
+}
+
 while true; do
     rm -f restart.txt
-    
-    $* &
+
+    "$@" &
     process_id=$!
     echo "$process_id" > process.txt
     wait $process_id
