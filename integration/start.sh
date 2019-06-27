@@ -29,8 +29,7 @@ while true; do
     "$@" &
     process_id=$!
     echo "$process_id" > process.txt
-    wait $process_id
-    EXIT_CODE=$?
+    wait $process_id && EXIT_CODE=$? || EXIT_CODE=$?
     if [ ! -f restart.txt ]; then
         exit $EXIT_CODE
     fi
