@@ -2,8 +2,8 @@ FROM golang:1.12
 
 # Install docker
 # Adapted from https://github.com/circleci/circleci-images/blob/staging/shared/images/Dockerfile-basic.template
-RUN set -ex \
-  && export DOCKER_VERSION=$(curl --silent --fail --retry 3 https://download.docker.com/linux/static/stable/x86_64/ | grep -o -e 'docker-[.0-9]*-ce\.tgz' | sort -r | head -n 1) \
+RUN set -exuo pipefail \
+  && export DOCKER_VERSION=$(curl -sSf --retry 3 https://download.docker.com/linux/static/stable/x86_64/ | grep -o -e 'docker-[.0-9]*-ce\.tgz' | sort -r | head -n 1) \
   && DOCKER_URL="https://download.docker.com/linux/static/stable/x86_64/${DOCKER_VERSION}" \
   && echo Docker URL: $DOCKER_URL \
   && curl --silent --show-error --location --fail --retry 3 --output /tmp/docker.tgz "${DOCKER_URL}" \
@@ -15,13 +15,13 @@ RUN set -ex \
   && (docker version || true)
 
 # Install docker-compose
-RUN curl -L "https://github.com/docker/compose/releases/download/1.23.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose \
+RUN curl -fL "https://github.com/docker/compose/releases/download/1.23.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose \
   && chmod a+x /usr/local/bin/docker-compose \
   && docker-compose version
 
 # Install kubectl client
 RUN apt update && apt install -y apt-transport-https \
-  && curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - \
+  && curl -fsS https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - \
   && touch /etc/apt/sources.list.d/kubernetes.list \
   && echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" | tee -a /etc/apt/sources.list.d/kubernetes.list \
   && apt update && apt install -y kubectl
@@ -40,6 +40,6 @@ RUN go get gotest.tools/gotestsum
 RUN apt update && apt install -y jq
 
 # install Kind (Kubernetes in Docker)
-RUN curl -Lo ./kind-linux-amd64 https://github.com/kubernetes-sigs/kind/releases/download/v0.4.0/kind-linux-amd64 \
+RUN curl -fLo ./kind-linux-amd64 https://github.com/kubernetes-sigs/kind/releases/download/v0.4.0/kind-linux-amd64 \
   && chmod +x ./kind-linux-amd64 \
   && mv ./kind-linux-amd64 /go/bin/kind
