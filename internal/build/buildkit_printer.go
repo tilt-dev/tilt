@@ -3,7 +3,6 @@ package build
 import (
 	"fmt"
 	"io"
-	"regexp"
 	"strings"
 
 	digest "github.com/opencontainers/go-digest"
@@ -26,19 +25,19 @@ type vertex struct {
 	cmdPrinted bool
 }
 
-// HACK: The prefix we assume here isn't valid for RUNS in exec format
-// Ex: RUN ["echo", "hello world"]
 const cmdPrefix = "/bin/sh -c "
+const internalPrefix = "[internal]"
 const buildPrefix = "    ╎ "
 
-var stepPattern = regexp.MustCompile(`^\[[0-9]+/[0-9]+\]`)
-
-func (v *vertex) isRun() bool {
+// TODO(nick): Delete isShellRun() and do this all differently.
+// We shouldn't try to do this until we have a test framework for
+// interpreting buildkit output.
+func (v *vertex) isShellRun() bool {
 	return strings.HasPrefix(v.name, cmdPrefix)
 }
 
-func (v *vertex) isStep() bool {
-	return stepPattern.MatchString(v.name)
+func (v *vertex) isInternal() bool {
+	return strings.HasPrefix(v.name, internalPrefix)
 }
 
 func (v *vertex) isError() bool {
@@ -95,10 +94,10 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) e
 			return fmt.Errorf("Expected to find digest %s in %+v", d, b.vData)
 		}
 		if vl.vertex.started && !vl.vertex.cmdPrinted {
-			if vl.vertex.isRun() {
+			if vl.vertex.isShellRun() {
 				b.logger.Infof("%sRUNNING: %s", buildPrefix, trimCmd(vl.vertex.name))
 				vl.vertex.cmdPrinted = true
-			} else if vl.vertex.isStep() {
+			} else if !vl.vertex.isInternal() {
 				b.logger.Infof("%s%s", buildPrefix, trimCmd(vl.vertex.name))
 				vl.vertex.cmdPrinted = true
 			}
@@ -112,7 +111,7 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) e
 			}
 		}
 
-		if vl.vertex.isRun() || vl.vertex.isStep() {
+		if !vl.vertex.isInternal() {
 			err := b.flushLogs(b.logger.Writer(logger.InfoLvl), vl)
 			if err != nil {
 				return err
