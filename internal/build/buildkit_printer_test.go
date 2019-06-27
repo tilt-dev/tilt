@@ -45,6 +45,9 @@ func TestBuildkitPrinter(t *testing.T) {
 		{"echo-hi-success-verbose", logger.VerboseLvl, "echo-hi-success.response.txt"},
 		{"echo-hi-failure", logger.InfoLvl, "echo-hi-failure.response.txt"},
 		{"echo-hi-failure-verbose", logger.InfoLvl, "echo-hi-failure.response.txt"},
+		{"multistage-success", logger.InfoLvl, "multistage-success.response.txt"},
+		{"multistage-fail-run", logger.InfoLvl, "multistage-fail-run.response.txt"},
+		{"multistage-fail-copy", logger.InfoLvl, "multistage-fail-copy.response.txt"},
 	}
 
 	base := t.Name()

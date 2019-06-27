@@ -1,0 +1,3 @@
+
+    ╎ ERROR IN: [stage-1 3/3] RUN cat hi.txt && exit 1
+    ╎   → hi
