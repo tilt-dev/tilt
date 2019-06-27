@@ -1913,7 +1913,7 @@ custom_build(
 
 	f.load("foo")
 	f.assertNumManifests(1)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "foo/.dockerignore")
 	f.assertNextManifest("foo",
 		cb(
 			image("gcr.io/foo"),
@@ -1941,7 +1941,7 @@ hfb = custom_build(
 
 	f.load("foo")
 	f.assertNumManifests(1)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "foo/.dockerignore")
 	f.assertNextManifest("foo",
 		cb(
 			image("gcr.io/foo"),
@@ -3337,7 +3337,7 @@ docker_build('fooimage', 'foo', ignore=[127])
 k8s_yaml('foo.yaml')
 `)
 
-	f.loadErrString("ignores must be a string or a sequence of strings; found a starlark.Int")
+	f.loadErrString("ignore must be a string or a sequence of strings; found a starlark.Int")
 }
 
 func TestDockerbuildOnly(t *testing.T) {
@@ -3476,7 +3476,7 @@ docker_build('gcr.io/foo', '.', ignore="\nweirdfile.txt")
 k8s_yaml('foo.yaml')
 `)
 
-	f.loadErrString(`ignores cannot contain newlines; found ignore: "\nweirdfile.txt`)
+	f.loadErrString(`ignore cannot contain newlines; found ignore: "\nweirdfile.txt"`)
 }
 func TestDockerbuildOnlyWithNewline(t *testing.T) {
 	f := newFixture(t)
@@ -3490,6 +3490,49 @@ k8s_yaml('foo.yaml')
 `)
 
 	f.loadErrString(`only cannot contain newlines; found only: "\nweirdfile.txt`)
+}
+
+// Custom Build Ignores(Single file)
+func TestCustomBuildIgnoresSingular(t *testing.T) {
+	f := newFixture(t)
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+custom_build('gcr.io/foo', 'docker build -t $EXPECTED_REF foo',
+  ['foo'], ignore="a.txt")
+k8s_yaml('foo.yaml')
+`) // custom build doesnt support globs for dependencies
+	f.load()
+	f.assertNextManifest("foo",
+		buildFilters("foo/a.txt"),
+		fileChangeFilters("foo/a.txt"),
+		buildMatches("foo/txt.a"),
+		fileChangeMatches("foo/txt.a"),
+	)
+}
+
+// Custom Build Ignores(Multiple files)
+func TestCustomBuildIgnoresMultiple(t *testing.T) {
+	f := newFixture(t)
+	f.setupFoo()
+
+	f.file("Tiltfile", `k8s_resource_assembly_version(2)
+custom_build('gcr.io/foo', 'docker build -t $EXPECTED_REF foo',
+ ['foo'], ignore=["a.md","a.txt"])
+k8s_yaml('foo.yaml')
+`)
+	f.load()
+	f.assertNextManifest("foo",
+		buildFilters("foo/a.txt"),
+		buildFilters("foo/a.md"),
+		fileChangeFilters("foo/a.txt"),
+		fileChangeFilters("foo/a.md"),
+		buildMatches("foo/txt.a"),
+		buildMatches("foo/md.a"),
+		fileChangeMatches("foo/txt.a"),
+		fileChangeMatches("foo/md.a"),
+	)
 }
 
 type fixture struct {
