@@ -227,7 +227,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaExec(ctx context.Context,
 		}
 		l.Infof("updating %v files %v", len(archivePaths), filesToShow)
 		if err := sbd.kCli.Exec(ctx, podID, container, namespace,
-			[]string{"tar", "-C", "/", "-x", "-f", "/dev/stdin"}, archive, w, w); err != nil {
+			[]string{"tar", "-C", "/", "-x", "-f", "-"}, archive, w, w); err != nil {
 			return err
 		}
 	}
