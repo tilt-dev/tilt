@@ -1,3 +1,0 @@
-    ╎ RUNNING: make
-    ╎ RUNNING: (>&2 echo "hi")
-    ╎   → hi

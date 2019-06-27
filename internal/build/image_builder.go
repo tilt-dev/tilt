@@ -433,7 +433,10 @@ func toBuildkitStatus(aux *json.RawMessage, b *buildkitPrinter) error {
 	if err := (&resp).Unmarshal(dt); err != nil {
 		return err
 	}
+	return b.parseAndPrint(toVertexes(resp))
+}
 
+func toVertexes(resp controlapi.StatusResponse) ([]*vertex, []*vertexLog) {
 	vertexes := []*vertex{}
 	logs := []*vertexLog{}
 
@@ -452,8 +455,7 @@ func toBuildkitStatus(aux *json.RawMessage, b *buildkitPrinter) error {
 			msg:    v.Msg,
 		})
 	}
-
-	return b.parseAndPrint(vertexes, logs)
+	return vertexes, logs
 }
 
 func messageIsFromBuildkit(msg jsonmessage.JSONMessage) bool {

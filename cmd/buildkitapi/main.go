@@ -53,7 +53,8 @@ func run() error {
 
 	opts := types.ImageBuildOptions{}
 	opts.Version = types.BuilderBuildKit
-	opts.Dockerfile = string(df)
+	opts.Dockerfile = "Dockerfile"
+	opts.Context = archive
 
 	response, err := d.ImageBuild(ctx, archive, opts)
 	if err != nil {
