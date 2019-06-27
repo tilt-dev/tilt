@@ -15,11 +15,10 @@ set -euo pipefail
 
 process_id=""
 
-trap quit SIGINT
-trap quit SIGTERM
+trap quit TERM INT
 
-function quit {
-  if [[ -n $process_id ]]; then
+quit() {
+  if [ -n "$process_id" ]; then
     kill $process_id
   fi
 }
