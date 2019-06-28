@@ -39,12 +39,11 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	} // parsing args
 
-	//see if its single value or not, can be refactored into a function
 	pathSlice := starlarkValueOrSequenceToSlice(configPathsValue)
 	var configPaths []string
-	for _, v := range pathSlice { // parsing slice of strings
+	for _, v := range pathSlice {
 		switch val := v.(type) {
-		case starlark.String: //for singular string
+		case starlark.String:
 			goString := val.GoString()
 			configPaths = append(configPaths, goString)
 		default:
@@ -54,11 +53,11 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	var services []*dcService
 
 	for _, path := range configPaths {
-		path = s.absPath(path) //get absolute paths for each element in configpath slice
+		path = s.absPath(path)
 
 	}
 
-	tempServices, err := parseDCConfig(s.ctx, s.dcCli, configPaths) // getting services from config files
+	tempServices, err := parseDCConfig(s.ctx, s.dcCli, configPaths)
 	services = append(services, tempServices...)
 	if err != nil {
 		return nil, err
