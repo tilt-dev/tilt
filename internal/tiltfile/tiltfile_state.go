@@ -981,37 +981,7 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 
 		s.configFiles = sliceutils.DedupedAndSorted(append(s.configFiles, dc.configPath...))
 	}
-	//var result []model.Manifest
-	//for _, configPath := range dc.configPath {
-	//	for _, svc := range dc.services { // for each services
-	//		m, configFiles, err := s.dcServiceToManifest(svc, configPath)
-	//		if err != nil {
-	//			return nil, err
-	//		}
-	//
-	//		iTargets, err := s.imgTargetsForDependencyIDs(svc.DependencyIDs)
-	//		if err != nil {
-	//			return nil, errors.Wrapf(err, "getting image build info for %s", svc.Name)
-	//		}
-	//		m = m.WithImageTargets(iTargets)
-	//
-	//		err = s.checkForImpossibleLiveUpdates(m)
-	//		if err != nil {
-	//			return nil, err
-	//		}
-	//
-	//		result = append(result, m)
-	//
-	//		// TODO(maia): might get config files from dc.yml that are overridden by imageTarget :-/
-	//		// e.g. dc.yml specifies one Dockerfile but the imageTarget specifies another
-	//		s.configFiles = sliceutils.DedupedAndSorted(append(s.configFiles, configFiles...))
-	//
-	//	}
-	//	if configPath != "" {
-	//		s.configFiles = sliceutils.DedupedAndSorted(append(s.configFiles, configPath))
-	//	}
-	//}
-	//
+
 	return result, nil
 }
 
