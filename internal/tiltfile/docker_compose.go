@@ -23,7 +23,7 @@ import (
 
 // dcResourceSet represents a single docker-compose config file and all its associated services
 type dcResourceSet struct {
-	configPath string
+	configPath []string
 
 	services []*dcService
 }
@@ -32,25 +32,42 @@ func (dc dcResourceSet) Empty() bool { return reflect.DeepEqual(dc, dcResourceSe
 
 func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var configPath string
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "configPath", &configPath)
+	var configPathsValue starlark.Value
+
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "configPaths", &configPathsValue)
 	if err != nil {
 		return nil, err
+	} // parsing args
+
+	//see if its single value or not, can be refactored into a function
+	pathSlice := starlarkValueOrSequenceToSlice(configPathsValue)
+	var configPaths []string
+	for _, v := range pathSlice { // parsing slice of strings
+		switch val := v.(type) {
+		case starlark.String: //for singular string
+			goString := val.GoString()
+			configPaths = append(configPaths, goString)
+		default:
+			return nil, fmt.Errorf("docker_compose files must be a string or a sequence of strings; found a %T", val)
+		}
 	}
-	configPath = s.absPath(configPath)
-	if err != nil {
-		return nil, err
+	var services []*dcService
+
+	for _, path := range configPaths {
+		path = s.absPath(path) //get absolute paths for each element in configpath slice
+
 	}
 
-	services, err := parseDCConfig(s.ctx, s.dcCli, configPath)
+	tempServices, err := parseDCConfig(s.ctx, s.dcCli, configPaths) // getting services from config files
+	services = append(services, tempServices...)
 	if err != nil {
 		return nil, err
 	}
-
 	if !s.dc.Empty() {
 		return starlark.None, fmt.Errorf("already have a docker-compose resource declared (%s), cannot declare another (%s)", s.dc.configPath, configPath)
 	}
 
-	s.dc = dcResourceSet{configPath: configPath, services: services}
+	s.dc = dcResourceSet{configPath: configPaths, services: services}
 
 	return starlark.None, nil
 }
@@ -330,7 +347,7 @@ func (c dcConfig) GetService(name string) (dcService, error) {
 	return svc, nil
 }
 
-func serviceNames(ctx context.Context, dcc dockercompose.DockerComposeClient, configPath string) ([]string, error) {
+func serviceNames(ctx context.Context, dcc dockercompose.DockerComposeClient, configPath []string) ([]string, error) {
 	servicesText, err := dcc.Services(ctx, configPath)
 	if err != nil {
 		return nil, err
@@ -350,7 +367,8 @@ func serviceNames(ctx context.Context, dcc dockercompose.DockerComposeClient, co
 	return result, nil
 }
 
-func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, configPath string) ([]*dcService, error) {
+func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, configPath []string) ([]*dcService, error) {
+
 	config, svcNames, err := getConfigAndServiceNames(ctx, dcc, configPath)
 	if err != nil {
 		return nil, err
@@ -369,7 +387,7 @@ func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, c
 }
 
 func getConfigAndServiceNames(ctx context.Context, dcc dockercompose.DockerComposeClient,
-	configPath string) (conf dcConfig, svcNames []string, err error) {
+	configPath []string) (conf dcConfig, svcNames []string, err error) {
 	// calls to `docker-compose config` take a bit, and we need two,
 	// so do them in parallel to make things faster
 	g, ctx := errgroup.WithContext(ctx)
@@ -400,7 +418,7 @@ func getConfigAndServiceNames(ctx context.Context, dcc dockercompose.DockerCompo
 	return conf, svcNames, err
 }
 
-func (s *tiltfileState) dcServiceToManifest(service *dcService, dcConfigPath string) (manifest model.Manifest,
+func (s *tiltfileState) dcServiceToManifest(service *dcService, dcConfigPath []string) (manifest model.Manifest,
 	configFiles []string, err error) {
 	dcInfo := model.DockerComposeTarget{
 		ConfigPath: dcConfigPath,
@@ -426,7 +444,11 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcConfigPath str
 
 	dcInfo = dcInfo.WithBuildPath(service.BuildContext)
 
-	paths := []string{path.Dir(service.DfPath), path.Dir(dcConfigPath)}
+	var paths []string
+	for _, configPath := range dcConfigPath {
+		paths = append(paths, path.Dir(configPath))
+	}
+	paths = append([]string{path.Dir(service.DfPath)}, paths...)
 	paths = append(paths, dcInfo.LocalPaths()...)
 	paths = append(paths, path.Dir(s.filename.path))
 

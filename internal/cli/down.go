@@ -56,7 +56,7 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 		logger.Get(ctx).Infof("error deleting k8s entities: %v", err)
 	}
 
-	var dcConfigPath string
+	var dcConfigPath []string
 	for _, m := range tlr.Manifests {
 		if m.IsDC() {
 			// TODO(maia): when we support up-ing from multiple docker-compose files, we'll
@@ -66,14 +66,16 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 		}
 	}
 
-	if dcConfigPath != "" {
-		// TODO(maia): when we support up-ing from multiple docker-compose files, we'll need to support down-ing as well
-		// TODO(maia): a way to `down` specific services?
-
-		dcc := downDeps.dcClient
-		err = dcc.Down(ctx, dcConfigPath, logger.Get(ctx).Writer(logger.InfoLvl), logger.Get(ctx).Writer(logger.InfoLvl))
-		if err != nil {
-			logger.Get(ctx).Infof("error running `docker-compose down`: %v", err)
+	for _, config := range dcConfigPath {
+		if config != "" {
+			// TODO(maia): when we support up-ing from multiple docker-compose files, we'll need to support down-ing as well
+			// TODO(maia): a way to `down` specific services?
+			// downing the first one
+			dcc := downDeps.dcClient
+			err = dcc.Down(ctx, dcConfigPath, logger.Get(ctx).Writer(logger.InfoLvl), logger.Get(ctx).Writer(logger.InfoLvl))
+			if err != nil {
+				logger.Get(ctx).Infof("error running `docker-compose down`: %v", err)
+			}
 		}
 	}
 	return nil
