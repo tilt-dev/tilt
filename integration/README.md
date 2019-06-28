@@ -29,4 +29,4 @@ These tests will not run with the normal `make test`.
 On CircleCI, we run these tests against a clean Kubernetes cluster.
 Follow these instructions if you want to run the same cluster locally.
 
-https://github.com/kubernetes-sigs/kubeadm-dind-cluster
+https://github.com/kubernetes-sigs/kind
