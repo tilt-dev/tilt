@@ -11,6 +11,7 @@ import (
 )
 
 // ParseConfig must return services topologically sorted wrt dependencies.
+
 func TestParseConfigPreservesServiceOrder(t *testing.T) {
 	f := newDCFixture(t)
 
@@ -61,6 +62,7 @@ version: '3.2'
 	if assert.Len(t, services, 1) {
 		assert.Equal(t, []int{3000}, services[0].PublishedPorts)
 	}
+
 }
 
 func TestPortMapSame(t *testing.T) {

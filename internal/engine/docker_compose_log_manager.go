@@ -111,7 +111,7 @@ func (m *DockerComposeLogManager) consumeLogs(watch dockerComposeLogWatch, st st
 	}()
 
 	name := watch.name
-	readCloser, err := m.dcc.StreamLogs(watch.ctx, watch.dc.ConfigPath, watch.dc.Name)
+	readCloser, err := m.dcc.StreamLogs(watch.ctx, watch.dc.ConfigPath, watch.dc.Name) //todo(maria)
 	if err != nil {
 		logger.Get(watch.ctx).Debugf("Error streaming %s logs: %v", name, err)
 		return
