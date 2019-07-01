@@ -5,22 +5,26 @@ import (
 	"sync"
 )
 
+type Defaults map[string]bool
+
 // All feature flags need to be defined here with their default values
 var flags = map[string]bool{
 	"events": false,
 }
 
-type Checker interface {
+type Feature interface {
 	IsEnabled(flag string) (bool, error)
-}
-
-type Writer interface {
 	Enable(flag string) error
 	Disable(flag string) error
 }
 
-func NewStaticMapFeature() *staticMapFeature {
-	return &staticMapFeature{flags: flags, mu: &sync.Mutex{}}
+func NewStaticMapFeature(defaults Defaults) Feature {
+	// copy map so we don't rely on global state
+	newMap := map[string]bool{}
+	for key, value := range defaults {
+		newMap[key] = value
+	}
+	return &staticMapFeature{flags: newMap, mu: &sync.Mutex{}}
 }
 
 type staticMapFeature struct {

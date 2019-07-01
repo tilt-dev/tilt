@@ -1,21 +1,20 @@
 package feature
 
 import (
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestIsEnabledReturnsAnErrorIfKeyDoesntExist(t *testing.T) {
-	m := newStaticMapFeatureForTesting(map[string]bool{})
+	m := NewStaticMapFeature(map[string]bool{})
 	enabled, err := m.IsEnabled("foo")
 	assert.EqualError(t, err, "Unknown flag: foo")
 	assert.False(t, enabled)
 }
 
 func TestIsEnabled(t *testing.T) {
-	m := newStaticMapFeatureForTesting(map[string]bool{"foo": true})
+	m := NewStaticMapFeature(map[string]bool{"foo": true})
 	enabled, err := m.IsEnabled("foo")
 
 	assert.NoError(t, err)
@@ -23,13 +22,13 @@ func TestIsEnabled(t *testing.T) {
 }
 
 func TestEnableUnknownKey(t *testing.T) {
-	m := newStaticMapFeatureForTesting(map[string]bool{})
+	m := NewStaticMapFeature(map[string]bool{})
 	err := m.Enable("foo")
 	assert.EqualError(t, err, "Unknown flag: foo")
 }
 
 func TestEnable(t *testing.T) {
-	m := newStaticMapFeatureForTesting(map[string]bool{"foo": false})
+	m := NewStaticMapFeature(map[string]bool{"foo": false})
 	err := m.Enable("foo")
 	assert.NoError(t, err)
 	enabled, err := m.IsEnabled("foo")
@@ -38,20 +37,16 @@ func TestEnable(t *testing.T) {
 }
 
 func TestDisableUnknownKey(t *testing.T) {
-	m := newStaticMapFeatureForTesting(map[string]bool{})
+	m := NewStaticMapFeature(map[string]bool{})
 	err := m.Disable("foo")
 	assert.EqualError(t, err, "Unknown flag: foo")
 }
 
 func TestDisable(t *testing.T) {
-	m := newStaticMapFeatureForTesting(map[string]bool{"foo": true})
+	m := NewStaticMapFeature(map[string]bool{"foo": true})
 	err := m.Disable("foo")
 	assert.NoError(t, err)
 	enabled, err := m.IsEnabled("foo")
 	assert.NoError(t, err)
 	assert.False(t, enabled)
-}
-
-func newStaticMapFeatureForTesting(flags map[string]bool) *staticMapFeature {
-	return &staticMapFeature{flags: flags, mu: &sync.Mutex{}}
 }
