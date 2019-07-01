@@ -1920,7 +1920,7 @@ func TestK8sEventLogTimestamp(t *testing.T) {
 	obj := unstructured.Unstructured{}
 	obj.SetLabels(map[string]string{k8s.TiltRunIDLabel: k8s.TiltRunID, k8s.ManifestNameLabel: name.String()})
 	f.kClient.GetResources = map[k8s.GetKey]*unstructured.Unstructured{
-		k8s.GetKey{"", "", "", "", "", ""}: &obj,
+		k8s.GetKey{}: &obj,
 	}
 
 	f.Start([]model.Manifest{manifest}, true)

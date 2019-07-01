@@ -30,7 +30,7 @@ func TestEventWatchManager_dispatchesEvent(t *testing.T) {
 	f.addManifest(mn)
 	obj := f.makeObj(mn)
 	f.kClient.GetResources = map[k8s.GetKey]*unstructured.Unstructured{
-		k8s.GetKey{"", "", "", "", obj.GetName(), ""}: &obj,
+		k8s.GetKey{Name: obj.GetName()}: &obj,
 	}
 
 	evt := f.makeEvent(obj)
@@ -69,7 +69,7 @@ func TestEventWatchManager_needsWatchNoK8s(t *testing.T) {
 
 	obj := f.makeObj(mn)
 	f.kClient.GetResources = map[k8s.GetKey]*unstructured.Unstructured{
-		k8s.GetKey{"", "", "", "", obj.GetName(), ""}: &obj,
+		k8s.GetKey{Name: obj.GetName()}: &obj,
 	}
 
 	evt := f.makeEvent(obj)
@@ -91,13 +91,13 @@ func TestEventWatchManager_ignoresPreStartEvents(t *testing.T) {
 	f.addManifest(mn)
 	obj := f.makeObj(mn)
 	f.kClient.GetResources = map[k8s.GetKey]*unstructured.Unstructured{
-		k8s.GetKey{"", "", "", "", obj.GetName(), ""}: &obj,
+		k8s.GetKey{Name: obj.GetName()}: &obj,
 	}
 
 	f.ewm.OnChange(f.ctx, f.store)
 
 	evt1 := f.makeEvent(obj)
-	evt1.CreationTimestamp = metav1.Time{f.clock.Now().Add(-time.Minute)}
+	evt1.CreationTimestamp = metav1.Time{Time: f.clock.Now().Add(-time.Minute)}
 
 	f.kClient.EmitEvent(f.ctx, evt1)
 
@@ -128,8 +128,8 @@ func TestEventWatchManager_janitor(t *testing.T) {
 	obj1 := f.makeObj(mn)
 	obj2 := f.makeObj(mn)
 	f.kClient.GetResources = map[k8s.GetKey]*unstructured.Unstructured{
-		k8s.GetKey{"", "", "", "", obj1.GetName(), ""}: &obj1,
-		k8s.GetKey{"", "", "", "", obj2.GetName(), ""}: &obj2,
+		k8s.GetKey{Name: obj1.GetName()}: &obj1,
+		k8s.GetKey{Name: obj2.GetName()}: &obj2,
 	}
 
 	f.ewm.OnChange(f.ctx, f.store)
@@ -171,7 +171,7 @@ func TestGetGroup(t *testing.T) {
 
 func (f *ewmFixture) makeEvent(obj unstructured.Unstructured) *v1.Event {
 	return &v1.Event{
-		ObjectMeta:     metav1.ObjectMeta{CreationTimestamp: metav1.Time{f.clock.Now()}},
+		ObjectMeta:     metav1.ObjectMeta{CreationTimestamp: metav1.Time{Time: f.clock.Now()}},
 		Reason:         "test event reason",
 		Message:        "test event message",
 		InvolvedObject: v1.ObjectReference{UID: obj.GetUID(), Name: obj.GetName()},
