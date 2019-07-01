@@ -47,8 +47,8 @@ func NewEventWatchManager(kClient k8s.Client, clock clockwork.Clock, f feature.F
 }
 
 func (m *EventWatchManager) needsWatch(st store.RStore) bool {
-	enabled, err := m.f.IsEnabled("events")
-	if !enabled || err != nil {
+	enabled := m.f.IsEnabled("events")
+	if !enabled {
 		return false
 	}
 
