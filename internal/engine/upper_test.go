@@ -10,7 +10,6 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"runtime/pprof"
 	"strings"
 	"sync"
 	"testing"
@@ -2810,11 +2809,6 @@ func (f *testFixture) WaitUntil(msg string, isDone func(store.EngineState) bool)
 
 		select {
 		case <-ctx.Done():
-			// dump the stacks of all goroutines
-			pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
-
-			fmt.Printf("state: '%+v'\n", state)
-
 			f.T().Fatalf("Timed out waiting for: %s", msg)
 		case <-f.onchangeCh:
 		}
