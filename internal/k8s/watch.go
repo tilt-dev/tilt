@@ -4,37 +4,23 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"reflect"
 	"time"
 
 	"github.com/pkg/errors"
-	authorizationv1 "k8s.io/api/authorization/v1"
 	v1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/informers"
-	authorizationv1client "k8s.io/client-go/kubernetes/typed/authorization/v1"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
 type watcherFactory func(namespace string) watcher
 type watcher interface {
 	Watch(options metav1.ListOptions) (watch.Interface, error)
-}
-
-type gvrWithNamespaced struct {
-	schema.GroupVersionResource
-
-	// if true, this resource can exist within a namespace; if false, resource is cluster-wide
-	// e.g. pods ARE namespaced; nodes are NOT namespaced
-	namespaced bool
 }
 
 func (kCli K8sClient) makeWatcher(f watcherFactory, ls labels.Selector) (watch.Interface, Namespace, error) {
@@ -239,192 +225,4 @@ func (kCli K8sClient) WatchServices(ctx context.Context, lps []model.LabelPair) 
 	}()
 
 	return ch, nil
-}
-
-func (kCli K8sClient) isWatchable(ctx context.Context, auth authorizationv1client.AuthorizationV1Interface, r metav1.APIResource, gv schema.GroupVersion) (bool, error) {
-	// NOTE(maia): verb IS accounted for below, but this is an easy way to pare down the # of calls we make
-	var hasWatchVerb bool
-	for _, v := range r.Verbs {
-		if v == "watch" {
-			hasWatchVerb = true
-		}
-	}
-	if !hasWatchVerb {
-		return false, nil
-	}
-
-	// Based on `kubectl auth can-i`: https://github.com/kubernetes/kubernetes/blob/master/pkg/kubectl/cmd/auth/cani.go#L234
-	sar := &authorizationv1.SelfSubjectAccessReview{
-		Spec: authorizationv1.SelfSubjectAccessReviewSpec{
-			ResourceAttributes: &authorizationv1.ResourceAttributes{
-				Namespace: kCli.configNamespace.String(),
-				Verb:      "watch",
-				Group:     gv.Group,
-				Version:   gv.Version,
-				Resource:  r.Name,
-			},
-		},
-	}
-
-	resp, err := auth.SelfSubjectAccessReviews().Create(sar)
-	if err != nil {
-		return false, err
-	}
-
-	return resp.Status.Allowed, nil
-}
-
-// Get all GroupVersionResources in the cluster that support watching
-func (kCli K8sClient) watchableGroupVersionResources(ctx context.Context) ([]gvrWithNamespaced, error) {
-	_, resourceLists, err := kCli.clientSet.Discovery().ServerGroupsAndResources()
-	if err != nil {
-		return nil, errors.Wrapf(err, "error getting list of resource types")
-	}
-
-	var ret []gvrWithNamespaced
-
-	authCli := kCli.clientSet.AuthorizationV1()
-
-	for _, rl := range resourceLists {
-		// one might think it'd be cleaner to use rl.GroupVersionKind().GroupVersion()
-		// empirically, but that returns an empty `Group` for most resources
-		// (one specific example in case we revisit this: statefulsets)
-		rlGV, err := schema.ParseGroupVersion(rl.GroupVersion)
-		if err != nil {
-			return nil, errors.Wrapf(err, "error parsing GroupVersion '%s'", rl.GroupVersion)
-		}
-		for _, r := range rl.APIResources {
-			watchable, err := kCli.isWatchable(ctx, authCli, r, rlGV)
-			if err != nil {
-				logger.Get(ctx).Infof("ERROR setting up watch for '%s.%s': %v", r.Name, rlGV.String(), err)
-			}
-
-			if !watchable {
-				continue
-			}
-
-			// per comments on r.Group/r.Version: empty implies the value of the containing ResourceList
-			group := r.Group
-			if group == "" {
-				group = rlGV.Group
-			}
-			version := r.Version
-			if version == "" {
-				version = rlGV.Version
-			}
-			ret = append(ret, gvrWithNamespaced{
-				GroupVersionResource: schema.GroupVersionResource{
-					Group:    group,
-					Version:  version,
-					Resource: r.Name,
-				},
-				namespaced: r.Namespaced,
-			})
-		}
-	}
-
-	return ret, nil
-}
-
-// WatchEverything sets up watches for every resource in the k8s cluster (that we have permission to watch).
-// (In practice, we use the resulting events only for noting when new object UIDs are added/deleted, and
-// use other type-specific watches for keeping track of pods, services, etc.)
-func (kCli K8sClient) WatchEverything(ctx context.Context, lps []model.LabelPair) (<-chan watch.Event, error) {
-	ls := labels.Set{}
-	for _, lp := range lps {
-		ls[lp.Key] = lp.Value
-	}
-
-	// there is no API to watch *everything*, but there is an API to watch everything of a given type
-	// so we'll get the list of watchable types and make a watcher for each
-	gvrs, err := kCli.watchableGroupVersionResources(ctx)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error getting list of watchable GroupVersionResources")
-	}
-	if len(gvrs) == 0 {
-		return nil, fmt.Errorf("Unable to watch any resources: do you have sufficient permissions to watch resources?")
-	}
-
-	var watchers []watch.Interface
-	for _, gvr := range gvrs {
-		watcher, _, err := kCli.makeWatcher(func(ns string) watcher {
-			// doesn't make sense to watch a given ns for a non-namespaced resource, don't try.
-			if ns != "" && !gvr.namespaced {
-				return nil
-			}
-			nri := kCli.dynamic.Resource(gvr.GroupVersionResource)
-			return nri.Namespace(ns)
-		}, ls.AsSelector())
-
-		if err != nil {
-			return nil, errors.Wrapf(err, "error making watcher for resource '%s'", gvr.String())
-		}
-		if watcher != nil {
-			watchers = append(watchers, watcher)
-		}
-	}
-
-	ch := make(chan watch.Event)
-
-	go watchEverythingLoop(ctx, ch, watchers, gvrs)
-
-	return ch, nil
-}
-
-func watchEverythingLoop(ctx context.Context, ch chan<- watch.Event, watchers []watch.Interface, gvrs []gvrWithNamespaced) {
-	var selectCases []reflect.SelectCase
-	for _, w := range watchers {
-		selectCases = append(selectCases, reflect.SelectCase{
-			Dir:  reflect.SelectRecv,
-			Chan: reflect.ValueOf(w.ResultChan()),
-		})
-	}
-
-	selectCases = append(selectCases, reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(ctx.Done())})
-
-	for {
-		chosen, value, ok := reflect.Select(selectCases)
-
-		// the last selectCase is ctx.Done
-		if chosen == len(selectCases)-1 {
-			cleanUp(ch, watchers)
-			return
-		}
-
-		if !ok {
-			// TODO: Possible bug for CRDs here! Notes:
-			// for some reason, we're getting ok = false for fission resources (e.g. fission.io/v1, Resource=environments)
-			// This happens after running tilt for 10-20 seconds
-			// My current hypotheses:
-			// 1. A misunderstanding on my part of what the third return value from `reflect.Select` indicates
-			// 2. A bug in the watch implementation for fission CRDs
-			// 3. A misunderstanding of how the watch API is to be used (maybe periodic closes are to be expected,
-			//    and we should just restart the watch? AFAIK, we haven't seen this with our existing watches,
-			//    but, then again our logging allowed this to exist unnoticed for quite some time:
-			//    https://github.com/windmilleng/tilt/pull/1647. I feel like we would have noticed this with pods,
-			//    though.
-			// 4. Maybe setting up 100+ watches taxes the system and causes it to drop connections
-			logger.Get(ctx).Infof("Failed watching K8S objects of type %v. This shouldn't happen. Please report a bug at: https://github.com/windmilleng/tilt/issues", gvrs[chosen])
-			analytics.Get(ctx).Incr("dynamic.watcher.closed", map[string]string{})
-			gvrs = append(gvrs[:chosen], gvrs[chosen+1:]...)
-			selectCases = append(selectCases[:chosen], selectCases[chosen+1:]...)
-			watchers = append(watchers[:chosen], watchers[chosen+1:]...)
-			continue
-		}
-
-		event := value.Interface().(watch.Event)
-		if event.Object == nil {
-			continue
-		}
-
-		ch <- event
-	}
-}
-
-func cleanUp(ch chan<- watch.Event, watchers []watch.Interface) {
-	for _, w := range watchers {
-		w.Stop()
-	}
-	close(ch)
-	return
 }

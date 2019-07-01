@@ -151,16 +151,6 @@ func TestK8sClient_WatchServicesBlockedByNamespaceRestriction(t *testing.T) {
 	}
 }
 
-func TestK8sClient_WatchEverything(t *testing.T) {
-	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
-
-	// NOTE(dmiller): because we don't add any resources in to the
-	// fake clientset that we set up in `newWatchTestFixture` `ServerGroupsAndResources()`
-	// returns an empty list, which triggers the following error
-	tf.watchEverythingExpectError("Unable to watch any resources: do you have sufficient permissions to watch resources?")
-}
-
 func TestK8sClient_WatchEvents(t *testing.T) {
 	tf := newWatchTestFixture(t)
 	defer tf.TearDown()
@@ -343,11 +333,6 @@ func (tf *watchTestFixture) runEvents(input []runtime.Object, expectedOutput []r
 	// TODO(matt) - using ElementsMatch instead of Equal because, for some reason, events do not always come out in the
 	// same order we feed them in. I'm punting on figuring out why for now.
 	assert.ElementsMatch(tf.t, expectedOutput, observedEvents)
-}
-
-func (tf *watchTestFixture) watchEverythingExpectError(expectedErr string) {
-	_, err := tf.kCli.WatchEverything(tf.ctx, []model.LabelPair{})
-	assert.EqualError(tf.t, err, expectedErr)
 }
 
 func (tf *watchTestFixture) testPodLabels(input labels.Set, expectedLabels labels.Set) {

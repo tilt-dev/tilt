@@ -3,20 +3,20 @@ package k8s
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"sync"
 	"time"
 
-	"k8s.io/apimachinery/pkg/labels"
-
-	"github.com/windmilleng/tilt/internal/model"
-
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 // A magic constant. If the docker client returns this constant, we always match
@@ -51,16 +51,23 @@ type FakeK8sClient struct {
 	serviceWatcherMu sync.Mutex
 	serviceWatches   []fakeServiceWatch
 
-	everythingWatcherMu sync.Mutex
-	everythingWatches   []fakeEverythingWatch
-	EverythingWatchErr  error
-
 	eventsCh       chan *v1.Event
 	EventsWatchErr error
 
 	UpsertError error
 	Runtime     container.Runtime
 	Registry    container.Registry
+
+	GetResources map[GetKey]*unstructured.Unstructured
+}
+
+type GetKey struct {
+	Group           string
+	Version         string
+	Kind            string
+	Namespace       string
+	Name            string
+	ResourceVersion string
 }
 
 type fakeServiceWatch struct {
@@ -71,11 +78,6 @@ type fakeServiceWatch struct {
 type fakePodWatch struct {
 	ls labels.Selector
 	ch chan *v1.Pod
-}
-
-type fakeEverythingWatch struct {
-	ls labels.Selector
-	ch chan watch.Event
 }
 
 func (c *FakeK8sClient) EmitService(ls labels.Selector, s *v1.Service) {
@@ -123,47 +125,6 @@ func (c *FakeK8sClient) WatchEvents(ctx context.Context) (<-chan *v1.Event, erro
 
 func (c *FakeK8sClient) EmitEvent(ctx context.Context, evt *v1.Event) {
 	c.eventsCh <- evt
-}
-
-// emits an event to chans returned by WatchEverything
-func (c *FakeK8sClient) EmitEverything(ls labels.Selector, e watch.Event) {
-	c.everythingWatcherMu.Lock()
-	defer c.everythingWatcherMu.Unlock()
-	for _, w := range c.everythingWatches {
-		if SelectorEqual(ls, w.ls) {
-			w.ch <- e
-		}
-	}
-}
-
-func (c *FakeK8sClient) WatchEverything(ctx context.Context, lps []model.LabelPair) (<-chan watch.Event, error) {
-	if c.EverythingWatchErr != nil {
-		err := c.EverythingWatchErr
-		c.EverythingWatchErr = nil
-		return nil, err
-	}
-
-	c.everythingWatcherMu.Lock()
-	ch := make(chan watch.Event, 20)
-	ls := LabelPairsToSelector(lps)
-	c.everythingWatches = append(c.everythingWatches, fakeEverythingWatch{ls, ch})
-	c.everythingWatcherMu.Unlock()
-
-	go func() {
-		// when ctx is canceled, remove the label selector from the list of watched label selectors
-		<-ctx.Done()
-		c.everythingWatcherMu.Lock()
-		var newWatches []fakeEverythingWatch
-		for _, e := range c.everythingWatches {
-			if !SelectorEqual(e.ls, ls) {
-				newWatches = append(newWatches, e)
-			}
-		}
-		c.everythingWatches = newWatches
-		c.everythingWatcherMu.Unlock()
-	}()
-	return ch, nil
-
 }
 
 func (c *FakeK8sClient) WatchedSelectors() []labels.Selector {
@@ -244,6 +205,16 @@ func (c *FakeK8sClient) Delete(ctx context.Context, entities []K8sEntity) error 
 	}
 	c.DeletedYaml = yaml
 	return nil
+}
+
+func (c *FakeK8sClient) Get(group, version, kind, namespace, name, resourceVersion string) (*unstructured.Unstructured, error) {
+	key := GetKey{group, version, kind, namespace, name, resourceVersion}
+	resp, ok := c.GetResources[key]
+	if !ok {
+		return nil, fmt.Errorf("No response found for %v", key)
+	}
+
+	return resp, nil
 }
 
 func (c *FakeK8sClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interface, error) {
