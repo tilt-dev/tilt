@@ -185,8 +185,12 @@ func (d *naiveNotify) shouldNotify(path string) bool {
 }
 
 func (d *naiveNotify) add(path string) error {
+	err := d.watcher.Add(path)
+	if err != nil {
+		return err
+	}
 	numberOfWatches.Add(1)
-	return d.watcher.Add(path)
+	return nil
 }
 
 func NewWatcher(l logger.Logger) (*naiveNotify, error) {
