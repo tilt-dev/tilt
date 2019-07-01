@@ -5,9 +5,6 @@ import (
 	"sync"
 )
 
-var once sync.Once
-var instance Feature
-
 type Defaults map[string]bool
 
 // All feature flags need to be defined here with their default values
@@ -22,11 +19,7 @@ type Feature interface {
 }
 
 func ProvideFeature() Feature {
-	once.Do(func() {
-		instance = newStaticMapFeature(flags)
-	})
-
-	return instance
+	return newStaticMapFeature(flags)
 }
 
 func newStaticMapFeature(defaults Defaults) *staticMapFeature {
