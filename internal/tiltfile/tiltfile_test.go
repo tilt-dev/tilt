@@ -28,6 +28,7 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/yaml"
+	"github.com/windmilleng/tilt/internal/feature"
 )
 
 const simpleDockerfile = "FROM golang:1.10"
@@ -3554,7 +3555,7 @@ func newFixture(t *testing.T) *fixture {
 	an, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
 	dcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
 	kCli := k8s.NewFakeK8sClient()
-	tfl := ProvideTiltfileLoader(ta, kCli, dcc, "fake-context")
+	tfl := ProvideTiltfileLoader(ta, kCli, dcc, "fake-context", feature.ProvideFeature())
 
 	r := &fixture{
 		ctx:            ctx,

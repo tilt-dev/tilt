@@ -31,6 +31,7 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/github"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
@@ -2518,6 +2519,7 @@ type testFixture struct {
 	ghc                   *github.FakeClient
 	opter                 *testOpter
 	tiltVersionCheckDelay time.Duration
+	feature               feature.Feature
 
 	// old value of k8sEventsFeatureFlag env var, for teardown
 	// if nil, no reset needed.
@@ -2570,7 +2572,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	realDcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
 
-	tfl := tiltfile.ProvideTiltfileLoader(ta, k8s, realDcc, "fake-context")
+	tfl := tiltfile.ProvideTiltfileLoader(ta, k8s, realDcc, "fake-context", feature.ProvideFeature())
 	cc := NewConfigsController(tfl, dockerClient)
 	dcw := NewDockerComposeEventWatcher(fakeDcc)
 	dclm := NewDockerComposeLogManager(fakeDcc)
@@ -2580,7 +2582,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	hudsc := server.ProvideHeadsUpServerController(0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ghc := &github.FakeClient{}
 	sc := &client.FakeSailClient{}
-	ewm := NewEventWatchManager(k8s, clockwork.NewRealClock())
+	feature := feature.ProvideFeature()
+	ewm := NewEventWatchManager(k8s, clockwork.NewRealClock(), feature)
 
 	ret := &testFixture{
 		TempDirFixture:        f,
@@ -2603,6 +2606,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		ghc:                   ghc,
 		opter:                 to,
 		tiltVersionCheckDelay: versionCheckInterval,
+		feature:               feature,
 	}
 
 	tiltVersionCheckTimerMaker := func(d time.Duration) <-chan time.Time {
@@ -2621,11 +2625,7 @@ func newTestFixture(t *testing.T) *testFixture {
 }
 
 func (f *testFixture) EnableK8sEvents() *testFixture {
-	oldVal := os.Getenv(k8sEventsFeatureFlag)
-	f.oldK8sEventsFeatureFlagVal = &oldVal
-
-	_ = os.Setenv(k8sEventsFeatureFlag, "true")
-
+	f.feature.Enable("events")
 	return f
 }
 
@@ -2905,11 +2905,6 @@ func (f *testFixture) TearDown() {
 	f.kClient.TearDown()
 	close(f.fsWatcher.events)
 	close(f.fsWatcher.errors)
-
-	if f.oldK8sEventsFeatureFlagVal != nil {
-		_ = os.Setenv(k8sEventsFeatureFlag, *f.oldK8sEventsFeatureFlagVal)
-	}
-
 	f.cancel()
 }
 
