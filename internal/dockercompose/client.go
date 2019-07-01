@@ -19,13 +19,13 @@ import (
 )
 
 type DockerComposeClient interface {
-	Up(ctx context.Context, configPath []string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error
-	Down(ctx context.Context, configPath []string, stdout, stderr io.Writer) error
-	StreamLogs(ctx context.Context, configPath []string, serviceName model.TargetName) (io.ReadCloser, error)
-	StreamEvents(ctx context.Context, configPath []string) (<-chan string, error)
-	Config(ctx context.Context, configPath []string) (string, error)
-	Services(ctx context.Context, configPath []string) (string, error)
-	ContainerID(ctx context.Context, configPath []string, serviceName model.TargetName) (container.ID, error)
+	Up(ctx context.Context, configPaths []string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error
+	Down(ctx context.Context, configPaths []string, stdout, stderr io.Writer) error
+	StreamLogs(ctx context.Context, configPaths []string, serviceName model.TargetName) (io.ReadCloser, error)
+	StreamEvents(ctx context.Context, configPaths []string) (<-chan string, error)
+	Config(ctx context.Context, configPaths []string) (string, error)
+	Services(ctx context.Context, configPaths []string) (string, error)
+	ContainerID(ctx context.Context, configPaths []string, serviceName model.TargetName) (container.ID, error)
 }
 
 type cmdDCClient struct {
@@ -168,8 +168,8 @@ func (c *cmdDCClient) Config(ctx context.Context, configPath []string) (string, 
 	return c.dcOutput(ctx, configPath, "config")
 }
 
-func (c *cmdDCClient) Services(ctx context.Context, configPath []string) (string, error) {
-	return c.dcOutput(ctx, configPath, "config", "--services")
+func (c *cmdDCClient) Services(ctx context.Context, configPaths []string) (string, error) {
+	return c.dcOutput(ctx, configPaths, "config", "--services")
 }
 
 func (c *cmdDCClient) ContainerID(ctx context.Context, configPath []string, serviceName model.TargetName) (container.ID, error) {

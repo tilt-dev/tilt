@@ -137,7 +137,7 @@ func resourceInfoView(mt *store.ManifestTarget) ResourceInfoView {
 		}
 	}
 	if dcState, ok := mt.State.ResourceState.(dockercompose.State); ok {
-		return NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPath, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
+		return NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPaths, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
 	} else {
 		pod := mt.State.MostRecentPod()
 		return K8sResourceInfo{

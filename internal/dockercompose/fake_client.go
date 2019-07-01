@@ -106,7 +106,7 @@ func (c *FakeDCClient) Config(ctx context.Context, pathToConfig []string) (strin
 	return c.ConfigOutput, nil
 }
 
-func (c *FakeDCClient) Services(ctx context.Context, pathToConfig []string) (string, error) {
+func (c *FakeDCClient) Services(ctx context.Context, configPaths []string) (string, error) {
 	return c.ServicesOutput, nil
 }
 

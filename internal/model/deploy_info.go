@@ -21,8 +21,8 @@ func NewDeployID() DeployID {
 func (dID DeployID) String() string { return strconv.Itoa(int(dID)) }
 
 type DockerComposeTarget struct {
-	Name       TargetName
-	ConfigPath []string
+	Name        TargetName
+	ConfigPaths []string
 
 	// The docker context, like in DockerBuild
 	buildPath string
@@ -136,7 +136,7 @@ func (dc DockerComposeTarget) Validate() error {
 		return fmt.Errorf("[Validate] DockerCompose resource missing name:\n%s", dc.YAMLRaw)
 	}
 
-	if dc.ConfigPath == nil {
+	if len(dc.ConfigPaths) == 0 {
 		return fmt.Errorf("[Validate] DockerCompose resource %s missing config path", dc.Name)
 	}
 
