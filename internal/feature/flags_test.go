@@ -7,16 +7,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIsEnabledDefaultsToFalse(t *testing.T) {
+func TestIsEnabledReturnsAnErrorIfKeyDoesntExist(t *testing.T) {
 	m := newStaticMapFeatureForTesting(map[string]bool{})
-
-	assert.False(t, m.IsEnabled("foo"))
+	enabled, err := m.IsEnabled("foo")
+	assert.EqualError(t, err, "Unknown flag: foo")
+	assert.False(t, enabled)
 }
 
 func TestIsEnabled(t *testing.T) {
 	m := newStaticMapFeatureForTesting(map[string]bool{"foo": true})
+	enabled, err := m.IsEnabled("foo")
 
-	assert.True(t, m.IsEnabled("foo"))
+	assert.NoError(t, err)
+	assert.True(t, enabled)
 }
 
 func TestEnableUnknownKey(t *testing.T) {
@@ -29,7 +32,9 @@ func TestEnable(t *testing.T) {
 	m := newStaticMapFeatureForTesting(map[string]bool{"foo": false})
 	err := m.Enable("foo")
 	assert.NoError(t, err)
-	assert.True(t, m.IsEnabled("foo"))
+	enabled, err := m.IsEnabled("foo")
+	assert.NoError(t, err)
+	assert.True(t, enabled)
 }
 
 func TestDisableUnknownKey(t *testing.T) {
@@ -42,7 +47,9 @@ func TestDisable(t *testing.T) {
 	m := newStaticMapFeatureForTesting(map[string]bool{"foo": true})
 	err := m.Disable("foo")
 	assert.NoError(t, err)
-	assert.False(t, m.IsEnabled("foo"))
+	enabled, err := m.IsEnabled("foo")
+	assert.NoError(t, err)
+	assert.False(t, enabled)
 }
 
 func newStaticMapFeatureForTesting(flags map[string]bool) *staticMapFeature {

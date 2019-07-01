@@ -11,7 +11,7 @@ var flags = map[string]bool{
 }
 
 type Checker interface {
-	IsEnabled(flag string) bool
+	IsEnabled(flag string) (bool, error)
 }
 
 type Writer interface {
@@ -28,10 +28,15 @@ type staticMapFeature struct {
 	mu    *sync.Mutex
 }
 
-func (f *staticMapFeature) IsEnabled(flag string) bool {
+func (f *staticMapFeature) IsEnabled(flag string) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.flags[flag]
+	enabled, ok := f.flags[flag]
+	if !ok {
+		return false, fmt.Errorf("Unknown flag: %s", flag)
+	}
+
+	return enabled, nil
 }
 
 func (f *staticMapFeature) Enable(flag string) error {
