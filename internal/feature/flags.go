@@ -5,10 +5,13 @@ import (
 	"sync"
 )
 
+var once sync.Once
+var instance Feature
+
 type Defaults map[string]bool
 
 // All feature flags need to be defined here with their default values
-var flags = map[string]bool{
+var flags = Defaults{
 	"events": false,
 }
 
@@ -18,7 +21,15 @@ type Feature interface {
 	Disable(flag string) error
 }
 
-func NewStaticMapFeature(defaults Defaults) Feature {
+func ProvideFeature() Feature {
+	once.Do(func() {
+		instance = newStaticMapFeature(flags)
+	})
+
+	return instance
+}
+
+func newStaticMapFeature(defaults Defaults) *staticMapFeature {
 	// copy map so we don't rely on global state
 	newMap := map[string]bool{}
 	for key, value := range defaults {
