@@ -316,16 +316,16 @@ var equalitytests = []struct {
 		false,
 	},
 	{
-		"DockerCompose.ConfigPath equal",
-		Manifest{}.WithDeployTarget(DockerComposeTarget{ConfigPath: "/src/docker-compose.yml"}),
-		Manifest{}.WithDeployTarget(DockerComposeTarget{ConfigPath: "/src/docker-compose.yml"}),
+		"DockerCompose.ConfigPaths equal",
+		Manifest{}.WithDeployTarget(DockerComposeTarget{ConfigPaths: "/src/docker-compose.yml"}),
+		Manifest{}.WithDeployTarget(DockerComposeTarget{ConfigPaths: "/src/docker-compose.yml"}),
 		true,
 		false,
 	},
 	{
-		"DockerCompose.ConfigPath unequal",
-		Manifest{}.WithDeployTarget(DockerComposeTarget{ConfigPath: "/src/docker-compose1.yml"}),
-		Manifest{}.WithDeployTarget(DockerComposeTarget{ConfigPath: "/src/docker-compose2.yml"}),
+		"DockerCompose.ConfigPaths unequal",
+		Manifest{}.WithDeployTarget(DockerComposeTarget{ConfigPaths: "/src/docker-compose1.yml"}),
+		Manifest{}.WithDeployTarget(DockerComposeTarget{ConfigPaths: "/src/docker-compose2.yml"}),
 		false,
 		true,
 	},
@@ -467,8 +467,8 @@ func TestManifestValidateSyncRelativePath(t *testing.T) {
 
 func TestDCTargetValidate(t *testing.T) {
 	targ := DockerComposeTarget{
-		Name:       "blah",
-		ConfigPath: "docker-compose.yml",
+		Name:        "blah",
+		ConfigPaths: "docker-compose.yml",
 	}
 	err := targ.Validate()
 	assert.NoError(t, err)
@@ -479,7 +479,7 @@ func TestDCTargetValidate(t *testing.T) {
 		assert.Contains(t, err.Error(), "missing config path")
 	}
 
-	noName := DockerComposeTarget{ConfigPath: "docker-compose.yml"}
+	noName := DockerComposeTarget{ConfigPaths: "docker-compose.yml"}
 	err = noName.Validate()
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "missing name")

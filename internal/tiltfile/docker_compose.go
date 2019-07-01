@@ -420,9 +420,9 @@ func getConfigAndServiceNames(ctx context.Context, dcc dockercompose.DockerCompo
 func (s *tiltfileState) dcServiceToManifest(service *dcService, dcConfigPath []string) (manifest model.Manifest,
 	configFiles []string, err error) {
 	dcInfo := model.DockerComposeTarget{
-		ConfigPath: dcConfigPath,
-		YAMLRaw:    service.ServiceConfig,
-		DfRaw:      service.DfContents,
+		ConfigPaths: dcConfigPath,
+		YAMLRaw:     service.ServiceConfig,
+		DfRaw:       service.DfContents,
 	}.WithDependencyIDs(service.DependencyIDs).
 		WithPublishedPorts(service.PublishedPorts).
 		WithIgnoredLocalDirectories(service.MountedLocalDirs)
