@@ -7,6 +7,7 @@ import (
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -74,18 +75,20 @@ func NewGlobalLogEvent(b []byte) LogEvent {
 }
 
 type K8sEventAction struct {
-	Event *v1.Event
+	Event          *v1.Event
+	ManifestName   model.ManifestName
+	InvolvedObject k8s.K8sEntity
 }
 
 func (K8sEventAction) Action() {}
 
-func NewK8sEventAction(event *v1.Event) K8sEventAction {
-	return K8sEventAction{event}
+func NewK8sEventAction(event *v1.Event, manifestName model.ManifestName, involvedObject k8s.K8sEntity) K8sEventAction {
+	return K8sEventAction{event, manifestName, involvedObject}
 }
 
 func (kEvt K8sEventAction) ToLogAction(mn model.ManifestName) LogAction {
 	msg := fmt.Sprintf("[K8s EVENT: %s] %s\n",
-		objRefHumanReadable(kEvt.Event.InvolvedObject), kEvt.Event.Message)
+		objRefHumanReadable(kEvt.InvolvedObject), kEvt.Event.Message)
 
 	return LogEvent{
 		mn:        mn,
@@ -94,10 +97,10 @@ func (kEvt K8sEventAction) ToLogAction(mn model.ManifestName) LogAction {
 	}
 }
 
-func objRefHumanReadable(obj v1.ObjectReference) string {
-	s := fmt.Sprintf("%s/%s %s", obj.APIVersion, obj.Kind, obj.Name)
-	if obj.Namespace != "default" {
-		s += fmt.Sprintf(" (ns: %s)", obj.Namespace)
+func objRefHumanReadable(obj k8s.K8sEntity) string {
+	s := fmt.Sprintf("%s %s", obj.Kind, obj.Name())
+	if obj.Namespace() != k8s.DefaultNamespace {
+		s += fmt.Sprintf(" (ns: %s)", obj.Namespace())
 	}
 	return s
 }

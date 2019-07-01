@@ -15,15 +15,15 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/apimachinery/pkg/types"
-	k8swatch "k8s.io/apimachinery/pkg/watch"
-
 	"github.com/docker/distribution/reference"
+	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/assets"
@@ -1796,24 +1796,22 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 	name := model.ManifestName(e.Name())
 	manifest := f.newManifest(string(name), []model.Sync{sync})
 
+	objRef := v1.ObjectReference{UID: types.UID(entityUID), Name: e.Name()}
+
+	obj := unstructured.Unstructured{}
+	obj.SetLabels(map[string]string{k8s.TiltRunIDLabel: k8s.TiltRunID, k8s.ManifestNameLabel: name.String()})
+	obj.SetName(objRef.Name)
+	f.kClient.GetResources = map[k8s.GetKey]*unstructured.Unstructured{
+		k8s.GetKey{Name: e.Name()}: &obj,
+	}
+
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
 
-	ls := k8s.TiltRunSelector()
-	f.kClient.EmitEverything(ls, k8swatch.Event{
-		Type:   k8swatch.Added,
-		Object: e.Obj,
-	})
-
-	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
-		_, ok := st.ObjectsByK8sUIDs[k8s.UID(entityUID)]
-		return ok
-	})
-
 	warnEvt := &v1.Event{
-		InvolvedObject: v1.ObjectReference{UID: types.UID(entityUID)},
+		InvolvedObject: objRef,
 		Message:        "something has happened zomg",
-		Type:           "Warning",
+		Type:           v1.EventTypeWarning,
 	}
 	f.kClient.EmitEvent(f.ctx, warnEvt)
 
@@ -1825,7 +1823,8 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 		}
 
 		warnEvts = ms.K8sWarnEvents
-		return strings.Contains(ms.CombinedLog.String(), "something has happened zomg")
+		combinedLogString := ms.CombinedLog.String()
+		return strings.Contains(combinedLogString, "something has happened zomg")
 	})
 
 	f.withState(func(st store.EngineState) {
@@ -1835,8 +1834,8 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 	if assert.Len(t, warnEvts, 1, "expect ms.K8sWarnEvents to contain 1 event") {
 		// Make sure we recorded the event on the manifest state
 		evt := warnEvts[0]
-		assert.Equal(t, evt.Event.Message, "something has happened zomg")
-		assert.Equal(t, evt.Entity.Name(), name.String())
+		assert.Equal(t, "something has happened zomg", evt.Event.Message)
+		assert.Equal(t, name.String(), evt.Entity.Name())
 	}
 
 	err := f.Stop()
@@ -1860,7 +1859,7 @@ func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
 	warnEvt := &v1.Event{
 		InvolvedObject: v1.ObjectReference{UID: types.UID(entityUID)},
 		Message:        "something has happened zomg",
-		Type:           "Warning",
+		Type:           v1.EventTypeWarning,
 	}
 	f.kClient.EmitEvent(f.ctx, warnEvt)
 
@@ -1884,21 +1883,10 @@ func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
 
-	ls := k8s.TiltRunSelector()
-	f.kClient.EmitEverything(ls, k8swatch.Event{
-		Type:   k8swatch.Added,
-		Object: e.Obj,
-	})
-
-	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
-		_, ok := st.ObjectsByK8sUIDs[k8s.UID(entityUID)]
-		return ok
-	})
-
 	normalEvt := &v1.Event{
 		InvolvedObject: v1.ObjectReference{UID: types.UID(entityUID)},
 		Message:        "all systems are go",
-		Type:           "Normal", // we should NOT log this message
+		Type:           v1.EventTypeNormal, // we should NOT log this message
 	}
 	f.kClient.EmitEvent(f.ctx, normalEvt)
 
@@ -1929,19 +1917,14 @@ func TestK8sEventLogTimestamp(t *testing.T) {
 	name := model.ManifestName(e.Name())
 	manifest := f.newManifest(string(name), []model.Sync{sync})
 
+	obj := unstructured.Unstructured{}
+	obj.SetLabels(map[string]string{k8s.TiltRunIDLabel: k8s.TiltRunID, k8s.ManifestNameLabel: name.String()})
+	f.kClient.GetResources = map[k8s.GetKey]*unstructured.Unstructured{
+		k8s.GetKey{}: &obj,
+	}
+
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
-
-	ls := k8s.TiltRunSelector()
-	f.kClient.EmitEverything(ls, k8swatch.Event{
-		Type:   k8swatch.Added,
-		Object: e.Obj,
-	})
-
-	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
-		_, ok := st.ObjectsByK8sUIDs[k8s.UID(entityUID)]
-		return ok
-	})
 
 	ts := time.Now().Add(time.Hour * 36) // the future, i.e. timestamp that won't otherwise appear in our log
 
@@ -1949,7 +1932,7 @@ func TestK8sEventLogTimestamp(t *testing.T) {
 		InvolvedObject: v1.ObjectReference{UID: types.UID(entityUID)},
 		Message:        "something has happened zomg",
 		LastTimestamp:  metav1.Time{Time: ts},
-		Type:           "Warning",
+		Type:           v1.EventTypeWarning,
 	}
 	f.kClient.EmitEvent(f.ctx, warnEvt)
 
@@ -1964,48 +1947,6 @@ func TestK8sEventLogTimestamp(t *testing.T) {
 		return strings.Contains(l, "something has happened zomg") && strings.Contains(l, string(tsPrefix))
 	})
 
-	err := f.Stop()
-	assert.NoError(t, err)
-}
-
-func TestUIDMapDeleteUID(t *testing.T) {
-	f := newTestFixture(t).EnableK8sEvents()
-	defer f.TearDown()
-
-	st := f.store.LockMutableStateForTesting()
-	st.LogTimestamps = true
-	f.store.UnlockMutableState()
-
-	entityUID := "someEntity"
-	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
-
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	name := model.ManifestName(e.Name())
-	manifest := f.newManifest(string(name), []model.Sync{sync})
-
-	f.Start([]model.Manifest{manifest}, true)
-	f.waitForCompletedBuildCount(1)
-
-	ls := k8s.TiltRunSelector()
-	f.kClient.EmitEverything(ls, k8swatch.Event{
-		Type:   k8swatch.Added,
-		Object: e.Obj,
-	})
-
-	f.WaitUntil("UID tracked", func(st store.EngineState) bool {
-		_, ok := st.ObjectsByK8sUIDs[k8s.UID(entityUID)]
-		return ok
-	})
-
-	f.kClient.EmitEverything(ls, k8swatch.Event{
-		Type:   k8swatch.Deleted,
-		Object: e.Obj,
-	})
-
-	f.WaitUntil("entry for UID removed from map", func(st store.EngineState) bool {
-		_, ok := st.ObjectsByK8sUIDs[k8s.UID(entityUID)]
-		return !ok
-	})
 	err := f.Stop()
 	assert.NoError(t, err)
 }
@@ -2639,8 +2580,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	hudsc := server.ProvideHeadsUpServerController(0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ghc := &github.FakeClient{}
 	sc := &client.FakeSailClient{}
-	ewm := NewEventWatchManager(k8s)
-	umm := NewUIDMapManager(k8s)
+	ewm := NewEventWatchManager(k8s, clockwork.NewRealClock())
 
 	ret := &testFixture{
 		TempDirFixture:        f,
@@ -2670,7 +2610,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
 
-	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc, sc, tvc, tas, ewm, umm)
+	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc, sc, tvc, tas, ewm)
 	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {
@@ -3134,4 +3074,34 @@ func assertLineMatches(t *testing.T, lines []string, re *regexp.Regexp) {
 func assertContainsOnce(t *testing.T, s string, val string) {
 	assert.Contains(t, s, val)
 	assert.Equal(t, 1, strings.Count(s, val), "Expected string to appear only once")
+}
+
+func entityWithUID(t *testing.T, yaml string, uid string) k8s.K8sEntity {
+	return entityWithUIDAndMaybeManifestLabel(t, yaml, uid, true)
+}
+
+func entityWithUIDAndMaybeManifestLabel(t *testing.T, yaml string, uid string, withManifestLabel bool) k8s.K8sEntity {
+	es, err := k8s.ParseYAMLFromString(yaml)
+	if err != nil {
+		t.Fatalf("error parsing yaml: %v", err)
+	}
+
+	if len(es) != 1 {
+		t.Fatalf("expected exactly 1 k8s entity from yaml, got %d", len(es))
+	}
+
+	e := es[0]
+	if withManifestLabel {
+		e, err = k8s.InjectLabels(e, []model.LabelPair{{
+			Key:   k8s.ManifestNameLabel,
+			Value: e.Name(),
+		}})
+		if err != nil {
+			t.Fatalf("error injecting manifest label: %v", err)
+		}
+	}
+
+	k8s.SetUIDForTest(t, &e, uid)
+
+	return e
 }

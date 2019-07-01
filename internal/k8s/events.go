@@ -1,6 +1,8 @@
 package k8s
 
-import v1 "k8s.io/api/core/v1"
+import (
+	v1 "k8s.io/api/core/v1"
+)
 
 // A Kubernetes event and the entity to which it applies
 type EventWithEntity struct {

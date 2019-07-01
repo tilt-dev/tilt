@@ -9,26 +9,32 @@ import (
 	"strings"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/logger"
-	"github.com/windmilleng/tilt/internal/model"
-
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/browser"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/validation"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
 
 	// Client auth plugins! They will auto-init if we import them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+
+	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 type Namespace string
@@ -69,6 +75,8 @@ type Client interface {
 	// behavior for our use cases.
 	Delete(ctx context.Context, entities []K8sEntity) error
 
+	Get(group, version, kind, namespace, name, resourceVersion string) (*unstructured.Unstructured, error)
+
 	PodByID(ctx context.Context, podID PodID, n Namespace) (*v1.Pod, error)
 
 	// Creates a channel where all changes to the pod are brodcast.
@@ -86,8 +94,6 @@ type Client interface {
 	WatchServices(ctx context.Context, lps []model.LabelPair) (<-chan *v1.Service, error)
 
 	WatchEvents(ctx context.Context) (<-chan *v1.Event, error)
-
-	WatchEverything(ctx context.Context, lps []model.LabelPair) (<-chan watch.Event, error)
 
 	ConnectedToCluster(ctx context.Context) error
 
@@ -110,6 +116,7 @@ type K8sClient struct {
 	dynamic         dynamic.Interface
 	runtimeAsync    *runtimeAsync
 	registryAsync   *registryAsync
+	drm             meta.RESTMapper
 }
 
 var _ Client = K8sClient{}
@@ -147,6 +154,18 @@ func ProvideK8sClient(
 		return &explodingClient{err: err}
 	}
 
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(restConfig)
+	if err != nil {
+		return &explodingClient{fmt.Errorf("unable to create discovery client: %v", err)}
+	}
+
+	apiGroupResources, err := restmapper.GetAPIGroupResources(discoveryClient)
+	if err != nil {
+		return &explodingClient{fmt.Errorf("unable to fetch API Group Resources: %v", err)}
+	}
+
+	drm := restmapper.NewDiscoveryRESTMapper(apiGroupResources)
+
 	// TODO(nick): I'm not happy about the way that pkg/browser uses global writers.
 	writer := logger.Get(ctx).Writer(logger.DebugLvl)
 	browser.Stdout = writer
@@ -163,6 +182,7 @@ func ProvideK8sClient(
 		runtimeAsync:    runtimeAsync,
 		registryAsync:   registryAsync,
 		dynamic:         di,
+		drm:             drm,
 	}
 }
 
@@ -308,6 +328,18 @@ func (k K8sClient) actOnEntities(ctx context.Context, cmdArgs []string, entities
 	}
 
 	return k.kubectlRunner.execWithStdin(ctx, args, rawYAML)
+}
+
+func (k K8sClient) Get(group, version, kind, namespace, name, resourceVersion string) (*unstructured.Unstructured, error) {
+	rm, err := k.drm.RESTMapping(schema.GroupKind{Group: group, Kind: kind})
+	if err != nil {
+		return nil, errors.Wrapf(err, "error mapping %s/%s", group, kind)
+	}
+
+	return k.dynamic.Resource(rm.Resource).Namespace(namespace).Get(name, metav1.GetOptions{
+		TypeMeta:        metav1.TypeMeta{},
+		ResourceVersion: resourceVersion,
+	})
 }
 
 func ProvideServerVersion(clientSet *kubernetes.Clientset) (*version.Info, error) {

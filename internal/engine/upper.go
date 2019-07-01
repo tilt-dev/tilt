@@ -15,7 +15,6 @@ import (
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	k8swatch "k8s.io/apimachinery/pkg/watch"
 
 	"github.com/windmilleng/tilt/internal/hud/server"
 
@@ -197,8 +196,6 @@ var UpperReducer = store.Reducer(func(ctx context.Context, state *store.EngineSt
 		handleAnalyticsOptAction(state, action)
 	case store.AnalyticsNudgeSurfacedAction:
 		handleAnalyticsNudgeSurfacedAction(ctx, state)
-	case UIDUpdateAction:
-		handleUIDUpdateAction(state, action)
 	case store.LogEvent:
 		// handled as a LogAction, do nothing
 
@@ -654,18 +651,6 @@ func populateContainerStatus(ctx context.Context, manifest model.Manifest, podIn
 	podInfo.ContainerInfos = cInfos
 }
 
-func handleUIDUpdateAction(state *store.EngineState, action UIDUpdateAction) {
-	switch action.EventType {
-	case k8swatch.Added:
-		state.ObjectsByK8sUIDs[action.UID] = store.UIDMapValue{
-			Manifest: action.ManifestName,
-			Entity:   action.Entity,
-		}
-	case k8swatch.Deleted:
-		delete(state.ObjectsByK8sUIDs, action.UID)
-	}
-}
-
 func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v1.Pod) {
 	mt, podInfo := ensureManifestTargetWithPod(state, pod)
 	if mt == nil || podInfo == nil {
@@ -869,19 +854,15 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 
 func handleK8sEvent(ctx context.Context, state *store.EngineState, action store.K8sEventAction) {
 	evt := action.Event
-	v, ok := state.ObjectsByK8sUIDs[k8s.UID(evt.InvolvedObject.UID)]
-	if !ok {
-		return
-	}
 
-	if evt.Type != "Normal" {
-		handleLogAction(state, action.ToLogAction(v.Manifest))
+	if evt.Type != v1.EventTypeNormal {
+		handleLogAction(state, action.ToLogAction(action.ManifestName))
 
-		ms, ok := state.ManifestState(v.Manifest)
+		ms, ok := state.ManifestState(action.ManifestName)
 		if !ok {
 			return
 		}
-		ms.K8sWarnEvents = append(ms.K8sWarnEvents, k8s.NewEventWithEntity(evt, v.Entity))
+		ms.K8sWarnEvents = append(ms.K8sWarnEvents, k8s.NewEventWithEntity(evt, action.InvolvedObject))
 	}
 }
 

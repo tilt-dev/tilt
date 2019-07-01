@@ -83,13 +83,6 @@ type EngineState struct {
 	// Analytics Info
 	AnalyticsOpt           analytics.Opt // changes to this field will propagate into the TiltAnalytics subscriber + we'll record them as user choice
 	AnalyticsNudgeSurfaced bool          // this flag is set the first time we show the analytics nudge to the user.
-
-	ObjectsByK8sUIDs map[k8s.UID]UIDMapValue
-}
-
-type UIDMapValue struct {
-	Manifest model.ManifestName
-	Entity   k8s.K8sEntity
 }
 
 func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.ManifestName {
@@ -273,7 +266,6 @@ func NewState() *EngineState {
 	ret.Log = model.Log{}
 	ret.ManifestTargets = make(map[model.ManifestName]*ManifestTarget)
 	ret.PendingConfigFileChanges = make(map[string]time.Time)
-	ret.ObjectsByK8sUIDs = make(map[k8s.UID]UIDMapValue)
 	return ret
 }
 

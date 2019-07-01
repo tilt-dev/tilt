@@ -7,12 +7,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/analytics"
-
 	"github.com/google/wire"
+	"github.com/jonboulle/clockwork"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/tools/clientcmd/api"
 
+	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
@@ -56,6 +56,7 @@ var BaseWireSet = wire.NewSet(
 
 	tiltfile.ProvideTiltfileLoader,
 
+	clockwork.NewRealClock,
 	engine.DeployerWireSet,
 	engine.NewPodLogManager,
 	engine.NewPortForwardController,
@@ -70,7 +71,6 @@ var BaseWireSet = wire.NewSet(
 	engine.NewProfilerManager,
 	engine.NewGithubClientFactory,
 	engine.NewTiltVersionChecker,
-	engine.NewUIDMapManager,
 
 	provideClock,
 	hud.NewRenderer,
