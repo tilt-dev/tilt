@@ -90,7 +90,7 @@ type tiltfileLoader struct {
 	kCli        k8s.Client
 	dcCli       dockercompose.DockerComposeClient
 	kubeContext k8s.KubeContext
-	f 					feature.Feature
+	f           feature.Feature
 }
 
 var _ TiltfileLoader = &tiltfileLoader{}
