@@ -13,6 +13,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
@@ -74,7 +75,8 @@ func ProvideTiltfileLoader(
 	analytics *analytics.TiltAnalytics,
 	kCli k8s.Client,
 	dcCli dockercompose.DockerComposeClient,
-	kubeContext k8s.KubeContext) TiltfileLoader {
+	kubeContext k8s.KubeContext,
+	f feature.Feature) TiltfileLoader {
 	return tiltfileLoader{
 		analytics:   analytics,
 		kCli:        kCli,
@@ -88,6 +90,7 @@ type tiltfileLoader struct {
 	kCli        k8s.Client
 	dcCli       dockercompose.DockerComposeClient
 	kubeContext k8s.KubeContext
+	f 					feature.Feature
 }
 
 var _ TiltfileLoader = &tiltfileLoader{}
