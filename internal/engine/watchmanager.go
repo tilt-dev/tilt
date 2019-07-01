@@ -2,11 +2,13 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/windmilleng/fsnotify"
 
 	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/ignore"
@@ -15,6 +17,8 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/watch"
 )
+
+const DetectedOverflowErrMsg = `It looks like the inotify event queue has overflowed. Check these instructions for how to raise the queue limit https://facebook.github.io/watchman/docs/install.html#system-specific-preparation`
 
 var ConfigsTargetID = model.TargetID{
 	Type: model.TargetTypeConfigs,
@@ -248,7 +252,11 @@ func (w *WatchManager) dispatchFileChangesLoop(
 			if !ok {
 				return
 			}
-			st.Dispatch(NewErrorAction(err))
+			if err.Error() == fsnotify.ErrEventOverflow.Error() {
+				st.Dispatch(NewErrorAction(fmt.Errorf("%s\nerror: %v", DetectedOverflowErrMsg, err)))
+			} else {
+				st.Dispatch(NewErrorAction(err))
+			}
 		case <-ctx.Done():
 			return
 
