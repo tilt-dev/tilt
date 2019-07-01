@@ -34,7 +34,7 @@ func InjectImagePullPolicy(entity K8sEntity, policy v1.PullPolicy) (K8sEntity, e
 //   to ensure that k8s fails hard if the image is missing from docker.
 //
 // Returns: the new entity, whether the image was replaced, and an error.
-func InjectImageDigest(entity K8sEntity, selector container.RefSelector, injectRef reference.Named, policy v1.PullPolicy) (K8sEntity, bool, error) {
+func InjectImageDigest(entity K8sEntity, selector container.RefSelector, injectRef reference.Named, matchInEnvVars bool, policy v1.PullPolicy) (K8sEntity, bool, error) {
 	entity = entity.DeepCopy()
 
 	// NOTE(nick): For some reason, if you have a reference with a digest,
@@ -62,12 +62,14 @@ func InjectImageDigest(entity K8sEntity, selector container.RefSelector, injectR
 		replaced = true
 	}
 
-	entity, r, err = injectImageDigestInEnvVars(entity, selector, injectRef)
-	if err != nil {
-		return K8sEntity{}, false, err
-	}
-	if r {
-		replaced = true
+	if matchInEnvVars {
+		entity, r, err = injectImageDigestInEnvVars(entity, selector, injectRef)
+		if err != nil {
+			return K8sEntity{}, false, err
+		}
+		if r {
+			replaced = true
+		}
 	}
 
 	entity, r, err = injectImageDigestInUnstructured(entity, injectRef)

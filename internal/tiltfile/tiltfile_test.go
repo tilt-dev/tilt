@@ -2149,7 +2149,7 @@ docker_build('gcr.io/foo-fetcher', 'foo-fetcher', match_in_env_vars=True)
 			image("gcr.io/foo"),
 		),
 		db(
-			image("gcr.io/foo-fetcher"),
+			image("gcr.io/foo-fetcher").withMatchInEnvVars(),
 		),
 	)
 }
@@ -3797,6 +3797,8 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 				f.t.FailNow()
 			}
 
+			assert.Equal(f.t, opt.image.matchInEnvVars, image.MatchInEnvVars)
+
 			if opt.cache != "" {
 				assert.Contains(f.t, image.CachePaths(), opt.cache,
 					"manifest %v cache paths don't include expected value", m.Name)
@@ -4179,8 +4181,9 @@ func fileChangeFilters(path string) matchPathHelper {
 }
 
 type imageHelper struct {
-	ref           string
-	deploymentRef string
+	ref            string
+	deploymentRef  string
+	matchInEnvVars bool
 }
 
 func image(ref string) imageHelper {
@@ -4193,6 +4196,11 @@ func imageNormalized(ref string) imageHelper {
 
 func (ih imageHelper) withInjectedRef(injectedRef string) imageHelper {
 	ih.deploymentRef = injectedRef
+	return ih
+}
+
+func (ih imageHelper) withMatchInEnvVars() imageHelper {
+	ih.matchInEnvVars = true
 	return ih
 }
 

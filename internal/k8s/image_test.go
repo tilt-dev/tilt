@@ -164,7 +164,7 @@ func TestInjectDigestBlorgBackendYAML(t *testing.T) {
 	entity := entities[1]
 	name := "gcr.io/blorg-dev/blorg-backend"
 	namedTagged, _ := reference.ParseNamed(fmt.Sprintf("%s:wm-tilt", name))
-	newEntity, replaced, err := InjectImageDigest(entity, container.NameSelector(namedTagged), namedTagged, v1.PullNever)
+	newEntity, replaced, err := InjectImageDigest(entity, container.NameSelector(namedTagged), namedTagged, false, v1.PullNever)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +204,7 @@ func InjectImageDigestWithStrings(entity K8sEntity, original string, newDigest s
 		return K8sEntity{}, false, err
 	}
 
-	return InjectImageDigest(entity, container.NameSelector(originalRef), canonicalRef, policy)
+	return InjectImageDigest(entity, container.NameSelector(originalRef), canonicalRef, false, policy)
 }
 
 func TestInjectSyncletImage(t *testing.T) {
@@ -217,7 +217,7 @@ func TestInjectSyncletImage(t *testing.T) {
 	entity := entities[0]
 	name := "gcr.io/windmill-public-containers/synclet"
 	namedTagged, _ := container.ParseNamedTagged(fmt.Sprintf("%s:tilt-deadbeef", name))
-	newEntity, replaced, err := InjectImageDigest(entity, container.NameSelector(namedTagged), namedTagged, v1.PullNever)
+	newEntity, replaced, err := InjectImageDigest(entity, container.NameSelector(namedTagged), namedTagged, false, v1.PullNever)
 	if err != nil {
 		t.Fatal(err)
 	} else if !replaced {
@@ -300,50 +300,6 @@ func TestEntityHasImage(t *testing.T) {
 
 }
 
-func TestInjectDigestEnvVar(t *testing.T) {
-	entities, err := ParseYAMLFromString(testyaml.SanchoYAML)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(entities) != 1 {
-		t.Fatalf("Unexpected entities: %+v", entities)
-	}
-
-	entity := entities[0]
-	name := "gcr.io/some-project-162817/sancho"
-
-	// add an env var with the image name
-	deployment := entity.Obj.(*appsv1.Deployment)
-	deployment.Spec.Template.Spec.Containers[0].Env = append(deployment.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
-		Name:  "IMAGE",
-		Value: name,
-	})
-
-	digest := "sha256:2baf1f40105d9501fe319a8ec463fdf4325a2a5df445adf3f572f626253678c9"
-	newEntity, replaced, err := InjectImageDigestWithStrings(entity, name, digest, v1.PullIfNotPresent)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !replaced {
-		t.Errorf("Expected replaced: true. Actual: %v", replaced)
-	}
-
-	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !strings.Contains(result, fmt.Sprintf("image: %s@%s", name, digest)) {
-		t.Errorf("image name did not appear in serialized yaml: %s", result)
-	}
-
-	if !strings.Contains(result, fmt.Sprintf("value: %s@%s", name, digest)) {
-		t.Errorf("env did not appear in serialized yaml: %s", result)
-	}
-}
-
 func testInjectDigestCRD(t *testing.T, yaml string, expectedDigestPrefix string) {
 	entities, err := ParseYAMLFromString(yaml)
 	if err != nil {
@@ -403,4 +359,50 @@ spec:
     args:
         image: gcr.io/foo:stable
 `, "image: ")
+}
+
+func TestMatchInEnvVarsFalse(t *testing.T) {
+	entity := parseOneEntity(t, testyaml.SanchoImageInEnvYAML)
+	name := "gcr.io/some-project-162817/sancho"
+	digest := "2baf1f40105d9501fe319a8ec463fdf4325a2a5df445adf3f572f626253678c9"
+	namedTagged, err := reference.ParseNamed(fmt.Sprintf("%s:%s", name, digest))
+	if err != nil {
+		t.Fatal(err)
+	}
+	newEntity, replaced, err := InjectImageDigest(entity, container.NameSelector(namedTagged), namedTagged, false, v1.PullNever)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.True(t, replaced)
+	d := newEntity.Obj.(*appsv1.Deployment)
+	if !assert.Equal(t, 1, len(d.Spec.Template.Spec.Containers)) {
+		return
+	}
+	c := d.Spec.Template.Spec.Containers[0]
+	// make sure we didn't inject to the env var
+	assert.Equal(t, namedTagged.String(), c.Image)
+	assert.Contains(t, c.Env, v1.EnvVar{Name: "bar", Value: name})
+}
+
+func TestMatchInEnvVarsTrue(t *testing.T) {
+	entity := parseOneEntity(t, testyaml.SanchoImageInEnvYAML)
+	name := "gcr.io/some-project-162817/sancho"
+	digest := "2baf1f40105d9501fe319a8ec463fdf4325a2a5df445adf3f572f626253678c9"
+	namedTagged, err := reference.ParseNamed(fmt.Sprintf("%s:%s", name, digest))
+	if err != nil {
+		t.Fatal(err)
+	}
+	newEntity, replaced, err := InjectImageDigest(entity, container.NameSelector(namedTagged), namedTagged, true, v1.PullNever)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.True(t, replaced)
+	d := newEntity.Obj.(*appsv1.Deployment)
+	if !assert.Equal(t, 1, len(d.Spec.Template.Spec.Containers)) {
+		return
+	}
+	c := d.Spec.Template.Spec.Containers[0]
+	// make sure we didn't inject to the env var
+	assert.Equal(t, namedTagged.String(), c.Image)
+	assert.Contains(t, c.Env, v1.EnvVar{Name: "bar", Value: namedTagged.String()})
 }

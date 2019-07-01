@@ -248,9 +248,10 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 				}
 
 				selector := iTargetMap[depID].ConfigurationRef
+				matchInEnvVars := iTargetMap[depID].MatchInEnvVars
 
 				var replaced bool
-				e, replaced, err = k8s.InjectImageDigest(e, selector, ref, policy)
+				e, replaced, err = k8s.InjectImageDigest(e, selector, ref, matchInEnvVars, policy)
 				if err != nil {
 					return err
 				}
