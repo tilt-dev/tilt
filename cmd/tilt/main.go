@@ -1,6 +1,8 @@
 package main
 
 import (
+	_ "expvar"
+
 	"github.com/windmilleng/tilt/internal/cli"
 	"github.com/windmilleng/tilt/internal/model"
 )
