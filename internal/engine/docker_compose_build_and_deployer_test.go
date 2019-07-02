@@ -21,7 +21,7 @@ import (
 )
 
 var expectedContainer = container.ID("dc-cont")
-var confPath = "/whales/are/big/dc.yml"
+var confPath = []string{"/whales/are/big/dc.yml"}
 var dcName = model.TargetName("MobyDick")
 var dcTarg = model.DockerComposeTarget{Name: dcName, ConfigPaths: confPath}
 
