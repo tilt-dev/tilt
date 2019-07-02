@@ -20,6 +20,7 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
@@ -3554,7 +3555,7 @@ func newFixture(t *testing.T) *fixture {
 	an, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
 	dcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
 	kCli := k8s.NewFakeK8sClient()
-	tfl := ProvideTiltfileLoader(ta, kCli, dcc, "fake-context")
+	tfl := ProvideTiltfileLoader(ta, kCli, dcc, "fake-context", feature.ProvideFeature())
 
 	r := &fixture{
 		ctx:            ctx,

@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 
+	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
@@ -33,18 +34,21 @@ type EventWatchManager struct {
 	uidMap   map[k8s.UID]uidMapEntry
 	uidMapMu sync.RWMutex
 	clock    clockwork.Clock
+	f        feature.Feature
 }
 
-func NewEventWatchManager(kClient k8s.Client, clock clockwork.Clock) *EventWatchManager {
+func NewEventWatchManager(kClient k8s.Client, clock clockwork.Clock, f feature.Feature) *EventWatchManager {
 	return &EventWatchManager{
 		kClient: kClient,
 		uidMap:  make(map[k8s.UID]uidMapEntry),
 		clock:   clock,
+		f:       f,
 	}
 }
 
 func (m *EventWatchManager) needsWatch(st store.RStore) bool {
-	if !k8sEventsFeatureFlagOn() {
+	enabled := m.f.IsEnabled("events")
+	if !enabled {
 		return false
 	}
 

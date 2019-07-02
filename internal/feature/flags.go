@@ -13,7 +13,7 @@ var flags = Defaults{
 }
 
 type Feature interface {
-	IsEnabled(flag string) (bool, error)
+	IsEnabled(flag string) bool
 	Enable(flag string) error
 	Disable(flag string) error
 }
@@ -36,15 +36,16 @@ type staticMapFeature struct {
 	mu    *sync.Mutex
 }
 
-func (f *staticMapFeature) IsEnabled(flag string) (bool, error) {
+// IsEnabled panics if flag does not exist
+func (f *staticMapFeature) IsEnabled(flag string) bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	enabled, ok := f.flags[flag]
 	if !ok {
-		return false, fmt.Errorf("Unknown flag: %s", flag)
+		panic("Unknown flag: " + flag)
 	}
 
-	return enabled, nil
+	return enabled
 }
 
 func (f *staticMapFeature) Enable(flag string) error {

@@ -8,16 +8,15 @@ import (
 
 func TestIsEnabledReturnsAnErrorIfKeyDoesntExist(t *testing.T) {
 	m := newStaticMapFeature(map[string]bool{})
-	enabled, err := m.IsEnabled("foo")
-	assert.EqualError(t, err, "Unknown flag: foo")
-	assert.False(t, enabled)
+	assert.Panics(t, func() {
+		m.IsEnabled("foo")
+	})
 }
 
 func TestIsEnabled(t *testing.T) {
 	m := newStaticMapFeature(map[string]bool{"foo": true})
-	enabled, err := m.IsEnabled("foo")
+	enabled := m.IsEnabled("foo")
 
-	assert.NoError(t, err)
 	assert.True(t, enabled)
 }
 
@@ -31,8 +30,7 @@ func TestEnable(t *testing.T) {
 	m := newStaticMapFeature(map[string]bool{"foo": false})
 	err := m.Enable("foo")
 	assert.NoError(t, err)
-	enabled, err := m.IsEnabled("foo")
-	assert.NoError(t, err)
+	enabled := m.IsEnabled("foo")
 	assert.True(t, enabled)
 }
 
@@ -46,7 +44,6 @@ func TestDisable(t *testing.T) {
 	m := newStaticMapFeature(map[string]bool{"foo": true})
 	err := m.Disable("foo")
 	assert.NoError(t, err)
-	enabled, err := m.IsEnabled("foo")
-	assert.NoError(t, err)
+	enabled := m.IsEnabled("foo")
 	assert.False(t, enabled)
 }

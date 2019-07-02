@@ -23,6 +23,7 @@ import (
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/engine"
+	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -120,7 +121,8 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
 	imageReaper := build.NewImageReaper(switchCli)
 	imageController := engine.NewImageController(imageReaper)
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, k8sClient, dockerComposeClient, kubeContext)
+	featureFeature := feature.ProvideFeature()
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, k8sClient, dockerComposeClient, kubeContext, featureFeature)
 	configsController := engine.NewConfigsController(tiltfileLoader, switchCli)
 	dockerComposeEventWatcher := engine.NewDockerComposeEventWatcher(dockerComposeClient)
 	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
@@ -154,7 +156,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	tiltVersionChecker := engine.NewTiltVersionChecker(githubClientFactory, timerMaker)
 	tiltAnalyticsSubscriber := engine.NewTiltAnalyticsSubscriber(analytics2)
 	clockworkClock := clockwork.NewRealClock()
-	eventWatchManager := engine.NewEventWatchManager(k8sClient, clockworkClock)
+	eventWatchManager := engine.NewEventWatchManager(k8sClient, clockworkClock, featureFeature)
 	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, imageController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, sailClient, tiltVersionChecker, tiltAnalyticsSubscriber, eventWatchManager)
 	upper := engine.NewUpper(ctx, storeStore, v2)
 	script := demo.NewScript(upper, headsUpDisplay, k8sClient, env, storeStore, branch, runtime, tiltfileLoader)
@@ -251,7 +253,8 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
 	imageReaper := build.NewImageReaper(switchCli)
 	imageController := engine.NewImageController(imageReaper)
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, k8sClient, dockerComposeClient, kubeContext)
+	featureFeature := feature.ProvideFeature()
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, k8sClient, dockerComposeClient, kubeContext, featureFeature)
 	configsController := engine.NewConfigsController(tiltfileLoader, switchCli)
 	dockerComposeEventWatcher := engine.NewDockerComposeEventWatcher(dockerComposeClient)
 	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
@@ -285,7 +288,7 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	tiltVersionChecker := engine.NewTiltVersionChecker(githubClientFactory, timerMaker)
 	tiltAnalyticsSubscriber := engine.NewTiltAnalyticsSubscriber(analytics2)
 	clockworkClock := clockwork.NewRealClock()
-	eventWatchManager := engine.NewEventWatchManager(k8sClient, clockworkClock)
+	eventWatchManager := engine.NewEventWatchManager(k8sClient, clockworkClock, featureFeature)
 	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, imageController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, sailClient, tiltVersionChecker, tiltAnalyticsSubscriber, eventWatchManager)
 	upper := engine.NewUpper(ctx, storeStore, v2)
 	threads := provideThreads(headsUpDisplay, upper, tiltBuild, sailMode)
@@ -425,7 +428,8 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics) (
 		return DownDeps{}, err
 	}
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, k8sClient, dockerComposeClient, kubeContext)
+	featureFeature := feature.ProvideFeature()
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, k8sClient, dockerComposeClient, kubeContext, featureFeature)
 	downDeps := ProvideDownDeps(tiltfileLoader, dockerComposeClient, k8sClient)
 	return downDeps, nil
 }
@@ -441,7 +445,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebURL,
 	provideWebPort,
 	provideWebDevPort, server.ProvideHeadsUpServer, assets.ProvideAssetServer, server.ProvideHeadsUpServerController, provideSailMode,
-	provideSailURL, client.SailWireSet, provideThreads, engine.NewKINDPusher,
+	provideSailURL, client.SailWireSet, provideThreads, engine.NewKINDPusher, feature.ProvideFeature,
 )
 
 type Threads struct {
