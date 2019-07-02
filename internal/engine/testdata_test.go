@@ -80,6 +80,20 @@ func NewSanchoFastBuildManifestWithCache(fixture pather, paths []string) model.M
 	return manifest
 }
 
+func NewSanchoManifestWithImageInEnvVar(f pather) model.Manifest {
+	it2 := model.NewImageTarget(container.MustParseSelector(SanchoRef.String() + "2")).WithBuildDetails(model.DockerBuild{
+		Dockerfile: SanchoDockerfile,
+		BuildPath:  f.Path(),
+	})
+	it2.MatchInEnvVars = true
+	return assembleK8sManifest(
+		model.Manifest{Name: "sancho"},
+		model.K8sTarget{YAML: testyaml.SanchoImageInEnvYAML},
+		NewSanchoDockerBuildImageTarget(f),
+		it2,
+	)
+}
+
 func NewSanchoCustomBuildManifest(fixture pather) model.Manifest {
 	return NewSanchoCustomBuildManifestWithTag(fixture, "")
 }

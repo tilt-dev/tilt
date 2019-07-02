@@ -895,6 +895,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 		iTarget := model.ImageTarget{
 			ConfigurationRef: image.configurationRef,
 			DeploymentRef:    image.deploymentRef,
+			MatchInEnvVars:   image.matchInEnvVars,
 		}.WithCachePaths(image.cachePaths)
 
 		lu := image.liveUpdate

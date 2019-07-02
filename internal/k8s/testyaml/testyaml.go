@@ -294,6 +294,8 @@ spec:
         env:
           - name: foo
             value: gcr.io/some-project-162817/sancho2
+          - name: bar
+            value: gcr.io/some-project-162817/sancho
 `
 
 const TracerYAML = `

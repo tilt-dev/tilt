@@ -16,6 +16,7 @@ type ImageTarget struct {
 	ConfigurationRef container.RefSelector
 	DeploymentRef    reference.Named
 	BuildDetails     BuildDetails
+	MatchInEnvVars   bool
 
 	cachePaths []string
 

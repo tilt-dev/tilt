@@ -9,15 +9,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/analytics"
-
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
-
 	"github.com/windmilleng/wmclient/pkg/dirs"
+	v1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 
+	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -460,6 +460,42 @@ func TestDeployUsesInjectRef(t *testing.T) {
 			assert.ElementsMatch(t, test.expectedImages, observedImages)
 		})
 	}
+}
+
+func TestDeployInjectImageEnvVar(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	manifest := NewSanchoManifestWithImageInEnvVar(f)
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	entities, err := k8s.ParseYAMLFromString(f.k8s.Yaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !assert.Equal(t, 1, len(entities)) {
+		return
+	}
+
+	d := entities[0].Obj.(*v1.Deployment)
+	if !assert.Equal(t, 1, len(d.Spec.Template.Spec.Containers)) {
+		return
+	}
+
+	c := d.Spec.Template.Spec.Containers[0]
+	// container image always gets injected
+	assert.Equal(t, "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95", c.Image)
+	expectedEnv := []corev1.EnvVar{
+		// sancho2 gets injected here because it sets match_in_env_vars in docker_build
+		{Name: "foo", Value: "gcr.io/some-project-162817/sancho2:tilt-11cd0b38bc3ceb95"},
+		// sancho does not because it doesn't
+		{Name: "bar", Value: "gcr.io/some-project-162817/sancho"},
+	}
+	assert.Equal(t, expectedEnv, c.Env)
 }
 
 type ibdFixture struct {
