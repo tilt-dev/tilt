@@ -3536,11 +3536,50 @@ k8s_yaml('foo.yaml')
 	)
 }
 
+func TestEnableFeature(t *testing.T) {
+	f := newFixture(t)
+	f.setupFoo()
+
+	f.file("Tiltfile", `enable_feature('testflag_disabled')`)
+	f.load()
+
+	f.assertFeature("testflag_disabled", true)
+}
+
+func TestDisableFeature(t *testing.T) {
+	f := newFixture(t)
+	f.setupFoo()
+
+	f.file("Tiltfile", `disable_feature('testflag_enabled')`)
+	f.load()
+
+	f.assertFeature("testflag_enabled", false)
+}
+
+func TestEnableFeatureThatDoesntExist(t *testing.T) {
+	f := newFixture(t)
+	f.setupFoo()
+
+	f.file("Tiltfile", `enable_feature('testflag')`)
+
+	f.loadErrString("Unknown feature flag: testflag")
+}
+
+func TestDisableFeatureThatDoesntExist(t *testing.T) {
+	f := newFixture(t)
+	f.setupFoo()
+
+	f.file("Tiltfile", `disable_feature('testflag')`)
+
+	f.loadErrString("Unknown feature flag: testflag")
+}
+
 type fixture struct {
 	ctx context.Context
 	t   *testing.T
 	*tempdir.TempDirFixture
-	kCli *k8s.FakeK8sClient
+	kCli    *k8s.FakeK8sClient
+	feature feature.Feature
 
 	tfl TiltfileLoader
 	an  *analytics.MemoryAnalytics
@@ -3555,7 +3594,8 @@ func newFixture(t *testing.T) *fixture {
 	an, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
 	dcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
 	kCli := k8s.NewFakeK8sClient()
-	tfl := ProvideTiltfileLoader(ta, kCli, dcc, "fake-context", feature.ProvideFeature())
+	feat := feature.ProvideFeatureForTesting(feature.Defaults{"testflag_disabled": false, "testflag_enabled": true})
+	tfl := ProvideTiltfileLoader(ta, kCli, dcc, "fake-context", feat)
 
 	r := &fixture{
 		ctx:            ctx,
@@ -3564,6 +3604,7 @@ func newFixture(t *testing.T) *fixture {
 		an:             an,
 		tfl:            tfl,
 		kCli:           kCli,
+		feature:        feat,
 	}
 	return r
 }
@@ -4055,6 +4096,10 @@ func (f *fixture) entities(y string) []k8s.K8sEntity {
 		f.t.Fatal(err)
 	}
 	return es
+}
+
+func (f *fixture) assertFeature(key string, enabled bool) {
+	assert.Equal(f.t, enabled, f.feature.IsEnabled(key))
 }
 
 type secretHelper struct {

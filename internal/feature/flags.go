@@ -22,6 +22,10 @@ func ProvideFeature() Feature {
 	return newStaticMapFeature(flags)
 }
 
+func ProvideFeatureForTesting(d Defaults) Feature {
+	return newStaticMapFeature(d)
+}
+
 func newStaticMapFeature(defaults Defaults) *staticMapFeature {
 	// copy map so we don't rely on global state
 	newMap := map[string]bool{}
@@ -42,7 +46,7 @@ func (f *staticMapFeature) IsEnabled(flag string) bool {
 	defer f.mu.Unlock()
 	enabled, ok := f.flags[flag]
 	if !ok {
-		panic("Unknown flag: " + flag)
+		panic("Unknown feature flag: " + flag)
 	}
 
 	return enabled
@@ -53,7 +57,7 @@ func (f *staticMapFeature) Enable(flag string) error {
 	defer f.mu.Unlock()
 	_, ok := f.flags[flag]
 	if !ok {
-		return fmt.Errorf("Unknown flag: %s", flag)
+		return fmt.Errorf("Unknown feature flag: %s", flag)
 	}
 
 	f.flags[flag] = true
@@ -65,7 +69,7 @@ func (f *staticMapFeature) Disable(flag string) error {
 	defer f.mu.Unlock()
 	_, ok := f.flags[flag]
 	if !ok {
-		return fmt.Errorf("Unknown flag: %s", flag)
+		return fmt.Errorf("Unknown feature flag: %s", flag)
 	}
 
 	f.flags[flag] = false
