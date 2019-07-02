@@ -23,7 +23,7 @@ import (
 
 // dcResourceSet represents a single docker-compose config file and all its associated services
 type dcResourceSet struct {
-	configPath []string
+	configPaths []string
 
 	services []*dcService
 }
@@ -31,7 +31,6 @@ type dcResourceSet struct {
 func (dc dcResourceSet) Empty() bool { return reflect.DeepEqual(dc, dcResourceSet{}) }
 
 func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var configPath string
 	var configPathsValue starlark.Value
 
 	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "configPaths", &configPathsValue)
@@ -51,11 +50,12 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		}
 	}
 	var services []*dcService
-
-	for _, path := range configPaths {
-		path = s.absPath(path)
+	absConfigPaths := make([]string, len(configPaths))
+	for i, path := range configPaths {
+		absConfigPaths[i] = s.absPath(path)
 
 	}
+	configPaths = absConfigPaths
 
 	tempServices, err := parseDCConfig(s.ctx, s.dcCli, configPaths)
 	services = append(services, tempServices...)
@@ -63,10 +63,10 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 	if !s.dc.Empty() {
-		return starlark.None, fmt.Errorf("already have a docker-compose resource declared (%s), cannot declare another (%s)", s.dc.configPath, configPath)
+		return starlark.None, fmt.Errorf("already have a docker-compose resource declared (%v), cannot declare another", s.dc.configPaths)
 	}
 
-	s.dc = dcResourceSet{configPath: configPaths, services: services}
+	s.dc = dcResourceSet{configPaths: configPaths, services: services}
 
 	return starlark.None, nil
 }
@@ -392,7 +392,9 @@ func getConfigAndServiceNames(ctx context.Context, dcc dockercompose.DockerCompo
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
+
 		configOut, err := dcc.Config(ctx, configPath)
+
 		if err != nil {
 			return err
 		}

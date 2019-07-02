@@ -2044,6 +2044,7 @@ func TestDockerComposeUp(t *testing.T) {
 	assert.Equal(t, server.DockerComposeTarget().ID(), call.dc().ID())
 }
 
+//TODO (maria) tests for dockercompose mulltiple files
 func TestDockerComposeRedeployFromFileChange(t *testing.T) {
 	f := newTestFixture(t)
 	_, m := f.setupDCFixture()

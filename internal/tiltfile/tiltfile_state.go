@@ -955,7 +955,7 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 	var result []model.Manifest
 
 	for _, svc := range dc.services {
-		m, configFiles, err := s.dcServiceToManifest(svc, dc.configPath)
+		m, configFiles, err := s.dcServiceToManifest(svc, dc.configPaths)
 		if err != nil {
 			return nil, err
 		}
@@ -977,9 +977,9 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 		// e.g. dc.yml specifies one Dockerfile but the imageTarget specifies another
 		s.configFiles = sliceutils.DedupedAndSorted(append(s.configFiles, configFiles...))
 	}
-	if dc.configPath != nil {
+	if dc.configPaths != nil {
 
-		s.configFiles = sliceutils.DedupedAndSorted(append(s.configFiles, dc.configPath...))
+		s.configFiles = sliceutils.DedupedAndSorted(append(s.configFiles, dc.configPaths...))
 	}
 
 	return result, nil
