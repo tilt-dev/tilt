@@ -15,6 +15,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -34,6 +35,7 @@ type tiltfileState struct {
 	dcCli           dockercompose.DockerComposeClient
 	kubeContext     k8s.KubeContext
 	privateRegistry container.Registry
+	f               feature.Feature
 
 	// added to during execution
 	configFiles        []string
@@ -88,7 +90,7 @@ const (
 	k8sResourceAssemblyVersionReasonExplicit
 )
 
-func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, filename string, kubeContext k8s.KubeContext, privateRegistry container.Registry) *tiltfileState {
+func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, filename string, kubeContext k8s.KubeContext, privateRegistry container.Registry, f feature.Feature) *tiltfileState {
 	lp := localPath{path: filename}
 	s := &tiltfileState{
 		ctx:                        ctx,
@@ -107,6 +109,7 @@ func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClie
 		k8sResourceAssemblyVersion: 2,
 		k8sResourceOptions:         make(map[string]k8sResourceOptions),
 		triggerMode:                TriggerModeAuto,
+		f:                          f,
 	}
 	s.filename = s.maybeAttachGitRepo(lp, filepath.Dir(lp.path))
 	return s
@@ -171,6 +174,10 @@ const (
 	triggerModeN       = "trigger_mode"
 	triggerModeAutoN   = "TRIGGER_MODE_AUTO"
 	triggerModeManualN = "TRIGGER_MODE_MANUAL"
+
+	// feature flags
+	enableFeatureN  = "enable_feature"
+	disableFeatureN = "disable_feature"
 
 	// other functions
 	failN = "fail"
@@ -289,6 +296,9 @@ func (s *tiltfileState) predeclared() starlark.StringDict {
 	addBuiltin(r, syncN, s.liveUpdateSync)
 	addBuiltin(r, runN, s.liveUpdateRun)
 	addBuiltin(r, restartContainerN, s.liveUpdateRestartContainer)
+
+	addBuiltin(r, enableFeatureN, s.enableFeature)
+	addBuiltin(r, disableFeatureN, s.disableFeature)
 
 	s.predeclaredMap = r
 

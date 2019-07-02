@@ -82,6 +82,7 @@ func ProvideTiltfileLoader(
 		kCli:        kCli,
 		dcCli:       dcCli,
 		kubeContext: kubeContext,
+		f:           f,
 	}
 }
 
@@ -113,7 +114,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	}
 
 	privateRegistry := tfl.kCli.PrivateRegistry(ctx)
-	s := newTiltfileState(ctx, tfl.dcCli, absFilename, tfl.kubeContext, privateRegistry)
+	s := newTiltfileState(ctx, tfl.dcCli, absFilename, tfl.kubeContext, privateRegistry, tfl.f)
 	printedWarnings := false
 	defer func() {
 		tlr.ConfigFiles = s.configFiles

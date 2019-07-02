@@ -23,7 +23,7 @@ func TestIsEnabled(t *testing.T) {
 func TestEnableUnknownKey(t *testing.T) {
 	m := newStaticMapFeature(map[string]bool{})
 	err := m.Enable("foo")
-	assert.EqualError(t, err, "Unknown flag: foo")
+	assert.EqualError(t, err, "Unknown feature flag: foo")
 }
 
 func TestEnable(t *testing.T) {
@@ -37,7 +37,7 @@ func TestEnable(t *testing.T) {
 func TestDisableUnknownKey(t *testing.T) {
 	m := newStaticMapFeature(map[string]bool{})
 	err := m.Disable("foo")
-	assert.EqualError(t, err, "Unknown flag: foo")
+	assert.EqualError(t, err, "Unknown feature flag: foo")
 }
 
 func TestDisable(t *testing.T) {
