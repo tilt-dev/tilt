@@ -495,15 +495,9 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 	var imageJSONPath starlark.Value
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"kind", &kind,
-		"image_json_path", &imageJSONPath,
+		"image_json_path?", &imageJSONPath,
 		"api_version?", &apiVersion,
 	); err != nil {
-		return nil, err
-	}
-
-	values := starlarkValueOrSequenceToSlice(imageJSONPath)
-	paths, err := starlarkValuesToJSONPaths(values)
-	if err != nil {
 		return nil, err
 	}
 
@@ -512,7 +506,17 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 		return nil, err
 	}
 
-	s.k8sImageJSONPaths[k] = paths
+	if imageJSONPath == nil {
+		s.workloadTypes = append(s.workloadTypes, k)
+	} else {
+		values := starlarkValueOrSequenceToSlice(imageJSONPath)
+		paths, err := starlarkValuesToJSONPaths(values)
+		if err != nil {
+			return nil, err
+		}
+
+		s.k8sImageJSONPaths[k] = paths
+	}
 
 	return starlark.None, nil
 }

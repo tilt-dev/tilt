@@ -51,6 +51,8 @@ type tiltfileState struct {
 
 	// JSON paths to images in k8s YAML (other than Container specs)
 	k8sImageJSONPaths map[k8sObjectSelector][]k8s.JSONPath
+	// objects of these types are considered workloads, whether or not they have an image
+	workloadTypes []k8sObjectSelector
 
 	k8sResourceAssemblyVersion       int
 	k8sResourceAssemblyVersionReason k8sResourceAssemblyVersionReason
@@ -528,6 +530,12 @@ func (s *tiltfileState) envVarImages() []container.RefSelector {
 }
 
 func (s *tiltfileState) isWorkload(e k8s.K8sEntity) (bool, error) {
+	for _, sel := range s.workloadTypes {
+		if sel.matches(e) {
+			return true, nil
+		}
+	}
+
 	images, err := e.FindImages(s.imageJSONPaths(e), s.envVarImages())
 	if err != nil {
 		return false, err
