@@ -27,7 +27,7 @@ func (s *tiltfileState) newGitRepo(path string) (*gitRepo, error) {
 	absPath := s.absPath(path)
 	_, err := os.Stat(absPath)
 	if err != nil {
-		return nil, fmt.Errorf("Reading path %s: %v", path, err)
+		return nil, fmt.Errorf("Reading paths %s: %v", path, err)
 	}
 
 	if _, err := os.Stat(filepath.Join(absPath, ".git")); os.IsNotExist(err) {
@@ -39,7 +39,7 @@ func (s *tiltfileState) newGitRepo(path string) (*gitRepo, error) {
 
 func (s *tiltfileState) localGitRepo(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path string
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "paths", &path)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (*gitRepo) Hash() (uint32, error) {
 
 func (gr *gitRepo) Attr(name string) (starlark.Value, error) {
 	switch name {
-	case "path":
+	case "paths":
 		return starlark.NewBuiltin(name, gr.path), nil
 	default:
 		return nil, nil
@@ -78,12 +78,12 @@ func (gr *gitRepo) Attr(name string) (starlark.Value, error) {
 }
 
 func (gr *gitRepo) AttrNames() []string {
-	return []string{"path"}
+	return []string{"paths"}
 }
 
 func (gr *gitRepo) path(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path string
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "paths", &path)
 	if err != nil {
 		return nil, err
 	}
@@ -184,14 +184,14 @@ func (s *tiltfileState) readFile(p localPath) ([]byte, error) {
 
 func (s *tiltfileState) watchFile(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path starlark.Value
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "paths", &path)
 	if err != nil {
 		return nil, err
 	}
 
 	p, err := s.localPathFromSkylarkValue(path)
 	if err != nil {
-		return nil, fmt.Errorf("invalid type for path: %v", err)
+		return nil, fmt.Errorf("invalid type for paths: %v", err)
 	}
 
 	s.recordConfigFile(p.path)
@@ -202,14 +202,14 @@ func (s *tiltfileState) watchFile(thread *starlark.Thread, fn *starlark.Builtin,
 func (s *tiltfileState) skylarkReadFile(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path starlark.Value
 	defaultReturn := ""
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path, "default?", &defaultReturn)
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "paths", &path, "default?", &defaultReturn)
 	if err != nil {
 		return nil, err
 	}
 
 	p, err := s.localPathFromSkylarkValue(path)
 	if err != nil {
-		return nil, fmt.Errorf("invalid type for path: %v", err)
+		return nil, fmt.Errorf("invalid type for paths: %v", err)
 	}
 
 	bs, err := s.readFile(p)
@@ -302,14 +302,14 @@ func (s *tiltfileState) execLocalCmdArgv(argv ...string) (string, error) {
 
 func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path starlark.Value
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "paths", &path)
 	if err != nil {
 		return nil, err
 	}
 
 	kustomizePath, err := s.localPathFromSkylarkValue(path)
 	if err != nil {
-		return nil, fmt.Errorf("Argument 0 (path): %v", err)
+		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
 
 	cmd := fmt.Sprintf("kustomize build %s", path)
@@ -330,14 +330,14 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 
 func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path starlark.Value
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path)
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "paths", &path)
 	if err != nil {
 		return nil, err
 	}
 
 	localPath, err := s.localPathFromSkylarkValue(path)
 	if err != nil {
-		return nil, fmt.Errorf("Argument 0 (path): %v", err)
+		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
 
 	templates, err := ioutil.ReadDir(filepath.Join(localPath.path, "templates"))
@@ -385,7 +385,7 @@ func (s *tiltfileState) listdir(thread *starlark.Thread, fn *starlark.Builtin, a
 
 	localPath, err := s.localPathFromSkylarkValue(dir)
 	if err != nil {
-		return nil, fmt.Errorf("Argument 0 (path): %v", err)
+		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
 	s.recordConfigFile(localPath.path)
 	var files []string
@@ -415,13 +415,13 @@ func (s *tiltfileState) listdir(thread *starlark.Thread, fn *starlark.Builtin, a
 func (s *tiltfileState) readYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path starlark.String
 	var defaultValue starlark.Value
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path, "default?", &defaultValue); err != nil {
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "paths", &path, "default?", &defaultValue); err != nil {
 		return nil, err
 	}
 
 	localPath, err := s.localPathFromSkylarkValue(path)
 	if err != nil {
-		return nil, fmt.Errorf("Argument 0 (path): %v", err)
+		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
 
 	contents, err := s.readFile(localPath)
@@ -468,13 +468,13 @@ func (s *tiltfileState) decodeJSON(thread *starlark.Thread, fn *starlark.Builtin
 func (s *tiltfileState) readJson(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path starlark.String
 	var defaultValue starlark.Value
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &path, "default?", &defaultValue); err != nil {
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "paths", &path, "default?", &defaultValue); err != nil {
 		return nil, err
 	}
 
 	localPath, err := s.localPathFromSkylarkValue(path)
 	if err != nil {
-		return nil, fmt.Errorf("Argument 0 (path): %v", err)
+		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
 
 	contents, err := s.readFile(localPath)

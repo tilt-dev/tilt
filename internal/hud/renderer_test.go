@@ -580,7 +580,7 @@ func TestDockerComposeUpExpanded(t *testing.T) {
 		Resources: []view.Resource{
 			{
 				Name:         "snack",
-				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusUp, testCID, model.NewLog("hellllo"), now.Add(-5*time.Second)),
+				ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, dockercompose.StatusUp, testCID, model.NewLog("hellllo"), now.Add(-5*time.Second)),
 				Endpoints:    []string{"http://localhost:3000"},
 				CurrentBuild: model.BuildRecord{
 					StartTime: now.Add(-5 * time.Second),
@@ -602,7 +602,7 @@ func TestStatusBarDCRebuild(t *testing.T) {
 		Resources: []view.Resource{
 			{
 				Name:         "snack",
-				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusDown, testCID, model.NewLog("hellllo"), now.Add(-5*time.Second)),
+				ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, dockercompose.StatusDown, testCID, model.NewLog("hellllo"), now.Add(-5*time.Second)),
 				CurrentBuild: model.BuildRecord{
 					StartTime: now.Add(-5 * time.Second),
 					Reason:    model.BuildReasonFlagChangedFiles,
@@ -623,7 +623,7 @@ func TestDetectDCCrashExpanded(t *testing.T) {
 		Resources: []view.Resource{
 			{
 				Name:         "snack",
-				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusCrash, testCID, model.NewLog("hi im a crash"), now.Add(-5*time.Second)),
+				ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, dockercompose.StatusCrash, testCID, model.NewLog("hi im a crash"), now.Add(-5*time.Second)),
 			},
 		},
 	}
@@ -640,7 +640,7 @@ func TestDetectDCCrashNotExpanded(t *testing.T) {
 		Resources: []view.Resource{
 			{
 				Name:         "snack",
-				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusCrash, testCID, model.NewLog("hi im a crash"), now.Add(-5*time.Second)),
+				ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, dockercompose.StatusCrash, testCID, model.NewLog("hi im a crash"), now.Add(-5*time.Second)),
 			},
 		},
 	}
@@ -657,7 +657,7 @@ func TestDetectDCCrashAutoExpand(t *testing.T) {
 		Resources: []view.Resource{
 			{
 				Name:         "snack",
-				ResourceInfo: view.NewDCResourceInfo("foo", dockercompose.StatusCrash, testCID, model.NewLog("hi im a crash"), now.Add(-5*time.Second)),
+				ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, dockercompose.StatusCrash, testCID, model.NewLog("hi im a crash"), now.Add(-5*time.Second)),
 			},
 		},
 	}

@@ -72,7 +72,7 @@ func TestDockerComposeManifest(t *testing.T) {
 	f.load("foo")
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	f.assertDcManifest("foo",
-		dcConfigPath(configPath),
+		dcConfigPath([]string{configPath}),
 		dcYAMLRaw(f.simpleConfigFooYAML()),
 		dcDfRaw(simpleDockerfile),
 		dcPublishedPorts(12312),
@@ -96,7 +96,7 @@ services:
 	f.load("bar")
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	f.assertDcManifest("bar",
-		dcConfigPath(configPath),
+		dcConfigPath([]string{configPath}),
 		dcYAMLRaw("image: redis:alpine"),
 		dcDfRaw(""),
 		// TODO(maia): assert m.tiltFilename
@@ -127,7 +127,7 @@ services:
 	f.load("baz")
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	f.assertDcManifest("baz",
-		dcConfigPath(configPath),
+		dcConfigPath([]string{configPath}),
 		dcYAMLRaw(dcYAML),
 		dcDfRaw(simpleDockerfile),
 		// TODO(maia): assert m.tiltFilename
@@ -184,7 +184,7 @@ services:
 	f.file("Tiltfile", fmt.Sprintf("docker_compose('%s')", configPath))
 
 	f.load("foo")
-	f.assertDcManifest("foo", dcConfigPath(configPath))
+	f.assertDcManifest("foo", dcConfigPath([]string{configPath}))
 }
 
 func TestDockerComposeManifestComputesLocalPaths(t *testing.T) {
@@ -204,7 +204,7 @@ RUN echo hi`
 	f.load("foo")
 	configPath := f.JoinPath("docker-compose.yml")
 	f.assertDcManifest("foo",
-		dcConfigPath(configPath),
+		dcConfigPath([]string{configPath}),
 		dcYAMLRaw(f.simpleConfigFooYAML()),
 		dcDfRaw(df),
 		dcLocalPaths([]string{f.JoinPath("foo")}),
@@ -239,7 +239,7 @@ services:
 	f.load("foo")
 	configPath := f.JoinPath("foo/docker-compose.yml")
 	f.assertDcManifest("foo",
-		dcConfigPath(configPath),
+		dcConfigPath([]string{configPath}),
 		dcYAMLRaw(f.simpleConfigFooYAML()),
 		dcDfRaw(df),
 		dcLocalPaths([]string{f.JoinPath("foo")}),
@@ -324,7 +324,7 @@ dc_resource('foo', 'gcr.io/foo')
 	assert.True(t, iTarget.AnyLiveUpdateInfo().Empty())
 
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
-	assert.Equal(t, m.DockerComposeTarget().ConfigPath, configPath)
+	assert.Equal(t, m.DockerComposeTarget().ConfigPaths, []string{configPath})
 }
 
 // I.e. make sure that we handle de/normalization between `fooimage` <--> `docker.io/library/fooimage`
@@ -346,7 +346,7 @@ dc_resource('foo', 'fooimage')
 	assert.False(t, m.ImageTargetAt(0).IsFastBuild())
 
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
-	assert.Equal(t, m.DockerComposeTarget().ConfigPath, configPath)
+	assert.Equal(t, m.DockerComposeTarget().ConfigPaths, []string{configPath})
 }
 
 func TestDockerComposeWithFastBuild(t *testing.T) {
@@ -357,7 +357,7 @@ func TestDockerComposeWithFastBuild(t *testing.T) {
 	f.file("docker-compose.yml", simpleConfig)
 	f.file("Tiltfile", `repo = local_git_repo('.')
 fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add(repo.path('foo'), 'src/') \
+  .add(repo.paths('foo'), 'src/') \
   .run("echo hi")
 docker_compose('docker-compose.yml')
 dc_resource('foo', 'gcr.io/foo')
@@ -368,7 +368,7 @@ dc_resource('foo', 'gcr.io/foo')
 		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi"), hotReload(false)))
 
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
-	assert.Equal(t, m.DockerComposeTarget().ConfigPath, configPath)
+	assert.Equal(t, m.DockerComposeTarget().ConfigPaths, []string{configPath})
 }
 
 func TestMultipleDockerComposeWithDockerBuild(t *testing.T) {
@@ -396,8 +396,8 @@ dc_resource('bar', 'gcr.io/bar')
 	assert.False(t, foo.ImageTargetAt(0).IsFastBuild())
 
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
-	assert.Equal(t, foo.DockerComposeTarget().ConfigPath, configPath)
-	assert.Equal(t, bar.DockerComposeTarget().ConfigPath, configPath)
+	assert.Equal(t, foo.DockerComposeTarget().ConfigPaths, []string{configPath})
+	assert.Equal(t, bar.DockerComposeTarget().ConfigPaths, []string{configPath})
 }
 
 func TestMultipleDockerComposeWithDockerBuildImageNames(t *testing.T) {
@@ -430,8 +430,8 @@ docker_compose('docker-compose.yml')
 	assert.False(t, foo.ImageTargetAt(0).IsFastBuild())
 
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
-	assert.Equal(t, foo.DockerComposeTarget().ConfigPath, configPath)
-	assert.Equal(t, bar.DockerComposeTarget().ConfigPath, configPath)
+	assert.Equal(t, foo.DockerComposeTarget().ConfigPaths, []string{configPath})
+	assert.Equal(t, bar.DockerComposeTarget().ConfigPaths, []string{configPath})
 }
 
 func TestDCImageRefSuggestion(t *testing.T) {
@@ -473,8 +473,8 @@ dc_resource('foo', img_name)
 	assert.Empty(t, bar.ImageTargets)
 
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
-	assert.Equal(t, foo.DockerComposeTarget().ConfigPath, configPath)
-	assert.Equal(t, bar.DockerComposeTarget().ConfigPath, configPath)
+	assert.Equal(t, foo.DockerComposeTarget().ConfigPaths, []string{configPath})
+	assert.Equal(t, bar.DockerComposeTarget().ConfigPaths, []string{configPath})
 }
 
 func TestDockerComposeResourceNoImageMatch(t *testing.T) {
@@ -501,7 +501,7 @@ func (f *fixture) assertDcManifest(name string, opts ...interface{}) model.Manif
 	for _, opt := range opts {
 		switch opt := opt.(type) {
 		case dcConfigPathHelper:
-			assert.Equal(f.t, opt.path, dcInfo.ConfigPath)
+			assert.Equal(f.t, opt.paths, dcInfo.ConfigPaths)
 		case dcLocalPathsHelper:
 			assert.ElementsMatch(f.t, opt.paths, dcInfo.LocalPaths())
 		case dcYAMLRawHelper:
@@ -518,11 +518,11 @@ func (f *fixture) assertDcManifest(name string, opts ...interface{}) model.Manif
 }
 
 type dcConfigPathHelper struct {
-	path string
+	paths []string
 }
 
-func dcConfigPath(path string) dcConfigPathHelper {
-	return dcConfigPathHelper{path}
+func dcConfigPath(paths []string) dcConfigPathHelper {
+	return dcConfigPathHelper{paths}
 }
 
 type dcYAMLRawHelper struct {

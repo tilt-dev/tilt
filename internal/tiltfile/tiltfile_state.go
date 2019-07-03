@@ -857,7 +857,7 @@ func (s *tiltfileState) validateLiveUpdate(iTarget model.ImageTarget, g model.Ta
 		return err
 	}
 
-	// Verify that all a) sync step src's and b) fall_back_on files are children of a watched path.
+	// Verify that all a) sync step src's and b) fall_back_on files are children of a watched paths.
 	// (If not, we'll never even get "file changed" events for them--they're nonsensical input, throw an error.)
 	for _, sync := range lu.SyncSteps() {
 		if !ospath.IsChildOfOne(watchedPaths, sync.LocalPath) {
@@ -869,7 +869,7 @@ func (s *tiltfileState) validateLiveUpdate(iTarget model.ImageTarget, g model.Ta
 	for _, path := range lu.FallBackOnFiles().Paths {
 		absPath := s.absPath(path)
 		if !ospath.IsChildOfOne(watchedPaths, absPath) {
-			return fmt.Errorf("fall_back_on path '%s' is not a child of any watched filepaths (%v)",
+			return fmt.Errorf("fall_back_on paths '%s' is not a child of any watched filepaths (%v)",
 				absPath, watchedPaths)
 		}
 
@@ -963,8 +963,9 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 
 func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) {
 	var result []model.Manifest
+
 	for _, svc := range dc.services {
-		m, configFiles, err := s.dcServiceToManifest(svc, dc.configPath)
+		m, configFiles, err := s.dcServiceToManifest(svc, dc.configPaths)
 		if err != nil {
 			return nil, err
 		}
@@ -986,9 +987,11 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 		// e.g. dc.yml specifies one Dockerfile but the imageTarget specifies another
 		s.configFiles = sliceutils.DedupedAndSorted(append(s.configFiles, configFiles...))
 	}
-	if dc.configPath != "" {
-		s.configFiles = sliceutils.DedupedAndSorted(append(s.configFiles, dc.configPath))
+	if len(dc.configPaths) != 0 {
+
+		s.configFiles = sliceutils.DedupedAndSorted(append(s.configFiles, dc.configPaths...))
 	}
+
 	return result, nil
 }
 

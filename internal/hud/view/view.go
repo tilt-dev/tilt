@@ -17,16 +17,16 @@ type ResourceInfoView interface {
 }
 
 type DCResourceInfo struct {
-	ConfigPath      string
+	ConfigPaths     []string
 	ContainerStatus dockercompose.Status
 	ContainerID     container.ID
 	Log             model.Log
 	StartTime       time.Time
 }
 
-func NewDCResourceInfo(configPath string, status dockercompose.Status, cID container.ID, log model.Log, startTime time.Time) DCResourceInfo {
+func NewDCResourceInfo(configPaths []string, status dockercompose.Status, cID container.ID, log model.Log, startTime time.Time) DCResourceInfo {
 	return DCResourceInfo{
-		ConfigPath:      configPath,
+		ConfigPaths:     configPaths,
 		ContainerStatus: status,
 		ContainerID:     cID,
 		Log:             log,

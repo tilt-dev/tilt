@@ -163,7 +163,7 @@ spec:
     - host: {{ $host }}
       http:
         paths:
-          - path: /
+          - paths: /
             backend:
               serviceName: {{ $serviceName }}
               servicePort: {{ $servicePort }}

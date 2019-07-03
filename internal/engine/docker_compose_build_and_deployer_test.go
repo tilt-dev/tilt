@@ -21,9 +21,9 @@ import (
 )
 
 var expectedContainer = container.ID("dc-cont")
-var confPath = "/whales/are/big/dc.yml"
+var confPath = []string{"/whales/are/big/dc.yml"}
 var dcName = model.TargetName("MobyDick")
-var dcTarg = model.DockerComposeTarget{Name: dcName, ConfigPath: confPath}
+var dcTarg = model.DockerComposeTarget{Name: dcName, ConfigPaths: confPath}
 
 var imgRef = "gcr.io/some/image"
 var imgTarg = model.NewImageTarget(container.MustParseSelector(imgRef)).

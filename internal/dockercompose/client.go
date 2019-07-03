@@ -19,13 +19,13 @@ import (
 )
 
 type DockerComposeClient interface {
-	Up(ctx context.Context, configPath string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error
-	Down(ctx context.Context, configPath string, stdout, stderr io.Writer) error
-	StreamLogs(ctx context.Context, configPath string, serviceName model.TargetName) (io.ReadCloser, error)
-	StreamEvents(ctx context.Context, configPath string) (<-chan string, error)
-	Config(ctx context.Context, configPath string) (string, error)
-	Services(ctx context.Context, configPath string) (string, error)
-	ContainerID(ctx context.Context, configPath string, serviceName model.TargetName) (container.ID, error)
+	Up(ctx context.Context, configPaths []string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error
+	Down(ctx context.Context, configPaths []string, stdout, stderr io.Writer) error
+	StreamLogs(ctx context.Context, configPaths []string, serviceName model.TargetName) (io.ReadCloser, error)
+	StreamEvents(ctx context.Context, configPaths []string) (<-chan string, error)
+	Config(ctx context.Context, configPaths []string) (string, error)
+	Services(ctx context.Context, configPaths []string) (string, error)
+	ContainerID(ctx context.Context, configPaths []string, serviceName model.TargetName) (container.ID, error)
 }
 
 type cmdDCClient struct {
@@ -40,13 +40,18 @@ func NewDockerComposeClient(env docker.LocalEnv) DockerComposeClient {
 	}
 }
 
-func (c *cmdDCClient) Up(ctx context.Context, configPath string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error {
+func (c *cmdDCClient) Up(ctx context.Context, configPaths []string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error {
 	var args []string
 	if logger.Get(ctx).Level() >= logger.VerboseLvl {
 		args = []string{"--verbose"}
 	}
 
-	args = append(args, "-f", configPath, "up", "--no-deps", "-d")
+	for _, config := range configPaths {
+		args = append(args, "-f", config)
+	}
+
+	args = append(args, "up", "--no-deps", "-d")
+
 	if shouldBuild {
 		args = append(args, "--build")
 	} else {
@@ -65,12 +70,16 @@ func (c *cmdDCClient) Up(ctx context.Context, configPath string, serviceName mod
 	return FormatError(cmd, nil, cmd.Run())
 }
 
-func (c *cmdDCClient) Down(ctx context.Context, configPath string, stdout, stderr io.Writer) error {
+func (c *cmdDCClient) Down(ctx context.Context, configPaths []string, stdout, stderr io.Writer) error {
 	var args []string
 	if logger.Get(ctx).Level() >= logger.VerboseLvl {
 		args = []string{"--verbose"}
 	}
-	args = append(args, "-f", configPath, "down")
+	for _, config := range configPaths {
+		args = append(args, "-f", config)
+	}
+
+	args = append(args, "down")
 	cmd := c.dcCommand(ctx, args)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
@@ -83,10 +92,14 @@ func (c *cmdDCClient) Down(ctx context.Context, configPath string, stdout, stder
 	return nil
 }
 
-func (c *cmdDCClient) StreamLogs(ctx context.Context, configPath string, serviceName model.TargetName) (io.ReadCloser, error) {
+func (c *cmdDCClient) StreamLogs(ctx context.Context, configPaths []string, serviceName model.TargetName) (io.ReadCloser, error) {
 	// TODO(maia): --since time
 	// (may need to implement with `docker log <cID>` instead since `d-c log` doesn't support `--since`
-	args := []string{"-f", configPath, "logs", "-f", "-t", serviceName.String()}
+	var args []string
+	for _, config := range configPaths {
+		args = append(args, "-f", config)
+	}
+	args = append(args, "logs", "-f", "-t", serviceName.String())
 	cmd := c.dcCommand(ctx, args)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -112,10 +125,14 @@ func (c *cmdDCClient) StreamLogs(ctx context.Context, configPath string, service
 	return stdout, nil
 }
 
-func (c *cmdDCClient) StreamEvents(ctx context.Context, configPath string) (<-chan string, error) {
+func (c *cmdDCClient) StreamEvents(ctx context.Context, configPaths []string) (<-chan string, error) {
 	ch := make(chan string)
 
-	args := []string{"-f", configPath, "events", "--json"}
+	var args []string
+	for _, config := range configPaths {
+		args = append(args, "-f", config)
+	}
+	args = append(args, "events", "--json")
 	cmd := c.dcCommand(ctx, args)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -146,16 +163,16 @@ func (c *cmdDCClient) StreamEvents(ctx context.Context, configPath string) (<-ch
 	return ch, nil
 }
 
-func (c *cmdDCClient) Config(ctx context.Context, configPath string) (string, error) {
-	return c.dcOutput(ctx, configPath, "config")
+func (c *cmdDCClient) Config(ctx context.Context, configPaths []string) (string, error) {
+	return c.dcOutput(ctx, configPaths, "config")
 }
 
-func (c *cmdDCClient) Services(ctx context.Context, configPath string) (string, error) {
-	return c.dcOutput(ctx, configPath, "config", "--services")
+func (c *cmdDCClient) Services(ctx context.Context, configPaths []string) (string, error) {
+	return c.dcOutput(ctx, configPaths, "config", "--services")
 }
 
-func (c *cmdDCClient) ContainerID(ctx context.Context, configPath string, serviceName model.TargetName) (container.ID, error) {
-	id, err := c.dcOutput(ctx, configPath, "ps", "-q", serviceName.String())
+func (c *cmdDCClient) ContainerID(ctx context.Context, configPaths []string, serviceName model.TargetName) (container.ID, error) {
+	id, err := c.dcOutput(ctx, configPaths, "ps", "-q", serviceName.String())
 	if err != nil {
 		return container.ID(""), err
 	}
@@ -169,8 +186,13 @@ func (c *cmdDCClient) dcCommand(ctx context.Context, args []string) *exec.Cmd {
 	return cmd
 }
 
-func (c *cmdDCClient) dcOutput(ctx context.Context, configPath string, args ...string) (string, error) {
-	args = append([]string{"-f", configPath}, args...)
+func (c *cmdDCClient) dcOutput(ctx context.Context, configPaths []string, args ...string) (string, error) {
+
+	var tempArgs []string
+	for _, config := range configPaths {
+		tempArgs = append(tempArgs, "-f", config)
+	}
+	args = append(tempArgs, args...)
 	cmd := c.dcCommand(ctx, args)
 
 	output, err := cmd.Output()

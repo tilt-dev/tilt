@@ -704,7 +704,7 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 	}
 
 	if dcState, ok := mt.State.ResourceState.(dockercompose.State); ok {
-		return view.NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPath, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
+		return view.NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPaths, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
 	} else {
 		pod := mt.State.MostRecentPod()
 		return view.K8sResourceInfo{
@@ -723,11 +723,11 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 // docker-compose manifests on this EngineState.
 // NOTE(maia): current assumption is only one d-c.yaml per run, so we take the
 // path from the first d-c manifest we see.
-func (s EngineState) DockerComposeConfigPath() string {
+func (s EngineState) DockerComposeConfigPath() []string {
 	for _, mt := range s.ManifestTargets {
 		if mt.Manifest.IsDC() {
-			return mt.Manifest.DockerComposeTarget().ConfigPath
+			return mt.Manifest.DockerComposeTarget().ConfigPaths
 		}
 	}
-	return ""
+	return []string{}
 }

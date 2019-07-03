@@ -33,16 +33,16 @@ func (w *DockerComposeEventWatcher) OnChange(ctx context.Context, st store.RStor
 	}
 
 	state := st.RLockState()
-	configPath := state.DockerComposeConfigPath()
+	configPaths := state.DockerComposeConfigPath()
 	st.RUnlockState()
 
-	if configPath == "" {
+	if len(configPaths) == 0 {
 		// No DC manifests to watch
 		return
 	}
 
 	w.watching = true
-	ch, err := w.startWatch(ctx, configPath)
+	ch, err := w.startWatch(ctx, configPaths)
 	if err != nil {
 		err = errors.Wrap(err, "Subscribing to docker-compose events")
 		st.Dispatch(NewErrorAction(err))
@@ -52,7 +52,7 @@ func (w *DockerComposeEventWatcher) OnChange(ctx context.Context, st store.RStor
 	go dispatchDockerComposeEventLoop(ctx, ch, st)
 }
 
-func (w *DockerComposeEventWatcher) startWatch(ctx context.Context, configPath string) (<-chan string, error) {
+func (w *DockerComposeEventWatcher) startWatch(ctx context.Context, configPath []string) (<-chan string, error) {
 	return w.dcc.StreamEvents(ctx, configPath)
 }
 

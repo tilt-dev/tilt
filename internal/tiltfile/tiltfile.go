@@ -107,7 +107,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	absFilename, err := ospath.RealAbs(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return TiltfileLoadResult{ConfigFiles: []string{filename}}, fmt.Errorf("No Tiltfile found at path '%s'. Check out https://docs.tilt.dev/tutorial.html", filename)
+			return TiltfileLoadResult{ConfigFiles: []string{filename}}, fmt.Errorf("No Tiltfile found at paths '%s'. Check out https://docs.tilt.dev/tutorial.html", filename)
 		}
 		absFilename, _ = filepath.Abs(filename)
 		return TiltfileLoadResult{ConfigFiles: []string{absFilename}}, err
