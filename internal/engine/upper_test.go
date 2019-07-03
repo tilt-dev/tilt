@@ -2423,6 +2423,25 @@ func TestSetAnalyticsOpt(t *testing.T) {
 	assert.Equal(t, []analytics.Opt{analytics.OptOut, analytics.OptIn}, f.opter.Calls())
 }
 
+func TestFeatureFlagsStoredOnState(t *testing.T) {
+	f := newTestFixture(t)
+
+	f.Start([]model.Manifest{}, true)
+	time.Sleep(10 * time.Millisecond)
+
+	f.store.Dispatch(ConfigsReloadedAction{Manifests: []model.Manifest{}, Features: map[string]bool{"foo": true}})
+
+	f.WaitUntil("feature is enabled", func(state store.EngineState) bool {
+		return state.Features["foo"] == true
+	})
+
+	f.store.Dispatch(ConfigsReloadedAction{Manifests: []model.Manifest{}, Features: map[string]bool{"foo": false}})
+
+	f.WaitUntil("feature is disabled", func(state store.EngineState) bool {
+		return state.Features["foo"] == false
+	})
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex

@@ -156,6 +156,7 @@ type ConfigsReloadedAction struct {
 	FinishTime time.Time
 	Err        error
 	Warnings   []string
+	Features   map[string]bool
 }
 
 func (ConfigsReloadedAction) Action() {}
