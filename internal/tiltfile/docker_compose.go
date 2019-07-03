@@ -358,6 +358,7 @@ func serviceNames(ctx context.Context, dcc dockercompose.DockerComposeClient, co
 
 	for _, name := range serviceNames {
 		if name == "" {
+			continue
 		}
 		result = append(result, name)
 	}
