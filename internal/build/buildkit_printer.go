@@ -3,7 +3,9 @@ package build
 import (
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
+	"time"
 
 	digest "github.com/opencontainers/go-digest"
 
@@ -17,17 +19,22 @@ type buildkitPrinter struct {
 }
 
 type vertex struct {
-	digest     digest.Digest
-	name       string
-	error      string
-	started    bool
-	completed  bool
-	cmdPrinted bool
+	digest          digest.Digest
+	name            string
+	error           string
+	started         bool
+	completed       bool
+	startPrinted    bool
+	completePrinted bool
+	cached          bool
+	duration        time.Duration
 }
 
 const cmdPrefix = "/bin/sh -c "
 const internalPrefix = "[internal]"
 const buildPrefix = "    ╎ "
+
+var stageNameRegexp = regexp.MustCompile("^\\[.+\\]")
 
 // TODO(nick): Delete isShellRun() and do this all differently.
 // We shouldn't try to do this until we have a test framework for
@@ -42,6 +49,17 @@ func (v *vertex) isInternal() bool {
 
 func (v *vertex) isError() bool {
 	return len(v.error) > 0
+}
+
+func (v *vertex) stageName() string {
+	match := stageNameRegexp.FindString(v.name)
+	if match == "" {
+		// If we couldn't find a match, just return the whole
+		// vertex name, so that the user has some hope of figuring out
+		// what went wrong.
+		return v.name
+	}
+	return match
 }
 
 type vertexAndLogs struct {
@@ -68,6 +86,8 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) e
 		if vl, ok := b.vData[v.digest]; ok {
 			vl.vertex.started = v.started
 			vl.vertex.completed = v.completed
+			vl.vertex.duration = v.duration
+			vl.vertex.cached = v.cached
 
 			if v.isError() {
 				vl.vertex.error = v.error
@@ -93,18 +113,17 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) e
 		if !ok {
 			return fmt.Errorf("Expected to find digest %s in %+v", d, b.vData)
 		}
-		if vl.vertex.started && !vl.vertex.cmdPrinted {
-			if vl.vertex.isShellRun() {
-				b.logger.Infof("%sRUNNING: %s", buildPrefix, trimCmd(vl.vertex.name))
-				vl.vertex.cmdPrinted = true
-			} else if !vl.vertex.isInternal() {
-				b.logger.Infof("%s%s", buildPrefix, trimCmd(vl.vertex.name))
-				vl.vertex.cmdPrinted = true
+		if vl.vertex.started && !vl.vertex.startPrinted && !vl.vertex.isInternal() {
+			cachePrefix := ""
+			if vl.vertex.cached {
+				cachePrefix = "[cached] "
 			}
+			b.logger.Infof("%s%s%s", buildPrefix, cachePrefix, vl.vertex.name)
+			vl.vertex.startPrinted = true
 		}
 
 		if vl.vertex.isError() {
-			b.logger.Infof("\n%sERROR IN: %s", buildPrefix, trimCmd(vl.vertex.name))
+			b.logger.Infof("\n%sERROR IN: %s", buildPrefix, vl.vertex.name)
 			err := b.flushLogs(b.logger.Writer(logger.InfoLvl), vl)
 			if err != nil {
 				return err
@@ -116,6 +135,18 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) e
 			if err != nil {
 				return err
 			}
+		}
+
+		if vl.vertex.completed &&
+			!vl.vertex.completePrinted &&
+			!vl.vertex.isInternal() &&
+			!vl.vertex.cached &&
+			vl.vertex.duration > 200*time.Millisecond &&
+			!vl.vertex.isError() {
+			b.logger.Infof("%s%s done | %s",
+				buildPrefix, vl.vertex.stageName(),
+				vl.vertex.duration.Truncate(time.Millisecond))
+			vl.vertex.completePrinted = true
 		}
 	}
 
@@ -138,8 +169,4 @@ func (b *buildkitPrinter) flushLogs(writer io.Writer, vl *vertexAndLogs) error {
 		}
 	}
 	return nil
-}
-
-func trimCmd(cmd string) string {
-	return strings.TrimPrefix(cmd, cmdPrefix)
 }

@@ -48,6 +48,8 @@ func TestBuildkitPrinter(t *testing.T) {
 		{"multistage-success", logger.InfoLvl, "multistage-success.response.txt"},
 		{"multistage-fail-run", logger.InfoLvl, "multistage-fail-run.response.txt"},
 		{"multistage-fail-copy", logger.InfoLvl, "multistage-fail-copy.response.txt"},
+		{"sleep-success", logger.InfoLvl, "sleep-success.response.txt"},
+		{"sleep-cache", logger.InfoLvl, "sleep-cache.response.txt"},
 	}
 
 	base := t.Name()

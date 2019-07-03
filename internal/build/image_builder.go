@@ -7,6 +7,7 @@ import (
 	"io"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockerfile"
@@ -441,13 +442,22 @@ func toVertexes(resp controlapi.StatusResponse) ([]*vertex, []*vertexLog) {
 	logs := []*vertexLog{}
 
 	for _, v := range resp.Vertexes {
+		duration := time.Duration(0)
+		started := v.Started != nil
+		completed := v.Completed != nil
+		if started && completed {
+			duration = (*v.Completed).Sub((*v.Started))
+		}
 		vertexes = append(vertexes, &vertex{
 			digest:    v.Digest,
 			name:      v.Name,
 			error:     v.Error,
-			started:   v.Started != nil,
-			completed: v.Completed != nil,
+			started:   started,
+			completed: completed,
+			cached:    v.Cached,
+			duration:  duration,
 		})
+
 	}
 	for _, v := range resp.Logs {
 		logs = append(logs, &vertexLog{

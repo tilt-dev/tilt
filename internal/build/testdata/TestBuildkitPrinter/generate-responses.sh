@@ -20,3 +20,7 @@ buildkitapi > $DIR/multistage-fail-run.response.txt
 
 cd $DIR/multistage-fail-copy
 buildkitapi > $DIR/multistage-fail-copy.response.txt
+
+cd $DIR/sleep-success
+buildkitapi > $DIR/sleep-success.response.txt
+buildkitapi --cache > $DIR/sleep-cache.response.txt
