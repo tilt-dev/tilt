@@ -105,7 +105,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		ibd.analytics.Timer("build.image", time.Since(startTime), tags)
 	}()
 
-	q, err := NewImageTargetQueue(iTargets, stateSet)
+	q, err := NewImageTargetQueue(ctx, iTargets, stateSet, ibd.ib.ImageExists)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}

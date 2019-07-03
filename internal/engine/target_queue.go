@@ -1,7 +1,11 @@
 package engine
 
 import (
+	"context"
 	"fmt"
+
+	"github.com/docker/distribution/reference"
+	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
@@ -12,6 +16,8 @@ type BuildHandler func(
 	target model.TargetSpec,
 	state store.BuildState,
 	depResults []store.BuildResult) (store.BuildResult, error)
+
+type ImageExistsChecker func(ctx context.Context, namedTagged reference.NamedTagged) (bool, error)
 
 // A little data structure to help iterate through dirty targets in dependency order.
 type TargetQueue struct {
@@ -37,7 +43,7 @@ type TargetQueue struct {
 	depsNeedBuild map[model.TargetID]bool
 }
 
-func NewImageTargetQueue(iTargets []model.ImageTarget, state store.BuildStateSet) (*TargetQueue, error) {
+func NewImageTargetQueue(ctx context.Context, iTargets []model.ImageTarget, state store.BuildStateSet, imageExists ImageExistsChecker) (*TargetQueue, error) {
 	targets := make([]model.TargetSpec, 0, len(iTargets))
 	for _, iTarget := range iTargets {
 		targets = append(targets, iTarget)
@@ -53,6 +59,14 @@ func NewImageTargetQueue(iTargets []model.ImageTarget, state store.BuildStateSet
 		id := target.ID()
 		if state[id].NeedsImageBuild() {
 			needsOwnBuild[id] = true
+		} else if !state[id].LastResult.IsEmpty() {
+			exists, err := imageExists(ctx, state[id].LastResult.Image)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error looking up whether last image built for %s exists", state[id].LastResult.Image.String())
+			}
+			if !exists {
+				needsOwnBuild[id] = true
+			}
 		}
 	}
 

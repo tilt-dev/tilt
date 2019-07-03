@@ -3,8 +3,11 @@ package testutils
 import (
 	"archive/tar"
 	"bytes"
+	"fmt"
 	"io"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 const expectedUidAndGid = 0
@@ -106,9 +109,8 @@ func AssertFilesInTar(t testing.TB, tr *tar.Reader, expectedFiles []ExpectedFile
 				t.Fatalf("Error reading tar file: %v", err)
 			}
 
-			if contents.String() != expected.Contents {
-				t.Errorf("Wrong contents in %q. Expected: %q. Actual: %q",
-					expected.Path, expected.Contents, contents.String())
+			if !assert.Equal(t, expected.Contents, contents.String()) {
+				fmt.Printf("wrong contents in %q\n", expected.Path)
 				continue
 			}
 		}

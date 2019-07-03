@@ -224,6 +224,8 @@ func TestImageIsClean(t *testing.T) {
 	iTargetID1 := manifest.ImageTargets[0].ID()
 	result1 := store.NewImageBuildResult(iTargetID1, container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"))
 
+	f.docker.ImageListCount = 1
+
 	stateSet := store.BuildStateSet{
 		iTargetID1: store.NewBuildState(result1, []string{}),
 	}
@@ -337,6 +339,8 @@ func TestMultiStageDockerBuildWithSecondImageDirty(t *testing.T) {
 	result2 := store.NewImageBuildResult(iTargetID2, container.MustParseNamedTagged("sancho:tilt-prebuilt2"))
 
 	newFile := f.WriteFile("sancho/message.txt", "message")
+
+	f.docker.ImageListCount = 1
 
 	stateSet := store.BuildStateSet{
 		iTargetID1: store.NewBuildState(result1, nil),

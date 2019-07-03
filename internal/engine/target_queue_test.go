@@ -1,14 +1,17 @@
 package engine
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
+	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
 func TestTargetQueue_Simple(t *testing.T) {
@@ -130,6 +133,35 @@ func TestTargetQueue_CachedBuild(t *testing.T) {
 	assert.Equal(t, expectedCalls, f.handler.calls)
 }
 
+func TestTargetQueue_DepsBuiltButReaped(t *testing.T) {
+	f := newTargetQueueFixture(t)
+
+	fooTarget := model.NewImageTarget(container.MustParseSelector("foo"))
+	s1 := store.BuildState{LastResult: store.BuildResult{TargetID: fooTarget.ID(), Image: container.MustParseNamedTagged("foo:1234")}}
+	barTarget := model.NewImageTarget(container.MustParseSelector("bar")).WithDependencyIDs([]model.TargetID{fooTarget.ID()})
+	s2 := store.BuildState{}
+
+	targets := []model.ImageTarget{fooTarget, barTarget}
+	buildStateSet := store.BuildStateSet{
+		fooTarget.ID(): s1,
+		barTarget.ID(): s2,
+	}
+
+	f.setMissingImage(s1.LastResult.Image)
+
+	f.run(targets, buildStateSet)
+
+	fooCall := newFakeBuildHandlerCall(fooTarget, s1, 1, []store.BuildResult{})
+	barCall := newFakeBuildHandlerCall(barTarget, s2, 2, []store.BuildResult{{TargetID: fooTarget.ID(), Image: fooCall.result.Image}})
+
+	// foo has a valid last result, but its image is missing, so we have to rebuild it and its deps
+	expectedCalls := map[model.TargetID]fakeBuildHandlerCall{
+		fooTarget.ID(): fooCall,
+		barTarget.ID(): barCall,
+	}
+	assert.Equal(t, expectedCalls, f.handler.calls)
+}
+
 func newFakeBuildHandlerCall(target model.ImageTarget, state store.BuildState, num int, depResults []store.BuildResult) fakeBuildHandlerCall {
 	return fakeBuildHandlerCall{
 		target: target,
@@ -170,19 +202,36 @@ func (fbh *fakeBuildHandler) handle(target model.TargetSpec, state store.BuildSt
 }
 
 type targetQueueFixture struct {
-	t       *testing.T
-	handler *fakeBuildHandler
+	t             *testing.T
+	ctx           context.Context
+	handler       *fakeBuildHandler
+	missingImages []reference.NamedTagged
 }
 
 func newTargetQueueFixture(t *testing.T) *targetQueueFixture {
+	ctx := output.CtxForTest()
 	return &targetQueueFixture{
 		t:       t,
+		ctx:     ctx,
 		handler: newFakeBuildHandler(),
 	}
 }
 
+func (f *targetQueueFixture) imageExists(ctx context.Context, namedTagged reference.NamedTagged) (b bool, e error) {
+	for _, ref := range f.missingImages {
+		if ref == namedTagged {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func (f *targetQueueFixture) setMissingImage(namedTagged reference.NamedTagged) {
+	f.missingImages = append(f.missingImages, namedTagged)
+}
+
 func (f *targetQueueFixture) run(targets []model.ImageTarget, buildStateSet store.BuildStateSet) {
-	tq, err := NewImageTargetQueue(targets, buildStateSet)
+	tq, err := NewImageTargetQueue(f.ctx, targets, buildStateSet, f.imageExists)
 	if err != nil {
 		f.t.Fatal(err)
 	}
