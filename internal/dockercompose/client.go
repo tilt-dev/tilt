@@ -40,13 +40,13 @@ func NewDockerComposeClient(env docker.LocalEnv) DockerComposeClient {
 	}
 }
 
-func (c *cmdDCClient) Up(ctx context.Context, configPath []string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error {
+func (c *cmdDCClient) Up(ctx context.Context, configPaths []string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error {
 	var args []string
 	if logger.Get(ctx).Level() >= logger.VerboseLvl {
 		args = []string{"--verbose"}
 	}
 
-	for _, config := range configPath {
+	for _, config := range configPaths {
 		args = append(args, "-f", config)
 	}
 
@@ -70,12 +70,12 @@ func (c *cmdDCClient) Up(ctx context.Context, configPath []string, serviceName m
 	return FormatError(cmd, nil, cmd.Run())
 }
 
-func (c *cmdDCClient) Down(ctx context.Context, configPath []string, stdout, stderr io.Writer) error {
+func (c *cmdDCClient) Down(ctx context.Context, configPaths []string, stdout, stderr io.Writer) error {
 	var args []string
 	if logger.Get(ctx).Level() >= logger.VerboseLvl {
 		args = []string{"--verbose"}
 	}
-	for _, config := range configPath {
+	for _, config := range configPaths {
 		args = append(args, "-f", config)
 	}
 
@@ -92,11 +92,11 @@ func (c *cmdDCClient) Down(ctx context.Context, configPath []string, stdout, std
 	return nil
 }
 
-func (c *cmdDCClient) StreamLogs(ctx context.Context, configPath []string, serviceName model.TargetName) (io.ReadCloser, error) {
+func (c *cmdDCClient) StreamLogs(ctx context.Context, configPaths []string, serviceName model.TargetName) (io.ReadCloser, error) {
 	// TODO(maia): --since time
 	// (may need to implement with `docker log <cID>` instead since `d-c log` doesn't support `--since`
 	var args []string
-	for _, config := range configPath {
+	for _, config := range configPaths {
 		args = append(args, "-f", config)
 	}
 	args = append(args, "logs", "-f", "-t", serviceName.String())
@@ -125,11 +125,11 @@ func (c *cmdDCClient) StreamLogs(ctx context.Context, configPath []string, servi
 	return stdout, nil
 }
 
-func (c *cmdDCClient) StreamEvents(ctx context.Context, configPath []string) (<-chan string, error) {
+func (c *cmdDCClient) StreamEvents(ctx context.Context, configPaths []string) (<-chan string, error) {
 	ch := make(chan string)
 
 	var args []string
-	for _, config := range configPath {
+	for _, config := range configPaths {
 		args = append(args, "-f", config)
 	}
 	args = append(args, "events", "--json")
@@ -157,23 +157,22 @@ func (c *cmdDCClient) StreamEvents(ctx context.Context, configPath []string) (<-
 		err = cmd.Wait()
 		if err != nil {
 			logger.Get(ctx).Infof("[DOCKER-COMPOSE WATCHER] exited with error: %v", err)
-			logger.Get(ctx).Infof("command running %v", cmd)
 		}
 	}()
 
 	return ch, nil
 }
 
-func (c *cmdDCClient) Config(ctx context.Context, configPath []string) (string, error) {
-	return c.dcOutput(ctx, configPath, "config")
+func (c *cmdDCClient) Config(ctx context.Context, configPaths []string) (string, error) {
+	return c.dcOutput(ctx, configPaths, "config")
 }
 
 func (c *cmdDCClient) Services(ctx context.Context, configPaths []string) (string, error) {
 	return c.dcOutput(ctx, configPaths, "config", "--services")
 }
 
-func (c *cmdDCClient) ContainerID(ctx context.Context, configPath []string, serviceName model.TargetName) (container.ID, error) {
-	id, err := c.dcOutput(ctx, configPath, "ps", "-q", serviceName.String())
+func (c *cmdDCClient) ContainerID(ctx context.Context, configPaths []string, serviceName model.TargetName) (container.ID, error) {
+	id, err := c.dcOutput(ctx, configPaths, "ps", "-q", serviceName.String())
 	if err != nil {
 		return container.ID(""), err
 	}
@@ -187,10 +186,10 @@ func (c *cmdDCClient) dcCommand(ctx context.Context, args []string) *exec.Cmd {
 	return cmd
 }
 
-func (c *cmdDCClient) dcOutput(ctx context.Context, configPath []string, args ...string) (string, error) {
+func (c *cmdDCClient) dcOutput(ctx context.Context, configPaths []string, args ...string) (string, error) {
 
 	var tempArgs []string
-	for _, config := range configPath {
+	for _, config := range configPaths {
 		tempArgs = append(tempArgs, "-f", config)
 	}
 	args = append(tempArgs, args...)

@@ -40,17 +40,17 @@ func NewFakeDockerComposeClient(t *testing.T, ctx context.Context) *FakeDCClient
 	}
 }
 
-func (c *FakeDCClient) Up(ctx context.Context, pathToConfig []string, serviceName model.TargetName,
+func (c *FakeDCClient) Up(ctx context.Context, configPaths []string, serviceName model.TargetName,
 	shouldBuild bool, stdout, stderr io.Writer) error {
-	c.UpCalls = append(c.UpCalls, UpCall{pathToConfig, serviceName, shouldBuild})
+	c.UpCalls = append(c.UpCalls, UpCall{configPaths, serviceName, shouldBuild})
 	return nil
 }
 
-func (c *FakeDCClient) Down(ctx context.Context, pathToConfig []string, stdout, stderr io.Writer) error {
+func (c *FakeDCClient) Down(ctx context.Context, configPaths []string, stdout, stderr io.Writer) error {
 	return nil
 }
 
-func (c *FakeDCClient) StreamLogs(ctx context.Context, pathToConfig []string, serviceName model.TargetName) (io.ReadCloser, error) {
+func (c *FakeDCClient) StreamLogs(ctx context.Context, configPaths []string, serviceName model.TargetName) (io.ReadCloser, error) {
 	output := c.RunLogOutput[serviceName]
 	reader, writer := io.Pipe()
 	go func() {
@@ -72,7 +72,7 @@ func (c *FakeDCClient) StreamLogs(ctx context.Context, pathToConfig []string, se
 	return reader, nil
 }
 
-func (c *FakeDCClient) StreamEvents(ctx context.Context, pathToConfig []string) (<-chan string, error) {
+func (c *FakeDCClient) StreamEvents(ctx context.Context, configPaths []string) (<-chan string, error) {
 	events := make(chan string, 10)
 	go func() {
 		for {
@@ -102,7 +102,7 @@ func (c *FakeDCClient) SendEvent(evt Event) error {
 	return nil
 }
 
-func (c *FakeDCClient) Config(ctx context.Context, pathToConfig []string) (string, error) {
+func (c *FakeDCClient) Config(ctx context.Context, configPaths []string) (string, error) {
 	return c.ConfigOutput, nil
 }
 
@@ -110,6 +110,6 @@ func (c *FakeDCClient) Services(ctx context.Context, configPaths []string) (stri
 	return c.ServicesOutput, nil
 }
 
-func (c *FakeDCClient) ContainerID(ctx context.Context, pathToConfig []string, serviceName model.TargetName) (container.ID, error) {
+func (c *FakeDCClient) ContainerID(ctx context.Context, configPaths []string, serviceName model.TargetName) (container.ID, error) {
 	return c.ContainerIdOutput, nil
 }

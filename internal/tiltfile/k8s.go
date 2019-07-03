@@ -437,12 +437,12 @@ func starlarkValuesToJSONPaths(values []starlark.Value) ([]k8s.JSONPath, error) 
 	for _, v := range values {
 		s, ok := v.(starlark.String)
 		if !ok {
-			return nil, fmt.Errorf("path must be a string or list of strings, found a list containing value '%+v' of type '%T'", v, v)
+			return nil, fmt.Errorf("paths must be a string or list of strings, found a list containing value '%+v' of type '%T'", v, v)
 		}
 
 		jp, err := k8s.NewJSONPath(s.String())
 		if err != nil {
-			return nil, errors.Wrapf(err, "error parsing json path '%s'", s.String())
+			return nil, errors.Wrapf(err, "error parsing json paths '%s'", s.String())
 		}
 
 		paths = append(paths, jp)
@@ -455,7 +455,7 @@ func (s *tiltfileState) k8sImageJsonPath(thread *starlark.Thread, fn *starlark.B
 	var apiVersion, kind, name, namespace string
 	var imageJSONPath starlark.Value
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
-		"path", &imageJSONPath,
+		"paths", &imageJSONPath,
 		"api_version?", &apiVersion,
 		"kind?", &kind,
 		"name?", &name,

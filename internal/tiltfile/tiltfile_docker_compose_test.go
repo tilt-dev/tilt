@@ -61,7 +61,7 @@ ports:
 - 12312:80/tcp`, f.JoinPath("foo"))
 }
 
-func TestDockerComposeManifest(t *testing.T) { //TODO MARIA
+func TestDockerComposeManifest(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -357,7 +357,7 @@ func TestDockerComposeWithFastBuild(t *testing.T) {
 	f.file("docker-compose.yml", simpleConfig)
 	f.file("Tiltfile", `repo = local_git_repo('.')
 fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add(repo.path('foo'), 'src/') \
+  .add(repo.paths('foo'), 'src/') \
   .run("echo hi")
 docker_compose('docker-compose.yml')
 dc_resource('foo', 'gcr.io/foo')
@@ -501,7 +501,7 @@ func (f *fixture) assertDcManifest(name string, opts ...interface{}) model.Manif
 	for _, opt := range opts {
 		switch opt := opt.(type) {
 		case dcConfigPathHelper:
-			assert.Equal(f.t, opt.path, dcInfo.ConfigPaths)
+			assert.Equal(f.t, opt.paths, dcInfo.ConfigPaths)
 		case dcLocalPathsHelper:
 			assert.ElementsMatch(f.t, opt.paths, dcInfo.LocalPaths())
 		case dcYAMLRawHelper:
@@ -518,11 +518,11 @@ func (f *fixture) assertDcManifest(name string, opts ...interface{}) model.Manif
 }
 
 type dcConfigPathHelper struct {
-	path []string
+	paths []string
 }
 
-func dcConfigPath(path []string) dcConfigPathHelper {
-	return dcConfigPathHelper{path}
+func dcConfigPath(paths []string) dcConfigPathHelper {
+	return dcConfigPathHelper{paths}
 }
 
 type dcYAMLRawHelper struct {

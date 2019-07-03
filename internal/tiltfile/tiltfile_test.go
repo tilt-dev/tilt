@@ -191,7 +191,7 @@ func TestExplicitDockerfileAsLocalPath(t *testing.T) {
 	f.dockerfile("other/Dockerfile")
 	f.file("Tiltfile", `
 r = local_git_repo('.')
-docker_build('gcr.io/foo', 'foo', dockerfile=r.path('other/Dockerfile'))
+docker_build('gcr.io/foo', 'foo', dockerfile=r.paths('other/Dockerfile'))
 k8s_yaml('foo.yaml')
 `)
 	f.load()
@@ -339,7 +339,7 @@ k8s_yaml(['foo.yaml', 'bar.yaml'])
 docker_build('gcr.io/foo', 'foo')
 fastbar = docker_build('gcr.io/bar', 'bar')
 
-fastbar.add('local/path', 'remote/path')
+fastbar.add('local/paths', 'remote/paths')
 fastbar.run('echo hi')
 `)
 
@@ -348,7 +348,7 @@ fastbar.run('echo hi')
 		db(image("gcr.io/foo")),
 		deployment("foo"))
 	f.assertNextManifest("bar",
-		db(image("gcr.io/bar"), nestedFB(add("local/path", "remote/path"), run("echo hi"))),
+		db(image("gcr.io/bar"), nestedFB(add("local/paths", "remote/paths"), run("echo hi"))),
 		deployment("bar"))
 }
 
@@ -469,10 +469,10 @@ func TestDockerBuildCache(t *testing.T) {
 	f.setupFoo()
 	f.file("Tiltfile", `
 k8s_yaml('foo.yaml')
-docker_build("gcr.io/foo", "foo", cache='/path/to/cache')
+docker_build("gcr.io/foo", "foo", cache='/paths/to/cache')
 `)
 	f.load()
-	f.assertNextManifest("foo", dbWithCache(image("gcr.io/foo"), "/path/to/cache"))
+	f.assertNextManifest("foo", dbWithCache(image("gcr.io/foo"), "/paths/to/cache"))
 }
 
 func TestFastBuildCache(t *testing.T) {
@@ -482,10 +482,10 @@ func TestFastBuildCache(t *testing.T) {
 	f.setupFoo()
 	f.file("Tiltfile", `
 k8s_yaml('foo.yaml')
-fast_build("gcr.io/foo", 'foo/Dockerfile', cache='/path/to/cache')
+fast_build("gcr.io/foo", 'foo/Dockerfile', cache='/paths/to/cache')
 `)
 	f.loadAssertWarnings(fastBuildDeprecationWarning)
-	f.assertNextManifest("foo", fbWithCache(image("gcr.io/foo"), "/path/to/cache"))
+	f.assertNextManifest("foo", fbWithCache(image("gcr.io/foo"), "/paths/to/cache"))
 }
 
 func TestDuplicateResourceNames(t *testing.T) {
@@ -538,10 +538,10 @@ func TestFastBuildAddString(t *testing.T) {
 	f.file("Tiltfile", fmt.Sprintf(`
 k8s_yaml(['foo.yaml', 'bar.yaml'])
 
-# fb.add() on string of relative path
+# fb.add() on string of relative paths
 fast_build('gcr.io/foo', 'foo/Dockerfile').add('./foo', '/foo')
 
-# fb.add() on string of absolute path
+# fb.add() on string of absolute paths
 fast_build('gcr.io/bar', 'foo/Dockerfile').add('%s', '/bar')
 `, f.JoinPath("./bar")))
 
@@ -558,7 +558,7 @@ func TestFastBuildAddLocalPath(t *testing.T) {
 	f.file("Tiltfile", `
 repo = local_git_repo('.')
 k8s_yaml('foo.yaml')
-fast_build('gcr.io/foo', 'foo/Dockerfile').add(repo.path('foo'), '/foo')
+fast_build('gcr.io/foo', 'foo/Dockerfile').add(repo.paths('foo'), '/foo')
 `)
 
 	f.loadAssertWarnings(fastBuildDeprecationWarning)
@@ -992,7 +992,7 @@ func TestFastBuildDockerignoreRoot(t *testing.T) {
 	f.file("Tiltfile", `
 repo = local_git_repo('.')
 fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add(repo.path('foo'), 'src/') \
+  .add(repo.paths('foo'), 'src/') \
   .run("echo hi")
 k8s_yaml('foo.yaml')
 `)
@@ -1032,7 +1032,7 @@ func TestK8sYAMLInputBareString(t *testing.T) {
 	f.WriteFile("bar.yaml", "im not yaml")
 	f.file("Tiltfile", `
 k8s_yaml('bar.yaml')
-docker_build("gcr.io/foo", "foo", cache='/path/to/cache')
+docker_build("gcr.io/foo", "foo", cache='/paths/to/cache')
 `)
 
 	f.loadErrString("bar.yaml is not a valid YAML file")
@@ -1045,7 +1045,7 @@ func TestK8sYAMLInputFromReadFile(t *testing.T) {
 	f.setupFoo()
 	f.file("Tiltfile", `
 k8s_yaml(str(read_file('foo.yaml')))
-docker_build("gcr.io/foo", "foo", cache='/path/to/cache')
+docker_build("gcr.io/foo", "foo", cache='/paths/to/cache')
 `)
 
 	f.loadErrString("no such file or directory")
@@ -1247,7 +1247,7 @@ func TestHelmFromRepoPath(t *testing.T) {
 
 	f.file("Tiltfile", `
 r = local_git_repo('.')
-yml = helm(r.path('helm'))
+yml = helm(r.paths('helm'))
 k8s_yaml(yml)
 `)
 
@@ -1962,7 +1962,7 @@ func TestExtraImageLocationOneImage(t *testing.T) {
 	f.file("Tiltfile", `
 k8s_resource_assembly_version(2)
 k8s_yaml('crd.yaml')
-k8s_image_json_path(kind='Environment', path='{.spec.runtime.image}')
+k8s_image_json_path(kind='Environment', paths='{.spec.runtime.image}')
 docker_build('test/mycrd-env', 'env')
 `)
 
@@ -2297,27 +2297,27 @@ func TestExtraImageLocationNoPaths(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 	f.file("Tiltfile", `k8s_image_json_path(kind='MyType')`)
-	f.loadErrString("missing argument for path")
+	f.loadErrString("missing argument for paths")
 }
 
 func TestExtraImageLocationNotListOrString(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
-	f.file("Tiltfile", `k8s_image_json_path(kind='MyType', path=8)`)
-	f.loadErrString("path must be a string or list of strings", "Int")
+	f.file("Tiltfile", `k8s_image_json_path(kind='MyType', paths=8)`)
+	f.loadErrString("paths must be a string or list of strings", "Int")
 }
 
 func TestExtraImageLocationListContainsNonString(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
-	f.file("Tiltfile", `k8s_image_json_path(kind='MyType', path=["foo", 8])`)
-	f.loadErrString("path must be a string or list of strings", "8", "Int")
+	f.file("Tiltfile", `k8s_image_json_path(kind='MyType', paths=["foo", 8])`)
+	f.loadErrString("paths must be a string or list of strings", "8", "Int")
 }
 
 func TestExtraImageLocationNoSelectorSpecified(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
-	f.file("Tiltfile", `k8s_image_json_path(path=["foo"])`)
+	f.file("Tiltfile", `k8s_image_json_path(paths=["foo"])`)
 	f.loadErrString("at least one of kind, name, or namespace must be specified")
 }
 
@@ -2329,7 +2329,7 @@ func TestFastBuildEmptyDockerfileArg(t *testing.T) {
 repo = local_git_repo('.')
 
 (fast_build('web/api', '')
-    .add(repo.path('src'), '/app/src').run(''))
+    .add(repo.paths('src'), '/app/src').run(''))
 `)
 	f.loadErrString("error reading dockerfile")
 }
@@ -3442,7 +3442,7 @@ k8s_yaml('foo.yaml')
 	)
 }
 
-// If an only rule starts with a !, we assume that path starts with a !
+// If an only rule starts with a !, we assume that paths starts with a !
 // We don't do a double negative
 func TestDockerbuildOnlyHasException(t *testing.T) {
 	f := newFixture(t)
@@ -3932,7 +3932,7 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			}
 
 		case matchPathHelper:
-			// Make sure the path matches one of the syncs.
+			// Make sure the paths matches one of the syncs.
 			isDep := false
 			path := f.JoinPath(opt.path)
 			for _, d := range m.LocalPaths() {
