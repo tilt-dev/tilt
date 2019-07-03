@@ -16,6 +16,7 @@ type Feature interface {
 	IsEnabled(flag string) bool
 	Enable(flag string) error
 	Disable(flag string) error
+	GetAllFlags() map[string]bool
 }
 
 func ProvideFeature() Feature {
@@ -74,4 +75,17 @@ func (f *staticMapFeature) Disable(flag string) error {
 
 	f.flags[flag] = false
 	return nil
+}
+
+// GetAllFlags make a copy of the feature flags map and returns it
+func (f *staticMapFeature) GetAllFlags() map[string]bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	newFlags := make(map[string]bool, len(f.flags))
+
+	for k, v := range f.flags {
+		newFlags[k] = v
+	}
+
+	return newFlags
 }

@@ -33,6 +33,7 @@ type TiltfileLoadResult struct {
 	ConfigFiles        []string
 	Warnings           []string
 	TiltIgnoreContents string
+	NewFeatureFlags    map[string]bool
 }
 
 func (r TiltfileLoadResult) Orchestrator() model.Orchestrator {
@@ -176,6 +177,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	printedWarnings = true
 
 	s.logger.Infof("Successfully loaded Tiltfile")
+	newFeature := s.f.GetAllFlags()
 
 	tfl.reportTiltfileLoaded(s.builtinCallCounts)
 
@@ -187,7 +189,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 		return TiltfileLoadResult{}, errors.Wrapf(err, "error reading %s", tiltIgnorePath(filename))
 	}
 
-	return TiltfileLoadResult{manifests, s.configFiles, s.warnings, string(tiltIgnoreContents)}, err
+	return TiltfileLoadResult{manifests, s.configFiles, s.warnings, string(tiltIgnoreContents), newFeature}, err
 }
 
 // .tiltignore sits next to Tiltfile

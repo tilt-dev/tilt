@@ -510,6 +510,8 @@ func handleConfigsReloaded(
 	state.ConfigFiles = event.ConfigFiles
 	state.TiltIgnoreContents = event.TiltIgnoreContents
 
+	state.Features = event.Features
+
 	// Remove pending file changes that were consumed by this build.
 	for file, modTime := range state.PendingConfigFileChanges {
 		if modTime.Before(status.StartTime) {
