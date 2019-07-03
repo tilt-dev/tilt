@@ -941,7 +941,7 @@ func TestReapOldBuilds(t *testing.T) {
 	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	manifest := f.newManifest("foobar", []model.Sync{sync})
 
-	f.docker.BuildCount++
+	f.docker.ImageListCount++
 
 	f.Start([]model.Manifest{manifest}, true)
 

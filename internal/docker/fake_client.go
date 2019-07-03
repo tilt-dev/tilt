@@ -77,6 +77,8 @@ type FakeClient struct {
 	BuildOutput       string
 	BuildErrorToThrow error // next call to Build will throw this err (after which we clear the error)
 
+	ImageListCount int
+
 	TagCount  int
 	TagSource string
 	TagTarget string
@@ -204,7 +206,7 @@ func (c *FakeClient) ImageInspectWithRaw(ctx context.Context, imageID string) (t
 }
 
 func (c *FakeClient) ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error) {
-	summaries := make([]types.ImageSummary, c.BuildCount)
+	summaries := make([]types.ImageSummary, c.ImageListCount)
 	for i := range summaries {
 		summaries[i] = types.ImageSummary{
 			ID:      fmt.Sprintf("build-id-%d", i),
