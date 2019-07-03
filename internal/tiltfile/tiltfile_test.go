@@ -1998,8 +1998,9 @@ docker_build('gcr.io/foo2', 'foo2')
 
 type k8sKindTest struct {
 	name                 string
-	args                 string
-	expectMatch          bool
+	k8sKindArgs          string
+	expectWorkload       bool
+	expectImage          bool
 	expectedError        string
 	preamble             string
 	expectedResourceName string
@@ -2007,12 +2008,13 @@ type k8sKindTest struct {
 
 func TestK8sKind(t *testing.T) {
 	tests := []k8sKindTest{
-		{name: "match kind", args: "'Environment', image_json_path='{.spec.runtime.image}'", expectMatch: true},
-		{name: "don't match kind", args: "'fdas', image_json_path='{.spec.runtime.image}'", expectMatch: false},
-		{name: "match apiVersion", args: "'Environment', image_json_path='{.spec.runtime.image}', api_version='fission.io/v1'", expectMatch: true},
-		{name: "don't match apiVersion", args: "'Environment', image_json_path='{.spec.runtime.image}', api_version='fission.io/v2'"},
-		{name: "invalid kind regexp", args: "'*', image_json_path='{.spec.runtime.image}'", expectedError: "error parsing kind regexp"},
-		{name: "invalid apiVersion regexp", args: "'Environment', api_version='*', image_json_path='{.spec.runtime.image}'", expectedError: "error parsing apiVersion regexp"},
+		{name: "match kind", k8sKindArgs: "'Environment', image_json_path='{.spec.runtime.image}'", expectWorkload: true, expectImage: true},
+		{name: "don't match kind", k8sKindArgs: "'fdas', image_json_path='{.spec.runtime.image}'", expectWorkload: false},
+		{name: "match apiVersion", k8sKindArgs: "'Environment', image_json_path='{.spec.runtime.image}', api_version='fission.io/v1'", expectWorkload: true, expectImage: true},
+		{name: "don't match apiVersion", k8sKindArgs: "'Environment', image_json_path='{.spec.runtime.image}', api_version='fission.io/v2'"},
+		{name: "invalid kind regexp", k8sKindArgs: "'*', image_json_path='{.spec.runtime.image}'", expectedError: "error parsing kind regexp"},
+		{name: "invalid apiVersion regexp", k8sKindArgs: "'Environment', api_version='*', image_json_path='{.spec.runtime.image}'", expectedError: "error parsing apiVersion regexp"},
+		{name: "no image", k8sKindArgs: "'Environment'", expectWorkload: true},
 	}
 
 	for _, test := range tests {
@@ -2022,30 +2024,43 @@ func TestK8sKind(t *testing.T) {
 			f.setupCRD()
 			f.dockerfile("env/Dockerfile")
 			f.dockerfile("builder/Dockerfile")
+			img := ""
+			if !test.expectWorkload || test.expectImage {
+				img = "docker_build('test/mycrd-env', 'env')"
+			}
 			f.file("Tiltfile", fmt.Sprintf(`
 k8s_resource_assembly_version(2)
 %s
 k8s_yaml('crd.yaml')
 k8s_kind(%s)
-docker_build('test/mycrd-env', 'env')
-`, test.preamble, test.args))
+%s
+`, test.preamble, test.k8sKindArgs, img))
 
-			if test.expectMatch {
+			if test.expectWorkload {
 				if test.expectedError != "" {
-					t.Fatal("invalid test: cannot expect both match and error")
+					t.Fatal("invalid test: cannot expect both workload and error")
 				}
 				expectedResourceName := "mycrd"
 				if test.expectedResourceName != "" {
 					expectedResourceName = test.expectedResourceName
 				}
 				f.load(expectedResourceName)
-				f.assertNextManifest(expectedResourceName,
-					db(
-						image("docker.io/test/mycrd-env"),
-					),
+				var imageOpt interface{}
+				if test.expectImage {
+					imageOpt = db(image("docker.io/test/mycrd-env"))
+				} else {
+					imageOpt = funcOpt(func(t *testing.T, m model.Manifest) bool {
+						return assert.Equal(t, 0, len(m.ImageTargets))
+					})
+				}
+				f.assertNextManifest(
+					expectedResourceName,
 					k8sObject("mycrd", "Environment"),
-				)
+					imageOpt)
 			} else {
+				if test.expectImage {
+					t.Fatal("invalid test: cannot expect image without expecting workload")
+				}
 				if test.expectedError == "" {
 					w := unusedImageWarning("docker.io/test/mycrd-env", []string{"docker.io/library/golang"})
 					f.loadAssertWarnings(w)
@@ -3802,6 +3817,8 @@ func (f *fixture) assertNextManifestUnresourced(expectedEntities ...string) {
 	assert.Equal(f.t, expectedEntities, entityNames)
 }
 
+type funcOpt func(*testing.T, model.Manifest) bool
+
 // assert functions and helpers
 func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Manifest {
 	if len(f.loadResult.Manifests) == 0 {
@@ -4021,6 +4038,8 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			assert.Equal(f.t, opt, m.K8sTarget().PortForwards)
 		case model.TriggerMode:
 			assert.Equal(f.t, opt, m.TriggerMode)
+		case funcOpt:
+			assert.True(f.t, opt(f.t, m))
 		default:
 			f.t.Fatalf("unexpected arg to assertNextManifest: %T %v", opt, opt)
 		}
