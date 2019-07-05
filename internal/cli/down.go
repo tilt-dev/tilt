@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -21,7 +20,8 @@ type downCmd struct {
 func (c *downCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "down",
-		Short: "delete kubernetes resources",
+		Short: "delete resources created by 'tilt up'",
+		Args:  cobra.NoArgs,
 	}
 
 	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
@@ -31,17 +31,17 @@ func (c *downCmd) register() *cobra.Command {
 
 func (c *downCmd) run(ctx context.Context, args []string) error {
 	a := analytics.Get(ctx)
-	a.Incr("cmd.down", map[string]string{
-		"count": fmt.Sprintf("%d", len(args)),
-	})
+	a.Incr("cmd.down", map[string]string{})
 	defer a.Flush(time.Second)
 
 	downDeps, err := wireDownDeps(ctx, a)
-
 	if err != nil {
 		return err
 	}
+	return c.down(ctx, downDeps)
+}
 
+func (c *downCmd) down(ctx context.Context, downDeps DownDeps) error {
 	tlr, err := downDeps.tfl.Load(ctx, c.fileName, nil)
 	if err != nil {
 		return err
@@ -52,9 +52,11 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 		return errors.Wrap(err, "Parsing manifest YAML")
 	}
 
-	err = downDeps.kClient.Delete(ctx, entities)
-	if err != nil {
-		logger.Get(ctx).Infof("error deleting k8s entities: %v", err)
+	if len(entities) > 0 {
+		err = downDeps.kClient.Delete(ctx, entities)
+		if err != nil {
+			return errors.Wrap(err, "Deleting k8s entities")
+		}
 	}
 
 	var dcConfigPaths []string
@@ -64,10 +66,14 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 			break
 		}
 	}
-	dcc := downDeps.dcClient
-	err = dcc.Down(ctx, dcConfigPaths, logger.Get(ctx).Writer(logger.InfoLvl), logger.Get(ctx).Writer(logger.InfoLvl))
-	if err != nil {
-		logger.Get(ctx).Infof("error running `docker-compose down`: %v", err)
+
+	if len(dcConfigPaths) > 0 {
+		dcc := downDeps.dcClient
+		err = dcc.Down(ctx, dcConfigPaths, logger.Get(ctx).Writer(logger.InfoLvl), logger.Get(ctx).Writer(logger.InfoLvl))
+		if err != nil {
+			return errors.Wrap(err, "Running `docker-compose down`")
+		}
 	}
+
 	return nil
 }

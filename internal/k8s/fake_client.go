@@ -32,9 +32,11 @@ type PodAndCName struct {
 }
 
 type FakeK8sClient struct {
-	Yaml        string
+	Yaml string
+	Lb   LoadBalancerSpec
+
 	DeletedYaml string
-	Lb          LoadBalancerSpec
+	DeleteError error
 
 	LastPodQueryNamespace Namespace
 	LastPodQueryImage     reference.NamedTagged
@@ -199,6 +201,12 @@ func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity) error 
 }
 
 func (c *FakeK8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
+	if c.DeleteError != nil {
+		err := c.DeleteError
+		c.DeleteError = nil
+		return err
+	}
+
 	yaml, err := SerializeSpecYAML(entities)
 	if err != nil {
 		return errors.Wrap(err, "kubectl delete")
