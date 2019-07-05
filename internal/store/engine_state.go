@@ -704,7 +704,7 @@ func tiltfileResourceView(s EngineState) view.Resource {
 func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 	if mt.Manifest.IsUnresourcedYAMLManifest() {
 		return view.YAMLResourceInfo{
-			K8sResources: mt.Manifest.K8sTarget().ResourceNames,
+			K8sResources: mt.Manifest.K8sTarget().DisplayNames,
 		}
 	}
 
