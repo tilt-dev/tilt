@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -19,10 +20,15 @@ import (
 	"github.com/windmilleng/tilt/internal/dockerfile"
 )
 
+var useCache bool
+
 // A small utility for running Buildkit on the dockerfile
 // in the current directory printing out all the buildkit api
 // response protobufs.
 func main() {
+	flag.BoolVar(&useCache, "cache", false, "Enable docker caching")
+	flag.Parse()
+
 	err := run()
 	if err != nil {
 		log.Fatal(err)
@@ -55,6 +61,9 @@ func run() error {
 	opts.Version = types.BuilderBuildKit
 	opts.Dockerfile = "Dockerfile"
 	opts.Context = archive
+	if !useCache {
+		opts.NoCache = true
+	}
 
 	response, err := d.ImageBuild(ctx, archive, opts)
 	if err != nil {
