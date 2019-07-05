@@ -21,7 +21,8 @@ type FakeDCClient struct {
 	ConfigOutput      string
 	ServicesOutput    string
 
-	UpCalls []UpCall
+	UpCalls   []UpCall
+	DownError error
 }
 
 // Represents a single call to Up
@@ -47,6 +48,11 @@ func (c *FakeDCClient) Up(ctx context.Context, configPaths []string, serviceName
 }
 
 func (c *FakeDCClient) Down(ctx context.Context, configPaths []string, stdout, stderr io.Writer) error {
+	if c.DownError != nil {
+		err := c.DownError
+		c.DownError = err
+		return err
+	}
 	return nil
 }
 
