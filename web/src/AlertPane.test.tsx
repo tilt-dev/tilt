@@ -1,6 +1,7 @@
 import React from "react"
 import AlertPane, { AlertResource } from "./AlertPane"
 import renderer from "react-test-renderer"
+import { oneResourceUnrecognizedError } from "./testdata.test"
 
 beforeEach(() => {
   Date.now = jest.fn(() => 1482363367071)
@@ -99,7 +100,7 @@ it("renders one container start error", () => {
     .toJSON()
   expect(tree).toMatchSnapshot()
 
-  // the podStatus will flap between "Error" and "CrashLoopBackoff"
+  // the podStatus will flap between "Error" and "CrashLoopBackOff"
   resources = [
     {
       Name: "foo",
@@ -228,6 +229,15 @@ it("renders warnings", () => {
     },
   ]
 
+  const tree = renderer
+    .create(<AlertPane resources={resources.map(r => new AlertResource(r))} />)
+    .toJSON()
+  expect(tree).toMatchSnapshot()
+})
+
+it("renders one container unrecognized error", () => {
+  const ts = "1,555,970,585,039"
+  let resources = [oneResourceUnrecognizedError()]
   const tree = renderer
     .create(<AlertPane resources={resources.map(r => new AlertResource(r))} />)
     .toJSON()

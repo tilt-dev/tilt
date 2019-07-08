@@ -18,6 +18,7 @@ class StatusItem {
   public currentBuild: Build
   public lastBuild: Build | null
   public podStatus: string
+  public podStatusMessage: string
   public pendingBuildSince: string
   public buildHistory: Array<Build>
   public pendingBuildEdits: Array<string>
@@ -36,6 +37,8 @@ class StatusItem {
     this.buildHistory = res.BuildHistory
     this.lastBuild = res.BuildHistory ? res.BuildHistory[0] : null
     this.podStatus = res.ResourceInfo && res.ResourceInfo.PodStatus
+    this.podStatusMessage =
+      res.ResourceInfo && res.ResourceInfo.PodStatusMessage
     this.pendingBuildSince = res.PendingBuildSince
     this.pendingBuildEdits = res.PendingBuildEdits
   }

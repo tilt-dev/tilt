@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -93,6 +94,55 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 
 	f.assertObservedPods(p4, p5)
 
+}
+
+type podStatusTestCase struct {
+	pod      corev1.PodStatus
+	status   string
+	messages []string
+}
+
+func TestPodStatus(t *testing.T) {
+	cases := []podStatusTestCase{
+		{
+			pod: corev1.PodStatus{
+				ContainerStatuses: []corev1.ContainerStatus{
+					{
+						LastTerminationState: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 128,
+								Message:  "failed to create containerd task: OCI runtime create failed: container_linux.go:345: starting container process caused \"exec: \\\"/hello\\\": stat /hello: no such file or directory\": unknown",
+								Reason:   "StartError",
+							},
+						},
+						Ready: false,
+						State: corev1.ContainerState{
+							Waiting: &corev1.ContainerStateWaiting{
+								Message: "Back-off 40s restarting failed container=my-app pod=my-app-7bb79c789d-8h6n9_default(31369f71-df65-4352-b6bd-6d704a862699)",
+								Reason:  "CrashLoopBackOff",
+							},
+						},
+					},
+				},
+			},
+			status: "CrashLoopBackOff",
+			messages: []string{
+				"failed to create containerd task: OCI runtime create failed: container_linux.go:345: starting container process caused \"exec: \\\"/hello\\\": stat /hello: no such file or directory\": unknown",
+				"Back-off 40s restarting failed container=my-app pod=my-app-7bb79c789d-8h6n9_default(31369f71-df65-4352-b6bd-6d704a862699)",
+			},
+		},
+	}
+
+	for i, c := range cases {
+		t.Run(fmt.Sprintf("case%d", i), func(t *testing.T) {
+			pod := corev1.Pod{Status: c.pod}
+			status := podStatusToString(pod)
+			assert.Equal(t, c.status, status)
+
+			messages := podStatusErrorMessages(pod)
+			assert.Equal(t, c.messages, messages)
+		})
+	}
 }
 
 func podNamed(name string) *corev1.Pod {

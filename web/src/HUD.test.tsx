@@ -144,7 +144,7 @@ it("renders two errors for a resource that has pod restarts, a build failure and
 
   let resourceView = oneResourceView()
   resourceView.Resources[0].ResourceInfo.PodRestarts = 1
-  resourceView.Resources[0].RuntimeStatus = "CrashLoopBackoff"
+  resourceView.Resources[0].RuntimeStatus = "CrashLoopBackOff"
   hud.setState({ View: resourceView })
   let errorTab = root.find(".tabLink--errors")
   expect(errorTab.at(0).text()).toEqual("Alerts2")

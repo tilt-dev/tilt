@@ -1,11 +1,6 @@
 import { isZeroTime } from "./time"
 import { StatusItem } from "./Statusbar"
-import {
-  podStatusCrashLoopBackOff,
-  podStatusError,
-  podStatusImagePullBackOff,
-  podStatusErrImgPull,
-} from "./constants"
+import { podStatusIsCrash, podStatusIsError } from "./constants"
 
 const combinedStatusMessage = (resources: Array<StatusItem>): string => {
   let buildingResources = resources.filter(
@@ -16,10 +11,8 @@ const combinedStatusMessage = (resources: Array<StatusItem>): string => {
     return `Updating ${buildingResources[0].name}…`
   }
 
-  let containerCrashedResources = resources.filter(
-    r =>
-      r.podStatus === podStatusCrashLoopBackOff ||
-      r.podStatus === podStatusError
+  let containerCrashedResources = resources.filter(r =>
+    podStatusIsCrash(r.podStatus)
   )
   if (containerCrashedResources.length > 0) {
     return "Container crashed: " + containerCrashedResources[0].name
@@ -34,9 +27,7 @@ const combinedStatusMessage = (resources: Array<StatusItem>): string => {
   }
 
   let resourcesWithInterestingPodStatuses = resources.filter(
-    r =>
-      r.podStatus === podStatusImagePullBackOff ||
-      r.podStatus === podStatusErrImgPull
+    r => podStatusIsError(r.podStatus) || r.podStatusMessage
   )
   if (resourcesWithInterestingPodStatuses.length > 0) {
     let r = resourcesWithInterestingPodStatuses[0]

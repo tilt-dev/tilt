@@ -172,6 +172,42 @@ exports[`renders one container start error 2`] = `
 </section>
 `;
 
+exports[`renders one container unrecognized error 1`] = `
+<section
+  className="AlertPane"
+>
+  <ul>
+    <li
+      className="AlertPane-item"
+    >
+      <header>
+        <p>
+          vigoda
+        </p>
+        <p>
+          <time
+            dateTime="2016-12-21T23:36:07.071Z"
+            title="2016-12-21 23:36"
+          >
+            &lt;5s
+          </time>
+        </p>
+      </header>
+      <section>
+        <code>
+          <span
+            className={null}
+            style={null}
+          >
+            Detailed message on GarbleError
+          </span>
+        </code>
+      </section>
+    </li>
+  </ul>
+</section>
+`;
+
 exports[`renders the last build with an error 1`] = `
 <section
   className="AlertPane"
