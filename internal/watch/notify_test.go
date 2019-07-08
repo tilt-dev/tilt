@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
@@ -36,7 +37,7 @@ func TestEventOrdering(t *testing.T) {
 	for i, _ := range dirs {
 		dir := f.TempDir("watched")
 		dirs[i] = dir
-		err := f.notify.Add(dir)
+		err := f.notify.Add(dir, model.EmptyMatcher)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -71,7 +72,7 @@ func TestGitBranchSwitch(t *testing.T) {
 	for i, _ := range dirs {
 		dir := f.TempDir("watched")
 		dirs[i] = dir
-		err := f.notify.Add(dir)
+		err := f.notify.Add(dir, model.EmptyMatcher)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -129,7 +130,7 @@ func TestWatchesAreRecursive(t *testing.T) {
 	f.MkdirAll(subPath)
 
 	// watch parent
-	err := f.notify.Add(root)
+	err := f.notify.Add(root, model.EmptyMatcher)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +154,7 @@ func TestNewDirectoriesAreRecursivelyWatched(t *testing.T) {
 	root := f.TempDir("root")
 
 	// watch parent
-	err := f.notify.Add(root)
+	err := f.notify.Add(root, model.EmptyMatcher)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,7 +181,7 @@ func TestWatchNonExistentPath(t *testing.T) {
 	root := f.TempDir("root")
 	path := filepath.Join(root, "change")
 
-	err := f.notify.Add(path)
+	err := f.notify.Add(path, model.EmptyMatcher)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,7 +201,7 @@ func TestWatchNonExistentPathDoesNotFireSiblingEvent(t *testing.T) {
 	watchedFile := filepath.Join(root, "a.txt")
 	unwatchedSibling := filepath.Join(root, "b.txt")
 
-	err := f.notify.Add(watchedFile)
+	err := f.notify.Add(watchedFile, model.EmptyMatcher)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +223,7 @@ func TestRemove(t *testing.T) {
 	d1 := "hello\ngo\n"
 	f.WriteFile(path, d1)
 
-	err := f.notify.Add(path)
+	err := f.notify.Add(path, model.EmptyMatcher)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -246,7 +247,7 @@ func TestRemoveAndAddBack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = f.notify.Add(path)
+	err = f.notify.Add(path, model.EmptyMatcher)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -278,7 +279,7 @@ func TestSingleFile(t *testing.T) {
 	d1 := "hello\ngo\n"
 	f.WriteFile(path, d1)
 
-	err := f.notify.Add(path)
+	err := f.notify.Add(path, model.EmptyMatcher)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -342,7 +343,7 @@ func TestWatchBrokenLink(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = f.notify.Add(newRoot.Path())
+	err = f.notify.Add(newRoot.Path(), model.EmptyMatcher)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -359,7 +360,7 @@ func TestMoveAndReplace(t *testing.T) {
 	file := filepath.Join(root, "myfile")
 	f.WriteFile(file, "hello")
 
-	err := f.notify.Add(file)
+	err := f.notify.Add(file, model.EmptyMatcher)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -475,6 +476,32 @@ func TestWatchNonexistentDirectory(t *testing.T) {
 // 	f.assertEvents(file)
 // }
 
+func TestWatchIgnoresFromFilter(t *testing.T) {
+	f := newNotifyFixture(t)
+	defer f.tearDown()
+
+	filter := model.NewGlobMatcher("**/*.txt")
+
+	dir := f.TempDir("watched")
+
+	f.fsync()
+	f.events = nil
+
+	p := filepath.Join(dir, "1.txt")
+
+	err := f.notify.Add(p, filter)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ioutil.WriteFile(p, []byte("1"), os.FileMode(0777))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.assertEvents()
+}
+
 type notifyFixture struct {
 	out *bytes.Buffer
 	*tempdir.TempDirFixture
@@ -493,7 +520,7 @@ func newNotifyFixture(t *testing.T) *notifyFixture {
 	f := tempdir.NewTempDirFixture(t)
 	watched := f.TempDir("watched")
 
-	err = notify.Add(watched)
+	err = notify.Add(watched, model.EmptyMatcher)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -506,7 +533,7 @@ func newNotifyFixture(t *testing.T) *notifyFixture {
 }
 
 func (f *notifyFixture) watch(path string) {
-	err := f.notify.Add(path)
+	err := f.notify.Add(path, model.EmptyMatcher)
 	if err != nil {
 		f.T().Fatalf("notify.Add: %s", path)
 	}

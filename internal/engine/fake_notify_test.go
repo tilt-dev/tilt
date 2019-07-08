@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/watch"
 )
@@ -107,7 +108,7 @@ func (w *fakeWatcher) matches(path string) bool {
 	return false
 }
 
-func (w *fakeWatcher) Add(name string) error {
+func (w *fakeWatcher) Add(name string, filter model.PathMatcher) error {
 	w.paths = append(w.paths, name)
 	return nil
 }

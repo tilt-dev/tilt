@@ -195,8 +195,19 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 			continue
 		}
 
+		filter, err := ignore.CreateFileChangeFilter(target)
+		if err != nil {
+			st.Dispatch(NewErrorAction(err))
+			return
+		}
+		tiltIgnoreFilter, err := dockerignore.DockerIgnoreTesterFromContents(tiltRoot, w.tiltIgnoreContents)
+		if err != nil {
+			st.Dispatch(NewErrorAction(err))
+		}
+		filter = model.NewCompositeMatcher([]model.PathMatcher{filter, tiltIgnoreFilter})
+
 		for _, d := range target.Dependencies() {
-			err = watcher.Add(d)
+			err = watcher.Add(d, filter)
 			if err != nil {
 				st.Dispatch(NewErrorAction(err))
 			}
@@ -204,7 +215,7 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 
 		ctx, cancel := context.WithCancel(ctx)
 
-		go w.dispatchFileChangesLoop(ctx, target, watcher, st, tiltRoot)
+		go w.dispatchFileChangesLoop(ctx, target, watcher, st, tiltRoot, filter)
 		newWatches[target.ID()] = targetNotifyCancel{target, watcher, cancel}
 	}
 
@@ -231,19 +242,8 @@ func (w *WatchManager) dispatchFileChangesLoop(
 	target WatchableTarget,
 	watcher watch.Notify,
 	st store.RStore,
-	tiltRoot string) {
-
-	filter, err := ignore.CreateFileChangeFilter(target)
-	if err != nil {
-		st.Dispatch(NewErrorAction(err))
-		return
-	}
-	tiltIgnoreFilter, err := dockerignore.DockerIgnoreTesterFromContents(tiltRoot, w.tiltIgnoreContents)
-	if err != nil {
-		st.Dispatch(NewErrorAction(err))
-	}
-	filter = model.NewCompositeMatcher([]model.PathMatcher{filter, tiltIgnoreFilter})
-
+	tiltRoot string,
+	filter model.PathMatcher) {
 	eventsCh := coalesceEvents(w.timerMaker, watcher.Events())
 
 	for {

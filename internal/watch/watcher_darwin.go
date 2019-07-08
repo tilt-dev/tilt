@@ -9,6 +9,8 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 
 	"github.com/windmilleng/fsevents"
+
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 // A file watcher optimized for Darwin.
@@ -71,11 +73,19 @@ func (d *darwinNotify) loop() {
 	}
 }
 
-func (d *darwinNotify) Add(name string) error {
+func (d *darwinNotify) Add(name string, filter model.PathMatcher) error {
 	d.sm.Lock()
 	defer d.sm.Unlock()
 
 	es := d.stream
+
+	isIgnored, err := filter.Matches(name, false)
+	if err != nil {
+		return err
+	}
+	if isIgnored {
+		return nil
+	}
 
 	// Check if this is a subdirectory of any of the paths
 	// we're already watching.
