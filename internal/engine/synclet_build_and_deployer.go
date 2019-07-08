@@ -200,7 +200,11 @@ func (sbd *SyncletBuildAndDeployer) updateViaExec(ctx context.Context,
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-updateViaExec")
 	defer span.Finish()
 	if !hotReload {
-		return fmt.Errorf("kubectl exec syncing is only supported on resources that don't use container_restart")
+		// If we're using kubectl exec syncing, it implies a non-Docker runtime,
+		// which probably doesn't support container restart. User will have to use
+		// our wrapper script to hack around it.
+		return fmt.Errorf("your container runtime does not support the `restart_container()` step. " +
+			"For a workaround, see https://github.com/windmilleng/rerun-process-wrapper")
 	}
 	l := logger.Get(ctx)
 	w := l.Writer(logger.InfoLvl)
