@@ -23,6 +23,9 @@ func initKlog() {
 
 	flags := []string{
 		"--stderrthreshold", "FATAL",
+		// k8s' reflector.go currently has only spurious warnings
+		// by default, set it to v0 so that they are not shown
+		fmt.Sprintf("--vmodule=reflector=%d", klogLevel),
 	}
 
 	if klogLevel > 0 {
