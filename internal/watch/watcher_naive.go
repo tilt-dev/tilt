@@ -36,7 +36,8 @@ type naiveNotify struct {
 }
 
 var (
-	numberOfWatches = expvar.NewInt("watch.naive.numberOfWatches")
+	numberOfWatches    = expvar.NewInt("watch.naive.numberOfWatches")
+	listOfWatchedFiles = expvar.NewMap("watch.naive.watchedFiles")
 )
 
 func (d *naiveNotify) Add(name string) error {
@@ -190,6 +191,7 @@ func (d *naiveNotify) add(path string) error {
 		return err
 	}
 	numberOfWatches.Add(1)
+	listOfWatchedFiles.Add(path, 1)
 	return nil
 }
 
