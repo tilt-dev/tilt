@@ -1,14 +1,17 @@
 package tiltfile
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 
 	"github.com/ghodss/yaml"
@@ -18,6 +21,8 @@ import (
 	"github.com/windmilleng/tilt/internal/kustomize"
 	"github.com/windmilleng/tilt/internal/ospath"
 )
+
+const localLogPrefix = " → "
 
 type gitRepo struct {
 	basePath string
@@ -258,22 +263,38 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 		return nil, err
 	}
 
-	s.logger.Infof("Running `%q`", command)
-	out, err := s.execLocalCmd(command)
+	s.logger.Infof("local: %s", command)
+	out, err := s.execLocalCmd(exec.Command("sh", "-c", command), true)
 	if err != nil {
 		return nil, err
 	}
 
-	return newBlob(out, fmt.Sprintf("cmd: '%s'", command)), nil
+	return newBlob(out, fmt.Sprintf("local: %s", command)), nil
 }
 
-func (s *tiltfileState) execLocalCmd(cmd string) (string, error) {
+func (s *tiltfileState) execLocalCmd(c *exec.Cmd, logOutput bool) (string, error) {
+	stdout := bytes.NewBuffer(nil)
+	stderr := bytes.NewBuffer(nil)
+
 	// TODO(nick): Should this also inject any docker.Env overrides?
-	c := exec.Command("sh", "-c", cmd)
 	c.Dir = filepath.Dir(s.filename.path)
-	out, err := c.Output()
+	c.Stdout = stdout
+	c.Stderr = stderr
+
+	if logOutput {
+		logOutput := NewMutexWriter(logger.NewPrefixedWriter(localLogPrefix, s.logger.Writer(logger.InfoLvl)))
+		c.Stdout = io.MultiWriter(stdout, logOutput)
+		c.Stderr = io.MultiWriter(stderr, logOutput)
+	}
+
+	err := c.Run()
 	if err != nil {
-		errorMessage := fmt.Sprintf("command %q failed.\nerror: %v\nstdout: %q", cmd, err, string(out))
+		// If we already logged the output, we don't need to log it again.
+		if logOutput {
+			return "", fmt.Errorf("command %q failed.\nerror: %v", c.Args, err)
+		}
+
+		errorMessage := fmt.Sprintf("command %q failed.\nerror: %v\nstdout: %q", c.Args, err, stdout.String())
 		exitError, ok := err.(*exec.ExitError)
 		if ok {
 			errorMessage += fmt.Sprintf("\nstderr: %q", string(exitError.Stderr))
@@ -281,23 +302,11 @@ func (s *tiltfileState) execLocalCmd(cmd string) (string, error) {
 		return "", errors.New(errorMessage)
 	}
 
-	return string(out), nil
-}
-
-func (s *tiltfileState) execLocalCmdArgv(argv ...string) (string, error) {
-	c := exec.Command(argv[0], argv[1:]...)
-	c.Dir = filepath.Dir(s.filename.path)
-	out, err := c.Output()
-	if err != nil {
-		errorMessage := fmt.Sprintf("command %q failed.\nerror: %v\nstdout: %q", argv, err, string(out))
-		exitError, ok := err.(*exec.ExitError)
-		if ok {
-			errorMessage += fmt.Sprintf("\nstderr: %q", string(exitError.Stderr))
-		}
-		return "", errors.New(errorMessage)
+	if stdout.Len() == 0 && stderr.Len() == 0 {
+		s.logger.Infof("%s[no output]", localLogPrefix)
 	}
 
-	return string(out), nil
+	return stdout.String(), nil
 }
 
 func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -312,8 +321,7 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
 
-	cmd := fmt.Sprintf("kustomize build %s", path)
-	yaml, err := s.execLocalCmd(cmd)
+	yaml, err := s.execLocalCmd(exec.Command("kustomize", "build", kustomizePath.String()), false)
 	if err != nil {
 		return nil, err
 	}
@@ -355,7 +363,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		cmd = append(cmd, filepath.Join("templates", name))
 	}
 
-	yaml, err := s.execLocalCmdArgv(cmd...)
+	yaml, err := s.execLocalCmd(exec.Command(cmd[0], cmd[1:]...), false)
 	if err != nil {
 		return nil, err
 	}
