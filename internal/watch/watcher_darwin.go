@@ -73,13 +73,13 @@ func (d *darwinNotify) loop() {
 	}
 }
 
-func (d *darwinNotify) Add(name string, filter model.PathMatcher) error {
+func (d *darwinNotify) Add(name string) error {
 	d.sm.Lock()
 	defer d.sm.Unlock()
 
 	es := d.stream
 
-	isIgnored, err := filter.Matches(name, false)
+	isIgnored, err := d.filter.Matches(name, false)
 	if err != nil {
 		return err
 	}

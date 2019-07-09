@@ -270,7 +270,14 @@ func (w *WatchManager) dispatchFileChangesLoop(
 					st.Dispatch(NewErrorAction(err))
 					continue
 				}
-				watchEvent.files = append(watchEvent.files, path)
+				isIgnored, err := filter.Matches(path, false)
+				if err != nil {
+					st.Dispatch(NewErrorAction(err))
+					continue
+				}
+				if !isIgnored {
+					watchEvent.files = append(watchEvent.files, path)
+				}
 			}
 
 			if len(watchEvent.files) > 0 {
