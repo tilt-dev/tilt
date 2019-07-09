@@ -96,6 +96,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebURL,
 	provideWebPort,
 	provideWebDevPort,
+	provideNoBrowserFlag,
 	server.ProvideHeadsUpServer,
 	assets.ProvideAssetServer,
 	server.ProvideHeadsUpServerController,

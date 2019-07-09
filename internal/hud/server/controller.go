@@ -20,6 +20,7 @@ import (
 const reconnectDur = 2 * time.Second
 
 type HeadsUpServerController struct {
+	noBrowser   bool
 	port        model.WebPort
 	hudServer   *HeadsUpServer
 	assetServer assets.Server
@@ -28,8 +29,9 @@ type HeadsUpServerController struct {
 	initDone    bool
 }
 
-func ProvideHeadsUpServerController(port model.WebPort, hudServer *HeadsUpServer, assetServer assets.Server, webURL model.WebURL) *HeadsUpServerController {
+func ProvideHeadsUpServerController(noBrowser bool, port model.WebPort, hudServer *HeadsUpServer, assetServer assets.Server, webURL model.WebURL) *HeadsUpServerController {
 	return &HeadsUpServerController{
+		noBrowser:   noBrowser,
 		port:        port,
 		hudServer:   hudServer,
 		assetServer: assetServer,
@@ -47,7 +49,7 @@ func (s *HeadsUpServerController) isWebsocketConnected() bool {
 }
 
 func (s *HeadsUpServerController) maybeOpenBrowser(st store.RStore) {
-	if s.webURL.Empty() || s.webLoadDone {
+	if s.webURL.Empty() || s.webLoadDone || s.noBrowser {
 		return
 	}
 

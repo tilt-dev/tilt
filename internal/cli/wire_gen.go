@@ -128,6 +128,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
 	analyticsReporter := engine.ProvideAnalyticsReporter(analytics2, storeStore)
+	bool2 := provideNoBrowserFlag()
 	tiltBuild := provideTiltInfo()
 	webMode, err := provideWebMode(tiltBuild)
 	if err != nil {
@@ -151,7 +152,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	sailDialer := client.ProvideSailDialer()
 	sailClient := client.ProvideSailClient(sailURL, sailRoomer, sailDialer)
 	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics2, sailClient)
-	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer, webURL)
+	headsUpServerController := server.ProvideHeadsUpServerController(bool2, modelWebPort, headsUpServer, assetsServer, webURL)
 	githubClientFactory := engine.NewGithubClientFactory()
 	tiltVersionChecker := engine.NewTiltVersionChecker(githubClientFactory, timerMaker)
 	tiltAnalyticsSubscriber := engine.NewTiltAnalyticsSubscriber(analytics2)
@@ -260,6 +261,7 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
 	analyticsReporter := engine.ProvideAnalyticsReporter(analytics2, storeStore)
+	bool2 := provideNoBrowserFlag()
 	tiltBuild := provideTiltInfo()
 	webMode, err := provideWebMode(tiltBuild)
 	if err != nil {
@@ -283,7 +285,7 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	sailDialer := client.ProvideSailDialer()
 	sailClient := client.ProvideSailClient(sailURL, sailRoomer, sailDialer)
 	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics2, sailClient)
-	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer, webURL)
+	headsUpServerController := server.ProvideHeadsUpServerController(bool2, modelWebPort, headsUpServer, assetsServer, webURL)
 	githubClientFactory := engine.NewGithubClientFactory()
 	tiltVersionChecker := engine.NewTiltVersionChecker(githubClientFactory, timerMaker)
 	tiltAnalyticsSubscriber := engine.NewTiltAnalyticsSubscriber(analytics2)
@@ -444,7 +446,8 @@ var BaseWireSet = wire.NewSet(
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
-	provideWebDevPort, server.ProvideHeadsUpServer, assets.ProvideAssetServer, server.ProvideHeadsUpServerController, provideSailMode,
+	provideWebDevPort,
+	provideNoBrowserFlag, server.ProvideHeadsUpServer, assets.ProvideAssetServer, server.ProvideHeadsUpServerController, provideSailMode,
 	provideSailURL, client.SailWireSet, provideThreads, engine.NewKINDPusher, feature.ProvideFeature,
 )
 
