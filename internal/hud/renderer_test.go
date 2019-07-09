@@ -211,7 +211,7 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`),
 				}},
 				LastDeployTime: ts,
 				ResourceInfo: view.YAMLResourceInfo{
-					K8sResources: []string{"deployA", "serviceB"},
+					K8sResources: []string{"sancho:deployment"},
 				},
 			},
 		},

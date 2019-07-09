@@ -849,7 +849,7 @@ func (s *tiltfileState) calculateResourceNames(workloads []k8s.K8sEntity) ([]str
 		}
 		return names, nil
 	} else {
-		return uniqueResourceNames(workloads)
+		return k8s.UniqueNames(workloads, 1)
 	}
 }
 
@@ -882,51 +882,6 @@ func newK8sObjectID(e k8s.K8sEntity) k8sObjectID {
 		namespace: e.Namespace().String(),
 		group:     e.Kind.Group,
 	}
-}
-
-// calculates names for workloads by using the shortest uniquely matching identifiers
-func uniqueResourceNames(es []k8s.K8sEntity) ([]string, error) {
-	ret := make([]string, len(es))
-	// how many resources potentially map to a given name
-	counts := make(map[string]int)
-
-	// returns a list of potential names, in order of preference
-	potentialNames := func(e k8s.K8sEntity) []string {
-		components := []string{
-			e.Name(),
-			e.Kind.Kind,
-			e.Namespace().String(),
-			e.Kind.Group,
-		}
-		var ret []string
-		for i := 0; i < len(components); i++ {
-			ret = append(ret, strings.ToLower(strings.Join(components[:i+1], ":")))
-		}
-		return ret
-	}
-
-	// count how many entity want each potential name
-	for _, e := range es {
-		for _, name := range potentialNames(e) {
-			counts[name]++
-		}
-	}
-
-	// for each entity, take the shortest name that is uniquely wanted by that entity
-	for i, e := range es {
-		names := potentialNames(e)
-		for _, name := range names {
-			if counts[name] == 1 {
-				ret[i] = name
-				break
-			}
-		}
-		if ret[i] == "" {
-			return nil, fmt.Errorf("unable to find a unique resource name for '%s'", names[len(names)-1])
-		}
-	}
-
-	return ret, nil
 }
 
 func (s *tiltfileState) k8sContext(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

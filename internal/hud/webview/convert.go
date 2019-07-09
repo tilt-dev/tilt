@@ -134,7 +134,7 @@ func tiltfileResourceView(s store.EngineState) Resource {
 func resourceInfoView(mt *store.ManifestTarget) ResourceInfoView {
 	if mt.Manifest.IsUnresourcedYAMLManifest() {
 		return YAMLResourceInfo{
-			K8sResources: mt.Manifest.K8sTarget().ResourceNames,
+			K8sResources: mt.Manifest.K8sTarget().DisplayNames,
 		}
 	}
 	if dcState, ok := mt.State.ResourceState.(dockercompose.State); ok {

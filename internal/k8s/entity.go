@@ -1,7 +1,6 @@
 package k8s
 
 import (
-	"fmt"
 	"net/url"
 	"reflect"
 	"strings"
@@ -291,10 +290,6 @@ func FilterByMatchesPodTemplateSpec(withPodSpec K8sEntity, entities []K8sEntity)
 		remaining = rest
 	}
 	return allMatches, remaining, nil
-}
-
-func (e K8sEntity) ResourceName() string {
-	return fmt.Sprintf("k8s%s-%s", e.Kind.Kind, e.Name())
 }
 
 func (e K8sEntity) HasName(name string) bool {

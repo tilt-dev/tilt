@@ -204,7 +204,7 @@ func (v *ResourceView) resourceExpandedYAML() rty.Component {
 	l := rty.NewConcatLayout(rty.DirHor)
 	l.Add(rty.TextString(strings.Repeat(" ", 2)))
 	rhs := rty.NewConcatLayout(rty.DirVert)
-	rhs.Add(rty.NewStringBuilder().Fg(cLightText).Text("K8s objects not included in the resources above:").Build())
+	rhs.Add(rty.NewStringBuilder().Fg(cLightText).Text("(Kubernetes objects that don't match a group)").Build())
 	rhs.Add(rty.TextString(strings.Join(yi.K8sResources, "\n")))
 	l.AddDynamic(rhs)
 	return l

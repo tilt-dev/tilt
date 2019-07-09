@@ -149,7 +149,10 @@ type K8sTarget struct {
 	PortForwards []PortForward
 	// labels for pods that we should watch and associate with this resource
 	ExtraPodSelectors []labels.Selector
-	ResourceNames     []string
+
+	// Each K8s entity should have a display name for user interfaces
+	// that balances brevity and uniqueness
+	DisplayNames []string
 
 	dependencyIDs []TargetID
 }

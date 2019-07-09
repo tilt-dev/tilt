@@ -8,6 +8,7 @@ import (
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 )
@@ -15,7 +16,8 @@ import (
 func TestNeedsNudgeK8sYaml(t *testing.T) {
 	state := store.NewState()
 
-	m := k8s.NewK8sOnlyManifestForTesting("yamlyaml", nil)
+	m, err := k8s.NewK8sOnlyManifestFromYAML(testyaml.SanchoYAML)
+	assert.NoError(t, err)
 	targ := store.NewManifestTarget(m)
 	targ.State = &store.ManifestState{LastSuccessfulDeployTime: time.Now()}
 	state.UpsertManifestTarget(targ)

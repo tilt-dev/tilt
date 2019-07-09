@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
+	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
@@ -66,7 +67,8 @@ func TestStateToViewPortForwards(t *testing.T) {
 }
 
 func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
-	m := k8s.NewK8sOnlyManifestForTesting("yamlyaml", []string{"deployA", "serviceB"})
+	m, err := k8s.NewK8sOnlyManifestFromYAML(testyaml.SanchoYAML)
+	assert.NoError(t, err)
 	state := newState([]model.Manifest{m})
 	v := StateToView(*state)
 
@@ -75,7 +77,7 @@ func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 	r, _ := v.Resource(m.Name)
 	assert.Equal(t, nil, r.LastBuild().Error)
 
-	expectedInfo := view.YAMLResourceInfo{K8sResources: []string{"deployA", "serviceB"}}
+	expectedInfo := view.YAMLResourceInfo{K8sResources: []string{"sancho:deployment"}}
 	assert.Equal(t, expectedInfo, r.ResourceInfo)
 }
 

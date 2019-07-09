@@ -1,4 +1,4 @@
-package tiltfile
+package k8s
 
 import (
 	"fmt"
@@ -6,8 +6,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-
-	"github.com/windmilleng/tilt/internal/k8s"
 )
 
 type workload struct {
@@ -51,7 +49,7 @@ func TestUniqueResourceNames(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.testName, func(t *testing.T) {
-			var entities []k8s.K8sEntity
+			var entities []K8sEntity
 			var expectedNames []string
 			for _, w := range test.workloads {
 				obj := unstructured.Unstructured{}
@@ -60,12 +58,12 @@ func TestUniqueResourceNames(t *testing.T) {
 				obj.SetKind(w.kind)
 				obj.SetAPIVersion(fmt.Sprintf("%s/1.0", w.group))
 				gvk := obj.GroupVersionKind()
-				entities = append(entities, k8s.K8sEntity{Obj: &obj, Kind: &gvk})
+				entities = append(entities, K8sEntity{Obj: &obj, Kind: &gvk})
 
 				expectedNames = append(expectedNames, w.expectedResourceName)
 			}
 
-			actualNames, err := uniqueResourceNames(entities)
+			actualNames, err := UniqueNames(entities, 1)
 			if err != nil {
 				assert.NoError(t, err)
 			}

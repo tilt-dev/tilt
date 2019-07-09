@@ -3,6 +3,8 @@ package k8s
 import (
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -17,17 +19,19 @@ func NewTarget(
 		return model.K8sTarget{}, err
 	}
 
-	var resourceNames []string
-	for _, e := range entities {
-		resourceNames = append(resourceNames, e.ResourceName())
+	// Use a min component count of 2 for computing names,
+	// so that the resource type appears
+	displayNames, err := UniqueNames(entities, 2)
+	if err != nil {
+		return model.K8sTarget{}, errors.Wrap(err, "k8s.NewTarget")
 	}
 
 	return model.K8sTarget{
 		Name:              name,
 		YAML:              yaml,
-		ResourceNames:     resourceNames,
 		PortForwards:      portForwards,
 		ExtraPodSelectors: extraPodSelectors,
+		DisplayNames:      displayNames,
 	}.WithDependencyIDs(dependencyIDs), nil
 }
 
@@ -39,11 +43,15 @@ func NewK8sOnlyManifest(name model.ManifestName, entities []K8sEntity) (model.Ma
 	return model.Manifest{Name: name}.WithDeployTarget(kTarget), nil
 }
 
-func NewK8sOnlyManifestForTesting(yaml string, entityNames []string) model.Manifest {
-	return model.Manifest{Name: model.UnresourcedYAMLManifestName}.
-		WithDeployTarget(model.K8sTarget{
-			Name:          model.UnresourcedYAMLManifestName.TargetName(),
-			YAML:          yaml,
-			ResourceNames: entityNames,
-		})
+func NewK8sOnlyManifestFromYAML(yaml string) (model.Manifest, error) {
+	entities, err := ParseYAMLFromString(yaml)
+	if err != nil {
+		return model.Manifest{}, errors.Wrap(err, "NewK8sOnlyManifestFromYAML")
+	}
+
+	manifest, err := NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, entities)
+	if err != nil {
+		return model.Manifest{}, errors.Wrap(err, "NewK8sOnlyManifestFromYAML")
+	}
+	return manifest, nil
 }
