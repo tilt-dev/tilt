@@ -17,6 +17,7 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
@@ -208,8 +209,11 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 	deployLabel := k8s.TiltDeployLabel(deployID)
 
 	var targetIDs []model.TargetID
+	var displayNames []string
 
 	for _, k8sTarget := range k8sTargets {
+		displayNames = append(displayNames, k8sTarget.DisplayNames...)
+
 		// TODO(nick): The parsed YAML should probably be a part of the model?
 		// It doesn't make much sense to re-parse it and inject labels on every deploy.
 		entities, err := k8s.ParseYAMLFromString(k8sTarget.YAML)
@@ -289,7 +293,16 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 		st.Dispatch(a)
 	}
 
-	return ibd.k8sClient.Upsert(ctx, newK8sEntities)
+	l := logger.Get(ctx)
+	writer := logger.NewPrefixedWriter(logger.Blue(l).Sprint("  │ "), l.Writer(logger.InfoLvl))
+	l = logger.NewLogger(logger.InfoLvl, writer)
+
+	l.Infof("Applying via kubectl:")
+	for _, displayName := range displayNames {
+		l.Infof("   %s", displayName)
+	}
+
+	return ibd.k8sClient.Upsert(logger.WithLogger(ctx, l), newK8sEntities)
 }
 
 // If we're using docker-for-desktop as our k8s backend,
