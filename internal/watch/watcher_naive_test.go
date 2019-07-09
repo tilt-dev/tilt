@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/windmilleng/tilt/internal/model"
 )
 
 func TestDontWatchEachFile(t *testing.T) {
@@ -16,7 +18,7 @@ func TestDontWatchEachFile(t *testing.T) {
 	// you can watch individual files with fsnotify, but that is more prone to exhaust resources
 	// this test uses a Linux way to get the number of watches to make sure we're watching
 	// per-directory, not per-file
-	f := newNotifyFixture(t)
+	f := newNotifyFixture(t, model.EmptyMatcher)
 	defer f.tearDown()
 
 	watched := f.TempDir("watched")

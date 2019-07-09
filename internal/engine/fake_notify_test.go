@@ -25,7 +25,7 @@ func newFakeMultiWatcher() *fakeMultiWatcher {
 	return r
 }
 
-func (w *fakeMultiWatcher) newSub(_ logger.Logger) (watch.Notify, error) {
+func (w *fakeMultiWatcher) newSub(_ logger.Logger, filter model.PathMatcher) (watch.Notify, error) {
 	subCh := make(chan watch.FileEvent)
 	errorCh := make(chan error)
 	w.mu.Lock()
@@ -108,7 +108,7 @@ func (w *fakeWatcher) matches(path string) bool {
 	return false
 }
 
-func (w *fakeWatcher) Add(name string, filter model.PathMatcher) error {
+func (w *fakeWatcher) Add(name string) error {
 	w.paths = append(w.paths, name)
 	return nil
 }

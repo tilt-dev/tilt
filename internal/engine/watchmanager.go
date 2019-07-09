@@ -189,12 +189,6 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 	newWatches := make(map[model.TargetID]targetNotifyCancel)
 	for _, target := range setup {
 		logger := store.NewLogActionLogger(ctx, st.Dispatch)
-		watcher, err := w.fsWatcherMaker(logger)
-		if err != nil {
-			st.Dispatch(NewErrorAction(err))
-			continue
-		}
-
 		filter, err := ignore.CreateFileChangeFilter(target)
 		if err != nil {
 			st.Dispatch(NewErrorAction(err))
@@ -205,9 +199,14 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 			st.Dispatch(NewErrorAction(err))
 		}
 		filter = model.NewCompositeMatcher([]model.PathMatcher{filter, tiltIgnoreFilter})
+		watcher, err := w.fsWatcherMaker(logger, filter)
+		if err != nil {
+			st.Dispatch(NewErrorAction(err))
+			continue
+		}
 
 		for _, d := range target.Dependencies() {
-			err = watcher.Add(d, filter)
+			err = watcher.Add(d)
 			if err != nil {
 				st.Dispatch(NewErrorAction(err))
 			}
@@ -271,14 +270,7 @@ func (w *WatchManager) dispatchFileChangesLoop(
 					st.Dispatch(NewErrorAction(err))
 					continue
 				}
-				isIgnored, err := filter.Matches(path, false)
-				if err != nil {
-					st.Dispatch(NewErrorAction(err))
-					continue
-				}
-				if !isIgnored {
-					watchEvent.files = append(watchEvent.files, path)
-				}
+				watchEvent.files = append(watchEvent.files, path)
 			}
 
 			if len(watchEvent.files) > 0 {

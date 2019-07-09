@@ -6,11 +6,10 @@ import (
 	"time"
 
 	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 
 	"github.com/windmilleng/fsevents"
-
-	"github.com/windmilleng/tilt/internal/model"
 )
 
 // A file watcher optimized for Darwin.
@@ -20,6 +19,7 @@ type darwinNotify struct {
 	events chan FileEvent
 	errors chan error
 	stop   chan struct{}
+	filter model.PathMatcher
 
 	// TODO(nick): This mutex is needed for the case where we add paths after we
 	// start watching. But because fsevents supports recursive watches, we don't
@@ -131,7 +131,7 @@ func (d *darwinNotify) Errors() chan error {
 	return d.errors
 }
 
-func NewWatcher(l logger.Logger) (Notify, error) {
+func NewWatcher(l logger.Logger, filter model.PathMatcher) (Notify, error) {
 	dw := &darwinNotify{
 		stream: &fsevents.EventStream{
 			Latency: 1 * time.Millisecond,
@@ -144,6 +144,7 @@ func NewWatcher(l logger.Logger) (Notify, error) {
 		events: make(chan FileEvent),
 		errors: make(chan error),
 		stop:   make(chan struct{}),
+		filter: filter,
 	}
 
 	return dw, nil

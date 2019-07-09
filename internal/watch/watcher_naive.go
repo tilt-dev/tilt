@@ -27,6 +27,7 @@ type naiveNotify struct {
 	events        chan fsnotify.Event
 	wrappedEvents chan FileEvent
 	errors        chan error
+	filter        model.PathMatcher
 
 	mu sync.Mutex
 
@@ -40,7 +41,7 @@ var (
 	numberOfWatches = expvar.NewInt("watch.naive.numberOfWatches")
 )
 
-func (d *naiveNotify) Add(name string, filter model.PathMatcher) error {
+func (d *naiveNotify) Add(name string) error {
 	fi, err := os.Stat(name)
 	if err != nil && !os.IsNotExist(err) {
 		return errors.Wrapf(err, "notify.Add(%q)", name)
@@ -48,17 +49,17 @@ func (d *naiveNotify) Add(name string, filter model.PathMatcher) error {
 
 	// if it's a file that doesn't exist, watch its parent
 	if os.IsNotExist(err) {
-		err = d.watchAncestorOfMissingPath(name, filter)
+		err = d.watchAncestorOfMissingPath(name)
 		if err != nil {
 			return errors.Wrapf(err, "watchAncestorOfMissingPath(%q)", name)
 		}
 	} else if fi.IsDir() {
-		err = d.watchRecursively(name, filter)
+		err = d.watchRecursively(name)
 		if err != nil {
 			return errors.Wrapf(err, "notify.Add(%q)", name)
 		}
 	} else {
-		err = d.add(filepath.Dir(name), filter)
+		err = d.add(filepath.Dir(name))
 		if err != nil {
 			return errors.Wrapf(err, "notify.Add(%q)", filepath.Dir(name))
 		}
@@ -71,7 +72,7 @@ func (d *naiveNotify) Add(name string, filter model.PathMatcher) error {
 	return nil
 }
 
-func (d *naiveNotify) watchRecursively(dir string, filter model.PathMatcher) error {
+func (d *naiveNotify) watchRecursively(dir string) error {
 	return filepath.Walk(dir, func(path string, mode os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -80,7 +81,7 @@ func (d *naiveNotify) watchRecursively(dir string, filter model.PathMatcher) err
 		if !mode.IsDir() {
 			return nil
 		}
-		err = d.add(path, filter)
+		err = d.add(path)
 		if err != nil {
 			if os.IsNotExist(err) {
 				return nil
@@ -91,7 +92,7 @@ func (d *naiveNotify) watchRecursively(dir string, filter model.PathMatcher) err
 	})
 }
 
-func (d *naiveNotify) watchAncestorOfMissingPath(path string, filter model.PathMatcher) error {
+func (d *naiveNotify) watchAncestorOfMissingPath(path string) error {
 	if path == string(filepath.Separator) {
 		return fmt.Errorf("cannot watch root directory")
 	}
@@ -103,10 +104,10 @@ func (d *naiveNotify) watchAncestorOfMissingPath(path string, filter model.PathM
 
 	if os.IsNotExist(err) {
 		parent := filepath.Dir(path)
-		return d.watchAncestorOfMissingPath(parent, filter)
+		return d.watchAncestorOfMissingPath(parent)
 	}
 
-	return d.add(path, filter)
+	return d.add(path)
 }
 
 func (d *naiveNotify) Close() error {
@@ -128,6 +129,7 @@ func (d *naiveNotify) loop() {
 
 		if e.Op&fsnotify.Create != fsnotify.Create {
 			if shouldNotify {
+				fmt.Printf("Notifying1 %s\n", e.Name)
 				d.wrappedEvents <- FileEvent{e.Name}
 			}
 			continue
@@ -140,6 +142,7 @@ func (d *naiveNotify) loop() {
 			}
 
 			if d.shouldNotify(path) {
+				fmt.Printf("Notifying2 %s\n", path)
 				d.wrappedEvents <- FileEvent{path}
 			}
 
@@ -157,8 +160,7 @@ func (d *naiveNotify) loop() {
 				}
 			}
 			if shouldWatch {
-				// NOTE(dmiller): we can't have a watcher here because this loop is started when the watcher is created
-				err := d.add(path, model.EmptyMatcher)
+				err := d.add(path)
 				if err != nil && !os.IsNotExist(err) {
 					d.log.Infof("Error watching path %s: %s", e.Name, err)
 				}
@@ -174,6 +176,12 @@ func (d *naiveNotify) loop() {
 func (d *naiveNotify) shouldNotify(path string) bool {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
+	isIgnored, _ := d.filter.Matches(path, false)
+	if isIgnored {
+		return false
+	}
+
 	if _, ok := d.notifyList[path]; ok {
 		return true
 	}
@@ -186,8 +194,9 @@ func (d *naiveNotify) shouldNotify(path string) bool {
 	return false
 }
 
-func (d *naiveNotify) add(path string, filter model.PathMatcher) error {
-	isIgnored, err := filter.Matches(path, false)
+func (d *naiveNotify) add(path string) error {
+	isIgnored, err := d.filter.Matches(path, false)
+	fmt.Printf("%s isIgnored to watch: %v\n", path, isIgnored)
 	if err != nil {
 		return err
 	}
@@ -202,7 +211,7 @@ func (d *naiveNotify) add(path string, filter model.PathMatcher) error {
 	return nil
 }
 
-func NewWatcher(l logger.Logger) (*naiveNotify, error) {
+func NewWatcher(l logger.Logger, filter model.PathMatcher) (*naiveNotify, error) {
 	fsw, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, err
@@ -217,6 +226,7 @@ func NewWatcher(l logger.Logger) (*naiveNotify, error) {
 		wrappedEvents: wrappedEvents,
 		errors:        fsw.Errors,
 		notifyList:    map[string]bool{},
+		filter:        filter,
 	}
 
 	go wmw.loop()

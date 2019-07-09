@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/opentracing/opentracing-go"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
@@ -55,14 +55,14 @@ type Upper struct {
 	store *store.Store
 }
 
-type FsWatcherMaker func(l logger.Logger) (watch.Notify, error)
+type FsWatcherMaker func(l logger.Logger, filter model.PathMatcher) (watch.Notify, error)
 type ServiceWatcherMaker func(context.Context, *store.Store) error
 type PodWatcherMaker func(context.Context, *store.Store) error
 type timerMaker func(d time.Duration) <-chan time.Time
 
 func ProvideFsWatcherMaker() FsWatcherMaker {
-	return func(l logger.Logger) (watch.Notify, error) {
-		return watch.NewWatcher(l)
+	return func(l logger.Logger, filter model.PathMatcher) (watch.Notify, error) {
+		return watch.NewWatcher(l, filter)
 	}
 }
 
