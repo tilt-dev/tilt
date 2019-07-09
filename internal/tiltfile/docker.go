@@ -25,7 +25,7 @@ type dockerImage struct {
 	baseDockerfile     dockerfile.Dockerfile
 	configurationRef   container.RefSelector
 	deploymentRef      reference.Named
-	syncs              []sync
+	syncs              []pathSync
 	runs               []model.Run
 	entrypoint         string
 	cachePaths         []string
@@ -496,7 +496,7 @@ func (b *fastBuild) add(thread *starlark.Thread, fn *starlark.Builtin, args star
 		return nil, err
 	}
 
-	s := sync{}
+	s := pathSync{}
 	lp, err := b.s.localPathFromSkylarkValue(src)
 	if err != nil {
 		return nil, errors.Wrapf(err, "%s.%s(): invalid type for src (arg 1)", b.String(), fn.Name())
@@ -540,7 +540,7 @@ func (b *fastBuild) run(thread *starlark.Thread, fn *starlark.Builtin, args star
 	return b, nil
 }
 
-type sync struct {
+type pathSync struct {
 	src        localPath
 	mountPoint string
 }

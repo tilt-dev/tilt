@@ -400,6 +400,9 @@ k8s_yaml(yaml)
 	f.assertNextManifest("foo",
 		db(image("gcr.io/foo")),
 		deployment("foo"))
+
+	assert.Contains(t, f.out.String(), "local: cat foo.yaml")
+	assert.Contains(t, f.out.String(), " → kind: Deployment")
 }
 
 func TestReadFile(t *testing.T) {
@@ -1829,7 +1832,7 @@ func TestYamlErrorFromLocal(t *testing.T) {
 yaml = local('echo hi')
 k8s_yaml(yaml)
 `)
-	f.loadErrString("cmd: 'echo hi'")
+	f.loadErrString("local: echo hi")
 }
 
 func TestYamlErrorFromReadFile(t *testing.T) {
@@ -3591,6 +3594,7 @@ func TestDisableFeatureThatDoesntExist(t *testing.T) {
 
 type fixture struct {
 	ctx context.Context
+	out *bytes.Buffer
 	t   *testing.T
 	*tempdir.TempDirFixture
 	kCli    *k8s.FakeK8sClient
@@ -3614,6 +3618,7 @@ func newFixture(t *testing.T) *fixture {
 
 	r := &fixture{
 		ctx:            ctx,
+		out:            out,
 		t:              t,
 		TempDirFixture: f,
 		an:             an,
