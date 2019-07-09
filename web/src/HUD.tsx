@@ -18,7 +18,7 @@ import { TiltBuild, ResourceView, Resource } from "./types"
 import AlertPane, { AlertResource } from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
-import NotFound from "./NotFound";
+import NotFound from "./NotFound"
 
 type HudProps = {
   history: History
@@ -129,7 +129,6 @@ class HUD extends Component<HudProps, HudState> {
     return this.pathBuilder.path(relPath)
   }
 
-
   render() {
     let view = this.state.View
     let sailEnabled = view && view.SailEnabled ? view.SailEnabled : false
@@ -144,7 +143,6 @@ class HUD extends Component<HudProps, HudState> {
     let toggleSidebar = this.toggleSidebar
     let statusItems = resources.map(res => new StatusItem(res))
     let sidebarItems = resources.map(res => new SidebarItem(res))
-
 
     let sidebarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name = props.match.params.name
@@ -170,14 +168,15 @@ class HUD extends Component<HudProps, HudState> {
         let selectedResource = resources.find(r => r.Name === name)
         if (selectedResource === undefined) {
           return (
-              <TopBar
-                logUrl={this.path("/")} // redirect to home page
-                alertsUrl={this.path("/")}
-                previewUrl={this.path("/")}
-                resourceView={t}
-                sailEnabled={sailEnabled}
-                sailUrl={sailUrl}
-                numberOfAlerts={numAlerts}/>
+            <TopBar
+              logUrl={this.path("/")} // redirect to home page
+              alertsUrl={this.path("/")}
+              previewUrl={this.path("/")}
+              resourceView={t}
+              sailEnabled={sailEnabled}
+              sailUrl={sailUrl}
+              numberOfAlerts={numAlerts}
+            />
           )
         }
         let er = new AlertResource(selectedResource)
@@ -215,10 +214,8 @@ class HUD extends Component<HudProps, HudState> {
       let podStatus = ""
       if (view && name !== "") {
         let r = view.Resources.find(r => r.Name === name)
-        if (r === undefined){
-          return (
-              <Route component = {NotFound}/>
-          )
+        if (r === undefined) {
+          return <Route component={NotFound} />
         }
         logs = (r && r.CombinedLog) || ""
         endpoints = (r && r.Endpoints) || []
@@ -246,10 +243,8 @@ class HUD extends Component<HudProps, HudState> {
       let endpoint = ""
       if (view && name !== "") {
         let r = view.Resources.find(r => r.Name === name)
-        if (r === undefined){
-          return (
-              < Route component={NotFound}/>
-          )
+        if (r === undefined) {
+          return <Route component={NotFound} />
         }
         endpoint = r ? r.Endpoints && r.Endpoints[0] : ""
       }
@@ -273,9 +268,7 @@ class HUD extends Component<HudProps, HudState> {
       let name = props.match.params ? props.match.params.name : ""
       let er = resources.find(r => r.Name === name)
       if (er === undefined) {
-        return (
-            < Route component={NotFound}/>
-        )
+        return <Route component={NotFound} />
       }
       if (er) {
         return <AlertPane resources={[new AlertResource(er)]} />
