@@ -4,9 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
-	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 
@@ -17,7 +15,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/dockerfile"
 )
 
 var useCache bool
@@ -44,15 +41,7 @@ func run() error {
 
 	d.NegotiateAPIVersion(ctx)
 
-	df, err := ioutil.ReadFile("Dockerfile")
-	if err != nil {
-		if os.IsNotExist(err) {
-			return fmt.Errorf("Dockerfile not found in current directory")
-		}
-		return err
-	}
-
-	archive, err := build.TarDfOnly(ctx, dockerfile.Dockerfile(df))
+	archive, err := build.TarPath(ctx, ".")
 	if err != nil {
 		return err
 	}

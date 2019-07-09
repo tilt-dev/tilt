@@ -24,3 +24,6 @@ buildkitapi > $DIR/multistage-fail-copy.response.txt
 cd $DIR/sleep-success
 buildkitapi > $DIR/sleep-success.response.txt
 buildkitapi --cache > $DIR/sleep-cache.response.txt
+
+cd $DIR/rust-success
+buildkitapi > $DIR/rust-success.response.txt

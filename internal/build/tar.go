@@ -277,6 +277,21 @@ func TarDfOnly(ctx context.Context, df dockerfile.Dockerfile) (io.Reader, error)
 	return ab.bytesBuffer()
 }
 
+func TarPath(ctx context.Context, path string) (io.Reader, error) {
+	ab := NewArchiveBuilder(model.EmptyMatcher)
+	err := ab.ArchivePathsIfExist(ctx, []PathMapping{
+		{
+			LocalPath:     path,
+			ContainerPath: ".",
+		},
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "TarDfAndPath")
+	}
+
+	return ab.bytesBuffer()
+}
+
 // Dedupe the entries with last-entry-wins semantics.
 func dedupeEntries(entries []archiveEntry) []archiveEntry {
 	seenIndex := make(map[string]int, len(entries))
