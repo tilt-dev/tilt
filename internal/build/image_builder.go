@@ -375,7 +375,7 @@ func readDockerOutput(ctx context.Context, reader io.Reader, writer io.Writer) (
 	decoder := json.NewDecoder(reader)
 	var innerSpan opentracing.Span
 
-	b := newBuildkitPrinter(logger.Get(ctx))
+	b := newBuildkitPrinter(logger.Get(ctx).Writer(logger.InfoLvl))
 
 	for decoder.More() {
 		if innerSpan != nil {
