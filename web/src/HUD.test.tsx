@@ -167,22 +167,30 @@ it("renders no error count in tabnav if there are no errors", () => {
 })
 
 it("log page for nonexistent resource shows error", async () => {
-  const root = mount(HUDAtPath("r/nonexistingresource"))
+  const root = mount(HUDAtPath("/r/nonexistentresource"))
   const hud = root.find(HUD)
   hud.setState({ View: oneResourceView() })
-  expect(root).toMatchSnapshot()
+
+  let loadingScreen = root.find(".LoadingScreen")
+  expect(loadingScreen.at(0).text()).toEqual("No resource found at /r/nonexistentresource")
 })
 
 it("preview page for nonexistent resource shows error", async () => {
   const root = mount(HUDAtPath("/r/nonexistentresource/preview"))
   const hud = root.find(HUD)
   hud.setState({ View: oneResourceView() })
-  expect(root).toMatchSnapshot()
+
+  let loadingScreen = root.find(".LoadingScreen")
+  expect(loadingScreen.at(0).text()).toEqual("No resource found at /r/nonexistentresource/preview")
+
 })
 
 it("alerts page for nonexistent resource shows error", async () => {
   const root = mount(HUDAtPath("/r/nonexistentresource/alerts"))
   const hud = root.find(HUD)
   hud.setState({ View: oneResourceView() })
-  expect(root).toMatchSnapshot()
+
+  let loadingScreen = root.find(".LoadingScreen")
+  expect(loadingScreen.at(0).text()).toEqual("No resource found at /r/nonexistentresource/alerts")
+
 })
