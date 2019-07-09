@@ -18,6 +18,13 @@ const emptyHUD = () => {
     </MemoryRouter>
   )
 }
+const HUDAtPath = (path: string) => {
+  return (
+    <MemoryRouter initialEntries={[path]}>
+      <HUD history={fakeHistory} />
+    </MemoryRouter>
+  )
+}
 
 beforeEach(() => {
   Date.now = jest.fn(() => 1482363367071)
@@ -157,4 +164,25 @@ it("renders no error count in tabnav if there are no errors", () => {
   hud.setState({ View: { Resources: [oneResourceNoAlerts()] } })
   let errorTab = root.find(".tabLink--errors")
   expect(errorTab.at(0).text()).toEqual("Alerts")
+})
+
+it("log page for nonexistent resource shows error", async () => {
+  const root = mount(HUDAtPath("r/nonexistingresource"))
+  const hud = root.find(HUD)
+  hud.setState({ View: oneResourceView() })
+  expect(root).toMatchSnapshot()
+})
+
+it("preview page for nonexistent resource shows error", async () => {
+  const root = mount(HUDAtPath("/r/nonexistentresource/preview"))
+  const hud = root.find(HUD)
+  hud.setState({ View: oneResourceView() })
+  expect(root).toMatchSnapshot()
+})
+
+it("alerts page for nonexistent resource shows error", async () => {
+  const root = mount(HUDAtPath("/r/nonexistentresource/alerts"))
+  const hud = root.find(HUD)
+  hud.setState({ View: oneResourceView() })
+  expect(root).toMatchSnapshot()
 })

@@ -170,8 +170,8 @@ class HUD extends Component<HudProps, HudState> {
           return (
             <TopBar
               logUrl={this.path("/")} // redirect to home page
-              alertsUrl={this.path("/")}
-              previewUrl={this.path("/")}
+              alertsUrl={this.path("/alerts")}
+              previewUrl={this.path("/preview")}
               resourceView={t}
               sailEnabled={sailEnabled}
               sailUrl={sailUrl}
