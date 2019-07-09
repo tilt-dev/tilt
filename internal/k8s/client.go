@@ -241,10 +241,6 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-k8sUpsert")
 	defer span.Finish()
 
-	l := logger.Get(ctx)
-	prefix := logger.Blue(l).Sprint("  │ ")
-	l.Infof("%sApplying via kubectl", prefix)
-
 	immutable := ImmutableEntities(entities)
 	if len(immutable) > 0 {
 		_, stderr, err := k.actOnEntities(ctx, []string{"replace", "--force"}, immutable)
@@ -267,7 +263,7 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
 			// NOTE(maia): this is equivalent to `kubecutl replace --force`, but will ensure that all
 			// dependant pods get deleted rather than orphaned. We WANT these pods to be deleted
 			// and recreated so they have all the new labels, etc. of their controlling k8s entity.
-			l.Infof("%sFalling back to 'kubectl delete && apply' on immutable field error", prefix)
+			logger.Get(ctx).Infof("Falling back to 'kubectl delete && apply' on immutable field error")
 			_, stderr, err = k.actOnEntities(ctx, []string{"delete"}, mutable)
 			if err != nil {
 				return errors.Wrapf(err, "kubectl delete (as part of delete && apply):\nstderr: %s", stderr)
