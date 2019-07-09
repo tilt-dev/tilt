@@ -11,8 +11,6 @@ import (
 	"testing"
 
 	controlapi "github.com/moby/buildkit/api/services/control"
-
-	"github.com/windmilleng/tilt/internal/logger"
 )
 
 // NOTE(dmiller): set at runtime with:
@@ -21,7 +19,6 @@ var WriteGoldenMaster = "0"
 
 type buildkitTestCase struct {
 	name         string
-	level        logger.Level
 	responsePath string
 }
 
@@ -41,16 +38,16 @@ func (c buildkitTestCase) readResponse(reader io.Reader) ([]controlapi.StatusRes
 
 func TestBuildkitPrinter(t *testing.T) {
 	cases := []buildkitTestCase{
-		{"echo-hi-success", logger.InfoLvl, "echo-hi-success.response.txt"},
-		{"echo-hi-success-verbose", logger.VerboseLvl, "echo-hi-success.response.txt"},
-		{"echo-hi-failure", logger.InfoLvl, "echo-hi-failure.response.txt"},
-		{"echo-hi-failure-verbose", logger.InfoLvl, "echo-hi-failure.response.txt"},
-		{"multistage-success", logger.InfoLvl, "multistage-success.response.txt"},
-		{"multistage-fail-run", logger.InfoLvl, "multistage-fail-run.response.txt"},
-		{"multistage-fail-copy", logger.InfoLvl, "multistage-fail-copy.response.txt"},
-		{"sleep-success", logger.InfoLvl, "sleep-success.response.txt"},
-		{"sleep-cache", logger.InfoLvl, "sleep-cache.response.txt"},
-		{"rust-success", logger.InfoLvl, "rust-success.response.txt"},
+		{"echo-hi-success", "echo-hi-success.response.txt"},
+		{"echo-hi-success-verbose", "echo-hi-success.response.txt"},
+		{"echo-hi-failure", "echo-hi-failure.response.txt"},
+		{"echo-hi-failure-verbose", "echo-hi-failure.response.txt"},
+		{"multistage-success", "multistage-success.response.txt"},
+		{"multistage-fail-run", "multistage-fail-run.response.txt"},
+		{"multistage-fail-copy", "multistage-fail-copy.response.txt"},
+		{"sleep-success", "sleep-success.response.txt"},
+		{"sleep-cache", "sleep-cache.response.txt"},
+		{"rust-success", "rust-success.response.txt"},
 	}
 
 	base := t.Name()
@@ -68,8 +65,7 @@ func TestBuildkitPrinter(t *testing.T) {
 			}
 
 			output := &strings.Builder{}
-			logger := logger.NewLogger(c.level, output)
-			p := newBuildkitPrinter(logger)
+			p := newBuildkitPrinter(output)
 
 			for _, resp := range responses {
 				err := p.parseAndPrint(toVertexes(resp))

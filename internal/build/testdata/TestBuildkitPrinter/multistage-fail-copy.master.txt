@@ -2,5 +2,5 @@
     ╎ [builder 2/2] RUN echo hi > hi.txt
     ╎ [builder 2/2] done | 1.16s
     ╎ [stage-1 2/3] COPY --from=builder /dest/hi.txt /src/hi.txt
-
+    ╎ 
     ╎ ERROR IN: [stage-1 2/3] COPY --from=builder /dest/hi.txt /src/hi.txt
