@@ -18,6 +18,7 @@ import { TiltBuild, ResourceView, Resource } from "./types"
 import AlertPane, { AlertResource } from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
+import NotFound from "./NotFound"
 
 type HudProps = {
   history: History
@@ -138,11 +139,11 @@ class HUD extends Component<HudProps, HudState> {
     if (!resources.length) {
       return <LoadingScreen message={message} />
     }
-
     let isSidebarClosed = this.state.IsSidebarClosed
     let toggleSidebar = this.toggleSidebar
     let statusItems = resources.map(res => new StatusItem(res))
     let sidebarItems = resources.map(res => new SidebarItem(res))
+
     let sidebarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name = props.match.params.name
       return (
@@ -165,6 +166,19 @@ class HUD extends Component<HudProps, HudState> {
       let numAlerts = 0
       if (name !== "") {
         let selectedResource = resources.find(r => r.Name === name)
+        if (selectedResource === undefined) {
+          return (
+            <TopBar
+              logUrl={this.path("/")} // redirect to home page
+              alertsUrl={this.path("/alerts")}
+              previewUrl={this.path("/preview")}
+              resourceView={t}
+              sailEnabled={sailEnabled}
+              sailUrl={sailUrl}
+              numberOfAlerts={numAlerts}
+            />
+          )
+        }
         let er = new AlertResource(selectedResource)
         if (er.hasAlert()) {
           numAlerts = er.numberOfAlerts()
@@ -200,6 +214,9 @@ class HUD extends Component<HudProps, HudState> {
       let podStatus = ""
       if (view && name !== "") {
         let r = view.Resources.find(r => r.Name === name)
+        if (r === undefined) {
+          return <Route component={NotFound} />
+        }
         logs = (r && r.CombinedLog) || ""
         endpoints = (r && r.Endpoints) || []
         podID = (r && r.PodID) || ""
@@ -226,6 +243,9 @@ class HUD extends Component<HudProps, HudState> {
       let endpoint = ""
       if (view && name !== "") {
         let r = view.Resources.find(r => r.Name === name)
+        if (r === undefined) {
+          return <Route component={NotFound} />
+        }
         endpoint = r ? r.Endpoints && r.Endpoints[0] : ""
       }
 
@@ -247,6 +267,9 @@ class HUD extends Component<HudProps, HudState> {
     let errorRoute = (props: RouteComponentProps<any>) => {
       let name = props.match.params ? props.match.params.name : ""
       let er = resources.find(r => r.Name === name)
+      if (er === undefined) {
+        return <Route component={NotFound} />
+      }
       if (er) {
         return <AlertPane resources={[new AlertResource(er)]} />
       }
