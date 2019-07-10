@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -130,14 +131,12 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget
 	containerPathsToRm := build.PathMappingsToContainerPaths(toRemove)
 
 	// archive files to copy to container
-	ab := build.NewArchiveBuilder(ignore.CreateBuildContextFilter(iTarget))
+	// TODO(dmiller) maybe don't do this?
+	buf := new(bytes.Buffer)
+	ab := build.NewArchiveBuilder(buf, ignore.CreateBuildContextFilter(iTarget))
 	err = ab.ArchivePathsIfExist(ctx, toArchive)
 	if err != nil {
 		return errors.Wrap(err, "archivePathsIfExists")
-	}
-	archive, err := ab.Reader()
-	if err != nil {
-		return err
 	}
 	archivePaths := ab.Paths()
 
@@ -158,13 +157,13 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget
 	if sbd.updateMode == UpdateModeKubectlExec || sbd.kCli.ContainerRuntime(ctx) != container.RuntimeDocker {
 		if err := sbd.updateViaExec(ctx,
 			deployInfo.PodID, deployInfo.Namespace, deployInfo.ContainerName,
-			archive, archivePaths, containerPathsToRm, cmds, hotReload); err != nil {
+			buf, archivePaths, containerPathsToRm, cmds, hotReload); err != nil {
 			return err
 		}
 	} else {
 		if err := sbd.updateViaSynclet(ctx,
 			deployInfo.PodID, deployInfo.Namespace, deployInfo.ContainerID,
-			archive, containerPathsToRm, cmds, hotReload); err != nil {
+			buf, containerPathsToRm, cmds, hotReload); err != nil {
 			return err
 		}
 	}

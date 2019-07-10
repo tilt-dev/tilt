@@ -307,17 +307,23 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 		}
 	}
 
-	archive, err := tarContextAndUpdateDf(ctx, df, paths, filter)
-	if err != nil {
-		return nil, err
-	}
+	pr, pw := io.Pipe()
+	go func() {
+		err := tarContextAndUpdateDf(ctx, pw, df, paths, filter)
+		if err != nil {
+			pw.CloseWithError(err)
+		} else {
+			pw.Close()
+		}
+	}()
 
 	ps.StartBuildStep(ctx, "Building image")
 	spanBuild, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuild")
+	// pass pr here
 	imageBuildResponse, err := d.dCli.ImageBuild(
 		ctx,
-		archive,
-		Options(archive, buildArgs),
+		pr,
+		Options(pr, buildArgs),
 	)
 	spanBuild.Finish()
 	if err != nil {
