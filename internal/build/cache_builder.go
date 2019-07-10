@@ -114,9 +114,9 @@ func (b CacheBuilder) CreateCacheFrom(ctx context.Context, inputs CacheInputs, s
 	go func() {
 		err := TarDfOnly(ctx, pw, df)
 		if err != nil {
-			pw.CloseWithError(errors.Wrap(err, "CreateCacheFrom"))
+			_ = pw.CloseWithError(errors.Wrap(err, "CreateCacheFrom"))
 		} else {
-			pw.Close()
+			_ = pw.Close()
 		}
 	}()
 

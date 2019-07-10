@@ -45,9 +45,9 @@ func run() error {
 	go func() {
 		err := build.TarPath(ctx, pw, ".")
 		if err != nil {
-			pw.CloseWithError(err)
+			_ = pw.CloseWithError(err)
 		} else {
-			pw.Close()
+			_ = pw.Close()
 		}
 	}()
 

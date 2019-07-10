@@ -311,9 +311,9 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 	go func() {
 		err := tarContextAndUpdateDf(ctx, pw, df, paths, filter)
 		if err != nil {
-			pw.CloseWithError(err)
+			_ = pw.CloseWithError(err)
 		} else {
-			pw.Close()
+			_ = pw.Close()
 		}
 	}()
 

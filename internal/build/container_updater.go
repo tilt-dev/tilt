@@ -52,14 +52,9 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.
 		ab := NewArchiveBuilder(pw, filter)
 		err = ab.ArchivePathsIfExist(ctx, toArchive)
 		if err != nil {
-			pw.CloseWithError(errors.Wrap(err, "archivePathsIfExists"))
+			_ = pw.CloseWithError(errors.Wrap(err, "archivePathsIfExists"))
 		} else {
-			err := ab.Close()
-			if err != nil {
-				pw.CloseWithError(err)
-			} else {
-				pw.Close()
-			}
+			_ = ab.Close()
 		}
 	}()
 
