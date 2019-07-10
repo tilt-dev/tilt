@@ -18,14 +18,6 @@ func TestMatches(t *testing.T) {
 	tf.AssertResult(tf.JoinPath("foo", "bar"), false)
 }
 
-func TestPatterns(t *testing.T) {
-	tf := newTestFixture(t, "node_modules")
-	defer tf.TearDown()
-
-	patterns := tf.tester.(model.PatternMatcher).AsMatchPatterns()
-	assert.Equal(t, []string{"node_modules"}, patterns)
-}
-
 func TestComment(t *testing.T) {
 	tf := newTestFixture(t, "# generated code")
 	defer tf.TearDown()
