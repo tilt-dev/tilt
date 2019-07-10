@@ -55,6 +55,7 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.
 			_ = pw.CloseWithError(errors.Wrap(err, "archivePathsIfExists"))
 		} else {
 			_ = ab.Close()
+			_ = pw.Close()
 		}
 	}()
 
