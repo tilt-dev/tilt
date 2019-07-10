@@ -29,7 +29,7 @@ type dockerImage struct {
 	matchInEnvVars     bool
 	ignores            []string
 	onlys              []string
-	entrypoint         model.Cmd // optional: override container entrypoint/command with this
+	entrypoint         model.Cmd // optional: if specified, we override the image entrypoint/k8s command with this
 
 	// fast-build properties -- will be deprecated
 	syncs        []pathSync
