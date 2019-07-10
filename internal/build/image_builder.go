@@ -319,7 +319,6 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 
 	ps.StartBuildStep(ctx, "Building image")
 	spanBuild, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuild")
-	// pass pr here
 	imageBuildResponse, err := d.dCli.ImageBuild(
 		ctx,
 		pr,
