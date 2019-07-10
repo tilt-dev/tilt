@@ -13,14 +13,6 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 )
 
-type fileChangeFilter struct {
-	ignoreMatchers model.PathMatcher
-}
-
-func (fcf fileChangeFilter) Matches(f string, isDir bool) (bool, error) {
-	return fcf.ignoreMatchers.Matches(f, isDir)
-}
-
 type repoTarget interface {
 	LocalRepos() []model.LocalGitRepo
 	Dockerignores() []model.Dockerignore
@@ -92,19 +84,16 @@ func CreateFileChangeFilter(m IgnorableTarget) (model.PathMatcher, error) {
 	// there or aren't in the right places.
 	//
 	// https://app.clubhouse.io/windmill/story/691/filter-out-ephemeral-file-changes
+	golandMatcher, _ := dockerignore.NewDockerPatternMatcher("/", []string{"*___jb_old___", "*___jb_tmp___"})
+
 	matchers = append(matchers,
 		// GoLand
-		model.NewGlobMatcher("*___jb_old___", "*___jb_tmp___"),
+		golandMatcher,
 		// Emacs
 		tempBrokenSymlinkMatcher{},
 	)
 
-	ignoreMatcher := model.NewCompositeMatcher(matchers)
-
-	// TODO(maia): this doesn't have to be a composite matcher anymore since removing `configMatcher`?
-	return fileChangeFilter{
-		ignoreMatchers: ignoreMatcher,
-	}, nil
+	return model.NewCompositeMatcher(matchers), nil
 }
 
 func CreateRunMatcher(r model.Run) (model.PathMatcher, error) {
