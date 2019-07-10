@@ -33,7 +33,7 @@ var updateModeFlag string = string(engine.UpdateModeAuto)
 var webModeFlag model.WebMode = model.DefaultWebMode
 var webPort = 0
 var webDevPort = 0
-var noBrowser = false
+var noBrowser bool = false
 var logActionsFlag bool = false
 var sailEnabled bool = false
 var sailModeFlag model.SailMode = model.SailModeProd
@@ -214,8 +214,8 @@ func provideWebPort() model.WebPort {
 	return model.WebPort(webPort)
 }
 
-func provideNoBrowserFlag() bool {
-	return noBrowser
+func provideNoBrowserFlag() model.NoBrowser {
+	return model.NoBrowser(noBrowser)
 }
 func provideWebDevPort() model.WebDevPort {
 	return model.WebDevPort(webDevPort)
