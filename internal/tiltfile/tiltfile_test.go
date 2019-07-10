@@ -9,8 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/windmilleng/tilt/internal/sliceutils"
 	appsv1 "k8s.io/api/apps/v1"
+
+	"github.com/windmilleng/tilt/internal/sliceutils"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/wmclient/pkg/analytics"
