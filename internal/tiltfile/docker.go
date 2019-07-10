@@ -33,6 +33,7 @@ type dockerImage struct {
 	matchInEnvVars     bool
 	ignores            []string
 	onlys              []string
+	entrypointOverride model.Cmd // optional: override container entrypoint/command with this
 
 	dbDockerfilePath localPath
 	dbDockerfile     dockerfile.Dockerfile
@@ -81,7 +82,7 @@ func (d *dockerImage) Type() dockerImageBuildType {
 }
 
 func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var dockerRef string
+	var dockerRef, entrypoint string
 	var contextVal, dockerfilePathVal, buildArgs, dockerfileContentsVal, cacheVal, liveUpdateVal, ignoreVal, onlyVal starlark.Value
 	var matchInEnvVars bool
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
@@ -95,6 +96,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		"match_in_env_vars?", &matchInEnvVars,
 		"ignore?", &ignoreVal,
 		"only?", &onlyVal,
+		"entrypoint?", &entrypoint,
 	); err != nil {
 		return nil, err
 	}
@@ -178,17 +180,23 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, error2
 	}
 
+	var entrypointCmd model.Cmd
+	if entrypoint != "" {
+		entrypointCmd = model.ToShellCmd(entrypoint)
+	}
+
 	r := &dockerImage{
-		dbDockerfilePath: dockerfilePath,
-		dbDockerfile:     dockerfile.Dockerfile(dockerfileContents),
-		dbBuildPath:      context,
-		configurationRef: container.NewRefSelector(ref),
-		dbBuildArgs:      sba,
-		cachePaths:       cachePaths,
-		liveUpdate:       liveUpdate,
-		matchInEnvVars:   matchInEnvVars,
-		ignores:          ignores,
-		onlys:            onlys,
+		dbDockerfilePath:   dockerfilePath,
+		dbDockerfile:       dockerfile.Dockerfile(dockerfileContents),
+		dbBuildPath:        context,
+		configurationRef:   container.NewRefSelector(ref),
+		dbBuildArgs:        sba,
+		cachePaths:         cachePaths,
+		liveUpdate:         liveUpdate,
+		matchInEnvVars:     matchInEnvVars,
+		ignores:            ignores,
+		onlys:              onlys,
+		entrypointOverride: entrypointCmd,
 	}
 	err = s.buildIndex.addImage(r)
 	if err != nil {
@@ -219,6 +227,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	var disablePush bool
 	var liveUpdateVal, ignoreVal starlark.Value
 	var matchInEnvVars bool
+	var entrypoint string
 
 	err := starlark.UnpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
@@ -229,6 +238,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		"live_update?", &liveUpdateVal,
 		"match_in_env_vars?", &matchInEnvVars,
 		"ignore?", &ignoreVal,
+		"entrypoint?", &entrypoint,
 	)
 	if err != nil {
 		return nil, err
@@ -269,15 +279,21 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, error
 	}
 
+	var entrypointCmd model.Cmd
+	if entrypoint != "" {
+		entrypointCmd = model.ToShellCmd(entrypoint)
+	}
+
 	img := &dockerImage{
-		configurationRef: container.NewRefSelector(ref),
-		customCommand:    command,
-		customDeps:       localDeps,
-		customTag:        tag,
-		disablePush:      disablePush,
-		liveUpdate:       liveUpdate,
-		matchInEnvVars:   matchInEnvVars,
-		ignores:          ignores,
+		configurationRef:   container.NewRefSelector(ref),
+		customCommand:      command,
+		customDeps:         localDeps,
+		customTag:          tag,
+		disablePush:        disablePush,
+		liveUpdate:         liveUpdate,
+		matchInEnvVars:     matchInEnvVars,
+		ignores:            ignores,
+		entrypointOverride: entrypointCmd,
 	}
 
 	err = s.buildIndex.addImage(img)

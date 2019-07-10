@@ -916,6 +916,10 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			MatchInEnvVars:   image.matchInEnvVars,
 		}.WithCachePaths(image.cachePaths)
 
+		if !image.entrypointOverride.Empty() {
+			iTarget = iTarget.WithOverrideCommand(image.entrypointOverride)
+		}
+
 		lu := image.liveUpdate
 
 		switch image.Type() {
@@ -982,6 +986,13 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting image build info for %s", svc.Name)
 		}
+
+		for _, iTarg := range iTargets {
+			if !iTarg.OverrideCmd.Empty() {
+				return nil, fmt.Errorf("docker_build/custom_build.entrypoint not supported for Docker Compose resources")
+			}
+		}
+
 		m = m.WithImageTargets(iTargets)
 
 		err = s.checkForImpossibleLiveUpdates(m)
@@ -996,7 +1007,6 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 		s.configFiles = sliceutils.DedupedAndSorted(append(s.configFiles, configFiles...))
 	}
 	if len(dc.configPaths) != 0 {
-
 		s.configFiles = sliceutils.DedupedAndSorted(append(s.configFiles, dc.configPaths...))
 	}
 
