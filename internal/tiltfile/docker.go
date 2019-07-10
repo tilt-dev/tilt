@@ -25,15 +25,17 @@ type dockerImage struct {
 	baseDockerfile     dockerfile.Dockerfile
 	configurationRef   container.RefSelector
 	deploymentRef      reference.Named
-	syncs              []pathSync
-	runs               []model.Run
-	entrypoint         string
 	cachePaths         []string
-	hotReload          bool
 	matchInEnvVars     bool
 	ignores            []string
 	onlys              []string
-	entrypointOverride model.Cmd // optional: override container entrypoint/command with this
+	entrypoint         model.Cmd // optional: override container entrypoint/command with this
+
+	// fast-build properties -- will be deprecated
+	syncs        []pathSync
+	runs         []model.Run
+	fbEntrypoint string
+	hotReload    bool
 
 	dbDockerfilePath localPath
 	dbDockerfile     dockerfile.Dockerfile
@@ -186,17 +188,17 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	}
 
 	r := &dockerImage{
-		dbDockerfilePath:   dockerfilePath,
-		dbDockerfile:       dockerfile.Dockerfile(dockerfileContents),
-		dbBuildPath:        context,
-		configurationRef:   container.NewRefSelector(ref),
-		dbBuildArgs:        sba,
-		cachePaths:         cachePaths,
-		liveUpdate:         liveUpdate,
-		matchInEnvVars:     matchInEnvVars,
-		ignores:            ignores,
-		onlys:              onlys,
-		entrypointOverride: entrypointCmd,
+		dbDockerfilePath: dockerfilePath,
+		dbDockerfile:     dockerfile.Dockerfile(dockerfileContents),
+		dbBuildPath:      context,
+		configurationRef: container.NewRefSelector(ref),
+		dbBuildArgs:      sba,
+		cachePaths:       cachePaths,
+		liveUpdate:       liveUpdate,
+		matchInEnvVars:   matchInEnvVars,
+		ignores:          ignores,
+		onlys:            onlys,
+		entrypoint:       entrypointCmd,
 	}
 	err = s.buildIndex.addImage(r)
 	if err != nil {
@@ -215,7 +217,7 @@ func (s *tiltfileState) fastBuildForImage(image *dockerImage) model.FastBuild {
 		BaseDockerfile: image.baseDockerfile.String(),
 		Syncs:          s.syncsToDomain(image),
 		Runs:           image.runs,
-		Entrypoint:     model.ToShellCmd(image.entrypoint),
+		Entrypoint:     model.ToShellCmd(image.fbEntrypoint),
 		HotReload:      image.hotReload,
 	}
 }
@@ -285,15 +287,15 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	}
 
 	img := &dockerImage{
-		configurationRef:   container.NewRefSelector(ref),
-		customCommand:      command,
-		customDeps:         localDeps,
-		customTag:          tag,
-		disablePush:        disablePush,
-		liveUpdate:         liveUpdate,
-		matchInEnvVars:     matchInEnvVars,
-		ignores:            ignores,
-		entrypointOverride: entrypointCmd,
+		configurationRef: container.NewRefSelector(ref),
+		customCommand:    command,
+		customDeps:       localDeps,
+		customTag:        tag,
+		disablePush:      disablePush,
+		liveUpdate:       liveUpdate,
+		matchInEnvVars:   matchInEnvVars,
+		ignores:          ignores,
+		entrypoint:       entrypointCmd,
 	}
 
 	err = s.buildIndex.addImage(img)
@@ -413,7 +415,7 @@ func (s *tiltfileState) fastBuild(thread *starlark.Thread, fn *starlark.Builtin,
 		baseDockerfilePath: baseDockerfilePath,
 		baseDockerfile:     df,
 		configurationRef:   container.NewRefSelector(ref),
-		entrypoint:         entrypoint,
+		fbEntrypoint:       entrypoint,
 		cachePaths:         cachePaths,
 	}
 	err = s.buildIndex.addImage(r)

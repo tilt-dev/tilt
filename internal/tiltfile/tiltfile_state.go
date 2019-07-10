@@ -916,8 +916,8 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			MatchInEnvVars:   image.matchInEnvVars,
 		}.WithCachePaths(image.cachePaths)
 
-		if !image.entrypointOverride.Empty() {
-			iTarget = iTarget.WithOverrideCommand(image.entrypointOverride)
+		if !image.entrypoint.Empty() {
+			iTarget = iTarget.WithOverrideCommand(image.entrypoint)
 		}
 
 		lu := image.liveUpdate
