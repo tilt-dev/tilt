@@ -502,6 +502,140 @@ func TestDeployInjectImageEnvVar(t *testing.T) {
 	assert.Equal(t, expectedEnv, c.Env)
 }
 
+func TestDeployInjectsOverrideCommand(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	cmd := model.ToShellCmd("./foo.sh bar")
+	manifest := NewSanchoDockerBuildManifest(f)
+	iTarg := manifest.ImageTargetAt(0).WithOverrideCommand(cmd)
+	manifest = manifest.WithImageTarget(iTarg)
+
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	entities, err := k8s.ParseYAMLFromString(f.k8s.Yaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !assert.Equal(t, 1, len(entities)) {
+		return
+	}
+
+	d := entities[0].Obj.(*v1.Deployment)
+	if !assert.Equal(t, 1, len(d.Spec.Template.Spec.Containers)) {
+		return
+	}
+
+	c := d.Spec.Template.Spec.Containers[0]
+
+	// Make sure container ref injection worked as expected
+	assert.Equal(t, "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95", c.Image)
+
+	assert.Equal(t, cmd.Argv, c.Command)
+	assert.Empty(t, c.Args)
+}
+
+func TestDeployInjectOverrideCommandClearsOldCommandAndArgs(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	cmd := model.ToShellCmd("./foo.sh bar")
+	manifest := NewSanchoDockerBuildManifestWithYaml(f, testyaml.SanchoYAMLWithCommand)
+	iTarg := manifest.ImageTargetAt(0).WithOverrideCommand(cmd)
+	manifest = manifest.WithImageTarget(iTarg)
+
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	entities, err := k8s.ParseYAMLFromString(f.k8s.Yaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !assert.Equal(t, 1, len(entities)) {
+		return
+	}
+
+	d := entities[0].Obj.(*v1.Deployment)
+	if !assert.Equal(t, 1, len(d.Spec.Template.Spec.Containers)) {
+		return
+	}
+
+	c := d.Spec.Template.Spec.Containers[0]
+	assert.Equal(t, cmd.Argv, c.Command)
+	assert.Empty(t, c.Args)
+}
+
+func TestCantInjectOverrideCommandWithoutContainer(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	// CRD YAML: we WILL successfully inject the new image ref, but can't inject
+	// an override command for that image because it's not in a "container" block:
+	// expect an error when we try
+	crdYamlWithSanchoImage := strings.ReplaceAll(testyaml.CRDYAML, testyaml.CRDImage, testyaml.SanchoImage)
+
+	cmd := model.ToShellCmd("./foo.sh bar")
+	manifest := NewSanchoDockerBuildManifestWithYaml(f, crdYamlWithSanchoImage)
+	iTarg := manifest.ImageTargetAt(0).WithOverrideCommand(cmd)
+	manifest = manifest.WithImageTarget(iTarg)
+
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "could not inject command")
+	}
+}
+
+func TestInjectOverrideCommandsMultipleImages(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	cmd1 := model.ToShellCmd("./command1.sh foo")
+	cmd2 := model.ToShellCmd("./command2.sh bar baz")
+
+	iTarget1 := NewSanchoDockerBuildImageTarget(f).WithOverrideCommand(cmd1)
+	iTarget2 := NewSanchoSidecarDockerBuildImageTarget(f).WithOverrideCommand(cmd2)
+	kTarget := model.K8sTarget{Name: "sancho", YAML: testyaml.SanchoSidecarYAML}.
+		WithDependencyIDs([]model.TargetID{iTarget1.ID(), iTarget2.ID()})
+	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}
+
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	entities, err := k8s.ParseYAMLFromString(f.k8s.Yaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !assert.Equal(t, 1, len(entities)) {
+		return
+	}
+
+	d := entities[0].Obj.(*v1.Deployment)
+	if !assert.Equal(t, 2, len(d.Spec.Template.Spec.Containers)) {
+		return
+	}
+
+	sanchoContainer := d.Spec.Template.Spec.Containers[0]
+	sidecarContainer := d.Spec.Template.Spec.Containers[1]
+
+	// Make sure container ref injection worked as expected
+	assert.Equal(t, "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95", sanchoContainer.Image)
+	assert.Equal(t, "gcr.io/some-project-162817/sancho-sidecar:tilt-11cd0b38bc3ceb95", sidecarContainer.Image)
+
+	assert.Equal(t, cmd1.Argv, sanchoContainer.Command)
+	assert.Equal(t, cmd2.Argv, sidecarContainer.Command)
+
+}
+
 type ibdFixture struct {
 	*tempdir.TempDirFixture
 	ctx    context.Context
