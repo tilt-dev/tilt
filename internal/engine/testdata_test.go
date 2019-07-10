@@ -27,9 +27,9 @@ type pather interface {
 	MkdirAll(p string)
 }
 
-var SanchoRef = container.MustParseSelector("gcr.io/some-project-162817/sancho")
+var SanchoRef = container.MustParseSelector(testyaml.SanchoImage)
 var SanchoBaseRef = container.MustParseSelector("sancho-base")
-var SanchoSidecarRef = container.MustParseSelector("gcr.io/some-project-162817/sancho-sidecar")
+var SanchoSidecarRef = container.MustParseSelector(testyaml.SanchoSidecarImage)
 
 func NewSanchoFastBuild(fixture pather) model.FastBuild {
 	return model.FastBuild{
@@ -197,9 +197,13 @@ func NewSanchoSidecarLiveUpdateImageTarget(f pather) (model.ImageTarget, error) 
 }
 
 func NewSanchoDockerBuildManifest(f pather) model.Manifest {
+	return NewSanchoDockerBuildManifestWithYaml(f, SanchoYAML)
+}
+
+func NewSanchoDockerBuildManifestWithYaml(f pather, yaml string) model.Manifest {
 	return assembleK8sManifest(
 		model.Manifest{Name: "sancho"},
-		model.K8sTarget{YAML: SanchoYAML},
+		model.K8sTarget{YAML: yaml},
 		NewSanchoDockerBuildImageTarget(f))
 }
 

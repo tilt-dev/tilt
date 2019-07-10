@@ -18,6 +18,10 @@ type ImageTarget struct {
 	BuildDetails     BuildDetails
 	MatchInEnvVars   bool
 
+	// User-supplied command to run when the container runs
+	// (i.e. overrides k8s yaml "command", container ENTRYPOINT, etc.)
+	OverrideCmd Cmd
+
 	cachePaths []string
 
 	// TODO(nick): It might eventually make sense to represent
@@ -174,6 +178,11 @@ func (i ImageTarget) WithRepos(repos []LocalGitRepo) ImageTarget {
 
 func (i ImageTarget) WithDockerignores(dockerignores []Dockerignore) ImageTarget {
 	i.dockerignores = append(append([]Dockerignore{}, i.dockerignores...), dockerignores...)
+	return i
+}
+
+func (i ImageTarget) WithOverrideCommand(cmd Cmd) ImageTarget {
+	i.OverrideCmd = cmd
 	return i
 }
 

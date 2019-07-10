@@ -251,8 +251,9 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 					return fmt.Errorf("Internal error: missing build result for dependency ID: %s", depID)
 				}
 
-				selector := iTargetMap[depID].ConfigurationRef
-				matchInEnvVars := iTargetMap[depID].MatchInEnvVars
+				iTarget := iTargetMap[depID]
+				selector := iTarget.ConfigurationRef
+				matchInEnvVars := iTarget.MatchInEnvVars
 
 				var replaced bool
 				e, replaced, err = k8s.InjectImageDigest(e, selector, ref, matchInEnvVars, policy)
@@ -261,6 +262,13 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 				}
 				if replaced {
 					injectedDepIDs[depID] = true
+
+					if !iTarget.OverrideCmd.Empty() {
+						e, err = k8s.InjectCommand(e, ref, iTarget.OverrideCmd)
+						if err != nil {
+							return err
+						}
+					}
 
 					if ibd.injectSynclet && needsSynclet && !injectedSynclet {
 						injectedRefSelector := container.NewRefSelector(ref).WithExactMatch()
