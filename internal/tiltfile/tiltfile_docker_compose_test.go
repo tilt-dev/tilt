@@ -490,6 +490,20 @@ dc_resource('no-svc-with-this-name-eek', 'gcr.io/foo')
 	f.loadErrString("no Docker Compose service found with name")
 }
 
+func TestDockerComposeDoesntSupportEntrypointOverride(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.file("docker-compose.yml", simpleConfig)
+	f.file("Tiltfile", `docker_build('gcr.io/foo', './foo', entrypoint='./foo')
+docker_compose('docker-compose.yml')
+dc_resource('foo', 'gcr.io/foo')
+`)
+
+	f.loadErrString("docker_build/custom_build.entrypoint not supported for Docker Compose resources")
+}
+
 func (f *fixture) assertDcManifest(name string, opts ...interface{}) model.Manifest {
 	m := f.assertNextManifest(name)
 
