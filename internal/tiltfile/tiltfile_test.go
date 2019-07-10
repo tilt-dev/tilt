@@ -1938,7 +1938,7 @@ hfb = custom_build(
   'docker build -t $TAG foo',
 	['foo'],
 	disable_push=True,
-).add_fast_build()`
+)`
 
 	f.setupFoo()
 	f.file("Tiltfile", tiltfile)
