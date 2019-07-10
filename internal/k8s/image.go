@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/model"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -174,6 +175,48 @@ func injectImageDigestInUnstructured(entity K8sEntity, injectRef reference.Named
 
 	entity.Obj = u
 	return entity, replaced, nil
+}
+
+func InjectCommand(entity K8sEntity, ref reference.Named, cmd model.Cmd) (K8sEntity, error) {
+	entity = entity.DeepCopy()
+
+	selector := container.NewRefSelector(ref)
+	e, injected, err := injectCommandInContainers(entity, selector, cmd)
+	if err != nil {
+		return e, err
+	}
+	if !injected {
+		// NOTE(maia): currently we only support injecting commands into containers (i.e. the
+		// k8s yaml `container` block). This means we don't support injecting commands into CRDs.
+		return e, fmt.Errorf("could not inject command %v into entity: %s. No container found matching ref: %s. "+
+			"Note: command overrides only supported on containers with images, not on CRDs",
+			cmd.Argv, entity.Name(), ref.String())
+	}
+
+	return e, nil
+}
+
+func injectCommandInContainers(entity K8sEntity, selector container.RefSelector, cmd model.Cmd) (K8sEntity, bool, error) {
+	var injected bool
+	containers, err := extractContainers(&entity)
+	if err != nil {
+		return K8sEntity{}, injected, err
+	}
+
+	for _, c := range containers {
+		existingRef, err := container.ParseNamed(c.Image)
+		if err != nil {
+			return K8sEntity{}, injected, err
+		}
+
+		if selector.Matches(existingRef) {
+			c.Command = cmd.Argv
+			c.Args = nil // clear the "args" param.
+
+			injected = true
+		}
+	}
+	return entity, injected, nil
 }
 
 // HasImage indicates whether the given entity is tagged with the given image.
