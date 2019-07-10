@@ -189,21 +189,19 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 	newWatches := make(map[model.TargetID]targetNotifyCancel)
 	for _, target := range setup {
 		logger := store.NewLogActionLogger(ctx, st.Dispatch)
-		watcher, err := w.fsWatcherMaker(logger)
+		watcher, err := w.fsWatcherMaker(target.Dependencies(), watch.EmptyMatcher{}, logger)
 		if err != nil {
 			st.Dispatch(NewErrorAction(err))
 			continue
 		}
 
-		for _, d := range target.Dependencies() {
-			err = watcher.Add(d)
-			if err != nil {
-				st.Dispatch(NewErrorAction(err))
-			}
+		err = watcher.Start()
+		if err != nil {
+			st.Dispatch(NewErrorAction(err))
+			continue
 		}
 
 		ctx, cancel := context.WithCancel(ctx)
-
 		go w.dispatchFileChangesLoop(ctx, target, watcher, st, tiltRoot)
 		newWatches[target.ID()] = targetNotifyCancel{target, watcher, cancel}
 	}

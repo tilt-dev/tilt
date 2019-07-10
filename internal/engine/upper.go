@@ -55,14 +55,14 @@ type Upper struct {
 	store *store.Store
 }
 
-type FsWatcherMaker func(l logger.Logger) (watch.Notify, error)
+type FsWatcherMaker func(paths []string, ignore watch.PathMatcher, l logger.Logger) (watch.Notify, error)
 type ServiceWatcherMaker func(context.Context, *store.Store) error
 type PodWatcherMaker func(context.Context, *store.Store) error
 type timerMaker func(d time.Duration) <-chan time.Time
 
 func ProvideFsWatcherMaker() FsWatcherMaker {
-	return func(l logger.Logger) (watch.Notify, error) {
-		return watch.NewWatcher(l)
+	return func(paths []string, ignore watch.PathMatcher, l logger.Logger) (watch.Notify, error) {
+		return watch.NewWatcher(paths, ignore, l)
 	}
 }
 
