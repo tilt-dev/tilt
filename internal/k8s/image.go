@@ -5,9 +5,10 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
-	"github.com/windmilleng/tilt/internal/model"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/windmilleng/tilt/internal/model"
 
 	"github.com/windmilleng/tilt/internal/container"
 )
