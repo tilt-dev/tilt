@@ -172,7 +172,9 @@ it("log page for nonexistent resource shows error", async () => {
   hud.setState({ View: oneResourceView() })
 
   let loadingScreen = root.find(".LoadingScreen")
-  expect(loadingScreen.at(0).text()).toEqual("No resource found at /r/nonexistentresource")
+  expect(loadingScreen.at(0).text()).toEqual(
+    "No resource found at /r/nonexistentresource"
+  )
 })
 
 it("preview page for nonexistent resource shows error", async () => {
@@ -181,8 +183,9 @@ it("preview page for nonexistent resource shows error", async () => {
   hud.setState({ View: oneResourceView() })
 
   let loadingScreen = root.find(".LoadingScreen")
-  expect(loadingScreen.at(0).text()).toEqual("No resource found at /r/nonexistentresource/preview")
-
+  expect(loadingScreen.at(0).text()).toEqual(
+    "No resource found at /r/nonexistentresource/preview"
+  )
 })
 
 it("alerts page for nonexistent resource shows error", async () => {
@@ -191,6 +194,7 @@ it("alerts page for nonexistent resource shows error", async () => {
   hud.setState({ View: oneResourceView() })
 
   let loadingScreen = root.find(".LoadingScreen")
-  expect(loadingScreen.at(0).text()).toEqual("No resource found at /r/nonexistentresource/alerts")
-
+  expect(loadingScreen.at(0).text()).toEqual(
+    "No resource found at /r/nonexistentresource/alerts"
+  )
 })
