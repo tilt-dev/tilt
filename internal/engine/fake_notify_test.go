@@ -24,12 +24,12 @@ func newFakeMultiWatcher() *fakeMultiWatcher {
 	return r
 }
 
-func (w *fakeMultiWatcher) newSub(_ logger.Logger) (watch.Notify, error) {
+func (w *fakeMultiWatcher) newSub(paths []string, ignore watch.PathMatcher, _ logger.Logger) (watch.Notify, error) {
 	subCh := make(chan watch.FileEvent)
 	errorCh := make(chan error)
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	watcher := newFakeWatcher(subCh, errorCh)
+	watcher := newFakeWatcher(subCh, errorCh, paths, ignore)
 	w.watchers = append(w.watchers, watcher)
 	w.subs = append(w.subs, subCh)
 	w.subsErrors = append(w.subsErrors, errorCh)
@@ -88,17 +88,26 @@ type fakeWatcher struct {
 	outboundCh chan watch.FileEvent
 	errorCh    chan error
 
-	paths []string
+	paths  []string
+	ignore watch.PathMatcher
 }
 
-func newFakeWatcher(inboundCh chan watch.FileEvent, errorCh chan error) *fakeWatcher {
-	r := &fakeWatcher{inboundCh: inboundCh, outboundCh: make(chan watch.FileEvent, 20), errorCh: errorCh}
-	go r.loop()
-
-	return r
+func newFakeWatcher(inboundCh chan watch.FileEvent, errorCh chan error, paths []string, ignore watch.PathMatcher) *fakeWatcher {
+	return &fakeWatcher{
+		inboundCh:  inboundCh,
+		outboundCh: make(chan watch.FileEvent, 20),
+		errorCh:    errorCh,
+		paths:      paths,
+		ignore:     ignore,
+	}
 }
 
 func (w *fakeWatcher) matches(path string) bool {
+	ignore, _ := w.ignore.Matches(path)
+	if ignore {
+		return false
+	}
+
 	for _, watched := range w.paths {
 		if ospath.IsChild(watched, path) {
 			return true
@@ -107,8 +116,8 @@ func (w *fakeWatcher) matches(path string) bool {
 	return false
 }
 
-func (w *fakeWatcher) Add(name string) error {
-	w.paths = append(w.paths, name)
+func (w *fakeWatcher) Start() error {
+	go w.loop()
 	return nil
 }
 
