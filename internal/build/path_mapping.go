@@ -48,7 +48,7 @@ func (m PathMapping) Filter(matcher model.PathMatcher) ([]PathMapping, error) {
 			return err
 		}
 
-		match, err := matcher.Matches(path, info.IsDir())
+		match, err := matcher.Matches(path)
 		if err != nil {
 			return err
 		}

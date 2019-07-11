@@ -163,7 +163,7 @@ func (a *ArchiveBuilder) entriesForPath(ctx context.Context, source, dest string
 			return errors.Wrapf(err, "error walking to %s", path)
 		}
 
-		matches, err := a.filter.Matches(path, info.IsDir())
+		matches, err := a.filter.Matches(path)
 		if err != nil {
 			return err
 		}

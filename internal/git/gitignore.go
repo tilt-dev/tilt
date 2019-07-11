@@ -12,7 +12,7 @@ type repoIgnoreTester struct {
 	repoRoot string
 }
 
-func (r repoIgnoreTester) Matches(f string, isDir bool) (bool, error) {
+func (r repoIgnoreTester) Matches(f string) (bool, error) {
 	// TODO(matt) what do we want to do with symlinks?
 	absPath, err := filepath.Abs(f)
 	if err != nil {

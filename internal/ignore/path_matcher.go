@@ -109,11 +109,7 @@ func CreateRunMatcher(r model.Run) (model.PathMatcher, error) {
 // .#a.txt -> [some garbage]
 type tempBrokenSymlinkMatcher struct{}
 
-func (m tempBrokenSymlinkMatcher) Matches(path string, isDir bool) (bool, error) {
-	if isDir {
-		return false, nil
-	}
-
+func (m tempBrokenSymlinkMatcher) Matches(path string) (bool, error) {
 	if !strings.HasPrefix(filepath.Base(path), ".") {
 		return false, nil
 	}
@@ -135,6 +131,6 @@ func newDirectoryMatcher(dir string) (directoryMatcher, error) {
 	return directoryMatcher{dir}, nil
 }
 
-func (d directoryMatcher) Matches(p string, isDir bool) (bool, error) {
+func (d directoryMatcher) Matches(p string) (bool, error) {
 	return ospath.IsChild(d.dir, p), nil
 }

@@ -81,7 +81,7 @@ func (tf *testFixture) JoinPath(repoNum int, path ...string) string {
 
 func (tf *testFixture) AssertResult(description, path string, expectedMatches bool, expectError bool) {
 	tf.t.Run(description, func(t *testing.T) {
-		isIgnored, err := tf.tester.Matches(path, false)
+		isIgnored, err := tf.tester.Matches(path)
 		if expectError {
 			assert.Error(t, err)
 		} else {

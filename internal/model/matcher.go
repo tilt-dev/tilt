@@ -9,13 +9,13 @@ import (
 )
 
 type PathMatcher interface {
-	Matches(f string, isDir bool) (bool, error)
+	Matches(f string) (bool, error)
 }
 
 // A Matcher that matches nothing.
 type emptyMatcher struct{}
 
-func (m emptyMatcher) Matches(f string, isDir bool) (bool, error) {
+func (m emptyMatcher) Matches(f string) (bool, error) {
 	return false, nil
 }
 
@@ -26,7 +26,7 @@ type fileMatcher struct {
 	paths map[string]bool
 }
 
-func (m fileMatcher) Matches(f string, isDir bool) (bool, error) {
+func (m fileMatcher) Matches(f string) (bool, error) {
 	return m.paths[f], nil
 }
 
@@ -56,7 +56,7 @@ type fileOrChildMatcher struct {
 	paths map[string]bool
 }
 
-func (m fileOrChildMatcher) Matches(f string, isDir bool) (bool, error) {
+func (m fileOrChildMatcher) Matches(f string) (bool, error) {
 	// (A) Exact match
 	if m.paths[f] {
 		return true, nil
@@ -112,7 +112,7 @@ func (ps PathSet) AnyMatch(paths []string) (bool, string, error) {
 	matcher := NewRelativeFileOrChildMatcher(ps.BaseDirectory, ps.Paths...)
 
 	for _, path := range paths {
-		match, err := matcher.Matches(path, false)
+		match, err := matcher.Matches(path)
 		if err != nil {
 			return false, "", err
 		}
@@ -134,9 +134,9 @@ func NewCompositeMatcher(matchers []PathMatcher) PathMatcher {
 	return CompositePathMatcher{Matchers: matchers}
 }
 
-func (c CompositePathMatcher) Matches(f string, isDir bool) (bool, error) {
+func (c CompositePathMatcher) Matches(f string) (bool, error) {
 	for _, t := range c.Matchers {
-		ret, err := t.Matches(f, isDir)
+		ret, err := t.Matches(f)
 		if err != nil {
 			return false, err
 		}

@@ -4027,7 +4027,7 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 				filterName = "FileChangeFilter"
 			}
 
-			actualFilter, err := filter.Matches(path, false)
+			actualFilter, err := filter.Matches(path)
 			if err != nil {
 				f.t.Fatalf("Error matching filter (%s): %v", path, err)
 			}
