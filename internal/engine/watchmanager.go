@@ -108,6 +108,7 @@ type WatchManager struct {
 	fsWatcherMaker     FsWatcherMaker
 	timerMaker         timerMaker
 	tiltIgnoreContents string
+	tiltIgnore         model.PathMatcher
 	disabledForTesting bool
 	mu                 sync.Mutex
 }
@@ -117,6 +118,7 @@ func NewWatchManager(watcherMaker FsWatcherMaker, timerMaker timerMaker) *WatchM
 		targetWatches:  make(map[model.TargetID]targetNotifyCancel),
 		fsWatcherMaker: watcherMaker,
 		timerMaker:     timerMaker,
+		tiltIgnore:     model.EmptyMatcher,
 	}
 }
 
@@ -163,6 +165,17 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 		delete(targetsToProcess, name)
 	}
 
+	if w.tiltIgnoreContents != state.TiltIgnoreContents {
+		w.tiltIgnoreContents = state.TiltIgnoreContents
+
+		tiltRoot := filepath.Dir(state.TiltfilePath)
+		tiltIgnoreFilter, err := dockerignore.DockerIgnoreTesterFromContents(tiltRoot, w.tiltIgnoreContents)
+		if err != nil {
+			st.Dispatch(NewErrorAction(err))
+		}
+		w.tiltIgnore = tiltIgnoreFilter
+	}
+
 	return setup, teardown
 }
 
@@ -179,17 +192,18 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 
 	setup, teardown := w.diff(ctx, st)
 
-	state := st.RLockState()
-	tiltRoot := filepath.Dir(state.TiltfilePath)
-	w.tiltIgnoreContents = state.TiltIgnoreContents
-	st.RUnlockState()
-
 	// setup the watch first, to avoid a gap in coverage between setup and
 	// teardown. it's ok if we get a file event twice.
 	newWatches := make(map[model.TargetID]targetNotifyCancel)
 	for _, target := range setup {
 		logger := store.NewLogActionLogger(ctx, st.Dispatch)
-		watcher, err := w.fsWatcherMaker(target.Dependencies(), watch.EmptyMatcher{}, logger)
+		ignore, err := w.createIgnoreMatcher(target)
+		if err != nil {
+			st.Dispatch(NewErrorAction(err))
+			continue
+		}
+
+		watcher, err := w.fsWatcherMaker(target.Dependencies(), ignore, logger)
 		if err != nil {
 			st.Dispatch(NewErrorAction(err))
 			continue
@@ -202,7 +216,7 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 		}
 
 		ctx, cancel := context.WithCancel(ctx)
-		go w.dispatchFileChangesLoop(ctx, target, watcher, st, tiltRoot)
+		go w.dispatchFileChangesLoop(ctx, target, watcher, st)
 		newWatches[target.ID()] = targetNotifyCancel{target, watcher, cancel}
 	}
 
@@ -224,23 +238,19 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 	}
 }
 
+func (w *WatchManager) createIgnoreMatcher(target WatchableTarget) (watch.PathMatcher, error) {
+	filter, err := ignore.CreateFileChangeFilter(target)
+	if err != nil {
+		return nil, err
+	}
+	return model.NewCompositeMatcher([]model.PathMatcher{filter, w.tiltIgnore}), nil
+}
+
 func (w *WatchManager) dispatchFileChangesLoop(
 	ctx context.Context,
 	target WatchableTarget,
 	watcher watch.Notify,
-	st store.RStore,
-	tiltRoot string) {
-
-	filter, err := ignore.CreateFileChangeFilter(target)
-	if err != nil {
-		st.Dispatch(NewErrorAction(err))
-		return
-	}
-	tiltIgnoreFilter, err := dockerignore.DockerIgnoreTesterFromContents(tiltRoot, w.tiltIgnoreContents)
-	if err != nil {
-		st.Dispatch(NewErrorAction(err))
-	}
-	filter = model.NewCompositeMatcher([]model.PathMatcher{filter, tiltIgnoreFilter})
+	st store.RStore) {
 
 	eventsCh := coalesceEvents(w.timerMaker, watcher.Events())
 
@@ -264,15 +274,7 @@ func (w *WatchManager) dispatchFileChangesLoop(
 			}
 			watchEvent := newTargetFilesChangedAction(target.ID())
 			for _, e := range fsEvents {
-				path := e.Path()
-				isIgnored, err := filter.Matches(path)
-				if err != nil {
-					st.Dispatch(NewErrorAction(err))
-					continue
-				}
-				if !isIgnored {
-					watchEvent.files = append(watchEvent.files, path)
-				}
+				watchEvent.files = append(watchEvent.files, e.Path())
 			}
 
 			if len(watchEvent.files) > 0 {
