@@ -29,10 +29,7 @@ func CreateBuildContextFilter(m repoTarget) model.PathMatcher {
 		}
 	}
 	for _, r := range m.LocalRepos() {
-		gim, err := git.NewRepoIgnoreTester(context.Background(), r.LocalPath)
-		if err == nil {
-			matchers = append(matchers, gim)
-		}
+		matchers = append(matchers, git.NewRepoIgnoreTester(context.Background(), r.LocalPath))
 	}
 	for _, r := range m.Dockerignores() {
 		dim, err := dockerignore.DockerIgnoreTesterFromContents(r.LocalPath, r.Contents)
@@ -56,10 +53,7 @@ type IgnorableTarget interface {
 func CreateFileChangeFilter(m IgnorableTarget) (model.PathMatcher, error) {
 	matchers := []model.PathMatcher{}
 	for _, r := range m.LocalRepos() {
-		gim, err := git.NewRepoIgnoreTester(context.Background(), r.LocalPath)
-		if err == nil {
-			matchers = append(matchers, gim)
-		}
+		matchers = append(matchers, git.NewRepoIgnoreTester(context.Background(), r.LocalPath))
 	}
 	for _, di := range m.Dockerignores() {
 		dim, err := dockerignore.DockerIgnoreTesterFromContents(di.LocalPath, di.Contents)
