@@ -31,6 +31,10 @@ func (i dockerPathMatcher) AsMatchPatterns() []string {
 	return result
 }
 
+func (i dockerPathMatcher) Exclusions() bool {
+	return i.matcher.Exclusions()
+}
+
 func NewDockerIgnoreTester(repoRoot string) (*dockerPathMatcher, error) {
 	absRoot, err := filepath.Abs(repoRoot)
 	if err != nil {
