@@ -138,7 +138,10 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget
 	if err != nil {
 		return errors.Wrap(err, "archivePathsIfExists")
 	}
-	ab.Close()
+	err = ab.Close()
+	if err != nil {
+		return errors.Wrap(err, "ArchiveBuilder Close")
+	}
 	archivePaths := ab.Paths()
 
 	if len(toArchive) > 0 {
