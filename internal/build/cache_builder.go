@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/md5"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/docker/distribution/reference"
@@ -108,19 +109,24 @@ func (b CacheBuilder) CreateCacheFrom(ctx context.Context, inputs CacheInputs, s
 	// Create a Dockerfile that copies directories from the sourceRef
 	// and puts them in a standalone image.
 	df := b.makeCacheDockerfile(inputs.BaseDockerfile, sourceRef, inputs.CachePaths)
-	dockerCtx, err := TarDfOnly(ctx, df)
-	if err != nil {
-		return errors.Wrap(err, "CreateCacheFrom")
-	}
+	pr, pw := io.Pipe()
+	go func() {
+		err := TarDfOnly(ctx, pw, df)
+		if err != nil {
+			_ = pw.CloseWithError(errors.Wrap(err, "CreateCacheFrom"))
+		} else {
+			_ = pw.Close()
+		}
+	}()
 
-	options := Options(dockerCtx, buildArgs)
+	options := Options(pr, buildArgs)
 	options.Tags = []string{cacheRef.String()}
 
 	// TODO(nick): I'm not sure if we should print this, or if it should
 	// be something that happens in the background without any user-visible output.
 	writer := logger.Get(ctx).Writer(logger.DebugLvl)
 	logger.Get(ctx).Debugf("Copying cache directories (%s)", sourceRef.String())
-	res, err := b.dCli.ImageBuild(ctx, dockerCtx, options)
+	res, err := b.dCli.ImageBuild(ctx, pr, options)
 	if err != nil {
 		return errors.Wrap(err, "ImageBuild")
 	}

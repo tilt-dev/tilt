@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/opentracing/opentracing-go"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 
 	"io/ioutil"
@@ -130,16 +130,20 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget
 	containerPathsToRm := build.PathMappingsToContainerPaths(toRemove)
 
 	// archive files to copy to container
-	ab := build.NewArchiveBuilder(ignore.CreateBuildContextFilter(iTarget))
-	err = ab.ArchivePathsIfExist(ctx, toArchive)
-	if err != nil {
-		return errors.Wrap(err, "archivePathsIfExists")
-	}
-	archive, err := ab.Reader()
-	if err != nil {
-		return err
-	}
-	archivePaths := ab.Paths()
+	pr, pw := io.Pipe()
+	go func() {
+		ab := build.NewArchiveBuilder(pw, ignore.CreateBuildContextFilter(iTarget))
+		err = ab.ArchivePathsIfExist(ctx, toArchive)
+		if err != nil {
+			_ = pw.CloseWithError(errors.Wrap(err, "archivePathsIfExists"))
+			return
+		}
+		err = ab.Close()
+		if err != nil {
+			_ = pw.CloseWithError(errors.Wrap(err, "ArchiveBuilder Close"))
+		}
+		_ = pw.Close()
+	}()
 
 	if len(toArchive) > 0 {
 		l.Infof("Will copy %d file(s) to container:", len(toArchive))
@@ -158,13 +162,13 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget
 	if sbd.updateMode == UpdateModeKubectlExec || sbd.kCli.ContainerRuntime(ctx) != container.RuntimeDocker {
 		if err := sbd.updateViaExec(ctx,
 			deployInfo.PodID, deployInfo.Namespace, deployInfo.ContainerName,
-			archive, archivePaths, containerPathsToRm, cmds, hotReload); err != nil {
+			pr, containerPathsToRm, cmds, hotReload); err != nil {
 			return err
 		}
 	} else {
 		if err := sbd.updateViaSynclet(ctx,
 			deployInfo.PodID, deployInfo.Namespace, deployInfo.ContainerID,
-			archive, containerPathsToRm, cmds, hotReload); err != nil {
+			pr, containerPathsToRm, cmds, hotReload); err != nil {
 			return err
 		}
 	}
@@ -196,7 +200,7 @@ func (sbd *SyncletBuildAndDeployer) updateViaSynclet(ctx context.Context,
 
 func (sbd *SyncletBuildAndDeployer) updateViaExec(ctx context.Context,
 	podID k8s.PodID, namespace k8s.Namespace, container container.Name,
-	archive io.Reader, archivePaths []string, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
+	archive io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletBuildAndDeployer-updateViaExec")
 	defer span.Finish()
 	if !hotReload {
@@ -223,17 +227,9 @@ func (sbd *SyncletBuildAndDeployer) updateViaExec(ctx context.Context,
 		}
 	}
 
-	if len(archivePaths) > 0 {
-		filesToShow := archivePaths
-		if len(filesToShow) > 5 {
-			filesToShow = append([]string(nil), archivePaths[0:5]...)
-			filesToShow = append(filesToShow, "...")
-		}
-		l.Infof("updating %v files %v", len(archivePaths), filesToShow)
-		if err := sbd.kCli.Exec(ctx, podID, container, namespace,
-			[]string{"tar", "-C", "/", "-x", "-f", "-"}, archive, w, w); err != nil {
-			return err
-		}
+	if err := sbd.kCli.Exec(ctx, podID, container, namespace,
+		[]string{"tar", "-C", "/", "-x", "-v", "-f", "-"}, archive, w, w); err != nil {
+		return err
 	}
 
 	for i, c := range cmds {

@@ -41,20 +41,25 @@ func run() error {
 
 	d.NegotiateAPIVersion(ctx)
 
-	archive, err := build.TarPath(ctx, ".")
-	if err != nil {
-		return err
-	}
+	pr, pw := io.Pipe()
+	go func() {
+		err := build.TarPath(ctx, pw, ".")
+		if err != nil {
+			_ = pw.CloseWithError(err)
+		} else {
+			_ = pw.Close()
+		}
+	}()
 
 	opts := types.ImageBuildOptions{}
 	opts.Version = types.BuilderBuildKit
 	opts.Dockerfile = "Dockerfile"
-	opts.Context = archive
+	opts.Context = pr
 	if !useCache {
 		opts.NoCache = true
 	}
 
-	response, err := d.ImageBuild(ctx, archive, opts)
+	response, err := d.ImageBuild(ctx, pr, opts)
 	if err != nil {
 		return err
 	}

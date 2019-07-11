@@ -47,15 +47,17 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.
 	}
 
 	// copy files to container
-	ab := NewArchiveBuilder(filter)
-	err = ab.ArchivePathsIfExist(ctx, toArchive)
-	if err != nil {
-		return errors.Wrap(err, "archivePathsIfExists")
-	}
-	reader, err := ab.Reader()
-	if err != nil {
-		return err
-	}
+	pr, pw := io.Pipe()
+	go func() {
+		ab := NewArchiveBuilder(pw, filter)
+		err = ab.ArchivePathsIfExist(ctx, toArchive)
+		if err != nil {
+			_ = pw.CloseWithError(errors.Wrap(err, "archivePathsIfExists"))
+		} else {
+			_ = ab.Close()
+			_ = pw.Close()
+		}
+	}()
 
 	if len(toArchive) > 0 {
 		l.Infof("Copying %d file(s) to container: %s", len(toArchive), cID.ShortStr())
@@ -66,7 +68,7 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.
 
 	// TODO(maia): catch errors -- CopyToContainer doesn't return errors if e.g. it
 	// fails to write a file b/c of permissions =(
-	err = r.dCli.CopyToContainerRoot(ctx, cID.String(), reader)
+	err = r.dCli.CopyToContainerRoot(ctx, cID.String(), pr)
 	if err != nil {
 		return err
 	}
