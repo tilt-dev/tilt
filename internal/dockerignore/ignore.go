@@ -14,7 +14,7 @@ type dockerPathMatcher struct {
 	matcher  *fileutils.PatternMatcher
 }
 
-func (i dockerPathMatcher) Matches(f string, isDir bool) (bool, error) {
+func (i dockerPathMatcher) Matches(f string) (bool, error) {
 	rp, err := filepath.Rel(i.repoRoot, f)
 	if err != nil {
 		return false, err

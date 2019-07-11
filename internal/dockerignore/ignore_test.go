@@ -87,7 +87,7 @@ func (tf *testFixture) JoinPath(path ...string) string {
 }
 
 func (tf *testFixture) AssertResult(path string, expectedMatches bool) {
-	isIgnored, err := tf.tester.Matches(path, false)
+	isIgnored, err := tf.tester.Matches(path)
 	if err != nil {
 		tf.t.Fatal(err)
 	} else {

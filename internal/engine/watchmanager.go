@@ -269,7 +269,7 @@ func (w *WatchManager) dispatchFileChangesLoop(
 					st.Dispatch(NewErrorAction(err))
 					continue
 				}
-				isIgnored, err := filter.Matches(path, false)
+				isIgnored, err := filter.Matches(path)
 				if err != nil {
 					st.Dispatch(NewErrorAction(err))
 					continue

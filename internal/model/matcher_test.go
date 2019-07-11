@@ -49,7 +49,7 @@ func TestFileOrChildMatcher(t *testing.T) {
 	}
 
 	for f, expected := range expectedMatch {
-		match, err := matcher.Matches(f, false)
+		match, err := matcher.Matches(f)
 		if assert.NoError(t, err) {
 			assert.Equal(t, expected, match, "expected file '%s' match --> %t", f, expected)
 		}
