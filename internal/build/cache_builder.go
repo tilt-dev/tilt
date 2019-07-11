@@ -109,7 +109,6 @@ func (b CacheBuilder) CreateCacheFrom(ctx context.Context, inputs CacheInputs, s
 	// Create a Dockerfile that copies directories from the sourceRef
 	// and puts them in a standalone image.
 	df := b.makeCacheDockerfile(inputs.BaseDockerfile, sourceRef, inputs.CachePaths)
-	// TODO(dmiller) do the same thing here
 	pr, pw := io.Pipe()
 	go func() {
 		err := TarDfOnly(ctx, pw, df)
