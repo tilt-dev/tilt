@@ -11,6 +11,8 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 
+	"github.com/windmilleng/tilt/internal/sliceutils"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
@@ -3592,6 +3594,42 @@ func TestDisableFeatureThatDoesntExist(t *testing.T) {
 	f.loadErrString("Unknown feature flag: testflag")
 }
 
+func TestDockerBuildEntrypoint(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', '.', entrypoint="/bin/the_app")
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	f.assertNextManifest("foo", db(image("gcr.io/foo"), entrypoint("/bin/the_app")))
+}
+
+func TestCustomBuildEntrypoint(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+custom_build('gcr.io/foo', 'docker build -t $EXPECTED_REF foo',
+ ['foo'], entrypoint="/bin/the_app")
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	f.assertNextManifest("foo", cb(
+		image("gcr.io/foo"),
+		deps(f.JoinPath("foo")),
+		cmd("docker build -t $EXPECTED_REF foo"),
+		entrypoint("/bin/the_app")),
+	)
+}
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer
@@ -3874,6 +3912,11 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 
 			for _, matcher := range opt.matchers {
 				switch matcher := matcher.(type) {
+				case entrypointHelper:
+					if !sliceutils.StringSliceEquals(matcher.cmd.Argv, image.OverrideCmd.Argv) {
+						f.t.Fatalf("expected OverrideCommand (aka entrypoint) %v, got %v",
+							matcher.cmd.Argv, image.OverrideCmd.Argv)
+					}
 				case nestedFBHelper:
 					dbInfo := image.DockerBuildInfo()
 					if matcher.fb == nil {
@@ -3936,6 +3979,11 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 					assert.Equal(f.t, matcher.tag, cbInfo.Tag)
 				case disablePushHelper:
 					assert.Equal(f.t, matcher.disabled, cbInfo.DisablePush)
+				case entrypointHelper:
+					if !sliceutils.StringSliceEquals(matcher.cmd.Argv, image.OverrideCmd.Argv) {
+						f.t.Fatalf("expected OverrideCommand (aka entrypoint) %v, got %v",
+							matcher.cmd.Argv, image.OverrideCmd.Argv)
+					}
 				case fbHelper:
 					if cbInfo.Fast.Empty() {
 						f.t.Fatalf("Expected manifest %v to have fast build, but it didn't", m.Name)
@@ -4373,6 +4421,14 @@ type cbHelper struct {
 
 func cb(img imageHelper, opts ...interface{}) cbHelper {
 	return cbHelper{img, opts}
+}
+
+type entrypointHelper struct {
+	cmd model.Cmd
+}
+
+func entrypoint(command string) entrypointHelper {
+	return entrypointHelper{model.ToShellCmd(command)}
 }
 
 type nestedFBHelper struct {
