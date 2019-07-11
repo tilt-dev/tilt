@@ -29,7 +29,7 @@ func TestArchiveDf(t *testing.T) {
 		df := dockerfile.Dockerfile(dfText)
 		err := ab.archiveDf(f.ctx, df)
 		if err != nil {
-			t.Fatal(err)
+			panic(err)
 		}
 	}()
 
