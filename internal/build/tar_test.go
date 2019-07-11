@@ -2,6 +2,7 @@ package build
 
 import (
 	"archive/tar"
+	"bytes"
 	"context"
 	"io"
 	"testing"
@@ -20,20 +21,18 @@ func TestArchiveDf(t *testing.T) {
 	f := newFixture(t)
 
 	dfText := "FROM alpine"
-	pr, pw := io.Pipe()
-	go func() {
-		ab := NewArchiveBuilder(pw, model.EmptyMatcher)
-		defer ab.Close()
-		defer f.tearDown()
+	buf := new(bytes.Buffer)
+	ab := NewArchiveBuilder(buf, model.EmptyMatcher)
+	defer ab.Close()
+	defer f.tearDown()
 
-		df := dockerfile.Dockerfile(dfText)
-		err := ab.archiveDf(f.ctx, df)
-		if err != nil {
-			panic(err)
-		}
-	}()
+	df := dockerfile.Dockerfile(dfText)
+	err := ab.archiveDf(f.ctx, df)
+	if err != nil {
+		panic(err)
+	}
 
-	actual := tar.NewReader(pr)
+	actual := tar.NewReader(buf)
 
 	f.assertFileInTar(actual, expectedFile{
 		Path:                   "Dockerfile",
@@ -86,32 +85,30 @@ func TestDontArchiveTiltfile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pr, pw := io.Pipe()
-	go func() {
-		ab := NewArchiveBuilder(pw, filter)
-		defer ab.Close()
+	buf := new(bytes.Buffer)
+	ab := NewArchiveBuilder(buf, filter)
+	defer ab.Close()
 
-		f.WriteFile("a", "a")
-		f.WriteFile("Tiltfile", "Tiltfile")
+	f.WriteFile("a", "a")
+	f.WriteFile("Tiltfile", "Tiltfile")
 
-		paths := []PathMapping{
-			PathMapping{
-				LocalPath:     f.JoinPath("a"),
-				ContainerPath: "/a",
-			},
-			PathMapping{
-				LocalPath:     f.JoinPath("Tiltfile"),
-				ContainerPath: "/Tiltfile",
-			},
-		}
+	paths := []PathMapping{
+		PathMapping{
+			LocalPath:     f.JoinPath("a"),
+			ContainerPath: "/a",
+		},
+		PathMapping{
+			LocalPath:     f.JoinPath("Tiltfile"),
+			ContainerPath: "/Tiltfile",
+		},
+	}
 
-		err = ab.ArchivePathsIfExist(f.ctx, paths)
-		if err != nil {
-			f.t.Fatal(err)
-		}
-	}()
+	err = ab.ArchivePathsIfExist(f.ctx, paths)
+	if err != nil {
+		f.t.Fatal(err)
+	}
 
-	actual := tar.NewReader(pr)
+	actual := tar.NewReader(buf)
 
 	testutils.AssertFilesInTar(
 		t,
@@ -131,34 +128,32 @@ func TestDontArchiveTiltfile(t *testing.T) {
 
 func TestArchiveOverlapping(t *testing.T) {
 	f := newFixture(t)
-	pr, pw := io.Pipe()
-	go func() {
-		ab := NewArchiveBuilder(pw, model.EmptyMatcher)
-		defer ab.Close()
-		defer f.tearDown()
+	buf := new(bytes.Buffer)
+	ab := NewArchiveBuilder(buf, model.EmptyMatcher)
+	defer ab.Close()
+	defer f.tearDown()
 
-		f.WriteFile("a/a.txt", "a.txt contents")
-		f.WriteFile("b/b.txt", "b.txt contents")
-		f.WriteSymlink("../b", "a/b")
+	f.WriteFile("a/a.txt", "a.txt contents")
+	f.WriteFile("b/b.txt", "b.txt contents")
+	f.WriteSymlink("../b", "a/b")
 
-		paths := []PathMapping{
-			PathMapping{
-				LocalPath:     f.JoinPath("a"),
-				ContainerPath: "/a",
-			},
-			PathMapping{
-				LocalPath:     f.JoinPath("b"),
-				ContainerPath: "/a/b",
-			},
-		}
+	paths := []PathMapping{
+		PathMapping{
+			LocalPath:     f.JoinPath("a"),
+			ContainerPath: "/a",
+		},
+		PathMapping{
+			LocalPath:     f.JoinPath("b"),
+			ContainerPath: "/a/b",
+		},
+	}
 
-		err := ab.ArchivePathsIfExist(f.ctx, paths)
-		if err != nil {
-			f.t.Fatal(err)
-		}
-	}()
+	err := ab.ArchivePathsIfExist(f.ctx, paths)
+	if err != nil {
+		f.t.Fatal(err)
+	}
 
-	actual := tar.NewReader(pr)
+	actual := tar.NewReader(buf)
 	f.assertFilesInTar(actual, []expectedFile{
 		expectedFile{Path: "a/a.txt", Contents: "a.txt contents", AssertUidAndGidAreZero: true},
 		expectedFile{Path: "a/b", IsDir: true},
@@ -168,29 +163,27 @@ func TestArchiveOverlapping(t *testing.T) {
 
 func TestArchiveSymlink(t *testing.T) {
 	f := newFixture(t)
-	pr, pw := io.Pipe()
-	go func() {
-		ab := NewArchiveBuilder(pw, model.EmptyMatcher)
-		defer ab.Close()
-		defer f.tearDown()
+	buf := new(bytes.Buffer)
+	ab := NewArchiveBuilder(buf, model.EmptyMatcher)
+	defer ab.Close()
+	defer f.tearDown()
 
-		f.WriteFile("src/a.txt", "hello world")
-		f.WriteSymlink("a.txt", "src/b.txt")
+	f.WriteFile("src/a.txt", "hello world")
+	f.WriteSymlink("a.txt", "src/b.txt")
 
-		paths := []PathMapping{
-			PathMapping{
-				LocalPath:     f.JoinPath("src"),
-				ContainerPath: "/src",
-			},
-		}
+	paths := []PathMapping{
+		PathMapping{
+			LocalPath:     f.JoinPath("src"),
+			ContainerPath: "/src",
+		},
+	}
 
-		err := ab.ArchivePathsIfExist(f.ctx, paths)
-		if err != nil {
-			f.t.Fatal(err)
-		}
-	}()
+	err := ab.ArchivePathsIfExist(f.ctx, paths)
+	if err != nil {
+		f.t.Fatal(err)
+	}
 
-	actual := tar.NewReader(pr)
+	actual := tar.NewReader(buf)
 	f.assertFilesInTar(actual, []expectedFile{
 		expectedFile{Path: "src/a.txt", Contents: "hello world"},
 		expectedFile{Path: "src/b.txt", Linkname: "a.txt"},
@@ -206,22 +199,20 @@ func TestArchiveException(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pr, pw := io.Pipe()
-	go func() {
-		ab := NewArchiveBuilder(pw, filter)
-		defer ab.Close()
+	buf := new(bytes.Buffer)
+	ab := NewArchiveBuilder(buf, filter)
+	defer ab.Close()
 
-		f.WriteFile("target/foo.txt", "bar")
+	f.WriteFile("target/foo.txt", "bar")
 
-		paths := []PathMapping{{LocalPath: f.Path(), ContainerPath: "/"}}
+	paths := []PathMapping{{LocalPath: f.Path(), ContainerPath: "/"}}
 
-		err = ab.ArchivePathsIfExist(f.ctx, paths)
-		if err != nil {
-			f.t.Fatal(err)
-		}
-	}()
+	err = ab.ArchivePathsIfExist(f.ctx, paths)
+	if err != nil {
+		f.t.Fatal(err)
+	}
 
-	actual := tar.NewReader(pr)
+	actual := tar.NewReader(buf)
 	f.assertFileInTar(actual, expectedFile{Path: "target/foo.txt", Contents: "bar"})
 }
 
