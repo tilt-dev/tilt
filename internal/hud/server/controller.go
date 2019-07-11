@@ -26,14 +26,16 @@ type HeadsUpServerController struct {
 	webURL      model.WebURL
 	webLoadDone bool
 	initDone    bool
+	noBrowser   model.NoBrowser
 }
 
-func ProvideHeadsUpServerController(port model.WebPort, hudServer *HeadsUpServer, assetServer assets.Server, webURL model.WebURL) *HeadsUpServerController {
+func ProvideHeadsUpServerController(port model.WebPort, hudServer *HeadsUpServer, assetServer assets.Server, webURL model.WebURL, noBrowser model.NoBrowser) *HeadsUpServerController {
 	return &HeadsUpServerController{
 		port:        port,
 		hudServer:   hudServer,
 		assetServer: assetServer,
 		webURL:      webURL,
+		noBrowser:   noBrowser,
 	}
 }
 
@@ -47,7 +49,7 @@ func (s *HeadsUpServerController) isWebsocketConnected() bool {
 }
 
 func (s *HeadsUpServerController) maybeOpenBrowser(st store.RStore) {
-	if s.webURL.Empty() || s.webLoadDone {
+	if s.webURL.Empty() || s.webLoadDone || (bool)(s.noBrowser) {
 		return
 	}
 

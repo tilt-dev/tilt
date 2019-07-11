@@ -8,6 +8,8 @@ import (
 	"github.com/spf13/pflag"
 )
 
+type NoBrowser bool // flag for disabling automatic browser opening
+
 // Web version of the form vA.B.C, where A, B, and C are integers.
 // Used for fetching web assets
 type WebVersion string

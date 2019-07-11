@@ -2598,7 +2598,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	pm := NewProfilerManager()
 	sCli := synclet.NewFakeSyncletClient()
 	sm := NewSyncletManagerForTests(k8s, sCli)
-	hudsc := server.ProvideHeadsUpServerController(0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
+	hudsc := server.ProvideHeadsUpServerController(0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{}, false)
 	ghc := &github.FakeClient{}
 	sc := &client.FakeSailClient{}
 	feature := feature.ProvideFeature()
