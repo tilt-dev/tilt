@@ -1787,7 +1787,7 @@ func TestUpper_PodLogs(t *testing.T) {
 }
 
 func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
-	f := newTestFixture(t).EnableK8sEvents()
+	f := newTestFixture(t)
 	defer f.TearDown()
 
 	entityUID := "someEntity"
@@ -1844,7 +1844,7 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 }
 
 func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
-	f := newTestFixture(t).EnableK8sEvents()
+	f := newTestFixture(t)
 	defer f.TearDown()
 
 	entityUID := "someEntity"
@@ -1871,7 +1871,7 @@ func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
 }
 
 func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
-	f := newTestFixture(t).EnableK8sEvents()
+	f := newTestFixture(t)
 	defer f.TearDown()
 
 	entityUID := "someEntity"
@@ -1904,7 +1904,7 @@ func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
 }
 
 func TestK8sEventLogTimestamp(t *testing.T) {
-	f := newTestFixture(t).EnableK8sEvents()
+	f := newTestFixture(t)
 	defer f.TearDown()
 
 	st := f.store.LockMutableStateForTesting()
@@ -2641,11 +2641,6 @@ func newTestFixture(t *testing.T) *testFixture {
 	}()
 
 	return ret
-}
-
-func (f *testFixture) EnableK8sEvents() *testFixture {
-	f.feature.Enable("events")
-	return f
 }
 
 func (f *testFixture) Start(manifests []model.Manifest, watchFiles bool, initOptions ...initOption) {
