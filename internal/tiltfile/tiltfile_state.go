@@ -779,9 +779,11 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 
 		m = m.WithImageTargets(iTargets)
 
-		err = s.checkForImpossibleLiveUpdates(m)
-		if err != nil {
-			return nil, err
+		if !s.f.IsEnabled(feature.MultipleContainersPerPod) {
+			err = s.checkForImpossibleLiveUpdates(m)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		result = append(result, m)
