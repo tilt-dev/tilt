@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"fmt"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -173,6 +174,45 @@ func TestHasKind(t *testing.T) {
 	assert.True(t, svc.HasKind("service"))
 }
 
+func TestNamespacesAndCRDsFirst(t *testing.T) {
+	eDeploy := mustParseYAML(t, testyaml.DoggosDeploymentYaml)[0]
+	eService := mustParseYAML(t, testyaml.DoggosServiceYaml)[0]
+	eCRD := mustParseYAML(t, testyaml.CRDYAML)[0]
+	eNamespace := mustParseYAML(t, testyaml.MyNamespaceYAML)[0]
+
+	for _, test := range []struct {
+		name           string
+		input          []K8sEntity
+		expectedOutput []K8sEntity
+	}{
+		{"namespace first",
+			[]K8sEntity{eDeploy, eNamespace, eService},
+			[]K8sEntity{eNamespace, eDeploy, eService},
+		},
+		{"crd first",
+			[]K8sEntity{eDeploy, eCRD, eService},
+			[]K8sEntity{eCRD, eDeploy, eService},
+		},
+		{"namespace, then crd, then rest",
+			[]K8sEntity{eDeploy, eCRD, eService, eNamespace},
+			[]K8sEntity{eNamespace, eCRD, eDeploy, eService},
+		},
+		{"noop -- no ns or crd",
+			[]K8sEntity{eDeploy, eService},
+			[]K8sEntity{eDeploy, eService},
+		},
+		{"noop -- already sorted",
+			[]K8sEntity{eNamespace, eCRD, eService, eDeploy},
+			[]K8sEntity{eNamespace, eCRD, eService, eDeploy},
+		},
+	} {
+		t.Run(string(test.name), func(t *testing.T) {
+			sort.Sort(namespacesAndCRDsFirst(test.input))
+			assert.Equal(t, test.expectedOutput, test.input)
+		})
+	}
+}
+
 func parseYAMLFromStrings(yaml ...string) ([]K8sEntity, error) {
 	var res []K8sEntity
 	for _, s := range yaml {
@@ -183,4 +223,12 @@ func parseYAMLFromStrings(yaml ...string) ([]K8sEntity, error) {
 		res = append(res, entities...)
 	}
 	return res, nil
+}
+
+func mustParseYAML(t *testing.T, yaml string) []K8sEntity {
+	entities, err := ParseYAMLFromString(yaml)
+	if err != nil {
+		t.Fatalf("ERROR %v parsing k8s YAML:\n%s", err, yaml)
+	}
+	return entities
 }

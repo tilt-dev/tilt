@@ -3,6 +3,7 @@ package k8s
 import (
 	"net/url"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -307,4 +308,33 @@ func (e K8sEntity) HasNamespace(ns string) bool {
 func (e K8sEntity) HasKind(kind string) bool {
 	// TODO(maia): support kind aliases (e.g. "po" for "pod")
 	return strings.ToLower(e.Kind.Kind) == strings.ToLower(kind)
+}
+
+type namespacesAndCRDsFirst []K8sEntity
+
+var _ sort.Interface = namespacesAndCRDsFirst{}
+
+func (nsCRDFirst namespacesAndCRDsFirst) Len() int {
+	return len(nsCRDFirst)
+}
+
+// Sort order: <namespaces>, <CRDs>, <everything else>
+func (nsCRDFirst namespacesAndCRDsFirst) Less(i, j int) bool {
+	kind1 := nsCRDFirst[i].Kind.Kind
+	kind2 := nsCRDFirst[j].Kind.Kind
+	if kind1 == "Namespace" {
+		return true
+	} else if kind2 == "Namespace" {
+		return false
+	} else if kind1 == "CustomResourceDefinition" {
+		return true
+	} else if kind2 == "CustomResourceDefinition" {
+		return false
+	} else {
+		return i < j
+	}
+}
+
+func (nsCRDFirst namespacesAndCRDsFirst) Swap(i, j int) {
+	nsCRDFirst[i], nsCRDFirst[j] = nsCRDFirst[j], nsCRDFirst[i]
 }
