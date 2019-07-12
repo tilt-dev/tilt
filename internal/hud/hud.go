@@ -206,10 +206,6 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				break
 			}
 			_, r := h.selectedResource()
-			if r.IsYAML() {
-				h.currentViewState.AlertMessage = fmt.Sprintf("YAML Resources don't have logs")
-				break
-			}
 
 			if h.webURL.Empty() {
 				break
