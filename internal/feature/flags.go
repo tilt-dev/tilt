@@ -8,9 +8,7 @@ import (
 type Defaults map[string]bool
 
 // All feature flags need to be defined here with their default values
-var flags = Defaults{
-	"events": false,
-}
+var flags = Defaults{}
 
 type Feature interface {
 	IsEnabled(flag string) bool

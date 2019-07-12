@@ -218,7 +218,6 @@ func newEWMFixture(t *testing.T) *ewmFixture {
 
 	clock := clockwork.NewFakeClock()
 	f := feature.ProvideFeature()
-	f.Enable("events")
 
 	ret := &ewmFixture{
 		kClient: kClient,
