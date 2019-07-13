@@ -111,6 +111,8 @@ func (m tempBrokenSymlinkMatcher) Matches(path string) (bool, error) {
 	return ospath.IsBrokenSymlink(path)
 }
 
+func (tempBrokenSymlinkMatcher) Exclusions() bool { return true }
+
 type directoryMatcher struct {
 	dir string
 }
@@ -127,4 +129,8 @@ func newDirectoryMatcher(dir string) (directoryMatcher, error) {
 
 func (d directoryMatcher) Matches(p string) (bool, error) {
 	return ospath.IsChild(d.dir, p), nil
+}
+
+func (directoryMatcher) Exclusions() bool {
+	return false
 }

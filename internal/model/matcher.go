@@ -10,6 +10,10 @@ import (
 
 type PathMatcher interface {
 	Matches(f string) (bool, error)
+
+	// Whether this matcher has any exclusion patterns. e.g.,
+	// A case where we match a/b but don't match a/b/c
+	Exclusions() bool
 }
 
 // A Matcher that matches nothing.
@@ -18,6 +22,7 @@ type emptyMatcher struct{}
 func (m emptyMatcher) Matches(f string) (bool, error) {
 	return false, nil
 }
+func (emptyMatcher) Exclusions() bool { return false }
 
 var EmptyMatcher PathMatcher = emptyMatcher{}
 
@@ -29,6 +34,7 @@ type fileMatcher struct {
 func (m fileMatcher) Matches(f string) (bool, error) {
 	return m.paths[f], nil
 }
+func (fileMatcher) Exclusions() bool { return true }
 
 // NewSimpleFileMatcher returns a matcher for the given paths; any relative paths
 // are converted to absolute (relative to cwd).
@@ -70,7 +76,10 @@ func (m fileOrChildMatcher) Matches(f string) (bool, error) {
 	}
 
 	return false, nil
+}
 
+func (m fileOrChildMatcher) Exclusions() bool {
+	return false
 }
 
 // NewRelativeFileOrChildMatcher returns a matcher for the given paths (with any
@@ -145,6 +154,15 @@ func (c CompositePathMatcher) Matches(f string) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+func (c CompositePathMatcher) Exclusions() bool {
+	for _, t := range c.Matchers {
+		if t.Exclusions() {
+			return true
+		}
+	}
+	return false
 }
 
 var _ PathMatcher = CompositePathMatcher{}
