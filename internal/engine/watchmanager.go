@@ -264,11 +264,7 @@ func (w *WatchManager) dispatchFileChangesLoop(
 			}
 			watchEvent := newTargetFilesChangedAction(target.ID())
 			for _, e := range fsEvents {
-				path, err := filepath.Abs(e.Path)
-				if err != nil {
-					st.Dispatch(NewErrorAction(err))
-					continue
-				}
+				path := e.Path()
 				isIgnored, err := filter.Matches(path)
 				if err != nil {
 					st.Dispatch(NewErrorAction(err))

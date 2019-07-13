@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"path/filepath"
 	"sync"
 
 	"github.com/windmilleng/tilt/internal/logger"
@@ -29,6 +30,7 @@ func (w *fakeMultiWatcher) newSub(paths []string, ignore watch.PathMatcher, _ lo
 	errorCh := make(chan error)
 	w.mu.Lock()
 	defer w.mu.Unlock()
+
 	watcher := newFakeWatcher(subCh, errorCh, paths, ignore)
 	w.watchers = append(w.watchers, watcher)
 	w.subs = append(w.subs, subCh)
@@ -68,7 +70,7 @@ func (w *fakeMultiWatcher) loop() {
 				return
 			}
 			for _, watcher := range w.watchers {
-				if watcher.matches(e.Path) {
+				if watcher.matches(e.Path()) {
 					watcher.inboundCh <- e
 				}
 			}
@@ -93,6 +95,10 @@ type fakeWatcher struct {
 }
 
 func newFakeWatcher(inboundCh chan watch.FileEvent, errorCh chan error, paths []string, ignore watch.PathMatcher) *fakeWatcher {
+	for i, path := range paths {
+		paths[i], _ = filepath.Abs(path)
+	}
+
 	return &fakeWatcher{
 		inboundCh:  inboundCh,
 		outboundCh: make(chan watch.FileEvent, 20),

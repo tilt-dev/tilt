@@ -29,7 +29,7 @@ func TestBuildControllerOnePod(t *testing.T) {
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	f.podEvent(f.testPod("pod-id", "fe", "Running", testContainer, time.Now()))
-	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("main.go")}
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
 	assert.Equal(t, "pod-id", call.oneState().DeployInfo.PodID.String())
@@ -55,7 +55,7 @@ func TestBuildControllerIgnoresImageTags(t *testing.T) {
 	pod := f.testPod("pod-id", "fe", "Running", testContainer, time.Now())
 	setImage(pod, "image-foo:othertag")
 	f.podEvent(pod)
-	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("main.go")}
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
 	assert.Equal(t, "pod-id", call.oneState().DeployInfo.PodID.String())
@@ -76,7 +76,7 @@ func TestBuildControllerDockerCompose(t *testing.T) {
 	imageTarget := manifest.ImageTargetAt(0)
 	assert.Equal(t, imageTarget, call.image())
 
-	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("main.go")}
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
 	imageState := call.state[imageTarget.ID()]
@@ -105,7 +105,7 @@ func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 	f.podEvent(podA)
 	f.podEvent(podB)
 
-	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("main.go")}
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	// We expect two pods associated with this manifest. We don't want to container-build
 	// if there are multiple pods, so make sure we're not sending deploy info (i.e. that
@@ -133,7 +133,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 
 	f.b.nextBuildContainer = testContainer
 	f.podEvent(f.testPod("pod-id", "fe", "Running", testContainer, time.Now()))
-	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("main.go")}
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
 	assert.Equal(t, "pod-id", call.oneState().DeployInfo.PodID.String())
@@ -177,7 +177,7 @@ func TestBuildControllerManualTrigger(t *testing.T) {
 	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: mName})
 	f.assertNoCall("manifest has no pending changes, so shouldn't build even if we try to trigger it")
 
-	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("main.go")}
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 	f.WaitUntil("pending change appears", func(st store.EngineState) bool {
 		return len(st.BuildStatus(manifest.ImageTargetAt(0).ID()).PendingFileChanges) > 0
 	})
@@ -222,7 +222,7 @@ func TestBuildQueueOrdering(t *testing.T) {
 	}
 	f.waitForCompletedBuildCount(len(manifests))
 
-	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("main.go")}
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 	f.WaitUntil("pending change appears", func(st store.EngineState) bool {
 		return len(st.BuildStatus(m1.ImageTargetAt(0).ID()).PendingFileChanges) > 0 &&
 			len(st.BuildStatus(m2.ImageTargetAt(0).ID()).PendingFileChanges) > 0 &&
@@ -279,7 +279,7 @@ func TestBuildQueueAndAutobuildOrdering(t *testing.T) {
 	}
 	f.waitForCompletedBuildCount(len(manifests))
 
-	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("dirManual/main.go")}
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("dirManual/main.go"))
 	f.WaitUntil("pending change appears", func(st store.EngineState) bool {
 		return len(st.BuildStatus(m1.ImageTargetAt(0).ID()).PendingFileChanges) > 0 &&
 			len(st.BuildStatus(m2.ImageTargetAt(0).ID()).PendingFileChanges) > 0 &&
@@ -292,7 +292,7 @@ func TestBuildQueueAndAutobuildOrdering(t *testing.T) {
 	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest2"})
 	// make our one auto-trigger manifest build - should be evaluated LAST, after
 	// all the manual manifests waiting in the queue
-	f.fsWatcher.events <- watch.FileEvent{Path: f.JoinPath("dirAuto/main.go")}
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("dirAuto/main.go"))
 	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest3"})
 	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest4"})
 
