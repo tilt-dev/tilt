@@ -3630,6 +3630,30 @@ k8s_yaml('foo.yaml')
 	)
 }
 
+func TestDuplicateResource(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("resource.yaml", fmt.Sprintf(`
+%s
+---
+%s
+`, testyaml.DoggosServiceYaml, testyaml.DoggosServiceYaml))
+	f.file("Tiltfile", `
+k8s_yaml('resource.yaml')
+`)
+
+	f.load()
+	m := f.assertNextManifestUnresourced("doggos", "doggos")
+
+	displayNames := []string{}
+	for _, name := range m.K8sTarget().DisplayNames {
+		displayNames = append(displayNames, name)
+	}
+	assert.Equal(t, []string{"doggos:service:default::0", "doggos:service:default::1"}, displayNames)
+}
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer
@@ -3847,7 +3871,7 @@ func (f *fixture) assertNoMoreManifests() {
 
 // Helper func for asserting that the next manifest is Unresourced
 // k8s YAML containing the given k8s entities.
-func (f *fixture) assertNextManifestUnresourced(expectedEntities ...string) {
+func (f *fixture) assertNextManifestUnresourced(expectedEntities ...string) model.Manifest {
 	next := f.assertNextManifest(model.UnresourcedYAMLManifestName.String())
 
 	entities, err := k8s.ParseYAML(bytes.NewBufferString(next.K8sTarget().YAML))
@@ -3858,6 +3882,7 @@ func (f *fixture) assertNextManifestUnresourced(expectedEntities ...string) {
 		entityNames[i] = e.Name()
 	}
 	assert.Equal(f.t, expectedEntities, entityNames)
+	return next
 }
 
 type funcOpt func(*testing.T, model.Manifest) bool
