@@ -117,6 +117,21 @@ func TestWatchManager_PickUpTiltIgnoreChanges(t *testing.T) {
 	f.AssertActionsContain(actions, "bar/baz/foo")
 }
 
+// to protect against https://github.com/windmilleng/tilt/issues/1857
+func TestWatchManager_ZeroDependencies(t *testing.T) {
+	f := newWMFixture(t)
+	defer f.TearDown()
+
+	target := model.DockerComposeTarget{Name: "foo"}
+	f.SetManifestTarget(target)
+
+	for _, w := range f.fakeMultiWatcher.watchers {
+		if len(w.paths) == 0 {
+			assert.FailNow(t, "no watchers should be created with zero paths")
+		}
+	}
+}
+
 type wmFixture struct {
 	ctx              context.Context
 	cancel           func()

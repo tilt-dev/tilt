@@ -203,7 +203,12 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 			continue
 		}
 
-		watcher, err := w.fsWatcherMaker(target.Dependencies(), ignore, logger)
+		deps := target.Dependencies()
+		if len(deps) == 0 {
+			continue
+		}
+
+		watcher, err := w.fsWatcherMaker(deps, ignore, logger)
 		if err != nil {
 			st.Dispatch(NewErrorAction(err))
 			continue
