@@ -207,7 +207,7 @@ func TestNamespacesAndCRDsFirst(t *testing.T) {
 		},
 	} {
 		t.Run(string(test.name), func(t *testing.T) {
-			sort.Sort(namespacesAndCRDsFirst(test.input))
+			sort.Sort(NamespacesAndCRDsFirst(test.input))
 			assert.Equal(t, test.expectedOutput, test.input)
 		})
 	}

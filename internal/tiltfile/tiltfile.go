@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 
 	"github.com/pkg/errors"
@@ -166,6 +167,10 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 
 	yamlManifest := model.Manifest{}
 	if len(unresourced) > 0 {
+		// We apply Namespaces first b/c subsequent entities may depend on the NS existing.
+		// We apply CRDs first so we don't try to create an instance of that CRD before it's defined.
+		sort.Sort(k8s.NamespacesAndCRDsFirst(unresourced))
+
 		yamlManifest, err = k8s.NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, unresourced)
 		if err != nil {
 			return TiltfileLoadResult{}, err

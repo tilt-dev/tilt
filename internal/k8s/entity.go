@@ -310,16 +310,16 @@ func (e K8sEntity) HasKind(kind string) bool {
 	return strings.ToLower(e.Kind.Kind) == strings.ToLower(kind)
 }
 
-type namespacesAndCRDsFirst []K8sEntity
+type NamespacesAndCRDsFirst []K8sEntity
 
-var _ sort.Interface = namespacesAndCRDsFirst{}
+var _ sort.Interface = NamespacesAndCRDsFirst{}
 
-func (nsCRDFirst namespacesAndCRDsFirst) Len() int {
+func (nsCRDFirst NamespacesAndCRDsFirst) Len() int {
 	return len(nsCRDFirst)
 }
 
 // Sort order: <namespaces>, <CRDs>, <everything else>
-func (nsCRDFirst namespacesAndCRDsFirst) Less(i, j int) bool {
+func (nsCRDFirst NamespacesAndCRDsFirst) Less(i, j int) bool {
 	kind1 := nsCRDFirst[i].Kind.Kind
 	kind2 := nsCRDFirst[j].Kind.Kind
 	if kind1 == "Namespace" {
@@ -335,6 +335,6 @@ func (nsCRDFirst namespacesAndCRDsFirst) Less(i, j int) bool {
 	}
 }
 
-func (nsCRDFirst namespacesAndCRDsFirst) Swap(i, j int) {
+func (nsCRDFirst NamespacesAndCRDsFirst) Swap(i, j int) {
 	nsCRDFirst[i], nsCRDFirst[j] = nsCRDFirst[j], nsCRDFirst[i]
 }
