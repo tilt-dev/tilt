@@ -3581,9 +3581,8 @@ func TestEnableFeatureThatDoesntExist(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `enable_feature('testflag')`)
-	f.loadAllowWarnings()
 
-	f.assertWarnings("Unknown feature flag used in check: testflag")
+	f.loadErrString("Unknown feature flag: testflag")
 }
 
 func TestDisableFeatureThatDoesntExist(t *testing.T) {
