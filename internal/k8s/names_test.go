@@ -24,6 +24,10 @@ func TestUniqueResourceNames(t *testing.T) {
 		{"one workload, just name", []workload{
 			{"foo", "Deployment", "default", "", "foo"},
 		}},
+		{"one workload, same name", []workload{
+			{"foo", "Deployment", "default", "", "foo:deployment:default::0"},
+			{"foo", "Deployment", "default", "", "foo:deployment:default::1"},
+		}},
 		{"one workload, by name", []workload{
 			{"foo", "Deployment", "default", "", "foo"},
 			{"bar", "Deployment", "default", "", "bar"},
@@ -63,10 +67,7 @@ func TestUniqueResourceNames(t *testing.T) {
 				expectedNames = append(expectedNames, w.expectedResourceName)
 			}
 
-			actualNames, err := UniqueNames(entities, 1)
-			if err != nil {
-				assert.NoError(t, err)
-			}
+			actualNames := UniqueNames(entities, 1)
 			assert.Equal(t, expectedNames, actualNames)
 		})
 	}

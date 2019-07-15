@@ -21,10 +21,7 @@ func NewTarget(
 
 	// Use a min component count of 2 for computing names,
 	// so that the resource type appears
-	displayNames, err := UniqueNames(entities, 2)
-	if err != nil {
-		return model.K8sTarget{}, errors.Wrap(err, "k8s.NewTarget")
-	}
+	displayNames := UniqueNames(entities, 2)
 
 	return model.K8sTarget{
 		Name:              name,
