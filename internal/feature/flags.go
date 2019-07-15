@@ -12,6 +12,7 @@ type Defaults map[string]bool
 // All feature flags need to be defined here with their default values
 var flags = Defaults{
 	MultipleContainersPerPod: false,
+	"events":                 false,
 }
 
 type Feature interface {
