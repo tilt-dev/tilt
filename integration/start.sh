@@ -11,7 +11,7 @@
 #   To restart the container:
 #   ./restart.sh
 
-set -euo pipefail
+set -eu
 
 process_id=""
 
@@ -34,6 +34,7 @@ while true; do
     EXIT_CODE=$?
     set -e
     if [ ! -f restart.txt ]; then
+        echo "Exiting with code $EXIT_CODE"
         exit $EXIT_CODE
     fi
     echo "Restarting"
