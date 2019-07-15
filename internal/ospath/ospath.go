@@ -9,6 +9,9 @@ import (
 // the relative path of `file` relative to `dir`.
 //
 // Returns true if successful. If `file` is not under `dir`, returns false.
+//
+// TODO(nick): Should we have an assertion that dir and file are absolute? This is a common
+// mistake when using this API. It won't work correctly with relative paths.
 func Child(dir string, file string) (string, bool) {
 	if dir == "" {
 		return "", false

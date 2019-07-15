@@ -5,11 +5,15 @@ import (
 	"sync"
 )
 
+const MultipleContainersPerPod = "multiple_containers_per_pod"
+const Events = "events"
+
 type Defaults map[string]bool
 
 // All feature flags need to be defined here with their default values
 var flags = Defaults{
-	"events": false,
+	MultipleContainersPerPod: false,
+	Events:                   true,
 }
 
 type Feature interface {
