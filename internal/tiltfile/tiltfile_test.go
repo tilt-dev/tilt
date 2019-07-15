@@ -3675,7 +3675,7 @@ func newFixture(t *testing.T) *fixture {
 	an, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
 	dcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
 	kCli := k8s.NewFakeK8sClient()
-	feat := feature.ProvideFeatureForTesting(feature.Defaults{"testflag_disabled": false, "testflag_enabled": true})
+	feat := feature.ProvideFeatureForTesting(feature.Defaults{"testflag_disabled": false, "testflag_enabled": true, feature.MultipleContainersPerPod: false})
 	tfl := ProvideTiltfileLoader(ta, kCli, dcc, "fake-context", feat)
 
 	r := &fixture{
