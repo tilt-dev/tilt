@@ -1,8 +1,6 @@
 package tiltfile
 
 import (
-	"fmt"
-
 	"go.starlark.net/starlark"
 )
 
@@ -13,10 +11,6 @@ func (s *tiltfileState) enableFeature(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
-	if _, ok := s.f.GetAllFlags()[flag]; !ok {
-		s.warnings = append(s.warnings, fmt.Sprintf("Unknown feature flag used in check: %s", flag))
-		return starlark.None, nil
-	}
 	err = s.f.Enable(flag)
 	if err != nil {
 		return nil, err
