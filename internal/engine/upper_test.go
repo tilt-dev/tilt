@@ -2644,7 +2644,7 @@ func newTestFixture(t *testing.T) *testFixture {
 }
 
 func (f *testFixture) EnableK8sEvents() *testFixture {
-	f.feature.Enable("events")
+	f.feature.Enable(feature.Events)
 	return f
 }
 
