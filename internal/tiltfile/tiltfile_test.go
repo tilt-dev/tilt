@@ -3630,34 +3630,6 @@ k8s_yaml('foo.yaml')
 	)
 }
 
-func TestYamlSorted(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.dockerfile("Dockerfile")
-	f.yaml("foo.yaml", secret("shh-a-secret"),
-		namespace("mynamespace"))
-	f.file("crd.yaml", testyaml.CRDYAML)
-	f.file("Tiltfile", `k8s_yaml(['foo.yaml', 'crd.yaml'])`)
-	// input order of k8s kinds: Secret, Namespace, CustomResourceDefinition, Project
-
-	f.load()
-	m := f.assertNextManifest(model.UnresourcedYAMLManifestName.String())
-
-	entities, err := k8s.ParseYAMLFromString(m.K8sTarget().YAML)
-	if err != nil {
-		f.t.Fatal(err)
-	}
-
-	expectedKindOrder := []string{"Namespace", "CustomResourceDefinition", "Secret", "Project"}
-	actualKindOrder := make([]string, len(entities))
-	for i, e := range entities {
-		actualKindOrder[i] = e.Kind.Kind
-	}
-
-	assert.Equal(t, expectedKindOrder, actualKindOrder, "manifest yaml entities were in the wrong order")
-}
-
 func TestDuplicateResource(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -3796,16 +3768,6 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 		case secretHelper:
 			s := testyaml.SecretYaml
 			s = strings.Replace(s, testyaml.SecretName, e.name, -1)
-			objs, err := k8s.ParseYAMLFromString(s)
-			if err != nil {
-				f.t.Fatal(err)
-			}
-
-			entityObjs = append(entityObjs, objs...)
-
-		case namespaceHelper:
-			s := testyaml.MyNamespaceYAML
-			s = strings.Replace(s, testyaml.MyNamespaceName, e.namespace, -1)
 			objs, err := k8s.ParseYAMLFromString(s)
 			if err != nil {
 				f.t.Fatal(err)
