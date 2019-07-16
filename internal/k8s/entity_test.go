@@ -2,7 +2,6 @@ package k8s
 
 import (
 	"fmt"
-	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -174,41 +173,53 @@ func TestHasKind(t *testing.T) {
 	assert.True(t, svc.HasKind("service"))
 }
 
-func TestNamespacesAndCRDsFirst(t *testing.T) {
+func TestEntitiesWithDependenciesAndRest(t *testing.T) {
 	eDeploy := mustParseYAML(t, testyaml.DoggosDeploymentYaml)[0]
 	eService := mustParseYAML(t, testyaml.DoggosServiceYaml)[0]
 	eCRD := mustParseYAML(t, testyaml.CRDYAML)[0]
 	eNamespace := mustParseYAML(t, testyaml.MyNamespaceYAML)[0]
 
 	for _, test := range []struct {
-		name           string
-		input          []K8sEntity
-		expectedOutput []K8sEntity
+		name             string
+		input            []K8sEntity
+		expectedWithDeps []K8sEntity
+		expectedRest     []K8sEntity
 	}{
-		{"namespace first",
+		{"one namespace",
 			[]K8sEntity{eDeploy, eNamespace, eService},
-			[]K8sEntity{eNamespace, eDeploy, eService},
+			[]K8sEntity{eNamespace},
+			[]K8sEntity{eDeploy, eService},
 		},
-		{"crd first",
+		{"one crd",
 			[]K8sEntity{eDeploy, eCRD, eService},
-			[]K8sEntity{eCRD, eDeploy, eService},
+			[]K8sEntity{eCRD},
+			[]K8sEntity{eDeploy, eService},
 		},
-		{"namespace, then crd, then rest",
+		{"namespace and crd",
 			[]K8sEntity{eDeploy, eCRD, eService, eNamespace},
-			[]K8sEntity{eNamespace, eCRD, eDeploy, eService},
-		},
-		{"noop -- no ns or crd",
-			[]K8sEntity{eDeploy, eService},
+			[]K8sEntity{eNamespace, eCRD},
 			[]K8sEntity{eDeploy, eService},
 		},
-		{"noop -- already sorted",
-			[]K8sEntity{eNamespace, eCRD, eService, eDeploy},
-			[]K8sEntity{eNamespace, eCRD, eService, eDeploy},
+		{"namespace and crd preserves order of rest",
+			[]K8sEntity{eService, eCRD, eDeploy, eNamespace},
+			[]K8sEntity{eNamespace, eCRD},
+			[]K8sEntity{eService, eDeploy},
+		},
+		{"none with deps",
+			[]K8sEntity{eDeploy, eService},
+			nil,
+			[]K8sEntity{eDeploy, eService},
+		},
+		{"only with deps",
+			[]K8sEntity{eNamespace, eCRD},
+			[]K8sEntity{eNamespace, eCRD},
+			nil,
 		},
 	} {
 		t.Run(string(test.name), func(t *testing.T) {
-			sort.Sort(NamespacesAndCRDsFirst(test.input))
-			assert.Equal(t, test.expectedOutput, test.input)
+			withDeps, rest := EntitiesWithDependenciesAndRest(test.input)
+			assert.Equal(t, test.expectedWithDeps, withDeps)
+			assert.Equal(t, test.expectedRest, rest)
 		})
 	}
 }

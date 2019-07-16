@@ -241,6 +241,15 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-k8sUpsert")
 	defer span.Finish()
 
+	// First apply all the entities on which something else might depend
+	withDeps, entities := EntitiesWithDependenciesAndRest(entities)
+	if len(withDeps) > 0 {
+		_, stderr, err := k.actOnEntities(ctx, []string{"apply"}, withDeps)
+		if err != nil {
+			return errors.Wrapf(err, "kubectl apply:\nstderr: %s", stderr)
+		}
+	}
+
 	immutable := ImmutableEntities(entities)
 	if len(immutable) > 0 {
 		_, stderr, err := k.actOnEntities(ctx, []string{"replace", "--force"}, immutable)

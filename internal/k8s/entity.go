@@ -3,7 +3,6 @@ package k8s
 import (
 	"net/url"
 	"reflect"
-	"sort"
 	"strings"
 	"testing"
 
@@ -159,6 +158,26 @@ func (e K8sEntity) DeepCopy() K8sEntity {
 	}
 }
 
+// EntitiesWithDependenciesAndRest returns two lists of k8s entities: those that may have dependencies,
+// which we will therefore want to apply first (i.e. namespaces and CRDs -- e.g. trying to create a
+// pod in a nonexistent namespace causes an error); and the rest of the entities.
+func EntitiesWithDependenciesAndRest(entities []K8sEntity) (withDeps, rest []K8sEntity) {
+	var ns []K8sEntity
+	var crd []K8sEntity
+
+	for _, e := range entities {
+		if e.Kind.Kind == "Namespace" {
+			ns = append(ns, e)
+		} else if e.Kind.Kind == "CustomResourceDefinition" {
+			crd = append(crd, e)
+		} else {
+			rest = append(rest, e)
+		}
+	}
+
+	return append(ns, crd...), rest
+}
+
 func ImmutableEntities(entities []K8sEntity) []K8sEntity {
 	result := make([]K8sEntity, 0)
 	for _, e := range entities {
@@ -308,33 +327,4 @@ func (e K8sEntity) HasNamespace(ns string) bool {
 func (e K8sEntity) HasKind(kind string) bool {
 	// TODO(maia): support kind aliases (e.g. "po" for "pod")
 	return strings.ToLower(e.Kind.Kind) == strings.ToLower(kind)
-}
-
-type NamespacesAndCRDsFirst []K8sEntity
-
-var _ sort.Interface = NamespacesAndCRDsFirst{}
-
-func (nsCRDFirst NamespacesAndCRDsFirst) Len() int {
-	return len(nsCRDFirst)
-}
-
-// Sort order: <namespaces>, <CRDs>, <everything else>
-func (nsCRDFirst NamespacesAndCRDsFirst) Less(i, j int) bool {
-	kind1 := nsCRDFirst[i].Kind.Kind
-	kind2 := nsCRDFirst[j].Kind.Kind
-	if kind1 == "Namespace" {
-		return true
-	} else if kind2 == "Namespace" {
-		return false
-	} else if kind1 == "CustomResourceDefinition" {
-		return true
-	} else if kind2 == "CustomResourceDefinition" {
-		return false
-	} else {
-		return i < j
-	}
-}
-
-func (nsCRDFirst NamespacesAndCRDsFirst) Swap(i, j int) {
-	nsCRDFirst[i], nsCRDFirst[j] = nsCRDFirst[j], nsCRDFirst[i]
 }
