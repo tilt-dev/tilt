@@ -34,26 +34,22 @@ type EventWatchManager struct {
 	uidMap   map[k8s.UID]uidMapEntry
 	uidMapMu sync.RWMutex
 	clock    clockwork.Clock
-	f        feature.Feature
 }
 
-func NewEventWatchManager(kClient k8s.Client, clock clockwork.Clock, f feature.Feature) *EventWatchManager {
+func NewEventWatchManager(kClient k8s.Client, clock clockwork.Clock) *EventWatchManager {
 	return &EventWatchManager{
 		kClient: kClient,
 		uidMap:  make(map[k8s.UID]uidMapEntry),
 		clock:   clock,
-		f:       f,
 	}
 }
 
 func (m *EventWatchManager) needsWatch(st store.RStore) bool {
-	enabled := m.f.IsEnabled(feature.Events)
-	if !enabled {
-		return false
-	}
-
 	state := st.RLockState()
 	defer st.RUnlockState()
+	if !state.Features[feature.Events] {
+		return false
+	}
 
 	atLeastOneK8s := false
 	for _, m := range state.Manifests() {

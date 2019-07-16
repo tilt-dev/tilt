@@ -108,7 +108,7 @@ var BaseWireSet = wire.NewSet(
 	provideThreads,
 	engine.NewKINDPusher,
 
-	feature.ProvideFeature,
+	wire.Value(feature.MainDefaults),
 )
 
 func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics *analytics.TiltAnalytics) (demo.Script, error) {

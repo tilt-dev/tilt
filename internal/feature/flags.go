@@ -2,94 +2,87 @@ package feature
 
 import (
 	"fmt"
-	"sync"
 )
 
 const MultipleContainersPerPod = "multiple_containers_per_pod"
 const Events = "events"
 
-type Defaults map[string]bool
+type Status int
 
-// All feature flags need to be defined here with their default values
-var flags = Defaults{
-	MultipleContainersPerPod: false,
-	Events:                   true,
+const (
+	Active Status = iota
+	Noop
+	Warn
+	// After Warn is Error, but it's not a value we can set
+)
+
+type Value struct {
+	Enabled bool
+	Status  Status
 }
 
-type Feature interface {
-	IsEnabled(flag string) bool
-	Enable(flag string) error
-	Disable(flag string) error
-	GetAllFlags() map[string]bool
+type Defaults map[string]Value
+
+var MainDefaults = Defaults{
+	MultipleContainersPerPod: Value{
+		Enabled: false,
+		Status:  Active,
+	},
+	Events: Value{
+		Enabled: true,
+		Status:  Warn,
+	},
 }
 
-func ProvideFeature() Feature {
-	return newStaticMapFeature(flags)
-}
-
-func ProvideFeatureForTesting(d Defaults) Feature {
-	return newStaticMapFeature(d)
-}
-
-func newStaticMapFeature(defaults Defaults) *staticMapFeature {
-	// copy map so we don't rely on global state
-	newMap := map[string]bool{}
-	for key, value := range defaults {
-		newMap[key] = value
+func (d Defaults) ToFeatureSet() FeatureSet {
+	r := make(FeatureSet)
+	for k, v := range d {
+		r[k] = v
 	}
-	return &staticMapFeature{flags: newMap, mu: &sync.Mutex{}}
+
+	return r
 }
 
-type staticMapFeature struct {
-	flags map[string]bool
-	mu    *sync.Mutex
+type FeatureSet map[string]Value
+
+type ObsoleteError string
+
+func (s ObsoleteError) Error() string {
+	return string(s)
 }
 
-// IsEnabled panics if flag does not exist
-func (f *staticMapFeature) IsEnabled(flag string) bool {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	enabled, ok := f.flags[flag]
+func (s FeatureSet) Set(name string, enabled bool) error {
+	v, ok := s[name]
 	if !ok {
-		panic("Unknown feature flag: " + flag)
+		return fmt.Errorf("feature flag \"%s\" is removed; remove it from your Tiltfile", name)
 	}
 
-	return enabled
-}
-
-func (f *staticMapFeature) Enable(flag string) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	_, ok := f.flags[flag]
-	if !ok {
-		return fmt.Errorf("Unknown feature flag: %s", flag)
+	switch v.Status {
+	case Warn:
+		return ObsoleteError(fmt.Sprintf("feature flag \"%s\" is obsolete; remove mention of it from your Tiltfile", name))
+	case Noop:
+		return nil
 	}
 
-	f.flags[flag] = true
+	v.Enabled = enabled
+	s[name] = v
 	return nil
 }
 
-func (f *staticMapFeature) Disable(flag string) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	_, ok := f.flags[flag]
-	if !ok {
-		return fmt.Errorf("Unknown feature flag: %s", flag)
-	}
-
-	f.flags[flag] = false
-	return nil
+func (s FeatureSet) Get(name string) bool {
+	return s[name].Enabled
 }
 
-// GetAllFlags make a copy of the feature flags map and returns it
-func (f *staticMapFeature) GetAllFlags() map[string]bool {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	newFlags := make(map[string]bool, len(f.flags))
-
-	for k, v := range f.flags {
-		newFlags[k] = v
+func (s FeatureSet) ToEnabled() map[string]bool {
+	r := make(map[string]bool)
+	for k, v := range s {
+		r[k] = v.Enabled
 	}
-
-	return newFlags
+	return r
 }
+
+// // All feature flags need to be defined here with their default values
+// var flags = Defaults{
+// 	MultipleContainersPerPod: false,
+// 	Events:                   true,
+// }

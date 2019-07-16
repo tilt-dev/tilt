@@ -77,13 +77,13 @@ func ProvideTiltfileLoader(
 	kCli k8s.Client,
 	dcCli dockercompose.DockerComposeClient,
 	kubeContext k8s.KubeContext,
-	f feature.Feature) TiltfileLoader {
+	fDefaults feature.Defaults) TiltfileLoader {
 	return tiltfileLoader{
 		analytics:   analytics,
 		kCli:        kCli,
 		dcCli:       dcCli,
 		kubeContext: kubeContext,
-		f:           f,
+		fDefaults:   fDefaults,
 	}
 }
 
@@ -92,7 +92,7 @@ type tiltfileLoader struct {
 	kCli        k8s.Client
 	dcCli       dockercompose.DockerComposeClient
 	kubeContext k8s.KubeContext
-	f           feature.Feature
+	fDefaults   feature.Defaults
 }
 
 var _ TiltfileLoader = &tiltfileLoader{}
@@ -115,7 +115,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	}
 
 	privateRegistry := tfl.kCli.PrivateRegistry(ctx)
-	s := newTiltfileState(ctx, tfl.dcCli, absFilename, tfl.kubeContext, privateRegistry, tfl.f)
+	s := newTiltfileState(ctx, tfl.dcCli, absFilename, tfl.kubeContext, privateRegistry, tfl.fDefaults.ToFeatureSet())
 	printedWarnings := false
 	defer func() {
 		tlr.ConfigFiles = s.configFiles
@@ -177,7 +177,6 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	printedWarnings = true
 
 	s.logger.Infof("Successfully loaded Tiltfile")
-	newFeature := s.f.GetAllFlags()
 
 	tfl.reportTiltfileLoaded(s.builtinCallCounts)
 
@@ -189,7 +188,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 		return TiltfileLoadResult{}, errors.Wrapf(err, "error reading %s", tiltIgnorePath(filename))
 	}
 
-	return TiltfileLoadResult{manifests, s.configFiles, s.warnings, string(tiltIgnoreContents), newFeature}, err
+	return TiltfileLoadResult{manifests, s.configFiles, s.warnings, string(tiltIgnoreContents), s.features.ToEnabled()}, err
 }
 
 // .tiltignore sits next to Tiltfile
