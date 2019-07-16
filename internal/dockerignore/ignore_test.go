@@ -15,7 +15,9 @@ func TestMatches(t *testing.T) {
 	tf := newTestFixture(t, "node_modules")
 	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("node_modules", "foo"), true)
+	tf.AssertResultEntireDir(tf.JoinPath("node_modules"), true)
 	tf.AssertResult(tf.JoinPath("foo", "bar"), false)
+	tf.AssertResultEntireDir(tf.JoinPath("foo"), false)
 }
 
 func TestComment(t *testing.T) {
@@ -45,6 +47,22 @@ func TestException(t *testing.T) {
 	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("docs", "stuff.md"), true)
 	tf.AssertResult(tf.JoinPath("docs", "README.md"), false)
+	tf.AssertResultEntireDir(tf.JoinPath("docs"), false)
+}
+
+func TestNestedException(t *testing.T) {
+	tf := newTestFixture(t, "a", "!a/b", "a/b/c")
+	defer tf.TearDown()
+	tf.AssertResultEntireDir(tf.JoinPath("a"), false)
+	tf.AssertResultEntireDir(tf.JoinPath("a", "b"), false)
+	tf.AssertResultEntireDir(tf.JoinPath("a", "b", "c"), true)
+}
+
+func TestOrthogonalException(t *testing.T) {
+	tf := newTestFixture(t, "a", "b", "!b/README.md")
+	defer tf.TearDown()
+	tf.AssertResultEntireDir(tf.JoinPath("a"), true)
+	tf.AssertResultEntireDir(tf.JoinPath("b"), false)
 }
 
 func TestNoDockerignoreFile(t *testing.T) {
@@ -52,6 +70,7 @@ func TestNoDockerignoreFile(t *testing.T) {
 	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("hi"), false)
 	tf.AssertResult(tf.JoinPath("hi", "hello"), false)
+	tf.AssertResultEntireDir(tf.JoinPath("hi"), false)
 }
 
 type testFixture struct {
@@ -88,6 +107,17 @@ func (tf *testFixture) JoinPath(path ...string) string {
 
 func (tf *testFixture) AssertResult(path string, expectedMatches bool) {
 	isIgnored, err := tf.tester.Matches(path)
+	if err != nil {
+		tf.t.Fatal(err)
+	} else {
+		if assert.NoError(tf.t, err) {
+			assert.Equalf(tf.t, expectedMatches, isIgnored, "Expected isIgnored to be %t for file %s, got %t", expectedMatches, path, isIgnored)
+		}
+	}
+}
+
+func (tf *testFixture) AssertResultEntireDir(path string, expectedMatches bool) {
+	isIgnored, err := tf.tester.MatchesEntireDir(path)
 	if err != nil {
 		tf.t.Fatal(err)
 	} else {
