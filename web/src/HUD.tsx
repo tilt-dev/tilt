@@ -98,11 +98,30 @@ class HUD extends Component<HudProps, HudState> {
 
   componentDidMount() {
     this.controller.createNewSocket()
+    console.log("HUD componentDidMount")
   }
 
   componentWillUnmount() {
     this.controller.dispose()
     this.unlisten()
+  }
+
+  resourcesToAlerts(state: HudState) {
+    if (!state.View) {
+      return []
+    }
+    let alertResources = state.View.Resources.map(r => new AlertResource(r))
+    let resourcesWithAlerts = alertResources.filter(r => r.hasAlert())
+    return resourcesWithAlerts
+  }
+
+  componentDidUpdate(prevProps: Readonly<HudProps>, prevState: Readonly<HudState>, snapshot?: any): void {
+    let prevAlerts = this.resourcesToAlerts(prevState)
+    let curAlerts = this.resourcesToAlerts(this.state)
+    if (prevAlerts.length !== curAlerts.length) {
+      console.log("posting alerts")
+      postMessage(curAlerts, '/api/alerts_notification')
+    }
   }
 
   setAppState(state: HudState) {
@@ -130,6 +149,7 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   render() {
+    console.log("HUD render")
     let view = this.state.View
     let sailEnabled = view && view.SailEnabled ? view.SailEnabled : false
     let sailUrl = view && view.SailURL ? view.SailURL : ""
