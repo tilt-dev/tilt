@@ -148,6 +148,15 @@ func (a *ArchiveBuilder) entriesForPath(ctx context.Context, source, dest string
 			return err
 		}
 		if matches {
+			if info.IsDir() && path != source {
+				shouldSkip, err := a.filter.MatchesEntireDir(path)
+				if err != nil {
+					return err
+				}
+				if shouldSkip {
+					return filepath.SkipDir
+				}
+			}
 			return nil
 		}
 
@@ -161,10 +170,11 @@ func (a *ArchiveBuilder) entriesForPath(ctx context.Context, source, dest string
 		}
 
 		header, err := tar.FileInfoHeader(info, linkname)
-		clearUIDAndGID(header)
 		if err != nil {
 			return errors.Wrapf(err, "%s: making header", path)
 		}
+
+		clearUIDAndGID(header)
 
 		if sourceIsDir {
 			// Name of file in tar should be relative to source directory...
