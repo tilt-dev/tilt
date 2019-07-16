@@ -704,12 +704,13 @@ func TestContainerBuildMultiStage(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
 
-	manifest := NewSanchoFastMultiStageManifest(f)
+	manifest := NewSanchoLiveUpdateMultiStageManifest(f)
 	targets := buildTargets(manifest)
 	changed := f.WriteFile("a.txt", "a")
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
 
-	// There are two image targets, and only the second one is dirty
+	// There are two image targets. The first has a build result,
+	// the second does not --> second target needs build
 	iTargetID := targets[0].ID()
 	firstResult := store.NewImageBuildResult(iTargetID, container.MustParseNamedTagged("sancho-base:tilt-prebuilt"))
 	bs[iTargetID] = store.NewBuildState(firstResult, nil)
@@ -719,8 +720,12 @@ func TestContainerBuildMultiStage(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Docker Build/Push would imply an image build. Make sure they didn't happen,
+	// i.e. that we did a LiveUpdate
 	assert.Equal(t, 0, f.docker.BuildCount)
 	assert.Equal(t, 0, f.docker.PushCount)
+
+	// Make sure we did a LiveUpdate (copy files to container, exec in container, restart)
 	assert.Equal(t, 1, f.docker.CopyCount)
 	assert.Equal(t, 1, len(f.docker.ExecCalls))
 	f.assertContainerRestarts(1)
