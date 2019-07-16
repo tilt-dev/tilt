@@ -31,8 +31,18 @@ func (i dockerPathMatcher) AsMatchPatterns() []string {
 	return result
 }
 
-func (i dockerPathMatcher) Exclusions() bool {
-	return i.matcher.Exclusions()
+func (i dockerPathMatcher) MatchesEntireDir(f string) (bool, error) {
+	matches, err := i.Matches(f)
+	if !matches || err != nil {
+		return matches, err
+	}
+
+	// We match the dir, but we might exclude files underneath it.
+	if i.matcher.Exclusions() {
+		// TODO(nick): Add more complex logic for interpreting exclusion patterns.
+		return false, nil
+	}
+	return true, nil
 }
 
 func NewDockerIgnoreTester(repoRoot string) (*dockerPathMatcher, error) {
