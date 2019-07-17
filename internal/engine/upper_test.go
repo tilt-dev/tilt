@@ -2538,7 +2538,6 @@ type testFixture struct {
 	ghc                   *github.FakeClient
 	opter                 *testOpter
 	tiltVersionCheckDelay time.Duration
-	// features              feature.FeatureSet
 
 	// old value of k8sEventsFeatureFlag env var, for teardown
 	// if nil, no reset needed.

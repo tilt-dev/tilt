@@ -4207,7 +4207,7 @@ func (f *fixture) entities(y string) []k8s.K8sEntity {
 }
 
 func (f *fixture) assertFeature(key string, enabled bool) {
-	assert.Equal(f.t, enabled, f.loadResult.NewFeatureFlags[key])
+	assert.Equal(f.t, enabled, f.loadResult.FeatureFlags[key])
 }
 
 type secretHelper struct {

@@ -33,7 +33,7 @@ type TiltfileLoadResult struct {
 	ConfigFiles        []string
 	Warnings           []string
 	TiltIgnoreContents string
-	NewFeatureFlags    map[string]bool
+	FeatureFlags       map[string]bool
 }
 
 func (r TiltfileLoadResult) Orchestrator() model.Orchestrator {
@@ -54,10 +54,6 @@ type TiltfileLoader interface {
 type FakeTiltfileLoader struct {
 	Result TiltfileLoadResult
 	Err    error
-	// Manifests   []model.Manifest
-	// ConfigFiles []string
-	// Warnings    []string
-	// Err         error
 }
 
 var _ TiltfileLoader = &FakeTiltfileLoader{}
