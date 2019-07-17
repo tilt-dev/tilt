@@ -2653,7 +2653,6 @@ func (f *testFixture) Start(manifests []model.Manifest, watchFiles bool, initOpt
 
 // Empty `initManifests` will run start ALL manifests
 func (f *testFixture) startWithInitManifests(initManifests []model.ManifestName, manifests []model.Manifest, watchFiles bool, initOptions ...initOption) {
-	// f.tfl = tflResult(manifests)
 	ia := InitAction{
 		Manifests:       manifests,
 		WatchFiles:      watchFiles,
@@ -2664,14 +2663,6 @@ func (f *testFixture) startWithInitManifests(initManifests []model.ManifestName,
 		ia = o(ia)
 	}
 	f.Init(ia)
-}
-
-func tflResult(manifests []model.Manifest) tiltfile.TiltfileLoader {
-	r := tiltfile.NewFakeTiltfileLoader()
-	r.Result = tiltfile.TiltfileLoadResult{
-		Manifests: manifests,
-	}
-	return r
 }
 
 type initOption func(ia InitAction) InitAction
