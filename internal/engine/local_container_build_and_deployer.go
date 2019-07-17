@@ -2,8 +2,10 @@ package engine
 
 import (
 	"context"
+	"io"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/containerupdate"
 
@@ -123,7 +125,7 @@ func (cbd *LocalContainerBuildAndDeployer) buildAndDeploy(ctx context.Context, i
 		return err
 	}
 
-	err = cbd.cu.UpdateInContainer(ctx, deployInfo, changedFiles, ignore.CreateBuildContextFilter(iTarget), boiledSteps, hotReload)
+	err = cbd.UpdateInContainer(ctx, deployInfo, changedFiles, ignore.CreateBuildContextFilter(iTarget), boiledSteps, hotReload)
 	if err != nil {
 		if build.IsUserBuildFailure(err) {
 			return WrapDontFallBackError(err)
@@ -132,4 +134,45 @@ func (cbd *LocalContainerBuildAndDeployer) buildAndDeploy(ctx context.Context, i
 	}
 	logger.Get(ctx).Infof("  → Container updated!")
 	return nil
+}
+
+func (cbd *LocalContainerBuildAndDeployer) UpdateInContainer(ctx context.Context, deployInfo store.DeployInfo, paths []build.PathMapping, filter model.PathMatcher, cmds []model.Cmd, hotReload bool) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "UpdateInContainer")
+	defer span.Finish()
+	l := logger.Get(ctx)
+
+	// rm files from container
+	toRemove, toArchive, err := build.MissingLocalPaths(ctx, paths)
+	if err != nil {
+		return errors.Wrap(err, "MissingLocalPaths")
+	}
+
+	if len(toRemove) > 0 {
+		l.Infof("Will delete %d file(s) from container: %s", len(toRemove), deployInfo.ContainerID.ShortStr())
+		for _, pm := range toRemove {
+			l.Infof("- '%s' (matched local path: '%s')", pm.ContainerPath, pm.LocalPath)
+		}
+	}
+
+	// copy files to container
+	pr, pw := io.Pipe()
+	go func() {
+		ab := build.NewArchiveBuilder(pw, filter)
+		err = ab.ArchivePathsIfExist(ctx, toArchive)
+		if err != nil {
+			_ = pw.CloseWithError(errors.Wrap(err, "archivePathsIfExists"))
+		} else {
+			_ = ab.Close()
+			_ = pw.Close()
+		}
+	}()
+
+	if len(toArchive) > 0 {
+		l.Infof("Will copy %d file(s) to container: %s", len(toArchive), deployInfo.ContainerID.ShortStr())
+		for _, pm := range toArchive {
+			l.Infof("- %s", pm.PrettyStr())
+		}
+	}
+
+	return cbd.cu.UpdateContainer(ctx, deployInfo, pr, build.PathMappingsToContainerPaths(toRemove), cmds, hotReload)
 }
