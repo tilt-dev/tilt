@@ -23,17 +23,14 @@ import (
 var _ BuildAndDeployer = &LocalContainerBuildAndDeployer{}
 
 type LocalContainerBuildAndDeployer struct {
-	cu        containerupdate.ContainerUpdater
-	analytics *analytics.TiltAnalytics
-	env       k8s.Env
+	cu  containerupdate.ContainerUpdater
+	env k8s.Env
 }
 
-func NewLocalContainerBuildAndDeployer(cu containerupdate.ContainerUpdater,
-	analytics *analytics.TiltAnalytics, env k8s.Env) *LocalContainerBuildAndDeployer {
+func NewLocalContainerBuildAndDeployer(cu containerupdate.ContainerUpdater, env k8s.Env) *LocalContainerBuildAndDeployer {
 	return &LocalContainerBuildAndDeployer{
-		cu:        cu,
-		analytics: analytics,
-		env:       env,
+		cu:  cu,
+		env: env,
 	}
 }
 
@@ -65,7 +62,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 
 	startTime := time.Now()
 	defer func() {
-		cbd.analytics.Timer("build.container", time.Since(startTime), nil)
+		analytics.Get(ctx).Timer("build.container", time.Since(startTime), nil)
 	}()
 
 	// LocalContainerBuildAndDeployer doesn't support initial build
@@ -119,31 +116,18 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 }
 
 func (cbd *LocalContainerBuildAndDeployer) buildAndDeploy(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) error {
+	l := logger.Get(ctx)
+	l.Infof("  → Updating container…")
+
 	deployInfo := state.DeployInfo
-	logger.Get(ctx).Infof("  → Updating container…")
+	filter := ignore.CreateBuildContextFilter(iTarget)
 	boiledSteps, err := build.BoilRuns(runs, changedFiles)
 	if err != nil {
 		return err
 	}
 
-	err = cbd.UpdateInContainer(ctx, deployInfo, changedFiles, ignore.CreateBuildContextFilter(iTarget), boiledSteps, hotReload)
-	if err != nil {
-		if build.IsUserBuildFailure(err) {
-			return WrapDontFallBackError(err)
-		}
-		return err
-	}
-	logger.Get(ctx).Infof("  → Container updated!")
-	return nil
-}
-
-func (cbd *LocalContainerBuildAndDeployer) UpdateInContainer(ctx context.Context, deployInfo store.DeployInfo, paths []build.PathMapping, filter model.PathMatcher, cmds []model.Cmd, hotReload bool) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "UpdateInContainer")
-	defer span.Finish()
-	l := logger.Get(ctx)
-
 	// rm files from container
-	toRemove, toArchive, err := build.MissingLocalPaths(ctx, paths)
+	toRemove, toArchive, err := build.MissingLocalPaths(ctx, changedFiles)
 	if err != nil {
 		return errors.Wrap(err, "MissingLocalPaths")
 	}
@@ -175,5 +159,13 @@ func (cbd *LocalContainerBuildAndDeployer) UpdateInContainer(ctx context.Context
 		}
 	}
 
-	return cbd.cu.UpdateContainer(ctx, deployInfo, pr, build.PathMappingsToContainerPaths(toRemove), cmds, hotReload)
+	err = cbd.cu.UpdateContainer(ctx, deployInfo, pr, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
+	if err != nil {
+		if build.IsUserBuildFailure(err) {
+			return WrapDontFallBackError(err)
+		}
+		return err
+	}
+	logger.Get(ctx).Infof("  → Container updated!")
+	return nil
 }
