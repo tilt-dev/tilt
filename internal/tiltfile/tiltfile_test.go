@@ -1940,7 +1940,7 @@ hfb = custom_build(
   'docker build -t $TAG foo',
 	['foo'],
 	disable_push=True,
-).add_fast_build()`
+)`
 
 	f.setupFoo()
 	f.file("Tiltfile", tiltfile)
@@ -3088,6 +3088,43 @@ docker_build('gcr.io/some-project-162817/sancho-sidecar', './sidecar',
 	f.loadAssertWarnings("Sorry, but Tilt only supports in-place updates for the first Tilt-built container on a pod, so we can't in-place update your image 'gcr.io/some-project-162817/sancho-sidecar'. If this is a feature you need, let us know!")
 }
 
+func TestMultipleLiveUpdatesOnManifestOKWithFeatureFlag(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("sancho/Dockerfile", "FROM golang:1.10")
+	f.file("sidecar/Dockerfile", "FROM golang:1.10")
+	f.file("sancho.yaml", testyaml.SanchoSidecarYAML) // two containers
+	f.file("Tiltfile", `
+enable_feature('multiple_containers_per_pod') # psst! rename the test when you take out this flag.
+k8s_yaml('sancho.yaml')
+docker_build('gcr.io/some-project-162817/sancho', './sancho',
+  live_update=[sync('./foo', '/bar')]
+)
+docker_build('gcr.io/some-project-162817/sancho-sidecar', './sidecar',
+  live_update=[sync('./baz', '/quux')]
+)
+`)
+
+	sync1 := model.LiveUpdateSyncStep{Source: f.JoinPath("foo"), Dest: "/bar"}
+	expectedLU1, err := model.NewLiveUpdate([]model.LiveUpdateStep{sync1}, f.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	sync2 := model.LiveUpdateSyncStep{Source: f.JoinPath("baz"), Dest: "/quux"}
+	expectedLU2, err := model.NewLiveUpdate([]model.LiveUpdateStep{sync2}, f.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.load()
+	f.assertNextManifest("sancho",
+		db(image("gcr.io/some-project-162817/sancho"), expectedLU1),
+		db(image("gcr.io/some-project-162817/sancho-sidecar"), expectedLU2),
+	)
+}
+
 func TestImpossibleLiveUpdatesOKNoLiveUpdate(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -3812,7 +3849,7 @@ func (f *fixture) loadResourceAssemblyV1(names ...string) {
 }
 
 // Load the manifests, expecting warnings.
-// Warnigns should be asserted later with assertWarnings
+// Warnings should be asserted later with assertWarnings
 func (f *fixture) loadAllowWarnings(names ...string) {
 	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
 	if err != nil {

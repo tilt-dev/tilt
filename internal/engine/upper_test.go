@@ -62,10 +62,7 @@ func init() {
 
 const (
 	simpleTiltfile = `
-k8s_resource_assembly_version(2)
-repo = local_git_repo('.')
-img = fast_build('gcr.io/windmill-public-containers/servantes/snack', 'Dockerfile')
-img.add(repo, '/src')
+docker_build('gcr.io/windmill-public-containers/servantes/snack', '.')
 k8s_yaml('snack.yaml')
 `
 	simpleYAML    = testyaml.SnackYaml
@@ -547,10 +544,13 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-func TestRebuildDockerfileViaImageBuild(t *testing.T) {
+func TestConfigFileChangeClearsBuildStateToForceImageBuild(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	f.WriteFile("Tiltfile", simpleTiltfile)
+	f.WriteFile("Tiltfile", `
+docker_build('gcr.io/windmill-public-containers/servantes/snack', '.', live_update=[sync('.', '/app')])
+k8s_yaml('snack.yaml')
+	`)
 	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
 	f.WriteFile("snack.yaml", simpleYAML)
 
@@ -558,13 +558,13 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 
 	// First call: with the old manifest
 	call := f.nextCall("old manifest")
-	assert.Equal(t, `FROM iron/go:prod`, call.image().TopFastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:prod`, call.image().DockerBuildInfo().Dockerfile)
 
 	f.WriteConfigFiles("Dockerfile", `FROM iron/go:dev`)
 
 	// Second call: new manifest!
 	call = f.nextCall("new manifest")
-	assert.Equal(t, "FROM iron/go:dev", call.image().TopFastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "FROM iron/go:dev", call.image().DockerBuildInfo().Dockerfile)
 	assert.Equal(t, testyaml.SnackYAMLPostConfig, call.k8s().YAML)
 
 	// Since the manifest changed, we cleared the previous build state to force an image build
@@ -574,7 +574,7 @@ func TestRebuildDockerfileViaImageBuild(t *testing.T) {
 
 	// third call: new manifest should persist
 	call = f.nextCall("persist new manifest")
-	assert.Equal(t, "FROM iron/go:dev", call.image().TopFastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "FROM iron/go:dev", call.image().DockerBuildInfo().Dockerfile)
 
 	// Unchanged manifest --> we do NOT clear the build state
 	assert.True(t, call.oneState().HasImage())
@@ -589,9 +589,8 @@ func TestMultipleChangesOnlyDeployOneManifest(t *testing.T) {
 	defer f.TearDown()
 
 	f.WriteFile("Tiltfile", `
-k8s_resource_assembly_version(2)
-fast_build("gcr.io/windmill-public-containers/servantes/snack", "Dockerfile1")
-fast_build("gcr.io/windmill-public-containers/servantes/doggos", "Dockerfile2")
+docker_build("gcr.io/windmill-public-containers/servantes/snack", "./snack", dockerfile="Dockerfile1")
+docker_build("gcr.io/windmill-public-containers/servantes/doggos", "./doggos", dockerfile="Dockerfile2")
 
 k8s_yaml(['snack.yaml', 'doggos.yaml'])
 k8s_resource('snack', new_name='baz')
@@ -606,11 +605,11 @@ k8s_resource('doggos', new_name='quux')
 
 	// First call: with the old manifests
 	call := f.nextCall("old manifest (baz)")
-	assert.Equal(t, `FROM iron/go:prod`, call.image().TopFastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:prod`, call.image().DockerBuildInfo().Dockerfile)
 	assert.Equal(t, "baz", string(call.k8s().Name))
 
 	call = f.nextCall("old manifest (quux)")
-	assert.Equal(t, `FROM iron/go:prod`, call.image().TopFastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:prod`, call.image().DockerBuildInfo().Dockerfile)
 	assert.Equal(t, "quux", string(call.k8s().Name))
 
 	// rewrite the dockerfiles
@@ -618,16 +617,16 @@ k8s_resource('doggos', new_name='quux')
 		"Dockerfile1", `FROM iron/go:dev1`,
 		"Dockerfile2", "FROM iron/go:dev2")
 
-	// Now with the manifests from the config files
+	// Builds triggered by config file changes
 	call = f.nextCall("manifest from config files (baz)")
-	assert.Equal(t, `FROM iron/go:dev1`, call.image().TopFastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:dev1`, call.image().DockerBuildInfo().Dockerfile)
 	assert.Equal(t, "baz", string(call.k8s().Name))
 
 	call = f.nextCall("manifest from config files (quux)")
-	assert.Equal(t, `FROM iron/go:dev2`, call.image().TopFastBuildInfo().BaseDockerfile)
+	assert.Equal(t, `FROM iron/go:dev2`, call.image().DockerBuildInfo().Dockerfile)
 	assert.Equal(t, "quux", string(call.k8s().Name))
 
-	// Now change a dockerfile
+	// Now change (only one) dockerfile
 	f.WriteConfigFiles("Dockerfile1", `FROM node:10`)
 
 	// Second call: one new manifest!
@@ -639,7 +638,7 @@ k8s_resource('doggos', new_name='quux')
 	// Since the manifest changed, we cleared the previous build state to force an image build
 	assert.False(t, call.oneState().HasImage())
 
-	// Importantly the other manifest, quux, is _not_ called
+	// Importantly the other manifest, quux, is _not_ called -- the DF change didn't affect its manifest
 	err := f.Stop()
 	assert.Nil(t, err)
 	f.assertAllBuildsConsumed()
@@ -650,8 +649,7 @@ func TestSecondResourceIsBuilt(t *testing.T) {
 	defer f.TearDown()
 
 	f.WriteFile("Tiltfile", `
-k8s_resource_assembly_version(2)
-fast_build("gcr.io/windmill-public-containers/servantes/snack", "Dockerfile1")
+docker_build("gcr.io/windmill-public-containers/servantes/snack", "./snack", dockerfile="Dockerfile1")
 
 k8s_yaml('snack.yaml')
 k8s_resource('snack', new_name='baz')  # rename "snack" --> "baz"
@@ -665,7 +663,7 @@ k8s_resource('snack', new_name='baz')  # rename "snack" --> "baz"
 
 	// First call: with one resource
 	call := f.nextCall("old manifest (baz)")
-	assert.Equal(t, "FROM iron/go:dev1", call.image().TopFastBuildInfo().BaseDockerfile)
+	assert.Equal(t, "FROM iron/go:dev1", call.image().DockerBuildInfo().Dockerfile)
 	assert.Equal(t, "baz", string(call.k8s().Name))
 
 	f.assertNoCall()
@@ -673,8 +671,8 @@ k8s_resource('snack', new_name='baz')  # rename "snack" --> "baz"
 	// Now add a second resource
 	f.WriteConfigFiles("Tiltfile", `
 k8s_resource_assembly_version(2)
-fast_build("gcr.io/windmill-public-containers/servantes/snack", "Dockerfile1")
-fast_build("gcr.io/windmill-public-containers/servantes/doggos", "Dockerfile2")
+docker_build("gcr.io/windmill-public-containers/servantes/snack", "./snack", dockerfile="Dockerfile1")
+docker_build("gcr.io/windmill-public-containers/servantes/doggos", "./doggos", dockerfile="Dockerfile2")
 
 k8s_yaml(['snack.yaml', 'doggos.yaml'])
 k8s_resource('snack', new_name='baz')  # rename "snack" --> "baz"

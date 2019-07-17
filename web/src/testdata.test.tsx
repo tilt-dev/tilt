@@ -78,6 +78,7 @@ function oneResource(): Resource {
       PodName: "vigoda-pod",
       PodCreationTime: ts,
       PodStatus: "Running",
+      PodStatusMessage: "",
       PodRestarts: 0,
       Endpoints: ["1.2.3.4:8080"],
       PodLog: "1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n",
@@ -253,6 +254,7 @@ function twoResourceView(): view {
     PendingBuildReason: 0,
     ResourceInfo: {
       PodStatus: "Running",
+      PodStatusMessage: "",
       PodRestarts: 0,
       PodCreationTime: "",
       PodLog: "",

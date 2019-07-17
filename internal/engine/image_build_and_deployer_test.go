@@ -365,28 +365,6 @@ ENTRYPOINT /go/bin/sancho
 	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
 }
 
-func TestMultiStageFastBuild(t *testing.T) {
-	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
-
-	manifest := NewSanchoFastMultiStageManifest(f)
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expected := expectedFile{
-		Path: "Dockerfile",
-		Contents: `FROM docker.io/library/sancho-base:tilt-11cd0b38bc3ceb95
-
-ADD . /
-RUN ["go", "install", "github.com/windmilleng/sancho"]
-ENTRYPOINT ["/go/bin/sancho"]
-LABEL "tilt.buildMode"="scratch"`,
-	}
-	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
-}
-
 func TestKINDPush(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvKIND)
 	defer f.TearDown()
@@ -428,7 +406,7 @@ func TestDeployUsesInjectRef(t *testing.T) {
 		{"docker build", func(f pather) model.Manifest { return NewSanchoDockerBuildManifest(f) }, expectedImages},
 		{"fast build", NewSanchoFastBuildManifest, expectedImages},
 		{"custom build", NewSanchoCustomBuildManifest, expectedImages},
-		{"fast multi stage", NewSanchoFastMultiStageManifest, append(expectedImages, "foo.com/sancho-base")},
+		{"live multi stage", NewSanchoLiveUpdateMultiStageManifest, append(expectedImages, "foo.com/sancho-base")},
 	}
 
 	for _, test := range tests {

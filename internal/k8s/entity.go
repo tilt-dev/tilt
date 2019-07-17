@@ -158,6 +158,26 @@ func (e K8sEntity) DeepCopy() K8sEntity {
 	}
 }
 
+// EntitiesWithDependentsAndRest returns two lists of k8s entities: those that may have dependencies,
+// which we will therefore want to apply first (i.e. namespaces and CRDs -- e.g. trying to create a
+// pod in a nonexistent namespace causes an error); and the rest of the entities.
+func EntitiesWithDependentsAndRest(entities []K8sEntity) (withDependents, rest []K8sEntity) {
+	var ns []K8sEntity
+	var crd []K8sEntity
+
+	for _, e := range entities {
+		if e.Kind.Kind == "Namespace" {
+			ns = append(ns, e)
+		} else if e.Kind.Kind == "CustomResourceDefinition" {
+			crd = append(crd, e)
+		} else {
+			rest = append(rest, e)
+		}
+	}
+
+	return append(ns, crd...), rest
+}
+
 func ImmutableEntities(entities []K8sEntity) []K8sEntity {
 	result := make([]K8sEntity, 0)
 	for _, e := range entities {

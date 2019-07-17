@@ -241,6 +241,15 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-k8sUpsert")
 	defer span.Finish()
 
+	// First apply all the entities on which something else might depend
+	withDependents, entities := EntitiesWithDependentsAndRest(entities)
+	if len(withDependents) > 0 {
+		err := k.applyEntitiesAndMaybeForce(ctx, withDependents)
+		if err != nil {
+			return err
+		}
+	}
+
 	immutable := ImmutableEntities(entities)
 	if len(immutable) > 0 {
 		_, stderr, err := k.actOnEntities(ctx, []string{"replace", "--force"}, immutable)
@@ -251,28 +260,37 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
 
 	mutable := MutableEntities(entities)
 	if len(mutable) > 0 {
-		_, stderr, err := k.actOnEntities(ctx, []string{"apply"}, mutable)
+		err := k.applyEntitiesAndMaybeForce(ctx, mutable)
 		if err != nil {
-			shouldTryReplace := maybeImmutableFieldStderr(stderr)
+			return err
+		}
+	}
+	return nil
+}
 
-			if !shouldTryReplace {
-				return errors.Wrapf(err, "kubectl apply:\nstderr: %s", stderr)
-			}
+// applyEntitiesAndMaybeForce `kubectl apply`'s the given entities, and if the call fails with
+// an immutible field error, attempts to `replace --force` them.
+func (k K8sClient) applyEntitiesAndMaybeForce(ctx context.Context, entities []K8sEntity) error {
+	_, stderr, err := k.actOnEntities(ctx, []string{"apply"}, entities)
+	if err != nil {
+		shouldTryReplace := maybeImmutableFieldStderr(stderr)
 
-			// If the kubectl apply failed due to an immutable field, fall back to kubectl delete && kubectl apply
-			// NOTE(maia): this is equivalent to `kubecutl replace --force`, but will ensure that all
-			// dependant pods get deleted rather than orphaned. We WANT these pods to be deleted
-			// and recreated so they have all the new labels, etc. of their controlling k8s entity.
-			logger.Get(ctx).Infof("Falling back to 'kubectl delete && apply' on immutable field error")
-			_, stderr, err = k.actOnEntities(ctx, []string{"delete"}, mutable)
-			if err != nil {
-				return errors.Wrapf(err, "kubectl delete (as part of delete && apply):\nstderr: %s", stderr)
-			}
-			_, stderr, err = k.actOnEntities(ctx, []string{"apply"}, mutable)
-			if err != nil {
-				return errors.Wrapf(err, "kubectl apply (as part of delete && apply):\nstderr: %s", stderr)
-			}
+		if !shouldTryReplace {
+			return errors.Wrapf(err, "kubectl apply:\nstderr: %s", stderr)
+		}
 
+		// If the kubectl apply failed due to an immutable field, fall back to kubectl delete && kubectl apply
+		// NOTE(maia): this is equivalent to `kubecutl replace --force`, but will ensure that all
+		// dependant pods get deleted rather than orphaned. We WANT these pods to be deleted
+		// and recreated so they have all the new labels, etc. of their controlling k8s entity.
+		logger.Get(ctx).Infof("Falling back to 'kubectl delete && apply' on immutable field error")
+		_, stderr, err = k.actOnEntities(ctx, []string{"delete"}, entities)
+		if err != nil {
+			return errors.Wrapf(err, "kubectl delete (as part of delete && apply):\nstderr: %s", stderr)
+		}
+		_, stderr, err = k.actOnEntities(ctx, []string{"apply"}, entities)
+		if err != nil {
+			return errors.Wrapf(err, "kubectl apply (as part of delete && apply):\nstderr: %s", stderr)
 		}
 	}
 	return nil

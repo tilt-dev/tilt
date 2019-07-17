@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"fmt"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/model"
@@ -248,17 +250,22 @@ ENTRYPOINT /go/bin/sancho
 		WithDeployTarget(kTarget)
 }
 
-func NewSanchoFastMultiStageManifest(fixture pather) model.Manifest {
+func NewSanchoLiveUpdateMultiStageManifest(fixture pather) model.Manifest {
 	baseImage := model.NewImageTarget(SanchoBaseRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: `FROM golang:1.10`,
 		BuildPath:  fixture.Path(),
 	})
 
-	fbInfo := NewSanchoFastBuild(fixture)
-	fbInfo.BaseDockerfile = `FROM sancho-base`
+	srcImage, err := NewSanchoLiveUpdateImageTarget(fixture)
+	if err != nil {
+		panic(fmt.Sprintf("making sancho LiveUpdate image target: %v", err))
+	}
 
-	srcImage := model.NewImageTarget(SanchoRef).
-		WithBuildDetails(fbInfo).
+	dbInfo := srcImage.DockerBuildInfo()
+	dbInfo.Dockerfile = `FROM sancho-base`
+
+	srcImage = srcImage.
+		WithBuildDetails(dbInfo).
 		WithDependencyIDs([]model.TargetID{baseImage.ID()})
 
 	kTarget := model.K8sTarget{YAML: SanchoYAML}.

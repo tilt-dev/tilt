@@ -7,6 +7,8 @@ import (
 
 	"github.com/docker/docker/builder/dockerignore"
 	"github.com/docker/docker/pkg/fileutils"
+
+	"github.com/windmilleng/tilt/internal/ospath"
 )
 
 type dockerPathMatcher struct {
@@ -23,16 +25,27 @@ func (i dockerPathMatcher) Matches(f string) (bool, error) {
 	return i.matcher.Matches(rp)
 }
 
-func (i dockerPathMatcher) AsMatchPatterns() []string {
-	result := []string{}
-	for _, p := range i.matcher.Patterns() {
-		result = append(result, p.String())
+func (i dockerPathMatcher) MatchesEntireDir(f string) (bool, error) {
+	matches, err := i.Matches(f)
+	if !matches || err != nil {
+		return matches, err
 	}
-	return result
-}
 
-func (i dockerPathMatcher) Exclusions() bool {
-	return i.matcher.Exclusions()
+	// We match the dir, but we might exclude files underneath it.
+	if i.matcher.Exclusions() {
+		for _, pattern := range i.matcher.Patterns() {
+			if !pattern.Exclusion() {
+				continue
+			}
+			absPattern := filepath.Join(i.repoRoot, pattern.String())
+			if ospath.IsChild(f, absPattern) {
+				// Found an exclusion match -- we don't match this whole dir
+				return false, nil
+			}
+		}
+		return true, nil
+	}
+	return true, nil
 }
 
 func NewDockerIgnoreTester(repoRoot string) (*dockerPathMatcher, error) {
