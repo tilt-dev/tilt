@@ -11,7 +11,6 @@ import (
 
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
-	"github.com/windmilleng/tilt/internal/containerupdate"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/tools/clientcmd/api"
 
@@ -19,6 +18,7 @@ import (
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/containerupdate"
 	"github.com/windmilleng/tilt/internal/demo"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -104,8 +104,8 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 		return demo.Script{}, err
 	}
 	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
-	containerUpdater := containerupdate.NewContainerUpdater(switchCli)
-	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, analytics2, env)
+	dockerContainerUpdater := containerupdate.NewDockerContainerUpdater(switchCli)
+	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(dockerContainerUpdater, analytics2, env)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
@@ -237,8 +237,8 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 		return Threads{}, err
 	}
 	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
-	containerUpdater := containerupdate.NewContainerUpdater(switchCli)
-	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, analytics2, env)
+	dockerContainerUpdater := containerupdate.NewDockerContainerUpdater(switchCli)
+	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(dockerContainerUpdater, analytics2, env)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)

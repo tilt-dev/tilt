@@ -20,12 +20,12 @@ import (
 var _ BuildAndDeployer = &LocalContainerBuildAndDeployer{}
 
 type LocalContainerBuildAndDeployer struct {
-	cu        *containerupdate.ContainerUpdater
+	cu        *containerupdate.DockerContainerUpdater
 	analytics *analytics.TiltAnalytics
 	env       k8s.Env
 }
 
-func NewLocalContainerBuildAndDeployer(cu *containerupdate.ContainerUpdater,
+func NewLocalContainerBuildAndDeployer(cu *containerupdate.DockerContainerUpdater,
 	analytics *analytics.TiltAnalytics, env k8s.Env) *LocalContainerBuildAndDeployer {
 	return &LocalContainerBuildAndDeployer{
 		cu:        cu,
@@ -123,10 +123,7 @@ func (cbd *LocalContainerBuildAndDeployer) buildAndDeploy(ctx context.Context, i
 		return err
 	}
 
-	// TODO - use PipelineState here when we actually do pipeline output for container builds
-	writer := logger.Get(ctx).Writer(logger.InfoLvl)
-
-	err = cbd.cu.UpdateInContainer(ctx, deployInfo.ContainerID, changedFiles, ignore.CreateBuildContextFilter(iTarget), boiledSteps, hotReload, writer)
+	err = cbd.cu.UpdateInContainer(ctx, deployInfo, changedFiles, ignore.CreateBuildContextFilter(iTarget), boiledSteps, hotReload)
 	if err != nil {
 		if build.IsUserBuildFailure(err) {
 			return WrapDontFallBackError(err)

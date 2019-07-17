@@ -2,18 +2,25 @@ package containerupdate
 
 import (
 	"context"
-	"io/ioutil"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
+
+var TestDeployInfo = store.DeployInfo{
+	PodID:         "somepod",
+	ContainerID:   docker.TestContainer,
+	ContainerName: "my-container",
+	Namespace:     "ns-foo",
+}
 
 func TestUpdateInContainerCopiesAndRmsFiles(t *testing.T) {
 	f := newRemoteDockerFixture(t)
@@ -29,7 +36,7 @@ func TestUpdateInContainerCopiesAndRmsFiles(t *testing.T) {
 		build.PathMapping{LocalPath: f.JoinPath("does-not-exist"), ContainerPath: "/src/does-not-exist"},
 	}
 
-	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, paths, model.EmptyMatcher, nil, false, ioutil.Discard)
+	err := f.cu.UpdateInContainer(f.ctx, TestDeployInfo, paths, model.EmptyMatcher, nil, false)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -53,7 +60,7 @@ func TestUpdateInContainerExecsRuns(t *testing.T) {
 	cmdA := model.Cmd{Argv: []string{"a"}}
 	cmdB := model.Cmd{Argv: []string{"cu", "and cu", "another cu"}}
 
-	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, []build.PathMapping{}, model.EmptyMatcher, []model.Cmd{cmdA, cmdB}, false, ioutil.Discard)
+	err := f.cu.UpdateInContainer(f.ctx, TestDeployInfo, []build.PathMapping{}, model.EmptyMatcher, []model.Cmd{cmdA, cmdB}, false)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -70,7 +77,7 @@ func TestUpdateInContainerRestartsContainer(t *testing.T) {
 	f := newRemoteDockerFixture(t)
 	defer f.teardown()
 
-	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, []build.PathMapping{}, model.EmptyMatcher, nil, false, ioutil.Discard)
+	err := f.cu.UpdateInContainer(f.ctx, TestDeployInfo, []build.PathMapping{}, model.EmptyMatcher, nil, false)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -82,7 +89,7 @@ func TestUpdateInContainerHotReloadDoesNotRestartContainer(t *testing.T) {
 	f := newRemoteDockerFixture(t)
 	defer f.teardown()
 
-	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, []build.PathMapping{}, model.EmptyMatcher, nil, true, ioutil.Discard)
+	err := f.cu.UpdateInContainer(f.ctx, TestDeployInfo, []build.PathMapping{}, model.EmptyMatcher, nil, true)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -97,7 +104,7 @@ func TestUpdateInContainerKillTask(t *testing.T) {
 	f.dCli.ExecErrorToThrow = docker.ExitError{ExitCode: build.TaskKillExitCode}
 
 	cmdA := model.Cmd{Argv: []string{"cat"}}
-	err := f.cu.UpdateInContainer(f.ctx, docker.TestContainer, []build.PathMapping{}, model.EmptyMatcher, []model.Cmd{cmdA}, false, ioutil.Discard)
+	err := f.cu.UpdateInContainer(f.ctx, TestDeployInfo, []build.PathMapping{}, model.EmptyMatcher, []model.Cmd{cmdA}, false)
 	msg := "killed by container engine"
 	if err == nil || !strings.Contains(err.Error(), msg) {
 		f.t.Errorf("Expected error %q, actual: %v", msg, err)
@@ -115,12 +122,12 @@ type mockContainerUpdaterFixture struct {
 	t    testing.TB
 	ctx  context.Context
 	dCli *docker.FakeClient
-	cu   *ContainerUpdater
+	cu   *DockerContainerUpdater
 }
 
 func newRemoteDockerFixture(t testing.TB) *mockContainerUpdaterFixture {
 	fakeCli := docker.NewFakeClient()
-	cu := &ContainerUpdater{
+	cu := &DockerContainerUpdater{
 		dCli: fakeCli,
 	}
 

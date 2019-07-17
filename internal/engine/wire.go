@@ -7,8 +7,9 @@ import (
 	"context"
 
 	"github.com/google/wire"
-	"github.com/windmilleng/tilt/internal/containerupdate"
 	"github.com/windmilleng/wmclient/pkg/dirs"
+
+	"github.com/windmilleng/tilt/internal/containerupdate"
 
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
@@ -35,7 +36,7 @@ var DeployerBaseWireSet = wire.NewSet(
 
 	// BuildOrder
 	NewImageBuildAndDeployer,
-	containerupdate.NewContainerUpdater, // in case it's a LocalContainerBuildAndDeployer
+	containerupdate.NewDockerContainerUpdater, // in case it's a LocalContainerBuildAndDeployer
 	NewSyncletBuildAndDeployer,
 	NewLocalContainerBuildAndDeployer,
 	NewDockerComposeBuildAndDeployer,
