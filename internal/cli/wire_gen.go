@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
+	"github.com/windmilleng/tilt/internal/containerupdate"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/tools/clientcmd/api"
 
@@ -103,7 +104,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 		return demo.Script{}, err
 	}
 	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
-	containerUpdater := build.NewContainerUpdater(switchCli)
+	containerUpdater := containerupdate.NewContainerUpdater(switchCli)
 	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, analytics2, env)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
@@ -236,7 +237,7 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 		return Threads{}, err
 	}
 	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
-	containerUpdater := build.NewContainerUpdater(switchCli)
+	containerUpdater := containerupdate.NewContainerUpdater(switchCli)
 	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, analytics2, env)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)

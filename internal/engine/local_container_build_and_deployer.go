@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/windmilleng/tilt/internal/analytics"
+	"github.com/windmilleng/tilt/internal/containerupdate"
 
 	"github.com/opentracing/opentracing-go"
 
@@ -19,12 +20,12 @@ import (
 var _ BuildAndDeployer = &LocalContainerBuildAndDeployer{}
 
 type LocalContainerBuildAndDeployer struct {
-	cu        *build.ContainerUpdater
+	cu        *containerupdate.ContainerUpdater
 	analytics *analytics.TiltAnalytics
 	env       k8s.Env
 }
 
-func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater,
+func NewLocalContainerBuildAndDeployer(cu *containerupdate.ContainerUpdater,
 	analytics *analytics.TiltAnalytics, env k8s.Env) *LocalContainerBuildAndDeployer {
 	return &LocalContainerBuildAndDeployer{
 		cu:        cu,

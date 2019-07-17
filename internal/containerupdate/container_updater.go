@@ -1,4 +1,4 @@
-package build
+package containerupdate
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/build"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
@@ -23,13 +24,13 @@ func NewContainerUpdater(dCli docker.Client) *ContainerUpdater {
 	return &ContainerUpdater{dCli: dCli}
 }
 
-func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.ID, paths []PathMapping, filter model.PathMatcher, runs []model.Cmd, hotReload bool, w io.Writer) error {
+func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.ID, paths []build.PathMapping, filter model.PathMatcher, runs []model.Cmd, hotReload bool, w io.Writer) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-UpdateInContainer")
 	defer span.Finish()
 	l := logger.Get(ctx)
 
 	// rm files from container
-	toRemove, toArchive, err := MissingLocalPaths(ctx, paths)
+	toRemove, toArchive, err := build.MissingLocalPaths(ctx, paths)
 	if err != nil {
 		return errors.Wrap(err, "MissingLocalPaths")
 	}
@@ -49,7 +50,7 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.
 	// copy files to container
 	pr, pw := io.Pipe()
 	go func() {
-		ab := NewArchiveBuilder(pw, filter)
+		ab := build.NewArchiveBuilder(pw, filter)
 		err = ab.ArchivePathsIfExist(ctx, toArchive)
 		if err != nil {
 			_ = pw.CloseWithError(errors.Wrap(err, "archivePathsIfExists"))
@@ -77,7 +78,7 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.
 	for _, s := range runs {
 		err = r.dCli.ExecInContainer(ctx, cID, s, w)
 		if err != nil {
-			return WrapContainerExecError(err, cID, s)
+			return build.WrapContainerExecError(err, cID, s)
 		}
 	}
 
@@ -95,7 +96,7 @@ func (r *ContainerUpdater) UpdateInContainer(ctx context.Context, cID container.
 	return nil
 }
 
-func (r *ContainerUpdater) RmPathsFromContainer(ctx context.Context, cID container.ID, paths []PathMapping) error {
+func (r *ContainerUpdater) RmPathsFromContainer(ctx context.Context, cID container.ID, paths []build.PathMapping) error {
 	if len(paths) == 0 {
 		return nil
 	}
@@ -111,7 +112,7 @@ func (r *ContainerUpdater) RmPathsFromContainer(ctx context.Context, cID contain
 	return nil
 }
 
-func makeRmCmd(paths []PathMapping) []string {
+func makeRmCmd(paths []build.PathMapping) []string {
 	cmd := []string{"rm", "-rf"}
 	for _, p := range paths {
 		cmd = append(cmd, p.ContainerPath)

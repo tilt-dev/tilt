@@ -11,7 +11,6 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
-
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/model"
 )
@@ -501,57 +500,6 @@ func TestBuildDockerWithRunsFromExistingPreservesEntrypoint(t *testing.T) {
 
 	// Start container WITHOUT overriding entrypoint (which assertFilesInImage... does)
 	cID := f.startContainer(f.ctx, containerConfig(ref))
-	f.assertFilesInContainer(f.ctx, cID, expected)
-}
-
-// * * * CONTAINER UPDATER * * *
-
-func TestUpdateInContainerE2E(t *testing.T) {
-	f := newDockerBuildFixture(t)
-	defer f.teardown()
-
-	f.WriteFile("delete_me", "will be deleted")
-	s := model.Sync{
-		LocalPath:     f.Path(),
-		ContainerPath: "/src",
-	}
-
-	// Allows us to track number of times the entrypoint has been called (i.e. how
-	// many times container has been (re)started -- also, sleep a bit so container
-	// stays alive for us to manipulate.
-	initStartcount := model.ToShellCmd("echo -n 0 > /src/startcount")
-	entrypoint := model.ToShellCmd(
-		"echo -n $(($(cat /src/startcount)+1)) > /src/startcount && sleep 210")
-
-	runs := model.ToRuns([]model.Cmd{initStartcount})
-	imgRef, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{s}, model.EmptyMatcher, runs, entrypoint)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cID := f.startContainer(f.ctx, containerConfig(imgRef))
-
-	f.Rm("delete_me") // expect to be deleted from container on update
-	f.WriteFile("foo", "hello world")
-
-	paths := []PathMapping{
-		PathMapping{LocalPath: f.JoinPath("delete_me"), ContainerPath: "/src/delete_me"},
-		PathMapping{LocalPath: f.JoinPath("foo"), ContainerPath: "/src/foo"},
-	}
-	touchBar := model.ToShellCmd("touch /src/bar")
-
-	cUpdater := ContainerUpdater{dCli: f.dCli}
-	err = cUpdater.UpdateInContainer(f.ctx, cID, paths, model.EmptyMatcher, []model.Cmd{touchBar}, false, f.ps.Writer(f.ctx))
-	if err != nil {
-		f.t.Fatal(err)
-	}
-
-	expected := []expectedFile{
-		expectedFile{Path: "/src/delete_me", Missing: true},
-		expectedFile{Path: "/src/foo", Contents: "hello world"},
-		expectedFile{Path: "/src/bar", Contents: ""},         // from cmd
-		expectedFile{Path: "/src/startcount", Contents: "2"}, // from entrypoint (confirm container restarted)
-	}
-
 	f.assertFilesInContainer(f.ctx, cID, expected)
 }
 
