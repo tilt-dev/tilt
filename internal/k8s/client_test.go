@@ -45,6 +45,44 @@ func TestUpsert(t *testing.T) {
 	assert.Equal(t, []string{"apply", "-f", "-"}, f.runner.calls[0].argv)
 }
 
+func TestUpsertOrder(t *testing.T) {
+	f := newClientTestFixture(t)
+	eDeploy := MustParseYAMLFromString(t, testyaml.SanchoYAML)[0]
+	eJob := MustParseYAMLFromString(t, testyaml.JobYAML)[0]
+	eNamespace := MustParseYAMLFromString(t, testyaml.MyNamespaceYAML)[0]
+
+	err := f.client.Upsert(f.ctx, []K8sEntity{eDeploy, eJob, eNamespace})
+	if !assert.Nil(t, err) {
+		t.FailNow()
+	}
+
+	// three different calls: one for namespace (withDependents), one for job (immutable), one for deployment (mutable)
+	if !assert.Equal(t, 3, len(f.runner.calls)) {
+		t.FailNow()
+	}
+
+	call0 := f.runner.calls[0]
+	assert.Equal(t, []string{"apply", "-f", "-"}, call0.argv, "expected args for call 0")
+	call0Entities := mustParseYAML(t, call0.stdin) // compare entities instead of strings because str > entity > string gets weird
+	if assert.Len(t, call0Entities, 1, "expect each 'apply' called on yaml for only one entity") {
+		assert.Equal(t, eNamespace, call0Entities[0], "expect call 0 to have applied namespace")
+	}
+
+	call1 := f.runner.calls[1]
+	assert.Equal(t, []string{"replace", "--force", "-f", "-"}, call1.argv, "expected args for call 1")
+	call1Entities := mustParseYAML(t, call1.stdin)
+	if assert.Len(t, call1Entities, 1, "expect each 'apply' called on yaml for only one entity") {
+		assert.Equal(t, eJob, call1Entities[0], "expect call 1 to have applied job")
+	}
+
+	call2 := f.runner.calls[2]
+	assert.Equal(t, []string{"apply", "-f", "-"}, call2.argv, "expected args for call 2")
+	call2Entities := mustParseYAML(t, call2.stdin)
+	if assert.Len(t, call2Entities, 1, "expect each 'apply' called on yaml for only one entity") {
+		assert.Equal(t, eDeploy, call2Entities[0], "expect call 2 to have applied deployment")
+	}
+}
+
 func TestUpsertStatefulsetForbidden(t *testing.T) {
 	f := newClientTestFixture(t)
 	postgres, err := ParseYAMLFromString(testyaml.PostgresYAML)

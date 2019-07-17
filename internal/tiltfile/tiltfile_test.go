@@ -3849,7 +3849,7 @@ func (f *fixture) loadResourceAssemblyV1(names ...string) {
 }
 
 // Load the manifests, expecting warnings.
-// Warnigns should be asserted later with assertWarnings
+// Warnings should be asserted later with assertWarnings
 func (f *fixture) loadAllowWarnings(names ...string) {
 	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
 	if err != nil {

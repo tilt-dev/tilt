@@ -173,6 +173,62 @@ func TestHasKind(t *testing.T) {
 	assert.True(t, svc.HasKind("service"))
 }
 
+func TestEntitiesWithDependenciesAndRest(t *testing.T) {
+	eDeploy := mustParseYAML(t, testyaml.DoggosDeploymentYaml)[0]
+	eService := mustParseYAML(t, testyaml.DoggosServiceYaml)[0]
+	eCRD := mustParseYAML(t, testyaml.CRDYAML)[0]
+	eNamespace := mustParseYAML(t, testyaml.MyNamespaceYAML)[0]
+
+	for _, test := range []struct {
+		name                   string
+		input                  []K8sEntity
+		expectedWithDependents []K8sEntity
+		expectedRest           []K8sEntity
+	}{
+		{"one namespace",
+			[]K8sEntity{eDeploy, eNamespace, eService},
+			[]K8sEntity{eNamespace},
+			[]K8sEntity{eDeploy, eService},
+		},
+		{"one crd",
+			[]K8sEntity{eDeploy, eCRD, eService},
+			[]K8sEntity{eCRD},
+			[]K8sEntity{eDeploy, eService},
+		},
+		{"namespace and crd",
+			[]K8sEntity{eDeploy, eCRD, eService, eNamespace},
+			[]K8sEntity{eNamespace, eCRD},
+			[]K8sEntity{eDeploy, eService},
+		},
+		{"namespace and crd preserves order of rest",
+			[]K8sEntity{eService, eCRD, eDeploy, eNamespace},
+			[]K8sEntity{eNamespace, eCRD},
+			[]K8sEntity{eService, eDeploy},
+		},
+		{"none with dependents",
+			[]K8sEntity{eDeploy, eService},
+			nil,
+			[]K8sEntity{eDeploy, eService},
+		},
+		{"only with dependents",
+			[]K8sEntity{eNamespace, eCRD},
+			[]K8sEntity{eNamespace, eCRD},
+			nil,
+		},
+		{"namespace first",
+			[]K8sEntity{eCRD, eNamespace},
+			[]K8sEntity{eNamespace, eCRD},
+			nil,
+		},
+	} {
+		t.Run(string(test.name), func(t *testing.T) {
+			withDependents, rest := EntitiesWithDependentsAndRest(test.input)
+			assert.Equal(t, test.expectedWithDependents, withDependents)
+			assert.Equal(t, test.expectedRest, rest)
+		})
+	}
+}
+
 func parseYAMLFromStrings(yaml ...string) ([]K8sEntity, error) {
 	var res []K8sEntity
 	for _, s := range yaml {
@@ -183,4 +239,12 @@ func parseYAMLFromStrings(yaml ...string) ([]K8sEntity, error) {
 		res = append(res, entities...)
 	}
 	return res, nil
+}
+
+func mustParseYAML(t *testing.T, yaml string) []K8sEntity {
+	entities, err := ParseYAMLFromString(yaml)
+	if err != nil {
+		t.Fatalf("ERROR %v parsing k8s YAML:\n%s", err, yaml)
+	}
+	return entities
 }
