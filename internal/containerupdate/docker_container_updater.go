@@ -15,11 +15,6 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 )
 
-type ContainerUpdater interface {
-	UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,
-		archiveToCopy io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error
-}
-
 type DockerContainerUpdater struct {
 	dCli docker.Client
 }
