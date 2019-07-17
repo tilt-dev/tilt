@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/containerupdate"
 
@@ -22,12 +23,12 @@ import (
 var _ BuildAndDeployer = &LocalContainerBuildAndDeployer{}
 
 type LocalContainerBuildAndDeployer struct {
-	cu        *containerupdate.DockerContainerUpdater
+	cu        containerupdate.ContainerUpdater
 	analytics *analytics.TiltAnalytics
 	env       k8s.Env
 }
 
-func NewLocalContainerBuildAndDeployer(cu *containerupdate.DockerContainerUpdater,
+func NewLocalContainerBuildAndDeployer(cu containerupdate.ContainerUpdater,
 	analytics *analytics.TiltAnalytics, env k8s.Env) *LocalContainerBuildAndDeployer {
 	return &LocalContainerBuildAndDeployer{
 		cu:        cu,

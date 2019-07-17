@@ -104,8 +104,8 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 		return demo.Script{}, err
 	}
 	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
-	dockerContainerUpdater := containerupdate.NewDockerContainerUpdater(switchCli)
-	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(dockerContainerUpdater, analytics2, env)
+	containerUpdater := containerupdate.NewDockerContainerUpdater(switchCli)
+	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, analytics2, env)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
@@ -237,8 +237,8 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 		return Threads{}, err
 	}
 	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
-	dockerContainerUpdater := containerupdate.NewDockerContainerUpdater(switchCli)
-	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(dockerContainerUpdater, analytics2, env)
+	containerUpdater := containerupdate.NewDockerContainerUpdater(switchCli)
+	localContainerBuildAndDeployer := engine.NewLocalContainerBuildAndDeployer(containerUpdater, analytics2, env)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
