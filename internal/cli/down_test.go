@@ -19,7 +19,7 @@ func TestDown(t *testing.T) {
 	f := newDownFixture(t)
 	defer f.TearDown()
 
-	f.tfl.Manifests = append(f.tfl.Manifests, newK8sManifest())
+	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: newK8sManifest()}
 	err := f.cmd.down(f.ctx, f.deps)
 	assert.NoError(t, err)
 	assert.Contains(t, f.kCli.DeletedYaml, "sancho")
@@ -29,7 +29,7 @@ func TestDownK8sFails(t *testing.T) {
 	f := newDownFixture(t)
 	defer f.TearDown()
 
-	f.tfl.Manifests = append(f.tfl.Manifests, newK8sManifest())
+	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: newK8sManifest()}
 	f.kCli.DeleteError = fmt.Errorf("GARBLEGARBLE")
 	err := f.cmd.down(f.ctx, f.deps)
 	if assert.Error(t, err) {
@@ -41,7 +41,7 @@ func TestDownDCFails(t *testing.T) {
 	f := newDownFixture(t)
 	defer f.TearDown()
 
-	f.tfl.Manifests = append(f.tfl.Manifests, newDCManifest())
+	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: newDCManifest()}
 	f.dcc.DownError = fmt.Errorf("GARBLEGARBLE")
 	err := f.cmd.down(f.ctx, f.deps)
 	if assert.Error(t, err) {
@@ -49,15 +49,15 @@ func TestDownDCFails(t *testing.T) {
 	}
 }
 
-func newK8sManifest() model.Manifest {
-	return model.Manifest{Name: "fe"}.WithDeployTarget(model.K8sTarget{YAML: testyaml.SanchoYAML})
+func newK8sManifest() []model.Manifest {
+	return []model.Manifest{model.Manifest{Name: "fe"}.WithDeployTarget(model.K8sTarget{YAML: testyaml.SanchoYAML})}
 }
 
-func newDCManifest() model.Manifest {
-	return model.Manifest{Name: "fe"}.WithDeployTarget(model.DockerComposeTarget{
+func newDCManifest() []model.Manifest {
+	return []model.Manifest{model.Manifest{Name: "fe"}.WithDeployTarget(model.DockerComposeTarget{
 		Name:        "fe",
 		ConfigPaths: []string{"dc.yaml"},
-	})
+	})}
 }
 
 type downFixture struct {

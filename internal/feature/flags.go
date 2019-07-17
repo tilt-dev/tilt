@@ -4,31 +4,34 @@ import (
 	"fmt"
 )
 
-const MultipleContainersPerPod = "multiple_containers_per_pod"
-const Events = "events"
-
+// The status of a feature flag
+// It starts as Active (we're using this flag to evaluate the feature)
+// Then when we no longer need it, we make it a noop. Leave it for an upgrade cycle.
+// Then move it to Obsolete, which will cause a warning. Leave it for an upgrade cycle.
+// Then remove the flag altogether.
 type Status int
 
 const (
 	Active Status = iota
 	Noop
-	Warn
-	// After Warn is Error, but it's not a value we can set
+	Obsolete
+	// After Obsolete is Error, but it's not a value we can set
 )
 
-type ObsoleteError string
+const MultipleContainersPerPod = "multiple_containers_per_pod"
+const Events = "events"
 
-func (s ObsoleteError) Error() string {
-	return string(s)
-}
-
+// The Value a flag can have. Status should never be changed.
 type Value struct {
 	Enabled bool
 	Status  Status
 }
 
+// Defaults is the initial values for a FeatureSet.
+// Don't modify after initializing.
 type Defaults map[string]Value
 
+// MainDefaults is the defaults we use in Main
 var MainDefaults = Defaults{
 	MultipleContainersPerPod: Value{
 		Enabled: false,
@@ -36,12 +39,14 @@ var MainDefaults = Defaults{
 	},
 	Events: Value{
 		Enabled: true,
-		Status:  Warn,
+		Status:  Active,
 	},
 }
 
+// FeatureSet is a mutable set of Features.
 type FeatureSet map[string]Value
 
+// Create a FeatureSet from defaults.
 func FromDefaults(d Defaults) FeatureSet {
 	r := make(FeatureSet)
 	for k, v := range d {
@@ -50,6 +55,14 @@ func FromDefaults(d Defaults) FeatureSet {
 	return r
 }
 
+// ObsoleteError is an error that a feature flag is obsolete
+type ObsoleteError string
+
+func (s ObsoleteError) Error() string {
+	return string(s)
+}
+
+// Set sets enabled for a feature if it's active. Returns an error if flag is unknown or obsolete.
 func (s FeatureSet) Set(name string, enabled bool) error {
 	v, ok := s[name]
 	if !ok {
@@ -57,7 +70,7 @@ func (s FeatureSet) Set(name string, enabled bool) error {
 	}
 
 	switch v.Status {
-	case Warn:
+	case Obsolete:
 		return ObsoleteError(fmt.Sprintf("Obsolete feature flag: %s", name))
 	case Noop:
 		return nil
@@ -68,10 +81,12 @@ func (s FeatureSet) Set(name string, enabled bool) error {
 	return nil
 }
 
+// Get gets whether a feature is enabled.
 func (s FeatureSet) Get(name string) bool {
 	return s[name].Enabled
 }
 
+// ToEnabled returns a copy of the enabled values of the FeatureSet
 func (s FeatureSet) ToEnabled() map[string]bool {
 	r := make(map[string]bool)
 	for k, v := range s {

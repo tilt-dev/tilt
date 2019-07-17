@@ -1904,7 +1904,7 @@ func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
 }
 
 func TestK8sEventLogTimestamp(t *testing.T) {
-	f := newTestFixture(t).EnableK8sEvents()
+	f := newTestFixture(t)
 	defer f.TearDown()
 
 	st := f.store.LockMutableStateForTesting()
@@ -2601,7 +2601,6 @@ func newTestFixture(t *testing.T) *testFixture {
 	hudsc := server.ProvideHeadsUpServerController(0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{}, false)
 	ghc := &github.FakeClient{}
 	sc := &client.FakeSailClient{}
-	// feature := feature.FromDefaults(feature.MainDefaults)
 	ewm := NewEventWatchManager(k8s, clockwork.NewRealClock())
 
 	ret := &testFixture{
@@ -2640,11 +2639,6 @@ func newTestFixture(t *testing.T) *testFixture {
 	}()
 
 	return ret
-}
-
-func (f *testFixture) EnableK8sEvents() *testFixture {
-	// f.feature.Enable(feature.Events)
-	return f
 }
 
 func (f *testFixture) Start(manifests []model.Manifest, watchFiles bool, initOptions ...initOption) {

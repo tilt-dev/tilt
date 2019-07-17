@@ -36,8 +36,8 @@ func TestSetNoop(t *testing.T) {
 	assert.False(t, m.Get("foo"))
 }
 
-func TestSetWarn(t *testing.T) {
-	m := FeatureSet{"foo": Value{Status: Warn, Enabled: false}}
+func TestSetObsolete(t *testing.T) {
+	m := FeatureSet{"foo": Value{Status: Obsolete, Enabled: false}}
 	err := m.Set("foo", true)
 	assert.EqualError(t, err, "Obsolete feature flag: foo")
 }

@@ -3594,6 +3594,14 @@ func TestDisableFeatureThatDoesntExist(t *testing.T) {
 	f.loadErrString("Unknown feature flag: testflag")
 }
 
+func TestDisableObsoleteFeature(t *testing.T) {
+	f := newFixture(t)
+	f.setupFoo()
+
+	f.file("Tiltfile", `disable_feature('obsoleteflag')`)
+	f.loadAssertWarnings("Obsolete feature flag: obsoleteflag")
+}
+
 func TestDockerBuildEntrypoint(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -3659,8 +3667,7 @@ type fixture struct {
 	out *bytes.Buffer
 	t   *testing.T
 	*tempdir.TempDirFixture
-	kCli    *k8s.FakeK8sClient
-	feature feature.Feature
+	kCli *k8s.FakeK8sClient
 
 	tfl TiltfileLoader
 	an  *analytics.MemoryAnalytics
@@ -3675,8 +3682,13 @@ func newFixture(t *testing.T) *fixture {
 	an, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
 	dcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
 	kCli := k8s.NewFakeK8sClient()
-	feat := feature.ProvideFeatureForTesting(feature.Defaults{"testflag_disabled": false, "testflag_enabled": true, feature.MultipleContainersPerPod: false})
-	tfl := ProvideTiltfileLoader(ta, kCli, dcc, "fake-context", feat)
+	features := feature.Defaults{
+		"testflag_disabled":              feature.Value{Enabled: false},
+		"testflag_enabled":               feature.Value{Enabled: true},
+		"obsoleteflag":                   feature.Value{Status: feature.Obsolete, Enabled: true},
+		feature.MultipleContainersPerPod: feature.Value{Enabled: false},
+	}
+	tfl := ProvideTiltfileLoader(ta, kCli, dcc, "fake-context", features)
 
 	r := &fixture{
 		ctx:            ctx,
@@ -3686,7 +3698,6 @@ func newFixture(t *testing.T) *fixture {
 		an:             an,
 		tfl:            tfl,
 		kCli:           kCli,
-		feature:        feat,
 	}
 	return r
 }
@@ -3812,7 +3823,7 @@ func (f *fixture) loadResourceAssemblyV1(names ...string) {
 }
 
 // Load the manifests, expecting warnings.
-// Warnigns should be asserted later with assertWarnings
+// Warnings should be asserted later with assertWarnings
 func (f *fixture) loadAllowWarnings(names ...string) {
 	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
 	if err != nil {
@@ -4196,7 +4207,7 @@ func (f *fixture) entities(y string) []k8s.K8sEntity {
 }
 
 func (f *fixture) assertFeature(key string, enabled bool) {
-	assert.Equal(f.t, enabled, f.feature.IsEnabled(key))
+	assert.Equal(f.t, enabled, f.loadResult.NewFeatureFlags[key])
 }
 
 type secretHelper struct {
