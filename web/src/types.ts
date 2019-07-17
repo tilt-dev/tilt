@@ -59,13 +59,14 @@ export type Resource = {
   PendingBuildReason: number
   PendingBuildSince: string
   ResourceInfo: {
-    PodCreationTime: string
-    PodLog: string
     PodName: string
-    PodRestarts: number
+    PodCreationTime: string
     PodUpdateStartTime: string
-    YAML: string
     PodStatus: string
+    PodStatusMessage: string
+    PodRestarts: number
+    PodLog: string
+    YAML: string
     Endpoints: Array<string>
   }
   RuntimeStatus: string
