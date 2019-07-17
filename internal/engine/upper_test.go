@@ -1787,7 +1787,7 @@ func TestUpper_PodLogs(t *testing.T) {
 }
 
 func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
-	f := newTestFixture(t).EnableK8sEvents()
+	f := newTestFixture(t)
 	defer f.TearDown()
 
 	entityUID := "someEntity"
@@ -1844,7 +1844,7 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 }
 
 func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
-	f := newTestFixture(t).EnableK8sEvents()
+	f := newTestFixture(t)
 	defer f.TearDown()
 
 	entityUID := "someEntity"
@@ -1871,7 +1871,7 @@ func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
 }
 
 func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
-	f := newTestFixture(t).EnableK8sEvents()
+	f := newTestFixture(t)
 	defer f.TearDown()
 
 	entityUID := "someEntity"
@@ -2601,7 +2601,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	hudsc := server.ProvideHeadsUpServerController(0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{}, false)
 	ghc := &github.FakeClient{}
 	sc := &client.FakeSailClient{}
-	feature := feature.FromDefaults(feature.MainDefaults)
+	// feature := feature.FromDefaults(feature.MainDefaults)
 	ewm := NewEventWatchManager(k8s, clockwork.NewRealClock())
 
 	ret := &testFixture{
@@ -2625,7 +2625,6 @@ func newTestFixture(t *testing.T) *testFixture {
 		ghc:                   ghc,
 		opter:                 to,
 		tiltVersionCheckDelay: versionCheckInterval,
-		feature:               feature,
 	}
 
 	tiltVersionCheckTimerMaker := func(d time.Duration) <-chan time.Time {
@@ -2645,7 +2644,7 @@ func newTestFixture(t *testing.T) *testFixture {
 
 func (f *testFixture) EnableK8sEvents() *testFixture {
 	// f.feature.Enable(feature.Events)
-	// return f
+	return f
 }
 
 func (f *testFixture) Start(manifests []model.Manifest, watchFiles bool, initOptions ...initOption) {
@@ -2654,6 +2653,7 @@ func (f *testFixture) Start(manifests []model.Manifest, watchFiles bool, initOpt
 
 // Empty `initManifests` will run start ALL manifests
 func (f *testFixture) startWithInitManifests(initManifests []model.ManifestName, manifests []model.Manifest, watchFiles bool, initOptions ...initOption) {
+	// f.tfl = tflResult(manifests)
 	ia := InitAction{
 		Manifests:       manifests,
 		WatchFiles:      watchFiles,
@@ -2664,6 +2664,14 @@ func (f *testFixture) startWithInitManifests(initManifests []model.ManifestName,
 		ia = o(ia)
 	}
 	f.Init(ia)
+}
+
+func tflResult(manifests []model.Manifest) tiltfile.TiltfileLoader {
+	r := tiltfile.NewFakeTiltfileLoader()
+	r.Result = tiltfile.TiltfileLoadResult{
+		Manifests: manifests,
+	}
+	return r
 }
 
 type initOption func(ia InitAction) InitAction

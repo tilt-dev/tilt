@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
@@ -47,9 +46,6 @@ func NewEventWatchManager(kClient k8s.Client, clock clockwork.Clock) *EventWatch
 func (m *EventWatchManager) needsWatch(st store.RStore) bool {
 	state := st.RLockState()
 	defer st.RUnlockState()
-	if !state.Features[feature.Events] {
-		return false
-	}
 
 	atLeastOneK8s := false
 	for _, m := range state.Manifests() {

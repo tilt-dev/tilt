@@ -53,6 +53,7 @@ type TiltfileLoader interface {
 
 type FakeTiltfileLoader struct {
 	Result TiltfileLoadResult
+	Err    error
 	// Manifests   []model.Manifest
 	// ConfigFiles []string
 	// Warnings    []string
@@ -66,11 +67,7 @@ func NewFakeTiltfileLoader() *FakeTiltfileLoader {
 }
 
 func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool) (TiltfileLoadResult, error) {
-	return TiltfileLoadResult{
-		Manifests:   tfl.Manifests,
-		ConfigFiles: tfl.ConfigFiles,
-		Warnings:    tfl.Warnings,
-	}, tfl.Err
+	return tfl.Result, tfl.Err
 }
 
 func ProvideTiltfileLoader(

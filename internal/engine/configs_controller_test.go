@@ -59,7 +59,7 @@ func (f *ccFixture) run() ConfigsReloadedAction {
 		}
 	}()
 
-	f.tfl.Manifests = []model.Manifest{{Name: "bar"}}
+	f.tfl = tflResult([]model.Manifest{{Name: "bar"}})
 
 	f.st.NotifySubscribers(f.ctx)
 
@@ -78,7 +78,7 @@ type ccFixture struct {
 	cc         *ConfigsController
 	st         *store.Store
 	getActions func() []store.Action
-	tfl        *tiltfile.FakeTiltfileLoader
+	tfl        tiltfile.TiltfileLoader
 	fc         *testutils.FakeClock
 }
 
