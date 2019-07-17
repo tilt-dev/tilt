@@ -83,9 +83,9 @@ func TestUpdateInContainerArchivesFilesToCopyAndGetsFilesToRemove(t *testing.T) 
 	assert.Equal(t, expectedToDelete, call.ToDelete)
 
 	expected := []expectedFile{
-		newExpectedFile("/src/hi", "hello"),
-		newExpectedFile("/src/planets/earth", "world"),
-		newMissingFile("/src/does-not-exist"),
+		expectFile("/src/hi", "hello"),
+		expectFile("/src/planets/earth", "world"),
+		expectMissing("/src/does-not-exist"),
 	}
 	testutils.AssertFilesInTar(f.t, tar.NewReader(call.Archive), expected)
 }
@@ -150,7 +150,7 @@ func (f *lcbadFixture) newPathSet(paths ...string) model.PathSet {
 	return model.NewPathSet(paths, f.Path())
 }
 
-func newExpectedFile(path, contents string) expectedFile {
+func expectFile(path, contents string) expectedFile {
 	return testutils.ExpectedFile{
 		Path:     path,
 		Contents: contents,
@@ -158,7 +158,7 @@ func newExpectedFile(path, contents string) expectedFile {
 	}
 }
 
-func newMissingFile(path string) expectedFile {
+func expectMissing(path string) expectedFile {
 	return testutils.ExpectedFile{
 		Path:    path,
 		Missing: true,
