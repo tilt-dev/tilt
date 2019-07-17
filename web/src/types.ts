@@ -1,3 +1,5 @@
+import {Alert} from "./alerts";
+
 export enum ResourceView {
   Log,
   Preview,
@@ -60,6 +62,7 @@ export type Resource = {
   PendingBuildSince: string
   ResourceInfo: {
     PodCreationTime: string
+
     PodLog: string
     PodName: string
     PodRestarts: number
@@ -71,4 +74,8 @@ export type Resource = {
   RuntimeStatus: string
   TriggerMode: TriggerMode
   HasPendingChanges: boolean
+  Alerts: Array<Alert>
 }
+
+
+

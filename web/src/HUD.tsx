@@ -19,6 +19,9 @@ import AlertPane, { AlertResource } from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
 import NotFound from "./NotFound"
+import {getAlertsResource} from "./alerts";
+import update from 'immutability-helper';
+
 
 type HudProps = {
   history: History
@@ -26,8 +29,10 @@ type HudProps = {
 
 type HudState = {
   Message: string
+
   View: {
     Resources: Array<Resource>
+    alertInitialized: boolean
     Log: string
     LogTimestamps: boolean
     SailEnabled: boolean
@@ -116,13 +121,25 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   componentDidUpdate(prevProps: Readonly<HudProps>, prevState: Readonly<HudState>, snapshot?: any): void {
-    let prevAlerts = this.resourcesToAlerts(prevState)
-    let curAlerts = this.resourcesToAlerts(this.state)
-    if (prevAlerts.length !== curAlerts.length) {
-      console.log("posting alerts")
-      postMessage(curAlerts, '/api/alerts_notification')
+    if (!this.state.View){
+      return
     }
+    if (this.state.View.alertInitialized){
+      return
+    }
+    let newState = this.state
+    let newResources = this.state.View.Resources.map(r => {
+      let resourceAlerts = getAlertsResource(r)
+      return update(r,{
+        Alerts: {$set: resourceAlerts}
+      })
+    })
+    newState = update(newState, {
+      View: {Resources: {$set: newResources}, alertInitialized: {$set: true}}
+    })
+    this.setState(newState)
   }
+
 
   setAppState(state: HudState) {
     this.setState(state)
@@ -291,7 +308,7 @@ class HUD extends Component<HudProps, HudState> {
         return <Route component={NotFound} />
       }
       if (er) {
-        return <AlertPane resources={[new AlertResource(er)]} />
+        return <AlertPane resources={curAlerts} />
       }
       return <AlertPane resources={[]} />
     }

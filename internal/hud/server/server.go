@@ -113,12 +113,11 @@ func (s *HeadsUpServer) HandleAlertsNotification(w http.ResponseWriter, req *htt
 		return
 	}
 
-	resp, err := http.Post("http://localhost:9988", "foo", req.Body)
+	resp, err := http.Post("http://localhost:9988", "Alert", req.Body)
 	if err != nil {
 		log.Printf("error posting alert: %v\n")
 		return
 	}
-
 	if resp.StatusCode != http.StatusOK {
 		b, err := ioutil.ReadAll(resp.Body)
 		if err != nil {

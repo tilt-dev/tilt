@@ -4,7 +4,7 @@ import AnsiLine from "./AnsiLine"
 import TimeAgo from "react-timeago"
 import "./AlertPane.scss"
 import { zeroTime } from "./time"
-import { Build } from "./types"
+import {Alert, Build, Resource} from "./types"
 import { timeAgoFormatter } from "./timeFormatters"
 import { podStatusIsCrash, podStatusIsError } from "./constants"
 
@@ -13,6 +13,7 @@ class AlertResource {
   public buildHistory: Array<Build>
   public resourceInfo: ResourceInfo
   public crashLog: string
+
 
   constructor(resource: any) {
     this.name = resource.Name
@@ -71,6 +72,7 @@ class AlertResource {
   }
 }
 
+
 type ResourceInfo = {
   podCreationTime: string
   podStatus: string
@@ -79,14 +81,14 @@ type ResourceInfo = {
 }
 
 type AlertsProps = {
-  resources: Array<AlertResource>
+  resources: Array<Alert>
 }
 
 function logToLines(s: string) {
   return s.split("\n").map((l, i) => <AnsiLine key={"logLine" + i} line={l} />)
 }
 
-function alertElements(resources: Array<AlertResource>) {
+function alertElements(resources: Array<Resource>) {
   let formatter = timeAgoFormatter
   let alertElements: Array<JSX.Element> = []
   resources.forEach(r => {
