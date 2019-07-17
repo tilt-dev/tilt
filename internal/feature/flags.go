@@ -83,7 +83,11 @@ func (s FeatureSet) Set(name string, enabled bool) error {
 
 // Get gets whether a feature is enabled.
 func (s FeatureSet) Get(name string) bool {
-	return s[name].Enabled
+	v, ok := s[name]
+	if !ok {
+		panic("get of unknown feature flag (code should use feature.Foo instead of \"foo\" to get a flag)")
+	}
+	return v.Enabled
 }
 
 // ToEnabled returns a copy of the enabled values of the FeatureSet

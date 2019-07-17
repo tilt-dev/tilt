@@ -6,9 +6,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetReturnsFalseIfKeyDoesntExist(t *testing.T) {
+func TestGetPanicsIfKeyDoesntExist(t *testing.T) {
 	m := FeatureSet{}
-	assert.False(t, m.Get("foo"))
+	assert.Panics(t, func() {
+		m.Get("foo")
+	})
 }
 
 func TestIsEnabled(t *testing.T) {
@@ -16,7 +18,7 @@ func TestIsEnabled(t *testing.T) {
 	assert.True(t, m.Get("foo"))
 }
 
-func TestSetReturnsErrorForUnknownKey(t *testing.T) {
+func TestSetReturnsErrorOnUnknownKey(t *testing.T) {
 	m := FeatureSet{}
 	err := m.Set("foo", false)
 	assert.EqualError(t, err, "Unknown feature flag: foo")
