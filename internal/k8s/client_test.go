@@ -56,7 +56,7 @@ func TestUpsertOrder(t *testing.T) {
 		t.FailNow()
 	}
 
-	// three different calls: one for namespace (withDeps), one for job (immutable), one for deployment (mutable)
+	// three different calls: one for namespace (withDependents), one for job (immutable), one for deployment (mutable)
 	if !assert.Equal(t, 3, len(f.runner.calls)) {
 		t.FailNow()
 	}

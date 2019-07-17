@@ -158,10 +158,10 @@ func (e K8sEntity) DeepCopy() K8sEntity {
 	}
 }
 
-// EntitiesWithDependenciesAndRest returns two lists of k8s entities: those that may have dependencies,
+// EntitiesWithDependentsAndRest returns two lists of k8s entities: those that may have dependencies,
 // which we will therefore want to apply first (i.e. namespaces and CRDs -- e.g. trying to create a
 // pod in a nonexistent namespace causes an error); and the rest of the entities.
-func EntitiesWithDependenciesAndRest(entities []K8sEntity) (withDeps, rest []K8sEntity) {
+func EntitiesWithDependentsAndRest(entities []K8sEntity) (withDependents, rest []K8sEntity) {
 	var ns []K8sEntity
 	var crd []K8sEntity
 

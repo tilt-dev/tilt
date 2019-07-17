@@ -180,10 +180,10 @@ func TestEntitiesWithDependenciesAndRest(t *testing.T) {
 	eNamespace := mustParseYAML(t, testyaml.MyNamespaceYAML)[0]
 
 	for _, test := range []struct {
-		name             string
-		input            []K8sEntity
-		expectedWithDeps []K8sEntity
-		expectedRest     []K8sEntity
+		name                   string
+		input                  []K8sEntity
+		expectedWithDependents []K8sEntity
+		expectedRest           []K8sEntity
 	}{
 		{"one namespace",
 			[]K8sEntity{eDeploy, eNamespace, eService},
@@ -205,20 +205,25 @@ func TestEntitiesWithDependenciesAndRest(t *testing.T) {
 			[]K8sEntity{eNamespace, eCRD},
 			[]K8sEntity{eService, eDeploy},
 		},
-		{"none with deps",
+		{"none with dependents",
 			[]K8sEntity{eDeploy, eService},
 			nil,
 			[]K8sEntity{eDeploy, eService},
 		},
-		{"only with deps",
+		{"only with dependents",
 			[]K8sEntity{eNamespace, eCRD},
+			[]K8sEntity{eNamespace, eCRD},
+			nil,
+		},
+		{"namespace first",
+			[]K8sEntity{eCRD, eNamespace},
 			[]K8sEntity{eNamespace, eCRD},
 			nil,
 		},
 	} {
 		t.Run(string(test.name), func(t *testing.T) {
-			withDeps, rest := EntitiesWithDependenciesAndRest(test.input)
-			assert.Equal(t, test.expectedWithDeps, withDeps)
+			withDependents, rest := EntitiesWithDependentsAndRest(test.input)
+			assert.Equal(t, test.expectedWithDependents, withDependents)
 			assert.Equal(t, test.expectedRest, rest)
 		})
 	}
