@@ -6,54 +6,47 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIsEnabledReturnsAnErrorIfKeyDoesntExist(t *testing.T) {
-	m := newStaticMapFeature(map[string]bool{})
+func TestGetPanicsIfKeyDoesntExist(t *testing.T) {
+	m := FeatureSet{}
 	assert.Panics(t, func() {
-		m.IsEnabled("foo")
+		m.Get("foo")
 	})
 }
 
 func TestIsEnabled(t *testing.T) {
-	m := newStaticMapFeature(map[string]bool{"foo": true})
-	enabled := m.IsEnabled("foo")
-
-	assert.True(t, enabled)
+	m := FeatureSet{"foo": {Enabled: true}}
+	assert.True(t, m.Get("foo"))
 }
 
-func TestEnableUnknownKey(t *testing.T) {
-	m := newStaticMapFeature(map[string]bool{})
-	err := m.Enable("foo")
+func TestSetReturnsErrorOnUnknownKey(t *testing.T) {
+	m := FeatureSet{}
+	err := m.Set("foo", false)
 	assert.EqualError(t, err, "Unknown feature flag: foo")
 }
 
-func TestEnable(t *testing.T) {
-	m := newStaticMapFeature(map[string]bool{"foo": false})
-	err := m.Enable("foo")
+func TestSetSimple(t *testing.T) {
+	m := FeatureSet{"foo": Value{Enabled: false}}
+	err := m.Set("foo", true)
 	assert.NoError(t, err)
-	enabled := m.IsEnabled("foo")
-	assert.True(t, enabled)
+	assert.True(t, m.Get("foo"))
 }
 
-func TestDisableUnknownKey(t *testing.T) {
-	m := newStaticMapFeature(map[string]bool{})
-	err := m.Disable("foo")
-	assert.EqualError(t, err, "Unknown feature flag: foo")
-}
-
-func TestDisable(t *testing.T) {
-	m := newStaticMapFeature(map[string]bool{"foo": true})
-	err := m.Disable("foo")
+func TestSetNoop(t *testing.T) {
+	m := FeatureSet{"foo": Value{Status: Noop, Enabled: false}}
+	err := m.Set("foo", true)
 	assert.NoError(t, err)
-	enabled := m.IsEnabled("foo")
-	assert.False(t, enabled)
+	assert.False(t, m.Get("foo"))
 }
 
-func TestGetAllFlags(t *testing.T) {
-	defaults := map[string]bool{"foo": true}
-	f := newStaticMapFeature(defaults)
-	actual := f.GetAllFlags()
+func TestSetObsolete(t *testing.T) {
+	m := FeatureSet{"foo": Value{Status: Obsolete, Enabled: false}}
+	err := m.Set("foo", true)
+	assert.EqualError(t, err, "Obsolete feature flag: foo")
+}
 
-	assert.Equal(t, defaults, actual)
-	// should be a new reference, so the pointers should not be equal.
-	assert.False(t, &defaults == &actual)
+func TestToEnabled(t *testing.T) {
+	m := FeatureSet{"foo": Value{Enabled: false}}
+	m.Set("foo", true)
+
+	assert.Equal(t, map[string]bool{"foo": true}, m.ToEnabled())
 }

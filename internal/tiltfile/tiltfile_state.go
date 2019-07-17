@@ -35,7 +35,7 @@ type tiltfileState struct {
 	dcCli           dockercompose.DockerComposeClient
 	kubeContext     k8s.KubeContext
 	privateRegistry container.Registry
-	f               feature.Feature
+	features        feature.FeatureSet
 
 	// added to during execution
 	configFiles        []string
@@ -92,7 +92,7 @@ const (
 	k8sResourceAssemblyVersionReasonExplicit
 )
 
-func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, filename string, kubeContext k8s.KubeContext, privateRegistry container.Registry, f feature.Feature) *tiltfileState {
+func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, filename string, kubeContext k8s.KubeContext, privateRegistry container.Registry, features feature.FeatureSet) *tiltfileState {
 	lp := localPath{path: filename}
 	s := &tiltfileState{
 		ctx:                        ctx,
@@ -111,7 +111,7 @@ func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClie
 		k8sResourceAssemblyVersion: 2,
 		k8sResourceOptions:         make(map[string]k8sResourceOptions),
 		triggerMode:                TriggerModeAuto,
-		f:                          f,
+		features:                   features,
 	}
 	s.filename = s.maybeAttachGitRepo(lp, filepath.Dir(lp.path))
 	return s
@@ -779,7 +779,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 
 		m = m.WithImageTargets(iTargets)
 
-		if !s.f.IsEnabled(feature.MultipleContainersPerPod) {
+		if !s.features.Get(feature.MultipleContainersPerPod) {
 			err = s.checkForImpossibleLiveUpdates(m)
 			if err != nil {
 				return nil, err

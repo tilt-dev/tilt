@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
@@ -217,12 +216,10 @@ func newEWMFixture(t *testing.T) *ewmFixture {
 	ctx, cancel := context.WithCancel(ctx)
 
 	clock := clockwork.NewFakeClock()
-	f := feature.ProvideFeature()
-	f.Enable("events")
 
 	ret := &ewmFixture{
 		kClient: kClient,
-		ewm:     NewEventWatchManager(kClient, clock, f),
+		ewm:     NewEventWatchManager(kClient, clock),
 		ctx:     ctx,
 		cancel:  cancel,
 		t:       t,

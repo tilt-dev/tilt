@@ -2,94 +2,99 @@ package feature
 
 import (
 	"fmt"
-	"sync"
+)
+
+// The status of a feature flag
+// It starts as Active (we're using this flag to evaluate the feature)
+// Then when we no longer need it, we make it a noop. Leave it for an upgrade cycle.
+// Then move it to Obsolete, which will cause a warning. Leave it for an upgrade cycle.
+// Then remove the flag altogether.
+type Status int
+
+const (
+	Active Status = iota
+	Noop
+	Obsolete
+	// After Obsolete is Error, but it's not a value we can set
 )
 
 const MultipleContainersPerPod = "multiple_containers_per_pod"
 const Events = "events"
 
-type Defaults map[string]bool
-
-// All feature flags need to be defined here with their default values
-var flags = Defaults{
-	MultipleContainersPerPod: false,
-	Events:                   true,
+// The Value a flag can have. Status should never be changed.
+type Value struct {
+	Enabled bool
+	Status  Status
 }
 
-type Feature interface {
-	IsEnabled(flag string) bool
-	Enable(flag string) error
-	Disable(flag string) error
-	GetAllFlags() map[string]bool
+// Defaults is the initial values for a FeatureSet.
+// Don't modify after initializing.
+type Defaults map[string]Value
+
+// MainDefaults is the defaults we use in Main
+var MainDefaults = Defaults{
+	MultipleContainersPerPod: Value{
+		Enabled: false,
+		Status:  Active,
+	},
+	Events: Value{
+		Enabled: true,
+		Status:  Active,
+	},
 }
 
-func ProvideFeature() Feature {
-	return newStaticMapFeature(flags)
-}
+// FeatureSet is a mutable set of Features.
+type FeatureSet map[string]Value
 
-func ProvideFeatureForTesting(d Defaults) Feature {
-	return newStaticMapFeature(d)
-}
-
-func newStaticMapFeature(defaults Defaults) *staticMapFeature {
-	// copy map so we don't rely on global state
-	newMap := map[string]bool{}
-	for key, value := range defaults {
-		newMap[key] = value
+// Create a FeatureSet from defaults.
+func FromDefaults(d Defaults) FeatureSet {
+	r := make(FeatureSet)
+	for k, v := range d {
+		r[k] = v
 	}
-	return &staticMapFeature{flags: newMap, mu: &sync.Mutex{}}
+	return r
 }
 
-type staticMapFeature struct {
-	flags map[string]bool
-	mu    *sync.Mutex
+// ObsoleteError is an error that a feature flag is obsolete
+type ObsoleteError string
+
+func (s ObsoleteError) Error() string {
+	return string(s)
 }
 
-// IsEnabled panics if flag does not exist
-func (f *staticMapFeature) IsEnabled(flag string) bool {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	enabled, ok := f.flags[flag]
+// Set sets enabled for a feature if it's active. Returns an error if flag is unknown or obsolete.
+func (s FeatureSet) Set(name string, enabled bool) error {
+	v, ok := s[name]
 	if !ok {
-		panic("Unknown feature flag: " + flag)
+		return fmt.Errorf("Unknown feature flag: %s", name)
 	}
 
-	return enabled
-}
-
-func (f *staticMapFeature) Enable(flag string) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	_, ok := f.flags[flag]
-	if !ok {
-		return fmt.Errorf("Unknown feature flag: %s", flag)
+	switch v.Status {
+	case Obsolete:
+		return ObsoleteError(fmt.Sprintf("Obsolete feature flag: %s", name))
+	case Noop:
+		return nil
 	}
 
-	f.flags[flag] = true
+	v.Enabled = enabled
+	s[name] = v
 	return nil
 }
 
-func (f *staticMapFeature) Disable(flag string) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	_, ok := f.flags[flag]
+// Get gets whether a feature is enabled.
+func (s FeatureSet) Get(name string) bool {
+	v, ok := s[name]
 	if !ok {
-		return fmt.Errorf("Unknown feature flag: %s", flag)
+		panic("get of unknown feature flag (code should use feature.Foo instead of \"foo\" to get a flag)")
 	}
-
-	f.flags[flag] = false
-	return nil
+	return v.Enabled
 }
 
-// GetAllFlags make a copy of the feature flags map and returns it
-func (f *staticMapFeature) GetAllFlags() map[string]bool {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	newFlags := make(map[string]bool, len(f.flags))
-
-	for k, v := range f.flags {
-		newFlags[k] = v
+// ToEnabled returns a copy of the enabled values of the FeatureSet
+func (s FeatureSet) ToEnabled() map[string]bool {
+	r := make(map[string]bool)
+	for k, v := range s {
+		r[k] = v.Enabled
 	}
-
-	return newFlags
+	return r
 }

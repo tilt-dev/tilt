@@ -59,8 +59,7 @@ func (f *ccFixture) run() ConfigsReloadedAction {
 		}
 	}()
 
-	f.tfl.Manifests = []model.Manifest{{Name: "bar"}}
-
+	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{{Name: "bar"}}}
 	f.st.NotifySubscribers(f.ctx)
 
 	a := store.WaitForAction(f.T(), reflect.TypeOf(ConfigsReloadedAction{}), f.getActions)
