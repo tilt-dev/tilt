@@ -52,10 +52,11 @@ type TiltfileLoader interface {
 }
 
 type FakeTiltfileLoader struct {
-	Manifests   []model.Manifest
-	ConfigFiles []string
-	Warnings    []string
-	Err         error
+	Result TiltfileLoadResult
+	// Manifests   []model.Manifest
+	// ConfigFiles []string
+	// Warnings    []string
+	// Err         error
 }
 
 var _ TiltfileLoader = &FakeTiltfileLoader{}
@@ -115,7 +116,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	}
 
 	privateRegistry := tfl.kCli.PrivateRegistry(ctx)
-	s := newTiltfileState(ctx, tfl.dcCli, absFilename, tfl.kubeContext, privateRegistry, tfl.fDefaults.ToFeatureSet())
+	s := newTiltfileState(ctx, tfl.dcCli, absFilename, tfl.kubeContext, privateRegistry, feature.FromDefaults(tfl.fDefaults))
 	printedWarnings := false
 	defer func() {
 		tlr.ConfigFiles = s.configFiles

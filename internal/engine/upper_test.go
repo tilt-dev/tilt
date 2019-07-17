@@ -2538,7 +2538,7 @@ type testFixture struct {
 	ghc                   *github.FakeClient
 	opter                 *testOpter
 	tiltVersionCheckDelay time.Duration
-	feature               feature.Feature
+	// features              feature.FeatureSet
 
 	// old value of k8sEventsFeatureFlag env var, for teardown
 	// if nil, no reset needed.
@@ -2591,7 +2591,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	realDcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
 
-	tfl := tiltfile.ProvideTiltfileLoader(ta, k8s, realDcc, "fake-context", feature.ProvideFeature())
+	tfl := tiltfile.ProvideTiltfileLoader(ta, k8s, realDcc, "fake-context", feature.MainDefaults)
 	cc := NewConfigsController(tfl, dockerClient)
 	dcw := NewDockerComposeEventWatcher(fakeDcc)
 	dclm := NewDockerComposeLogManager(fakeDcc)
@@ -2601,8 +2601,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	hudsc := server.ProvideHeadsUpServerController(0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{}, false)
 	ghc := &github.FakeClient{}
 	sc := &client.FakeSailClient{}
-	feature := feature.ProvideFeature()
-	ewm := NewEventWatchManager(k8s, clockwork.NewRealClock(), feature)
+	feature := feature.FromDefaults(feature.MainDefaults)
+	ewm := NewEventWatchManager(k8s, clockwork.NewRealClock())
 
 	ret := &testFixture{
 		TempDirFixture:        f,
@@ -2644,22 +2644,12 @@ func newTestFixture(t *testing.T) *testFixture {
 }
 
 func (f *testFixture) EnableK8sEvents() *testFixture {
-	f.feature.Enable(feature.Events)
-	return f
+	// f.feature.Enable(feature.Events)
+	// return f
 }
 
 func (f *testFixture) Start(manifests []model.Manifest, watchFiles bool, initOptions ...initOption) {
 	f.startWithInitManifests(nil, manifests, watchFiles, initOptions...)
-}
-
-// Start ONLY the specified manifests and no others (e.g. if additional manifests
-// specified later, don't run them. Like running `tilt up <foo, bar>`.
-func (f *testFixture) StartOnly(manifests []model.Manifest, watchFiles bool) {
-	mNames := make([]model.ManifestName, len(manifests))
-	for i, m := range manifests {
-		mNames[i] = m.Name
-	}
-	f.startWithInitManifests(mNames, manifests, watchFiles)
 }
 
 // Empty `initManifests` will run start ALL manifests
