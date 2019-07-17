@@ -29,9 +29,9 @@ func (cu *DockerContainerUpdater) UpdateContainer(ctx context.Context, deployInf
 	archiveToCopy io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
 	l := logger.Get(ctx)
 
-	err := cu.RmPathsFromContainer(ctx, deployInfo.ContainerID, filesToDelete)
+	err := cu.rmPathsFromContainer(ctx, deployInfo.ContainerID, filesToDelete)
 	if err != nil {
-		return errors.Wrap(err, "RmPathsFromContainer")
+		return errors.Wrap(err, "rmPathsFromContainer")
 	}
 
 	// TODO(maia): catch errors -- CopyToContainer doesn't return errors if e.g. it
@@ -63,7 +63,7 @@ func (cu *DockerContainerUpdater) UpdateContainer(ctx context.Context, deployInf
 	return nil
 }
 
-func (cu *DockerContainerUpdater) RmPathsFromContainer(ctx context.Context, cID container.ID, paths []string) error {
+func (cu *DockerContainerUpdater) rmPathsFromContainer(ctx context.Context, cID container.ID, paths []string) error {
 	if len(paths) == 0 {
 		return nil
 	}
