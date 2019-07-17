@@ -15,6 +15,10 @@ type LiveUpdate struct {
 }
 
 func NewLiveUpdate(steps []LiveUpdateStep, baseDir string) (LiveUpdate, error) {
+	if len(steps) == 0 {
+		return LiveUpdate{}, nil
+	}
+
 	// Check that all FallBackOn steps come at the beginning
 	// (Technically could do this in the loop below, but it's
 	// easier to reason about/modify this way.)
@@ -45,7 +49,7 @@ func NewLiveUpdate(steps []LiveUpdateStep, baseDir string) (LiveUpdate, error) {
 			}
 		}
 	}
-	return LiveUpdate{steps, baseDir}, nil
+	return LiveUpdate{Steps: steps, BaseDir: baseDir}, nil
 }
 
 func (lu LiveUpdate) Empty() bool { return len(lu.Steps) == 0 }
