@@ -1,5 +1,10 @@
 # -*- mode: Python -*-
 
+# HACK: load namespaces on `tilt up` but not on `tilt down`
+load_namespace = not str(local('echo -n $SKIP_NAMESPACE'))
+if load_namespace:
+  k8s_yaml('../namespace.yaml')
+
 default_registry(read_json('tilt_option.json', {})
                  .get('default_registry', 'gcr.io/windmill-test-containers/servantes'))
 

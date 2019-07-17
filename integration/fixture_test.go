@@ -205,6 +205,22 @@ func (f *fixture) TearDown() {
 
 	f.KillProcs()
 
+	// This is a hack.
+	//
+	// Deleting a namespace is slow. Doing it on every test case makes
+	// the tests more accurate. We believe that in this particular case,
+	// the trade-off of speed over accuracy is worthwhile, so
+	// we add this hack so that we can `tilt down` without deleting
+	// the namespace.
+	//
+	// Each Tiltfile reads this environment variable, and skips loading the namespace
+	// into Tilt, so that Tilt doesn't delete it.
+	//
+	// If users want to do the same thing in practice, it might be worth
+	// adding better in-product hooks (e.g., `tilt down --preserve-namespace`),
+	// or more scriptability in the Tiltfile.
+	f.tiltEnviron["SKIP_NAMESPACE"] = "true"
+
 	cmd := f.tiltCmd([]string{"down"}, os.Stdout)
 	err := cmd.Run()
 	if err != nil {
