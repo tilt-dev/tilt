@@ -8,7 +8,7 @@ import (
 // One service deployed with docker-compose
 func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		msg := "🍄 Two-Up! 🍄"
+		msg := "🍄 One-Up! 🍄"
 		_, _ = w.Write([]byte(msg))
 	})
 
