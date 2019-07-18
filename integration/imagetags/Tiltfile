@@ -2,7 +2,7 @@
 k8s_resource_assembly_version(2)
 
 # HACK: load namespaces on `tilt up` but not on `tilt down`
-load_namespace = not str(local('echo -n $SKIP_NAMESPACE'))
+load_namespace = not str(local('echo $SKIP_NAMESPACE')).strip()
 if load_namespace:
   k8s_yaml('../namespace.yaml')
 
