@@ -33,8 +33,8 @@ func TestBuildAndDeployBoilsSteps(t *testing.T) {
 	packageJson := build.PathMapping{LocalPath: f.JoinPath("package.json"), ContainerPath: "/src/package.json"}
 	runs := []model.Run{
 		model.ToRun(model.ToShellCmd("./foo.sh bar")),
-		model.Run{model.ToShellCmd("yarn install"), f.newPathSet("package.json")},
-		model.Run{model.ToShellCmd("pip install"), f.newPathSet("requirements.txt")},
+		model.Run{Cmd: model.ToShellCmd("yarn install"), Triggers: f.newPathSet("package.json")},
+		model.Run{Cmd: model.ToShellCmd("pip install"), Triggers: f.newPathSet("requirements.txt")},
 	}
 
 	err := f.lcbad.buildAndDeploy(f.ctx, model.ImageTarget{}, TestBuildState, []build.PathMapping{packageJson}, runs, false)
@@ -94,7 +94,7 @@ func TestDontFallBackOnUserError(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
 
-	f.cu.UpdateErrToThrow = build.UserBuildFailure{12345}
+	f.cu.UpdateErrToThrow = build.UserBuildFailure{ExitCode: 12345}
 
 	err := f.lcbad.buildAndDeploy(f.ctx, model.ImageTarget{}, TestBuildState, nil, nil, false)
 	if assert.NotNil(t, err) {
