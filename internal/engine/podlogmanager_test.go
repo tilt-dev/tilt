@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 
+	"github.com/windmilleng/tilt/internal/testutils"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -31,7 +33,7 @@ func TestLogs(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchFiles = true
-	state.UpsertManifestTarget(newManifestTargetWithPod(
+	state.UpsertManifestTarget(testutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
 			PodID:         podID,
@@ -53,7 +55,7 @@ func TestLogActions(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchFiles = true
-	state.UpsertManifestTarget(newManifestTargetWithPod(
+	state.UpsertManifestTarget(testutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
 			PodID:         podID,
@@ -75,7 +77,7 @@ func TestLogsFailed(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchFiles = true
-	state.UpsertManifestTarget(newManifestTargetWithPod(
+	state.UpsertManifestTarget(testutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
 			PodID:         podID,
@@ -98,7 +100,7 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchFiles = true
-	state.UpsertManifestTarget(newManifestTargetWithPod(
+	state.UpsertManifestTarget(testutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
 			PodID:         podID,
@@ -127,7 +129,7 @@ func TestMultiContainerLogs(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchFiles = true
-	state.UpsertManifestTarget(newManifestTargetWithPod(
+	state.UpsertManifestTarget(testutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
 			PodID:         podID,
@@ -162,7 +164,7 @@ func TestContainerPrefixes(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchFiles = true
-	state.UpsertManifestTarget(newManifestTargetWithPod(
+	state.UpsertManifestTarget(testutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "multiContainer"},
 		// Pod with multiple containers -- logs should be prefixed with container name
 		store.Pod{
@@ -175,7 +177,7 @@ func TestContainerPrefixes(t *testing.T) {
 				store.ContainerInfo{ID: "cid2", Name: cNamePrefix2},
 			},
 		}))
-	state.UpsertManifestTarget(newManifestTargetWithPod(
+	state.UpsertManifestTarget(testutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "singleContainer"},
 		// Pod with just one container -- logs should NOT be prefixed with container name
 		store.Pod{
@@ -218,7 +220,7 @@ func TestLogsByPodPhase(t *testing.T) {
 
 			state := f.store.LockMutableStateForTesting()
 			state.WatchFiles = true
-			state.UpsertManifestTarget(newManifestTargetWithPod(
+			state.UpsertManifestTarget(testutils.NewManifestTargetWithPod(
 				model.Manifest{Name: "server"},
 				store.Pod{
 					PodID:         podID,
@@ -313,10 +315,4 @@ func (f *plmFixture) AssertOutputContains(s string) {
 func (f *plmFixture) AssertOutputDoesNotContain(s string) {
 	time.Sleep(10 * time.Millisecond)
 	assert.NotContains(f.T(), f.out.String(), s)
-}
-
-func newManifestTargetWithPod(m model.Manifest, pod store.Pod) *store.ManifestTarget {
-	mt := store.NewManifestTarget(m)
-	mt.State.PodSet = store.NewPodSet(pod)
-	return mt
 }

@@ -6,8 +6,10 @@ import (
 	"io"
 	"strings"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+
+	"github.com/windmilleng/tilt/internal/containerupdate"
 
 	"io/ioutil"
 
@@ -23,12 +25,12 @@ import (
 var _ BuildAndDeployer = &SyncletBuildAndDeployer{}
 
 type SyncletBuildAndDeployer struct {
-	sm         SyncletManager
+	sm         containerupdate.SyncletManager
 	kCli       k8s.Client
 	updateMode UpdateMode
 }
 
-func NewSyncletBuildAndDeployer(sm SyncletManager, kCli k8s.Client, updateMode UpdateMode) *SyncletBuildAndDeployer {
+func NewSyncletBuildAndDeployer(sm containerupdate.SyncletManager, kCli k8s.Client, updateMode UpdateMode) *SyncletBuildAndDeployer {
 	return &SyncletBuildAndDeployer{
 		sm:         sm,
 		kCli:       kCli,

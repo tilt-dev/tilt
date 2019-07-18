@@ -50,12 +50,12 @@ var DeployerBaseWireSet = wire.NewSet(
 
 var DeployerWireSetTest = wire.NewSet(
 	DeployerBaseWireSet,
-	NewSyncletManagerForTests,
+	containerupdate.NewSyncletManagerForTests,
 )
 
 var DeployerWireSet = wire.NewSet(
 	DeployerBaseWireSet,
-	NewSyncletManager,
+	containerupdate.NewSyncletManager,
 )
 
 func provideBuildAndDeployer(

@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"github.com/windmilleng/tilt/internal/containerupdate"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/sail/client"
@@ -20,7 +21,7 @@ func ProvideSubscribers(
 	dcw *DockerComposeEventWatcher,
 	dclm *DockerComposeLogManager,
 	pm *ProfilerManager,
-	sm SyncletManager,
+	sm containerupdate.SyncletManager,
 	ar *AnalyticsReporter,
 	hudsc *server.HeadsUpServerController,
 	sail client.SailClient,

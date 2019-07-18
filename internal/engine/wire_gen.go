@@ -26,7 +26,7 @@ import (
 // Injectors from wire.go:
 
 func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode UpdateModeFlag, sCli synclet.SyncletClient, dcc dockercompose.DockerComposeClient, clock build.Clock, kp KINDPusher, analytics2 *analytics.TiltAnalytics) (BuildAndDeployer, error) {
-	syncletManager := NewSyncletManagerForTests(kClient, sCli)
+	syncletManager := containerupdate.NewSyncletManagerForTests(kClient, sCli)
 	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
 	engineUpdateMode, err := ProvideUpdateMode(updateMode, env, runtime)
 	if err != nil {
@@ -122,12 +122,12 @@ var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Valu
 
 var DeployerWireSetTest = wire.NewSet(
 	DeployerBaseWireSet,
-	NewSyncletManagerForTests,
+	containerupdate.NewSyncletManagerForTests,
 )
 
 var DeployerWireSet = wire.NewSet(
 	DeployerBaseWireSet,
-	NewSyncletManager,
+	containerupdate.NewSyncletManager,
 )
 
 func provideKubectlLogLevelInfo() k8s.KubectlLogLevel {
