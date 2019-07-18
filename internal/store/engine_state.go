@@ -88,6 +88,8 @@ type EngineState struct {
 	// This field is only here to trigger rebuilds when features are
 	// toggled in the Tiltfile.
 	Features map[string]bool
+
+	TeamName string
 }
 
 func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.ManifestName {

@@ -2425,18 +2425,35 @@ func TestFeatureFlagsStoredOnState(t *testing.T) {
 	f := newTestFixture(t)
 
 	f.Start([]model.Manifest{}, true)
-	time.Sleep(10 * time.Millisecond)
 
-	f.store.Dispatch(ConfigsReloadedAction{Manifests: []model.Manifest{}, Features: map[string]bool{"foo": true}})
+	f.store.Dispatch(ConfigsReloadedAction{Features: map[string]bool{"foo": true}})
 
 	f.WaitUntil("feature is enabled", func(state store.EngineState) bool {
 		return state.Features["foo"] == true
 	})
 
-	f.store.Dispatch(ConfigsReloadedAction{Manifests: []model.Manifest{}, Features: map[string]bool{"foo": false}})
+	f.store.Dispatch(ConfigsReloadedAction{Features: map[string]bool{"foo": false}})
 
 	f.WaitUntil("feature is disabled", func(state store.EngineState) bool {
 		return state.Features["foo"] == false
+	})
+}
+
+func TestTeamNameStoredOnState(t *testing.T) {
+	f := newTestFixture(t)
+
+	f.Start([]model.Manifest{}, true)
+
+	f.store.Dispatch(ConfigsReloadedAction{TeamName: "sharks"})
+
+	f.WaitUntil("teamName is set to sharks", func(state store.EngineState) bool {
+		return state.TeamName == "sharks"
+	})
+
+	f.store.Dispatch(ConfigsReloadedAction{TeamName: "jets"})
+
+	f.WaitUntil("teamName is set to jets", func(state store.EngineState) bool {
+		return state.TeamName == "jets"
 	})
 }
 

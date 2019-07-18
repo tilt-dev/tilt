@@ -470,6 +470,8 @@ func handleConfigsReloaded(
 	status.Error = event.Err
 	status.Warnings = event.Warnings
 
+	state.TeamName = event.TeamName
+
 	state.LastTiltfileBuild = status
 	state.CurrentTiltfileBuild = model.BuildRecord{}
 	if event.Err != nil {
