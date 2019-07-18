@@ -757,7 +757,7 @@ func TestDockerComposeImageBuild(t *testing.T) {
 	assert.Len(t, f.dcCli.UpCalls, 1)
 }
 
-func TestDockerComposeFastBuild(t *testing.T) {
+func TestDockerComposeInPlaceUpdate(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
