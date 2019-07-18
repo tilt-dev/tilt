@@ -48,19 +48,6 @@ it("renders the last build with an error", () => {
   let resources: Array<Partial<Resource>> = [
     {
       Name: "foo",
-      BuildHistory: [
-        {
-          Log: "laa dee daa I'm another error\nBetter watch out",
-          FinishTime: ts,
-          Error: {},
-        },
-        {
-          Log: "laa dee daa I'm an error\nI'm serious",
-          FinishTime: ts,
-          Error: {},
-        },
-      ],
-
       Alerts: [
           {alertType:PodRestartErrorType, msg: "laa dee daa I'm an error\nfor real I am", titleMsg: "", timestamp: ts},
           {alertType:PodRestartErrorType, msg: "\"laa dee daa I'm an error\nI'm serious", titleMsg: "", timestamp: ts}
@@ -77,9 +64,16 @@ it("renders the last build with an error", () => {
 
 it("renders one container start error", () => {
   const ts = "1,555,970,585,039"
+  let resource: Partial<Resource> = {
+    Name: "foo",
+
+  }
   let resources = [
     {
       Name: "foo",
+      Alerts: [
+        {alertType:PodRestartErrorType, msg: "", titleMsg: "", timestamp: ts},
+      ]
       CrashLog: "Eeeeek there is a problem",
       BuildHistory: [
         {

@@ -15,6 +15,8 @@ export const ResourceCrashRebuildErrorType = "ResourceCrashRebuild"
 export const BuildFailedErrorType = "BuildError"
 export const WarningErrorType = "Warning"
 
+
+//these functions can be moved to wear the resources type is defined
 function hasAlert(resource: Resource) {
     return numberOfAlerts(resource) > 0
 }
@@ -26,6 +28,9 @@ function crashRebuild(resource: Resource): boolean {
 function podStatusIsError(resource: Resource) {
     let podStatus = resource.ResourceInfo.PodStatus
     let podStatusMessage = resource.ResourceInfo.PodStatusMessage
+    if (podStatus == null) {
+        return false 
+    }
     return podStatusErrorFunction(podStatus) || podStatusMessage
 }
 
@@ -53,10 +58,15 @@ function getAlertsResource(r: Resource): Array<Alert> {
     if (buildFailed(r)){
         result.push(buildFailedErrAlert(r))
     }
-    result = result.concat(warningsErrAlerts(r))
+    if (warningsErrAlerts(r).length > 0){
+        result = result.concat(warningsErrAlerts(r))
+    }
     return result
 }
 
+// The following functions are based on the current type of errors that we showed in "AlertPane.tsx"
+// that classifies the different errors, the following functions create the alerts based on their types, since
+// they displayed different messages
 function podStatusErrAlert(resource: Resource): Alert{
     let podStatus = resource.ResourceInfo.PodStatus
     let podStatusMessage = resource.ResourceInfo.PodStatusMessage
@@ -91,12 +101,12 @@ function warningsErrAlerts (resource: Resource) : Array<Alert>{
     if (resource.BuildHistory.length > 0) {
          warnings = resource.BuildHistory[0].Warnings
     }
-    warnings.forEach(w => {
-        alertArray.push({alertType: WarningErrorType, titleMsg: resource.Name,  msg: w, timestamp: resource.BuildHistory[0].FinishTime})
-    })
+    if (warnings.length > 0){
+        warnings.forEach(w => {
+            alertArray.push({alertType: WarningErrorType, titleMsg: resource.Name,  msg: w, timestamp: resource.BuildHistory[0].FinishTime})
+        })
+    }
     return alertArray
 
 }
-
-
-export {getAlertsResource,numberOfAlerts}
+export {getAlertsResource,numberOfAlerts,podStatusErrAlert,warningsErrAlerts,buildFailedErrAlert,crashRebuildErrAlert,podRestartErrAlert}

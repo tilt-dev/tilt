@@ -37,7 +37,7 @@ class SidebarItem {
     this.lastDeployTime = res.LastDeployTime
     this.pendingBuildSince = res.PendingBuildSince
     this.currentBuildStartTime = res.CurrentBuild.StartTime
-    this.alertCount = numberOfAlerts(res)
+    this.alertCount = numberOfAlerts(res) 
     this.triggerMode = res.TriggerMode
     this.hasPendingChanges = res.HasPendingChanges
     let buildHistory = res.BuildHistory || []
