@@ -36,6 +36,8 @@ func NewTiltAnalytics(opt analytics.Opt, opter AnalyticsOpter, analytics analyti
 	return &TiltAnalytics{opt, opter, analytics, tiltVersion}
 }
 
+// NOTE: if you need a ctx as well, use testutils.CtxAndAnalyticsForTest so that you get
+// a ctx with the correct analytics baked in.
 func NewMemoryTiltAnalyticsForTest(opter AnalyticsOpter) (*analytics.MemoryAnalytics, *TiltAnalytics) {
 	ma := analytics.NewMemoryAnalytics()
 	return ma, NewTiltAnalytics(analytics.OptIn, opter, ma, "v0.0.0")

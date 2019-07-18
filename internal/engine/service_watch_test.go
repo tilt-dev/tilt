@@ -11,10 +11,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/windmilleng/tilt/internal/testutils"
+
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
 func TestServiceWatch(t *testing.T) {
@@ -83,7 +84,7 @@ type swFixture struct {
 func newSWFixture(t *testing.T) *swFixture {
 	kClient := k8s.NewFakeK8sClient()
 
-	ctx := output.CtxForTest()
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
 
 	nip := k8s.NodeIP("fakeip")

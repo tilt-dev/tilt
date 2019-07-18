@@ -7,11 +7,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/testutils"
+
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 )
 
@@ -72,7 +73,8 @@ type downFixture struct {
 }
 
 func newDownFixture(t *testing.T) downFixture {
-	ctx, cancel := context.WithCancel(output.CtxForTest())
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
+	ctx, cancel := context.WithCancel(ctx)
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	kCli := k8s.NewFakeK8sClient()

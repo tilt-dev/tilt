@@ -6,8 +6,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/testutils"
+
 	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
 // ParseConfig must return services topologically sorted wrt dependencies.
@@ -129,7 +130,7 @@ type dcFixture struct {
 }
 
 func newDCFixture(t *testing.T) dcFixture {
-	ctx := output.CtxForTest()
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	dcCli := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	return dcFixture{
 		t:     t,

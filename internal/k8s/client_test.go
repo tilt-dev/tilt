@@ -15,10 +15,11 @@ import (
 	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
 
+	"github.com/windmilleng/tilt/internal/testutils"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
 func TestEmptyNamespace(t *testing.T) {
@@ -166,7 +167,8 @@ type clientTestFixture struct {
 func newClientTestFixture(t *testing.T) *clientTestFixture {
 	ret := &clientTestFixture{}
 	ret.t = t
-	ret.ctx = output.CtxForTest()
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
+	ret.ctx = ctx
 	ret.runner = &fakeKubectlRunner{}
 
 	tracker := ktesting.NewObjectTracker(scheme.Scheme, scheme.Codecs.UniversalDecoder())

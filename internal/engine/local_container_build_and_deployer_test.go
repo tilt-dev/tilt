@@ -14,7 +14,6 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
@@ -134,10 +133,11 @@ type lcbadFixture struct {
 func newFixture(t testing.TB) *lcbadFixture {
 	fakeContainerUpdater := &containerupdate.FakeContainerUpdater{}
 	lcbad := NewLocalContainerBuildAndDeployer(fakeContainerUpdater, k8s.EnvDockerDesktop)
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	return &lcbadFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,
-		ctx:            output.CtxForTest(),
+		ctx:            ctx,
 		cu:             fakeContainerUpdater,
 		lcbad:          lcbad,
 	}
