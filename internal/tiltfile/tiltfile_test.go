@@ -3717,7 +3717,7 @@ func newFixture(t *testing.T) *fixture {
 	out := new(bytes.Buffer)
 	ctx := testutils.ForkedCtxForTest(out)
 	f := tempdir.NewTempDirFixture(t)
-	ctx, an, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(ctx, tiltanalytics.NullOpter{})
+	an, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
 	dcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
 	kCli := k8s.NewFakeK8sClient()
 	features := feature.Defaults{

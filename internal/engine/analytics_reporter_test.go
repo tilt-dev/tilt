@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -110,7 +109,7 @@ type analyticsReporterTestFixture struct {
 
 func newAnalyticsReporterTestFixture() *analyticsReporterTestFixture {
 	st, _ := store.NewStoreForTesting()
-	_, ma, a := tiltanalytics.NewMemoryTiltAnalyticsForTest(context.Background(), tiltanalytics.NullOpter{})
+	ma, a := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
 	ar := AnalyticsReporter{
 		a:       a,
 		store:   st,
