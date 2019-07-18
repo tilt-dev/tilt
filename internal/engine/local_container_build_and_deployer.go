@@ -2,9 +2,13 @@ package engine
 
 import (
 	"context"
+	"io"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tilt/internal/analytics"
+	"github.com/windmilleng/tilt/internal/containerupdate"
 
 	"github.com/opentracing/opentracing-go"
 
@@ -19,17 +23,14 @@ import (
 var _ BuildAndDeployer = &LocalContainerBuildAndDeployer{}
 
 type LocalContainerBuildAndDeployer struct {
-	cu        *build.ContainerUpdater
-	analytics *analytics.TiltAnalytics
-	env       k8s.Env
+	cu  containerupdate.ContainerUpdater
+	env k8s.Env
 }
 
-func NewLocalContainerBuildAndDeployer(cu *build.ContainerUpdater,
-	analytics *analytics.TiltAnalytics, env k8s.Env) *LocalContainerBuildAndDeployer {
+func NewLocalContainerBuildAndDeployer(cu containerupdate.ContainerUpdater, env k8s.Env) *LocalContainerBuildAndDeployer {
 	return &LocalContainerBuildAndDeployer{
-		cu:        cu,
-		analytics: analytics,
-		env:       env,
+		cu:  cu,
+		env: env,
 	}
 }
 
@@ -61,7 +62,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 
 	startTime := time.Now()
 	defer func() {
-		cbd.analytics.Timer("build.container", time.Since(startTime), nil)
+		analytics.Get(ctx).Timer("build.container", time.Since(startTime), nil)
 	}()
 
 	// LocalContainerBuildAndDeployer doesn't support initial build
@@ -115,17 +116,50 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 }
 
 func (cbd *LocalContainerBuildAndDeployer) buildAndDeploy(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) error {
+	l := logger.Get(ctx)
+	l.Infof("  → Updating container…")
+
 	deployInfo := state.DeployInfo
-	logger.Get(ctx).Infof("  → Updating container…")
+	filter := ignore.CreateBuildContextFilter(iTarget)
 	boiledSteps, err := build.BoilRuns(runs, changedFiles)
 	if err != nil {
 		return err
 	}
 
-	// TODO - use PipelineState here when we actually do pipeline output for container builds
-	writer := logger.Get(ctx).Writer(logger.InfoLvl)
+	// rm files from container
+	toRemove, toArchive, err := build.MissingLocalPaths(ctx, changedFiles)
+	if err != nil {
+		return errors.Wrap(err, "MissingLocalPaths")
+	}
 
-	err = cbd.cu.UpdateInContainer(ctx, deployInfo.ContainerID, changedFiles, ignore.CreateBuildContextFilter(iTarget), boiledSteps, hotReload, writer)
+	if len(toRemove) > 0 {
+		l.Infof("Will delete %d file(s) from container: %s", len(toRemove), deployInfo.ContainerID.ShortStr())
+		for _, pm := range toRemove {
+			l.Infof("- '%s' (matched local path: '%s')", pm.ContainerPath, pm.LocalPath)
+		}
+	}
+
+	// copy files to container
+	pr, pw := io.Pipe()
+	go func() {
+		ab := build.NewArchiveBuilder(pw, filter)
+		err = ab.ArchivePathsIfExist(ctx, toArchive)
+		if err != nil {
+			_ = pw.CloseWithError(errors.Wrap(err, "archivePathsIfExists"))
+		} else {
+			_ = ab.Close()
+			_ = pw.Close()
+		}
+	}()
+
+	if len(toArchive) > 0 {
+		l.Infof("Will copy %d file(s) to container: %s", len(toArchive), deployInfo.ContainerID.ShortStr())
+		for _, pm := range toArchive {
+			l.Infof("- %s", pm.PrettyStr())
+		}
+	}
+
+	err = cbd.cu.UpdateContainer(ctx, deployInfo, pr, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 	if err != nil {
 		if build.IsUserBuildFailure(err) {
 			return WrapDontFallBackError(err)

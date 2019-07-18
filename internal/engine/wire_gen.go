@@ -13,6 +13,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/containerupdate"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/dockerfile"
@@ -32,8 +33,8 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 		return nil, err
 	}
 	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(syncletManager, kClient, engineUpdateMode)
-	containerUpdater := build.NewContainerUpdater(docker2)
-	localContainerBuildAndDeployer := NewLocalContainerBuildAndDeployer(containerUpdater, analytics2, env)
+	containerUpdater := containerupdate.NewDockerContainerUpdater(docker2)
+	localContainerBuildAndDeployer := NewLocalContainerBuildAndDeployer(containerUpdater, env)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
@@ -111,7 +112,7 @@ var (
 
 // wire.go:
 
-var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), minikube.ProvideMinikubeClient, build.DefaultImageBuilder, build.NewCacheBuilder, build.NewDockerImageBuilder, build.NewExecCustomBuilder, wire.Bind(new(build.CustomBuilder), new(build.ExecCustomBuilder)), NewImageBuildAndDeployer, build.NewContainerUpdater, NewSyncletBuildAndDeployer,
+var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), minikube.ProvideMinikubeClient, build.DefaultImageBuilder, build.NewCacheBuilder, build.NewDockerImageBuilder, build.NewExecCustomBuilder, wire.Bind(new(build.CustomBuilder), new(build.ExecCustomBuilder)), NewImageBuildAndDeployer, containerupdate.NewDockerContainerUpdater, NewSyncletBuildAndDeployer,
 	NewLocalContainerBuildAndDeployer,
 	NewDockerComposeBuildAndDeployer,
 	NewImageAndCacheBuilder,

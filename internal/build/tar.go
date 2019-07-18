@@ -78,7 +78,7 @@ func (a *ArchiveBuilder) ArchivePathsIfExist(ctx context.Context, paths []PathMa
 	// 2) de-dupe them, with last-one-wins semantics
 	// 3) write all the entries
 	//
-	// It's not obvious that this is the correct behavor. A better approach
+	// It's not obvious that this is the correct behavior. A better approach
 	// (that's more in-line with how syncs work) might ignore files in earlier
 	// path mappings when we know they're going to be "synced" over.
 	// There's a bunch of subtle product decisions about how overlapping path
