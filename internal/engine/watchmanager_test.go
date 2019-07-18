@@ -135,7 +135,9 @@ func newWMFixture(t *testing.T) *wmFixture {
 	fakeMultiWatcher := newFakeMultiWatcher()
 	wm := NewWatchManager(fakeMultiWatcher.newSub, timerMaker.maker())
 
-	ctx, cancel := context.WithCancel(testutils.CtxForTest())
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
+	ctx, cancel := context.WithCancel(ctx)
+
 	go func() {
 		err := st.Loop(ctx)
 		if err != nil && err != context.Canceled {

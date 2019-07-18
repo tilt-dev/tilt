@@ -222,7 +222,7 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T) *fixture {
-	ctx := testutils.CtxForTest()
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 
 	return &fixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),

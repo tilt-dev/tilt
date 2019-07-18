@@ -64,7 +64,7 @@ type fakeCustomBuildFixture struct {
 }
 
 func newFakeCustomBuildFixture(t *testing.T) *fakeCustomBuildFixture {
-	ctx := testutils.CtxForTest()
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	dCli := docker.NewFakeClient()
 	clock := fakeClock{
 		now: time.Unix(1551202573, 0),

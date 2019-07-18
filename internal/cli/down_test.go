@@ -73,7 +73,8 @@ type downFixture struct {
 }
 
 func newDownFixture(t *testing.T) downFixture {
-	ctx, cancel := context.WithCancel(testutils.CtxForTest())
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
+	ctx, cancel := context.WithCancel(ctx)
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	kCli := k8s.NewFakeK8sClient()

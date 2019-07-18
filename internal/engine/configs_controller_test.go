@@ -87,7 +87,7 @@ func newCCFixture(t *testing.T) *ccFixture {
 	cc := NewConfigsController(tfl, docker.NewFakeClient())
 	fc := testutils.NewRandomFakeClock()
 	cc.clock = fc.Clock()
-	ctx := testutils.CtxForTest()
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	st.AddSubscriber(ctx, cc)
 	go st.Loop(ctx)
 	return &ccFixture{

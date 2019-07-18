@@ -194,7 +194,8 @@ func newWatchTestFixture(t *testing.T) *watchTestFixture {
 
 	c := fake.NewSimpleClientset()
 
-	ret.ctx, ret.cancel = context.WithCancel(testutils.CtxForTest())
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
+	ret.ctx, ret.cancel = context.WithCancel(ctx)
 
 	ret.w = watch.NewFakeWithChanSize(10, false)
 

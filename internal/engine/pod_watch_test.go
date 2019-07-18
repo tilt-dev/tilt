@@ -195,7 +195,7 @@ func (pw *pwFixture) reducer(ctx context.Context, state *store.EngineState, acti
 func newPWFixture(t *testing.T) *pwFixture {
 	kClient := k8s.NewFakeK8sClient()
 
-	ctx := testutils.CtxForTest()
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
 
 	ret := &pwFixture{

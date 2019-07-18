@@ -14,7 +14,7 @@ import (
 )
 
 func TestWebsocketCloseOnReadErr(t *testing.T) {
-	ctx := testutils.CtxForTest()
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	st, _ := store.NewStoreForTesting()
 	st.SetUpSubscribersForTesting(ctx)
 
@@ -40,7 +40,7 @@ func TestWebsocketCloseOnReadErr(t *testing.T) {
 }
 
 func TestWebsocketReadErrDuringMsg(t *testing.T) {
-	ctx := testutils.CtxForTest()
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	st, _ := store.NewStoreForTesting()
 	st.SetUpSubscribersForTesting(ctx)
 

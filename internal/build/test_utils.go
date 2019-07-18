@@ -48,7 +48,7 @@ type fakeClock struct {
 func (c fakeClock) Now() time.Time { return c.now }
 
 func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
-	ctx := testutils.CtxForTest()
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	env := k8s.EnvGKE
 
 	dEnv, err := docker.ProvideClusterEnv(ctx, env, wmcontainer.RuntimeDocker, minikube.FakeClient{})
@@ -79,7 +79,7 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 }
 
 func newFakeDockerBuildFixture(t testing.TB) *dockerBuildFixture {
-	ctx := testutils.CtxForTest()
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	dCli := docker.NewFakeClient()
 	labels := dockerfile.Labels(map[dockerfile.Label]dockerfile.LabelValue{
 		TestImage: "1",

@@ -118,10 +118,11 @@ func newDCUFixture(t testing.TB) *dockerContainerUpdaterFixture {
 	cu := &DockerContainerUpdater{
 		dCli: fakeCli,
 	}
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 
 	return &dockerContainerUpdaterFixture{
 		t:    t,
-		ctx:  testutils.CtxForTest(),
+		ctx:  ctx,
 		dCli: fakeCli,
 		dcu:  cu,
 	}

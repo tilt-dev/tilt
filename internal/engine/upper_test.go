@@ -27,7 +27,6 @@ import (
 
 	"github.com/windmilleng/tilt/internal/testutils"
 
-	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
@@ -2563,7 +2562,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	fakeHud := hud.NewFakeHud()
 
 	log := bufsync.NewThreadSafeBuffer()
-	ctx, cancel := context.WithCancel(testutils.ForkedCtxForTest(log))
+	ctx, _, ta := testutils.ForkedCtxAndAnalyticsForTest(log)
+	ctx, cancel := context.WithCancel(ctx)
 
 	fSub := fixtureSub{ch: make(chan bool, 1000)}
 	st := store.NewStore(UpperReducer, store.LogActionsFlag(false))
@@ -2581,7 +2581,6 @@ func newTestFixture(t *testing.T) *testFixture {
 	pfc := NewPortForwardController(k8s)
 	ic := NewImageController(reaper)
 	to := &testOpter{}
-	_, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(to)
 	tas := NewTiltAnalyticsSubscriber(ta)
 	ar := ProvideAnalyticsReporter(ta, st)
 

@@ -210,7 +210,7 @@ type targetQueueFixture struct {
 }
 
 func newTargetQueueFixture(t *testing.T) *targetQueueFixture {
-	ctx := testutils.CtxForTest()
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	return &targetQueueFixture{
 		t:       t,
 		ctx:     ctx,

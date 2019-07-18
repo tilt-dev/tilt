@@ -97,7 +97,7 @@ func newLoggingKubectlRunnerFixture() *loggingKubectlRunnerFixture {
 	}
 
 	w := &bytes.Buffer{}
-	ctx := testutils.ForkedCtxForTest(w)
+	ctx, _, _ := testutils.ForkedCtxAndAnalyticsForTest(w)
 
 	return &loggingKubectlRunnerFixture{
 		runner,

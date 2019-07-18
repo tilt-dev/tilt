@@ -130,7 +130,7 @@ type dcFixture struct {
 }
 
 func newDCFixture(t *testing.T) dcFixture {
-	ctx := testutils.CtxForTest()
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	dcCli := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	return dcFixture{
 		t:     t,

@@ -96,7 +96,8 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T) *fixture {
-	ctx, cancel := context.WithCancel(testutils.CtxForTest())
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
+	ctx, cancel := context.WithCancel(ctx)
 	u, err := url.Parse("ws://localhost:12345")
 	if err != nil {
 		t.Fatal(err)

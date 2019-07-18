@@ -11,8 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/analytics"
-
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -827,9 +825,7 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 		},
 	}
 	logs := new(bytes.Buffer)
-	_, ta := analytics.NewMemoryTiltAnalyticsForTest(analytics.NullOpter{})
-	ctx := testutils.ForkedCtxForTest(logs)
-	ctx = analytics.WithAnalytics(ctx, ta)
+	ctx, _, ta := testutils.ForkedCtxAndAnalyticsForTest(logs)
 	k8s := k8s.NewFakeK8sClient()
 	sCli := synclet.NewFakeSyncletClient()
 	mode := UpdateModeFlag(UpdateModeAuto)

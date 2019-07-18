@@ -167,7 +167,7 @@ type dcbdFixture struct {
 }
 
 func newDCBDFixture(t *testing.T) *dcbdFixture {
-	ctx := testutils.CtxForTest()
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 
 	f := tempdir.NewTempDirFixture(t)
 

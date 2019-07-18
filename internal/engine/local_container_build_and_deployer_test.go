@@ -133,10 +133,11 @@ type lcbadFixture struct {
 func newFixture(t testing.TB) *lcbadFixture {
 	fakeContainerUpdater := &containerupdate.FakeContainerUpdater{}
 	lcbad := NewLocalContainerBuildAndDeployer(fakeContainerUpdater, k8s.EnvDockerDesktop)
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	return &lcbadFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,
-		ctx:            testutils.CtxForTest(),
+		ctx:            ctx,
 		cu:             fakeContainerUpdater,
 		lcbad:          lcbad,
 	}

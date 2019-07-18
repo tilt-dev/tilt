@@ -167,7 +167,8 @@ type clientTestFixture struct {
 func newClientTestFixture(t *testing.T) *clientTestFixture {
 	ret := &clientTestFixture{}
 	ret.t = t
-	ret.ctx = testutils.CtxForTest()
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
+	ret.ctx = ctx
 	ret.runner = &fakeKubectlRunner{}
 
 	tracker := ktesting.NewObjectTracker(scheme.Scheme, scheme.Codecs.UniversalDecoder())
