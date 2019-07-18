@@ -16,12 +16,11 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
-	"github.com/windmilleng/tilt/internal/hud/server"
-
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud"
+	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
@@ -731,9 +730,9 @@ func checkForPodCrash(ctx context.Context, state *store.EngineState, ms *store.M
 	msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Name)
 	le := store.NewLogEvent(ms.Name, []byte(msg+"\n"))
 	if len(ms.BuildHistory) > 0 {
-		ms.BuildHistory[0].Log = model.AppendLog(ms.BuildHistory[0].Log, le, state.LogTimestamps, nil)
+		ms.BuildHistory[0].Log = model.AppendLog(ms.BuildHistory[0].Log, le, state.LogTimestamps, "")
 	}
-	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, le, state.LogTimestamps, nil)
+	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, le, state.LogTimestamps, "")
 	handleLogAction(state, le)
 }
 
@@ -789,7 +788,7 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 	}
 
 	podInfo := ms.PodSet.Pods[podID]
-	podInfo.CurrentLog = model.AppendLog(podInfo.CurrentLog, action, state.LogTimestamps, nil)
+	podInfo.CurrentLog = model.AppendLog(podInfo.CurrentLog, action, state.LogTimestamps, "")
 }
 
 func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
@@ -800,7 +799,7 @@ func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
 		return
 	}
 
-	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, action, state.LogTimestamps, nil)
+	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, action, state.LogTimestamps, "")
 }
 
 func handleLogAction(state *store.EngineState, action store.LogAction) {
@@ -811,12 +810,13 @@ func handleLogAction(state *store.EngineState, action store.LogAction) {
 		alreadyHasSourcePrefix = true
 	}
 
-	var allLogPrefix []byte
+	var allLogPrefix string
 	if manifestName != "" && !alreadyHasSourcePrefix {
 		allLogPrefix = sourcePrefix(manifestName)
 	}
 
 	state.Log = model.AppendLog(state.Log, action, state.LogTimestamps, allLogPrefix)
+
 	if manifestName == "" {
 		return
 	}
@@ -826,10 +826,10 @@ func handleLogAction(state *store.EngineState, action store.LogAction) {
 		// This is OK. The user could have edited the manifest recently.
 		return
 	}
-	ms.CombinedLog = model.AppendLog(ms.CombinedLog, action, state.LogTimestamps, nil)
+	ms.CombinedLog = model.AppendLog(ms.CombinedLog, action, state.LogTimestamps, "")
 }
 
-func sourcePrefix(n model.ManifestName) []byte {
+func sourcePrefix(n model.ManifestName) string {
 	max := 12
 	spaces := ""
 	if len(n) > max {
@@ -837,7 +837,7 @@ func sourcePrefix(n model.ManifestName) []byte {
 	} else {
 		spaces = strings.Repeat(" ", max-len(n))
 	}
-	return []byte(fmt.Sprintf("%s%s┊ ", n, spaces))
+	return fmt.Sprintf("%s%s┊ ", n, spaces)
 }
 
 func handleServiceEvent(ctx context.Context, state *store.EngineState, action ServiceChangeAction) {
@@ -983,12 +983,12 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 	}
 
 	dcState, _ := ms.ResourceState.(dockercompose.State)
-	ms.ResourceState = dcState.WithCurrentLog(model.AppendLog(dcState.CurrentLog, action, state.LogTimestamps, nil))
+	ms.ResourceState = dcState.WithCurrentLog(model.AppendLog(dcState.CurrentLog, action, state.LogTimestamps, ""))
 }
 
 func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action TiltfileLogAction) {
-	state.CurrentTiltfileBuild.Log = model.AppendLog(state.CurrentTiltfileBuild.Log, action, state.LogTimestamps, nil)
-	state.TiltfileCombinedLog = model.AppendLog(state.TiltfileCombinedLog, action, state.LogTimestamps, nil)
+	state.CurrentTiltfileBuild.Log = model.AppendLog(state.CurrentTiltfileBuild.Log, action, state.LogTimestamps, "")
+	state.TiltfileCombinedLog = model.AppendLog(state.TiltfileCombinedLog, action, state.LogTimestamps, "")
 }
 
 func handleAnalyticsOptAction(state *store.EngineState, action store.AnalyticsOptAction) {
