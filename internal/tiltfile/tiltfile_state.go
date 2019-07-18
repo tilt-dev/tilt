@@ -79,6 +79,8 @@ type tiltfileState struct {
 	// for error reporting in case it's called twice
 	triggerModeCallPosition syntax.Position
 
+	teamName string
+
 	logger   logger.Logger
 	warnings []string
 }
@@ -182,8 +184,9 @@ const (
 	disableFeatureN = "disable_feature"
 
 	// other functions
-	failN = "fail"
-	blobN = "blob"
+	failN    = "fail"
+	blobN    = "blob"
+	setTeamN = "set_team"
 )
 
 type triggerMode int
@@ -301,6 +304,8 @@ func (s *tiltfileState) predeclared() starlark.StringDict {
 
 	addBuiltin(r, enableFeatureN, s.enableFeature)
 	addBuiltin(r, disableFeatureN, s.disableFeature)
+
+	addBuiltin(r, setTeamN, s.setTeam)
 
 	s.predeclaredMap = r
 
@@ -1093,6 +1098,26 @@ func (s *tiltfileState) triggerModeFn(thread *starlark.Thread, fn *starlark.Buil
 
 	s.triggerMode = triggerMode
 	s.triggerModeCallPosition = thread.Caller().Position()
+
+	return starlark.None, nil
+}
+
+func (s *tiltfileState) setTeam(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var teamName string
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "team_name", &teamName)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(teamName) == 0 {
+		return nil, errors.New("team_name cannot be empty")
+	}
+
+	if s.teamName != "" {
+		return nil, fmt.Errorf("team_name set multiple times (to '%s' and '%s')", s.teamName, teamName)
+	}
+
+	s.teamName = teamName
 
 	return starlark.None, nil
 }

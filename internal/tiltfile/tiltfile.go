@@ -34,6 +34,7 @@ type TiltfileLoadResult struct {
 	Warnings           []string
 	TiltIgnoreContents string
 	FeatureFlags       map[string]bool
+	TeamName           string
 }
 
 func (r TiltfileLoadResult) Orchestrator() model.Orchestrator {
@@ -182,7 +183,14 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 		return TiltfileLoadResult{}, errors.Wrapf(err, "error reading %s", tiltIgnorePath(filename))
 	}
 
-	return TiltfileLoadResult{manifests, s.configFiles, s.warnings, string(tiltIgnoreContents), s.features.ToEnabled()}, err
+	return TiltfileLoadResult{
+		Manifests:          manifests,
+		ConfigFiles:        s.configFiles,
+		Warnings:           s.warnings,
+		TiltIgnoreContents: string(tiltIgnoreContents),
+		FeatureFlags:       s.features.ToEnabled(),
+		TeamName:           s.teamName,
+	}, err
 }
 
 // .tiltignore sits next to Tiltfile

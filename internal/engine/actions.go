@@ -157,6 +157,7 @@ type ConfigsReloadedAction struct {
 	Err        error
 	Warnings   []string
 	Features   map[string]bool
+	TeamName   string
 }
 
 func (ConfigsReloadedAction) Action() {}
