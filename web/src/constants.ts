@@ -19,7 +19,7 @@ function podStatusIsCrash(status: string) {
   return status === podStatusError || status === podStatusCrashLoopBackOff
 }
 
-function podStatusIsError(status: string) {
+function podStatusErrorFunction(status: string) {
   return (
     status === podStatusError ||
     status === podStatusCrashLoopBackOff ||
@@ -30,5 +30,5 @@ function podStatusIsError(status: string) {
   )
 }
 
-export { podStatusIsCrash, podStatusIsError }
+export { podStatusIsCrash, podStatusErrorFunction }
 

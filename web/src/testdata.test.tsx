@@ -94,6 +94,7 @@ function oneResource(): Resource {
     PodID: "",
     IsTiltfile: false,
     PathsWatched: [],
+    Alerts: []
   }
   return resource
 }
@@ -264,6 +265,7 @@ function twoResourceView(): view {
       Endpoints: [],
     },
     HasPendingChanges: false,
+    Alerts: []
   }
   return { Resources: [vigoda, snack] }
 }

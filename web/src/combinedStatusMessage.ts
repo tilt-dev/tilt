@@ -1,6 +1,6 @@
 import { isZeroTime } from "./time"
 import { StatusItem } from "./Statusbar"
-import { podStatusIsCrash, podStatusIsError } from "./constants"
+import { podStatusIsCrash, podStatusErrorFunction } from "./constants"
 
 const combinedStatusMessage = (resources: Array<StatusItem>): string => {
   let buildingResources = resources.filter(
@@ -27,7 +27,7 @@ const combinedStatusMessage = (resources: Array<StatusItem>): string => {
   }
 
   let resourcesWithInterestingPodStatuses = resources.filter(
-    r => podStatusIsError(r.podStatus) || r.podStatusMessage
+    r => podStatusErrorFunction(r.podStatus) || r.podStatusMessage
   )
   if (resourcesWithInterestingPodStatuses.length > 0) {
     let r = resourcesWithInterestingPodStatuses[0]
