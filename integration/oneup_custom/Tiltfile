@@ -1,5 +1,10 @@
 # -*- mode: Python -*-
 
+# HACK: load namespaces on `tilt up` but not on `tilt down`
+load_namespace = not str(local('echo -n $SKIP_NAMESPACE'))
+if load_namespace:
+  k8s_yaml('../namespace.yaml')
+
 custom_build(
   'gcr.io/windmill-test-containers/integration/oneup-custom',
   'docker build -t $EXPECTED_REF .',
@@ -7,4 +12,3 @@ custom_build(
  )
 k8s_yaml('oneup_custom.yaml')
 k8s_resource('oneup-custom', port_forwards=8100)
-

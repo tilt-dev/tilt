@@ -36,7 +36,6 @@ func newK8sFixture(t *testing.T, dir string) *k8sFixture {
 	td := tempdir.NewTempDirFixture(t)
 
 	kf := &k8sFixture{fixture: f, tempDir: td}
-	kf.CreateNamespaceIfNecessary()
 	kf.ClearNamespace()
 	return kf
 }
@@ -158,18 +157,6 @@ func (f *k8sFixture) ClearResource(name string) {
 	err := cmd.Run()
 	if err != nil {
 		f.t.Fatalf("Error deleting deployments: %v. Logs:\n%s", err, outWriter.String())
-	}
-}
-
-func (f *k8sFixture) CreateNamespaceIfNecessary() {
-	outWriter := bytes.NewBuffer(nil)
-	cmd := exec.CommandContext(f.ctx, "kubectl", "apply", "-f", "namespace.yaml")
-	cmd.Stdout = outWriter
-	cmd.Stderr = outWriter
-	cmd.Dir = packageDir
-	err := cmd.Run()
-	if err != nil {
-		f.t.Fatalf("Error creating namespace: %v. Logs:\n%s", err, outWriter.String())
 	}
 }
 
