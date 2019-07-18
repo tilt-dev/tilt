@@ -491,16 +491,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:7ef6a56647e5419fac38bd654351e30ba0f3ccdfd38201cac905977a0c85c700"
+  digest = "1:d6c4ec356d8412ae237d3e09c3c2a8567f4c48e56bf73be9db9af2b91c957c54"
   name = "github.com/golang/protobuf"
   packages = [
-    "jsonpb",
     "proto",
     "protoc-gen-go/descriptor",
     "ptypes",
     "ptypes/any",
     "ptypes/duration",
-    "ptypes/struct",
     "ptypes/timestamp",
     "ptypes/wrappers",
   ]
@@ -623,15 +621,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:536a21652ced4d5de20d8702e79be206b7fc29fbae8bf18d7ea524ebff905159"
+  digest = "1:59b23668305d31152e16ba0e865d0f67850820a7b11ded254ccbb30f3af997c6"
   name = "github.com/grpc-ecosystem/go-grpc-middleware"
   packages = [
     ".",
-    "logging",
-    "logging/logrus",
-    "logging/logrus/ctxlogrus",
     "tags",
-    "tags/logrus",
   ]
   pruneopts = "UT"
   revision = "cfaf5686ec79ff8344257723b6f5ba1ae0ffeb4d"
@@ -691,22 +685,6 @@
   pruneopts = "UT"
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
   version = "v1.0"
-
-[[projects]]
-  branch = "master"
-  digest = "1:0a00b2537beacde5f2f5ebec11684f8e98fb23c2ed798a948461d82356dc7491"
-  name = "github.com/jinzhu/gorm"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "b7156195f7f3415f97c20abbd6aff894b847fee8"
-
-[[projects]]
-  branch = "master"
-  digest = "1:fd97437fbb6b7dce04132cf06775bd258cce305c44add58eb55ca86c6c325160"
-  name = "github.com/jinzhu/inflection"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "04140366298a54a039076d798123ffa108fff46c"
 
 [[projects]]
   digest = "1:75ab90ae3f5d876167e60f493beadfe66f0ed861a710f283fb06c86437a09538"
@@ -1138,19 +1116,6 @@
   pruneopts = "UT"
   revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
   version = "v1.4.7"
-
-[[projects]]
-  branch = "master"
-  digest = "1:2db8022071f959b0d03a13c9450ad414b6a4a2095189fc6ac2f6635df62a82c4"
-  name = "github.com/windmilleng/windmill"
-  packages = [
-    "logging",
-    "server/wmservice",
-    "stats",
-    "stats/server",
-  ]
-  pruneopts = "UT"
-  revision = "dd0f29d6215432eb4cbcec7ceb752abb8ada319b"
 
 [[projects]]
   branch = "master"
@@ -1817,8 +1782,6 @@
     "github.com/whilp/git-urls",
     "github.com/windmilleng/fsevents",
     "github.com/windmilleng/fsnotify",
-    "github.com/windmilleng/windmill/stats",
-    "github.com/windmilleng/windmill/stats/server",
     "github.com/windmilleng/wmclient/pkg/analytics",
     "github.com/windmilleng/wmclient/pkg/dirs",
     "github.com/windmilleng/wmclient/pkg/os/temp",

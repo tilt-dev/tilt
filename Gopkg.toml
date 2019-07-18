@@ -75,8 +75,4 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/windmilleng/windmill"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/gdamore/tcell"
