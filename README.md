@@ -58,7 +58,7 @@ We expect everyone in our community (users, contributors, followers, and employe
 To make changes to Tilt, read the [developer guide](DEVELOPING.md).
 
 For bugs and feature requests, file an [issue](https://github.com/windmilleng/tilt/issues)
-or check out the [feature roadmap](ROADMAP.md).
+or check out the [feature roadmap](https://github.com/orgs/windmilleng/projects/3).
 
 ## Telemetry and Privacy
 We're a small company trying to make Tilt awesomer. We can do this better if we understand which features people are using and which bugs people are running into. You can enable sending telemetry data to https://events.windmill.build in the UI or by running `tilt analytics opt in`. It really helps us!
