@@ -22,6 +22,11 @@ type UpdateContainerCall struct {
 	HotReload  bool
 }
 
+func (cu *FakeContainerUpdater) CanUpdateSpecs(specs []model.TargetSpec) (canUpd bool, msg string, silent bool) {
+	// TODO(maia): implement
+	return true, "", false
+}
+
 func (cu *FakeContainerUpdater) UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,
 	archiveToCopy io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
 	cu.Calls = append(cu.Calls, UpdateContainerCall{

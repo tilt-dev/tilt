@@ -25,6 +25,11 @@ func NewExecUpdater(kCli k8s.Client) ContainerUpdater {
 	return &ExecUpdater{kCli: kCli}
 }
 
+func (cu *ExecUpdater) CanUpdateSpecs(specs []model.TargetSpec) (canUpd bool, msg string, silent bool) {
+	// TODO(maia): implement
+	return true, "", false
+}
+
 func (cu *ExecUpdater) UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,
 	archiveToCopy io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ExecUpdater-UpdateContainer")

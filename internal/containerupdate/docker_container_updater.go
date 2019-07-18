@@ -26,6 +26,16 @@ func NewDockerContainerUpdater(dCli docker.Client) ContainerUpdater {
 	return &DockerContainerUpdater{dCli: dCli}
 }
 
+func (cu *DockerContainerUpdater) CanUpdateSpecs(specs []model.TargetSpec) (canUpd bool, msg string, silent bool) {
+	isDC := len(model.ExtractDockerComposeTargets(specs)) > 0
+	isK8s := len(model.ExtractK8sTargets(specs)) > 0
+	canLocalUpdate := isDC || isK8s
+	if !canLocalUpdate {
+		return false, "Local container builder needs docker-compose or k8s cluster w/ local updates", true
+	}
+	return true, "", false
+}
+
 func (cu *DockerContainerUpdater) UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,
 	archiveToCopy io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
 	l := logger.Get(ctx)

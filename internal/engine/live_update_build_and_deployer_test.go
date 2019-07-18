@@ -10,7 +10,6 @@ import (
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/containerupdate"
 	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils"
@@ -26,6 +25,11 @@ var TestDeployInfo = store.DeployInfo{
 }
 
 var TestBuildState = store.BuildState{DeployInfo: TestDeployInfo}
+
+func TestCanUpdateSpecsSurfacesErrorsCorrectly(t *testing.T) {
+	// when silent error and when not, etc.
+	t.Fatal("not implemented")
+}
 
 func TestBuildAndDeployBoilsSteps(t *testing.T) {
 	f := newFixture(t)
@@ -128,12 +132,12 @@ type lcbadFixture struct {
 	t     testing.TB
 	ctx   context.Context
 	cu    *containerupdate.FakeContainerUpdater
-	lcbad *LocalContainerBuildAndDeployer
+	lcbad *LiveUpdateBuildAndDeployer
 }
 
 func newFixture(t testing.TB) *lcbadFixture {
 	fakeContainerUpdater := &containerupdate.FakeContainerUpdater{}
-	lcbad := NewLocalContainerBuildAndDeployer(fakeContainerUpdater, k8s.EnvDockerDesktop)
+	lcbad := NewLiveUpdateBuildAndDeployer(fakeContainerUpdater)
 	return &lcbadFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,

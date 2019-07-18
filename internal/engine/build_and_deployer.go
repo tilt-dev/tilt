@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/store"
 
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 )
@@ -87,34 +85,18 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 	return store.BuildResultSet{}, lastErr
 }
 
-func DefaultBuildOrder(sbad *SyncletBuildAndDeployer, cbad *LocalContainerBuildAndDeployer, ibad *ImageBuildAndDeployer, dcbad *DockerComposeBuildAndDeployer, env k8s.Env, updMode UpdateMode, runtime container.Runtime) BuildOrder {
-
+func DefaultBuildOrder(lubad *LiveUpdateBuildAndDeployer, ibad *ImageBuildAndDeployer, dcbad *DockerComposeBuildAndDeployer, updMode UpdateMode) BuildOrder {
 	if updMode == UpdateModeImage || updMode == UpdateModeNaive {
 		return BuildOrder{dcbad, ibad}
 	}
 
-	if updMode == UpdateModeKubectlExec {
-		return BuildOrder{sbad, dcbad, ibad}
+	if updMode == UpdateModeKubectlExec || updMode == UpdateModeContainer {
+		return BuildOrder{lubad, dcbad, ibad}
 	}
 
-	if updMode == UpdateModeContainer {
-		return BuildOrder{cbad, dcbad, ibad}
-	}
-
-	if updMode == UpdateModeSynclet {
-		if runtime == container.RuntimeDocker {
-			ibad.SetInjectSynclet(true)
-		}
-		return BuildOrder{sbad, dcbad, ibad}
-	}
-
-	if env.IsLocalCluster() && runtime == container.RuntimeDocker {
-		return BuildOrder{cbad, dcbad, ibad}
-	}
-
-	if runtime == container.RuntimeDocker {
+	if lubad.IsSyncletUpdater() {
 		ibad.SetInjectSynclet(true)
 	}
 
-	return BuildOrder{sbad, cbad, dcbad, ibad}
+	return BuildOrder{lubad, dcbad, ibad}
 }

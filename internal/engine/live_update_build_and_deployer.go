@@ -14,27 +14,29 @@ import (
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/ignore"
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 )
 
-var _ BuildAndDeployer = &LocalContainerBuildAndDeployer{}
+var _ BuildAndDeployer = &LiveUpdateBuildAndDeployer{}
 
-type LocalContainerBuildAndDeployer struct {
-	cu  containerupdate.ContainerUpdater
-	env k8s.Env
+type LiveUpdateBuildAndDeployer struct {
+	cu containerupdate.ContainerUpdater
 }
 
-func NewLocalContainerBuildAndDeployer(cu containerupdate.ContainerUpdater, env k8s.Env) *LocalContainerBuildAndDeployer {
-	return &LocalContainerBuildAndDeployer{
-		cu:  cu,
-		env: env,
+func NewLiveUpdateBuildAndDeployer(cu containerupdate.ContainerUpdater) *LiveUpdateBuildAndDeployer {
+	return &LiveUpdateBuildAndDeployer{
+		cu: cu,
 	}
 }
 
-func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
+func (lubad *LiveUpdateBuildAndDeployer) IsSyncletUpdater() bool {
+	_, ok := lubad.cu.(*containerupdate.SyncletUpdater)
+	return ok
+}
+
+func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
 	liveUpdateStateSet, err := extractImageTargetsForLiveUpdates(specs, stateSet)
 	if err != nil {
 		return store.BuildResultSet{}, err
@@ -44,11 +46,12 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("Local container builder needs exactly one image target")
 	}
 
-	isDC := len(model.ExtractDockerComposeTargets(specs)) > 0
-	isK8s := len(model.ExtractK8sTargets(specs)) > 0
-	canLocalUpdate := isDC || (isK8s && cbd.env.IsLocalCluster())
-	if !canLocalUpdate {
-		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("Local container builder needs docker-compose or k8s cluster w/ local updates")
+	canUpdate, msg, silent := lubad.cu.CanUpdateSpecs(specs)
+	if !canUpdate {
+		if silent {
+			return store.BuildResultSet{}, SilentRedirectToNextBuilderf(msg)
+		}
+		return store.BuildResultSet{}, RedirectToNextBuilderInfof(msg)
 	}
 
 	liveUpdateState := liveUpdateStateSet[0]
@@ -56,7 +59,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 	state := liveUpdateState.iTargetState
 	filesChanged := liveUpdateState.filesChanged
 
-	span, ctx := opentracing.StartSpanFromContext(ctx, "LocalContainerBuildAndDeployer-BuildAndDeploy")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "LiveUpdateBuildAndDeployer-BuildAndDeploy")
 	span.SetTag("target", iTarget.ConfigurationRef.String())
 	defer span.Finish()
 
@@ -65,7 +68,7 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		analytics.Get(ctx).Timer("build.container", time.Since(startTime), nil)
 	}()
 
-	// LocalContainerBuildAndDeployer doesn't support initial build
+	// LiveUpdateBuildAndDeployer doesn't support initial build
 	if state.IsEmpty() {
 		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("prev. build state is empty; container build does not support initial deploy")
 	}
@@ -108,14 +111,14 @@ func (cbd *LocalContainerBuildAndDeployer) BuildAndDeploy(ctx context.Context, s
 		hotReload = !luInfo.ShouldRestart()
 	}
 
-	err = cbd.buildAndDeploy(ctx, iTarget, state, changedFiles, runs, hotReload)
+	err = lubad.buildAndDeploy(ctx, iTarget, state, changedFiles, runs, hotReload)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
 	return liveUpdateState.createResultSet(), nil
 }
 
-func (cbd *LocalContainerBuildAndDeployer) buildAndDeploy(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) error {
+func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) error {
 	l := logger.Get(ctx)
 	l.Infof("  → Updating container…")
 
@@ -159,7 +162,7 @@ func (cbd *LocalContainerBuildAndDeployer) buildAndDeploy(ctx context.Context, i
 		}
 	}
 
-	err = cbd.cu.UpdateContainer(ctx, deployInfo, pr, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
+	err = lubad.cu.UpdateContainer(ctx, deployInfo, pr, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 	if err != nil {
 		if build.IsUserBuildFailure(err) {
 			return WrapDontFallBackError(err)

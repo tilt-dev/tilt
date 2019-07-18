@@ -36,9 +36,9 @@ var DeployerBaseWireSet = wire.NewSet(
 
 	// BuildOrder
 	NewImageBuildAndDeployer,
-	containerupdate.NewDockerContainerUpdater, // in case it's a LocalContainerBuildAndDeployer
+	containerupdate.NewDockerContainerUpdater, // in case it's a LiveUpdateBuildAndDeployer
 	NewSyncletBuildAndDeployer,
-	NewLocalContainerBuildAndDeployer,
+	NewLiveUpdateBuildAndDeployer,
 	NewDockerComposeBuildAndDeployer,
 	NewImageAndCacheBuilder,
 	DefaultBuildOrder,

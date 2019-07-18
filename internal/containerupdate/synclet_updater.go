@@ -22,6 +22,11 @@ func NewSyncletUpdater(sm SyncletManager) ContainerUpdater {
 	return &SyncletUpdater{sm: sm}
 }
 
+func (cu *SyncletUpdater) CanUpdateSpecs(specs []model.TargetSpec) (canUpd bool, msg string, silent bool) {
+	// TODO(maia): implement
+	return true, "", false
+}
+
 func (cu *SyncletUpdater) UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,
 	archiveToCopy io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletUpdater-UpdateContainer")

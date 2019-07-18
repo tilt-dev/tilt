@@ -23,6 +23,10 @@ var TestDeployInfo = store.DeployInfo{
 	Namespace:     "ns-foo",
 }
 
+func TestCanUpdateSpecs(t *testing.T) {
+	t.Fatal("not implemented")
+}
+
 func TestUpdateInContainerCopiesAndRmsFiles(t *testing.T) {
 	f := newDCUFixture(t)
 
