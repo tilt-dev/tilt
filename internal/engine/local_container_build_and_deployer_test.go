@@ -84,9 +84,9 @@ func TestUpdateInContainerArchivesFilesToCopyAndGetsFilesToRemove(t *testing.T) 
 	assert.Equal(t, expectedToDelete, call.ToDelete)
 
 	expected := []expectedFile{
-		expectFile("/src/hi", "hello"),
-		expectFile("/src/planets/earth", "world"),
-		expectMissing("/src/does-not-exist"),
+		expectFile("src/hi", "hello"),
+		expectFile("src/planets/earth", "world"),
+		expectMissing("src/does-not-exist"),
 	}
 	testutils.AssertFilesInTar(f.t, tar.NewReader(call.Archive), expected)
 }
