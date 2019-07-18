@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/internal/testutils/output"
+	"github.com/windmilleng/tilt/internal/testutils"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
@@ -195,7 +195,7 @@ func (pw *pwFixture) reducer(ctx context.Context, state *store.EngineState, acti
 func newPWFixture(t *testing.T) *pwFixture {
 	kClient := k8s.NewFakeK8sClient()
 
-	ctx := output.CtxForTest()
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
 
 	ret := &pwFixture{

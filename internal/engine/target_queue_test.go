@@ -8,10 +8,11 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/testutils"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
 func TestTargetQueue_Simple(t *testing.T) {
@@ -209,7 +210,7 @@ type targetQueueFixture struct {
 }
 
 func newTargetQueueFixture(t *testing.T) *targetQueueFixture {
-	ctx := output.CtxForTest()
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	return &targetQueueFixture{
 		t:       t,
 		ctx:     ctx,

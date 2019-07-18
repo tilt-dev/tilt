@@ -9,9 +9,10 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/testutils"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
 func TestCustomBuildSuccess(t *testing.T) {
@@ -63,7 +64,7 @@ type fakeCustomBuildFixture struct {
 }
 
 func newFakeCustomBuildFixture(t *testing.T) *fakeCustomBuildFixture {
-	ctx := output.CtxForTest()
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	dCli := docker.NewFakeClient()
 	clock := fakeClock{
 		now: time.Unix(1551202573, 0),

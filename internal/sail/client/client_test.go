@@ -10,11 +10,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/testutils"
+
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
 const (
@@ -95,7 +96,8 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T) *fixture {
-	ctx, cancel := context.WithCancel(output.CtxForTest())
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
+	ctx, cancel := context.WithCancel(ctx)
 	u, err := url.Parse("ws://localhost:12345")
 	if err != nil {
 		t.Fatal(err)

@@ -17,7 +17,6 @@ import (
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -25,7 +24,6 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
@@ -628,11 +626,10 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 	f := tempdir.NewTempDirFixture(t)
 	dir := dirs.NewWindmillDirAt(f.Path())
 	docker := docker.NewFakeClient()
-	ctx := output.CtxForTest()
+	ctx, _, ta := testutils.CtxAndAnalyticsForTest()
 	kClient := k8s.NewFakeK8sClient()
 	kp := &fakeKINDPusher{}
 	clock := fakeClock{time.Date(2019, 1, 1, 1, 1, 1, 1, time.UTC)}
-	_, ta := analytics.NewMemoryTiltAnalyticsForTest(analytics.NullOpter{})
 	ibd, err := provideImageBuildAndDeployer(ctx, docker, kClient, env, dir, clock, kp, ta)
 	if err != nil {
 		t.Fatal(err)

@@ -18,8 +18,9 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
 
+	"github.com/windmilleng/tilt/internal/testutils"
+
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
 func TestK8sClient_WatchPods(t *testing.T) {
@@ -193,7 +194,8 @@ func newWatchTestFixture(t *testing.T) *watchTestFixture {
 
 	c := fake.NewSimpleClientset()
 
-	ret.ctx, ret.cancel = context.WithCancel(output.CtxForTest())
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
+	ret.ctx, ret.cancel = context.WithCancel(ctx)
 
 	ret.w = watch.NewFakeWithChanSize(10, false)
 

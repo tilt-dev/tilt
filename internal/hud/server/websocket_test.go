@@ -8,12 +8,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/testutils"
+
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
 func TestWebsocketCloseOnReadErr(t *testing.T) {
-	ctx := output.CtxForTest()
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	st, _ := store.NewStoreForTesting()
 	st.SetUpSubscribersForTesting(ctx)
 
@@ -39,7 +40,7 @@ func TestWebsocketCloseOnReadErr(t *testing.T) {
 }
 
 func TestWebsocketReadErrDuringMsg(t *testing.T) {
-	ctx := output.CtxForTest()
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	st, _ := store.NewStoreForTesting()
 	st.SetUpSubscribersForTesting(ctx)
 

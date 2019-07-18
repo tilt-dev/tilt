@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/internal/testutils/output"
+	"github.com/windmilleng/tilt/internal/testutils"
 )
 
 func TestLoggingKubectlRunnerNoStdin(t *testing.T) {
@@ -97,7 +97,7 @@ func newLoggingKubectlRunnerFixture() *loggingKubectlRunnerFixture {
 	}
 
 	w := &bytes.Buffer{}
-	ctx := output.ForkedCtxForTest(w)
+	ctx, _, _ := testutils.ForkedCtxAndAnalyticsForTest(w)
 
 	return &loggingKubectlRunnerFixture{
 		runner,

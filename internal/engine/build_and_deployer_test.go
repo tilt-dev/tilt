@@ -11,8 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/analytics"
-	mode2 "github.com/windmilleng/tilt/internal/mode"
+	"github.com/windmilleng/tilt/internal/mode"
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
@@ -32,7 +31,6 @@ import (
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
@@ -829,12 +827,10 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 		},
 	}
 	logs := new(bytes.Buffer)
-	_, ta := analytics.NewMemoryTiltAnalyticsForTest(analytics.NullOpter{})
-	ctx := output.ForkedCtxForTest(logs)
-	ctx = analytics.WithAnalytics(ctx, ta)
+	ctx, _, ta := testutils.ForkedCtxAndAnalyticsForTest(logs)
 	k8s := k8s.NewFakeK8sClient()
 	sCli := synclet.NewFakeSyncletClient()
-	mode := mode2.UpdateModeFlag(mode2.UpdateModeAuto)
+	mode := mode.UpdateModeFlag(mode.UpdateModeAuto)
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	kp := &fakeKINDPusher{}
 	bd, err := provideBuildAndDeployer(ctx, docker, k8s, dir, env, mode, sCli, dcc, fakeClock{now: time.Unix(1551202573, 0)}, kp, ta)

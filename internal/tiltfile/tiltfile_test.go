@@ -11,6 +11,8 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 
+	"github.com/windmilleng/tilt/internal/testutils"
+
 	"github.com/windmilleng/tilt/internal/sliceutils"
 
 	"github.com/stretchr/testify/assert"
@@ -18,7 +20,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
-	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -28,7 +29,6 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/yaml"
 )
@@ -3743,9 +3743,8 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	out := new(bytes.Buffer)
-	ctx := output.ForkedCtxForTest(out)
+	ctx, ma, ta := testutils.ForkedCtxAndAnalyticsForTest(out)
 	f := tempdir.NewTempDirFixture(t)
-	an, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
 	dcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
 	kCli := k8s.NewFakeK8sClient()
 	features := feature.Defaults{
@@ -3761,7 +3760,7 @@ func newFixture(t *testing.T) *fixture {
 		out:            out,
 		t:              t,
 		TempDirFixture: f,
-		an:             an,
+		an:             ma,
 		tfl:            tfl,
 		kCli:           kCli,
 	}
