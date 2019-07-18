@@ -16,7 +16,6 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
@@ -168,7 +167,7 @@ type dcbdFixture struct {
 }
 
 func newDCBDFixture(t *testing.T) *dcbdFixture {
-	ctx := output.CtxForTest()
+	ctx := testutils.CtxForTest()
 
 	f := tempdir.NewTempDirFixture(t)
 

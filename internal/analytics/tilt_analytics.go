@@ -1,6 +1,7 @@
 package analytics
 
 import (
+	"context"
 	"time"
 
 	"github.com/windmilleng/wmclient/pkg/analytics"
@@ -36,9 +37,11 @@ func NewTiltAnalytics(opt analytics.Opt, opter AnalyticsOpter, analytics analyti
 	return &TiltAnalytics{opt, opter, analytics, tiltVersion}
 }
 
-func NewMemoryTiltAnalyticsForTest(opter AnalyticsOpter) (*analytics.MemoryAnalytics, *TiltAnalytics) {
+func NewMemoryTiltAnalyticsForTest(ctx context.Context, opter AnalyticsOpter) (context.Context, *analytics.MemoryAnalytics, *TiltAnalytics) {
 	ma := analytics.NewMemoryAnalytics()
-	return ma, NewTiltAnalytics(analytics.OptIn, opter, ma, "v0.0.0")
+	ta := NewTiltAnalytics(analytics.OptIn, opter, ma, "v0.0.0")
+	ctx = WithAnalytics(ctx, ta) // also return a ctx with this Analytics, so that this same analytics will record increments to Get(ctx).Count etc.
+	return ctx, ma, ta
 }
 
 func (ta *TiltAnalytics) Opt() analytics.Opt {

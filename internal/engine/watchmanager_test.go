@@ -10,9 +10,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/testutils"
+
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/watch"
 )
@@ -134,7 +135,7 @@ func newWMFixture(t *testing.T) *wmFixture {
 	fakeMultiWatcher := newFakeMultiWatcher()
 	wm := NewWatchManager(fakeMultiWatcher.newSub, timerMaker.maker())
 
-	ctx, cancel := context.WithCancel(output.CtxForTest())
+	ctx, cancel := context.WithCancel(testutils.CtxForTest())
 	go func() {
 		err := st.Loop(ctx)
 		if err != nil && err != context.Canceled {

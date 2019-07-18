@@ -8,12 +8,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/testutils"
+
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
 var TestDeployInfo = store.DeployInfo{
@@ -120,7 +121,7 @@ func newDCUFixture(t testing.TB) *dockerContainerUpdaterFixture {
 
 	return &dockerContainerUpdaterFixture{
 		t:    t,
-		ctx:  output.CtxForTest(),
+		ctx:  testutils.CtxForTest(),
 		dCli: fakeCli,
 		dcu:  cu,
 	}

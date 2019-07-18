@@ -1,4 +1,4 @@
-package output
+package testutils
 
 import (
 	"context"
@@ -15,17 +15,19 @@ func CtxForTest() context.Context {
 	l := logger.NewLogger(logger.DebugLvl, os.Stdout)
 	ctx := logger.WithLogger(context.Background(), l)
 
-	_, a := analytics.NewMemoryTiltAnalyticsForTest(analytics.NullOpter{})
-	ctx = analytics.WithAnalytics(ctx, a)
+	ctx, _, _ = analytics.NewMemoryTiltAnalyticsForTest(ctx, analytics.NullOpter{})
 
 	return ctx
 }
 
 // CtxForTest returns a context.Context suitable for use in tests (i.e. with
-// logger attached), and with all output being copied to `w`
+// logger & analytics attached), and with all output being copied to `w`
 func ForkedCtxForTest(w io.Writer) context.Context {
 	l := logger.NewLogger(logger.DebugLvl, os.Stdout)
 	ctx := logger.WithLogger(context.Background(), l)
 	ctx = logger.CtxWithForkedOutput(ctx, w)
+
+	ctx, _, _ = analytics.NewMemoryTiltAnalyticsForTest(ctx, analytics.NullOpter{})
+
 	return ctx
 }

@@ -11,6 +11,8 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 
+	"github.com/windmilleng/tilt/internal/testutils"
+
 	"github.com/windmilleng/tilt/internal/sliceutils"
 
 	"github.com/stretchr/testify/assert"
@@ -28,7 +30,6 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/yaml"
 )
@@ -3714,9 +3715,9 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	out := new(bytes.Buffer)
-	ctx := output.ForkedCtxForTest(out)
+	ctx := testutils.ForkedCtxForTest(out)
 	f := tempdir.NewTempDirFixture(t)
-	an, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
+	ctx, an, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(ctx, tiltanalytics.NullOpter{})
 	dcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
 	kCli := k8s.NewFakeK8sClient()
 	features := feature.Defaults{

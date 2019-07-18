@@ -13,7 +13,6 @@ import (
 	"github.com/windmilleng/tilt/internal/dockerignore"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
@@ -223,7 +222,7 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T) *fixture {
-	ctx := output.CtxForTest()
+	ctx := testutils.CtxForTest()
 
 	return &fixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),

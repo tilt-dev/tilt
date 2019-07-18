@@ -14,10 +14,11 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/windmilleng/tilt/internal/testutils"
+
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 )
 
 func TestEventWatchManager_dispatchesEvent(t *testing.T) {
@@ -212,7 +213,7 @@ type ewmFixture struct {
 func newEWMFixture(t *testing.T) *ewmFixture {
 	kClient := k8s.NewFakeK8sClient()
 
-	ctx := output.CtxForTest()
+	ctx := testutils.CtxForTest()
 	ctx, cancel := context.WithCancel(ctx)
 
 	clock := clockwork.NewFakeClock()

@@ -25,6 +25,8 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/windmilleng/tilt/internal/testutils"
+
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/build"
@@ -44,7 +46,6 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
-	testoutput "github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
@@ -2562,7 +2563,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	fakeHud := hud.NewFakeHud()
 
 	log := bufsync.NewThreadSafeBuffer()
-	ctx, cancel := context.WithCancel(testoutput.ForkedCtxForTest(log))
+	ctx, cancel := context.WithCancel(testutils.ForkedCtxForTest(log))
 
 	fSub := fixtureSub{ch: make(chan bool, 1000)}
 	st := store.NewStore(UpperReducer, store.LogActionsFlag(false))
@@ -2580,7 +2581,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	pfc := NewPortForwardController(k8s)
 	ic := NewImageController(reaper)
 	to := &testOpter{}
-	_, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(to)
+	ctx, _, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(ctx, to)
 	tas := NewTiltAnalyticsSubscriber(ta)
 	ar := ProvideAnalyticsReporter(ta, st)
 

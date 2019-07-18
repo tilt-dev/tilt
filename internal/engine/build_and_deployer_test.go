@@ -31,7 +31,6 @@ import (
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
@@ -828,15 +827,14 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 		},
 	}
 	logs := new(bytes.Buffer)
-	_, ta := analytics.NewMemoryTiltAnalyticsForTest(analytics.NullOpter{})
-	ctx := output.ForkedCtxForTest(logs)
-	ctx = analytics.WithAnalytics(ctx, ta)
+	ctx := testutils.ForkedCtxForTest(logs)
 	k8s := k8s.NewFakeK8sClient()
 	sCli := synclet.NewFakeSyncletClient()
 	mode := UpdateModeFlag(UpdateModeAuto)
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	kp := &fakeKINDPusher{}
-	bd, err := provideBuildAndDeployer(ctx, docker, k8s, dir, env, mode, sCli, dcc, fakeClock{now: time.Unix(1551202573, 0)}, kp, ta)
+	bd, err := provideBuildAndDeployer(ctx, docker, k8s, dir, env, mode, sCli, dcc,
+		fakeClock{now: time.Unix(1551202573, 0)}, kp, analytics.Get(ctx))
 	if err != nil {
 		t.Fatal(err)
 	}

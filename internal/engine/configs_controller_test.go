@@ -13,7 +13,6 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/internal/testutils/output"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 )
@@ -88,7 +87,7 @@ func newCCFixture(t *testing.T) *ccFixture {
 	cc := NewConfigsController(tfl, docker.NewFakeClient())
 	fc := testutils.NewRandomFakeClock()
 	cc.clock = fc.Clock()
-	ctx := output.CtxForTest()
+	ctx := testutils.CtxForTest()
 	st.AddSubscriber(ctx, cc)
 	go st.Loop(ctx)
 	return &ccFixture{
