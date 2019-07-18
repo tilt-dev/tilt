@@ -12,6 +12,8 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 
+	"github.com/windmilleng/tilt/internal/mode"
+
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
@@ -62,7 +64,7 @@ func NewImageBuildAndDeployer(
 	k8sClient k8s.Client,
 	env k8s.Env,
 	analytics *analytics.TiltAnalytics,
-	updMode UpdateMode,
+	updMode mode.UpdateMode,
 	c build.Clock,
 	runtime container.Runtime,
 	kp KINDPusher,

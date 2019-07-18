@@ -1,10 +1,10 @@
-package engine
+package mode
 
 import (
 	"fmt"
 
 	"github.com/windmilleng/tilt/internal/container"
-	k8s "github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/k8s"
 )
 
 type UpdateMode string

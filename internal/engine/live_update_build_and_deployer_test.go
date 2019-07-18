@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/k8s"
+
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/containerupdate"
 	"github.com/windmilleng/tilt/internal/docker"
@@ -137,7 +139,7 @@ type lcbadFixture struct {
 
 func newFixture(t testing.TB) *lcbadFixture {
 	fakeContainerUpdater := &containerupdate.FakeContainerUpdater{}
-	lcbad := NewLiveUpdateBuildAndDeployer(fakeContainerUpdater)
+	lcbad := NewLiveUpdateBuildAndDeployer(fakeContainerUpdater, k8s.EnvGKE)
 	return &lcbadFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,

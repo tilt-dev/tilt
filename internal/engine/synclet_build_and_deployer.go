@@ -9,6 +9,8 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 
+	"github.com/windmilleng/tilt/internal/mode"
+
 	"github.com/windmilleng/tilt/internal/containerupdate"
 
 	"io/ioutil"
@@ -27,10 +29,10 @@ var _ BuildAndDeployer = &SyncletBuildAndDeployer{}
 type SyncletBuildAndDeployer struct {
 	sm         containerupdate.SyncletManager
 	kCli       k8s.Client
-	updateMode UpdateMode
+	updateMode mode.UpdateMode
 }
 
-func NewSyncletBuildAndDeployer(sm containerupdate.SyncletManager, kCli k8s.Client, updateMode UpdateMode) *SyncletBuildAndDeployer {
+func NewSyncletBuildAndDeployer(sm containerupdate.SyncletManager, kCli k8s.Client, updateMode mode.UpdateMode) *SyncletBuildAndDeployer {
 	return &SyncletBuildAndDeployer{
 		sm:         sm,
 		kCli:       kCli,
@@ -161,7 +163,7 @@ func (sbd *SyncletBuildAndDeployer) updateInCluster(ctx context.Context, iTarget
 	}
 
 	// TODO(dbentley): it would be even better to check if the pod has the sidecar
-	if sbd.updateMode == UpdateModeKubectlExec || sbd.kCli.ContainerRuntime(ctx) != container.RuntimeDocker {
+	if sbd.updateMode == mode.UpdateModeKubectlExec || sbd.kCli.ContainerRuntime(ctx) != container.RuntimeDocker {
 		if err := sbd.updateViaExec(ctx,
 			deployInfo.PodID, deployInfo.Namespace, deployInfo.ContainerName,
 			pr, containerPathsToRm, cmds, hotReload); err != nil {

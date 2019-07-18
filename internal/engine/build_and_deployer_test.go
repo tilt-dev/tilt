@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/windmilleng/tilt/internal/analytics"
+	mode2 "github.com/windmilleng/tilt/internal/mode"
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
@@ -833,7 +834,7 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 	ctx = analytics.WithAnalytics(ctx, ta)
 	k8s := k8s.NewFakeK8sClient()
 	sCli := synclet.NewFakeSyncletClient()
-	mode := UpdateModeFlag(UpdateModeAuto)
+	mode := mode2.UpdateModeFlag(mode2.UpdateModeAuto)
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	kp := &fakeKINDPusher{}
 	bd, err := provideBuildAndDeployer(ctx, docker, k8s, dir, env, mode, sCli, dcc, fakeClock{now: time.Unix(1551202573, 0)}, kp, ta)

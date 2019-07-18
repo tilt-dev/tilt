@@ -8,6 +8,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/windmilleng/tilt/internal/k8s"
+
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
@@ -26,10 +28,10 @@ func NewDockerContainerUpdater(dCli docker.Client) ContainerUpdater {
 	return &DockerContainerUpdater{dCli: dCli}
 }
 
-func (cu *DockerContainerUpdater) CanUpdateSpecs(specs []model.TargetSpec) (canUpd bool, msg string, silent bool) {
+func (cu *DockerContainerUpdater) CanUpdateSpecs(specs []model.TargetSpec, env k8s.Env) (canUpd bool, msg string, silent bool) {
 	isDC := len(model.ExtractDockerComposeTargets(specs)) > 0
 	isK8s := len(model.ExtractK8sTargets(specs)) > 0
-	canLocalUpdate := isDC || isK8s
+	canLocalUpdate := isDC || (isK8s && env.IsLocalCluster())
 	if !canLocalUpdate {
 		return false, "Local container builder needs docker-compose or k8s cluster w/ local updates", true
 	}

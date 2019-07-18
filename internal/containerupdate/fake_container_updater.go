@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 )
@@ -22,7 +23,7 @@ type UpdateContainerCall struct {
 	HotReload  bool
 }
 
-func (cu *FakeContainerUpdater) CanUpdateSpecs(specs []model.TargetSpec) (canUpd bool, msg string, silent bool) {
+func (cu *FakeContainerUpdater) CanUpdateSpecs(specs []model.TargetSpec, env k8s.Env) (canUpd bool, msg string, silent bool) {
 	// TODO(maia): implement
 	return true, "", false
 }

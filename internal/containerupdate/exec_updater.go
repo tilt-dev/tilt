@@ -25,8 +25,9 @@ func NewExecUpdater(kCli k8s.Client) ContainerUpdater {
 	return &ExecUpdater{kCli: kCli}
 }
 
-func (cu *ExecUpdater) CanUpdateSpecs(specs []model.TargetSpec) (canUpd bool, msg string, silent bool) {
+func (cu *ExecUpdater) CanUpdateSpecs(specs []model.TargetSpec, env k8s.Env) (canUpd bool, msg string, silent bool) {
 	// TODO(maia): implement
+	// remember: if you get docker compose specs, error, we can't handle them -- should run with UpdateMode: Container
 	return true, "", false
 }
 

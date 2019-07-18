@@ -14,6 +14,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/ignore"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
@@ -22,12 +23,14 @@ import (
 var _ BuildAndDeployer = &LiveUpdateBuildAndDeployer{}
 
 type LiveUpdateBuildAndDeployer struct {
-	cu containerupdate.ContainerUpdater
+	cu  containerupdate.ContainerUpdater
+	env k8s.Env
 }
 
-func NewLiveUpdateBuildAndDeployer(cu containerupdate.ContainerUpdater) *LiveUpdateBuildAndDeployer {
+func NewLiveUpdateBuildAndDeployer(cu containerupdate.ContainerUpdater, env k8s.Env) *LiveUpdateBuildAndDeployer {
 	return &LiveUpdateBuildAndDeployer{
-		cu: cu,
+		cu:  cu,
+		env: env,
 	}
 }
 
@@ -46,7 +49,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("Local container builder needs exactly one image target")
 	}
 
-	canUpdate, msg, silent := lubad.cu.CanUpdateSpecs(specs)
+	canUpdate, msg, silent := lubad.cu.CanUpdateSpecs(specs, lubad.env)
 	if !canUpdate {
 		if silent {
 			return store.BuildResultSet{}, SilentRedirectToNextBuilderf(msg)

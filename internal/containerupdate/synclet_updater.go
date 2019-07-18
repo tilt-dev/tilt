@@ -7,6 +7,8 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 
+	"github.com/windmilleng/tilt/internal/k8s"
+
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
@@ -22,8 +24,9 @@ func NewSyncletUpdater(sm SyncletManager) ContainerUpdater {
 	return &SyncletUpdater{sm: sm}
 }
 
-func (cu *SyncletUpdater) CanUpdateSpecs(specs []model.TargetSpec) (canUpd bool, msg string, silent bool) {
+func (cu *SyncletUpdater) CanUpdateSpecs(specs []model.TargetSpec, env k8s.Env) (canUpd bool, msg string, silent bool) {
 	// TODO(maia): implement
+	// remember: if you get docker compose specs, error, we can't handle them -- should run with UpdateMode: Container
 	return true, "", false
 }
 

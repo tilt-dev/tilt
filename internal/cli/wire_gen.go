@@ -29,6 +29,7 @@ import (
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/minikube"
+	"github.com/windmilleng/tilt/internal/mode"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
@@ -97,19 +98,20 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 		return demo.Script{}, err
 	}
 	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
-	containerUpdater := containerupdate.NewDockerContainerUpdater(switchCli)
-	liveUpdateBuildAndDeployer := engine.NewLiveUpdateBuildAndDeployer(containerUpdater)
+	syncletManager := containerupdate.NewSyncletManager(k8sClient)
+	modeUpdateModeFlag := provideUpdateModeFlag()
+	updateMode, err := mode.ProvideUpdateMode(modeUpdateModeFlag, env, runtime)
+	if err != nil {
+		return demo.Script{}, err
+	}
+	containerUpdater := containerupdate.ProvideContainerUpdater(k8sClient, switchCli, syncletManager, env, updateMode, runtime)
+	liveUpdateBuildAndDeployer := engine.NewLiveUpdateBuildAndDeployer(containerUpdater, env)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(switchCli)
 	clock := build.ProvideClock()
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, clock)
-	engineUpdateModeFlag := provideUpdateModeFlag()
-	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env, runtime)
-	if err != nil {
-		return demo.Script{}, err
-	}
 	kindPusher := engine.NewKINDPusher()
 	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, k8sClient, env, analytics2, updateMode, clock, runtime, kindPusher)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
@@ -126,7 +128,6 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	dockerComposeEventWatcher := engine.NewDockerComposeEventWatcher(dockerComposeClient)
 	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
-	syncletManager := containerupdate.NewSyncletManager(k8sClient)
 	analyticsReporter := engine.ProvideAnalyticsReporter(analytics2, storeStore)
 	tiltBuild := provideTiltInfo()
 	webMode, err := provideWebMode(tiltBuild)
@@ -230,19 +231,20 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 		return Threads{}, err
 	}
 	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
-	containerUpdater := containerupdate.NewDockerContainerUpdater(switchCli)
-	liveUpdateBuildAndDeployer := engine.NewLiveUpdateBuildAndDeployer(containerUpdater)
+	syncletManager := containerupdate.NewSyncletManager(k8sClient)
+	modeUpdateModeFlag := provideUpdateModeFlag()
+	updateMode, err := mode.ProvideUpdateMode(modeUpdateModeFlag, env, runtime)
+	if err != nil {
+		return Threads{}, err
+	}
+	containerUpdater := containerupdate.ProvideContainerUpdater(k8sClient, switchCli, syncletManager, env, updateMode, runtime)
+	liveUpdateBuildAndDeployer := engine.NewLiveUpdateBuildAndDeployer(containerUpdater, env)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(switchCli)
 	clock := build.ProvideClock()
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, clock)
-	engineUpdateModeFlag := provideUpdateModeFlag()
-	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env, runtime)
-	if err != nil {
-		return Threads{}, err
-	}
 	kindPusher := engine.NewKINDPusher()
 	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, k8sClient, env, analytics2, updateMode, clock, runtime, kindPusher)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
@@ -259,7 +261,6 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	dockerComposeEventWatcher := engine.NewDockerComposeEventWatcher(dockerComposeClient)
 	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
-	syncletManager := containerupdate.NewSyncletManager(k8sClient)
 	analyticsReporter := engine.ProvideAnalyticsReporter(analytics2, storeStore)
 	tiltBuild := provideTiltInfo()
 	webMode, err := provideWebMode(tiltBuild)
