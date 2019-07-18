@@ -2562,7 +2562,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	fakeHud := hud.NewFakeHud()
 
 	log := bufsync.NewThreadSafeBuffer()
-	ctx, _, ta := testutils.ForkedCtxAndAnalyticsForTest(log)
+	to := &testOpter{}
+	ctx, _, ta := testutils.ForkedCtxAndAnalyticsWithOpterForTest(log, to)
 	ctx, cancel := context.WithCancel(ctx)
 
 	fSub := fixtureSub{ch: make(chan bool, 1000)}
@@ -2580,7 +2581,6 @@ func newTestFixture(t *testing.T) *testFixture {
 	fwm := NewWatchManager(watcher.newSub, timerMaker.maker())
 	pfc := NewPortForwardController(k8s)
 	ic := NewImageController(reaper)
-	to := &testOpter{}
 	tas := NewTiltAnalyticsSubscriber(ta)
 	ar := ProvideAnalyticsReporter(ta, st)
 
