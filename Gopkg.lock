@@ -468,23 +468,6 @@
   version = "v0.3.0"
 
 [[projects]]
-  digest = "1:9ae31ce33b4bab257668963e844d98765b44160be4ee98cafc44637a213e530d"
-  name = "github.com/gobwas/glob"
-  packages = [
-    ".",
-    "compiler",
-    "match",
-    "syntax",
-    "syntax/ast",
-    "syntax/lexer",
-    "util/runes",
-    "util/strings",
-  ]
-  pruneopts = "UT"
-  revision = "5ccd90ef52e1e632236f7326478d4faa74f99438"
-  version = "v0.2.3"
-
-[[projects]]
   digest = "1:3fdbd53962bb796a751552e6be1fb3dbd293d6d5851c0c48f611a82480769d7c"
   name = "github.com/gogo/googleapis"
   packages = ["google/rpc"]
@@ -1796,7 +1779,6 @@
     "github.com/fatih/color",
     "github.com/gdamore/tcell",
     "github.com/ghodss/yaml",
-    "github.com/gobwas/glob",
     "github.com/golang/protobuf/proto",
     "github.com/google/go-cmp/cmp",
     "github.com/google/go-cmp/cmp/cmpopts",
