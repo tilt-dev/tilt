@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/manifestutils"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -23,7 +23,7 @@ func TestSyncletSubscriptions(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 	state.WatchFiles = true
-	state.UpsertManifestTarget(testutils.NewManifestTargetWithPod(
+	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
 			PodID:      "pod-id",
@@ -36,7 +36,7 @@ func TestSyncletSubscriptions(t *testing.T) {
 	assert.Equal(t, 1, len(f.sm.clients))
 
 	state = f.store.LockMutableStateForTesting()
-	state.UpsertManifestTarget(testutils.NewManifestTargetWithPod(
+	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
 			PodID: "pod-id",

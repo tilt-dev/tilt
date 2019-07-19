@@ -1,4 +1,4 @@
-package testutils
+package manifestutils
 
 import (
 	"github.com/windmilleng/tilt/internal/model"
