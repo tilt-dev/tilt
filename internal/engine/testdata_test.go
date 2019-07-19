@@ -70,6 +70,13 @@ func NewSanchoFastBuildManifest(fixture pather) model.Manifest {
 		NewSanchoFastBuildImage(fixture))
 }
 
+func NewSanchoLiveUpdateManifest(fixture pather) model.Manifest {
+	return assembleK8sManifest(
+		model.Manifest{Name: "sancho"},
+		model.K8sTarget{YAML: SanchoYAML},
+		NewSanchoLiveUpdateImageTarget(fixture))
+}
+
 func NewSanchoFastBuildDCManifest(fixture pather) model.Manifest {
 	return assembleDCManifest(
 		model.Manifest{Name: "sancho"},
@@ -154,7 +161,7 @@ func NewSanchoDockerBuildImageTarget(f pather) model.ImageTarget {
 	})
 }
 
-func NewSanchoLiveUpdateImageTarget(f pather) (model.ImageTarget, error) {
+func NewSanchoLiveUpdateImageTarget(f pather) model.ImageTarget {
 	syncs := []model.LiveUpdateSyncStep{
 		{
 			Source: f.Path(),
@@ -169,9 +176,9 @@ func NewSanchoLiveUpdateImageTarget(f pather) (model.ImageTarget, error) {
 
 	lu, err := assembleLiveUpdate(syncs, runs, true, []string{}, f)
 	if err != nil {
-		return model.ImageTarget{}, err
+		panic(fmt.Sprintf("making sancho LiveUpdate image target: %v", err))
 	}
-	return imageTargetWithLiveUpdate(model.NewImageTarget(SanchoRef), lu), nil
+	return imageTargetWithLiveUpdate(model.NewImageTarget(SanchoRef), lu)
 }
 
 func NewSanchoSidecarDockerBuildImageTarget(f pather) model.ImageTarget {
@@ -188,14 +195,11 @@ func NewSanchoSidecarFastBuildImageTarget(f pather) model.ImageTarget {
 	return iTarget
 }
 
-func NewSanchoSidecarLiveUpdateImageTarget(f pather) (model.ImageTarget, error) {
-	iTarget, err := NewSanchoLiveUpdateImageTarget(f)
-	if err != nil {
-		return model.ImageTarget{}, nil
-	}
+func NewSanchoSidecarLiveUpdateImageTarget(f pather) model.ImageTarget {
+	iTarget := NewSanchoLiveUpdateImageTarget(f)
 	iTarget.ConfigurationRef = SanchoSidecarRef
 	iTarget.DeploymentRef = SanchoSidecarRef.AsNamedOnly()
-	return iTarget, nil
+	return iTarget
 }
 
 func NewSanchoDockerBuildManifest(f pather) model.Manifest {
@@ -256,11 +260,7 @@ func NewSanchoLiveUpdateMultiStageManifest(fixture pather) model.Manifest {
 		BuildPath:  fixture.Path(),
 	})
 
-	srcImage, err := NewSanchoLiveUpdateImageTarget(fixture)
-	if err != nil {
-		panic(fmt.Sprintf("making sancho LiveUpdate image target: %v", err))
-	}
-
+	srcImage := NewSanchoLiveUpdateImageTarget(fixture)
 	dbInfo := srcImage.DockerBuildInfo()
 	dbInfo.Dockerfile = `FROM sancho-base`
 

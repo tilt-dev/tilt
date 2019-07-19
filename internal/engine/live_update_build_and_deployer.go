@@ -60,7 +60,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	}
 
 	if len(liveUpdateStateSet) != 1 {
-		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("Local container builder needs exactly one image target")
+		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("LiveUpdateBuildAndDeployer needs exactly one image target (got %d)", len(liveUpdateStateSet))
 	}
 
 	canUpdate, msg, silent := lubad.cu.CanUpdateSpecs(specs, lubad.env)
@@ -87,7 +87,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 
 	// LiveUpdateBuildAndDeployer doesn't support initial build
 	if state.IsEmpty() {
-		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("prev. build state is empty; container build does not support initial deploy")
+		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("prev. build state is empty; LiveUpdate does not support initial deploy")
 	}
 
 	var changedFiles []build.PathMapping

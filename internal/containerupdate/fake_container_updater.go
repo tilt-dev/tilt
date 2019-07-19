@@ -13,6 +13,8 @@ type FakeContainerUpdater struct {
 	UpdateErrToThrow error
 
 	Calls []UpdateContainerCall
+
+	CanUpdateSpecsFn func(specs []model.TargetSpec, env k8s.Env) (canUpd bool, msg string, silent bool)
 }
 
 type UpdateContainerCall struct {
@@ -24,7 +26,9 @@ type UpdateContainerCall struct {
 }
 
 func (cu *FakeContainerUpdater) CanUpdateSpecs(specs []model.TargetSpec, env k8s.Env) (canUpd bool, msg string, silent bool) {
-	// TODO(maia): implement
+	if cu.CanUpdateSpecsFn != nil {
+		return cu.CanUpdateSpecsFn(specs, env)
+	}
 	return true, "", false
 }
 

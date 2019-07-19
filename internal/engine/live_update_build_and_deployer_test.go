@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/logger"
+
 	"github.com/windmilleng/tilt/internal/k8s"
 
 	"github.com/windmilleng/tilt/internal/build"
@@ -25,11 +27,56 @@ var TestDeployInfo = store.DeployInfo{
 	Namespace:     "ns-foo",
 }
 
-var TestBuildState = store.BuildState{DeployInfo: TestDeployInfo}
+var TestBuildState = store.BuildState{
+	LastResult:      alreadyBuilt,
+	FilesChangedSet: map[string]bool{"foo.py": true},
+	DeployInfo:      TestDeployInfo,
+}
 
-func TestCanUpdateSpecsSurfacesErrorsCorrectly(t *testing.T) {
-	// when silent error and when not, etc.
-	t.Fatal("not implemented")
+func TestSurfaceErrorIfCantUpdateSpecs(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	m := NewSanchoLiveUpdateManifest(f)
+	stateSet := store.BuildStateSet{m.ImageTargetAt(0).ID(): TestBuildState}
+
+	errMsg := "something is not right! something is quite wrong!"
+	errorer := func(specs []model.TargetSpec, env k8s.Env) (canUpd bool, msg string, silent bool) {
+		return false, errMsg, false
+	}
+
+	f.cu.CanUpdateSpecsFn = errorer
+	_, err := f.lcbad.BuildAndDeploy(f.ctx, f.st, m.TargetSpecs(), stateSet)
+	if assert.EqualErrorf(t, err, errMsg, "some error yo") {
+		redirectErr, ok := err.(RedirectToNextBuilder)
+		if assert.True(t, ok) {
+			// Make sure it's a non-silent error
+			assert.True(t, logger.InfoLvl == redirectErr.level)
+		}
+	}
+}
+
+func TestSurfaceSilentErrorIfCantUpdateSpecs(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	m := NewSanchoLiveUpdateManifest(f)
+	stateSet := store.BuildStateSet{m.ImageTargetAt(0).ID(): TestBuildState}
+
+	errMsg := "something is not right! something is quite wrong!"
+	silentError := func(specs []model.TargetSpec, env k8s.Env) (canUpd bool, msg string, silent bool) {
+		return false, errMsg, true
+	}
+
+	f.cu.CanUpdateSpecsFn = silentError
+	_, err := f.lcbad.BuildAndDeploy(f.ctx, f.st, m.TargetSpecs(), stateSet)
+	if assert.EqualErrorf(t, err, errMsg, "some error yo") {
+		redirectErr, ok := err.(RedirectToNextBuilder)
+		if assert.True(t, ok) {
+			// Make sure it's a silent error
+			assert.True(t, logger.DebugLvl == redirectErr.level)
+		}
+	}
 }
 
 func TestBuildAndDeployBoilsSteps(t *testing.T) {
@@ -132,17 +179,20 @@ type lcbadFixture struct {
 	*tempdir.TempDirFixture
 	t     testing.TB
 	ctx   context.Context
+	st    *store.Store
 	cu    *containerupdate.FakeContainerUpdater
 	lcbad *LiveUpdateBuildAndDeployer
 }
 
 func newFixture(t testing.TB) *lcbadFixture {
 	fakeContainerUpdater := &containerupdate.FakeContainerUpdater{}
-	lcbad := NewLiveUpdateBuildAndDeployer(fakeContainerUpdater, k8s.EnvDockerDesktop) // todo: different envs?
+	lcbad := NewLiveUpdateBuildAndDeployer(fakeContainerUpdater, k8s.EnvDockerDesktop)
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
+	st, _ := store.NewStoreForTesting()
 	return &lcbadFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,
+		st:             st,
 		ctx:            ctx,
 		cu:             fakeContainerUpdater,
 		lcbad:          lcbad,
