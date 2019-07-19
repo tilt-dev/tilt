@@ -7,6 +7,10 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 
+	"github.com/windmilleng/tilt/internal/target"
+
+	"github.com/windmilleng/tilt/internal/engine/errors"
+
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
@@ -57,7 +61,7 @@ func (bd *DockerComposeBuildAndDeployer) extract(specs []model.TargetSpec) ([]mo
 func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, currentState store.BuildStateSet) (store.BuildResultSet, error) {
 	iTargets, dcTargets := bd.extract(specs)
 	if len(dcTargets) != 1 {
-		return store.BuildResultSet{}, SilentRedirectToNextBuilderf(
+		return store.BuildResultSet{}, errors.SilentRedirectToNextBuilderf(
 			"DockerComposeBuildAndDeployer requires exactly one dcTarget (got %d)", len(dcTargets))
 	}
 	dcTarget := dcTargets[0]
@@ -127,7 +131,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 
 	results := q.results
 	for _, iTarget := range iTargets {
-		if isImageDeployedToDC(iTarget, dcTarget) {
+		if target.IsImageDeployedToDC(iTarget, dcTarget) {
 			result := results[iTarget.ID()]
 			result.ContainerID = cid
 			results[iTarget.ID()] = result

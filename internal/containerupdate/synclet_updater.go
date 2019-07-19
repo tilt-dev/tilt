@@ -24,10 +24,8 @@ func NewSyncletUpdater(sm SyncletManager) ContainerUpdater {
 	return &SyncletUpdater{sm: sm}
 }
 
-func (cu *SyncletUpdater) CanUpdateSpecs(specs []model.TargetSpec, env k8s.Env) (canUpd bool, msg string, silent bool) {
-	// TODO(maia): implement
-	// remember: if you get docker compose specs, error, we can't handle them -- should run with UpdateMode: Container
-	return true, "", false
+func (cu *SyncletUpdater) ValidateSpecs(specs []model.TargetSpec, env k8s.Env) error {
+	return validateSpecsOnlyImagesDeployedToK8s(specs, "SyncletUpdater")
 }
 
 func (cu *SyncletUpdater) UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,

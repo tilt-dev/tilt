@@ -1,4 +1,4 @@
-package engine
+package target
 
 import (
 	"github.com/windmilleng/tilt/internal/model"
@@ -7,17 +7,17 @@ import (
 
 // A helper data structure that represents a live-update image and
 // the files changed in all of its dependencies.
-type liveUpdateStateTree struct {
-	iTarget           model.ImageTarget
-	filesChanged      []string
-	iTargetState      store.BuildState
-	hasFileChangesIDs []model.TargetID
+type LiveUpdateStateTree struct {
+	ITarget           model.ImageTarget
+	FilesChanged      []string
+	ITargetState      store.BuildState
+	HasFileChangesIDs []model.TargetID
 }
 
 // Create a successful build result if the live update deploys successfully.
-func (t liveUpdateStateTree) createResultSet() store.BuildResultSet {
-	iTargetID := t.iTarget.ID()
-	state := t.iTargetState
+func (t LiveUpdateStateTree) CreateResultSet() store.BuildResultSet {
+	iTargetID := t.ITarget.ID()
+	state := t.ITargetState
 	res := state.LastResult.ShallowCloneForContainerUpdate(state.FilesChangedSet)
 	res.ContainerID = state.DeployInfo.ContainerID
 
@@ -27,7 +27,7 @@ func (t liveUpdateStateTree) createResultSet() store.BuildResultSet {
 	// Invalidate all the image builds for images we depend on.
 	// Otherwise, the image builder will think the existing image ID
 	// is valid and won't try to rebuild it.
-	for _, id := range t.hasFileChangesIDs {
+	for _, id := range t.HasFileChangesIDs {
 		if id != iTargetID {
 			resultSet[id] = store.BuildResult{}
 		}

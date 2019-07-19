@@ -21,6 +21,7 @@ import (
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	tilterrors "github.com/windmilleng/tilt/internal/engine/errors"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
@@ -277,7 +278,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	ms.NeedsRebuildFromCrash = false
 
 	if err != nil {
-		if isPermanentError(err) {
+		if tilterrors.IsPermanentError(err) {
 			return err
 		} else if engineState.WatchFiles {
 			l := logger.Get(ctx)

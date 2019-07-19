@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/windmilleng/tilt/internal/containerupdate"
+	"github.com/windmilleng/tilt/internal/target"
 
 	"github.com/windmilleng/tilt/internal/testutils"
 
@@ -204,11 +205,11 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	for _, iTarget := range model.ExtractImageTargets(specs) {
 		var deployTarget model.TargetSpec
 		if !call.dc().Empty() {
-			if isImageDeployedToDC(iTarget, call.dc()) {
+			if target.IsImageDeployedToDC(iTarget, call.dc()) {
 				deployTarget = call.dc()
 			}
 		} else {
-			if isImageDeployedToK8s(iTarget, []model.K8sTarget{call.k8s()}) {
+			if target.IsImageDeployedToK8s(iTarget, []model.K8sTarget{call.k8s()}) {
 				deployTarget = call.k8s()
 			}
 		}

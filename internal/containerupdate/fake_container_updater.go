@@ -10,12 +10,13 @@ import (
 )
 
 type FakeContainerUpdater struct {
-	UpdateErrToThrow error
+	ValidateErr error
+	UpdateErr   error
 
 	Calls []UpdateContainerCall
-
-	CanUpdateSpecsFn func(specs []model.TargetSpec, env k8s.Env) (canUpd bool, msg string, silent bool)
 }
+
+var _ ContainerUpdater = &FakeContainerUpdater{}
 
 type UpdateContainerCall struct {
 	DeployInfo store.DeployInfo
@@ -25,11 +26,13 @@ type UpdateContainerCall struct {
 	HotReload  bool
 }
 
-func (cu *FakeContainerUpdater) CanUpdateSpecs(specs []model.TargetSpec, env k8s.Env) (canUpd bool, msg string, silent bool) {
-	if cu.CanUpdateSpecsFn != nil {
-		return cu.CanUpdateSpecsFn(specs, env)
+func (cu *FakeContainerUpdater) ValidateSpecs(specs []model.TargetSpec, env k8s.Env) error {
+	var err error
+	if cu.ValidateErr != nil {
+		err = cu.ValidateErr
+		cu.ValidateErr = nil
 	}
-	return true, "", false
+	return err
 }
 
 func (cu *FakeContainerUpdater) UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,
@@ -43,9 +46,9 @@ func (cu *FakeContainerUpdater) UpdateContainer(ctx context.Context, deployInfo 
 	})
 
 	var err error
-	if cu.UpdateErrToThrow != nil {
-		err = cu.UpdateErrToThrow
-		cu.UpdateErrToThrow = nil
+	if cu.UpdateErr != nil {
+		err = cu.UpdateErr
+		cu.UpdateErr = nil
 	}
 	return err
 }

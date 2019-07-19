@@ -8,6 +8,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	tilterrors "github.com/windmilleng/tilt/internal/engine/errors"
+
 	"github.com/windmilleng/tilt/internal/k8s"
 
 	"github.com/windmilleng/tilt/internal/build"
@@ -28,14 +30,14 @@ func NewDockerContainerUpdater(dCli docker.Client) ContainerUpdater {
 	return &DockerContainerUpdater{dCli: dCli}
 }
 
-func (cu *DockerContainerUpdater) CanUpdateSpecs(specs []model.TargetSpec, env k8s.Env) (canUpd bool, msg string, silent bool) {
+func (cu *DockerContainerUpdater) ValidateSpecs(specs []model.TargetSpec, env k8s.Env) error {
 	isDC := len(model.ExtractDockerComposeTargets(specs)) > 0
 	isK8s := len(model.ExtractK8sTargets(specs)) > 0
 	canLocalUpdate := isDC || (isK8s && env.IsLocalCluster())
 	if !canLocalUpdate {
-		return false, "Local container builder needs docker-compose or k8s cluster w/ local updates", true
+		return tilterrors.SilentRedirectToNextBuilderf("Local container builder needs docker-compose or k8s cluster w/ local updates")
 	}
-	return true, "", false
+	return nil
 }
 
 func (cu *DockerContainerUpdater) UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/windmilleng/tilt/internal/engine/errors"
 	"github.com/windmilleng/tilt/internal/mode"
 	"github.com/windmilleng/tilt/internal/store"
 
@@ -80,13 +81,13 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 			return br, err
 		}
 
-		if !shouldFallBackForErr(err) {
+		if !errors.ShouldFallBackForErr(err) {
 			return store.BuildResultSet{}, err
 		}
 
-		if redirectErr, ok := err.(RedirectToNextBuilder); ok {
+		if redirectErr, ok := err.(errors.RedirectToNextBuilder); ok {
 			s := fmt.Sprintf("falling back to next update method because: %v\n", err)
-			logger.Get(ctx).Write(redirectErr.level, s)
+			logger.Get(ctx).Write(redirectErr.Level, s)
 		} else {
 			lastUnexpectedErr = err
 			if i+1 < len(builders) {

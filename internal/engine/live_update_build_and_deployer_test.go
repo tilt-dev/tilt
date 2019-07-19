@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/internal/engine/errors"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 
@@ -33,7 +33,7 @@ var TestBuildState = store.BuildState{
 	DeployInfo:      TestDeployInfo,
 }
 
-func TestSurfaceErrorIfCantUpdateSpecs(t *testing.T) {
+func TestSurfaceErrorIfSpecsInvalidForUpdater(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
 
@@ -41,42 +41,11 @@ func TestSurfaceErrorIfCantUpdateSpecs(t *testing.T) {
 	stateSet := store.BuildStateSet{m.ImageTargetAt(0).ID(): TestBuildState}
 
 	errMsg := "something is not right! something is quite wrong!"
-	errorer := func(specs []model.TargetSpec, env k8s.Env) (canUpd bool, msg string, silent bool) {
-		return false, errMsg, false
-	}
+	expectedErr := errors.SilentRedirectToNextBuilderf(errMsg)
+	f.cu.ValidateErr = expectedErr
 
-	f.cu.CanUpdateSpecsFn = errorer
-	_, err := f.lcbad.BuildAndDeploy(f.ctx, f.st, m.TargetSpecs(), stateSet)
-	if assert.EqualErrorf(t, err, errMsg, "some error yo") {
-		redirectErr, ok := err.(RedirectToNextBuilder)
-		if assert.True(t, ok) {
-			// Make sure it's a non-silent error
-			assert.True(t, logger.InfoLvl == redirectErr.level)
-		}
-	}
-}
-
-func TestSurfaceSilentErrorIfCantUpdateSpecs(t *testing.T) {
-	f := newFixture(t)
-	defer f.teardown()
-
-	m := NewSanchoLiveUpdateManifest(f)
-	stateSet := store.BuildStateSet{m.ImageTargetAt(0).ID(): TestBuildState}
-
-	errMsg := "something is not right! something is quite wrong!"
-	silentError := func(specs []model.TargetSpec, env k8s.Env) (canUpd bool, msg string, silent bool) {
-		return false, errMsg, true
-	}
-
-	f.cu.CanUpdateSpecsFn = silentError
-	_, err := f.lcbad.BuildAndDeploy(f.ctx, f.st, m.TargetSpecs(), stateSet)
-	if assert.EqualErrorf(t, err, errMsg, "some error yo") {
-		redirectErr, ok := err.(RedirectToNextBuilder)
-		if assert.True(t, ok) {
-			// Make sure it's a silent error
-			assert.True(t, logger.DebugLvl == redirectErr.level)
-		}
-	}
+	_, err := f.liveUpdBaD.BuildAndDeploy(f.ctx, f.st, m.TargetSpecs(), stateSet)
+	assert.Equal(t, expectedErr, err)
 }
 
 func TestBuildAndDeployBoilsSteps(t *testing.T) {
@@ -90,7 +59,7 @@ func TestBuildAndDeployBoilsSteps(t *testing.T) {
 		model.Run{Cmd: model.ToShellCmd("pip install"), Triggers: f.newPathSet("requirements.txt")},
 	}
 
-	err := f.lcbad.buildAndDeploy(f.ctx, model.ImageTarget{}, TestBuildState, []build.PathMapping{packageJson}, runs, false)
+	err := f.liveUpdBaD.buildAndDeploy(f.ctx, model.ImageTarget{}, TestBuildState, []build.PathMapping{packageJson}, runs, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +91,7 @@ func TestUpdateInContainerArchivesFilesToCopyAndGetsFilesToRemove(t *testing.T) 
 		build.PathMapping{LocalPath: f.JoinPath("does-not-exist"), ContainerPath: "/src/does-not-exist"},
 	}
 
-	err := f.lcbad.buildAndDeploy(f.ctx, model.ImageTarget{}, TestBuildState, paths, nil, false)
+	err := f.liveUpdBaD.buildAndDeploy(f.ctx, model.ImageTarget{}, TestBuildState, paths, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,11 +116,11 @@ func TestDontFallBackOnUserError(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
 
-	f.cu.UpdateErrToThrow = build.UserBuildFailure{ExitCode: 12345}
+	f.cu.UpdateErr = build.UserBuildFailure{ExitCode: 12345}
 
-	err := f.lcbad.buildAndDeploy(f.ctx, model.ImageTarget{}, TestBuildState, nil, nil, false)
+	err := f.liveUpdBaD.buildAndDeploy(f.ctx, model.ImageTarget{}, TestBuildState, nil, nil, false)
 	if assert.NotNil(t, err) {
-		assert.IsType(t, DontFallBackError{}, err)
+		assert.IsType(t, errors.DontFallBackError{}, err)
 	}
 }
 
@@ -161,7 +130,7 @@ func TestUpdateContainerWithHotReload(t *testing.T) {
 
 	expectedHotReloads := []bool{true, true, false, true}
 	for _, hotReload := range expectedHotReloads {
-		err := f.lcbad.buildAndDeploy(f.ctx, model.ImageTarget{}, TestBuildState, nil, nil, hotReload)
+		err := f.liveUpdBaD.buildAndDeploy(f.ctx, model.ImageTarget{}, TestBuildState, nil, nil, hotReload)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -175,35 +144,35 @@ func TestUpdateContainerWithHotReload(t *testing.T) {
 	}
 }
 
-type lcbadFixture struct {
+type liveUpdBaDFixture struct {
 	*tempdir.TempDirFixture
-	t     testing.TB
-	ctx   context.Context
-	st    *store.Store
-	cu    *containerupdate.FakeContainerUpdater
-	lcbad *LiveUpdateBuildAndDeployer
+	t          testing.TB
+	ctx        context.Context
+	st         *store.Store
+	cu         *containerupdate.FakeContainerUpdater
+	liveUpdBaD *LiveUpdateBuildAndDeployer
 }
 
-func newFixture(t testing.TB) *lcbadFixture {
+func newFixture(t testing.TB) *liveUpdBaDFixture {
 	fakeContainerUpdater := &containerupdate.FakeContainerUpdater{}
 	lcbad := NewLiveUpdateBuildAndDeployer(fakeContainerUpdater, k8s.EnvDockerDesktop)
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	st, _ := store.NewStoreForTesting()
-	return &lcbadFixture{
+	return &liveUpdBaDFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,
 		st:             st,
 		ctx:            ctx,
 		cu:             fakeContainerUpdater,
-		lcbad:          lcbad,
+		liveUpdBaD:     lcbad,
 	}
 }
 
-func (f *lcbadFixture) teardown() {
+func (f *liveUpdBaDFixture) teardown() {
 	f.TempDirFixture.TearDown()
 }
 
-func (f *lcbadFixture) newPathSet(paths ...string) model.PathSet {
+func (f *liveUpdBaDFixture) newPathSet(paths ...string) model.PathSet {
 	return model.NewPathSet(paths, f.Path())
 }
 

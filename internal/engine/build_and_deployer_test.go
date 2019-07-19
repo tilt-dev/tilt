@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	errors2 "github.com/windmilleng/tilt/internal/engine/errors"
 	"github.com/windmilleng/tilt/internal/mode"
 
 	"github.com/windmilleng/tilt/internal/build"
@@ -437,7 +438,7 @@ func TestFallBackToImageDeploy(t *testing.T) {
 func TestNoFallbackForDontFallBackError(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop)
 	defer f.TearDown()
-	f.docker.ExecErrorToThrow = DontFallBackErrorf("i'm melllting")
+	f.docker.ExecErrorToThrow = errors2.DontFallBackErrorf("i'm melllting")
 
 	changed := f.WriteFile("a.txt", "a")
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
