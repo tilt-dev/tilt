@@ -98,7 +98,7 @@ func TimestampPrefix(ts time.Time) []byte {
 // Returns a new instance of `Log` with content equal to `b` appended to the end of `l`
 // Performs truncation off the start of the log (at a newline) to ensure the resulting log is not
 // longer than `maxLogLengthInBytes`. (which maybe means a pedant would say this isn't strictly an `append`?)
-func AppendLog(l Log, le LogEvent, timestampsEnabled bool, prefix []byte) Log {
+func AppendLog(l Log, le LogEvent, timestampsEnabled bool, prefix string) Log {
 	isStartingNewLine := len(l.lines) == 0 || l.lines[len(l.lines)-1].IsComplete()
 	addedLines := linesFromBytes(le.Message())
 	if len(addedLines) == 0 {
@@ -117,7 +117,7 @@ func AppendLog(l Log, le LogEvent, timestampsEnabled bool, prefix []byte) Log {
 	if len(prefix) > 0 {
 		for i, line := range addedLines {
 			if i != 0 || isStartingNewLine {
-				addedLines[i] = append(prefix, line...)
+				addedLines[i] = append([]byte(prefix), line...)
 			}
 		}
 	}

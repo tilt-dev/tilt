@@ -48,8 +48,8 @@ Questions? Comments? Just want to say hi?
 Find us on the Kubernetes slack. Get an invite at [slack.k8s.io](http://slack.k8s.io) and find
 us in [the **#tilt** channel](https://kubernetes.slack.com/messages/CESBL84MV/).
 
-We tweet [@windmill_eng](https://twitter.com/windmill_eng) and
-blog about building Tilt at [medium.com/windmill-engineering](https://medium.com/windmill-engineering).
+We tweet [@tilt_dev](https://twitter.com/tilt_dev) and
+blog about building Tilt at [blog.tilt.dev](https://blog.tilt.dev).
 
 We expect everyone in our community (users, contributors, followers, and employees alike) to abide by our [**Code of Conduct**](https://docs.tilt.dev/code_of_conduct.html).
 
@@ -58,7 +58,7 @@ We expect everyone in our community (users, contributors, followers, and employe
 To make changes to Tilt, read the [developer guide](DEVELOPING.md).
 
 For bugs and feature requests, file an [issue](https://github.com/windmilleng/tilt/issues)
-or check out the [feature roadmap](ROADMAP.md).
+or check out the [feature roadmap](https://github.com/orgs/windmilleng/projects/3).
 
 ## Telemetry and Privacy
 We're a small company trying to make Tilt awesomer. We can do this better if we understand which features people are using and which bugs people are running into. You can enable sending telemetry data to https://events.windmill.build in the UI or by running `tilt analytics opt in`. It really helps us!

@@ -23,7 +23,7 @@ func (l logEvent) Time() time.Time {
 
 func TestLog_AppendUnderLimit(t *testing.T) {
 	l := NewLog("foo")
-	l = AppendLog(l, logEvent{time.Time{}, "bar"}, false, nil)
+	l = AppendLog(l, logEvent{time.Time{}, "bar"}, false, "")
 	assert.Equal(t, "foobar", l.String())
 }
 
@@ -39,7 +39,7 @@ func TestLog_AppendOverLimit(t *testing.T) {
 
 	s := sb.String()
 
-	l = AppendLog(l, logEvent{time.Time{}, s}, false, nil)
+	l = AppendLog(l, logEvent{time.Time{}, s}, false, "")
 
 	assert.Equal(t, s, l.String())
 }
@@ -55,7 +55,7 @@ func TestLog_Timestamps(t *testing.T) {
 
 	// appended text has a newline in the middle of the text (which should get a timestamp)
 	// and at the end of the text (which shouldn't)
-	l = AppendLog(l, logEvent{ts, "bar\nbaz\n"}, true, nil)
+	l = AppendLog(l, logEvent{ts, "bar\nbaz\n"}, true, "")
 
 	expected := "hello\n2019/03/06 12:34:56 bar\n2019/03/06 12:34:56 baz\n"
 	assert.Equal(t, expected, l.String())
@@ -63,7 +63,7 @@ func TestLog_Timestamps(t *testing.T) {
 
 func TestLogPrefix(t *testing.T) {
 	l := NewLog("hello\n")
-	l = AppendLog(l, logEvent{time.Now(), "bar\nbaz\n"}, false, []byte("prefix | "))
+	l = AppendLog(l, logEvent{time.Now(), "bar\nbaz\n"}, false, "prefix | ")
 	expected := "hello\nprefix | bar\nprefix | baz\n"
 	assert.Equal(t, expected, l.String())
 }
