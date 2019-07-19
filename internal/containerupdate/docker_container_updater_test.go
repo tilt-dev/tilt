@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/k8s"
+
 	"github.com/windmilleng/tilt/internal/testutils"
 
 	"github.com/windmilleng/tilt/internal/build"
@@ -25,7 +27,48 @@ var TestDeployInfo = store.DeployInfo{
 }
 
 func TestCanUpdateSpecs(t *testing.T) {
-	t.Fatal("not implemented")
+	f := newDCUFixture(t)
+
+	iTarg := model.ImageTarget{}
+	k8sTarg := model.K8sTarget{}
+	dcTarg := model.DockerComposeTarget{}
+
+	for _, test := range []struct {
+		name            string
+		specs           []model.TargetSpec
+		env             k8s.Env
+		expectCanUpdate bool
+	}{
+		{"can update docker compose",
+			[]model.TargetSpec{dcTarg},
+			k8s.EnvGKE,
+			true,
+		},
+		{"can update k8s + local cluster",
+			[]model.TargetSpec{iTarg, k8sTarg},
+			k8s.EnvDockerDesktop,
+			true,
+		},
+		{"can't update k8s + remote cluster",
+			[]model.TargetSpec{iTarg, k8sTarg},
+			k8s.EnvGKE,
+			false,
+		},
+		{"can't update if not k8s or dc",
+			[]model.TargetSpec{iTarg},
+			k8s.EnvGKE,
+			false,
+		},
+	} {
+		t.Run(string(test.name), func(t *testing.T) {
+			actualCanUpdate, msg, silent := f.dcu.CanUpdateSpecs(test.specs, test.env)
+			assert.Equal(t, test.expectCanUpdate, actualCanUpdate, "expected CanUpdate = %t, but got %t", test.expectCanUpdate, actualCanUpdate)
+			if !actualCanUpdate {
+				assert.Equal(t, msg, "Local container builder needs docker-compose or k8s cluster w/ local updates")
+				assert.True(t, silent)
+			}
+		})
+	}
 }
 
 func TestUpdateInContainerCopiesAndRmsFiles(t *testing.T) {

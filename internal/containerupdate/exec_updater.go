@@ -36,7 +36,6 @@ func (cu *ExecUpdater) UpdateContainer(ctx context.Context, deployInfo store.Dep
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ExecUpdater-UpdateContainer")
 	defer span.Finish()
 
-	// TODO(maia): put this in ValidUpdate() or whatever.
 	if !hotReload {
 		// If we're using kubectl exec syncing, it implies a non-Docker runtime,
 		// which probably doesn't support container restart. User will have to use
