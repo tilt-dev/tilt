@@ -38,12 +38,15 @@ var DeployerBaseWireSet = wire.NewSet(
 
 	// BuildOrder
 	NewImageBuildAndDeployer,
-	containerupdate.ProvideContainerUpdater,
+	containerupdate.ProvideK8sContainerUpdater,
+	containerupdate.ProvideDCContainerUpdater,
 	NewSyncletBuildAndDeployer,
-	NewLiveUpdateBuildAndDeployer,
+	ProvideLiveUpdateBuildAndDeployerForK8s,
+	ProvideLiveUpdateBuildAndDeployerForDC,
 	NewDockerComposeBuildAndDeployer,
 	NewImageAndCacheBuilder,
-	DefaultBuildOrder,
+	DefaultBuildOrderForK8s,
+	DefaultBuildOrderForDC,
 
 	wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)),
 	NewCompositeBuildAndDeployer,

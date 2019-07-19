@@ -37,6 +37,10 @@ func (bo BuildOrder) String() string {
 	return output.String()
 }
 
+// Differentiate between the BuildOrder we'll use for k8s targets and for dc targets
+type K8sOrder BuildOrder
+type DCOrder BuildOrder
+
 type FallbackTester func(error) bool
 
 // CompositeBuildAndDeployer tries to run each builder in order.  If a builder
@@ -44,19 +48,32 @@ type FallbackTester func(error) bool
 // critical enough to stop the whole pipeline, or to fallback to the next
 // builder.
 type CompositeBuildAndDeployer struct {
-	builders BuildOrder
+	k8sBuilders BuildOrder
+	dcBuilders  BuildOrder // if any DC targets present, use this order
 }
 
 var _ BuildAndDeployer = &CompositeBuildAndDeployer{}
 
-func NewCompositeBuildAndDeployer(builders BuildOrder) *CompositeBuildAndDeployer {
-	return &CompositeBuildAndDeployer{builders: builders}
+func NewCompositeBuildAndDeployer(k8sOrder K8sOrder, dcOrder DCOrder) *CompositeBuildAndDeployer {
+	return &CompositeBuildAndDeployer{k8sBuilders: BuildOrder(k8sOrder), dcBuilders: BuildOrder(dcOrder)}
+}
+
+// BuildOrderForSpecs returns the sequence of builders we should use for these targets.
+// If any DC targets are present, use the dcBuilders; otherwise, the k8sBuilders.
+func (composite *CompositeBuildAndDeployer) buildOrderForSpecs(specs []model.TargetSpec) BuildOrder {
+	isDC := len(model.ExtractDockerComposeTargets(specs)) > 0
+	if isDC {
+		return composite.dcBuilders
+	}
+	return composite.k8sBuilders
 }
 
 func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, currentState store.BuildStateSet) (store.BuildResultSet, error) {
+	builders := composite.buildOrderForSpecs(specs)
+
 	var lastErr, lastUnexpectedErr error
-	logger.Get(ctx).Debugf("Building with BuildOrder: %s", composite.builders.String())
-	for i, builder := range composite.builders {
+	logger.Get(ctx).Debugf("Building with BuildOrder: %s", builders.String())
+	for i, builder := range builders {
 		logger.Get(ctx).Debugf("Trying to build and deploy with %T", builder)
 		br, err := builder.BuildAndDeploy(ctx, st, specs, currentState)
 		if err == nil {
@@ -72,7 +89,7 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 			logger.Get(ctx).Write(redirectErr.level, s)
 		} else {
 			lastUnexpectedErr = err
-			if i+1 < len(composite.builders) {
+			if i+1 < len(builders) {
 				logger.Get(ctx).Infof("got unexpected error during build/deploy: %v", err)
 			}
 		}
@@ -86,14 +103,24 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 	return store.BuildResultSet{}, lastErr
 }
 
-func DefaultBuildOrder(lubad *LiveUpdateBuildAndDeployer, ibad *ImageBuildAndDeployer, dcbad *DockerComposeBuildAndDeployer, updMode mode.UpdateMode) BuildOrder {
+func DefaultBuildOrderForK8s(liveUpdBAD k8sLiveUpdBAD, ibad *ImageBuildAndDeployer, dcbad *DockerComposeBuildAndDeployer, updMode mode.UpdateMode) K8sOrder {
 	if updMode == mode.UpdateModeImage || updMode == mode.UpdateModeNaive {
-		return BuildOrder{dcbad, ibad}
+		return K8sOrder(BuildOrder{ibad})
 	}
 
-	if lubad.IsSyncletUpdater() {
-		ibad.SetInjectSynclet(true)
+	k8sLiveUpdater := LiveUpdateBuildAndDeployer(*liveUpdBAD)
+	if k8sLiveUpdater.IsSyncletUpdater() {
+		ibad.NewWithInjectSynclet(true)
 	}
 
-	return BuildOrder{lubad, dcbad, ibad}
+	return K8sOrder(BuildOrder{&k8sLiveUpdater, dcbad, ibad})
+}
+
+func DefaultBuildOrderForDC(liveUpdBAD dcLiveUpdBAD, ibad *ImageBuildAndDeployer, dcbad *DockerComposeBuildAndDeployer, updMode mode.UpdateMode) DCOrder {
+	if updMode == mode.UpdateModeImage || updMode == mode.UpdateModeNaive {
+		return DCOrder(BuildOrder{dcbad})
+	}
+
+	dcLiveUpdater := LiveUpdateBuildAndDeployer(*liveUpdBAD)
+	return DCOrder(BuildOrder{&dcLiveUpdater, dcbad, ibad})
 }

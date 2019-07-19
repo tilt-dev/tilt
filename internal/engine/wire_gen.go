@@ -33,8 +33,8 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 	if err != nil {
 		return nil, err
 	}
-	containerUpdater := containerupdate.ProvideContainerUpdater(kClient, docker2, syncletManager, env, modeUpdateMode, runtime)
-	liveUpdateBuildAndDeployer := NewLiveUpdateBuildAndDeployer(containerUpdater, env)
+	k8sContainerUpdater := containerupdate.ProvideK8sContainerUpdater(kClient, docker2, syncletManager, env, modeUpdateMode, runtime)
+	engineK8sLiveUpdBAD := ProvideLiveUpdateBuildAndDeployerForK8s(k8sContainerUpdater, env)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
@@ -43,8 +43,11 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, kClient, env, analytics2, modeUpdateMode, clock, runtime, kp)
 	engineImageAndCacheBuilder := NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, modeUpdateMode)
 	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcc, docker2, engineImageAndCacheBuilder, clock)
-	buildOrder := DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, modeUpdateMode)
-	compositeBuildAndDeployer := NewCompositeBuildAndDeployer(buildOrder)
+	k8sOrder := DefaultBuildOrderForK8s(engineK8sLiveUpdBAD, imageBuildAndDeployer, dockerComposeBuildAndDeployer, modeUpdateMode)
+	dcContainerUpdater := containerupdate.ProvideDCContainerUpdater(docker2, modeUpdateMode)
+	engineDcLiveUpdBAD := ProvideLiveUpdateBuildAndDeployerForDC(dcContainerUpdater, env)
+	dcOrder := DefaultBuildOrderForDC(engineDcLiveUpdBAD, imageBuildAndDeployer, dockerComposeBuildAndDeployer, modeUpdateMode)
+	compositeBuildAndDeployer := NewCompositeBuildAndDeployer(k8sOrder, dcOrder)
 	return compositeBuildAndDeployer, nil
 }
 
@@ -112,11 +115,13 @@ var (
 
 // wire.go:
 
-var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), minikube.ProvideMinikubeClient, build.DefaultImageBuilder, build.NewCacheBuilder, build.NewDockerImageBuilder, build.NewExecCustomBuilder, wire.Bind(new(build.CustomBuilder), new(build.ExecCustomBuilder)), NewImageBuildAndDeployer, containerupdate.ProvideContainerUpdater, NewSyncletBuildAndDeployer,
-	NewLiveUpdateBuildAndDeployer,
+var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), minikube.ProvideMinikubeClient, build.DefaultImageBuilder, build.NewCacheBuilder, build.NewDockerImageBuilder, build.NewExecCustomBuilder, wire.Bind(new(build.CustomBuilder), new(build.ExecCustomBuilder)), NewImageBuildAndDeployer, containerupdate.ProvideK8sContainerUpdater, containerupdate.ProvideDCContainerUpdater, NewSyncletBuildAndDeployer,
+	ProvideLiveUpdateBuildAndDeployerForK8s,
+	ProvideLiveUpdateBuildAndDeployerForDC,
 	NewDockerComposeBuildAndDeployer,
 	NewImageAndCacheBuilder,
-	DefaultBuildOrder, wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer, mode.ProvideUpdateMode,
+	DefaultBuildOrderForK8s,
+	DefaultBuildOrderForDC, wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer, mode.ProvideUpdateMode,
 )
 
 var DeployerWireSetTest = wire.NewSet(

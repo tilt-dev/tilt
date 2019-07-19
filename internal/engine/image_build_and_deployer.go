@@ -82,7 +82,7 @@ func NewImageBuildAndDeployer(
 }
 
 // Turn on synclet injection. Should be called before any builds.
-func (ibd *ImageBuildAndDeployer) SetInjectSynclet(inject bool) {
+func (ibd *ImageBuildAndDeployer) NewWithInjectSynclet(inject bool) {
 	ibd.injectSynclet = inject
 }
 
