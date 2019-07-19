@@ -115,8 +115,7 @@ var (
 
 // wire.go:
 
-var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), minikube.ProvideMinikubeClient, build.DefaultImageBuilder, build.NewCacheBuilder, build.NewDockerImageBuilder, build.NewExecCustomBuilder, wire.Bind(new(build.CustomBuilder), new(build.ExecCustomBuilder)), NewImageBuildAndDeployer, containerupdate.ProvideK8sContainerUpdater, containerupdate.ProvideDCContainerUpdater, NewSyncletBuildAndDeployer,
-	ProvideLiveUpdateBuildAndDeployerForK8s,
+var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), minikube.ProvideMinikubeClient, build.DefaultImageBuilder, build.NewCacheBuilder, build.NewDockerImageBuilder, build.NewExecCustomBuilder, wire.Bind(new(build.CustomBuilder), new(build.ExecCustomBuilder)), NewImageBuildAndDeployer, containerupdate.ProvideK8sContainerUpdater, containerupdate.ProvideDCContainerUpdater, ProvideLiveUpdateBuildAndDeployerForK8s,
 	ProvideLiveUpdateBuildAndDeployerForDC,
 	NewDockerComposeBuildAndDeployer,
 	NewImageAndCacheBuilder,

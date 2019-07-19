@@ -40,7 +40,6 @@ var DeployerBaseWireSet = wire.NewSet(
 	NewImageBuildAndDeployer,
 	containerupdate.ProvideK8sContainerUpdater,
 	containerupdate.ProvideDCContainerUpdater,
-	NewSyncletBuildAndDeployer,
 	ProvideLiveUpdateBuildAndDeployerForK8s,
 	ProvideLiveUpdateBuildAndDeployerForDC,
 	NewDockerComposeBuildAndDeployer,
