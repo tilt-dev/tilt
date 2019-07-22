@@ -1,3 +1,5 @@
+// Code for parsing Kustomize YAML and analyzing dependencies adapted from
+// https://github.com/GoogleContainerTools/skaffold/blob/511c77f1736b657415500eb9b820ae7e4f753347/pkg/skaffold/deploy/kustomize.go
 package kustomize
 
 import (
@@ -15,6 +17,7 @@ var kustomizationFileNames = []string{
 }
 
 // kustomization is the content of a kustomization.yaml file.
+// TODO(nick): Update this to use the upstream kustomize types
 type kustomization struct {
 	Bases              []string             `yaml:"bases"`
 	Resources          []string             `yaml:"resources"`
