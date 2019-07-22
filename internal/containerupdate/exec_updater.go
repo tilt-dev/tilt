@@ -37,11 +37,9 @@ func (cu *ExecUpdater) UpdateContainer(ctx context.Context, deployInfo store.Dep
 	defer span.Finish()
 
 	if !hotReload {
-		// If we're using kubectl exec syncing, it implies a non-Docker runtime,
-		// which probably doesn't support container restart. User will have to use
-		// our wrapper script to hack around it.
-		return fmt.Errorf("your container runtime does not support the `restart_container()` step. " +
-			"For a workaround, see https://github.com/windmilleng/rerun-process-wrapper")
+		return fmt.Errorf("ExecUpdater does not `restart_container()` step. If you ran Tilt " +
+			"with `--updateMode=exec`, omit this flag. If you are using a non-Docker container runtime, " +
+			"see https://github.com/windmilleng/rerun-process-wrapper for a workaround")
 	}
 
 	l := logger.Get(ctx)
