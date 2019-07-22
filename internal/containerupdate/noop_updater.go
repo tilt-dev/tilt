@@ -9,19 +9,19 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 )
 
-type NoopUpdater struct{}
+type ExplodingContainerUpdater struct{}
 
-var _ ContainerUpdater = NoopUpdater{}
+var _ ContainerUpdater = ExplodingContainerUpdater{}
 
-func NewNoopUpdater() ContainerUpdater {
-	return NoopUpdater{}
+func NewExplodingContainerUpdater() ContainerUpdater {
+	return ExplodingContainerUpdater{}
 }
 
-func (cu NoopUpdater) SupportsSpecs(specs []model.TargetSpec) (supported bool, msg string) {
-	return false, "NoopUpdater.SupportsSpecs should never be called; please contact Tilt support"
+func (cu ExplodingContainerUpdater) SupportsSpecs(specs []model.TargetSpec) (supported bool, msg string) {
+	return false, "ExplodingContainerUpdater.SupportsSpecs should never be called; please contact Tilt support"
 }
 
-func (cu NoopUpdater) UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,
+func (cu ExplodingContainerUpdater) UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,
 	archiveToCopy io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
-	return fmt.Errorf("NoopUpdater.SupportsSpecs should never be called; please contact Tilt support")
+	return fmt.Errorf("ExplodingContainerUpdater.UpdateContainer should never be called; please contact Tilt support")
 }

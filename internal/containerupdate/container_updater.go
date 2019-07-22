@@ -27,7 +27,7 @@ type DCContainerUpdater ContainerUpdater
 
 func ProvideK8sContainerUpdater(kCli k8s.Client, dCli docker.Client, sm SyncletManager, env k8s.Env, updMode mode.UpdateMode, runtime container.Runtime) K8sContainerUpdater {
 	if updMode == mode.UpdateModeImage || updMode == mode.UpdateModeNaive {
-		return NewNoopUpdater()
+		return NewExplodingContainerUpdater()
 	}
 
 	if updMode == mode.UpdateModeKubectlExec {
@@ -47,7 +47,7 @@ func ProvideK8sContainerUpdater(kCli k8s.Client, dCli docker.Client, sm SyncletM
 
 func ProvideDCContainerUpdater(dCli docker.Client, updMode mode.UpdateMode, env k8s.Env, runtime container.Runtime) DCContainerUpdater {
 	if updMode == mode.UpdateModeImage || updMode == mode.UpdateModeNaive {
-		return NewNoopUpdater()
+		return NewExplodingContainerUpdater()
 	}
 
 	return NewDockerContainerUpdater(dCli, env, runtime)
