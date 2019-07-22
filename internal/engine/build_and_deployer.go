@@ -109,12 +109,11 @@ func DefaultBuildOrderForK8s(liveUpdBAD k8sLiveUpdBAD, ibad *ImageBuildAndDeploy
 		return K8sOrder(BuildOrder{ibad})
 	}
 
-	k8sLiveUpdater := LiveUpdateBuildAndDeployer(*liveUpdBAD)
-	if k8sLiveUpdater.IsSyncletUpdater() {
+	if liveUpdBAD.IsSyncletUpdater() {
 		ibad.SetInjectSynclet(true)
 	}
 
-	return K8sOrder(BuildOrder{&k8sLiveUpdater, dcbad, ibad})
+	return K8sOrder(BuildOrder{liveUpdBAD, dcbad, ibad})
 }
 
 func DefaultBuildOrderForDC(liveUpdBAD dcLiveUpdBAD, ibad *ImageBuildAndDeployer, dcbad *DockerComposeBuildAndDeployer, updMode mode.UpdateMode) DCOrder {
@@ -122,6 +121,5 @@ func DefaultBuildOrderForDC(liveUpdBAD dcLiveUpdBAD, ibad *ImageBuildAndDeployer
 		return DCOrder(BuildOrder{dcbad})
 	}
 
-	dcLiveUpdater := LiveUpdateBuildAndDeployer(*liveUpdBAD)
-	return DCOrder(BuildOrder{&dcLiveUpdater, dcbad, ibad})
+	return DCOrder(BuildOrder{liveUpdBAD, dcbad, ibad})
 }
