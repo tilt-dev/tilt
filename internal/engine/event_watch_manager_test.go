@@ -137,11 +137,13 @@ func TestEventWatchManager_janitor(t *testing.T) {
 
 	f.assertUIDMapKeys([]types.UID{obj1.GetUID()})
 
+	f.clock.BlockUntil(1)
 	f.clock.Advance(uidMapEntryTTL / 2)
 
 	f.kClient.EmitEvent(f.ctx, f.makeEvent(obj2))
 	f.assertUIDMapKeys([]types.UID{obj1.GetUID(), obj2.GetUID()})
 
+	f.clock.BlockUntil(1)
 	f.clock.Advance(uidMapEntryTTL/2 + 1)
 	f.assertUIDMapKeys([]types.UID{obj2.GetUID()})
 }
