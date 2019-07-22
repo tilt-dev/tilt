@@ -22,18 +22,21 @@ import (
 
 type DockerContainerUpdater struct {
 	dCli docker.Client
+	env  k8s.Env
 }
 
 var _ ContainerUpdater = &DockerContainerUpdater{}
 
-func NewDockerContainerUpdater(dCli docker.Client) ContainerUpdater {
-	return &DockerContainerUpdater{dCli: dCli}
+func NewDockerContainerUpdater(dCli docker.Client, env k8s.Env) ContainerUpdater {
+	return &DockerContainerUpdater{dCli: dCli, env: env}
 }
 
-func (cu *DockerContainerUpdater) ValidateSpecs(specs []model.TargetSpec, env k8s.Env) error {
+// SupportsSpecs returns an error (to be surfaced by the BuildAndDeployer) if
+// the DockerContainerUpdater does not support the given specs.
+func (cu *DockerContainerUpdater) SupportsSpecs(specs []model.TargetSpec) error {
 	isDC := len(model.ExtractDockerComposeTargets(specs)) > 0
 	isK8s := len(model.ExtractK8sTargets(specs)) > 0
-	canLocalUpdate := isDC || (isK8s && env.IsLocalCluster())
+	canLocalUpdate := isDC || (isK8s && cu.env.IsLocalCluster())
 	if !canLocalUpdate {
 		return tilterrors.SilentRedirectToNextBuilderf("Local container builder needs docker-compose or k8s cluster w/ local updates")
 	}

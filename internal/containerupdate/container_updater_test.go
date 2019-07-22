@@ -10,7 +10,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-func TestValidateSpecsOnlyImageDeployedToK8s(t *testing.T) {
+func TestSupportsSpecsOnlyImageDeployedToK8s(t *testing.T) {
 	iTarg := model.ImageTarget{}
 	k8sTargWithDep := model.K8sTarget{}.WithDependencyIDs([]model.TargetID{iTarg.ID()})
 	k8sTargNoDep := model.K8sTarget{}

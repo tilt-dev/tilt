@@ -14,7 +14,7 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils"
 )
 
-func TestExecUpdater_ValidateSpecs(t *testing.T) {
+func TestExecUpdater_SupportsSpecs(t *testing.T) {
 	f := newExecFixture(t)
 
 	iTarg := model.ImageTarget{}
@@ -50,7 +50,7 @@ func TestExecUpdater_ValidateSpecs(t *testing.T) {
 		},
 	} {
 		t.Run(string(test.name), func(t *testing.T) {
-			actualErr := f.ecu.ValidateSpecs(test.specs, test.env)
+			actualErr := f.ecu.SupportsSpecs(test.specs)
 			assert.Equal(t, test.expectedErr, actualErr)
 		})
 	}

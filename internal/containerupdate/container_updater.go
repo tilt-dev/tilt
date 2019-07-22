@@ -18,7 +18,7 @@ import (
 type ContainerUpdater interface {
 	UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,
 		archiveToCopy io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error
-	ValidateSpecs(specs []model.TargetSpec, env k8s.Env) error
+	SupportsSpecs(specs []model.TargetSpec) error // Return an error if this ContainerUpdater does not support these specs
 }
 
 // Differentiate between the CU we'll need for k8s updates (may be docker || synclet || exec)
@@ -36,7 +36,7 @@ func ProvideK8sContainerUpdater(kCli k8s.Client, dCli docker.Client, sm SyncletM
 	}
 
 	if updMode == mode.UpdateModeContainer || (runtime == container.RuntimeDocker && env.IsLocalCluster()) {
-		return NewDockerContainerUpdater(dCli)
+		return NewDockerContainerUpdater(dCli, env)
 	}
 
 	if updMode == mode.UpdateModeSynclet || runtime == container.RuntimeDocker {
@@ -46,12 +46,12 @@ func ProvideK8sContainerUpdater(kCli k8s.Client, dCli docker.Client, sm SyncletM
 	return NewExecUpdater(kCli)
 }
 
-func ProvideDCContainerUpdater(dCli docker.Client, updMode mode.UpdateMode) DCContainerUpdater {
+func ProvideDCContainerUpdater(dCli docker.Client, updMode mode.UpdateMode, env k8s.Env) DCContainerUpdater {
 	if updMode == mode.UpdateModeImage || updMode == mode.UpdateModeNaive {
 		return NewNoopUpdater()
 	}
 
-	return NewDockerContainerUpdater(dCli)
+	return NewDockerContainerUpdater(dCli, env)
 }
 
 // validation func shared by ExecUpdater and SyncletUpdater

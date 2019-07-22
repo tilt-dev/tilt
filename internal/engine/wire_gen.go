@@ -44,7 +44,7 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 	engineImageAndCacheBuilder := NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, modeUpdateMode)
 	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcc, docker2, engineImageAndCacheBuilder, clock)
 	k8sOrder := DefaultBuildOrderForK8s(engineK8sLiveUpdBAD, imageBuildAndDeployer, dockerComposeBuildAndDeployer, modeUpdateMode)
-	dcContainerUpdater := containerupdate.ProvideDCContainerUpdater(docker2, modeUpdateMode)
+	dcContainerUpdater := containerupdate.ProvideDCContainerUpdater(docker2, modeUpdateMode, env)
 	engineDcLiveUpdBAD := ProvideLiveUpdateBuildAndDeployerForDC(dcContainerUpdater, env)
 	dcOrder := DefaultBuildOrderForDC(engineDcLiveUpdBAD, imageBuildAndDeployer, dockerComposeBuildAndDeployer, modeUpdateMode)
 	compositeBuildAndDeployer := NewCompositeBuildAndDeployer(k8sOrder, dcOrder)

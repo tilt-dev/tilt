@@ -7,8 +7,6 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 
-	"github.com/windmilleng/tilt/internal/k8s"
-
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
@@ -24,7 +22,9 @@ func NewSyncletUpdater(sm SyncletManager) ContainerUpdater {
 	return &SyncletUpdater{sm: sm}
 }
 
-func (cu *SyncletUpdater) ValidateSpecs(specs []model.TargetSpec, env k8s.Env) error {
+// SupportsSpecs returns an error (to be surfaced by the BuildAndDeployer) if
+// the SyncletUpdater does not support the given specs.
+func (cu *SyncletUpdater) SupportsSpecs(specs []model.TargetSpec) error {
 	return validateSpecsOnlyImagesDeployedToK8s(specs, "SyncletUpdater")
 }
 

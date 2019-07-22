@@ -13,7 +13,7 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils"
 )
 
-func TestSyncletUpdater_ValidateSpecs(t *testing.T) {
+func TestSyncletUpdater_SupportsSpecs(t *testing.T) {
 	f := newSyncletFixture(t)
 
 	// iTarg := model.ImageTarget{}
@@ -38,7 +38,7 @@ func TestSyncletUpdater_ValidateSpecs(t *testing.T) {
 		// },
 	} {
 		t.Run(string(test.name), func(t *testing.T) {
-			actualErr := f.scu.ValidateSpecs(test.specs, test.env)
+			actualErr := f.scu.SupportsSpecs(test.specs)
 			assert.Equal(t, test.expectedErr, actualErr)
 
 		})

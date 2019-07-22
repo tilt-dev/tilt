@@ -25,7 +25,9 @@ func NewExecUpdater(kCli k8s.Client) ContainerUpdater {
 	return &ExecUpdater{kCli: kCli}
 }
 
-func (cu *ExecUpdater) ValidateSpecs(specs []model.TargetSpec, env k8s.Env) error {
+// SupportsSpecs returns an error (to be surfaced by the BuildAndDeployer) if
+// the ExecUpdater does not support the given specs.
+func (cu *ExecUpdater) SupportsSpecs(specs []model.TargetSpec) error {
 	return validateSpecsOnlyImagesDeployedToK8s(specs, "ExecUpdater")
 }
 

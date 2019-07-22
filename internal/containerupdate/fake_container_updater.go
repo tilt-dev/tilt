@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 )
@@ -26,7 +25,7 @@ type UpdateContainerCall struct {
 	HotReload  bool
 }
 
-func (cu *FakeContainerUpdater) ValidateSpecs(specs []model.TargetSpec, env k8s.Env) error {
+func (cu *FakeContainerUpdater) SupportsSpecs(specs []model.TargetSpec) error {
 	var err error
 	if cu.ValidateErr != nil {
 		err = cu.ValidateErr

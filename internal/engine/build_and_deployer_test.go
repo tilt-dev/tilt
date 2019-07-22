@@ -50,7 +50,7 @@ func TestGKEDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	manifest := NewSanchoFastBuildManifest(f)
+	manifest := NewSanchoLiveUpdateManifest(f)
 	targets := buildTargets(manifest)
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
 	if err != nil {

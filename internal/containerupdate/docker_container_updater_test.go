@@ -27,9 +27,7 @@ var TestDeployInfo = store.DeployInfo{
 	Namespace:     "ns-foo",
 }
 
-func TestDockerContainerUpdater_ValidateSpecs(t *testing.T) {
-	f := newDCUFixture(t)
-
+func TestDockerContainerUpdater_SupportsSpecs(t *testing.T) {
 	iTarg := model.ImageTarget{}
 	k8sTarg := model.K8sTarget{}
 	dcTarg := model.DockerComposeTarget{}
@@ -57,7 +55,8 @@ func TestDockerContainerUpdater_ValidateSpecs(t *testing.T) {
 		},
 	} {
 		t.Run(string(test.name), func(t *testing.T) {
-			actualErr := f.dcu.ValidateSpecs(test.specs, test.env)
+			f := newDCUFixture(t, test.env)
+			actualErr := f.dcu.SupportsSpecs(test.specs)
 			assert.Equal(t, test.expectedErr, actualErr)
 
 		})
@@ -65,7 +64,7 @@ func TestDockerContainerUpdater_ValidateSpecs(t *testing.T) {
 }
 
 func TestUpdateInContainerCopiesAndRmsFiles(t *testing.T) {
-	f := newDCUFixture(t)
+	f := newDCUFixture(t, k8s.EnvDockerDesktop)
 
 	archive := bytes.NewBuffer([]byte("hello world"))
 	toDelete := []string{"/src/does-not-exist"}
@@ -87,7 +86,7 @@ func TestUpdateInContainerCopiesAndRmsFiles(t *testing.T) {
 }
 
 func TestUpdateContainerExecsRuns(t *testing.T) {
-	f := newDCUFixture(t)
+	f := newDCUFixture(t, k8s.EnvDockerDesktop)
 
 	cmdA := model.Cmd{Argv: []string{"a"}}
 	cmdB := model.Cmd{Argv: []string{"cu", "and cu", "another cu"}}
@@ -106,7 +105,7 @@ func TestUpdateContainerExecsRuns(t *testing.T) {
 }
 
 func TestUpdateContainerRestartsContainer(t *testing.T) {
-	f := newDCUFixture(t)
+	f := newDCUFixture(t, k8s.EnvDockerDesktop)
 
 	err := f.dcu.UpdateContainer(f.ctx, TestDeployInfo, nil, nil, nil, false)
 	if err != nil {
@@ -117,7 +116,7 @@ func TestUpdateContainerRestartsContainer(t *testing.T) {
 }
 
 func TestUpdateContainerHotReloadDoesNotRestartContainer(t *testing.T) {
-	f := newDCUFixture(t)
+	f := newDCUFixture(t, k8s.EnvDockerDesktop)
 
 	err := f.dcu.UpdateContainer(f.ctx, TestDeployInfo, nil, nil, nil, true)
 	if err != nil {
@@ -128,7 +127,7 @@ func TestUpdateContainerHotReloadDoesNotRestartContainer(t *testing.T) {
 }
 
 func TestUpdateContainerKillTask(t *testing.T) {
-	f := newDCUFixture(t)
+	f := newDCUFixture(t, k8s.EnvDockerDesktop)
 
 	f.dCli.ExecErrorToThrow = docker.ExitError{ExitCode: build.TaskKillExitCode}
 
@@ -153,11 +152,9 @@ type dockerContainerUpdaterFixture struct {
 	dcu  *DockerContainerUpdater
 }
 
-func newDCUFixture(t testing.TB) *dockerContainerUpdaterFixture {
+func newDCUFixture(t testing.TB, env k8s.Env) *dockerContainerUpdaterFixture {
 	fakeCli := docker.NewFakeClient()
-	cu := &DockerContainerUpdater{
-		dCli: fakeCli,
-	}
+	cu := &DockerContainerUpdater{dCli: fakeCli, env: env}
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 
 	return &dockerContainerUpdaterFixture{
