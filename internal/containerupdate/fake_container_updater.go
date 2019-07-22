@@ -26,11 +26,9 @@ type UpdateContainerCall struct {
 }
 
 func (cu *FakeContainerUpdater) SupportsSpecs(specs []model.TargetSpec) error {
-	var err error
-	if cu.ValidateErr != nil {
-		err = cu.ValidateErr
-		cu.ValidateErr = nil
-	}
+	err := cu.ValidateErr
+	cu.ValidateErr = nil
+
 	return err
 }
 
@@ -44,10 +42,7 @@ func (cu *FakeContainerUpdater) UpdateContainer(ctx context.Context, deployInfo 
 		HotReload:  hotReload,
 	})
 
-	var err error
-	if cu.UpdateErr != nil {
-		err = cu.UpdateErr
-		cu.UpdateErr = nil
-	}
+	err := cu.UpdateErr
+	cu.UpdateErr = nil
 	return err
 }
