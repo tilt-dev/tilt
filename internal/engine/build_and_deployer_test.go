@@ -188,7 +188,7 @@ func TestContainerBuildSynclet(t *testing.T) {
 	}
 
 	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
-	assert.False(t, f.sCli.UpdateContainerHotReload)
+	assert.False(t, f.sCli.LastHotReload)
 }
 
 func TestContainerBuildLocalTriggeredRuns(t *testing.T) {
@@ -273,7 +273,7 @@ func TestContainerBuildSyncletTriggeredRuns(t *testing.T) {
 	}
 
 	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
-	assert.False(t, f.sCli.UpdateContainerHotReload)
+	assert.False(t, f.sCli.LastHotReload)
 }
 
 func TestContainerBuildSyncletHotReload(t *testing.T) {
@@ -293,7 +293,7 @@ func TestContainerBuildSyncletHotReload(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.True(t, f.sCli.UpdateContainerHotReload)
+	assert.True(t, f.sCli.LastHotReload)
 }
 
 func TestDockerBuildWithNestedFastBuildDeploysSynclet(t *testing.T) {

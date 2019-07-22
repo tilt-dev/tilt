@@ -37,7 +37,7 @@ func (cu *ExecUpdater) UpdateContainer(ctx context.Context, deployInfo store.Dep
 	defer span.Finish()
 
 	if !hotReload {
-		return fmt.Errorf("ExecUpdater does not `restart_container()` step. If you ran Tilt " +
+		return fmt.Errorf("ExecUpdater does not support `restart_container()` step. If you ran Tilt " +
 			"with `--updateMode=exec`, omit this flag. If you are using a non-Docker container runtime, " +
 			"see https://github.com/windmilleng/rerun-process-wrapper for a workaround")
 	}

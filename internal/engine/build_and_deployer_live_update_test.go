@@ -67,7 +67,7 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 
 	assert.Equal(t, tCase.expectSyncletUpdateContainerCount, f.sCli.UpdateContainerCount, "synclet update container")
 	assert.Equal(t, tCase.expectSyncletCommandCount, f.sCli.CommandsRunCount, "synclet commands run")
-	assert.Equal(t, tCase.expectSyncletHotReload, f.sCli.UpdateContainerHotReload, "synclet hot reload")
+	assert.Equal(t, tCase.expectSyncletHotReload, f.sCli.LastHotReload, "synclet hot reload")
 
 	id := manifest.ImageTargetAt(iTargIdx).ID()
 	_, hasResult := result[id]
