@@ -111,7 +111,7 @@ func DefaultBuildOrderForK8s(liveUpdBAD k8sLiveUpdBAD, ibad *ImageBuildAndDeploy
 
 	k8sLiveUpdater := LiveUpdateBuildAndDeployer(*liveUpdBAD)
 	if k8sLiveUpdater.IsSyncletUpdater() {
-		ibad.NewWithInjectSynclet(true)
+		ibad.SetInjectSynclet(true)
 	}
 
 	return K8sOrder(BuildOrder{&k8sLiveUpdater, dcbad, ibad})

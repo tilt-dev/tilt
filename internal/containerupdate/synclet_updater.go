@@ -24,8 +24,8 @@ func NewSyncletUpdater(sm SyncletManager) ContainerUpdater {
 
 // SupportsSpecs returns an error (to be surfaced by the BuildAndDeployer) if
 // the SyncletUpdater does not support the given specs.
-func (cu *SyncletUpdater) SupportsSpecs(specs []model.TargetSpec) error {
-	return validateSpecsOnlyImagesDeployedToK8s(specs, "SyncletUpdater")
+func (cu *SyncletUpdater) SupportsSpecs(specs []model.TargetSpec) (supported bool, msg string) {
+	return specsAreOnlyImagesDeployedToK8s(specs, "SyncletUpdater")
 }
 
 func (cu *SyncletUpdater) UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,

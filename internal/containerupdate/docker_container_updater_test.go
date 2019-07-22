@@ -8,7 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	tilterrors "github.com/windmilleng/tilt/internal/engine/errors"
+	"github.com/windmilleng/tilt/internal/container"
+
 	"github.com/windmilleng/tilt/internal/k8s"
 
 	"github.com/windmilleng/tilt/internal/testutils"
@@ -33,38 +34,56 @@ func TestDockerContainerUpdater_SupportsSpecs(t *testing.T) {
 	dcTarg := model.DockerComposeTarget{}
 
 	for _, test := range []struct {
-		name        string
-		specs       []model.TargetSpec
-		env         k8s.Env
-		expectedErr error
+		name            string
+		specs           []model.TargetSpec
+		env             k8s.Env
+		runtime         container.Runtime
+		expectSupported bool
 	}{
-		{"can update docker compose",
+		{"supports docker compose",
 			[]model.TargetSpec{dcTarg},
 			k8s.EnvGKE,
-			nil,
+			container.RuntimeDocker,
+			true,
 		},
-		{"can update k8s + local cluster",
+		{"supports k8s + local cluster",
 			[]model.TargetSpec{iTarg, k8sTarg},
 			k8s.EnvDockerDesktop,
-			nil,
+			container.RuntimeDocker,
+			true,
 		},
-		{"can't update k8s + remote cluster",
+		{"doesn't support k8s + remote cluster",
 			[]model.TargetSpec{iTarg, k8sTarg},
 			k8s.EnvGKE,
-			tilterrors.SilentRedirectToNextBuilderf("Local container builder needs docker-compose or k8s cluster w/ local updates"),
+			container.RuntimeDocker,
+			false,
+		},
+		{"doesn't support k8s + non-docker runtime",
+			[]model.TargetSpec{iTarg, k8sTarg},
+			k8s.EnvMinikube,
+			container.RuntimeContainerd,
+			false,
 		},
 	} {
 		t.Run(string(test.name), func(t *testing.T) {
-			f := newDCUFixture(t, test.env)
-			actualErr := f.dcu.SupportsSpecs(test.specs)
-			assert.Equal(t, test.expectedErr, actualErr)
+			f := newDCUFixture(t, test.env, test.runtime)
+			supported, msg := f.dcu.SupportsSpecs(test.specs)
+
+			if test.expectSupported {
+				assert.True(t, supported, "expected SupportSpecs = true, but got false (msg: '%s')", msg)
+			} else {
+				if assert.False(t, supported, "expected SupportSpecs = false, but got true") {
+					assert.Contains(t, msg, "DockerContainerUpdater needs Docker "+
+						"Compose or a local k8s cluster with container runtime = Docker.")
+				}
+			}
 
 		})
 	}
 }
 
 func TestUpdateInContainerCopiesAndRmsFiles(t *testing.T) {
-	f := newDCUFixture(t, k8s.EnvDockerDesktop)
+	f := newDefaultDCUFixture(t)
 
 	archive := bytes.NewBuffer([]byte("hello world"))
 	toDelete := []string{"/src/does-not-exist"}
@@ -86,7 +105,7 @@ func TestUpdateInContainerCopiesAndRmsFiles(t *testing.T) {
 }
 
 func TestUpdateContainerExecsRuns(t *testing.T) {
-	f := newDCUFixture(t, k8s.EnvDockerDesktop)
+	f := newDefaultDCUFixture(t)
 
 	cmdA := model.Cmd{Argv: []string{"a"}}
 	cmdB := model.Cmd{Argv: []string{"cu", "and cu", "another cu"}}
@@ -105,7 +124,7 @@ func TestUpdateContainerExecsRuns(t *testing.T) {
 }
 
 func TestUpdateContainerRestartsContainer(t *testing.T) {
-	f := newDCUFixture(t, k8s.EnvDockerDesktop)
+	f := newDefaultDCUFixture(t)
 
 	err := f.dcu.UpdateContainer(f.ctx, TestDeployInfo, nil, nil, nil, false)
 	if err != nil {
@@ -116,7 +135,7 @@ func TestUpdateContainerRestartsContainer(t *testing.T) {
 }
 
 func TestUpdateContainerHotReloadDoesNotRestartContainer(t *testing.T) {
-	f := newDCUFixture(t, k8s.EnvDockerDesktop)
+	f := newDefaultDCUFixture(t)
 
 	err := f.dcu.UpdateContainer(f.ctx, TestDeployInfo, nil, nil, nil, true)
 	if err != nil {
@@ -127,7 +146,7 @@ func TestUpdateContainerHotReloadDoesNotRestartContainer(t *testing.T) {
 }
 
 func TestUpdateContainerKillTask(t *testing.T) {
-	f := newDCUFixture(t, k8s.EnvDockerDesktop)
+	f := newDefaultDCUFixture(t)
 
 	f.dCli.ExecErrorToThrow = docker.ExitError{ExitCode: build.TaskKillExitCode}
 
@@ -152,9 +171,9 @@ type dockerContainerUpdaterFixture struct {
 	dcu  *DockerContainerUpdater
 }
 
-func newDCUFixture(t testing.TB, env k8s.Env) *dockerContainerUpdaterFixture {
+func newDCUFixture(t testing.TB, env k8s.Env, runtime container.Runtime) *dockerContainerUpdaterFixture {
 	fakeCli := docker.NewFakeClient()
-	cu := &DockerContainerUpdater{dCli: fakeCli, env: env}
+	cu := &DockerContainerUpdater{dCli: fakeCli, env: env, runtime: runtime}
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 
 	return &dockerContainerUpdaterFixture{
@@ -163,4 +182,8 @@ func newDCUFixture(t testing.TB, env k8s.Env) *dockerContainerUpdaterFixture {
 		dCli: fakeCli,
 		dcu:  cu,
 	}
+}
+
+func newDefaultDCUFixture(t testing.TB) *dockerContainerUpdaterFixture {
+	return newDCUFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 }

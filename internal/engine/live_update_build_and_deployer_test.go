@@ -41,11 +41,12 @@ func TestSurfaceErrorIfSpecsInvalidForUpdater(t *testing.T) {
 	stateSet := store.BuildStateSet{m.ImageTargetAt(0).ID(): TestBuildState}
 
 	errMsg := "something is not right! something is quite wrong!"
-	expectedErr := errors.SilentRedirectToNextBuilderf(errMsg)
-	f.cu.ValidateErr = expectedErr
+	f.cu.SupportsSpecsMsg = errMsg
 
 	_, err := f.liveUpdBaD.BuildAndDeploy(f.ctx, f.st, m.TargetSpecs(), stateSet)
-	assert.Equal(t, expectedErr, err)
+	if assert.NotNil(t, err, "expected LiveUpdateBaD to surface an error b/c container updater doesn't support specs") {
+		assert.Contains(t, err.Error(), errMsg)
+	}
 }
 
 func TestBuildAndDeployBoilsSteps(t *testing.T) {

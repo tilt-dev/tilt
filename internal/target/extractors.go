@@ -103,7 +103,7 @@ func IsImageDeployedToK8s(iTarget model.ImageTarget, kTargets []model.K8sTarget)
 	return false
 }
 
-func AllImagesDeployerToK8s(specs []model.TargetSpec) bool {
+func AllImagesDeployedToK8s(specs []model.TargetSpec) bool {
 	iTargets, kTargets := ExtractImageAndK8sTargets(specs)
 	for _, iTarg := range iTargets {
 		if !IsImageDeployedToK8s(iTarg, kTargets) {

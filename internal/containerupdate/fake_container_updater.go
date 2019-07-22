@@ -9,8 +9,8 @@ import (
 )
 
 type FakeContainerUpdater struct {
-	ValidateErr error
-	UpdateErr   error
+	SupportsSpecsMsg string
+	UpdateErr        error
 
 	Calls []UpdateContainerCall
 }
@@ -25,11 +25,11 @@ type UpdateContainerCall struct {
 	HotReload  bool
 }
 
-func (cu *FakeContainerUpdater) SupportsSpecs(specs []model.TargetSpec) error {
-	err := cu.ValidateErr
-	cu.ValidateErr = nil
+func (cu *FakeContainerUpdater) SupportsSpecs(specs []model.TargetSpec) (supported bool, msg string) {
+	msg = cu.SupportsSpecsMsg
+	cu.SupportsSpecsMsg = ""
 
-	return err
+	return msg == "", msg
 }
 
 func (cu *FakeContainerUpdater) UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,

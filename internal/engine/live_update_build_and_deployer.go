@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"time"
 
@@ -66,9 +67,9 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		return store.BuildResultSet{}, errors2.SilentRedirectToNextBuilderf("LiveUpdateBuildAndDeployer needs exactly one image target (got %d)", len(liveUpdateStateSet))
 	}
 
-	err = lubad.cu.SupportsSpecs(specs)
-	if err != nil {
-		return store.BuildResultSet{}, err
+	supported, msg := lubad.cu.SupportsSpecs(specs)
+	if !supported {
+		return store.BuildResultSet{}, fmt.Errorf(msg)
 	}
 
 	liveUpdateState := liveUpdateStateSet[0]

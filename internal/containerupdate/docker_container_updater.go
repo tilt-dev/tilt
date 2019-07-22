@@ -8,8 +8,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	tilterrors "github.com/windmilleng/tilt/internal/engine/errors"
-
 	"github.com/windmilleng/tilt/internal/k8s"
 
 	"github.com/windmilleng/tilt/internal/build"
@@ -21,26 +19,29 @@ import (
 )
 
 type DockerContainerUpdater struct {
-	dCli docker.Client
-	env  k8s.Env
+	dCli    docker.Client
+	env     k8s.Env
+	runtime container.Runtime
 }
 
 var _ ContainerUpdater = &DockerContainerUpdater{}
 
-func NewDockerContainerUpdater(dCli docker.Client, env k8s.Env) ContainerUpdater {
-	return &DockerContainerUpdater{dCli: dCli, env: env}
+func NewDockerContainerUpdater(dCli docker.Client, env k8s.Env, runtime container.Runtime) ContainerUpdater {
+	return &DockerContainerUpdater{dCli: dCli, env: env, runtime: runtime}
 }
 
 // SupportsSpecs returns an error (to be surfaced by the BuildAndDeployer) if
 // the DockerContainerUpdater does not support the given specs.
-func (cu *DockerContainerUpdater) SupportsSpecs(specs []model.TargetSpec) error {
+func (cu *DockerContainerUpdater) SupportsSpecs(specs []model.TargetSpec) (supported bool, msg string) {
 	isDC := len(model.ExtractDockerComposeTargets(specs)) > 0
 	isK8s := len(model.ExtractK8sTargets(specs)) > 0
-	canLocalUpdate := isDC || (isK8s && cu.env.IsLocalCluster())
+	canLocalUpdate := isDC || (isK8s && cu.env.IsLocalCluster() && cu.runtime == container.RuntimeDocker)
 	if !canLocalUpdate {
-		return tilterrors.SilentRedirectToNextBuilderf("Local container builder needs docker-compose or k8s cluster w/ local updates")
+		return false, "DockerContainerUpdater needs Docker Compose or a local k8s " +
+			"cluster with container runtime = Docker. (If you're running with --updateMode=container " +
+			"and trying to deploy to k8s, your current cluster doesn't support this mode.)"
 	}
-	return nil
+	return true, ""
 }
 
 func (cu *DockerContainerUpdater) UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,

@@ -17,8 +17,8 @@ func NewNoopUpdater() ContainerUpdater {
 	return NoopUpdater{}
 }
 
-func (cu NoopUpdater) SupportsSpecs(specs []model.TargetSpec) error {
-	return fmt.Errorf("NoopUpdater.SupportsSpecs should never be called; please contact Tilt support")
+func (cu NoopUpdater) SupportsSpecs(specs []model.TargetSpec) (supported bool, msg string) {
+	return false, "NoopUpdater.SupportsSpecs should never be called; please contact Tilt support"
 }
 
 func (cu NoopUpdater) UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,
