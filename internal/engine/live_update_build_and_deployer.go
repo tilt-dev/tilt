@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	errors2 "github.com/windmilleng/tilt/internal/engine/errors"
+	tilterrors "github.com/windmilleng/tilt/internal/engine/errors"
 
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/containerupdate"
@@ -64,7 +64,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	}
 
 	if len(liveUpdateStateSet) != 1 {
-		return store.BuildResultSet{}, errors2.SilentRedirectToNextBuilderf("LiveUpdateBuildAndDeployer needs exactly one image target (got %d)", len(liveUpdateStateSet))
+		return store.BuildResultSet{}, tilterrors.SilentRedirectToNextBuilderf("LiveUpdateBuildAndDeployer needs exactly one image target (got %d)", len(liveUpdateStateSet))
 	}
 
 	supported, msg := lubad.cu.SupportsSpecs(specs)
@@ -88,7 +88,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 
 	// LiveUpdateBuildAndDeployer doesn't support initial build
 	if state.IsEmpty() {
-		return store.BuildResultSet{}, errors2.SilentRedirectToNextBuilderf("prev. build state is empty; LiveUpdate does not support initial deploy")
+		return store.BuildResultSet{}, tilterrors.SilentRedirectToNextBuilderf("prev. build state is empty; LiveUpdate does not support initial deploy")
 	}
 
 	var changedFiles []build.PathMapping
@@ -109,7 +109,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 			if pmErr, ok := err.(*build.PathMappingErr); ok {
 				// expected error for this builder. One of more files don't match sync's;
 				// i.e. they're within the docker context but not within a sync; do a full image build.
-				return nil, errors2.RedirectToNextBuilderInfof(
+				return nil, tilterrors.RedirectToNextBuilderInfof(
 					"at least one file (%s) doesn't match a LiveUpdate sync, so performing a full build", pmErr.File)
 			}
 			return store.BuildResultSet{}, err
@@ -121,7 +121,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 			return nil, err
 		}
 		if anyMatch {
-			return store.BuildResultSet{}, errors2.RedirectToNextBuilderInfof(
+			return store.BuildResultSet{}, tilterrors.RedirectToNextBuilderInfof(
 				"detected change to fall_back_on file '%s'", file)
 		}
 
@@ -183,7 +183,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, iTa
 	err = lubad.cu.UpdateContainer(ctx, deployInfo, pr, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 	if err != nil {
 		if build.IsUserBuildFailure(err) {
-			return errors2.WrapDontFallBackError(err)
+			return tilterrors.WrapDontFallBackError(err)
 		}
 		return err
 	}

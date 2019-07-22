@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	errors2 "github.com/windmilleng/tilt/internal/engine/errors"
+	tilterrors "github.com/windmilleng/tilt/internal/engine/errors"
 
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/sliceutils"
@@ -45,7 +45,7 @@ func ExtractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 	for _, iTarget := range deployedImages {
 		state := stateSet[iTarget.ID()]
 		if state.IsEmpty() {
-			return nil, errors2.SilentRedirectToNextBuilderf("In-place build does not support initial deploy")
+			return nil, tilterrors.SilentRedirectToNextBuilderf("In-place build does not support initial deploy")
 		}
 
 		hasFileChangesIDs, err := hasFileChangesTree(g, iTarget, stateSet)
@@ -62,7 +62,7 @@ func ExtractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 		fbInfo := iTarget.AnyFastBuildInfo()
 		luInfo := iTarget.AnyLiveUpdateInfo()
 		if fbInfo.Empty() && luInfo.Empty() {
-			return nil, errors2.SilentRedirectToNextBuilderf("In-place build requires either FastBuild or LiveUpdate")
+			return nil, tilterrors.SilentRedirectToNextBuilderf("In-place build requires either FastBuild or LiveUpdate")
 		}
 
 		// Now that we have fast build information, we know this CAN be updated in
@@ -70,7 +70,7 @@ func ExtractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 		// that would need to be updated.
 		deployInfo := state.DeployInfo
 		if deployInfo.Empty() {
-			return nil, errors2.RedirectToNextBuilderInfof("don't have info for deployed container of image %q (often a result of the deployment not yet being ready)", iTarget.DeploymentRef.String())
+			return nil, tilterrors.RedirectToNextBuilderInfof("don't have info for deployed container of image %q (often a result of the deployment not yet being ready)", iTarget.DeploymentRef.String())
 		}
 
 		filesChanged, err := filesChangedTree(g, iTarget, stateSet)
