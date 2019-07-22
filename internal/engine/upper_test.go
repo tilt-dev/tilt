@@ -2460,6 +2460,7 @@ func TestTeamNameStoredOnState(t *testing.T) {
 func TestBuildLogAction(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.bc.DisableForTesting()
 
 	manifest := f.newManifest("alert-injester", nil)
 	f.Start([]model.Manifest{manifest}, true)
