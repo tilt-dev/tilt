@@ -19,13 +19,12 @@ import (
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/wmclient/pkg/analytics"
+	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
-
-	"github.com/windmilleng/tilt/internal/testutils"
 
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/build"
@@ -44,6 +43,7 @@ import (
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet"
+	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/tiltfile"
@@ -2601,11 +2601,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	tas := NewTiltAnalyticsSubscriber(ta)
 	ar := ProvideAnalyticsReporter(ta, st)
 
-	// TODO(nick): Why does this test use two different docker compose clients???
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
-	realDcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
 
-	tfl := tiltfile.ProvideTiltfileLoader(ta, k8s, realDcc, "fake-context", feature.MainDefaults)
+	tfl := tiltfile.ProvideTiltfileLoader(ta, k8s, fakeDcc, "fake-context", feature.MainDefaults)
 	cc := NewConfigsController(tfl, dockerClient)
 	dcw := NewDockerComposeEventWatcher(fakeDcc)
 	dclm := NewDockerComposeLogManager(fakeDcc)
@@ -3017,6 +3015,28 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 	f.WriteFile("Dockerfile", string(dfc))
 
 	f.WriteFile("Tiltfile", `docker_compose('docker-compose.yml')`)
+
+	var dcConfig tiltfile.DcConfig
+	err = yaml.Unmarshal(dcpc, &dcConfig)
+	if err != nil {
+		f.T().Fatal(err)
+	}
+
+	svc := dcConfig.Services["server"]
+	svc.Build.Context = f.Path()
+	dcConfig.Services["server"] = svc
+
+	y, err := yaml.Marshal(dcConfig)
+	if err != nil {
+		f.T().Fatal(err)
+	}
+	f.dcc.ConfigOutput = string(y)
+
+	servicesOutput := strings.Builder{}
+	for s := range dcConfig.Services {
+		_, _ = servicesOutput.WriteString(fmt.Sprintf("%s\n", s))
+	}
+	f.dcc.ServicesOutput = servicesOutput.String()
 
 	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
 	if err != nil {
