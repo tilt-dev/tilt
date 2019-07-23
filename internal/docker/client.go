@@ -170,7 +170,7 @@ func getDockerBuilderVersion(v types.Version, env k8s.Env) (types.BuilderVersion
 			// This error message is copied from Docker, for consistency.
 			return "", errors.Wrap(err, "DOCKER_BUILDKIT environment variable expects boolean value")
 		}
-		if buildkitEnabled {
+		if buildkitEnabled && SupportsBuildkit(v, env) {
 			return types.BuilderBuildKit, nil
 
 		}
