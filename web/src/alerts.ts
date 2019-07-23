@@ -53,11 +53,9 @@ function getResourceAlerts(r: Resource): Array<Alert> {
 
   if (podStatusIsError(r)) {
     result.push(podStatusErrAlert(r))
-  }
-  if (podRestarted(r)) {
+  } else if (podRestarted(r)) {
     result.push(podRestartErrAlert(r))
-  }
-  if (crashRebuild(r)) {
+  } else if (crashRebuild(r)) {
     result.push(crashRebuildErrAlert(r))
   }
   if (buildFailed(r)) {
@@ -91,7 +89,9 @@ function podStatusErrAlert(resource: Resource): Alert {
 
 function podRestartErrAlert(resource: Resource): Alert {
   let msg = resource.CrashLog || ""
-  let titleMsg = "Restarts:" + resource.ResourceInfo.PodRestarts.toString()
+  let titleMsg = "Restarts: "
+  titleMsg = titleMsg.concat(resource.ResourceInfo.PodRestarts.toString())
+
   return {
     alertType: PodRestartErrorType,
     titleMsg: titleMsg,
