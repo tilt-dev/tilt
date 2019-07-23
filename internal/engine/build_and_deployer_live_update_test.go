@@ -31,6 +31,7 @@ type testCase struct {
 	expectSyncletHotReload            bool
 
 	// k8s/deploy actions
+	expectK8sExecCount  int
 	expectK8sDeploy     bool
 	expectSyncletDeploy bool
 
@@ -67,6 +68,8 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 	assert.Equal(t, tCase.expectSyncletUpdateContainerCount, f.sCli.UpdateContainerCount, "synclet update container")
 	assert.Equal(t, tCase.expectSyncletCommandCount, f.sCli.CommandsRunCount, "synclet commands run")
 	assert.Equal(t, tCase.expectSyncletHotReload, f.sCli.LastHotReload, "synclet hot reload")
+
+	assert.Equal(t, tCase.expectK8sExecCount, len(f.k8s.ExecCalls), "# k8s exec calls")
 
 	id := manifest.ImageTargetAt(iTargIdx).ID()
 	_, hasResult := result[id]
@@ -298,27 +301,24 @@ func TestLiveUpdateExecDoesNotSupportRestart(t *testing.T) {
 	runTestCase(t, f, tCase)
 }
 
-// func TestLiveUpdateDockerBuildExec(t *testing.T) {
-// 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeContainerd)
-// 	defer f.TearDown()
-//
-// 	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, []string{"i/match/nothing"}, f)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	tCase := testCase{
-// 		env:                      k8s.EnvDockerDesktop,
-// 		baseManifest:             NewSanchoDockerBuildManifest(f),
-// 		liveUpdate:               lu,
-// 		changedFiles:             []string{"a.txt"},
-// 		expectDockerBuildCount:   0,
-// 		expectDockerPushCount:    0,
-// 		expectDockerCopyCount:    1,
-// 		expectDockerExecCount:    1,
-// 		expectDockerRestartCount: 1,
-// 	}
-// 	runTestCase(t, f, tCase)
-// }
+func TestLiveUpdateDockerBuildExec(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeContainerd)
+	defer f.TearDown()
+
+	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tCase := testCase{
+		baseManifest:           NewSanchoDockerBuildManifest(f),
+		liveUpdate:             lu,
+		changedFiles:           []string{"a.txt"},
+		expectDockerBuildCount: 0,
+		expectDockerPushCount:  0,
+		expectK8sExecCount:     2, // one tar archive, one run cmd
+	}
+	runTestCase(t, f, tCase)
+}
 
 func TestDockerBuildDoesNotDeploySynclet(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
