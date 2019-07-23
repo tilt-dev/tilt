@@ -7,6 +7,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/windmilleng/tilt/internal/mode"
+
 	"github.com/windmilleng/tilt/internal/container"
 
 	tilterrors "github.com/windmilleng/tilt/internal/engine/errors"
@@ -31,16 +33,19 @@ type LiveUpdateBuildAndDeployer struct {
 	dcu     *containerupdate.DockerContainerUpdater
 	scu     *containerupdate.SyncletUpdater
 	ecu     *containerupdate.ExecUpdater
+	updMode mode.UpdateMode
 	env     k8s.Env
 	runtime container.Runtime
 }
 
-func NewLiveUpdateBuildAndDeployer(dcu *containerupdate.DockerContainerUpdater, scu *containerupdate.SyncletUpdater,
-	ecu *containerupdate.ExecUpdater, env k8s.Env, runtime container.Runtime) *LiveUpdateBuildAndDeployer {
+func NewLiveUpdateBuildAndDeployer(dcu *containerupdate.DockerContainerUpdater,
+	scu *containerupdate.SyncletUpdater, ecu *containerupdate.ExecUpdater,
+	updMode mode.UpdateMode, env k8s.Env, runtime container.Runtime) *LiveUpdateBuildAndDeployer {
 	return &LiveUpdateBuildAndDeployer{
 		dcu:     dcu,
 		scu:     scu,
 		ecu:     ecu,
+		updMode: updMode,
 		env:     env,
 		runtime: runtime,
 	}
@@ -75,6 +80,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		return store.BuildResultSet{}, tilterrors.SilentRedirectToNextBuilderf("prev. build state is empty; LiveUpdate does not support initial deploy")
 	}
 
+	containerUpdater := lubad.containerUpdaterForSpecs(specs)
 	var changedFiles []build.PathMapping
 	var runs []model.Run
 	var hotReload bool
@@ -113,14 +119,14 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		hotReload = !luInfo.ShouldRestart()
 	}
 
-	err = lubad.buildAndDeploy(ctx, iTarget, state, changedFiles, runs, hotReload)
+	err = lubad.buildAndDeploy(ctx, containerUpdater, iTarget, state, changedFiles, runs, hotReload)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
 	return liveUpdateState.CreateResultSet(), nil
 }
 
-func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) error {
+func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu containerupdate.ContainerUpdater, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) error {
 	l := logger.Get(ctx)
 	l.Infof("  → Updating container…")
 
@@ -164,8 +170,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, iTa
 		}
 	}
 
-	// TODO: Choose which container updater to use (maybe need original specs for this?)
-	err = lubad.dcu.UpdateContainer(ctx, deployInfo, pr, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
+	err = cu.UpdateContainer(ctx, deployInfo, pr, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 	if err != nil {
 		if build.IsUserBuildFailure(err) {
 			return tilterrors.WrapDontFallBackError(err)
@@ -174,4 +179,28 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, iTa
 	}
 	logger.Get(ctx).Infof("  → Container updated!")
 	return nil
+}
+
+func (lubad *LiveUpdateBuildAndDeployer) containerUpdaterForSpecs(specs []model.TargetSpec) containerupdate.ContainerUpdater {
+	isDC := len(model.ExtractDockerComposeTargets(specs)) > 0
+	if isDC || lubad.updMode == mode.UpdateModeContainer {
+		return lubad.dcu
+	}
+
+	if lubad.updMode == mode.UpdateModeSynclet {
+		return lubad.scu
+	}
+
+	if lubad.updMode == mode.UpdateModeKubectlExec {
+		return lubad.ecu
+	}
+
+	if lubad.runtime == container.RuntimeDocker {
+		if lubad.env.IsLocalCluster() {
+			return lubad.dcu
+		}
+		return lubad.scu
+	}
+
+	return lubad.ecu
 }

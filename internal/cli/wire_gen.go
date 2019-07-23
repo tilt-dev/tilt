@@ -98,22 +98,22 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 		return demo.Script{}, err
 	}
 	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
-	dockerContainerUpdater := containerupdate.NewDockerContainerUpdater(switchCli, env, runtime)
+	dockerContainerUpdater := containerupdate.NewDockerContainerUpdater(switchCli)
 	syncletManager := containerupdate.NewSyncletManager(k8sClient)
 	syncletUpdater := containerupdate.NewSyncletUpdater(syncletManager)
 	execUpdater := containerupdate.NewExecUpdater(k8sClient)
-	liveUpdateBuildAndDeployer := engine.NewLiveUpdateBuildAndDeployer(dockerContainerUpdater, syncletUpdater, execUpdater, env, runtime)
+	modeUpdateModeFlag := provideUpdateModeFlag()
+	updateMode, err := mode.ProvideUpdateMode(modeUpdateModeFlag, env, runtime)
+	if err != nil {
+		return demo.Script{}, err
+	}
+	liveUpdateBuildAndDeployer := engine.NewLiveUpdateBuildAndDeployer(dockerContainerUpdater, syncletUpdater, execUpdater, updateMode, env, runtime)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(switchCli)
 	clock := build.ProvideClock()
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, clock)
-	modeUpdateModeFlag := provideUpdateModeFlag()
-	updateMode, err := mode.ProvideUpdateMode(modeUpdateModeFlag, env, runtime)
-	if err != nil {
-		return demo.Script{}, err
-	}
 	kindPusher := engine.NewKINDPusher()
 	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, k8sClient, env, analytics2, updateMode, clock, runtime, kindPusher)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
@@ -233,22 +233,22 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 		return Threads{}, err
 	}
 	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
-	dockerContainerUpdater := containerupdate.NewDockerContainerUpdater(switchCli, env, runtime)
+	dockerContainerUpdater := containerupdate.NewDockerContainerUpdater(switchCli)
 	syncletManager := containerupdate.NewSyncletManager(k8sClient)
 	syncletUpdater := containerupdate.NewSyncletUpdater(syncletManager)
 	execUpdater := containerupdate.NewExecUpdater(k8sClient)
-	liveUpdateBuildAndDeployer := engine.NewLiveUpdateBuildAndDeployer(dockerContainerUpdater, syncletUpdater, execUpdater, env, runtime)
+	modeUpdateModeFlag := provideUpdateModeFlag()
+	updateMode, err := mode.ProvideUpdateMode(modeUpdateModeFlag, env, runtime)
+	if err != nil {
+		return Threads{}, err
+	}
+	liveUpdateBuildAndDeployer := engine.NewLiveUpdateBuildAndDeployer(dockerContainerUpdater, syncletUpdater, execUpdater, updateMode, env, runtime)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(switchCli)
 	clock := build.ProvideClock()
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, clock)
-	modeUpdateModeFlag := provideUpdateModeFlag()
-	updateMode, err := mode.ProvideUpdateMode(modeUpdateModeFlag, env, runtime)
-	if err != nil {
-		return Threads{}, err
-	}
 	kindPusher := engine.NewKINDPusher()
 	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, k8sClient, env, analytics2, updateMode, clock, runtime, kindPusher)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)

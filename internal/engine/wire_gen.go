@@ -27,21 +27,21 @@ import (
 // Injectors from wire.go:
 
 func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode mode.UpdateModeFlag, sCli synclet.SyncletClient, dcc dockercompose.DockerComposeClient, clock build.Clock, kp KINDPusher, analytics2 *analytics.TiltAnalytics) (BuildAndDeployer, error) {
-	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
-	dockerContainerUpdater := containerupdate.NewDockerContainerUpdater(docker2, env, runtime)
+	dockerContainerUpdater := containerupdate.NewDockerContainerUpdater(docker2)
 	syncletManager := containerupdate.NewSyncletManagerForTests(kClient, sCli)
 	syncletUpdater := containerupdate.NewSyncletUpdater(syncletManager)
 	execUpdater := containerupdate.NewExecUpdater(kClient)
-	liveUpdateBuildAndDeployer := NewLiveUpdateBuildAndDeployer(dockerContainerUpdater, syncletUpdater, execUpdater, env, runtime)
+	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
+	modeUpdateMode, err := mode.ProvideUpdateMode(updateMode, env, runtime)
+	if err != nil {
+		return nil, err
+	}
+	liveUpdateBuildAndDeployer := NewLiveUpdateBuildAndDeployer(dockerContainerUpdater, syncletUpdater, execUpdater, modeUpdateMode, env, runtime)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(docker2)
 	execCustomBuilder := build.NewExecCustomBuilder(docker2, clock)
-	modeUpdateMode, err := mode.ProvideUpdateMode(updateMode, env, runtime)
-	if err != nil {
-		return nil, err
-	}
 	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, kClient, env, analytics2, modeUpdateMode, clock, runtime, kp)
 	engineImageAndCacheBuilder := NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, modeUpdateMode)
 	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcc, docker2, engineImageAndCacheBuilder, clock)

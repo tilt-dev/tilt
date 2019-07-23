@@ -8,8 +8,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/k8s"
-
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
@@ -19,29 +17,13 @@ import (
 )
 
 type DockerContainerUpdater struct {
-	dCli    docker.Client
-	env     k8s.Env
-	runtime container.Runtime
+	dCli docker.Client
 }
 
 var _ ContainerUpdater = &DockerContainerUpdater{}
 
-func NewDockerContainerUpdater(dCli docker.Client, env k8s.Env, runtime container.Runtime) *DockerContainerUpdater {
-	return &DockerContainerUpdater{dCli: dCli, env: env, runtime: runtime}
-}
-
-// SupportsSpecs returns an error (to be surfaced by the BuildAndDeployer) if
-// the DockerContainerUpdater does not support the given specs.
-func (cu *DockerContainerUpdater) SupportsSpecs(specs []model.TargetSpec) (supported bool, msg string) {
-	isDC := len(model.ExtractDockerComposeTargets(specs)) > 0
-	isK8s := len(model.ExtractK8sTargets(specs)) > 0
-	canLocalUpdate := isDC || (isK8s && cu.env.IsLocalCluster() && cu.runtime == container.RuntimeDocker)
-	if !canLocalUpdate {
-		return false, "DockerContainerUpdater needs Docker Compose or a local k8s " +
-			"cluster with container runtime = Docker. (If you're running with --updateMode=container " +
-			"and trying to deploy to k8s, your current cluster doesn't support this mode.)"
-	}
-	return true, ""
+func NewDockerContainerUpdater(dCli docker.Client) *DockerContainerUpdater {
+	return &DockerContainerUpdater{dCli: dCli}
 }
 
 func (cu *DockerContainerUpdater) UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,

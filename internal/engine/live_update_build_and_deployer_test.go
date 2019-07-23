@@ -7,6 +7,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/mode"
+
 	"github.com/windmilleng/tilt/internal/engine/errors"
 
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -33,22 +36,6 @@ var TestBuildState = store.BuildState{
 	DeployInfo:      TestDeployInfo,
 }
 
-func TestSurfaceErrorIfSpecsInvalidForUpdater(t *testing.T) {
-	f := newFixture(t)
-	defer f.teardown()
-
-	m := NewSanchoLiveUpdateManifest(f)
-	stateSet := store.BuildStateSet{m.ImageTargetAt(0).ID(): TestBuildState}
-
-	errMsg := "something is not right! something is quite wrong!"
-	f.cu.SupportsSpecsMsg = errMsg
-
-	_, err := f.liveUpdBaD.BuildAndDeploy(f.ctx, f.st, m.TargetSpecs(), stateSet)
-	if assert.NotNil(t, err, "expected LiveUpdateBaD to surface an error b/c container updater doesn't support specs") {
-		assert.Contains(t, err.Error(), errMsg)
-	}
-}
-
 func TestBuildAndDeployBoilsSteps(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
@@ -60,7 +47,7 @@ func TestBuildAndDeployBoilsSteps(t *testing.T) {
 		model.Run{Cmd: model.ToShellCmd("pip install"), Triggers: f.newPathSet("requirements.txt")},
 	}
 
-	err := f.liveUpdBaD.buildAndDeploy(f.ctx, model.ImageTarget{}, TestBuildState, []build.PathMapping{packageJson}, runs, false)
+	err := f.liveUpdBaD.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, []build.PathMapping{packageJson}, runs, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +79,7 @@ func TestUpdateInContainerArchivesFilesToCopyAndGetsFilesToRemove(t *testing.T) 
 		build.PathMapping{LocalPath: f.JoinPath("does-not-exist"), ContainerPath: "/src/does-not-exist"},
 	}
 
-	err := f.liveUpdBaD.buildAndDeploy(f.ctx, model.ImageTarget{}, TestBuildState, paths, nil, false)
+	err := f.liveUpdBaD.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, paths, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +106,7 @@ func TestDontFallBackOnUserError(t *testing.T) {
 
 	f.cu.UpdateErr = build.UserBuildFailure{ExitCode: 12345}
 
-	err := f.liveUpdBaD.buildAndDeploy(f.ctx, model.ImageTarget{}, TestBuildState, nil, nil, false)
+	err := f.liveUpdBaD.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, nil, nil, false)
 	if assert.NotNil(t, err) {
 		assert.IsType(t, errors.DontFallBackError{}, err)
 	}
@@ -131,7 +118,7 @@ func TestUpdateContainerWithHotReload(t *testing.T) {
 
 	expectedHotReloads := []bool{true, true, false, true}
 	for _, hotReload := range expectedHotReloads {
-		err := f.liveUpdBaD.buildAndDeploy(f.ctx, model.ImageTarget{}, TestBuildState, nil, nil, hotReload)
+		err := f.liveUpdBaD.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, nil, nil, hotReload)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -155,8 +142,14 @@ type liveUpdBaDFixture struct {
 }
 
 func newFixture(t testing.TB) *liveUpdBaDFixture {
+	dCli := docker.NewFakeClient()
+	sm := containerupdate.SyncletManager{}
+	kCli := k8s.NewFakeK8sClient()
+	dcu := containerupdate.NewDockerContainerUpdater(dCli)
+	scu := containerupdate.NewSyncletUpdater(sm)
+	ecu := containerupdate.NewExecUpdater(kCli)
 	fakeContainerUpdater := &containerupdate.FakeContainerUpdater{}
-	lcbad := NewLiveUpdateBuildAndDeployer(fakeContainerUpdater, k8s.EnvDockerDesktop)
+	lcbad := NewLiveUpdateBuildAndDeployer(dcu, scu, ecu, mode.UpdateModeAuto, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	st, _ := store.NewStoreForTesting()
 	return &liveUpdBaDFixture{

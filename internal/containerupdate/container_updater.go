@@ -15,7 +15,6 @@ import (
 type ContainerUpdater interface {
 	UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,
 		archiveToCopy io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error
-	SupportsSpecs(specs []model.TargetSpec) (supported bool, msg string)
 }
 
 func ProvideContainerUpdater(kCli k8s.Client, dCli docker.Client, sm SyncletManager, env k8s.Env, updMode mode.UpdateMode, runtime container.Runtime) ContainerUpdater {
@@ -28,7 +27,7 @@ func ProvideContainerUpdater(kCli k8s.Client, dCli docker.Client, sm SyncletMana
 	}
 
 	if updMode == mode.UpdateModeContainer || (runtime == container.RuntimeDocker && env.IsLocalCluster()) {
-		return NewDockerContainerUpdater(dCli, env, runtime)
+		return NewDockerContainerUpdater(dCli)
 	}
 
 	if updMode == mode.UpdateModeSynclet || runtime == container.RuntimeDocker {

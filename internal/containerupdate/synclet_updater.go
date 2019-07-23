@@ -22,13 +22,6 @@ func NewSyncletUpdater(sm SyncletManager) *SyncletUpdater {
 	return &SyncletUpdater{sm: sm}
 }
 
-// SupportsSpecs returns an error (to be surfaced by the BuildAndDeployer) if
-// the SyncletUpdater does not support the given specs.
-func (cu *SyncletUpdater) SupportsSpecs(specs []model.TargetSpec) (supported bool, msg string) {
-	// return specsAreOnlyImagesDeployedToK8s(specs, "SyncletUpdater")
-	return true, ""
-}
-
 func (cu *SyncletUpdater) UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,
 	archiveToCopy io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletUpdater-UpdateContainer")
