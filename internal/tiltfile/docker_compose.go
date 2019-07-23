@@ -132,7 +132,7 @@ func (s *tiltfileState) getDCService(name string) (*dcService, error) {
 
 // Go representations of docker-compose.yml
 // (Add fields as we need to support more things)
-type dcConfig struct {
+type DcConfig struct {
 	Services map[string]dcServiceConfig
 }
 
@@ -227,7 +227,7 @@ func (p *Ports) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // We use a custom Unmarshal method here so that we can store the RawYAML in addition
 // to unmarshaling the fields we care about into structs.
-func (c *dcConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *DcConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	aux := struct {
 		Services map[string]interface{} `yaml:"services"`
 	}{}
@@ -287,7 +287,7 @@ type dcService struct {
 	TriggerMode triggerMode
 }
 
-func (c dcConfig) GetService(name string) (dcService, error) {
+func (c DcConfig) GetService(name string) (dcService, error) {
 	svcConfig, ok := c.Services[name]
 	if !ok {
 		return dcService{}, fmt.Errorf("no service %s found in config", name)
@@ -386,7 +386,7 @@ func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, c
 }
 
 func getConfigAndServiceNames(ctx context.Context, dcc dockercompose.DockerComposeClient,
-	configPaths []string) (conf dcConfig, svcNames []string, err error) {
+	configPaths []string) (conf DcConfig, svcNames []string, err error) {
 	// calls to `docker-compose config` take a bit, and we need two,
 	// so do them in parallel to make things faster
 	g, ctx := errgroup.WithContext(ctx)
