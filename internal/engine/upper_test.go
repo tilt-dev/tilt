@@ -19,19 +19,17 @@ import (
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/wmclient/pkg/analytics"
+	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/windmilleng/tilt/internal/containerupdate"
-
-	"github.com/windmilleng/tilt/internal/testutils"
-
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/containerupdate"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/feature"
@@ -46,6 +44,7 @@ import (
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet"
+	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/tiltfile"
@@ -2216,12 +2215,8 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionStart))
 	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionDie))
 
-	f.WaitUntilManifestState("has a status", m1.ManifestName(), func(st store.ManifestState) bool {
-		return st.DCResourceState().Status != ""
-	})
-
-	f.withManifestState(m1.ManifestName(), func(st store.ManifestState) {
-		assert.Equal(t, dockercompose.StatusCrash, st.DCResourceState().Status)
+	f.WaitUntilManifestState("is crashing", m1.ManifestName(), func(st store.ManifestState) bool {
+		return st.DCResourceState().Status == dockercompose.StatusCrash
 	})
 
 	f.withManifestState(m2.ManifestName(), func(st store.ManifestState) {
@@ -2237,11 +2232,7 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionStart))
 
 	f.WaitUntilManifestState("is not crashing", m1.ManifestName(), func(st store.ManifestState) bool {
-		return st.DCResourceState().Status != dockercompose.StatusCrash
-	})
-
-	f.withManifestState(m1.ManifestName(), func(st store.ManifestState) {
-		assert.NotEqual(t, dockercompose.StatusCrash, st.DCResourceState().Status)
+		return st.DCResourceState().Status == dockercompose.StatusUp
 	})
 }
 
@@ -2638,11 +2629,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	tas := NewTiltAnalyticsSubscriber(ta)
 	ar := ProvideAnalyticsReporter(ta, st)
 
-	// TODO(nick): Why does this test use two different docker compose clients???
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
-	realDcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
 
-	tfl := tiltfile.ProvideTiltfileLoader(ta, k8s, realDcc, "fake-context", feature.MainDefaults)
+	tfl := tiltfile.ProvideTiltfileLoader(ta, k8s, fakeDcc, "fake-context", feature.MainDefaults)
 	cc := NewConfigsController(tfl, dockerClient)
 	dcw := NewDockerComposeEventWatcher(fakeDcc)
 	dclm := NewDockerComposeLogManager(fakeDcc)
@@ -3054,6 +3043,24 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 	f.WriteFile("Dockerfile", string(dfc))
 
 	f.WriteFile("Tiltfile", `docker_compose('docker-compose.yml')`)
+
+	var dcConfig tiltfile.DcConfig
+	err = yaml.Unmarshal(dcpc, &dcConfig)
+	if err != nil {
+		f.T().Fatal(err)
+	}
+
+	svc := dcConfig.Services["server"]
+	svc.Build.Context = f.Path()
+	dcConfig.Services["server"] = svc
+
+	y, err := yaml.Marshal(dcConfig)
+	if err != nil {
+		f.T().Fatal(err)
+	}
+	f.dcc.ConfigOutput = string(y)
+
+	f.dcc.ServicesOutput = "redis\nserver\n"
 
 	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
 	if err != nil {

@@ -1,13 +1,15 @@
-server:
-  build: .
-  links:
-    - redis
-  expose:
-    - "3000"
-  environment:
-    - NAME=TheServer
-
-redis:
-  image: redis:alpine
-  expose:
-    - "6379"
+services:
+  redis:
+    expose:
+      - '6379'
+    image: redis:alpine
+    network_mode: bridge
+  server:
+    environment:
+      NAME: TheServer
+    expose:
+      - '3000'
+    links:
+      - redis
+    network_mode: bridge
+version: '2.1'
