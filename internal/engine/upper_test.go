@@ -3032,11 +3032,7 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 	}
 	f.dcc.ConfigOutput = string(y)
 
-	servicesOutput := strings.Builder{}
-	for s := range dcConfig.Services {
-		_, _ = servicesOutput.WriteString(fmt.Sprintf("%s\n", s))
-	}
-	f.dcc.ServicesOutput = servicesOutput.String()
+	f.dcc.ServicesOutput = "redis\nserver\n"
 
 	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
 	if err != nil {
