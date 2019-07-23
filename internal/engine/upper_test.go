@@ -2214,12 +2214,8 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionStart))
 	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionDie))
 
-	f.WaitUntilManifestState("has a status", m1.ManifestName(), func(st store.ManifestState) bool {
-		return st.DCResourceState().Status != ""
-	})
-
-	f.withManifestState(m1.ManifestName(), func(st store.ManifestState) {
-		assert.Equal(t, dockercompose.StatusCrash, st.DCResourceState().Status)
+	f.WaitUntilManifestState("is crashing", m1.ManifestName(), func(st store.ManifestState) bool {
+		return st.DCResourceState().Status == dockercompose.StatusCrash
 	})
 
 	f.withManifestState(m2.ManifestName(), func(st store.ManifestState) {
@@ -2235,11 +2231,7 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionStart))
 
 	f.WaitUntilManifestState("is not crashing", m1.ManifestName(), func(st store.ManifestState) bool {
-		return st.DCResourceState().Status != dockercompose.StatusCrash
-	})
-
-	f.withManifestState(m1.ManifestName(), func(st store.ManifestState) {
-		assert.NotEqual(t, dockercompose.StatusCrash, st.DCResourceState().Status)
+		return st.DCResourceState().Status == dockercompose.StatusUp
 	})
 }
 
