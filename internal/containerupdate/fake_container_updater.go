@@ -4,18 +4,18 @@ import (
 	"context"
 	"io"
 
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 )
 
 type FakeContainerUpdater struct {
-	SupportsSpecsMsg string
-	UpdateErr        error
+	UpdateErr error
 
 	Calls []UpdateContainerCall
-}
 
-var _ ContainerUpdater = &FakeContainerUpdater{}
+	CanUpdateSpecsFn func(specs []model.TargetSpec, env k8s.Env) (canUpd bool, msg string, silent bool)
+}
 
 type UpdateContainerCall struct {
 	DeployInfo store.DeployInfo
@@ -23,13 +23,6 @@ type UpdateContainerCall struct {
 	ToDelete   []string
 	Cmds       []model.Cmd
 	HotReload  bool
-}
-
-func (cu *FakeContainerUpdater) SupportsSpecs(specs []model.TargetSpec) (supported bool, msg string) {
-	msg = cu.SupportsSpecsMsg
-	cu.SupportsSpecsMsg = ""
-
-	return msg == "", msg
 }
 
 func (cu *FakeContainerUpdater) UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,

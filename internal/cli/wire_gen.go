@@ -29,7 +29,6 @@ import (
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/minikube"
-	"github.com/windmilleng/tilt/internal/mode"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
@@ -103,7 +102,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	syncletUpdater := containerupdate.NewSyncletUpdater(syncletManager)
 	execUpdater := containerupdate.NewExecUpdater(k8sClient)
 	modeUpdateModeFlag := provideUpdateModeFlag()
-	updateMode, err := mode.ProvideUpdateMode(modeUpdateModeFlag, env, runtime)
+	updateMode, err := engine.ProvideUpdateMode(modeUpdateModeFlag, env, runtime)
 	if err != nil {
 		return demo.Script{}, err
 	}
@@ -238,7 +237,7 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	syncletUpdater := containerupdate.NewSyncletUpdater(syncletManager)
 	execUpdater := containerupdate.NewExecUpdater(k8sClient)
 	modeUpdateModeFlag := provideUpdateModeFlag()
-	updateMode, err := mode.ProvideUpdateMode(modeUpdateModeFlag, env, runtime)
+	updateMode, err := engine.ProvideUpdateMode(modeUpdateModeFlag, env, runtime)
 	if err != nil {
 		return Threads{}, err
 	}

@@ -12,12 +12,6 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/windmilleng/tilt/internal/target"
-
-	tilterrors "github.com/windmilleng/tilt/internal/engine/errors"
-
-	"github.com/windmilleng/tilt/internal/mode"
-
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
@@ -68,7 +62,7 @@ func NewImageBuildAndDeployer(
 	k8sClient k8s.Client,
 	env k8s.Env,
 	analytics *analytics.TiltAnalytics,
-	updMode mode.UpdateMode,
+	updMode UpdateMode,
 	c build.Clock,
 	runtime container.Runtime,
 	kp KINDPusher,
@@ -91,9 +85,9 @@ func (ibd *ImageBuildAndDeployer) SetInjectSynclet(inject bool) {
 }
 
 func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (resultSet store.BuildResultSet, err error) {
-	iTargets, kTargets := target.ExtractImageAndK8sTargets(specs)
+	iTargets, kTargets := extractImageAndK8sTargets(specs)
 	if len(kTargets) == 0 && len(iTargets) == 0 {
-		return store.BuildResultSet{}, tilterrors.SilentRedirectToNextBuilderf("ImageBuildAndDeployer does not support these specs")
+		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("ImageBuildAndDeployer does not support these specs")
 	}
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuildAndDeployer-BuildAndDeploy")
@@ -178,7 +172,7 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 
 	// We can also skip the push of the image if it isn't used
 	// in any k8s resources! (e.g., it's consumed by another image).
-	if ibd.canAlwaysSkipPush() || !target.IsImageDeployedToK8s(iTarget, kTargets) || cbSkip {
+	if ibd.canAlwaysSkipPush() || !isImageDeployedToK8s(iTarget, kTargets) || cbSkip {
 		ps.Printf(ctx, "Skipping push")
 		return ref, nil
 	}

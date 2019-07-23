@@ -13,7 +13,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"k8s.io/klog"
 
-	"github.com/windmilleng/tilt/internal/mode"
+	"github.com/windmilleng/tilt/internal/engine"
 
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
@@ -30,7 +30,7 @@ import (
 const DefaultWebPort = 10350
 const DefaultWebDevPort = 46764
 
-var updateModeFlag string = string(mode.UpdateModeAuto)
+var updateModeFlag string = string(engine.UpdateModeAuto)
 var webModeFlag model.WebMode = model.DefaultWebMode
 var webPort = 0
 var webDevPort = 0
@@ -54,8 +54,8 @@ func (c *upCmd) register() *cobra.Command {
 
 	cmd.Flags().BoolVar(&c.watch, "watch", true, "If true, services will be automatically rebuilt and redeployed when files change. Otherwise, each service will be started once.")
 	cmd.Flags().Var(&webModeFlag, "web-mode", "Values: local, prod. Controls whether to use prod assets or a local dev server")
-	cmd.Flags().StringVar(&updateModeFlag, "update-mode", string(mode.UpdateModeAuto),
-		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", mode.AllUpdateModes))
+	cmd.Flags().StringVar(&updateModeFlag, "update-mode", string(engine.UpdateModeAuto),
+		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", engine.AllUpdateModes))
 	cmd.Flags().StringVar(&c.traceTags, "traceTags", "", "tags to add to spans for easy querying, of the form: key1=val1,key2=val2")
 	cmd.Flags().StringVar(&build.ImageTagPrefix, "image-tag-prefix", build.ImageTagPrefix,
 		"For integration tests. Customize the image tag prefix so tests can write to a public registry")
@@ -169,8 +169,8 @@ func logOutput(s string) {
 	log.Print(color.GreenString(s))
 }
 
-func provideUpdateModeFlag() mode.UpdateModeFlag {
-	return mode.UpdateModeFlag(updateModeFlag)
+func provideUpdateModeFlag() engine.UpdateModeFlag {
+	return engine.UpdateModeFlag(updateModeFlag)
 }
 
 func provideLogActions() store.LogActionsFlag {

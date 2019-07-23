@@ -8,10 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/mode"
-
-	"github.com/windmilleng/tilt/internal/engine/errors"
-
 	"github.com/windmilleng/tilt/internal/k8s"
 
 	"github.com/windmilleng/tilt/internal/build"
@@ -47,7 +43,7 @@ func TestBuildAndDeployBoilsSteps(t *testing.T) {
 		model.Run{Cmd: model.ToShellCmd("pip install"), Triggers: f.newPathSet("requirements.txt")},
 	}
 
-	err := f.liveUpdBaD.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, []build.PathMapping{packageJson}, runs, false)
+	err := f.lcbad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, []build.PathMapping{packageJson}, runs, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +75,7 @@ func TestUpdateInContainerArchivesFilesToCopyAndGetsFilesToRemove(t *testing.T) 
 		build.PathMapping{LocalPath: f.JoinPath("does-not-exist"), ContainerPath: "/src/does-not-exist"},
 	}
 
-	err := f.liveUpdBaD.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, paths, nil, false)
+	err := f.lcbad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, paths, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,9 +102,9 @@ func TestDontFallBackOnUserError(t *testing.T) {
 
 	f.cu.UpdateErr = build.UserBuildFailure{ExitCode: 12345}
 
-	err := f.liveUpdBaD.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, nil, nil, false)
+	err := f.lcbad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, nil, nil, false)
 	if assert.NotNil(t, err) {
-		assert.IsType(t, errors.DontFallBackError{}, err)
+		assert.IsType(t, DontFallBackError{}, err)
 	}
 }
 
@@ -118,7 +114,7 @@ func TestUpdateContainerWithHotReload(t *testing.T) {
 
 	expectedHotReloads := []bool{true, true, false, true}
 	for _, hotReload := range expectedHotReloads {
-		err := f.liveUpdBaD.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, nil, nil, hotReload)
+		err := f.lcbad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, nil, nil, hotReload)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -132,39 +128,39 @@ func TestUpdateContainerWithHotReload(t *testing.T) {
 	}
 }
 
-type liveUpdBaDFixture struct {
+type lcbadFixture struct {
 	*tempdir.TempDirFixture
-	t          testing.TB
-	ctx        context.Context
-	st         *store.Store
-	cu         *containerupdate.FakeContainerUpdater
-	liveUpdBaD *LiveUpdateBuildAndDeployer
+	t     testing.TB
+	ctx   context.Context
+	st    *store.Store
+	cu    *containerupdate.FakeContainerUpdater
+	lcbad *LiveUpdateBuildAndDeployer
 }
 
-func newFixture(t testing.TB) *liveUpdBaDFixture {
+func newFixture(t testing.TB) *lcbadFixture {
 	// HACK: we don't need these to do anything, we just need them to exist so we can create the BaD.
 	dcu := &containerupdate.DockerContainerUpdater{}
 	scu := &containerupdate.SyncletUpdater{}
 	ecu := &containerupdate.ExecUpdater{}
 	fakeContainerUpdater := &containerupdate.FakeContainerUpdater{}
-	lcbad := NewLiveUpdateBuildAndDeployer(dcu, scu, ecu, mode.UpdateModeAuto, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	lcbad := NewLiveUpdateBuildAndDeployer(dcu, scu, ecu, UpdateModeAuto, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	st, _ := store.NewStoreForTesting()
-	return &liveUpdBaDFixture{
+	return &lcbadFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,
 		st:             st,
 		ctx:            ctx,
 		cu:             fakeContainerUpdater,
-		liveUpdBaD:     lcbad,
+		lcbad:          lcbad,
 	}
 }
 
-func (f *liveUpdBaDFixture) teardown() {
+func (f *lcbadFixture) teardown() {
 	f.TempDirFixture.TearDown()
 }
 
-func (f *liveUpdBaDFixture) newPathSet(paths ...string) model.PathSet {
+func (f *lcbadFixture) newPathSet(paths ...string) model.PathSet {
 	return model.NewPathSet(paths, f.Path())
 }
 

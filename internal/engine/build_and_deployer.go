@@ -6,9 +6,7 @@ import (
 	"strings"
 
 	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/engine/errors"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/mode"
 	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/windmilleng/tilt/internal/logger"
@@ -66,13 +64,13 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 			return br, err
 		}
 
-		if !errors.ShouldFallBackForErr(err) {
+		if !shouldFallBackForErr(err) {
 			return store.BuildResultSet{}, err
 		}
 
-		if redirectErr, ok := err.(errors.RedirectToNextBuilder); ok {
+		if redirectErr, ok := err.(RedirectToNextBuilder); ok {
 			s := fmt.Sprintf("falling back to next update method because: %v\n", err)
-			logger.Get(ctx).Write(redirectErr.Level, s)
+			logger.Get(ctx).Write(redirectErr.level, s)
 		} else {
 			lastUnexpectedErr = err
 			if i+1 < len(composite.builders) {
@@ -90,12 +88,12 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 }
 
 func DefaultBuildOrder(lubad *LiveUpdateBuildAndDeployer, ibad *ImageBuildAndDeployer, dcbad *DockerComposeBuildAndDeployer,
-	updMode mode.UpdateMode, env k8s.Env, runtime container.Runtime) BuildOrder {
-	if updMode == mode.UpdateModeImage || updMode == mode.UpdateModeNaive {
+	updMode UpdateMode, env k8s.Env, runtime container.Runtime) BuildOrder {
+	if updMode == UpdateModeImage || updMode == UpdateModeNaive {
 		return BuildOrder{dcbad, ibad}
 	}
 
-	if updMode == mode.UpdateModeSynclet || (!env.IsLocalCluster() && runtime == container.RuntimeDocker) {
+	if updMode == UpdateModeSynclet || (!env.IsLocalCluster() && runtime == container.RuntimeDocker) {
 		ibad.SetInjectSynclet(true)
 	}
 

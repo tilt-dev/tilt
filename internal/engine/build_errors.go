@@ -1,4 +1,4 @@
-package errors
+package engine
 
 import (
 	"context"
@@ -11,10 +11,10 @@ import (
 
 // Nothing is on fire, this is an expected case like a container builder being
 // passed a build with no attached container.
-// `Level` indicates at what log level this error should be shown to the user
+// `level` indicates at what log level this error should be shown to the user
 type RedirectToNextBuilder struct {
 	error
-	Level logger.Level
+	level logger.Level
 }
 
 func WrapRedirectToNextBuilder(err error, level logger.Level) RedirectToNextBuilder {
@@ -28,10 +28,6 @@ func SilentRedirectToNextBuilderf(msg string, a ...interface{}) RedirectToNextBu
 
 func RedirectToNextBuilderInfof(msg string, a ...interface{}) RedirectToNextBuilder {
 	return RedirectToNextBuilder{fmt.Errorf(msg, a...), logger.InfoLvl}
-}
-
-func (r RedirectToNextBuilder) IsSilent() bool {
-	return r.Level != logger.InfoLvl
 }
 
 var _ error = RedirectToNextBuilder{}
@@ -54,13 +50,13 @@ var _ error = DontFallBackError{}
 
 // A permanent error indicates that the whole build pipeline needs to stop.
 // It will never recover, even on subsequent rebuilds.
-func IsPermanentError(err error) bool {
+func isPermanentError(err error) bool {
 	cause := errors.Cause(err)
 	return cause == context.Canceled
 }
 
-func ShouldFallBackForErr(err error) bool {
-	if IsPermanentError(err) {
+func shouldFallBackForErr(err error) bool {
+	if isPermanentError(err) {
 		return false
 	}
 

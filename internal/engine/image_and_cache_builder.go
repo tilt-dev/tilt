@@ -6,8 +6,6 @@ import (
 
 	"github.com/docker/distribution/reference"
 
-	"github.com/windmilleng/tilt/internal/mode"
-
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/ignore"
@@ -20,10 +18,10 @@ type imageAndCacheBuilder struct {
 	ib         build.ImageBuilder
 	cb         build.CacheBuilder
 	custb      build.CustomBuilder
-	updateMode mode.UpdateMode
+	updateMode UpdateMode
 }
 
-func NewImageAndCacheBuilder(ib build.ImageBuilder, cb build.CacheBuilder, custb build.CustomBuilder, updateMode mode.UpdateMode) *imageAndCacheBuilder {
+func NewImageAndCacheBuilder(ib build.ImageBuilder, cb build.CacheBuilder, custb build.CustomBuilder, updateMode UpdateMode) *imageAndCacheBuilder {
 	return &imageAndCacheBuilder{
 		ib:         ib,
 		cb:         cb,
@@ -58,7 +56,7 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 
 		go icb.maybeCreateCacheFrom(ctx, cacheInputs, ref, state, iTarget, cacheRef)
 	case model.FastBuild:
-		if !state.HasImage() || icb.updateMode == mode.UpdateModeNaive {
+		if !state.HasImage() || icb.updateMode == UpdateModeNaive {
 			// No existing image to build off of, need to build from scratch
 			ps.StartPipelineStep(ctx, "Building from scratch: [%s]", userFacingRefName)
 			defer ps.EndPipelineStep(ctx)
