@@ -60,7 +60,7 @@ export type Resource = {
   PendingBuildEdits: Array<string>
   PendingBuildReason: number
   PendingBuildSince: string
-  ResourceInfo: ResourceInfo
+  ResourceInfo: ResourceInfo 
   RuntimeStatus: string
   TriggerMode: TriggerMode
   HasPendingChanges: boolean

@@ -19,7 +19,7 @@ import AlertPane from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
 import NotFound from "./NotFound"
-import {getAlertsResource, numberOfAlerts} from "./alerts";
+import {getResourceAlerts, numberOfAlerts} from "./alerts";
 import update from 'immutability-helper';
 
 
@@ -29,7 +29,6 @@ type HudProps = {
 
 type HudState = {
   Message: string
-
   View: {
     Resources: Array<Resource>
     alertInitialized: boolean
@@ -110,28 +109,6 @@ class HUD extends Component<HudProps, HudState> {
   componentWillUnmount() {
     this.controller.dispose()
     this.unlisten()
-  }
-
-
-
-  componentDidUpdate(prevProps: Readonly<HudProps>, prevState: Readonly<HudState>, snapshot?: any): void {
-    if (!this.state.View){
-      return
-    }
-    if (this.state.View.alertInitialized){
-      return
-    }
-    let newState = this.state
-    let newResources = this.state.View.Resources.map(r => {
-      let resourceAlerts = getAlertsResource(r)
-      return update(r,{
-        Alerts: {$set: resourceAlerts}
-      })
-    })
-    newState = update(newState, {
-      View: {Resources: {$set: newResources}, alertInitialized: {$set: true}}
-    })
-    this.setState(newState)
   }
 
 

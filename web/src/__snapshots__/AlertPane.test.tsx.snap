@@ -13,7 +13,15 @@ exports[`renders multiple lines of a crash log 1`] = `
           foo
         </p>
         <p>
-          Pod crashed!
+          Pod crashed
+        </p>
+        <p>
+          <time
+            dateTime="1949-11-18T09:39:00.000Z"
+            title="1,555,970,585,039"
+          >
+            67yr
+          </time>
         </p>
       </header>
       <section>
@@ -132,6 +140,36 @@ exports[`renders one container start error 1`] = `
         </code>
       </section>
     </li>
+    <li
+      className="AlertPane-item"
+    >
+      <header>
+        <p>
+          foo
+        </p>
+        <p>
+          Restarts:2
+        </p>
+        <p>
+          <time
+            dateTime="1949-11-18T09:39:00.000Z"
+            title="1,555,970,585,039"
+          >
+            67yr
+          </time>
+        </p>
+      </header>
+      <section>
+        <code>
+          <span
+            className={null}
+            style={null}
+          >
+            Eeeeek there is a problem
+          </span>
+        </code>
+      </section>
+    </li>
   </ul>
 </section>
 `;
@@ -147,6 +185,36 @@ exports[`renders one container start error 2`] = `
       <header>
         <p>
           foo
+        </p>
+        <p>
+          <time
+            dateTime="1949-11-18T09:39:00.000Z"
+            title="1,555,970,585,039"
+          >
+            67yr
+          </time>
+        </p>
+      </header>
+      <section>
+        <code>
+          <span
+            className={null}
+            style={null}
+          >
+            Eeeeek there is a problem
+          </span>
+        </code>
+      </section>
+    </li>
+    <li
+      className="AlertPane-item"
+    >
+      <header>
+        <p>
+          foo
+        </p>
+        <p>
+          Restarts:2
         </p>
         <p>
           <time
@@ -300,7 +368,15 @@ exports[`renders warnings 1`] = `
           foo
         </p>
         <p>
-          Pod crashed!
+          Pod crashed
+        </p>
+        <p>
+          <time
+            dateTime="1949-11-18T09:39:00.000Z"
+            title="1,555,970,585,039"
+          >
+            67yr
+          </time>
         </p>
       </header>
       <section>
@@ -318,6 +394,9 @@ exports[`renders warnings 1`] = `
       className="AlertPane-item"
     >
       <header>
+        <p>
+          foo
+        </p>
         <p>
           foo
         </p>
@@ -358,7 +437,15 @@ exports[`shows that a container has restarted 1`] = `
           foo
         </p>
         <p>
-          Restarts: 1
+          Restarts:1
+        </p>
+        <p>
+          <time
+            dateTime="1949-11-18T09:39:00.000Z"
+            title="1,555,970,585,039"
+          >
+            67yr
+          </time>
         </p>
       </header>
       <section>
@@ -389,7 +476,15 @@ exports[`shows that a crash rebuild has occurred 1`] = `
           foo
         </p>
         <p>
-          Pod crashed!
+          Pod crashed
+        </p>
+        <p>
+          <time
+            dateTime="1949-11-18T09:39:00.000Z"
+            title="1,555,970,585,039"
+          >
+            67yr
+          </time>
         </p>
       </header>
       <section>

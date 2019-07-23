@@ -43,16 +43,18 @@ function buildFailed(resource: Resource) {
 }
 
 function numberOfAlerts(resource: Resource): number {
-    return getAlertsResource(resource).length
+    return getResourceAlerts(resource).length
 }
-function getAlertsResource(r: Resource): Array<Alert> {
+function getResourceAlerts(r: Resource): Array<Alert> {
     let result: Array<Alert> = []
 
     if (podStatusIsError(r)){
         result.push(podStatusErrAlert(r))
-    } else if (podRestarted(r)){
+    }
+    if (podRestarted(r)){
         result.push(podRestartErrAlert(r))
-    } else if (crashRebuild(r)){
+    }
+    if (crashRebuild(r)){
         result.push(crashRebuildErrAlert(r))
     }
     if (buildFailed(r)){
@@ -76,7 +78,7 @@ function podStatusErrAlert(resource: Resource): Alert{
     }
     msg = msg || podStatusMessage || `Pod has status ${podStatus}`
 
-    return {alertType: PodStatusErrorType, titleMsg: resource.Name, msg: msg, timestamp: resource.ResourceInfo.PodCreationTime}
+    return {alertType: PodStatusErrorType, titleMsg: "", msg: msg, timestamp: resource.ResourceInfo.PodCreationTime}
 }
 
 function podRestartErrAlert(resource: Resource): Alert {
@@ -92,7 +94,7 @@ function crashRebuildErrAlert(resource: Resource): Alert {
 
 function buildFailedErrAlert (resource: Resource): Alert {
     let msg = resource.BuildHistory[0].Log || ""
-    return {alertType: BuildFailedErrorType,titleMsg: resource.Name, msg: msg, timestamp: resource.ResourceInfo.PodCreationTime}
+    return {alertType: BuildFailedErrorType,titleMsg: "Build error", msg: msg, timestamp: resource.ResourceInfo.PodCreationTime}
 }
 function warningsErrAlerts (resource: Resource) : Array<Alert>{
     let warnings : Array<string> = []
@@ -101,7 +103,7 @@ function warningsErrAlerts (resource: Resource) : Array<Alert>{
     if (resource.BuildHistory.length > 0) {
          warnings = resource.BuildHistory[0].Warnings
     }
-    if (warnings.length > 0){
+    if (((warnings || []).length) > 0){
         warnings.forEach(w => {
             alertArray.push({alertType: WarningErrorType, titleMsg: resource.Name,  msg: w, timestamp: resource.BuildHistory[0].FinishTime})
         })
@@ -109,4 +111,4 @@ function warningsErrAlerts (resource: Resource) : Array<Alert>{
     return alertArray
 
 }
-export {getAlertsResource,numberOfAlerts,podStatusErrAlert,warningsErrAlerts,buildFailedErrAlert,crashRebuildErrAlert,podRestartErrAlert}
+export {getResourceAlerts,numberOfAlerts,podStatusErrAlert,warningsErrAlerts,buildFailedErrAlert,crashRebuildErrAlert,podRestartErrAlert}

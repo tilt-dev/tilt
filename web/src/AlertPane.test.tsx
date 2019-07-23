@@ -3,7 +3,15 @@ import AlertPane from "./AlertPane"
 import renderer from "react-test-renderer"
 import {oneResourceUnrecognizedError} from "./testdata.test"
 import {Resource, ResourceInfo, TriggerMode} from "./types";
-import {Alert,  PodRestartErrorType, PodStatusErrorType,ResourceCrashRebuildErrorType, BuildFailedErrorType, WarningErrorType} from "./alerts";
+import {
+  Alert,
+  PodRestartErrorType,
+  PodStatusErrorType,
+  ResourceCrashRebuildErrorType,
+  BuildFailedErrorType,
+  WarningErrorType,
+  getResourceAlerts
+} from "./alerts";
 
 
 
@@ -64,31 +72,20 @@ it("renders the last build with an error", () => {
 
 it("renders one container start error", () => {
   const ts = "1,555,970,585,039"
-  let resource: Partial<Resource> = {
-    Name: "foo",
 
-  }
-  let resources = [
-    {
-      Name: "foo",
-      Alerts: [
-        {alertType:PodRestartErrorType, msg: "", titleMsg: "", timestamp: ts},
-      ]
-      CrashLog: "Eeeeek there is a problem",
-      BuildHistory: [
-        {
-          Log: "laa dee daa I'm an error\nI'm serious",
-          FinishTime: ts,
-          Error: null,
-        },
-      ],
-      ResourceInfo: {
-        PodCreationTime: ts,
-        PodStatus: "Error",
-        PodRestarts: 2,
-      },
-    },
-  ]
+  let resource = fillResourceFields()
+  resource.CrashLog = "Eeeeek there is a problem"
+  resource.BuildHistory = [{
+    Log: "laa dee daa I'm not an error\nI'm serious",
+    FinishTime: ts,
+    Error: null,
+  }]
+  resource.ResourceInfo.PodCreationTime = ts
+  resource.ResourceInfo.PodStatus = "Error"
+  resource.ResourceInfo.PodRestarts = 2
+  resource.Alerts = getResourceAlerts(resource)
+
+  let resources = [resource]
 
   const tree = renderer
     .create(<AlertPane resources={resources as Array<Resource>} />)
@@ -96,24 +93,9 @@ it("renders one container start error", () => {
   expect(tree).toMatchSnapshot()
 
   // the podStatus will flap between "Error" and "CrashLoopBackOff"
-  resources = [
-    {
-      Name: "foo",
-      CrashLog: "Eeeeek there is a problem",
-      BuildHistory: [
-        {
-          Log: "laa dee daa I'm not an error\nI'm serious",
-          FinishTime: ts,
-          Error: null,
-        },
-      ],
-      ResourceInfo: {
-        PodCreationTime: ts,
-        PodStatus: "CrashLoopBackOff",
-        PodRestarts: 3,
-      },
-    },
-  ]
+  resource.ResourceInfo.PodStatus = "CrashLoopBackOff"
+  resource.ResourceInfo.PodRestarts = 3
+
 
   const newTree = renderer
     .create(<AlertPane resources={resources as Array<Resource>} />)
@@ -123,24 +105,20 @@ it("renders one container start error", () => {
 
 it("shows that a container has restarted", () => {
   const ts = "1,555,970,585,039"
-  const resources = [
+  let resource = fillResourceFields()
+  resource.CrashLog = "Eeeeek the container crashed"
+  resource.BuildHistory = [
     {
-      Name: "foo",
-      CrashLog: "Eeeeek the container crashed",
-      BuildHistory: [
-        {
-          Log: "laa dee daa I'm not an error\nseriously",
-          FinishTime: ts,
-          Error: null,
-        },
-      ],
-      ResourceInfo: {
-        PodCreationTime: ts,
-        PodStatus: "ok",
-        PodRestarts: 1,
-      },
+      Log: "laa dee daa I'm not an error\nseriously",
+      FinishTime: ts,
+      Error: null,
     },
   ]
+  resource.ResourceInfo.PodStatus = "ok"
+  resource.ResourceInfo.PodCreationTime = ts
+  resource.ResourceInfo.PodRestarts = 1
+  resource.Alerts = getResourceAlerts(resource)
+  let resources = [resource]
 
   const tree = renderer
     .create(<AlertPane resources={resources as Array<Resource>} />)
@@ -150,24 +128,21 @@ it("shows that a container has restarted", () => {
 
 it("shows that a crash rebuild has occurred", () => {
   const ts = "1,555,970,585,039"
-  const resources = [
+  let resource = fillResourceFields()
+  resource.CrashLog = "Eeeeek the container crashed"
+  resource.BuildHistory = [
     {
-      Name: "foo",
-      CrashLog: "Eeeeek the container crashed",
-      BuildHistory: [
-        {
-          Log: "laa dee daa I'm not an error\nseriously",
-          FinishTime: ts,
-          Error: null,
-          IsCrashRebuild: true,
-        },
-      ],
-      ResourceInfo: {
-        PodCreationTime: ts,
-        PodStatus: "ok",
-      },
+      Log: "laa dee daa I'm not an error\nseriously",
+      FinishTime: ts,
+      Error: null,
+      IsCrashRebuild: true,
     },
   ]
+  resource.ResourceInfo.PodCreationTime = ts
+  resource.ResourceInfo.PodStatus = "ok"
+  resource.Alerts = getResourceAlerts(resource)
+
+  let resources = [resource]
 
   const tree = renderer
     .create(<AlertPane resources={resources as Array<Resource>} />)
@@ -177,24 +152,23 @@ it("shows that a crash rebuild has occurred", () => {
 
 it("renders multiple lines of a crash log", () => {
   const ts = "1,555,970,585,039"
-  const resources = [
+
+  let resource = fillResourceFields()
+  resource.CrashLog = "Eeeeek the container crashed\nno but really it crashed"
+  resource.BuildHistory = [
     {
-      Name: "foo",
-      CrashLog: "Eeeeek the container crashed\nno but really it crashed",
-      BuildHistory: [
-        {
-          Log: "laa dee daa I'm not an error\nseriously",
-          FinishTime: ts,
-          Error: null,
-          IsCrashRebuild: true,
-        },
-      ],
-      ResourceInfo: {
-        PodCreationTime: ts,
-        PodStatus: "ok",
-      },
+      Log: "laa dee daa I'm not an error\nseriously",
+      FinishTime: ts,
+      Error: null,
+      IsCrashRebuild: true,
     },
   ]
+  resource.ResourceInfo.PodCreationTime = ts
+  resource.ResourceInfo.PodStatus = "ok"
+  resource.Alerts = getResourceAlerts(resource)
+
+  let resources = [resource]
+
 
   const tree = renderer
     .create(<AlertPane resources={resources as Array<Resource>} />)
@@ -204,25 +178,22 @@ it("renders multiple lines of a crash log", () => {
 
 it("renders warnings", () => {
   const ts = "1,555,970,585,039"
-  const resources = [
+  let resource = fillResourceFields()
+  resource.CrashLog = "Eeeeek the container crashed"
+  resource.BuildHistory = [
     {
-      Name: "foo",
-      CrashLog: "Eeeeek the container crashed",
-      BuildHistory: [
-        {
-          Log: "laa dee daa I'm not an error\nseriously",
-          FinishTime: ts,
-          Error: null,
-          IsCrashRebuild: true,
-          Warnings: ["Hi I'm a warning"],
-        },
-      ],
-      ResourceInfo: {
-        PodCreationTime: ts,
-        PodStatus: "ok",
-      },
+      Log: "laa dee daa I'm not an error\nseriously",
+      FinishTime: ts,
+      Error: null,
+      IsCrashRebuild: true,
+      Warnings: ["Hi I'm a warning"],
     },
   ]
+  resource.ResourceInfo.PodCreationTime = ts
+  resource.ResourceInfo.PodStatus = "ok"
+  resource.Alerts = getResourceAlerts(resource)
+
+  let resources = [resource]
 
   const tree = renderer
     .create(<AlertPane resources={resources as Array<Resource>} />)
@@ -232,7 +203,11 @@ it("renders warnings", () => {
 
 it("renders one container unrecognized error", () => {
   const ts = "1,555,970,585,039"
-  let resources = [oneResourceUnrecognizedError()]
+  let resource = oneResourceUnrecognizedError()
+  resource.Alerts = getResourceAlerts(resource)
+
+  let resources = [resource]
+
   const tree = renderer
     .create(<AlertPane resources={resources} />)
     .toJSON()
@@ -241,7 +216,7 @@ it("renders one container unrecognized error", () => {
 
 function fillResourceFields() : Resource{
   return {
-    Name: "",
+    Name: "foo",
     CombinedLog: "",
     BuildHistory:[],
     CrashLog: "",
