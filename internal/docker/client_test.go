@@ -51,7 +51,7 @@ func TestProvideBuilderVersion(t *testing.T) {
 	cases := []builderVersionTestCase{
 		{"1.37", "", types.BuilderV1},
 		{"1.37", "0", types.BuilderV1},
-		{"1.37", "1", types.BuilderBuildKit},
+		{"1.37", "1", types.BuilderV1},
 		{"1.40", "", types.BuilderBuildKit},
 		{"1.40", "0", types.BuilderV1},
 		{"1.40", "1", types.BuilderBuildKit},

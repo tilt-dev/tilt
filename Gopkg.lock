@@ -1714,6 +1714,19 @@
   revision = "21c4ce38f2a793ec01e925ddc31216500183b773"
 
 [[projects]]
+  digest = "1:a5ff995cf74dcce65de89a10a64d9b5bd0696af1bf6ab6307bf59643d61a6f5d"
+  name = "sigs.k8s.io/kustomize"
+  packages = [
+    "pkg/gvk",
+    "pkg/image",
+    "pkg/pgmconfig",
+    "pkg/types",
+  ]
+  pruneopts = "UT"
+  revision = "af67c893d87c5fb8200f8a3edac7fdafd61ec0bd"
+  version = "v2.1.0"
+
+[[projects]]
   digest = "1:7719608fe0b52a4ece56c2dde37bedd95b938677d1ab0f84b8a7852e4c59f849"
   name = "sigs.k8s.io/yaml"
   packages = ["."]
@@ -1836,6 +1849,8 @@
     "k8s.io/client-go/util/jsonpath",
     "k8s.io/klog",
     "k8s.io/kubernetes/pkg/kubectl/scheme",
+    "sigs.k8s.io/kustomize/pkg/pgmconfig",
+    "sigs.k8s.io/kustomize/pkg/types",
     "sigs.k8s.io/yaml",
   ]
   solver-name = "gps-cdcl"

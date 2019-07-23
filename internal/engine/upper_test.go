@@ -2460,6 +2460,41 @@ func TestTeamNameStoredOnState(t *testing.T) {
 	})
 }
 
+func TestBuildLogAction(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	f.bc.DisableForTesting()
+
+	manifest := f.newManifest("alert-injester", nil)
+	f.Start([]model.Manifest{manifest}, true)
+
+	f.store.Dispatch(BuildStartedAction{
+		ManifestName: manifest.Name,
+		StartTime:    time.Now(),
+	})
+
+	f.store.Dispatch(BuildLogAction{
+		LogEvent: store.NewLogEvent(manifest.Name, []byte(`a
+bc
+def
+ghij`)),
+	})
+
+	f.WaitUntilManifestState("log appears", manifest.Name, func(ms store.ManifestState) bool {
+		return ms.CurrentBuild.Log.Len() > 0
+	})
+
+	f.withState(func(s store.EngineState) {
+		assert.Contains(t, s.Log.String(), `alert-injes…┊ a
+alert-injes…┊ bc
+alert-injes…┊ def
+alert-injes…┊ ghij`)
+	})
+
+	err := f.Stop()
+	assert.Nil(t, err)
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
