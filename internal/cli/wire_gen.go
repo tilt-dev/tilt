@@ -104,8 +104,8 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	if err != nil {
 		return demo.Script{}, err
 	}
-	k8sContainerUpdater := containerupdate.ProvideK8sContainerUpdater(k8sClient, switchCli, syncletManager, env, updateMode, runtime)
-	k8sLiveUpdBAD := engine.ProvideLiveUpdateBuildAndDeployerForK8s(k8sContainerUpdater, env)
+	containerUpdater := containerupdate.ProvideContainerUpdater(k8sClient, switchCli, syncletManager, env, updateMode, runtime)
+	liveUpdateBuildAndDeployer := engine.NewLiveUpdateBuildAndDeployer(containerUpdater, env)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
@@ -117,11 +117,8 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	imageAndCacheBuilder := engine.NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, updateMode)
 	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageAndCacheBuilder, clock)
-	k8sOrder := engine.DefaultBuildOrderForK8s(k8sLiveUpdBAD, imageBuildAndDeployer, dockerComposeBuildAndDeployer, updateMode)
-	dcContainerUpdater := containerupdate.ProvideDCContainerUpdater(switchCli, updateMode, env, runtime)
-	dcLiveUpdBAD := engine.ProvideLiveUpdateBuildAndDeployerForDC(dcContainerUpdater, env)
-	dcOrder := engine.DefaultBuildOrderForDC(dcLiveUpdBAD, imageBuildAndDeployer, dockerComposeBuildAndDeployer, updateMode)
-	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(k8sOrder, dcOrder)
+	buildOrder := engine.DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, updateMode)
+	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder)
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
 	imageReaper := build.NewImageReaper(switchCli)
 	imageController := engine.NewImageController(imageReaper)
@@ -240,8 +237,8 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	if err != nil {
 		return Threads{}, err
 	}
-	k8sContainerUpdater := containerupdate.ProvideK8sContainerUpdater(k8sClient, switchCli, syncletManager, env, updateMode, runtime)
-	k8sLiveUpdBAD := engine.ProvideLiveUpdateBuildAndDeployerForK8s(k8sContainerUpdater, env)
+	containerUpdater := containerupdate.ProvideContainerUpdater(k8sClient, switchCli, syncletManager, env, updateMode, runtime)
+	liveUpdateBuildAndDeployer := engine.NewLiveUpdateBuildAndDeployer(containerUpdater, env)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
@@ -253,11 +250,8 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	imageAndCacheBuilder := engine.NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, updateMode)
 	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageAndCacheBuilder, clock)
-	k8sOrder := engine.DefaultBuildOrderForK8s(k8sLiveUpdBAD, imageBuildAndDeployer, dockerComposeBuildAndDeployer, updateMode)
-	dcContainerUpdater := containerupdate.ProvideDCContainerUpdater(switchCli, updateMode, env, runtime)
-	dcLiveUpdBAD := engine.ProvideLiveUpdateBuildAndDeployerForDC(dcContainerUpdater, env)
-	dcOrder := engine.DefaultBuildOrderForDC(dcLiveUpdBAD, imageBuildAndDeployer, dockerComposeBuildAndDeployer, updateMode)
-	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(k8sOrder, dcOrder)
+	buildOrder := engine.DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, updateMode)
+	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder)
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
 	imageReaper := build.NewImageReaper(switchCli)
 	imageController := engine.NewImageController(imageReaper)

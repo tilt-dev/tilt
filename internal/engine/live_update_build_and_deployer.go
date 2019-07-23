@@ -31,12 +31,6 @@ type LiveUpdateBuildAndDeployer struct {
 	env k8s.Env
 }
 
-// Differentiate between the LiveUpdateBaD we'll use for k8s updates (may have
-// ContainerUpdater = docker || synclet || exec) and the one we'll use for
-// DC updates (will always have DockerContainerUpdater)
-type k8sLiveUpdBAD struct{ *LiveUpdateBuildAndDeployer }
-type dcLiveUpdBAD struct{ *LiveUpdateBuildAndDeployer }
-
 func NewLiveUpdateBuildAndDeployer(cu containerupdate.ContainerUpdater, env k8s.Env) *LiveUpdateBuildAndDeployer {
 	return &LiveUpdateBuildAndDeployer{
 		cu:  cu,
@@ -44,15 +38,7 @@ func NewLiveUpdateBuildAndDeployer(cu containerupdate.ContainerUpdater, env k8s.
 	}
 }
 
-func ProvideLiveUpdateBuildAndDeployerForK8s(k8scu containerupdate.K8sContainerUpdater, env k8s.Env) k8sLiveUpdBAD {
-	return k8sLiveUpdBAD{NewLiveUpdateBuildAndDeployer(k8scu, env)}
-}
-
-func ProvideLiveUpdateBuildAndDeployerForDC(dccu containerupdate.DCContainerUpdater, env k8s.Env) dcLiveUpdBAD {
-	return dcLiveUpdBAD{NewLiveUpdateBuildAndDeployer(dccu, env)}
-}
-
-func (lubad LiveUpdateBuildAndDeployer) IsSyncletUpdater() bool {
+func (lubad *LiveUpdateBuildAndDeployer) IsSyncletUpdater() bool {
 	_, ok := lubad.cu.(*containerupdate.SyncletUpdater)
 	return ok
 }
