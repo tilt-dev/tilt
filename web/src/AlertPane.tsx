@@ -4,47 +4,42 @@ import AnsiLine from "./AnsiLine"
 import TimeAgo from "react-timeago"
 import "./AlertPane.scss"
 import { zeroTime } from "./time"
-import {Build, Resource, ResourceInfo} from "./types"
+import { Build, Resource, ResourceInfo } from "./types"
 import { timeAgoFormatter } from "./timeFormatters"
 import { podStatusIsCrash, podStatusErrorFunction } from "./constants"
-import {Alert} from "./alerts"
+import { Alert } from "./alerts"
 
 type AlertsProps = {
   resources: Array<Resource>
 }
 
-
 function logToLines(s: string) {
   return s.split("\n").map((l, i) => <AnsiLine key={"logLine" + i} line={l} />)
 }
 
-function alertElements(resources: Array<Resource>){
+function alertElements(resources: Array<Resource>) {
   let formatter = timeAgoFormatter
   let alertElements: Array<JSX.Element> = []
   resources.forEach(resource => {
     resource.Alerts.forEach(alert => {
       alertElements.push(
-          <li key={alert.alertType + resource.Name} className="AlertPane-item">
-            <header>
-              <p>{resource.Name}</p>
-               {alert.titleMsg != "" && <p>{alert.titleMsg}</p>}
-              <p>
-                <TimeAgo
-                    date={alert.timestamp}
-                    formatter={formatter}
-                />
-              </p>
-            </header>
-            <section>{logToLines(alert.msg)}</section>
-          </li>
+        <li key={alert.alertType + resource.Name} className="AlertPane-item">
+          <header>
+            <p>{resource.Name}</p>
+            {alert.titleMsg != "" && <p>{alert.titleMsg}</p>}
+            <p>
+              <TimeAgo date={alert.timestamp} formatter={formatter} />
+            </p>
+          </header>
+          <section>{logToLines(alert.msg)}</section>
+        </li>
       )
-    }
-    )})
+    })
+  })
   return alertElements
 }
 
 class AlertPane extends PureComponent<AlertsProps> {
-
   render() {
     let el = (
       <section className="Pane-empty-message">

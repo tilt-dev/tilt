@@ -19,9 +19,8 @@ import AlertPane from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
 import NotFound from "./NotFound"
-import {getResourceAlerts, numberOfAlerts} from "./alerts";
-import update from 'immutability-helper';
-
+import { getResourceAlerts, numberOfAlerts } from "./alerts"
+import update from "immutability-helper"
 
 type HudProps = {
   history: History
@@ -110,7 +109,6 @@ class HUD extends Component<HudProps, HudState> {
     this.controller.dispose()
     this.unlisten()
   }
-
 
   setAppState(state: HudState) {
     this.setState(state)

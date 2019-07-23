@@ -1,8 +1,8 @@
 import React from "react"
 import AlertPane from "./AlertPane"
 import renderer from "react-test-renderer"
-import {oneResourceUnrecognizedError} from "./testdata.test"
-import {Resource, ResourceInfo, TriggerMode} from "./types";
+import { oneResourceUnrecognizedError } from "./testdata.test"
+import { Resource, ResourceInfo, TriggerMode } from "./types"
 import {
   Alert,
   PodRestartErrorType,
@@ -10,18 +10,15 @@ import {
   ResourceCrashRebuildErrorType,
   BuildFailedErrorType,
   WarningErrorType,
-  getResourceAlerts
-} from "./alerts";
-
-
-
+  getResourceAlerts,
+} from "./alerts"
 
 beforeEach(() => {
   Date.now = jest.fn(() => 1482363367071)
 })
 
 it("renders no errors", () => {
-   let resources: Array<Partial<Resource>> = [
+  let resources: Array<Partial<Resource>> = [
     {
       Name: "foo",
       Alerts: [],
@@ -37,10 +34,17 @@ it("renders no errors", () => {
 
 it("renders one build error", () => {
   const ts = "1,555,970,585,039"
-  let resources:Array<Partial<Resource>> = [
+  let resources: Array<Partial<Resource>> = [
     {
       Name: "foo",
-      Alerts: [{alertType:BuildFailedErrorType, msg: "laa dee daa I'm an error\nfor real I am", titleMsg: "", timestamp: ts}]
+      Alerts: [
+        {
+          alertType: BuildFailedErrorType,
+          msg: "laa dee daa I'm an error\nfor real I am",
+          titleMsg: "",
+          timestamp: ts,
+        },
+      ],
     },
   ]
 
@@ -57,9 +61,19 @@ it("renders the last build with an error", () => {
     {
       Name: "foo",
       Alerts: [
-          {alertType:PodRestartErrorType, msg: "laa dee daa I'm an error\nfor real I am", titleMsg: "", timestamp: ts},
-          {alertType:PodRestartErrorType, msg: "\"laa dee daa I'm an error\nI'm serious", titleMsg: "", timestamp: ts}
-      ]
+        {
+          alertType: PodRestartErrorType,
+          msg: "laa dee daa I'm an error\nfor real I am",
+          titleMsg: "",
+          timestamp: ts,
+        },
+        {
+          alertType: PodRestartErrorType,
+          msg: "\"laa dee daa I'm an error\nI'm serious",
+          titleMsg: "",
+          timestamp: ts,
+        },
+      ],
     },
   ]
 
@@ -75,11 +89,13 @@ it("renders one container start error", () => {
 
   let resource = fillResourceFields()
   resource.CrashLog = "Eeeeek there is a problem"
-  resource.BuildHistory = [{
-    Log: "laa dee daa I'm not an error\nI'm serious",
-    FinishTime: ts,
-    Error: null,
-  }]
+  resource.BuildHistory = [
+    {
+      Log: "laa dee daa I'm not an error\nI'm serious",
+      FinishTime: ts,
+      Error: null,
+    },
+  ]
   resource.ResourceInfo.PodCreationTime = ts
   resource.ResourceInfo.PodStatus = "Error"
   resource.ResourceInfo.PodRestarts = 2
@@ -95,7 +111,6 @@ it("renders one container start error", () => {
   // the podStatus will flap between "Error" and "CrashLoopBackOff"
   resource.ResourceInfo.PodStatus = "CrashLoopBackOff"
   resource.ResourceInfo.PodRestarts = 3
-
 
   const newTree = renderer
     .create(<AlertPane resources={resources as Array<Resource>} />)
@@ -169,7 +184,6 @@ it("renders multiple lines of a crash log", () => {
 
   let resources = [resource]
 
-
   const tree = renderer
     .create(<AlertPane resources={resources as Array<Resource>} />)
     .toJSON()
@@ -208,17 +222,15 @@ it("renders one container unrecognized error", () => {
 
   let resources = [resource]
 
-  const tree = renderer
-    .create(<AlertPane resources={resources} />)
-    .toJSON()
+  const tree = renderer.create(<AlertPane resources={resources} />).toJSON()
   expect(tree).toMatchSnapshot()
 })
 
-function fillResourceFields() : Resource{
+function fillResourceFields(): Resource {
   return {
     Name: "foo",
     CombinedLog: "",
-    BuildHistory:[],
+    BuildHistory: [],
     CrashLog: "",
     CurrentBuild: 0,
     DirectoriesWatched: [],
@@ -227,7 +239,7 @@ function fillResourceFields() : Resource{
     IsTiltfile: false,
     LastDeployTime: "",
     PathsWatched: [],
-    PendingBuildEdits:[],
+    PendingBuildEdits: [],
     PendingBuildReason: 0,
     PendingBuildSince: "",
     ResourceInfo: {

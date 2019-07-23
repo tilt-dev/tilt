@@ -3,15 +3,21 @@ import { ReactComponent as ChevronSvg } from "./assets/svg/chevron.svg"
 import { Link } from "react-router-dom"
 import { combinedStatus, warnings } from "./status"
 import "./Sidebar.scss"
-import {ResourceView, TriggerMode, RuntimeStatus, Build, Resource} from "./types"
+import {
+  ResourceView,
+  TriggerMode,
+  RuntimeStatus,
+  Build,
+  Resource,
+} from "./types"
 import TimeAgo from "react-timeago"
 import { isZeroTime } from "./time"
 import PathBuilder from "./PathBuilder"
 import { timeAgoFormatter } from "./timeFormatters"
 import SidebarIcon from "./SidebarIcon"
 import SidebarTriggerButton from "./SidebarTriggerButton"
-import {number} from "prop-types";
-import {numberOfAlerts} from "./alerts";
+import { number } from "prop-types"
+import { numberOfAlerts } from "./alerts"
 
 class SidebarItem {
   name: string
@@ -37,7 +43,7 @@ class SidebarItem {
     this.lastDeployTime = res.LastDeployTime
     this.pendingBuildSince = res.PendingBuildSince
     this.currentBuildStartTime = res.CurrentBuild.StartTime
-    this.alertCount = numberOfAlerts(res) 
+    this.alertCount = numberOfAlerts(res)
     this.triggerMode = res.TriggerMode
     this.hasPendingChanges = res.HasPendingChanges
     let buildHistory = res.BuildHistory || []
@@ -138,9 +144,7 @@ class Sidebar extends PureComponent<SidebarProps> {
               {item.name}
             </p>
             {item.alertCount > 0 ? (
-              <span className="resLink-alertBadge">
-                {item.alertCount}
-              </span>
+              <span className="resLink-alertBadge">{item.alertCount}</span>
             ) : (
               ""
             )}

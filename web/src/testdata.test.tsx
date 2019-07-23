@@ -1,7 +1,7 @@
 import { RouteComponentProps } from "react-router-dom"
 import { UnregisterCallback, Href } from "history"
 import { Resource, TriggerMode } from "./types"
-import {getResourceAlerts} from "./alerts";
+import { getResourceAlerts } from "./alerts"
 
 type view = {
   Resources: Array<Resource>
@@ -95,7 +95,7 @@ function oneResource(): Resource {
     PodID: "",
     IsTiltfile: false,
     PathsWatched: [],
-    Alerts: []
+    Alerts: [],
   }
   return resource
 }
@@ -266,7 +266,7 @@ function twoResourceView(): view {
       Endpoints: [],
     },
     HasPendingChanges: false,
-    Alerts: []
+    Alerts: [],
   }
   return { Resources: [vigoda, snack] }
 }
@@ -1347,7 +1347,7 @@ function oneResourceCrashedOnStart(): any {
       ShowBuildStatus: true,
       CombinedLog:
         "\n\u001b[34m──┤ Building: \u001b[0msnack\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/snack]\nBuilding Dockerfile:\n  FROM golang:1.10\n  \n  ADD . /go/src/github.com/windmilleng/servantes/snack\n  RUN go install github.com/windmilleng/servantes/snack\n  \n  ENTRYPOINT /go/bin/snack\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 9.7 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/3] FROM docker.io/library/golang:1.10\n    ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/snack\n    ╎ [3/3] RUN go install github.com/windmilleng/servantes/snack\n\n\u001b[34mSTEP 2/3 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/snack:tilt-44f988219ddc41f5\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/3 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 1.332s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 0.175s\n\u001b[34m  │ \u001b[0mDone in: 1.507s \n\n2019/04/22 17:34:10 Starting Snack Service on :8083\n\n\u001b[32m1 changed: \u001b[0m[snack/main.go]\n\n\n\u001b[34m──┤ Rebuilding: \u001b[0msnack\u001b[34m ├────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/snack]\nBuilding Dockerfile:\n  FROM golang:1.10\n  \n  ADD . /go/src/github.com/windmilleng/servantes/snack\n  RUN go install github.com/windmilleng/servantes/snack\n  \n  ENTRYPOINT /go/bin/snack\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 9.7 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/3] FROM docker.io/library/golang:1.10\n    ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/snack\n    ╎ [3/3] RUN go install github.com/windmilleng/servantes/snack\n\n\u001b[34mSTEP 2/3 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/snack:tilt-a2f42ad453eedd6d\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/3 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 2.134s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 0.222s\n\u001b[34m  │ \u001b[0mDone in: 2.356s \n\n2019/04/22 17:35:01 Can't Find Necessary Resource File; dying\n2019/04/22 17:35:02 Can't Find Necessary Resource File; dying\n",
-      Alerts: []
+      Alerts: [],
     },
   ]
 }
@@ -1398,7 +1398,7 @@ function oneResourceManualTriggerDirty(): any {
         PodRestarts: 0,
         PodLog: "",
         YAML: "",
-        Endpoints: []
+        Endpoints: [],
       },
       RuntimeStatus: "ok",
       IsTiltfile: true,
@@ -1406,7 +1406,7 @@ function oneResourceManualTriggerDirty(): any {
       CombinedLog:
         'Beginning Tiltfile execution\nRunning `"whoami"`\nRunning `"m4 -Dvarowner=dan \\"deploy/fe.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/vigoda.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/snack.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/doggos.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/fortune.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/hypothesizer.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/spoonerisms.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/emoji.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/words.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/secrets.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/job.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/sleeper.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/hello_world.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/tick.yaml\\""`\nSuccessfully loaded Tiltfile\n',
       CrashLog: "",
-      Alerts: []
+      Alerts: [],
     },
     {
       Name: "snack",
@@ -1459,7 +1459,7 @@ function oneResourceManualTriggerDirty(): any {
       CombinedLog:
         "\n\u001b[34m──┤ Building: \u001b[0msnack\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/snack]\nBuilding Dockerfile:\n  FROM golang:1.10\n  \n  ADD . /go/src/github.com/windmilleng/servantes/snack\n  RUN go install github.com/windmilleng/servantes/snack\n  \n  ENTRYPOINT /go/bin/snack\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 10 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/3] FROM docker.io/library/golang:1.10@sha256:6d5e79878a3e4f1b30b7aa4d24fb6ee6184e905a9b172fc72593935633be4c46\n    ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/snack\n    ╎ [3/3] RUN go install github.com/windmilleng/servantes/snack\n\n\u001b[34mSTEP 2/3 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/snack:tilt-fcf849b0f0bc9396\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/3 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 5.314s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 0.168s\n\u001b[34m  │ \u001b[0mDone in: 5.482s \n\n2019/06/12 16:33:49 Starting Snack Service on :8083\n",
       CrashLog: "",
-      Alerts: []
+      Alerts: [],
     },
   ]
 }

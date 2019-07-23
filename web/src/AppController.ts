@@ -1,6 +1,6 @@
 import HUD from "./HUD"
-import {getResourceAlerts} from "./alerts";
-import update from "immutability-helper";
+import { getResourceAlerts } from "./alerts"
+import update from "immutability-helper"
 
 // A Websocket that automatically retries.
 
@@ -47,10 +47,11 @@ class AppController {
 
       let data = JSON.parse(event.data)
 
-      data.Resources = data.Resources.map((r: any) => { // function(r) { }
+      data.Resources = data.Resources.map((r: any) => {
+        // function(r) { }
         if (r.ResourceInfo === null) {
           r.ResourceInfo = {
-            PodName:  "",
+            PodName: "",
             PodCreationTime: "",
             PodUpdateStartTime: "",
             PodStatus: "",
@@ -58,13 +59,12 @@ class AppController {
             PodRestarts: 0,
             PodLog: "",
             YAML: "",
-            Endpoints: []
+            Endpoints: [],
           }
         }
         r.Alerts = getResourceAlerts(r)
         return r
       })
-
 
       //data.Resources = data.Resources.map((r: any) => new ResourceClass(r))
       // @ts-ignore
