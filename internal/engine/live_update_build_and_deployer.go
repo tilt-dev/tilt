@@ -2,11 +2,12 @@ package engine
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"time"
 
 	"github.com/pkg/errors"
+
+	"github.com/windmilleng/tilt/internal/container"
 
 	tilterrors "github.com/windmilleng/tilt/internal/engine/errors"
 
@@ -27,20 +28,22 @@ import (
 var _ BuildAndDeployer = &LiveUpdateBuildAndDeployer{}
 
 type LiveUpdateBuildAndDeployer struct {
-	cu  containerupdate.ContainerUpdater
-	env k8s.Env
+	dcu     *containerupdate.DockerContainerUpdater
+	scu     *containerupdate.SyncletUpdater
+	ecu     *containerupdate.ExecUpdater
+	env     k8s.Env
+	runtime container.Runtime
 }
 
-func NewLiveUpdateBuildAndDeployer(cu containerupdate.ContainerUpdater, env k8s.Env) *LiveUpdateBuildAndDeployer {
+func NewLiveUpdateBuildAndDeployer(dcu *containerupdate.DockerContainerUpdater, scu *containerupdate.SyncletUpdater,
+	ecu *containerupdate.ExecUpdater, env k8s.Env, runtime container.Runtime) *LiveUpdateBuildAndDeployer {
 	return &LiveUpdateBuildAndDeployer{
-		cu:  cu,
-		env: env,
+		dcu:     dcu,
+		scu:     scu,
+		ecu:     ecu,
+		env:     env,
+		runtime: runtime,
 	}
-}
-
-func (lubad *LiveUpdateBuildAndDeployer) IsSyncletUpdater() bool {
-	_, ok := lubad.cu.(*containerupdate.SyncletUpdater)
-	return ok
 }
 
 func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
@@ -51,11 +54,6 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 
 	if len(liveUpdateStateSet) != 1 {
 		return store.BuildResultSet{}, tilterrors.SilentRedirectToNextBuilderf("LiveUpdateBuildAndDeployer needs exactly one image target (got %d)", len(liveUpdateStateSet))
-	}
-
-	supported, msg := lubad.cu.SupportsSpecs(specs)
-	if !supported {
-		return store.BuildResultSet{}, fmt.Errorf(msg)
 	}
 
 	liveUpdateState := liveUpdateStateSet[0]
@@ -166,7 +164,8 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, iTa
 		}
 	}
 
-	err = lubad.cu.UpdateContainer(ctx, deployInfo, pr, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
+	// TODO: Choose which container updater to use (maybe need original specs for this?)
+	err = lubad.dcu.UpdateContainer(ctx, deployInfo, pr, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 	if err != nil {
 		if build.IsUserBuildFailure(err) {
 			return tilterrors.WrapDontFallBackError(err)

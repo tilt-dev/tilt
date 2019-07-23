@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/engine/errors"
 	"github.com/windmilleng/tilt/internal/mode"
 	"github.com/windmilleng/tilt/internal/store"
@@ -87,12 +88,13 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 	return store.BuildResultSet{}, lastErr
 }
 
-func DefaultBuildOrder(lubad *LiveUpdateBuildAndDeployer, ibad *ImageBuildAndDeployer, dcbad *DockerComposeBuildAndDeployer, updMode mode.UpdateMode) BuildOrder {
+func DefaultBuildOrder(lubad *LiveUpdateBuildAndDeployer, ibad *ImageBuildAndDeployer, dcbad *DockerComposeBuildAndDeployer,
+	updMode mode.UpdateMode, runtime container.Runtime) BuildOrder {
 	if updMode == mode.UpdateModeImage || updMode == mode.UpdateModeNaive {
 		return BuildOrder{dcbad, ibad}
 	}
 
-	if lubad.IsSyncletUpdater() {
+	if updMode == mode.UpdateModeSynclet || runtime == container.RuntimeDocker {
 		ibad.SetInjectSynclet(true)
 	}
 

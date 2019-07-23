@@ -21,14 +21,15 @@ type ExecUpdater struct {
 
 var _ ContainerUpdater = &ExecUpdater{}
 
-func NewExecUpdater(kCli k8s.Client) ContainerUpdater {
+func NewExecUpdater(kCli k8s.Client) *ExecUpdater {
 	return &ExecUpdater{kCli: kCli}
 }
 
 // SupportsSpecs returns an error (to be surfaced by the BuildAndDeployer) if
 // the ExecUpdater does not support the given specs.
 func (cu *ExecUpdater) SupportsSpecs(specs []model.TargetSpec) (supported bool, msg string) {
-	return specsAreOnlyImagesDeployedToK8s(specs, "ExecUpdater")
+	// return specsAreOnlyImagesDeployedToK8s(specs, "ExecUpdater")
+	return true, ""
 }
 
 func (cu *ExecUpdater) UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,

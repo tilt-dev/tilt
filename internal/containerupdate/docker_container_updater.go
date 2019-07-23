@@ -26,7 +26,7 @@ type DockerContainerUpdater struct {
 
 var _ ContainerUpdater = &DockerContainerUpdater{}
 
-func NewDockerContainerUpdater(dCli docker.Client, env k8s.Env, runtime container.Runtime) ContainerUpdater {
+func NewDockerContainerUpdater(dCli docker.Client, env k8s.Env, runtime container.Runtime) *DockerContainerUpdater {
 	return &DockerContainerUpdater{dCli: dCli, env: env, runtime: runtime}
 }
 

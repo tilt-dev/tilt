@@ -18,14 +18,15 @@ type SyncletUpdater struct {
 
 var _ ContainerUpdater = &SyncletUpdater{}
 
-func NewSyncletUpdater(sm SyncletManager) ContainerUpdater {
+func NewSyncletUpdater(sm SyncletManager) *SyncletUpdater {
 	return &SyncletUpdater{sm: sm}
 }
 
 // SupportsSpecs returns an error (to be surfaced by the BuildAndDeployer) if
 // the SyncletUpdater does not support the given specs.
 func (cu *SyncletUpdater) SupportsSpecs(specs []model.TargetSpec) (supported bool, msg string) {
-	return specsAreOnlyImagesDeployedToK8s(specs, "SyncletUpdater")
+	// return specsAreOnlyImagesDeployedToK8s(specs, "SyncletUpdater")
+	return true, ""
 }
 
 func (cu *SyncletUpdater) UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,
