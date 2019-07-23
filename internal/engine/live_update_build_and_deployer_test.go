@@ -142,12 +142,10 @@ type liveUpdBaDFixture struct {
 }
 
 func newFixture(t testing.TB) *liveUpdBaDFixture {
-	dCli := docker.NewFakeClient()
-	sm := containerupdate.SyncletManager{}
-	kCli := k8s.NewFakeK8sClient()
-	dcu := containerupdate.NewDockerContainerUpdater(dCli)
-	scu := containerupdate.NewSyncletUpdater(sm)
-	ecu := containerupdate.NewExecUpdater(kCli)
+	// HACK: we don't need these to do anything, we just need them to exist so we can create the BaD.
+	dcu := &containerupdate.DockerContainerUpdater{}
+	scu := &containerupdate.SyncletUpdater{}
+	ecu := &containerupdate.ExecUpdater{}
 	fakeContainerUpdater := &containerupdate.FakeContainerUpdater{}
 	lcbad := NewLiveUpdateBuildAndDeployer(dcu, scu, ecu, mode.UpdateModeAuto, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
