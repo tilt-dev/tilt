@@ -6,7 +6,7 @@ import "./AlertPane.scss"
 import { zeroTime } from "./time"
 import { Build, Resource, ResourceInfo } from "./types"
 import { timeAgoFormatter } from "./timeFormatters"
-import { podStatusIsCrash, podStatusErrorFunction } from "./constants"
+import { podStatusIsCrash, podStatusIsError } from "./constants"
 import { Alert } from "./alerts"
 
 type AlertsProps = {

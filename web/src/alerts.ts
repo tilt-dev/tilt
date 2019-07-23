@@ -1,5 +1,5 @@
 import { Resource } from "./types"
-import { podStatusErrorFunction, podStatusIsCrash } from "./constants"
+import { podStatusIsError, podStatusIsCrash } from "./constants"
 import React from "react"
 
 export type Alert = {
@@ -26,13 +26,13 @@ function crashRebuild(resource: Resource): boolean {
   )
 }
 
-function podStatusIsError(resource: Resource) {
+function podStatusHasError(resource: Resource) {
   let podStatus = resource.ResourceInfo.PodStatus
   let podStatusMessage = resource.ResourceInfo.PodStatusMessage
   if (podStatus == null) {
     return false
   }
-  return podStatusErrorFunction(podStatus) || podStatusMessage
+  return podStatusIsError(podStatus) || podStatusMessage
 }
 
 function podRestarted(resource: Resource) {
@@ -51,7 +51,7 @@ function numberOfAlerts(resource: Resource): number {
 function getResourceAlerts(r: Resource): Array<Alert> {
   let result: Array<Alert> = []
 
-  if (podStatusIsError(r)) {
+  if (podStatusHasError(r)) {
     result.push(podStatusErrAlert(r))
   } else if (podRestarted(r)) {
     result.push(podRestartErrAlert(r))

@@ -48,7 +48,6 @@ class AppController {
       let data = JSON.parse(event.data)
 
       data.Resources = data.Resources.map((r: any) => {
-        // function(r) { }
         if (r.ResourceInfo === null) {
           r.ResourceInfo = {
             PodName: "",
@@ -65,8 +64,6 @@ class AppController {
         r.Alerts = getResourceAlerts(r)
         return r
       })
-
-      //data.Resources = data.Resources.map((r: any) => new ResourceClass(r))
       // @ts-ignore
       this.component.setAppState({ View: data })
     })

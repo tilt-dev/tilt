@@ -102,7 +102,6 @@ class HUD extends Component<HudProps, HudState> {
 
   componentDidMount() {
     this.controller.createNewSocket()
-    console.log("HUD componentDidMount")
   }
 
   componentWillUnmount() {
@@ -135,7 +134,6 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   render() {
-    console.log("HUD render")
     let view = this.state.View
     let sailEnabled = view && view.SailEnabled ? view.SailEnabled : false
     let sailUrl = view && view.SailURL ? view.SailURL : ""
