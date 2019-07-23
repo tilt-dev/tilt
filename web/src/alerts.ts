@@ -15,7 +15,7 @@ export const ResourceCrashRebuildErrorType = "ResourceCrashRebuild"
 export const BuildFailedErrorType = "BuildError"
 export const WarningErrorType = "Warning"
 
-//these functions can be moved to wear the resources type is defined
+//these functions can be moved to where the resources type is defined
 function hasAlert(resource: Resource) {
   return numberOfAlerts(resource) > 0
 }
