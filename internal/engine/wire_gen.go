@@ -45,7 +45,7 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, kClient, env, analytics2, modeUpdateMode, clock, runtime, kp)
 	engineImageAndCacheBuilder := NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, modeUpdateMode)
 	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcc, docker2, engineImageAndCacheBuilder, clock)
-	buildOrder := DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, modeUpdateMode, runtime)
+	buildOrder := DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, modeUpdateMode, env, runtime)
 	compositeBuildAndDeployer := NewCompositeBuildAndDeployer(buildOrder)
 	return compositeBuildAndDeployer, nil
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/engine/errors"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/mode"
 	"github.com/windmilleng/tilt/internal/store"
 
@@ -89,12 +90,12 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 }
 
 func DefaultBuildOrder(lubad *LiveUpdateBuildAndDeployer, ibad *ImageBuildAndDeployer, dcbad *DockerComposeBuildAndDeployer,
-	updMode mode.UpdateMode, runtime container.Runtime) BuildOrder {
+	updMode mode.UpdateMode, env k8s.Env, runtime container.Runtime) BuildOrder {
 	if updMode == mode.UpdateModeImage || updMode == mode.UpdateModeNaive {
 		return BuildOrder{dcbad, ibad}
 	}
 
-	if updMode == mode.UpdateModeSynclet || runtime == container.RuntimeDocker {
+	if updMode == mode.UpdateModeSynclet || (!env.IsLocalCluster() && runtime == container.RuntimeDocker) {
 		ibad.SetInjectSynclet(true)
 	}
 

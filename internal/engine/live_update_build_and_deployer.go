@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"time"
 
@@ -184,23 +185,29 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 func (lubad *LiveUpdateBuildAndDeployer) containerUpdaterForSpecs(specs []model.TargetSpec) containerupdate.ContainerUpdater {
 	isDC := len(model.ExtractDockerComposeTargets(specs)) > 0
 	if isDC || lubad.updMode == mode.UpdateModeContainer {
+		fmt.Println("~ docker 1")
 		return lubad.dcu
 	}
 
 	if lubad.updMode == mode.UpdateModeSynclet {
+		fmt.Println("~ synclet 1")
 		return lubad.scu
 	}
 
 	if lubad.updMode == mode.UpdateModeKubectlExec {
+		fmt.Println("~ exec 1")
 		return lubad.ecu
 	}
 
 	if lubad.runtime == container.RuntimeDocker {
 		if lubad.env.IsLocalCluster() {
+			fmt.Println("~ docker 2")
 			return lubad.dcu
 		}
+		fmt.Println("~ synclet 2")
 		return lubad.scu
 	}
 
+	fmt.Println("~ exec 2")
 	return lubad.ecu
 }
