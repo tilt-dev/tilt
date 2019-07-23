@@ -43,7 +43,7 @@ func TestBuildAndDeployBoilsSteps(t *testing.T) {
 		model.Run{Cmd: model.ToShellCmd("pip install"), Triggers: f.newPathSet("requirements.txt")},
 	}
 
-	err := f.lcbad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, []build.PathMapping{packageJson}, runs, false)
+	err := f.lubad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, []build.PathMapping{packageJson}, runs, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestUpdateInContainerArchivesFilesToCopyAndGetsFilesToRemove(t *testing.T) 
 		build.PathMapping{LocalPath: f.JoinPath("does-not-exist"), ContainerPath: "/src/does-not-exist"},
 	}
 
-	err := f.lcbad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, paths, nil, false)
+	err := f.lubad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, paths, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func TestDontFallBackOnUserError(t *testing.T) {
 
 	f.cu.UpdateErr = build.UserBuildFailure{ExitCode: 12345}
 
-	err := f.lcbad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, nil, nil, false)
+	err := f.lubad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, nil, nil, false)
 	if assert.NotNil(t, err) {
 		assert.IsType(t, DontFallBackError{}, err)
 	}
@@ -114,7 +114,7 @@ func TestUpdateContainerWithHotReload(t *testing.T) {
 
 	expectedHotReloads := []bool{true, true, false, true}
 	for _, hotReload := range expectedHotReloads {
-		err := f.lcbad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, nil, nil, hotReload)
+		err := f.lubad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, nil, nil, hotReload)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -134,16 +134,14 @@ type lcbadFixture struct {
 	ctx   context.Context
 	st    *store.Store
 	cu    *containerupdate.FakeContainerUpdater
-	lcbad *LiveUpdateBuildAndDeployer
+	lubad *LiveUpdateBuildAndDeployer
 }
 
 func newFixture(t testing.TB) *lcbadFixture {
-	// HACK: we don't need these to do anything, we just need them to exist so we can create the BaD.
-	dcu := &containerupdate.DockerContainerUpdater{}
-	scu := &containerupdate.SyncletUpdater{}
-	ecu := &containerupdate.ExecUpdater{}
+	// HACK: we don't need any real container updaters on this LiveUpdBaD since we're testing a
+	// func further down the flow that takes a ContainerUpdater as an arg, so just put in nil's
+	lubad := NewLiveUpdateBuildAndDeployer(nil, nil, nil, UpdateModeAuto, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	fakeContainerUpdater := &containerupdate.FakeContainerUpdater{}
-	lcbad := NewLiveUpdateBuildAndDeployer(dcu, scu, ecu, UpdateModeAuto, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	st, _ := store.NewStoreForTesting()
 	return &lcbadFixture{
@@ -152,7 +150,7 @@ func newFixture(t testing.TB) *lcbadFixture {
 		st:             st,
 		ctx:            ctx,
 		cu:             fakeContainerUpdater,
-		lcbad:          lcbad,
+		lubad:          lubad,
 	}
 }
 
