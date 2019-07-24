@@ -20,7 +20,6 @@ import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
 import NotFound from "./NotFound"
 import { getResourceAlerts, numberOfAlerts } from "./alerts"
-import update from "immutability-helper"
 
 type HudProps = {
   history: History
