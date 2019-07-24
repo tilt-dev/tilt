@@ -37,7 +37,7 @@ func (cu *ExecUpdater) UpdateContainer(ctx context.Context, deployInfo store.Dep
 	}
 
 	l := logger.Get(ctx)
-	w := l.Writer(logger.InfoLvl)
+	w := logger.Get(ctx).Writer(logger.InfoLvl)
 
 	if len(filesToDelete) > 0 {
 		err := cu.kCli.Exec(ctx,

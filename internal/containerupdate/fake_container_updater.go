@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 )
@@ -13,8 +12,6 @@ type FakeContainerUpdater struct {
 	UpdateErr error
 
 	Calls []UpdateContainerCall
-
-	CanUpdateSpecsFn func(specs []model.TargetSpec, env k8s.Env) (canUpd bool, msg string, silent bool)
 }
 
 type UpdateContainerCall struct {

@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/sliceutils"
+
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
@@ -39,9 +41,8 @@ func TestUpdateContainerDeletesFiles(t *testing.T) {
 	}
 
 	for _, call := range f.kCli.ExecCalls {
-		if len(call.Cmd) >= 1 && call.Cmd[0] == "rm" {
-			t.Errorf("found kubernetes exec `rm` call, expected none b/c no files to delete")
-			t.Fail()
+		if sliceutils.StringSliceStartsWith(call.Cmd, "rm") {
+			t.Fatal("found kubernetes exec `rm` call, expected none b/c no files to delete")
 		}
 	}
 
@@ -52,14 +53,17 @@ func TestUpdateContainerDeletesFiles(t *testing.T) {
 	}
 	var rmCmd []string
 	for _, call := range f.kCli.ExecCalls {
-		if len(call.Cmd) >= 1 && call.Cmd[0] == "rm" {
+		if sliceutils.StringSliceStartsWith(call.Cmd, "rm") {
+			if len(rmCmd) != 0 {
+				t.Fatalf(`found two rm commands, expected one.
+cmd 1: %v
+cmd 2: %v`, rmCmd, call.Cmd)
+			}
 			rmCmd = call.Cmd
-			break
 		}
 	}
 	if len(rmCmd) == 0 {
-		t.Errorf("no `rm` cmd found, expected one b/c we specified files to delete")
-		t.Fail()
+		t.Fatal("no `rm` cmd found, expected one b/c we specified files to delete")
 	}
 
 	expectedRmCmd := []string{"rm", "-rf", "/foo/delete_me", "/bar/me_too"}
