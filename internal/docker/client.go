@@ -24,7 +24,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 )
@@ -113,7 +112,7 @@ type Cli struct {
 	env       Env
 }
 
-func NewDockerClient(ctx context.Context, env Env, kEnv k8s.Env) (*Cli, error) {
+func NewDockerClient(ctx context.Context, env Env) (*Cli, error) {
 	opts, err := CreateClientOpts(ctx, env)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewDockerClient")
@@ -133,7 +132,7 @@ func NewDockerClient(ctx context.Context, env Env, kEnv k8s.Env) (*Cli, error) {
 			minDockerVersion, serverVersion.APIVersion)
 	}
 
-	builderVersion, err := getDockerBuilderVersion(serverVersion, kEnv)
+	builderVersion, err := getDockerBuilderVersion(serverVersion, env)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewDockerVersion")
 	}
@@ -161,7 +160,7 @@ func SupportedVersion(v types.Version) bool {
 	return version.GTE(minDockerVersion)
 }
 
-func getDockerBuilderVersion(v types.Version, env k8s.Env) (types.BuilderVersion, error) {
+func getDockerBuilderVersion(v types.Version, env Env) (types.BuilderVersion, error) {
 	// If the user has explicitly chosen to enable/disable buildkit, respect that.
 	buildkitEnv := os.Getenv("DOCKER_BUILDKIT")
 	if buildkitEnv != "" {
@@ -188,8 +187,8 @@ func getDockerBuilderVersion(v types.Version, env k8s.Env) (types.BuilderVersion
 //
 // Inferred from release notes
 // https://docs.docker.com/engine/release-notes/
-func SupportsBuildkit(v types.Version, env k8s.Env) bool {
-	if env == k8s.EnvMinikube {
+func SupportsBuildkit(v types.Version, env Env) bool {
+	if env.IsMinikube {
 		// Buildkit for Minikube is currently busted. Follow
 		// https://github.com/kubernetes/minikube/issues/4143
 		// for updates.

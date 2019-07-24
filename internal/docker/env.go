@@ -19,6 +19,10 @@ type Env struct {
 	APIVersion string
 	TLSVerify  string
 	CertPath   string
+
+	// Minikube's docker client has a bug where it can't use buildkit. See:
+	// https://github.com/kubernetes/minikube/issues/4143
+	IsMinikube bool
 }
 
 // Serializes this back to environment variables for os.Environ
@@ -43,8 +47,19 @@ func (e Env) AsEnviron() []string {
 type ClusterEnv Env
 type LocalEnv Env
 
-func ProvideLocalEnv(ctx context.Context) (LocalEnv, error) {
+func ProvideLocalEnv(ctx context.Context, cEnv ClusterEnv) (LocalEnv, error) {
 	result, err := overlayOSEnvVars(Env{})
+	if err != nil {
+		return LocalEnv{}, err
+	}
+
+	// The user may have already configured their local docker client
+	// to use Minikube's docker server. We check for that by comparing
+	// the hosts of the LocalEnv and ClusterEnv.
+	if cEnv.Host == result.Host {
+		result.IsMinikube = cEnv.IsMinikube
+	}
+
 	return LocalEnv(result), err
 }
 
@@ -78,6 +93,8 @@ func ProvideClusterEnv(ctx context.Context, env k8s.Env, runtime container.Runti
 			if tlsVerify != "" {
 				result.TLSVerify = tlsVerify
 			}
+
+			result.IsMinikube = true
 		} else if env == k8s.EnvMicroK8s {
 			// If we're running Microk8s with a docker runtime, talk to Microk8s's docker socket.
 			result.Host = microK8sDockerHost
@@ -99,9 +116,11 @@ func overlayOSEnvVars(result Env) (Env, error) {
 			return Env{}, errors.Wrap(err, "ProvideDockerEnv")
 		}
 
-		// If the docker host is set from the env, ignore all the variables
-		// from minikube/microk8s
-		result = Env{Host: host}
+		// If the docker host is set from the env and different from the cluster host,
+		// ignore all the variables from minikube/microk8s
+		if host != result.Host {
+			result = Env{Host: host}
+		}
 	}
 
 	apiVersion := os.Getenv("DOCKER_API_VERSION")

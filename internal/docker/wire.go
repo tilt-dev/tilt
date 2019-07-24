@@ -31,4 +31,9 @@ var ClusterWireSet = wire.NewSet(
 var LocalWireSet = wire.NewSet(
 	ProvideLocalCli,
 	ProvideLocalEnv,
+	ProvideEmptyClusterEnv,
 	ProvideLocalAsDefault)
+
+func ProvideEmptyClusterEnv() ClusterEnv {
+	return ClusterEnv{}
+}

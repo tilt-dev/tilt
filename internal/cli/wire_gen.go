@@ -78,13 +78,13 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	fsWatcherMaker := engine.ProvideFsWatcherMaker()
 	timerMaker := engine.ProvideTimerMaker()
 	watchManager := engine.NewWatchManager(fsWatcherMaker, timerMaker)
-	localEnv, err := docker.ProvideLocalEnv(ctx)
-	if err != nil {
-		return demo.Script{}, err
-	}
 	runtime := k8s.ProvideContainerRuntime(ctx, k8sClient)
 	minikubeClient := minikube.ProvideMinikubeClient()
 	clusterEnv, err := docker.ProvideClusterEnv(ctx, env, runtime, minikubeClient)
+	if err != nil {
+		return demo.Script{}, err
+	}
+	localEnv, err := docker.ProvideLocalEnv(ctx, clusterEnv)
 	if err != nil {
 		return demo.Script{}, err
 	}
@@ -92,7 +92,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	if err != nil {
 		return demo.Script{}, err
 	}
-	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, env, localClient)
+	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
 	if err != nil {
 		return demo.Script{}, err
 	}
@@ -101,8 +101,8 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	syncletManager := containerupdate.NewSyncletManager(k8sClient)
 	syncletUpdater := containerupdate.NewSyncletUpdater(syncletManager)
 	execUpdater := containerupdate.NewExecUpdater(k8sClient)
-	modeUpdateModeFlag := provideUpdateModeFlag()
-	updateMode, err := engine.ProvideUpdateMode(modeUpdateModeFlag, env, runtime)
+	engineUpdateModeFlag := provideUpdateModeFlag()
+	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env, runtime)
 	if err != nil {
 		return demo.Script{}, err
 	}
@@ -213,13 +213,13 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	fsWatcherMaker := engine.ProvideFsWatcherMaker()
 	timerMaker := engine.ProvideTimerMaker()
 	watchManager := engine.NewWatchManager(fsWatcherMaker, timerMaker)
-	localEnv, err := docker.ProvideLocalEnv(ctx)
-	if err != nil {
-		return Threads{}, err
-	}
 	runtime := k8s.ProvideContainerRuntime(ctx, k8sClient)
 	minikubeClient := minikube.ProvideMinikubeClient()
 	clusterEnv, err := docker.ProvideClusterEnv(ctx, env, runtime, minikubeClient)
+	if err != nil {
+		return Threads{}, err
+	}
+	localEnv, err := docker.ProvideLocalEnv(ctx, clusterEnv)
 	if err != nil {
 		return Threads{}, err
 	}
@@ -227,7 +227,7 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	if err != nil {
 		return Threads{}, err
 	}
-	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, env, localClient)
+	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
 	if err != nil {
 		return Threads{}, err
 	}
@@ -236,8 +236,8 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	syncletManager := containerupdate.NewSyncletManager(k8sClient)
 	syncletUpdater := containerupdate.NewSyncletUpdater(syncletManager)
 	execUpdater := containerupdate.NewExecUpdater(k8sClient)
-	modeUpdateModeFlag := provideUpdateModeFlag()
-	updateMode, err := engine.ProvideUpdateMode(modeUpdateModeFlag, env, runtime)
+	engineUpdateModeFlag := provideUpdateModeFlag()
+	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env, runtime)
 	if err != nil {
 		return Threads{}, err
 	}
@@ -377,10 +377,6 @@ func wireK8sVersion(ctx context.Context) (*version.Info, error) {
 }
 
 func wireDockerClusterClient(ctx context.Context) (docker.ClusterClient, error) {
-	localEnv, err := docker.ProvideLocalEnv(ctx)
-	if err != nil {
-		return nil, err
-	}
 	clientConfig := k8s.ProvideClientConfig()
 	config, err := k8s.ProvideKubeConfig(clientConfig)
 	if err != nil {
@@ -402,11 +398,15 @@ func wireDockerClusterClient(ctx context.Context) (docker.ClusterClient, error) 
 	if err != nil {
 		return nil, err
 	}
+	localEnv, err := docker.ProvideLocalEnv(ctx, clusterEnv)
+	if err != nil {
+		return nil, err
+	}
 	localClient, err := docker.ProvideLocalCli(ctx, localEnv)
 	if err != nil {
 		return nil, err
 	}
-	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, env, localClient)
+	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
 	if err != nil {
 		return nil, err
 	}
@@ -429,7 +429,13 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics) (
 	int2 := provideKubectlLogLevel()
 	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, int2)
 	k8sClient := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
-	localEnv, err := docker.ProvideLocalEnv(ctx)
+	runtime := k8s.ProvideContainerRuntime(ctx, k8sClient)
+	minikubeClient := minikube.ProvideMinikubeClient()
+	clusterEnv, err := docker.ProvideClusterEnv(ctx, env, runtime, minikubeClient)
+	if err != nil {
+		return DownDeps{}, err
+	}
+	localEnv, err := docker.ProvideLocalEnv(ctx, clusterEnv)
 	if err != nil {
 		return DownDeps{}, err
 	}
