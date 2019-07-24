@@ -67,7 +67,6 @@ it("renders a build with an error", () => {
           titleMsg: "",
           timestamp: ts,
         },
-
       ],
     },
   ]
