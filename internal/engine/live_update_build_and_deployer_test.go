@@ -7,10 +7,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/k8s"
+
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/containerupdate"
 	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils"
@@ -24,7 +26,11 @@ var TestDeployInfo = store.DeployInfo{
 	Namespace:     "ns-foo",
 }
 
-var TestBuildState = store.BuildState{DeployInfo: TestDeployInfo}
+var TestBuildState = store.BuildState{
+	LastResult:      alreadyBuilt,
+	FilesChangedSet: map[string]bool{"foo.py": true},
+	DeployInfo:      TestDeployInfo,
+}
 
 func TestBuildAndDeployBoilsSteps(t *testing.T) {
 	f := newFixture(t)
@@ -37,7 +43,7 @@ func TestBuildAndDeployBoilsSteps(t *testing.T) {
 		model.Run{Cmd: model.ToShellCmd("pip install"), Triggers: f.newPathSet("requirements.txt")},
 	}
 
-	err := f.lcbad.buildAndDeploy(f.ctx, model.ImageTarget{}, TestBuildState, []build.PathMapping{packageJson}, runs, false)
+	err := f.lubad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, []build.PathMapping{packageJson}, runs, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +75,7 @@ func TestUpdateInContainerArchivesFilesToCopyAndGetsFilesToRemove(t *testing.T) 
 		build.PathMapping{LocalPath: f.JoinPath("does-not-exist"), ContainerPath: "/src/does-not-exist"},
 	}
 
-	err := f.lcbad.buildAndDeploy(f.ctx, model.ImageTarget{}, TestBuildState, paths, nil, false)
+	err := f.lubad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, paths, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,9 +100,9 @@ func TestDontFallBackOnUserError(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
 
-	f.cu.UpdateErrToThrow = build.UserBuildFailure{ExitCode: 12345}
+	f.cu.UpdateErr = build.UserBuildFailure{ExitCode: 12345}
 
-	err := f.lcbad.buildAndDeploy(f.ctx, model.ImageTarget{}, TestBuildState, nil, nil, false)
+	err := f.lubad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, nil, nil, false)
 	if assert.NotNil(t, err) {
 		assert.IsType(t, DontFallBackError{}, err)
 	}
@@ -108,7 +114,7 @@ func TestUpdateContainerWithHotReload(t *testing.T) {
 
 	expectedHotReloads := []bool{true, true, false, true}
 	for _, hotReload := range expectedHotReloads {
-		err := f.lcbad.buildAndDeploy(f.ctx, model.ImageTarget{}, TestBuildState, nil, nil, hotReload)
+		err := f.lubad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, nil, nil, hotReload)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -126,20 +132,25 @@ type lcbadFixture struct {
 	*tempdir.TempDirFixture
 	t     testing.TB
 	ctx   context.Context
+	st    *store.Store
 	cu    *containerupdate.FakeContainerUpdater
-	lcbad *LocalContainerBuildAndDeployer
+	lubad *LiveUpdateBuildAndDeployer
 }
 
 func newFixture(t testing.TB) *lcbadFixture {
+	// HACK(maia): we don't need any real container updaters on this LiveUpdBaD since we're testing
+	// a func further down the flow that takes a ContainerUpdater as an arg, so just pass nils
+	lubad := NewLiveUpdateBuildAndDeployer(nil, nil, nil, UpdateModeAuto, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	fakeContainerUpdater := &containerupdate.FakeContainerUpdater{}
-	lcbad := NewLocalContainerBuildAndDeployer(fakeContainerUpdater, k8s.EnvDockerDesktop)
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
+	st, _ := store.NewStoreForTesting()
 	return &lcbadFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,
+		st:             st,
 		ctx:            ctx,
 		cu:             fakeContainerUpdater,
-		lcbad:          lcbad,
+		lubad:          lubad,
 	}
 }
 

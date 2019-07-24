@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/windmilleng/tilt/internal/container"
-	k8s "github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/k8s"
 )
 
 type UpdateMode string
@@ -51,13 +51,21 @@ func ProvideUpdateMode(flag UpdateModeFlag, env k8s.Env, runtime container.Runti
 	}
 
 	if !valid {
-		return "", fmt.Errorf("Unknown update mode %q. Valid Values: %v", flag, AllUpdateModes)
+		return "", fmt.Errorf("unknown update mode %q. Valid Values: %v", flag, AllUpdateModes)
 	}
 
 	mode := UpdateMode(flag)
 	if mode == UpdateModeContainer {
 		if !env.IsLocalCluster() || runtime != container.RuntimeDocker {
-			return "", fmt.Errorf("Update mode %q is only valid with local Docker clusters like Docker For Mac, Minikube, and MicroK8s", flag)
+			return "", fmt.Errorf("update mode %q is only valid with local Docker clusters like Docker For Mac, Minikube, and MicroK8s", flag)
+		}
+	}
+
+	if mode == UpdateModeSynclet {
+		if runtime != container.RuntimeDocker {
+			return "", fmt.Errorf("update mode %q is only valid with Docker container runtime (and will NOT work with"+
+				"containerd, cri-o, etc.)", flag)
+
 		}
 	}
 

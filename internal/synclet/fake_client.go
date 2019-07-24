@@ -15,7 +15,9 @@ import (
 type FakeSyncletClient struct {
 	UpdateContainerCount         int
 	CommandsRunCount             int
-	UpdateContainerHotReload     bool
+	LastTarArchiveBytes          []byte
+	LastFilesToDelete            []string
+	LastHotReload                bool
 	ClosedCount                  int
 	UpdateContainerErrorToReturn error
 	PodID                        k8s.PodID
@@ -36,8 +38,10 @@ func (c *FakeSyncletClient) UpdateContainer(ctx context.Context, containerID con
 		return ret
 	}
 	c.UpdateContainerCount += 1
-	c.UpdateContainerHotReload = hotReload
+	c.LastTarArchiveBytes = tarArchive
+	c.LastFilesToDelete = filesToDelete
 	c.CommandsRunCount += len(commands)
+	c.LastHotReload = hotReload
 	return nil
 }
 

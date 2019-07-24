@@ -13,9 +13,10 @@ import (
 	"golang.org/x/sync/errgroup"
 	"k8s.io/klog"
 
+	"github.com/windmilleng/tilt/internal/engine"
+
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"

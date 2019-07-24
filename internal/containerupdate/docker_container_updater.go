@@ -22,7 +22,7 @@ type DockerContainerUpdater struct {
 
 var _ ContainerUpdater = &DockerContainerUpdater{}
 
-func NewDockerContainerUpdater(dCli docker.Client) ContainerUpdater {
+func NewDockerContainerUpdater(dCli docker.Client) *DockerContainerUpdater {
 	return &DockerContainerUpdater{dCli: dCli}
 }
 

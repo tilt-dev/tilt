@@ -44,10 +44,10 @@ var alreadyBuiltSet = store.BuildResultSet{imageTargetID: alreadyBuilt}
 type expectedFile = testutils.ExpectedFile
 
 func TestGKEDeploy(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE)
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
-	manifest := NewSanchoFastBuildManifest(f)
+	manifest := NewSanchoLiveUpdateManifest(f)
 	targets := buildTargets(manifest)
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
 	if err != nil {
@@ -73,7 +73,7 @@ func TestGKEDeploy(t *testing.T) {
 }
 
 func TestDockerForMacDeploy(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
 	manifest := NewSanchoFastBuildManifest(f)
@@ -102,7 +102,7 @@ func TestDockerForMacDeploy(t *testing.T) {
 }
 
 func TestNamespaceGKE(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE)
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
 	assert.Equal(t, "", string(f.sCli.Namespace))
@@ -129,7 +129,7 @@ func TestNamespaceGKE(t *testing.T) {
 }
 
 func TestContainerBuildLocal(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
 	changed := f.WriteFile("a.txt", "a")
@@ -162,7 +162,7 @@ func TestContainerBuildLocal(t *testing.T) {
 }
 
 func TestContainerBuildSynclet(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE)
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
 	changed := f.WriteFile("a.txt", "a")
@@ -185,11 +185,11 @@ func TestContainerBuildSynclet(t *testing.T) {
 	}
 
 	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
-	assert.False(t, f.sCli.UpdateContainerHotReload)
+	assert.False(t, f.sCli.LastHotReload)
 }
 
 func TestContainerBuildLocalTriggeredRuns(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
 	changed := f.WriteFile("a.txt", "a")
@@ -233,7 +233,7 @@ func TestContainerBuildLocalTriggeredRuns(t *testing.T) {
 }
 
 func TestContainerBuildSyncletTriggeredRuns(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE)
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
 	changed := f.WriteFile("a.txt", "a")
@@ -270,11 +270,11 @@ func TestContainerBuildSyncletTriggeredRuns(t *testing.T) {
 	}
 
 	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
-	assert.False(t, f.sCli.UpdateContainerHotReload)
+	assert.False(t, f.sCli.LastHotReload)
 }
 
 func TestContainerBuildSyncletHotReload(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE)
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
 	changed := f.WriteFile("a.txt", "a")
@@ -290,11 +290,11 @@ func TestContainerBuildSyncletHotReload(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.True(t, f.sCli.UpdateContainerHotReload)
+	assert.True(t, f.sCli.LastHotReload)
 }
 
 func TestDockerBuildWithNestedFastBuildDeploysSynclet(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE)
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildManifestWithNestedFastBuild(f)
@@ -323,7 +323,7 @@ func TestDockerBuildWithNestedFastBuildDeploysSynclet(t *testing.T) {
 }
 
 func TestDockerBuildWithNestedFastBuildContainerUpdate(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
 	changed := f.WriteFile("a.txt", "a")
@@ -356,7 +356,7 @@ func TestDockerBuildWithNestedFastBuildContainerUpdate(t *testing.T) {
 }
 
 func TestIncrementalBuildFailure(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
 	changed := f.WriteFile("a.txt", "a")
@@ -388,7 +388,7 @@ func TestIncrementalBuildFailure(t *testing.T) {
 }
 
 func TestIncrementalBuildKilled(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
 	changed := f.WriteFile("a.txt", "a")
@@ -411,7 +411,7 @@ func TestIncrementalBuildKilled(t *testing.T) {
 }
 
 func TestFallBackToImageDeploy(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
 	f.docker.ExecErrorToThrow = errors.New("some random error")
@@ -433,7 +433,7 @@ func TestFallBackToImageDeploy(t *testing.T) {
 }
 
 func TestNoFallbackForDontFallBackError(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 	f.docker.ExecErrorToThrow = DontFallBackErrorf("i'm melllting")
 
@@ -457,7 +457,7 @@ func TestNoFallbackForDontFallBackError(t *testing.T) {
 }
 
 func TestIncrementalBuildTwice(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
 	manifest := NewSanchoFastBuildManifest(f)
@@ -506,7 +506,7 @@ func TestIncrementalBuildTwice(t *testing.T) {
 // Kill the pod after the first container update,
 // and make sure the next image build gets the right file updates.
 func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
 	manifest := NewSanchoFastBuildManifest(f)
@@ -576,7 +576,7 @@ RUN ["go", "install", "github.com/windmilleng/sancho"]`,
 }
 
 func TestIgnoredFiles(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
 	manifest := NewSanchoFastBuildManifest(f)
@@ -616,7 +616,7 @@ func TestIgnoredFiles(t *testing.T) {
 }
 
 func TestCustomBuildWithFastBuild(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE)
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
@@ -643,7 +643,7 @@ func TestCustomBuildWithFastBuild(t *testing.T) {
 }
 
 func TestCustomBuildWithoutFastBuild(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE)
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
@@ -670,7 +670,7 @@ func TestCustomBuildWithoutFastBuild(t *testing.T) {
 }
 
 func TestCustomBuildDeterministicTag(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE)
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 	refStr := "gcr.io/some-project-162817/sancho:deterministic-tag"
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
@@ -698,7 +698,7 @@ func TestCustomBuildDeterministicTag(t *testing.T) {
 }
 
 func TestContainerBuildMultiStage(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop)
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
 	manifest := NewSanchoLiveUpdateMultiStageManifest(f)
@@ -736,7 +736,7 @@ func TestContainerBuildMultiStage(t *testing.T) {
 }
 
 func TestDockerComposeImageBuild(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE)
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
 	manifest := NewSanchoFastBuildDCManifest(f)
@@ -755,8 +755,8 @@ func TestDockerComposeImageBuild(t *testing.T) {
 	assert.Len(t, f.dcCli.UpCalls, 1)
 }
 
-func TestDockerComposeFastBuild(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE)
+func TestDockerComposeInPlaceUpdate(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
 	manifest := NewSanchoFastBuildDCManifest(f)
@@ -781,7 +781,7 @@ func TestDockerComposeFastBuild(t *testing.T) {
 }
 
 func TestReturnLastUnexpectedError(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE)
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
 	// next Docker build will throw an unexpected error -- this is one we want to return,
@@ -813,7 +813,7 @@ type bdFixture struct {
 	logs   *bytes.Buffer
 }
 
-func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
+func newBDFixture(t *testing.T, env k8s.Env, runtime container.Runtime) *bdFixture {
 	f := tempdir.NewTempDirFixture(t)
 	dir := dirs.NewWindmillDirAt(f.Path())
 	docker := docker.NewFakeClient()
@@ -827,6 +827,7 @@ func newBDFixture(t *testing.T, env k8s.Env) *bdFixture {
 	logs := new(bytes.Buffer)
 	ctx, _, ta := testutils.ForkedCtxAndAnalyticsForTest(logs)
 	k8s := k8s.NewFakeK8sClient()
+	k8s.Runtime = runtime
 	sCli := synclet.NewFakeSyncletClient()
 	mode := UpdateModeFlag(UpdateModeAuto)
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)

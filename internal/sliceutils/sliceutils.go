@@ -44,6 +44,15 @@ func StringSliceEquals(a, b []string) bool {
 	return true
 }
 
+// StringSliceStartsWith returns true if slice A starts with the given elem.
+func StringSliceStartsWith(a []string, elem string) bool {
+	if len(a) == 0 {
+		return false
+	}
+
+	return a[0] == elem
+}
+
 // returns a slice that consists of `a`, in order, followed by elements of `b` that are not in `a`
 func AppendWithoutDupes(a []string, b ...string) []string {
 	seen := make(map[string]bool)

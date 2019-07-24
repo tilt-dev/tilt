@@ -128,14 +128,9 @@ func TestDeployPodWithMultipleLiveUpdateImages(t *testing.T) {
 	defer f.TearDown()
 	f.ibd.injectSynclet = true
 
-	iTarget1, err := NewSanchoLiveUpdateImageTarget(f)
-	if err != nil {
-		t.Fatal(err)
-	}
-	iTarget2, err := NewSanchoSidecarLiveUpdateImageTarget(f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	iTarget1 := NewSanchoLiveUpdateImageTarget(f)
+	iTarget2 := NewSanchoSidecarLiveUpdateImageTarget(f)
+
 	kTarget := model.K8sTarget{Name: "sancho", YAML: testyaml.SanchoSidecarYAML}.
 		WithDependencyIDs([]model.TargetID{iTarget1.ID(), iTarget2.ID()})
 	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}

@@ -36,9 +36,10 @@ var DeployerBaseWireSet = wire.NewSet(
 
 	// BuildOrder
 	NewImageBuildAndDeployer,
-	containerupdate.NewDockerContainerUpdater, // in case it's a LocalContainerBuildAndDeployer
-	NewSyncletBuildAndDeployer,
-	NewLocalContainerBuildAndDeployer,
+	containerupdate.NewDockerContainerUpdater,
+	containerupdate.NewSyncletUpdater,
+	containerupdate.NewExecUpdater,
+	NewLiveUpdateBuildAndDeployer,
 	NewDockerComposeBuildAndDeployer,
 	NewImageAndCacheBuilder,
 	DefaultBuildOrder,
@@ -50,12 +51,12 @@ var DeployerBaseWireSet = wire.NewSet(
 
 var DeployerWireSetTest = wire.NewSet(
 	DeployerBaseWireSet,
-	NewSyncletManagerForTests,
+	containerupdate.NewSyncletManagerForTests,
 )
 
 var DeployerWireSet = wire.NewSet(
 	DeployerBaseWireSet,
-	NewSyncletManager,
+	containerupdate.NewSyncletManager,
 )
 
 func provideBuildAndDeployer(

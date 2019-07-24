@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"sync"
 	"time"
 
@@ -61,6 +62,16 @@ type FakeK8sClient struct {
 	Registry    container.Registry
 
 	GetResources map[GetKey]*unstructured.Unstructured
+
+	ExecCalls []ExecCall
+}
+
+type ExecCall struct {
+	PID   PodID
+	CName container.Name
+	Ns    Namespace
+	Cmd   []string
+	Stdin []byte
 }
 
 type GetKey struct {
@@ -313,6 +324,22 @@ func (c *FakeK8sClient) PrivateRegistry(ctx context.Context) container.Registry 
 }
 
 func (c *FakeK8sClient) Exec(ctx context.Context, podID PodID, cName container.Name, n Namespace, cmd []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
+	var stdinBytes []byte
+	var err error
+	if stdin != nil {
+		stdinBytes, err = ioutil.ReadAll(stdin)
+		if err != nil {
+			return errors.Wrap(err, "reading Exec stdin")
+		}
+	}
+
+	c.ExecCalls = append(c.ExecCalls, ExecCall{
+		PID:   podID,
+		CName: cName,
+		Ns:    n,
+		Cmd:   cmd,
+		Stdin: stdinBytes,
+	})
 	return nil
 }
 

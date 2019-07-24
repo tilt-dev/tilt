@@ -26,24 +26,25 @@ import (
 // Injectors from wire.go:
 
 func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode UpdateModeFlag, sCli synclet.SyncletClient, dcc dockercompose.DockerComposeClient, clock build.Clock, kp KINDPusher, analytics2 *analytics.TiltAnalytics) (BuildAndDeployer, error) {
-	syncletManager := NewSyncletManagerForTests(kClient, sCli)
+	dockerContainerUpdater := containerupdate.NewDockerContainerUpdater(docker2)
+	syncletManager := containerupdate.NewSyncletManagerForTests(kClient, sCli)
+	syncletUpdater := containerupdate.NewSyncletUpdater(syncletManager)
+	execUpdater := containerupdate.NewExecUpdater(kClient)
 	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
-	engineUpdateMode, err := ProvideUpdateMode(updateMode, env, runtime)
+	modeUpdateMode, err := ProvideUpdateMode(updateMode, env, runtime)
 	if err != nil {
 		return nil, err
 	}
-	syncletBuildAndDeployer := NewSyncletBuildAndDeployer(syncletManager, kClient, engineUpdateMode)
-	containerUpdater := containerupdate.NewDockerContainerUpdater(docker2)
-	localContainerBuildAndDeployer := NewLocalContainerBuildAndDeployer(containerUpdater, env)
+	liveUpdateBuildAndDeployer := NewLiveUpdateBuildAndDeployer(dockerContainerUpdater, syncletUpdater, execUpdater, modeUpdateMode, env, runtime)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(docker2)
 	execCustomBuilder := build.NewExecCustomBuilder(docker2, clock)
-	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, kClient, env, analytics2, engineUpdateMode, clock, runtime, kp)
-	engineImageAndCacheBuilder := NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, engineUpdateMode)
+	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, kClient, env, analytics2, modeUpdateMode, clock, runtime, kp)
+	engineImageAndCacheBuilder := NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, modeUpdateMode)
 	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcc, docker2, engineImageAndCacheBuilder, clock)
-	buildOrder := DefaultBuildOrder(syncletBuildAndDeployer, localContainerBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, env, engineUpdateMode, runtime)
+	buildOrder := DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, modeUpdateMode, env, runtime)
 	compositeBuildAndDeployer := NewCompositeBuildAndDeployer(buildOrder)
 	return compositeBuildAndDeployer, nil
 }
@@ -79,7 +80,7 @@ func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	cacheBuilder := build.NewCacheBuilder(dCli)
 	clock := build.ProvideClock()
 	execCustomBuilder := build.NewExecCustomBuilder(dCli, clock)
-	updateModeFlag := _wireEngineUpdateModeFlagValue
+	updateModeFlag := _wireModeUpdateModeFlagValue
 	env := _wireEnvValue
 	portForwarder := k8s.ProvidePortForwarder()
 	clientConfig := k8s.ProvideClientConfig()
@@ -106,28 +107,24 @@ func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 }
 
 var (
-	_wireEngineUpdateModeFlagValue = UpdateModeFlag(UpdateModeAuto)
-	_wireEnvValue                  = k8s.Env(k8s.EnvNone)
+	_wireModeUpdateModeFlagValue = UpdateModeFlag(UpdateModeAuto)
+	_wireEnvValue                = k8s.Env(k8s.EnvNone)
 )
 
 // wire.go:
 
-var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), minikube.ProvideMinikubeClient, build.DefaultImageBuilder, build.NewCacheBuilder, build.NewDockerImageBuilder, build.NewExecCustomBuilder, wire.Bind(new(build.CustomBuilder), new(build.ExecCustomBuilder)), NewImageBuildAndDeployer, containerupdate.NewDockerContainerUpdater, NewSyncletBuildAndDeployer,
-	NewLocalContainerBuildAndDeployer,
+var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), minikube.ProvideMinikubeClient, build.DefaultImageBuilder, build.NewCacheBuilder, build.NewDockerImageBuilder, build.NewExecCustomBuilder, wire.Bind(new(build.CustomBuilder), new(build.ExecCustomBuilder)), NewImageBuildAndDeployer, containerupdate.NewDockerContainerUpdater, containerupdate.NewSyncletUpdater, containerupdate.NewExecUpdater, NewLiveUpdateBuildAndDeployer,
 	NewDockerComposeBuildAndDeployer,
 	NewImageAndCacheBuilder,
-	DefaultBuildOrder, wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer,
-	ProvideUpdateMode,
+	DefaultBuildOrder, wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer, ProvideUpdateMode,
 )
 
 var DeployerWireSetTest = wire.NewSet(
-	DeployerBaseWireSet,
-	NewSyncletManagerForTests,
+	DeployerBaseWireSet, containerupdate.NewSyncletManagerForTests,
 )
 
 var DeployerWireSet = wire.NewSet(
-	DeployerBaseWireSet,
-	NewSyncletManager,
+	DeployerBaseWireSet, containerupdate.NewSyncletManager,
 )
 
 func provideKubectlLogLevelInfo() k8s.KubectlLogLevel {

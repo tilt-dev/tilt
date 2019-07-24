@@ -46,7 +46,7 @@ func TestUpdateInContainerCopiesAndRmsFiles(t *testing.T) {
 	}
 }
 
-func TestUpdateInContainerExecsRuns(t *testing.T) {
+func TestUpdateContainerExecsRuns(t *testing.T) {
 	f := newDCUFixture(t)
 
 	cmdA := model.Cmd{Argv: []string{"a"}}
@@ -65,7 +65,7 @@ func TestUpdateInContainerExecsRuns(t *testing.T) {
 	assert.Equal(f.t, expectedExecs, f.dCli.ExecCalls)
 }
 
-func TestUpdateInContainerRestartsContainer(t *testing.T) {
+func TestUpdateContainerRestartsContainer(t *testing.T) {
 	f := newDCUFixture(t)
 
 	err := f.dcu.UpdateContainer(f.ctx, TestDeployInfo, nil, nil, nil, false)
@@ -76,7 +76,7 @@ func TestUpdateInContainerRestartsContainer(t *testing.T) {
 	assert.Equal(f.t, f.dCli.RestartsByContainer[docker.TestContainer], 1)
 }
 
-func TestUpdateInContainerHotReloadDoesNotRestartContainer(t *testing.T) {
+func TestUpdateContainerHotReloadDoesNotRestartContainer(t *testing.T) {
 	f := newDCUFixture(t)
 
 	err := f.dcu.UpdateContainer(f.ctx, TestDeployInfo, nil, nil, nil, true)
@@ -87,7 +87,7 @@ func TestUpdateInContainerHotReloadDoesNotRestartContainer(t *testing.T) {
 	assert.Equal(f.t, 0, len(f.dCli.RestartsByContainer))
 }
 
-func TestUpdateInContainerKillTask(t *testing.T) {
+func TestUpdateContainerKillTask(t *testing.T) {
 	f := newDCUFixture(t)
 
 	f.dCli.ExecErrorToThrow = docker.ExitError{ExitCode: build.TaskKillExitCode}
@@ -115,9 +115,7 @@ type dockerContainerUpdaterFixture struct {
 
 func newDCUFixture(t testing.TB) *dockerContainerUpdaterFixture {
 	fakeCli := docker.NewFakeClient()
-	cu := &DockerContainerUpdater{
-		dCli: fakeCli,
-	}
+	cu := &DockerContainerUpdater{dCli: fakeCli}
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 
 	return &dockerContainerUpdaterFixture{

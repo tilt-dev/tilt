@@ -9,7 +9,7 @@ import (
 )
 
 type FakeContainerUpdater struct {
-	UpdateErrToThrow error
+	UpdateErr error
 
 	Calls []UpdateContainerCall
 }
@@ -32,10 +32,7 @@ func (cu *FakeContainerUpdater) UpdateContainer(ctx context.Context, deployInfo 
 		HotReload:  hotReload,
 	})
 
-	var err error
-	if cu.UpdateErrToThrow != nil {
-		err = cu.UpdateErrToThrow
-		cu.UpdateErrToThrow = nil
-	}
+	err := cu.UpdateErr
+	cu.UpdateErr = nil
 	return err
 }
