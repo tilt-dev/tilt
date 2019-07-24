@@ -138,8 +138,8 @@ type lcbadFixture struct {
 }
 
 func newFixture(t testing.TB) *lcbadFixture {
-	// HACK: we don't need any real container updaters on this LiveUpdBaD since we're testing a
-	// func further down the flow that takes a ContainerUpdater as an arg, so just put in nil's
+	// HACK(maia): we don't need any real container updaters on this LiveUpdBaD since we're testing
+	// a func further down the flow that takes a ContainerUpdater as an arg, so just pass nils
 	lubad := NewLiveUpdateBuildAndDeployer(nil, nil, nil, UpdateModeAuto, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	fakeContainerUpdater := &containerupdate.FakeContainerUpdater{}
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()

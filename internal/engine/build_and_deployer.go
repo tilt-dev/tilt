@@ -93,7 +93,8 @@ func DefaultBuildOrder(lubad *LiveUpdateBuildAndDeployer, ibad *ImageBuildAndDep
 		return BuildOrder{dcbad, ibad}
 	}
 
-	if updMode == UpdateModeSynclet || (!env.IsLocalCluster() && runtime == container.RuntimeDocker) {
+	if updMode == UpdateModeSynclet ||
+		(updMode == UpdateModeAuto && !env.IsLocalCluster() && runtime == container.RuntimeDocker) {
 		ibad.SetInjectSynclet(true)
 	}
 
