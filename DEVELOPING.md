@@ -249,8 +249,10 @@ goreleaser will build binaries for the latest tag (using semantic version to
 determine "latest"). Check the current releases to figure out what the latest
 release ought to be.
 
-After updating the release notes, update [the docs](https://github.com/windmilleng/tilt.build/tree/master/docs/install.md)
-and [the default dev version](internal/cli/build.go).
+After updating the release notes,
+update [the docs](https://github.com/windmilleng/tilt.build/tree/master/docs/install.md),
+[the default dev version](internal/cli/build.go),
+and [the installer version](scripts/install.sh).
 
 ### Version numbers
 Our rule of thumb pre 1.0 is only bump the minor version if you would write a blog post about it. (We haven't always followed this rule, but we'd like to start!)
