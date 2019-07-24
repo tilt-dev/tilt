@@ -1,6 +1,5 @@
 import HUD from "./HUD"
 import { getResourceAlerts } from "./alerts"
-import update from "immutability-helper"
 
 // A Websocket that automatically retries.
 
