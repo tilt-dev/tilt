@@ -36,11 +36,9 @@ func TestLogs(t *testing.T) {
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
-			PodID:         podID,
-			ContainerName: cName,
-			ContainerID:   cID,
-			Phase:         v1.PodRunning,
-		}))
+			PodID: podID,
+			Phase: v1.PodRunning,
+		}.WithContainer(cName, cID)))
 	f.store.UnlockMutableState()
 
 	f.plm.OnChange(f.ctx, f.store)
@@ -58,11 +56,9 @@ func TestLogActions(t *testing.T) {
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
-			PodID:         podID,
-			ContainerName: cName,
-			ContainerID:   cID,
-			Phase:         v1.PodRunning,
-		}))
+			PodID: podID,
+			Phase: v1.PodRunning,
+		}.WithContainer(cName, cID)))
 	f.store.UnlockMutableState()
 
 	f.plm.OnChange(f.ctx, f.store)
@@ -80,11 +76,9 @@ func TestLogsFailed(t *testing.T) {
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
-			PodID:         podID,
-			ContainerName: cName,
-			ContainerID:   cID,
-			Phase:         v1.PodRunning,
-		}))
+			PodID: podID,
+			Phase: v1.PodRunning,
+		}.WithContainer(cName, cID)))
 	f.store.UnlockMutableState()
 
 	f.plm.OnChange(f.ctx, f.store)
@@ -103,11 +97,9 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
-			PodID:         podID,
-			ContainerName: cName,
-			ContainerID:   cID,
-			Phase:         v1.PodRunning,
-		}))
+			PodID: podID,
+			Phase: v1.PodRunning,
+		}.WithContainer(cName, cID)))
 	f.store.UnlockMutableState()
 
 	f.plm.OnChange(f.ctx, f.store)
@@ -132,15 +124,13 @@ func TestMultiContainerLogs(t *testing.T) {
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{
-			PodID:         podID,
-			ContainerName: "cont1",
-			ContainerID:   "cid1",
-			Phase:         v1.PodRunning,
+			PodID: podID,
+			Phase: v1.PodRunning,
 			ContainerInfos: []store.ContainerInfo{
 				store.ContainerInfo{ID: "cid1", Name: "cont1"},
 				store.ContainerInfo{ID: "cid2", Name: "cont2"},
 			},
-		}))
+		}.WithContainer("cont1", "cid1")))
 	f.store.UnlockMutableState()
 
 	f.plm.OnChange(f.ctx, f.store)
@@ -168,24 +158,20 @@ func TestContainerPrefixes(t *testing.T) {
 		model.Manifest{Name: "multiContainer"},
 		// Pod with multiple containers -- logs should be prefixed with container name
 		store.Pod{
-			PodID:         pID1,
-			ContainerName: cNamePrefix1,
-			ContainerID:   "cid1",
-			Phase:         v1.PodRunning,
+			PodID: pID1,
+			Phase: v1.PodRunning,
 			ContainerInfos: []store.ContainerInfo{
 				store.ContainerInfo{ID: "cid1", Name: cNamePrefix1},
 				store.ContainerInfo{ID: "cid2", Name: cNamePrefix2},
 			},
-		}))
+		}.WithContainer(cNamePrefix1, "cid1")))
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "singleContainer"},
 		// Pod with just one container -- logs should NOT be prefixed with container name
 		store.Pod{
-			PodID:         pID2,
-			ContainerName: cNameNoPrefix,
-			ContainerID:   "cid3",
-			Phase:         v1.PodRunning,
-		}))
+			PodID: pID2,
+			Phase: v1.PodRunning,
+		}.WithContainer(cNameNoPrefix, "cid3")))
 	f.store.UnlockMutableState()
 
 	f.plm.OnChange(f.ctx, f.store)
@@ -223,11 +209,9 @@ func TestLogsByPodPhase(t *testing.T) {
 			state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
 				model.Manifest{Name: "server"},
 				store.Pod{
-					PodID:         podID,
-					ContainerName: cName,
-					ContainerID:   cID,
-					Phase:         test.phase,
-				}))
+					PodID: podID,
+					Phase: test.phase,
+				}.WithContainer(cName, cID)))
 			f.store.UnlockMutableState()
 
 			f.plm.OnChange(f.ctx, f.store)

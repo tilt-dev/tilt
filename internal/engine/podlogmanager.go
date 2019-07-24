@@ -54,7 +54,7 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 				continue
 			}
 
-			if pod.ContainerName == "" || pod.ContainerID == "" {
+			if pod.ContainerName() == "" || pod.ContainerID() == "" {
 				continue
 			}
 
@@ -70,7 +70,7 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 			containerInfos := pod.ContainerInfos
 			if len(containerInfos) == 0 {
 				containerInfos = []store.ContainerInfo{
-					store.ContainerInfo{ID: pod.ContainerID, Name: pod.ContainerName},
+					store.ContainerInfo{ID: pod.ContainerID(), Name: pod.ContainerName()},
 				}
 			}
 			// if pod has more than one container, we should prefix logs with the container name

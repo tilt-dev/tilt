@@ -153,29 +153,24 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 // Fill in container fields on the pod state.
 func populateContainerStatus(ctx context.Context, manifest model.Manifest, podInfo *store.Pod, pod *v1.Pod, cStatus v1.ContainerStatus) {
 	cName := k8s.ContainerNameFromContainerStatus(cStatus)
-	podInfo.ContainerName = cName
-	podInfo.ContainerReady = cStatus.Ready
 
 	cID, err := k8s.ContainerIDFromContainerStatus(cStatus)
 	if err != nil {
 		logger.Get(ctx).Debugf("Error parsing container ID: %v", err)
 		return
 	}
-	podInfo.ContainerID = cID
 
 	cRef, err := container.ParseNamed(cStatus.Image)
 	if err != nil {
 		logger.Get(ctx).Debugf("Error parsing container image ID: %v", err)
 		return
 	}
-	podInfo.ContainerImageRef = cRef
 
 	ports := make([]int32, 0)
 	cSpec := k8s.ContainerSpecOf(pod, cStatus)
 	for _, cPort := range cSpec.Ports {
 		ports = append(ports, cPort.ContainerPort)
 	}
-	podInfo.ContainerPorts = ports
 
 	forwards := PopulatePortForwards(manifest, *podInfo)
 	if len(forwards) < len(manifest.K8sTarget().PortForwards) {
@@ -183,6 +178,17 @@ func populateContainerStatus(ctx context.Context, manifest model.Manifest, podIn
 			"WARNING: Resource %s is using port forwards, but no container ports on pod %s",
 			manifest.Name, podInfo.PodID)
 	}
+
+	// ~~ If this container is already on the pod, replace it
+	// ~~ this interim code assumes one pod per container, so just make it so
+	c := store.Container{
+		Name:     cName,
+		ID:       cID,
+		Ports:    ports,
+		Ready:    cStatus.Ready,
+		ImageRef: cRef,
+	}
+	podInfo.Containers = []store.Container{c}
 
 	// HACK(maia): Go through ALL containers (except tilt-synclet), grab minimum info we need
 	// to stream logs from them.
@@ -198,9 +204,7 @@ func populateContainerStatus(ctx context.Context, manifest model.Manifest, podIn
 			logger.Get(ctx).Debugf("Error parsing container ID: %v", err)
 			return
 		}
-		if err != nil {
-			return
-		}
+
 		cInfos = append(cInfos, store.ContainerInfo{
 			ID:   cID,
 			Name: k8s.ContainerNameFromContainerStatus(cStat),
@@ -215,7 +219,7 @@ func checkForPodCrash(ctx context.Context, state *store.EngineState, ms *store.M
 		return
 	}
 
-	if ms.ExpectedContainerID == "" || ms.ExpectedContainerID == podInfo.ContainerID {
+	if ms.ExpectedContainerID == "" || ms.ExpectedContainerID == podInfo.ContainerID() {
 		// The pod is what we expect it to be.
 		return
 	}

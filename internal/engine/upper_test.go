@@ -1155,9 +1155,9 @@ func TestPodEventContainerStatus(t *testing.T) {
 		return podState.PodID == "my-pod"
 	})
 
-	assert.Equal(t, "", string(podState.ContainerID))
-	assert.Equal(t, "main", string(podState.ContainerName))
-	assert.Equal(t, []int32{8080}, podState.ContainerPorts)
+	assert.Equal(t, "", string(podState.ContainerID()))
+	assert.Equal(t, "main", string(podState.ContainerName()))
+	assert.Equal(t, []int32{8080}, podState.ContainerPorts())
 
 	err := f.Stop()
 	assert.Nil(t, err)
@@ -1213,9 +1213,9 @@ func TestPodEventContainerStatusWithoutImage(t *testing.T) {
 	})
 
 	// If we have no image target to match container by image ref, we just take the first one
-	assert.Equal(t, "great-container-id", string(podState.ContainerID))
-	assert.Equal(t, "first-container", string(podState.ContainerName))
-	assert.Equal(t, []int32{8080}, podState.ContainerPorts)
+	assert.Equal(t, "great-container-id", string(podState.ContainerID()))
+	assert.Equal(t, "first-container", string(podState.ContainerName()))
+	assert.Equal(t, []int32{8080}, podState.ContainerPorts())
 
 	err := f.Stop()
 	assert.Nil(t, err)
@@ -1476,7 +1476,7 @@ func TestPodContainerStatus(t *testing.T) {
 	f.podEvent(pod)
 
 	f.WaitUntilManifestState("container is ready", "fe", func(ms store.ManifestState) bool {
-		ports := ms.MostRecentPod().ContainerPorts
+		ports := ms.MostRecentPod().ContainerPorts()
 		return len(ports) == 1 && ports[0] == 8080
 	})
 
@@ -1614,7 +1614,7 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 	f.podLog(name, "second string")
 	f.pod.Status.ContainerStatuses[0].Ready = false
 	f.notifyAndWaitForPodStatus(func(pod store.Pod) bool {
-		return !pod.ContainerReady
+		return !pod.ContainerReady()
 	})
 
 	// The second instance is down, so we don't include the first instance's log

@@ -523,12 +523,7 @@ type Pod struct {
 	// The log for the currently active pod, if any
 	CurrentLog model.Log `testdiff:"ignore"`
 
-	// Corresponds to the deployed container.
-	ContainerName     container.Name
-	ContainerID       container.ID
-	ContainerPorts    []int32
-	ContainerReady    bool
-	ContainerImageRef reference.Named
+	Containers []Container
 
 	// We want to show the user # of restarts since pod has been running current code,
 	// i.e. OldRestarts - Total Restarts
@@ -540,6 +535,14 @@ type Pod struct {
 	// we need to ship log visibility into multiple containers. Here's the minimum
 	// of info we need for that.
 	ContainerInfos []ContainerInfo
+}
+
+type Container struct {
+	Name     container.Name
+	ID       container.ID
+	Ports    []int32
+	Ready    bool
+	ImageRef reference.Named
 }
 
 // The minimum info we need to retrieve logs for a container.
@@ -564,6 +567,40 @@ func (p Pod) isAfter(p2 Pod) bool {
 
 func (p Pod) Log() model.Log {
 	return p.CurrentLog
+}
+
+// HACK(maia): temp func to keep behavior the same as it currently is--
+// we'll STORE info about all containers, but continue to only use info
+// from the one blessed container.
+func (p Pod) BlessedContainer() Container {
+	if len(p.Containers) == 0 {
+		return Container{}
+	}
+	// better way of marking blessed container?
+	return p.Containers[0]
+}
+
+func (p Pod) ContainerName() container.Name {
+	return p.BlessedContainer().Name
+}
+
+func (p Pod) ContainerID() container.ID {
+	return p.BlessedContainer().ID
+}
+func (p Pod) ContainerPorts() []int32 {
+	return p.BlessedContainer().Ports
+}
+func (p Pod) ContainerReady() bool {
+	return p.BlessedContainer().Ready
+}
+func (p Pod) ContainerImageRef() reference.Named {
+	return p.BlessedContainer().ImageRef
+}
+
+func (p Pod) WithContainer(name container.Name, id container.ID) Pod {
+	c := Container{Name: name, ID: id}
+	p.Containers = []Container{c}
+	return p
 }
 
 func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {

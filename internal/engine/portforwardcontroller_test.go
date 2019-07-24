@@ -82,7 +82,9 @@ func TestPortForwardAutoDiscovery(t *testing.T) {
 	assert.Equal(t, 0, len(f.plc.activeForwards))
 
 	state = f.st.LockMutableStateForTesting()
-	state.ManifestTargets["fe"].State.PodSet.Pods["pod-id"].ContainerPorts = []int32{8000}
+	state.ManifestTargets["fe"].State.PodSet.Pods["pod-id"].Containers = []store.Container{
+		store.Container{Ports: []int32{8000}},
+	}
 	f.st.UnlockMutableState()
 
 	f.plc.OnChange(f.ctx, f.st)
