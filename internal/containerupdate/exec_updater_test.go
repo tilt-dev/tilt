@@ -8,8 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/internal/sliceutils"
-
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
@@ -41,8 +39,8 @@ func TestUpdateContainerDeletesFiles(t *testing.T) {
 	}
 
 	for _, call := range f.kCli.ExecCalls {
-		if sliceutils.StringSliceStartsWith(call.Cmd, []string{"rm", "-rf"}) {
-			t.Errorf("found kubernetes exec `rm -rf` call, expected none b/c no files to delete")
+		if len(call.Cmd) >= 1 && call.Cmd[0] == "rm" {
+			t.Errorf("found kubernetes exec `rm` call, expected none b/c no files to delete")
 			t.Fail()
 		}
 	}
@@ -54,13 +52,13 @@ func TestUpdateContainerDeletesFiles(t *testing.T) {
 	}
 	var rmCmd []string
 	for _, call := range f.kCli.ExecCalls {
-		if sliceutils.StringSliceStartsWith(call.Cmd, []string{"rm", "-rf"}) {
+		if len(call.Cmd) >= 1 && call.Cmd[0] == "rm" {
 			rmCmd = call.Cmd
 			break
 		}
 	}
 	if len(rmCmd) == 0 {
-		t.Errorf("no `rm -rf` cmd found, expected one b/c we specified files to delete")
+		t.Errorf("no `rm` cmd found, expected one b/c we specified files to delete")
 		t.Fail()
 	}
 

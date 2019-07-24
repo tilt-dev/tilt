@@ -189,11 +189,12 @@ func (lubad *LiveUpdateBuildAndDeployer) containerUpdaterForSpecs(specs []model.
 		return lubad.ecu
 	}
 
-	if lubad.runtime == container.RuntimeDocker {
-		if lubad.env.IsLocalCluster() {
-			return lubad.dcu
-		}
+	if shouldUseSynclet(lubad.updMode, lubad.env, lubad.runtime) {
 		return lubad.scu
+	}
+
+	if lubad.runtime == container.RuntimeDocker && lubad.env.IsLocalCluster() {
+		return lubad.dcu
 	}
 
 	return lubad.ecu
