@@ -11,15 +11,16 @@ export type Alert = {
 
 export const PodRestartErrorType = "PodRestartError"
 export const PodStatusErrorType = "PodStatusError"
-export const ResourceCrashRebuildErrorType = "ResourceCrashRebuild"
+export const CrashRebuildErrorType = "ResourceCrashRebuild"
 export const BuildFailedErrorType = "BuildError"
 export const WarningErrorType = "Warning"
 
-//these functions can be moved to where the resources type is defined
 function hasAlert(resource: Resource) {
   return numberOfAlerts(resource) > 0
 }
 
+//These functions determine what kind of error has occurred based on information about
+//the resource - return booleans
 function crashRebuild(resource: Resource): boolean {
   return (
     resource.BuildHistory.length > 0 && resource.BuildHistory[0].IsCrashRebuild
@@ -48,21 +49,24 @@ function buildFailed(resource: Resource) {
 function numberOfAlerts(resource: Resource): number {
   return getResourceAlerts(resource).length
 }
+
+//This function determines what kind of alert should be made based on the functions defined
+//above
 function getResourceAlerts(r: Resource): Array<Alert> {
   let result: Array<Alert> = []
 
   if (podStatusHasError(r)) {
-    result.push(podStatusErrAlert(r))
+    result.push(podStatusIsErrAlert(r))
   } else if (podRestarted(r)) {
-    result.push(podRestartErrAlert(r))
+    result.push(podRestartAlert(r))
   } else if (crashRebuild(r)) {
-    result.push(crashRebuildErrAlert(r))
+    result.push(crashRebuildAlert(r))
   }
   if (buildFailed(r)) {
-    result.push(buildFailedErrAlert(r))
+    result.push(buildFailedAlert(r))
   }
-  if (warningsErrAlerts(r).length > 0) {
-    result = result.concat(warningsErrAlerts(r))
+  if (warningsAlerts(r).length > 0) {
+    result = result.concat(warningsAlerts(r))
   }
   return result
 }
@@ -70,7 +74,7 @@ function getResourceAlerts(r: Resource): Array<Alert> {
 // The following functions are based on the current type of errors that we showed in "AlertPane.tsx"
 // that classifies the different errors, the following functions create the alerts based on their types, since
 // they displayed different messages
-function podStatusErrAlert(resource: Resource): Alert {
+function podStatusIsErrAlert(resource: Resource): Alert {
   let podStatus = resource.ResourceInfo.PodStatus
   let podStatusMessage = resource.ResourceInfo.PodStatusMessage
   let msg = ""
@@ -87,7 +91,7 @@ function podStatusErrAlert(resource: Resource): Alert {
   }
 }
 
-function podRestartErrAlert(resource: Resource): Alert {
+function podRestartAlert(resource: Resource): Alert {
   let msg = resource.CrashLog || ""
   let titleMsg = "Restarts: "
   titleMsg = titleMsg.concat(resource.ResourceInfo.PodRestarts.toString())
@@ -100,17 +104,17 @@ function podRestartErrAlert(resource: Resource): Alert {
   }
 }
 
-function crashRebuildErrAlert(resource: Resource): Alert {
+function crashRebuildAlert(resource: Resource): Alert {
   let msg = resource.CrashLog || ""
   return {
-    alertType: ResourceCrashRebuildErrorType,
+    alertType: CrashRebuildErrorType,
     titleMsg: "Pod crashed",
     msg: msg,
     timestamp: resource.ResourceInfo.PodCreationTime,
   }
 }
 
-function buildFailedErrAlert(resource: Resource): Alert {
+function buildFailedAlert(resource: Resource): Alert {
   let msg = resource.BuildHistory[0].Log || ""
   return {
     alertType: BuildFailedErrorType,
@@ -119,7 +123,7 @@ function buildFailedErrAlert(resource: Resource): Alert {
     timestamp: resource.ResourceInfo.PodCreationTime,
   }
 }
-function warningsErrAlerts(resource: Resource): Array<Alert> {
+function warningsAlerts(resource: Resource): Array<Alert> {
   let warnings: Array<string> = []
   let alertArray: Array<Alert> = []
 
@@ -141,9 +145,9 @@ function warningsErrAlerts(resource: Resource): Array<Alert> {
 export {
   getResourceAlerts,
   numberOfAlerts,
-  podStatusErrAlert,
-  warningsErrAlerts,
-  buildFailedErrAlert,
-  crashRebuildErrAlert,
-  podRestartErrAlert,
+  podStatusIsErrAlert,
+  warningsAlerts,
+  buildFailedAlert,
+  crashRebuildAlert,
+  podRestartAlert,
 }

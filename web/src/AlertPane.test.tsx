@@ -7,7 +7,7 @@ import {
   Alert,
   PodRestartErrorType,
   PodStatusErrorType,
-  ResourceCrashRebuildErrorType,
+  CrashRebuildErrorType,
   BuildFailedErrorType,
   WarningErrorType,
   getResourceAlerts,
@@ -55,24 +55,19 @@ it("renders one build error", () => {
   expect(tree).toMatchSnapshot()
 })
 
-it("renders the last build with an error", () => {
+it("renders a build with an error", () => {
   const ts = "1,555,970,585,039"
   let resources: Array<Partial<Resource>> = [
     {
       Name: "foo",
       Alerts: [
         {
-          alertType: PodRestartErrorType,
+          alertType: BuildFailedErrorType,
           msg: "laa dee daa I'm an error\nfor real I am",
           titleMsg: "",
           timestamp: ts,
         },
-        {
-          alertType: PodRestartErrorType,
-          msg: "\"laa dee daa I'm an error\nI'm serious",
-          titleMsg: "",
-          timestamp: ts,
-        },
+
       ],
     },
   ]
