@@ -15,10 +15,11 @@ import { incr, pathToTag } from "./analytics"
 import TopBar from "./TopBar"
 import "./HUD.scss"
 import { TiltBuild, ResourceView, Resource } from "./types"
-import AlertPane, { AlertResource } from "./AlertPane"
+import AlertPane from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
 import NotFound from "./NotFound"
+import { getResourceAlerts, numberOfAlerts } from "./alerts"
 
 type HudProps = {
   history: History
@@ -179,13 +180,10 @@ class HUD extends Component<HudProps, HudState> {
             />
           )
         }
-        let er = new AlertResource(selectedResource)
-        if (er.hasAlert()) {
-          numAlerts = er.numberOfAlerts()
-        }
+        numAlerts = numberOfAlerts(selectedResource)
       } else {
-        numAlerts = resourcesWithAlerts
-          .map(er => er.numberOfAlerts())
+        numAlerts = resources
+          .map(r => numberOfAlerts(r))
           .reduce((sum, current) => sum + current, 0)
       }
       return (
@@ -271,13 +269,10 @@ class HUD extends Component<HudProps, HudState> {
         return <Route component={NotFound} />
       }
       if (er) {
-        return <AlertPane resources={[new AlertResource(er)]} />
+        return <AlertPane resources={resources} />
       }
       return <AlertPane resources={[]} />
     }
-    let alertResources = resources.map(r => new AlertResource(r))
-    let resourcesWithAlerts = alertResources.filter(r => r.hasAlert())
-
     let runningVersion = view && view.RunningTiltBuild
     let latestVersion = view && view.LatestTiltBuild
 
@@ -353,7 +348,7 @@ class HUD extends Component<HudProps, HudState> {
           <Route
             exact
             path={this.path("/alerts")}
-            render={() => <AlertPane resources={alertResources} />}
+            render={() => <AlertPane resources={resources} />}
           />
           <Route exact path={this.path("/preview")} render={previewRoute} />
           <Route exact path={this.path("/r/:name")} render={logsRoute} />
