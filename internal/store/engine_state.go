@@ -529,12 +529,6 @@ type Pod struct {
 	// i.e. OldRestarts - Total Restarts
 	ContainerRestarts int
 	OldRestarts       int // # times the pod restarted when it was running old code
-
-	// HACK(maia): eventually we'll want our model of the world to handle pods with
-	// multiple containers (for logs, restart counts, port forwards, etc.). For now,
-	// we need to ship log visibility into multiple containers. Here's the minimum
-	// of info we need for that.
-	ContainerInfos []ContainerInfo
 }
 
 type Container struct {

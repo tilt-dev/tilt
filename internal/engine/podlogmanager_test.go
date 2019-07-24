@@ -133,12 +133,11 @@ func TestMultiContainerLogs(t *testing.T) {
 	p := store.Pod{
 		PodID: podID,
 		Phase: v1.PodRunning,
-		ContainerInfos: []store.ContainerInfo{
-			store.ContainerInfo{ID: "cid1", Name: "cont1"},
-			store.ContainerInfo{ID: "cid2", Name: "cont2"},
+		Containers: []store.Container{
+			store.Container{Name: "cont1", ID: "cid1", Blessed: true},
+			store.Container{Name: "cont2", ID: "cid2"},
 		},
 	}
-	p = PodWithContainer(p, "cont1", "cid1")
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "server"}, p))
 	f.store.UnlockMutableState()
@@ -168,25 +167,25 @@ func TestContainerPrefixes(t *testing.T) {
 	podMultiC := store.Pod{
 		PodID: pID1,
 		Phase: v1.PodRunning,
-		ContainerInfos: []store.ContainerInfo{
-			store.ContainerInfo{ID: "cid1", Name: cNamePrefix1},
-			store.ContainerInfo{ID: "cid2", Name: cNamePrefix2},
+		Containers: []store.Container{
+			// Pod with multiple containers -- logs should be prefixed with container name
+			store.Container{Name: cNamePrefix1, ID: "cid1", Blessed: true},
+			store.Container{Name: cNamePrefix2, ID: "cid2"},
 		},
 	}
-	podMultiC = PodWithContainer(podMultiC, cNamePrefix1, "cid1")
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
-		model.Manifest{Name: "multiContainer"},
-		// Pod with multiple containers -- logs should be prefixed with container name
-		podMultiC))
+		model.Manifest{Name: "multiContainer"}, podMultiC))
 
 	podSingleC := store.Pod{
 		PodID: pID2,
 		Phase: v1.PodRunning,
+		Containers: []store.Container{
+			// Pod with just one container -- logs should NOT be prefixed with container name
+			store.Container{Name: cNameNoPrefix, ID: "cid3", Blessed: true},
+		},
 	}
-	podSingleC = PodWithContainer(podSingleC, cNameNoPrefix, "cid3")
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "singleContainer"},
-		// Pod with just one container -- logs should NOT be prefixed with container name
 		podSingleC))
 	f.store.UnlockMutableState()
 

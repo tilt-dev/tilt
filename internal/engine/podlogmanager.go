@@ -65,23 +65,15 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 				continue
 			}
 
-			// NOTE(maia): setting up logWatchers using both containerInfos and pod.ContainerName etc.
-			// is a temporary hack. Put this in for backwards compatibility.
-			containerInfos := pod.ContainerInfos
-			if len(containerInfos) == 0 {
-				containerInfos = []store.ContainerInfo{
-					store.ContainerInfo{ID: pod.ContainerID(), Name: pod.ContainerName()},
-				}
-			}
 			// if pod has more than one container, we should prefix logs with the container name
-			shouldPrefix := len(containerInfos) > 1
+			shouldPrefix := len(pod.Containers) > 1
 
-			for _, cInfo := range containerInfos {
+			for _, c := range pod.Containers {
 				// Key the log watcher by the container id, so we auto-restart the
 				// watching if the container crashes.
 				key := podLogKey{
 					podID: pod.PodID,
-					cID:   cInfo.ID,
+					cID:   c.ID,
 				}
 				stateWatches[key] = true
 
@@ -106,7 +98,7 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 					cancel:          cancel,
 					name:            ms.Name,
 					podID:           pod.PodID,
-					cName:           cInfo.Name,
+					cName:           c.Name,
 					namespace:       pod.Namespace,
 					startWatchTime:  startWatchTime,
 					terminationTime: make(chan time.Time, 1),

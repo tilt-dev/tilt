@@ -141,6 +141,11 @@ func populateContainers(ctx context.Context, manifest model.Manifest, podInfo *s
 	podInfo.Containers = nil
 
 	for _, cStatus := range pod.Status.ContainerStatuses {
+		if cStatus.Name == sidecar.SyncletContainerName {
+			// We don't want logs, status, etc. for the Tilt synclet.
+			continue
+		}
+
 		cName := k8s.ContainerNameFromContainerStatus(cStatus)
 
 		cID, err := k8s.ContainerIDFromContainerStatus(cStatus)
@@ -180,28 +185,6 @@ func populateContainers(ctx context.Context, manifest model.Manifest, podInfo *s
 		}
 		podInfo.Containers = append(podInfo.Containers, c)
 	}
-
-	// HACK(maia): Go through ALL containers (except tilt-synclet), grab minimum info we need
-	// to stream logs from them.
-	var cInfos []store.ContainerInfo
-	for _, cStat := range pod.Status.ContainerStatuses {
-		if cStat.Name == sidecar.SyncletContainerName {
-			// We don't want logs for the Tilt synclet.
-			continue
-		}
-
-		cID, err := k8s.ContainerIDFromContainerStatus(cStat)
-		if err != nil {
-			logger.Get(ctx).Debugf("Error parsing container ID: %v", err)
-			return
-		}
-
-		cInfos = append(cInfos, store.ContainerInfo{
-			ID:   cID,
-			Name: k8s.ContainerNameFromContainerStatus(cStat),
-		})
-	}
-	podInfo.ContainerInfos = cInfos
 }
 
 func getBlessedContainerID(iTargets []model.ImageTarget, pod *v1.Pod) (container.ID, error) {
