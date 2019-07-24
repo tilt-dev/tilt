@@ -170,6 +170,11 @@ func wireDockerClusterClient(ctx context.Context) (docker.ClusterClient, error) 
 	return nil, nil
 }
 
+func wireDockerLocalClient(ctx context.Context) (docker.LocalClient, error) {
+	wire.Build(BaseWireSet)
+	return nil, nil
+}
+
 func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics) (DownDeps, error) {
 	wire.Build(BaseWireSet, ProvideDownDeps)
 	return DownDeps{}, nil

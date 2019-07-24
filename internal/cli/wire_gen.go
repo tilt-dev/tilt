@@ -413,6 +413,39 @@ func wireDockerClusterClient(ctx context.Context) (docker.ClusterClient, error) 
 	return clusterClient, nil
 }
 
+func wireDockerLocalClient(ctx context.Context) (docker.LocalClient, error) {
+	clientConfig := k8s.ProvideClientConfig()
+	config, err := k8s.ProvideKubeConfig(clientConfig)
+	if err != nil {
+		return nil, err
+	}
+	env := k8s.ProvideEnv(config)
+	portForwarder := k8s.ProvidePortForwarder()
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	kubeContext, err := k8s.ProvideKubeContext(config)
+	if err != nil {
+		return nil, err
+	}
+	int2 := provideKubectlLogLevel()
+	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, int2)
+	k8sClient := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
+	runtime := k8s.ProvideContainerRuntime(ctx, k8sClient)
+	minikubeClient := minikube.ProvideMinikubeClient()
+	clusterEnv, err := docker.ProvideClusterEnv(ctx, env, runtime, minikubeClient)
+	if err != nil {
+		return nil, err
+	}
+	localEnv, err := docker.ProvideLocalEnv(ctx, clusterEnv)
+	if err != nil {
+		return nil, err
+	}
+	localClient, err := docker.ProvideLocalCli(ctx, localEnv)
+	if err != nil {
+		return nil, err
+	}
+	return localClient, nil
+}
+
 func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics) (DownDeps, error) {
 	clientConfig := k8s.ProvideClientConfig()
 	config, err := k8s.ProvideKubeConfig(clientConfig)
