@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
@@ -38,42 +39,20 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v
 
 	defer prunePods(ms)
 
-	// Check if the container is ready.
-	var cStatus v1.ContainerStatus
-	var err error
-	if len(manifest.ImageTargets) > 0 {
-		// Get status of (first) container matching (an) image we built for this manifest.
-		for _, iTarget := range manifest.ImageTargets {
-			cStatus, err = k8s.ContainerMatching(pod, container.NameSelector(iTarget.DeploymentRef))
-			if err != nil {
-				logger.Get(ctx).Debugf("Error matching container: %v", err)
-				return
-			}
-			if cStatus.Name != "" {
-				break
-			}
-		}
-	} else {
-		// We didn't build images for this manifest so we have no good way of figuring
-		// out which container(s) we care about; for now, take the first.
-		if len(pod.Status.ContainerStatuses) > 0 {
-			cStatus = pod.Status.ContainerStatuses[0]
-		}
+	populateContainers(ctx, manifest, podInfo, pod)
 
-	}
-
-	if cStatus.Name == "" {
+	if len(podInfo.Containers) == 0 {
+		// not enough info to do anything else
 		return
 	}
 
-	populateContainerStatus(ctx, manifest, podInfo, pod, cStatus)
 	checkForPodCrash(ctx, state, ms, *podInfo)
 
-	if int(cStatus.RestartCount) > podInfo.ContainerRestarts {
+	if int(podInfo.BlessedContainer().Restarts) > podInfo.ContainerRestarts {
 		ms.CrashLog = podInfo.CurrentLog
 		podInfo.CurrentLog = model.Log{}
 	}
-	podInfo.ContainerRestarts = int(cStatus.RestartCount)
+	podInfo.ContainerRestarts = int(podInfo.BlessedContainer().Restarts)
 }
 
 // Get a pointer to a mutable manifest state,
@@ -151,44 +130,56 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 }
 
 // Fill in container fields on the pod state.
-func populateContainerStatus(ctx context.Context, manifest model.Manifest, podInfo *store.Pod, pod *v1.Pod, cStatus v1.ContainerStatus) {
-	cName := k8s.ContainerNameFromContainerStatus(cStatus)
-
-	cID, err := k8s.ContainerIDFromContainerStatus(cStatus)
+func populateContainers(ctx context.Context, manifest model.Manifest, podInfo *store.Pod, pod *v1.Pod) {
+	blessedCID, err := getBlessedContainerID(manifest.ImageTargets, pod)
 	if err != nil {
-		logger.Get(ctx).Debugf("Error parsing container ID: %v", err)
+		logger.Get(ctx).Debugf("Populating containers for pod: %v", err)
 		return
 	}
 
-	cRef, err := container.ParseNamed(cStatus.Image)
-	if err != nil {
-		logger.Get(ctx).Debugf("Error parsing container image ID: %v", err)
-		return
-	}
+	// Clear containers on the pod
+	podInfo.Containers = nil
 
-	ports := make([]int32, 0)
-	cSpec := k8s.ContainerSpecOf(pod, cStatus)
-	for _, cPort := range cSpec.Ports {
-		ports = append(ports, cPort.ContainerPort)
-	}
+	for _, cStatus := range pod.Status.ContainerStatuses {
+		cName := k8s.ContainerNameFromContainerStatus(cStatus)
 
-	forwards := PopulatePortForwards(manifest, *podInfo)
-	if len(forwards) < len(manifest.K8sTarget().PortForwards) {
-		logger.Get(ctx).Infof(
-			"WARNING: Resource %s is using port forwards, but no container ports on pod %s",
-			manifest.Name, podInfo.PodID)
-	}
+		cID, err := k8s.ContainerIDFromContainerStatus(cStatus)
+		if err != nil {
+			logger.Get(ctx).Debugf("Error parsing container ID: %v", err)
+			return
+		}
 
-	// ~~ If this container is already on the pod, replace it
-	// ~~ this interim code assumes one pod per container, so just make it so
-	c := store.Container{
-		Name:     cName,
-		ID:       cID,
-		Ports:    ports,
-		Ready:    cStatus.Ready,
-		ImageRef: cRef,
+		cRef, err := container.ParseNamed(cStatus.Image)
+		if err != nil {
+			logger.Get(ctx).Debugf("Error parsing container image ID: %v", err)
+			return
+		}
+
+		ports := make([]int32, 0)
+		cSpec := k8s.ContainerSpecOf(pod, cStatus)
+		for _, cPort := range cSpec.Ports {
+			ports = append(ports, cPort.ContainerPort)
+		}
+
+		forwards := PopulatePortForwards(manifest, *podInfo)
+		if len(forwards) < len(manifest.K8sTarget().PortForwards) {
+			logger.Get(ctx).Infof(
+				"WARNING: Resource %s is using port forwards, but no container ports on pod %s",
+				manifest.Name, podInfo.PodID)
+		}
+
+		fmt.Printf("Container %s (%s) is blessed? %t\n", cName, cID, cID == blessedCID)
+		c := store.Container{
+			Name:     cName,
+			ID:       cID,
+			Ports:    ports,
+			Ready:    cStatus.Ready,
+			ImageRef: cRef,
+			Restarts: cStatus.RestartCount,
+			Blessed:  cID == blessedCID,
+		}
+		podInfo.Containers = append(podInfo.Containers, c)
 	}
-	podInfo.Containers = []store.Container{c}
 
 	// HACK(maia): Go through ALL containers (except tilt-synclet), grab minimum info we need
 	// to stream logs from them.
@@ -213,6 +204,32 @@ func populateContainerStatus(ctx context.Context, manifest model.Manifest, podIn
 	podInfo.ContainerInfos = cInfos
 }
 
+func getBlessedContainerID(iTargets []model.ImageTarget, pod *v1.Pod) (container.ID, error) {
+	if len(iTargets) > 0 {
+		fmt.Println("~~~ GETTING BLESSED CONTAINER ID ~~~")
+		// Get status of (first) container matching (an) image we built for this manifest.
+		for _, iTarget := range iTargets {
+			cStatus, err := k8s.ContainerMatching(pod, container.NameSelector(iTarget.DeploymentRef))
+			if err != nil {
+				fmt.Println("~~~ Something went wrong!")
+				return "", errors.Wrapf(err, "Error matching container for target: %s",
+					iTarget.DeploymentRef.String())
+			}
+			if cStatus.Name != "" {
+				fmt.Println("~~~ Got it!", cStatus.ContainerID)
+				return k8s.NormalizeContainerID(cStatus.ContainerID)
+			}
+		}
+	} else {
+		// We didn't build images for this manifest so we have no good way of figuring
+		// out which container(s) we care about; for now, take the first.
+		if len(pod.Status.ContainerStatuses) > 0 {
+			cID := pod.Status.ContainerStatuses[0].ContainerID
+			return k8s.NormalizeContainerID(cID)
+		}
+	}
+	return "", nil
+}
 func checkForPodCrash(ctx context.Context, state *store.EngineState, ms *store.ManifestState, podInfo store.Pod) {
 	if ms.NeedsRebuildFromCrash {
 		// We're already aware the pod is crashing.

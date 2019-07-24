@@ -543,6 +543,12 @@ type Container struct {
 	Ports    []int32
 	Ready    bool
 	ImageRef reference.Named
+	Restarts int32
+
+	// Temporary: we use this to replicate current behavior of most stuff being
+	// based off a single blessed container, i.e. the first container we find that
+	// is running a Tilt-built image (or failing that, the first container).
+	Blessed bool
 }
 
 // The minimum info we need to retrieve logs for a container.
@@ -576,7 +582,14 @@ func (p Pod) BlessedContainer() Container {
 	if len(p.Containers) == 0 {
 		return Container{}
 	}
-	// better way of marking blessed container?
+
+	for _, c := range p.Containers {
+		if c.Blessed {
+			return c
+		}
+	}
+	// This shouldn't happen, BUT if none of the containers is marked `blessed`,
+	// just return the first one
 	return p.Containers[0]
 }
 
@@ -595,12 +608,6 @@ func (p Pod) ContainerReady() bool {
 }
 func (p Pod) ContainerImageRef() reference.Named {
 	return p.BlessedContainer().ImageRef
-}
-
-func (p Pod) WithContainer(name container.Name, id container.ID) Pod {
-	c := Container{Name: name, ID: id}
-	p.Containers = []Container{c}
-	return p
 }
 
 func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {
