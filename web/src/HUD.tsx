@@ -49,7 +49,6 @@ class HUD extends Component<HudProps, HudState> {
   private history: History
   private unlisten: UnregisterCallback
 
-
   constructor(props: HudProps) {
     super(props)
 

@@ -70,9 +70,8 @@ function getResourceAlerts(r: Resource): Array<Alert> {
   return result
 }
 
-// The following functions are based on the current type of errors that we showed in "AlertPane.tsx"
-// that classifies the different errors, the following functions create the alerts based on their types, since
-// they displayed different messages
+//The following functions create the alerts based on their types, since
+// they use different information from the resource to contruct their messages
 function podStatusIsErrAlert(resource: Resource): Alert {
   let podStatus = resource.ResourceInfo.PodStatus
   let podStatusMessage = resource.ResourceInfo.PodStatusMessage
