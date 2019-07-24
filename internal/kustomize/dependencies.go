@@ -1,5 +1,24 @@
-// Code for parsing Kustomize YAML and analyzing dependencies adapted from
-// https://github.com/GoogleContainerTools/skaffold/blob/511c77f1736b657415500eb9b820ae7e4f753347/pkg/skaffold/deploy/kustomize.go
+/**
+Code for parsing Kustomize YAML and analyzing dependencies.
+
+Adapted from
+https://github.com/GoogleContainerTools/skaffold/blob/511c77f1736b657415500eb9b820ae7e4f753347/pkg/skaffold/deploy/kustomize.go
+
+Copyright 2018 The Skaffold Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package kustomize
 
 import (
