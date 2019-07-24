@@ -16,22 +16,22 @@ import (
 
 type buildkitTestCase struct {
 	v        types.Version
-	env      k8s.Env
+	env      Env
 	expected bool
 }
 
 func TestSupportsBuildkit(t *testing.T) {
 	cases := []buildkitTestCase{
-		{types.Version{APIVersion: "1.37", Experimental: true}, k8s.EnvGKE, false},
-		{types.Version{APIVersion: "1.37", Experimental: false}, k8s.EnvGKE, false},
-		{types.Version{APIVersion: "1.38", Experimental: true}, k8s.EnvGKE, true},
-		{types.Version{APIVersion: "1.38", Experimental: false}, k8s.EnvGKE, false},
-		{types.Version{APIVersion: "1.39", Experimental: true}, k8s.EnvGKE, true},
-		{types.Version{APIVersion: "1.39", Experimental: false}, k8s.EnvGKE, true},
-		{types.Version{APIVersion: "1.40", Experimental: true}, k8s.EnvGKE, true},
-		{types.Version{APIVersion: "1.40", Experimental: false}, k8s.EnvGKE, true},
-		{types.Version{APIVersion: "garbage", Experimental: false}, k8s.EnvGKE, false},
-		{types.Version{APIVersion: "1.39", Experimental: true}, k8s.EnvMinikube, false},
+		{types.Version{APIVersion: "1.37", Experimental: true}, Env{}, false},
+		{types.Version{APIVersion: "1.37", Experimental: false}, Env{}, false},
+		{types.Version{APIVersion: "1.38", Experimental: true}, Env{}, true},
+		{types.Version{APIVersion: "1.38", Experimental: false}, Env{}, false},
+		{types.Version{APIVersion: "1.39", Experimental: true}, Env{}, true},
+		{types.Version{APIVersion: "1.39", Experimental: false}, Env{}, true},
+		{types.Version{APIVersion: "1.40", Experimental: true}, Env{}, true},
+		{types.Version{APIVersion: "1.40", Experimental: false}, Env{}, true},
+		{types.Version{APIVersion: "garbage", Experimental: false}, Env{}, false},
+		{types.Version{APIVersion: "1.39", Experimental: true}, Env{IsMinikube: true}, false},
 	}
 
 	for i, c := range cases {
@@ -63,7 +63,7 @@ func TestProvideBuilderVersion(t *testing.T) {
 			defer os.Setenv("DOCKER_BUILDKIT", "")
 
 			v, err := getDockerBuilderVersion(
-				types.Version{APIVersion: c.v}, k8s.EnvGKE)
+				types.Version{APIVersion: c.v}, Env{})
 			assert.NoError(t, err)
 			assert.Equal(t, c.expected, v)
 		})
@@ -92,11 +92,12 @@ func TestSupported(t *testing.T) {
 }
 
 type provideEnvTestCase struct {
-	env      k8s.Env
-	runtime  container.Runtime
-	osEnv    map[string]string
-	mkEnv    map[string]string
-	expected Env
+	env             k8s.Env
+	runtime         container.Runtime
+	osEnv           map[string]string
+	mkEnv           map[string]string
+	expectedCluster Env
+	expectedLocal   Env
 }
 
 func TestProvideEnv(t *testing.T) {
@@ -117,7 +118,13 @@ func TestProvideEnv(t *testing.T) {
 				"DOCKER_CERT_PATH":   "/home/nick/.minikube/certs",
 				"DOCKER_API_VERSION": "1.35",
 			},
-			expected: Env{
+			expectedCluster: Env{
+				TLSVerify:  "1",
+				Host:       "tcp://192.168.99.100:2376",
+				CertPath:   "/home/nick/.minikube/certs",
+				APIVersion: "1.35",
+			},
+			expectedLocal: Env{
 				TLSVerify:  "1",
 				Host:       "tcp://192.168.99.100:2376",
 				CertPath:   "/home/nick/.minikube/certs",
@@ -125,9 +132,10 @@ func TestProvideEnv(t *testing.T) {
 			},
 		},
 		{
-			env:      k8s.EnvMicroK8s,
-			runtime:  container.RuntimeDocker,
-			expected: Env{Host: microK8sDockerHost},
+			env:             k8s.EnvMicroK8s,
+			runtime:         container.RuntimeDocker,
+			expectedCluster: Env{Host: microK8sDockerHost},
+			expectedLocal:   Env{},
 		},
 		{
 			env:     k8s.EnvMicroK8s,
@@ -142,11 +150,12 @@ func TestProvideEnv(t *testing.T) {
 				"DOCKER_CERT_PATH":   "/home/nick/.minikube/certs",
 				"DOCKER_API_VERSION": "1.35",
 			},
-			expected: Env{
+			expectedCluster: Env{
 				TLSVerify:  "1",
 				Host:       "tcp://192.168.99.100:2376",
 				CertPath:   "/home/nick/.minikube/certs",
 				APIVersion: "1.35",
+				IsMinikube: true,
 			},
 		},
 		{
@@ -161,8 +170,39 @@ func TestProvideEnv(t *testing.T) {
 			osEnv: map[string]string{
 				"DOCKER_HOST": "tcp://registry.local:80",
 			},
-			expected: Env{
+			expectedCluster: Env{
 				Host: "tcp://registry.local:80",
+			},
+			expectedLocal: Env{
+				Host: "tcp://registry.local:80",
+			},
+		},
+		{
+			// Test the case where the user has already run
+			// eval $(minikube docker-env)
+			env:     k8s.EnvMinikube,
+			runtime: container.RuntimeDocker,
+			mkEnv: map[string]string{
+				"DOCKER_TLS_VERIFY": "1",
+				"DOCKER_HOST":       "tcp://192.168.99.100:2376",
+				"DOCKER_CERT_PATH":  "/home/nick/.minikube/certs",
+			},
+			osEnv: map[string]string{
+				"DOCKER_TLS_VERIFY": "1",
+				"DOCKER_HOST":       "tcp://192.168.99.100:2376",
+				"DOCKER_CERT_PATH":  "/home/nick/.minikube/certs",
+			},
+			expectedCluster: Env{
+				TLSVerify:  "1",
+				Host:       "tcp://192.168.99.100:2376",
+				CertPath:   "/home/nick/.minikube/certs",
+				IsMinikube: true,
+			},
+			expectedLocal: Env{
+				TLSVerify:  "1",
+				Host:       "tcp://192.168.99.100:2376",
+				CertPath:   "/home/nick/.minikube/certs",
+				IsMinikube: true,
 			},
 		},
 		{
@@ -174,7 +214,6 @@ func TestProvideEnv(t *testing.T) {
 				"DOCKER_CERT_PATH":   "/home/nick/.minikube/certs",
 				"DOCKER_API_VERSION": "1.35",
 			},
-			expected: Env{},
 		},
 		{
 			env: k8s.EnvUnknown,
@@ -184,7 +223,13 @@ func TestProvideEnv(t *testing.T) {
 				"DOCKER_CERT_PATH":   "/home/nick/.minikube/certs",
 				"DOCKER_API_VERSION": "1.35",
 			},
-			expected: Env{
+			expectedCluster: Env{
+				TLSVerify:  "1",
+				Host:       "tcp://localhost:2376",
+				CertPath:   "/home/nick/.minikube/certs",
+				APIVersion: "1.35",
+			},
+			expectedLocal: Env{
 				TLSVerify:  "1",
 				Host:       "tcp://localhost:2376",
 				CertPath:   "/home/nick/.minikube/certs",
@@ -208,9 +253,14 @@ func TestProvideEnv(t *testing.T) {
 			}()
 
 			mkClient := minikube.FakeClient{DockerEnvMap: c.mkEnv}
-			actual, err := ProvideClusterEnv(context.Background(), c.env, c.runtime, mkClient)
+			cluster, err := ProvideClusterEnv(context.Background(), c.env, c.runtime, mkClient)
 			if assert.NoError(t, err) {
-				assert.Equal(t, c.expected, Env(actual))
+				assert.Equal(t, c.expectedCluster, Env(cluster))
+			}
+
+			local, err := ProvideLocalEnv(context.Background(), cluster)
+			if assert.NoError(t, err) {
+				assert.Equal(t, c.expectedLocal, Env(local))
 			}
 		})
 	}

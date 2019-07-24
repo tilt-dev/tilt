@@ -15,7 +15,8 @@ import (
 // Injectors from wire.go:
 
 func WireSynclet(ctx context.Context, runtime container.Runtime) (*Synclet, error) {
-	localEnv, err := docker.ProvideLocalEnv(ctx)
+	clusterEnv := docker.ProvideEmptyClusterEnv()
+	localEnv, err := docker.ProvideLocalEnv(ctx, clusterEnv)
 	if err != nil {
 		return nil, err
 	}

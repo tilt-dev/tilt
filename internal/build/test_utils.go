@@ -56,7 +56,7 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 		t.Fatal(err)
 	}
 
-	dCli, err := docker.NewDockerClient(ctx, docker.Env(dEnv), env)
+	dCli, err := docker.NewDockerClient(ctx, docker.Env(dEnv))
 	if err != nil {
 		t.Fatal(err)
 	}
