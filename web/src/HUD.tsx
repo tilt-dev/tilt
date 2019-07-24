@@ -29,7 +29,6 @@ type HudState = {
   Message: string
   View: {
     Resources: Array<Resource>
-    alertInitialized: boolean
     Log: string
     LogTimestamps: boolean
     SailEnabled: boolean
@@ -50,6 +49,7 @@ class HUD extends Component<HudProps, HudState> {
   private history: History
   private unlisten: UnregisterCallback
 
+
   constructor(props: HudProps) {
     super(props)
 
@@ -67,7 +67,6 @@ class HUD extends Component<HudProps, HudState> {
     this.state = {
       Message: "",
       View: {
-        alertInitialized: false,
         Resources: [],
         Log: "",
         LogTimestamps: false,

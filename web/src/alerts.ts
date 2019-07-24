@@ -1,6 +1,5 @@
 import { Resource } from "./types"
 import { podStatusIsError, podStatusIsCrash } from "./constants"
-import React from "react"
 
 export type Alert = {
   alertType: string
