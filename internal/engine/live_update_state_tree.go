@@ -18,7 +18,7 @@ type liveUpdateStateTree struct {
 func (t liveUpdateStateTree) createResultSet() store.BuildResultSet {
 	iTargetID := t.iTarget.ID()
 	state := t.iTargetState
-	res := state.LastResult.ShallowCloneForContainerUpdate(state.FilesChangedSet)
+	res := state.LastResult
 	res.ContainerID = state.DeployInfo.ContainerID
 
 	resultSet := store.BuildResultSet{}

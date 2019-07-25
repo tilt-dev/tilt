@@ -471,21 +471,10 @@ func TestIncrementalBuildTwice(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	id := manifest.ImageTargetAt(0).ID()
-	rSet := firstResult[id].FilesReplacedSet
-	if len(rSet) != 1 || !rSet[aPath] {
-		t.Errorf("Expected replaced set with a.txt, actual: %v", rSet)
-	}
-
 	secondState := resultToStateSet(firstResult, []string{bPath}, f.deployInfo())
-	secondResult, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, secondState)
+	_, err = f.bd.BuildAndDeploy(f.ctx, f.st, targets, secondState)
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	rSet = secondResult[id].FilesReplacedSet
-	if len(rSet) != 2 || !rSet[aPath] || !rSet[bPath] {
-		t.Errorf("Expected replaced set with a.txt, b.txt, actual: %v", rSet)
 	}
 
 	if f.docker.BuildCount != 0 {
@@ -520,24 +509,13 @@ func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	id := manifest.ImageTargetAt(0).ID()
-	rSet := firstResult[id].FilesReplacedSet
-	if len(rSet) != 1 || !rSet[aPath] {
-		t.Errorf("Expected replaced set with a.txt, actual: %v", rSet)
-	}
-
 	// Kill the pod
 	f.docker.ExecErrorToThrow = fmt.Errorf("Dead pod")
 
 	secondState := resultToStateSet(firstResult, []string{bPath}, f.deployInfo())
-	secondResult, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, secondState)
+	_, err = f.bd.BuildAndDeploy(f.ctx, f.st, targets, secondState)
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	rSet = secondResult[id].FilesReplacedSet
-	if len(rSet) != 0 {
-		t.Errorf("Expected empty replaced set, actual: %v", rSet)
 	}
 
 	if f.docker.BuildCount != 1 {
