@@ -3,21 +3,14 @@ import { ReactComponent as ChevronSvg } from "./assets/svg/chevron.svg"
 import { Link } from "react-router-dom"
 import { combinedStatus, warnings } from "./status"
 import "./Sidebar.scss"
-import {
-  ResourceView,
-  TriggerMode,
-  RuntimeStatus,
-  Build,
-  Resource,
-} from "./types"
+import { ResourceView, TriggerMode, RuntimeStatus, Build } from "./types"
 import TimeAgo from "react-timeago"
 import { isZeroTime } from "./time"
 import PathBuilder from "./PathBuilder"
 import { timeAgoFormatter } from "./timeFormatters"
+import { AlertResource } from "./AlertPane"
 import SidebarIcon from "./SidebarIcon"
 import SidebarTriggerButton from "./SidebarTriggerButton"
-import { number } from "prop-types"
-import { numberOfAlerts } from "./alerts"
 
 class SidebarItem {
   name: string
@@ -27,7 +20,7 @@ class SidebarItem {
   lastDeployTime: string
   pendingBuildSince: string
   currentBuildStartTime: string
-  alertCount: number
+  alertResource: AlertResource
   triggerMode: TriggerMode
   hasPendingChanges: boolean
   lastBuild: Build | null = null
@@ -35,21 +28,25 @@ class SidebarItem {
   /**
    * Create a pared down SidebarItem from a ResourceView
    */
-  constructor(res: Resource) {
+  constructor(res: any) {
     this.name = res.Name
     this.status = combinedStatus(res)
     this.hasWarnings = warnings(res).length > 0
-    this.hasEndpoints = (res.Endpoints || []).length > 0
+    this.hasEndpoints = (res.Endpoints || []).length
     this.lastDeployTime = res.LastDeployTime
     this.pendingBuildSince = res.PendingBuildSince
     this.currentBuildStartTime = res.CurrentBuild.StartTime
-    this.alertCount = numberOfAlerts(res)
+    this.alertResource = new AlertResource(res)
     this.triggerMode = res.TriggerMode
     this.hasPendingChanges = res.HasPendingChanges
     let buildHistory = res.BuildHistory || []
     if (buildHistory.length > 0) {
       this.lastBuild = buildHistory[0]
     }
+  }
+
+  numberOfAlerts(): number {
+    return this.alertResource.numberOfAlerts()
   }
 }
 
@@ -79,7 +76,7 @@ class Sidebar extends PureComponent<SidebarProps> {
         ? pb.path("/alerts")
         : pb.path("/")
     let totalAlerts = this.props.items
-      .map(i => i.alertCount)
+      .map(i => i.numberOfAlerts())
       .reduce((sum, current) => sum + current, 0)
 
     let allItem = (
@@ -143,8 +140,10 @@ class Sidebar extends PureComponent<SidebarProps> {
             <p className="resLink-name" title={item.name}>
               {item.name}
             </p>
-            {item.alertCount > 0 ? (
-              <span className="resLink-alertBadge">{item.alertCount}</span>
+            {item.numberOfAlerts() > 0 ? (
+              <span className="resLink-alertBadge">
+                {item.numberOfAlerts()}
+              </span>
             ) : (
               ""
             )}

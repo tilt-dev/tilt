@@ -53,7 +53,6 @@ func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analyti
 	r.HandleFunc("/api/view", s.ViewJSON)
 	r.HandleFunc("/api/analytics", s.HandleAnalytics)
 	r.HandleFunc("/api/analytics_opt", s.HandleAnalyticsOpt)
-	//r.HandleFunc("/api/alerts_notification", s.HandleAlertsNotification)
 	r.HandleFunc("/api/sail", s.HandleSail)
 	r.HandleFunc("/api/trigger", s.HandleTrigger)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
@@ -105,28 +104,6 @@ func (s *HeadsUpServer) HandleAnalyticsOpt(w http.ResponseWriter, req *http.Requ
 
 	s.store.Dispatch(store.AnalyticsOptAction{Opt: opt})
 }
-
-//func (s *HeadsUpServer) HandleAlertsNotification(w http.ResponseWriter, req *http.Request) {
-//	if req.Method != http.MethodPost {
-//		http.Error(w, "must be POST request", http.StatusBadRequest)
-//		return
-//	}
-//
-//	resp, err := http.Post("http://localhost:9988", "Alert", req.Body)
-//	if err != nil {
-//		log.Printf("error posting alert: %v\n")
-//		return
-//	}
-//	if resp.StatusCode != http.StatusOK {
-//		b, err := ioutil.ReadAll(resp.Body)
-//		if err != nil {
-//			log.Printf("error reading error body: %v\n", err)
-//			return
-//		}
-//		log.Printf("error posting alert. status: %d %s, body: %s\n", resp.StatusCode, resp.Status, string(b))
-//		return
-//	}
-//}
 
 func (s *HeadsUpServer) HandleAnalytics(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {

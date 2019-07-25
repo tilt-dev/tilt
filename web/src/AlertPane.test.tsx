@@ -1,32 +1,23 @@
 import React from "react"
-import AlertPane from "./AlertPane"
+import AlertPane, { AlertResource } from "./AlertPane"
 import renderer from "react-test-renderer"
 import { oneResourceUnrecognizedError } from "./testdata.test"
-import { Resource, ResourceInfo, TriggerMode } from "./types"
-import {
-  Alert,
-  PodRestartErrorType,
-  PodStatusErrorType,
-  CrashRebuildErrorType,
-  BuildFailedErrorType,
-  WarningErrorType,
-  getResourceAlerts,
-} from "./alerts"
 
 beforeEach(() => {
   Date.now = jest.fn(() => 1482363367071)
 })
 
 it("renders no errors", () => {
-  let resources: Array<Partial<Resource>> = [
+  let resources = [
     {
       Name: "foo",
-      Alerts: [],
+      BuildHistory: [],
+      ResourceInfo: {},
     },
   ]
 
   const tree = renderer
-    .create(<AlertPane resources={resources as Array<Resource>} />)
+    .create(<AlertPane resources={resources.map(r => new AlertResource(r))} />)
     .toJSON()
 
   expect(tree).toMatchSnapshot()
@@ -34,45 +25,50 @@ it("renders no errors", () => {
 
 it("renders one build error", () => {
   const ts = "1,555,970,585,039"
-  let resources: Array<Partial<Resource>> = [
+  let resources = [
     {
       Name: "foo",
-      Alerts: [
+      BuildHistory: [
         {
-          alertType: BuildFailedErrorType,
-          msg: "laa dee daa I'm an error\nfor real I am",
-          titleMsg: "",
-          timestamp: ts,
+          Log: "laa dee daa I'm an error\nfor real I am",
+          FinishTime: ts,
+          Error: {},
         },
       ],
+      ResourceInfo: {},
     },
   ]
 
   const tree = renderer
-    .create(<AlertPane resources={resources as Array<Resource>} />)
+    .create(<AlertPane resources={resources.map(r => new AlertResource(r))} />)
     .toJSON()
 
   expect(tree).toMatchSnapshot()
 })
 
-it("renders a build with an error", () => {
+it("renders the last build with an error", () => {
   const ts = "1,555,970,585,039"
-  let resources: Array<Partial<Resource>> = [
+  let resources = [
     {
       Name: "foo",
-      Alerts: [
+      BuildHistory: [
         {
-          alertType: BuildFailedErrorType,
-          msg: "laa dee daa I'm an error\nfor real I am",
-          titleMsg: "",
-          timestamp: ts,
+          Log: "laa dee daa I'm another error\nBetter watch out",
+          FinishTime: ts,
+          Error: {},
+        },
+        {
+          Log: "laa dee daa I'm an error\nI'm serious",
+          FinishTime: ts,
+          Error: {},
         },
       ],
+      ResourceInfo: {},
     },
   ]
 
   const tree = renderer
-    .create(<AlertPane resources={resources as Array<Resource>} />)
+    .create(<AlertPane resources={resources.map(r => new AlertResource(r))} />)
     .toJSON()
 
   expect(tree).toMatchSnapshot()
@@ -80,176 +76,170 @@ it("renders a build with an error", () => {
 
 it("renders one container start error", () => {
   const ts = "1,555,970,585,039"
-
-  let resource = fillResourceFields()
-  resource.CrashLog = "Eeeeek there is a problem"
-  resource.BuildHistory = [
+  let resources = [
     {
-      Log: "laa dee daa I'm not an error\nI'm serious",
-      FinishTime: ts,
-      Error: null,
+      Name: "foo",
+      CrashLog: "Eeeeek there is a problem",
+      BuildHistory: [
+        {
+          Log: "laa dee daa I'm an error\nI'm serious",
+          FinishTime: ts,
+          Error: null,
+        },
+      ],
+      ResourceInfo: {
+        PodCreationTime: ts,
+        PodStatus: "Error",
+        PodRestarts: 2,
+      },
     },
   ]
-  resource.ResourceInfo.PodCreationTime = ts
-  resource.ResourceInfo.PodStatus = "Error"
-  resource.ResourceInfo.PodRestarts = 2
-  resource.Alerts = getResourceAlerts(resource)
-
-  let resources = [resource]
 
   const tree = renderer
-    .create(<AlertPane resources={resources as Array<Resource>} />)
+    .create(<AlertPane resources={resources.map(r => new AlertResource(r))} />)
     .toJSON()
   expect(tree).toMatchSnapshot()
 
   // the podStatus will flap between "Error" and "CrashLoopBackOff"
-  resource.ResourceInfo.PodStatus = "CrashLoopBackOff"
-  resource.ResourceInfo.PodRestarts = 3
+  resources = [
+    {
+      Name: "foo",
+      CrashLog: "Eeeeek there is a problem",
+      BuildHistory: [
+        {
+          Log: "laa dee daa I'm not an error\nI'm serious",
+          FinishTime: ts,
+          Error: null,
+        },
+      ],
+      ResourceInfo: {
+        PodCreationTime: ts,
+        PodStatus: "CrashLoopBackOff",
+        PodRestarts: 3,
+      },
+    },
+  ]
 
   const newTree = renderer
-    .create(<AlertPane resources={resources as Array<Resource>} />)
+    .create(<AlertPane resources={resources.map(r => new AlertResource(r))} />)
     .toJSON()
   expect(newTree).toMatchSnapshot()
 })
 
 it("shows that a container has restarted", () => {
   const ts = "1,555,970,585,039"
-  let resource = fillResourceFields()
-  resource.CrashLog = "Eeeeek the container crashed"
-  resource.BuildHistory = [
+  const resources = [
     {
-      Log: "laa dee daa I'm not an error\nseriously",
-      FinishTime: ts,
-      Error: null,
+      Name: "foo",
+      CrashLog: "Eeeeek the container crashed",
+      BuildHistory: [
+        {
+          Log: "laa dee daa I'm not an error\nseriously",
+          FinishTime: ts,
+          Error: null,
+        },
+      ],
+      ResourceInfo: {
+        PodCreationTime: ts,
+        PodStatus: "ok",
+        PodRestarts: 1,
+      },
     },
   ]
-  resource.ResourceInfo.PodStatus = "ok"
-  resource.ResourceInfo.PodCreationTime = ts
-  resource.ResourceInfo.PodRestarts = 1
-  resource.Alerts = getResourceAlerts(resource)
-  let resources = [resource]
 
   const tree = renderer
-    .create(<AlertPane resources={resources as Array<Resource>} />)
+    .create(<AlertPane resources={resources.map(r => new AlertResource(r))} />)
     .toJSON()
   expect(tree).toMatchSnapshot()
 })
 
 it("shows that a crash rebuild has occurred", () => {
   const ts = "1,555,970,585,039"
-  let resource = fillResourceFields()
-  resource.CrashLog = "Eeeeek the container crashed"
-  resource.BuildHistory = [
+  const resources = [
     {
-      Log: "laa dee daa I'm not an error\nseriously",
-      FinishTime: ts,
-      Error: null,
-      IsCrashRebuild: true,
+      Name: "foo",
+      CrashLog: "Eeeeek the container crashed",
+      BuildHistory: [
+        {
+          Log: "laa dee daa I'm not an error\nseriously",
+          FinishTime: ts,
+          Error: null,
+          IsCrashRebuild: true,
+        },
+      ],
+      ResourceInfo: {
+        PodCreationTime: ts,
+        PodStatus: "ok",
+      },
     },
   ]
-  resource.ResourceInfo.PodCreationTime = ts
-  resource.ResourceInfo.PodStatus = "ok"
-  resource.Alerts = getResourceAlerts(resource)
-
-  let resources = [resource]
 
   const tree = renderer
-    .create(<AlertPane resources={resources as Array<Resource>} />)
+    .create(<AlertPane resources={resources.map(r => new AlertResource(r))} />)
     .toJSON()
   expect(tree).toMatchSnapshot()
 })
 
 it("renders multiple lines of a crash log", () => {
   const ts = "1,555,970,585,039"
-
-  let resource = fillResourceFields()
-  resource.CrashLog = "Eeeeek the container crashed\nno but really it crashed"
-  resource.BuildHistory = [
+  const resources = [
     {
-      Log: "laa dee daa I'm not an error\nseriously",
-      FinishTime: ts,
-      Error: null,
-      IsCrashRebuild: true,
+      Name: "foo",
+      CrashLog: "Eeeeek the container crashed\nno but really it crashed",
+      BuildHistory: [
+        {
+          Log: "laa dee daa I'm not an error\nseriously",
+          FinishTime: ts,
+          Error: null,
+          IsCrashRebuild: true,
+        },
+      ],
+      ResourceInfo: {
+        PodCreationTime: ts,
+        PodStatus: "ok",
+      },
     },
   ]
-  resource.ResourceInfo.PodCreationTime = ts
-  resource.ResourceInfo.PodStatus = "ok"
-  resource.Alerts = getResourceAlerts(resource)
-
-  let resources = [resource]
 
   const tree = renderer
-    .create(<AlertPane resources={resources as Array<Resource>} />)
+    .create(<AlertPane resources={resources.map(r => new AlertResource(r))} />)
     .toJSON()
   expect(tree).toMatchSnapshot()
 })
 
 it("renders warnings", () => {
   const ts = "1,555,970,585,039"
-  let resource = fillResourceFields()
-  resource.CrashLog = "Eeeeek the container crashed"
-  resource.BuildHistory = [
+  const resources = [
     {
-      Log: "laa dee daa I'm not an error\nseriously",
-      FinishTime: ts,
-      Error: null,
-      IsCrashRebuild: true,
-      Warnings: ["Hi I'm a warning"],
+      Name: "foo",
+      CrashLog: "Eeeeek the container crashed",
+      BuildHistory: [
+        {
+          Log: "laa dee daa I'm not an error\nseriously",
+          FinishTime: ts,
+          Error: null,
+          IsCrashRebuild: true,
+          Warnings: ["Hi I'm a warning"],
+        },
+      ],
+      ResourceInfo: {
+        PodCreationTime: ts,
+        PodStatus: "ok",
+      },
     },
   ]
-  resource.ResourceInfo.PodCreationTime = ts
-  resource.ResourceInfo.PodStatus = "ok"
-  resource.Alerts = getResourceAlerts(resource)
-
-  let resources = [resource]
 
   const tree = renderer
-    .create(<AlertPane resources={resources as Array<Resource>} />)
+    .create(<AlertPane resources={resources.map(r => new AlertResource(r))} />)
     .toJSON()
   expect(tree).toMatchSnapshot()
 })
 
 it("renders one container unrecognized error", () => {
   const ts = "1,555,970,585,039"
-  let resource = oneResourceUnrecognizedError()
-  resource.Alerts = getResourceAlerts(resource)
-
-  let resources = [resource]
-
-  const tree = renderer.create(<AlertPane resources={resources} />).toJSON()
+  let resources = [oneResourceUnrecognizedError()]
+  const tree = renderer
+    .create(<AlertPane resources={resources.map(r => new AlertResource(r))} />)
+    .toJSON()
   expect(tree).toMatchSnapshot()
 })
-
-function fillResourceFields(): Resource {
-  return {
-    Name: "foo",
-    CombinedLog: "",
-    BuildHistory: [],
-    CrashLog: "",
-    CurrentBuild: 0,
-    DirectoriesWatched: [],
-    Endpoints: [],
-    PodID: "",
-    IsTiltfile: false,
-    LastDeployTime: "",
-    PathsWatched: [],
-    PendingBuildEdits: [],
-    PendingBuildReason: 0,
-    PendingBuildSince: "",
-    ResourceInfo: {
-      PodName: "",
-      PodCreationTime: "",
-      PodUpdateStartTime: "",
-      PodStatus: "",
-      PodStatusMessage: "",
-      PodRestarts: 0,
-      PodLog: "",
-      YAML: "",
-      Endpoints: [],
-    },
-    RuntimeStatus: "",
-    TriggerMode: TriggerMode.TriggerModeAuto,
-    HasPendingChanges: true,
-    Alerts: [],
-  }
-}

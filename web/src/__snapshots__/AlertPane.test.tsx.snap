@@ -1,49 +1,5 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`renders a build with an error 1`] = `
-<section
-  className="AlertPane"
->
-  <ul>
-    <li
-      className="AlertPane-item"
-    >
-      <header>
-        <p>
-          foo
-        </p>
-        <p>
-          <time
-            dateTime="1949-11-18T09:39:00.000Z"
-            title="1,555,970,585,039"
-          >
-            67yr
-          </time>
-        </p>
-      </header>
-      <section>
-        <code>
-          <span
-            className={null}
-            style={null}
-          >
-            laa dee daa I'm an error
-          </span>
-        </code>
-        <code>
-          <span
-            className={null}
-            style={null}
-          >
-            for real I am
-          </span>
-        </code>
-      </section>
-    </li>
-  </ul>
-</section>
-`;
-
 exports[`renders multiple lines of a crash log 1`] = `
 <section
   className="AlertPane"
@@ -57,15 +13,7 @@ exports[`renders multiple lines of a crash log 1`] = `
           foo
         </p>
         <p>
-          Pod crashed
-        </p>
-        <p>
-          <time
-            dateTime="1949-11-18T09:39:00.000Z"
-            title="1,555,970,585,039"
-          >
-            67yr
-          </time>
+          Pod crashed!
         </p>
       </header>
       <section>
@@ -260,6 +208,50 @@ exports[`renders one container unrecognized error 1`] = `
 </section>
 `;
 
+exports[`renders the last build with an error 1`] = `
+<section
+  className="AlertPane"
+>
+  <ul>
+    <li
+      className="AlertPane-item"
+    >
+      <header>
+        <p>
+          foo
+        </p>
+        <p>
+          <time
+            dateTime="1949-11-18T09:39:00.000Z"
+            title="1,555,970,585,039"
+          >
+            67yr
+          </time>
+        </p>
+      </header>
+      <section>
+        <code>
+          <span
+            className={null}
+            style={null}
+          >
+            laa dee daa I'm another error
+          </span>
+        </code>
+        <code>
+          <span
+            className={null}
+            style={null}
+          >
+            Better watch out
+          </span>
+        </code>
+      </section>
+    </li>
+  </ul>
+</section>
+`;
+
 exports[`renders warnings 1`] = `
 <section
   className="AlertPane"
@@ -273,15 +265,7 @@ exports[`renders warnings 1`] = `
           foo
         </p>
         <p>
-          Pod crashed
-        </p>
-        <p>
-          <time
-            dateTime="1949-11-18T09:39:00.000Z"
-            title="1,555,970,585,039"
-          >
-            67yr
-          </time>
+          Pod crashed!
         </p>
       </header>
       <section>
@@ -299,9 +283,6 @@ exports[`renders warnings 1`] = `
       className="AlertPane-item"
     >
       <header>
-        <p>
-          foo
-        </p>
         <p>
           foo
         </p>
@@ -344,14 +325,6 @@ exports[`shows that a container has restarted 1`] = `
         <p>
           Restarts: 1
         </p>
-        <p>
-          <time
-            dateTime="1949-11-18T09:39:00.000Z"
-            title="1,555,970,585,039"
-          >
-            67yr
-          </time>
-        </p>
       </header>
       <section>
         <code>
@@ -381,15 +354,7 @@ exports[`shows that a crash rebuild has occurred 1`] = `
           foo
         </p>
         <p>
-          Pod crashed
-        </p>
-        <p>
-          <time
-            dateTime="1949-11-18T09:39:00.000Z"
-            title="1,555,970,585,039"
-          >
-            67yr
-          </time>
+          Pod crashed!
         </p>
       </header>
       <section>
