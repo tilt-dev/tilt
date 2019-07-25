@@ -21,7 +21,7 @@ func BenchmarkBuildTenRuns(b *testing.B) {
 		}
 		runs := model.ToRuns(cmds)
 
-		ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{}, model.EmptyMatcher, runs, model.Cmd{})
+		ref, err := f.b.BuildImage(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{}, model.EmptyMatcher, runs, model.Cmd{})
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -49,7 +49,7 @@ func BenchmarkBuildTenRunsInOne(b *testing.B) {
 		oneCmd := strings.Join(allCmds, " && ")
 
 		runs := model.ToRuns([]model.Cmd{model.ToShellCmd(oneCmd)})
-		ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, nil, model.EmptyMatcher, runs, model.Cmd{})
+		ref, err := f.b.BuildImage(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, nil, model.EmptyMatcher, runs, model.Cmd{})
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -61,26 +61,5 @@ func BenchmarkBuildTenRunsInOne(b *testing.B) {
 	}
 	for i := 0; i < b.N; i++ {
 		run()
-	}
-}
-
-func BenchmarkIterativeBuildTenTimes(b *testing.B) {
-	f := newDockerBuildFixture(b)
-	defer f.teardown()
-	runs := model.ToRuns([]model.Cmd{model.ToShellCmd("echo 1 >> hi")})
-	ref, err := f.b.BuildImageFromScratch(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, nil, model.EmptyMatcher, runs, model.Cmd{})
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		for j := 0; j < 10; j++ {
-			ref, err = f.b.BuildImageFromExisting(f.ctx, f.ps, ref, nil, model.EmptyMatcher, runs)
-			if err != nil {
-				b.Fatal(err)
-			}
-		}
 	}
 }
