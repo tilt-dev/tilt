@@ -523,29 +523,30 @@ type Pod struct {
 	// The log for the currently active pod, if any
 	CurrentLog model.Log `testdiff:"ignore"`
 
-	// Corresponds to the deployed container.
-	ContainerName     container.Name
-	ContainerID       container.ID
-	ContainerPorts    []int32
-	ContainerReady    bool
-	ContainerImageRef reference.Named
+	Containers []Container
 
 	// We want to show the user # of restarts since pod has been running current code,
 	// i.e. OldRestarts - Total Restarts
 	ContainerRestarts int
 	OldRestarts       int // # times the pod restarted when it was running old code
-
-	// HACK(maia): eventually we'll want our model of the world to handle pods with
-	// multiple containers (for logs, restart counts, port forwards, etc.). For now,
-	// we need to ship log visibility into multiple containers. Here's the minimum
-	// of info we need for that.
-	ContainerInfos []ContainerInfo
 }
 
-// The minimum info we need to retrieve logs for a container.
-type ContainerInfo struct {
-	ID container.ID
-	container.Name
+type Container struct {
+	Name     container.Name
+	ID       container.ID
+	Ports    []int32
+	Ready    bool
+	ImageRef reference.Named
+	Restarts int32
+
+	// Temporary: we use this to replicate current behavior of most stuff being
+	// based off a single blessed container, i.e. the first container we find that
+	// is running a Tilt-built image (or failing that, the first container).
+	Blessed bool
+}
+
+func (c Container) Empty() bool {
+	return c.Name == "" && c.ID == ""
 }
 
 func (p Pod) Empty() bool {
@@ -564,6 +565,41 @@ func (p Pod) isAfter(p2 Pod) bool {
 
 func (p Pod) Log() model.Log {
 	return p.CurrentLog
+}
+
+// HACK(maia): temp func to keep behavior the same as it currently is--
+// we'll STORE info about all containers, but continue to only use info
+// from the one blessed container.
+func (p Pod) BlessedContainer() Container {
+	if len(p.Containers) == 0 {
+		return Container{}
+	}
+
+	for _, c := range p.Containers {
+		if c.Blessed {
+			return c
+		}
+	}
+	// This shouldn't happen, BUT if none of the containers is marked `blessed`,
+	// just return the first one
+	return p.Containers[0]
+}
+
+func (p Pod) ContainerName() container.Name {
+	return p.BlessedContainer().Name
+}
+
+func (p Pod) ContainerID() container.ID {
+	return p.BlessedContainer().ID
+}
+func (p Pod) ContainerPorts() []int32 {
+	return p.BlessedContainer().Ports
+}
+func (p Pod) ContainerReady() bool {
+	return p.BlessedContainer().Ready
+}
+func (p Pod) ContainerImageRef() reference.Named {
+	return p.BlessedContainer().ImageRef
 }
 
 func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {

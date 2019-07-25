@@ -233,7 +233,7 @@ func NewDeployInfo(iTarget model.ImageTarget, deployID model.DeployID, podSet Po
 	}
 
 	pod := podSet.MostRecentPod()
-	if pod.PodID == "" || pod.ContainerID == "" || pod.ContainerName == "" || !pod.ContainerReady {
+	if pod.PodID == "" || pod.ContainerID() == "" || pod.ContainerName() == "" || !pod.ContainerReady() {
 		return DeployInfo{}
 	}
 
@@ -242,14 +242,14 @@ func NewDeployInfo(iTarget model.ImageTarget, deployID model.DeployID, podSet Po
 	}
 
 	// Only return the pod if it matches our image.
-	if pod.ContainerImageRef == nil || iTarget.DeploymentRef.Name() != pod.ContainerImageRef.Name() {
+	if pod.ContainerImageRef() == nil || iTarget.DeploymentRef.Name() != pod.ContainerImageRef().Name() {
 		return DeployInfo{}
 	}
 
 	return DeployInfo{
 		PodID:         pod.PodID,
-		ContainerID:   pod.ContainerID,
-		ContainerName: pod.ContainerName,
+		ContainerID:   pod.ContainerID(),
+		ContainerName: pod.ContainerName(),
 		Namespace:     pod.Namespace,
 	}
 }

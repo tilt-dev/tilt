@@ -18,6 +18,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
@@ -1155,9 +1156,9 @@ func TestPodEventContainerStatus(t *testing.T) {
 		return podState.PodID == "my-pod"
 	})
 
-	assert.Equal(t, "", string(podState.ContainerID))
-	assert.Equal(t, "main", string(podState.ContainerName))
-	assert.Equal(t, []int32{8080}, podState.ContainerPorts)
+	assert.Equal(t, "", string(podState.ContainerID()))
+	assert.Equal(t, "main", string(podState.ContainerName()))
+	assert.Equal(t, []int32{8080}, podState.ContainerPorts())
 
 	err := f.Stop()
 	assert.Nil(t, err)
@@ -1213,9 +1214,9 @@ func TestPodEventContainerStatusWithoutImage(t *testing.T) {
 	})
 
 	// If we have no image target to match container by image ref, we just take the first one
-	assert.Equal(t, "great-container-id", string(podState.ContainerID))
-	assert.Equal(t, "first-container", string(podState.ContainerName))
-	assert.Equal(t, []int32{8080}, podState.ContainerPorts)
+	assert.Equal(t, "great-container-id", string(podState.ContainerID()))
+	assert.Equal(t, "first-container", string(podState.ContainerName()))
+	assert.Equal(t, []int32{8080}, podState.ContainerPorts())
 
 	err := f.Stop()
 	assert.Nil(t, err)
@@ -1476,7 +1477,7 @@ func TestPodContainerStatus(t *testing.T) {
 	f.podEvent(pod)
 
 	f.WaitUntilManifestState("container is ready", "fe", func(ms store.ManifestState) bool {
-		ports := ms.MostRecentPod().ContainerPorts
+		ports := ms.MostRecentPod().ContainerPorts()
 		return len(ports) == 1 && ports[0] == 8080
 	})
 
@@ -1614,7 +1615,7 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 	f.podLog(name, "second string")
 	f.pod.Status.ContainerStatuses[0].Ready = false
 	f.notifyAndWaitForPodStatus(func(pod store.Pod) bool {
-		return !pod.ContainerReady
+		return !pod.ContainerReady()
 	})
 
 	// The second instance is down, so we don't include the first instance's log
@@ -1677,6 +1678,104 @@ func TestUpperBuildImmediatelyAfterCrashRebuild(t *testing.T) {
 	err := f.Stop()
 	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
+}
+
+func TestUpperRecordPodWithMultipleContainers(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName("foobar")
+	manifest := f.newManifest(name.String(), []model.Sync{sync})
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	pID := k8s.PodID("foobarpod")
+	f.pod = f.testPod(pID.String(), name.String(), "Running", testContainer, time.Now())
+	f.pod.Status.ContainerStatuses = append(f.pod.Status.ContainerStatuses, v1.ContainerStatus{
+		Name:        "sidecar",
+		Image:       "sidecar-image",
+		Ready:       false,
+		ContainerID: "docker://sidecar",
+	})
+
+	f.upper.store.Dispatch(PodChangeAction{f.pod})
+
+	f.WaitUntilManifestState("pod appears", name, func(ms store.ManifestState) bool {
+		return ms.MostRecentPod().PodID == k8s.PodID(f.pod.Name)
+	})
+
+	f.notifyAndWaitForPodStatus(func(pod store.Pod) bool {
+		if len(pod.Containers) != 2 {
+			return false
+		}
+
+		c1 := pod.Containers[0]
+		require.Equal(t, container.Name("test container!"), c1.Name)
+		require.Equal(t, container.ID(testContainer), c1.ID)
+		require.True(t, c1.Ready)
+		require.True(t, c1.Blessed)
+
+		c2 := pod.Containers[1]
+		require.Equal(t, container.Name("sidecar"), c2.Name)
+		require.Equal(t, container.ID("sidecar"), c2.ID)
+		require.False(t, c2.Ready)
+		require.False(t, c2.Blessed)
+
+		return true
+	})
+
+	err := f.Stop()
+	assert.NoError(t, err)
+}
+
+func TestUpperProcessOtherContainersIfOneErrors(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
+	name := model.ManifestName("foobar")
+	manifest := f.newManifest(name.String(), []model.Sync{sync})
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	pID := k8s.PodID("foobarpod")
+	f.pod = f.testPod(pID.String(), name.String(), "Running", testContainer, time.Now())
+	f.pod.Status.ContainerStatuses = append(f.pod.Status.ContainerStatuses, v1.ContainerStatus{
+		Name:  "extra1",
+		Image: "extra1-image",
+		Ready: false,
+		// when populating container info for this pod, we'll error when we try to parse
+		// this cID -- we should still populate info for the other containers, though.
+		ContainerID: "malformed",
+	}, v1.ContainerStatus{
+		Name:        "extra2",
+		Image:       "extra2-image",
+		Ready:       false,
+		ContainerID: "docker://extra2",
+	})
+
+	f.upper.store.Dispatch(PodChangeAction{f.pod})
+
+	f.WaitUntilManifestState("pod appears", name, func(ms store.ManifestState) bool {
+		return ms.MostRecentPod().PodID == k8s.PodID(f.pod.Name)
+	})
+
+	f.notifyAndWaitForPodStatus(func(pod store.Pod) bool {
+		if len(pod.Containers) != 2 {
+			return false
+		}
+
+		require.Equal(t, container.Name("test container!"), pod.Containers[0].Name)
+		require.Equal(t, container.Name("extra2"), pod.Containers[1].Name)
+
+		return true
+	})
+
+	err := f.Stop()
+	assert.NoError(t, err)
 }
 
 func testService(serviceName string, manifestName string, ip string, port int) *v1.Service {

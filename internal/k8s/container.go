@@ -150,6 +150,10 @@ func ContainerMatching(pod *v1.Pod, ref container.RefSelector) (v1.ContainerStat
 
 func ContainerIDFromContainerStatus(status v1.ContainerStatus) (container.ID, error) {
 	id := status.ContainerID
+	return NormalizeContainerID(id)
+}
+
+func NormalizeContainerID(id string) (container.ID, error) {
 	if id == "" {
 		return "", nil
 	}
