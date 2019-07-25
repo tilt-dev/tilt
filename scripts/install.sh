@@ -7,7 +7,7 @@
 
 # When releasing Tilt, the releaser should update this version number
 # AFTER they upload new binaries.
-VERSION="0.9.4"
+VERSION="0.9.5"
 BREW=$(which brew)
 
 set -e
@@ -16,7 +16,7 @@ if [[ "$OSTYPE" == "linux-gnu" ]]; then
     set -x
     curl -fsSL https://github.com/windmilleng/tilt/releases/download/v$VERSION/tilt.$VERSION.linux.x86_64.tar.gz | tar -xzv tilt
     sudo mv tilt /usr/local/bin/tilt
-    
+
 elif [[ "$OSTYPE" == "darwin"* ]]; then
 
     if [[ "$BREW" != "" ]]; then
