@@ -553,26 +553,6 @@ func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
 		t.Errorf("Expected 2 exec in container call, actual: %d", len(f.docker.ExecCalls))
 	}
 	f.assertContainerRestarts(1)
-
-	// Make sure the right files were pushed to docker.
-	tr := tar.NewReader(f.docker.BuildOptions.Context)
-	testutils.AssertFilesInTar(t, tr, []expectedFile{
-		expectedFile{
-			Path: "Dockerfile",
-			Contents: `FROM gcr.io/some-project-162817/sancho:deadbeef
-LABEL "tilt.buildMode"="existing"
-ADD . /
-RUN ["go", "install", "github.com/windmilleng/sancho"]`,
-		},
-		expectedFile{
-			Path:     "go/src/github.com/windmilleng/sancho/a.txt",
-			Contents: "a",
-		},
-		expectedFile{
-			Path:     "go/src/github.com/windmilleng/sancho/b.txt",
-			Contents: "b",
-		},
-	})
 }
 
 func TestIgnoredFiles(t *testing.T) {
