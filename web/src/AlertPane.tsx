@@ -12,6 +12,7 @@ import { Alert } from "./alerts"
 type AlertsProps = {
   resources: Array<Resource>
   handleSendAlert: (alert: Alert) => void
+  featureFlags: { [featureFlag: string]: boolean }
 }
 
 function logToLines(s: string) {
@@ -20,10 +21,12 @@ function logToLines(s: string) {
 
 function alertElements(
   resources: Array<Resource>,
-  handleSendAlert: (alert: Alert) => void
+  handleSendAlert: (alert: Alert) => void,
+  featureFlags: { [featureFlag: string]: boolean }
 ) {
   let formatter = timeAgoFormatter
   let alertElements: Array<JSX.Element> = []
+
   resources.forEach(resource => {
     resource.Alerts.forEach(alert => {
       alertElements.push(
@@ -36,11 +39,14 @@ function alertElements(
             </p>
           </header>
           <section>{logToLines(alert.msg)}</section>
-          <footer>
-            <button onClick={() => handleSendAlert(alert)}>
-              Get Alert Link
-            </button>
-          </footer>
+          {!featureFlags ||
+            (featureFlags && featureFlags.team_alerts && (
+              <footer>
+                <button onClick={() => handleSendAlert(alert)}>
+                  Get Alert Link
+                </button>
+              </footer>
+            ))}
         </li>
       )
     })
@@ -57,7 +63,11 @@ class AlertPane extends PureComponent<AlertsProps> {
       </section>
     )
 
-    let alerts = alertElements(this.props.resources, this.props.handleSendAlert)
+    let alerts = alertElements(
+      this.props.resources,
+      this.props.handleSendAlert,
+      this.props.featureFlags
+    )
     if (alerts.length > 0) {
       el = <ul>{alerts}</ul>
     }

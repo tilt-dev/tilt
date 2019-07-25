@@ -84,9 +84,6 @@ type EngineState struct {
 	AnalyticsOpt           analytics.Opt // changes to this field will propagate into the TiltAnalytics subscriber + we'll record them as user choice
 	AnalyticsNudgeSurfaced bool          // this flag is set the first time we show the analytics nudge to the user.
 
-	// Features should NOT be read. Use the feature package.
-	// This field is only here to trigger rebuilds when features are
-	// toggled in the Tiltfile.
 	Features map[string]bool
 
 	TeamName string

@@ -36,6 +36,7 @@ type HudState = {
     NeedsAnalyticsNudge: boolean
     RunningTiltBuild: TiltBuild
     LatestTiltBuild: TiltBuild
+    FeatureFlags: { [featureFlag: string]: boolean }
   } | null
   IsSidebarClosed: boolean
 }
@@ -86,6 +87,7 @@ class HUD extends Component<HudProps, HudState> {
           Date: "",
           Dev: false,
         },
+        FeatureFlags: {},
       },
       IsSidebarClosed: false,
     }
@@ -160,6 +162,7 @@ class HUD extends Component<HudProps, HudState> {
     let needsNudge = view ? view.NeedsAnalyticsNudge : false
     let message = this.state.Message
     let resources = (view && view.Resources) || []
+    let featureFlags = (view && view.FeatureFlags) || {}
     if (!resources.length) {
       return <LoadingScreen message={message} />
     }
@@ -296,11 +299,16 @@ class HUD extends Component<HudProps, HudState> {
           <AlertPane
             resources={resources}
             handleSendAlert={this.sendAlert.bind(this)}
+            featureFlags={featureFlags}
           />
         )
       }
       return (
-        <AlertPane resources={[]} handleSendAlert={this.sendAlert.bind(this)} />
+        <AlertPane
+          resources={[]}
+          handleSendAlert={this.sendAlert.bind(this)}
+          featureFlags={featureFlags}
+        />
       )
     }
     let runningVersion = view && view.RunningTiltBuild
@@ -382,6 +390,7 @@ class HUD extends Component<HudProps, HudState> {
               <AlertPane
                 resources={resources}
                 handleSendAlert={this.sendAlert.bind(this)}
+                featureFlags={featureFlags}
               />
             )}
           />

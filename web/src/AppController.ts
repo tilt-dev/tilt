@@ -8,7 +8,6 @@ class AppController {
   loadCount: number
   liveSocket: boolean
   tryConnectCount: number
-  // TOOD(dmiller): optional type?
   socket: WebSocket | null = null
   component: HUD
   disposed: boolean = false

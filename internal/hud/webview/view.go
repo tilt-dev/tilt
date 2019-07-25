@@ -136,8 +136,9 @@ type View struct {
 	Resources     []Resource
 	LogTimestamps bool
 
-	SailEnabled bool
-	SailURL     string
+	FeatureFlags map[string]bool
+	SailEnabled  bool
+	SailURL      string
 
 	NeedsAnalyticsNudge bool
 
