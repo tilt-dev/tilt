@@ -19,7 +19,8 @@ import AlertPane from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
 import NotFound from "./NotFound"
-import { getResourceAlerts, numberOfAlerts, Alert } from "./alerts"
+import { numberOfAlerts, Alert } from "./alerts"
+import Features from "./feature"
 
 type HudProps = {
   history: History
@@ -170,6 +171,12 @@ class HUD extends Component<HudProps, HudState> {
     let toggleSidebar = this.toggleSidebar
     let statusItems = resources.map(res => new StatusItem(res))
     let sidebarItems = resources.map(res => new SidebarItem(res))
+    var features: Features
+    if (this.state.View) {
+      features = new Features(this.state.View.FeatureFlags)
+    } else {
+      features = new Features({})
+    }
 
     let sidebarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name = props.match.params.name
@@ -299,7 +306,7 @@ class HUD extends Component<HudProps, HudState> {
           <AlertPane
             resources={resources}
             handleSendAlert={this.sendAlert.bind(this)}
-            featureFlags={featureFlags}
+            teamAlertsIsEnabled={features.isEnabled("team_alerts")}
           />
         )
       }
@@ -307,7 +314,7 @@ class HUD extends Component<HudProps, HudState> {
         <AlertPane
           resources={[]}
           handleSendAlert={this.sendAlert.bind(this)}
-          featureFlags={featureFlags}
+          teamAlertsIsEnabled={features.isEnabled("team_alerts")}
         />
       )
     }
@@ -390,7 +397,7 @@ class HUD extends Component<HudProps, HudState> {
               <AlertPane
                 resources={resources}
                 handleSendAlert={this.sendAlert.bind(this)}
-                featureFlags={featureFlags}
+                teamAlertsIsEnabled={features.isEnabled("team_alerts")}
               />
             )}
           />

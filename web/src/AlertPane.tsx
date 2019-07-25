@@ -12,7 +12,7 @@ import { Alert } from "./alerts"
 type AlertsProps = {
   resources: Array<Resource>
   handleSendAlert: (alert: Alert) => void
-  featureFlags: { [featureFlag: string]: boolean }
+  teamAlertsIsEnabled: boolean
 }
 
 function logToLines(s: string) {
@@ -22,7 +22,7 @@ function logToLines(s: string) {
 function alertElements(
   resources: Array<Resource>,
   handleSendAlert: (alert: Alert) => void,
-  featureFlags: { [featureFlag: string]: boolean }
+  teamAlertsIsEnabled: boolean
 ) {
   let formatter = timeAgoFormatter
   let alertElements: Array<JSX.Element> = []
@@ -39,14 +39,13 @@ function alertElements(
             </p>
           </header>
           <section>{logToLines(alert.msg)}</section>
-          {!featureFlags ||
-            (featureFlags && featureFlags.team_alerts && (
-              <footer>
-                <button onClick={() => handleSendAlert(alert)}>
-                  Get Alert Link
-                </button>
-              </footer>
-            ))}
+          {teamAlertsIsEnabled && (
+            <footer>
+              <button onClick={() => handleSendAlert(alert)}>
+                Get Alert Link
+              </button>
+            </footer>
+          )}
         </li>
       )
     })
@@ -66,7 +65,7 @@ class AlertPane extends PureComponent<AlertsProps> {
     let alerts = alertElements(
       this.props.resources,
       this.props.handleSendAlert,
-      this.props.featureFlags
+      this.props.teamAlertsIsEnabled
     )
     if (alerts.length > 0) {
       el = <ul>{alerts}</ul>

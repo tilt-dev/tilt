@@ -260,6 +260,50 @@ exports[`renders one container unrecognized error 1`] = `
 </section>
 `;
 
+exports[`renders the get alert link button when the feature is enabled 1`] = `
+<section
+  className="AlertPane"
+>
+  <ul>
+    <li
+      className="AlertPane-item"
+    >
+      <header>
+        <p>
+          foo
+        </p>
+        <p>
+          <time
+            dateTime="1949-11-18T09:39:00.000Z"
+            title="1,555,970,585,039"
+          >
+            67yr
+          </time>
+        </p>
+      </header>
+      <section>
+        <code>
+          <span
+            className={null}
+            style={null}
+          >
+            laa dee daa I'm an error
+          </span>
+        </code>
+        <code>
+          <span
+            className={null}
+            style={null}
+          >
+            for real I am
+          </span>
+        </code>
+      </section>
+    </li>
+  </ul>
+</section>
+`;
+
 exports[`renders warnings 1`] = `
 <section
   className="AlertPane"

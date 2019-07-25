@@ -13,6 +13,8 @@ import {
   getResourceAlerts,
 } from "./alerts"
 
+// TODO(Han) fix all the type errors plz D:
+
 beforeEach(() => {
   Date.now = jest.fn(() => 1482363367071)
 })
@@ -217,6 +219,30 @@ it("renders one container unrecognized error", () => {
   let resources = [resource]
 
   const tree = renderer.create(<AlertPane resources={resources} />).toJSON()
+  expect(tree).toMatchSnapshot()
+})
+
+// TODO(Han)
+it("renders the get alert link button when the feature is enabled", () => {
+  const ts = "1,555,970,585,039"
+  let resources: Array<Partial<Resource>> = [
+    {
+      Name: "foo",
+      Alerts: [
+        {
+          alertType: BuildFailedErrorType,
+          msg: "laa dee daa I'm an error\nfor real I am",
+          titleMsg: "",
+          timestamp: ts,
+        },
+      ],
+    },
+  ]
+
+  const tree = renderer
+    .create(<AlertPane resources={resources as Array<Resource>} />)
+    .toJSON()
+
   expect(tree).toMatchSnapshot()
 })
 

@@ -15,6 +15,8 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 )
 
+// TODO(Han) add feature flag test
+
 func TestStateToWebViewMultipleSyncs(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
