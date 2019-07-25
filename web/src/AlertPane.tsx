@@ -11,13 +11,17 @@ import { Alert } from "./alerts"
 
 type AlertsProps = {
   resources: Array<Resource>
+  handleSendAlert: (alert: Alert) => void
 }
 
 function logToLines(s: string) {
   return s.split("\n").map((l, i) => <AnsiLine key={"logLine" + i} line={l} />)
 }
 
-function alertElements(resources: Array<Resource>) {
+function alertElements(
+  resources: Array<Resource>,
+  handleSendAlert: (alert: Alert) => void
+) {
   let formatter = timeAgoFormatter
   let alertElements: Array<JSX.Element> = []
   resources.forEach(resource => {
@@ -32,6 +36,11 @@ function alertElements(resources: Array<Resource>) {
             </p>
           </header>
           <section>{logToLines(alert.msg)}</section>
+          <footer>
+            <button onClick={() => handleSendAlert(alert)}>
+              Get Alert Link
+            </button>
+          </footer>
         </li>
       )
     })
@@ -48,7 +57,7 @@ class AlertPane extends PureComponent<AlertsProps> {
       </section>
     )
 
-    let alerts = alertElements(this.props.resources)
+    let alerts = alertElements(this.props.resources, this.props.handleSendAlert)
     if (alerts.length > 0) {
       el = <ul>{alerts}</ul>
     }

@@ -19,7 +19,7 @@ import AlertPane from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
 import NotFound from "./NotFound"
-import { getResourceAlerts, numberOfAlerts } from "./alerts"
+import { getResourceAlerts, numberOfAlerts, Alert } from "./alerts"
 
 type HudProps = {
   history: History
@@ -38,6 +38,10 @@ type HudState = {
     LatestTiltBuild: TiltBuild
   } | null
   IsSidebarClosed: boolean
+}
+
+type NewAlertResponse = {
+  url: string
 }
 
 // The Main HUD view, as specified in
@@ -128,6 +132,25 @@ class HUD extends Component<HudProps, HudState> {
 
   path(relPath: string) {
     return this.pathBuilder.path(relPath)
+  }
+
+  sendAlert(alert: Alert) {
+    let url = `//${window.location.host}/api/alerts/new`
+    fetch(url, {
+      method: "post",
+      body: JSON.stringify(alert),
+    })
+      .then(res => {
+        res
+          .json()
+          .then((value: NewAlertResponse) => {
+            // TODO(dmiller): maybe set state here in the future
+            debugger
+            window.open(value.url)
+          })
+          .catch(err => console.error(err))
+      })
+      .then(err => console.error(err))
   }
 
   render() {
@@ -269,9 +292,16 @@ class HUD extends Component<HudProps, HudState> {
         return <Route component={NotFound} />
       }
       if (er) {
-        return <AlertPane resources={resources} />
+        return (
+          <AlertPane
+            resources={resources}
+            handleSendAlert={this.sendAlert.bind(this)}
+          />
+        )
       }
-      return <AlertPane resources={[]} />
+      return (
+        <AlertPane resources={[]} handleSendAlert={this.sendAlert.bind(this)} />
+      )
     }
     let runningVersion = view && view.RunningTiltBuild
     let latestVersion = view && view.LatestTiltBuild
@@ -348,7 +378,12 @@ class HUD extends Component<HudProps, HudState> {
           <Route
             exact
             path={this.path("/alerts")}
-            render={() => <AlertPane resources={resources} />}
+            render={() => (
+              <AlertPane
+                resources={resources}
+                handleSendAlert={this.sendAlert.bind(this)}
+              />
+            )}
           />
           <Route exact path={this.path("/preview")} render={previewRoute} />
           <Route exact path={this.path("/r/:name")} render={logsRoute} />

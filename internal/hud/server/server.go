@@ -56,6 +56,7 @@ func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analyti
 	//r.HandleFunc("/api/alerts_notification", s.HandleAlertsNotification)
 	r.HandleFunc("/api/sail", s.HandleSail)
 	r.HandleFunc("/api/trigger", s.HandleTrigger)
+	r.HandleFunc("/api/alerts/new", s.HandleNewAlert)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
 	r.PathPrefix("/").Handler(assetServer)
 
@@ -218,4 +219,26 @@ func MaybeSendToTriggerQueue(st store.RStore, name string) error {
 
 	st.Dispatch(AppendToTriggerQueueAction{Name: mName})
 	return nil
+}
+
+type NewAlertResponse struct {
+	Url string `json:"url"`
+}
+
+func (s *HeadsUpServer) HandleNewAlert(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		http.Error(w, "must be POST request", http.StatusBadRequest)
+		return
+	}
+
+	responsePayload := &NewAlertResponse{
+		Url: "http://www.something.com",
+	}
+	js, err := json.Marshal(responsePayload)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("unable to marshal JSON (%+v) response: %v", responsePayload, err), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(js)
 }
