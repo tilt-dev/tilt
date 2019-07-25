@@ -133,7 +133,7 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 func populateContainers(ctx context.Context, manifest model.Manifest, podInfo *store.Pod, pod *v1.Pod) {
 	blessedCID, err := getBlessedContainerID(manifest.ImageTargets, pod)
 	if err != nil {
-		logger.Get(ctx).Debugf("Populating containers for pod: %v", err)
+		logger.Get(ctx).Debugf(err.Error())
 		return
 	}
 
@@ -141,65 +141,71 @@ func populateContainers(ctx context.Context, manifest model.Manifest, podInfo *s
 	podInfo.Containers = nil
 
 	for _, cStatus := range pod.Status.ContainerStatuses {
-		if cStatus.Name == sidecar.SyncletContainerName {
-			// We don't want logs, status, etc. for the Tilt synclet.
+		c, err := containerForStatus(ctx, manifest, podInfo, pod, cStatus, blessedCID)
+		if err != nil {
+			logger.Get(ctx).Debugf(err.Error())
 			continue
 		}
 
-		cName := k8s.ContainerNameFromContainerStatus(cStatus)
-
-		cID, err := k8s.ContainerIDFromContainerStatus(cStatus)
-		if err != nil {
-			logger.Get(ctx).Debugf("Error parsing container ID: %v", err)
-			return
+		if !c.Empty() {
+			podInfo.Containers = append(podInfo.Containers, c)
 		}
-
-		cRef, err := container.ParseNamed(cStatus.Image)
-		if err != nil {
-			logger.Get(ctx).Debugf("Error parsing container image ID: %v", err)
-			return
-		}
-
-		ports := make([]int32, 0)
-		cSpec := k8s.ContainerSpecOf(pod, cStatus)
-		for _, cPort := range cSpec.Ports {
-			ports = append(ports, cPort.ContainerPort)
-		}
-
-		forwards := PopulatePortForwards(manifest, *podInfo)
-		if len(forwards) < len(manifest.K8sTarget().PortForwards) {
-			logger.Get(ctx).Infof(
-				"WARNING: Resource %s is using port forwards, but no container ports on pod %s",
-				manifest.Name, podInfo.PodID)
-		}
-
-		fmt.Printf("Container %s (%s) is blessed? %t\n", cName, cID, cID == blessedCID)
-		c := store.Container{
-			Name:     cName,
-			ID:       cID,
-			Ports:    ports,
-			Ready:    cStatus.Ready,
-			ImageRef: cRef,
-			Restarts: cStatus.RestartCount,
-			Blessed:  cID == blessedCID,
-		}
-		podInfo.Containers = append(podInfo.Containers, c)
 	}
 }
 
+func containerForStatus(ctx context.Context, manifest model.Manifest, podInfo *store.Pod, pod *v1.Pod,
+	cStatus v1.ContainerStatus, blessedCID container.ID) (store.Container, error) {
+	if cStatus.Name == sidecar.SyncletContainerName {
+		// We don't want logs, status, etc. for the Tilt synclet.
+		return store.Container{}, nil
+	}
+
+	cName := k8s.ContainerNameFromContainerStatus(cStatus)
+
+	cID, err := k8s.ContainerIDFromContainerStatus(cStatus)
+	if err != nil {
+		return store.Container{}, errors.Wrap(err, "Error parsing container ID")
+	}
+
+	cRef, err := container.ParseNamed(cStatus.Image)
+	if err != nil {
+		return store.Container{}, errors.Wrap(err, "Error parsing container image ID")
+
+	}
+
+	ports := make([]int32, 0)
+	cSpec := k8s.ContainerSpecOf(pod, cStatus)
+	for _, cPort := range cSpec.Ports {
+		ports = append(ports, cPort.ContainerPort)
+	}
+
+	forwards := PopulatePortForwards(manifest, *podInfo)
+	if len(forwards) < len(manifest.K8sTarget().PortForwards) {
+		logger.Get(ctx).Infof(
+			"WARNING: Resource %s is using port forwards, but no container ports on pod %s",
+			manifest.Name, podInfo.PodID)
+	}
+
+	return store.Container{
+		Name:     cName,
+		ID:       cID,
+		Ports:    ports,
+		Ready:    cStatus.Ready,
+		ImageRef: cRef,
+		Restarts: cStatus.RestartCount,
+		Blessed:  cID == blessedCID,
+	}, nil
+}
 func getBlessedContainerID(iTargets []model.ImageTarget, pod *v1.Pod) (container.ID, error) {
 	if len(iTargets) > 0 {
-		fmt.Println("~~~ GETTING BLESSED CONTAINER ID ~~~")
 		// Get status of (first) container matching (an) image we built for this manifest.
 		for _, iTarget := range iTargets {
 			cStatus, err := k8s.ContainerMatching(pod, container.NameSelector(iTarget.DeploymentRef))
 			if err != nil {
-				fmt.Println("~~~ Something went wrong!")
 				return "", errors.Wrapf(err, "Error matching container for target: %s",
 					iTarget.DeploymentRef.String())
 			}
 			if cStatus.Name != "" {
-				fmt.Println("~~~ Got it!", cStatus.ContainerID)
 				return k8s.NormalizeContainerID(cStatus.ContainerID)
 			}
 		}

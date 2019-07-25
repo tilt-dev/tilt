@@ -545,10 +545,8 @@ type Container struct {
 	Blessed bool
 }
 
-// The minimum info we need to retrieve logs for a container.
-type ContainerInfo struct {
-	ID container.ID
-	container.Name
+func (c Container) Empty() bool {
+	return c.Name == "" && c.ID == ""
 }
 
 func (p Pod) Empty() bool {
