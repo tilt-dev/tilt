@@ -133,7 +133,7 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 func populateContainers(ctx context.Context, manifest model.Manifest, podInfo *store.Pod, pod *v1.Pod) {
 	blessedCID, err := getBlessedContainerID(manifest.ImageTargets, pod)
 	if err != nil {
-		logger.Get(ctx).Debugf(err.Error())
+		logger.Get(ctx).Debugf("Getting blessed container ID: %v", err)
 		return
 	}
 
