@@ -240,9 +240,9 @@ func TestImageIsDirtyAfterContainerBuild(t *testing.T) {
 	manifest := NewSanchoDockerBuildManifest(f)
 	iTargetID1 := manifest.ImageTargets[0].ID()
 	result1 := store.BuildResult{
-		TargetID:    iTargetID1,
-		Image:       container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"),
-		ContainerID: container.ID("12345"),
+		TargetID:     iTargetID1,
+		Image:        container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"),
+		ContainerIDs: []container.ID{container.ID("12345")},
 	}
 
 	stateSet := store.BuildStateSet{

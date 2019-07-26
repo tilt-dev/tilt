@@ -129,7 +129,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	for _, iTarget := range iTargets {
 		if isImageDeployedToDC(iTarget, dcTarget) {
 			result := results[iTarget.ID()]
-			result.ContainerID = cid
+			result.ContainerIDs = []container.ID{cid}
 			results[iTarget.ID()] = result
 		}
 	}
