@@ -543,7 +543,7 @@ func (s *tiltfileState) isWorkload(e k8s.K8sEntity) (bool, error) {
 
 	images, err := e.FindImages(s.imageJSONPaths(e), s.envVarImages())
 	if err != nil {
-		return false, err
+		return false, errors.Wrapf(err, "finding images in %s", e.Name())``
 	} else {
 		return len(images) > 0, nil
 	}
