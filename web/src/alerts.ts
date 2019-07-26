@@ -118,7 +118,7 @@ function buildFailedAlert(resource: Resource): Alert {
     alertType: BuildFailedErrorType,
     titleMsg: "Build error",
     msg: msg,
-    timestamp: resource.ResourceInfo.PodCreationTime,
+    timestamp: resource.BuildHistory[0].FinishTime,
   }
 }
 function warningsAlerts(resource: Resource): Array<Alert> {
