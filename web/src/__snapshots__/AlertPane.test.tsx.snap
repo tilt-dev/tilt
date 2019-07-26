@@ -15,14 +15,14 @@ exports[`renders multiple lines of a crash log 1`] = `
         <p>
           Pod crashed
         </p>
-        <p>
+        <time>
           <time
             dateTime="1949-11-18T09:39:00.000Z"
             title="1,555,970,585,039"
           >
             67yr
           </time>
-        </p>
+        </time>
       </header>
       <section>
         <code>
@@ -76,14 +76,14 @@ exports[`renders one container start error 1`] = `
         <p>
           foo
         </p>
-        <p>
+        <time>
           <time
             dateTime="1949-11-18T09:39:00.000Z"
             title="1,555,970,585,039"
           >
             67yr
           </time>
-        </p>
+        </time>
       </header>
       <section>
         <code>
@@ -112,14 +112,14 @@ exports[`renders one container start error 2`] = `
         <p>
           foo
         </p>
-        <p>
+        <time>
           <time
             dateTime="1949-11-18T09:39:00.000Z"
             title="1,555,970,585,039"
           >
             67yr
           </time>
-        </p>
+        </time>
       </header>
       <section>
         <code>
@@ -148,14 +148,14 @@ exports[`renders one container unrecognized error 1`] = `
         <p>
           vigoda
         </p>
-        <p>
+        <time>
           <time
             dateTime="2016-12-21T23:36:07.071Z"
             title="2016-12-21 23:36"
           >
             &lt;5s
           </time>
-        </p>
+        </time>
       </header>
       <section>
         <code>
@@ -238,14 +238,14 @@ exports[`renders warnings 1`] = `
         <p>
           Pod crashed
         </p>
-        <p>
+        <time>
           <time
             dateTime="1949-11-18T09:39:00.000Z"
             title="1,555,970,585,039"
           >
             67yr
           </time>
-        </p>
+        </time>
       </header>
       <section>
         <code>
@@ -268,14 +268,14 @@ exports[`renders warnings 1`] = `
         <p>
           foo
         </p>
-        <p>
+        <time>
           <time
             dateTime="1949-11-18T09:39:00.000Z"
             title="1,555,970,585,039"
           >
             67yr
           </time>
-        </p>
+        </time>
       </header>
       <section>
         <code>
@@ -307,14 +307,14 @@ exports[`shows that a container has restarted 1`] = `
         <p>
           Restarts: 1
         </p>
-        <p>
+        <time>
           <time
             dateTime="1949-11-18T09:39:00.000Z"
             title="1,555,970,585,039"
           >
             67yr
           </time>
-        </p>
+        </time>
       </header>
       <section>
         <code>
@@ -346,14 +346,14 @@ exports[`shows that a crash rebuild has occurred 1`] = `
         <p>
           Pod crashed
         </p>
-        <p>
+        <time>
           <time
             dateTime="1949-11-18T09:39:00.000Z"
             title="1,555,970,585,039"
           >
             67yr
           </time>
-        </p>
+        </time>
       </header>
       <section>
         <code>

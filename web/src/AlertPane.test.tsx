@@ -231,8 +231,9 @@ it("renders the get alert link button when the feature is enabled", () => {
         {
           alertType: BuildFailedErrorType,
           msg: "laa dee daa I'm an error\nfor real I am",
-          titleMsg: "",
+          header: "",
           timestamp: ts,
+          resourceName: "foo",
         },
       ],
     },

@@ -93,12 +93,12 @@ function podStatusIsErrAlert(resource: Resource): Alert {
 
 function podRestartAlert(resource: Resource): Alert {
   let msg = resource.CrashLog || ""
-  let titleMsg = "Restarts: "
-  titleMsg = titleMsg.concat(resource.ResourceInfo.PodRestarts.toString())
+  let header = "Restarts: "
+  header = header.concat(resource.ResourceInfo.PodRestarts.toString())
 
   return {
     alertType: PodRestartErrorType,
-    header: titleMsg,
+    header: header,
     msg: msg,
     timestamp: resource.ResourceInfo.PodCreationTime,
     resourceName: resource.Name,
