@@ -19,7 +19,7 @@ import AlertPane from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
 import NotFound from "./NotFound"
-import { getResourceAlerts, hasAlert, numberOfAlerts } from "./alerts"
+import { numberOfAlerts } from "./alerts"
 
 type HudProps = {
   history: History
