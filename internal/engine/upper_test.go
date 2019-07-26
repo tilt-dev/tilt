@@ -150,7 +150,9 @@ func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deploy
 		containerID = container.ID(fmt.Sprintf("dc-%s", path.Base(named.Name())))
 	}
 	result := store.NewImageBuildResult(iTarget.ID(), nt)
-	result.ContainerIDs = []container.ID{containerID}
+	if containerID != "" {
+		result.ContainerIDs = []container.ID{containerID}
+	}
 	return result
 }
 
