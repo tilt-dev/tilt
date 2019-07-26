@@ -372,7 +372,7 @@ func TestMaybeSendToTriggerQueue_notManualManifest(t *testing.T) {
 func TestHandleNewAlert(t *testing.T) {
 	f := newTestFixture(t)
 
-	var jsonStr = []byte(`{"alertType": "build", "msg": "test", "timestamp": "2019-04-22T11:00:01-04:00", "tilteMsg": ""}`)
+	var jsonStr = []byte(`{"alertType": "build", "msg": "test", "timestamp": "2019-04-22T11:00:01-04:00", "header": "", "resourceName": "doggos"}`)
 	req, err := http.NewRequest(http.MethodPost, "/api/alerts/new", bytes.NewBuffer(jsonStr))
 	if err != nil {
 		t.Fatal(err)

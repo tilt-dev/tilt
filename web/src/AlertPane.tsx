@@ -33,10 +33,10 @@ function alertElements(
         <li key={alert.alertType + resource.Name} className="AlertPane-item">
           <header>
             <p>{resource.Name}</p>
-            {alert.titleMsg != "" && <p>{alert.titleMsg}</p>}
-            <p>
+            {alert.header != "" && <p>{alert.header}</p>}
+            <time>
               <TimeAgo date={alert.timestamp} formatter={formatter} />
-            </p>
+            </time>
           </header>
           <section>{logToLines(alert.msg)}</section>
           {teamAlertsIsEnabled && (

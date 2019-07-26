@@ -265,18 +265,19 @@ func templateAlertURL(id tft.AlertID) string {
 }
 
 type tsAlert struct {
-	AlertType string `json:"alertType"`
-	Msg       string `json:"msg"`
-	Timestamp string `json:"timestamp"`
-	TitleMsg  string `json:"titleMsg"`
+	AlertType    string `json:"alertType"`
+	Header       string `json:"header"`
+	Msg          string `json:"msg"`
+	Timestamp    string `json:"timestamp"`
+	ResourceName string `json:"resourceName"`
 }
 
 func tsAlertToBackendAlert(alert tsAlert) tft.Alert {
 	return tft.Alert{
 		AlertType:    alert.AlertType,
+		Header:       alert.Header,
 		Msg:          alert.Msg,
 		RFC3339Time:  alert.Timestamp,
-		ResourceName: "", //TODO(Han)
-		Header:       alert.TitleMsg,
+		ResourceName: alert.ResourceName,
 	}
 }
