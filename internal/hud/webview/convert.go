@@ -13,7 +13,6 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 )
 
-// TODO(Han) add feature flags to here
 func StateToWebView(s store.EngineState) View {
 	ret := View{}
 
