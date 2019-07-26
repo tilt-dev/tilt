@@ -327,11 +327,11 @@ func buildStateSet(manifest model.Manifest, specs []model.TargetSpec, ms *store.
 			iTarget, ok := spec.(model.ImageTarget)
 			if ok {
 				if manifest.IsK8s() {
-					buildState = buildState.WithDeployTarget(store.NewDeployInfo(iTarget, ms.DeployID, ms.PodSet))
+					buildState = buildState.WithRunningContainers(store.RunningContainersForTarget(iTarget, ms.DeployID, ms.PodSet))
 				}
 
 				if manifest.IsDC() {
-					buildState = buildState.WithDeployTarget(store.NewDeployInfoFromDC(ms.DCResourceState()))
+					buildState = buildState.WithRunningContainers(store.RunningContainersForDC(ms.DCResourceState()))
 				}
 			}
 		}

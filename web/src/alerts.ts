@@ -122,7 +122,7 @@ function buildFailedAlert(resource: Resource): Alert {
     alertType: BuildFailedErrorType,
     header: "Build error",
     msg: msg,
-    timestamp: resource.ResourceInfo.PodCreationTime,
+    timestamp: resource.BuildHistory[0].FinishTime,
     resourceName: resource.Name,
   }
 }
@@ -154,4 +154,5 @@ export {
   buildFailedAlert,
   crashRebuildAlert,
   podRestartAlert,
+  hasAlert,
 }

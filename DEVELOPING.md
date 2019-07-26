@@ -250,9 +250,9 @@ determine "latest"). Check the current releases to figure out what the latest
 release ought to be.
 
 After updating the release notes,
-update [the docs](https://github.com/windmilleng/tilt.build/tree/master/docs/install.md),
-[the default dev version](internal/cli/build.go),
-and [the installer version](scripts/install.sh).
+update the [install](https://github.com/windmilleng/tilt.build/tree/master/docs/install.md) and [upgrade](https://github.com/windmilleng/tilt.build/blob/master/docs/upgrade.md) docs,
+the [default dev version](internal/cli/build.go),
+and the [installer version](scripts/install.sh).
 
 ### Version numbers
 Our rule of thumb pre 1.0 is only bump the minor version if you would write a blog post about it. (We haven't always followed this rule, but we'd like to start!)

@@ -303,19 +303,12 @@ class HUD extends Component<HudProps, HudState> {
       if (er) {
         return (
           <AlertPane
-            resources={resources}
+            resources={[er]}
             handleSendAlert={this.sendAlert.bind(this)}
             teamAlertsIsEnabled={features.isEnabled("team_alerts")}
           />
         )
       }
-      return (
-        <AlertPane
-          resources={[]}
-          handleSendAlert={this.sendAlert.bind(this)}
-          teamAlertsIsEnabled={features.isEnabled("team_alerts")}
-        />
-      )
     }
     let runningVersion = view && view.RunningTiltBuild
     let latestVersion = view && view.LatestTiltBuild

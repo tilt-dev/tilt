@@ -40,8 +40,7 @@ type dockerImageBuilder struct {
 
 type ImageBuilder interface {
 	BuildDockerfile(ctx context.Context, ps *PipelineState, ref reference.Named, df dockerfile.Dockerfile, buildPath string, filter model.PathMatcher, buildArgs map[string]string) (reference.NamedTagged, error)
-	BuildImageFromScratch(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile, syncs []model.Sync, filter model.PathMatcher, runs []model.Run, entrypoint model.Cmd) (reference.NamedTagged, error)
-	BuildImageFromExisting(ctx context.Context, ps *PipelineState, existing reference.NamedTagged, paths []PathMapping, filter model.PathMatcher, runs []model.Run) (reference.NamedTagged, error)
+	BuildImage(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile, syncs []model.Sync, filter model.PathMatcher, runs []model.Run, entrypoint model.Cmd) (reference.NamedTagged, error)
 	PushImage(ctx context.Context, name reference.NamedTagged, writer io.Writer) (reference.NamedTagged, error)
 	TagImage(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
 	ImageExists(ctx context.Context, ref reference.NamedTagged) (bool, error)
@@ -73,11 +72,11 @@ func (d *dockerImageBuilder) BuildDockerfile(ctx context.Context, ps *PipelineSt
 	return d.buildFromDf(ctx, ps, df, paths, filter, ref, buildArgs)
 }
 
-func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile,
+func (d *dockerImageBuilder) BuildImage(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile,
 	syncs []model.Sync, filter model.PathMatcher,
 	runs []model.Run, entrypoint model.Cmd) (reference.NamedTagged, error) {
 
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildImageFromScratch")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildImage")
 	defer span.Finish()
 
 	hasEntrypoint := !entrypoint.Empty()
@@ -86,7 +85,7 @@ func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ps *Pipe
 	df := baseDockerfile
 	df, runs, err := d.addConditionalRuns(df, runs, paths)
 	if err != nil {
-		return nil, errors.Wrapf(err, "BuildImageFromScratch")
+		return nil, errors.Wrapf(err, "BuildImage")
 	}
 
 	df = df.AddAll()
@@ -97,25 +96,6 @@ func (d *dockerImageBuilder) BuildImageFromScratch(ctx context.Context, ps *Pipe
 
 	df = d.applyLabels(df, BuildModeScratch)
 	return d.buildFromDf(ctx, ps, df, paths, filter, ref, model.DockerBuildArgs{})
-}
-
-func (d *dockerImageBuilder) BuildImageFromExisting(ctx context.Context, ps *PipelineState, existing reference.NamedTagged,
-	paths []PathMapping, filter model.PathMatcher, runs []model.Run) (reference.NamedTagged, error) {
-
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-BuildImageFromExisting")
-	defer span.Finish()
-
-	df := d.applyLabels(dockerfile.FromExisting(existing), BuildModeExisting)
-
-	// Don't worry about conditional runs on incremental builds, they've
-	// already handled by the watch loop.
-	df, err := d.addSyncedAndRemovedFiles(ctx, df, paths)
-	if err != nil {
-		return nil, errors.Wrap(err, "BuildImageFromExisting")
-	}
-
-	df = d.addRemainingRuns(df, runs)
-	return d.buildFromDf(ctx, ps, df, paths, filter, existing, model.DockerBuildArgs{})
 }
 
 func (d *dockerImageBuilder) applyLabels(df dockerfile.Dockerfile, buildMode dockerfile.LabelValue) dockerfile.Dockerfile {

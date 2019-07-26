@@ -17,7 +17,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 )
 
-var TestDeployInfo = store.DeployInfo{
+var TestContainerInfo = store.ContainerInfo{
 	PodID:         "somepod",
 	ContainerID:   docker.TestContainer,
 	ContainerName: "my-container",
@@ -29,7 +29,7 @@ func TestUpdateInContainerCopiesAndRmsFiles(t *testing.T) {
 
 	archive := bytes.NewBuffer([]byte("hello world"))
 	toDelete := []string{"/src/does-not-exist"}
-	err := f.dcu.UpdateContainer(f.ctx, TestDeployInfo, archive, toDelete, nil, false)
+	err := f.dcu.UpdateContainer(f.ctx, TestContainerInfo, archive, toDelete, nil, false)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestUpdateContainerExecsRuns(t *testing.T) {
 	cmdA := model.Cmd{Argv: []string{"a"}}
 	cmdB := model.Cmd{Argv: []string{"cu", "and cu", "another cu"}}
 
-	err := f.dcu.UpdateContainer(f.ctx, TestDeployInfo, nil, nil, []model.Cmd{cmdA, cmdB}, false)
+	err := f.dcu.UpdateContainer(f.ctx, TestContainerInfo, nil, nil, []model.Cmd{cmdA, cmdB}, false)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func TestUpdateContainerExecsRuns(t *testing.T) {
 func TestUpdateContainerRestartsContainer(t *testing.T) {
 	f := newDCUFixture(t)
 
-	err := f.dcu.UpdateContainer(f.ctx, TestDeployInfo, nil, nil, nil, false)
+	err := f.dcu.UpdateContainer(f.ctx, TestContainerInfo, nil, nil, nil, false)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -79,7 +79,7 @@ func TestUpdateContainerRestartsContainer(t *testing.T) {
 func TestUpdateContainerHotReloadDoesNotRestartContainer(t *testing.T) {
 	f := newDCUFixture(t)
 
-	err := f.dcu.UpdateContainer(f.ctx, TestDeployInfo, nil, nil, nil, true)
+	err := f.dcu.UpdateContainer(f.ctx, TestContainerInfo, nil, nil, nil, true)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestUpdateContainerKillTask(t *testing.T) {
 	f.dCli.ExecErrorToThrow = docker.ExitError{ExitCode: build.TaskKillExitCode}
 
 	cmdA := model.Cmd{Argv: []string{"cat"}}
-	err := f.dcu.UpdateContainer(f.ctx, TestDeployInfo, nil, nil, []model.Cmd{cmdA}, false)
+	err := f.dcu.UpdateContainer(f.ctx, TestContainerInfo, nil, nil, []model.Cmd{cmdA}, false)
 	msg := "killed by container engine"
 	if err == nil || !strings.Contains(err.Error(), msg) {
 		f.t.Errorf("Expected error %q, actual: %v", msg, err)

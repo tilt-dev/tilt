@@ -56,43 +56,18 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 
 		go icb.maybeCreateCacheFrom(ctx, cacheInputs, ref, state, iTarget, cacheRef)
 	case model.FastBuild:
-		if !state.HasImage() || icb.updateMode == UpdateModeNaive {
-			// No existing image to build off of, need to build from scratch
-			ps.StartPipelineStep(ctx, "Building from scratch: [%s]", userFacingRefName)
-			defer ps.EndPipelineStep(ctx)
+		ps.StartPipelineStep(ctx, "Building from scratch: [%s]", userFacingRefName)
+		defer ps.EndPipelineStep(ctx)
 
-			df := icb.baseDockerfile(bd, cacheRef, iTarget.CachePaths())
-			runs := bd.Runs
-			ref, err := icb.ib.BuildImageFromScratch(ctx, ps, refToBuild, df, bd.Syncs, ignore.CreateBuildContextFilter(iTarget), runs, bd.Entrypoint)
+		df := icb.baseDockerfile(bd, cacheRef, iTarget.CachePaths())
+		runs := bd.Runs
+		ref, err := icb.ib.BuildImage(ctx, ps, refToBuild, df, bd.Syncs, ignore.CreateBuildContextFilter(iTarget), runs, bd.Entrypoint)
 
-			if err != nil {
-				return nil, err
-			}
-			n = ref
-			go icb.maybeCreateCacheFrom(ctx, cacheInputs, ref, state, iTarget, cacheRef)
-
-		} else {
-			// We have an existing image, can do an iterative build
-			changed, err := state.FilesChangedSinceLastResultImage()
-			if err != nil {
-				return nil, err
-			}
-
-			cf, err := build.FilesToPathMappings(changed, bd.Syncs)
-			if err != nil {
-				return nil, err
-			}
-
-			ps.StartPipelineStep(ctx, "Building from existing: [%s]", userFacingRefName)
-			defer ps.EndPipelineStep(ctx)
-
-			runs := bd.Runs
-			ref, err := icb.ib.BuildImageFromExisting(ctx, ps, state.LastResult.Image, cf, ignore.CreateBuildContextFilter(iTarget), runs)
-			if err != nil {
-				return nil, err
-			}
-			n = ref
+		if err != nil {
+			return nil, err
 		}
+		n = ref
+		go icb.maybeCreateCacheFrom(ctx, cacheInputs, ref, state, iTarget, cacheRef)
 	case model.CustomBuild:
 		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", userFacingRefName)
 		defer ps.EndPipelineStep(ctx)

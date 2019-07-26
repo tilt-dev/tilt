@@ -20,70 +20,8 @@ beforeEach(() => {
 })
 
 it("renders no errors", () => {
-  let resources: Array<Partial<Resource>> = [
-    {
-      Name: "foo",
-      Alerts: [],
-    },
-  ]
-
-  const tree = renderer
-    .create(
-      <AlertPane
-        resources={resources as Array<Resource>}
-        handleSendAlert={fakeSendAlert}
-        teamAlertsIsEnabled={false}
-      />
-    )
-    .toJSON()
-
-  expect(tree).toMatchSnapshot()
-})
-
-it("renders one build error", () => {
-  const ts = "1,555,970,585,039"
-  let resources: Array<Partial<Resource>> = [
-    {
-      Name: "foo",
-      Alerts: [
-        {
-          alertType: BuildFailedErrorType,
-          msg: "laa dee daa I'm an error\nfor real I am",
-          titleMsg: "",
-          timestamp: ts,
-        },
-      ],
-    },
-  ]
-
-  const tree = renderer
-    .create(
-      <AlertPane
-        resources={resources as Array<Resource>}
-        handleSendAlert={fakeSendAlert}
-        teamAlertsIsEnabled={false}
-      />
-    )
-    .toJSON()
-
-  expect(tree).toMatchSnapshot()
-})
-
-it("renders a build with an error", () => {
-  const ts = "1,555,970,585,039"
-  let resources: Array<Partial<Resource>> = [
-    {
-      Name: "foo",
-      Alerts: [
-        {
-          alertType: BuildFailedErrorType,
-          msg: "laa dee daa I'm an error\nfor real I am",
-          titleMsg: "",
-          timestamp: ts,
-        },
-      ],
-    },
-  ]
+  let resource = fillResourceFields()
+  let resources = [resource]
 
   const tree = renderer
     .create(

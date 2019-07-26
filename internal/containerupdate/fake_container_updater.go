@@ -15,21 +15,21 @@ type FakeContainerUpdater struct {
 }
 
 type UpdateContainerCall struct {
-	DeployInfo store.DeployInfo
-	Archive    io.Reader
-	ToDelete   []string
-	Cmds       []model.Cmd
-	HotReload  bool
+	ContainerInfo store.ContainerInfo
+	Archive       io.Reader
+	ToDelete      []string
+	Cmds          []model.Cmd
+	HotReload     bool
 }
 
-func (cu *FakeContainerUpdater) UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,
+func (cu *FakeContainerUpdater) UpdateContainer(ctx context.Context, cInfo store.ContainerInfo,
 	archiveToCopy io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
 	cu.Calls = append(cu.Calls, UpdateContainerCall{
-		DeployInfo: deployInfo,
-		Archive:    archiveToCopy,
-		ToDelete:   filesToDelete,
-		Cmds:       cmds,
-		HotReload:  hotReload,
+		ContainerInfo: cInfo,
+		Archive:       archiveToCopy,
+		ToDelete:      filesToDelete,
+		Cmds:          cmds,
+		HotReload:     hotReload,
 	})
 
 	err := cu.UpdateErr

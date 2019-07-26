@@ -50,6 +50,7 @@ describe("getResourceAlerts", () => {
     r.BuildHistory = [
       {
         Log: "Build error log",
+        FinishTime: "10:00AM",
       },
       {
         Log: "Build error 2",
@@ -60,7 +61,7 @@ describe("getResourceAlerts", () => {
       {
         alertType: BuildFailedErrorType,
         msg: "Build error log",
-        timestamp: "",
+        timestamp: "10:00AM",
         titleMsg: "Build error",
       },
     ]
@@ -70,6 +71,7 @@ describe("getResourceAlerts", () => {
   it("should show a crash rebuild alert  using the first build info", () => {
     let r: Resource = emptyResource()
     r.CrashLog = "Hello I am a crash log"
+    r.ResourceInfo.PodCreationTime = "10:00AM"
     r.BuildHistory = [
       {
         Log: "Hello I am a log",
@@ -87,7 +89,7 @@ describe("getResourceAlerts", () => {
       {
         alertType: CrashRebuildErrorType,
         msg: "Hello I am a crash log",
-        timestamp: "",
+        timestamp: "10:00AM",
         titleMsg: "Pod crashed",
       },
     ]
@@ -123,10 +125,13 @@ describe("getResourceAlerts", () => {
   it("should show a pod restart alert and a build failed alert", () => {
     let r: Resource = emptyResource()
     r.ResourceInfo.PodRestarts = 1 // triggers pod restart alert
+    r.CrashLog = "I'm a pod that crashed"
+    r.ResourceInfo.PodCreationTime = "10:00AM"
     r.BuildHistory = [
       // triggers build failed alert
       {
         Log: "Build error log",
+        FinishTime: "10:00AM",
       },
       {
         Log: "Build error 2",
@@ -136,14 +141,14 @@ describe("getResourceAlerts", () => {
     let expectedAlerts: Array<Alert> = [
       {
         alertType: PodRestartErrorType,
-        msg: "",
-        timestamp: "",
+        msg: "I'm a pod that crashed",
+        timestamp: "10:00AM",
         titleMsg: "Restarts: 1",
       },
       {
         alertType: BuildFailedErrorType,
         msg: "Build error log",
-        timestamp: "",
+        timestamp: "10:00AM",
         titleMsg: "Build error",
       },
     ]
@@ -172,7 +177,7 @@ describe("getResourceAlerts", () => {
       {
         alertType: BuildFailedErrorType,
         msg: "Build failed log",
-        timestamp: "",
+        timestamp: "10:00am",
         titleMsg: "Build error",
       },
       {
