@@ -148,7 +148,6 @@ class HUD extends Component<HudProps, HudState> {
           .json()
           .then((value: NewAlertResponse) => {
             // TODO(dmiller): maybe set state here in the future
-            debugger
             window.open(value.url)
           })
           .catch(err => console.error(err))

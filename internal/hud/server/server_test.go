@@ -368,6 +368,28 @@ func TestMaybeSendToTriggerQueue_notManualManifest(t *testing.T) {
 	store.AssertNoActionOfType(t, reflect.TypeOf(server.AppendToTriggerQueueAction{}), f.getActions)
 }
 
+func TestHandleNewAlert(t *testing.T) {
+	f := newTestFixture(t)
+
+	var jsonStr = []byte(`{"alertType": "build", "msg": "test", "timestamp": "2019-04-22T11:00:01-04:00", "tilteMsg": ""}`)
+	req, err := http.NewRequest(http.MethodPost, "/api/alerts/new", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.serv.HandleNewAlert)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+	assert.Contains(t, rr.Body.String(), "http://www.something.com")
+}
+
 type serverFixture struct {
 	t          *testing.T
 	serv       *server.HeadsUpServer

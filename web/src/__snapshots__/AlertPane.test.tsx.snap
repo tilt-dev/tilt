@@ -299,6 +299,13 @@ exports[`renders the get alert link button when the feature is enabled 1`] = `
           </span>
         </code>
       </section>
+      <footer>
+        <button
+          onClick={[Function]}
+        >
+          Get Alert Link
+        </button>
+      </footer>
     </li>
   </ul>
 </section>

@@ -19,6 +19,8 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 )
 
+const TiltAlertsDomain = "alerts.tilt.dev"
+
 type analyticsPayload struct {
 	Verb string            `json:"verb"`
 	Name string            `json:"name"`
@@ -231,8 +233,11 @@ func (s *HeadsUpServer) HandleNewAlert(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
+	// TODO(dmiller): actually make request to alerts backend
+
+	id := ""
 	responsePayload := &NewAlertResponse{
-		Url: "http://www.something.com",
+		Url: templateAlertURL(id),
 	}
 	js, err := json.Marshal(responsePayload)
 	if err != nil {
@@ -241,4 +246,8 @@ func (s *HeadsUpServer) HandleNewAlert(w http.ResponseWriter, req *http.Request)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(js)
+}
+
+func templateAlertURL(id string) string {
+	return fmt.Sprintf("http://%s/%s", TiltAlertsDomain, id)
 }
