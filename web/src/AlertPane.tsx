@@ -7,7 +7,7 @@ import { zeroTime } from "./time"
 import { Build, Resource, ResourceInfo } from "./types"
 import { timeAgoFormatter } from "./timeFormatters"
 import { podStatusIsCrash, podStatusIsError } from "./constants"
-import { Alert } from "./alerts"
+import { Alert, hasAlert } from "./alerts"
 
 type AlertsProps = {
   resources: Array<Resource>
@@ -20,7 +20,9 @@ function logToLines(s: string) {
 function alertElements(resources: Array<Resource>) {
   let formatter = timeAgoFormatter
   let alertElements: Array<JSX.Element> = []
-  resources.forEach(resource => {
+
+  let alertResources = resources.filter(r => hasAlert(r))
+  alertResources.forEach(resource => {
     resource.Alerts.forEach(alert => {
       alertElements.push(
         <li key={alert.alertType + resource.Name} className="AlertPane-item">

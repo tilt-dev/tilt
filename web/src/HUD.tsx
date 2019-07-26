@@ -19,7 +19,7 @@ import AlertPane from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
 import NotFound from "./NotFound"
-import { getResourceAlerts, numberOfAlerts } from "./alerts"
+import { getResourceAlerts, hasAlert, numberOfAlerts } from "./alerts"
 
 type HudProps = {
   history: History
@@ -269,9 +269,8 @@ class HUD extends Component<HudProps, HudState> {
         return <Route component={NotFound} />
       }
       if (er) {
-        return <AlertPane resources={resources} />
+        return <AlertPane resources={[er]} />
       }
-      return <AlertPane resources={[]} />
     }
     let runningVersion = view && view.RunningTiltBuild
     let latestVersion = view && view.LatestTiltBuild

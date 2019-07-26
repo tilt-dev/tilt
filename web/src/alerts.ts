@@ -148,4 +148,5 @@ export {
   buildFailedAlert,
   crashRebuildAlert,
   podRestartAlert,
+  hasAlert,
 }
