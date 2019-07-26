@@ -103,6 +103,31 @@ spec:
                 key: token
 `
 
+const SanchoTwoContainersOneImageYAML = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sancho-2c1i
+  namespace: sancho-ns
+  labels:
+    app: sancho-2c1i
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sancho-2c1i
+  template:
+    metadata:
+      labels:
+        app: sancho-2c1i
+    spec:
+      containers:
+      - name: sancho
+        image: gcr.io/some-project-162817/sancho
+      - name: sancho2
+        image: gcr.io/some-project-162817/sancho
+`
+
 const SanchoYAMLWithCommand = `
 apiVersion: apps/v1
 kind: Deployment

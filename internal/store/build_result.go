@@ -37,10 +37,10 @@ type BuildResult struct {
 }
 
 // For in-place container updates.
-func NewLiveUpdateBuildResult(id model.TargetID, containerID container.ID) BuildResult {
+func NewLiveUpdateBuildResult(id model.TargetID, containerIDs []container.ID) BuildResult {
 	return BuildResult{
 		TargetID:                id,
-		LiveUpdatedContainerIDs: []container.ID{containerID},
+		LiveUpdatedContainerIDs: containerIDs,
 	}
 }
 
@@ -74,6 +74,14 @@ func (b BuildResult) IsInPlaceUpdate() bool {
 
 type BuildResultSet map[model.TargetID]BuildResult
 
+func (set BuildResultSet) LiveUpdatedContainerIDs() []container.ID {
+	result := []container.ID{}
+	for _, r := range set {
+		result = append(result, r.LiveUpdatedContainerIDs...)
+	}
+	return result
+}
+
 // Returns a container ID iff it's the only container ID in the result set.
 // If there are multiple container IDs, we have to give up.
 func (set BuildResultSet) OneAndOnlyLiveUpdatedContainerID() container.ID {
@@ -91,27 +99,6 @@ func (set BuildResultSet) OneAndOnlyLiveUpdatedContainerID() container.ID {
 		if curID == "" {
 			continue
 		}
-
-		if id != "" && curID != id {
-			return ""
-		}
-
-		id = curID
-	}
-	return id
-}
-
-// NOTE(maia): this is used only to populate ms.LiveUpdatedContainerID, and will
-// be removed in http://bit.ly/2LFAPDb when we implement crash detection
-// for multiple containers
-func (set BuildResultSet) OneLiveUpdatedContainerIDForOldBehavior() container.ID {
-	var id container.ID
-	for _, result := range set {
-		if len(result.LiveUpdatedContainerIDs) == 0 {
-			continue
-		}
-
-		curID := result.LiveUpdatedContainerIDs[0]
 
 		if id != "" && curID != id {
 			return ""
@@ -237,6 +224,18 @@ func IDsForInfos(infos []ContainerInfo) []container.ID {
 		ids[i] = info.ContainerID
 	}
 	return ids
+}
+
+func AllRunningContainers(mt *ManifestTarget) []ContainerInfo {
+	if mt.Manifest.IsDC() {
+		return RunningContainersForDC(mt.State.DCResourceState())
+	}
+
+	result := []ContainerInfo{}
+	for _, iTarget := range mt.Manifest.ImageTargets {
+		result = append(result, RunningContainersForTarget(iTarget, mt.State.DeployID, mt.State.PodSet)...)
+	}
+	return result
 }
 
 // If all containers running the given image are ready, returns info for them.

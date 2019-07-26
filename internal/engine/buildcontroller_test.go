@@ -11,6 +11,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/hud/server"
+	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
 	"github.com/windmilleng/tilt/internal/testutils/podbuilder"
 
@@ -161,7 +162,7 @@ func TestBuildControllerTwoContainers(t *testing.T) {
 	assert.Equal(t, "pod-id", c0.PodID.String(), "pod ID for cInfo at index 0")
 	assert.Equal(t, "pod-id", c1.PodID.String(), "pod ID for cInfo at index 1")
 
-	assert.Equal(t, podbuilder.FakeContainerID, c0.ContainerID, "container ID for cInfo at index 0")
+	assert.Equal(t, podbuilder.FakeContainerID(), c0.ContainerID, "container ID for cInfo at index 0")
 	assert.Equal(t, "cID-same-image", c1.ContainerID.String(), "container ID for cInfo at index 1")
 
 	assert.Equal(t, "sancho", c0.ContainerName.String(), "container name for cInfo at index 0")
@@ -218,7 +219,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 	f.waitForCompletedBuildCount(1)
 
-	f.b.nextLiveUpdateContainerID = podbuilder.FakeContainerID
+	f.b.nextLiveUpdateContainerIDs = []container.ID{podbuilder.FakeContainerID()}
 	f.podEvent(f.testPod("pod-id", manifest, "Running", time.Now()))
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
@@ -227,13 +228,58 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 	f.withManifestState("fe", func(ms store.ManifestState) {
 		assert.Equal(t, model.BuildReasonFlagChangedFiles, ms.LastBuild().Reason)
-		assert.Equal(t, podbuilder.FakeContainerID, ms.LiveUpdatedContainerID)
+		assert.Equal(t, podbuilder.FakeContainerIDSet(1), ms.LiveUpdatedContainerIDs)
 	})
 
 	// Restart the pod with a new container id, to simulate a container restart.
 	f.podEvent(podbuilder.New(t, manifest).WithPodID("pod-id").WithContainerID("funnyContainerID").Build())
 	call = f.nextCall()
 	assert.True(t, call.oneState().OneContainerInfo().Empty())
+	f.waitForCompletedBuildCount(3)
+
+	f.withManifestState("fe", func(ms store.ManifestState) {
+		assert.Equal(t, model.BuildReasonFlagCrash, ms.LastBuild().Reason)
+	})
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+}
+
+func TestCrashRebuildTwoContainersOneImage(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	manifest := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(testyaml.SanchoTwoContainersOneImageYAML).
+		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		Build()
+	f.Start([]model.Manifest{manifest}, true)
+
+	call := f.nextCall()
+	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
+	f.waitForCompletedBuildCount(1)
+
+	f.b.nextLiveUpdateContainerIDs = []container.ID{"c1", "c2"}
+	f.podEvent(podbuilder.New(t, manifest).
+		WithContainerID("c1").
+		WithContainerIDAtIndex("c2", 1).
+		Build())
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
+
+	call = f.nextCall()
+	f.waitForCompletedBuildCount(2)
+	f.withManifestState("fe", func(ms store.ManifestState) {
+		assert.Equal(t, 2, len(ms.LiveUpdatedContainerIDs))
+	})
+
+	// Restart one container id but not the other.
+	f.podEvent(podbuilder.New(t, manifest).
+		WithContainerID("c1").
+		WithContainerIDAtIndex("c3", 1).
+		Build())
+
+	call = f.nextCall()
 	f.waitForCompletedBuildCount(3)
 
 	f.withManifestState("fe", func(ms store.ManifestState) {

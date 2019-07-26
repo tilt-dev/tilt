@@ -52,7 +52,7 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v
 			"WARNING: Resource %s is using port forwards, but no container ports on pod %s",
 			manifest.Name, podInfo.PodID)
 	}
-	checkForPodCrash(ctx, state, ms, *podInfo)
+	checkForPodCrash(ctx, state, mt)
 
 	if int(podInfo.BlessedContainer().Restarts) > podInfo.ContainerRestarts {
 		ms.CrashLog = podInfo.CurrentLog
@@ -218,21 +218,34 @@ func getBlessedContainerID(iTargets []model.ImageTarget, pod *v1.Pod) (container
 	}
 	return "", nil
 }
-func checkForPodCrash(ctx context.Context, state *store.EngineState, ms *store.ManifestState, podInfo store.Pod) {
+
+func checkForPodCrash(ctx context.Context, state *store.EngineState, mt *store.ManifestTarget) {
+	ms := mt.State
 	if ms.NeedsRebuildFromCrash {
 		// We're already aware the pod is crashing.
 		return
 	}
 
-	if ms.LiveUpdatedContainerID == "" || ms.LiveUpdatedContainerID == podInfo.ContainerID() {
+	runningContainers := store.AllRunningContainers(mt)
+	hitList := make(map[container.ID]bool, len(ms.LiveUpdatedContainerIDs))
+	for cID := range ms.LiveUpdatedContainerIDs {
+		hitList[cID] = true
+	}
+	for _, c := range runningContainers {
+		delete(hitList, c.ContainerID)
+	}
+
+	if len(hitList) == 0 {
 		// The pod is what we expect it to be.
 		return
 	}
 
 	// The pod isn't what we expect!
-	ms.CrashLog = podInfo.CurrentLog
+	// TODO(nick): We should store the logs by container ID, and
+	// only put the container that crashed in the CrashLog.
+	ms.CrashLog = ms.MostRecentPod().CurrentLog
 	ms.NeedsRebuildFromCrash = true
-	ms.LiveUpdatedContainerID = ""
+	ms.LiveUpdatedContainerIDs = container.NewIDSet()
 	msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Name)
 	le := store.NewLogEvent(ms.Name, []byte(msg+"\n"))
 	if len(ms.BuildHistory) > 0 {
