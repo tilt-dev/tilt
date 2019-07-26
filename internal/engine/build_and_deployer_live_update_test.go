@@ -1,10 +1,14 @@
 package engine
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -16,7 +20,8 @@ type testCase struct {
 	baseManifest model.Manifest
 	liveUpdate   model.LiveUpdate
 
-	changedFiles []string // leave empty for no changed files
+	changedFiles        []string       // leave empty for from-scratch build
+	runningContainerIDs []container.ID // if empty, use default container
 
 	// Docker actions
 	expectDockerBuildCount   int
@@ -41,13 +46,31 @@ type testCase struct {
 }
 
 func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
-	bs := f.createBuildStateSet(tCase.baseManifest, tCase.changedFiles)
+	if len(tCase.changedFiles) == 0 && len(tCase.runningContainerIDs) != 0 {
+		t.Fatal("can't specify both empty changedFiles (implies from-scratch " +
+			"build) and non-empty running containers (implies there's an existing build " +
+			"to LiveUpdate on top of).")
+	}
+
 	manifest := tCase.baseManifest
+	bs := f.createBuildStateSet(manifest, tCase.changedFiles)
 
 	// Assume that the last image target is the deployed one.
 	iTargIdx := len(manifest.ImageTargets) - 1
 	iTarg := manifest.ImageTargetAt(iTargIdx)
-	assert.True(t, manifest.IsImageDeployed(iTarg))
+	require.True(t, manifest.IsImageDeployed(iTarg))
+
+	if len(tCase.runningContainerIDs) > 0 {
+		cInfos := make([]store.ContainerInfo, len(tCase.runningContainerIDs))
+		for i, id := range tCase.runningContainerIDs {
+			cInfos[i] = store.ContainerInfo{
+				PodID:         testPodID,
+				ContainerID:   id,
+				ContainerName: container.Name(fmt.Sprintf("container %s", id)),
+			}
+		}
+		bs[iTarg.ID()] = bs[iTarg.ID()].WithRunningContainers(cInfos)
+	}
 
 	db := iTarg.DockerBuildInfo()
 	db.LiveUpdate = tCase.liveUpdate
@@ -63,7 +86,11 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 	assert.Equal(t, tCase.expectDockerPushCount, f.docker.PushCount, "docker push")
 	assert.Equal(t, tCase.expectDockerCopyCount, f.docker.CopyCount, "docker copy")
 	assert.Equal(t, tCase.expectDockerExecCount, len(f.docker.ExecCalls), "docker exec")
-	f.assertContainerRestarts(tCase.expectDockerRestartCount)
+	if len(tCase.runningContainerIDs) > 0 {
+		f.assertTotalContainerRestarts(tCase.expectDockerRestartCount)
+	} else {
+		f.assertContainerRestarts(tCase.expectDockerRestartCount)
+	}
 
 	assert.Equal(t, tCase.expectSyncletUpdateContainerCount, f.sCli.UpdateContainerCount, "synclet update container")
 	assert.Equal(t, tCase.expectSyncletCommandCount, f.sCli.CommandsRunCount, "synclet commands run")
@@ -72,14 +99,19 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 	assert.Equal(t, tCase.expectK8sExecCount, len(f.k8s.ExecCalls), "# k8s exec calls")
 
 	id := manifest.ImageTargetAt(iTargIdx).ID()
-	_, hasResult := result[id]
+	imgRes, hasResult := result[id]
 	assert.True(t, hasResult)
 
 	if !tCase.expectK8sDeploy {
 		assert.Empty(t, f.k8s.Yaml, "expected no k8s deploy, but we deployed YAML: %s", f.k8s.Yaml)
 
-		// We did a container build, so we expect result to have the container ID we operated on
-		assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
+		if len(tCase.runningContainerIDs) > 0 {
+			// We expect to have operated on the number of containers that the user specified
+			assert.Equal(t, imgRes.ContainerIDs, tCase.runningContainerIDs)
+		} else {
+			// We did a container build, so we expect result to have the container ID we operated on
+			assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
+		}
 	} else {
 		expectedYaml := "image: gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
 		if !strings.Contains(f.k8s.Yaml, expectedYaml) {
@@ -118,6 +150,79 @@ func TestLiveUpdateDockerBuildLocalContainer(t *testing.T) {
 		expectDockerCopyCount:    1,
 		expectDockerExecCount:    1,
 		expectDockerRestartCount: 1,
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateDockerBuildLocalContainerOnMultipleContainers(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	defer f.TearDown()
+
+	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cIDs := []container.ID{"c1", "c2", "c3"}
+	tCase := testCase{
+		baseManifest:           NewSanchoDockerBuildManifest(f),
+		runningContainerIDs:    cIDs,
+		liveUpdate:             lu,
+		changedFiles:           []string{"a.txt"},
+		expectDockerBuildCount: 0,
+		expectDockerPushCount:  0,
+
+		// one of each operation per container
+		expectDockerCopyCount:    3,
+		expectDockerExecCount:    3,
+		expectDockerRestartCount: 3,
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateDockerBuildSyncletOnMultipleContainers(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	defer f.TearDown()
+
+	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cIDs := []container.ID{"c1", "c2", "c3"}
+	tCase := testCase{
+		baseManifest:           NewSanchoDockerBuildManifest(f),
+		runningContainerIDs:    cIDs,
+		liveUpdate:             lu,
+		changedFiles:           []string{"a.txt"},
+		expectDockerBuildCount: 0,
+		expectDockerPushCount:  0,
+
+		// one of each operation per container
+		expectSyncletUpdateContainerCount: 3,
+		expectSyncletCommandCount:         3,
+		expectSyncletHotReload:            false,
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateDockerBuildExecOnMultipleContainers(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeCrio)
+	defer f.TearDown()
+
+	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, []string{"i/match/nothing"}, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cIDs := []container.ID{"c1", "c2", "c3"}
+	tCase := testCase{
+		baseManifest:           NewSanchoDockerBuildManifest(f),
+		runningContainerIDs:    cIDs,
+		liveUpdate:             lu,
+		changedFiles:           []string{"a.txt"},
+		expectDockerBuildCount: 0,
+		expectDockerPushCount:  0,
+
+		// 2 per container (tar archive, run command) x 3 containers
+		expectK8sExecCount: 6,
 	}
 	runTestCase(t, f, tCase)
 }
