@@ -870,7 +870,7 @@ func (f *bdFixture) createBuildStateSet(manifest model.Manifest, changedFiles []
 
 		state := store.NewBuildState(alreadyBuilt, filesChangingImage)
 		if manifest.IsImageDeployed(iTarget) {
-			state = state.WithRunningContainer(testContainerInfo)
+			state = state.WithRunningContainers([]store.ContainerInfo{testContainerInfo})
 		}
 		bs[iTarget.ID()] = state
 	}
@@ -883,10 +883,10 @@ func (f *bdFixture) createBuildStateSet(manifest model.Manifest, changedFiles []
 	return bs
 }
 
-func resultToStateSet(resultSet store.BuildResultSet, files []string, deploy store.ContainerInfo) store.BuildStateSet {
+func resultToStateSet(resultSet store.BuildResultSet, files []string, cInfo store.ContainerInfo) store.BuildStateSet {
 	stateSet := store.BuildStateSet{}
 	for id, result := range resultSet {
-		state := store.NewBuildState(result, files).WithRunningContainer(deploy)
+		state := store.NewBuildState(result, files).WithRunningContainers([]store.ContainerInfo{cInfo})
 		stateSet[id] = state
 	}
 	return stateSet

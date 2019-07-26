@@ -1650,7 +1650,7 @@ func TestUpperBuildImmediatelyAfterCrashRebuild(t *testing.T) {
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
-	assert.Equal(t, "pod-id", call.oneState().RunningContainer.PodID.String())
+	assert.Equal(t, "pod-id", call.oneState().OneContainerInfo().PodID.String())
 	f.waitForCompletedBuildCount(2)
 	f.withManifestState("fe", func(ms store.ManifestState) {
 		assert.Equal(t, model.BuildReasonFlagChangedFiles, ms.LastBuild().Reason)
@@ -1661,7 +1661,7 @@ func TestUpperBuildImmediatelyAfterCrashRebuild(t *testing.T) {
 	// Restart the pod with a new container id, to simulate a container restart.
 	f.podEvent(f.testPod("pod-id", "fe", "Running", "funnyContainerID", time.Now()))
 	call = f.nextCall()
-	assert.True(t, call.oneState().RunningContainer.Empty())
+	assert.True(t, call.oneState().OneContainerInfo().Empty())
 	f.waitForCompletedBuildCount(3)
 
 	f.withManifestState("fe", func(ms store.ManifestState) {
@@ -1674,7 +1674,7 @@ func TestUpperBuildImmediatelyAfterCrashRebuild(t *testing.T) {
 	// at this point we have not received a pod event for pod that was started by the crash-rebuild,
 	// so any known pod info would have to be invalid to use for a build and this BuildState should
 	// not have any ContainerInfo
-	assert.True(t, call.oneState().RunningContainer.Empty())
+	assert.True(t, call.oneState().OneContainerInfo().Empty())
 
 	err := f.Stop()
 	assert.NoError(t, err)

@@ -125,7 +125,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 	l := logger.Get(ctx)
 	l.Infof("  → Updating container…")
 
-	cInfo := state.RunningContainer
+	cInfo := state.OneContainerInfo()
 	filter := ignore.CreateBuildContextFilter(iTarget)
 	boiledSteps, err := build.BoilRuns(runs, changedFiles)
 	if err != nil {

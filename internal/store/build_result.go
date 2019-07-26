@@ -84,8 +84,7 @@ type BuildState struct {
 	// This must be liberal: it's ok if this has too many files, but not ok if it has too few.
 	FilesChangedSet map[string]bool
 
-	// ~~ running containers
-	RunningContainer ContainerInfo
+	RunningContainers []ContainerInfo
 }
 
 func NewBuildState(result BuildResult, files []string) BuildState {
@@ -99,11 +98,19 @@ func NewBuildState(result BuildResult, files []string) BuildState {
 	}
 }
 
-func (b BuildState) WithRunningContainer(c ContainerInfo) BuildState {
-	b.RunningContainer = c
+func (b BuildState) WithRunningContainers(cInfos []ContainerInfo) BuildState {
+	b.RunningContainers = cInfos
 	return b
 }
 
+// NOTE(maia): Interim method to replicate old behavior where every
+// BuildState had a single ContainerInfo
+func (b BuildState) OneContainerInfo() ContainerInfo {
+	if len(b.RunningContainers) == 0 {
+		return ContainerInfo{}
+	}
+	return b.RunningContainers[0]
+}
 func (b BuildState) LastImageAsString() string {
 	img := b.LastResult.Image
 	if img == nil {
@@ -177,35 +184,40 @@ func (c ContainerInfo) Empty() bool {
 
 // Check to see if there's a single, unambiguous Ready container
 // in the given PodSet. If so, create a ContainerInfo for that container.
-func RunningContainersForTarget(iTarget model.ImageTarget, deployID model.DeployID, podSet PodSet) ContainerInfo {
+// TODO(maia): soon will return cInfos for ALL ready containers running this image
+func RunningContainersForTarget(iTarget model.ImageTarget, deployID model.DeployID, podSet PodSet) []ContainerInfo {
 	if podSet.Len() != 1 {
-		return ContainerInfo{}
+		return nil
 	}
 
 	pod := podSet.MostRecentPod()
 	if pod.PodID == "" || pod.ContainerID() == "" || pod.ContainerName() == "" || !pod.ContainerReady() {
-		return ContainerInfo{}
+		return nil
 	}
 
 	if podSet.DeployID != deployID {
-		return ContainerInfo{}
+		return nil
 	}
 
 	// Only return the pod if it matches our image.
 	if pod.ContainerImageRef() == nil || iTarget.DeploymentRef.Name() != pod.ContainerImageRef().Name() {
-		return ContainerInfo{}
+		return nil
 	}
 
-	return ContainerInfo{
-		PodID:         pod.PodID,
-		ContainerID:   pod.ContainerID(),
-		ContainerName: pod.ContainerName(),
-		Namespace:     pod.Namespace,
+	return []ContainerInfo{
+		ContainerInfo{
+			PodID:         pod.PodID,
+			ContainerID:   pod.ContainerID(),
+			ContainerName: pod.ContainerName(),
+			Namespace:     pod.Namespace,
+		},
 	}
 }
 
-func RunningContainersForDC(state dockercompose.State) ContainerInfo {
-	return ContainerInfo{ContainerID: state.ContainerID}
+func RunningContainersForDC(state dockercompose.State) []ContainerInfo {
+	return []ContainerInfo{
+		ContainerInfo{ContainerID: state.ContainerID},
+	}
 }
 
 var BuildStateClean = BuildState{}

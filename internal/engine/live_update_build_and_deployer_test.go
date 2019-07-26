@@ -27,9 +27,9 @@ var TestContainerInfo = store.ContainerInfo{
 }
 
 var TestBuildState = store.BuildState{
-	LastResult:       alreadyBuilt,
-	FilesChangedSet:  map[string]bool{"foo.py": true},
-	RunningContainer: TestContainerInfo,
+	LastResult:        alreadyBuilt,
+	FilesChangedSet:   map[string]bool{"foo.py": true},
+	RunningContainers: []store.ContainerInfo{TestContainerInfo},
 }
 
 func TestBuildAndDeployBoilsSteps(t *testing.T) {
