@@ -257,7 +257,7 @@ func (s *HeadsUpServer) HandleNewAlert(w http.ResponseWriter, req *http.Request)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(js)
+	_, _ = w.Write(js)
 }
 
 func templateAlertURL(id tft.AlertID) string {
