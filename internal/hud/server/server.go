@@ -10,6 +10,8 @@ import (
 	_ "github.com/gorilla/websocket"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
+	"context"
+
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/hud/webview"
@@ -17,6 +19,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
+	tft "github.com/windmilleng/tilt/internal/tft/client"
 )
 
 const TiltAlertsDomain = "alerts.tilt.dev"
@@ -40,16 +43,18 @@ type HeadsUpServer struct {
 	router            *mux.Router
 	a                 *tiltanalytics.TiltAnalytics
 	sailCli           client.SailClient
+	tftCli            tft.Client
 	numWebsocketConns int32
 }
 
-func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics *tiltanalytics.TiltAnalytics, sailCli client.SailClient) *HeadsUpServer {
+func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics *tiltanalytics.TiltAnalytics, sailCli client.SailClient, tftClient tft.Client) *HeadsUpServer {
 	r := mux.NewRouter().UseEncodedPath()
 	s := &HeadsUpServer{
 		store:   store,
 		router:  r,
 		a:       analytics,
 		sailCli: sailCli,
+		tftCli:  tftClient,
 	}
 
 	r.HandleFunc("/api/view", s.ViewJSON)
@@ -233,9 +238,16 @@ func (s *HeadsUpServer) HandleNewAlert(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	// TODO(dmiller): actually make request to alerts backend
+	decoder := json.NewDecoder(req.Body)
+	var alert tsAlert
+	err := decoder.Decode(&alert)
+	if err != nil {
+		panic(err)
+	}
 
-	id := ""
+	ctx := context.TODO()
+	id, err := s.tftCli.SendAlert(ctx, tsAlertToBackendAlert(alert))
+
 	responsePayload := &NewAlertResponse{
 		Url: templateAlertURL(id),
 	}
@@ -248,6 +260,23 @@ func (s *HeadsUpServer) HandleNewAlert(w http.ResponseWriter, req *http.Request)
 	w.Write(js)
 }
 
-func templateAlertURL(id string) string {
+func templateAlertURL(id tft.AlertID) string {
 	return fmt.Sprintf("http://%s/%s", TiltAlertsDomain, id)
+}
+
+type tsAlert struct {
+	AlertType string `json:"alertType"`
+	Msg       string `json:"msg"`
+	Timestamp string `json:"timestamp"`
+	TitleMsg  string `json:"titleMsg"`
+}
+
+func tsAlertToBackendAlert(alert tsAlert) tft.Alert {
+	return tft.Alert{
+		AlertType:    alert.AlertType,
+		Msg:          alert.Msg,
+		RFC3339Time:  alert.Timestamp,
+		ResourceName: "", //TODO(Han)
+		Header:       alert.TitleMsg,
+	}
 }

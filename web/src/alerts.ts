@@ -1,6 +1,7 @@
 import { Resource } from "./types"
 import { podStatusIsError, podStatusIsCrash } from "./constants"
 
+// TODO(Han): add resource name here
 export type Alert = {
   alertType: string
   msg: string

@@ -18,6 +18,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
+	tft "github.com/windmilleng/tilt/internal/tft/client"
 )
 
 func TestHandleAnalyticsEmptyRequest(t *testing.T) {
@@ -387,7 +388,7 @@ func TestHandleNewAlert(t *testing.T) {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusBadRequest)
 	}
-	assert.Contains(t, rr.Body.String(), "http://www.something.com")
+	assert.Contains(t, rr.Body.String(), "aaaaaa")
 }
 
 type serverFixture struct {
@@ -406,7 +407,8 @@ func newTestFixture(t *testing.T) *serverFixture {
 	a := analytics.NewMemoryAnalytics()
 	a, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
 	sailCli := client.NewFakeSailClient()
-	serv := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, sailCli)
+	tftClient := tft.ProvideFakeClient()
+	serv := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, sailCli, tftClient)
 
 	return &serverFixture{
 		t:          t,
