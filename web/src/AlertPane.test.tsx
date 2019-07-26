@@ -227,6 +227,18 @@ it("renders the get alert link button when the feature is enabled", () => {
   let resources: Array<Partial<Resource>> = [
     {
       Name: "foo",
+      ResourceInfo: {
+        PodName: "",
+        PodCreationTime: "",
+        PodUpdateStartTime: "",
+        PodStatus: "",
+        PodStatusMessage: "",
+        PodRestarts: 0,
+        PodLog: "",
+        YAML: "",
+        Endpoints: [],
+      },
+      BuildHistory: [],
       Alerts: [
         {
           alertType: BuildFailedErrorType,
