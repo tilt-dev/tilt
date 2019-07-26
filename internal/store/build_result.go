@@ -182,16 +182,15 @@ func (c ContainerInfo) Empty() bool {
 	return c == ContainerInfo{}
 }
 
-// Check to see if there's a single, unambiguous Ready container
-// in the given PodSet. If so, create a ContainerInfo for that container.
-// TODO(maia): soon will return cInfos for ALL ready containers running this image
+// IF all containers running the given image are ready, returns info for them.
+// (Currently only supports containers running on a single pod.)
 func RunningContainersForTarget(iTarget model.ImageTarget, deployID model.DeployID, podSet PodSet) []ContainerInfo {
 	if podSet.Len() != 1 {
 		return nil
 	}
 
 	pod := podSet.MostRecentPod()
-	if pod.PodID == "" || pod.ContainerID() == "" || pod.ContainerName() == "" || !pod.ContainerReady() {
+	if pod.PodID == "" {
 		return nil
 	}
 
@@ -199,19 +198,29 @@ func RunningContainersForTarget(iTarget model.ImageTarget, deployID model.Deploy
 		return nil
 	}
 
-	// Only return the pod if it matches our image.
-	if pod.ContainerImageRef() == nil || iTarget.DeploymentRef.Name() != pod.ContainerImageRef().Name() {
-		return nil
+	var containers []ContainerInfo
+	for _, c := range pod.Containers {
+		// Only return containers matching our image
+		if c.ImageRef == nil || iTarget.DeploymentRef.Name() != c.ImageRef.Name() {
+			continue
+		}
+		if c.ID == "" || c.Name == "" || !c.Ready {
+			// If we're missing any relevant info for this container, OR if the
+			// container isn't ready, we can't update it in place.
+			// (Since we'll need to fully rebuild this image, we shouldn't bother
+			// in-place updating ANY containers on this pod -- they'll all
+			// be recreated when we image build. So don't return ANY ContainerInfos.)
+			return nil
+		}
+		containers = append(containers, ContainerInfo{
+			PodID:         pod.PodID,
+			ContainerID:   c.ID,
+			ContainerName: c.Name,
+			Namespace:     pod.Namespace,
+		})
 	}
 
-	return []ContainerInfo{
-		ContainerInfo{
-			PodID:         pod.PodID,
-			ContainerID:   pod.ContainerID(),
-			ContainerName: pod.ContainerName(),
-			Namespace:     pod.Namespace,
-		},
-	}
+	return containers
 }
 
 func RunningContainersForDC(state dockercompose.State) []ContainerInfo {
