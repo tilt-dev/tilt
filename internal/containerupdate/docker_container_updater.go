@@ -26,38 +26,38 @@ func NewDockerContainerUpdater(dCli docker.Client) *DockerContainerUpdater {
 	return &DockerContainerUpdater{dCli: dCli}
 }
 
-func (cu *DockerContainerUpdater) UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,
+func (cu *DockerContainerUpdater) UpdateContainer(ctx context.Context, cInfo store.ContainerInfo,
 	archiveToCopy io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
 	l := logger.Get(ctx)
 
-	err := cu.rmPathsFromContainer(ctx, deployInfo.ContainerID, filesToDelete)
+	err := cu.rmPathsFromContainer(ctx, cInfo.ContainerID, filesToDelete)
 	if err != nil {
 		return errors.Wrap(err, "rmPathsFromContainer")
 	}
 
 	// TODO(maia): catch errors -- CopyToContainer doesn't return errors if e.g. it
 	// fails to write a file b/c of permissions =(
-	err = cu.dCli.CopyToContainerRoot(ctx, deployInfo.ContainerID.String(), archiveToCopy)
+	err = cu.dCli.CopyToContainerRoot(ctx, cInfo.ContainerID.String(), archiveToCopy)
 	if err != nil {
 		return err
 	}
 
 	// Exec run's on container
 	for _, s := range cmds {
-		err = cu.dCli.ExecInContainer(ctx, deployInfo.ContainerID, s, l.Writer(logger.InfoLvl))
+		err = cu.dCli.ExecInContainer(ctx, cInfo.ContainerID, s, l.Writer(logger.InfoLvl))
 		if err != nil {
-			return build.WrapContainerExecError(err, deployInfo.ContainerID, s)
+			return build.WrapContainerExecError(err, cInfo.ContainerID, s)
 		}
 	}
 
 	if hotReload {
-		l.Debugf("Hot reload on, skipping container restart: %s", deployInfo.ContainerID.ShortStr())
+		l.Debugf("Hot reload on, skipping container restart: %s", cInfo.ContainerID.ShortStr())
 		return nil
 	}
 
 	// Restart container so that entrypoint restarts with the updated files etc.
-	l.Debugf("Restarting container: %s", deployInfo.ContainerID.ShortStr())
-	err = cu.dCli.ContainerRestartNoWait(ctx, deployInfo.ContainerID.String())
+	l.Debugf("Restarting container: %s", cInfo.ContainerID.ShortStr())
+	err = cu.dCli.ContainerRestartNoWait(ctx, cInfo.ContainerID.String())
 	if err != nil {
 		return errors.Wrap(err, "ContainerRestart")
 	}

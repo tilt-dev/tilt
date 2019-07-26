@@ -64,11 +64,10 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 		}
 
 		// Now that we have fast build information, we know this CAN be updated in
-		// a container. Check to see if we have enough information about the container
-		// that would need to be updated.
-		deployInfo := state.DeployInfo
-		if deployInfo.Empty() {
-			return nil, RedirectToNextBuilderInfof("don't have info for deployed container of image %q (often a result of the deployment not yet being ready)", iTarget.DeploymentRef.String())
+		// a container(s). Check to see if we have enough information about the
+		// container(s) that would need to be updated.
+		if len(state.RunningContainers) == 0 {
+			return nil, RedirectToNextBuilderInfof("don't have info for running container of image %q (often a result of the deployment not yet being ready)", iTarget.DeploymentRef.String())
 		}
 
 		filesChanged, err := filesChangedTree(g, iTarget, stateSet)

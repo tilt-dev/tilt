@@ -9,6 +9,6 @@ import (
 )
 
 type ContainerUpdater interface {
-	UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,
+	UpdateContainer(ctx context.Context, cInfo store.ContainerInfo,
 		archiveToCopy io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error
 }

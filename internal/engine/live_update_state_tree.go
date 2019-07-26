@@ -19,7 +19,9 @@ func (t liveUpdateStateTree) createResultSet() store.BuildResultSet {
 	iTargetID := t.iTarget.ID()
 	state := t.iTargetState
 	res := state.LastResult
-	res.ContainerID = state.DeployInfo.ContainerID
+
+	// TODO(maia): result should have a LIST of expected container IDs
+	res.ContainerID = state.OneContainerInfo().ContainerID
 
 	resultSet := store.BuildResultSet{}
 	resultSet[iTargetID] = res

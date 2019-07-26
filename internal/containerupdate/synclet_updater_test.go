@@ -15,7 +15,7 @@ import (
 func TestUpdateContainer(t *testing.T) {
 	f := newSyncletFixture(t)
 
-	err := f.scu.UpdateContainer(f.ctx, TestDeployInfo, newReader("hello world"), toDelete, cmds, false)
+	err := f.scu.UpdateContainer(f.ctx, TestContainerInfo, newReader("hello world"), toDelete, cmds, false)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -70,6 +70,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	}()
 
 	// LiveUpdateBuildAndDeployer doesn't support initial build
+	// ~~ put this check in extractImageTargetsForLiveUpdates()
 	if state.IsEmpty() {
 		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("prev. build state is empty; LiveUpdate does not support initial deploy")
 	}
@@ -124,7 +125,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 	l := logger.Get(ctx)
 	l.Infof("  → Updating container…")
 
-	deployInfo := state.DeployInfo
+	cInfo := state.OneContainerInfo()
 	filter := ignore.CreateBuildContextFilter(iTarget)
 	boiledSteps, err := build.BoilRuns(runs, changedFiles)
 	if err != nil {
@@ -138,7 +139,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 	}
 
 	if len(toRemove) > 0 {
-		l.Infof("Will delete %d file(s) from container: %s", len(toRemove), deployInfo.ContainerID.ShortStr())
+		l.Infof("Will delete %d file(s) from container: %s", len(toRemove), cInfo.ContainerID.ShortStr())
 		for _, pm := range toRemove {
 			l.Infof("- '%s' (matched local path: '%s')", pm.ContainerPath, pm.LocalPath)
 		}
@@ -158,13 +159,13 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 	}()
 
 	if len(toArchive) > 0 {
-		l.Infof("Will copy %d file(s) to container: %s", len(toArchive), deployInfo.ContainerID.ShortStr())
+		l.Infof("Will copy %d file(s) to container: %s", len(toArchive), cInfo.ContainerID.ShortStr())
 		for _, pm := range toArchive {
 			l.Infof("- %s", pm.PrettyStr())
 		}
 	}
 
-	err = cu.UpdateContainer(ctx, deployInfo, pr, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
+	err = cu.UpdateContainer(ctx, cInfo, pr, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 	if err != nil {
 		if build.IsUserBuildFailure(err) {
 			return WrapDontFallBackError(err)
