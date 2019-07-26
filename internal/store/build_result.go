@@ -182,7 +182,7 @@ func (c ContainerInfo) Empty() bool {
 	return c == ContainerInfo{}
 }
 
-// IF all containers running the given image are ready, returns info for them.
+// If all containers running the given image are ready, returns info for them.
 // (Currently only supports containers running on a single pod.)
 func RunningContainersForTarget(iTarget model.ImageTarget, deployID model.DeployID, podSet PodSet) []ContainerInfo {
 	if podSet.Len() != 1 {
