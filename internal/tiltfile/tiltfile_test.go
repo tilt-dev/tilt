@@ -532,7 +532,7 @@ k8s_yaml('all.yaml')
 docker_build("ceci n'est pas une valid image ref", 'a')
 `)
 
-	f.loadErrString("invalid reference format", "asdf", "asdf")
+	f.loadErrString("invalid reference format")
 }
 
 func TestInvalidImageNameInK8SYAML(t *testing.T) {
