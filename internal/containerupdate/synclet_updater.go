@@ -22,12 +22,12 @@ func NewSyncletUpdater(sm SyncletManager) *SyncletUpdater {
 	return &SyncletUpdater{sm: sm}
 }
 
-func (cu *SyncletUpdater) UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,
+func (cu *SyncletUpdater) UpdateContainer(ctx context.Context, cInfo store.ContainerInfo,
 	archiveToCopy io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SyncletUpdater-UpdateContainer")
 	defer span.Finish()
 
-	sCli, err := cu.sm.ClientForPod(ctx, deployInfo.PodID, deployInfo.Namespace)
+	sCli, err := cu.sm.ClientForPod(ctx, cInfo.PodID, cInfo.Namespace)
 	if err != nil {
 		return err
 	}
@@ -37,7 +37,7 @@ func (cu *SyncletUpdater) UpdateContainer(ctx context.Context, deployInfo store.
 		return err
 	}
 
-	err = sCli.UpdateContainer(ctx, deployInfo.ContainerID, archiveBytes, filesToDelete, cmds, hotReload)
+	err = sCli.UpdateContainer(ctx, cInfo.ContainerID, archiveBytes, filesToDelete, cmds, hotReload)
 	if err != nil && build.IsUserBuildFailure(err) {
 		return err
 	}

@@ -43,6 +43,12 @@ var alreadyBuiltSet = store.BuildResultSet{imageTargetID: alreadyBuilt}
 
 type expectedFile = testutils.ExpectedFile
 
+var testContainerInfo = store.ContainerInfo{
+	PodID:         "pod-id",
+	ContainerID:   k8s.MagicTestContainerID,
+	ContainerName: "container-name",
+}
+
 func TestGKEDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
@@ -115,11 +121,11 @@ func TestNamespaceGKE(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	deployInfo := f.deployInfo()
-	deployInfo.Namespace = "sancho-ns"
+	cInfo := testContainerInfo
+	cInfo.Namespace = "sancho-ns"
 
 	changed := f.WriteFile("a.txt", "a")
-	bs := resultToStateSet(result, []string{changed}, deployInfo)
+	bs := resultToStateSet(result, []string{changed}, cInfo)
 	result, err = f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
 	if err != nil {
 		t.Fatal(err)
@@ -135,7 +141,7 @@ func TestContainerBuildLocal(t *testing.T) {
 	changed := f.WriteFile("a.txt", "a")
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err != nil {
 		t.Fatal(err)
@@ -166,7 +172,7 @@ func TestContainerBuildSynclet(t *testing.T) {
 	defer f.TearDown()
 
 	changed := f.WriteFile("a.txt", "a")
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
 	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
@@ -206,7 +212,7 @@ func TestContainerBuildLocalTriggeredRuns(t *testing.T) {
 	manifest = manifest.WithImageTarget(iTarg)
 
 	targets := buildTargets(manifest)
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err != nil {
 		t.Fatal(err)
@@ -250,7 +256,7 @@ func TestContainerBuildSyncletTriggeredRuns(t *testing.T) {
 	manifest = manifest.WithImageTarget(iTarg)
 
 	targets := buildTargets(manifest)
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err != nil {
 		t.Fatal(err)
@@ -278,7 +284,7 @@ func TestContainerBuildSyncletHotReload(t *testing.T) {
 	defer f.TearDown()
 
 	changed := f.WriteFile("a.txt", "a")
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 	manifest := NewSanchoFastBuildManifest(f)
 	iTarget := manifest.ImageTargetAt(0)
 	fbInfo := iTarget.TopFastBuildInfo()
@@ -327,7 +333,7 @@ func TestDockerBuildWithNestedFastBuildContainerUpdate(t *testing.T) {
 	defer f.TearDown()
 
 	changed := f.WriteFile("a.txt", "a")
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 	manifest := NewSanchoDockerBuildManifestWithNestedFastBuild(f)
 	targets := buildTargets(manifest)
 	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
@@ -360,7 +366,7 @@ func TestIncrementalBuildFailure(t *testing.T) {
 	defer f.TearDown()
 
 	changed := f.WriteFile("a.txt", "a")
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 	f.docker.ExecErrorToThrow = docker.ExitError{ExitCode: 1}
 
 	manifest := NewSanchoFastBuildManifest(f)
@@ -393,7 +399,7 @@ func TestIncrementalBuildKilled(t *testing.T) {
 
 	changed := f.WriteFile("a.txt", "a")
 
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 	f.docker.ExecErrorToThrow = docker.ExitError{ExitCode: build.TaskKillExitCode}
 
 	manifest := NewSanchoFastBuildManifest(f)
@@ -417,7 +423,7 @@ func TestFallBackToImageDeploy(t *testing.T) {
 	f.docker.ExecErrorToThrow = errors.New("some random error")
 
 	changed := f.WriteFile("a.txt", "a")
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
@@ -438,7 +444,7 @@ func TestNoFallbackForDontFallBackError(t *testing.T) {
 	f.docker.ExecErrorToThrow = DontFallBackErrorf("i'm melllting")
 
 	changed := f.WriteFile("a.txt", "a")
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
@@ -465,13 +471,13 @@ func TestIncrementalBuildTwice(t *testing.T) {
 	aPath := f.WriteFile("a.txt", "a")
 	bPath := f.WriteFile("b.txt", "b")
 
-	firstState := resultToStateSet(alreadyBuiltSet, []string{aPath}, f.deployInfo())
+	firstState := resultToStateSet(alreadyBuiltSet, []string{aPath}, testContainerInfo)
 	firstResult, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, firstState)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	secondState := resultToStateSet(firstResult, []string{bPath}, f.deployInfo())
+	secondState := resultToStateSet(firstResult, []string{bPath}, testContainerInfo)
 	_, err = f.bd.BuildAndDeploy(f.ctx, f.st, targets, secondState)
 	if err != nil {
 		t.Fatal(err)
@@ -503,7 +509,7 @@ func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
 	aPath := f.WriteFile("a.txt", "a")
 	bPath := f.WriteFile("b.txt", "b")
 
-	firstState := resultToStateSet(alreadyBuiltSet, []string{aPath}, f.deployInfo())
+	firstState := resultToStateSet(alreadyBuiltSet, []string{aPath}, testContainerInfo)
 	firstResult, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, firstState)
 	if err != nil {
 		t.Fatal(err)
@@ -512,7 +518,7 @@ func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
 	// Kill the pod
 	f.docker.ExecErrorToThrow = fmt.Errorf("Dead pod")
 
-	secondState := resultToStateSet(firstResult, []string{bPath}, f.deployInfo())
+	secondState := resultToStateSet(firstResult, []string{bPath}, testContainerInfo)
 	_, err = f.bd.BuildAndDeploy(f.ctx, f.st, targets, secondState)
 	if err != nil {
 		t.Fatal(err)
@@ -662,7 +668,7 @@ func TestContainerBuildMultiStage(t *testing.T) {
 	manifest := NewSanchoLiveUpdateMultiStageManifest(f)
 	targets := buildTargets(manifest)
 	changed := f.WriteFile("a.txt", "a")
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 
 	// There are two image targets. The first has a build result,
 	// the second does not --> second target needs build
@@ -720,7 +726,7 @@ func TestDockerComposeInPlaceUpdate(t *testing.T) {
 	manifest := NewSanchoFastBuildDCManifest(f)
 	targets := buildTargets(manifest)
 	changed := f.WriteFile("a.txt", "a")
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, f.deployInfo())
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err != nil {
@@ -819,14 +825,6 @@ func (f *bdFixture) NewPathSet(paths ...string) model.PathSet {
 	return model.NewPathSet(paths, f.Path())
 }
 
-func (f *bdFixture) deployInfo() store.DeployInfo {
-	return store.DeployInfo{
-		PodID:         "pod-id",
-		ContainerID:   k8s.MagicTestContainerID,
-		ContainerName: "container-name",
-	}
-}
-
 func (f *bdFixture) assertContainerRestarts(count int) {
 	// Ensure that MagicTestContainerID was the only container id that saw
 	// restarts, and that it saw the right number of restarts.
@@ -872,7 +870,7 @@ func (f *bdFixture) createBuildStateSet(manifest model.Manifest, changedFiles []
 
 		state := store.NewBuildState(alreadyBuilt, filesChangingImage)
 		if manifest.IsImageDeployed(iTarget) {
-			state = state.WithDeployTarget(f.deployInfo())
+			state = state.WithRunningContainer(testContainerInfo)
 		}
 		bs[iTarget.ID()] = state
 	}
@@ -885,10 +883,10 @@ func (f *bdFixture) createBuildStateSet(manifest model.Manifest, changedFiles []
 	return bs
 }
 
-func resultToStateSet(resultSet store.BuildResultSet, files []string, deploy store.DeployInfo) store.BuildStateSet {
+func resultToStateSet(resultSet store.BuildResultSet, files []string, deploy store.ContainerInfo) store.BuildStateSet {
 	stateSet := store.BuildStateSet{}
 	for id, result := range resultSet {
-		state := store.NewBuildState(result, files).WithDeployTarget(deploy)
+		state := store.NewBuildState(result, files).WithRunningContainer(deploy)
 		stateSet[id] = state
 	}
 	return stateSet

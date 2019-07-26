@@ -802,8 +802,8 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 //
 // Currently, we only collect container information for the first Tilt-built container
 // on the pod (b/c of how we assemble resources, this corresponds to the first image target).
-// We won't collect container info (including DeployInfo) on any subsequent containers
-// (i.e. subsequent image targets), so will never be able to LiveUpdate them.
+// We won't collect container info on any subsequent containers (i.e. subsequent image
+// targets), so will never be able to LiveUpdate them.
 func (s *tiltfileState) checkForImpossibleLiveUpdates(m model.Manifest) error {
 	seenDeployedImage := false
 

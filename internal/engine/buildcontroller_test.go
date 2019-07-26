@@ -32,7 +32,7 @@ func TestBuildControllerOnePod(t *testing.T) {
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
-	assert.Equal(t, "pod-id", call.oneState().DeployInfo.PodID.String())
+	assert.Equal(t, "pod-id", call.oneState().RunningContainer.PodID.String())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -58,7 +58,7 @@ func TestBuildControllerIgnoresImageTags(t *testing.T) {
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
-	assert.Equal(t, "pod-id", call.oneState().DeployInfo.PodID.String())
+	assert.Equal(t, "pod-id", call.oneState().RunningContainer.PodID.String())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -80,7 +80,7 @@ func TestBuildControllerDockerCompose(t *testing.T) {
 
 	call = f.nextCall()
 	imageState := call.state[imageTarget.ID()]
-	assert.Equal(t, "dc-sancho", imageState.DeployInfo.ContainerID.String())
+	assert.Equal(t, "dc-sancho", imageState.RunningContainer.ContainerID.String())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -111,7 +111,7 @@ func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 	// if there are multiple pods, so make sure we're not sending deploy info (i.e. that
 	// we're doing an image build)
 	call = f.nextCall()
-	assert.Equal(t, "", call.oneState().DeployInfo.PodID.String())
+	assert.Equal(t, "", call.oneState().RunningContainer.PodID.String())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -136,7 +136,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
-	assert.Equal(t, "pod-id", call.oneState().DeployInfo.PodID.String())
+	assert.Equal(t, "pod-id", call.oneState().RunningContainer.PodID.String())
 	f.waitForCompletedBuildCount(2)
 	f.withManifestState("fe", func(ms store.ManifestState) {
 		assert.Equal(t, model.BuildReasonFlagChangedFiles, ms.LastBuild().Reason)
@@ -146,7 +146,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	// Restart the pod with a new container id, to simulate a container restart.
 	f.podEvent(f.testPod("pod-id", "fe", "Running", "funnyContainerID", time.Now()))
 	call = f.nextCall()
-	assert.True(t, call.oneState().DeployInfo.Empty())
+	assert.True(t, call.oneState().RunningContainer.Empty())
 	f.waitForCompletedBuildCount(3)
 
 	f.withManifestState("fe", func(ms store.ManifestState) {

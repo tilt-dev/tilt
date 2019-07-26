@@ -25,7 +25,7 @@ var cmds = []model.Cmd{cmdA, cmdB}
 func TestUpdateContainerDoesntSupportRestart(t *testing.T) {
 	f := newExecFixture(t)
 
-	err := f.ecu.UpdateContainer(f.ctx, TestDeployInfo, newReader("boop"), toDelete, cmds, false)
+	err := f.ecu.UpdateContainer(f.ctx, TestContainerInfo, newReader("boop"), toDelete, cmds, false)
 	if assert.NotNil(t, err, "expect Exec UpdateContainer to fail if !hotReload") {
 		assert.Contains(t, err.Error(), "ExecUpdater does not support `restart_container()` step")
 	}
@@ -35,7 +35,7 @@ func TestUpdateContainerDeletesFiles(t *testing.T) {
 	f := newExecFixture(t)
 
 	// No files to delete
-	err := f.ecu.UpdateContainer(f.ctx, TestDeployInfo, newReader("boop"), nil, cmds, true)
+	err := f.ecu.UpdateContainer(f.ctx, TestContainerInfo, newReader("boop"), nil, cmds, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestUpdateContainerDeletesFiles(t *testing.T) {
 	}
 
 	// Two files to delete
-	err = f.ecu.UpdateContainer(f.ctx, TestDeployInfo, newReader("boop"), toDelete, cmds, true)
+	err = f.ecu.UpdateContainer(f.ctx, TestContainerInfo, newReader("boop"), toDelete, cmds, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ cmd 2: %v`, rmCmd, call.Cmd)
 func TestUpdateContainerTarsArchive(t *testing.T) {
 	f := newExecFixture(t)
 
-	err := f.ecu.UpdateContainer(f.ctx, TestDeployInfo, newReader("hello world"), nil, nil, true)
+	err := f.ecu.UpdateContainer(f.ctx, TestContainerInfo, newReader("hello world"), nil, nil, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func TestUpdateContainerTarsArchive(t *testing.T) {
 func TestUpdateContainerRunsCommands(t *testing.T) {
 	f := newExecFixture(t)
 
-	err := f.ecu.UpdateContainer(f.ctx, TestDeployInfo, newReader("hello world"), nil, cmds, true)
+	err := f.ecu.UpdateContainer(f.ctx, TestContainerInfo, newReader("hello world"), nil, cmds, true)
 	if err != nil {
 		t.Fatal(err)
 	}

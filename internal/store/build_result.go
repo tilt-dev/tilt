@@ -84,7 +84,8 @@ type BuildState struct {
 	// This must be liberal: it's ok if this has too many files, but not ok if it has too few.
 	FilesChangedSet map[string]bool
 
-	DeployInfo DeployInfo
+	// ~~ running containers
+	RunningContainer ContainerInfo
 }
 
 func NewBuildState(result BuildResult, files []string) BuildState {
@@ -98,8 +99,8 @@ func NewBuildState(result BuildResult, files []string) BuildState {
 	}
 }
 
-func (b BuildState) WithDeployTarget(d DeployInfo) BuildState {
-	b.DeployInfo = d
+func (b BuildState) WithRunningContainer(c ContainerInfo) BuildState {
+	b.RunningContainer = c
 	return b
 }
 
@@ -162,40 +163,40 @@ func (set BuildStateSet) FilesChanged() []string {
 	return result
 }
 
-// The information we need to find a ready container.
-type DeployInfo struct {
+// Information describing a single running & ready container
+type ContainerInfo struct {
 	PodID         k8s.PodID
 	ContainerID   container.ID
 	ContainerName container.Name
 	Namespace     k8s.Namespace
 }
 
-func (d DeployInfo) Empty() bool {
-	return d == DeployInfo{}
+func (c ContainerInfo) Empty() bool {
+	return c == ContainerInfo{}
 }
 
 // Check to see if there's a single, unambiguous Ready container
-// in the given PodSet. If so, create a DeployInfo for that container.
-func NewDeployInfo(iTarget model.ImageTarget, deployID model.DeployID, podSet PodSet) DeployInfo {
+// in the given PodSet. If so, create a ContainerInfo for that container.
+func RunningContainersForTarget(iTarget model.ImageTarget, deployID model.DeployID, podSet PodSet) ContainerInfo {
 	if podSet.Len() != 1 {
-		return DeployInfo{}
+		return ContainerInfo{}
 	}
 
 	pod := podSet.MostRecentPod()
 	if pod.PodID == "" || pod.ContainerID() == "" || pod.ContainerName() == "" || !pod.ContainerReady() {
-		return DeployInfo{}
+		return ContainerInfo{}
 	}
 
 	if podSet.DeployID != deployID {
-		return DeployInfo{}
+		return ContainerInfo{}
 	}
 
 	// Only return the pod if it matches our image.
 	if pod.ContainerImageRef() == nil || iTarget.DeploymentRef.Name() != pod.ContainerImageRef().Name() {
-		return DeployInfo{}
+		return ContainerInfo{}
 	}
 
-	return DeployInfo{
+	return ContainerInfo{
 		PodID:         pod.PodID,
 		ContainerID:   pod.ContainerID(),
 		ContainerName: pod.ContainerName(),
@@ -203,8 +204,8 @@ func NewDeployInfo(iTarget model.ImageTarget, deployID model.DeployID, podSet Po
 	}
 }
 
-func NewDeployInfoFromDC(state dockercompose.State) DeployInfo {
-	return DeployInfo{ContainerID: state.ContainerID}
+func RunningContainersForDC(state dockercompose.State) ContainerInfo {
+	return ContainerInfo{ContainerID: state.ContainerID}
 }
 
 var BuildStateClean = BuildState{}

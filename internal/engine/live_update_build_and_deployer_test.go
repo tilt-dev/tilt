@@ -19,7 +19,7 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
-var TestDeployInfo = store.DeployInfo{
+var TestContainerInfo = store.ContainerInfo{
 	PodID:         "somepod",
 	ContainerID:   docker.TestContainer,
 	ContainerName: "my-container",
@@ -27,9 +27,9 @@ var TestDeployInfo = store.DeployInfo{
 }
 
 var TestBuildState = store.BuildState{
-	LastResult:      alreadyBuilt,
-	FilesChangedSet: map[string]bool{"foo.py": true},
-	DeployInfo:      TestDeployInfo,
+	LastResult:       alreadyBuilt,
+	FilesChangedSet:  map[string]bool{"foo.py": true},
+	RunningContainer: TestContainerInfo,
 }
 
 func TestBuildAndDeployBoilsSteps(t *testing.T) {

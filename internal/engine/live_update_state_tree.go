@@ -19,7 +19,9 @@ func (t liveUpdateStateTree) createResultSet() store.BuildResultSet {
 	iTargetID := t.iTarget.ID()
 	state := t.iTargetState
 	res := state.LastResult
-	res.ContainerID = state.DeployInfo.ContainerID
+
+	// ~~ res.containerIDs = [di.cid for di in state.deployInfos]
+	res.ContainerID = state.RunningContainer.ContainerID
 
 	resultSet := store.BuildResultSet{}
 	resultSet[iTargetID] = res

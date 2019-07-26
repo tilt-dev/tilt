@@ -25,7 +25,7 @@ func NewExecUpdater(kCli k8s.Client) *ExecUpdater {
 	return &ExecUpdater{kCli: kCli}
 }
 
-func (cu *ExecUpdater) UpdateContainer(ctx context.Context, deployInfo store.DeployInfo,
+func (cu *ExecUpdater) UpdateContainer(ctx context.Context, cInfo store.ContainerInfo,
 	archiveToCopy io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ExecUpdater-UpdateContainer")
 	defer span.Finish()
@@ -41,14 +41,14 @@ func (cu *ExecUpdater) UpdateContainer(ctx context.Context, deployInfo store.Dep
 
 	if len(filesToDelete) > 0 {
 		err := cu.kCli.Exec(ctx,
-			deployInfo.PodID, deployInfo.ContainerName, deployInfo.Namespace,
+			cInfo.PodID, cInfo.ContainerName, cInfo.Namespace,
 			append([]string{"rm", "-rf"}, filesToDelete...), nil, w, w)
 		if err != nil {
 			return err
 		}
 	}
 
-	err := cu.kCli.Exec(ctx, deployInfo.PodID, deployInfo.ContainerName, deployInfo.Namespace,
+	err := cu.kCli.Exec(ctx, cInfo.PodID, cInfo.ContainerName, cInfo.Namespace,
 		[]string{"tar", "-C", "/", "-x", "-v", "-f", "-"}, archiveToCopy, w, w)
 	if err != nil {
 		return err
@@ -56,7 +56,7 @@ func (cu *ExecUpdater) UpdateContainer(ctx context.Context, deployInfo store.Dep
 
 	for i, c := range cmds {
 		l.Infof("[CMD %d/%d] %s", i+1, len(cmds), strings.Join(c.Argv, " "))
-		err := cu.kCli.Exec(ctx, deployInfo.PodID, deployInfo.ContainerName, deployInfo.Namespace,
+		err := cu.kCli.Exec(ctx, cInfo.PodID, cInfo.ContainerName, cInfo.Namespace,
 			c.Argv, nil, w, w)
 		if err != nil {
 			return err
