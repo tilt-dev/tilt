@@ -50,7 +50,7 @@ describe("getResourceAlerts", () => {
     r.BuildHistory = [
       {
         Log: "Build error log",
-        FinishTime: "10:00AM"
+        FinishTime: "10:00AM",
       },
       {
         Log: "Build error 2",
@@ -131,7 +131,7 @@ describe("getResourceAlerts", () => {
       // triggers build failed alert
       {
         Log: "Build error log",
-        FinishTime: "10:00AM"
+        FinishTime: "10:00AM",
       },
       {
         Log: "Build error 2",
