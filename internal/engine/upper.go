@@ -331,7 +331,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	if engineState.WatchFiles {
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
-		cID := cb.Result.OneAndOnlyContainerID()
+		cID := cb.Result.OneContainerIDForOldBehavior()
 		if cID != "" {
 			ms.ExpectedContainerID = cID
 

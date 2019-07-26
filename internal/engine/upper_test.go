@@ -150,7 +150,7 @@ func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deploy
 		containerID = container.ID(fmt.Sprintf("dc-%s", path.Base(named.Name())))
 	}
 	result := store.NewImageBuildResult(iTarget.ID(), nt)
-	result.ContainerID = containerID
+	result.ContainerIDs = []container.ID{containerID}
 	return result
 }
 
@@ -3211,7 +3211,7 @@ func containerResultSet(manifest model.Manifest, id container.ID) store.BuildRes
 	for _, iTarget := range manifest.ImageTargets {
 		ref, _ := reference.WithTag(iTarget.DeploymentRef, "deadbeef")
 		result := store.NewImageBuildResult(iTarget.ID(), ref)
-		result.ContainerID = id
+		result.ContainerIDs = []container.ID{id}
 		resultSet[iTarget.ID()] = result
 	}
 	return resultSet

@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/model"
 )
 
@@ -17,15 +18,15 @@ func imageID(s string) model.TargetID {
 
 func TestOneAndOnlyContainerID(t *testing.T) {
 	set := BuildResultSet{
-		imageID("a"): BuildResult{ContainerID: "cA"},
-		imageID("b"): BuildResult{ContainerID: "cB"},
+		imageID("a"): BuildResult{ContainerIDs: []container.ID{"cA"}},
+		imageID("b"): BuildResult{ContainerIDs: []container.ID{"cB"}},
 	}
 	assert.Equal(t, "", string(set.OneAndOnlyContainerID()))
 
 	set = BuildResultSet{
-		imageID("a"): BuildResult{ContainerID: "cA"},
-		imageID("b"): BuildResult{ContainerID: "cA"},
-		imageID("c"): BuildResult{ContainerID: ""},
+		imageID("a"): BuildResult{ContainerIDs: []container.ID{"cA"}},
+		imageID("b"): BuildResult{ContainerIDs: []container.ID{"cA"}},
+		imageID("c"): BuildResult{ContainerIDs: []container.ID{""}},
 	}
 	assert.Equal(t, "cA", string(set.OneAndOnlyContainerID()))
 }

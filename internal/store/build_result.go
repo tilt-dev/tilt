@@ -21,15 +21,15 @@ type BuildResult struct {
 	// The tag is derived from a content-addressable digest.
 	Image reference.NamedTagged
 
-	// If this build was a container build, containerID we built on top of
-	ContainerID container.ID
+	// If this build was a container build, containerIDs we built on top of
+	ContainerIDs []container.ID
 }
 
 // For docker-compose deploys that don't have any built images.
 func NewContainerBuildResult(id model.TargetID, containerID container.ID) BuildResult {
 	return BuildResult{
-		TargetID:    id,
-		ContainerID: containerID,
+		TargetID:     id,
+		ContainerIDs: []container.ID{containerID},
 	}
 }
 
@@ -50,7 +50,7 @@ func (b BuildResult) HasImage() bool {
 }
 
 func (b BuildResult) IsInPlaceUpdate() bool {
-	return !b.ContainerID.Empty()
+	return len(b.ContainerIDs) != 0
 }
 
 type BuildResultSet map[model.TargetID]BuildResult
@@ -60,15 +60,45 @@ type BuildResultSet map[model.TargetID]BuildResult
 func (set BuildResultSet) OneAndOnlyContainerID() container.ID {
 	var id container.ID
 	for _, result := range set {
-		if result.ContainerID == "" {
+		if len(result.ContainerIDs) == 0 {
 			continue
 		}
 
-		if id != "" && result.ContainerID != id {
+		if len(result.ContainerIDs) > 1 {
 			return ""
 		}
 
-		id = result.ContainerID
+		curID := result.ContainerIDs[0]
+		if curID == "" {
+			continue
+		}
+
+		if id != "" && curID != id {
+			return ""
+		}
+
+		id = curID
+	}
+	return id
+}
+
+// NOTE(maia): this is used only to populate ms.ExpectedContainerID, and will
+// be removed in http://bit.ly/2LFAPDb when we implement crash detection
+// for multiple containers
+func (set BuildResultSet) OneContainerIDForOldBehavior() container.ID {
+	var id container.ID
+	for _, result := range set {
+		if len(result.ContainerIDs) == 0 {
+			continue
+		}
+
+		curID := result.ContainerIDs[0]
+
+		if id != "" && curID != id {
+			return ""
+		}
+
+		id = curID
 	}
 	return id
 }
