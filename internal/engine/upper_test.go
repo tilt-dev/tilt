@@ -124,9 +124,9 @@ type fakeBuildAndDeployer struct {
 
 	buildCount int
 
-	// Set this to simulate a container update that returns the container ID
+	// Set this to simulate a container update that returns the container IDs
 	// it updated.
-	nextLiveUpdateContainerID container.ID
+	nextLiveUpdateContainerIDs []container.ID
 
 	// Inject the container ID of the container started by Docker Compose.
 	// If not set, we will auto-generate an ID.
@@ -147,9 +147,9 @@ func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deploy
 	nt, _ := reference.WithTag(named, fmt.Sprintf("tilt-%d", b.buildCount))
 
 	var result store.BuildResult
-	containerID := b.nextLiveUpdateContainerID
-	if containerID != "" {
-		result = store.NewLiveUpdateBuildResult(iTarget.ID(), containerID)
+	containerIDs := b.nextLiveUpdateContainerIDs
+	if len(containerIDs) > 0 {
+		result = store.NewLiveUpdateBuildResult(iTarget.ID(), containerIDs)
 	} else {
 		result = store.NewImageBuildResult(iTarget.ID(), nt)
 	}
@@ -218,7 +218,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		result[iTarget.ID()] = b.nextBuildResult(iTarget, deployTarget)
 	}
 
-	if !call.dc().Empty() && b.nextLiveUpdateContainerID == "" {
+	if !call.dc().Empty() && len(b.nextLiveUpdateContainerIDs) == 0 {
 		dcContainerID := container.ID(fmt.Sprintf("dc-%s", path.Base(call.dc().ID().Name.String())))
 		if b.nextDockerComposeContainerID != "" {
 			dcContainerID = b.nextDockerComposeContainerID
@@ -226,7 +226,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		result[call.dc().ID()] = store.NewDockerComposeDeployResult(call.dc().ID(), dcContainerID)
 	}
 
-	b.nextLiveUpdateContainerID = ""
+	b.nextLiveUpdateContainerIDs = nil
 	b.nextDockerComposeContainerID = ""
 
 	return result, nil
@@ -1586,7 +1586,7 @@ func TestUpperBuildImmediatelyAfterCrashRebuild(t *testing.T) {
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 	f.waitForCompletedBuildCount(1)
 
-	f.b.nextLiveUpdateContainerID = podbuilder.FakeContainerID
+	f.b.nextLiveUpdateContainerIDs = []container.ID{podbuilder.FakeContainerID()}
 	f.podEvent(f.testPod("pod-id", manifest, "Running", time.Now()))
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
@@ -1595,7 +1595,7 @@ func TestUpperBuildImmediatelyAfterCrashRebuild(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 	f.withManifestState("fe", func(ms store.ManifestState) {
 		assert.Equal(t, model.BuildReasonFlagChangedFiles, ms.LastBuild().Reason)
-		assert.Equal(t, podbuilder.FakeContainerID, ms.LiveUpdatedContainerID)
+		assert.Equal(t, podbuilder.FakeContainerIDSet(1), ms.LiveUpdatedContainerIDs)
 	})
 
 	f.b.nextDeployID = podbuilder.FakeDeployID + 1
@@ -1654,7 +1654,7 @@ func TestUpperRecordPodWithMultipleContainers(t *testing.T) {
 
 		c1 := pod.Containers[0]
 		require.Equal(t, container.Name("sancho"), c1.Name)
-		require.Equal(t, container.ID(podbuilder.FakeContainerID), c1.ID)
+		require.Equal(t, podbuilder.FakeContainerID(), c1.ID)
 		require.True(t, c1.Ready)
 		require.True(t, c1.Blessed)
 
