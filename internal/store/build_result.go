@@ -1,7 +1,6 @@
 package store
 
 import (
-	"fmt"
 	"sort"
 
 	"github.com/docker/distribution/reference"
@@ -24,11 +23,6 @@ type BuildResult struct {
 
 	// If this build was a container build, containerID we built on top of
 	ContainerID container.ID
-
-	// Some of our build engines replace the files in-place, rather
-	// than building a new image. This captures how much the code
-	// running on-pod has diverged from the original image.
-	FilesReplacedSet map[string]bool
 }
 
 // For docker-compose deploys that don't have any built images.
@@ -57,24 +51,6 @@ func (b BuildResult) HasImage() bool {
 
 func (b BuildResult) IsInPlaceUpdate() bool {
 	return !b.ContainerID.Empty()
-}
-
-// Clone the build result and add new replaced files.
-// Does not do a deep clone of the underlying entities.
-func (b BuildResult) ShallowCloneForContainerUpdate(filesReplacedSet map[string]bool) BuildResult {
-	result := BuildResult{}
-	result.TargetID = b.TargetID
-	result.Image = b.Image
-
-	newSet := make(map[string]bool, len(b.FilesReplacedSet)+len(filesReplacedSet))
-	for k, v := range b.FilesReplacedSet {
-		newSet[k] = v
-	}
-	for k, v := range filesReplacedSet {
-		newSet[k] = v
-	}
-	result.FilesReplacedSet = newSet
-	return result
 }
 
 type BuildResultSet map[model.TargetID]BuildResult
@@ -145,33 +121,6 @@ func (b BuildState) FilesChanged() []string {
 	}
 	sort.Strings(result)
 	return result
-}
-
-// Return the files changed since the last result's image in sorted order.
-// The sorting helps ensure that this is deterministic, both for testing
-// and for deterministic builds.
-// Errors if there was no last result image.
-func (b BuildState) FilesChangedSinceLastResultImage() ([]string, error) {
-	if !b.LastResult.HasImage() {
-		return nil, fmt.Errorf("No image in last result")
-	}
-
-	cSet := b.FilesChangedSet
-	rSet := b.LastResult.FilesReplacedSet
-	sum := make(map[string]bool, len(cSet)+len(rSet))
-	for k, v := range cSet {
-		sum[k] = v
-	}
-	for k, v := range rSet {
-		sum[k] = v
-	}
-
-	result := make([]string, 0, len(sum))
-	for file, _ := range sum {
-		result = append(result, file)
-	}
-	sort.Strings(result)
-	return result, nil
 }
 
 // A build state is empty if there are no previous results.
