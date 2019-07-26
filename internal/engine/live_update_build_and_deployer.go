@@ -70,7 +70,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	}()
 
 	// LiveUpdateBuildAndDeployer doesn't support initial build
-	// ~~ put this check in extractImageTargetsForLiveUpdates()
+	// TODO(maia): put this check in extractImageTargetsForLiveUpdates()
 	if state.IsEmpty() {
 		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("prev. build state is empty; LiveUpdate does not support initial deploy")
 	}
