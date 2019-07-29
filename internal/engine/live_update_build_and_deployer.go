@@ -165,10 +165,16 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 		}
 	}
 
+	// if any fail b/c !userFailure, fall back
+	// if 1 fails b/c userFailure:
+	// - update rest.
+	// -- if all fail b/c userFailure, don't fall back
+	// -- if any succeed, do an image build (otherwise, possible disparate state)
+
 	for _, cInfo := range state.RunningContainers {
 		err = cu.UpdateContainer(ctx, cInfo, pr, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 		if err != nil {
-			if build.IsUserBuildFailure(err) {
+			if build.IsUserRunFailure(err) {
 				return WrapDontFallBackError(err)
 			}
 			return err

@@ -102,7 +102,7 @@ func TestDontFallBackOnUserError(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
 
-	f.cu.UpdateErr = build.UserBuildFailure{ExitCode: 12345}
+	f.cu.UpdateErr = build.UserRunFailure{ExitCode: 12345}
 
 	err := f.lubad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, nil, nil, false)
 	if assert.NotNil(t, err) {
