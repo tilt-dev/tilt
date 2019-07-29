@@ -164,7 +164,7 @@ func TestContainerBuildLocal(t *testing.T) {
 	id := manifest.ImageTargetAt(0).ID()
 	_, hasResult := result[id]
 	assert.True(t, hasResult)
-	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
+	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyLiveUpdatedContainerID().String())
 }
 
 func TestContainerBuildSynclet(t *testing.T) {
@@ -190,7 +190,7 @@ func TestContainerBuildSynclet(t *testing.T) {
 		t.Errorf("Expected 1 synclet containerUpdate, actual: %d", f.sCli.UpdateContainerCount)
 	}
 
-	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
+	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyLiveUpdatedContainerID().String())
 	assert.False(t, f.sCli.LastHotReload)
 }
 
@@ -235,7 +235,7 @@ func TestContainerBuildLocalTriggeredRuns(t *testing.T) {
 	id := manifest.ImageTargetAt(0).ID()
 	_, hasResult := result[id]
 	assert.True(t, hasResult)
-	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
+	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyLiveUpdatedContainerID().String())
 }
 
 func TestContainerBuildSyncletTriggeredRuns(t *testing.T) {
@@ -275,7 +275,7 @@ func TestContainerBuildSyncletTriggeredRuns(t *testing.T) {
 		t.Errorf("Expected 2 commands run by the synclet, actual: %d", f.sCli.CommandsRunCount)
 	}
 
-	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
+	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyLiveUpdatedContainerID().String())
 	assert.False(t, f.sCli.LastHotReload)
 }
 
@@ -358,7 +358,7 @@ func TestDockerBuildWithNestedFastBuildContainerUpdate(t *testing.T) {
 	id := manifest.ImageTargetAt(0).ID()
 	_, hasResult := result[id]
 	assert.True(t, hasResult)
-	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
+	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyLiveUpdatedContainerID().String())
 }
 
 func TestIncrementalBuildFailure(t *testing.T) {
@@ -696,7 +696,7 @@ func TestContainerBuildMultiStage(t *testing.T) {
 	assert.False(t, hasResult0)
 	_, hasResult1 := result[manifest.ImageTargetAt(1).ID()]
 	assert.True(t, hasResult1)
-	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
+	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyLiveUpdatedContainerID().String())
 }
 
 func TestDockerComposeImageBuild(t *testing.T) {

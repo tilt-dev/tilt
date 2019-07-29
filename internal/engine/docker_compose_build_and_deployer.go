@@ -126,14 +126,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	}
 
 	results := q.results
-	for _, iTarget := range iTargets {
-		if isImageDeployedToDC(iTarget, dcTarget) {
-			result := results[iTarget.ID()]
-			result.ContainerIDs = []container.ID{cid}
-			results[iTarget.ID()] = result
-		}
-	}
-	results[dcTarget.ID()] = store.NewContainerBuildResult(dcTarget.ID(), cid)
+	results[dcTarget.ID()] = store.NewDockerComposeDeployResult(dcTarget.ID(), cid)
 	return results, nil
 }
 

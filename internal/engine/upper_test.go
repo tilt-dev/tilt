@@ -125,7 +125,11 @@ type fakeBuildAndDeployer struct {
 
 	// Set this to simulate a container update that returns the container ID
 	// it updated.
-	nextBuildContainer container.ID
+	nextLiveUpdateContainerID container.ID
+
+	// Inject the container ID of the container started by Docker Compose.
+	// If not set, we will auto-generate an ID.
+	nextDockerComposeContainerID container.ID
 
 	nextDeployID model.DeployID
 
@@ -140,15 +144,13 @@ var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deployTarget model.TargetSpec) store.BuildResult {
 	named := iTarget.DeploymentRef
 	nt, _ := reference.WithTag(named, fmt.Sprintf("tilt-%d", b.buildCount))
-	containerID := b.nextBuildContainer
-	_, isDC := deployTarget.(model.DockerComposeTarget)
-	if isDC && containerID == "" {
-		// DockerCompose creates a container ID synchronously.
-		containerID = container.ID(fmt.Sprintf("dc-%s", path.Base(named.Name())))
-	}
-	result := store.NewImageBuildResult(iTarget.ID(), nt)
+
+	var result store.BuildResult
+	containerID := b.nextLiveUpdateContainerID
 	if containerID != "" {
-		result.ContainerIDs = []container.ID{containerID}
+		result = store.NewLiveUpdateBuildResult(iTarget.ID(), containerID)
+	} else {
+		result = store.NewImageBuildResult(iTarget.ID(), nt)
 	}
 	return result
 }
@@ -215,11 +217,16 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		result[iTarget.ID()] = b.nextBuildResult(iTarget, deployTarget)
 	}
 
-	if !call.dc().Empty() {
-		result[call.dc().ID()] = store.NewContainerBuildResult(call.dc().ID(), b.nextBuildContainer)
+	if !call.dc().Empty() && b.nextLiveUpdateContainerID == "" {
+		dcContainerID := container.ID(fmt.Sprintf("dc-%s", path.Base(call.dc().ID().Name.String())))
+		if b.nextDockerComposeContainerID != "" {
+			dcContainerID = b.nextDockerComposeContainerID
+		}
+		result[call.dc().ID()] = store.NewDockerComposeDeployResult(call.dc().ID(), dcContainerID)
 	}
 
-	b.nextBuildContainer = ""
+	b.nextLiveUpdateContainerID = ""
+	b.nextDockerComposeContainerID = ""
 
 	return result, nil
 }
@@ -1571,7 +1578,7 @@ func TestUpperBuildImmediatelyAfterCrashRebuild(t *testing.T) {
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 	f.waitForCompletedBuildCount(1)
 
-	f.b.nextBuildContainer = podbuilder.FakeContainerID
+	f.b.nextLiveUpdateContainerID = podbuilder.FakeContainerID
 	f.podEvent(f.testPod("pod-id", manifest, "Running", podbuilder.FakeContainerID, time.Now()))
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
@@ -1580,7 +1587,7 @@ func TestUpperBuildImmediatelyAfterCrashRebuild(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 	f.withManifestState("fe", func(ms store.ManifestState) {
 		assert.Equal(t, model.BuildReasonFlagChangedFiles, ms.LastBuild().Reason)
-		assert.Equal(t, podbuilder.FakeContainerID, ms.ExpectedContainerID.String())
+		assert.Equal(t, podbuilder.FakeContainerID, ms.LiveUpdatedContainerID.String())
 	})
 
 	f.b.nextDeployID = podbuilder.FakeDeployID + 1
@@ -2260,7 +2267,7 @@ func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 	m1, _ := f.setupDCFixture()
 
 	expected := container.ID("aaaaaa")
-	f.b.nextBuildContainer = expected
+	f.b.nextDockerComposeContainerID = expected
 	f.loadAndStart()
 
 	f.waitForCompletedBuildCount(2)
@@ -2279,6 +2286,7 @@ func TestDockerComposeBuildCompletedDoesntSetStatusIfNotSuccessful(t *testing.T)
 	f := newTestFixture(t)
 	m1, _ := f.setupDCFixture()
 
+	f.SetNextBuildFailure(fmt.Errorf("dc failure"))
 	f.loadAndStart()
 
 	f.waitForCompletedBuildCount(2)
@@ -3140,7 +3148,7 @@ func containerResultSet(manifest model.Manifest, id container.ID) store.BuildRes
 	for _, iTarget := range manifest.ImageTargets {
 		ref, _ := reference.WithTag(iTarget.DeploymentRef, "deadbeef")
 		result := store.NewImageBuildResult(iTarget.ID(), ref)
-		result.ContainerIDs = []container.ID{id}
+		result.LiveUpdatedContainerIDs = []container.ID{id}
 		resultSet[iTarget.ID()] = result
 	}
 	return resultSet

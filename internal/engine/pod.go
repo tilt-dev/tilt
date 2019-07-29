@@ -224,7 +224,7 @@ func checkForPodCrash(ctx context.Context, state *store.EngineState, ms *store.M
 		return
 	}
 
-	if ms.ExpectedContainerID == "" || ms.ExpectedContainerID == podInfo.ContainerID() {
+	if ms.LiveUpdatedContainerID == "" || ms.LiveUpdatedContainerID == podInfo.ContainerID() {
 		// The pod is what we expect it to be.
 		return
 	}
@@ -232,7 +232,7 @@ func checkForPodCrash(ctx context.Context, state *store.EngineState, ms *store.M
 	// The pod isn't what we expect!
 	ms.CrashLog = podInfo.CurrentLog
 	ms.NeedsRebuildFromCrash = true
-	ms.ExpectedContainerID = ""
+	ms.LiveUpdatedContainerID = ""
 	msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Name)
 	le := store.NewLogEvent(ms.Name, []byte(msg+"\n"))
 	if len(ms.BuildHistory) > 0 {
