@@ -168,7 +168,6 @@ class HUD extends Component<HudProps, HudState> {
     let needsNudge = view ? view.NeedsAnalyticsNudge : false
     let message = this.state.Message
     let resources = (view && view.Resources) || []
-    let featureFlags = (view && view.FeatureFlags) || {}
     if (!resources.length) {
       return <LoadingScreen message={message} />
     }

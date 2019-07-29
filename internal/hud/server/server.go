@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -9,9 +10,6 @@ import (
 	"github.com/gorilla/mux"
 	_ "github.com/gorilla/websocket"
 	"github.com/windmilleng/wmclient/pkg/analytics"
-
-	"context"
-
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/hud/webview"
