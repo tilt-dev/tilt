@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/mux"
 	_ "github.com/gorilla/websocket"
 	"github.com/windmilleng/wmclient/pkg/analytics"
+
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/hud/webview"
