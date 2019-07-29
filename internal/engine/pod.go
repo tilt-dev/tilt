@@ -46,6 +46,12 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v
 		return
 	}
 
+	fwdsValid := portForwardsAreValid(manifest, *podInfo)
+	if !fwdsValid {
+		logger.Get(ctx).Infof(
+			"WARNING: Resource %s is using port forwards, but no container ports on pod %s",
+			manifest.Name, podInfo.PodID)
+	}
 	checkForPodCrash(ctx, state, ms, *podInfo)
 
 	if int(podInfo.BlessedContainer().Restarts) > podInfo.ContainerRestarts {
@@ -177,13 +183,6 @@ func containerForStatus(ctx context.Context, manifest model.Manifest, podInfo *s
 	cSpec := k8s.ContainerSpecOf(pod, cStatus)
 	for _, cPort := range cSpec.Ports {
 		ports = append(ports, cPort.ContainerPort)
-	}
-
-	forwards := PopulatePortForwards(manifest, *podInfo)
-	if len(forwards) < len(manifest.K8sTarget().PortForwards) {
-		logger.Get(ctx).Infof(
-			"WARNING: Resource %s is using port forwards, but no container ports on pod %s",
-			manifest.Name, podInfo.PodID)
 	}
 
 	return store.Container{

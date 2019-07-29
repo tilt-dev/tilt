@@ -47,7 +47,7 @@ func (m *PortForwardController) diff(ctx context.Context, st store.RStore) (toSt
 			continue
 		}
 
-		forwards := PopulatePortForwards(manifest, pod)
+		forwards := populatePortForwards(manifest, pod)
 		if len(forwards) == 0 {
 			continue
 		}
@@ -127,9 +127,9 @@ type portForwardEntry struct {
 }
 
 // Extract the port-forward specs from the manifest. If any of them
-// have ContainerPort = 0, populate them with the default port in the pod spec.
+// have ContainerPort = 0, populate them with the default port for the pod.
 // Quietly drop forwards that we can't populate.
-func PopulatePortForwards(m model.Manifest, pod store.Pod) []model.PortForward {
+func populatePortForwards(m model.Manifest, pod store.Pod) []model.PortForward {
 	cPorts := pod.ContainerPorts()
 	fwds := m.K8sTarget().PortForwards
 	forwards := make([]model.PortForward, 0, len(fwds))
@@ -144,4 +144,10 @@ func PopulatePortForwards(m model.Manifest, pod store.Pod) []model.PortForward {
 		forwards = append(forwards, forward)
 	}
 	return forwards
+}
+
+func portForwardsAreValid(m model.Manifest, pod store.Pod) bool {
+	expectedFwds := m.K8sTarget().PortForwards
+	actualFwds := populatePortForwards(m, pod)
+	return len(actualFwds) == len(expectedFwds)
 }
