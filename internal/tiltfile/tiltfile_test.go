@@ -522,7 +522,7 @@ docker_build('gcr.io/a', 'a')
 	f.loadErrString("Image for ref \"gcr.io/a\" has already been defined")
 }
 
-func TestInvalidImageName(t *testing.T) {
+func TestInvalidImageNameInDockerBuild(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -533,6 +533,26 @@ docker_build("ceci n'est pas une valid image ref", 'a')
 `)
 
 	f.loadErrString("invalid reference format")
+}
+
+func TestInvalidImageNameInK8SYAML(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+yaml_str = """
+kind: Pod
+apiVersion: v1
+metadata:
+  name: test-pod
+spec:
+  containers:
+  - image: IMAGE_URL
+"""
+
+k8s_yaml([blob(yaml_str)])`)
+
+	f.loadErrString("invalid reference format", "test-pod", "IMAGE_URL")
 }
 
 func TestFastBuildAddString(t *testing.T) {

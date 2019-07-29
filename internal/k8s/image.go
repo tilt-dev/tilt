@@ -251,7 +251,7 @@ func (e K8sEntity) FindImages(imageJSONPaths []JSONPath, envVarImages []containe
 	for _, c := range containers {
 		ref, err := container.ParseNamed(c.Image)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "parsing %s", c.Image)
 		}
 
 		result = append(result, ref)
