@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/windmilleng/tilt/internal/docker"
+
 	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -16,12 +18,17 @@ import (
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 )
 
+var userFailureErr = docker.ExitError{ExitCode: 123}
+
 type testCase struct {
 	baseManifest model.Manifest
 	liveUpdate   model.LiveUpdate
 
 	changedFiles        []string       // leave empty for from-scratch build
 	runningContainerIDs []container.ID // if empty, use default container
+
+	// Expect the BuildAndDeploy call to fail with an error containing this string
+	expectErrorContains string
 
 	// Docker actions
 	expectDockerBuildCount   int
@@ -78,7 +85,11 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 	targets := buildTargets(manifest)
 
 	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
-	if err != nil {
+	if tCase.expectErrorContains != "" {
+		require.NotNil(t, err, "expected error containing '%s' but got no error", tCase.expectErrorContains)
+		require.Contains(t, err.Error(), tCase.expectErrorContains,
+			"expected BuildAndDeploy error to contain string")
+	} else if err != nil {
 		t.Fatal(err)
 	}
 
@@ -98,10 +109,25 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 
 	assert.Equal(t, tCase.expectK8sExecCount, len(f.k8s.ExecCalls), "# k8s exec calls")
 
+	logsStr := f.logs.String()
+	if len(tCase.logsContain) > 0 {
+		for _, s := range tCase.logsContain {
+			assert.Contains(t, logsStr, s, "checking that logs contain expected string")
+		}
+	}
+	if len(tCase.logsDontContain) > 0 {
+		for _, s := range tCase.logsDontContain {
+			assert.NotContains(t, logsStr, s, "checking that logs do NOT contain string")
+		}
+	}
+
 	id := manifest.ImageTargetAt(iTargIdx).ID()
 	imgRes, hasResult := result[id]
-	assert.True(t, hasResult)
+	if tCase.expectErrorContains != "" {
+		return
+	}
 
+	require.True(t, hasResult, "expect build result for image")
 	if !tCase.expectK8sDeploy {
 		assert.Empty(t, f.k8s.Yaml, "expected no k8s deploy, but we deployed YAML: %s", f.k8s.Yaml)
 
@@ -118,18 +144,6 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 			t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.Yaml)
 		}
 		assert.Equal(t, tCase.expectSyncletDeploy, strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName), "expected synclet-deploy = %t (deployed yaml was: %s)", tCase.expectSyncletDeploy, f.k8s.Yaml)
-	}
-
-	logsStr := f.logs.String()
-	if len(tCase.logsContain) > 0 {
-		for _, s := range tCase.logsContain {
-			assert.Contains(t, logsStr, s, "checking that logs contain expected string")
-		}
-	}
-	if len(tCase.logsDontContain) > 0 {
-		for _, s := range tCase.logsDontContain {
-			assert.NotContains(t, logsStr, s, "checking that logs do NOT contain string")
-		}
 	}
 }
 
@@ -223,6 +237,173 @@ func TestLiveUpdateDockerBuildExecOnMultipleContainers(t *testing.T) {
 
 		// 1 per container (tar archive) x 3 containers
 		expectK8sExecCount: 3,
+	}
+	runTestCase(t, f, tCase)
+}
+
+// If any container updates fail with a non-UserRunFailure, fall back to image build.
+func TestLiveUpdateMultipleContainersFallsBackForFailure(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	defer f.TearDown()
+
+	f.docker.SetExecError(fmt.Errorf("egads"))
+
+	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cIDs := []container.ID{"c1", "c2", "c3"}
+	tCase := testCase{
+		baseManifest:        NewSanchoDockerBuildManifest(f),
+		runningContainerIDs: cIDs,
+		liveUpdate:          lu,
+		changedFiles:        []string{"a.txt"},
+
+		// attempted container update; called copy and exec before hitting error
+		expectDockerCopyCount: 1,
+		expectDockerExecCount: 1,
+
+		// fell back to image build
+		expectDockerBuildCount: 1,
+		expectK8sDeploy:        true,
+	}
+	runTestCase(t, f, tCase)
+}
+
+// Even if the first container update succeeds, if any subsequent container updates
+// fail with a non-UserRunFailure, fall back to image build.
+func TestLiveUpdateMultipleContainersFallsBackForFailureAfterSuccess(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	defer f.TearDown()
+
+	// First call = no error, second call = error
+	f.docker.ExecErrorsToThrow = []error{nil, fmt.Errorf("egads")}
+
+	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cIDs := []container.ID{"c1", "c2", "c3"}
+	tCase := testCase{
+		baseManifest:        NewSanchoDockerBuildManifest(f),
+		runningContainerIDs: cIDs,
+		liveUpdate:          lu,
+		changedFiles:        []string{"a.txt"},
+
+		// one successful update (copy, exec, restart);
+		// one truncated update (copy, exec) before hitting error
+		expectDockerCopyCount:    2,
+		expectDockerExecCount:    2,
+		expectDockerRestartCount: 1,
+
+		// fell back to image build
+		expectDockerBuildCount: 1,
+		expectK8sDeploy:        true,
+	}
+	runTestCase(t, f, tCase)
+}
+
+// If one container update fails with UserRunFailure, continue running updates on
+// all containers. If ALL the updates fail with a UserRunFailure, don't fall back.
+func TestLiveUpdateMultipleContainersUpdatesAllForUserRunFailuresAndDoesntFallBack(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	defer f.TearDown()
+
+	// Same UserRunFailure on all three exec calls
+	f.docker.ExecErrorsToThrow = []error{userFailureErr, userFailureErr, userFailureErr}
+
+	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cIDs := []container.ID{"c1", "c2", "c3"}
+	tCase := testCase{
+		baseManifest:        NewSanchoDockerBuildManifest(f),
+		runningContainerIDs: cIDs,
+		liveUpdate:          lu,
+		changedFiles:        []string{"a.txt"},
+
+		// BuildAndDeploy call will ultimately fail with this error,
+		// b/c we DON'T fall back to an image build
+		expectErrorContains: "Command failed with exit code: 123",
+
+		// attempted update for each container;
+		// for each, called copy and exec before hitting error
+		// (so did not call restart)
+		expectDockerCopyCount:    3,
+		expectDockerExecCount:    3,
+		expectDockerRestartCount: 0,
+
+		// DO NOT fall back to image build
+		expectDockerBuildCount: 0,
+		expectK8sDeploy:        false,
+	}
+	runTestCase(t, f, tCase)
+}
+
+// If only SOME container updates fail with a UserRunFailure (1+ succeeds, or 1+ fails
+// with a non-UserRunFailure), fall back to an image build.
+func TestLiveUpdateMultipleContainersFallsBackForSomeUserRunFailuresSomeSuccess(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	defer f.TearDown()
+
+	f.docker.ExecErrorsToThrow = []error{userFailureErr, nil, userFailureErr}
+
+	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cIDs := []container.ID{"c1", "c2", "c3"}
+	tCase := testCase{
+		baseManifest:        NewSanchoDockerBuildManifest(f),
+		runningContainerIDs: cIDs,
+		liveUpdate:          lu,
+		changedFiles:        []string{"a.txt"},
+
+		// one truncated update (copy and exec before hitting error)
+		// one successful update (copy, exec, restart)
+		// fall back before attempting third update
+		expectDockerCopyCount:    2,
+		expectDockerExecCount:    2,
+		expectDockerRestartCount: 1,
+
+		// fell back to image build
+		expectDockerBuildCount: 1,
+		expectK8sDeploy:        true,
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateMultipleContainersFallsBackForSomeUserRunFailuresSomeNonUserFailures(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	defer f.TearDown()
+
+	f.docker.ExecErrorsToThrow = []error{
+		userFailureErr,
+		fmt.Errorf("not a user failure"),
+		userFailureErr,
+	}
+
+	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cIDs := []container.ID{"c1", "c2", "c3"}
+	tCase := testCase{
+		baseManifest:        NewSanchoDockerBuildManifest(f),
+		runningContainerIDs: cIDs,
+		liveUpdate:          lu,
+		changedFiles:        []string{"a.txt"},
+
+		// two truncated updates (copy and exec before hitting error)
+		// fall back before attempting third update
+		expectDockerCopyCount:    2,
+		expectDockerExecCount:    2,
+		expectDockerRestartCount: 0,
+
+		// fell back to image build
+		expectDockerBuildCount: 1,
+		expectK8sDeploy:        true,
 	}
 	runTestCase(t, f, tCase)
 }

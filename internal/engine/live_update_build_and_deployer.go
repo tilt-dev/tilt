@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"time"
 
@@ -171,15 +172,33 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 	// -- if all fail b/c userFailure, don't fall back
 	// -- if any succeed, do an image build (otherwise, possible disparate state)
 
+	var lastUserBuildFailure error
 	for _, cInfo := range state.RunningContainers {
 		err = cu.UpdateContainer(ctx, cInfo, pr, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 		if err != nil {
 			if build.IsUserRunFailure(err) {
-				return WrapDontFallBackError(err)
+				// Keep running updates -- we want all containers to have the same files on them
+				// even if the Runs don't succeed
+				lastUserBuildFailure = err
+				logger.Get(ctx).Infof("  → FAILED TO UPDATE CONTAINER %s with user run error: %v", cInfo.ContainerID, err)
+				continue
 			}
+
+			// Something went wrong with this update and it's NOT the user's fault--
+			// likely a infrastructure error. Bail, and fall back to full build.
 			return err
+		} else {
+			logger.Get(ctx).Infof("  → Container %s updated!", cInfo.ContainerID)
+			if lastUserBuildFailure != nil {
+				// This build succeeded, but previously at least one failed due to user error.
+				// We may have inconsistent state--bail, and fall back to full build.
+				return fmt.Errorf("INCONSISTENT STATE: container %s successfully updated,"+
+					"but last update failed with '%v'", cInfo.ContainerID, lastUserBuildFailure)
+			}
 		}
-		logger.Get(ctx).Infof("  → Container %s updated!", cInfo.ContainerID)
+	}
+	if lastUserBuildFailure != nil {
+		return WrapDontFallBackError(lastUserBuildFailure)
 	}
 	return nil
 }
