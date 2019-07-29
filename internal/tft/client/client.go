@@ -1,6 +1,13 @@
 package client
 
-import "context"
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+)
 
 type Alert struct {
 	AlertType    string `json:"alertType"`
@@ -16,11 +23,37 @@ type Client interface {
 	SendAlert(ctx context.Context, alert Alert) (AlertID, error)
 }
 
+const alertStorageBaseURL = "http://alerts.tilt.dev"
+
+type newAlertResponse struct {
+	ID string
+}
+
 type tftClient struct{}
 
 func (t *tftClient) SendAlert(ctx context.Context, alert Alert) (AlertID, error) {
-	// TODO(dmiller): implement this
-	return "", nil
+	buf, err := json.Marshal(alert)
+	if err != nil {
+		return "", err
+	}
+	fmt.Println(string(buf))
+	resp, err := http.Post(fmt.Sprintf("%s/api/alert", alertStorageBaseURL), "application/json", bytes.NewReader(buf))
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Expected 200 response code from backend, got %d", resp.StatusCode)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	fmt.Println(string(body))
+	var r newAlertResponse
+	err = json.Unmarshal(body, &r)
+	return AlertID(r.ID), nil
 }
 
 func ProvideClient() Client {

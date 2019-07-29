@@ -142,6 +142,10 @@ class HUD extends Component<HudProps, HudState> {
     fetch(url, {
       method: "post",
       body: JSON.stringify(alert),
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
     })
       .then(res => {
         res
@@ -150,7 +154,9 @@ class HUD extends Component<HudProps, HudState> {
             // TODO(dmiller): maybe set state here in the future
             window.open(value.url)
           })
-          .catch(err => console.error(err))
+          .catch(err => {
+            console.error(err)
+          })
       })
       .then(err => console.error(err))
   }

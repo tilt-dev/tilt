@@ -242,11 +242,16 @@ func (s *HeadsUpServer) HandleNewAlert(w http.ResponseWriter, req *http.Request)
 	var alert tsAlert
 	err := decoder.Decode(&alert)
 	if err != nil {
-		panic(err)
+		http.Error(w, fmt.Sprintf("error decoding request: %v", err), http.StatusBadRequest)
+		return
 	}
 
 	ctx := context.TODO()
 	id, err := s.tftCli.SendAlert(ctx, tsAlertToBackendAlert(alert))
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error talking to backend: %v", err), http.StatusBadRequest)
+		return
+	}
 
 	responsePayload := &NewAlertResponse{
 		Url: templateAlertURL(id),
@@ -261,7 +266,7 @@ func (s *HeadsUpServer) HandleNewAlert(w http.ResponseWriter, req *http.Request)
 }
 
 func templateAlertURL(id tft.AlertID) string {
-	return fmt.Sprintf("http://%s/%s", TiltAlertsDomain, id)
+	return fmt.Sprintf("http://%s/alert/%s", TiltAlertsDomain, id)
 }
 
 type tsAlert struct {
