@@ -208,7 +208,7 @@ func TestLiveUpdateDockerBuildExecOnMultipleContainers(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeCrio)
 	defer f.TearDown()
 
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, []string{"i/match/nothing"}, f)
+	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), nil, false, []string{"i/match/nothing"}, f)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,8 +221,8 @@ func TestLiveUpdateDockerBuildExecOnMultipleContainers(t *testing.T) {
 		expectDockerBuildCount: 0,
 		expectDockerPushCount:  0,
 
-		// 2 per container (tar archive, run command) x 3 containers
-		expectK8sExecCount: 6,
+		// 1 per container (tar archive) x 3 containers
+		expectK8sExecCount: 3,
 	}
 	runTestCase(t, f, tCase)
 }
