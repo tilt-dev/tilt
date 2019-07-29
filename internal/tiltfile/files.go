@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/sliceutils"
@@ -348,21 +347,17 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
 
-	templates, err := ioutil.ReadDir(filepath.Join(localPath.path, "templates"))
+	info, err := os.Stat(localPath.path)
 	if err != nil {
-		return nil, fmt.Errorf("Expected to be able to read Helm templates in %s, but got an error: %v", localPath.path, err)
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("Could not read Helm chart directory %q: does not exist", localPath.path)
+		}
+		return nil, fmt.Errorf("Could not read Helm chart directory %q: %v", localPath.path, err)
+	} else if !info.IsDir() {
+		return nil, fmt.Errorf("helm() may only be called on directories with Chart.yaml: %q", localPath.path)
 	}
 
 	cmd := []string{"helm", "template", localPath.path}
-	for _, t := range templates {
-		name := t.Name()
-		if name == "tests" || name == "NOTES.txt" || strings.HasPrefix(name, "_") {
-			continue
-		}
-		cmd = append(cmd, "-x")
-		cmd = append(cmd, filepath.Join("templates", name))
-	}
-
 	yaml, err := s.execLocalCmd(exec.Command(cmd[0], cmd[1:]...), false)
 	if err != nil {
 		return nil, err
@@ -370,7 +365,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 
 	s.recordConfigFile(localPath.path)
 
-	return newBlob(string(yaml), fmt.Sprintf("helm: %s", localPath.path)), nil
+	return newBlob(filterHelmTestYAML(string(yaml)), fmt.Sprintf("helm: %s", localPath.path)), nil
 }
 
 func (s *tiltfileState) blob(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
