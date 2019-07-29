@@ -198,7 +198,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 					"but last update failed with '%v'", cInfo.ContainerID, lastUserBuildFailure)
 			}
 		}
-		archiveReader = &buf
+		archiveReader = &archiveBuf
 	}
 	if lastUserBuildFailure != nil {
 		return WrapDontFallBackError(lastUserBuildFailure)
