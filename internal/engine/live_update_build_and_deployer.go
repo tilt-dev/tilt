@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -158,6 +159,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 			_ = pw.Close()
 		}
 	}()
+	var archiveReader io.Reader = pr
 
 	if len(toArchive) > 0 {
 		l.Infof("Will copy %d file(s) to container(s): %s", len(toArchive), cIDStr)
@@ -168,7 +170,13 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 
 	var lastUserBuildFailure error
 	for _, cInfo := range state.RunningContainers {
-		err = cu.UpdateContainer(ctx, cInfo, pr, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
+
+		// always pass a copy of the tar archive reader
+		// so multiple updates can access the same data
+		var archiveBuf bytes.Buffer
+		archiveTee := io.TeeReader(archiveReader, &archiveBuf)
+
+		err = cu.UpdateContainer(ctx, cInfo, archiveTee, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 		if err != nil {
 			if build.IsUserRunFailure(err) {
 				// Keep running updates -- we want all containers to have the same files on them
@@ -190,6 +198,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 					"but last update failed with '%v'", cInfo.ContainerID, lastUserBuildFailure)
 			}
 		}
+		archiveReader = &buf
 	}
 	if lastUserBuildFailure != nil {
 		return WrapDontFallBackError(lastUserBuildFailure)
