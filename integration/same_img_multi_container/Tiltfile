@@ -16,6 +16,6 @@ docker_build('sameimg', '.',
              live_update=[
                  sync('.', codepath),
                  run('go install {}'.format(codepath)),
-                 restart_container(),
+                 run('{}/restart.sh'.format(codepath))
              ])
 k8s_yaml('sameimg.yaml')

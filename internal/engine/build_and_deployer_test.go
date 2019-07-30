@@ -839,12 +839,6 @@ func (f *bdFixture) assertContainerRestarts(count int) {
 
 // Total number of restarts, regardless of which container.
 func (f *bdFixture) assertTotalContainerRestarts(count int) {
-	// Ensure that MagicTestContainerID was the only container id that saw
-	// restarts, and that it saw the right number of restarts.
-	expected := map[string]int{}
-	if count != 0 {
-		expected[string(k8s.MagicTestContainerID)] = count
-	}
 	assert.Len(f.T(), f.docker.RestartsByContainer, count,
 		"checking for expected # of container restarts")
 }
