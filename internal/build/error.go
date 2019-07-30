@@ -23,25 +23,29 @@ func WrapContainerExecError(err error, cID container.ID, cmd model.Cmd) error {
 			return fmt.Errorf("executing %v on container %s: killed by container engine", cmd, cID.ShortStr())
 		}
 
-		return UserBuildFailure{ExitCode: exitErr.ExitCode}
+		return RunStepFailure{
+			Cmd:      cmd,
+			ExitCode: exitErr.ExitCode,
+		}
 	}
 
 	return errors.Wrapf(err, "executing %v on container %s", cmd, cID.ShortStr())
 }
 
-// Indicates that the build failed because the user script failed
-// (as opposed to an infrastructure issue).
-type UserBuildFailure struct {
+// Indicates that the update failed because one of the user's Runs failed
+// (i.e. exited non-zero) -- as opposed to an infrastructure issue.
+type RunStepFailure struct {
+	Cmd      model.Cmd
 	ExitCode int
 }
 
-func (e UserBuildFailure) Error() string {
-	return fmt.Sprintf("Command failed with exit code: %d", e.ExitCode)
+func (e RunStepFailure) Error() string {
+	return fmt.Sprintf("Run step %q failed with exit code: %d", e.Cmd.String(), e.ExitCode)
 }
 
-func IsUserBuildFailure(err error) bool {
-	_, ok := err.(UserBuildFailure)
+func IsRunStepFailure(err error) bool {
+	_, ok := err.(RunStepFailure)
 	return ok
 }
 
-var _ error = UserBuildFailure{}
+var _ error = RunStepFailure{}

@@ -212,6 +212,14 @@ func (c ContainerInfo) Empty() bool {
 	return c == ContainerInfo{}
 }
 
+func IDsForInfos(infos []ContainerInfo) []container.ID {
+	ids := make([]container.ID, len(infos))
+	for i, info := range infos {
+		ids[i] = info.ContainerID
+	}
+	return ids
+}
+
 // If all containers running the given image are ready, returns info for them.
 // (Currently only supports containers running on a single pod.)
 func RunningContainersForTarget(iTarget model.ImageTarget, deployID model.DeployID, podSet PodSet) []ContainerInfo {
