@@ -393,10 +393,10 @@ func TestDeployUsesInjectRef(t *testing.T) {
 	expectedImages := []string{"foo.com/gcr.io_some-project-162817_sancho"}
 	tests := []struct {
 		name           string
-		manifest       func(f pather) model.Manifest
+		manifest       func(f Fixture) model.Manifest
 		expectedImages []string
 	}{
-		{"docker build", func(f pather) model.Manifest { return NewSanchoDockerBuildManifest(f) }, expectedImages},
+		{"docker build", func(f Fixture) model.Manifest { return NewSanchoDockerBuildManifest(f) }, expectedImages},
 		{"fast build", NewSanchoFastBuildManifest, expectedImages},
 		{"custom build", NewSanchoCustomBuildManifest, expectedImages},
 		{"live multi stage", NewSanchoLiveUpdateMultiStageManifest, append(expectedImages, "foo.com/sancho-base")},

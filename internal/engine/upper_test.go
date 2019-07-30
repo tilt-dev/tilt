@@ -46,6 +46,7 @@ import (
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
+	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
 	"github.com/windmilleng/tilt/internal/testutils/podbuilder"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/tiltfile"
@@ -2988,15 +2989,15 @@ func (f *testFixture) newManifest(name string) model.Manifest {
 func (f *testFixture) newFastBuildManifest(name string, syncs []model.Sync) model.Manifest {
 	ref := container.MustParseNamed(name)
 	refSel := container.NewRefSelector(ref)
-
-	return assembleK8sManifest(
-		model.Manifest{Name: model.ManifestName(name)},
-		model.K8sTarget{YAML: SanchoYAML},
-		model.NewImageTarget(refSel).
-			WithBuildDetails(model.FastBuild{
-				BaseDockerfile: `from golang:1.10`,
-				Syncs:          syncs,
-			}))
+	iTarget := model.NewImageTarget(refSel).
+		WithBuildDetails(model.FastBuild{
+			BaseDockerfile: `from golang:1.10`,
+			Syncs:          syncs,
+		})
+	return manifestbuilder.New(f, model.ManifestName(name)).
+		WithK8sYAML(SanchoYAML).
+		WithImageTarget(iTarget).
+		Build()
 }
 
 func (f *testFixture) newManifestWithRef(name string, ref reference.Named) model.Manifest {
@@ -3006,10 +3007,10 @@ func (f *testFixture) newManifestWithRef(name string, ref reference.Named) model
 	iTarget.ConfigurationRef = refSel
 	iTarget.DeploymentRef = ref
 
-	return assembleK8sManifest(
-		model.Manifest{Name: model.ManifestName(name)},
-		model.K8sTarget{YAML: SanchoYAML},
-		iTarget)
+	return manifestbuilder.New(f, model.ManifestName(name)).
+		WithK8sYAML(SanchoYAML).
+		WithImageTarget(iTarget).
+		Build()
 }
 
 func (f *testFixture) newDCManifest(name string, DCYAMLRaw string, dockerfileContents string) model.Manifest {
