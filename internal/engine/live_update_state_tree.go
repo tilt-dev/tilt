@@ -20,9 +20,9 @@ func (t liveUpdateStateTree) createResultSet() store.BuildResultSet {
 	state := t.iTargetState
 	res := state.LastResult
 
-	res.ContainerIDs = nil
+	res.LiveUpdatedContainerIDs = nil
 	for _, c := range state.RunningContainers {
-		res.ContainerIDs = append(res.ContainerIDs, c.ContainerID)
+		res.LiveUpdatedContainerIDs = append(res.LiveUpdatedContainerIDs, c.ContainerID)
 	}
 
 	resultSet := store.BuildResultSet{}

@@ -221,7 +221,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	}
 	ms.ConfigFilesThatCausedChange = []string{}
 	ms.CurrentBuild = bs
-	ms.ExpectedContainerID = ""
+	ms.LiveUpdatedContainerID = ""
 
 	for _, pod := range ms.PodSet.Pods {
 		pod.CurrentLog = model.Log{}
@@ -312,10 +312,12 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	if mt.Manifest.IsDC() {
 		state, _ := ms.ResourceState.(dockercompose.State)
 
-		cid := cb.Result.OneAndOnlyContainerID()
+		dcResult := cb.Result[mt.Manifest.DockerComposeTarget().ID()]
+		cid := dcResult.DockerComposeContainerID
 		if cid != "" {
 			state = state.WithContainerID(cid)
 		}
+
 		// If we have a container ID and no status yet, set status to Up
 		// (this is an expected case when we run docker-compose up while the service
 		// is already running, and we won't get an event to tell us so).
@@ -331,9 +333,9 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	if engineState.WatchFiles {
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 
-		cID := cb.Result.OneContainerIDForOldBehavior()
+		cID := cb.Result.OneLiveUpdatedContainerIDForOldBehavior()
 		if cID != "" {
-			ms.ExpectedContainerID = cID
+			ms.LiveUpdatedContainerID = cID
 
 			bestPod := ms.MostRecentPod()
 			if bestPod.StartedAt.After(bs.StartTime) ||

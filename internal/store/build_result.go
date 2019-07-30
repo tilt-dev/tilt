@@ -21,23 +21,42 @@ type BuildResult struct {
 	// The tag is derived from a content-addressable digest.
 	Image reference.NamedTagged
 
-	// If this build was a container build, containerIDs we built on top of
-	ContainerIDs []container.ID
+	// The ID of the container that Docker Compose created.
+	//
+	// When we deploy a Docker Compose service, we wait synchronously for the
+	// container to start. Note that this is a different concurrency model than
+	// we use for Kubernetes, where the pods appear some time later via an
+	// asynchronous event.
+	DockerComposeContainerID container.ID
+
+	// The ID of the container(s) that we live-updated in-place.
+	//
+	// The contents of the container have diverged from the image it's built on,
+	// so we need to keep track of that.
+	LiveUpdatedContainerIDs []container.ID
 }
 
-// For docker-compose deploys that don't have any built images.
-func NewContainerBuildResult(id model.TargetID, containerID container.ID) BuildResult {
+// For in-place container updates.
+func NewLiveUpdateBuildResult(id model.TargetID, containerID container.ID) BuildResult {
 	return BuildResult{
-		TargetID:     id,
-		ContainerIDs: []container.ID{containerID},
+		TargetID:                id,
+		LiveUpdatedContainerIDs: []container.ID{containerID},
 	}
 }
 
-// For image targets. The container id will be added later.
+// For image targets.
 func NewImageBuildResult(id model.TargetID, image reference.NamedTagged) BuildResult {
 	return BuildResult{
 		TargetID: id,
 		Image:    image,
+	}
+}
+
+// For docker compose deploy targets.
+func NewDockerComposeDeployResult(id model.TargetID, containerID container.ID) BuildResult {
+	return BuildResult{
+		TargetID:                 id,
+		DockerComposeContainerID: containerID,
 	}
 }
 
@@ -50,25 +69,25 @@ func (b BuildResult) HasImage() bool {
 }
 
 func (b BuildResult) IsInPlaceUpdate() bool {
-	return len(b.ContainerIDs) != 0
+	return len(b.LiveUpdatedContainerIDs) != 0
 }
 
 type BuildResultSet map[model.TargetID]BuildResult
 
 // Returns a container ID iff it's the only container ID in the result set.
 // If there are multiple container IDs, we have to give up.
-func (set BuildResultSet) OneAndOnlyContainerID() container.ID {
+func (set BuildResultSet) OneAndOnlyLiveUpdatedContainerID() container.ID {
 	var id container.ID
 	for _, result := range set {
-		if len(result.ContainerIDs) == 0 {
+		if len(result.LiveUpdatedContainerIDs) == 0 {
 			continue
 		}
 
-		if len(result.ContainerIDs) > 1 {
+		if len(result.LiveUpdatedContainerIDs) > 1 {
 			return ""
 		}
 
-		curID := result.ContainerIDs[0]
+		curID := result.LiveUpdatedContainerIDs[0]
 		if curID == "" {
 			continue
 		}
@@ -82,17 +101,17 @@ func (set BuildResultSet) OneAndOnlyContainerID() container.ID {
 	return id
 }
 
-// NOTE(maia): this is used only to populate ms.ExpectedContainerID, and will
+// NOTE(maia): this is used only to populate ms.LiveUpdatedContainerID, and will
 // be removed in http://bit.ly/2LFAPDb when we implement crash detection
 // for multiple containers
-func (set BuildResultSet) OneContainerIDForOldBehavior() container.ID {
+func (set BuildResultSet) OneLiveUpdatedContainerIDForOldBehavior() container.ID {
 	var id container.ID
 	for _, result := range set {
-		if len(result.ContainerIDs) == 0 {
+		if len(result.LiveUpdatedContainerIDs) == 0 {
 			continue
 		}
 
-		curID := result.ContainerIDs[0]
+		curID := result.LiveUpdatedContainerIDs[0]
 
 		if id != "" && curID != id {
 			return ""

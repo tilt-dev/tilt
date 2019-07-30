@@ -217,7 +217,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 	f.waitForCompletedBuildCount(1)
 
-	f.b.nextBuildContainer = podbuilder.FakeContainerID
+	f.b.nextLiveUpdateContainerID = podbuilder.FakeContainerID
 	f.podEvent(f.testPod("pod-id", manifest, "Running", podbuilder.FakeContainerID, time.Now()))
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
@@ -226,7 +226,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 	f.withManifestState("fe", func(ms store.ManifestState) {
 		assert.Equal(t, model.BuildReasonFlagChangedFiles, ms.LastBuild().Reason)
-		assert.Equal(t, podbuilder.FakeContainerID, ms.ExpectedContainerID.String())
+		assert.Equal(t, podbuilder.FakeContainerID, ms.LiveUpdatedContainerID.String())
 	})
 
 	// Restart the pod with a new container id, to simulate a container restart.

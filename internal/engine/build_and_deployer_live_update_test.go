@@ -79,7 +79,7 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 		assert.Empty(t, f.k8s.Yaml, "expected no k8s deploy, but we deployed YAML: %s", f.k8s.Yaml)
 
 		// We did a container build, so we expect result to have the container ID we operated on
-		assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
+		assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyLiveUpdatedContainerID().String())
 	} else {
 		expectedYaml := "image: gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
 		if !strings.Contains(f.k8s.Yaml, expectedYaml) {

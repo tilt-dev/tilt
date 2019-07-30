@@ -247,8 +247,11 @@ type ManifestState struct {
 	// The last `BuildHistoryLimit` builds. The most recent build is first in the slice.
 	BuildHistory []model.BuildRecord
 
-	// If the pod isn't running this container then it's possible we're running stale code
-	ExpectedContainerID container.ID
+	// The container ID that we've run a LiveUpdate on, if any. Its contents have
+	// diverged from the image it's built on. If this container doesn't appear on
+	// the pod, we've lost that state and need to rebuild.
+	LiveUpdatedContainerID container.ID
+
 	// We detected stale code and are currently doing an image build
 	NeedsRebuildFromCrash bool
 
