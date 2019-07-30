@@ -36,7 +36,6 @@ func (t *tftClient) SendAlert(ctx context.Context, alert Alert) (AlertID, error)
 	if err != nil {
 		return "", err
 	}
-	fmt.Println(string(buf))
 	resp, err := http.Post(fmt.Sprintf("%s/api/alert", alertStorageBaseURL), "application/json", bytes.NewReader(buf))
 	if err != nil {
 		return "", err
@@ -50,7 +49,6 @@ func (t *tftClient) SendAlert(ctx context.Context, alert Alert) (AlertID, error)
 	if err != nil {
 		return "", err
 	}
-	fmt.Println(string(body))
 	var r newAlertResponse
 	err = json.Unmarshal(body, &r)
 	return AlertID(r.ID), nil
