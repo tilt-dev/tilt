@@ -23,7 +23,10 @@ func WrapContainerExecError(err error, cID container.ID, cmd model.Cmd) error {
 			return fmt.Errorf("executing %v on container %s: killed by container engine", cmd, cID.ShortStr())
 		}
 
-		return RunStepFailure{ExitCode: exitErr.ExitCode}
+		return RunStepFailure{
+			Cmd:      cmd,
+			ExitCode: exitErr.ExitCode,
+		}
 	}
 
 	return errors.Wrapf(err, "executing %v on container %s", cmd, cID.ShortStr())
@@ -32,11 +35,12 @@ func WrapContainerExecError(err error, cID container.ID, cmd model.Cmd) error {
 // Indicates that the update failed because one of the user's Runs failed
 // (i.e. exited non-zero) -- as opposed to an infrastructure issue.
 type RunStepFailure struct {
+	Cmd      model.Cmd
 	ExitCode int
 }
 
 func (e RunStepFailure) Error() string {
-	return fmt.Sprintf("Run step failed with exit code: %d", e.ExitCode)
+	return fmt.Sprintf("Run step `%s` failed with exit code: %d", e.Cmd.String(), e.ExitCode)
 }
 
 func IsRunStepFailure(err error) bool {
