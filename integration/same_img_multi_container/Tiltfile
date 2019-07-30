@@ -19,4 +19,3 @@ docker_build('sameimg', '.',
                  restart_container(),
              ])
 k8s_yaml('sameimg.yaml')
-k8s_resource('sameimg', port_forwards=['8100:8000', '8101:8001'])
