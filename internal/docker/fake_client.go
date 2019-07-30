@@ -89,8 +89,8 @@ type FakeClient struct {
 	CopyContainer string
 	CopyContent   io.Reader
 
-	ExecCalls        []ExecCall
-	ExecErrorToThrow error // next call to Exec will throw this err (after which we clear the error)
+	ExecCalls         []ExecCall
+	ExecErrorsToThrow []error // next call to exec will throw ExecError[0] (which we then pop)
 
 	RestartsByContainer map[string]int
 	RemovedImageIDs     []string
@@ -117,6 +117,10 @@ func (c *FakeClient) BuilderVersion() types.BuilderVersion {
 }
 func (c *FakeClient) ServerVersion() types.Version {
 	return types.Version{}
+}
+
+func (c *FakeClient) SetExecError(err error) {
+	c.ExecErrorsToThrow = []error{err}
 }
 
 func (c *FakeClient) SetContainerListOutput(output map[string][]types.Container) {
@@ -156,9 +160,14 @@ func (c *FakeClient) ExecInContainer(ctx context.Context, cID container.ID, cmd 
 	}
 	c.ExecCalls = append(c.ExecCalls, execCall)
 
-	// If we're supposed to throw an error on this call, throw it (and reset ErrorToThrow)
-	err := c.ExecErrorToThrow
-	c.ExecErrorToThrow = nil
+	// If we're supposed to throw an error on this call, throw it (and pop from
+	// the list of ErrorsToThrow)
+	var err error
+	if len(c.ExecErrorsToThrow) > 0 {
+		err = c.ExecErrorsToThrow[0]
+		c.ExecErrorsToThrow = append([]error{}, c.ExecErrorsToThrow[1:]...)
+	}
+
 	return err
 }
 
