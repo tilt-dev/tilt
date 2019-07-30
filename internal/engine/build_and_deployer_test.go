@@ -367,7 +367,7 @@ func TestIncrementalBuildFailure(t *testing.T) {
 
 	changed := f.WriteFile("a.txt", "a")
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
-	f.docker.ExecErrorToThrow = docker.ExitError{ExitCode: 1}
+	f.docker.SetExecError(docker.ExitError{ExitCode: 1})
 
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
@@ -400,7 +400,7 @@ func TestIncrementalBuildKilled(t *testing.T) {
 	changed := f.WriteFile("a.txt", "a")
 
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
-	f.docker.ExecErrorToThrow = docker.ExitError{ExitCode: build.TaskKillExitCode}
+	f.docker.SetExecError(docker.ExitError{ExitCode: build.TaskKillExitCode})
 
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
@@ -420,7 +420,7 @@ func TestFallBackToImageDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	f.docker.ExecErrorToThrow = errors.New("some random error")
+	f.docker.SetExecError(errors.New("some random error"))
 
 	changed := f.WriteFile("a.txt", "a")
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
@@ -441,7 +441,7 @@ func TestFallBackToImageDeploy(t *testing.T) {
 func TestNoFallbackForDontFallBackError(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
-	f.docker.ExecErrorToThrow = DontFallBackErrorf("i'm melllting")
+	f.docker.SetExecError(DontFallBackErrorf("i'm melllting"))
 
 	changed := f.WriteFile("a.txt", "a")
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
@@ -516,7 +516,7 @@ func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
 	}
 
 	// Kill the pod
-	f.docker.ExecErrorToThrow = fmt.Errorf("Dead pod")
+	f.docker.SetExecError(fmt.Errorf("Dead pod"))
 
 	secondState := resultToStateSet(firstResult, []string{bPath}, testContainerInfo)
 	_, err = f.bd.BuildAndDeploy(f.ctx, f.st, targets, secondState)

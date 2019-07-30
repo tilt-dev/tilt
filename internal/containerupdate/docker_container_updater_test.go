@@ -90,7 +90,7 @@ func TestUpdateContainerHotReloadDoesNotRestartContainer(t *testing.T) {
 func TestUpdateContainerKillTask(t *testing.T) {
 	f := newDCUFixture(t)
 
-	f.dCli.ExecErrorToThrow = docker.ExitError{ExitCode: build.TaskKillExitCode}
+	f.dCli.SetExecError(docker.ExitError{ExitCode: build.TaskKillExitCode})
 
 	cmdA := model.Cmd{Argv: []string{"cat"}}
 	err := f.dcu.UpdateContainer(f.ctx, TestContainerInfo, nil, nil, []model.Cmd{cmdA}, false)
