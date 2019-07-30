@@ -16,7 +16,7 @@ import (
 )
 
 const FakeDeployID = model.DeployID(1234567890)
-const FakeContainerID = "myTestContainer"
+const FakeContainerID = container.ID("myTestContainer")
 
 // Builds Pod objects for testing
 //
