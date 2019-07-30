@@ -20,8 +20,16 @@ const FakeContainerID = "myTestContainer"
 
 // Builds Pod objects for testing
 //
-// Ensures that any PodStatus objects we create are consistent with the Pod in
-// the PodTemplateSpec in the manifest.
+// The pod model should be internally well-formed (e.g., the containers
+// in the PodSpec object should match the containers in the PodStatus object).
+//
+// The pod model should also be consistent with the Manifest (e.g., if the Manifest
+// specifies a Deployment with labels in a PodTemplateSpec, then any Pods should also
+// have those labels).
+//
+// The PodBuilder is responsible for making sure we create well-formed Pods for
+// testing. Tests should never modify the pod directly, but instead use the PodBuilder
+// methods to ensure that the pod is consistent.
 type PodBuilder struct {
 	t        testing.TB
 	manifest model.Manifest
@@ -31,7 +39,8 @@ type PodBuilder struct {
 	creationTime time.Time
 	deployID     model.DeployID
 
-	// keyed by container index
+	// keyed by container index -- i.e. the first container will have image: imageRefs[0] and ID: cIDs[0], etc.
+	// If there's no entry at index i, we'll use a dummy value.
 	imageRefs map[int]string
 	cIDs      map[int]string
 }
@@ -59,12 +68,20 @@ func (b PodBuilder) WithPhase(phase string) PodBuilder {
 	return b
 }
 
-func (b PodBuilder) WithImage(image string, index int) PodBuilder {
+func (b PodBuilder) WithImage(image string) PodBuilder {
+	return b.WithImageAtIndex(image, 0)
+}
+
+func (b PodBuilder) WithImageAtIndex(image string, index int) PodBuilder {
 	b.imageRefs[index] = image
 	return b
 }
 
-func (b PodBuilder) WithContainerID(cID string, index int) PodBuilder {
+func (b PodBuilder) WithContainerID(cID string) PodBuilder {
+	return b.WithContainerIDAtIndex(cID, 0)
+}
+
+func (b PodBuilder) WithContainerIDAtIndex(cID string, index int) PodBuilder {
 	if cID == "" {
 		b.cIDs[index] = ""
 	} else {
