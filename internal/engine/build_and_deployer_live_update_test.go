@@ -325,7 +325,7 @@ func TestLiveUpdateMultipleContainersUpdatesAllForUserRunFailuresAndDoesntFallBa
 
 		// BuildAndDeploy call will ultimately fail with this error,
 		// b/c we DON'T fall back to an image build
-		expectErrorContains: "Command failed with exit code: 123",
+		expectErrorContains: "failed with exit code: 123",
 
 		// attempted update for each container;
 		// for each, called copy and exec before hitting error
