@@ -55,7 +55,7 @@ func TestBuildControllerIgnoresImageTags(t *testing.T) {
 
 	pod := podbuilder.New(t, manifest).
 		WithPodID("pod-id").
-		WithImage("image-foo:othertag", 0).
+		WithImage("image-foo:othertag").
 		Build()
 	f.podEvent(pod)
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
