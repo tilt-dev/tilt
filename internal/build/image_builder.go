@@ -277,7 +277,6 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildFromDf")
 	defer span.Finish()
 
-	// TODO(Han): Extend output to print without newline
 	ps.StartBuildStep(ctx, "Tarring context…")
 
 	// NOTE(maia): some people want to know what files we're adding (b/c `ADD . /` isn't descriptive)

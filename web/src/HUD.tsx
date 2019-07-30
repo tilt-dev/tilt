@@ -19,7 +19,8 @@ import AlertPane from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
 import NotFound from "./NotFound"
-import { numberOfAlerts } from "./alerts"
+import { numberOfAlerts, Alert } from "./alerts"
+import Features from "./feature"
 
 type HudProps = {
   history: History
@@ -36,8 +37,13 @@ type HudState = {
     NeedsAnalyticsNudge: boolean
     RunningTiltBuild: TiltBuild
     LatestTiltBuild: TiltBuild
+    FeatureFlags: { [featureFlag: string]: boolean }
   } | null
   IsSidebarClosed: boolean
+}
+
+type NewAlertResponse = {
+  url: string
 }
 
 // The Main HUD view, as specified in
@@ -82,6 +88,7 @@ class HUD extends Component<HudProps, HudState> {
           Date: "",
           Dev: false,
         },
+        FeatureFlags: {},
       },
       IsSidebarClosed: false,
     }
@@ -130,6 +137,30 @@ class HUD extends Component<HudProps, HudState> {
     return this.pathBuilder.path(relPath)
   }
 
+  sendAlert(alert: Alert) {
+    let url = `//${window.location.host}/api/alerts/new`
+    fetch(url, {
+      method: "post",
+      body: JSON.stringify(alert),
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    })
+      .then(res => {
+        res
+          .json()
+          .then((value: NewAlertResponse) => {
+            // TODO(dmiller): maybe set state here in the future
+            window.open(value.url)
+          })
+          .catch(err => {
+            console.error(err)
+          })
+      })
+      .then(err => console.error(err))
+  }
+
   render() {
     let view = this.state.View
     let sailEnabled = view && view.SailEnabled ? view.SailEnabled : false
@@ -144,6 +175,12 @@ class HUD extends Component<HudProps, HudState> {
     let toggleSidebar = this.toggleSidebar
     let statusItems = resources.map(res => new StatusItem(res))
     let sidebarItems = resources.map(res => new SidebarItem(res))
+    var features: Features
+    if (this.state.View) {
+      features = new Features(this.state.View.FeatureFlags)
+    } else {
+      features = new Features({})
+    }
 
     let sidebarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name = props.match.params.name
@@ -269,7 +306,13 @@ class HUD extends Component<HudProps, HudState> {
         return <Route component={NotFound} />
       }
       if (er) {
-        return <AlertPane resources={[er]} />
+        return (
+          <AlertPane
+            resources={[er]}
+            handleSendAlert={this.sendAlert.bind(this)}
+            teamAlertsIsEnabled={features.isEnabled("team_alerts")}
+          />
+        )
       }
     }
     let runningVersion = view && view.RunningTiltBuild
@@ -347,7 +390,13 @@ class HUD extends Component<HudProps, HudState> {
           <Route
             exact
             path={this.path("/alerts")}
-            render={() => <AlertPane resources={resources} />}
+            render={() => (
+              <AlertPane
+                resources={resources}
+                handleSendAlert={this.sendAlert.bind(this)}
+                teamAlertsIsEnabled={features.isEnabled("team_alerts")}
+              />
+            )}
           />
           <Route exact path={this.path("/preview")} render={previewRoute} />
           <Route exact path={this.path("/r/:name")} render={logsRoute} />

@@ -18,6 +18,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
+	tft "github.com/windmilleng/tilt/internal/tft/client"
 )
 
 func TestHandleAnalyticsEmptyRequest(t *testing.T) {
@@ -368,6 +369,28 @@ func TestMaybeSendToTriggerQueue_notManualManifest(t *testing.T) {
 	store.AssertNoActionOfType(t, reflect.TypeOf(server.AppendToTriggerQueueAction{}), f.getActions)
 }
 
+func TestHandleNewAlert(t *testing.T) {
+	f := newTestFixture(t)
+
+	var jsonStr = []byte(`{"alertType": "build", "msg": "test", "timestamp": "2019-04-22T11:00:01-04:00", "header": "", "resourceName": "doggos"}`)
+	req, err := http.NewRequest(http.MethodPost, "/api/alerts/new", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.serv.HandleNewAlert)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+	assert.Contains(t, rr.Body.String(), "aaaaaa")
+}
+
 type serverFixture struct {
 	t          *testing.T
 	serv       *server.HeadsUpServer
@@ -384,7 +407,8 @@ func newTestFixture(t *testing.T) *serverFixture {
 	a := analytics.NewMemoryAnalytics()
 	a, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
 	sailCli := client.NewFakeSailClient()
-	serv := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, sailCli)
+	tftClient := tft.ProvideFakeClient()
+	serv := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, sailCli, tftClient)
 
 	return &serverFixture{
 		t:          t,

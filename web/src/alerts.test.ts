@@ -23,7 +23,8 @@ describe("getResourceAlerts", () => {
         alertType: PodStatusErrorType,
         msg: "I'm a pod in Error",
         timestamp: "",
-        titleMsg: "",
+        header: "",
+        resourceName: "snack",
       },
     ]
     expect(actual).toEqual(expectedAlerts)
@@ -39,7 +40,8 @@ describe("getResourceAlerts", () => {
         alertType: PodRestartErrorType,
         msg: "",
         timestamp: "",
-        titleMsg: "Restarts: 1",
+        header: "Restarts: 1",
+        resourceName: "snack",
       },
     ]
     expect(actual).toEqual(expectedAlerts)
@@ -62,7 +64,8 @@ describe("getResourceAlerts", () => {
         alertType: BuildFailedErrorType,
         msg: "Build error log",
         timestamp: "10:00AM",
-        titleMsg: "Build error",
+        header: "Build error",
+        resourceName: "snack",
       },
     ]
     expect(actual).toEqual(expectedAlerts)
@@ -90,13 +93,14 @@ describe("getResourceAlerts", () => {
         alertType: CrashRebuildErrorType,
         msg: "Hello I am a crash log",
         timestamp: "10:00AM",
-        titleMsg: "Pod crashed",
+        header: "Pod crashed",
+        resourceName: "snack",
       },
     ]
     expect(actual).toEqual(expectedAlerts)
   })
 
-  it("should show a warning alert  using the first build history", () => {
+  it("should show a warning alert using the first build history", () => {
     let r: Resource = emptyResource()
     r.BuildHistory = [
       {
@@ -116,7 +120,8 @@ describe("getResourceAlerts", () => {
         alertType: WarningErrorType,
         msg: "Hi i'm a warning",
         timestamp: "10:00am",
-        titleMsg: "test",
+        header: "snack",
+        resourceName: "snack",
       },
     ]
     expect(actual).toEqual(expectedAlerts)
@@ -143,13 +148,15 @@ describe("getResourceAlerts", () => {
         alertType: PodRestartErrorType,
         msg: "I'm a pod that crashed",
         timestamp: "10:00AM",
-        titleMsg: "Restarts: 1",
+        header: "Restarts: 1",
+        resourceName: "snack",
       },
       {
         alertType: BuildFailedErrorType,
         msg: "Build error log",
         timestamp: "10:00AM",
-        titleMsg: "Build error",
+        header: "Build error",
+        resourceName: "snack",
       },
     ]
     expect(actual).toEqual(expectedAlerts)
@@ -172,19 +179,22 @@ describe("getResourceAlerts", () => {
         alertType: CrashRebuildErrorType,
         msg: "Hello I am a crash log",
         timestamp: "",
-        titleMsg: "Pod crashed",
+        header: "Pod crashed",
+        resourceName: "snack",
       },
       {
         alertType: BuildFailedErrorType,
         msg: "Build failed log",
         timestamp: "10:00am",
-        titleMsg: "Build error",
+        header: "Build error",
+        resourceName: "snack",
       },
       {
         alertType: WarningErrorType,
         msg: "Hi I am a warning",
         timestamp: "10:00am",
-        titleMsg: "test",
+        header: "snack",
+        resourceName: "snack",
       },
     ]
     expect(actual).toEqual(expectedAlerts)
@@ -203,7 +213,7 @@ describe("getResourceAlerts", () => {
 
 function emptyResource(): Resource {
   return {
-    Name: "test",
+    Name: "snack",
     CombinedLog: "",
     BuildHistory: [],
     CrashLog: "",

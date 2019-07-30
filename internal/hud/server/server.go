@@ -1,10 +1,12 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	_ "github.com/gorilla/websocket"
@@ -17,7 +19,11 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
+	tft "github.com/windmilleng/tilt/internal/tft/client"
 )
+
+const TiltAlertsDomain = "alerts.tilt.dev"
+const httpTimeOut = 5 * time.Second
 
 type analyticsPayload struct {
 	Verb string            `json:"verb"`
@@ -38,24 +44,26 @@ type HeadsUpServer struct {
 	router            *mux.Router
 	a                 *tiltanalytics.TiltAnalytics
 	sailCli           client.SailClient
+	tftCli            tft.Client
 	numWebsocketConns int32
 }
 
-func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics *tiltanalytics.TiltAnalytics, sailCli client.SailClient) *HeadsUpServer {
+func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics *tiltanalytics.TiltAnalytics, sailCli client.SailClient, tftClient tft.Client) *HeadsUpServer {
 	r := mux.NewRouter().UseEncodedPath()
 	s := &HeadsUpServer{
 		store:   store,
 		router:  r,
 		a:       analytics,
 		sailCli: sailCli,
+		tftCli:  tftClient,
 	}
 
 	r.HandleFunc("/api/view", s.ViewJSON)
 	r.HandleFunc("/api/analytics", s.HandleAnalytics)
 	r.HandleFunc("/api/analytics_opt", s.HandleAnalyticsOpt)
-	//r.HandleFunc("/api/alerts_notification", s.HandleAlertsNotification)
 	r.HandleFunc("/api/sail", s.HandleSail)
 	r.HandleFunc("/api/trigger", s.HandleTrigger)
+	r.HandleFunc("/api/alerts/new", s.HandleNewAlert)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
 	r.PathPrefix("/").Handler(assetServer)
 
@@ -105,28 +113,6 @@ func (s *HeadsUpServer) HandleAnalyticsOpt(w http.ResponseWriter, req *http.Requ
 
 	s.store.Dispatch(store.AnalyticsOptAction{Opt: opt})
 }
-
-//func (s *HeadsUpServer) HandleAlertsNotification(w http.ResponseWriter, req *http.Request) {
-//	if req.Method != http.MethodPost {
-//		http.Error(w, "must be POST request", http.StatusBadRequest)
-//		return
-//	}
-//
-//	resp, err := http.Post("http://localhost:9988", "Alert", req.Body)
-//	if err != nil {
-//		log.Printf("error posting alert: %v\n")
-//		return
-//	}
-//	if resp.StatusCode != http.StatusOK {
-//		b, err := ioutil.ReadAll(resp.Body)
-//		if err != nil {
-//			log.Printf("error reading error body: %v\n", err)
-//			return
-//		}
-//		log.Printf("error posting alert. status: %d %s, body: %s\n", resp.StatusCode, resp.Status, string(b))
-//		return
-//	}
-//}
 
 func (s *HeadsUpServer) HandleAnalytics(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
@@ -218,4 +204,65 @@ func MaybeSendToTriggerQueue(st store.RStore, name string) error {
 
 	st.Dispatch(AppendToTriggerQueueAction{Name: mName})
 	return nil
+}
+
+type NewAlertResponse struct {
+	Url string `json:"url"`
+}
+
+func (s *HeadsUpServer) HandleNewAlert(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		http.Error(w, "must be POST request", http.StatusBadRequest)
+		return
+	}
+
+	decoder := json.NewDecoder(req.Body)
+	var alert tsAlert
+	err := decoder.Decode(&alert)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error decoding request: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	ctx := context.TODO()
+	ctx, cancel := context.WithTimeout(context.Background(), httpTimeOut)
+	defer cancel()
+	id, err := s.tftCli.SendAlert(ctx, tsAlertToBackendAlert(alert))
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error talking to backend: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	responsePayload := &NewAlertResponse{
+		Url: templateAlertURL(id),
+	}
+	js, err := json.Marshal(responsePayload)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("unable to marshal JSON (%+v) response: %v", responsePayload, err), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write(js)
+}
+
+func templateAlertURL(id tft.AlertID) string {
+	return fmt.Sprintf("http://%s/alert/%s", TiltAlertsDomain, id)
+}
+
+type tsAlert struct {
+	AlertType    string `json:"alertType"`
+	Header       string `json:"header"`
+	Msg          string `json:"msg"`
+	Timestamp    string `json:"timestamp"`
+	ResourceName string `json:"resourceName"`
+}
+
+func tsAlertToBackendAlert(alert tsAlert) tft.Alert {
+	return tft.Alert{
+		AlertType:    alert.AlertType,
+		Header:       alert.Header,
+		Msg:          alert.Msg,
+		RFC3339Time:  alert.Timestamp,
+		ResourceName: alert.ResourceName,
+	}
 }
