@@ -19,6 +19,7 @@ func NewDeployID() DeployID {
 }
 
 func (dID DeployID) String() string { return strconv.Itoa(int(dID)) }
+func (dID DeployID) Empty() bool    { return dID == 0 }
 
 type DockerComposeTarget struct {
 	Name        TargetName
