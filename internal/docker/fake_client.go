@@ -119,16 +119,16 @@ func (c *FakeClient) ServerVersion() types.Version {
 	return types.Version{}
 }
 
+func (c *FakeClient) SetExecError(err error) {
+	c.ExecErrorsToThrow = []error{err}
+}
+
 func (c *FakeClient) SetContainerListOutput(output map[string][]types.Container) {
 	c.ContainerListOutput = output
 }
 
 func (c *FakeClient) SetDefaultContainerListOutput() {
 	c.SetContainerListOutput(DefaultContainerListOutput)
-}
-
-func (c *FakeClient) SetExecError(err error) {
-	c.ExecErrorsToThrow = []error{err}
 }
 
 func (c *FakeClient) ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error) {
