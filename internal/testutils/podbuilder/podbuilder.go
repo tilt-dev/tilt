@@ -180,6 +180,22 @@ func (b PodBuilder) buildContainerStatuses(spec v1.PodSpec) []v1.ContainerStatus
 	return result
 }
 
+func (b PodBuilder) validateImageRefs(numContainers int) {
+	for index, img := range b.imageRefs {
+		if index >= numContainers {
+			b.t.Fatalf("Image %q specified at index %d. Pod only has %d containers", img, index, numContainers)
+		}
+	}
+}
+
+func (b PodBuilder) validateContainerIDs(numContainers int) {
+	for index, cID := range b.cIDs {
+		if index >= numContainers {
+			b.t.Fatalf("Container ID %q specified at index %d. Pod only has %d containers", cID, index, numContainers)
+		}
+	}
+}
+
 func (b PodBuilder) Build() *v1.Pod {
 	entities, err := parseYAMLFromManifest(b.manifest)
 	if err != nil {
@@ -194,8 +210,13 @@ func (b PodBuilder) Build() *v1.Pod {
 	if len(tSpecs) != 1 {
 		b.t.Fatalf("PodBuilder only works with Manifests with exactly 1 PodTemplateSpec: %v", tSpecs)
 	}
+
 	tSpec := tSpecs[0]
 	spec := tSpec.Spec
+	numContainers := len(spec.Containers)
+	b.validateImageRefs(numContainers)
+	b.validateContainerIDs(numContainers)
+
 	for i, container := range spec.Containers {
 		container.Image = b.buildImage(i)
 		spec.Containers[i] = container
