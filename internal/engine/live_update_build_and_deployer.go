@@ -140,7 +140,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 	}
 
 	if len(toRemove) > 0 {
-		l.Infof("Will delete %d file(s) from containe(r): %s", len(toRemove), cIDStr)
+		l.Infof("Will delete %d file(s) from container(s): %s", len(toRemove), cIDStr)
 		for _, pm := range toRemove {
 			l.Infof("- '%s' (matched local path: '%s')", pm.ContainerPath, pm.LocalPath)
 		}
@@ -160,7 +160,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 	}()
 
 	if len(toArchive) > 0 {
-		l.Infof("Will copy %d file(s) to containe(r): %s", len(toArchive), cIDStr)
+		l.Infof("Will copy %d file(s) to container(s): %s", len(toArchive), cIDStr)
 		for _, pm := range toArchive {
 			l.Infof("- %s", pm.PrettyStr())
 		}

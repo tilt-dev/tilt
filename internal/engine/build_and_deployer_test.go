@@ -372,7 +372,7 @@ func TestIncrementalBuildFailure(t *testing.T) {
 	manifest := NewSanchoFastBuildManifest(f)
 	targets := buildTargets(manifest)
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
-	msg := "Run step `go install github.com/windmilleng/sancho` failed with exit code: 1"
+	msg := "Run step \"go install github.com/windmilleng/sancho\" failed with exit code: 1"
 	if err == nil || !strings.Contains(err.Error(), msg) {
 		t.Fatalf("Expected error message %q, actual: %v", msg, err)
 	}

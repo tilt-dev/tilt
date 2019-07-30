@@ -40,7 +40,7 @@ type RunStepFailure struct {
 }
 
 func (e RunStepFailure) Error() string {
-	return fmt.Sprintf("Run step `%s` failed with exit code: %d", e.Cmd.String(), e.ExitCode)
+	return fmt.Sprintf("Run step %q failed with exit code: %d", e.Cmd.String(), e.ExitCode)
 }
 
 func IsRunStepFailure(err error) bool {
