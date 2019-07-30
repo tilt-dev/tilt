@@ -43,8 +43,9 @@ var alreadyBuiltSet = store.BuildResultSet{imageTargetID: alreadyBuilt}
 
 type expectedFile = testutils.ExpectedFile
 
+var testPodID k8s.PodID = "pod-id"
 var testContainerInfo = store.ContainerInfo{
-	PodID:         "pod-id",
+	PodID:         testPodID,
 	ContainerID:   k8s.MagicTestContainerID,
 	ContainerName: "container-name",
 }
@@ -833,6 +834,12 @@ func (f *bdFixture) assertContainerRestarts(count int) {
 		expected[string(k8s.MagicTestContainerID)] = count
 	}
 	assert.Equal(f.T(), expected, f.docker.RestartsByContainer,
+		"checking for expected # of container restarts")
+}
+
+// Total number of restarts, regardless of which container.
+func (f *bdFixture) assertTotalContainerRestarts(count int) {
+	assert.Len(f.T(), f.docker.RestartsByContainer, count,
 		"checking for expected # of container restarts")
 }
 

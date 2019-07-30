@@ -1,0 +1,21 @@
+# -*- mode: Python -*-
+
+# HACK: load namespaces on `tilt up` but not on `tilt down`
+load_namespace = not str(local('echo $SKIP_NAMESPACE')).strip()
+if load_namespace:
+  k8s_yaml('../namespace.yaml')
+
+# If you get push errors, you can change the default_registry.
+# Create tilt_option.json with contents: {"default_registry": "gcr.io/my-personal-project"}
+# (with your registry inserted). tilt_option.json is gitignore'd, unlike Tiltfile
+default_registry(read_json('tilt_option.json', {})
+                 .get('default_registry', 'gcr.io/windmill-test-containers/servantes'))
+
+codepath = '/go/src/github.com/windmilleng/integration/same_img_multi_container'
+docker_build('sameimg', '.',
+             live_update=[
+                 sync('.', codepath),
+                 run('go install {}'.format(codepath)),
+                 run('{}/restart.sh'.format(codepath))
+             ])
+k8s_yaml('sameimg.yaml')
