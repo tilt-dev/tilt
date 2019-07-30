@@ -124,8 +124,9 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu containerupdate.ContainerUpdater, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) error {
 	l := logger.Get(ctx)
 	l.Infof("  → Updating container…")
-
 	cInfo := state.OneContainerInfo()
+	cIDStr := cInfo.ContainerID.ShortStr()
+
 	filter := ignore.CreateBuildContextFilter(iTarget)
 	boiledSteps, err := build.BoilRuns(runs, changedFiles)
 	if err != nil {
@@ -139,7 +140,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 	}
 
 	if len(toRemove) > 0 {
-		l.Infof("Will delete %d file(s) from container: %s", len(toRemove), cInfo.ContainerID.ShortStr())
+		l.Infof("Will delete %d file(s) from containe(r): %s", len(toRemove), cIDStr)
 		for _, pm := range toRemove {
 			l.Infof("- '%s' (matched local path: '%s')", pm.ContainerPath, pm.LocalPath)
 		}
@@ -159,7 +160,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 	}()
 
 	if len(toArchive) > 0 {
-		l.Infof("Will copy %d file(s) to container: %s", len(toArchive), cInfo.ContainerID.ShortStr())
+		l.Infof("Will copy %d file(s) to containe(r): %s", len(toArchive), cIDStr)
 		for _, pm := range toArchive {
 			l.Infof("- %s", pm.PrettyStr())
 		}
@@ -167,7 +168,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 
 	err = cu.UpdateContainer(ctx, cInfo, pr, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 	if err != nil {
-		if build.IsUserBuildFailure(err) {
+		if build.IsRunStepFailure(err) {
 			return WrapDontFallBackError(err)
 		}
 		return err

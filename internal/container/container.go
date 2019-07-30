@@ -2,6 +2,7 @@ package container
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
@@ -17,6 +18,14 @@ func (id ID) ShortStr() string {
 		return string(id)[:10]
 	}
 	return string(id)
+}
+
+func ShortStrs(ids []ID) string {
+	shortStrs := make([]string, len(ids))
+	for i, id := range ids {
+		shortStrs[i] = id.ShortStr()
+	}
+	return strings.Join(shortStrs, ", ")
 }
 
 func (n Name) String() string { return string(n) }
