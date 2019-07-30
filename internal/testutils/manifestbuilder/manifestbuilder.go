@@ -59,7 +59,7 @@ func (b ManifestBuilder) WithLiveUpdate(lu model.LiveUpdate) ManifestBuilder {
 
 func (b ManifestBuilder) WithLiveUpdateAtIndex(lu model.LiveUpdate, index int) ManifestBuilder {
 	if len(b.iTargets) <= index {
-		b.f.T().Fatal("WithLiveUpdateAtIndex: index %d out of range -- (manifestBuilder has %d image targets)", index, len(b.iTargets))
+		b.f.T().Fatalf("WithLiveUpdateAtIndex: index %d out of range -- (manifestBuilder has %d image targets)", index, len(b.iTargets))
 	}
 
 	iTarg := b.iTargets[index]
@@ -71,7 +71,7 @@ func (b ManifestBuilder) WithLiveUpdateAtIndex(lu model.LiveUpdate, index int) M
 		bd.LiveUpdate = lu
 		b.iTargets[index] = iTarg.WithBuildDetails(bd)
 	default:
-		b.f.T().Fatal("unrecognized buildDetails type: %v", bd)
+		b.f.T().Fatalf("unrecognized buildDetails type: %v", bd)
 	}
 	return b
 }
