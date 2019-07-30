@@ -982,7 +982,7 @@ func (f *testFixture) testPodWithDeployID(podID string, manifest model.Manifest,
 	return podbuilder.New(f.T(), manifest).
 		WithPodID(podID).
 		WithPhase(phase).
-		WithContainerID(cID, 0).
+		WithContainerID(cID).
 		WithCreationTime(creationTime).
 		WithDeployID(deployID).
 		Build()
