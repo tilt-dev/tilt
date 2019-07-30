@@ -235,7 +235,7 @@ func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 func TestUpper_Up(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	manifest := f.newManifest("foobar", nil)
+	manifest := f.newManifest("foobar")
 
 	err := f.upper.Init(f.ctx, InitAction{
 		Manifests:       []model.Manifest{manifest},
@@ -286,8 +286,7 @@ func TestUpper_WatchFalseNoManifestsExplicitlyNamed(t *testing.T) {
 func TestUpper_UpWatchError(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{sync})
+	manifest := f.newManifest("foobar")
 	f.Start([]model.Manifest{manifest}, true)
 
 	f.fsWatcher.errors <- errors.New("bazquu")
@@ -301,8 +300,7 @@ func TestUpper_UpWatchError(t *testing.T) {
 func TestUpper_UpWatchFileChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{sync})
+	manifest := f.newManifest("foobar")
 	f.Start([]model.Manifest{manifest}, true)
 
 	f.timerMaker.maxTimerLock.Lock()
@@ -331,8 +329,7 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{sync})
+	manifest := f.newManifest("foobar")
 	f.Start([]model.Manifest{manifest}, true)
 
 	f.timerMaker.maxTimerLock.Lock()
@@ -366,8 +363,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{sync})
+	manifest := f.newManifest("foobar")
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
@@ -401,8 +397,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 func TestFirstBuildFailsWhileWatching(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{sync})
+	manifest := f.newManifest("foobar")
 	f.SetNextBuildFailure(errors.New("Build failed"))
 
 	f.Start([]model.Manifest{manifest}, true)
@@ -424,8 +419,7 @@ func TestFirstBuildFailsWhileWatching(t *testing.T) {
 func TestFirstBuildCancelsWhileWatching(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{sync})
+	manifest := f.newManifest("foobar")
 	f.SetNextBuildFailure(context.Canceled)
 
 	f.Start([]model.Manifest{manifest}, true)
@@ -441,8 +435,7 @@ func TestFirstBuildCancelsWhileWatching(t *testing.T) {
 func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{sync})
+	manifest := f.newManifest("foobar")
 	buildFailedToken := errors.New("doesn't compile")
 	f.SetNextBuildFailure(buildFailedToken)
 
@@ -454,8 +447,7 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 func TestRebuildWithChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{sync})
+	manifest := f.newManifest("foobar")
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCallComplete("first build")
@@ -487,8 +479,7 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 func TestThreeBuilds(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("fe", []model.Sync{sync})
+	manifest := f.newManifest("fe")
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCallComplete("first build")
@@ -518,8 +509,7 @@ func TestThreeBuilds(t *testing.T) {
 func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{sync})
+	manifest := f.newManifest("foobar")
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
@@ -908,7 +898,7 @@ func TestDockerRebuildWithChangedFiles(t *testing.T) {
 ADD ./ ./
 go build ./...
 `
-	manifest := f.newManifest("foobar", nil)
+	manifest := f.newManifest("foobar")
 	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).WithBuildDetails(
 		model.DockerBuild{
 			Dockerfile: df,
@@ -937,8 +927,7 @@ go build ./...
 func TestReapOldBuilds(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{sync})
+	manifest := f.newManifest("foobar")
 
 	f.docker.ImageListCount++
 
@@ -957,8 +946,7 @@ func TestHudUpdated(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	sync := model.Sync{LocalPath: f.TempDirFixture.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{sync})
+	manifest := f.newManifest("foobar")
 
 	f.Start([]model.Manifest{manifest}, true)
 	call := f.nextCall()
@@ -996,8 +984,7 @@ func (f *testFixture) testPodWithDeployID(podID string, manifest model.Manifest,
 func TestPodEvent(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{sync})
+	manifest := f.newManifest("foobar")
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
@@ -1021,8 +1008,7 @@ func TestPodEventOrdering(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("fe", []model.Sync{sync})
+	manifest := f.newManifest("fe")
 
 	past := time.Now().Add(-time.Minute)
 	now := time.Now()
@@ -1088,8 +1074,7 @@ func TestPodEventOrdering(t *testing.T) {
 func TestPodEventContainerStatus(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{sync})
+	manifest := f.newManifest("foobar")
 	f.Start([]model.Manifest{manifest}, true)
 
 	var ref reference.NamedTagged
@@ -1181,9 +1166,8 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	defer f.TearDown()
 	f.bc.DisableForTesting()
 
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("foobar")
-	manifest := f.newManifest(name.String(), []model.Sync{sync})
+	manifest := f.newManifest(name.String())
 	f.Start([]model.Manifest{manifest}, true)
 
 	// Start and end a fake build to set manifestState.ExpectedContainerId
@@ -1222,9 +1206,8 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 	defer f.TearDown()
 	f.bc.DisableForTesting()
 
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("foobar")
-	manifest := f.newManifest(name.String(), []model.Sync{sync})
+	manifest := f.newManifest(name.String())
 
 	f.Start([]model.Manifest{manifest}, true)
 
@@ -1261,9 +1244,8 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	defer f.TearDown()
 	f.bc.DisableForTesting()
 
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("foobar")
-	manifest := f.newManifest(name.String(), []model.Sync{sync})
+	manifest := f.newManifest(name.String())
 
 	f.Start([]model.Manifest{manifest}, true)
 
@@ -1316,8 +1298,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 func TestPodEventUpdateByTimestamp(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{sync})
+	manifest := f.newManifest("foobar")
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
@@ -1345,8 +1326,7 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 func TestPodEventUpdateByPodName(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{sync})
+	manifest := f.newManifest("foobar")
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCallComplete()
@@ -1380,8 +1360,7 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 func TestPodEventIgnoreOlderPod(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{sync})
+	manifest := f.newManifest("foobar")
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
@@ -1407,8 +1386,7 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 func TestPodContainerStatus(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("fe", []model.Sync{sync})
+	manifest := f.newManifest("fe")
 	f.Start([]model.Manifest{manifest}, true)
 
 	_ = f.nextCall()
@@ -1444,8 +1422,7 @@ func TestPodContainerStatus(t *testing.T) {
 func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
-	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{sync})
+	manifest := f.newManifest("foobar")
 	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).
 		WithDockerignores([]model.Dockerignore{
 			{
@@ -1471,9 +1448,8 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("foobar")
-	manifest := f.newManifest(name.String(), []model.Sync{sync})
+	manifest := f.newManifest(name.String())
 
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
@@ -1498,9 +1474,8 @@ func TestBuildResetsPodLog(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("foobar")
-	manifest := f.newManifest(name.String(), []model.Sync{sync})
+	manifest := f.newManifest(name.String())
 
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
@@ -1526,9 +1501,8 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("foobar")
-	manifest := f.newManifest(name.String(), []model.Sync{sync})
+	manifest := f.newManifest(name.String())
 
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
@@ -1556,9 +1530,8 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("foobar")
-	manifest := f.newManifest(name.String(), []model.Sync{sync})
+	manifest := f.newManifest(name.String())
 
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
@@ -1590,8 +1563,7 @@ func TestUpperBuildImmediatelyAfterCrashRebuild(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("fe", []model.Sync{sync})
+	manifest := f.newManifest("fe")
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
@@ -1639,9 +1611,8 @@ func TestUpperRecordPodWithMultipleContainers(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("foobar")
-	manifest := f.newManifest(name.String(), []model.Sync{sync})
+	manifest := f.newManifest(name.String())
 
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
@@ -1689,9 +1660,8 @@ func TestUpperProcessOtherContainersIfOneErrors(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("foobar")
-	manifest := f.newManifest(name.String(), []model.Sync{sync})
+	manifest := f.newManifest(name.String())
 
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
@@ -1760,8 +1730,7 @@ func TestUpper_ServiceEvent(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{sync})
+	manifest := f.newManifest("foobar")
 
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
@@ -1790,8 +1759,7 @@ func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{sync})
+	manifest := f.newManifest("foobar")
 
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
@@ -1824,9 +1792,8 @@ func TestUpper_PodLogs(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("fe")
-	manifest := f.newManifest(string(name), []model.Sync{sync})
+	manifest := f.newManifest(string(name))
 
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
@@ -1846,9 +1813,8 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 	entityUID := "someEntity"
 	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
 
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName(e.Name())
-	manifest := f.newManifest(string(name), []model.Sync{sync})
+	manifest := f.newManifest(string(name))
 
 	objRef := v1.ObjectReference{UID: types.UID(entityUID), Name: e.Name()}
 
@@ -1903,9 +1869,8 @@ func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
 	entityUID := "someEntity"
 	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
 
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName(e.Name())
-	manifest := f.newManifest(string(name), []model.Sync{sync})
+	manifest := f.newManifest(string(name))
 
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
@@ -1930,9 +1895,8 @@ func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
 	entityUID := "someEntity"
 	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
 
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName(e.Name())
-	manifest := f.newManifest(string(name), []model.Sync{sync})
+	manifest := f.newManifest(string(name))
 
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
@@ -1967,9 +1931,8 @@ func TestK8sEventLogTimestamp(t *testing.T) {
 	entityUID := "someEntity"
 	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
 
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName(e.Name())
-	manifest := f.newManifest(string(name), []model.Sync{sync})
+	manifest := f.newManifest(string(name))
 
 	obj := unstructured.Unstructured{}
 	obj.SetLabels(map[string]string{k8s.TiltRunIDLabel: k8s.TiltRunID, k8s.ManifestNameLabel: name.String()})
@@ -2034,10 +1997,13 @@ func TestHudExitWithError(t *testing.T) {
 	assert.Equal(t, e, err)
 }
 
+// This test only makes sense in FastBuild.
+// In LiveUpdate, all syncs are captured by the build context,
+// so don't need to be watched independently.
 func TestNewSyncsAreWatched(t *testing.T) {
 	f := newTestFixture(t)
 	sync1 := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	m1 := f.newManifest("mani1", []model.Sync{sync1})
+	m1 := f.newFastBuildManifest("mani1", []model.Sync{sync1})
 	f.Start([]model.Manifest{
 		m1,
 	}, true)
@@ -2045,7 +2011,7 @@ func TestNewSyncsAreWatched(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 
 	sync2 := model.Sync{LocalPath: "/js", ContainerPath: "/go"}
-	m2 := f.newManifest("mani1", []model.Sync{sync1, sync2})
+	m2 := f.newFastBuildManifest("mani1", []model.Sync{sync1, sync2})
 	f.store.Dispatch(ConfigsReloadedAction{
 		Manifests: []model.Manifest{m2},
 	})
@@ -2067,9 +2033,8 @@ func TestNewSyncsAreWatched(t *testing.T) {
 
 func TestNewConfigsAreWatchedAfterFailure(t *testing.T) {
 	f := newTestFixture(t)
-	sync := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
 	name := model.ManifestName("foo")
-	m := f.newManifest(name.String(), []model.Sync{sync})
+	m := f.newManifest(name.String())
 	f.Start([]model.Manifest{m}, true)
 	f.WriteConfigFiles("Tiltfile", "read_file('foo.txt')")
 	f.WaitUntil("foo.txt is a config file", func(state store.EngineState) bool {
@@ -2421,8 +2386,7 @@ func TestTiltVersionCheck(t *testing.T) {
 	f.ghc.LatestReleaseRet = versions[0]
 	f.tiltVersionCheckDelay = time.Millisecond
 
-	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("foobar", []model.Sync{sync})
+	manifest := f.newManifest("foobar")
 	f.Start([]model.Manifest{manifest}, true)
 
 	f.WaitUntil("latest version is updated the first time", func(state store.EngineState) bool {
@@ -2509,7 +2473,7 @@ func TestBuildLogAction(t *testing.T) {
 	defer f.TearDown()
 	f.bc.DisableForTesting()
 
-	manifest := f.newManifest("alert-injester", nil)
+	manifest := f.newManifest("alert-injester")
 	f.Start([]model.Manifest{manifest}, true)
 
 	f.store.Dispatch(BuildStartedAction{
@@ -3008,13 +2972,15 @@ func (f *testFixture) podEvent(pod *v1.Pod) {
 	f.store.Dispatch(NewPodChangeAction(pod))
 }
 
-func (f *testFixture) newManifest(name string, syncs []model.Sync) model.Manifest {
+func (f *testFixture) newManifest(name string) model.Manifest {
 	ref := container.MustParseNamed(name)
-	return f.newManifestWithRef(name, ref, syncs)
+	return f.newManifestWithRef(name, ref)
 }
 
-func (f *testFixture) newManifestWithRef(name string, ref reference.Named, syncs []model.Sync) model.Manifest {
+func (f *testFixture) newFastBuildManifest(name string, syncs []model.Sync) model.Manifest {
+	ref := container.MustParseNamed(name)
 	refSel := container.NewRefSelector(ref)
+
 	return assembleK8sManifest(
 		model.Manifest{Name: model.ManifestName(name)},
 		model.K8sTarget{YAML: SanchoYAML},
@@ -3023,6 +2989,19 @@ func (f *testFixture) newManifestWithRef(name string, ref reference.Named, syncs
 				BaseDockerfile: `from golang:1.10`,
 				Syncs:          syncs,
 			}))
+}
+
+func (f *testFixture) newManifestWithRef(name string, ref reference.Named) model.Manifest {
+	refSel := container.NewRefSelector(ref)
+
+	iTarget := NewSanchoLiveUpdateImageTarget(f)
+	iTarget.ConfigurationRef = refSel
+	iTarget.DeploymentRef = ref
+
+	return assembleK8sManifest(
+		model.Manifest{Name: model.ManifestName(name)},
+		model.K8sTarget{YAML: SanchoYAML},
+		iTarget)
 }
 
 func (f *testFixture) newDCManifest(name string, DCYAMLRaw string, dockerfileContents string) model.Manifest {

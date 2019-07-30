@@ -161,6 +161,14 @@ func NewSanchoDockerBuildImageTarget(f pather) model.ImageTarget {
 	})
 }
 
+func NewSanchoSyncOnlyImageTarget(f pather, syncs []model.LiveUpdateSyncStep) model.ImageTarget {
+	lu, err := assembleLiveUpdate(syncs, nil, false, []string{}, f)
+	if err != nil {
+		panic(fmt.Sprintf("making sancho LiveUpdate image target: %v", err))
+	}
+	return imageTargetWithLiveUpdate(NewSanchoDockerBuildImageTarget(f), lu)
+}
+
 func NewSanchoLiveUpdateImageTarget(f pather) model.ImageTarget {
 	syncs := []model.LiveUpdateSyncStep{
 		{
@@ -178,7 +186,7 @@ func NewSanchoLiveUpdateImageTarget(f pather) model.ImageTarget {
 	if err != nil {
 		panic(fmt.Sprintf("making sancho LiveUpdate image target: %v", err))
 	}
-	return imageTargetWithLiveUpdate(model.NewImageTarget(SanchoRef), lu)
+	return imageTargetWithLiveUpdate(NewSanchoDockerBuildImageTarget(f), lu)
 }
 
 func NewSanchoSidecarDockerBuildImageTarget(f pather) model.ImageTarget {
