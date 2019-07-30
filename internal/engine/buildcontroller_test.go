@@ -11,6 +11,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/hud/server"
+	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
 	"github.com/windmilleng/tilt/internal/testutils/podbuilder"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -407,10 +408,9 @@ func TestBuildControllerNoBuildManifestsFirst(t *testing.T) {
 	}
 
 	for _, i := range []int{3, 7, 8} {
-		manifests[i] = assembleK8sManifest(
-			model.Manifest{
-				Name: model.ManifestName(fmt.Sprintf("unbuilt%d", i+1))},
-			model.K8sTarget{YAML: "fake-yaml"})
+		manifests[i] = manifestbuilder.New(f, model.ManifestName(fmt.Sprintf("unbuilt%d", i+1))).
+			WithK8sYAML("fake-yaml").
+			Build()
 	}
 	f.Start(manifests, true)
 
@@ -448,7 +448,7 @@ func TestBuildControllerUnresourcedYAMLFirst(t *testing.T) {
 		f.newManifest("built4"),
 	}
 
-	manifests = append(manifests, assembleK8sManifest(model.Manifest{Name: model.UnresourcedYAMLManifestName}, model.K8sTarget{YAML: "fake-yaml"}))
+	manifests = append(manifests, manifestbuilder.New(f, model.UnresourcedYAMLManifestName).WithK8sYAML("fake-yaml").Build())
 	f.Start(manifests, true)
 
 	var observedBuildOrder []string

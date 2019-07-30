@@ -16,56 +16,58 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
-
-var expectedContainer = container.ID("dc-cont")
-var confPath = []string{"/whales/are/big/dc.yml"}
-var dcName = model.TargetName("MobyDick")
-var dcTarg = model.DockerComposeTarget{Name: dcName, ConfigPaths: confPath}
-
-var imgRef = "gcr.io/some/image"
-var imgTarg = model.NewImageTarget(container.MustParseSelector(imgRef)).
-	WithBuildDetails(model.DockerBuild{
-		Dockerfile: "Dockerfile.whales",
-		BuildPath:  "/whales/are/big",
-	})
 
 func TestDockerComposeTargetBuilt(t *testing.T) {
 	f := newDCBDFixture(t)
 	defer f.TearDown()
 
-	res, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, []model.TargetSpec{dcTarg}, store.BuildStateSet{})
+	expectedContainerID := "fake-container-id"
+	f.dcCli.ContainerIdOutput = container.ID(expectedContainerID)
+
+	manifest := manifestbuilder.New(f, "fe").WithDockerCompose().Build()
+	dcTarg := manifest.DockerComposeTarget()
+
+	res, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if assert.Len(t, f.dcCli.UpCalls, 1, "expect one call to `docker-compose up`") {
 		call := f.dcCli.UpCalls[0]
-		assert.Equal(t, confPath, call.PathToConfig)
-		assert.Equal(t, dcName, call.ServiceName)
+		assert.Equal(t, dcTarg.ConfigPaths, call.PathToConfig)
+		assert.Equal(t, "fe", call.ServiceName.String())
 		assert.True(t, call.ShouldBuild)
 	}
-	assert.Equal(t, expectedContainer, res[dcTarg.ID()].DockerComposeContainerID)
+	assert.Equal(t, expectedContainerID, res[dcTarg.ID()].DockerComposeContainerID.String())
 }
 
 func TestTiltBuildsImage(t *testing.T) {
 	f := newDCBDFixture(t)
 	defer f.TearDown()
 
-	res, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, []model.TargetSpec{imgTarg, dcTarg}, store.BuildStateSet{})
+	iTarget := NewSanchoDockerBuildImageTarget(f)
+	manifest := manifestbuilder.New(f, "fe").
+		WithDockerCompose().
+		WithImageTarget(iTarget).
+		Build()
+	dcTarg := manifest.DockerComposeTarget()
+
+	res, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	assert.Equal(t, 1, f.dCli.BuildCount, "expect one docker build")
 
-	expectedTag := fmt.Sprintf("%s:%s", imgRef, docker.TagLatest)
+	expectedTag := fmt.Sprintf("%s:%s", iTarget.DeploymentRef, docker.TagLatest)
 	assert.Equal(t, expectedTag, f.dCli.TagTarget)
 
 	if assert.Len(t, f.dcCli.UpCalls, 1, "expect one call to `docker-compose up`") {
 		call := f.dcCli.UpCalls[0]
-		assert.Equal(t, confPath, call.PathToConfig)
-		assert.Equal(t, dcName, call.ServiceName)
+		assert.Equal(t, dcTarg.ConfigPaths, call.PathToConfig)
+		assert.Equal(t, "fe", call.ServiceName.String())
 		assert.False(t, call.ShouldBuild, "should call `up` without `--build` b/c Tilt is doing the building")
 	}
 
@@ -79,8 +81,12 @@ func TestTiltBuildsImageWithTag(t *testing.T) {
 	refWithTag := "gcr.io/foo:bar"
 	iTarget := model.NewImageTarget(container.MustParseSelector(refWithTag)).
 		WithBuildDetails(model.DockerBuild{})
+	manifest := manifestbuilder.New(f, "fe").
+		WithDockerCompose().
+		WithImageTarget(iTarget).
+		Build()
 
-	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, []model.TargetSpec{iTarget, dcTarg}, store.BuildStateSet{})
+	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +98,7 @@ func TestDCBADRejectsAllSpecsIfOneUnsupported(t *testing.T) {
 	f := newDCBDFixture(t)
 	defer f.TearDown()
 
-	specs := []model.TargetSpec{dcTarg, imgTarg, model.K8sTarget{}}
+	specs := []model.TargetSpec{model.DockerComposeTarget{}, model.ImageTarget{}, model.K8sTarget{}}
 
 	iTarg, dcTarg := f.dcbad.extract(specs)
 	assert.Empty(t, iTarg)
@@ -104,7 +110,8 @@ func TestMultiStageDockerCompose(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildMultiStageManifest(f).
-		WithDeployTarget(dcTarg)
+		WithDeployTarget(defaultDockerComposeTarget(f, "sancho"))
+
 	stateSet := store.BuildStateSet{}
 	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
 	if err != nil {
@@ -131,7 +138,8 @@ func TestMultiStageDockerComposeWithOnlyOneDirtyImage(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildMultiStageManifest(f).
-		WithDeployTarget(dcTarg)
+		WithDeployTarget(defaultDockerComposeTarget(f, "sancho"))
+
 	iTargetID := manifest.ImageTargets[0].ID()
 	result := store.NewImageBuildResult(iTargetID, container.MustParseNamedTagged("sancho-base:tilt-prebuilt"))
 	state := store.NewBuildState(result, nil)
@@ -173,7 +181,6 @@ func newDCBDFixture(t *testing.T) *dcbdFixture {
 
 	dir := dirs.NewWindmillDirAt(f.Path())
 	dcCli := dockercompose.NewFakeDockerComposeClient(t, ctx)
-	dcCli.ContainerIdOutput = expectedContainer
 	dCli := docker.NewFakeClient()
 	dcbad, err := provideDockerComposeBuildAndDeployer(ctx, dcCli, dCli, dir)
 	if err != nil {
@@ -187,5 +194,12 @@ func newDCBDFixture(t *testing.T) *dcbdFixture {
 		dCli:           dCli,
 		dcbad:          dcbad,
 		st:             st,
+	}
+}
+
+func defaultDockerComposeTarget(f Fixture, name string) model.DockerComposeTarget {
+	return model.DockerComposeTarget{
+		Name:        model.TargetName(name),
+		ConfigPaths: []string{f.JoinPath("docker-compose.yml")},
 	}
 }
