@@ -3,9 +3,11 @@ package engine
 import (
 	"archive/tar"
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -125,6 +127,138 @@ func TestUpdateContainerWithHotReload(t *testing.T) {
 			assert.Equal(t, expectedHotReloads[i], call.HotReload,
 				"expected f.cu.Calls[%d] to have HotReload = %t", i, expectedHotReloads[i])
 		}
+	}
+}
+
+func TestUpdateMultipleRunningContainers(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	cInfo1 := store.ContainerInfo{
+		PodID:         "mypod",
+		ContainerID:   "cid1",
+		ContainerName: "container1",
+		Namespace:     "ns-foo",
+	}
+	cInfo2 := store.ContainerInfo{
+		PodID:         "mypod",
+		ContainerID:   "cid2",
+		ContainerName: "container2",
+		Namespace:     "ns-foo",
+	}
+
+	cInfos := []store.ContainerInfo{cInfo1, cInfo2}
+	state := store.BuildState{
+		LastResult:        alreadyBuilt,
+		FilesChangedSet:   map[string]bool{"foo.py": true},
+		RunningContainers: cInfos,
+	}
+
+	paths := []build.PathMapping{
+		// Will try to delete this file
+		build.PathMapping{LocalPath: f.JoinPath("does-not-exist"), ContainerPath: "/src/does-not-exist"},
+	}
+
+	cmd := model.ToShellCmd("./foo.sh bar")
+	runs := []model.Run{model.ToRun(cmd)}
+
+	err := f.lubad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, state, paths, runs, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedToDelete := []string{"/src/does-not-exist"}
+
+	require.Len(t, f.cu.Calls, 2)
+
+	for i, call := range f.cu.Calls {
+		assert.Equal(t, cInfos[i], call.ContainerInfo)
+		assert.Equal(t, expectedToDelete, call.ToDelete)
+		if assert.Len(t, call.Cmds, 1) {
+			assert.Equal(t, cmd, call.Cmds[0])
+		}
+		assert.True(t, call.HotReload)
+	}
+}
+
+func TestErrorStopsSubsequentContainerUpdates(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	cInfo1 := store.ContainerInfo{
+		PodID:         "mypod",
+		ContainerID:   "cid1",
+		ContainerName: "container1",
+		Namespace:     "ns-foo",
+	}
+	cInfo2 := store.ContainerInfo{
+		PodID:         "mypod",
+		ContainerID:   "cid2",
+		ContainerName: "container2",
+		Namespace:     "ns-foo",
+	}
+
+	cInfos := []store.ContainerInfo{cInfo1, cInfo2}
+	state := store.BuildState{
+		LastResult:        alreadyBuilt,
+		FilesChangedSet:   map[string]bool{"foo.py": true},
+		RunningContainers: cInfos,
+	}
+
+	f.cu.UpdateErr = fmt.Errorf("👀")
+	err := f.lubad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, state, nil, nil, false)
+	require.NotNil(t, err)
+	assert.Contains(t, "👀", err.Error())
+	require.Len(t, f.cu.Calls, 1, "should only call UpdateContainer once (error should stop subsequent calls)")
+}
+
+func TestUpdateMultipleContainersTeesArchive(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	cInfo1 := store.ContainerInfo{
+		PodID:         "mypod",
+		ContainerID:   "cid1",
+		ContainerName: "container1",
+		Namespace:     "ns-foo",
+	}
+	cInfo2 := store.ContainerInfo{
+		PodID:         "mypod",
+		ContainerID:   "cid2",
+		ContainerName: "container2",
+		Namespace:     "ns-foo",
+	}
+
+	cInfos := []store.ContainerInfo{cInfo1, cInfo2}
+	state := store.BuildState{
+		LastResult:        alreadyBuilt,
+		FilesChangedSet:   map[string]bool{"foo.py": true},
+		RunningContainers: cInfos,
+	}
+
+	// Write files so we know whether to cp to or rm from container
+	f.WriteFile("hi", "hello")
+	f.WriteFile("planets/earth", "world")
+
+	paths := []build.PathMapping{
+		build.PathMapping{LocalPath: f.JoinPath("hi"), ContainerPath: "/src/hi"},
+		build.PathMapping{LocalPath: f.JoinPath("planets/earth"), ContainerPath: "/src/planets/earth"},
+	}
+	expected := []expectedFile{
+		expectFile("src/hi", "hello"),
+		expectFile("src/planets/earth", "world"),
+	}
+
+	err := f.lubad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, state, paths, nil, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	require.Len(t, f.cu.Calls, 2)
+
+	for i, call := range f.cu.Calls {
+		assert.Equal(t, cInfos[i], call.ContainerInfo)
+		testutils.AssertFilesInTar(f.t, tar.NewReader(call.Archive), expected)
 	}
 }
 

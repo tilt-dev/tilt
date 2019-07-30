@@ -1,7 +1,9 @@
 package engine
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"time"
 
@@ -123,9 +125,8 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 
 func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu containerupdate.ContainerUpdater, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) error {
 	l := logger.Get(ctx)
+	cIDStr := container.ShortStrs(store.IDsForInfos(state.RunningContainers))
 	l.Infof("  → Updating container…")
-	cInfo := state.OneContainerInfo()
-	cIDStr := cInfo.ContainerID.ShortStr()
 
 	filter := ignore.CreateBuildContextFilter(iTarget)
 	boiledSteps, err := build.BoilRuns(runs, changedFiles)
@@ -158,6 +159,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 			_ = pw.Close()
 		}
 	}()
+	var archiveReader io.Reader = pr
 
 	if len(toArchive) > 0 {
 		l.Infof("Will copy %d file(s) to container(s): %s", len(toArchive), cIDStr)
@@ -166,14 +168,42 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 		}
 	}
 
-	err = cu.UpdateContainer(ctx, cInfo, pr, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
-	if err != nil {
-		if build.IsRunStepFailure(err) {
-			return WrapDontFallBackError(err)
+	var lastUserBuildFailure error
+	for _, cInfo := range state.RunningContainers {
+
+		// always pass a copy of the tar archive reader
+		// so multiple updates can access the same data
+		var archiveBuf bytes.Buffer
+		archiveTee := io.TeeReader(archiveReader, &archiveBuf)
+
+		err = cu.UpdateContainer(ctx, cInfo, archiveTee, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
+		if err != nil {
+			if runFail, ok := err.(build.RunStepFailure); ok {
+				// Keep running updates -- we want all containers to have the same files on them
+				// even if the Runs don't succeed
+				lastUserBuildFailure = err
+				logger.Get(ctx).Infof("  → FAILED TO UPDATE CONTAINER %s: run step %q failed with with exit code: %d",
+					cInfo.ContainerID, runFail.Cmd.String(), runFail.ExitCode)
+				continue
+			}
+
+			// Something went wrong with this update and it's NOT the user's fault--
+			// likely a infrastructure error. Bail, and fall back to full build.
+			return err
+		} else {
+			logger.Get(ctx).Infof("  → Container %s updated!", cInfo.ContainerID)
+			if lastUserBuildFailure != nil {
+				// This build succeeded, but previously at least one failed due to user error.
+				// We may have inconsistent state--bail, and fall back to full build.
+				return fmt.Errorf("INCONSISTENT STATE: container %s successfully updated,"+
+					"but last update failed with '%v'", cInfo.ContainerID, lastUserBuildFailure)
+			}
 		}
-		return err
+		archiveReader = &archiveBuf
 	}
-	logger.Get(ctx).Infof("  → Container updated!")
+	if lastUserBuildFailure != nil {
+		return WrapDontFallBackError(lastUserBuildFailure)
+	}
 	return nil
 }
 

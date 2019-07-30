@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sameimg
+  namespace: tilt-integration
+  labels:
+    app: sameimg
+spec:
+  selector:
+    matchLabels:
+      app: sameimg
+  template:
+    metadata:
+      labels:
+        app: sameimg
+    spec:
+      containers:
+      - name: c1
+        image: sameimg
+        command: ["/go/src/github.com/windmilleng/integration/same_img_multi_container/start.sh", "/go/bin/same_img_multi_container", "-port", "8000"]
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: "10m"
+      - name: c2
+        image: sameimg
+        command: ["/go/src/github.com/windmilleng/integration/same_img_multi_container/start.sh", "/go/bin/same_img_multi_container", "-port", "8001"]
+        ports:
+          - containerPort: 8001
+        resources:
+          requests:
+            cpu: "10m"
