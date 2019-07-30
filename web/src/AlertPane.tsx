@@ -35,9 +35,7 @@ function alertElements(
           <header>
             <p>{resource.Name}</p>
             {alert.header != "" && <p>{alert.header}</p>}
-            <time>
-              <TimeAgo date={alert.timestamp} formatter={formatter} />
-            </time>
+            <TimeAgo date={alert.timestamp} formatter={formatter} />
           </header>
           <section>{logToLines(alert.msg)}</section>
           {teamAlertsIsEnabled && (
