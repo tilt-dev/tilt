@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -30,6 +31,7 @@ import (
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
+	"github.com/windmilleng/tilt/internal/tiltfile/testdata"
 	"github.com/windmilleng/tilt/internal/yaml"
 )
 
@@ -522,7 +524,7 @@ docker_build('gcr.io/a', 'a')
 	f.loadErrString("Image for ref \"gcr.io/a\" has already been defined")
 }
 
-func TestInvalidImageName(t *testing.T) {
+func TestInvalidImageNameInDockerBuild(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -533,6 +535,26 @@ docker_build("ceci n'est pas une valid image ref", 'a')
 `)
 
 	f.loadErrString("invalid reference format")
+}
+
+func TestInvalidImageNameInK8SYAML(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+yaml_str = """
+kind: Pod
+apiVersion: v1
+metadata:
+  name: test-pod
+spec:
+  containers:
+  - image: IMAGE_URL
+"""
+
+k8s_yaml([blob(yaml_str)])`)
+
+	f.loadErrString("invalid reference format", "test-pod", "IMAGE_URL")
 }
 
 func TestFastBuildAddString(t *testing.T) {
@@ -1240,7 +1262,7 @@ yml = helm('helm')
 k8s_yaml(yml)
 `)
 
-	f.loadErrString("Expected to be able to read Helm templates in ")
+	f.loadErrString("Could not read Helm chart directory")
 }
 
 func TestHelmFromRepoPath(t *testing.T) {
@@ -3317,6 +3339,20 @@ k8s_yaml(yml)
 	)
 }
 
+func TestHelmIncludesRequirements(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupHelmWithRequirements()
+	f.file("Tiltfile", `
+yml = helm('helm')
+k8s_yaml(yml)
+`)
+
+	f.load()
+	f.assertNextManifest("release-name-nginx-ingress-controller")
+}
+
 func TestK8sContext(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -4646,6 +4682,13 @@ func (f *fixture) setupHelm() {
 	f.file("helm/templates/deployment.yaml", deploymentYAML)
 	f.file("helm/templates/ingress.yaml", ingressYAML)
 	f.file("helm/templates/service.yaml", serviceYAML)
+}
+
+func (f *fixture) setupHelmWithRequirements() {
+	f.setupHelm()
+
+	nginxIngressChartPath := testdata.NginxIngressChartPath()
+	f.CopyFile(nginxIngressChartPath, filepath.Join("helm/charts", filepath.Base(nginxIngressChartPath)))
 }
 
 func (f *fixture) setupHelmWithTest() {

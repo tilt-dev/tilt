@@ -133,10 +133,10 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 
 		if len(tCase.runningContainerIDs) > 0 {
 			// We expect to have operated on the number of containers that the user specified
-			assert.Equal(t, imgRes.ContainerIDs, tCase.runningContainerIDs)
+			assert.Equal(t, imgRes.LiveUpdatedContainerIDs, tCase.runningContainerIDs)
 		} else {
 			// We did a container build, so we expect result to have the container ID we operated on
-			assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyContainerID().String())
+			assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyLiveUpdatedContainerID().String())
 		}
 	} else {
 		expectedYaml := "image: gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"

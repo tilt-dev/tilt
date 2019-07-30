@@ -11,6 +11,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/hud/server"
+	"github.com/windmilleng/tilt/internal/testutils/podbuilder"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/model"
@@ -22,15 +23,14 @@ func TestBuildControllerOnePod(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("fe", []model.Sync{sync})
+	manifest := f.newManifest("fe")
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
-	f.podEvent(f.testPod("pod-id", "fe", "Running", testContainer, time.Now()))
+	f.podEvent(f.testPod("pod-id", manifest, "Running", podbuilder.FakeContainerID, time.Now()))
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
@@ -45,17 +45,18 @@ func TestBuildControllerIgnoresImageTags(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
 	ref := container.MustParseNamed("image-foo:tagged")
-	manifest := f.newManifestWithRef("fe", ref, []model.Sync{sync})
+	manifest := f.newManifestWithRef("fe", ref)
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
-	pod := f.testPod("pod-id", "fe", "Running", testContainer, time.Now())
-	setImage(pod, "image-foo:othertag")
+	pod := podbuilder.New(t, manifest).
+		WithPodID("pod-id").
+		WithImage("image-foo:othertag", 0).
+		Build()
 	f.podEvent(pod)
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
@@ -93,8 +94,7 @@ func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("fe", []model.Sync{sync})
+	manifest := f.newManifest("fe")
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
@@ -102,8 +102,8 @@ func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	// Associate the pods with the manifest state
-	podA := f.testPod("pod-a", "fe", "Running", testContainer, time.Now())
-	podB := f.testPod("pod-b", "fe", "Running", testContainer, time.Now())
+	podA := f.testPod("pod-a", manifest, "Running", podbuilder.FakeContainerID, time.Now())
+	podB := f.testPod("pod-b", manifest, "Running", podbuilder.FakeContainerID, time.Now())
 	f.podEvent(podA)
 	f.podEvent(podB)
 
@@ -124,8 +124,7 @@ func TestBuildControllerTwoContainers(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("fe", []model.Sync{sync})
+	manifest := f.newManifest("fe")
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
@@ -133,7 +132,7 @@ func TestBuildControllerTwoContainers(t *testing.T) {
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	// container already on this pod matches the image built by this manifest
-	f.pod = f.testPod("pod-id", "fe", "Running", testContainer, time.Now())
+	f.pod = f.testPod("pod-id", manifest, "Running", podbuilder.FakeContainerID, time.Now())
 	imgName := f.pod.Status.ContainerStatuses[0].Image
 	f.pod.Status.ContainerStatuses = append(f.pod.Status.ContainerStatuses, v1.ContainerStatus{
 		Name:        "same image",
@@ -161,10 +160,10 @@ func TestBuildControllerTwoContainers(t *testing.T) {
 	assert.Equal(t, "pod-id", c0.PodID.String(), "pod ID for cInfo at index 0")
 	assert.Equal(t, "pod-id", c1.PodID.String(), "pod ID for cInfo at index 1")
 
-	assert.Equal(t, testContainer, c0.ContainerID.String(), "container ID for cInfo at index 0")
+	assert.Equal(t, podbuilder.FakeContainerID, c0.ContainerID.String(), "container ID for cInfo at index 0")
 	assert.Equal(t, "cID-same-image", c1.ContainerID.String(), "container ID for cInfo at index 1")
 
-	assert.Equal(t, "test container!", c0.ContainerName.String(), "container name for cInfo at index 0")
+	assert.Equal(t, "sancho", c0.ContainerName.String(), "container name for cInfo at index 0")
 	assert.Equal(t, "same image", c1.ContainerName.String(), "container name for cInfo at index 1")
 
 	err := f.Stop()
@@ -176,8 +175,7 @@ func TestBuildControllerWontContainerBuildWithSomeButNotAllReadyContainers(t *te
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("fe", []model.Sync{sync})
+	manifest := f.newManifest("fe")
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
@@ -185,7 +183,7 @@ func TestBuildControllerWontContainerBuildWithSomeButNotAllReadyContainers(t *te
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	// container already on this pod matches the image built by this manifest
-	f.pod = f.testPod("pod-id", "fe", "Running", testContainer, time.Now())
+	f.pod = f.testPod("pod-id", manifest, "Running", podbuilder.FakeContainerID, time.Now())
 	imgName := f.pod.Status.ContainerStatuses[0].Image
 	f.pod.Status.ContainerStatuses = append(f.pod.Status.ContainerStatuses, v1.ContainerStatus{
 		Name:        "same image",
@@ -211,8 +209,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest("fe", []model.Sync{sync})
+	manifest := f.newManifest("fe")
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
@@ -220,8 +217,8 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 	f.waitForCompletedBuildCount(1)
 
-	f.b.nextBuildContainer = testContainer
-	f.podEvent(f.testPod("pod-id", "fe", "Running", testContainer, time.Now()))
+	f.b.nextLiveUpdateContainerID = podbuilder.FakeContainerID
+	f.podEvent(f.testPod("pod-id", manifest, "Running", podbuilder.FakeContainerID, time.Now()))
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
@@ -229,11 +226,11 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 	f.withManifestState("fe", func(ms store.ManifestState) {
 		assert.Equal(t, model.BuildReasonFlagChangedFiles, ms.LastBuild().Reason)
-		assert.Equal(t, testContainer, ms.ExpectedContainerID.String())
+		assert.Equal(t, podbuilder.FakeContainerID, ms.LiveUpdatedContainerID.String())
 	})
 
 	// Restart the pod with a new container id, to simulate a container restart.
-	f.podEvent(f.testPod("pod-id", "fe", "Running", "funnyContainerID", time.Now()))
+	f.podEvent(f.testPod("pod-id", manifest, "Running", "funnyContainerID", time.Now()))
 	call = f.nextCall()
 	assert.True(t, call.oneState().OneContainerInfo().Empty())
 	f.waitForCompletedBuildCount(3)
@@ -252,8 +249,7 @@ func TestBuildControllerManualTrigger(t *testing.T) {
 	defer f.TearDown()
 	mName := model.ManifestName("foobar")
 
-	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	manifest := f.newManifest(mName.String(), []model.Sync{sync}).WithTriggerMode(model.TriggerModeManual)
+	manifest := f.newManifest(mName.String()).WithTriggerMode(model.TriggerModeManual)
 	f.Init(InitAction{
 		Manifests:       []model.Manifest{manifest},
 		WatchFiles:      true,
@@ -291,11 +287,10 @@ func TestBuildQueueOrdering(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-	m1 := f.newManifest("manifest1", []model.Sync{sync}).WithTriggerMode(model.TriggerModeManual)
-	m2 := f.newManifest("manifest2", []model.Sync{sync}).WithTriggerMode(model.TriggerModeManual)
-	m3 := f.newManifest("manifest3", []model.Sync{sync}).WithTriggerMode(model.TriggerModeManual)
-	m4 := f.newManifest("manifest4", []model.Sync{sync}).WithTriggerMode(model.TriggerModeManual)
+	m1 := f.newManifest("manifest1").WithTriggerMode(model.TriggerModeManual)
+	m2 := f.newManifest("manifest2").WithTriggerMode(model.TriggerModeManual)
+	m3 := f.newManifest("manifest3").WithTriggerMode(model.TriggerModeManual)
+	m4 := f.newManifest("manifest4").WithTriggerMode(model.TriggerModeManual)
 
 	// attach to state in different order than we plan to trigger them
 	manifests := []model.Manifest{m4, m2, m3, m1}
@@ -339,6 +334,8 @@ func TestBuildQueueOrdering(t *testing.T) {
 	f.waitForCompletedBuildCount(2 * len(manifests))
 }
 
+// This test is tightly coupled with FastBuild, and needs to be
+// rewritten to use DockerBuild
 func TestBuildQueueAndAutobuildOrdering(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -348,11 +345,11 @@ func TestBuildQueueAndAutobuildOrdering(t *testing.T) {
 	// changes to this dir. will register with our automatic manifests
 	syncDirAuto := model.Sync{LocalPath: f.JoinPath("dirAuto/"), ContainerPath: "/go"}
 
-	m1 := f.newManifest("manifest1", []model.Sync{syncDirManual}).WithTriggerMode(model.TriggerModeManual)
-	m2 := f.newManifest("manifest2", []model.Sync{syncDirManual}).WithTriggerMode(model.TriggerModeManual)
-	m3 := f.newManifest("manifest3", []model.Sync{syncDirManual}).WithTriggerMode(model.TriggerModeManual)
-	m4 := f.newManifest("manifest4", []model.Sync{syncDirManual}).WithTriggerMode(model.TriggerModeManual)
-	m5 := f.newManifest("manifest5", []model.Sync{syncDirAuto}).WithTriggerMode(model.TriggerModeAuto)
+	m1 := f.newFastBuildManifest("manifest1", []model.Sync{syncDirManual}).WithTriggerMode(model.TriggerModeManual)
+	m2 := f.newFastBuildManifest("manifest2", []model.Sync{syncDirManual}).WithTriggerMode(model.TriggerModeManual)
+	m3 := f.newFastBuildManifest("manifest3", []model.Sync{syncDirManual}).WithTriggerMode(model.TriggerModeManual)
+	m4 := f.newFastBuildManifest("manifest4", []model.Sync{syncDirManual}).WithTriggerMode(model.TriggerModeManual)
+	m5 := f.newFastBuildManifest("manifest5", []model.Sync{syncDirAuto}).WithTriggerMode(model.TriggerModeAuto)
 
 	// attach to state in different order than we plan to trigger them
 	manifests := []model.Manifest{m5, m4, m2, m3, m1}
@@ -406,8 +403,7 @@ func TestBuildControllerNoBuildManifestsFirst(t *testing.T) {
 
 	manifests := make([]model.Manifest, 10)
 	for i := 0; i < 10; i++ {
-		sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
-		manifests[i] = f.newManifest(fmt.Sprintf("built%d", i+1), []model.Sync{sync})
+		manifests[i] = f.newManifest(fmt.Sprintf("built%d", i+1))
 	}
 
 	for _, i := range []int{3, 7, 8} {
@@ -445,12 +441,11 @@ func TestBuildControllerUnresourcedYAMLFirst(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	sync := model.Sync{LocalPath: f.Path(), ContainerPath: "/go"}
 	manifests := []model.Manifest{
-		f.newManifest("built1", []model.Sync{sync}),
-		f.newManifest("built2", []model.Sync{sync}),
-		f.newManifest("built3", []model.Sync{sync}),
-		f.newManifest("built4", []model.Sync{sync}),
+		f.newManifest("built1"),
+		f.newManifest("built2"),
+		f.newManifest("built3"),
+		f.newManifest("built4"),
 	}
 
 	manifests = append(manifests, assembleK8sManifest(model.Manifest{Name: model.UnresourcedYAMLManifestName}, model.K8sTarget{YAML: "fake-yaml"}))

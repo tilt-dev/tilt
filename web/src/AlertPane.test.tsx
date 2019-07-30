@@ -13,6 +13,8 @@ import {
   getResourceAlerts,
 } from "./alerts"
 
+const fakeSendAlert = () => {}
+
 beforeEach(() => {
   Date.now = jest.fn(() => 1482363367071)
 })
@@ -22,7 +24,13 @@ it("renders no errors", () => {
   let resources = [resource]
 
   const tree = renderer
-    .create(<AlertPane resources={resources as Array<Resource>} />)
+    .create(
+      <AlertPane
+        resources={resources as Array<Resource>}
+        handleSendAlert={fakeSendAlert}
+        teamAlertsIsEnabled={false}
+      />
+    )
     .toJSON()
 
   expect(tree).toMatchSnapshot()
@@ -48,7 +56,13 @@ it("renders one container start error", () => {
   let resources = [resource]
 
   const tree = renderer
-    .create(<AlertPane resources={resources as Array<Resource>} />)
+    .create(
+      <AlertPane
+        resources={resources as Array<Resource>}
+        handleSendAlert={fakeSendAlert}
+        teamAlertsIsEnabled={false}
+      />
+    )
     .toJSON()
   expect(tree).toMatchSnapshot()
 
@@ -57,7 +71,13 @@ it("renders one container start error", () => {
   resource.ResourceInfo.PodRestarts = 3
 
   const newTree = renderer
-    .create(<AlertPane resources={resources as Array<Resource>} />)
+    .create(
+      <AlertPane
+        resources={resources as Array<Resource>}
+        handleSendAlert={fakeSendAlert}
+        teamAlertsIsEnabled={false}
+      />
+    )
     .toJSON()
   expect(newTree).toMatchSnapshot()
 })
@@ -80,7 +100,13 @@ it("shows that a container has restarted", () => {
   let resources = [resource]
 
   const tree = renderer
-    .create(<AlertPane resources={resources as Array<Resource>} />)
+    .create(
+      <AlertPane
+        resources={resources as Array<Resource>}
+        handleSendAlert={fakeSendAlert}
+        teamAlertsIsEnabled={false}
+      />
+    )
     .toJSON()
   expect(tree).toMatchSnapshot()
 })
@@ -104,7 +130,13 @@ it("shows that a crash rebuild has occurred", () => {
   let resources = [resource]
 
   const tree = renderer
-    .create(<AlertPane resources={resources as Array<Resource>} />)
+    .create(
+      <AlertPane
+        resources={resources as Array<Resource>}
+        handleSendAlert={fakeSendAlert}
+        teamAlertsIsEnabled={false}
+      />
+    )
     .toJSON()
   expect(tree).toMatchSnapshot()
 })
@@ -129,7 +161,13 @@ it("renders multiple lines of a crash log", () => {
   let resources = [resource]
 
   const tree = renderer
-    .create(<AlertPane resources={resources as Array<Resource>} />)
+    .create(
+      <AlertPane
+        resources={resources as Array<Resource>}
+        handleSendAlert={fakeSendAlert}
+        teamAlertsIsEnabled={false}
+      />
+    )
     .toJSON()
   expect(tree).toMatchSnapshot()
 })
@@ -154,7 +192,13 @@ it("renders warnings", () => {
   let resources = [resource]
 
   const tree = renderer
-    .create(<AlertPane resources={resources as Array<Resource>} />)
+    .create(
+      <AlertPane
+        resources={resources as Array<Resource>}
+        handleSendAlert={fakeSendAlert}
+        teamAlertsIsEnabled={false}
+      />
+    )
     .toJSON()
   expect(tree).toMatchSnapshot()
 })
@@ -166,7 +210,57 @@ it("renders one container unrecognized error", () => {
 
   let resources = [resource]
 
-  const tree = renderer.create(<AlertPane resources={resources} />).toJSON()
+  const tree = renderer
+    .create(
+      <AlertPane
+        resources={resources}
+        handleSendAlert={fakeSendAlert}
+        teamAlertsIsEnabled={false}
+      />
+    )
+    .toJSON()
+  expect(tree).toMatchSnapshot()
+})
+
+it("renders the get alert link button when the feature is enabled", () => {
+  const ts = "1,555,970,585,039"
+  let resources: Array<Partial<Resource>> = [
+    {
+      Name: "foo",
+      ResourceInfo: {
+        PodName: "",
+        PodCreationTime: "",
+        PodUpdateStartTime: "",
+        PodStatus: "",
+        PodStatusMessage: "",
+        PodRestarts: 0,
+        PodLog: "",
+        YAML: "",
+        Endpoints: [],
+      },
+      BuildHistory: [],
+      Alerts: [
+        {
+          alertType: BuildFailedErrorType,
+          msg: "laa dee daa I'm an error\nfor real I am",
+          header: "",
+          timestamp: ts,
+          resourceName: "foo",
+        },
+      ],
+    },
+  ]
+
+  const tree = renderer
+    .create(
+      <AlertPane
+        resources={resources as Array<Resource>}
+        handleSendAlert={fakeSendAlert}
+        teamAlertsIsEnabled={true}
+      />
+    )
+    .toJSON()
+
   expect(tree).toMatchSnapshot()
 })
 

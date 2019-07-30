@@ -38,7 +38,7 @@ func (cu *SyncletUpdater) UpdateContainer(ctx context.Context, cInfo store.Conta
 	}
 
 	err = sCli.UpdateContainer(ctx, cInfo.ContainerID, archiveBytes, filesToDelete, cmds, hotReload)
-	if err != nil && build.IsUserRunFailure(err) {
+	if err != nil && build.IsRunStepFailure(err) {
 		return err
 	}
 	return nil

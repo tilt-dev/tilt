@@ -21,7 +21,7 @@ func BenchmarkBuildTenRuns(b *testing.B) {
 		}
 		runs := model.ToRuns(cmds)
 
-		ref, err := f.b.BuildImage(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{}, model.EmptyMatcher, runs, model.Cmd{})
+		ref, err := f.b.DeprecatedFastBuildImage(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{}, model.EmptyMatcher, runs, model.Cmd{})
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -49,7 +49,7 @@ func BenchmarkBuildTenRunsInOne(b *testing.B) {
 		oneCmd := strings.Join(allCmds, " && ")
 
 		runs := model.ToRuns([]model.Cmd{model.ToShellCmd(oneCmd)})
-		ref, err := f.b.BuildImage(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, nil, model.EmptyMatcher, runs, model.Cmd{})
+		ref, err := f.b.DeprecatedFastBuildImage(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, nil, model.EmptyMatcher, runs, model.Cmd{})
 		if err != nil {
 			b.Fatal(err)
 		}

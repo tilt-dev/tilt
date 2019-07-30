@@ -11,13 +11,19 @@ import { Alert, hasAlert } from "./alerts"
 
 type AlertsProps = {
   resources: Array<Resource>
+  handleSendAlert: (alert: Alert) => void
+  teamAlertsIsEnabled: boolean
 }
 
 function logToLines(s: string) {
   return s.split("\n").map((l, i) => <AnsiLine key={"logLine" + i} line={l} />)
 }
 
-function alertElements(resources: Array<Resource>) {
+function alertElements(
+  resources: Array<Resource>,
+  handleSendAlert: (alert: Alert) => void,
+  teamAlertsIsEnabled: boolean
+) {
   let formatter = timeAgoFormatter
   let alertElements: Array<JSX.Element> = []
 
@@ -28,12 +34,17 @@ function alertElements(resources: Array<Resource>) {
         <li key={alert.alertType + resource.Name} className="AlertPane-item">
           <header>
             <p>{resource.Name}</p>
-            {alert.titleMsg != "" && <p>{alert.titleMsg}</p>}
-            <p>
-              <TimeAgo date={alert.timestamp} formatter={formatter} />
-            </p>
+            {alert.header != "" && <p>{alert.header}</p>}
+            <TimeAgo date={alert.timestamp} formatter={formatter} />
           </header>
           <section>{logToLines(alert.msg)}</section>
+          {teamAlertsIsEnabled && (
+            <footer>
+              <button onClick={() => handleSendAlert(alert)}>
+                Get Alert Link
+              </button>
+            </footer>
+          )}
         </li>
       )
     })
@@ -50,7 +61,11 @@ class AlertPane extends PureComponent<AlertsProps> {
       </section>
     )
 
-    let alerts = alertElements(this.props.resources)
+    let alerts = alertElements(
+      this.props.resources,
+      this.props.handleSendAlert,
+      this.props.teamAlertsIsEnabled
+    )
     if (alerts.length > 0) {
       el = <ul>{alerts}</ul>
     }

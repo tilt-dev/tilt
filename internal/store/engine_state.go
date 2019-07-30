@@ -84,9 +84,6 @@ type EngineState struct {
 	AnalyticsOpt           analytics.Opt // changes to this field will propagate into the TiltAnalytics subscriber + we'll record them as user choice
 	AnalyticsNudgeSurfaced bool          // this flag is set the first time we show the analytics nudge to the user.
 
-	// Features should NOT be read. Use the feature package.
-	// This field is only here to trigger rebuilds when features are
-	// toggled in the Tiltfile.
 	Features map[string]bool
 
 	TeamName string
@@ -250,8 +247,11 @@ type ManifestState struct {
 	// The last `BuildHistoryLimit` builds. The most recent build is first in the slice.
 	BuildHistory []model.BuildRecord
 
-	// If the pod isn't running this container then it's possible we're running stale code
-	ExpectedContainerID container.ID
+	// The container ID that we've run a LiveUpdate on, if any. Its contents have
+	// diverged from the image it's built on. If this container doesn't appear on
+	// the pod, we've lost that state and need to rebuild.
+	LiveUpdatedContainerID container.ID
+
 	// We detected stale code and are currently doing an image build
 	NeedsRebuildFromCrash bool
 

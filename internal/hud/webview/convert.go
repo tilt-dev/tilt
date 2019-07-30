@@ -101,6 +101,7 @@ func StateToWebView(s store.EngineState) View {
 	ret.NeedsAnalyticsNudge = NeedsNudge(s)
 	ret.RunningTiltBuild = s.TiltBuildInfo
 	ret.LatestTiltBuild = s.LatestTiltBuild
+	ret.FeatureFlags = s.Features
 
 	return ret
 }

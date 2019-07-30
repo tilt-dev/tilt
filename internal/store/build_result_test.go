@@ -16,17 +16,17 @@ func imageID(s string) model.TargetID {
 	}
 }
 
-func TestOneAndOnlyContainerID(t *testing.T) {
+func TestOneAndOnlyLiveUpdatedContainerID(t *testing.T) {
 	set := BuildResultSet{
-		imageID("a"): BuildResult{ContainerIDs: []container.ID{"cA"}},
-		imageID("b"): BuildResult{ContainerIDs: []container.ID{"cB"}},
+		imageID("a"): BuildResult{LiveUpdatedContainerIDs: []container.ID{"cA"}},
+		imageID("b"): BuildResult{LiveUpdatedContainerIDs: []container.ID{"cB"}},
 	}
-	assert.Equal(t, "", string(set.OneAndOnlyContainerID()))
+	assert.Equal(t, "", string(set.OneAndOnlyLiveUpdatedContainerID()))
 
 	set = BuildResultSet{
-		imageID("a"): BuildResult{ContainerIDs: []container.ID{"cA"}},
-		imageID("b"): BuildResult{ContainerIDs: []container.ID{"cA"}},
-		imageID("c"): BuildResult{ContainerIDs: []container.ID{""}},
+		imageID("a"): BuildResult{LiveUpdatedContainerIDs: []container.ID{"cA"}},
+		imageID("b"): BuildResult{LiveUpdatedContainerIDs: []container.ID{"cA"}},
+		imageID("c"): BuildResult{LiveUpdatedContainerIDs: []container.ID{""}},
 	}
-	assert.Equal(t, "cA", string(set.OneAndOnlyContainerID()))
+	assert.Equal(t, "cA", string(set.OneAndOnlyLiveUpdatedContainerID()))
 }

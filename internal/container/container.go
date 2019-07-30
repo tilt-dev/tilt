@@ -19,6 +19,7 @@ func (id ID) ShortStr() string {
 	}
 	return string(id)
 }
+
 func ShortStrs(ids []ID) string {
 	shortStrs := make([]string, len(ids))
 	for i, id := range ids {

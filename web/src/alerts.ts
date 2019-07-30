@@ -3,9 +3,10 @@ import { podStatusIsError, podStatusIsCrash } from "./constants"
 
 export type Alert = {
   alertType: string
+  header: string
   msg: string
   timestamp: string
-  titleMsg: string
+  resourceName: string
 }
 
 export const PodRestartErrorType = "PodRestartError"
@@ -83,22 +84,24 @@ function podStatusIsErrAlert(resource: Resource): Alert {
 
   return {
     alertType: PodStatusErrorType,
-    titleMsg: "",
+    header: "",
     msg: msg,
     timestamp: resource.ResourceInfo.PodCreationTime,
+    resourceName: resource.Name,
   }
 }
 
 function podRestartAlert(resource: Resource): Alert {
   let msg = resource.CrashLog || ""
-  let titleMsg = "Restarts: "
-  titleMsg = titleMsg.concat(resource.ResourceInfo.PodRestarts.toString())
+  let header = "Restarts: "
+  header = header.concat(resource.ResourceInfo.PodRestarts.toString())
 
   return {
     alertType: PodRestartErrorType,
-    titleMsg: titleMsg,
+    header: header,
     msg: msg,
     timestamp: resource.ResourceInfo.PodCreationTime,
+    resourceName: resource.Name,
   }
 }
 
@@ -106,9 +109,10 @@ function crashRebuildAlert(resource: Resource): Alert {
   let msg = resource.CrashLog || ""
   return {
     alertType: CrashRebuildErrorType,
-    titleMsg: "Pod crashed",
+    header: "Pod crashed",
     msg: msg,
     timestamp: resource.ResourceInfo.PodCreationTime,
+    resourceName: resource.Name,
   }
 }
 
@@ -116,9 +120,10 @@ function buildFailedAlert(resource: Resource): Alert {
   let msg = resource.BuildHistory[0].Log || ""
   return {
     alertType: BuildFailedErrorType,
-    titleMsg: "Build error",
+    header: "Build error",
     msg: msg,
     timestamp: resource.BuildHistory[0].FinishTime,
+    resourceName: resource.Name,
   }
 }
 function warningsAlerts(resource: Resource): Array<Alert> {
@@ -132,9 +137,10 @@ function warningsAlerts(resource: Resource): Array<Alert> {
     warnings.forEach(w => {
       alertArray.push({
         alertType: WarningErrorType,
-        titleMsg: resource.Name,
+        header: resource.Name,
         msg: w,
         timestamp: resource.BuildHistory[0].FinishTime,
+        resourceName: resource.Name,
       })
     })
   }

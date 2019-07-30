@@ -26,6 +26,7 @@ func TestStateToWebViewMultipleSyncs(t *testing.T) {
 			},
 		}),
 	)
+
 	state := newState([]model.Manifest{m})
 	ms := state.ManifestTargets[m.Name].State
 	ms.CurrentBuild.Edits = []string{"/a/b/d", "/a/b/c/d/e"}
@@ -128,6 +129,14 @@ func TestTriggerMode(t *testing.T) {
 
 	newM, _ := v.Resource(model.ManifestName("server"))
 	assert.Equal(t, model.TriggerModeManual, newM.TriggerMode)
+}
+
+func TestFeatureFlags(t *testing.T) {
+	state := newState(nil)
+	state.Features = map[string]bool{"foo_feature": true}
+
+	v := StateToWebView(*state)
+	assert.Equal(t, v.FeatureFlags, map[string]bool{"foo_feature": true})
 }
 
 func newState(manifests []model.Manifest) *store.EngineState {

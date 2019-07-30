@@ -72,7 +72,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	}()
 
 	// LiveUpdateBuildAndDeployer doesn't support initial build
-	// ~~ put this check in extractImageTargetsForLiveUpdates()
+	// TODO(maia): put this check in extractImageTargetsForLiveUpdates()
 	if state.IsEmpty() {
 		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("prev. build state is empty; LiveUpdate does not support initial deploy")
 	}
@@ -178,11 +178,12 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 
 		err = cu.UpdateContainer(ctx, cInfo, archiveTee, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 		if err != nil {
-			if build.IsUserRunFailure(err) {
+			if runFail, ok := err.(build.RunStepFailure); ok {
 				// Keep running updates -- we want all containers to have the same files on them
 				// even if the Runs don't succeed
 				lastUserBuildFailure = err
-				logger.Get(ctx).Infof("  → FAILED TO UPDATE CONTAINER %s with user run error: %v", cInfo.ContainerID, err)
+				logger.Get(ctx).Infof("  → FAILED TO UPDATE CONTAINER %s: run step %q failed with with exit code: %d",
+					cInfo.ContainerID, runFail.Cmd.String(), runFail.ExitCode)
 				continue
 			}
 
