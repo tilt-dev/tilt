@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
@@ -13,8 +15,7 @@ import (
 )
 
 type testCase struct {
-	baseManifest model.Manifest
-	liveUpdate   model.LiveUpdate
+	manifest model.Manifest
 
 	changedFiles []string // leave empty for no changed files
 
@@ -41,17 +42,8 @@ type testCase struct {
 }
 
 func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
-	bs := f.createBuildStateSet(tCase.baseManifest, tCase.changedFiles)
-	manifest := tCase.baseManifest
-
-	// Assume that the last image target is the deployed one.
-	iTargIdx := len(manifest.ImageTargets) - 1
-	iTarg := manifest.ImageTargetAt(iTargIdx)
-	assert.True(t, manifest.IsImageDeployed(iTarg))
-
-	db := iTarg.DockerBuildInfo()
-	db.LiveUpdate = tCase.liveUpdate
-	manifest.ImageTargets[iTargIdx] = iTarg.WithBuildDetails(db)
+	bs := f.createBuildStateSet(tCase.manifest, tCase.changedFiles)
+	manifest := tCase.manifest
 	targets := buildTargets(manifest)
 
 	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
@@ -71,6 +63,8 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 
 	assert.Equal(t, tCase.expectK8sExecCount, len(f.k8s.ExecCalls), "# k8s exec calls")
 
+	// Assume that the last image target is the deployed one.
+	iTargIdx := len(manifest.ImageTargets) - 1
 	id := manifest.ImageTargetAt(iTargIdx).ID()
 	_, hasResult := result[id]
 	assert.True(t, hasResult)
@@ -110,8 +104,11 @@ func TestLiveUpdateDockerBuildLocalContainer(t *testing.T) {
 		t.Fatal(err)
 	}
 	tCase := testCase{
-		baseManifest:             NewSanchoDockerBuildManifest(f),
-		liveUpdate:               lu,
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithLiveUpdate(lu).
+			Build(),
 		changedFiles:             []string{"a.txt"},
 		expectDockerBuildCount:   0,
 		expectDockerPushCount:    0,
@@ -131,8 +128,11 @@ func TestLiveUpdateCustomBuildLocalContainer(t *testing.T) {
 		t.Fatal(err)
 	}
 	tCase := testCase{
-		baseManifest:             NewSanchoCustomBuildManifest(f),
-		liveUpdate:               lu,
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoCustomBuildImageTarget(f)).
+			WithLiveUpdate(lu).
+			Build(),
 		changedFiles:             []string{"app/a.txt"},
 		expectDockerBuildCount:   0,
 		expectDockerPushCount:    0,
@@ -152,8 +152,11 @@ func TestLiveUpdateHotReloadLocalContainer(t *testing.T) {
 		t.Fatal(err)
 	}
 	tCase := testCase{
-		baseManifest:             NewSanchoDockerBuildManifest(f),
-		liveUpdate:               lu,
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithLiveUpdate(lu).
+			Build(),
 		changedFiles:             []string{"a.txt"},
 		expectDockerBuildCount:   0,
 		expectDockerPushCount:    0,
@@ -178,8 +181,11 @@ func TestLiveUpdateRunTriggerLocalContainer(t *testing.T) {
 		t.Fatal(err)
 	}
 	tCase := testCase{
-		baseManifest:             NewSanchoDockerBuildManifest(f),
-		liveUpdate:               lu,
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithLiveUpdate(lu).
+			Build(),
 		changedFiles:             []string{"a.txt"},
 		expectDockerBuildCount:   0,
 		expectDockerPushCount:    0,
@@ -204,8 +210,11 @@ func TestLiveUpdateRunTriggerSynclet(t *testing.T) {
 		t.Fatal(err)
 	}
 	tCase := testCase{
-		baseManifest:                      NewSanchoDockerBuildManifest(f),
-		liveUpdate:                        lu,
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithLiveUpdate(lu).
+			Build(),
 		changedFiles:                      []string{"a.txt"},
 		expectDockerBuildCount:            0,
 		expectDockerPushCount:             0,
@@ -224,8 +233,11 @@ func TestLiveUpdateDockerBuildSynclet(t *testing.T) {
 		t.Fatal(err)
 	}
 	tCase := testCase{
-		baseManifest:                      NewSanchoDockerBuildManifest(f),
-		liveUpdate:                        lu,
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithLiveUpdate(lu).
+			Build(),
 		changedFiles:                      []string{"a.txt"},
 		expectDockerBuildCount:            0,
 		expectDockerPushCount:             0,
@@ -245,8 +257,11 @@ func TestLiveUpdateCustomBuildSynclet(t *testing.T) {
 		t.Fatal(err)
 	}
 	tCase := testCase{
-		baseManifest:                      NewSanchoCustomBuildManifest(f),
-		liveUpdate:                        lu,
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoCustomBuildImageTarget(f)).
+			WithLiveUpdate(lu).
+			Build(),
 		changedFiles:                      []string{"app/a.txt"},
 		expectDockerBuildCount:            0,
 		expectDockerPushCount:             0,
@@ -266,8 +281,11 @@ func TestLiveUpdateHotReloadSynclet(t *testing.T) {
 		t.Fatal(err)
 	}
 	tCase := testCase{
-		baseManifest:                      NewSanchoDockerBuildManifest(f),
-		liveUpdate:                        lu,
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithLiveUpdate(lu).
+			Build(),
 		changedFiles:                      []string{"a.txt"},
 		expectDockerBuildCount:            0,
 		expectDockerPushCount:             0,
@@ -287,8 +305,11 @@ func TestLiveUpdateExecDoesNotSupportRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	tCase := testCase{
-		baseManifest:             NewSanchoDockerBuildManifest(f),
-		liveUpdate:               lu,
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithLiveUpdate(lu).
+			Build(),
 		changedFiles:             []string{"a.txt"},
 		expectDockerBuildCount:   1, // we did a Docker build instead of an in-place update!
 		expectDockerPushCount:    1, // expect Docker push on GKE
@@ -310,8 +331,11 @@ func TestLiveUpdateDockerBuildExec(t *testing.T) {
 		t.Fatal(err)
 	}
 	tCase := testCase{
-		baseManifest:           NewSanchoDockerBuildManifest(f),
-		liveUpdate:             lu,
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithLiveUpdate(lu).
+			Build(),
 		changedFiles:           []string{"a.txt"},
 		expectDockerBuildCount: 0,
 		expectDockerPushCount:  0,
@@ -320,12 +344,15 @@ func TestLiveUpdateDockerBuildExec(t *testing.T) {
 	runTestCase(t, f, tCase)
 }
 
-func TestDockerBuildDoesNotDeploySynclet(t *testing.T) {
+func TestDockerBuildWithoutLiveUpdateDoesNotDeploySynclet(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
 	tCase := testCase{
-		baseManifest:           NewSanchoDockerBuildManifest(f),
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			Build(),
 		changedFiles:           nil, // will use an empty BuildResultSet, i.e. treat this as first build
 		expectDockerBuildCount: 1,
 		expectDockerPushCount:  1,
@@ -345,8 +372,11 @@ func TestLiveUpdateDockerBuildDeploysSynclet(t *testing.T) {
 	}
 
 	tCase := testCase{
-		baseManifest:           NewSanchoDockerBuildManifest(f),
-		liveUpdate:             lu,
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithLiveUpdate(lu).
+			Build(),
 		changedFiles:           nil, // will use an empty BuildResultSet, i.e. treat this as first build
 		expectDockerBuildCount: 1,
 		expectDockerPushCount:  1,
@@ -365,8 +395,11 @@ func TestLiveUpdateLocalContainerFallBackOn(t *testing.T) {
 		t.Fatal(err)
 	}
 	tCase := testCase{
-		baseManifest:             NewSanchoDockerBuildManifest(f),
-		liveUpdate:               lu,
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithLiveUpdate(lu).
+			Build(),
 		changedFiles:             []string{"a.txt"},
 		expectDockerBuildCount:   1, // we did a Docker build instead of an in-place update!
 		expectDockerPushCount:    0,
@@ -388,8 +421,11 @@ func TestLiveUpdateSyncletFallBackOn(t *testing.T) {
 		t.Fatal(err)
 	}
 	tCase := testCase{
-		baseManifest:             NewSanchoDockerBuildManifest(f),
-		liveUpdate:               lu,
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithLiveUpdate(lu).
+			Build(),
 		changedFiles:             []string{"a.txt"},
 		expectDockerBuildCount:   1, // we did a Docker build instead of an in-place update!
 		expectDockerPushCount:    1,
@@ -417,8 +453,11 @@ func TestLiveUpdateLocalContainerChangedFileNotMatchingSyncFallsBack(t *testing.
 		t.Fatal(err)
 	}
 	tCase := testCase{
-		baseManifest: NewSanchoDockerBuildManifest(f),
-		liveUpdate:   lu,
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithLiveUpdate(lu).
+			Build(),
 		changedFiles: []string{f.JoinPath("a.txt")}, // matches context but not sync'd directory
 
 		expectDockerBuildCount:   1, // we did a Docker build instead of an in-place update!
@@ -448,8 +487,11 @@ func TestLiveUpdateSyncletChangedFileNotMatchingSyncFallsBack(t *testing.T) {
 		t.Fatal(err)
 	}
 	tCase := testCase{
-		baseManifest: NewSanchoDockerBuildManifest(f),
-		liveUpdate:   lu,
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithLiveUpdate(lu).
+			Build(),
 		changedFiles: []string{f.JoinPath("a.txt")}, // matches context but not sync'd directory
 
 		expectDockerBuildCount:   1, // we did a Docker build instead of an in-place update!
@@ -480,8 +522,11 @@ func TestLiveUpdateSomeFilesMatchSyncSomeDontFallsBack(t *testing.T) {
 		t.Fatal(err)
 	}
 	tCase := testCase{
-		baseManifest: NewSanchoDockerBuildManifest(f),
-		liveUpdate:   lu,
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithLiveUpdate(lu).
+			Build(),
 		// One file matches a sync, one does not -- we should still fall back.
 		changedFiles: f.JoinPaths([]string{"specific/directory/i_match", "a.txt"}),
 
@@ -513,8 +558,7 @@ func TestLiveUpdateInFirstImageOfImageDependency(t *testing.T) {
 	}
 
 	tCase := testCase{
-		baseManifest:             NewSanchoDockerBuildMultiStageManifest(f),
-		liveUpdate:               lu,
+		manifest:                 NewSanchoDockerBuildMultiStageManifestWithLiveUpdate(f, lu),
 		changedFiles:             []string{"sancho-base/a.txt"},
 		expectDockerCopyCount:    1,
 		expectDockerExecCount:    1,
@@ -539,8 +583,7 @@ func TestLiveUpdateInFirstImageOfImageDependencyWithoutSync(t *testing.T) {
 	}
 
 	tCase := testCase{
-		baseManifest:           NewSanchoDockerBuildMultiStageManifest(f),
-		liveUpdate:             lu,
+		manifest:               NewSanchoDockerBuildMultiStageManifestWithLiveUpdate(f, lu),
 		changedFiles:           []string{"sancho-base/a.txt"},
 		expectDockerBuildCount: 2,
 		expectK8sDeploy:        true,
@@ -564,8 +607,7 @@ func TestLiveUpdateInSecondImageOfImageDependency(t *testing.T) {
 	}
 
 	tCase := testCase{
-		baseManifest:             NewSanchoDockerBuildMultiStageManifest(f),
-		liveUpdate:               lu,
+		manifest:                 NewSanchoDockerBuildMultiStageManifestWithLiveUpdate(f, lu),
 		changedFiles:             []string{"sancho/a.txt"},
 		expectDockerCopyCount:    1,
 		expectDockerExecCount:    1,
