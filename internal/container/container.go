@@ -58,7 +58,7 @@ func MustParseNamedTagged(s string) reference.NamedTagged {
 func MustParseNamed(s string) reference.Named {
 	n, err := reference.ParseNormalizedNamed(s)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("MustParseNamed(%q): %v", s, err))
 	}
 	return n
 }
