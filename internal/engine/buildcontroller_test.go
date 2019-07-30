@@ -30,7 +30,7 @@ func TestBuildControllerOnePod(t *testing.T) {
 	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
-	f.podEvent(f.testPod("pod-id", "fe", "Running", testContainer, time.Now()))
+	f.podEvent(f.testPod("pod-id", manifest, "Running", testContainer, time.Now()))
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
@@ -54,7 +54,7 @@ func TestBuildControllerIgnoresImageTags(t *testing.T) {
 	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
-	pod := f.testPod("pod-id", "fe", "Running", testContainer, time.Now())
+	pod := f.testPod("pod-id", manifest, "Running", testContainer, time.Now())
 	setImage(pod, "image-foo:othertag")
 	f.podEvent(pod)
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
@@ -102,8 +102,8 @@ func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	// Associate the pods with the manifest state
-	podA := f.testPod("pod-a", "fe", "Running", testContainer, time.Now())
-	podB := f.testPod("pod-b", "fe", "Running", testContainer, time.Now())
+	podA := f.testPod("pod-a", manifest, "Running", testContainer, time.Now())
+	podB := f.testPod("pod-b", manifest, "Running", testContainer, time.Now())
 	f.podEvent(podA)
 	f.podEvent(podB)
 
@@ -133,7 +133,7 @@ func TestBuildControllerTwoContainers(t *testing.T) {
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	// container already on this pod matches the image built by this manifest
-	f.pod = f.testPod("pod-id", "fe", "Running", testContainer, time.Now())
+	f.pod = f.testPod("pod-id", manifest, "Running", testContainer, time.Now())
 	imgName := f.pod.Status.ContainerStatuses[0].Image
 	f.pod.Status.ContainerStatuses = append(f.pod.Status.ContainerStatuses, v1.ContainerStatus{
 		Name:        "same image",
@@ -185,7 +185,7 @@ func TestBuildControllerWontContainerBuildWithSomeButNotAllReadyContainers(t *te
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	// container already on this pod matches the image built by this manifest
-	f.pod = f.testPod("pod-id", "fe", "Running", testContainer, time.Now())
+	f.pod = f.testPod("pod-id", manifest, "Running", testContainer, time.Now())
 	imgName := f.pod.Status.ContainerStatuses[0].Image
 	f.pod.Status.ContainerStatuses = append(f.pod.Status.ContainerStatuses, v1.ContainerStatus{
 		Name:        "same image",
@@ -221,7 +221,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 
 	f.b.nextBuildContainer = testContainer
-	f.podEvent(f.testPod("pod-id", "fe", "Running", testContainer, time.Now()))
+	f.podEvent(f.testPod("pod-id", manifest, "Running", testContainer, time.Now()))
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
@@ -233,7 +233,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	})
 
 	// Restart the pod with a new container id, to simulate a container restart.
-	f.podEvent(f.testPod("pod-id", "fe", "Running", "funnyContainerID", time.Now()))
+	f.podEvent(f.testPod("pod-id", manifest, "Running", "funnyContainerID", time.Now()))
 	call = f.nextCall()
 	assert.True(t, call.oneState().OneContainerInfo().Empty())
 	f.waitForCompletedBuildCount(3)
