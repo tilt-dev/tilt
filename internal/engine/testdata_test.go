@@ -103,16 +103,23 @@ func NewSanchoCustomBuildManifest(fixture Fixture) model.Manifest {
 	return NewSanchoCustomBuildManifestWithTag(fixture, "")
 }
 
-func NewSanchoCustomBuildManifestWithTag(fixture Fixture, tag string) model.Manifest {
+func NewSanchoCustomBuildImageTarget(fixture Fixture) model.ImageTarget {
+	return NewSanchoCustomBuildImageTargetWithTag(fixture, "")
+}
+
+func NewSanchoCustomBuildImageTargetWithTag(fixture Fixture, tag string) model.ImageTarget {
 	cb := model.CustomBuild{
 		Command: "true",
 		Deps:    []string{fixture.JoinPath("app")},
 		Tag:     tag,
 	}
+	return model.NewImageTarget(SanchoRef).WithBuildDetails(cb)
+}
 
+func NewSanchoCustomBuildManifestWithTag(fixture Fixture, tag string) model.Manifest {
 	return manifestbuilder.New(fixture, "sancho").
 		WithK8sYAML(SanchoYAML).
-		WithImageTarget(model.NewImageTarget(SanchoRef).WithBuildDetails(cb)).
+		WithImageTarget(NewSanchoCustomBuildImageTargetWithTag(fixture, tag)).
 		Build()
 }
 
@@ -244,12 +251,33 @@ ENTRYPOINT /go/bin/sancho
 		BuildPath: fixture.JoinPath("sancho"),
 	}).WithDependencyIDs([]model.TargetID{baseImage.ID()})
 
-	kTarget := model.K8sTarget{YAML: SanchoYAML}.
-		WithDependencyIDs([]model.TargetID{srcImage.ID()})
+	return manifestbuilder.New(fixture, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithImageTargets(baseImage, srcImage).
+		Build()
+}
 
-	return model.Manifest{Name: "sancho"}.
-		WithImageTargets([]model.ImageTarget{baseImage, srcImage}).
-		WithDeployTarget(kTarget)
+func NewSanchoDockerBuildMultiStageManifestWithLiveUpdate(fixture Fixture, lu model.LiveUpdate) model.Manifest {
+	baseImage := model.NewImageTarget(SanchoBaseRef).WithBuildDetails(model.DockerBuild{
+		Dockerfile: `FROM golang:1.10`,
+		BuildPath:  fixture.JoinPath("sancho-base"),
+	})
+
+	srcImage := model.NewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
+		Dockerfile: `
+FROM sancho-base
+ADD . .
+RUN go install github.com/windmilleng/sancho
+ENTRYPOINT /go/bin/sancho
+`,
+		BuildPath: fixture.JoinPath("sancho"),
+	}).WithDependencyIDs([]model.TargetID{baseImage.ID()})
+
+	return manifestbuilder.New(fixture, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithImageTargets(baseImage, srcImage).
+		WithLiveUpdateAtIndex(lu, 1).
+		Build()
 }
 
 func NewSanchoLiveUpdateMultiStageManifest(fixture Fixture) model.Manifest {

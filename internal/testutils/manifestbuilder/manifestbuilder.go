@@ -53,6 +53,29 @@ func (b ManifestBuilder) WithImageTargets(iTargs ...model.ImageTarget) ManifestB
 	return b
 }
 
+func (b ManifestBuilder) WithLiveUpdate(lu model.LiveUpdate) ManifestBuilder {
+	return b.WithLiveUpdateAtIndex(lu, 0)
+}
+
+func (b ManifestBuilder) WithLiveUpdateAtIndex(lu model.LiveUpdate, index int) ManifestBuilder {
+	if len(b.iTargets) <= index {
+		b.f.T().Fatalf("WithLiveUpdateAtIndex: index %d out of range -- (manifestBuilder has %d image targets)", index, len(b.iTargets))
+	}
+
+	iTarg := b.iTargets[index]
+	switch bd := iTarg.BuildDetails.(type) {
+	case model.DockerBuild:
+		bd.LiveUpdate = lu
+		b.iTargets[index] = iTarg.WithBuildDetails(bd)
+	case model.CustomBuild:
+		bd.LiveUpdate = lu
+		b.iTargets[index] = iTarg.WithBuildDetails(bd)
+	default:
+		b.f.T().Fatalf("unrecognized buildDetails type: %v", bd)
+	}
+	return b
+}
+
 func (b ManifestBuilder) Build() model.Manifest {
 	if b.k8sYAML != "" {
 		return assembleK8s(
