@@ -388,7 +388,7 @@ func TestHandleNewAlert(t *testing.T) {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusBadRequest)
 	}
-	assert.Contains(t, rr.Body.String(), "aaaaaa")
+	assert.Contains(t, rr.Body.String(), "https://alerts.tilt.dev/alert/aaaaaa")
 }
 
 type serverFixture struct {

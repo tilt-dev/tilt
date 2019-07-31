@@ -22,7 +22,7 @@ import (
 	tft "github.com/windmilleng/tilt/internal/tft/client"
 )
 
-const TiltAlertsDomain = "alerts.tilt.dev"
+const tiltAlertsDomain = "alerts.tilt.dev"
 const httpTimeOut = 5 * time.Second
 
 type analyticsPayload struct {
@@ -246,7 +246,7 @@ func (s *HeadsUpServer) HandleNewAlert(w http.ResponseWriter, req *http.Request)
 }
 
 func templateAlertURL(id tft.AlertID) string {
-	return fmt.Sprintf("http://%s/alert/%s", TiltAlertsDomain, id)
+	return fmt.Sprintf("https://%s/alert/%s", tiltAlertsDomain, id)
 }
 
 type tsAlert struct {
