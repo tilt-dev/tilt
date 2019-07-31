@@ -304,7 +304,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 		for _, pod := range ms.PodSet.Pods {
 			// # of pod restarts from old code (shouldn't be reflected in HUD)
-			pod.OldRestarts = pod.ContainerRestarts
+			pod.OldRestarts = pod.AllContainerRestarts()
 		}
 	}
 

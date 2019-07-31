@@ -134,7 +134,7 @@ func TestMultiContainerLogs(t *testing.T) {
 		PodID: podID,
 		Phase: v1.PodRunning,
 		Containers: []store.Container{
-			store.Container{Name: "cont1", ID: "cid1", Blessed: true},
+			store.Container{Name: "cont1", ID: "cid1"},
 			store.Container{Name: "cont2", ID: "cid2"},
 		},
 	}
@@ -169,7 +169,7 @@ func TestContainerPrefixes(t *testing.T) {
 		Phase: v1.PodRunning,
 		Containers: []store.Container{
 			// Pod with multiple containers -- logs should be prefixed with container name
-			store.Container{Name: cNamePrefix1, ID: "cid1", Blessed: true},
+			store.Container{Name: cNamePrefix1, ID: "cid1"},
 			store.Container{Name: cNamePrefix2, ID: "cid2"},
 		},
 	}
@@ -181,7 +181,7 @@ func TestContainerPrefixes(t *testing.T) {
 		Phase: v1.PodRunning,
 		Containers: []store.Container{
 			// Pod with just one container -- logs should NOT be prefixed with container name
-			store.Container{Name: cNameNoPrefix, ID: "cid3", Blessed: true},
+			store.Container{Name: cNameNoPrefix, ID: "cid3"},
 		},
 	}
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
@@ -319,7 +319,7 @@ func (f *plmFixture) AssertOutputDoesNotContain(s string) {
 }
 
 func PodWithContainer(pod store.Pod, name container.Name, id container.ID) store.Pod {
-	c := store.Container{Name: name, ID: id, Blessed: true}
+	c := store.Container{Name: name, ID: id}
 	pod.Containers = []store.Container{c}
 	return pod
 }

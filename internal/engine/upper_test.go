@@ -1667,13 +1667,11 @@ func TestUpperRecordPodWithMultipleContainers(t *testing.T) {
 		require.Equal(t, container.Name("sancho"), c1.Name)
 		require.Equal(t, podbuilder.FakeContainerID(), c1.ID)
 		require.True(t, c1.Ready)
-		require.True(t, c1.Blessed)
 
 		c2 := pod.Containers[1]
 		require.Equal(t, container.Name("sidecar"), c2.Name)
 		require.Equal(t, container.ID("sidecar"), c2.ID)
 		require.False(t, c2.Ready)
-		require.False(t, c2.Blessed)
 
 		return true
 	})
@@ -2965,7 +2963,7 @@ func (f *testFixture) restartPod() {
 	f.upper.store.Dispatch(PodChangeAction{f.pod})
 
 	f.WaitUntilManifestState("pod restart seen", "foobar", func(ms store.ManifestState) bool {
-		return ms.MostRecentPod().ContainerRestarts == int(restartCount)
+		return ms.MostRecentPod().AllContainerRestarts() == int(restartCount)
 	})
 }
 
