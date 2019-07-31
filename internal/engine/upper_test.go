@@ -321,7 +321,7 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 
 	call = f.nextCallComplete()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
-	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.oneState().LastImageAsString())
+	assert.Equal(t, "gcr.io/some-project-162817/sancho:tilt-1", call.oneState().LastImageAsString())
 	fileAbsPath := f.JoinPath(fileRelPath)
 	assert.Equal(t, []string{fileAbsPath}, call.oneState().FilesChanged())
 
@@ -466,7 +466,7 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("a.go"))
 
 	call = f.nextCallComplete("failed build from a.go change")
-	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.oneState().LastImageAsString())
+	assert.Equal(t, "gcr.io/some-project-162817/sancho:tilt-1", call.oneState().LastImageAsString())
 	assert.Equal(t, []string{f.JoinPath("a.go")}, call.oneState().FilesChanged())
 
 	// Simulate a change to b.go
@@ -476,7 +476,7 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 	// on the last successful result, from before a.go changed.
 	call = f.nextCallComplete("build on last successful result")
 	assert.Equal(t, []string{f.JoinPath("a.go"), f.JoinPath("b.go")}, call.oneState().FilesChanged())
-	assert.Equal(t, "docker.io/library/foobar:tilt-1", call.oneState().LastImageAsString())
+	assert.Equal(t, "gcr.io/some-project-162817/sancho:tilt-1", call.oneState().LastImageAsString())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -2989,8 +2989,11 @@ func (f *testFixture) podEvent(pod *v1.Pod) {
 }
 
 func (f *testFixture) newManifest(name string) model.Manifest {
-	ref := container.MustParseNamed(name)
-	return f.newManifestWithRef(name, ref)
+	iTarget := NewSanchoLiveUpdateImageTarget(f)
+	return manifestbuilder.New(f, model.ManifestName(name)).
+		WithK8sYAML(SanchoYAML).
+		WithImageTarget(iTarget).
+		Build()
 }
 
 func (f *testFixture) newFastBuildManifest(name string, syncs []model.Sync) model.Manifest {

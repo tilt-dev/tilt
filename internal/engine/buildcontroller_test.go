@@ -288,10 +288,14 @@ func TestBuildQueueOrdering(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	m1 := f.newManifest("manifest1").WithTriggerMode(model.TriggerModeManual)
-	m2 := f.newManifest("manifest2").WithTriggerMode(model.TriggerModeManual)
-	m3 := f.newManifest("manifest3").WithTriggerMode(model.TriggerModeManual)
-	m4 := f.newManifest("manifest4").WithTriggerMode(model.TriggerModeManual)
+	m1 := f.newManifestWithRef("manifest1", container.MustParseNamed("manifest1")).
+		WithTriggerMode(model.TriggerModeManual)
+	m2 := f.newManifestWithRef("manifest2", container.MustParseNamed("manifest2")).
+		WithTriggerMode(model.TriggerModeManual)
+	m3 := f.newManifestWithRef("manifest3", container.MustParseNamed("manifest3")).
+		WithTriggerMode(model.TriggerModeManual)
+	m4 := f.newManifestWithRef("manifest4", container.MustParseNamed("manifest4")).
+		WithTriggerMode(model.TriggerModeManual)
 
 	// attach to state in different order than we plan to trigger them
 	manifests := []model.Manifest{m4, m2, m3, m1}
