@@ -50,18 +50,7 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 	stateWatches := make(map[podLogKey]bool)
 	for _, ms := range state.ManifestStates() {
 		for _, pod := range ms.PodSet.PodList() {
-			if pod.PodID == "" {
-				continue
-			}
-
-			if pod.ContainerName() == "" || pod.ContainerID() == "" {
-				continue
-			}
-
-			// Only try to fetch logs if pod is in a state that can handle it;
-			// otherwise, it may reject our connection.
-			if !(pod.Phase == v1.PodRunning || pod.Phase == v1.PodSucceeded ||
-				pod.Phase == v1.PodFailed) {
+			if !m.shouldWatchPodLogs(pod) {
 				continue
 			}
 
@@ -119,6 +108,31 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 	}
 
 	return setup, teardown
+}
+
+func (m *PodLogManager) shouldWatchPodLogs(pod store.Pod) bool {
+	if pod.PodID == "" || len(pod.Containers) == 0 {
+		return false
+	}
+
+	// If an ID or name for the containers hasn't been created yet, weird things
+	// will happen when we try to store them in the `m.watches` map.  This should
+	// only happen if the pod is still in a weird creating state. It shouldn't
+	// happen when user code is running.
+	for _, container := range pod.Containers {
+		if container.Name == "" || container.ID == "" {
+			return false
+		}
+	}
+
+	// Only try to fetch logs if pod is in a state that can handle it;
+	// otherwise, it may reject our connection.
+	if !(pod.Phase == v1.PodRunning || pod.Phase == v1.PodSucceeded ||
+		pod.Phase == v1.PodFailed) {
+		return false
+	}
+
+	return true
 }
 
 func (m *PodLogManager) OnChange(ctx context.Context, st store.RStore) {

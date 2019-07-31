@@ -130,7 +130,7 @@ type portForwardEntry struct {
 // have ContainerPort = 0, populate them with the default port for the pod.
 // Quietly drop forwards that we can't populate.
 func populatePortForwards(m model.Manifest, pod store.Pod) []model.PortForward {
-	cPorts := pod.ContainerPorts()
+	cPorts := pod.AllContainerPorts()
 	fwds := m.K8sTarget().PortForwards
 	forwards := make([]model.PortForward, 0, len(fwds))
 	for _, forward := range fwds {
