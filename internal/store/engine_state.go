@@ -247,10 +247,10 @@ type ManifestState struct {
 	// The last `BuildHistoryLimit` builds. The most recent build is first in the slice.
 	BuildHistory []model.BuildRecord
 
-	// The container ID that we've run a LiveUpdate on, if any. Its contents have
-	// diverged from the image it's built on. If this container doesn't appear on
+	// The container IDs that we've run a LiveUpdate on, if any. Their contents have
+	// diverged from the image they are built on. If these container don't appear on
 	// the pod, we've lost that state and need to rebuild.
-	LiveUpdatedContainerID container.ID
+	LiveUpdatedContainerIDs map[container.ID]bool
 
 	// We detected stale code and are currently doing an image build
 	NeedsRebuildFromCrash bool
@@ -278,9 +278,10 @@ func NewState() *EngineState {
 
 func newManifestState(mn model.ManifestName) *ManifestState {
 	return &ManifestState{
-		Name:          mn,
-		BuildStatuses: make(map[model.TargetID]*BuildStatus),
-		LBs:           make(map[k8s.ServiceName]*url.URL),
+		Name:                    mn,
+		BuildStatuses:           make(map[model.TargetID]*BuildStatus),
+		LBs:                     make(map[k8s.ServiceName]*url.URL),
+		LiveUpdatedContainerIDs: container.NewIDSet(),
 	}
 }
 

@@ -78,3 +78,11 @@ func MustNormalizeRef(ref string) string {
 	}
 	return normalized
 }
+
+func NewIDSet(ids ...ID) map[ID]bool {
+	result := make(map[ID]bool, len(ids))
+	for _, id := range ids {
+		result[id] = true
+	}
+	return result
+}

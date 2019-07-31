@@ -16,7 +16,27 @@ import (
 )
 
 const FakeDeployID = model.DeployID(1234567890)
-const FakeContainerID = container.ID("myTestContainer")
+const fakeContainerID = container.ID("myTestContainer")
+
+func FakeContainerID() container.ID {
+	return FakeContainerIDAtIndex(0)
+}
+
+func FakeContainerIDAtIndex(index int) container.ID {
+	indexSuffix := ""
+	if index != 0 {
+		indexSuffix = fmt.Sprintf("-%d", index)
+	}
+	return container.ID(fmt.Sprintf("%s%s", fakeContainerID, indexSuffix))
+}
+
+func FakeContainerIDSet(size int) map[container.ID]bool {
+	result := container.NewIDSet()
+	for i := 0; i < size; i++ {
+		result[FakeContainerIDAtIndex(i)] = true
+	}
+	return result
+}
 
 // Builds Pod objects for testing
 //
@@ -77,11 +97,11 @@ func (b PodBuilder) WithImageAtIndex(image string, index int) PodBuilder {
 	return b
 }
 
-func (b PodBuilder) WithContainerID(cID string) PodBuilder {
+func (b PodBuilder) WithContainerID(cID container.ID) PodBuilder {
 	return b.WithContainerIDAtIndex(cID, 0)
 }
 
-func (b PodBuilder) WithContainerIDAtIndex(cID string, index int) PodBuilder {
+func (b PodBuilder) WithContainerIDAtIndex(cID container.ID, index int) PodBuilder {
 	if cID == "" {
 		b.cIDs[index] = ""
 	} else {
@@ -150,11 +170,7 @@ func (b PodBuilder) buildContainerID(index int) string {
 		return cID
 	}
 
-	indexSuffix := ""
-	if index != 0 {
-		indexSuffix = fmt.Sprintf("-%d", index)
-	}
-	return fmt.Sprintf("%s%s%s", k8s.ContainerIDPrefix, FakeContainerID, indexSuffix)
+	return fmt.Sprintf("%s%s", k8s.ContainerIDPrefix, FakeContainerIDAtIndex(index))
 }
 
 func (b PodBuilder) buildPhase() v1.PodPhase {
