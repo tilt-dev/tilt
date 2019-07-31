@@ -221,7 +221,6 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	}
 	ms.ConfigFilesThatCausedChange = []string{}
 	ms.CurrentBuild = bs
-	ms.LiveUpdatedContainerID = ""
 
 	for _, pod := range ms.PodSet.Pods {
 		pod.CurrentLog = model.Log{}
@@ -309,6 +308,24 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		}
 	}
 
+	// Track the container ids that have been live-updated whether the
+	// build succeeds or fails.
+	liveUpdateContainerIDs := cb.Result.LiveUpdatedContainerIDs()
+	if len(liveUpdateContainerIDs) == 0 {
+		// Assume this was an image build, and reset all the container ids
+		ms.LiveUpdatedContainerIDs = container.NewIDSet()
+	} else {
+		for _, cID := range liveUpdateContainerIDs {
+			ms.LiveUpdatedContainerIDs[cID] = true
+		}
+
+		bestPod := ms.MostRecentPod()
+		if bestPod.StartedAt.After(bs.StartTime) ||
+			bestPod.UpdateStartTime.Equal(bs.StartTime) {
+			checkForContainerCrash(ctx, engineState, mt)
+		}
+	}
+
 	if mt.Manifest.IsDC() {
 		state, _ := ms.ResourceState.(dockercompose.State)
 
@@ -332,17 +349,6 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 	if engineState.WatchFiles {
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
-
-		cID := cb.Result.OneLiveUpdatedContainerIDForOldBehavior()
-		if cID != "" {
-			ms.LiveUpdatedContainerID = cID
-
-			bestPod := ms.MostRecentPod()
-			if bestPod.StartedAt.After(bs.StartTime) ||
-				bestPod.UpdateStartTime.Equal(bs.StartTime) {
-				checkForPodCrash(ctx, engineState, ms, bestPod)
-			}
-		}
 	}
 
 	return nil
