@@ -23,7 +23,7 @@ type Client interface {
 	SendAlert(ctx context.Context, alert Alert) (AlertID, error)
 }
 
-const alertStorageBaseURL = "http://alerts.tilt.dev"
+const alertStorageBaseURL = "https://alerts.tilt.dev"
 
 type newAlertResponse struct {
 	ID string
