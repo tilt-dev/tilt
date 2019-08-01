@@ -586,21 +586,21 @@ func (p Pod) BlessedContainer() Container {
 	return p.Containers[0]
 }
 
-func (p Pod) ContainerName() container.Name {
-	return p.BlessedContainer().Name
+func (p Pod) AllContainerPorts() []int32 {
+	result := make([]int32, 0)
+	for _, c := range p.Containers {
+		result = append(result, c.Ports...)
+	}
+	return result
 }
 
-func (p Pod) ContainerID() container.ID {
-	return p.BlessedContainer().ID
-}
-func (p Pod) ContainerPorts() []int32 {
-	return p.BlessedContainer().Ports
-}
-func (p Pod) ContainerReady() bool {
-	return p.BlessedContainer().Ready
-}
-func (p Pod) ContainerImageRef() reference.Named {
-	return p.BlessedContainer().ImageRef
+func (p Pod) AllContainersReady() bool {
+	for _, c := range p.Containers {
+		if !c.Ready {
+			return false
+		}
+	}
+	return true
 }
 
 func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {
