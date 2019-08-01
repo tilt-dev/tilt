@@ -756,9 +756,7 @@ func TestReturnLastUnexpectedError(t *testing.T) {
 	f.docker.BuildErrorToThrow = fmt.Errorf("no one expects the unexpected error")
 
 	manifest := NewSanchoFastBuildDCManifest(f)
-	targets := buildTargets(manifest)
-
-	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "no one expects the unexpected error")
 	}
@@ -768,6 +766,111 @@ func TestLiveUpdateMultipleImagesSamePod(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
+	manifest, bs := multiImageLiveUpdateManifestAndBuildState(f)
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// expect live update and NOT an image build
+	assert.Equal(t, 0, f.docker.BuildCount)
+	assert.Equal(t, 0, f.docker.PushCount)
+	f.assertK8sUpsertCalled(false)
+
+	// one for each container update
+	assert.Equal(t, 2, f.sCli.UpdateContainerCount)
+}
+
+func TestOneLiveUpdateOneDockerBuildDoesImageBuild(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	defer f.TearDown()
+
+	sanchoTarg := NewSanchoLiveUpdateImageTarget(f)          // first target = LiveUpdate
+	sidecarTarg := NewSanchoSidecarDockerBuildImageTarget(f) // second target = DockerBuild
+	sanchoRef := container.MustParseNamedTagged(fmt.Sprintf("%s:tilt-123", testyaml.SanchoImage))
+	sidecarRef := container.MustParseNamedTagged(fmt.Sprintf("%s:tilt-123", testyaml.SanchoSidecarImage))
+	sanchoCInfo := store.ContainerInfo{
+		PodID:         testPodID,
+		ContainerName: "sancho",
+		ContainerID:   "sancho-c",
+	}
+
+	manifest := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(testyaml.SanchoSidecarYAML).
+		WithImageTargets(sanchoTarg, sidecarTarg).
+		Build()
+	changed := f.WriteFile("a.txt", "a")
+	sanchoState := store.NewBuildState(store.NewImageBuildResult(sanchoTarg.ID(), sanchoRef), []string{changed}).
+		WithRunningContainers([]store.ContainerInfo{sanchoCInfo})
+	sidecarState := store.NewBuildState(store.NewImageBuildResult(sidecarTarg.ID(), sidecarRef), []string{changed})
+
+	bs := store.BuildStateSet{sanchoTarg.ID(): sanchoState, sidecarTarg.ID(): sidecarState}
+
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// expect an image build
+	assert.Equal(t, 2, f.docker.BuildCount)
+	assert.Equal(t, 2, f.docker.PushCount)
+	f.assertK8sUpsertCalled(true)
+
+	// should NOT have run live update
+	assert.Equal(t, 0, f.sCli.UpdateContainerCount)
+}
+
+// func TestLiveUpdateMultipleImagesOneRunErrorExecutesRestOfLiveUpdatesAndDoesntImageBuild(t *testing.T) {
+// 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+// 	defer f.TearDown()
+//
+// 	t.Fatal("not implemented")
+// }
+
+func TestLiveUpdateMultipleImagesOneUpdateErrorFallsBackToImageBuild(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	defer f.TearDown()
+
+	// Second LiveUpdate will throw an error
+	f.docker.ExecErrorsToThrow = []error{nil, fmt.Errorf("whelp ¯\\_(ツ)_/¯")}
+
+	manifest, bs := multiImageLiveUpdateManifestAndBuildState(f)
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// one for each container update
+	assert.Equal(t, 2, f.docker.CopyCount)
+	assert.Equal(t, 2, len(f.docker.ExecCalls)) // second one errors
+
+	// expect image build (2x images) when we fall back from failed LiveUpdate
+	assert.Equal(t, 2, f.docker.BuildCount)
+	assert.Equal(t, 0, f.docker.PushCount)
+	f.assertK8sUpsertCalled(true)
+}
+
+func TestLiveUpdateMultipleImagesOneWithUnsyncedChangeFileFallsBackToImageBuild(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	defer f.TearDown()
+
+	manifest, bs := multiImageLiveUpdateManifestAndBuildState(f)
+	bs[manifest.ImageTargetAt(1).ID()].FilesChangedSet["/not/synced"] = true // changed file not in a sync --> fall back to image build
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// should NOT have run live update
+	assert.Equal(t, 0, f.sCli.UpdateContainerCount)
+
+	// expect image build (2x images) when we fall back from failed LiveUpdate
+	assert.Equal(t, 2, f.docker.BuildCount)
+	assert.Equal(t, 2, f.docker.PushCount)
+	f.assertK8sUpsertCalled(true)
+}
+
+func multiImageLiveUpdateManifestAndBuildState(f *bdFixture) (model.Manifest, store.BuildStateSet) {
 	sanchoTarg := NewSanchoLiveUpdateImageTarget(f)
 	sidecarTarg := NewSanchoSidecarLiveUpdateImageTarget(f)
 	sanchoRef := container.MustParseNamedTagged(fmt.Sprintf("%s:tilt-123", testyaml.SanchoImage))
@@ -787,7 +890,7 @@ func TestLiveUpdateMultipleImagesSamePod(t *testing.T) {
 		WithK8sYAML(testyaml.SanchoSidecarYAML).
 		WithImageTargets(sanchoTarg, sidecarTarg).
 		Build()
-	targets := buildTargets(manifest)
+
 	changed := f.WriteFile("a.txt", "a")
 	sanchoState := store.NewBuildState(store.NewImageBuildResult(sanchoTarg.ID(), sanchoRef), []string{changed}).
 		WithRunningContainers([]store.ContainerInfo{sanchoCInfo})
@@ -796,17 +899,7 @@ func TestLiveUpdateMultipleImagesSamePod(t *testing.T) {
 
 	bs := store.BuildStateSet{sanchoTarg.ID(): sanchoState, sidecarTarg.ID(): sidecarState}
 
-	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// live update update and NOT an image build
-	assert.Equal(t, 0, f.docker.BuildCount)
-	assert.Equal(t, 0, f.docker.PushCount)
-
-	// one for each container update
-	assert.Equal(t, 2, f.sCli.UpdateContainerCount)
+	return manifest, bs
 }
 
 // The API boundaries between BuildAndDeployer and the ImageBuilder aren't obvious and
@@ -887,6 +980,11 @@ func (f *bdFixture) assertContainerRestarts(count int) {
 func (f *bdFixture) assertTotalContainerRestarts(count int) {
 	assert.Len(f.T(), f.docker.RestartsByContainer, count,
 		"checking for expected # of container restarts")
+}
+
+func (f *bdFixture) assertK8sUpsertCalled(called bool) {
+	assert.Equal(f.T(), called, f.k8s.Yaml != "",
+		"checking that k8s.Upsert was called")
 }
 
 func (f *bdFixture) createBuildStateSet(manifest model.Manifest, changedFiles []string) store.BuildStateSet {
