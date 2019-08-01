@@ -528,8 +528,7 @@ type Pod struct {
 
 	// We want to show the user # of restarts since pod has been running current code,
 	// i.e. OldRestarts - Total Restarts
-	ContainerRestarts int
-	OldRestarts       int // # times the pod restarted when it was running old code
+	OldRestarts int // # times the pod restarted when it was running old code
 }
 
 type Container struct {
@@ -538,12 +537,7 @@ type Container struct {
 	Ports    []int32
 	Ready    bool
 	ImageRef reference.Named
-	Restarts int32
-
-	// Temporary: we use this to replicate current behavior of most stuff being
-	// based off a single blessed container, i.e. the first container we find that
-	// is running a Tilt-built image (or failing that, the first container).
-	Blessed bool
+	Restarts int
 }
 
 func (c Container) Empty() bool {
@@ -568,24 +562,6 @@ func (p Pod) Log() model.Log {
 	return p.CurrentLog
 }
 
-// HACK(maia): temp func to keep behavior the same as it currently is--
-// we'll STORE info about all containers, but continue to only use info
-// from the one blessed container.
-func (p Pod) BlessedContainer() Container {
-	if len(p.Containers) == 0 {
-		return Container{}
-	}
-
-	for _, c := range p.Containers {
-		if c.Blessed {
-			return c
-		}
-	}
-	// This shouldn't happen, BUT if none of the containers is marked `blessed`,
-	// just return the first one
-	return p.Containers[0]
-}
-
 func (p Pod) AllContainerPorts() []int32 {
 	result := make([]int32, 0)
 	for _, c := range p.Containers {
@@ -601,6 +577,14 @@ func (p Pod) AllContainersReady() bool {
 		}
 	}
 	return true
+}
+
+func (p Pod) AllContainerRestarts() int {
+	result := 0
+	for _, c := range p.Containers {
+		result += c.Restarts
+	}
+	return result
 }
 
 func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {
@@ -759,7 +743,7 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 			PodCreationTime:    pod.StartedAt,
 			PodUpdateStartTime: pod.UpdateStartTime,
 			PodStatus:          pod.Status,
-			PodRestarts:        pod.ContainerRestarts - pod.OldRestarts,
+			PodRestarts:        pod.AllContainerRestarts() - pod.OldRestarts,
 			PodLog:             pod.CurrentLog,
 			YAML:               mt.Manifest.K8sTarget().YAML,
 		}
