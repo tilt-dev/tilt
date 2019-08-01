@@ -36,6 +36,12 @@ func (tvc *TiltVersionChecker) OnChange(ctx context.Context, st store.RStore) {
 		return
 	}
 
+	s := st.RLockState()
+	defer st.RUnlockState()
+	if s.TiltBuildInfo.Dev {
+		return
+	}
+
 	tvc.client = tvc.clientFactory()
 	tvc.started = true
 
