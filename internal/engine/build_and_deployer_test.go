@@ -820,12 +820,19 @@ func TestOneLiveUpdateOneDockerBuildDoesImageBuild(t *testing.T) {
 	assert.Equal(t, 0, f.sCli.UpdateContainerCount)
 }
 
-// func TestLiveUpdateMultipleImagesOneRunErrorExecutesRestOfLiveUpdatesAndDoesntImageBuild(t *testing.T) {
-// 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
-// 	defer f.TearDown()
-//
-// 	t.Fatal("not implemented")
-// }
+func TestLiveUpdateMultipleImagesOneRunErrorExecutesRestOfLiveUpdatesAndDoesntImageBuild(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	defer f.TearDown()
+
+	// First LiveUpdate will simulate a failed Run step
+	f.docker.ExecErrorsToThrow = []error{userFailureErr}
+
+	manifest, bs := multiImageLiveUpdateManifestAndBuildState(f)
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestLiveUpdateMultipleImagesOneUpdateErrorFallsBackToImageBuild(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)

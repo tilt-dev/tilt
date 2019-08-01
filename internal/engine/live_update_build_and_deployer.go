@@ -178,7 +178,6 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 
 	var lastUserBuildFailure error
 	for _, cInfo := range state.RunningContainers {
-
 		// always pass a copy of the tar archive reader
 		// so multiple updates can access the same data
 		var archiveBuf bytes.Buffer
