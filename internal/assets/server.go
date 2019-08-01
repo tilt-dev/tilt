@@ -69,10 +69,7 @@ func (s *devServer) TearDown(ctx context.Context) {
 	defer s.mu.Unlock()
 
 	cmd := s.cmd
-	if cmd != nil && cmd.Process != nil {
-		// Kill the entire process group.
-		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-	}
+	killProcessGroup(cmd)
 	s.disposed = true
 }
 
@@ -101,9 +98,13 @@ func (s *devServer) start(ctx context.Context, stdout, stderr io.Writer) (*exec.
 	cmd.Dir = assetDir
 	cmd.Env = append(os.Environ(), "BROWSER=none", fmt.Sprintf("PORT=%d", s.port))
 
-	// yarn will spawn the dev server as a subproces, so set
+	attrs := &syscall.SysProcAttr{}
+
+	// yarn will spawn the dev server as a subprocess, so set
 	// a process group id so we can murder them all.
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	setOptNewProcessGroup(attrs)
+
+	cmd.SysProcAttr = attrs
 
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
