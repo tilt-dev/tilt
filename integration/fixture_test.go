@@ -94,6 +94,23 @@ func (f *fixture) deleteNamespace() {
 	if err != nil {
 		f.t.Fatalf("Deleting namespace tilt-integration: %v", err)
 	}
+
+	// block until the namespace doesn't exist, since kubectl often returns and the namespace is still "terminating"
+	// which causes the creation of objects in that namespace to fail
+	var b []byte
+	args := []string{"kubectl", "get", "namespace", "tilt-integration", "--ignore-not-found"}
+	timeout := time.Now().Add(10 * time.Second)
+	for time.Now().Before(timeout) {
+		cmd := exec.CommandContext(f.ctx, args[0], args[1:]...)
+		b, err = cmd.Output()
+		if err != nil {
+			f.t.Fatalf("Error: checking that deletion of the tilt-integration namespace has completed: %v", err)
+		}
+		if len(b) == 0 {
+			return
+		}
+	}
+	f.t.Fatalf("timed out waiting for tilt-integration deletion to complete. last output of %q: %q", args, string(b))
 }
 
 func (f *fixture) DumpLogs() {
@@ -149,7 +166,13 @@ func (f *fixture) runInBackground(cmd *exec.Cmd) {
 
 	f.cmds = append(f.cmds, cmd)
 	go func() {
-		_ = cmd.Wait()
+		err = cmd.Wait()
+		if err != nil {
+			fmt.Printf("error running command: %v\n", err)
+			if ee, ok := err.(*exec.ExitError); ok {
+				fmt.Printf("stderr: %q\n", ee.Stderr)
+			}
+		}
 	}()
 }
 

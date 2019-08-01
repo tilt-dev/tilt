@@ -161,6 +161,7 @@ func (f *k8sFixture) ClearResource(name string) {
 }
 
 func (f *k8sFixture) ClearNamespace() {
+	f.ClearResource("jobs")
 	f.ClearResource("deployments")
 	f.ClearResource("services")
 }
