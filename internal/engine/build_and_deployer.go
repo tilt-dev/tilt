@@ -65,7 +65,7 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 		}
 
 		if !shouldFallBackForErr(err) {
-			return store.BuildResultSet{}, err
+			return br, err
 		}
 
 		if redirectErr, ok := err.(RedirectToNextBuilder); ok {
