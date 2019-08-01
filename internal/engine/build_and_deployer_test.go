@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -760,7 +762,35 @@ func TestReturnLastUnexpectedError(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "no one expects the unexpected error")
 	}
+}
 
+func TestLiveUpdateWithRunFailureReturnsContainerIDs(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	defer f.TearDown()
+
+	// LiveUpdate will failure with a RunStepFailure
+	f.docker.SetExecError(userFailureErr)
+
+	manifest := NewSanchoLiveUpdateManifest(f)
+	targets := buildTargets(manifest)
+	changed := f.WriteFile("a.txt", "a")
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
+	resultSet, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
+	require.NotNil(t, err, "expected failed LiveUpdate to return error")
+
+	iTargID := manifest.ImageTargetAt(0).ID()
+	result := resultSet[iTargID]
+	require.False(t, result.IsEmpty(), "expected build result for image target %s", iTargID)
+	require.Len(t, result.LiveUpdatedContainerIDs, 1)
+	require.Equal(t, result.LiveUpdatedContainerIDs[0], testContainerInfo)
+
+	// LiveUpdate failed due to RunStepError, should NOT fall back to image build
+	assert.Equal(t, 0, f.docker.BuildCount, "expect no image build -> no docker build calls")
+	f.assertK8sUpsertCalled(false)
+
+	// Copied files and tried to docker.exec before hitting error
+	assert.Equal(t, 1, f.docker.CopyCount)
+	assert.Equal(t, 1, len(f.docker.ExecCalls))
 }
 
 // The API boundaries between BuildAndDeployer and the ImageBuilder aren't obvious and
@@ -841,6 +871,11 @@ func (f *bdFixture) assertContainerRestarts(count int) {
 func (f *bdFixture) assertTotalContainerRestarts(count int) {
 	assert.Len(f.T(), f.docker.RestartsByContainer, count,
 		"checking for expected # of container restarts")
+}
+
+func (f *bdFixture) assertK8sUpsertCalled(called bool) {
+	assert.Equal(f.T(), called, f.k8s.Yaml != "",
+		"checking that k8s.Upsert was called")
 }
 
 func (f *bdFixture) createBuildStateSet(manifest model.Manifest, changedFiles []string) store.BuildStateSet {
