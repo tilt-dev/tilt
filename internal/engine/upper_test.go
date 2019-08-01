@@ -194,12 +194,6 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		logger.Get(ctx).Infof("fake building %s", ids)
 	}()
 
-	err := b.nextBuildFailure
-	if err != nil {
-		b.nextBuildFailure = nil
-		return store.BuildResultSet{}, err
-	}
-
 	dID := podbuilder.FakeDeployID
 	if b.nextDeployID != 0 {
 		dID = b.nextDeployID
@@ -238,7 +232,10 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	b.nextLiveUpdateContainerIDs = nil
 	b.nextDockerComposeContainerID = ""
 
-	return result, nil
+	err := b.nextBuildFailure
+	b.nextBuildFailure = nil
+
+	return result, err
 }
 
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
@@ -2296,25 +2293,6 @@ func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 		}
 		assert.Equal(t, expected, state.ContainerID)
 		assert.Equal(t, dockercompose.StatusUp, state.Status)
-	})
-}
-
-func TestDockerComposeBuildCompletedDoesntSetStatusIfNotSuccessful(t *testing.T) {
-	f := newTestFixture(t)
-	m1, _ := f.setupDCFixture()
-
-	f.SetNextBuildFailure(fmt.Errorf("dc failure"))
-	f.loadAndStart()
-
-	f.waitForCompletedBuildCount(2)
-
-	f.withManifestState(m1.ManifestName(), func(st store.ManifestState) {
-		state, ok := st.ResourceState.(dockercompose.State)
-		if !ok {
-			t.Fatal("expected ResourceState to be docker compose, but it wasn't")
-		}
-		assert.Empty(t, state.ContainerID)
-		assert.Empty(t, state.Status)
 	})
 }
 
