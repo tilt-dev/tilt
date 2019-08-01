@@ -11,15 +11,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/ospath"
-	"github.com/windmilleng/tilt/internal/store"
-
 	"github.com/docker/docker/api/types"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/k8s/testyaml"
+	"github.com/windmilleng/tilt/internal/ospath"
+	"github.com/windmilleng/tilt/internal/store"
 
 	"github.com/windmilleng/wmclient/pkg/dirs"
 
@@ -29,6 +30,7 @@ import (
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
@@ -760,6 +762,51 @@ func TestReturnLastUnexpectedError(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "no one expects the unexpected error")
 	}
+}
+
+func TestLiveUpdateMultipleImagesSamePod(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	defer f.TearDown()
+
+	sanchoTarg := NewSanchoLiveUpdateImageTarget(f)
+	sidecarTarg := NewSanchoSidecarLiveUpdateImageTarget(f)
+	sanchoRef := container.MustParseNamedTagged(fmt.Sprintf("%s:tilt-123", testyaml.SanchoImage))
+	sidecarRef := container.MustParseNamedTagged(fmt.Sprintf("%s:tilt-123", testyaml.SanchoSidecarImage))
+	sanchoCInfo := store.ContainerInfo{
+		PodID:         testPodID,
+		ContainerName: "sancho",
+		ContainerID:   "sancho-c",
+	}
+	sidecarCInfo := store.ContainerInfo{
+		PodID:         testPodID,
+		ContainerName: "sancho-sidecar",
+		ContainerID:   "sidecar-c",
+	}
+
+	manifest := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(testyaml.SanchoSidecarYAML).
+		WithImageTargets(sanchoTarg, sidecarTarg).
+		Build()
+	targets := buildTargets(manifest)
+	changed := f.WriteFile("a.txt", "a")
+	sanchoState := store.NewBuildState(store.NewImageBuildResult(sanchoTarg.ID(), sanchoRef), []string{changed}).
+		WithRunningContainers([]store.ContainerInfo{sanchoCInfo})
+	sidecarState := store.NewBuildState(store.NewImageBuildResult(sidecarTarg.ID(), sidecarRef), []string{changed}).
+		WithRunningContainers([]store.ContainerInfo{sidecarCInfo})
+
+	bs := store.BuildStateSet{sanchoTarg.ID(): sanchoState, sidecarTarg.ID(): sidecarState}
+
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// live update update and NOT an image build
+	assert.Equal(t, 0, f.docker.BuildCount)
+	assert.Equal(t, 0, f.docker.PushCount)
+
+	// one for each container update
+	assert.Equal(t, 2, f.sCli.UpdateContainerCount)
 
 }
 
