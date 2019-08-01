@@ -257,7 +257,7 @@ func TestCrashRebuildTwoContainersOneImage(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	f.waitForCompletedBuildCount(1)
 
 	f.b.nextLiveUpdateContainerIDs = []container.ID{"c1", "c2"}
