@@ -807,7 +807,6 @@ func TestLiveUpdateMultipleImagesSamePod(t *testing.T) {
 
 	// one for each container update
 	assert.Equal(t, 2, f.sCli.UpdateContainerCount)
-
 }
 
 // The API boundaries between BuildAndDeployer and the ImageBuilder aren't obvious and
