@@ -15,27 +15,29 @@ type liveUpdateStateTree struct {
 }
 
 // Create a successful build result if the live update deploys successfully.
-func (t liveUpdateStateTree) createResultSet() store.BuildResultSet {
-	iTargetID := t.iTarget.ID()
-	state := t.iTargetState
-	res := state.LastResult
-
-	res.LiveUpdatedContainerIDs = nil
-	for _, c := range state.RunningContainers {
-		res.LiveUpdatedContainerIDs = append(res.LiveUpdatedContainerIDs, c.ContainerID)
-	}
-
+func createResultSet(trees []liveUpdateStateTree) store.BuildResultSet {
 	resultSet := store.BuildResultSet{}
-	resultSet[iTargetID] = res
+	for _, t := range trees {
+		iTargetID := t.iTarget.ID()
+		state := t.iTargetState
+		res := state.LastResult
 
-	// Invalidate all the image builds for images we depend on.
-	// Otherwise, the image builder will think the existing image ID
-	// is valid and won't try to rebuild it.
-	for _, id := range t.hasFileChangesIDs {
-		if id != iTargetID {
-			resultSet[id] = store.BuildResult{}
+		res.LiveUpdatedContainerIDs = nil
+		for _, c := range state.RunningContainers {
+			res.LiveUpdatedContainerIDs = append(res.LiveUpdatedContainerIDs, c.ContainerID)
 		}
-	}
 
+		resultSet[iTargetID] = res
+
+		// Invalidate all the image builds for images we depend on.
+		// Otherwise, the image builder will think the existing image ID
+		// is valid and won't try to rebuild it.
+		for _, id := range t.hasFileChangesIDs {
+			if id != iTargetID {
+				resultSet[id] = store.BuildResult{}
+			}
+		}
+
+	}
 	return resultSet
 }

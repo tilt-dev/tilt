@@ -291,7 +291,7 @@ func TestCrashRebuildTwoContainersOneImage(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-// TODO(maia)	: test one live update fails --> fall back to image build
+// TODO(maia): test one live update fails --> fall back to image build
 
 func TestBuildControllerManualTrigger(t *testing.T) {
 	f := newTestFixture(t)
