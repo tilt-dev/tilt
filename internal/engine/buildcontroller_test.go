@@ -29,7 +29,7 @@ func TestBuildControllerOnePod(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	f.podEvent(f.testPod("pod-id", manifest, "Running", time.Now()))
@@ -52,7 +52,7 @@ func TestBuildControllerIgnoresImageTags(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	pod := podbuilder.New(t, manifest).
@@ -79,7 +79,7 @@ func TestBuildControllerDockerCompose(t *testing.T) {
 
 	call := f.nextCall()
 	imageTarget := manifest.ImageTargetAt(0)
-	assert.Equal(t, imageTarget, call.image())
+	assert.Equal(t, imageTarget, call.firstImgTarg())
 
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
@@ -100,7 +100,7 @@ func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	// Associate the pods with the manifest state
@@ -130,7 +130,7 @@ func TestBuildControllerTwoContainers(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	// container already on this pod matches the image built by this manifest
@@ -181,7 +181,7 @@ func TestBuildControllerWontContainerBuildWithSomeButNotAllReadyContainers(t *te
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	// container already on this pod matches the image built by this manifest
@@ -215,7 +215,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 	f.waitForCompletedBuildCount(1)
 
@@ -257,7 +257,7 @@ func TestCrashRebuildTwoContainersOneImage(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	f.waitForCompletedBuildCount(1)
 
 	f.b.nextLiveUpdateContainerIDs = []container.ID{"c1", "c2"}
@@ -375,7 +375,7 @@ func TestBuildQueueOrdering(t *testing.T) {
 	for i, _ := range manifests {
 		expName := fmt.Sprintf("manifest%d", i+1)
 		call := f.nextCall()
-		imgID := call.image().ID().String()
+		imgID := call.firstImgTarg().ID().String()
 		if assert.True(t, strings.HasSuffix(imgID, expName),
 			"expected to get manifest '%s' but instead got: '%s' (checking suffix for manifest name)", expName, imgID) {
 			assert.Equal(t, []string{f.JoinPath("main.go")}, call.oneState().FilesChanged(),
@@ -435,7 +435,7 @@ func TestBuildQueueAndAutobuildOrdering(t *testing.T) {
 
 	for i, _ := range manifests {
 		call := f.nextCall()
-		assert.True(t, strings.HasSuffix(call.image().ID().String(), fmt.Sprintf("manifest%d", i+1)))
+		assert.True(t, strings.HasSuffix(call.firstImgTarg().ID().String(), fmt.Sprintf("manifest%d", i+1)))
 
 		if i < 4 {
 			assert.Equal(t, []string{f.JoinPath("dirManual/main.go")}, call.oneState().FilesChanged(), "for manifest %d", i+1)

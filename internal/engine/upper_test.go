@@ -78,14 +78,23 @@ type buildAndDeployCall struct {
 	state store.BuildStateSet
 }
 
-func (c buildAndDeployCall) image() model.ImageTarget {
+func (c buildAndDeployCall) firstImgTarg() model.ImageTarget {
+	iTargs := c.imageTargets()
+	if len(iTargs) > 0 {
+		return iTargs[0]
+	}
+	return model.ImageTarget{}
+}
+
+func (c buildAndDeployCall) imageTargets() []model.ImageTarget {
+	targs := make([]model.ImageTarget, 0, len(c.specs))
 	for _, spec := range c.specs {
 		t, ok := spec.(model.ImageTarget)
 		if ok {
-			return t
+			targs = append(targs, t)
 		}
 	}
-	return model.ImageTarget{}
+	return targs
 }
 
 func (c buildAndDeployCall) k8s() model.K8sTarget {
@@ -313,14 +322,14 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 
 	f.timerMaker.maxTimerLock.Lock()
 	call := f.nextCallComplete()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	fileRelPath := "fdas"
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath(fileRelPath))
 
 	call = f.nextCallComplete()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, "gcr.io/some-project-162817/sancho:tilt-1", call.oneState().LastImageAsString())
 	fileAbsPath := f.JoinPath(fileRelPath)
 	assert.Equal(t, []string{fileAbsPath}, call.oneState().FilesChanged())
@@ -342,7 +351,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 
 	f.timerMaker.maxTimerLock.Lock()
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	f.timerMaker.restTimerLock.Lock()
@@ -354,7 +363,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 	f.timerMaker.restTimerLock.Unlock()
 
 	call = f.nextCall()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 
 	var fileAbsPaths []string
 	for _, fileRelPath := range fileRelPaths {
@@ -375,7 +384,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	f.timerMaker.maxTimerLock.Lock()
@@ -388,7 +397,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	f.timerMaker.maxTimerLock.Unlock()
 
 	call = f.nextCall()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 
 	var fileAbsPaths []string
 	for _, fileRelPath := range fileRelPaths {
@@ -557,13 +566,13 @@ k8s_yaml('snack.yaml')
 
 	// First call: with the old manifest
 	call := f.nextCall("old manifest")
-	assert.Equal(t, `FROM iron/go:prod`, call.image().DockerBuildInfo().Dockerfile)
+	assert.Equal(t, `FROM iron/go:prod`, call.firstImgTarg().DockerBuildInfo().Dockerfile)
 
 	f.WriteConfigFiles("Dockerfile", `FROM iron/go:dev`)
 
 	// Second call: new manifest!
 	call = f.nextCall("new manifest")
-	assert.Equal(t, "FROM iron/go:dev", call.image().DockerBuildInfo().Dockerfile)
+	assert.Equal(t, "FROM iron/go:dev", call.firstImgTarg().DockerBuildInfo().Dockerfile)
 	assert.Equal(t, testyaml.SnackYAMLPostConfig, call.k8s().YAML)
 
 	// Since the manifest changed, we cleared the previous build state to force an image build
@@ -573,7 +582,7 @@ k8s_yaml('snack.yaml')
 
 	// third call: new manifest should persist
 	call = f.nextCall("persist new manifest")
-	assert.Equal(t, "FROM iron/go:dev", call.image().DockerBuildInfo().Dockerfile)
+	assert.Equal(t, "FROM iron/go:dev", call.firstImgTarg().DockerBuildInfo().Dockerfile)
 
 	// Unchanged manifest --> we do NOT clear the build state
 	assert.True(t, call.oneState().HasImage())
@@ -604,11 +613,11 @@ k8s_resource('doggos', new_name='quux')
 
 	// First call: with the old manifests
 	call := f.nextCall("old manifest (baz)")
-	assert.Equal(t, `FROM iron/go:prod`, call.image().DockerBuildInfo().Dockerfile)
+	assert.Equal(t, `FROM iron/go:prod`, call.firstImgTarg().DockerBuildInfo().Dockerfile)
 	assert.Equal(t, "baz", string(call.k8s().Name))
 
 	call = f.nextCall("old manifest (quux)")
-	assert.Equal(t, `FROM iron/go:prod`, call.image().DockerBuildInfo().Dockerfile)
+	assert.Equal(t, `FROM iron/go:prod`, call.firstImgTarg().DockerBuildInfo().Dockerfile)
 	assert.Equal(t, "quux", string(call.k8s().Name))
 
 	// rewrite the dockerfiles
@@ -618,11 +627,11 @@ k8s_resource('doggos', new_name='quux')
 
 	// Builds triggered by config file changes
 	call = f.nextCall("manifest from config files (baz)")
-	assert.Equal(t, `FROM iron/go:dev1`, call.image().DockerBuildInfo().Dockerfile)
+	assert.Equal(t, `FROM iron/go:dev1`, call.firstImgTarg().DockerBuildInfo().Dockerfile)
 	assert.Equal(t, "baz", string(call.k8s().Name))
 
 	call = f.nextCall("manifest from config files (quux)")
-	assert.Equal(t, `FROM iron/go:dev2`, call.image().DockerBuildInfo().Dockerfile)
+	assert.Equal(t, `FROM iron/go:dev2`, call.firstImgTarg().DockerBuildInfo().Dockerfile)
 	assert.Equal(t, "quux", string(call.k8s().Name))
 
 	// Now change (only one) dockerfile
@@ -662,7 +671,7 @@ k8s_resource('snack', new_name='baz')  # rename "snack" --> "baz"
 
 	// First call: with one resource
 	call := f.nextCall("old manifest (baz)")
-	assert.Equal(t, "FROM iron/go:dev1", call.image().DockerBuildInfo().Dockerfile)
+	assert.Equal(t, "FROM iron/go:dev1", call.firstImgTarg().DockerBuildInfo().Dockerfile)
 	assert.Equal(t, "baz", string(call.k8s().Name))
 
 	f.assertNoCall()
@@ -703,7 +712,7 @@ k8s_yaml('snack.yaml')`)
 
 	// First call: with the old manifests
 	call := f.nextCall("initial call")
-	assert.Equal(t, "FROM iron/go:dev1", call.image().DockerBuildInfo().Dockerfile)
+	assert.Equal(t, "FROM iron/go:dev1", call.firstImgTarg().DockerBuildInfo().Dockerfile)
 	assert.Equal(t, "snack", string(call.k8s().Name))
 
 	// Write same contents to Dockerfile -- an "edit" event for a config file,
@@ -1449,7 +1458,7 @@ func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("dignore.txt"))
 	f.assertNoCall("event for ignored file should not trigger build")
@@ -1582,7 +1591,7 @@ func TestUpperBuildImmediatelyAfterCrashRebuild(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.image())
+	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 	f.waitForCompletedBuildCount(1)
 
