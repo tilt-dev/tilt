@@ -39,3 +39,11 @@ func (t liveUpdateStateTree) createResultSet() store.BuildResultSet {
 
 	return resultSet
 }
+
+func createResultSet(trees []liveUpdateStateTree) store.BuildResultSet {
+	resultSet := store.BuildResultSet{}
+	for _, t := range trees {
+		resultSet = store.MergeBuildResultsSet(resultSet, t.createResultSet())
+	}
+	return resultSet
+}

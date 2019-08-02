@@ -7,13 +7,13 @@ import (
 	"io"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/analytics"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/containerupdate"
-
-	"github.com/opentracing/opentracing-go"
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/ignore"
@@ -47,22 +47,57 @@ func NewLiveUpdateBuildAndDeployer(dcu *containerupdate.DockerContainerUpdater,
 	}
 }
 
+// Info needed to perform a live update
+type liveUpdInfo struct {
+	iTarget      model.ImageTarget
+	state        store.BuildState
+	changedFiles []build.PathMapping
+	runs         []model.Run
+	hotReload    bool
+}
+
 func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
 	liveUpdateStateSet, err := extractImageTargetsForLiveUpdates(specs, stateSet)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
 
-	if len(liveUpdateStateSet) != 1 {
-		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("LiveUpdateBuildAndDeployer needs exactly one image target (got %d)", len(liveUpdateStateSet))
+	containerUpdater := lubad.containerUpdaterForSpecs(specs)
+	liveUpdInfos := make([]liveUpdInfo, len(liveUpdateStateSet))
+
+	if len(liveUpdateStateSet) == 0 {
+		return nil, RedirectToNextBuilderInfof("no targets for LiveUpdate found")
 	}
 
-	liveUpdateState := liveUpdateStateSet[0]
-	iTarget := liveUpdateState.iTarget
-	state := liveUpdateState.iTargetState
-	filesChanged := liveUpdateState.filesChanged
+	for i, luStateTree := range liveUpdateStateSet {
+		luInfo, err := liveUpdateInfoForStateTree(luStateTree)
+		if err != nil {
+			return store.BuildResultSet{}, err
+		}
 
-	span, ctx := opentracing.StartSpanFromContext(ctx, "LiveUpdateBuildAndDeployer-BuildAndDeploy")
+		liveUpdInfos[i] = luInfo
+	}
+
+	var dontFallBackErr error
+	for _, info := range liveUpdInfos {
+		err = lubad.buildAndDeploy(ctx, containerUpdater, info.iTarget, info.state, info.changedFiles, info.runs, info.hotReload)
+		if err != nil {
+			if !IsDontFallBackError(err) {
+				// something went wrong, we want to fall back -- bail and
+				// let the next builder take care of it
+				return store.BuildResultSet{}, err
+			}
+			// if something went wrong due to USER failure (i.e. run step failed),
+			// run the rest of the container updates so all the containers are in
+			// a consistent state, then return this error, i.e. don't fall back.
+			dontFallBackErr = err
+		}
+	}
+	return createResultSet(liveUpdateStateSet), dontFallBackErr
+}
+
+func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu containerupdate.ContainerUpdater, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "LiveUpdateBuildAndDeployer-buildAndDeploy")
 	span.SetTag("target", iTarget.ConfigurationRef.String())
 	defer span.Finish()
 
@@ -71,62 +106,6 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		analytics.Get(ctx).Timer("build.container", time.Since(startTime), nil)
 	}()
 
-	// LiveUpdateBuildAndDeployer doesn't support initial build
-	// TODO(maia): put this check in extractImageTargetsForLiveUpdates()
-	if state.IsEmpty() {
-		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("prev. build state is empty; LiveUpdate does not support initial deploy")
-	}
-
-	containerUpdater := lubad.containerUpdaterForSpecs(specs)
-	var changedFiles []build.PathMapping
-	var runs []model.Run
-	var hotReload bool
-
-	if fbInfo := iTarget.AnyFastBuildInfo(); !fbInfo.Empty() {
-		changedFiles, err = build.FilesToPathMappings(filesChanged, fbInfo.Syncs)
-		if err != nil {
-			return store.BuildResultSet{}, err
-		}
-		runs = fbInfo.Runs
-		hotReload = fbInfo.HotReload
-	}
-	if luInfo := iTarget.AnyLiveUpdateInfo(); !luInfo.Empty() {
-		changedFiles, err = build.FilesToPathMappings(filesChanged, luInfo.SyncSteps())
-		if err != nil {
-			if pmErr, ok := err.(*build.PathMappingErr); ok {
-				// expected error for this builder. One of more files don't match sync's;
-				// i.e. they're within the docker context but not within a sync; do a full image build.
-				return nil, RedirectToNextBuilderInfof(
-					"at least one file (%s) doesn't match a LiveUpdate sync, so performing a full build", pmErr.File)
-			}
-			return store.BuildResultSet{}, err
-		}
-
-		// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
-		anyMatch, file, err := luInfo.FallBackOnFiles().AnyMatch(build.PathMappingsToLocalPaths(changedFiles))
-		if err != nil {
-			return nil, err
-		}
-		if anyMatch {
-			return store.BuildResultSet{}, RedirectToNextBuilderInfof(
-				"detected change to fall_back_on file '%s'", file)
-		}
-
-		runs = luInfo.RunSteps()
-		hotReload = !luInfo.ShouldRestart()
-	}
-
-	err = lubad.buildAndDeploy(ctx, containerUpdater, iTarget, state, changedFiles, runs, hotReload)
-	if err != nil && !IsDontFallBackError(err) {
-		return store.BuildResultSet{}, err
-	}
-	// If no error, great!
-	// If we got a DontFallBack error, we still want to return a result set
-	// b/c we may have touched containers.
-	return liveUpdateState.createResultSet(), err
-}
-
-func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu containerupdate.ContainerUpdater, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) error {
 	l := logger.Get(ctx)
 	cIDStr := container.ShortStrs(store.IDsForInfos(state.RunningContainers))
 	l.Infof("  → Updating container…")
@@ -173,7 +152,6 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 
 	var lastUserBuildFailure error
 	for _, cInfo := range state.RunningContainers {
-
 		// always pass a copy of the tar archive reader
 		// so multiple updates can access the same data
 		var archiveBuf bytes.Buffer
@@ -208,6 +186,64 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 		return WrapDontFallBackError(lastUserBuildFailure)
 	}
 	return nil
+}
+
+// liveUpdateInfoForStateTree validates the state tree for LiveUpdate and returns
+// all the info we need to execute the update.
+func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, error) {
+	iTarget := stateTree.iTarget
+	state := stateTree.iTargetState
+	filesChanged := stateTree.filesChanged
+
+	var err error
+	var changedFiles []build.PathMapping
+	var runs []model.Run
+	var hotReload bool
+
+	if fbInfo := iTarget.AnyFastBuildInfo(); !fbInfo.Empty() {
+		changedFiles, err = build.FilesToPathMappings(filesChanged, fbInfo.Syncs)
+		if err != nil {
+			return liveUpdInfo{}, err
+		}
+		runs = fbInfo.Runs
+		hotReload = fbInfo.HotReload
+	} else if luInfo := iTarget.AnyLiveUpdateInfo(); !luInfo.Empty() {
+		changedFiles, err = build.FilesToPathMappings(filesChanged, luInfo.SyncSteps())
+		if err != nil {
+			if pmErr, ok := err.(*build.PathMappingErr); ok {
+				// expected error for this builder. One of more files don't match sync's;
+				// i.e. they're within the docker context but not within a sync; do a full image build.
+				return liveUpdInfo{}, RedirectToNextBuilderInfof(
+					"at least one file (%s) doesn't match a LiveUpdate sync, so performing a full build", pmErr.File)
+			}
+			return liveUpdInfo{}, err
+		}
+
+		// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
+		anyMatch, file, err := luInfo.FallBackOnFiles().AnyMatch(build.PathMappingsToLocalPaths(changedFiles))
+		if err != nil {
+			return liveUpdInfo{}, err
+		}
+		if anyMatch {
+			return liveUpdInfo{}, RedirectToNextBuilderInfof(
+				"detected change to fall_back_on file '%s'", file)
+		}
+
+		runs = luInfo.RunSteps()
+		hotReload = !luInfo.ShouldRestart()
+	} else {
+		// We should have validated this when generating the LiveUpdateStateTrees, but double check!
+		panic(fmt.Sprintf("found neither FastBuild nor LiveUpdate info on target %s, "+
+			"which should have already been validated", iTarget.ID()))
+	}
+
+	return liveUpdInfo{
+		iTarget:      iTarget,
+		state:        state,
+		changedFiles: changedFiles,
+		runs:         runs,
+		hotReload:    hotReload,
+	}, nil
 }
 
 func (lubad *LiveUpdateBuildAndDeployer) containerUpdaterForSpecs(specs []model.TargetSpec) containerupdate.ContainerUpdater {

@@ -11,19 +11,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/api/types"
+	"github.com/opencontainers/go-digest"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/windmilleng/wmclient/pkg/dirs"
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
-
-	"github.com/docker/docker/api/types"
-	"github.com/opencontainers/go-digest"
-	"github.com/stretchr/testify/assert"
-
-	"github.com/windmilleng/wmclient/pkg/dirs"
 
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -31,6 +31,7 @@ import (
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
@@ -135,6 +136,24 @@ func TestNamespaceGKE(t *testing.T) {
 	}
 
 	assert.Equal(t, "sancho-ns", string(f.sCli.Namespace))
+}
+
+func TestYamlManifestDeploy(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	defer f.TearDown()
+
+	manifest := manifestbuilder.New(f, "some_yaml").
+		WithK8sYAML(testyaml.TracerYAML).Build()
+	targets := buildTargets(manifest)
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 0, f.sCli.UpdateContainerCount)
+	assert.Equal(t, 0, f.docker.BuildCount)
+	assert.Equal(t, 0, f.docker.PushCount)
+	f.assertK8sUpsertCalled(true)
 }
 
 func TestContainerBuildLocal(t *testing.T) {
@@ -756,9 +775,7 @@ func TestReturnLastUnexpectedError(t *testing.T) {
 	f.docker.BuildErrorToThrow = fmt.Errorf("no one expects the unexpected error")
 
 	manifest := NewSanchoFastBuildDCManifest(f)
-	targets := buildTargets(manifest)
-
-	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "no one expects the unexpected error")
 	}
@@ -791,6 +808,167 @@ func TestLiveUpdateWithRunFailureReturnsContainerIDs(t *testing.T) {
 	// Copied files and tried to docker.exec before hitting error
 	assert.Equal(t, 1, f.docker.CopyCount)
 	assert.Equal(t, 1, len(f.docker.ExecCalls))
+}
+
+func TestLiveUpdateMultipleImagesSamePod(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	defer f.TearDown()
+
+	manifest, bs := multiImageLiveUpdateManifestAndBuildState(f)
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// expect live update and NOT an image build
+	assert.Equal(t, 0, f.docker.BuildCount)
+	assert.Equal(t, 0, f.docker.PushCount)
+	f.assertK8sUpsertCalled(false)
+
+	// one for each container update
+	assert.Equal(t, 2, f.sCli.UpdateContainerCount)
+}
+
+func TestOneLiveUpdateOneDockerBuildDoesImageBuild(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	defer f.TearDown()
+
+	sanchoTarg := NewSanchoLiveUpdateImageTarget(f)          // first target = LiveUpdate
+	sidecarTarg := NewSanchoSidecarDockerBuildImageTarget(f) // second target = DockerBuild
+	sanchoRef := container.MustParseNamedTagged(fmt.Sprintf("%s:tilt-123", testyaml.SanchoImage))
+	sidecarRef := container.MustParseNamedTagged(fmt.Sprintf("%s:tilt-123", testyaml.SanchoSidecarImage))
+	sanchoCInfo := store.ContainerInfo{
+		PodID:         testPodID,
+		ContainerName: "sancho",
+		ContainerID:   "sancho-c",
+	}
+
+	manifest := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(testyaml.SanchoSidecarYAML).
+		WithImageTargets(sanchoTarg, sidecarTarg).
+		Build()
+	changed := f.WriteFile("a.txt", "a")
+	sanchoState := store.NewBuildState(store.NewImageBuildResult(sanchoTarg.ID(), sanchoRef), []string{changed}).
+		WithRunningContainers([]store.ContainerInfo{sanchoCInfo})
+	sidecarState := store.NewBuildState(store.NewImageBuildResult(sidecarTarg.ID(), sidecarRef), []string{changed})
+
+	bs := store.BuildStateSet{sanchoTarg.ID(): sanchoState, sidecarTarg.ID(): sidecarState}
+
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// expect an image build
+	assert.Equal(t, 2, f.docker.BuildCount)
+	assert.Equal(t, 2, f.docker.PushCount)
+	f.assertK8sUpsertCalled(true)
+
+	// should NOT have run live update
+	assert.Equal(t, 0, f.sCli.UpdateContainerCount)
+}
+
+func TestLiveUpdateMultipleImagesOneRunErrorExecutesRestOfLiveUpdatesAndDoesntImageBuild(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	defer f.TearDown()
+
+	// First LiveUpdate will simulate a failed Run step
+	f.docker.ExecErrorsToThrow = []error{userFailureErr}
+
+	manifest, bs := multiImageLiveUpdateManifestAndBuildState(f)
+	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
+	require.NotNil(t, err)
+	assert.Contains(t, err.Error(), "Run step \"go install github.com/windmilleng/sancho\" failed with exit code: 123")
+
+	// one for each container update
+	assert.Equal(t, 2, f.docker.CopyCount)
+	assert.Equal(t, 2, len(f.docker.ExecCalls))
+
+	// expect NO image build
+	assert.Equal(t, 0, f.docker.BuildCount)
+	assert.Equal(t, 0, f.docker.PushCount)
+	f.assertK8sUpsertCalled(false)
+
+	// Make sure we returned the CIDs we LiveUpdated --
+	// they contain state now, we'll want to track them
+	liveUpdatedCIDs := result.LiveUpdatedContainerIDs()
+	expectedCIDs := []container.ID{"sancho-c", "sidecar-c"}
+	assert.ElementsMatch(t, expectedCIDs, liveUpdatedCIDs)
+}
+
+func TestLiveUpdateMultipleImagesOneUpdateErrorFallsBackToImageBuild(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	defer f.TearDown()
+
+	// Second LiveUpdate will throw an error
+	f.docker.ExecErrorsToThrow = []error{nil, fmt.Errorf("whelp ¯\\_(ツ)_/¯")}
+
+	manifest, bs := multiImageLiveUpdateManifestAndBuildState(f)
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// one for each container update
+	assert.Equal(t, 2, f.docker.CopyCount)
+	assert.Equal(t, 2, len(f.docker.ExecCalls)) // second one errors
+
+	// expect image build (2x images) when we fall back from failed LiveUpdate
+	assert.Equal(t, 2, f.docker.BuildCount)
+	assert.Equal(t, 0, f.docker.PushCount)
+	f.assertK8sUpsertCalled(true)
+}
+
+func TestLiveUpdateMultipleImagesOneWithUnsyncedChangeFileFallsBackToImageBuild(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	defer f.TearDown()
+
+	manifest, bs := multiImageLiveUpdateManifestAndBuildState(f)
+	bs[manifest.ImageTargetAt(1).ID()].FilesChangedSet["/not/synced"] = true // changed file not in a sync --> fall back to image build
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// should NOT have run live update
+	assert.Equal(t, 0, f.sCli.UpdateContainerCount)
+
+	// expect image build (2x images) when we fall back from failed LiveUpdate
+	assert.Equal(t, 2, f.docker.BuildCount)
+	assert.Equal(t, 2, f.docker.PushCount)
+	f.assertK8sUpsertCalled(true)
+}
+
+func multiImageLiveUpdateManifestAndBuildState(f *bdFixture) (model.Manifest, store.BuildStateSet) {
+	sanchoTarg := NewSanchoLiveUpdateImageTarget(f)
+	sidecarTarg := NewSanchoSidecarLiveUpdateImageTarget(f)
+	sanchoRef := container.MustParseNamedTagged(fmt.Sprintf("%s:tilt-123", testyaml.SanchoImage))
+	sidecarRef := container.MustParseNamedTagged(fmt.Sprintf("%s:tilt-123", testyaml.SanchoSidecarImage))
+	sanchoCInfo := store.ContainerInfo{
+		PodID:         testPodID,
+		ContainerName: "sancho",
+		ContainerID:   "sancho-c",
+	}
+	sidecarCInfo := store.ContainerInfo{
+		PodID:         testPodID,
+		ContainerName: "sancho-sidecar",
+		ContainerID:   "sidecar-c",
+	}
+
+	manifest := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(testyaml.SanchoSidecarYAML).
+		WithImageTargets(sanchoTarg, sidecarTarg).
+		Build()
+
+	changed := f.WriteFile("a.txt", "a")
+	sanchoState := store.NewBuildState(store.NewImageBuildResult(sanchoTarg.ID(), sanchoRef), []string{changed}).
+		WithRunningContainers([]store.ContainerInfo{sanchoCInfo})
+	sidecarState := store.NewBuildState(store.NewImageBuildResult(sidecarTarg.ID(), sidecarRef), []string{changed}).
+		WithRunningContainers([]store.ContainerInfo{sidecarCInfo})
+
+	bs := store.BuildStateSet{sanchoTarg.ID(): sanchoState, sidecarTarg.ID(): sidecarState}
+
+	return manifest, bs
 }
 
 // The API boundaries between BuildAndDeployer and the ImageBuilder aren't obvious and

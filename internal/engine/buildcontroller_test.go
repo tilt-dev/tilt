@@ -262,7 +262,56 @@ func TestCrashRebuildTwoContainersOneImage(t *testing.T) {
 
 	f.b.nextLiveUpdateContainerIDs = []container.ID{"c1", "c2"}
 	f.podEvent(podbuilder.New(t, manifest).
+		WithContainerIDAtIndex("c1", 0).
+		WithContainerIDAtIndex("c2", 1).
+		Build())
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
+
+	call = f.nextCall()
+	f.waitForCompletedBuildCount(2)
+	f.withManifestState("sancho", func(ms store.ManifestState) {
+		assert.Equal(t, 2, len(ms.LiveUpdatedContainerIDs))
+	})
+
+	// Simulate pod event where one of the containers has been restarted with a new ID.
+	f.podEvent(podbuilder.New(t, manifest).
 		WithContainerID("c1").
+		WithContainerIDAtIndex("c3", 1).
+		Build())
+
+	call = f.nextCall()
+	f.waitForCompletedBuildCount(3)
+
+	f.withManifestState("sancho", func(ms store.ManifestState) {
+		assert.Equal(t, model.BuildReasonFlagCrash, ms.LastBuild().Reason)
+	})
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+}
+
+func TestCrashRebuildTwoContainersTwoImages(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	manifest := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(testyaml.SanchoTwoContainersOneImageYAML).
+		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		WithImageTarget(NewSanchoSidecarLiveUpdateImageTarget(f)).
+		Build()
+	f.Start([]model.Manifest{manifest}, true)
+
+	call := f.nextCall()
+	iTargs := call.imageTargets()
+	require.Len(t, iTargs, 2)
+	assert.Equal(t, manifest.ImageTargetAt(0), iTargs[0])
+	assert.Equal(t, manifest.ImageTargetAt(1), iTargs[1])
+	f.waitForCompletedBuildCount(1)
+
+	f.b.nextLiveUpdateContainerIDs = []container.ID{"c1", "c2"}
+	f.podEvent(podbuilder.New(t, manifest).
+		WithContainerIDAtIndex("c1", 0).
 		WithContainerIDAtIndex("c2", 1).
 		Build())
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
@@ -325,6 +374,7 @@ func TestRecordLiveUpdatedContainerIDsForFailedLiveUpdate(t *testing.T) {
 		assert.Equal(t, 2, len(ms.LiveUpdatedContainerIDs))
 	})
 }
+
 func TestBuildControllerManualTrigger(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
