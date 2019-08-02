@@ -110,7 +110,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	}
 
 	privateRegistry := tfl.kCli.PrivateRegistry(ctx)
-	s := newTiltfileState(ctx, tfl.dcCli, absFilename, tfl.kubeContext, privateRegistry, feature.FromDefaults(tfl.fDefaults))
+	s := newTiltfileState(ctx, tfl.dcCli, tfl.kubeContext, privateRegistry, feature.FromDefaults(tfl.fDefaults))
 	printedWarnings := false
 	defer func() {
 		tlr.ConfigFiles = s.configFiles
@@ -121,7 +121,8 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	}()
 
 	s.logger.Infof("Beginning Tiltfile execution")
-	if err := s.exec(); err != nil {
+	_, err = s.exec(absFilename)
+	if err != nil {
 		if err, ok := err.(*starlark.EvalError); ok {
 			return TiltfileLoadResult{}, errors.New(err.Backtrace())
 		}

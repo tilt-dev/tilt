@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"path"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -25,7 +24,8 @@ import (
 type dcResourceSet struct {
 	configPaths []string
 
-	services []*dcService
+	services     []*dcService
+	tiltfilePath string
 }
 
 func (dc dcResourceSet) Empty() bool { return reflect.DeepEqual(dc, dcResourceSet{}) }
@@ -58,7 +58,11 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		return starlark.None, fmt.Errorf("already have a docker-compose resource declared (%v), cannot declare another", s.dc.configPaths)
 	}
 
-	s.dc = dcResourceSet{configPaths: configPaths, services: services}
+	s.dc = dcResourceSet{
+		configPaths:  configPaths,
+		services:     services,
+		tiltfilePath: s.currentTiltfilePath(thread),
+	}
 
 	return starlark.None, nil
 }
@@ -411,10 +415,10 @@ func getConfigAndServiceNames(ctx context.Context, dcc dockercompose.DockerCompo
 	return conf, svcNames, err
 }
 
-func (s *tiltfileState) dcServiceToManifest(service *dcService, dcConfigPaths []string) (manifest model.Manifest,
+func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResourceSet) (manifest model.Manifest,
 	configFiles []string, err error) {
 	dcInfo := model.DockerComposeTarget{
-		ConfigPaths: dcConfigPaths,
+		ConfigPaths: dcSet.configPaths,
 		YAMLRaw:     service.ServiceConfig,
 		DfRaw:       service.DfContents,
 	}.WithDependencyIDs(service.DependencyIDs).
@@ -437,16 +441,16 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcConfigPaths []
 
 	dcInfo = dcInfo.WithBuildPath(service.BuildContext)
 
-	paths := []string{path.Dir(service.DfPath)}
-	for _, configPath := range dcConfigPaths {
-		paths = append(paths, path.Dir(configPath))
+	paths := []string{filepath.Dir(service.DfPath)}
+	for _, configPath := range dcSet.configPaths {
+		paths = append(paths, filepath.Dir(configPath))
 	}
 	paths = append(paths, dcInfo.LocalPaths()...)
-	paths = append(paths, path.Dir(s.filename))
+	paths = append(paths, filepath.Dir(dcSet.tiltfilePath))
 
 	dcInfo = dcInfo.WithDockerignores(s.dockerignoresFromPathsAndContextFilters(paths, []string{}, []string{}))
 
-	localPaths := []string{s.filename}
+	localPaths := []string{dcSet.tiltfilePath}
 	for _, p := range paths {
 		if !filepath.IsAbs(p) {
 			return model.Manifest{}, nil, fmt.Errorf("internal error: path not resolved correctly! Please report to https://github.com/windmilleng/tilt/issues : %s", p)
@@ -454,7 +458,7 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcConfigPaths []
 		localPaths = append(localPaths, p)
 	}
 	dcInfo = dcInfo.WithRepos(reposForPaths(localPaths)).
-		WithTiltFilename(s.filename)
+		WithTiltFilename(dcSet.tiltfilePath)
 
 	m = m.WithDeployTarget(dcInfo)
 

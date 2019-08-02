@@ -21,6 +21,7 @@ const fastBuildDeprecationWarning = "FastBuild (`fast_build`; `add_fast_build`; 
 	"information. If Live Update doesn't fit your use case, let us know."
 
 type dockerImage struct {
+	tiltfilePath       string
 	baseDockerfilePath string
 	baseDockerfile     dockerfile.Dockerfile
 	configurationRef   container.RefSelector
@@ -167,7 +168,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	liveUpdate, err := s.liveUpdateFromSteps(liveUpdateVal)
+	liveUpdate, err := s.liveUpdateFromSteps(thread, liveUpdateVal)
 	if err != nil {
 		return nil, errors.Wrap(err, "live_update")
 	}
@@ -188,6 +189,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	}
 
 	r := &dockerImage{
+		tiltfilePath:     s.currentTiltfilePath(thread),
 		dbDockerfilePath: dockerfilePath,
 		dbDockerfile:     dockerfile.Dockerfile(dockerfileContents),
 		dbBuildPath:      context,
@@ -271,7 +273,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		localDeps = append(localDeps, p)
 	}
 
-	liveUpdate, err := s.liveUpdateFromSteps(liveUpdateVal)
+	liveUpdate, err := s.liveUpdateFromSteps(thread, liveUpdateVal)
 	if err != nil {
 		return nil, errors.Wrap(err, "live_update")
 	}
@@ -552,7 +554,7 @@ func (b *fastBuild) run(thread *starlark.Thread, fn *starlark.Builtin, args star
 	}
 
 	run := model.ToRun(model.ToShellCmd(cmd))
-	run = run.WithTriggers(triggers, b.s.absWorkingDir())
+	run = run.WithTriggers(triggers, b.s.absWorkingDir(thread))
 
 	b.img.runs = append(b.img.runs, run)
 	return b, nil
@@ -605,7 +607,7 @@ func (s *tiltfileState) reposForImage(image *dockerImage) []model.LocalGitRepo {
 		image.baseDockerfilePath,
 		image.dbDockerfilePath,
 		image.dbBuildPath,
-		s.filename)
+		image.tiltfilePath)
 
 	return reposForPaths(paths)
 }
