@@ -102,6 +102,11 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 	ns := k8s.NamespaceFromPod(pod)
 	hasSynclet := sidecar.PodSpecContainsSynclet(pod.Spec)
 
+	if pod.DeletionTimestamp != nil && !pod.DeletionTimestamp.IsZero() && ms.PodSet.Pods != nil {
+		delete(ms.PodSet.Pods, podID)
+		return nil, nil
+	}
+
 	// CASE 1: We don't have a set of pods for this DeployID yet
 	if ms.PodSet.DeployID == 0 || ms.PodSet.DeployID != deployID {
 		ms.PodSet = store.PodSet{
