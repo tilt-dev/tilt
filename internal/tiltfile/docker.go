@@ -21,7 +21,7 @@ const fastBuildDeprecationWarning = "FastBuild (`fast_build`; `add_fast_build`; 
 	"information. If Live Update doesn't fit your use case, let us know."
 
 type dockerImage struct {
-	baseDockerfilePath localPath
+	baseDockerfilePath string
 	baseDockerfile     dockerfile.Dockerfile
 	configurationRef   container.RefSelector
 	deploymentRef      reference.Named
@@ -37,9 +37,9 @@ type dockerImage struct {
 	fbEntrypoint string
 	hotReload    bool
 
-	dbDockerfilePath localPath
+	dbDockerfilePath string
 	dbDockerfile     dockerfile.Dockerfile
-	dbBuildPath      localPath
+	dbBuildPath      string
 	dbBuildArgs      model.DockerBuildArgs
 	customCommand    string
 	customDeps       []string
@@ -68,11 +68,11 @@ const (
 )
 
 func (d *dockerImage) Type() dockerImageBuildType {
-	if !d.dbBuildPath.Empty() {
+	if d.dbBuildPath != "" {
 		return DockerBuild
 	}
 
-	if !d.baseDockerfilePath.Empty() {
+	if d.baseDockerfilePath != "" {
 		return FastBuild
 	}
 
@@ -129,7 +129,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		}
 	}
 
-	dockerfilePath := context.join("Dockerfile")
+	dockerfilePath := filepath.Join(context, "Dockerfile")
 	var dockerfileContents string
 	if dockerfileContentsVal != nil && dockerfilePathVal != nil {
 		return nil, fmt.Errorf("Cannot specify both dockerfile and dockerfile_contents keyword arguments")
@@ -268,7 +268,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		if err != nil {
 			return nil, fmt.Errorf("Argument 3 (deps): %v", err)
 		}
-		localDeps = append(localDeps, p.path)
+		localDeps = append(localDeps, p)
 	}
 
 	liveUpdate, err := s.liveUpdateFromSteps(liveUpdateVal)
@@ -559,7 +559,7 @@ func (b *fastBuild) run(thread *starlark.Thread, fn *starlark.Builtin, args star
 }
 
 type pathSync struct {
-	src        localPath
+	src        string
 	mountPoint string
 }
 
@@ -567,25 +567,29 @@ func (s *tiltfileState) syncsToDomain(image *dockerImage) []model.Sync {
 	var result []model.Sync
 
 	for _, sync := range image.syncs {
-		result = append(result, model.Sync{LocalPath: sync.src.path, ContainerPath: sync.mountPoint})
+		result = append(result, model.Sync{LocalPath: sync.src, ContainerPath: sync.mountPoint})
 	}
 
 	return result
 }
 
-func reposForPaths(paths []localPath) []model.LocalGitRepo {
+func isGitRepoBase(path string) bool {
+	return ospath.IsDir(filepath.Join(path, ".git"))
+}
+
+func reposForPaths(paths []string) []model.LocalGitRepo {
 	var result []model.LocalGitRepo
 	repoSet := map[string]bool{}
 
 	for _, path := range paths {
-		repo := path.repo
-		if repo == nil || repoSet[repo.basePath] {
+		isRepoBase := isGitRepoBase(path)
+		if !isRepoBase || repoSet[path] {
 			continue
 		}
 
-		repoSet[repo.basePath] = true
+		repoSet[path] = true
 		result = append(result, model.LocalGitRepo{
-			LocalPath: repo.basePath,
+			LocalPath: path,
 		})
 	}
 
@@ -593,7 +597,7 @@ func reposForPaths(paths []localPath) []model.LocalGitRepo {
 }
 
 func (s *tiltfileState) reposForImage(image *dockerImage) []model.LocalGitRepo {
-	var paths []localPath
+	var paths []string
 	for _, sync := range image.syncs {
 		paths = append(paths, sync.src)
 	}
@@ -646,7 +650,7 @@ func (s *tiltfileState) dockerignoresFromPathsAndContextFilters(paths []string, 
 			Contents:  onlyContents,
 		})
 
-		contents, err := s.readFile(s.localPathFromString(filepath.Join(path, ".dockerignore")))
+		contents, err := s.readFile(filepath.Join(path, ".dockerignore"))
 		if err != nil {
 			continue
 		}
@@ -691,21 +695,11 @@ func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Docker
 	var paths []string
 
 	for _, sync := range image.syncs {
-		paths = append(paths, sync.src.path)
-
-		// NOTE(maia): this doesn't reflect the behavior of Docker, which only
-		// looks in the build context for the .dockerignore file. Leaving it
-		// for now, though, for fastbuild cases where .dockerignore doesn't
-		// live in the user's synced dir(s) (e.g. user only syncs several specific
-		// files, not a directory containing the .dockerignore).
-		repo := sync.src.repo
-		if repo != nil {
-			paths = append(paths, repo.basePath)
-		}
+		paths = append(paths, sync.src)
 	}
 	switch image.Type() {
 	case DockerBuild:
-		paths = append(paths, image.dbBuildPath.path)
+		paths = append(paths, image.dbBuildPath)
 	case CustomBuild:
 		paths = append(paths, image.customDeps...)
 	}

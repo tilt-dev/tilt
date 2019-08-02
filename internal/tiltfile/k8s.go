@@ -666,7 +666,7 @@ func (s *tiltfileState) yamlEntitiesFromSkylarkValue(v starlark.Value) ([]k8s.K8
 		entities, err := k8s.ParseYAMLFromString(string(bs))
 		if err != nil {
 			if strings.Contains(err.Error(), "json parse error: ") {
-				return entities, fmt.Errorf("%s is not a valid YAML file: %s", yamlPath.String(), err)
+				return entities, fmt.Errorf("%s is not a valid YAML file: %s", yamlPath, err)
 			}
 			return entities, err
 		}
