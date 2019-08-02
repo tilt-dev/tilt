@@ -83,6 +83,17 @@ func (set BuildResultSet) LiveUpdatedContainerIDs() []container.ID {
 	return result
 }
 
+func MergeBuildResultsSet(a, b BuildResultSet) BuildResultSet {
+	res := make(BuildResultSet)
+	for k, v := range a {
+		res[k] = v
+	}
+	for k, v := range b {
+		res[k] = v
+	}
+	return res
+}
+
 // Returns a container ID iff it's the only container ID in the result set.
 // If there are multiple container IDs, we have to give up.
 func (set BuildResultSet) OneAndOnlyLiveUpdatedContainerID() container.ID {
