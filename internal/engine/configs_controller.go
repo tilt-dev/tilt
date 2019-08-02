@@ -62,8 +62,20 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 		matching[string(m)] = true
 	}
 
+	var changedFiles []string
+	for k := range filesChanged {
+		changedFiles = append(changedFiles, k)
+	}
+
+	l := logger.Get(ctx)
+
+	if len(changedFiles) > 0 {
+		p := logger.Green(l).Sprintf("%d changed: ", len(changedFiles))
+		l.Infof("\n%s%v\n", p, formatFileChangeList(changedFiles))
+	}
+
 	actionWriter := NewTiltfileLogWriter(st)
-	loadCtx := logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), actionWriter))
+	loadCtx := logger.WithLogger(ctx, logger.NewLogger(l.Level(), actionWriter))
 
 	tlr, err := cc.tfl.Load(loadCtx, tiltfilePath, matching)
 	if err == nil && len(tlr.Manifests) == 0 {
