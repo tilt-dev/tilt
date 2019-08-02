@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/docker"
+
 	"github.com/windmilleng/tilt/internal/testutils/manifestutils"
 
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -52,7 +54,7 @@ type smFixture struct {
 	ctx    context.Context
 	cancel func()
 	kCli   *k8s.FakeK8sClient
-	sCli   *synclet.FakeSyncletClient
+	sCli   *synclet.TestSyncletClient
 	sm     SyncletManager
 	store  *store.Store
 }
@@ -60,7 +62,8 @@ type smFixture struct {
 func newSMFixture(t *testing.T) *smFixture {
 	f := tempdir.NewTempDirFixture(t)
 	kCli := k8s.NewFakeK8sClient()
-	sCli := synclet.NewFakeSyncletClient()
+	dCli := docker.NewFakeClient()
+	sCli := synclet.NewSyncletClientNoGRPC(dCli)
 	sm := NewSyncletManagerForTests(kCli, sCli)
 	st, _ := store.NewStoreForTesting()
 
