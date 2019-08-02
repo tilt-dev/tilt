@@ -42,9 +42,6 @@ const watchBufferMaxTimeInMs = 10000
 var watchBufferMinRestDuration = watchBufferMinRestInMs * time.Millisecond
 var watchBufferMaxDuration = watchBufferMaxTimeInMs * time.Millisecond
 
-// When we kick off a build because some files changed, only print the first `maxChangedFilesToPrint`
-const maxChangedFilesToPrint = 5
-
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
