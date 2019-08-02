@@ -858,10 +858,24 @@ func TestLiveUpdateMultipleImagesOneRunErrorExecutesRestOfLiveUpdatesAndDoesntIm
 	f.docker.ExecErrorsToThrow = []error{userFailureErr}
 
 	manifest, bs := multiImageLiveUpdateManifestAndBuildState(f)
-	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
-	if err != nil {
-		t.Fatal(err)
-	}
+	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
+	require.NotNil(t, err)
+	assert.Contains(t, err.Error(), "Run step \"go install github.com/windmilleng/sancho\" failed with exit code: 123")
+
+	// one for each container update
+	assert.Equal(t, 2, f.docker.CopyCount)
+	assert.Equal(t, 2, len(f.docker.ExecCalls))
+
+	// expect NO image build
+	assert.Equal(t, 0, f.docker.BuildCount)
+	assert.Equal(t, 0, f.docker.PushCount)
+	f.assertK8sUpsertCalled(false)
+
+	// Make sure we returned the CIDs we LiveUpdated --
+	// they contain state now, we'll want to track them
+	liveUpdatedCIDs := result.LiveUpdatedContainerIDs()
+	expectedCIDs := []container.ID{"sancho-c", "sidecar-c"}
+	assert.ElementsMatch(t, expectedCIDs, liveUpdatedCIDs)
 }
 
 func TestLiveUpdateMultipleImagesOneUpdateErrorFallsBackToImageBuild(t *testing.T) {

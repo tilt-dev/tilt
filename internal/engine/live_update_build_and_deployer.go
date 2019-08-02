@@ -122,14 +122,22 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		}
 	}
 
+	var dontFallBackErr error
 	for _, info := range liveUpdInfos {
 		err = lubad.buildAndDeploy(ctx, containerUpdater, info.iTarget, info.state, info.changedFiles, info.runs, info.hotReload)
-		if err != nil && !IsDontFallBackError(err) {
-			return store.BuildResultSet{}, err
+		if err != nil {
+			if !IsDontFallBackError(err) {
+				// something went wrong, we want to fall back -- bail and
+				// let the next builder take care of it
+				return store.BuildResultSet{}, err
+			}
+			// if something went wrong due to USER failure (i.e. run step failed),
+			// run the rest of the container updates so all the containers are in
+			// a consistent state, then return this error, i.e. don't fall back.
+			dontFallBackErr = err
 		}
-		// ~~ TODO: IF DONTFALLBACK ERR, RUN THE REST OF THE LU'S AND MAKE SURE TO RETURN IT
 	}
-	return createResultSet(liveUpdateStateSet), nil
+	return createResultSet(liveUpdateStateSet), dontFallBackErr
 }
 
 func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu containerupdate.ContainerUpdater, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) error {
