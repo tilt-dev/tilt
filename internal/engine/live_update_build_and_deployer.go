@@ -5,8 +5,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+
+	"github.com/windmilleng/tilt/internal/analytics"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/containerupdate"
@@ -69,15 +73,6 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		iTarget := liveUpdateState.iTarget
 		state := liveUpdateState.iTargetState
 		filesChanged := liveUpdateState.filesChanged
-
-		// span, ctx := opentracing.StartSpanFromContext(ctx, "LiveUpdateBuildAndDeployer-BuildAndDeploy")
-		// span.SetTag("target", iTarget.ConfigurationRef.String())
-		// defer span.Finish()
-		//
-		// startTime := time.Now()
-		// defer func() {
-		// 	analytics.Get(ctx).Timer("build.container", time.Since(startTime), nil)
-		// }()
 
 		var changedFiles []build.PathMapping
 		var runs []model.Run
@@ -145,6 +140,15 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 }
 
 func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu containerupdate.ContainerUpdater, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "LiveUpdateBuildAndDeployer-buildAndDeploy")
+	span.SetTag("target", iTarget.ConfigurationRef.String())
+	defer span.Finish()
+
+	startTime := time.Now()
+	defer func() {
+		analytics.Get(ctx).Timer("build.container", time.Since(startTime), nil)
+	}()
+
 	l := logger.Get(ctx)
 	cIDStr := container.ShortStrs(store.IDsForInfos(state.RunningContainers))
 	l.Infof("  → Updating container…")
