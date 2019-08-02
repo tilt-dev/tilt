@@ -5,7 +5,6 @@
 package starlark
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,22 +13,25 @@ import (
 	"math/big"
 	"sort"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
 	"go.starlark.net/internal/compile"
+	"go.starlark.net/internal/spell"
 	"go.starlark.net/resolve"
 	"go.starlark.net/syntax"
 )
-
-const debug = false
 
 // A Thread contains the state of a Starlark thread,
 // such as its call stack and thread-local storage.
 // The Thread is threaded throughout the evaluator.
 type Thread struct {
-	// frame is the current Starlark execution frame.
-	frame *Frame
+	// Name is an optional name that describes the thread, for debugging.
+	Name string
+
+	// stack is the stack of (internal) call frames.
+	stack []*frame
 
 	// Print is the client-supplied implementation of the Starlark
 	// 'print' function. If nil, fmt.Fprintln(os.Stderr, msg) is
@@ -47,6 +49,9 @@ type Thread struct {
 	// locals holds arbitrary "thread-local" Go values belonging to the client.
 	// They are accessible to the client but not to any Starlark program.
 	locals map[string]interface{}
+
+	// proftime holds the accumulated execution time since the last profile event.
+	proftime time.Duration
 }
 
 // SetLocal sets the thread-local value associated with the specified key.
@@ -63,34 +68,55 @@ func (thread *Thread) Local(key string) interface{} {
 	return thread.locals[key]
 }
 
-// Caller returns the frame of the caller of the current function.
+// CallFrame returns a copy of the specified frame of the callstack.
 // It should only be used in built-ins called from Starlark code.
-func (thread *Thread) Caller() *Frame { return thread.frame.parent }
+// Depth 0 means the frame of the built-in itself, 1 is its caller, and so on.
+//
+// It is equivalent to CallStack().At(depth), but more efficient.
+func (thread *Thread) CallFrame(depth int) CallFrame {
+	return thread.frameAt(depth).asCallFrame()
+}
 
-// TopFrame returns the topmost stack frame.
-func (thread *Thread) TopFrame() *Frame { return thread.frame }
+func (thread *Thread) frameAt(depth int) *frame {
+	return thread.stack[len(thread.stack)-1-depth]
+}
+
+// CallStack returns a new slice containing the thread's stack of call frames.
+func (thread *Thread) CallStack() CallStack {
+	frames := make([]CallFrame, len(thread.stack))
+	for i, fr := range thread.stack {
+		frames[i] = fr.asCallFrame()
+	}
+	return frames
+}
+
+// CallStackDepth returns the number of frames in the current call stack.
+func (thread *Thread) CallStackDepth() int { return len(thread.stack) }
 
 // A StringDict is a mapping from names to values, and represents
 // an environment such as the global variables of a module.
 // It is not a true starlark.Value.
 type StringDict map[string]Value
 
-func (d StringDict) String() string {
+// Keys returns a new sorted slice of d's keys.
+func (d StringDict) Keys() []string {
 	names := make([]string, 0, len(d))
 	for name := range d {
 		names = append(names, name)
 	}
 	sort.Strings(names)
+	return names
+}
 
-	var buf bytes.Buffer
-	path := make([]Value, 0, 4)
+func (d StringDict) String() string {
+	buf := new(strings.Builder)
 	buf.WriteByte('{')
 	sep := ""
-	for _, name := range names {
+	for _, name := range d.Keys() {
 		buf.WriteString(sep)
 		buf.WriteString(name)
 		buf.WriteString(": ")
-		writeValue(&buf, d[name], path)
+		writeValue(buf, d[name], nil)
 		sep = ", "
 	}
 	buf.WriteByte('}')
@@ -106,54 +132,85 @@ func (d StringDict) Freeze() {
 // Has reports whether the dictionary contains the specified key.
 func (d StringDict) Has(key string) bool { _, ok := d[key]; return ok }
 
-// A Frame records a call to a Starlark function (including module toplevel)
+// A frame records a call to a Starlark function (including module toplevel)
 // or a built-in function or method.
-type Frame struct {
-	parent   *Frame          // caller's frame (or nil)
-	callable Callable        // current function (or toplevel) or built-in
-	posn     syntax.Position // source position of PC, set during error
-	callpc   uint32          // PC of position of active call, set during call
-}
-
-// The Frames of a thread are structured as a spaghetti stack, not a
-// slice, so that an EvalError can copy a stack efficiently and immutably.
-// In hindsight using a slice would have led to a more convenient API.
-
-func (fr *Frame) errorf(posn syntax.Position, format string, args ...interface{}) *EvalError {
-	fr.posn = posn
-	msg := fmt.Sprintf(format, args...)
-	return &EvalError{Msg: msg, Frame: fr}
+type frame struct {
+	callable  Callable // current function (or toplevel) or built-in
+	pc        uint32   // program counter (Starlark frames only)
+	locals    []Value  // local variables (Starlark frames only)
+	spanStart int64    // start time of current profiler span
 }
 
 // Position returns the source position of the current point of execution in this frame.
-func (fr *Frame) Position() syntax.Position {
-	if fr.posn.IsValid() {
-		return fr.posn // leaf frame only (the error)
-	}
+func (fr *frame) Position() syntax.Position {
 	switch c := fr.callable.(type) {
 	case *Function:
 		// Starlark function
-		return c.funcode.Position(fr.callpc) // position of active call
-	case interface{ Position() syntax.Position }:
+		return c.funcode.Position(fr.pc)
+	case callableWithPosition:
 		// If a built-in Callable defines
 		// a Position method, use it.
 		return c.Position()
 	}
-	return syntax.MakePosition(&builtinFilename, 1, 0)
+	return syntax.MakePosition(&builtinFilename, 0, 0)
 }
 
 var builtinFilename = "<builtin>"
 
 // Function returns the frame's function or built-in.
-func (fr *Frame) Callable() Callable { return fr.callable }
+func (fr *frame) Callable() Callable { return fr.callable }
 
-// Parent returns the frame of the enclosing function call, if any.
-func (fr *Frame) Parent() *Frame { return fr.parent }
+// A CallStack is a stack of call frames, outermost first.
+type CallStack []CallFrame
 
-// An EvalError is a Starlark evaluation error and its associated call stack.
+// At returns a copy of the frame at depth i.
+// At(0) returns the topmost frame.
+func (stack CallStack) At(i int) CallFrame { return stack[len(stack)-1-i] }
+
+// Pop removes and returns the topmost frame.
+func (stack *CallStack) Pop() CallFrame {
+	last := len(*stack) - 1
+	top := (*stack)[last]
+	*stack = (*stack)[:last]
+	return top
+}
+
+// String returns a user-friendly description of the stack.
+func (stack CallStack) String() string {
+	out := new(strings.Builder)
+	fmt.Fprintf(out, "Traceback (most recent call last):\n")
+	for _, fr := range stack {
+		fmt.Fprintf(out, "  %s: in %s\n", fr.Pos, fr.Name)
+	}
+	return out.String()
+}
+
+// An EvalError is a Starlark evaluation error and
+// a copy of the thread's stack at the moment of the error.
 type EvalError struct {
-	Msg   string
-	Frame *Frame
+	Msg       string
+	CallStack CallStack
+}
+
+// A CallFrame represents the function name and current
+// position of execution of an enclosing call frame.
+type CallFrame struct {
+	Name string
+	Pos  syntax.Position
+}
+
+func (fr *frame) asCallFrame() CallFrame {
+	return CallFrame{
+		Name: fr.Callable().Name(),
+		Pos:  fr.Position(),
+	}
+}
+
+func (thread *Thread) evalError(err error) *EvalError {
+	return &EvalError{
+		Msg:       err.Error(),
+		CallStack: thread.CallStack(),
+	}
 }
 
 func (e *EvalError) Error() string { return e.Msg }
@@ -161,32 +218,7 @@ func (e *EvalError) Error() string { return e.Msg }
 // Backtrace returns a user-friendly error message describing the stack
 // of calls that led to this error.
 func (e *EvalError) Backtrace() string {
-	var buf bytes.Buffer
-	e.Frame.WriteBacktrace(&buf)
-	fmt.Fprintf(&buf, "Error: %s", e.Msg)
-	return buf.String()
-}
-
-// WriteBacktrace writes a user-friendly description of the stack to buf.
-func (fr *Frame) WriteBacktrace(out *bytes.Buffer) {
-	fmt.Fprintf(out, "Traceback (most recent call last):\n")
-	var print func(fr *Frame)
-	print = func(fr *Frame) {
-		if fr != nil {
-			print(fr.parent)
-			fmt.Fprintf(out, "  %s: in %s\n", fr.Position(), fr.Callable().Name())
-		}
-	}
-	print(fr)
-}
-
-// Stack returns the stack of frames, innermost first.
-func (e *EvalError) Stack() []*Frame {
-	var stack []*Frame
-	for fr := e.Frame; fr != nil; fr = fr.parent {
-		stack = append(stack, fr)
-	}
-	return stack
+	return fmt.Sprintf("%sError: %s", e.CallStack, e.Msg)
 }
 
 // A Program is a compiled Starlark program.
@@ -203,6 +235,11 @@ type Program struct {
 // with an interpreter at another version, and should thus incorporate
 // the compiler version into the cache key when reusing compiled code.
 const CompilerVersion = compile.Version
+
+// Filename returns the name of the file from which this program was loaded.
+func (prog *Program) Filename() string { return prog.compiled.Toplevel.Pos.Filename() }
+
+func (prog *Program) String() string { return prog.Filename() }
 
 // NumLoads returns the number of load statements in the compiled program.
 func (prog *Program) NumLoads() int { return len(prog.compiled.Loads) }
@@ -265,14 +302,37 @@ func SourceProgram(filename string, src interface{}, isPredeclared func(string) 
 	if err != nil {
 		return nil, nil, err
 	}
+	prog, err := FileProgram(f, isPredeclared)
+	return f, prog, err
+}
 
+// FileProgram produces a new program by resolving,
+// and compiling the Starlark source file syntax tree.
+// On success, it returns the compiled program.
+//
+// Resolving a syntax tree mutates it.
+// Do not call FileProgram more than once on the same file.
+//
+// The isPredeclared predicate reports whether a name is
+// a pre-declared identifier of the current module.
+// Its typical value is predeclared.Has,
+// where predeclared is a StringDict of pre-declared values.
+func FileProgram(f *syntax.File, isPredeclared func(string) bool) (*Program, error) {
 	if err := resolve.File(f, isPredeclared, Universe.Has); err != nil {
-		return f, nil, err
+		return nil, err
 	}
 
-	compiled := compile.File(f.Stmts, f.Locals, f.Globals)
+	var pos syntax.Position
+	if len(f.Stmts) > 0 {
+		pos = syntax.Start(f.Stmts[0])
+	} else {
+		pos = syntax.MakePosition(&f.Path, 1, 1)
+	}
 
-	return f, &Program{compiled}, nil
+	module := f.Module.(*resolve.Module)
+	compiled := compile.File(f.Stmts, pos, "<toplevel>", module.Locals, module.Globals)
+
+	return &Program{compiled}, nil
 }
 
 // CompiledProgram produces a new program from the representation
@@ -282,36 +342,36 @@ func CompiledProgram(in io.Reader) (*Program, error) {
 	if err != nil {
 		return nil, err
 	}
-	prog, err := compile.DecodeProgram(data)
+	compiled, err := compile.DecodeProgram(data)
 	if err != nil {
 		return nil, err
 	}
-	return &Program{prog}, nil
+	return &Program{compiled}, nil
 }
 
 // Init creates a set of global variables for the program,
 // executes the toplevel code of the specified program,
 // and returns a new, unfrozen dictionary of the globals.
 func (prog *Program) Init(thread *Thread, predeclared StringDict) (StringDict, error) {
-	toplevel := makeToplevelFunction(prog.compiled.Toplevel, predeclared)
+	toplevel := makeToplevelFunction(prog.compiled, predeclared)
 
 	_, err := Call(thread, toplevel, nil, nil)
 
-	// Convert the global environment to a map and freeze it.
+	// Convert the global environment to a map.
 	// We return a (partial) map even in case of error.
 	return toplevel.Globals(), err
 }
 
-func makeToplevelFunction(funcode *compile.Funcode, predeclared StringDict) *Function {
+func makeToplevelFunction(prog *compile.Program, predeclared StringDict) *Function {
 	// Create the Starlark value denoted by each program constant c.
-	constants := make([]Value, len(funcode.Prog.Constants))
-	for i, c := range funcode.Prog.Constants {
+	constants := make([]Value, len(prog.Constants))
+	for i, c := range prog.Constants {
 		var v Value
 		switch c := c.(type) {
 		case int64:
 			v = MakeInt64(c)
 		case *big.Int:
-			v = Int{c}
+			v = MakeBigInt(c)
 		case string:
 			v = String(c)
 		case float64:
@@ -323,10 +383,13 @@ func makeToplevelFunction(funcode *compile.Funcode, predeclared StringDict) *Fun
 	}
 
 	return &Function{
-		funcode:     funcode,
-		predeclared: predeclared,
-		globals:     make([]Value, len(funcode.Prog.Globals)),
-		constants:   constants,
+		funcode: prog.Toplevel,
+		module: &module{
+			program:     prog,
+			predeclared: predeclared,
+			globals:     make([]Value, len(prog.Globals)),
+			constants:   constants,
+		},
 	}
 }
 
@@ -345,15 +408,51 @@ func Eval(thread *Thread, filename string, src interface{}, env StringDict) (Val
 	if err != nil {
 		return nil, err
 	}
+	f, err := makeExprFunc(expr, env)
+	if err != nil {
+		return nil, err
+	}
+	return Call(thread, f, nil, nil)
+}
 
+// EvalExpr resolves and evaluates an expression within the
+// specified (predeclared) environment.
+// Evaluating a comma-separated list of expressions yields a tuple value.
+//
+// Resolving an expression mutates it.
+// Do not call EvalExpr more than once for the same expression.
+//
+// Evaluation cannot mutate the environment dictionary itself,
+// though it may modify variables reachable from the dictionary.
+//
+// If Eval fails during evaluation, it returns an *EvalError
+// containing a backtrace.
+func EvalExpr(thread *Thread, expr syntax.Expr, env StringDict) (Value, error) {
+	fn, err := makeExprFunc(expr, env)
+	if err != nil {
+		return nil, err
+	}
+	return Call(thread, fn, nil, nil)
+}
+
+// ExprFunc returns a no-argument function
+// that evaluates the expression whose source is src.
+func ExprFunc(filename string, src interface{}, env StringDict) (*Function, error) {
+	expr, err := syntax.ParseExpr(filename, src, 0)
+	if err != nil {
+		return nil, err
+	}
+	return makeExprFunc(expr, env)
+}
+
+// makeExprFunc returns a no-argument function whose body is expr.
+func makeExprFunc(expr syntax.Expr, env StringDict) (*Function, error) {
 	locals, err := resolve.Expr(expr, env.Has, Universe.Has)
 	if err != nil {
 		return nil, err
 	}
 
-	fn := makeToplevelFunction(compile.Expr(expr, locals), env)
-
-	return Call(thread, fn, nil, nil)
+	return makeToplevelFunction(compile.Expr(expr, "<expr>", locals), env), nil
 }
 
 // The following functions are primitive operations of the byte code interpreter.
@@ -374,28 +473,52 @@ func listExtend(x *List, y Iterable) {
 }
 
 // getAttr implements x.dot.
-func getAttr(fr *Frame, x Value, name string) (Value, error) {
-	// field or method?
-	if x, ok := x.(HasAttrs); ok {
-		if v, err := x.Attr(name); v != nil || err != nil {
-			return v, err
-		}
+func getAttr(x Value, name string) (Value, error) {
+	hasAttr, ok := x.(HasAttrs)
+	if !ok {
+		return nil, fmt.Errorf("%s has no .%s field or method", x.Type(), name)
 	}
 
-	return nil, fmt.Errorf("%s has no .%s field or method", x.Type(), name)
+	var errmsg string
+	v, err := hasAttr.Attr(name)
+	if err == nil {
+		if v != nil {
+			return v, nil // success
+		}
+		// (nil, nil) => generic error
+		errmsg = fmt.Sprintf("%s has no .%s field or method", x.Type(), name)
+	} else if nsa, ok := err.(NoSuchAttrError); ok {
+		errmsg = string(nsa)
+	} else {
+		return nil, err // return error as is
+	}
+
+	// add spelling hint
+	if n := spell.Nearest(name, hasAttr.AttrNames()); n != "" {
+		errmsg = fmt.Sprintf("%s (did you mean .%s?)", errmsg, n)
+	}
+
+	return nil, fmt.Errorf("%s", errmsg)
 }
 
 // setField implements x.name = y.
-func setField(fr *Frame, x Value, name string, y Value) error {
+func setField(x Value, name string, y Value) error {
 	if x, ok := x.(HasSetField); ok {
 		err := x.SetField(name, y)
+		if _, ok := err.(NoSuchAttrError); ok {
+			// No such field: check spelling.
+			if n := spell.Nearest(name, x.AttrNames()); n != "" {
+				err = fmt.Errorf("%s (did you mean .%s?)", err, n)
+			}
+		}
 		return err
 	}
+
 	return fmt.Errorf("can't assign to .%s field of %s", name, x.Type())
 }
 
 // getIndex implements x[y].
-func getIndex(fr *Frame, x, y Value) (Value, error) {
+func getIndex(x, y Value) (Value, error) {
 	switch x := x.(type) {
 	case Mapping: // dict
 		z, found, err := x.Get(y)
@@ -413,20 +536,28 @@ func getIndex(fr *Frame, x, y Value) (Value, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%s index: %s", x.Type(), err)
 		}
+		origI := i
 		if i < 0 {
 			i += n
 		}
 		if i < 0 || i >= n {
-			return nil, fmt.Errorf("%s index %d out of range [0:%d]",
-				x.Type(), i, n)
+			return nil, outOfRange(origI, n, x)
 		}
 		return x.Index(i), nil
 	}
 	return nil, fmt.Errorf("unhandled index operation %s[%s]", x.Type(), y.Type())
 }
 
+func outOfRange(i, n int, x Value) error {
+	if n == 0 {
+		return fmt.Errorf("index %d out of range: empty %s", i, x.Type())
+	} else {
+		return fmt.Errorf("%s index %d out of range [%d:%d]", x.Type(), i, -n, n-1)
+	}
+}
+
 // setIndex implements x[y] = z.
-func setIndex(fr *Frame, x, y, z Value) error {
+func setIndex(x, y, z Value) error {
 	switch x := x.(type) {
 	case HasSetKey:
 		if err := x.SetKey(y, z); err != nil {
@@ -434,15 +565,17 @@ func setIndex(fr *Frame, x, y, z Value) error {
 		}
 
 	case HasSetIndex:
+		n := x.Len()
 		i, err := AsInt32(y)
 		if err != nil {
 			return err
 		}
+		origI := i
 		if i < 0 {
-			i += x.Len()
+			i += n
 		}
-		if i < 0 || i >= x.Len() {
-			return fmt.Errorf("%s index %d out of range [0:%d]", x.Type(), i, x.Len())
+		if i < 0 || i >= n {
+			return outOfRange(origI, n, x)
 		}
 		return x.SetIndex(i, z)
 
@@ -454,26 +587,20 @@ func setIndex(fr *Frame, x, y, z Value) error {
 
 // Unary applies a unary operator (+, -, ~, not) to its operand.
 func Unary(op syntax.Token, x Value) (Value, error) {
-	switch op {
-	case syntax.MINUS:
-		switch x := x.(type) {
-		case Int:
-			return zero.Sub(x), nil
-		case Float:
-			return -x, nil
-		}
-	case syntax.PLUS:
-		switch x.(type) {
-		case Int, Float:
-			return x, nil
-		}
-	case syntax.TILDE:
-		if xint, ok := x.(Int); ok {
-			return xint.Not(), nil
-		}
-	case syntax.NOT:
+	// The NOT operator is not customizable.
+	if op == syntax.NOT {
 		return !x.Truth(), nil
 	}
+
+	// Int, Float, and user-defined types
+	if x, ok := x.(HasUnary); ok {
+		// (nil, nil) => unhandled
+		y, err := x.Unary(op)
+		if y != nil || err != nil {
+			return y, err
+		}
+	}
+
 	return nil, fmt.Errorf("unknown unary op: %s %s", op, x.Type())
 }
 
@@ -808,6 +935,7 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 	}
 
 	// user-defined types
+	// (nil, nil) => unhandled
 	if x, ok := x.(HasBinary); ok {
 		z, err := x.Binary(op, y, Left)
 		if z != nil || err != nil {
@@ -882,14 +1010,38 @@ func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 		return nil, fmt.Errorf("invalid call of non-function (%s)", fn.Type())
 	}
 
-	thread.frame = &Frame{parent: thread.frame, callable: c}
+	// Allocate and push a new frame.
+	var fr *frame
+	// Optimization: use slack portion of thread.stack
+	// slice as a freelist of empty frames.
+	if n := len(thread.stack); n < cap(thread.stack) {
+		fr = thread.stack[n : n+1][0]
+	}
+	if fr == nil {
+		fr = new(frame)
+	}
+	thread.stack = append(thread.stack, fr) // push
+
+	fr.callable = c
+
+	thread.beginProfSpan()
 	result, err := c.CallInternal(thread, args, kwargs)
-	thread.frame = thread.frame.parent
+	thread.endProfSpan()
 
 	// Sanity check: nil is not a valid Starlark value.
 	if result == nil && err == nil {
-		return nil, fmt.Errorf("internal error: nil (not None) returned from %s", fn)
+		err = fmt.Errorf("internal error: nil (not None) returned from %s", fn)
 	}
+
+	// Always return an EvalError with an accurate frame.
+	if err != nil {
+		if _, ok := err.(*EvalError); !ok {
+			err = thread.evalError(err)
+		}
+	}
+
+	*fr = frame{}                                     // clear out any references
+	thread.stack = thread.stack[:len(thread.stack)-1] // pop
 
 	return result, err
 }
@@ -958,7 +1110,8 @@ func slice(x, lo, hi, step_ Value) (Value, error) {
 }
 
 // From Hacker's Delight, section 2.8.
-func signum(x int) int { return int(uint64(int64(x)>>63) | (uint64(-x) >> 63)) }
+func signum64(x int64) int { return int(uint64(x>>63) | uint64(-x)>>63) }
+func signum(x int) int     { return signum64(int64(x)) }
 
 // indices converts start_ and end_ to indices in the range [0:len].
 // The start index defaults to 0 and the end index defaults to len.
@@ -1011,12 +1164,29 @@ func asIndex(v Value, len int, result *int) error {
 // setArgs sets the values of the formal parameters of function fn in
 // based on the actual parameter values in args and kwargs.
 func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
-	// This is adapted from the algorithm from PyEval_EvalCodeEx.
+
+	// This is the general schema of a function:
+	//
+	//   def f(p1, p2=dp2, p3=dp3, *args, k1, k2=dk2, k3, **kwargs)
+	//
+	// The p parameters are non-kwonly, and may be specified positionally.
+	// The k parameters are kwonly, and must be specified by name.
+	// The defaults tuple is (dp2, dp3, mandatory, dk2, mandatory).
+	//
+	// Arguments are processed as follows:
+	// - positional arguments are bound to a prefix of [p1, p2, p3].
+	// - surplus positional arguments are bound to *args.
+	// - keyword arguments are bound to any of {p1, p2, p3, k1, k2, k3};
+	//   duplicate bindings are rejected.
+	// - surplus keyword arguments are bound to **kwargs.
+	// - defaults are bound to each parameter from p2 to k3 if no value was set.
+	//   default values come from the tuple above.
+	//   It is an error if the tuple entry for an unset parameter is 'mandatory'.
 
 	// Nullary function?
 	if fn.NumParams() == 0 {
 		if nactual := len(args) + len(kwargs); nactual > 0 {
-			return fmt.Errorf("function %s takes no arguments (%d given)", fn.Name(), nactual)
+			return fmt.Errorf("function %s accepts no arguments (%d given)", fn.Name(), nactual)
 		}
 		return nil
 	}
@@ -1028,7 +1198,7 @@ func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
 		return z
 	}
 
-	// nparams is the number of ordinary parameters (sans * or **).
+	// nparams is the number of ordinary parameters (sans *args and **kwargs).
 	nparams := fn.NumParams()
 	var kwdict *Dict
 	if fn.HasKwargs() {
@@ -1040,32 +1210,29 @@ func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
 		nparams--
 	}
 
+	// nonkwonly is the number of non-kwonly parameters.
+	nonkwonly := nparams - fn.NumKwonlyParams()
+
 	// Too many positional args?
 	n := len(args)
-	maxpos := nparams
-	if len(args) > maxpos {
+	if len(args) > nonkwonly {
 		if !fn.HasVarargs() {
-			return fmt.Errorf("function %s takes %s %d positional argument%s (%d given)",
+			return fmt.Errorf("function %s accepts %s%d positional argument%s (%d given)",
 				fn.Name(),
-				cond(len(fn.defaults) > 0, "at most", "exactly"),
-				maxpos,
-				cond(nparams == 1, "", "s"),
-				len(args)+len(kwargs))
+				cond(len(fn.defaults) > fn.NumKwonlyParams(), "at most ", ""),
+				nonkwonly,
+				cond(nonkwonly == 1, "", "s"),
+				len(args))
 		}
-		n = maxpos
+		n = nonkwonly
 	}
 
-	// set of defined (regular) parameters
-	var defined intset
-	defined.init(nparams)
-
-	// ordinary parameters
+	// Bind positional arguments to non-kwonly parameters.
 	for i := 0; i < n; i++ {
 		locals[i] = args[i]
-		defined.set(i)
 	}
 
-	// variadic arguments
+	// Bind surplus positional arguments to *args parameter.
 	if fn.HasVarargs() {
 		tuple := make(Tuple, len(args)-n)
 		for i := n; i < len(args); i++ {
@@ -1074,13 +1241,13 @@ func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
 		locals[nparams] = tuple
 	}
 
-	// keyword arguments
+	// Bind keyword arguments to parameters.
 	paramIdents := fn.funcode.Locals[:nparams]
 	for _, pair := range kwargs {
 		k, v := pair[0].(String), pair[1]
 		if i := findParam(paramIdents, string(k)); i >= 0 {
-			if defined.set(i) {
-				return fmt.Errorf("function %s got multiple values for keyword argument %s", fn.Name(), k)
+			if locals[i] != nil {
+				return fmt.Errorf("function %s got multiple values for parameter %s", fn.Name(), k)
 			}
 			locals[i] = v
 			continue
@@ -1088,41 +1255,47 @@ func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
 		if kwdict == nil {
 			return fmt.Errorf("function %s got an unexpected keyword argument %s", fn.Name(), k)
 		}
-		n := kwdict.Len()
+		oldlen := kwdict.Len()
 		kwdict.SetKey(k, v)
-		if kwdict.Len() == n {
-			return fmt.Errorf("function %s got multiple values for keyword argument %s", fn.Name(), k)
+		if kwdict.Len() == oldlen {
+			return fmt.Errorf("function %s got multiple values for parameter %s", fn.Name(), k)
 		}
 	}
 
-	// default values
-	if n < nparams {
+	// Are defaults required?
+	if n < nparams || fn.NumKwonlyParams() > 0 {
 		m := nparams - len(fn.defaults) // first default
 
-		// report errors for missing non-optional arguments
-		i := n
-		for ; i < m; i++ {
-			if !defined.get(i) {
-				return fmt.Errorf("function %s takes %s %d positional argument%s (%d given)",
-					fn.Name(),
-					cond(fn.HasVarargs() || len(fn.defaults) > 0, "at least", "exactly"),
-					m,
-					cond(m == 1, "", "s"),
-					defined.len())
+		// Report errors for missing required arguments.
+		var missing []string
+		var i int
+		for i = n; i < m; i++ {
+			if locals[i] == nil {
+				missing = append(missing, paramIdents[i].Name)
 			}
 		}
 
-		// set default values
+		// Bind default values to parameters.
 		for ; i < nparams; i++ {
-			if !defined.get(i) {
-				locals[i] = fn.defaults[i-m]
+			if locals[i] == nil {
+				dflt := fn.defaults[i-m]
+				if _, ok := dflt.(mandatory); ok {
+					missing = append(missing, paramIdents[i].Name)
+					continue
+				}
+				locals[i] = dflt
 			}
+		}
+
+		if missing != nil {
+			return fmt.Errorf("function %s missing %d argument%s (%s)",
+				fn.Name(), len(missing), cond(len(missing) > 1, "s", ""), strings.Join(missing, ", "))
 		}
 	}
 	return nil
 }
 
-func findParam(params []compile.Ident, name string) int {
+func findParam(params []compile.Binding, name string) int {
 	for i, param := range params {
 		if param.Name == name {
 			return i
@@ -1131,54 +1304,14 @@ func findParam(params []compile.Ident, name string) int {
 	return -1
 }
 
-type intset struct {
-	small uint64       // bitset, used if n < 64
-	large map[int]bool //    set, used if n >= 64
-}
-
-func (is *intset) init(n int) {
-	if n >= 64 {
-		is.large = make(map[int]bool)
-	}
-}
-
-func (is *intset) set(i int) (prev bool) {
-	if is.large == nil {
-		prev = is.small&(1<<uint(i)) != 0
-		is.small |= 1 << uint(i)
-	} else {
-		prev = is.large[i]
-		is.large[i] = true
-	}
-	return
-}
-
-func (is *intset) get(i int) bool {
-	if is.large == nil {
-		return is.small&(1<<uint(i)) != 0
-	}
-	return is.large[i]
-}
-
-func (is *intset) len() int {
-	if is.large == nil {
-		// Suboptimal, but used only for error reporting.
-		len := 0
-		for i := 0; i < 64; i++ {
-			if is.small&(1<<uint(i)) != 0 {
-				len++
-			}
-		}
-		return len
-	}
-	return len(is.large)
-}
-
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string-interpolation
 func interpolate(format string, x Value) (Value, error) {
-	var buf bytes.Buffer
-	path := make([]Value, 0, 4)
+	buf := new(strings.Builder)
 	index := 0
+	nargs := 1
+	if tuple, ok := x.(Tuple); ok {
+		nargs = len(tuple)
+	}
 	for {
 		i := strings.IndexByte(format, '%')
 		if i < 0 {
@@ -1213,13 +1346,11 @@ func interpolate(format string, x Value) (Value, error) {
 			format = format[j+1:]
 		} else {
 			// positional argument: %s.
-			if tuple, ok := x.(Tuple); ok {
-				if index >= len(tuple) {
-					return nil, fmt.Errorf("not enough arguments for format string")
-				}
-				arg = tuple[index]
-			} else if index > 0 {
+			if index >= nargs {
 				return nil, fmt.Errorf("not enough arguments for format string")
+			}
+			if tuple, ok := x.(Tuple); ok {
+				arg = tuple[index]
 			} else {
 				arg = x
 			}
@@ -1240,7 +1371,7 @@ func interpolate(format string, x Value) (Value, error) {
 			if str, ok := AsString(arg); ok && c == 's' {
 				buf.WriteString(str)
 			} else {
-				writeValue(&buf, arg, path)
+				writeValue(buf, arg, nil)
 			}
 		case 'd', 'i', 'o', 'x', 'X':
 			i, err := NumberToInt(arg)
@@ -1249,13 +1380,13 @@ func interpolate(format string, x Value) (Value, error) {
 			}
 			switch c {
 			case 'd', 'i':
-				buf.WriteString(i.bigint.Text(10))
+				fmt.Fprintf(buf, "%d", i)
 			case 'o':
-				buf.WriteString(i.bigint.Text(8))
+				fmt.Fprintf(buf, "%o", i)
 			case 'x':
-				buf.WriteString(i.bigint.Text(16))
+				fmt.Fprintf(buf, "%x", i)
 			case 'X':
-				buf.WriteString(strings.ToUpper(i.bigint.Text(16)))
+				fmt.Fprintf(buf, "%X", i)
 			}
 		case 'e', 'f', 'g', 'E', 'F', 'G':
 			f, ok := AsFloat(arg)
@@ -1264,17 +1395,17 @@ func interpolate(format string, x Value) (Value, error) {
 			}
 			switch c {
 			case 'e':
-				fmt.Fprintf(&buf, "%e", f)
+				fmt.Fprintf(buf, "%e", f)
 			case 'f':
-				fmt.Fprintf(&buf, "%f", f)
+				fmt.Fprintf(buf, "%f", f)
 			case 'g':
-				fmt.Fprintf(&buf, "%g", f)
+				fmt.Fprintf(buf, "%g", f)
 			case 'E':
-				fmt.Fprintf(&buf, "%E", f)
+				fmt.Fprintf(buf, "%E", f)
 			case 'F':
-				fmt.Fprintf(&buf, "%F", f)
+				fmt.Fprintf(buf, "%F", f)
 			case 'G':
-				fmt.Fprintf(&buf, "%G", f)
+				fmt.Fprintf(buf, "%G", f)
 			}
 		case 'c':
 			switch arg := arg.(type) {
@@ -1303,7 +1434,7 @@ func interpolate(format string, x Value) (Value, error) {
 		index++
 	}
 
-	if tuple, ok := x.(Tuple); ok && index < len(tuple) {
+	if index < nargs {
 		return nil, fmt.Errorf("too many arguments for format string")
 	}
 

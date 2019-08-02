@@ -70,9 +70,7 @@ type File struct {
 	Path  string
 	Stmts []Stmt
 
-	// set by resolver:
-	Locals  []*Ident // this file's (comprehension-)local variables
-	Globals []*Ident // this file's global variables
+	Module interface{} // a *resolve.Module, set by resolver
 }
 
 func (x *File) Span() (start, end Position) {
@@ -118,35 +116,19 @@ func (x *AssignStmt) Span() (start, end Position) {
 	return
 }
 
-// A Function represents the common parts of LambdaExpr and DefStmt.
-type Function struct {
-	commentsRef
-	StartPos Position // position of DEF or LAMBDA token
-	Params   []Expr   // param = ident | ident=expr | *ident | **ident
-	Body     []Stmt
-
-	// set by resolver:
-	HasVarargs bool     // whether params includes *args (convenience)
-	HasKwargs  bool     // whether params includes **kwargs (convenience)
-	Locals     []*Ident // this function's local variables, parameters first
-	FreeVars   []*Ident // enclosing local variables to capture in closure
-}
-
-func (x *Function) Span() (start, end Position) {
-	_, end = x.Body[len(x.Body)-1].Span()
-	return x.StartPos, end
-}
-
 // A DefStmt represents a function definition.
 type DefStmt struct {
 	commentsRef
-	Def  Position
-	Name *Ident
-	Function
+	Def    Position
+	Name   *Ident
+	Params []Expr // param = ident | ident=expr | * | *ident | **ident
+	Body   []Stmt
+
+	Function interface{} // a *resolve.Function, set by resolver
 }
 
 func (x *DefStmt) Span() (start, end Position) {
-	_, end = x.Function.Body[len(x.Body)-1].Span()
+	_, end = x.Body[len(x.Body)-1].Span()
 	return x.Def, end
 }
 
@@ -259,10 +241,7 @@ type Ident struct {
 	NamePos Position
 	Name    string
 
-	// set by resolver:
-
-	Scope uint8 // see type resolve.Scope
-	Index int   // index into enclosing {DefStmt,File}.Locals (if scope==Local) or DefStmt.FreeVars (if scope==Free) or File.Globals (if scope==Global)
+	Binding interface{} // a *resolver.Binding, set by resolver
 }
 
 func (x *Ident) Span() (start, end Position) {
@@ -426,11 +405,14 @@ func (x *DictEntry) Span() (start, end Position) {
 type LambdaExpr struct {
 	commentsRef
 	Lambda Position
-	Function
+	Params []Expr // param = ident | ident=expr | * | *ident | **ident
+	Body   Expr
+
+	Function interface{} // a *resolve.Function, set by resolver
 }
 
 func (x *LambdaExpr) Span() (start, end Position) {
-	_, end = x.Function.Body[len(x.Body)-1].Span()
+	_, end = x.Body.Span()
 	return x.Lambda, end
 }
 
@@ -479,19 +461,31 @@ func (x *TupleExpr) Span() (start, end Position) {
 }
 
 // A UnaryExpr represents a unary expression: Op X.
+//
+// As a special case, UnaryOp{Op:Star} may also represent
+// the star parameter in def f(*args) or def f(*, x).
 type UnaryExpr struct {
 	commentsRef
 	OpPos Position
 	Op    Token
-	X     Expr
+	X     Expr // may be nil if Op==STAR
 }
 
 func (x *UnaryExpr) Span() (start, end Position) {
-	_, end = x.X.Span()
+	if x.X != nil {
+		_, end = x.X.Span()
+	} else {
+		end = x.OpPos.add("*")
+	}
 	return x.OpPos, end
 }
 
 // A BinaryExpr represents a binary expression: X Op Y.
+//
+// As a special case, BinaryExpr{Op:EQ} may also
+// represent a named argument in a call f(k=v)
+// or a named parameter in a function declaration
+// def f(param=default).
 type BinaryExpr struct {
 	commentsRef
 	X     Expr

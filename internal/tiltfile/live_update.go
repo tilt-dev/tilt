@@ -137,7 +137,7 @@ func (s *tiltfileState) liveUpdateFallBackOn(thread *starlark.Thread, fn *starla
 
 	ret := liveUpdateFallBackOnStep{
 		files:    fileStrings,
-		position: thread.TopFrame().Position(),
+		position: thread.CallFrame(1).Pos,
 	}
 	s.recordLiveUpdateStep(ret)
 	return ret, nil
@@ -152,7 +152,7 @@ func (s *tiltfileState) liveUpdateSync(thread *starlark.Thread, fn *starlark.Bui
 	ret := liveUpdateSyncStep{
 		localPath:  s.absPath(localPath),
 		remotePath: remotePath,
-		position:   thread.TopFrame().Position(),
+		position:   thread.CallFrame(1).Pos,
 	}
 	s.recordLiveUpdateStep(ret)
 	return ret, nil
@@ -179,7 +179,7 @@ func (s *tiltfileState) liveUpdateRun(thread *starlark.Thread, fn *starlark.Buil
 	ret := liveUpdateRunStep{
 		command:  command,
 		triggers: triggerStrings,
-		position: thread.TopFrame().Position(),
+		position: thread.CallFrame(1).Pos,
 	}
 	s.recordLiveUpdateStep(ret)
 	return ret, nil
@@ -191,7 +191,7 @@ func (s *tiltfileState) liveUpdateRestartContainer(thread *starlark.Thread, fn *
 	}
 
 	ret := liveUpdateRestartContainerStep{
-		position: thread.TopFrame().Position(),
+		position: thread.CallFrame(1).Pos,
 	}
 	s.recordLiveUpdateStep(ret)
 	return ret, nil

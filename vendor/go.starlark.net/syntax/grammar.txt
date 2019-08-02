@@ -10,7 +10,7 @@ DefStmt = 'def' identifier '(' [Parameters [',']] ')' ':' Suite .
 
 Parameters = Parameter {',' Parameter}.
 
-Parameter = identifier | identifier '=' Test | '*' identifier | '**' identifier .
+Parameter = identifier | identifier '=' Test | '*' | '*' identifier | '**' identifier .
 
 IfStmt = 'if' Test ':' Suite {'elif' Test ':' Suite} ['else' ':' Suite] .
 

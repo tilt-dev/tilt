@@ -10,6 +10,9 @@ package syntax
 // recursively for each non-nil child of n.
 // Walk then calls f(nil).
 func Walk(n Node, f func(Node) bool) {
+	if n == nil {
+		panic("nil")
+	}
 	if !f(n) {
 		return
 	}
@@ -31,15 +34,15 @@ func Walk(n Node, f func(Node) bool) {
 		walkStmts(n.False, f)
 
 	case *AssignStmt:
-		Walk(n.RHS, f)
 		Walk(n.LHS, f)
+		Walk(n.RHS, f)
 
 	case *DefStmt:
 		Walk(n.Name, f)
-		for _, param := range n.Function.Params {
+		for _, param := range n.Params {
 			Walk(param, f)
 		}
-		walkStmts(n.Function.Body, f)
+		walkStmts(n.Body, f)
 
 	case *ForStmt:
 		Walk(n.Vars, f)
@@ -97,10 +100,10 @@ func Walk(n Node, f func(Node) bool) {
 		}
 
 	case *Comprehension:
+		Walk(n.Body, f)
 		for _, clause := range n.Clauses {
 			Walk(clause, f)
 		}
-		Walk(n.Body, f)
 
 	case *IfClause:
 		Walk(n.Cond, f)
@@ -122,7 +125,9 @@ func Walk(n Node, f func(Node) bool) {
 		}
 
 	case *UnaryExpr:
-		Walk(n.X, f)
+		if n.X != nil {
+			Walk(n.X, f)
+		}
 
 	case *BinaryExpr:
 		Walk(n.X, f)
@@ -139,10 +144,10 @@ func Walk(n Node, f func(Node) bool) {
 		}
 
 	case *LambdaExpr:
-		for _, param := range n.Function.Params {
+		for _, param := range n.Params {
 			Walk(param, f)
 		}
-		walkStmts(n.Function.Body, f)
+		Walk(n.Body, f)
 
 	default:
 		panic(n)

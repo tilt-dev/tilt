@@ -47,7 +47,43 @@ func Parse(filename string, src interface{}, mode Mode) (f *File, err error) {
 	return f, nil
 }
 
+// ParseCompoundStmt parses a single compound statement:
+// a blank line, a def, for, while, or if statement, or a
+// semicolon-separated list of simple statements followed
+// by a newline. These are the units on which the REPL operates.
+// ParseCompoundStmt does not consume any following input.
+// The parser calls the readline function each
+// time it needs a new line of input.
+func ParseCompoundStmt(filename string, readline func() ([]byte, error)) (f *File, err error) {
+	in, err := newScanner(filename, readline, false)
+	if err != nil {
+		return nil, err
+	}
+
+	p := parser{in: in}
+	defer p.in.recover(&err)
+
+	p.nextToken() // read first lookahead token
+
+	var stmts []Stmt
+	switch p.tok {
+	case DEF, IF, FOR, WHILE:
+		stmts = p.parseStmt(stmts)
+	case NEWLINE:
+		// blank line
+	default:
+		stmts = p.parseSimpleStmt(stmts, false)
+		// Require but don't consume newline, to avoid blocking again.
+		if p.tok != NEWLINE {
+			p.in.errorf(p.in.pos, "invalid syntax")
+		}
+	}
+
+	return &File{Path: filename, Stmts: stmts}, nil
+}
+
 // ParseExpr parses a Starlark expression.
+// A comma-separated list of expressions is parsed as a tuple.
 // See Parse for explanation of parameters.
 func ParseExpr(filename string, src interface{}, mode Mode) (expr Expr, err error) {
 	in, err := newScanner(filename, src, mode&RetainComments != 0)
@@ -58,7 +94,9 @@ func ParseExpr(filename string, src interface{}, mode Mode) (expr Expr, err erro
 	defer p.in.recover(&err)
 
 	p.nextToken() // read first lookahead token
-	expr = p.parseTest()
+
+	// Use parseExpr, not parseTest, to permit an unparenthesized tuple.
+	expr = p.parseExpr(false)
 
 	// A following newline (e.g. "f()\n") appears outside any brackets,
 	// on a non-blank line, and thus results in a NEWLINE token.
@@ -114,7 +152,7 @@ func (p *parser) parseStmt(stmts []Stmt) []Stmt {
 	} else if p.tok == WHILE {
 		return append(stmts, p.parseWhileStmt())
 	}
-	return p.parseSimpleStmt(stmts)
+	return p.parseSimpleStmt(stmts, true)
 }
 
 func (p *parser) parseDefStmt() Stmt {
@@ -126,13 +164,10 @@ func (p *parser) parseDefStmt() Stmt {
 	p.consume(COLON)
 	body := p.parseSuite()
 	return &DefStmt{
-		Def:  defpos,
-		Name: id,
-		Function: Function{
-			StartPos: defpos,
-			Params:   params,
-			Body:     body,
-		},
+		Def:    defpos,
+		Name:   id,
+		Params: params,
+		Body:   body,
 	}
 }
 
@@ -219,7 +254,8 @@ func (p *parser) parseForLoopVariables() Expr {
 }
 
 // simple_stmt = small_stmt (SEMI small_stmt)* SEMI? NEWLINE
-func (p *parser) parseSimpleStmt(stmts []Stmt) []Stmt {
+// In REPL mode, it does not consume the NEWLINE.
+func (p *parser) parseSimpleStmt(stmts []Stmt, consumeNL bool) []Stmt {
 	for {
 		stmts = append(stmts, p.parseSmallStmt())
 		if p.tok != SEMI {
@@ -231,9 +267,10 @@ func (p *parser) parseSimpleStmt(stmts []Stmt) []Stmt {
 		}
 	}
 	// EOF without NEWLINE occurs in `if x: pass`, for example.
-	if p.tok != EOF {
+	if p.tok != EOF && consumeNL {
 		p.consume(NEWLINE)
 	}
+
 	return stmts
 }
 
@@ -355,7 +392,7 @@ func (p *parser) parseSuite() []Stmt {
 		return stmts
 	}
 
-	return p.parseSimpleStmt(nil)
+	return p.parseSimpleStmt(nil, true)
 }
 
 func (p *parser) parseIdent() *Ident {
@@ -382,15 +419,17 @@ func (p *parser) consume(t Token) Position {
 //
 // param = IDENT
 //       | IDENT EQ test
+//       | STAR
 //       | STAR IDENT
 //       | STARSTAR IDENT
 //
 // parseParams parses a parameter list.  The resulting expressions are of the form:
 //
-//      *Ident
-//      *Binary{Op: EQ, X: *Ident, Y: Expr}
-//      *Unary{Op: STAR, X: *Ident}
-//      *Unary{Op: STARSTAR, X: *Ident}
+//      *Ident                                          x
+//      *Binary{Op: EQ, X: *Ident, Y: Expr}             x=y
+//      *Unary{Op: STAR}                                *
+//      *Unary{Op: STAR, X: *Ident}                     *args
+//      *Unary{Op: STARSTAR, X: *Ident}                 **kwargs
 func (p *parser) parseParams() []Expr {
 	var params []Expr
 	stars := false
@@ -406,16 +445,19 @@ func (p *parser) parseParams() []Expr {
 			break
 		}
 
-		// *args or **kwargs
+		// * or *args or **kwargs
 		if p.tok == STAR || p.tok == STARSTAR {
 			stars = true
 			op := p.tok
 			pos := p.nextToken()
-			id := p.parseIdent()
+			var x Expr
+			if op == STARSTAR || p.tok == IDENT {
+				x = p.parseIdent()
+			}
 			params = append(params, &UnaryExpr{
 				OpPos: pos,
 				Op:    op,
-				X:     id,
+				X:     x,
 			})
 			continue
 		}
@@ -524,11 +566,8 @@ func (p *parser) parseLambda(allowCond bool) Expr {
 
 	return &LambdaExpr{
 		Lambda: lambda,
-		Function: Function{
-			StartPos: lambda,
-			Params:   params,
-			Body:     []Stmt{&ReturnStmt{Result: body}},
-		},
+		Params: params,
+		Body:   body,
 	}
 }
 

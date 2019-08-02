@@ -73,7 +73,7 @@ func TestGitRepoBadMethodCall(t *testing.T) {
 local_git_repo('.').asdf()
 `)
 
-	f.loadErrString("Tiltfile:2: in <toplevel>", "Error: gitRepo has no .asdf field or method")
+	f.loadErrString("Tiltfile:2:20: in <toplevel>", "Error: gitRepo has no .asdf field or method")
 }
 
 func TestFastBuildBadMethodCall(t *testing.T) {
@@ -1498,7 +1498,7 @@ func TestBlobErr(t *testing.T) {
 		`blob(42)`,
 	)
 
-	f.loadErrString("for parameter 1: got int, want string")
+	f.loadErrString("for parameter input: got int, want string")
 }
 
 func TestImageDependencyV1(t *testing.T) {
