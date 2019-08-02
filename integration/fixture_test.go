@@ -15,6 +15,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/windmilleng/tilt/internal/testutils/bufsync"
 )
 
 var packageDir string
@@ -38,7 +40,7 @@ type fixture struct {
 	ctx           context.Context
 	cancel        func()
 	dir           string
-	logs          *bytes.Buffer
+	logs          *bufsync.ThreadSafeBuffer
 	cmds          []*exec.Cmd
 	originalFiles map[string]string
 	tiltEnviron   map[string]string
@@ -58,7 +60,7 @@ func newFixture(t *testing.T, dir string) *fixture {
 		ctx:           ctx,
 		cancel:        cancel,
 		dir:           dir,
-		logs:          bytes.NewBuffer(nil),
+		logs:          bufsync.NewThreadSafeBuffer(),
 		originalFiles: make(map[string]string),
 		tiltEnviron: map[string]string{
 			"TILT_DISABLE_ANALYTICS": "true",
@@ -114,7 +116,7 @@ func (f *fixture) deleteNamespace() {
 }
 
 func (f *fixture) DumpLogs() {
-	_, _ = os.Stdout.Write(f.logs.Bytes())
+	_, _ = os.Stdout.Write([]byte(f.logs.String()))
 }
 
 func (f *fixture) WaitUntil(ctx context.Context, msg string, fun func() (string, error), expectedContents string) {
@@ -188,22 +190,23 @@ func (f *fixture) TiltWatchExec() {
 
 func (f *fixture) ReplaceContents(fileBaseName, original, replacement string) {
 	file := filepath.Join(f.dir, fileBaseName)
-	contents, ok := f.originalFiles[file]
-	if !ok {
-		contentsB, err := ioutil.ReadFile(file)
-		if err != nil {
-			f.t.Fatal(err)
-		}
-		contents = string(contentsB)
+	contentsBytes, err := ioutil.ReadFile(file)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	contents := string(contentsBytes)
+	_, hasStoredContents := f.originalFiles[file]
+	if !hasStoredContents {
 		f.originalFiles[file] = contents
 	}
 
 	newContents := strings.Replace(contents, original, replacement, -1)
 	if newContents == contents {
-		f.t.Fatalf("Could not find contents to replace in file %s: %s", fileBaseName, contents)
+		f.t.Fatalf("Could not find contents %q to replace in file %s: %s", original, fileBaseName, contents)
 	}
 
-	err := ioutil.WriteFile(file, []byte(newContents), os.FileMode(0777))
+	err = ioutil.WriteFile(file, []byte(newContents), os.FileMode(0777))
 	if err != nil {
 		f.t.Fatal(err)
 	}

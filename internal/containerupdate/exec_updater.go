@@ -8,8 +8,8 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 
+	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/k8s"
-
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
@@ -59,7 +59,7 @@ func (cu *ExecUpdater) UpdateContainer(ctx context.Context, cInfo store.Containe
 		err := cu.kCli.Exec(ctx, cInfo.PodID, cInfo.ContainerName, cInfo.Namespace,
 			c.Argv, nil, w, w)
 		if err != nil {
-			return err
+			return build.WrapCodeExitError(err, cInfo.ContainerID, c)
 		}
 
 	}
