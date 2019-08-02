@@ -56,7 +56,10 @@ func initKlog(w io.Writer) {
 	var tmpFlagSet = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	klog.InitFlags(tmpFlagSet)
 
-	klog.SetOutput(filteredWriter(w, isResourceVersionTooOldMessage))
+	if klogLevel == 0 {
+		w = filteredWriter(w, isResourceVersionTooOldMessage)
+	}
+	klog.SetOutput(w)
 
 	flags := []string{
 		"--stderrthreshold", "FATAL",
