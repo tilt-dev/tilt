@@ -362,7 +362,7 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		newName:           newName,
 		portForwards:      portForwards,
 		extraPodSelectors: extraPodSelectors,
-		tiltfilePosition:  thread.Caller().Position(),
+		tiltfilePosition:  thread.CallFrame(1).Pos,
 		triggerMode:       triggerMode,
 	}
 

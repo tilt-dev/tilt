@@ -1097,7 +1097,7 @@ func (s *tiltfileState) triggerModeFn(thread *starlark.Thread, fn *starlark.Buil
 	}
 
 	s.triggerMode = triggerMode
-	s.triggerModeCallPosition = thread.Caller().Position()
+	s.triggerModeCallPosition = thread.CallFrame(1).Pos
 
 	return starlark.None, nil
 }

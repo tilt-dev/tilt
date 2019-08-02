@@ -34,6 +34,7 @@
 //      HasSetField     -- value has settable fields x.f
 //      HasSetIndex     -- value supports element update using x[i]=y
 //      HasSetKey       -- value supports map update using x[k]=v
+//      HasUnary        -- value defines unary operations such as + and -
 //
 // Client applications may also define domain-specific functions in Go
 // and make them available to Starlark programs.  Use NewBuiltin to
@@ -66,7 +67,6 @@ package starlark // import "go.starlark.net/starlark"
 // This file defines the data types of Starlark and their basic operations.
 
 import (
-	"bytes"
 	"fmt"
 	"math"
 	"math/big"
@@ -101,7 +101,8 @@ type Value interface {
 
 	// Hash returns a function of x such that Equals(x, y) => Hash(x) == Hash(y).
 	// Hash may fail if the value's type is not hashable, or if the value
-	// contains a non-hashable value.
+	// contains a non-hashable value. The hash is used only by dictionaries and
+	// is not exposed to the Starlark program.
 	Hash() (uint32, error)
 }
 
@@ -150,9 +151,15 @@ type Callable interface {
 	CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Value, error)
 }
 
+type callableWithPosition interface {
+	Callable
+	Position() syntax.Position
+}
+
 var (
-	_ Callable = (*Builtin)(nil)
-	_ Callable = (*Function)(nil)
+	_ Callable             = (*Builtin)(nil)
+	_ Callable             = (*Function)(nil)
+	_ callableWithPosition = (*Function)(nil)
 )
 
 // An Iterable abstracts a sequence of values.
@@ -191,7 +198,8 @@ type Sliceable interface {
 	Indexable
 	// For positive strides (step > 0), 0 <= start <= end <= n.
 	// For negative strides (step < 0), -1 <= end <= start < n.
-	// The caller must ensure that the start and end indices are valid.
+	// The caller must ensure that the start and end indices are valid
+	// and that step is non-zero.
 	Slice(start, end, step int) Value
 }
 
@@ -236,6 +244,9 @@ type Iterator interface {
 }
 
 // A Mapping is a mapping from keys to values, such as a dictionary.
+//
+// If a type satisfies both Mapping and Iterable, the iterator yields
+// the keys of the mapping.
 type Mapping interface {
 	Value
 	// Get returns the value corresponding to the specified key,
@@ -246,7 +257,14 @@ type Mapping interface {
 	Get(Value) (v Value, found bool, err error)
 }
 
-var _ Mapping = (*Dict)(nil)
+// An IterableMapping is a mapping that supports key enumeration.
+type IterableMapping interface {
+	Mapping
+	Iterate() Iterator // see Iterable interface
+	Items() []Tuple    // a new slice containing all key/value pairs
+}
+
+var _ IterableMapping = (*Dict)(nil)
 
 // A HasSetKey supports map update using x[k]=v syntax, like a dictionary.
 type HasSetKey interface {
@@ -257,7 +275,8 @@ type HasSetKey interface {
 var _ HasSetKey = (*Dict)(nil)
 
 // A HasBinary value may be used as either operand of these binary operators:
-//     +   -   *   /   %   in   not in   |   &
+//     +   -   *   /   //   %   in   not in   |   &   ^   <<   >>
+//
 // The Side argument indicates whether the receiver is the left or right operand.
 //
 // An implementation may decline to handle an operation by returning (nil, nil).
@@ -274,6 +293,17 @@ const (
 	Left  Side = false
 	Right Side = true
 )
+
+// A HasUnary value may be used as the operand of these unary operators:
+//     +   -   ~
+//
+// An implementation may decline to handle an operation by returning (nil, nil).
+// For this reason, clients should always call the standalone Unary(op, x)
+// function rather than calling the method directly.
+type HasUnary interface {
+	Value
+	Unary(op syntax.Token) (Value, error)
+}
 
 // A HasAttrs value has fields or methods that may be read by a dot expression (y = x.f).
 // Attribute names may be listed using the built-in 'dir' function.
@@ -295,10 +325,22 @@ var (
 )
 
 // A HasSetField value has fields that may be written by a dot expression (x.f = y).
+//
+// An implementation of SetField may return a NoSuchAttrError,
+// in which case the runtime may augment the error message to
+// warn of possible misspelling.
 type HasSetField interface {
 	HasAttrs
 	SetField(name string, val Value) error
 }
+
+// A NoSuchAttrError may be returned by an implementation of
+// HasAttrs.Attr or HasSetField.SetField to indicate that no such field
+// exists. In that case the runtime may augment the error message to
+// warn of possible misspelling.
+type NoSuchAttrError string
+
+func (e NoSuchAttrError) Error() string { return string(e) }
 
 // NoneType is the type of None.  Its only legal value is None.
 // (We represent it as a number, not struct{}, so that None may be constant.)
@@ -398,6 +440,17 @@ func AsFloat(x Value) (f float64, ok bool) {
 }
 
 func (x Float) Mod(y Float) Float { return Float(math.Mod(float64(x), float64(y))) }
+
+// Unary implements the operations +float and -float.
+func (f Float) Unary(op syntax.Token) (Value, error) {
+	switch op {
+	case syntax.MINUS:
+		return -f, nil
+	case syntax.PLUS:
+		return +f, nil
+	}
+	return nil, nil
+}
 
 // String is the type of a Starlark string.
 //
@@ -517,13 +570,30 @@ func (*stringIterator) Done() {}
 // The initialization behavior of a Starlark module is also represented by a Function.
 type Function struct {
 	funcode  *compile.Funcode
+	module   *module
 	defaults Tuple
 	freevars Tuple
+}
 
-	// These fields are shared by all functions in a module.
+// A module is the dynamic counterpart to a Program.
+// All functions in the same program share a module.
+type module struct {
+	program     *compile.Program
 	predeclared StringDict
 	globals     []Value
 	constants   []Value
+}
+
+// makeGlobalDict returns a new, unfrozen StringDict containing all global
+// variables so far defined in the module.
+func (m *module) makeGlobalDict() StringDict {
+	r := make(StringDict, len(m.program.Globals))
+	for i, id := range m.program.Globals {
+		if v := m.globals[i]; v != nil {
+			r[id.Name] = v
+		}
+	}
+	return r
 }
 
 func (fn *Function) Name() string          { return fn.funcode.Name } // "lambda" for anonymous functions
@@ -536,22 +606,20 @@ func (fn *Function) Truth() Bool           { return true }
 
 // Globals returns a new, unfrozen StringDict containing all global
 // variables so far defined in the function's module.
-func (fn *Function) Globals() StringDict {
-	m := make(StringDict, len(fn.funcode.Prog.Globals))
-	for i, id := range fn.funcode.Prog.Globals {
-		if v := fn.globals[i]; v != nil {
-			m[id.Name] = v
-		}
-	}
-	return m
-}
+func (fn *Function) Globals() StringDict { return fn.module.makeGlobalDict() }
 
 func (fn *Function) Position() syntax.Position { return fn.funcode.Pos }
 func (fn *Function) NumParams() int            { return fn.funcode.NumParams }
+func (fn *Function) NumKwonlyParams() int      { return fn.funcode.NumKwonlyParams }
 
 // Param returns the name and position of the ith parameter,
 // where 0 <= i < NumParams().
+// The *args and **kwargs parameters are at the end
+// even if there were optional parameters after *args.
 func (fn *Function) Param(i int) (string, syntax.Position) {
+	if i >= fn.NumParams() {
+		panic(i)
+	}
 	id := fn.funcode.Locals[i]
 	return id.Name, id.Pos
 }
@@ -610,8 +678,19 @@ func (b *Builtin) BindReceiver(recv Value) *Builtin {
 }
 
 // A *Dict represents a Starlark dictionary.
+// The zero value of Dict is a valid empty dictionary.
+// If you know the exact final number of entries,
+// it is more efficient to call NewDict.
 type Dict struct {
 	ht hashtable
+}
+
+// NewDict returns a set with initial space for
+// at least size insertions before rehashing.
+func NewDict(size int) *Dict {
+	dict := new(Dict)
+	dict.ht.init(size)
+	return dict
 }
 
 func (d *Dict) Clear() error                                    { return d.ht.clear() }
@@ -867,8 +946,19 @@ func (it *tupleIterator) Next(p *Value) bool {
 func (it *tupleIterator) Done() {}
 
 // A Set represents a Starlark set value.
+// The zero value of Set is a valid empty set.
+// If you know the exact final number of elements,
+// it is more efficient to call NewSet.
 type Set struct {
 	ht hashtable // values are all None
+}
+
+// NewSet returns a dictionary with initial space for
+// at least size insertions before rehashing.
+func NewSet(size int) *Set {
+	set := new(Set)
+	set.ht.init(size)
+	return set
 }
 
 func (s *Set) Delete(k Value) (found bool, err error) { _, found, err = s.ht.delete(k); return }
@@ -930,15 +1020,19 @@ func (s *Set) Union(iter Iterator) (Value, error) {
 // toString returns the string form of value v.
 // It may be more efficient than v.String() for larger values.
 func toString(v Value) string {
-	var buf bytes.Buffer
-	path := make([]Value, 0, 4)
-	writeValue(&buf, v, path)
+	buf := new(strings.Builder)
+	writeValue(buf, v, nil)
 	return buf.String()
 }
 
-// path is the list of *List and *Dict values we're currently printing.
+// writeValue writes x to out.
+//
+// path is used to detect cycles.
+// It contains the list of *List and *Dict values we're currently printing.
 // (These are the only potentially cyclic structures.)
-func writeValue(out *bytes.Buffer, x Value, path []Value) {
+// Callers should generally pass nil for path.
+// It is safe to re-use the same path slice for multiple calls.
+func writeValue(out *strings.Builder, x Value, path []Value) {
 	switch x := x.(type) {
 	case nil:
 		out.WriteString("<nil>") // indicates a bug

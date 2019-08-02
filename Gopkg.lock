@@ -1158,17 +1158,18 @@
   version = "v0.18.0"
 
 [[projects]]
-  branch = "options"
-  digest = "1:5a5bee0940615e07d3c0093497df22f1e133a433550be3ab7f116317b728b723"
+  branch = "master"
+  digest = "1:281ea62de3a62abc33f24e71f91c4e47967b34cf134f17448e0047aa1ff7a80d"
   name = "go.starlark.net"
   packages = [
     "internal/compile",
+    "internal/spell",
     "resolve",
     "starlark",
     "syntax",
   ]
   pruneopts = "UT"
-  revision = "c0b6b768d91b2b919fd75c060b95f91ecb3b6d8a"
+  revision = "fc7a7f44baedf13df916b2aad597bc944964dd27"
 
 [[projects]]
   branch = "master"
@@ -1850,6 +1851,7 @@
     "k8s.io/client-go/tools/portforward",
     "k8s.io/client-go/tools/remotecommand",
     "k8s.io/client-go/transport/spdy",
+    "k8s.io/client-go/util/exec",
     "k8s.io/client-go/util/jsonpath",
     "k8s.io/klog",
     "k8s.io/kubernetes/pkg/kubectl/scheme",
