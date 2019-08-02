@@ -138,6 +138,24 @@ func TestNamespaceGKE(t *testing.T) {
 	assert.Equal(t, "sancho-ns", string(f.sCli.Namespace))
 }
 
+func TestYamlManifestDeploy(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	defer f.TearDown()
+
+	manifest := manifestbuilder.New(f, "some_yaml").
+		WithK8sYAML(testyaml.TracerYAML).Build()
+	targets := buildTargets(manifest)
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 0, f.sCli.UpdateContainerCount)
+	assert.Equal(t, 0, f.docker.BuildCount)
+	assert.Equal(t, 0, f.docker.PushCount)
+	f.assertK8sUpsertCalled(true)
+}
+
 func TestContainerBuildLocal(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
