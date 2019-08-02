@@ -18,11 +18,38 @@ function logToLines(s: string) {
   return s.split("\n").map((l, i) => <AnsiLine key={"logLine" + i} line={l} />)
 }
 
-function alertElements(
+function renderAlertLinkButton(
+    alert: Alert,
+    alertLinks: { [key: string]: string },
+    handleSendAlert: (alert: Alert) => void,
+) {
+  let key = alertKey(alert)
+  let hasLink = alertLinks.hasOwnProperty(key)
+
+  if (!hasLink) {
+    return (
+      <section className="AlertPane-headerDiv-alertUrlWrap">
+        <button onClick={() => handleSendAlert(alert)}>
+          Get Link
+        </button>
+      </section>
+    )
+  } else {
+    return (
+        <section className="AlertPane-headerDiv-alertUrlWrap">
+          <p className="AlertPane-headerDiv-alertUrl">{alertLinks[key]}</p>
+          <button title="Open link in new tab" onClick={() => window.open(alertLinks[key])}>
+            Open
+          </button>
+        </section>
+  )}
+}
+
+function renderAlerts(
   resources: Array<Resource>,
-  handleSendAlert: (alert: Alert) => void,
   teamAlertsIsEnabled: boolean,
-  alertLinks: { [key: string]: string }
+  alertLinks: { [key: string]: string },
+  handleSendAlert: (alert: Alert) => void,
 ) {
   let formatter = timeAgoFormatter
   let alertElements: Array<JSX.Element> = []
@@ -30,30 +57,26 @@ function alertElements(
   let alertResources = resources.filter(r => hasAlert(r))
   alertResources.forEach(resource => {
     resource.Alerts.forEach(alert => {
-      let key = alertKey(alert)
-      let alertHasLink = alertLinks.hasOwnProperty(key)
       alertElements.push(
         <li key={alert.alertType + resource.Name} className="AlertPane-item">
           <header>
-            <p>{resource.Name}</p>
-            {alert.header != "" && <p>{alert.header}</p>}
-            <TimeAgo date={alert.timestamp} formatter={formatter} />
+            <div className="AlertPane-headerDiv">
+              <h3  className="AlertPane-headerDiv-header">{alert.header}</h3>
+              {teamAlertsIsEnabled && renderAlertLinkButton(
+                  alert,
+                  alertLinks,
+                  handleSendAlert,
+              )}
+            </div>
+            <div className="AlertPane-headerDiv">
+              <p>
+                <span>Resource: {alert.resourceName}</span>
+                <span>Type: {alert.alertType}</span>
+              </p>
+              <TimeAgo date={alert.timestamp} formatter={formatter} />
+            </div>
           </header>
           <section>{logToLines(alert.msg)}</section>
-          {teamAlertsIsEnabled && !alertHasLink && (
-            <footer>
-              <button onClick={() => handleSendAlert(alert)}>
-                Get Alert Link
-              </button>
-            </footer>
-          )}
-          {alertHasLink && (
-            <footer>
-              <button onClick={() => window.open(alertLinks[key])}>
-                Open Alert Link
-              </button>
-            </footer>
-          )}
         </li>
       )
     })
@@ -70,11 +93,11 @@ class AlertPane extends PureComponent<AlertsProps> {
       </section>
     )
 
-    let alerts = alertElements(
+    let alerts = renderAlerts(
       this.props.resources,
-      this.props.handleSendAlert,
       this.props.teamAlertsIsEnabled,
-      this.props.alertLinks
+      this.props.alertLinks,
+      this.props.handleSendAlert,
     )
     if (alerts.length > 0) {
       el = <ul>{alerts}</ul>
