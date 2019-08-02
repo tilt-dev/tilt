@@ -61,6 +61,10 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	containerUpdater := lubad.containerUpdaterForSpecs(specs)
 	liveUpdInfos := make([]liveUpdInfo, len(liveUpdateStateSet))
 
+	if len(liveUpdateStateSet) == 0 {
+		return nil, RedirectToNextBuilderInfof("no targets for LiveUpdate found")
+	}
+
 	for i, liveUpdateState := range liveUpdateStateSet {
 		iTarget := liveUpdateState.iTarget
 		state := liveUpdateState.iTargetState
