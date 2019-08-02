@@ -42,9 +42,6 @@ const watchBufferMaxTimeInMs = 10000
 var watchBufferMinRestDuration = watchBufferMinRestInMs * time.Millisecond
 var watchBufferMaxDuration = watchBufferMaxTimeInMs * time.Millisecond
 
-// When we kick off a build because some files changed, only print the first `maxChangedFilesToPrint`
-const maxChangedFilesToPrint = 5
-
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
@@ -221,7 +218,6 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	}
 	ms.ConfigFilesThatCausedChange = []string{}
 	ms.CurrentBuild = bs
-	ms.LiveUpdatedContainerID = ""
 
 	for _, pod := range ms.PodSet.Pods {
 		pod.CurrentLog = model.Log{}
@@ -305,7 +301,25 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 		for _, pod := range ms.PodSet.Pods {
 			// # of pod restarts from old code (shouldn't be reflected in HUD)
-			pod.OldRestarts = pod.ContainerRestarts
+			pod.OldRestarts = pod.AllContainerRestarts()
+		}
+	}
+
+	// Track the container ids that have been live-updated whether the
+	// build succeeds or fails.
+	liveUpdateContainerIDs := cb.Result.LiveUpdatedContainerIDs()
+	if len(liveUpdateContainerIDs) == 0 {
+		// Assume this was an image build, and reset all the container ids
+		ms.LiveUpdatedContainerIDs = container.NewIDSet()
+	} else {
+		for _, cID := range liveUpdateContainerIDs {
+			ms.LiveUpdatedContainerIDs[cID] = true
+		}
+
+		bestPod := ms.MostRecentPod()
+		if bestPod.StartedAt.After(bs.StartTime) ||
+			bestPod.UpdateStartTime.Equal(bs.StartTime) {
+			checkForContainerCrash(ctx, engineState, mt)
 		}
 	}
 
@@ -332,17 +346,6 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 	if engineState.WatchFiles {
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
-
-		cID := cb.Result.OneLiveUpdatedContainerIDForOldBehavior()
-		if cID != "" {
-			ms.LiveUpdatedContainerID = cID
-
-			bestPod := ms.MostRecentPod()
-			if bestPod.StartedAt.After(bs.StartTime) ||
-				bestPod.UpdateStartTime.Equal(bs.StartTime) {
-				checkForPodCrash(ctx, engineState, ms, bestPod)
-			}
-		}
 	}
 
 	return nil

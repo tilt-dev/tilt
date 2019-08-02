@@ -83,7 +83,7 @@ func TestPortForwardAutoDiscovery(t *testing.T) {
 
 	state = f.st.LockMutableStateForTesting()
 	state.ManifestTargets["fe"].State.PodSet.Pods["pod-id"].Containers = []store.Container{
-		store.Container{Ports: []int32{8000}, Blessed: true},
+		store.Container{Ports: []int32{8000}},
 	}
 	f.st.UnlockMutableState()
 

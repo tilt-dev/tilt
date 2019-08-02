@@ -16,7 +16,7 @@ spec:
           image: alpine
           command: ["sh", "-c", "echo this is a successful job"]
       restartPolicy: Never
-  backoffLimit: 4
+  backoffLimit: 0
 ---
 apiVersion: batch/v1
 kind: Job
@@ -36,5 +36,5 @@ spec:
           image: alpine
           command: ["sh", "-c", "echo this job will fail && false"]
       restartPolicy: Never
-  backoffLimit: 4
+  backoffLimit: 0
 

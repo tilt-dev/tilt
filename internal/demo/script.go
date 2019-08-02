@@ -93,7 +93,7 @@ func (m *podMonitor) OnChange(ctx context.Context, st store.RStore) {
 			m.healthy = false
 		}
 
-		if pod.ContainerRestarts > 0 {
+		if pod.AllContainerRestarts() > 0 {
 			m.hasPodRestart = true
 			m.healthy = false
 		}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+	"k8s.io/client-go/util/exec"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
@@ -12,6 +13,17 @@ import (
 
 // https://success.docker.com/article/what-causes-a-container-to-exit-with-code-137
 const TaskKillExitCode = 137
+
+func WrapCodeExitError(err error, cID container.ID, cmd model.Cmd) error {
+	exitErr, isExitErr := err.(exec.CodeExitError)
+	if isExitErr {
+		return RunStepFailure{
+			Cmd:      cmd,
+			ExitCode: exitErr.ExitStatus(),
+		}
+	}
+	return errors.Wrapf(err, "executing %v on container %s", cmd, cID.ShortStr())
+}
 
 // Convert a Docker exec error into our own internal error type.
 func WrapContainerExecError(err error, cID container.ID, cmd model.Cmd) error {

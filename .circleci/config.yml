@@ -19,6 +19,15 @@ jobs:
     steps:
       - checkout
       - run: make check-js test-js
+        
+  build-windows:
+    docker:
+      - image: circleci/golang:1.12
+    working_directory: /go/src/github.com/windmilleng/tilt
+    steps:
+      - checkout
+      # Currently, we only check to make sure Windows binaries compile
+      - run: GOOS=windows go install github.com/windmilleng/tilt/cmd/tilt
 
   build-integration:
     docker:
@@ -89,5 +98,8 @@ workflows:
           requires:
             - build-linux
       - build-integration:
+          requires:
+            - build-linux
+      - build-windows:
           requires:
             - build-linux

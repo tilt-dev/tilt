@@ -117,10 +117,13 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	}
 
 	err = lubad.buildAndDeploy(ctx, containerUpdater, iTarget, state, changedFiles, runs, hotReload)
-	if err != nil {
+	if err != nil && !IsDontFallBackError(err) {
 		return store.BuildResultSet{}, err
 	}
-	return liveUpdateState.createResultSet(), nil
+	// If no error, great!
+	// If we got a DontFallBack error, we still want to return a result set
+	// b/c we may have touched containers.
+	return liveUpdateState.createResultSet(), err
 }
 
 func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu containerupdate.ContainerUpdater, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) error {

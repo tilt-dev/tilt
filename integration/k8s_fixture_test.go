@@ -161,6 +161,7 @@ func (f *k8sFixture) ClearResource(name string) {
 }
 
 func (f *k8sFixture) ClearNamespace() {
+	f.ClearResource("jobs")
 	f.ClearResource("deployments")
 	f.ClearResource("services")
 }
@@ -228,6 +229,9 @@ func (f *k8sFixture) SetRestrictedCredentials() {
 	// docker-for-desktop has a default binding that gives service accounts access to everything.
 	// See: https://github.com/docker/for-mac/issues/3694
 	f.runCommandSilently("kubectl", "delete", "clusterrolebinding", "docker-for-desktop-binding", "--ignore-not-found")
+
+	// The service account needs the namespace to exist.
+	f.runCommandSilently("kubectl", "apply", "-f", "namespace.yaml")
 	f.runCommandSilently("kubectl", "apply", "-f", "service-account.yaml")
 	f.runCommandSilently("kubectl", "apply", "-f", "access.yaml")
 	f.getSecrets()

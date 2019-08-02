@@ -7,7 +7,6 @@ import (
 
 	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/model"
-	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
 )
 
@@ -247,17 +246,9 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry, c
 		s := logger.Blue(l).Sprintf(" ├──────────────────────────────────────────────")
 		l.Infof("\n%s%s%s", p, name, s)
 	} else {
-		var changedPathsToPrint []string
-		if len(changedFiles) > maxChangedFilesToPrint {
-			changedPathsToPrint = append(changedPathsToPrint, changedFiles[:maxChangedFilesToPrint]...)
-			changedPathsToPrint = append(changedPathsToPrint, "...")
-		} else {
-			changedPathsToPrint = changedFiles
-		}
-
 		if len(changedFiles) > 0 {
 			p := logger.Green(l).Sprintf("%d changed: ", len(changedFiles))
-			l.Infof("\n%s%v\n", p, ospath.TryAsCwdChildren(changedPathsToPrint))
+			l.Infof("\n%s%v\n", p, formatFileChangeList(changedFiles))
 		}
 
 		rp := logger.Blue(l).Sprintf("──┤ Rebuilding: ")

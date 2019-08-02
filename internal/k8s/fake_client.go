@@ -63,7 +63,8 @@ type FakeK8sClient struct {
 
 	GetResources map[GetKey]*unstructured.Unstructured
 
-	ExecCalls []ExecCall
+	ExecCalls  []ExecCall
+	ExecErrors []error
 }
 
 type ExecCall struct {
@@ -340,6 +341,12 @@ func (c *FakeK8sClient) Exec(ctx context.Context, podID PodID, cName container.N
 		Cmd:   cmd,
 		Stdin: stdinBytes,
 	})
+
+	if len(c.ExecErrors) > 0 {
+		err = c.ExecErrors[0]
+		c.ExecErrors = c.ExecErrors[1:]
+		return err
+	}
 	return nil
 }
 

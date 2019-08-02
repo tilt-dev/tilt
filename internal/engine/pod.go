@@ -39,7 +39,8 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v
 
 	defer prunePods(ms)
 
-	populateContainers(ctx, manifest, podInfo, pod)
+	oldRestartTotal := podInfo.AllContainerRestarts()
+	podInfo.Containers = podContainers(ctx, pod)
 
 	if len(podInfo.Containers) == 0 {
 		// not enough info to do anything else
@@ -52,13 +53,12 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v
 			"WARNING: Resource %s is using port forwards, but no container ports on pod %s",
 			manifest.Name, podInfo.PodID)
 	}
-	checkForPodCrash(ctx, state, ms, *podInfo)
+	checkForContainerCrash(ctx, state, mt)
 
-	if int(podInfo.BlessedContainer().Restarts) > podInfo.ContainerRestarts {
+	if oldRestartTotal < podInfo.AllContainerRestarts() {
 		ms.CrashLog = podInfo.CurrentLog
 		podInfo.CurrentLog = model.Log{}
 	}
-	podInfo.ContainerRestarts = int(podInfo.BlessedContainer().Restarts)
 }
 
 // Get a pointer to a mutable manifest state,
@@ -135,32 +135,25 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 	return mt, podInfo
 }
 
-// Fill in container fields on the pod state.
-func populateContainers(ctx context.Context, manifest model.Manifest, podInfo *store.Pod, pod *v1.Pod) {
-	blessedCID, err := getBlessedContainerID(manifest.ImageTargets, pod)
-	if err != nil {
-		logger.Get(ctx).Debugf("Getting blessed container ID: %v", err)
-		return
-	}
-
-	// Clear containers on the pod
-	podInfo.Containers = nil
-
+// Convert a Kubernetes Pod into a list if simpler Container models to store in the engine state.
+func podContainers(ctx context.Context, pod *v1.Pod) []store.Container {
+	result := make([]store.Container, 0, len(pod.Status.ContainerStatuses))
 	for _, cStatus := range pod.Status.ContainerStatuses {
-		c, err := containerForStatus(ctx, manifest, podInfo, pod, cStatus, blessedCID)
+		c, err := containerForStatus(ctx, pod, cStatus)
 		if err != nil {
 			logger.Get(ctx).Debugf(err.Error())
 			continue
 		}
 
 		if !c.Empty() {
-			podInfo.Containers = append(podInfo.Containers, c)
+			result = append(result, c)
 		}
 	}
+	return result
 }
 
-func containerForStatus(ctx context.Context, manifest model.Manifest, podInfo *store.Pod, pod *v1.Pod,
-	cStatus v1.ContainerStatus, blessedCID container.ID) (store.Container, error) {
+// Convert a Kubernetes Pod and ContainerStatus into a simpler Container model to store in the engine state.
+func containerForStatus(ctx context.Context, pod *v1.Pod, cStatus v1.ContainerStatus) (store.Container, error) {
 	if cStatus.Name == sidecar.SyncletContainerName {
 		// We don't want logs, status, etc. for the Tilt synclet.
 		return store.Container{}, nil
@@ -191,48 +184,37 @@ func containerForStatus(ctx context.Context, manifest model.Manifest, podInfo *s
 		Ports:    ports,
 		Ready:    cStatus.Ready,
 		ImageRef: cRef,
-		Restarts: cStatus.RestartCount,
-		Blessed:  cID == blessedCID,
+		Restarts: int(cStatus.RestartCount),
 	}, nil
 }
-func getBlessedContainerID(iTargets []model.ImageTarget, pod *v1.Pod) (container.ID, error) {
-	if len(iTargets) > 0 {
-		// Get status of (first) container matching (an) image we built for this manifest.
-		for _, iTarget := range iTargets {
-			cStatus, err := k8s.ContainerMatching(pod, container.NameSelector(iTarget.DeploymentRef))
-			if err != nil {
-				return "", errors.Wrapf(err, "Error matching container for target: %s",
-					iTarget.DeploymentRef.String())
-			}
-			if cStatus.Name != "" {
-				return k8s.NormalizeContainerID(cStatus.ContainerID)
-			}
-		}
-	} else {
-		// We didn't build images for this manifest so we have no good way of figuring
-		// out which container(s) we care about; for now, take the first.
-		if len(pod.Status.ContainerStatuses) > 0 {
-			cID := pod.Status.ContainerStatuses[0].ContainerID
-			return k8s.NormalizeContainerID(cID)
-		}
-	}
-	return "", nil
-}
-func checkForPodCrash(ctx context.Context, state *store.EngineState, ms *store.ManifestState, podInfo store.Pod) {
+
+func checkForContainerCrash(ctx context.Context, state *store.EngineState, mt *store.ManifestTarget) {
+	ms := mt.State
 	if ms.NeedsRebuildFromCrash {
 		// We're already aware the pod is crashing.
 		return
 	}
 
-	if ms.LiveUpdatedContainerID == "" || ms.LiveUpdatedContainerID == podInfo.ContainerID() {
+	runningContainers := store.AllRunningContainers(mt)
+	hitList := make(map[container.ID]bool, len(ms.LiveUpdatedContainerIDs))
+	for cID := range ms.LiveUpdatedContainerIDs {
+		hitList[cID] = true
+	}
+	for _, c := range runningContainers {
+		delete(hitList, c.ContainerID)
+	}
+
+	if len(hitList) == 0 {
 		// The pod is what we expect it to be.
 		return
 	}
 
 	// The pod isn't what we expect!
-	ms.CrashLog = podInfo.CurrentLog
+	// TODO(nick): We should store the logs by container ID, and
+	// only put the container that crashed in the CrashLog.
+	ms.CrashLog = ms.MostRecentPod().CurrentLog
 	ms.NeedsRebuildFromCrash = true
-	ms.LiveUpdatedContainerID = ""
+	ms.LiveUpdatedContainerIDs = container.NewIDSet()
 	msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Name)
 	le := store.NewLogEvent(ms.Name, []byte(msg+"\n"))
 	if len(ms.BuildHistory) > 0 {

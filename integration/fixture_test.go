@@ -15,6 +15,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/windmilleng/tilt/internal/testutils/bufsync"
 )
 
 var packageDir string
@@ -38,7 +40,7 @@ type fixture struct {
 	ctx           context.Context
 	cancel        func()
 	dir           string
-	logs          *bytes.Buffer
+	logs          *bufsync.ThreadSafeBuffer
 	cmds          []*exec.Cmd
 	originalFiles map[string]string
 	tiltEnviron   map[string]string
@@ -58,7 +60,7 @@ func newFixture(t *testing.T, dir string) *fixture {
 		ctx:           ctx,
 		cancel:        cancel,
 		dir:           dir,
-		logs:          bytes.NewBuffer(nil),
+		logs:          bufsync.NewThreadSafeBuffer(),
 		originalFiles: make(map[string]string),
 		tiltEnviron: map[string]string{
 			"TILT_DISABLE_ANALYTICS": "true",
@@ -94,10 +96,27 @@ func (f *fixture) deleteNamespace() {
 	if err != nil {
 		f.t.Fatalf("Deleting namespace tilt-integration: %v", err)
 	}
+
+	// block until the namespace doesn't exist, since kubectl often returns and the namespace is still "terminating"
+	// which causes the creation of objects in that namespace to fail
+	var b []byte
+	args := []string{"kubectl", "get", "namespace", "tilt-integration", "--ignore-not-found"}
+	timeout := time.Now().Add(10 * time.Second)
+	for time.Now().Before(timeout) {
+		cmd := exec.CommandContext(f.ctx, args[0], args[1:]...)
+		b, err = cmd.Output()
+		if err != nil {
+			f.t.Fatalf("Error: checking that deletion of the tilt-integration namespace has completed: %v", err)
+		}
+		if len(b) == 0 {
+			return
+		}
+	}
+	f.t.Fatalf("timed out waiting for tilt-integration deletion to complete. last output of %q: %q", args, string(b))
 }
 
 func (f *fixture) DumpLogs() {
-	_, _ = os.Stdout.Write(f.logs.Bytes())
+	_, _ = os.Stdout.Write([]byte(f.logs.String()))
 }
 
 func (f *fixture) WaitUntil(ctx context.Context, msg string, fun func() (string, error), expectedContents string) {
@@ -149,7 +168,13 @@ func (f *fixture) runInBackground(cmd *exec.Cmd) {
 
 	f.cmds = append(f.cmds, cmd)
 	go func() {
-		_ = cmd.Wait()
+		err = cmd.Wait()
+		if err != nil {
+			fmt.Printf("error running command: %v\n", err)
+			if ee, ok := err.(*exec.ExitError); ok {
+				fmt.Printf("stderr: %q\n", ee.Stderr)
+			}
+		}
 	}()
 }
 
@@ -165,22 +190,23 @@ func (f *fixture) TiltWatchExec() {
 
 func (f *fixture) ReplaceContents(fileBaseName, original, replacement string) {
 	file := filepath.Join(f.dir, fileBaseName)
-	contents, ok := f.originalFiles[file]
-	if !ok {
-		contentsB, err := ioutil.ReadFile(file)
-		if err != nil {
-			f.t.Fatal(err)
-		}
-		contents = string(contentsB)
+	contentsBytes, err := ioutil.ReadFile(file)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	contents := string(contentsBytes)
+	_, hasStoredContents := f.originalFiles[file]
+	if !hasStoredContents {
 		f.originalFiles[file] = contents
 	}
 
 	newContents := strings.Replace(contents, original, replacement, -1)
 	if newContents == contents {
-		f.t.Fatalf("Could not find contents to replace in file %s: %s", fileBaseName, contents)
+		f.t.Fatalf("Could not find contents %q to replace in file %s: %s", original, fileBaseName, contents)
 	}
 
-	err := ioutil.WriteFile(file, []byte(newContents), os.FileMode(0777))
+	err = ioutil.WriteFile(file, []byte(newContents), os.FileMode(0777))
 	if err != nil {
 		f.t.Fatal(err)
 	}

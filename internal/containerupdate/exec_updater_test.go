@@ -3,11 +3,14 @@ package containerupdate
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/client-go/util/exec"
 
+	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -99,6 +102,19 @@ func TestUpdateContainerRunsCommands(t *testing.T) {
 		assert.Equal(t, cmdA.Argv, f.kCli.ExecCalls[1].Cmd)
 		assert.Equal(t, cmdB.Argv, f.kCli.ExecCalls[2].Cmd)
 	}
+}
+
+func TestUpdateContainerRunsFailure(t *testing.T) {
+	f := newExecFixture(t)
+
+	// The first exec() call is a copy, so won't trigger a RunStepFailure
+	f.kCli.ExecErrors = []error{nil, exec.CodeExitError{Err: fmt.Errorf("Compile error"), Code: 1}}
+
+	err := f.ecu.UpdateContainer(f.ctx, TestContainerInfo, newReader("hello world"), nil, cmds, true)
+	if assert.True(t, build.IsRunStepFailure(err)) {
+		assert.Equal(t, "Run step \"a\" failed with exit code: 1", err.Error())
+	}
+	assert.Equal(t, 2, len(f.kCli.ExecCalls))
 }
 
 type execUpdaterFixture struct {

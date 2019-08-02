@@ -7,7 +7,6 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 
-	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 )
@@ -37,9 +36,5 @@ func (cu *SyncletUpdater) UpdateContainer(ctx context.Context, cInfo store.Conta
 		return err
 	}
 
-	err = sCli.UpdateContainer(ctx, cInfo.ContainerID, archiveBytes, filesToDelete, cmds, hotReload)
-	if err != nil && build.IsRunStepFailure(err) {
-		return err
-	}
-	return nil
+	return sCli.UpdateContainer(ctx, cInfo.ContainerID, archiveBytes, filesToDelete, cmds, hotReload)
 }
