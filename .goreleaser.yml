@@ -8,6 +8,7 @@ builds:
   goos:
   - linux
   - darwin
+  - windows
   # Cross-compiling darwin is a pain due to fsevents,
   # and we don't expect darwin/386 users anyway.
   ignore:
@@ -16,6 +17,7 @@ builds:
 archive:
   name_template: "{{ .ProjectName }}.{{ .Version }}.{{ .Os }}.{{ .Arch }}"
   replacements:
+    windows: windows_ALPHA
     darwin: mac
     linux: linux
     386: i386
