@@ -820,7 +820,7 @@ func newBDFixture(t *testing.T, env k8s.Env, runtime container.Runtime) *bdFixtu
 	ctx, _, ta := testutils.ForkedCtxAndAnalyticsForTest(logs)
 	k8s := k8s.NewFakeK8sClient()
 	k8s.Runtime = runtime
-	sCli := synclet.NewSyncletClientNoGRPC(docker)
+	sCli := synclet.NewTestSyncletClient(docker)
 	mode := UpdateModeFlag(UpdateModeAuto)
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	kp := &fakeKINDPusher{}

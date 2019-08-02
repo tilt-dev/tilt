@@ -25,7 +25,7 @@ type TestSyncletClient struct {
 
 var _ SyncletClient = &TestSyncletClient{}
 
-func NewSyncletClientNoGRPC(dCli docker.Client) *TestSyncletClient {
+func NewTestSyncletClient(dCli docker.Client) *TestSyncletClient {
 	return &TestSyncletClient{synclet: NewSynclet(dCli)}
 }
 

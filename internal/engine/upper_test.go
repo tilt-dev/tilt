@@ -2657,7 +2657,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	dcw := NewDockerComposeEventWatcher(fakeDcc)
 	dclm := NewDockerComposeLogManager(fakeDcc)
 	pm := NewProfilerManager()
-	sCli := synclet.NewFakeSyncletClient()
+	sCli := synclet.NewTestSyncletClient(dockerClient)
 	sm := containerupdate.NewSyncletManagerForTests(k8s, sCli)
 	hudsc := server.ProvideHeadsUpServerController(0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{}, false)
 	ghc := &github.FakeClient{}

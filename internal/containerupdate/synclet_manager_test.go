@@ -63,7 +63,7 @@ func newSMFixture(t *testing.T) *smFixture {
 	f := tempdir.NewTempDirFixture(t)
 	kCli := k8s.NewFakeK8sClient()
 	dCli := docker.NewFakeClient()
-	sCli := synclet.NewSyncletClientNoGRPC(dCli)
+	sCli := synclet.NewTestSyncletClient(dCli)
 	sm := NewSyncletManagerForTests(kCli, sCli)
 	st, _ := store.NewStoreForTesting()
 
