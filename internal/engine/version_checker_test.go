@@ -6,15 +6,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/windmilleng/tilt/internal/github"
 	"github.com/windmilleng/tilt/internal/logger"
-	"github.com/windmilleng/tilt/internal/testutils/bufsync"
-
+	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/internal/testutils/bufsync"
 )
 
 func TestSleepAfterFailure(t *testing.T) {
@@ -40,9 +40,21 @@ func TestSleepAfterFailure(t *testing.T) {
 	assert.Equal(t, 1, strings.Count(f.out.String(), errorMsg))
 }
 
+func TestVersionCheckDisabledForDev(t *testing.T) {
+	f := newVersionCheckerFixture(t)
+
+	state := f.store.LockMutableStateForTesting()
+	state.TiltBuildInfo = model.TiltBuild{Dev: true}
+	f.store.UnlockMutableState()
+
+	f.vc.OnChange(f.ctx, f.store)
+
+	require.False(t, f.vc.started)
+}
+
 type versionCheckerFixture struct {
 	ctx    context.Context
-	store  store.RStore
+	store  *store.Store
 	vc     *TiltVersionChecker
 	cancel context.CancelFunc
 	delay  time.Duration
