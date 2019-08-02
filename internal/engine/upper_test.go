@@ -1367,7 +1367,7 @@ func TestPodEventDeleted(t *testing.T) {
 		return state.PodSet.ContainsID("my-pod")
 	})
 
-	pod.DeletionTimestamp = &metav1.Time{pod.CreationTimestamp.Add(time.Minute)}
+	pod.DeletionTimestamp = &metav1.Time{Time: pod.CreationTimestamp.Add(time.Minute)}
 	f.podEvent(pod)
 
 	f.WaitUntilManifestState("podset is empty", mn, func(state store.ManifestState) bool {
