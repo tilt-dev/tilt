@@ -14,6 +14,9 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/windmilleng/wmclient/pkg/dirs"
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
@@ -21,8 +24,6 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
-
-	"github.com/windmilleng/wmclient/pkg/dirs"
 
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -760,6 +761,35 @@ func TestReturnLastUnexpectedError(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "no one expects the unexpected error")
 	}
+}
+
+func TestLiveUpdateWithRunFailureReturnsContainerIDs(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	defer f.TearDown()
+
+	// LiveUpdate will failure with a RunStepFailure
+	f.docker.SetExecError(userFailureErr)
+
+	manifest := NewSanchoLiveUpdateManifest(f)
+	targets := buildTargets(manifest)
+	changed := f.WriteFile("a.txt", "a")
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
+	resultSet, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
+	require.NotNil(t, err, "expected failed LiveUpdate to return error")
+
+	iTargID := manifest.ImageTargetAt(0).ID()
+	result := resultSet[iTargID]
+	require.False(t, result.IsEmpty(), "expected build result for image target %s", iTargID)
+	require.Len(t, result.LiveUpdatedContainerIDs, 1)
+	require.Equal(t, result.LiveUpdatedContainerIDs[0].String(), k8s.MagicTestContainerID)
+
+	// LiveUpdate failed due to RunStepError, should NOT fall back to image build
+	assert.Equal(t, 0, f.docker.BuildCount, "expect no image build -> no docker build calls")
+	f.assertK8sUpsertCalled(false)
+
+	// Copied files and tried to docker.exec before hitting error
+	assert.Equal(t, 1, f.docker.CopyCount)
+	assert.Equal(t, 1, len(f.docker.ExecCalls))
 }
 
 func TestLiveUpdateMultipleImagesSamePod(t *testing.T) {

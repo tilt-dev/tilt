@@ -148,7 +148,7 @@ func resourceInfoView(mt *store.ManifestTarget) ResourceInfoView {
 			PodUpdateStartTime: pod.UpdateStartTime,
 			PodStatus:          pod.Status,
 			PodStatusMessage:   strings.Join(pod.StatusMessages, "\n"),
-			PodRestarts:        pod.ContainerRestarts - pod.OldRestarts,
+			PodRestarts:        pod.AllContainerRestarts() - pod.OldRestarts,
 			PodLog:             pod.Log(),
 			YAML:               mt.Manifest.K8sTarget().YAML,
 		}

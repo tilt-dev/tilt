@@ -340,7 +340,40 @@ func TestCrashRebuildTwoContainersTwoImages(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-// TODO(maia): test one live update fails --> fall back to image build
+func TestRecordLiveUpdatedContainerIDsForFailedLiveUpdate(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	manifest := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(testyaml.SanchoTwoContainersOneImageYAML).
+		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		Build()
+	f.Start([]model.Manifest{manifest}, true)
+
+	call := f.nextCall()
+	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
+	f.waitForCompletedBuildCount(1)
+
+	expectedErr := fmt.Errorf("i can't let you do that dave")
+	f.b.nextBuildFailure = expectedErr
+	f.b.nextLiveUpdateContainerIDs = []container.ID{"c1", "c2"}
+
+	f.podEvent(podbuilder.New(t, manifest).
+		WithContainerIDAtIndex("c1", 0).
+		WithContainerIDAtIndex("c2", 1).
+		Build())
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
+
+	call = f.nextCall()
+	f.waitForCompletedBuildCount(2)
+	f.withManifestState("sancho", func(ms store.ManifestState) {
+		// Manifest should have recorded last build as a failure, but
+		// ALSO have recorded the LiveUpdatedContainerIDs
+		require.Equal(t, expectedErr, ms.BuildHistory[0].Error)
+
+		assert.Equal(t, 2, len(ms.LiveUpdatedContainerIDs))
+	})
+}
 
 func TestBuildControllerManualTrigger(t *testing.T) {
 	f := newTestFixture(t)

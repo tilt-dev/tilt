@@ -194,12 +194,6 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		logger.Get(ctx).Infof("fake building %s", ids)
 	}()
 
-	err := b.nextBuildFailure
-	if err != nil {
-		b.nextBuildFailure = nil
-		return store.BuildResultSet{}, err
-	}
-
 	dID := podbuilder.FakeDeployID
 	if b.nextDeployID != 0 {
 		dID = b.nextDeployID
@@ -238,7 +232,10 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	b.nextLiveUpdateContainerIDs = nil
 	b.nextDockerComposeContainerID = ""
 
-	return result, nil
+	err := b.nextBuildFailure
+	b.nextBuildFailure = nil
+
+	return result, err
 }
 
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
@@ -1108,12 +1105,13 @@ func TestPodEventContainerStatus(t *testing.T) {
 	podState := store.Pod{}
 	f.WaitUntilManifestState("container status", "foobar", func(ms store.ManifestState) bool {
 		podState = ms.MostRecentPod()
-		return podState.PodID == "my-pod"
+		return podState.PodID == "my-pod" && len(podState.Containers) > 0
 	})
 
-	assert.Equal(t, "", string(podState.ContainerID()))
-	assert.Equal(t, "main", string(podState.ContainerName()))
-	assert.Equal(t, []int32{8080}, podState.ContainerPorts())
+	container := podState.Containers[0]
+	assert.Equal(t, "", string(container.ID))
+	assert.Equal(t, "main", string(container.Name))
+	assert.Equal(t, []int32{8080}, podState.AllContainerPorts())
 
 	err := f.Stop()
 	assert.Nil(t, err)
@@ -1165,13 +1163,14 @@ func TestPodEventContainerStatusWithoutImage(t *testing.T) {
 	podState := store.Pod{}
 	f.WaitUntilManifestState("container status", "foobar", func(ms store.ManifestState) bool {
 		podState = ms.MostRecentPod()
-		return podState.PodID == "my-pod"
+		return podState.PodID == "my-pod" && len(podState.Containers) > 0
 	})
 
 	// If we have no image target to match container by image ref, we just take the first one
-	assert.Equal(t, "great-container-id", string(podState.ContainerID()))
-	assert.Equal(t, "first-container", string(podState.ContainerName()))
-	assert.Equal(t, []int32{8080}, podState.ContainerPorts())
+	container := podState.Containers[0]
+	assert.Equal(t, "great-container-id", string(container.ID))
+	assert.Equal(t, "first-container", string(container.Name))
+	assert.Equal(t, []int32{8080}, podState.AllContainerPorts())
 
 	err := f.Stop()
 	assert.Nil(t, err)
@@ -1433,7 +1432,7 @@ func TestPodContainerStatus(t *testing.T) {
 	f.podEvent(pod)
 
 	f.WaitUntilManifestState("container is ready", "fe", func(ms store.ManifestState) bool {
-		ports := ms.MostRecentPod().ContainerPorts()
+		ports := ms.MostRecentPod().AllContainerPorts()
 		return len(ports) == 1 && ports[0] == 8080
 	})
 
@@ -1566,7 +1565,7 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 	f.podLog(name, "second string")
 	f.pod.Status.ContainerStatuses[0].Ready = false
 	f.notifyAndWaitForPodStatus(func(pod store.Pod) bool {
-		return !pod.ContainerReady()
+		return !pod.AllContainersReady()
 	})
 
 	// The second instance is down, so we don't include the first instance's log
@@ -1665,13 +1664,11 @@ func TestUpperRecordPodWithMultipleContainers(t *testing.T) {
 		require.Equal(t, container.Name("sancho"), c1.Name)
 		require.Equal(t, podbuilder.FakeContainerID(), c1.ID)
 		require.True(t, c1.Ready)
-		require.True(t, c1.Blessed)
 
 		c2 := pod.Containers[1]
 		require.Equal(t, container.Name("sidecar"), c2.Name)
 		require.Equal(t, container.ID("sidecar"), c2.ID)
 		require.False(t, c2.Ready)
-		require.False(t, c2.Blessed)
 
 		return true
 	})
@@ -2296,25 +2293,6 @@ func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 		}
 		assert.Equal(t, expected, state.ContainerID)
 		assert.Equal(t, dockercompose.StatusUp, state.Status)
-	})
-}
-
-func TestDockerComposeBuildCompletedDoesntSetStatusIfNotSuccessful(t *testing.T) {
-	f := newTestFixture(t)
-	m1, _ := f.setupDCFixture()
-
-	f.SetNextBuildFailure(fmt.Errorf("dc failure"))
-	f.loadAndStart()
-
-	f.waitForCompletedBuildCount(2)
-
-	f.withManifestState(m1.ManifestName(), func(st store.ManifestState) {
-		state, ok := st.ResourceState.(dockercompose.State)
-		if !ok {
-			t.Fatal("expected ResourceState to be docker compose, but it wasn't")
-		}
-		assert.Empty(t, state.ContainerID)
-		assert.Empty(t, state.Status)
 	})
 }
 
@@ -2963,7 +2941,7 @@ func (f *testFixture) restartPod() {
 	f.upper.store.Dispatch(PodChangeAction{f.pod})
 
 	f.WaitUntilManifestState("pod restart seen", "foobar", func(ms store.ManifestState) bool {
-		return ms.MostRecentPod().ContainerRestarts == int(restartCount)
+		return ms.MostRecentPod().AllContainerRestarts() == int(restartCount)
 	})
 }
 

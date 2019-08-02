@@ -46,6 +46,11 @@ func DontFallBackErrorf(msg string, a ...interface{}) DontFallBackError {
 	return DontFallBackError{fmt.Errorf(msg, a...)}
 }
 
+func IsDontFallBackError(err error) bool {
+	_, ok := err.(DontFallBackError)
+	return ok
+}
+
 var _ error = DontFallBackError{}
 
 // A permanent error indicates that the whole build pipeline needs to stop.
@@ -61,7 +66,7 @@ func shouldFallBackForErr(err error) bool {
 	}
 
 	cause := errors.Cause(err)
-	if _, ok := cause.(DontFallBackError); ok {
+	if IsDontFallBackError(cause) {
 		return false
 	}
 	return true

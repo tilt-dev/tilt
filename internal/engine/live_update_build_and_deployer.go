@@ -124,9 +124,10 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 
 	for _, info := range liveUpdInfos {
 		err = lubad.buildAndDeploy(ctx, containerUpdater, info.iTarget, info.state, info.changedFiles, info.runs, info.hotReload)
-		if err != nil {
+		if err != nil && !IsDontFallBackError(err) {
 			return store.BuildResultSet{}, err
 		}
+		// ~~ TODO: IF DONTFALLBACK ERR, RUN THE REST OF THE LU'S AND MAKE SURE TO RETURN IT
 	}
 	return createResultSet(liveUpdateStateSet), nil
 }
