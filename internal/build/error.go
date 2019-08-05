@@ -56,8 +56,28 @@ func (e RunStepFailure) Error() string {
 }
 
 func IsRunStepFailure(err error) bool {
-	_, ok := err.(RunStepFailure)
+	_, ok := MaybeRunStepFailure(err)
 	return ok
+}
+
+func MaybeRunStepFailure(err error) (RunStepFailure, bool) {
+	e := err
+	for {
+		if e == nil {
+			break
+		}
+		rsf, ok := e.(RunStepFailure)
+		if ok {
+			return rsf, true
+		}
+		cause := errors.Cause(e)
+		if cause == e {
+			// no available causes to drill into
+			break
+		}
+		e = cause
+	}
+	return RunStepFailure{}, false
 }
 
 var _ error = RunStepFailure{}

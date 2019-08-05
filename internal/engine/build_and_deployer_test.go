@@ -783,7 +783,7 @@ func TestLiveUpdateWithRunFailureReturnsContainerIDs(t *testing.T) {
 	defer f.TearDown()
 
 	// LiveUpdate will failure with a RunStepFailure
-	f.docker.SetExecError(userFailureErr)
+	f.docker.SetExecError(userFailureErrDocker)
 
 	manifest := NewSanchoLiveUpdateManifest(f)
 	targets := buildTargets(manifest)
@@ -870,7 +870,7 @@ func TestLiveUpdateMultipleImagesOneRunErrorExecutesRestOfLiveUpdatesAndDoesntIm
 	defer f.TearDown()
 
 	// First LiveUpdate will simulate a failed Run step
-	f.docker.ExecErrorsToThrow = []error{userFailureErr}
+	f.docker.ExecErrorsToThrow = []error{userFailureErrDocker}
 
 	manifest, bs := multiImageLiveUpdateManifestAndBuildState(f)
 	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
