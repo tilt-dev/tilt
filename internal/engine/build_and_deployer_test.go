@@ -202,18 +202,18 @@ func TestContainerBuildSynclet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if f.docker.BuildCount != 0 {
-		t.Errorf("Expected no docker build, actual: %d", f.docker.BuildCount)
-	}
-	if f.docker.PushCount != 0 {
-		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
-	}
-	if f.sCli.UpdateContainerCount != 1 {
-		t.Errorf("Expected 1 synclet containerUpdate, actual: %d", f.sCli.UpdateContainerCount)
-	}
-
+	assert.Equal(t, 0, f.docker.BuildCount,
+		"Expected no docker build, actual: %d", f.docker.BuildCount)
+	assert.Equal(t, 0, f.docker.PushCount,
+		"Expected no push to docker, actual: %d", f.docker.PushCount)
+	assert.Equal(t, 1, f.sCli.UpdateContainerCount,
+		"Expected 1 synclet UpdateContainer call, actual: %d", f.sCli.UpdateContainerCount)
+	assert.Equal(t, 1, f.docker.CopyCount,
+		"Expected 1 docker CopyToContainer (via synclet), actual: %d", f.docker.CopyCount)
+	assert.Len(t, f.docker.ExecCalls, 1,
+		"Expected 1 docker Exec call (via synclet), actual: %d", len(f.docker.ExecCalls))
+	f.assertContainerRestarts(1)
 	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyLiveUpdatedContainerID().String())
-	assert.False(t, f.sCli.LastHotReload)
 }
 
 func TestContainerBuildLocalTriggeredRuns(t *testing.T) {
@@ -284,21 +284,16 @@ func TestContainerBuildSyncletTriggeredRuns(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if f.docker.BuildCount != 0 {
-		t.Errorf("Expected no docker build, actual: %d", f.docker.BuildCount)
-	}
-	if f.docker.PushCount != 0 {
-		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
-	}
-	if f.sCli.UpdateContainerCount != 1 {
-		t.Errorf("Expected 1 synclet containerUpdate, actual: %d", f.sCli.UpdateContainerCount)
-	}
-	if f.sCli.CommandsRunCount != 2 {
-		t.Errorf("Expected 2 commands run by the synclet, actual: %d", f.sCli.CommandsRunCount)
-	}
-
+	assert.Equal(t, 0, f.docker.BuildCount, "Expected no docker build, actual: %d", f.docker.BuildCount)
+	assert.Equal(t, 0, f.docker.PushCount, "Expected no push to docker, actual: %d", f.docker.PushCount)
+	assert.Equal(t, 1, f.sCli.UpdateContainerCount,
+		"Expected 1 synclet UpdateContainer call, actual: %d", f.sCli.UpdateContainerCount)
+	assert.Equal(t, 1, f.docker.CopyCount,
+		"Expected 1 docker CopyToContainer (via synclet), actual: %d", f.docker.CopyCount)
+	assert.Len(t, f.docker.ExecCalls, 2,
+		"Expected 1 docker Exec call (via synclet), actual: %d", len(f.docker.ExecCalls))
+	f.assertContainerRestarts(1)
 	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyLiveUpdatedContainerID().String())
-	assert.False(t, f.sCli.LastHotReload)
 }
 
 func TestContainerBuildSyncletHotReload(t *testing.T) {
@@ -317,8 +312,9 @@ func TestContainerBuildSyncletHotReload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	assert.True(t, f.sCli.LastHotReload)
+	assert.Equal(t, 1, f.sCli.UpdateContainerCount,
+		"Expected 1 synclet UpdateContainer call, actual: %d", f.sCli.UpdateContainerCount)
+	f.assertContainerRestarts(0)
 }
 
 func TestDockerBuildWithNestedFastBuildDeploysSynclet(t *testing.T) {
@@ -759,7 +755,8 @@ func TestDockerComposeInPlaceUpdate(t *testing.T) {
 	assert.Equal(t, 0, f.docker.PushCount)
 	assert.Equal(t, 1, f.docker.CopyCount)
 	assert.Equal(t, 1, len(f.docker.ExecCalls))
-	assert.Equal(t, 0, f.sCli.UpdateContainerCount)
+	assert.Equal(t, 0, f.sCli.UpdateContainerCount,
+		"Expected no synclet UpdateContainer call, actual: %d", f.sCli.UpdateContainerCount)
 	if strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName) {
 		t.Errorf("Should not deploy the synclet for a docker-compose build: %s", f.k8s.Yaml)
 	}
@@ -979,7 +976,7 @@ type bdFixture struct {
 	ctx    context.Context
 	docker *docker.FakeClient
 	k8s    *k8s.FakeK8sClient
-	sCli   *synclet.FakeSyncletClient
+	sCli   *synclet.TestSyncletClient
 	bd     BuildAndDeployer
 	st     *store.Store
 	dcCli  *dockercompose.FakeDCClient
@@ -1001,7 +998,7 @@ func newBDFixture(t *testing.T, env k8s.Env, runtime container.Runtime) *bdFixtu
 	ctx, _, ta := testutils.ForkedCtxAndAnalyticsForTest(logs)
 	k8s := k8s.NewFakeK8sClient()
 	k8s.Runtime = runtime
-	sCli := synclet.NewFakeSyncletClient()
+	sCli := synclet.NewTestSyncletClient(docker)
 	mode := UpdateModeFlag(UpdateModeAuto)
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	kp := &fakeKINDPusher{}

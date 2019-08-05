@@ -38,10 +38,10 @@ type testCase struct {
 	expectDockerExecCount    int
 	expectDockerRestartCount int
 
-	// Synclet actions
+	// Most synclet behavior is tested via the fake docker client,
+	// but you can assert on this to make sure updates actually happened
+	// via the synclet and not the DockerContainerUpdater
 	expectSyncletUpdateContainerCount int
-	expectSyncletCommandCount         int
-	expectSyncletHotReload            bool
 
 	// k8s/deploy actions
 	expectK8sExecCount  int
@@ -101,10 +101,7 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 		f.assertContainerRestarts(tCase.expectDockerRestartCount)
 	}
 
-	assert.Equal(t, tCase.expectSyncletUpdateContainerCount, f.sCli.UpdateContainerCount, "synclet update container")
-	assert.Equal(t, tCase.expectSyncletCommandCount, f.sCli.CommandsRunCount, "synclet commands run")
-	assert.Equal(t, tCase.expectSyncletHotReload, f.sCli.LastHotReload, "synclet hot reload")
-
+	assert.Equal(t, tCase.expectSyncletUpdateContainerCount, f.sCli.UpdateContainerCount)
 	assert.Equal(t, tCase.expectK8sExecCount, len(f.k8s.ExecCalls), "# k8s exec calls")
 
 	logsStr := f.logs.String()
@@ -219,8 +216,9 @@ func TestLiveUpdateDockerBuildSyncletOnMultipleContainers(t *testing.T) {
 
 		// one of each operation per container
 		expectSyncletUpdateContainerCount: 3,
-		expectSyncletCommandCount:         3,
-		expectSyncletHotReload:            false,
+		expectDockerCopyCount:             3,
+		expectDockerExecCount:             3,
+		expectDockerRestartCount:          3,
 	}
 	runTestCase(t, f, tCase)
 }
@@ -533,7 +531,9 @@ func TestLiveUpdateRunTriggerSynclet(t *testing.T) {
 		expectDockerBuildCount:            0,
 		expectDockerPushCount:             0,
 		expectSyncletUpdateContainerCount: 1,
-		expectSyncletCommandCount:         2, // one run's triggers don't match -- should only exec the other two.
+		expectDockerCopyCount:             1,
+		expectDockerExecCount:             2, // one run's triggers don't match -- should only exec the other two.
+		expectDockerRestartCount:          1,
 	}
 	runTestCase(t, f, tCase)
 }
@@ -556,8 +556,9 @@ func TestLiveUpdateDockerBuildSynclet(t *testing.T) {
 		expectDockerBuildCount:            0,
 		expectDockerPushCount:             0,
 		expectSyncletUpdateContainerCount: 1,
-		expectSyncletCommandCount:         1,
-		expectSyncletHotReload:            false,
+		expectDockerCopyCount:             1,
+		expectDockerExecCount:             1,
+		expectDockerRestartCount:          1,
 	}
 	runTestCase(t, f, tCase)
 }
@@ -580,8 +581,9 @@ func TestLiveUpdateCustomBuildSynclet(t *testing.T) {
 		expectDockerBuildCount:            0,
 		expectDockerPushCount:             0,
 		expectSyncletUpdateContainerCount: 1,
-		expectSyncletCommandCount:         1,
-		expectSyncletHotReload:            false,
+		expectDockerCopyCount:             1,
+		expectDockerExecCount:             1,
+		expectDockerRestartCount:          1,
 	}
 	runTestCase(t, f, tCase)
 }
@@ -604,8 +606,9 @@ func TestLiveUpdateHotReloadSynclet(t *testing.T) {
 		expectDockerBuildCount:            0,
 		expectDockerPushCount:             0,
 		expectSyncletUpdateContainerCount: 1,
-		expectSyncletCommandCount:         1,
-		expectSyncletHotReload:            true,
+		expectDockerCopyCount:             1,
+		expectDockerExecCount:             1,
+		expectDockerRestartCount:          0, // hot reload!
 	}
 	runTestCase(t, f, tCase)
 }
