@@ -1,8 +1,6 @@
 package engine
 
 import (
-	"fmt"
-
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/model"
@@ -159,10 +157,7 @@ func NewSanchoDockerBuildImageTarget(f Fixture) model.ImageTarget {
 }
 
 func NewSanchoSyncOnlyImageTarget(f Fixture, syncs []model.LiveUpdateSyncStep) model.ImageTarget {
-	lu, err := assembleLiveUpdate(syncs, nil, false, []string{}, f)
-	if err != nil {
-		panic(fmt.Sprintf("making sancho LiveUpdate image target: %v", err))
-	}
+	lu := assembleLiveUpdate(syncs, nil, false, []string{}, f)
 	return imageTargetWithLiveUpdate(NewSanchoDockerBuildImageTarget(f), lu)
 }
 
@@ -179,10 +174,7 @@ func NewSanchoLiveUpdateImageTarget(f Fixture) model.ImageTarget {
 		},
 	}
 
-	lu, err := assembleLiveUpdate(syncs, runs, true, []string{}, f)
-	if err != nil {
-		panic(fmt.Sprintf("making sancho LiveUpdate image target: %v", err))
-	}
+	lu := assembleLiveUpdate(syncs, runs, true, []string{}, f)
 	return imageTargetWithLiveUpdate(NewSanchoDockerBuildImageTarget(f), lu)
 }
 
@@ -335,7 +327,7 @@ func NewManifestsWithCommonAncestor(fixture Fixture) (model.Manifest, model.Mani
 	return m1, m2
 }
 
-func assembleLiveUpdate(syncs []model.LiveUpdateSyncStep, runs []model.LiveUpdateRunStep, shouldRestart bool, fallBackOn []string, f Fixture) (model.LiveUpdate, error) {
+func assembleLiveUpdate(syncs []model.LiveUpdateSyncStep, runs []model.LiveUpdateRunStep, shouldRestart bool, fallBackOn []string, f Fixture) model.LiveUpdate {
 	var steps []model.LiveUpdateStep
 	if len(fallBackOn) > 0 {
 		steps = append(steps, model.LiveUpdateFallBackOnStep{Files: fallBackOn})
@@ -351,9 +343,9 @@ func assembleLiveUpdate(syncs []model.LiveUpdateSyncStep, runs []model.LiveUpdat
 	}
 	lu, err := model.NewLiveUpdate(steps, f.Path())
 	if err != nil {
-		return model.LiveUpdate{}, err
+		f.T().Fatal(err)
 	}
-	return lu, nil
+	return lu
 }
 
 func imageTargetWithLiveUpdate(i model.ImageTarget, lu model.LiveUpdate) model.ImageTarget {
