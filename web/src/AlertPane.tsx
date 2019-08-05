@@ -19,9 +19,9 @@ function logToLines(s: string) {
 }
 
 function renderAlertLinkButton(
-    alert: Alert,
-    alertLinks: { [key: string]: string },
-    handleSendAlert: (alert: Alert) => void,
+  alert: Alert,
+  alertLinks: { [key: string]: string },
+  handleSendAlert: (alert: Alert) => void
 ) {
   let key = alertKey(alert)
   let hasLink = alertLinks.hasOwnProperty(key)
@@ -29,27 +29,29 @@ function renderAlertLinkButton(
   if (!hasLink) {
     return (
       <section className="AlertPane-headerDiv-alertUrlWrap">
-        <button onClick={() => handleSendAlert(alert)}>
-          Get Link
-        </button>
+        <button onClick={() => handleSendAlert(alert)}>Get Link</button>
       </section>
     )
   } else {
     return (
-        <section className="AlertPane-headerDiv-alertUrlWrap">
-          <p className="AlertPane-headerDiv-alertUrl">{alertLinks[key]}</p>
-          <button title="Open link in new tab" onClick={() => window.open(alertLinks[key])}>
-            Open
-          </button>
-        </section>
-  )}
+      <section className="AlertPane-headerDiv-alertUrlWrap">
+        <p className="AlertPane-headerDiv-alertUrl">{alertLinks[key]}</p>
+        <button
+          title="Open link in new tab"
+          onClick={() => window.open(alertLinks[key])}
+        >
+          Open
+        </button>
+      </section>
+    )
+  }
 }
 
 function renderAlerts(
   resources: Array<Resource>,
   teamAlertsIsEnabled: boolean,
   alertLinks: { [key: string]: string },
-  handleSendAlert: (alert: Alert) => void,
+  handleSendAlert: (alert: Alert) => void
 ) {
   let formatter = timeAgoFormatter
   let alertElements: Array<JSX.Element> = []
@@ -61,12 +63,9 @@ function renderAlerts(
         <li key={alert.alertType + resource.Name} className="AlertPane-item">
           <header>
             <div className="AlertPane-headerDiv">
-              <h3  className="AlertPane-headerDiv-header">{alert.header}</h3>
-              {teamAlertsIsEnabled && renderAlertLinkButton(
-                  alert,
-                  alertLinks,
-                  handleSendAlert,
-              )}
+              <h3 className="AlertPane-headerDiv-header">{alert.header}</h3>
+              {teamAlertsIsEnabled &&
+                renderAlertLinkButton(alert, alertLinks, handleSendAlert)}
             </div>
             <div className="AlertPane-headerDiv">
               <p>
@@ -97,7 +96,7 @@ class AlertPane extends PureComponent<AlertsProps> {
       this.props.resources,
       this.props.teamAlertsIsEnabled,
       this.props.alertLinks,
-      this.props.handleSendAlert,
+      this.props.handleSendAlert
     )
     if (alerts.length > 0) {
       el = <ul>{alerts}</ul>
