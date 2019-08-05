@@ -72,7 +72,8 @@ func MaybeRunStepFailure(err error) (RunStepFailure, bool) {
 		}
 		cause := errors.Cause(e)
 		if cause == e {
-			// no available causes to drill into
+			// no more causes to drill into
+			// (If err does not implement Causer, `Cause(err)` returns back the original error)
 			break
 		}
 		e = cause
