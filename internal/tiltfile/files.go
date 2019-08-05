@@ -26,8 +26,8 @@ type gitRepo struct {
 	basePath string
 }
 
-func (s *tiltfileState) newGitRepo(path string) (*gitRepo, error) {
-	absPath := s.absPath(path)
+func (s *tiltfileState) newGitRepo(t *starlark.Thread, path string) (*gitRepo, error) {
+	absPath := s.absPath(t, path)
 	_, err := os.Stat(absPath)
 	if err != nil {
 		return nil, fmt.Errorf("Reading paths %s: %v", path, err)
@@ -47,7 +47,7 @@ func (s *tiltfileState) localGitRepo(thread *starlark.Thread, fn *starlark.Built
 		return nil, err
 	}
 
-	return s.newGitRepo(path)
+	return s.newGitRepo(thread, path)
 }
 
 var _ starlark.Value = &gitRepo{}
@@ -98,12 +98,12 @@ func (gr *gitRepo) makeLocalPath(path string) string {
 	return filepath.Join(gr.basePath, path)
 }
 
-func (s *tiltfileState) localPathFromSkylarkValue(v starlark.Value) (string, error) {
+func (s *tiltfileState) absPathFromStarlarkValue(thread *starlark.Thread, v starlark.Value) (string, error) {
 	switch v := v.(type) {
 	case *gitRepo:
 		return v.makeLocalPath("."), nil
 	case starlark.String:
-		return s.absPath(string(v)), nil
+		return s.absPath(thread, string(v)), nil
 	default:
 		return "", fmt.Errorf("expected gitRepo | string. Actual type: %T", v)
 	}
@@ -112,7 +112,7 @@ func (s *tiltfileState) localPathFromSkylarkValue(v starlark.Value) (string, err
 // When running the Tilt demo, the current working directory is arbitrary.
 // So we want to resolve paths relative to the dir where the Tiltfile lives,
 // not relative to the working directory.
-func (s *tiltfileState) absPath(path string) string {
+func (s *tiltfileState) absPath(t *starlark.Thread, path string) string {
 	if filepath.IsAbs(path) {
 		return path
 	}
@@ -139,7 +139,7 @@ func (s *tiltfileState) watchFile(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, err
 	}
 
-	p, err := s.localPathFromSkylarkValue(path)
+	p, err := s.absPathFromStarlarkValue(thread, path)
 	if err != nil {
 		return nil, fmt.Errorf("invalid type for paths: %v", err)
 	}
@@ -157,7 +157,7 @@ func (s *tiltfileState) skylarkReadFile(thread *starlark.Thread, fn *starlark.Bu
 		return nil, err
 	}
 
-	p, err := s.localPathFromSkylarkValue(path)
+	p, err := s.absPathFromStarlarkValue(thread, path)
 	if err != nil {
 		return nil, fmt.Errorf("invalid type for paths: %v", err)
 	}
@@ -261,7 +261,7 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, err
 	}
 
-	kustomizePath, err := s.localPathFromSkylarkValue(path)
+	kustomizePath, err := s.absPathFromStarlarkValue(thread, path)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
@@ -288,7 +288,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, err
 	}
 
-	localPath, err := s.localPathFromSkylarkValue(path)
+	localPath, err := s.absPathFromStarlarkValue(thread, path)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
@@ -332,7 +332,7 @@ func (s *tiltfileState) listdir(thread *starlark.Thread, fn *starlark.Builtin, a
 		return nil, err
 	}
 
-	localPath, err := s.localPathFromSkylarkValue(dir)
+	localPath, err := s.absPathFromStarlarkValue(thread, dir)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
@@ -368,7 +368,7 @@ func (s *tiltfileState) readYaml(thread *starlark.Thread, fn *starlark.Builtin, 
 		return nil, err
 	}
 
-	localPath, err := s.localPathFromSkylarkValue(path)
+	localPath, err := s.absPathFromStarlarkValue(thread, path)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
@@ -421,7 +421,7 @@ func (s *tiltfileState) readJson(thread *starlark.Thread, fn *starlark.Builtin, 
 		return nil, err
 	}
 
-	localPath, err := s.localPathFromSkylarkValue(path)
+	localPath, err := s.absPathFromStarlarkValue(thread, path)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
