@@ -15,4 +15,9 @@ describe("feature", () => {
     let features = new Features({ foo: true })
     expect(features.isEnabled("foo")).toBe(true)
   })
+
+  it("still works if null is passed in", () => {
+    let features = new Features(null)
+    expect(features.isEnabled("foo")).toBe(false)
+  })
 })
