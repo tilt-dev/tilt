@@ -175,12 +175,12 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 
 	tfl.reportTiltfileLoaded(s.builtinCallCounts)
 
-	tiltIgnoreContents, err := s.readFile(s.localPathFromString(tiltIgnorePath(filename)))
+	tiltIgnoreContents, err := s.readFile(tiltIgnorePath(absFilename))
 	// missing tiltignore is fine
 	if os.IsNotExist(err) {
 		err = nil
 	} else if err != nil {
-		return TiltfileLoadResult{}, errors.Wrapf(err, "error reading %s", tiltIgnorePath(filename))
+		return TiltfileLoadResult{}, errors.Wrapf(err, "error reading %s", tiltIgnorePath(absFilename))
 	}
 
 	return TiltfileLoadResult{

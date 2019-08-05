@@ -18,7 +18,6 @@ import (
 	"go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/kustomize"
-	"github.com/windmilleng/tilt/internal/ospath"
 )
 
 const localLogPrefix = " → "
@@ -92,75 +91,22 @@ func (gr *gitRepo) path(thread *starlark.Thread, fn *starlark.Builtin, args star
 		return nil, err
 	}
 
-	return gr.makeLocalPath(path), nil
+	return starlark.String(gr.makeLocalPath(path)), nil
 }
 
-func (gr *gitRepo) makeLocalPath(path string) localPath {
-	return localPath{filepath.Join(gr.basePath, path), gr}
+func (gr *gitRepo) makeLocalPath(path string) string {
+	return filepath.Join(gr.basePath, path)
 }
 
-type localPath struct {
-	path string
-	repo *gitRepo
-}
-
-// If this is the root of a git repo, automatically attach a gitRepo
-// so that we don't end up tracking .git changes
-func (s *tiltfileState) maybeAttachGitRepo(lp localPath, repoRoot string) localPath {
-	if ospath.IsDir(filepath.Join(repoRoot, ".git")) {
-		repo, err := s.newGitRepo(repoRoot)
-		if err == nil {
-			lp.repo = repo
-		}
-	}
-	return lp
-}
-
-func (s *tiltfileState) localPathFromString(p string) localPath {
-	lp := localPath{path: s.absPath(p)}
-	lp = s.maybeAttachGitRepo(lp, lp.path)
-	return lp
-}
-
-func (s *tiltfileState) localPathFromSkylarkValue(v starlark.Value) (localPath, error) {
+func (s *tiltfileState) localPathFromSkylarkValue(v starlark.Value) (string, error) {
 	switch v := v.(type) {
-	case localPath:
-		return v, nil
 	case *gitRepo:
 		return v.makeLocalPath("."), nil
 	case starlark.String:
-		return s.localPathFromString(string(v)), nil
+		return s.absPath(string(v)), nil
 	default:
-		return localPath{}, fmt.Errorf("expected localPath | gitRepo | string. Actual type: %T", v)
+		return "", fmt.Errorf("expected gitRepo | string. Actual type: %T", v)
 	}
-}
-
-var _ starlark.Value = localPath{}
-
-func (lp localPath) String() string {
-	return lp.path
-}
-
-func (localPath) Type() string {
-	return "localPath"
-}
-
-func (localPath) Freeze() {}
-
-func (localPath) Hash() (uint32, error) {
-	return 0, errors.New("unhashable type: localPath")
-}
-
-func (lp localPath) Empty() bool {
-	return lp.path == ""
-}
-
-func (lp localPath) Truth() starlark.Bool {
-	return lp != localPath{}
-}
-
-func (lp localPath) join(path string) localPath {
-	return localPath{path: filepath.Join(lp.path, path), repo: lp.repo}
 }
 
 // When running the Tilt demo, the current working directory is arbitrary.
@@ -174,16 +120,16 @@ func (s *tiltfileState) absPath(path string) string {
 }
 
 func (s *tiltfileState) absWorkingDir() string {
-	return filepath.Dir(s.filename.path)
+	return filepath.Dir(s.filename)
 }
 
 func (s *tiltfileState) recordConfigFile(f string) {
 	s.configFiles = sliceutils.AppendWithoutDupes(s.configFiles, f)
 }
 
-func (s *tiltfileState) readFile(p localPath) ([]byte, error) {
-	s.recordConfigFile(p.path)
-	return ioutil.ReadFile(p.path)
+func (s *tiltfileState) readFile(p string) ([]byte, error) {
+	s.recordConfigFile(p)
+	return ioutil.ReadFile(p)
 }
 
 func (s *tiltfileState) watchFile(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -198,7 +144,7 @@ func (s *tiltfileState) watchFile(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, fmt.Errorf("invalid type for paths: %v", err)
 	}
 
-	s.recordConfigFile(p.path)
+	s.recordConfigFile(p)
 
 	return starlark.None, nil
 }
@@ -223,7 +169,7 @@ func (s *tiltfileState) skylarkReadFile(thread *starlark.Thread, fn *starlark.Bu
 		return nil, err
 	}
 
-	return newBlob(string(bs), fmt.Sprintf("file: %s", p.path)), nil
+	return newBlob(string(bs), fmt.Sprintf("file: %s", p)), nil
 }
 
 type blob struct {
@@ -276,7 +222,7 @@ func (s *tiltfileState) execLocalCmd(c *exec.Cmd, logOutput bool) (string, error
 	stderr := bytes.NewBuffer(nil)
 
 	// TODO(nick): Should this also inject any docker.Env overrides?
-	c.Dir = filepath.Dir(s.filename.path)
+	c.Dir = filepath.Dir(s.filename)
 	c.Stdout = stdout
 	c.Stderr = stderr
 
@@ -320,11 +266,11 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
 
-	yaml, err := s.execLocalCmd(exec.Command("kustomize", "build", kustomizePath.String()), false)
+	yaml, err := s.execLocalCmd(exec.Command("kustomize", "build", kustomizePath), false)
 	if err != nil {
 		return nil, err
 	}
-	deps, err := kustomize.Deps(kustomizePath.String())
+	deps, err := kustomize.Deps(kustomizePath)
 	if err != nil {
 		return nil, fmt.Errorf("internal error: %v", err)
 	}
@@ -332,7 +278,7 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 		s.recordConfigFile(d)
 	}
 
-	return newBlob(yaml, fmt.Sprintf("kustomize: %s", kustomizePath.String())), nil
+	return newBlob(yaml, fmt.Sprintf("kustomize: %s", kustomizePath)), nil
 }
 
 func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -347,25 +293,25 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
 
-	info, err := os.Stat(localPath.path)
+	info, err := os.Stat(localPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("Could not read Helm chart directory %q: does not exist", localPath.path)
+			return nil, fmt.Errorf("Could not read Helm chart directory %q: does not exist", localPath)
 		}
-		return nil, fmt.Errorf("Could not read Helm chart directory %q: %v", localPath.path, err)
+		return nil, fmt.Errorf("Could not read Helm chart directory %q: %v", localPath, err)
 	} else if !info.IsDir() {
-		return nil, fmt.Errorf("helm() may only be called on directories with Chart.yaml: %q", localPath.path)
+		return nil, fmt.Errorf("helm() may only be called on directories with Chart.yaml: %q", localPath)
 	}
 
-	cmd := []string{"helm", "template", localPath.path}
+	cmd := []string{"helm", "template", localPath}
 	yaml, err := s.execLocalCmd(exec.Command(cmd[0], cmd[1:]...), false)
 	if err != nil {
 		return nil, err
 	}
 
-	s.recordConfigFile(localPath.path)
+	s.recordConfigFile(localPath)
 
-	return newBlob(filterHelmTestYAML(string(yaml)), fmt.Sprintf("helm: %s", localPath.path)), nil
+	return newBlob(filterHelmTestYAML(string(yaml)), fmt.Sprintf("helm: %s", localPath)), nil
 }
 
 func (s *tiltfileState) blob(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -390,10 +336,10 @@ func (s *tiltfileState) listdir(thread *starlark.Thread, fn *starlark.Builtin, a
 	if err != nil {
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
-	s.recordConfigFile(localPath.path)
+	s.recordConfigFile(localPath)
 	var files []string
-	err = filepath.Walk(localPath.path, func(path string, info os.FileInfo, err error) error {
-		if path == localPath.path {
+	err = filepath.Walk(localPath, func(path string, info os.FileInfo, err error) error {
+		if path == localPath {
 			return nil
 		}
 		if !info.IsDir() {

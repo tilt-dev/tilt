@@ -31,7 +31,7 @@ type resourceSet struct {
 type tiltfileState struct {
 	// set at creation
 	ctx             context.Context
-	filename        localPath
+	filename        string
 	dcCli           dockercompose.DockerComposeClient
 	kubeContext     k8s.KubeContext
 	privateRegistry container.Registry
@@ -95,10 +95,9 @@ const (
 )
 
 func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, filename string, kubeContext k8s.KubeContext, privateRegistry container.Registry, features feature.FeatureSet) *tiltfileState {
-	lp := localPath{path: filename}
-	s := &tiltfileState{
+	return &tiltfileState{
 		ctx:                        ctx,
-		filename:                   localPath{path: filename},
+		filename:                   filename,
 		dcCli:                      dcCli,
 		kubeContext:                kubeContext,
 		privateRegistry:            privateRegistry,
@@ -115,8 +114,6 @@ func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClie
 		triggerMode:                TriggerModeAuto,
 		features:                   features,
 	}
-	s.filename = s.maybeAttachGitRepo(lp, filepath.Dir(lp.path))
-	return s
 }
 
 func (s *tiltfileState) starlarkThread() *starlark.Thread {
@@ -128,7 +125,7 @@ func (s *tiltfileState) starlarkThread() *starlark.Thread {
 }
 
 func (s *tiltfileState) exec() error {
-	_, err := starlark.ExecFile(s.starlarkThread(), s.filename.path, nil, s.predeclared())
+	_, err := starlark.ExecFile(s.starlarkThread(), s.filename, nil, s.predeclared())
 	return err
 }
 
@@ -933,7 +930,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 		case DockerBuild:
 			iTarget = iTarget.WithBuildDetails(model.DockerBuild{
 				Dockerfile: image.dbDockerfile.String(),
-				BuildPath:  string(image.dbBuildPath.path),
+				BuildPath:  image.dbBuildPath,
 				BuildArgs:  image.dbBuildArgs,
 				FastBuild:  s.fastBuildForImage(image),
 				LiveUpdate: lu,
@@ -964,7 +961,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 		iTarget = iTarget.
 			WithRepos(s.reposForImage(image)).
 			WithDockerignores(s.dockerignoresForImage(image)). // used even for custom build
-			WithTiltFilename(s.filename.path).
+			WithTiltFilename(s.filename).
 			WithDependencyIDs(image.dependencyIDs)
 
 		depTargets, err := s.imgTargetsForDependencyIDsHelper(image.dependencyIDs, claimStatus)
