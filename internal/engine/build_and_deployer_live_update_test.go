@@ -25,8 +25,8 @@ var userFailureErr = docker.ExitError{ExitCode: 123}
 type testCase struct {
 	manifest model.Manifest
 
-	changedFiles        []string       // leave empty for from-scratch build
-	runningContainerIDs []container.ID // if empty, use default container
+	changedFiles              []string                          // leave empty for from-scratch build
+	runningContainersByTarget map[model.TargetID][]container.ID // if empty, use default container
 
 	// Expect the BuildAndDeploy call to fail with an error containing this string
 	expectErrorContains string
@@ -54,7 +54,7 @@ type testCase struct {
 }
 
 func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
-	if len(tCase.changedFiles) == 0 && len(tCase.runningContainerIDs) != 0 {
+	if len(tCase.changedFiles) == 0 && len(tCase.runningContainersByTarget) != 0 {
 		t.Fatal("can't specify both empty changedFiles (implies from-scratch " +
 			"build) and non-empty running containers (implies there's an existing build " +
 			"to LiveUpdate on top of).")
@@ -68,16 +68,16 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 	iTarg := manifest.ImageTargetAt(iTargIdx)
 	require.True(t, manifest.IsImageDeployed(iTarg))
 
-	if len(tCase.runningContainerIDs) > 0 {
-		cInfos := make([]store.ContainerInfo, len(tCase.runningContainerIDs))
-		for i, id := range tCase.runningContainerIDs {
+	for targID, cIDs := range tCase.runningContainersByTarget {
+		cInfos := make([]store.ContainerInfo, len(cIDs))
+		for i, id := range cIDs {
 			cInfos[i] = store.ContainerInfo{
 				PodID:         testPodID,
 				ContainerID:   id,
 				ContainerName: container.Name(fmt.Sprintf("container %s", id)),
 			}
 		}
-		bs[iTarg.ID()] = bs[iTarg.ID()].WithRunningContainers(cInfos)
+		bs[targID] = bs[targID].WithRunningContainers(cInfos)
 	}
 
 	targets := buildTargets(manifest)
@@ -95,7 +95,7 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 	assert.Equal(t, tCase.expectDockerPushCount, f.docker.PushCount, "docker push")
 	assert.Equal(t, tCase.expectDockerCopyCount, f.docker.CopyCount, "docker copy")
 	assert.Equal(t, tCase.expectDockerExecCount, len(f.docker.ExecCalls), "docker exec")
-	if len(tCase.runningContainerIDs) > 0 {
+	if len(tCase.runningContainersByTarget) > 0 {
 		f.assertTotalContainerRestarts(tCase.expectDockerRestartCount)
 	} else {
 		f.assertContainerRestarts(tCase.expectDockerRestartCount)
@@ -116,29 +116,41 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 		}
 	}
 
-	id := manifest.ImageTargetAt(iTargIdx).ID()
-	imgRes, hasResult := result[id]
 	if tCase.expectErrorContains != "" {
 		return
 	}
 
-	require.True(t, hasResult, "expect build result for image")
-	if !tCase.expectK8sDeploy {
-		assert.Empty(t, f.k8s.Yaml, "expected no k8s deploy, but we deployed YAML: %s", f.k8s.Yaml)
-
-		if len(tCase.runningContainerIDs) > 0 {
-			// We expect to have operated on the number of containers that the user specified
-			assert.Equal(t, imgRes.LiveUpdatedContainerIDs, tCase.runningContainerIDs)
-		} else {
-			// We did a container build, so we expect result to have the container ID we operated on
-			assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyLiveUpdatedContainerID().String())
-		}
-	} else {
+	if tCase.expectK8sDeploy {
 		expectedYaml := "image: gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
 		if !strings.Contains(f.k8s.Yaml, expectedYaml) {
 			t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.Yaml)
 		}
 		assert.Equal(t, tCase.expectSyncletDeploy, strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName), "expected synclet-deploy = %t (deployed yaml was: %s)", tCase.expectSyncletDeploy, f.k8s.Yaml)
+		return
+	} else {
+		require.Empty(t, f.k8s.Yaml, "expected no k8s deploy, but we deployed YAML: %s", f.k8s.Yaml)
+	}
+
+	// if no other info provided, assume that the last image target is the deployed one
+	expectUpdatedTargs := []model.TargetID{manifest.ImageTargetAt(iTargIdx).ID()}
+	if len(tCase.runningContainersByTarget) > 0 {
+		expectUpdatedTargs = nil
+		for targID, _ := range tCase.runningContainersByTarget {
+			expectUpdatedTargs = append(expectUpdatedTargs, targID)
+		}
+	}
+
+	for _, expectID := range expectUpdatedTargs {
+		imgRes, hasResult := result[expectID]
+		require.True(t, hasResult, "expect build result for image target %s", expectID)
+
+		if len(tCase.runningContainersByTarget) > 0 {
+			// We expect to have operated on the containers that the test specified
+			assert.ElementsMatch(t, imgRes.LiveUpdatedContainerIDs, tCase.runningContainersByTarget[expectID])
+		} else {
+			// We set up the test with RunningContainer = DefaultContainer; expect to have operated on that.
+			assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyLiveUpdatedContainerID().String())
+		}
 	}
 }
 
@@ -146,16 +158,8 @@ func TestLiveUpdateDockerBuildLocalContainer(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
-	if err != nil {
-		t.Fatal(err)
-	}
 	tCase := testCase{
-		manifest: manifestbuilder.New(f, "sancho").
-			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
-			WithLiveUpdate(lu).
-			Build(),
+		manifest:                 NewSanchoLiveUpdateManifest(f),
 		changedFiles:             []string{"a.txt"},
 		expectDockerBuildCount:   0,
 		expectDockerPushCount:    0,
@@ -170,21 +174,14 @@ func TestLiveUpdateDockerBuildLocalContainerOnMultipleContainers(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	m := NewSanchoLiveUpdateManifest(f)
 	cIDs := []container.ID{"c1", "c2", "c3"}
 	tCase := testCase{
-		manifest: manifestbuilder.New(f, "sancho").
-			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
-			WithLiveUpdate(lu).
-			Build(),
-		runningContainerIDs:    cIDs,
-		changedFiles:           []string{"a.txt"},
-		expectDockerBuildCount: 0,
-		expectDockerPushCount:  0,
+		manifest:                  m,
+		runningContainersByTarget: map[model.TargetID][]container.ID{m.ImageTargetAt(0).ID(): cIDs},
+		changedFiles:              []string{"a.txt"},
+		expectDockerBuildCount:    0,
+		expectDockerPushCount:     0,
 
 		// one of each operation per container
 		expectDockerCopyCount:    3,
@@ -198,21 +195,14 @@ func TestLiveUpdateDockerBuildSyncletOnMultipleContainers(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	m := NewSanchoLiveUpdateManifest(f)
 	cIDs := []container.ID{"c1", "c2", "c3"}
 	tCase := testCase{
-		manifest: manifestbuilder.New(f, "sancho").
-			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
-			WithLiveUpdate(lu).
-			Build(),
-		runningContainerIDs:    cIDs,
-		changedFiles:           []string{"a.txt"},
-		expectDockerBuildCount: 0,
-		expectDockerPushCount:  0,
+		manifest:                  m,
+		runningContainersByTarget: map[model.TargetID][]container.ID{m.ImageTargetAt(0).ID(): cIDs},
+		changedFiles:              []string{"a.txt"},
+		expectDockerBuildCount:    0,
+		expectDockerPushCount:     0,
 
 		// one of each operation per container
 		expectSyncletUpdateContainerCount: 3,
@@ -227,21 +217,19 @@ func TestLiveUpdateDockerBuildExecOnMultipleContainers(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeCrio)
 	defer f.TearDown()
 
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), nil, false, []string{"i/match/nothing"}, f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), nil, false, []string{"i/match/nothing"}, f)
+	iTarg := NewSanchoDockerBuildImageTarget(f)
 	cIDs := []container.ID{"c1", "c2", "c3"}
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithImageTarget(iTarg).
 			WithLiveUpdate(lu).
 			Build(),
-		runningContainerIDs:    cIDs,
-		changedFiles:           []string{"a.txt"},
-		expectDockerBuildCount: 0,
-		expectDockerPushCount:  0,
+		runningContainersByTarget: map[model.TargetID][]container.ID{iTarg.ID(): cIDs},
+		changedFiles:              []string{"a.txt"},
+		expectDockerBuildCount:    0,
+		expectDockerPushCount:     0,
 
 		// 1 per container (tar archive) x 3 containers
 		expectK8sExecCount: 3,
@@ -256,19 +244,12 @@ func TestLiveUpdateMultipleContainersFallsBackForFailure(t *testing.T) {
 
 	f.docker.SetExecError(fmt.Errorf("egads"))
 
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	m := NewSanchoLiveUpdateManifest(f)
 	cIDs := []container.ID{"c1", "c2", "c3"}
 	tCase := testCase{
-		manifest: manifestbuilder.New(f, "sancho").
-			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
-			WithLiveUpdate(lu).
-			Build(),
-		runningContainerIDs: cIDs,
-		changedFiles:        []string{"a.txt"},
+		manifest:                  m,
+		runningContainersByTarget: map[model.TargetID][]container.ID{m.ImageTargetAt(0).ID(): cIDs},
+		changedFiles:              []string{"a.txt"},
 
 		// attempted container update; called copy and exec before hitting error
 		expectDockerCopyCount: 1,
@@ -290,19 +271,12 @@ func TestLiveUpdateMultipleContainersFallsBackForFailureAfterSuccess(t *testing.
 	// First call = no error, second call = error
 	f.docker.ExecErrorsToThrow = []error{nil, fmt.Errorf("egads")}
 
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	m := NewSanchoLiveUpdateManifest(f)
 	cIDs := []container.ID{"c1", "c2", "c3"}
 	tCase := testCase{
-		manifest: manifestbuilder.New(f, "sancho").
-			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
-			WithLiveUpdate(lu).
-			Build(),
-		runningContainerIDs: cIDs,
-		changedFiles:        []string{"a.txt"},
+		manifest:                  m,
+		runningContainersByTarget: map[model.TargetID][]container.ID{m.ImageTargetAt(0).ID(): cIDs},
+		changedFiles:              []string{"a.txt"},
 
 		// one successful update (copy, exec, restart);
 		// one truncated update (copy, exec) before hitting error
@@ -326,19 +300,12 @@ func TestLiveUpdateMultipleContainersUpdatesAllForUserRunFailuresAndDoesntFallBa
 	// Same UserRunFailure on all three exec calls
 	f.docker.ExecErrorsToThrow = []error{userFailureErr, userFailureErr, userFailureErr}
 
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	m := NewSanchoLiveUpdateManifest(f)
 	cIDs := []container.ID{"c1", "c2", "c3"}
 	tCase := testCase{
-		manifest: manifestbuilder.New(f, "sancho").
-			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
-			WithLiveUpdate(lu).
-			Build(),
-		runningContainerIDs: cIDs,
-		changedFiles:        []string{"a.txt"},
+		manifest:                  m,
+		runningContainersByTarget: map[model.TargetID][]container.ID{m.ImageTargetAt(0).ID(): cIDs},
+		changedFiles:              []string{"a.txt"},
 
 		// BuildAndDeploy call will ultimately fail with this error,
 		// b/c we DON'T fall back to an image build
@@ -366,19 +333,12 @@ func TestLiveUpdateMultipleContainersFallsBackForSomeUserRunFailuresSomeSuccess(
 
 	f.docker.ExecErrorsToThrow = []error{userFailureErr, nil, userFailureErr}
 
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	m := NewSanchoLiveUpdateManifest(f)
 	cIDs := []container.ID{"c1", "c2", "c3"}
 	tCase := testCase{
-		manifest: manifestbuilder.New(f, "sancho").
-			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
-			WithLiveUpdate(lu).
-			Build(),
-		runningContainerIDs: cIDs,
-		changedFiles:        []string{"a.txt"},
+		manifest:                  m,
+		runningContainersByTarget: map[model.TargetID][]container.ID{m.ImageTargetAt(0).ID(): cIDs},
+		changedFiles:              []string{"a.txt"},
 
 		// one truncated update (copy and exec before hitting error)
 		// one successful update (copy, exec, restart)
@@ -404,19 +364,12 @@ func TestLiveUpdateMultipleContainersFallsBackForSomeUserRunFailuresSomeNonUserF
 		userFailureErr,
 	}
 
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	m := NewSanchoLiveUpdateManifest(f)
 	cIDs := []container.ID{"c1", "c2", "c3"}
 	tCase := testCase{
-		manifest: manifestbuilder.New(f, "sancho").
-			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
-			WithLiveUpdate(lu).
-			Build(),
-		runningContainerIDs: cIDs,
-		changedFiles:        []string{"a.txt"},
+		manifest:                  m,
+		runningContainersByTarget: map[model.TargetID][]container.ID{m.ImageTargetAt(0).ID(): cIDs},
+		changedFiles:              []string{"a.txt"},
 
 		// two truncated updates (copy and exec before hitting error)
 		// fall back before attempting third update
@@ -435,10 +388,7 @@ func TestLiveUpdateCustomBuildLocalContainer(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
@@ -459,10 +409,7 @@ func TestLiveUpdateHotReloadLocalContainer(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil, f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil, f)
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
@@ -488,10 +435,7 @@ func TestLiveUpdateRunTriggerLocalContainer(t *testing.T) {
 		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
 		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo b"), Triggers: f.NewPathSet("b.txt")}, // does NOT match changed file
 	}
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), runs, true, nil, f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), runs, true, nil, f)
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
@@ -517,10 +461,7 @@ func TestLiveUpdateRunTriggerSynclet(t *testing.T) {
 		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
 		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo b"), Triggers: f.NewPathSet("b.txt")}, // does NOT match changed file
 	}
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), runs, true, nil, f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), runs, true, nil, f)
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
@@ -542,16 +483,8 @@ func TestLiveUpdateDockerBuildSynclet(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, nil, f)
-	if err != nil {
-		t.Fatal(err)
-	}
 	tCase := testCase{
-		manifest: manifestbuilder.New(f, "sancho").
-			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
-			WithLiveUpdate(lu).
-			Build(),
+		manifest:                          NewSanchoLiveUpdateManifest(f),
 		changedFiles:                      []string{"a.txt"},
 		expectDockerBuildCount:            0,
 		expectDockerPushCount:             0,
@@ -567,10 +500,7 @@ func TestLiveUpdateCustomBuildSynclet(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, nil, f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, nil, f)
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
@@ -592,10 +522,7 @@ func TestLiveUpdateHotReloadSynclet(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil, f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil, f)
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
@@ -617,10 +544,7 @@ func TestLiveUpdateExecDoesNotSupportRestart(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeContainerd)
 	defer f.TearDown()
 
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
@@ -643,10 +567,7 @@ func TestLiveUpdateDockerBuildExec(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeContainerd)
 	defer f.TearDown()
 
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil, f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil, f)
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
@@ -666,10 +587,7 @@ func TestDockerBuildWithoutLiveUpdateDoesNotDeploySynclet(t *testing.T) {
 	defer f.TearDown()
 
 	tCase := testCase{
-		manifest: manifestbuilder.New(f, "sancho").
-			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
-			Build(),
+		manifest:               NewSanchoDockerBuildManifest(f),
 		changedFiles:           nil, // will use an empty BuildResultSet, i.e. treat this as first build
 		expectDockerBuildCount: 1,
 		expectDockerPushCount:  1,
@@ -683,17 +601,8 @@ func TestLiveUpdateDockerBuildDeploysSynclet(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil, f)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	tCase := testCase{
-		manifest: manifestbuilder.New(f, "sancho").
-			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
-			WithLiveUpdate(lu).
-			Build(),
+		manifest:               NewSanchoLiveUpdateManifest(f),
 		changedFiles:           nil, // will use an empty BuildResultSet, i.e. treat this as first build
 		expectDockerBuildCount: 1,
 		expectDockerPushCount:  1,
@@ -707,10 +616,7 @@ func TestLiveUpdateLocalContainerFallBackOn(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"a.txt"}, f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"a.txt"}, f)
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
@@ -733,10 +639,7 @@ func TestLiveUpdateSyncletFallBackOn(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"a.txt"}, f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"a.txt"}, f)
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
@@ -765,10 +668,7 @@ func TestLiveUpdateLocalContainerChangedFileNotMatchingSyncFallsBack(t *testing.
 		Dest:   "/go/src/github.com/windmilleng/sancho",
 	}}
 
-	lu, err := assembleLiveUpdate(steps, SanchoRunSteps, true, []string{"a.txt"}, f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, []string{"a.txt"}, f)
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
@@ -799,10 +699,7 @@ func TestLiveUpdateSyncletChangedFileNotMatchingSyncFallsBack(t *testing.T) {
 		Dest:   "/go/src/github.com/windmilleng/sancho",
 	}}
 
-	lu, err := assembleLiveUpdate(steps, SanchoRunSteps, true, []string{"a.txt"}, f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, []string{"a.txt"}, f)
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
@@ -834,10 +731,7 @@ func TestLiveUpdateSomeFilesMatchSyncSomeDontFallsBack(t *testing.T) {
 		Dest:   "/go/src/github.com/windmilleng/sancho",
 	}}
 
-	lu, err := assembleLiveUpdate(steps, SanchoRunSteps, true, []string{"a.txt"}, f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, []string{"a.txt"}, f)
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
@@ -869,11 +763,7 @@ func TestLiveUpdateInFirstImageOfImageDependency(t *testing.T) {
 		Dest:   "/go/src/github.com/windmilleng/sancho-base",
 	}}
 
-	lu, err := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f)
 	tCase := testCase{
 		manifest:                 NewSanchoDockerBuildMultiStageManifestWithLiveUpdate(f, lu),
 		changedFiles:             []string{"sancho-base/a.txt"},
@@ -894,11 +784,7 @@ func TestLiveUpdateInFirstImageOfImageDependencyWithoutSync(t *testing.T) {
 		Dest:   "/go/src/github.com/windmilleng/sancho",
 	}}
 
-	lu, err := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f)
 	tCase := testCase{
 		manifest:               NewSanchoDockerBuildMultiStageManifestWithLiveUpdate(f, lu),
 		changedFiles:           []string{"sancho-base/a.txt"},
@@ -918,11 +804,7 @@ func TestLiveUpdateInSecondImageOfImageDependency(t *testing.T) {
 		Dest:   "/go/src/github.com/windmilleng/sancho",
 	}}
 
-	lu, err := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f)
 	tCase := testCase{
 		manifest:                 NewSanchoDockerBuildMultiStageManifestWithLiveUpdate(f, lu),
 		changedFiles:             []string{"sancho/a.txt"},
