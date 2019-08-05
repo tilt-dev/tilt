@@ -3,11 +3,16 @@
 // This is important because when the React app starts,
 // it starts with an empty state and there won't be _any_ feature flags
 // until the first engine state comes in over the Websocket.
+type featureFlags = { [featureFlag: string]: boolean }
 export default class Features {
-  private flags: { [featureFlag: string]: boolean }
+  private flags: featureFlags
 
-  constructor(flags: { [featureFlag: string]: boolean }) {
-    this.flags = flags
+  constructor(flags: featureFlags | null) {
+    if (flags) {
+      this.flags = flags
+    } else {
+      this.flags = {}
+    }
   }
 
   public isEnabled(flag: string): boolean {
