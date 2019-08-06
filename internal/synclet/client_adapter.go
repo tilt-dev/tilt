@@ -44,8 +44,9 @@ func (s *SyncletCli) UpdateContainer(
 	commands []model.Cmd,
 	hotReload bool) error {
 
-	var protoCmds []*proto.Cmd
+	ctx, cancelCtx := context.WithCancel(ctx)
 
+	var protoCmds []*proto.Cmd
 	for _, cmd := range commands {
 		protoCmds = append(protoCmds, &proto.Cmd{Argv: cmd.Argv})
 	}
@@ -73,6 +74,7 @@ func (s *SyncletCli) UpdateContainer(
 
 		if reply != nil && reply.FailedRunStep != nil {
 			frs := reply.FailedRunStep
+			cancelCtx()
 			return build.RunStepFailure{
 				Cmd:      model.Cmd{Argv: []string{frs.Cmd}},
 				ExitCode: int(frs.ExitCode),

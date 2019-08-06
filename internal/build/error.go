@@ -51,6 +51,10 @@ type RunStepFailure struct {
 	ExitCode int
 }
 
+func (e RunStepFailure) Empty() bool {
+	return e.Cmd.Empty() && e.ExitCode == 0
+}
+
 func (e RunStepFailure) Error() string {
 	return fmt.Sprintf("Run step %q failed with exit code: %d", e.Cmd.String(), e.ExitCode)
 }
