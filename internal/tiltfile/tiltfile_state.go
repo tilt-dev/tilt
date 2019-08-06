@@ -879,10 +879,12 @@ func (s *tiltfileState) validateLiveUpdate(iTarget model.ImageTarget, g model.Ta
 	}
 
 	for _, path := range lu.FallBackOnFiles().Paths {
-		absPath := s.absPath(path)
-		if !ospath.IsChildOfOne(watchedPaths, absPath) {
+		if !filepath.IsAbs(path) {
+			return fmt.Errorf("internal error: path not resolved correctly! Please report to https://github.com/windmilleng/tilt/issues : %s", path)
+		}
+		if !ospath.IsChildOfOne(watchedPaths, path) {
 			return fmt.Errorf("fall_back_on paths '%s' is not a child of any watched filepaths (%v)",
-				absPath, watchedPaths)
+				path, watchedPaths)
 		}
 
 	}

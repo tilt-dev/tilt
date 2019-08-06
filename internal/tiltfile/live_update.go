@@ -125,18 +125,17 @@ func (s *tiltfileState) liveUpdateFallBackOn(thread *starlark.Thread, fn *starla
 		return nil, err
 	}
 	filesSlice := starlarkValueOrSequenceToSlice(files)
-	var fileStrings []string
+	var paths []string
 	for _, f := range filesSlice {
-		switch fStr := f.(type) {
-		case starlark.String:
-			fileStrings = append(fileStrings, string(fStr))
-		default:
-			return nil, fmt.Errorf("fall_back_on step contained value '%s' of type '%s'. it may only contain strings", fStr, fStr.Type())
+		path, err := s.absPathFromStarlarkValue(thread, f)
+		if err != nil {
+			return nil, fmt.Errorf("fall_back_on step contained value '%s' of type '%s'. it may only contain strings", f, f.Type())
 		}
+		paths = append(paths, path)
 	}
 
 	ret := liveUpdateFallBackOnStep{
-		files:    fileStrings,
+		files:    paths,
 		position: thread.CallFrame(1).Pos,
 	}
 	s.recordLiveUpdateStep(ret)
@@ -150,7 +149,7 @@ func (s *tiltfileState) liveUpdateSync(thread *starlark.Thread, fn *starlark.Bui
 	}
 
 	ret := liveUpdateSyncStep{
-		localPath:  s.absPath(localPath),
+		localPath:  s.absPath(thread, localPath),
 		remotePath: remotePath,
 		position:   thread.CallFrame(1).Pos,
 	}

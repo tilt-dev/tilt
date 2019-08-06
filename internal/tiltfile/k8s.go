@@ -106,7 +106,7 @@ func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, a
 		return nil, err
 	}
 
-	entities, err := s.yamlEntitiesFromSkylarkValueOrList(yamlValue)
+	entities, err := s.yamlEntitiesFromSkylarkValueOrList(thread, yamlValue)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 		}
 	}
 
-	entities, err := s.yamlEntitiesFromSkylarkValueOrList(yamlValue)
+	entities, err := s.yamlEntitiesFromSkylarkValueOrList(thread, yamlValue)
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +220,7 @@ func (s *tiltfileState) k8sResourceV1(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
-	entities, err := s.yamlEntitiesFromSkylarkValueOrList(yamlValue)
+	entities, err := s.yamlEntitiesFromSkylarkValueOrList(thread, yamlValue)
 	if err != nil {
 		return nil, err
 	}
@@ -626,11 +626,11 @@ func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 	return r, nil
 }
 
-func (s *tiltfileState) yamlEntitiesFromSkylarkValueOrList(v starlark.Value) ([]k8s.K8sEntity, error) {
+func (s *tiltfileState) yamlEntitiesFromSkylarkValueOrList(thread *starlark.Thread, v starlark.Value) ([]k8s.K8sEntity, error) {
 	values := starlarkValueOrSequenceToSlice(v)
 	var ret []k8s.K8sEntity
 	for _, value := range values {
-		entities, err := s.yamlEntitiesFromSkylarkValue(value)
+		entities, err := s.yamlEntitiesFromSkylarkValue(thread, value)
 		if err != nil {
 			return nil, err
 		}
@@ -648,14 +648,14 @@ func parseYAMLFromBlob(blob blob) ([]k8s.K8sEntity, error) {
 	return ret, nil
 }
 
-func (s *tiltfileState) yamlEntitiesFromSkylarkValue(v starlark.Value) ([]k8s.K8sEntity, error) {
+func (s *tiltfileState) yamlEntitiesFromSkylarkValue(thread *starlark.Thread, v starlark.Value) ([]k8s.K8sEntity, error) {
 	switch v := v.(type) {
 	case nil:
 		return nil, nil
 	case *blob:
 		return parseYAMLFromBlob(*v)
 	default:
-		yamlPath, err := s.localPathFromSkylarkValue(v)
+		yamlPath, err := s.absPathFromStarlarkValue(thread, v)
 		if err != nil {
 			return nil, err
 		}

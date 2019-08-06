@@ -305,7 +305,9 @@ func newLiveUpdateFixture(t *testing.T) *liveUpdateFixture {
 	var steps []model.LiveUpdateStep
 
 	steps = append(steps,
-		model.LiveUpdateFallBackOnStep{Files: []string{"foo/i", "foo/j"}},
+		model.LiveUpdateFallBackOnStep{
+			Files: []string{f.JoinPath("foo/i"), f.JoinPath("foo/j")},
+		},
 		model.LiveUpdateSyncStep{Source: f.JoinPath("foo", "b"), Dest: "/c"},
 		model.LiveUpdateRunStep{
 			Command:  model.ToShellCmd("f"),

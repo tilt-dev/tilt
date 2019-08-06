@@ -41,22 +41,14 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	pathSlice := starlarkValueOrSequenceToSlice(configPathsValue)
 	var configPaths []string
 	for _, v := range pathSlice {
-		switch val := v.(type) {
-		case starlark.String:
-			goString := val.GoString()
-			configPaths = append(configPaths, goString)
-		default:
-			return nil, fmt.Errorf("docker_compose files must be a string or a sequence of strings; found a %T", val)
+		path, err := s.absPathFromStarlarkValue(thread, v)
+		if err != nil {
+			return nil, fmt.Errorf("docker_compose files must be a string or a sequence of strings; found a %T", v)
 		}
+		configPaths = append(configPaths, path)
 	}
+
 	var services []*dcService
-	absConfigPaths := make([]string, len(configPaths))
-	for i, path := range configPaths {
-		absConfigPaths[i] = s.absPath(path)
-
-	}
-	configPaths = absConfigPaths
-
 	tempServices, err := parseDCConfig(s.ctx, s.dcCli, configPaths)
 	services = append(services, tempServices...)
 	if err != nil {
@@ -456,7 +448,10 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcConfigPaths []
 
 	localPaths := []string{s.filename}
 	for _, p := range paths {
-		localPaths = append(localPaths, s.absPath(p))
+		if !filepath.IsAbs(p) {
+			return model.Manifest{}, nil, fmt.Errorf("internal error: path not resolved correctly! Please report to https://github.com/windmilleng/tilt/issues : %s", p)
+		}
+		localPaths = append(localPaths, p)
 	}
 	dcInfo = dcInfo.WithRepos(reposForPaths(localPaths)).
 		WithTiltFilename(s.filename)
