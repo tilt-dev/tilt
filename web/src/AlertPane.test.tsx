@@ -27,8 +27,9 @@ it("renders no errors", () => {
     .create(
       <AlertPane
         resources={resources as Array<Resource>}
-        handleSendAlert={fakeSendAlert}
         teamAlertsIsEnabled={false}
+        handleSendAlert={fakeSendAlert}
+        alertLinks={{ BuildErrorFoo: "https://alerts.tilt.dev/alert/moo" }}
       />
     )
     .toJSON()
@@ -59,8 +60,9 @@ it("renders one container start error", () => {
     .create(
       <AlertPane
         resources={resources as Array<Resource>}
-        handleSendAlert={fakeSendAlert}
         teamAlertsIsEnabled={false}
+        handleSendAlert={fakeSendAlert}
+        alertLinks={{ BuildErrorFoo: "https://alerts.tilt.dev/alert/moo" }}
       />
     )
     .toJSON()
@@ -74,8 +76,9 @@ it("renders one container start error", () => {
     .create(
       <AlertPane
         resources={resources as Array<Resource>}
-        handleSendAlert={fakeSendAlert}
         teamAlertsIsEnabled={false}
+        handleSendAlert={fakeSendAlert}
+        alertLinks={{ BuildErrorFoo: "https://alerts.tilt.dev/alert/moo" }}
       />
     )
     .toJSON()
@@ -103,8 +106,9 @@ it("shows that a container has restarted", () => {
     .create(
       <AlertPane
         resources={resources as Array<Resource>}
-        handleSendAlert={fakeSendAlert}
         teamAlertsIsEnabled={false}
+        handleSendAlert={fakeSendAlert}
+        alertLinks={{ BuildErrorFoo: "https://alerts.tilt.dev/alert/moo" }}
       />
     )
     .toJSON()
@@ -133,8 +137,9 @@ it("shows that a crash rebuild has occurred", () => {
     .create(
       <AlertPane
         resources={resources as Array<Resource>}
-        handleSendAlert={fakeSendAlert}
         teamAlertsIsEnabled={false}
+        handleSendAlert={fakeSendAlert}
+        alertLinks={{ BuildErrorFoo: "https://alerts.tilt.dev/alert/moo" }}
       />
     )
     .toJSON()
@@ -164,8 +169,9 @@ it("renders multiple lines of a crash log", () => {
     .create(
       <AlertPane
         resources={resources as Array<Resource>}
-        handleSendAlert={fakeSendAlert}
         teamAlertsIsEnabled={false}
+        handleSendAlert={fakeSendAlert}
+        alertLinks={{ BuildErrorFoo: "https://alerts.tilt.dev/alert/moo" }}
       />
     )
     .toJSON()
@@ -195,8 +201,9 @@ it("renders warnings", () => {
     .create(
       <AlertPane
         resources={resources as Array<Resource>}
-        handleSendAlert={fakeSendAlert}
         teamAlertsIsEnabled={false}
+        handleSendAlert={fakeSendAlert}
+        alertLinks={{ BuildErrorFoo: "https://alerts.tilt.dev/alert/moo" }}
       />
     )
     .toJSON()
@@ -214,8 +221,9 @@ it("renders one container unrecognized error", () => {
     .create(
       <AlertPane
         resources={resources}
-        handleSendAlert={fakeSendAlert}
         teamAlertsIsEnabled={false}
+        handleSendAlert={fakeSendAlert}
+        alertLinks={{ BuildErrorFoo: "https://alerts.tilt.dev/alert/moo" }}
       />
     )
     .toJSON()
@@ -255,8 +263,9 @@ it("renders the get alert link button when the feature is enabled", () => {
     .create(
       <AlertPane
         resources={resources as Array<Resource>}
-        handleSendAlert={fakeSendAlert}
         teamAlertsIsEnabled={true}
+        handleSendAlert={fakeSendAlert}
+        alertLinks={{ BuildErrorFoo: "https://alerts.tilt.dev/alert/moo" }}
       />
     )
     .toJSON()
