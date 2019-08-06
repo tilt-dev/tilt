@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -108,7 +109,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 
 	l := logger.Get(ctx)
 	cIDStr := container.ShortStrs(store.IDsForInfos(state.RunningContainers))
-	l.Infof("  → Updating container…")
+	l.Infof("  → Updating container(s): %s", cIDStr)
 
 	filter := ignore.CreateBuildContextFilter(iTarget)
 	boiledSteps, err := build.BoilRuns(runs, changedFiles)
@@ -141,7 +142,10 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 			_ = pw.Close()
 		}
 	}()
-	var archiveReader io.Reader = pr
+	tarBytes, err := ioutil.ReadAll(pr)
+	if err != nil {
+		return err
+	}
 
 	if len(toArchive) > 0 {
 		l.Infof("Will copy %d file(s) to container(s): %s", len(toArchive), cIDStr)
@@ -152,7 +156,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 
 	var lastUserBuildFailure error
 	for _, cInfo := range state.RunningContainers {
-		archiveReader, err = lubad.updateContainerAndTeeTarArchive(ctx, cu, cInfo, archiveReader, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
+		err = cu.UpdateContainer(ctx, cInfo, bytes.NewReader(tarBytes), build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 		if err != nil {
 			if runFail, ok := build.MaybeRunStepFailure(err); ok {
 				// Keep running updates -- we want all containers to have the same files on them
@@ -180,18 +184,6 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 		return WrapDontFallBackError(lastUserBuildFailure)
 	}
 	return nil
-}
-
-func (lubad *LiveUpdateBuildAndDeployer) updateContainerAndTeeTarArchive(ctx context.Context,
-	cu containerupdate.ContainerUpdater, cInfo store.ContainerInfo, archiveToCopy io.Reader,
-	filesToDelete []string, cmds []model.Cmd, hotReload bool) (io.Reader, error) {
-	// always pass a copy of the tar archive reader
-	// so multiple updates can access the same data
-	var archiveBuf bytes.Buffer
-	archiveTee := io.TeeReader(archiveToCopy, &archiveBuf)
-
-	err := cu.UpdateContainer(ctx, cInfo, archiveTee, filesToDelete, cmds, hotReload)
-	return &archiveBuf, err
 }
 
 // liveUpdateInfoForStateTree validates the state tree for LiveUpdate and returns

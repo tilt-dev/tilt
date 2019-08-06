@@ -217,7 +217,7 @@ func TestErrorStopsSubsequentContainerUpdates(t *testing.T) {
 	require.Len(t, f.cu.Calls, 1, "should only call UpdateContainer once (error should stop subsequent calls)")
 }
 
-func TestUpdateMultipleContainersTeesArchive(t *testing.T) {
+func TestUpdateMultipleContainersWithSameTarArchive(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
 
@@ -267,7 +267,7 @@ func TestUpdateMultipleContainersTeesArchive(t *testing.T) {
 	}
 }
 
-func TestUpdateMultipleContainersTeesArchiveOnRunStepFailure(t *testing.T) {
+func TestUpdateMultipleContainersWithSameTarArchiveOnRunStepFailure(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
 
