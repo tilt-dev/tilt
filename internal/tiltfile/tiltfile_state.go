@@ -31,13 +31,13 @@ type resourceSet struct {
 type tiltfileState struct {
 	// set at creation
 	ctx             context.Context
-	filename        string
 	dcCli           dockercompose.DockerComposeClient
 	kubeContext     k8s.KubeContext
 	privateRegistry container.Registry
 	features        feature.FeatureSet
 
 	// added to during execution
+	loadCache          map[string]loadCacheEntry
 	configFiles        []string
 	buildIndex         *buildIndex
 	k8s                []*k8sResource
@@ -94,17 +94,16 @@ const (
 	k8sResourceAssemblyVersionReasonExplicit
 )
 
-func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, filename string, kubeContext k8s.KubeContext, privateRegistry container.Registry, features feature.FeatureSet) *tiltfileState {
+func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, kubeContext k8s.KubeContext, privateRegistry container.Registry, features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
 		ctx:                        ctx,
-		filename:                   filename,
 		dcCli:                      dcCli,
 		kubeContext:                kubeContext,
 		privateRegistry:            privateRegistry,
 		buildIndex:                 newBuildIndex(),
 		k8sByName:                  make(map[string]*k8sResource),
 		k8sImageJSONPaths:          make(map[k8sObjectSelector][]k8s.JSONPath),
-		configFiles:                []string{filename, tiltIgnorePath(filename)},
+		configFiles:                []string{},
 		usedImages:                 make(map[string]bool),
 		logger:                     logger.Get(ctx),
 		builtinCallCounts:          make(map[string]int),
@@ -113,20 +112,34 @@ func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClie
 		k8sResourceOptions:         make(map[string]k8sResourceOptions),
 		triggerMode:                TriggerModeAuto,
 		features:                   features,
+		loadCache:                  make(map[string]loadCacheEntry),
 	}
+}
+
+// Path to the Tiltfile at the bottom of the call stack.
+func (s *tiltfileState) currentTiltfilePath(t *starlark.Thread) string {
+	depth := t.CallStackDepth()
+	if depth == 0 {
+		panic("internal error: currentTiltfilePath must be called from an active starlark thread")
+	}
+	return t.CallFrame(depth - 1).Pos.Filename()
+}
+
+// print() for fulfilling the starlark thread callback
+func (s *tiltfileState) print(_ *starlark.Thread, msg string) {
+	s.logger.Infof("%s", msg)
+}
+
+// load() for fulfilling the starlark thread callback
+func (s *tiltfileState) load(thread *starlark.Thread, f string) (starlark.StringDict, error) {
+	return s.exec(s.absPath(thread, f))
 }
 
 func (s *tiltfileState) starlarkThread() *starlark.Thread {
 	return &starlark.Thread{
-		Print: func(_ *starlark.Thread, msg string) {
-			s.logger.Infof("%s", msg)
-		},
+		Print: s.print,
+		Load:  s.load,
 	}
-}
-
-func (s *tiltfileState) exec() error {
-	_, err := starlark.ExecFile(s.starlarkThread(), s.filename, nil, s.predeclared())
-	return err
 }
 
 // Builtin functions
@@ -164,6 +177,7 @@ const (
 	decodeJSONN   = "decode_json"
 	readJSONN     = "read_json"
 	readYAMLN     = "read_yaml"
+	includeN      = "include"
 
 	// live update functions
 	fallBackOnN       = "fall_back_on"
@@ -289,6 +303,7 @@ func (s *tiltfileState) predeclared() starlark.StringDict {
 	addBuiltin(r, decodeJSONN, s.decodeJSON)
 	addBuiltin(r, readJSONN, s.readJson)
 	addBuiltin(r, readYAMLN, s.readYaml)
+	addBuiltin(r, includeN, s.include)
 
 	addBuiltin(r, triggerModeN, s.triggerModeFn)
 	r[triggerModeAutoN] = TriggerModeAuto
@@ -963,7 +978,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 		iTarget = iTarget.
 			WithRepos(s.reposForImage(image)).
 			WithDockerignores(s.dockerignoresForImage(image)). // used even for custom build
-			WithTiltFilename(s.filename).
+			WithTiltFilename(image.tiltfilePath).
 			WithDependencyIDs(image.dependencyIDs)
 
 		depTargets, err := s.imgTargetsForDependencyIDsHelper(image.dependencyIDs, claimStatus)
@@ -983,7 +998,7 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 	var result []model.Manifest
 
 	for _, svc := range dc.services {
-		m, configFiles, err := s.dcServiceToManifest(svc, dc.configPaths)
+		m, configFiles, err := s.dcServiceToManifest(svc, dc)
 		if err != nil {
 			return nil, err
 		}

@@ -30,7 +30,7 @@ func (s *tiltfileState) newGitRepo(t *starlark.Thread, path string) (*gitRepo, e
 	absPath := s.absPath(t, path)
 	_, err := os.Stat(absPath)
 	if err != nil {
-		return nil, fmt.Errorf("Reading paths %s: %v", path, err)
+		return nil, fmt.Errorf("Reading paths %s: %v", absPath, err)
 	}
 
 	if _, err := os.Stat(filepath.Join(absPath, ".git")); os.IsNotExist(err) {
@@ -116,11 +116,11 @@ func (s *tiltfileState) absPath(t *starlark.Thread, path string) string {
 	if filepath.IsAbs(path) {
 		return path
 	}
-	return filepath.Join(s.absWorkingDir(), path)
+	return filepath.Join(s.absWorkingDir(t), path)
 }
 
-func (s *tiltfileState) absWorkingDir() string {
-	return filepath.Dir(s.filename)
+func (s *tiltfileState) absWorkingDir(t *starlark.Thread) string {
+	return filepath.Dir(s.currentTiltfilePath(t))
 }
 
 func (s *tiltfileState) recordConfigFile(f string) {
@@ -209,7 +209,7 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 	}
 
 	s.logger.Infof("local: %s", command)
-	out, err := s.execLocalCmd(exec.Command("sh", "-c", command), true)
+	out, err := s.execLocalCmd(thread, exec.Command("sh", "-c", command), true)
 	if err != nil {
 		return nil, err
 	}
@@ -217,12 +217,12 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 	return newBlob(out, fmt.Sprintf("local: %s", command)), nil
 }
 
-func (s *tiltfileState) execLocalCmd(c *exec.Cmd, logOutput bool) (string, error) {
+func (s *tiltfileState) execLocalCmd(t *starlark.Thread, c *exec.Cmd, logOutput bool) (string, error) {
 	stdout := bytes.NewBuffer(nil)
 	stderr := bytes.NewBuffer(nil)
 
 	// TODO(nick): Should this also inject any docker.Env overrides?
-	c.Dir = filepath.Dir(s.filename)
+	c.Dir = s.absWorkingDir(t)
 	c.Stdout = stdout
 	c.Stderr = stderr
 
@@ -266,7 +266,7 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
 
-	yaml, err := s.execLocalCmd(exec.Command("kustomize", "build", kustomizePath), false)
+	yaml, err := s.execLocalCmd(thread, exec.Command("kustomize", "build", kustomizePath), false)
 	if err != nil {
 		return nil, err
 	}
@@ -304,7 +304,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	}
 
 	cmd := []string{"helm", "template", localPath}
-	yaml, err := s.execLocalCmd(exec.Command(cmd[0], cmd[1:]...), false)
+	yaml, err := s.execLocalCmd(thread, exec.Command(cmd[0], cmd[1:]...), false)
 	if err != nil {
 		return nil, err
 	}
