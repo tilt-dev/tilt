@@ -86,6 +86,7 @@ class AppController {
         View: null,
         Message: "Disconnected…",
         IsSidebarClosed: false,
+        AlertLinks: {},
       })
       this.createNewSocket()
       return
@@ -110,6 +111,7 @@ class AppController {
         View: null,
         Message: message,
         IsSidebarClosed: false,
+        AlertLinks: {},
       })
       this.createNewSocket()
     }, timeout)

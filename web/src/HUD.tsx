@@ -19,7 +19,7 @@ import AlertPane from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
 import NotFound from "./NotFound"
-import { numberOfAlerts, Alert } from "./alerts"
+import { numberOfAlerts, Alert, alertKey } from "./alerts"
 import Features from "./feature"
 
 type HudProps = {
@@ -40,6 +40,7 @@ type HudState = {
     FeatureFlags: { [featureFlag: string]: boolean }
   } | null
   IsSidebarClosed: boolean
+  AlertLinks: { [key: string]: string }
 }
 
 type NewAlertResponse = {
@@ -91,6 +92,7 @@ class HUD extends Component<HudProps, HudState> {
         FeatureFlags: {},
       },
       IsSidebarClosed: false,
+      AlertLinks: {},
     }
 
     this.toggleSidebar = this.toggleSidebar.bind(this)
@@ -151,8 +153,11 @@ class HUD extends Component<HudProps, HudState> {
         res
           .json()
           .then((value: NewAlertResponse) => {
-            // TODO(dmiller): maybe set state here in the future
-            window.open(value.url)
+            let links = this.state.AlertLinks
+            links[alertKey(alert)] = value.url
+            this.setState({
+              AlertLinks: links,
+            })
           })
           .catch(err => {
             console.error(err)
@@ -311,6 +316,7 @@ class HUD extends Component<HudProps, HudState> {
             resources={[er]}
             handleSendAlert={this.sendAlert.bind(this)}
             teamAlertsIsEnabled={features.isEnabled("team_alerts")}
+            alertLinks={this.state.AlertLinks}
           />
         )
       }
@@ -395,6 +401,7 @@ class HUD extends Component<HudProps, HudState> {
                 resources={resources}
                 handleSendAlert={this.sendAlert.bind(this)}
                 teamAlertsIsEnabled={features.isEnabled("team_alerts")}
+                alertLinks={this.state.AlertLinks}
               />
             )}
           />
