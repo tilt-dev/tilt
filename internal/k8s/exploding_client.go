@@ -22,8 +22,8 @@ type explodingClient struct {
 	err error
 }
 
-func (ec *explodingClient) Upsert(ctx context.Context, entities []K8sEntity) ([]K8sEntity, error) {
-	return nil, errors.Wrap(ec.err, "could not set up k8s client")
+func (ec *explodingClient) Upsert(ctx context.Context, entities []K8sEntity) error {
+	return errors.Wrap(ec.err, "could not set up k8s client")
 }
 
 func (ec *explodingClient) Delete(ctx context.Context, entities []K8sEntity) error {
