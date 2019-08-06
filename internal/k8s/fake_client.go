@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/docker/distribution/reference"
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -201,28 +200,16 @@ func (c *FakeK8sClient) ConnectedToCluster(ctx context.Context) error {
 	return nil
 }
 
-func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity) ([]K8sEntity, error) {
+func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
 	if c.UpsertError != nil {
-		return nil, c.UpsertError
+		return c.UpsertError
 	}
 	yaml, err := SerializeSpecYAML(entities)
 	if err != nil {
-		return nil, errors.Wrap(err, "kubectl apply")
+		return errors.Wrap(err, "kubectl apply")
 	}
 	c.Yaml = yaml
-
-	result := make([]K8sEntity, 0, len(entities))
-
-	for _, e := range result {
-		clone := e.DeepCopy()
-		err = SetUID(&clone, uuid.New().String())
-		if err != nil {
-			return nil, errors.Wrap(err, "Upsert: generating UUID")
-		}
-		result = append(result, clone)
-	}
-
-	return result, nil
+	return nil
 }
 
 func (c *FakeK8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
