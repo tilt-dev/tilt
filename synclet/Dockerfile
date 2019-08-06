@@ -1,4 +1,4 @@
-ARG baseImage="golang/1.12-alpine"
+ARG baseImage="golang:1.12-alpine"
 
 FROM ${baseImage} as builder
 
@@ -11,12 +11,14 @@ ADD . .
 
 RUN mkdir -p /app
 
+RUN apk add build-base
+
 # Build the server binary.
 RUN go build -o server ./cmd/synclet/main.go
 RUN mv server /app/
 
 # Build an image with just the Go cache artifacts
-FROM golang/1.12-alpine as go-cache
+FROM golang:1.12-alpine as go-cache
 
 COPY --from=builder /root/.cache /root/.cache
 
