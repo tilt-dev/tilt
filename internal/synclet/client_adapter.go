@@ -44,8 +44,6 @@ func (s *SyncletCli) UpdateContainer(
 	commands []model.Cmd,
 	hotReload bool) error {
 
-	ctx, cancelCtx := context.WithCancel(ctx)
-
 	var protoCmds []*proto.Cmd
 	for _, cmd := range commands {
 		protoCmds = append(protoCmds, &proto.Cmd{Argv: cmd.Argv})
@@ -69,19 +67,22 @@ func (s *SyncletCli) UpdateContainer(
 		return errors.Wrap(err, "failed invoking synclet.UpdateContainer")
 	}
 
+	var runStepFailure build.RunStepFailure
 	for {
 		reply, err := stream.Recv()
 
 		if reply != nil && reply.FailedRunStep != nil {
 			frs := reply.FailedRunStep
-			cancelCtx()
-			return build.RunStepFailure{
+			runStepFailure = build.RunStepFailure{
 				Cmd:      model.Cmd{Argv: []string{frs.Cmd}},
 				ExitCode: int(frs.ExitCode),
 			}
 		}
 
 		if err == io.EOF {
+			if !runStepFailure.Empty() {
+				return runStepFailure
+			}
 			return nil
 		} else if err != nil {
 			return errors.Wrap(err, "error from synclet.UpdateContainer")
