@@ -6,6 +6,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/windmilleng/tilt/internal/build"
+
 	"github.com/windmilleng/tilt/internal/container"
 
 	"github.com/windmilleng/tilt/internal/logger"
@@ -68,6 +70,14 @@ func (s *SyncletCli) UpdateContainer(
 
 	for {
 		reply, err := stream.Recv()
+
+		if reply != nil && reply.FailedRunStep != nil {
+			frs := reply.FailedRunStep
+			return build.RunStepFailure{
+				Cmd:      model.Cmd{Argv: []string{frs.Cmd}},
+				ExitCode: int(frs.ExitCode),
+			}
+		}
 
 		if err == io.EOF {
 			return nil

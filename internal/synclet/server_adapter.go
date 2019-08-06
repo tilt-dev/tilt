@@ -3,6 +3,9 @@ package synclet
 import (
 	"sync"
 
+	"github.com/davecgh/go-spew/spew"
+
+	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/synclet/proto"
@@ -31,10 +34,24 @@ func (s *GRPCServer) UpdateContainer(req *proto.UpdateContainerRequest, server p
 		return server.Send(&proto.UpdateContainerReply{LogMessage: m})
 	}
 
+	sendRSF := func(rsf build.RunStepFailure) error {
+		sendMutex.Lock()
+		defer sendMutex.Unlock()
+		return server.Send(&proto.UpdateContainerReply{FailedRunStep: &proto.FailedRunStep{
+			Cmd:      rsf.Cmd.String(),
+			ExitCode: int32(rsf.ExitCode),
+		}})
+	}
+
 	ctx, err := makeContext(server.Context(), req.LogStyle, send)
 	if err != nil {
 		return err
 	}
 
-	return s.del.UpdateContainer(ctx, container.ID(req.ContainerId), req.TarArchive, req.FilesToDelete, commands, req.HotReload)
+	err = s.del.UpdateContainer(ctx, container.ID(req.ContainerId), req.TarArchive, req.FilesToDelete, commands, req.HotReload)
+	spew.Dump(err)
+	if rsf, ok := build.MaybeRunStepFailure(err); ok {
+		return sendRSF(rsf)
+	}
+	return err
 }
