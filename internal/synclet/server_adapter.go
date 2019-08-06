@@ -1,6 +1,7 @@
 package synclet
 
 import (
+	"context"
 	"sync"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -8,11 +9,16 @@ import (
 	"github.com/windmilleng/tilt/internal/synclet/proto"
 )
 
-type GRPCServer struct {
-	del *Synclet
+type syncletDelegate interface {
+	UpdateContainer(ctx context.Context, containerID container.ID, tarArchive []byte,
+		filesToDelete []string, commands []model.Cmd, hotReload bool) error
 }
 
-func NewGRPCServer(del *Synclet) *GRPCServer {
+type GRPCServer struct {
+	del syncletDelegate
+}
+
+func NewGRPCServer(del syncletDelegate) *GRPCServer {
 	return &GRPCServer{del: del}
 }
 
