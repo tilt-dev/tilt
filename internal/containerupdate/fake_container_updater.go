@@ -9,7 +9,7 @@ import (
 )
 
 type FakeContainerUpdater struct {
-	UpdateErr error
+	UpdateErrs []error
 
 	Calls []UpdateContainerCall
 }
@@ -22,6 +22,10 @@ type UpdateContainerCall struct {
 	HotReload     bool
 }
 
+func (cu *FakeContainerUpdater) SetUpdateErr(err error) {
+	cu.UpdateErrs = []error{err}
+}
+
 func (cu *FakeContainerUpdater) UpdateContainer(ctx context.Context, cInfo store.ContainerInfo,
 	archiveToCopy io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
 	cu.Calls = append(cu.Calls, UpdateContainerCall{
@@ -32,7 +36,12 @@ func (cu *FakeContainerUpdater) UpdateContainer(ctx context.Context, cInfo store
 		HotReload:     hotReload,
 	})
 
-	err := cu.UpdateErr
-	cu.UpdateErr = nil
+	// If we're supposed to throw an error on this call, throw it (and pop from
+	// the list of UpdateErrs)
+	var err error
+	if len(cu.UpdateErrs) > 0 {
+		err = cu.UpdateErrs[0]
+		cu.UpdateErrs = append([]error{}, cu.UpdateErrs[1:]...)
+	}
 	return err
 }

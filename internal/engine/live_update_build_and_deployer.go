@@ -152,12 +152,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 
 	var lastUserBuildFailure error
 	for _, cInfo := range state.RunningContainers {
-		// always pass a copy of the tar archive reader
-		// so multiple updates can access the same data
-		var archiveBuf bytes.Buffer
-		archiveTee := io.TeeReader(archiveReader, &archiveBuf)
-
-		err = cu.UpdateContainer(ctx, cInfo, archiveTee, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
+		archiveReader, err = lubad.updateContainerAndTeeTarArchive(ctx, cu, cInfo, archiveReader, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 		if err != nil {
 			if runFail, ok := build.MaybeRunStepFailure(err); ok {
 				// Keep running updates -- we want all containers to have the same files on them
@@ -180,12 +175,23 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 					"but last update failed with '%v'", cInfo.ContainerID, lastUserBuildFailure)
 			}
 		}
-		archiveReader = &archiveBuf
 	}
 	if lastUserBuildFailure != nil {
 		return WrapDontFallBackError(lastUserBuildFailure)
 	}
 	return nil
+}
+
+func (lubad *LiveUpdateBuildAndDeployer) updateContainerAndTeeTarArchive(ctx context.Context,
+	cu containerupdate.ContainerUpdater, cInfo store.ContainerInfo, archiveToCopy io.Reader,
+	filesToDelete []string, cmds []model.Cmd, hotReload bool) (io.Reader, error) {
+	// always pass a copy of the tar archive reader
+	// so multiple updates can access the same data
+	var archiveBuf bytes.Buffer
+	archiveTee := io.TeeReader(archiveToCopy, &archiveBuf)
+
+	err := cu.UpdateContainer(ctx, cInfo, archiveTee, filesToDelete, cmds, hotReload)
+	return &archiveBuf, err
 }
 
 // liveUpdateInfoForStateTree validates the state tree for LiveUpdate and returns
