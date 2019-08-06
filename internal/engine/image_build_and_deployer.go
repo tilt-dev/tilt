@@ -238,6 +238,10 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 				return err
 			}
 
+			// StatefulSet pods should be managed in parallel. See:
+			// https://github.com/windmilleng/tilt/issues/1962
+			e = k8s.InjectParallelPodManagementPolicy(e)
+
 			// When working with a local k8s cluster, we set the pull policy to Never,
 			// to ensure that k8s fails hard if the image is missing from docker.
 			policy := v1.PullIfNotPresent
