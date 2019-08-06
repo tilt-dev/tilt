@@ -268,6 +268,8 @@ func TestLiveUpdateDockerContainerUserRunFailureDoesntFallBack(t *testing.T) {
 	runTestCase(t, f, tCase)
 }
 
+// TODO(maia): make this test actually touch gRPC de/serialization,
+// which is where most of this logic lives
 func TestLiveUpdateSyncletUserRunFailureDoesntFallBack(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
