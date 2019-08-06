@@ -2,22 +2,23 @@ package tiltfile
 
 import (
 	"fmt"
+	"net"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
 
-	"github.com/windmilleng/tilt/internal/sliceutils"
-
-	"go.starlark.net/syntax"
-
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/sliceutils"
 )
 
 type referenceList []reference.Named
@@ -886,4 +887,58 @@ func newK8sObjectID(e k8s.K8sEntity) k8sObjectID {
 
 func (s *tiltfileState) k8sContext(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	return starlark.String(s.kubeContext), nil
+}
+
+func (s *tiltfileState) allowK8SContexts(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var contexts starlark.Value
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+		"contexts", &contexts,
+	); err != nil {
+		return nil, err
+	}
+
+	for _, c := range starlarkValueOrSequenceToSlice(contexts) {
+		switch val := c.(type) {
+		case starlark.String:
+			s.whitelistedK8SContexts = append(s.whitelistedK8SContexts, k8s.KubeContext(val))
+		default:
+			return nil, fmt.Errorf("allow_k8s_contexts contexts must be a string or a sequence of strings; found a %T", val)
+
+		}
+	}
+
+	s.whitelistedK8SContexts = append(s.whitelistedK8SContexts)
+
+	return starlark.None, nil
+}
+
+func (s *tiltfileState) validateK8SContext(kubeConfig *api.Config) error {
+	contextName := kubeConfig.CurrentContext
+	clusterName := kubeConfig.Contexts[contextName].Cluster
+	server := kubeConfig.Clusters[clusterName].Server
+	url, err := url.Parse(server)
+	if err != nil {
+		return errors.Wrapf(err, "running in kube context %q, which specifies kube api url %q. error parsing that url", contextName, server)
+	}
+
+	ipaddr, err := net.ResolveIPAddr("ip", url.Hostname())
+	if err != nil {
+		return errors.Wrapf(err, "running in kube context %q, which specifies kube api url %q. error resolving host %q", contextName, url, url.Host)
+	}
+
+	if ipaddr.IP.IsLoopback() {
+		return nil
+	}
+
+	for _, c := range s.whitelistedK8SContexts {
+		if c == k8s.KubeContext(contextName) {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("Current kube context %q is neither whitelisted nor known to be local. If this is not the "+
+		"desired kube context, then switch contexts and restart tilt. If it is, then call allow_k8s_contexts with "+
+		"%q in your Tiltfile. See https://docs.tilt.dev/api.html#api.allow_k8s_contexts for more information.",
+		contextName,
+		contextName)
 }
