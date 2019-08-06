@@ -3,7 +3,6 @@ package synclet
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"log"
 	"strings"
 
@@ -99,27 +98,27 @@ func (s Synclet) UpdateContainer(
 
 	err := s.rmFiles(ctx, containerId, filesToDelete)
 	if err != nil {
-		return fmt.Errorf("error removing files while updating container %s: %v",
-			containerId.ShortStr(), err)
+		return errors.Wrapf(err, "error removing files while updating container %s",
+			containerId.ShortStr())
 	}
 
 	err = s.writeFiles(ctx, containerId, tarArchive)
 	if err != nil {
-		return fmt.Errorf("error writing files while updating container %s: %v",
-			containerId.ShortStr(), err)
+		return errors.Wrapf(err, "error writing files while updating container %s",
+			containerId.ShortStr())
 	}
 
 	err = s.execCmds(ctx, containerId, commands)
 	if err != nil {
-		return fmt.Errorf("error exec'ing commands while updating container %s: %v",
-			containerId.ShortStr(), err)
+		return errors.Wrapf(err, "error exec'ing commands while updating container %s",
+			containerId.ShortStr())
 	}
 
 	if !hotReload {
 		err = s.restartContainer(ctx, containerId)
 		if err != nil {
-			return fmt.Errorf("error restarting container %s: %v",
-				containerId.ShortStr(), err)
+			return errors.Wrapf(err, "error restarting container %s",
+				containerId.ShortStr())
 		}
 	}
 

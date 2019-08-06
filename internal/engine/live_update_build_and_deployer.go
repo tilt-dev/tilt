@@ -159,7 +159,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 
 		err = cu.UpdateContainer(ctx, cInfo, archiveTee, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 		if err != nil {
-			if runFail, ok := err.(build.RunStepFailure); ok {
+			if runFail, ok := build.MaybeRunStepFailure(err); ok {
 				// Keep running updates -- we want all containers to have the same files on them
 				// even if the Runs don't succeed
 				lastUserBuildFailure = err
