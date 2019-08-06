@@ -3,8 +3,6 @@ package synclet
 import (
 	"sync"
 
-	"github.com/davecgh/go-spew/spew"
-
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/model"
@@ -49,7 +47,6 @@ func (s *GRPCServer) UpdateContainer(req *proto.UpdateContainerRequest, server p
 	}
 
 	err = s.del.UpdateContainer(ctx, container.ID(req.ContainerId), req.TarArchive, req.FilesToDelete, commands, req.HotReload)
-	spew.Dump(err)
 	if rsf, ok := build.MaybeRunStepFailure(err); ok {
 		return sendRSF(rsf)
 	}

@@ -247,17 +247,8 @@ func TestLiveUpdateDockerContainerUserRunFailureDoesntFallBack(t *testing.T) {
 	defer f.TearDown()
 
 	f.docker.SetExecError(userFailureErrDocker)
-
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
-	if err != nil {
-		t.Fatal(err)
-	}
 	tCase := testCase{
-		manifest: manifestbuilder.New(f, "sancho").
-			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
-			WithLiveUpdate(lu).
-			Build(),
+		manifest:     NewSanchoLiveUpdateManifest(f),
 		changedFiles: []string{"a.txt"},
 
 		// BuildAndDeploy call will ultimately fail with this error,
@@ -283,16 +274,8 @@ func TestLiveUpdateSyncletUserRunFailureDoesntFallBack(t *testing.T) {
 
 	f.docker.SetExecError(userFailureErrDocker)
 
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
-	if err != nil {
-		t.Fatal(err)
-	}
 	tCase := testCase{
-		manifest: manifestbuilder.New(f, "sancho").
-			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
-			WithLiveUpdate(lu).
-			Build(),
+		manifest:     NewSanchoLiveUpdateManifest(f),
 		changedFiles: []string{"a.txt"},
 
 		// BuildAndDeploy call will ultimately fail with this error,
@@ -320,10 +303,7 @@ func TestLiveUpdateExecUserRunFailureDoesntFallBack(t *testing.T) {
 
 	f.k8s.ExecErrors = []error{nil, userFailureErrExec}
 
-	lu, err := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, []string{"i/match/nothing"}, f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, []string{"i/match/nothing"}, f)
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
