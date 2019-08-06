@@ -15,7 +15,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/clientcmd/api"
 
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
@@ -29,6 +28,7 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/k8sutils"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/tiltfile/testdata"
 	"github.com/windmilleng/tilt/internal/yaml"
@@ -3795,22 +3795,8 @@ type fixture struct {
 	loadResult TiltfileLoadResult
 }
 
-func (f *fixture) makeContext() *api.Config {
-	contextName := string(f.k8sContext)
-	clusterName := "mycluster"
-	ret := api.NewConfig()
-	ret.CurrentContext = contextName
-	context := api.NewContext()
-	context.Cluster = clusterName
-	ret.Contexts[contextName] = context
-	cluster := api.NewCluster()
-	cluster.Server = f.k8sAPIURL
-	ret.Clusters[clusterName] = cluster
-	return ret
-}
-
 func (f *fixture) newTiltfileLoader() TiltfileLoader {
-	k8sContext := f.makeContext()
+	k8sContext := k8sutils.NewConfig(string(f.k8sContext), "my-cluster", f.k8sAPIURL)
 	dcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
 	features := feature.Defaults{
 		"testflag_disabled":              feature.Value{Enabled: false},
