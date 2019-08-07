@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -46,6 +47,8 @@ func FakeGRPCWrapper(ctx context.Context, c *TestSyncletClient) (SyncletClient, 
 	go func() {
 		<-ctx.Done()
 		grpcServer.GracefulStop()
+		_ = l.Close()
+		_ = os.Remove(socket)
 	}()
 	return client, nil
 }
