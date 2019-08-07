@@ -96,8 +96,9 @@ const (
 )
 
 // These are k8s context names that we assume are safe to deploy to even if they are neither localhost
-// nor in allow_k8s_contexts. e.g., minikube uses a non-loopback ip on a virtual interface
-var defaultWhitelistedKubeContexts = []k8s.KubeContext{"minikube"}
+// nor in allow_k8s_contexts. e.g., minikube uses a non-loopback ip on a virtual interface,
+// and some versions of docker-for-desktop use 'kubernetes.docker.local'
+var defaultWhitelistedKubeContexts = []k8s.KubeContext{"minikube", "docker-desktop", "docker-for-desktop"}
 
 func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, kubeContext k8s.KubeContext, privateRegistry container.Registry, features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
