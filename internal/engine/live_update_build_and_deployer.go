@@ -176,7 +176,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 			if lastUserBuildFailure != nil {
 				// This build succeeded, but previously at least one failed due to user error.
 				// We may have inconsistent state--bail, and fall back to full build.
-				return fmt.Errorf("INCONSISTENT STATE: container %s successfully updated,"+
+				return fmt.Errorf("INCONSISTENT STATE: container %s successfully updated, "+
 					"but last update failed with '%v'", cInfo.ContainerID, lastUserBuildFailure)
 			}
 		}
