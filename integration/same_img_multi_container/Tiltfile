@@ -19,3 +19,4 @@ docker_build('sameimg', '.',
                  run('{}/restart.sh'.format(codepath))
              ])
 k8s_yaml('sameimg.yaml')
+k8s_resource('sameimg', port_forwards=['8100:8000', '8101:8001'])
