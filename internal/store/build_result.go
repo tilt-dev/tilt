@@ -1,7 +1,6 @@
 package store
 
 import (
-	"log"
 	"sort"
 
 	"github.com/docker/distribution/reference"
@@ -270,7 +269,6 @@ func RunningContainersForTarget(iTarget model.ImageTarget, deployID model.Deploy
 	for _, c := range pod.Containers {
 		// Only return containers matching our image
 		if c.ImageRef == nil || iTarget.DeploymentRef.Name() != c.ImageRef.Name() {
-			log.Println("SKIPPING", iTarget.DeploymentRef, c.ImageRef)
 			continue
 		}
 		if c.ID == "" || c.Name == "" || !c.Ready {

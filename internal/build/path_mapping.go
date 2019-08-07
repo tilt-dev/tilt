@@ -89,22 +89,25 @@ func FilterMappings(mappings []PathMapping, matcher model.PathMatcher) ([]PathMa
 }
 
 // FilesToPathMappings converts a list of absolute local filepaths into pathMappings (i.e.
-// associates local filepaths with their syncs and destination paths).
+// associates local filepaths with their syncs and destination paths), skipping those
+// that it cannot associate with a sync.
 func FilesToPathMappings(files []string, syncs []model.Sync) ([]PathMapping, error) {
-	var pms []PathMapping
+	pms := make([]PathMapping, 0, len(files))
 	for _, f := range files {
-		pm, err := fileToPathMapping(f, syncs)
+		pm, couldMap, err := fileToPathMapping(f, syncs)
 		if err != nil {
 			return nil, err
 		}
 
-		pms = append(pms, pm)
+		if couldMap {
+			pms = append(pms, pm)
+		}
 	}
 
 	return pms, nil
 }
 
-func fileToPathMapping(file string, sync []model.Sync) (PathMapping, error) {
+func fileToPathMapping(file string, sync []model.Sync) (pm PathMapping, couldMap bool, err error) {
 	for _, s := range sync {
 		// Open Q: can you sync files inside of syncs?! o_0
 		// TODO(maia): are symlinks etc. gonna kick our asses here? If so, will
@@ -113,7 +116,7 @@ func fileToPathMapping(file string, sync []model.Sync) (PathMapping, error) {
 		if isChild {
 			localPathIsFile, err := isFile(s.LocalPath)
 			if err != nil {
-				return PathMapping{}, fmt.Errorf("error stat'ing: %v", err)
+				return PathMapping{}, false, fmt.Errorf("error stat'ing: %v", err)
 			}
 			var containerPath string
 			if endsWithSlash(s.ContainerPath) && localPathIsFile {
@@ -125,14 +128,14 @@ func fileToPathMapping(file string, sync []model.Sync) (PathMapping, error) {
 			return PathMapping{
 				LocalPath:     file,
 				ContainerPath: containerPath,
-			}, nil
+			}, true, nil
 		}
 	}
 	// (Potentially) expected case: the file doesn't match any sync src's. It's up
 	// to the caller to decide whether this is expected or not.
 	// E.g. for LiveUpdate, this is an expected case; for FastBuild, it means
 	// something is wrong (as we only WATCH files/dirs specified by the sync's).
-	return PathMapping{}, pathMappingErr(file, "File matches no syncs")
+	return PathMapping{}, false, nil
 }
 
 func endsWithSlash(path string) bool {
@@ -193,20 +196,4 @@ func PathMappingsToLocalPaths(mappings []PathMapping) []string {
 		res[i] = m.LocalPath
 	}
 	return res
-}
-
-type PathMappingErr struct {
-	s    string
-	File string
-}
-
-func (e *PathMappingErr) Error() string { return e.s }
-
-var _ error = &PathMappingErr{}
-
-func pathMappingErr(file string, msg string) *PathMappingErr {
-	return &PathMappingErr{
-		File: file,
-		s:    fmt.Sprintf("[File %s] %s", file, msg),
-	}
 }
