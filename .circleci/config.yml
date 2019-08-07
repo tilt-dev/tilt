@@ -81,7 +81,8 @@ jobs:
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.
       - run: mkdir -p test-results
-      - run: gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- -tags 'skipcontainertests' ./...
+      - run: ulimit -n 4096 &&
+             gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- -tags 'skipcontainertests' ./...
       - store_test_results:
           path: test-results
 
