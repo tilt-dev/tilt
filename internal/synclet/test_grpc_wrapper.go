@@ -2,6 +2,7 @@ package synclet
 
 import (
 	"context"
+	"io/ioutil"
 	"log"
 	"net"
 	"path/filepath"
@@ -12,8 +13,13 @@ import (
 	"github.com/windmilleng/tilt/internal/synclet/proto"
 )
 
-func FakeGRPCWrapper(ctx context.Context, c SyncletClient, tempDir string) (SyncletClient, error) {
-	socket := filepath.Join(tempDir, "grpcSyncletSocket")
+func FakeGRPCWrapper(ctx context.Context, c *TestSyncletClient) (SyncletClient, error) {
+	socketDir, err := ioutil.TempDir("", "grpc")
+	if err != nil {
+		return nil, err
+	}
+
+	socket := filepath.Join(socketDir, "socket")
 	l, err := net.Listen("unix", socket)
 	if err != nil {
 		return nil, err

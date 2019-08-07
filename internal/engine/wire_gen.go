@@ -25,9 +25,13 @@ import (
 
 // Injectors from wire.go:
 
-func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode UpdateModeFlag, sCli synclet.SyncletClient, dcc dockercompose.DockerComposeClient, clock build.Clock, kp KINDPusher, analytics2 *analytics.TiltAnalytics) (BuildAndDeployer, error) {
+func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode UpdateModeFlag, sCli *synclet.TestSyncletClient, dcc dockercompose.DockerComposeClient, clock build.Clock, kp KINDPusher, analytics2 *analytics.TiltAnalytics) (BuildAndDeployer, error) {
 	dockerContainerUpdater := containerupdate.NewDockerContainerUpdater(docker2)
-	syncletManager := containerupdate.NewSyncletManagerForTests(kClient, sCli)
+	syncletClient, err := synclet.FakeGRPCWrapper(ctx, sCli)
+	if err != nil {
+		return nil, err
+	}
+	syncletManager := containerupdate.NewSyncletManagerForTests(kClient, syncletClient, sCli)
 	syncletUpdater := containerupdate.NewSyncletUpdater(syncletManager)
 	execUpdater := containerupdate.NewExecUpdater(kClient)
 	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
@@ -121,7 +125,7 @@ var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Valu
 )
 
 var DeployerWireSetTest = wire.NewSet(
-	DeployerBaseWireSet, containerupdate.NewSyncletManagerForTests,
+	DeployerBaseWireSet, containerupdate.NewSyncletManagerForTests, synclet.FakeGRPCWrapper,
 )
 
 var DeployerWireSet = wire.NewSet(
