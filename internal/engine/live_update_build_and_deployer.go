@@ -1,11 +1,8 @@
 package engine
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -130,23 +127,6 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 		}
 	}
 
-	// copy files to container
-	pr, pw := io.Pipe()
-	go func() {
-		ab := build.NewArchiveBuilder(pw, filter)
-		err = ab.ArchivePathsIfExist(ctx, toArchive)
-		if err != nil {
-			_ = pw.CloseWithError(errors.Wrap(err, "archivePathsIfExists"))
-		} else {
-			_ = ab.Close()
-			_ = pw.Close()
-		}
-	}()
-	tarBytes, err := ioutil.ReadAll(pr)
-	if err != nil {
-		return err
-	}
-
 	if len(toArchive) > 0 {
 		l.Infof("Will copy %d file(s) to container(s): %s", len(toArchive), cIDStr)
 		for _, pm := range toArchive {
@@ -156,7 +136,13 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 
 	var lastUserBuildFailure error
 	for _, cInfo := range state.RunningContainers {
-		err = cu.UpdateContainer(ctx, cInfo, bytes.NewReader(tarBytes), build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
+		archive, err := build.TarArchiveForPaths(ctx, toArchive, filter)
+		if err != nil {
+			return errors.Wrap(err, "TarArchiveForPaths")
+		}
+
+		err = cu.UpdateContainer(ctx, cInfo, archive,
+			build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 		if err != nil {
 			if runFail, ok := build.MaybeRunStepFailure(err); ok {
 				// Keep running updates -- we want all containers to have the same files on them

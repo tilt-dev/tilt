@@ -278,6 +278,21 @@ func TarPath(ctx context.Context, writer io.Writer, path string) error {
 	return ab.Close()
 }
 
+func TarArchiveForPaths(ctx context.Context, toArchive []PathMapping, filter model.PathMatcher) (io.Reader, error) {
+	pr, pw := io.Pipe()
+	ab := NewArchiveBuilder(pw, filter)
+	err := ab.ArchivePathsIfExist(ctx, toArchive)
+	if err != nil {
+		_ = pw.CloseWithError(errors.Wrap(err, "archivePathsIfExists"))
+		return nil, err
+	} else {
+		_ = ab.Close()
+		_ = pw.Close()
+
+	}
+	return pr, nil
+}
+
 // Dedupe the entries with last-entry-wins semantics.
 func dedupeEntries(entries []archiveEntry) []archiveEntry {
 	seenIndex := make(map[string]int, len(entries))
