@@ -60,14 +60,15 @@ export type Resource = {
   PendingBuildEdits: Array<string>
   PendingBuildReason: number
   PendingBuildSince: string
-  ResourceInfo: ResourceInfo
+  ResourceInfo: K8sResourceInfo | DCResourceInfo
   RuntimeStatus: string
   TriggerMode: TriggerMode
   HasPendingChanges: boolean
   Alerts: Array<Alert>
 }
 
-export type ResourceInfo = {
+export type K8sResourceInfo = {
+  type: "K8sResource"
   PodName: string
   PodCreationTime: string
   PodUpdateStartTime: string
@@ -77,4 +78,13 @@ export type ResourceInfo = {
   PodLog: string
   YAML: string
   Endpoints: Array<string>
+}
+
+export type DCResourceInfo = {
+  type: "DCResource"
+  ConfigPaths: Array<string>
+  ContainerStatus: string
+  ContainerID: string
+  Log: string
+  StartTime: string
 }
