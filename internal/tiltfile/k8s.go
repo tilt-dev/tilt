@@ -2,8 +2,8 @@ package tiltfile
 
 import (
 	"fmt"
-	"net"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -907,9 +907,19 @@ func (s *tiltfileState) allowK8SContexts(thread *starlark.Thread, fn *starlark.B
 		}
 	}
 
-	s.whitelistedK8SContexts = append(s.whitelistedK8SContexts)
-
 	return starlark.None, nil
+}
+
+var ipv4Loopback = regexp.MustCompile(`^127(?:\.0){1,2}\.1$`)
+var ipv6Loopback = "::1"
+
+// this is non-exhaustive, but hopefully gets >99% of cases, without having to make a network request
+// it doesn't cover ipv6-mapped ipv4 addresses (e.g., "http://[::ffff:7f00:1]"), non-loopback ips,
+// or non-"localhost" hostnames mapped to loopback
+func isLocalhost(host string) bool {
+	return host == "localhost" ||
+		ipv4Loopback.MatchString(host) ||
+		host == ipv6Loopback
 }
 
 func (s *tiltfileState) validateK8SContext(kubeConfig *api.Config) error {
@@ -921,12 +931,7 @@ func (s *tiltfileState) validateK8SContext(kubeConfig *api.Config) error {
 		return errors.Wrapf(err, "running in kube context %q, which specifies kube api url %q. error parsing that url", contextName, server)
 	}
 
-	ipaddr, err := net.ResolveIPAddr("ip", url.Hostname())
-	if err != nil {
-		return errors.Wrapf(err, "running in kube context %q, which specifies kube api url %q. error resolving host %q", contextName, url, url.Host)
-	}
-
-	if ipaddr.IP.IsLoopback() {
+	if isLocalhost(url.Hostname()) {
 		return nil
 	}
 
@@ -936,9 +941,11 @@ func (s *tiltfileState) validateK8SContext(kubeConfig *api.Config) error {
 		}
 	}
 
-	return fmt.Errorf("Current kube context %q is neither whitelisted nor known to be local. If this is not the "+
-		"desired kube context, then switch contexts and restart tilt. If it is, then call allow_k8s_contexts with "+
-		"%q in your Tiltfile. See https://docs.tilt.dev/api.html#api.allow_k8s_contexts for more information.",
+	return fmt.Errorf(
+		`Stop! '%s' might be production.
+If you're sure you want to deploy there, add:
+allow_k8s_contexts('%s')
+to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`,
 		contextName,
 		contextName)
 }

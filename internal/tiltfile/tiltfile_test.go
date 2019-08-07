@@ -3753,10 +3753,10 @@ func TestK8SContextAcceptance(t *testing.T) {
 	}{
 		{"localhost", "fake-context", "http://localhost:6443", false, nil},
 		{"127.0.0.1", "fake-context", "http://127.0.0.1:6443", false, nil},
-		{"remote", "fake-context", "http://www.google.com:6443", true, []string{"\"fake-context\"", "whitelisted", "local", "allow_k8s_contexts"}},
+		{"::1", "fake-context", "http://[::1]:6443", false, nil},
+		{"remote", "fake-context", "http://www.google.com:6443", true, []string{"'fake-context'", "If you're sure", "switch k8s contexts", "allow_k8s_contexts"}},
 		{"whitelisted", "minikube", "http://www.google.com:6443", false, nil},
 		{"allowed", "allowed-context", "http://www.google.com:6443", false, nil},
-		{"host doesn't resolve", "fake-context", "http://invalid:6443", true, []string{"invalid:6443", "no such host"}},
 		{"invalid url", "fake-context", "://localhost", true, []string{"://localhost", "missing protocol scheme"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
