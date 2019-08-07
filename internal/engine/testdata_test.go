@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"fmt"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/model"
@@ -44,14 +46,21 @@ func NewSanchoFastBuild(fixture Fixture) model.FastBuild {
 	}
 }
 
-func SanchoSyncSteps(fixture Fixture) []model.LiveUpdateSyncStep {
+func SyncStepsForApp(app string, fixture Fixture) []model.LiveUpdateSyncStep {
 	return []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
 		Source: fixture.Path(),
-		Dest:   "/go/src/github.com/windmilleng/sancho",
+		Dest:   fmt.Sprintf("/go/src/github.com/windmilleng/%s", app),
 	}}
 }
+func SanchoSyncSteps(fixture Fixture) []model.LiveUpdateSyncStep {
+	return SyncStepsForApp("sancho", fixture)
+}
 
-var SanchoRunSteps = []model.LiveUpdateRunStep{model.LiveUpdateRunStep{Command: model.Cmd{Argv: []string{"go", "install", "github.com/windmilleng/sancho"}}}}
+func RunStepsForApp(app string) []model.LiveUpdateRunStep {
+	return []model.LiveUpdateRunStep{model.LiveUpdateRunStep{Command: model.Cmd{Argv: []string{"go", "install", fmt.Sprintf("github.com/windmilleng/%s", app)}}}}
+}
+
+var SanchoRunSteps = RunStepsForApp("sancho")
 
 func NewSanchoFastBuildImage(fixture Fixture) model.ImageTarget {
 	fbInfo := NewSanchoFastBuild(fixture)
