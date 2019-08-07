@@ -21,6 +21,11 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
+var rsf = build.RunStepFailure{
+	Cmd:      model.ToShellCmd("omgwtfbbq"),
+	ExitCode: 123,
+}
+
 var TestContainerInfo = store.ContainerInfo{
 	PodID:         "somepod",
 	ContainerID:   docker.TestContainer,
@@ -102,7 +107,7 @@ func TestDontFallBackOnUserError(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
 
-	f.cu.UpdateErr = build.RunStepFailure{ExitCode: 12345}
+	f.cu.SetUpdateErr(build.RunStepFailure{ExitCode: 12345})
 
 	err := f.lubad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, TestBuildState, nil, nil, false)
 	if assert.NotNil(t, err) {
@@ -205,14 +210,14 @@ func TestErrorStopsSubsequentContainerUpdates(t *testing.T) {
 		RunningContainers: cInfos,
 	}
 
-	f.cu.UpdateErr = fmt.Errorf("👀")
+	f.cu.SetUpdateErr(fmt.Errorf("👀"))
 	err := f.lubad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, state, nil, nil, false)
 	require.NotNil(t, err)
 	assert.Contains(t, "👀", err.Error())
 	require.Len(t, f.cu.Calls, 1, "should only call UpdateContainer once (error should stop subsequent calls)")
 }
 
-func TestUpdateMultipleContainersTeesArchive(t *testing.T) {
+func TestUpdateMultipleContainersWithSameTarArchive(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
 
@@ -259,6 +264,56 @@ func TestUpdateMultipleContainersTeesArchive(t *testing.T) {
 	for i, call := range f.cu.Calls {
 		assert.Equal(t, cInfos[i], call.ContainerInfo)
 		testutils.AssertFilesInTar(f.t, tar.NewReader(call.Archive), expected)
+	}
+}
+
+func TestUpdateMultipleContainersWithSameTarArchiveOnRunStepFailure(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	cInfo1 := store.ContainerInfo{
+		PodID:         "mypod",
+		ContainerID:   "cid1",
+		ContainerName: "container1",
+		Namespace:     "ns-foo",
+	}
+	cInfo2 := store.ContainerInfo{
+		PodID:         "mypod",
+		ContainerID:   "cid2",
+		ContainerName: "container2",
+		Namespace:     "ns-foo",
+	}
+
+	cInfos := []store.ContainerInfo{cInfo1, cInfo2}
+	state := store.BuildState{
+		LastResult:        alreadyBuilt,
+		FilesChangedSet:   map[string]bool{"foo.py": true},
+		RunningContainers: cInfos,
+	}
+
+	// Write files so we know whether to cp to or rm from container
+	f.WriteFile("hi", "hello")
+	f.WriteFile("planets/earth", "world")
+
+	paths := []build.PathMapping{
+		build.PathMapping{LocalPath: f.JoinPath("hi"), ContainerPath: "/src/hi"},
+		build.PathMapping{LocalPath: f.JoinPath("planets/earth"), ContainerPath: "/src/planets/earth"},
+	}
+	expected := []expectedFile{
+		expectFile("src/hi", "hello"),
+		expectFile("src/planets/earth", "world"),
+	}
+
+	f.cu.UpdateErrs = []error{rsf, rsf}
+	err := f.lubad.buildAndDeploy(f.ctx, f.cu, model.ImageTarget{}, state, paths, nil, true)
+	require.NotNil(t, err)
+	assert.Contains(t, err.Error(), "Run step \"omgwtfbbq\" failed with exit code: 123")
+
+	require.Len(t, f.cu.Calls, 2)
+
+	for i, call := range f.cu.Calls {
+		assert.Equal(t, cInfos[i], call.ContainerInfo, "ContainerUpdater call[%d]", i)
+		testutils.AssertFilesInTar(f.t, tar.NewReader(call.Archive), expected, "ContainerUpdater call[%d]", i)
 	}
 }
 

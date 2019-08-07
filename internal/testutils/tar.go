@@ -36,7 +36,17 @@ func AssertFileInTar(t testing.TB, tr *tar.Reader, expected ExpectedFile) {
 
 // Asserts whether or not these files are in the tar, but not that they are the only
 // files in the tarball.
-func AssertFilesInTar(t testing.TB, tr *tar.Reader, expectedFiles []ExpectedFile) {
+func AssertFilesInTar(t testing.TB, tr *tar.Reader, expectedFiles []ExpectedFile,
+	msgAndArgs ...interface{}) {
+	msg := "AssertFilesInTar"
+	if len(msgAndArgs) > 0 {
+		m := msgAndArgs[0]
+		s, ok := m.(string)
+		if !ok {
+			t.Fatalf("first arg to msgAndArgs (%v) not string", m)
+		}
+		msg = fmt.Sprintf(s, msgAndArgs[1:]...)
+	}
 	dupes := make(map[string]bool)
 
 	burndownMap := make(map[string]ExpectedFile, len(expectedFiles))
@@ -49,11 +59,11 @@ func AssertFilesInTar(t testing.TB, tr *tar.Reader, expectedFiles []ExpectedFile
 		if err == io.EOF {
 			break
 		} else if err != nil {
-			t.Fatalf("Error reading tar file: %v", err)
+			t.Fatalf("Error reading tar file: %v (%s)", err, msg)
 		}
 
 		if dupes[header.Name] {
-			t.Fatalf("File in tarball twice. This is invalid and will break when extracted: %v", header.Name)
+			t.Fatalf("File in tarball twice. This is invalid and will break when extracted: %v (%s)", header.Name, msg)
 			break
 		}
 
@@ -68,7 +78,7 @@ func AssertFilesInTar(t testing.TB, tr *tar.Reader, expectedFiles []ExpectedFile
 		delete(burndownMap, expected.Path)
 
 		if expected.Missing {
-			t.Errorf("Path %q was not expected in the tarball", expected.Path)
+			t.Errorf("Path %q was not expected in the tarball (%s)", expected.Path, msg)
 			continue
 		}
 
@@ -76,41 +86,41 @@ func AssertFilesInTar(t testing.TB, tr *tar.Reader, expectedFiles []ExpectedFile
 		expectedDir := expected.IsDir
 		expectedSymlink := expected.Linkname != ""
 		if expectedReg && header.Typeflag != tar.TypeReg {
-			t.Errorf("Path %q exists but is not a regular file", expected.Path)
+			t.Errorf("Path %q exists but is not a regular file (%s)", expected.Path, msg)
 			continue
 		}
 
 		if expectedDir && header.Typeflag != tar.TypeDir {
-			t.Errorf("Path %q exists but is not a directory", expected.Path)
+			t.Errorf("Path %q exists but is not a directory (%s)", expected.Path, msg)
 			continue
 		}
 
 		if expectedSymlink && header.Typeflag != tar.TypeSymlink {
-			t.Errorf("Path %q exists but is not a directory", expected.Path)
+			t.Errorf("Path %q exists but is not a directory (%s)", expected.Path, msg)
 			continue
 		}
 
 		if expected.AssertUidAndGidAreZero && header.Uid != expectedUidAndGid {
-			t.Errorf("Expected %s to have UID 0, got %d", header.Name, header.Uid)
+			t.Errorf("Expected %s to have UID 0, got %d (%s)", header.Name, header.Uid, msg)
 		}
 
 		if expected.AssertUidAndGidAreZero && header.Gid != expectedUidAndGid {
-			t.Errorf("Expected %s to have GID 0, got %d", header.Name, header.Gid)
+			t.Errorf("Expected %s to have GID 0, got %d (%s)", header.Name, header.Gid, msg)
 		}
 
 		if header.Linkname != expected.Linkname {
-			t.Errorf("Expected linkname %q, actual %q", expected.Linkname, header.Linkname)
+			t.Errorf("Expected linkname %q, actual %q (%s)", expected.Linkname, header.Linkname, msg)
 		}
 
 		if expectedReg {
 			contents := bytes.NewBuffer(nil)
 			_, err = io.Copy(contents, tr)
 			if err != nil {
-				t.Fatalf("Error reading tar file: %v", err)
+				t.Fatalf("Error reading tar file: %v (%s)", err, msg)
 			}
 
 			if !assert.Equal(t, expected.Contents, contents.String()) {
-				fmt.Printf("wrong contents in %q\n", expected.Path)
+				fmt.Printf("wrong contents in %q\n (%s)", expected.Path, msg)
 				continue
 			}
 		}
@@ -120,7 +130,7 @@ func AssertFilesInTar(t testing.TB, tr *tar.Reader, expectedFiles []ExpectedFile
 
 	for _, f := range burndownMap {
 		if !f.Missing {
-			t.Errorf("File not found in container: %s", f.Path)
+			t.Errorf("File not found in container: %s (%s)", f.Path, msg)
 		}
 	}
 }

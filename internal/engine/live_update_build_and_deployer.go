@@ -1,10 +1,8 @@
 package engine
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -108,7 +106,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 
 	l := logger.Get(ctx)
 	cIDStr := container.ShortStrs(store.IDsForInfos(state.RunningContainers))
-	l.Infof("  → Updating container…")
+	l.Infof("  → Updating container(s): %s", cIDStr)
 
 	filter := ignore.CreateBuildContextFilter(iTarget)
 	boiledSteps, err := build.BoilRuns(runs, changedFiles)
@@ -129,20 +127,6 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 		}
 	}
 
-	// copy files to container
-	pr, pw := io.Pipe()
-	go func() {
-		ab := build.NewArchiveBuilder(pw, filter)
-		err = ab.ArchivePathsIfExist(ctx, toArchive)
-		if err != nil {
-			_ = pw.CloseWithError(errors.Wrap(err, "archivePathsIfExists"))
-		} else {
-			_ = ab.Close()
-			_ = pw.Close()
-		}
-	}()
-	var archiveReader io.Reader = pr
-
 	if len(toArchive) > 0 {
 		l.Infof("Will copy %d file(s) to container(s): %s", len(toArchive), cIDStr)
 		for _, pm := range toArchive {
@@ -152,12 +136,9 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 
 	var lastUserBuildFailure error
 	for _, cInfo := range state.RunningContainers {
-		// always pass a copy of the tar archive reader
-		// so multiple updates can access the same data
-		var archiveBuf bytes.Buffer
-		archiveTee := io.TeeReader(archiveReader, &archiveBuf)
-
-		err = cu.UpdateContainer(ctx, cInfo, archiveTee, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
+		archive := build.TarArchiveForPaths(ctx, toArchive, filter)
+		err = cu.UpdateContainer(ctx, cInfo, archive,
+			build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 		if err != nil {
 			if runFail, ok := build.MaybeRunStepFailure(err); ok {
 				// Keep running updates -- we want all containers to have the same files on them
@@ -180,7 +161,6 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 					"but last update failed with '%v'", cInfo.ContainerID, lastUserBuildFailure)
 			}
 		}
-		archiveReader = &archiveBuf
 	}
 	if lastUserBuildFailure != nil {
 		return WrapDontFallBackError(lastUserBuildFailure)
