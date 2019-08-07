@@ -136,11 +136,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 
 	var lastUserBuildFailure error
 	for _, cInfo := range state.RunningContainers {
-		archive, err := build.TarArchiveForPaths(ctx, toArchive, filter)
-		if err != nil {
-			return errors.Wrap(err, "TarArchiveForPaths")
-		}
-
+		archive := build.TarArchiveForPaths(ctx, toArchive, filter)
 		err = cu.UpdateContainer(ctx, cInfo, archive,
 			build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 		if err != nil {
