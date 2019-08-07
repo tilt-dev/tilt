@@ -21,6 +21,7 @@ const fastBuildDeprecationWarning = "FastBuild (`fast_build`; `add_fast_build`; 
 	"information. If Live Update doesn't fit your use case, let us know."
 
 type dockerImage struct {
+	tiltfilePath       string
 	baseDockerfilePath string
 	baseDockerfile     dockerfile.Dockerfile
 	configurationRef   container.RefSelector
@@ -111,7 +112,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	if contextVal == nil {
 		return nil, fmt.Errorf("Argument 2 (context): empty but is required")
 	}
-	context, err := s.localPathFromSkylarkValue(contextVal)
+	context, err := s.absPathFromStarlarkValue(thread, contextVal)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +145,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 			return nil, fmt.Errorf("Argument (dockerfile_contents): must be string or blob.")
 		}
 	} else if dockerfilePathVal != nil {
-		dockerfilePath, err = s.localPathFromSkylarkValue(dockerfilePathVal)
+		dockerfilePath, err = s.absPathFromStarlarkValue(thread, dockerfilePathVal)
 		if err != nil {
 			return nil, err
 		}
@@ -167,7 +168,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	liveUpdate, err := s.liveUpdateFromSteps(liveUpdateVal)
+	liveUpdate, err := s.liveUpdateFromSteps(thread, liveUpdateVal)
 	if err != nil {
 		return nil, errors.Wrap(err, "live_update")
 	}
@@ -188,6 +189,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	}
 
 	r := &dockerImage{
+		tiltfilePath:     s.currentTiltfilePath(thread),
 		dbDockerfilePath: dockerfilePath,
 		dbDockerfile:     dockerfile.Dockerfile(dockerfileContents),
 		dbBuildPath:      context,
@@ -264,14 +266,14 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	defer iter.Done()
 	var v starlark.Value
 	for iter.Next(&v) {
-		p, err := s.localPathFromSkylarkValue(v)
+		p, err := s.absPathFromStarlarkValue(thread, v)
 		if err != nil {
 			return nil, fmt.Errorf("Argument 3 (deps): %v", err)
 		}
 		localDeps = append(localDeps, p)
 	}
 
-	liveUpdate, err := s.liveUpdateFromSteps(liveUpdateVal)
+	liveUpdate, err := s.liveUpdateFromSteps(thread, liveUpdateVal)
 	if err != nil {
 		return nil, errors.Wrap(err, "live_update")
 	}
@@ -386,7 +388,7 @@ func (s *tiltfileState) fastBuild(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, err
 	}
 
-	baseDockerfilePath, err := s.localPathFromSkylarkValue(baseDockerfile)
+	baseDockerfilePath, err := s.absPathFromStarlarkValue(thread, baseDockerfile)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 2 (base_dockerfile): %v", err)
 	}
@@ -515,7 +517,7 @@ func (b *fastBuild) add(thread *starlark.Thread, fn *starlark.Builtin, args star
 	}
 
 	s := pathSync{}
-	lp, err := b.s.localPathFromSkylarkValue(src)
+	lp, err := b.s.absPathFromStarlarkValue(thread, src)
 	if err != nil {
 		return nil, errors.Wrapf(err, "%s.%s(): invalid type for src (arg 1)", b.String(), fn.Name())
 	}
@@ -552,7 +554,7 @@ func (b *fastBuild) run(thread *starlark.Thread, fn *starlark.Builtin, args star
 	}
 
 	run := model.ToRun(model.ToShellCmd(cmd))
-	run = run.WithTriggers(triggers, b.s.absWorkingDir())
+	run = run.WithTriggers(triggers, b.s.absWorkingDir(thread))
 
 	b.img.runs = append(b.img.runs, run)
 	return b, nil
@@ -605,7 +607,7 @@ func (s *tiltfileState) reposForImage(image *dockerImage) []model.LocalGitRepo {
 		image.baseDockerfilePath,
 		image.dbDockerfilePath,
 		image.dbBuildPath,
-		s.filename)
+		image.tiltfilePath)
 
 	return reposForPaths(paths)
 }

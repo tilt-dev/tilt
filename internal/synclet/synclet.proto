@@ -37,8 +37,16 @@ message LogMessage {
     bytes message = 2;
 }
 
+message FailedRunStep {
+    string cmd = 1;
+    int32  exit_code = 2;
+}
+
 message UpdateContainerReply {
     LogMessage log_message = 1;
+
+    // Contains info about run step failure (if any)
+    FailedRunStep failed_run_step = 2;
 }
 
 message LogStyle {

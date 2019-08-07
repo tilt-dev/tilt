@@ -31,13 +31,13 @@ type resourceSet struct {
 type tiltfileState struct {
 	// set at creation
 	ctx             context.Context
-	filename        string
 	dcCli           dockercompose.DockerComposeClient
 	kubeContext     k8s.KubeContext
 	privateRegistry container.Registry
 	features        feature.FeatureSet
 
 	// added to during execution
+	loadCache          map[string]loadCacheEntry
 	configFiles        []string
 	buildIndex         *buildIndex
 	k8s                []*k8sResource
@@ -99,17 +99,16 @@ const (
 // nor in allow_k8s_contexts. e.g., minikube uses a non-loopback ip on a virtual interface
 var defaultWhitelistedKubeContexts = []k8s.KubeContext{"minikube"}
 
-func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, filename string, kubeContext k8s.KubeContext, privateRegistry container.Registry, features feature.FeatureSet) *tiltfileState {
+func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, kubeContext k8s.KubeContext, privateRegistry container.Registry, features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
 		ctx:                        ctx,
-		filename:                   filename,
 		dcCli:                      dcCli,
 		kubeContext:                kubeContext,
 		privateRegistry:            privateRegistry,
 		buildIndex:                 newBuildIndex(),
 		k8sByName:                  make(map[string]*k8sResource),
 		k8sImageJSONPaths:          make(map[k8sObjectSelector][]k8s.JSONPath),
-		configFiles:                []string{filename, tiltIgnorePath(filename)},
+		configFiles:                []string{},
 		usedImages:                 make(map[string]bool),
 		logger:                     logger.Get(ctx),
 		builtinCallCounts:          make(map[string]int),
@@ -118,21 +117,35 @@ func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClie
 		k8sResourceOptions:         make(map[string]k8sResourceOptions),
 		triggerMode:                TriggerModeAuto,
 		features:                   features,
+		loadCache:                  make(map[string]loadCacheEntry),
 		whitelistedK8SContexts:     defaultWhitelistedKubeContexts,
 	}
 }
 
-func (s *tiltfileState) starlarkThread() *starlark.Thread {
-	return &starlark.Thread{
-		Print: func(_ *starlark.Thread, msg string) {
-			s.logger.Infof("%s", msg)
-		},
+// Path to the Tiltfile at the bottom of the call stack.
+func (s *tiltfileState) currentTiltfilePath(t *starlark.Thread) string {
+	depth := t.CallStackDepth()
+	if depth == 0 {
+		panic("internal error: currentTiltfilePath must be called from an active starlark thread")
 	}
+	return t.CallFrame(depth - 1).Pos.Filename()
 }
 
-func (s *tiltfileState) exec() error {
-	_, err := starlark.ExecFile(s.starlarkThread(), s.filename, nil, s.predeclared())
-	return err
+// print() for fulfilling the starlark thread callback
+func (s *tiltfileState) print(_ *starlark.Thread, msg string) {
+	s.logger.Infof("%s", msg)
+}
+
+// load() for fulfilling the starlark thread callback
+func (s *tiltfileState) load(thread *starlark.Thread, f string) (starlark.StringDict, error) {
+	return s.exec(s.absPath(thread, f))
+}
+
+func (s *tiltfileState) starlarkThread() *starlark.Thread {
+	return &starlark.Thread{
+		Print: s.print,
+		Load:  s.load,
+	}
 }
 
 // Builtin functions
@@ -171,6 +184,7 @@ const (
 	decodeJSONN   = "decode_json"
 	readJSONN     = "read_json"
 	readYAMLN     = "read_yaml"
+	includeN      = "include"
 
 	// live update functions
 	fallBackOnN       = "fall_back_on"
@@ -297,6 +311,7 @@ func (s *tiltfileState) predeclared() starlark.StringDict {
 	addBuiltin(r, decodeJSONN, s.decodeJSON)
 	addBuiltin(r, readJSONN, s.readJson)
 	addBuiltin(r, readYAMLN, s.readYaml)
+	addBuiltin(r, includeN, s.include)
 
 	addBuiltin(r, triggerModeN, s.triggerModeFn)
 	r[triggerModeAutoN] = TriggerModeAuto
@@ -887,10 +902,12 @@ func (s *tiltfileState) validateLiveUpdate(iTarget model.ImageTarget, g model.Ta
 	}
 
 	for _, path := range lu.FallBackOnFiles().Paths {
-		absPath := s.absPath(path)
-		if !ospath.IsChildOfOne(watchedPaths, absPath) {
+		if !filepath.IsAbs(path) {
+			return fmt.Errorf("internal error: path not resolved correctly! Please report to https://github.com/windmilleng/tilt/issues : %s", path)
+		}
+		if !ospath.IsChildOfOne(watchedPaths, path) {
 			return fmt.Errorf("fall_back_on paths '%s' is not a child of any watched filepaths (%v)",
-				absPath, watchedPaths)
+				path, watchedPaths)
 		}
 
 	}
@@ -969,7 +986,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 		iTarget = iTarget.
 			WithRepos(s.reposForImage(image)).
 			WithDockerignores(s.dockerignoresForImage(image)). // used even for custom build
-			WithTiltFilename(s.filename).
+			WithTiltFilename(image.tiltfilePath).
 			WithDependencyIDs(image.dependencyIDs)
 
 		depTargets, err := s.imgTargetsForDependencyIDsHelper(image.dependencyIDs, claimStatus)
@@ -989,7 +1006,7 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 	var result []model.Manifest
 
 	for _, svc := range dc.services {
-		m, configFiles, err := s.dcServiceToManifest(svc, dc.configPaths)
+		m, configFiles, err := s.dcServiceToManifest(svc, dc)
 		if err != nil {
 			return nil, err
 		}

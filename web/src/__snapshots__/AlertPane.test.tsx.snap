@@ -9,18 +9,35 @@ exports[`renders multiple lines of a crash log 1`] = `
       className="AlertPane-item"
     >
       <header>
-        <p>
-          foo
-        </p>
-        <p>
-          Pod crashed
-        </p>
-        <time
-          dateTime="1949-11-18T09:39:00.000Z"
-          title="1,555,970,585,039"
+        <div
+          className="AlertPane-headerDiv"
         >
-          67yr
-        </time>
+          <h3
+            className="AlertPane-headerDiv-header"
+          >
+            Pod crashed
+          </h3>
+        </div>
+        <div
+          className="AlertPane-headerDiv"
+        >
+          <p>
+            <span>
+              Resource: 
+              foo
+            </span>
+            <span>
+              Type: 
+              ResourceCrashRebuild
+            </span>
+          </p>
+          <time
+            dateTime="1949-11-18T09:39:00.000Z"
+            title="1,555,970,585,039"
+          >
+            67yr
+          </time>
+        </div>
       </header>
       <section>
         <code>
@@ -71,15 +88,35 @@ exports[`renders one container start error 1`] = `
       className="AlertPane-item"
     >
       <header>
-        <p>
-          foo
-        </p>
-        <time
-          dateTime="1949-11-18T09:39:00.000Z"
-          title="1,555,970,585,039"
+        <div
+          className="AlertPane-headerDiv"
         >
-          67yr
-        </time>
+          <h3
+            className="AlertPane-headerDiv-header"
+          >
+            
+          </h3>
+        </div>
+        <div
+          className="AlertPane-headerDiv"
+        >
+          <p>
+            <span>
+              Resource: 
+              foo
+            </span>
+            <span>
+              Type: 
+              PodStatusError
+            </span>
+          </p>
+          <time
+            dateTime="1949-11-18T09:39:00.000Z"
+            title="1,555,970,585,039"
+          >
+            67yr
+          </time>
+        </div>
       </header>
       <section>
         <code>
@@ -105,15 +142,35 @@ exports[`renders one container start error 2`] = `
       className="AlertPane-item"
     >
       <header>
-        <p>
-          foo
-        </p>
-        <time
-          dateTime="1949-11-18T09:39:00.000Z"
-          title="1,555,970,585,039"
+        <div
+          className="AlertPane-headerDiv"
         >
-          67yr
-        </time>
+          <h3
+            className="AlertPane-headerDiv-header"
+          >
+            
+          </h3>
+        </div>
+        <div
+          className="AlertPane-headerDiv"
+        >
+          <p>
+            <span>
+              Resource: 
+              foo
+            </span>
+            <span>
+              Type: 
+              PodStatusError
+            </span>
+          </p>
+          <time
+            dateTime="1949-11-18T09:39:00.000Z"
+            title="1,555,970,585,039"
+          >
+            67yr
+          </time>
+        </div>
       </header>
       <section>
         <code>
@@ -139,15 +196,35 @@ exports[`renders one container unrecognized error 1`] = `
       className="AlertPane-item"
     >
       <header>
-        <p>
-          vigoda
-        </p>
-        <time
-          dateTime="2016-12-21T23:36:07.071Z"
-          title="2016-12-21 23:36"
+        <div
+          className="AlertPane-headerDiv"
         >
-          &lt;5s
-        </time>
+          <h3
+            className="AlertPane-headerDiv-header"
+          >
+            
+          </h3>
+        </div>
+        <div
+          className="AlertPane-headerDiv"
+        >
+          <p>
+            <span>
+              Resource: 
+              vigoda
+            </span>
+            <span>
+              Type: 
+              PodStatusError
+            </span>
+          </p>
+          <time
+            dateTime="2016-12-21T23:36:07.071Z"
+            title="2016-12-21 23:36"
+          >
+            &lt;5s
+          </time>
+        </div>
       </header>
       <section>
         <code>
@@ -190,18 +267,35 @@ exports[`renders warnings 1`] = `
       className="AlertPane-item"
     >
       <header>
-        <p>
-          foo
-        </p>
-        <p>
-          Pod crashed
-        </p>
-        <time
-          dateTime="1949-11-18T09:39:00.000Z"
-          title="1,555,970,585,039"
+        <div
+          className="AlertPane-headerDiv"
         >
-          67yr
-        </time>
+          <h3
+            className="AlertPane-headerDiv-header"
+          >
+            Pod crashed
+          </h3>
+        </div>
+        <div
+          className="AlertPane-headerDiv"
+        >
+          <p>
+            <span>
+              Resource: 
+              foo
+            </span>
+            <span>
+              Type: 
+              ResourceCrashRebuild
+            </span>
+          </p>
+          <time
+            dateTime="1949-11-18T09:39:00.000Z"
+            title="1,555,970,585,039"
+          >
+            67yr
+          </time>
+        </div>
       </header>
       <section>
         <code>
@@ -218,18 +312,35 @@ exports[`renders warnings 1`] = `
       className="AlertPane-item"
     >
       <header>
-        <p>
-          foo
-        </p>
-        <p>
-          foo
-        </p>
-        <time
-          dateTime="1949-11-18T09:39:00.000Z"
-          title="1,555,970,585,039"
+        <div
+          className="AlertPane-headerDiv"
         >
-          67yr
-        </time>
+          <h3
+            className="AlertPane-headerDiv-header"
+          >
+            foo
+          </h3>
+        </div>
+        <div
+          className="AlertPane-headerDiv"
+        >
+          <p>
+            <span>
+              Resource: 
+              foo
+            </span>
+            <span>
+              Type: 
+              Warning
+            </span>
+          </p>
+          <time
+            dateTime="1949-11-18T09:39:00.000Z"
+            title="1,555,970,585,039"
+          >
+            67yr
+          </time>
+        </div>
       </header>
       <section>
         <code>
@@ -255,18 +366,35 @@ exports[`shows that a container has restarted 1`] = `
       className="AlertPane-item"
     >
       <header>
-        <p>
-          foo
-        </p>
-        <p>
-          Restarts: 1
-        </p>
-        <time
-          dateTime="1949-11-18T09:39:00.000Z"
-          title="1,555,970,585,039"
+        <div
+          className="AlertPane-headerDiv"
         >
-          67yr
-        </time>
+          <h3
+            className="AlertPane-headerDiv-header"
+          >
+            Restarts: 1
+          </h3>
+        </div>
+        <div
+          className="AlertPane-headerDiv"
+        >
+          <p>
+            <span>
+              Resource: 
+              foo
+            </span>
+            <span>
+              Type: 
+              PodRestartError
+            </span>
+          </p>
+          <time
+            dateTime="1949-11-18T09:39:00.000Z"
+            title="1,555,970,585,039"
+          >
+            67yr
+          </time>
+        </div>
       </header>
       <section>
         <code>
@@ -292,18 +420,35 @@ exports[`shows that a crash rebuild has occurred 1`] = `
       className="AlertPane-item"
     >
       <header>
-        <p>
-          foo
-        </p>
-        <p>
-          Pod crashed
-        </p>
-        <time
-          dateTime="1949-11-18T09:39:00.000Z"
-          title="1,555,970,585,039"
+        <div
+          className="AlertPane-headerDiv"
         >
-          67yr
-        </time>
+          <h3
+            className="AlertPane-headerDiv-header"
+          >
+            Pod crashed
+          </h3>
+        </div>
+        <div
+          className="AlertPane-headerDiv"
+        >
+          <p>
+            <span>
+              Resource: 
+              foo
+            </span>
+            <span>
+              Type: 
+              ResourceCrashRebuild
+            </span>
+          </p>
+          <time
+            dateTime="1949-11-18T09:39:00.000Z"
+            title="1,555,970,585,039"
+          >
+            67yr
+          </time>
+        </div>
       </header>
       <section>
         <code>

@@ -59,14 +59,11 @@ func NewSyncletManager(kCli k8s.Client) SyncletManager {
 	}
 }
 
-func NewSyncletManagerForTests(kCli k8s.Client, fakeCli synclet.SyncletClient) SyncletManager {
+func NewSyncletManagerForTests(kCli k8s.Client, sCli synclet.SyncletClient, fake *synclet.TestSyncletClient) SyncletManager {
 	newClientFn := func(ctx context.Context, kCli k8s.Client, podID k8s.PodID, ns k8s.Namespace) (synclet.SyncletClient, error) {
-		fake, ok := fakeCli.(*synclet.TestSyncletClient)
-		if ok {
-			fake.PodID = podID
-			fake.Namespace = ns
-		}
-		return fakeCli, nil
+		fake.PodID = podID
+		fake.Namespace = ns
+		return sCli, nil
 	}
 
 	return SyncletManager{

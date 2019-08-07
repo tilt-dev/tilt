@@ -125,18 +125,17 @@ func (s *tiltfileState) liveUpdateFallBackOn(thread *starlark.Thread, fn *starla
 		return nil, err
 	}
 	filesSlice := starlarkValueOrSequenceToSlice(files)
-	var fileStrings []string
+	var paths []string
 	for _, f := range filesSlice {
-		switch fStr := f.(type) {
-		case starlark.String:
-			fileStrings = append(fileStrings, string(fStr))
-		default:
-			return nil, fmt.Errorf("fall_back_on step contained value '%s' of type '%s'. it may only contain strings", fStr, fStr.Type())
+		path, err := s.absPathFromStarlarkValue(thread, f)
+		if err != nil {
+			return nil, fmt.Errorf("fall_back_on step contained value '%s' of type '%s'. it may only contain strings", f, f.Type())
 		}
+		paths = append(paths, path)
 	}
 
 	ret := liveUpdateFallBackOnStep{
-		files:    fileStrings,
+		files:    paths,
 		position: thread.CallFrame(1).Pos,
 	}
 	s.recordLiveUpdateStep(ret)
@@ -150,7 +149,7 @@ func (s *tiltfileState) liveUpdateSync(thread *starlark.Thread, fn *starlark.Bui
 	}
 
 	ret := liveUpdateSyncStep{
-		localPath:  s.absPath(localPath),
+		localPath:  s.absPath(thread, localPath),
 		remotePath: remotePath,
 		position:   thread.CallFrame(1).Pos,
 	}
@@ -197,7 +196,7 @@ func (s *tiltfileState) liveUpdateRestartContainer(thread *starlark.Thread, fn *
 	return ret, nil
 }
 
-func (s *tiltfileState) liveUpdateStepToModel(l liveUpdateStep) (model.LiveUpdateStep, error) {
+func (s *tiltfileState) liveUpdateStepToModel(t *starlark.Thread, l liveUpdateStep) (model.LiveUpdateStep, error) {
 	switch x := l.(type) {
 	case liveUpdateFallBackOnStep:
 		return model.LiveUpdateFallBackOnStep{Files: x.files}, nil
@@ -211,7 +210,7 @@ func (s *tiltfileState) liveUpdateStepToModel(l liveUpdateStep) (model.LiveUpdat
 			Command: model.ToShellCmd(x.command),
 			Triggers: model.PathSet{
 				Paths:         x.triggers,
-				BaseDirectory: s.absWorkingDir(),
+				BaseDirectory: s.absWorkingDir(t),
 			},
 		}, nil
 	case liveUpdateRestartContainerStep:
@@ -221,7 +220,7 @@ func (s *tiltfileState) liveUpdateStepToModel(l liveUpdateStep) (model.LiveUpdat
 	}
 }
 
-func (s *tiltfileState) liveUpdateFromSteps(maybeSteps starlark.Value) (model.LiveUpdate, error) {
+func (s *tiltfileState) liveUpdateFromSteps(t *starlark.Thread, maybeSteps starlark.Value) (model.LiveUpdate, error) {
 	var modelSteps []model.LiveUpdateStep
 	stepSlice := starlarkValueOrSequenceToSlice(maybeSteps)
 
@@ -231,7 +230,7 @@ func (s *tiltfileState) liveUpdateFromSteps(maybeSteps starlark.Value) (model.Li
 			return model.LiveUpdate{}, fmt.Errorf("'steps' must be a list of live update steps - got value '%v' of type '%s'", v.String(), v.Type())
 		}
 
-		ms, err := s.liveUpdateStepToModel(step)
+		ms, err := s.liveUpdateStepToModel(t, step)
 		if err != nil {
 			return model.LiveUpdate{}, err
 		}
@@ -240,7 +239,7 @@ func (s *tiltfileState) liveUpdateFromSteps(maybeSteps starlark.Value) (model.Li
 		modelSteps = append(modelSteps, ms)
 	}
 
-	return model.NewLiveUpdate(modelSteps, s.absWorkingDir())
+	return model.NewLiveUpdate(modelSteps, s.absWorkingDir(t))
 }
 
 func (s *tiltfileState) consumeLiveUpdateStep(stepToConsume liveUpdateStep) {

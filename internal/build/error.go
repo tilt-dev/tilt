@@ -51,13 +51,38 @@ type RunStepFailure struct {
 	ExitCode int
 }
 
+func (e RunStepFailure) Empty() bool {
+	return e.Cmd.Empty() && e.ExitCode == 0
+}
+
 func (e RunStepFailure) Error() string {
 	return fmt.Sprintf("Run step %q failed with exit code: %d", e.Cmd.String(), e.ExitCode)
 }
 
 func IsRunStepFailure(err error) bool {
-	_, ok := err.(RunStepFailure)
+	_, ok := MaybeRunStepFailure(err)
 	return ok
+}
+
+func MaybeRunStepFailure(err error) (RunStepFailure, bool) {
+	e := err
+	for {
+		if e == nil {
+			break
+		}
+		rsf, ok := e.(RunStepFailure)
+		if ok {
+			return rsf, true
+		}
+		cause := errors.Cause(e)
+		if cause == e {
+			// no more causes to drill into
+			// (If err does not implement Causer, `Cause(err)` returns back the original error)
+			break
+		}
+		e = cause
+	}
+	return RunStepFailure{}, false
 }
 
 var _ error = RunStepFailure{}

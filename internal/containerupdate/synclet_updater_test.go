@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/windmilleng/tilt/internal/sliceutils"
+	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 
 	"github.com/windmilleng/tilt/internal/docker"
 
@@ -20,6 +21,7 @@ import (
 
 func TestUpdateContainer(t *testing.T) {
 	f := newSyncletFixture(t)
+	defer f.TearDown()
 
 	err := f.scu.UpdateContainer(f.ctx, TestContainerInfo, newReader("hello world"), toDelete, cmds, false)
 	if err != nil {
@@ -40,31 +42,44 @@ func TestUpdateContainer(t *testing.T) {
 }
 
 type syncletUpdaterFixture struct {
-	t    testing.TB
-	ctx  context.Context
-	sm   SyncletManager
-	sCli *synclet.TestSyncletClient
-	dCli *docker.FakeClient
-	scu  *SyncletUpdater
+	t testing.TB
+	*tempdir.TempDirFixture
+	ctx    context.Context
+	cancel func()
+	sm     SyncletManager
+	sCli   *synclet.TestSyncletClient
+	dCli   *docker.FakeClient
+	scu    *SyncletUpdater
 }
 
 func newSyncletFixture(t testing.TB) *syncletUpdaterFixture {
+	f := tempdir.NewTempDirFixture(t)
 	kCli := k8s.NewFakeK8sClient()
 	dCli := docker.NewFakeClient()
 	sCli := synclet.NewTestSyncletClient(dCli)
-	sm := NewSyncletManagerForTests(kCli, sCli)
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
+	ctx, cancel := context.WithCancel(ctx)
+	sGRPCCli, err := synclet.FakeGRPCWrapper(ctx, sCli)
+	assert.NoError(t, err)
+	sm := NewSyncletManagerForTests(kCli, sGRPCCli, sCli)
 
 	cu := &SyncletUpdater{
 		sm: sm,
 	}
-	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 
 	return &syncletUpdaterFixture{
-		t:    t,
-		ctx:  ctx,
-		sm:   sm,
-		sCli: sCli,
-		dCli: dCli,
-		scu:  cu,
+		t:              t,
+		TempDirFixture: f,
+		ctx:            ctx,
+		cancel:         cancel,
+		sm:             sm,
+		sCli:           sCli,
+		dCli:           dCli,
+		scu:            cu,
 	}
+}
+
+func (f *syncletUpdaterFixture) TearDown() {
+	f.cancel()
+	f.TempDirFixture.TearDown()
 }

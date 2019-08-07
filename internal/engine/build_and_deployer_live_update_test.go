@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/client-go/util/exec"
 
 	"github.com/windmilleng/tilt/internal/docker"
 
@@ -20,7 +21,11 @@ import (
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 )
 
-var userFailureErr = docker.ExitError{ExitCode: 123}
+var userFailureErrDocker = docker.ExitError{ExitCode: 123}
+var userFailureErrExec = exec.CodeExitError{
+	Err:  fmt.Errorf("welcome to zombocom"),
+	Code: 123,
+}
 
 type testCase struct {
 	manifest model.Manifest
@@ -170,7 +175,7 @@ func TestLiveUpdateDockerBuildLocalContainer(t *testing.T) {
 	runTestCase(t, f, tCase)
 }
 
-func TestLiveUpdateDockerBuildLocalContainerOnMultipleContainers(t *testing.T) {
+func TestLiveUpdateDockerBuildLocalContainerSameImgMultipleContainers(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
@@ -191,7 +196,7 @@ func TestLiveUpdateDockerBuildLocalContainerOnMultipleContainers(t *testing.T) {
 	runTestCase(t, f, tCase)
 }
 
-func TestLiveUpdateDockerBuildSyncletOnMultipleContainers(t *testing.T) {
+func TestLiveUpdateDockerBuildSyncletSameImgMultipleContainers(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
@@ -213,12 +218,12 @@ func TestLiveUpdateDockerBuildSyncletOnMultipleContainers(t *testing.T) {
 	runTestCase(t, f, tCase)
 }
 
-func TestLiveUpdateDockerBuildExecOnMultipleContainers(t *testing.T) {
+func TestLiveUpdateDockerBuildExecSameImgMultipleContainers(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeCrio)
 	defer f.TearDown()
 
-	lu := assembleLiveUpdate(SanchoSyncSteps(f), nil, false, []string{"i/match/nothing"}, f)
 	iTarg := NewSanchoDockerBuildImageTarget(f)
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), nil, false, []string{"i/match/nothing"}, f)
 	cIDs := []container.ID{"c1", "c2", "c3"}
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
@@ -233,6 +238,177 @@ func TestLiveUpdateDockerBuildExecOnMultipleContainers(t *testing.T) {
 
 		// 1 per container (tar archive) x 3 containers
 		expectK8sExecCount: 3,
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateDockerBuildLocalContainerDiffImgMultipleContainers(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	defer f.TearDown()
+
+	sanchoTarg := NewSanchoLiveUpdateImageTarget(f)
+	sidecarTarg := NewSanchoSidecarLiveUpdateImageTarget(f)
+	tCase := testCase{
+		manifest: manifestbuilder.New(f, "sanchoWithSidecar").
+			WithK8sYAML(SanchoYAML).
+			WithImageTargets(sanchoTarg, sidecarTarg).
+			Build(),
+		runningContainersByTarget: map[model.TargetID][]container.ID{
+			sanchoTarg.ID():  []container.ID{"c1"},
+			sidecarTarg.ID(): []container.ID{"c2"},
+		},
+		changedFiles:           []string{"a.txt"},
+		expectDockerBuildCount: 0,
+		expectDockerPushCount:  0,
+
+		// one of each operation per container
+		expectDockerCopyCount:    2,
+		expectDockerExecCount:    2,
+		expectDockerRestartCount: 2,
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateDockerBuildSyncletDiffImgMultipleContainers(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	defer f.TearDown()
+
+	sanchoTarg := NewSanchoLiveUpdateImageTarget(f)
+	sidecarTarg := NewSanchoSidecarLiveUpdateImageTarget(f)
+	tCase := testCase{
+		manifest: manifestbuilder.New(f, "sanchoWithSidecar").
+			WithK8sYAML(SanchoYAML).
+			WithImageTargets(sanchoTarg, sidecarTarg).
+			Build(),
+		runningContainersByTarget: map[model.TargetID][]container.ID{
+			sanchoTarg.ID():  []container.ID{"c1"},
+			sidecarTarg.ID(): []container.ID{"c2"},
+		},
+		changedFiles:           []string{"a.txt"},
+		expectDockerBuildCount: 0,
+		expectDockerPushCount:  0,
+
+		// one of each operation per container
+		expectSyncletUpdateContainerCount: 2,
+		expectDockerCopyCount:             2,
+		expectDockerExecCount:             2,
+		expectDockerRestartCount:          2,
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateDockerBuildExecDiffImgMultipleContainers(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeCrio)
+	defer f.TearDown()
+
+	sanchoLU := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil, f)
+	sidecarLU := assembleLiveUpdate(SyncStepsForApp("sidecar", f), RunStepsForApp("sidecar"),
+		false, nil, f)
+	sanchoTarg := NewSanchoDockerBuildImageTarget(f)
+	sidecarTarg := NewSanchoSidecarDockerBuildImageTarget(f)
+	tCase := testCase{
+		manifest: manifestbuilder.New(f, "sanchoWithSidecar").
+			WithK8sYAML(SanchoYAML).
+			WithImageTargets(sanchoTarg, sidecarTarg).
+			WithLiveUpdateAtIndex(sanchoLU, 0).
+			WithLiveUpdateAtIndex(sidecarLU, 1).
+			Build(),
+		runningContainersByTarget: map[model.TargetID][]container.ID{
+			sanchoTarg.ID():  []container.ID{"c1"},
+			sidecarTarg.ID(): []container.ID{"c2"},
+		},
+		changedFiles:           []string{"a.txt"},
+		expectDockerBuildCount: 0,
+		expectDockerPushCount:  0,
+
+		// two (tar archive + run step) per container
+		expectK8sExecCount: 4,
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateDockerContainerUserRunFailureDoesntFallBack(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	defer f.TearDown()
+
+	f.docker.SetExecError(userFailureErrDocker)
+	tCase := testCase{
+		manifest:     NewSanchoLiveUpdateManifest(f),
+		changedFiles: []string{"a.txt"},
+
+		// BuildAndDeploy call will ultimately fail with this error,
+		// b/c we DON'T fall back to an image build
+		expectErrorContains: "failed with exit code: 123",
+
+		// called copy and exec before hitting error
+		// (so, did not restart)
+		expectDockerCopyCount:    1,
+		expectDockerExecCount:    1,
+		expectDockerRestartCount: 0,
+
+		// DO NOT fall back to image build
+		expectDockerBuildCount: 0,
+		expectK8sDeploy:        false,
+	}
+	runTestCase(t, f, tCase)
+}
+
+// TODO(maia): make this test actually touch gRPC de/serialization,
+// which is where most of this logic lives
+func TestLiveUpdateSyncletUserRunFailureDoesntFallBack(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	defer f.TearDown()
+
+	f.docker.SetExecError(userFailureErrDocker)
+
+	tCase := testCase{
+		manifest:     NewSanchoLiveUpdateManifest(f),
+		changedFiles: []string{"a.txt"},
+
+		// BuildAndDeploy call will ultimately fail with this error,
+		// b/c we DON'T fall back to an image build
+		expectErrorContains: "failed with exit code: 123",
+
+		expectSyncletUpdateContainerCount: 1,
+
+		// called copy and exec before hitting error
+		// (so, did not restart)
+		expectDockerCopyCount:    1,
+		expectDockerExecCount:    1,
+		expectDockerRestartCount: 0,
+
+		// DO NOT fall back to image build
+		expectDockerBuildCount: 0,
+		expectK8sDeploy:        false,
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateExecUserRunFailureDoesntFallBack(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeCrio)
+	defer f.TearDown()
+
+	f.k8s.ExecErrors = []error{nil, userFailureErrExec}
+
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, []string{"i/match/nothing"}, f)
+	tCase := testCase{
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithLiveUpdate(lu).
+			Build(),
+		changedFiles: []string{"a.txt"},
+
+		// BuildAndDeploy call will ultimately fail with this error,
+		// b/c we DON'T fall back to an image build
+		expectErrorContains: "failed with exit code: 123",
+
+		// called exec twice (tar archive, run command) before hitting error
+		expectK8sExecCount: 2,
+
+		// DO NOT fall back to image build
+		expectDockerBuildCount: 0,
+		expectK8sDeploy:        false,
 	}
 	runTestCase(t, f, tCase)
 }
@@ -298,7 +474,7 @@ func TestLiveUpdateMultipleContainersUpdatesAllForUserRunFailuresAndDoesntFallBa
 	defer f.TearDown()
 
 	// Same UserRunFailure on all three exec calls
-	f.docker.ExecErrorsToThrow = []error{userFailureErr, userFailureErr, userFailureErr}
+	f.docker.ExecErrorsToThrow = []error{userFailureErrDocker, userFailureErrDocker, userFailureErrDocker}
 
 	m := NewSanchoLiveUpdateManifest(f)
 	cIDs := []container.ID{"c1", "c2", "c3"}
@@ -331,7 +507,7 @@ func TestLiveUpdateMultipleContainersFallsBackForSomeUserRunFailuresSomeSuccess(
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	f.docker.ExecErrorsToThrow = []error{userFailureErr, nil, userFailureErr}
+	f.docker.ExecErrorsToThrow = []error{userFailureErrDocker, nil, userFailureErrDocker}
 
 	m := NewSanchoLiveUpdateManifest(f)
 	cIDs := []container.ID{"c1", "c2", "c3"}
@@ -359,9 +535,9 @@ func TestLiveUpdateMultipleContainersFallsBackForSomeUserRunFailuresSomeNonUserF
 	defer f.TearDown()
 
 	f.docker.ExecErrorsToThrow = []error{
-		userFailureErr,
+		userFailureErrDocker,
 		fmt.Errorf("not a user failure"),
-		userFailureErr,
+		userFailureErrDocker,
 	}
 
 	m := NewSanchoLiveUpdateManifest(f)

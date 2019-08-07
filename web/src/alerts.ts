@@ -126,6 +126,7 @@ function buildFailedAlert(resource: Resource): Alert {
     resourceName: resource.Name,
   }
 }
+
 function warningsAlerts(resource: Resource): Array<Alert> {
   let warnings: Array<string> = []
   let alertArray: Array<Alert> = []
@@ -146,6 +147,10 @@ function warningsAlerts(resource: Resource): Array<Alert> {
   }
   return alertArray
 }
+
+function alertKey(alert: Alert): string {
+  return alert.alertType + alert.timestamp
+}
 export {
   getResourceAlerts,
   numberOfAlerts,
@@ -155,4 +160,5 @@ export {
   crashRebuildAlert,
   podRestartAlert,
   hasAlert,
+  alertKey,
 }

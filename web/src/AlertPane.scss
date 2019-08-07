@@ -15,18 +15,60 @@
   width: 100%;
 }
 
-.AlertPane-item header {
+.AlertPane-item > header {
   background-color: $color-gray;
   border: 1px solid $color-gray-light;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   padding-top: $spacing-unit / 4;
   padding-bottom: $spacing-unit / 4;
   padding-left: $spacing-unit / 2;
   padding-right: $spacing-unit / 2;
 }
 
-.AlertPane-item section {
+.AlertPane-headerDiv {
+  display: flex;
+  justify-content: space-between;
+}
+
+.AlertPane-headerDiv span + span {
+  margin-left: $spacing-unit / 2;
+  border-left: 1px solid $color-gray-light;
+  padding-left: $spacing-unit / 2;
+}
+
+.AlertPane-headerDiv-header {
+  margin: 0;
+  font-size: $font-size;
+}
+
+.AlertPane-headerDiv-alertUrlWrap {
+  flex: 1;
+  display: flex;
+  margin-left: $spacing-unit * 2;
+  justify-content: flex-end;
+}
+
+.AlertPane-headerDiv-alertUrlWrap button {
+  background-color: transparent;
+  border: 1px solid rgba($color-white, $translucent-ish);
+  color: $color-white;
+  text-transform: uppercase;
+}
+
+.AlertPane-headerDiv-alertUrlWrap button:hover {
+  background-color: $color-gray-dark;
+}
+
+.AlertPane-headerDiv-alertUrl {
+  background-color: $color-gray-dark;
+  border: 1px solid $color-gray-darkest;
+  padding-left: $spacing-unit / 2;
+  padding-right: $spacing-unit / 2;
+  user-select: all;
+}
+
+.AlertPane-item > section {
   background-color: $color-gray-dark;
   border-bottom-left-radius: $spacing-unit / 4;
   border-bottom-right-radius: $spacing-unit / 4;

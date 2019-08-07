@@ -159,7 +159,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 
 		err = cu.UpdateContainer(ctx, cInfo, archiveTee, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 		if err != nil {
-			if runFail, ok := err.(build.RunStepFailure); ok {
+			if runFail, ok := build.MaybeRunStepFailure(err); ok {
 				// Keep running updates -- we want all containers to have the same files on them
 				// even if the Runs don't succeed
 				lastUserBuildFailure = err
@@ -176,7 +176,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 			if lastUserBuildFailure != nil {
 				// This build succeeded, but previously at least one failed due to user error.
 				// We may have inconsistent state--bail, and fall back to full build.
-				return fmt.Errorf("INCONSISTENT STATE: container %s successfully updated,"+
+				return fmt.Errorf("INCONSISTENT STATE: container %s successfully updated, "+
 					"but last update failed with '%v'", cInfo.ContainerID, lastUserBuildFailure)
 			}
 		}
