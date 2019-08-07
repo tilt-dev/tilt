@@ -77,6 +77,7 @@ func (s *SyncletCli) UpdateContainer(
 				Cmd:      model.Cmd{Argv: []string{frs.Cmd}},
 				ExitCode: int(frs.ExitCode),
 			}
+			continue
 		}
 
 		if err == io.EOF {
