@@ -2,23 +2,31 @@
 
 class PathBuilder {
   private host: string
-  private roomId: string
+  private roomId: string = ""
+  private snapId: string = ""
 
   constructor(host: string, pathname: string) {
     this.host = host
-    this.roomId = ""
 
-    let roomRe = new RegExp("^/view/([^/]+)")
+    const roomRe = new RegExp("^/view/([^/]+)")
     let roomMatch = roomRe.exec(pathname)
     if (roomMatch) {
       this.roomId = roomMatch[1]
     }
+    const snapshotRe = new RegExp("^/snapshot/([^/]+)")
+    let snapMatch = snapshotRe.exec(pathname)
+    if (snapMatch) {
+      this.snapId = snapMatch[1]
+    }
   }
 
-  getWebsocketUrl() {
+  getDataUrl() {
     let scheme = "wss"
     if (this.isLocal()) {
       scheme = "ws"
+    }
+    if (this.isSnapshot()) {
+      return this.snapshotUrl()
     }
     if (this.roomId) {
       return `${scheme}://${this.host}/join/${this.roomId}`
@@ -28,6 +36,18 @@ class PathBuilder {
 
   isLocal() {
     return this.host.indexOf("localhost") == 0
+  }
+
+  isSnapshot(): boolean {
+    return this.snapId !== ""
+  }
+
+  snapshotUrl(): string {
+    let scheme = "https"
+    if (this.isLocal()) {
+      scheme = "http"
+    }
+    return `${scheme}://${this.host}/api/snapshots/${this.snapId}`
   }
 
   rootPath() {

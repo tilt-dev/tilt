@@ -45,25 +45,29 @@ class AppController {
 
       let data = JSON.parse(event.data)
 
-      data.Resources = data.Resources.map((r: any) => {
-        if (r.ResourceInfo === null) {
-          r.ResourceInfo = {
-            PodName: "",
-            PodCreationTime: "",
-            PodUpdateStartTime: "",
-            PodStatus: "",
-            PodStatusMessage: "",
-            PodRestarts: 0,
-            PodLog: "",
-            YAML: "",
-            Endpoints: [],
-          }
-        }
-        r.Alerts = getResourceAlerts(r)
-        return r
-      })
+      data.Resources = this.setDefaultResourceInfo(data.Resources)
       // @ts-ignore
       this.component.setAppState({ View: data })
+    })
+  }
+
+  setDefaultResourceInfo(resources: Array<any>): Array<any> {
+    return resources.map(r => {
+      if (r.ResourceInfo === null) {
+        r.ResourceInfo = {
+          PodName: "",
+          PodCreationTime: "",
+          PodUpdateStartTime: "",
+          PodStatus: "",
+          PodStatusMessage: "",
+          PodRestarts: 0,
+          PodLog: "",
+          YAML: "",
+          Endpoints: [],
+        }
+      }
+      r.Alerts = getResourceAlerts(r)
+      return r
     })
   }
 
@@ -115,6 +119,28 @@ class AppController {
       })
       this.createNewSocket()
     }, timeout)
+  }
+
+  setStateFromSnapshot(): void {
+    let url = this.url
+    fetch(url)
+      .then(resp =>
+        resp
+          .json()
+          .then(data => {
+            data.Resources = this.setDefaultResourceInfo(data.Resources)
+            // @ts-ignore
+            this.component.setAppState({ View: data })
+          })
+          .catch(err => {
+            // TODO(dmiller): set app state with an error message
+            console.error(err)
+          })
+      )
+      .catch(err => {
+        // TODO(dmiller): set app state with an error message
+        console.error(err)
+      })
   }
 }
 
