@@ -180,7 +180,7 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 
 	buildReason := ms.NextBuildReason()
 	targets := buildTargets(manifest)
-	buildStateSet := buildStateSet(manifest, targets, ms)
+	buildStateSet := buildStateSet(ctx, manifest, targets, ms)
 
 	return buildEntry{
 		name:          manifest.Name,
@@ -296,7 +296,7 @@ func buildTargets(manifest model.Manifest) []model.TargetSpec {
 }
 
 // Extract a set of build states from a manifest for BuildAndDeploy.
-func buildStateSet(manifest model.Manifest, specs []model.TargetSpec, ms *store.ManifestState) store.BuildStateSet {
+func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.TargetSpec, ms *store.ManifestState) store.BuildStateSet {
 	buildStateSet := store.BuildStateSet{}
 
 	for _, spec := range specs {
@@ -327,7 +327,14 @@ func buildStateSet(manifest model.Manifest, specs []model.TargetSpec, ms *store.
 			iTarget, ok := spec.(model.ImageTarget)
 			if ok {
 				if manifest.IsK8s() {
-					buildState = buildState.WithRunningContainers(store.RunningContainersForTarget(iTarget, ms.DeployID, ms.PodSet))
+					cInfos, err := store.RunningContainersForTargetForOnePod(iTarget, ms.DeployID, ms.PodSet)
+					if err != nil {
+						// Too many pods to LiveUpdate. Surface an error IF target has LiveUpdate instructions.
+						if !iTarget.AnyFastBuildInfo().Empty() || !iTarget.AnyLiveUpdateInfo().Empty() {
+							logger.Get(ctx).Infof("CANNOT PERFORM LIVE UPDATE ON IMAGE %s:\n\t%v", iTarget.ID(), err)
+						}
+					}
+					buildState = buildState.WithRunningContainers(cInfos)
 				}
 
 				if manifest.IsDC() {

@@ -1,6 +1,7 @@
 package store
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/docker/distribution/reference"
@@ -242,27 +243,39 @@ func AllRunningContainers(mt *ManifestTarget) []ContainerInfo {
 		return RunningContainersForDC(mt.State.DCResourceState())
 	}
 
-	result := []ContainerInfo{}
+	var result []ContainerInfo
 	for _, iTarget := range mt.Manifest.ImageTargets {
-		result = append(result, RunningContainersForTarget(iTarget, mt.State.DeployID, mt.State.PodSet)...)
+		cInfos, err := RunningContainersForTargetForOnePod(iTarget, mt.State.DeployID, mt.State.PodSet)
+		if err != nil {
+			// HACK(maia): just don't collect container info for targets running
+			// more than one pod -- we don't support LiveUpdating them anyway,
+			// so no need to monitor those containers for crashes.
+			continue
+		}
+		result = append(result, cInfos...)
 	}
 	return result
 }
 
 // If all containers running the given image are ready, returns info for them.
-// (Currently only supports containers running on a single pod.)
-func RunningContainersForTarget(iTarget model.ImageTarget, deployID model.DeployID, podSet PodSet) []ContainerInfo {
-	if podSet.Len() != 1 {
-		return nil
+// (If this image is running on multiple pods, return an error.)
+func RunningContainersForTargetForOnePod(iTarget model.ImageTarget, deployID model.DeployID,
+	podSet PodSet) ([]ContainerInfo, error) {
+	if podSet.Len() > 1 {
+		return nil, fmt.Errorf("can only get container info for a single pod; image target %s has %d pods", iTarget.ID(), podSet.Len())
+	}
+
+	if podSet.Len() == 0 {
+		return nil, nil
 	}
 
 	pod := podSet.MostRecentPod()
 	if pod.PodID == "" {
-		return nil
+		return nil, nil
 	}
 
 	if podSet.DeployID != deployID {
-		return nil
+		return nil, nil
 	}
 
 	var containers []ContainerInfo
@@ -277,7 +290,7 @@ func RunningContainersForTarget(iTarget model.ImageTarget, deployID model.Deploy
 			// (Since we'll need to fully rebuild this image, we shouldn't bother
 			// in-place updating ANY containers on this pod -- they'll all
 			// be recreated when we image build. So don't return ANY ContainerInfos.)
-			return nil
+			return nil, nil
 		}
 		containers = append(containers, ContainerInfo{
 			PodID:         pod.PodID,
@@ -287,7 +300,7 @@ func RunningContainersForTarget(iTarget model.ImageTarget, deployID model.Deploy
 		})
 	}
 
-	return containers
+	return containers, nil
 }
 
 func RunningContainersForDC(state dockercompose.State) []ContainerInfo {
