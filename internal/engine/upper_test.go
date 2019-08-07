@@ -1346,6 +1346,39 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
+func TestPodEventDeleted(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	mn := model.ManifestName("foobar")
+	manifest := f.newManifest(mn.String())
+	f.Start([]model.Manifest{manifest}, true)
+
+	call := f.nextCallComplete()
+	assert.True(t, call.oneState().IsEmpty())
+
+	creationTime := time.Now()
+	pod := f.testPod("my-pod", manifest, "Running", creationTime)
+	f.podEvent(pod)
+
+	f.WaitUntilManifestState("pod crashes", mn, func(state store.ManifestState) bool {
+		return state.PodSet.ContainsID("my-pod")
+	})
+
+	pod.DeletionTimestamp = &metav1.Time{Time: pod.CreationTimestamp.Add(time.Minute)}
+	f.podEvent(pod)
+
+	f.WaitUntilManifestState("podset is empty", mn, func(state store.ManifestState) bool {
+		return state.PodSet.Len() == 0
+	})
+
+	err := f.Stop()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.assertAllBuildsConsumed()
+}
+
 func TestPodEventUpdateByPodName(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
