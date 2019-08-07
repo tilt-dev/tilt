@@ -974,6 +974,7 @@ func multiImageLiveUpdateManifestAndBuildState(f *bdFixture) (model.Manifest, st
 type bdFixture struct {
 	*tempdir.TempDirFixture
 	ctx    context.Context
+	cancel func()
 	docker *docker.FakeClient
 	k8s    *k8s.FakeK8sClient
 	sCli   *synclet.TestSyncletClient
@@ -984,6 +985,9 @@ type bdFixture struct {
 }
 
 func newBDFixture(t *testing.T, env k8s.Env, runtime container.Runtime) *bdFixture {
+	logs := new(bytes.Buffer)
+	ctx, _, ta := testutils.ForkedCtxAndAnalyticsForTest(logs)
+	ctx, cancel := context.WithCancel(ctx)
 	f := tempdir.NewTempDirFixture(t)
 	dir := dirs.NewWindmillDirAt(f.Path())
 	docker := docker.NewFakeClient()
@@ -994,8 +998,6 @@ func newBDFixture(t *testing.T, env k8s.Env, runtime container.Runtime) *bdFixtu
 			},
 		},
 	}
-	logs := new(bytes.Buffer)
-	ctx, _, ta := testutils.ForkedCtxAndAnalyticsForTest(logs)
 	k8s := k8s.NewFakeK8sClient()
 	k8s.Runtime = runtime
 	sCli := synclet.NewTestSyncletClient(docker)
@@ -1012,6 +1014,7 @@ func newBDFixture(t *testing.T, env k8s.Env, runtime container.Runtime) *bdFixtu
 	return &bdFixture{
 		TempDirFixture: f,
 		ctx:            ctx,
+		cancel:         cancel,
 		docker:         docker,
 		k8s:            k8s,
 		sCli:           sCli,
@@ -1024,6 +1027,7 @@ func newBDFixture(t *testing.T, env k8s.Env, runtime container.Runtime) *bdFixtu
 
 func (f *bdFixture) TearDown() {
 	f.k8s.TearDown()
+	f.cancel()
 	f.TempDirFixture.TearDown()
 }
 
