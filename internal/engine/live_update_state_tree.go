@@ -47,3 +47,13 @@ func createResultSet(trees []liveUpdateStateTree) store.BuildResultSet {
 	}
 	return resultSet
 }
+
+func allChangedFiles(trees []liveUpdateStateTree) map[string]bool {
+	res := make(map[string]bool)
+	for _, t := range trees {
+		for _, f := range t.filesChanged {
+			res[f] = true
+		}
+	}
+	return res
+}

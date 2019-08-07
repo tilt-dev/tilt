@@ -1,10 +1,9 @@
 package engine
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
+	"strings"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -56,6 +55,8 @@ type liveUpdInfo struct {
 	hotReload    bool
 }
 
+func (lui liveUpdInfo) Empty() bool { return lui.iTarget.ID() == model.ImageTarget{}.ID() }
+
 func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
 	liveUpdateStateSet, err := extractImageTargetsForLiveUpdates(specs, stateSet)
 	if err != nil {
@@ -69,13 +70,29 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		return nil, RedirectToNextBuilderInfof("no targets for LiveUpdate found")
 	}
 
+	unclaimedFiles := allChangedFiles(liveUpdateStateSet)
 	for i, luStateTree := range liveUpdateStateSet {
 		luInfo, err := liveUpdateInfoForStateTree(luStateTree)
 		if err != nil {
 			return store.BuildResultSet{}, err
 		}
 
-		liveUpdInfos[i] = luInfo
+		for _, mapping := range luInfo.changedFiles {
+			delete(unclaimedFiles, mapping.LocalPath)
+		}
+
+		if !luInfo.Empty() {
+			liveUpdInfos[i] = luInfo
+		}
+	}
+
+	if len(unclaimedFiles) > 0 {
+		files := make([]string, 0, len(unclaimedFiles))
+		for f, _ := range unclaimedFiles {
+			files = append(files, f)
+		}
+		return nil, RedirectToNextBuilderInfof("found file(s) not matching a LiveUpdate sync, so "+
+			"performing a full build. (Files: %s)", strings.Join(files, ", "))
 	}
 
 	var dontFallBackErr error
@@ -108,7 +125,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 
 	l := logger.Get(ctx)
 	cIDStr := container.ShortStrs(store.IDsForInfos(state.RunningContainers))
-	l.Infof("  → Updating container…")
+	l.Infof("  → Updating container(s): %s", cIDStr)
 
 	filter := ignore.CreateBuildContextFilter(iTarget)
 	boiledSteps, err := build.BoilRuns(runs, changedFiles)
@@ -129,20 +146,6 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 		}
 	}
 
-	// copy files to container
-	pr, pw := io.Pipe()
-	go func() {
-		ab := build.NewArchiveBuilder(pw, filter)
-		err = ab.ArchivePathsIfExist(ctx, toArchive)
-		if err != nil {
-			_ = pw.CloseWithError(errors.Wrap(err, "archivePathsIfExists"))
-		} else {
-			_ = ab.Close()
-			_ = pw.Close()
-		}
-	}()
-	var archiveReader io.Reader = pr
-
 	if len(toArchive) > 0 {
 		l.Infof("Will copy %d file(s) to container(s): %s", len(toArchive), cIDStr)
 		for _, pm := range toArchive {
@@ -152,12 +155,9 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 
 	var lastUserBuildFailure error
 	for _, cInfo := range state.RunningContainers {
-		// always pass a copy of the tar archive reader
-		// so multiple updates can access the same data
-		var archiveBuf bytes.Buffer
-		archiveTee := io.TeeReader(archiveReader, &archiveBuf)
-
-		err = cu.UpdateContainer(ctx, cInfo, archiveTee, build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
+		archive := build.TarArchiveForPaths(ctx, toArchive, filter)
+		err = cu.UpdateContainer(ctx, cInfo, archive,
+			build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 		if err != nil {
 			if runFail, ok := build.MaybeRunStepFailure(err); ok {
 				// Keep running updates -- we want all containers to have the same files on them
@@ -180,7 +180,6 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 					"but last update failed with '%v'", cInfo.ContainerID, lastUserBuildFailure)
 			}
 		}
-		archiveReader = &archiveBuf
 	}
 	if lastUserBuildFailure != nil {
 		return WrapDontFallBackError(lastUserBuildFailure)
@@ -196,31 +195,25 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 	filesChanged := stateTree.filesChanged
 
 	var err error
-	var changedFiles []build.PathMapping
+	var fileMappings []build.PathMapping
 	var runs []model.Run
 	var hotReload bool
 
 	if fbInfo := iTarget.AnyFastBuildInfo(); !fbInfo.Empty() {
-		changedFiles, err = build.FilesToPathMappings(filesChanged, fbInfo.Syncs)
+		fileMappings, err = build.FilesToPathMappings(filesChanged, fbInfo.Syncs)
 		if err != nil {
 			return liveUpdInfo{}, err
 		}
 		runs = fbInfo.Runs
 		hotReload = fbInfo.HotReload
 	} else if luInfo := iTarget.AnyLiveUpdateInfo(); !luInfo.Empty() {
-		changedFiles, err = build.FilesToPathMappings(filesChanged, luInfo.SyncSteps())
+		fileMappings, err = build.FilesToPathMappings(filesChanged, luInfo.SyncSteps())
 		if err != nil {
-			if pmErr, ok := err.(*build.PathMappingErr); ok {
-				// expected error for this builder. One of more files don't match sync's;
-				// i.e. they're within the docker context but not within a sync; do a full image build.
-				return liveUpdInfo{}, RedirectToNextBuilderInfof(
-					"at least one file (%s) doesn't match a LiveUpdate sync, so performing a full build", pmErr.File)
-			}
 			return liveUpdInfo{}, err
 		}
 
 		// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
-		anyMatch, file, err := luInfo.FallBackOnFiles().AnyMatch(build.PathMappingsToLocalPaths(changedFiles))
+		anyMatch, file, err := luInfo.FallBackOnFiles().AnyMatch(build.PathMappingsToLocalPaths(fileMappings))
 		if err != nil {
 			return liveUpdInfo{}, err
 		}
@@ -237,10 +230,15 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 			"which should have already been validated", iTarget.ID()))
 	}
 
+	if len(fileMappings) == 0 {
+		// No files matched a sync for this image, no LiveUpdate to run
+		return liveUpdInfo{}, nil
+	}
+
 	return liveUpdInfo{
 		iTarget:      iTarget,
 		state:        state,
-		changedFiles: changedFiles,
+		changedFiles: fileMappings,
 		runs:         runs,
 		hotReload:    hotReload,
 	}, nil
