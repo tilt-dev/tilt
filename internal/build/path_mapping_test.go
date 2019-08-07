@@ -102,7 +102,7 @@ func TestFileToDirectoryPathMapping(t *testing.T) {
 	assert.ElementsMatch(t, expected, actual)
 }
 
-func TestFileNotInSyncThrowsErr(t *testing.T) {
+func TestFileNotInSyncYieldsNoMapping(t *testing.T) {
 	f := tempdir.NewTempDirFixture(t)
 	defer f.TearDown()
 
@@ -115,8 +115,9 @@ func TestFileNotInSyncThrowsErr(t *testing.T) {
 		},
 	}
 
-	_, err := FilesToPathMappings(files, syncs)
-	if assert.NotNil(t, err, "expected error for file not matching any syncs") {
-		assert.Contains(t, err.Error(), "matches no syncs")
+	actual, err := FilesToPathMappings(files, syncs)
+	if err != nil {
+		f.T().Fatal(err)
 	}
+	assert.Empty(t, actual, "expected no path mapping returned for a file not matching any syncs")
 }

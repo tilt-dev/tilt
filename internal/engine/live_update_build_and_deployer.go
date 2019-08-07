@@ -200,14 +200,14 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 	var hotReload bool
 
 	if fbInfo := iTarget.AnyFastBuildInfo(); !fbInfo.Empty() {
-		fileMappings, _, err = build.FilesToPathMappings(filesChanged, fbInfo.Syncs)
+		fileMappings, err = build.FilesToPathMappings(filesChanged, fbInfo.Syncs)
 		if err != nil {
 			return liveUpdInfo{}, err
 		}
 		runs = fbInfo.Runs
 		hotReload = fbInfo.HotReload
 	} else if luInfo := iTarget.AnyLiveUpdateInfo(); !luInfo.Empty() {
-		fileMappings, _, err = build.FilesToPathMappings(filesChanged, luInfo.SyncSteps())
+		fileMappings, err = build.FilesToPathMappings(filesChanged, luInfo.SyncSteps())
 		if err != nil {
 			return liveUpdInfo{}, err
 		}
