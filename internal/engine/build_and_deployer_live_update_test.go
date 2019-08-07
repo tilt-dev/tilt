@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/util/exec"
 
+	"github.com/windmilleng/tilt/internal/k8s/testyaml"
+
 	"github.com/windmilleng/tilt/internal/docker"
 
 	"github.com/windmilleng/tilt/internal/store"
@@ -250,7 +252,7 @@ func TestLiveUpdateDockerBuildLocalContainerDiffImgMultipleContainers(t *testing
 	sidecarTarg := NewSanchoSidecarLiveUpdateImageTarget(f)
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sanchoWithSidecar").
-			WithK8sYAML(SanchoYAML).
+			WithK8sYAML(testyaml.SanchoSidecarYAML).
 			WithImageTargets(sanchoTarg, sidecarTarg).
 			Build(),
 		runningContainersByTarget: map[model.TargetID][]container.ID{
@@ -277,7 +279,7 @@ func TestLiveUpdateDockerBuildSyncletDiffImgMultipleContainers(t *testing.T) {
 	sidecarTarg := NewSanchoSidecarLiveUpdateImageTarget(f)
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sanchoWithSidecar").
-			WithK8sYAML(SanchoYAML).
+			WithK8sYAML(testyaml.SanchoSidecarYAML).
 			WithImageTargets(sanchoTarg, sidecarTarg).
 			Build(),
 		runningContainersByTarget: map[model.TargetID][]container.ID{
@@ -308,7 +310,7 @@ func TestLiveUpdateDockerBuildExecDiffImgMultipleContainers(t *testing.T) {
 	sidecarTarg := NewSanchoSidecarDockerBuildImageTarget(f)
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sanchoWithSidecar").
-			WithK8sYAML(SanchoYAML).
+			WithK8sYAML(testyaml.SanchoSidecarYAML).
 			WithImageTargets(sanchoTarg, sidecarTarg).
 			WithLiveUpdateAtIndex(sanchoLU, 0).
 			WithLiveUpdateAtIndex(sidecarLU, 1).
@@ -323,6 +325,43 @@ func TestLiveUpdateDockerBuildExecDiffImgMultipleContainers(t *testing.T) {
 
 		// two (tar archive + run step) per container
 		expectK8sExecCount: 4,
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateDiffImgMultipleContainersOnlySomeSyncsMatch(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeCrio)
+	defer f.TearDown()
+
+	sanchoSyncs := SanchoSyncSteps(f)
+	sanchoSyncs[0].Source = f.JoinPath("sancho")
+	sidecarSyncs := SyncStepsForApp("sidecar", f)
+	sidecarSyncs[0].Source = f.JoinPath("sidecar")
+
+	sanchoLU := assembleLiveUpdate(sanchoSyncs, SanchoRunSteps, false, nil, f)
+	sidecarLU := assembleLiveUpdate(sidecarSyncs, RunStepsForApp("sidecar"),
+		false, nil, f)
+	sanchoTarg := NewSanchoDockerBuildImageTarget(f)
+	sidecarTarg := NewSanchoSidecarDockerBuildImageTarget(f)
+
+	tCase := testCase{
+		manifest: manifestbuilder.New(f, "sanchoWithSidecar").
+			WithK8sYAML(testyaml.SanchoSidecarYAML).
+			WithImageTargets(sanchoTarg, sidecarTarg).
+			WithLiveUpdateAtIndex(sanchoLU, 0).
+			WithLiveUpdateAtIndex(sidecarLU, 1).
+			Build(),
+		runningContainersByTarget: map[model.TargetID][]container.ID{
+			sanchoTarg.ID():  []container.ID{"c1"},
+			sidecarTarg.ID(): []container.ID{"c2"},
+		},
+		changedFiles:           []string{"sidecar/a.txt"},
+		expectDockerBuildCount: 0,
+		expectDockerPushCount:  0,
+
+		// two (tar archive + run step) per container
+		// only the sidecar should be updated, so expect 2 calls
+		expectK8sExecCount: 2,
 	}
 	runTestCase(t, f, tCase)
 }
