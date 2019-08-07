@@ -179,7 +179,7 @@ func (f *k8sFixture) setupNewKubeConfig() {
 	log.Printf("New kubeconfig: %s", f.kubeconfigPath)
 }
 
-func (f *k8sFixture) runCommandSilently(name string, arg ...string) {
+func (f *k8sFixture) runCommand(name string, arg ...string) (*bytes.Buffer, error) {
 	outWriter := bytes.NewBuffer(nil)
 	cmd := exec.CommandContext(f.ctx, name, arg...)
 	cmd.Stdout = outWriter
@@ -189,6 +189,11 @@ func (f *k8sFixture) runCommandSilently(name string, arg ...string) {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("KUBECONFIG=%s", f.kubeconfigPath))
 	}
 	err := cmd.Run()
+	return outWriter, err
+}
+
+func (f *k8sFixture) runCommandSilently(name string, arg ...string) {
+	_, err := f.runCommand(name, arg...)
 	if err != nil {
 		f.t.Fatalf("Error running command silently %s %v: %v", name, arg, err)
 	}
