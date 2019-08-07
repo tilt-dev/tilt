@@ -46,7 +46,6 @@ import (
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
-	"github.com/windmilleng/tilt/internal/testutils/k8sutils"
 	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
 	"github.com/windmilleng/tilt/internal/testutils/podbuilder"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
@@ -2687,9 +2686,7 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 
-	k8sConfig := k8sutils.NewConfig("fake-context", "fake-cluster", "http://localhost:6443")
-
-	tfl := tiltfile.ProvideTiltfileLoader(ta, k8s, fakeDcc, "fake-context", k8sConfig, feature.MainDefaults)
+	tfl := tiltfile.ProvideTiltfileLoader(ta, k8s, fakeDcc, "fake-context", feature.MainDefaults)
 	cc := NewConfigsController(tfl, dockerClient)
 	dcw := NewDockerComposeEventWatcher(fakeDcc)
 	dclm := NewDockerComposeLogManager(fakeDcc)

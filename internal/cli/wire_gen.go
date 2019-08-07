@@ -125,7 +125,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	imageReaper := build.NewImageReaper(switchCli)
 	imageController := engine.NewImageController(imageReaper)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, k8sClient, dockerComposeClient, kubeContext, config, defaults)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, k8sClient, dockerComposeClient, kubeContext, defaults)
 	configsController := engine.NewConfigsController(tiltfileLoader, switchCli)
 	dockerComposeEventWatcher := engine.NewDockerComposeEventWatcher(dockerComposeClient)
 	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
@@ -261,7 +261,7 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	imageReaper := build.NewImageReaper(switchCli)
 	imageController := engine.NewImageController(imageReaper)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, k8sClient, dockerComposeClient, kubeContext, config, defaults)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, k8sClient, dockerComposeClient, kubeContext, defaults)
 	configsController := engine.NewConfigsController(tiltfileLoader, switchCli)
 	dockerComposeEventWatcher := engine.NewDockerComposeEventWatcher(dockerComposeClient)
 	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
@@ -477,7 +477,7 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics) (
 	}
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, k8sClient, dockerComposeClient, kubeContext, config, defaults)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, k8sClient, dockerComposeClient, kubeContext, defaults)
 	downDeps := ProvideDownDeps(tiltfileLoader, dockerComposeClient, k8sClient)
 	return downDeps, nil
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
-	"k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -73,14 +72,12 @@ func ProvideTiltfileLoader(
 	kCli k8s.Client,
 	dcCli dockercompose.DockerComposeClient,
 	kubeContext k8s.KubeContext,
-	kubeConfig *api.Config,
 	fDefaults feature.Defaults) TiltfileLoader {
 	return tiltfileLoader{
 		analytics:   analytics,
 		kCli:        kCli,
 		dcCli:       dcCli,
 		kubeContext: kubeContext,
-		kubeConfig:  kubeConfig,
 		fDefaults:   fDefaults,
 	}
 }
@@ -90,7 +87,6 @@ type tiltfileLoader struct {
 	kCli        k8s.Client
 	dcCli       dockercompose.DockerComposeClient
 	kubeContext k8s.KubeContext
-	kubeConfig  *api.Config
 	fDefaults   feature.Defaults
 }
 
@@ -142,11 +138,6 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 
 	if len(resources.k8s) > 0 {
 		manifests, err = s.translateK8s(resources.k8s)
-		if err != nil {
-			return TiltfileLoadResult{}, err
-		}
-
-		err = s.validateK8SContext(tfl.kubeConfig)
 		if err != nil {
 			return TiltfileLoadResult{}, err
 		}
