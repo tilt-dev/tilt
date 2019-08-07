@@ -2,22 +2,23 @@ package tiltfile
 
 import (
 	"fmt"
+	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
-	"github.com/windmilleng/tilt/internal/sliceutils"
-
-	"go.starlark.net/syntax"
-
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/sliceutils"
 )
 
 type referenceList []reference.Named
@@ -886,4 +887,65 @@ func newK8sObjectID(e k8s.K8sEntity) k8sObjectID {
 
 func (s *tiltfileState) k8sContext(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	return starlark.String(s.kubeContext), nil
+}
+
+func (s *tiltfileState) allowK8SContexts(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var contexts starlark.Value
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+		"contexts", &contexts,
+	); err != nil {
+		return nil, err
+	}
+
+	for _, c := range starlarkValueOrSequenceToSlice(contexts) {
+		switch val := c.(type) {
+		case starlark.String:
+			s.whitelistedK8SContexts = append(s.whitelistedK8SContexts, k8s.KubeContext(val))
+		default:
+			return nil, fmt.Errorf("allow_k8s_contexts contexts must be a string or a sequence of strings; found a %T", val)
+
+		}
+	}
+
+	return starlark.None, nil
+}
+
+var ipv4Loopback = regexp.MustCompile(`^127(?:\.0){1,2}\.1$`)
+var ipv6Loopback = "::1"
+
+// this is non-exhaustive, but hopefully gets >99% of cases, without having to make a network request
+// it doesn't cover ipv6-mapped ipv4 addresses (e.g., "http://[::ffff:7f00:1]"), non-loopback ips,
+// or non-"localhost" hostnames mapped to loopback
+func isLocalhost(host string) bool {
+	return host == "localhost" ||
+		ipv4Loopback.MatchString(host) ||
+		host == ipv6Loopback
+}
+
+func (s *tiltfileState) validateK8SContext(kubeConfig *api.Config) error {
+	contextName := kubeConfig.CurrentContext
+	clusterName := kubeConfig.Contexts[contextName].Cluster
+	server := kubeConfig.Clusters[clusterName].Server
+	url, err := url.Parse(server)
+	if err != nil {
+		return errors.Wrapf(err, "running in kube context %q, which specifies kube api url %q. error parsing that url", contextName, server)
+	}
+
+	if isLocalhost(url.Hostname()) {
+		return nil
+	}
+
+	for _, c := range s.whitelistedK8SContexts {
+		if c == k8s.KubeContext(contextName) {
+			return nil
+		}
+	}
+
+	return fmt.Errorf(
+		`Stop! '%s' might be production.
+If you're sure you want to deploy there, add:
+allow_k8s_contexts('%s')
+to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`,
+		contextName,
+		contextName)
 }

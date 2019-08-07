@@ -10,17 +10,13 @@ import (
 	"strings"
 	"testing"
 
-	appsv1 "k8s.io/api/apps/v1"
-
-	"github.com/windmilleng/tilt/internal/testutils"
-
-	"github.com/windmilleng/tilt/internal/sliceutils"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/wmclient/pkg/analytics"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -30,6 +26,9 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
+	"github.com/windmilleng/tilt/internal/sliceutils"
+	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/k8sutils"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/tiltfile/testdata"
 	"github.com/windmilleng/tilt/internal/yaml"
@@ -936,7 +935,7 @@ docker_build('gcr.io/bar', 'bar')
 k8s_yaml('bar.yaml')
 `)
 
-	_, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"))
+	_, err := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"))
 	if assert.Error(t, err) {
 		assert.Equal(t, `You specified some resources that could not be found: "baz"
 Is this a typo? Existing resources in Tiltfile: "foo", "bar"`, err.Error())
@@ -3744,32 +3743,75 @@ set_team('jets')
 	f.loadErrString("team_name set multiple times", "'sharks'", "'jets'")
 }
 
+func TestK8SContextAcceptance(t *testing.T) {
+	for _, test := range []struct {
+		name                    string
+		contextName             k8s.KubeContext
+		url                     string
+		expectError             bool
+		expectedErrorSubstrings []string
+	}{
+		{"localhost", "fake-context", "http://localhost:6443", false, nil},
+		{"127.0.0.1", "fake-context", "http://127.0.0.1:6443", false, nil},
+		{"::1", "fake-context", "http://[::1]:6443", false, nil},
+		{"remote", "fake-context", "http://www.google.com:6443", true, []string{"'fake-context'", "If you're sure", "switch k8s contexts", "allow_k8s_contexts"}},
+		{"whitelisted", "minikube", "http://www.google.com:6443", false, nil},
+		{"allowed", "allowed-context", "http://www.google.com:6443", false, nil},
+		{"invalid url", "fake-context", "://localhost", true, []string{"://localhost", "missing protocol scheme"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+
+			f.file("Tiltfile", `
+k8s_yaml("foo.yaml")
+allow_k8s_contexts("allowed-context")
+`)
+			f.setupFoo()
+
+			f.k8sAPIURL = test.url
+			f.k8sContext = test.contextName
+			if !test.expectError {
+				f.load()
+			} else {
+				f.loadErrString(test.expectedErrorSubstrings...)
+			}
+		})
+	}
+}
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer
 	t   *testing.T
 	*tempdir.TempDirFixture
-	kCli *k8s.FakeK8sClient
+	kCli       *k8s.FakeK8sClient
+	k8sContext k8s.KubeContext
+	k8sAPIURL  string
 
-	tfl TiltfileLoader
-	an  *analytics.MemoryAnalytics
+	ta *tiltanalytics.TiltAnalytics
+	an *analytics.MemoryAnalytics
 
 	loadResult TiltfileLoadResult
 }
 
-func newFixture(t *testing.T) *fixture {
-	out := new(bytes.Buffer)
-	ctx, ma, ta := testutils.ForkedCtxAndAnalyticsForTest(out)
-	f := tempdir.NewTempDirFixture(t)
+func (f *fixture) newTiltfileLoader() TiltfileLoader {
+	k8sContext := k8sutils.NewConfig(string(f.k8sContext), "my-cluster", f.k8sAPIURL)
 	dcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
-	kCli := k8s.NewFakeK8sClient()
 	features := feature.Defaults{
 		"testflag_disabled":              feature.Value{Enabled: false},
 		"testflag_enabled":               feature.Value{Enabled: true},
 		"obsoleteflag":                   feature.Value{Status: feature.Obsolete, Enabled: true},
 		feature.MultipleContainersPerPod: feature.Value{Enabled: false},
 	}
-	tfl := ProvideTiltfileLoader(ta, kCli, dcc, "fake-context", features)
+	return ProvideTiltfileLoader(f.ta, f.kCli, dcc, k8s.KubeContext(k8sContext.CurrentContext), k8sContext, features)
+}
+
+func newFixture(t *testing.T) *fixture {
+	out := new(bytes.Buffer)
+	ctx, ma, ta := testutils.ForkedCtxAndAnalyticsForTest(out)
+	f := tempdir.NewTempDirFixture(t)
+	kCli := k8s.NewFakeK8sClient()
 
 	r := &fixture{
 		ctx:            ctx,
@@ -3777,8 +3819,10 @@ func newFixture(t *testing.T) *fixture {
 		t:              t,
 		TempDirFixture: f,
 		an:             ma,
-		tfl:            tfl,
+		ta:             ta,
 		kCli:           kCli,
+		k8sAPIURL:      "http://localhost:6443",
+		k8sContext:     "fake-context",
 	}
 	return r
 }
@@ -3895,7 +3939,7 @@ func (f *fixture) load(names ...string) {
 }
 
 func (f *fixture) loadResourceAssemblyV1(names ...string) {
-	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
+	tlr, err := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -3906,7 +3950,7 @@ func (f *fixture) loadResourceAssemblyV1(names ...string) {
 // Load the manifests, expecting warnings.
 // Warnings should be asserted later with assertWarnings
 func (f *fixture) loadAllowWarnings(names ...string) {
-	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
+	tlr, err := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -3931,7 +3975,7 @@ func (f *fixture) loadAssertWarnings(warnings ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	tlr, err := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), nil)
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}
