@@ -2613,6 +2613,12 @@ type testFixture struct {
 
 func newTestFixture(t *testing.T) *testFixture {
 	f := tempdir.NewTempDirFixture(t)
+
+	log := bufsync.NewThreadSafeBuffer()
+	to := &testOpter{}
+	ctx, _, ta := testutils.ForkedCtxAndAnalyticsWithOpterForTest(log, to)
+	ctx, cancel := context.WithCancel(ctx)
+
 	watcher := newFakeMultiWatcher()
 	b := newFakeBuildAndDeployer(t)
 
@@ -2626,11 +2632,6 @@ func newTestFixture(t *testing.T) *testFixture {
 	sw := NewServiceWatcher(k8s, "")
 
 	fakeHud := hud.NewFakeHud()
-
-	log := bufsync.NewThreadSafeBuffer()
-	to := &testOpter{}
-	ctx, _, ta := testutils.ForkedCtxAndAnalyticsWithOpterForTest(log, to)
-	ctx, cancel := context.WithCancel(ctx)
 
 	fSub := fixtureSub{ch: make(chan bool, 1000)}
 	st := store.NewStore(UpperReducer, store.LogActionsFlag(false))
@@ -2658,7 +2659,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	dclm := NewDockerComposeLogManager(fakeDcc)
 	pm := NewProfilerManager()
 	sCli := synclet.NewTestSyncletClient(dockerClient)
-	sm := containerupdate.NewSyncletManagerForTests(k8s, sCli)
+	sGRPCCli, err := synclet.FakeGRPCWrapper(ctx, sCli)
+	assert.NoError(t, err)
+	sm := containerupdate.NewSyncletManagerForTests(k8s, sGRPCCli, sCli)
 	hudsc := server.ProvideHeadsUpServerController(0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{}, false)
 	ghc := &github.FakeClient{}
 	sc := &client.FakeSailClient{}

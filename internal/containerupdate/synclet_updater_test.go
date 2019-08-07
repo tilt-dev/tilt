@@ -59,11 +59,9 @@ func newSyncletFixture(t testing.TB) *syncletUpdaterFixture {
 	sCli := synclet.NewTestSyncletClient(dCli)
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
-	sGRPCCli, err := synclet.FakeGRPCWrapper(ctx, sCli, f.Path())
-	if err != nil {
-		t.Fatal(err)
-	}
-	sm := NewSyncletManagerForTests(kCli, sGRPCCli)
+	sGRPCCli, err := synclet.FakeGRPCWrapper(ctx, sCli)
+	assert.NoError(t, err)
+	sm := NewSyncletManagerForTests(kCli, sGRPCCli, sCli)
 
 	cu := &SyncletUpdater{
 		sm: sm,
