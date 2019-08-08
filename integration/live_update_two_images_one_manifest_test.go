@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -26,6 +27,8 @@ func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 	initialPods := f.WaitForAllPodsReady(ctx, "app=twoimages")
+	require.Len(t, initialPods, 1, "expect a single pod")
+	f.WaitForAllContainersForPodReady(f.ctx, initialPods[0], time.Minute)
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
@@ -59,10 +62,12 @@ func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
 	f.CurlUntil(ctx, tadaUrl, "🎉 One-Up! 🎉\n")
 
 	podsAfterKillTada := f.WaitForAllPodsReady(ctx, "app=twoimages")
-	assert.Equal(t, podsAfterSparkleLiveUpd, podsAfterKillTada)
+	assert.Equal(t, initialPods, podsAfterKillTada)
 
 	// Make sure that we can LiveUpdate both at once
 	fmt.Println("> LiveUpdate both services at once")
+
+	f.WaitForAllContainersForPodReady(f.ctx, podsAfterKillTada[0], time.Minute) // make sure containers ready before we try to LiveUpdate
 	f.ReplaceContents("./sparkle/main.go", "Two-Up", "Three-Up")
 	f.ReplaceContents("./tada/main.go", "One-Up", "Three-Up")
 

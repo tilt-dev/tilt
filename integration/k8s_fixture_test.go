@@ -129,6 +129,49 @@ func (f *k8sFixture) AllPodsInPhase(ctx context.Context, selector string, phase 
 	return hasOneMatchingPod, outStr, podNames
 }
 
+func (f *k8sFixture) WaitForAllContainersForPodReady(ctx context.Context, pod string, timeout time.Duration) bool {
+	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	for {
+		allContainersReady, output := f.AllContainersForPodReady(timeoutCtx, pod)
+		if allContainersReady {
+			return true
+		}
+
+		select {
+		case <-timeoutCtx.Done():
+			f.t.Fatalf("Timed out waiting for containers for pod %s to be ready. Output:\n:%s\n", pod, output)
+		case <-time.After(200 * time.Millisecond):
+		}
+	}
+}
+
+// Checks that all containers for the given pod are ready
+// Returns the output (for diagnostics)
+func (f *k8sFixture) AllContainersForPodReady(ctx context.Context, pod string) (bool, string) {
+	cmd := exec.Command("kubectl", "get", "pod", pod,
+		namespaceFlag, "-o=template",
+		"--template", "{{range .status.containerStatuses}}{{.ready}}{{println}}{{end}}")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		f.t.Fatal(errors.Wrapf(err, "get pod %s", pod))
+	}
+
+	outStr := strings.TrimSpace(string(out))
+	fmt.Println(outStr)
+	lines := strings.Split(outStr, "\n")
+	if len(lines) == 0 {
+		return false, outStr
+	}
+	for _, line := range lines {
+		if line != "true" {
+			return false, outStr
+		}
+	}
+	return true, outStr
+}
+
 func (f *k8sFixture) ForwardPort(name string, portMap string) {
 	outWriter := os.Stdout
 
