@@ -53,6 +53,14 @@ func (id TargetID) String() string {
 	return fmt.Sprintf("%s:%s", id.Type, id.Name)
 }
 
+func TargetIDSet(tids []TargetID) map[TargetID]bool {
+	res := make(map[TargetID]bool)
+	for _, id := range tids {
+		res[id] = true
+	}
+	return res
+}
+
 type TargetSpec interface {
 	ID() TargetID
 

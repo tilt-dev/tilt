@@ -110,7 +110,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 			dontFallBackErr = err
 		}
 	}
-	return createResultSet(liveUpdateStateSet), dontFallBackErr
+	return createResultSet(liveUpdateStateSet, liveUpdInfos), dontFallBackErr
 }
 
 func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu containerupdate.ContainerUpdater, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) error {
