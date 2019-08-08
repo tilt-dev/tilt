@@ -124,19 +124,12 @@ class AppController {
   setStateFromSnapshot(): void {
     let url = this.url
     fetch(url)
-      .then(resp =>
-        resp
-          .json()
-          .then(data => {
-            data.Resources = this.setDefaultResourceInfo(data.Resources)
-            // @ts-ignore
-            this.component.setAppState({ View: data })
-          })
-          .catch(err => {
-            // TODO(dmiller): set app state with an error message
-            console.error(err)
-          })
-      )
+      .then(resp => resp.json())
+      .then(data => {
+        data.Resources = this.setDefaultResourceInfo(data.Resources)
+        // @ts-ignore
+        this.component.setAppState({ View: data })
+      })
       .catch(err => {
         // TODO(dmiller): set app state with an error message
         console.error(err)

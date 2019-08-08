@@ -112,9 +112,7 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   componentWillUnmount() {
-    if (!this.pathBuilder.isSnapshot()) {
-      this.controller.dispose()
-    }
+    this.controller.dispose()
     this.unlisten()
   }
 
