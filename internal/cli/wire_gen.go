@@ -15,7 +15,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/containerupdate"
@@ -34,6 +33,7 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	client2 "github.com/windmilleng/tilt/internal/tft/client"
 	"github.com/windmilleng/tilt/internal/tiltfile"
+	"github.com/windmilleng/tilt/pkg/assets"
 )
 
 // Injectors from wire.go:
