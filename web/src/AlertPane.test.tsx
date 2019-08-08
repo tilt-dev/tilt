@@ -2,7 +2,7 @@ import React from "react"
 import AlertPane from "./AlertPane"
 import renderer from "react-test-renderer"
 import { oneResourceUnrecognizedError } from "./testdata.test"
-import { Resource, ResourceInfo, TriggerMode } from "./types"
+import { Resource, K8sResourceInfo, TriggerMode } from "./types"
 import {
   Alert,
   PodRestartErrorType,
