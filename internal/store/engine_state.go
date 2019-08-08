@@ -68,14 +68,10 @@ type EngineState struct {
 	LogTimestamps bool
 	IsProfiling   bool
 
-	LastTiltfileBuild    model.BuildRecord
-	CurrentTiltfileBuild model.BuildRecord
-	TiltfileCombinedLog  model.Log
+	TiltfileState ManifestState
 
 	SailEnabled bool
 	SailURL     string
-
-	FirstTiltfileBuildCompleted bool
 
 	// from GitHub
 	LatestTiltBuild model.TiltBuild
@@ -197,7 +193,7 @@ func (e EngineState) IsEmpty() bool {
 }
 
 func (e EngineState) LastTiltfileError() error {
-	return e.LastTiltfileBuild.Error
+	return e.TiltfileState.LastBuild().Error
 }
 
 type ResourceState interface {
@@ -701,25 +697,25 @@ func StateToView(s EngineState) view.View {
 }
 
 func tiltfileResourceView(s EngineState) view.Resource {
-	ltfb := s.LastTiltfileBuild
-	if !s.CurrentTiltfileBuild.Empty() {
-		ltfb.Log = s.CurrentTiltfileBuild.Log
+	ltfb := s.TiltfileState.LastBuild()
+	if !s.TiltfileState.CurrentBuild.Empty() {
+		ltfb.Log = s.TiltfileState.CurrentBuild.Log
 	}
 	tr := view.Resource{
 		Name:         view.TiltfileResourceName,
 		IsTiltfile:   true,
-		CurrentBuild: s.CurrentTiltfileBuild,
+		CurrentBuild: s.TiltfileState.CurrentBuild,
 		BuildHistory: []model.BuildRecord{
 			ltfb,
 		},
 	}
-	if !s.CurrentTiltfileBuild.Empty() {
-		tr.PendingBuildSince = s.CurrentTiltfileBuild.StartTime
+	if !s.TiltfileState.CurrentBuild.Empty() {
+		tr.PendingBuildSince = s.TiltfileState.CurrentBuild.StartTime
 	} else {
-		tr.LastDeployTime = s.LastTiltfileBuild.FinishTime
+		tr.LastDeployTime = s.TiltfileState.LastBuild().FinishTime
 	}
-	if !s.LastTiltfileBuild.Empty() {
-		err := s.LastTiltfileBuild.Error
+	if !s.TiltfileState.LastBuild().Empty() {
+		err := s.TiltfileState.LastBuild().Error
 		if err != nil {
 			tr.CrashLog = model.NewLog(err.Error())
 		}

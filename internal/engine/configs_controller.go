@@ -37,13 +37,13 @@ func (cc *ConfigsController) DisableForTesting(disabled bool) {
 // 3) Those files have changed since the last Tiltfile build
 //    (so that we don't keep re-running a failed build)
 func (cc *ConfigsController) shouldBuild(state store.EngineState) bool {
-	isRunning := !state.CurrentTiltfileBuild.StartTime.IsZero()
+	isRunning := !state.TiltfileState.CurrentBuild.StartTime.IsZero()
 	if isRunning {
 		return false
 	}
 
 	for _, changeTime := range state.PendingConfigFileChanges {
-		lastStartTime := state.LastTiltfileBuild.StartTime
+		lastStartTime := state.TiltfileState.LastBuild().StartTime
 		if changeTime.After(lastStartTime) {
 			return true
 		}

@@ -455,7 +455,7 @@ func handleConfigsReloadStarted(
 		Edits:     filesChanged,
 	}
 
-	state.CurrentTiltfileBuild = status
+	state.TiltfileState.CurrentBuild = status
 }
 
 func handleConfigsReloaded(
@@ -463,21 +463,20 @@ func handleConfigsReloaded(
 	state *store.EngineState,
 	event ConfigsReloadedAction,
 ) {
-	state.FirstTiltfileBuildCompleted = true
 	manifests := event.Manifests
 	if state.InitialBuildsQueued == 0 {
 		state.InitialBuildsQueued = len(manifests)
 	}
 
-	status := state.CurrentTiltfileBuild
-	status.FinishTime = event.FinishTime
-	status.Error = event.Err
-	status.Warnings = event.Warnings
+	b := state.TiltfileState.CurrentBuild
+	b.FinishTime = event.FinishTime
+	b.Error = event.Err
+	b.Warnings = event.Warnings
 
 	state.TeamName = event.TeamName
 
-	state.LastTiltfileBuild = status
-	state.CurrentTiltfileBuild = model.BuildRecord{}
+	state.TiltfileState.AddCompletedBuild(b)
+	state.TiltfileState.CurrentBuild = model.BuildRecord{}
 	if event.Err != nil {
 		// There was an error, so don't update status with the new, nonexistent state
 
@@ -497,7 +496,7 @@ func handleConfigsReloaded(
 
 		newDefOrder[i] = m.ManifestName()
 
-		configFilesThatChanged := state.LastTiltfileBuild.Edits
+		configFilesThatChanged := state.TiltfileState.LastBuild().Edits
 		old := mt.Manifest
 		mt.Manifest = m
 		if model.ChangesInvalidateBuild(old, m) {
@@ -520,7 +519,7 @@ func handleConfigsReloaded(
 
 	// Remove pending file changes that were consumed by this build.
 	for file, modTime := range state.PendingConfigFileChanges {
-		if modTime.Before(status.StartTime) {
+		if modTime.Before(state.TiltfileState.LastBuild().StartTime) {
 			delete(state.PendingConfigFileChanges, file)
 		}
 	}
@@ -637,14 +636,14 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.AnalyticsOpt = action.AnalyticsOpt
 
 	if action.ExecuteTiltfile {
-		status := model.BuildRecord{
+		b := model.BuildRecord{
 			StartTime:  action.StartTime,
 			FinishTime: action.FinishTime,
 			Error:      action.Err,
 			Warnings:   action.Warnings,
 			Reason:     model.BuildReasonFlagInit,
 		}
-		engineState.LastTiltfileBuild = status
+		engineState.TiltfileState.AddCompletedBuild(b)
 
 		manifests := action.Manifests
 		for _, m := range manifests {
@@ -722,8 +721,8 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 }
 
 func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action TiltfileLogAction) {
-	state.CurrentTiltfileBuild.Log = model.AppendLog(state.CurrentTiltfileBuild.Log, action, state.LogTimestamps, "")
-	state.TiltfileCombinedLog = model.AppendLog(state.TiltfileCombinedLog, action, state.LogTimestamps, "")
+	state.TiltfileState.CurrentBuild.Log = model.AppendLog(state.TiltfileState.CurrentBuild.Log, action, state.LogTimestamps, "")
+	state.TiltfileState.CombinedLog = model.AppendLog(state.TiltfileState.CombinedLog, action, state.LogTimestamps, "")
 }
 
 func handleAnalyticsOptAction(state *store.EngineState, action store.AnalyticsOptAction) {

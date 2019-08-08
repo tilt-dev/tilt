@@ -86,7 +86,7 @@ func TestAnalyticsReporter_TiltfileError(t *testing.T) {
 
 	state.CompletedBuildCount = 3
 
-	state.LastTiltfileBuild = model.BuildRecord{Error: errors.New("foo")}
+	state.TiltfileState.AddCompletedBuild(model.BuildRecord{Error: errors.New("foo")})
 
 	tf.ar.store.UnlockMutableState()
 
