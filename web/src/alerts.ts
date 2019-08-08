@@ -135,7 +135,7 @@ function crashRebuildAlert(resource: Resource): Alert {
       alertType: CrashRebuildErrorType,
       header: "Pod crashed",
       msg: msg,
-      timestamp: resource.BuildHistory[0].FinishTime,
+      timestamp: resource.ResourceInfo.PodCreationTime,
       resourceName: resource.Name,
     }
   } else {
