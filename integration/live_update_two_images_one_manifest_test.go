@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -24,13 +23,9 @@ func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
 	f.TiltWatch()
 
 	fmt.Println("> Initial build")
-	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
-	defer cancel()
-	initialPods := f.WaitForAllPodsReady(ctx, "app=twoimages")
-	require.Len(t, initialPods, 1, "expect a single pod")
-	f.WaitForAllContainersForPodReady(f.ctx, initialPods[0], time.Minute)
+	initialPod := f.WaitForOnePodWithAllContainersReady(f.ctx, "app=twoimages", time.Minute)
 
-	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
+	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 	f.CurlUntil(ctx, sparkleUrl, "✨ One-Up! ✨\n")
 	f.CurlUntil(ctx, tadaUrl, "🎉 One-Up! 🎉\n")
@@ -44,16 +39,16 @@ func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
 	f.CurlUntil(ctx, sparkleUrl, "✨ Two-Up! ✨\n")
 	f.CurlUntil(ctx, tadaUrl, "🎉 One-Up! 🎉\n")
 
-	podsAfterSparkleLiveUpd := f.WaitForAllPodsReady(ctx, "app=twoimages")
+	podAfterSparkleLiveUpd := f.WaitForOnePodWithAllContainersReady(f.ctx, "app=twoimages", time.Minute)
 
-	// Assert that the pods were changed in-place / that we did NOT create new pods.
-	assert.Equal(t, initialPods, podsAfterSparkleLiveUpd)
+	// Assert that the pod was changed in-place / that we did NOT create new pods.
+	assert.Equal(t, initialPod, podAfterSparkleLiveUpd)
 
 	// Kill the container we didn't LiveUpdate; k8s should quietly replace it, WITHOUT us
 	// doing a crash rebuild (b/c that container didn't have state on it)
 	// We expect the `kill` command to die abnormally when the parent process dies.
 	fmt.Println("> kill 'tada' and wait for container to come back up")
-	_, _ = f.runCommand("kubectl", "exec", podsAfterSparkleLiveUpd[0], "-c=tada", namespaceFlag,
+	_, _ = f.runCommand("kubectl", "exec", podAfterSparkleLiveUpd, "-c=tada", namespaceFlag,
 		"--", "kill", "1")
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
@@ -61,13 +56,12 @@ func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
 	f.CurlUntil(ctx, sparkleUrl, "✨ Two-Up! ✨\n")
 	f.CurlUntil(ctx, tadaUrl, "🎉 One-Up! 🎉\n")
 
-	podsAfterKillTada := f.WaitForAllPodsReady(ctx, "app=twoimages")
-	assert.Equal(t, initialPods, podsAfterKillTada)
+	podAfterKillTada := f.WaitForOnePodWithAllContainersReady(f.ctx, "app=twoimages", time.Minute)
+	assert.Equal(t, initialPod, podAfterKillTada)
 
 	// Make sure that we can LiveUpdate both at once
 	fmt.Println("> LiveUpdate both services at once")
 
-	f.WaitForAllContainersForPodReady(f.ctx, podsAfterKillTada[0], time.Minute) // make sure containers ready before we try to LiveUpdate
 	f.ReplaceContents("./sparkle/main.go", "Two-Up", "Three-Up")
 	f.ReplaceContents("./tada/main.go", "One-Up", "Three-Up")
 
@@ -78,12 +72,12 @@ func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
-	podsAfterLiveUpdBoth := f.WaitForAllPodsReady(ctx, "app=twoimages")
-	assert.Equal(t, podsAfterKillTada, podsAfterLiveUpdBoth)
+	podAfterBothLiveUpdate := f.WaitForOnePodWithAllContainersReady(f.ctx, "app=twoimages", time.Minute)
+	assert.Equal(t, podAfterKillTada, podAfterBothLiveUpdate)
 
 	// Kill a container we DID LiveUpdate; we should detect it and do a crash rebuild.
 	fmt.Println("> kill 'sparkle' and wait for crash rebuild")
-	_, _ = f.runCommand("kubectl", "exec", podsAfterLiveUpdBoth[0], "-c=sparkle", namespaceFlag,
+	_, _ = f.runCommand("kubectl", "exec", podAfterBothLiveUpdate, "-c=sparkle", namespaceFlag,
 		"--", "kill", "1")
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
@@ -91,6 +85,8 @@ func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
 	f.CurlUntil(ctx, sparkleUrl, "✨ Three-Up! ✨\n")
 	f.CurlUntil(ctx, tadaUrl, "🎉 Three-Up! 🎉\n")
 
-	podsAfterKillSparkle := f.WaitForAllPodsReady(ctx, "app=twoimages")
-	assert.NotEqual(t, podsAfterLiveUpdBoth, podsAfterKillSparkle)
+	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
+	defer cancel()
+	allPodsAfterKillSparkle := f.WaitForAllPodsReady(f.ctx, "app=twoimages")
+	assert.NotEqual(t, []string{podAfterBothLiveUpdate}, allPodsAfterKillSparkle)
 }

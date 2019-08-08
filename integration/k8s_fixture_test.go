@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
@@ -69,6 +70,16 @@ func (f *k8sFixture) CurlUntil(ctx context.Context, url string, expectedContents
 // Returns the names of the ready pods.
 func (f *k8sFixture) WaitForAllPodsReady(ctx context.Context, selector string) []string {
 	return f.WaitForAllPodsInPhase(ctx, selector, v1.PodRunning)
+}
+
+func (f *k8sFixture) WaitForOnePodWithAllContainersReady(ctx context.Context, selector string, timeout time.Duration) string {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	allPods := f.WaitForAllPodsReady(ctx, selector)
+	require.Len(f.t, allPods, 1, "need exactly one ready pod")
+	f.WaitForAllContainersForPodReady(ctx, allPods[0])
+	return allPods[0]
 }
 
 func (f *k8sFixture) WaitForAllPodsInPhase(ctx context.Context, selector string, phase v1.PodPhase) []string {
@@ -129,18 +140,15 @@ func (f *k8sFixture) AllPodsInPhase(ctx context.Context, selector string, phase 
 	return hasOneMatchingPod, outStr, podNames
 }
 
-func (f *k8sFixture) WaitForAllContainersForPodReady(ctx context.Context, pod string, timeout time.Duration) bool {
-	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
+func (f *k8sFixture) WaitForAllContainersForPodReady(ctx context.Context, pod string) {
 	for {
-		allContainersReady, output := f.AllContainersForPodReady(timeoutCtx, pod)
+		allContainersReady, output := f.AllContainersForPodReady(ctx, pod)
 		if allContainersReady {
-			return true
+			return
 		}
 
 		select {
-		case <-timeoutCtx.Done():
+		case <-ctx.Done():
 			f.t.Fatalf("Timed out waiting for containers for pod %s to be ready. Output:\n:%s\n", pod, output)
 		case <-time.After(200 * time.Millisecond):
 		}
@@ -159,7 +167,6 @@ func (f *k8sFixture) AllContainersForPodReady(ctx context.Context, pod string) (
 	}
 
 	outStr := strings.TrimSpace(string(out))
-	fmt.Println(outStr)
 	lines := strings.Split(outStr, "\n")
 	if len(lines) == 0 {
 		return false, outStr
