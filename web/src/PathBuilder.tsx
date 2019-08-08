@@ -47,7 +47,7 @@ class PathBuilder {
     if (this.isLocal()) {
       scheme = "http"
     }
-    return `${scheme}://${this.host}/api/snapshots/${this.snapId}`
+    return `${scheme}://${this.host}/api/snapshot/${this.snapId}`
   }
 
   rootPath() {

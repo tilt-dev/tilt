@@ -33,12 +33,12 @@ describe("PathBuilder", () => {
   it("handles snapshots in prod", () => {
     let pb = new PathBuilder("snapshots.tilt.dev", "/snapshot/aaaaaa")
     expect(pb.getDataUrl()).toEqual(
-      "https://snapshots.tilt.dev/api/snapshots/aaaaaa"
+      "https://snapshots.tilt.dev/api/snapshot/aaaaaa"
     )
   })
 
   it("handles snapshots in dev", () => {
     let pb = new PathBuilder("localhost", "/snapshot/aaaaaa")
-    expect(pb.getDataUrl()).toEqual("http://localhost/api/snapshots/aaaaaa")
+    expect(pb.getDataUrl()).toEqual("http://localhost/api/snapshot/aaaaaa")
   })
 })
