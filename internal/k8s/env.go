@@ -20,8 +20,12 @@ const (
 	EnvNone          Env = "none" // k8s not running (not neces. a problem, e.g. if using Tilt x Docker Compose)
 )
 
-func (e Env) IsLocalCluster() bool {
+func (e Env) UsesLocalDockerRegistry() bool {
 	return e == EnvMinikube || e == EnvDockerDesktop || e == EnvMicroK8s
+}
+
+func (e Env) IsLocalCluster() bool {
+	return e == EnvMinikube || e == EnvDockerDesktop || e == EnvMicroK8s || e == EnvKIND
 }
 
 func ProvideEnv(kubeConfig *api.Config) Env {
@@ -40,25 +44,6 @@ func ProvideKubeConfig(clientLoader clientcmd.ClientConfig) (*api.Config, error)
 	}
 
 	return config, nil
-}
-
-func EnvFromString(s string) Env {
-	if Env(s) == EnvMinikube {
-		return EnvMinikube
-	} else if Env(s) == EnvDockerDesktop || s == "docker-desktop" {
-		return EnvDockerDesktop
-	} else if Env(s) == EnvMicroK8s {
-		return EnvMicroK8s
-	} else if strings.HasPrefix(s, "kubernetes-admin@kind") {
-		return EnvKIND
-	} else if Env(s) == EnvNone {
-		return EnvNone
-	} else if strings.HasPrefix(s, string(EnvGKE)) {
-		// GKE context strings look like:
-		// gke_blorg-dev_us-central1-b_blorg
-		return EnvGKE
-	}
-	return EnvUnknown
 }
 
 func EnvFromConfig(config *api.Config) Env {

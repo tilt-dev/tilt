@@ -28,7 +28,6 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/internal/testutils/k8sutils"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/tiltfile/testdata"
 	"github.com/windmilleng/tilt/internal/yaml"
@@ -3747,17 +3746,15 @@ func TestK8SContextAcceptance(t *testing.T) {
 	for _, test := range []struct {
 		name                    string
 		contextName             k8s.KubeContext
-		url                     string
+		env                     k8s.Env
 		expectError             bool
 		expectedErrorSubstrings []string
 	}{
-		{"localhost", "fake-context", "http://localhost:6443", false, nil},
-		{"127.0.0.1", "fake-context", "http://127.0.0.1:6443", false, nil},
-		{"::1", "fake-context", "http://[::1]:6443", false, nil},
-		{"remote", "fake-context", "http://www.google.com:6443", true, []string{"'fake-context'", "If you're sure", "switch k8s contexts", "allow_k8s_contexts"}},
-		{"whitelisted", "minikube", "http://www.google.com:6443", false, nil},
-		{"allowed", "allowed-context", "http://www.google.com:6443", false, nil},
-		{"invalid url", "fake-context", "://localhost", true, []string{"://localhost", "missing protocol scheme"}},
+		{"minikube", "minikube", k8s.EnvMinikube, false, nil},
+		{"docker-for-desktop", "docker-for-desktop", k8s.EnvDockerDesktop, false, nil},
+		{"kind", "KIND", k8s.EnvKIND, false, nil},
+		{"gke", "gke", k8s.EnvGKE, true, []string{"'gke'", "If you're sure", "switch k8s contexts", "allow_k8s_contexts"}},
+		{"allowed", "allowed-context", k8s.EnvGKE, false, nil},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			f := newFixture(t)
@@ -3769,8 +3766,8 @@ allow_k8s_contexts("allowed-context")
 `)
 			f.setupFoo()
 
-			f.k8sAPIURL = test.url
 			f.k8sContext = test.contextName
+			f.k8sEnv = test.env
 			if !test.expectError {
 				f.load()
 			} else {
@@ -3787,7 +3784,7 @@ type fixture struct {
 	*tempdir.TempDirFixture
 	kCli       *k8s.FakeK8sClient
 	k8sContext k8s.KubeContext
-	k8sAPIURL  string
+	k8sEnv     k8s.Env
 
 	ta *tiltanalytics.TiltAnalytics
 	an *analytics.MemoryAnalytics
@@ -3796,7 +3793,6 @@ type fixture struct {
 }
 
 func (f *fixture) newTiltfileLoader() TiltfileLoader {
-	k8sContext := k8sutils.NewConfig(string(f.k8sContext), "my-cluster", f.k8sAPIURL)
 	dcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
 	features := feature.Defaults{
 		"testflag_disabled":              feature.Value{Enabled: false},
@@ -3804,7 +3800,7 @@ func (f *fixture) newTiltfileLoader() TiltfileLoader {
 		"obsoleteflag":                   feature.Value{Status: feature.Obsolete, Enabled: true},
 		feature.MultipleContainersPerPod: feature.Value{Enabled: false},
 	}
-	return ProvideTiltfileLoader(f.ta, f.kCli, dcc, k8s.KubeContext(k8sContext.CurrentContext), k8sContext, features)
+	return ProvideTiltfileLoader(f.ta, f.kCli, dcc, f.k8sContext, f.k8sEnv, features)
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -3821,8 +3817,8 @@ func newFixture(t *testing.T) *fixture {
 		an:             ma,
 		ta:             ta,
 		kCli:           kCli,
-		k8sAPIURL:      "http://localhost:6443",
 		k8sContext:     "fake-context",
+		k8sEnv:         k8s.EnvDockerDesktop,
 	}
 	return r
 }

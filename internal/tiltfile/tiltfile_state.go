@@ -33,6 +33,7 @@ type tiltfileState struct {
 	ctx             context.Context
 	dcCli           dockercompose.DockerComposeClient
 	kubeContext     k8s.KubeContext
+	kubeEnv         k8s.Env
 	privateRegistry container.Registry
 	features        feature.FeatureSet
 
@@ -57,7 +58,7 @@ type tiltfileState struct {
 	k8sResourceAssemblyVersion       int
 	k8sResourceAssemblyVersionReason k8sResourceAssemblyVersionReason
 	workloadToResourceFunction       workloadToResourceFunction
-	whitelistedK8SContexts           []k8s.KubeContext
+	allowedK8SContexts               []k8s.KubeContext
 
 	// for assembly
 	usedImages map[string]bool
@@ -95,16 +96,18 @@ const (
 	k8sResourceAssemblyVersionReasonExplicit
 )
 
-// These are k8s context names that we assume are safe to deploy to even if they are neither localhost
-// nor in allow_k8s_contexts. e.g., minikube uses a non-loopback ip on a virtual interface,
-// and some versions of docker-for-desktop use 'kubernetes.docker.local'
-var defaultWhitelistedKubeContexts = []k8s.KubeContext{"minikube", "docker-desktop", "docker-for-desktop"}
-
-func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, kubeContext k8s.KubeContext, privateRegistry container.Registry, features feature.FeatureSet) *tiltfileState {
+func newTiltfileState(
+	ctx context.Context,
+	dcCli dockercompose.DockerComposeClient,
+	kubeContext k8s.KubeContext,
+	kubeEnv k8s.Env,
+	privateRegistry container.Registry,
+	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
 		ctx:                        ctx,
 		dcCli:                      dcCli,
 		kubeContext:                kubeContext,
+		kubeEnv:                    kubeEnv,
 		privateRegistry:            privateRegistry,
 		buildIndex:                 newBuildIndex(),
 		k8sByName:                  make(map[string]*k8sResource),
@@ -119,7 +122,6 @@ func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClie
 		triggerMode:                TriggerModeAuto,
 		features:                   features,
 		loadCache:                  make(map[string]loadCacheEntry),
-		whitelistedK8SContexts:     defaultWhitelistedKubeContexts,
 	}
 }
 

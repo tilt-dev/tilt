@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
-	"k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -73,14 +72,14 @@ func ProvideTiltfileLoader(
 	kCli k8s.Client,
 	dcCli dockercompose.DockerComposeClient,
 	kubeContext k8s.KubeContext,
-	kubeConfig *api.Config,
+	kubeEnv k8s.Env,
 	fDefaults feature.Defaults) TiltfileLoader {
 	return tiltfileLoader{
 		analytics:   analytics,
 		kCli:        kCli,
 		dcCli:       dcCli,
 		kubeContext: kubeContext,
-		kubeConfig:  kubeConfig,
+		kubeEnv:     kubeEnv,
 		fDefaults:   fDefaults,
 	}
 }
@@ -90,7 +89,7 @@ type tiltfileLoader struct {
 	kCli        k8s.Client
 	dcCli       dockercompose.DockerComposeClient
 	kubeContext k8s.KubeContext
-	kubeConfig  *api.Config
+	kubeEnv     k8s.Env
 	fDefaults   feature.Defaults
 }
 
@@ -114,7 +113,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	}
 
 	privateRegistry := tfl.kCli.PrivateRegistry(ctx)
-	s := newTiltfileState(ctx, tfl.dcCli, tfl.kubeContext, privateRegistry, feature.FromDefaults(tfl.fDefaults))
+	s := newTiltfileState(ctx, tfl.dcCli, tfl.kubeContext, tfl.kubeEnv, privateRegistry, feature.FromDefaults(tfl.fDefaults))
 	printedWarnings := false
 	defer func() {
 		tlr.ConfigFiles = s.configFiles
@@ -146,7 +145,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 			return TiltfileLoadResult{}, err
 		}
 
-		err = s.validateK8SContext(tfl.kubeConfig)
+		err = s.validateK8SContext(s.kubeContext, s.kubeEnv)
 		if err != nil {
 			return TiltfileLoadResult{}, err
 		}

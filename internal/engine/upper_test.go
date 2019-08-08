@@ -46,7 +46,6 @@ import (
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
-	"github.com/windmilleng/tilt/internal/testutils/k8sutils"
 	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
 	"github.com/windmilleng/tilt/internal/testutils/podbuilder"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
@@ -2661,9 +2660,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	dockerClient := docker.NewFakeClient()
 	reaper := build.NewImageReaper(dockerClient)
 
-	k8s := k8s.NewFakeK8sClient()
-	pw := NewPodWatcher(k8s)
-	sw := NewServiceWatcher(k8s, "")
+	kCli := k8s.NewFakeK8sClient()
+	pw := NewPodWatcher(kCli)
+	sw := NewServiceWatcher(kCli, "")
 
 	fakeHud := hud.NewFakeHud()
 
@@ -2671,7 +2670,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	st := store.NewStore(UpperReducer, store.LogActionsFlag(false))
 	st.AddSubscriber(ctx, fSub)
 
-	plm := NewPodLogManager(k8s)
+	plm := NewPodLogManager(kCli)
 	bc := NewBuildController(b)
 
 	err := os.Mkdir(f.JoinPath(".git"), os.FileMode(0777))
@@ -2680,16 +2679,14 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 
 	fwm := NewWatchManager(watcher.newSub, timerMaker.maker())
-	pfc := NewPortForwardController(k8s)
+	pfc := NewPortForwardController(kCli)
 	ic := NewImageController(reaper)
 	tas := NewTiltAnalyticsSubscriber(ta)
 	ar := ProvideAnalyticsReporter(ta, st)
 
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 
-	k8sConfig := k8sutils.NewConfig("fake-context", "fake-cluster", "http://localhost:6443")
-
-	tfl := tiltfile.ProvideTiltfileLoader(ta, k8s, fakeDcc, "fake-context", k8sConfig, feature.MainDefaults)
+	tfl := tiltfile.ProvideTiltfileLoader(ta, kCli, fakeDcc, "fake-context", k8s.EnvDockerDesktop, feature.MainDefaults)
 	cc := NewConfigsController(tfl, dockerClient)
 	dcw := NewDockerComposeEventWatcher(fakeDcc)
 	dclm := NewDockerComposeLogManager(fakeDcc)
@@ -2697,11 +2694,11 @@ func newTestFixture(t *testing.T) *testFixture {
 	sCli := synclet.NewTestSyncletClient(dockerClient)
 	sGRPCCli, err := synclet.FakeGRPCWrapper(ctx, sCli)
 	assert.NoError(t, err)
-	sm := containerupdate.NewSyncletManagerForTests(k8s, sGRPCCli, sCli)
+	sm := containerupdate.NewSyncletManagerForTests(kCli, sGRPCCli, sCli)
 	hudsc := server.ProvideHeadsUpServerController(0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{}, false)
 	ghc := &github.FakeClient{}
 	sc := &client.FakeSailClient{}
-	ewm := NewEventWatchManager(k8s, clockwork.NewRealClock())
+	ewm := NewEventWatchManager(kCli, clockwork.NewRealClock())
 
 	ret := &testFixture{
 		TempDirFixture:        f,
@@ -2711,7 +2708,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		fsWatcher:             watcher,
 		timerMaker:            &timerMaker,
 		docker:                dockerClient,
-		kClient:               k8s,
+		kClient:               kCli,
 		hud:                   fakeHud,
 		log:                   log,
 		store:                 st,
