@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: twoimages
+  namespace: tilt-integration
+  labels:
+    app: twoimages
+spec:
+  selector:
+    matchLabels:
+      app: twoimages
+  template:
+    metadata:
+      labels:
+        app: twoimages
+    spec:
+      containers:
+      - name: sparkle
+        image: sparkle
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: "10m"
+      - name: tada
+        image: tada
+        ports:
+          - containerPort: 8001
+        resources:
+          requests:
+            cpu: "10m"

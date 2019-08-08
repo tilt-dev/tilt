@@ -1,0 +1,34 @@
+# -*- mode: Python -*-
+
+# HACK: load namespaces on `tilt up` but not on `tilt down`
+load_namespace = not str(local('echo $SKIP_NAMESPACE')).strip()
+if load_namespace:
+  k8s_yaml('../namespace.yaml')
+
+enable_feature('multiple_containers_per_pod')
+
+# If you get push errors, you can change the default_registry.
+# Create tilt_option.json with contents: {"default_registry": "gcr.io/my-personal-project"}
+# (with your registry inserted). tilt_option.json is gitignore'd, unlike Tiltfile
+default_registry(read_json('tilt_option.json', {})
+                 .get('default_registry', 'gcr.io/windmill-test-containers/servantes'))
+
+codepath = '/go/src/github.com/windmilleng/integration/live_update_two_images_one_manifest'
+sparkle_path = '{}/sparkle'.format(codepath)
+tada_path = '{}/tada'.format(codepath)
+
+docker_build('sparkle', '.', dockerfile='Dockerfile.sparkle',
+             live_update=[
+                 sync('./sparkle/', sparkle_path),
+                 run('go install {}'.format(sparkle_path)),
+                 run('{}/restart.sh'.format(sparkle_path))
+             ])
+docker_build('tada', '.', dockerfile='Dockerfile.tada',
+             live_update=[
+                 sync('./tada/', tada_path),
+                 run('go install {}'.format(tada_path)),
+                 run('{}/restart.sh'.format(tada_path))
+             ])
+k8s_yaml('two_images.yaml')
+
+k8s_resource('twoimages', port_forwards=['8100:8000', '8101:8001'])
