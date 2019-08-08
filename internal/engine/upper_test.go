@@ -2334,12 +2334,12 @@ func TestEmptyTiltfile(t *testing.T) {
 	f.WriteFile("Tiltfile", "")
 	go f.upper.Start(f.ctx, []string{}, model.TiltBuild{}, false, f.JoinPath("Tiltfile"), true, model.SailModeDisabled, analytics.OptIn)
 	f.WaitUntil("build is set", func(st store.EngineState) bool {
-		return !st.LastTiltfileBuild.Empty()
+		return !st.TiltfileState.LastBuild().Empty()
 	})
 	f.withState(func(st store.EngineState) {
-		assert.Contains(t, st.LastTiltfileBuild.Error.Error(), "No resources found. Check out ")
-		assertContainsOnce(t, st.TiltfileCombinedLog.String(), "No resources found. Check out ")
-		assertContainsOnce(t, st.LastTiltfileBuild.Log.String(), "No resources found. Check out ")
+		assert.Contains(t, st.TiltfileState.LastBuild().Error.Error(), "No resources found. Check out ")
+		assertContainsOnce(t, st.TiltfileState.CombinedLog.String(), "No resources found. Check out ")
+		assertContainsOnce(t, st.TiltfileState.LastBuild().Log.String(), "No resources found. Check out ")
 	})
 }
 

@@ -60,7 +60,7 @@ func (s *HeadsUpServerController) maybeOpenBrowser(st store.RStore) {
 	}
 
 	state := st.RLockState()
-	tiltfileCompleted := state.FirstTiltfileBuildCompleted
+	tiltfileCompleted := !state.TiltfileState.LastBuild().Empty()
 	startTime := state.TiltStartTime
 	st.RUnlockState()
 
