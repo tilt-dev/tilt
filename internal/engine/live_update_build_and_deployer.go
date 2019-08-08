@@ -262,7 +262,7 @@ func (lubad *LiveUpdateBuildAndDeployer) containerUpdaterForSpecs(specs []model.
 		return lubad.scu
 	}
 
-	if lubad.runtime == container.RuntimeDocker && lubad.env.IsLocalCluster() {
+	if lubad.runtime == container.RuntimeDocker && lubad.env.UsesLocalDockerRegistry() {
 		return lubad.dcu
 	}
 

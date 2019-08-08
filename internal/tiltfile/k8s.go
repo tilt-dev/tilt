@@ -6,18 +6,16 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/windmilleng/tilt/internal/sliceutils"
-
-	"go.starlark.net/syntax"
-
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/internal/sliceutils"
 )
 
 type referenceList []reference.Named
@@ -886,4 +884,45 @@ func newK8sObjectID(e k8s.K8sEntity) k8sObjectID {
 
 func (s *tiltfileState) k8sContext(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	return starlark.String(s.kubeContext), nil
+}
+
+func (s *tiltfileState) allowK8SContexts(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var contexts starlark.Value
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+		"contexts", &contexts,
+	); err != nil {
+		return nil, err
+	}
+
+	for _, c := range starlarkValueOrSequenceToSlice(contexts) {
+		switch val := c.(type) {
+		case starlark.String:
+			s.allowedK8SContexts = append(s.allowedK8SContexts, k8s.KubeContext(val))
+		default:
+			return nil, fmt.Errorf("allow_k8s_contexts contexts must be a string or a sequence of strings; found a %T", val)
+
+		}
+	}
+
+	return starlark.None, nil
+}
+
+func (s *tiltfileState) validateK8SContext(context k8s.KubeContext, env k8s.Env) error {
+	if env.IsLocalCluster() {
+		return nil
+	}
+
+	for _, c := range s.allowedK8SContexts {
+		if c == context {
+			return nil
+		}
+	}
+
+	return fmt.Errorf(
+		`Stop! '%s' might be production.
+If you're sure you want to deploy there, add:
+allow_k8s_contexts('%s')
+to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`,
+		context,
+		context)
 }

@@ -72,12 +72,14 @@ func ProvideTiltfileLoader(
 	kCli k8s.Client,
 	dcCli dockercompose.DockerComposeClient,
 	kubeContext k8s.KubeContext,
+	kubeEnv k8s.Env,
 	fDefaults feature.Defaults) TiltfileLoader {
 	return tiltfileLoader{
 		analytics:   analytics,
 		kCli:        kCli,
 		dcCli:       dcCli,
 		kubeContext: kubeContext,
+		kubeEnv:     kubeEnv,
 		fDefaults:   fDefaults,
 	}
 }
@@ -87,6 +89,7 @@ type tiltfileLoader struct {
 	kCli        k8s.Client
 	dcCli       dockercompose.DockerComposeClient
 	kubeContext k8s.KubeContext
+	kubeEnv     k8s.Env
 	fDefaults   feature.Defaults
 }
 
@@ -110,7 +113,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	}
 
 	privateRegistry := tfl.kCli.PrivateRegistry(ctx)
-	s := newTiltfileState(ctx, tfl.dcCli, tfl.kubeContext, privateRegistry, feature.FromDefaults(tfl.fDefaults))
+	s := newTiltfileState(ctx, tfl.dcCli, tfl.kubeContext, tfl.kubeEnv, privateRegistry, feature.FromDefaults(tfl.fDefaults))
 	printedWarnings := false
 	defer func() {
 		tlr.ConfigFiles = s.configFiles
@@ -138,6 +141,11 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 
 	if len(resources.k8s) > 0 {
 		manifests, err = s.translateK8s(resources.k8s)
+		if err != nil {
+			return TiltfileLoadResult{}, err
+		}
+
+		err = s.validateK8SContext(s.kubeContext, s.kubeEnv)
 		if err != nil {
 			return TiltfileLoadResult{}, err
 		}

@@ -101,5 +101,5 @@ func DefaultBuildOrder(lubad *LiveUpdateBuildAndDeployer, ibad *ImageBuildAndDep
 }
 
 func shouldUseSynclet(updMode UpdateMode, env k8s.Env, runtime container.Runtime) bool {
-	return updMode == UpdateModeAuto && !env.IsLocalCluster() && runtime == container.RuntimeDocker
+	return updMode == UpdateModeAuto && !env.UsesLocalDockerRegistry() && runtime == container.RuntimeDocker
 }
