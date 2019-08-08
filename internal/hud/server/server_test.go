@@ -3,8 +3,12 @@ package server_test
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
@@ -20,6 +24,16 @@ import (
 	tft "github.com/windmilleng/tilt/internal/tft/client"
 	"github.com/windmilleng/tilt/pkg/assets"
 )
+
+var originalWD string
+
+func init() {
+	wd, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	originalWD = wd
+}
 
 func TestHandleAnalyticsEmptyRequest(t *testing.T) {
 	f := newTestFixture(t)
@@ -379,6 +393,32 @@ func TestHandleNewAlert(t *testing.T) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.serv.HandleNewAlert)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+	assert.Contains(t, rr.Body.String(), "https://alerts.tilt.dev/alert/aaaaaa")
+}
+
+func TestHandleNewSnapshot(t *testing.T) {
+	f := newTestFixture(t)
+
+	sp := filepath.Join(originalWD, "testdata", "snapshot.json")
+	snap, err := ioutil.ReadFile(sp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := http.NewRequest(http.MethodPost, "/api/alerts/new", bytes.NewBuffer(snap))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	fmt.Print(snap)
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(f.serv.HandleNewAlert)
 
