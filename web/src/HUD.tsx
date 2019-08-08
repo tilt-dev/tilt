@@ -261,7 +261,7 @@ class HUD extends Component<HudProps, HudState> {
         logs = (r && r.CombinedLog) || ""
         endpoints = (r && r.Endpoints) || []
         podID = (r && r.PodID) || ""
-        if (r.ResourceInfo.type !== "DCResource") {
+        if (r.ResourceInfo.type !== "DCResourceInfo") {
           podStatus = (r && r.ResourceInfo && r.ResourceInfo.PodStatus) || ""
         }
       }

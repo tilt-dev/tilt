@@ -68,7 +68,7 @@ export type Resource = {
 }
 
 export type K8sResourceInfo = {
-  type: "K8sResource"
+  type: "K8sResourceInfo"
   PodName: string
   PodCreationTime: string
   PodUpdateStartTime: string
@@ -81,7 +81,7 @@ export type K8sResourceInfo = {
 }
 
 export type DCResourceInfo = {
-  type: "DCResource"
+  type: "DCResourceInfo"
   ConfigPaths: Array<string>
   ContainerStatus: string
   ContainerID: string
