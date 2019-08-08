@@ -24,8 +24,7 @@ function hasAlert(resource: Resource) {
 
 //Errors for K8s Resources
 function crashRebuild(r: Resource): boolean {
-    return r.BuildHistory.length > 0 && r.BuildHistory[0].IsCrashRebuild
-
+  return r.BuildHistory.length > 0 && r.BuildHistory[0].IsCrashRebuild
 }
 
 function podStatusHasError(r: Resource) {
@@ -58,7 +57,7 @@ function buildFailed(resource: Resource) {
 //above
 function getResourceAlerts(r: Resource): Array<Alert> {
   let result: Array<Alert> = []
-  if (r.ResourceInfo.type !== "DCResourceInfo"){
+  if (r.ResourceInfo.type !== "DCResourceInfo") {
     if (podStatusHasError(r)) {
       result.push(podStatusIsErrAlert(r))
     } else if (podRestarted(r)) {

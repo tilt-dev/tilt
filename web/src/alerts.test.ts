@@ -376,7 +376,7 @@ it("renders a build error for both a K8s resource and DC resource ", () => {
   let dcAlerts = getResourceAlerts(dcresource)
   let k8sAlerts = getResourceAlerts(k8sresource)
 
-  let actual  = dcAlerts.concat(k8sAlerts);
+  let actual = dcAlerts.concat(k8sAlerts)
   let expectedAlerts: Array<Alert> = [
     {
       alertType: BuildFailedErrorType,
@@ -392,7 +392,6 @@ it("renders a build error for both a K8s resource and DC resource ", () => {
       header: "Build error",
       resourceName: "snack",
     },
-
   ]
   expect(actual).toEqual(expectedAlerts)
 })
