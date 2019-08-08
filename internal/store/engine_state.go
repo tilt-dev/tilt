@@ -230,7 +230,7 @@ type ManifestState struct {
 
 	BuildStatuses map[model.TargetID]*BuildStatus
 
-	// State of the running resource -- specific to type (e.g. k8s, docker-compose, etc.)
+	// Snapshot of the running resource -- specific to type (e.g. k8s, docker-compose, etc.)
 	ResourceState ResourceState
 
 	PendingManifestChange time.Time

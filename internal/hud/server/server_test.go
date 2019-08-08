@@ -3,8 +3,11 @@ package server_test
 import (
 	"bytes"
 	"context"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
@@ -20,6 +23,16 @@ import (
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/model"
 )
+
+var originalWD string
+
+func init() {
+	wd, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	originalWD = wd
+}
 
 func TestHandleAnalyticsEmptyRequest(t *testing.T) {
 	f := newTestFixture(t)
@@ -391,6 +404,31 @@ func TestHandleNewAlert(t *testing.T) {
 	assert.Contains(t, rr.Body.String(), "https://alerts.tilt.dev/alert/aaaaaa")
 }
 
+func TestHandleNewSnapshot(t *testing.T) {
+	f := newTestFixture(t)
+
+	sp := filepath.Join(originalWD, "testdata", "snapshot.json")
+	snap, err := ioutil.ReadFile(sp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := http.NewRequest(http.MethodPost, "/api/snapshot/new", bytes.NewBuffer(snap))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.serv.HandleNewSnapshot)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+	assert.Contains(t, rr.Body.String(), "https://alerts.tilt.dev/snapshot/aaaaa")
+}
+
 type serverFixture struct {
 	t          *testing.T
 	serv       *server.HeadsUpServer
@@ -408,7 +446,8 @@ func newTestFixture(t *testing.T) *serverFixture {
 	a, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
 	sailCli := client.NewFakeSailClient()
 	tftClient := tft.ProvideFakeClient()
-	serv := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, sailCli, tftClient)
+	httpClient := fakeHttpClient{}
+	serv := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, sailCli, tftClient, httpClient)
 
 	return &serverFixture{
 		t:          t,
@@ -419,6 +458,15 @@ func newTestFixture(t *testing.T) *serverFixture {
 		st:         st,
 		getActions: getActions,
 	}
+}
+
+type fakeHttpClient struct{}
+
+func (f fakeHttpClient) Do(req *http.Request) (*http.Response, error) {
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       ioutil.NopCloser(bytes.NewReader([]byte(`{"ID":"aaaaa"}`))),
+	}, nil
 }
 
 func (f *serverFixture) assertIncrement(name string, count int) {

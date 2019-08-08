@@ -77,11 +77,27 @@ export type K8sResourceInfo = {
   YAML: string
   Endpoints: Array<string>
 }
-
 export type DCResourceInfo = {
   ConfigPaths: Array<string>
   ContainerStatus: string
   ContainerID: string
   Log: string
   StartTime: string
+}
+
+export type Snapshot = {
+  // input of snapshot_storage
+  Message: string
+  View: {
+    Resources: Array<Resource>
+    Log: string
+    LogTimestamps: boolean
+    SailEnabled: boolean
+    SailURL: string
+    NeedsAnalyticsNudge: boolean
+    RunningTiltBuild: TiltBuild
+    LatestTiltBuild: TiltBuild
+    FeatureFlags: { [featureFlag: string]: boolean }
+  } | null
+  IsSidebarClosed: boolean
 }

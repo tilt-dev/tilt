@@ -54,6 +54,8 @@ func (t *tftClient) SendAlert(ctx context.Context, alert Alert) (AlertID, error)
 	return AlertID(r.ID), nil
 }
 
+//TODO TFT: Create send snapshot function: returns snapshot ID and error
+
 func ProvideClient() Client {
 	return &tftClient{}
 }

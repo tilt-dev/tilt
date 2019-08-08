@@ -1,5 +1,6 @@
 import HUD from "./HUD"
 import { getResourceAlerts } from "./alerts"
+import {Resource} from "./types";
 
 // A Websocket that automatically retries.
 
@@ -91,6 +92,7 @@ class AppController {
         Message: "Disconnected…",
         IsSidebarClosed: false,
         AlertLinks: {},
+        SnapshotLink: "",
       })
       this.createNewSocket()
       return
@@ -116,6 +118,7 @@ class AppController {
         Message: message,
         IsSidebarClosed: false,
         AlertLinks: {},
+        SnapshotLink: "",
       })
       this.createNewSocket()
     }, timeout)

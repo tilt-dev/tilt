@@ -14,7 +14,7 @@ import { History, UnregisterCallback } from "history"
 import { incr, pathToTag } from "./analytics"
 import TopBar from "./TopBar"
 import "./HUD.scss"
-import { TiltBuild, ResourceView, Resource } from "./types"
+import { TiltBuild, ResourceView, Resource, Snapshot } from "./types"
 import AlertPane from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
@@ -41,12 +41,26 @@ type HudState = {
   } | null
   IsSidebarClosed: boolean
   AlertLinks: { [key: string]: string }
+  SnapshotLink: string
 }
 
 type NewAlertResponse = {
   url: string
 }
 
+type NewSnapshotResponse = {
+  // output of snapshot_storage
+  url: string
+}
+
+function hudStatetoSnapshot(h: HUD): Snapshot {
+  //used this because hudState has extra fields we don't care about
+  return {
+    Message: h.state.Message,
+    View: h.state.View,
+    IsSidebarClosed: h.state.IsSidebarClosed,
+  }
+}
 // The Main HUD view, as specified in
 // https://docs.google.com/document/d/1VNIGfpC4fMfkscboW0bjYYFJl07um_1tsFrbN-Fu3FI/edit#heading=h.l8mmnclsuxl1
 class HUD extends Component<HudProps, HudState> {
@@ -90,6 +104,7 @@ class HUD extends Component<HudProps, HudState> {
       },
       IsSidebarClosed: false,
       AlertLinks: {},
+      SnapshotLink: "",
     }
 
     this.toggleSidebar = this.toggleSidebar.bind(this)
@@ -167,6 +182,25 @@ class HUD extends Component<HudProps, HudState> {
       .then(err => console.error(err))
   }
 
+  sendSnapshot(snapshot: Snapshot) {
+    let url = `//${window.location.host}/api/snapshot/new`
+    fetch(url, {
+      method: "post",
+      body: JSON.stringify(snapshot),
+    })
+      .then(res => {
+        res
+          .json()
+          .then((value: NewSnapshotResponse) => {
+            this.setState({
+              SnapshotLink: value.url,
+            })
+          })
+          .catch(err => console.error(err))
+      })
+      .then(err => console.error(err))
+  }
+
   render() {
     let view = this.state.View
     let sailEnabled = view && view.SailEnabled ? view.SailEnabled : false
@@ -220,6 +254,9 @@ class HUD extends Component<HudProps, HudState> {
               sailEnabled={sailEnabled}
               sailUrl={sailUrl}
               numberOfAlerts={numAlerts}
+              state={this.state}
+              handleSendSnapshot={this.sendSnapshot.bind(this)}
+              snapshotURL={this.state.SnapshotLink}
             />
           )
         }
@@ -240,6 +277,9 @@ class HUD extends Component<HudProps, HudState> {
           sailEnabled={sailEnabled}
           sailUrl={sailUrl}
           numberOfAlerts={numAlerts}
+          state={this.state}
+          handleSendSnapshot={this.sendSnapshot.bind(this)}
+          snapshotURL={this.state.SnapshotLink}
         />
       )
     }
