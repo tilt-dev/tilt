@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Kubernetes Authors.
+Copyright 2017 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,16 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package types
+// Package constants holds global constants for the kustomize tool.
+package constants
 
-import (
-	"fmt"
-)
-
-type NoFieldError struct {
-	Field string
-}
-
-func (e NoFieldError) Error() string {
-	return fmt.Sprintf("no field named '%s'", e.Field)
+// KustomizationFileNames is a list of filenames that can be recognized and consumbed
+// by Kustomize.
+// In each directory, Kustomize searches for file with the name in this list.
+// Only one match is allowed.
+var KustomizationFileNames = []string{
+	"kustomization.yaml",
+	"kustomization.yml",
+	"Kustomization",
 }
