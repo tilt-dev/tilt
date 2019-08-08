@@ -27,7 +27,7 @@ func TestLoggingKubectlRunnerNoStdin(t *testing.T) {
 	assert.Equal(t, "bar", stderr)
 
 	l := f.log()
-	assert.Contains(t, l, `Running: ["kubectl" "-v" "6" "hello" "goodbye"]`)
+	assert.Contains(t, l, `Running: ["tilt" "kubectl" "-v" "6" "hello" "goodbye"]`)
 	assert.Contains(t, l, `stdout: 'foo'`)
 	assert.Contains(t, l, `stderr: 'bar'`)
 }
@@ -53,7 +53,7 @@ func TestLoggingKubectlRunnerStdin(t *testing.T) {
 	assert.Equal(t, "bar", stderr)
 
 	l := f.log()
-	assert.Contains(t, l, `Running: ["kubectl" "-v" "6" "hello" "goodbye"]`)
+	assert.Contains(t, l, `Running: ["tilt" "kubectl" "-v" "6" "hello" "goodbye"]`)
 	assert.Contains(t, l, `stdout: 'foo'`)
 	assert.Contains(t, l, `stderr: 'bar'`)
 	assert.Contains(t, l, `stdin: 'some yaml'`)
