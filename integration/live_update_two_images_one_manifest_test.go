@@ -58,11 +58,11 @@ func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
-	fourthPods := f.WaitForAllPodsReady(ctx, "app=twoimages")
-	assert.Equal(t, thirdPods, fourthPods)
+	f.CurlUntil(ctx, "http://localhost:8100", "✨ Three-Up! ✨\n")
+	f.CurlUntil(ctx, "http://localhost:8101", "🎉 Three-Up! 🎉\n")
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
-	f.CurlUntil(ctx, "http://localhost:8100", "✨ Three-Up! ✨\n")
-	f.CurlUntil(ctx, "http://localhost:8101", "🎉 Three-Up! 🎉\n")
+	fourthPods := f.WaitForAllPodsReady(ctx, "app=twoimages")
+	assert.Equal(t, thirdPods, fourthPods)
 }
