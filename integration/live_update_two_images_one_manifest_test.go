@@ -25,6 +25,7 @@ func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
 	f.CurlUntil(ctx, "http://localhost:8100", "✨ One-Up! ✨\n")
 	f.CurlUntil(ctx, "http://localhost:8101", "🎉 One-Up! 🎉\n")
 
+	// Live Update only one
 	f.ReplaceContents("./sparkle/main.go", "One-Up", "Two-Up")
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
