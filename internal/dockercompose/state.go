@@ -3,7 +3,7 @@ package dockercompose
 import (
 	"time"
 
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 
 	"github.com/windmilleng/tilt/internal/container"
 )

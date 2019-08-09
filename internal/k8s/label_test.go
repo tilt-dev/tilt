@@ -9,7 +9,7 @@ import (
 	"k8s.io/api/apps/v1beta2"
 
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 func TestInjectLabelPod(t *testing.T) {

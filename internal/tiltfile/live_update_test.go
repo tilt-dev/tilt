@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 func TestLiveUpdateStepNotUsed(t *testing.T) {

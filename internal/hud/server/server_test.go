@@ -14,11 +14,11 @@ import (
 
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/hud/server"
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 	tft "github.com/windmilleng/tilt/internal/tft/client"
 	"github.com/windmilleng/tilt/pkg/assets"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 func TestHandleAnalyticsEmptyRequest(t *testing.T) {

@@ -1,6 +1,6 @@
 package store
 
-import "github.com/windmilleng/tilt/internal/model"
+import "github.com/windmilleng/tilt/pkg/model"
 
 type ManifestTarget struct {
 	Manifest model.Manifest

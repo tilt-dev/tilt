@@ -16,9 +16,9 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/podbuilder"
 
 	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/watch"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 func TestBuildControllerOnePod(t *testing.T) {
@@ -41,6 +41,69 @@ func TestBuildControllerOnePod(t *testing.T) {
 	err := f.Stop()
 	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
+}
+
+func TestBuildControllerTooManyPodsForLiveUpdateErrorMessage(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	manifest := NewSanchoLiveUpdateManifest(f)
+	f.Start([]model.Manifest{manifest}, true)
+
+	// intial build
+	call := f.nextCall()
+	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
+	assert.Equal(t, []string{}, call.oneState().FilesChanged())
+
+	p1 := podbuilder.New(t, manifest).WithPodID("pod1").Build()
+	p2 := podbuilder.New(t, manifest).WithPodID("pod2").Build()
+
+	f.podEvent(p1)
+	f.podEvent(p2)
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
+
+	call = f.nextCall()
+	// Should not have sent container info b/c too many pods
+	assert.Equal(t, store.ContainerInfo{}, call.oneState().OneContainerInfo())
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+
+	assert.Contains(t, f.log.String(), "can only get container info for a single pod",
+		"should print error message when trying to get Running Containers for manifest with more than one pod")
+}
+
+func TestBuildControllerTooManyPodsForDockerBuildNoErrorMessage(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	manifest := NewSanchoDockerBuildManifest(f)
+	f.Start([]model.Manifest{manifest}, true)
+
+	// intial build
+	call := f.nextCall()
+	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
+	assert.Equal(t, []string{}, call.oneState().FilesChanged())
+
+	p1 := podbuilder.New(t, manifest).WithPodID("pod1").Build()
+	p2 := podbuilder.New(t, manifest).WithPodID("pod2").Build()
+
+	f.podEvent(p1)
+	f.podEvent(p2)
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
+
+	call = f.nextCall()
+	// Should not have sent container info b/c too many pods
+	assert.Equal(t, store.ContainerInfo{}, call.oneState().OneContainerInfo())
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+
+	// Should not have surfaced this log line b/c manifest doesn't have LiveUpdate instructions
+	assert.NotContains(t, f.log.String(), "can only get container info for a single pod",
+		"should print error message when trying to get Running Containers for manifest with more than one pod")
 }
 
 func TestBuildControllerIgnoresImageTags(t *testing.T) {

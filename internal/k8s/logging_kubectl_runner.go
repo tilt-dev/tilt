@@ -20,7 +20,7 @@ func (k loggingKubectlRunner) logExecStart(ctx context.Context, args []string, s
 		return
 	}
 
-	logger.Get(ctx).Infof("Running: %q\n", append([]string{"kubectl"}, args...))
+	logger.Get(ctx).Infof("Running: %q\n", append([]string{"tilt", "kubectl"}, args...))
 
 	if stdin != "" {
 		logger.Get(ctx).Infof("stdin: '%s'\n", stdin)

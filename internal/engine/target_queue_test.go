@@ -11,8 +11,8 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils"
 
 	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 func TestTargetQueue_Simple(t *testing.T) {

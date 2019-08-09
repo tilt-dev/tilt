@@ -12,9 +12,9 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v1.Pod) {

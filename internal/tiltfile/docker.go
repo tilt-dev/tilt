@@ -11,8 +11,8 @@ import (
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockerfile"
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 const fastBuildDeprecationWarning = "FastBuild (`fast_build`; `add_fast_build`; " +
@@ -173,14 +173,14 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, errors.Wrap(err, "live_update")
 	}
 
-	ignores, error := parseValuesToStrings(ignoreVal, "ignore")
-	if error != nil {
-		return nil, error
+	ignores, err := parseValuesToStrings(ignoreVal, "ignore")
+	if err != nil {
+		return nil, err
 	}
 
-	onlys, error2 := parseValuesToStrings(onlyVal, "only")
-	if error2 != nil {
-		return nil, error2
+	onlys, err := s.parseOnly(onlyVal)
+	if err != nil {
+		return nil, err
 	}
 
 	var entrypointCmd model.Cmd
@@ -212,6 +212,23 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	// (but use DockerBuild info for image builds)
 	fb := &fastBuild{s: s, img: r}
 	return fb, nil
+}
+
+func (s *tiltfileState) parseOnly(val starlark.Value) ([]string, error) {
+	paths, err := parseValuesToStrings(val, "only")
+	if err != nil {
+		return nil, err
+	}
+
+	for _, p := range paths {
+		// We want to forbid file globs due to these issues:
+		// https://github.com/windmilleng/tilt/issues/1982
+		// https://github.com/moby/moby/issues/30018
+		if strings.Contains(p, "*") {
+			return nil, fmt.Errorf("'only' does not support '*' file globs. Must be a real path: %s", p)
+		}
+	}
+	return paths, nil
 }
 
 func (s *tiltfileState) fastBuildForImage(image *dockerImage) model.FastBuild {

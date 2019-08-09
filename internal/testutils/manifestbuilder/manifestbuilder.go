@@ -3,7 +3,7 @@ package manifestbuilder
 import (
 	"testing"
 
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 // Builds Manifest objects for testing.

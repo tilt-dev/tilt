@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 var _ Client = &explodingClient{}

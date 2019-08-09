@@ -7,8 +7,8 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 // Allows the caller to inject its own build strategy for dirty targets.

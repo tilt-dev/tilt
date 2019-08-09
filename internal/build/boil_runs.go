@@ -1,7 +1,7 @@
 package build
 
 import (
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 func BoilRuns(runs []model.Run, pathMappings []PathMapping) ([]model.Cmd, error) {

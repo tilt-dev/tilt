@@ -28,7 +28,7 @@ import (
 	"strings"
 
 	yaml "gopkg.in/yaml.v2"
-	"sigs.k8s.io/kustomize/pkg/pgmconfig"
+	"sigs.k8s.io/kustomize/pkg/constants"
 	"sigs.k8s.io/kustomize/pkg/types"
 )
 
@@ -37,7 +37,7 @@ func loadKustFile(dir string) ([]byte, string, error) {
 	var content []byte
 	var path string
 	match := 0
-	for _, kf := range pgmconfig.KustomizationFileNames {
+	for _, kf := range constants.KustomizationFileNames {
 		p := filepath.Join(dir, kf)
 		c, err := ioutil.ReadFile(p)
 		if err == nil {
@@ -51,7 +51,7 @@ func loadKustFile(dir string) ([]byte, string, error) {
 	case 0:
 		return nil, "", fmt.Errorf(
 			"unable to find one of %v in directory '%s'",
-			pgmconfig.KustomizationFileNames, dir)
+			constants.KustomizationFileNames, dir)
 	case 1:
 		return content, path, nil
 	default:
@@ -73,7 +73,7 @@ func dependenciesForKustomization(dir string) ([]string, error) {
 		return nil, err
 	}
 
-	buf = types.FixKustomizationPreUnmarshalling(buf)
+	buf = types.DealWithDeprecatedFields(buf)
 
 	content := types.Kustomization{}
 	if err := yaml.Unmarshal(buf, &content); err != nil {
