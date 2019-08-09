@@ -51,6 +51,7 @@ func Execute() {
 	addCommand(rootCmd, &downCmd{}, a)
 	addCommand(rootCmd, &demoCmd{}, a)
 	addCommand(rootCmd, &versionCmd{}, a)
+	rootCmd.AddCommand(newKubectlCmd())
 
 	globalFlags := rootCmd.PersistentFlags()
 	globalFlags.BoolVarP(&debug, "debug", "d", false, "Enable debug logging")
