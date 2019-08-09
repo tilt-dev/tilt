@@ -1,8 +1,9 @@
 import React, { PureComponent } from "react"
-import { ResourceView } from "./types"
+import {ResourceView, State} from "./types"
 import "./TopBar.scss"
 import SailInfo from "./SailInfo"
 import TabNav from "./TabNav"
+import {Alert} from "./alerts";
 
 type TopBarProps = {
   previewUrl: string
@@ -25,14 +26,22 @@ class TopBar extends PureComponent<TopBarProps> {
           resourceView={this.props.resourceView}
           numberOfAlerts={this.props.numberOfAlerts}
         />
+          <div className="TopBar-headerDiv-snapshotURL">
+              {renderSnapshotLinkButton()}
+          </div>
         <span className="TopBar-spacer">&nbsp;</span>
         <SailInfo
           sailEnabled={this.props.sailEnabled}
           sailUrl={this.props.sailUrl}
         />
+
       </div>
     )
   }
+}
+
+function renderSnapshotLinkButton() { //TODO TFT
+    return <button>Get Link</button>
 }
 
 export default TopBar
