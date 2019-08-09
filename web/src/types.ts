@@ -66,9 +66,7 @@ export type Resource = {
   HasPendingChanges: boolean
   Alerts: Array<Alert>
 }
-
 export type K8sResourceInfo = {
-  type: "K8sResourceInfo"
   PodName: string
   PodCreationTime: string
   PodUpdateStartTime: string
@@ -81,10 +79,33 @@ export type K8sResourceInfo = {
 }
 
 export type DCResourceInfo = {
-  type: "DCResourceInfo"
   ConfigPaths: Array<string>
   ContainerStatus: string
   ContainerID: string
   Log: string
   StartTime: string
 }
+
+// interface ResourceInfo  {}
+//
+// interface K8sResourceInfo extends ResourceInfo {
+//   PodName: string
+//   PodCreationTime: string
+//   PodUpdateStartTime: string
+//   PodStatus: string
+//   PodStatusMessage: string
+//   PodRestarts: number
+//   PodLog: string
+//   YAML: string
+//   Endpoints: Array<string>
+// }
+//
+//
+//
+// interface DCResourceInfo extends ResourceInfo {
+//   ConfigPaths: Array<string>
+//   ContainerStatus: string
+//   ContainerID: string
+//   Log: string
+//   StartTime: string
+// }
