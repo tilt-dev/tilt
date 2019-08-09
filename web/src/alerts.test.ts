@@ -8,14 +8,14 @@ import {
   PodStatusErrorType,
   WarningErrorType,
 } from "./alerts"
-import { Resource, ResourceInfo, TriggerMode } from "./types"
-import { emptyTypeAnnotation } from "@babel/types"
+import { Resource, K8sResourceInfo, TriggerMode } from "./types"
 
 describe("getResourceAlerts", () => {
-  it("shows that a pod status of error is an alert", () => {
-    let r: Resource = emptyResource()
-    r.ResourceInfo.PodStatus = "Error"
-    r.ResourceInfo.PodStatusMessage = "I'm a pod in Error"
+  it("K8Resource: shows that a pod status of error is an alert", () => {
+    let r: Resource = k8sResource()
+    let rInfo = <K8sResourceInfo>r.ResourceInfo
+    rInfo.PodStatus = "Error"
+    rInfo.PodStatusMessage = "I'm a pod in Error"
 
     let actual = getResourceAlerts(r)
     let expectedAlerts: Array<Alert> = [
@@ -30,10 +30,10 @@ describe("getResourceAlerts", () => {
     expect(actual).toEqual(expectedAlerts)
   })
 
-  it("should show pod restart alert", () => {
-    let r: Resource = emptyResource()
-    r.ResourceInfo.PodRestarts = 1
-
+  it("K8s Resource: should show pod restart alert ", () => {
+    let r: Resource = k8sResource()
+    let rInfo = <K8sResourceInfo>r.ResourceInfo
+    rInfo.PodRestarts = 1
     let actual = getResourceAlerts(r)
     let expectedAlerts: Array<Alert> = [
       {
@@ -47,8 +47,8 @@ describe("getResourceAlerts", () => {
     expect(actual).toEqual(expectedAlerts)
   })
 
-  it("should show the first build alert", () => {
-    let r: Resource = emptyResource()
+  it("K8s Resource should show the first build alert", () => {
+    let r: Resource = k8sResource()
     r.BuildHistory = [
       {
         Log: "Build error log",
@@ -71,10 +71,9 @@ describe("getResourceAlerts", () => {
     expect(actual).toEqual(expectedAlerts)
   })
 
-  it("should show a crash rebuild alert  using the first build info", () => {
-    let r: Resource = emptyResource()
+  it("K8s Resource: should show a crash rebuild alert  using the first build info", () => {
+    let r: Resource = k8sResource()
     r.CrashLog = "Hello I am a crash log"
-    r.ResourceInfo.PodCreationTime = "10:00AM"
     r.BuildHistory = [
       {
         Log: "Hello I am a log",
@@ -87,6 +86,9 @@ describe("getResourceAlerts", () => {
         Error: null,
       },
     ]
+    let rInfo = <K8sResourceInfo>r.ResourceInfo
+    rInfo.PodCreationTime = "10:00AM"
+
     let actual = getResourceAlerts(r)
     let expectedAlerts: Array<Alert> = [
       {
@@ -100,8 +102,8 @@ describe("getResourceAlerts", () => {
     expect(actual).toEqual(expectedAlerts)
   })
 
-  it("should show a warning alert using the first build history", () => {
-    let r: Resource = emptyResource()
+  it("K8s Resource: should show a warning alert using the first build history ", () => {
+    let r: Resource = k8sResource()
     r.BuildHistory = [
       {
         Log: "Hello I'm a log",
@@ -127,11 +129,13 @@ describe("getResourceAlerts", () => {
     expect(actual).toEqual(expectedAlerts)
   })
 
-  it("should show a pod restart alert and a build failed alert", () => {
-    let r: Resource = emptyResource()
-    r.ResourceInfo.PodRestarts = 1 // triggers pod restart alert
+  it("K8s Resource: should show a pod restart alert and a build failed alert", () => {
+    let r: Resource = k8sResource()
+    let rInfo = <K8sResourceInfo>r.ResourceInfo
+    rInfo.PodRestarts = 1 // triggers pod restart alert
+    rInfo.PodCreationTime = "10:00AM"
+
     r.CrashLog = "I'm a pod that crashed"
-    r.ResourceInfo.PodCreationTime = "10:00AM"
     r.BuildHistory = [
       // triggers build failed alert
       {
@@ -162,8 +166,8 @@ describe("getResourceAlerts", () => {
     expect(actual).toEqual(expectedAlerts)
   })
 
-  it("should show 3 alerts: 1 crash rebuild alert, 1 build failed alert, 1 warning alert ", () => {
-    let r: Resource = emptyResource()
+  it("K8s Resource: should show 3 alerts: 1 crash rebuild alert, 1 build failed alert, 1 warning alert ", () => {
+    let r: Resource = k8sResource()
     r.CrashLog = "Hello I am a crash log"
     r.BuildHistory = [
       {
@@ -200,9 +204,10 @@ describe("getResourceAlerts", () => {
     expect(actual).toEqual(expectedAlerts)
   })
 
-  it("should show number of alerts a resource has", () => {
-    let r: Resource = emptyResource()
-    r.ResourceInfo.PodRestarts = 1
+  it("K8s Resource: should show number of alerts a resource has", () => {
+    let r: Resource = k8sResource()
+    let rInfo = <K8sResourceInfo>r.ResourceInfo
+    rInfo.PodRestarts = 1
     r.Alerts = getResourceAlerts(r)
     let actualNum = numberOfAlerts(r)
     let expectedNum = 1
@@ -211,7 +216,138 @@ describe("getResourceAlerts", () => {
   })
 })
 
-function emptyResource(): Resource {
+//DC Resource Tests
+it("DC Resource: should show a warning alert using the first build history ", () => {
+  let r: Resource = dcResource()
+  r.BuildHistory = [
+    {
+      Log: "Hello I'm a log",
+      Warnings: ["Hi i'm a warning"],
+      Error: null,
+      FinishTime: "10:00am",
+    },
+    {
+      Log: "Hello I'm a log2",
+      Warnings: ["This warning shouldn't show up", "Or this one"],
+    },
+  ]
+  let actual = getResourceAlerts(r)
+  let expectedAlerts: Array<Alert> = [
+    {
+      alertType: WarningErrorType,
+      msg: "Hi i'm a warning",
+      timestamp: "10:00am",
+      header: "vigoda",
+      resourceName: "vigoda",
+    },
+  ]
+  expect(actual).toEqual(expectedAlerts)
+})
+
+//DC Resource Tests
+it("DC Resource: should show a warning alert using the first build history ", () => {
+  let r: Resource = dcResource()
+  r.BuildHistory = [
+    {
+      Log: "Hello I'm a log",
+      Warnings: ["Hi i'm a warning"],
+      Error: null,
+      FinishTime: "10:00am",
+    },
+    {
+      Log: "Hello I'm a log2",
+      Warnings: ["This warning shouldn't show up", "Or this one"],
+    },
+  ]
+  let actual = getResourceAlerts(r)
+  let expectedAlerts: Array<Alert> = [
+    {
+      alertType: WarningErrorType,
+      msg: "Hi i'm a warning",
+      timestamp: "10:00am",
+      header: "vigoda",
+      resourceName: "vigoda",
+    },
+  ]
+  expect(actual).toEqual(expectedAlerts)
+})
+
+it("DC Resource has build failed alert using first build history info ", () => {
+  let r: Resource = dcResource()
+  r.BuildHistory = [
+    {
+      Log: "Hi you're build failed :'(",
+      Error: "theres an error !!!!",
+      FinishTime: "10:00am",
+    },
+    {
+      Log: "Hello I'm a log2",
+      Warnings: ["This warning shouldn't show up", "Or this one"],
+    },
+  ]
+  let actual = getResourceAlerts(r)
+  let expectedAlerts: Array<Alert> = [
+    {
+      alertType: BuildFailedErrorType,
+      msg: "Hi you're build failed :'(",
+      timestamp: "10:00am",
+      header: "Build error",
+      resourceName: "vigoda",
+    },
+  ]
+  expect(actual).toEqual(expectedAlerts)
+})
+
+it("renders a build error for both a K8s resource and DC resource ", () => {
+  let dcresource: Resource = dcResource()
+  dcresource.BuildHistory = [
+    {
+      Log: "Hi your build failed :'(",
+      Error: "theres an error !!!!",
+      FinishTime: "10:00am",
+    },
+    {
+      Log: "Hello I'm a log2",
+      Warnings: ["This warning shouldn't show up", "Or this one"],
+    },
+  ]
+  let k8sresource: Resource = k8sResource()
+  k8sresource.BuildHistory = [
+    {
+      Log: "Hi this (k8s) resource failed too :)",
+      Error: "theres an error !!!!",
+      FinishTime: "10:00am",
+    },
+    {
+      Log: "Hello I'm a log2",
+      Warnings: ["This warning shouldn't show up", "Or this one"],
+    },
+  ]
+
+  let dcAlerts = getResourceAlerts(dcresource)
+  let k8sAlerts = getResourceAlerts(k8sresource)
+
+  let actual = dcAlerts.concat(k8sAlerts)
+  let expectedAlerts: Array<Alert> = [
+    {
+      alertType: BuildFailedErrorType,
+      msg: "Hi your build failed :'(",
+      timestamp: "10:00am",
+      header: "Build error",
+      resourceName: "vigoda",
+    },
+    {
+      alertType: BuildFailedErrorType,
+      msg: "Hi this (k8s) resource failed too :)",
+      timestamp: "10:00am",
+      header: "Build error",
+      resourceName: "snack",
+    },
+  ]
+  expect(actual).toEqual(expectedAlerts)
+})
+
+function k8sResource(): Resource {
   return {
     Name: "snack",
     CombinedLog: "",
@@ -241,6 +377,56 @@ function emptyResource(): Resource {
     RuntimeStatus: "",
     TriggerMode: TriggerMode.TriggerModeAuto,
     HasPendingChanges: true,
+    Alerts: [],
+  }
+}
+
+function dcResource(): Resource {
+  return {
+    Name: "vigoda",
+    DirectoriesWatched: [],
+    PathsWatched: ["Tiltfile.dc"],
+    LastDeployTime: "2019-08-07T11:43:37.568629-04:00",
+    TriggerMode: 0,
+    BuildHistory: [
+      {
+        Edits: null,
+        Error: null,
+        Warnings: null,
+        StartTime: "2019-08-07T11:43:32.422237-04:00",
+        FinishTime: "2019-08-07T11:43:37.568626-04:00",
+        Reason: 8,
+        Log: "",
+        IsCrashRebuild: false,
+      },
+    ],
+    CurrentBuild: {
+      Edits: null,
+      Error: null,
+      Warnings: null,
+      StartTime: "0001-01-01T00:00:00Z",
+      FinishTime: "0001-01-01T00:00:00Z",
+      Reason: 0,
+      Log: "",
+      IsCrashRebuild: false,
+    },
+    PendingBuildReason: 0,
+    PendingBuildEdits: [],
+    PendingBuildSince: "0001-01-01T00:00:00Z",
+    HasPendingChanges: false,
+    Endpoints: ["http://localhost:9007/"],
+    PodID: "",
+    ResourceInfo: {
+      ConfigPaths: [""],
+      ContainerStatus: "OK",
+      ContainerID: "",
+      Log: "",
+      StartTime: "2019-08-07T11:43:36.900841-04:00",
+    },
+    RuntimeStatus: "ok",
+    IsTiltfile: false,
+    CombinedLog: "",
+    CrashLog: "",
     Alerts: [],
   }
 }

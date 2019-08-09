@@ -9,6 +9,7 @@ import {
   oneResourceNoAlerts,
 } from "./testdata.test"
 import { createMemoryHistory } from "history"
+import { isK8sResourceInfo } from "./alerts"
 
 const fakeHistory = createMemoryHistory()
 const emptyHUD = () => {
@@ -78,7 +79,10 @@ it("doesn't re-render the sidebar when the logs change", async () => {
   let resourceView = oneResourceView()
   hud.setState({ View: resourceView })
   let oldDOMNode = root.find(".Sidebar").getDOMNode()
-  resourceView.Resources[0].ResourceInfo.PodLog += "hello world\n"
+  let resource = resourceView.Resources[0]
+  if (isK8sResourceInfo(resource.ResourceInfo)) {
+    resource.ResourceInfo.PodLog += "hello world\n"
+  }
   hud.setState({ View: resourceView })
   let newDOMNode = root.find(".Sidebar").getDOMNode()
 
@@ -139,7 +143,10 @@ it("renders two errors for a resource that has pod restarts and a build failure"
   const hud = root.find(HUD)
 
   let resourceView = oneResourceView()
-  resourceView.Resources[0].ResourceInfo.PodRestarts = 1
+  let resource = resourceView.Resources[0]
+  if (isK8sResourceInfo(resource.ResourceInfo)) {
+    resource.ResourceInfo.PodRestarts = 1
+  }
   hud.setState({ View: resourceView })
   let errorTab = root.find(".tabLink--errors")
   expect(errorTab.at(0).text()).toEqual("Alerts2")
@@ -150,7 +157,10 @@ it("renders two errors for a resource that has pod restarts, a build failure and
   const hud = root.find(HUD)
 
   let resourceView = oneResourceView()
-  resourceView.Resources[0].ResourceInfo.PodRestarts = 1
+  let resource = resourceView.Resources[0]
+  if (isK8sResourceInfo(resource.ResourceInfo)) {
+    resource.ResourceInfo.PodRestarts = 1
+  }
   resourceView.Resources[0].RuntimeStatus = "CrashLoopBackOff"
   hud.setState({ View: resourceView })
   let errorTab = root.find(".tabLink--errors")
