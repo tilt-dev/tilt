@@ -79,7 +79,7 @@ export type ResourceInfo = {
   Endpoints: Array<string>
 }
 
-export type State = {
+export type Snapshot = {
   Message: string
   View: {
     Resources: Array<Resource>
@@ -93,4 +93,5 @@ export type State = {
     FeatureFlags: { [featureFlag: string]: boolean }
   } | null
   IsSidebarClosed: boolean
+  AlertLinks: { [key: string]: string }
 }

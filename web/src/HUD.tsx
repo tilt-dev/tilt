@@ -14,7 +14,7 @@ import { History, UnregisterCallback } from "history"
 import { incr, pathToTag } from "./analytics"
 import TopBar from "./TopBar"
 import "./HUD.scss"
-import { TiltBuild, ResourceView, Resource } from "./types"
+import {TiltBuild, ResourceView, Resource, Snapshot} from "./types"
 import AlertPane from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
@@ -166,6 +166,13 @@ class HUD extends Component<HudProps, HudState> {
       .then(err => console.error(err))
   }
 
+  sendSnapshot(snapshot: Snapshot) {
+    if (snapshot == null){
+      console.log("snapshot is null :(")
+    }
+    console.log(snapshot.View)
+  }
+
   render() {
     let view = this.state.View
     let sailEnabled = view && view.SailEnabled ? view.SailEnabled : false
@@ -201,6 +208,7 @@ class HUD extends Component<HudProps, HudState> {
       )
     }
 
+
     let topBarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name =
         props.match.params && props.match.params.name
@@ -219,6 +227,8 @@ class HUD extends Component<HudProps, HudState> {
               sailEnabled={sailEnabled}
               sailUrl={sailUrl}
               numberOfAlerts={numAlerts}
+              state={this.state}
+              handleSendSnapshot={this.sendSnapshot.bind(this.state)}
             />
           )
         }
@@ -239,6 +249,8 @@ class HUD extends Component<HudProps, HudState> {
           sailEnabled={sailEnabled}
           sailUrl={sailUrl}
           numberOfAlerts={numAlerts}
+          state={this.state}
+          handleSendSnapshot={this.sendSnapshot.bind(this.state)}
         />
       )
     }

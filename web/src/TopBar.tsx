@@ -1,5 +1,5 @@
 import React, { PureComponent } from "react"
-import {ResourceView, State} from "./types"
+import {ResourceView, Snapshot} from "./types"
 import "./TopBar.scss"
 import SailInfo from "./SailInfo"
 import TabNav from "./TabNav"
@@ -13,6 +13,9 @@ type TopBarProps = {
   sailEnabled: boolean
   sailUrl: string
   numberOfAlerts: number
+  state: Snapshot
+    handleSendSnapshot: (snapshot: Snapshot) => void
+
 }
 
 class TopBar extends PureComponent<TopBarProps> {
@@ -27,10 +30,10 @@ class TopBar extends PureComponent<TopBarProps> {
           numberOfAlerts={this.props.numberOfAlerts}
         />
           <div className="TopBar-headerDiv-snapshotURL">
-              {renderSnapshotLinkButton()}
+              {renderSnapshotLinkButton(this.props.state, this.props.handleSendSnapshot)}
           </div>
         <span className="TopBar-spacer">&nbsp;</span>
-        <SailInfo
+          <SailInfo
           sailEnabled={this.props.sailEnabled}
           sailUrl={this.props.sailUrl}
         />
@@ -40,8 +43,9 @@ class TopBar extends PureComponent<TopBarProps> {
   }
 }
 
-function renderSnapshotLinkButton() { //TODO TFT
-    return <button>Get Link</button>
+function renderSnapshotLinkButton(snapshot:Snapshot,handleSendSnapshot: (snapshot: Snapshot) => void ){ //TODO TFT
+    return <button onClick={() => handleSendSnapshot(snapshot)}>Get Link</button>
+
 }
 
 export default TopBar
