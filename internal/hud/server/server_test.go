@@ -3,7 +3,6 @@ package server_test
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -402,7 +401,7 @@ func TestHandleNewAlert(t *testing.T) {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusBadRequest)
 	}
-	assert.Contains(t, rr.Body.String(), "https://alerts.tilt.dev/alert/aaaaaa")
+	assert.Contains(t, rr.Body.String(), "https://alerts.tilt.dev/alert/aaaaaa") // TODO(Han): Use constant
 }
 
 func TestHandleNewSnapshot(t *testing.T) {
@@ -413,23 +412,23 @@ func TestHandleNewSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req, err := http.NewRequest(http.MethodPost, "/api/alerts/new", bytes.NewBuffer(snap))
+	req, err := http.NewRequest(http.MethodPost, "/api/snapshot/new", bytes.NewBuffer(snap))
 	if err != nil {
 		t.Fatal(err)
 	}
-	req.Header.Set("Content-Type", "application/json")
-	fmt.Print(snap)
+
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleNewAlert)
+	handler := http.HandlerFunc(f.serv.HandleNewSnapshot)
 
 	handler.ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
+			status, http.StatusInternalServerError)
 	}
 	assert.Contains(t, rr.Body.String(), "https://alerts.tilt.dev/alert/aaaaaa")
 }
+
 
 type serverFixture struct {
 	t          *testing.T
@@ -448,7 +447,8 @@ func newTestFixture(t *testing.T) *serverFixture {
 	a, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
 	sailCli := client.NewFakeSailClient()
 	tftClient := tft.ProvideFakeClient()
-	serv := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, sailCli, tftClient)
+	httpClient := fakeHttpClient{}
+	serv := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, sailCli, tftClient, httpClient)
 
 	return &serverFixture{
 		t:          t,
@@ -459,6 +459,13 @@ func newTestFixture(t *testing.T) *serverFixture {
 		st:         st,
 		getActions: getActions,
 	}
+}
+
+type fakeHttpClient struct {}
+
+func (f fakeHttpClient) Do(req *http.Request) (*http.Response, error) {
+	return nil, nil
+	//w.WriteHeader(http.StatusOK)
 }
 
 func (f *serverFixture) assertIncrement(name string, count int) {
