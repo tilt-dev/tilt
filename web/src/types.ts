@@ -85,27 +85,3 @@ export type DCResourceInfo = {
   Log: string
   StartTime: string
 }
-
-// interface ResourceInfo  {}
-//
-// interface K8sResourceInfo extends ResourceInfo {
-//   PodName: string
-//   PodCreationTime: string
-//   PodUpdateStartTime: string
-//   PodStatus: string
-//   PodStatusMessage: string
-//   PodRestarts: number
-//   PodLog: string
-//   YAML: string
-//   Endpoints: Array<string>
-// }
-//
-//
-//
-// interface DCResourceInfo extends ResourceInfo {
-//   ConfigPaths: Array<string>
-//   ContainerStatus: string
-//   ContainerID: string
-//   Log: string
-//   StartTime: string
-// }
