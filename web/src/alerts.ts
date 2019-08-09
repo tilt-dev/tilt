@@ -50,7 +50,7 @@ function buildFailed(resource: Resource) {
   )
 }
 
-function isK8sResource(
+function isK8sResourceInfo(
   resourceInfo: K8sResourceInfo | DCResourceInfo
 ): resourceInfo is K8sResourceInfo {
   return (<K8sResourceInfo>resourceInfo).PodRestarts !== undefined
@@ -61,7 +61,7 @@ function isK8sResource(
 function getResourceAlerts(r: Resource): Array<Alert> {
   let result: Array<Alert> = []
 
-  if (isK8sResource(r.ResourceInfo)) {
+  if (isK8sResourceInfo(r.ResourceInfo)) {
     // K8s alerts
     if (podStatusHasError(r)) {
       result.push(podStatusIsErrAlert(r))
@@ -176,4 +176,5 @@ export {
   podRestartAlert,
   hasAlert,
   alertKey,
+  isK8sResourceInfo,
 }

@@ -19,7 +19,7 @@ import AlertPane from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
 import NotFound from "./NotFound"
-import { numberOfAlerts, Alert, alertKey } from "./alerts"
+import {numberOfAlerts, Alert, alertKey, isK8sResourceInfo} from "./alerts"
 import Features from "./feature"
 
 type HudProps = {
@@ -261,7 +261,7 @@ class HUD extends Component<HudProps, HudState> {
         logs = (r && r.CombinedLog) || ""
         endpoints = (r && r.Endpoints) || []
         podID = (r && r.PodID) || ""
-        if (r.ResourceInfo.type !== "DCResourceInfo") {
+        if (isK8sResourceInfo(r.ResourceInfo)) {
           podStatus = (r && r.ResourceInfo && r.ResourceInfo.PodStatus) || ""
         }
       }
