@@ -635,6 +635,8 @@ func (s *tiltfileState) assembleK8sUnresourced() error {
 }
 
 func (s *tiltfileState) validateK8s(r *k8sResource) error {
+	// a. r.imageRefMap should be image -> count
+	// ~~ look at r.imageRefMap, log stat for any count > 1 if liveupd
 	if len(r.entities) == 0 {
 		if len(r.refSelectors) > 0 {
 			return fmt.Errorf("resource %q: could not find k8s entities matching "+

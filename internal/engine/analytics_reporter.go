@@ -85,6 +85,9 @@ func (ar *AnalyticsReporter) report() {
 	if st.LastTiltfileError() != nil {
 		tiltfileIsInError = "true"
 	} else {
+		// ~~ report image targets per resource?
+		// ~~ report # resources with 2+ live updates
+
 		// only report when there's no tiltfile error, to avoid polluting aggregations
 		stats["resource.count"] = strconv.Itoa(len(st.ManifestDefinitionOrder))
 		stats["resource.dockercompose.count"] = strconv.Itoa(dcCount)

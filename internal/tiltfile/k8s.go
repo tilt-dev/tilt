@@ -67,7 +67,8 @@ func (r *k8sResource) addRefSelector(selector container.RefSelector) {
 	r.refSelectors = append(r.refSelectors, selector)
 }
 
-func (r *k8sResource) addEntities(entities []k8s.K8sEntity, imageJSONPaths func(e k8s.K8sEntity) []k8s.JSONPath, envVarImages []container.RefSelector) error {
+func (r *k8sResource) addEntities(entities []k8s.K8sEntity,
+	imageJSONPaths func(e k8s.K8sEntity) []k8s.JSONPath, envVarImages []container.RefSelector) error {
 	r.entities = append(r.entities, entities...)
 
 	for _, entity := range entities {
@@ -76,6 +77,7 @@ func (r *k8sResource) addEntities(entities []k8s.K8sEntity, imageJSONPaths func(
 			return err
 		}
 		for _, image := range images {
+			// ~ if image already in here, wanna record a stat about same-img-multi-c
 			if !r.imageRefMap[image.String()] {
 				r.imageRefMap[image.String()] = true
 				r.imageRefs = append(r.imageRefs, image)
