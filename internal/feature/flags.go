@@ -35,7 +35,7 @@ type Defaults map[string]Value
 // MainDefaults is the defaults we use in Main
 var MainDefaults = Defaults{
 	MultipleContainersPerPod: Value{
-		Enabled: false,
+		Enabled: true,
 		Status:  Active,
 	},
 	Events: Value{
