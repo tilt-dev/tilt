@@ -3419,7 +3419,7 @@ func TestDockerbuildOnly(t *testing.T) {
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
 	f.file("Tiltfile", `
-docker_build('gcr.io/foo', '.', only="myservice/**")
+docker_build('gcr.io/foo', '.', only="myservice")
 k8s_yaml('foo.yaml')
 `)
 
@@ -3439,7 +3439,7 @@ func TestDockerbuildOnlyAsArray(t *testing.T) {
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
 	f.file("Tiltfile", `
-docker_build('gcr.io/foo', '.', only=["common/**", "myservice/**"])
+docker_build('gcr.io/foo', '.', only=["common", "myservice"])
 k8s_yaml('foo.yaml')
 `)
 
@@ -3470,6 +3470,22 @@ k8s_yaml('foo.yaml')
 	f.loadErrString("only must be a string or a sequence of strings; found a starlark.Int")
 }
 
+func TestDockerbuildInvalidOnlyGlob(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+docker_build('fooimage', 'foo', only=["**/common"])
+k8s_yaml('foo.yaml')
+`)
+
+	f.loadErrString("'only' does not support '*' file globs")
+}
+
 func TestDockerbuildOnlyAndIgnore(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -3477,7 +3493,7 @@ func TestDockerbuildOnlyAndIgnore(t *testing.T) {
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
 	f.file("Tiltfile", `
-docker_build('gcr.io/foo', '.', ignore="**/*.md", only=["common/**", "myservice/**"])
+docker_build('gcr.io/foo', '.', ignore="**/*.md", only=["common", "myservice"])
 k8s_yaml('foo.yaml')
 `)
 
@@ -3522,7 +3538,7 @@ func TestDockerbuildOnlyHasException(t *testing.T) {
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
 	f.file("Tiltfile", `
-docker_build('gcr.io/foo', '.', only="!myservice/**")
+docker_build('gcr.io/foo', '.', only="!myservice")
 k8s_yaml('foo.yaml')
 `)
 
