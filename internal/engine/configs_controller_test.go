@@ -33,7 +33,6 @@ func TestConfigsController(t *testing.T) {
 
 	expected := ConfigsReloadedAction{
 		Manifests:  []model.Manifest{{Name: "bar"}},
-		StartTime:  f.fc.Times[0],
 		FinishTime: f.fc.Times[1],
 	}
 

@@ -93,18 +93,12 @@ func NewBuildCompleteAction(result store.BuildResultSet, err error) BuildComplet
 
 type InitAction struct {
 	WatchFiles    bool
-	Manifests     []model.Manifest
 	TiltfilePath  string
 	ConfigFiles   []string
 	InitManifests []model.ManifestName
 
-	TiltBuild  model.TiltBuild
-	StartTime  time.Time
-	FinishTime time.Time
-	Err        error
-	Warnings   []string
-
-	ExecuteTiltfile bool
+	TiltBuild model.TiltBuild
+	StartTime time.Time
 
 	EnableSail bool
 
@@ -152,7 +146,6 @@ type ConfigsReloadedAction struct {
 	TiltIgnoreContents string
 	ConfigFiles        []string
 
-	StartTime  time.Time
 	FinishTime time.Time
 	Err        error
 	Warnings   []string
