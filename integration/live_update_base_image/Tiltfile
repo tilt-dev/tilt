@@ -1,8 +1,5 @@
 
-# HACK: load namespaces on `tilt up` but not on `tilt down`
-load_namespace = not str(local('echo $SKIP_NAMESPACE')).strip()
-if load_namespace:
-  k8s_yaml('../namespace.yaml')
+include('../Tiltfile')
 
 repo = 'gcr.io/windmill-test-containers'
 docker_build(repo + '/live-update-base-image-common', 'common')
