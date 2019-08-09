@@ -9,7 +9,7 @@ import (
 
 	digest "github.com/opencontainers/go-digest"
 
-	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/pkg/logger"
 )
 
 type buildkitPrinter struct {

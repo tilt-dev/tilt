@@ -8,10 +8,10 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 
 	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/options"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
+	"github.com/windmilleng/tilt/pkg/logger"
 
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/pkg/logger"
 )
 
 // wraps a kubectlRunner with logging

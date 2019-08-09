@@ -18,8 +18,8 @@ import (
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/minikube"
+	"github.com/windmilleng/tilt/pkg/logger"
 )
 
 var DeployerBaseWireSet = wire.NewSet(

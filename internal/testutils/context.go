@@ -8,7 +8,7 @@ import (
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/pkg/logger"
 )
 
 // CtxAndAnalyticsForTest returns a context.Context suitable for use in tests (i.e. with

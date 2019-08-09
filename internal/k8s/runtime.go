@@ -10,7 +10,7 @@ import (
 	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
 	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/pkg/logger"
 )
 
 type runtimeAsync struct {

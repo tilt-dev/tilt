@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/pkg/logger"
 
 	"github.com/gdamore/tcell"
 	"github.com/pkg/browser"

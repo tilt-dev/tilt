@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/pkg/logger"
 )
 
 type PipelineState struct {

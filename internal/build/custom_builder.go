@@ -10,7 +10,7 @@ import (
 	"github.com/opencontainers/go-digest"
 
 	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/pkg/logger"
 )
 
 type CustomBuilder interface {
