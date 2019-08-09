@@ -471,12 +471,10 @@ function dcResource(): Resource {
     Endpoints: ["http://localhost:9007/"],
     PodID: "",
     ResourceInfo: {
-      ConfigPaths: [
-        "",
-      ],
+      ConfigPaths: [""],
       ContainerStatus: "OK",
       ContainerID: "",
-      Log:"",
+      Log: "",
       StartTime: "2019-08-07T11:43:36.900841-04:00",
     },
     RuntimeStatus: "ok",
