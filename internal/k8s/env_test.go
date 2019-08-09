@@ -1,8 +1,12 @@
 package k8s
 
 import (
+	"context"
+	"path/filepath"
 	"testing"
 
+	"github.com/mitchellh/go-homedir"
+	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/tools/clientcmd/api"
 )
 
@@ -16,7 +20,7 @@ type expectedConfig struct {
 	input    *api.Config
 }
 
-func TestEnvFromConfig(t *testing.T) {
+func TestProvideEnv(t *testing.T) {
 	minikubeContexts := map[string]*api.Context{
 		"minikube": &api.Context{
 			Cluster: "minikube",
@@ -47,6 +51,15 @@ func TestEnvFromConfig(t *testing.T) {
 			Cluster: "microk8s-cluster",
 		},
 	}
+
+	homedir, err := homedir.Dir()
+	assert.NoError(t, err)
+	k3dContexts := map[string]*api.Context{
+		"default": &api.Context{
+			LocationOfOrigin: filepath.Join(homedir, ".config", "k3d", "k3s-default", "kubeconfig.yaml"),
+			Cluster:          "default",
+		},
+	}
 	table := []expectedConfig{
 		{EnvUnknown, &api.Config{CurrentContext: "aws"}},
 		{EnvMinikube, &api.Config{CurrentContext: "minikube", Contexts: minikubeContexts}},
@@ -55,11 +68,12 @@ func TestEnvFromConfig(t *testing.T) {
 		{EnvGKE, &api.Config{CurrentContext: "gke_blorg-dev_us-central1-b_blorg", Contexts: gkeContexts}},
 		{EnvKIND, &api.Config{CurrentContext: "kubernetes-admin@kind-1", Contexts: kindContexts}},
 		{EnvMicroK8s, &api.Config{CurrentContext: "microk8s", Contexts: microK8sContexts}},
+		{EnvK3D, &api.Config{CurrentContext: "default", Contexts: k3dContexts}},
 	}
 
 	for _, tt := range table {
 		t.Run(tt.input.CurrentContext, func(t *testing.T) {
-			actual := EnvFromConfig(tt.input)
+			actual := ProvideEnv(context.Background(), tt.input)
 			if actual != tt.expected {
 				t.Errorf("Expected %s, actual %s", tt.expected, actual)
 			}

@@ -901,6 +901,14 @@
   revision = "df0db7a16a9e283fd5b61572edbf5baf73c4bcd7"
 
 [[projects]]
+  digest = "1:5d231480e1c64a726869bc4142d270184c419749d34f167646baa21008eb0a79"
+  name = "github.com/mitchellh/go-homedir"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "af06845cf3004701891bf4fdb884bfe4920b3727"
+  version = "v1.1.0"
+
+[[projects]]
   digest = "1:abf08734a6527df70ed361d7c369fb580e6840d8f7a6012e5f609fdfd93b4e48"
   name = "github.com/mitchellh/go-wordwrap"
   packages = ["."]
@@ -2030,6 +2038,7 @@
     "github.com/json-iterator/go",
     "github.com/lightstep/lightstep-tracer-go",
     "github.com/mattn/go-isatty",
+    "github.com/mitchellh/go-homedir",
     "github.com/moby/buildkit/api/services/control",
     "github.com/moby/buildkit/frontend/dockerfile/command",
     "github.com/moby/buildkit/frontend/dockerfile/instructions",

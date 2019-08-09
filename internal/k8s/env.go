@@ -1,11 +1,17 @@
 package k8s
 
 import (
+	"context"
+	"path/filepath"
 	"strings"
 
+	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
+
+	"github.com/windmilleng/tilt/internal/ospath"
+	"github.com/windmilleng/tilt/pkg/logger"
 )
 
 type Env string
@@ -17,6 +23,7 @@ const (
 	EnvDockerDesktop Env = "docker-for-desktop"
 	EnvMicroK8s      Env = "microk8s"
 	EnvKIND          Env = "kind"
+	EnvK3D           Env = "k3d"
 	EnvNone          Env = "none" // k8s not running (not neces. a problem, e.g. if using Tilt x Docker Compose)
 )
 
@@ -25,11 +32,7 @@ func (e Env) UsesLocalDockerRegistry() bool {
 }
 
 func (e Env) IsLocalCluster() bool {
-	return e == EnvMinikube || e == EnvDockerDesktop || e == EnvMicroK8s || e == EnvKIND
-}
-
-func ProvideEnv(kubeConfig *api.Config) Env {
-	return EnvFromConfig(kubeConfig)
+	return e == EnvMinikube || e == EnvDockerDesktop || e == EnvMicroK8s || e == EnvKIND || e == EnvK3D
 }
 
 func ProvideKubeContext(config *api.Config) (KubeContext, error) {
@@ -46,7 +49,7 @@ func ProvideKubeConfig(clientLoader clientcmd.ClientConfig) (*api.Config, error)
 	return config, nil
 }
 
-func EnvFromConfig(config *api.Config) Env {
+func ProvideEnv(ctx context.Context, config *api.Config) Env {
 	n := config.CurrentContext
 
 	c, ok := config.Contexts[n]
@@ -67,6 +70,18 @@ func EnvFromConfig(config *api.Config) Env {
 		return EnvKIND
 	} else if cn == "microk8s-cluster" {
 		return EnvMicroK8s
+	}
+
+	loc := c.LocationOfOrigin
+	homedir, err := homedir.Dir()
+	if err != nil {
+		logger.Get(ctx).Infof("Error loading homedir: %v", err)
+		return EnvUnknown
+	}
+
+	k3dDir := filepath.Join(homedir, ".config", "k3d")
+	if ospath.IsChild(k3dDir, loc) {
+		return EnvK3D
 	}
 
 	return EnvUnknown
