@@ -21,6 +21,7 @@ const (
 const MultipleContainersPerPod = "multiple_containers_per_pod"
 const Events = "events"
 const TeamAlerts = "team_alerts"
+const Snapshots = "snapshots"
 
 // The Value a flag can have. Status should never be changed.
 type Value struct {
@@ -43,6 +44,10 @@ var MainDefaults = Defaults{
 		Status:  Active,
 	},
 	TeamAlerts: Value{
+		Enabled: false,
+		Status:  Active,
+	},
+	Snapshots: Value{
 		Enabled: false,
 		Status:  Active,
 	},
