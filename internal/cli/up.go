@@ -11,6 +11,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
+	"k8s.io/klog"
 
 	"github.com/windmilleng/tilt/internal/engine"
 
@@ -159,6 +160,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 func redirectLogs(ctx context.Context, l logger.Logger) context.Context {
 	ctx = logger.WithLogger(ctx, l)
 	log.SetOutput(l.Writer(logger.InfoLvl))
+	klog.SetOutput(l.Writer(logger.InfoLvl))
 	return ctx
 }
 
