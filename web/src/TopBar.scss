@@ -21,3 +21,19 @@
   flex-grow: 1;
   height: 0;
 }
+.TopBar-headerDiv-snapshotURL {
+  flex: 1;
+  display: flex;
+  margin-left: $spacing-unit * 15;
+  justify-content: flex-end;
+}
+.TopBar-headerDiv-snapshotURL button {
+  background-color: transparent;
+  border: 1px solid rgba($color-white, $translucent-ish);
+  color: $color-white;
+  text-transform: uppercase;
+}
+
+.AlertPane-headerDiv-snapshotURL button:hover {
+  background-color: $color-gray-dark;
+}
