@@ -64,7 +64,9 @@ func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analyti
 	r.HandleFunc("/api/sail", s.HandleSail)
 	r.HandleFunc("/api/trigger", s.HandleTrigger)
 	r.HandleFunc("/api/alerts/new", s.HandleNewAlert)
+	r.HandleFunc("/api/snapshot/new", s.HandleNewSnapShot)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
+
 	r.PathPrefix("/").Handler(assetServer)
 
 	return s
@@ -211,6 +213,41 @@ type NewAlertResponse struct {
 }
 
 func (s *HeadsUpServer) HandleNewAlert(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		http.Error(w, "must be POST request", http.StatusBadRequest)
+		return
+	}
+
+	decoder := json.NewDecoder(req.Body)
+	var alert tsAlert
+	err := decoder.Decode(&alert)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error decoding request: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	ctx := context.TODO()
+	ctx, cancel := context.WithTimeout(context.Background(), httpTimeOut)
+	defer cancel()
+	id, err := s.tftCli.SendAlert(ctx, tsAlertToBackendAlert(alert))
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error talking to backend: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	responsePayload := &NewAlertResponse{
+		Url: templateAlertURL(id),
+	}
+	js, err := json.Marshal(responsePayload)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("unable to marshal JSON (%+v) response: %v", responsePayload, err), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write(js)
+}
+
+func (s *HeadsUpServer) HandleNewSnapShot(w http.ResponseWriter, req *http.Request) { //TODO: TFT
 	if req.Method != http.MethodPost {
 		http.Error(w, "must be POST request", http.StatusBadRequest)
 		return
