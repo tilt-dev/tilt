@@ -12,11 +12,11 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/options"
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/synclet/proto"
 	"github.com/windmilleng/tilt/internal/tracer"
+	"github.com/windmilleng/tilt/pkg/logger"
 )
 
 type SyncletCmd struct {

@@ -15,7 +15,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/pkg/logger"
 )
 
 var debug bool

@@ -6,8 +6,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/pkg/logger"
 )
 
 type DockerComposeEventWatcher struct {
