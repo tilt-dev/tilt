@@ -26,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/containerupdate"
@@ -51,6 +50,7 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
+	"github.com/windmilleng/tilt/pkg/assets"
 )
 
 var originalWD string
@@ -1346,6 +1346,39 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
+func TestPodEventDeleted(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	mn := model.ManifestName("foobar")
+	manifest := f.newManifest(mn.String())
+	f.Start([]model.Manifest{manifest}, true)
+
+	call := f.nextCallComplete()
+	assert.True(t, call.oneState().IsEmpty())
+
+	creationTime := time.Now()
+	pod := f.testPod("my-pod", manifest, "Running", creationTime)
+	f.podEvent(pod)
+
+	f.WaitUntilManifestState("pod crashes", mn, func(state store.ManifestState) bool {
+		return state.PodSet.ContainsID("my-pod")
+	})
+
+	pod.DeletionTimestamp = &metav1.Time{Time: pod.CreationTimestamp.Add(time.Minute)}
+	f.podEvent(pod)
+
+	f.WaitUntilManifestState("podset is empty", mn, func(state store.ManifestState) bool {
+		return state.PodSet.Len() == 0
+	})
+
+	err := f.Stop()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.assertAllBuildsConsumed()
+}
+
 func TestPodEventUpdateByPodName(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -2301,12 +2334,12 @@ func TestEmptyTiltfile(t *testing.T) {
 	f.WriteFile("Tiltfile", "")
 	go f.upper.Start(f.ctx, []string{}, model.TiltBuild{}, false, f.JoinPath("Tiltfile"), true, model.SailModeDisabled, analytics.OptIn)
 	f.WaitUntil("build is set", func(st store.EngineState) bool {
-		return !st.LastTiltfileBuild.Empty()
+		return !st.TiltfileState.LastBuild().Empty()
 	})
 	f.withState(func(st store.EngineState) {
-		assert.Contains(t, st.LastTiltfileBuild.Error.Error(), "No resources found. Check out ")
-		assertContainsOnce(t, st.TiltfileCombinedLog.String(), "No resources found. Check out ")
-		assertContainsOnce(t, st.LastTiltfileBuild.Log.String(), "No resources found. Check out ")
+		assert.Contains(t, st.TiltfileState.LastBuild().Error.Error(), "No resources found. Check out ")
+		assertContainsOnce(t, st.TiltfileState.CombinedLog.String(), "No resources found. Check out ")
+		assertContainsOnce(t, st.TiltfileState.LastBuild().Log.String(), "No resources found. Check out ")
 	})
 }
 
@@ -2627,9 +2660,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	dockerClient := docker.NewFakeClient()
 	reaper := build.NewImageReaper(dockerClient)
 
-	k8s := k8s.NewFakeK8sClient()
-	pw := NewPodWatcher(k8s)
-	sw := NewServiceWatcher(k8s, "")
+	kCli := k8s.NewFakeK8sClient()
+	pw := NewPodWatcher(kCli)
+	sw := NewServiceWatcher(kCli, "")
 
 	fakeHud := hud.NewFakeHud()
 
@@ -2637,7 +2670,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	st := store.NewStore(UpperReducer, store.LogActionsFlag(false))
 	st.AddSubscriber(ctx, fSub)
 
-	plm := NewPodLogManager(k8s)
+	plm := NewPodLogManager(kCli)
 	bc := NewBuildController(b)
 
 	err := os.Mkdir(f.JoinPath(".git"), os.FileMode(0777))
@@ -2646,14 +2679,14 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 
 	fwm := NewWatchManager(watcher.newSub, timerMaker.maker())
-	pfc := NewPortForwardController(k8s)
+	pfc := NewPortForwardController(kCli)
 	ic := NewImageController(reaper)
 	tas := NewTiltAnalyticsSubscriber(ta)
 	ar := ProvideAnalyticsReporter(ta, st)
 
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 
-	tfl := tiltfile.ProvideTiltfileLoader(ta, k8s, fakeDcc, "fake-context", feature.MainDefaults)
+	tfl := tiltfile.ProvideTiltfileLoader(ta, kCli, fakeDcc, "fake-context", k8s.EnvDockerDesktop, feature.MainDefaults)
 	cc := NewConfigsController(tfl, dockerClient)
 	dcw := NewDockerComposeEventWatcher(fakeDcc)
 	dclm := NewDockerComposeLogManager(fakeDcc)
@@ -2661,11 +2694,11 @@ func newTestFixture(t *testing.T) *testFixture {
 	sCli := synclet.NewTestSyncletClient(dockerClient)
 	sGRPCCli, err := synclet.FakeGRPCWrapper(ctx, sCli)
 	assert.NoError(t, err)
-	sm := containerupdate.NewSyncletManagerForTests(k8s, sGRPCCli, sCli)
+	sm := containerupdate.NewSyncletManagerForTests(kCli, sGRPCCli, sCli)
 	hudsc := server.ProvideHeadsUpServerController(0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{}, false)
 	ghc := &github.FakeClient{}
 	sc := &client.FakeSailClient{}
-	ewm := NewEventWatchManager(k8s, clockwork.NewRealClock())
+	ewm := NewEventWatchManager(kCli, clockwork.NewRealClock())
 
 	ret := &testFixture{
 		TempDirFixture:        f,
@@ -2675,7 +2708,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		fsWatcher:             watcher,
 		timerMaker:            &timerMaker,
 		docker:                dockerClient,
-		kClient:               k8s,
+		kClient:               kCli,
 		hud:                   fakeHud,
 		log:                   log,
 		store:                 st,

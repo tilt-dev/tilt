@@ -10,17 +10,13 @@ import (
 	"strings"
 	"testing"
 
-	appsv1 "k8s.io/api/apps/v1"
-
-	"github.com/windmilleng/tilt/internal/testutils"
-
-	"github.com/windmilleng/tilt/internal/sliceutils"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/wmclient/pkg/analytics"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -30,6 +26,8 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
+	"github.com/windmilleng/tilt/internal/sliceutils"
+	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/tiltfile/testdata"
 	"github.com/windmilleng/tilt/internal/yaml"
@@ -936,7 +934,7 @@ docker_build('gcr.io/bar', 'bar')
 k8s_yaml('bar.yaml')
 `)
 
-	_, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"))
+	_, err := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"))
 	if assert.Error(t, err) {
 		assert.Equal(t, `You specified some resources that could not be found: "baz"
 Is this a typo? Existing resources in Tiltfile: "foo", "bar"`, err.Error())
@@ -3744,32 +3742,72 @@ set_team('jets')
 	f.loadErrString("team_name set multiple times", "'sharks'", "'jets'")
 }
 
+func TestK8SContextAcceptance(t *testing.T) {
+	for _, test := range []struct {
+		name                    string
+		contextName             k8s.KubeContext
+		env                     k8s.Env
+		expectError             bool
+		expectedErrorSubstrings []string
+	}{
+		{"minikube", "minikube", k8s.EnvMinikube, false, nil},
+		{"docker-for-desktop", "docker-for-desktop", k8s.EnvDockerDesktop, false, nil},
+		{"kind", "KIND", k8s.EnvKIND, false, nil},
+		{"gke", "gke", k8s.EnvGKE, true, []string{"'gke'", "If you're sure", "switch k8s contexts", "allow_k8s_contexts"}},
+		{"allowed", "allowed-context", k8s.EnvGKE, false, nil},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+
+			f.file("Tiltfile", `
+k8s_yaml("foo.yaml")
+allow_k8s_contexts("allowed-context")
+`)
+			f.setupFoo()
+
+			f.k8sContext = test.contextName
+			f.k8sEnv = test.env
+			if !test.expectError {
+				f.load()
+			} else {
+				f.loadErrString(test.expectedErrorSubstrings...)
+			}
+		})
+	}
+}
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer
 	t   *testing.T
 	*tempdir.TempDirFixture
-	kCli *k8s.FakeK8sClient
+	kCli       *k8s.FakeK8sClient
+	k8sContext k8s.KubeContext
+	k8sEnv     k8s.Env
 
-	tfl TiltfileLoader
-	an  *analytics.MemoryAnalytics
+	ta *tiltanalytics.TiltAnalytics
+	an *analytics.MemoryAnalytics
 
 	loadResult TiltfileLoadResult
 }
 
-func newFixture(t *testing.T) *fixture {
-	out := new(bytes.Buffer)
-	ctx, ma, ta := testutils.ForkedCtxAndAnalyticsForTest(out)
-	f := tempdir.NewTempDirFixture(t)
+func (f *fixture) newTiltfileLoader() TiltfileLoader {
 	dcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
-	kCli := k8s.NewFakeK8sClient()
 	features := feature.Defaults{
 		"testflag_disabled":              feature.Value{Enabled: false},
 		"testflag_enabled":               feature.Value{Enabled: true},
 		"obsoleteflag":                   feature.Value{Status: feature.Obsolete, Enabled: true},
 		feature.MultipleContainersPerPod: feature.Value{Enabled: false},
 	}
-	tfl := ProvideTiltfileLoader(ta, kCli, dcc, "fake-context", features)
+	return ProvideTiltfileLoader(f.ta, f.kCli, dcc, f.k8sContext, f.k8sEnv, features)
+}
+
+func newFixture(t *testing.T) *fixture {
+	out := new(bytes.Buffer)
+	ctx, ma, ta := testutils.ForkedCtxAndAnalyticsForTest(out)
+	f := tempdir.NewTempDirFixture(t)
+	kCli := k8s.NewFakeK8sClient()
 
 	r := &fixture{
 		ctx:            ctx,
@@ -3777,8 +3815,10 @@ func newFixture(t *testing.T) *fixture {
 		t:              t,
 		TempDirFixture: f,
 		an:             ma,
-		tfl:            tfl,
+		ta:             ta,
 		kCli:           kCli,
+		k8sContext:     "fake-context",
+		k8sEnv:         k8s.EnvDockerDesktop,
 	}
 	return r
 }
@@ -3895,7 +3935,7 @@ func (f *fixture) load(names ...string) {
 }
 
 func (f *fixture) loadResourceAssemblyV1(names ...string) {
-	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
+	tlr, err := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -3906,7 +3946,7 @@ func (f *fixture) loadResourceAssemblyV1(names ...string) {
 // Load the manifests, expecting warnings.
 // Warnings should be asserted later with assertWarnings
 func (f *fixture) loadAllowWarnings(names ...string) {
-	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
+	tlr, err := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -3931,7 +3971,7 @@ func (f *fixture) loadAssertWarnings(warnings ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	tlr, err := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), nil)
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}

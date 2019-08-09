@@ -40,9 +40,18 @@ func (t liveUpdateStateTree) createResultSet() store.BuildResultSet {
 	return resultSet
 }
 
-func createResultSet(trees []liveUpdateStateTree) store.BuildResultSet {
+func createResultSet(trees []liveUpdateStateTree, luInfos []liveUpdInfo) store.BuildResultSet {
+	liveUpdatedTargetIDs := make(map[model.TargetID]bool)
+	for _, info := range luInfos {
+		liveUpdatedTargetIDs[info.iTarget.ID()] = true
+	}
+
 	resultSet := store.BuildResultSet{}
 	for _, t := range trees {
+		if !liveUpdatedTargetIDs[t.iTarget.ID()] {
+			// We didn't actually do a LiveUpdate for this tree
+			continue
+		}
 		resultSet = store.MergeBuildResultsSet(resultSet, t.createResultSet())
 	}
 	return resultSet

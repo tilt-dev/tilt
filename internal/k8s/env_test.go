@@ -11,28 +11,6 @@ type expectedEnv struct {
 	string
 }
 
-func TestEnvFromString(t *testing.T) {
-	table := []expectedEnv{
-		{EnvMinikube, "minikube"},
-		{EnvDockerDesktop, "docker-for-desktop"},
-		{EnvDockerDesktop, "docker-desktop"},
-		{EnvGKE, "gke_blorg-dev_us-central1-b_blorg"},
-		{EnvMicroK8s, "microk8s"},
-		{EnvUnknown, "aws"},
-		{EnvKIND, "kubernetes-admin@kind"},
-		{EnvKIND, "kubernetes-admin@kind-1"},
-	}
-
-	for _, tt := range table {
-		t.Run(tt.string, func(t *testing.T) {
-			actual := EnvFromString(tt.string)
-			if actual != tt.expected {
-				t.Errorf("Expected %s, actual %s", tt.expected, actual)
-			}
-		})
-	}
-}
-
 type expectedConfig struct {
 	expected Env
 	input    *api.Config

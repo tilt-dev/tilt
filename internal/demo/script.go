@@ -148,7 +148,7 @@ func (m *podMonitor) waitUntilCond(ctx context.Context, f func() bool) error {
 }
 
 func (s Script) Run(ctx context.Context) error {
-	if !s.env.IsLocalCluster() {
+	if !s.env.UsesLocalDockerRegistry() {
 		_, _ = fmt.Fprintf(os.Stderr, "tilt demo mode only supports Docker For Mac, Minikube, and MicroK8s\n")
 		_, _ = fmt.Fprintf(os.Stderr, "check your current cluster with:\n")
 		_, _ = fmt.Fprintf(os.Stderr, "\nkubectl config get-contexts\n\n")

@@ -32,12 +32,12 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, pod *v
 	}
 
 	// Update the status
-	podInfo.Deleting = pod.DeletionTimestamp != nil
+	podInfo.Deleting = pod.DeletionTimestamp != nil && !pod.DeletionTimestamp.IsZero()
 	podInfo.Phase = pod.Status.Phase
 	podInfo.Status = podStatusToString(*pod)
 	podInfo.StatusMessages = podStatusErrorMessages(*pod)
 
-	defer prunePods(ms)
+	prunePods(ms)
 
 	oldRestartTotal := podInfo.AllContainerRestarts()
 	podInfo.Containers = podContainers(ctx, pod)
@@ -227,17 +227,17 @@ func checkForContainerCrash(ctx context.Context, state *store.EngineState, mt *s
 // If there's more than one pod, prune the deleting/dead ones so
 // that they don't clutter the output.
 func prunePods(ms *store.ManifestState) {
+	// Always remove pods that were manually deleted.
+	for key, pod := range ms.PodSet.Pods {
+		if pod.Deleting {
+			delete(ms.PodSet.Pods, key)
+		}
+	}
 	// Continue pruning until we have 1 pod.
 	for ms.PodSet.Len() > 1 {
 		bestPod := ms.MostRecentPod()
 
 		for key, pod := range ms.PodSet.Pods {
-			// Always remove pods that were manually deleted.
-			if pod.Deleting {
-				delete(ms.PodSet.Pods, key)
-				break
-			}
-
 			// Remove terminated pods if they aren't the most recent one.
 			isDead := pod.Phase == v1.PodSucceeded || pod.Phase == v1.PodFailed
 			if isDead && pod.PodID != bestPod.PodID {

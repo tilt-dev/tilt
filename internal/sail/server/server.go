@@ -11,8 +11,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 
-	"github.com/windmilleng/tilt/internal/assets"
 	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/assets"
 )
 
 var upgrader = websocket.Upgrader{

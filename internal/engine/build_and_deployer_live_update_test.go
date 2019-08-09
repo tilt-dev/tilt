@@ -35,6 +35,13 @@ type testCase struct {
 	changedFiles              []string                          // leave empty for from-scratch build
 	runningContainersByTarget map[model.TargetID][]container.ID // if empty, use default container
 
+	// expect that these targets (and only these targets) will be updated (i.e. will have build
+	// results, will have acted upon the associated containers). Must be used in conjunction with
+	// runningContainersByTarget. If blank, we check that all targets in runningContainersByTarget
+	// have been updated; if THAT is blank, we check that the last image target on the manifest
+	// has been updated
+	expectUpdatedTargets []model.TargetID
+
 	// Expect the BuildAndDeploy call to fail with an error containing this string
 	expectErrorContains string
 
@@ -65,6 +72,11 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 		t.Fatal("can't specify both empty changedFiles (implies from-scratch " +
 			"build) and non-empty running containers (implies there's an existing build " +
 			"to LiveUpdate on top of).")
+	}
+
+	if len(tCase.expectUpdatedTargets) > 0 && len(tCase.runningContainersByTarget) == 0 {
+		t.Fatal("can only specify expectUpdatedTargets with runningContainersByTarget" +
+			"(the former only makes sense in a multi-target scenario)")
 	}
 
 	manifest := tCase.manifest
@@ -138,27 +150,34 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 		require.Empty(t, f.k8s.Yaml, "expected no k8s deploy, but we deployed YAML: %s", f.k8s.Yaml)
 	}
 
-	// if no other info provided, assume that the last image target is the deployed one
-	expectUpdatedTargs := []model.TargetID{manifest.ImageTargetAt(iTargIdx).ID()}
-	if len(tCase.runningContainersByTarget) > 0 {
-		expectUpdatedTargs = nil
+	expectUpdatedTargs := make(map[model.TargetID]bool)
+	if len(tCase.expectUpdatedTargets) > 0 {
+		expectUpdatedTargs = model.TargetIDSet(tCase.expectUpdatedTargets)
+	} else if len(tCase.runningContainersByTarget) > 0 {
 		for targID, _ := range tCase.runningContainersByTarget {
-			expectUpdatedTargs = append(expectUpdatedTargs, targID)
+			expectUpdatedTargs[targID] = true
 		}
+	} else {
+		// if no other info provided, assume that the last image target is the deployed one
+		expectUpdatedTargs[manifest.ImageTargetAt(iTargIdx).ID()] = true
 	}
 
-	for _, expectID := range expectUpdatedTargs {
-		imgRes, hasResult := result[expectID]
-		require.True(t, hasResult, "expect build result for image target %s", expectID)
+	for tid, res := range result {
+		if !expectUpdatedTargs[tid] && !res.IsEmpty() {
+			t.Fatalf("got non empty result for target %s when didn't expect one. Result: %v", tid, res)
+		}
+		// mark this target as seen
+		delete(expectUpdatedTargs, tid)
 
 		if len(tCase.runningContainersByTarget) > 0 {
 			// We expect to have operated on the containers that the test specified
-			assert.ElementsMatch(t, imgRes.LiveUpdatedContainerIDs, tCase.runningContainersByTarget[expectID])
+			assert.ElementsMatch(t, res.LiveUpdatedContainerIDs, tCase.runningContainersByTarget[tid])
 		} else {
 			// We set up the test with RunningContainer = DefaultContainer; expect to have operated on that.
 			assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyLiveUpdatedContainerID().String())
 		}
 	}
+	require.Empty(t, expectUpdatedTargs, "didn't find results for these expected targets")
 }
 
 func TestLiveUpdateDockerBuildLocalContainer(t *testing.T) {
@@ -355,7 +374,8 @@ func TestLiveUpdateDiffImgMultipleContainersOnlySomeSyncsMatch(t *testing.T) {
 			sanchoTarg.ID():  []container.ID{"c1"},
 			sidecarTarg.ID(): []container.ID{"c2"},
 		},
-		changedFiles:           []string{"sidecar/a.txt"},
+		changedFiles:           []string{"sidecar/a.txt"},          // nothing matching Sancho's syncs
+		expectUpdatedTargets:   []model.TargetID{sidecarTarg.ID()}, // we should only update the Sidecar target
 		expectDockerBuildCount: 0,
 		expectDockerPushCount:  0,
 

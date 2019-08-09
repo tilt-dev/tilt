@@ -416,12 +416,12 @@
   version = "v1.1.0"
 
 [[projects]]
-  digest = "1:f1f2bd73c025d24c3b93abf6364bccb802cf2fdedaa44360804c67800e8fab8d"
+  digest = "1:b48d19e79fa607e9e3715ff9a73cdd3777a9cac254b50b9af721466f687e850d"
   name = "github.com/evanphx/json-patch"
   packages = ["."]
   pruneopts = "UT"
-  revision = "72bf35d0ff611848c1dc9df0f976c81192392fa5"
-  version = "v4.1.0"
+  revision = "afac545df32f2287a079e2dfb7ba2745a643747e"
+  version = "v3.0.0"
 
 [[projects]]
   digest = "1:865079840386857c809b72ce300be7580cb50d3d3129ce11bf9aa6ca2bc1934a"
@@ -1718,17 +1718,18 @@
   revision = "21c4ce38f2a793ec01e925ddc31216500183b773"
 
 [[projects]]
-  digest = "1:a5ff995cf74dcce65de89a10a64d9b5bd0696af1bf6ab6307bf59643d61a6f5d"
+  digest = "1:e41b95c48a8fe99d8bd2ed0994f693ecb1bcab3eb7026d8148c6238c71843da5"
   name = "sigs.k8s.io/kustomize"
   packages = [
+    "pkg/constants",
     "pkg/gvk",
     "pkg/image",
-    "pkg/pgmconfig",
+    "pkg/patch",
     "pkg/types",
   ]
   pruneopts = "UT"
-  revision = "af67c893d87c5fb8200f8a3edac7fdafd61ec0bd"
-  version = "v2.1.0"
+  revision = "a6f65144121d1955266b0cd836ce954c04122dc8"
+  version = "v2.0.3"
 
 [[projects]]
   digest = "1:7719608fe0b52a4ece56c2dde37bedd95b938677d1ab0f84b8a7852e4c59f849"
@@ -1855,7 +1856,7 @@
     "k8s.io/client-go/util/jsonpath",
     "k8s.io/klog",
     "k8s.io/kubernetes/pkg/kubectl/scheme",
-    "sigs.k8s.io/kustomize/pkg/pgmconfig",
+    "sigs.k8s.io/kustomize/pkg/constants",
     "sigs.k8s.io/kustomize/pkg/types",
     "sigs.k8s.io/yaml",
   ]

@@ -33,6 +33,7 @@ type tiltfileState struct {
 	ctx             context.Context
 	dcCli           dockercompose.DockerComposeClient
 	kubeContext     k8s.KubeContext
+	kubeEnv         k8s.Env
 	privateRegistry container.Registry
 	features        feature.FeatureSet
 
@@ -57,6 +58,7 @@ type tiltfileState struct {
 	k8sResourceAssemblyVersion       int
 	k8sResourceAssemblyVersionReason k8sResourceAssemblyVersionReason
 	workloadToResourceFunction       workloadToResourceFunction
+	allowedK8SContexts               []k8s.KubeContext
 
 	// for assembly
 	usedImages map[string]bool
@@ -94,11 +96,18 @@ const (
 	k8sResourceAssemblyVersionReasonExplicit
 )
 
-func newTiltfileState(ctx context.Context, dcCli dockercompose.DockerComposeClient, kubeContext k8s.KubeContext, privateRegistry container.Registry, features feature.FeatureSet) *tiltfileState {
+func newTiltfileState(
+	ctx context.Context,
+	dcCli dockercompose.DockerComposeClient,
+	kubeContext k8s.KubeContext,
+	kubeEnv k8s.Env,
+	privateRegistry container.Registry,
+	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
 		ctx:                        ctx,
 		dcCli:                      dcCli,
 		kubeContext:                kubeContext,
+		kubeEnv:                    kubeEnv,
 		privateRegistry:            privateRegistry,
 		buildIndex:                 newBuildIndex(),
 		k8sByName:                  make(map[string]*k8sResource),
@@ -165,6 +174,7 @@ const (
 	k8sImageJSONPathN           = "k8s_image_json_path"
 	workloadToResourceFunctionN = "workload_to_resource_function"
 	k8sContextN                 = "k8s_context"
+	allowK8SContexts            = "allow_k8s_contexts"
 
 	// file functions
 	localGitRepoN = "local_git_repo"
@@ -294,6 +304,7 @@ func (s *tiltfileState) predeclared() starlark.StringDict {
 	addBuiltin(r, k8sImageJSONPathN, s.k8sImageJsonPath)
 	addBuiltin(r, workloadToResourceFunctionN, s.workloadToResourceFunctionFn)
 	addBuiltin(r, k8sContextN, s.k8sContext)
+	addBuiltin(r, allowK8SContexts, s.allowK8SContexts)
 	addBuiltin(r, localGitRepoN, s.localGitRepo)
 	addBuiltin(r, kustomizeN, s.kustomize)
 	addBuiltin(r, helmN, s.helm)

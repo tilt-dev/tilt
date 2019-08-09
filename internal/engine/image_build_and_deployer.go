@@ -322,7 +322,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 // The k8s will use the image already available
 // in the local docker daemon.
 func (ibd *ImageBuildAndDeployer) canAlwaysSkipPush() bool {
-	return ibd.env.IsLocalCluster() && ibd.runtime == container.RuntimeDocker
+	return ibd.env.UsesLocalDockerRegistry() && ibd.runtime == container.RuntimeDocker
 }
 
 // Create a new ImageTarget with the dockerfiles rewritten

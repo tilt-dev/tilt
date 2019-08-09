@@ -60,9 +60,9 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - homebrew_cache_v10
+            - homebrew_cache_v11
       # Bump cache version when changing this.
-      - run: echo 'export HOMEBREW_PACKAGES="go@1.12 kustomize docker-compose"' >> $BASH_ENV
+      - run: echo 'export HOMEBREW_PACKAGES="go@1.12"' >> $BASH_ENV
       # Only update when brew doesn't know about some of the packages because:
       # 1) not worth the cost, and
       # 2) hits github in a way that leads to flakyness
@@ -71,18 +71,15 @@ jobs:
       - save_cache:
           paths:
             - /usr/local/Homebrew
-          key: homebrew_cache_v10
+          key: homebrew_cache_v11
       - run: echo 'export PATH="/usr/local/opt/go@1.12/bin:$PATH"' >> $BASH_ENV
-      # NOTE(dmiller): the helm package in Homebrew is too old, and the tests fail. Install from GitHub instead.
-      - run: curl --silent --show-error --location --fail --retry 3 --output /tmp/helm.tar.gz  https://storage.googleapis.com/kubernetes-helm/helm-v2.12.1-darwin-amd64.tar.gz &&
-             tar -xz -C /tmp -f /tmp/helm.tar.gz &&
-             mv /tmp/darwin-amd64/helm /usr/local/bin/helm
       - run: curl -fsSL "https://github.com/gotestyourself/gotestsum/releases/download/v0.3.3/gotestsum_0.3.3_darwin_amd64.tar.gz" | sudo tar -xz -C /usr/local/bin gotestsum
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.
       - run: mkdir -p test-results
-      - run: ulimit -n 4096 &&
-             gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- -tags 'skipcontainertests' ./...
+      # Only run watch tests, because these are currently the only tests that are OS-specific.
+      # In other Tilt tests, we mock out OS-specific components.
+      - run: gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./internal/watch/...
       - store_test_results:
           path: test-results
 

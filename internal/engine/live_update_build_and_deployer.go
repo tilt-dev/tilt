@@ -64,14 +64,14 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	}
 
 	containerUpdater := lubad.containerUpdaterForSpecs(specs)
-	liveUpdInfos := make([]liveUpdInfo, len(liveUpdateStateSet))
+	liveUpdInfos := make([]liveUpdInfo, 0, len(liveUpdateStateSet))
 
 	if len(liveUpdateStateSet) == 0 {
 		return nil, RedirectToNextBuilderInfof("no targets for LiveUpdate found")
 	}
 
 	unclaimedFiles := allChangedFiles(liveUpdateStateSet)
-	for i, luStateTree := range liveUpdateStateSet {
+	for _, luStateTree := range liveUpdateStateSet {
 		luInfo, err := liveUpdateInfoForStateTree(luStateTree)
 		if err != nil {
 			return store.BuildResultSet{}, err
@@ -82,7 +82,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		}
 
 		if !luInfo.Empty() {
-			liveUpdInfos[i] = luInfo
+			liveUpdInfos = append(liveUpdInfos, luInfo)
 		}
 	}
 
@@ -110,7 +110,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 			dontFallBackErr = err
 		}
 	}
-	return createResultSet(liveUpdateStateSet), dontFallBackErr
+	return createResultSet(liveUpdateStateSet, liveUpdInfos), dontFallBackErr
 }
 
 func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu containerupdate.ContainerUpdater, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) error {
@@ -262,7 +262,7 @@ func (lubad *LiveUpdateBuildAndDeployer) containerUpdaterForSpecs(specs []model.
 		return lubad.scu
 	}
 
-	if lubad.runtime == container.RuntimeDocker && lubad.env.IsLocalCluster() {
+	if lubad.runtime == container.RuntimeDocker && lubad.env.UsesLocalDockerRegistry() {
 		return lubad.dcu
 	}
 

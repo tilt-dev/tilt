@@ -52,6 +52,11 @@
   name = "k8s.io/api"
   version = "kubernetes-1.15.0"
 
+# Match kustomize version in kubernetes-1.15.0
+[[constraint]]
+  name = "sigs.k8s.io/kustomize"
+  version = "v2.0.3"
+
 # these need to be here. https://github.com/golang/dep/issues/1415
 [[override]]
   name = "github.com/docker/docker"
@@ -76,3 +81,7 @@
 [[constraint]]
   branch = "master"
   name = "github.com/gdamore/tcell"
+
+[[override]]
+  name = "github.com/russross/blackfriday"
+  version = "v1.5"

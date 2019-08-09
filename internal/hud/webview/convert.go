@@ -107,9 +107,10 @@ func StateToWebView(s store.EngineState) View {
 }
 
 func tiltfileResourceView(s store.EngineState) Resource {
-	ltfb := s.LastTiltfileBuild
-	if !s.CurrentTiltfileBuild.Empty() {
-		ltfb.Log = s.CurrentTiltfileBuild.Log
+	ltfb := s.TiltfileState.LastBuild()
+	ctfb := s.TiltfileState.CurrentBuild
+	if !ctfb.Empty() {
+		ltfb.Log = ctfb.Log
 	}
 
 	ltfb.Edits = ospath.FileListDisplayNames([]string{filepath.Dir(s.TiltfilePath)}, ltfb.Edits)
@@ -117,17 +118,17 @@ func tiltfileResourceView(s store.EngineState) Resource {
 	tr := Resource{
 		Name:         view.TiltfileResourceName,
 		IsTiltfile:   true,
-		CurrentBuild: ToWebViewBuildRecord(s.CurrentTiltfileBuild),
+		CurrentBuild: ToWebViewBuildRecord(ctfb),
 		BuildHistory: []BuildRecord{
 			ToWebViewBuildRecord(ltfb),
 		},
-		CombinedLog:   s.TiltfileCombinedLog,
+		CombinedLog:   ctfb.Log,
 		RuntimeStatus: RuntimeStatusOK,
 	}
-	if !s.CurrentTiltfileBuild.Empty() {
-		tr.PendingBuildSince = s.CurrentTiltfileBuild.StartTime
+	if !ctfb.Empty() {
+		tr.PendingBuildSince = ctfb.StartTime
 	} else {
-		tr.LastDeployTime = s.LastTiltfileBuild.FinishTime
+		tr.LastDeployTime = ltfb.FinishTime
 	}
 	return tr
 }
