@@ -272,60 +272,6 @@ it("DC Resource: should show a warning alert using the first build history ", ()
   expect(actual).toEqual(expectedAlerts)
 })
 
-it("DC Resource: should show a warning alert using the first build history ", () => {
-  let r: Resource = dcResource()
-  r.BuildHistory = [
-    {
-      Log: "Hello I'm a log",
-      Warnings: ["Hi i'm a warning"],
-      Error: null,
-      FinishTime: "10:00am",
-    },
-    {
-      Log: "Hello I'm a log2",
-      Warnings: ["This warning shouldn't show up", "Or this one"],
-    },
-  ]
-  let actual = getResourceAlerts(r)
-  let expectedAlerts: Array<Alert> = [
-    {
-      alertType: WarningErrorType,
-      msg: "Hi i'm a warning",
-      timestamp: "10:00am",
-      header: "vigoda",
-      resourceName: "vigoda",
-    },
-  ]
-  expect(actual).toEqual(expectedAlerts)
-})
-
-it("DC Resource: should show a warning alert using the first build history ", () => {
-  let r: Resource = dcResource()
-  r.BuildHistory = [
-    {
-      Log: "Hello I'm a log",
-      Warnings: ["Hi i'm a warning"],
-      Error: null,
-      FinishTime: "10:00am",
-    },
-    {
-      Log: "Hello I'm a log2",
-      Warnings: ["This warning shouldn't show up", "Or this one"],
-    },
-  ]
-  let actual = getResourceAlerts(r)
-  let expectedAlerts: Array<Alert> = [
-    {
-      alertType: WarningErrorType,
-      msg: "Hi i'm a warning",
-      timestamp: "10:00am",
-      header: "vigoda",
-      resourceName: "vigoda",
-    },
-  ]
-  expect(actual).toEqual(expectedAlerts)
-})
-
 it("DC Resource has build failed alert using first build history info ", () => {
   let r: Resource = dcResource()
   r.BuildHistory = [
