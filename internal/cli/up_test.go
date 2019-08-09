@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 func TestProdSailUrl(t *testing.T) {

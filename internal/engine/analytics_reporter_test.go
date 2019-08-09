@@ -12,8 +12,8 @@ import (
 
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 var (

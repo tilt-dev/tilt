@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 // For injecting room creation logic (because the real way involves an HTTP request)

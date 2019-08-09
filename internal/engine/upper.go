@@ -21,11 +21,11 @@ import (
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/logger"
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/watch"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 // When we see a file change, wait this long to see if any other files have changed, and bundle all changes together.

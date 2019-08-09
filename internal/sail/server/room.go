@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 // A room where messages from a source are broadcast to all the followers.

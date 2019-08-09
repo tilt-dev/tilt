@@ -14,10 +14,10 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/windmilleng/tilt/internal/logger"
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/network"
 	"github.com/windmilleng/tilt/internal/sail/server"
 	"github.com/windmilleng/tilt/pkg/assets"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 const DefaultWebDevPort = 10451

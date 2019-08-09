@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 func NewTarget(

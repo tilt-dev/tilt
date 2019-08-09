@@ -10,7 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 func makeLabelSet(lps []model.LabelPair) labels.Set {

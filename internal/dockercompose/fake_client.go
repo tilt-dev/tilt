@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 type FakeDCClient struct {

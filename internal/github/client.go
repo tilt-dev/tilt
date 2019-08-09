@@ -7,7 +7,7 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 type Client interface {

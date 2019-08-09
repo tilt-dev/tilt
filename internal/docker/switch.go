@@ -8,7 +8,7 @@ import (
 	"github.com/docker/docker/api/types"
 
 	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 // A Cli implementation that lets us switch back and forth between a local

@@ -10,7 +10,7 @@ import (
 
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 // when adding a new type of `liveUpdateStep`, make sure that any tiltfile functions that create them also call

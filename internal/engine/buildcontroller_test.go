@@ -16,9 +16,9 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/podbuilder"
 
 	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/watch"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 func TestBuildControllerOnePod(t *testing.T) {

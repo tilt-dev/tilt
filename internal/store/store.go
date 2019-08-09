@@ -9,7 +9,7 @@ import (
 	"gopkg.in/d4l3k/messagediff.v1"
 
 	"github.com/windmilleng/tilt/internal/logger"
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 // Allow actions to batch together a bit.

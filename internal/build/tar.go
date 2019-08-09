@@ -13,7 +13,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/dockerfile"
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 type ArchiveBuilder struct {
