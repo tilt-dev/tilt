@@ -19,7 +19,7 @@ import AlertPane from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
 import NotFound from "./NotFound"
-import {numberOfAlerts, Alert, alertKey, isK8sResourceInfo} from "./alerts"
+import { numberOfAlerts, Alert, alertKey, isK8sResourceInfo } from "./alerts"
 import Features from "./feature"
 
 type HudProps = {

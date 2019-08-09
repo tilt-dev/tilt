@@ -11,6 +11,7 @@ import {
   BuildFailedErrorType,
   WarningErrorType,
   getResourceAlerts,
+  isK8sResourceInfo,
 } from "./alerts"
 
 const fakeSendAlert = () => {}
@@ -49,9 +50,11 @@ it("renders one container start error", () => {
       Error: null,
     },
   ]
-  resource.ResourceInfo.PodCreationTime = ts
-  resource.ResourceInfo.PodStatus = "Error"
-  resource.ResourceInfo.PodRestarts = 2
+  if (isK8sResourceInfo(resource.ResourceInfo)) {
+    resource.ResourceInfo.PodCreationTime = ts
+    resource.ResourceInfo.PodStatus = "Error"
+    resource.ResourceInfo.PodRestarts = 2
+  }
   resource.Alerts = getResourceAlerts(resource)
 
   let resources = [resource]
@@ -69,9 +72,10 @@ it("renders one container start error", () => {
   expect(tree).toMatchSnapshot()
 
   // the podStatus will flap between "Error" and "CrashLoopBackOff"
-  resource.ResourceInfo.PodStatus = "CrashLoopBackOff"
-  resource.ResourceInfo.PodRestarts = 3
-
+  if (isK8sResourceInfo(resource.ResourceInfo)) {
+    resource.ResourceInfo.PodStatus = "CrashLoopBackOff"
+    resource.ResourceInfo.PodRestarts = 3
+  }
   const newTree = renderer
     .create(
       <AlertPane
@@ -96,9 +100,11 @@ it("shows that a container has restarted", () => {
       Error: null,
     },
   ]
-  resource.ResourceInfo.PodStatus = "ok"
-  resource.ResourceInfo.PodCreationTime = ts
-  resource.ResourceInfo.PodRestarts = 1
+  if (isK8sResourceInfo(resource.ResourceInfo)) {
+    resource.ResourceInfo.PodStatus = "ok"
+    resource.ResourceInfo.PodCreationTime = ts
+    resource.ResourceInfo.PodRestarts = 1
+  }
   resource.Alerts = getResourceAlerts(resource)
   let resources = [resource]
 
@@ -127,8 +133,10 @@ it("shows that a crash rebuild has occurred", () => {
       IsCrashRebuild: true,
     },
   ]
-  resource.ResourceInfo.PodCreationTime = ts
-  resource.ResourceInfo.PodStatus = "ok"
+  if (isK8sResourceInfo(resource.ResourceInfo)) {
+    resource.ResourceInfo.PodCreationTime = ts
+    resource.ResourceInfo.PodStatus = "ok"
+  }
   resource.Alerts = getResourceAlerts(resource)
 
   let resources = [resource]
@@ -159,8 +167,10 @@ it("renders multiple lines of a crash log", () => {
       IsCrashRebuild: true,
     },
   ]
-  resource.ResourceInfo.PodCreationTime = ts
-  resource.ResourceInfo.PodStatus = "ok"
+  if (isK8sResourceInfo(resource.ResourceInfo)) {
+    resource.ResourceInfo.PodCreationTime = ts
+    resource.ResourceInfo.PodStatus = "ok"
+  }
   resource.Alerts = getResourceAlerts(resource)
 
   let resources = [resource]
@@ -191,8 +201,10 @@ it("renders warnings", () => {
       Warnings: ["Hi I'm a warning"],
     },
   ]
-  resource.ResourceInfo.PodCreationTime = ts
-  resource.ResourceInfo.PodStatus = "ok"
+  if (isK8sResourceInfo(resource.ResourceInfo)) {
+    resource.ResourceInfo.PodCreationTime = ts
+    resource.ResourceInfo.PodStatus = "ok"
+  }
   resource.Alerts = getResourceAlerts(resource)
 
   let resources = [resource]

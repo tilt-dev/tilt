@@ -53,7 +53,7 @@ function buildFailed(resource: Resource) {
 function isK8sResourceInfo(
   resourceInfo: K8sResourceInfo | DCResourceInfo
 ): resourceInfo is K8sResourceInfo {
-  return (<K8sResourceInfo>resourceInfo).PodRestarts !== undefined
+  return (<K8sResourceInfo>resourceInfo).PodName !== undefined
 }
 
 //This function determines what kind of alert should be made based on the functions defined
