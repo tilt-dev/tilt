@@ -5,8 +5,8 @@ import (
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 type Fixture = manifestbuilder.Fixture

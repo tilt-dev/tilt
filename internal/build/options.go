@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 func Options(archive io.Reader, args model.DockerBuildArgs) docker.BuildOptions {

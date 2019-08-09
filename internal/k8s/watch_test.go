@@ -20,7 +20,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/testutils"
 
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 func TestK8sClient_WatchPods(t *testing.T) {

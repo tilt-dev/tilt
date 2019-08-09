@@ -12,8 +12,8 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/rty"
+	"github.com/windmilleng/tilt/pkg/model"
 
 	"github.com/gdamore/tcell"
 )

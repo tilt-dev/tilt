@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 // Version for Go-compiled builds that didn't go through goreleaser.

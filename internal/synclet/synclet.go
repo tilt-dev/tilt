@@ -15,7 +15,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 
 	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 const Port = 23551

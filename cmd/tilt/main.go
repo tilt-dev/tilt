@@ -4,7 +4,7 @@ import (
 	_ "expvar"
 
 	"github.com/windmilleng/tilt/internal/cli"
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 // Magic variables set by goreleaser

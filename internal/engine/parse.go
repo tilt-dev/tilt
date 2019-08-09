@@ -2,7 +2,7 @@ package engine
 
 import (
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 func ParseYAMLFromManifests(manifests ...model.Manifest) ([]k8s.K8sEntity, error) {

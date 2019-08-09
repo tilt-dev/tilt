@@ -6,8 +6,8 @@ import (
 	"github.com/gdamore/tcell"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/rty"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 type TabView struct {

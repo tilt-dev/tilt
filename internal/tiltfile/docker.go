@@ -11,8 +11,8 @@ import (
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockerfile"
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/ospath"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 const fastBuildDeprecationWarning = "FastBuild (`fast_build`; `add_fast_build`; " +

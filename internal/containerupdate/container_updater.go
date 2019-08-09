@@ -4,8 +4,8 @@ import (
 	"context"
 	"io"
 
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 type ContainerUpdater interface {

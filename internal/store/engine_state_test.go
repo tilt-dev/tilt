@@ -13,7 +13,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 func TestStateToViewMultipleSyncs(t *testing.T) {

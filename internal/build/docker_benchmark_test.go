@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 func BenchmarkBuildTenRuns(b *testing.B) {

@@ -17,8 +17,8 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils"
 
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 func TestEventWatchManager_dispatchesEvent(t *testing.T) {

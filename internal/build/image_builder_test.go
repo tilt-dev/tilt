@@ -13,8 +13,8 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockerfile"
-	"github.com/windmilleng/tilt/internal/model"
 	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 const simpleDockerfile = dockerfile.Dockerfile("FROM alpine")

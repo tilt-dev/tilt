@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 	"k8s.io/apimachinery/pkg/labels"
 
-	"github.com/windmilleng/tilt/internal/model"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 const TiltRunIDLabel = "tilt-runid"
