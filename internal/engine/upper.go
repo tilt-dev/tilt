@@ -114,16 +114,14 @@ func (u Upper) Start(
 	configFiles := []string{absTfPath}
 
 	return u.Init(ctx, InitAction{
-		WatchFiles:      watch,
-		TiltfilePath:    absTfPath,
-		ConfigFiles:     configFiles,
-		InitManifests:   manifestNames,
-		TiltBuild:       b,
-		StartTime:       startTime,
-		FinishTime:      time.Now(),
-		ExecuteTiltfile: false,
-		EnableSail:      sailMode.IsEnabled(),
-		AnalyticsOpt:    analyticsOpt,
+		WatchFiles:    watch,
+		TiltfilePath:  absTfPath,
+		ConfigFiles:   configFiles,
+		InitManifests: manifestNames,
+		TiltBuild:     b,
+		StartTime:     startTime,
+		EnableSail:    sailMode.IsEnabled(),
+		AnalyticsOpt:  analyticsOpt,
 	})
 }
 
@@ -469,13 +467,15 @@ func handleConfigsReloaded(
 	}
 
 	b := state.TiltfileState.CurrentBuild
-	b.FinishTime = event.FinishTime
-	b.Error = event.Err
-	b.Warnings = event.Warnings
 
-	state.TeamName = event.TeamName
+	// if the ConfigsReloadedAction came from a unit test, there might not be a current build
+	if !b.Empty() {
+		b.FinishTime = event.FinishTime
+		b.Error = event.Err
+		b.Warnings = event.Warnings
 
-	state.TiltfileState.AddCompletedBuild(b)
+		state.TiltfileState.AddCompletedBuild(b)
+	}
 	state.TiltfileState.CurrentBuild = model.BuildRecord{}
 	if event.Err != nil {
 		// There was an error, so don't update status with the new, nonexistent state
@@ -499,13 +499,14 @@ func handleConfigsReloaded(
 		configFilesThatChanged := state.TiltfileState.LastBuild().Edits
 		old := mt.Manifest
 		mt.Manifest = m
+
 		if model.ChangesInvalidateBuild(old, m) {
 			// Manifest has changed such that the current build is invalid;
 			// ensure we do an image build so that we apply the changes
-			state := mt.State
-			state.BuildStatuses = make(map[model.TargetID]*store.BuildStatus)
-			state.PendingManifestChange = time.Now()
-			state.ConfigFilesThatCausedChange = configFilesThatChanged
+			ms := mt.State
+			ms.BuildStatuses = make(map[model.TargetID]*store.BuildStatus)
+			ms.PendingManifestChange = time.Now()
+			ms.ConfigFilesThatCausedChange = configFilesThatChanged
 		}
 		state.UpsertManifestTarget(mt)
 	}
@@ -516,6 +517,7 @@ func handleConfigsReloaded(
 	state.TiltIgnoreContents = event.TiltIgnoreContents
 
 	state.Features = event.Features
+	state.TeamName = event.TeamName
 
 	// Remove pending file changes that were consumed by this build.
 	for file, modTime := range state.PendingConfigFileChanges {
@@ -625,38 +627,18 @@ func handleLatestVersionAction(state *store.EngineState, action LatestVersionAct
 }
 
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
-	watchFiles := action.WatchFiles
 	engineState.TiltBuildInfo = action.TiltBuild
 	engineState.TiltStartTime = action.StartTime
 	engineState.TiltfilePath = action.TiltfilePath
 	engineState.ConfigFiles = action.ConfigFiles
 	engineState.InitManifests = action.InitManifests
 	engineState.SailEnabled = action.EnableSail
-
 	engineState.AnalyticsOpt = action.AnalyticsOpt
+	engineState.WatchFiles = action.WatchFiles
 
-	if action.ExecuteTiltfile {
-		b := model.BuildRecord{
-			StartTime:  action.StartTime,
-			FinishTime: action.FinishTime,
-			Error:      action.Err,
-			Warnings:   action.Warnings,
-			Reason:     model.BuildReasonFlagInit,
-		}
-		engineState.TiltfileState.AddCompletedBuild(b)
+	// NOTE(dmiller): this kicks off a Tiltfile build
+	engineState.PendingConfigFileChanges[action.TiltfilePath] = time.Now()
 
-		manifests := action.Manifests
-		for _, m := range manifests {
-			engineState.UpsertManifestTarget(store.NewManifestTarget(m))
-		}
-
-		engineState.InitialBuildsQueued = len(manifests)
-	} else {
-		// NOTE(dmiller): this kicks off a Tiltfile build
-		engineState.PendingConfigFileChanges[action.TiltfilePath] = time.Now()
-	}
-
-	engineState.WatchFiles = watchFiles
 	return nil
 }
 

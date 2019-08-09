@@ -194,9 +194,7 @@ func (s Script) Run(ctx context.Context) error {
 
 		initAction := engine.InitAction{
 			WatchFiles:   true,
-			Manifests:    tlr.Manifests,
 			TiltfilePath: tfPath,
-			Warnings:     tlr.Warnings,
 		}
 		return s.upper.Init(ctx, initAction)
 	})
