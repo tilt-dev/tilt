@@ -51,17 +51,19 @@ func ProvideAnalyticsReporter(a *analytics.TiltAnalytics, st *store.Store) *Anal
 func (ar *AnalyticsReporter) report() {
 	st := ar.store.RLockState()
 	defer ar.store.RUnlockState()
-	var dcCount, k8sCount, fastbuildBaseCount, anyFastbuildCount, liveUpdateCount, unbuiltCount int
+	var dcCount, k8sCount, fastbuildBaseCount, anyFastbuildCount, liveUpdateCount, unbuiltCount, multiImgLiveUpdate int
 	for _, m := range st.Manifests() {
 		if m.IsK8s() {
 			k8sCount++
 			if len(m.ImageTargets) == 0 {
 				unbuiltCount++
 			}
+			// Open Q: stat for number of resources with multiple image targets? (# targets per resource?)
 		}
 		if m.IsDC() {
 			dcCount++
 		}
+		var seenLU, multiLU bool
 		for _, it := range m.ImageTargets {
 			if !it.AnyFastBuildInfo().Empty() {
 				anyFastbuildCount++
@@ -71,8 +73,19 @@ func (ar *AnalyticsReporter) report() {
 				break
 			}
 			if !it.AnyLiveUpdateInfo().Empty() {
-				liveUpdateCount++
+				if !seenLU {
+					// OPEN Q: do we want to report the number of LiveUpd _targets_ or
+					// LiveUpd _resources_ (and separately report whether there are resources
+					// with more than one LiveUpd on them)? <- this does the latter
+					seenLU = true
+					liveUpdateCount++
+				} else if !multiLU {
+					multiLU = true
+				}
 			}
+		}
+		if multiLU {
+			multiImgLiveUpdate++
 		}
 	}
 
@@ -85,9 +98,6 @@ func (ar *AnalyticsReporter) report() {
 	if st.LastTiltfileError() != nil {
 		tiltfileIsInError = "true"
 	} else {
-		// ~~ report image targets per resource?
-		// ~~ report # resources with 2+ live updates
-
 		// only report when there's no tiltfile error, to avoid polluting aggregations
 		stats["resource.count"] = strconv.Itoa(len(st.ManifestDefinitionOrder))
 		stats["resource.dockercompose.count"] = strconv.Itoa(dcCount)
@@ -96,6 +106,7 @@ func (ar *AnalyticsReporter) report() {
 		stats["resource.anyfastbuild.count"] = strconv.Itoa(anyFastbuildCount)
 		stats["resource.liveupdate.count"] = strconv.Itoa(liveUpdateCount)
 		stats["resource.unbuiltresources.count"] = strconv.Itoa(unbuiltCount)
+		stats["resource.multipleimageliveupdate.count"] = strconv.Itoa(multiImgLiveUpdate)
 	}
 
 	stats["tiltfile.error"] = tiltfileIsInError
