@@ -1824,7 +1824,54 @@ k8s_yaml('foo.yaml')
 		},
 		N: 1,
 	}}
-	assert.Equal(t, expected, f.an.Counts)
+	for _, evt := range expected {
+		assert.Contains(t, f.an.Counts, evt)
+	}
+}
+
+func TestContainersPerRefCounts(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.file("sancho.yaml", testyaml.SanchoTwoContainersOneImageYAML) // 1 image x 2 containers
+	f.file("blorg.yaml", testyaml.BlorgJobYAML)
+	f.file("doggos.yaml", testyaml.DoggosDeploymentYaml)
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/some-project-162817/sancho', '.', live_update=[sync('.', '/')])
+docker_build('gcr.io/blorg-dev/blorg-backend:devel-nick', '.', live_update=[sync('.', '/')])
+docker_build('gcr.io/windmill-public-containers/servantes/doggos', '.') # no LiveUpdate
+k8s_yaml(['sancho.yaml', 'blorg.yaml', 'doggos.yaml'])
+`)
+
+	f.load()
+	expected := []analytics.CountEvent{{
+		Name: "containersForRef",
+		Tags: map[string]string{
+			"ref":         testyaml.SanchoImage,
+			"live_update": "true",
+		},
+		N: 2,
+	}, {
+		Name: "containersForRef",
+		Tags: map[string]string{
+			"ref":         "gcr.io/blorg-dev/blorg-backend:devel-nick",
+			"live_update": "true",
+		},
+		N: 1,
+	}, {
+		Name: "containersForRef",
+		Tags: map[string]string{
+			"ref":         "gcr.io/windmill-public-containers/servantes/doggos",
+			"live_update": "false",
+		},
+		N: 1,
+	}}
+	for _, evt := range expected {
+		assert.Contains(t, f.an.Counts, evt)
+	}
 }
 
 func TestYamlErrorFromLocal(t *testing.T) {

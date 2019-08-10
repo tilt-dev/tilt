@@ -36,8 +36,8 @@ type k8sResource struct {
 
 	imageRefs referenceList
 
-	// Map of imageRefs, to avoid dupes
-	imageRefMap map[string]bool
+	// Map of imageRefs -> count, to avoid dupes / know how many times we've injected each
+	imageRefMap map[string]int
 
 	portForwards []portForward
 
@@ -77,11 +77,11 @@ func (r *k8sResource) addEntities(entities []k8s.K8sEntity,
 			return err
 		}
 		for _, image := range images {
-			// ~ if image already in here, wanna record a stat about same-img-multi-c
-			if !r.imageRefMap[image.String()] {
-				r.imageRefMap[image.String()] = true
+			count := r.imageRefMap[image.String()]
+			if count == 0 {
 				r.imageRefs = append(r.imageRefs, image)
 			}
+			r.imageRefMap[image.String()] += 1
 		}
 	}
 
@@ -618,7 +618,7 @@ func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 	}
 	r := &k8sResource{
 		name:        name,
-		imageRefMap: make(map[string]bool),
+		imageRefMap: make(map[string]int),
 	}
 	s.k8s = append(s.k8s, r)
 	s.k8sByName[name] = r

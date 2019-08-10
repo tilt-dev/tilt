@@ -7,7 +7,10 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/davecgh/go-spew/spew"
 	"go.starlark.net/syntax"
+
+	"github.com/windmilleng/tilt/internal/analytics"
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
@@ -782,7 +785,9 @@ Is this a typo? Existing resources in Tiltfile: %s`,
 	return result, nil
 }
 
-func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest, error) {
+func (s *tiltfileState) translateK8s(ctx context.Context, resources []*k8sResource) ([]model.Manifest, error) {
+	a := analytics.Get(ctx)
+
 	var result []model.Manifest
 	for _, r := range resources {
 		mn := model.ManifestName(r.name)
@@ -817,6 +822,13 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 		}
 
 		result = append(result, m)
+		spew.Dump(r.imageRefMap)
+		for _, iTarg := range iTargets {
+			ref := iTarg.ConfigurationRef.String()
+			hasLiveUpd := fmt.Sprintf("%t", !iTarg.AnyLiveUpdateInfo().Empty())
+			count := r.imageRefMap[ref]
+			a.Count("containersForRef", map[string]string{"ref": ref, "live_update": hasLiveUpd}, count)
+		}
 	}
 
 	return result, nil
