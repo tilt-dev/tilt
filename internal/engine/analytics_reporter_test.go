@@ -68,17 +68,18 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 	tf.run()
 
 	expectedTags := map[string]string{
-		"builds.completed_count":                 "3",
-		"resource.count":                         "11",
-		"resource.dockercompose.count":           "3",
-		"resource.unbuiltresources.count":        "3",
-		"resource.fastbuild.count":               "1",
-		"resource.anyfastbuild.count":            "2",
-		"resource.liveupdate.count":              "3",
-		"resource.k8s.count":                     "4",
-		"resource.multipleimageliveupdate.count": "1",
-		"tiltfile.error":                         "false",
-		"up.starttime":                           state.TiltStartTime.Format(time.RFC3339),
+		"builds.completed_count":                              "3",
+		"resource.count":                                      "11",
+		"resource.dockercompose.count":                        "3",
+		"resource.unbuiltresources.count":                     "3",
+		"resource.fastbuild.count":                            "1",
+		"resource.anyfastbuild.count":                         "2",
+		"resource.liveupdate.count":                           "3",
+		"resource.k8s.count":                                  "4",
+		"resource.sameimagemultiplecontainerliveupdate.count": "0", // tests for this below
+		"resource.multipleimageliveupdate.count":              "1",
+		"tiltfile.error":                                      "false",
+		"up.starttime":                                        state.TiltStartTime.Format(time.RFC3339),
 	}
 
 	tf.assertStats(t, expectedTags)
