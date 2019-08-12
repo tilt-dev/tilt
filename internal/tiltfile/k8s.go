@@ -36,8 +36,8 @@ type k8sResource struct {
 
 	imageRefs referenceList
 
-	// Map of imageRefs, to avoid dupes
-	imageRefMap map[string]bool
+	// Map of imageRefs -> count, to avoid dupes / know how many times we've injected each
+	imageRefMap map[string]int
 
 	portForwards []portForward
 
@@ -67,7 +67,8 @@ func (r *k8sResource) addRefSelector(selector container.RefSelector) {
 	r.refSelectors = append(r.refSelectors, selector)
 }
 
-func (r *k8sResource) addEntities(entities []k8s.K8sEntity, imageJSONPaths func(e k8s.K8sEntity) []k8s.JSONPath, envVarImages []container.RefSelector) error {
+func (r *k8sResource) addEntities(entities []k8s.K8sEntity,
+	imageJSONPaths func(e k8s.K8sEntity) []k8s.JSONPath, envVarImages []container.RefSelector) error {
 	r.entities = append(r.entities, entities...)
 
 	for _, entity := range entities {
@@ -76,10 +77,11 @@ func (r *k8sResource) addEntities(entities []k8s.K8sEntity, imageJSONPaths func(
 			return err
 		}
 		for _, image := range images {
-			if !r.imageRefMap[image.String()] {
-				r.imageRefMap[image.String()] = true
+			count := r.imageRefMap[image.String()]
+			if count == 0 {
 				r.imageRefs = append(r.imageRefs, image)
 			}
+			r.imageRefMap[image.String()] += 1
 		}
 	}
 
@@ -616,7 +618,7 @@ func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 	}
 	r := &k8sResource{
 		name:        name,
-		imageRefMap: make(map[string]bool),
+		imageRefMap: make(map[string]int),
 	}
 	s.k8s = append(s.k8s, r)
 	s.k8sByName[name] = r
