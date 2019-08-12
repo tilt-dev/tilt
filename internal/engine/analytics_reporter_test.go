@@ -6,9 +6,10 @@ import (
 	"testing"
 	"time"
 
-	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
-
 	"github.com/stretchr/testify/assert"
+
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
+	"github.com/windmilleng/tilt/internal/container"
 
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
@@ -27,6 +28,18 @@ var (
 
 	kTarg = model.K8sTarget{}
 	dTarg = model.DockerComposeTarget{}
+)
+
+var (
+	r1 = "gcr.io/some-project-162817/one"
+	r2 = "gcr.io/some-project-162817/two"
+	r3 = "gcr.io/some-project-162817/three"
+	r4 = "gcr.io/some-project-162817/four"
+
+	iTargWithRef1     = iTargetForRef(r1).WithBuildDetails(model.DockerBuild{LiveUpdate: lu})
+	iTargWithRef2     = iTargetForRef(r2).WithBuildDetails(model.DockerBuild{LiveUpdate: lu})
+	iTargWithRef3     = iTargetForRef(r3).WithBuildDetails(model.DockerBuild{LiveUpdate: lu})
+	iTargWithRef4NoLU = iTargetForRef(r4)
 )
 
 func TestAnalyticsReporter_Everything(t *testing.T) {
@@ -69,6 +82,52 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 	}
 
 	tf.assertStats(t, expectedTags)
+}
+
+func TestAnalyticsReporter_SameImageMultiContainer(t *testing.T) {
+	tf := newAnalyticsReporterTestFixture()
+
+	injectCountsA := map[string]int{
+		r1: 1,
+		r2: 2,
+	}
+	k8sTargA := kTarg.WithRefInjectCounts(injectCountsA)
+	tf.addManifest(tf.nextManifest().
+		WithImageTarget(iTargWithRef1).
+		WithImageTarget(iTargWithRef2).
+		WithDeployTarget(k8sTargA))
+
+	injectCountsB := map[string]int{
+		r2: 2,
+		r3: 3,
+	}
+	k8sTargB := kTarg.WithRefInjectCounts(injectCountsB)
+	tf.addManifest(tf.nextManifest().
+		WithImageTarget(iTargWithRef2).
+		WithImageTarget(iTargWithRef3).
+		WithDeployTarget(k8sTargB))
+
+	tf.run()
+
+	assert.Equal(t, "2", tf.ma.Counts[0].Tags["resource.sameimagemultiplecontainerliveupdate.count"])
+}
+
+func TestAnalyticsReporter_SameImageMultiContainer_NoIncr(t *testing.T) {
+	tf := newAnalyticsReporterTestFixture()
+
+	injectCounts := map[string]int{
+		r1: 1,
+		r4: 2,
+	}
+	k8sTarg := kTarg.WithRefInjectCounts(injectCounts)
+	tf.addManifest(tf.nextManifest().
+		WithImageTarget(iTargWithRef1).
+		WithImageTarget(iTargWithRef4NoLU). // injects multiple times, but no LU so won't record stat for it
+		WithDeployTarget(k8sTarg))
+
+	tf.run()
+
+	assert.Equal(t, "0", tf.ma.Counts[0].Tags["resource.sameimagemultiplecontainerliveupdate.count"])
 }
 
 func TestAnalyticsReporter_TiltfileError(t *testing.T) {
@@ -146,4 +205,10 @@ func (artf *analyticsReporterTestFixture) run() {
 func (artf *analyticsReporterTestFixture) assertStats(t *testing.T, expectedTags map[string]string) {
 	expectedCounts := []analytics.CountEvent{{Name: "up.running", N: 1, Tags: expectedTags}}
 	assert.Equal(t, expectedCounts, artf.ma.Counts)
+}
+
+func iTargetForRef(ref string) model.ImageTarget {
+	named := container.MustParseNamed(ref)
+	selector := container.NameSelector(named)
+	return model.NewImageTarget(selector)
 }
