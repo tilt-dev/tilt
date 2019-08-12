@@ -58,7 +58,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	if err != nil {
 		return demo.Script{}, err
 	}
-	env := k8s.ProvideEnv(config)
+	env := k8s.ProvideEnv(ctx, config)
 	portForwarder := k8s.ProvidePortForwarder()
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubeContext, err := k8s.ProvideKubeContext(config)
@@ -194,7 +194,7 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	if err != nil {
 		return Threads{}, err
 	}
-	env := k8s.ProvideEnv(config)
+	env := k8s.ProvideEnv(ctx, config)
 	portForwarder := k8s.ProvidePortForwarder()
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubeContext, err := k8s.ProvideKubeContext(config)
@@ -332,7 +332,7 @@ func wireEnv(ctx context.Context) (k8s.Env, error) {
 	if err != nil {
 		return "", err
 	}
-	env := k8s.ProvideEnv(config)
+	env := k8s.ProvideEnv(ctx, config)
 	return env, nil
 }
 
@@ -348,7 +348,7 @@ func wireRuntime(ctx context.Context) (container.Runtime, error) {
 	if err != nil {
 		return "", err
 	}
-	env := k8s.ProvideEnv(config)
+	env := k8s.ProvideEnv(ctx, config)
 	portForwarder := k8s.ProvidePortForwarder()
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubeContext, err := k8s.ProvideKubeContext(config)
@@ -385,7 +385,7 @@ func wireDockerClusterClient(ctx context.Context) (docker.ClusterClient, error) 
 	if err != nil {
 		return nil, err
 	}
-	env := k8s.ProvideEnv(config)
+	env := k8s.ProvideEnv(ctx, config)
 	portForwarder := k8s.ProvidePortForwarder()
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubeContext, err := k8s.ProvideKubeContext(config)
@@ -422,7 +422,7 @@ func wireDockerLocalClient(ctx context.Context) (docker.LocalClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	env := k8s.ProvideEnv(config)
+	env := k8s.ProvideEnv(ctx, config)
 	portForwarder := k8s.ProvidePortForwarder()
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubeContext, err := k8s.ProvideKubeContext(config)
@@ -455,7 +455,7 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics) (
 	if err != nil {
 		return DownDeps{}, err
 	}
-	env := k8s.ProvideEnv(config)
+	env := k8s.ProvideEnv(ctx, config)
 	portForwarder := k8s.ProvidePortForwarder()
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubeContext, err := k8s.ProvideKubeContext(config)
