@@ -793,7 +793,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 			TriggerMode: tm,
 		}
 
-		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.portForwardsToDomain(r), r.extraPodSelectors, r.dependencyIDs)
+		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.portForwardsToDomain(r), r.extraPodSelectors, r.dependencyIDs, r.imageRefMap)
 		if err != nil {
 			return nil, err
 		}

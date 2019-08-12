@@ -140,7 +140,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	var manifests []model.Manifest
 
 	if len(resources.k8s) > 0 {
-		manifests, err = s.translateK8s(ctx, resources.k8s)
+		manifests, err = s.translateK8s(resources.k8s)
 		if err != nil {
 			return TiltfileLoadResult{}, err
 		}

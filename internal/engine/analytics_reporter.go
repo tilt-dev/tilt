@@ -51,10 +51,13 @@ func ProvideAnalyticsReporter(a *analytics.TiltAnalytics, st *store.Store) *Anal
 func (ar *AnalyticsReporter) report() {
 	st := ar.store.RLockState()
 	defer ar.store.RUnlockState()
-	var dcCount, k8sCount, fastbuildBaseCount, anyFastbuildCount, liveUpdateCount, unbuiltCount, multiImgLiveUpdate int
+	var dcCount, k8sCount, fastbuildBaseCount, anyFastbuildCount, liveUpdateCount,
+		unbuiltCount, sameImgMultiContainerLiveUpdate, multiImgLiveUpdate int
 	for _, m := range st.Manifests() {
+		var refInjectCounts map[string]int
 		if m.IsK8s() {
 			k8sCount++
+			refInjectCounts = m.K8sTarget().RefInjectCounts()
 			if len(m.ImageTargets) == 0 {
 				unbuiltCount++
 			}
@@ -62,7 +65,7 @@ func (ar *AnalyticsReporter) report() {
 		if m.IsDC() {
 			dcCount++
 		}
-		var seenLU, multiLU bool
+		var seenLU, multiImgLU, multiContainerLU bool
 		for _, it := range m.ImageTargets {
 			if !it.AnyFastBuildInfo().Empty() {
 				anyFastbuildCount++
@@ -75,12 +78,17 @@ func (ar *AnalyticsReporter) report() {
 				if !seenLU {
 					seenLU = true
 					liveUpdateCount++
-				} else if !multiLU {
-					multiLU = true
+				} else if !multiImgLU {
+					multiImgLU = true
 				}
+				multiContainerLU = multiContainerLU ||
+					refInjectCounts[it.ConfigurationRef.String()] > 0
 			}
 		}
-		if multiLU {
+		if multiContainerLU {
+			sameImgMultiContainerLiveUpdate++
+		}
+		if multiImgLU {
 			multiImgLiveUpdate++
 		}
 	}
@@ -102,6 +110,7 @@ func (ar *AnalyticsReporter) report() {
 		stats["resource.anyfastbuild.count"] = strconv.Itoa(anyFastbuildCount)
 		stats["resource.liveupdate.count"] = strconv.Itoa(liveUpdateCount)
 		stats["resource.unbuiltresources.count"] = strconv.Itoa(unbuiltCount)
+		stats["resource.sameimagemultiplecontainerliveupdate.count"] = strconv.Itoa(sameImgMultiContainerLiveUpdate)
 		stats["resource.multipleimageliveupdate.count"] = strconv.Itoa(multiImgLiveUpdate)
 	}
 

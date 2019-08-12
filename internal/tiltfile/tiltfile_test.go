@@ -1829,49 +1829,41 @@ k8s_yaml('foo.yaml')
 	}
 }
 
-func TestContainersPerRefCounts(t *testing.T) {
+func TestK8sManifestRefInjectCounts(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("Dockerfile", "FROM golang:1.10")
-	f.file("sancho.yaml", testyaml.SanchoTwoContainersOneImageYAML) // 1 image x 2 containers
+	f.file("sancho_twin.yaml", testyaml.SanchoTwoContainersOneImageYAML) // 1 img x 2 c
+	f.file("sancho_sidecar.yaml", testyaml.SanchoSidecarYAML)            // 2 imgs (1 c each)
 	f.file("blorg.yaml", testyaml.BlorgJobYAML)
-	f.file("doggos.yaml", testyaml.DoggosDeploymentYaml)
 
 	f.file("Tiltfile", `
-docker_build('gcr.io/some-project-162817/sancho', '.', live_update=[sync('.', '/')])
-docker_build('gcr.io/blorg-dev/blorg-backend:devel-nick', '.', live_update=[sync('.', '/')])
-docker_build('gcr.io/windmill-public-containers/servantes/doggos', '.') # no LiveUpdate
-k8s_yaml(['sancho.yaml', 'blorg.yaml', 'doggos.yaml'])
+docker_build('gcr.io/some-project-162817/sancho', '.')
+docker_build('gcr.io/some-project-162817/sancho-sidecar', '.')
+docker_build('gcr.io/blorg-dev/blorg-backend:devel-nick', '.')
+
+k8s_yaml(['sancho_twin.yaml', 'sancho_sidecar.yaml', 'blorg.yaml'])
 `)
 
 	f.load()
-	expected := []analytics.CountEvent{{
-		Name: "containersForRef",
-		Tags: map[string]string{
-			"ref":         tiltanalytics.HashMD5(testyaml.SanchoImage),
-			"live_update": "true",
-		},
-		N: 2,
-	}, {
-		Name: "containersForRef",
-		Tags: map[string]string{
-			"ref":         tiltanalytics.HashMD5("gcr.io/blorg-dev/blorg-backend:devel-nick"),
-			"live_update": "true",
-		},
-		N: 1,
-	}, {
-		Name: "containersForRef",
-		Tags: map[string]string{
-			"ref":         tiltanalytics.HashMD5("gcr.io/windmill-public-containers/servantes/doggos"),
-			"live_update": "false",
-		},
-		N: 1,
-	}}
-	for _, evt := range expected {
-		assert.Contains(t, f.an.Counts, evt)
-	}
+
+	sanchoTwin := f.assertNextManifest("sancho-2c1i")
+	sTwinInjectCounts := sanchoTwin.K8sTarget().RefInjectCounts()
+	assert.Len(t, sTwinInjectCounts, 1)
+	assert.Equal(t, sTwinInjectCounts[testyaml.SanchoImage], 2)
+
+	sanchoSidecar := f.assertNextManifest("sancho")
+	ssInjectCounts := sanchoSidecar.K8sTarget().RefInjectCounts()
+	assert.Len(t, ssInjectCounts, 2)
+	assert.Equal(t, ssInjectCounts[testyaml.SanchoImage], 1)
+	assert.Equal(t, ssInjectCounts[testyaml.SanchoSidecarImage], 1)
+
+	blorgJob := f.assertNextManifest("blorg-job")
+	blorgInjectCounts := blorgJob.K8sTarget().RefInjectCounts()
+	assert.Len(t, blorgInjectCounts, 1)
+	assert.Equal(t, blorgJob.K8sTarget().RefInjectCounts()["gcr.io/blorg-dev/blorg-backend:devel-nick"], 1)
 }
 
 func TestYamlErrorFromLocal(t *testing.T) {
