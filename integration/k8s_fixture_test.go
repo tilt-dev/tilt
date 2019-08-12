@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
@@ -64,60 +65,41 @@ func (f *k8sFixture) CurlUntil(ctx context.Context, url string, expectedContents
 	}, expectedContents)
 }
 
-// Waits until n pods matching the selector are ready (i.e. phase = "Running").
-// If n = -1, waits for all pods matching the selector to be ready
+// Waits until all pods matching the selector are ready (i.e. phase = "Running")
 // At least one pod must match.
 // Returns the names of the ready pods.
-func (f *k8sFixture) WaitForPodsReady(ctx context.Context, selector string, n int) []string {
-	return f.WaitForPodsInPhase(ctx, selector, v1.PodRunning, n)
-}
-
 func (f *k8sFixture) WaitForAllPodsReady(ctx context.Context, selector string) []string {
-	return f.WaitForPodsInPhase(ctx, selector, v1.PodRunning, -1)
+	return f.WaitForAllPodsInPhase(ctx, selector, v1.PodRunning)
 }
 
 func (f *k8sFixture) WaitForOnePodWithAllContainersReady(ctx context.Context, selector string, timeout time.Duration) string {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	pod := f.WaitForPodsReady(ctx, selector, 1)[0]
-	f.WaitForAllContainersForPodReady(ctx, pod)
-	return pod
+	allPods := f.WaitForAllPodsReady(ctx, selector)
+	require.Len(f.t, allPods, 1, "need exactly one ready pod")
+	f.WaitForAllContainersForPodReady(ctx, allPods[0])
+	return allPods[0]
 }
 
-func (f *k8sFixture) WaitForPodsInPhase(ctx context.Context, selector string, phase v1.PodPhase, n int) []string {
-	if n == 0 {
-		f.t.Fatal("Cannot wait for 0 pods in phase")
-	}
-
-	msg := fmt.Sprintf("Timed out waiting for exactly %d pod(s) to be ready.", n)
-	if n == -1 {
-		msg = "Timed out waiting for all pods to be ready."
-	}
-
+func (f *k8sFixture) WaitForAllPodsInPhase(ctx context.Context, selector string, phase v1.PodPhase) []string {
 	for {
-		allPodsReady, output, podNames := f.PodsInPhase(ctx, selector, phase)
+		allPodsReady, output, podNames := f.AllPodsInPhase(ctx, selector, phase)
 		if allPodsReady {
-			if n == -1 || len(podNames) == n {
-				return podNames
-			}
+			return podNames
 		}
 
 		select {
 		case <-ctx.Done():
-			f.t.Fatalf("%s Selector: %s. Output:\n:%s\n", msg, selector, output)
+			f.t.Fatalf("Timed out waiting for pods to be ready. Selector: %s. Output:\n:%s\n", selector, output)
 		case <-time.After(200 * time.Millisecond):
 		}
 	}
 }
 
-func (f *k8sFixture) WaitForAllPodsInPhase(ctx context.Context, selector string, phase v1.PodPhase) []string {
-	return f.WaitForPodsInPhase(ctx, selector, phase, -1)
-}
-
 // Checks that all pods are in the given phase
 // Returns the output (for diagnostics) and the name of the pods in the given phase.
-func (f *k8sFixture) PodsInPhase(ctx context.Context, selector string, phase v1.PodPhase) (bool, string, []string) {
+func (f *k8sFixture) AllPodsInPhase(ctx context.Context, selector string, phase v1.PodPhase) (bool, string, []string) {
 	cmd := exec.Command("kubectl", "get", "pods",
 		namespaceFlag, "--selector="+selector, "-o=template",
 		"--template", "{{range .items}}{{.metadata.name}} {{.status.phase}}{{println}}{{end}}")
