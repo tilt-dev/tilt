@@ -256,8 +256,8 @@ and the [installer version](scripts/install.sh).
 
 ### Version numbers
 For pre-v1.0:
-* If adding backwards-compatible functionality increment the patch version (0.x.Y)
-* If adding backwards-incompatible functionality increment the minor version (0.X.y)
+* If adding backwards-compatible functionality increment the patch version (0.x.Y).
+* If adding backwards-incompatible functionality increment the minor version (0.X.y). We would probably **write a blog post** about this.
 
 
 
