@@ -1,9 +1,9 @@
 import React, { PureComponent } from "react"
-import {ResourceView, Snapshot} from "./types"
+import { ResourceView, Snapshot } from "./types"
 import "./TopBar.scss"
 import SailInfo from "./SailInfo"
 import TabNav from "./TabNav"
-import {Alert} from "./alerts";
+import { Alert } from "./alerts"
 
 type TopBarProps = {
   previewUrl: string
@@ -14,9 +14,8 @@ type TopBarProps = {
   sailUrl: string
   numberOfAlerts: number
   state: Snapshot
-    handleSendSnapshot: (snapshot: Snapshot) => void
-    //TODO TFT: add snapshot feature flag boolean
-
+  handleSendSnapshot: (snapshot: Snapshot) => void
+  //TODO TFT: add snapshot feature flag boolean
 }
 
 class TopBar extends PureComponent<TopBarProps> {
@@ -31,23 +30,28 @@ class TopBar extends PureComponent<TopBarProps> {
           numberOfAlerts={this.props.numberOfAlerts}
         />
         {/*//TODO TFT: check for snapshot feature flag boolean */}
-          <div className="TopBar-headerDiv-snapshotURL">
-              {renderSnapshotLinkButton(this.props.state, this.props.handleSendSnapshot)}
-          </div>
+        <div className="TopBar-headerDiv-snapshotURL">
+          {renderSnapshotLinkButton(
+            this.props.state,
+            this.props.handleSendSnapshot
+          )}
+        </div>
         <span className="TopBar-spacer">&nbsp;</span>
-          <SailInfo
+        <SailInfo
           sailEnabled={this.props.sailEnabled}
           sailUrl={this.props.sailUrl}
         />
-
       </div>
     )
   }
 }
 
-function renderSnapshotLinkButton(snapshot:Snapshot,handleSendSnapshot: (snapshot: Snapshot) => void ){ //TODO TFT
-    return <button onClick={() => handleSendSnapshot(snapshot)}>Get Link</button>
-
+function renderSnapshotLinkButton(
+  snapshot: Snapshot,
+  handleSendSnapshot: (snapshot: Snapshot) => void
+) {
+  //TODO TFT - formatting the button
+  return <button onClick={() => handleSendSnapshot(snapshot)}>Get Link</button>
 }
 
 export default TopBar

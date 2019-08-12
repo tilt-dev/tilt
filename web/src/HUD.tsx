@@ -14,7 +14,7 @@ import { History, UnregisterCallback } from "history"
 import { incr, pathToTag } from "./analytics"
 import TopBar from "./TopBar"
 import "./HUD.scss"
-import {TiltBuild, ResourceView, Resource, Snapshot} from "./types"
+import { TiltBuild, ResourceView, Resource, Snapshot } from "./types"
 import AlertPane from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
@@ -47,11 +47,19 @@ type NewAlertResponse = {
   url: string
 }
 
-type NewSnapshotResponse = { //TODO TFT
+type NewSnapshotResponse = {
   // output of snapshot_storage
   url: string
 }
 
+function hudStatetoSnapshot(h: HudState): Snapshot {
+  //used this because hudState has extra fields we don't care about
+  return {
+    Message: h.Message,
+    View: h.View,
+    IsSidebarClosed: h.IsSidebarClosed,
+  }
+}
 // The Main HUD view, as specified in
 // https://docs.google.com/document/d/1VNIGfpC4fMfkscboW0bjYYFJl07um_1tsFrbN-Fu3FI/edit#heading=h.l8mmnclsuxl1
 class HUD extends Component<HudProps, HudState> {
@@ -177,17 +185,17 @@ class HUD extends Component<HudProps, HudState> {
       method: "post",
       body: JSON.stringify(snapshot),
     })
-        .then(res => {
-          res
-              .json()
-              .then((value: NewSnapshotResponse) => {
-                debugger
-                window.open(value.url)
-              })
-              .catch(err => console.error(err))
-        })
-        .then(err => console.error(err))
-        //TODO TFT: maybe do something other than console the error
+      .then(res => {
+        res
+          .json()
+          .then((value: NewSnapshotResponse) => {
+            debugger
+            window.open(value.url)
+          })
+          .catch(err => console.error(err))
+      })
+      .then(err => console.error(err))
+    //TODO TFT: maybe do something other than console the error
   }
 
   render() {
@@ -225,7 +233,6 @@ class HUD extends Component<HudProps, HudState> {
       )
     }
 
-
     let topBarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name =
         props.match.params && props.match.params.name
@@ -245,7 +252,9 @@ class HUD extends Component<HudProps, HudState> {
               sailUrl={sailUrl}
               numberOfAlerts={numAlerts}
               state={this.state}
-              handleSendSnapshot={this.sendSnapshot.bind(this.state)}
+              handleSendSnapshot={this.sendSnapshot.bind(
+                hudStatetoSnapshot(this.state)
+              )}
             />
           )
         }
@@ -267,7 +276,9 @@ class HUD extends Component<HudProps, HudState> {
           sailUrl={sailUrl}
           numberOfAlerts={numAlerts}
           state={this.state}
-          handleSendSnapshot={this.sendSnapshot.bind(this.state)}
+          handleSendSnapshot={this.sendSnapshot.bind(
+            hudStatetoSnapshot(this.state)
+          )}
         />
       )
     }
