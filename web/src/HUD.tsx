@@ -47,6 +47,11 @@ type NewAlertResponse = {
   url: string
 }
 
+type NewSnapshotResponse = { //TODO TFT
+  // output of snapshot_storage
+  url: string
+}
+
 // The Main HUD view, as specified in
 // https://docs.google.com/document/d/1VNIGfpC4fMfkscboW0bjYYFJl07um_1tsFrbN-Fu3FI/edit#heading=h.l8mmnclsuxl1
 class HUD extends Component<HudProps, HudState> {
@@ -167,10 +172,22 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   sendSnapshot(snapshot: Snapshot) {
-    if (snapshot == null){
-      console.log("snapshot is null :(")
-    }
-    console.log(snapshot.View)
+    let url = `//${window.location.host}/api/snapshot/new`
+    fetch(url, {
+      method: "post",
+      body: JSON.stringify(snapshot),
+    })
+        .then(res => {
+          res
+              .json()
+              .then((value: NewSnapshotResponse) => {
+                debugger
+                window.open(value.url)
+              })
+              .catch(err => console.error(err))
+        })
+        .then(err => console.error(err))
+        //TODO TFT: maybe do something other than console the error
   }
 
   render() {

@@ -15,6 +15,7 @@ type TopBarProps = {
   numberOfAlerts: number
   state: Snapshot
     handleSendSnapshot: (snapshot: Snapshot) => void
+    //TODO TFT: add snapshot feature flag boolean
 
 }
 
@@ -29,6 +30,7 @@ class TopBar extends PureComponent<TopBarProps> {
           resourceView={this.props.resourceView}
           numberOfAlerts={this.props.numberOfAlerts}
         />
+        {/*//TODO TFT: check for snapshot feature flag boolean */}
           <div className="TopBar-headerDiv-snapshotURL">
               {renderSnapshotLinkButton(this.props.state, this.props.handleSendSnapshot)}
           </div>

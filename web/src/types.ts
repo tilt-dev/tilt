@@ -79,7 +79,7 @@ export type ResourceInfo = {
   Endpoints: Array<string>
 }
 
-export type Snapshot = {
+export type Snapshot = { // input of snapshot_storage
   Message: string
   View: {
     Resources: Array<Resource>
