@@ -11,24 +11,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const (
-	sparkleUrl = "http://localhost:8100"
-	tadaUrl    = "http://localhost:8101"
-)
-
 func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
+
 	f := newK8sFixture(t, "live_update_two_images_one_manifest")
 	defer f.TearDown()
 
 	f.TiltWatch()
+
+	sparkleURL := "http://localhost:8100"
+	tadaURL := "http://localhost:8101"
 
 	fmt.Println("> Initial build")
 	initialPod := f.WaitForOnePodWithAllContainersReady(f.ctx, "app=twoimages", time.Minute)
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
-	f.CurlUntil(ctx, sparkleUrl, "✨ One-Up! ✨\n")
-	f.CurlUntil(ctx, tadaUrl, "🎉 One-Up! 🎉\n")
+	f.CurlUntil(ctx, sparkleURL, "✨ One-Up! ✨\n")
+	f.CurlUntil(ctx, tadaURL, "🎉 One-Up! 🎉\n")
 
 	// Live Update only one
 	fmt.Println("> LiveUpdate 'sparkle'")
@@ -36,8 +35,8 @@ func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
-	f.CurlUntil(ctx, sparkleUrl, "✨ Two-Up! ✨\n")
-	f.CurlUntil(ctx, tadaUrl, "🎉 One-Up! 🎉\n")
+	f.CurlUntil(ctx, sparkleURL, "✨ Two-Up! ✨\n")
+	f.CurlUntil(ctx, tadaURL, "🎉 One-Up! 🎉\n")
 
 	podAfterSparkleLiveUpd := f.WaitForOnePodWithAllContainersReady(f.ctx, "app=twoimages", time.Minute)
 
@@ -53,8 +52,8 @@ func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
-	f.CurlUntil(ctx, sparkleUrl, "✨ Two-Up! ✨\n")
-	f.CurlUntil(ctx, tadaUrl, "🎉 One-Up! 🎉\n")
+	f.CurlUntil(ctx, sparkleURL, "✨ Two-Up! ✨\n")
+	f.CurlUntil(ctx, tadaURL, "🎉 One-Up! 🎉\n")
 
 	podAfterKillTada := f.WaitForOnePodWithAllContainersReady(f.ctx, "app=twoimages", time.Minute)
 	assert.Equal(t, initialPod, podAfterKillTada)
@@ -67,8 +66,8 @@ func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
-	f.CurlUntil(ctx, sparkleUrl, "✨ Three-Up! ✨\n")
-	f.CurlUntil(ctx, tadaUrl, "🎉 Three-Up! 🎉\n")
+	f.CurlUntil(ctx, sparkleURL, "✨ Three-Up! ✨\n")
+	f.CurlUntil(ctx, tadaURL, "🎉 Three-Up! 🎉\n")
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
@@ -82,8 +81,8 @@ func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
-	f.CurlUntil(ctx, sparkleUrl, "✨ Three-Up! ✨\n")
-	f.CurlUntil(ctx, tadaUrl, "🎉 Three-Up! 🎉\n")
+	f.CurlUntil(ctx, sparkleURL, "✨ Three-Up! ✨\n")
+	f.CurlUntil(ctx, tadaURL, "🎉 Three-Up! 🎉\n")
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
