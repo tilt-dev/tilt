@@ -58,7 +58,6 @@ func (ar *AnalyticsReporter) report() {
 			if len(m.ImageTargets) == 0 {
 				unbuiltCount++
 			}
-			// Open Q: stat for number of resources with multiple image targets? (# targets per resource?)
 		}
 		if m.IsDC() {
 			dcCount++
@@ -74,9 +73,6 @@ func (ar *AnalyticsReporter) report() {
 			}
 			if !it.AnyLiveUpdateInfo().Empty() {
 				if !seenLU {
-					// OPEN Q: do we want to report the number of LiveUpd _targets_ or
-					// LiveUpd _resources_ (and separately report whether there are resources
-					// with more than one LiveUpd on them)? <- this does the latter
 					seenLU = true
 					liveUpdateCount++
 				} else if !multiLU {
