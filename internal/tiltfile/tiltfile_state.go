@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/davecgh/go-spew/spew"
 	"go.starlark.net/syntax"
 
 	"github.com/windmilleng/tilt/internal/analytics"
@@ -638,8 +637,6 @@ func (s *tiltfileState) assembleK8sUnresourced() error {
 }
 
 func (s *tiltfileState) validateK8s(r *k8sResource) error {
-	// a. r.imageRefMap should be image -> count
-	// ~~ look at r.imageRefMap, log stat for any count > 1 if liveupd
 	if len(r.entities) == 0 {
 		if len(r.refSelectors) > 0 {
 			return fmt.Errorf("resource %q: could not find k8s entities matching "+
@@ -822,12 +819,14 @@ func (s *tiltfileState) translateK8s(ctx context.Context, resources []*k8sResour
 		}
 
 		result = append(result, m)
-		spew.Dump(r.imageRefMap)
 		for _, iTarg := range iTargets {
 			ref := iTarg.ConfigurationRef.String()
 			hasLiveUpd := fmt.Sprintf("%t", !iTarg.AnyLiveUpdateInfo().Empty())
 			count := r.imageRefMap[ref]
-			a.Count("containersForRef", map[string]string{"ref": ref, "live_update": hasLiveUpd}, count)
+
+			a.Count("containersForRef", map[string]string{
+				"ref": analytics.HashMD5(ref), "live_update": hasLiveUpd,
+			}, count)
 		}
 	}
 

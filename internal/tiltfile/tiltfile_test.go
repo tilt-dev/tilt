@@ -1850,21 +1850,21 @@ k8s_yaml(['sancho.yaml', 'blorg.yaml', 'doggos.yaml'])
 	expected := []analytics.CountEvent{{
 		Name: "containersForRef",
 		Tags: map[string]string{
-			"ref":         testyaml.SanchoImage,
+			"ref":         tiltanalytics.HashMD5(testyaml.SanchoImage),
 			"live_update": "true",
 		},
 		N: 2,
 	}, {
 		Name: "containersForRef",
 		Tags: map[string]string{
-			"ref":         "gcr.io/blorg-dev/blorg-backend:devel-nick",
+			"ref":         tiltanalytics.HashMD5("gcr.io/blorg-dev/blorg-backend:devel-nick"),
 			"live_update": "true",
 		},
 		N: 1,
 	}, {
 		Name: "containersForRef",
 		Tags: map[string]string{
-			"ref":         "gcr.io/windmill-public-containers/servantes/doggos",
+			"ref":         tiltanalytics.HashMD5("gcr.io/windmill-public-containers/servantes/doggos"),
 			"live_update": "false",
 		},
 		N: 1,
