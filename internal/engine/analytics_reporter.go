@@ -29,10 +29,12 @@ func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore) {
 	// wait until state has been kinda initialized
 	if !state.TiltStartTime.IsZero() && state.LastTiltfileError() == nil {
 		ar.started = true
+		ar.report() // report once now...
 		go func() {
 			for {
 				select {
 				case <-time.After(analyticsReportingInterval):
+					// and once every <interval> thereafter
 					ar.report()
 				case <-ctx.Done():
 					return
