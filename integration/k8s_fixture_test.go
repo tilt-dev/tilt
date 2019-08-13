@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
@@ -69,6 +70,16 @@ func (f *k8sFixture) CurlUntil(ctx context.Context, url string, expectedContents
 // Returns the names of the ready pods.
 func (f *k8sFixture) WaitForAllPodsReady(ctx context.Context, selector string) []string {
 	return f.WaitForAllPodsInPhase(ctx, selector, v1.PodRunning)
+}
+
+func (f *k8sFixture) WaitForOnePodWithAllContainersReady(ctx context.Context, selector string, timeout time.Duration) string {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	allPods := f.WaitForAllPodsReady(ctx, selector)
+	require.Len(f.t, allPods, 1, "need exactly one ready pod")
+	f.WaitForAllContainersForPodReady(ctx, allPods[0])
+	return allPods[0]
 }
 
 func (f *k8sFixture) WaitForAllPodsInPhase(ctx context.Context, selector string, phase v1.PodPhase) []string {
@@ -127,6 +138,45 @@ func (f *k8sFixture) AllPodsInPhase(ctx context.Context, selector string, phase 
 		podNames = append(podNames, name)
 	}
 	return hasOneMatchingPod, outStr, podNames
+}
+
+func (f *k8sFixture) WaitForAllContainersForPodReady(ctx context.Context, pod string) {
+	for {
+		allContainersReady, output := f.AllContainersForPodReady(ctx, pod)
+		if allContainersReady {
+			return
+		}
+
+		select {
+		case <-ctx.Done():
+			f.t.Fatalf("Timed out waiting for containers for pod %s to be ready. Output:\n:%s\n", pod, output)
+		case <-time.After(200 * time.Millisecond):
+		}
+	}
+}
+
+// Checks that all containers for the given pod are ready
+// Returns the output (for diagnostics)
+func (f *k8sFixture) AllContainersForPodReady(ctx context.Context, pod string) (bool, string) {
+	cmd := exec.Command("kubectl", "get", "pod", pod,
+		namespaceFlag, "-o=template",
+		"--template", "{{range .status.containerStatuses}}{{.ready}}{{println}}{{end}}")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		f.t.Fatal(errors.Wrapf(err, "get pod %s", pod))
+	}
+
+	outStr := strings.TrimSpace(string(out))
+	lines := strings.Split(outStr, "\n")
+	if len(lines) == 0 {
+		return false, outStr
+	}
+	for _, line := range lines {
+		if line != "true" {
+			return false, outStr
+		}
+	}
+	return true, outStr
 }
 
 func (f *k8sFixture) ForwardPort(name string, portMap string) {
