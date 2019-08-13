@@ -1,11 +1,18 @@
 @import "constants";
 
-.SailInfo {
-  padding-right: $spacing-unit;
-  a {
-    color: $color-gray-lightest;
-  }
-  a:hover {
-    color: $color-white;
-  }
+.SailInfo-button {
+  background-color: transparent;
+  border: 1px solid rgba($color-white, $translucent-ish);
+  color: $color-white;
+  text-transform: uppercase;
+  padding-top: $spacing-unit / 3;
+  padding-bottom: $spacing-unit / 3;
+  padding-left: $spacing-unit / 2;
+  padding-right: $spacing-unit / 2;
+  margin-left: $spacing-unit / 2;
+}
+
+.SailInfo-button:hover {
+  cursor: pointer;
+  background-color: $color-gray-dark;
 }
