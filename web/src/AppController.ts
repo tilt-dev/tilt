@@ -45,9 +45,9 @@ class AppController {
 
       let data = JSON.parse(event.data)
 
-      data.View.Resources = this.setDefaultResourceInfo(data.View.Resources)
+      data.Resources = this.setDefaultResourceInfo(data.Resources)
       // @ts-ignore
-      this.component.setAppState({ View: data.View })
+      this.component.setAppState({ View: data })
     })
   }
 
@@ -126,7 +126,7 @@ class AppController {
     fetch(url)
       .then(resp => resp.json())
       .then(data => {
-        data.Resources = this.setDefaultResourceInfo(data.Resources)
+        data.View.Resources = this.setDefaultResourceInfo(data.View.Resources)
         // @ts-ignore
         this.component.setAppState({ View: data })
       })
