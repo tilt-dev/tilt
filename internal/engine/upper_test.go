@@ -3012,6 +3012,11 @@ func (f *testFixture) LogLines() []string {
 }
 
 func (f *testFixture) TearDown() {
+	if f.T().Failed() {
+		f.withState(func(es store.EngineState) {
+			fmt.Println(es.Log.String())
+		})
+	}
 	f.TempDirFixture.TearDown()
 	f.kClient.TearDown()
 	close(f.fsWatcher.events)
