@@ -78,7 +78,6 @@ type ExecCall struct {
 
 type GetKey struct {
 	Group           string
-	Version         string
 	Kind            string
 	Namespace       string
 	Name            string
@@ -240,8 +239,13 @@ func (c *FakeK8sClient) Delete(ctx context.Context, entities []K8sEntity) error 
 	return nil
 }
 
-func (c *FakeK8sClient) Get(group, version, kind, namespace, name, resourceVersion string) (*unstructured.Unstructured, error) {
-	key := GetKey{group, version, kind, namespace, name, resourceVersion}
+func (c *FakeK8sClient) GetByReference(ref v1.ObjectReference) (*unstructured.Unstructured, error) {
+	group := getGroup(ref)
+	kind := ref.Kind
+	namespace := ref.Namespace
+	name := ref.Name
+	resourceVersion := ref.ResourceVersion
+	key := GetKey{group, kind, namespace, name, resourceVersion}
 	resp, ok := c.GetResources[key]
 	if !ok {
 		return nil, fmt.Errorf("No response found for %v", key)

@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/browser"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -78,7 +79,7 @@ type Client interface {
 	// behavior for our use cases.
 	Delete(ctx context.Context, entities []K8sEntity) error
 
-	Get(group, version, kind, namespace, name, resourceVersion string) (*unstructured.Unstructured, error)
+	GetByReference(ref v1.ObjectReference) (*unstructured.Unstructured, error)
 
 	PodByID(ctx context.Context, podID PodID, n Namespace) (*v1.Pod, error)
 
@@ -361,16 +362,53 @@ func (k K8sClient) actOnEntities(ctx context.Context, cmdArgs []string, entities
 	return k.kubectlRunner.execWithStdin(ctx, args, rawYAML)
 }
 
-func (k K8sClient) Get(group, version, kind, namespace, name, resourceVersion string) (*unstructured.Unstructured, error) {
+func (k K8sClient) GetByReference(ref v1.ObjectReference) (*unstructured.Unstructured, error) {
+	group := getGroup(ref)
+	kind := ref.Kind
+	namespace := ref.Namespace
+	name := ref.Name
+	resourceVersion := ref.ResourceVersion
+	uid := ref.UID
 	rm, err := k.drm.RESTMapping(schema.GroupKind{Group: group, Kind: kind})
 	if err != nil {
 		return nil, errors.Wrapf(err, "error mapping %s/%s", group, kind)
 	}
 
-	return k.dynamic.Resource(rm.Resource).Namespace(namespace).Get(name, metav1.GetOptions{
-		TypeMeta:        metav1.TypeMeta{},
+	result, err := k.dynamic.Resource(rm.Resource).Namespace(namespace).Get(name, metav1.GetOptions{
 		ResourceVersion: resourceVersion,
 	})
+	if err != nil {
+		return nil, err
+	}
+	if uid != "" && result.GetUID() != uid {
+		return nil, apierrors.NewNotFound(v1.Resource(kind), name)
+	}
+	return result, nil
+}
+
+// Tests whether a string is a valid version for a k8s resource type.
+// from https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definition-versioning/#version-priority
+// Versions start with a v followed by a number, an optional beta or alpha designation, and optional additional numeric
+// versioning information. Broadly, a version string might look like v2 or v2beta1.
+var versionRegex = regexp.MustCompile(`^v\d+(?:(?:alpha|beta)(?:\d+)?)?$`)
+
+func getGroup(involvedObject v1.ObjectReference) string {
+	// For some types, APIVersion is incorrectly just the group w/ no version, which leads GroupVersionKind to return
+	// a value where Group is empty and Version contains the group, so we need to correct for that.
+	// An empty Group is valid, though: it's empty for apps in the core group.
+	// So, we detect this situation by checking if the version field is valid.
+
+	// this stems from group/version not necessarily being populated at other points in the API. see more info here:
+	// https://github.com/kubernetes/client-go/issues/308
+	// https://github.com/kubernetes/kubernetes/issues/3030
+
+	gvk := involvedObject.GroupVersionKind()
+	group := gvk.Group
+	if !versionRegex.MatchString(gvk.Version) {
+		group = involvedObject.APIVersion
+	}
+
+	return group
 }
 
 func ProvideServerVersion(clientSet *kubernetes.Clientset) (*version.Info, error) {
