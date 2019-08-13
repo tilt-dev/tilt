@@ -1,7 +1,6 @@
-FROM golang:1.11-alpine
-WORKDIR /go/src/github.com/windmilleng/integration/live_update_two_images_one_manifest/sparkle
+FROM python:alpine
+WORKDIR /app
+ADD requirements.txt .
 ADD sparkle .
-ADD start.sh .
-ADD restart.sh .
-RUN go install github.com/windmilleng/integration/live_update_two_images_one_manifest/sparkle
-ENTRYPOINT ./start.sh /go/bin/sparkle
+RUN pip install -r requirements.txt
+ENTRYPOINT python /app/app.py

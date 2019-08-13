@@ -31,7 +31,7 @@ func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
 
 	// Live Update only one
 	fmt.Println("> LiveUpdate 'sparkle'")
-	f.ReplaceContents("./sparkle/main.go", "One-Up", "Two-Up")
+	f.ReplaceContents("./sparkle/app.py", "One-Up", "Two-Up")
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
@@ -61,8 +61,8 @@ func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
 	// Make sure that we can LiveUpdate both at once
 	fmt.Println("> LiveUpdate both services at once")
 
-	f.ReplaceContents("./sparkle/main.go", "Two-Up", "Three-Up")
-	f.ReplaceContents("./tada/main.go", "One-Up", "Three-Up")
+	f.ReplaceContents("./sparkle/app.py", "Two-Up", "Three-Up")
+	f.ReplaceContents("./tada/app.py", "One-Up", "Three-Up")
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()

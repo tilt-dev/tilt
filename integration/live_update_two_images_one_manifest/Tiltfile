@@ -13,21 +13,13 @@ enable_feature('multiple_containers_per_pod')
 default_registry(read_json('tilt_option.json', {})
                  .get('default_registry', 'gcr.io/windmill-test-containers/servantes'))
 
-codepath = '/go/src/github.com/windmilleng/integration/live_update_two_images_one_manifest'
-sparkle_path = '{}/sparkle'.format(codepath)
-tada_path = '{}/tada'.format(codepath)
-
 docker_build('sparkle', '.', dockerfile='Dockerfile.sparkle',
              live_update=[
-                 sync('./sparkle/', sparkle_path),
-                 run('go install {}'.format(sparkle_path)),
-                 run('{}/restart.sh'.format(sparkle_path))
+                 sync('./sparkle/', '/app/'),
              ])
 docker_build('tada', '.', dockerfile='Dockerfile.tada',
              live_update=[
-                 sync('./tada/', tada_path),
-                 run('go install {}'.format(tada_path)),
-                 run('{}/restart.sh'.format(tada_path))
+                 sync('./tada/', '/app/'),
              ])
 k8s_yaml('two_images.yaml')
 
