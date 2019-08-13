@@ -21,6 +21,7 @@ type buildEntry struct {
 	name          model.ManifestName
 	targets       []model.TargetSpec
 	buildStateSet store.BuildStateSet
+	filesChanged  []string
 	buildReason   model.BuildReason
 	firstBuild    bool
 }
@@ -188,6 +189,7 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 		firstBuild:    firstBuild,
 		buildReason:   buildReason,
 		buildStateSet: buildStateSet,
+		filesChanged:  append(ms.ConfigFilesThatCausedChange, buildStateSet.FilesChanged()...),
 	}, true
 }
 
@@ -212,14 +214,13 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 		}
 		ctx := logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), actionWriter))
 
-		filesChanged := entry.buildStateSet.FilesChanged()
 		st.Dispatch(BuildStartedAction{
 			ManifestName: entry.name,
 			StartTime:    time.Now(),
-			FilesChanged: filesChanged,
+			FilesChanged: entry.filesChanged,
 			Reason:       entry.buildReason,
 		})
-		c.logBuildEntry(ctx, entry, filesChanged)
+		c.logBuildEntry(ctx, entry)
 
 		result, err := c.buildAndDeploy(ctx, st, entry)
 		st.Dispatch(NewBuildCompleteAction(result, err))
@@ -237,9 +238,10 @@ func (c *BuildController) buildAndDeploy(ctx context.Context, st store.RStore, e
 	return c.b.BuildAndDeploy(ctx, st, targets, entry.buildStateSet)
 }
 
-func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry, changedFiles []string) {
+func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 	firstBuild := entry.firstBuild
 	name := entry.name
+	changedFiles := entry.filesChanged
 
 	l := logger.Get(ctx)
 	if firstBuild {

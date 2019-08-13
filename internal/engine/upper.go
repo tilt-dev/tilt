@@ -209,11 +209,8 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 		return
 	}
 
-	edits := []string{}
-	edits = append(edits, action.FilesChanged...)
-
 	bs := model.BuildRecord{
-		Edits:     append(edits, ms.ConfigFilesThatCausedChange...),
+		Edits:     append([]string{}, action.FilesChanged...),
 		StartTime: action.StartTime,
 		Reason:    action.Reason,
 	}
