@@ -22,8 +22,8 @@ import (
 	tft "github.com/windmilleng/tilt/internal/tft/client"
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/model"
-
 )
+
 func TestHandleAnalyticsEmptyRequest(t *testing.T) {
 	f := newTestFixture(t)
 
