@@ -16,9 +16,9 @@ import (
 )
 
 const fastBuildDeprecationWarning = "FastBuild (`fast_build`; `add_fast_build`; " +
-	"`docker_build(...).add(...)`, etc.) will be deprecated soon; you can use Live " +
-	"Update instead! See https://docs.tilt.dev/live_update_tutorial.html for more " +
-	"information. If Live Update doesn't fit your use case, let us know."
+	"`docker_build(...).add(...)`, etc.) will be deprecated **ON THURS. 9/12/19**; " +
+	"you can use Live Update instead! See https://docs.tilt.dev/live_update_tutorial.html " +
+	"for more information. If Live Update doesn't fit your use case, let us know."
 
 type dockerImage struct {
 	tiltfilePath       string

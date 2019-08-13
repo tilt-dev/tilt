@@ -2534,6 +2534,43 @@ alert-injes…┊ ghij`)
 	assert.Nil(t, err)
 }
 
+func TestTiltfileChangedFilesOnlyLoggedAfterFirstBuild(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", `
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile')
+k8s_yaml('snack.yaml')`)
+	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
+	f.WriteFile("snack.yaml", simpleYAML)
+	f.WriteFile("src/main.go", "hello")
+
+	f.loadAndStart()
+
+	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
+		return len(state.TiltfileState.BuildHistory) == 1
+	})
+
+	// we shouldn't log changes for first build
+	f.withState(func(state store.EngineState) {
+		require.NotContains(t, state.Log.String(), "changed: [")
+	})
+
+	f.WriteFile("Tiltfile", `
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile', ignore='foo')
+k8s_yaml('snack.yaml')`)
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("Tiltfile"))
+
+	f.WaitUntil("Tiltfile reloaded", func(state store.EngineState) bool {
+		return len(state.TiltfileState.BuildHistory) == 2
+	})
+
+	f.withState(func(state store.EngineState) {
+		expectedMessage := fmt.Sprintf("1 changed: [%s]", f.JoinPath("Tiltfile"))
+		require.Contains(t, state.Log.String(), expectedMessage)
+	})
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
