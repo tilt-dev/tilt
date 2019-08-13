@@ -292,7 +292,7 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	request, err := http.NewRequest(http.MethodPost, "https://alerts.tilt.dev/api/snapshot/new", req.Body) // New request
+	request, err := http.NewRequest(http.MethodPost, "https://alerts.tilt.dev/api/snapshot/new", req.Body)
 	response, err := s.httpCli.Do(request)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

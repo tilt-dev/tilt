@@ -31,11 +31,12 @@ class TopBar extends PureComponent<TopBarProps> {
           numberOfAlerts={this.props.numberOfAlerts}
         />
         <section className="TopBar-tools">
-          {this.props.snapshotsIsEnabled && renderSnapshotLinkButton(
-            this.props.state,
-            this.props.handleSendSnapshot,
-            this.props.snapshotURL
-          )}
+          {this.props.snapshotsIsEnabled &&
+            renderSnapshotLinkButton(
+              this.props.state,
+              this.props.handleSendSnapshot,
+              this.props.snapshotURL
+            )}
           <SailInfo
             sailEnabled={this.props.sailEnabled}
             sailUrl={this.props.sailUrl}
@@ -55,7 +56,9 @@ function renderSnapshotLinkButton(
   if (!hasLink) {
     return (
       <section className="TopBar-snapshotUrlWrap">
-        <button onClick={() => handleSendSnapshot(snapshot)}>Share Snapshot</button>
+        <button onClick={() => handleSendSnapshot(snapshot)}>
+          Share Snapshot
+        </button>
       </section>
     )
   } else {

@@ -22,18 +22,8 @@ import (
 	tft "github.com/windmilleng/tilt/internal/tft/client"
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/model"
+
 )
-
-var originalWD string
-
-func init() {
-	wd, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
-	originalWD = wd
-}
-
 func TestHandleAnalyticsEmptyRequest(t *testing.T) {
 	f := newTestFixture(t)
 
@@ -407,7 +397,11 @@ func TestHandleNewAlert(t *testing.T) {
 func TestHandleNewSnapshot(t *testing.T) {
 	f := newTestFixture(t)
 
-	sp := filepath.Join(originalWD, "testdata", "snapshot.json")
+	wd, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	sp := filepath.Join(wd, "testdata", "snapshot.json")
 	snap, err := ioutil.ReadFile(sp)
 	if err != nil {
 		t.Fatal(err)
