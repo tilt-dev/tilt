@@ -1,6 +1,6 @@
 import HUD from "./HUD"
 import { getResourceAlerts } from "./alerts"
-import {Resource} from "./types";
+import { Resource } from "./types"
 
 // A Websocket that automatically retries.
 
