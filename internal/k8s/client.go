@@ -43,7 +43,6 @@ type PodID string
 type NodeID string
 type ServiceName string
 type KubeContext string
-type UID string
 
 const DefaultNamespace = Namespace("default")
 
