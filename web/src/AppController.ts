@@ -126,7 +126,7 @@ class AppController {
     fetch(url)
       .then(resp => resp.json())
       .then(data => {
-        data.Resources = this.setDefaultResourceInfo(data.Resources)
+        data.View.Resources = this.setDefaultResourceInfo(data.View.Resources)
         // @ts-ignore
         this.component.setAppState({ View: data })
       })
