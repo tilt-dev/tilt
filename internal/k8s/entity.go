@@ -141,8 +141,8 @@ func (e K8sEntity) Namespace() Namespace {
 	return Namespace(n)
 }
 
-func (e K8sEntity) UID() UID {
-	return UID(e.meta().GetUID())
+func (e K8sEntity) UID() types.UID {
+	return e.meta().GetUID()
 }
 
 func (e K8sEntity) Labels() map[string]string {

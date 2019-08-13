@@ -6,6 +6,7 @@ import (
 
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -180,7 +181,7 @@ type LatestVersionAction struct {
 func (LatestVersionAction) Action() {}
 
 type UIDUpdateAction struct {
-	UID          k8s.UID
+	UID          types.UID
 	EventType    watch.EventType
 	ManifestName model.ManifestName
 	Entity       k8s.K8sEntity

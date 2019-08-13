@@ -8,6 +8,7 @@ import (
 	"github.com/jonboulle/clockwork"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
@@ -29,7 +30,7 @@ type uidMapEntry struct {
 type EventWatchManager struct {
 	kClient  k8s.Client
 	watching bool
-	uidMap   map[k8s.UID]uidMapEntry
+	uidMap   map[types.UID]uidMapEntry
 	uidMapMu sync.RWMutex
 	clock    clockwork.Clock
 }
@@ -37,7 +38,7 @@ type EventWatchManager struct {
 func NewEventWatchManager(kClient k8s.Client, clock clockwork.Clock) *EventWatchManager {
 	return &EventWatchManager{
 		kClient: kClient,
-		uidMap:  make(map[k8s.UID]uidMapEntry),
+		uidMap:  make(map[types.UID]uidMapEntry),
 		clock:   clock,
 	}
 }
@@ -104,7 +105,7 @@ func (m *EventWatchManager) createEntry(ctx context.Context, involvedObject v1.O
 // object at the same time, they can each result in their own API request.
 // We're currently assuming this matters sufficiently rarely that it's not worth the code complexity to fix.
 func (m *EventWatchManager) getEntry(ctx context.Context, obj v1.ObjectReference) uidMapEntry {
-	uid := k8s.UID(obj.UID)
+	uid := obj.UID
 
 	m.uidMapMu.RLock()
 	entry, ok := m.uidMap[uid]
