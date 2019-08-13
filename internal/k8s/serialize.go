@@ -41,12 +41,11 @@ func ParseYAML(k8sYaml io.Reader) ([]K8sEntity, error) {
 			continue
 		}
 
-		obj, groupVersionKind, err :=
+		obj, _, err :=
 			scheme.Codecs.UniversalDeserializer().Decode(ext.Raw, nil, nil)
 		if err == nil {
 			result = append(result, K8sEntity{
-				Obj:  obj,
-				Kind: groupVersionKind,
+				Obj: obj,
 			})
 			continue
 		}
@@ -56,15 +55,14 @@ func ParseYAML(k8sYaml io.Reader) ([]K8sEntity, error) {
 		}
 
 		// If this is a NotRegisteredError, fallback to unstructured code
-		obj, groupVersionKind, err =
+		obj, _, err =
 			unstructured.UnstructuredJSONScheme.Decode(ext.Raw, nil, nil)
 		if err != nil {
 			return nil, err
 		}
 
 		result = append(result, K8sEntity{
-			Obj:  obj,
-			Kind: groupVersionKind,
+			Obj: obj,
 		})
 	}
 

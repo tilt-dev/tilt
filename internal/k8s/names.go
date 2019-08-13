@@ -48,11 +48,12 @@ func UniqueNames(es []K8sEntity, minComponents int) []string {
 
 // returns a list of potential names, in order of preference
 func potentialNames(e K8sEntity, minComponents int) []string {
+	gvk := e.GVK()
 	components := []string{
 		e.Name(),
-		e.Kind.Kind,
+		gvk.Kind,
 		e.Namespace().String(),
-		e.Kind.Group,
+		gvk.Group,
 	}
 	var ret []string
 	for i := minComponents - 1; i < len(components); i++ {

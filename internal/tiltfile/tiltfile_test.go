@@ -4193,7 +4193,7 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			yaml := m.K8sTarget().YAML
 			found := false
 			for _, e := range f.entities(yaml) {
-				if e.Kind.Kind == "Deployment" && e.Name() == opt.name {
+				if e.GVK().Kind == "Deployment" && e.Name() == opt.name {
 					found = true
 					break
 				}
@@ -4205,7 +4205,7 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			yaml := m.K8sTarget().YAML
 			found := false
 			for _, e := range f.entities(yaml) {
-				if e.Kind.Kind == "Service" && e.Name() == opt.name {
+				if e.GVK().Kind == "Service" && e.Name() == opt.name {
 					found = true
 					break
 				}
@@ -4217,7 +4217,7 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			yaml := m.K8sTarget().YAML
 			found := false
 			for _, e := range f.entities(yaml) {
-				if e.Kind.Kind == opt.kind && e.Name() == opt.name {
+				if e.GVK().Kind == opt.kind && e.Name() == opt.name {
 					found = true
 					break
 				}

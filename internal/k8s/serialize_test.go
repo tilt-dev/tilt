@@ -20,9 +20,9 @@ func MustParseYAMLFromString(t *testing.T, s string) []K8sEntity {
 func TestTracerYAML(t *testing.T) {
 	entities := MustParseYAMLFromString(t, testyaml.TracerYAML)
 	if len(entities) != 3 ||
-		entities[0].Kind.Kind != "Deployment" ||
-		entities[1].Kind.Kind != "Service" ||
-		entities[2].Kind.Kind != "Service" {
+		entities[0].GVK().Kind != "Deployment" ||
+		entities[1].GVK().Kind != "Service" ||
+		entities[2].GVK().Kind != "Service" {
 		t.Errorf("Unexpected entities: %+v", entities)
 	}
 
@@ -41,7 +41,7 @@ func TestTracerYAML(t *testing.T) {
 
 func TestSanchoYAML(t *testing.T) {
 	entities := MustParseYAMLFromString(t, testyaml.SanchoYAML)
-	if len(entities) != 1 || entities[0].Kind.Kind != "Deployment" {
+	if len(entities) != 1 || entities[0].GVK().Kind != "Deployment" {
 		t.Errorf("Unexpected entities: %+v", entities)
 	}
 
@@ -61,7 +61,7 @@ func TestHelmGeneratedRedisYAML(t *testing.T) {
 
 	kinds := []string{}
 	for _, entity := range entities {
-		kinds = append(kinds, entity.Kind.Kind)
+		kinds = append(kinds, entity.GVK().Kind)
 	}
 	assert.Equal(t, []string{
 		"Secret",
@@ -81,7 +81,7 @@ func TestCRDYAML(t *testing.T) {
 	kinds := []string{}
 	names := []string{}
 	for _, entity := range entities {
-		kinds = append(kinds, entity.Kind.Kind)
+		kinds = append(kinds, entity.GVK().Kind)
 		names = append(names, entity.Name())
 	}
 	assert.Equal(t, []string{
