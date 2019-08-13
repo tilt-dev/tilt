@@ -88,10 +88,12 @@ func newSWFixture(t *testing.T) *swFixture {
 	ctx, cancel := context.WithCancel(ctx)
 
 	nip := k8s.NodeIP("fakeip")
+	of := k8s.ProvideOwnerFetcher(kClient)
+	sw := NewServiceWatcher(kClient, of, nip)
 
 	ret := &swFixture{
 		kClient: kClient,
-		sw:      NewServiceWatcher(kClient, nip),
+		sw:      sw,
 		nip:     nip,
 		ctx:     ctx,
 		cancel:  cancel,

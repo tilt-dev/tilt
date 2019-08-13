@@ -44,7 +44,8 @@ var K8sWireSet = wire.NewSet(
 	k8s.ProvideKubectlRunner,
 	k8s.ProvideContainerRuntime,
 	k8s.ProvideServerVersion,
-	k8s.ProvideK8sClient)
+	k8s.ProvideK8sClient,
+	k8s.ProvideOwnerFetcher)
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet,

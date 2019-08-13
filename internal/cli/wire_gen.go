@@ -68,12 +68,13 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	int2 := provideKubectlLogLevel()
 	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, int2)
 	k8sClient := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
-	podWatcher := engine.NewPodWatcher(k8sClient)
+	ownerFetcher := k8s.ProvideOwnerFetcher(k8sClient)
+	podWatcher := engine.NewPodWatcher(k8sClient, ownerFetcher)
 	nodeIP, err := k8s.DetectNodeIP(ctx, env)
 	if err != nil {
 		return demo.Script{}, err
 	}
-	serviceWatcher := engine.NewServiceWatcher(k8sClient, nodeIP)
+	serviceWatcher := engine.NewServiceWatcher(k8sClient, ownerFetcher, nodeIP)
 	podLogManager := engine.NewPodLogManager(k8sClient)
 	portForwardController := engine.NewPortForwardController(k8sClient)
 	fsWatcherMaker := engine.ProvideFsWatcherMaker()
@@ -205,12 +206,13 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	int2 := provideKubectlLogLevel()
 	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, int2)
 	k8sClient := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
-	podWatcher := engine.NewPodWatcher(k8sClient)
+	ownerFetcher := k8s.ProvideOwnerFetcher(k8sClient)
+	podWatcher := engine.NewPodWatcher(k8sClient, ownerFetcher)
 	nodeIP, err := k8s.DetectNodeIP(ctx, env)
 	if err != nil {
 		return Threads{}, err
 	}
-	serviceWatcher := engine.NewServiceWatcher(k8sClient, nodeIP)
+	serviceWatcher := engine.NewServiceWatcher(k8sClient, ownerFetcher, nodeIP)
 	podLogManager := engine.NewPodLogManager(k8sClient)
 	portForwardController := engine.NewPortForwardController(k8sClient)
 	fsWatcherMaker := engine.ProvideFsWatcherMaker()
@@ -486,7 +488,7 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics) (
 
 // wire.go:
 
-var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.DetectNodeIP, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientSet, k8s.ProvideRESTConfig, k8s.ProvidePortForwarder, k8s.ProvideConfigNamespace, k8s.ProvideKubectlRunner, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient)
+var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.DetectNodeIP, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientSet, k8s.ProvideRESTConfig, k8s.ProvidePortForwarder, k8s.ProvideConfigNamespace, k8s.ProvideKubectlRunner, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient, k8s.ProvideOwnerFetcher)
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet,
