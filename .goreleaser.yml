@@ -9,13 +9,8 @@ builds:
   - linux
   - darwin
   - windows
-  # Cross-compiling darwin is a pain due to fsevents,
-  # and we don't expect darwin/386 users anyway.
-  ignore:
-  - goos: darwin
-    goarch: 386
-  - goos: windows
-    goarch: 386
+  goarch:
+  - amd64
 archive:
   name_template: "{{ .ProjectName }}.{{ .Version }}.{{ .Os }}.{{ .Arch }}"
   replacements:
