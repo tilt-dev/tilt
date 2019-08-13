@@ -1,0 +1,258 @@
+{
+  "Log": "\u001b[32mStarting Tilt (v0.9.7-dev, built 2019-08-08)…\u001b[0m\nBeginning Tiltfile execution\nlocal: kubectl config current-context\nInstalling Tilt NodeJS dependencies…\n → docker-for-desktop\nlocal: [ -d \"../alert_frontend\" ] \u0026\u0026 echo \"true\" || echo \"false\"\n → true\nfound alert_frontend\nlocal: cd ../alert_frontend \u0026\u0026 ENV=local toast helm_dev\n → [INFO] Ready to run 2 tasks: `install_helm` and `helm_dev`.\n → [INFO] Running task `install_helm`…\n → [INFO] Running task `helm_dev`…\nStarting Tilt webpack server…\n → ---\n → # Source: chart/templates/service.yaml\n → apiVersion: v1\n → kind: Service\n → metadata:\n →   name: alert-frontend\n →   labels:\n →     app: alert-frontend\n → spec:\n →   type: NodePort\n →   ports:\n →   - port: 80\n →     targetPort: 8087\n →     protocol: TCP\n →   selector:\n →     app: alert-frontend\n → \n → \n → ---\n → # Source: chart/templates/deployment.yaml\n → apiVersion: apps/v1\n → kind: Deployment\n → metadata:\n →   name: alert-frontend\n →   labels:\n →     app: alert-frontend\n → spec:\n →   replicas: 1\n →   selector:\n →     matchLabels:\n →       app: alert-frontend\n →   template:\n →     metadata:\n →       labels:\n →         app: alert-frontend\n →     spec:\n →       volumes:\n →       - name: google-cloud-key\n →         secret:\n →           secretName: firebase-key\n →       containers:\n →       - name: alert-frontend\n →         image: gcr.io/blorg-dev/alert-frontend\n →         ports:\n →         - containerPort: 8087\n →         volumeMounts:\n →         - name: google-cloud-key\n →           mountPath: /var/secrets/google\n →         readinessProbe:\n →           httpGet:\n →             path: /healthz\n →             port: 8087\n →           initialDelaySeconds: 5\n →           periodSeconds: 5\n →         env:\n →         - name: GOOGLE_APPLICATION_CREDENTIALS\n →           value: /var/secrets/google/blorg-dev-cc7165b01011.json\n →         - name: WINDMILL_ENV\n →           value: dev\n →         resources:\n →           requests:\n →             cpu: 10m\n → \nlocal: [ -d \"../alert_storage\" ] \u0026\u0026 echo \"true\" || echo \"false\"\n → true\nfound alert_storage\nlocal: cd ../alert_storage \u0026\u0026 ENV=local toast helm_dev\n → [INFO] Ready to run 2 tasks: `install_helm` and `helm_dev`.\n → [INFO] Running task `install_helm`…\n → [INFO] Running task `helm_dev`…\n → ---\n → # Source: chart/templates/service.yaml\n → apiVersion: v1\n → kind: Service\n → metadata:\n →   name: alert-storage\n →   labels:\n →     app: alert-storage\n → spec:\n →   type: NodePort\n →   ports:\n →   - port: 80\n →     targetPort: 8088\n →     protocol: TCP\n →   selector:\n →     app: alert-storage\n → \n → \n → ---\n → # Source: chart/templates/deployment.yaml\n → apiVersion: apps/v1\n → kind: Deployment\n → metadata:\n →   name: alert-storage\n →   labels:\n →     app: alert-storage\n → spec:\n →   replicas: 1\n →   selector:\n →     matchLabels:\n →       app: alert-storage\n →   template:\n →     metadata:\n →       labels:\n →         app: alert-storage\n →     spec:\n →       volumes:\n →       - name: google-cloud-key\n →         secret:\n →           secretName: firebase-key\n →       containers:\n →       - name: alert-storage\n →         image: gcr.io/blorg-dev/alert-storage\n →         ports:\n →         - containerPort: 8088\n →         volumeMounts:\n →         - name: google-cloud-key\n →           mountPath: /var/secrets/google\n →         readinessProbe:\n →           httpGet:\n →             path: /healthz\n →             port: 8088\n →           initialDelaySeconds: 5\n →           periodSeconds: 5\n →         env:\n →         - name: GOOGLE_APPLICATION_CREDENTIALS\n →           value: /var/secrets/google/blorg-dev-cc7165b01011.json\n →         - name: WINDMILL_ENV\n →           value: local\n →         resources:\n →           requests:\n →             cpu: 10m\n → \nSuccessfully loaded Tiltfile\nuncategoriz…┊ \nuncategoriz…┊ \u001b[34m──┤ Building: \u001b[0muncategorized\u001b[34m ├──────────────────────────────────────────────\u001b[0m\nuncategoriz…┊ falling back to next update method because: no targets for LiveUpdate found\nuncategoriz…┊ \u001b[34mSTEP 1/1 — \u001b[0mDeploying\nuncategoriz…┊ \u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\nuncategoriz…┊ \u001b[34m  │ \u001b[0mApplying via kubectl:\nuncategoriz…┊ \u001b[34m  │ \u001b[0m   firebase-key:secret\nuncategoriz…┊ \nuncategoriz…┊ \u001b[34m  │ \u001b[0mStep 1 - 2.988s\nuncategoriz…┊ \u001b[34m  │ \u001b[0mDone in: 2.988s \nuncategoriz…┊ \nfirestore   ┊ \nfirestore   ┊ \u001b[34m──┤ Building: \u001b[0mfirestore\u001b[34m ├──────────────────────────────────────────────\u001b[0m\nfirestore   ┊ falling back to next update method because: no targets for LiveUpdate found\nfirestore   ┊ \u001b[34mSTEP 1/1 — \u001b[0mDeploying\nfirestore   ┊ \u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\nfirestore   ┊ \u001b[34m  │ \u001b[0mApplying via kubectl:\nfirestore   ┊ \u001b[34m  │ \u001b[0m   firestore:deployment\nfirestore   ┊ \u001b[34m  │ \u001b[0m   firestore:service\nfirestore   ┊ \nfirestore   ┊ \u001b[34m  │ \u001b[0mStep 1 - 2.733s\nfirestore   ┊ \u001b[34m  │ \u001b[0mDone in: 2.733s \nfirestore   ┊ \nalert-front…┊ \nalert-front…┊ \u001b[34m──┤ Building: \u001b[0malert-frontend\u001b[34m ├──────────────────────────────────────────────\u001b[0m\nalert-front…┊ \u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [gcr.io/blorg-dev/alert-frontend]\nalert-front…┊ Building Dockerfile:\nalert-front…┊   FROM node:10\nalert-front…┊   WORKDIR /usr/src/app\nalert-front…┊   \nalert-front…┊   COPY package.json ./\nalert-front…┊   COPY yarn.lock ./\nalert-front…┊   \nalert-front…┊   RUN yarn\nalert-front…┊   \nalert-front…┊   COPY . .\nalert-front…┊   RUN yarn build\nalert-front…┊   EXPOSE 3000\nalert-front…┊   CMD [\"node\", \"dist/index.js\"]\nalert-front…┊ \nalert-front…┊ \nalert-front…┊ \u001b[34m  │ \u001b[0mTarring context…\nalert-front…┊ \u001b[34m  │ \u001b[0mBuilding image\nalert-front…┊     ╎ [1/6] FROM docker.io/library/node:10\nalert-front…┊     ╎ [cached] [2/6] COPY package.json ./\nalert-front…┊     ╎ [cached] [3/6] COPY yarn.lock ./\nalert-front…┊     ╎ [cached] [4/6] RUN yarn\nalert-front…┊     ╎ [5/6] COPY . .\nalert-front…┊     ╎ [5/6] done | 1.255s\nalert-front…┊     ╎ [6/6] RUN yarn build\nalert-front…┊     ╎   → yarn run v1.16.0\nalert-front…┊     ╎   → $ tsc\n",
+  "Resources": [
+    {
+      "Name": "(Tiltfile)",
+      "DirectoriesWatched": null,
+      "PathsWatched": null,
+      "LastDeployTime": "2019-08-08T18:13:03.526205-04:00",
+      "TriggerMode": 0,
+      "BuildHistory": [
+        {
+          "Edits": [
+            "Tiltfile"
+          ],
+          "Error": null,
+          "Warnings": null,
+          "StartTime": "2019-08-08T18:12:54.170157-04:00",
+          "FinishTime": "2019-08-08T18:13:03.526205-04:00",
+          "Reason": 2,
+          "Log": "Beginning Tiltfile execution\nlocal: kubectl config current-context\n → docker-for-desktop\nlocal: [ -d \"../alert_frontend\" ] \u0026\u0026 echo \"true\" || echo \"false\"\n → true\nfound alert_frontend\nlocal: cd ../alert_frontend \u0026\u0026 ENV=local toast helm_dev\n → [INFO] Ready to run 2 tasks: `install_helm` and `helm_dev`.\n → [INFO] Running task `install_helm`…\n → [INFO] Running task `helm_dev`…\n → ---\n → # Source: chart/templates/service.yaml\n → apiVersion: v1\n → kind: Service\n → metadata:\n →   name: alert-frontend\n →   labels:\n →     app: alert-frontend\n → spec:\n →   type: NodePort\n →   ports:\n →   - port: 80\n →     targetPort: 8087\n →     protocol: TCP\n →   selector:\n →     app: alert-frontend\n → \n → \n → ---\n → # Source: chart/templates/deployment.yaml\n → apiVersion: apps/v1\n → kind: Deployment\n → metadata:\n →   name: alert-frontend\n →   labels:\n →     app: alert-frontend\n → spec:\n →   replicas: 1\n →   selector:\n →     matchLabels:\n →       app: alert-frontend\n →   template:\n →     metadata:\n →       labels:\n →         app: alert-frontend\n →     spec:\n →       volumes:\n →       - name: google-cloud-key\n →         secret:\n →           secretName: firebase-key\n →       containers:\n →       - name: alert-frontend\n →         image: gcr.io/blorg-dev/alert-frontend\n →         ports:\n →         - containerPort: 8087\n →         volumeMounts:\n →         - name: google-cloud-key\n →           mountPath: /var/secrets/google\n →         readinessProbe:\n →           httpGet:\n →             path: /healthz\n →             port: 8087\n →           initialDelaySeconds: 5\n →           periodSeconds: 5\n →         env:\n →         - name: GOOGLE_APPLICATION_CREDENTIALS\n →           value: /var/secrets/google/blorg-dev-cc7165b01011.json\n →         - name: WINDMILL_ENV\n →           value: dev\n →         resources:\n →           requests:\n →             cpu: 10m\n → \nlocal: [ -d \"../alert_storage\" ] \u0026\u0026 echo \"true\" || echo \"false\"\n → true\nfound alert_storage\nlocal: cd ../alert_storage \u0026\u0026 ENV=local toast helm_dev\n → [INFO] Ready to run 2 tasks: `install_helm` and `helm_dev`.\n → [INFO] Running task `install_helm`…\n → [INFO] Running task `helm_dev`…\n → ---\n → # Source: chart/templates/service.yaml\n → apiVersion: v1\n → kind: Service\n → metadata:\n →   name: alert-storage\n →   labels:\n →     app: alert-storage\n → spec:\n →   type: NodePort\n →   ports:\n →   - port: 80\n →     targetPort: 8088\n →     protocol: TCP\n →   selector:\n →     app: alert-storage\n → \n → \n → ---\n → # Source: chart/templates/deployment.yaml\n → apiVersion: apps/v1\n → kind: Deployment\n → metadata:\n →   name: alert-storage\n →   labels:\n →     app: alert-storage\n → spec:\n →   replicas: 1\n →   selector:\n →     matchLabels:\n →       app: alert-storage\n →   template:\n →     metadata:\n →       labels:\n →         app: alert-storage\n →     spec:\n →       volumes:\n →       - name: google-cloud-key\n →         secret:\n →           secretName: firebase-key\n →       containers:\n →       - name: alert-storage\n →         image: gcr.io/blorg-dev/alert-storage\n →         ports:\n →         - containerPort: 8088\n →         volumeMounts:\n →         - name: google-cloud-key\n →           mountPath: /var/secrets/google\n →         readinessProbe:\n →           httpGet:\n →             path: /healthz\n →             port: 8088\n →           initialDelaySeconds: 5\n →           periodSeconds: 5\n →         env:\n →         - name: GOOGLE_APPLICATION_CREDENTIALS\n →           value: /var/secrets/google/blorg-dev-cc7165b01011.json\n →         - name: WINDMILL_ENV\n →           value: local\n →         resources:\n →           requests:\n →             cpu: 10m\n → \nSuccessfully loaded Tiltfile\n",
+          "IsCrashRebuild": false
+        }
+      ],
+      "CurrentBuild": {
+        "Edits": null,
+        "Error": null,
+        "Warnings": null,
+        "StartTime": "0001-01-01T00:00:00Z",
+        "FinishTime": "0001-01-01T00:00:00Z",
+        "Reason": 0,
+        "Log": "",
+        "IsCrashRebuild": false
+      },
+      "PendingBuildReason": 0,
+      "PendingBuildEdits": null,
+      "PendingBuildSince": "0001-01-01T00:00:00Z",
+      "HasPendingChanges": false,
+      "Endpoints": null,
+      "PodID": "",
+      "ResourceInfo": null,
+      "RuntimeStatus": "ok",
+      "IsTiltfile": true,
+      "ShowBuildStatus": false,
+      "CombinedLog": "",
+      "CrashLog": ""
+    },
+    {
+      "Name": "alert-frontend",
+      "DirectoriesWatched": [
+        "/Users/maria/go/src/github.com/windmilleng/alert_frontend"
+      ],
+      "PathsWatched": [
+        "Tiltfile"
+      ],
+      "LastDeployTime": "0001-01-01T00:00:00Z",
+      "TriggerMode": 0,
+      "BuildHistory": [],
+      "CurrentBuild": {
+        "Edits": null,
+        "Error": null,
+        "Warnings": null,
+        "StartTime": "2019-08-08T18:13:09.258531-04:00",
+        "FinishTime": "0001-01-01T00:00:00Z",
+        "Reason": 8,
+        "Log": "\n\u001b[34m──┤ Building: \u001b[0malert-frontend\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [gcr.io/blorg-dev/alert-frontend]\nBuilding Dockerfile:\n  FROM node:10\n  WORKDIR /usr/src/app\n  \n  COPY package.json ./\n  COPY yarn.lock ./\n  \n  RUN yarn\n  \n  COPY . .\n  RUN yarn build\n  EXPOSE 3000\n  CMD [\"node\", \"dist/index.js\"]\n\n\n\u001b[34m  │ \u001b[0mTarring context…\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/6] FROM docker.io/library/node:10\n    ╎ [cached] [2/6] COPY package.json ./\n    ╎ [cached] [3/6] COPY yarn.lock ./\n    ╎ [cached] [4/6] RUN yarn\n    ╎ [5/6] COPY . .\n    ╎ [5/6] done | 1.255s\n    ╎ [6/6] RUN yarn build\n    ╎   → yarn run v1.16.0\n    ╎   → $ tsc\n",
+        "IsCrashRebuild": false
+      },
+      "PendingBuildReason": 0,
+      "PendingBuildEdits": null,
+      "PendingBuildSince": "0001-01-01T00:00:00Z",
+      "HasPendingChanges": false,
+      "Endpoints": [
+        "http://localhost:8087/"
+      ],
+      "PodID": "",
+      "ResourceInfo": {
+        "PodName": "",
+        "PodCreationTime": "0001-01-01T00:00:00Z",
+        "PodUpdateStartTime": "0001-01-01T00:00:00Z",
+        "PodStatus": "",
+        "PodStatusMessage": "",
+        "PodRestarts": 0,
+        "PodLog": "",
+        "YAML": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  labels:\n    app: alert-frontend\n  name: alert-frontend\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: alert-frontend\n  strategy: {}\n  template:\n    metadata:\n      labels:\n        app: alert-frontend\n    spec:\n      containers:\n      - env:\n        - name: GOOGLE_APPLICATION_CREDENTIALS\n          value: /var/secrets/google/blorg-dev-cc7165b01011.json\n        - name: WINDMILL_ENV\n          value: dev\n        image: gcr.io/blorg-dev/alert-frontend\n        name: alert-frontend\n        ports:\n        - containerPort: 8087\n        readinessProbe:\n          httpGet:\n            path: /healthz\n            port: 8087\n          initialDelaySeconds: 5\n          periodSeconds: 5\n        resources:\n          requests:\n            cpu: 10m\n        volumeMounts:\n        - mountPath: /var/secrets/google\n          name: google-cloud-key\n      volumes:\n      - name: google-cloud-key\n        secret:\n          secretName: firebase-key\n\n---\napiVersion: v1\nkind: Service\nmetadata:\n  labels:\n    app: alert-frontend\n  name: alert-frontend\nspec:\n  ports:\n  - port: 80\n    protocol: TCP\n    targetPort: 8087\n  selector:\n    app: alert-frontend\n  type: NodePort\n"
+      },
+      "RuntimeStatus": "pending",
+      "IsTiltfile": false,
+      "ShowBuildStatus": true,
+      "CombinedLog": "\n\u001b[34m──┤ Building: \u001b[0malert-frontend\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [gcr.io/blorg-dev/alert-frontend]\nBuilding Dockerfile:\n  FROM node:10\n  WORKDIR /usr/src/app\n  \n  COPY package.json ./\n  COPY yarn.lock ./\n  \n  RUN yarn\n  \n  COPY . .\n  RUN yarn build\n  EXPOSE 3000\n  CMD [\"node\", \"dist/index.js\"]\n\n\n\u001b[34m  │ \u001b[0mTarring context…\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/6] FROM docker.io/library/node:10\n    ╎ [cached] [2/6] COPY package.json ./\n    ╎ [cached] [3/6] COPY yarn.lock ./\n    ╎ [cached] [4/6] RUN yarn\n    ╎ [5/6] COPY . .\n    ╎ [5/6] done | 1.255s\n    ╎ [6/6] RUN yarn build\n    ╎   → yarn run v1.16.0\n    ╎   → $ tsc\n",
+      "CrashLog": ""
+    },
+    {
+      "Name": "alert-storage",
+      "DirectoriesWatched": [
+        "/Users/maria/go/src/github.com/windmilleng/alert_storage"
+      ],
+      "PathsWatched": [
+        "Tiltfile"
+      ],
+      "LastDeployTime": "0001-01-01T00:00:00Z",
+      "TriggerMode": 0,
+      "BuildHistory": [],
+      "CurrentBuild": {
+        "Edits": null,
+        "Error": null,
+        "Warnings": null,
+        "StartTime": "0001-01-01T00:00:00Z",
+        "FinishTime": "0001-01-01T00:00:00Z",
+        "Reason": 0,
+        "Log": "",
+        "IsCrashRebuild": false
+      },
+      "PendingBuildReason": 8,
+      "PendingBuildEdits": null,
+      "PendingBuildSince": "0001-01-01T00:00:00Z",
+      "HasPendingChanges": false,
+      "Endpoints": [
+        "http://localhost:8088/"
+      ],
+      "PodID": "",
+      "ResourceInfo": {
+        "PodName": "",
+        "PodCreationTime": "0001-01-01T00:00:00Z",
+        "PodUpdateStartTime": "0001-01-01T00:00:00Z",
+        "PodStatus": "",
+        "PodStatusMessage": "",
+        "PodRestarts": 0,
+        "PodLog": "",
+        "YAML": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  labels:\n    app: alert-storage\n  name: alert-storage\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: alert-storage\n  strategy: {}\n  template:\n    metadata:\n      labels:\n        app: alert-storage\n    spec:\n      containers:\n      - env:\n        - name: GOOGLE_APPLICATION_CREDENTIALS\n          value: /var/secrets/google/blorg-dev-cc7165b01011.json\n        - name: WINDMILL_ENV\n          value: local\n        image: gcr.io/blorg-dev/alert-storage\n        name: alert-storage\n        ports:\n        - containerPort: 8088\n        readinessProbe:\n          httpGet:\n            path: /healthz\n            port: 8088\n          initialDelaySeconds: 5\n          periodSeconds: 5\n        resources:\n          requests:\n            cpu: 10m\n        volumeMounts:\n        - mountPath: /var/secrets/google\n          name: google-cloud-key\n      volumes:\n      - name: google-cloud-key\n        secret:\n          secretName: firebase-key\n\n---\napiVersion: v1\nkind: Service\nmetadata:\n  labels:\n    app: alert-storage\n  name: alert-storage\nspec:\n  ports:\n  - port: 80\n    protocol: TCP\n    targetPort: 8088\n  selector:\n    app: alert-storage\n  type: NodePort\n"
+      },
+      "RuntimeStatus": "pending",
+      "IsTiltfile": false,
+      "ShowBuildStatus": true,
+      "CombinedLog": "",
+      "CrashLog": ""
+    },
+    {
+      "Name": "firestore",
+      "DirectoriesWatched": [],
+      "PathsWatched": [
+        "Tiltfile"
+      ],
+      "LastDeployTime": "2019-08-08T18:13:09.258424-04:00",
+      "TriggerMode": 0,
+      "BuildHistory": [
+        {
+          "Edits": null,
+          "Error": null,
+          "Warnings": null,
+          "StartTime": "2019-08-08T18:13:06.524315-04:00",
+          "FinishTime": "2019-08-08T18:13:09.258422-04:00",
+          "Reason": 8,
+          "Log": "\n\u001b[34m──┤ Building: \u001b[0mfirestore\u001b[34m ├──────────────────────────────────────────────\u001b[0m\nfalling back to next update method because: no targets for LiveUpdate found\n\u001b[34mSTEP 1/1 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl:\n\u001b[34m  │ \u001b[0m   firestore:deployment\n\u001b[34m  │ \u001b[0m   firestore:service\n\n\u001b[34m  │ \u001b[0mStep 1 - 2.733s\n\u001b[34m  │ \u001b[0mDone in: 2.733s \n\n",
+          "IsCrashRebuild": false
+        }
+      ],
+      "CurrentBuild": {
+        "Edits": null,
+        "Error": null,
+        "Warnings": null,
+        "StartTime": "0001-01-01T00:00:00Z",
+        "FinishTime": "0001-01-01T00:00:00Z",
+        "Reason": 0,
+        "Log": "",
+        "IsCrashRebuild": false
+      },
+      "PendingBuildReason": 0,
+      "PendingBuildEdits": null,
+      "PendingBuildSince": "0001-01-01T00:00:00Z",
+      "HasPendingChanges": false,
+      "Endpoints": [
+        "http://localhost:8080/"
+      ],
+      "PodID": "",
+      "ResourceInfo": {
+        "PodName": "",
+        "PodCreationTime": "0001-01-01T00:00:00Z",
+        "PodUpdateStartTime": "0001-01-01T00:00:00Z",
+        "PodStatus": "",
+        "PodStatusMessage": "",
+        "PodRestarts": 0,
+        "PodLog": "",
+        "YAML": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  labels:\n    app: firestore\n  name: firestore\nspec:\n  selector:\n    matchLabels:\n      app: firestore\n  strategy: {}\n  template:\n    metadata:\n      labels:\n        app: firestore\n    spec:\n      containers:\n      - env:\n        - name: FIRESTORE_PROJECT_ID\n          value: alerts\n        image: pathmotion/firestore-emulator-docker\n        name: firestore\n        ports:\n        - containerPort: 8080\n        resources:\n          requests:\n            cpu: 10m\n\n---\napiVersion: v1\nkind: Service\nmetadata:\n  labels:\n    app: firestore\n  name: firestore\nspec:\n  ports:\n  - port: 8080\n    protocol: TCP\n    targetPort: 8080\n  selector:\n    app: firestore\n  type: LoadBalancer\n"
+      },
+      "RuntimeStatus": "pending",
+      "IsTiltfile": false,
+      "ShowBuildStatus": false,
+      "CombinedLog": "\n\u001b[34m──┤ Building: \u001b[0mfirestore\u001b[34m ├──────────────────────────────────────────────\u001b[0m\nfalling back to next update method because: no targets for LiveUpdate found\n\u001b[34mSTEP 1/1 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl:\n\u001b[34m  │ \u001b[0m   firestore:deployment\n\u001b[34m  │ \u001b[0m   firestore:service\n\n\u001b[34m  │ \u001b[0mStep 1 - 2.733s\n\u001b[34m  │ \u001b[0mDone in: 2.733s \n\n",
+      "CrashLog": ""
+    },
+    {
+      "Name": "uncategorized",
+      "DirectoriesWatched": [],
+      "PathsWatched": [
+        "Tiltfile"
+      ],
+      "LastDeployTime": "2019-08-08T18:13:06.524148-04:00",
+      "TriggerMode": 0,
+      "BuildHistory": [
+        {
+          "Edits": null,
+          "Error": null,
+          "Warnings": null,
+          "StartTime": "2019-08-08T18:13:03.533476-04:00",
+          "FinishTime": "2019-08-08T18:13:06.524147-04:00",
+          "Reason": 8,
+          "Log": "\n\u001b[34m──┤ Building: \u001b[0muncategorized\u001b[34m ├──────────────────────────────────────────────\u001b[0m\nfalling back to next update method because: no targets for LiveUpdate found\n\u001b[34mSTEP 1/1 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl:\n\u001b[34m  │ \u001b[0m   firebase-key:secret\n\n\u001b[34m  │ \u001b[0mStep 1 - 2.988s\n\u001b[34m  │ \u001b[0mDone in: 2.988s \n\n",
+          "IsCrashRebuild": false
+        }
+      ],
+      "CurrentBuild": {
+        "Edits": null,
+        "Error": null,
+        "Warnings": null,
+        "StartTime": "0001-01-01T00:00:00Z",
+        "FinishTime": "0001-01-01T00:00:00Z",
+        "Reason": 0,
+        "Log": "",
+        "IsCrashRebuild": false
+      },
+      "PendingBuildReason": 0,
+      "PendingBuildEdits": null,
+      "PendingBuildSince": "0001-01-01T00:00:00Z",
+      "HasPendingChanges": false,
+      "Endpoints": null,
+      "PodID": "",
+      "ResourceInfo": {
+        "K8sResources": [
+          "firebase-key:secret"
+        ]
+      },
+      "RuntimeStatus": "ok",
+      "IsTiltfile": false,
+      "ShowBuildStatus": false,
+      "CombinedLog": "\n\u001b[34m──┤ Building: \u001b[0muncategorized\u001b[34m ├──────────────────────────────────────────────\u001b[0m\nfalling back to next update method because: no targets for LiveUpdate found\n\u001b[34mSTEP 1/1 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl:\n\u001b[34m  │ \u001b[0m   firebase-key:secret\n\n\u001b[34m  │ \u001b[0mStep 1 - 2.988s\n\u001b[34m  │ \u001b[0mDone in: 2.988s \n\n",
+      "CrashLog": ""
+    }
+  ],
+  "LogTimestamps": false,
+  "FeatureFlags": {
+    "events": true,
+    "multiple_containers_per_pod": false,
+    "team_alerts": true
+  },
+  "SailEnabled": false,
+  "SailURL": "",
+  "NeedsAnalyticsNudge": false,
+  "RunningTiltBuild": {
+    "Version": "0.9.7",
+    "Date": "2019-08-08",
+    "Dev": true
+  },
+  "LatestTiltBuild": {
+    "Version": "",
+    "Date": "",
+    "Dev": false
+  }
+}

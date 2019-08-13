@@ -165,7 +165,7 @@ func (r Resource) IsCollapsed(rv ResourceViewState) bool {
 	return rv.CollapseState.IsCollapsed(r.DefaultCollapse())
 }
 
-// State of the current view that's not expressed in the underlying model state.
+// Snapshot of the current view that's not expressed in the underlying model state.
 //
 // This includes things like the current selection, warning messages,
 // narration messages, etc.

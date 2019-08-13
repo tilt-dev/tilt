@@ -285,6 +285,7 @@ it("renders the get alert link button when the feature is enabled", () => {
   expect(tree).toMatchSnapshot()
 })
 
+//TODO TFT: Create tests testing that button appears and URL appears
 function fillResourceFields(): Resource {
   return {
     Name: "foo",
