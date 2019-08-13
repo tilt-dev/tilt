@@ -45,9 +45,9 @@ class AppController {
 
       let data = JSON.parse(event.data)
 
-      data.Resources = this.setDefaultResourceInfo(data.Resources)
+      data.View.Resources = this.setDefaultResourceInfo(data.View.Resources)
       // @ts-ignore
-      this.component.setAppState({ View: data })
+      this.component.setAppState({ View: data.View })
     })
   }
 
