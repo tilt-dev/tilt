@@ -904,6 +904,41 @@ k8s_yaml('snack.yaml')`
 	f.assertAllBuildsConsumed()
 }
 
+func TestConfigChange_FilenamesLoggedInManifestBuild(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", `
+k8s_yaml('snack.yaml')
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src')`)
+	f.WriteFile("src/Dockerfile", `FROM iron/go:dev`)
+	f.WriteFile("snack.yaml", simpleYAML)
+
+	f.loadAndStart()
+
+	f.WaitUntilManifestState("snack loaded", "snack", func(ms store.ManifestState) bool {
+		return len(ms.BuildHistory) == 1
+	})
+
+	// make a config file change to kick off a new build
+	f.WriteFile("Tiltfile", `
+k8s_yaml('snack.yaml')
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', ignore='Dockerfile')`)
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("Tiltfile"))
+
+	f.WaitUntilManifestState("snack reloaded", "snack", func(ms store.ManifestState) bool {
+		return len(ms.BuildHistory) == 2
+	})
+
+	f.withManifestState("snack", func(ms store.ManifestState) {
+		expected := fmt.Sprintf("1 changed: [%s]", f.JoinPath("Tiltfile"))
+		require.Contains(t, ms.CombinedLog.String(), expected)
+	})
+
+	err := f.Stop()
+	assert.Nil(t, err)
+}
+
 func TestDockerRebuildWithChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
