@@ -16,7 +16,7 @@ type TopBarProps = {
   state: Snapshot
   handleSendSnapshot: (snapshot: Snapshot) => void
   snapshotURL: string
-  //TODO TFT: add snapshot feature flag boolean
+  snapshotsIsEnabled: boolean
 }
 
 class TopBar extends PureComponent<TopBarProps> {
@@ -30,19 +30,17 @@ class TopBar extends PureComponent<TopBarProps> {
           resourceView={this.props.resourceView}
           numberOfAlerts={this.props.numberOfAlerts}
         />
-        {/*//TODO TFT: check for snapshot feature flag boolean */}
-        <div className="TopBar-headerDiv-snapshotURL">
-          {renderSnapshotLinkButton(
+        <section className="TopBar-tools">
+          {this.props.snapshotsIsEnabled && renderSnapshotLinkButton(
             this.props.state,
             this.props.handleSendSnapshot,
             this.props.snapshotURL
           )}
-        </div>
-        <span className="TopBar-spacer">&nbsp;</span>
-        <SailInfo
-          sailEnabled={this.props.sailEnabled}
-          sailUrl={this.props.sailUrl}
-        />
+          <SailInfo
+            sailEnabled={this.props.sailEnabled}
+            sailUrl={this.props.sailUrl}
+          />
+        </section>
       </div>
     )
   }
@@ -53,17 +51,17 @@ function renderSnapshotLinkButton(
   handleSendSnapshot: (snapshot: Snapshot) => void,
   snapshotURL: string
 ) {
-  let hasLink = snapshotURL != ""
+  let hasLink = snapshotURL !== ""
   if (!hasLink) {
     return (
-      <section className="TopBar-headerDiv-snapshotUrlWrap">
-        <button onClick={() => handleSendSnapshot(snapshot)}>Get Link</button>
+      <section className="TopBar-snapshotUrlWrap">
+        <button onClick={() => handleSendSnapshot(snapshot)}>Share Snapshot</button>
       </section>
     )
   } else {
     return (
-      <section className="TopBar-headerDiv-snapshotUrlWrap">
-        <p className="TopBar-headerDiv-snapshotUrl">{snapshotURL}</p>
+      <section className="TopBar-snapshotUrlWrap">
+        <p className="TopBar-snapshotUrl">{snapshotURL}</p>
         <button
           title="Open link in new tab"
           onClick={() => window.open(snapshotURL)}
@@ -73,7 +71,6 @@ function renderSnapshotLinkButton(
       </section>
     )
   }
-  //TODO TFT - formatting the button
 }
 
 export default TopBar

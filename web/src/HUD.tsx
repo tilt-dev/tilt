@@ -257,6 +257,7 @@ class HUD extends Component<HudProps, HudState> {
               state={this.state}
               handleSendSnapshot={this.sendSnapshot.bind(this)}
               snapshotURL={this.state.SnapshotLink}
+              snapshotsIsEnabled={features.isEnabled("snapshots")}
             />
           )
         }
@@ -280,6 +281,7 @@ class HUD extends Component<HudProps, HudState> {
           state={this.state}
           handleSendSnapshot={this.sendSnapshot.bind(this)}
           snapshotURL={this.state.SnapshotLink}
+          snapshotsIsEnabled={features.isEnabled("snapshots")}
         />
       )
     }
