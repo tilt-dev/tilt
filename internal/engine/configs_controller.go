@@ -51,6 +51,20 @@ func (cc *ConfigsController) shouldBuild(state store.EngineState) bool {
 	return false
 }
 
+func logTiltfileChanges(ctx context.Context, filesChanged map[string]bool) {
+	var filenames []string
+	for k := range filesChanged {
+		filenames = append(filenames, k)
+	}
+
+	l := logger.Get(ctx)
+
+	if len(filenames) > 0 {
+		p := logger.Green(l).Sprintf("%d changed: ", len(filenames))
+		l.Infof("\n%s%v\n", p, formatFileChangeList(filenames))
+	}
+}
+
 func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 	initManifests []model.ManifestName, filesChanged map[string]bool, tiltfilePath string) {
 
@@ -63,14 +77,21 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 	}
 
 	actionWriter := NewTiltfileLogWriter(st)
-	loadCtx := logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), actionWriter))
+	ctx = logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), actionWriter))
 
-	tlr, err := cc.tfl.Load(loadCtx, tiltfilePath, matching)
+	state := st.RLockState()
+	firstBuild := !state.TiltfileState.StartedFirstBuild()
+	if !firstBuild {
+		logTiltfileChanges(ctx, filesChanged)
+	}
+	st.RUnlockState()
+
+	tlr, err := cc.tfl.Load(ctx, tiltfilePath, matching)
 	if err == nil && len(tlr.Manifests) == 0 {
 		err = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
 	}
 	if err != nil {
-		logger.Get(loadCtx).Infof(err.Error())
+		logger.Get(ctx).Infof(err.Error())
 	}
 
 	if tlr.Orchestrator() != model.OrchestratorUnknown {
