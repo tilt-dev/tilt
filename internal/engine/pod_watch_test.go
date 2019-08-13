@@ -220,7 +220,7 @@ func (f *pwFixture) TearDown() {
 }
 
 func newManifestTargetWithSelectors(m model.Manifest, selectors []labels.Selector) (*store.ManifestTarget, error) {
-	dt, err := k8s.NewTarget(model.TargetName(m.Name), nil, nil, selectors, nil)
+	dt, err := k8s.NewTarget(model.TargetName(m.Name), nil, nil, selectors, nil, nil)
 	if err != nil {
 		return nil, err
 	}

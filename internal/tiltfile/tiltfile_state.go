@@ -17,9 +17,9 @@ import (
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/sliceutils"
+	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -793,7 +793,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 			TriggerMode: tm,
 		}
 
-		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.portForwardsToDomain(r), r.extraPodSelectors, r.dependencyIDs)
+		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.portForwardsToDomain(r), r.extraPodSelectors, r.dependencyIDs, r.imageRefMap)
 		if err != nil {
 			return nil, err
 		}
@@ -828,8 +828,6 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 // We won't collect container info on any subsequent containers (i.e. subsequent image
 // targets), so will never be able to LiveUpdate them.
 func (s *tiltfileState) checkForImpossibleLiveUpdates(m model.Manifest) error {
-	seenDeployedImage := false
-
 	g, err := model.NewTargetGraph(m.TargetSpecs())
 	if err != nil {
 		return err
@@ -837,11 +835,6 @@ func (s *tiltfileState) checkForImpossibleLiveUpdates(m model.Manifest) error {
 
 	for _, iTarg := range m.ImageTargets {
 		isDeployed := m.IsImageDeployed(iTarg)
-		isFirstDeployedImage := false
-		if isDeployed && !seenDeployedImage {
-			isFirstDeployedImage = true
-			seenDeployedImage = true
-		}
 
 		// This check only applies to images with live updates.
 		isInPlaceUpdate := !iTarg.AnyFastBuildInfo().Empty() || !iTarg.AnyLiveUpdateInfo().Empty()
@@ -853,16 +846,6 @@ func (s *tiltfileState) checkForImpossibleLiveUpdates(m model.Manifest) error {
 		// should probably emit a different kind of warning.
 		if !isDeployed {
 			continue
-		}
-
-		if !isFirstDeployedImage {
-			// TODO(maia): s/in-place updates/live updates after we fully deprecate FastBuild
-			s.warnings = append(s.warnings, fmt.Sprintf("Sorry, but Tilt only supports in-place updates "+
-				"for the first Tilt-built container on a pod, so we can't in-place update your image '%s'. If this "+
-				"is a feature you need, let us know!", iTarg.DeploymentRef.String()))
-
-			// Only emit the warning once
-			return nil
 		}
 
 		err = s.validateLiveUpdate(iTarg, g)

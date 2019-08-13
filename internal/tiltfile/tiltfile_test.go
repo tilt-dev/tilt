@@ -1824,7 +1824,46 @@ k8s_yaml('foo.yaml')
 		},
 		N: 1,
 	}}
-	assert.Equal(t, expected, f.an.Counts)
+	for _, evt := range expected {
+		assert.Contains(t, f.an.Counts, evt)
+	}
+}
+
+func TestK8sManifestRefInjectCounts(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.file("sancho_twin.yaml", testyaml.SanchoTwoContainersOneImageYAML) // 1 img x 2 c
+	f.file("sancho_sidecar.yaml", testyaml.SanchoSidecarYAML)            // 2 imgs (1 c each)
+	f.file("blorg.yaml", testyaml.BlorgJobYAML)
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/some-project-162817/sancho', '.')
+docker_build('gcr.io/some-project-162817/sancho-sidecar', '.')
+docker_build('gcr.io/blorg-dev/blorg-backend:devel-nick', '.')
+
+k8s_yaml(['sancho_twin.yaml', 'sancho_sidecar.yaml', 'blorg.yaml'])
+`)
+
+	f.load()
+
+	sanchoTwin := f.assertNextManifest("sancho-2c1i")
+	sTwinInjectCounts := sanchoTwin.K8sTarget().RefInjectCounts()
+	assert.Len(t, sTwinInjectCounts, 1)
+	assert.Equal(t, sTwinInjectCounts[testyaml.SanchoImage], 2)
+
+	sanchoSidecar := f.assertNextManifest("sancho")
+	ssInjectCounts := sanchoSidecar.K8sTarget().RefInjectCounts()
+	assert.Len(t, ssInjectCounts, 2)
+	assert.Equal(t, ssInjectCounts[testyaml.SanchoImage], 1)
+	assert.Equal(t, ssInjectCounts[testyaml.SanchoSidecarImage], 1)
+
+	blorgJob := f.assertNextManifest("blorg-job")
+	blorgInjectCounts := blorgJob.K8sTarget().RefInjectCounts()
+	assert.Len(t, blorgInjectCounts, 1)
+	assert.Equal(t, blorgJob.K8sTarget().RefInjectCounts()["gcr.io/blorg-dev/blorg-backend:devel-nick"], 1)
 }
 
 func TestYamlErrorFromLocal(t *testing.T) {
@@ -3069,7 +3108,7 @@ k8s_resource('hello-foo', port_forwards=8000)
 	f.loadErrString("workload_to_resource_function arg must take 1 argument. wtrf takes 2")
 }
 
-func TestImpossibleLiveUpdates(t *testing.T) {
+func TestMultipleLiveUpdatesOnManifest(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -3078,41 +3117,21 @@ func TestImpossibleLiveUpdates(t *testing.T) {
 	f.file("sidecar/Dockerfile", "FROM golang:1.10")
 	f.file("sancho.yaml", testyaml.SanchoSidecarYAML) // two containers
 	f.file("Tiltfile", `
-k8s_yaml('sancho.yaml')
-docker_build('gcr.io/some-project-162817/sancho', './sancho')
-docker_build('gcr.io/some-project-162817/sancho-sidecar', './sidecar',
-  live_update=[restart_container()]
-)
-`)
-
-	f.loadAssertWarnings("Sorry, but Tilt only supports in-place updates for the first Tilt-built container on a pod, so we can't in-place update your image 'gcr.io/some-project-162817/sancho-sidecar'. If this is a feature you need, let us know!")
-}
-
-func TestMultipleLiveUpdatesOnManifestOKWithFeatureFlag(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.gitInit("")
-	f.file("sancho/Dockerfile", "FROM golang:1.10")
-	f.file("sidecar/Dockerfile", "FROM golang:1.10")
-	f.file("sancho.yaml", testyaml.SanchoSidecarYAML) // two containers
-	f.file("Tiltfile", `
-enable_feature('multiple_containers_per_pod') # psst! rename the test when you take out this flag.
 k8s_yaml('sancho.yaml')
 docker_build('gcr.io/some-project-162817/sancho', './sancho',
-  live_update=[sync('./foo', '/bar')]
+  live_update=[sync('./sancho/foo', '/bar')]
 )
 docker_build('gcr.io/some-project-162817/sancho-sidecar', './sidecar',
-  live_update=[sync('./baz', '/quux')]
+  live_update=[sync('./sidecar/baz', '/quux')]
 )
 `)
 
-	sync1 := model.LiveUpdateSyncStep{Source: f.JoinPath("foo"), Dest: "/bar"}
+	sync1 := model.LiveUpdateSyncStep{Source: f.JoinPath("sancho/foo"), Dest: "/bar"}
 	expectedLU1, err := model.NewLiveUpdate([]model.LiveUpdateStep{sync1}, f.Path())
 	if err != nil {
 		t.Fatal(err)
 	}
-	sync2 := model.LiveUpdateSyncStep{Source: f.JoinPath("baz"), Dest: "/quux"}
+	sync2 := model.LiveUpdateSyncStep{Source: f.JoinPath("sidecar/baz"), Dest: "/quux"}
 	expectedLU2, err := model.NewLiveUpdate([]model.LiveUpdateStep{sync2}, f.Path())
 	if err != nil {
 		t.Fatal(err)

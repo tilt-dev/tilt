@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
+	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -81,7 +81,6 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 		Manifests:          tlr.Manifests,
 		ConfigFiles:        tlr.ConfigFiles,
 		TiltIgnoreContents: tlr.TiltIgnoreContents,
-		StartTime:          startTime,
 		FinishTime:         cc.clock(),
 		Err:                err,
 		Warnings:           tlr.Warnings,

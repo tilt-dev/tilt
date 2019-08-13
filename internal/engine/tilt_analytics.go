@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/pkg/logger"
 )
 
 type TiltAnalyticsSubscriber struct {

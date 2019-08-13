@@ -17,9 +17,9 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
+	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -314,7 +314,12 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 		l.Infof("   %s", displayName)
 	}
 
-	return ibd.k8sClient.Upsert(logger.WithLogger(ctx, l), newK8sEntities)
+	result, err := ibd.k8sClient.Upsert(logger.WithLogger(ctx, l), newK8sEntities)
+
+	// TODO(nick): Do something with this result
+	_ = result
+
+	return err
 }
 
 // If we're using docker-for-desktop as our k8s backend,

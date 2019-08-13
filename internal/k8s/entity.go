@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"fmt"
 	"net/url"
 	"reflect"
 	"strings"
@@ -95,22 +96,22 @@ func (e K8sEntity) maybeStructuredMeta() (meta *metav1.ObjectMeta, fieldIndex in
 	return nil, -1
 }
 
-func SetUIDForTest(t *testing.T, e *K8sEntity, UID string) {
+func SetUID(e *K8sEntity, UID string) error {
 	unstruct := e.maybeUnstructuredMeta()
 	if unstruct != nil {
-		t.Fatal("SetUIDForTesting not yet implemented for unstructured metadata")
+		return fmt.Errorf("SetUIDForTesting not yet implemented for unstructured metadata")
 	}
 
 	structured, i := e.maybeStructuredMeta()
 	if structured == nil {
-		t.Fatalf("Cannot set UID -- entity has neither unstructured nor structured metadata. k8s entity: %+v", e)
+		return fmt.Errorf("Cannot set UID -- entity has neither unstructured nor structured metadata. k8s entity: %+v", e)
 	}
 
 	structured.SetUID(types.UID(UID))
 	objVal := reflect.ValueOf(e.Obj)
 	if objVal.Kind() == reflect.Ptr {
 		if objVal.IsNil() {
-			t.Fatalf("Cannot set UID -- e.Obj is a pointer. k8s entity: %+v", e)
+			return fmt.Errorf("Cannot set UID -- e.Obj is a pointer. k8s entity: %+v", e)
 		}
 		objVal = objVal.Elem()
 	}
@@ -118,6 +119,14 @@ func SetUIDForTest(t *testing.T, e *K8sEntity, UID string) {
 	fieldVal := objVal.Field(i)
 	metaVal := reflect.ValueOf(*structured)
 	fieldVal.Set(metaVal)
+	return nil
+}
+
+func SetUIDForTest(t *testing.T, e *K8sEntity, UID string) {
+	err := SetUID(e, UID)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func (e K8sEntity) Name() string {

@@ -444,11 +444,8 @@ func TestBuildControllerManualTrigger(t *testing.T) {
 	mName := model.ManifestName("foobar")
 
 	manifest := f.newManifest(mName.String()).WithTriggerMode(model.TriggerModeManual)
-	f.Init(InitAction{
-		Manifests:       []model.Manifest{manifest},
-		WatchFiles:      true,
-		ExecuteTiltfile: true,
-	})
+	manifests := []model.Manifest{manifest}
+	f.Start(manifests, true)
 
 	f.nextCall()
 	f.waitForCompletedBuildCount(1)
@@ -492,11 +489,7 @@ func TestBuildQueueOrdering(t *testing.T) {
 
 	// attach to state in different order than we plan to trigger them
 	manifests := []model.Manifest{m4, m2, m3, m1}
-	f.Init(InitAction{
-		Manifests:       manifests,
-		WatchFiles:      true,
-		ExecuteTiltfile: true,
-	})
+	f.Start(manifests, true)
 
 	// Wait for initial build
 	for _, _ = range manifests {
@@ -551,11 +544,7 @@ func TestBuildQueueAndAutobuildOrdering(t *testing.T) {
 
 	// attach to state in different order than we plan to trigger them
 	manifests := []model.Manifest{m5, m4, m2, m3, m1}
-	f.Init(InitAction{
-		Manifests:       manifests,
-		WatchFiles:      true,
-		ExecuteTiltfile: true,
-	})
+	f.Start(manifests, true)
 
 	// Wait for initial build
 	for _, _ = range manifests {

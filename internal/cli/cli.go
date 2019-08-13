@@ -15,7 +15,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/pkg/logger"
 )
 
 var debug bool
@@ -77,11 +77,10 @@ type tiltCmd interface {
 
 func preCommand(ctx context.Context, a *analytics.TiltAnalytics) (context.Context, func() error) {
 	cleanup := func() error { return nil }
+	initKlog()
 	l := logger.NewLogger(logLevel(verbose, debug), os.Stdout)
 	ctx = logger.WithLogger(ctx, l)
 	ctx = analytics.WithAnalytics(ctx, a)
-
-	initKlog(l.Writer(logger.InfoLvl))
 
 	if trace {
 		backend, err := tracer.StringToTracerBackend(traceType)

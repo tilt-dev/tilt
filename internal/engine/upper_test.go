@@ -38,8 +38,8 @@ import (
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/sail/client"
+	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/testutils"
@@ -50,6 +50,7 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
 	"github.com/windmilleng/tilt/pkg/assets"
+	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -251,17 +252,15 @@ func TestUpper_Up(t *testing.T) {
 	defer f.TearDown()
 	manifest := f.newManifest("foobar")
 
-	err := f.upper.Init(f.ctx, InitAction{
-		Manifests:       []model.Manifest{manifest},
-		ExecuteTiltfile: true,
-	})
+	f.setManifests([]model.Manifest{manifest})
+	err := f.upper.Init(f.ctx, InitAction{TiltfilePath: f.JoinPath("Tiltfile")})
 	close(f.b.calls)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	var started []model.TargetID
 	for call := range f.b.calls {
 		started = append(started, call.k8s().ID())
 	}
-	assert.Equal(t, []model.TargetID{manifest.K8sTarget().ID()}, started)
+	require.Equal(t, []model.TargetID{manifest.K8sTarget().ID()}, started)
 
 	state := f.upper.store.RLockState()
 	defer f.upper.store.RUnlockState()
@@ -278,9 +277,8 @@ func TestUpper_WatchFalseNoManifestsExplicitlyNamed(t *testing.T) {
 	f.WriteFile("snack.yaml", simpleYAML)
 
 	err := f.upper.Init(f.ctx, InitAction{
-		ExecuteTiltfile: false,
-		TiltfilePath:    f.JoinPath("Tiltfile"),
-		InitManifests:   nil, // equivalent to `tilt up --watch=false` (i.e. not specifying any manifest names)
+		TiltfilePath:  f.JoinPath("Tiltfile"),
+		InitManifests: nil, // equivalent to `tilt up --watch=false` (i.e. not specifying any manifest names)
 	})
 	close(f.b.calls)
 
@@ -305,7 +303,7 @@ func TestUpper_UpWatchError(t *testing.T) {
 
 	f.fsWatcher.errors <- errors.New("bazquu")
 
-	err := <-f.createManifestsResult
+	err := <-f.upperInitResult
 	if assert.NotNil(t, err) {
 		assert.Equal(t, "bazquu", err.Error())
 	}
@@ -453,7 +451,8 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	buildFailedToken := errors.New("doesn't compile")
 	f.SetNextBuildFailure(buildFailedToken)
 
-	err := f.upper.Init(f.ctx, InitAction{Manifests: []model.Manifest{manifest}, ExecuteTiltfile: true})
+	f.setManifests([]model.Manifest{manifest})
+	err := f.upper.Init(f.ctx, InitAction{TiltfilePath: f.JoinPath("Tiltfile")})
 	expectedErrStr := fmt.Sprintf("Build Failed: %v", buildFailedToken)
 	assert.Equal(t, expectedErrStr, err.Error())
 }
@@ -967,7 +966,7 @@ func TestHudUpdated(t *testing.T) {
 	assert.True(t, call.oneState().IsEmpty())
 
 	f.WaitUntilHUD("hud update", func(v view.View) bool {
-		return len(v.Resources) > 0
+		return len(v.Resources) == 2
 	})
 
 	err := f.Stop()
@@ -2026,7 +2025,6 @@ func TestInitSetsTiltfilePath(t *testing.T) {
 	f := newTestFixture(t)
 	f.Start([]model.Manifest{}, true)
 	f.store.Dispatch(InitAction{
-		Manifests:    []model.Manifest{},
 		TiltfilePath: "/Tiltfile",
 	})
 	f.WaitUntil("tiltfile path gets set on init", func(st store.EngineState) bool {
@@ -2087,9 +2085,8 @@ func TestNewSyncsAreWatched(t *testing.T) {
 
 func TestNewConfigsAreWatchedAfterFailure(t *testing.T) {
 	f := newTestFixture(t)
-	name := model.ManifestName("foo")
-	m := f.newManifest(name.String())
-	f.Start([]model.Manifest{m}, true)
+	f.loadAndStart()
+
 	f.WriteConfigFiles("Tiltfile", "read_file('foo.txt')")
 	f.WaitUntil("foo.txt is a config file", func(state store.EngineState) bool {
 		for _, s := range state.ConfigFiles {
@@ -2380,26 +2377,24 @@ docker_build('gcr.io/windmill-public-containers/servantes/snack', '.')
 k8s_yaml('snack.yaml')`
 	f.WriteFile("Tiltfile", tiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:dev`)
-	f.WriteFile("snack.yaml", simpleYAML)
+	f.WriteFile("snack.yaml", testyaml.Deployment("snack", "gcr.io/windmill-public-containers/servantes/snack:old"))
 
 	f.loadAndStart()
 
 	f.waitForCompletedBuildCount(1)
 
-	f.WriteFile("snack.yaml", testyaml.SnackYAMLPostConfig)
+	f.WriteFile("snack.yaml", testyaml.Deployment("snack", "gcr.io/windmill-public-containers/servantes/snack:new"))
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("snack.yaml"))
 
-	f.waitForCompletedBuildCount(2)
-	f.withManifestState(model.ManifestName("snack"), func(ms store.ManifestState) {
-		assert.Equal(t, []string{f.JoinPath("snack.yaml")}, ms.LastBuild().Edits)
+	f.WaitUntilManifestState("done", "snack", func(ms store.ManifestState) bool {
+		return sliceutils.StringSliceEquals(ms.LastBuild().Edits, []string{f.JoinPath("snack.yaml")})
 	})
 
 	f.WriteFile("Dockerfile", `FROM iron/go:foobar`)
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("Dockerfile"))
 
-	f.waitForCompletedBuildCount(3)
-	f.withManifestState(model.ManifestName("snack"), func(ms store.ManifestState) {
-		assert.Equal(t, []string{f.JoinPath("Dockerfile")}, ms.LastBuild().Edits)
+	f.WaitUntilManifestState("done", "snack", func(ms store.ManifestState) bool {
+		return sliceutils.StringSliceEquals(ms.LastBuild().Edits, []string{f.JoinPath("Dockerfile")})
 	})
 }
 
@@ -2623,7 +2618,7 @@ type testFixture struct {
 	docker                *docker.FakeClient
 	kClient               *k8s.FakeK8sClient
 	hud                   *hud.FakeHud
-	createManifestsResult chan error
+	upperInitResult       chan error
 	log                   *bufsync.ThreadSafeBuffer
 	store                 *store.Store
 	pod                   *v1.Pod
@@ -2738,17 +2733,19 @@ func newTestFixture(t *testing.T) *testFixture {
 	return ret
 }
 
+// starts the upper with the given manifests, bypassing normal tiltfile loading
 func (f *testFixture) Start(manifests []model.Manifest, watchFiles bool, initOptions ...initOption) {
 	f.startWithInitManifests(nil, manifests, watchFiles, initOptions...)
 }
 
+// starts the upper with the given manifests, bypassing normal tiltfile loading
 // Empty `initManifests` will run start ALL manifests
 func (f *testFixture) startWithInitManifests(initManifests []model.ManifestName, manifests []model.Manifest, watchFiles bool, initOptions ...initOption) {
+	f.setManifests(manifests)
+
 	ia := InitAction{
-		Manifests:       manifests,
-		WatchFiles:      watchFiles,
-		TiltfilePath:    f.JoinPath("Tiltfile"),
-		ExecuteTiltfile: true,
+		WatchFiles:   watchFiles,
+		TiltfilePath: f.JoinPath("Tiltfile"),
 	}
 	for _, o := range initOptions {
 		ia = o(ia)
@@ -2756,41 +2753,56 @@ func (f *testFixture) startWithInitManifests(initManifests []model.ManifestName,
 	f.Init(ia)
 }
 
+func (f *testFixture) setManifests(manifests []model.Manifest) {
+	tfl := tiltfile.NewFakeTiltfileLoader()
+	tfl.Result.Manifests = manifests
+	f.tfl = tfl
+	f.cc.tfl = tfl
+}
+
 type initOption func(ia InitAction) InitAction
 
 func (f *testFixture) Init(action InitAction) {
-	if action.TiltfilePath == "" {
-		action.TiltfilePath = "/Tiltfile"
-	}
-
-	manifests := action.Manifests
 	watchFiles := action.WatchFiles
-	f.createManifestsResult = make(chan error)
+	f.upperInitResult = make(chan error, 10)
 
 	go func() {
 		err := f.upper.Init(f.ctx, action)
 		if err != nil && err != context.Canceled {
 			// Print this out here in case the test never completes
-			log.Printf("CreateManifests failed: %v", err)
+			log.Printf("upper exited: %v\n", err)
 			f.cancel()
 		}
-		f.createManifestsResult <- err
+		select {
+		case f.upperInitResult <- err:
+		default:
+			fmt.Println("writing to upperInitResult would block!")
+			panic(err)
+		}
 	}()
 
-	f.WaitUntil("manifests appear", func(st store.EngineState) bool {
-		return len(st.ManifestTargets) == len(manifests) && st.WatchFiles == watchFiles
+	f.WaitUntil("tiltfile build finishes", func(st store.EngineState) bool {
+		return !st.TiltfileState.LastBuild().Empty()
 	})
+
+	state := f.store.LockMutableStateForTesting()
+	expectedWatchCount := len(watchableTargetsForManifests(state.Manifests()))
+	if len(state.ConfigFiles) > 0 {
+		// watchmanager also creates a watcher for config files
+		expectedWatchCount++
+	}
+	f.store.UnlockMutableState()
 
 	f.PollUntil("watches set up", func() bool {
 		f.fwm.mu.Lock()
 		defer f.fwm.mu.Unlock()
-		return !watchFiles || len(f.fwm.targetWatches) == len(watchableTargetsForManifests(manifests))
+		return !watchFiles || len(f.fwm.targetWatches) == expectedWatchCount
 	})
 }
 
 func (f *testFixture) Stop() error {
 	f.cancel()
-	err := <-f.createManifestsResult
+	err := <-f.upperInitResult
 	if err == context.Canceled {
 		return nil
 	} else {
@@ -2803,7 +2815,7 @@ func (f *testFixture) WaitForExit() error {
 	case <-time.After(time.Second):
 		f.T().Fatalf("Timed out waiting for upper to exit")
 		return nil
-	case err := <-f.createManifestsResult:
+	case err := <-f.upperInitResult:
 		return err
 	}
 }
@@ -3066,11 +3078,11 @@ func (f *testFixture) assertAllBuildsConsumed() {
 }
 
 func (f *testFixture) loadAndStart() {
-	tlr, err := f.tfl.Load(f.ctx, f.JoinPath(tiltfile.FileName), nil)
-	if err != nil {
-		f.T().Fatal(err)
+	ia := InitAction{
+		WatchFiles:   true,
+		TiltfilePath: f.JoinPath("Tiltfile"),
 	}
-	f.Start(tlr.Manifests, true)
+	f.Init(ia)
 }
 
 func (f *testFixture) WriteConfigFiles(args ...string) {

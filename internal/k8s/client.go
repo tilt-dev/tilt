@@ -33,7 +33,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -67,7 +67,10 @@ type Client interface {
 	//
 	// Tries to update them in-place if possible. But for certain resource types,
 	// we might need to fallback to deleting and re-creating them.
-	Upsert(ctx context.Context, entities []K8sEntity) error
+	//
+	// Returns entities in the order that they were applied (which may be different
+	// than they were passed in) and with UUIDs from the Kube API
+	Upsert(ctx context.Context, entities []K8sEntity) ([]K8sEntity, error)
 
 	// Deletes all given entities.
 	//
@@ -237,46 +240,59 @@ func ServiceURL(service *v1.Service, ip NodeIP) (*url.URL, error) {
 	return nil, nil
 }
 
-func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) error {
+func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) ([]K8sEntity, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-k8sUpsert")
 	defer span.Finish()
+
+	result := make([]K8sEntity, 0, len(entities))
 
 	// First apply all the entities on which something else might depend
 	withDependents, entities := EntitiesWithDependentsAndRest(entities)
 	if len(withDependents) > 0 {
-		err := k.applyEntitiesAndMaybeForce(ctx, withDependents)
+		newEntities, err := k.applyEntitiesAndMaybeForce(ctx, withDependents)
 		if err != nil {
-			return err
+			return nil, err
 		}
+		result = append(result, newEntities...)
 	}
 
 	immutable := ImmutableEntities(entities)
 	if len(immutable) > 0 {
-		_, stderr, err := k.actOnEntities(ctx, []string{"replace", "--force"}, immutable)
+		newEntities, err := k.forceReplaceEntities(ctx, immutable)
 		if err != nil {
-			return errors.Wrapf(err, "kubectl replace:\nstderr: %s", stderr)
+			return nil, err
 		}
+		result = append(result, newEntities...)
 	}
 
 	mutable := MutableEntities(entities)
 	if len(mutable) > 0 {
-		err := k.applyEntitiesAndMaybeForce(ctx, mutable)
+		newEntities, err := k.applyEntitiesAndMaybeForce(ctx, mutable)
 		if err != nil {
-			return err
+			return nil, err
 		}
+		result = append(result, newEntities...)
 	}
-	return nil
+	return result, nil
+}
+
+func (k K8sClient) forceReplaceEntities(ctx context.Context, entities []K8sEntity) ([]K8sEntity, error) {
+	stdout, stderr, err := k.actOnEntities(ctx, []string{"replace", "-o", "yaml", "--force"}, entities)
+	if err != nil {
+		return nil, errors.Wrapf(err, "kubectl replace:\nstderr: %s", stderr)
+	}
+	return ParseYAMLFromString(stdout)
 }
 
 // applyEntitiesAndMaybeForce `kubectl apply`'s the given entities, and if the call fails with
 // an immutible field error, attempts to `replace --force` them.
-func (k K8sClient) applyEntitiesAndMaybeForce(ctx context.Context, entities []K8sEntity) error {
-	_, stderr, err := k.actOnEntities(ctx, []string{"apply"}, entities)
+func (k K8sClient) applyEntitiesAndMaybeForce(ctx context.Context, entities []K8sEntity) ([]K8sEntity, error) {
+	stdout, stderr, err := k.actOnEntities(ctx, []string{"apply", "-o", "yaml"}, entities)
 	if err != nil {
 		shouldTryReplace := maybeImmutableFieldStderr(stderr)
 
 		if !shouldTryReplace {
-			return errors.Wrapf(err, "kubectl apply:\nstderr: %s", stderr)
+			return nil, errors.Wrapf(err, "kubectl apply:\nstderr: %s", stderr)
 		}
 
 		// If the kubectl apply failed due to an immutable field, fall back to kubectl delete && kubectl apply
@@ -284,16 +300,17 @@ func (k K8sClient) applyEntitiesAndMaybeForce(ctx context.Context, entities []K8
 		// dependant pods get deleted rather than orphaned. We WANT these pods to be deleted
 		// and recreated so they have all the new labels, etc. of their controlling k8s entity.
 		logger.Get(ctx).Infof("Falling back to 'kubectl delete && apply' on immutable field error")
-		_, stderr, err = k.actOnEntities(ctx, []string{"delete"}, entities)
+		stdout, stderr, err = k.actOnEntities(ctx, []string{"delete"}, entities)
 		if err != nil {
-			return errors.Wrapf(err, "kubectl delete (as part of delete && apply):\nstderr: %s", stderr)
+			return nil, errors.Wrapf(err, "kubectl delete (as part of delete && apply):\nstderr: %s", stderr)
 		}
-		_, stderr, err = k.actOnEntities(ctx, []string{"apply"}, entities)
+		stdout, stderr, err = k.actOnEntities(ctx, []string{"apply", "-o", "yaml"}, entities)
 		if err != nil {
-			return errors.Wrapf(err, "kubectl apply (as part of delete && apply):\nstderr: %s", stderr)
+			return nil, errors.Wrapf(err, "kubectl apply (as part of delete && apply):\nstderr: %s", stderr)
 		}
 	}
-	return nil
+
+	return ParseYAMLFromString(stdout)
 }
 
 func (k K8sClient) ConnectedToCluster(ctx context.Context) error {

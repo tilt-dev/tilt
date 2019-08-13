@@ -11,6 +11,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
+	"k8s.io/klog"
 
 	"github.com/windmilleng/tilt/internal/engine"
 
@@ -18,11 +19,11 @@ import (
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/logger"
 	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tracer"
+	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -159,6 +160,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 func redirectLogs(ctx context.Context, l logger.Logger) context.Context {
 	ctx = logger.WithLogger(ctx, l)
 	log.SetOutput(l.Writer(logger.InfoLvl))
+	klog.SetOutput(l.Writer(logger.InfoLvl))
 	return ctx
 }
 

@@ -10,7 +10,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/container"
 
-	"github.com/windmilleng/tilt/internal/logger"
+	"github.com/windmilleng/tilt/pkg/logger"
 
 	"github.com/windmilleng/tilt/internal/synclet/proto"
 	"github.com/windmilleng/tilt/pkg/model"
