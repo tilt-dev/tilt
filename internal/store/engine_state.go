@@ -274,9 +274,9 @@ func NewState() *EngineState {
 
 func newManifestState(mn model.ManifestName) *ManifestState {
 	return &ManifestState{
-		Name:          mn,
-		BuildStatuses: make(map[model.TargetID]*BuildStatus),
-		LBs:           make(map[k8s.ServiceName]*url.URL),
+		Name:                    mn,
+		BuildStatuses:           make(map[model.TargetID]*BuildStatus),
+		LBs:                     make(map[k8s.ServiceName]*url.URL),
 		LiveUpdatedContainerIDs: container.NewIDSet(),
 	}
 }
