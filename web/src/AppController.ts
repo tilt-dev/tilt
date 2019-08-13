@@ -128,7 +128,7 @@ class AppController {
       .then(data => {
         data.View.Resources = this.setDefaultResourceInfo(data.View.Resources)
         // @ts-ignore
-        this.component.setAppState({ View: data })
+        this.component.setAppState({ View: data.View })
       })
       .catch(err => {
         // TODO(dmiller): set app state with an error message
