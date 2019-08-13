@@ -148,29 +148,6 @@ func TestEventWatchManager_janitor(t *testing.T) {
 	f.assertUIDMapKeys([]types.UID{obj2.GetUID()})
 }
 
-func TestGetGroup(t *testing.T) {
-	for _, test := range []struct {
-		name          string
-		apiVersion    string
-		expectedGroup string
-	}{
-		{"normal", "apps/v1", "apps"},
-		// core types have an empty group
-		{"core", "/v1", ""},
-		// on some versions of k8s, deployment is buggy and doesn't have a version in its apiVersion
-		{"no version", "extensions", "extensions"},
-		{"alpha version", "apps/v1alpha1", "apps"},
-		{"beta version", "apps/v1beta1", "apps"},
-		// I've never seen this in the wild, but the docs say it's legal
-		{"alpha version, no second number", "apps/v1alpha", "apps"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			obj := v1.ObjectReference{APIVersion: test.apiVersion}
-			assert.Equal(t, test.expectedGroup, getGroup(obj))
-		})
-	}
-}
-
 func (f *ewmFixture) makeEvent(obj unstructured.Unstructured) *v1.Event {
 	return &v1.Event{
 		ObjectMeta:     metav1.ObjectMeta{CreationTimestamp: metav1.Time{Time: f.clock.Now()}},

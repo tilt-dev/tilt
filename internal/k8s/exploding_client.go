@@ -30,7 +30,7 @@ func (ec *explodingClient) Delete(ctx context.Context, entities []K8sEntity) err
 	return errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) Get(group, version, kind, namespace, name, resourceVersion string) (*unstructured.Unstructured, error) {
+func (ec *explodingClient) GetByReference(ref v1.ObjectReference) (*unstructured.Unstructured, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
