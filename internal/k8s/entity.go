@@ -24,19 +24,25 @@ type K8sEntity struct {
 	Obj runtime.Object
 }
 
+func NewK8sEntity(obj runtime.Object) K8sEntity {
+	return K8sEntity{Obj: obj}
+}
+
 type k8sMeta interface {
 	GetName() string
 	GetNamespace() string
 	GetUID() types.UID
 	GetLabels() map[string]string
+	GetOwnerReferences() []metav1.OwnerReference
 }
 
 type emptyMeta struct{}
 
-func (emptyMeta) GetName() string              { return "" }
-func (emptyMeta) GetNamespace() string         { return "" }
-func (emptyMeta) GetUID() types.UID            { return "" }
-func (emptyMeta) GetLabels() map[string]string { return make(map[string]string) }
+func (emptyMeta) GetName() string                             { return "" }
+func (emptyMeta) GetNamespace() string                        { return "" }
+func (emptyMeta) GetUID() types.UID                           { return "" }
+func (emptyMeta) GetLabels() map[string]string                { return make(map[string]string) }
+func (emptyMeta) GetOwnerReferences() []metav1.OwnerReference { return nil }
 
 var _ k8sMeta = emptyMeta{}
 var _ k8sMeta = &metav1.ObjectMeta{}
@@ -169,9 +175,7 @@ func (e K8sEntity) ImmutableOnceCreated() bool {
 }
 
 func (e K8sEntity) DeepCopy() K8sEntity {
-	return K8sEntity{
-		Obj: e.Obj.DeepCopyObject(),
-	}
+	return NewK8sEntity(e.Obj.DeepCopyObject())
 }
 
 // EntitiesWithDependentsAndRest returns two lists of k8s entities: those that may have dependencies,

@@ -17,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/version"
@@ -78,7 +77,7 @@ type Client interface {
 	// behavior for our use cases.
 	Delete(ctx context.Context, entities []K8sEntity) error
 
-	GetByReference(ref v1.ObjectReference) (*unstructured.Unstructured, error)
+	GetByReference(ref v1.ObjectReference) (K8sEntity, error)
 
 	PodByID(ctx context.Context, podID PodID, n Namespace) (*v1.Pod, error)
 
@@ -361,7 +360,7 @@ func (k K8sClient) actOnEntities(ctx context.Context, cmdArgs []string, entities
 	return k.kubectlRunner.execWithStdin(ctx, args, rawYAML)
 }
 
-func (k K8sClient) GetByReference(ref v1.ObjectReference) (*unstructured.Unstructured, error) {
+func (k K8sClient) GetByReference(ref v1.ObjectReference) (K8sEntity, error) {
 	group := getGroup(ref)
 	kind := ref.Kind
 	namespace := ref.Namespace
@@ -370,19 +369,19 @@ func (k K8sClient) GetByReference(ref v1.ObjectReference) (*unstructured.Unstruc
 	uid := ref.UID
 	rm, err := k.drm.RESTMapping(schema.GroupKind{Group: group, Kind: kind})
 	if err != nil {
-		return nil, errors.Wrapf(err, "error mapping %s/%s", group, kind)
+		return K8sEntity{}, errors.Wrapf(err, "error mapping %s/%s", group, kind)
 	}
 
 	result, err := k.dynamic.Resource(rm.Resource).Namespace(namespace).Get(name, metav1.GetOptions{
 		ResourceVersion: resourceVersion,
 	})
 	if err != nil {
-		return nil, err
+		return K8sEntity{}, err
 	}
 	if uid != "" && result.GetUID() != uid {
-		return nil, apierrors.NewNotFound(v1.Resource(kind), name)
+		return K8sEntity{}, apierrors.NewNotFound(v1.Resource(kind), name)
 	}
-	return result, nil
+	return NewK8sEntity(result), nil
 }
 
 // Tests whether a string is a valid version for a k8s resource type.

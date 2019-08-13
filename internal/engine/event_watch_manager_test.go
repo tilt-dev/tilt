@@ -29,18 +29,15 @@ func TestEventWatchManager_dispatchesEvent(t *testing.T) {
 
 	f.addManifest(mn)
 	obj := f.makeObj(mn)
-	f.kClient.GetResources = map[k8s.GetKey]*unstructured.Unstructured{
-		k8s.GetKey{Name: obj.GetName()}: &obj,
+	f.kClient.GetResources = map[k8s.GetKey]k8s.K8sEntity{
+		k8s.GetKey{Name: obj.Name()}: obj,
 	}
 
 	evt := f.makeEvent(obj)
 
 	f.ewm.OnChange(f.ctx, f.store)
 	f.kClient.EmitEvent(f.ctx, evt)
-	e := k8s.K8sEntity{
-		Obj: &obj,
-	}
-	expected := store.K8sEventAction{Event: evt, ManifestName: mn, InvolvedObject: e}
+	expected := store.K8sEventAction{Event: evt, ManifestName: mn, InvolvedObject: obj}
 	f.assertActions(expected)
 }
 
@@ -66,8 +63,8 @@ func TestEventWatchManager_needsWatchNoK8s(t *testing.T) {
 	mn := model.ManifestName("someK8sManifest")
 
 	obj := f.makeObj(mn)
-	f.kClient.GetResources = map[k8s.GetKey]*unstructured.Unstructured{
-		k8s.GetKey{Name: obj.GetName()}: &obj,
+	f.kClient.GetResources = map[k8s.GetKey]k8s.K8sEntity{
+		k8s.GetKey{Name: obj.Name()}: obj,
 	}
 
 	evt := f.makeEvent(obj)
@@ -88,8 +85,8 @@ func TestEventWatchManager_ignoresPreStartEvents(t *testing.T) {
 
 	f.addManifest(mn)
 	obj := f.makeObj(mn)
-	f.kClient.GetResources = map[k8s.GetKey]*unstructured.Unstructured{
-		k8s.GetKey{Name: obj.GetName()}: &obj,
+	f.kClient.GetResources = map[k8s.GetKey]k8s.K8sEntity{
+		k8s.GetKey{Name: obj.Name()}: obj,
 	}
 
 	f.ewm.OnChange(f.ctx, f.store)
@@ -103,12 +100,8 @@ func TestEventWatchManager_ignoresPreStartEvents(t *testing.T) {
 
 	f.kClient.EmitEvent(f.ctx, evt2)
 
-	e := k8s.K8sEntity{
-		Obj: &obj,
-	}
-
 	// first event predates tilt start time, so should be ignored
-	expected := store.K8sEventAction{Event: evt2, ManifestName: mn, InvolvedObject: e}
+	expected := store.K8sEventAction{Event: evt2, ManifestName: mn, InvolvedObject: obj}
 
 	f.assertActions(expected)
 }
@@ -123,37 +116,37 @@ func TestEventWatchManager_janitor(t *testing.T) {
 
 	obj1 := f.makeObj(mn)
 	obj2 := f.makeObj(mn)
-	f.kClient.GetResources = map[k8s.GetKey]*unstructured.Unstructured{
-		k8s.GetKey{Name: obj1.GetName()}: &obj1,
-		k8s.GetKey{Name: obj2.GetName()}: &obj2,
+	f.kClient.GetResources = map[k8s.GetKey]k8s.K8sEntity{
+		k8s.GetKey{Name: obj1.Name()}: obj1,
+		k8s.GetKey{Name: obj2.Name()}: obj2,
 	}
 
 	f.ewm.OnChange(f.ctx, f.store)
 	f.kClient.EmitEvent(f.ctx, f.makeEvent(obj1))
 
-	f.assertUIDMapKeys([]types.UID{obj1.GetUID()})
+	f.assertUIDMapKeys([]types.UID{obj1.UID()})
 
 	f.clock.BlockUntil(1)
 	f.clock.Advance(uidMapEntryTTL / 2)
 
 	f.kClient.EmitEvent(f.ctx, f.makeEvent(obj2))
-	f.assertUIDMapKeys([]types.UID{obj1.GetUID(), obj2.GetUID()})
+	f.assertUIDMapKeys([]types.UID{obj1.UID(), obj2.UID()})
 
 	f.clock.BlockUntil(1)
 	f.clock.Advance(uidMapEntryTTL/2 + 1)
-	f.assertUIDMapKeys([]types.UID{obj2.GetUID()})
+	f.assertUIDMapKeys([]types.UID{obj2.UID()})
 }
 
-func (f *ewmFixture) makeEvent(obj unstructured.Unstructured) *v1.Event {
+func (f *ewmFixture) makeEvent(obj k8s.K8sEntity) *v1.Event {
 	return &v1.Event{
 		ObjectMeta:     metav1.ObjectMeta{CreationTimestamp: metav1.Time{Time: f.clock.Now()}},
 		Reason:         "test event reason",
 		Message:        "test event message",
-		InvolvedObject: v1.ObjectReference{UID: obj.GetUID(), Name: obj.GetName()},
+		InvolvedObject: v1.ObjectReference{UID: obj.UID(), Name: obj.Name()},
 	}
 }
 
-func (f *ewmFixture) makeObj(mn model.ManifestName) unstructured.Unstructured {
+func (f *ewmFixture) makeObj(mn model.ManifestName) k8s.K8sEntity {
 	ret := unstructured.Unstructured{}
 
 	f.objectCount++
@@ -165,7 +158,7 @@ func (f *ewmFixture) makeObj(mn model.ManifestName) unstructured.Unstructured {
 		k8s.ManifestNameLabel: mn.String(),
 	})
 
-	return ret
+	return k8s.NewK8sEntity(&ret)
 }
 
 type ewmFixture struct {

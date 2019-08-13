@@ -12,14 +12,14 @@ import (
 )
 
 func TestTypedPodGVK(t *testing.T) {
-	entity := K8sEntity{Obj: &v1.Pod{}}
+	entity := NewK8sEntity(&v1.Pod{})
 	assert.Equal(t, "", entity.GVK().Group)
 	assert.Equal(t, "v1", entity.GVK().Version)
 	assert.Equal(t, "Pod", entity.GVK().Kind)
 }
 
 func TestTypedDeploymentGVK(t *testing.T) {
-	entity := K8sEntity{Obj: &appsv1.Deployment{}}
+	entity := NewK8sEntity(&appsv1.Deployment{})
 	assert.Equal(t, "apps", entity.GVK().Group)
 	assert.Equal(t, "v1", entity.GVK().Version)
 	assert.Equal(t, "Deployment", entity.GVK().Kind)

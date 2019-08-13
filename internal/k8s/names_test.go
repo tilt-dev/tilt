@@ -61,7 +61,7 @@ func TestUniqueResourceNames(t *testing.T) {
 				obj.SetNamespace(w.namespace)
 				obj.SetKind(w.kind)
 				obj.SetAPIVersion(fmt.Sprintf("%s/1.0", w.group))
-				entities = append(entities, K8sEntity{Obj: &obj})
+				entities = append(entities, NewK8sEntity(&obj))
 
 				expectedNames = append(expectedNames, w.expectedResourceName)
 			}

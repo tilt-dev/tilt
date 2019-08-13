@@ -1909,8 +1909,8 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 	obj := unstructured.Unstructured{}
 	obj.SetLabels(map[string]string{k8s.TiltRunIDLabel: k8s.TiltRunID, k8s.ManifestNameLabel: name.String()})
 	obj.SetName(objRef.Name)
-	f.kClient.GetResources = map[k8s.GetKey]*unstructured.Unstructured{
-		k8s.GetKey{Name: e.Name()}: &obj,
+	f.kClient.GetResources = map[k8s.GetKey]k8s.K8sEntity{
+		k8s.GetKey{Name: e.Name()}: k8s.NewK8sEntity(&obj),
 	}
 
 	f.Start([]model.Manifest{manifest}, true)
@@ -2024,8 +2024,8 @@ func TestK8sEventLogTimestamp(t *testing.T) {
 
 	obj := unstructured.Unstructured{}
 	obj.SetLabels(map[string]string{k8s.TiltRunIDLabel: k8s.TiltRunID, k8s.ManifestNameLabel: name.String()})
-	f.kClient.GetResources = map[k8s.GetKey]*unstructured.Unstructured{
-		k8s.GetKey{}: &obj,
+	f.kClient.GetResources = map[k8s.GetKey]k8s.K8sEntity{
+		k8s.GetKey{}: k8s.NewK8sEntity(&obj),
 	}
 
 	f.Start([]model.Manifest{manifest}, true)
