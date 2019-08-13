@@ -171,10 +171,10 @@ func TestSelectorMatchesLabels(t *testing.T) {
 	if len(entities) != 2 {
 		t.Fatal("expected exactly two entities")
 	}
-	if entities[0].Kind.Kind != "Service" {
+	if entities[0].GVK().Kind != "Service" {
 		t.Fatal("expected first entity to be a Service")
 	}
-	if entities[1].Kind.Kind != "Deployment" {
+	if entities[1].GVK().Kind != "Deployment" {
 		t.Fatal("expected second entity to be a Deployment")
 	}
 

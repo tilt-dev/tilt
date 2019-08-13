@@ -339,7 +339,7 @@ func maybeImmutableFieldStderr(stderr string) bool {
 func (k K8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
 	l := logger.Get(ctx)
 	for _, e := range entities {
-		l.Infof("Deleting via kubectl: %s/%s\n", e.Kind.Kind, e.Name())
+		l.Infof("Deleting via kubectl: %s/%s\n", e.GVK().Kind, e.Name())
 	}
 
 	_, stderr, err := k.actOnEntities(ctx, []string{"delete", "--ignore-not-found"}, entities)

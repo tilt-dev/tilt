@@ -7,21 +7,21 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/windmilleng/tilt/internal/container"
 )
 
 type K8sEntity struct {
-	Obj  runtime.Object
-	Kind *schema.GroupVersionKind
+	Obj runtime.Object
 }
 
 type k8sMeta interface {
@@ -40,6 +40,20 @@ func (emptyMeta) GetLabels() map[string]string { return make(map[string]string) 
 
 var _ k8sMeta = emptyMeta{}
 var _ k8sMeta = &metav1.ObjectMeta{}
+
+func (e K8sEntity) GVK() schema.GroupVersionKind {
+	gvk := e.Obj.GetObjectKind().GroupVersionKind()
+	if gvk.Empty() {
+		// On typed go objects, the GVK is usually empty by convention, so we grab it from the Scheme
+		// See https://github.com/kubernetes/kubernetes/pull/59264#issuecomment-362575608
+		// for discussion on why the API behaves this way.
+		gvks, _, _ := scheme.Scheme.ObjectKinds(e.Obj)
+		if len(gvks) > 0 {
+			return gvks[0]
+		}
+	}
+	return gvk
+}
 
 func (e K8sEntity) meta() k8sMeta {
 	if unstruct := e.maybeUnstructuredMeta(); unstruct != nil {
@@ -151,19 +165,12 @@ func (e K8sEntity) Labels() map[string]string {
 
 // Most entities can be updated once running, but a few cannot.
 func (e K8sEntity) ImmutableOnceCreated() bool {
-	if e.Kind != nil {
-		return e.Kind.Kind == "Job" || e.Kind.Kind == "Pod"
-	}
-	return false
+	return e.GVK().Kind == "Job" || e.GVK().Kind == "Pod"
 }
 
 func (e K8sEntity) DeepCopy() K8sEntity {
-	// GroupVersionKind is a struct of string values, so dereferencing the pointer
-	// is an adequate copy.
-	kind := *e.Kind
 	return K8sEntity{
-		Obj:  e.Obj.DeepCopyObject(),
-		Kind: &kind,
+		Obj: e.Obj.DeepCopyObject(),
 	}
 }
 
@@ -175,9 +182,10 @@ func EntitiesWithDependentsAndRest(entities []K8sEntity) (withDependents, rest [
 	var crd []K8sEntity
 
 	for _, e := range entities {
-		if e.Kind.Kind == "Namespace" {
+		kind := e.GVK().Kind
+		if kind == "Namespace" {
 			ns = append(ns, e)
-		} else if e.Kind.Kind == "CustomResourceDefinition" {
+		} else if kind == "CustomResourceDefinition" {
 			crd = append(crd, e)
 		} else {
 			rest = append(rest, e)
@@ -335,5 +343,5 @@ func (e K8sEntity) HasNamespace(ns string) bool {
 
 func (e K8sEntity) HasKind(kind string) bool {
 	// TODO(maia): support kind aliases (e.g. "po" for "pod")
-	return strings.ToLower(e.Kind.Kind) == strings.ToLower(kind)
+	return strings.ToLower(e.GVK().Kind) == strings.ToLower(kind)
 }

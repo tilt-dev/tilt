@@ -876,11 +876,12 @@ func (s *tiltfileState) workloadToResourceFunctionNames(workloads []k8s.K8sEntit
 }
 
 func newK8sObjectID(e k8s.K8sEntity) k8sObjectID {
+	gvk := e.GVK()
 	return k8sObjectID{
 		name:      e.Name(),
-		kind:      e.Kind.Kind,
+		kind:      gvk.Kind,
 		namespace: e.Namespace().String(),
-		group:     e.Kind.Group,
+		group:     gvk.Group,
 	}
 }
 

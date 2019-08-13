@@ -37,10 +37,8 @@ func TestEventWatchManager_dispatchesEvent(t *testing.T) {
 
 	f.ewm.OnChange(f.ctx, f.store)
 	f.kClient.EmitEvent(f.ctx, evt)
-	gvk := obj.GroupVersionKind()
 	e := k8s.K8sEntity{
-		Obj:  &obj,
-		Kind: &gvk,
+		Obj: &obj,
 	}
 	expected := store.K8sEventAction{Event: evt, ManifestName: mn, InvolvedObject: e}
 	f.assertActions(expected)
@@ -105,10 +103,8 @@ func TestEventWatchManager_ignoresPreStartEvents(t *testing.T) {
 
 	f.kClient.EmitEvent(f.ctx, evt2)
 
-	gvk := obj.GroupVersionKind()
 	e := k8s.K8sEntity{
-		Obj:  &obj,
-		Kind: &gvk,
+		Obj: &obj,
 	}
 
 	// first event predates tilt start time, so should be ignored

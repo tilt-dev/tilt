@@ -1087,8 +1087,9 @@ func newK8sObjectSelector(apiVersion string, kind string, name string, namespace
 }
 
 func (k k8sObjectSelector) matches(e k8s.K8sEntity) bool {
-	return k.apiVersion.MatchString(e.Kind.GroupVersion().String()) &&
-		k.kind.MatchString(e.Kind.Kind) &&
+	gvk := e.GVK()
+	return k.apiVersion.MatchString(gvk.GroupVersion().String()) &&
+		k.kind.MatchString(gvk.Kind) &&
 		k.name.MatchString(e.Name()) &&
 		k.namespace.MatchString(e.Namespace().String())
 }

@@ -94,8 +94,7 @@ func (m *EventWatchManager) createEntry(ctx context.Context, involvedObject v1.O
 		return ret
 	}
 
-	gvk := o.GroupVersionKind()
-	ret.obj = k8s.K8sEntity{Obj: o, Kind: &gvk}
+	ret.obj = k8s.K8sEntity{Obj: o}
 	ret.manifest = mn
 	ret.belongsToThisTilt = o.GetLabels()[k8s.TiltRunIDLabel] == k8s.TiltRunID
 	return ret

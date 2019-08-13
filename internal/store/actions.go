@@ -98,7 +98,7 @@ func (kEvt K8sEventAction) ToLogAction(mn model.ManifestName) LogAction {
 }
 
 func objRefHumanReadable(obj k8s.K8sEntity) string {
-	s := fmt.Sprintf("%s %s", obj.Kind, obj.Name())
+	s := fmt.Sprintf("%s %s", obj.GVK().Kind, obj.Name())
 	if obj.Namespace() != k8s.DefaultNamespace {
 		s += fmt.Sprintf(" (ns: %s)", obj.Namespace())
 	}
