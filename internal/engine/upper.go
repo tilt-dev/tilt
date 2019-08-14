@@ -214,13 +214,13 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	ms.ConfigFilesThatCausedChange = []string{}
 	ms.CurrentBuild = bs
 
-	for _, pod := range ms.PodSet.Pods {
-		pod.CurrentLog = model.Log{}
-		pod.UpdateStartTime = action.StartTime
-	}
-
-	if dcState, ok := ms.ResourceState.(dockercompose.State); ok {
-		ms.ResourceState = dcState.WithCurrentLog(model.Log{})
+	if ms.IsK8s() {
+		for _, pod := range ms.K8sRuntimeState().Pods {
+			pod.CurrentLog = model.Log{}
+			pod.UpdateStartTime = action.StartTime
+		}
+	} else {
+		ms.RuntimeState = ms.DCRuntimeState().WithCurrentLog(model.Log{})
 	}
 
 	// Keep the crash log around until we have a rebuild
@@ -294,7 +294,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 			ms.MutableBuildStatus(id).LastSuccessfulResult = result
 		}
 
-		for _, pod := range ms.PodSet.Pods {
+		for _, pod := range ms.K8sRuntimeState().Pods {
 			// # of pod restarts from old code (shouldn't be reflected in HUD)
 			pod.OldRestarts = pod.AllContainerRestarts()
 		}
@@ -319,7 +319,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	}
 
 	if mt.Manifest.IsDC() {
-		state, _ := ms.ResourceState.(dockercompose.State)
+		state, _ := ms.RuntimeState.(dockercompose.State)
 
 		dcResult := cb.Result[mt.Manifest.DockerComposeTarget().ID()]
 		cid := dcResult.DockerComposeContainerID
@@ -336,7 +336,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 			state = state.WithStatus(dockercompose.StatusUp)
 		}
 
-		ms.ResourceState = state
+		ms.RuntimeState = state
 	}
 
 	if engineState.WatchFiles {
@@ -582,7 +582,8 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action Se
 		return
 	}
 
-	ms.LBs[k8s.ServiceName(service.Name)] = action.URL
+	runtime := ms.GetOrCreateK8sRuntimeState()
+	runtime.LBs[k8s.ServiceName(service.Name)] = action.URL
 }
 
 func handleK8sEvent(ctx context.Context, state *store.EngineState, action store.K8sEventAction) {
@@ -658,7 +659,7 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 		return
 	}
 
-	state, _ := ms.ResourceState.(dockercompose.State)
+	state, _ := ms.RuntimeState.(dockercompose.State)
 
 	state = state.WithContainerID(container.ID(evt.ID))
 
@@ -681,7 +682,7 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 		state = state.WithStatus(dockercompose.StatusCrash)
 	}
 
-	ms.ResourceState = state
+	ms.RuntimeState = state
 }
 
 func handleDockerComposeLogAction(state *store.EngineState, action DockerComposeLogAction) {
@@ -692,8 +693,8 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 		return
 	}
 
-	dcState, _ := ms.ResourceState.(dockercompose.State)
-	ms.ResourceState = dcState.WithCurrentLog(model.AppendLog(dcState.CurrentLog, action, state.LogTimestamps, ""))
+	dcState, _ := ms.RuntimeState.(dockercompose.State)
+	ms.RuntimeState = dcState.WithCurrentLog(model.AppendLog(dcState.CurrentLog, action, state.LogTimestamps, ""))
 }
 
 func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action TiltfileLogAction) {

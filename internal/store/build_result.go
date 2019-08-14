@@ -240,12 +240,12 @@ func IDsForInfos(infos []ContainerInfo) []container.ID {
 
 func AllRunningContainers(mt *ManifestTarget) []ContainerInfo {
 	if mt.Manifest.IsDC() {
-		return RunningContainersForDC(mt.State.DCResourceState())
+		return RunningContainersForDC(mt.State.DCRuntimeState())
 	}
 
 	var result []ContainerInfo
 	for _, iTarget := range mt.Manifest.ImageTargets {
-		cInfos, err := RunningContainersForTargetForOnePod(iTarget, mt.State.DeployID, mt.State.PodSet)
+		cInfos, err := RunningContainersForTargetForOnePod(iTarget, mt.State.DeployID, mt.State.K8sRuntimeState())
 		if err != nil {
 			// HACK(maia): just don't collect container info for targets running
 			// more than one pod -- we don't support LiveUpdating them anyway,
@@ -260,21 +260,21 @@ func AllRunningContainers(mt *ManifestTarget) []ContainerInfo {
 // If all containers running the given image are ready, returns info for them.
 // (If this image is running on multiple pods, return an error.)
 func RunningContainersForTargetForOnePod(iTarget model.ImageTarget, deployID model.DeployID,
-	podSet PodSet) ([]ContainerInfo, error) {
-	if podSet.Len() > 1 {
-		return nil, fmt.Errorf("can only get container info for a single pod; image target %s has %d pods", iTarget.ID(), podSet.Len())
+	runtimeState K8sRuntimeState) ([]ContainerInfo, error) {
+	if runtimeState.PodLen() > 1 {
+		return nil, fmt.Errorf("can only get container info for a single pod; image target %s has %d pods", iTarget.ID(), runtimeState.PodLen())
 	}
 
-	if podSet.Len() == 0 {
+	if runtimeState.PodLen() == 0 {
 		return nil, nil
 	}
 
-	pod := podSet.MostRecentPod()
+	pod := runtimeState.MostRecentPod()
 	if pod.PodID == "" {
 		return nil, nil
 	}
 
-	if podSet.DeployID != deployID {
+	if runtimeState.PodDeployID != deployID {
 		return nil, nil
 	}
 

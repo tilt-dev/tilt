@@ -36,7 +36,7 @@ func TestPortForward(t *testing.T) {
 	assert.Equal(t, 0, len(f.plc.activeForwards))
 
 	state = f.st.LockMutableStateForTesting()
-	state.ManifestTargets["fe"].State.PodSet = store.NewPodSet(store.Pod{PodID: "pod-id", Phase: v1.PodRunning})
+	state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(0, store.Pod{PodID: "pod-id", Phase: v1.PodRunning})
 	f.st.UnlockMutableState()
 
 	f.plc.OnChange(f.ctx, f.st)
@@ -44,7 +44,7 @@ func TestPortForward(t *testing.T) {
 	assert.Equal(t, "pod-id", f.kCli.LastForwardPortPodID.String())
 
 	state = f.st.LockMutableStateForTesting()
-	state.ManifestTargets["fe"].State.PodSet = store.NewPodSet(store.Pod{PodID: "pod-id2", Phase: v1.PodRunning})
+	state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(0, store.Pod{PodID: "pod-id2", Phase: v1.PodRunning})
 	f.st.UnlockMutableState()
 
 	f.plc.OnChange(f.ctx, f.st)
@@ -52,7 +52,7 @@ func TestPortForward(t *testing.T) {
 	assert.Equal(t, "pod-id2", f.kCli.LastForwardPortPodID.String())
 
 	state = f.st.LockMutableStateForTesting()
-	state.ManifestTargets["fe"].State.PodSet = store.NewPodSet(store.Pod{PodID: "pod-id2", Phase: v1.PodPending})
+	state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(0, store.Pod{PodID: "pod-id2", Phase: v1.PodPending})
 	f.st.UnlockMutableState()
 
 	f.plc.OnChange(f.ctx, f.st)
@@ -75,14 +75,14 @@ func TestPortForwardAutoDiscovery(t *testing.T) {
 		},
 	})
 	state.UpsertManifestTarget(store.NewManifestTarget(m))
-	state.ManifestTargets["fe"].State.PodSet = store.NewPodSet(store.Pod{PodID: "pod-id", Phase: v1.PodRunning})
+	state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(0, store.Pod{PodID: "pod-id", Phase: v1.PodRunning})
 	f.st.UnlockMutableState()
 
 	f.plc.OnChange(f.ctx, f.st)
 	assert.Equal(t, 0, len(f.plc.activeForwards))
 
 	state = f.st.LockMutableStateForTesting()
-	state.ManifestTargets["fe"].State.PodSet.Pods["pod-id"].Containers = []store.Container{
+	state.ManifestTargets["fe"].State.K8sRuntimeState().Pods["pod-id"].Containers = []store.Container{
 		store.Container{Ports: []int32{8000}},
 	}
 	f.st.UnlockMutableState()

@@ -7,6 +7,6 @@ import (
 
 func NewManifestTargetWithPod(m model.Manifest, pod store.Pod) *store.ManifestTarget {
 	mt := store.NewManifestTarget(m)
-	mt.State.PodSet = store.NewPodSet(pod)
+	mt.State.RuntimeState = store.NewK8sRuntimeState(0, pod)
 	return mt
 }
