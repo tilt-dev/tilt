@@ -13,15 +13,17 @@ import (
 )
 
 type ServiceWatcher struct {
-	kCli     k8s.Client
-	watching bool
-	nodeIP   k8s.NodeIP
+	kCli         k8s.Client
+	ownerFetcher k8s.OwnerFetcher
+	watching     bool
+	nodeIP       k8s.NodeIP
 }
 
-func NewServiceWatcher(kCli k8s.Client, nodeIP k8s.NodeIP) *ServiceWatcher {
+func NewServiceWatcher(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher, nodeIP k8s.NodeIP) *ServiceWatcher {
 	return &ServiceWatcher{
-		kCli:   kCli,
-		nodeIP: nodeIP,
+		kCli:         kCli,
+		ownerFetcher: ownerFetcher,
+		nodeIP:       nodeIP,
 	}
 }
 
@@ -77,6 +79,8 @@ func dispatchServiceChange(st store.RStore, service *v1.Service, ip k8s.NodeIP) 
 	if err != nil {
 		return err
 	}
+
+	// TODO(nick): Attach owner tree.
 
 	st.Dispatch(NewServiceChangeAction(service, url))
 	return nil

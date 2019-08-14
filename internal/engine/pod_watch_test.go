@@ -198,7 +198,8 @@ func newPWFixture(t *testing.T) *pwFixture {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
 
-	pw := NewPodWatcher(kClient)
+	of := k8s.ProvideOwnerFetcher(kClient)
+	pw := NewPodWatcher(kClient, of)
 	ret := &pwFixture{
 		kClient: kClient,
 		pw:      pw,

@@ -2728,8 +2728,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	reaper := build.NewImageReaper(dockerClient)
 
 	kCli := k8s.NewFakeK8sClient()
-	pw := NewPodWatcher(kCli)
-	sw := NewServiceWatcher(kCli, "")
+	of := k8s.ProvideOwnerFetcher(kCli)
+	pw := NewPodWatcher(kCli, of)
+	sw := NewServiceWatcher(kCli, of, "")
 
 	fakeHud := hud.NewFakeHud()
 
