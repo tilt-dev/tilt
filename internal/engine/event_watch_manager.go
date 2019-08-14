@@ -80,7 +80,7 @@ func (m *EventWatchManager) createEntry(ctx context.Context, involvedObject v1.O
 		expiresAt:         m.clock.Now().Add(uidMapEntryTTL),
 	}
 
-	o, err := m.kClient.GetByReference(involvedObject)
+	e, err := m.kClient.GetByReference(involvedObject)
 	if err != nil {
 		// if the lookup was an error, wipe out resourceVersion so that we don't cache a potentially
 		// ephemeral negative result
@@ -89,14 +89,14 @@ func (m *EventWatchManager) createEntry(ctx context.Context, involvedObject v1.O
 		return ret
 	}
 
-	mn := model.ManifestName(o.GetLabels()[k8s.ManifestNameLabel])
+	mn := model.ManifestName(e.Labels()[k8s.ManifestNameLabel])
 	if mn == "" {
 		return ret
 	}
 
-	ret.obj = k8s.K8sEntity{Obj: o}
+	ret.obj = e
 	ret.manifest = mn
-	ret.belongsToThisTilt = o.GetLabels()[k8s.TiltRunIDLabel] == k8s.TiltRunID
+	ret.belongsToThisTilt = e.Labels()[k8s.TiltRunIDLabel] == k8s.TiltRunID
 	return ret
 }
 

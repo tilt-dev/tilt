@@ -13,7 +13,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/watch"
 
@@ -62,7 +61,7 @@ type FakeK8sClient struct {
 	Runtime     container.Runtime
 	Registry    container.Registry
 
-	GetResources map[GetKey]*unstructured.Unstructured
+	GetResources map[GetKey]K8sEntity
 
 	ExecCalls  []ExecCall
 	ExecErrors []error
@@ -239,7 +238,7 @@ func (c *FakeK8sClient) Delete(ctx context.Context, entities []K8sEntity) error 
 	return nil
 }
 
-func (c *FakeK8sClient) GetByReference(ref v1.ObjectReference) (*unstructured.Unstructured, error) {
+func (c *FakeK8sClient) GetByReference(ref v1.ObjectReference) (K8sEntity, error) {
 	group := getGroup(ref)
 	kind := ref.Kind
 	namespace := ref.Namespace
@@ -248,7 +247,7 @@ func (c *FakeK8sClient) GetByReference(ref v1.ObjectReference) (*unstructured.Un
 	key := GetKey{group, kind, namespace, name, resourceVersion}
 	resp, ok := c.GetResources[key]
 	if !ok {
-		return nil, fmt.Errorf("No response found for %v", key)
+		return K8sEntity{}, fmt.Errorf("No response found for %v", key)
 	}
 
 	return resp, nil

@@ -85,7 +85,7 @@ func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {
 			st.Dispatch(NewErrorAction(err))
 			return
 		}
-		go dispatchPodChangesLoop(ctx, ch, st)
+		go w.dispatchPodChangesLoop(ctx, ch, st)
 	}
 
 	for _, pw := range teardown {
@@ -104,7 +104,7 @@ func (w *PodWatcher) removeWatch(toRemove PodWatch) {
 	}
 }
 
-func dispatchPodChangesLoop(ctx context.Context, ch <-chan *v1.Pod, st store.RStore) {
+func (w *PodWatcher) dispatchPodChangesLoop(ctx context.Context, ch <-chan *v1.Pod, st store.RStore) {
 	for {
 		select {
 		case pod, ok := <-ch:
