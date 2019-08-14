@@ -607,6 +607,20 @@ func TestInjectOverrideCommandsMultipleImages(t *testing.T) {
 
 }
 
+func TestIBDDeployUIDs(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	manifest := NewSanchoFastBuildManifest(f)
+	result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 1, len(result.DeployedUIDSet()))
+	assert.True(t, result.DeployedUIDSet().Contains(f.k8s.LastUpsertResult[0].UID()))
+}
+
 type ibdFixture struct {
 	*tempdir.TempDirFixture
 	ctx    context.Context

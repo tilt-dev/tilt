@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/docker/distribution/reference"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -13,6 +14,8 @@ import (
 )
 
 // The results of a successful build.
+// TODO(nick): This should probably be implemented
+// as different typer per targetID type
 type BuildResult struct {
 	// The image target that this built.
 	TargetID model.TargetID
@@ -35,6 +38,9 @@ type BuildResult struct {
 	// The contents of the container have diverged from the image it's built on,
 	// so we need to keep track of that.
 	LiveUpdatedContainerIDs []container.ID
+
+	// The UIDs that we deployed to a Kubernetes cluster.
+	DeployedUIDs []types.UID
 }
 
 // For in-place container updates.
@@ -61,6 +67,14 @@ func NewDockerComposeDeployResult(id model.TargetID, containerID container.ID) B
 	}
 }
 
+// For kubernetes deploy targets.
+func NewK8sDeployResult(id model.TargetID, uids []types.UID) BuildResult {
+	return BuildResult{
+		TargetID:     id,
+		DeployedUIDs: uids,
+	}
+}
+
 func (b BuildResult) IsEmpty() bool {
 	return b.TargetID.Empty()
 }
@@ -79,6 +93,14 @@ func (set BuildResultSet) LiveUpdatedContainerIDs() []container.ID {
 	result := []container.ID{}
 	for _, r := range set {
 		result = append(result, r.LiveUpdatedContainerIDs...)
+	}
+	return result
+}
+
+func (set BuildResultSet) DeployedUIDSet() UIDSet {
+	result := NewUIDSet()
+	for _, r := range set {
+		result.Add(r.DeployedUIDs...)
 	}
 	return result
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -17,9 +18,10 @@ type RuntimeState interface {
 }
 
 type K8sRuntimeState struct {
-	PodDeployID model.DeployID // Deploy that pods correspond to
-	Pods        map[k8s.PodID]*Pod
-	LBs         map[k8s.ServiceName]*url.URL
+	PodDeployID    model.DeployID // Deploy that pods correspond to
+	Pods           map[k8s.PodID]*Pod
+	LBs            map[k8s.ServiceName]*url.URL
+	DeployedUIDSet UIDSet
 }
 
 func (K8sRuntimeState) RuntimeState() {}
@@ -155,4 +157,20 @@ func (p Pod) AllContainerRestarts() int {
 		result += c.Restarts
 	}
 	return result
+}
+
+type UIDSet map[types.UID]bool
+
+func NewUIDSet() UIDSet {
+	return make(map[types.UID]bool)
+}
+
+func (s UIDSet) Add(uids ...types.UID) {
+	for _, uid := range uids {
+		s[uid] = true
+	}
+}
+
+func (s UIDSet) Contains(uid types.UID) bool {
+	return s[uid]
 }

@@ -57,9 +57,11 @@ type FakeK8sClient struct {
 	eventsCh       chan *v1.Event
 	EventsWatchErr error
 
-	UpsertError error
-	Runtime     container.Runtime
-	Registry    container.Registry
+	UpsertError      error
+	LastUpsertResult []K8sEntity
+
+	Runtime  container.Runtime
+	Registry container.Registry
 
 	GetResources map[GetKey]K8sEntity
 
@@ -211,7 +213,7 @@ func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity) ([]K8s
 
 	result := make([]K8sEntity, 0, len(entities))
 
-	for _, e := range result {
+	for _, e := range entities {
 		clone := e.DeepCopy()
 		err = SetUID(&clone, uuid.New().String())
 		if err != nil {
@@ -220,6 +222,7 @@ func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity) ([]K8s
 		result = append(result, clone)
 	}
 
+	c.LastUpsertResult = result
 	return result, nil
 }
 

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/docker/distribution/reference"
+	"github.com/google/uuid"
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -144,6 +145,8 @@ type fakeBuildAndDeployer struct {
 
 	nextDeployID model.DeployID
 
+	nextDeployedUID types.UID
+
 	// Set this to simulate the build failing. Do not set this directly, use fixture.SetNextBuildFailure
 	nextBuildFailure error
 
@@ -228,6 +231,16 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 			dcContainerID = b.nextDockerComposeContainerID
 		}
 		result[call.dc().ID()] = store.NewDockerComposeDeployResult(call.dc().ID(), dcContainerID)
+	}
+
+	if !call.k8s().Empty() {
+		uid := types.UID(uuid.New().String())
+		if b.nextDeployedUID != "" {
+			uid = b.nextDeployedUID
+			b.nextDeployedUID = ""
+		}
+		uids := []types.UID{uid}
+		result[call.k8s().ID()] = store.NewK8sDeployResult(call.k8s().ID(), uids)
 	}
 
 	b.nextLiveUpdateContainerIDs = nil
@@ -2606,6 +2619,26 @@ k8s_yaml('snack.yaml')`)
 		expectedMessage := fmt.Sprintf("1 changed: [%s]", f.JoinPath("Tiltfile"))
 		require.Contains(t, state.Log.String(), expectedMessage)
 	})
+}
+
+func TestDeployUIDsInEngineState(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	uid := types.UID("fake-uid")
+	f.b.nextDeployedUID = uid
+
+	manifest := f.newManifest("fe")
+	f.Start([]model.Manifest{manifest}, true)
+
+	_ = f.nextCall()
+	f.WaitUntilManifestState("UID in ManifestState", "fe", func(state store.ManifestState) bool {
+		return state.K8sRuntimeState().DeployedUIDSet.Contains(uid)
+	})
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
 }
 
 type fakeTimerMaker struct {

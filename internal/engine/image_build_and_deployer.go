@@ -11,6 +11,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
@@ -219,7 +220,11 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 	}
 
 	// TODO(nick): Do something with this result
-	_ = deployed
+	uids := []types.UID{}
+	for _, entity := range deployed {
+		uids = append(uids, entity.UID())
+	}
+	results[kTarget.ID()] = store.NewK8sDeployResult(kTarget.ID(), uids)
 
 	return results, nil
 }
