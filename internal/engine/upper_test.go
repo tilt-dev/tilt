@@ -214,7 +214,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 				deployTarget = call.dc()
 			}
 		} else {
-			if isImageDeployedToK8s(iTarget, []model.K8sTarget{call.k8s()}) {
+			if isImageDeployedToK8s(iTarget, call.k8s()) {
 				deployTarget = call.k8s()
 			}
 		}

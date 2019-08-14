@@ -88,13 +88,11 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 
 // Returns true if the given image is deployed to one of the given k8s targets.
 // Note that some images are injected into other images, so may never be deployed.
-func isImageDeployedToK8s(iTarget model.ImageTarget, kTargets []model.K8sTarget) bool {
+func isImageDeployedToK8s(iTarget model.ImageTarget, kTarget model.K8sTarget) bool {
 	id := iTarget.ID()
-	for _, kTarget := range kTargets {
-		for _, depID := range kTarget.DependencyIDs() {
-			if depID == id {
-				return true
-			}
+	for _, depID := range kTarget.DependencyIDs() {
+		if depID == id {
+			return true
 		}
 	}
 	return false
