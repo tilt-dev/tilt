@@ -20,9 +20,6 @@ const (
 
 const MultipleContainersPerPod = "multiple_containers_per_pod"
 const Events = "events"
-
-//TODO: TFT delete once feature flag is deleted from Tftconfigs
-const TeamAlerts = "team_alerts"
 const Snapshots = "snapshots"
 
 // The Value a flag can have. Status should never be changed.
@@ -43,10 +40,6 @@ var MainDefaults = Defaults{
 	},
 	Events: Value{
 		Enabled: true,
-		Status:  Active,
-	},
-	TeamAlerts: Value{
-		Enabled: false,
 		Status:  Active,
 	},
 	Snapshots: Value{
