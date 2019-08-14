@@ -241,23 +241,6 @@ exports[`renders one container unrecognized error 1`] = `
 </section>
 `;
 
-exports[`renders the get alert link button when the feature is enabled 1`] = `
-<section
-  className="AlertPane"
->
-  <section
-    className="Pane-empty-message"
-  >
-    <svg>
-      logo-wordmark-gray.svg
-    </svg>
-    <h2>
-      No Alerts Found
-    </h2>
-  </section>
-</section>
-`;
-
 exports[`renders warnings 1`] = `
 <section
   className="AlertPane"

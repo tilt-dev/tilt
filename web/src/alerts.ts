@@ -162,10 +162,6 @@ function warningsAlerts(resource: Resource): Array<Alert> {
   return alertArray
 }
 
-function alertKey(alert: Alert): string {
-  return alert.alertType + alert.timestamp
-}
-
 export {
   getResourceAlerts,
   numberOfAlerts,
@@ -175,6 +171,5 @@ export {
   crashRebuildAlert,
   podRestartAlert,
   hasAlert,
-  alertKey,
   isK8sResourceInfo,
 }

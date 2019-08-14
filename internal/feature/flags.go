@@ -20,6 +20,8 @@ const (
 
 const MultipleContainersPerPod = "multiple_containers_per_pod"
 const Events = "events"
+
+//TODO: TFT delete once feature flag is deleted from Tftconfigs
 const TeamAlerts = "team_alerts"
 const Snapshots = "snapshots"
 

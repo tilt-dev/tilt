@@ -25,7 +25,6 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
-	tft "github.com/windmilleng/tilt/internal/tft/client"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -106,7 +105,6 @@ var BaseWireSet = wire.NewSet(
 	provideSailMode,
 	provideSailURL,
 	client.SailWireSet,
-	tft.ProvideClient,
 
 	provideThreads,
 	engine.NewKINDPusher,
