@@ -222,7 +222,7 @@ func templateSnapshotURL(id SnapshotID) string {
 }
 
 func newSnapshotURL() string {
-	return fmt.Sprintf("https://%s/snapshot/new", tiltSnapshotDomain)
+	return fmt.Sprintf("https://%s/api/snapshot/new", tiltSnapshotDomain)
 }
 
 func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Request) {
