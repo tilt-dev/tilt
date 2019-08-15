@@ -253,7 +253,8 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 	var resp snapshotIDResponse
 	err = json.Unmarshal(responseWithID, &resp)
 	if err != nil || resp.ID == "" {
-		log.Printf("Error unpacking snapshot response json: %v\n", err)
+		log.Printf("Error unpacking snapshot response JSON: %v\nJSON: %s\n", err, responseWithID)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -264,10 +265,11 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 		Url: templateSnapshotURL(ID),
 	}
 
-	//encode URL to json format
+	//encode URL to JSON format
 	urlJS, err := json.Marshal(responsePayload)
 	if err != nil {
 		log.Printf("Error to marshal url JSON response %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
