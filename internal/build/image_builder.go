@@ -370,6 +370,7 @@ func readDockerOutput(ctx context.Context, reader io.Reader, writer io.Writer) (
 		if err != nil {
 			return dockerOutput{}, errors.Wrap(err, "decoding docker output")
 		}
+		result.lastMessage = message
 
 		if len(message.Stream) > 0 {
 			msg := message.Stream
@@ -479,7 +480,7 @@ func (d *dockerImageBuilder) getDigestFromDockerOutput(ctx context.Context, outp
 		return digest.Digest(data.ID), nil
 	}
 
-	return "", fmt.Errorf("Could not find image digest in docker output")
+	return "", fmt.Errorf("Could not find image digest in docker output. Last message was %+v", output.lastMessage)
 }
 
 func getDigestFromAux(aux json.RawMessage) (digest.Digest, error) {
@@ -520,6 +521,7 @@ var oldDigestRegexp = regexp.MustCompile(`^Successfully built ([0-9a-f]+)\s*$`)
 type dockerOutput struct {
 	aux         *json.RawMessage
 	shortDigest string
+	lastMessage jsonmessage.JSONMessage
 }
 
 func indent(text, indent string) string {
