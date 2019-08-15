@@ -30,7 +30,6 @@ import (
 	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
-	client2 "github.com/windmilleng/tilt/internal/tft/client"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -154,9 +153,8 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	sailRoomer := client.ProvideSailRoomer(sailURL)
 	sailDialer := client.ProvideSailDialer()
 	sailClient := client.ProvideSailClient(sailURL, sailRoomer, sailDialer)
-	clientClient := client2.ProvideClient()
 	httpClient := server.ProvideHttpClient()
-	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics2, sailClient, clientClient, httpClient)
+	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics2, sailClient, httpClient)
 	modelNoBrowser := provideNoBrowserFlag()
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer, webURL, modelNoBrowser)
 	githubClientFactory := engine.NewGithubClientFactory()
@@ -292,9 +290,8 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	sailRoomer := client.ProvideSailRoomer(sailURL)
 	sailDialer := client.ProvideSailDialer()
 	sailClient := client.ProvideSailClient(sailURL, sailRoomer, sailDialer)
-	clientClient := client2.ProvideClient()
 	httpClient := server.ProvideHttpClient()
-	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics2, sailClient, clientClient, httpClient)
+	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics2, sailClient, httpClient)
 	modelNoBrowser := provideNoBrowserFlag()
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer, webURL, modelNoBrowser)
 	githubClientFactory := engine.NewGithubClientFactory()
@@ -498,7 +495,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebPort,
 	provideWebDevPort,
 	provideNoBrowserFlag, server.ProvideHeadsUpServer, assets.ProvideAssetServer, server.ProvideHeadsUpServerController, server.ProvideHttpClient, provideSailMode,
-	provideSailURL, client.SailWireSet, client2.ProvideClient, provideThreads, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
+	provideSailURL, client.SailWireSet, provideThreads, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
 )
 
 type Threads struct {

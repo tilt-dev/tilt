@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -17,13 +16,13 @@ import (
 	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
-	tft "github.com/windmilleng/tilt/internal/tft/client"
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
-const tiltAlertsDomain = "alerts.tilt.dev"
+//TODO TFT: change snapshot url to be snapshot.tilt.dev
+const tiltSnapshotDomain = "alerts.tilt.dev"
 const httpTimeOut = 5 * time.Second
 
 type analyticsPayload struct {
@@ -45,19 +44,17 @@ type HeadsUpServer struct {
 	router            *mux.Router
 	a                 *tiltanalytics.TiltAnalytics
 	sailCli           client.SailClient
-	tftCli            tft.Client
 	numWebsocketConns int32
 	httpCli           httpClient
 }
 
-func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics *tiltanalytics.TiltAnalytics, sailCli client.SailClient, tftClient tft.Client, httpClient httpClient) *HeadsUpServer {
+func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics *tiltanalytics.TiltAnalytics, sailCli client.SailClient, httpClient httpClient) *HeadsUpServer {
 	r := mux.NewRouter().UseEncodedPath()
 	s := &HeadsUpServer{
 		store:   store,
 		router:  r,
 		a:       analytics,
 		sailCli: sailCli,
-		tftCli:  tftClient,
 		httpCli: httpClient,
 	}
 
@@ -66,7 +63,6 @@ func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analyti
 	r.HandleFunc("/api/analytics_opt", s.HandleAnalyticsOpt)
 	r.HandleFunc("/api/sail", s.HandleSail)
 	r.HandleFunc("/api/trigger", s.HandleTrigger)
-	r.HandleFunc("/api/alerts/new", s.HandleNewAlert)
 	r.HandleFunc("/api/snapshot/new", s.HandleNewSnapshot)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
 
@@ -211,67 +207,6 @@ func MaybeSendToTriggerQueue(st store.RStore, name string) error {
 	return nil
 }
 
-type NewAlertResponse struct {
-	Url string `json:"url"`
-}
-
-func (s *HeadsUpServer) HandleNewAlert(w http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodPost {
-		http.Error(w, "must be POST request", http.StatusBadRequest)
-		return
-	}
-
-	decoder := json.NewDecoder(req.Body)
-	var alert tsAlert
-	err := decoder.Decode(&alert)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("error decoding request: %v", err), http.StatusBadRequest)
-		return
-	}
-
-	ctx := context.TODO()
-	ctx, cancel := context.WithTimeout(context.Background(), httpTimeOut)
-	defer cancel()
-	id, err := s.tftCli.SendAlert(ctx, tsAlertToBackendAlert(alert))
-	if err != nil {
-		http.Error(w, fmt.Sprintf("error talking to backend: %v", err), http.StatusBadRequest)
-		return
-	}
-
-	responsePayload := &NewAlertResponse{
-		Url: templateAlertURL(id),
-	}
-	js, err := json.Marshal(responsePayload)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("unable to marshal JSON (%+v) response: %v", responsePayload, err), http.StatusBadRequest)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(js)
-}
-
-func templateAlertURL(id tft.AlertID) string {
-	return fmt.Sprintf("https://%s/alert/%s", tiltAlertsDomain, id)
-}
-
-type tsAlert struct {
-	AlertType    string `json:"alertType"`
-	Header       string `json:"header"`
-	Msg          string `json:"msg"`
-	Timestamp    string `json:"timestamp"`
-	ResourceName string `json:"resourceName"`
-}
-
-func tsAlertToBackendAlert(alert tsAlert) tft.Alert {
-	return tft.Alert{
-		AlertType:    alert.AlertType,
-		Header:       alert.Header,
-		Msg:          alert.Msg,
-		RFC3339Time:  alert.Timestamp,
-		ResourceName: alert.ResourceName,
-	}
-}
-
 /* -- SNAPSHOT: SENDING SNAPSHOT TO SERVER -- */
 type snapshotURLJson struct {
 	Url string `json:"url"`
@@ -283,7 +218,11 @@ type snapshotIDResponse struct {
 }
 
 func templateSnapshotURL(id SnapshotID) string {
-	return fmt.Sprintf("https://%s/snapshot/%s", tiltAlertsDomain, id)
+	return fmt.Sprintf("https://%s/snapshot/%s", tiltSnapshotDomain, id)
+}
+
+func newSnapshotURL() string {
+	return fmt.Sprintf("https://%s/snapshot/new", tiltSnapshotDomain)
 }
 
 func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Request) {
@@ -292,7 +231,7 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	request, err := http.NewRequest(http.MethodPost, "https://alerts.tilt.dev/api/snapshot/new", req.Body)
+	request, err := http.NewRequest(http.MethodPost, newSnapshotURL(), req.Body)
 	response, err := s.httpCli.Do(request)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
