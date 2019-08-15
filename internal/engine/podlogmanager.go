@@ -49,7 +49,8 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 
 	stateWatches := make(map[podLogKey]bool)
 	for _, ms := range state.ManifestStates() {
-		for _, pod := range ms.PodSet.PodList() {
+		runtime := ms.K8sRuntimeState()
+		for _, pod := range runtime.PodList() {
 			if !m.shouldWatchPodLogs(pod) {
 				continue
 			}
