@@ -2,16 +2,12 @@ package store
 
 import (
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
 	"time"
 
 	"github.com/windmilleng/wmclient/pkg/analytics"
-	v1 "k8s.io/api/core/v1"
-
-	"github.com/docker/distribution/reference"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -196,10 +192,6 @@ func (e EngineState) LastTiltfileError() error {
 	return e.TiltfileState.LastBuild().Error
 }
 
-type ResourceState interface {
-	ResourceState()
-}
-
 // TODO(nick): This will eventually implement TargetStatus
 type BuildStatus struct {
 	// Stores the times of all the pending changes,
@@ -223,15 +215,10 @@ func (s BuildStatus) IsEmpty() bool {
 type ManifestState struct {
 	Name model.ManifestName
 
-	// k8s-specific state
-	PodSet   PodSet
-	LBs      map[k8s.ServiceName]*url.URL
 	DeployID model.DeployID // ID we have assigned to the current deploy (helps find expected k8s objects)
 
 	BuildStatuses map[model.TargetID]*BuildStatus
-
-	// State of the running resource -- specific to type (e.g. k8s, docker-compose, etc.)
-	ResourceState ResourceState
+	RuntimeState  RuntimeState
 
 	PendingManifestChange time.Time
 
@@ -276,7 +263,6 @@ func newManifestState(mn model.ManifestName) *ManifestState {
 	return &ManifestState{
 		Name:                    mn,
 		BuildStatuses:           make(map[model.TargetID]*BuildStatus),
-		LBs:                     make(map[k8s.ServiceName]*url.URL),
 		LiveUpdatedContainerIDs: container.NewIDSet(),
 	}
 }
@@ -305,13 +291,32 @@ func (ms *ManifestState) MutableBuildStatus(id model.TargetID) *BuildStatus {
 	return result
 }
 
-func (ms *ManifestState) DCResourceState() dockercompose.State {
-	ret, _ := ms.ResourceState.(dockercompose.State)
+func (ms *ManifestState) DCRuntimeState() dockercompose.State {
+	ret, _ := ms.RuntimeState.(dockercompose.State)
 	return ret
 }
 
 func (ms *ManifestState) IsDC() bool {
-	_, ok := ms.ResourceState.(dockercompose.State)
+	_, ok := ms.RuntimeState.(dockercompose.State)
+	return ok
+}
+
+func (ms *ManifestState) K8sRuntimeState() K8sRuntimeState {
+	ret, _ := ms.RuntimeState.(K8sRuntimeState)
+	return ret
+}
+
+func (ms *ManifestState) GetOrCreateK8sRuntimeState() K8sRuntimeState {
+	ret, ok := ms.RuntimeState.(K8sRuntimeState)
+	if !ok {
+		ret = NewK8sRuntimeState(0)
+		ms.RuntimeState = ret
+	}
+	return ret
+}
+
+func (ms *ManifestState) IsK8s() bool {
+	_, ok := ms.RuntimeState.(K8sRuntimeState)
 	return ok
 }
 
@@ -338,7 +343,7 @@ func (ms *ManifestState) StartedFirstBuild() bool {
 }
 
 func (ms *ManifestState) MostRecentPod() Pod {
-	return ms.PodSet.MostRecentPod()
+	return ms.K8sRuntimeState().MostRecentPod()
 }
 
 func (ms *ManifestState) HasPendingFileChanges() bool {
@@ -447,142 +452,6 @@ func (s *YAMLManifestState) LastBuild() model.BuildRecord {
 
 var _ model.TargetStatus = &YAMLManifestState{}
 
-type PodSet struct {
-	Pods     map[k8s.PodID]*Pod
-	DeployID model.DeployID // Deploy that these pods correspond to
-}
-
-func NewPodSet(pods ...Pod) PodSet {
-	podMap := make(map[k8s.PodID]*Pod, len(pods))
-	for _, pod := range pods {
-		p := pod
-		podMap[p.PodID] = &p
-	}
-	return PodSet{
-		Pods: podMap,
-	}
-}
-
-func (s PodSet) Len() int {
-	return len(s.Pods)
-}
-
-func (s PodSet) ContainsID(id k8s.PodID) bool {
-	_, ok := s.Pods[id]
-	return ok
-}
-
-func (s PodSet) PodList() []Pod {
-	pods := make([]Pod, 0, len(s.Pods))
-	for _, pod := range s.Pods {
-		pods = append(pods, *pod)
-	}
-	return pods
-}
-
-// Get the "most recent pod" from the PodSet.
-// For most users, we believe there will be only one pod per manifest.
-// So most of this time, this will return the only pod.
-// And in other cases, it will return a reasonable, consistent default.
-func (s PodSet) MostRecentPod() Pod {
-	bestPod := Pod{}
-	found := false
-
-	for _, v := range s.Pods {
-		if !found || v.isAfter(bestPod) {
-			bestPod = *v
-			found = true
-		}
-	}
-
-	return bestPod
-}
-
-type Pod struct {
-	PodID     k8s.PodID
-	Namespace k8s.Namespace
-	StartedAt time.Time
-	Status    string
-	Phase     v1.PodPhase
-
-	// Error messages from the pod state if it's in an error state.
-	StatusMessages []string
-
-	// Set when we get ready to replace a pod. We may do the update in-place.
-	UpdateStartTime time.Time
-
-	// If a pod is being deleted, Kubernetes marks it as Running
-	// until it actually gets removed.
-	Deleting bool
-
-	HasSynclet bool
-
-	// The log for the currently active pod, if any
-	CurrentLog model.Log `testdiff:"ignore"`
-
-	Containers []Container
-
-	// We want to show the user # of restarts since pod has been running current code,
-	// i.e. OldRestarts - Total Restarts
-	OldRestarts int // # times the pod restarted when it was running old code
-}
-
-type Container struct {
-	Name     container.Name
-	ID       container.ID
-	Ports    []int32
-	Ready    bool
-	ImageRef reference.Named
-	Restarts int
-}
-
-func (c Container) Empty() bool {
-	return c.Name == "" && c.ID == ""
-}
-
-func (p Pod) Empty() bool {
-	return p.PodID == ""
-}
-
-// A stable sort order for pods.
-func (p Pod) isAfter(p2 Pod) bool {
-	if p.StartedAt.After(p2.StartedAt) {
-		return true
-	} else if p2.StartedAt.After(p.StartedAt) {
-		return false
-	}
-	return p.PodID > p2.PodID
-}
-
-func (p Pod) Log() model.Log {
-	return p.CurrentLog
-}
-
-func (p Pod) AllContainerPorts() []int32 {
-	result := make([]int32, 0)
-	for _, c := range p.Containers {
-		result = append(result, c.Ports...)
-	}
-	return result
-}
-
-func (p Pod) AllContainersReady() bool {
-	for _, c := range p.Containers {
-		if !c.Ready {
-			return false
-		}
-	}
-	return true
-}
-
-func (p Pod) AllContainerRestarts() int {
-	result := 0
-	for _, c := range p.Containers {
-		result += c.Restarts
-	}
-	return result
-}
-
 func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {
 	defer func() {
 		sort.Strings(endpoints)
@@ -606,7 +475,7 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {
 		return endpoints
 	}
 
-	for _, u := range mt.State.LBs {
+	for _, u := range mt.State.K8sRuntimeState().LBs {
 		if u != nil {
 			endpoints = append(endpoints, u.String())
 		}
@@ -730,7 +599,7 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 		}
 	}
 
-	if dcState, ok := mt.State.ResourceState.(dockercompose.State); ok {
+	if dcState, ok := mt.State.RuntimeState.(dockercompose.State); ok {
 		return view.NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPaths, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
 	} else {
 		pod := mt.State.MostRecentPod()

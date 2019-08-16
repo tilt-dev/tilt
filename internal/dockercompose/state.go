@@ -59,7 +59,7 @@ type State struct {
 	IsStopping  bool
 }
 
-func (State) ResourceState() {}
+func (State) RuntimeState() {}
 
 func (s State) Log() model.Log {
 	return s.CurrentLog

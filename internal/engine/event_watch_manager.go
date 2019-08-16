@@ -2,13 +2,13 @@ package engine
 
 import (
 	"context"
-	"regexp"
 	"sync"
 	"time"
 
 	"github.com/jonboulle/clockwork"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
@@ -30,7 +30,7 @@ type uidMapEntry struct {
 type EventWatchManager struct {
 	kClient  k8s.Client
 	watching bool
-	uidMap   map[k8s.UID]uidMapEntry
+	uidMap   map[types.UID]uidMapEntry
 	uidMapMu sync.RWMutex
 	clock    clockwork.Clock
 }
@@ -38,7 +38,7 @@ type EventWatchManager struct {
 func NewEventWatchManager(kClient k8s.Client, clock clockwork.Clock) *EventWatchManager {
 	return &EventWatchManager{
 		kClient: kClient,
-		uidMap:  make(map[k8s.UID]uidMapEntry),
+		uidMap:  make(map[types.UID]uidMapEntry),
 		clock:   clock,
 	}
 }
@@ -73,31 +73,6 @@ func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore) {
 	go m.dispatchEventsLoop(ctx, ch, st)
 }
 
-// Tests whether a string is a valid version for a k8s resource type.
-// from https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definition-versioning/#version-priority
-// Versions start with a v followed by a number, an optional beta or alpha designation, and optional additional numeric
-// versioning information. Broadly, a version string might look like v2 or v2beta1.
-var versionRegex = regexp.MustCompile(`^v\d+(?:(?:alpha|beta)(?:\d+)?)?$`)
-
-func getGroup(involvedObject v1.ObjectReference) string {
-	// For some types, APIVersion is incorrectly just the group w/ no version, which leads GroupVersionKind to return
-	// a value where Group is empty and Version contains the group, so we need to correct for that.
-	// An empty Group is valid, though: it's empty for apps in the core group.
-	// So, we detect this situation by checking if the version field is valid.
-
-	// this stems from group/version not necessarily being populated at other points in the API. see more info here:
-	// https://github.com/kubernetes/client-go/issues/308
-	// https://github.com/kubernetes/kubernetes/issues/3030
-
-	gvk := involvedObject.GroupVersionKind()
-	group := gvk.Group
-	if !versionRegex.MatchString(gvk.Version) {
-		group = involvedObject.APIVersion
-	}
-
-	return group
-}
-
 func (m *EventWatchManager) createEntry(ctx context.Context, involvedObject v1.ObjectReference) uidMapEntry {
 	ret := uidMapEntry{
 		resourceVersion:   involvedObject.ResourceVersion,
@@ -105,14 +80,7 @@ func (m *EventWatchManager) createEntry(ctx context.Context, involvedObject v1.O
 		expiresAt:         m.clock.Now().Add(uidMapEntryTTL),
 	}
 
-	o, err := m.kClient.Get(
-		getGroup(involvedObject),
-		"", // version is taken care of by DiscoveryRESTMapper
-		involvedObject.Kind,
-		involvedObject.Namespace,
-		involvedObject.Name,
-		involvedObject.ResourceVersion,
-	)
+	e, err := m.kClient.GetByReference(involvedObject)
 	if err != nil {
 		// if the lookup was an error, wipe out resourceVersion so that we don't cache a potentially
 		// ephemeral negative result
@@ -121,15 +89,14 @@ func (m *EventWatchManager) createEntry(ctx context.Context, involvedObject v1.O
 		return ret
 	}
 
-	mn := model.ManifestName(o.GetLabels()[k8s.ManifestNameLabel])
+	mn := model.ManifestName(e.Labels()[k8s.ManifestNameLabel])
 	if mn == "" {
 		return ret
 	}
 
-	gvk := o.GroupVersionKind()
-	ret.obj = k8s.K8sEntity{Obj: o, Kind: &gvk}
+	ret.obj = e
 	ret.manifest = mn
-	ret.belongsToThisTilt = o.GetLabels()[k8s.TiltRunIDLabel] == k8s.TiltRunID
+	ret.belongsToThisTilt = e.Labels()[k8s.TiltRunIDLabel] == k8s.TiltRunID
 	return ret
 }
 
@@ -137,7 +104,7 @@ func (m *EventWatchManager) createEntry(ctx context.Context, involvedObject v1.O
 // object at the same time, they can each result in their own API request.
 // We're currently assuming this matters sufficiently rarely that it's not worth the code complexity to fix.
 func (m *EventWatchManager) getEntry(ctx context.Context, obj v1.ObjectReference) uidMapEntry {
-	uid := k8s.UID(obj.UID)
+	uid := obj.UID
 
 	m.uidMapMu.RLock()
 	entry, ok := m.uidMap[uid]

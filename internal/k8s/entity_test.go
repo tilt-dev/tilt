@@ -5,9 +5,25 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 )
+
+func TestTypedPodGVK(t *testing.T) {
+	entity := NewK8sEntity(&v1.Pod{})
+	assert.Equal(t, "", entity.GVK().Group)
+	assert.Equal(t, "v1", entity.GVK().Version)
+	assert.Equal(t, "Pod", entity.GVK().Kind)
+}
+
+func TestTypedDeploymentGVK(t *testing.T) {
+	entity := NewK8sEntity(&appsv1.Deployment{})
+	assert.Equal(t, "apps", entity.GVK().Group)
+	assert.Equal(t, "v1", entity.GVK().Version)
+	assert.Equal(t, "Deployment", entity.GVK().Kind)
+}
 
 func TestName(t *testing.T) {
 	entities, err := ParseYAMLFromString(testyaml.BlorgBackendYAML)
@@ -42,10 +58,10 @@ func TestImmutableFilter(t *testing.T) {
 		t.Fatalf("Expected 2 entities, actual: %d", len(immEntities))
 	}
 
-	if immEntities[0].Kind.Kind != "Job" {
+	if immEntities[0].GVK().Kind != "Job" {
 		t.Errorf("Expected Job entity, actual: %+v", immEntities)
 	}
-	if immEntities[1].Kind.Kind != "Pod" {
+	if immEntities[1].GVK().Kind != "Pod" {
 		t.Errorf("Expected Pod entity, actual: %+v", immEntities)
 	}
 }
@@ -62,7 +78,7 @@ func TestMutableFilter(t *testing.T) {
 		t.Fatalf("Expected 1 entity, actual: %d", len(results))
 	}
 
-	if results[0].Kind.Kind != "Deployment" {
+	if results[0].GVK().Kind != "Deployment" {
 		t.Errorf("Expected Deployment entity, actual: %+v", results)
 	}
 }
@@ -91,7 +107,7 @@ func TestFilter(t *testing.T) {
 	}
 
 	test := func(e K8sEntity) (bool, error) {
-		if e.Kind.Kind == "Deployment" || e.Kind.Kind == "Job" {
+		if e.GVK().Kind == "Deployment" || e.GVK().Kind == "Job" {
 			return true, nil
 		}
 		return false, nil

@@ -198,9 +198,11 @@ func newPWFixture(t *testing.T) *pwFixture {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
 
+	of := k8s.ProvideOwnerFetcher(kClient)
+	pw := NewPodWatcher(kClient, of)
 	ret := &pwFixture{
 		kClient: kClient,
-		pw:      NewPodWatcher(kClient),
+		pw:      pw,
 		ctx:     ctx,
 		cancel:  cancel,
 		t:       t,
@@ -220,7 +222,7 @@ func (f *pwFixture) TearDown() {
 }
 
 func newManifestTargetWithSelectors(m model.Manifest, selectors []labels.Selector) (*store.ManifestTarget, error) {
-	dt, err := k8s.NewTarget(model.TargetName(m.Name), nil, nil, selectors, nil)
+	dt, err := k8s.NewTarget(model.TargetName(m.Name), nil, nil, selectors, nil, nil)
 	if err != nil {
 		return nil, err
 	}

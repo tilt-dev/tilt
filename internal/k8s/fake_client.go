@@ -13,7 +13,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/watch"
 
@@ -58,11 +57,13 @@ type FakeK8sClient struct {
 	eventsCh       chan *v1.Event
 	EventsWatchErr error
 
-	UpsertError error
-	Runtime     container.Runtime
-	Registry    container.Registry
+	UpsertError      error
+	LastUpsertResult []K8sEntity
 
-	GetResources map[GetKey]*unstructured.Unstructured
+	Runtime  container.Runtime
+	Registry container.Registry
+
+	GetResources map[GetKey]K8sEntity
 
 	ExecCalls  []ExecCall
 	ExecErrors []error
@@ -78,7 +79,6 @@ type ExecCall struct {
 
 type GetKey struct {
 	Group           string
-	Version         string
 	Kind            string
 	Namespace       string
 	Name            string
@@ -213,7 +213,7 @@ func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity) ([]K8s
 
 	result := make([]K8sEntity, 0, len(entities))
 
-	for _, e := range result {
+	for _, e := range entities {
 		clone := e.DeepCopy()
 		err = SetUID(&clone, uuid.New().String())
 		if err != nil {
@@ -222,6 +222,7 @@ func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity) ([]K8s
 		result = append(result, clone)
 	}
 
+	c.LastUpsertResult = result
 	return result, nil
 }
 
@@ -240,11 +241,16 @@ func (c *FakeK8sClient) Delete(ctx context.Context, entities []K8sEntity) error 
 	return nil
 }
 
-func (c *FakeK8sClient) Get(group, version, kind, namespace, name, resourceVersion string) (*unstructured.Unstructured, error) {
-	key := GetKey{group, version, kind, namespace, name, resourceVersion}
+func (c *FakeK8sClient) GetByReference(ref v1.ObjectReference) (K8sEntity, error) {
+	group := getGroup(ref)
+	kind := ref.Kind
+	namespace := ref.Namespace
+	name := ref.Name
+	resourceVersion := ref.ResourceVersion
+	key := GetKey{group, kind, namespace, name, resourceVersion}
 	resp, ok := c.GetResources[key]
 	if !ok {
-		return nil, fmt.Errorf("No response found for %v", key)
+		return K8sEntity{}, fmt.Errorf("No response found for %v", key)
 	}
 
 	return resp, nil

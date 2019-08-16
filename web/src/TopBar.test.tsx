@@ -1,8 +1,16 @@
 import React from "react"
 import renderer from "react-test-renderer"
 import { MemoryRouter } from "react-router"
-import { ResourceView } from "./types"
+import { Resource, ResourceView, Snapshot, TiltBuild } from "./types"
 import TopBar from "./TopBar"
+
+const testState: Snapshot = {
+  Message: "",
+  View: null,
+  IsSidebarClosed: false,
+}
+
+const fakeSendSnapshot = (snapshot: Snapshot) => void {}
 
 it("shows sail share button", () => {
   const tree = renderer
@@ -16,6 +24,10 @@ it("shows sail share button", () => {
           sailEnabled={true}
           sailUrl=""
           numberOfAlerts={0}
+          state={testState}
+          handleSendSnapshot={fakeSendSnapshot}
+          snapshotURL=""
+          snapshotsIsEnabled={false}
         />
       </MemoryRouter>
     )
@@ -36,6 +48,34 @@ it("shows sail url", () => {
           sailEnabled={true}
           sailUrl="www.sail.dev/xyz"
           numberOfAlerts={1}
+          state={testState}
+          handleSendSnapshot={fakeSendSnapshot}
+          snapshotURL=""
+          snapshotsIsEnabled={false}
+        />
+      </MemoryRouter>
+    )
+    .toJSON()
+
+  expect(tree).toMatchSnapshot()
+})
+
+it("shows snapshot url", () => {
+  const tree = renderer
+    .create(
+      <MemoryRouter>
+        <TopBar
+          logUrl="/r/foo"
+          previewUrl="/r/foo/preview"
+          alertsUrl="/r/foo/alerts"
+          resourceView={ResourceView.Alerts}
+          sailEnabled={false}
+          sailUrl="www.sail.dev/xyz"
+          numberOfAlerts={1}
+          state={testState}
+          handleSendSnapshot={fakeSendSnapshot}
+          snapshotURL=""
+          snapshotsIsEnabled={true}
         />
       </MemoryRouter>
     )

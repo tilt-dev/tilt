@@ -3,7 +3,6 @@
 package integration
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -152,12 +151,8 @@ func (f *fixture) tiltCmd(tiltArgs []string, outWriter io.Writer) *exec.Cmd {
 }
 
 func (f *fixture) TiltUp(name string) {
-	out := bytes.NewBuffer(nil)
-	cmd := f.tiltCmd([]string{"up", name, "--watch=false", "--debug", "--hud=false", "--port=0", "--image-tag-prefix=" + imageTagPrefix}, out)
-	err := cmd.Run()
-	if err != nil {
-		f.t.Fatalf("Failed to up service: %v. Logs:\n%s", err, out.String())
-	}
+	cmd := f.tiltCmd([]string{"up", name, "--watch=false", "--debug", "--hud=false", "--port=0", "--image-tag-prefix=" + imageTagPrefix}, os.Stdout)
+	f.runInBackground(cmd)
 }
 
 func (f *fixture) runInBackground(cmd *exec.Cmd) {

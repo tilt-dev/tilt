@@ -14,12 +14,12 @@ import { History, UnregisterCallback } from "history"
 import { incr, pathToTag } from "./analytics"
 import TopBar from "./TopBar"
 import "./HUD.scss"
-import { TiltBuild, ResourceView, Resource } from "./types"
+import { TiltBuild, ResourceView, Resource, Snapshot } from "./types"
 import AlertPane from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
 import NotFound from "./NotFound"
-import { numberOfAlerts, Alert, alertKey, isK8sResourceInfo } from "./alerts"
+import { numberOfAlerts, Alert, isK8sResourceInfo } from "./alerts"
 import Features from "./feature"
 
 type HudProps = {
@@ -40,13 +40,22 @@ type HudState = {
     FeatureFlags: { [featureFlag: string]: boolean }
   } | null
   IsSidebarClosed: boolean
-  AlertLinks: { [key: string]: string }
+  SnapshotLink: string
 }
 
-type NewAlertResponse = {
+type NewSnapshotResponse = {
+  // output of snapshot_storage
   url: string
 }
 
+function hudStatetoSnapshot(h: HUD): Snapshot {
+  //used this because hudState has extra fields we don't care about
+  return {
+    Message: h.state.Message,
+    View: h.state.View,
+    IsSidebarClosed: h.state.IsSidebarClosed,
+  }
+}
 // The Main HUD view, as specified in
 // https://docs.google.com/document/d/1VNIGfpC4fMfkscboW0bjYYFJl07um_1tsFrbN-Fu3FI/edit#heading=h.l8mmnclsuxl1
 class HUD extends Component<HudProps, HudState> {
@@ -89,7 +98,7 @@ class HUD extends Component<HudProps, HudState> {
         FeatureFlags: {},
       },
       IsSidebarClosed: false,
-      AlertLinks: {},
+      SnapshotLink: "",
     }
 
     this.toggleSidebar = this.toggleSidebar.bind(this)
@@ -140,29 +149,21 @@ class HUD extends Component<HudProps, HudState> {
     return this.pathBuilder.path(relPath)
   }
 
-  sendAlert(alert: Alert) {
-    let url = `//${window.location.host}/api/alerts/new`
+  sendSnapshot(snapshot: Snapshot) {
+    let url = `//${window.location.host}/api/snapshot/new`
     fetch(url, {
       method: "post",
-      body: JSON.stringify(alert),
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
+      body: JSON.stringify(snapshot),
     })
       .then(res => {
         res
           .json()
-          .then((value: NewAlertResponse) => {
-            let links = this.state.AlertLinks
-            links[alertKey(alert)] = value.url
+          .then((value: NewSnapshotResponse) => {
             this.setState({
-              AlertLinks: links,
+              SnapshotLink: value.url,
             })
           })
-          .catch(err => {
-            console.error(err)
-          })
+          .catch(err => console.error(err))
       })
       .then(err => console.error(err))
   }
@@ -220,6 +221,10 @@ class HUD extends Component<HudProps, HudState> {
               sailEnabled={sailEnabled}
               sailUrl={sailUrl}
               numberOfAlerts={numAlerts}
+              state={this.state}
+              handleSendSnapshot={this.sendSnapshot.bind(this)}
+              snapshotURL={this.state.SnapshotLink}
+              snapshotsIsEnabled={features.isEnabled("snapshots")}
             />
           )
         }
@@ -240,6 +245,10 @@ class HUD extends Component<HudProps, HudState> {
           sailEnabled={sailEnabled}
           sailUrl={sailUrl}
           numberOfAlerts={numAlerts}
+          state={this.state}
+          handleSendSnapshot={this.sendSnapshot.bind(this)}
+          snapshotURL={this.state.SnapshotLink}
+          snapshotsIsEnabled={features.isEnabled("snapshots")}
         />
       )
     }
@@ -314,14 +323,7 @@ class HUD extends Component<HudProps, HudState> {
         return <Route component={NotFound} />
       }
       if (er) {
-        return (
-          <AlertPane
-            resources={[er]}
-            handleSendAlert={this.sendAlert.bind(this)}
-            teamAlertsIsEnabled={features.isEnabled("team_alerts")}
-            alertLinks={this.state.AlertLinks}
-          />
-        )
+        return <AlertPane resources={[er]} />
       }
     }
     let snapshotRoute = () => {
@@ -416,14 +418,7 @@ class HUD extends Component<HudProps, HudState> {
           <Route
             exact
             path={this.path("/alerts")}
-            render={() => (
-              <AlertPane
-                resources={resources}
-                handleSendAlert={this.sendAlert.bind(this)}
-                teamAlertsIsEnabled={features.isEnabled("team_alerts")}
-                alertLinks={this.state.AlertLinks}
-              />
-            )}
+            render={() => <AlertPane resources={resources} />}
           />
           <Route exact path={this.path("/preview")} render={previewRoute} />
           <Route exact path={this.path("/r/:name")} render={logsRoute} />

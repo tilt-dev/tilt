@@ -1824,7 +1824,46 @@ k8s_yaml('foo.yaml')
 		},
 		N: 1,
 	}}
-	assert.Equal(t, expected, f.an.Counts)
+	for _, evt := range expected {
+		assert.Contains(t, f.an.Counts, evt)
+	}
+}
+
+func TestK8sManifestRefInjectCounts(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.file("sancho_twin.yaml", testyaml.SanchoTwoContainersOneImageYAML) // 1 img x 2 c
+	f.file("sancho_sidecar.yaml", testyaml.SanchoSidecarYAML)            // 2 imgs (1 c each)
+	f.file("blorg.yaml", testyaml.BlorgJobYAML)
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/some-project-162817/sancho', '.')
+docker_build('gcr.io/some-project-162817/sancho-sidecar', '.')
+docker_build('gcr.io/blorg-dev/blorg-backend:devel-nick', '.')
+
+k8s_yaml(['sancho_twin.yaml', 'sancho_sidecar.yaml', 'blorg.yaml'])
+`)
+
+	f.load()
+
+	sanchoTwin := f.assertNextManifest("sancho-2c1i")
+	sTwinInjectCounts := sanchoTwin.K8sTarget().RefInjectCounts()
+	assert.Len(t, sTwinInjectCounts, 1)
+	assert.Equal(t, sTwinInjectCounts[testyaml.SanchoImage], 2)
+
+	sanchoSidecar := f.assertNextManifest("sancho")
+	ssInjectCounts := sanchoSidecar.K8sTarget().RefInjectCounts()
+	assert.Len(t, ssInjectCounts, 2)
+	assert.Equal(t, ssInjectCounts[testyaml.SanchoImage], 1)
+	assert.Equal(t, ssInjectCounts[testyaml.SanchoSidecarImage], 1)
+
+	blorgJob := f.assertNextManifest("blorg-job")
+	blorgInjectCounts := blorgJob.K8sTarget().RefInjectCounts()
+	assert.Len(t, blorgInjectCounts, 1)
+	assert.Equal(t, blorgJob.K8sTarget().RefInjectCounts()["gcr.io/blorg-dev/blorg-backend:devel-nick"], 1)
 }
 
 func TestYamlErrorFromLocal(t *testing.T) {
@@ -4154,7 +4193,7 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			yaml := m.K8sTarget().YAML
 			found := false
 			for _, e := range f.entities(yaml) {
-				if e.Kind.Kind == "Deployment" && e.Name() == opt.name {
+				if e.GVK().Kind == "Deployment" && e.Name() == opt.name {
 					found = true
 					break
 				}
@@ -4166,7 +4205,7 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			yaml := m.K8sTarget().YAML
 			found := false
 			for _, e := range f.entities(yaml) {
-				if e.Kind.Kind == "Service" && e.Name() == opt.name {
+				if e.GVK().Kind == "Service" && e.Name() == opt.name {
 					found = true
 					break
 				}
@@ -4178,7 +4217,7 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 			yaml := m.K8sTarget().YAML
 			found := false
 			for _, e := range f.entities(yaml) {
-				if e.Kind.Kind == opt.kind && e.Name() == opt.name {
+				if e.GVK().Kind == opt.kind && e.Name() == opt.name {
 					found = true
 					break
 				}

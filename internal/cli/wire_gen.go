@@ -30,7 +30,6 @@ import (
 	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
-	client2 "github.com/windmilleng/tilt/internal/tft/client"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -68,12 +67,13 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	int2 := provideKubectlLogLevel()
 	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, int2)
 	k8sClient := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
-	podWatcher := engine.NewPodWatcher(k8sClient)
+	ownerFetcher := k8s.ProvideOwnerFetcher(k8sClient)
+	podWatcher := engine.NewPodWatcher(k8sClient, ownerFetcher)
 	nodeIP, err := k8s.DetectNodeIP(ctx, env)
 	if err != nil {
 		return demo.Script{}, err
 	}
-	serviceWatcher := engine.NewServiceWatcher(k8sClient, nodeIP)
+	serviceWatcher := engine.NewServiceWatcher(k8sClient, ownerFetcher, nodeIP)
 	podLogManager := engine.NewPodLogManager(k8sClient)
 	portForwardController := engine.NewPortForwardController(k8sClient)
 	fsWatcherMaker := engine.ProvideFsWatcherMaker()
@@ -153,8 +153,8 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	sailRoomer := client.ProvideSailRoomer(sailURL)
 	sailDialer := client.ProvideSailDialer()
 	sailClient := client.ProvideSailClient(sailURL, sailRoomer, sailDialer)
-	clientClient := client2.ProvideClient()
-	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics2, sailClient, clientClient)
+	httpClient := server.ProvideHttpClient()
+	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics2, sailClient, httpClient)
 	modelNoBrowser := provideNoBrowserFlag()
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer, webURL, modelNoBrowser)
 	githubClientFactory := engine.NewGithubClientFactory()
@@ -204,12 +204,13 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	int2 := provideKubectlLogLevel()
 	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, int2)
 	k8sClient := k8s.ProvideK8sClient(ctx, env, portForwarder, namespace, kubectlRunner, clientConfig)
-	podWatcher := engine.NewPodWatcher(k8sClient)
+	ownerFetcher := k8s.ProvideOwnerFetcher(k8sClient)
+	podWatcher := engine.NewPodWatcher(k8sClient, ownerFetcher)
 	nodeIP, err := k8s.DetectNodeIP(ctx, env)
 	if err != nil {
 		return Threads{}, err
 	}
-	serviceWatcher := engine.NewServiceWatcher(k8sClient, nodeIP)
+	serviceWatcher := engine.NewServiceWatcher(k8sClient, ownerFetcher, nodeIP)
 	podLogManager := engine.NewPodLogManager(k8sClient)
 	portForwardController := engine.NewPortForwardController(k8sClient)
 	fsWatcherMaker := engine.ProvideFsWatcherMaker()
@@ -289,8 +290,8 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	sailRoomer := client.ProvideSailRoomer(sailURL)
 	sailDialer := client.ProvideSailDialer()
 	sailClient := client.ProvideSailClient(sailURL, sailRoomer, sailDialer)
-	clientClient := client2.ProvideClient()
-	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics2, sailClient, clientClient)
+	httpClient := server.ProvideHttpClient()
+	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics2, sailClient, httpClient)
 	modelNoBrowser := provideNoBrowserFlag()
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer, webURL, modelNoBrowser)
 	githubClientFactory := engine.NewGithubClientFactory()
@@ -484,7 +485,7 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics) (
 
 // wire.go:
 
-var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.DetectNodeIP, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientSet, k8s.ProvideRESTConfig, k8s.ProvidePortForwarder, k8s.ProvideConfigNamespace, k8s.ProvideKubectlRunner, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient)
+var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.DetectNodeIP, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientSet, k8s.ProvideRESTConfig, k8s.ProvidePortForwarder, k8s.ProvideConfigNamespace, k8s.ProvideKubectlRunner, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient, k8s.ProvideOwnerFetcher)
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet,
@@ -493,8 +494,8 @@ var BaseWireSet = wire.NewSet(
 	provideWebURL,
 	provideWebPort,
 	provideWebDevPort,
-	provideNoBrowserFlag, server.ProvideHeadsUpServer, assets.ProvideAssetServer, server.ProvideHeadsUpServerController, provideSailMode,
-	provideSailURL, client.SailWireSet, client2.ProvideClient, provideThreads, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
+	provideNoBrowserFlag, server.ProvideHeadsUpServer, assets.ProvideAssetServer, server.ProvideHeadsUpServerController, server.ProvideHttpClient, provideSailMode,
+	provideSailURL, client.SailWireSet, provideThreads, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
 )
 
 type Threads struct {

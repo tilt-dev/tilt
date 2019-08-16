@@ -103,22 +103,23 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 	hasSynclet := sidecar.PodSpecContainsSynclet(pod.Spec)
 
 	// CASE 1: We don't have a set of pods for this DeployID yet
-	if ms.PodSet.DeployID == 0 || ms.PodSet.DeployID != deployID {
-		ms.PodSet = store.PodSet{
-			DeployID: deployID,
-			Pods:     make(map[k8s.PodID]*store.Pod),
-		}
-		ms.PodSet.Pods[podID] = &store.Pod{
+	runtime := ms.GetOrCreateK8sRuntimeState()
+	if runtime.PodDeployID == 0 || runtime.PodDeployID != deployID {
+		runtime.PodDeployID = deployID
+		runtime.Pods = make(map[k8s.PodID]*store.Pod)
+		pod := &store.Pod{
 			PodID:      podID,
 			StartedAt:  startedAt,
 			Status:     status,
 			Namespace:  ns,
 			HasSynclet: hasSynclet,
 		}
-		return mt, ms.PodSet.Pods[podID]
+		runtime.Pods[podID] = pod
+		ms.RuntimeState = runtime
+		return mt, pod
 	}
 
-	podInfo, ok := ms.PodSet.Pods[podID]
+	podInfo, ok := runtime.Pods[podID]
 	if !ok {
 		// CASE 2: We have a set of pods for this DeployID, but not this particular pod -- record it
 		podInfo = &store.Pod{
@@ -128,7 +129,7 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.
 			Namespace:  ns,
 			HasSynclet: hasSynclet,
 		}
-		ms.PodSet.Pods[podID] = podInfo
+		runtime.Pods[podID] = podInfo
 	}
 
 	// CASE 3: This pod is already in the PodSet, nothing to do.
@@ -228,20 +229,21 @@ func checkForContainerCrash(ctx context.Context, state *store.EngineState, mt *s
 // that they don't clutter the output.
 func prunePods(ms *store.ManifestState) {
 	// Always remove pods that were manually deleted.
-	for key, pod := range ms.PodSet.Pods {
+	runtime := ms.GetOrCreateK8sRuntimeState()
+	for key, pod := range runtime.Pods {
 		if pod.Deleting {
-			delete(ms.PodSet.Pods, key)
+			delete(runtime.Pods, key)
 		}
 	}
 	// Continue pruning until we have 1 pod.
-	for ms.PodSet.Len() > 1 {
+	for runtime.PodLen() > 1 {
 		bestPod := ms.MostRecentPod()
 
-		for key, pod := range ms.PodSet.Pods {
+		for key, pod := range runtime.Pods {
 			// Remove terminated pods if they aren't the most recent one.
 			isDead := pod.Phase == v1.PodSucceeded || pod.Phase == v1.PodFailed
 			if isDead && pod.PodID != bestPod.PodID {
-				delete(ms.PodSet.Pods, key)
+				delete(runtime.Pods, key)
 				break
 			}
 		}
@@ -260,7 +262,8 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 	}
 
 	podID := action.PodID
-	if !ms.PodSet.ContainsID(podID) {
+	runtime := ms.GetOrCreateK8sRuntimeState()
+	if !runtime.ContainsID(podID) {
 		// NOTE(nick): There are two cases where this could happen:
 		// 1) Pod 1 died and kubernetes started Pod 2. What should we do with
 		//    logs from Pod 1 that are still in the action queue?
@@ -275,6 +278,6 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 		return
 	}
 
-	podInfo := ms.PodSet.Pods[podID]
+	podInfo := runtime.Pods[podID]
 	podInfo.CurrentLog = model.AppendLog(podInfo.CurrentLog, action, state.LogTimestamps, "")
 }

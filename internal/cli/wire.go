@@ -25,7 +25,6 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
-	tft "github.com/windmilleng/tilt/internal/tft/client"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -44,7 +43,8 @@ var K8sWireSet = wire.NewSet(
 	k8s.ProvideKubectlRunner,
 	k8s.ProvideContainerRuntime,
 	k8s.ProvideServerVersion,
-	k8s.ProvideK8sClient)
+	k8s.ProvideK8sClient,
+	k8s.ProvideOwnerFetcher)
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet,
@@ -101,11 +101,11 @@ var BaseWireSet = wire.NewSet(
 	server.ProvideHeadsUpServer,
 	assets.ProvideAssetServer,
 	server.ProvideHeadsUpServerController,
+	server.ProvideHttpClient,
 
 	provideSailMode,
 	provideSailURL,
 	client.SailWireSet,
-	tft.ProvideClient,
 
 	provideThreads,
 	engine.NewKINDPusher,

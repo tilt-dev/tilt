@@ -11,6 +11,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
@@ -86,12 +87,13 @@ func (ibd *ImageBuildAndDeployer) SetInjectSynclet(inject bool) {
 
 func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (resultSet store.BuildResultSet, err error) {
 	iTargets, kTargets := extractImageAndK8sTargets(specs)
-	if len(kTargets) == 0 && len(iTargets) == 0 {
+	if len(kTargets) != 1 {
 		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("ImageBuildAndDeployer does not support these specs")
 	}
 
+	kTarget := kTargets[0]
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuildAndDeployer-BuildAndDeploy")
-	span.SetTag("target", kTargets[0].Name)
+	span.SetTag("target", kTarget.Name)
 	defer span.Finish()
 
 	startTime := time.Now()
@@ -111,10 +113,8 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		return store.BuildResultSet{}, err
 	}
 
-	numStages := q.CountDirty() * 2 // each image target has two stages: one for build, and one for push
-	if len(kTargets) > 0 {
-		numStages++
-	}
+	// each image target has two stages: one for build, and one for push
+	numStages := q.CountDirty()*2 + 1
 
 	ps := build.NewPipelineState(ctx, numStages, ibd.clock)
 	defer func() { ps.End(ctx, err) }()
@@ -138,7 +138,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 			return store.BuildResult{}, err
 		}
 
-		ref, err = ibd.push(ctx, ref, ps, iTarget, kTargets)
+		ref, err = ibd.push(ctx, ref, ps, iTarget, kTarget)
 		if err != nil {
 			return store.BuildResult{}, err
 		}
@@ -153,15 +153,10 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 
 	// (If we pass an empty list of refs here (as we will do if only deploying
 	// yaml), we just don't inject any image refs into the yaml, nbd.
-	err = ibd.deploy(ctx, st, ps, iTargetMap, kTargets, q.results, anyInPlaceBuild)
-	if err != nil {
-		return store.BuildResultSet{}, err
-	}
-
-	return q.results, nil
+	return ibd.deploy(ctx, st, ps, iTargetMap, kTarget, q.results, anyInPlaceBuild)
 }
 
-func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedTagged, ps *build.PipelineState, iTarget model.ImageTarget, kTargets []model.K8sTarget) (reference.NamedTagged, error) {
+func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedTagged, ps *build.PipelineState, iTarget model.ImageTarget, kTarget model.K8sTarget) (reference.NamedTagged, error) {
 	ps.StartPipelineStep(ctx, "Pushing %s", ref.String())
 	defer ps.EndPipelineStep(ctx)
 
@@ -172,7 +167,7 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 
 	// We can also skip the push of the image if it isn't used
 	// in any k8s resources! (e.g., it's consumed by another image).
-	if ibd.canAlwaysSkipPush() || !isImageDeployedToK8s(iTarget, kTargets) || cbSkip {
+	if ibd.canAlwaysSkipPush() || !isImageDeployedToK8s(iTarget, kTarget) || cbSkip {
 		ps.Printf(ctx, "Skipping push")
 		return ref, nil
 	}
@@ -197,129 +192,140 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
 func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, ps *build.PipelineState,
-	iTargetMap map[model.TargetID]model.ImageTarget, k8sTargets []model.K8sTarget, results store.BuildResultSet, needsSynclet bool) error {
+	iTargetMap map[model.TargetID]model.ImageTarget, kTarget model.K8sTarget, results store.BuildResultSet, needsSynclet bool) (store.BuildResultSet, error) {
 	ps.StartPipelineStep(ctx, "Deploying")
 	defer ps.EndPipelineStep(ctx)
 
-	ps.StartBuildStep(ctx, "Parsing Kubernetes config YAML")
-
-	newK8sEntities := []k8s.K8sEntity{}
+	ps.StartBuildStep(ctx, "Injecting images into Kubernetes YAML")
 
 	deployID := model.NewDeployID()
 	deployLabel := k8s.TiltDeployLabel(deployID)
-
-	var targetIDs []model.TargetID
-	var displayNames []string
-
-	for _, k8sTarget := range k8sTargets {
-		displayNames = append(displayNames, k8sTarget.DisplayNames...)
-
-		// TODO(nick): The parsed YAML should probably be a part of the model?
-		// It doesn't make much sense to re-parse it and inject labels on every deploy.
-		entities, err := k8s.ParseYAMLFromString(k8sTarget.YAML)
-		if err != nil {
-			return err
-		}
-
-		depIDs := k8sTarget.DependencyIDs()
-		injectedDepIDs := map[model.TargetID]bool{}
-		for _, e := range entities {
-			injectedSynclet := false
-			e, err = k8s.InjectLabels(e, []model.LabelPair{k8s.TiltRunLabel(), {Key: k8s.ManifestNameLabel, Value: k8sTarget.Name.String()}, deployLabel})
-			if err != nil {
-				return errors.Wrap(err, "deploy")
-			}
-
-			// For development, image pull policy should never be set to "Always",
-			// even if it might make sense to use "Always" in prod. People who
-			// set "Always" for development are shooting their own feet.
-			e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
-			if err != nil {
-				return err
-			}
-
-			// StatefulSet pods should be managed in parallel. See:
-			// https://github.com/windmilleng/tilt/issues/1962
-			e = k8s.InjectParallelPodManagementPolicy(e)
-
-			// When working with a local k8s cluster, we set the pull policy to Never,
-			// to ensure that k8s fails hard if the image is missing from docker.
-			policy := v1.PullIfNotPresent
-			if ibd.canAlwaysSkipPush() {
-				policy = v1.PullNever
-			}
-
-			for _, depID := range depIDs {
-				ref := results[depID].Image
-				if ref == nil {
-					return fmt.Errorf("Internal error: missing build result for dependency ID: %s", depID)
-				}
-
-				iTarget := iTargetMap[depID]
-				selector := iTarget.ConfigurationRef
-				matchInEnvVars := iTarget.MatchInEnvVars
-
-				var replaced bool
-				e, replaced, err = k8s.InjectImageDigest(e, selector, ref, matchInEnvVars, policy)
-				if err != nil {
-					return err
-				}
-				if replaced {
-					injectedDepIDs[depID] = true
-
-					if !iTarget.OverrideCmd.Empty() {
-						e, err = k8s.InjectCommand(e, ref, iTarget.OverrideCmd)
-						if err != nil {
-							return err
-						}
-					}
-
-					if ibd.injectSynclet && needsSynclet && !injectedSynclet {
-						injectedRefSelector := container.NewRefSelector(ref).WithExactMatch()
-
-						var sidecarInjected bool
-						e, sidecarInjected, err = sidecar.InjectSyncletSidecar(e, injectedRefSelector)
-						if err != nil {
-							return err
-						}
-						if !sidecarInjected {
-							return fmt.Errorf("Could not inject synclet: %v", e)
-						}
-						injectedSynclet = true
-					}
-				}
-			}
-			newK8sEntities = append(newK8sEntities, e)
-		}
-		targetIDs = append(targetIDs, k8sTarget.ID())
-
-		for _, depID := range depIDs {
-			if !injectedDepIDs[depID] {
-				return fmt.Errorf("Docker image missing from yaml: %s", depID)
-			}
-		}
+	newK8sEntities, err := ibd.createEntitiesToDeploy(ctx, iTargetMap, kTarget, results, needsSynclet, deployLabel)
+	if err != nil {
+		return nil, err
 	}
 
-	deployIDActions := NewDeployIDActionsForTargets(targetIDs, deployID)
-	for _, a := range deployIDActions {
-		st.Dispatch(a)
-	}
+	st.Dispatch(NewDeployIDAction(kTarget.ID(), deployID))
 
-	l := logger.Get(ctx)
-	writer := logger.NewPrefixedWriter(logger.Blue(l).Sprint("  │ "), l.Writer(logger.InfoLvl))
-	l = logger.NewLogger(logger.InfoLvl, writer)
+	ctx, l := ibd.indentLogger(ctx)
 
 	l.Infof("Applying via kubectl:")
-	for _, displayName := range displayNames {
+	for _, displayName := range kTarget.DisplayNames {
 		l.Infof("   %s", displayName)
 	}
 
-	result, err := ibd.k8sClient.Upsert(logger.WithLogger(ctx, l), newK8sEntities)
+	deployed, err := ibd.k8sClient.Upsert(ctx, newK8sEntities)
+	if err != nil {
+		return nil, err
+	}
 
 	// TODO(nick): Do something with this result
-	_ = result
+	uids := []types.UID{}
+	for _, entity := range deployed {
+		uids = append(uids, entity.UID())
+	}
+	results[kTarget.ID()] = store.NewK8sDeployResult(kTarget.ID(), uids)
 
-	return err
+	return results, nil
+}
+
+func (ibd *ImageBuildAndDeployer) indentLogger(ctx context.Context) (context.Context, logger.Logger) {
+	l := logger.Get(ctx)
+	writer := logger.NewPrefixedWriter(logger.Blue(l).Sprint("  │ "), l.Writer(logger.InfoLvl))
+	l = logger.NewLogger(logger.InfoLvl, writer)
+	return logger.WithLogger(ctx, l), l
+}
+
+func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
+	iTargetMap map[model.TargetID]model.ImageTarget, k8sTarget model.K8sTarget,
+	results store.BuildResultSet, needsSynclet bool, deployLabel model.LabelPair) ([]k8s.K8sEntity, error) {
+	newK8sEntities := []k8s.K8sEntity{}
+
+	// TODO(nick): The parsed YAML should probably be a part of the model?
+	// It doesn't make much sense to re-parse it and inject labels on every deploy.
+	entities, err := k8s.ParseYAMLFromString(k8sTarget.YAML)
+	if err != nil {
+		return nil, err
+	}
+
+	depIDs := k8sTarget.DependencyIDs()
+	injectedDepIDs := map[model.TargetID]bool{}
+	for _, e := range entities {
+		injectedSynclet := false
+		e, err = k8s.InjectLabels(e, []model.LabelPair{k8s.TiltRunLabel(), {Key: k8s.ManifestNameLabel, Value: k8sTarget.Name.String()}, deployLabel})
+		if err != nil {
+			return nil, errors.Wrap(err, "deploy")
+		}
+
+		// For development, image pull policy should never be set to "Always",
+		// even if it might make sense to use "Always" in prod. People who
+		// set "Always" for development are shooting their own feet.
+		e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
+		if err != nil {
+			return nil, err
+		}
+
+		// StatefulSet pods should be managed in parallel. See:
+		// https://github.com/windmilleng/tilt/issues/1962
+		e = k8s.InjectParallelPodManagementPolicy(e)
+
+		// When working with a local k8s cluster, we set the pull policy to Never,
+		// to ensure that k8s fails hard if the image is missing from docker.
+		policy := v1.PullIfNotPresent
+		if ibd.canAlwaysSkipPush() {
+			policy = v1.PullNever
+		}
+
+		for _, depID := range depIDs {
+			ref := results[depID].Image
+			if ref == nil {
+				return nil, fmt.Errorf("Internal error: missing build result for dependency ID: %s", depID)
+			}
+
+			iTarget := iTargetMap[depID]
+			selector := iTarget.ConfigurationRef
+			matchInEnvVars := iTarget.MatchInEnvVars
+
+			var replaced bool
+			e, replaced, err = k8s.InjectImageDigest(e, selector, ref, matchInEnvVars, policy)
+			if err != nil {
+				return nil, err
+			}
+			if replaced {
+				injectedDepIDs[depID] = true
+
+				if !iTarget.OverrideCmd.Empty() {
+					e, err = k8s.InjectCommand(e, ref, iTarget.OverrideCmd)
+					if err != nil {
+						return nil, err
+					}
+				}
+
+				if ibd.injectSynclet && needsSynclet && !injectedSynclet {
+					injectedRefSelector := container.NewRefSelector(ref).WithExactMatch()
+
+					var sidecarInjected bool
+					e, sidecarInjected, err = sidecar.InjectSyncletSidecar(e, injectedRefSelector)
+					if err != nil {
+						return nil, err
+					}
+					if !sidecarInjected {
+						return nil, fmt.Errorf("Could not inject synclet: %v", e)
+					}
+					injectedSynclet = true
+				}
+			}
+		}
+		newK8sEntities = append(newK8sEntities, e)
+	}
+
+	for _, depID := range depIDs {
+		if !injectedDepIDs[depID] {
+			return nil, fmt.Errorf("Docker image missing from yaml: %s", depID)
+		}
+	}
+
+	return newK8sEntities, nil
 }
 
 // If we're using docker-for-desktop as our k8s backend,

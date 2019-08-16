@@ -1,5 +1,6 @@
 import HUD from "./HUD"
 import { getResourceAlerts } from "./alerts"
+import { Resource } from "./types"
 
 // A Websocket that automatically retries.
 
@@ -90,7 +91,7 @@ class AppController {
         View: null,
         Message: "Disconnected…",
         IsSidebarClosed: false,
-        AlertLinks: {},
+        SnapshotLink: "",
       })
       this.createNewSocket()
       return
@@ -115,7 +116,7 @@ class AppController {
         View: null,
         Message: message,
         IsSidebarClosed: false,
-        AlertLinks: {},
+        SnapshotLink: "",
       })
       this.createNewSocket()
     }, timeout)
@@ -126,9 +127,9 @@ class AppController {
     fetch(url)
       .then(resp => resp.json())
       .then(data => {
-        data.Resources = this.setDefaultResourceInfo(data.Resources)
+        data.View.Resources = this.setDefaultResourceInfo(data.View.Resources)
         // @ts-ignore
-        this.component.setAppState({ View: data })
+        this.component.setAppState({ View: data.View })
       })
       .catch(err => {
         // TODO(dmiller): set app state with an error message

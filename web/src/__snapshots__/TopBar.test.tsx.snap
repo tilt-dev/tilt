@@ -38,21 +38,21 @@ exports[`shows sail share button 1`] = `
       </li>
     </ul>
   </nav>
-  <span
-    className="TopBar-spacer"
+  <section
+    className="TopBar-tools"
   >
-     
-  </span>
-  <span
-    className="SailInfo"
-  >
-    <button
-      onClick={[Function]}
-      type="button"
+    <span
+      className="SailInfo"
     >
-      Share me!
-    </button>
-  </span>
+      <button
+        className="SailInfo-button"
+        onClick={[Function]}
+        type="button"
+      >
+        Share Live
+      </button>
+    </span>
+  </section>
 </div>
 `;
 
@@ -98,20 +98,82 @@ exports[`shows sail url 1`] = `
       </li>
     </ul>
   </nav>
-  <span
-    className="TopBar-spacer"
+  <section
+    className="TopBar-tools"
   >
-     
-  </span>
-  <span
-    className="SailInfo"
-  >
-    <a
-      href="www.sail.dev/xyz"
-      target="_blank"
+    <span
+      className="SailInfo"
     >
-      Share this view!
-    </a>
-  </span>
+      <a
+        href="www.sail.dev/xyz"
+        target="_blank"
+      >
+        Share this view!
+      </a>
+    </span>
+  </section>
+</div>
+`;
+
+exports[`shows snapshot url 1`] = `
+<div
+  className="TopBar"
+>
+  <nav
+    className="TabNav"
+  >
+    <ul>
+      <li>
+        <a
+          className="tabLink "
+          href="/r/foo"
+          onClick={[Function]}
+        >
+          Logs
+        </a>
+      </li>
+      <li>
+        <a
+          className="tabLink "
+          href="/r/foo/preview"
+          onClick={[Function]}
+        >
+          Preview
+        </a>
+      </li>
+      <li>
+        <a
+          className="tabLink tabLink--errors tabLink--is-selected"
+          href="/r/foo/alerts"
+          onClick={[Function]}
+        >
+          Alerts
+          <span
+            className="tabLink-alertBadge"
+          >
+            1
+          </span>
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <section
+    className="TopBar-tools"
+  >
+    <section
+      className="TopBar-snapshotUrlWrap"
+    >
+      <button
+        onClick={[Function]}
+      >
+        Share Snapshot
+      </button>
+    </section>
+    <span
+      className="sail-url"
+    >
+       
+    </span>
+  </section>
 </div>
 `;

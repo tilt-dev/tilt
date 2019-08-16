@@ -30,8 +30,12 @@ class SailInfo extends PureComponent<SailProps> {
 
       return (
         <span className="SailInfo">
-          <button type="button" onClick={SailInfo.newSailRoom}>
-            Share me!
+          <button
+            className="SailInfo-button"
+            type="button"
+            onClick={SailInfo.newSailRoom}
+          >
+            Share Live
           </button>
         </span>
       )

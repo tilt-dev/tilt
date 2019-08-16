@@ -255,4 +255,6 @@ the [default dev version](internal/cli/build.go),
 and the [installer version](scripts/install.sh).
 
 ### Version numbers
-Our rule of thumb pre 1.0 is only bump the minor version if you would write a blog post about it. (We haven't always followed this rule, but we'd like to start!)
+For pre-v1.0:
+* If adding backwards-compatible functionality increment the patch version (0.x.Y).
+* If adding backwards-incompatible functionality increment the minor version (0.X.y). We would probably **write a blog post** about this.

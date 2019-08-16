@@ -793,7 +793,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 			TriggerMode: tm,
 		}
 
-		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.portForwardsToDomain(r), r.extraPodSelectors, r.dependencyIDs)
+		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.portForwardsToDomain(r), r.extraPodSelectors, r.dependencyIDs, r.imageRefMap)
 		if err != nil {
 			return nil, err
 		}
@@ -1087,8 +1087,9 @@ func newK8sObjectSelector(apiVersion string, kind string, name string, namespace
 }
 
 func (k k8sObjectSelector) matches(e k8s.K8sEntity) bool {
-	return k.apiVersion.MatchString(e.Kind.GroupVersion().String()) &&
-		k.kind.MatchString(e.Kind.Kind) &&
+	gvk := e.GVK()
+	return k.apiVersion.MatchString(gvk.GroupVersion().String()) &&
+		k.kind.MatchString(gvk.Kind) &&
 		k.name.MatchString(e.Name()) &&
 		k.namespace.MatchString(e.Namespace().String())
 }

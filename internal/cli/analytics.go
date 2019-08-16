@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"crypto/md5"
-	"encoding/base64"
 	"os"
 	"os/exec"
 	"runtime"
@@ -77,8 +75,7 @@ func globalTags() map[string]string {
 	// store a hash of the git remote to help us guess how many users are running it on the same repository
 	origin := normalizeGitRemote(gitOrigin("."))
 	if origin != "" {
-		h := md5.Sum([]byte(origin))
-		ret["git.origin"] = base64.StdEncoding.EncodeToString(h[:])
+		ret["git.origin"] = tiltanalytics.HashMD5(origin)
 	}
 
 	return ret

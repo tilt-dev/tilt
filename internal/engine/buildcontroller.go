@@ -5,7 +5,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -21,6 +20,7 @@ type buildEntry struct {
 	name          model.ManifestName
 	targets       []model.TargetSpec
 	buildStateSet store.BuildStateSet
+	filesChanged  []string
 	buildReason   model.BuildReason
 	firstBuild    bool
 }
@@ -188,6 +188,7 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 		firstBuild:    firstBuild,
 		buildReason:   buildReason,
 		buildStateSet: buildStateSet,
+		filesChanged:  append(ms.ConfigFilesThatCausedChange, buildStateSet.FilesChanged()...),
 	}, true
 }
 
@@ -212,14 +213,13 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 		}
 		ctx := logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), actionWriter))
 
-		filesChanged := entry.buildStateSet.FilesChanged()
 		st.Dispatch(BuildStartedAction{
 			ManifestName: entry.name,
 			StartTime:    time.Now(),
-			FilesChanged: filesChanged,
+			FilesChanged: entry.filesChanged,
 			Reason:       entry.buildReason,
 		})
-		c.logBuildEntry(ctx, entry, filesChanged)
+		c.logBuildEntry(ctx, entry)
 
 		result, err := c.buildAndDeploy(ctx, st, entry)
 		st.Dispatch(NewBuildCompleteAction(result, err))
@@ -237,9 +237,10 @@ func (c *BuildController) buildAndDeploy(ctx context.Context, st store.RStore, e
 	return c.b.BuildAndDeploy(ctx, st, targets, entry.buildStateSet)
 }
 
-func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry, changedFiles []string) {
+func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 	firstBuild := entry.firstBuild
 	name := entry.name
+	changedFiles := entry.filesChanged
 
 	l := logger.Get(ctx)
 	if firstBuild {
@@ -247,17 +248,9 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry, c
 		s := logger.Blue(l).Sprintf(" ├──────────────────────────────────────────────")
 		l.Infof("\n%s%s%s", p, name, s)
 	} else {
-		var changedPathsToPrint []string
-		if len(changedFiles) > maxChangedFilesToPrint {
-			changedPathsToPrint = append(changedPathsToPrint, changedFiles[:maxChangedFilesToPrint]...)
-			changedPathsToPrint = append(changedPathsToPrint, "...")
-		} else {
-			changedPathsToPrint = changedFiles
-		}
-
 		if len(changedFiles) > 0 {
 			p := logger.Green(l).Sprintf("%d changed: ", len(changedFiles))
-			l.Infof("\n%s%v\n", p, ospath.TryAsCwdChildren(changedPathsToPrint))
+			l.Infof("\n%s%v\n", p, formatFileChangeList(changedFiles))
 		}
 
 		rp := logger.Blue(l).Sprintf("──┤ Rebuilding: ")
@@ -327,7 +320,7 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 			iTarget, ok := spec.(model.ImageTarget)
 			if ok {
 				if manifest.IsK8s() {
-					cInfos, err := store.RunningContainersForTargetForOnePod(iTarget, ms.DeployID, ms.PodSet)
+					cInfos, err := store.RunningContainersForTargetForOnePod(iTarget, ms.DeployID, ms.K8sRuntimeState())
 					if err != nil {
 						// Couldn't get running container info; surface an error IF target has LiveUpdate instructions.
 						if !iTarget.AnyFastBuildInfo().Empty() || !iTarget.AnyLiveUpdateInfo().Empty() {
@@ -338,7 +331,7 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 				}
 
 				if manifest.IsDC() {
-					buildState = buildState.WithRunningContainers(store.RunningContainersForDC(ms.DCResourceState()))
+					buildState = buildState.WithRunningContainers(store.RunningContainersForDC(ms.DCRuntimeState()))
 				}
 			}
 		}

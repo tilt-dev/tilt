@@ -1,0 +1,6 @@
+FROM python:alpine
+WORKDIR /app
+ADD requirements.txt .
+ADD sparkle .
+RUN pip install -r requirements.txt
+ENTRYPOINT python /app/app.py

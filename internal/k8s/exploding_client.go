@@ -8,7 +8,6 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/watch"
 
@@ -30,8 +29,8 @@ func (ec *explodingClient) Delete(ctx context.Context, entities []K8sEntity) err
 	return errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) Get(group, version, kind, namespace, name, resourceVersion string) (*unstructured.Unstructured, error) {
-	return nil, errors.Wrap(ec.err, "could not set up k8s client")
+func (ec *explodingClient) GetByReference(ref v1.ObjectReference) (K8sEntity, error) {
+	return K8sEntity{}, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
 func (ec *explodingClient) PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, lp []model.LabelPair) ([]v1.Pod, error) {

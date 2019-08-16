@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/docker/distribution/reference"
+	"github.com/google/uuid"
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -144,6 +145,8 @@ type fakeBuildAndDeployer struct {
 
 	nextDeployID model.DeployID
 
+	nextDeployedUID types.UID
+
 	// Set this to simulate the build failing. Do not set this directly, use fixture.SetNextBuildFailure
 	nextBuildFailure error
 
@@ -214,7 +217,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 				deployTarget = call.dc()
 			}
 		} else {
-			if isImageDeployedToK8s(iTarget, []model.K8sTarget{call.k8s()}) {
+			if isImageDeployedToK8s(iTarget, call.k8s()) {
 				deployTarget = call.k8s()
 			}
 		}
@@ -228,6 +231,16 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 			dcContainerID = b.nextDockerComposeContainerID
 		}
 		result[call.dc().ID()] = store.NewDockerComposeDeployResult(call.dc().ID(), dcContainerID)
+	}
+
+	if !call.k8s().Empty() {
+		uid := types.UID(uuid.New().String())
+		if b.nextDeployedUID != "" {
+			uid = b.nextDeployedUID
+			b.nextDeployedUID = ""
+		}
+		uids := []types.UID{uid}
+		result[call.k8s().ID()] = store.NewK8sDeployResult(call.k8s().ID(), uids)
 	}
 
 	b.nextLiveUpdateContainerIDs = nil
@@ -904,6 +917,41 @@ k8s_yaml('snack.yaml')`
 	f.assertAllBuildsConsumed()
 }
 
+func TestConfigChange_FilenamesLoggedInManifestBuild(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", `
+k8s_yaml('snack.yaml')
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src')`)
+	f.WriteFile("src/Dockerfile", `FROM iron/go:dev`)
+	f.WriteFile("snack.yaml", simpleYAML)
+
+	f.loadAndStart()
+
+	f.WaitUntilManifestState("snack loaded", "snack", func(ms store.ManifestState) bool {
+		return len(ms.BuildHistory) == 1
+	})
+
+	// make a config file change to kick off a new build
+	f.WriteFile("Tiltfile", `
+k8s_yaml('snack.yaml')
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', ignore='Dockerfile')`)
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("Tiltfile"))
+
+	f.WaitUntilManifestState("snack reloaded", "snack", func(ms store.ManifestState) bool {
+		return len(ms.BuildHistory) == 2
+	})
+
+	f.withManifestState("snack", func(ms store.ManifestState) {
+		expected := fmt.Sprintf("1 changed: [%s]", f.JoinPath("Tiltfile"))
+		require.Contains(t, ms.CombinedLog.String(), expected)
+	})
+
+	err := f.Stop()
+	assert.Nil(t, err)
+}
+
 func TestDockerRebuildWithChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -1071,10 +1119,11 @@ func TestPodEventOrdering(t *testing.T) {
 			})
 
 			f.withManifestState("fe", func(ms store.ManifestState) {
-				if assert.Equal(t, 2, ms.PodSet.Len()) {
-					assert.Equal(t, now.String(), ms.PodSet.Pods["pod-a"].StartedAt.String())
-					assert.Equal(t, now.String(), ms.PodSet.Pods["pod-b"].StartedAt.String())
-					assert.Equal(t, deployIDNow, ms.PodSet.DeployID)
+				runtime := ms.K8sRuntimeState()
+				if assert.Equal(t, 2, runtime.PodLen()) {
+					assert.Equal(t, now.String(), runtime.Pods["pod-a"].StartedAt.String())
+					assert.Equal(t, now.String(), runtime.Pods["pod-b"].StartedAt.String())
+					assert.Equal(t, deployIDNow, runtime.PodDeployID)
 				}
 			})
 
@@ -1360,14 +1409,14 @@ func TestPodEventDeleted(t *testing.T) {
 	f.podEvent(pod)
 
 	f.WaitUntilManifestState("pod crashes", mn, func(state store.ManifestState) bool {
-		return state.PodSet.ContainsID("my-pod")
+		return state.K8sRuntimeState().ContainsID("my-pod")
 	})
 
 	pod.DeletionTimestamp = &metav1.Time{Time: pod.CreationTimestamp.Add(time.Minute)}
 	f.podEvent(pod)
 
 	f.WaitUntilManifestState("podset is empty", mn, func(state store.ManifestState) bool {
-		return state.PodSet.Len() == 0
+		return state.K8sRuntimeState().PodLen() == 0
 	})
 
 	err := f.Stop()
@@ -1792,7 +1841,7 @@ func TestUpper_ServiceEvent(t *testing.T) {
 	dispatchServiceChange(f.store, svc, "")
 
 	f.WaitUntilManifestState("lb updated", "foobar", func(ms store.ManifestState) bool {
-		return len(ms.LBs) > 0
+		return len(ms.K8sRuntimeState().LBs) > 0
 	})
 
 	err := f.Stop()
@@ -1800,10 +1849,11 @@ func TestUpper_ServiceEvent(t *testing.T) {
 
 	ms, _ := f.upper.store.RLockState().ManifestState(manifest.Name)
 	defer f.upper.store.RUnlockState()
-	assert.Equal(t, 1, len(ms.LBs))
-	url, ok := ms.LBs["myservice"]
+	lbs := ms.K8sRuntimeState().LBs
+	assert.Equal(t, 1, len(lbs))
+	url, ok := lbs["myservice"]
 	if !ok {
-		t.Fatalf("%v did not contain key 'myservice'", ms.LBs)
+		t.Fatalf("%v did not contain key 'myservice'", lbs)
 	}
 	assert.Equal(t, "http://1.2.3.4:8080/", url.String())
 }
@@ -1821,7 +1871,7 @@ func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 	dispatchServiceChange(f.store, svc, "")
 
 	f.WaitUntilManifestState("lb url added", "foobar", func(ms store.ManifestState) bool {
-		url := ms.LBs["myservice"]
+		url := ms.K8sRuntimeState().LBs["myservice"]
 		if url == nil {
 			return false
 		}
@@ -1833,7 +1883,7 @@ func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 	dispatchServiceChange(f.store, svc, "")
 
 	f.WaitUntilManifestState("lb url removed", "foobar", func(ms store.ManifestState) bool {
-		url := ms.LBs["myservice"]
+		url := ms.K8sRuntimeState().LBs["myservice"]
 		return url == nil
 	})
 
@@ -1874,8 +1924,8 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 	obj := unstructured.Unstructured{}
 	obj.SetLabels(map[string]string{k8s.TiltRunIDLabel: k8s.TiltRunID, k8s.ManifestNameLabel: name.String()})
 	obj.SetName(objRef.Name)
-	f.kClient.GetResources = map[k8s.GetKey]*unstructured.Unstructured{
-		k8s.GetKey{Name: e.Name()}: &obj,
+	f.kClient.GetResources = map[k8s.GetKey]k8s.K8sEntity{
+		k8s.GetKey{Name: e.Name()}: k8s.NewK8sEntity(&obj),
 	}
 
 	f.Start([]model.Manifest{manifest}, true)
@@ -1989,8 +2039,8 @@ func TestK8sEventLogTimestamp(t *testing.T) {
 
 	obj := unstructured.Unstructured{}
 	obj.SetLabels(map[string]string{k8s.TiltRunIDLabel: k8s.TiltRunID, k8s.ManifestNameLabel: name.String()})
-	f.kClient.GetResources = map[k8s.GetKey]*unstructured.Unstructured{
-		k8s.GetKey{}: &obj,
+	f.kClient.GetResources = map[k8s.GetKey]k8s.K8sEntity{
+		k8s.GetKey{}: k8s.NewK8sEntity(&obj),
 	}
 
 	f.Start([]model.Manifest{manifest}, true)
@@ -2145,7 +2195,7 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 	}
 
 	f.WaitUntilManifestState("resource status = 'In Progress'", m.ManifestName(), func(ms store.ManifestState) bool {
-		return ms.DCResourceState().Status == dockercompose.StatusInProg
+		return ms.DCRuntimeState().Status == dockercompose.StatusInProg
 	})
 
 	beforeStart := time.Now()
@@ -2157,11 +2207,11 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 	}
 
 	f.WaitUntilManifestState("resource status = 'OK'", m.ManifestName(), func(ms store.ManifestState) bool {
-		return ms.DCResourceState().Status == dockercompose.StatusUp
+		return ms.DCRuntimeState().Status == dockercompose.StatusUp
 	})
 
 	f.withManifestState(m.ManifestName(), func(ms store.ManifestState) {
-		assert.True(t, ms.DCResourceState().StartTime.After(beforeStart))
+		assert.True(t, ms.DCRuntimeState().StartTime.After(beforeStart))
 
 	})
 
@@ -2173,7 +2223,7 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 
 	time.Sleep(10 * time.Millisecond)
 	f.WaitUntilManifestState("resource status = 'OK'", m.ManifestName(), func(ms store.ManifestState) bool {
-		return ms.DCResourceState().Status == dockercompose.StatusUp
+		return ms.DCRuntimeState().Status == dockercompose.StatusUp
 	})
 }
 
@@ -2196,7 +2246,7 @@ func TestDockerComposeStartsEventWatcher(t *testing.T) {
 	}
 
 	f.WaitUntilManifestState("resource status = 'In Progress'", m.ManifestName(), func(ms store.ManifestState) bool {
-		return ms.DCResourceState().Status == dockercompose.StatusInProg
+		return ms.DCRuntimeState().Status == dockercompose.StatusInProg
 	})
 }
 
@@ -2233,12 +2283,12 @@ func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 
 	f.WaitUntilManifestState("wait until manifest state has a log", m.ManifestName(), func(st store.ManifestState) bool {
-		return !st.DCResourceState().Log().Empty()
+		return !st.DCRuntimeState().Log().Empty()
 	})
 
 	// recorded on manifest state
 	f.withManifestState(m.ManifestName(), func(st store.ManifestState) {
-		assert.Contains(t, st.DCResourceState().Log().String(), expected)
+		assert.Contains(t, st.DCRuntimeState().Log().String(), expected)
 		assert.Equal(t, 1, strings.Count(st.CombinedLog.String(), expected))
 	})
 }
@@ -2257,7 +2307,7 @@ func TestDockerComposeFiltersRunLogs(t *testing.T) {
 
 	// recorded on manifest state
 	f.withManifestState(m.ManifestName(), func(st store.ManifestState) {
-		assert.NotContains(t, st.DCResourceState().Log().String(), expected)
+		assert.NotContains(t, st.DCRuntimeState().Log().String(), expected)
 	})
 }
 
@@ -2269,11 +2319,11 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 
 	f.withManifestState(m1.ManifestName(), func(st store.ManifestState) {
-		assert.NotEqual(t, dockercompose.StatusCrash, st.DCResourceState().Status)
+		assert.NotEqual(t, dockercompose.StatusCrash, st.DCRuntimeState().Status)
 	})
 
 	f.withManifestState(m2.ManifestName(), func(st store.ManifestState) {
-		assert.NotEqual(t, dockercompose.StatusCrash, st.DCResourceState().Status)
+		assert.NotEqual(t, dockercompose.StatusCrash, st.DCRuntimeState().Status)
 	})
 
 	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionKill))
@@ -2286,11 +2336,11 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionDie))
 
 	f.WaitUntilManifestState("is crashing", m1.ManifestName(), func(st store.ManifestState) bool {
-		return st.DCResourceState().Status == dockercompose.StatusCrash
+		return st.DCRuntimeState().Status == dockercompose.StatusCrash
 	})
 
 	f.withManifestState(m2.ManifestName(), func(st store.ManifestState) {
-		assert.NotEqual(t, dockercompose.StatusCrash, st.DCResourceState().Status)
+		assert.NotEqual(t, dockercompose.StatusCrash, st.DCRuntimeState().Status)
 	})
 
 	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionKill))
@@ -2302,7 +2352,7 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionStart))
 
 	f.WaitUntilManifestState("is not crashing", m1.ManifestName(), func(st store.ManifestState) bool {
-		return st.DCResourceState().Status == dockercompose.StatusUp
+		return st.DCRuntimeState().Status == dockercompose.StatusUp
 	})
 }
 
@@ -2317,9 +2367,9 @@ func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 
 	f.withManifestState(m1.ManifestName(), func(st store.ManifestState) {
-		state, ok := st.ResourceState.(dockercompose.State)
+		state, ok := st.RuntimeState.(dockercompose.State)
 		if !ok {
-			t.Fatal("expected ResourceState to be docker compose, but it wasn't")
+			t.Fatal("expected RuntimeState to be docker compose, but it wasn't")
 		}
 		assert.Equal(t, expected, state.ContainerID)
 		assert.Equal(t, dockercompose.StatusUp, state.Status)
@@ -2534,6 +2584,63 @@ alert-injes…┊ ghij`)
 	assert.Nil(t, err)
 }
 
+func TestTiltfileChangedFilesOnlyLoggedAfterFirstBuild(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", `
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile')
+k8s_yaml('snack.yaml')`)
+	f.WriteFile("Dockerfile", `FROM iron/go:dev1`)
+	f.WriteFile("snack.yaml", simpleYAML)
+	f.WriteFile("src/main.go", "hello")
+
+	f.loadAndStart()
+
+	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
+		return len(state.TiltfileState.BuildHistory) == 1
+	})
+
+	// we shouldn't log changes for first build
+	f.withState(func(state store.EngineState) {
+		require.NotContains(t, state.Log.String(), "changed: [")
+	})
+
+	f.WriteFile("Tiltfile", `
+docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile', ignore='foo')
+k8s_yaml('snack.yaml')`)
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("Tiltfile"))
+
+	f.WaitUntil("Tiltfile reloaded", func(state store.EngineState) bool {
+		return len(state.TiltfileState.BuildHistory) == 2
+	})
+
+	f.withState(func(state store.EngineState) {
+		expectedMessage := fmt.Sprintf("1 changed: [%s]", f.JoinPath("Tiltfile"))
+		require.Contains(t, state.Log.String(), expectedMessage)
+	})
+}
+
+func TestDeployUIDsInEngineState(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	uid := types.UID("fake-uid")
+	f.b.nextDeployedUID = uid
+
+	manifest := f.newManifest("fe")
+	f.Start([]model.Manifest{manifest}, true)
+
+	_ = f.nextCall()
+	f.WaitUntilManifestState("UID in ManifestState", "fe", func(state store.ManifestState) bool {
+		return state.K8sRuntimeState().DeployedUIDSet.Contains(uid)
+	})
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
@@ -2656,8 +2763,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	reaper := build.NewImageReaper(dockerClient)
 
 	kCli := k8s.NewFakeK8sClient()
-	pw := NewPodWatcher(kCli)
-	sw := NewServiceWatcher(kCli, "")
+	of := k8s.ProvideOwnerFetcher(kCli)
+	pw := NewPodWatcher(kCli, of)
+	sw := NewServiceWatcher(kCli, of, "")
 
 	fakeHud := hud.NewFakeHud()
 
@@ -3012,6 +3120,11 @@ func (f *testFixture) LogLines() []string {
 }
 
 func (f *testFixture) TearDown() {
+	if f.T().Failed() {
+		f.withState(func(es store.EngineState) {
+			fmt.Println(es.Log.String())
+		})
+	}
 	f.TempDirFixture.TearDown()
 	f.kClient.TearDown()
 	close(f.fsWatcher.events)

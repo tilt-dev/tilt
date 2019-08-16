@@ -13,7 +13,8 @@ func NewTarget(
 	entities []K8sEntity,
 	portForwards []model.PortForward,
 	extraPodSelectors []labels.Selector,
-	dependencyIDs []model.TargetID) (model.K8sTarget, error) {
+	dependencyIDs []model.TargetID,
+	refInjectCounts map[string]int) (model.K8sTarget, error) {
 	yaml, err := SerializeSpecYAML(entities)
 	if err != nil {
 		return model.K8sTarget{}, err
@@ -29,11 +30,11 @@ func NewTarget(
 		PortForwards:      portForwards,
 		ExtraPodSelectors: extraPodSelectors,
 		DisplayNames:      displayNames,
-	}.WithDependencyIDs(dependencyIDs), nil
+	}.WithDependencyIDs(dependencyIDs).WithRefInjectCounts(refInjectCounts), nil
 }
 
 func NewK8sOnlyManifest(name model.ManifestName, entities []K8sEntity) (model.Manifest, error) {
-	kTarget, err := NewTarget(name.TargetName(), entities, nil, nil, nil)
+	kTarget, err := NewTarget(name.TargetName(), entities, nil, nil, nil, nil)
 	if err != nil {
 		return model.Manifest{}, err
 	}

@@ -3,8 +3,11 @@ package server_test
 import (
 	"bytes"
 	"context"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
@@ -16,7 +19,6 @@ import (
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
-	tft "github.com/windmilleng/tilt/internal/tft/client"
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/model"
 )
@@ -369,26 +371,33 @@ func TestMaybeSendToTriggerQueue_notManualManifest(t *testing.T) {
 	store.AssertNoActionOfType(t, reflect.TypeOf(server.AppendToTriggerQueueAction{}), f.getActions)
 }
 
-func TestHandleNewAlert(t *testing.T) {
+func TestHandleNewSnapshot(t *testing.T) {
 	f := newTestFixture(t)
 
-	var jsonStr = []byte(`{"alertType": "build", "msg": "test", "timestamp": "2019-04-22T11:00:01-04:00", "header": "", "resourceName": "doggos"}`)
-	req, err := http.NewRequest(http.MethodPost, "/api/alerts/new", bytes.NewBuffer(jsonStr))
+	wd, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	sp := filepath.Join(wd, "testdata", "snapshot.json")
+	snap, err := ioutil.ReadFile(sp)
 	if err != nil {
 		t.Fatal(err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req, err := http.NewRequest(http.MethodPost, "/api/snapshot/new", bytes.NewBuffer(snap))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleNewAlert)
+	handler := http.HandlerFunc(f.serv.HandleNewSnapshot)
 
 	handler.ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
+			status, http.StatusOK)
 	}
-	assert.Contains(t, rr.Body.String(), "https://alerts.tilt.dev/alert/aaaaaa")
+	assert.Contains(t, rr.Body.String(), "https://alerts.tilt.dev/snapshot/aaaaa")
 }
 
 type serverFixture struct {
@@ -407,8 +416,8 @@ func newTestFixture(t *testing.T) *serverFixture {
 	a := analytics.NewMemoryAnalytics()
 	a, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
 	sailCli := client.NewFakeSailClient()
-	tftClient := tft.ProvideFakeClient()
-	serv := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, sailCli, tftClient)
+	httpClient := fakeHttpClient{}
+	serv := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, sailCli, httpClient)
 
 	return &serverFixture{
 		t:          t,
@@ -419,6 +428,15 @@ func newTestFixture(t *testing.T) *serverFixture {
 		st:         st,
 		getActions: getActions,
 	}
+}
+
+type fakeHttpClient struct{}
+
+func (f fakeHttpClient) Do(req *http.Request) (*http.Response, error) {
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       ioutil.NopCloser(bytes.NewReader([]byte(`{"ID":"aaaaa"}`))),
+	}, nil
 }
 
 func (f *serverFixture) assertIncrement(name string, count int) {

@@ -15,13 +15,15 @@ import (
 )
 
 type PodWatcher struct {
-	kCli    k8s.Client
-	watches []PodWatch
+	kCli         k8s.Client
+	ownerFetcher k8s.OwnerFetcher
+	watches      []PodWatch
 }
 
-func NewPodWatcher(kCli k8s.Client) *PodWatcher {
+func NewPodWatcher(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher) *PodWatcher {
 	return &PodWatcher{
-		kCli: kCli,
+		kCli:         kCli,
+		ownerFetcher: ownerFetcher,
 	}
 }
 
@@ -85,7 +87,7 @@ func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {
 			st.Dispatch(NewErrorAction(err))
 			return
 		}
-		go dispatchPodChangesLoop(ctx, ch, st)
+		go w.dispatchPodChangesLoop(ctx, ch, st)
 	}
 
 	for _, pw := range teardown {
@@ -104,13 +106,16 @@ func (w *PodWatcher) removeWatch(toRemove PodWatch) {
 	}
 }
 
-func dispatchPodChangesLoop(ctx context.Context, ch <-chan *v1.Pod, st store.RStore) {
+func (w *PodWatcher) dispatchPodChangesLoop(ctx context.Context, ch <-chan *v1.Pod, st store.RStore) {
 	for {
 		select {
 		case pod, ok := <-ch:
 			if !ok {
 				return
 			}
+
+			// TODO(nick): Attach OwnerTree
+
 			st.Dispatch(NewPodChangeAction(pod))
 		case <-ctx.Done():
 			return

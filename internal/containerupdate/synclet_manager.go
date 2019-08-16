@@ -94,7 +94,7 @@ func (sm SyncletManager) diff(ctx context.Context, st store.RStore) (setup []syn
 	// Look for all the pods that have synclets, and
 	// start warming the connection.
 	for _, ms := range state.ManifestStates() {
-		for _, pod := range ms.PodSet.Pods {
+		for _, pod := range ms.K8sRuntimeState().Pods {
 			if !pod.HasSynclet {
 				continue
 			}

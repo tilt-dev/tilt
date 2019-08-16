@@ -1,8 +1,9 @@
 import React, { PureComponent } from "react"
-import { ResourceView } from "./types"
+import { ResourceView, Snapshot } from "./types"
 import "./TopBar.scss"
 import SailInfo from "./SailInfo"
 import TabNav from "./TabNav"
+import { Alert } from "./alerts"
 
 type TopBarProps = {
   previewUrl: string
@@ -12,6 +13,10 @@ type TopBarProps = {
   sailEnabled: boolean
   sailUrl: string
   numberOfAlerts: number
+  state: Snapshot
+  handleSendSnapshot: (snapshot: Snapshot) => void
+  snapshotURL: string
+  snapshotsIsEnabled: boolean
 }
 
 class TopBar extends PureComponent<TopBarProps> {
@@ -25,12 +30,48 @@ class TopBar extends PureComponent<TopBarProps> {
           resourceView={this.props.resourceView}
           numberOfAlerts={this.props.numberOfAlerts}
         />
-        <span className="TopBar-spacer">&nbsp;</span>
-        <SailInfo
-          sailEnabled={this.props.sailEnabled}
-          sailUrl={this.props.sailUrl}
-        />
+        <section className="TopBar-tools">
+          {this.props.snapshotsIsEnabled &&
+            renderSnapshotLinkButton(
+              this.props.state,
+              this.props.handleSendSnapshot,
+              this.props.snapshotURL
+            )}
+          <SailInfo
+            sailEnabled={this.props.sailEnabled}
+            sailUrl={this.props.sailUrl}
+          />
+        </section>
       </div>
+    )
+  }
+}
+
+function renderSnapshotLinkButton(
+  snapshot: Snapshot,
+  handleSendSnapshot: (snapshot: Snapshot) => void,
+  snapshotURL: string
+) {
+  let hasLink = snapshotURL !== ""
+  if (!hasLink) {
+    return (
+      <section className="TopBar-snapshotUrlWrap">
+        <button onClick={() => handleSendSnapshot(snapshot)}>
+          Share Snapshot
+        </button>
+      </section>
+    )
+  } else {
+    return (
+      <section className="TopBar-snapshotUrlWrap">
+        <p className="TopBar-snapshotUrl">{snapshotURL}</p>
+        <button
+          title="Open link in new tab"
+          onClick={() => window.open(snapshotURL)}
+        >
+          Open
+        </button>
+      </section>
     )
   }
 }
