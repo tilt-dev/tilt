@@ -47,6 +47,7 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
 	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
 	"github.com/windmilleng/tilt/internal/testutils/podbuilder"
+	"github.com/windmilleng/tilt/internal/testutils/servicebuilder"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/watch"
@@ -151,6 +152,8 @@ type fakeBuildAndDeployer struct {
 	nextBuildFailure error
 
 	buildLogOutput map[model.TargetID]string
+
+	resultsByID store.BuildResultSet
 }
 
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
@@ -249,6 +252,10 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	err := b.nextBuildFailure
 	b.nextBuildFailure = nil
 
+	for key, val := range result {
+		b.resultsByID[key] = val
+	}
+
 	return result, err
 }
 
@@ -257,6 +264,7 @@ func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 		t:              t,
 		calls:          make(chan buildAndDeployCall, 20),
 		buildLogOutput: make(map[model.TargetID]string),
+		resultsByID:    store.BuildResultSet{},
 	}
 }
 
@@ -1805,29 +1813,6 @@ func TestUpperProcessOtherContainersIfOneErrors(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func testService(serviceName string, manifestName string, ip string, port int) *v1.Service {
-	return &v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   serviceName,
-			Labels: map[string]string{k8s.ManifestNameLabel: manifestName},
-		},
-		Spec: v1.ServiceSpec{
-			Ports: []v1.ServicePort{{
-				Port: int32(port),
-			}},
-		},
-		Status: v1.ServiceStatus{
-			LoadBalancer: v1.LoadBalancerStatus{
-				Ingress: []v1.LoadBalancerIngress{
-					{
-						IP: ip,
-					},
-				},
-			},
-		},
-	}
-}
-
 func TestUpper_ServiceEvent(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -1837,7 +1822,8 @@ func TestUpper_ServiceEvent(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
 
-	svc := testService("myservice", "foobar", "1.2.3.4", 8080)
+	uid := f.b.resultsByID[manifest.K8sTarget().ID()].DeployedUIDs[0]
+	svc := servicebuilder.New(t, manifest).WithUID(uid).WithPort(8080).WithIP("1.2.3.4").Build()
 	dispatchServiceChange(f.store, svc, "")
 
 	f.WaitUntilManifestState("lb updated", "foobar", func(ms store.ManifestState) bool {
@@ -1851,7 +1837,7 @@ func TestUpper_ServiceEvent(t *testing.T) {
 	defer f.upper.store.RUnlockState()
 	lbs := ms.K8sRuntimeState().LBs
 	assert.Equal(t, 1, len(lbs))
-	url, ok := lbs["myservice"]
+	url, ok := lbs[k8s.ServiceName(svc.Name)]
 	if !ok {
 		t.Fatalf("%v did not contain key 'myservice'", lbs)
 	}
@@ -1867,23 +1853,24 @@ func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
 
-	svc := testService("myservice", "foobar", "1.2.3.4", 8080)
+	uid := f.b.resultsByID[manifest.K8sTarget().ID()].DeployedUIDs[0]
+	sb := servicebuilder.New(t, manifest).WithUID(uid).WithPort(8080).WithIP("1.2.3.4")
+	svc := sb.Build()
 	dispatchServiceChange(f.store, svc, "")
 
 	f.WaitUntilManifestState("lb url added", "foobar", func(ms store.ManifestState) bool {
-		url := ms.K8sRuntimeState().LBs["myservice"]
+		url := ms.K8sRuntimeState().LBs[k8s.ServiceName(svc.Name)]
 		if url == nil {
 			return false
 		}
 		return "http://1.2.3.4:8080/" == url.String()
 	})
 
-	svc = testService("myservice", "foobar", "1.2.3.4", 8080)
-	svc.Status = v1.ServiceStatus{}
+	svc = sb.WithIP("").Build()
 	dispatchServiceChange(f.store, svc, "")
 
 	f.WaitUntilManifestState("lb url removed", "foobar", func(ms store.ManifestState) bool {
-		url := ms.K8sRuntimeState().LBs["myservice"]
+		url := ms.K8sRuntimeState().LBs[k8s.ServiceName(svc.Name)]
 		return url == nil
 	})
 
