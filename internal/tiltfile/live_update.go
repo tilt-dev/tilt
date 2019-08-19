@@ -121,7 +121,7 @@ func (s *tiltfileState) recordLiveUpdateStep(step liveUpdateStep) {
 
 func (s *tiltfileState) liveUpdateFallBackOn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var files starlark.Value
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "paths", &files); err != nil {
+	if err := s.unpackArgs(fn.Name(), args, kwargs, "paths", &files); err != nil {
 		return nil, err
 	}
 	filesSlice := starlarkValueOrSequenceToSlice(files)
@@ -144,7 +144,7 @@ func (s *tiltfileState) liveUpdateFallBackOn(thread *starlark.Thread, fn *starla
 
 func (s *tiltfileState) liveUpdateSync(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var localPath, remotePath string
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "local_path", &localPath, "remote_path", &remotePath); err != nil {
+	if err := s.unpackArgs(fn.Name(), args, kwargs, "local_path", &localPath, "remote_path", &remotePath); err != nil {
 		return nil, err
 	}
 
@@ -160,7 +160,7 @@ func (s *tiltfileState) liveUpdateSync(thread *starlark.Thread, fn *starlark.Bui
 func (s *tiltfileState) liveUpdateRun(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var command string
 	var triggers starlark.Value
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "cmd", &command, "trigger?", &triggers); err != nil {
+	if err := s.unpackArgs(fn.Name(), args, kwargs, "cmd", &command, "trigger?", &triggers); err != nil {
 		return nil, err
 	}
 
@@ -185,7 +185,7 @@ func (s *tiltfileState) liveUpdateRun(thread *starlark.Thread, fn *starlark.Buil
 }
 
 func (s *tiltfileState) liveUpdateRestartContainer(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs); err != nil {
+	if err := s.unpackArgs(fn.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 

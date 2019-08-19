@@ -100,7 +100,7 @@ func (r k8sResource) refSelectorList() []string {
 
 func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var yamlValue starlark.Value
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"yaml", &yamlValue,
 	); err != nil {
 		return nil, err
@@ -118,7 +118,7 @@ func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, a
 func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var yamlValue, labelsValue starlark.Value
 	var name, namespace, kind, apiVersion string
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+	err := s.unpackArgs(fn.Name(), args, kwargs,
 		"yaml", &yamlValue,
 		"labels?", &labelsValue,
 		"name?", &name,
@@ -202,7 +202,7 @@ func (s *tiltfileState) k8sResourceV1(thread *starlark.Thread, fn *starlark.Buil
 	var portForwardsVal starlark.Value
 	var extraPodSelectorsVal starlark.Value
 
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
 		"yaml?", &yamlValue,
 		"image?", &imageVal,
@@ -330,7 +330,7 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 	var extraPodSelectorsVal starlark.Value
 	var triggerMode triggerMode
 
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"workload", &workload,
 		"new_name?", &newName,
 		"port_forwards?", &portForwardsVal,
@@ -454,7 +454,7 @@ func starlarkValuesToJSONPaths(values []starlark.Value) ([]k8s.JSONPath, error) 
 func (s *tiltfileState) k8sImageJsonPath(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var apiVersion, kind, name, namespace string
 	var imageJSONPath starlark.Value
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"paths", &imageJSONPath,
 		"api_version?", &apiVersion,
 		"kind?", &kind,
@@ -493,7 +493,7 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 
 	var apiVersion, kind string
 	var imageJSONPath starlark.Value
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"kind", &kind,
 		"image_json_path?", &imageJSONPath,
 		"api_version?", &apiVersion,
@@ -523,7 +523,7 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 
 func (s *tiltfileState) workloadToResourceFunctionFn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var wtrf *starlark.Function
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"func", &wtrf); err != nil {
 		return nil, err
 	}
@@ -733,7 +733,7 @@ func (s *tiltfileState) portForward(thread *starlark.Thread, fn *starlark.Builti
 	var local int
 	var container int
 
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "local", &local, "container?", &container); err != nil {
+	if err := s.unpackArgs(fn.Name(), args, kwargs, "local", &local, "container?", &container); err != nil {
 		return nil, err
 	}
 
@@ -817,7 +817,7 @@ func (s *tiltfileState) imageJSONPaths(e k8s.K8sEntity) []k8s.JSONPath {
 
 func (s *tiltfileState) k8sResourceAssemblyVersionFn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var version int
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"version", &version,
 	); err != nil {
 		return nil, err
@@ -891,7 +891,7 @@ func (s *tiltfileState) k8sContext(thread *starlark.Thread, fn *starlark.Builtin
 
 func (s *tiltfileState) allowK8SContexts(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var contexts starlark.Value
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"contexts", &contexts,
 	); err != nil {
 		return nil, err

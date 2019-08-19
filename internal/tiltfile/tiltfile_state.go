@@ -66,6 +66,8 @@ type tiltfileState struct {
 	predeclaredMap starlark.StringDict
 	// count how many times each builtin is called, for analytics
 	builtinCallCounts map[string]int
+	// how many times each arg is used on each builtin
+	builtinArgCounts map[string]map[string]int
 
 	// any LiveUpdate steps that have been created but not used by a LiveUpdate will cause an error, to ensure
 	// that users aren't accidentally using step-creating functions incorrectly
@@ -116,6 +118,7 @@ func newTiltfileState(
 		usedImages:                 make(map[string]bool),
 		logger:                     logger.Get(ctx),
 		builtinCallCounts:          make(map[string]int),
+		builtinArgCounts:           make(map[string]map[string]int),
 		unconsumedLiveUpdateSteps:  make(map[string]liveUpdateStep),
 		k8sResourceAssemblyVersion: 2,
 		k8sResourceOptions:         make(map[string]k8sResourceOptions),
@@ -272,6 +275,35 @@ func (s *tiltfileState) makeBuiltinReporting(name string, f func(thread *starlar
 		s.builtinCallCounts[name]++
 		return f(thread, fn, args, kwargs)
 	}
+}
+
+type argUnpacker func(fnname string, args starlark.Tuple, kwargs []starlark.Tuple, pairs ...interface{}) error
+
+func (s *tiltfileState) unpackArgs(fnname string, args starlark.Tuple, kwargs []starlark.Tuple, pairs ...interface{}) error {
+	err := starlark.UnpackArgs(fnname, args, kwargs, pairs...)
+	if err == nil {
+		var paramNames []string
+		for i, o := range pairs {
+			if i%2 == 0 {
+				name := strings.TrimSuffix(o.(string), "?")
+				paramNames = append(paramNames, name)
+			}
+		}
+
+		usedParamNames := paramNames[:args.Len()]
+		for _, p := range kwargs {
+			name := strings.TrimSuffix(string(p[0].(starlark.String)), "?")
+			usedParamNames = append(usedParamNames, name)
+		}
+		_, ok := s.builtinArgCounts[fnname]
+		if !ok {
+			s.builtinArgCounts[fnname] = make(map[string]int)
+		}
+		for _, paramName := range usedParamNames {
+			s.builtinArgCounts[fnname][paramName]++
+		}
+	}
+	return err
 }
 
 func (s *tiltfileState) predeclared() starlark.StringDict {
@@ -1096,7 +1128,7 @@ func (k k8sObjectSelector) matches(e k8s.K8sEntity) bool {
 
 func (s *tiltfileState) triggerModeFn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var triggerMode triggerMode
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "trigger_mode", &triggerMode)
+	err := s.unpackArgs(fn.Name(), args, kwargs, "trigger_mode", &triggerMode)
 	if err != nil {
 		return nil, err
 	}
@@ -1113,7 +1145,7 @@ func (s *tiltfileState) triggerModeFn(thread *starlark.Thread, fn *starlark.Buil
 
 func (s *tiltfileState) setTeam(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var teamName string
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "team_name", &teamName)
+	err := s.unpackArgs(fn.Name(), args, kwargs, "team_name", &teamName)
 	if err != nil {
 		return nil, err
 	}

@@ -7,10 +7,12 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -1816,16 +1818,49 @@ k8s_yaml('foo.yaml')
 `)
 
 	f.load()
-	expected := []analytics.CountEvent{{
-		Name: "tiltfile.loaded",
-		Tags: map[string]string{
-			"tiltfile.invoked.docker_build": "2",
-			"tiltfile.invoked.k8s_yaml":     "1",
-		},
-		N: 1,
-	}}
-	for _, evt := range expected {
-		assert.Contains(t, f.an.Counts, evt)
+
+	require.Len(t, f.an.Counts, 1)
+	expectedCallCounts := map[string]int{
+		"docker_build": 2,
+		"k8s_yaml":     1,
+	}
+	tags := f.an.Counts[0].Tags
+	for arg, expectedCount := range expectedCallCounts {
+		count, ok := tags[fmt.Sprintf("tiltfile.invoked.%s", arg)]
+		require.True(t, ok, "arg %s was not counted in %v", arg, tags)
+		require.Equal(t, strconv.Itoa(expectedCount), count, "arg %s had the wrong count in %v", arg, tags)
+	}
+}
+
+func TestArgCounts(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.yaml("foo.yaml",
+		deployment("foo", image("gcr.io/foo")),
+		deployment("bar", image("gcr.io/bar")))
+	f.file("Tiltfile", `
+docker_build(ref='gcr.io/foo', context='.', dockerfile='Dockerfile')
+docker_build('gcr.io/bar', '.')
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+
+	require.Len(t, f.an.Counts, 1)
+	expectedArgCounts := map[string]int{
+		"docker_build.arg.context":    2,
+		"docker_build.arg.dockerfile": 1,
+		"docker_build.arg.ref":        2,
+		"k8s_yaml.arg.yaml":           1,
+	}
+	tags := f.an.Counts[0].Tags
+	for arg, expectedCount := range expectedArgCounts {
+		count, ok := tags[fmt.Sprintf("tiltfile.invoked.%s", arg)]
+		require.True(t, ok, "tiltfile.invoked.%s was not counted in %v", arg, tags)
+		require.Equal(t, strconv.Itoa(expectedCount), count, "tiltfile.invoked.%s had the wrong count in %v", arg, tags)
 	}
 }
 

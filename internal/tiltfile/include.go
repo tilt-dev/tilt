@@ -28,7 +28,7 @@ const (
 // scope (i.e., you can't load() a Tilfile for its side-effects).
 func (s *tiltfileState) include(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var p string
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &p)
+	err := s.unpackArgs(fn.Name(), args, kwargs, "path", &p)
 	if err != nil {
 		return nil, err
 	}

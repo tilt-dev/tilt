@@ -88,7 +88,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	var dockerRef, entrypoint string
 	var contextVal, dockerfilePathVal, buildArgs, dockerfileContentsVal, cacheVal, liveUpdateVal, ignoreVal, onlyVal starlark.Value
 	var matchInEnvVars bool
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
 		"context", &contextVal,
 		"build_args?", &buildArgs,
@@ -250,7 +250,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	var matchInEnvVars bool
 	var entrypoint string
 
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+	err := s.unpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
 		"command", &command,
 		"deps", &deps,
@@ -395,7 +395,7 @@ func (s *tiltfileState) fastBuild(thread *starlark.Thread, fn *starlark.Builtin,
 	var dockerRef, entrypoint string
 	var baseDockerfile starlark.Value
 	var cacheVal starlark.Value
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+	err := s.unpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
 		"base_dockerfile", &baseDockerfile,
 		"entrypoint?", &entrypoint,
@@ -512,7 +512,7 @@ func (b *fastBuild) AttrNames() []string {
 }
 
 func (b *fastBuild) hotReload(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs); err != nil {
+	if err := b.s.unpackArgs(fn.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 
@@ -529,7 +529,7 @@ func (b *fastBuild) add(thread *starlark.Thread, fn *starlark.Builtin, args star
 	var src starlark.Value
 	var mountPoint string
 
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "src", &src, "dest", &mountPoint); err != nil {
+	if err := b.s.unpackArgs(fn.Name(), args, kwargs, "src", &src, "dest", &mountPoint); err != nil {
 		return nil, err
 	}
 
@@ -549,7 +549,7 @@ func (b *fastBuild) add(thread *starlark.Thread, fn *starlark.Builtin, args star
 func (b *fastBuild) run(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var cmd string
 	var trigger starlark.Value
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "cmd", &cmd, "trigger?", &trigger); err != nil {
+	if err := b.s.unpackArgs(fn.Name(), args, kwargs, "cmd", &cmd, "trigger?", &trigger); err != nil {
 		return nil, err
 	}
 
@@ -635,7 +635,7 @@ func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Bu
 	}
 
 	var dr string
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "name", &dr); err != nil {
+	if err := s.unpackArgs(fn.Name(), args, kwargs, "name", &dr); err != nil {
 		return nil, err
 	}
 
