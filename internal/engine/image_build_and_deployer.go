@@ -205,6 +205,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 		return nil, err
 	}
 
+	st.Dispatch(DeployStartedAction{})
 	st.Dispatch(NewDeployIDAction(kTarget.ID(), deployID))
 
 	ctx, l := ibd.indentLogger(ctx)
@@ -222,6 +223,10 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 	// TODO(nick): Do something with this result
 	uids := []types.UID{}
 	for _, entity := range deployed {
+		uid := entity.UID()
+		if uid == "" {
+			return nil, fmt.Errorf("Entity not deployed correctly: %v", entity)
+		}
 		uids = append(uids, entity.UID())
 	}
 	results[kTarget.ID()] = store.NewK8sDeployResult(kTarget.ID(), uids)
