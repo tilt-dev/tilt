@@ -208,3 +208,22 @@ it("alerts page for nonexistent resource shows error", async () => {
     "No resource found at /r/nonexistentresource/alerts"
   )
 })
+
+it("preview pane for all resources", async () => {
+  const root = mount(HUDAtPath("/preview"))
+  const hud = root.find(HUD)
+  hud.setState({ View: twoResourceView() })
+
+  let previewScreens = root.find(".PreviewList")
+  expect(previewScreens).toHaveLength(1)
+  expect(previewScreens.at(0).text()).toEqual("snack")
+})
+
+it("preview pane for one resource", async () => {
+  const root = mount(HUDAtPath("/r/snack/preview"))
+  const hud = root.find(HUD)
+  hud.setState({ View: twoResourceView() })
+
+  let previewScreens = root.find(".PreviewPane")
+  expect(previewScreens).toHaveLength(1)
+})

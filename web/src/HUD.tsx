@@ -209,7 +209,7 @@ class HUD extends Component<HudProps, HudState> {
           ? props.match.params.name
           : ""
       let numAlerts = 0
-      if (name !== "") {
+      if (name) {
         let selectedResource = resources.find(r => r.Name === name)
         if (selectedResource === undefined) {
           return (
@@ -262,7 +262,7 @@ class HUD extends Component<HudProps, HudState> {
       let endpoints: Array<string> = []
       let podID = ""
       let podStatus = ""
-      if (view && name !== "") {
+      if (view && name) {
         let r = view.Resources.find(r => r.Name === name)
         if (r === undefined) {
           return <Route component={NotFound} />
@@ -293,7 +293,7 @@ class HUD extends Component<HudProps, HudState> {
     let previewRoute = (props: RouteComponentProps<any>) => {
       let name = props.match.params ? props.match.params.name : ""
       let endpoint = ""
-      if (view && name !== "") {
+      if (view && name) {
         let r = view.Resources.find(r => r.Name === name)
         if (r === undefined) {
           return <Route component={NotFound} />
