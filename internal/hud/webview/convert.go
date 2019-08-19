@@ -122,7 +122,7 @@ func tiltfileResourceView(s store.EngineState) Resource {
 		BuildHistory: []BuildRecord{
 			ToWebViewBuildRecord(ltfb),
 		},
-		CombinedLog:   ctfb.Log,
+		CombinedLog:   s.TiltfileState.CombinedLog,
 		RuntimeStatus: RuntimeStatusOK,
 	}
 	if !ctfb.Empty() {
