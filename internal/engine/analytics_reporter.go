@@ -30,8 +30,13 @@ func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore) {
 	if !state.TiltStartTime.IsZero() && state.LastTiltfileError() == nil {
 		ar.started = true
 		go func() {
-			time.Sleep(time.Minute * 5)
-			ar.report() // report once pretty soon after startup...
+			select {
+			case <-time.After(time.Minute * 2):
+				ar.report() // report once pretty soon after startup...
+			case <-ctx.Done():
+				return
+			}
+
 			for {
 				select {
 				case <-time.After(analyticsReportingInterval):
