@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
@@ -79,6 +80,19 @@ func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 
 	expectedInfo := YAMLResourceInfo{K8sResources: []string{"sancho:deployment"}}
 	assert.Equal(t, expectedInfo, r.ResourceInfo)
+}
+
+func TestStateToViewTiltfileLog(t *testing.T) {
+	es := newState([]model.Manifest{})
+	es.TiltfileState.CombinedLog = model.AppendLog(
+		es.TiltfileState.CombinedLog,
+		store.NewLogEvent("Tiltfile", []byte("hello")),
+		false,
+		"")
+	v := StateToWebView(*es)
+	r, ok := v.Resource("(Tiltfile)")
+	require.True(t, ok, "no resource named (Tiltfile) found")
+	assert.Equal(t, "hello", r.CombinedLog.String())
 }
 
 func TestRelativeTiltfilePath(t *testing.T) {
