@@ -10,7 +10,7 @@ import (
 )
 
 // How often to periodically report data for analytics while Tilt is running
-const analyticsReportingInterval = time.Hour * 1
+const analyticsReportingInterval = time.Minute * 15
 
 type AnalyticsReporter struct {
 	a       *analytics.TiltAnalytics
@@ -29,8 +29,9 @@ func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore) {
 	// wait until state has been kinda initialized
 	if !state.TiltStartTime.IsZero() && state.LastTiltfileError() == nil {
 		ar.started = true
-		ar.report() // report once now...
 		go func() {
+			time.Sleep(time.Minute * 5)
+			ar.report() // report once pretty soon after startup...
 			for {
 				select {
 				case <-time.After(analyticsReportingInterval):
