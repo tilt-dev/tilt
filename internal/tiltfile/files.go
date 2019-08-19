@@ -23,7 +23,8 @@ import (
 const localLogPrefix = " → "
 
 type gitRepo struct {
-	basePath string
+	basePath    string
+	argUnpacker argUnpacker
 }
 
 func (s *tiltfileState) newGitRepo(t *starlark.Thread, path string) (*gitRepo, error) {
@@ -37,12 +38,12 @@ func (s *tiltfileState) newGitRepo(t *starlark.Thread, path string) (*gitRepo, e
 		return nil, fmt.Errorf("%s isn't a valid git repo: it doesn't have a .git/ directory", absPath)
 	}
 
-	return &gitRepo{basePath: absPath}, nil
+	return &gitRepo{basePath: absPath, argUnpacker: s.unpackArgs}, nil
 }
 
 func (s *tiltfileState) localGitRepo(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path string
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "paths", &path)
+	err := s.unpackArgs(fn.Name(), args, kwargs, "paths", &path)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +87,7 @@ func (gr *gitRepo) AttrNames() []string {
 
 func (gr *gitRepo) path(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path string
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "paths", &path)
+	err := gr.argUnpacker(fn.Name(), args, kwargs, "paths", &path)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +135,7 @@ func (s *tiltfileState) readFile(p string) ([]byte, error) {
 
 func (s *tiltfileState) watchFile(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path starlark.Value
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "paths", &path)
+	err := s.unpackArgs(fn.Name(), args, kwargs, "paths", &path)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +153,7 @@ func (s *tiltfileState) watchFile(thread *starlark.Thread, fn *starlark.Builtin,
 func (s *tiltfileState) skylarkReadFile(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path starlark.Value
 	defaultReturn := ""
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "paths", &path, "default?", &defaultReturn)
+	err := s.unpackArgs(fn.Name(), args, kwargs, "paths", &path, "default?", &defaultReturn)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +204,7 @@ func (b *blob) Hash() (uint32, error) {
 
 func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var command string
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "command", &command)
+	err := s.unpackArgs(fn.Name(), args, kwargs, "command", &command)
 	if err != nil {
 		return nil, err
 	}
@@ -256,7 +257,7 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, c *exec.Cmd, logOutput 
 
 func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path starlark.Value
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "paths", &path)
+	err := s.unpackArgs(fn.Name(), args, kwargs, "paths", &path)
 	if err != nil {
 		return nil, err
 	}
@@ -283,7 +284,7 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 
 func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path starlark.Value
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "paths", &path)
+	err := s.unpackArgs(fn.Name(), args, kwargs, "paths", &path)
 	if err != nil {
 		return nil, err
 	}
@@ -316,7 +317,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 
 func (s *tiltfileState) blob(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var input starlark.String
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "input", &input)
+	err := s.unpackArgs(fn.Name(), args, kwargs, "input", &input)
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +328,7 @@ func (s *tiltfileState) blob(thread *starlark.Thread, fn *starlark.Builtin, args
 func (s *tiltfileState) listdir(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dir starlark.String
 	var recursive bool
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "dir", &dir, "recursive?", &recursive)
+	err := s.unpackArgs(fn.Name(), args, kwargs, "dir", &dir, "recursive?", &recursive)
 	if err != nil {
 		return nil, err
 	}
@@ -364,7 +365,7 @@ func (s *tiltfileState) listdir(thread *starlark.Thread, fn *starlark.Builtin, a
 func (s *tiltfileState) readYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path starlark.String
 	var defaultValue starlark.Value
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "paths", &path, "default?", &defaultValue); err != nil {
+	if err := s.unpackArgs(fn.Name(), args, kwargs, "paths", &path, "default?", &defaultValue); err != nil {
 		return nil, err
 	}
 
@@ -397,7 +398,7 @@ func (s *tiltfileState) readYaml(thread *starlark.Thread, fn *starlark.Builtin, 
 
 func (s *tiltfileState) decodeJSON(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var jsonString starlark.String
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "json", &jsonString); err != nil {
+	if err := s.unpackArgs(fn.Name(), args, kwargs, "json", &jsonString); err != nil {
 		return nil, err
 	}
 
@@ -417,7 +418,7 @@ func (s *tiltfileState) decodeJSON(thread *starlark.Thread, fn *starlark.Builtin
 func (s *tiltfileState) readJson(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path starlark.String
 	var defaultValue starlark.Value
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "paths", &path, "default?", &defaultValue); err != nil {
+	if err := s.unpackArgs(fn.Name(), args, kwargs, "paths", &path, "default?", &defaultValue); err != nil {
 		return nil, err
 	}
 

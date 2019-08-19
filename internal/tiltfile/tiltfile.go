@@ -182,7 +182,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 
 	s.logger.Infof("Successfully loaded Tiltfile")
 
-	tfl.reportTiltfileLoaded(s.builtinCallCounts)
+	tfl.reportTiltfileLoaded(s.builtinCallCounts, s.builtinArgCounts)
 
 	tiltIgnoreContents, err := s.readFile(tiltIgnorePath(absFilename))
 	// missing tiltignore is fine
@@ -251,10 +251,15 @@ func starlarkValueOrSequenceToSlice(v starlark.Value) []starlark.Value {
 	}
 }
 
-func (tfl *tiltfileLoader) reportTiltfileLoaded(counts map[string]int) {
+func (tfl *tiltfileLoader) reportTiltfileLoaded(callCounts map[string]int, argCounts map[string]map[string]int) {
 	tags := make(map[string]string)
-	for builtinName, count := range counts {
+	for builtinName, count := range callCounts {
 		tags[fmt.Sprintf("tiltfile.invoked.%s", builtinName)] = strconv.Itoa(count)
+	}
+	for builtinName, counts := range argCounts {
+		for argName, count := range counts {
+			tags[fmt.Sprintf("tiltfile.invoked.%s.arg.%s", builtinName, argName)] = strconv.Itoa(count)
+		}
 	}
 	tfl.analytics.Incr("tiltfile.loaded", tags)
 }

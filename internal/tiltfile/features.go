@@ -8,7 +8,7 @@ import (
 
 func (s *tiltfileState) enableFeature(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var flag string
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "msg", &flag)
+	err := s.unpackArgs(fn.Name(), args, kwargs, "msg", &flag)
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +26,7 @@ func (s *tiltfileState) enableFeature(thread *starlark.Thread, fn *starlark.Buil
 
 func (s *tiltfileState) disableFeature(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var flag string
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "msg", &flag)
+	err := s.unpackArgs(fn.Name(), args, kwargs, "msg", &flag)
 	if err != nil {
 		return nil, err
 	}

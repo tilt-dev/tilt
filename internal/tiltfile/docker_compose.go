@@ -33,7 +33,7 @@ func (dc dcResourceSet) Empty() bool { return reflect.DeepEqual(dc, dcResourceSe
 func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var configPathsValue starlark.Value
 
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "configPaths", &configPathsValue)
+	err := s.unpackArgs(fn.Name(), args, kwargs, "configPaths", &configPathsValue)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 	var imageVal starlark.Value
 	var triggerMode triggerMode
 
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
 		"image", &imageVal, // in future this will be optional
 		"trigger_mode?", &triggerMode,
