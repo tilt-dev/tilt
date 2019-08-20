@@ -143,6 +143,7 @@ func populatePortForwards(m model.Manifest, pod store.Pod) []model.PortForward {
 			for _, cPort := range cPorts {
 				if int(forward.LocalPort) == int(cPort) {
 					forward.ContainerPort = int(cPort)
+					break
 				}
 			}
 		}
