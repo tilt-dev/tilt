@@ -102,6 +102,21 @@ func TestPodDisruptionBudgetYAML(t *testing.T) {
 	assert.Equal(t, 1, len(entities))
 }
 
+func TestListYAML(t *testing.T) {
+	// We should unroll top-level lists
+	entities := MustParseYAMLFromString(t, testyaml.DoggosListYAML)
+	assert.Equal(t, 2, len(entities))
+
+	kinds := []string{}
+	for _, entity := range entities {
+		kinds = append(kinds, entity.GVK().Kind)
+	}
+	assert.Equal(t, []string{
+		"Service",
+		"Deployment",
+	}, kinds)
+}
+
 // Assert that parsing the YAML and re-serializing it produces the same result.
 // Returns the parsed entities.
 func assertRoundTripYAML(t *testing.T, yaml string) []K8sEntity {
