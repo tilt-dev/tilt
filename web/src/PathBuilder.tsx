@@ -26,7 +26,7 @@ class PathBuilder {
       scheme = "ws"
     }
     if (this.isSnapshot()) {
-      return this.snapshotUrl()
+      return this.snapshotDataUrl()
     }
     if (this.roomId) {
       return `${scheme}://${this.host}/join/${this.roomId}`
@@ -42,7 +42,7 @@ class PathBuilder {
     return this.snapId !== ""
   }
 
-  snapshotUrl(): string {
+  private snapshotDataUrl(): string {
     let scheme = "https"
     if (this.isLocal()) {
       scheme = "http"
@@ -50,9 +50,16 @@ class PathBuilder {
     return `${scheme}://${this.host}/api/snapshot/${this.snapId}`
   }
 
+  private snapshotPathBase(): string {
+    return `/snapshot/${this.snapId}`
+  }
+
   rootPath() {
     if (this.roomId) {
       return `/view/${this.roomId}`
+    }
+    if (this.isSnapshot()) {
+      return this.snapshotPathBase()
     }
     return ""
   }
