@@ -140,6 +140,11 @@ func populatePortForwards(m model.Manifest, pod store.Pod) []model.PortForward {
 			}
 
 			forward.ContainerPort = int(cPorts[0])
+			for _, cPort := range cPorts {
+				if int(forward.LocalPort) == int(cPort) {
+					forward.ContainerPort = int(cPort)
+				}
+			}
 		}
 		forwards = append(forwards, forward)
 	}
