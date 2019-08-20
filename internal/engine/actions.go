@@ -12,6 +12,7 @@ import (
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/internal/token"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -104,6 +105,8 @@ type InitAction struct {
 	EnableSail bool
 
 	AnalyticsOpt analytics.Opt
+
+	Token token.Token
 }
 
 func (InitAction) Action() {}

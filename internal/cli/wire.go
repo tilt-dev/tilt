@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
+	"github.com/windmilleng/wmclient/pkg/dirs"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/tools/clientcmd/api"
 
@@ -26,6 +27,7 @@ import (
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
+	"github.com/windmilleng/tilt/internal/token"
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/model"
 )
@@ -106,6 +108,9 @@ var BaseWireSet = wire.NewSet(
 	provideSailMode,
 	provideSailURL,
 	client.SailWireSet,
+
+	dirs.UseWindmillDir,
+	token.GetOrCreateToken,
 
 	provideThreads,
 	engine.NewKINDPusher,
