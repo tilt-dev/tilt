@@ -3,7 +3,6 @@ import { ResourceView, Snapshot } from "./types"
 import "./TopBar.scss"
 import SailInfo from "./SailInfo"
 import TabNav from "./TabNav"
-import { Alert } from "./alerts"
 
 type TopBarProps = {
   previewUrl: string
@@ -16,7 +15,7 @@ type TopBarProps = {
   state: Snapshot
   handleSendSnapshot: (snapshot: Snapshot) => void
   snapshotURL: string
-  snapshotsIsEnabled: boolean
+  showSnapshot: boolean
 }
 
 class TopBar extends PureComponent<TopBarProps> {
@@ -31,7 +30,7 @@ class TopBar extends PureComponent<TopBarProps> {
           numberOfAlerts={this.props.numberOfAlerts}
         />
         <section className="TopBar-tools">
-          {this.props.snapshotsIsEnabled &&
+          {this.props.showSnapshot &&
             renderSnapshotLinkButton(
               this.props.state,
               this.props.handleSendSnapshot,

@@ -11,6 +11,16 @@ import {
 import { createMemoryHistory } from "history"
 import { isK8sResourceInfo } from "./alerts"
 
+declare global {
+  namespace NodeJS {
+    interface Global {
+      document: Document
+      window: Window
+      navigator: Navigator
+    }
+  }
+}
+
 const fakeHistory = createMemoryHistory()
 const emptyHUD = () => {
   return (
@@ -226,4 +236,34 @@ it("preview pane for one resource", async () => {
 
   let previewScreens = root.find(".PreviewPane")
   expect(previewScreens).toHaveLength(1)
+
+it("renders snapshot button if snapshots are enabled and this isn't a snapshot view", async () => {
+  const root = mount(HUDAtPath("/"))
+  const hud = root.find(HUD)
+  let view = oneResourceView()
+  view.FeatureFlags = { snapshots: true }
+  hud.setState({ View: view })
+
+  let snapshotSection = root.find(".TopBar-snapshotUrlWrap")
+  expect(snapshotSection.exists()).toBe(true)
+})
+
+it("doesn't render snapshot button if snapshots are enabled and this is a snapshot view", async () => {
+  global.window = Object.create(window)
+  Object.defineProperty(window, "location", {
+    value: {
+      host: "localhost",
+      pathname: "/snapshot/aaaaaa",
+    },
+  })
+
+  const root = mount(HUDAtPath("/"))
+  const hud = root.find(HUD)
+
+  let view = oneResourceView()
+  view.FeatureFlags = { snapshots: true }
+  hud.setState({ View: view })
+
+  let snapshotSection = root.find(".TopBar-snapshotUrlWrap")
+  expect(snapshotSection.exists()).toBe(false)
 })

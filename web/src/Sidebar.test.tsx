@@ -4,12 +4,9 @@ import { MemoryRouter } from "react-router"
 import Sidebar, { SidebarItem } from "./Sidebar"
 import {
   oneResource,
-  oneResourceView,
   twoResourceView,
-  allResourcesOK,
   oneResourceManualTriggerDirty,
 } from "./testdata.test"
-import { mount } from "enzyme"
 import { ResourceView, TriggerMode, Resource } from "./types"
 import PathBuilder from "./PathBuilder"
 
