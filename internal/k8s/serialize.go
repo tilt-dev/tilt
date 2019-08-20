@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"io"
 
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
@@ -15,6 +17,71 @@ import (
 func ParseYAMLFromString(yaml string) ([]K8sEntity, error) {
 	buf := bytes.NewBuffer([]byte(yaml))
 	return ParseYAML(buf)
+}
+
+func decodeMetaList(list *metav1.List) ([]K8sEntity, error) {
+	result := make([]K8sEntity, 0, len(list.Items))
+	for _, item := range list.Items {
+		decoded, err := decodeRawExtension(item)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, decoded...)
+	}
+	return result, nil
+}
+
+func decodeList(list *v1.List) ([]K8sEntity, error) {
+	return decodeMetaList((*metav1.List)(list))
+}
+
+func decodeToRuntimeObj(ext runtime.RawExtension) (runtime.Object, error) {
+	ext.Raw = bytes.TrimSpace(ext.Raw)
+
+	// NOTE(nick): I LOL'd at the null check, but it's what kubectl does.
+	if len(ext.Raw) == 0 || bytes.Equal(ext.Raw, []byte("null")) {
+		return nil, nil
+	}
+
+	obj, _, err :=
+		scheme.Codecs.UniversalDeserializer().Decode(ext.Raw, nil, nil)
+	if err == nil {
+		return obj, nil
+	}
+
+	if !runtime.IsNotRegisteredError(err) {
+		return nil, err
+	}
+
+	// If this is a NotRegisteredError, fallback to unstructured code
+	obj, _, err =
+		unstructured.UnstructuredJSONScheme.Decode(ext.Raw, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+func decodeRawExtension(ext runtime.RawExtension) ([]K8sEntity, error) {
+	obj, err := decodeToRuntimeObj(ext)
+	if err != nil {
+		return nil, err
+	} else if obj == nil {
+		return nil, nil
+	}
+
+	// Check to see if this is a list, and we can decode the list elements.
+	list, isList := obj.(*v1.List)
+	if isList {
+		return decodeList(list)
+	}
+
+	metaList, isMetaList := obj.(*metav1.List)
+	if isMetaList {
+		return decodeMetaList(metaList)
+	}
+
+	return []K8sEntity{NewK8sEntity(obj)}, nil
 }
 
 // Parse the YAML into entities.
@@ -34,36 +101,11 @@ func ParseYAML(k8sYaml io.Reader) ([]K8sEntity, error) {
 			return nil, err
 		}
 
-		ext.Raw = bytes.TrimSpace(ext.Raw)
-
-		// NOTE(nick): I LOL'd at the null check, but it's what kubectl does.
-		if len(ext.Raw) == 0 || bytes.Equal(ext.Raw, []byte("null")) {
-			continue
-		}
-
-		obj, _, err :=
-			scheme.Codecs.UniversalDeserializer().Decode(ext.Raw, nil, nil)
-		if err == nil {
-			result = append(result, K8sEntity{
-				Obj: obj,
-			})
-			continue
-		}
-
-		if !runtime.IsNotRegisteredError(err) {
-			return nil, err
-		}
-
-		// If this is a NotRegisteredError, fallback to unstructured code
-		obj, _, err =
-			unstructured.UnstructuredJSONScheme.Decode(ext.Raw, nil, nil)
+		entities, err := decodeRawExtension(ext)
 		if err != nil {
 			return nil, err
 		}
-
-		result = append(result, K8sEntity{
-			Obj: obj,
-		})
+		result = append(result, entities...)
 	}
 
 	return result, nil

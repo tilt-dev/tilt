@@ -1382,3 +1382,50 @@ spec:
       component: server
       release: infra-kafka
 `
+
+const DoggosListYAML = `
+apiVersion: v1
+kind: List
+items:
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: doggos
+    labels:
+      app: doggos
+      whosAGoodBoy: imAGoodBoy
+  spec:
+    ports:
+      - port: 80
+        targetPort: 8083
+        protocol: TCP
+    selector:
+      app: doggos
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: doggos
+    labels:
+      app: doggos
+      breed: corgi
+      whosAGoodBoy: imAGoodBoy
+    namespace: the-dog-zone
+  spec:
+    selector:
+      matchLabels:
+        app: doggos
+        breed: corgi
+        whosAGoodBoy: imAGoodBoy
+    template:
+      metadata:
+        labels:
+          app: doggos
+          breed: corgi
+          whosAGoodBoy: imAGoodBoy
+          tier: web
+      spec:
+        containers:
+        - name: doggos
+          image: gcr.io/windmill-public-containers/servantes/doggos
+          command: ["/go/bin/doggos"]
+`
