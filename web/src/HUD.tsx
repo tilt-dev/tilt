@@ -113,10 +113,6 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   componentDidMount() {
-    if (process.env.NODE_ENV === "test") {
-      // we don't want to run any bootstrapping code in the test environment
-      return
-    }
     if (this.pathBuilder.isSnapshot()) {
       this.controller.setStateFromSnapshot()
     } else {
