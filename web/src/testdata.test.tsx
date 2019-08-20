@@ -5,6 +5,7 @@ import { getResourceAlerts } from "./alerts"
 
 type view = {
   Resources: Array<Resource>
+  FeatureFlags?: { [featureFlag: string]: boolean }
 }
 
 // NOTE(dmiller) 4-02-19 this function is currently unused but I'm going to keep it around.

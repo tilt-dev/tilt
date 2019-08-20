@@ -27,7 +27,7 @@ it("shows sail share button", () => {
           state={testState}
           handleSendSnapshot={fakeSendSnapshot}
           snapshotURL=""
-          snapshotsIsEnabled={false}
+          showSnapshotButton={false}
         />
       </MemoryRouter>
     )
@@ -51,7 +51,7 @@ it("shows sail url", () => {
           state={testState}
           handleSendSnapshot={fakeSendSnapshot}
           snapshotURL=""
-          snapshotsIsEnabled={false}
+          showSnapshotButton={false}
         />
       </MemoryRouter>
     )
@@ -75,7 +75,7 @@ it("shows snapshot url", () => {
           state={testState}
           handleSendSnapshot={fakeSendSnapshot}
           snapshotURL=""
-          snapshotsIsEnabled={true}
+          showSnapshotButton={true}
         />
       </MemoryRouter>
     )

@@ -113,6 +113,10 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   componentDidMount() {
+    if (process.env.NODE_ENV === "test") {
+      // we don't want to run any bootstrapping code in the test environment
+      return
+    }
     if (this.pathBuilder.isSnapshot()) {
       this.controller.setStateFromSnapshot()
     } else {
@@ -188,6 +192,8 @@ class HUD extends Component<HudProps, HudState> {
     } else {
       features = new Features({})
     }
+    let showSnapshot =
+      features.isEnabled("snapshots") && !this.pathBuilder.isSnapshot()
 
     let sidebarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name = props.match.params.name
@@ -224,7 +230,7 @@ class HUD extends Component<HudProps, HudState> {
               state={this.state}
               handleSendSnapshot={this.sendSnapshot.bind(this)}
               snapshotURL={this.state.SnapshotLink}
-              snapshotsIsEnabled={features.isEnabled("snapshots")}
+              showSnapshotButton={showSnapshot}
             />
           )
         }
@@ -248,7 +254,7 @@ class HUD extends Component<HudProps, HudState> {
           state={this.state}
           handleSendSnapshot={this.sendSnapshot.bind(this)}
           snapshotURL={this.state.SnapshotLink}
-          snapshotsIsEnabled={features.isEnabled("snapshots")}
+          showSnapshotButton={showSnapshot}
         />
       )
     }
