@@ -15,7 +15,7 @@ type TopBarProps = {
   state: Snapshot
   handleSendSnapshot: (snapshot: Snapshot) => void
   snapshotURL: string
-  showSnapshot: boolean
+  showSnapshotButton: boolean
 }
 
 class TopBar extends PureComponent<TopBarProps> {
@@ -30,7 +30,7 @@ class TopBar extends PureComponent<TopBarProps> {
           numberOfAlerts={this.props.numberOfAlerts}
         />
         <section className="TopBar-tools">
-          {this.props.showSnapshot &&
+          {this.props.showSnapshotButton &&
             renderSnapshotLinkButton(
               this.props.state,
               this.props.handleSendSnapshot,
