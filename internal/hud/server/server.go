@@ -64,6 +64,7 @@ func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analyti
 	r.HandleFunc("/api/sail", s.HandleSail)
 	r.HandleFunc("/api/trigger", s.HandleTrigger)
 	r.HandleFunc("/api/snapshot/new", s.HandleNewSnapshot)
+	r.HandleFunc("/api/snapshot/{snapshot_id}", s.SnapshotJSON)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
 
 	r.PathPrefix("/").Handler(assetServer)
@@ -82,6 +83,24 @@ func (s *HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(view)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error rendering view payload: %v", err), http.StatusInternalServerError)
+	}
+}
+
+type snapshot struct {
+	View webview.View
+}
+
+func (s *HeadsUpServer) SnapshotJSON(w http.ResponseWriter, req *http.Request) {
+	state := s.store.RLockState()
+	view := webview.StateToWebView(state)
+	s.store.RUnlockState()
+
+	w.Header().Set("Content-Type", "application/json")
+	err := json.NewEncoder(w).Encode(snapshot{
+		View: view,
+	})
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error rendering view payload: %v", err), http.StatusInternalServerError)
 	}
