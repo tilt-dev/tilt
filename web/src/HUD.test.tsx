@@ -236,6 +236,7 @@ it("preview pane for one resource", async () => {
 
   let previewScreens = root.find(".PreviewPane")
   expect(previewScreens).toHaveLength(1)
+})
 
 it("renders snapshot button if snapshots are enabled and this isn't a snapshot view", async () => {
   const root = mount(HUDAtPath("/"))
