@@ -1543,7 +1543,7 @@
   version = "v2.2.1"
 
 [[projects]]
-  digest = "1:6d0aa77d566a58435e633a5cd9cea7492f5f8fb330e54f5c643478473c2fc595"
+  digest = "1:97b61d2f080698a86707e10e69f80d98ff3c7faac96065679962f50b9a7cb8a4"
   name = "k8s.io/api"
   packages = [
     "admission/v1beta1",
@@ -1586,11 +1586,11 @@
     "storage/v1beta1",
   ]
   pruneopts = "UT"
-  revision = "7cf5895f2711098d7d9527db0a4a49fb0dff7de2"
-  version = "kubernetes-1.15.0"
+  revision = "3544db3b9e4494309507e02eced5cd9dcff47e6a"
+  version = "kubernetes-1.15.3"
 
 [[projects]]
-  digest = "1:c147086d8f172859e6f658215de9a3b509befeab758df3da83c58e7fdac4b153"
+  digest = "1:7efcdcb8a59a9769eebf21454d4f75bb2593c2ac8be3d90c33071e6aa64c0940"
   name = "k8s.io/apimachinery"
   packages = [
     "pkg/api/equality",
@@ -1647,8 +1647,8 @@
     "third_party/forked/golang/reflect",
   ]
   pruneopts = "UT"
-  revision = "1799e75a07195de9460b8ef7300883499f12127b"
-  version = "kubernetes-1.15.0"
+  revision = "f2f3a405f61d6c2cdc0d00687c1b5d90de91e9f0"
+  version = "kubernetes-1.15.3"
 
 [[projects]]
   digest = "1:f107a860bd0f6b51b21bc0d21ca093cc655560361fd812c7035951648651c128"
@@ -1668,11 +1668,11 @@
     "pkg/resource",
   ]
   pruneopts = "UT"
-  revision = "2090e6d8f84c1db3e23968b0ee97fb677b363fcf"
-  version = "kubernetes-1.15.0"
+  revision = "541433d7ce357bd9c62ab3d00580f2b234ee0973"
+  version = "kubernetes-1.15.3"
 
 [[projects]]
-  digest = "1:8081ad48ab5f4ce61cf807269e4e61df56ab87abd1d9fd671220adf9587efca1"
+  digest = "1:b5058f1f213a2e273a316a5cfba4e4b5fc5f0ade26dc53c72f34f9cb0756083c"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -1884,8 +1884,8 @@
     "util/retry",
   ]
   pruneopts = "UT"
-  revision = "78d2af792babf2dd937ba2e2a8d99c753a5eda89"
-  version = "kubernetes-1.15.0"
+  revision = "e14f31a72a77f7aa82a95eaf542d1194fb027d04"
+  version = "kubernetes-1.15.3"
 
 [[projects]]
   digest = "1:e2999bf1bb6eddc2a6aa03fe5e6629120a53088926520ca3b4765f77d7ff7eab"
@@ -1945,8 +1945,8 @@
     "pkg/kubectl/version",
   ]
   pruneopts = "UT"
-  revision = "f6278300bebbb750328ac16ee6dd3aa7d3549568"
-  version = "v1.15.2"
+  revision = "2d3c76f9091b6bec110a5e63777c332469e0cba2"
+  version = "v1.15.3"
 
 [[projects]]
   branch = "master"
