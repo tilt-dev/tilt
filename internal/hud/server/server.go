@@ -64,6 +64,7 @@ func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analyti
 	r.HandleFunc("/api/sail", s.HandleSail)
 	r.HandleFunc("/api/trigger", s.HandleTrigger)
 	r.HandleFunc("/api/snapshot/new", s.HandleNewSnapshot)
+	// this endpoint is only used for testing snapshots in development
 	r.HandleFunc("/api/snapshot/{snapshot_id}", s.SnapshotJSON)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
 
