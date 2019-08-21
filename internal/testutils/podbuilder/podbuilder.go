@@ -58,6 +58,7 @@ type PodBuilder struct {
 	phase        string
 	creationTime time.Time
 	deployID     model.DeployID
+	restartCount int
 
 	// keyed by container index -- i.e. the first container will have image: imageRefs[0] and ID: cIDs[0], etc.
 	// If there's no entry at index i, we'll use a dummy value.
@@ -72,6 +73,15 @@ func New(t testing.TB, manifest model.Manifest) PodBuilder {
 		imageRefs: make(map[int]string),
 		cIDs:      make(map[int]string),
 	}
+}
+
+func (b PodBuilder) RestartCount() int {
+	return b.restartCount
+}
+
+func (b PodBuilder) WithRestartCount(restartCount int) PodBuilder {
+	b.restartCount = restartCount
+	return b
 }
 
 func (b PodBuilder) WithPodID(podID string) PodBuilder {
@@ -183,11 +193,16 @@ func (b PodBuilder) buildPhase() v1.PodPhase {
 func (b PodBuilder) buildContainerStatuses(spec v1.PodSpec) []v1.ContainerStatus {
 	result := make([]v1.ContainerStatus, len(spec.Containers))
 	for i, cSpec := range spec.Containers {
+		restartCount := 0
+		if i == 0 {
+			restartCount = b.restartCount
+		}
 		result[i] = v1.ContainerStatus{
-			Name:        cSpec.Name,
-			Image:       b.buildImage(cSpec.Image, i),
-			Ready:       true,
-			ContainerID: b.buildContainerID(i),
+			Name:         cSpec.Name,
+			Image:        b.buildImage(cSpec.Image, i),
+			Ready:        true,
+			ContainerID:  b.buildContainerID(i),
+			RestartCount: int32(restartCount),
 		}
 	}
 	return result
