@@ -54,6 +54,12 @@ type PodLogAction struct {
 
 func (PodLogAction) Action() {}
 
+// A little helper action so that we synchronize
+// Kubernetes events that happen while a `kubectl apply` is in-progress.
+type DeployStartedAction struct{}
+
+func (DeployStartedAction) Action() {}
+
 type DeployIDAction struct {
 	TargetID model.TargetID
 	DeployID model.DeployID

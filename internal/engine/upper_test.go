@@ -208,6 +208,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		b.nextDeployID = 0
 	}
 
+	st.Dispatch(DeployStartedAction{})
 	deployIDActions := NewDeployIDActionsForTargets(ids, dID)
 	for _, a := range deployIDActions {
 		st.Dispatch(a)

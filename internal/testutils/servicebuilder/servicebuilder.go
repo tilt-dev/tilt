@@ -8,7 +8,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -66,9 +65,8 @@ func (sb ServiceBuilder) Build() *v1.Service {
 
 	return &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   sb.name(),
-			UID:    sb.getUid(),
-			Labels: map[string]string{k8s.ManifestNameLabel: sb.manifest.Name.String()},
+			Name: sb.name(),
+			UID:  sb.getUid(),
 		},
 		Spec: v1.ServiceSpec{Ports: ports},
 		Status: v1.ServiceStatus{
