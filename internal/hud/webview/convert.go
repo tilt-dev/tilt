@@ -10,6 +10,7 @@ import (
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/internal/tft"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -102,6 +103,7 @@ func StateToWebView(s store.EngineState) View {
 	ret.RunningTiltBuild = s.TiltBuildInfo
 	ret.LatestTiltBuild = s.LatestTiltBuild
 	ret.FeatureFlags = s.Features
+	ret.RegisterTokenURL = tft.RegisterTokenURL(s.Token)
 
 	return ret
 }
