@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
+	"github.com/windmilleng/wmclient/pkg/dirs"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/tools/clientcmd/api"
 
@@ -31,6 +32,7 @@ import (
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
+	"github.com/windmilleng/tilt/internal/token"
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/model"
 )
@@ -163,7 +165,15 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	clockworkClock := clockwork.NewRealClock()
 	eventWatchManager := engine.NewEventWatchManager(k8sClient, clockworkClock)
 	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, imageController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, sailClient, tiltVersionChecker, tiltAnalyticsSubscriber, eventWatchManager)
-	upper := engine.NewUpper(ctx, storeStore, v2)
+	windmillDir, err := dirs.UseWindmillDir()
+	if err != nil {
+		return demo.Script{}, err
+	}
+	tokenToken, err := token.GetOrCreateToken(windmillDir)
+	if err != nil {
+		return demo.Script{}, err
+	}
+	upper := engine.NewUpper(ctx, storeStore, v2, tokenToken)
 	script := demo.NewScript(upper, headsUpDisplay, k8sClient, env, storeStore, branch, runtime, tiltfileLoader)
 	return script, nil
 }
@@ -300,7 +310,15 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	clockworkClock := clockwork.NewRealClock()
 	eventWatchManager := engine.NewEventWatchManager(k8sClient, clockworkClock)
 	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, imageController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, sailClient, tiltVersionChecker, tiltAnalyticsSubscriber, eventWatchManager)
-	upper := engine.NewUpper(ctx, storeStore, v2)
+	windmillDir, err := dirs.UseWindmillDir()
+	if err != nil {
+		return Threads{}, err
+	}
+	tokenToken, err := token.GetOrCreateToken(windmillDir)
+	if err != nil {
+		return Threads{}, err
+	}
+	upper := engine.NewUpper(ctx, storeStore, v2, tokenToken)
 	threads := provideThreads(headsUpDisplay, upper, tiltBuild, sailMode)
 	return threads, nil
 }
@@ -495,7 +513,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebPort,
 	provideWebDevPort,
 	provideNoBrowserFlag, server.ProvideHeadsUpServer, assets.ProvideAssetServer, server.ProvideHeadsUpServerController, server.ProvideHttpClient, provideSailMode,
-	provideSailURL, client.SailWireSet, provideThreads, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
+	provideSailURL, client.SailWireSet, dirs.UseWindmillDir, token.GetOrCreateToken, provideThreads, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
 )
 
 type Threads struct {

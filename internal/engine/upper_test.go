@@ -50,6 +50,7 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/servicebuilder"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/tiltfile"
+	"github.com/windmilleng/tilt/internal/token"
 	"github.com/windmilleng/tilt/internal/watch"
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/logger"
@@ -2819,7 +2820,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
 
 	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc, sc, tvc, tas, ewm)
-	ret.upper = NewUpper(ctx, st, subs)
+	ret.upper = NewUpper(ctx, st, subs, token.Token("unit test token"))
 
 	go func() {
 		fakeHud.Run(ctx, ret.upper.Dispatch, hud.DefaultRefreshInterval)

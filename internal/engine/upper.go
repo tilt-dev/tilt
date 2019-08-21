@@ -23,6 +23,7 @@ import (
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/internal/token"
 	"github.com/windmilleng/tilt/internal/watch"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -46,6 +47,7 @@ var watchBufferMaxDuration = watchBufferMaxTimeInMs * time.Millisecond
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
 	store *store.Store
+	token token.Token
 }
 
 type FsWatcherMaker func(paths []string, ignore watch.PathMatcher, l logger.Logger) (watch.Notify, error)
@@ -65,7 +67,7 @@ func ProvideTimerMaker() timerMaker {
 	}
 }
 
-func NewUpper(ctx context.Context, st *store.Store, subs []store.Subscriber) Upper {
+func NewUpper(ctx context.Context, st *store.Store, subs []store.Subscriber, t token.Token) Upper {
 	// There's not really a good reason to add all the subscribers
 	// in NewUpper(), but it's as good a place as any.
 	for _, sub := range subs {
@@ -74,6 +76,7 @@ func NewUpper(ctx context.Context, st *store.Store, subs []store.Subscriber) Upp
 
 	return Upper{
 		store: st,
+		token: t,
 	}
 }
 
@@ -119,6 +122,7 @@ func (u Upper) Start(
 		StartTime:     startTime,
 		EnableSail:    sailMode.IsEnabled(),
 		AnalyticsOpt:  analyticsOpt,
+		Token:         u.token,
 	})
 }
 
@@ -638,6 +642,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.SailEnabled = action.EnableSail
 	engineState.AnalyticsOpt = action.AnalyticsOpt
 	engineState.WatchFiles = action.WatchFiles
+	engineState.Token = action.Token
 
 	// NOTE(dmiller): this kicks off a Tiltfile build
 	engineState.PendingConfigFileChanges[action.TiltfilePath] = time.Now()
