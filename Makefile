@@ -77,10 +77,10 @@ shorttest:
 
 integration:
 ifneq ($(CIRCLECI),true)
-		go test -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 500s ./integration
+		go test -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s ./integration
 else
 		mkdir -p test-results
-		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./integration -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 600s
+		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./integration -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s
 endif
 
 dev-js:
