@@ -92,6 +92,7 @@ class AppController {
         Message: "Disconnected…",
         IsSidebarClosed: false,
         SnapshotLink: "",
+        ShowSnapshotModal: false,
       })
       this.createNewSocket()
       return
@@ -117,6 +118,7 @@ class AppController {
         Message: message,
         IsSidebarClosed: false,
         SnapshotLink: "",
+        ShowSnapshotModal: false,
       })
       this.createNewSocket()
     }, timeout)

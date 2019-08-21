@@ -1,0 +1,83 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`ShareSnapshotModal renders with modal closed 1`] = `
+<div
+  className="modal display-none"
+>
+  <section
+    className="modal-main"
+  >
+    <section
+      className="modal-snapshotUrlWrap"
+    >
+      <button
+        onClick={[Function]}
+      >
+        close
+      </button>
+      <button
+        onClick={[Function]}
+      >
+        Open link in new tab
+      </button>
+    </section>
+    <hr />
+    <section
+      className="modal-cloud"
+    >
+      <p>
+        Go to 
+        <a
+          href=""
+        >
+          TiltCloud
+        </a>
+         to manage your snapshots.
+        <br />
+        (You'll just need to link your GitHub Account)
+      </p>
+    </section>
+  </section>
+</div>
+`;
+
+exports[`ShareSnapshotModal renders with modal open 1`] = `
+<div
+  className="modal display-block"
+>
+  <section
+    className="modal-main"
+  >
+    <section
+      className="modal-snapshotUrlWrap"
+    >
+      <button
+        onClick={[Function]}
+      >
+        close
+      </button>
+      <button
+        onClick={[Function]}
+      >
+        Open link in new tab
+      </button>
+    </section>
+    <hr />
+    <section
+      className="modal-cloud"
+    >
+      <p>
+        Go to 
+        <a
+          href=""
+        >
+          TiltCloud
+        </a>
+         to manage your snapshots.
+        <br />
+        (You'll just need to link your GitHub Account)
+      </p>
+    </section>
+  </section>
+</div>
+`;

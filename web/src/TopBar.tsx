@@ -12,10 +12,8 @@ type TopBarProps = {
   sailEnabled: boolean
   sailUrl: string
   numberOfAlerts: number
-  state: Snapshot
-  handleSendSnapshot: (snapshot: Snapshot) => void
-  snapshotURL: string
   showSnapshotButton: boolean
+  handleOpenModal: () => void
 }
 
 class TopBar extends PureComponent<TopBarProps> {
@@ -31,11 +29,7 @@ class TopBar extends PureComponent<TopBarProps> {
         />
         <section className="TopBar-tools">
           {this.props.showSnapshotButton &&
-            renderSnapshotLinkButton(
-              this.props.state,
-              this.props.handleSendSnapshot,
-              this.props.snapshotURL
-            )}
+            renderSnapshotModal(this.props.handleOpenModal)}
           <SailInfo
             sailEnabled={this.props.sailEnabled}
             sailUrl={this.props.sailUrl}
@@ -46,33 +40,12 @@ class TopBar extends PureComponent<TopBarProps> {
   }
 }
 
-function renderSnapshotLinkButton(
-  snapshot: Snapshot,
-  handleSendSnapshot: (snapshot: Snapshot) => void,
-  snapshotURL: string
-) {
-  let hasLink = snapshotURL !== ""
-  if (!hasLink) {
-    return (
-      <section className="TopBar-snapshotUrlWrap">
-        <button onClick={() => handleSendSnapshot(snapshot)}>
-          Share Snapshot
-        </button>
-      </section>
-    )
-  } else {
-    return (
-      <section className="TopBar-snapshotUrlWrap">
-        <p className="TopBar-snapshotUrl">{snapshotURL}</p>
-        <button
-          title="Open link in new tab"
-          onClick={() => window.open(snapshotURL)}
-        >
-          Open
-        </button>
-      </section>
-    )
-  }
+const renderSnapshotModal = (handleOpenModal: () => void) => {
+  return (
+    <section className="TopBar-snapshotUrlWrap">
+      <button onClick={handleOpenModal}>Share Snapshot</button>
+    </section>
+  )
 }
 
 export default TopBar

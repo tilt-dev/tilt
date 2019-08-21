@@ -1,16 +1,10 @@
 import React from "react"
 import renderer from "react-test-renderer"
 import { MemoryRouter } from "react-router"
-import { Resource, ResourceView, Snapshot, TiltBuild } from "./types"
+import { ResourceView, Snapshot } from "./types"
 import TopBar from "./TopBar"
 
-const testState: Snapshot = {
-  Message: "",
-  View: null,
-  IsSidebarClosed: false,
-}
-
-const fakeSendSnapshot = (snapshot: Snapshot) => void {}
+const fakeHandleOpenModal = () => {}
 
 it("shows sail share button", () => {
   const tree = renderer
@@ -24,10 +18,8 @@ it("shows sail share button", () => {
           sailEnabled={true}
           sailUrl=""
           numberOfAlerts={0}
-          state={testState}
-          handleSendSnapshot={fakeSendSnapshot}
-          snapshotURL=""
           showSnapshotButton={false}
+          handleOpenModal={fakeHandleOpenModal}
         />
       </MemoryRouter>
     )
@@ -48,10 +40,8 @@ it("shows sail url", () => {
           sailEnabled={true}
           sailUrl="www.sail.dev/xyz"
           numberOfAlerts={1}
-          state={testState}
-          handleSendSnapshot={fakeSendSnapshot}
-          snapshotURL=""
           showSnapshotButton={false}
+          handleOpenModal={fakeHandleOpenModal}
         />
       </MemoryRouter>
     )
@@ -72,10 +62,8 @@ it("shows snapshot url", () => {
           sailEnabled={false}
           sailUrl="www.sail.dev/xyz"
           numberOfAlerts={1}
-          state={testState}
-          handleSendSnapshot={fakeSendSnapshot}
-          snapshotURL=""
           showSnapshotButton={true}
+          handleOpenModal={fakeHandleOpenModal}
         />
       </MemoryRouter>
     )
