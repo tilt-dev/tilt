@@ -254,6 +254,7 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 	request, err := http.NewRequest(http.MethodPost, newSnapshotURL(), req.Body)
 	response, err := s.httpCli.Do(request)
 	if err != nil {
+		log.Printf("Error creating snapshot: %v\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		_, err := w.Write([]byte(err.Error()))
 		if err != nil {
@@ -264,6 +265,7 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 
 	responseWithID, err := ioutil.ReadAll(response.Body)
 	if err != nil {
+		log.Printf("Error reading response when creating snapshot: %v\n", err)
 		log.Printf("Error reading responseWithID: %v\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
