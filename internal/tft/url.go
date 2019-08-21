@@ -1,6 +1,6 @@
 package tft
 
-import(
+import (
 	"fmt"
 
 	"github.com/windmilleng/tilt/internal/token"
