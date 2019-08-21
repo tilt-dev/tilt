@@ -7,7 +7,7 @@ import (
 	"github.com/windmilleng/wmclient/pkg/dirs"
 )
 
-const tokenPath = "token"
+const tokenFileName = "token"
 
 type Token string
 
@@ -29,7 +29,7 @@ func GetOrCreateToken(dir *dirs.WindmillDir) (Token, error) {
 }
 
 func getExistingToken(dir *dirs.WindmillDir) (Token, error) {
-	token, err := dir.ReadFile(tokenPath)
+	token, err := dir.ReadFile(tokenFileName)
 	if err != nil {
 		return "", err
 	}
@@ -37,5 +37,5 @@ func getExistingToken(dir *dirs.WindmillDir) (Token, error) {
 }
 
 func writeToken(dir *dirs.WindmillDir, t Token) error {
-	return dir.WriteFile(tokenPath, string(t))
+	return dir.WriteFile(tokenFileName, string(t))
 }
