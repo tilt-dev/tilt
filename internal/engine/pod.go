@@ -18,11 +18,6 @@ import (
 )
 
 func handlePodChangeAction(ctx context.Context, state *store.EngineState, action PodChangeAction) {
-	if state.DeployInProgress {
-		state.DeployActionsDeferred = append(state.DeployActionsDeferred, action)
-		return
-	}
-
 	pod := action.Pod
 	mt, podInfo := ensureManifestTargetWithPod(state, pod)
 	if mt == nil || podInfo == nil {

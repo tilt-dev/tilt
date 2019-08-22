@@ -205,7 +205,6 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 		return nil, err
 	}
 
-	st.Dispatch(DeployStartedAction{})
 	st.Dispatch(NewDeployIDAction(kTarget.ID(), deployID))
 
 	ctx, l := ibd.indentLogger(ctx)
