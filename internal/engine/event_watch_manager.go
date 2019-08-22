@@ -80,7 +80,7 @@ func (m *EventWatchManager) createEntry(ctx context.Context, involvedObject v1.O
 		expiresAt:         m.clock.Now().Add(uidMapEntryTTL),
 	}
 
-	e, err := m.kClient.GetByReference(involvedObject)
+	e, err := m.kClient.GetByReference(ctx, involvedObject)
 	if err != nil {
 		// if the lookup was an error, wipe out resourceVersion so that we don't cache a potentially
 		// ephemeral negative result

@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -250,9 +251,10 @@ func (c *FakeK8sClient) InjectEntityByName(entities ...K8sEntity) {
 	}
 }
 
-func (c *FakeK8sClient) GetByReference(ref v1.ObjectReference) (K8sEntity, error) {
+func (c *FakeK8sClient) GetByReference(ctx context.Context, ref v1.ObjectReference) (K8sEntity, error) {
 	resp, ok := c.entityByName[ref.Name]
 	if !ok {
+		logger.Get(ctx).Infof("FakeK8sClient.GetByReference: resource not found: %s", ref.Name)
 		return K8sEntity{}, apierrors.NewNotFound(v1.Resource(ref.Kind), ref.Name)
 	}
 	return resp, nil

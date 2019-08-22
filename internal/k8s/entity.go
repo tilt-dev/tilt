@@ -47,6 +47,18 @@ func (emptyMeta) GetOwnerReferences() []metav1.OwnerReference { return nil }
 var _ k8sMeta = emptyMeta{}
 var _ k8sMeta = &metav1.ObjectMeta{}
 
+func (e K8sEntity) ToObjectReference() v1.ObjectReference {
+	meta := e.meta()
+	apiVersion, kind := e.GVK().ToAPIVersionAndKind()
+	return v1.ObjectReference{
+		Kind:       kind,
+		APIVersion: apiVersion,
+		Name:       meta.GetName(),
+		Namespace:  meta.GetNamespace(),
+		UID:        meta.GetUID(),
+	}
+}
+
 func (e K8sEntity) GVK() schema.GroupVersionKind {
 	gvk := e.Obj.GetObjectKind().GroupVersionKind()
 	if gvk.Empty() {

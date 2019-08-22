@@ -7,10 +7,12 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -20,14 +22,27 @@ type PodWatcher struct {
 	kCli         k8s.Client
 	ownerFetcher k8s.OwnerFetcher
 
-	mu      sync.RWMutex
-	watches []PodWatch
+	mu                sync.RWMutex
+	watches           []PodWatch
+	knownDeployedUIDs map[types.UID]model.ManifestName
+
+	// An index that maps the UID of Kubernetes resources to the UIDs of
+	// all pods that they own (transitively).
+	//
+	// For example, a Deployment UID might contain a set of N pod UIDs.
+	knownDescendentPodUIDs map[types.UID]store.UIDSet
+
+	// An index of all the known pods, by UID
+	knownPods map[types.UID]*v1.Pod
 }
 
 func NewPodWatcher(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher) *PodWatcher {
 	return &PodWatcher{
-		kCli:         kCli,
-		ownerFetcher: ownerFetcher,
+		kCli:                   kCli,
+		ownerFetcher:           ownerFetcher,
+		knownDeployedUIDs:      make(map[types.UID]model.ManifestName),
+		knownDescendentPodUIDs: make(map[types.UID]store.UIDSet),
+		knownPods:              make(map[types.UID]*v1.Pod),
 	}
 }
 
@@ -60,7 +75,13 @@ func subtract(a, b []PodWatch) []PodWatch {
 	return ret
 }
 
-func (w *PodWatcher) diff(ctx context.Context, st store.RStore) (setup []PodWatch, teardown []PodWatch) {
+type podWatchTaskList struct {
+	setup    []PodWatch
+	teardown []PodWatch
+	newUIDs  map[types.UID]model.ManifestName
+}
+
+func (w *PodWatcher) diff(ctx context.Context, st store.RStore) podWatchTaskList {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
@@ -68,14 +89,26 @@ func (w *PodWatcher) diff(ctx context.Context, st store.RStore) (setup []PodWatc
 	defer w.mu.RUnlock()
 
 	atLeastOneK8s := false
+	newUIDs := make(map[types.UID]model.ManifestName)
 	var neededWatches []PodWatch
-	for _, m := range state.Manifests() {
-		if m.IsK8s() {
-			atLeastOneK8s = true
-			for _, ls := range m.K8sTarget().ExtraPodSelectors {
-				if !ls.Empty() {
-					neededWatches = append(neededWatches, PodWatch{name: m.Name, labels: ls})
-				}
+	for _, mt := range state.Targets() {
+		if !mt.Manifest.IsK8s() {
+			continue
+		}
+
+		name := mt.Manifest.Name
+		atLeastOneK8s = true
+		for _, ls := range mt.Manifest.K8sTarget().ExtraPodSelectors {
+			if !ls.Empty() {
+				neededWatches = append(neededWatches, PodWatch{name: mt.Manifest.Name, labels: ls})
+			}
+		}
+
+		// Collect all the new UIDs since the last time we checked the engine state.
+		for id := range mt.State.K8sRuntimeState().DeployedUIDSet {
+			oldName := w.knownDeployedUIDs[id]
+			if name != oldName {
+				newUIDs[id] = name
 			}
 		}
 	}
@@ -83,13 +116,17 @@ func (w *PodWatcher) diff(ctx context.Context, st store.RStore) (setup []PodWatc
 		neededWatches = append(neededWatches, PodWatch{labels: k8s.TiltRunSelector()})
 	}
 
-	return subtract(neededWatches, w.watches), subtract(w.watches, neededWatches)
+	return podWatchTaskList{
+		setup:    subtract(neededWatches, w.watches),
+		teardown: subtract(w.watches, neededWatches),
+		newUIDs:  newUIDs,
+	}
 }
 
 func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {
-	setup, teardown := w.diff(ctx, st)
+	taskList := w.diff(ctx, st)
 
-	for _, pw := range setup {
+	for _, pw := range taskList.setup {
 		ctx, cancel := context.WithCancel(ctx)
 		pw.cancel = cancel
 		w.addWatch(pw)
@@ -102,9 +139,13 @@ func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {
 		go w.dispatchPodChangesLoop(ctx, ch, st)
 	}
 
-	for _, pw := range teardown {
+	for _, pw := range taskList.teardown {
 		pw.cancel()
 		w.removeWatch(pw)
+	}
+
+	if len(taskList.newUIDs) > 0 {
+		w.setupNewUIDs(ctx, st, taskList.newUIDs)
 	}
 }
 
@@ -126,19 +167,89 @@ func (w *PodWatcher) removeWatch(toRemove PodWatch) {
 	}
 }
 
-func (w *PodWatcher) triagePodUpdate(pod *v1.Pod) model.ManifestName {
-	manifestName := model.ManifestName(pod.ObjectMeta.Labels[k8s.ManifestNameLabel])
-	if manifestName != "" {
-		return manifestName
+// When new UIDs are deployed, go through all our known pods and dispatch
+// new actions. This handles the case where we get the Pod change event
+// before the deploy id shows up in the manifest, which is way more common than
+// you would think.
+func (w *PodWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs map[types.UID]model.ManifestName) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	for uid, mn := range newUIDs {
+		w.knownDeployedUIDs[uid] = mn
+
+		pod, ok := w.knownPods[uid]
+		if ok {
+			st.Dispatch(NewPodChangeAction(pod, mn))
+			continue
+		}
+
+		descendants := w.knownDescendentPodUIDs[uid]
+		for podUID := range descendants {
+			pod, ok := w.knownPods[podUID]
+			if ok {
+				st.Dispatch(NewPodChangeAction(pod, mn))
+			}
+		}
+	}
+}
+
+// Check to see if this pod corresponds to any of our manifests.
+//
+// Currently, we do this by comparing the pod UID and its owner UIDs against
+// what we've deployed to the cluster.
+//
+// If the pod doesn't match an existing deployed resource, keep it in local
+// state, so we can match it later if the owner UID shows up.
+func (w *PodWatcher) triagePodUpdate(pod *v1.Pod, objTree k8s.ObjectRefTree) model.ManifestName {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	uid := pod.UID
+	oldPod, ok := w.knownPods[uid]
+
+	// Throw out updates that are older than what we currently have.
+	//
+	// Note that this code also dispatches actions for updates where the new
+	// ResourceVersion == the old ResourceVersion. We do this deliberately to make
+	// testing much easier, because the test harness doesn't need to keep track of
+	// ResourceVersions.
+	olderThanKnown := ok && oldPod.ResourceVersion > pod.ResourceVersion
+	if olderThanKnown {
+		return ""
 	}
 
-	w.mu.RLock()
-	defer w.mu.RUnlock()
+	w.knownPods[uid] = pod
 
+	// Set up the descendent pod UID index
+	for _, ownerUID := range objTree.UIDs() {
+		if uid == ownerUID {
+			continue
+		}
+
+		set, ok := w.knownDescendentPodUIDs[ownerUID]
+		if !ok {
+			set = store.NewUIDSet()
+			w.knownDescendentPodUIDs[ownerUID] = set
+		}
+		set.Add(uid)
+	}
+
+	// Find the manifest name
+	for _, ownerUID := range objTree.UIDs() {
+		mn, ok := w.knownDeployedUIDs[ownerUID]
+		if ok {
+			return mn
+		}
+	}
+
+	// If we can't find the manifest based on owner, check to see if the pod any
+	// of the manifest-specific pod selectors.
+	//
+	// NOTE(nick): This code might be totally obsolete now that we triage
+	// pods by owner UID. It's meant to handle CRDs, but most CRDs should
+	// set owner reference appropriately.
 	podLabels := labels.Set(pod.ObjectMeta.GetLabels())
-
-	// if there's no ManifestNameLabel, then maybe it matches some manifest's
-	// ExtraPodSelectors
 	for _, watch := range w.watches {
 		if watch.name == "" {
 			continue
@@ -159,7 +270,13 @@ func (w *PodWatcher) dispatchPodChangesLoop(ctx context.Context, ch <-chan *v1.P
 				return
 			}
 
-			mn := w.triagePodUpdate(pod)
+			objTree, err := w.ownerFetcher.OwnerTreeOf(ctx, k8s.NewK8sEntity(pod))
+			if err != nil {
+				logger.Get(ctx).Infof("Handling pod update (%q): %v", pod.Name, err)
+				continue
+			}
+
+			mn := w.triagePodUpdate(pod, objTree)
 			if mn == "" {
 				continue
 			}
