@@ -15,11 +15,12 @@ exports[`ShareSnapshotModal renders with modal closed 1`] = `
       >
         close
       </button>
-      <button
-        onClick={[Function]}
+      <a
+        href="http://test.com"
+        target="_blank"
       >
         Open link in new tab
-      </button>
+      </a>
     </section>
     <hr />
     <section
@@ -56,11 +57,12 @@ exports[`ShareSnapshotModal renders with modal open 1`] = `
       >
         close
       </button>
-      <button
-        onClick={[Function]}
+      <a
+        href="http://test.com"
+        target="_blank"
       >
         Open link in new tab
-      </button>
+      </a>
     </section>
     <hr />
     <section
