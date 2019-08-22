@@ -57,6 +57,7 @@ type PodBuilder struct {
 	podID        string
 	phase        string
 	creationTime time.Time
+	deletionTime time.Time
 	deployID     model.DeployID
 	restartCount int
 
@@ -125,12 +126,17 @@ func (b PodBuilder) WithCreationTime(creationTime time.Time) PodBuilder {
 	return b
 }
 
+func (b PodBuilder) WithDeletionTime(deletionTime time.Time) PodBuilder {
+	b.deletionTime = deletionTime
+	return b
+}
+
 func (b PodBuilder) WithDeployID(deployID model.DeployID) PodBuilder {
 	b.deployID = deployID
 	return b
 }
 
-func (b PodBuilder) buildPodID() string {
+func (b PodBuilder) PodID() string {
 	if b.podID != "" {
 		return b.podID
 	}
@@ -142,6 +148,13 @@ func (b PodBuilder) buildCreationTime() metav1.Time {
 		return metav1.Time{Time: b.creationTime}
 	}
 	return metav1.Time{Time: time.Now()}
+}
+
+func (b PodBuilder) buildDeletionTime() *metav1.Time {
+	if !b.deletionTime.IsZero() {
+		return &metav1.Time{Time: b.deletionTime}
+	}
+	return nil
 }
 
 func (b PodBuilder) buildLabels(tSpec *v1.PodTemplateSpec) map[string]string {
@@ -171,7 +184,7 @@ func (b PodBuilder) buildImage(imageSpec string, index int) string {
 	// Use the pod ID as the image tag. This is kind of weird, but gets at the semantics
 	// we want (e.g., a new pod ID indicates that this is a new build).
 	// Tests that don't want this behavior should replace the image with setImage(pod, imageName)
-	return fmt.Sprintf("%s:%s", imageSpecRef.Name(), b.buildPodID())
+	return fmt.Sprintf("%s:%s", imageSpecRef.Name(), b.PodID())
 }
 
 func (b PodBuilder) buildContainerID(index int) string {
@@ -252,8 +265,9 @@ func (b PodBuilder) Build() *v1.Pod {
 
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:              b.buildPodID(),
+			Name:              b.PodID(),
 			CreationTimestamp: b.buildCreationTime(),
+			DeletionTimestamp: b.buildDeletionTime(),
 			Labels:            b.buildLabels(tSpec),
 		},
 		Spec: spec,
