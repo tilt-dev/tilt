@@ -28,7 +28,7 @@ exports[`ShareSnapshotModal renders with modal closed 1`] = `
       <p>
         Go to 
         <a
-          href=""
+          href="http://registertoken.com"
         >
           TiltCloud
         </a>
@@ -69,7 +69,7 @@ exports[`ShareSnapshotModal renders with modal open 1`] = `
       <p>
         Go to 
         <a
-          href=""
+          href="http://registertoken.com"
         >
           TiltCloud
         </a>

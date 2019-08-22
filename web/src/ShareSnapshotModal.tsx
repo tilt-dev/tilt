@@ -1,4 +1,4 @@
-import React from "react"
+import React, { PureComponent } from "react"
 import { Snapshot } from "./types"
 import "./ShareSnapshotModal.scss"
 
@@ -9,50 +9,57 @@ type props = {
   snapshotUrl: string
   registerTokenUrl: string
 }
-export default function ShareSnapshotModal(props: props) {
-  const showHideClassName = props.show
-    ? "modal display-block"
-    : "modal display-none"
-  const hasLink = props.snapshotUrl !== ""
-  if (!hasLink) {
+
+// TODO(dmiller): in the future this should also show if you are logged in and who you are
+export default class ShareSnapshotModal extends PureComponent<props> {
+  render() {
+    const showHideClassName = this.props.show
+      ? "modal display-block"
+      : "modal display-none"
+    const hasLink = this.props.snapshotUrl !== ""
+    if (!hasLink) {
+      return (
+        <div className={showHideClassName}>
+          <div className="modal-main">
+            <section className="modal-snapshotUrlWrap">
+              <button onClick={this.props.handleClose}>close</button>
+              <button onClick={() => this.props.handleSendSnapshot()}>
+                Share Snapshot
+              </button>
+            </section>
+            <hr />
+            {this.loggedOutTiltCloudCopy()}
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className={showHideClassName}>
         <div className="modal-main">
           <section className="modal-snapshotUrlWrap">
-            <button onClick={props.handleClose}>close</button>
-            <button onClick={() => props.handleSendSnapshot()}>
-              Share Snapshot
+            <button onClick={this.props.handleClose}>close</button>
+            <button onClick={() => window.open(this.props.snapshotUrl)}>
+              Open link in new tab
             </button>
           </section>
           <hr />
-          {loggedOutTiltCloudCopy(props.registerTokenUrl)}
+          {this.loggedOutTiltCloudCopy()}
         </div>
       </div>
     )
   }
 
-  return (
-    <div className={showHideClassName}>
-      <div className="modal-main">
-        <section className="modal-snapshotUrlWrap">
-          <button onClick={props.handleClose}>close</button>
-          <button onClick={() => window.open(props.snapshotUrl)}>
-            Open link in new tab
-          </button>
-        </section>
-        <hr />
-        {loggedOutTiltCloudCopy("")}
-      </div>
-    </div>
-  )
+  loggedOutTiltCloudCopy() {
+    return (
+      <section className="modal-cloud">
+        <p>
+          Go to <a href={this.props.registerTokenUrl}>TiltCloud</a> to manage
+          your snapshots.
+          <br />
+          (You'll just need to link your GitHub Account)
+        </p>
+      </section>
+    )
+  }
 }
-
-const loggedOutTiltCloudCopy = (registerTokenURL: string) => (
-  <section className="modal-cloud">
-    <p>
-      Go to <a href={registerTokenURL}>TiltCloud</a> to manage your snapshots.
-      <br />
-      (You'll just need to link your GitHub Account)
-    </p>
-  </section>
-)
