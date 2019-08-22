@@ -28,8 +28,7 @@ class TopBar extends PureComponent<TopBarProps> {
           numberOfAlerts={this.props.numberOfAlerts}
         />
         <section className="TopBar-tools">
-          {this.props.showSnapshotButton &&
-            renderSnapshotModal(this.props.handleOpenModal)}
+          {this.props.showSnapshotButton && this.renderSnapshotModal()}
           <SailInfo
             sailEnabled={this.props.sailEnabled}
             sailUrl={this.props.sailUrl}
@@ -38,14 +37,14 @@ class TopBar extends PureComponent<TopBarProps> {
       </div>
     )
   }
-}
 
-const renderSnapshotModal = (handleOpenModal: () => void) => {
-  return (
-    <section className="TopBar-snapshotUrlWrap">
-      <button onClick={handleOpenModal}>Share Snapshot</button>
-    </section>
-  )
+  renderSnapshotModal() {
+    return (
+      <section className="TopBar-snapshotUrlWrap">
+        <button onClick={this.props.handleOpenModal}>Share Snapshot</button>
+      </section>
+    )
+  }
 }
 
 export default TopBar
