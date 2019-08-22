@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"io"
+	"strings"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,6 +18,18 @@ import (
 func ParseYAMLFromString(yaml string) ([]K8sEntity, error) {
 	buf := bytes.NewBuffer([]byte(yaml))
 	return ParseYAML(buf)
+}
+
+func parseYAMLFromStringWithDeletedResources(yamlWithDeletedResources string) ([]K8sEntity, error) {
+	lines := strings.Split(yamlWithDeletedResources, "\n")
+	for len(lines) > 0 {
+		line := lines[0]
+		if !strings.HasSuffix(line, "deleted") {
+			break
+		}
+		lines = lines[1:]
+	}
+	return ParseYAMLFromString(strings.Join(lines, "\n"))
 }
 
 func decodeMetaList(list *metav1.List) ([]K8sEntity, error) {
