@@ -17,7 +17,7 @@ export default function ShareSnapshotModal(props: props) {
   if (!hasLink) {
     return (
       <div className={showHideClassName}>
-        <section className="modal-main">
+        <div className="modal-main">
           <section className="modal-snapshotUrlWrap">
             <button onClick={props.handleClose}>close</button>
             <button onClick={() => props.handleSendSnapshot()}>
@@ -26,14 +26,14 @@ export default function ShareSnapshotModal(props: props) {
           </section>
           <hr />
           {loggedOutTiltCloudCopy(props.registerTokenUrl)}
-        </section>
+        </div>
       </div>
     )
   }
 
   return (
     <div className={showHideClassName}>
-      <section className="modal-main">
+      <div className="modal-main">
         <section className="modal-snapshotUrlWrap">
           <button onClick={props.handleClose}>close</button>
           <button onClick={() => window.open(props.snapshotUrl)}>
@@ -42,7 +42,7 @@ export default function ShareSnapshotModal(props: props) {
         </section>
         <hr />
         {loggedOutTiltCloudCopy("")}
-      </section>
+      </div>
     </div>
   )
 }

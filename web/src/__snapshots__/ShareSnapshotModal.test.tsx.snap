@@ -4,7 +4,7 @@ exports[`ShareSnapshotModal renders with modal closed 1`] = `
 <div
   className="modal display-none"
 >
-  <section
+  <div
     className="modal-main"
   >
     <section
@@ -37,7 +37,7 @@ exports[`ShareSnapshotModal renders with modal closed 1`] = `
         (You'll just need to link your GitHub Account)
       </p>
     </section>
-  </section>
+  </div>
 </div>
 `;
 
@@ -45,7 +45,7 @@ exports[`ShareSnapshotModal renders with modal open 1`] = `
 <div
   className="modal display-block"
 >
-  <section
+  <div
     className="modal-main"
   >
     <section
@@ -78,6 +78,6 @@ exports[`ShareSnapshotModal renders with modal open 1`] = `
         (You'll just need to link your GitHub Account)
       </p>
     </section>
-  </section>
+  </div>
 </div>
 `;
