@@ -208,7 +208,6 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		b.nextDeployID = 0
 	}
 
-	st.Dispatch(DeployStartedAction{})
 	deployIDActions := NewDeployIDActionsForTargets(ids, dID)
 	for _, a := range deployIDActions {
 		st.Dispatch(a)
@@ -1837,7 +1836,7 @@ func TestUpper_ServiceEvent(t *testing.T) {
 
 	uid := f.b.resultsByID[manifest.K8sTarget().ID()].DeployedUIDs[0]
 	svc := servicebuilder.New(t, manifest).WithUID(uid).WithPort(8080).WithIP("1.2.3.4").Build()
-	dispatchServiceChange(f.store, svc, "")
+	dispatchServiceChange(f.store, svc, manifest.Name, "")
 
 	f.WaitUntilManifestState("lb updated", "foobar", func(ms store.ManifestState) bool {
 		return len(ms.K8sRuntimeState().LBs) > 0
@@ -1869,7 +1868,7 @@ func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 	uid := f.b.resultsByID[manifest.K8sTarget().ID()].DeployedUIDs[0]
 	sb := servicebuilder.New(t, manifest).WithUID(uid).WithPort(8080).WithIP("1.2.3.4")
 	svc := sb.Build()
-	dispatchServiceChange(f.store, svc, "")
+	dispatchServiceChange(f.store, svc, manifest.Name, "")
 
 	f.WaitUntilManifestState("lb url added", "foobar", func(ms store.ManifestState) bool {
 		url := ms.K8sRuntimeState().LBs[k8s.ServiceName(svc.Name)]
@@ -1880,7 +1879,7 @@ func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 	})
 
 	svc = sb.WithIP("").Build()
-	dispatchServiceChange(f.store, svc, "")
+	dispatchServiceChange(f.store, svc, manifest.Name, "")
 
 	f.WaitUntilManifestState("lb url removed", "foobar", func(ms store.ManifestState) bool {
 		url := ms.K8sRuntimeState().LBs[k8s.ServiceName(svc.Name)]

@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/servicebuilder"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
@@ -22,52 +22,84 @@ func TestServiceWatch(t *testing.T) {
 	f := newSWFixture(t)
 	defer f.TearDown()
 
-	f.addManifest("server")
+	nodePort := 9998
+	uid := types.UID("fake-uid")
+	manifest := f.addManifest("server")
+	f.addDeployedUID(manifest, uid)
 
 	f.sw.OnChange(f.ctx, f.store)
 
 	ls := k8s.TiltRunSelector()
-
-	nodePort := 9998
-
-	s := f.serviceNamed("foo", nodePort)
+	s := servicebuilder.New(f.t, manifest).
+		WithPort(9998).
+		WithNodePort(int32(nodePort)).
+		WithIP(string(f.nip)).
+		WithUID(uid).
+		Build()
 	f.kClient.EmitService(ls, s)
 
-	expectedSCA := ServiceChangeAction{Service: s, URL: &url.URL{
-		Scheme: "http",
-		Host:   fmt.Sprintf("%s:%d", f.nip, nodePort),
-		Path:   "/",
-	}}
+	expectedSCA := ServiceChangeAction{
+		Service:      s,
+		ManifestName: manifest.Name,
+		URL: &url.URL{
+			Scheme: "http",
+			Host:   fmt.Sprintf("%s:%d", f.nip, nodePort),
+			Path:   "/",
+		},
+	}
 
 	f.assertObservedServiceChangeActions(expectedSCA)
 }
 
-func (f *swFixture) addManifest(manifestName string) {
+// In many environments, we will get a Service change event
+// faster than the `kubectl apply` finishes. So we need to hold onto
+// the Service and dispatch an event when the UID returne by `kubectl apply`
+// shows up.
+func TestServiceWatchDeployIDDelayed(t *testing.T) {
+	f := newSWFixture(t)
+	defer f.TearDown()
+
+	uid := types.UID("fake-uid")
+	manifest := f.addManifest("server")
+
+	f.sw.OnChange(f.ctx, f.store)
+
+	ls := k8s.TiltRunSelector()
+	s := servicebuilder.New(f.t, manifest).
+		WithUID(uid).
+		Build()
+	f.kClient.EmitService(ls, s)
+	f.waitUntilServiceKnown(uid)
+
+	f.addDeployedUID(manifest, uid)
+	f.sw.OnChange(f.ctx, f.store)
+
+	expectedSCA := ServiceChangeAction{
+		Service:      s,
+		ManifestName: manifest.Name,
+	}
+	f.assertObservedServiceChangeActions(expectedSCA)
+}
+
+func (f *swFixture) addManifest(manifestName string) model.Manifest {
 	state := f.store.LockMutableStateForTesting()
+	defer f.store.UnlockMutableState()
 	state.WatchFiles = true
 	dt := model.K8sTarget{Name: model.TargetName(manifestName)}
 	m := model.Manifest{Name: model.ManifestName(manifestName)}.WithDeployTarget(dt)
 	state.UpsertManifestTarget(store.NewManifestTarget(m))
-	f.store.UnlockMutableState()
+	return m
 }
 
-func (f *swFixture) serviceNamed(name string, nodePort int) *corev1.Service {
-	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
-		Spec: corev1.ServiceSpec{
-			Ports: []corev1.ServicePort{{Port: 9998, NodePort: int32(nodePort)}},
-		},
-		Status: corev1.ServiceStatus{
-			LoadBalancer: corev1.LoadBalancerStatus{
-				Ingress: []corev1.LoadBalancerIngress{
-					{
-						IP:       string(f.nip),
-						Hostname: string(f.nip),
-					},
-				},
-			},
-		},
+func (f *swFixture) addDeployedUID(m model.Manifest, uid types.UID) {
+	state := f.store.LockMutableStateForTesting()
+	defer f.store.UnlockMutableState()
+	mState, ok := state.ManifestState(m.Name)
+	if !ok {
+		f.t.Fatalf("Unknown manifest: %s", m.Name)
 	}
+	runtimeState := mState.GetOrCreateK8sRuntimeState()
+	runtimeState.DeployedUIDSet[uid] = true
 }
 
 type swFixture struct {
@@ -131,4 +163,20 @@ func (f *swFixture) assertObservedServiceChangeActions(expectedSCAs ...ServiceCh
 	if !assert.Equal(f.t, expectedSCAs, observedSCAs) {
 		f.t.FailNow()
 	}
+}
+
+func (f *swFixture) waitUntilServiceKnown(uid types.UID) {
+	start := time.Now()
+	for time.Since(start) < 200*time.Millisecond {
+		f.sw.mu.Lock()
+		_, known := f.sw.knownServices[uid]
+		f.sw.mu.Unlock()
+		if known {
+			return
+		}
+
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	f.t.Fatalf("timeout waiting for service with UID: %s", uid)
 }

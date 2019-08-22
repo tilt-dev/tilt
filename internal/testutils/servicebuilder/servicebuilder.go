@@ -15,9 +15,10 @@ type ServiceBuilder struct {
 	t        testing.TB
 	manifest model.Manifest
 
-	uid  types.UID
-	port int32
-	ip   string
+	uid      types.UID
+	port     int32
+	nodePort int32
+	ip       string
 }
 
 func New(t testing.TB, manifest model.Manifest) ServiceBuilder {
@@ -34,6 +35,11 @@ func (sb ServiceBuilder) WithUID(uid types.UID) ServiceBuilder {
 
 func (sb ServiceBuilder) WithPort(port int32) ServiceBuilder {
 	sb.port = port
+	return sb
+}
+
+func (sb ServiceBuilder) WithNodePort(port int32) ServiceBuilder {
+	sb.nodePort = port
 	return sb
 }
 
@@ -55,8 +61,8 @@ func (sb ServiceBuilder) getUid() types.UID {
 
 func (sb ServiceBuilder) Build() *v1.Service {
 	ports := []v1.ServicePort{}
-	if sb.port != 0 {
-		ports = append(ports, v1.ServicePort{Port: sb.port})
+	if sb.port != 0 || sb.nodePort != 0 {
+		ports = append(ports, v1.ServicePort{Port: sb.port, NodePort: sb.nodePort})
 	}
 	ingress := []v1.LoadBalancerIngress{}
 	if sb.ip != "" {

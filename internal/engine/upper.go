@@ -191,8 +191,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleAnalyticsOptAction(state, action)
 	case store.AnalyticsNudgeSurfacedAction:
 		handleAnalyticsNudgeSurfacedAction(ctx, state)
-	case DeployStartedAction:
-		handleDeployStartedAction(state)
 	case store.LogEvent:
 		// handled as a LogAction, do nothing
 
@@ -243,18 +241,10 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 
 func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, cb BuildCompleteAction) error {
 	defer func() {
-		deferred := engineState.DeployActionsDeferred
-		engineState.DeployActionsDeferred = nil
 		engineState.CurrentlyBuilding = ""
-		engineState.DeployInProgress = false
 
 		if engineState.CompletedBuildCount == engineState.InitialBuildsQueued {
 			logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
-		}
-
-		// Process all the pod and service change actions that were deferred.
-		for _, action := range deferred {
-			upperReducerFn(ctx, engineState, action)
 		}
 	}()
 
@@ -592,13 +582,8 @@ func sourcePrefix(n model.ManifestName) string {
 }
 
 func handleServiceEvent(ctx context.Context, state *store.EngineState, action ServiceChangeAction) {
-	if state.DeployInProgress {
-		state.DeployActionsDeferred = append(state.DeployActionsDeferred, action)
-		return
-	}
-
 	service := action.Service
-	ms, ok := state.ManifestStateForUID(service.UID)
+	ms, ok := state.ManifestState(action.ManifestName)
 	if !ok {
 		return
 	}
@@ -738,8 +723,4 @@ func handleAnalyticsNudgeSurfacedAction(ctx context.Context, state *store.Engine
 		tiltanalytics.Get(ctx).IncrIfUnopted("analytics.nudge.surfaced")
 		state.AnalyticsNudgeSurfaced = true
 	}
-}
-
-func handleDeployStartedAction(state *store.EngineState) {
-	state.DeployInProgress = true
 }
