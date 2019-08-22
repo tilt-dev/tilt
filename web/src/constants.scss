@@ -48,6 +48,7 @@ $statusbar-tiltPanel-width: $spacing-unit * 1.75;
 
 $analyticsNudge-height: $tabnav-height * 1.5;
 
+$z-modal: 2001;
 $z-analyticsNudge: 2000;
 $z-statusbar: 1000;
 $z-sidebar: 1000;
@@ -61,4 +62,9 @@ $animation-timing: 200ms;
   line-height: 1;
   font-size: $font-size-small;
   text-transform: uppercase;
+}
+
+.u-hide {
+  display: none !important;
+  visibility: hidden !important;
 }

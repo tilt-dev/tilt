@@ -27,20 +27,22 @@ type HudProps = {
   history: History
 }
 
+type HudView = {
+  Resources: Array<Resource>
+  Log: string
+  LogTimestamps: boolean
+  SailEnabled: boolean
+  SailURL: string
+  NeedsAnalyticsNudge: boolean
+  RunningTiltBuild: TiltBuild
+  LatestTiltBuild: TiltBuild
+  FeatureFlags: { [featureFlag: string]: boolean }
+  RegisterTokenURL: string
+}
+
 type HudState = {
   Message: string
-  View: {
-    Resources: Array<Resource>
-    Log: string
-    LogTimestamps: boolean
-    SailEnabled: boolean
-    SailURL: string
-    NeedsAnalyticsNudge: boolean
-    RunningTiltBuild: TiltBuild
-    LatestTiltBuild: TiltBuild
-    FeatureFlags: { [featureFlag: string]: boolean }
-    RegisterTokenURL: string
-  } | null
+  View: HudView | null
   IsSidebarClosed: boolean
   SnapshotLink: string
   showSnapshotModal: boolean
@@ -346,18 +348,11 @@ class HUD extends Component<HudProps, HudState> {
     }
     let runningVersion = view && view.RunningTiltBuild
     let latestVersion = view && view.LatestTiltBuild
-    let registerTokenUrl = (view && view.RegisterTokenURL) || ""
-
+    let shareSnapshotModal = this.renderShareSnapshotModal(view)
     return (
       <div className="HUD">
         <AnalyticsNudge needsNudge={needsNudge} />
-        <ShareSnapshotModal
-          handleSendSnapshot={this.sendSnapshot.bind(this, this.state)}
-          handleClose={() => this.setState({ showSnapshotModal: false })}
-          show={this.state.showSnapshotModal}
-          snapshotUrl={this.state.SnapshotLink}
-          registerTokenUrl={registerTokenUrl}
-        />
+        {shareSnapshotModal}
         <Switch>
           <Route
             path={this.path("/r/:name/alerts")}
@@ -454,6 +449,21 @@ class HUD extends Component<HudProps, HudState> {
           <Route component={NoMatch} />
         </Switch>
       </div>
+    )
+  }
+
+  renderShareSnapshotModal(view: HudView | null) {
+    let handleClose = () => this.setState({ showSnapshotModal: false })
+    let handleSendSnapshot = () => this.sendSnapshot(this.state)
+    let registerTokenUrl = (view && view.RegisterTokenURL) || ""
+    return (
+      <ShareSnapshotModal
+        handleSendSnapshot={handleSendSnapshot}
+        handleClose={handleClose}
+        snapshotUrl={this.state.SnapshotLink}
+        registerTokenUrl={registerTokenUrl}
+        isOpen={this.state.showSnapshotModal}
+      />
     )
   }
 }
