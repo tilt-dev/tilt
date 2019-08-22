@@ -39,9 +39,9 @@ export default class ShareSnapshotModal extends PureComponent<props> {
         <div className="modal-main">
           <section className="modal-snapshotUrlWrap">
             <button onClick={this.props.handleClose}>close</button>
-            <button onClick={() => window.open(this.props.snapshotUrl)}>
+            <a href={this.props.snapshotUrl} target="_blank">
               Open link in new tab
-            </button>
+            </a>
           </section>
           <hr />
           {this.loggedOutTiltCloudCopy()}
