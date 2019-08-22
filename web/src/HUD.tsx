@@ -19,8 +19,9 @@ import AlertPane from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
 import NotFound from "./NotFound"
-import { numberOfAlerts, Alert, isK8sResourceInfo } from "./alerts"
+import { numberOfAlerts, isK8sResourceInfo } from "./alerts"
 import Features from "./feature"
+import ShareSnapshotModal from "./ShareSnapshotModal"
 
 type HudProps = {
   history: History
@@ -38,9 +39,11 @@ type HudState = {
     RunningTiltBuild: TiltBuild
     LatestTiltBuild: TiltBuild
     FeatureFlags: { [featureFlag: string]: boolean }
+    RegisterTokenURL: string
   } | null
   IsSidebarClosed: boolean
   SnapshotLink: string
+  showSnapshotModal: boolean
 }
 
 type NewSnapshotResponse = {
@@ -48,14 +51,6 @@ type NewSnapshotResponse = {
   url: string
 }
 
-function hudStatetoSnapshot(h: HUD): Snapshot {
-  //used this because hudState has extra fields we don't care about
-  return {
-    Message: h.state.Message,
-    View: h.state.View,
-    IsSidebarClosed: h.state.IsSidebarClosed,
-  }
-}
 // The Main HUD view, as specified in
 // https://docs.google.com/document/d/1VNIGfpC4fMfkscboW0bjYYFJl07um_1tsFrbN-Fu3FI/edit#heading=h.l8mmnclsuxl1
 class HUD extends Component<HudProps, HudState> {
@@ -96,9 +91,11 @@ class HUD extends Component<HudProps, HudState> {
           Dev: false,
         },
         FeatureFlags: {},
+        RegisterTokenURL: "",
       },
       IsSidebarClosed: false,
       SnapshotLink: "",
+      showSnapshotModal: false,
     }
 
     this.toggleSidebar = this.toggleSidebar.bind(this)
@@ -209,6 +206,8 @@ class HUD extends Component<HudProps, HudState> {
       )
     }
 
+    let handleOpenModal = () => this.setState({ showSnapshotModal: true })
+
     let topBarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name =
         props.match.params && props.match.params.name
@@ -227,10 +226,8 @@ class HUD extends Component<HudProps, HudState> {
               sailEnabled={sailEnabled}
               sailUrl={sailUrl}
               numberOfAlerts={numAlerts}
-              state={this.state}
-              handleSendSnapshot={this.sendSnapshot.bind(this)}
-              snapshotURL={this.state.SnapshotLink}
               showSnapshotButton={showSnapshot}
+              handleOpenModal={handleOpenModal}
             />
           )
         }
@@ -251,10 +248,8 @@ class HUD extends Component<HudProps, HudState> {
           sailEnabled={sailEnabled}
           sailUrl={sailUrl}
           numberOfAlerts={numAlerts}
-          state={this.state}
-          handleSendSnapshot={this.sendSnapshot.bind(this)}
-          snapshotURL={this.state.SnapshotLink}
           showSnapshotButton={showSnapshot}
+          handleOpenModal={handleOpenModal}
         />
       )
     }
@@ -351,10 +346,18 @@ class HUD extends Component<HudProps, HudState> {
     }
     let runningVersion = view && view.RunningTiltBuild
     let latestVersion = view && view.LatestTiltBuild
+    let registerTokenUrl = (view && view.RegisterTokenURL) || ""
 
     return (
       <div className="HUD">
         <AnalyticsNudge needsNudge={needsNudge} />
+        <ShareSnapshotModal
+          handleSendSnapshot={this.sendSnapshot.bind(this, this.state)}
+          handleClose={() => this.setState({ showSnapshotModal: false })}
+          show={this.state.showSnapshotModal}
+          snapshotUrl={this.state.SnapshotLink}
+          registerTokenUrl={registerTokenUrl}
+        />
         <Switch>
           <Route
             path={this.path("/r/:name/alerts")}

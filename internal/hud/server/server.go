@@ -13,6 +13,7 @@ import (
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
+	"github.com/windmilleng/tilt/internal/cloud"
 	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
@@ -21,8 +22,6 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
-//TODO TFT: change snapshot url to be snapshot.tilt.dev
-const tiltSnapshotDomain = "alerts.tilt.dev"
 const httpTimeOut = 5 * time.Second
 
 type analyticsPayload struct {
@@ -238,11 +237,11 @@ type snapshotIDResponse struct {
 }
 
 func templateSnapshotURL(id SnapshotID) string {
-	return fmt.Sprintf("https://%s/snapshot/%s", tiltSnapshotDomain, id)
+	return fmt.Sprintf("https://%s/snapshot/%s", cloud.Domain, id)
 }
 
 func newSnapshotURL() string {
-	return fmt.Sprintf("https://%s/api/snapshot/new", tiltSnapshotDomain)
+	return fmt.Sprintf("https://%s/api/snapshot/new", cloud.Domain)
 }
 
 func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Request) {
