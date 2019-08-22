@@ -43,7 +43,7 @@ type HudState = {
   } | null
   IsSidebarClosed: boolean
   SnapshotLink: string
-  ShowSnapshotModal: boolean
+  showSnapshotModal: boolean
 }
 
 type NewSnapshotResponse = {
@@ -95,7 +95,7 @@ class HUD extends Component<HudProps, HudState> {
       },
       IsSidebarClosed: false,
       SnapshotLink: "",
-      ShowSnapshotModal: false,
+      showSnapshotModal: false,
     }
 
     this.toggleSidebar = this.toggleSidebar.bind(this)
@@ -206,7 +206,7 @@ class HUD extends Component<HudProps, HudState> {
       )
     }
 
-    let handleOpenModal = () => this.setState({ ShowSnapshotModal: true })
+    let handleOpenModal = () => this.setState({ showSnapshotModal: true })
 
     let topBarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name =
@@ -353,8 +353,8 @@ class HUD extends Component<HudProps, HudState> {
         <AnalyticsNudge needsNudge={needsNudge} />
         <ShareSnapshotModal
           handleSendSnapshot={this.sendSnapshot.bind(this, this.state)}
-          handleClose={() => this.setState({ ShowSnapshotModal: false })}
-          show={this.state.ShowSnapshotModal}
+          handleClose={() => this.setState({ showSnapshotModal: false })}
+          show={this.state.showSnapshotModal}
           snapshotUrl={this.state.SnapshotLink}
           registerTokenUrl={registerTokenUrl}
         />
