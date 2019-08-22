@@ -1038,15 +1038,6 @@ func TestHudUpdated(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-func (f *testFixture) testPodWithDeployID(podID string, manifest model.Manifest, phase string, creationTime time.Time, deployID model.DeployID) *v1.Pod {
-	return podbuilder.New(f.T(), manifest).
-		WithPodID(podID).
-		WithPhase(phase).
-		WithCreationTime(creationTime).
-		WithDeployID(deployID).
-		Build()
-}
-
 func TestPodEvent(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -1083,17 +1074,20 @@ func TestPodEventOrdering(t *testing.T) {
 	now := time.Now()
 	deployIDPast := model.DeployID(111)
 	deployIDNow := model.DeployID(999)
-	podAPast := f.testPodWithDeployID("pod-a", manifest, "Running", past, deployIDPast)
-	podBPast := f.testPodWithDeployID("pod-b", manifest, "Running", past, deployIDPast)
-	podANow := f.testPodWithDeployID("pod-a", manifest, "Running", now, deployIDNow)
-	podBNow := f.testPodWithDeployID("pod-b", manifest, "Running", now, deployIDNow)
-	podCNow := f.testPodWithDeployID("pod-b", manifest, "Running", now, deployIDNow)
-	podCNowDeleting := f.testPodWithDeployID("pod-c", manifest, "Running", now, deployIDNow)
-	podCNowDeleting.DeletionTimestamp = &metav1.Time{Time: now}
+	pb := podbuilder.New(f.T(), manifest)
+	pbA := pb.WithPodID("pod-a")
+	pbB := pb.WithPodID("pod-b")
+	pbC := pb.WithPodID("pod-c")
+	podAPast := pbA.WithCreationTime(past).WithDeployID(deployIDPast)
+	podBPast := pbB.WithCreationTime(past).WithDeployID(deployIDPast)
+	podANow := pbA.WithCreationTime(now).WithDeployID(deployIDNow)
+	podBNow := pbB.WithCreationTime(now).WithDeployID(deployIDNow)
+	podCNow := pbC.WithCreationTime(now).WithDeployID(deployIDNow)
+	podCNowDeleting := podCNow.WithDeletionTime(now)
 
 	// Test the pod events coming in in different orders,
 	// and the manifest ends up with podANow and podBNow
-	podOrders := [][]*v1.Pod{
+	podOrders := [][]podbuilder.PodBuilder{
 		{podAPast, podBPast, podANow, podBNow},
 		{podAPast, podANow, podBPast, podBNow},
 		{podANow, podAPast, podBNow, podBPast},
@@ -1114,12 +1108,12 @@ func TestPodEventOrdering(t *testing.T) {
 				return ms.DeployID == deployIDNow
 			})
 
-			for _, pod := range order {
-				f.podEvent(pod)
+			for _, pb := range order {
+				f.podEvent(pb.Build())
 			}
 
 			f.upper.store.Dispatch(PodLogAction{
-				PodID:    k8s.PodIDFromPod(podBNow),
+				PodID:    k8s.PodID(podBNow.PodID()),
 				LogEvent: store.NewLogEvent("fe", []byte("pod b log\n")),
 			})
 
@@ -1191,7 +1185,7 @@ func TestPodEventContainerStatusWithoutImage(t *testing.T) {
 		return len(ms.BuildHistory) > 0
 	})
 
-	pod := f.testPodWithDeployID("my-pod", manifest, "Running", time.Now(), deployID)
+	pod := podbuilder.New(f.T(), manifest).WithDeployID(deployID).Build()
 	pod.Status = k8s.FakePodStatus(ref, "Running")
 
 	// If we have no image target to match container status by image ref,
@@ -1220,7 +1214,7 @@ func TestPodEventContainerStatusWithoutImage(t *testing.T) {
 	podState := store.Pod{}
 	f.WaitUntilManifestState("container status", "foobar", func(ms store.ManifestState) bool {
 		podState = ms.MostRecentPod()
-		return podState.PodID == "my-pod" && len(podState.Containers) > 0
+		return podState.PodID.String() == pod.Name && len(podState.Containers) > 0
 	})
 
 	// If we have no image target to match container by image ref, we just take the first one
@@ -1422,17 +1416,15 @@ func TestPodEventDeleted(t *testing.T) {
 	assert.True(t, call.oneState().IsEmpty())
 
 	creationTime := time.Now()
-	pod := podbuilder.New(f.T(), manifest).
-		WithCreationTime(creationTime).
-		Build()
-	f.podEvent(pod)
+	pb := podbuilder.New(f.T(), manifest).
+		WithCreationTime(creationTime)
+	f.podEvent(pb.Build())
 
 	f.WaitUntilManifestState("pod crashes", mn, func(state store.ManifestState) bool {
-		return state.K8sRuntimeState().ContainsID(k8s.PodID(pod.Name))
+		return state.K8sRuntimeState().ContainsID(k8s.PodID(pb.PodID()))
 	})
 
-	pod.DeletionTimestamp = &metav1.Time{Time: pod.CreationTimestamp.Add(time.Minute)}
-	f.podEvent(pod)
+	f.podEvent(pb.WithDeletionTime(creationTime.Add(time.Minute)).Build())
 
 	f.WaitUntilManifestState("podset is empty", mn, func(state store.ManifestState) bool {
 		return state.K8sRuntimeState().PodLen() == 0
