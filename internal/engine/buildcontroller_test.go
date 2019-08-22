@@ -33,7 +33,7 @@ func TestBuildControllerOnePod(t *testing.T) {
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	pod := podbuilder.New(f.T(), manifest).Build()
-	f.podEvent(pod)
+	f.podEvent(pod, manifest.Name)
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
@@ -59,8 +59,8 @@ func TestBuildControllerTooManyPodsForLiveUpdateErrorMessage(t *testing.T) {
 	p1 := podbuilder.New(t, manifest).WithPodID("pod1").Build()
 	p2 := podbuilder.New(t, manifest).WithPodID("pod2").Build()
 
-	f.podEvent(p1)
-	f.podEvent(p2)
+	f.podEvent(p1, manifest.Name)
+	f.podEvent(p2, manifest.Name)
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
@@ -90,8 +90,8 @@ func TestBuildControllerTooManyPodsForDockerBuildNoErrorMessage(t *testing.T) {
 	p1 := podbuilder.New(t, manifest).WithPodID("pod1").Build()
 	p2 := podbuilder.New(t, manifest).WithPodID("pod2").Build()
 
-	f.podEvent(p1)
-	f.podEvent(p2)
+	f.podEvent(p1, manifest.Name)
+	f.podEvent(p2, manifest.Name)
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
@@ -123,7 +123,7 @@ func TestBuildControllerIgnoresImageTags(t *testing.T) {
 		WithPodID("pod-id").
 		WithImage("image-foo:othertag").
 		Build()
-	f.podEvent(pod)
+	f.podEvent(pod, manifest.Name)
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
@@ -170,8 +170,8 @@ func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 	// Associate the pods with the manifest state
 	podA := podbuilder.New(f.T(), manifest).WithPodID("pod-a").Build()
 	podB := podbuilder.New(f.T(), manifest).WithPodID("pod-b").Build()
-	f.podEvent(podA)
-	f.podEvent(podB)
+	f.podEvent(podA, manifest.Name)
+	f.podEvent(podB, manifest.Name)
 
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
@@ -211,7 +211,7 @@ func TestBuildControllerTwoContainers(t *testing.T) {
 		Ready:       false,
 		ContainerID: "docker://cID-different-image",
 	})
-	f.podEvent(pod)
+	f.podEvent(pod, manifest.Name)
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
@@ -257,7 +257,7 @@ func TestBuildControllerWontContainerBuildWithSomeButNotAllReadyContainers(t *te
 		Ready:       false,
 		ContainerID: "docker://cID-same-image",
 	})
-	f.podEvent(pod)
+	f.podEvent(pod, manifest.Name)
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	// If even one of the containers matching this image is !ready, we have to do a
@@ -286,7 +286,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	f.b.nextLiveUpdateContainerIDs = []container.ID{podbuilder.FakeContainerID()}
 	pb := podbuilder.New(f.T(), manifest)
 	pod := pb.Build()
-	f.podEvent(pod)
+	f.podEvent(pod, manifest.Name)
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
@@ -298,7 +298,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	})
 
 	// Restart the pod with a new container id, to simulate a container restart.
-	f.podEvent(pb.WithContainerID("funnyContainerID").Build())
+	f.podEvent(pb.WithContainerID("funnyContainerID").Build(), manifest.Name)
 	call = f.nextCall()
 	assert.True(t, call.oneState().OneContainerInfo().Empty())
 	f.waitForCompletedBuildCount(3)
@@ -330,7 +330,7 @@ func TestCrashRebuildTwoContainersOneImage(t *testing.T) {
 	f.podEvent(podbuilder.New(t, manifest).
 		WithContainerIDAtIndex("c1", 0).
 		WithContainerIDAtIndex("c2", 1).
-		Build())
+		Build(), manifest.Name)
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
@@ -343,7 +343,7 @@ func TestCrashRebuildTwoContainersOneImage(t *testing.T) {
 	f.podEvent(podbuilder.New(t, manifest).
 		WithContainerID("c1").
 		WithContainerIDAtIndex("c3", 1).
-		Build())
+		Build(), manifest.Name)
 
 	call = f.nextCall()
 	f.waitForCompletedBuildCount(3)
@@ -379,7 +379,7 @@ func TestCrashRebuildTwoContainersTwoImages(t *testing.T) {
 	f.podEvent(podbuilder.New(t, manifest).
 		WithContainerIDAtIndex("c1", 0).
 		WithContainerIDAtIndex("c2", 1).
-		Build())
+		Build(), manifest.Name)
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
@@ -392,7 +392,7 @@ func TestCrashRebuildTwoContainersTwoImages(t *testing.T) {
 	f.podEvent(podbuilder.New(t, manifest).
 		WithContainerID("c1").
 		WithContainerIDAtIndex("c3", 1).
-		Build())
+		Build(), manifest.Name)
 
 	call = f.nextCall()
 	f.waitForCompletedBuildCount(3)
@@ -427,7 +427,7 @@ func TestRecordLiveUpdatedContainerIDsForFailedLiveUpdate(t *testing.T) {
 	f.podEvent(podbuilder.New(t, manifest).
 		WithContainerIDAtIndex("c1", 0).
 		WithContainerIDAtIndex("c2", 1).
-		Build())
+		Build(), manifest.Name)
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()

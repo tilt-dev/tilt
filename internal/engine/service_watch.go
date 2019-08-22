@@ -118,7 +118,7 @@ func (w *ServiceWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newU
 	}
 }
 
-func (w *ServiceWatcher) maybeRecordServiceUpdate(service *v1.Service) (*v1.Service, model.ManifestName) {
+func (w *ServiceWatcher) triageServiceUpdate(service *v1.Service) model.ManifestName {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -131,17 +131,17 @@ func (w *ServiceWatcher) maybeRecordServiceUpdate(service *v1.Service) (*v1.Serv
 	// to keep track of ResourceVersions
 	olderThanKnown := ok && oldService.ResourceVersion > service.ResourceVersion
 	if olderThanKnown {
-		return nil, ""
+		return ""
 	}
 
 	w.knownServices[uid] = service
 
 	manifestName, ok := w.knownDeployedUIDs[uid]
 	if !ok {
-		return nil, ""
+		return ""
 	}
 
-	return service, manifestName
+	return manifestName
 }
 
 func (w *ServiceWatcher) dispatchServiceChangesLoop(ctx context.Context, ch <-chan *v1.Service, st store.RStore) {
@@ -152,8 +152,8 @@ func (w *ServiceWatcher) dispatchServiceChangesLoop(ctx context.Context, ch <-ch
 				return
 			}
 
-			service, manifestName := w.maybeRecordServiceUpdate(service)
-			if service == nil {
+			manifestName := w.triageServiceUpdate(service)
+			if manifestName == "" {
 				continue
 			}
 
