@@ -352,10 +352,9 @@ class HUD extends Component<HudProps, HudState> {
       <div className="HUD">
         <AnalyticsNudge needsNudge={needsNudge} />
         <ShareSnapshotModal
-          handleSendSnapshot={this.sendSnapshot.bind(this)}
+          handleSendSnapshot={this.sendSnapshot.bind(this, this.state)}
           handleClose={() => this.setState({ ShowSnapshotModal: false })}
           show={this.state.ShowSnapshotModal}
-          state={this.state}
           snapshotUrl={this.state.SnapshotLink}
           registerTokenUrl={registerTokenUrl}
         />

@@ -3,10 +3,9 @@ import { Snapshot } from "./types"
 import "./ShareSnapshotModal.scss"
 
 type props = {
-  handleSendSnapshot: (snapshot: Snapshot) => void
+  handleSendSnapshot: () => void
   handleClose: () => void
   show: boolean
-  state: Snapshot
   snapshotUrl: string
   registerTokenUrl: string
 }
@@ -21,7 +20,7 @@ export default function ShareSnapshotModal(props: props) {
         <section className="modal-main">
           <section className="modal-snapshotUrlWrap">
             <button onClick={props.handleClose}>close</button>
-            <button onClick={() => props.handleSendSnapshot(props.state)}>
+            <button onClick={() => props.handleSendSnapshot()}>
               Share Snapshot
             </button>
           </section>
