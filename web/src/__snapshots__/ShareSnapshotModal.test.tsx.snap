@@ -1,85 +1,118 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`ShareSnapshotModal renders with modal closed 1`] = `
+exports[`ShareSnapshotModal renders with modal closed 1`] = `null`;
+
+exports[`ShareSnapshotModal renders with modal open 1`] = `
 <div
-  className="modal display-none"
+  className="ReactModal__Overlay ReactModal__Overlay--after-open"
+  onClick={[Function]}
+  onMouseDown={[Function]}
+  style={
+    Object {
+      "backgroundColor": "rgba(255, 255, 255, 0.75)",
+      "bottom": 0,
+      "left": 0,
+      "position": "fixed",
+      "right": 0,
+      "top": 0,
+    }
+  }
 >
   <div
-    className="modal-main"
+    className="ReactModal__Content ReactModal__Content--after-open ShareSnapshotModal"
+    onClick={[Function]}
+    onKeyDown={[Function]}
+    onMouseDown={[Function]}
+    onMouseUp={[Function]}
+    role="dialog"
+    style={Object {}}
+    tabIndex="-1"
   >
-    <section
-      className="modal-snapshotUrlWrap"
+    <div
+      className="ShareSnapshotModal-pane"
     >
-      <button
-        onClick={[Function]}
-      >
-        close
-      </button>
       <a
         href="http://test.com"
         target="_blank"
       >
         Open link in new tab
       </a>
-    </section>
-    <hr />
-    <section
-      className="modal-cloud"
+    </div>
+    <div
+      className="ShareSnapshotModal-pane"
     >
-      <p>
-        Go to 
-        <a
-          href="http://registertoken.com"
-        >
-          TiltCloud
-        </a>
-         to manage your snapshots.
-        <br />
-        (You'll just need to link your GitHub Account)
-      </p>
-    </section>
+      <div>
+        <div>
+          Go to 
+          <a
+            href="http://registertoken.com"
+          >
+            TiltCloud
+          </a>
+           to manage your snapshots.
+        </div>
+        <div>
+          (You'll just need to link your GitHub Account)
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 `;
 
-exports[`ShareSnapshotModal renders with modal open 1`] = `
+exports[`ShareSnapshotModal renders without snapshotUrl 1`] = `
 <div
-  className="modal display-block"
+  className="ReactModal__Overlay ReactModal__Overlay--after-open"
+  onClick={[Function]}
+  onMouseDown={[Function]}
+  style={
+    Object {
+      "backgroundColor": "rgba(255, 255, 255, 0.75)",
+      "bottom": 0,
+      "left": 0,
+      "position": "fixed",
+      "right": 0,
+      "top": 0,
+    }
+  }
 >
   <div
-    className="modal-main"
+    className="ReactModal__Content ReactModal__Content--after-open ShareSnapshotModal"
+    onClick={[Function]}
+    onKeyDown={[Function]}
+    onMouseDown={[Function]}
+    onMouseUp={[Function]}
+    role="dialog"
+    style={Object {}}
+    tabIndex="-1"
   >
-    <section
-      className="modal-snapshotUrlWrap"
+    <div
+      className="ShareSnapshotModal-pane"
     >
       <button
         onClick={[Function]}
       >
-        close
+        Share Snapshot
       </button>
-      <a
-        href="http://test.com"
-        target="_blank"
-      >
-        Open link in new tab
-      </a>
-    </section>
-    <hr />
-    <section
-      className="modal-cloud"
+    </div>
+    <div
+      className="ShareSnapshotModal-pane"
     >
-      <p>
-        Go to 
-        <a
-          href="http://registertoken.com"
-        >
-          TiltCloud
-        </a>
-         to manage your snapshots.
-        <br />
-        (You'll just need to link your GitHub Account)
-      </p>
-    </section>
+      <div>
+        <div>
+          Go to 
+          <a
+            href="http://registertoken.com"
+          >
+            TiltCloud
+          </a>
+           to manage your snapshots.
+        </div>
+        <div>
+          (You'll just need to link your GitHub Account)
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 `;

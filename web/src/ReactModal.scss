@@ -1,0 +1,8 @@
+@import "constants";
+
+.ReactModal__Overlay {
+  z-index: $z-modal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
