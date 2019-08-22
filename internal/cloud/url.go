@@ -1,4 +1,4 @@
-package tft
+package cloud
 
 import (
 	"fmt"

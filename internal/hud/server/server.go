@@ -16,7 +16,7 @@ import (
 	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/tft"
+	"github.com/windmilleng/tilt/internal/cloud"
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -237,11 +237,11 @@ type snapshotIDResponse struct {
 }
 
 func templateSnapshotURL(id SnapshotID) string {
-	return fmt.Sprintf("https://%s/snapshot/%s", tft.Domain, id)
+	return fmt.Sprintf("https://%s/snapshot/%s", cloud.Domain, id)
 }
 
 func newSnapshotURL() string {
-	return fmt.Sprintf("https://%s/api/snapshot/new", tft.Domain)
+	return fmt.Sprintf("https://%s/api/snapshot/new", cloud.Domain)
 }
 
 func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Request) {
