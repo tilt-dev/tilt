@@ -35,40 +35,18 @@ func NewServiceWatcher(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher, nodeIP k8
 	}
 }
 
-type serviceWatcherTaskList struct {
-	needsWatch bool
-	newUIDs    map[types.UID]model.ManifestName
-}
-
-func (w *ServiceWatcher) diff(st store.RStore) serviceWatcherTaskList {
+func (w *ServiceWatcher) diff(st store.RStore) watcherTaskList {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
-	newUIDs := make(map[types.UID]model.ManifestName)
-	atLeastOneK8s := false
-	for _, mt := range state.Targets() {
-		if !mt.Manifest.IsK8s() {
-			continue
-		}
-
-		name := mt.Manifest.Name
-		atLeastOneK8s = true
-		for id := range mt.State.K8sRuntimeState().DeployedUIDSet {
-			oldName := w.knownDeployedUIDs[id]
-			if name != oldName {
-				newUIDs[id] = name
-			}
-		}
+	taskList := createWatcherTaskList(state, w.knownDeployedUIDs)
+	if w.watching {
+		taskList.needsWatch = false
 	}
-
-	needsWatch := atLeastOneK8s && state.WatchFiles && !w.watching
-	return serviceWatcherTaskList{
-		needsWatch: needsWatch,
-		newUIDs:    newUIDs,
-	}
+	return taskList
 }
 
 func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore) {

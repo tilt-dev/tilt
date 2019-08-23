@@ -76,9 +76,9 @@ func subtract(a, b []PodWatch) []PodWatch {
 }
 
 type podWatchTaskList struct {
+	watcherTaskList
 	setup    []PodWatch
 	teardown []PodWatch
-	newUIDs  map[types.UID]model.ManifestName
 }
 
 func (w *PodWatcher) diff(ctx context.Context, st store.RStore) podWatchTaskList {
@@ -88,38 +88,23 @@ func (w *PodWatcher) diff(ctx context.Context, st store.RStore) podWatchTaskList
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
-	atLeastOneK8s := false
-	newUIDs := make(map[types.UID]model.ManifestName)
+	taskList := createWatcherTaskList(state, w.knownDeployedUIDs)
 	var neededWatches []PodWatch
 	for _, mt := range state.Targets() {
-		if !mt.Manifest.IsK8s() {
-			continue
-		}
-
-		name := mt.Manifest.Name
-		atLeastOneK8s = true
 		for _, ls := range mt.Manifest.K8sTarget().ExtraPodSelectors {
 			if !ls.Empty() {
 				neededWatches = append(neededWatches, PodWatch{name: mt.Manifest.Name, labels: ls})
 			}
 		}
-
-		// Collect all the new UIDs since the last time we checked the engine state.
-		for id := range mt.State.K8sRuntimeState().DeployedUIDSet {
-			oldName := w.knownDeployedUIDs[id]
-			if name != oldName {
-				newUIDs[id] = name
-			}
-		}
 	}
-	if atLeastOneK8s {
+	if taskList.needsWatch {
 		neededWatches = append(neededWatches, PodWatch{labels: k8s.TiltRunSelector()})
 	}
 
 	return podWatchTaskList{
-		setup:    subtract(neededWatches, w.watches),
-		teardown: subtract(w.watches, neededWatches),
-		newUIDs:  newUIDs,
+		watcherTaskList: taskList,
+		setup:           subtract(neededWatches, w.watches),
+		teardown:        subtract(w.watches, neededWatches),
 	}
 }
 
