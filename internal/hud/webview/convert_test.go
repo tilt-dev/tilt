@@ -156,6 +156,7 @@ func TestFeatureFlags(t *testing.T) {
 
 func TestRegisterTokenURL(t *testing.T) {
 	state := newState(nil)
+	state.CloudAddress = "alerts.tilt.dev"
 	state.Token = token.Token("aaaaaaa")
 
 	v := StateToWebView(*state)
