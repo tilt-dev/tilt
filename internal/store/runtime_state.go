@@ -18,7 +18,11 @@ type RuntimeState interface {
 }
 
 type K8sRuntimeState struct {
-	PodDeployID    model.DeployID // Deploy that pods correspond to
+	// The ancestor that we match pods against to associate them with this manifest.
+	// If we deployed Pod YAML, this will be the Pod UID.
+	// In many cases, this will be a Deployment UID.
+	PodAncestorUID types.UID
+
 	Pods           map[k8s.PodID]*Pod
 	LBs            map[k8s.ServiceName]*url.URL
 	DeployedUIDSet UIDSet
@@ -26,14 +30,13 @@ type K8sRuntimeState struct {
 
 func (K8sRuntimeState) RuntimeState() {}
 
-func NewK8sRuntimeState(deployID model.DeployID, pods ...Pod) K8sRuntimeState {
+func NewK8sRuntimeState(pods ...Pod) K8sRuntimeState {
 	podMap := make(map[k8s.PodID]*Pod, len(pods))
 	for _, pod := range pods {
 		p := pod
 		podMap[p.PodID] = &p
 	}
 	return K8sRuntimeState{
-		PodDeployID:    deployID,
 		Pods:           podMap,
 		LBs:            make(map[k8s.ServiceName]*url.URL),
 		DeployedUIDSet: NewUIDSet(),

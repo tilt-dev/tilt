@@ -165,7 +165,7 @@ func (w *PodWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs 
 
 		pod, ok := w.knownPods[uid]
 		if ok {
-			st.Dispatch(NewPodChangeAction(pod, mn))
+			st.Dispatch(NewPodChangeAction(pod, mn, uid))
 			continue
 		}
 
@@ -173,7 +173,7 @@ func (w *PodWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs 
 		for podUID := range descendants {
 			pod, ok := w.knownPods[podUID]
 			if ok {
-				st.Dispatch(NewPodChangeAction(pod, mn))
+				st.Dispatch(NewPodChangeAction(pod, mn, uid))
 			}
 		}
 	}
@@ -182,11 +182,12 @@ func (w *PodWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs 
 // Check to see if this pod corresponds to any of our manifests.
 //
 // Currently, we do this by comparing the pod UID and its owner UIDs against
-// what we've deployed to the cluster.
+// what we've deployed to the cluster. Returns the ManifestName and the UID that
+// it matched against.
 //
 // If the pod doesn't match an existing deployed resource, keep it in local
 // state, so we can match it later if the owner UID shows up.
-func (w *PodWatcher) triagePodUpdate(pod *v1.Pod, objTree k8s.ObjectRefTree) model.ManifestName {
+func (w *PodWatcher) triagePodUpdate(pod *v1.Pod, objTree k8s.ObjectRefTree) (model.ManifestName, types.UID) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -201,7 +202,7 @@ func (w *PodWatcher) triagePodUpdate(pod *v1.Pod, objTree k8s.ObjectRefTree) mod
 	// ResourceVersions.
 	olderThanKnown := ok && oldPod.ResourceVersion > pod.ResourceVersion
 	if olderThanKnown {
-		return ""
+		return "", ""
 	}
 
 	w.knownPods[uid] = pod
@@ -224,7 +225,7 @@ func (w *PodWatcher) triagePodUpdate(pod *v1.Pod, objTree k8s.ObjectRefTree) mod
 	for _, ownerUID := range objTree.UIDs() {
 		mn, ok := w.knownDeployedUIDs[ownerUID]
 		if ok {
-			return mn
+			return mn, ownerUID
 		}
 	}
 
@@ -241,10 +242,10 @@ func (w *PodWatcher) triagePodUpdate(pod *v1.Pod, objTree k8s.ObjectRefTree) mod
 		}
 
 		if watch.labels.Matches(podLabels) {
-			return watch.name
+			return watch.name, ""
 		}
 	}
-	return ""
+	return "", ""
 }
 
 func (w *PodWatcher) dispatchPodChangesLoop(ctx context.Context, ch <-chan *v1.Pod, st store.RStore) {
@@ -261,12 +262,12 @@ func (w *PodWatcher) dispatchPodChangesLoop(ctx context.Context, ch <-chan *v1.P
 				continue
 			}
 
-			mn := w.triagePodUpdate(pod, objTree)
+			mn, ancestorUID := w.triagePodUpdate(pod, objTree)
 			if mn == "" {
 				continue
 			}
 
-			st.Dispatch(NewPodChangeAction(pod, mn))
+			st.Dispatch(NewPodChangeAction(pod, mn, ancestorUID))
 		case <-ctx.Done():
 			return
 		}
