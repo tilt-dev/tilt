@@ -1,12 +1,15 @@
 package k8s
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -68,7 +71,7 @@ func (v OwnerFetcher) setCachedTree(id types.UID, tree ObjectRefTree) {
 	v.cache[id] = tree
 }
 
-func (v OwnerFetcher) OwnerTreeOf(entity K8sEntity) (ObjectRefTree, error) {
+func (v OwnerFetcher) OwnerTreeOf(ctx context.Context, entity K8sEntity) (ObjectRefTree, error) {
 	meta := entity.meta()
 	uid := meta.GetUID()
 	if uid == "" {
@@ -80,22 +83,15 @@ func (v OwnerFetcher) OwnerTreeOf(entity K8sEntity) (ObjectRefTree, error) {
 		return tree, nil
 	}
 
-	apiVersion, kind := entity.GVK().ToAPIVersionAndKind()
-	ref := v1.ObjectReference{
-		Kind:       kind,
-		APIVersion: apiVersion,
-		Name:       meta.GetName(),
-		Namespace:  meta.GetNamespace(),
-		UID:        meta.GetUID(),
-	}
+	ref := entity.ToObjectReference()
 	tree = ObjectRefTree{Ref: ref}
 
-	owners, err := v.ownersOfMeta(meta)
+	owners, err := v.ownersOfMeta(ctx, meta)
 	if err != nil {
 		return ObjectRefTree{}, err
 	}
 	for _, owner := range owners {
-		ownerTree, err := v.OwnerTreeOf(owner)
+		ownerTree, err := v.OwnerTreeOf(ctx, owner)
 		if err != nil {
 			return ObjectRefTree{}, err
 		}
@@ -105,19 +101,12 @@ func (v OwnerFetcher) OwnerTreeOf(entity K8sEntity) (ObjectRefTree, error) {
 	return tree, nil
 }
 
-func (v OwnerFetcher) ownersOfMeta(meta k8sMeta) ([]K8sEntity, error) {
+func (v OwnerFetcher) ownersOfMeta(ctx context.Context, meta k8sMeta) ([]K8sEntity, error) {
 	owners := meta.GetOwnerReferences()
 	result := make([]K8sEntity, 0, len(owners))
 	for _, owner := range owners {
-		ref := v1.ObjectReference{
-			APIVersion: owner.APIVersion,
-			Kind:       owner.Kind,
-			Namespace:  meta.GetNamespace(),
-			Name:       owner.Name,
-			UID:        owner.UID,
-		}
-
-		owner, err := v.kCli.GetByReference(ref)
+		ref := OwnerRefToObjectRef(owner, meta.GetNamespace())
+		owner, err := v.kCli.GetByReference(ctx, ref)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				continue
@@ -128,4 +117,25 @@ func (v OwnerFetcher) ownersOfMeta(meta k8sMeta) ([]K8sEntity, error) {
 	}
 
 	return result, nil
+}
+
+func OwnerRefToObjectRef(owner metav1.OwnerReference, namespace string) v1.ObjectReference {
+	return v1.ObjectReference{
+		APIVersion: owner.APIVersion,
+		Kind:       owner.Kind,
+		Namespace:  namespace,
+		Name:       owner.Name,
+		UID:        owner.UID,
+	}
+}
+
+func RuntimeObjToOwnerRef(obj runtime.Object) metav1.OwnerReference {
+	e := NewK8sEntity(obj)
+	ref := e.ToObjectReference()
+	return metav1.OwnerReference{
+		APIVersion: ref.APIVersion,
+		Kind:       ref.Kind,
+		Name:       ref.Name,
+		UID:        ref.UID,
+	}
 }

@@ -29,7 +29,7 @@ func (ec *explodingClient) Delete(ctx context.Context, entities []K8sEntity) err
 	return errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) GetByReference(ref v1.ObjectReference) (K8sEntity, error) {
+func (ec *explodingClient) GetByReference(ctx context.Context, ref v1.ObjectReference) (K8sEntity, error) {
 	return K8sEntity{}, errors.Wrap(ec.err, "could not set up k8s client")
 }
 

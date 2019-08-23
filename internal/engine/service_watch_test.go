@@ -27,8 +27,6 @@ func TestServiceWatch(t *testing.T) {
 	manifest := f.addManifest("server")
 	f.addDeployedUID(manifest, uid)
 
-	f.sw.OnChange(f.ctx, f.store)
-
 	ls := k8s.TiltRunSelector()
 	s := servicebuilder.New(f.t, manifest).
 		WithPort(9998).
@@ -72,7 +70,6 @@ func TestServiceWatchDeployIDDelayed(t *testing.T) {
 	f.waitUntilServiceKnown(uid)
 
 	f.addDeployedUID(manifest, uid)
-	f.sw.OnChange(f.ctx, f.store)
 
 	expectedSCA := ServiceChangeAction{
 		Service:      s,
@@ -92,6 +89,8 @@ func (f *swFixture) addManifest(manifestName string) model.Manifest {
 }
 
 func (f *swFixture) addDeployedUID(m model.Manifest, uid types.UID) {
+	defer f.sw.OnChange(f.ctx, f.store)
+
 	state := f.store.LockMutableStateForTesting()
 	defer f.store.UnlockMutableState()
 	mState, ok := state.ManifestState(m.Name)
