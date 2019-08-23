@@ -29,9 +29,7 @@ func TestEventWatchManager_dispatchesEvent(t *testing.T) {
 
 	f.addManifest(mn)
 	obj := f.makeObj(mn)
-	f.kClient.GetResources = map[k8s.GetKey]k8s.K8sEntity{
-		k8s.GetKey{Name: obj.Name()}: obj,
-	}
+	f.kClient.InjectEntityByName(obj)
 
 	evt := f.makeEvent(obj)
 
@@ -63,9 +61,7 @@ func TestEventWatchManager_needsWatchNoK8s(t *testing.T) {
 	mn := model.ManifestName("someK8sManifest")
 
 	obj := f.makeObj(mn)
-	f.kClient.GetResources = map[k8s.GetKey]k8s.K8sEntity{
-		k8s.GetKey{Name: obj.Name()}: obj,
-	}
+	f.kClient.InjectEntityByName(obj)
 
 	evt := f.makeEvent(obj)
 
@@ -85,9 +81,7 @@ func TestEventWatchManager_ignoresPreStartEvents(t *testing.T) {
 
 	f.addManifest(mn)
 	obj := f.makeObj(mn)
-	f.kClient.GetResources = map[k8s.GetKey]k8s.K8sEntity{
-		k8s.GetKey{Name: obj.Name()}: obj,
-	}
+	f.kClient.InjectEntityByName(obj)
 
 	f.ewm.OnChange(f.ctx, f.store)
 
@@ -116,10 +110,7 @@ func TestEventWatchManager_janitor(t *testing.T) {
 
 	obj1 := f.makeObj(mn)
 	obj2 := f.makeObj(mn)
-	f.kClient.GetResources = map[k8s.GetKey]k8s.K8sEntity{
-		k8s.GetKey{Name: obj1.Name()}: obj1,
-		k8s.GetKey{Name: obj2.Name()}: obj2,
-	}
+	f.kClient.InjectEntityByName(obj1, obj2)
 
 	f.ewm.OnChange(f.ctx, f.store)
 	f.kClient.EmitEvent(f.ctx, f.makeEvent(obj1))
