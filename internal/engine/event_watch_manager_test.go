@@ -11,10 +11,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
+	"github.com/windmilleng/tilt/internal/testutils/podbuilder"
+	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
@@ -27,11 +29,13 @@ func TestEventWatchManager_dispatchesEvent(t *testing.T) {
 
 	mn := model.ManifestName("someK8sManifest")
 
-	f.addManifest(mn)
-	obj := f.makeObj(mn)
-	f.kClient.InjectEntityByName(obj)
+	// Seed the k8s client with a pod and its owner tree
+	manifest := f.addManifest(mn)
+	pb := podbuilder.New(t, manifest)
+	f.addDeployedUID(manifest, pb.DeploymentUID())
+	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
 
-	evt := f.makeEvent(obj)
+	evt := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
 
 	f.ewm.OnChange(f.ctx, f.store)
 	f.kClient.EmitEvent(f.ctx, evt)
@@ -54,23 +58,29 @@ func TestEventWatchManager_watchError(t *testing.T) {
 	f.assertActions(expected)
 }
 
-func TestEventWatchManager_needsWatchNoK8s(t *testing.T) {
+func TestEventWatchManager_eventBeforeDeployID(t *testing.T) {
 	f := newEWMFixture(t)
 	defer f.TearDown()
 
 	mn := model.ManifestName("someK8sManifest")
 
-	obj := f.makeObj(mn)
-	f.kClient.InjectEntityByName(obj)
+	// Seed the k8s client with a pod and its owner tree
+	manifest := f.addManifest(mn)
+	pb := podbuilder.New(t, manifest)
+	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
 
-	evt := f.makeEvent(obj)
+	evt := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
 
-	// No k8s manifests on the state, so OnChange shouldn't do anything --
-	// when we emit an event, we do NOT expect to see an action dispatched,
-	// since no watch should have been started.
-	f.ewm.OnChange(f.ctx, f.store)
+	// The UIDs haven't shown up in the engine state yet, so
+	// we shouldn't emit the events.
 	f.kClient.EmitEvent(f.ctx, evt)
 	f.assertNoActions()
+
+	// When the UIDs of the deployed objects show up, then
+	// we need to go back and emit the events we saw earlier.
+	f.addDeployedUID(manifest, pb.DeploymentUID())
+	expected := store.K8sEventAction{Event: evt, ManifestName: mn}
+	f.assertActions(expected)
 }
 
 func TestEventWatchManager_ignoresPreStartEvents(t *testing.T) {
@@ -79,18 +89,19 @@ func TestEventWatchManager_ignoresPreStartEvents(t *testing.T) {
 
 	mn := model.ManifestName("someK8sManifest")
 
-	f.addManifest(mn)
-	obj := f.makeObj(mn)
-	f.kClient.InjectEntityByName(obj)
+	// Seed the k8s client with a pod and its owner tree
+	manifest := f.addManifest(mn)
+	pb := podbuilder.New(t, manifest)
+	f.addDeployedUID(manifest, pb.DeploymentUID())
+	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
 
-	f.ewm.OnChange(f.ctx, f.store)
-
-	evt1 := f.makeEvent(obj)
+	entity := k8s.NewK8sEntity(pb.Build())
+	evt1 := f.makeEvent(entity)
 	evt1.CreationTimestamp = metav1.Time{Time: f.clock.Now().Add(-time.Minute)}
 
 	f.kClient.EmitEvent(f.ctx, evt1)
 
-	evt2 := f.makeEvent(obj)
+	evt2 := f.makeEvent(entity)
 
 	f.kClient.EmitEvent(f.ctx, evt2)
 
@@ -98,34 +109,6 @@ func TestEventWatchManager_ignoresPreStartEvents(t *testing.T) {
 	expected := store.K8sEventAction{Event: evt2, ManifestName: mn}
 
 	f.assertActions(expected)
-}
-
-func TestEventWatchManager_janitor(t *testing.T) {
-	f := newEWMFixture(t)
-	defer f.TearDown()
-
-	mn := model.ManifestName("foo")
-
-	f.addManifest(mn)
-
-	obj1 := f.makeObj(mn)
-	obj2 := f.makeObj(mn)
-	f.kClient.InjectEntityByName(obj1, obj2)
-
-	f.ewm.OnChange(f.ctx, f.store)
-	f.kClient.EmitEvent(f.ctx, f.makeEvent(obj1))
-
-	f.assertUIDMapKeys([]types.UID{obj1.UID()})
-
-	f.clock.BlockUntil(1)
-	f.clock.Advance(uidMapEntryTTL / 2)
-
-	f.kClient.EmitEvent(f.ctx, f.makeEvent(obj2))
-	f.assertUIDMapKeys([]types.UID{obj1.UID(), obj2.UID()})
-
-	f.clock.BlockUntil(1)
-	f.clock.Advance(uidMapEntryTTL/2 + 1)
-	f.assertUIDMapKeys([]types.UID{obj2.UID()})
 }
 
 func (f *ewmFixture) makeEvent(obj k8s.K8sEntity) *v1.Event {
@@ -137,22 +120,8 @@ func (f *ewmFixture) makeEvent(obj k8s.K8sEntity) *v1.Event {
 	}
 }
 
-func (f *ewmFixture) makeObj(mn model.ManifestName) k8s.K8sEntity {
-	ret := unstructured.Unstructured{}
-
-	f.objectCount++
-
-	ret.SetName(fmt.Sprintf("obj%d", f.objectCount))
-	ret.SetUID(types.UID(fmt.Sprintf("uid%d", f.objectCount)))
-	ret.SetLabels(map[string]string{
-		k8s.TiltRunIDLabel:    k8s.TiltRunID,
-		k8s.ManifestNameLabel: mn.String(),
-	})
-
-	return k8s.NewK8sEntity(&ret)
-}
-
 type ewmFixture struct {
+	*tempdir.TempDirFixture
 	t          *testing.T
 	kClient    *k8s.FakeK8sClient
 	ewm        *EventWatchManager
@@ -175,15 +144,18 @@ func newEWMFixture(t *testing.T) *ewmFixture {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
 
+	of := k8s.ProvideOwnerFetcher(kClient)
+
 	clock := clockwork.NewFakeClock()
 
 	ret := &ewmFixture{
-		kClient: kClient,
-		ewm:     NewEventWatchManager(kClient, clock),
-		ctx:     ctx,
-		cancel:  cancel,
-		t:       t,
-		clock:   clock,
+		TempDirFixture: tempdir.NewTempDirFixture(t),
+		kClient:        kClient,
+		ewm:            NewEventWatchManager(kClient, of),
+		ctx:            ctx,
+		cancel:         cancel,
+		t:              t,
+		clock:          clock,
 	}
 
 	ret.store, ret.getActions = store.NewStoreForTesting()
@@ -196,17 +168,34 @@ func newEWMFixture(t *testing.T) *ewmFixture {
 }
 
 func (f *ewmFixture) TearDown() {
+	f.TempDirFixture.TearDown()
 	f.kClient.TearDown()
 	f.cancel()
 }
 
-func (f *ewmFixture) addManifest(manifestName model.ManifestName) {
+func (f *ewmFixture) addManifest(manifestName model.ManifestName) model.Manifest {
 	state := f.store.LockMutableStateForTesting()
 	state.WatchFiles = true
-	dt := model.K8sTarget{Name: model.TargetName(manifestName)}
-	m := model.Manifest{Name: manifestName}.WithDeployTarget(dt)
+
+	m := manifestbuilder.New(f, manifestName).
+		WithK8sYAML(SanchoYAML).
+		Build()
 	state.UpsertManifestTarget(store.NewManifestTarget(m))
 	f.store.UnlockMutableState()
+	return m
+}
+
+func (f *ewmFixture) addDeployedUID(m model.Manifest, uid types.UID) {
+	defer f.ewm.OnChange(f.ctx, f.store)
+
+	state := f.store.LockMutableStateForTesting()
+	defer f.store.UnlockMutableState()
+	mState, ok := state.ManifestState(m.Name)
+	if !ok {
+		f.t.Fatalf("Unknown manifest: %s", m.Name)
+	}
+	runtimeState := mState.GetOrCreateK8sRuntimeState()
+	runtimeState.DeployedUIDSet[uid] = true
 }
 
 func (f *ewmFixture) assertNoActions() {
@@ -245,25 +234,4 @@ func (f *ewmFixture) assertActions(expected ...store.Action) {
 			assert.Equal(f.t, expected[i], a)
 		}
 	}
-}
-
-func (f *ewmFixture) assertUIDMapKeys(expectedKeys []types.UID) {
-	uidMapKeys := func() []types.UID {
-		var ret []types.UID
-		f.ewm.uidMapMu.Lock()
-		for k := range f.ewm.uidMap {
-			ret = append(ret, types.UID(k))
-		}
-		f.ewm.uidMapMu.Unlock()
-		return ret
-	}
-
-	start := time.Now()
-	for time.Since(start) < 200*time.Millisecond {
-		if len(uidMapKeys()) == len(expectedKeys) {
-			break
-		}
-	}
-
-	assert.ElementsMatch(f.t, expectedKeys, uidMapKeys())
 }
