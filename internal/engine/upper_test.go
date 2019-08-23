@@ -2377,7 +2377,7 @@ func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 func TestEmptyTiltfile(t *testing.T) {
 	f := newTestFixture(t)
 	f.WriteFile("Tiltfile", "")
-	go f.upper.Start(f.ctx, []string{}, model.TiltBuild{}, false, f.JoinPath("Tiltfile"), true, model.SailModeDisabled, analytics.OptIn)
+	go f.upper.Start(f.ctx, []string{}, model.TiltBuild{}, false, f.JoinPath("Tiltfile"), true, model.SailModeDisabled, analytics.OptIn, token.Token("unit test token"), "nonexistent.example.com")
 	f.WaitUntil("build is set", func(st store.EngineState) bool {
 		return !st.TiltfileState.LastBuild().Empty()
 	})
@@ -2829,7 +2829,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
 
 	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc, sc, tvc, tas, ewm)
-	ret.upper = NewUpper(ctx, st, subs, token.Token("unit test token"))
+	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {
 		fakeHud.Run(ctx, ret.upper.Dispatch, hud.DefaultRefreshInterval)

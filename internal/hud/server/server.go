@@ -45,16 +45,18 @@ type HeadsUpServer struct {
 	sailCli           client.SailClient
 	numWebsocketConns int32
 	httpCli           httpClient
+	cloudAddress      string
 }
 
-func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics *tiltanalytics.TiltAnalytics, sailCli client.SailClient, httpClient httpClient) *HeadsUpServer {
+func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics *tiltanalytics.TiltAnalytics, sailCli client.SailClient, httpClient httpClient, cloudAddress cloud.Address) *HeadsUpServer {
 	r := mux.NewRouter().UseEncodedPath()
 	s := &HeadsUpServer{
-		store:   store,
-		router:  r,
-		a:       analytics,
-		sailCli: sailCli,
-		httpCli: httpClient,
+		store:        store,
+		router:       r,
+		a:            analytics,
+		sailCli:      sailCli,
+		httpCli:      httpClient,
+		cloudAddress: string(cloudAddress),
 	}
 
 	r.HandleFunc("/api/view", s.ViewJSON)
@@ -236,12 +238,12 @@ type snapshotIDResponse struct {
 	ID string
 }
 
-func templateSnapshotURL(id SnapshotID) string {
-	return fmt.Sprintf("https://%s/snapshot/%s", cloud.Domain, id)
+func (s *HeadsUpServer) templateSnapshotURL(id SnapshotID) string {
+	return fmt.Sprintf("https://%s/snapshot/%s", s.cloudAddress, id)
 }
 
-func newSnapshotURL() string {
-	return fmt.Sprintf("https://%s/api/snapshot/new", cloud.Domain)
+func (s *HeadsUpServer) newSnapshotURL() string {
+	return fmt.Sprintf("https://%s/api/snapshot/new", s.cloudAddress)
 }
 
 func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Request) {
@@ -250,7 +252,7 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	request, err := http.NewRequest(http.MethodPost, newSnapshotURL(), req.Body)
+	request, err := http.NewRequest(http.MethodPost, s.newSnapshotURL(), req.Body)
 	response, err := s.httpCli.Do(request)
 	if err != nil {
 		log.Printf("Error creating snapshot: %v\n", err)
@@ -283,7 +285,7 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 	var ID SnapshotID
 	ID = SnapshotID(resp.ID)
 	responsePayload := snapshotURLJson{
-		Url: templateSnapshotURL(ID),
+		Url: s.templateSnapshotURL(ID),
 	}
 
 	//encode URL to JSON format

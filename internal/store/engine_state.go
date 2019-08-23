@@ -79,8 +79,9 @@ type EngineState struct {
 
 	Features map[string]bool
 
-	TeamName string
-	Token    token.Token
+	CloudAddress string
+	Token        token.Token
+	TeamName     string
 }
 
 func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.ManifestName {

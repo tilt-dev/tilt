@@ -47,7 +47,6 @@ var watchBufferMaxDuration = watchBufferMaxTimeInMs * time.Millisecond
 // Upper seems like a poor and undescriptive name.
 type Upper struct {
 	store *store.Store
-	token token.Token
 }
 
 type FsWatcherMaker func(paths []string, ignore watch.PathMatcher, l logger.Logger) (watch.Notify, error)
@@ -67,7 +66,7 @@ func ProvideTimerMaker() timerMaker {
 	}
 }
 
-func NewUpper(ctx context.Context, st *store.Store, subs []store.Subscriber, t token.Token) Upper {
+func NewUpper(ctx context.Context, st *store.Store, subs []store.Subscriber) Upper {
 	// There's not really a good reason to add all the subscribers
 	// in NewUpper(), but it's as good a place as any.
 	for _, sub := range subs {
@@ -76,7 +75,6 @@ func NewUpper(ctx context.Context, st *store.Store, subs []store.Subscriber, t t
 
 	return Upper{
 		store: st,
-		token: t,
 	}
 }
 
@@ -92,7 +90,10 @@ func (u Upper) Start(
 	fileName string,
 	useActionWriter bool,
 	sailMode model.SailMode,
-	analyticsOpt analytics.Opt) error {
+	analyticsOpt analytics.Opt,
+	token token.Token,
+	cloudAddress string,
+) error {
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Start")
 	defer span.Finish()
@@ -122,7 +123,8 @@ func (u Upper) Start(
 		StartTime:     startTime,
 		EnableSail:    sailMode.IsEnabled(),
 		AnalyticsOpt:  analyticsOpt,
-		Token:         u.token,
+		Token:         token,
+		CloudAddress:  cloudAddress,
 	})
 }
 
@@ -636,6 +638,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.SailEnabled = action.EnableSail
 	engineState.AnalyticsOpt = action.AnalyticsOpt
 	engineState.WatchFiles = action.WatchFiles
+	engineState.CloudAddress = action.CloudAddress
 	engineState.Token = action.Token
 
 	// NOTE(dmiller): this kicks off a Tiltfile build

@@ -103,7 +103,7 @@ func StateToWebView(s store.EngineState) View {
 	ret.RunningTiltBuild = s.TiltBuildInfo
 	ret.LatestTiltBuild = s.LatestTiltBuild
 	ret.FeatureFlags = s.Features
-	ret.RegisterTokenURL = cloud.RegisterTokenURL(s.Token)
+	ret.RegisterTokenURL = cloud.RegisterTokenURL(s.CloudAddress, s.Token)
 
 	return ret
 }
