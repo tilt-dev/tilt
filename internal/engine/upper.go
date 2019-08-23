@@ -597,12 +597,6 @@ func handleK8sEvent(ctx context.Context, state *store.EngineState, action store.
 
 	if evt.Type != v1.EventTypeNormal {
 		handleLogAction(state, action.ToLogAction(action.ManifestName))
-
-		ms, ok := state.ManifestState(action.ManifestName)
-		if !ok {
-			return
-		}
-		ms.K8sWarnEvents = append(ms.K8sWarnEvents, k8s.NewEventWithEntity(evt, action.InvolvedObject))
 	}
 }
 

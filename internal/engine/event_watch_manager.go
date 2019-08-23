@@ -164,7 +164,7 @@ func (m *EventWatchManager) dispatchEventsLoop(ctx context.Context, ch <-chan *v
 				entry := m.getEntry(ctx, event.InvolvedObject)
 
 				if entry.belongsToThisTilt {
-					st.Dispatch(store.NewK8sEventAction(event, entry.manifest, entry.obj))
+					st.Dispatch(store.NewK8sEventAction(event, entry.manifest))
 				}
 			}()
 
