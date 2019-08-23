@@ -3,7 +3,6 @@ package k8s
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"sync"
@@ -13,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/watch"
 
@@ -63,7 +63,7 @@ type FakeK8sClient struct {
 	Runtime  container.Runtime
 	Registry container.Registry
 
-	GetResources map[GetKey]K8sEntity
+	entityByName map[string]K8sEntity
 
 	ExecCalls  []ExecCall
 	ExecErrors []error
@@ -241,18 +241,20 @@ func (c *FakeK8sClient) Delete(ctx context.Context, entities []K8sEntity) error 
 	return nil
 }
 
-func (c *FakeK8sClient) GetByReference(ref v1.ObjectReference) (K8sEntity, error) {
-	group := getGroup(ref)
-	kind := ref.Kind
-	namespace := ref.Namespace
-	name := ref.Name
-	resourceVersion := ref.ResourceVersion
-	key := GetKey{group, kind, namespace, name, resourceVersion}
-	resp, ok := c.GetResources[key]
-	if !ok {
-		return K8sEntity{}, fmt.Errorf("No response found for %v", key)
+func (c *FakeK8sClient) InjectEntityByName(entities ...K8sEntity) {
+	if c.entityByName == nil {
+		c.entityByName = make(map[string]K8sEntity)
 	}
+	for _, entity := range entities {
+		c.entityByName[entity.Name()] = entity
+	}
+}
 
+func (c *FakeK8sClient) GetByReference(ref v1.ObjectReference) (K8sEntity, error) {
+	resp, ok := c.entityByName[ref.Name]
+	if !ok {
+		return K8sEntity{}, apierrors.NewNotFound(v1.Resource(ref.Kind), ref.Name)
+	}
 	return resp, nil
 }
 
