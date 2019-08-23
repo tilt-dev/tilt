@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -10,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/pkg/model"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 )
@@ -17,7 +19,9 @@ import (
 type PodWatcher struct {
 	kCli         k8s.Client
 	ownerFetcher k8s.OwnerFetcher
-	watches      []PodWatch
+
+	mu      sync.RWMutex
+	watches []PodWatch
 }
 
 func NewPodWatcher(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher) *PodWatcher {
@@ -28,8 +32,13 @@ func NewPodWatcher(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher) *PodWatcher {
 }
 
 type PodWatch struct {
+	name   model.ManifestName
 	labels labels.Selector
 	cancel context.CancelFunc
+}
+
+func (pw PodWatch) Equal(other PodWatch) bool {
+	return pw.name == other.name && k8s.SelectorEqual(pw.labels, other.labels)
 }
 
 // returns all elements of `a` that are not in `b`
@@ -39,7 +48,7 @@ func subtract(a, b []PodWatch) []PodWatch {
 	for _, pwa := range a {
 		inB := false
 		for _, pwb := range b {
-			if k8s.SelectorEqual(pwa.labels, pwb.labels) {
+			if pwa.Equal(pwb) {
 				inB = true
 				break
 			}
@@ -55,6 +64,9 @@ func (w *PodWatcher) diff(ctx context.Context, st store.RStore) (setup []PodWatc
 	state := st.RLockState()
 	defer st.RUnlockState()
 
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
 	atLeastOneK8s := false
 	var neededWatches []PodWatch
 	for _, m := range state.Manifests() {
@@ -62,7 +74,7 @@ func (w *PodWatcher) diff(ctx context.Context, st store.RStore) (setup []PodWatc
 			atLeastOneK8s = true
 			for _, ls := range m.K8sTarget().ExtraPodSelectors {
 				if !ls.Empty() {
-					neededWatches = append(neededWatches, PodWatch{labels: ls})
+					neededWatches = append(neededWatches, PodWatch{name: m.Name, labels: ls})
 				}
 			}
 		}
@@ -79,8 +91,8 @@ func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {
 
 	for _, pw := range setup {
 		ctx, cancel := context.WithCancel(ctx)
-		pw = PodWatch{labels: pw.labels, cancel: cancel}
-		w.watches = append(w.watches, pw)
+		pw.cancel = cancel
+		w.addWatch(pw)
 		ch, err := w.kCli.WatchPods(ctx, pw.labels)
 		if err != nil {
 			err = errors.Wrap(err, "Error watching pods. Are you connected to kubernetes?\n")
@@ -96,14 +108,47 @@ func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {
 	}
 }
 
+func (w *PodWatcher) addWatch(pw PodWatch) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.watches = append(w.watches, pw)
+}
+
 func (w *PodWatcher) removeWatch(toRemove PodWatch) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
 	oldWatches := append([]PodWatch{}, w.watches...)
 	w.watches = nil
 	for _, e := range oldWatches {
-		if !k8s.SelectorEqual(e.labels, toRemove.labels) {
+		if !e.Equal(toRemove) {
 			w.watches = append(w.watches, e)
 		}
 	}
+}
+
+func (w *PodWatcher) triagePodUpdate(pod *v1.Pod) model.ManifestName {
+	manifestName := model.ManifestName(pod.ObjectMeta.Labels[k8s.ManifestNameLabel])
+	if manifestName != "" {
+		return manifestName
+	}
+
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	podLabels := labels.Set(pod.ObjectMeta.GetLabels())
+
+	// if there's no ManifestNameLabel, then maybe it matches some manifest's
+	// ExtraPodSelectors
+	for _, watch := range w.watches {
+		if watch.name == "" {
+			continue
+		}
+
+		if watch.labels.Matches(podLabels) {
+			return watch.name
+		}
+	}
+	return ""
 }
 
 func (w *PodWatcher) dispatchPodChangesLoop(ctx context.Context, ch <-chan *v1.Pod, st store.RStore) {
@@ -114,9 +159,12 @@ func (w *PodWatcher) dispatchPodChangesLoop(ctx context.Context, ch <-chan *v1.P
 				return
 			}
 
-			// TODO(nick): Attach OwnerTree
+			mn := w.triagePodUpdate(pod)
+			if mn == "" {
+				continue
+			}
 
-			st.Dispatch(NewPodChangeAction(pod))
+			st.Dispatch(NewPodChangeAction(pod, mn))
 		case <-ctx.Done():
 			return
 		}

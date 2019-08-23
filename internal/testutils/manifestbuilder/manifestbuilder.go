@@ -3,6 +3,8 @@ package manifestbuilder
 import (
 	"testing"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -20,8 +22,9 @@ type ManifestBuilder struct {
 	f    Fixture
 	name model.ManifestName
 
-	k8sYAML       string
-	dcConfigPaths []string
+	k8sYAML         string
+	k8sPodSelectors []labels.Selector
+	dcConfigPaths   []string
 
 	iTargets []model.ImageTarget
 }
@@ -35,6 +38,11 @@ func New(f Fixture, name model.ManifestName) ManifestBuilder {
 
 func (b ManifestBuilder) WithK8sYAML(yaml string) ManifestBuilder {
 	b.k8sYAML = yaml
+	return b
+}
+
+func (b ManifestBuilder) WithK8sPodSelectors(podSelectors []labels.Selector) ManifestBuilder {
+	b.k8sPodSelectors = podSelectors
 	return b
 }
 
@@ -80,7 +88,7 @@ func (b ManifestBuilder) Build() model.Manifest {
 	if b.k8sYAML != "" {
 		return assembleK8s(
 			model.Manifest{Name: b.name},
-			model.K8sTarget{YAML: b.k8sYAML},
+			model.K8sTarget{YAML: b.k8sYAML, ExtraPodSelectors: b.k8sPodSelectors},
 			b.iTargets...)
 	}
 

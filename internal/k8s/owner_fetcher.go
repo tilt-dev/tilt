@@ -17,6 +17,14 @@ type ObjectRefTree struct {
 	Owners []ObjectRefTree
 }
 
+func (t ObjectRefTree) UIDs() []types.UID {
+	result := []types.UID{t.Ref.UID}
+	for _, owner := range t.Owners {
+		result = append(result, owner.UIDs()...)
+	}
+	return result
+}
+
 func (t ObjectRefTree) stringLines() []string {
 	result := []string{fmt.Sprintf("%s:%s", t.Ref.Kind, t.Ref.Name)}
 	for _, owner := range t.Owners {

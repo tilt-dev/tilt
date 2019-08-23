@@ -21,13 +21,17 @@ func NewErrorAction(err error) store.ErrorAction {
 }
 
 type PodChangeAction struct {
-	Pod *v1.Pod
+	Pod          *v1.Pod
+	ManifestName model.ManifestName
 }
 
 func (PodChangeAction) Action() {}
 
-func NewPodChangeAction(pod *v1.Pod) PodChangeAction {
-	return PodChangeAction{Pod: pod}
+func NewPodChangeAction(pod *v1.Pod, mn model.ManifestName) PodChangeAction {
+	return PodChangeAction{
+		Pod:          pod,
+		ManifestName: mn,
+	}
 }
 
 type ServiceChangeAction struct {

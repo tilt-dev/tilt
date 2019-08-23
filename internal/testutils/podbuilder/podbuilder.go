@@ -54,12 +54,14 @@ type PodBuilder struct {
 	t        testing.TB
 	manifest model.Manifest
 
-	podID        string
-	phase        string
-	creationTime time.Time
-	deletionTime time.Time
-	deployID     model.DeployID
-	restartCount int
+	podID             string
+	phase             string
+	creationTime      time.Time
+	deletionTime      time.Time
+	deployID          model.DeployID
+	restartCount      int
+	extraPodLabels    map[string]string
+	skipManifestLabel bool
 
 	// keyed by container index -- i.e. the first container will have image: imageRefs[0] and ID: cIDs[0], etc.
 	// If there's no entry at index i, we'll use a dummy value.
@@ -69,11 +71,26 @@ type PodBuilder struct {
 
 func New(t testing.TB, manifest model.Manifest) PodBuilder {
 	return PodBuilder{
-		t:         t,
-		manifest:  manifest,
-		imageRefs: make(map[int]string),
-		cIDs:      make(map[int]string),
+		t:              t,
+		manifest:       manifest,
+		imageRefs:      make(map[int]string),
+		cIDs:           make(map[int]string),
+		extraPodLabels: make(map[string]string),
 	}
+}
+
+func (b PodBuilder) WithoutManifestLabel() PodBuilder {
+	b.skipManifestLabel = true
+	return b
+}
+
+func (b PodBuilder) WithPodLabel(key, val string) PodBuilder {
+	b.extraPodLabels[key] = val
+	return b
+}
+
+func (b PodBuilder) ManifestName() model.ManifestName {
+	return b.manifest.Name
 }
 
 func (b PodBuilder) RestartCount() int {
@@ -163,11 +180,17 @@ func (b PodBuilder) buildLabels(tSpec *v1.PodTemplateSpec) map[string]string {
 		deployID = FakeDeployID
 	}
 	labels := map[string]string{
-		k8s.ManifestNameLabel: b.manifest.Name.String(),
 		k8s.TiltDeployIDLabel: deployID.String(),
 	}
 
+	if !b.skipManifestLabel {
+		labels[k8s.ManifestNameLabel] = b.manifest.Name.String()
+	}
+
 	for k, v := range tSpec.Labels {
+		labels[k] = v
+	}
+	for k, v := range b.extraPodLabels {
 		labels[k] = v
 	}
 	return labels
