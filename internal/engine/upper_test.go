@@ -1938,14 +1938,12 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 	}
 	f.kClient.EmitEvent(f.ctx, warnEvt)
 
-	var warnEvts []k8s.EventWithEntity
 	f.WaitUntil("event message appears in manifest log", func(st store.EngineState) bool {
 		ms, ok := st.ManifestState(name)
 		if !ok {
 			t.Fatalf("Manifest %s not found in state", name)
 		}
 
-		warnEvts = ms.K8sWarnEvents
 		combinedLogString := ms.CombinedLog.String()
 		return strings.Contains(combinedLogString, "something has happened zomg")
 	})
@@ -1953,13 +1951,6 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 	f.withState(func(st store.EngineState) {
 		assert.Contains(t, st.Log.String(), "something has happened zomg", "event message not in global log")
 	})
-
-	if assert.Len(t, warnEvts, 1, "expect ms.K8sWarnEvents to contain 1 event") {
-		// Make sure we recorded the event on the manifest state
-		evt := warnEvts[0]
-		assert.Equal(t, "something has happened zomg", evt.Event.Message)
-		assert.Equal(t, name.String(), evt.Entity.Name())
-	}
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -2015,8 +2006,6 @@ func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
 	f.withManifestState(name, func(ms store.ManifestState) {
 		assert.NotContains(t, ms.CombinedLog.String(), "all systems are go",
 			"message for event of type 'normal' should not appear in log")
-
-		assert.Len(t, ms.K8sWarnEvents, 0, "expect ms.K8sWarnEvents to be empty")
 	})
 
 	err := f.Stop()
