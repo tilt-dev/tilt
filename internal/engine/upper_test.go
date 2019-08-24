@@ -1246,8 +1246,9 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 		ManifestName: manifest.Name,
 		StartTime:    time.Now(),
 	})
+
 	f.store.Dispatch(BuildCompleteAction{
-		Result: containerResultSet(manifest, "theOriginalContainer"),
+		Result: liveUpdateResultSet(manifest, "theOriginalContainer"),
 	})
 	f.setDeployIDForManifest(manifest, podbuilder.FakeDeployID)
 
@@ -1290,10 +1291,11 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 
 	// Simulate k8s restarting the container due to a crash.
 	f.podEvent(podbuilder.New(t, manifest).WithContainerID("myfunnycontainerid").Build(), manifest.Name)
+
 	// ...and finish the build. Even though this action comes in AFTER the pod
 	// event w/ unexpected container,  we should still be able to detect the mismatch.
 	f.store.Dispatch(BuildCompleteAction{
-		Result: containerResultSet(manifest, "theOriginalContainer"),
+		Result: liveUpdateResultSet(manifest, "theOriginalContainer"),
 	})
 
 	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {
@@ -1326,16 +1328,16 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 		StartTime:    time.Now(),
 	})
 	podStartTime := time.Now()
+	pb := podbuilder.New(t, manifest).
+		WithPodID("mypod").
+		WithContainerID("normal-container-id").
+		WithCreationTime(podStartTime)
 	f.store.Dispatch(BuildCompleteAction{
-		Result: containerResultSet(manifest, "normal-container-id"),
+		Result: deployResultSet(manifest, pb.DeploymentUID()),
 	})
 	f.setDeployIDForManifest(manifest, podbuilder.FakeDeployID)
 
-	f.podEvent(podbuilder.New(t, manifest).
-		WithPodID("mypod").
-		WithContainerID("normal-container-id").
-		WithCreationTime(podStartTime).
-		Build(), manifest.Name)
+	f.podEvent(pb.Build(), manifest.Name)
 	f.WaitUntil("nothing waiting for build", func(st store.EngineState) bool {
 		return st.CompletedBuildCount == 1 && nextManifestNameToBuild(st) == ""
 	})
@@ -1357,7 +1359,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 		WithCreationTime(podStartTime).
 		Build(), manifest.Name)
 	f.store.Dispatch(BuildCompleteAction{
-		Result: containerResultSet(manifest, "normal-container-id"),
+		Result: liveUpdateResultSet(manifest, "normal-container-id"),
 	})
 
 	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {
@@ -3287,13 +3289,21 @@ func dcContainerEvtForManifest(m model.Manifest, action dockercompose.Action) do
 	}
 }
 
-func containerResultSet(manifest model.Manifest, id container.ID) store.BuildResultSet {
+func deployResultSet(manifest model.Manifest, uid types.UID) store.BuildResultSet {
 	resultSet := store.BuildResultSet{}
 	for _, iTarget := range manifest.ImageTargets {
 		ref, _ := reference.WithTag(iTarget.DeploymentRef, "deadbeef")
-		result := store.NewImageBuildResult(iTarget.ID(), ref)
-		result.LiveUpdatedContainerIDs = []container.ID{id}
-		resultSet[iTarget.ID()] = result
+		resultSet[iTarget.ID()] = store.NewImageBuildResult(iTarget.ID(), ref)
+	}
+	ktID := manifest.K8sTarget().ID()
+	resultSet[ktID] = store.NewK8sDeployResult(ktID, []types.UID{uid})
+	return resultSet
+}
+
+func liveUpdateResultSet(manifest model.Manifest, id container.ID) store.BuildResultSet {
+	resultSet := store.BuildResultSet{}
+	for _, iTarget := range manifest.ImageTargets {
+		resultSet[iTarget.ID()] = store.NewLiveUpdateBuildResult(iTarget.ID(), []container.ID{id})
 	}
 	return resultSet
 }
