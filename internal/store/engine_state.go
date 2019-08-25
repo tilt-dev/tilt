@@ -8,12 +8,10 @@ import (
 	"time"
 
 	"github.com/windmilleng/wmclient/pkg/analytics"
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/token"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -82,9 +80,6 @@ type EngineState struct {
 
 	TeamName string
 	Token    token.Token
-
-	DeployInProgress      bool
-	DeployActionsDeferred []Action
 }
 
 func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.ManifestName {
@@ -141,20 +136,6 @@ func (e EngineState) ManifestState(mn model.ManifestName) (*ManifestState, bool)
 		return nil, ok
 	}
 	return m.State, ok
-}
-
-func (e EngineState) ManifestStateForUID(uid types.UID) (*ManifestState, bool) {
-	for _, m := range e.ManifestTargets {
-		if !m.Manifest.IsK8s() {
-			continue
-		}
-
-		k8sState := m.State.K8sRuntimeState()
-		if k8sState.DeployedUIDSet.Contains(uid) {
-			return m.State, true
-		}
-	}
-	return nil, false
 }
 
 // Returns Manifests in a stable order
@@ -267,8 +248,6 @@ type ManifestState struct {
 
 	// If this manifest was changed, which config files led to the most recent change in manifest definition
 	ConfigFilesThatCausedChange []string
-
-	K8sWarnEvents []k8s.EventWithEntity
 }
 
 func NewState() *EngineState {

@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/windmilleng/tilt/internal/cloud"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/ospath"
@@ -102,6 +103,7 @@ func StateToWebView(s store.EngineState) View {
 	ret.RunningTiltBuild = s.TiltBuildInfo
 	ret.LatestTiltBuild = s.LatestTiltBuild
 	ret.FeatureFlags = s.Features
+	ret.RegisterTokenURL = cloud.RegisterTokenURL(s.Token)
 
 	return ret
 }

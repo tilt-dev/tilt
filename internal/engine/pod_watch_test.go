@@ -9,29 +9,61 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
+	"github.com/windmilleng/tilt/internal/testutils/podbuilder"
+	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/model"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestPodWatch(t *testing.T) {
 	f := newPWFixture(t)
 	defer f.TearDown()
 
-	f.addManifestWithSelectors("server")
+	manifest := f.addManifestWithSelectors("server")
 
 	f.pw.OnChange(f.ctx, f.store)
 
 	ls := k8s.TiltRunSelector()
-	p := podNamed("hello")
+	pb := podbuilder.New(t, manifest)
+	p := pb.Build()
+
+	// Simulate the Deployment UID in the engine state
+	f.addDeployedUID(manifest, pb.DeploymentUID())
+	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
+
 	f.kClient.EmitPod(ls, p)
 
 	f.assertWatchedSelectors(ls)
+
+	f.assertObservedPods(p)
+}
+
+func TestPodWatchChangeEventBeforeUID(t *testing.T) {
+	f := newPWFixture(t)
+	defer f.TearDown()
+
+	manifest := f.addManifestWithSelectors("server")
+
+	f.pw.OnChange(f.ctx, f.store)
+
+	ls := k8s.TiltRunSelector()
+	pb := podbuilder.New(t, manifest)
+	p := pb.Build()
+
+	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
+	f.kClient.EmitPod(ls, p)
+	f.assertObservedPods()
+
+	// Simulate the Deployment UID in the engine state after
+	// the pod event.
+	f.addDeployedUID(manifest, pb.DeploymentUID())
 
 	f.assertObservedPods(p)
 }
@@ -43,16 +75,20 @@ func TestPodWatchExtraSelectors(t *testing.T) {
 	ls := k8s.TiltRunSelector()
 	ls1 := labels.Set{"foo": "bar"}.AsSelector()
 	ls2 := labels.Set{"baz": "quu"}.AsSelector()
-	f.addManifestWithSelectors("server", ls1, ls2)
+	manifest := f.addManifestWithSelectors("server", ls1, ls2)
 
 	f.pw.OnChange(f.ctx, f.store)
 
 	f.assertWatchedSelectors(ls, ls1, ls2)
 
-	p := podNamed("pod1")
+	p := podbuilder.New(t, manifest).
+		WithoutManifestLabel().
+		WithPodLabel("foo", "bar").
+		Build()
 	f.kClient.EmitPod(ls1, p)
 
 	f.assertObservedPods(p)
+	assert.Equal(t, []model.ManifestName{manifest.Name}, f.manifestNames)
 }
 
 func TestPodWatchHandleSelectorChange(t *testing.T) {
@@ -61,39 +97,58 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 
 	ls := k8s.TiltRunSelector()
 	ls1 := labels.Set{"foo": "bar"}.AsSelector()
-	f.addManifestWithSelectors("server1", ls1)
+	manifest := f.addManifestWithSelectors("server1", ls1)
 
 	f.pw.OnChange(f.ctx, f.store)
 
 	f.assertWatchedSelectors(ls, ls1)
 
-	p := podNamed("pod1")
+	p := podbuilder.New(t, manifest).
+		WithoutManifestLabel().
+		WithPodLabel("foo", "bar").
+		Build()
 	f.kClient.EmitPod(ls1, p)
 
 	f.assertObservedPods(p)
 	f.clearPods()
 
 	ls2 := labels.Set{"baz": "quu"}.AsSelector()
-	f.addManifestWithSelectors("server2", ls2)
+	manifest2 := f.addManifestWithSelectors("server2", ls2)
 	f.removeManifest("server1")
 
 	f.pw.OnChange(f.ctx, f.store)
 
 	f.assertWatchedSelectors(ls, ls2)
 
-	p2 := podNamed("pod2")
+	pb2 := podbuilder.New(t, manifest2).WithPodID("pod2")
+	p2 := pb2.Build()
+	f.addDeployedUID(manifest2, pb2.DeploymentUID())
+	f.kClient.InjectEntityByName(pb2.ObjectTreeEntities()...)
 	f.kClient.EmitPod(ls, p2)
 	f.assertObservedPods(p2)
 	f.clearPods()
 
-	f.kClient.EmitPod(ls1, podNamed("pod3"))
-	p4 := podNamed("pod4")
+	p3 := podbuilder.New(t, manifest2).
+		WithPodID("pod3").
+		WithoutManifestLabel().
+		WithPodLabel("foo", "bar").
+		Build()
+	f.kClient.EmitPod(ls1, p3)
+
+	p4 := podbuilder.New(t, manifest2).
+		WithPodID("pod4").
+		WithoutManifestLabel().
+		WithPodLabel("baz", "quu").
+		Build()
 	f.kClient.EmitPod(ls2, p4)
-	p5 := podNamed("pod5")
+
+	p5 := podbuilder.New(t, manifest2).
+		WithPodID("pod5").
+		Build()
 	f.kClient.EmitPod(ls, p5)
 
 	f.assertObservedPods(p4, p5)
-
+	assert.Equal(t, []model.ManifestName{manifest2.Name, manifest2.Name}, f.manifestNames)
 }
 
 type podStatusTestCase struct {
@@ -145,19 +200,17 @@ func TestPodStatus(t *testing.T) {
 	}
 }
 
-func podNamed(name string) *corev1.Pod {
-	return &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name}}
-}
-
-func (f *pwFixture) addManifestWithSelectors(manifestName string, ls ...labels.Selector) {
+func (f *pwFixture) addManifestWithSelectors(manifestName string, ls ...labels.Selector) model.Manifest {
 	state := f.store.LockMutableStateForTesting()
 	state.WatchFiles = true
-	mt, err := newManifestTargetWithSelectors(model.Manifest{Name: model.ManifestName(manifestName)}, ls)
-	if err != nil {
-		f.t.Fatalf("error creating manifest target with selectors: %+v", err)
-	}
+	m := manifestbuilder.New(f, model.ManifestName(manifestName)).
+		WithK8sYAML(SanchoYAML).
+		WithK8sPodSelectors(ls).
+		Build()
+	mt := store.NewManifestTarget(m)
 	state.UpsertManifestTarget(mt)
 	f.store.UnlockMutableState()
+	return mt.Manifest
 }
 
 func (f *pwFixture) removeManifest(manifestName string) {
@@ -175,13 +228,15 @@ func (f *pwFixture) removeManifest(manifestName string) {
 }
 
 type pwFixture struct {
-	t       *testing.T
-	kClient *k8s.FakeK8sClient
-	pw      *PodWatcher
-	ctx     context.Context
-	cancel  func()
-	store   *store.Store
-	pods    []*corev1.Pod
+	*tempdir.TempDirFixture
+	t             *testing.T
+	kClient       *k8s.FakeK8sClient
+	pw            *PodWatcher
+	ctx           context.Context
+	cancel        func()
+	store         *store.Store
+	pods          []*corev1.Pod
+	manifestNames []model.ManifestName
 }
 
 func (pw *pwFixture) reducer(ctx context.Context, state *store.EngineState, action store.Action) {
@@ -190,6 +245,7 @@ func (pw *pwFixture) reducer(ctx context.Context, state *store.EngineState, acti
 		pw.t.Errorf("Expected action type PodLogAction. Actual: %T", action)
 	}
 	pw.pods = append(pw.pods, a.Pod)
+	pw.manifestNames = append(pw.manifestNames, a.ManifestName)
 }
 
 func newPWFixture(t *testing.T) *pwFixture {
@@ -201,11 +257,12 @@ func newPWFixture(t *testing.T) *pwFixture {
 	of := k8s.ProvideOwnerFetcher(kClient)
 	pw := NewPodWatcher(kClient, of)
 	ret := &pwFixture{
-		kClient: kClient,
-		pw:      pw,
-		ctx:     ctx,
-		cancel:  cancel,
-		t:       t,
+		TempDirFixture: tempdir.NewTempDirFixture(t),
+		kClient:        kClient,
+		pw:             pw,
+		ctx:            ctx,
+		cancel:         cancel,
+		t:              t,
 	}
 
 	st := store.NewStore(store.Reducer(ret.reducer), store.LogActionsFlag(false))
@@ -217,17 +274,22 @@ func newPWFixture(t *testing.T) *pwFixture {
 }
 
 func (f *pwFixture) TearDown() {
+	f.TempDirFixture.TearDown()
 	f.kClient.TearDown()
 	f.cancel()
 }
 
-func newManifestTargetWithSelectors(m model.Manifest, selectors []labels.Selector) (*store.ManifestTarget, error) {
-	dt, err := k8s.NewTarget(model.TargetName(m.Name), nil, nil, selectors, nil, nil)
-	if err != nil {
-		return nil, err
+func (f *pwFixture) addDeployedUID(m model.Manifest, uid types.UID) {
+	defer f.pw.OnChange(f.ctx, f.store)
+
+	state := f.store.LockMutableStateForTesting()
+	defer f.store.UnlockMutableState()
+	mState, ok := state.ManifestState(m.Name)
+	if !ok {
+		f.t.Fatalf("Unknown manifest: %s", m.Name)
 	}
-	m = m.WithDeployTarget(dt)
-	return store.NewManifestTarget(m), nil
+	runtimeState := mState.GetOrCreateK8sRuntimeState()
+	runtimeState.DeployedUIDSet[uid] = true
 }
 
 func (f *pwFixture) assertObservedPods(pods ...*corev1.Pod) {
@@ -258,4 +320,5 @@ func (f *pwFixture) assertWatchedSelectors(ls ...labels.Selector) {
 
 func (f *pwFixture) clearPods() {
 	f.pods = nil
+	f.manifestNames = nil
 }

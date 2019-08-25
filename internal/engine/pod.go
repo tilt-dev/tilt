@@ -7,7 +7,6 @@ import (
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -18,13 +17,8 @@ import (
 )
 
 func handlePodChangeAction(ctx context.Context, state *store.EngineState, action PodChangeAction) {
-	if state.DeployInProgress {
-		state.DeployActionsDeferred = append(state.DeployActionsDeferred, action)
-		return
-	}
-
 	pod := action.Pod
-	mt, podInfo := ensureManifestTargetWithPod(state, pod)
+	mt, podInfo := ensureManifestTargetWithPod(state, pod, action.ManifestName)
 	if mt == nil || podInfo == nil {
 		return
 	}
@@ -71,22 +65,7 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 // ensuring that some Pod exists on the state.
 //
 // Intended as a helper for pod-mutating events.
-func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod) (*store.ManifestTarget, *store.Pod) {
-	manifestName := model.ManifestName(pod.ObjectMeta.Labels[k8s.ManifestNameLabel])
-	if manifestName == "" {
-		// if there's no ManifestNameLabel, then maybe it matches some manifest's ExtraPodSelectors
-		for _, m := range state.Manifests() {
-			if m.IsK8s() {
-				for _, lps := range m.K8sTarget().ExtraPodSelectors {
-					if lps.Matches(labels.Set(pod.ObjectMeta.GetLabels())) {
-						manifestName = m.Name
-						break
-					}
-				}
-			}
-		}
-	}
-
+func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod, manifestName model.ManifestName) (*store.ManifestTarget, *store.Pod) {
 	mt, ok := state.ManifestTargets[manifestName]
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.

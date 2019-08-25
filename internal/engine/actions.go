@@ -21,24 +21,33 @@ func NewErrorAction(err error) store.ErrorAction {
 }
 
 type PodChangeAction struct {
-	Pod *v1.Pod
+	Pod          *v1.Pod
+	ManifestName model.ManifestName
 }
 
 func (PodChangeAction) Action() {}
 
-func NewPodChangeAction(pod *v1.Pod) PodChangeAction {
-	return PodChangeAction{Pod: pod}
+func NewPodChangeAction(pod *v1.Pod, mn model.ManifestName) PodChangeAction {
+	return PodChangeAction{
+		Pod:          pod,
+		ManifestName: mn,
+	}
 }
 
 type ServiceChangeAction struct {
-	Service *v1.Service
-	URL     *url.URL
+	Service      *v1.Service
+	ManifestName model.ManifestName
+	URL          *url.URL
 }
 
 func (ServiceChangeAction) Action() {}
 
-func NewServiceChangeAction(service *v1.Service, url *url.URL) ServiceChangeAction {
-	return ServiceChangeAction{Service: service, URL: url}
+func NewServiceChangeAction(service *v1.Service, mn model.ManifestName, url *url.URL) ServiceChangeAction {
+	return ServiceChangeAction{
+		Service:      service,
+		ManifestName: mn,
+		URL:          url,
+	}
 }
 
 type BuildLogAction struct {
@@ -53,12 +62,6 @@ type PodLogAction struct {
 }
 
 func (PodLogAction) Action() {}
-
-// A little helper action so that we synchronize
-// Kubernetes events that happen while a `kubectl apply` is in-progress.
-type DeployStartedAction struct{}
-
-func (DeployStartedAction) Action() {}
 
 type DeployIDAction struct {
 	TargetID model.TargetID

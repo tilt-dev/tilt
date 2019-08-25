@@ -33,9 +33,10 @@ func NewK8sRuntimeState(deployID model.DeployID, pods ...Pod) K8sRuntimeState {
 		podMap[p.PodID] = &p
 	}
 	return K8sRuntimeState{
-		PodDeployID: deployID,
-		Pods:        podMap,
-		LBs:         make(map[k8s.ServiceName]*url.URL),
+		PodDeployID:    deployID,
+		Pods:           podMap,
+		LBs:            make(map[k8s.ServiceName]*url.URL),
+		DeployedUIDSet: NewUIDSet(),
 	}
 }
 

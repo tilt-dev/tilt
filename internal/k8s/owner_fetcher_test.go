@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -33,10 +34,9 @@ func TestVisitOneParent(t *testing.T) {
 			UID:  "rs-a-uid",
 		},
 	}
-	kCli.GetResources = make(map[GetKey]K8sEntity)
-	kCli.GetResources[GetKey{"apps", "ReplicaSet", "", "rs-a", ""}] = K8sEntity{Obj: rs}
+	kCli.InjectEntityByName(NewK8sEntity(rs))
 
-	tree, err := ov.OwnerTreeOf(K8sEntity{Obj: pod})
+	tree, err := ov.OwnerTreeOf(context.Background(), K8sEntity{Obj: pod})
 	assert.NoError(t, err)
 	assert.Equal(t, `Pod:pod-a
   ReplicaSet:rs-a`, tree.String())
@@ -80,11 +80,9 @@ func TestVisitTwoParents(t *testing.T) {
 			UID:  "dep-a-uid",
 		},
 	}
-	kCli.GetResources = make(map[GetKey]K8sEntity)
-	kCli.GetResources[GetKey{"apps", "ReplicaSet", "", "rs-a", ""}] = K8sEntity{Obj: rs}
-	kCli.GetResources[GetKey{"apps", "Deployment", "", "dep-a", ""}] = K8sEntity{Obj: dep}
+	kCli.InjectEntityByName(NewK8sEntity(rs), NewK8sEntity(dep))
 
-	tree, err := ov.OwnerTreeOf(K8sEntity{Obj: pod})
+	tree, err := ov.OwnerTreeOf(context.Background(), K8sEntity{Obj: pod})
 	assert.NoError(t, err)
 	assert.Equal(t, `Pod:pod-a
   ReplicaSet:rs-a

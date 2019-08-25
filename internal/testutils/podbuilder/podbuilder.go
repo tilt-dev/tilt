@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/docker/distribution/reference"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -54,11 +56,15 @@ type PodBuilder struct {
 	t        testing.TB
 	manifest model.Manifest
 
-	podID        string
-	phase        string
-	creationTime time.Time
-	deployID     model.DeployID
-	restartCount int
+	podID             string
+	phase             string
+	creationTime      time.Time
+	deletionTime      time.Time
+	deployID          model.DeployID
+	restartCount      int
+	extraPodLabels    map[string]string
+	skipManifestLabel bool
+	deploymentUID     types.UID
 
 	// keyed by container index -- i.e. the first container will have image: imageRefs[0] and ID: cIDs[0], etc.
 	// If there's no entry at index i, we'll use a dummy value.
@@ -68,11 +74,26 @@ type PodBuilder struct {
 
 func New(t testing.TB, manifest model.Manifest) PodBuilder {
 	return PodBuilder{
-		t:         t,
-		manifest:  manifest,
-		imageRefs: make(map[int]string),
-		cIDs:      make(map[int]string),
+		t:              t,
+		manifest:       manifest,
+		imageRefs:      make(map[int]string),
+		cIDs:           make(map[int]string),
+		extraPodLabels: make(map[string]string),
 	}
+}
+
+func (b PodBuilder) WithoutManifestLabel() PodBuilder {
+	b.skipManifestLabel = true
+	return b
+}
+
+func (b PodBuilder) WithPodLabel(key, val string) PodBuilder {
+	b.extraPodLabels[key] = val
+	return b
+}
+
+func (b PodBuilder) ManifestName() model.ManifestName {
+	return b.manifest.Name
 }
 
 func (b PodBuilder) RestartCount() int {
@@ -125,16 +146,71 @@ func (b PodBuilder) WithCreationTime(creationTime time.Time) PodBuilder {
 	return b
 }
 
+func (b PodBuilder) WithDeletionTime(deletionTime time.Time) PodBuilder {
+	b.deletionTime = deletionTime
+	return b
+}
+
 func (b PodBuilder) WithDeployID(deployID model.DeployID) PodBuilder {
 	b.deployID = deployID
 	return b
 }
 
-func (b PodBuilder) buildPodID() string {
+func (b PodBuilder) PodID() string {
 	if b.podID != "" {
 		return b.podID
 	}
 	return "fakePodID"
+}
+
+func (b PodBuilder) buildPodUID() types.UID {
+	return types.UID(fmt.Sprintf("%s-fakeUID", b.PodID()))
+}
+
+func (b PodBuilder) WithDeploymentUID(deploymentUID types.UID) PodBuilder {
+	b.deploymentUID = deploymentUID
+	return b
+}
+
+func (b PodBuilder) buildReplicaSetName() string {
+	return fmt.Sprintf("%s-replicaset", b.manifest.Name)
+}
+
+func (b PodBuilder) buildReplicaSetUID() types.UID {
+	return types.UID(fmt.Sprintf("%s-fakeUID", b.buildReplicaSetName()))
+}
+
+func (b PodBuilder) buildDeploymentName() string {
+	return b.manifest.Name.String()
+}
+
+func (b PodBuilder) DeploymentUID() types.UID {
+	if b.deploymentUID != "" {
+		return b.deploymentUID
+	}
+	return types.UID(fmt.Sprintf("%s-fakeUID", b.buildDeploymentName()))
+}
+
+func (b PodBuilder) buildDeployment() *appsv1.Deployment {
+	return &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: b.buildDeploymentName(),
+			UID:  b.DeploymentUID(),
+		},
+	}
+}
+
+func (b PodBuilder) buildReplicaSet() *appsv1.ReplicaSet {
+	dep := b.buildDeployment()
+	return &appsv1.ReplicaSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: b.buildReplicaSetName(),
+			UID:  b.buildReplicaSetUID(),
+			OwnerReferences: []metav1.OwnerReference{
+				k8s.RuntimeObjToOwnerRef(dep),
+			},
+		},
+	}
 }
 
 func (b PodBuilder) buildCreationTime() metav1.Time {
@@ -144,17 +220,30 @@ func (b PodBuilder) buildCreationTime() metav1.Time {
 	return metav1.Time{Time: time.Now()}
 }
 
+func (b PodBuilder) buildDeletionTime() *metav1.Time {
+	if !b.deletionTime.IsZero() {
+		return &metav1.Time{Time: b.deletionTime}
+	}
+	return nil
+}
+
 func (b PodBuilder) buildLabels(tSpec *v1.PodTemplateSpec) map[string]string {
 	deployID := b.deployID
 	if deployID.Empty() {
 		deployID = FakeDeployID
 	}
 	labels := map[string]string{
-		k8s.ManifestNameLabel: b.manifest.Name.String(),
 		k8s.TiltDeployIDLabel: deployID.String(),
 	}
 
+	if !b.skipManifestLabel {
+		labels[k8s.ManifestNameLabel] = b.manifest.Name.String()
+	}
+
 	for k, v := range tSpec.Labels {
+		labels[k] = v
+	}
+	for k, v := range b.extraPodLabels {
 		labels[k] = v
 	}
 	return labels
@@ -171,7 +260,7 @@ func (b PodBuilder) buildImage(imageSpec string, index int) string {
 	// Use the pod ID as the image tag. This is kind of weird, but gets at the semantics
 	// we want (e.g., a new pod ID indicates that this is a new build).
 	// Tests that don't want this behavior should replace the image with setImage(pod, imageName)
-	return fmt.Sprintf("%s:%s", imageSpecRef.Name(), b.buildPodID())
+	return fmt.Sprintf("%s:%s", imageSpecRef.Name(), b.PodID())
 }
 
 func (b PodBuilder) buildContainerID(index int) string {
@@ -224,6 +313,18 @@ func (b PodBuilder) validateContainerIDs(numContainers int) {
 	}
 }
 
+// Simulates a Pod -> ReplicaSet -> Deployment ref tree
+func (b PodBuilder) ObjectTreeEntities() []k8s.K8sEntity {
+	pod := b.Build()
+	rs := b.buildReplicaSet()
+	dep := b.buildDeployment()
+	return []k8s.K8sEntity{
+		k8s.NewK8sEntity(pod),
+		k8s.NewK8sEntity(rs),
+		k8s.NewK8sEntity(dep),
+	}
+}
+
 func (b PodBuilder) Build() *v1.Pod {
 	entities, err := parseYAMLFromManifest(b.manifest)
 	if err != nil {
@@ -252,9 +353,14 @@ func (b PodBuilder) Build() *v1.Pod {
 
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:              b.buildPodID(),
+			Name:              b.PodID(),
 			CreationTimestamp: b.buildCreationTime(),
+			DeletionTimestamp: b.buildDeletionTime(),
 			Labels:            b.buildLabels(tSpec),
+			UID:               b.buildPodUID(),
+			OwnerReferences: []metav1.OwnerReference{
+				k8s.RuntimeObjToOwnerRef(b.buildReplicaSet()),
+			},
 		},
 		Spec: spec,
 		Status: v1.PodStatus{
