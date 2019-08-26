@@ -64,7 +64,7 @@ func (kCli K8sClient) WatchEvents(ctx context.Context) (<-chan *v1.Event, error)
 	// HACK(dmiller): There's no way to get errors out of an informer. See https://github.com/kubernetes/client-go/issues/155
 	// In the meantime, at least to get authorization and some other errors let's try to set up a watcher and then just
 	// throw it away.
-	watcher, _, err := kCli.makeWatcher(func(ns string) watcher {
+	watcher, ns, err := kCli.makeWatcher(func(ns string) watcher {
 		return kCli.core.Events(ns)
 	}, labels.Everything())
 	if err != nil {
@@ -74,7 +74,11 @@ func (kCli K8sClient) WatchEvents(ctx context.Context) (<-chan *v1.Event, error)
 
 	ch := make(chan *v1.Event)
 
-	factory := informers.NewSharedInformerFactoryWithOptions(kCli.clientSet, 5*time.Second, informers.WithNamespace(kCli.configNamespace.String()))
+	options := []informers.SharedInformerOption{}
+	if ns != "" {
+		options = append(options, informers.WithNamespace(ns.String()))
+	}
+	factory := informers.NewSharedInformerFactoryWithOptions(kCli.clientSet, 5*time.Second, options...)
 	informer := factory.Core().V1().Events().Informer()
 
 	stopper := make(chan struct{})
