@@ -70,11 +70,6 @@ func newFixture(t *testing.T, dir string) *fixture {
 	if !installed {
 		// Install tilt on the first test run.
 		f.installTilt()
-
-		// Delete the namespace when the test starts,
-		// to make sure nothing is left over from previous tests.
-		f.deleteNamespace()
-
 		installed = true
 	}
 
@@ -83,35 +78,22 @@ func newFixture(t *testing.T, dir string) *fixture {
 
 func (f *fixture) installTilt() {
 	cmd := exec.CommandContext(f.ctx, "go", "install", "github.com/windmilleng/tilt/cmd/tilt")
-	err := cmd.Run()
-	if err != nil {
-		f.t.Fatalf("Building tilt: %v", err)
-	}
+	f.runOrFail(cmd, "Building tilt")
 }
 
-func (f *fixture) deleteNamespace() {
-	cmd := exec.CommandContext(f.ctx, "kubectl", "delete", "namespace", "tilt-integration", "--ignore-not-found")
-	err := cmd.Run()
-	if err != nil {
-		f.t.Fatalf("Deleting namespace tilt-integration: %v", err)
+func (f *fixture) runOrFail(cmd *exec.Cmd, msg string) {
+	// Use Output() instead of Run() because that captures Stderr in the ExitError.
+	_, err := cmd.Output()
+	if err == nil {
+		return
 	}
 
-	// block until the namespace doesn't exist, since kubectl often returns and the namespace is still "terminating"
-	// which causes the creation of objects in that namespace to fail
-	var b []byte
-	args := []string{"kubectl", "get", "namespace", "tilt-integration", "--ignore-not-found"}
-	timeout := time.Now().Add(10 * time.Second)
-	for time.Now().Before(timeout) {
-		cmd := exec.CommandContext(f.ctx, args[0], args[1:]...)
-		b, err = cmd.Output()
-		if err != nil {
-			f.t.Fatalf("Error: checking that deletion of the tilt-integration namespace has completed: %v", err)
-		}
-		if len(b) == 0 {
-			return
-		}
+	exitErr, isExitErr := err.(*exec.ExitError)
+	if isExitErr {
+		f.t.Fatalf("%s\nError: %v\nStderr:\n%s\n", msg, err, string(exitErr.Stderr))
+		return
 	}
-	f.t.Fatalf("timed out waiting for tilt-integration deletion to complete. last output of %q: %q", args, string(b))
+	f.t.Fatalf("%s. Error: %v", msg, err)
 }
 
 func (f *fixture) DumpLogs() {
@@ -245,7 +227,7 @@ func (f *fixture) TearDown() {
 	cmd := f.tiltCmd([]string{"down"}, os.Stdout)
 	err := cmd.Run()
 	if err != nil {
-		f.t.Fatal(err)
+		f.t.Errorf("Running tilt down: %v", err)
 	}
 
 	for k, v := range f.originalFiles {
