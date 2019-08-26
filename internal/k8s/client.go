@@ -280,7 +280,8 @@ func (k K8sClient) forceReplaceEntities(ctx context.Context, entities []K8sEntit
 	if err != nil {
 		return nil, errors.Wrapf(err, "kubectl replace:\nstderr: %s", stderr)
 	}
-	return ParseYAMLFromString(stdout)
+
+	return parseYAMLFromStringWithDeletedResources(stdout)
 }
 
 // applyEntitiesAndMaybeForce `kubectl apply`'s the given entities, and if the call fails with
