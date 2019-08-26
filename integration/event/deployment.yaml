@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: event
+  namespace: tilt-integration
+  labels:
+    app: event
+spec:
+  selector:
+    matchLabels:
+      app: event
+  template:
+    metadata:
+      labels:
+        app: event
+    spec:
+      containers:
+      - name: server
+        image: event-server
+        ports:
+        - containerPort: 8000
