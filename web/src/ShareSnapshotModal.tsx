@@ -1,13 +1,14 @@
 import React, { PureComponent } from "react"
 import Modal from "react-modal"
-import { Snapshot } from "./types"
 import "./ShareSnapshotModal.scss"
+import cookies from "js-cookie"
 
 type props = {
   handleSendSnapshot: () => void
   handleClose: () => void
   snapshotUrl: string
-  registerTokenUrl: string
+  tiltCloudUsername: string
+  tiltCloudSchemeHost: string
   isOpen: boolean
 }
 
@@ -23,7 +24,7 @@ export default class ShareSnapshotModal extends PureComponent<props> {
       >
         <div className="ShareSnapshotModal-pane">{link}</div>
         <div className="ShareSnapshotModal-pane">
-          {this.loggedOutTiltCloudCopy()}
+          {this.tiltCloudCopy()}
         </div>
       </Modal>
     )
@@ -43,15 +44,26 @@ export default class ShareSnapshotModal extends PureComponent<props> {
     )
   }
 
-  loggedOutTiltCloudCopy() {
-    return (
-      <div>
-        <div>
-          Go to <a href={this.props.registerTokenUrl}>TiltCloud</a> to manage
-          your snapshots.
-        </div>
-        <div>(You'll just need to link your GitHub Account)</div>
-      </div>
-    )
+  tiltCloudCopy() {
+    if (this.props.tiltCloudUsername == "") {
+      return (
+          <div>
+            <div>
+              Click <form action={this.props.tiltCloudSchemeHost + "/register_token"} target="_blank" method="POST">
+              <input type="submit" value="here"/>
+              <input name="token" type="hidden" value={cookies.get("Tilt-Token")}/>
+            </form>
+              to associate this copy of Tilt with your TiltCloud account.
+            </div>
+            <div>(You'll just need to link your GitHub Account)</div>
+          </div>
+      )
+    } else {
+      return (
+          <div>
+            Sharing snapshots as {this.props.tiltCloudUsername}.
+          </div>
+      )
+    }
   }
 }

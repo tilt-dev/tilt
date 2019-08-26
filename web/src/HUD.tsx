@@ -37,7 +37,8 @@ type HudView = {
   RunningTiltBuild: TiltBuild
   LatestTiltBuild: TiltBuild
   FeatureFlags: { [featureFlag: string]: boolean }
-  RegisterTokenURL: string
+  TiltCloudUsername: string
+  TiltCloudSchemeHost: string
 }
 
 type HudState = {
@@ -93,7 +94,8 @@ class HUD extends Component<HudProps, HudState> {
           Dev: false,
         },
         FeatureFlags: {},
-        RegisterTokenURL: "",
+        TiltCloudUsername: "",
+        TiltCloudSchemeHost: "",
       },
       IsSidebarClosed: false,
       SnapshotLink: "",
@@ -455,13 +457,15 @@ class HUD extends Component<HudProps, HudState> {
   renderShareSnapshotModal(view: HudView | null) {
     let handleClose = () => this.setState({ showSnapshotModal: false })
     let handleSendSnapshot = () => this.sendSnapshot(this.state)
-    let registerTokenUrl = (view && view.RegisterTokenURL) || ""
+    let tiltCloudUsername = (view && view.TiltCloudUsername) || ""
+    let tiltCloudSchemeHost = (view && view.TiltCloudSchemeHost) || ""
     return (
       <ShareSnapshotModal
         handleSendSnapshot={handleSendSnapshot}
         handleClose={handleClose}
         snapshotUrl={this.state.SnapshotLink}
-        registerTokenUrl={registerTokenUrl}
+        tiltCloudUsername={tiltCloudUsername}
+        tiltCloudSchemeHost={tiltCloudSchemeHost}
         isOpen={this.state.showSnapshotModal}
       />
     )

@@ -112,3 +112,14 @@ func (AnalyticsOptAction) Action() {}
 type AnalyticsNudgeSurfacedAction struct{}
 
 func (AnalyticsNudgeSurfacedAction) Action() {}
+
+type TiltCloudUserLookedUpAction struct {
+	Found    bool
+	Username string
+}
+
+func (TiltCloudUserLookedUpAction) Action() {}
+
+type RecheckTiltCloudUserAction struct{}
+
+func (RecheckTiltCloudUserAction) Action() {}
