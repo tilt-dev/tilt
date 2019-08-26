@@ -3,7 +3,7 @@ import { Snapshot } from "./types"
 import { oneResource } from "./testdata.test"
 import Features from "./feature"
 
-const testSnapshot: Snapshot = {
+const testSnapshot = {
   Message: "",
   View: {
     Resources: [oneResource()],
@@ -45,7 +45,11 @@ describe("cleanStateForSnapshotPOST", () => {
   it("sets the snapshot feature flag to false", () => {
     testSnapshot.View.FeatureFlags["snapshots"] = true
     let cleanedState = cleanStateForSnapshotPOST(testSnapshot)
-    let features = new Features(cleanedState.View.FeatureFlags)
-    expect(features.isEnabled("snapshots")).toBe(false)
+    if (cleanedState.View) {
+      let features = new Features(cleanedState.View.FeatureFlags)
+      expect(features.isEnabled("snapshots")).toBe(false)
+    } else {
+      throw "Error: View was null"
+    }
   })
 })
