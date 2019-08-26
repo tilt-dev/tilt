@@ -1,0 +1,6 @@
+# -*- mode: Python -*-
+
+include('../Tiltfile')
+k8s_yaml('pod.yaml')
+docker_build('pod', '.')
+k8s_resource('pod', port_forwards=31234)
