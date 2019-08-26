@@ -23,14 +23,19 @@ func NewErrorAction(err error) store.ErrorAction {
 type PodChangeAction struct {
 	Pod          *v1.Pod
 	ManifestName model.ManifestName
+
+	// The UID that we matched against to associate this pod with Tilt.
+	// Might be the Pod UID itself, or the UID of an ancestor.
+	AncestorUID types.UID
 }
 
 func (PodChangeAction) Action() {}
 
-func NewPodChangeAction(pod *v1.Pod, mn model.ManifestName) PodChangeAction {
+func NewPodChangeAction(pod *v1.Pod, mn model.ManifestName, ancestorUID types.UID) PodChangeAction {
 	return PodChangeAction{
 		Pod:          pod,
 		ManifestName: mn,
+		AncestorUID:  ancestorUID,
 	}
 }
 

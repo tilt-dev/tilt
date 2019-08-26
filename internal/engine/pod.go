@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
@@ -18,7 +17,7 @@ import (
 
 func handlePodChangeAction(ctx context.Context, state *store.EngineState, action PodChangeAction) {
 	pod := action.Pod
-	mt, podInfo := ensureManifestTargetWithPod(state, pod, action.ManifestName)
+	mt, podInfo := ensureManifestTargetWithPod(state, action)
 	if mt == nil || podInfo == nil {
 		return
 	}
@@ -65,7 +64,10 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 // ensuring that some Pod exists on the state.
 //
 // Intended as a helper for pod-mutating events.
-func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod, manifestName model.ManifestName) (*store.ManifestTarget, *store.Pod) {
+func ensureManifestTargetWithPod(state *store.EngineState, action PodChangeAction) (*store.ManifestTarget, *store.Pod) {
+	pod := action.Pod
+	manifestName := action.ManifestName
+	ancestorUID := action.AncestorUID
 	mt, ok := state.ManifestTargets[manifestName]
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.
@@ -73,24 +75,24 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod, manifest
 	}
 
 	ms := mt.State
-
-	deployID := ms.DeployID
-	if podDeployID, ok := pod.ObjectMeta.Labels[k8s.TiltDeployIDLabel]; ok {
-		if pdID, err := strconv.Atoi(podDeployID); err != nil || pdID != int(deployID) {
-			return nil, nil
-		}
-	}
-
 	podID := k8s.PodIDFromPod(pod)
 	startedAt := pod.CreationTimestamp.Time
 	status := podStatusToString(*pod)
 	ns := k8s.NamespaceFromPod(pod)
 	hasSynclet := sidecar.PodSpecContainsSynclet(pod.Spec)
-
-	// CASE 1: We don't have a set of pods for this DeployID yet
 	runtime := ms.GetOrCreateK8sRuntimeState()
-	if runtime.PodDeployID == 0 || runtime.PodDeployID != deployID {
-		runtime.PodDeployID = deployID
+
+	// If the event has an ancestor UID attached, but that ancestor isn't in the
+	// deployed UID set anymore, we can ignore it.
+	isAncestorMatch := ancestorUID != ""
+	if isAncestorMatch && !runtime.DeployedUIDSet.Contains(ancestorUID) {
+		return nil, nil
+	}
+
+	// Case 1: We haven't seen pods for this ancestor yet.
+	if runtime.PodAncestorUID == "" ||
+		(isAncestorMatch && runtime.PodAncestorUID != ancestorUID) {
+		runtime.PodAncestorUID = ancestorUID
 		runtime.Pods = make(map[k8s.PodID]*store.Pod)
 		pod := &store.Pod{
 			PodID:      podID,
@@ -106,7 +108,8 @@ func ensureManifestTargetWithPod(state *store.EngineState, pod *v1.Pod, manifest
 
 	podInfo, ok := runtime.Pods[podID]
 	if !ok {
-		// CASE 2: We have a set of pods for this DeployID, but not this particular pod -- record it
+		// CASE 2: We have a set of pods for this ancestor UID, but not this
+		// particular pod -- record it
 		podInfo = &store.Pod{
 			PodID:      podID,
 			StartedAt:  startedAt,

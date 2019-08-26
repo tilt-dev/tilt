@@ -267,7 +267,7 @@ func AllRunningContainers(mt *ManifestTarget) []ContainerInfo {
 
 	var result []ContainerInfo
 	for _, iTarget := range mt.Manifest.ImageTargets {
-		cInfos, err := RunningContainersForTargetForOnePod(iTarget, mt.State.DeployID, mt.State.K8sRuntimeState())
+		cInfos, err := RunningContainersForTargetForOnePod(iTarget, mt.State.K8sRuntimeState())
 		if err != nil {
 			// HACK(maia): just don't collect container info for targets running
 			// more than one pod -- we don't support LiveUpdating them anyway,
@@ -281,8 +281,7 @@ func AllRunningContainers(mt *ManifestTarget) []ContainerInfo {
 
 // If all containers running the given image are ready, returns info for them.
 // (If this image is running on multiple pods, return an error.)
-func RunningContainersForTargetForOnePod(iTarget model.ImageTarget, deployID model.DeployID,
-	runtimeState K8sRuntimeState) ([]ContainerInfo, error) {
+func RunningContainersForTargetForOnePod(iTarget model.ImageTarget, runtimeState K8sRuntimeState) ([]ContainerInfo, error) {
 	if runtimeState.PodLen() > 1 {
 		return nil, fmt.Errorf("can only get container info for a single pod; image target %s has %d pods", iTarget.ID(), runtimeState.PodLen())
 	}
@@ -296,7 +295,11 @@ func RunningContainersForTargetForOnePod(iTarget model.ImageTarget, deployID mod
 		return nil, nil
 	}
 
-	if runtimeState.PodDeployID != deployID {
+	// If there was a recent deploy, the runtime state might not have the
+	// new pods yet. We check the PodAncestorID and see if it's in the most
+	// recent deploy set. If it's not, then we can should ignore these pods.
+	ancestorUID := runtimeState.PodAncestorUID
+	if ancestorUID != "" && !runtimeState.DeployedUIDSet.Contains(ancestorUID) {
 		return nil, nil
 	}
 
