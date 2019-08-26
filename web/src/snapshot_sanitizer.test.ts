@@ -1,6 +1,7 @@
 import cleanStateForSnapshotPOST from "./snapshot_sanitizer"
 import { Snapshot } from "./types"
 import { oneResource } from "./testdata.test"
+import Features from "./feature"
 
 const testSnapshot: Snapshot = {
   Message: "",
@@ -21,7 +22,9 @@ const testSnapshot: Snapshot = {
       Date: "",
       Dev: false,
     },
-    FeatureFlags: {},
+    FeatureFlags: {
+      snapshots: true,
+    },
   },
   IsSidebarClosed: false,
   SnapshotLink: "https://snapshots.tilt.dev/foo",
@@ -38,5 +41,11 @@ describe("cleanStateForSnapshotPOST", () => {
     expect(cleanStateForSnapshotPOST(testSnapshot).showSnapshotModal).toBe(
       false
     )
+  })
+  it("sets the snapshot feature flag to false", () => {
+    testSnapshot.View.FeatureFlags["snapshots"] = true
+    let cleanedState = cleanStateForSnapshotPOST(testSnapshot)
+    let features = new Features(cleanedState.View.FeatureFlags)
+    expect(features.isEnabled("snapshots")).toBe(false)
   })
 })

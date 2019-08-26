@@ -5,5 +5,8 @@ export default function cleanStateForSnapshotPOST(
 ): Snapshot {
   snapshot.SnapshotLink = ""
   snapshot.showSnapshotModal = false
+  if (snapshot.View) {
+    snapshot.View.FeatureFlags["snapshots"] = false
+  }
   return snapshot
 }
