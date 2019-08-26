@@ -100,4 +100,6 @@ export type Snapshot = {
     FeatureFlags: { [featureFlag: string]: boolean }
   } | null
   IsSidebarClosed: boolean
+  SnapshotLink: string
+  showSnapshotModal: boolean
 }
