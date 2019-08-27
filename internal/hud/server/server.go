@@ -276,6 +276,12 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 	}
 
 	request, err := http.NewRequest(http.MethodPost, s.newSnapshotURL(), req.Body)
+	request, err := http.NewRequest(http.MethodPost, newSnapshotURL(), req.Body)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error making request: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+
 	response, err := s.httpCli.Do(request)
 	if err != nil {
 		log.Printf("Error creating snapshot: %v\n", err)
