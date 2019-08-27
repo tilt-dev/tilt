@@ -38,17 +38,17 @@ describe("ShareSnapshotModal", () => {
 
   it("renders with modal open w/ known username", () => {
     const tree = renderer
-        .create(
-            <ShareSnapshotModal
-                handleSendSnapshot={fakeSendsnapshot}
-                handleClose={fakeHandleCloseModal}
-                isOpen={true}
-                snapshotUrl="http://test.com"
-                tiltCloudUsername={"tacocat"}
-                tiltCloudSchemeHost={"https://cloud.tilt.dev"}
-            />
-        )
-        .toJSON()
+      .create(
+        <ShareSnapshotModal
+          handleSendSnapshot={fakeSendsnapshot}
+          handleClose={fakeHandleCloseModal}
+          isOpen={true}
+          snapshotUrl="http://test.com"
+          tiltCloudUsername={"tacocat"}
+          tiltCloudSchemeHost={"https://cloud.tilt.dev"}
+        />
+      )
+      .toJSON()
 
     expect(tree).toMatchSnapshot()
   })
