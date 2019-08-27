@@ -275,7 +275,6 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 	s.store.RUnlockState()
 
 	request, err := http.NewRequest(http.MethodPost, s.newSnapshotURL(), req.Body)
-	request, err := http.NewRequest(http.MethodPost, newSnapshotURL(), req.Body)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error making request: %s", err.Error()), http.StatusInternalServerError)
 		return
