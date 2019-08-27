@@ -10,7 +10,7 @@ import (
 
 func TestFormatChangedFileListTruncates(t *testing.T) {
 	actual := formatFileChangeList([]string{"a", "b", "c", "d", "e", "f"})
-	expected := "[a b c d e f]"
+	expected := "[a b c d e ...]"
 	require.Equal(t, expected, actual)
 }
 
