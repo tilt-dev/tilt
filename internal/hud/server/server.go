@@ -63,7 +63,7 @@ func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analyti
 	r.HandleFunc("/api/analytics_opt", s.HandleAnalyticsOpt)
 	r.HandleFunc("/api/sail", s.HandleSail)
 	r.HandleFunc("/api/trigger", s.HandleTrigger)
-	r.HandleFunc("/api/snapshot/new", s.HandleNewSnapshot)
+	r.HandleFunc("/api/snapshot/new", s.HandleNewSnapshot).Methods("POST")
 	// this endpoint is only used for testing snapshots in development
 	r.HandleFunc("/api/snapshot/{snapshot_id}", s.SnapshotJSON)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
@@ -264,16 +264,16 @@ func newSnapshotURL() string {
 }
 
 func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodPost {
-		http.Error(w, "must be POST request", http.StatusBadRequest)
-		return
-	}
+	st := s.store.RLockState()
+	token := st.Token
+	s.store.RUnlockState()
 
 	request, err := http.NewRequest(http.MethodPost, newSnapshotURL(), req.Body)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error making request: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
+	request.Header.Set(cloud.TiltTokenHeaderName, token.String())
 	response, err := s.httpCli.Do(request)
 	if err != nil {
 		log.Printf("Error creating snapshot: %v\n", err)
