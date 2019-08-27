@@ -311,7 +311,7 @@ func (ms *ManifestState) K8sRuntimeState() K8sRuntimeState {
 func (ms *ManifestState) GetOrCreateK8sRuntimeState() K8sRuntimeState {
 	ret, ok := ms.RuntimeState.(K8sRuntimeState)
 	if !ok {
-		ret = NewK8sRuntimeState(0)
+		ret = NewK8sRuntimeState()
 		ms.RuntimeState = ret
 	}
 	return ret

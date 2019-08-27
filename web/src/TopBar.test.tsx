@@ -1,7 +1,7 @@
 import React from "react"
 import renderer from "react-test-renderer"
 import { MemoryRouter } from "react-router"
-import { ResourceView, Snapshot } from "./types"
+import { ResourceView } from "./types"
 import TopBar from "./TopBar"
 
 const fakeHandleOpenModal = () => {}

@@ -232,9 +232,7 @@ func (b PodBuilder) buildLabels(tSpec *v1.PodTemplateSpec) map[string]string {
 	if deployID.Empty() {
 		deployID = FakeDeployID
 	}
-	labels := map[string]string{
-		k8s.TiltDeployIDLabel: deployID.String(),
-	}
+	labels := map[string]string{}
 
 	if !b.skipManifestLabel {
 		labels[k8s.ManifestNameLabel] = b.manifest.Name.String()

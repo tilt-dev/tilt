@@ -22,6 +22,7 @@ import NotFound from "./NotFound"
 import { numberOfAlerts, isK8sResourceInfo } from "./alerts"
 import Features from "./feature"
 import ShareSnapshotModal from "./ShareSnapshotModal"
+import cleanStateForSnapshotPOST from "./snapshot_sanitizer"
 
 type HudProps = {
   history: History
@@ -156,9 +157,10 @@ class HUD extends Component<HudProps, HudState> {
 
   sendSnapshot(snapshot: Snapshot) {
     let url = `//${window.location.host}/api/snapshot/new`
+    let sanitizedSnapshot = cleanStateForSnapshotPOST(snapshot)
     fetch(url, {
       method: "post",
-      body: JSON.stringify(snapshot),
+      body: JSON.stringify(sanitizedSnapshot),
     })
       .then(res => {
         res

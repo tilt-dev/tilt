@@ -117,6 +117,16 @@ func TestListYAML(t *testing.T) {
 	}, kinds)
 }
 
+func TestDeleted(t *testing.T) {
+	result, err := parseYAMLFromStringWithDeletedResources(testyaml.OneDeleted)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(result))
+
+	result, err = parseYAMLFromStringWithDeletedResources(testyaml.TwoDeleted)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(result))
+}
+
 // Assert that parsing the YAML and re-serializing it produces the same result.
 // Returns the parsed entities.
 func assertRoundTripYAML(t *testing.T, yaml string) []K8sEntity {

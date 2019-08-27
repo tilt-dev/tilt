@@ -14,12 +14,13 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes/fake"
-	k8stesting "k8s.io/client-go/testing"
+	"k8s.io/client-go/kubernetes/scheme"
+	ktesting "k8s.io/client-go/testing"
 
 	"github.com/windmilleng/tilt/internal/testutils"
-
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -159,7 +160,20 @@ func TestK8sClient_WatchEvents(t *testing.T) {
 	event1 := fakeEvent("event1", "hello1", 1)
 	event2 := fakeEvent("event2", "hello2", 2)
 	event3 := fakeEvent("event3", "hello3", 3)
-	events := []runtime.Object{&event1, &event2, &event3}
+	events := []runtime.Object{event1, event2, event3}
+	tf.runEvents(events, events)
+}
+
+func TestK8sClient_WatchEventsNamespaced(t *testing.T) {
+	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
+
+	tf.kCli.configNamespace = "default"
+
+	event1 := fakeEvent("event1", "hello1", 1)
+	event1.Namespace = "sandbox"
+
+	events := []runtime.Object{event1}
 	tf.runEvents(events, events)
 }
 
@@ -172,17 +186,29 @@ func TestK8sClient_WatchEventsUpdate(t *testing.T) {
 	event1b := fakeEvent("event1", "hello1", 1)
 	event3 := fakeEvent("event3", "hello3", 1)
 	event2b := fakeEvent("event2", "hello2", 2)
-	emittedEvents := []runtime.Object{&event1, &event2, &event1b, &event3, &event2b}
-	// we shouldn't see the update for 1b because its count didn't change
-	expectedEvents := []runtime.Object{&event1, &event2, &event3, &event2b}
-	tf.runEvents(emittedEvents, expectedEvents)
+
+	ch, err := tf.kCli.WatchEvents(tf.ctx)
+	assert.NoError(t, err)
+
+	gvr := schema.GroupVersionResource{Version: "v1", Resource: "events"}
+	tf.tracker.Add(event1)
+	tf.tracker.Add(event2)
+	tf.assertEvents([]runtime.Object{event1, event2}, ch)
+
+	tf.tracker.Update(gvr, event1b, "")
+	tf.assertEvents([]runtime.Object{}, ch)
+
+	tf.tracker.Add(event3)
+	tf.tracker.Update(gvr, event2b, "")
+	tf.assertEvents([]runtime.Object{event3, event2b}, ch)
 }
 
 type watchTestFixture struct {
-	t                 *testing.T
-	kCli              K8sClient
-	w                 *watch.FakeWatcher
-	watchRestrictions k8stesting.WatchRestrictions
+	t    *testing.T
+	kCli K8sClient
+
+	tracker           ktesting.ObjectTracker
+	watchRestrictions ktesting.WatchRestrictions
 	ctx               context.Context
 	watchErr          error
 	nsRestriction     Namespace
@@ -192,36 +218,49 @@ type watchTestFixture struct {
 func newWatchTestFixture(t *testing.T) *watchTestFixture {
 	ret := &watchTestFixture{t: t}
 
-	c := fake.NewSimpleClientset()
-
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ret.ctx, ret.cancel = context.WithCancel(ctx)
 
-	ret.w = watch.NewFakeWithChanSize(10, false)
+	tracker := ktesting.NewObjectTracker(scheme.Scheme, scheme.Codecs.UniversalDecoder())
+	ret.tracker = tracker
 
-	wr := func(action k8stesting.Action) (handled bool, wi watch.Interface, err error) {
-		wa := action.(k8stesting.WatchAction)
+	cs := &fake.Clientset{}
+	cs.AddReactor("*", "*", ktesting.ObjectReaction(tracker))
+
+	wr := func(action ktesting.Action) (handled bool, wi watch.Interface, err error) {
+		wa := action.(ktesting.WatchAction)
 		nsRestriction := ret.nsRestriction
 		if !nsRestriction.Empty() && wa.GetNamespace() != nsRestriction.String() {
 			return true, nil, &apiErrors.StatusError{
 				ErrStatus: metav1.Status{Code: http.StatusForbidden},
 			}
 		}
+
 		ret.watchRestrictions = wa.GetWatchRestrictions()
 		if ret.watchErr != nil {
 			return true, nil, ret.watchErr
 		}
-		return true, ret.w, nil
+
+		// Fake watcher implementation based on objects added to the tracker.
+		gvr := action.GetResource()
+		ns := action.GetNamespace()
+		watch, err := tracker.Watch(gvr, ns)
+		if err != nil {
+			return false, nil, err
+		}
+
+		return true, watch, nil
 	}
 
-	c.Fake.PrependWatchReactor("*", wr)
+	cs.AddWatchReactor("*", wr)
+
 	ret.kCli = K8sClient{
 		env:           EnvUnknown,
 		kubectlRunner: nil,
-		core:          c.CoreV1(), // TODO set
+		core:          cs.CoreV1(), // TODO set
 		restConfig:    nil,
 		portForwarder: nil,
-		clientSet:     c,
+		clientSet:     cs,
 	}
 
 	return ret
@@ -232,20 +271,17 @@ func (tf *watchTestFixture) TearDown() {
 }
 
 func (tf *watchTestFixture) runPods(input []runtime.Object, expectedOutput []runtime.Object) {
-	for _, o := range input {
-		tf.w.Add(o)
-	}
-
-	tf.w.Stop()
-
 	ch, err := tf.kCli.WatchPods(tf.ctx, labels.Set{}.AsSelector())
 	if !assert.NoError(tf.t, err) {
 		return
 	}
 
+	for _, o := range input {
+		tf.tracker.Add(o)
+	}
+
 	var observedPods []runtime.Object
 
-	timeout := time.After(500 * time.Millisecond)
 	done := false
 	for !done {
 		select {
@@ -255,12 +291,9 @@ func (tf *watchTestFixture) runPods(input []runtime.Object, expectedOutput []run
 			} else {
 				observedPods = append(observedPods, pod)
 			}
-		case <-timeout:
-			tf.t.Fatalf("test timed out\nExpected pods: %v\nObserved pods: %v\n", expectedOutput, observedPods)
-		default:
-			if len(observedPods) == len(expectedOutput) {
-				done = true
-			}
+		case <-time.After(10 * time.Millisecond):
+			// if we haven't seen any events for 10ms, assume we're done
+			done = true
 		}
 	}
 
@@ -268,20 +301,17 @@ func (tf *watchTestFixture) runPods(input []runtime.Object, expectedOutput []run
 }
 
 func (tf *watchTestFixture) runServices(input []runtime.Object, expectedOutput []runtime.Object) {
-	for _, o := range input {
-		tf.w.Add(o)
-	}
-
-	tf.w.Stop()
-
 	ch, err := tf.kCli.WatchServices(tf.ctx, []model.LabelPair{})
 	if !assert.NoError(tf.t, err) {
 		return
 	}
 
+	for _, o := range input {
+		tf.tracker.Add(o)
+	}
+
 	var observedServices []runtime.Object
 
-	timeout := time.After(500 * time.Millisecond)
 	done := false
 	for !done {
 		select {
@@ -291,8 +321,9 @@ func (tf *watchTestFixture) runServices(input []runtime.Object, expectedOutput [
 			} else {
 				observedServices = append(observedServices, pod)
 			}
-		case <-timeout:
-			tf.t.Fatal("test timed out")
+		case <-time.After(10 * time.Millisecond):
+			// if we haven't seen any events for 10ms, assume we're done
+			done = true
 		}
 	}
 
@@ -300,20 +331,20 @@ func (tf *watchTestFixture) runServices(input []runtime.Object, expectedOutput [
 }
 
 func (tf *watchTestFixture) runEvents(input []runtime.Object, expectedOutput []runtime.Object) {
-	for _, o := range input {
-		tf.w.Add(o)
-	}
-
-	tf.w.Stop()
-
 	ch, err := tf.kCli.WatchEvents(tf.ctx)
 	if !assert.NoError(tf.t, err) {
 		return
 	}
 
+	for _, o := range input {
+		tf.tracker.Add(o)
+	}
+	tf.assertEvents(expectedOutput, ch)
+}
+
+func (tf *watchTestFixture) assertEvents(expectedOutput []runtime.Object, ch <-chan *v1.Event) {
 	var observedEvents []runtime.Object
 
-	timeout := time.After(500 * time.Millisecond)
 	done := false
 	for !done {
 		select {
@@ -323,8 +354,6 @@ func (tf *watchTestFixture) runEvents(input []runtime.Object, expectedOutput []r
 			} else {
 				observedEvents = append(observedEvents, event)
 			}
-		case <-timeout:
-			tf.t.Fatalf("test timed out\nExpected events: %v\nObserved events: %v\n", expectedOutput, observedEvents)
 		case <-time.After(10 * time.Millisecond):
 			// if we haven't seen any events for 10ms, assume we're done
 			// ideally we'd always be exiting from ch closing, but it's not currently clear how to do that via informer
@@ -370,8 +399,8 @@ func fakeService(name string) v1.Service {
 	}
 }
 
-func fakeEvent(name string, message string, count int) v1.Event {
-	return v1.Event{
+func fakeEvent(name string, message string, count int) *v1.Event {
+	return &v1.Event{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
