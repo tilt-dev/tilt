@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
-	"strings"
 	"sync"
 	"time"
 
@@ -19,6 +17,8 @@ import (
 
 // to avoid infinitely resubmitting requests on error
 const timeoutAfterError = 5 * time.Minute
+
+const TiltTokenHeaderName = "X-Tilt-Token"
 
 func NewUsernameManager(client HttpClient) *CloudUsernameManager {
 	return &CloudUsernameManager{client: client}
@@ -87,13 +87,13 @@ func (c *CloudUsernameManager) OnChange(ctx context.Context, st store.RStore) {
 			c.currentlyMakingRequest = false
 			c.mu.Unlock()
 		}()
-		body := strings.NewReader(fmt.Sprintf("token=%s", url.QueryEscape(string(state.Token))))
-		req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/whoami", SchemeHost), body)
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/whoami", SchemeHost), nil)
 		if err != nil {
 			logger.Get(ctx).Infof("error making whoami request: %v", err)
 			c.error()
 			return
 		}
+		req.Header.Set(TiltTokenHeaderName, string(state.Token))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		resp, err := c.client.Do(req)
 		if err != nil {
