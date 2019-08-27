@@ -18,5 +18,5 @@ func formatFileChangeList(changedFiles []string) string {
 		changedPathsToPrint = changedFiles
 	}
 
-	return fmt.Sprintf("%v", ospath.TryAsCwdChildren(changedFiles))
+	return fmt.Sprintf("%v", ospath.TryAsCwdChildren(changedPathsToPrint))
 }
