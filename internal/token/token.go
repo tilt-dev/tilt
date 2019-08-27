@@ -11,6 +11,10 @@ const tokenFileName = "token"
 
 type Token string
 
+func (t Token) ToString() string {
+	return string(t)
+}
+
 func GetOrCreateToken(dir *dirs.WindmillDir) (Token, error) {
 	token, err := getExistingToken(dir)
 	if os.IsNotExist(err) {
