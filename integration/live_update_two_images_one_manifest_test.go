@@ -31,7 +31,7 @@ func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
 
 	// Live Update only one
 	fmt.Println("> LiveUpdate 'sparkle'")
-	f.ReplaceContents("./sparkle/app.py", "One-Up", "Two-Up")
+	f.ReplaceContents("./sparkle/index.html", "One-Up", "Two-Up")
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
@@ -48,7 +48,7 @@ func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
 	// We expect the `kill` command to die abnormally when the parent process dies.
 	fmt.Println("> kill 'tada' and wait for container to come back up")
 	_, _ = f.runCommand("kubectl", "exec", podAfterSparkleLiveUpd, "-c=tada", namespaceFlag,
-		"--", "kill", "1")
+		"--", "killall", "busybox")
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
@@ -61,8 +61,8 @@ func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
 	// Make sure that we can LiveUpdate both at once
 	fmt.Println("> LiveUpdate both services at once")
 
-	f.ReplaceContents("./sparkle/app.py", "Two-Up", "Three-Up")
-	f.ReplaceContents("./tada/app.py", "One-Up", "Three-Up")
+	f.ReplaceContents("./sparkle/index.html", "Two-Up", "Three-Up")
+	f.ReplaceContents("./tada/index.html", "One-Up", "Three-Up")
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
@@ -77,7 +77,7 @@ func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
 	// Kill a container we DID LiveUpdate; we should detect it and do a crash rebuild.
 	fmt.Println("> kill 'sparkle' and wait for crash rebuild")
 	_, _ = f.runCommand("kubectl", "exec", podAfterBothLiveUpdate, "-c=sparkle", namespaceFlag,
-		"--", "kill", "1")
+		"--", "killall", "busybox")
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()

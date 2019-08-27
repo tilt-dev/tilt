@@ -1,0 +1,6 @@
+# -*- mode: Python -*-
+
+include('../Tiltfile')
+k8s_yaml('job.yaml')
+docker_build('job', '.')
+k8s_resource('job', port_forwards=31234)

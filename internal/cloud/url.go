@@ -1,12 +1,9 @@
 package cloud
 
 import (
-	"fmt"
 	"net/url"
 	"os"
 	"strings"
-
-	"github.com/windmilleng/tilt/internal/token"
 )
 
 // an address like cloud.tilt.dev or localhost:10450
