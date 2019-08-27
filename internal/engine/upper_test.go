@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/cloud"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/containerupdate"
 	"github.com/windmilleng/tilt/internal/docker"
@@ -45,6 +46,7 @@ import (
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
+	"github.com/windmilleng/tilt/internal/testutils/httptest"
 	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
 	"github.com/windmilleng/tilt/internal/testutils/podbuilder"
 	"github.com/windmilleng/tilt/internal/testutils/servicebuilder"
@@ -2788,6 +2790,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	ghc := &github.FakeClient{}
 	sc := &client.FakeSailClient{}
 	ewm := NewEventWatchManager(kCli, clockwork.NewRealClock())
+	tcum := cloud.NewUsernameManager(httptest.NewFakeClient())
 
 	ret := &testFixture{
 		TempDirFixture:        f,
@@ -2817,7 +2820,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
 
-	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc, sc, tvc, tas, ewm)
+	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc, sc, tvc, tas, ewm, tcum)
 	ret.upper = NewUpper(ctx, st, subs, token.Token("unit test token"))
 
 	go func() {

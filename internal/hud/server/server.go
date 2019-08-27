@@ -23,6 +23,7 @@ import (
 )
 
 const httpTimeOut = 5 * time.Second
+const TiltTokenCookieName = "Tilt-Token"
 
 type analyticsPayload struct {
 	Verb string            `json:"verb"`
@@ -66,10 +67,28 @@ func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analyti
 	// this endpoint is only used for testing snapshots in development
 	r.HandleFunc("/api/snapshot/{snapshot_id}", s.SnapshotJSON)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
+	r.HandleFunc("/api/refresh_tilt_cloud_whoami", s.recheckTiltCloudUser)
 
-	r.PathPrefix("/").Handler(assetServer)
+	r.PathPrefix("/").Handler(s.cookieWrapper(assetServer))
 
 	return s
+}
+
+type funcHandler struct {
+	f func(w http.ResponseWriter, r *http.Request)
+}
+
+func (fh funcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fh.f(w, r)
+}
+
+func (s *HeadsUpServer) cookieWrapper(handler http.Handler) http.Handler {
+	return funcHandler{f: func(w http.ResponseWriter, r *http.Request) {
+		state := s.store.RLockState()
+		http.SetCookie(w, &http.Cookie{Name: TiltTokenCookieName, Value: string(state.Token), Path: "/"})
+		s.store.RUnlockState()
+		handler.ServeHTTP(w, r)
+	}}
 }
 
 func (s *HeadsUpServer) Router() http.Handler {
@@ -237,11 +256,11 @@ type snapshotIDResponse struct {
 }
 
 func templateSnapshotURL(id SnapshotID) string {
-	return fmt.Sprintf("https://%s/snapshot/%s", cloud.Domain, id)
+	return fmt.Sprintf("%s/snapshot/%s", cloud.SchemeHost, id)
 }
 
 func newSnapshotURL() string {
-	return fmt.Sprintf("https://%s/api/snapshot/new", cloud.Domain)
+	return fmt.Sprintf("%s/api/snapshot/new", cloud.SchemeHost)
 }
 
 func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Request) {
@@ -302,6 +321,11 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
+}
+
+// TODO - actually call this from webui
+func (s *HeadsUpServer) recheckTiltCloudUser(w http.ResponseWriter, req *http.Request) {
+	s.store.Dispatch(store.RecheckTiltCloudUserAction{})
 }
 
 type httpClient interface {

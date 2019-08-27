@@ -19,7 +19,7 @@ describe("ShareSnapshotModal", () => {
     ReactDOM.createPortal = originalCreatePortal
   })
 
-  it("renders with modal open", () => {
+  it("renders with modal open w/o known username", () => {
     const tree = renderer
       .create(
         <ShareSnapshotModal
@@ -27,7 +27,25 @@ describe("ShareSnapshotModal", () => {
           handleClose={fakeHandleCloseModal}
           isOpen={true}
           snapshotUrl="http://test.com"
-          registerTokenUrl="http://registertoken.com"
+          tiltCloudUsername={null}
+          tiltCloudSchemeHost={"https://cloud.tilt.dev"}
+        />
+      )
+      .toJSON()
+
+    expect(tree).toMatchSnapshot()
+  })
+
+  it("renders with modal open w/ known username", () => {
+    const tree = renderer
+      .create(
+        <ShareSnapshotModal
+          handleSendSnapshot={fakeSendsnapshot}
+          handleClose={fakeHandleCloseModal}
+          isOpen={true}
+          snapshotUrl="http://test.com"
+          tiltCloudUsername={"tacocat"}
+          tiltCloudSchemeHost={"https://cloud.tilt.dev"}
         />
       )
       .toJSON()
@@ -43,7 +61,8 @@ describe("ShareSnapshotModal", () => {
           handleClose={fakeHandleCloseModal}
           isOpen={true}
           snapshotUrl=""
-          registerTokenUrl="http://registertoken.com"
+          tiltCloudUsername={null}
+          tiltCloudSchemeHost={"https://cloud.tilt.dev"}
         />
       )
       .toJSON()
@@ -59,7 +78,8 @@ describe("ShareSnapshotModal", () => {
           handleClose={fakeHandleCloseModal}
           isOpen={false}
           snapshotUrl="http://test.com"
-          registerTokenUrl="http://registertoken.com"
+          tiltCloudUsername={null}
+          tiltCloudSchemeHost={"https://cloud.tilt.dev"}
         />
       )
       .toJSON()

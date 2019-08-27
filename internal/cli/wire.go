@@ -15,6 +15,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/cloud"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/demo"
 	"github.com/windmilleng/tilt/internal/docker"
@@ -75,6 +76,8 @@ var BaseWireSet = wire.NewSet(
 	engine.NewProfilerManager,
 	engine.NewGithubClientFactory,
 	engine.NewTiltVersionChecker,
+	cloud.ProvideHttpClient,
+	cloud.NewUsernameManager,
 
 	provideClock,
 	hud.NewRenderer,

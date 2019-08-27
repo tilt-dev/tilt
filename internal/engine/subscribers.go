@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"github.com/windmilleng/tilt/internal/cloud"
 	"github.com/windmilleng/tilt/internal/containerupdate"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
@@ -27,7 +28,8 @@ func ProvideSubscribers(
 	sail client.SailClient,
 	tvc *TiltVersionChecker,
 	ta *TiltAnalyticsSubscriber,
-	ewm *EventWatchManager) []store.Subscriber {
+	ewm *EventWatchManager,
+	tcum *cloud.CloudUsernameManager) []store.Subscriber {
 	return []store.Subscriber{
 		hud,
 		pw,
@@ -48,5 +50,6 @@ func ProvideSubscribers(
 		tvc,
 		ta,
 		ewm,
+		tcum,
 	}
 }

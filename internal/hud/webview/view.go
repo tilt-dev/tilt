@@ -144,7 +144,9 @@ type View struct {
 
 	RunningTiltBuild model.TiltBuild
 	LatestTiltBuild  model.TiltBuild
-	RegisterTokenURL string
+
+	TiltCloudUsername   string
+	TiltCloudSchemeHost string
 }
 
 func (v View) Resource(n model.ManifestName) (Resource, bool) {

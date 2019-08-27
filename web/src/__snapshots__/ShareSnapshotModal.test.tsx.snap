@@ -2,7 +2,56 @@
 
 exports[`ShareSnapshotModal renders with modal closed 1`] = `null`;
 
-exports[`ShareSnapshotModal renders with modal open 1`] = `
+exports[`ShareSnapshotModal renders with modal open w/ known username 1`] = `
+<div
+  className="ReactModal__Overlay ReactModal__Overlay--after-open"
+  onClick={[Function]}
+  onMouseDown={[Function]}
+  style={
+    Object {
+      "backgroundColor": "rgba(255, 255, 255, 0.75)",
+      "bottom": 0,
+      "left": 0,
+      "position": "fixed",
+      "right": 0,
+      "top": 0,
+    }
+  }
+>
+  <div
+    className="ReactModal__Content ReactModal__Content--after-open ShareSnapshotModal"
+    onClick={[Function]}
+    onKeyDown={[Function]}
+    onMouseDown={[Function]}
+    onMouseUp={[Function]}
+    role="dialog"
+    style={Object {}}
+    tabIndex="-1"
+  >
+    <div
+      className="ShareSnapshotModal-pane"
+    >
+      <a
+        href="http://test.com"
+        target="_blank"
+      >
+        Open link in new tab
+      </a>
+    </div>
+    <div
+      className="ShareSnapshotModal-pane"
+    >
+      <div>
+        Sharing snapshots as 
+        tacocat
+        .
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`ShareSnapshotModal renders with modal open w/o known username 1`] = `
 <div
   className="ReactModal__Overlay ReactModal__Overlay--after-open"
   onClick={[Function]}
@@ -43,13 +92,23 @@ exports[`ShareSnapshotModal renders with modal open 1`] = `
     >
       <div>
         <div>
-          Go to 
-          <a
-            href="http://registertoken.com"
+          Click
+           
+          <form
+            action="https://cloud.tilt.dev/register_token"
+            method="POST"
+            target="_blank"
           >
-            TiltCloud
-          </a>
-           to manage your snapshots.
+            <input
+              type="submit"
+              value="here"
+            />
+            <input
+              name="token"
+              type="hidden"
+            />
+          </form>
+          to associate this copy of Tilt with your TiltCloud account.
         </div>
         <div>
           (You'll just need to link your GitHub Account)
@@ -100,13 +159,23 @@ exports[`ShareSnapshotModal renders without snapshotUrl 1`] = `
     >
       <div>
         <div>
-          Go to 
-          <a
-            href="http://registertoken.com"
+          Click
+           
+          <form
+            action="https://cloud.tilt.dev/register_token"
+            method="POST"
+            target="_blank"
           >
-            TiltCloud
-          </a>
-           to manage your snapshots.
+            <input
+              type="submit"
+              value="here"
+            />
+            <input
+              name="token"
+              type="hidden"
+            />
+          </form>
+          to associate this copy of Tilt with your TiltCloud account.
         </div>
         <div>
           (You'll just need to link your GitHub Account)

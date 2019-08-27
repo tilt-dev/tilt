@@ -191,6 +191,10 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleAnalyticsOptAction(state, action)
 	case store.AnalyticsNudgeSurfacedAction:
 		handleAnalyticsNudgeSurfacedAction(ctx, state)
+	case store.TiltCloudUserLookedUpAction:
+		handleTiltCloudUserLookedUpAction(state, action)
+	case store.RecheckTiltCloudUserAction:
+		handleRecheckTiltCloudUserAction(state)
 	case store.LogEvent:
 		// handled as a LogAction, do nothing
 
@@ -717,4 +721,18 @@ func handleAnalyticsNudgeSurfacedAction(ctx context.Context, state *store.Engine
 		tiltanalytics.Get(ctx).IncrIfUnopted("analytics.nudge.surfaced")
 		state.AnalyticsNudgeSurfaced = true
 	}
+}
+
+func handleTiltCloudUserLookedUpAction(state *store.EngineState, action store.TiltCloudUserLookedUpAction) {
+	if !action.Found {
+		state.TokenKnownUnregistered = true
+		state.TiltCloudUsername = ""
+	} else {
+		state.TokenKnownUnregistered = false
+		state.TiltCloudUsername = action.Username
+	}
+}
+
+func handleRecheckTiltCloudUserAction(state *store.EngineState) {
+	state.TokenKnownUnregistered = false
 }
