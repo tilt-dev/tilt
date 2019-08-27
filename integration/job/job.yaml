@@ -1,0 +1,19 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job
+  labels:
+    app: job
+spec:
+  template:
+    metadata:
+      labels:
+        app: job
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: job
+        image: job
+        ports:
+          - containerPort: 8000

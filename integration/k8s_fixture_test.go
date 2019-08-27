@@ -23,6 +23,8 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
+var k8sInstalled bool
+
 type k8sFixture struct {
 	*fixture
 	tempDir *tempdir.TempDirFixture
@@ -37,8 +39,47 @@ func newK8sFixture(t *testing.T, dir string) *k8sFixture {
 	td := tempdir.NewTempDirFixture(t)
 
 	kf := &k8sFixture{fixture: f, tempDir: td}
-	kf.ClearNamespace()
+
+	if !k8sInstalled {
+		kf.checkKubectlConnection()
+
+		// Delete the namespace when the test starts,
+		// to make sure nothing is left over from previous tests.
+		kf.deleteNamespace()
+
+		k8sInstalled = true
+	} else {
+		kf.ClearNamespace()
+	}
+
 	return kf
+}
+
+func (f *k8sFixture) checkKubectlConnection() {
+	cmd := exec.CommandContext(f.ctx, "kubectl", "version")
+	f.runOrFail(cmd, "Checking kubectl connection")
+}
+
+func (f *k8sFixture) deleteNamespace() {
+	cmd := exec.CommandContext(f.ctx, "kubectl", "delete", "namespace", "tilt-integration", "--ignore-not-found")
+	f.runOrFail(cmd, "Deleting namespace tilt-integration")
+
+	// block until the namespace doesn't exist, since kubectl often returns and the namespace is still "terminating"
+	// which causes the creation of objects in that namespace to fail
+	var b []byte
+	args := []string{"kubectl", "get", "namespace", "tilt-integration", "--ignore-not-found"}
+	timeout := time.Now().Add(10 * time.Second)
+	for time.Now().Before(timeout) {
+		cmd := exec.CommandContext(f.ctx, args[0], args[1:]...)
+		b, err := cmd.Output()
+		if err != nil {
+			f.t.Fatalf("Error: checking that deletion of the tilt-integration namespace has completed: %v", err)
+		}
+		if len(b) == 0 {
+			return
+		}
+	}
+	f.t.Fatalf("timed out waiting for tilt-integration deletion to complete. last output of %q: %q", args, string(b))
 }
 
 func (f *k8sFixture) Curl(url string) (string, error) {
