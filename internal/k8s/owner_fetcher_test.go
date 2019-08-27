@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -35,7 +36,7 @@ func TestVisitOneParent(t *testing.T) {
 	}
 	kCli.InjectEntityByName(NewK8sEntity(rs))
 
-	tree, err := ov.OwnerTreeOf(K8sEntity{Obj: pod})
+	tree, err := ov.OwnerTreeOf(context.Background(), K8sEntity{Obj: pod})
 	assert.NoError(t, err)
 	assert.Equal(t, `Pod:pod-a
   ReplicaSet:rs-a`, tree.String())
@@ -81,7 +82,7 @@ func TestVisitTwoParents(t *testing.T) {
 	}
 	kCli.InjectEntityByName(NewK8sEntity(rs), NewK8sEntity(dep))
 
-	tree, err := ov.OwnerTreeOf(K8sEntity{Obj: pod})
+	tree, err := ov.OwnerTreeOf(context.Background(), K8sEntity{Obj: pod})
 	assert.NoError(t, err)
 	assert.Equal(t, `Pod:pod-a
   ReplicaSet:rs-a

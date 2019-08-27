@@ -76,6 +76,8 @@ var BaseWireSet = wire.NewSet(
 	engine.NewProfilerManager,
 	engine.NewGithubClientFactory,
 	engine.NewTiltVersionChecker,
+	cloud.ProvideHttpClient,
+	cloud.NewUsernameManager,
 
 	provideClock,
 	hud.NewRenderer,

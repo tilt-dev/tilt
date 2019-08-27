@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -24,6 +23,7 @@ import (
 )
 
 const httpTimeOut = 5 * time.Second
+const TiltTokenCookieName = "Tilt-Token"
 
 type analyticsPayload struct {
 	Verb string            `json:"verb"`
@@ -69,10 +69,28 @@ func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analyti
 	// this endpoint is only used for testing snapshots in development
 	r.HandleFunc("/api/snapshot/{snapshot_id}", s.SnapshotJSON)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
+	r.HandleFunc("/api/refresh_tilt_cloud_whoami", s.recheckTiltCloudUser)
 
-	r.PathPrefix("/").Handler(assetServer)
+	r.PathPrefix("/").Handler(s.cookieWrapper(assetServer))
 
 	return s
+}
+
+type funcHandler struct {
+	f func(w http.ResponseWriter, r *http.Request)
+}
+
+func (fh funcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fh.f(w, r)
+}
+
+func (s *HeadsUpServer) cookieWrapper(handler http.Handler) http.Handler {
+	return funcHandler{f: func(w http.ResponseWriter, r *http.Request) {
+		state := s.store.RLockState()
+		http.SetCookie(w, &http.Cookie{Name: TiltTokenCookieName, Value: string(state.Token), Path: "/"})
+		s.store.RUnlockState()
+		handler.ServeHTTP(w, r)
+	}}
 }
 
 func (s *HeadsUpServer) Router() http.Handler {
@@ -239,19 +257,16 @@ type snapshotIDResponse struct {
 	ID string
 }
 
-func protocolForAddr(cloudAddress string) string {
-	if strings.Split(cloudAddress, ":")[0] == "localhost" {
-		return "http"
-	}
-	return "https"
-}
-
 func (s *HeadsUpServer) templateSnapshotURL(id SnapshotID) string {
-	return fmt.Sprintf("%s://%s/snapshot/%s", protocolForAddr(s.cloudAddress), s.cloudAddress, id)
+	u := cloud.URL(s.cloudAddress)
+	u.Path = fmt.Sprintf("snapshot/%s", id)
+	return u.String()
 }
 
 func (s *HeadsUpServer) newSnapshotURL() string {
-	return fmt.Sprintf("%s://%s/api/snapshot/new", protocolForAddr(s.cloudAddress), s.cloudAddress)
+	u := cloud.URL(s.cloudAddress)
+	u.Path = "/api/snapshot/new"
+	return u.String()
 }
 
 func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Request) {
@@ -312,6 +327,11 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
+}
+
+// TODO - actually call this from webui
+func (s *HeadsUpServer) recheckTiltCloudUser(w http.ResponseWriter, req *http.Request) {
+	s.store.Dispatch(store.RecheckTiltCloudUserAction{})
 }
 
 type httpClient interface {

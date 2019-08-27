@@ -77,7 +77,7 @@ type Client interface {
 	// behavior for our use cases.
 	Delete(ctx context.Context, entities []K8sEntity) error
 
-	GetByReference(ref v1.ObjectReference) (K8sEntity, error)
+	GetByReference(ctx context.Context, ref v1.ObjectReference) (K8sEntity, error)
 
 	PodByID(ctx context.Context, podID PodID, n Namespace) (*v1.Pod, error)
 
@@ -280,7 +280,8 @@ func (k K8sClient) forceReplaceEntities(ctx context.Context, entities []K8sEntit
 	if err != nil {
 		return nil, errors.Wrapf(err, "kubectl replace:\nstderr: %s", stderr)
 	}
-	return ParseYAMLFromString(stdout)
+
+	return parseYAMLFromStringWithDeletedResources(stdout)
 }
 
 // applyEntitiesAndMaybeForce `kubectl apply`'s the given entities, and if the call fails with
@@ -360,7 +361,7 @@ func (k K8sClient) actOnEntities(ctx context.Context, cmdArgs []string, entities
 	return k.kubectlRunner.execWithStdin(ctx, args, rawYAML)
 }
 
-func (k K8sClient) GetByReference(ref v1.ObjectReference) (K8sEntity, error) {
+func (k K8sClient) GetByReference(ctx context.Context, ref v1.ObjectReference) (K8sEntity, error) {
 	group := getGroup(ref)
 	kind := ref.Kind
 	namespace := ref.Namespace

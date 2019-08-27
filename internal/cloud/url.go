@@ -2,7 +2,9 @@ package cloud
 
 import (
 	"fmt"
+	"net/url"
 	"os"
+	"strings"
 
 	"github.com/windmilleng/tilt/internal/token"
 )
@@ -23,4 +25,14 @@ func ProvideAddress() Address {
 
 func RegisterTokenURL(cloudAddress string, t token.Token) string {
 	return fmt.Sprintf("https://%s/register_token?token=%s", cloudAddress, t)
+}
+
+func URL(cloudAddress string) *url.URL {
+	var u url.URL
+	u.Host = cloudAddress
+	u.Scheme = "https"
+	if strings.Split(cloudAddress, ":")[0] == "localhost" {
+		u.Scheme = "http"
+	}
+	return &u
 }

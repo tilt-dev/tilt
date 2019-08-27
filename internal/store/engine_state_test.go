@@ -85,7 +85,7 @@ func TestMostRecentPod(t *testing.T) {
 	podA := Pod{PodID: "pod-a", StartedAt: time.Now()}
 	podB := Pod{PodID: "pod-b", StartedAt: time.Now().Add(time.Minute)}
 	podC := Pod{PodID: "pod-c", StartedAt: time.Now().Add(-time.Minute)}
-	podSet := NewK8sRuntimeState(0, podA, podB, podC)
+	podSet := NewK8sRuntimeState(podA, podB, podC)
 	assert.Equal(t, "pod-b", podSet.MostRecentPod().PodID.String())
 }
 

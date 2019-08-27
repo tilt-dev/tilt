@@ -22,6 +22,7 @@ import NotFound from "./NotFound"
 import { numberOfAlerts, isK8sResourceInfo } from "./alerts"
 import Features from "./feature"
 import ShareSnapshotModal from "./ShareSnapshotModal"
+import cleanStateForSnapshotPOST from "./snapshot_sanitizer"
 
 type HudProps = {
   history: History
@@ -37,7 +38,8 @@ type HudView = {
   RunningTiltBuild: TiltBuild
   LatestTiltBuild: TiltBuild
   FeatureFlags: { [featureFlag: string]: boolean }
-  RegisterTokenURL: string
+  TiltCloudUsername: string
+  TiltCloudSchemeHost: string
 }
 
 type HudState = {
@@ -93,7 +95,8 @@ class HUD extends Component<HudProps, HudState> {
           Dev: false,
         },
         FeatureFlags: {},
-        RegisterTokenURL: "",
+        TiltCloudUsername: "",
+        TiltCloudSchemeHost: "",
       },
       IsSidebarClosed: false,
       SnapshotLink: "",
@@ -154,9 +157,10 @@ class HUD extends Component<HudProps, HudState> {
 
   sendSnapshot(snapshot: Snapshot) {
     let url = `//${window.location.host}/api/snapshot/new`
+    let sanitizedSnapshot = cleanStateForSnapshotPOST(snapshot)
     fetch(url, {
       method: "post",
-      body: JSON.stringify(snapshot),
+      body: JSON.stringify(sanitizedSnapshot),
     })
       .then(res => {
         res
@@ -455,13 +459,15 @@ class HUD extends Component<HudProps, HudState> {
   renderShareSnapshotModal(view: HudView | null) {
     let handleClose = () => this.setState({ showSnapshotModal: false })
     let handleSendSnapshot = () => this.sendSnapshot(this.state)
-    let registerTokenUrl = (view && view.RegisterTokenURL) || ""
+    let tiltCloudUsername = (view && view.TiltCloudUsername) || null
+    let tiltCloudSchemeHost = (view && view.TiltCloudSchemeHost) || ""
     return (
       <ShareSnapshotModal
         handleSendSnapshot={handleSendSnapshot}
         handleClose={handleClose}
         snapshotUrl={this.state.SnapshotLink}
-        registerTokenUrl={registerTokenUrl}
+        tiltCloudUsername={tiltCloudUsername}
+        tiltCloudSchemeHost={tiltCloudSchemeHost}
         isOpen={this.state.showSnapshotModal}
       />
     )

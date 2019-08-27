@@ -13,7 +13,6 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/token"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -152,15 +151,6 @@ func TestFeatureFlags(t *testing.T) {
 
 	v := StateToWebView(*state)
 	assert.Equal(t, v.FeatureFlags, map[string]bool{"foo_feature": true})
-}
-
-func TestRegisterTokenURL(t *testing.T) {
-	state := newState(nil)
-	state.CloudAddress = "alerts.tilt.dev"
-	state.Token = token.Token("aaaaaaa")
-
-	v := StateToWebView(*state)
-	require.Equal(t, v.RegisterTokenURL, "https://alerts.tilt.dev/register_token?token=aaaaaaa")
 }
 
 func newState(manifests []model.Manifest) *store.EngineState {

@@ -19,6 +19,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestPodWatch(t *testing.T) {
@@ -30,10 +31,39 @@ func TestPodWatch(t *testing.T) {
 	f.pw.OnChange(f.ctx, f.store)
 
 	ls := k8s.TiltRunSelector()
-	p := podbuilder.New(t, manifest).Build()
+	pb := podbuilder.New(t, manifest)
+	p := pb.Build()
+
+	// Simulate the Deployment UID in the engine state
+	f.addDeployedUID(manifest, pb.DeploymentUID())
+	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
+
 	f.kClient.EmitPod(ls, p)
 
 	f.assertWatchedSelectors(ls)
+
+	f.assertObservedPods(p)
+}
+
+func TestPodWatchChangeEventBeforeUID(t *testing.T) {
+	f := newPWFixture(t)
+	defer f.TearDown()
+
+	manifest := f.addManifestWithSelectors("server")
+
+	f.pw.OnChange(f.ctx, f.store)
+
+	ls := k8s.TiltRunSelector()
+	pb := podbuilder.New(t, manifest)
+	p := pb.Build()
+
+	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
+	f.kClient.EmitPod(ls, p)
+	f.assertObservedPods()
+
+	// Simulate the Deployment UID in the engine state after
+	// the pod event.
+	f.addDeployedUID(manifest, pb.DeploymentUID())
 
 	f.assertObservedPods(p)
 }
@@ -90,24 +120,31 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 
 	f.assertWatchedSelectors(ls, ls2)
 
-	p2 := podbuilder.New(t, manifest2).Build()
+	pb2 := podbuilder.New(t, manifest2).WithPodID("pod2")
+	p2 := pb2.Build()
+	f.addDeployedUID(manifest2, pb2.DeploymentUID())
+	f.kClient.InjectEntityByName(pb2.ObjectTreeEntities()...)
 	f.kClient.EmitPod(ls, p2)
 	f.assertObservedPods(p2)
 	f.clearPods()
 
 	p3 := podbuilder.New(t, manifest2).
+		WithPodID("pod3").
 		WithoutManifestLabel().
 		WithPodLabel("foo", "bar").
 		Build()
 	f.kClient.EmitPod(ls1, p3)
 
 	p4 := podbuilder.New(t, manifest2).
+		WithPodID("pod4").
 		WithoutManifestLabel().
 		WithPodLabel("baz", "quu").
 		Build()
 	f.kClient.EmitPod(ls2, p4)
 
-	p5 := podbuilder.New(t, manifest2).Build()
+	p5 := podbuilder.New(t, manifest2).
+		WithPodID("pod5").
+		Build()
 	f.kClient.EmitPod(ls, p5)
 
 	f.assertObservedPods(p4, p5)
@@ -240,6 +277,19 @@ func (f *pwFixture) TearDown() {
 	f.TempDirFixture.TearDown()
 	f.kClient.TearDown()
 	f.cancel()
+}
+
+func (f *pwFixture) addDeployedUID(m model.Manifest, uid types.UID) {
+	defer f.pw.OnChange(f.ctx, f.store)
+
+	state := f.store.LockMutableStateForTesting()
+	defer f.store.UnlockMutableState()
+	mState, ok := state.ManifestState(m.Name)
+	if !ok {
+		f.t.Fatalf("Unknown manifest: %s", m.Name)
+	}
+	runtimeState := mState.GetOrCreateK8sRuntimeState()
+	runtimeState.DeployedUIDSet[uid] = true
 }
 
 func (f *pwFixture) assertObservedPods(pods ...*corev1.Pod) {

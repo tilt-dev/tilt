@@ -199,8 +199,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 	ps.StartBuildStep(ctx, "Injecting images into Kubernetes YAML")
 
 	deployID := model.NewDeployID()
-	deployLabel := k8s.TiltDeployLabel(deployID)
-	newK8sEntities, err := ibd.createEntitiesToDeploy(ctx, iTargetMap, kTarget, results, needsSynclet, deployLabel)
+	newK8sEntities, err := ibd.createEntitiesToDeploy(ctx, iTargetMap, kTarget, results, needsSynclet)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +241,7 @@ func (ibd *ImageBuildAndDeployer) indentLogger(ctx context.Context) (context.Con
 
 func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 	iTargetMap map[model.TargetID]model.ImageTarget, k8sTarget model.K8sTarget,
-	results store.BuildResultSet, needsSynclet bool, deployLabel model.LabelPair) ([]k8s.K8sEntity, error) {
+	results store.BuildResultSet, needsSynclet bool) ([]k8s.K8sEntity, error) {
 	newK8sEntities := []k8s.K8sEntity{}
 
 	// TODO(nick): The parsed YAML should probably be a part of the model?
@@ -256,7 +255,7 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 	injectedDepIDs := map[model.TargetID]bool{}
 	for _, e := range entities {
 		injectedSynclet := false
-		e, err = k8s.InjectLabels(e, []model.LabelPair{k8s.TiltRunLabel(), {Key: k8s.ManifestNameLabel, Value: k8sTarget.Name.String()}, deployLabel})
+		e, err = k8s.InjectLabels(e, []model.LabelPair{k8s.TiltRunLabel(), {Key: k8s.ManifestNameLabel, Value: k8sTarget.Name.String()}})
 		if err != nil {
 			return nil, errors.Wrap(err, "deploy")
 		}

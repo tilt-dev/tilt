@@ -12,7 +12,6 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/token"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -82,6 +81,9 @@ type EngineState struct {
 	CloudAddress string
 	Token        token.Token
 	TeamName     string
+
+	TiltCloudUsername      string
+	TokenKnownUnregistered bool // to distinguish whether an empty TiltCloudUsername means "we haven't checked" or "we checked and the token isn't registered"
 }
 
 func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.ManifestName {
@@ -250,8 +252,6 @@ type ManifestState struct {
 
 	// If this manifest was changed, which config files led to the most recent change in manifest definition
 	ConfigFilesThatCausedChange []string
-
-	K8sWarnEvents []k8s.EventWithEntity
 }
 
 func NewState() *EngineState {
@@ -312,7 +312,7 @@ func (ms *ManifestState) K8sRuntimeState() K8sRuntimeState {
 func (ms *ManifestState) GetOrCreateK8sRuntimeState() K8sRuntimeState {
 	ret, ok := ms.RuntimeState.(K8sRuntimeState)
 	if !ok {
-		ret = NewK8sRuntimeState(0)
+		ret = NewK8sRuntimeState()
 		ms.RuntimeState = ret
 	}
 	return ret
