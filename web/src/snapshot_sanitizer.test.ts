@@ -1,5 +1,4 @@
 import cleanStateForSnapshotPOST from "./snapshot_sanitizer"
-import { Snapshot } from "./types"
 import { oneResource } from "./testdata.test"
 import Features from "./feature"
 
