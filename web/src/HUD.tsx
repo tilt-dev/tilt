@@ -67,13 +67,18 @@ class HUD extends Component<HudProps, HudState> {
   constructor(props: HudProps) {
     super(props)
 
+    incr("ui.web.init", { ua: window.navigator.userAgent })
+
     this.pathBuilder = new PathBuilder(
       window.location.host,
       window.location.pathname
     )
     this.controller = new AppController(this.pathBuilder.getDataUrl(), this)
     this.history = props.history
-    this.unlisten = () => {}
+    this.unlisten = this.history.listen((location, _) => {
+      let tags = { type: pathToTag(location.pathname) }
+      incr("ui.web.navigation", tags)
+    })
 
     this.state = {
       Message: "",
@@ -104,14 +109,6 @@ class HUD extends Component<HudProps, HudState> {
     }
 
     this.toggleSidebar = this.toggleSidebar.bind(this)
-  }
-
-  componentWillMount() {
-    incr("ui.web.init", { ua: window.navigator.userAgent })
-    this.unlisten = this.history.listen((location, _) => {
-      let tags = { type: pathToTag(location.pathname) }
-      incr("ui.web.navigation", tags)
-    })
   }
 
   componentDidMount() {
