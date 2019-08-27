@@ -11,7 +11,7 @@ const tokenFileName = "token"
 
 type Token string
 
-func (t Token) ToString() string {
+func (t Token) String() string {
 	return string(t)
 }
 
