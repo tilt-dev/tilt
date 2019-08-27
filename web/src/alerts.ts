@@ -1,6 +1,5 @@
 import { DCResourceInfo, K8sResourceInfo, Resource } from "./types"
 import { podStatusIsError, podStatusIsCrash } from "./constants"
-import { is } from "immutable"
 
 export type Alert = {
   alertType: string

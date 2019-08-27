@@ -20,7 +20,6 @@
     "@types/react-timeago": "^4.1.0",
     "ansi-to-react": "^5.0.0",
     "history": "^4.9.0",
-    "immutable": "^4.0.0-rc.12",
     "js-cookie": "^2.2.1",
     "lodash": "^4.17.15",
     "node-sass": "^4.12.0",
