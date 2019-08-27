@@ -54,6 +54,6 @@ describe("cleanStateForSnapshotPOST", () => {
   it("doesn't modify state", () => {
     let state = testSnapshot
     let snapshot = cleanStateForSnapshotPOST(state)
-    expect(snapshot).not.toBe(state)
+    expect(snapshot).not.toMatchObject(state)
   })
 })
