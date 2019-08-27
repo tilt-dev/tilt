@@ -1,6 +1,4 @@
-FROM python:alpine
+FROM busybox
 WORKDIR /app
-ADD requirements.txt .
 ADD sparkle .
-RUN pip install -r requirements.txt
-ENTRYPOINT python /app/app.py
+ENTRYPOINT ./start.sh
