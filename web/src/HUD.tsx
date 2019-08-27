@@ -457,7 +457,7 @@ class HUD extends Component<HudProps, HudState> {
   renderShareSnapshotModal(view: HudView | null) {
     let handleClose = () => this.setState({ showSnapshotModal: false })
     let handleSendSnapshot = () => this.sendSnapshot(this.state)
-    let tiltCloudUsername = (view && view.TiltCloudUsername) || ""
+    let tiltCloudUsername = (view && view.TiltCloudUsername) || null
     let tiltCloudSchemeHost = (view && view.TiltCloudSchemeHost) || ""
     return (
       <ShareSnapshotModal

@@ -7,7 +7,7 @@ type props = {
   handleSendSnapshot: () => void
   handleClose: () => void
   snapshotUrl: string
-  tiltCloudUsername: string
+  tiltCloudUsername: string | null
   tiltCloudSchemeHost: string
   isOpen: boolean
 }
@@ -23,9 +23,7 @@ export default class ShareSnapshotModal extends PureComponent<props> {
         className="ShareSnapshotModal"
       >
         <div className="ShareSnapshotModal-pane">{link}</div>
-        <div className="ShareSnapshotModal-pane">
-          {this.tiltCloudCopy()}
-        </div>
+        <div className="ShareSnapshotModal-pane">{this.tiltCloudCopy()}</div>
       </Modal>
     )
   }
@@ -45,25 +43,30 @@ export default class ShareSnapshotModal extends PureComponent<props> {
   }
 
   tiltCloudCopy() {
-    if (this.props.tiltCloudUsername == "") {
+    if (!this.props.tiltCloudUsername) {
       return (
+        <div>
           <div>
-            <div>
-              Click <form action={this.props.tiltCloudSchemeHost + "/register_token"} target="_blank" method="POST">
-              <input type="submit" value="here"/>
-              <input name="token" type="hidden" value={cookies.get("Tilt-Token")}/>
+            Click{" "}
+            <form
+              action={this.props.tiltCloudSchemeHost + "/register_token"}
+              target="_blank"
+              method="POST"
+            >
+              <input type="submit" value="here" />
+              <input
+                name="token"
+                type="hidden"
+                value={cookies.get("Tilt-Token")}
+              />
             </form>
-              to associate this copy of Tilt with your TiltCloud account.
-            </div>
-            <div>(You'll just need to link your GitHub Account)</div>
+            to associate this copy of Tilt with your TiltCloud account.
           </div>
+          <div>(You'll just need to link your GitHub Account)</div>
+        </div>
       )
     } else {
-      return (
-          <div>
-            Sharing snapshots as {this.props.tiltCloudUsername}.
-          </div>
-      )
+      return <div>Sharing snapshots as {this.props.tiltCloudUsername}.</div>
     }
   }
 }
