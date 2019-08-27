@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -238,12 +239,19 @@ type snapshotIDResponse struct {
 	ID string
 }
 
+func protocolForAddr(cloudAddress string) string {
+	if strings.Split(cloudAddress, ":")[0] == "localhost" {
+		return "http"
+	}
+	return "https"
+}
+
 func (s *HeadsUpServer) templateSnapshotURL(id SnapshotID) string {
-	return fmt.Sprintf("https://%s/snapshot/%s", s.cloudAddress, id)
+	return fmt.Sprintf("%s://%s/snapshot/%s", protocolForAddr(s.cloudAddress), s.cloudAddress, id)
 }
 
 func (s *HeadsUpServer) newSnapshotURL() string {
-	return fmt.Sprintf("https://%s/api/snapshot/new", s.cloudAddress)
+	return fmt.Sprintf("%s://%s/api/snapshot/new", protocolForAddr(s.cloudAddress), s.cloudAddress)
 }
 
 func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Request) {
