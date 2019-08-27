@@ -23,10 +23,6 @@ func ProvideAddress() Address {
 	return Address(address)
 }
 
-func RegisterTokenURL(cloudAddress string, t token.Token) string {
-	return fmt.Sprintf("https://%s/register_token?token=%s", cloudAddress, t)
-}
-
 func URL(cloudAddress string) *url.URL {
 	var u url.URL
 	u.Host = cloudAddress
