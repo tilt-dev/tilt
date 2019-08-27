@@ -135,7 +135,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
           Endpoint{endpoints.length > 1 ? "s" : ""}:
         </div>
         {endpoints.map(ep => (
-          <a className="resourceInfo-value" href={ep} target="_blank">
+          <a className="resourceInfo-value" href={ep} target="_blank" key={ep}>
             {ep}
           </a>
         ))}
