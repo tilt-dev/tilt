@@ -1,5 +1,4 @@
 import cleanStateForSnapshotPOST from "./snapshot_sanitizer"
-import { Snapshot } from "./types"
 import { oneResource } from "./testdata.test"
 import Features from "./feature"
 
@@ -51,5 +50,10 @@ describe("cleanStateForSnapshotPOST", () => {
     } else {
       throw "Error: View was null"
     }
+  })
+  it("doesn't modify state", () => {
+    let state = testSnapshot
+    let snapshot = cleanStateForSnapshotPOST(state)
+    expect(snapshot).not.toMatchObject(state)
   })
 })
