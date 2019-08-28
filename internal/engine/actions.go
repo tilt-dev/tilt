@@ -120,7 +120,8 @@ type InitAction struct {
 
 	AnalyticsOpt analytics.Opt
 
-	Token token.Token
+	CloudAddress string
+	Token        token.Token
 }
 
 func (InitAction) Action() {}

@@ -46,16 +46,18 @@ type HeadsUpServer struct {
 	sailCli           client.SailClient
 	numWebsocketConns int32
 	httpCli           httpClient
+	cloudAddress      string
 }
 
-func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics *tiltanalytics.TiltAnalytics, sailCli client.SailClient, httpClient httpClient) *HeadsUpServer {
+func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics *tiltanalytics.TiltAnalytics, sailCli client.SailClient, httpClient httpClient, cloudAddress cloud.Address) *HeadsUpServer {
 	r := mux.NewRouter().UseEncodedPath()
 	s := &HeadsUpServer{
-		store:   store,
-		router:  r,
-		a:       analytics,
-		sailCli: sailCli,
-		httpCli: httpClient,
+		store:        store,
+		router:       r,
+		a:            analytics,
+		sailCli:      sailCli,
+		httpCli:      httpClient,
+		cloudAddress: string(cloudAddress),
 	}
 
 	r.HandleFunc("/api/view", s.ViewJSON)
@@ -255,12 +257,16 @@ type snapshotIDResponse struct {
 	ID string
 }
 
-func templateSnapshotURL(id SnapshotID) string {
-	return fmt.Sprintf("%s/snapshot/%s", cloud.SchemeHost, id)
+func (s *HeadsUpServer) templateSnapshotURL(id SnapshotID) string {
+	u := cloud.URL(s.cloudAddress)
+	u.Path = fmt.Sprintf("snapshot/%s", id)
+	return u.String()
 }
 
-func newSnapshotURL() string {
-	return fmt.Sprintf("%s/api/snapshot/new", cloud.SchemeHost)
+func (s *HeadsUpServer) newSnapshotURL() string {
+	u := cloud.URL(s.cloudAddress)
+	u.Path = "/api/snapshot/new"
+	return u.String()
 }
 
 func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Request) {
@@ -268,11 +274,12 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 	token := st.Token
 	s.store.RUnlockState()
 
-	request, err := http.NewRequest(http.MethodPost, newSnapshotURL(), req.Body)
+	request, err := http.NewRequest(http.MethodPost, s.newSnapshotURL(), req.Body)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error making request: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
+
 	request.Header.Set(cloud.TiltTokenHeaderName, token.String())
 	response, err := s.httpCli.Do(request)
 	if err != nil {
@@ -306,7 +313,7 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 	var ID SnapshotID
 	ID = SnapshotID(resp.ID)
 	responsePayload := snapshotURLJson{
-		Url: templateSnapshotURL(ID),
+		Url: s.templateSnapshotURL(ID),
 	}
 
 	//encode URL to JSON format

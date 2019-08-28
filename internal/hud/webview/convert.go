@@ -104,7 +104,7 @@ func StateToWebView(s store.EngineState) View {
 	ret.LatestTiltBuild = s.LatestTiltBuild
 	ret.FeatureFlags = s.Features
 	ret.TiltCloudUsername = s.TiltCloudUsername
-	ret.TiltCloudSchemeHost = cloud.SchemeHost
+	ret.TiltCloudSchemeHost = cloud.URL(s.CloudAddress).String()
 
 	return ret
 }

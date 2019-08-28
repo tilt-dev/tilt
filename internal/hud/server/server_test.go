@@ -16,6 +16,7 @@ import (
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
+	"github.com/windmilleng/tilt/internal/cloud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
@@ -397,7 +398,7 @@ func TestHandleNewSnapshot(t *testing.T) {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusOK)
 	}
-	assert.Contains(t, rr.Body.String(), "https://alerts.tilt.dev/snapshot/aaaaa")
+	assert.Contains(t, rr.Body.String(), "https://nonexistent.example.com/snapshot/aaaaa")
 }
 
 type serverFixture struct {
@@ -417,7 +418,7 @@ func newTestFixture(t *testing.T) *serverFixture {
 	a, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
 	sailCli := client.NewFakeSailClient()
 	httpClient := fakeHttpClient{}
-	serv := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, sailCli, httpClient)
+	serv := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, sailCli, httpClient, cloud.Address("nonexistent.example.com"))
 
 	return &serverFixture{
 		t:          t,

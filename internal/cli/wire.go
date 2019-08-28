@@ -114,6 +114,7 @@ var BaseWireSet = wire.NewSet(
 
 	dirs.UseWindmillDir,
 	token.GetOrCreateToken,
+	cloud.ProvideAddress,
 
 	provideThreads,
 	engine.NewKINDPusher,
@@ -132,14 +133,16 @@ func wireThreads(ctx context.Context, analytics *analytics.TiltAnalytics) (Threa
 }
 
 type Threads struct {
-	hud       hud.HeadsUpDisplay
-	upper     engine.Upper
-	tiltBuild model.TiltBuild
-	sailMode  model.SailMode
+	hud          hud.HeadsUpDisplay
+	upper        engine.Upper
+	tiltBuild    model.TiltBuild
+	sailMode     model.SailMode
+	token        token.Token
+	cloudAddress cloud.Address
 }
 
-func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, b model.TiltBuild, sailMode model.SailMode) Threads {
-	return Threads{h, upper, b, sailMode}
+func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, b model.TiltBuild, sailMode model.SailMode, token token.Token, cloudAddress cloud.Address) Threads {
+	return Threads{h, upper, b, sailMode, token, cloudAddress}
 }
 
 func wireKubeContext(ctx context.Context) (k8s.KubeContext, error) {

@@ -78,8 +78,9 @@ type EngineState struct {
 
 	Features map[string]bool
 
-	TeamName string
-	Token    token.Token
+	CloudAddress string
+	Token        token.Token
+	TeamName     string
 
 	TiltCloudUsername      string
 	TokenKnownUnregistered bool // to distinguish whether an empty TiltCloudUsername means "we haven't checked" or "we checked and the token isn't registered"

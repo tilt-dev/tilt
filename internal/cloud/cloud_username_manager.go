@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"sync"
@@ -77,6 +76,10 @@ func (c *CloudUsernameManager) OnChange(ctx context.Context, st store.RStore) {
 		return
 	}
 
+	token := state.Token
+	u := URL(state.CloudAddress)
+	u.Path = "/api/whoami"
+
 	go func() {
 		c.mu.Lock()
 		c.currentlyMakingRequest = true
@@ -87,13 +90,13 @@ func (c *CloudUsernameManager) OnChange(ctx context.Context, st store.RStore) {
 			c.currentlyMakingRequest = false
 			c.mu.Unlock()
 		}()
-		req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/whoami", SchemeHost), nil)
+		req, err := http.NewRequest("GET", u.String(), nil)
 		if err != nil {
 			logger.Get(ctx).Infof("error making whoami request: %v", err)
 			c.error()
 			return
 		}
-		req.Header.Set(TiltTokenHeaderName, string(state.Token))
+		req.Header.Set(TiltTokenHeaderName, string(token))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		resp, err := c.client.Do(req)
 		if err != nil {

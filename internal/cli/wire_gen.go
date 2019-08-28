@@ -157,7 +157,8 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	sailDialer := client.ProvideSailDialer()
 	sailClient := client.ProvideSailClient(sailURL, sailRoomer, sailDialer)
 	httpClient := server.ProvideHttpClient()
-	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics2, sailClient, httpClient)
+	address := cloud.ProvideAddress()
+	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics2, sailClient, httpClient, address)
 	modelNoBrowser := provideNoBrowserFlag()
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer, webURL, modelNoBrowser)
 	githubClientFactory := engine.NewGithubClientFactory()
@@ -168,15 +169,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	cloudHttpClient := cloud.ProvideHttpClient()
 	cloudUsernameManager := cloud.NewUsernameManager(cloudHttpClient)
 	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, imageController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, sailClient, tiltVersionChecker, tiltAnalyticsSubscriber, eventWatchManager, cloudUsernameManager)
-	windmillDir, err := dirs.UseWindmillDir()
-	if err != nil {
-		return demo.Script{}, err
-	}
-	tokenToken, err := token.GetOrCreateToken(windmillDir)
-	if err != nil {
-		return demo.Script{}, err
-	}
-	upper := engine.NewUpper(ctx, storeStore, v2, tokenToken)
+	upper := engine.NewUpper(ctx, storeStore, v2)
 	script := demo.NewScript(upper, headsUpDisplay, k8sClient, env, storeStore, branch, runtime, tiltfileLoader)
 	return script, nil
 }
@@ -304,7 +297,8 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	sailDialer := client.ProvideSailDialer()
 	sailClient := client.ProvideSailClient(sailURL, sailRoomer, sailDialer)
 	httpClient := server.ProvideHttpClient()
-	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics2, sailClient, httpClient)
+	address := cloud.ProvideAddress()
+	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics2, sailClient, httpClient, address)
 	modelNoBrowser := provideNoBrowserFlag()
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer, webURL, modelNoBrowser)
 	githubClientFactory := engine.NewGithubClientFactory()
@@ -315,6 +309,7 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	cloudHttpClient := cloud.ProvideHttpClient()
 	cloudUsernameManager := cloud.NewUsernameManager(cloudHttpClient)
 	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, imageController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, sailClient, tiltVersionChecker, tiltAnalyticsSubscriber, eventWatchManager, cloudUsernameManager)
+	upper := engine.NewUpper(ctx, storeStore, v2)
 	windmillDir, err := dirs.UseWindmillDir()
 	if err != nil {
 		return Threads{}, err
@@ -323,8 +318,7 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	if err != nil {
 		return Threads{}, err
 	}
-	upper := engine.NewUpper(ctx, storeStore, v2, tokenToken)
-	threads := provideThreads(headsUpDisplay, upper, tiltBuild, sailMode)
+	threads := provideThreads(headsUpDisplay, upper, tiltBuild, sailMode, tokenToken, address)
 	return threads, nil
 }
 
@@ -518,18 +512,20 @@ var BaseWireSet = wire.NewSet(
 	provideWebPort,
 	provideWebDevPort,
 	provideNoBrowserFlag, server.ProvideHeadsUpServer, assets.ProvideAssetServer, server.ProvideHeadsUpServerController, server.ProvideHttpClient, provideSailMode,
-	provideSailURL, client.SailWireSet, dirs.UseWindmillDir, token.GetOrCreateToken, provideThreads, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
+	provideSailURL, client.SailWireSet, dirs.UseWindmillDir, token.GetOrCreateToken, cloud.ProvideAddress, provideThreads, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
 )
 
 type Threads struct {
-	hud       hud.HeadsUpDisplay
-	upper     engine.Upper
-	tiltBuild model.TiltBuild
-	sailMode  model.SailMode
+	hud          hud.HeadsUpDisplay
+	upper        engine.Upper
+	tiltBuild    model.TiltBuild
+	sailMode     model.SailMode
+	token        token.Token
+	cloudAddress cloud.Address
 }
 
-func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, b model.TiltBuild, sailMode model.SailMode) Threads {
-	return Threads{h, upper, b, sailMode}
+func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, b model.TiltBuild, sailMode model.SailMode, token2 token.Token, cloudAddress cloud.Address) Threads {
+	return Threads{h, upper, b, sailMode, token2, cloudAddress}
 }
 
 type DownDeps struct {
