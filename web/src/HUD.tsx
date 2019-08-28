@@ -8,7 +8,6 @@ import LogPane from "./LogPane"
 import K8sViewPane from "./K8sViewPane"
 import PreviewPane from "./PreviewPane"
 import PathBuilder from "./PathBuilder"
-import { Map } from "immutable"
 import { Route, Switch, RouteComponentProps } from "react-router-dom"
 import { History, UnregisterCallback } from "history"
 import { incr, pathToTag } from "./analytics"
@@ -134,9 +133,9 @@ class HUD extends Component<HudProps, HudState> {
 
   toggleSidebar() {
     this.setState(prevState => {
-      return Map(prevState)
-        .set("IsSidebarClosed", !prevState.IsSidebarClosed)
-        .toObject() as HudState // NOTE(dmiller): TypeScript doesn't seem to understand what's going on here so I added a type assertion.
+      return {
+        IsSidebarClosed: !prevState.IsSidebarClosed,
+      }
     })
   }
 
