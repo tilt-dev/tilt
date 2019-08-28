@@ -115,6 +115,66 @@ exports[`shows sail url 1`] = `
 </div>
 `;
 
+exports[`shows snapshot owner 1`] = `
+<div
+  className="TopBar"
+>
+  <nav
+    className="TabNav"
+  >
+    <ul>
+      <li>
+        <a
+          className="tabLink "
+          href="/r/foo"
+          onClick={[Function]}
+        >
+          Logs
+        </a>
+      </li>
+      <li>
+        <a
+          className="tabLink "
+          href="/r/foo/preview"
+          onClick={[Function]}
+        >
+          Preview
+        </a>
+      </li>
+      <li>
+        <a
+          className="tabLink tabLink--errors tabLink--is-selected"
+          href="/r/foo/alerts"
+          onClick={[Function]}
+        >
+          Alerts
+          <span
+            className="tabLink-alertBadge"
+          >
+            1
+          </span>
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <section
+    className="TopBar-tools"
+  >
+    <section
+      className="TopBar-snapshotUrlWrap"
+    >
+      Snapshot shared by 
+      foo
+    </section>
+    <span
+      className="sail-url"
+    >
+       
+    </span>
+  </section>
+</div>
+`;
+
 exports[`shows snapshot url 1`] = `
 <div
   className="TopBar"

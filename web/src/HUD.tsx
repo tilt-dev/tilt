@@ -193,6 +193,10 @@ class HUD extends Component<HudProps, HudState> {
     }
     let showSnapshot =
       features.isEnabled("snapshots") && !this.pathBuilder.isSnapshot()
+    let snapshotOwner: string | null = null
+    if (features.isEnabled("snapshots") && this.state.View) {
+      snapshotOwner = this.state.View.TiltCloudUsername
+    }
 
     let sidebarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name = props.match.params.name
@@ -229,6 +233,7 @@ class HUD extends Component<HudProps, HudState> {
               sailUrl={sailUrl}
               numberOfAlerts={numAlerts}
               showSnapshotButton={showSnapshot}
+              snapshotOwner={snapshotOwner}
               handleOpenModal={handleOpenModal}
             />
           )
@@ -251,6 +256,7 @@ class HUD extends Component<HudProps, HudState> {
           sailUrl={sailUrl}
           numberOfAlerts={numAlerts}
           showSnapshotButton={showSnapshot}
+          snapshotOwner={snapshotOwner}
           handleOpenModal={handleOpenModal}
         />
       )
