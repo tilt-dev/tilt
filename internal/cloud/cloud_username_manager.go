@@ -105,6 +105,12 @@ func (c *CloudUsernameManager) OnChange(ctx context.Context, st store.RStore) {
 			return
 		}
 
+		if resp.StatusCode != http.StatusOK {
+			logger.Get(ctx).Infof("error checking tilt cloud status: %v", resp)
+			c.error()
+			return
+		}
+
 		responseBody, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			logger.Get(ctx).Infof("error reading response body: %v", err)
