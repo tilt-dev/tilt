@@ -76,24 +76,24 @@ it("shows snapshot url", () => {
 })
 
 it("shows snapshot owner", () => {
-    const tree = renderer
-        .create(
-            <MemoryRouter>
-                <TopBar
-                    logUrl="/r/foo"
-                    previewUrl="/r/foo/preview"
-                    alertsUrl="/r/foo/alerts"
-                    resourceView={ResourceView.Alerts}
-                    sailEnabled={false}
-                    sailUrl="www.sail.dev/xyz"
-                    numberOfAlerts={1}
-                    showSnapshotButton={false}
-                    snapshotOwner="foo"
-                    handleOpenModal={fakeHandleOpenModal}
-                />
-            </MemoryRouter>
-        )
-        .toJSON()
+  const tree = renderer
+    .create(
+      <MemoryRouter>
+        <TopBar
+          logUrl="/r/foo"
+          previewUrl="/r/foo/preview"
+          alertsUrl="/r/foo/alerts"
+          resourceView={ResourceView.Alerts}
+          sailEnabled={false}
+          sailUrl="www.sail.dev/xyz"
+          numberOfAlerts={1}
+          showSnapshotButton={false}
+          snapshotOwner="foo"
+          handleOpenModal={fakeHandleOpenModal}
+        />
+      </MemoryRouter>
+    )
+    .toJSON()
 
-    expect(tree).toMatchSnapshot()
+  expect(tree).toMatchSnapshot()
 })

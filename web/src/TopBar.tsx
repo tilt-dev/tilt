@@ -29,7 +29,9 @@ class TopBar extends PureComponent<TopBarProps> {
           numberOfAlerts={this.props.numberOfAlerts}
         />
         <section className="TopBar-tools">
-          {this.props.showSnapshotButton ? this.renderSnapshotModal() : this.renderSnapshotOwner()}
+          {this.props.showSnapshotButton
+            ? this.renderSnapshotModal()
+            : this.renderSnapshotOwner()}
           <SailInfo
             sailEnabled={this.props.sailEnabled}
             sailUrl={this.props.sailUrl}
@@ -50,9 +52,9 @@ class TopBar extends PureComponent<TopBarProps> {
   renderSnapshotOwner() {
     if (this.props.snapshotOwner) {
       return (
-          <section className="TopBar-snapshotUrlWrap">
-            Snapshot shared by {this.props.snapshotOwner}
-          </section>
+        <section className="TopBar-snapshotUrlWrap">
+          Snapshot shared by {this.props.snapshotOwner}
+        </section>
       )
     } else {
       return null
