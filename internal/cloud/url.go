@@ -14,7 +14,7 @@ const addressEnvName = "TILT_CLOUD_ADDRESS"
 func ProvideAddress() Address {
 	address := os.Getenv(addressEnvName)
 	if address == "" {
-		address = "alerts.tilt.dev"
+		address = "cloud.tilt.dev"
 	}
 
 	return Address(address)
