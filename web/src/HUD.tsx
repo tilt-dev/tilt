@@ -194,7 +194,7 @@ class HUD extends Component<HudProps, HudState> {
     let showSnapshot =
       features.isEnabled("snapshots") && !this.pathBuilder.isSnapshot()
     let snapshotOwner: string | null = null
-    if (features.isEnabled("snapshots") && this.state.View) {
+    if (this.pathBuilder.isSnapshot() && this.state.View) {
       snapshotOwner = this.state.View.TiltCloudUsername
     }
 
