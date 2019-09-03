@@ -479,7 +479,7 @@ func (d *dockerImageBuilder) getDigestFromDockerOutput(ctx context.Context, outp
 		return digest.Digest(data.ID), nil
 	}
 
-	return "", fmt.Errorf("Could not find image digest in docker output")
+	return "", fmt.Errorf("Docker is not responding. Maybe Docker is out of disk space? Try running `docker system prune`")
 }
 
 func getDigestFromAux(aux json.RawMessage) (digest.Digest, error) {
