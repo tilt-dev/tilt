@@ -60,6 +60,12 @@ func TestProvideEnv(t *testing.T) {
 			Cluster:          "default",
 		},
 	}
+	kindNamedClusterContexts := map[string]*api.Context{
+		"default": &api.Context{
+			LocationOfOrigin: filepath.Join(homedir, ".kube", "kind-config-integration"),
+			Cluster:          "integration",
+		},
+	}
 	table := []expectedConfig{
 		{EnvUnknown, &api.Config{CurrentContext: "aws"}},
 		{EnvMinikube, &api.Config{CurrentContext: "minikube", Contexts: minikubeContexts}},
@@ -69,6 +75,7 @@ func TestProvideEnv(t *testing.T) {
 		{EnvKIND, &api.Config{CurrentContext: "kubernetes-admin@kind-1", Contexts: kindContexts}},
 		{EnvMicroK8s, &api.Config{CurrentContext: "microk8s", Contexts: microK8sContexts}},
 		{EnvK3D, &api.Config{CurrentContext: "default", Contexts: k3dContexts}},
+		{EnvKIND, &api.Config{CurrentContext: "default", Contexts: kindNamedClusterContexts}},
 	}
 
 	for _, tt := range table {

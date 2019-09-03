@@ -91,11 +91,9 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 
 	kContext, err := wireKubeContext(ctx)
 	printField("Context", kContext, err)
-	kConfig, err := wireKubeConfig(ctx)
-	kc, ok := kConfig.Contexts[kConfig.CurrentContext]
-	clusterName := "Unknown"
-	if ok {
-		clusterName = kc.Cluster
+	clusterName, err := wireClusterName(ctx)
+	if clusterName == "" {
+		clusterName = "Unknown"
 	}
 	printField("Cluster Name", clusterName, err)
 

@@ -14,6 +14,7 @@ import (
 	"github.com/windmilleng/tilt/pkg/logger"
 )
 
+type ClusterName string
 type Env string
 
 const (
@@ -49,6 +50,15 @@ func ProvideKubeConfig(clientLoader clientcmd.ClientConfig) (*api.Config, error)
 	return config, nil
 }
 
+func ProvideClusterName(ctx context.Context, config *api.Config) ClusterName {
+	n := config.CurrentContext
+	c, ok := config.Contexts[n]
+	if !ok {
+		return ""
+	}
+	return ClusterName(c.Cluster)
+}
+
 func ProvideEnv(ctx context.Context, config *api.Config) Env {
 	n := config.CurrentContext
 
@@ -82,6 +92,18 @@ func ProvideEnv(ctx context.Context, config *api.Config) Env {
 	k3dDir := filepath.Join(homedir, ".config", "k3d")
 	if ospath.IsChild(k3dDir, loc) {
 		return EnvK3D
+	}
+
+	// NOTE(nick): Users can set the KIND cluster name with `kind create cluster
+	// --name`.  This makes the KIND cluster really hard to detect.
+	//
+	// We currently do it by assuming that KIND configs are always stored in a
+	// file named kind-config-*.
+	//
+	// KIND internally looks for its clusters with `docker ps` + filters,
+	// which might be a route to explore if this isn't robust enough.
+	if strings.HasPrefix(filepath.Base(loc), "kind-config-") {
+		return EnvKIND
 	}
 
 	return EnvUnknown

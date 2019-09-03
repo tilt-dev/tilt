@@ -117,7 +117,8 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	cacheBuilder := build.NewCacheBuilder(switchCli)
 	clock := build.ProvideClock()
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, clock)
-	kindPusher := engine.NewKINDPusher()
+	clusterName := k8s.ProvideClusterName(ctx, config)
+	kindPusher := engine.NewKINDPusher(clusterName)
 	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, k8sClient, env, analytics2, updateMode, clock, runtime, kindPusher)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	imageAndCacheBuilder := engine.NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, updateMode)
@@ -257,7 +258,8 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	cacheBuilder := build.NewCacheBuilder(switchCli)
 	clock := build.ProvideClock()
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, clock)
-	kindPusher := engine.NewKINDPusher()
+	clusterName := k8s.ProvideClusterName(ctx, config)
+	kindPusher := engine.NewKINDPusher(clusterName)
 	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, k8sClient, env, analytics2, updateMode, clock, runtime, kindPusher)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	imageAndCacheBuilder := engine.NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, updateMode)
@@ -358,6 +360,16 @@ func wireNamespace(ctx context.Context) (k8s.Namespace, error) {
 	clientConfig := k8s.ProvideClientConfig()
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	return namespace, nil
+}
+
+func wireClusterName(ctx context.Context) (k8s.ClusterName, error) {
+	clientConfig := k8s.ProvideClientConfig()
+	config, err := k8s.ProvideKubeConfig(clientConfig)
+	if err != nil {
+		return "", err
+	}
+	clusterName := k8s.ProvideClusterName(ctx, config)
+	return clusterName, nil
 }
 
 func wireRuntime(ctx context.Context) (container.Runtime, error) {
@@ -502,7 +514,7 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics) (
 
 // wire.go:
 
-var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.DetectNodeIP, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientSet, k8s.ProvideRESTConfig, k8s.ProvidePortForwarder, k8s.ProvideConfigNamespace, k8s.ProvideKubectlRunner, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient, k8s.ProvideOwnerFetcher)
+var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.DetectNodeIP, k8s.ProvideClusterName, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientSet, k8s.ProvideRESTConfig, k8s.ProvidePortForwarder, k8s.ProvideConfigNamespace, k8s.ProvideKubectlRunner, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient, k8s.ProvideOwnerFetcher)
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet,

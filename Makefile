@@ -83,6 +83,12 @@ else
 		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./integration -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s
 endif
 
+# Run the integration tests on kind
+integration-kind:
+	kind create cluster --name=integration
+	KUBECONFIG="$(kind get kubeconfig-path --name="integration")" go test -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s ./integration
+	kind delete cluster --name=integration
+
 dev-js:
 	cd web && yarn install && yarn run start
 

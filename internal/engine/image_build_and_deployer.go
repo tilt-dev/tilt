@@ -30,18 +30,22 @@ type KINDPusher interface {
 	PushToKIND(ctx context.Context, ref reference.NamedTagged, w io.Writer) error
 }
 
-type cmdKINDPusher struct{}
+type cmdKINDPusher struct {
+	clusterName k8s.ClusterName
+}
 
-func (*cmdKINDPusher) PushToKIND(ctx context.Context, ref reference.NamedTagged, w io.Writer) error {
-	cmd := exec.CommandContext(ctx, "kind", "load", "docker-image", ref.String())
+func (p *cmdKINDPusher) PushToKIND(ctx context.Context, ref reference.NamedTagged, w io.Writer) error {
+	cmd := exec.CommandContext(ctx, "kind", "load", "docker-image", ref.String(), "--name", string(p.clusterName))
 	cmd.Stdout = w
 	cmd.Stderr = w
 
 	return cmd.Run()
 }
 
-func NewKINDPusher() KINDPusher {
-	return &cmdKINDPusher{}
+func NewKINDPusher(clusterName k8s.ClusterName) KINDPusher {
+	return &cmdKINDPusher{
+		clusterName: clusterName,
+	}
 }
 
 type ImageBuildAndDeployer struct {
