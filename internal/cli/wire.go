@@ -36,6 +36,7 @@ import (
 var K8sWireSet = wire.NewSet(
 	k8s.ProvideEnv,
 	k8s.DetectNodeIP,
+	k8s.ProvideClusterName,
 	k8s.ProvideKubeContext,
 	k8s.ProvideKubeConfig,
 	k8s.ProvideClientConfig,
@@ -161,6 +162,11 @@ func wireEnv(ctx context.Context) (k8s.Env, error) {
 }
 
 func wireNamespace(ctx context.Context) (k8s.Namespace, error) {
+	wire.Build(K8sWireSet)
+	return "", nil
+}
+
+func wireClusterName(ctx context.Context) (k8s.ClusterName, error) {
 	wire.Build(K8sWireSet)
 	return "", nil
 }

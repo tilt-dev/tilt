@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -264,7 +265,13 @@ func (f *k8sFixture) setupNewKubeConfig() {
 		f.t.Fatalf("Error reading KUBECONFIG: %v", err)
 	}
 
-	f.kubeconfigPath = f.tempDir.JoinPath("config")
+	// Create a file with the same basename as the current kubeconfig,
+	// because we sometimes use that for env detection.
+	kubeconfigBaseName := filepath.Base(os.Getenv("KUBECONFIG"))
+	if kubeconfigBaseName == "" {
+		kubeconfigBaseName = "config"
+	}
+	f.kubeconfigPath = f.tempDir.JoinPath(kubeconfigBaseName)
 	f.tempDir.WriteFile(f.kubeconfigPath, string(current))
 	f.fixture.tiltEnviron["KUBECONFIG"] = f.kubeconfigPath
 	log.Printf("New kubeconfig: %s", f.kubeconfigPath)
