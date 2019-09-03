@@ -107,11 +107,6 @@ exports[`ShareSnapshotModal renders with modal open w/o known username 1`] = `
               name="token"
               type="hidden"
             />
-            <input
-              name="tilt_callback"
-              type="hidden"
-              value="http://localhost/api/refresh_tilt_cloud_whoami"
-            />
           </form>
           to associate this copy of Tilt with your TiltCloud account.
         </div>
@@ -178,11 +173,6 @@ exports[`ShareSnapshotModal renders without snapshotUrl 1`] = `
             <input
               name="token"
               type="hidden"
-            />
-            <input
-              name="tilt_callback"
-              type="hidden"
-              value="http://localhost/api/refresh_tilt_cloud_whoami"
             />
           </form>
           to associate this copy of Tilt with your TiltCloud account.

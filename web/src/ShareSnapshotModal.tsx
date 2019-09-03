@@ -43,9 +43,6 @@ export default class ShareSnapshotModal extends PureComponent<props> {
   }
 
   tiltCloudCopy() {
-    let callbackURL = `${window.location.protocol}//${
-      window.location.host
-    }/api/refresh_tilt_cloud_whoami`
     if (!this.props.tiltCloudUsername) {
       return (
         <div>
@@ -62,7 +59,6 @@ export default class ShareSnapshotModal extends PureComponent<props> {
                 type="hidden"
                 value={cookies.get("Tilt-Token")}
               />
-              <input name="tilt_callback" type="hidden" value={callbackURL} />
             </form>
             to associate this copy of Tilt with your TiltCloud account.
           </div>
