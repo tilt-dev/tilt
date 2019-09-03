@@ -17,6 +17,5 @@ spec:
       containers:
       - name: onewatchexec
         image: gcr.io/windmill-test-containers/integration/onewatchexec
-        command: ["python", "/app/app.py"]
         ports:
         - containerPort: 5000
