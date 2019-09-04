@@ -27,8 +27,6 @@ proto: scripts/protocc/protocc.py
 	python3 scripts/protocc/protocc.py --out go
 
 # Build a binary that uses synclet:latest
-# TODO(nick): We should have a release build that bakes in a particular
-# SYNCLET_IMAGE tag.
 install:
 	go install ./cmd/tilt/...
 
