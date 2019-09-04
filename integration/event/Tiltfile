@@ -1,0 +1,7 @@
+# -*- mode: Python -*-
+
+include('../Tiltfile')
+
+k8s_yaml('deployment.yaml')
+docker_build('event-server', '.')
+k8s_resource('event', port_forwards=['31234:8000'])
