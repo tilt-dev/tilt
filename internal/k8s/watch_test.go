@@ -16,7 +16,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/client-go/kubernetes/fake"
+	dfake "k8s.io/client-go/dynamic/fake"
+	kfake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	ktesting "k8s.io/client-go/testing"
 
@@ -224,9 +225,6 @@ func newWatchTestFixture(t *testing.T) *watchTestFixture {
 	tracker := ktesting.NewObjectTracker(scheme.Scheme, scheme.Codecs.UniversalDecoder())
 	ret.tracker = tracker
 
-	cs := &fake.Clientset{}
-	cs.AddReactor("*", "*", ktesting.ObjectReaction(tracker))
-
 	wr := func(action ktesting.Action) (handled bool, wi watch.Interface, err error) {
 		wa := action.(ktesting.WatchAction)
 		nsRestriction := ret.nsRestriction
@@ -252,15 +250,19 @@ func newWatchTestFixture(t *testing.T) *watchTestFixture {
 		return true, watch, nil
 	}
 
-	cs.AddWatchReactor("*", wr)
+	cs := kfake.NewSimpleClientset()
+	cs.PrependReactor("*", "*", ktesting.ObjectReaction(tracker))
+	cs.PrependWatchReactor("*", wr)
+
+	dcs := dfake.NewSimpleDynamicClient(scheme.Scheme)
+	dcs.PrependReactor("*", "*", ktesting.ObjectReaction(tracker))
+	dcs.PrependWatchReactor("*", wr)
 
 	ret.kCli = K8sClient{
-		env:           EnvUnknown,
-		kubectlRunner: nil,
-		core:          cs.CoreV1(), // TODO set
-		restConfig:    nil,
-		portForwarder: nil,
-		clientSet:     cs,
+		env:       EnvUnknown,
+		dynamic:   dcs,
+		clientSet: cs,
+		core:      cs.CoreV1(),
 	}
 
 	return ret
