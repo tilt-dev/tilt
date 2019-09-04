@@ -82,9 +82,9 @@ type EngineState struct {
 	Token        token.Token
 	TeamName     string
 
-	TiltCloudUsername             string
-	TokenKnownUnregistered        bool // to distinguish whether an empty TiltCloudUsername means "we haven't checked" or "we checked and the token isn't registered"
-	TiltCloudUsernameNeedsRefresh bool
+	TiltCloudUsername                           string
+	TokenKnownUnregistered                      bool // to distinguish whether an empty TiltCloudUsername means "we haven't checked" or "we checked and the token isn't registered"
+	WaitingForTiltCloudUsernamePostRegistration bool
 }
 
 func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.ManifestName {

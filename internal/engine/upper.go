@@ -195,8 +195,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleAnalyticsNudgeSurfacedAction(ctx, state)
 	case store.TiltCloudUserLookedUpAction:
 		handleTiltCloudUserLookedUpAction(state, action)
-	case store.RecheckTiltCloudUserAction:
-		handleRecheckTiltCloudUserAction(state)
+	case store.UserStartedTiltCloudRegistrationAction:
+		handleUserStartedTiltCloudRegistrationAction(state)
 	case store.LogEvent:
 		// handled as a LogAction, do nothing
 
@@ -727,8 +727,8 @@ func handleAnalyticsNudgeSurfacedAction(ctx context.Context, state *store.Engine
 }
 
 func handleTiltCloudUserLookedUpAction(state *store.EngineState, action store.TiltCloudUserLookedUpAction) {
-	if state.TiltCloudUsername != "" {
-		state.TiltCloudUsernameNeedsRefresh = false
+	if action.IsPostRegistrationLookup {
+		state.WaitingForTiltCloudUsernamePostRegistration = false
 	}
 	if !action.Found {
 		state.TokenKnownUnregistered = true
@@ -739,6 +739,6 @@ func handleTiltCloudUserLookedUpAction(state *store.EngineState, action store.Ti
 	}
 }
 
-func handleRecheckTiltCloudUserAction(state *store.EngineState) {
-	state.TiltCloudUsernameNeedsRefresh = true
+func handleUserStartedTiltCloudRegistrationAction(state *store.EngineState) {
+	state.WaitingForTiltCloudUsernamePostRegistration = true
 }

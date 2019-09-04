@@ -108,8 +108,9 @@ func (c *CloudUsernameManager) CheckUsername(ctx context.Context, st store.RStor
 	}
 
 	st.Dispatch(store.TiltCloudUserLookedUpAction{
-		Found:    r.Found,
-		Username: r.Username,
+		Found:                    r.Found,
+		Username:                 r.Username,
+		IsPostRegistrationLookup: blocking,
 	})
 }
 
@@ -126,14 +127,10 @@ func (c *CloudUsernameManager) OnChange(ctx context.Context, st store.RStore) {
 	currentlyMakingRequest := c.currentlyMakingRequest
 	c.mu.Unlock()
 
-	// if a refresh has been induced, then do a long_get lookup, so that we get the username as soon as
-	// the user has finished the process
-	if state.TiltCloudUsernameNeedsRefresh && !currentlyMakingRequest {
+	if state.WaitingForTiltCloudUsernamePostRegistration && !currentlyMakingRequest {
 		go c.CheckUsername(ctx, st, true)
 		return
 	}
-
-	// otherwise, we're not necessarily expecting a username, so just get the current state
 
 	// c.currentlyMakingRequest is a bit of a race condition here:
 	// 1. start making request that's going to return TokenKnownUnregistered = true

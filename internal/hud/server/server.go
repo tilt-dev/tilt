@@ -69,7 +69,7 @@ func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analyti
 	// this endpoint is only used for testing snapshots in development
 	r.HandleFunc("/api/snapshot/{snapshot_id}", s.SnapshotJSON)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
-	r.HandleFunc("/api/refresh_tilt_cloud_whoami", s.recheckTiltCloudUser)
+	r.HandleFunc("/api/user_started_tilt_cloud_registration", s.userStartedTiltCloudRegistration)
 
 	r.PathPrefix("/").Handler(s.cookieWrapper(assetServer))
 
@@ -334,8 +334,8 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 
 }
 
-func (s *HeadsUpServer) recheckTiltCloudUser(w http.ResponseWriter, req *http.Request) {
-	s.store.Dispatch(store.RecheckTiltCloudUserAction{})
+func (s *HeadsUpServer) userStartedTiltCloudRegistration(w http.ResponseWriter, req *http.Request) {
+	s.store.Dispatch(store.UserStartedTiltCloudRegistrationAction{})
 }
 
 type httpClient interface {
