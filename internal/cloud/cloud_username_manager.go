@@ -52,7 +52,8 @@ func (c *CloudUsernameManager) error() {
 
 func (c *CloudUsernameManager) CheckUsername(ctx context.Context, st store.RStore, blocking bool) {
 	state := st.RLockState()
-	defer st.RUnlockState()
+	tok := state.Token
+	st.RUnlockState()
 
 	c.mu.Lock()
 	c.currentlyMakingRequest = true
@@ -77,7 +78,7 @@ func (c *CloudUsernameManager) CheckUsername(ctx context.Context, st store.RStor
 		c.error()
 		return
 	}
-	req.Header.Set(TiltTokenHeaderName, string(state.Token))
+	req.Header.Set(TiltTokenHeaderName, string(tok))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := c.client.Do(req)
 	if err != nil {
