@@ -727,6 +727,9 @@ func handleAnalyticsNudgeSurfacedAction(ctx context.Context, state *store.Engine
 }
 
 func handleTiltCloudUserLookedUpAction(state *store.EngineState, action store.TiltCloudUserLookedUpAction) {
+	if state.TiltCloudUsername != "" {
+		state.TiltCloudUsernameNeedsRefresh = false
+	}
 	if !action.Found {
 		state.TokenKnownUnregistered = true
 		state.TiltCloudUsername = ""
@@ -737,5 +740,5 @@ func handleTiltCloudUserLookedUpAction(state *store.EngineState, action store.Ti
 }
 
 func handleRecheckTiltCloudUserAction(state *store.EngineState) {
-	state.TokenKnownUnregistered = false
+	state.TiltCloudUsernameNeedsRefresh = true
 }

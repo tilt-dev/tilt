@@ -334,7 +334,6 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 
 }
 
-// TODO - actually call this from webui
 func (s *HeadsUpServer) recheckTiltCloudUser(w http.ResponseWriter, req *http.Request) {
 	s.store.Dispatch(store.RecheckTiltCloudUserAction{})
 }

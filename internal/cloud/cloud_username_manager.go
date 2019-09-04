@@ -50,6 +50,68 @@ func (c *CloudUsernameManager) error() {
 	c.mu.Unlock()
 }
 
+func (c *CloudUsernameManager) CheckUsername(ctx context.Context, st store.RStore, blocking bool) {
+	state := st.RLockState()
+	defer st.RUnlockState()
+
+	c.mu.Lock()
+	c.currentlyMakingRequest = true
+	c.mu.Unlock()
+
+	defer func() {
+		c.mu.Lock()
+		c.currentlyMakingRequest = false
+		c.mu.Unlock()
+	}()
+
+	u := URL(state.CloudAddress)
+	u.Path = "/api/whoami"
+
+	if blocking {
+		u.Query().Set("wait_for_registration", "true")
+	}
+
+	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		logger.Get(ctx).Infof("error making whoami request: %v", err)
+		c.error()
+		return
+	}
+	req.Header.Set(TiltTokenHeaderName, string(state.Token))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := c.client.Do(req)
+	if err != nil {
+		logger.Get(ctx).Infof("error checking tilt cloud status: %v", err)
+		c.error()
+		return
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		logger.Get(ctx).Infof("error checking tilt cloud status: %v", resp)
+		c.error()
+		return
+	}
+
+	responseBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		logger.Get(ctx).Infof("error reading response body: %v", err)
+		c.error()
+		return
+	}
+	r := whoAmIResponse{}
+	err = json.NewDecoder(bytes.NewReader(responseBody)).Decode(&r)
+	if err != nil {
+		logger.Get(ctx).Infof("error decoding tilt whoami response '%s': %v", string(responseBody), err)
+		c.error()
+		return
+	}
+
+	st.Dispatch(store.TiltCloudUserLookedUpAction{
+		Found:    r.Found,
+		Username: r.Username,
+	})
+}
+
 func (c *CloudUsernameManager) OnChange(ctx context.Context, st store.RStore) {
 	state := st.RLockState()
 	defer st.RUnlockState()
@@ -62,6 +124,15 @@ func (c *CloudUsernameManager) OnChange(ctx context.Context, st store.RStore) {
 	sleepingAfterErrorUntil := c.sleepingAfterErrorUntil
 	currentlyMakingRequest := c.currentlyMakingRequest
 	c.mu.Unlock()
+
+	// if a refresh has been induced, then do a long_get lookup, so that we get the username as soon as
+	// the user has finished the process
+	if state.TiltCloudUsernameNeedsRefresh && !currentlyMakingRequest {
+		go c.CheckUsername(ctx, st, true)
+		return
+	}
+
+	// otherwise, we're not necessarily expecting a username, so just get the current state
 
 	// c.currentlyMakingRequest is a bit of a race condition here:
 	// 1. start making request that's going to return TokenKnownUnregistered = true
@@ -76,58 +147,5 @@ func (c *CloudUsernameManager) OnChange(ctx context.Context, st store.RStore) {
 		return
 	}
 
-	token := state.Token
-	u := URL(state.CloudAddress)
-	u.Path = "/api/whoami"
-
-	go func() {
-		c.mu.Lock()
-		c.currentlyMakingRequest = true
-		c.mu.Unlock()
-
-		defer func() {
-			c.mu.Lock()
-			c.currentlyMakingRequest = false
-			c.mu.Unlock()
-		}()
-		req, err := http.NewRequest("GET", u.String(), nil)
-		if err != nil {
-			logger.Get(ctx).Infof("error making whoami request: %v", err)
-			c.error()
-			return
-		}
-		req.Header.Set(TiltTokenHeaderName, string(token))
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		resp, err := c.client.Do(req)
-		if err != nil {
-			logger.Get(ctx).Infof("error checking tilt cloud status: %v", err)
-			c.error()
-			return
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			logger.Get(ctx).Infof("error checking tilt cloud status: %v", resp)
-			c.error()
-			return
-		}
-
-		responseBody, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			logger.Get(ctx).Infof("error reading response body: %v", err)
-			c.error()
-			return
-		}
-		r := whoAmIResponse{}
-		err = json.NewDecoder(bytes.NewReader(responseBody)).Decode(&r)
-		if err != nil {
-			logger.Get(ctx).Infof("error decoding tilt whoami response '%s': %v", string(responseBody), err)
-			c.error()
-			return
-		}
-
-		st.Dispatch(store.TiltCloudUserLookedUpAction{
-			Found:    r.Found,
-			Username: r.Username,
-		})
-	}()
+	go c.CheckUsername(ctx, st, false)
 }
