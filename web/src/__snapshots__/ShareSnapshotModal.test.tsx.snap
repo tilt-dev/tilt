@@ -97,6 +97,7 @@ exports[`ShareSnapshotModal renders with modal open w/o known username 1`] = `
           <form
             action="https://cloud.tilt.dev/register_token"
             method="POST"
+            onSubmit={[Function]}
             target="_blank"
           >
             <input
@@ -164,6 +165,7 @@ exports[`ShareSnapshotModal renders without snapshotUrl 1`] = `
           <form
             action="https://cloud.tilt.dev/register_token"
             method="POST"
+            onSubmit={[Function]}
             target="_blank"
           >
             <input

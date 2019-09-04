@@ -52,6 +52,7 @@ export default class ShareSnapshotModal extends PureComponent<props> {
               action={this.props.tiltCloudSchemeHost + "/register_token"}
               target="_blank"
               method="POST"
+              onSubmit={ShareSnapshotModal.notifyTiltOfRegistration}
             >
               <input type="submit" value="here" />
               <input
@@ -68,5 +69,18 @@ export default class ShareSnapshotModal extends PureComponent<props> {
     } else {
       return <div>Sharing snapshots as {this.props.tiltCloudUsername}.</div>
     }
+  }
+
+  static notifyTiltOfRegistration() {
+    let url = `${window.location.protocol}//${
+      window.location.host
+    }/api/user_started_tilt_cloud_registration`
+    fetch(url, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    })
   }
 }
