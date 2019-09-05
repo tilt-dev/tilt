@@ -72,18 +72,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     }
 
     this.rafID = requestAnimationFrame(() => {
-      let lastElInView = this.lastElement
-        ? this.lastElement.getBoundingClientRect().bottom < window.innerHeight
-        : false
-
-      // Always auto-scroll when we're recovering from a loading screen.
-      let autoscroll = false
-      if (!this.props.log || !this.lastElement) {
-        autoscroll = true
-      } else {
-        autoscroll = lastElInView
-      }
-
+      let autoscroll = this.computeAutoScroll()
       this.setState(prevState => {
         let lastWheelEventTimeMs = prevState.lastWheelEventTimeMs
         if (lastWheelEventTimeMs) {
@@ -96,6 +85,24 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
         return { autoscroll, lastWheelEventTimeMs: 0 }
       })
     })
+  }
+
+  // Compute whether we should auto-scroll from the state of the DOM.
+  // This forces a layout, so should be used sparingly.
+  computeAutoScroll() {
+    // Always auto-scroll when we're recovering from a loading screen.
+    if (!this.props.log || !this.lastElement) {
+      return true
+    }
+
+    // Never auto-scroll if we're horizontally scrolled.
+    if (window.scrollX) {
+      return false
+    }
+
+    let lastElInView =
+      this.lastElement.getBoundingClientRect().bottom < window.innerHeight
+    return lastElInView
   }
 
   render() {
