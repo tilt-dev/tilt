@@ -64,7 +64,8 @@ type FakeK8sClient struct {
 	Runtime  container.Runtime
 	Registry container.Registry
 
-	entityByName map[string]K8sEntity
+	entityByName            map[string]K8sEntity
+	getByReferenceCallCount int
 
 	ExecCalls  []ExecCall
 	ExecErrors []error
@@ -76,14 +77,6 @@ type ExecCall struct {
 	Ns    Namespace
 	Cmd   []string
 	Stdin []byte
-}
-
-type GetKey struct {
-	Group           string
-	Kind            string
-	Namespace       string
-	Name            string
-	ResourceVersion string
 }
 
 type fakeServiceWatch struct {
@@ -252,6 +245,7 @@ func (c *FakeK8sClient) InjectEntityByName(entities ...K8sEntity) {
 }
 
 func (c *FakeK8sClient) GetByReference(ctx context.Context, ref v1.ObjectReference) (K8sEntity, error) {
+	c.getByReferenceCallCount++
 	resp, ok := c.entityByName[ref.Name]
 	if !ok {
 		logger.Get(ctx).Infof("FakeK8sClient.GetByReference: resource not found: %s", ref.Name)
