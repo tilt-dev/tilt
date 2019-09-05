@@ -179,15 +179,9 @@ func (w *PodWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs 
 	}
 }
 
-// Check to see if this pod corresponds to any of our manifests.
-//
-// Currently, we do this by comparing the pod UID and its owner UIDs against
-// what we've deployed to the cluster. Returns the ManifestName and the UID that
-// it matched against.
-//
-// If the pod doesn't match an existing deployed resource, keep it in local
-// state, so we can match it later if the owner UID shows up.
-func (w *PodWatcher) triagePodUpdate(pod *v1.Pod, objTree k8s.ObjectRefTree) (model.ManifestName, types.UID) {
+// Record the pod update, and return true if this is newer than
+// the state we already know about.
+func (w *PodWatcher) recordPodUpdate(pod *v1.Pod) bool {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -202,10 +196,26 @@ func (w *PodWatcher) triagePodUpdate(pod *v1.Pod, objTree k8s.ObjectRefTree) (mo
 	// ResourceVersions.
 	olderThanKnown := ok && oldPod.ResourceVersion > pod.ResourceVersion
 	if olderThanKnown {
-		return "", ""
+		return false
 	}
 
 	w.knownPods[uid] = pod
+	return true
+}
+
+// Check to see if this pod corresponds to any of our manifests.
+//
+// Currently, we do this by comparing the pod UID and its owner UIDs against
+// what we've deployed to the cluster. Returns the ManifestName and the UID that
+// it matched against.
+//
+// If the pod doesn't match an existing deployed resource, keep it in local
+// state, so we can match it later if the owner UID shows up.
+func (w *PodWatcher) triagePodUpdate(pod *v1.Pod, objTree k8s.ObjectRefTree) (model.ManifestName, types.UID) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	uid := pod.UID
 
 	// Set up the descendent pod UID index
 	for _, ownerUID := range objTree.UIDs() {
@@ -248,6 +258,28 @@ func (w *PodWatcher) triagePodUpdate(pod *v1.Pod, objTree k8s.ObjectRefTree) (mo
 	return "", ""
 }
 
+func (w *PodWatcher) dispatchPodChange(ctx context.Context, pod *v1.Pod, st store.RStore) {
+	// Check to see if we can discard this pod quickly before
+	// doing a potentially expensive object tree lookup
+	ok := w.recordPodUpdate(pod)
+	if !ok {
+		return
+	}
+
+	objTree, err := w.ownerFetcher.OwnerTreeOf(ctx, k8s.NewK8sEntity(pod))
+	if err != nil {
+		logger.Get(ctx).Infof("Handling pod update (%q): %v", pod.Name, err)
+		return
+	}
+
+	mn, ancestorUID := w.triagePodUpdate(pod, objTree)
+	if mn == "" {
+		return
+	}
+
+	st.Dispatch(NewPodChangeAction(pod, mn, ancestorUID))
+}
+
 func (w *PodWatcher) dispatchPodChangesLoop(ctx context.Context, ch <-chan *v1.Pod, st store.RStore) {
 	for {
 		select {
@@ -256,18 +288,7 @@ func (w *PodWatcher) dispatchPodChangesLoop(ctx context.Context, ch <-chan *v1.P
 				return
 			}
 
-			objTree, err := w.ownerFetcher.OwnerTreeOf(ctx, k8s.NewK8sEntity(pod))
-			if err != nil {
-				logger.Get(ctx).Infof("Handling pod update (%q): %v", pod.Name, err)
-				continue
-			}
-
-			mn, ancestorUID := w.triagePodUpdate(pod, objTree)
-			if mn == "" {
-				continue
-			}
-
-			st.Dispatch(NewPodChangeAction(pod, mn, ancestorUID))
+			go w.dispatchPodChange(ctx, pod, st)
 		case <-ctx.Done():
 			return
 		}
