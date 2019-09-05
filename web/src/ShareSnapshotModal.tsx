@@ -12,24 +12,32 @@ type props = {
   isOpen: boolean
 }
 
-// TODO(dmiller): in the future this should also show if you are logged in and who you are
 export default class ShareSnapshotModal extends PureComponent<props> {
   render() {
-    let link = this.renderShareLink()
+    let tcUser = this.props.tiltCloudUsername;
+    let user = tcUser ? tcUser : "[anonymous user]";
+    let link = this.renderShareLink();
     return (
       <Modal
         onRequestClose={this.props.handleClose}
         isOpen={this.props.isOpen}
         className="ShareSnapshotModal"
       >
-        <div className="ShareSnapshotModal-pane">{link}</div>
-        <div className="ShareSnapshotModal-pane">{this.tiltCloudCopy()}</div>
+        <h2 className="ShareSnapshotModal-title">Share a Shapshot</h2>
+        <div className="ShareSnapshotModal-pane">
+          <p>Let anyone explore your current Tilt session with an interactive snapshot.</p>
+          {link}
+          <p className="ShareSnapshotModal-user">Sharing as <strong>{user}</strong></p>
+        </div>
+        <div className="ShareSnapshotModal-pane">
+          {this.tiltCloudCopy()}
+        </div>
       </Modal>
     )
   }
 
   renderShareLink() {
-    const hasLink = this.props.snapshotUrl !== ""
+    const hasLink = this.props.snapshotUrl !== "";
     if (!hasLink) {
       return (
         <button onClick={this.props.handleSendSnapshot}>Share Snapshot</button>
@@ -45,29 +53,30 @@ export default class ShareSnapshotModal extends PureComponent<props> {
   tiltCloudCopy() {
     if (!this.props.tiltCloudUsername) {
       return (
-        <div>
-          <div>
-            Click{" "}
-            <form
-              action={this.props.tiltCloudSchemeHost + "/register_token"}
-              target="_blank"
-              method="POST"
-              onSubmit={ShareSnapshotModal.notifyTiltOfRegistration}
-            >
-              <input type="submit" value="here" />
-              <input
-                name="token"
-                type="hidden"
-                value={cookies.get("Tilt-Token")}
-              />
-            </form>
-            to associate this copy of Tilt with your TiltCloud account.
-          </div>
-          <div>(You'll just need to link your GitHub Account)</div>
-        </div>
+        <section className="ShareSnapshotModal-tiltCloudCopy">
+          <p>Register on TiltCloud to share under your name, view, and delete snapshots.</p>
+          <form
+            className="ShareSnapshotModal-tiltCloudButtonForm"
+            action={this.props.tiltCloudSchemeHost + "/register_token"}
+            target="_blank"
+            method="POST"
+            onSubmit={ShareSnapshotModal.notifyTiltOfRegistration}
+          >
+            <p>You'll need a GitHub account</p>
+            <span className="ShareSnapshotModal-tiltCloudButtonForm-spacer" />
+            <input className="ShareSnapshotModal-tiltCloudButton" type="submit" value="Sign Up" />
+            <input
+              name="token"
+              type="hidden"
+              value={cookies.get("Tilt-Token")}
+            />
+          </form>
+        </section>
       )
     } else {
-      return <div>Sharing snapshots as {this.props.tiltCloudUsername}.</div>
+      return (
+        <p>View and delete snapshots on <a href="http://cloud.tilt.dev/snapshots" target="_blank">TiltCloud</a></p>
+      )
     }
   }
 
