@@ -194,8 +194,9 @@ func (b PodBuilder) DeploymentUID() types.UID {
 func (b PodBuilder) buildDeployment() *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: b.buildDeploymentName(),
-			UID:  b.DeploymentUID(),
+			Name:   b.buildDeploymentName(),
+			Labels: k8s.NewTiltLabelMap(),
+			UID:    b.DeploymentUID(),
 		},
 	}
 }
@@ -204,8 +205,9 @@ func (b PodBuilder) buildReplicaSet() *appsv1.ReplicaSet {
 	dep := b.buildDeployment()
 	return &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: b.buildReplicaSetName(),
-			UID:  b.buildReplicaSetUID(),
+			Name:   b.buildReplicaSetName(),
+			UID:    b.buildReplicaSetUID(),
+			Labels: k8s.NewTiltLabelMap(),
 			OwnerReferences: []metav1.OwnerReference{
 				k8s.RuntimeObjToOwnerRef(dep),
 			},
@@ -232,8 +234,7 @@ func (b PodBuilder) buildLabels(tSpec *v1.PodTemplateSpec) map[string]string {
 	if deployID.Empty() {
 		deployID = FakeDeployID
 	}
-	labels := map[string]string{}
-
+	labels := k8s.NewTiltLabelMap()
 	if !b.skipManifestLabel {
 		labels[k8s.ManifestNameLabel] = b.manifest.Name.String()
 	}
