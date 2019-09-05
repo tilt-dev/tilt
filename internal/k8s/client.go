@@ -34,7 +34,6 @@ import (
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
 )
 
 type Namespace string
@@ -93,7 +92,7 @@ type Client interface {
 
 	WatchPods(ctx context.Context, lps labels.Selector) (<-chan *v1.Pod, error)
 
-	WatchServices(ctx context.Context, lps []model.LabelPair) (<-chan *v1.Service, error)
+	WatchServices(ctx context.Context, lps labels.Selector) (<-chan *v1.Service, error)
 
 	WatchEvents(ctx context.Context) (<-chan *v1.Event, error)
 

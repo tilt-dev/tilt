@@ -27,7 +27,7 @@ func TestServiceWatch(t *testing.T) {
 	manifest := f.addManifest("server")
 	f.addDeployedUID(manifest, uid)
 
-	ls := k8s.TiltRunSelector()
+	ls := k8s.ManagedByTiltSelector()
 	s := servicebuilder.New(f.t, manifest).
 		WithPort(9998).
 		WithNodePort(int32(nodePort)).
@@ -62,7 +62,7 @@ func TestServiceWatchDeployIDDelayed(t *testing.T) {
 
 	f.sw.OnChange(f.ctx, f.store)
 
-	ls := k8s.TiltRunSelector()
+	ls := k8s.ManagedByTiltSelector()
 	s := servicebuilder.New(f.t, manifest).
 		WithUID(uid).
 		Build()
