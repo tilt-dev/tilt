@@ -46,46 +46,87 @@ func (t ObjectRefTree) String() string {
 
 type OwnerFetcher struct {
 	kCli  Client
-	cache map[types.UID]ObjectRefTree
-	mu    *sync.RWMutex
+	cache map[types.UID]*objectTreePromise
+	mu    *sync.Mutex
 }
 
 func ProvideOwnerFetcher(kCli Client) OwnerFetcher {
 	return OwnerFetcher{
 		kCli:  kCli,
-		cache: make(map[types.UID]ObjectRefTree),
-		mu:    &sync.RWMutex{},
+		cache: make(map[types.UID]*objectTreePromise),
+		mu:    &sync.Mutex{},
 	}
 }
 
-func (v OwnerFetcher) getCachedTree(id types.UID) (ObjectRefTree, bool) {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
-	tree, ok := v.cache[id]
-	return tree, ok
-}
-
-func (v OwnerFetcher) setCachedTree(id types.UID, tree ObjectRefTree) {
+// Returns a promise and a boolean. The boolean is true if the promise is
+// already in progress, and false if the caller is responsible for
+// resolving/rejecting the promise.
+func (v OwnerFetcher) getOrCreatePromise(id types.UID) (*objectTreePromise, bool) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
-	v.cache[id] = tree
+	promise, ok := v.cache[id]
+	if !ok {
+		promise = newObjectTreePromise()
+		v.cache[id] = promise
+	}
+	return promise, ok
 }
 
-func (v OwnerFetcher) OwnerTreeOf(ctx context.Context, entity K8sEntity) (ObjectRefTree, error) {
+func (v OwnerFetcher) OwnerTreeOfRef(ctx context.Context, ref v1.ObjectReference) (result ObjectRefTree, err error) {
+	uid := ref.UID
+	if uid == "" {
+		return ObjectRefTree{}, fmt.Errorf("Can only get owners of deployed entities")
+	}
+
+	promise, ok := v.getOrCreatePromise(uid)
+	if ok {
+		return promise.wait()
+	}
+
+	defer func() {
+		if err != nil {
+			promise.reject(err)
+		} else {
+			promise.resolve(result)
+		}
+	}()
+
+	entity, err := v.kCli.GetByReference(ctx, ref)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return ObjectRefTree{Ref: ref}, nil
+		}
+		return ObjectRefTree{}, err
+	}
+	return v.ownerTreeOfHelper(ctx, ref, entity.meta())
+}
+
+func (v OwnerFetcher) OwnerTreeOf(ctx context.Context, entity K8sEntity) (result ObjectRefTree, err error) {
 	meta := entity.meta()
 	uid := meta.GetUID()
 	if uid == "" {
 		return ObjectRefTree{}, fmt.Errorf("Can only get owners of deployed entities")
 	}
 
-	tree, ok := v.getCachedTree(uid)
+	promise, ok := v.getOrCreatePromise(uid)
 	if ok {
-		return tree, nil
+		return promise.wait()
 	}
 
-	ref := entity.ToObjectReference()
-	tree = ObjectRefTree{Ref: ref}
+	defer func() {
+		if err != nil {
+			promise.reject(err)
+		} else {
+			promise.resolve(result)
+		}
+	}()
 
+	ref := entity.ToObjectReference()
+	return v.ownerTreeOfHelper(ctx, ref, meta)
+}
+
+func (v OwnerFetcher) ownerTreeOfHelper(ctx context.Context, ref v1.ObjectReference, meta k8sMeta) (ObjectRefTree, error) {
+	tree := ObjectRefTree{Ref: ref}
 	owners, err := v.ownersOfMeta(ctx, meta)
 	if err != nil {
 		return ObjectRefTree{}, err
@@ -97,7 +138,6 @@ func (v OwnerFetcher) OwnerTreeOf(ctx context.Context, entity K8sEntity) (Object
 		}
 		tree.Owners = append(tree.Owners, ownerTree)
 	}
-	v.setCachedTree(uid, tree)
 	return tree, nil
 }
 
@@ -138,4 +178,31 @@ func RuntimeObjToOwnerRef(obj runtime.Object) metav1.OwnerReference {
 		Name:       ref.Name,
 		UID:        ref.UID,
 	}
+}
+
+type objectTreePromise struct {
+	tree ObjectRefTree
+	err  error
+	done chan struct{}
+}
+
+func newObjectTreePromise() *objectTreePromise {
+	return &objectTreePromise{
+		done: make(chan struct{}),
+	}
+}
+
+func (e *objectTreePromise) resolve(tree ObjectRefTree) {
+	e.tree = tree
+	close(e.done)
+}
+
+func (e *objectTreePromise) reject(err error) {
+	e.err = err
+	close(e.done)
+}
+
+func (e *objectTreePromise) wait() (ObjectRefTree, error) {
+	<-e.done
+	return e.tree, e.err
 }

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/sync/errgroup"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,6 +15,51 @@ func TestVisitOneParent(t *testing.T) {
 	kCli := &FakeK8sClient{}
 	ov := ProvideOwnerFetcher(kCli)
 
+	pod, rs := fakeOneParentChain()
+	kCli.InjectEntityByName(NewK8sEntity(rs))
+
+	tree, err := ov.OwnerTreeOf(context.Background(), K8sEntity{Obj: pod})
+	assert.NoError(t, err)
+	assert.Equal(t, `Pod:pod-a
+  ReplicaSet:rs-a`, tree.String())
+}
+
+func TestVisitTwoParents(t *testing.T) {
+	kCli := &FakeK8sClient{}
+	ov := ProvideOwnerFetcher(kCli)
+
+	pod, rs, dep := fakeTwoParentChain()
+	kCli.InjectEntityByName(NewK8sEntity(rs), NewK8sEntity(dep))
+
+	tree, err := ov.OwnerTreeOf(context.Background(), K8sEntity{Obj: pod})
+	assert.NoError(t, err)
+	assert.Equal(t, `Pod:pod-a
+  ReplicaSet:rs-a
+    Deployment:dep-a`, tree.String())
+}
+
+func TestOwnerFetcherParallelism(t *testing.T) {
+	kCli := &FakeK8sClient{}
+	ov := ProvideOwnerFetcher(kCli)
+
+	pod, rs := fakeOneParentChain()
+	kCli.InjectEntityByName(NewK8sEntity(rs))
+
+	count := 30
+	g, ctx := errgroup.WithContext(context.Background())
+	for i := 0; i < count; i++ {
+		g.Go(func() error {
+			_, err := ov.OwnerTreeOf(ctx, NewK8sEntity(pod))
+			return err
+		})
+	}
+
+	err := g.Wait()
+	assert.NoError(t, err)
+	assert.Equal(t, 1, kCli.getByReferenceCallCount)
+}
+
+func fakeOneParentChain() (*v1.Pod, *appsv1.ReplicaSet) {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pod-a",
@@ -34,18 +80,10 @@ func TestVisitOneParent(t *testing.T) {
 			UID:  "rs-a-uid",
 		},
 	}
-	kCli.InjectEntityByName(NewK8sEntity(rs))
-
-	tree, err := ov.OwnerTreeOf(context.Background(), K8sEntity{Obj: pod})
-	assert.NoError(t, err)
-	assert.Equal(t, `Pod:pod-a
-  ReplicaSet:rs-a`, tree.String())
+	return pod, rs
 }
 
-func TestVisitTwoParents(t *testing.T) {
-	kCli := &FakeK8sClient{}
-	ov := ProvideOwnerFetcher(kCli)
-
+func fakeTwoParentChain() (*v1.Pod, *appsv1.ReplicaSet, *appsv1.Deployment) {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pod-a",
@@ -80,11 +118,5 @@ func TestVisitTwoParents(t *testing.T) {
 			UID:  "dep-a-uid",
 		},
 	}
-	kCli.InjectEntityByName(NewK8sEntity(rs), NewK8sEntity(dep))
-
-	tree, err := ov.OwnerTreeOf(context.Background(), K8sEntity{Obj: pod})
-	assert.NoError(t, err)
-	assert.Equal(t, `Pod:pod-a
-  ReplicaSet:rs-a
-    Deployment:dep-a`, tree.String())
+	return pod, rs, dep
 }
