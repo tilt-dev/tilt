@@ -98,7 +98,7 @@ func (f *fixture) DumpLogs() {
 	_, _ = os.Stdout.Write([]byte(f.logs.String()))
 }
 
-func (f *fixture) WaitUntil(ctx context.Context, msg string, fun func() (string, error), expectedContents string) {
+func (f *fixture) WaitUntilContains(ctx context.Context, msg string, fun func() (string, error), expectedContents string) {
 	for {
 		actualContents, err := fun()
 		if err == nil && strings.Contains(actualContents, expectedContents) {
@@ -113,6 +113,24 @@ func (f *fixture) WaitUntil(ctx context.Context, msg string, fun func() (string,
 				"Actual: %s\n"+
 				"Current error: %v\n",
 				msg, expectedContents, actualContents, err)
+		case <-time.After(200 * time.Millisecond):
+		}
+	}
+}
+
+func (f *fixture) WaitUntil(ctx context.Context, msg string, fun func() (bool, error)) {
+	for {
+		ok, err := fun()
+		if err == nil && ok {
+			return
+		}
+
+		select {
+		case <-ctx.Done():
+			f.KillProcs()
+			f.t.Fatalf("%s: timed out waiting\n"+
+				"Current error: %v\n",
+				msg, err)
 		case <-time.After(200 * time.Millisecond):
 		}
 	}

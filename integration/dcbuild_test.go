@@ -18,7 +18,7 @@ func TestDockerComposeImageBuild(t *testing.T) {
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 
-	f.WaitUntil(ctx, "dcbuild up", func() (string, error) {
+	f.WaitUntilContains(ctx, "dcbuild up", func() (string, error) {
 		return f.dockerCmdOutput([]string{
 			"ps", "-f", "name=dcbuild", "--format", "{{.Image}}",
 		})

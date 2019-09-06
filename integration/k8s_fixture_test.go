@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
@@ -102,7 +101,7 @@ func (f *k8sFixture) Curl(url string) (string, error) {
 }
 
 func (f *k8sFixture) CurlUntil(ctx context.Context, url string, expectedContents string) {
-	f.WaitUntil(ctx, fmt.Sprintf("curl(%s)", url), func() (string, error) {
+	f.WaitUntilContains(ctx, fmt.Sprintf("curl(%s)", url), func() (string, error) {
 		return f.Curl(url)
 	}, expectedContents)
 }
@@ -114,37 +113,22 @@ func (f *k8sFixture) WaitForAllPodsReady(ctx context.Context, selector string) [
 	return f.WaitForAllPodsInPhase(ctx, selector, v1.PodRunning)
 }
 
-func (f *k8sFixture) WaitForOnePodWithAllContainersReady(ctx context.Context, selector string, timeout time.Duration) string {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	allPods := f.WaitForAllPodsReady(ctx, selector)
-	require.Len(f.t, allPods, 1, "need exactly one ready pod")
-	f.WaitForAllContainersForPodReady(ctx, allPods[0])
-	return allPods[0]
-}
-
 func (f *k8sFixture) WaitForAllPodsInPhase(ctx context.Context, selector string, phase v1.PodPhase) []string {
-	for {
-		allPodsReady, output, podNames := f.AllPodsInPhase(ctx, selector, phase)
-		if allPodsReady {
-			return podNames
-		}
-
-		select {
-		case <-ctx.Done():
-			f.t.Fatalf("Timed out waiting for pods to be ready. Selector: %s. Output:\n:%s\n", selector, output)
-		case <-time.After(200 * time.Millisecond):
-		}
-	}
+	msg := fmt.Sprintf("All pods (selector=%q) in phase %s", selector, phase)
+	podNames := []string{}
+	f.WaitUntil(ctx, msg, func() (bool, error) {
+		var allPodsInPhase bool
+		allPodsInPhase, podNames = f.AllPodsInPhase(ctx, selector, phase)
+		return allPodsInPhase, nil
+	})
+	return podNames
 }
 
-// Checks that all pods are in the given phase
-// Returns the output (for diagnostics) and the name of the pods in the given phase.
-func (f *k8sFixture) AllPodsInPhase(ctx context.Context, selector string, phase v1.PodPhase) (bool, string, []string) {
+// Returns a map of pod names to their phase names
+func (f *k8sFixture) PodPhases(ctx context.Context, selector string) map[string]string {
 	cmd := exec.Command("kubectl", "get", "pods",
 		namespaceFlag, "--selector="+selector, "-o=template",
-		"--template", "{{range .items}}{{.metadata.name}} {{.status.phase}}{{println}}{{end}}")
+		"--template", "{{range .items}}{{.metadata.name}}|{{.status.phase}}|{{.metadata.deletionTimestamp}}{{println}}{{end}}")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		f.t.Fatal(errors.Wrap(err, "get pods"))
@@ -152,54 +136,65 @@ func (f *k8sFixture) AllPodsInPhase(ctx context.Context, selector string, phase 
 
 	outStr := string(out)
 	lines := strings.Split(outStr, "\n")
-	podNames := []string{}
-	hasOneMatchingPod := false
+
+	result := map[string]string{}
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
 
-		elements := strings.Split(line, " ")
-		if len(elements) < 2 {
-			f.t.Fatalf("Unexpected output of kubect get pods: %s", outStr)
+		elements := strings.Split(line, "|")
+		if len(elements) != 3 {
+			f.t.Fatalf("Unexpected output of kubectl get pods: %s", outStr)
 		}
 
-		name, actualPhase := elements[0], elements[1]
-		var matchedPhase bool
-		if actualPhase == string(phase) {
-			matchedPhase = true
-			hasOneMatchingPod = true
-
+		isDeleting := elements[2] != "<no value>"
+		if isDeleting {
+			// Ignore elements that are being deleted
+			continue
 		}
 
-		if !matchedPhase {
-			return false, outStr, nil
-		}
+		result[elements[0]] = elements[1]
+	}
+	return result
+}
 
+// Return at least one pod in the given phase
+func (f *k8sFixture) SomePodsInPhase(ctx context.Context, selector string, phase v1.PodPhase) (bool, []string) {
+	podPhases := f.PodPhases(ctx, selector)
+	podNames := []string{}
+	for name, actualPhase := range podPhases {
+		if actualPhase != string(phase) {
+			continue
+		}
 		podNames = append(podNames, name)
 	}
-	return hasOneMatchingPod, outStr, podNames
+	return len(podNames) > 0, podNames
+}
+
+// Checks that all pods are in the given phase
+// Returns the output (for diagnostics) and the name of the pods in the given phase.
+func (f *k8sFixture) AllPodsInPhase(ctx context.Context, selector string, phase v1.PodPhase) (bool, []string) {
+	podPhases := f.PodPhases(ctx, selector)
+	podNames := []string{}
+	for name, actualPhase := range podPhases {
+		if actualPhase != string(phase) {
+			return false, nil
+		}
+		podNames = append(podNames, name)
+	}
+	return len(podNames) > 0, podNames
 }
 
 func (f *k8sFixture) WaitForAllContainersForPodReady(ctx context.Context, pod string) {
-	for {
-		allContainersReady, output := f.AllContainersForPodReady(ctx, pod)
-		if allContainersReady {
-			return
-		}
-
-		select {
-		case <-ctx.Done():
-			f.t.Fatalf("Timed out waiting for containers for pod %s to be ready. Output:\n:%s\n", pod, output)
-		case <-time.After(200 * time.Millisecond):
-		}
-	}
+	f.WaitUntil(ctx, fmt.Sprintf("All containers of pod ready %s", pod), func() (bool, error) {
+		return f.AllContainersForPodReady(ctx, pod), nil
+	})
 }
 
 // Checks that all containers for the given pod are ready
-// Returns the output (for diagnostics)
-func (f *k8sFixture) AllContainersForPodReady(ctx context.Context, pod string) (bool, string) {
+func (f *k8sFixture) AllContainersForPodReady(ctx context.Context, pod string) bool {
 	cmd := exec.Command("kubectl", "get", "pod", pod,
 		namespaceFlag, "-o=template",
 		"--template", "{{range .status.containerStatuses}}{{.ready}}{{println}}{{end}}")
@@ -211,14 +206,14 @@ func (f *k8sFixture) AllContainersForPodReady(ctx context.Context, pod string) (
 	outStr := strings.TrimSpace(string(out))
 	lines := strings.Split(outStr, "\n")
 	if len(lines) == 0 {
-		return false, outStr
+		return false
 	}
 	for _, line := range lines {
 		if line != "true" {
-			return false, outStr
+			return false
 		}
 	}
-	return true, outStr
+	return true
 }
 
 func (f *k8sFixture) ForwardPort(name string, portMap string) {

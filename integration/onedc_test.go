@@ -18,7 +18,7 @@ func TestOneDockerCompose(t *testing.T) {
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 
-	f.WaitUntil(ctx, "onedc up", func() (string, error) {
+	f.WaitUntilContains(ctx, "onedc up", func() (string, error) {
 		return f.dockerCmdOutput([]string{
 			"ps", "-f", "name=onedc", "--format", "{{.Image}}",
 		})

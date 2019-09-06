@@ -53,7 +53,7 @@ func TestEvent(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
-	f.WaitUntil(ctx, "unschedulable pod event", func() (string, error) {
+	f.WaitUntilContains(ctx, "unschedulable pod event", func() (string, error) {
 		return f.logs.String(), nil
 	}, "had taints that the pod didn't tolerate")
 

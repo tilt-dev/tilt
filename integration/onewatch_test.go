@@ -28,7 +28,7 @@ func TestOneWatch(t *testing.T) {
 	// Introduce a syntax error
 	f.ReplaceContents("main.go", "One-Up", "One-Up\"")
 
-	f.WaitUntil(ctx, "live_update syntax error", func() (string, error) {
+	f.WaitUntilContains(ctx, "live_update syntax error", func() (string, error) {
 		return f.logs.String(), nil
 	}, "FAILED TO UPDATE CONTAINER")
 

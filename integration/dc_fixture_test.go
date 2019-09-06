@@ -104,7 +104,7 @@ func (f *dcFixture) dockerKillAll(name string) {
 }
 
 func (f *dcFixture) CurlUntil(ctx context.Context, service string, url string, expectedContents string) {
-	f.WaitUntil(ctx, fmt.Sprintf("curl(%s)", url), func() (string, error) {
+	f.WaitUntilContains(ctx, fmt.Sprintf("curl(%s)", url), func() (string, error) {
 		out := &bytes.Buffer{}
 		cID, err := f.dockerContainerID(service)
 		if err != nil {
