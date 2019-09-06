@@ -63,8 +63,12 @@ func (m *EventWatchManager) diff(st store.RStore) eventWatchTaskList {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
+	watcherTaskList := createWatcherTaskList(state, m.knownDeployedUIDs)
+	if m.watching {
+		watcherTaskList.needsWatch = false
+	}
 	return eventWatchTaskList{
-		watcherTaskList: createWatcherTaskList(state, m.knownDeployedUIDs),
+		watcherTaskList: watcherTaskList,
 		tiltStartTime:   state.TiltStartTime,
 	}
 }
