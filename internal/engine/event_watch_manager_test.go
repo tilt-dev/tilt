@@ -43,6 +43,18 @@ func TestEventWatchManager_dispatchesEvent(t *testing.T) {
 	f.assertActions(expected)
 }
 
+func TestEventWatchManager_listensOnce(t *testing.T) {
+	f := newEWMFixture(t)
+	defer f.TearDown()
+
+	f.addManifest("fe")
+	f.ewm.OnChange(f.ctx, f.store)
+
+	f.kClient.EventsWatchErr = fmt.Errorf("Multiple watches forbidden")
+	f.ewm.OnChange(f.ctx, f.store)
+	f.assertActions()
+}
+
 func TestEventWatchManager_watchError(t *testing.T) {
 	f := newEWMFixture(t)
 	defer f.TearDown()
