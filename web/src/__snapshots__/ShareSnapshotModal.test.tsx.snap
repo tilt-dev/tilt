@@ -28,24 +28,59 @@ exports[`ShareSnapshotModal renders with modal open w/ known username 1`] = `
     style={Object {}}
     tabIndex="-1"
   >
+    <h2
+      className="ShareSnapshotModal-title"
+    >
+      Share a Shapshot
+    </h2>
     <div
       className="ShareSnapshotModal-pane"
     >
-      <a
-        href="http://test.com"
-        target="_blank"
+      <p>
+        Let anyone explore your current Tilt session with an interactive snapshot.
+      </p>
+      <section
+        className="ShareSnapshotModal-shareLink"
       >
-        Open link in new tab
-      </a>
+        <div
+          className="ShareSnapshotModal-shareLink-urlBox"
+        >
+          <p
+            className="ShareSnapshotModal-shareLink-url"
+          >
+            http://test.com
+          </p>
+        </div>
+        <a
+          className="ShareSnapshotModal-button"
+          href="http://test.com"
+          target="_blank"
+        >
+          Open
+        </a>
+      </section>
+      <p
+        className="ShareSnapshotModal-user"
+      >
+        Sharing as 
+        <strong>
+          tacocat
+        </strong>
+      </p>
     </div>
     <div
       className="ShareSnapshotModal-pane"
     >
-      <div>
-        Sharing snapshots as 
-        tacocat
-        .
-      </div>
+      <p>
+        View and delete snapshots on
+         
+        <a
+          href="http://cloud.tilt.dev/snapshots"
+          target="_blank"
+        >
+          TiltCloud
+        </a>
+      </p>
     </div>
   </div>
 </div>
@@ -77,44 +112,77 @@ exports[`ShareSnapshotModal renders with modal open w/o known username 1`] = `
     style={Object {}}
     tabIndex="-1"
   >
+    <h2
+      className="ShareSnapshotModal-title"
+    >
+      Share a Shapshot
+    </h2>
     <div
       className="ShareSnapshotModal-pane"
     >
-      <a
-        href="http://test.com"
-        target="_blank"
+      <p>
+        Let anyone explore your current Tilt session with an interactive snapshot.
+      </p>
+      <section
+        className="ShareSnapshotModal-shareLink"
       >
-        Open link in new tab
-      </a>
+        <div
+          className="ShareSnapshotModal-shareLink-urlBox"
+        >
+          <p
+            className="ShareSnapshotModal-shareLink-url"
+          >
+            http://test.com
+          </p>
+        </div>
+        <a
+          className="ShareSnapshotModal-button"
+          href="http://test.com"
+          target="_blank"
+        >
+          Open
+        </a>
+      </section>
+      <p
+        className="ShareSnapshotModal-user"
+      >
+        Sharing as 
+        <strong>
+          [anonymous user]
+        </strong>
+      </p>
     </div>
     <div
       className="ShareSnapshotModal-pane"
     >
-      <div>
-        <div>
-          Click
-           
-          <form
-            action="https://cloud.tilt.dev/register_token"
-            method="POST"
-            onSubmit={[Function]}
-            target="_blank"
-          >
-            <input
-              type="submit"
-              value="here"
-            />
-            <input
-              name="token"
-              type="hidden"
-            />
-          </form>
-          to associate this copy of Tilt with your TiltCloud account.
-        </div>
-        <div>
-          (You'll just need to link your GitHub Account)
-        </div>
-      </div>
+      <section>
+        <p>
+          Register on TiltCloud to share under your name, view, and delete snapshots.
+        </p>
+        <form
+          action="https://cloud.tilt.dev/register_token"
+          className="ShareSnapshotModal-tiltCloudButtonForm"
+          method="POST"
+          onSubmit={[Function]}
+          target="_blank"
+        >
+          <p>
+            You'll need a GitHub account
+          </p>
+          <span
+            className="ShareSnapshotModal-tiltCloudButtonForm-spacer"
+          />
+          <input
+            className="ShareSnapshotModal-tiltCloudButton"
+            type="submit"
+            value="Sign Up"
+          />
+          <input
+            name="token"
+            type="hidden"
+          />
+        </form>
+      </section>
     </div>
   </div>
 </div>
@@ -146,43 +214,76 @@ exports[`ShareSnapshotModal renders without snapshotUrl 1`] = `
     style={Object {}}
     tabIndex="-1"
   >
+    <h2
+      className="ShareSnapshotModal-title"
+    >
+      Share a Shapshot
+    </h2>
     <div
       className="ShareSnapshotModal-pane"
     >
-      <button
-        onClick={[Function]}
+      <p>
+        Let anyone explore your current Tilt session with an interactive snapshot.
+      </p>
+      <section
+        className="ShareSnapshotModal-shareLink"
       >
-        Share Snapshot
-      </button>
+        <div
+          className="ShareSnapshotModal-shareLink-urlBox"
+        >
+          <p
+            className="ShareSnapshotModal-shareLink-placeholder"
+          >
+            No Link Generated Yet
+          </p>
+        </div>
+        <button
+          className="ShareSnapshotModal-button"
+          onClick={[Function]}
+        >
+          Get Link
+        </button>
+      </section>
+      <p
+        className="ShareSnapshotModal-user"
+      >
+        Sharing as 
+        <strong>
+          [anonymous user]
+        </strong>
+      </p>
     </div>
     <div
       className="ShareSnapshotModal-pane"
     >
-      <div>
-        <div>
-          Click
-           
-          <form
-            action="https://cloud.tilt.dev/register_token"
-            method="POST"
-            onSubmit={[Function]}
-            target="_blank"
-          >
-            <input
-              type="submit"
-              value="here"
-            />
-            <input
-              name="token"
-              type="hidden"
-            />
-          </form>
-          to associate this copy of Tilt with your TiltCloud account.
-        </div>
-        <div>
-          (You'll just need to link your GitHub Account)
-        </div>
-      </div>
+      <section>
+        <p>
+          Register on TiltCloud to share under your name, view, and delete snapshots.
+        </p>
+        <form
+          action="https://cloud.tilt.dev/register_token"
+          className="ShareSnapshotModal-tiltCloudButtonForm"
+          method="POST"
+          onSubmit={[Function]}
+          target="_blank"
+        >
+          <p>
+            You'll need a GitHub account
+          </p>
+          <span
+            className="ShareSnapshotModal-tiltCloudButtonForm-spacer"
+          />
+          <input
+            className="ShareSnapshotModal-tiltCloudButton"
+            type="submit"
+            value="Sign Up"
+          />
+          <input
+            name="token"
+            type="hidden"
+          />
+        </form>
+      </section>
     </div>
   </div>
 </div>
