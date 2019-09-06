@@ -173,35 +173,6 @@ func (s *tiltfileState) skylarkReadFile(thread *starlark.Thread, fn *starlark.Bu
 	return newBlob(string(bs), fmt.Sprintf("file: %s", p)), nil
 }
 
-type blob struct {
-	text   string
-	source string
-}
-
-var _ starlark.Value = &blob{}
-
-func newBlob(text string, source string) *blob {
-	return &blob{text: text, source: source}
-}
-
-func (b *blob) String() string {
-	return b.text
-}
-
-func (b *blob) Type() string {
-	return "blob"
-}
-
-func (b *blob) Freeze() {}
-
-func (b *blob) Truth() starlark.Bool {
-	return len(b.text) > 0
-}
-
-func (b *blob) Hash() (uint32, error) {
-	return 0, fmt.Errorf("unhashable type: blob")
-}
-
 func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var command string
 	err := s.unpackArgs(fn.Name(), args, kwargs, "command", &command)

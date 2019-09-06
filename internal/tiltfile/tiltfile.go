@@ -211,14 +211,14 @@ func skylarkStringDictToGoMap(d *starlark.Dict) (map[string]string, error) {
 	r := map[string]string{}
 
 	for _, tuple := range d.Items() {
-		kV, ok := tuple[0].(starlark.String)
+		kV, ok := AsString(tuple[0])
 		if !ok {
 			return nil, fmt.Errorf("key is not a string: %T (%v)", tuple[0], tuple[0])
 		}
 
 		k := string(kV)
 
-		vV, ok := tuple[1].(starlark.String)
+		vV, ok := AsString(tuple[1])
 		if !ok {
 			return nil, fmt.Errorf("value is not a string: %T (%v)", tuple[1], tuple[1])
 		}

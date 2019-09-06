@@ -3738,6 +3738,26 @@ k8s_yaml('foo.yaml')
 	f.assertNextManifest("foo", db(image("gcr.io/foo"), entrypoint("/bin/the_app")))
 }
 
+func TestDockerBuild_buildArgs(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("rev.txt", "hello")
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo', build_args={'GIT_REV': local('cat rev.txt')})
+k8s_yaml('foo.yaml')
+`)
+
+	f.load("foo")
+
+	m := f.assertNextManifest("foo")
+	assert.Equal(t,
+		model.DockerBuildArgs{"GIT_REV": "hello"},
+		m.ImageTargets[0].DockerBuildInfo().BuildArgs)
+}
+
 func TestCustomBuildEntrypoint(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
