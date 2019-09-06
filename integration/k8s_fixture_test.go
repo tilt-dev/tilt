@@ -268,7 +268,7 @@ func (f *k8sFixture) setupNewKubeConfig() {
 	// Create a file with the same basename as the current kubeconfig,
 	// because we sometimes use that for env detection.
 	kubeconfigBaseName := filepath.Base(os.Getenv("KUBECONFIG"))
-	if kubeconfigBaseName == "" {
+	if kubeconfigBaseName == "" || kubeconfigBaseName == "." {
 		kubeconfigBaseName = "config"
 	}
 	f.kubeconfigPath = f.tempDir.JoinPath(kubeconfigBaseName)
