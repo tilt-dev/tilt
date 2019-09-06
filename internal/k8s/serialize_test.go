@@ -127,6 +127,20 @@ func TestDeleted(t *testing.T) {
 	assert.Equal(t, 2, len(result))
 }
 
+func TestBase64Serialization(t *testing.T) {
+	// json-iterator used to have a bug where it serialized this incorrectly.
+	// https://github.com/json-iterator/go/issues/272
+	yaml := `apiVersion: v1
+data:
+  credentials: ""
+kind: Secret
+metadata:
+  name: ldap
+  namespace: myspace
+type: Opaque`
+	assertRoundTripYAML(t, yaml)
+}
+
 // Assert that parsing the YAML and re-serializing it produces the same result.
 // Returns the parsed entities.
 func assertRoundTripYAML(t *testing.T, yaml string) []K8sEntity {
