@@ -82,7 +82,6 @@ func TestPodWatchExtraSelectors(t *testing.T) {
 	f.assertWatchedSelectors(ls, ls1, ls2)
 
 	p := podbuilder.New(t, manifest).
-		WithoutManifestLabel().
 		WithPodLabel("foo", "bar").
 		Build()
 	f.kClient.EmitPod(ls1, p)
@@ -104,7 +103,6 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 	f.assertWatchedSelectors(ls, ls1)
 
 	p := podbuilder.New(t, manifest).
-		WithoutManifestLabel().
 		WithPodLabel("foo", "bar").
 		Build()
 	f.kClient.EmitPod(ls1, p)
@@ -130,14 +128,12 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 
 	p3 := podbuilder.New(t, manifest2).
 		WithPodID("pod3").
-		WithoutManifestLabel().
 		WithPodLabel("foo", "bar").
 		Build()
 	f.kClient.EmitPod(ls1, p3)
 
 	p4 := podbuilder.New(t, manifest2).
 		WithPodID("pod4").
-		WithoutManifestLabel().
 		WithPodLabel("baz", "quu").
 		Build()
 	f.kClient.EmitPod(ls2, p4)

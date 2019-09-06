@@ -56,15 +56,14 @@ type PodBuilder struct {
 	t        testing.TB
 	manifest model.Manifest
 
-	podID             string
-	phase             string
-	creationTime      time.Time
-	deletionTime      time.Time
-	deployID          model.DeployID
-	restartCount      int
-	extraPodLabels    map[string]string
-	skipManifestLabel bool
-	deploymentUID     types.UID
+	podID          string
+	phase          string
+	creationTime   time.Time
+	deletionTime   time.Time
+	deployID       model.DeployID
+	restartCount   int
+	extraPodLabels map[string]string
+	deploymentUID  types.UID
 
 	// keyed by container index -- i.e. the first container will have image: imageRefs[0] and ID: cIDs[0], etc.
 	// If there's no entry at index i, we'll use a dummy value.
@@ -80,11 +79,6 @@ func New(t testing.TB, manifest model.Manifest) PodBuilder {
 		cIDs:           make(map[int]string),
 		extraPodLabels: make(map[string]string),
 	}
-}
-
-func (b PodBuilder) WithoutManifestLabel() PodBuilder {
-	b.skipManifestLabel = true
-	return b
 }
 
 func (b PodBuilder) WithPodLabel(key, val string) PodBuilder {
@@ -235,10 +229,6 @@ func (b PodBuilder) buildLabels(tSpec *v1.PodTemplateSpec) map[string]string {
 		deployID = FakeDeployID
 	}
 	labels := k8s.NewTiltLabelMap()
-	if !b.skipManifestLabel {
-		labels[k8s.ManifestNameLabel] = b.manifest.Name.String()
-	}
-
 	for k, v := range tSpec.Labels {
 		labels[k] = v
 	}

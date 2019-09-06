@@ -3305,10 +3305,6 @@ func assertContainsOnce(t *testing.T, s string, val string) {
 }
 
 func entityWithUID(t *testing.T, yaml string, uid string) k8s.K8sEntity {
-	return entityWithUIDAndMaybeManifestLabel(t, yaml, uid, true)
-}
-
-func entityWithUIDAndMaybeManifestLabel(t *testing.T, yaml string, uid string, withManifestLabel bool) k8s.K8sEntity {
 	es, err := k8s.ParseYAMLFromString(yaml)
 	if err != nil {
 		t.Fatalf("error parsing yaml: %v", err)
@@ -3319,16 +3315,6 @@ func entityWithUIDAndMaybeManifestLabel(t *testing.T, yaml string, uid string, w
 	}
 
 	e := es[0]
-	if withManifestLabel {
-		e, err = k8s.InjectLabels(e, []model.LabelPair{{
-			Key:   k8s.ManifestNameLabel,
-			Value: e.Name(),
-		}})
-		if err != nil {
-			t.Fatalf("error injecting manifest label: %v", err)
-		}
-	}
-
 	k8s.SetUIDForTest(t, &e, uid)
 
 	return e

@@ -177,9 +177,9 @@ func TestNoImageTargets(t *testing.T) {
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, "image: gcr.io/windmill-public-containers/lonely-pod"),
 		"Expected lonely-pod image to appear once in YAML: %s", f.k8s.Yaml)
 
-	expectedLabelStr := fmt.Sprintf("%s: %s", k8s.ManifestNameLabel, targName)
+	expectedLabelStr := fmt.Sprintf("%s: %s", k8s.ManagedByLabel, k8s.ManagedByValue)
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedLabelStr),
-		"Expected \"%s\"image to appear once in YAML: %s", expectedLabelStr, f.k8s.Yaml)
+		"Expected \"%s\" label to appear once in YAML: %s", expectedLabelStr, f.k8s.Yaml)
 }
 
 func TestImageIsClean(t *testing.T) {

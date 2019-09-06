@@ -261,7 +261,6 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 		injectedSynclet := false
 		e, err = k8s.InjectLabels(e, []model.LabelPair{
 			k8s.TiltManagedByLabel(),
-			{Key: k8s.ManifestNameLabel, Value: k8sTarget.Name.String()},
 		})
 		if err != nil {
 			return nil, errors.Wrap(err, "deploy")
