@@ -5,62 +5,82 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jonboulle/clockwork"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
-// no explicit analysis went into the selection of these numbers
-const uidMapEntryTTL = 10 * time.Minute
-const uidMapJanitorInterval = 3 * time.Minute
-
-type uidMapEntry struct {
-	resourceVersion   string
-	manifest          model.ManifestName
-	obj               k8s.K8sEntity
-	belongsToThisTilt bool
-	expiresAt         time.Time
-}
-
+// TODO(nick): Right now, the EventWatchManager, PodWatcher, and ServiceWatcher
+// all look very similar, with a few subtle differences (particularly in how
+// we decide whether two objects are related, and how we index those relationships).
+//
+// We're probably missing some abstractions here.
+//
+// TODO(nick): We should also add garbage collection and/or handle Delete events
+// from the kubernetes informer properly.
 type EventWatchManager struct {
-	kClient  k8s.Client
-	watching bool
-	uidMap   map[types.UID]uidMapEntry
-	uidMapMu sync.RWMutex
-	clock    clockwork.Clock
+	kClient      k8s.Client
+	ownerFetcher k8s.OwnerFetcher
+	watching     bool
+
+	mu                sync.RWMutex
+	knownDeployedUIDs map[types.UID]model.ManifestName
+
+	// An index that maps the UID of Kubernetes resources to the UIDs of
+	// all events that they own (transitively).
+	//
+	// For example, a Deployment UID might contain a set of N event UIDs.
+	knownDescendentEventUIDs map[types.UID]store.UIDSet
+
+	// An index of all the known events, by UID
+	knownEvents map[types.UID]*v1.Event
 }
 
-func NewEventWatchManager(kClient k8s.Client, clock clockwork.Clock) *EventWatchManager {
+func NewEventWatchManager(kClient k8s.Client, ownerFetcher k8s.OwnerFetcher) *EventWatchManager {
 	return &EventWatchManager{
-		kClient: kClient,
-		uidMap:  make(map[types.UID]uidMapEntry),
-		clock:   clock,
+		kClient:                  kClient,
+		ownerFetcher:             ownerFetcher,
+		knownDeployedUIDs:        make(map[types.UID]model.ManifestName),
+		knownDescendentEventUIDs: make(map[types.UID]store.UIDSet),
+		knownEvents:              make(map[types.UID]*v1.Event),
 	}
 }
 
-func (m *EventWatchManager) needsWatch(st store.RStore) bool {
+type eventWatchTaskList struct {
+	watcherTaskList
+	tiltStartTime time.Time
+}
+
+func (m *EventWatchManager) diff(st store.RStore) eventWatchTaskList {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	atLeastOneK8s := false
-	for _, m := range state.Manifests() {
-		if m.IsK8s() {
-			atLeastOneK8s = true
-		}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return eventWatchTaskList{
+		watcherTaskList: createWatcherTaskList(state, m.knownDeployedUIDs),
+		tiltStartTime:   state.TiltStartTime,
 	}
-	return atLeastOneK8s && state.WatchFiles && !m.watching
 }
 
 func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore) {
-	if !m.needsWatch(st) {
-		return
+	taskList := m.diff(st)
+	if taskList.needsWatch {
+		m.setupWatch(ctx, st, taskList.tiltStartTime)
 	}
 
+	if len(taskList.newUIDs) > 0 {
+		m.setupNewUIDs(ctx, st, taskList.newUIDs)
+	}
+}
+
+func (m *EventWatchManager) setupWatch(ctx context.Context, st store.RStore, tiltStartTime time.Time) {
 	m.watching = true
 
 	ch, err := m.kClient.WatchEvents(ctx)
@@ -69,83 +89,110 @@ func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore) {
 		st.Dispatch(NewErrorAction(err))
 		return
 	}
-
-	go m.dispatchEventsLoop(ctx, ch, st)
+	go m.dispatchEventsLoop(ctx, ch, st, tiltStartTime)
 }
 
-func (m *EventWatchManager) createEntry(ctx context.Context, involvedObject v1.ObjectReference) uidMapEntry {
-	ret := uidMapEntry{
-		resourceVersion:   involvedObject.ResourceVersion,
-		belongsToThisTilt: false,
-		expiresAt:         m.clock.Now().Add(uidMapEntryTTL),
-	}
+// When new UIDs are deployed, go through all our known events and dispatch
+// new actions. This handles the case where we get the event
+// before the deploy id shows up in the manifest, which is way more common than
+// you would think.
+func (m *EventWatchManager) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs map[types.UID]model.ManifestName) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
-	e, err := m.kClient.GetByReference(ctx, involvedObject)
-	if err != nil {
-		// if the lookup was an error, wipe out resourceVersion so that we don't cache a potentially
-		// ephemeral negative result
-		// (unfortunately, this means we won't log the event for which this lookup failed)
-		ret.resourceVersion = "0"
-		return ret
-	}
+	for uid, mn := range newUIDs {
+		m.knownDeployedUIDs[uid] = mn
 
-	mn := model.ManifestName(e.Labels()[k8s.ManifestNameLabel])
-	if mn == "" {
-		return ret
-	}
-
-	ret.obj = e
-	ret.manifest = mn
-	ret.belongsToThisTilt = e.Labels()[k8s.TiltRunIDLabel] == k8s.TiltRunID
-	return ret
-}
-
-// This does not attempt to prevent duplicate simultaneous requests. If we get multiple events for the same
-// object at the same time, they can each result in their own API request.
-// We're currently assuming this matters sufficiently rarely that it's not worth the code complexity to fix.
-func (m *EventWatchManager) getEntry(ctx context.Context, obj v1.ObjectReference) uidMapEntry {
-	uid := obj.UID
-
-	m.uidMapMu.RLock()
-	entry, ok := m.uidMap[uid]
-	m.uidMapMu.RUnlock()
-	if !ok || entry.resourceVersion != obj.ResourceVersion {
-		entry = m.createEntry(ctx, obj)
-		m.uidMapMu.Lock()
-		// another thread might have come in and set this to the same or even a newer value by now
-		// neither of these cases should affect behavior aside from causing some unneeded api requests
-		m.uidMap[uid] = entry
-		m.uidMapMu.Unlock()
-	}
-
-	return entry
-}
-
-// just loops and deletes any entrys that have hit their expiration
-func (m *EventWatchManager) uidMapJanitor(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-m.clock.After(uidMapJanitorInterval):
-			m.uidMapMu.Lock()
-			for k, v := range m.uidMap {
-				if m.clock.Now().After(v.expiresAt) {
-					delete(m.uidMap, k)
-				}
+		descendants := m.knownDescendentEventUIDs[uid]
+		for uid := range descendants {
+			event, ok := m.knownEvents[uid]
+			if ok {
+				st.Dispatch(store.NewK8sEventAction(event, mn))
 			}
-			m.uidMapMu.Unlock()
 		}
 	}
 }
 
-func (m *EventWatchManager) dispatchEventsLoop(ctx context.Context, ch <-chan *v1.Event, st store.RStore) {
-	go m.uidMapJanitor(ctx)
+// Record the event update, and return true if this is newer than
+// the state we already know about.
+func (m *EventWatchManager) recordEventUpdate(event *v1.Event) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
-	state := st.RLockState()
-	tiltStartTime := state.TiltStartTime
-	st.RUnlockState()
+	uid := event.UID
+	oldEvent, ok := m.knownEvents[uid]
 
+	// Throw out updates that are older than what we currently have.
+	//
+	// Note that this code also dispatches actions for updates where the new
+	// ResourceVersion == the old ResourceVersion. We do this deliberately to make
+	// testing much easier, because the test harness doesn't need to keep track of
+	// ResourceVersions.
+	olderThanKnown := ok && oldEvent.ResourceVersion > event.ResourceVersion
+	if olderThanKnown {
+		return false
+	}
+
+	m.knownEvents[uid] = event
+	return true
+}
+
+// Check to see if this event corresponds to any of our manifests.
+//
+// We do this by comparing the event's InvolvedObject UID and its owner UIDs
+// against what we've deployed to the cluster. Returns the ManifestName that it
+// matched against.
+//
+// If the event doesn't match an existing deployed resource, keep it in local
+// state, so we can match it later if the owner UID shows up.
+func (m *EventWatchManager) triageEventUpdate(event *v1.Event, objTree k8s.ObjectRefTree) model.ManifestName {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	uid := event.UID
+
+	// Set up the descendent index of the involved object
+	for _, ownerUID := range objTree.UIDs() {
+		set, ok := m.knownDescendentEventUIDs[ownerUID]
+		if !ok {
+			set = store.NewUIDSet()
+			m.knownDescendentEventUIDs[ownerUID] = set
+		}
+		set.Add(uid)
+	}
+
+	// Find the manifest name
+	for _, ownerUID := range objTree.UIDs() {
+		mn, ok := m.knownDeployedUIDs[ownerUID]
+		if ok {
+			return mn
+		}
+	}
+
+	return ""
+}
+
+func (m *EventWatchManager) dispatchEventChange(ctx context.Context, event *v1.Event, st store.RStore) {
+	ok := m.recordEventUpdate(event)
+	if !ok {
+		return
+	}
+
+	objTree, err := m.ownerFetcher.OwnerTreeOfRef(ctx, event.InvolvedObject)
+	if err != nil {
+		logger.Get(ctx).Infof("Error handling event update (%q): %v", event.Name, err)
+		return
+	}
+
+	mn := m.triageEventUpdate(event, objTree)
+	if mn == "" {
+		return
+	}
+
+	st.Dispatch(store.NewK8sEventAction(event, mn))
+}
+
+func (m *EventWatchManager) dispatchEventsLoop(ctx context.Context, ch <-chan *v1.Event, st store.RStore, tiltStartTime time.Time) {
 	for {
 		select {
 		case event, ok := <-ch:
@@ -153,20 +200,24 @@ func (m *EventWatchManager) dispatchEventsLoop(ctx context.Context, ch <-chan *v
 				return
 			}
 
-			// on startup, k8s will give us a bunch of event objects that happened before tilt started, which
-			// leads to flooding the k8s api with lookups on those events' involvedObjects
-			// we don't care about those events, so ignore them.
+			// on startup, k8s will give us a bunch of event objects that happened
+			// before tilt started, which leads to flooding the k8s api with lookups
+			// on those events' involvedObjects we don't care about those events, so
+			// ignore them.
+			//
+			// TODO(nick): We might need to remove this check and optimize
+			// it in a different way. We want Tilt to be to attach to existing
+			// resources, and these resources might have pre-existing events.
 			if event.ObjectMeta.CreationTimestamp.Time.Before(tiltStartTime) {
 				continue
 			}
 
-			go func() {
-				entry := m.getEntry(ctx, event.InvolvedObject)
+			// Ignore normal events.
+			if event.Type == v1.EventTypeNormal {
+				continue
+			}
 
-				if entry.belongsToThisTilt {
-					st.Dispatch(store.NewK8sEventAction(event, entry.manifest))
-				}
-			}()
+			go m.dispatchEventChange(ctx, event, st)
 
 		case <-ctx.Done():
 			return

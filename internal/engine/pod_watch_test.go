@@ -30,7 +30,7 @@ func TestPodWatch(t *testing.T) {
 
 	f.pw.OnChange(f.ctx, f.store)
 
-	ls := k8s.TiltRunSelector()
+	ls := k8s.ManagedByTiltSelector()
 	pb := podbuilder.New(t, manifest)
 	p := pb.Build()
 
@@ -53,7 +53,7 @@ func TestPodWatchChangeEventBeforeUID(t *testing.T) {
 
 	f.pw.OnChange(f.ctx, f.store)
 
-	ls := k8s.TiltRunSelector()
+	ls := k8s.ManagedByTiltSelector()
 	pb := podbuilder.New(t, manifest)
 	p := pb.Build()
 
@@ -72,7 +72,7 @@ func TestPodWatchExtraSelectors(t *testing.T) {
 	f := newPWFixture(t)
 	defer f.TearDown()
 
-	ls := k8s.TiltRunSelector()
+	ls := k8s.ManagedByTiltSelector()
 	ls1 := labels.Set{"foo": "bar"}.AsSelector()
 	ls2 := labels.Set{"baz": "quu"}.AsSelector()
 	manifest := f.addManifestWithSelectors("server", ls1, ls2)
@@ -95,7 +95,7 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 	f := newPWFixture(t)
 	defer f.TearDown()
 
-	ls := k8s.TiltRunSelector()
+	ls := k8s.ManagedByTiltSelector()
 	ls1 := labels.Set{"foo": "bar"}.AsSelector()
 	manifest := f.addManifestWithSelectors("server1", ls1)
 

@@ -28,7 +28,7 @@ func TestFixContainerStatusImages(t *testing.T) {
 	assert.NotEqual(t,
 		pod.Spec.Containers[0].Image,
 		pod.Status.ContainerStatuses[0].Image)
-	FixContainerStatusImages(&pod)
+	FixContainerStatusImages(pod)
 	assert.Equal(t,
 		pod.Spec.Containers[0].Image,
 		pod.Status.ContainerStatuses[0].Image)
@@ -48,7 +48,7 @@ func TestWaitForContainerAlreadyAlive(t *testing.T) {
 			},
 		},
 	}
-	f.addObject(&podData)
+	f.addObject(podData)
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
 	defer cancel()
@@ -102,7 +102,7 @@ func TestWaitForContainerSuccess(t *testing.T) {
 	}
 
 	<-f.watchNotify
-	f.updatePod(&newPod)
+	f.updatePod(newPod)
 	err = <-result
 	if err != nil {
 		t.Fatal(err)
@@ -141,7 +141,7 @@ func TestWaitForContainerFailure(t *testing.T) {
 	}
 
 	<-f.watchNotify
-	f.updatePod(&newPod)
+	f.updatePod(newPod)
 	err = <-result
 
 	expected := "Container will never be ready"
@@ -182,7 +182,7 @@ func TestWaitForContainerUnschedulable(t *testing.T) {
 	}
 
 	<-f.watchNotify
-	f.updatePod(&newPod)
+	f.updatePod(newPod)
 	err = <-result
 
 	expected := "Container will never be ready: 0/4 nodes are available: 4 Insufficient cpu."

@@ -63,7 +63,7 @@ func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore) {
 func (w *ServiceWatcher) setupWatch(ctx context.Context, st store.RStore) {
 	w.watching = true
 
-	ch, err := w.kCli.WatchServices(ctx, []model.LabelPair{k8s.TiltRunLabel()})
+	ch, err := w.kCli.WatchServices(ctx, k8s.ManagedByTiltSelector())
 	if err != nil {
 		err = errors.Wrap(err, "Error watching services. Are you connected to kubernetes?\n")
 		st.Dispatch(NewErrorAction(err))
@@ -96,7 +96,9 @@ func (w *ServiceWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newU
 	}
 }
 
-func (w *ServiceWatcher) triageServiceUpdate(service *v1.Service) model.ManifestName {
+// Record the service update, and return true if this is newer than
+// the state we already know about.
+func (w *ServiceWatcher) recordServiceUpdate(service *v1.Service) bool {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -109,11 +111,22 @@ func (w *ServiceWatcher) triageServiceUpdate(service *v1.Service) model.Manifest
 	// to keep track of ResourceVersions
 	olderThanKnown := ok && oldService.ResourceVersion > service.ResourceVersion
 	if olderThanKnown {
-		return ""
+		return false
 	}
 
 	w.knownServices[uid] = service
+	return true
+}
 
+// Match up the service update to a manifest.
+//
+// The division between triageServiceUpdate and recordServiceUpdate is a bit artificial,
+// but is designed this way to be consistent with PodWatcher and EventWatchManager.
+func (w *ServiceWatcher) triageServiceUpdate(service *v1.Service) model.ManifestName {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	uid := service.UID
 	manifestName, ok := w.knownDeployedUIDs[uid]
 	if !ok {
 		return ""
@@ -128,6 +141,11 @@ func (w *ServiceWatcher) dispatchServiceChangesLoop(ctx context.Context, ch <-ch
 		case service, ok := <-ch:
 			if !ok {
 				return
+			}
+
+			ok = w.recordServiceUpdate(service)
+			if !ok {
+				continue
 			}
 
 			manifestName := w.triageServiceUpdate(service)

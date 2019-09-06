@@ -17,14 +17,12 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/google/uuid"
-	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/windmilleng/tilt/internal/build"
@@ -1917,22 +1915,13 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	entityUID := "someEntity"
-	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
-
-	name := model.ManifestName(e.Name())
+	name := model.ManifestName("fe")
 	manifest := f.newManifest(string(name))
-
-	objRef := v1.ObjectReference{UID: types.UID(entityUID), Name: e.Name()}
-
-	obj := unstructured.Unstructured{}
-	obj.SetLabels(map[string]string{k8s.TiltRunIDLabel: k8s.TiltRunID, k8s.ManifestNameLabel: name.String()})
-	obj.SetName(objRef.Name)
-	f.kClient.InjectEntityByName(k8s.NewK8sEntity(&obj))
 
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
 
+	objRef := v1.ObjectReference{UID: f.lastDeployedUID(name)}
 	warnEvt := &v1.Event{
 		InvolvedObject: objRef,
 		Message:        "something has happened zomg",
@@ -1962,17 +1951,14 @@ func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	entityUID := "someEntity"
-	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
-
-	name := model.ManifestName(e.Name())
+	name := model.ManifestName("fe")
 	manifest := f.newManifest(string(name))
 
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
 
 	warnEvt := &v1.Event{
-		InvolvedObject: v1.ObjectReference{UID: types.UID(entityUID)},
+		InvolvedObject: v1.ObjectReference{UID: types.UID("someRandomUID")},
 		Message:        "something has happened zomg",
 		Type:           v1.EventTypeWarning,
 	}
@@ -1988,17 +1974,14 @@ func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	entityUID := "someEntity"
-	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
-
-	name := model.ManifestName(e.Name())
+	name := model.ManifestName("fe")
 	manifest := f.newManifest(string(name))
 
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
 
 	normalEvt := &v1.Event{
-		InvolvedObject: v1.ObjectReference{UID: types.UID(entityUID)},
+		InvolvedObject: v1.ObjectReference{UID: f.lastDeployedUID(name)},
 		Message:        "all systems are go",
 		Type:           v1.EventTypeNormal, // we should NOT log this message
 	}
@@ -2022,15 +2005,8 @@ func TestK8sEventLogTimestamp(t *testing.T) {
 	st.LogTimestamps = true
 	f.store.UnlockMutableState()
 
-	entityUID := "someEntity"
-	e := entityWithUID(t, testyaml.DoggosDeploymentYaml, entityUID)
-
-	name := model.ManifestName(e.Name())
+	name := model.ManifestName("fe")
 	manifest := f.newManifest(string(name))
-
-	obj := unstructured.Unstructured{}
-	obj.SetLabels(map[string]string{k8s.TiltRunIDLabel: k8s.TiltRunID, k8s.ManifestNameLabel: name.String()})
-	f.kClient.InjectEntityByName(k8s.NewK8sEntity(&obj))
 
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
@@ -2038,7 +2014,7 @@ func TestK8sEventLogTimestamp(t *testing.T) {
 	ts := time.Now().Add(time.Hour * 36) // the future, i.e. timestamp that won't otherwise appear in our log
 
 	warnEvt := &v1.Event{
-		InvolvedObject: v1.ObjectReference{UID: types.UID(entityUID)},
+		InvolvedObject: v1.ObjectReference{UID: f.lastDeployedUID(name)},
 		Message:        "something has happened zomg",
 		LastTimestamp:  metav1.Time{Time: ts},
 		Type:           v1.EventTypeWarning,
@@ -2726,11 +2702,6 @@ type testFixture struct {
 	opter                 *testOpter
 	tiltVersionCheckDelay time.Duration
 
-	// old value of k8sEventsFeatureFlag env var, for teardown
-	// if nil, no reset needed.
-	// TODO(maia): rm when we unflag this
-	oldK8sEventsFeatureFlagVal *string
-
 	onchangeCh chan bool
 }
 
@@ -2789,7 +2760,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	hudsc := server.ProvideHeadsUpServerController(0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{}, false)
 	ghc := &github.FakeClient{}
 	sc := &client.FakeSailClient{}
-	ewm := NewEventWatchManager(kCli, clockwork.NewRealClock())
+	ewm := NewEventWatchManager(kCli, of)
 	tcum := cloud.NewUsernameManager(httptest.NewFakeClient())
 
 	ret := &testFixture{

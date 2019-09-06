@@ -18,7 +18,6 @@ import (
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
 )
 
 // A magic constant. If the docker client returns this constant, we always match
@@ -64,7 +63,8 @@ type FakeK8sClient struct {
 	Runtime  container.Runtime
 	Registry container.Registry
 
-	entityByName map[string]K8sEntity
+	entityByName            map[string]K8sEntity
+	getByReferenceCallCount int
 
 	ExecCalls  []ExecCall
 	ExecErrors []error
@@ -76,14 +76,6 @@ type ExecCall struct {
 	Ns    Namespace
 	Cmd   []string
 	Stdin []byte
-}
-
-type GetKey struct {
-	Group           string
-	Kind            string
-	Namespace       string
-	Name            string
-	ResourceVersion string
 }
 
 type fakeServiceWatch struct {
@@ -106,10 +98,9 @@ func (c *FakeK8sClient) EmitService(ls labels.Selector, s *v1.Service) {
 	}
 }
 
-func (c *FakeK8sClient) WatchServices(ctx context.Context, lps []model.LabelPair) (<-chan *v1.Service, error) {
+func (c *FakeK8sClient) WatchServices(ctx context.Context, ls labels.Selector) (<-chan *v1.Service, error) {
 	c.serviceWatcherMu.Lock()
 	ch := make(chan *v1.Service, 20)
-	ls := LabelPairsToSelector(lps)
 	c.serviceWatches = append(c.serviceWatches, fakeServiceWatch{ls, ch})
 	c.serviceWatcherMu.Unlock()
 
@@ -252,6 +243,7 @@ func (c *FakeK8sClient) InjectEntityByName(entities ...K8sEntity) {
 }
 
 func (c *FakeK8sClient) GetByReference(ctx context.Context, ref v1.ObjectReference) (K8sEntity, error) {
+	c.getByReferenceCallCount++
 	resp, ok := c.entityByName[ref.Name]
 	if !ok {
 		logger.Get(ctx).Infof("FakeK8sClient.GetByReference: resource not found: %s", ref.Name)

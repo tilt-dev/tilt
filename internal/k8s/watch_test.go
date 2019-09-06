@@ -22,7 +22,6 @@ import (
 	ktesting "k8s.io/client-go/testing"
 
 	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/pkg/model"
 )
 
 func TestK8sClient_WatchPods(t *testing.T) {
@@ -32,7 +31,7 @@ func TestK8sClient_WatchPods(t *testing.T) {
 	pod1 := fakePod(PodID("abcd"), "efgh")
 	pod2 := fakePod(PodID("1234"), "hieruyge")
 	pod3 := fakePod(PodID("754"), "efgh")
-	pods := []runtime.Object{&pod1, &pod2, &pod3}
+	pods := []runtime.Object{pod1, pod2, pod3}
 	tf.runPods(pods, pods)
 }
 
@@ -41,10 +40,10 @@ func TestK8sClient_WatchPodsFilterNonPods(t *testing.T) {
 	defer tf.TearDown()
 
 	pod := fakePod(PodID("abcd"), "efgh")
-	pods := []runtime.Object{&pod}
+	pods := []runtime.Object{pod}
 
-	deployment := appsv1.Deployment{}
-	input := []runtime.Object{&deployment, &pod}
+	deployment := &appsv1.Deployment{}
+	input := []runtime.Object{deployment, pod}
 	tf.runPods(input, pods)
 }
 
@@ -63,7 +62,7 @@ func TestK8sClient_WatchServices(t *testing.T) {
 	svc1 := fakeService("svc1")
 	svc2 := fakeService("svc2")
 	svc3 := fakeService("svc3")
-	svcs := []runtime.Object{&svc1, &svc2, &svc3}
+	svcs := []runtime.Object{svc1, svc2, svc3}
 	tf.runServices(svcs, svcs)
 }
 
@@ -72,10 +71,10 @@ func TestK8sClient_WatchServicesFilterNonServices(t *testing.T) {
 	defer tf.TearDown()
 
 	svc := fakeService("svc1")
-	svcs := []runtime.Object{&svc}
+	svcs := []runtime.Object{svc}
 
-	deployment := appsv1.Deployment{}
-	input := []runtime.Object{&deployment, &svc}
+	deployment := &appsv1.Deployment{}
+	input := []runtime.Object{deployment, svc}
 	tf.runServices(input, svcs)
 }
 
@@ -83,7 +82,7 @@ func TestK8sClient_WatchServicesLabelsPassed(t *testing.T) {
 	tf := newWatchTestFixture(t)
 	defer tf.TearDown()
 
-	lps := []model.LabelPair{{Key: "foo", Value: "bar"}, {Key: "baz", Value: "quu"}}
+	lps := labels.Set{"foo": "bar", "baz": "quu"}
 	tf.testServiceLabels(lps, lps)
 }
 
@@ -92,7 +91,7 @@ func TestK8sClient_WatchPodsError(t *testing.T) {
 	defer tf.TearDown()
 
 	tf.watchErr = newForbiddenError()
-	_, err := tf.kCli.WatchPods(tf.ctx, labels.Set{}.AsSelector())
+	_, err := tf.kCli.WatchPods(tf.ctx, labels.Everything())
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Forbidden")
 	}
@@ -108,8 +107,8 @@ func TestK8sClient_WatchPodsWithNamespaceRestriction(t *testing.T) {
 	pod1 := fakePod(PodID("pod1"), "image1")
 	pod1.Namespace = "sandbox"
 
-	input := []runtime.Object{&pod1}
-	expected := []runtime.Object{&pod1}
+	input := []runtime.Object{pod1}
+	expected := []runtime.Object{pod1}
 	tf.runPods(input, expected)
 }
 
@@ -120,7 +119,7 @@ func TestK8sClient_WatchPodsBlockedByNamespaceRestriction(t *testing.T) {
 	tf.nsRestriction = "sandbox"
 	tf.kCli.configNamespace = ""
 
-	_, err := tf.kCli.WatchPods(tf.ctx, labels.Set{}.AsSelector())
+	_, err := tf.kCli.WatchPods(tf.ctx, labels.Everything())
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Code: 403")
 	}
@@ -136,8 +135,8 @@ func TestK8sClient_WatchServicesWithNamespaceRestriction(t *testing.T) {
 	svc1 := fakeService("svc1")
 	svc1.Namespace = "sandbox"
 
-	input := []runtime.Object{&svc1}
-	expected := []runtime.Object{&svc1}
+	input := []runtime.Object{svc1}
+	expected := []runtime.Object{svc1}
 	tf.runServices(input, expected)
 }
 
@@ -148,7 +147,7 @@ func TestK8sClient_WatchServicesBlockedByNamespaceRestriction(t *testing.T) {
 	tf.nsRestriction = "sandbox"
 	tf.kCli.configNamespace = ""
 
-	_, err := tf.kCli.WatchServices(tf.ctx, nil)
+	_, err := tf.kCli.WatchServices(tf.ctx, labels.Everything())
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Code: 403")
 	}
@@ -188,12 +187,10 @@ func TestK8sClient_WatchEventsUpdate(t *testing.T) {
 	event3 := fakeEvent("event3", "hello3", 1)
 	event2b := fakeEvent("event2", "hello2", 2)
 
-	ch, err := tf.kCli.WatchEvents(tf.ctx)
-	assert.NoError(t, err)
+	ch := tf.watchEvents()
 
 	gvr := schema.GroupVersionResource{Version: "v1", Resource: "events"}
-	tf.tracker.Add(event1)
-	tf.tracker.Add(event2)
+	tf.addObjects(event1, event2)
 	tf.assertEvents([]runtime.Object{event1, event2}, ch)
 
 	tf.tracker.Update(gvr, event1b, "")
@@ -202,6 +199,36 @@ func TestK8sClient_WatchEventsUpdate(t *testing.T) {
 	tf.tracker.Add(event3)
 	tf.tracker.Update(gvr, event2b, "")
 	tf.assertEvents([]runtime.Object{event3, event2b}, ch)
+}
+
+func TestWatchPodsAfterAdding(t *testing.T) {
+	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
+
+	pod1 := fakePod(PodID("abcd"), "efgh")
+	tf.addObjects(pod1)
+	ch := tf.watchPods()
+	tf.assertPods([]runtime.Object{pod1}, ch)
+}
+
+func TestWatchServicesAfterAdding(t *testing.T) {
+	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
+
+	svc := fakeService("svc1")
+	tf.addObjects(svc)
+	ch := tf.watchServices()
+	tf.assertServices([]runtime.Object{svc}, ch)
+}
+
+func TestWatchEventsAfterAdding(t *testing.T) {
+	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
+
+	event := fakeEvent("event1", "hello1", 1)
+	tf.addObjects(event)
+	ch := tf.watchEvents()
+	tf.assertEvents([]runtime.Object{event}, ch)
 }
 
 type watchTestFixture struct {
@@ -272,16 +299,46 @@ func (tf *watchTestFixture) TearDown() {
 	tf.cancel()
 }
 
-func (tf *watchTestFixture) runPods(input []runtime.Object, expectedOutput []runtime.Object) {
-	ch, err := tf.kCli.WatchPods(tf.ctx, labels.Set{}.AsSelector())
-	if !assert.NoError(tf.t, err) {
-		return
+func (tf *watchTestFixture) watchPods() <-chan *v1.Pod {
+	ch, err := tf.kCli.WatchPods(tf.ctx, labels.Everything())
+	if err != nil {
+		tf.t.Fatalf("watchPods: %v", err)
 	}
+	return ch
+}
 
-	for _, o := range input {
-		tf.tracker.Add(o)
+func (tf *watchTestFixture) watchServices() <-chan *v1.Service {
+	ch, err := tf.kCli.WatchServices(tf.ctx, labels.Everything())
+	if err != nil {
+		tf.t.Fatalf("watchServices: %v", err)
 	}
+	return ch
+}
 
+func (tf *watchTestFixture) watchEvents() <-chan *v1.Event {
+	ch, err := tf.kCli.WatchEvents(tf.ctx)
+	if err != nil {
+		tf.t.Fatalf("watchEvents: %v", err)
+	}
+	return ch
+}
+
+func (tf *watchTestFixture) addObjects(inputs ...runtime.Object) {
+	for _, o := range inputs {
+		err := tf.tracker.Add(o)
+		if err != nil {
+			tf.t.Fatalf("addObjects: %v", err)
+		}
+	}
+}
+
+func (tf *watchTestFixture) runPods(input []runtime.Object, expected []runtime.Object) {
+	ch := tf.watchPods()
+	tf.addObjects(input...)
+	tf.assertPods(expected, ch)
+}
+
+func (tf *watchTestFixture) assertPods(expectedOutput []runtime.Object, ch <-chan *v1.Pod) {
 	var observedPods []runtime.Object
 
 	done := false
@@ -302,16 +359,13 @@ func (tf *watchTestFixture) runPods(input []runtime.Object, expectedOutput []run
 	assert.Equal(tf.t, expectedOutput, observedPods)
 }
 
-func (tf *watchTestFixture) runServices(input []runtime.Object, expectedOutput []runtime.Object) {
-	ch, err := tf.kCli.WatchServices(tf.ctx, []model.LabelPair{})
-	if !assert.NoError(tf.t, err) {
-		return
-	}
+func (tf *watchTestFixture) runServices(input []runtime.Object, expected []runtime.Object) {
+	ch := tf.watchServices()
+	tf.addObjects(input...)
+	tf.assertServices(expected, ch)
+}
 
-	for _, o := range input {
-		tf.tracker.Add(o)
-	}
-
+func (tf *watchTestFixture) assertServices(expectedOutput []runtime.Object, ch <-chan *v1.Service) {
 	var observedServices []runtime.Object
 
 	done := false
@@ -333,14 +387,8 @@ func (tf *watchTestFixture) runServices(input []runtime.Object, expectedOutput [
 }
 
 func (tf *watchTestFixture) runEvents(input []runtime.Object, expectedOutput []runtime.Object) {
-	ch, err := tf.kCli.WatchEvents(tf.ctx)
-	if !assert.NoError(tf.t, err) {
-		return
-	}
-
-	for _, o := range input {
-		tf.tracker.Add(o)
-	}
+	ch := tf.watchEvents()
+	tf.addObjects(input...)
 	tf.assertEvents(expectedOutput, ch)
 }
 
@@ -377,36 +425,14 @@ func (tf *watchTestFixture) testPodLabels(input labels.Set, expectedLabels label
 	assert.Equal(tf.t, expectedLabels.String(), input.String())
 }
 
-func (tf *watchTestFixture) testServiceLabels(input []model.LabelPair, expectedLabels []model.LabelPair) {
-	_, err := tf.kCli.WatchServices(tf.ctx, input)
+func (tf *watchTestFixture) testServiceLabels(input labels.Set, expectedLabels labels.Set) {
+	_, err := tf.kCli.WatchServices(tf.ctx, input.AsSelector())
 	if !assert.NoError(tf.t, err) {
 		return
 	}
 
 	assert.Equal(tf.t, fields.Everything(), tf.watchRestrictions.Fields)
 
-	ls := labels.Set{}
-	for _, l := range expectedLabels {
-		ls[l.Key] = l.Value
-	}
-	expectedLabelSelector := labels.SelectorFromSet(ls)
+	expectedLabelSelector := expectedLabels.AsSelector()
 	assert.Equal(tf.t, expectedLabelSelector, tf.watchRestrictions.Labels)
-}
-
-func fakeService(name string) v1.Service {
-	return v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-	}
-}
-
-func fakeEvent(name string, message string, count int) *v1.Event {
-	return &v1.Event{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-		Message: message,
-		Count:   int32(count),
-	}
 }

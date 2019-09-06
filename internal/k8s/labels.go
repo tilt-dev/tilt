@@ -7,6 +7,10 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
+// https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
+const ManagedByLabel = "app.kubernetes.io/managed-by"
+const ManagedByValue = "tilt"
+
 const TiltRunIDLabel = "tilt-runid"
 
 var TiltRunID = uuid.New().String()
@@ -20,8 +24,22 @@ func TiltRunLabel() model.LabelPair {
 	}
 }
 
-func TiltRunSelector() labels.Selector {
-	return labels.Set{TiltRunIDLabel: TiltRunID}.AsSelector()
+func TiltManagedByLabel() model.LabelPair {
+	return model.LabelPair{
+		Key:   ManagedByLabel,
+		Value: ManagedByValue,
+	}
+}
+
+func ManagedByTiltSelector() labels.Selector {
+	return labels.Set{ManagedByLabel: ManagedByValue}.AsSelector()
+}
+
+func NewTiltLabelMap() map[string]string {
+	return map[string]string{
+		ManagedByLabel: ManagedByValue,
+		TiltRunIDLabel: TiltRunID,
+	}
 }
 
 func LabelPairsToSelector(lps []model.LabelPair) labels.Selector {

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -69,7 +70,9 @@ func (c *CloudUsernameManager) CheckUsername(ctx context.Context, st store.RStor
 	u.Path = "/api/whoami"
 
 	if blocking {
-		u.Query().Set("wait_for_registration", "true")
+		q := url.Values{}
+		q.Set("wait_for_registration", "true")
+		u.RawQuery = q.Encode()
 	}
 
 	req, err := http.NewRequest("GET", u.String(), nil)
