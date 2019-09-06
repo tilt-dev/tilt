@@ -2,6 +2,8 @@
 @import "ReactModal";
 
 .ShareSnapshotModal-pane {
+  display: flex;
+  flex-direction: column;
   font-size: $font-size;
   padding-top: $spacing-unit * 0.75;
   padding-bottom: $spacing-unit;
@@ -26,10 +28,55 @@
   border-top: 1px dotted $color-gray-dark;
 }
 
-.ShareSnapshotModal-tiltCloudCopy {
+// Get Link
+$ShareSnapshotModal-button-width: 95px;
+
+.ShareSnapshotModal-shareLink {
   display: flex;
-  flex-direction: column;
+  margin-top: $spacing-unit * 0.75;
+  margin-bottom: $spacing-unit / 4;
 }
+
+.ShareSnapshotModal-shareLink-urlBox {
+  background-color: rgba($color-gray-lightest, $translucent);
+  border: 1px solid $color-gray-lightest;
+  padding-top: $spacing-unit / 6;
+  padding-bottom: $spacing-unit / 6;
+  padding-left: $spacing-unit / 3;
+  padding-right: $spacing-unit / 3;
+  width: calc(100% - #{$ShareSnapshotModal-button-width});
+  box-sizing: border-box;
+}
+
+.ShareSnapshotModal-shareLink-url {
+  user-select: all;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ShareSnapshotModal-shareLink-placeholder {
+  color: $color-gray-lightest;
+}
+
+.ShareSnapshotModal-button {
+  cursor: pointer;
+  font-family: $font-sans-serif;
+  font-size: $font-size-smallest;
+  text-transform: uppercase;
+  background-color: $color-gray-dark;
+  color: $color-white;
+  border: 0 none;
+  padding-top: $spacing-unit / 3;
+  padding-bottom: $spacing-unit / 3;
+  padding-left: $spacing-unit / 2;
+  padding-right: $spacing-unit / 2;
+  text-decoration: none;
+  text-align: center;
+  width: $ShareSnapshotModal-button-width;
+}
+
+// Tilt Cloud Marketing
 
 .ShareSnapshotModal-tiltCloudButtonForm {
   display: flex;

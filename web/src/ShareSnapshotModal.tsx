@@ -38,22 +38,32 @@ export default class ShareSnapshotModal extends PureComponent<props> {
 
   renderShareLink() {
     const hasLink = this.props.snapshotUrl !== "";
-    if (!hasLink) {
-      return (
-        <button onClick={this.props.handleSendSnapshot}>Share Snapshot</button>
-      )
-    }
     return (
-      <a href={this.props.snapshotUrl} target="_blank">
-        Open link in new tab
-      </a>
-    )
+      <section className="ShareSnapshotModal-shareLink">
+        <div className="ShareSnapshotModal-shareLink-urlBox">
+          {hasLink
+            ? <p className="ShareSnapshotModal-shareLink-url">{this.props.snapshotUrl}</p>
+            : <p className="ShareSnapshotModal-shareLink-placeholder">No Link Generated Yet</p>
+          }
+        </div>
+        { !hasLink &&
+          <button className="ShareSnapshotModal-button" onClick={this.props.handleSendSnapshot}>
+            Get Link
+          </button>
+        }
+        { hasLink &&
+          <a className="ShareSnapshotModal-button" href={this.props.snapshotUrl} target="_blank">
+            Open
+          </a>
+        }
+      </section>
+    );
   }
 
   tiltCloudCopy() {
     if (!this.props.tiltCloudUsername) {
       return (
-        <section className="ShareSnapshotModal-tiltCloudCopy">
+        <section>
           <p>Register on TiltCloud to share under your name, view, and delete snapshots.</p>
           <form
             className="ShareSnapshotModal-tiltCloudButtonForm"
