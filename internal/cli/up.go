@@ -16,7 +16,6 @@ import (
 	"github.com/windmilleng/tilt/internal/engine"
 
 	"github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/output"
@@ -57,8 +56,6 @@ func (c *upCmd) register() *cobra.Command {
 	cmd.Flags().StringVar(&updateModeFlag, "update-mode", string(engine.UpdateModeAuto),
 		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", engine.AllUpdateModes))
 	cmd.Flags().StringVar(&c.traceTags, "traceTags", "", "tags to add to spans for easy querying, of the form: key1=val1,key2=val2")
-	cmd.Flags().StringVar(&build.ImageTagPrefix, "image-tag-prefix", build.ImageTagPrefix,
-		"For integration tests. Customize the image tag prefix so tests can write to a public registry")
 	cmd.Flags().BoolVar(&c.hud, "hud", true, "If true, tilt will open in HUD mode.")
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
 	cmd.Flags().IntVar(&webPort, "port", DefaultWebPort, "Port for the Tilt HTTP server. Set to 0 to disable.")
@@ -69,11 +66,7 @@ func (c *upCmd) register() *cobra.Command {
 	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
 	cmd.Flags().BoolVar(&noBrowser, "no-browser", false, "If true, web UI will not open on startup.")
 
-	err := cmd.Flags().MarkHidden("image-tag-prefix")
-	if err != nil {
-		panic(err)
-	}
-	err = cmd.Flags().MarkHidden("share-mode")
+	err := cmd.Flags().MarkHidden("share-mode")
 	if err != nil {
 		panic(err)
 	}

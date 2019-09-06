@@ -19,7 +19,6 @@ import (
 )
 
 var packageDir string
-var imageTagPrefix string
 var installed bool
 
 const namespaceFlag = "-n=tilt-integration"
@@ -31,7 +30,6 @@ func init() {
 	}
 
 	packageDir = filepath.Dir(file)
-	imageTagPrefix = fmt.Sprintf("tilt-T-%x-", time.Now().Unix())
 }
 
 type fixture struct {
@@ -133,7 +131,7 @@ func (f *fixture) tiltCmd(tiltArgs []string, outWriter io.Writer) *exec.Cmd {
 }
 
 func (f *fixture) TiltUp(name string) {
-	cmd := f.tiltCmd([]string{"up", name, "--watch=false", "--debug", "--hud=false", "--port=0", "--image-tag-prefix=" + imageTagPrefix}, os.Stdout)
+	cmd := f.tiltCmd([]string{"up", name, "--watch=false", "--debug", "--hud=false", "--port=0"}, os.Stdout)
 	f.runInBackground(cmd)
 }
 
