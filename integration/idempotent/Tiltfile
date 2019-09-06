@@ -1,0 +1,8 @@
+# -*- mode: Python -*-
+
+include('../Tiltfile')
+
+k8s_yaml('deployment.yaml')
+docker_build('idempotent', '.')
+
+k8s_resource("idempotent", port_forwards=["31234:8000"])

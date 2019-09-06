@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: idempotent
+  namespace: tilt-integration
+  labels:
+    app: idempotent
+spec:
+  selector:
+    matchLabels:
+      app: idempotent
+  template:
+    metadata:
+      labels:
+        app: idempotent
+    spec:
+      containers:
+      - name: idempotent
+        image: idempotent
+        ports:
+        - containerPort: 8000

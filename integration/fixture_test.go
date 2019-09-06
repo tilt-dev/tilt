@@ -130,8 +130,17 @@ func (f *fixture) tiltCmd(tiltArgs []string, outWriter io.Writer) *exec.Cmd {
 	return cmd
 }
 
+func (f *fixture) TiltUpCmd(name string) *exec.Cmd {
+	args := []string{"up"}
+	if name != "" {
+		args = append(args, name)
+	}
+	args = append(args, "--watch=false", "--debug", "--hud=false", "--port=0")
+	return f.tiltCmd(args, os.Stdout)
+}
+
 func (f *fixture) TiltUp(name string) {
-	cmd := f.tiltCmd([]string{"up", name, "--watch=false", "--debug", "--hud=false", "--port=0"}, os.Stdout)
+	cmd := f.TiltUpCmd(name)
 	f.runInBackground(cmd)
 }
 
