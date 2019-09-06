@@ -222,11 +222,9 @@ func (f *k8sFixture) AllContainersForPodReady(ctx context.Context, pod string) (
 }
 
 func (f *k8sFixture) ForwardPort(name string, portMap string) {
-	outWriter := os.Stdout
-
 	cmd := exec.CommandContext(f.ctx, "kubectl", "port-forward", namespaceFlag, name, portMap)
-	cmd.Stdout = outWriter
-	cmd.Stderr = outWriter
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stdout
 	err := cmd.Start()
 	if err != nil {
 		f.t.Fatal(err)

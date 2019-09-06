@@ -1,7 +1,6 @@
 package k8s
 
 import (
-	"github.com/google/uuid"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/pkg/model"
@@ -11,18 +10,7 @@ import (
 const ManagedByLabel = "app.kubernetes.io/managed-by"
 const ManagedByValue = "tilt"
 
-const TiltRunIDLabel = "tilt-runid"
-
-var TiltRunID = uuid.New().String()
-
 const ManifestNameLabel = "tilt-manifest"
-
-func TiltRunLabel() model.LabelPair {
-	return model.LabelPair{
-		Key:   TiltRunIDLabel,
-		Value: TiltRunID,
-	}
-}
 
 func TiltManagedByLabel() model.LabelPair {
 	return model.LabelPair{
@@ -38,7 +26,6 @@ func ManagedByTiltSelector() labels.Selector {
 func NewTiltLabelMap() map[string]string {
 	return map[string]string{
 		ManagedByLabel: ManagedByValue,
-		TiltRunIDLabel: TiltRunID,
 	}
 }
 
