@@ -144,8 +144,6 @@ type View struct {
 	LogTimestamps bool
 
 	FeatureFlags map[string]bool
-	SailEnabled  bool
-	SailURL      string
 
 	NeedsAnalyticsNudge bool
 

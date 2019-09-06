@@ -66,9 +66,6 @@ type EngineState struct {
 
 	TiltfileState ManifestState
 
-	SailEnabled bool
-	SailURL     string
-
 	// from GitHub
 	LatestTiltBuild model.TiltBuild
 

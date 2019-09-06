@@ -35,8 +35,6 @@ var webPort = 0
 var webDevPort = 0
 var noBrowser bool = false
 var logActionsFlag bool = false
-var sailEnabled bool = false
-var sailModeFlag model.SailMode = model.SailModeProd
 
 type upCmd struct {
 	watch     bool
@@ -60,16 +58,9 @@ func (c *upCmd) register() *cobra.Command {
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
 	cmd.Flags().IntVar(&webPort, "port", DefaultWebPort, "Port for the Tilt HTTP server. Set to 0 to disable.")
 	cmd.Flags().IntVar(&webDevPort, "webdev-port", DefaultWebDevPort, "Port for the Tilt Dev Webpack server. Only applies when using --web-mode=local")
-	cmd.Flags().BoolVar(&sailEnabled, "share", false, "Enable sharing current state to a remote server")
-	cmd.Flags().Var(&sailModeFlag, "share-mode", "Sets the server that we're sharing to. Values: none, default, local, prod, staging")
 	cmd.Flags().Lookup("logactions").Hidden = true
 	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
 	cmd.Flags().BoolVar(&noBrowser, "no-browser", false, "If true, web UI will not open on startup.")
-
-	err := cmd.Flags().MarkHidden("share-mode")
-	if err != nil {
-		panic(err)
-	}
 
 	return cmd
 }
@@ -139,7 +130,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	g.Go(func() error {
 		defer cancel()
-		return upper.Start(ctx, args, threads.tiltBuild, c.watch, c.fileName, c.hud, threads.sailMode, a.Opt(), threads.token, string(threads.cloudAddress))
+		return upper.Start(ctx, args, threads.tiltBuild, c.watch, c.fileName, c.hud, a.Opt(), threads.token, string(threads.cloudAddress))
 	})
 
 	err = g.Wait()
@@ -188,22 +179,6 @@ func provideWebMode(b model.TiltBuild) (model.WebMode, error) {
 	return "", model.UnrecognizedWebModeError(string(webModeFlag))
 }
 
-func provideSailMode() (model.SailMode, error) {
-	if !sailEnabled {
-		return model.SailModeDisabled, nil
-	}
-
-	switch sailModeFlag {
-	case model.SailModeLocal, model.SailModeProd, model.SailModeStaging, model.SailModeDisabled:
-		return sailModeFlag, nil
-	case model.SailModeDefault:
-		// TODO(nick): This might eventually change in dev vs prod, but
-		// for now, default to disabled.
-		return model.SailModeDisabled, nil
-	}
-	return "", model.UnrecognizedSailModeError(string(sailModeFlag))
-}
-
 func provideWebPort() model.WebPort {
 	return model.WebPort(webPort)
 }
@@ -225,29 +200,4 @@ func provideWebURL(webPort model.WebPort) (model.WebURL, error) {
 		return model.WebURL{}, err
 	}
 	return model.WebURL(*u), nil
-}
-
-func provideSailURL(mode model.SailMode) (model.SailURL, error) {
-	urlString := ""
-	switch mode {
-	case model.SailModeLocal:
-		urlString = fmt.Sprintf("//localhost:%d/", model.DefaultSailPort)
-
-	case model.SailModeProd:
-		urlString = "//sail.tilt.dev/"
-	case model.SailModeStaging:
-		urlString = "//sail-staging.tilt.dev/"
-	}
-
-	if urlString == "" {
-		return model.SailURL{}, nil
-	}
-
-	u, err := url.Parse(urlString)
-	if err != nil {
-		return model.SailURL{}, err
-	}
-
-	// Base SailURL -- use .Http() and .Ws() methods as appropriate to set scheme
-	return model.SailURL(*u), nil
 }

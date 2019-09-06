@@ -38,7 +38,6 @@ import (
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet"
@@ -2344,7 +2343,7 @@ func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 func TestEmptyTiltfile(t *testing.T) {
 	f := newTestFixture(t)
 	f.WriteFile("Tiltfile", "")
-	go f.upper.Start(f.ctx, []string{}, model.TiltBuild{}, false, f.JoinPath("Tiltfile"), true, model.SailModeDisabled, analytics.OptIn, token.Token("unit test token"), "nonexistent.example.com")
+	go f.upper.Start(f.ctx, []string{}, model.TiltBuild{}, false, f.JoinPath("Tiltfile"), true, analytics.OptIn, token.Token("unit test token"), "nonexistent.example.com")
 	f.WaitUntil("build is set", func(st store.EngineState) bool {
 		return !st.TiltfileState.LastBuild().Empty()
 	})
@@ -2759,7 +2758,6 @@ func newTestFixture(t *testing.T) *testFixture {
 	sm := containerupdate.NewSyncletManagerForTests(kCli, sGRPCCli, sCli)
 	hudsc := server.ProvideHeadsUpServerController(0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{}, false)
 	ghc := &github.FakeClient{}
-	sc := &client.FakeSailClient{}
 	ewm := NewEventWatchManager(kCli, of)
 	tcum := cloud.NewUsernameManager(httptest.NewFakeClient())
 
@@ -2791,7 +2789,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
 
-	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc, sc, tvc, tas, ewm, tcum)
+	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc, tvc, tas, ewm, tcum)
 	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {

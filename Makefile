@@ -38,9 +38,6 @@ install-dev:
 install-debug:
 	go install -gcflags "all=-N -l" ./...
 
-install-sail:
-	go install ./cmd/sail/...
-
 define synclet-build-dev
 	echo $1 > $(SYNCLET_DEV_IMAGE_TAG_FILE)
 	docker tag $(SYNCLET_IMAGE):dirty $(SYNCLET_IMAGE):$1
@@ -123,7 +120,7 @@ errcheck:
 timing: install
 	./scripts/timing.py
 
-WIRE_PATHS = engine cli synclet sail/client
+WIRE_PATHS = engine cli synclet
 wire:
 	$(foreach path,$(WIRE_PATHS),wire ./internal/$(path) && goimports -w $(GOIMPORTS_LOCAL_ARG) internal/$(path) &&) true
 
@@ -131,7 +128,6 @@ wire-check:
 	wire check ./internal/engine
 	wire check ./internal/cli
 	wire check ./internal/synclet
-	wire check ./internal/sail/client
 
 ci-container:
 	docker build -t gcr.io/windmill-public-containers/tilt-ci -f .circleci/Dockerfile .circleci
@@ -158,20 +154,6 @@ synclet-release:
 
 release:
 	goreleaser --rm-dist
-
-deploy-sail:
-	$(eval TAG := $(shell date +built-%s))
-	docker build -t gcr.io/windmill-public-containers/sail:$(TAG) -f deployments/sail.dockerfile .
-	docker push gcr.io/windmill-public-containers/sail:$(TAG)
-	cat deployments/sail.yaml | sed 's!gcr.io/windmill-public-containers/sail!gcr.io/windmill-public-containers/sail:$(TAG)!g' | kubectl apply -f -
-	kubectl apply -f deployments/sail-networking.yaml
-
-deploy-sail-staging:
-	$(eval TAG := $(shell date +built-%s))
-	docker build -t gcr.io/windmill-public-containers/sail-staging:$(TAG) -f deployments/sail-staging.dockerfile .
-	docker push gcr.io/windmill-public-containers/sail-staging:$(TAG)
-	cat deployments/sail-staging.yaml | sed 's!gcr.io/windmill-public-containers/sail-staging!gcr.io/windmill-public-containers/sail-staging:$(TAG)!g' | kubectl apply -f -
-	kubectl apply -f deployments/sail-staging-networking.yaml
 
 prettier:
 	cd web && yarn install

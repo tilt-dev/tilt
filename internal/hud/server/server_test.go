@@ -18,7 +18,6 @@ import (
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/cloud"
 	"github.com/windmilleng/tilt/internal/hud/server"
-	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -208,27 +207,6 @@ func TestHandleAnalyticsOptMalformedPayload(t *testing.T) {
 	}
 }
 
-func TestHandleSail(t *testing.T) {
-	f := newTestFixture(t)
-
-	req, err := http.NewRequest(http.MethodPost, "/api/sail", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleSail)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
-
-	assert.Equal(f.t, 1, f.sailCli.ConnectCalls)
-}
-
 func TestHandleTriggerReturnsError(t *testing.T) {
 	f := newTestFixture(t)
 
@@ -406,7 +384,6 @@ type serverFixture struct {
 	serv       *server.HeadsUpServer
 	a          *analytics.MemoryAnalytics
 	ta         *tiltanalytics.TiltAnalytics
-	sailCli    *client.FakeSailClient
 	st         *store.Store
 	getActions func() []store.Action
 }
@@ -416,16 +393,14 @@ func newTestFixture(t *testing.T) *serverFixture {
 	go st.Loop(context.Background())
 	a := analytics.NewMemoryAnalytics()
 	a, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
-	sailCli := client.NewFakeSailClient()
 	httpClient := fakeHttpClient{}
-	serv := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, sailCli, httpClient, cloud.Address("nonexistent.example.com"))
+	serv := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, httpClient, cloud.Address("nonexistent.example.com"))
 
 	return &serverFixture{
 		t:          t,
 		serv:       serv,
 		a:          a,
 		ta:         ta,
-		sailCli:    sailCli,
 		st:         st,
 		getActions: getActions,
 	}

@@ -116,8 +116,6 @@ type InitAction struct {
 	TiltBuild model.TiltBuild
 	StartTime time.Time
 
-	EnableSail bool
-
 	AnalyticsOpt analytics.Opt
 
 	CloudAddress string
