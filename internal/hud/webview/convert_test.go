@@ -153,6 +153,31 @@ func TestFeatureFlags(t *testing.T) {
 	assert.Equal(t, v.FeatureFlags, map[string]bool{"foo_feature": true})
 }
 
+func TestReadinessCheckFailing(t *testing.T) {
+	m := model.Manifest{
+		Name: "foo",
+	}.WithDeployTarget(model.K8sTarget{})
+	state := newState([]model.Manifest{m})
+	state.ManifestTargets[m.Name].State.RuntimeState = store.K8sRuntimeState{
+		Pods: map[k8s.PodID]*store.Pod{
+			"pod id": {
+				Status: "Running",
+				Phase:  "Running",
+				Containers: []store.Container{
+					{
+						Ready: false,
+					},
+				},
+			},
+		},
+	}
+
+	v := StateToWebView(*state)
+	rv, ok := v.Resource(m.Name)
+	require.True(t, ok)
+	require.Equal(t, RuntimeStatusPending, rv.RuntimeStatus)
+}
+
 func newState(manifests []model.Manifest) *store.EngineState {
 	ret := store.NewState()
 	for _, m := range manifests {

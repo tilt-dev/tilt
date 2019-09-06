@@ -155,6 +155,7 @@ func resourceInfoView(mt *store.ManifestTarget) ResourceInfoView {
 			PodUpdateStartTime: pod.UpdateStartTime,
 			PodStatus:          pod.Status,
 			PodStatusMessage:   strings.Join(pod.StatusMessages, "\n"),
+			AllContainersReady: pod.AllContainersReady(),
 			PodRestarts:        pod.AllContainerRestarts() - pod.OldRestarts,
 			PodLog:             pod.Log(),
 			YAML:               mt.Manifest.K8sTarget().YAML,
@@ -173,6 +174,7 @@ func runtimeStatus(res ResourceInfoView) RuntimeStatus {
 	if !ok {
 		return RuntimeStatusError
 	}
+
 	return result
 }
 
