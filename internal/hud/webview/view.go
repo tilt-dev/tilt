@@ -45,6 +45,7 @@ type K8sResourceInfo struct {
 	PodUpdateStartTime time.Time
 	PodStatus          string
 	PodStatusMessage   string
+	AllContainersReady bool
 	PodRestarts        int
 	PodLog             model.Log
 	YAML               string
@@ -54,7 +55,13 @@ var _ ResourceInfoView = K8sResourceInfo{}
 
 func (K8sResourceInfo) resourceInfoView()             {}
 func (k8sInfo K8sResourceInfo) RuntimeLog() model.Log { return k8sInfo.PodLog }
-func (k8sInfo K8sResourceInfo) Status() string        { return k8sInfo.PodStatus }
+func (k8sInfo K8sResourceInfo) Status() string {
+	status := k8sInfo.PodStatus
+	if status == "Running" && !k8sInfo.AllContainersReady {
+		status = "Pending"
+	}
+	return status
+}
 
 type YAMLResourceInfo struct {
 	K8sResources []string
@@ -127,8 +134,8 @@ type RuntimeStatus string
 
 const (
 	RuntimeStatusOK      RuntimeStatus = "ok"
-	RuntimeStatusPending               = "pending"
-	RuntimeStatusError                 = "error"
+	RuntimeStatusPending RuntimeStatus = "pending"
+	RuntimeStatusError   RuntimeStatus = "error"
 )
 
 type View struct {
