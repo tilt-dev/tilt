@@ -25,7 +25,6 @@ import (
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/token"
@@ -109,10 +108,6 @@ var BaseWireSet = wire.NewSet(
 	server.ProvideHeadsUpServerController,
 	server.ProvideHttpClient,
 
-	provideSailMode,
-	provideSailURL,
-	client.SailWireSet,
-
 	dirs.UseWindmillDir,
 	token.GetOrCreateToken,
 	cloud.ProvideAddress,
@@ -137,13 +132,12 @@ type Threads struct {
 	hud          hud.HeadsUpDisplay
 	upper        engine.Upper
 	tiltBuild    model.TiltBuild
-	sailMode     model.SailMode
 	token        token.Token
 	cloudAddress cloud.Address
 }
 
-func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, b model.TiltBuild, sailMode model.SailMode, token token.Token, cloudAddress cloud.Address) Threads {
-	return Threads{h, upper, b, sailMode, token, cloudAddress}
+func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, b model.TiltBuild, token token.Token, cloudAddress cloud.Address) Threads {
+	return Threads{h, upper, b, token, cloudAddress}
 }
 
 func wireKubeContext(ctx context.Context) (k8s.KubeContext, error) {

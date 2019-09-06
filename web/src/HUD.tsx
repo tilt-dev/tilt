@@ -173,8 +173,6 @@ class HUD extends Component<HudProps, HudState> {
 
   render() {
     let view = this.state.View
-    let sailEnabled = view && view.SailEnabled ? view.SailEnabled : false
-    let sailUrl = view && view.SailURL ? view.SailURL : ""
     let needsNudge = view ? view.NeedsAnalyticsNudge : false
     let message = this.state.Message
     let resources = (view && view.Resources) || []
@@ -229,8 +227,6 @@ class HUD extends Component<HudProps, HudState> {
               alertsUrl={this.path("/alerts")}
               previewUrl={this.path("/preview")}
               resourceView={t}
-              sailEnabled={sailEnabled}
-              sailUrl={sailUrl}
               numberOfAlerts={numAlerts}
               showSnapshotButton={showSnapshot}
               snapshotOwner={snapshotOwner}
@@ -252,8 +248,6 @@ class HUD extends Component<HudProps, HudState> {
           }
           previewUrl={this.path(this.getPreviewForName(name, sidebarItems))}
           resourceView={t}
-          sailEnabled={sailEnabled}
-          sailUrl={sailUrl}
           numberOfAlerts={numAlerts}
           showSnapshotButton={showSnapshot}
           snapshotOwner={snapshotOwner}

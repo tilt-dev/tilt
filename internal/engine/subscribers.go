@@ -5,7 +5,6 @@ import (
 	"github.com/windmilleng/tilt/internal/containerupdate"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
-	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 )
 
@@ -25,7 +24,6 @@ func ProvideSubscribers(
 	sm containerupdate.SyncletManager,
 	ar *AnalyticsReporter,
 	hudsc *server.HeadsUpServerController,
-	sail client.SailClient,
 	tvc *TiltVersionChecker,
 	ta *TiltAnalyticsSubscriber,
 	ewm *EventWatchManager,
@@ -46,7 +44,6 @@ func ProvideSubscribers(
 		sm,
 		ar,
 		hudsc,
-		sail,
 		tvc,
 		ta,
 		ewm,

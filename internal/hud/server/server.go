@@ -15,10 +15,8 @@ import (
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/cloud"
 	"github.com/windmilleng/tilt/internal/hud/webview"
-	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/assets"
-	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -43,19 +41,17 @@ type HeadsUpServer struct {
 	store             *store.Store
 	router            *mux.Router
 	a                 *tiltanalytics.TiltAnalytics
-	sailCli           client.SailClient
 	numWebsocketConns int32
 	httpCli           httpClient
 	cloudAddress      string
 }
 
-func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics *tiltanalytics.TiltAnalytics, sailCli client.SailClient, httpClient httpClient, cloudAddress cloud.Address) *HeadsUpServer {
+func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics *tiltanalytics.TiltAnalytics, httpClient httpClient, cloudAddress cloud.Address) *HeadsUpServer {
 	r := mux.NewRouter().UseEncodedPath()
 	s := &HeadsUpServer{
 		store:        store,
 		router:       r,
 		a:            analytics,
-		sailCli:      sailCli,
 		httpCli:      httpClient,
 		cloudAddress: string(cloudAddress),
 	}
@@ -63,7 +59,6 @@ func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analyti
 	r.HandleFunc("/api/view", s.ViewJSON)
 	r.HandleFunc("/api/analytics", s.HandleAnalytics)
 	r.HandleFunc("/api/analytics_opt", s.HandleAnalyticsOpt)
-	r.HandleFunc("/api/sail", s.HandleSail)
 	r.HandleFunc("/api/trigger", s.HandleTrigger)
 	r.HandleFunc("/api/snapshot/new", s.HandleNewSnapshot).Methods("POST")
 	// this endpoint is only used for testing snapshots in development
@@ -178,27 +173,6 @@ func (s *HeadsUpServer) HandleAnalytics(w http.ResponseWriter, req *http.Request
 
 		s.a.Incr(p.Name, p.Tags)
 	}
-}
-
-func (s *HeadsUpServer) HandleSail(w http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodPost {
-		http.Error(w, "must be POST request", http.StatusBadRequest)
-		return
-	}
-
-	// Request context doesn't have logger, just slap one on for now.
-	l := logger.NewFuncLogger(false, logger.DebugLvl, func(level logger.Level, b []byte) error {
-		s.store.Dispatch(store.NewGlobalLogEvent(b))
-		return nil
-	})
-
-	err := s.sailCli.Connect(logger.WithLogger(req.Context(), l), s.store)
-	if err != nil {
-		log.Printf("sailClient.NewRoom: %v", err)
-		http.Error(w, fmt.Sprintf("error creating new Sail room: %v", err), http.StatusInternalServerError)
-		return
-	}
-
 }
 
 func (s *HeadsUpServer) HandleTrigger(w http.ResponseWriter, req *http.Request) {

@@ -20,7 +20,6 @@ import (
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/sail/client"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/token"
@@ -89,7 +88,6 @@ func (u Upper) Start(
 	watch bool,
 	fileName string,
 	useActionWriter bool,
-	sailMode model.SailMode,
 	analyticsOpt analytics.Opt,
 	token token.Token,
 	cloudAddress string,
@@ -121,7 +119,6 @@ func (u Upper) Start(
 		InitManifests: manifestNames,
 		TiltBuild:     b,
 		StartTime:     startTime,
-		EnableSail:    sailMode.IsEnabled(),
 		AnalyticsOpt:  analyticsOpt,
 		Token:         token,
 		CloudAddress:  cloudAddress,
@@ -181,8 +178,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleStopProfilingAction(state)
 	case hud.SetLogTimestampsAction:
 		handleLogTimestampsAction(state, action)
-	case client.SailRoomConnectedAction:
-		handleSailRoomConnectedAction(ctx, state, action)
 	case TiltfileLogAction:
 		handleTiltfileLogAction(ctx, state, action)
 	case hud.DumpEngineStateAction:
@@ -415,14 +410,6 @@ func handleLogTimestampsAction(state *store.EngineState, action hud.SetLogTimest
 	state.LogTimestamps = action.Value
 }
 
-func handleSailRoomConnectedAction(ctx context.Context, state *store.EngineState, action client.SailRoomConnectedAction) {
-	if action.Err != nil {
-		logger.Get(ctx).Infof("Error connecting Sail room: %v\n", action.Err)
-		return
-	}
-	state.SailURL = action.ViewURL
-}
-
 func handleFSEvent(
 	ctx context.Context,
 	state *store.EngineState,
@@ -633,7 +620,6 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.TiltfilePath = action.TiltfilePath
 	engineState.ConfigFiles = action.ConfigFiles
 	engineState.InitManifests = action.InitManifests
-	engineState.SailEnabled = action.EnableSail
 	engineState.AnalyticsOpt = action.AnalyticsOpt
 	engineState.WatchFiles = action.WatchFiles
 	engineState.CloudAddress = action.CloudAddress

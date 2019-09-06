@@ -1,7 +1,6 @@
 import React, { PureComponent } from "react"
 import { ResourceView, Snapshot } from "./types"
 import "./TopBar.scss"
-import SailInfo from "./SailInfo"
 import TabNav from "./TabNav"
 
 type TopBarProps = {
@@ -9,8 +8,6 @@ type TopBarProps = {
   logUrl: string
   alertsUrl: string
   resourceView: ResourceView
-  sailEnabled: boolean
-  sailUrl: string
   numberOfAlerts: number
   showSnapshotButton: boolean
   snapshotOwner: string | null
@@ -32,10 +29,6 @@ class TopBar extends PureComponent<TopBarProps> {
           {this.props.showSnapshotButton
             ? this.renderSnapshotModal()
             : this.renderSnapshotOwner()}
-          <SailInfo
-            sailEnabled={this.props.sailEnabled}
-            sailUrl={this.props.sailUrl}
-          />
         </section>
       </div>
     )

@@ -242,8 +242,6 @@
     "multiple_containers_per_pod": false,
     "team_alerts": true
   },
-  "SailEnabled": false,
-  "SailURL": "",
   "NeedsAnalyticsNudge": false,
   "RunningTiltBuild": {
     "Version": "0.9.7",
