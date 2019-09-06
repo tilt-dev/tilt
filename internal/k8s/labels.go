@@ -24,15 +24,15 @@ func TiltRunLabel() model.LabelPair {
 	}
 }
 
-func TiltRunSelector() labels.Selector {
-	return labels.Set{TiltRunIDLabel: TiltRunID}.AsSelector()
-}
-
 func TiltManagedByLabel() model.LabelPair {
 	return model.LabelPair{
 		Key:   ManagedByLabel,
 		Value: ManagedByValue,
 	}
+}
+
+func ManagedByTiltSelector() labels.Selector {
+	return labels.Set{ManagedByLabel: ManagedByValue}.AsSelector()
 }
 
 func NewTiltLabelMap() map[string]string {

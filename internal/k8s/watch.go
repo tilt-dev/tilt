@@ -15,8 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
-
-	"github.com/windmilleng/tilt/pkg/model"
 )
 
 type watcherFactory func(namespace string) watcher
@@ -176,8 +174,7 @@ func (kCli K8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan
 	return ch, nil
 }
 
-func (kCli K8sClient) WatchServices(ctx context.Context, lps []model.LabelPair) (<-chan *v1.Service, error) {
-	ls := labels.SelectorFromSet(makeLabelSet(lps))
+func (kCli K8sClient) WatchServices(ctx context.Context, ls labels.Selector) (<-chan *v1.Service, error) {
 	gvr := v1.SchemeGroupVersion.WithResource("services")
 	informer, err := kCli.makeInformer(ctx, gvr, ls)
 	if err != nil {

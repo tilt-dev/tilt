@@ -22,7 +22,6 @@ import (
 	ktesting "k8s.io/client-go/testing"
 
 	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/pkg/model"
 )
 
 func TestK8sClient_WatchPods(t *testing.T) {
@@ -83,7 +82,7 @@ func TestK8sClient_WatchServicesLabelsPassed(t *testing.T) {
 	tf := newWatchTestFixture(t)
 	defer tf.TearDown()
 
-	lps := []model.LabelPair{{Key: "foo", Value: "bar"}, {Key: "baz", Value: "quu"}}
+	lps := labels.Set{"foo": "bar", "baz": "quu"}
 	tf.testServiceLabels(lps, lps)
 }
 
@@ -92,7 +91,7 @@ func TestK8sClient_WatchPodsError(t *testing.T) {
 	defer tf.TearDown()
 
 	tf.watchErr = newForbiddenError()
-	_, err := tf.kCli.WatchPods(tf.ctx, labels.Set{}.AsSelector())
+	_, err := tf.kCli.WatchPods(tf.ctx, labels.Everything())
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Forbidden")
 	}
@@ -120,7 +119,7 @@ func TestK8sClient_WatchPodsBlockedByNamespaceRestriction(t *testing.T) {
 	tf.nsRestriction = "sandbox"
 	tf.kCli.configNamespace = ""
 
-	_, err := tf.kCli.WatchPods(tf.ctx, labels.Set{}.AsSelector())
+	_, err := tf.kCli.WatchPods(tf.ctx, labels.Everything())
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Code: 403")
 	}
@@ -148,7 +147,7 @@ func TestK8sClient_WatchServicesBlockedByNamespaceRestriction(t *testing.T) {
 	tf.nsRestriction = "sandbox"
 	tf.kCli.configNamespace = ""
 
-	_, err := tf.kCli.WatchServices(tf.ctx, nil)
+	_, err := tf.kCli.WatchServices(tf.ctx, labels.Everything())
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Code: 403")
 	}
@@ -301,7 +300,7 @@ func (tf *watchTestFixture) TearDown() {
 }
 
 func (tf *watchTestFixture) watchPods() <-chan *v1.Pod {
-	ch, err := tf.kCli.WatchPods(tf.ctx, labels.Set{}.AsSelector())
+	ch, err := tf.kCli.WatchPods(tf.ctx, labels.Everything())
 	if err != nil {
 		tf.t.Fatalf("watchPods: %v", err)
 	}
@@ -309,7 +308,7 @@ func (tf *watchTestFixture) watchPods() <-chan *v1.Pod {
 }
 
 func (tf *watchTestFixture) watchServices() <-chan *v1.Service {
-	ch, err := tf.kCli.WatchServices(tf.ctx, []model.LabelPair{})
+	ch, err := tf.kCli.WatchServices(tf.ctx, labels.Everything())
 	if err != nil {
 		tf.t.Fatalf("watchServices: %v", err)
 	}
@@ -426,18 +425,14 @@ func (tf *watchTestFixture) testPodLabels(input labels.Set, expectedLabels label
 	assert.Equal(tf.t, expectedLabels.String(), input.String())
 }
 
-func (tf *watchTestFixture) testServiceLabels(input []model.LabelPair, expectedLabels []model.LabelPair) {
-	_, err := tf.kCli.WatchServices(tf.ctx, input)
+func (tf *watchTestFixture) testServiceLabels(input labels.Set, expectedLabels labels.Set) {
+	_, err := tf.kCli.WatchServices(tf.ctx, input.AsSelector())
 	if !assert.NoError(tf.t, err) {
 		return
 	}
 
 	assert.Equal(tf.t, fields.Everything(), tf.watchRestrictions.Fields)
 
-	ls := labels.Set{}
-	for _, l := range expectedLabels {
-		ls[l.Key] = l.Value
-	}
-	expectedLabelSelector := labels.SelectorFromSet(ls)
+	expectedLabelSelector := expectedLabels.AsSelector()
 	assert.Equal(tf.t, expectedLabelSelector, tf.watchRestrictions.Labels)
 }

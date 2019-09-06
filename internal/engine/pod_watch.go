@@ -98,7 +98,7 @@ func (w *PodWatcher) diff(ctx context.Context, st store.RStore) podWatchTaskList
 		}
 	}
 	if taskList.needsWatch {
-		neededWatches = append(neededWatches, PodWatch{labels: k8s.TiltRunSelector()})
+		neededWatches = append(neededWatches, PodWatch{labels: k8s.ManagedByTiltSelector()})
 	}
 
 	return podWatchTaskList{
