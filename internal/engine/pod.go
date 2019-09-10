@@ -16,14 +16,15 @@ import (
 )
 
 func handlePodChangeAction(ctx context.Context, state *store.EngineState, action PodChangeAction) {
-	pod := action.Pod
-	mt, podInfo := ensureManifestTargetWithPod(state, action)
-	if mt == nil || podInfo == nil {
+	mt := matchPodChangeToManifest(state, action)
+	if mt == nil {
 		return
 	}
 
+	pod := action.Pod
 	ms := mt.State
 	manifest := mt.Manifest
+	podInfo, isNew := trackPod(ms, action)
 	podID := k8s.PodIDFromPod(pod)
 	if podInfo.PodID != podID {
 		// This is an event from an old pod.
@@ -40,6 +41,15 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 
 	oldRestartTotal := podInfo.AllContainerRestarts()
 	podInfo.Containers = podContainers(ctx, pod)
+	if isNew {
+		// This is the first time we've seen this pod.
+		// Ignore any restarts that happened before Tilt saw it.
+		//
+		// This can happen when the image was deployed on a previous
+		// Tilt run, so we're just attaching to an existing pod
+		// with some old history.
+		podInfo.BaselineRestarts = podInfo.AllContainerRestarts()
+	}
 
 	if len(podInfo.Containers) == 0 {
 		// not enough info to do anything else
@@ -60,21 +70,35 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 	}
 }
 
-// Get a pointer to a mutable manifest state,
-// ensuring that some Pod exists on the state.
-//
-// Intended as a helper for pod-mutating events.
-func ensureManifestTargetWithPod(state *store.EngineState, action PodChangeAction) (*store.ManifestTarget, *store.Pod) {
-	pod := action.Pod
+// Find the ManifestTarget for the PodChangeAction,
+// and confirm that it matches what we've deployed.
+func matchPodChangeToManifest(state *store.EngineState, action PodChangeAction) *store.ManifestTarget {
 	manifestName := action.ManifestName
 	ancestorUID := action.AncestorUID
 	mt, ok := state.ManifestTargets[manifestName]
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.
-		return nil, nil
+		return nil
 	}
 
 	ms := mt.State
+	runtime := ms.GetOrCreateK8sRuntimeState()
+
+	// If the event has an ancestor UID attached, but that ancestor isn't in the
+	// deployed UID set anymore, we can ignore it.
+	isAncestorMatch := ancestorUID != ""
+	if isAncestorMatch && !runtime.DeployedUIDSet.Contains(ancestorUID) {
+		return nil
+	}
+	return mt
+}
+
+// Checks the runtime state if we're already tracking this pod.
+// If not, create a new tracking object.
+// Returns a store.Pod that the caller can mutate, and true
+// if this is the first time we've seen this pod.
+func trackPod(ms *store.ManifestState, action PodChangeAction) (*store.Pod, bool) {
+	pod := action.Pod
 	podID := k8s.PodIDFromPod(pod)
 	startedAt := pod.CreationTimestamp.Time
 	status := podStatusToString(*pod)
@@ -82,14 +106,9 @@ func ensureManifestTargetWithPod(state *store.EngineState, action PodChangeActio
 	hasSynclet := sidecar.PodSpecContainsSynclet(pod.Spec)
 	runtime := ms.GetOrCreateK8sRuntimeState()
 
-	// If the event has an ancestor UID attached, but that ancestor isn't in the
-	// deployed UID set anymore, we can ignore it.
-	isAncestorMatch := ancestorUID != ""
-	if isAncestorMatch && !runtime.DeployedUIDSet.Contains(ancestorUID) {
-		return nil, nil
-	}
-
 	// Case 1: We haven't seen pods for this ancestor yet.
+	ancestorUID := action.AncestorUID
+	isAncestorMatch := ancestorUID != ""
 	if runtime.PodAncestorUID == "" ||
 		(isAncestorMatch && runtime.PodAncestorUID != ancestorUID) {
 		runtime.PodAncestorUID = ancestorUID
@@ -103,7 +122,7 @@ func ensureManifestTargetWithPod(state *store.EngineState, action PodChangeActio
 		}
 		runtime.Pods[podID] = pod
 		ms.RuntimeState = runtime
-		return mt, pod
+		return pod, true
 	}
 
 	podInfo, ok := runtime.Pods[podID]
@@ -118,10 +137,11 @@ func ensureManifestTargetWithPod(state *store.EngineState, action PodChangeActio
 			HasSynclet: hasSynclet,
 		}
 		runtime.Pods[podID] = podInfo
+		return podInfo, true
 	}
 
 	// CASE 3: This pod is already in the PodSet, nothing to do.
-	return mt, podInfo
+	return podInfo, false
 }
 
 // Convert a Kubernetes Pod into a list if simpler Container models to store in the engine state.

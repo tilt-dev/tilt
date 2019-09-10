@@ -299,8 +299,9 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		}
 
 		for _, pod := range ms.K8sRuntimeState().Pods {
-			// # of pod restarts from old code (shouldn't be reflected in HUD)
-			pod.OldRestarts = pod.AllContainerRestarts()
+			// Reset the baseline, so that we don't show restarts
+			// from before any live-updates
+			pod.BaselineRestarts = pod.AllContainerRestarts()
 		}
 	}
 
