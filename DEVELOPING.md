@@ -179,39 +179,6 @@ To run the server on an alternate port (e.g. 8001):
 tilt up --port=8001
 ```
 
-## Tilt Sharing
-
-Tilt has an experimental mode for sharing your Tilt view with other people. All sharing is public.
-
-To enable this feature, run:
-
-```
-tilt up --share
-```
-
-A new button will show up in the Tilt web UI that lets you create a new shareable URL.
-
-When you click the "Share" button, Tilt will send its entire state to this
-public URL. You can then send this URL to your friends (e.g., via a Slack
-message). The URL will be at https://sail.tilt.dev/.
-
-The hub server that coordinates sharing is called Sail.
-If you want to make changes to the sail server, you can run it locally.
-
-```
-make install-sail
-sail
-```
-
-Then tell Tilt to use the local Sail server as the sharing hub.
-
-```
-tilt up --share --share-mode=local
-```
-
-There is also a staging instance of the Sail server, for testing that changes
-work on HTTPS. This is less common.
-
 ## Documentation
 
 The landing page and documentation lives in
