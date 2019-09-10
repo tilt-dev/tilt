@@ -85,7 +85,7 @@ func NewK8sEventAction(event *v1.Event, manifestName model.ManifestName) K8sEven
 }
 
 func (kEvt K8sEventAction) ToLogAction(mn model.ManifestName) LogAction {
-	msg := fmt.Sprintf("[K8s EVENT: %s] %s\n",
+	msg := fmt.Sprintf("[K8S EVENT: %s] %s\n",
 		objRefHumanReadable(kEvt.Event.InvolvedObject), kEvt.Event.Message)
 
 	return LogEvent{
