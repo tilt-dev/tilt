@@ -1688,6 +1688,28 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestUpperPodRestartsBeforeTiltStart(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	name := model.ManifestName("fe")
+	manifest := f.newManifest(name.String())
+
+	f.Start([]model.Manifest{manifest}, true)
+	f.waitForCompletedBuildCount(1)
+
+	pb := podbuilder.New(f.T(), manifest).
+		WithRestartCount(1)
+	f.startPod(pb.Build(), manifest.Name)
+
+	f.withManifestState(name, func(ms store.ManifestState) {
+		assert.Equal(t, 1, ms.MostRecentPod().BaselineRestarts)
+	})
+
+	err := f.Stop()
+	assert.NoError(t, err)
+}
+
 // This tests a bug that led to infinite redeploys:
 // 1. Crash rebuild
 // 2. Immediately do a container build, before we get the event with the new container ID in (1). This container build

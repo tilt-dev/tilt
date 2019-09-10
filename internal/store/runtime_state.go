@@ -102,9 +102,9 @@ type Pod struct {
 
 	Containers []Container
 
-	// We want to show the user # of restarts since pod has been running current code,
-	// i.e. OldRestarts - Total Restarts
-	OldRestarts int // # times the pod restarted when it was running old code
+	// We want to show the user # of restarts since some baseline time
+	// i.e. Total Restarts - BaselineRestarts
+	BaselineRestarts int
 }
 
 type Container struct {
