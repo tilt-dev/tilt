@@ -37,7 +37,7 @@ exports[`ShareSnapshotModal renders with modal open w/ known username 1`] = `
       className="ShareSnapshotModal-pane"
     >
       <p>
-        Get a link to share a snapshot of the current state of your Tilt session.
+        Get a link to a snapshot -- a browsable, sharable view of the current state of your Tilt session.
       </p>
       <section
         className="ShareSnapshotModal-shareLink"
@@ -121,7 +121,7 @@ exports[`ShareSnapshotModal renders with modal open w/o known username 1`] = `
       className="ShareSnapshotModal-pane"
     >
       <p>
-        Get a link to share a snapshot of the current state of your Tilt session.
+        Get a link to a snapshot -- a browsable, sharable view of the current state of your Tilt session.
       </p>
       <section
         className="ShareSnapshotModal-shareLink"
@@ -223,7 +223,7 @@ exports[`ShareSnapshotModal renders without snapshotUrl 1`] = `
       className="ShareSnapshotModal-pane"
     >
       <p>
-        Get a link to share a snapshot of the current state of your Tilt session.
+        Get a link to a snapshot -- a browsable, sharable view of the current state of your Tilt session.
       </p>
       <section
         className="ShareSnapshotModal-shareLink"

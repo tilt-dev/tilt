@@ -26,8 +26,8 @@ export default class ShareSnapshotModal extends PureComponent<props> {
         <h2 className="ShareSnapshotModal-title">Share a Shapshot</h2>
         <div className="ShareSnapshotModal-pane">
           <p>
-            Get a link to share a snapshot of the current state of your Tilt
-            session.
+            Get a link to a snapshot -- a browsable, sharable view of the
+            current state of your Tilt session.
           </p>
           {link}
           <p className="ShareSnapshotModal-user">
