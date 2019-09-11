@@ -184,8 +184,10 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 			return nil, fmt.Errorf("Error pushing to KIND: %v", err)
 		}
 	} else {
-		ps.Printf(ctx, "Pushing to registry")
-		ref, err = ibd.ib.PushImage(ctx, ref, ps.Writer(ctx))
+		ps.Printf(ctx, "Pushing with Docker client")
+		writer := ps.Writer(ctx)
+		ctx = logger.WithLogger(ctx, logger.NewLogger(logger.InfoLvl, writer))
+		ref, err = ibd.ib.PushImage(ctx, ref, writer)
 		if err != nil {
 			return nil, err
 		}
