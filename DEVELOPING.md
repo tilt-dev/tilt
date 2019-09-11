@@ -86,11 +86,11 @@ make install
 To start using Tilt, just run `tilt up` in any project with a `Tiltfile` -- i.e., NOT the root of the Tilt source code.
 There are plenty of toy projects to play with in the [integration](https://github.com/windmilleng/tilt/tree/master/integration) directory
 (see e.g. `./integration/oneup`), or check out one of these sample repos to get started:
-- [ABC123](https://github.com/windmilleng/abc123): Go/Py/JS microservices generating random letters and numbers, with a self-documented incremental Tiltfile
+- [ABC123](https://github.com/windmilleng/abc123): Go/Python/JavaScript microservices generating random letters and numbers
+- [Servantes](https://github.com/windmilleng/servantes): a-little-bit-of-everything sample app with multiple microservices in different languages, showcasing many different Tilt behaviors
 - [Frontend Demo](https://github.com/windmilleng/tilt-frontend-demo): Tilt + ReactJS
 - [Live Update Examples](https://github.com/windmilleng/live_update): contains Go and Python examples of Tilt's [Live Update](https://docs.tilt.dev/live_update_tutorial.html) functionality
 - [Sidecar Example](https://github.com/windmilleng/sidecar_example): simple Python app and home-rolled logging sidecar
-- [Servantes](https://github.com/windmilleng/servantes): a-little-bit-of-everything sample app with multiple microservices in different languages, showcasing many different Tilt behaviors
 
 ### Go Modules
 
