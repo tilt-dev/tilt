@@ -109,7 +109,7 @@ export default class ShareSnapshotModal extends PureComponent<props> {
       return (
         <p>
           Manage your snapshots on{" "}
-          <a href="http://cloud.tilt.dev/snapshots" target="_blank">
+          <a href={this.props.tiltCloudSchemeHost + "/snapshots"} target="_blank">
             TiltCloud
           </a>
         </p>
