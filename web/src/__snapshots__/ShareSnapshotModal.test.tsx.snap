@@ -75,7 +75,7 @@ exports[`ShareSnapshotModal renders with modal open w/ known username 1`] = `
         Manage your snapshots on
          
         <a
-          href="http://cloud.tilt.dev/snapshots"
+          href="https://cloud.tilt.dev/snapshots"
           target="_blank"
         >
           TiltCloud
