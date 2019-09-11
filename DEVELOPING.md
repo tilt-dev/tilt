@@ -83,7 +83,16 @@ To install `tilt` on PATH, run
 make install
 ```
 
-## Go Modules
+To start using Tilt, just run `tilt up` in any project with a `Tiltfile` -- i.e., NOT the root of the Tilt source code.
+There are plenty of toy projects to play with in the [integration](https://github.com/windmilleng/tilt/tree/master/integration) directory
+(see e.g. `./integration/oneup`), or check out one of these sample repos to get started:
+- [ABC123](https://github.com/windmilleng/abc123): Go/Python/JavaScript microservices generating random letters and numbers
+- [Servantes](https://github.com/windmilleng/servantes): a-little-bit-of-everything sample app with multiple microservices in different languages, showcasing many different Tilt behaviors
+- [Frontend Demo](https://github.com/windmilleng/tilt-frontend-demo): Tilt + ReactJS
+- [Live Update Examples](https://github.com/windmilleng/live_update): contains Go and Python examples of Tilt's [Live Update](https://docs.tilt.dev/live_update_tutorial.html) functionality
+- [Sidecar Example](https://github.com/windmilleng/sidecar_example): simple Python app and home-rolled logging sidecar
+
+### Go Modules
 
 Currently, Tilt will not work with Go modules. See [this issue](https://github.com/windmilleng/tilt/issues/1520)
 for more details.
@@ -178,39 +187,6 @@ To run the server on an alternate port (e.g. 8001):
 ```
 tilt up --port=8001
 ```
-
-## Tilt Sharing
-
-Tilt has an experimental mode for sharing your Tilt view with other people. All sharing is public.
-
-To enable this feature, run:
-
-```
-tilt up --share
-```
-
-A new button will show up in the Tilt web UI that lets you create a new shareable URL.
-
-When you click the "Share" button, Tilt will send its entire state to this
-public URL. You can then send this URL to your friends (e.g., via a Slack
-message). The URL will be at https://sail.tilt.dev/.
-
-The hub server that coordinates sharing is called Sail.
-If you want to make changes to the sail server, you can run it locally.
-
-```
-make install-sail
-sail
-```
-
-Then tell Tilt to use the local Sail server as the sharing hub.
-
-```
-tilt up --share --share-mode=local
-```
-
-There is also a staging instance of the Sail server, for testing that changes
-work on HTTPS. This is less common.
 
 ## Documentation
 
