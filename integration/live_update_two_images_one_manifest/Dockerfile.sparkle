@@ -1,4 +1,5 @@
 FROM busybox
 WORKDIR /app
-ADD sparkle .
+ADD start.sh .
+ADD index.html .
 ENTRYPOINT ./start.sh

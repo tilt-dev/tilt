@@ -39,7 +39,7 @@ func TestFilesToPathMappings(t *testing.T) {
 			ContainerPath: "/nested/dest2",
 		},
 	}
-	actual, err := FilesToPathMappings(absPaths, syncs)
+	actual, skipped, err := FilesToPathMappings(absPaths, syncs)
 	if err != nil {
 		f.T().Fatal(err)
 	}
@@ -64,6 +64,7 @@ func TestFilesToPathMappings(t *testing.T) {
 	}
 
 	assert.ElementsMatch(t, expected, actual)
+	assert.Equal(t, 0, len(skipped))
 }
 
 func TestFileToDirectoryPathMapping(t *testing.T) {
@@ -87,7 +88,7 @@ func TestFileToDirectoryPathMapping(t *testing.T) {
 		},
 	}
 
-	actual, err := FilesToPathMappings(absPaths, syncs)
+	actual, skipped, err := FilesToPathMappings(absPaths, syncs)
 	if err != nil {
 		f.T().Fatal(err)
 	}
@@ -100,6 +101,7 @@ func TestFileToDirectoryPathMapping(t *testing.T) {
 	}
 
 	assert.ElementsMatch(t, expected, actual)
+	assert.Equal(t, 0, len(skipped))
 }
 
 func TestFileNotInSyncYieldsNoMapping(t *testing.T) {
@@ -115,9 +117,10 @@ func TestFileNotInSyncYieldsNoMapping(t *testing.T) {
 		},
 	}
 
-	actual, err := FilesToPathMappings(files, syncs)
+	actual, skipped, err := FilesToPathMappings(files, syncs)
 	if err != nil {
 		f.T().Fatal(err)
 	}
 	assert.Empty(t, actual, "expected no path mapping returned for a file not matching any syncs")
+	assert.Equal(t, files, skipped)
 }

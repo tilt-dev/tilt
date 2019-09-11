@@ -89,22 +89,25 @@ func FilterMappings(mappings []PathMapping, matcher model.PathMatcher) ([]PathMa
 }
 
 // FilesToPathMappings converts a list of absolute local filepaths into pathMappings (i.e.
-// associates local filepaths with their syncs and destination paths), skipping those
+// associates local filepaths with their syncs and destination paths), returning those
 // that it cannot associate with a sync.
-func FilesToPathMappings(files []string, syncs []model.Sync) ([]PathMapping, error) {
+func FilesToPathMappings(files []string, syncs []model.Sync) ([]PathMapping, []string, error) {
 	pms := make([]PathMapping, 0, len(files))
+	skipped := []string{}
 	for _, f := range files {
 		pm, couldMap, err := fileToPathMapping(f, syncs)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		if couldMap {
 			pms = append(pms, pm)
+		} else {
+			skipped = append(skipped, f)
 		}
 	}
 
-	return pms, nil
+	return pms, skipped, nil
 }
 
 func fileToPathMapping(file string, sync []model.Sync) (pm PathMapping, couldMap bool, err error) {
