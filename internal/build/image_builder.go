@@ -9,13 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/cli/cli/command"
-	cliflags "github.com/docker/cli/cli/flags"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/pkg/jsonmessage"
-	"github.com/docker/docker/registry"
 	controlapi "github.com/moby/buildkit/api/services/control"
 	"github.com/opencontainers/go-digest"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -205,46 +202,11 @@ func (d *dockerImageBuilder) TagImage(ctx context.Context, ref reference.Named, 
 // error, or push to a registry that kubernetes does have access to (e.g., a local registry).
 func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedTagged, writer io.Writer) (reference.NamedTagged, error) {
 	l := logger.Get(ctx)
-	l.Infof("Pushing Docker image")
-	prefix := logger.Blue(l).Sprint("  │ ")
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-PushImage")
 	defer span.Finish()
 
-	repoInfo, err := registry.ParseRepositoryInfo(ref)
-	if err != nil {
-		return nil, errors.Wrap(err, "PushImage#ParseRepositoryInfo")
-	}
-
-	l.Infof("%sconnecting to repository", prefix)
-	cli := command.NewDockerCli(nil, writer, writer, true)
-
-	err = cli.Initialize(cliflags.NewClientOptions())
-	if err != nil {
-		return nil, errors.Wrap(err, "PushImage#InitializeCLI")
-	}
-	authConfig := command.ResolveAuthConfig(ctx, cli, repoInfo.Index)
-	requestPrivilege := command.RegistryAuthenticationPrivilegedFunc(cli, repoInfo.Index, "push")
-
-	encodedAuth, err := command.EncodeAuthToBase64(authConfig)
-	if err != nil {
-		return nil, errors.Wrap(err, "PushImage#EncodeAuthToBase64")
-	}
-
-	options := types.ImagePushOptions{
-		RegistryAuth:  encodedAuth,
-		PrivilegeFunc: requestPrivilege,
-	}
-
-	if reference.Domain(ref) == "" {
-		return nil, errors.Wrap(err, "PushImage: no domain in container name")
-	}
-
-	l.Infof("%spushing the image", prefix)
-	imagePushResponse, err := d.dCli.ImagePush(
-		ctx,
-		ref.String(),
-		options)
+	imagePushResponse, err := d.dCli.ImagePush(ctx, ref)
 	if err != nil {
 		return nil, errors.Wrap(err, "PushImage#ImagePush")
 	}

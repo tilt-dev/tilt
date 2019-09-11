@@ -13,9 +13,13 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/config"
+	cliflags "github.com/docker/cli/cli/flags"
+	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/registry"
 	"github.com/docker/go-connections/tlsconfig"
 	"github.com/moby/buildkit/identity"
 	"github.com/moby/buildkit/session"
@@ -76,7 +80,7 @@ type Client interface {
 	// Returns an ExitError if the command exits with a non-zero exit code.
 	ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, out io.Writer) error
 
-	ImagePush(ctx context.Context, image string, options types.ImagePushOptions) (io.ReadCloser, error)
+	ImagePush(ctx context.Context, image reference.NamedTagged) (io.ReadCloser, error)
 	ImageBuild(ctx context.Context, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error)
 	ImageTag(ctx context.Context, source, target string) error
 	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
@@ -346,6 +350,46 @@ func (c *Cli) BuilderVersion() types.BuilderVersion {
 
 func (c *Cli) ServerVersion() types.Version {
 	return c.serverVersion
+}
+
+func (c *Cli) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.ReadCloser, error) {
+	<-c.initDone
+
+	if c.initError != nil {
+		logger.Get(ctx).Verbosef("%v", c.initError)
+	}
+
+	repoInfo, err := registry.ParseRepositoryInfo(ref)
+	if err != nil {
+		return nil, errors.Wrap(err, "ImagePush#ParseRepositoryInfo")
+	}
+
+	logger.Get(ctx).Infof("Authenticating to image repo: %s", repoInfo.Index.Name)
+	infoWriter := logger.Get(ctx).Writer(logger.InfoLvl)
+	cli := command.NewDockerCli(nil, infoWriter, infoWriter, true)
+
+	err = cli.Initialize(cliflags.NewClientOptions())
+	if err != nil {
+		return nil, errors.Wrap(err, "ImagePush#InitializeCLI")
+	}
+	authConfig := command.ResolveAuthConfig(ctx, cli, repoInfo.Index)
+	requestPrivilege := command.RegistryAuthenticationPrivilegedFunc(cli, repoInfo.Index, "push")
+
+	encodedAuth, err := command.EncodeAuthToBase64(authConfig)
+	if err != nil {
+		return nil, errors.Wrap(err, "ImagePush#EncodeAuthToBase64")
+	}
+
+	options := types.ImagePushOptions{
+		RegistryAuth:  encodedAuth,
+		PrivilegeFunc: requestPrivilege,
+	}
+
+	if reference.Domain(ref) == "" {
+		return nil, errors.Wrap(err, "ImagePush: no domain in container name")
+	}
+	logger.Get(ctx).Infof("Sending image data")
+	return c.Client.ImagePush(ctx, ref.String(), options)
 }
 
 func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error) {

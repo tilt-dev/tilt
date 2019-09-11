@@ -5,6 +5,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -64,8 +65,8 @@ func (c *switchCli) CopyToContainerRoot(ctx context.Context, container string, c
 func (c *switchCli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, out io.Writer) error {
 	return c.client().ExecInContainer(ctx, cID, cmd, out)
 }
-func (c *switchCli) ImagePush(ctx context.Context, image string, options types.ImagePushOptions) (io.ReadCloser, error) {
-	return c.client().ImagePush(ctx, image, options)
+func (c *switchCli) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.ReadCloser, error) {
+	return c.client().ImagePush(ctx, ref)
 }
 func (c *switchCli) ImageBuild(ctx context.Context, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error) {
 	return c.client().ImageBuild(ctx, buildContext, options)

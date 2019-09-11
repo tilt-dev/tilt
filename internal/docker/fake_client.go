@@ -8,6 +8,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -178,10 +179,9 @@ func (c *FakeClient) CopyToContainerRoot(ctx context.Context, container string, 
 	return nil
 }
 
-func (c *FakeClient) ImagePush(ctx context.Context, image string, options types.ImagePushOptions) (io.ReadCloser, error) {
+func (c *FakeClient) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.ReadCloser, error) {
 	c.PushCount++
-	c.PushImage = image
-	c.PushOptions = options
+	c.PushImage = ref.String()
 	return NewFakeDockerResponse(c.PushOutput), nil
 }
 
