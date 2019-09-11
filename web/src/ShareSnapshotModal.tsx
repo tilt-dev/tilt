@@ -26,8 +26,8 @@ export default class ShareSnapshotModal extends PureComponent<props> {
         <h2 className="ShareSnapshotModal-title">Share a Shapshot</h2>
         <div className="ShareSnapshotModal-pane">
           <p>
-            Let anyone explore your current Tilt session with an interactive
-            snapshot.
+            Get a link to a snapshot -- a browsable, sharable view of the
+            current state of your Tilt session.
           </p>
           {link}
           <p className="ShareSnapshotModal-user">
@@ -80,7 +80,7 @@ export default class ShareSnapshotModal extends PureComponent<props> {
       return (
         <section>
           <p>
-            Register on TiltCloud to share under your name, view, and delete
+            Connect Tilt to TiltCloud to share under your name and manage your
             snapshots.
           </p>
           <form
@@ -95,7 +95,7 @@ export default class ShareSnapshotModal extends PureComponent<props> {
             <input
               className="ShareSnapshotModal-tiltCloudButton"
               type="submit"
-              value="Sign Up"
+              value="Connect to TiltCloud"
             />
             <input
               name="token"
@@ -108,7 +108,7 @@ export default class ShareSnapshotModal extends PureComponent<props> {
     } else {
       return (
         <p>
-          View and delete snapshots on{" "}
+          Manage your snapshots on{" "}
           <a href="http://cloud.tilt.dev/snapshots" target="_blank">
             TiltCloud
           </a>
