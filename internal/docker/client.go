@@ -115,16 +115,16 @@ type Cli struct {
 func NewDockerClient(ctx context.Context, env Env) (*Cli, error) {
 	opts, err := CreateClientOpts(ctx, env)
 	if err != nil {
-		return nil, errors.Wrap(err, "NewDockerClient")
+		return nil, errors.Wrap(err, "CreateClientOpts")
 	}
 	d, err := client.NewClientWithOpts(opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, "NewDockerClient")
+		return nil, errors.Wrap(err, "NewClientWithOpts")
 	}
 
 	serverVersion, err := d.ServerVersion(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "NewDockerVersion")
+		return nil, errors.Wrap(err, "NewDockerServerVersion")
 	}
 
 	if !SupportedVersion(serverVersion) {
@@ -134,7 +134,7 @@ func NewDockerClient(ctx context.Context, env Env) (*Cli, error) {
 
 	builderVersion, err := getDockerBuilderVersion(serverVersion, env)
 	if err != nil {
-		return nil, errors.Wrap(err, "NewDockerVersion")
+		return nil, errors.Wrap(err, "NewDockerBuilderVersion")
 	}
 
 	cli := &Cli{
