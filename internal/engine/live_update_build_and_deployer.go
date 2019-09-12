@@ -70,29 +70,15 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		return nil, RedirectToNextBuilderInfof("no targets for LiveUpdate found")
 	}
 
-	unclaimedFiles := allChangedFiles(liveUpdateStateSet)
 	for _, luStateTree := range liveUpdateStateSet {
 		luInfo, err := liveUpdateInfoForStateTree(luStateTree)
 		if err != nil {
 			return store.BuildResultSet{}, err
 		}
 
-		for _, mapping := range luInfo.changedFiles {
-			delete(unclaimedFiles, mapping.LocalPath)
-		}
-
 		if !luInfo.Empty() {
 			liveUpdInfos = append(liveUpdInfos, luInfo)
 		}
-	}
-
-	if len(unclaimedFiles) > 0 {
-		files := make([]string, 0, len(unclaimedFiles))
-		for f, _ := range unclaimedFiles {
-			files = append(files, f)
-		}
-		return nil, RedirectToNextBuilderInfof("found file(s) not matching a LiveUpdate sync, so "+
-			"performing a full build. (Files: %s)", strings.Join(files, ", "))
 	}
 
 	var dontFallBackErr error
@@ -200,16 +186,26 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 	var hotReload bool
 
 	if fbInfo := iTarget.AnyFastBuildInfo(); !fbInfo.Empty() {
-		fileMappings, err = build.FilesToPathMappings(filesChanged, fbInfo.Syncs)
+		var skipped []string
+		fileMappings, skipped, err = build.FilesToPathMappings(filesChanged, fbInfo.Syncs)
 		if err != nil {
 			return liveUpdInfo{}, err
+		}
+		if len(skipped) > 0 {
+			return liveUpdInfo{}, RedirectToNextBuilderInfof("found file(s) not matching a FastBuild sync, so "+
+				"performing a full build. (Files: %s)", strings.Join(skipped, ", "))
 		}
 		runs = fbInfo.Runs
 		hotReload = fbInfo.HotReload
 	} else if luInfo := iTarget.AnyLiveUpdateInfo(); !luInfo.Empty() {
-		fileMappings, err = build.FilesToPathMappings(filesChanged, luInfo.SyncSteps())
+		var skipped []string
+		fileMappings, skipped, err = build.FilesToPathMappings(filesChanged, luInfo.SyncSteps())
 		if err != nil {
 			return liveUpdInfo{}, err
+		}
+		if len(skipped) > 0 {
+			return liveUpdInfo{}, RedirectToNextBuilderInfof("found file(s) not matching a LiveUpdate sync, so "+
+				"performing a full build. (Files: %s)", strings.Join(skipped, ", "))
 		}
 
 		// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer

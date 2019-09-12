@@ -8,11 +8,11 @@ include('../Tiltfile')
 default_registry(read_json('tilt_option.json', {})
                  .get('default_registry', 'gcr.io/windmill-test-containers/servantes'))
 
-docker_build('sparkle', '.', dockerfile='Dockerfile.sparkle',
+docker_build('sparkle', './sparkle', dockerfile='Dockerfile.sparkle',
              live_update=[
                  sync('./sparkle/', '/app/'),
              ])
-docker_build('tada', '.', dockerfile='Dockerfile.tada',
+docker_build('tada', './tada', dockerfile='Dockerfile.tada',
              live_update=[
                  sync('./tada/', '/app/'),
              ])
