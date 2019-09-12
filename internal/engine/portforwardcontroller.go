@@ -5,6 +5,8 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/logger"
@@ -54,9 +56,12 @@ func (m *PortForwardController) diff(ctx context.Context, st store.RStore) (toSt
 
 		statePods[podID] = true
 
-		_, isActive := m.activeForwards[podID]
+		oldEntry, isActive := m.activeForwards[podID]
 		if isActive {
-			continue
+			if cmp.Equal(oldEntry.forwards, forwards) {
+				continue
+			}
+			toShutdown = append(toShutdown, oldEntry)
 		}
 
 		ctx, cancel := context.WithCancel(ctx)
