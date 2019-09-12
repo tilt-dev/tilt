@@ -122,6 +122,37 @@ func TestPortForwardAutoDiscovery2(t *testing.T) {
 	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort)
 }
 
+func TestPortForwardChangePort(t *testing.T) {
+	f := newPLCFixture(t)
+	defer f.TearDown()
+
+	state := f.st.LockMutableStateForTesting()
+	m := model.Manifest{Name: "fe"}.WithDeployTarget(model.K8sTarget{
+		PortForwards: []model.PortForward{
+			{
+				LocalPort:     8080,
+				ContainerPort: 8081,
+			},
+		},
+	})
+	state.UpsertManifestTarget(store.NewManifestTarget(m))
+	state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(store.Pod{PodID: "pod-id", Phase: v1.PodRunning})
+	f.st.UnlockMutableState()
+
+	f.plc.OnChange(f.ctx, f.st)
+	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort)
+
+	state = f.st.LockMutableStateForTesting()
+	kTarget := state.ManifestTargets["fe"].Manifest.K8sTarget()
+	kTarget.PortForwards[0].ContainerPort = 8082
+	f.st.UnlockMutableState()
+
+	f.plc.OnChange(f.ctx, f.st)
+	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 8082, f.kCli.LastForwardPortRemotePort)
+}
+
 type portForwardTestCase struct {
 	spec           []model.PortForward
 	containerPorts []int32
