@@ -32,6 +32,8 @@ type WatchableTarget interface {
 	ID() model.TargetID
 }
 
+var _ WatchableTarget = model.LocalTarget{}
+
 func watchableTargetsForManifests(manifests []model.Manifest) []WatchableTarget {
 	var watchable []WatchableTarget
 	seen := map[model.TargetID]bool{}
@@ -42,12 +44,18 @@ func watchableTargetsForManifests(manifests []model.Manifest) []WatchableTarget 
 				watchable = append(watchable, dcTarget)
 				seen[dcTarget.ID()] = true
 			}
-		}
-
-		for _, iTarget := range m.ImageTargets {
-			if !seen[iTarget.ID()] {
-				watchable = append(watchable, iTarget)
-				seen[iTarget.ID()] = true
+		} else if m.IsK8s() {
+			for _, iTarget := range m.ImageTargets {
+				if !seen[iTarget.ID()] {
+					watchable = append(watchable, iTarget)
+					seen[iTarget.ID()] = true
+				}
+			}
+		} else if m.IsLocal() {
+			t := m.LocalTarget()
+			if !seen[t.ID()] {
+				watchable = append(watchable, t)
+				seen[t.ID()] = true
 			}
 		}
 	}

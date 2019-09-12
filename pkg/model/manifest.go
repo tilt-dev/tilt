@@ -75,6 +75,16 @@ func (m Manifest) ImageTargetAt(i int) ImageTarget {
 
 type DockerBuildArgs map[string]string
 
+func (m Manifest) LocalTarget() LocalTarget {
+	ret, _ := m.deployTarget.(LocalTarget)
+	return ret
+}
+
+func (m Manifest) IsLocal() bool {
+	_, ok := m.deployTarget.(LocalTarget)
+	return ok
+}
+
 func (m Manifest) DockerComposeTarget() DockerComposeTarget {
 	ret, _ := m.deployTarget.(DockerComposeTarget)
 	return ret

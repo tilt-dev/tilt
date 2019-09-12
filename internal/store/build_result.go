@@ -16,6 +16,7 @@ import (
 // The results of a successful build.
 // TODO(nick): This should probably be implemented
 // as different typer per targetID type
+// ✨ TODO ✨ -- how to make this applicable to LocalTarget?
 type BuildResult struct {
 	// The image target that this built.
 	TargetID model.TargetID

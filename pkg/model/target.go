@@ -35,6 +35,8 @@ const (
 
 	// Changes that affect all targets, rebuilding the target graph.
 	TargetTypeConfigs TargetType = "configs"
+
+	TargetTypeLocal TargetType = "local"
 )
 
 type TargetID struct {
