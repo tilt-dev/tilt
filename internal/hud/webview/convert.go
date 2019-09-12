@@ -144,7 +144,7 @@ func resourceInfoView(mt *store.ManifestTarget) ResourceInfoView {
 		dc := mt.Manifest.DockerComposeTarget()
 		dcState := mt.State.DCRuntimeState()
 		return NewDCResourceInfo(dc.ConfigPaths, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
-	} else {
+	} else if mt.Manifest.IsK8s() {
 		kState := mt.State.K8sRuntimeState()
 		pod := kState.MostRecentPod()
 		return K8sResourceInfo{
@@ -158,7 +158,13 @@ func resourceInfoView(mt *store.ManifestTarget) ResourceInfoView {
 			PodLog:             pod.Log(),
 			YAML:               mt.Manifest.K8sTarget().YAML,
 		}
+	} else if mt.Manifest.IsLocal() {
+		// ✨ TODO ✨
+		// return NewLocalResourceInfo(...)
+	} else {
+		panic("unrecognized type")
 	}
+	return nil
 }
 
 func runtimeStatus(res ResourceInfoView) RuntimeStatus {

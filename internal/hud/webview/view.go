@@ -117,7 +117,9 @@ type Resource struct {
 	ResourceInfo  ResourceInfoView
 	RuntimeStatus RuntimeStatus
 
-	IsTiltfile      bool
+	IsTiltfile bool
+
+	// ✨ TODO ✨ -- hmm we don't show timing for the deploy step, do we? We'll probably want to show timing for the LocalResource execution...
 	ShowBuildStatus bool // if true, we show status & time in 'Build Status'; else, "N/A"
 	CombinedLog     model.Log
 	CrashLog        model.Log

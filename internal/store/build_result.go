@@ -264,6 +264,8 @@ func IDsForInfos(infos []ContainerInfo) []container.ID {
 func AllRunningContainers(mt *ManifestTarget) []ContainerInfo {
 	if mt.Manifest.IsDC() {
 		return RunningContainersForDC(mt.State.DCRuntimeState())
+	} else if mt.Manifest.IsLocal() {
+		return nil
 	}
 
 	var result []ContainerInfo
