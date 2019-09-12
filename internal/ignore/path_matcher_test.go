@@ -103,6 +103,12 @@ func TestIgnores(t *testing.T) {
 		},
 		{
 			target:               target,
+			change:               "dir/.my-machine.yaml.swn",
+			ignoreInBuildContext: false,
+			ignoreInFileChange:   true,
+		},
+		{
+			target:               target,
 			change:               "dir/.my-machine.yaml.swx",
 			ignoreInBuildContext: false,
 			ignoreInFileChange:   true,
