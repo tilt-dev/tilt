@@ -19,11 +19,32 @@ import (
 )
 
 type PortForwardClient interface {
-	Create(ctx context.Context, namespace Namespace, podID PodID, localPort int, remotePort int) (closer func(), err error)
+	// Creates a new port-forwarder that's bound to the given context's lifecycle.
+	// When the context is canceled, the port-forwarder will close.
+	CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, localPort int, remotePort int) (PortForwarder, error)
 }
 
-func (k K8sClient) ForwardPort(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (localPort int, closer func(), err error) {
-	localPort = optionalLocalPort
+type PortForwarder interface {
+	// The local port we're listening on.
+	LocalPort() int
+
+	// Listens on the configured port and forward all traffic to the container.
+	// Returns when the port-forwarder sees an unrecoverable error or
+	// when the context passed at creation is canceled.
+	ForwardPorts() error
+}
+
+type portForwarder struct {
+	*portforward.PortForwarder
+	localPort int
+}
+
+func (pf portForwarder) LocalPort() int {
+	return pf.localPort
+}
+
+func (k K8sClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (PortForwarder, error) {
+	localPort := optionalLocalPort
 	if localPort == 0 {
 		// preferably, we'd set the localport to 0, and let the underlying function pick a port for us,
 		// to avoid the race condition potential of something else grabbing this port between
@@ -31,18 +52,14 @@ func (k K8sClient) ForwardPort(ctx context.Context, namespace Namespace, podID P
 		// the k8s client supports a local port of 0, and stores the actual local port assigned in a field,
 		// but unfortunately does not export that field, so there is no way for the caller to know which
 		// local port to talk to.
+		var err error
 		localPort, err = getAvailablePort()
 		if err != nil {
-			return 0, nil, errors.Wrap(err, "failed to find an available local port")
+			return nil, errors.Wrap(err, "failed to find an available local port")
 		}
 	}
 
-	closer, err = k.portForwardClient.Create(ctx, namespace, podID, localPort, remotePort)
-	if err != nil {
-		return 0, nil, err
-	}
-
-	return localPort, closer, nil
+	return k.portForwardClient.CreatePortForwarder(ctx, namespace, podID, localPort, remotePort)
 }
 
 type portForwardClient struct {
@@ -65,7 +82,7 @@ func ProvidePortForwardClient(
 	}
 }
 
-func (c portForwardClient) Create(ctx context.Context, namespace Namespace, podID PodID, localPort int, remotePort int) (closer func(), err error) {
+func (c portForwardClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, localPort int, remotePort int) (PortForwarder, error) {
 	transport, upgrader, err := spdy.RoundTripperFor(c.config)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting roundtripper")
@@ -93,32 +110,18 @@ func (c portForwardClient) Create(ctx context.Context, namespace Namespace, podI
 		readyChan,
 		logger.Get(ctx).Writer(logger.DebugLvl),
 		logger.Get(ctx).Writer(logger.DebugLvl))
-
 	if err != nil {
 		return nil, errors.Wrap(err, "error forwarding port")
 	}
 
-	errChan := make(chan error)
 	go func() {
-		errChan <- pf.ForwardPorts()
-		err := <-errChan
-		pf.Close()
-		// logging isn't really sufficient, since we're in a goroutine and who knows where the caller
-		// has moved on to by this point, but other options are much more expensive (e.g., monitoring the state
-		// of the port forward from the caller and/or automatically reconnecting port forwards)
-		logger.Get(ctx).Infof("error from port forward: %v", err)
+		<-ctx.Done()
+		close(stopChan)
 	}()
-
-	select {
-	case err = <-errChan:
-		pf.Close()
-		return nil, errors.Wrap(err, "error forwarding port")
-	case <-pf.Ready:
-		closer = func() {
-			close(stopChan)
-		}
-		return closer, nil
-	}
+	return portForwarder{
+		PortForwarder: pf,
+		localPort:     localPort,
+	}, nil
 }
 
 func getAvailablePort() (int, error) {
@@ -148,6 +151,6 @@ type explodingPortForwardClient struct {
 	error error
 }
 
-func (c explodingPortForwardClient) Create(ctx context.Context, namespace Namespace, podID PodID, localPort int, remotePort int) (closer func(), err error) {
+func (c explodingPortForwardClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, localPort int, remotePort int) (PortForwarder, error) {
 	return nil, c.error
 }

@@ -2,8 +2,10 @@ package engine
 
 import (
 	"context"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/google/go-cmp/cmp"
 
@@ -100,24 +102,71 @@ func (m *PortForwardController) OnChange(ctx context.Context, st store.RStore) {
 	}
 
 	for _, entry := range toStart {
-		entry := entry
-		ns := entry.namespace
-		podID := entry.podID
-		for _, forward := range entry.forwards {
-			// TODO(nick): Handle the case where DockerForDesktop is handling
-			// the port-forwarding natively already
-			_, closer, err := m.kClient.ForwardPort(ctx, ns, podID, forward.LocalPort, forward.ContainerPort)
-			if err != nil {
-				logger.Get(ctx).Infof("Error port-forwarding %s: %v", entry.name, err)
-				continue
-			}
+		// Treat port-forwarding errors as part of the pod log
+		actionWriter := PodLogActionWriter{
+			store:        st,
+			podID:        entry.podID,
+			manifestName: entry.name,
+		}
+		ctx := entry.ctx
+		ctx = logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), actionWriter))
 
-			go func() {
-				<-entry.ctx.Done()
-				closer()
-			}()
+		for _, forward := range entry.forwards {
+			entry := entry
+			forward := forward
+			go m.startPortForwardLoop(ctx, entry, forward)
 		}
 	}
+}
+
+func (m *PortForwardController) startPortForwardLoop(ctx context.Context, entry portForwardEntry, forward model.PortForward) {
+	originalBackoff := wait.Backoff{
+		Steps:    1000,
+		Duration: 50 * time.Millisecond,
+		Factor:   2.0,
+		Jitter:   0.1,
+		Cap:      15 * time.Second,
+	}
+	currentBackoff := originalBackoff
+
+	for {
+		start := time.Now()
+		err := m.onePortForward(ctx, entry, forward)
+		if ctx.Err() != nil {
+			// If the context was canceled, we're satisfied.
+			// Ignore any errors.
+			return
+		}
+
+		// Otherwise, repeat the loop, maybe logging the error
+		if err != nil {
+			logger.Get(ctx).Infof("Reconnecting... Error port-forwarding %s: %v", entry.name, err)
+		}
+
+		// If this failed in less than a second, then we should advance the backoff.
+		// Otherwise, reset the backoff.
+		if time.Since(start) < time.Second {
+			time.Sleep(currentBackoff.Step())
+		} else {
+			currentBackoff = originalBackoff
+		}
+	}
+}
+
+func (m *PortForwardController) onePortForward(ctx context.Context, entry portForwardEntry, forward model.PortForward) error {
+	ns := entry.namespace
+	podID := entry.podID
+
+	pf, err := m.kClient.CreatePortForwarder(ctx, ns, podID, forward.LocalPort, forward.ContainerPort)
+	if err != nil {
+		return err
+	}
+
+	err = pf.ForwardPorts()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 var _ store.Subscriber = &PortForwardController{}

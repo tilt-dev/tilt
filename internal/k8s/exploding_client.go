@@ -53,8 +53,8 @@ func (ec *explodingClient) ContainerLogs(ctx context.Context, podID PodID, cName
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) ForwardPort(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (localPort int, closer func(), err error) {
-	return 0, nil, errors.Wrap(ec.err, "could not set up k8s client")
+func (ec *explodingClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (PortForwarder, error) {
+	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
 func (ec *explodingClient) WatchPods(ctx context.Context, lps labels.Selector) (<-chan *v1.Pod, error) {

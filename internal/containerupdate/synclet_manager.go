@@ -194,10 +194,21 @@ func newSyncletClient(ctx context.Context, kCli k8s.Client, podID k8s.PodID, ns 
 	}
 
 	// TODO(nick): We need a better way to kill the client when the pod dies.
-	tunneledPort, tunnelCloser, err := kCli.ForwardPort(ctx, ns, podID, 0, synclet.Port)
+	ctx, cancel := context.WithCancel(ctx)
+	pf, err := kCli.CreatePortForwarder(ctx, ns, podID, 0, synclet.Port)
 	if err != nil {
+		cancel()
 		return nil, errors.Wrapf(err, "failed opening tunnel to synclet pod '%s'", podID)
 	}
+
+	go func() {
+		err := pf.ForwardPorts()
+		if err != nil && ctx.Err() == nil {
+			logger.Get(ctx).Infof("synclet tunnel closed: %v", err)
+		}
+	}()
+
+	tunneledPort := pf.LocalPort()
 
 	logger.Get(ctx).Verbosef("tunneling to synclet client at %s (local port %d)", podID.String(), tunneledPort)
 
@@ -209,8 +220,9 @@ func newSyncletClient(ctx context.Context, kCli k8s.Client, podID k8s.PodID, ns 
 
 	conn, err := grpc.DialContext(ctx, fmt.Sprintf("127.0.0.1:%d", tunneledPort), opts...)
 	if err != nil {
+		cancel()
 		return nil, errors.Wrap(err, "connecting to synclet")
 	}
 
-	return tunneledSyncletClient{synclet.NewGRPCClient(conn), tunnelCloser}, nil
+	return tunneledSyncletClient{synclet.NewGRPCClient(conn), cancel}, nil
 }
