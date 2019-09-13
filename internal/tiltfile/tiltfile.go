@@ -145,7 +145,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 			return TiltfileLoadResult{}, err
 		}
 
-		err = s.validateK8SContext(s.kubeContext, s.kubeEnv)
+		err = s.validateK8SContext()
 		if err != nil {
 			return TiltfileLoadResult{}, err
 		}
