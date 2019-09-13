@@ -33,6 +33,8 @@ type PodAndCName struct {
 }
 
 type FakeK8sClient struct {
+	FakePortForwardClient
+
 	Yaml string
 	Lb   LoadBalancerSpec
 
@@ -44,9 +46,6 @@ type FakeK8sClient struct {
 
 	PodLogsByPodAndContainer map[PodAndCName]BufferCloser
 	ContainerLogsError       error
-
-	LastForwardPortPodID      PodID
-	LastForwardPortRemotePort int
 
 	podWatcherMu sync.Mutex
 	podWatches   []fakePodWatch
@@ -323,9 +322,9 @@ func (c *FakeK8sClient) applyWasCalled() bool {
 }
 
 func (c *FakeK8sClient) ForwardPort(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (int, func(), error) {
-	c.LastForwardPortPodID = podID
-	c.LastForwardPortRemotePort = remotePort
-	return optionalLocalPort, func() {}, nil
+	pfc := &(c.FakePortForwardClient)
+	closer, err := pfc.Create(ctx, namespace, podID, optionalLocalPort, remotePort)
+	return optionalLocalPort, closer, err
 }
 
 func (c *FakeK8sClient) ContainerRuntime(ctx context.Context) container.Runtime {
@@ -374,3 +373,14 @@ func (b BufferCloser) Close() error {
 }
 
 var _ io.ReadCloser = BufferCloser{}
+
+type FakePortForwardClient struct {
+	LastForwardPortPodID      PodID
+	LastForwardPortRemotePort int
+}
+
+func (c *FakePortForwardClient) Create(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (func(), error) {
+	c.LastForwardPortPodID = podID
+	c.LastForwardPortRemotePort = remotePort
+	return func() {}, nil
+}
