@@ -288,7 +288,7 @@ func newWatchTestFixture(t *testing.T) *watchTestFixture {
 	ret.kCli = K8sClient{
 		env:       EnvUnknown,
 		dynamic:   dcs,
-		clientSet: cs,
+		clientset: cs,
 		core:      cs.CoreV1(),
 	}
 

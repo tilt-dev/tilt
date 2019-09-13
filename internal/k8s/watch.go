@@ -84,7 +84,7 @@ func (kCli K8sClient) makeInformer(
 		options = append(options, informers.WithNamespace(ns.String()))
 	}
 
-	factory := informers.NewSharedInformerFactoryWithOptions(kCli.clientSet, 5*time.Second, options...)
+	factory := informers.NewSharedInformerFactoryWithOptions(kCli.clientset, 5*time.Second, options...)
 	resFactory, err := factory.ForResource(gvr)
 	if err != nil {
 		return nil, errors.Wrap(err, "makeInformer")

@@ -39,7 +39,7 @@ var K8sWireSet = wire.NewSet(
 	k8s.ProvideKubeContext,
 	k8s.ProvideKubeConfig,
 	k8s.ProvideClientConfig,
-	k8s.ProvideClientSet,
+	k8s.ProvideClientset,
 	k8s.ProvideRESTConfig,
 	k8s.ProvidePortForwarder,
 	k8s.ProvideConfigNamespace,

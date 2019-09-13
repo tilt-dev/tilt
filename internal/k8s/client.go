@@ -113,7 +113,7 @@ type K8sClient struct {
 	restConfig      *rest.Config
 	portForwarder   PortForwarder
 	configNamespace Namespace
-	clientSet       kubernetes.Interface
+	clientset       kubernetes.Interface
 	dynamic         dynamic.Interface
 	runtimeAsync    *runtimeAsync
 	registryAsync   *registryAsync
@@ -127,6 +127,8 @@ type PortForwarder func(ctx context.Context, restConfig *rest.Config, core apiv1
 func ProvideK8sClient(
 	ctx context.Context,
 	env Env,
+	maybeRESTConfig RESTConfigOrError,
+	maybeClientset ClientsetOrError,
 	pf PortForwarder,
 	configNamespace Namespace,
 	runner kubectlRunner,
@@ -136,12 +138,12 @@ func ProvideK8sClient(
 		return &explodingClient{err: fmt.Errorf("Kubernetes context not set")}
 	}
 
-	restConfig, err := ProvideRESTConfig(clientLoader)
+	restConfig, err := maybeRESTConfig.Config, maybeRESTConfig.Error
 	if err != nil {
 		return &explodingClient{err: err}
 	}
 
-	clientset, err := ProvideClientSet(restConfig)
+	clientset, err := maybeClientset.Clientset, maybeClientset.Error
 	if err != nil {
 		return &explodingClient{err: err}
 	}
@@ -179,7 +181,7 @@ func ProvideK8sClient(
 		restConfig:      restConfig,
 		portForwarder:   pf,
 		configNamespace: configNamespace,
-		clientSet:       clientset,
+		clientset:       clientset,
 		runtimeAsync:    runtimeAsync,
 		registryAsync:   registryAsync,
 		dynamic:         di,
@@ -409,17 +411,24 @@ func getGroup(involvedObject v1.ObjectReference) string {
 	return group
 }
 
-func ProvideServerVersion(clientSet *kubernetes.Clientset) (*version.Info, error) {
-	return clientSet.Discovery().ServerVersion()
+func ProvideServerVersion(maybeClientset ClientsetOrError) (*version.Info, error) {
+	if maybeClientset.Error != nil {
+		return nil, maybeClientset.Error
+	}
+	return maybeClientset.Clientset.Discovery().ServerVersion()
 }
 
-func ProvideClientSet(cfg *rest.Config) (*kubernetes.Clientset, error) {
-	clientSet, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		return nil, err
-	}
+type ClientsetOrError struct {
+	Clientset *kubernetes.Clientset
+	Error     error
+}
 
-	return clientSet, nil
+func ProvideClientset(cfg RESTConfigOrError) ClientsetOrError {
+	if cfg.Error != nil {
+		return ClientsetOrError{Error: cfg.Error}
+	}
+	clientset, err := kubernetes.NewForConfig(cfg.Config)
+	return ClientsetOrError{Clientset: clientset, Error: err}
 }
 
 func ProvideClientConfig() clientcmd.ClientConfig {
@@ -450,12 +459,14 @@ func ProvideConfigNamespace(clientLoader clientcmd.ClientConfig) Namespace {
 	return Namespace(namespace)
 }
 
-func ProvideRESTConfig(clientLoader clientcmd.ClientConfig) (*rest.Config, error) {
+type RESTConfigOrError struct {
+	Config *rest.Config
+	Error  error
+}
+
+func ProvideRESTConfig(clientLoader clientcmd.ClientConfig) RESTConfigOrError {
 	config, err := clientLoader.ClientConfig()
-	if err != nil {
-		return nil, err
-	}
-	return config, nil
+	return RESTConfigOrError{Config: config, Error: err}
 }
 
 func ProvidePortForwarder() PortForwarder {
