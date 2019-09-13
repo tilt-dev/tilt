@@ -3867,6 +3867,39 @@ allow_k8s_contexts("allowed-context")
 	}
 }
 
+func TestLocalObeysAllowedK8sContexts(t *testing.T) {
+	for _, test := range []struct {
+		name                    string
+		contextName             k8s.KubeContext
+		env                     k8s.Env
+		expectError             bool
+		expectedErrorSubstrings []string
+	}{
+		{"gke", "gke", k8s.EnvGKE, true, []string{"'gke'", "If you're sure", "switch k8s contexts", "allow_k8s_contexts"}},
+		{"allowed", "allowed-context", k8s.EnvGKE, false, nil},
+		{"docker-compose", "unknown", k8s.EnvNone, false, nil},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+
+			f.file("Tiltfile", `
+allow_k8s_contexts("allowed-context")
+local('echo hi')
+`)
+			f.setupFoo()
+
+			f.k8sContext = test.contextName
+			f.k8sEnv = test.env
+			if !test.expectError {
+				f.load()
+			} else {
+				f.loadErrString(test.expectedErrorSubstrings...)
+			}
+		})
+	}
+}
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer

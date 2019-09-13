@@ -910,13 +910,13 @@ func (s *tiltfileState) allowK8SContexts(thread *starlark.Thread, fn *starlark.B
 	return starlark.None, nil
 }
 
-func (s *tiltfileState) validateK8SContext(context k8s.KubeContext, env k8s.Env) error {
-	if env.IsLocalCluster() {
+func (s *tiltfileState) validateK8SContext() error {
+	if s.kubeEnv == k8s.EnvNone || s.kubeEnv.IsLocalCluster() {
 		return nil
 	}
 
 	for _, c := range s.allowedK8SContexts {
-		if c == context {
+		if c == s.kubeContext {
 			return nil
 		}
 	}
@@ -926,6 +926,6 @@ func (s *tiltfileState) validateK8SContext(context k8s.KubeContext, env k8s.Env)
 If you're sure you want to deploy there, add:
 allow_k8s_contexts('%s')
 to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`,
-		context,
-		context)
+		s.kubeContext,
+		s.kubeContext)
 }

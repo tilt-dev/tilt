@@ -269,10 +269,25 @@ func starlarkTriggerModeToModel(triggerMode triggerMode) (model.TriggerMode, err
 	}
 }
 
+type builtin func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)
+
 // count how many times each builtin is called, for analytics
-func (s *tiltfileState) makeBuiltinReporting(name string, f func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)) func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (s *tiltfileState) makeBuiltinReporting(name string, f builtin) builtin {
 	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		s.builtinCallCounts[name]++
+		return f(thread, fn, args, kwargs)
+	}
+}
+
+// wrap a builtin such that it's only allowed to run when we have a known safe k8s context
+// (none (e.g., docker-compose), local, or specified by `allow_k8s_contexts`)
+func (s *tiltfileState) potentiallyK8sUnsafeBuiltin(f builtin) builtin {
+	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		err := s.validateK8SContext()
+		if err != nil {
+			return nil, err
+		}
+
 		return f(thread, fn, args, kwargs)
 	}
 }
@@ -311,13 +326,13 @@ func (s *tiltfileState) predeclared() starlark.StringDict {
 		return s.predeclaredMap
 	}
 
-	addBuiltin := func(r starlark.StringDict, name string, fn func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)) {
+	addBuiltin := func(r starlark.StringDict, name string, fn builtin) {
 		r[name] = starlark.NewBuiltin(name, s.makeBuiltinReporting(name, fn))
 	}
 
 	r := make(starlark.StringDict)
 
-	addBuiltin(r, localN, s.local)
+	addBuiltin(r, localN, s.potentiallyK8sUnsafeBuiltin(s.local))
 	addBuiltin(r, readFileN, s.skylarkReadFile)
 	addBuiltin(r, watchFileN, s.watchFile)
 
