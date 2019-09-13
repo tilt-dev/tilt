@@ -11,8 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
-	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
 
 	"github.com/windmilleng/tilt/internal/testutils"
@@ -218,12 +216,12 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 	runtimeAsync := newRuntimeAsync(core)
 	registryAsync := newRegistryAsync(EnvUnknown, core, runtimeAsync)
 	ret.client = K8sClient{
-		env:           EnvUnknown,
-		kubectlRunner: ret.runner,
-		core:          core,
-		portForwarder: fakePortForwarder,
-		runtimeAsync:  runtimeAsync,
-		registryAsync: registryAsync,
+		env:               EnvUnknown,
+		kubectlRunner:     ret.runner,
+		core:              core,
+		portForwardClient: &FakePortForwardClient{},
+		runtimeAsync:      runtimeAsync,
+		registryAsync:     registryAsync,
 	}
 	return ret
 }
@@ -263,9 +261,3 @@ func (c clientTestFixture) setStderr(stderr string) {
 func (c clientTestFixture) setError(err error) {
 	c.runner.err = err
 }
-
-func fakePortForwarder(ctx context.Context, restConfig *rest.Config, core apiv1.CoreV1Interface, namespace string, podID PodID, localPort int, remotePort int) (closer func(), err error) {
-	return nil, nil
-}
-
-var _ PortForwarder = fakePortForwarder

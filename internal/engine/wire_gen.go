@@ -89,7 +89,7 @@ func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	clientConfig := k8s.ProvideClientConfig()
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
-	portForwarder := k8s.ProvidePortForwarder()
+	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	config, err := k8s.ProvideKubeConfig(clientConfig)
 	if err != nil {
@@ -101,7 +101,7 @@ func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	}
 	int2 := provideKubectlLogLevelInfo()
 	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, int2)
-	client := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwarder, namespace, kubectlRunner, clientConfig)
+	client := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, kubectlRunner, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
 	updateMode, err := ProvideUpdateMode(updateModeFlag, env, runtime)
 	if err != nil {

@@ -107,29 +107,27 @@ type Client interface {
 }
 
 type K8sClient struct {
-	env             Env
-	kubectlRunner   kubectlRunner
-	core            apiv1.CoreV1Interface
-	restConfig      *rest.Config
-	portForwarder   PortForwarder
-	configNamespace Namespace
-	clientset       kubernetes.Interface
-	dynamic         dynamic.Interface
-	runtimeAsync    *runtimeAsync
-	registryAsync   *registryAsync
-	drm             meta.RESTMapper
+	env               Env
+	kubectlRunner     kubectlRunner
+	core              apiv1.CoreV1Interface
+	restConfig        *rest.Config
+	portForwardClient PortForwardClient
+	configNamespace   Namespace
+	clientset         kubernetes.Interface
+	dynamic           dynamic.Interface
+	runtimeAsync      *runtimeAsync
+	registryAsync     *registryAsync
+	drm               meta.RESTMapper
 }
 
 var _ Client = K8sClient{}
-
-type PortForwarder func(ctx context.Context, restConfig *rest.Config, core apiv1.CoreV1Interface, namespace string, podID PodID, localPort int, remotePort int) (closer func(), err error)
 
 func ProvideK8sClient(
 	ctx context.Context,
 	env Env,
 	maybeRESTConfig RESTConfigOrError,
 	maybeClientset ClientsetOrError,
-	pf PortForwarder,
+	pfClient PortForwardClient,
 	configNamespace Namespace,
 	runner kubectlRunner,
 	clientLoader clientcmd.ClientConfig) Client {
@@ -175,17 +173,17 @@ func ProvideK8sClient(
 	browser.Stderr = writer
 
 	return K8sClient{
-		env:             env,
-		kubectlRunner:   runner,
-		core:            core,
-		restConfig:      restConfig,
-		portForwarder:   pf,
-		configNamespace: configNamespace,
-		clientset:       clientset,
-		runtimeAsync:    runtimeAsync,
-		registryAsync:   registryAsync,
-		dynamic:         di,
-		drm:             drm,
+		env:               env,
+		kubectlRunner:     runner,
+		core:              core,
+		restConfig:        restConfig,
+		portForwardClient: pfClient,
+		configNamespace:   configNamespace,
+		clientset:         clientset,
+		runtimeAsync:      runtimeAsync,
+		registryAsync:     registryAsync,
+		dynamic:           di,
+		drm:               drm,
 	}
 }
 
@@ -467,8 +465,4 @@ type RESTConfigOrError struct {
 func ProvideRESTConfig(clientLoader clientcmd.ClientConfig) RESTConfigOrError {
 	config, err := clientLoader.ClientConfig()
 	return RESTConfigOrError{Config: config, Error: err}
-}
-
-func ProvidePortForwarder() PortForwarder {
-	return portForwarder
 }

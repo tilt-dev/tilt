@@ -124,7 +124,7 @@ func provideDockerComposeBuildAndDeployer(
 		k8s.ProvideK8sClient,
 		k8s.ProvideRESTConfig,
 		k8s.ProvideClientset,
-		k8s.ProvidePortForwarder,
+		k8s.ProvidePortForwardClient,
 		k8s.ProvideContainerRuntime,
 		k8s.ProvideKubeConfig,
 	)

@@ -18,6 +18,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+type PortForwardClient interface {
+	Create(ctx context.Context, namespace Namespace, podID PodID, localPort int, remotePort int) (closer func(), err error)
+}
+
 func (k K8sClient) ForwardPort(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (localPort int, closer func(), err error) {
 	localPort = optionalLocalPort
 	if localPort == 0 {
@@ -33,7 +37,7 @@ func (k K8sClient) ForwardPort(ctx context.Context, namespace Namespace, podID P
 		}
 	}
 
-	closer, err = k.portForwarder(ctx, k.restConfig, k.core, namespace.String(), podID, localPort, remotePort)
+	closer, err = k.portForwardClient.Create(ctx, namespace, podID, localPort, remotePort)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -41,15 +45,35 @@ func (k K8sClient) ForwardPort(ctx context.Context, namespace Namespace, podID P
 	return localPort, closer, nil
 }
 
-func portForwarder(ctx context.Context, restConfig *rest.Config, core v1.CoreV1Interface, namespace string, podID PodID, localPort int, remotePort int) (closer func(), err error) {
-	transport, upgrader, err := spdy.RoundTripperFor(restConfig)
+type portForwardClient struct {
+	config *rest.Config
+	core   v1.CoreV1Interface
+}
+
+func ProvidePortForwardClient(
+	maybeRESTConfig RESTConfigOrError,
+	maybeClientset ClientsetOrError) PortForwardClient {
+	if maybeRESTConfig.Error != nil {
+		return explodingPortForwardClient{error: maybeRESTConfig.Error}
+	}
+	if maybeClientset.Error != nil {
+		return explodingPortForwardClient{error: maybeClientset.Error}
+	}
+	return portForwardClient{
+		maybeRESTConfig.Config,
+		maybeClientset.Clientset.CoreV1(),
+	}
+}
+
+func (c portForwardClient) Create(ctx context.Context, namespace Namespace, podID PodID, localPort int, remotePort int) (closer func(), err error) {
+	transport, upgrader, err := spdy.RoundTripperFor(c.config)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting roundtripper")
 	}
 
-	req := core.RESTClient().Post().
+	req := c.core.RESTClient().Post().
 		Resource("pods").
-		Namespace(namespace).
+		Namespace(namespace.String()).
 		Name(podID.String()).
 		SubResource("portforward")
 
@@ -118,4 +142,12 @@ func getAvailablePort() (int, error) {
 		return 0, err
 	}
 	return port, err
+}
+
+type explodingPortForwardClient struct {
+	error error
+}
+
+func (c explodingPortForwardClient) Create(ctx context.Context, namespace Namespace, podID PodID, localPort int, remotePort int) (closer func(), err error) {
+	return nil, c.error
 }
