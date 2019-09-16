@@ -89,13 +89,11 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 	var imageRefAsStr string
 	switch imageVal := imageVal.(type) {
 	case nil:
-		return nil, fmt.Errorf("must specify an image arg (string or fast_build)")
+		return nil, fmt.Errorf("must specify an image arg")
 	case starlark.String:
 		imageRefAsStr = string(imageVal)
-	case *fastBuild:
-		imageRefAsStr = imageVal.img.configurationRef.String()
 	default:
-		return nil, fmt.Errorf("image arg must be a string or fast_build; got %T", imageVal)
+		return nil, fmt.Errorf("image arg must be a string; got %T", imageVal)
 	}
 
 	svc, err := s.getDCService(name)
@@ -268,7 +266,7 @@ type dcService struct {
 	// https://docs.docker.com/compose/compose-file/#volumes
 	MountedLocalDirs []string
 
-	// RefSelector of an image described via docker_build || fast_build call.
+	// RefSelector of an image described via docker_build call.
 	// Can be explicitly linked to this service via dc_service call,
 	// or implicitly via an image name in the docker-compose.yml
 	ImageRef reference.Named
