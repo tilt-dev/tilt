@@ -168,7 +168,7 @@ class HUD extends Component<HudProps, HudState> {
           })
           .catch(err => console.error(err))
       })
-      .then(err => console.error(err))
+      .catch(err => console.error(err))
   }
 
   render() {
