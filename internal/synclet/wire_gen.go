@@ -20,10 +20,7 @@ func WireSynclet(ctx context.Context, runtime container.Runtime) (*Synclet, erro
 	if err != nil {
 		return nil, err
 	}
-	localClient, err := docker.ProvideLocalCli(ctx, localEnv)
-	if err != nil {
-		return nil, err
-	}
+	localClient := docker.ProvideLocalCli(ctx, localEnv)
 	client := docker.ProvideLocalAsDefault(localClient)
 	synclet := NewSynclet(client)
 	return synclet, nil

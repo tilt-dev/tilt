@@ -56,11 +56,7 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 		t.Fatal(err)
 	}
 
-	dCli, err := docker.NewDockerClient(ctx, docker.Env(dEnv))
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	dCli := docker.NewDockerClient(ctx, docker.Env(dEnv)).(*docker.Cli)
 	ps := NewPipelineState(ctx, 3, fakeClock{})
 
 	labels := dockerfile.Labels(map[dockerfile.Label]dockerfile.LabelValue{

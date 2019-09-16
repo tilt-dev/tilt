@@ -33,9 +33,19 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 	defer cancel()
 
 	clusterDocker, clusterDockerErr := wireDockerClusterClient(ctx)
+	if clusterDockerErr == nil {
+		clusterDockerErr = clusterDocker.CheckConnected()
+	}
+
 	localDocker, localDockerErr := wireDockerLocalClient(ctx)
-	twoDockerClients := clusterDockerErr == nil && localDockerErr == nil &&
-		localDocker.Env().Host != clusterDocker.Env().Host
+	if localDockerErr == nil {
+		localDockerErr = localDocker.CheckConnected()
+	}
+
+	isLocalDockerErr := localDockerErr != nil
+	isClusterDockerErr := clusterDockerErr != nil
+	twoDockerClients := (isLocalDockerErr != isClusterDockerErr) ||
+		(!isLocalDockerErr && !isClusterDockerErr && localDocker.Env().Host != clusterDocker.Env().Host)
 
 	fmt.Println("---")
 	if twoDockerClients {
@@ -61,26 +71,26 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 		printField("Builder", builderVersion, nil)
 	}
 
-	if localDockerErr != nil {
-		printField("Host (local)", nil, localDockerErr)
-	}
-
 	if twoDockerClients {
 		fmt.Println("---")
 		fmt.Println("Docker (local)")
 
-		dockerEnv := localDocker.Env()
-		host := dockerEnv.Host
-		if host == "" {
-			host = "[default]"
+		if localDockerErr != nil {
+			printField("Host", nil, localDockerErr)
+		} else {
+			dockerEnv := localDocker.Env()
+			host := dockerEnv.Host
+			if host == "" {
+				host = "[default]"
+			}
+			printField("Host", host, nil)
+
+			version := localDocker.ServerVersion()
+			printField("Version", version.APIVersion, nil)
+
+			builderVersion := localDocker.BuilderVersion()
+			printField("Builder", builderVersion, nil)
 		}
-		printField("Host", host, nil)
-
-		version := localDocker.ServerVersion()
-		printField("Version", version.APIVersion, nil)
-
-		builderVersion := localDocker.BuilderVersion()
-		printField("Builder", builderVersion, nil)
 	}
 
 	fmt.Println("---")

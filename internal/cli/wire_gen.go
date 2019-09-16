@@ -93,10 +93,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	if err != nil {
 		return demo.Script{}, err
 	}
-	localClient, err := docker.ProvideLocalCli(ctx, localEnv)
-	if err != nil {
-		return demo.Script{}, err
-	}
+	localClient := docker.ProvideLocalCli(ctx, localEnv)
 	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
 	if err != nil {
 		return demo.Script{}, err
@@ -224,10 +221,7 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	if err != nil {
 		return Threads{}, err
 	}
-	localClient, err := docker.ProvideLocalCli(ctx, localEnv)
-	if err != nil {
-		return Threads{}, err
-	}
+	localClient := docker.ProvideLocalCli(ctx, localEnv)
 	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
 	if err != nil {
 		return Threads{}, err
@@ -412,10 +406,7 @@ func wireDockerClusterClient(ctx context.Context) (docker.ClusterClient, error) 
 	if err != nil {
 		return nil, err
 	}
-	localClient, err := docker.ProvideLocalCli(ctx, localEnv)
-	if err != nil {
-		return nil, err
-	}
+	localClient := docker.ProvideLocalCli(ctx, localEnv)
 	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
 	if err != nil {
 		return nil, err
@@ -451,10 +442,7 @@ func wireDockerLocalClient(ctx context.Context) (docker.LocalClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	localClient, err := docker.ProvideLocalCli(ctx, localEnv)
-	if err != nil {
-		return nil, err
-	}
+	localClient := docker.ProvideLocalCli(ctx, localEnv)
 	return localClient, nil
 }
 

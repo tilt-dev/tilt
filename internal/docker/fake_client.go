@@ -96,7 +96,9 @@ type FakeClient struct {
 	RestartsByContainer map[string]int
 	RemovedImageIDs     []string
 
-	Images map[string]types.ImageInspect
+	Images            map[string]types.ImageInspect
+	Orchestrator      model.Orchestrator
+	CheckConnectedErr error
 }
 
 func NewFakeClient() *FakeClient {
@@ -109,7 +111,12 @@ func NewFakeClient() *FakeClient {
 	}
 }
 
-func (c *FakeClient) SetOrchestrator(orc model.Orchestrator) {}
+func (c *FakeClient) SetOrchestrator(orc model.Orchestrator) {
+	c.Orchestrator = orc
+}
+func (c *FakeClient) CheckConnected() error {
+	return c.CheckConnectedErr
+}
 func (c *FakeClient) Env() Env {
 	return Env{}
 }
