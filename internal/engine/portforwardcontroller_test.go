@@ -4,13 +4,16 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/internal/testutils/bufsync"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
+	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -33,22 +36,23 @@ func TestPortForward(t *testing.T) {
 	state.UpsertManifestTarget(store.NewManifestTarget(m))
 	f.st.UnlockMutableState()
 
-	f.plc.OnChange(f.ctx, f.st)
+	f.onChange()
 	assert.Equal(t, 0, len(f.plc.activeForwards))
 
 	state = f.st.LockMutableStateForTesting()
 	state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(store.Pod{PodID: "pod-id", Phase: v1.PodRunning})
 	f.st.UnlockMutableState()
 
-	f.plc.OnChange(f.ctx, f.st)
+	f.onChange()
 	assert.Equal(t, 1, len(f.plc.activeForwards))
 	assert.Equal(t, "pod-id", f.kCli.LastForwardPortPodID.String())
+	firstPodForwardCtx := f.kCli.LastForwardContext
 
 	state = f.st.LockMutableStateForTesting()
 	state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(store.Pod{PodID: "pod-id2", Phase: v1.PodRunning})
 	f.st.UnlockMutableState()
 
-	f.plc.OnChange(f.ctx, f.st)
+	f.onChange()
 	assert.Equal(t, 1, len(f.plc.activeForwards))
 	assert.Equal(t, "pod-id2", f.kCli.LastForwardPortPodID.String())
 
@@ -56,8 +60,11 @@ func TestPortForward(t *testing.T) {
 	state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(store.Pod{PodID: "pod-id2", Phase: v1.PodPending})
 	f.st.UnlockMutableState()
 
-	f.plc.OnChange(f.ctx, f.st)
+	f.onChange()
 	assert.Equal(t, 0, len(f.plc.activeForwards))
+
+	assert.Equal(t, context.Canceled, firstPodForwardCtx.Err(),
+		"Expected first port-forward to be canceled")
 }
 
 func TestPortForwardAutoDiscovery(t *testing.T) {
@@ -79,7 +86,7 @@ func TestPortForwardAutoDiscovery(t *testing.T) {
 	state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(store.Pod{PodID: "pod-id", Phase: v1.PodRunning})
 	f.st.UnlockMutableState()
 
-	f.plc.OnChange(f.ctx, f.st)
+	f.onChange()
 	assert.Equal(t, 0, len(f.plc.activeForwards))
 	state = f.st.LockMutableStateForTesting()
 	state.ManifestTargets["fe"].State.K8sRuntimeState().Pods["pod-id"].Containers = []store.Container{
@@ -87,7 +94,7 @@ func TestPortForwardAutoDiscovery(t *testing.T) {
 	}
 	f.st.UnlockMutableState()
 
-	f.plc.OnChange(f.ctx, f.st)
+	f.onChange()
 	assert.Equal(t, 1, len(f.plc.activeForwards))
 	assert.Equal(t, 8000, f.kCli.LastForwardPortRemotePort)
 }
@@ -117,7 +124,7 @@ func TestPortForwardAutoDiscovery2(t *testing.T) {
 	})
 	f.st.UnlockMutableState()
 
-	f.plc.OnChange(f.ctx, f.st)
+	f.onChange()
 	assert.Equal(t, 1, len(f.plc.activeForwards))
 	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort)
 }
@@ -139,7 +146,7 @@ func TestPortForwardChangePort(t *testing.T) {
 	state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(store.Pod{PodID: "pod-id", Phase: v1.PodRunning})
 	f.st.UnlockMutableState()
 
-	f.plc.OnChange(f.ctx, f.st)
+	f.onChange()
 	assert.Equal(t, 1, len(f.plc.activeForwards))
 	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort)
 
@@ -148,9 +155,40 @@ func TestPortForwardChangePort(t *testing.T) {
 	kTarget.PortForwards[0].ContainerPort = 8082
 	f.st.UnlockMutableState()
 
-	f.plc.OnChange(f.ctx, f.st)
+	f.onChange()
 	assert.Equal(t, 1, len(f.plc.activeForwards))
 	assert.Equal(t, 8082, f.kCli.LastForwardPortRemotePort)
+}
+
+func TestPortForwardRestart(t *testing.T) {
+	f := newPLCFixture(t)
+	defer f.TearDown()
+
+	state := f.st.LockMutableStateForTesting()
+	m := model.Manifest{Name: "fe"}.WithDeployTarget(model.K8sTarget{
+		PortForwards: []model.PortForward{
+			{
+				LocalPort:     8080,
+				ContainerPort: 8081,
+			},
+		},
+	})
+	state.UpsertManifestTarget(store.NewManifestTarget(m))
+	state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(store.Pod{PodID: "pod-id", Phase: v1.PodRunning})
+	f.st.UnlockMutableState()
+
+	f.onChange()
+	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 1, f.kCli.CreatePortForwardCallCount)
+
+	err := fmt.Errorf("unique-error")
+	f.kCli.LastForwarder.Done <- err
+
+	assert.Contains(t, "unique-error", f.out.String())
+	time.Sleep(100 * time.Millisecond)
+
+	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 2, f.kCli.CreatePortForwardCallCount)
 }
 
 type portForwardTestCase struct {
@@ -205,10 +243,12 @@ func TestPopulatePortForward(t *testing.T) {
 
 type plcFixture struct {
 	*tempdir.TempDirFixture
-	ctx  context.Context
-	kCli *k8s.FakeK8sClient
-	st   *store.Store
-	plc  *PortForwardController
+	ctx    context.Context
+	cancel func()
+	kCli   *k8s.FakeK8sClient
+	st     *store.Store
+	plc    *PortForwardController
+	out    *bufsync.ThreadSafeBuffer
 }
 
 func newPLCFixture(t *testing.T) *plcFixture {
@@ -216,16 +256,29 @@ func newPLCFixture(t *testing.T) *plcFixture {
 	st, _ := store.NewStoreForTesting()
 	kCli := k8s.NewFakeK8sClient()
 	plc := NewPortForwardController(kCli)
+
+	out := bufsync.NewThreadSafeBuffer()
+	l := logger.NewLogger(logger.DebugLvl, out)
+	ctx, cancel := context.WithCancel(context.Background())
+	ctx = logger.WithLogger(ctx, l)
 	return &plcFixture{
 		TempDirFixture: f,
-		ctx:            context.Background(),
+		ctx:            ctx,
+		cancel:         cancel,
 		st:             st,
 		kCli:           kCli,
 		plc:            plc,
+		out:            out,
 	}
+}
+
+func (f *plcFixture) onChange() {
+	f.plc.OnChange(f.ctx, f.st)
+	time.Sleep(10 * time.Millisecond)
 }
 
 func (f *plcFixture) TearDown() {
 	f.kCli.TearDown()
 	f.TempDirFixture.TearDown()
+	f.cancel()
 }
