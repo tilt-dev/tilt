@@ -159,7 +159,6 @@ func (s *tiltfileState) starlarkThread() *starlark.Thread {
 const (
 	// build functions
 	dockerBuildN     = "docker_build"
-	fastBuildN       = "fast_build"
 	customBuildN     = "custom_build"
 	defaultRegistryN = "default_registry"
 
@@ -337,7 +336,6 @@ func (s *tiltfileState) predeclared() starlark.StringDict {
 	addBuiltin(r, watchFileN, s.watchFile)
 
 	addBuiltin(r, dockerBuildN, s.dockerBuild)
-	addBuiltin(r, fastBuildN, s.fastBuild)
 	addBuiltin(r, customBuildN, s.customBuild)
 	addBuiltin(r, defaultRegistryN, s.defaultRegistry)
 	addBuiltin(r, dockerComposeN, s.dockerCompose)
