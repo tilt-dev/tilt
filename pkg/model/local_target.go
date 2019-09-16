@@ -54,7 +54,7 @@ func (lt LocalTarget) Dependencies() []string {
 }
 
 func (lt LocalTarget) LocalRepos() []LocalGitRepo {
-	return lt.LocalRepos()
+	return lt.repos
 }
 
 func (lt LocalTarget) Dockerignores() []Dockerignore {
