@@ -48,7 +48,8 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, kClient, env, analytics2, engineUpdateMode, clock, runtime, kp)
 	engineImageAndCacheBuilder := NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, engineUpdateMode)
 	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcc, docker2, engineImageAndCacheBuilder, clock)
-	buildOrder := DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, engineUpdateMode, env, runtime)
+	localTargetBuildAndDeployer := NewLocalTargetBuildAndDeployer()
+	buildOrder := DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, engineUpdateMode, env, runtime)
 	compositeBuildAndDeployer := NewCompositeBuildAndDeployer(buildOrder)
 	return compositeBuildAndDeployer, nil
 }
@@ -119,7 +120,8 @@ var (
 
 // wire.go:
 
-var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), minikube.ProvideMinikubeClient, build.DefaultImageBuilder, build.NewCacheBuilder, build.NewDockerImageBuilder, build.NewExecCustomBuilder, wire.Bind(new(build.CustomBuilder), new(build.ExecCustomBuilder)), NewImageBuildAndDeployer, containerupdate.NewDockerContainerUpdater, containerupdate.NewSyncletUpdater, containerupdate.NewExecUpdater, NewLiveUpdateBuildAndDeployer,
+var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), minikube.ProvideMinikubeClient, build.DefaultImageBuilder, build.NewCacheBuilder, build.NewDockerImageBuilder, build.NewExecCustomBuilder, wire.Bind(new(build.CustomBuilder), new(build.ExecCustomBuilder)), NewLocalTargetBuildAndDeployer,
+	NewImageBuildAndDeployer, containerupdate.NewDockerContainerUpdater, containerupdate.NewSyncletUpdater, containerupdate.NewExecUpdater, NewLiveUpdateBuildAndDeployer,
 	NewDockerComposeBuildAndDeployer,
 	NewImageAndCacheBuilder,
 	DefaultBuildOrder, wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer,
