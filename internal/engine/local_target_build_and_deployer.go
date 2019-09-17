@@ -53,12 +53,14 @@ func (bd *LocalTargetBuildAndDeployer) run(ctx context.Context, c model.Cmd) err
 			"(should have been caught by Validate() )")
 	}
 
-	writer := logger.Get(ctx).Writer(logger.InfoLvl)
+	l := logger.Get(ctx)
+	writer := l.Writer(logger.InfoLvl)
 	cmd := exec.CommandContext(ctx, c.Argv[0], c.Argv[1:]...)
 	cmd.Stdout = writer
 	cmd.Stderr = writer
 
-	// TODO(maia): print command being run, pipeline step for recording duration etc.
+	// TODO(maia): pipeline step for recording duration etc., better log output
+	l.Infof("Running command: %v", c.Argv)
 	err := cmd.Run()
 	if err != nil {
 		// TODO(maia): any point in checking if it's an ExitError,
