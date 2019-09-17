@@ -58,6 +58,7 @@ func (bd *LocalTargetBuildAndDeployer) run(ctx context.Context, c model.Cmd) err
 	cmd.Stdout = writer
 	cmd.Stderr = writer
 
+	// TODO(maia): print command being run, pipeline step for recording duration etc.
 	err := cmd.Run()
 	if err != nil {
 		// TODO(maia): any point in checking if it's an ExitError,
