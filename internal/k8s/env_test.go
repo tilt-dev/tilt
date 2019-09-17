@@ -67,6 +67,7 @@ func TestProvideEnv(t *testing.T) {
 		},
 	}
 	table := []expectedConfig{
+		{EnvNone, &api.Config{}},
 		{EnvUnknown, &api.Config{CurrentContext: "aws"}},
 		{EnvMinikube, &api.Config{CurrentContext: "minikube", Contexts: minikubeContexts}},
 		{EnvDockerDesktop, &api.Config{CurrentContext: "docker-for-desktop", Contexts: dockerDesktopContexts}},
