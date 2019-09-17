@@ -64,6 +64,9 @@ func ProvideEnv(ctx context.Context, config *api.Config) Env {
 
 	c, ok := config.Contexts[n]
 	if !ok {
+		if n == "" {
+			return EnvNone
+		}
 		return EnvUnknown
 	}
 
