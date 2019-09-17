@@ -19,9 +19,9 @@ func TestNoLocalTargets(t *testing.T) {
 		model.ImageTarget{}, model.K8sTarget{}, model.DockerComposeTarget{},
 	}
 	res, err := f.ltbad.BuildAndDeploy(f.ctx, f.st, specs, store.BuildStateSet{})
-	require.Empty(t, res)
-	require.NotNil(t, err)
+	assert.Empty(t, res, "expect empty result for failed BuildAndDeploy")
 
+	require.NotNil(t, err)
 	assert.Contains(t, err.Error(),
 		"LocalTargetBuildAndDeployer requires exactly one LocalTarget (got 0)")
 }
@@ -33,9 +33,9 @@ func TestTooManyLocalTargets(t *testing.T) {
 		model.LocalTarget{}, model.ImageTarget{}, model.K8sTarget{}, model.LocalTarget{},
 	}
 	res, err := f.ltbad.BuildAndDeploy(f.ctx, f.st, specs, store.BuildStateSet{})
-	require.Empty(t, res)
-	require.NotNil(t, err)
+	assert.Empty(t, res, "expect empty result for failed BuildAndDeploy")
 
+	require.NotNil(t, err)
 	assert.Contains(t, err.Error(),
 		"LocalTargetBuildAndDeployer requires exactly one LocalTarget (got 2)")
 }
@@ -74,7 +74,7 @@ func TestFailedCommand(t *testing.T) {
 	targ := model.LocalTarget{Cmd: model.ToShellCmd("echo oh no; false")}
 
 	res, err := f.ltbad.BuildAndDeploy(f.ctx, f.st, []model.TargetSpec{targ}, store.BuildStateSet{})
-	require.Empty(t, res, "failed cmd should have empty build result")
+	assert.Empty(t, res, "expect empty build result for failed cmd")
 
 	require.NotNil(t, err, "failed cmd should throw error")
 	assert.Contains(t, err.Error(),
