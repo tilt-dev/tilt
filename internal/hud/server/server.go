@@ -15,6 +15,7 @@ import (
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/cloud"
 	"github.com/windmilleng/tilt/internal/hud/webview"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -35,6 +36,13 @@ type analyticsOptPayload struct {
 
 type triggerPayload struct {
 	ManifestNames []string `json:"manifest_names"`
+}
+
+type actionPayload struct {
+	Type            string             `json:"type"`
+	ManifestName    model.ManifestName `json:"manifest_name"`
+	PodID           k8s.PodID          `json:"pod_id"`
+	VisibleRestarts int                `json:"visible_restarts"`
 }
 
 type HeadsUpServer struct {
@@ -60,6 +68,7 @@ func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analyti
 	r.HandleFunc("/api/analytics", s.HandleAnalytics)
 	r.HandleFunc("/api/analytics_opt", s.HandleAnalyticsOpt)
 	r.HandleFunc("/api/trigger", s.HandleTrigger)
+	r.HandleFunc("/api/action", s.DispatchAction).Methods("POST")
 	r.HandleFunc("/api/snapshot/new", s.HandleNewSnapshot).Methods("POST")
 	// this endpoint is only used for testing snapshots in development
 	r.HandleFunc("/api/snapshot/{snapshot_id}", s.SnapshotJSON)
@@ -173,6 +182,30 @@ func (s *HeadsUpServer) HandleAnalytics(w http.ResponseWriter, req *http.Request
 
 		s.a.Incr(p.Name, p.Tags)
 	}
+}
+
+func (s *HeadsUpServer) DispatchAction(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		http.Error(w, "must be POST request", http.StatusBadRequest)
+		return
+	}
+
+	var payload actionPayload
+	decoder := json.NewDecoder(req.Body)
+	err := decoder.Decode(&payload)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error parsing JSON payload: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	switch payload.Type {
+	case "PodResetRestarts":
+		s.store.Dispatch(
+			store.NewPodResetRestartsAction(payload.PodID, payload.ManifestName, payload.VisibleRestarts))
+	default:
+		http.Error(w, fmt.Sprintf("Unknown action type: %s", payload.Type), http.StatusBadRequest)
+	}
+
 }
 
 func (s *HeadsUpServer) HandleTrigger(w http.ResponseWriter, req *http.Request) {
