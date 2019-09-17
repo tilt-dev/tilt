@@ -58,6 +58,8 @@ var sessionSharedKey = identity.NewID()
 
 // Create an interface so this can be mocked out.
 type Client interface {
+	CheckConnected() error
+
 	// If you'd like to call this Docker instance in a separate process, these
 	// are the environment variables you'll need to do so.
 	Env() Env
@@ -116,29 +118,30 @@ type Cli struct {
 	env       Env
 }
 
-func NewDockerClient(ctx context.Context, env Env) (*Cli, error) {
+func NewDockerClient(ctx context.Context, env Env) Client {
 	opts, err := CreateClientOpts(ctx, env)
 	if err != nil {
-		return nil, errors.Wrap(err, "CreateClientOpts")
+		return newExplodingClient(err)
 	}
 	d, err := client.NewClientWithOpts(opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, "NewClientWithOpts")
+		return newExplodingClient(err)
 	}
 
 	serverVersion, err := d.ServerVersion(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "NewDockerServerVersion")
+		return newExplodingClient(err)
 	}
 
 	if !SupportedVersion(serverVersion) {
-		return nil, fmt.Errorf("Tilt requires a Docker server newer than %s. Current Docker server: %s",
-			minDockerVersion, serverVersion.APIVersion)
+		return newExplodingClient(
+			fmt.Errorf("Tilt requires a Docker server newer than %s. Current Docker server: %s",
+				minDockerVersion, serverVersion.APIVersion))
 	}
 
 	builderVersion, err := getDockerBuilderVersion(serverVersion, env)
 	if err != nil {
-		return nil, errors.Wrap(err, "NewDockerBuilderVersion")
+		return newExplodingClient(err)
 	}
 
 	cli := &Cli{
@@ -151,7 +154,7 @@ func NewDockerClient(ctx context.Context, env Env) (*Cli, error) {
 
 	go cli.backgroundInit(ctx)
 
-	return cli, nil
+	return cli
 }
 
 func SupportedVersion(v types.Version) bool {
@@ -339,6 +342,7 @@ func (c *Cli) backgroundInit(ctx context.Context) {
 	close(c.initDone)
 }
 
+func (c *Cli) CheckConnected() error                  { return nil }
 func (c *Cli) SetOrchestrator(orc model.Orchestrator) {}
 func (c *Cli) Env() Env {
 	return c.env

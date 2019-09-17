@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
@@ -96,6 +98,10 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 
 	if tlr.Orchestrator() != model.OrchestratorUnknown {
 		cc.dockerClient.SetOrchestrator(tlr.Orchestrator())
+		dockerErr := cc.dockerClient.CheckConnected()
+		if err == nil && dockerErr != nil {
+			err = errors.Wrap(dockerErr, "Failed to connect to Docker")
+		}
 	}
 
 	st.Dispatch(ConfigsReloadedAction{
