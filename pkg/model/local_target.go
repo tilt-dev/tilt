@@ -8,7 +8,7 @@ import (
 
 type LocalTarget struct {
 	Cmd  Cmd
-	Deps []string
+	deps []string // a list of ABSOLUTE file paths that are dependencies of this target
 
 	dockerignores []Dockerignore
 	repos         []LocalGitRepo
@@ -17,7 +17,7 @@ type LocalTarget struct {
 var _ TargetSpec = LocalTarget{}
 
 func NewLocalTarget(cmd Cmd, deps []string) LocalTarget {
-	return LocalTarget{Cmd: cmd, Deps: deps}
+	return LocalTarget{Cmd: cmd, deps: deps}
 }
 
 func (lt LocalTarget) WithRepos(repos []LocalGitRepo) LocalTarget {
@@ -50,7 +50,7 @@ func (lt LocalTarget) Validate() error {
 
 // Implements: engine.WatchableManifest
 func (lt LocalTarget) Dependencies() []string {
-	return sliceutils.DedupedAndSorted(lt.Deps)
+	return sliceutils.DedupedAndSorted(lt.deps)
 }
 
 func (lt LocalTarget) LocalRepos() []LocalGitRepo {
