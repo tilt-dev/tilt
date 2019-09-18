@@ -3900,6 +3900,23 @@ local('echo hi')
 	}
 }
 
+func TestLocalResource(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource("test", "echo hi", ["/foo/bar"])
+`)
+
+	f.load()
+	f.assertNumManifests(1)
+	m := f.loadResult.Manifests[0]
+	require.Equal(t, "test", m.Name.String())
+	lt := m.LocalTarget()
+	require.Equal(t, []string{"sh", "-c", "echo hi"}, lt.Cmd.Argv)
+	require.Equal(t, []string{"/foo/bar"}, lt.Dependencies())
+}
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer

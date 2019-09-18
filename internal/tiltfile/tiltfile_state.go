@@ -46,6 +46,7 @@ type tiltfileState struct {
 	k8sUnresourced     []k8s.K8sEntity
 	dc                 dcResourceSet // currently only support one d-c.yml
 	k8sResourceOptions map[string]k8sResourceOptions
+	localResources     []localResource
 
 	// ensure that any pushed images are pushed instead to this registry, rewriting names if needed
 	defaultRegistryHost container.Registry
@@ -122,6 +123,7 @@ func newTiltfileState(
 		unconsumedLiveUpdateSteps:  make(map[string]liveUpdateStep),
 		k8sResourceAssemblyVersion: 2,
 		k8sResourceOptions:         make(map[string]k8sResourceOptions),
+		localResources:             []localResource{},
 		triggerMode:                TriggerModeAuto,
 		features:                   features,
 		loadCache:                  make(map[string]loadCacheEntry),
@@ -172,6 +174,7 @@ const (
 	k8sYamlN                    = "k8s_yaml"
 	filterYamlN                 = "filter_yaml"
 	k8sResourceN                = "k8s_resource"
+	localResourceN              = "local_resource"
 	portForwardN                = "port_forward"
 	k8sKindN                    = "k8s_kind"
 	k8sImageJSONPathN           = "k8s_image_json_path"
@@ -346,6 +349,7 @@ func (s *tiltfileState) predeclared() starlark.StringDict {
 	addBuiltin(r, k8sYamlN, s.k8sYaml)
 	addBuiltin(r, filterYamlN, s.filterYaml)
 	addBuiltin(r, k8sResourceN, s.k8sResource)
+	addBuiltin(r, localResourceN, s.localResource)
 	addBuiltin(r, portForwardN, s.portForward)
 	addBuiltin(r, k8sKindN, s.k8sKind)
 	addBuiltin(r, k8sImageJSONPathN, s.k8sImageJsonPath)
@@ -1176,4 +1180,25 @@ func (s *tiltfileState) setTeam(thread *starlark.Thread, fn *starlark.Builtin, a
 	s.teamName = teamName
 
 	return starlark.None, nil
+}
+
+func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
+	var result []model.Manifest
+
+	for _, r := range s.localResources {
+		mn := model.ManifestName(r.name)
+		tm, err := starlarkTriggerModeToModel(s.triggerModeForResource(r.triggerMode))
+		if err != nil {
+			return nil, err
+		}
+		lt := model.NewLocalTarget(r.cmd, r.deps)
+		m := model.Manifest{
+			Name:        mn,
+			TriggerMode: tm,
+		}.WithDeployTarget(lt)
+
+		result = append(result, m)
+	}
+
+	return result, nil
 }

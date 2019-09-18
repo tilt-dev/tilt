@@ -161,6 +161,12 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 		return TiltfileLoadResult{}, err
 	}
 
+	localManifests, err := s.translateLocal()
+	if err != nil {
+		return TiltfileLoadResult{}, err
+	}
+	manifests = append(manifests, localManifests...)
+
 	s.checkForFastBuilds(manifests)
 
 	manifests, err = match(manifests, matching)
