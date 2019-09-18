@@ -185,7 +185,7 @@ func TestLocalResource(t *testing.T) {
 	lt := model.NewLocalTarget(cmd, []string{"/foo/bar", "/baz/qux"})
 	m := model.Manifest{
 		Name: "test",
-	}.WithLocalTarget(lt)
+	}.WithDeployTarget(lt)
 
 	state := newState([]model.Manifest{m})
 	v := StateToWebView(*state)

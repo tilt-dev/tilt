@@ -85,11 +85,6 @@ func (m Manifest) IsLocal() bool {
 	return ok
 }
 
-func (m Manifest) WithLocalTarget(lTarget LocalTarget) Manifest {
-	m.deployTarget = lTarget
-	return m
-}
-
 func (m Manifest) DockerComposeTarget() DockerComposeTarget {
 	ret, _ := m.deployTarget.(DockerComposeTarget)
 	return ret
