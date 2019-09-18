@@ -1062,6 +1062,37 @@ func TestPodEvent(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
+func TestPodResetRestartsAction(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	manifest := f.newManifest("fe")
+	f.Start([]model.Manifest{manifest}, true)
+
+	call := f.nextCall()
+	assert.True(t, call.oneState().IsEmpty())
+
+	pb := podbuilder.New(f.T(), manifest)
+	f.podEvent(pb.Build(), manifest.Name)
+
+	pb = pb.
+		WithPhase("CrashLoopBackOff").
+		WithRestartCount(1)
+	f.podEvent(pb.Build(), manifest.Name)
+
+	f.WaitUntilManifestState("restart seen", "fe", func(ms store.ManifestState) bool {
+		return ms.MostRecentPod().VisibleContainerRestarts() == 1
+	})
+
+	f.store.Dispatch(store.NewPodResetRestartsAction(
+		k8s.PodID(pb.Build().Name), "fe", 1))
+
+	f.WaitUntilManifestState("restart cleared", "fe", func(ms store.ManifestState) bool {
+		return ms.MostRecentPod().VisibleContainerRestarts() == 0
+	})
+
+	assert.NoError(t, f.Stop())
+}
+
 func TestPodEventOrdering(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()

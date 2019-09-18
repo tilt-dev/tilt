@@ -155,6 +155,10 @@ func (p Pod) AllContainersReady() bool {
 	return true
 }
 
+func (p Pod) VisibleContainerRestarts() int {
+	return p.AllContainerRestarts() - p.BaselineRestarts
+}
+
 func (p Pod) AllContainerRestarts() int {
 	result := 0
 	for _, c := range p.Containers {

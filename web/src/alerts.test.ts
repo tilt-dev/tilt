@@ -34,7 +34,10 @@ describe("getResourceAlerts", () => {
     let r: Resource = k8sResource()
     let rInfo = <K8sResourceInfo>r.ResourceInfo
     rInfo.PodRestarts = 1
-    let actual = getResourceAlerts(r)
+    let actual = getResourceAlerts(r).map(a => {
+      delete a.dismissHandler
+      return a
+    })
     let expectedAlerts: Array<Alert> = [
       {
         alertType: PodRestartErrorType,
@@ -146,7 +149,10 @@ describe("getResourceAlerts", () => {
         Log: "Build error 2",
       },
     ]
-    let actual = getResourceAlerts(r)
+    let actual = getResourceAlerts(r).map(a => {
+      delete a.dismissHandler
+      return a
+    })
     let expectedAlerts: Array<Alert> = [
       {
         alertType: PodRestartErrorType,

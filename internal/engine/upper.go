@@ -148,6 +148,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleFSEvent(ctx, state, action)
 	case PodChangeAction:
 		handlePodChangeAction(ctx, state, action)
+	case store.PodResetRestartsAction:
+		handlePodResetRestartsAction(state, action)
 	case ServiceChangeAction:
 		handleServiceEvent(ctx, state, action)
 	case store.K8sEventAction:
