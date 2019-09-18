@@ -76,7 +76,16 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
-		"image", &imageVal, // in future this will be optional
+
+		// TODO(maia): if you docker_build('myimg') and dc.yml refers to 'myimg', we
+		//  associate the docker_build with your dc resource automatically. What we
+		//  CAN'T do is use the arg to dc_resource.image to OVERRIDE the image named
+		//  in dc.yml, which we should probs be able to do?
+		// (If your dc.yml does NOT specify `Image`, DC will expect an image of name
+		// <directory>_<service>, and Tilt has no way of figuring this out yet, so
+		// can't auto-associate that image, you need to use dc_resource.)
+		"image?", &imageVal,
+
 		"trigger_mode?", &triggerMode,
 	); err != nil {
 		return nil, err
@@ -88,8 +97,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 
 	var imageRefAsStr string
 	switch imageVal := imageVal.(type) {
-	case nil:
-		return nil, fmt.Errorf("must specify an image arg (string or fast_build)")
+	case nil: // optional arg, this is fine
 	case starlark.String:
 		imageRefAsStr = string(imageVal)
 	case *fastBuild:
