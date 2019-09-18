@@ -34,6 +34,7 @@ type k8sMeta interface {
 	GetUID() types.UID
 	GetLabels() map[string]string
 	GetOwnerReferences() []metav1.OwnerReference
+	SetNamespace(ns string)
 }
 
 type emptyMeta struct{}
@@ -43,6 +44,7 @@ func (emptyMeta) GetNamespace() string                        { return "" }
 func (emptyMeta) GetUID() types.UID                           { return "" }
 func (emptyMeta) GetLabels() map[string]string                { return make(map[string]string) }
 func (emptyMeta) GetOwnerReferences() []metav1.OwnerReference { return nil }
+func (emptyMeta) SetNamespace(ns string)                      {}
 
 var _ k8sMeta = emptyMeta{}
 var _ k8sMeta = &metav1.ObjectMeta{}
@@ -57,6 +59,13 @@ func (e K8sEntity) ToObjectReference() v1.ObjectReference {
 		Namespace:  meta.GetNamespace(),
 		UID:        meta.GetUID(),
 	}
+}
+
+func (e K8sEntity) WithNamespace(ns string) K8sEntity {
+	newE := e.DeepCopy()
+	meta := newE.meta()
+	meta.SetNamespace(ns)
+	return newE
 }
 
 func (e K8sEntity) GVK() schema.GroupVersionKind {
@@ -114,16 +123,16 @@ func (e K8sEntity) maybeStructuredMeta() (meta *metav1.ObjectMeta, fieldIndex in
 			continue
 		}
 
-		if !fieldVal.CanInterface() {
+		if !fieldVal.CanAddr() {
 			continue
 		}
 
-		metadata, ok := fieldVal.Interface().(metav1.ObjectMeta)
+		metadata, ok := fieldVal.Addr().Interface().(*metav1.ObjectMeta)
 		if !ok {
 			continue
 		}
 
-		return &metadata, i
+		return metadata, i
 	}
 	return nil, -1
 }

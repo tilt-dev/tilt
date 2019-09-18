@@ -105,6 +105,11 @@ resources: {}
   #  cpu: 100m
   #  memory: 128Mi`
 
+const valuesDevYAML = `# Dev values for helloworld chart
+service:
+  name: nginx-dev
+`
+
 const helpersTPL = `{{/* vim: set filetype=mustache: */}}
 {{/*
 Expand the name of the chart.
@@ -153,6 +158,7 @@ metadata:
     chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
+    namespaceLabel: {{ .Release.Namespace }}
   annotations:
     {{- range $key, $value := .Values.ingress.annotations }}
       {{ $key }}: {{ $value | quote }}
@@ -184,6 +190,7 @@ metadata:
     chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
+    namespaceLabel: {{ .Release.Namespace }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -200,6 +207,7 @@ const helmTestYAML = `apiVersion: v1
 kind: Pod
 metadata:
   name: "{{ .Release.Name }}-credentials-test"
+  namespace: {{ .Release.Namespace }}
   annotations:
     "helm.sh/hook": test-success
 spec:
