@@ -12,6 +12,8 @@ import (
 )
 
 func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
+	// https://app.clubhouse.io/windmill/story/3484/testliveupdatetwoimagesonemanifest-is-flaky
+	t.SkipNow()
 
 	f := newK8sFixture(t, "live_update_two_images_one_manifest")
 	defer f.TearDown()
