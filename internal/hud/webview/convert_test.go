@@ -178,6 +178,23 @@ func TestReadinessCheckFailing(t *testing.T) {
 	require.Equal(t, RuntimeStatusPending, rv.RuntimeStatus)
 }
 
+func TestLocalResource(t *testing.T) {
+	cmd := model.Cmd{
+		Argv: []string{"make", "test"},
+	}
+	lt := model.NewLocalTarget(cmd, []string{"/foo/bar", "/baz/qux"})
+	m := model.Manifest{
+		Name: "test",
+	}.WithDeployTarget(lt)
+
+	state := newState([]model.Manifest{m})
+	v := StateToWebView(*state)
+
+	assert.Equal(t, 2, len(v.Resources))
+	r := v.Resources[1]
+	assert.Equal(t, "test", r.Name.String())
+}
+
 func newState(manifests []model.Manifest) *store.EngineState {
 	ret := store.NewState()
 	for _, m := range manifests {
