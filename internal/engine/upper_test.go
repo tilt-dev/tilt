@@ -3260,7 +3260,7 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 
 	f.WriteFile("Tiltfile", `docker_compose('docker-compose.yml')`)
 
-	var dcConfig tiltfile.DcConfig
+	var dcConfig dockercompose.Config
 	err = yaml.Unmarshal(dcpc, &dcConfig)
 	if err != nil {
 		f.T().Fatal(err)
