@@ -183,16 +183,16 @@ const (
 	allowK8SContexts            = "allow_k8s_contexts"
 
 	// file functions
-	localN        = "local"
-	readFileN     = "read_file"
-	watchFileN    = "watch_file"
-	kustomizeN    = "kustomize"
-	helmN         = "helm"
-	listdirN      = "listdir"
-	decodeJSONN   = "decode_json"
-	readJSONN     = "read_json"
-	readYAMLN     = "read_yaml"
-	includeN      = "include"
+	localN      = "local"
+	readFileN   = "read_file"
+	watchFileN  = "watch_file"
+	kustomizeN  = "kustomize"
+	helmN       = "helm"
+	listdirN    = "listdir"
+	decodeJSONN = "decode_json"
+	readJSONN   = "read_json"
+	readYAMLN   = "read_yaml"
+	includeN    = "include"
 
 	// live update functions
 	fallBackOnN       = "fall_back_on"
