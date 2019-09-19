@@ -10,9 +10,7 @@ type LocalTarget struct {
 	Cmd  Cmd
 	deps []string // a list of ABSOLUTE file paths that are dependencies of this target
 
-	// TODO(dmiller): remove dockerignores
-	dockerignores []Dockerignore
-	repos         []LocalGitRepo
+	repos []LocalGitRepo
 }
 
 var _ TargetSpec = LocalTarget{}
@@ -23,11 +21,6 @@ func NewLocalTarget(cmd Cmd, deps []string) LocalTarget {
 
 func (lt LocalTarget) WithRepos(repos []LocalGitRepo) LocalTarget {
 	lt.repos = append(append([]LocalGitRepo{}, lt.repos...), repos...)
-	return lt
-}
-
-func (lt LocalTarget) WithDockerignores(dockerignores []Dockerignore) LocalTarget {
-	lt.dockerignores = append(append([]Dockerignore{}, lt.dockerignores...), dockerignores...)
 	return lt
 }
 
