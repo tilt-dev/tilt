@@ -283,6 +283,8 @@ func buildTargets(manifest model.Manifest) []model.TargetSpec {
 		result = append(result, manifest.DockerComposeTarget())
 	} else if manifest.IsK8s() {
 		result = append(result, manifest.K8sTarget())
+	} else if manifest.IsLocal() {
+		result = append(result, manifest.LocalTarget())
 	}
 
 	return result

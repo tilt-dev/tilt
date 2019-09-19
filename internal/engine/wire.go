@@ -35,6 +35,7 @@ var DeployerBaseWireSet = wire.NewSet(
 	wire.Bind(new(build.CustomBuilder), new(build.ExecCustomBuilder)),
 
 	// BuildOrder
+	NewLocalTargetBuildAndDeployer,
 	NewImageBuildAndDeployer,
 	containerupdate.NewDockerContainerUpdater,
 	containerupdate.NewSyncletUpdater,
