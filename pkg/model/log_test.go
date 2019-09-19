@@ -41,7 +41,7 @@ func TestLog_AppendOverLimit(t *testing.T) {
 
 	l = AppendLog(l, logEvent{time.Time{}, s}, false, "")
 
-	assert.Equal(t, s, l.String())
+	assert.Equal(t, s[:logTruncationTarget], l.String())
 }
 
 func TestLog_Timestamps(t *testing.T) {
