@@ -8,12 +8,13 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
-func Options(archive io.Reader, args model.DockerBuildArgs) docker.BuildOptions {
+func Options(archive io.Reader, args model.DockerBuildArgs, target model.DockerBuildTarget) docker.BuildOptions {
 	return docker.BuildOptions{
 		Context:    archive,
 		Dockerfile: "Dockerfile",
 		Remove:     shouldRemoveImage(),
 		BuildArgs:  manifestBuildArgsToDockerBuildArgs(args),
+		Target:     string(target),
 	}
 }
 

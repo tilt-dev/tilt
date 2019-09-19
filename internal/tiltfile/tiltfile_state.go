@@ -994,11 +994,12 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 		switch image.Type() {
 		case DockerBuild:
 			iTarget = iTarget.WithBuildDetails(model.DockerBuild{
-				Dockerfile: image.dbDockerfile.String(),
-				BuildPath:  image.dbBuildPath,
-				BuildArgs:  image.dbBuildArgs,
-				FastBuild:  s.fastBuildForImage(image),
-				LiveUpdate: lu,
+				Dockerfile:  image.dbDockerfile.String(),
+				BuildPath:   image.dbBuildPath,
+				BuildArgs:   image.dbBuildArgs,
+				FastBuild:   s.fastBuildForImage(image),
+				LiveUpdate:  lu,
+				TargetStage: model.DockerBuildTarget(image.targetStage),
 			})
 		case FastBuild:
 			iTarget = iTarget.WithBuildDetails(s.fastBuildForImage(image))

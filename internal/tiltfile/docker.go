@@ -31,6 +31,7 @@ type dockerImage struct {
 	ignores            []string
 	onlys              []string
 	entrypoint         model.Cmd // optional: if specified, we override the image entrypoint/k8s command with this
+	targetStage        string    // optional: if specified, we build a particular target in the dockerfile
 
 	// fast-build properties -- will be deprecated
 	syncs        []pathSync
@@ -85,7 +86,7 @@ func (d *dockerImage) Type() dockerImageBuildType {
 }
 
 func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var dockerRef, entrypoint string
+	var dockerRef, entrypoint, targetStage string
 	var contextVal, dockerfilePathVal, buildArgs, dockerfileContentsVal, cacheVal, liveUpdateVal, ignoreVal, onlyVal starlark.Value
 	var matchInEnvVars bool
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
@@ -100,6 +101,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		"ignore?", &ignoreVal,
 		"only?", &onlyVal,
 		"entrypoint?", &entrypoint,
+		"target?", &targetStage,
 	); err != nil {
 		return nil, err
 	}
@@ -201,6 +203,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		ignores:          ignores,
 		onlys:            onlys,
 		entrypoint:       entrypointCmd,
+		targetStage:      targetStage,
 	}
 	err = s.buildIndex.addImage(r)
 	if err != nil {

@@ -8,4 +8,5 @@ type BuildOptions struct {
 	Remove     bool
 	BuildArgs  map[string]*string
 	Tags       []string
+	Target     string
 }
