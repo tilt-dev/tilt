@@ -1233,6 +1233,27 @@ k8s_yaml(yml)
 	)
 }
 
+func TestHelmArgs(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupHelm()
+
+	f.file("Tiltfile", `
+yml = helm('./helm', name='rose-quartz', namespace='garnet', values=['./helm/values.yaml', './helm/values-dev.yaml'])
+k8s_yaml(yml)
+`)
+
+	f.load()
+
+	m := f.assertNextManifestUnresourced("rose-quartz-helloworld-chart")
+	yaml := m.K8sTarget().YAML
+	assert.Contains(t, yaml, "release: rose-quartz")
+	assert.Contains(t, yaml, "namespace: garnet")
+	assert.Contains(t, yaml, "namespaceLabel: garnet")
+	assert.Contains(t, yaml, "name: nginx-dev")
+}
+
 func TestHelmInvalidDirectory(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -4820,6 +4841,7 @@ func (f *fixture) setupExpand() {
 func (f *fixture) setupHelm() {
 	f.file("helm/Chart.yaml", chartYAML)
 	f.file("helm/values.yaml", valuesYAML)
+	f.file("helm/values-dev.yaml", valuesDevYAML)
 
 	f.file("helm/templates/_helpers.tpl", helpersTPL)
 	f.file("helm/templates/deployment.yaml", deploymentYAML)
