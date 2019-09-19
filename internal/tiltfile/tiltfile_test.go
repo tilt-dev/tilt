@@ -469,6 +469,20 @@ k8s_resource("the-deployment", "foo")
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "configMap.yaml", "deployment.yaml", "Kustomization", "service.yaml")
 }
 
+func TestDockerBuildTarget(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build("gcr.io/foo", "foo", target='stage')
+`)
+	f.load()
+	m := f.assertNextManifest("foo")
+	assert.Equal(t, "stage", m.ImageTargets[0].BuildDetails.(model.DockerBuild).TargetStage.String())
+}
+
 func TestDockerBuildCache(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

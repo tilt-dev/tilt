@@ -119,7 +119,7 @@ func (b CacheBuilder) CreateCacheFrom(ctx context.Context, inputs CacheInputs, s
 		}
 	}()
 
-	options := Options(pr, buildArgs)
+	options := Options(pr, buildArgs, "")
 	options.Tags = []string{cacheRef.String()}
 
 	// TODO(nick): I'm not sure if we should print this, or if it should

@@ -412,6 +412,7 @@ func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options Bu
 	opts.BuildArgs = options.BuildArgs
 	opts.Dockerfile = options.Dockerfile
 	opts.Tags = options.Tags
+	opts.Target = options.Target
 
 	return c.Client.ImageBuild(ctx, buildContext, opts)
 }
