@@ -480,14 +480,6 @@
   revision = "d6023ce2651d8eafb5c75bb0c7167536102ec9f5"
 
 [[projects]]
-  digest = "1:bbc4aacabe6880bdbce849c64cb061b7eddf39f132af4ea2853ddd32f85fbec3"
-  name = "github.com/fatih/camelcase"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "44e46d280b43ec1531bb25252440e34f1b800b65"
-  version = "v1.0.0"
-
-[[projects]]
   digest = "1:865079840386857c809b72ce300be7580cb50d3d3129ce11bf9aa6ca2bc1934a"
   name = "github.com/fatih/color"
   packages = ["."]
@@ -736,17 +728,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:59b23668305d31152e16ba0e865d0f67850820a7b11ded254ccbb30f3af997c6"
-  name = "github.com/grpc-ecosystem/go-grpc-middleware"
-  packages = [
-    ".",
-    "tags",
-  ]
-  pruneopts = "UT"
-  revision = "cfaf5686ec79ff8344257723b6f5ba1ae0ffeb4d"
-
-[[projects]]
-  branch = "master"
   digest = "1:1a1206efd03a54d336dce7bb8719e74f2f8932f661cb9f57d5813a1d99c083d8"
   name = "github.com/grpc-ecosystem/grpc-opentracing"
   packages = ["go/otgrpc"]
@@ -779,19 +760,6 @@
   pruneopts = "UT"
   revision = "9f23e2d6bd2a77f959b2bf6acdbefd708a83a4a4"
   version = "v0.3.6"
-
-[[projects]]
-  branch = "master"
-  digest = "1:63224a53a3f1d13c83858672c603ac19fc3ed9e518ee7d96561f7129f73e3105"
-  name = "github.com/improbable-eng/go-httpwares"
-  packages = [
-    ".",
-    "logging",
-    "logging/logrus",
-    "logging/logrus/ctxlogrus",
-  ]
-  pruneopts = "UT"
-  revision = "33c6690a604c5e73b152aa22e9874288ba70d4be"
 
 [[projects]]
   digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
@@ -1543,10 +1511,12 @@
   version = "v2.2.1"
 
 [[projects]]
-  digest = "1:97b61d2f080698a86707e10e69f80d98ff3c7faac96065679962f50b9a7cb8a4"
+  digest = "1:3363ef5c237a77a65becb1aa86daf82eff76d9f7add0fca417a3dae8a17356ac"
   name = "k8s.io/api"
   packages = [
+    "admission/v1",
     "admission/v1beta1",
+    "admissionregistration/v1",
     "admissionregistration/v1beta1",
     "apps/v1",
     "apps/v1beta1",
@@ -1566,6 +1536,7 @@
     "coordination/v1",
     "coordination/v1beta1",
     "core/v1",
+    "discovery/v1alpha1",
     "events/v1beta1",
     "extensions/v1beta1",
     "imagepolicy/v1alpha1",
@@ -1586,11 +1557,11 @@
     "storage/v1beta1",
   ]
   pruneopts = "UT"
-  revision = "3544db3b9e4494309507e02eced5cd9dcff47e6a"
-  version = "kubernetes-1.15.3"
+  revision = "95b840bb6a1f5f0462af804c8589396d294d4914"
+  version = "kubernetes-1.16.0"
 
 [[projects]]
-  digest = "1:7efcdcb8a59a9769eebf21454d4f75bb2593c2ac8be3d90c33071e6aa64c0940"
+  digest = "1:12e3a7ff97f5d0276395f053ece2a4b4a4361148a21e3286071479b32e30d823"
   name = "k8s.io/apimachinery"
   packages = [
     "pkg/api/equality",
@@ -1621,7 +1592,6 @@
     "pkg/util/cache",
     "pkg/util/clock",
     "pkg/util/diff",
-    "pkg/util/duration",
     "pkg/util/errors",
     "pkg/util/framer",
     "pkg/util/httpstream",
@@ -1647,11 +1617,11 @@
     "third_party/forked/golang/reflect",
   ]
   pruneopts = "UT"
-  revision = "f2f3a405f61d6c2cdc0d00687c1b5d90de91e9f0"
-  version = "kubernetes-1.15.3"
+  revision = "27d36303b6556f377b4f34e64705fa9024a12b0c"
+  version = "kubernetes-1.16.0"
 
 [[projects]]
-  digest = "1:f107a860bd0f6b51b21bc0d21ca093cc655560361fd812c7035951648651c128"
+  digest = "1:244061a36af793cc985f093a54c9796f216fdf4e41c06e72848b1a77d9cc7408"
   name = "k8s.io/cli-runtime"
   packages = [
     "pkg/genericclioptions",
@@ -1668,11 +1638,11 @@
     "pkg/resource",
   ]
   pruneopts = "UT"
-  revision = "541433d7ce357bd9c62ab3d00580f2b234ee0973"
-  version = "kubernetes-1.15.3"
+  revision = "f783a3654da8387af6f52378b0611c2d81ea4dd8"
+  version = "kubernetes-1.16.0"
 
 [[projects]]
-  digest = "1:da4662918114bcf0884187fb3586638391a2b83a28d9add75b8f30623adead04"
+  digest = "1:e3777852bf30156c531ebaa966f2e0326cd056264c054e26984b750eaa9c3183"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -1682,6 +1652,7 @@
     "dynamic/fake",
     "informers",
     "informers/admissionregistration",
+    "informers/admissionregistration/v1",
     "informers/admissionregistration/v1beta1",
     "informers/apps",
     "informers/apps/v1",
@@ -1704,6 +1675,8 @@
     "informers/coordination/v1beta1",
     "informers/core",
     "informers/core/v1",
+    "informers/discovery",
+    "informers/discovery/v1alpha1",
     "informers/events",
     "informers/events/v1beta1",
     "informers/extensions",
@@ -1734,6 +1707,8 @@
     "kubernetes",
     "kubernetes/fake",
     "kubernetes/scheme",
+    "kubernetes/typed/admissionregistration/v1",
+    "kubernetes/typed/admissionregistration/v1/fake",
     "kubernetes/typed/admissionregistration/v1beta1",
     "kubernetes/typed/admissionregistration/v1beta1/fake",
     "kubernetes/typed/apps/v1",
@@ -1772,6 +1747,8 @@
     "kubernetes/typed/coordination/v1beta1/fake",
     "kubernetes/typed/core/v1",
     "kubernetes/typed/core/v1/fake",
+    "kubernetes/typed/discovery/v1alpha1",
+    "kubernetes/typed/discovery/v1alpha1/fake",
     "kubernetes/typed/events/v1beta1",
     "kubernetes/typed/events/v1beta1/fake",
     "kubernetes/typed/extensions/v1beta1",
@@ -1806,6 +1783,7 @@
     "kubernetes/typed/storage/v1alpha1/fake",
     "kubernetes/typed/storage/v1beta1",
     "kubernetes/typed/storage/v1beta1/fake",
+    "listers/admissionregistration/v1",
     "listers/admissionregistration/v1beta1",
     "listers/apps/v1",
     "listers/apps/v1beta1",
@@ -1821,6 +1799,7 @@
     "listers/coordination/v1",
     "listers/coordination/v1beta1",
     "listers/core/v1",
+    "listers/discovery/v1alpha1",
     "listers/events/v1beta1",
     "listers/extensions/v1beta1",
     "listers/networking/v1",
@@ -1885,8 +1864,16 @@
     "util/retry",
   ]
   pruneopts = "UT"
-  revision = "e14f31a72a77f7aa82a95eaf542d1194fb027d04"
-  version = "kubernetes-1.15.3"
+  revision = "1fbdaa4c8d908275eee958429b1cafc2591a2c5d"
+  version = "kubernetes-1.16.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:87b39a5573d0bc55c0d4ec61072fb661115aae0c754e44edc8e977c2196a6259"
+  name = "k8s.io/component-base"
+  packages = ["version"]
+  pruneopts = "UT"
+  revision = "61bc4cc48c91118b272b37f356826d1a9ff06603"
 
 [[projects]]
   digest = "1:e2999bf1bb6eddc2a6aa03fe5e6629120a53088926520ca3b4765f77d7ff7eab"
@@ -1909,59 +1896,44 @@
   revision = "e3762e86a74c878ffed47484592986685639c2cd"
 
 [[projects]]
-  digest = "1:3e09b6c68cee98670b36d961d9cc843378a9da010cf837cf8133ef7b0b458bb5"
-  name = "k8s.io/kubernetes"
+  branch = "master"
+  digest = "1:f08b3a1d6f492e6d9239654dd56aeb13bea1695245fbdfaea831d55d59cb1b11"
+  name = "k8s.io/kubectl"
   packages = [
-    "pkg/kubectl",
-    "pkg/kubectl/apps",
-    "pkg/kubectl/cmd/apply",
-    "pkg/kubectl/cmd/delete",
-    "pkg/kubectl/cmd/replace",
-    "pkg/kubectl/cmd/util",
-    "pkg/kubectl/cmd/util/editor",
-    "pkg/kubectl/cmd/util/editor/crlf",
-    "pkg/kubectl/cmd/util/openapi",
-    "pkg/kubectl/cmd/util/openapi/validation",
-    "pkg/kubectl/cmd/wait",
-    "pkg/kubectl/describe",
-    "pkg/kubectl/describe/versioned",
-    "pkg/kubectl/generated",
-    "pkg/kubectl/scheme",
-    "pkg/kubectl/util",
-    "pkg/kubectl/util/certificate",
-    "pkg/kubectl/util/deployment",
-    "pkg/kubectl/util/event",
-    "pkg/kubectl/util/fieldpath",
-    "pkg/kubectl/util/i18n",
-    "pkg/kubectl/util/interrupt",
-    "pkg/kubectl/util/podutils",
-    "pkg/kubectl/util/qos",
-    "pkg/kubectl/util/rbac",
-    "pkg/kubectl/util/resource",
-    "pkg/kubectl/util/slice",
-    "pkg/kubectl/util/storage",
-    "pkg/kubectl/util/templates",
-    "pkg/kubectl/util/term",
-    "pkg/kubectl/validation",
-    "pkg/kubectl/version",
+    "pkg/cmd/apply",
+    "pkg/cmd/delete",
+    "pkg/cmd/replace",
+    "pkg/cmd/util",
+    "pkg/cmd/util/editor",
+    "pkg/cmd/util/editor/crlf",
+    "pkg/cmd/wait",
+    "pkg/generated",
+    "pkg/rawhttp",
+    "pkg/scheme",
+    "pkg/util",
+    "pkg/util/i18n",
+    "pkg/util/interrupt",
+    "pkg/util/openapi",
+    "pkg/util/openapi/validation",
+    "pkg/util/templates",
+    "pkg/util/term",
+    "pkg/validation",
   ]
   pruneopts = "UT"
-  revision = "2d3c76f9091b6bec110a5e63777c332469e0cba2"
-  version = "v1.15.3"
+  revision = "5bf870509147b4563a8a905fbb7e309cef9f4306"
 
 [[projects]]
   branch = "master"
-  digest = "1:cf6717f0518dfcc9e03a9083edf52acaf99f9abd4cd9117a11070f5d878f6b22"
+  digest = "1:6371e2b9680d370d913c1830d8cf27f6dbe3992c2f18a82e05fc465993d02b0d"
   name = "k8s.io/utils"
   packages = [
     "buffer",
     "exec",
     "integer",
-    "pointer",
     "trace",
   ]
   pruneopts = "UT"
-  revision = "21c4ce38f2a793ec01e925ddc31216500183b773"
+  revision = "3d4f5b7dea0b7c63c77d7fb1f0ee433ad8d54667"
 
 [[projects]]
   digest = "1:cb422c75bab66a8339a38b64e837f3b28f3d5a8c06abd7b9048f420363baa18a"
@@ -2034,7 +2006,6 @@
     "github.com/gorilla/mux",
     "github.com/gorilla/websocket",
     "github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc",
-    "github.com/improbable-eng/go-httpwares/logging/logrus",
     "github.com/jonboulle/clockwork",
     "github.com/json-iterator/go",
     "github.com/lightstep/lightstep-tracer-go",
@@ -2055,7 +2026,6 @@
     "github.com/pkg/errors",
     "github.com/rivo/tview",
     "github.com/schollz/closestmatch",
-    "github.com/sirupsen/logrus",
     "github.com/spf13/cobra",
     "github.com/spf13/pflag",
     "github.com/stretchr/testify/assert",
@@ -2095,6 +2065,7 @@
     "k8s.io/apimachinery/pkg/runtime/schema",
     "k8s.io/apimachinery/pkg/types",
     "k8s.io/apimachinery/pkg/util/sets",
+    "k8s.io/apimachinery/pkg/util/wait",
     "k8s.io/apimachinery/pkg/util/yaml",
     "k8s.io/apimachinery/pkg/version",
     "k8s.io/apimachinery/pkg/watch",
@@ -2121,11 +2092,11 @@
     "k8s.io/client-go/util/exec",
     "k8s.io/client-go/util/jsonpath",
     "k8s.io/klog",
-    "k8s.io/kubernetes/pkg/kubectl/cmd/apply",
-    "k8s.io/kubernetes/pkg/kubectl/cmd/delete",
-    "k8s.io/kubernetes/pkg/kubectl/cmd/replace",
-    "k8s.io/kubernetes/pkg/kubectl/cmd/util",
-    "k8s.io/kubernetes/pkg/kubectl/scheme",
+    "k8s.io/kubectl/pkg/cmd/apply",
+    "k8s.io/kubectl/pkg/cmd/delete",
+    "k8s.io/kubectl/pkg/cmd/replace",
+    "k8s.io/kubectl/pkg/cmd/util",
+    "k8s.io/kubectl/pkg/scheme",
     "sigs.k8s.io/kustomize/pkg/constants",
     "sigs.k8s.io/kustomize/pkg/types",
     "sigs.k8s.io/yaml",

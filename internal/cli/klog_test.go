@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
 )
 
@@ -15,13 +14,13 @@ func TestResourceVersionTooOldWarningsSilenced(t *testing.T) {
 	out := bytes.NewBuffer(nil)
 	klog.SetOutput(out)
 
-	cache.PrintWatchEndedV4()
+	PrintWatchEndedV4()
 	klog.Flush()
 	assert.Equal(t, "", out.String())
 
-	cache.PrintWatchEndedWarning()
+	PrintWatchEndedWarning()
 	klog.Flush()
-	assert.Contains(t, out.String(), "reflector.go")
+	assert.Contains(t, out.String(), "klog_test.go")
 	assert.Contains(t, out.String(), "watch ended")
 }
 
@@ -35,7 +34,14 @@ func TestResourceVersionTooOldWarningsPrinted(t *testing.T) {
 	out := bytes.NewBuffer(nil)
 	klog.SetOutput(out)
 
-	cache.PrintWatchEndedV4()
+	PrintWatchEndedV4()
 	klog.Flush()
 	assert.Contains(t, out.String(), "watch ended")
+}
+
+func PrintWatchEndedV4() {
+	klog.V(4).Infof("watch ended")
+}
+func PrintWatchEndedWarning() {
+	klog.Warningf("watch ended")
 }
