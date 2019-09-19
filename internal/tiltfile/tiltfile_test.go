@@ -3905,17 +3905,36 @@ func TestLocalResource(t *testing.T) {
 	defer f.TearDown()
 
 	f.file("Tiltfile", `
-local_resource("test", "echo hi", ["foo/bar"])
+local_resource("test", "echo hi", ["foo/bar", "foo/a.txt"])
 `)
 
+	f.setupFoo()
+	f.file(".gitignore", "*.txt")
 	f.load()
+
 	f.assertNumManifests(1)
+
+	// TODO(dmiller): make the rest of these assertion helpers like the other manifest helpers
 	m := f.loadResult.Manifests[0]
 	require.Equal(t, "test", m.Name.String())
 	lt := m.LocalTarget()
-	path := f.JoinPath("foo/bar")
+	path1 := f.JoinPath("foo/bar")
+	path2 := f.JoinPath("foo/a.txt")
 	require.Equal(t, []string{"sh", "-c", "echo hi"}, lt.Cmd.Argv)
-	require.Equal(t, []string{path}, lt.Dependencies())
+	require.Equal(t, []string{path2, path1}, lt.Dependencies())
+
+	f.assertConfigFiles("Tiltfile", ".tiltignore")
+
+	filter, err := ignore.CreateFileChangeFilter(lt)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	matches, err := filter.Matches(path2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	require.Equal(t, false, matches)
 }
 
 type fixture struct {

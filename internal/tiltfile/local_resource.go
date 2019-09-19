@@ -13,6 +13,7 @@ type localResource struct {
 	cmd         model.Cmd
 	deps        []string
 	triggerMode triggerMode
+	repos       []model.LocalGitRepo
 }
 
 func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -39,11 +40,14 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		depsStrings = append(depsStrings, path)
 	}
 
+	repos := reposForPaths(depsStrings)
+
 	res := localResource{
 		name:        name,
 		cmd:         model.ToShellCmd(cmd),
 		deps:        depsStrings,
 		triggerMode: triggerMode,
+		repos:       repos,
 	}
 	s.localResources = append(s.localResources, res)
 
