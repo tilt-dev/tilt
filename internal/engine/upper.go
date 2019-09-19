@@ -228,7 +228,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 			pod.CurrentLog = model.Log{}
 			pod.UpdateStartTime = action.StartTime
 		}
-	} else {
+	} else if ms.IsDC() {
 		ms.RuntimeState = ms.DCRuntimeState().WithCurrentLog(model.Log{})
 	}
 

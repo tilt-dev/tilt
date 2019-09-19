@@ -602,8 +602,8 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 
 	if dcState, ok := mt.State.RuntimeState.(dockercompose.State); ok {
 		return view.NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPaths, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
-	} else {
-		pod := mt.State.MostRecentPod()
+	} else if k8sState, ok := mt.State.RuntimeState.(K8sRuntimeState); ok {
+		pod := k8sState.MostRecentPod()
 		return view.K8sResourceInfo{
 			PodName:            pod.PodID.String(),
 			PodCreationTime:    pod.StartedAt,
@@ -614,6 +614,8 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 			YAML:               mt.Manifest.K8sTarget().YAML,
 		}
 	}
+	// Otherwise, LocalResource
+	return view.LocalResourceInfo{}
 }
 
 // DockerComposeConfigPath returns the path to the docker-compose yaml file of any
