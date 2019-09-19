@@ -65,17 +65,6 @@ k8s_resource('foo', 'foo.yaml')
 	f.loadErrString("foo/Dockerfile", "no such file or directory", "error reading dockerfile")
 }
 
-func TestGitRepoBadMethodCall(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-	f.setupFoo()
-	f.file("Tiltfile", `
-local_git_repo('.').asdf()
-`)
-
-	f.loadErrString("Tiltfile:2:20: in <toplevel>", "Error: gitRepo has no .asdf field or method")
-}
-
 func TestFastBuildBadMethodCall(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -182,20 +171,6 @@ func TestExplicitDockerfileIsConfigFile(t *testing.T) {
 	f.dockerfile("other/Dockerfile")
 	f.file("Tiltfile", `
 docker_build('gcr.io/foo', 'foo', dockerfile='other/Dockerfile')
-k8s_yaml('foo.yaml')
-`)
-	f.load()
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "other/Dockerfile", "foo/.dockerignore")
-}
-
-func TestExplicitDockerfileAsLocalPath(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-	f.setupFoo()
-	f.dockerfile("other/Dockerfile")
-	f.file("Tiltfile", `
-r = local_git_repo('.')
-docker_build('gcr.io/foo', 'foo', dockerfile=r.paths('other/Dockerfile'))
 k8s_yaml('foo.yaml')
 `)
 	f.load()
@@ -378,13 +353,6 @@ k8s_yaml('foo.yaml')
 		deployment("foo"),
 	)
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
-}
-
-func TestVerifiesGitRepo(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-	f.file("Tiltfile", "local_git_repo('.')")
-	f.loadErrString("isn't a valid git repo")
 }
 
 func TestLocal(t *testing.T) {
@@ -575,38 +543,6 @@ fast_build('gcr.io/bar', 'foo/Dockerfile').add('%s', '/bar')
 	f.loadAssertWarnings(fastBuildDeprecationWarning)
 	f.assertNextManifest("foo", fb(image("gcr.io/foo"), add("foo", "/foo")))
 	f.assertNextManifest("bar", fb(image("gcr.io/bar"), add("bar", "/bar")))
-}
-
-func TestFastBuildAddLocalPath(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-	f.file("Tiltfile", `
-repo = local_git_repo('.')
-k8s_yaml('foo.yaml')
-fast_build('gcr.io/foo', 'foo/Dockerfile').add(repo.paths('foo'), '/foo')
-`)
-
-	f.loadAssertWarnings(fastBuildDeprecationWarning)
-	f.assertNextManifest("foo", fb(image("gcr.io/foo"), add("foo", "/foo")))
-}
-
-func TestFastBuildAddGitRepo(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-	f.file("Tiltfile", `
-repo = local_git_repo('.')
-k8s_yaml('foo.yaml')
-
-# add the whole repo
-fast_build('gcr.io/foo', 'foo/Dockerfile').add(repo, '/whole_repo')
-`)
-
-	f.loadAssertWarnings(fastBuildDeprecationWarning)
-	f.assertNextManifest("foo", fb(image("gcr.io/foo"), add(".", "/whole_repo")))
 }
 
 type portForwardCase struct {
@@ -1264,29 +1200,6 @@ k8s_yaml(yml)
 `)
 
 	f.loadErrString("Could not read Helm chart directory")
-}
-
-func TestHelmFromRepoPath(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.gitInit(".")
-	f.setupHelm()
-
-	f.file("Tiltfile", `
-r = local_git_repo('.')
-yml = helm(r.paths('helm'))
-k8s_yaml(yml)
-`)
-
-	f.load()
-
-	f.assertNextManifestUnresourced("release-name-helloworld-chart")
-	f.assertConfigFiles(
-		"Tiltfile",
-		".tiltignore",
-		"helm",
-	)
 }
 
 func TestEmptyDockerfileDockerBuild(t *testing.T) {
@@ -2441,10 +2354,9 @@ func TestFastBuildEmptyDockerfileArg(t *testing.T) {
 	defer f.TearDown()
 	f.gitInit(f.Path())
 	f.file("Tiltfile", `
-repo = local_git_repo('.')
 
 (fast_build('web/api', '')
-    .add(repo.paths('src'), '/app/src').run(''))
+    .add('src', '/app/src').run(''))
 `)
 	f.loadErrString("error reading dockerfile")
 }

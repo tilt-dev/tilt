@@ -389,9 +389,9 @@ func TestDockerComposeWithFastBuild(t *testing.T) {
 
 	f.setupFoo()
 	f.file("docker-compose.yml", simpleConfig)
-	f.file("Tiltfile", `repo = local_git_repo('.')
+	f.file("Tiltfile", `
 fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add(repo.paths('foo'), 'src/') \
+  .add('foo', 'src/') \
   .run("echo hi")
 docker_compose('docker-compose.yml')
 dc_resource('foo', 'gcr.io/foo')

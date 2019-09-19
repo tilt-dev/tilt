@@ -183,7 +183,6 @@ const (
 	allowK8SContexts            = "allow_k8s_contexts"
 
 	// file functions
-	localGitRepoN = "local_git_repo"
 	localN        = "local"
 	readFileN     = "read_file"
 	watchFileN    = "watch_file"
@@ -356,7 +355,6 @@ func (s *tiltfileState) predeclared() starlark.StringDict {
 	addBuiltin(r, workloadToResourceFunctionN, s.workloadToResourceFunctionFn)
 	addBuiltin(r, k8sContextN, s.k8sContext)
 	addBuiltin(r, allowK8SContexts, s.allowK8SContexts)
-	addBuiltin(r, localGitRepoN, s.localGitRepo)
 	addBuiltin(r, kustomizeN, s.kustomize)
 	addBuiltin(r, helmN, s.helm)
 	addBuiltin(r, failN, s.fail)

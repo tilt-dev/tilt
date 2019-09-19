@@ -3,7 +3,6 @@
 include('../Tiltfile')
 
 k8s_yaml('deployment.yaml')
-repo = local_git_repo('../../')
 docker_build('gcr.io/windmill-test-containers/integration/onewatch',
              '.',
              dockerfile='Dockerfile',
