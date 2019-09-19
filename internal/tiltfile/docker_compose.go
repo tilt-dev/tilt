@@ -76,7 +76,16 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
-		"image", &imageVal, // in future this will be optional
+
+		// TODO(maia): if you docker_build('myimg') and dc.yml refers to 'myimg', we
+		//  associate the docker_build with your dc resource automatically. What we
+		//  CAN'T do is use the arg to dc_resource.image to OVERRIDE the image named
+		//  in dc.yml, which we should probs be able to do?
+		// (If your dc.yml does NOT specify `Image`, DC will expect an image of name
+		// <directory>_<service>, and Tilt has no way of figuring this out yet, so
+		// can't auto-associate that image, you need to use dc_resource.)
+		"image?", &imageVal,
+
 		"trigger_mode?", &triggerMode,
 	); err != nil {
 		return nil, err
@@ -88,8 +97,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 
 	var imageRefAsStr string
 	switch imageVal := imageVal.(type) {
-	case nil:
-		return nil, fmt.Errorf("must specify an image arg (string or fast_build)")
+	case nil: // optional arg, this is fine
 	case starlark.String:
 		imageRefAsStr = string(imageVal)
 	case *fastBuild:
@@ -109,7 +117,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 	if err != nil {
 		return nil, err
 	}
-	svc.ImageRef = normalized
+	svc.imageRefFromUser = normalized
 
 	return starlark.None, nil
 }
@@ -268,10 +276,10 @@ type dcService struct {
 	// https://docs.docker.com/compose/compose-file/#volumes
 	MountedLocalDirs []string
 
-	// RefSelector of an image described via docker_build || fast_build call.
-	// Can be explicitly linked to this service via dc_service call,
-	// or implicitly via an image name in the docker-compose.yml
-	ImageRef reference.Named
+	// RefSelector of the image associated with this service
+	// The user-provided image ref overrides the config-provided image ref
+	imageRefFromConfig reference.Named // from docker-compose.yml `Image` field
+	imageRefFromUser   reference.Named // set via dc_resource
 
 	// Currently just use these to diff against when config files are edited to see if manifest has changed
 	ServiceConfig []byte
@@ -281,6 +289,13 @@ type dcService struct {
 	PublishedPorts []int
 
 	TriggerMode triggerMode
+}
+
+func (svc dcService) ImageRef() reference.Named {
+	if svc.imageRefFromUser != nil {
+		return svc.imageRefFromUser
+	}
+	return svc.imageRefFromConfig
 }
 
 func (c DcConfig) GetService(name string) (dcService, error) {
@@ -328,7 +343,7 @@ func (c DcConfig) GetService(name string) (dcService, error) {
 			// error, but we don't really have a better way right now.
 			return dcService{}, fmt.Errorf("Error parsing image name %q: %v", ref, err)
 		} else {
-			svc.ImageRef = ref
+			svc.imageRefFromConfig = ref
 		}
 	}
 

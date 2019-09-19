@@ -327,6 +327,40 @@ dc_resource('foo', 'gcr.io/foo')
 	assert.Equal(t, m.DockerComposeTarget().ConfigPaths, []string{configPath})
 }
 
+func TestDockerComposeWithDockerBuildAutoAssociate(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.file("docker-compose.yml", `version: '3'
+services:
+  foo:
+    image: gcr.io/as_specified_in_config
+    build: ./foo
+    command: sleep 100
+    ports:
+      - "12312:80"`)
+	f.file("Tiltfile", `docker_build('gcr.io/as_specified_in_config', './foo')
+docker_compose('docker-compose.yml')
+`)
+
+	f.load()
+
+	// don't need a dc_resource call if the docker_build image matches the
+	// `Image` specified in dc.yml
+	m := f.assertNextManifest("foo", db(image("gcr.io/as_specified_in_config")))
+	iTarget := m.ImageTargetAt(0)
+
+	// Make sure there's no fast build / live update in the default case.
+	assert.True(t, iTarget.IsDockerBuild())
+	assert.False(t, iTarget.IsFastBuild())
+	assert.True(t, iTarget.AnyFastBuildInfo().Empty())
+	assert.True(t, iTarget.AnyLiveUpdateInfo().Empty())
+
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	assert.Equal(t, m.DockerComposeTarget().ConfigPaths, []string{configPath})
+}
+
 // I.e. make sure that we handle de/normalization between `fooimage` <--> `docker.io/library/fooimage`
 func TestDockerComposeWithDockerBuildLocalRef(t *testing.T) {
 	f := newFixture(t)

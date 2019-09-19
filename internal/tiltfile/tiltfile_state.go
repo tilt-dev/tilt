@@ -473,11 +473,14 @@ func (s *tiltfileState) assembleDC() error {
 	}
 
 	for _, svc := range s.dc.services {
-		if svc.ImageRef != nil {
-			builder := s.buildIndex.findBuilderForConsumedImage(svc.ImageRef)
+		if svc.ImageRef() != nil {
+			builder := s.buildIndex.findBuilderForConsumedImage(svc.ImageRef())
 			if builder != nil {
 				svc.DependencyIDs = append(svc.DependencyIDs, builder.ID())
 			}
+			// TODO(maia): throw warning if
+			//  a. there is an img ref from config, and img ref from user doesn't match
+			//  b. there is no img ref from config, and img ref from user is not of form .*_<svc_name>
 		}
 	}
 	return nil
