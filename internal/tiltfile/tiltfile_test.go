@@ -3905,7 +3905,7 @@ func TestLocalResource(t *testing.T) {
 	defer f.TearDown()
 
 	f.file("Tiltfile", `
-local_resource("test", "echo hi", ["/foo/bar"])
+local_resource("test", "echo hi", ["foo/bar"])
 `)
 
 	f.load()
@@ -3913,8 +3913,9 @@ local_resource("test", "echo hi", ["/foo/bar"])
 	m := f.loadResult.Manifests[0]
 	require.Equal(t, "test", m.Name.String())
 	lt := m.LocalTarget()
+	path := f.JoinPath("foo/bar")
 	require.Equal(t, []string{"sh", "-c", "echo hi"}, lt.Cmd.Argv)
-	require.Equal(t, []string{"/foo/bar"}, lt.Dependencies())
+	require.Equal(t, []string{path}, lt.Dependencies())
 }
 
 type fixture struct {
