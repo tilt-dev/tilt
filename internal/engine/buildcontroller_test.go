@@ -156,6 +156,29 @@ func TestBuildControllerDockerCompose(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
+func TestBuildControllerLocalResource(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	dep := f.JoinPath("stuff.json")
+	manifest := manifestbuilder.New(f, "yarn-add").
+		WithLocalResource("echo beep boop", []string{dep}).Build()
+	f.Start([]model.Manifest{manifest}, true)
+
+	call := f.nextCall()
+	lt := manifest.LocalTarget()
+	assert.Equal(t, lt, call.local())
+
+	f.fsWatcher.events <- watch.NewFileEvent(dep)
+
+	call = f.nextCall()
+	assert.Equal(t, lt, call.local())
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+}
+
 func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()

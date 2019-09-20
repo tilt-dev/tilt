@@ -19,6 +19,8 @@ func NewLocalTarget(cmd Cmd, deps []string) LocalTarget {
 	return LocalTarget{Cmd: cmd, deps: deps}
 }
 
+func (lt LocalTarget) Empty() bool { return lt.Cmd.Empty() }
+
 func (lt LocalTarget) WithRepos(repos []LocalGitRepo) LocalTarget {
 	lt.repos = append(append([]LocalGitRepo{}, lt.repos...), repos...)
 	return lt
