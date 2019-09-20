@@ -1,4 +1,4 @@
-package engine
+package configs
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/pkg/logger"
@@ -27,6 +28,10 @@ func NewConfigsController(tfl tiltfile.TiltfileLoader, dockerClient docker.Clien
 		dockerClient: dockerClient,
 		clock:        time.Now,
 	}
+}
+
+func (cc *ConfigsController) SetTiltfileLoaderForTesting(tfl tiltfile.TiltfileLoader) {
+	cc.tfl = tfl
 }
 
 func (cc *ConfigsController) DisableForTesting(disabled bool) {
@@ -63,7 +68,7 @@ func logTiltfileChanges(ctx context.Context, filesChanged map[string]bool) {
 
 	if len(filenames) > 0 {
 		p := logger.Green(l).Sprintf("%d changed: ", len(filenames))
-		l.Infof("\n%s%v\n", p, formatFileChangeList(filenames))
+		l.Infof("\n%s%v\n", p, ospath.FormatFileChangeList(filenames))
 	}
 }
 
@@ -136,7 +141,7 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 
 	tiltfilePath, err := state.RelativeTiltfilePath()
 	if err != nil {
-		st.Dispatch(NewErrorAction(err))
+		st.Dispatch(store.NewErrorAction(err))
 		return
 	}
 

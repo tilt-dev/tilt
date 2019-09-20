@@ -1,4 +1,4 @@
-package engine
+package configs
 
 import (
 	"github.com/windmilleng/tilt/internal/store"

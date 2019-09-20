@@ -151,27 +151,6 @@ func NewHudStoppedAction(err error) HudStoppedAction {
 	return HudStoppedAction{err}
 }
 
-type ConfigsReloadStartedAction struct {
-	FilesChanged map[string]bool
-	StartTime    time.Time
-}
-
-func (ConfigsReloadStartedAction) Action() {}
-
-type ConfigsReloadedAction struct {
-	Manifests          []model.Manifest
-	TiltIgnoreContents string
-	ConfigFiles        []string
-
-	FinishTime time.Time
-	Err        error
-	Warnings   []string
-	Features   map[string]bool
-	TeamName   string
-}
-
-func (ConfigsReloadedAction) Action() {}
-
 type DockerComposeEventAction struct {
 	Event dockercompose.Event
 }
@@ -183,12 +162,6 @@ type DockerComposeLogAction struct {
 }
 
 func (DockerComposeLogAction) Action() {}
-
-type TiltfileLogAction struct {
-	store.LogEvent
-}
-
-func (TiltfileLogAction) Action() {}
 
 type LatestVersionAction struct {
 	Build model.TiltBuild

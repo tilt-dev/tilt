@@ -3,6 +3,7 @@ package engine
 import (
 	"github.com/windmilleng/tilt/internal/cloud"
 	"github.com/windmilleng/tilt/internal/containerupdate"
+	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/store"
@@ -17,7 +18,7 @@ func ProvideSubscribers(
 	fwm *WatchManager,
 	bc *BuildController,
 	ic *ImageController,
-	cc *ConfigsController,
+	cc *configs.ConfigsController,
 	dcw *DockerComposeEventWatcher,
 	dclm *DockerComposeLogManager,
 	pm *ProfilerManager,

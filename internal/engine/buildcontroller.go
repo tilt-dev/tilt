@@ -5,6 +5,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -241,7 +242,7 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 	} else {
 		if len(changedFiles) > 0 {
 			p := logger.Green(l).Sprintf("%d changed: ", len(changedFiles))
-			l.Infof("\n%s%v\n", p, formatFileChangeList(changedFiles))
+			l.Infof("\n%s%v\n", p, ospath.FormatFileChangeList(changedFiles))
 		}
 
 		rp := logger.Blue(l).Sprintf("──┤ Rebuilding: ")
