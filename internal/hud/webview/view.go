@@ -73,6 +73,14 @@ func (YAMLResourceInfo) resourceInfoView()              {}
 func (yamlInfo YAMLResourceInfo) RuntimeLog() model.Log { return model.NewLog("") }
 func (yamlInfo YAMLResourceInfo) Status() string        { return "" }
 
+type LocalResourceInfo struct{}
+
+var _ ResourceInfoView = LocalResourceInfo{}
+
+func (LocalResourceInfo) resourceInfoView()     {}
+func (LocalResourceInfo) RuntimeLog() model.Log { return model.NewLog("") }
+func (LocalResourceInfo) Status() string        { return "" }
+
 type BuildRecord struct {
 	model.BuildRecord
 	IsCrashRebuild bool

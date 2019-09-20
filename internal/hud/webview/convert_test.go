@@ -16,10 +16,12 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
+var fooManifest = model.Manifest{Name: "foo"}.WithDeployTarget(model.K8sTarget{})
+
 func TestStateToWebViewMultipleSyncs(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
-	}.WithImageTarget(model.ImageTarget{}.
+	}.WithDeployTarget(model.K8sTarget{}).WithImageTarget(model.ImageTarget{}.
 		WithBuildDetails(model.FastBuild{
 			Syncs: []model.Sync{
 				{LocalPath: "/a/b"},
@@ -113,7 +115,7 @@ func TestRelativeTiltfilePath(t *testing.T) {
 func TestNeedsNudgeSet(t *testing.T) {
 	state := newState(nil)
 
-	m := model.Manifest{Name: "server"}
+	m := fooManifest
 	targ := store.NewManifestTarget(m)
 	targ.State = &store.ManifestState{}
 	state.UpsertManifestTarget(targ)
@@ -132,7 +134,7 @@ func TestNeedsNudgeSet(t *testing.T) {
 
 func TestTriggerMode(t *testing.T) {
 	state := newState(nil)
-	m := model.Manifest{Name: "server"}
+	m := fooManifest
 	targ := store.NewManifestTarget(m)
 	targ.Manifest.TriggerMode = model.TriggerModeManual
 	targ.State = &store.ManifestState{}
@@ -141,7 +143,7 @@ func TestTriggerMode(t *testing.T) {
 	v := StateToWebView(*state)
 	assert.Equal(t, 2, len(v.Resources))
 
-	newM, _ := v.Resource(model.ManifestName("server"))
+	newM, _ := v.Resource(model.ManifestName("foo"))
 	assert.Equal(t, model.TriggerModeManual, newM.TriggerMode)
 }
 
@@ -193,6 +195,7 @@ func TestLocalResource(t *testing.T) {
 	assert.Equal(t, 2, len(v.Resources))
 	r := v.Resources[1]
 	assert.Equal(t, "test", r.Name.String())
+	assert.Equal(t, RuntimeStatusOK, r.RuntimeStatus)
 }
 
 func newState(manifests []model.Manifest) *store.EngineState {
