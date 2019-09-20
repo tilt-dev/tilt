@@ -86,8 +86,8 @@ type EngineState struct {
 
 func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.ManifestName {
 	result := make([]model.ManifestName, 0)
-	for mn, state := range e.ManifestTargets {
-		manifest := state.Manifest
+	for mn, mt := range e.ManifestTargets {
+		manifest := mt.Manifest
 		for _, iTarget := range manifest.ImageTargets {
 			if iTarget.ID() == id {
 				result = append(result, mn)
@@ -97,6 +97,9 @@ func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.Manife
 			result = append(result, mn)
 		}
 		if manifest.DockerComposeTarget().ID() == id {
+			result = append(result, mn)
+		}
+		if manifest.LocalTarget().ID() == id {
 			result = append(result, mn)
 		}
 	}
