@@ -621,9 +621,9 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 	} else if mt.Manifest.IsK8s() {
 		// Ditto
 		return view.K8sResourceInfo{}
-	} else {
-		panic("Unrecognized manifest type (not one of: k8s, DC, local)")
 	}
+
+	panic("Unrecognized manifest type (not one of: k8s, DC, local)")
 }
 
 // DockerComposeConfigPath returns the path to the docker-compose yaml file of any
