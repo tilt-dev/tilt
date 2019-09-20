@@ -486,11 +486,29 @@ func handleConfigsReloaded(
 	}
 	state.TiltfileState.CurrentBuild = model.BuildRecord{}
 	if event.Err != nil {
-		// There was an error, so don't update status with the new, nonexistent state
+		// When the Tiltfile had an error, we want to differentiate between two cases:
+		//
+		// 1) You're running `tilt up` for the first time, and a local() command
+		// exited with status code 1.  Partial results (like enabling features)
+		// would be helpful.
+		//
+		// 2) You're running 'tilt up' in the happy state. You edit the Tiltfile,
+		// and introduce a syntax error.  You don't want partial results to wipe out
+		// your "good" state.
 
-		// EXCEPT for the config file list, because we want to watch new config files even when the tiltfile is broken
-		// append any new config files found in the reload action
+		// Watch any new config files in the partial state.
 		state.ConfigFiles = sliceutils.AppendWithoutDupes(state.ConfigFiles, event.ConfigFiles...)
+
+		// Enable any new features in the partial state.
+		if len(state.Features) == 0 {
+			state.Features = event.Features
+		} else {
+			for feature, val := range event.Features {
+				if val {
+					state.Features[feature] = val
+				}
+			}
+		}
 
 		return
 	}

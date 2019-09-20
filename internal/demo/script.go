@@ -185,9 +185,9 @@ func (s Script) Run(ctx context.Context) error {
 		}
 
 		tfPath := filepath.Join(dir, tiltfile.FileName)
-		tlr, err := s.tfl.Load(ctx, tfPath, nil)
-		if err != nil {
-			return err
+		tlr := s.tfl.Load(ctx, tfPath, nil)
+		if tlr.Error != nil {
+			return tlr.Error
 		}
 
 		defer s.cleanUp(newBackgroundContext(ctx), tlr.Manifests)

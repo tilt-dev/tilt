@@ -950,7 +950,8 @@ docker_build('gcr.io/bar', 'bar')
 k8s_yaml('bar.yaml')
 `)
 
-	_, err := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"))
+	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"))
+	err := tlr.Error
 	if assert.Error(t, err) {
 		assert.Equal(t, `You specified some resources that could not be found: "baz"
 Is this a typo? Existing resources in Tiltfile: "foo", "bar"`, err.Error())
@@ -3722,6 +3723,19 @@ func TestEnableFeature(t *testing.T) {
 	f.assertFeature("testflag_disabled", true)
 }
 
+func TestEnableFeatureWithError(t *testing.T) {
+	f := newFixture(t)
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+enable_feature('testflag_disabled')
+fail('goodnight moon')
+`)
+	f.loadErrString("goodnight moon")
+
+	f.assertFeature("testflag_disabled", true)
+}
+
 func TestDisableFeature(t *testing.T) {
 	f := newFixture(t)
 	f.setupFoo()
@@ -4130,7 +4144,8 @@ func (f *fixture) load(names ...string) {
 }
 
 func (f *fixture) loadResourceAssemblyV1(names ...string) {
-	tlr, err := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
+	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
+	err := tlr.Error
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -4141,7 +4156,8 @@ func (f *fixture) loadResourceAssemblyV1(names ...string) {
 // Load the manifests, expecting warnings.
 // Warnings should be asserted later with assertWarnings
 func (f *fixture) loadAllowWarnings(names ...string) {
-	tlr, err := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
+	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
+	err := tlr.Error
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -4166,7 +4182,8 @@ func (f *fixture) loadAssertWarnings(warnings ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	tlr, err := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	err := tlr.Error
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}
