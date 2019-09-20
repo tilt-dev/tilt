@@ -613,9 +613,17 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 			PodLog:             pod.CurrentLog,
 			YAML:               mt.Manifest.K8sTarget().YAML,
 		}
+	} else if mt.Manifest.IsLocal() {
+		return view.LocalResourceInfo{}
+	} else if mt.Manifest.IsDC() {
+		// Idk when we'd have a DC manifest w/o DC runtime status, but better an empty resource info than a nil one
+		return view.DCResourceInfo{}
+	} else if mt.Manifest.IsK8s() {
+		// Ditto
+		return view.K8sResourceInfo{}
+	} else {
+		panic("Unrecognized manifest type (not one of: k8s, DC, local)")
 	}
-	// Otherwise, LocalResource
-	return view.LocalResourceInfo{}
 }
 
 // DockerComposeConfigPath returns the path to the docker-compose yaml file of any
