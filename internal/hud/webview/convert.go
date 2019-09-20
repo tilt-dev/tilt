@@ -156,7 +156,6 @@ func resourceInfoView(mt *store.ManifestTarget) ResourceInfoView {
 			AllContainersReady: pod.AllContainersReady(),
 			PodRestarts:        pod.VisibleContainerRestarts(),
 			PodLog:             pod.Log(),
-			YAML:               mt.Manifest.K8sTarget().YAML,
 		}
 	}
 }
