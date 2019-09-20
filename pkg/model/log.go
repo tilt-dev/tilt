@@ -12,6 +12,12 @@ import (
 // A render time of ~40ms was about when the interface started being noticeably laggy to me.
 const maxLogLengthInBytes = 120 * 1000
 
+// After a log hits its limit, we need to truncate it to keep it small
+// we do this by cutting a big chunk at a time, so that we have rarer, larger changes, instead of
+// a small change every time new data is written to the log
+// https://github.com/windmilleng/tilt/issues/1935#issuecomment-531390353
+const logTruncationTarget = maxLogLengthInBytes / 2
+
 const newlineByte = byte('\n')
 
 // All LogLines should end in a \n to be considered "complete".
@@ -143,13 +149,17 @@ type LogEvent interface {
 }
 
 func ensureMaxLength(lines []logLine) []logLine {
-	bytesLeft := maxLogLengthInBytes
+	bytesSpent := 0
+	truncationIndex := -1
 	for i := len(lines) - 1; i >= 0; i-- {
 		line := lines[i]
-		if line.Len() > bytesLeft {
-			return lines[i+1:]
+		bytesSpent += line.Len()
+		if truncationIndex == -1 && bytesSpent > logTruncationTarget {
+			truncationIndex = i + 1
 		}
-		bytesLeft -= line.Len()
+		if bytesSpent > maxLogLengthInBytes {
+			return lines[truncationIndex:]
+		}
 	}
 
 	return lines
