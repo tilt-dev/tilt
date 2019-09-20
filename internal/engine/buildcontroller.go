@@ -40,37 +40,22 @@ func nextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 		return nil
 	}
 
-	// unresourced YAML goes first
-	targets := append([]*store.ManifestTarget{}, state.Targets()...)
-	findUnresourcedYAMLAndPutItFirst(targets)
+	targets := state.Targets()
 
-	// put no-build manifests next since they're more likely to be
-	// 1. fast and 2. dependencies of other services (e.g., redis)
-	sort.Sort(newNoBuildsManifestsFirst(targets))
-
-	// First, go through all the manifests in order.
-	// If any of them haven't started yet, build them now.
-	for _, mt := range targets {
-		if !mt.State.StartedFirstBuild() {
-			return mt
-		}
+	// If any of the manifest target's haven't been built yet, build them now.
+	unbuilt := findUnbuiltTargets(targets)
+	if len(unbuilt) > 0 {
+		return nextUnbuiltTargetToBuild(unbuilt)
 	}
 
-	// Next go through all the manifests, and check:
-	// 1) all pending file changes, and
-	// 2) all pending manifest changes
-	// The earliest one is the one we want.
-	var choice *store.ManifestTarget
-	earliest := time.Now()
-
-	// always use a stable iteration order
+	// Next prioritize builds that crashed and need a rebuilt to have up-to-date code.
 	for _, mt := range targets {
-		// Always prioritize builds that crashes and have an out-of-sync.
 		if mt.State.NeedsRebuildFromCrash {
 			return mt
 		}
 	}
 
+	// Next prioritize builds that are have been manually triggered.
 	if len(state.TriggerQueue) > 0 {
 		mn := state.TriggerQueue[0]
 		mt, ok := state.ManifestTargets[mn]
@@ -78,6 +63,19 @@ func nextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 			return mt
 		}
 	}
+
+	return earliestPendingAutoTriggerTarget(targets)
+}
+
+// Go through all the manifests, and check:
+// 1) all pending file changes, and
+// 2) all pending manifest changes
+// The earliest one is the one we want.
+//
+// If no targets are pending, return nil
+func earliestPendingAutoTriggerTarget(targets []*store.ManifestTarget) *store.ManifestTarget {
+	var choice *store.ManifestTarget
+	earliest := time.Now()
 
 	for _, mt := range targets {
 		ok, newTime := mt.State.HasPendingChangesBefore(earliest)
@@ -95,59 +93,52 @@ func nextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 	return choice
 }
 
-func findUnresourcedYAMLAndPutItFirst(input []*store.ManifestTarget) {
-	for i := range input {
-		if input[i].Manifest.ManifestName() == model.UnresourcedYAMLManifestName {
-			found := input[i]
-			copy(input[1:], append(input[:i], input[i+1:]...))
-			input[0] = found
-			break
+// Helper function for ordering targets that have never been built before.
+func nextUnbuiltTargetToBuild(unbuilt []*store.ManifestTarget) *store.ManifestTarget {
+	// unresourced YAML goes first
+	unresourced := findUnresourcedYAML(unbuilt)
+	if unresourced != nil {
+		return unresourced
+	}
+
+	// If this is Kubernetes, unbuilt resources go first.
+	// (If this is Docker Compose, we want to trust the ordering
+	// that docker-compose put things in.)
+	deployOnlyK8sTargets := findDeployOnlyK8sManifestTargets(unbuilt)
+	if len(deployOnlyK8sTargets) > 0 {
+		return deployOnlyK8sTargets[0]
+	}
+
+	return unbuilt[0]
+}
+
+func findUnbuiltTargets(targets []*store.ManifestTarget) []*store.ManifestTarget {
+	result := []*store.ManifestTarget{}
+	for _, target := range targets {
+		if !target.State.StartedFirstBuild() {
+			result = append(result, target)
 		}
 	}
+	return result
 }
 
-type noBuildManifestsFirst struct {
-	mts             []*store.ManifestTarget
-	origIndexByName map[string]int
-}
-
-var _ sort.Interface = noBuildManifestsFirst{}
-
-func newNoBuildsManifestsFirst(mts []*store.ManifestTarget) *noBuildManifestsFirst {
-	indexByName := make(map[string]int)
-	for i, mt := range mts {
-		indexByName[mt.Manifest.Name.String()] = i
+func findUnresourcedYAML(targets []*store.ManifestTarget) *store.ManifestTarget {
+	for _, target := range targets {
+		if target.Manifest.ManifestName() == model.UnresourcedYAMLManifestName {
+			return target
+		}
 	}
-	return &noBuildManifestsFirst{
-		mts:             mts,
-		origIndexByName: indexByName,
-	}
+	return nil
 }
 
-func (nbmf noBuildManifestsFirst) Len() int {
-	return len(nbmf.mts)
-}
-
-func (nbmf noBuildManifestsFirst) Less(i, j int) bool {
-	isNoBuild := func(mt *store.ManifestTarget) bool {
-		return len(mt.Manifest.ImageTargets) == 0
+func findDeployOnlyK8sManifestTargets(targets []*store.ManifestTarget) []*store.ManifestTarget {
+	result := []*store.ManifestTarget{}
+	for _, target := range targets {
+		if target.Manifest.IsK8s() && len(target.Manifest.ImageTargets) == 0 {
+			result = append(result, target)
+		}
 	}
-
-	a := nbmf.mts[i]
-	b := nbmf.mts[j]
-
-	nba := isNoBuild(a)
-	nbb := isNoBuild(b)
-
-	if nba == nbb {
-		return nbmf.origIndexByName[a.Manifest.Name.String()] < nbmf.origIndexByName[b.Manifest.Name.String()]
-	} else {
-		return nba
-	}
-}
-
-func (nbmf noBuildManifestsFirst) Swap(i, j int) {
-	nbmf.mts[i], nbmf.mts[j] = nbmf.mts[j], nbmf.mts[i]
+	return result
 }
 
 func nextManifestNameToBuild(state store.EngineState) model.ManifestName {
