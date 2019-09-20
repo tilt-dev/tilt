@@ -144,7 +144,11 @@ func resourceInfoView(mt *store.ManifestTarget) ResourceInfoView {
 		dc := mt.Manifest.DockerComposeTarget()
 		dcState := mt.State.DCRuntimeState()
 		return NewDCResourceInfo(dc.ConfigPaths, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
-	} else {
+	}
+	if mt.Manifest.IsLocal() {
+		return LocalResourceInfo{}
+	}
+	if mt.Manifest.IsK8s() {
 		kState := mt.State.K8sRuntimeState()
 		pod := kState.MostRecentPod()
 		return K8sResourceInfo{
@@ -159,9 +163,15 @@ func resourceInfoView(mt *store.ManifestTarget) ResourceInfoView {
 			YAML:               mt.Manifest.K8sTarget().YAML,
 		}
 	}
+
+	panic("Unrecognized manifest type (not one of: k8s, DC, local)")
 }
 
 func runtimeStatus(res ResourceInfoView) RuntimeStatus {
+	_, isLocal := res.(LocalResourceInfo)
+	if isLocal {
+		return RuntimeStatusOK
+	}
 	// if we have no images to build, we have no runtime status monitoring.
 	_, isYAML := res.(YAMLResourceInfo)
 	if isYAML {
