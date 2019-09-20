@@ -4,6 +4,7 @@ import (
 	"context"
 	"os/exec"
 
+	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -12,10 +13,12 @@ import (
 var _ BuildAndDeployer = &LocalTargetBuildAndDeployer{}
 
 // TODO(maia): CommandRunner interface for testability
-type LocalTargetBuildAndDeployer struct{}
+type LocalTargetBuildAndDeployer struct {
+	clock build.Clock
+}
 
-func NewLocalTargetBuildAndDeployer() *LocalTargetBuildAndDeployer {
-	return &LocalTargetBuildAndDeployer{}
+func NewLocalTargetBuildAndDeployer(c build.Clock) *LocalTargetBuildAndDeployer {
+	return &LocalTargetBuildAndDeployer{clock: c}
 }
 
 func (bd *LocalTargetBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (resultSet store.BuildResultSet, err error) {
@@ -59,9 +62,11 @@ func (bd *LocalTargetBuildAndDeployer) run(ctx context.Context, c model.Cmd) err
 	cmd.Stdout = writer
 	cmd.Stderr = writer
 
-	// TODO(maia): pipeline step for recording duration etc., better log output
-	l.Infof("Running command: %v", c.Argv)
+	ps := build.NewPipelineState(ctx, 1, bd.clock)
+	ps.StartPipelineStep(ctx, "Running command: %v", c.Argv)
+	defer ps.EndPipelineStep(ctx)
 	err := cmd.Run()
+	defer func() { ps.End(ctx, err) }()
 	if err != nil {
 		// TODO(maia): any point in checking if it's an ExitError,
 		//   pulling out the error code, etc.?

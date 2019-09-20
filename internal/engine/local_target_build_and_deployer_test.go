@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -95,8 +96,9 @@ type ltFixture struct {
 func newLTFixture() *ltFixture {
 	out := new(bytes.Buffer)
 	ctx, _, _ := testutils.ForkedCtxAndAnalyticsForTest(out)
+	clock := fakeClock{time.Date(2019, 1, 1, 1, 1, 1, 1, time.UTC)}
 
-	ltbad := NewLocalTargetBuildAndDeployer()
+	ltbad := NewLocalTargetBuildAndDeployer(clock)
 	st, _ := store.NewStoreForTesting()
 	return &ltFixture{
 		ctx:   ctx,
