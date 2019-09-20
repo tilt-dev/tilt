@@ -7,6 +7,7 @@ import (
 )
 
 type LocalTarget struct {
+	Name TargetName
 	Cmd  Cmd
 	deps []string // a list of ABSOLUTE file paths that are dependencies of this target
 
@@ -15,8 +16,12 @@ type LocalTarget struct {
 
 var _ TargetSpec = LocalTarget{}
 
-func NewLocalTarget(cmd Cmd, deps []string) LocalTarget {
-	return LocalTarget{Cmd: cmd, deps: deps}
+func NewLocalTarget(name TargetName, cmd Cmd, deps []string) LocalTarget {
+	return LocalTarget{
+		Name: name,
+		Cmd:  cmd,
+		deps: deps,
+	}
 }
 
 func (lt LocalTarget) Empty() bool { return lt.Cmd.Empty() }
@@ -28,7 +33,7 @@ func (lt LocalTarget) WithRepos(repos []LocalGitRepo) LocalTarget {
 
 func (lt LocalTarget) ID() TargetID {
 	return TargetID{
-		Name: TargetName(lt.Cmd.String()),
+		Name: lt.Name,
 		Type: TargetTypeLocal,
 	}
 }

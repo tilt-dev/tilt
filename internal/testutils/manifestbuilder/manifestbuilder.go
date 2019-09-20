@@ -111,7 +111,7 @@ func (b ManifestBuilder) Build() model.Manifest {
 	}
 
 	if b.localCmd != "" {
-		lt := model.NewLocalTarget(model.ToShellCmd(b.localCmd), b.localDeps)
+		lt := model.NewLocalTarget(model.TargetName(b.name), model.ToShellCmd(b.localCmd), b.localDeps)
 		return model.Manifest{Name: b.name}.WithDeployTarget(lt)
 	}
 
