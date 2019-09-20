@@ -1,4 +1,4 @@
-package engine
+package k8swatch
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
 	"github.com/windmilleng/tilt/internal/testutils/podbuilder"
@@ -190,7 +191,7 @@ func (f *ewmFixture) addManifest(manifestName model.ManifestName) model.Manifest
 	state.WatchFiles = true
 
 	m := manifestbuilder.New(f, manifestName).
-		WithK8sYAML(SanchoYAML).
+		WithK8sYAML(testyaml.SanchoYAML).
 		Build()
 	state.UpsertManifestTarget(store.NewManifestTarget(m))
 	f.store.UnlockMutableState()

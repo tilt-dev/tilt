@@ -1,4 +1,4 @@
-package engine
+package k8swatch
 
 import (
 	"context"
@@ -90,7 +90,7 @@ func (m *EventWatchManager) setupWatch(ctx context.Context, st store.RStore, til
 	ch, err := m.kClient.WatchEvents(ctx)
 	if err != nil {
 		err = errors.Wrap(err, "Error watching k8s events\n")
-		st.Dispatch(NewErrorAction(err))
+		st.Dispatch(store.NewErrorAction(err))
 		return
 	}
 	go m.dispatchEventsLoop(ctx, ch, st, tiltStartTime)

@@ -1,4 +1,4 @@
-package engine
+package k8swatch
 
 import (
 	"context"

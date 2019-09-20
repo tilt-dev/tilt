@@ -1,4 +1,4 @@
-package engine
+package k8swatch
 
 import (
 	"context"
@@ -66,7 +66,7 @@ func (w *ServiceWatcher) setupWatch(ctx context.Context, st store.RStore) {
 	ch, err := w.kCli.WatchServices(ctx, k8s.ManagedByTiltSelector())
 	if err != nil {
 		err = errors.Wrap(err, "Error watching services. Are you connected to kubernetes?\n")
-		st.Dispatch(NewErrorAction(err))
+		st.Dispatch(store.NewErrorAction(err))
 		return
 	}
 
@@ -89,7 +89,7 @@ func (w *ServiceWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newU
 			continue
 		}
 
-		err := dispatchServiceChange(st, service, mn, w.nodeIP)
+		err := DispatchServiceChange(st, service, mn, w.nodeIP)
 		if err != nil {
 			logger.Get(ctx).Infof("error resolving service url %s: %v", service.Name, err)
 		}
@@ -153,7 +153,7 @@ func (w *ServiceWatcher) dispatchServiceChangesLoop(ctx context.Context, ch <-ch
 				continue
 			}
 
-			err := dispatchServiceChange(st, service, manifestName, w.nodeIP)
+			err := DispatchServiceChange(st, service, manifestName, w.nodeIP)
 			if err != nil {
 				logger.Get(ctx).Infof("error resolving service url %s: %v", service.Name, err)
 			}
@@ -163,7 +163,7 @@ func (w *ServiceWatcher) dispatchServiceChangesLoop(ctx context.Context, ch <-ch
 	}
 }
 
-func dispatchServiceChange(st store.RStore, service *v1.Service, mn model.ManifestName, ip k8s.NodeIP) error {
+func DispatchServiceChange(st store.RStore, service *v1.Service, mn model.ManifestName, ip k8s.NodeIP) error {
 	url, err := k8s.ServiceURL(service, ip)
 	if err != nil {
 		return err

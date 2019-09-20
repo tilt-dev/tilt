@@ -18,6 +18,7 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/engine/configs"
+	"github.com/windmilleng/tilt/internal/engine/k8swatch"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -147,11 +148,11 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleExitAction(state, action)
 	case targetFilesChangedAction:
 		handleFSEvent(ctx, state, action)
-	case PodChangeAction:
+	case k8swatch.PodChangeAction:
 		handlePodChangeAction(ctx, state, action)
 	case store.PodResetRestartsAction:
 		handlePodResetRestartsAction(state, action)
-	case ServiceChangeAction:
+	case k8swatch.ServiceChangeAction:
 		handleServiceEvent(ctx, state, action)
 	case store.K8sEventAction:
 		handleK8sEvent(ctx, state, action)
@@ -583,7 +584,7 @@ func sourcePrefix(n model.ManifestName) string {
 	return fmt.Sprintf("%s%s┊ ", n, spaces)
 }
 
-func handleServiceEvent(ctx context.Context, state *store.EngineState, action ServiceChangeAction) {
+func handleServiceEvent(ctx context.Context, state *store.EngineState, action k8swatch.ServiceChangeAction) {
 	service := action.Service
 	ms, ok := state.ManifestState(action.ManifestName)
 	if !ok {
