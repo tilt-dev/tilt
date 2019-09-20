@@ -17,6 +17,7 @@ import (
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -164,9 +165,9 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleBuildStarted(ctx, state, action)
 	case DeployIDAction:
 		handleDeployIDAction(ctx, state, action)
-	case ConfigsReloadStartedAction:
+	case configs.ConfigsReloadStartedAction:
 		handleConfigsReloadStarted(ctx, state, action)
-	case ConfigsReloadedAction:
+	case configs.ConfigsReloadedAction:
 		handleConfigsReloaded(ctx, state, action)
 	case DockerComposeEventAction:
 		handleDockerComposeEvent(ctx, state, action)
@@ -180,7 +181,7 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleStopProfilingAction(state)
 	case hud.SetLogTimestampsAction:
 		handleLogTimestampsAction(state, action)
-	case TiltfileLogAction:
+	case configs.TiltfileLogAction:
 		handleTiltfileLogAction(ctx, state, action)
 	case hud.DumpEngineStateAction:
 		handleDumpEngineStateAction(ctx, state)
@@ -447,7 +448,7 @@ func handleFSEvent(
 func handleConfigsReloadStarted(
 	ctx context.Context,
 	state *store.EngineState,
-	event ConfigsReloadStartedAction,
+	event configs.ConfigsReloadStartedAction,
 ) {
 	filesChanged := []string{}
 	for f, _ := range event.FilesChanged {
@@ -465,7 +466,7 @@ func handleConfigsReloadStarted(
 func handleConfigsReloaded(
 	ctx context.Context,
 	state *store.EngineState,
-	event ConfigsReloadedAction,
+	event configs.ConfigsReloadedAction,
 ) {
 	manifests := event.Manifests
 	if state.InitialBuildsQueued == 0 {
@@ -699,7 +700,7 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 	ms.RuntimeState = dcState.WithCurrentLog(model.AppendLog(dcState.CurrentLog, action, state.LogTimestamps, ""))
 }
 
-func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action TiltfileLogAction) {
+func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action configs.TiltfileLogAction) {
 	state.TiltfileState.CurrentBuild.Log = model.AppendLog(state.TiltfileState.CurrentBuild.Log, action, state.LogTimestamps, "")
 	state.TiltfileState.CombinedLog = model.AppendLog(state.TiltfileState.CombinedLog, action, state.LogTimestamps, "")
 }

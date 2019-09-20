@@ -1,4 +1,4 @@
-package engine
+package configs
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
@@ -26,7 +27,7 @@ func TestConfigsController(t *testing.T) {
 	assert.Equal(t, model.OrchestratorUnknown, f.docker.Orchestrator)
 	f.addManifest("fe")
 
-	bar := manifestbuilder.New(f, "bar").WithK8sYAML(SanchoYAML).Build()
+	bar := manifestbuilder.New(f, "bar").WithK8sYAML(testyaml.SanchoYAML).Build()
 	a := f.run(bar)
 
 	expected := ConfigsReloadedAction{
@@ -46,7 +47,7 @@ func TestConfigsControllerDockerNotConnected(t *testing.T) {
 	f.addManifest("fe")
 	f.docker.CheckConnectedErr = fmt.Errorf("connection-error")
 
-	bar := manifestbuilder.New(f, "bar").WithK8sYAML(SanchoYAML).Build()
+	bar := manifestbuilder.New(f, "bar").WithK8sYAML(testyaml.SanchoYAML).Build()
 	a := f.run(bar)
 
 	if assert.Error(t, a.Err) {
@@ -90,7 +91,7 @@ func newCCFixture(t *testing.T) *ccFixture {
 
 func (f *ccFixture) addManifest(name model.ManifestName) {
 	state := f.st.LockMutableStateForTesting()
-	m := manifestbuilder.New(f, name).WithK8sYAML(SanchoYAML).Build()
+	m := manifestbuilder.New(f, name).WithK8sYAML(testyaml.SanchoYAML).Build()
 	mt := store.NewManifestTarget(m)
 	state.UpsertManifestTarget(mt)
 	state.PendingConfigFileChanges["Tiltfile"] = time.Now()

@@ -31,6 +31,7 @@ import (
 	"github.com/windmilleng/tilt/internal/containerupdate"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/github"
 	"github.com/windmilleng/tilt/internal/hud"
@@ -2141,7 +2142,7 @@ func TestNewSyncsAreWatched(t *testing.T) {
 
 	sync2 := model.Sync{LocalPath: "/js", ContainerPath: "/go"}
 	m2 := f.newFastBuildManifest("mani1", []model.Sync{sync1, sync2})
-	f.store.Dispatch(ConfigsReloadedAction{
+	f.store.Dispatch(configs.ConfigsReloadedAction{
 		Manifests: []model.Manifest{m2},
 	})
 
@@ -2263,7 +2264,7 @@ func TestDockerComposeStartsEventWatcher(t *testing.T) {
 	f.Start([]model.Manifest{}, true)
 	time.Sleep(10 * time.Millisecond)
 
-	f.store.Dispatch(ConfigsReloadedAction{Manifests: []model.Manifest{m}})
+	f.store.Dispatch(configs.ConfigsReloadedAction{Manifests: []model.Manifest{m}})
 	f.waitForCompletedBuildCount(1)
 
 	// Is DockerComposeEventWatcher watching for events??
@@ -2545,13 +2546,13 @@ func TestFeatureFlagsStoredOnState(t *testing.T) {
 
 	f.Start([]model.Manifest{}, true)
 
-	f.store.Dispatch(ConfigsReloadedAction{Features: map[string]bool{"foo": true}})
+	f.store.Dispatch(configs.ConfigsReloadedAction{Features: map[string]bool{"foo": true}})
 
 	f.WaitUntil("feature is enabled", func(state store.EngineState) bool {
 		return state.Features["foo"] == true
 	})
 
-	f.store.Dispatch(ConfigsReloadedAction{Features: map[string]bool{"foo": false}})
+	f.store.Dispatch(configs.ConfigsReloadedAction{Features: map[string]bool{"foo": false}})
 
 	f.WaitUntil("feature is disabled", func(state store.EngineState) bool {
 		return state.Features["foo"] == false
@@ -2563,13 +2564,13 @@ func TestTeamNameStoredOnState(t *testing.T) {
 
 	f.Start([]model.Manifest{}, true)
 
-	f.store.Dispatch(ConfigsReloadedAction{TeamName: "sharks"})
+	f.store.Dispatch(configs.ConfigsReloadedAction{TeamName: "sharks"})
 
 	f.WaitUntil("teamName is set to sharks", func(state store.EngineState) bool {
 		return state.TeamName == "sharks"
 	})
 
-	f.store.Dispatch(ConfigsReloadedAction{TeamName: "jets"})
+	f.store.Dispatch(configs.ConfigsReloadedAction{TeamName: "jets"})
 
 	f.WaitUntil("teamName is set to jets", func(state store.EngineState) bool {
 		return state.TeamName == "jets"
@@ -2757,7 +2758,7 @@ type testFixture struct {
 	store                 *store.Store
 	bc                    *BuildController
 	fwm                   *WatchManager
-	cc                    *ConfigsController
+	cc                    *configs.ConfigsController
 	dcc                   *dockercompose.FakeDCClient
 	tfl                   tiltfile.TiltfileLoader
 	ghc                   *github.FakeClient
@@ -2809,9 +2810,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	ar := ProvideAnalyticsReporter(ta, st)
 
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
-
 	tfl := tiltfile.ProvideTiltfileLoader(ta, kCli, fakeDcc, "fake-context", k8s.EnvDockerDesktop, feature.MainDefaults)
-	cc := NewConfigsController(tfl, dockerClient)
+	cc := configs.NewConfigsController(tfl, dockerClient)
 	dcw := NewDockerComposeEventWatcher(fakeDcc)
 	dclm := NewDockerComposeLogManager(fakeDcc)
 	pm := NewProfilerManager()
@@ -2886,7 +2886,7 @@ func (f *testFixture) setManifests(manifests []model.Manifest) {
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	tfl.Result.Manifests = manifests
 	f.tfl = tfl
-	f.cc.tfl = tfl
+	f.cc.SetTiltfileLoaderForTesting(tfl)
 }
 
 type initOption func(ia InitAction) InitAction

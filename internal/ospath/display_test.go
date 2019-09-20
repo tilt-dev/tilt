@@ -1,4 +1,4 @@
-package engine
+package ospath
 
 import (
 	"os"
@@ -9,7 +9,7 @@ import (
 )
 
 func TestFormatChangedFileListTruncates(t *testing.T) {
-	actual := formatFileChangeList([]string{"a", "b", "c", "d", "e", "f"})
+	actual := FormatFileChangeList([]string{"a", "b", "c", "d", "e", "f"})
 	expected := "[a b c d e ...]"
 	require.Equal(t, expected, actual)
 }
@@ -17,7 +17,7 @@ func TestFormatChangedFileListTruncates(t *testing.T) {
 func TestFormatChangedFileListMakesRelative(t *testing.T) {
 	wd, err := os.Getwd()
 	require.NoError(t, err)
-	actual := formatFileChangeList([]string{filepath.Join(wd, "foo"), "/bar/baz"})
+	actual := FormatFileChangeList([]string{filepath.Join(wd, "foo"), "/bar/baz"})
 	expected := "[foo /bar/baz]"
 	require.Equal(t, expected, actual)
 }
