@@ -74,7 +74,6 @@ export type K8sResourceInfo = {
   PodStatusMessage: string
   PodRestarts: number
   PodLog: string
-  YAML: string
   Endpoints: Array<string>
 }
 export type DCResourceInfo = {

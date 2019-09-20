@@ -63,7 +63,6 @@ class AppController {
           PodStatusMessage: "",
           PodRestarts: 0,
           PodLog: "",
-          YAML: "",
           Endpoints: [],
         }
       }
