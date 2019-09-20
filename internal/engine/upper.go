@@ -228,7 +228,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 			pod.CurrentLog = model.Log{}
 			pod.UpdateStartTime = action.StartTime
 		}
-	} else {
+	} else if ms.IsDC() {
 		ms.RuntimeState = ms.DCRuntimeState().WithCurrentLog(model.Log{})
 	}
 
@@ -352,6 +352,11 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		}
 
 		ms.RuntimeState = state
+	}
+
+	if mt.Manifest.IsLocal() {
+		// dummy value to indicate that this is a LocalResource (LR's have no runtime state, only build state)
+		ms.RuntimeState = store.LocalRuntimeState{}
 	}
 
 	if engineState.WatchFiles {

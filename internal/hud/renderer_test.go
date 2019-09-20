@@ -814,6 +814,70 @@ func TestRenderTabView(t *testing.T) {
 	rtf.run("log tab pod", 117, 20, v, vs)
 }
 
+func TestPendingLocalResource(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+
+	ts := time.Now().Add(-5 * time.Minute)
+
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name: "yarn-add",
+				CurrentBuild: model.BuildRecord{
+					StartTime: ts.Add(-5 * time.Second),
+					Edits:     []string{"node.json"},
+				},
+				ResourceInfo: view.LocalResourceInfo{},
+			},
+		},
+	}
+
+	vs := fakeViewState(1, view.CollapseAuto)
+	rtf.run("unfinished local resource", 80, 20, v, vs)
+}
+
+func TestFinishedLocalResource(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name: "yarn-add",
+				BuildHistory: []model.BuildRecord{
+					model.BuildRecord{FinishTime: time.Now()},
+				},
+				ResourceInfo: view.LocalResourceInfo{},
+			},
+		},
+	}
+
+	vs := fakeViewState(1, view.CollapseAuto)
+	rtf.run("finished local resource", 80, 20, v, vs)
+}
+
+func TestErroredLocalResource(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+
+	v := view.View{
+		Resources: []view.Resource{
+			{
+				Name: "yarn-add",
+				BuildHistory: []model.BuildRecord{
+					model.BuildRecord{
+						FinishTime: time.Now(),
+						Error:      fmt.Errorf("help i'm trapped in an error factory"),
+						Log:        model.NewLog("1\n2\n3\nthe compiler did not understand!\n5\n6\n7\n8\n"),
+					},
+				},
+				ResourceInfo: view.LocalResourceInfo{},
+			},
+		},
+	}
+
+	vs := fakeViewState(1, view.CollapseAuto)
+	rtf.run("errored local resource", 80, 20, v, vs)
+}
+
 type rendererTestFixture struct {
 	i rty.InteractiveTester
 }

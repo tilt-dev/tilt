@@ -63,6 +63,9 @@ var statusColors = map[string]tcell.Color{
 	string(dockercompose.StatusUp):     cGood,
 	string(dockercompose.StatusDown):   cBad,
 	"Completed":                        cGood,
+
+	// Placeholder. LocalResource has no runtime status; if build succeeds, should always be green
+	view.LocalResourceStatusPlaceholder: cGood,
 }
 
 func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {

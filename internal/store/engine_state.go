@@ -600,10 +600,12 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 		}
 	}
 
-	if dcState, ok := mt.State.RuntimeState.(dockercompose.State); ok {
-		return view.NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPaths, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
-	} else {
-		pod := mt.State.MostRecentPod()
+	switch state := mt.State.RuntimeState.(type) {
+	case dockercompose.State:
+		return view.NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPaths,
+			state.Status, state.ContainerID, state.Log(), state.StartTime)
+	case K8sRuntimeState:
+		pod := state.MostRecentPod()
 		return view.K8sResourceInfo{
 			PodName:            pod.PodID.String(),
 			PodCreationTime:    pod.StartedAt,
@@ -613,6 +615,11 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 			PodLog:             pod.CurrentLog,
 			YAML:               mt.Manifest.K8sTarget().YAML,
 		}
+	case LocalRuntimeState:
+		return view.LocalResourceInfo{}
+	default:
+		// This is silly but it was the old behavior.
+		return view.K8sResourceInfo{}
 	}
 }
 

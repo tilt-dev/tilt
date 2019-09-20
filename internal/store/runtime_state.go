@@ -17,6 +17,15 @@ type RuntimeState interface {
 	RuntimeState()
 }
 
+// Currently just a placeholder, as a LocalResource has no runtime state, only "build"
+// state. In future, we may use this to store runtime state for long-running processes
+// kicked off via a LocalResource.
+type LocalRuntimeState struct{}
+
+func (LocalRuntimeState) RuntimeState() {}
+
+var _ RuntimeState = LocalRuntimeState{}
+
 type K8sRuntimeState struct {
 	// The ancestor that we match pods against to associate them with this manifest.
 	// If we deployed Pod YAML, this will be the Pod UID.
@@ -29,6 +38,8 @@ type K8sRuntimeState struct {
 }
 
 func (K8sRuntimeState) RuntimeState() {}
+
+var _ RuntimeState = K8sRuntimeState{}
 
 func NewK8sRuntimeState(pods ...Pod) K8sRuntimeState {
 	podMap := make(map[k8s.PodID]*Pod, len(pods))
