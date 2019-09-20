@@ -25,6 +25,8 @@ type ManifestBuilder struct {
 	k8sYAML         string
 	k8sPodSelectors []labels.Selector
 	dcConfigPaths   []string
+	localCmd        string
+	localDeps       []string
 
 	iTargets []model.ImageTarget
 }
@@ -48,6 +50,12 @@ func (b ManifestBuilder) WithK8sPodSelectors(podSelectors []labels.Selector) Man
 
 func (b ManifestBuilder) WithDockerCompose() ManifestBuilder {
 	b.dcConfigPaths = []string{b.f.JoinPath("docker-compose.yml")}
+	return b
+}
+
+func (b ManifestBuilder) WithLocalResource(cmd string, deps []string) ManifestBuilder {
+	b.localCmd = cmd
+	b.localDeps = deps
 	return b
 }
 
@@ -100,6 +108,11 @@ func (b ManifestBuilder) Build() model.Manifest {
 				ConfigPaths: b.dcConfigPaths,
 			},
 			b.iTargets...)
+	}
+
+	if b.localCmd != "" {
+		lt := model.NewLocalTarget(model.ToShellCmd(b.localCmd), b.localDeps)
+		return model.Manifest{Name: b.name}.WithDeployTarget(lt)
 	}
 
 	b.f.T().Fatalf("No deploy target specified: %s", b.name)

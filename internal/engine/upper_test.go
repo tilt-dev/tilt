@@ -120,6 +120,16 @@ func (c buildAndDeployCall) dc() model.DockerComposeTarget {
 	return model.DockerComposeTarget{}
 }
 
+func (c buildAndDeployCall) local() model.LocalTarget {
+	for _, spec := range c.specs {
+		t, ok := spec.(model.LocalTarget)
+		if ok {
+			return t
+		}
+	}
+	return model.LocalTarget{}
+}
+
 func (c buildAndDeployCall) oneState() store.BuildState {
 	if len(c.state) != 1 {
 		panic(fmt.Sprintf("More than one state: %v", c.state))
@@ -176,7 +186,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	b.buildCount++
 
 	call := buildAndDeployCall{count: b.buildCount, specs: specs, state: state}
-	if call.dc().Empty() && call.k8s().Empty() {
+	if call.dc().Empty() && call.k8s().Empty() && call.local().Empty() {
 		b.t.Fatalf("Invalid call: %+v", call)
 	}
 

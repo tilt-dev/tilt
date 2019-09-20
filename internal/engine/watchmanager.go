@@ -18,7 +18,7 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
-const DetectedOverflowErrMsg = `It looks like the inotify event queue has overflowed. Check these instructions for how to raise the queue limit https://facebook.github.io/watchman/docs/install.html#system-specific-preparation`
+const DetectedOverflowErrMsg = `It looks like the inotify event queue has overflowed. Check these instructions for how to raise the queue limit: https://facebook.github.io/watchman/docs/install.html#system-specific-preparation`
 
 var ConfigsTargetID = model.TargetID{
 	Type: model.TargetTypeConfigs,
@@ -32,22 +32,19 @@ type WatchableTarget interface {
 	ID() model.TargetID
 }
 
+var _ WatchableTarget = model.ImageTarget{}
+var _ WatchableTarget = model.LocalTarget{}
+
 func watchableTargetsForManifests(manifests []model.Manifest) []WatchableTarget {
 	var watchable []WatchableTarget
 	seen := map[model.TargetID]bool{}
 	for _, m := range manifests {
-		if m.IsDC() {
-			dcTarget := m.DockerComposeTarget()
-			if !seen[dcTarget.ID()] {
-				watchable = append(watchable, dcTarget)
-				seen[dcTarget.ID()] = true
-			}
-		}
-
-		for _, iTarget := range m.ImageTargets {
-			if !seen[iTarget.ID()] {
-				watchable = append(watchable, iTarget)
-				seen[iTarget.ID()] = true
+		for _, t := range m.TargetSpecs() {
+			if !seen[t.ID()] {
+				if watchTarg, ok := t.(WatchableTarget); ok {
+					watchable = append(watchable, watchTarg)
+					seen[watchTarg.ID()] = true
+				}
 			}
 		}
 	}

@@ -1195,7 +1195,8 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 		if err != nil {
 			return nil, err
 		}
-		lt := model.NewLocalTarget(r.cmd, r.deps)
+
+		lt := model.NewLocalTarget(r.cmd, r.deps).WithRepos(reposForPaths(r.deps))
 		m := model.Manifest{
 			Name:        mn,
 			TriggerMode: tm,
