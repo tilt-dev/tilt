@@ -354,6 +354,11 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		ms.RuntimeState = state
 	}
 
+	if mt.Manifest.IsLocal() {
+		// dummy value to indicate that this is a LocalResource (LR's have no runtime state, only build state)
+		ms.RuntimeState = store.LocalRuntimeState{}
+	}
+
 	if engineState.WatchFiles {
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 	}

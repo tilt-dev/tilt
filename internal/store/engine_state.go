@@ -600,10 +600,12 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 		}
 	}
 
-	if dcState, ok := mt.State.RuntimeState.(dockercompose.State); ok {
-		return view.NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPaths, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
-	} else if k8sState, ok := mt.State.RuntimeState.(K8sRuntimeState); ok {
-		pod := k8sState.MostRecentPod()
+	switch state := mt.State.RuntimeState.(type) {
+	case dockercompose.State:
+		return view.NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPaths,
+			state.Status, state.ContainerID, state.Log(), state.StartTime)
+	case K8sRuntimeState:
+		pod := state.MostRecentPod()
 		return view.K8sResourceInfo{
 			PodName:            pod.PodID.String(),
 			PodCreationTime:    pod.StartedAt,
@@ -613,17 +615,12 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 			PodLog:             pod.CurrentLog,
 			YAML:               mt.Manifest.K8sTarget().YAML,
 		}
-	} else if mt.Manifest.IsLocal() {
+	case LocalRuntimeState:
 		return view.LocalResourceInfo{}
-	} else if mt.Manifest.IsDC() {
-		// Idk when we'd have a DC manifest w/o DC runtime status, but better an empty resource info than a nil one
-		return view.DCResourceInfo{}
-	} else if mt.Manifest.IsK8s() {
-		// Ditto
+	default:
+		// This is silly but it was the old behavior.
 		return view.K8sResourceInfo{}
 	}
-
-	panic("Unrecognized manifest type (not one of: k8s, DC, local)")
 }
 
 // DockerComposeConfigPath returns the path to the docker-compose yaml file of any
