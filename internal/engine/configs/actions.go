@@ -24,6 +24,7 @@ type ConfigsReloadedAction struct {
 	Warnings   []string
 	Features   map[string]bool
 	TeamName   string
+	Secrets    model.SecretSet
 }
 
 func (ConfigsReloadedAction) Action() {}

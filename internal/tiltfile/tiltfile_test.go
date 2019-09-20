@@ -3772,6 +3772,64 @@ func (f *fixture) assertRepos(expectedLocalPaths []string, repos []model.LocalGi
 	assert.ElementsMatch(f.t, expectedLocalPaths, actualLocalPaths)
 }
 
+func TestSecretString(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("secret.yaml", `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-secret
+stringData:
+  client-id: hello
+  client-secret: world
+`)
+	f.file("Tiltfile", `
+k8s_yaml('secret.yaml')
+`)
+
+	f.load()
+
+	secrets := f.loadResult.Secrets
+	assert.Equal(t, 2, len(secrets))
+	assert.Equal(t, "client-id", secrets["hello"].Key)
+	assert.Equal(t, "hello", string(secrets["hello"].Value))
+	assert.Equal(t, "aGVsbG8=", string(secrets["hello"].ValueEncoded))
+	assert.Equal(t, "client-secret", secrets["world"].Key)
+	assert.Equal(t, "world", string(secrets["world"].Value))
+	assert.Equal(t, "d29ybGQ=", string(secrets["world"].ValueEncoded))
+}
+
+func TestSecretBytes(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("secret.yaml", `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-secret
+data:
+  client-id: aGVsbG8=
+  client-secret: d29ybGQ=
+`)
+	f.file("Tiltfile", `
+k8s_yaml('secret.yaml')
+`)
+
+	f.load()
+
+	secrets := f.loadResult.Secrets
+	assert.Equal(t, 2, len(secrets))
+	assert.Equal(t, "client-id", secrets["hello"].Key)
+	assert.Equal(t, "hello", string(secrets["hello"].Value))
+	assert.Equal(t, "aGVsbG8=", string(secrets["hello"].ValueEncoded))
+	assert.Equal(t, "client-secret", secrets["world"].Key)
+	assert.Equal(t, "world", string(secrets["world"].Value))
+	assert.Equal(t, "d29ybGQ=", string(secrets["world"].ValueEncoded))
+}
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer
