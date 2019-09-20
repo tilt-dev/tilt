@@ -1,4 +1,4 @@
-package engine
+package k8swatch
 
 import (
 	"context"
@@ -118,7 +118,7 @@ func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {
 		ch, err := w.kCli.WatchPods(ctx, pw.labels)
 		if err != nil {
 			err = errors.Wrap(err, "Error watching pods. Are you connected to kubernetes?\n")
-			st.Dispatch(NewErrorAction(err))
+			st.Dispatch(store.NewErrorAction(err))
 			return
 		}
 		go w.dispatchPodChangesLoop(ctx, ch, st)
@@ -297,7 +297,7 @@ func (w *PodWatcher) dispatchPodChangesLoop(ctx context.Context, ch <-chan *v1.P
 
 // copied from https://github.com/kubernetes/kubernetes/blob/aedeccda9562b9effe026bb02c8d3c539fc7bb77/pkg/kubectl/resource_printer.go#L692-L764
 // to match the status column of `kubectl get pods`
-func podStatusToString(pod v1.Pod) string {
+func PodStatusToString(pod v1.Pod) string {
 	reason := string(pod.Status.Phase)
 	if pod.Status.Reason != "" {
 		reason = pod.Status.Reason
@@ -353,7 +353,7 @@ func podStatusToString(pod v1.Pod) string {
 }
 
 // Pull out interesting error messages from the pod status
-func podStatusErrorMessages(pod v1.Pod) []string {
+func PodStatusErrorMessages(pod v1.Pod) []string {
 	result := []string{}
 	if isPodStillInitializing(pod) {
 		for _, container := range pod.Status.InitContainerStatuses {

@@ -1,4 +1,4 @@
-package engine
+package k8swatch
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
 	"github.com/windmilleng/tilt/internal/testutils/podbuilder"
@@ -187,10 +188,10 @@ func TestPodStatus(t *testing.T) {
 	for i, c := range cases {
 		t.Run(fmt.Sprintf("case%d", i), func(t *testing.T) {
 			pod := corev1.Pod{Status: c.pod}
-			status := podStatusToString(pod)
+			status := PodStatusToString(pod)
 			assert.Equal(t, c.status, status)
 
-			messages := podStatusErrorMessages(pod)
+			messages := PodStatusErrorMessages(pod)
 			assert.Equal(t, c.messages, messages)
 		})
 	}
@@ -200,7 +201,7 @@ func (f *pwFixture) addManifestWithSelectors(manifestName string, ls ...labels.S
 	state := f.store.LockMutableStateForTesting()
 	state.WatchFiles = true
 	m := manifestbuilder.New(f, model.ManifestName(manifestName)).
-		WithK8sYAML(SanchoYAML).
+		WithK8sYAML(testyaml.SanchoYAML).
 		WithK8sPodSelectors(ls).
 		Build()
 	mt := store.NewManifestTarget(m)

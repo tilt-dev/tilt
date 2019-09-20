@@ -32,6 +32,7 @@ import (
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/engine/configs"
+	"github.com/windmilleng/tilt/internal/engine/k8swatch"
 	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/github"
 	"github.com/windmilleng/tilt/internal/hud"
@@ -1149,7 +1150,7 @@ func TestPodEventOrdering(t *testing.T) {
 			})
 
 			for _, pb := range order {
-				f.store.Dispatch(NewPodChangeAction(pb.Build(), manifest.Name, pb.DeploymentUID()))
+				f.store.Dispatch(k8swatch.NewPodChangeAction(pb.Build(), manifest.Name, pb.DeploymentUID()))
 			}
 
 			f.upper.store.Dispatch(PodLogAction{
@@ -1377,7 +1378,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 		Result: deployResultSet(manifest, ancestorUID),
 	})
 
-	f.store.Dispatch(NewPodChangeAction(pb.Build(), manifest.Name, ancestorUID))
+	f.store.Dispatch(k8swatch.NewPodChangeAction(pb.Build(), manifest.Name, ancestorUID))
 	f.WaitUntil("nothing waiting for build", func(st store.EngineState) bool {
 		return st.CompletedBuildCount == 1 && nextManifestNameToBuild(st) == ""
 	})
@@ -1394,7 +1395,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 
 	// Simulate a pod crash, then a build completion
 	pb = pb.WithContainerID("funny-container-id")
-	f.store.Dispatch(NewPodChangeAction(pb.Build(), manifest.Name, ancestorUID))
+	f.store.Dispatch(k8swatch.NewPodChangeAction(pb.Build(), manifest.Name, ancestorUID))
 
 	f.store.Dispatch(BuildCompleteAction{
 		Result: liveUpdateResultSet(manifest, "normal-container-id"),
@@ -1902,7 +1903,7 @@ func TestUpper_ServiceEvent(t *testing.T) {
 
 	uid := f.b.resultsByID[manifest.K8sTarget().ID()].DeployedUIDs[0]
 	svc := servicebuilder.New(t, manifest).WithUID(uid).WithPort(8080).WithIP("1.2.3.4").Build()
-	dispatchServiceChange(f.store, svc, manifest.Name, "")
+	k8swatch.DispatchServiceChange(f.store, svc, manifest.Name, "")
 
 	f.WaitUntilManifestState("lb updated", "foobar", func(ms store.ManifestState) bool {
 		return len(ms.K8sRuntimeState().LBs) > 0
@@ -1934,7 +1935,7 @@ func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 	uid := f.b.resultsByID[manifest.K8sTarget().ID()].DeployedUIDs[0]
 	sb := servicebuilder.New(t, manifest).WithUID(uid).WithPort(8080).WithIP("1.2.3.4")
 	svc := sb.Build()
-	dispatchServiceChange(f.store, svc, manifest.Name, "")
+	k8swatch.DispatchServiceChange(f.store, svc, manifest.Name, "")
 
 	f.WaitUntilManifestState("lb url added", "foobar", func(ms store.ManifestState) bool {
 		url := ms.K8sRuntimeState().LBs[k8s.ServiceName(svc.Name)]
@@ -1945,7 +1946,7 @@ func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 	})
 
 	svc = sb.WithIP("").Build()
-	dispatchServiceChange(f.store, svc, manifest.Name, "")
+	k8swatch.DispatchServiceChange(f.store, svc, manifest.Name, "")
 
 	f.WaitUntilManifestState("lb url removed", "foobar", func(ms store.ManifestState) bool {
 		url := ms.K8sRuntimeState().LBs[k8s.ServiceName(svc.Name)]
@@ -2786,8 +2787,8 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	kCli := k8s.NewFakeK8sClient()
 	of := k8s.ProvideOwnerFetcher(kCli)
-	pw := NewPodWatcher(kCli, of)
-	sw := NewServiceWatcher(kCli, of, "")
+	pw := k8swatch.NewPodWatcher(kCli, of)
+	sw := k8swatch.NewServiceWatcher(kCli, of, "")
 
 	fakeHud := hud.NewFakeHud()
 
@@ -2821,7 +2822,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	sm := containerupdate.NewSyncletManagerForTests(kCli, sGRPCCli, sCli)
 	hudsc := server.ProvideHeadsUpServerController(0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{}, false)
 	ghc := &github.FakeClient{}
-	ewm := NewEventWatchManager(kCli, of)
+	ewm := k8swatch.NewEventWatchManager(kCli, of)
 	tcum := cloud.NewUsernameManager(httptest.NewFakeClient())
 
 	ret := &testFixture{
@@ -3099,7 +3100,7 @@ func (f *testFixture) lastDeployedUID(manifestName model.ManifestName) types.UID
 }
 
 func (f *testFixture) startPod(pod *v1.Pod, manifestName model.ManifestName) {
-	f.upper.store.Dispatch(NewPodChangeAction(pod, manifestName, f.lastDeployedUID(manifestName)))
+	f.upper.store.Dispatch(k8swatch.NewPodChangeAction(pod, manifestName, f.lastDeployedUID(manifestName)))
 
 	f.WaitUntilManifestState("pod appears", manifestName, func(ms store.ManifestState) bool {
 		return ms.MostRecentPod().PodID == k8s.PodID(pod.Name)
@@ -3123,7 +3124,7 @@ func (f *testFixture) restartPod(pb podbuilder.PodBuilder) podbuilder.PodBuilder
 
 	pod := pb.Build()
 	mn := pb.ManifestName()
-	f.upper.store.Dispatch(NewPodChangeAction(pod, mn, f.lastDeployedUID(mn)))
+	f.upper.store.Dispatch(k8swatch.NewPodChangeAction(pod, mn, f.lastDeployedUID(mn)))
 
 	f.WaitUntilManifestState("pod restart seen", "foobar", func(ms store.ManifestState) bool {
 		return ms.MostRecentPod().AllContainerRestarts() == int(restartCount)
@@ -3132,7 +3133,7 @@ func (f *testFixture) restartPod(pb podbuilder.PodBuilder) podbuilder.PodBuilder
 }
 
 func (f *testFixture) notifyAndWaitForPodStatus(pod *v1.Pod, mn model.ManifestName, pred func(pod store.Pod) bool) {
-	f.upper.store.Dispatch(NewPodChangeAction(pod, mn, f.lastDeployedUID(mn)))
+	f.upper.store.Dispatch(k8swatch.NewPodChangeAction(pod, mn, f.lastDeployedUID(mn)))
 
 	f.WaitUntilManifestState("pod status change seen", mn, func(state store.ManifestState) bool {
 		return pred(state.MostRecentPod())
@@ -3163,7 +3164,7 @@ func (f *testFixture) TearDown() {
 }
 
 func (f *testFixture) podEvent(pod *v1.Pod, mn model.ManifestName) {
-	f.store.Dispatch(NewPodChangeAction(pod, mn, f.lastDeployedUID(mn)))
+	f.store.Dispatch(k8swatch.NewPodChangeAction(pod, mn, f.lastDeployedUID(mn)))
 }
 
 func (f *testFixture) newManifest(name string) model.Manifest {
