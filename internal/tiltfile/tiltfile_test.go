@@ -238,7 +238,7 @@ fast_build('gcr.io/foo', 'foo/Dockerfile') \
   .run("echo hi")
 k8s_yaml('foo.yaml')
 `)
-	f.loadErrString("fast_build is deleted")
+	f.loadErrString("fast_build is no longer supported")
 }
 
 func TestAddFastBuildFails(t *testing.T) {
@@ -251,7 +251,7 @@ docker_build('gcr.io/foo', 'foo') \
   .run("echo hi")
 k8s_yaml('foo.yaml')
 `)
-	f.loadErrString("fast_build is deleted")
+	f.loadErrString("fast_build is no longer supported")
 }
 
 func TestVerifiesGitRepo(t *testing.T) {
