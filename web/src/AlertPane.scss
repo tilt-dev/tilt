@@ -14,7 +14,9 @@
   list-style: none;
   width: 100%;
 }
-
+.AlertPane-item {
+  position: relative;
+}
 .AlertPane-item > header {
   background-color: $color-gray;
   border: 1px solid $color-gray-light;
@@ -50,6 +52,7 @@
   border-right: 1px solid $color-gray-light;
   border-bottom: 1px solid $color-gray-light;
   padding: $spacing-unit / 2;
+  min-height: 2em;
 }
 
 .AlertPane-item + .AlertPane-item {
@@ -69,4 +72,24 @@
   min-height: $spacing-unit / 2; // Respect blank lines
   height: auto;
   opacity: 1;
+}
+
+.AlertPane-dismissButton {
+  position: absolute;
+  right: $spacing-unit/2;
+  bottom: $spacing-unit/2;
+  align-content: center;
+  background-color: $color-gray-dark;
+  color: $color-blue;
+  @include button-text;
+  border: 1px solid $color-blue;
+  border-radius: 5px;
+  padding: $spacing-unit/3;
+  min-width: $spacing-unit * 3;
+  transition: background-color ease 0.3s;
+}
+
+.AlertPane-dismissButton:hover {
+  background-color: $color-gray;
+  cursor: pointer;
 }

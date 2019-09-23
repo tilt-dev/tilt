@@ -238,14 +238,19 @@ func ImageTargetsByID(iTargets []ImageTarget) map[TargetID]ImageTarget {
 }
 
 type DockerBuild struct {
-	Dockerfile string
-	BuildPath  string // the absolute path to the files
-	BuildArgs  DockerBuildArgs
-	FastBuild  FastBuild  // Optionally, can use FastBuild to update this build in place.
-	LiveUpdate LiveUpdate // Optionally, can use LiveUpdate to update this build in place.
+	Dockerfile  string
+	BuildPath   string // the absolute path to the files
+	BuildArgs   DockerBuildArgs
+	FastBuild   FastBuild  // Optionally, can use FastBuild to update this build in place.
+	LiveUpdate  LiveUpdate // Optionally, can use LiveUpdate to update this build in place.
+	TargetStage DockerBuildTarget
 }
 
 func (DockerBuild) buildDetails() {}
+
+type DockerBuildTarget string
+
+func (s DockerBuildTarget) String() string { return string(s) }
 
 type FastBuild struct {
 	BaseDockerfile string

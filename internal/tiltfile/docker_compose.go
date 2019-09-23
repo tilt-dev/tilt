@@ -6,14 +6,11 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
-	"golang.org/x/sync/errgroup"
-	"gopkg.in/yaml.v2"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -76,7 +73,16 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
-		"image", &imageVal, // in future this will be optional
+
+		// TODO(maia): if you docker_build('myimg') and dc.yml refers to 'myimg', we
+		//  associate the docker_build with your dc resource automatically. What we
+		//  CAN'T do is use the arg to dc_resource.image to OVERRIDE the image named
+		//  in dc.yml, which we should probs be able to do?
+		// (If your dc.yml does NOT specify `Image`, DC will expect an image of name
+		// <directory>_<service>, and Tilt has no way of figuring this out yet, so
+		// can't auto-associate that image, you need to use dc_resource.)
+		"image?", &imageVal,
+
 		"trigger_mode?", &triggerMode,
 	); err != nil {
 		return nil, err
@@ -88,8 +94,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 
 	var imageRefAsStr string
 	switch imageVal := imageVal.(type) {
-	case nil:
-		return nil, fmt.Errorf("must specify an image arg")
+	case nil: // optional arg, this is fine
 	case starlark.String:
 		imageRefAsStr = string(imageVal)
 	default:
@@ -107,7 +112,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 	if err != nil {
 		return nil, err
 	}
-	svc.ImageRef = normalized
+	svc.imageRefFromUser = normalized
 
 	return starlark.None, nil
 }
@@ -124,139 +129,6 @@ func (s *tiltfileState) getDCService(name string) (*dcService, error) {
 		"Found these instead:\n\t%s", name, strings.Join(allNames, "; "))
 }
 
-// Go representations of docker-compose.yml
-// (Add fields as we need to support more things)
-type DcConfig struct {
-	Services map[string]dcServiceConfig
-}
-
-type dcServiceConfig struct {
-	RawYAML []byte        // We store this to diff against when docker-compose.yml is edited to see if the manifest has changed
-	Build   dcBuildConfig `yaml:"build"`
-	Image   string        `yaml:"image"`
-	Volumes Volumes       `yaml:"volumes"`
-	Ports   Ports         `yaml:"ports"`
-}
-
-type Volumes []Volume
-
-type Volume struct {
-	Source string
-}
-
-func (v *Volumes) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var sliceType []interface{}
-	err := unmarshal(&sliceType)
-	if err != nil {
-		return errors.Wrap(err, "unmarshalling volumes")
-	}
-
-	for _, volume := range sliceType {
-		// Volumes syntax documented here: https://docs.docker.com/compose/compose-file/#volumes
-		// This implementation far from comprehensive. It will silently ignore:
-		// 1. "short" syntax using volume keys instead of paths
-		// 2. all "long" syntax volumes
-		// Ideally, we'd let the user know we didn't handle their case, but getting a ctx here is not easy
-		switch a := volume.(type) {
-		case string:
-			parts := strings.Split(a, ":")
-			*v = append(*v, Volume{Source: parts[0]})
-		}
-	}
-
-	return nil
-}
-
-type Ports []Port
-type Port struct {
-	Published int `yaml:"published"`
-}
-
-func (p *Ports) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var sliceType []interface{}
-	err := unmarshal(&sliceType)
-	if err != nil {
-		return errors.Wrap(err, "unmarshalling ports")
-	}
-
-	for _, portSpec := range sliceType {
-		// Port syntax documented here:
-		// https://docs.docker.com/compose/compose-file/#ports
-		// ports aren't critical, so on any error we want to continue quietly.
-		//
-		// Fortunately, `docker-compose config` does a lot of normalization for us,
-		// like resolving port ranges and ensuring the protocol (tcp vs udp)
-		// is always included.
-		switch portSpec := portSpec.(type) {
-		case string:
-			withoutProtocol := strings.Split(portSpec, "/")[0]
-			parts := strings.Split(withoutProtocol, ":")
-			publishedPart := parts[0]
-			if len(parts) == 3 {
-				// For "127.0.0.1:3000:3000"
-				publishedPart = parts[1]
-			}
-			port, err := strconv.Atoi(publishedPart)
-			if err != nil {
-				continue
-			}
-			*p = append(*p, Port{Published: port})
-		case map[interface{}]interface{}:
-			var portStruct Port
-			b, err := yaml.Marshal(portSpec) // so we can unmarshal it again
-			if err != nil {
-				continue
-			}
-
-			err = yaml.Unmarshal(b, &portStruct)
-			if err != nil {
-				continue
-			}
-			*p = append(*p, portStruct)
-		}
-	}
-
-	return nil
-}
-
-// We use a custom Unmarshal method here so that we can store the RawYAML in addition
-// to unmarshaling the fields we care about into structs.
-func (c *DcConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	aux := struct {
-		Services map[string]interface{} `yaml:"services"`
-	}{}
-	err := unmarshal(&aux)
-	if err != nil {
-		return err
-	}
-
-	if c.Services == nil {
-		c.Services = make(map[string]dcServiceConfig)
-	}
-
-	for k, v := range aux.Services {
-		b, err := yaml.Marshal(v) // so we can unmarshal it again
-		if err != nil {
-			return err
-		}
-
-		svcConf := &dcServiceConfig{}
-		err = yaml.Unmarshal(b, svcConf)
-		if err != nil {
-			return err
-		}
-
-		svcConf.RawYAML = b
-		c.Services[k] = *svcConf
-	}
-	return nil
-}
-
-type dcBuildConfig struct {
-	Context    string `yaml:"context"`
-	Dockerfile string `yaml:"dockerfile"`
-}
-
 // A docker-compose service, according to Tilt.
 type dcService struct {
 	Name         string
@@ -266,10 +138,10 @@ type dcService struct {
 	// https://docs.docker.com/compose/compose-file/#volumes
 	MountedLocalDirs []string
 
-	// RefSelector of an image described via docker_build call.
-	// Can be explicitly linked to this service via dc_service call,
-	// or implicitly via an image name in the docker-compose.yml
-	ImageRef reference.Named
+	// RefSelector of the image associated with this service
+	// The user-provided image ref overrides the config-provided image ref
+	imageRefFromConfig reference.Named // from docker-compose.yml `Image` field
+	imageRefFromUser   reference.Named // set via dc_resource
 
 	// Currently just use these to diff against when config files are edited to see if manifest has changed
 	ServiceConfig []byte
@@ -281,7 +153,14 @@ type dcService struct {
 	TriggerMode triggerMode
 }
 
-func (c DcConfig) GetService(name string) (dcService, error) {
+func (svc dcService) ImageRef() reference.Named {
+	if svc.imageRefFromUser != nil {
+		return svc.imageRefFromUser
+	}
+	return svc.imageRefFromConfig
+}
+
+func DockerComposeConfigToService(c dockercompose.Config, name string) (dcService, error) {
 	svcConfig, ok := c.Services[name]
 	if !ok {
 		return dcService{}, fmt.Errorf("no service %s found in config", name)
@@ -326,7 +205,7 @@ func (c DcConfig) GetService(name string) (dcService, error) {
 			// error, but we don't really have a better way right now.
 			return dcService{}, fmt.Errorf("Error parsing image name %q: %v", ref, err)
 		} else {
-			svc.ImageRef = ref
+			svc.imageRefFromConfig = ref
 		}
 	}
 
@@ -340,36 +219,16 @@ func (c DcConfig) GetService(name string) (dcService, error) {
 	return svc, nil
 }
 
-func serviceNames(ctx context.Context, dcc dockercompose.DockerComposeClient, configPaths []string) ([]string, error) {
-	servicesText, err := dcc.Services(ctx, configPaths)
-	if err != nil {
-		return nil, err
-	}
-
-	serviceNames := strings.Split(servicesText, "\n")
-
-	var result []string
-
-	for _, name := range serviceNames {
-		if name == "" {
-			continue
-		}
-		result = append(result, name)
-	}
-
-	return result, nil
-}
-
 func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, configPaths []string) ([]*dcService, error) {
 
-	config, svcNames, err := getConfigAndServiceNames(ctx, dcc, configPaths)
+	config, svcNames, err := dockercompose.ReadConfigAndServiceNames(ctx, dcc, configPaths)
 	if err != nil {
 		return nil, err
 	}
 
 	var services []*dcService
 	for _, name := range svcNames {
-		svc, err := config.GetService(name)
+		svc, err := DockerComposeConfigToService(config, name)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting service %s", name)
 		}
@@ -377,40 +236,6 @@ func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, c
 	}
 
 	return services, nil
-}
-
-func getConfigAndServiceNames(ctx context.Context, dcc dockercompose.DockerComposeClient,
-	configPaths []string) (conf DcConfig, svcNames []string, err error) {
-	// calls to `docker-compose config` take a bit, and we need two,
-	// so do them in parallel to make things faster
-	g, ctx := errgroup.WithContext(ctx)
-
-	g.Go(func() error {
-
-		configOut, err := dcc.Config(ctx, configPaths)
-
-		if err != nil {
-			return err
-		}
-
-		err = yaml.Unmarshal([]byte(configOut), &conf)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-
-	g.Go(func() error {
-		var err error
-		svcNames, err = serviceNames(ctx, dcc, configPaths)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-
-	err = g.Wait()
-	return conf, svcNames, err
 }
 
 func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResourceSet) (manifest model.Manifest,

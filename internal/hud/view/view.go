@@ -66,6 +66,17 @@ func (YAMLResourceInfo) resourceInfoView()              {}
 func (yamlInfo YAMLResourceInfo) RuntimeLog() model.Log { return model.NewLog("") }
 func (yamlInfo YAMLResourceInfo) Status() string        { return "" }
 
+type LocalResourceInfo struct {
+}
+
+var _ ResourceInfoView = LocalResourceInfo{}
+
+var LocalResourceStatusPlaceholder = "local-resource-ok"
+
+func (LocalResourceInfo) resourceInfoView()     {}
+func (LocalResourceInfo) RuntimeLog() model.Log { return model.Log{} }                    // no runtime log, only build log
+func (LocalResourceInfo) Status() string        { return LocalResourceStatusPlaceholder } // no status independent of build status
+
 type Resource struct {
 	Name               model.ManifestName
 	DirectoriesWatched []string

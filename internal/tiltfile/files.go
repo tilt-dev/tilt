@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/pkg/logger"
 
@@ -255,7 +256,14 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 
 func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path starlark.Value
-	err := s.unpackArgs(fn.Name(), args, kwargs, "paths", &path)
+	var name string
+	var namespace string
+	var valueFilesV starlark.Value
+	err := s.unpackArgs(fn.Name(), args, kwargs,
+		"paths", &path,
+		"name?", &name,
+		"namespace?", &namespace,
+		"values?", &valueFilesV)
 	if err != nil {
 		return nil, err
 	}
@@ -263,6 +271,12 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	localPath, err := s.absPathFromStarlarkValue(thread, path)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
+	}
+
+	valueFiles, ok := AsStringOrStringList(valueFilesV)
+	if !ok {
+		return nil, fmt.Errorf("Argument 'values' must be string or list of strings. Actual: %T",
+			valueFilesV)
 	}
 
 	info, err := os.Stat(localPath)
@@ -276,14 +290,44 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	}
 
 	cmd := []string{"helm", "template", localPath}
-	yaml, err := s.execLocalCmd(thread, exec.Command(cmd[0], cmd[1:]...), false)
+	if name != "" {
+		cmd = append(cmd, "--name", name)
+	}
+	if namespace != "" {
+		cmd = append(cmd, "--namespace", namespace)
+	}
+	for _, valueFile := range valueFiles {
+		cmd = append(cmd, "--values", valueFile)
+	}
+
+	stdout, err := s.execLocalCmd(thread, exec.Command(cmd[0], cmd[1:]...), false)
 	if err != nil {
 		return nil, err
 	}
 
 	s.recordConfigFile(localPath)
 
-	return newBlob(filterHelmTestYAML(string(yaml)), fmt.Sprintf("helm: %s", localPath)), nil
+	yaml := filterHelmTestYAML(string(stdout))
+
+	if namespace != "" {
+		// helm template --namespace doesn't inject the namespace,
+		// so we have to do that ourselves :\
+		// https://github.com/helm/helm/issues/5465
+		entities, err := k8s.ParseYAMLFromString(yaml)
+		if err != nil {
+			return nil, err
+		}
+
+		for i, e := range entities {
+			entities[i] = e.WithNamespace(namespace)
+		}
+		yaml, err = k8s.SerializeSpecYAML(entities)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return newBlob(yaml, fmt.Sprintf("helm: %s", localPath)), nil
 }
 
 func (s *tiltfileState) blob(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

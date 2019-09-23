@@ -44,6 +44,9 @@ func (c *switchCli) SetOrchestrator(orc model.Orchestrator) {
 	defer c.mu.Unlock()
 	c.orc = orc
 }
+func (c *switchCli) CheckConnected() error {
+	return c.client().CheckConnected()
+}
 func (c *switchCli) Env() Env {
 	return c.client().Env()
 }

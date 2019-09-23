@@ -3,6 +3,8 @@ package engine
 import (
 	"github.com/windmilleng/tilt/internal/cloud"
 	"github.com/windmilleng/tilt/internal/containerupdate"
+	"github.com/windmilleng/tilt/internal/engine/configs"
+	"github.com/windmilleng/tilt/internal/engine/k8swatch"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/store"
@@ -10,14 +12,14 @@ import (
 
 func ProvideSubscribers(
 	hud hud.HeadsUpDisplay,
-	pw *PodWatcher,
-	sw *ServiceWatcher,
+	pw *k8swatch.PodWatcher,
+	sw *k8swatch.ServiceWatcher,
 	plm *PodLogManager,
 	pfc *PortForwardController,
 	fwm *WatchManager,
 	bc *BuildController,
 	ic *ImageController,
-	cc *ConfigsController,
+	cc *configs.ConfigsController,
 	dcw *DockerComposeEventWatcher,
 	dclm *DockerComposeLogManager,
 	pm *ProfilerManager,
@@ -26,7 +28,7 @@ func ProvideSubscribers(
 	hudsc *server.HeadsUpServerController,
 	tvc *TiltVersionChecker,
 	ta *TiltAnalyticsSubscriber,
-	ewm *EventWatchManager,
+	ewm *k8swatch.EventWatchManager,
 	tcum *cloud.CloudUsernameManager) []store.Subscriber {
 	return []store.Subscriber{
 		hud,

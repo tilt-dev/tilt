@@ -158,7 +158,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 			// likely a infrastructure error. Bail, and fall back to full build.
 			return err
 		} else {
-			logger.Get(ctx).Infof("  → Container %s updated!", cInfo.ContainerID)
+			logger.Get(ctx).Infof("  → Container %s updated!", cInfo.ContainerID.ShortStr())
 			if lastUserBuildFailure != nil {
 				// This build succeeded, but previously at least one failed due to user error.
 				// We may have inconsistent state--bail, and fall back to full build.

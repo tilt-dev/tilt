@@ -5,10 +5,10 @@ import (
 
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/kubernetes/pkg/kubectl/cmd/apply"
-	"k8s.io/kubernetes/pkg/kubectl/cmd/delete"
-	"k8s.io/kubernetes/pkg/kubectl/cmd/replace"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubectl/pkg/cmd/apply"
+	"k8s.io/kubectl/pkg/cmd/delete"
+	"k8s.io/kubectl/pkg/cmd/replace"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
 // Currently, the implementation of `kubectl apply` is a complex protocol

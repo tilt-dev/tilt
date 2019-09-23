@@ -321,10 +321,9 @@ func (c *FakeK8sClient) applyWasCalled() bool {
 	return c.Yaml != ""
 }
 
-func (c *FakeK8sClient) ForwardPort(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (int, func(), error) {
+func (c *FakeK8sClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (PortForwarder, error) {
 	pfc := &(c.FakePortForwardClient)
-	closer, err := pfc.Create(ctx, namespace, podID, optionalLocalPort, remotePort)
-	return optionalLocalPort, closer, err
+	return pfc.CreatePortForwarder(ctx, namespace, podID, optionalLocalPort, remotePort)
 }
 
 func (c *FakeK8sClient) ContainerRuntime(ctx context.Context) container.Runtime {
@@ -374,13 +373,44 @@ func (b BufferCloser) Close() error {
 
 var _ io.ReadCloser = BufferCloser{}
 
-type FakePortForwardClient struct {
-	LastForwardPortPodID      PodID
-	LastForwardPortRemotePort int
+type FakePortForwarder struct {
+	localPort int
+	ctx       context.Context
+	Done      chan error
 }
 
-func (c *FakePortForwardClient) Create(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (func(), error) {
+func (pf FakePortForwarder) LocalPort() int {
+	return pf.localPort
+}
+
+func (pf FakePortForwarder) ForwardPorts() error {
+	select {
+	case <-pf.ctx.Done():
+		return pf.ctx.Err()
+	case <-pf.Done:
+		return nil
+	}
+}
+
+type FakePortForwardClient struct {
+	CreatePortForwardCallCount int
+	LastForwardPortPodID       PodID
+	LastForwardPortRemotePort  int
+	LastForwarder              FakePortForwarder
+	LastForwardContext         context.Context
+}
+
+func (c *FakePortForwardClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (PortForwarder, error) {
+	c.CreatePortForwardCallCount++
+	c.LastForwardContext = ctx
 	c.LastForwardPortPodID = podID
 	c.LastForwardPortRemotePort = remotePort
-	return func() {}, nil
+
+	result := FakePortForwarder{
+		localPort: optionalLocalPort,
+		ctx:       ctx,
+		Done:      make(chan error),
+	}
+	c.LastForwarder = result
+	return result, nil
 }

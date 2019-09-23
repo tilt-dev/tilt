@@ -101,8 +101,6 @@ test-js:
 
 ensure:
 	dep ensure
-	# Patch reflector until we can upgrade to k8s 1.16
-	cp scripts/patch/reflector.go.txt vendor/k8s.io/client-go/tools/cache/reflector.go
 
 goimports:
 	goimports -w -l $(GOIMPORTS_LOCAL_ARG) $$(go list -f {{.Dir}} ./...)

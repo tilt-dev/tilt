@@ -1,11 +1,9 @@
 package engine
 
 import (
-	"net/url"
 	"time"
 
 	"github.com/windmilleng/wmclient/pkg/analytics"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 
@@ -18,41 +16,6 @@ import (
 
 func NewErrorAction(err error) store.ErrorAction {
 	return store.NewErrorAction(err)
-}
-
-type PodChangeAction struct {
-	Pod          *v1.Pod
-	ManifestName model.ManifestName
-
-	// The UID that we matched against to associate this pod with Tilt.
-	// Might be the Pod UID itself, or the UID of an ancestor.
-	AncestorUID types.UID
-}
-
-func (PodChangeAction) Action() {}
-
-func NewPodChangeAction(pod *v1.Pod, mn model.ManifestName, ancestorUID types.UID) PodChangeAction {
-	return PodChangeAction{
-		Pod:          pod,
-		ManifestName: mn,
-		AncestorUID:  ancestorUID,
-	}
-}
-
-type ServiceChangeAction struct {
-	Service      *v1.Service
-	ManifestName model.ManifestName
-	URL          *url.URL
-}
-
-func (ServiceChangeAction) Action() {}
-
-func NewServiceChangeAction(service *v1.Service, mn model.ManifestName, url *url.URL) ServiceChangeAction {
-	return ServiceChangeAction{
-		Service:      service,
-		ManifestName: mn,
-		URL:          url,
-	}
 }
 
 type BuildLogAction struct {
@@ -151,27 +114,6 @@ func NewHudStoppedAction(err error) HudStoppedAction {
 	return HudStoppedAction{err}
 }
 
-type ConfigsReloadStartedAction struct {
-	FilesChanged map[string]bool
-	StartTime    time.Time
-}
-
-func (ConfigsReloadStartedAction) Action() {}
-
-type ConfigsReloadedAction struct {
-	Manifests          []model.Manifest
-	TiltIgnoreContents string
-	ConfigFiles        []string
-
-	FinishTime time.Time
-	Err        error
-	Warnings   []string
-	Features   map[string]bool
-	TeamName   string
-}
-
-func (ConfigsReloadedAction) Action() {}
-
 type DockerComposeEventAction struct {
 	Event dockercompose.Event
 }
@@ -183,12 +125,6 @@ type DockerComposeLogAction struct {
 }
 
 func (DockerComposeLogAction) Action() {}
-
-type TiltfileLogAction struct {
-	store.LogEvent
-}
-
-func (TiltfileLogAction) Action() {}
 
 type LatestVersionAction struct {
 	Build model.TiltBuild

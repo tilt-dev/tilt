@@ -47,7 +47,8 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 		defer ps.EndPipelineStep(ctx)
 
 		df := icb.dockerfile(iTarget, cacheRef)
-		ref, err := icb.ib.BuildImage(ctx, ps, refToBuild, df, bd.BuildPath, ignore.CreateBuildContextFilter(iTarget), bd.BuildArgs)
+		ref, err := icb.ib.BuildImage(ctx, ps, refToBuild, df, bd.BuildPath,
+			ignore.CreateBuildContextFilter(iTarget), bd.BuildArgs, bd.TargetStage)
 
 		if err != nil {
 			return nil, err

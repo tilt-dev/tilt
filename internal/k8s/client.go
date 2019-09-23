@@ -88,7 +88,7 @@ type Client interface {
 	ContainerLogs(ctx context.Context, podID PodID, cName container.Name, n Namespace, startTime time.Time) (io.ReadCloser, error)
 
 	// Opens a tunnel to the specified pod+port. Returns the tunnel's local port and a function that closes the tunnel
-	ForwardPort(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (localPort int, closer func(), err error)
+	CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (PortForwarder, error)
 
 	WatchPods(ctx context.Context, lps labels.Selector) (<-chan *v1.Pod, error)
 

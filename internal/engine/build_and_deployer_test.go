@@ -936,6 +936,38 @@ func TestLiveUpdateMultipleImagesOneWithUnsyncedChangeFileFallsBackToImageBuild(
 	f.assertK8sUpsertCalled(true)
 }
 
+func TestLocalTargetDeploy(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	defer f.TearDown()
+
+	lt := model.LocalTarget{Cmd: model.ToShellCmd("echo hello world")}
+	res, err := f.bd.BuildAndDeploy(f.ctx, f.st, []model.TargetSpec{lt}, store.BuildStateSet{})
+	require.Nil(t, err)
+
+	assert.Equal(t, 0, f.docker.BuildCount, "should have 0 docker builds")
+	assert.Equal(t, 0, f.docker.PushCount, "should have 0 docker pushes")
+	assert.Empty(t, f.k8s.Yaml, "should not apply any k8s yaml")
+	assert.Len(t, res, 1, "expect exactly one result in result set")
+	assert.Contains(t, f.logs.String(), "hello world", "logs should contain cmd output")
+}
+
+func TestLocalTargetFailure(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	defer f.TearDown()
+
+	lt := model.LocalTarget{Cmd: model.ToShellCmd("echo oh no; false")}
+	res, err := f.bd.BuildAndDeploy(f.ctx, f.st, []model.TargetSpec{lt}, store.BuildStateSet{})
+	assert.Empty(t, res, "expect empty result for failed command")
+
+	require.NotNil(t, err)
+	assert.Contains(t, err.Error(), "exit status 1", "error msg should indicate command failure")
+	assert.Contains(t, f.logs.String(), "oh no", "logs should contain cmd output")
+
+	assert.Equal(t, 0, f.docker.BuildCount, "should have 0 docker builds")
+	assert.Equal(t, 0, f.docker.PushCount, "should have 0 docker pushes")
+	assert.Empty(t, f.k8s.Yaml, "should not apply any k8s yaml")
+}
+
 func multiImageLiveUpdateManifestAndBuildState(f *bdFixture) (model.Manifest, store.BuildStateSet) {
 	sanchoTarg := NewSanchoLiveUpdateImageTarget(f)
 	sidecarTarg := NewSanchoSidecarLiveUpdateImageTarget(f)

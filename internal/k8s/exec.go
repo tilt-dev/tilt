@@ -8,7 +8,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/remotecommand"
-	"k8s.io/kubernetes/pkg/kubectl/scheme"
+	"k8s.io/kubectl/pkg/scheme"
 
 	"github.com/windmilleng/tilt/internal/container"
 )

@@ -86,8 +86,8 @@ type EngineState struct {
 
 func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.ManifestName {
 	result := make([]model.ManifestName, 0)
-	for mn, state := range e.ManifestTargets {
-		manifest := state.Manifest
+	for mn, mt := range e.ManifestTargets {
+		manifest := mt.Manifest
 		for _, iTarget := range manifest.ImageTargets {
 			if iTarget.ID() == id {
 				result = append(result, mn)
@@ -97,6 +97,9 @@ func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.Manife
 			result = append(result, mn)
 		}
 		if manifest.DockerComposeTarget().ID() == id {
+			result = append(result, mn)
+		}
+		if manifest.LocalTarget().ID() == id {
 			result = append(result, mn)
 		}
 	}
@@ -600,19 +603,26 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 		}
 	}
 
-	if dcState, ok := mt.State.RuntimeState.(dockercompose.State); ok {
-		return view.NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPaths, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
-	} else {
-		pod := mt.State.MostRecentPod()
+	switch state := mt.State.RuntimeState.(type) {
+	case dockercompose.State:
+		return view.NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPaths,
+			state.Status, state.ContainerID, state.Log(), state.StartTime)
+	case K8sRuntimeState:
+		pod := state.MostRecentPod()
 		return view.K8sResourceInfo{
 			PodName:            pod.PodID.String(),
 			PodCreationTime:    pod.StartedAt,
 			PodUpdateStartTime: pod.UpdateStartTime,
 			PodStatus:          pod.Status,
-			PodRestarts:        pod.AllContainerRestarts() - pod.BaselineRestarts,
+			PodRestarts:        pod.VisibleContainerRestarts(),
 			PodLog:             pod.CurrentLog,
 			YAML:               mt.Manifest.K8sTarget().YAML,
 		}
+	case LocalRuntimeState:
+		return view.LocalResourceInfo{}
+	default:
+		// This is silly but it was the old behavior.
+		return view.K8sResourceInfo{}
 	}
 }
 

@@ -35,7 +35,12 @@ func (c *dockerCmd) run(ctx context.Context, args []string) error {
 
 	client, err := wireDockerClusterClient(ctx)
 	if err != nil {
-		return errors.Wrap(err, "wireDockerClusterClient")
+		return errors.Wrap(err, "Failed to init Docker client")
+	}
+
+	err = client.CheckConnected()
+	if err != nil {
+		return errors.Wrap(err, "Failed to connect to Docker server")
 	}
 
 	dockerEnv := client.Env()

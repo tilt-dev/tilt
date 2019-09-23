@@ -88,16 +88,16 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 }
 
 func DefaultBuildOrder(lubad *LiveUpdateBuildAndDeployer, ibad *ImageBuildAndDeployer, dcbad *DockerComposeBuildAndDeployer,
-	updMode UpdateMode, env k8s.Env, runtime container.Runtime) BuildOrder {
+	ltbad *LocalTargetBuildAndDeployer, updMode UpdateMode, env k8s.Env, runtime container.Runtime) BuildOrder {
 	if updMode == UpdateModeImage || updMode == UpdateModeNaive {
-		return BuildOrder{dcbad, ibad}
+		return BuildOrder{dcbad, ibad, ltbad}
 	}
 
 	if updMode == UpdateModeSynclet || shouldUseSynclet(updMode, env, runtime) {
 		ibad.SetInjectSynclet(true)
 	}
 
-	return BuildOrder{lubad, dcbad, ibad}
+	return BuildOrder{lubad, dcbad, ibad, ltbad}
 }
 
 func shouldUseSynclet(updMode UpdateMode, env k8s.Env, runtime container.Runtime) bool {

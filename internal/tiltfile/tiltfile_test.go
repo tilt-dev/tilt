@@ -343,6 +343,20 @@ k8s_resource("the-deployment", "foo")
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "configMap.yaml", "deployment.yaml", "Kustomization", "service.yaml")
 }
 
+func TestDockerBuildTarget(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build("gcr.io/foo", "foo", target='stage')
+`)
+	f.load()
+	m := f.assertNextManifest("foo")
+	assert.Equal(t, "stage", m.ImageTargets[0].BuildDetails.(model.DockerBuild).TargetStage.String())
+}
+
 func TestDockerBuildCache(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -745,7 +759,8 @@ docker_build('gcr.io/bar', 'bar')
 k8s_yaml('bar.yaml')
 `)
 
-	_, err := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"))
+	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"))
+	err := tlr.Error
 	if assert.Error(t, err) {
 		assert.Equal(t, `You specified some resources that could not be found: "baz"
 Is this a typo? Existing resources in Tiltfile: "foo", "bar"`, err.Error())
@@ -1019,6 +1034,27 @@ k8s_yaml(yml)
 		".tiltignore",
 		"helm",
 	)
+}
+
+func TestHelmArgs(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupHelm()
+
+	f.file("Tiltfile", `
+yml = helm('./helm', name='rose-quartz', namespace='garnet', values=['./helm/values.yaml', './helm/values-dev.yaml'])
+k8s_yaml(yml)
+`)
+
+	f.load()
+
+	m := f.assertNextManifestUnresourced("rose-quartz-helloworld-chart")
+	yaml := m.K8sTarget().YAML
+	assert.Contains(t, yaml, "release: rose-quartz")
+	assert.Contains(t, yaml, "namespace: garnet")
+	assert.Contains(t, yaml, "namespaceLabel: garnet")
+	assert.Contains(t, yaml, "name: nginx-dev")
 }
 
 func TestHelmInvalidDirectory(t *testing.T) {
@@ -3412,6 +3448,19 @@ func TestEnableFeature(t *testing.T) {
 	f.assertFeature("testflag_disabled", true)
 }
 
+func TestEnableFeatureWithError(t *testing.T) {
+	f := newFixture(t)
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+enable_feature('testflag_disabled')
+fail('goodnight moon')
+`)
+	f.loadErrString("goodnight moon")
+
+	f.assertFeature("testflag_disabled", true)
+}
+
 func TestDisableFeature(t *testing.T) {
 	f := newFixture(t)
 	f.setupFoo()
@@ -3625,6 +3674,43 @@ local('echo hi')
 	}
 }
 
+func TestLocalResource(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource("test", "echo hi", ["foo/bar", "foo/a.txt"])
+`)
+
+	f.setupFoo()
+	f.file(".gitignore", "*.txt")
+	f.load()
+
+	f.assertNumManifests(1)
+
+	// TODO(dmiller): make the rest of these assertion helpers like the other manifest helpers
+	m := f.loadResult.Manifests[0]
+	require.Equal(t, "test", m.Name.String())
+	lt := m.LocalTarget()
+	path1 := f.JoinPath("foo/bar")
+	path2 := f.JoinPath("foo/a.txt")
+	require.Equal(t, []string{"sh", "-c", "echo hi"}, lt.Cmd.Argv)
+	require.Equal(t, []string{path2, path1}, lt.Dependencies())
+
+	f.assertConfigFiles("Tiltfile", ".tiltignore")
+
+	filter, err := ignore.CreateFileChangeFilter(lt)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	matches, err := filter.Matches(path2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	require.Equal(t, false, matches)
+}
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer
@@ -3783,7 +3869,8 @@ func (f *fixture) load(names ...string) {
 }
 
 func (f *fixture) loadResourceAssemblyV1(names ...string) {
-	tlr, err := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
+	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
+	err := tlr.Error
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -3794,7 +3881,8 @@ func (f *fixture) loadResourceAssemblyV1(names ...string) {
 // Load the manifests, expecting warnings.
 // Warnings should be asserted later with assertWarnings
 func (f *fixture) loadAllowWarnings(names ...string) {
-	tlr, err := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
+	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
+	err := tlr.Error
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -3819,7 +3907,8 @@ func (f *fixture) loadAssertWarnings(warnings ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	tlr, err := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	err := tlr.Error
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}
@@ -4545,6 +4634,7 @@ func (f *fixture) setupExpand() {
 func (f *fixture) setupHelm() {
 	f.file("helm/Chart.yaml", chartYAML)
 	f.file("helm/values.yaml", valuesYAML)
+	f.file("helm/values-dev.yaml", valuesDevYAML)
 
 	f.file("helm/templates/_helpers.tpl", helpersTPL)
 	f.file("helm/templates/deployment.yaml", deploymentYAML)

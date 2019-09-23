@@ -7,6 +7,7 @@ export type Alert = {
   msg: string
   timestamp: string
   resourceName: string
+  dismissHandler?: () => void
 }
 
 export const PodRestartErrorType = "PodRestartError"
@@ -53,6 +54,15 @@ function isK8sResourceInfo(
   resourceInfo: K8sResourceInfo | DCResourceInfo
 ): resourceInfo is K8sResourceInfo {
   return (<K8sResourceInfo>resourceInfo).PodName !== undefined
+}
+
+function mustK8sResourceInfo(
+  resourceInfo: K8sResourceInfo | DCResourceInfo
+): K8sResourceInfo {
+  if (!isK8sResourceInfo(resourceInfo)) {
+    throw new Error(`Not K8sResourceInfo: ${resourceInfo}`)
+  }
+  return resourceInfo
 }
 
 //This function determines what kind of alert should be made based on the functions defined
@@ -106,16 +116,38 @@ function podStatusIsErrAlert(resource: Resource): Alert {
   }
 }
 function podRestartAlert(r: Resource): Alert {
-  let rInfo = <K8sResourceInfo>r.ResourceInfo
+  let rInfo: K8sResourceInfo = <K8sResourceInfo>r.ResourceInfo
   let msg = r.CrashLog || ""
-  let header = "Restarts: "
-  header = header.concat(rInfo.PodRestarts.toString())
+  let header = `Restarts: ${rInfo.PodRestarts.toString()}`
+
+  let dismissHandler = () => {
+    let url = "/api/action"
+    let payload = {
+      type: "PodResetRestarts",
+      manifest_name: r.Name,
+      visible_restarts: Number(rInfo.PodRestarts),
+      pod_id: rInfo.PodName,
+    }
+    fetch(url, {
+      method: "POST",
+      body: JSON.stringify(payload),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }).then(response => {
+      if (!response.ok) {
+        console.error(response)
+      }
+    })
+  }
+
   return {
     alertType: PodRestartErrorType,
     header: header,
     msg: msg,
     timestamp: rInfo.PodCreationTime,
     resourceName: r.Name,
+    dismissHandler: dismissHandler,
   }
 }
 function crashRebuildAlert(r: Resource): Alert {
@@ -171,4 +203,5 @@ export {
   podRestartAlert,
   hasAlert,
   isK8sResourceInfo,
+  mustK8sResourceInfo,
 }

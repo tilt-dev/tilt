@@ -31,6 +31,8 @@ import (
 	"github.com/windmilleng/tilt/internal/containerupdate"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/engine/configs"
+	"github.com/windmilleng/tilt/internal/engine/k8swatch"
 	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/github"
 	"github.com/windmilleng/tilt/internal/hud"
@@ -120,6 +122,16 @@ func (c buildAndDeployCall) dc() model.DockerComposeTarget {
 	return model.DockerComposeTarget{}
 }
 
+func (c buildAndDeployCall) local() model.LocalTarget {
+	for _, spec := range c.specs {
+		t, ok := spec.(model.LocalTarget)
+		if ok {
+			return t
+		}
+	}
+	return model.LocalTarget{}
+}
+
 func (c buildAndDeployCall) oneState() store.BuildState {
 	if len(c.state) != 1 {
 		panic(fmt.Sprintf("More than one state: %v", c.state))
@@ -176,7 +188,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	b.buildCount++
 
 	call := buildAndDeployCall{count: b.buildCount, specs: specs, state: state}
-	if call.dc().Empty() && call.k8s().Empty() {
+	if call.dc().Empty() && call.k8s().Empty() && call.local().Empty() {
 		b.t.Fatalf("Invalid call: %+v", call)
 	}
 
@@ -1062,6 +1074,37 @@ func TestPodEvent(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
+func TestPodResetRestartsAction(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	manifest := f.newManifest("fe")
+	f.Start([]model.Manifest{manifest}, true)
+
+	call := f.nextCall()
+	assert.True(t, call.oneState().IsEmpty())
+
+	pb := podbuilder.New(f.T(), manifest)
+	f.podEvent(pb.Build(), manifest.Name)
+
+	pb = pb.
+		WithPhase("CrashLoopBackOff").
+		WithRestartCount(1)
+	f.podEvent(pb.Build(), manifest.Name)
+
+	f.WaitUntilManifestState("restart seen", "fe", func(ms store.ManifestState) bool {
+		return ms.MostRecentPod().VisibleContainerRestarts() == 1
+	})
+
+	f.store.Dispatch(store.NewPodResetRestartsAction(
+		k8s.PodID(pb.Build().Name), "fe", 1))
+
+	f.WaitUntilManifestState("restart cleared", "fe", func(ms store.ManifestState) bool {
+		return ms.MostRecentPod().VisibleContainerRestarts() == 0
+	})
+
+	assert.NoError(t, f.Stop())
+}
+
 func TestPodEventOrdering(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -1107,7 +1150,7 @@ func TestPodEventOrdering(t *testing.T) {
 			})
 
 			for _, pb := range order {
-				f.store.Dispatch(NewPodChangeAction(pb.Build(), manifest.Name, pb.DeploymentUID()))
+				f.store.Dispatch(k8swatch.NewPodChangeAction(pb.Build(), manifest.Name, pb.DeploymentUID()))
 			}
 
 			f.upper.store.Dispatch(PodLogAction{
@@ -1335,7 +1378,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 		Result: deployResultSet(manifest, ancestorUID),
 	})
 
-	f.store.Dispatch(NewPodChangeAction(pb.Build(), manifest.Name, ancestorUID))
+	f.store.Dispatch(k8swatch.NewPodChangeAction(pb.Build(), manifest.Name, ancestorUID))
 	f.WaitUntil("nothing waiting for build", func(st store.EngineState) bool {
 		return st.CompletedBuildCount == 1 && nextManifestNameToBuild(st) == ""
 	})
@@ -1352,7 +1395,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 
 	// Simulate a pod crash, then a build completion
 	pb = pb.WithContainerID("funny-container-id")
-	f.store.Dispatch(NewPodChangeAction(pb.Build(), manifest.Name, ancestorUID))
+	f.store.Dispatch(k8swatch.NewPodChangeAction(pb.Build(), manifest.Name, ancestorUID))
 
 	f.store.Dispatch(BuildCompleteAction{
 		Result: liveUpdateResultSet(manifest, "normal-container-id"),
@@ -1860,7 +1903,7 @@ func TestUpper_ServiceEvent(t *testing.T) {
 
 	uid := f.b.resultsByID[manifest.K8sTarget().ID()].DeployedUIDs[0]
 	svc := servicebuilder.New(t, manifest).WithUID(uid).WithPort(8080).WithIP("1.2.3.4").Build()
-	dispatchServiceChange(f.store, svc, manifest.Name, "")
+	k8swatch.DispatchServiceChange(f.store, svc, manifest.Name, "")
 
 	f.WaitUntilManifestState("lb updated", "foobar", func(ms store.ManifestState) bool {
 		return len(ms.K8sRuntimeState().LBs) > 0
@@ -1892,7 +1935,7 @@ func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 	uid := f.b.resultsByID[manifest.K8sTarget().ID()].DeployedUIDs[0]
 	sb := servicebuilder.New(t, manifest).WithUID(uid).WithPort(8080).WithIP("1.2.3.4")
 	svc := sb.Build()
-	dispatchServiceChange(f.store, svc, manifest.Name, "")
+	k8swatch.DispatchServiceChange(f.store, svc, manifest.Name, "")
 
 	f.WaitUntilManifestState("lb url added", "foobar", func(ms store.ManifestState) bool {
 		url := ms.K8sRuntimeState().LBs[k8s.ServiceName(svc.Name)]
@@ -1903,7 +1946,7 @@ func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 	})
 
 	svc = sb.WithIP("").Build()
-	dispatchServiceChange(f.store, svc, manifest.Name, "")
+	k8swatch.DispatchServiceChange(f.store, svc, manifest.Name, "")
 
 	f.WaitUntilManifestState("lb url removed", "foobar", func(ms store.ManifestState) bool {
 		url := ms.K8sRuntimeState().LBs[k8s.ServiceName(svc.Name)]
@@ -2100,7 +2143,7 @@ func TestNewSyncsAreWatched(t *testing.T) {
 
 	sync2 := model.Sync{LocalPath: "/js", ContainerPath: "/go"}
 	m2 := f.newFastBuildManifest("mani1", []model.Sync{sync1, sync2})
-	f.store.Dispatch(ConfigsReloadedAction{
+	f.store.Dispatch(configs.ConfigsReloadedAction{
 		Manifests: []model.Manifest{m2},
 	})
 
@@ -2222,7 +2265,7 @@ func TestDockerComposeStartsEventWatcher(t *testing.T) {
 	f.Start([]model.Manifest{}, true)
 	time.Sleep(10 * time.Millisecond)
 
-	f.store.Dispatch(ConfigsReloadedAction{Manifests: []model.Manifest{m}})
+	f.store.Dispatch(configs.ConfigsReloadedAction{Manifests: []model.Manifest{m}})
 	f.waitForCompletedBuildCount(1)
 
 	// Is DockerComposeEventWatcher watching for events??
@@ -2504,13 +2547,13 @@ func TestFeatureFlagsStoredOnState(t *testing.T) {
 
 	f.Start([]model.Manifest{}, true)
 
-	f.store.Dispatch(ConfigsReloadedAction{Features: map[string]bool{"foo": true}})
+	f.store.Dispatch(configs.ConfigsReloadedAction{Features: map[string]bool{"foo": true}})
 
 	f.WaitUntil("feature is enabled", func(state store.EngineState) bool {
 		return state.Features["foo"] == true
 	})
 
-	f.store.Dispatch(ConfigsReloadedAction{Features: map[string]bool{"foo": false}})
+	f.store.Dispatch(configs.ConfigsReloadedAction{Features: map[string]bool{"foo": false}})
 
 	f.WaitUntil("feature is disabled", func(state store.EngineState) bool {
 		return state.Features["foo"] == false
@@ -2522,13 +2565,13 @@ func TestTeamNameStoredOnState(t *testing.T) {
 
 	f.Start([]model.Manifest{}, true)
 
-	f.store.Dispatch(ConfigsReloadedAction{TeamName: "sharks"})
+	f.store.Dispatch(configs.ConfigsReloadedAction{TeamName: "sharks"})
 
 	f.WaitUntil("teamName is set to sharks", func(state store.EngineState) bool {
 		return state.TeamName == "sharks"
 	})
 
-	f.store.Dispatch(ConfigsReloadedAction{TeamName: "jets"})
+	f.store.Dispatch(configs.ConfigsReloadedAction{TeamName: "jets"})
 
 	f.WaitUntil("teamName is set to jets", func(state store.EngineState) bool {
 		return state.TeamName == "jets"
@@ -2627,6 +2670,25 @@ func TestDeployUIDsInEngineState(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
+func TestEnableFeatureOnFail(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", `
+enable_feature('snapshots')
+fail('goodnight moon')
+`)
+
+	f.loadAndStart()
+
+	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
+		return len(state.TiltfileState.BuildHistory) == 1
+	})
+	f.withState(func(state store.EngineState) {
+		assert.True(t, state.Features["snapshots"])
+	})
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
@@ -2716,7 +2778,7 @@ type testFixture struct {
 	store                 *store.Store
 	bc                    *BuildController
 	fwm                   *WatchManager
-	cc                    *ConfigsController
+	cc                    *configs.ConfigsController
 	dcc                   *dockercompose.FakeDCClient
 	tfl                   tiltfile.TiltfileLoader
 	ghc                   *github.FakeClient
@@ -2744,8 +2806,8 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	kCli := k8s.NewFakeK8sClient()
 	of := k8s.ProvideOwnerFetcher(kCli)
-	pw := NewPodWatcher(kCli, of)
-	sw := NewServiceWatcher(kCli, of, "")
+	pw := k8swatch.NewPodWatcher(kCli, of)
+	sw := k8swatch.NewServiceWatcher(kCli, of, "")
 
 	fakeHud := hud.NewFakeHud()
 
@@ -2768,9 +2830,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	ar := ProvideAnalyticsReporter(ta, st)
 
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
-
 	tfl := tiltfile.ProvideTiltfileLoader(ta, kCli, fakeDcc, "fake-context", k8s.EnvDockerDesktop, feature.MainDefaults)
-	cc := NewConfigsController(tfl, dockerClient)
+	cc := configs.NewConfigsController(tfl, dockerClient)
 	dcw := NewDockerComposeEventWatcher(fakeDcc)
 	dclm := NewDockerComposeLogManager(fakeDcc)
 	pm := NewProfilerManager()
@@ -2780,7 +2841,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	sm := containerupdate.NewSyncletManagerForTests(kCli, sGRPCCli, sCli)
 	hudsc := server.ProvideHeadsUpServerController(0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{}, false)
 	ghc := &github.FakeClient{}
-	ewm := NewEventWatchManager(kCli, of)
+	ewm := k8swatch.NewEventWatchManager(kCli, of)
 	tcum := cloud.NewUsernameManager(httptest.NewFakeClient())
 
 	ret := &testFixture{
@@ -2845,7 +2906,7 @@ func (f *testFixture) setManifests(manifests []model.Manifest) {
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	tfl.Result.Manifests = manifests
 	f.tfl = tfl
-	f.cc.tfl = tfl
+	f.cc.SetTiltfileLoaderForTesting(tfl)
 }
 
 type initOption func(ia InitAction) InitAction
@@ -3058,7 +3119,7 @@ func (f *testFixture) lastDeployedUID(manifestName model.ManifestName) types.UID
 }
 
 func (f *testFixture) startPod(pod *v1.Pod, manifestName model.ManifestName) {
-	f.upper.store.Dispatch(NewPodChangeAction(pod, manifestName, f.lastDeployedUID(manifestName)))
+	f.upper.store.Dispatch(k8swatch.NewPodChangeAction(pod, manifestName, f.lastDeployedUID(manifestName)))
 
 	f.WaitUntilManifestState("pod appears", manifestName, func(ms store.ManifestState) bool {
 		return ms.MostRecentPod().PodID == k8s.PodID(pod.Name)
@@ -3082,7 +3143,7 @@ func (f *testFixture) restartPod(pb podbuilder.PodBuilder) podbuilder.PodBuilder
 
 	pod := pb.Build()
 	mn := pb.ManifestName()
-	f.upper.store.Dispatch(NewPodChangeAction(pod, mn, f.lastDeployedUID(mn)))
+	f.upper.store.Dispatch(k8swatch.NewPodChangeAction(pod, mn, f.lastDeployedUID(mn)))
 
 	f.WaitUntilManifestState("pod restart seen", "foobar", func(ms store.ManifestState) bool {
 		return ms.MostRecentPod().AllContainerRestarts() == int(restartCount)
@@ -3091,7 +3152,7 @@ func (f *testFixture) restartPod(pb podbuilder.PodBuilder) podbuilder.PodBuilder
 }
 
 func (f *testFixture) notifyAndWaitForPodStatus(pod *v1.Pod, mn model.ManifestName, pred func(pod store.Pod) bool) {
-	f.upper.store.Dispatch(NewPodChangeAction(pod, mn, f.lastDeployedUID(mn)))
+	f.upper.store.Dispatch(k8swatch.NewPodChangeAction(pod, mn, f.lastDeployedUID(mn)))
 
 	f.WaitUntilManifestState("pod status change seen", mn, func(state store.ManifestState) bool {
 		return pred(state.MostRecentPod())
@@ -3122,7 +3183,7 @@ func (f *testFixture) TearDown() {
 }
 
 func (f *testFixture) podEvent(pod *v1.Pod, mn model.ManifestName) {
-	f.store.Dispatch(NewPodChangeAction(pod, mn, f.lastDeployedUID(mn)))
+	f.store.Dispatch(k8swatch.NewPodChangeAction(pod, mn, f.lastDeployedUID(mn)))
 }
 
 func (f *testFixture) newManifest(name string) model.Manifest {
@@ -3229,7 +3290,7 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 
 	f.WriteFile("Tiltfile", `docker_compose('docker-compose.yml')`)
 
-	var dcConfig tiltfile.DcConfig
+	var dcConfig dockercompose.Config
 	err = yaml.Unmarshal(dcpc, &dcConfig)
 	if err != nil {
 		f.T().Fatal(err)
@@ -3247,9 +3308,9 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 
 	f.dcc.ServicesOutput = "redis\nserver\n"
 
-	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
-	if err != nil {
-		f.T().Fatal(err)
+	tlr := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	if tlr.Error != nil {
+		f.T().Fatal(tlr.Error)
 	}
 
 	if len(tlr.Manifests) != 2 {

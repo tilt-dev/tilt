@@ -168,7 +168,7 @@ class HUD extends Component<HudProps, HudState> {
           })
           .catch(err => console.error(err))
       })
-      .then(err => console.error(err))
+      .catch(err => console.error(err))
   }
 
   render() {
@@ -326,7 +326,7 @@ class HUD extends Component<HudProps, HudState> {
         return <Route component={NotFound} />
       }
       if (er) {
-        return <AlertPane resources={[er]} />
+        return <AlertPane pathBuilder={this.pathBuilder} resources={[er]} />
       }
     }
     let snapshotRoute = () => {
@@ -422,7 +422,9 @@ class HUD extends Component<HudProps, HudState> {
           <Route
             exact
             path={this.path("/alerts")}
-            render={() => <AlertPane resources={resources} />}
+            render={() => (
+              <AlertPane pathBuilder={this.pathBuilder} resources={resources} />
+            )}
           />
           <Route exact path={this.path("/preview")} render={previewRoute} />
           <Route exact path={this.path("/r/:name")} render={logsRoute} />

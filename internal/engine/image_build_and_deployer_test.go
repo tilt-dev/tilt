@@ -23,6 +23,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/pkg/model"
 )
@@ -592,6 +593,26 @@ func TestIBDDeployUIDs(t *testing.T) {
 
 	assert.Equal(t, 1, len(result.DeployedUIDSet()))
 	assert.True(t, result.DeployedUIDSet().Contains(f.k8s.LastUpsertResult[0].UID()))
+}
+
+func TestDockerBuildTargetStage(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	iTarget := NewSanchoDockerBuildImageTarget(f)
+	db := iTarget.BuildDetails.(model.DockerBuild)
+	db.TargetStage = "stage"
+	iTarget.BuildDetails = db
+
+	manifest := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(testyaml.SanchoYAML).
+		WithImageTargets(iTarget).
+		Build()
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, "stage", f.docker.BuildOptions.Target)
 }
 
 type ibdFixture struct {

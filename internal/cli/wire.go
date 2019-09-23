@@ -21,6 +21,8 @@ import (
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/engine"
+	"github.com/windmilleng/tilt/internal/engine/configs"
+	"github.com/windmilleng/tilt/internal/engine/k8swatch"
 	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
@@ -66,11 +68,11 @@ var BaseWireSet = wire.NewSet(
 	engine.NewPodLogManager,
 	engine.NewPortForwardController,
 	engine.NewBuildController,
-	engine.NewPodWatcher,
-	engine.NewServiceWatcher,
-	engine.NewEventWatchManager,
+	k8swatch.NewPodWatcher,
+	k8swatch.NewServiceWatcher,
+	k8swatch.NewEventWatchManager,
 	engine.NewImageController,
-	engine.NewConfigsController,
+	configs.NewConfigsController,
 	engine.NewDockerComposeEventWatcher,
 	engine.NewDockerComposeLogManager,
 	engine.NewProfilerManager,

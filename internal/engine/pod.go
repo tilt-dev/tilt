@@ -8,6 +8,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/engine/k8swatch"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
@@ -15,7 +16,7 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
-func handlePodChangeAction(ctx context.Context, state *store.EngineState, action PodChangeAction) {
+func handlePodChangeAction(ctx context.Context, state *store.EngineState, action k8swatch.PodChangeAction) {
 	mt := matchPodChangeToManifest(state, action)
 	if mt == nil {
 		return
@@ -34,8 +35,8 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 	// Update the status
 	podInfo.Deleting = pod.DeletionTimestamp != nil && !pod.DeletionTimestamp.IsZero()
 	podInfo.Phase = pod.Status.Phase
-	podInfo.Status = podStatusToString(*pod)
-	podInfo.StatusMessages = podStatusErrorMessages(*pod)
+	podInfo.Status = k8swatch.PodStatusToString(*pod)
+	podInfo.StatusMessages = k8swatch.PodStatusErrorMessages(*pod)
 
 	prunePods(ms)
 
@@ -72,7 +73,7 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 
 // Find the ManifestTarget for the PodChangeAction,
 // and confirm that it matches what we've deployed.
-func matchPodChangeToManifest(state *store.EngineState, action PodChangeAction) *store.ManifestTarget {
+func matchPodChangeToManifest(state *store.EngineState, action k8swatch.PodChangeAction) *store.ManifestTarget {
 	manifestName := action.ManifestName
 	ancestorUID := action.AncestorUID
 	mt, ok := state.ManifestTargets[manifestName]
@@ -97,11 +98,11 @@ func matchPodChangeToManifest(state *store.EngineState, action PodChangeAction) 
 // If not, create a new tracking object.
 // Returns a store.Pod that the caller can mutate, and true
 // if this is the first time we've seen this pod.
-func trackPod(ms *store.ManifestState, action PodChangeAction) (*store.Pod, bool) {
+func trackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*store.Pod, bool) {
 	pod := action.Pod
 	podID := k8s.PodIDFromPod(pod)
 	startedAt := pod.CreationTimestamp.Time
-	status := podStatusToString(*pod)
+	status := k8swatch.PodStatusToString(*pod)
 	ns := k8s.NamespaceFromPod(pod)
 	hasSynclet := sidecar.PodSpecContainsSynclet(pod.Spec)
 	runtime := ms.GetOrCreateK8sRuntimeState()
@@ -288,4 +289,22 @@ func handlePodLogAction(state *store.EngineState, action PodLogAction) {
 
 	podInfo := runtime.Pods[podID]
 	podInfo.CurrentLog = model.AppendLog(podInfo.CurrentLog, action, state.LogTimestamps, "")
+}
+
+func handlePodResetRestartsAction(state *store.EngineState, action store.PodResetRestartsAction) {
+	ms, ok := state.ManifestState(action.ManifestName)
+	if !ok {
+		return
+	}
+
+	runtime := ms.K8sRuntimeState()
+	podInfo, ok := runtime.Pods[action.PodID]
+	if !ok {
+		return
+	}
+
+	// We have to be careful here because the pod might have restarted
+	// since the action was created.
+	delta := podInfo.VisibleContainerRestarts() - action.VisibleRestarts
+	podInfo.BaselineRestarts = podInfo.AllContainerRestarts() - delta
 }

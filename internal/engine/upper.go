@@ -17,6 +17,8 @@ import (
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/engine/configs"
+	"github.com/windmilleng/tilt/internal/engine/k8swatch"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -146,9 +148,11 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleExitAction(state, action)
 	case targetFilesChangedAction:
 		handleFSEvent(ctx, state, action)
-	case PodChangeAction:
+	case k8swatch.PodChangeAction:
 		handlePodChangeAction(ctx, state, action)
-	case ServiceChangeAction:
+	case store.PodResetRestartsAction:
+		handlePodResetRestartsAction(state, action)
+	case k8swatch.ServiceChangeAction:
 		handleServiceEvent(ctx, state, action)
 	case store.K8sEventAction:
 		handleK8sEvent(ctx, state, action)
@@ -162,9 +166,9 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleBuildStarted(ctx, state, action)
 	case DeployIDAction:
 		handleDeployIDAction(ctx, state, action)
-	case ConfigsReloadStartedAction:
+	case configs.ConfigsReloadStartedAction:
 		handleConfigsReloadStarted(ctx, state, action)
-	case ConfigsReloadedAction:
+	case configs.ConfigsReloadedAction:
 		handleConfigsReloaded(ctx, state, action)
 	case DockerComposeEventAction:
 		handleDockerComposeEvent(ctx, state, action)
@@ -178,7 +182,7 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleStopProfilingAction(state)
 	case hud.SetLogTimestampsAction:
 		handleLogTimestampsAction(state, action)
-	case TiltfileLogAction:
+	case configs.TiltfileLogAction:
 		handleTiltfileLogAction(ctx, state, action)
 	case hud.DumpEngineStateAction:
 		handleDumpEngineStateAction(ctx, state)
@@ -226,7 +230,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 			pod.CurrentLog = model.Log{}
 			pod.UpdateStartTime = action.StartTime
 		}
-	} else {
+	} else if ms.IsDC() {
 		ms.RuntimeState = ms.DCRuntimeState().WithCurrentLog(model.Log{})
 	}
 
@@ -352,6 +356,11 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		ms.RuntimeState = state
 	}
 
+	if mt.Manifest.IsLocal() {
+		// dummy value to indicate that this is a LocalResource (LR's have no runtime state, only build state)
+		ms.RuntimeState = store.LocalRuntimeState{}
+	}
+
 	if engineState.WatchFiles {
 		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 	}
@@ -440,7 +449,7 @@ func handleFSEvent(
 func handleConfigsReloadStarted(
 	ctx context.Context,
 	state *store.EngineState,
-	event ConfigsReloadStartedAction,
+	event configs.ConfigsReloadStartedAction,
 ) {
 	filesChanged := []string{}
 	for f, _ := range event.FilesChanged {
@@ -458,7 +467,7 @@ func handleConfigsReloadStarted(
 func handleConfigsReloaded(
 	ctx context.Context,
 	state *store.EngineState,
-	event ConfigsReloadedAction,
+	event configs.ConfigsReloadedAction,
 ) {
 	manifests := event.Manifests
 	if state.InitialBuildsQueued == 0 {
@@ -477,11 +486,29 @@ func handleConfigsReloaded(
 	}
 	state.TiltfileState.CurrentBuild = model.BuildRecord{}
 	if event.Err != nil {
-		// There was an error, so don't update status with the new, nonexistent state
+		// When the Tiltfile had an error, we want to differentiate between two cases:
+		//
+		// 1) You're running `tilt up` for the first time, and a local() command
+		// exited with status code 1.  Partial results (like enabling features)
+		// would be helpful.
+		//
+		// 2) You're running 'tilt up' in the happy state. You edit the Tiltfile,
+		// and introduce a syntax error.  You don't want partial results to wipe out
+		// your "good" state.
 
-		// EXCEPT for the config file list, because we want to watch new config files even when the tiltfile is broken
-		// append any new config files found in the reload action
+		// Watch any new config files in the partial state.
 		state.ConfigFiles = sliceutils.AppendWithoutDupes(state.ConfigFiles, event.ConfigFiles...)
+
+		// Enable any new features in the partial state.
+		if len(state.Features) == 0 {
+			state.Features = event.Features
+		} else {
+			for feature, val := range event.Features {
+				if val {
+					state.Features[feature] = val
+				}
+			}
+		}
 
 		return
 	}
@@ -575,7 +602,7 @@ func sourcePrefix(n model.ManifestName) string {
 	return fmt.Sprintf("%s%s┊ ", n, spaces)
 }
 
-func handleServiceEvent(ctx context.Context, state *store.EngineState, action ServiceChangeAction) {
+func handleServiceEvent(ctx context.Context, state *store.EngineState, action k8swatch.ServiceChangeAction) {
 	service := action.Service
 	ms, ok := state.ManifestState(action.ManifestName)
 	if !ok {
@@ -692,7 +719,7 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 	ms.RuntimeState = dcState.WithCurrentLog(model.AppendLog(dcState.CurrentLog, action, state.LogTimestamps, ""))
 }
 
-func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action TiltfileLogAction) {
+func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action configs.TiltfileLogAction) {
 	state.TiltfileState.CurrentBuild.Log = model.AppendLog(state.TiltfileState.CurrentBuild.Log, action, state.LogTimestamps, "")
 	state.TiltfileState.CombinedLog = model.AppendLog(state.TiltfileState.CombinedLog, action, state.LogTimestamps, "")
 }

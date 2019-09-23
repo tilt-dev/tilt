@@ -45,9 +45,9 @@ func NewPipelineState(ctx context.Context, totalStepCount int, c Clock) *Pipelin
 
 // NOTE(maia): this func should always be deferred in a closure, so that the `err` arg
 // is bound at the time of calling rather than at the time of deferring. I.e., do:
-//     defer func() { ps.End(err) }()
+//     defer func() { ps.End(ctx, err) }()
 // and NOT:
-//     defer ps.End(err)
+//     defer ps.End(ctx, err)
 func (ps *PipelineState) End(ctx context.Context, err error) {
 	l := logger.Get(ctx)
 	prefix := logger.Blue(l).Sprint("  │ ")

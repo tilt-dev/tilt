@@ -156,6 +156,29 @@ func TestBuildControllerDockerCompose(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
+func TestBuildControllerLocalResource(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	dep := f.JoinPath("stuff.json")
+	manifest := manifestbuilder.New(f, "yarn-add").
+		WithLocalResource("echo beep boop", []string{dep}).Build()
+	f.Start([]model.Manifest{manifest}, true)
+
+	call := f.nextCall()
+	lt := manifest.LocalTarget()
+	assert.Equal(t, lt, call.local())
+
+	f.fsWatcher.events <- watch.NewFileEvent(dep)
+
+	call = f.nextCall()
+	assert.Equal(t, lt, call.local())
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+}
+
 func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -652,6 +675,35 @@ func TestBuildControllerUnresourcedYAMLFirst(t *testing.T) {
 		"built2",
 		"built3",
 		"built4",
+	}
+	assert.Equal(t, expectedBuildOrder, observedBuildOrder)
+}
+
+func TestBuildControllerRespectDockerComposeOrder(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	sancho := NewSanchoFastBuildDCManifest(f)
+	redis := manifestbuilder.New(f, "redis").WithDockerCompose().Build()
+	donQuixote := manifestbuilder.New(f, "don-quixote").WithDockerCompose().Build()
+	manifests := []model.Manifest{redis, sancho, donQuixote}
+	f.Start(manifests, true)
+
+	var observedBuildOrder []string
+	for i := 0; i < len(manifests); i++ {
+		call := f.nextCall()
+		observedBuildOrder = append(observedBuildOrder, call.dc().Name.String())
+	}
+
+	// If these were Kubernetes resources, we would try to deploy don-quixote
+	// before sancho, because it doesn't have an image build.
+	//
+	// But this would be wrong, because Docker Compose has stricter ordering requirements, see:
+	// https://docs.docker.com/compose/startup-order/
+	expectedBuildOrder := []string{
+		"redis",
+		"sancho",
+		"don-quixote",
 	}
 	assert.Equal(t, expectedBuildOrder, observedBuildOrder)
 }
