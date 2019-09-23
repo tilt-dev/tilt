@@ -972,6 +972,31 @@ docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', ignor
 	assert.Nil(t, err)
 }
 
+func TestConfigChange_LocalResourceChange(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", `print('tiltfile 1')
+local_resource('local', 'echo one fish two fish', deps='foo.bar')`)
+
+	f.loadAndStart()
+
+	// First call: with the old manifests
+	call := f.nextCall("initial call")
+	assert.Equal(t, "local", string(call.local().Name))
+	assert.Equal(t, "echo one fish two fish", call.local().Cmd.String())
+
+	// Change the definition of the resource -- this changes the manifest which should trigger an updated
+	f.WriteConfigFiles("Tiltfile", `print('tiltfile 2')
+local_resource('local', 'echo red fish blue fish', deps='foo.bar')`)
+	call = f.nextCall("rebuild from config change")
+	assert.Equal(t, "echo red fish blue fish", call.local().Cmd.String())
+
+	err := f.Stop()
+	assert.Nil(t, err)
+	f.assertAllBuildsConsumed()
+}
+
 func TestDockerRebuildWithChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
