@@ -24,13 +24,14 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
 		"cmd", &cmd,
-		"deps?", &deps,
+		"deps", &deps, // TODO(maia): will be optional once we extend LocalResource to infrequent manual jobs
 		"trigger_mode?", &triggerMode,
 	); err != nil {
 		return nil, err
 	}
 
 	depsVals := starlarkValueOrSequenceToSlice(deps)
+
 	var depsStrings []string
 	for _, v := range depsVals {
 		path, err := s.absPathFromStarlarkValue(thread, v)

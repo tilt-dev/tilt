@@ -3970,7 +3970,7 @@ local_resource("test", "echo hi", ["foo/bar", "foo/a.txt"])
 	path1 := f.JoinPath("foo/bar")
 	path2 := f.JoinPath("foo/a.txt")
 	require.Equal(t, []string{"sh", "-c", "echo hi"}, lt.Cmd.Argv)
-	require.Equal(t, []string{path2, path1}, lt.Dependencies())
+	require.ElementsMatch(t, []string{path1, path2}, lt.Dependencies())
 
 	f.assertConfigFiles("Tiltfile", ".tiltignore")
 
@@ -3984,6 +3984,39 @@ local_resource("test", "echo hi", ["foo/bar", "foo/a.txt"])
 		t.Fatal(err)
 	}
 	require.Equal(t, false, matches)
+}
+
+func TestLocalResourceDepsString(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource("test", "echo hi", "foo/bar")
+`)
+
+	f.setupFoo()
+	f.load("test")
+
+	f.assertNumManifests(1)
+
+	// TODO(dmiller): make the rest of these assertion helpers like the other manifest helpers
+	m := f.loadResult.Manifests[0]
+	require.Equal(t, "test", m.Name.String())
+	lt := m.LocalTarget()
+	require.Equal(t, []string{"sh", "-c", "echo hi"}, lt.Cmd.Argv)
+	require.Equal(t, []string{f.JoinPath("foo/bar")}, lt.Dependencies())
+}
+
+func TestLocalResourceDepsRequired(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource("test", "echo hi")
+`)
+
+	f.setupFoo()
+	f.loadErrString("missing argument for deps")
 }
 
 type fixture struct {
