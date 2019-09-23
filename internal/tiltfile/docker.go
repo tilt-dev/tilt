@@ -15,7 +15,7 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
-var fastBuildDeletedErr = fmt.Errorf("fast_build is deleted; check out live_update (e.g. https://docs.tilt.dev/live_update_tutorial.html")
+var fastBuildDeletedErr = fmt.Errorf("fast_build is no longer supported. live_update provides the same functionality with less set-up: https://docs.tilt.dev/live_update_tutorial.html . If you run into problems, let us know: https://tilt.dev/contact")
 
 type dockerImage struct {
 	tiltfilePath       string
