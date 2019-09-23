@@ -1,7 +1,7 @@
 # -*- mode: Python -*-
 
 docker_compose('docker-compose.yaml')
-img = docker_build('gcr.io/windmill-test-containers/dcfastbuild', '.',
+docker_build('gcr.io/windmill-test-containers/dcfastbuild', '.',
                    live_update=[
                      sync('.', '/go/src/github.com/windmilleng/tilt/integration/dcfastbuild'),
                      run('go install github.com/windmilleng/tilt/integration/dcfastbuild/cmd/dcfastbuild'),
