@@ -41,5 +41,10 @@ func (fc *FakeClient) RequestURLs() []string {
 }
 
 func NewFakeClient() *FakeClient {
-	return &FakeClient{}
+	return &FakeClient{
+		Response: http.Response{
+			StatusCode: http.StatusInternalServerError,
+			Body:       ioutil.NopCloser(strings.NewReader("FakeClient response uninitialized")),
+		},
+	}
 }
