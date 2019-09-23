@@ -383,28 +383,6 @@ dc_resource('foo', 'fooimage')
 	assert.Equal(t, m.DockerComposeTarget().ConfigPaths, []string{configPath})
 }
 
-func TestDockerComposeWithFastBuild(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-	f.file("docker-compose.yml", simpleConfig)
-	f.file("Tiltfile", `repo = local_git_repo('.')
-fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add(repo.paths('foo'), 'src/') \
-  .run("echo hi")
-docker_compose('docker-compose.yml')
-dc_resource('foo', 'gcr.io/foo')
-`)
-
-	f.loadAssertWarnings(fastBuildDeprecationWarning)
-	m := f.assertNextManifest("foo",
-		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi"), hotReload(false)))
-
-	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
-	assert.Equal(t, m.DockerComposeTarget().ConfigPaths, []string{configPath})
-}
-
 func TestMultipleDockerComposeWithDockerBuild(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

@@ -231,10 +231,8 @@ func (s *tiltfileState) k8sResourceV1(thread *starlark.Thread, fn *starlark.Buil
 		// empty
 	case starlark.String:
 		imageRefAsStr = string(imageVal)
-	case *fastBuild:
-		imageRefAsStr = imageVal.img.configurationRef.String()
 	default:
-		return nil, fmt.Errorf("image arg must be a string or fast_build; got %T", imageVal)
+		return nil, fmt.Errorf("image arg must be a string; got %T", imageVal)
 	}
 
 	portForwards, err := convertPortForwards(portForwardsVal)

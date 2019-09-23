@@ -15,10 +15,7 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
-const fastBuildDeprecationWarning = "FastBuild (`fast_build`; `add_fast_build`; " +
-	"`docker_build(...).add(...)`, etc.) will be deprecated **ON THURS. 9/12/19**; " +
-	"you can use Live Update instead! See https://docs.tilt.dev/live_update_tutorial.html " +
-	"for more information. If Live Update doesn't fit your use case, let us know."
+var fastBuildDeletedErr = fmt.Errorf("fast_build is no longer supported. live_update provides the same functionality with less set-up: https://docs.tilt.dev/live_update_tutorial.html . If you run into problems, let us know: https://tilt.dev/contact")
 
 type dockerImage struct {
 	tiltfilePath       string
@@ -210,10 +207,9 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	// NOTE(maia): docker_build returns a fast build that users can optionally
-	// populate; if populated, we use it for in-place updates of this image
-	// (but use DockerBuild info for image builds)
-	fb := &fastBuild{s: s, img: r}
+	// NOTE(maia): docker_build returned a fast build that users can optionally
+	// populate; now it just errors
+	fb := &fastBuild{}
 	return fb, nil
 }
 
@@ -353,25 +349,17 @@ func (b *customBuild) Hash() (uint32, error) {
 	return 0, fmt.Errorf("unhashable type: custom_build")
 }
 
-const (
-	addFastBuildN = "add_fast_build"
-)
-
 func (b *customBuild) Attr(name string) (starlark.Value, error) {
 	switch name {
-	case addFastBuildN:
-		return starlark.NewBuiltin(name, b.addFastBuild), nil
+	case "add_fast_build":
+		return nil, fastBuildDeletedErr
 	default:
 		return nil, nil
 	}
 }
 
 func (b *customBuild) AttrNames() []string {
-	return []string{addFastBuildN}
-}
-
-func (b *customBuild) addFastBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	return &fastBuild{s: b.s, img: b.img}, nil
+	return []string{}
 }
 
 func parseValuesToStrings(value starlark.Value, param string) ([]string, error) {
@@ -394,59 +382,7 @@ func parseValuesToStrings(value starlark.Value, param string) ([]string, error) 
 
 }
 func (s *tiltfileState) fastBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-
-	var dockerRef, entrypoint string
-	var baseDockerfile starlark.Value
-	var cacheVal starlark.Value
-	err := s.unpackArgs(fn.Name(), args, kwargs,
-		"ref", &dockerRef,
-		"base_dockerfile", &baseDockerfile,
-		"entrypoint?", &entrypoint,
-		"cache?", &cacheVal,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	baseDockerfilePath, err := s.absPathFromStarlarkValue(thread, baseDockerfile)
-	if err != nil {
-		return nil, fmt.Errorf("Argument 2 (base_dockerfile): %v", err)
-	}
-
-	ref, err := container.ParseNamed(dockerRef)
-	if err != nil {
-		return nil, fmt.Errorf("Parsing %q: %v", dockerRef, err)
-	}
-
-	bs, err := s.readFile(baseDockerfilePath)
-	if err != nil {
-		return nil, errors.Wrap(err, "error reading dockerfile")
-	}
-
-	df := dockerfile.Dockerfile(bs)
-	if err = df.ValidateBaseDockerfile(); err != nil {
-		return nil, err
-	}
-
-	cachePaths, err := s.cachePathsFromSkylarkValue(cacheVal)
-	if err != nil {
-		return nil, err
-	}
-
-	r := &dockerImage{
-		baseDockerfilePath: baseDockerfilePath,
-		baseDockerfile:     df,
-		configurationRef:   container.NewRefSelector(ref),
-		fbEntrypoint:       entrypoint,
-		cachePaths:         cachePaths,
-	}
-	err = s.buildIndex.addImage(r)
-	if err != nil {
-		return nil, err
-	}
-
-	fb := &fastBuild{s: s, img: r}
-	return fb, nil
+	return nil, fastBuildDeletedErr
 }
 
 func (s *tiltfileState) cachePathsFromSkylarkValue(val starlark.Value) ([]string, error) {
@@ -466,15 +402,14 @@ func (s *tiltfileState) cachePathsFromSkylarkValue(val starlark.Value) ([]string
 	return ret, nil
 }
 
+// fastBuild exists just to error
 type fastBuild struct {
-	s   *tiltfileState
-	img *dockerImage
 }
 
 var _ starlark.Value = &fastBuild{}
 
 func (b *fastBuild) String() string {
-	return fmt.Sprintf("fast_build(%q)", b.img.configurationRef.String())
+	return "fast_build(%q)"
 }
 
 func (b *fastBuild) Type() string {
@@ -491,93 +426,12 @@ func (b *fastBuild) Hash() (uint32, error) {
 	return 0, fmt.Errorf("unhashable type: fast_build")
 }
 
-const (
-	fbAddN       = "add"
-	fbRunN       = "run"
-	fbHotReloadN = "hot_reload"
-)
-
 func (b *fastBuild) Attr(name string) (starlark.Value, error) {
-	switch name {
-	case fbAddN:
-		return starlark.NewBuiltin(name, b.add), nil
-	case fbRunN:
-		return starlark.NewBuiltin(name, b.run), nil
-	case fbHotReloadN:
-		return starlark.NewBuiltin(name, b.hotReload), nil
-	default:
-		return nil, nil
-	}
+	return nil, fastBuildDeletedErr
 }
 
 func (b *fastBuild) AttrNames() []string {
-	return []string{fbAddN, fbRunN, fbHotReloadN}
-}
-
-func (b *fastBuild) hotReload(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	if err := b.s.unpackArgs(fn.Name(), args, kwargs); err != nil {
-		return nil, err
-	}
-
-	b.img.hotReload = true
-
-	return b, nil
-}
-
-func (b *fastBuild) add(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	if len(b.img.runs) > 0 {
-		return nil, fmt.Errorf("fast_build(%q).add() called after .run(); must add all code before runs", b.img.configurationRef.String())
-	}
-
-	var src starlark.Value
-	var mountPoint string
-
-	if err := b.s.unpackArgs(fn.Name(), args, kwargs, "src", &src, "dest", &mountPoint); err != nil {
-		return nil, err
-	}
-
-	s := pathSync{}
-	lp, err := b.s.absPathFromStarlarkValue(thread, src)
-	if err != nil {
-		return nil, errors.Wrapf(err, "%s.%s(): invalid type for src (arg 1)", b.String(), fn.Name())
-	}
-	s.src = lp
-
-	s.mountPoint = mountPoint
-	b.img.syncs = append(b.img.syncs, s)
-
-	return b, nil
-}
-
-func (b *fastBuild) run(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var cmd string
-	var trigger starlark.Value
-	if err := b.s.unpackArgs(fn.Name(), args, kwargs, "cmd", &cmd, "trigger?", &trigger); err != nil {
-		return nil, err
-	}
-
-	var triggers []string
-	switch trigger := trigger.(type) {
-	case *starlark.List:
-		l := trigger.Len()
-		triggers = make([]string, l)
-		for i := 0; i < l; i++ {
-			t := trigger.Index(i)
-			tStr, isStr := t.(starlark.String)
-			if !isStr {
-				return nil, badTypeErr(fn, starlark.String(""), t)
-			}
-			triggers[i] = string(tStr)
-		}
-	case starlark.String:
-		triggers = []string{string(trigger)}
-	}
-
-	run := model.ToRun(model.ToShellCmd(cmd))
-	run = run.WithTriggers(triggers, b.s.absWorkingDir(thread))
-
-	b.img.runs = append(b.img.runs, run)
-	return b, nil
+	return []string{}
 }
 
 type pathSync struct {
@@ -726,15 +580,4 @@ func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Docker
 		paths = append(paths, image.customDeps...)
 	}
 	return s.dockerignoresFromPathsAndContextFilters(paths, image.ignores, image.onlys)
-}
-
-func (s *tiltfileState) checkForFastBuilds(manifests []model.Manifest) {
-	for _, m := range manifests {
-		for _, iTarg := range m.ImageTargets {
-			if !iTarg.AnyFastBuildInfo().Empty() {
-				s.warnings = append(s.warnings, fastBuildDeprecationWarning)
-				return
-			}
-		}
-	}
 }

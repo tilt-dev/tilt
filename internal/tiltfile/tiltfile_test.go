@@ -76,21 +76,6 @@ local_git_repo('.').asdf()
 	f.loadErrString("Tiltfile:2:20: in <toplevel>", "Error: gitRepo has no .asdf field or method")
 }
 
-func TestFastBuildBadMethodCall(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-	f.setupFoo()
-	f.file("Tiltfile", `
-hfb = fast_build(
-  'gcr.io/foo',
-  'foo/Dockerfile',
-  './entrypoint',
-).asdf()
-`)
-
-	f.loadErrString("Error: fast_build has no .asdf field or method")
-}
-
 func TestCustomBuildBadMethodCall(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -243,10 +228,9 @@ k8s_yaml('foo.yaml')
 	f.loadErrString("Cannot specify both dockerfile and dockerfile_contents")
 }
 
-func TestFastBuildSimple(t *testing.T) {
+func TestFastBuildFails(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
-
 	f.setupFoo()
 	f.file("Tiltfile", `
 fast_build('gcr.io/foo', 'foo/Dockerfile') \
@@ -254,130 +238,20 @@ fast_build('gcr.io/foo', 'foo/Dockerfile') \
   .run("echo hi")
 k8s_yaml('foo.yaml')
 `)
-	f.loadAssertWarnings(fastBuildDeprecationWarning)
-	f.assertNextManifest("foo",
-		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi"), hotReload(false)),
-		deployment("foo"),
-	)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
+	f.loadErrString("fast_build is no longer supported")
 }
 
-func TestFastBuildHotReload(t *testing.T) {
+func TestAddFastBuildFails(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
-
 	f.setupFoo()
 	f.file("Tiltfile", `
-fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add('foo', 'src/') \
-  .run("echo hi") \
-  .hot_reload()
-k8s_yaml('foo.yaml')
-`)
-	f.loadAssertWarnings(fastBuildDeprecationWarning)
-	f.assertNextManifest("foo",
-		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi"), hotReload(true)),
-		deployment("foo"),
-	)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
-}
-
-func TestFastBuildPassedToResource(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-	f.file("Tiltfile", `
-fb = fast_build('gcr.io/foo', 'foo/Dockerfile') \
+docker_build('gcr.io/foo', 'foo') \
   .add('foo', 'src/') \
   .run("echo hi")
 k8s_yaml('foo.yaml')
 `)
-	f.loadAssertWarnings(fastBuildDeprecationWarning)
-	f.assertNextManifest("foo",
-		fb(image("gcr.io/foo"), add("foo", "src/"), run("echo hi")),
-		deployment("foo"),
-	)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
-}
-
-func TestFastBuildValidates(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-	f.file("foo/Dockerfile", `
-from golang:1.10
-ADD . .`)
-	f.file("Tiltfile", `
-fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add('foo', 'src/') \
-  .run("echo hi")
-k8s_yaml('foo.yaml')
-`)
-	f.loadErrString("base Dockerfile contains an ADD/COPY")
-}
-
-func TestFastBuildRunBeforeAdd(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-	f.file("Tiltfile", `
-fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .run("echo hi") \
-  .add('foo', 'src/')
-k8s_yaml('foo.yaml')
-`)
-	f.loadErrString("fast_build(\"gcr.io/foo\").add() called after .run()")
-}
-
-func TestDockerBuildWithEmbeddedFastBuild(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFooAndBar()
-	f.file("Tiltfile", `
-k8s_yaml(['foo.yaml', 'bar.yaml'])
-
-docker_build('gcr.io/foo', 'foo')
-fastbar = docker_build('gcr.io/bar', 'bar')
-
-fastbar.add('local/paths', 'remote/paths')
-fastbar.run('echo hi')
-`)
-
-	f.loadAssertWarnings(fastBuildDeprecationWarning)
-	f.assertNextManifest("foo",
-		db(image("gcr.io/foo")),
-		deployment("foo"))
-	f.assertNextManifest("bar",
-		db(image("gcr.io/bar"), nestedFB(add("local/paths", "remote/paths"), run("echo hi"))),
-		deployment("bar"))
-}
-
-func TestFastBuildTriggers(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-	f.file("Tiltfile", `
-fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add('foo', 'src/') \
-  .run("echo hi", trigger=['a', 'b']) \
-  .run("echo again", trigger='c')
-k8s_yaml('foo.yaml')
-`)
-	f.loadAssertWarnings(fastBuildDeprecationWarning)
-	f.assertNextManifest("foo",
-		fb(image("gcr.io/foo"),
-			add("foo", "src/"),
-			run("echo hi", "a", "b"),
-			run("echo again", "c"),
-		),
-		deployment("foo"),
-	)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
+	f.loadErrString("fast_build is no longer supported")
 }
 
 func TestVerifiesGitRepo(t *testing.T) {
@@ -496,19 +370,6 @@ docker_build("gcr.io/foo", "foo", cache='/paths/to/cache')
 	f.assertNextManifest("foo", dbWithCache(image("gcr.io/foo"), "/paths/to/cache"))
 }
 
-func TestFastBuildCache(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-	f.file("Tiltfile", `
-k8s_yaml('foo.yaml')
-fast_build("gcr.io/foo", 'foo/Dockerfile', cache='/paths/to/cache')
-`)
-	f.loadAssertWarnings(fastBuildDeprecationWarning)
-	f.assertNextManifest("foo", fbWithCache(image("gcr.io/foo"), "/paths/to/cache"))
-}
-
 func TestDuplicateResourceNames(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -569,58 +430,6 @@ spec:
 k8s_yaml([blob(yaml_str)])`)
 
 	f.loadErrString("invalid reference format", "test-pod", "IMAGE_URL")
-}
-
-func TestFastBuildAddString(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFooAndBar()
-	f.file("Tiltfile", fmt.Sprintf(`
-k8s_yaml(['foo.yaml', 'bar.yaml'])
-
-# fb.add() on string of relative paths
-fast_build('gcr.io/foo', 'foo/Dockerfile').add('./foo', '/foo')
-
-# fb.add() on string of absolute paths
-fast_build('gcr.io/bar', 'foo/Dockerfile').add('%s', '/bar')
-`, f.JoinPath("./bar")))
-
-	f.loadAssertWarnings(fastBuildDeprecationWarning)
-	f.assertNextManifest("foo", fb(image("gcr.io/foo"), add("foo", "/foo")))
-	f.assertNextManifest("bar", fb(image("gcr.io/bar"), add("bar", "/bar")))
-}
-
-func TestFastBuildAddLocalPath(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-	f.file("Tiltfile", `
-repo = local_git_repo('.')
-k8s_yaml('foo.yaml')
-fast_build('gcr.io/foo', 'foo/Dockerfile').add(repo.paths('foo'), '/foo')
-`)
-
-	f.loadAssertWarnings(fastBuildDeprecationWarning)
-	f.assertNextManifest("foo", fb(image("gcr.io/foo"), add("foo", "/foo")))
-}
-
-func TestFastBuildAddGitRepo(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-	f.file("Tiltfile", `
-repo = local_git_repo('.')
-k8s_yaml('foo.yaml')
-
-# add the whole repo
-fast_build('gcr.io/foo', 'foo/Dockerfile').add(repo, '/whole_repo')
-`)
-
-	f.loadAssertWarnings(fastBuildDeprecationWarning)
-	f.assertNextManifest("foo", fb(image("gcr.io/foo"), add(".", "/whole_repo")))
 }
 
 type portForwardCase struct {
@@ -1025,27 +834,6 @@ k8s_yaml('foo.yaml')
 	)
 }
 
-func TestFastBuildDockerignoreSubdir(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-	f.file("foo/.dockerignore", "*.txt")
-	f.file("Tiltfile", `
-fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add('foo', 'src/') \
-  .run("echo hi")
-k8s_yaml('foo.yaml')
-`)
-	f.loadAssertWarnings(fastBuildDeprecationWarning)
-	f.assertNextManifest("foo",
-		buildFilters("foo/a.txt"),
-		fileChangeFilters("foo/a.txt"),
-		buildMatches("foo/subdir/a.txt"),
-		fileChangeMatches("foo/subdir/a.txt"),
-	)
-}
-
 func TestK8sYAMLInputBareString(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -1317,21 +1105,6 @@ k8s_yaml('foo.yaml')
 	m := f.assertNextManifest("foo", db(image("gcr.io/foo")))
 	assert.True(t, m.ImageTargetAt(0).IsDockerBuild())
 	assert.False(t, m.ImageTargetAt(0).IsFastBuild())
-}
-
-func TestEmptyDockerfileFastBuild(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-	f.setupFoo()
-	f.file("foo/Dockerfile", "")
-	f.file("Tiltfile", `
-fast_build('gcr.io/foo', 'foo/Dockerfile')
-k8s_yaml('foo.yaml')
-`)
-	f.load()
-	m := f.assertNextManifest("foo", fb(image("gcr.io/foo")))
-	assert.False(t, m.ImageTargetAt(0).IsDockerBuild())
-	assert.True(t, m.ImageTargetAt(0).IsFastBuild())
 }
 
 func TestSanchoSidecar(t *testing.T) {
@@ -1977,41 +1750,6 @@ k8s_yaml(blob('hi'))
 	f.loadErrString("from Tiltfile blob() call")
 }
 
-func TestCustomBuildWithFastBuild(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	tiltfile := `k8s_yaml('foo.yaml')
-hfb = custom_build(
-  'gcr.io/foo',
-  'docker build -t $EXPECTED_REF foo',
-  ['foo']
-).add_fast_build()
-hfb.add('foo', '/app')
-hfb.run('cd /app && pip install -r requirements.txt')
-hfb.hot_reload()`
-
-	f.setupFoo()
-	f.file("Tiltfile", tiltfile)
-
-	f.loadAssertWarnings(fastBuildDeprecationWarning)
-	f.assertNumManifests(1)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "foo/.dockerignore")
-	f.assertNextManifest("foo",
-		cb(
-			image("gcr.io/foo"),
-			deps(f.JoinPath("foo")),
-			cmd("docker build -t $EXPECTED_REF foo"),
-			disablePush(false),
-			fb(
-				image("gcr.io/foo"),
-				add("foo", "/app"),
-				run("cd /app && pip install -r requirements.txt"),
-			),
-		),
-		deployment("foo"))
-}
-
 func TestCustomBuildWithTag(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -2449,19 +2187,6 @@ func TestExtraImageLocationNoSelectorSpecified(t *testing.T) {
 	defer f.TearDown()
 	f.file("Tiltfile", `k8s_image_json_path(paths=["foo"])`)
 	f.loadErrString("at least one of kind, name, or namespace must be specified")
-}
-
-func TestFastBuildEmptyDockerfileArg(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-	f.gitInit(f.Path())
-	f.file("Tiltfile", `
-repo = local_git_repo('.')
-
-(fast_build('web/api', '')
-    .add(repo.paths('src'), '/app/src').run(''))
-`)
-	f.loadErrString("error reading dockerfile")
 }
 
 func TestDockerBuildEmptyDockerFileArg(t *testing.T) {

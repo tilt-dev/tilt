@@ -97,10 +97,8 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 	case nil: // optional arg, this is fine
 	case starlark.String:
 		imageRefAsStr = string(imageVal)
-	case *fastBuild:
-		imageRefAsStr = imageVal.img.configurationRef.String()
 	default:
-		return nil, fmt.Errorf("image arg must be a string or fast_build; got %T", imageVal)
+		return nil, fmt.Errorf("image arg must be a string; got %T", imageVal)
 	}
 
 	svc, err := s.getDCService(name)

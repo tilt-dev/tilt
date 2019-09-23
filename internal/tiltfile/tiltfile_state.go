@@ -202,8 +202,6 @@ func (s *tiltfileState) loadManifests(absFilename string, matching map[string]bo
 	}
 	manifests = append(manifests, localManifests...)
 
-	s.checkForFastBuilds(manifests)
-
 	manifests, err = match(manifests, matching)
 	if err != nil {
 		return nil, err
