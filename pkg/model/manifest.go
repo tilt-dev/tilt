@@ -187,34 +187,39 @@ func (m Manifest) Validate() error {
 }
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
-	primitivesEq, dockerEq, k8sEq, dcEq := m1.fieldGroupsEqual(m2)
-	return primitivesEq && dockerEq && k8sEq && dcEq
+	primitivesEq, dockerEq, k8sEq, dcEq, localEq := m1.fieldGroupsEqual(m2)
+	return primitivesEq && dockerEq && k8sEq && dcEq && localEq
 }
 
 // ChangesInvalidateBuild checks whether the changes from old => new manifest
 // invalidate our build of the old one; i.e. if we're replacing `old` with `new`,
 // should we perform a full rebuild?
 func ChangesInvalidateBuild(old, new Manifest) bool {
-	_, dockerEq, k8sEq, dcEq := old.fieldGroupsEqual(new)
+	_, dockerEq, k8sEq, dcEq, localEq := old.fieldGroupsEqual(new)
 
 	// We only need to update for this manifest if any of the field-groups
 	// affecting build+deploy have changed (i.e. a change in primitives doesn't matter)
-	return !dockerEq || !k8sEq || !dcEq
+	return !dockerEq || !k8sEq || !dcEq || !localEq
 
 }
-func (m1 Manifest) fieldGroupsEqual(m2 Manifest) (primitivesEq, dockerEq, k8sEq, dcEq bool) {
-	primitivesMatch := m1.Name == m2.Name && m1.TriggerMode == m2.TriggerMode
-	dockerEqual := DeepEqual(m1.ImageTargets, m2.ImageTargets)
+func (m1 Manifest) fieldGroupsEqual(m2 Manifest) (primitivesEq, dockerEq, k8sEq, dcEq, localEq bool) {
+	primitivesEq = m1.Name == m2.Name && m1.TriggerMode == m2.TriggerMode
+
+	dockerEq = DeepEqual(m1.ImageTargets, m2.ImageTargets)
 
 	dc1 := m1.DockerComposeTarget()
 	dc2 := m2.DockerComposeTarget()
-	dockerComposeEqual := DeepEqual(dc1, dc2)
+	dcEq = DeepEqual(dc1, dc2)
 
 	k8s1 := m1.K8sTarget()
 	k8s2 := m2.K8sTarget()
-	k8sEqual := DeepEqual(k8s1, k8s2)
+	k8sEq = DeepEqual(k8s1, k8s2)
 
-	return primitivesMatch, dockerEqual, dockerComposeEqual, k8sEqual
+	lt1 := m1.LocalTarget()
+	lt2 := m2.LocalTarget()
+	localEq = DeepEqual(lt1, lt2)
+
+	return primitivesEq, dockerEq, dcEq, k8sEq, localEq
 }
 
 func (m Manifest) ManifestName() ManifestName {
@@ -364,6 +369,7 @@ var imageTargetAllowUnexported = cmp.AllowUnexported(ImageTarget{})
 var dcTargetAllowUnexported = cmp.AllowUnexported(DockerComposeTarget{})
 var labelRequirementAllowUnexported = cmp.AllowUnexported(labels.Requirement{})
 var k8sTargetAllowUnexported = cmp.AllowUnexported(K8sTarget{})
+var localTargetAllowUnexported = cmp.AllowUnexported(LocalTarget{})
 var selectorAllowUnexported = cmp.AllowUnexported(container.RefSelector{})
 
 var dockerRefEqual = cmp.Comparer(func(a, b reference.Named) bool {
@@ -387,6 +393,7 @@ func DeepEqual(x, y interface{}) bool {
 		dcTargetAllowUnexported,
 		labelRequirementAllowUnexported,
 		k8sTargetAllowUnexported,
+		localTargetAllowUnexported,
 		selectorAllowUnexported,
 		dockerRefEqual)
 }

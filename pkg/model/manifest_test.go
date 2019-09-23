@@ -421,6 +421,34 @@ var equalitytests = []struct {
 		false,
 		true,
 	},
+	{
+		"LocalTarget equal",
+		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToShellCmd("beep boop"), []string{"bar", "baz"})),
+		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToShellCmd("beep boop"), []string{"bar", "baz"})),
+		true,
+		false,
+	},
+	{
+		"LocalTarget.Name unequal",
+		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToShellCmd("beep boop"), []string{"bar", "baz"})),
+		Manifest{}.WithDeployTarget(NewLocalTarget("foooooo", ToShellCmd("beep boop"), []string{"bar", "baz"})),
+		false,
+		true,
+	},
+	{
+		"LocalTarget.Cmd unequal",
+		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToShellCmd("beep boop"), []string{"bar", "baz"})),
+		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToShellCmd("bippity boppity"), []string{"bar", "baz"})),
+		false,
+		true,
+	},
+	{
+		"LocalTarget.Deps unequal",
+		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToShellCmd("beep boop"), []string{"bar", "baz"})),
+		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToShellCmd("beep boop"), []string{"quux", "baz"})),
+		false,
+		true,
+	},
 }
 
 func TestManifestEquality(t *testing.T) {
