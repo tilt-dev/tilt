@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
@@ -109,6 +110,7 @@ func printWarnings(s *tiltfileState) {
 
 // Load loads the Tiltfile in `filename`
 func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool) TiltfileLoadResult {
+	start := time.Now()
 	absFilename, err := ospath.RealAbs(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -152,7 +154,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 
 	printWarnings(s)
 	s.logger.Infof("Successfully loaded Tiltfile")
-	tfl.reportTiltfileLoaded(s.builtinCallCounts, s.builtinArgCounts)
+	tfl.reportTiltfileLoaded(s.builtinCallCounts, s.builtinArgCounts, time.Since(start))
 
 	return tlr
 }
@@ -206,7 +208,8 @@ func starlarkValueOrSequenceToSlice(v starlark.Value) []starlark.Value {
 	}
 }
 
-func (tfl *tiltfileLoader) reportTiltfileLoaded(callCounts map[string]int, argCounts map[string]map[string]int) {
+func (tfl *tiltfileLoader) reportTiltfileLoaded(callCounts map[string]int,
+	argCounts map[string]map[string]int, loadDur time.Duration) {
 	tags := make(map[string]string)
 	for builtinName, count := range callCounts {
 		tags[fmt.Sprintf("tiltfile.invoked.%s", builtinName)] = strconv.Itoa(count)
@@ -217,4 +220,5 @@ func (tfl *tiltfileLoader) reportTiltfileLoaded(callCounts map[string]int, argCo
 		}
 	}
 	tfl.analytics.Incr("tiltfile.loaded", tags)
+	tfl.analytics.Timer("tiltfile.load", loadDur, nil)
 }
