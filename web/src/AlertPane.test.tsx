@@ -253,7 +253,6 @@ function fillResourceFields(): Resource {
       PodStatusMessage: "",
       PodRestarts: 0,
       PodLog: "",
-      YAML: "",
       Endpoints: [],
     },
     RuntimeStatus: "",

@@ -48,7 +48,6 @@ type K8sResourceInfo struct {
 	AllContainersReady bool
 	PodRestarts        int
 	PodLog             model.Log
-	YAML               string
 }
 
 var _ ResourceInfoView = K8sResourceInfo{}

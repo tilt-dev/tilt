@@ -377,7 +377,6 @@ function k8sResource(): Resource {
       PodStatusMessage: "",
       PodRestarts: 0,
       PodLog: "",
-      YAML: "",
       Endpoints: [],
     },
     RuntimeStatus: "",
