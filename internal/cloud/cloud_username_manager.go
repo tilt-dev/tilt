@@ -93,7 +93,7 @@ func (c *CloudUsernameManager) CheckUsername(ctx context.Context, st store.RStor
 	if resp.StatusCode != http.StatusOK {
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			logger.Get(ctx).Infof("tilt cloud status request failed with status %d. error reading response body: %v", resp.statusCode, err)
+			logger.Get(ctx).Infof("tilt cloud status request failed with status %d. error reading response body: %v", resp.StatusCode, err)
 			c.error()
 			return
 		}
