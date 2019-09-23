@@ -102,6 +102,13 @@ func nextUnbuiltTargetToBuild(unbuilt []*store.ManifestTarget) *store.ManifestTa
 		return unresourced
 	}
 
+	// Local resources come before all cluster resources (b/c LR's may
+	// change things on disk that cluster resources then pull in).
+	localTargets := findLocalTargets(unbuilt)
+	if len(localTargets) > 0 {
+		return localTargets[0]
+	}
+
 	// If this is Kubernetes, unbuilt resources go first.
 	// (If this is Docker Compose, we want to trust the ordering
 	// that docker-compose put things in.)
@@ -136,6 +143,16 @@ func findDeployOnlyK8sManifestTargets(targets []*store.ManifestTarget) []*store.
 	result := []*store.ManifestTarget{}
 	for _, target := range targets {
 		if target.Manifest.IsK8s() && len(target.Manifest.ImageTargets) == 0 {
+			result = append(result, target)
+		}
+	}
+	return result
+}
+
+func findLocalTargets(targets []*store.ManifestTarget) []*store.ManifestTarget {
+	result := []*store.ManifestTarget{}
+	for _, target := range targets {
+		if target.Manifest.IsLocal() {
 			result = append(result, target)
 		}
 	}

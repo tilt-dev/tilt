@@ -707,3 +707,44 @@ func TestBuildControllerRespectDockerComposeOrder(t *testing.T) {
 	}
 	assert.Equal(t, expectedBuildOrder, observedBuildOrder)
 }
+
+func TestBuildControllerLocalResourcesBeforeClusterResources(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	manifests := []model.Manifest{
+		f.newManifest("clusterBuilt1"),
+		f.newManifest("clusterBuilt2"),
+		manifestbuilder.New(f, "clusterUnbuilt").
+			WithK8sYAML("fake-yaml").Build(),
+		manifestbuilder.New(f, "local1").
+			WithLocalResource("echo local1", nil).Build(),
+		f.newManifest("clusterBuilt3"),
+		manifestbuilder.New(f, "local2").
+			WithLocalResource("echo local2", nil).Build(),
+	}
+
+	manifests = append(manifests, manifestbuilder.New(f, model.UnresourcedYAMLManifestName).WithK8sYAML("also-fake-yaml").Build())
+	f.Start(manifests, true)
+
+	var observedBuildOrder []string
+	for i := 0; i < len(manifests); i++ {
+		call := f.nextCall()
+		if !call.k8s().Empty() {
+			observedBuildOrder = append(observedBuildOrder, call.k8s().Name.String())
+			continue
+		}
+		observedBuildOrder = append(observedBuildOrder, call.local().Name.String())
+	}
+
+	expectedBuildOrder := []string{
+		model.UnresourcedYAMLManifestName.String(),
+		"local1", // local resource comes after UnresourcedYAML but before all cluster resources
+		"local2",
+		"clusterUnbuilt",
+		"clusterBuilt1",
+		"clusterBuilt2",
+		"clusterBuilt3",
+	}
+	assert.Equal(t, expectedBuildOrder, observedBuildOrder)
+}
