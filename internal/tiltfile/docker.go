@@ -348,6 +348,8 @@ func (b *customBuild) Hash() (uint32, error) {
 
 func (b *customBuild) Attr(name string) (starlark.Value, error) {
 	switch name {
+	case "add_fast_build":
+		return nil, fastBuildDeletedErr
 	default:
 		return nil, nil
 	}
