@@ -156,6 +156,70 @@ func (s *tiltfileState) starlarkThread() *starlark.Thread {
 	}
 }
 
+// Load loads the Tiltfile in `filename`, and returns the manifests matching `matching`.
+func (s *tiltfileState) loadManifests(absFilename string, matching map[string]bool) ([]model.Manifest, error) {
+	s.logger.Infof("Beginning Tiltfile execution")
+	_, err := s.exec(absFilename)
+	if err != nil {
+		if err, ok := err.(*starlark.EvalError); ok {
+			return nil, errors.New(err.Backtrace())
+		}
+		return nil, err
+	}
+
+	resources, unresourced, err := s.assemble()
+	if err != nil {
+		return nil, err
+	}
+
+	var manifests []model.Manifest
+
+	if len(resources.k8s) > 0 {
+		manifests, err = s.translateK8s(resources.k8s)
+		if err != nil {
+			return nil, err
+		}
+
+		err = s.validateK8SContext()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		manifests, err = s.translateDC(resources.dc)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	err = s.checkForUnconsumedLiveUpdateSteps()
+	if err != nil {
+		return nil, err
+	}
+
+	localManifests, err := s.translateLocal()
+	if err != nil {
+		return nil, err
+	}
+	manifests = append(manifests, localManifests...)
+
+	s.checkForFastBuilds(manifests)
+
+	manifests, err = match(manifests, matching)
+	if err != nil {
+		return nil, err
+	}
+
+	yamlManifest := model.Manifest{}
+	if len(unresourced) > 0 {
+		yamlManifest, err = k8s.NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, unresourced)
+		if err != nil {
+			return nil, err
+		}
+		manifests = append(manifests, yamlManifest)
+	}
+	return manifests, nil
+}
+
 // Builtin functions
 
 const (

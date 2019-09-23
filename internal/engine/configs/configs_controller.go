@@ -93,19 +93,19 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 	}
 	st.RUnlockState()
 
-	tlr, err := cc.tfl.Load(ctx, tiltfilePath, matching)
-	if err == nil && len(tlr.Manifests) == 0 {
-		err = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
+	tlr := cc.tfl.Load(ctx, tiltfilePath, matching)
+	if tlr.Error == nil && len(tlr.Manifests) == 0 {
+		tlr.Error = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
 	}
-	if err != nil {
-		logger.Get(ctx).Infof(err.Error())
+	if tlr.Error != nil {
+		logger.Get(ctx).Infof(tlr.Error.Error())
 	}
 
 	if tlr.Orchestrator() != model.OrchestratorUnknown {
 		cc.dockerClient.SetOrchestrator(tlr.Orchestrator())
 		dockerErr := cc.dockerClient.CheckConnected()
-		if err == nil && dockerErr != nil {
-			err = errors.Wrap(dockerErr, "Failed to connect to Docker")
+		if tlr.Error == nil && dockerErr != nil {
+			tlr.Error = errors.Wrap(dockerErr, "Failed to connect to Docker")
 		}
 	}
 
@@ -114,7 +114,7 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 		ConfigFiles:        tlr.ConfigFiles,
 		TiltIgnoreContents: tlr.TiltIgnoreContents,
 		FinishTime:         cc.clock(),
-		Err:                err,
+		Err:                tlr.Error,
 		Warnings:           tlr.Warnings,
 		Features:           tlr.FeatureFlags,
 		TeamName:           tlr.TeamName,

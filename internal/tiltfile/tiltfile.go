@@ -3,11 +3,11 @@ package tiltfile
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
 
-	"github.com/pkg/errors"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 
@@ -35,6 +35,7 @@ type TiltfileLoadResult struct {
 	TiltIgnoreContents string
 	FeatureFlags       map[string]bool
 	TeamName           string
+	Error              error
 }
 
 func (r TiltfileLoadResult) Orchestrator() model.Orchestrator {
@@ -49,12 +50,17 @@ func (r TiltfileLoadResult) Orchestrator() model.Orchestrator {
 }
 
 type TiltfileLoader interface {
-	Load(ctx context.Context, filename string, matching map[string]bool) (TiltfileLoadResult, error)
+	// Load the Tiltfile.
+	//
+	// By design, Load() always returns a result.
+	// We want to be very careful not to treat non-zero exit codes like an error.
+	// Because even if the Tiltfile has errors, we might need to watch files
+	// or return partial results (like enabled features).
+	Load(ctx context.Context, filename string, matching map[string]bool) TiltfileLoadResult
 }
 
 type FakeTiltfileLoader struct {
 	Result TiltfileLoadResult
-	Err    error
 }
 
 var _ TiltfileLoader = &FakeTiltfileLoader{}
@@ -63,8 +69,8 @@ func NewFakeTiltfileLoader() *FakeTiltfileLoader {
 	return &FakeTiltfileLoader{}
 }
 
-func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool) (TiltfileLoadResult, error) {
-	return tfl.Result, tfl.Err
+func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool) TiltfileLoadResult {
+	return tfl.Result
 }
 
 func ProvideTiltfileLoader(
@@ -101,111 +107,54 @@ func printWarnings(s *tiltfileState) {
 	}
 }
 
-// Load loads the Tiltfile in `filename`, and returns the manifests matching `matching`.
-func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool) (tlr TiltfileLoadResult, err error) {
+// Load loads the Tiltfile in `filename`
+func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool) TiltfileLoadResult {
 	absFilename, err := ospath.RealAbs(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return TiltfileLoadResult{ConfigFiles: []string{filename}}, fmt.Errorf("No Tiltfile found at paths '%s'. Check out https://docs.tilt.dev/tutorial.html", filename)
+			return TiltfileLoadResult{
+				ConfigFiles: []string{filename},
+				Error:       fmt.Errorf("No Tiltfile found at paths '%s'. Check out https://docs.tilt.dev/tutorial.html", filename),
+			}
 		}
 		absFilename, _ = filepath.Abs(filename)
-		return TiltfileLoadResult{ConfigFiles: []string{absFilename}}, err
+		return TiltfileLoadResult{
+			ConfigFiles: []string{absFilename},
+			Error:       err,
+		}
 	}
+
+	tiltIgnorePath := tiltIgnorePath(absFilename)
+	tlr := TiltfileLoadResult{
+		ConfigFiles: []string{absFilename, tiltIgnorePath},
+	}
+
+	tiltIgnoreContents, err := ioutil.ReadFile(tiltIgnorePath)
+
+	// missing tiltignore is fine, but a filesystem error is not
+	if err != nil && !os.IsNotExist(err) {
+		tlr.Error = err
+		return tlr
+	}
+
+	tlr.TiltIgnoreContents = string(tiltIgnoreContents)
 
 	privateRegistry := tfl.kCli.PrivateRegistry(ctx)
 	s := newTiltfileState(ctx, tfl.dcCli, tfl.kubeContext, tfl.kubeEnv, privateRegistry, feature.FromDefaults(tfl.fDefaults))
-	printedWarnings := false
-	defer func() {
-		tlr.ConfigFiles = s.configFiles
-		tlr.Warnings = s.warnings
-		if !printedWarnings {
-			printWarnings(s)
-		}
-	}()
 
-	s.logger.Infof("Beginning Tiltfile execution")
-	_, err = s.exec(absFilename)
-	if err != nil {
-		if err, ok := err.(*starlark.EvalError); ok {
-			return TiltfileLoadResult{}, errors.New(err.Backtrace())
-		}
-		return TiltfileLoadResult{}, err
-	}
-
-	resources, unresourced, err := s.assemble()
-	if err != nil {
-		return TiltfileLoadResult{}, err
-	}
-
-	var manifests []model.Manifest
-
-	if len(resources.k8s) > 0 {
-		manifests, err = s.translateK8s(resources.k8s)
-		if err != nil {
-			return TiltfileLoadResult{}, err
-		}
-
-		err = s.validateK8SContext()
-		if err != nil {
-			return TiltfileLoadResult{}, err
-		}
-	} else {
-		manifests, err = s.translateDC(resources.dc)
-		if err != nil {
-			return TiltfileLoadResult{}, err
-		}
-	}
-
-	err = s.checkForUnconsumedLiveUpdateSteps()
-	if err != nil {
-		return TiltfileLoadResult{}, err
-	}
-
-	localManifests, err := s.translateLocal()
-	if err != nil {
-		return TiltfileLoadResult{}, err
-	}
-	manifests = append(manifests, localManifests...)
-
-	s.checkForFastBuilds(manifests)
-
-	manifests, err = match(manifests, matching)
-	if err != nil {
-		return TiltfileLoadResult{}, err
-	}
-
-	yamlManifest := model.Manifest{}
-	if len(unresourced) > 0 {
-		yamlManifest, err = k8s.NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, unresourced)
-		if err != nil {
-			return TiltfileLoadResult{}, err
-		}
-		manifests = append(manifests, yamlManifest)
-	}
+	manifests, err := s.loadManifests(absFilename, matching)
+	tlr.ConfigFiles = s.configFiles
+	tlr.Warnings = s.warnings
+	tlr.FeatureFlags = s.features.ToEnabled()
+	tlr.Error = err
+	tlr.Manifests = manifests
+	tlr.TeamName = s.teamName
 
 	printWarnings(s)
-	printedWarnings = true
-
 	s.logger.Infof("Successfully loaded Tiltfile")
-
 	tfl.reportTiltfileLoaded(s.builtinCallCounts, s.builtinArgCounts)
 
-	tiltIgnoreContents, err := s.readFile(tiltIgnorePath(absFilename))
-	// missing tiltignore is fine
-	if os.IsNotExist(err) {
-		err = nil
-	} else if err != nil {
-		return TiltfileLoadResult{}, errors.Wrapf(err, "error reading %s", tiltIgnorePath(absFilename))
-	}
-
-	return TiltfileLoadResult{
-		Manifests:          manifests,
-		ConfigFiles:        s.configFiles,
-		Warnings:           s.warnings,
-		TiltIgnoreContents: string(tiltIgnoreContents),
-		FeatureFlags:       s.features.ToEnabled(),
-		TeamName:           s.teamName,
-	}, err
+	return tlr
 }
 
 // .tiltignore sits next to Tiltfile

@@ -2670,6 +2670,25 @@ func TestDeployUIDsInEngineState(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
+func TestEnableFeatureOnFail(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", `
+enable_feature('snapshots')
+fail('goodnight moon')
+`)
+
+	f.loadAndStart()
+
+	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
+		return len(state.TiltfileState.BuildHistory) == 1
+	})
+	f.withState(func(state store.EngineState) {
+		assert.True(t, state.Features["snapshots"])
+	})
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
@@ -3289,9 +3308,9 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 
 	f.dcc.ServicesOutput = "redis\nserver\n"
 
-	tlr, err := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
-	if err != nil {
-		f.T().Fatal(err)
+	tlr := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	if tlr.Error != nil {
+		f.T().Fatal(tlr.Error)
 	}
 
 	if len(tlr.Manifests) != 2 {
