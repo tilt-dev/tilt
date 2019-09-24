@@ -76,6 +76,16 @@ func (l Log) MarshalJSON() ([]byte, error) {
 	return json.Marshal(l.String())
 }
 
+func (l Log) ScrubSecretsStartingAt(secrets SecretSet, index int) {
+	for i := index; i < len(l.lines); i++ {
+		l.lines[i] = secrets.Scrub(l.lines[i])
+	}
+}
+
+func (l Log) LineCount() int {
+	return len(l.lines)
+}
+
 func (l Log) Len() int {
 	result := 0
 	for _, line := range l.lines {
@@ -104,9 +114,10 @@ func TimestampPrefix(ts time.Time) []byte {
 // Returns a new instance of `Log` with content equal to `b` appended to the end of `l`
 // Performs truncation off the start of the log (at a newline) to ensure the resulting log is not
 // longer than `maxLogLengthInBytes`. (which maybe means a pedant would say this isn't strictly an `append`?)
-func AppendLog(l Log, le LogEvent, timestampsEnabled bool, prefix string) Log {
+func AppendLog(l Log, le LogEvent, timestampsEnabled bool, prefix string, secrets SecretSet) Log {
+	msg := secrets.Scrub(le.Message())
 	isStartingNewLine := len(l.lines) == 0 || l.lines[len(l.lines)-1].IsComplete()
-	addedLines := linesFromBytes(le.Message())
+	addedLines := linesFromBytes(msg)
 	if len(addedLines) == 0 {
 		return l
 	}

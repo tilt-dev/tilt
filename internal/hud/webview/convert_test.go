@@ -90,7 +90,8 @@ func TestStateToViewTiltfileLog(t *testing.T) {
 		es.TiltfileState.CombinedLog,
 		store.NewLogEvent("Tiltfile", []byte("hello")),
 		false,
-		"")
+		"",
+		nil)
 	v := StateToWebView(*es)
 	r, ok := v.Resource("(Tiltfile)")
 	require.True(t, ok, "no resource named (Tiltfile) found")

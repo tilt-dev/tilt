@@ -25,6 +25,10 @@ type ConfigsReloadedAction struct {
 	Features   map[string]bool
 	TeamName   string
 	Secrets    model.SecretSet
+
+	// The length of the global log when Tiltfile execution started.
+	// Useful for knowing how far back in time we have to scrub secrets.
+	GlobalLogLineCountAtExecStart int
 }
 
 func (ConfigsReloadedAction) Action() {}
