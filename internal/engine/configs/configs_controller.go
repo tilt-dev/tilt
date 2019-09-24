@@ -87,6 +87,7 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 	ctx = logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), actionWriter))
 
 	state := st.RLockState()
+	globalLogLineCountAtExecStart := state.Log.LineCount()
 	firstBuild := !state.TiltfileState.StartedFirstBuild()
 	if !firstBuild {
 		logTiltfileChanges(ctx, filesChanged)
@@ -110,15 +111,16 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 	}
 
 	st.Dispatch(ConfigsReloadedAction{
-		Manifests:          tlr.Manifests,
-		ConfigFiles:        tlr.ConfigFiles,
-		TiltIgnoreContents: tlr.TiltIgnoreContents,
-		FinishTime:         cc.clock(),
-		Err:                tlr.Error,
-		Warnings:           tlr.Warnings,
-		Features:           tlr.FeatureFlags,
-		TeamName:           tlr.TeamName,
-		Secrets:            tlr.Secrets,
+		Manifests:                     tlr.Manifests,
+		ConfigFiles:                   tlr.ConfigFiles,
+		TiltIgnoreContents:            tlr.TiltIgnoreContents,
+		FinishTime:                    cc.clock(),
+		Err:                           tlr.Error,
+		Warnings:                      tlr.Warnings,
+		Features:                      tlr.FeatureFlags,
+		TeamName:                      tlr.TeamName,
+		Secrets:                       tlr.Secrets,
+		GlobalLogLineCountAtExecStart: globalLogLineCountAtExecStart,
 	})
 }
 

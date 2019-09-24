@@ -58,6 +58,16 @@ func (le LogEvent) Message() []byte {
 	return le.msg
 }
 
+func (le *LogEvent) ScrubSecret(secret model.Secret) {
+	le.msg = secret.Scrub(le.msg)
+}
+
+func (le *LogEvent) ScrubSecretSet(secrets model.SecretSet) {
+	for _, s := range secrets {
+		le.ScrubSecret(s)
+	}
+}
+
 func NewLogEvent(mn model.ManifestName, b []byte) LogEvent {
 	return LogEvent{
 		mn:        mn,

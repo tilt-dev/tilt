@@ -23,7 +23,7 @@ func (l logEvent) Time() time.Time {
 
 func TestLog_AppendUnderLimit(t *testing.T) {
 	l := NewLog("foo")
-	l = AppendLog(l, logEvent{time.Time{}, "bar"}, false, "")
+	l = AppendLog(l, logEvent{time.Time{}, "bar"}, false, "", nil)
 	assert.Equal(t, "foobar", l.String())
 }
 
@@ -39,7 +39,7 @@ func TestLog_AppendOverLimit(t *testing.T) {
 
 	s := sb.String()
 
-	l = AppendLog(l, logEvent{time.Time{}, s}, false, "")
+	l = AppendLog(l, logEvent{time.Time{}, s}, false, "", nil)
 
 	assert.Equal(t, s[:logTruncationTarget], l.String())
 }
@@ -55,7 +55,7 @@ func TestLog_Timestamps(t *testing.T) {
 
 	// appended text has a newline in the middle of the text (which should get a timestamp)
 	// and at the end of the text (which shouldn't)
-	l = AppendLog(l, logEvent{ts, "bar\nbaz\n"}, true, "")
+	l = AppendLog(l, logEvent{ts, "bar\nbaz\n"}, true, "", nil)
 
 	expected := "hello\n2019/03/06 12:34:56 bar\n2019/03/06 12:34:56 baz\n"
 	assert.Equal(t, expected, l.String())
@@ -63,9 +63,20 @@ func TestLog_Timestamps(t *testing.T) {
 
 func TestLogPrefix(t *testing.T) {
 	l := NewLog("hello\n")
-	l = AppendLog(l, logEvent{time.Now(), "bar\nbaz\n"}, false, "prefix | ")
+	l = AppendLog(l, logEvent{time.Now(), "bar\nbaz\n"}, false, "prefix | ", nil)
 	expected := "hello\nprefix | bar\nprefix | baz\n"
 	assert.Equal(t, expected, l.String())
+}
+
+func TestScrubSecret(t *testing.T) {
+	l := NewLog("")
+	secretSet := SecretSet{}
+	secretSet.AddSecret("my-secret", "client-id", []byte("secret"))
+	l = AppendLog(l, logEvent{time.Now(), "hello\nsecret-time!\nc2VjcmV0-time!\ngoodbye"}, false, "", secretSet)
+	assert.Equal(t, `hello
+[redacted secret my-secret:client-id]-time!
+[redacted secret my-secret:client-id]-time!
+goodbye`, l.String())
 }
 
 func TestLogTail(t *testing.T) {

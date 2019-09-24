@@ -476,6 +476,22 @@ func handleConfigsReloaded(
 
 	b := state.TiltfileState.CurrentBuild
 
+	// Track the new secrets and go back to scrub them.
+	newSecrets := model.SecretSet{}
+	for k, v := range event.Secrets {
+		_, exists := state.Secrets[k]
+		if !exists {
+			newSecrets[k] = v
+		}
+	}
+
+	// Add all secrets, even if we failed.
+	state.Secrets.AddAll(event.Secrets)
+
+	// Retroactively scrub secrets
+	b.Log.ScrubSecretsStartingAt(newSecrets, 0)
+	state.Log.ScrubSecretsStartingAt(newSecrets, event.GlobalLogLineCountAtExecStart)
+
 	// if the ConfigsReloadedAction came from a unit test, there might not be a current build
 	if !b.Empty() {
 		b.FinishTime = event.FinishTime
@@ -509,9 +525,6 @@ func handleConfigsReloaded(
 				}
 			}
 		}
-
-		// Add all new secrets, even if we failed.
-		state.Secrets.AddAll(event.Secrets)
 
 		return
 	}
@@ -547,7 +560,6 @@ func handleConfigsReloaded(
 
 	state.Features = event.Features
 	state.TeamName = event.TeamName
-	state.Secrets.AddAll(event.Secrets)
 
 	// Remove pending file changes that were consumed by this build.
 	for file, modTime := range state.PendingConfigFileChanges {
@@ -565,7 +577,7 @@ func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
 		return
 	}
 
-	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, action, state.LogTimestamps, "")
+	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, action, state.LogTimestamps, "", state.Secrets)
 }
 
 func handleLogAction(state *store.EngineState, action store.LogAction) {
@@ -581,7 +593,7 @@ func handleLogAction(state *store.EngineState, action store.LogAction) {
 		allLogPrefix = sourcePrefix(manifestName)
 	}
 
-	state.Log = model.AppendLog(state.Log, action, state.LogTimestamps, allLogPrefix)
+	state.Log = model.AppendLog(state.Log, action, state.LogTimestamps, allLogPrefix, state.Secrets)
 
 	if manifestName == "" {
 		return
@@ -592,7 +604,7 @@ func handleLogAction(state *store.EngineState, action store.LogAction) {
 		// This is OK. The user could have edited the manifest recently.
 		return
 	}
-	ms.CombinedLog = model.AppendLog(ms.CombinedLog, action, state.LogTimestamps, "")
+	ms.CombinedLog = model.AppendLog(ms.CombinedLog, action, state.LogTimestamps, "", state.Secrets)
 }
 
 func sourcePrefix(n model.ManifestName) string {
@@ -720,12 +732,12 @@ func handleDockerComposeLogAction(state *store.EngineState, action DockerCompose
 	}
 
 	dcState, _ := ms.RuntimeState.(dockercompose.State)
-	ms.RuntimeState = dcState.WithCurrentLog(model.AppendLog(dcState.CurrentLog, action, state.LogTimestamps, ""))
+	ms.RuntimeState = dcState.WithCurrentLog(model.AppendLog(dcState.CurrentLog, action, state.LogTimestamps, "", state.Secrets))
 }
 
 func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action configs.TiltfileLogAction) {
-	state.TiltfileState.CurrentBuild.Log = model.AppendLog(state.TiltfileState.CurrentBuild.Log, action, state.LogTimestamps, "")
-	state.TiltfileState.CombinedLog = model.AppendLog(state.TiltfileState.CombinedLog, action, state.LogTimestamps, "")
+	state.TiltfileState.CurrentBuild.Log = model.AppendLog(state.TiltfileState.CurrentBuild.Log, action, state.LogTimestamps, "", state.Secrets)
+	state.TiltfileState.CombinedLog = model.AppendLog(state.TiltfileState.CombinedLog, action, state.LogTimestamps, "", state.Secrets)
 }
 
 func handleAnalyticsOptAction(state *store.EngineState, action store.AnalyticsOptAction) {
