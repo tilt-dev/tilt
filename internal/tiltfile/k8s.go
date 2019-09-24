@@ -919,11 +919,5 @@ func (s *tiltfileState) validateK8SContext() error {
 		}
 	}
 
-	return fmt.Errorf(
-		`Stop! '%s' might be production.
-If you're sure you want to deploy there, add:
-allow_k8s_contexts('%s')
-to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`,
-		s.kubeContext,
-		s.kubeContext)
+	return fmt.Errorf("'%s' is not a known local context", s.kubeContext)
 }
