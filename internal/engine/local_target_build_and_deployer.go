@@ -61,12 +61,10 @@ func (bd *LocalTargetBuildAndDeployer) run(ctx context.Context, c model.Cmd, wd 
 	cmd := exec.CommandContext(ctx, c.Argv[0], c.Argv[1:]...)
 	cmd.Stdout = writer
 	cmd.Stderr = writer
-	if wd != "" {
-		cmd.Dir = wd
-	}
+	cmd.Dir = wd
 
 	ps := build.NewPipelineState(ctx, 1, bd.clock)
-	ps.StartPipelineStep(ctx, "Running command: %v (from %q)", c.Argv, wd)
+	ps.StartPipelineStep(ctx, "Running command: %v (in %q)", c.Argv, wd)
 	defer ps.EndPipelineStep(ctx)
 	err := cmd.Run()
 	defer func() { ps.End(ctx, err) }()
