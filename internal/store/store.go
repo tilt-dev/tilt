@@ -169,7 +169,7 @@ func (s *Store) maybeFinished() (bool, error) {
 	state := s.RLockState()
 	defer s.RUnlockState()
 
-	if state.PermanentError != nil {
+	if state.PermanentError == context.Canceled {
 		return true, state.PermanentError
 	}
 

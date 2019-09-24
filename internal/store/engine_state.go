@@ -565,6 +565,7 @@ func StateToView(s EngineState) view.View {
 	}
 
 	ret.Log = s.Log
+	ret.PermanentError = s.PermanentError
 
 	return ret
 }

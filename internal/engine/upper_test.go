@@ -334,11 +334,11 @@ func TestUpper_UpWatchError(t *testing.T) {
 	manifest := f.newManifest("foobar")
 	f.Start([]model.Manifest{manifest}, true)
 
-	f.fsWatcher.errors <- errors.New("bazquu")
+	f.fsWatcher.errors <- context.Canceled
 
 	err := <-f.upperInitResult
 	if assert.NotNil(t, err) {
-		assert.Equal(t, "bazquu", err.Error())
+		assert.Equal(t, "context canceled", err.Error())
 	}
 }
 
@@ -486,8 +486,10 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 
 	f.setManifests([]model.Manifest{manifest})
 	err := f.upper.Init(f.ctx, InitAction{TiltfilePath: f.JoinPath("Tiltfile")})
-	expectedErrStr := fmt.Sprintf("Build Failed: %v", buildFailedToken)
-	assert.Equal(t, expectedErrStr, err.Error())
+	require.Nil(t, err)
+	f.WaitUntilManifestState("build has failed", manifest.ManifestName(), func(st store.ManifestState) bool {
+		return st.LastBuild().Error != nil
+	})
 }
 
 func TestRebuildWithChangedFiles(t *testing.T) {
@@ -2149,8 +2151,7 @@ func TestHudExitWithError(t *testing.T) {
 	f.Start([]model.Manifest{}, true)
 	e := errors.New("helllllo")
 	f.store.Dispatch(hud.NewExitAction(e))
-	err := f.WaitForExit()
-	assert.Equal(t, e, err)
+	_ = f.WaitForNoExit()
 }
 
 // This test only makes sense in FastBuild.
@@ -2990,6 +2991,16 @@ func (f *testFixture) WaitForExit() error {
 		f.T().Fatalf("Timed out waiting for upper to exit")
 		return nil
 	case err := <-f.upperInitResult:
+		return err
+	}
+}
+
+func (f *testFixture) WaitForNoExit() error {
+	select {
+	case <-time.After(time.Second):
+		return nil
+	case err := <-f.upperInitResult:
+		f.T().Fatalf("upper exited when it shouldn't have")
 		return err
 	}
 }

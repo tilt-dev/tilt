@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -107,10 +106,10 @@ func TestSubscriberTeardown(t *testing.T) {
 	s := newFakeSubscriber()
 	st.AddSubscriber(ctx, s)
 
-	go st.Dispatch(NewErrorAction(fmt.Errorf("fake error")))
+	go st.Dispatch(NewErrorAction(context.Canceled))
 	err := st.Loop(ctx)
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "fake error")
+		assert.Contains(t, err.Error(), "context canceled")
 	}
 
 	assert.Equal(t, 1, s.teardownCount)
@@ -139,11 +138,11 @@ func TestSubscriberTeardownOnRemove(t *testing.T) {
 
 	assert.Equal(t, 1, s.teardownCount)
 
-	st.Dispatch(NewErrorAction(fmt.Errorf("fake error")))
+	st.Dispatch(NewErrorAction(context.Canceled))
 
 	err := <-errChan
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "fake error")
+		assert.Contains(t, err.Error(), "context canceled")
 	}
 	assert.Equal(t, 1, s.teardownCount)
 }
