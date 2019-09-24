@@ -182,7 +182,10 @@ func (s *tiltfileState) loadManifests(absFilename string, matching map[string]bo
 
 		err = s.validateK8SContext()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf(`Stop! %s might be production.
+If you're sure you want to deploy there, add:
+allow_k8s_contexts('%s')
+to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, s.kubeContext, s.kubeContext)
 		}
 	} else {
 		manifests, err = s.translateDC(resources.dc)
@@ -350,7 +353,10 @@ func (s *tiltfileState) potentiallyK8sUnsafeBuiltin(f builtin) builtin {
 	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		err := s.validateK8SContext()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf(`Refusing to run '%s' because %s might be a production kube context.
+If you're sure you want to continue add:
+allow_k8s_contexts('%s')
+before this function call in your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, fn.Name(), s.kubeContext, s.kubeContext)
 		}
 
 		return f(thread, fn, args, kwargs)
