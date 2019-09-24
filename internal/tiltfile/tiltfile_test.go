@@ -4130,20 +4130,6 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 						f.t.Fatalf("expected OverrideCommand (aka entrypoint) %v, got %v",
 							matcher.cmd.Argv, image.OverrideCmd.Argv)
 					}
-				case nestedFBHelper:
-					dbInfo := image.DockerBuildInfo()
-					if matcher.fb == nil {
-						if !dbInfo.FastBuild.Empty() {
-							f.t.Fatalf("expected docker build for manifest %v to have "+
-								"no nested fastbuild, but found one: %v", m.Name, dbInfo.FastBuild)
-						}
-					} else {
-						if dbInfo.FastBuild.Empty() {
-							f.t.Fatalf("expected docker build for manifest %v to have "+
-								"nested fastbuild, but found none", m.Name)
-						}
-						matcher.fb.checkMatchers(f, m, dbInfo.FastBuild)
-					}
 				case model.LiveUpdate:
 					lu := image.AnyLiveUpdateInfo()
 					assert.False(f.t, lu.Empty())
@@ -4152,24 +4138,6 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 					f.t.Fatalf("unknown dbHelper matcher: %T %v", matcher, matcher)
 				}
 			}
-		case fbHelper:
-			image := nextImageTarget()
-
-			ref := image.ConfigurationRef
-			if ref.RefName() != opt.image.ref {
-				f.t.Fatalf("manifest %v image ref: %q; expected %q", m.Name, ref.RefName(), opt.image.ref)
-			}
-
-			if opt.cache != "" {
-				assert.Contains(f.t, image.CachePaths(), opt.cache,
-					"manifest %v cache paths don't include expected value", m.Name)
-			}
-
-			if !image.IsFastBuild() {
-				f.t.Fatalf("expected fast build but manifest %v has no fast build info", m.Name)
-			}
-
-			opt.checkMatchers(f, m, image.TopFastBuildInfo())
 		case cbHelper:
 			image := nextImageTarget()
 			ref := image.ConfigurationRef
@@ -4197,12 +4165,6 @@ func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Man
 						f.t.Fatalf("expected OverrideCommand (aka entrypoint) %v, got %v",
 							matcher.cmd.Argv, image.OverrideCmd.Argv)
 					}
-				case fbHelper:
-					if cbInfo.Fast.Empty() {
-						f.t.Fatalf("Expected manifest %v to have fast build, but it didn't", m.Name)
-					}
-
-					matcher.checkMatchers(f, m, cbInfo.Fast)
 				case model.LiveUpdate:
 					lu := image.AnyLiveUpdateInfo()
 					assert.False(f.t, lu.Empty())
@@ -4581,51 +4543,6 @@ func dbWithCache(img imageHelper, cache string, opts ...interface{}) dbHelper {
 	return dbHelper{image: img, cache: cache, matchers: opts}
 }
 
-// fast build helper
-type fbHelper struct {
-	image    imageHelper
-	cache    string
-	matchers []interface{}
-}
-
-func fb(img imageHelper, opts ...interface{}) fbHelper {
-	return fbHelper{image: img, matchers: opts}
-}
-
-func fbWithCache(img imageHelper, cache string, opts ...interface{}) fbHelper {
-	return fbHelper{image: img, cache: cache, matchers: opts}
-}
-
-func (fb fbHelper) checkMatchers(f *fixture, m model.Manifest, fbInfo model.FastBuild) {
-	syncs := fbInfo.Syncs
-	runs := fbInfo.Runs
-	for _, matcher := range fb.matchers {
-		switch matcher := matcher.(type) {
-		case addHelper:
-			sync := syncs[0]
-			syncs = syncs[1:]
-			if sync.LocalPath != f.JoinPath(matcher.src) {
-				f.t.Fatalf("manifest %v sync %+v src: %q; expected %q", m.Name, sync, sync.LocalPath, f.JoinPath(matcher.src))
-			}
-			if sync.ContainerPath != matcher.dest {
-				f.t.Fatalf("manifest %v sync %+v dest: %q; expected %q", m.Name, sync, sync.ContainerPath, matcher.dest)
-			}
-		case runHelper:
-			run := runs[0]
-			runs = runs[1:]
-			assert.Equal(f.t, model.ToShellCmd(matcher.cmd), run.Cmd)
-			assert.Equal(f.t, matcher.triggers, run.Triggers.Paths)
-			if !run.Triggers.Empty() {
-				assert.Equal(f.t, f.Path(), run.Triggers.BaseDirectory)
-			}
-		case hotReloadHelper:
-			assert.Equal(f.t, matcher.on, fbInfo.HotReload)
-		default:
-			f.t.Fatalf("unknown fbHelper matcher: %T %v", matcher, matcher)
-		}
-	}
-}
-
 // custom build helper
 type cbHelper struct {
 	image    imageHelper
@@ -4642,17 +4559,6 @@ type entrypointHelper struct {
 
 func entrypoint(command string) entrypointHelper {
 	return entrypointHelper{model.ToShellCmd(command)}
-}
-
-type nestedFBHelper struct {
-	fb *fbHelper
-}
-
-func nestedFB(opts ...interface{}) nestedFBHelper {
-	if len(opts) == 0 {
-		return nestedFBHelper{nil}
-	}
-	return nestedFBHelper{&fbHelper{matchers: opts}}
 }
 
 type addHelper struct {
