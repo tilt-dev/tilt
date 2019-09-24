@@ -118,6 +118,7 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 		Warnings:           tlr.Warnings,
 		Features:           tlr.FeatureFlags,
 		TeamName:           tlr.TeamName,
+		Secrets:            tlr.Secrets,
 	})
 }
 

@@ -36,6 +36,7 @@ type TiltfileLoadResult struct {
 	TiltIgnoreContents string
 	FeatureFlags       map[string]bool
 	TeamName           string
+	Secrets            model.SecretSet
 	Error              error
 }
 
@@ -145,6 +146,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	s := newTiltfileState(ctx, tfl.dcCli, tfl.kubeContext, tfl.kubeEnv, privateRegistry, feature.FromDefaults(tfl.fDefaults))
 
 	manifests, err := s.loadManifests(absFilename, matching)
+	tlr.Secrets = s.extractSecrets()
 	tlr.ConfigFiles = s.configFiles
 	tlr.Warnings = s.warnings
 	tlr.FeatureFlags = s.features.ToEnabled()

@@ -75,6 +75,8 @@ type EngineState struct {
 
 	Features map[string]bool
 
+	Secrets model.SecretSet
+
 	CloudAddress string
 	Token        token.Token
 	TeamName     string
@@ -260,6 +262,7 @@ func NewState() *EngineState {
 	ret.Log = model.Log{}
 	ret.ManifestTargets = make(map[model.ManifestName]*ManifestTarget)
 	ret.PendingConfigFileChanges = make(map[string]time.Time)
+	ret.Secrets = model.SecretSet{}
 	return ret
 }
 

@@ -510,6 +510,9 @@ func handleConfigsReloaded(
 			}
 		}
 
+		// Add all new secrets, even if we failed.
+		state.Secrets.AddAll(event.Secrets)
+
 		return
 	}
 
@@ -544,6 +547,7 @@ func handleConfigsReloaded(
 
 	state.Features = event.Features
 	state.TeamName = event.TeamName
+	state.Secrets.AddAll(event.Secrets)
 
 	// Remove pending file changes that were consumed by this build.
 	for file, modTime := range state.PendingConfigFileChanges {

@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -113,6 +114,39 @@ func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, a
 	s.k8sUnresourced = append(s.k8sUnresourced, entities...)
 
 	return starlark.None, nil
+}
+
+func (s *tiltfileState) extractSecrets() model.SecretSet {
+	result := model.SecretSet{}
+	for _, e := range s.k8sUnresourced {
+		secrets := s.maybeExtractSecrets(e)
+		result.AddAll(secrets)
+	}
+
+	for _, k := range s.k8s {
+		for _, e := range k.entities {
+			secrets := s.maybeExtractSecrets(e)
+			result.AddAll(secrets)
+		}
+	}
+	return result
+}
+
+func (s *tiltfileState) maybeExtractSecrets(e k8s.K8sEntity) model.SecretSet {
+	secret, ok := e.Obj.(*v1.Secret)
+	if !ok {
+		return nil
+	}
+
+	result := model.SecretSet{}
+	for key, data := range secret.Data {
+		result.AddSecret(secret.Name, key, data)
+	}
+
+	for key, data := range secret.StringData {
+		result.AddSecret(secret.Name, key, []byte(data))
+	}
+	return result
 }
 
 func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
