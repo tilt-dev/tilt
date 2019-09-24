@@ -29,7 +29,7 @@ func (bd *LocalTargetBuildAndDeployer) BuildAndDeploy(ctx context.Context, st st
 	}
 
 	targ := targets[0]
-	err = bd.run(ctx, targ.Cmd)
+	err = bd.run(ctx, targ.Cmd, targ.Workdir)
 	if err != nil {
 		// (Never fall back from the LocalTargetBaD, none of our other BaDs can handle this target)
 		return store.BuildResultSet{}, DontFallBackErrorf("Command %q failed: %v", targ.Cmd.String(), err)
@@ -50,7 +50,7 @@ func (bd *LocalTargetBuildAndDeployer) extract(specs []model.TargetSpec) []model
 	return targs
 }
 
-func (bd *LocalTargetBuildAndDeployer) run(ctx context.Context, c model.Cmd) error {
+func (bd *LocalTargetBuildAndDeployer) run(ctx context.Context, c model.Cmd, wd string) error {
 	if len(c.Argv) == 0 {
 		panic("LocalTargetBuildAndDeployer tried to run empty command " +
 			"(should have been caught by Validate() )")
@@ -61,9 +61,12 @@ func (bd *LocalTargetBuildAndDeployer) run(ctx context.Context, c model.Cmd) err
 	cmd := exec.CommandContext(ctx, c.Argv[0], c.Argv[1:]...)
 	cmd.Stdout = writer
 	cmd.Stderr = writer
+	if wd != "" {
+		cmd.Dir = wd
+	}
 
 	ps := build.NewPipelineState(ctx, 1, bd.clock)
-	ps.StartPipelineStep(ctx, "Running command: %v", c.Argv)
+	ps.StartPipelineStep(ctx, "Running command: %v (from %q)", c.Argv, wd)
 	defer ps.EndPipelineStep(ctx)
 	err := cmd.Run()
 	defer func() { ps.End(ctx, err) }()

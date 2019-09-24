@@ -48,6 +48,9 @@ func (lt LocalTarget) Validate() error {
 	if lt.Cmd.Empty() {
 		return fmt.Errorf("[Validate] LocalTarget missing command")
 	}
+	if lt.Workdir == "" {
+		return fmt.Errorf("[Validate] LocalTarget missing workdir")
+	}
 	return nil
 }
 
