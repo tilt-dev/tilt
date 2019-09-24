@@ -25,7 +25,7 @@ func TestSameImgMultiContainer(t *testing.T) {
 	f.CurlUntil(ctx, "http://localhost:8100", "🍄 One-Up! 🍄")
 	f.CurlUntil(ctx, "http://localhost:8101", "🍄 One-Up! 🍄")
 
-	f.ReplaceContents("main.go", "One-Up", "Two-Up")
+	f.ReplaceContents("source.txt", "One-Up", "Two-Up")
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()

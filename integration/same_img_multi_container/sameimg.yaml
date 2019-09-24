@@ -17,7 +17,7 @@ spec:
       containers:
       - name: c1
         image: sameimg
-        command: ["/go/src/github.com/windmilleng/integration/same_img_multi_container/start.sh", "/go/bin/same_img_multi_container", "-port", "8000"]
+        command: ["/src/start.sh", "/src/main.sh", "8000"]
         ports:
         - containerPort: 8000
         resources:
@@ -25,7 +25,7 @@ spec:
             cpu: "10m"
       - name: c2
         image: sameimg
-        command: ["/go/src/github.com/windmilleng/integration/same_img_multi_container/start.sh", "/go/bin/same_img_multi_container", "-port", "8001"]
+        command: ["/src/start.sh", "/src/main.sh", "8001"]
         ports:
           - containerPort: 8001
         resources:
