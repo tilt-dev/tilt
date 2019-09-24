@@ -184,7 +184,7 @@ func TestLocalResource(t *testing.T) {
 	cmd := model.Cmd{
 		Argv: []string{"make", "test"},
 	}
-	lt := model.NewLocalTarget("my-local", cmd, []string{"/foo/bar", "/baz/qux"})
+	lt := model.NewLocalTarget("my-local", cmd, "path/to/tiltfile", []string{"/foo/bar", "/baz/qux"})
 	m := model.Manifest{
 		Name: "test",
 	}.WithDeployTarget(lt)

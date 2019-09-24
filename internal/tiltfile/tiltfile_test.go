@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/windmilleng/wmclient/pkg/analytics"
@@ -3696,6 +3697,7 @@ local_resource("test", "echo hi", ["foo/bar", "foo/a.txt"])
 	path2 := f.JoinPath("foo/a.txt")
 	require.Equal(t, []string{"sh", "-c", "echo hi"}, lt.Cmd.Argv)
 	require.Equal(t, []string{path2, path1}, lt.Dependencies())
+	f.assertRepos([]string{f.Path()}, lt.LocalRepos())
 
 	f.assertConfigFiles("Tiltfile", ".tiltignore")
 
@@ -3709,6 +3711,65 @@ local_resource("test", "echo hi", ["foo/bar", "foo/a.txt"])
 		t.Fatal(err)
 	}
 	require.Equal(t, false, matches)
+}
+
+func TestLocalResourceWorkdir(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("nested/Tiltfile", `
+local_resource("nested-local", "echo nested", ["foo/bar", "more_nested/repo"])
+`)
+	f.file("Tiltfile", `
+include('nested/Tiltfile')
+local_resource("toplvl-local", "echo hello world", ["foo/baz", "foo/a.txt"])
+`)
+
+	f.setupFoo()
+	f.MkdirAll("nested/.git")
+	f.MkdirAll("nested/more_nested/repo/.git")
+	f.MkdirAll("foo/baz/.git")
+	f.MkdirAll("foo/.git") // no Tiltfile lives here, nor is it a LocalResource dep; won't be pulled in as a repo
+	f.load()
+
+	f.assertNumManifests(2)
+
+	// TODO(dmiller): make the rest of these assertion helpers like the other manifest helpers
+	mNested := f.loadResult.Manifests[0]
+	require.Equal(t, "nested-local", mNested.Name.String())
+	ltNested := mNested.LocalTarget()
+	require.Equal(t, []string{"sh", "-c", "echo nested"}, ltNested.Cmd.Argv)
+	require.ElementsMatch(t, []string{
+		f.JoinPath("nested/foo/bar"),
+		f.JoinPath("nested/more_nested/repo"),
+	}, ltNested.Dependencies())
+	f.assertRepos([]string{
+		f.JoinPath("nested"),
+		f.JoinPath("nested/more_nested/repo"),
+	}, ltNested.LocalRepos())
+
+	mTop := f.loadResult.Manifests[1]
+	require.Equal(t, "toplvl-local", mTop.Name.String())
+	ltTop := mTop.LocalTarget()
+	require.Equal(t, []string{"sh", "-c", "echo hello world"}, ltTop.Cmd.Argv)
+	require.ElementsMatch(t, []string{
+		f.JoinPath("foo/baz"),
+		f.JoinPath("foo/a.txt"),
+	}, ltTop.Dependencies())
+	spew.Dump(ltTop.LocalRepos())
+	f.assertRepos([]string{
+		f.JoinPath("foo/baz"),
+		f.Path(),
+	}, ltTop.LocalRepos())
+}
+
+func (f *fixture) assertRepos(expectedLocalPaths []string, repos []model.LocalGitRepo) {
+	var actualLocalPaths []string
+	for _, r := range repos {
+		actualLocalPaths = append(actualLocalPaths, r.LocalPath)
+	}
+	spew.Dump(actualLocalPaths)
+	assert.ElementsMatch(f.t, expectedLocalPaths, actualLocalPaths)
 }
 
 type fixture struct {

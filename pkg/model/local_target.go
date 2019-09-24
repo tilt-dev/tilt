@@ -7,20 +7,22 @@ import (
 )
 
 type LocalTarget struct {
-	Name TargetName
-	Cmd  Cmd
-	deps []string // a list of ABSOLUTE file paths that are dependencies of this target
+	Name    TargetName
+	Cmd     Cmd
+	Workdir string   // directory from which this Cmd should be run
+	deps    []string // a list of ABSOLUTE file paths that are dependencies of this target
 
 	repos []LocalGitRepo
 }
 
 var _ TargetSpec = LocalTarget{}
 
-func NewLocalTarget(name TargetName, cmd Cmd, deps []string) LocalTarget {
+func NewLocalTarget(name TargetName, cmd Cmd, workdir string, deps []string) LocalTarget {
 	return LocalTarget{
-		Name: name,
-		Cmd:  cmd,
-		deps: deps,
+		Name:    name,
+		Cmd:     cmd,
+		Workdir: workdir,
+		deps:    deps,
 	}
 }
 

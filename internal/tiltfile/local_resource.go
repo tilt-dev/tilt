@@ -2,6 +2,7 @@ package tiltfile
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/windmilleng/tilt/pkg/model"
 
@@ -11,6 +12,7 @@ import (
 type localResource struct {
 	name        string
 	cmd         model.Cmd
+	workdir     string
 	deps        []string
 	triggerMode triggerMode
 	repos       []model.LocalGitRepo
@@ -45,6 +47,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	res := localResource{
 		name:        name,
 		cmd:         model.ToShellCmd(cmd),
+		workdir:     filepath.Dir(s.currentTiltfilePath(thread)),
 		deps:        depsStrings,
 		triggerMode: triggerMode,
 		repos:       repos,
