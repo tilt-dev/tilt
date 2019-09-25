@@ -133,9 +133,20 @@ func (u Upper) Init(ctx context.Context, action InitAction) error {
 }
 
 func upperReducerFn(ctx context.Context, state *store.EngineState, action store.Action) {
+	// Allow exitAction and dumpEngineStateAction even if there's a fatal error
+	if exitAction, isExitAction := action.(hud.ExitAction); isExitAction {
+		handleExitAction(state, exitAction)
+		return
+	}
+	if _, isDumpEngineStateAction := action.(hud.DumpEngineStateAction); isDumpEngineStateAction {
+		handleDumpEngineStateAction(ctx, state)
+		return
+	}
+
 	if state.FatalError != nil {
 		return
 	}
+
 	logAction, isLogAction := action.(store.LogAction)
 	if isLogAction {
 		handleLogAction(state, logAction)
