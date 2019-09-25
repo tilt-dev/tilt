@@ -85,7 +85,7 @@ export default class ShareSnapshotModal extends PureComponent<props> {
           </p>
           <form
             className="ShareSnapshotModal-tiltCloudButtonForm"
-            action={this.props.tiltCloudSchemeHost + "/register_token"}
+            action={this.props.tiltCloudSchemeHost + "/start_register_token"}
             target="_blank"
             method="POST"
             onSubmit={ShareSnapshotModal.notifyTiltOfRegistration}
