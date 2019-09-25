@@ -160,7 +160,7 @@ exports[`ShareSnapshotModal renders with modal open w/o known username 1`] = `
           Connect Tilt to TiltCloud to share under your name and manage your snapshots.
         </p>
         <form
-          action="https://cloud.tilt.dev/register_token"
+          action="https://cloud.tilt.dev/start_register_token"
           className="ShareSnapshotModal-tiltCloudButtonForm"
           method="POST"
           onSubmit={[Function]}
@@ -261,7 +261,7 @@ exports[`ShareSnapshotModal renders without snapshotUrl 1`] = `
           Connect Tilt to TiltCloud to share under your name and manage your snapshots.
         </p>
         <form
-          action="https://cloud.tilt.dev/register_token"
+          action="https://cloud.tilt.dev/start_register_token"
           className="ShareSnapshotModal-tiltCloudButtonForm"
           method="POST"
           onSubmit={[Function]}
