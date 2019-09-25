@@ -18,7 +18,7 @@ import AlertPane from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
 import NotFound from "./NotFound"
-import { numberOfAlerts, isK8sResourceInfo } from "./alerts"
+import { numberOfAlerts } from "./alerts"
 import Features from "./feature"
 import ShareSnapshotModal from "./ShareSnapshotModal"
 import cleanStateForSnapshotPOST from "./snapshot_sanitizer"
@@ -273,9 +273,7 @@ class HUD extends Component<HudProps, HudState> {
         logs = (r && r.CombinedLog) || ""
         endpoints = (r && r.Endpoints) || []
         podID = (r && r.PodID) || ""
-        if (isK8sResourceInfo(r.ResourceInfo)) {
-          podStatus = (r && r.ResourceInfo && r.ResourceInfo.PodStatus) || ""
-        }
+        podStatus = (r.K8sResourceInfo && r.K8sResourceInfo.PodStatus) || ""
       }
       return (
         <LogPane

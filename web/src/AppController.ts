@@ -54,8 +54,8 @@ class AppController {
 
   setDefaultResourceInfo(resources: Array<any>): Array<any> {
     return resources.map(r => {
-      if (r.ResourceInfo === null) {
-        r.ResourceInfo = {
+      if (!r.K8sResourceInfo && !r.DCResourceInfo) {
+        r.K8sResourceInfo = {
           PodName: "",
           PodCreationTime: "",
           PodUpdateStartTime: "",

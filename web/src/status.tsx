@@ -41,7 +41,7 @@ function warnings(res: any): string[] {
   let warnings = (lastBuild && lastBuild.Warnings) || []
   warnings = Array.from(warnings)
 
-  if (res.ResourceInfo && res.ResourceInfo.PodRestarts > 0) {
+  if (res.K8sResourceInfo && res.K8sResourceInfo.PodRestarts > 0) {
     warnings.push("Container restarted")
   }
 

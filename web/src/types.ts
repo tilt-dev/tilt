@@ -60,7 +60,8 @@ export type Resource = {
   PendingBuildEdits: Array<string>
   PendingBuildReason: number
   PendingBuildSince: string
-  ResourceInfo: K8sResourceInfo | DCResourceInfo
+  K8sResourceInfo?: K8sResourceInfo
+  DCResourceInfo?: DCResourceInfo
   RuntimeStatus: string
   TriggerMode: TriggerMode
   HasPendingChanges: boolean

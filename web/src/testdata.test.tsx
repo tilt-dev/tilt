@@ -76,7 +76,7 @@ function oneResource(): Resource {
       Edits: ["main.go"],
       StartTime: ts,
     },
-    ResourceInfo: {
+    K8sResourceInfo: {
       PodName: "vigoda-pod",
       PodCreationTime: ts,
       PodStatus: "Running",
@@ -117,7 +117,7 @@ function oneResourceNoAlerts(): any {
     PendingBuildEdits: ["main.go", "cli.go", "vigoda.go"],
     PendingBuildSince: ts,
     CurrentBuild: {},
-    ResourceInfo: {
+    K8sResourceInfo: {
       PodName: "vigoda-pod",
       PodCreationTime: ts,
       PodStatus: "Running",
@@ -147,7 +147,7 @@ function oneResourceImagePullBackOff(): any {
     PendingBuildEdits: ["main.go", "cli.go", "vigoda.go"],
     PendingBuildSince: ts,
     CurrentBuild: {},
-    ResourceInfo: {
+    K8sResourceInfo: {
       PodName: "vigoda-pod",
       PodCreationTime: ts,
       PodStatus: "ImagePullBackOff",
@@ -177,7 +177,7 @@ function oneResourceErrImgPull(): any {
     PendingBuildEdits: ["main.go", "cli.go", "vigoda.go"],
     PendingBuildSince: ts,
     CurrentBuild: {},
-    ResourceInfo: {
+    K8sResourceInfo: {
       PodName: "vigoda-pod",
       PodCreationTime: ts,
       PodStatus: "ErrImagePull",
@@ -207,7 +207,7 @@ function oneResourceUnrecognizedError(): any {
     PendingBuildEdits: ["main.go", "cli.go", "vigoda.go"],
     PendingBuildSince: ts,
     CurrentBuild: {},
-    ResourceInfo: {
+    K8sResourceInfo: {
       PodName: "vigoda-pod",
       PodCreationTime: ts,
       PodStatus: "GarbleError",
@@ -254,7 +254,7 @@ function twoResourceView(): view {
     PodID: "",
     PathsWatched: [],
     PendingBuildReason: 0,
-    ResourceInfo: {
+    K8sResourceInfo: {
       PodStatus: "Running",
       PodStatusMessage: "",
       PodRestarts: 0,
@@ -304,7 +304,6 @@ function allResourcesOK(): any {
       PendingBuildEdits: null,
       PendingBuildSince: "0001-01-01T00:00:00Z",
       Endpoints: null,
-      ResourceInfo: null,
       RuntimeStatus: "ok",
       IsTiltfile: true,
       ShowBuildStatus: false,
@@ -341,7 +340,7 @@ function allResourcesOK(): any {
       PendingBuildEdits: null,
       PendingBuildSince: "0001-01-01T00:00:00Z",
       Endpoints: ["http://localhost:9000/"],
-      ResourceInfo: {
+      K8sResourceInfo: {
         PodName: "dan-fe-7cdc8f978f-vp94d",
         PodCreationTime: "2019-04-22T11:00:01-04:00",
         PodUpdateStartTime: "0001-01-01T00:00:00Z",
@@ -385,7 +384,7 @@ function allResourcesOK(): any {
       PendingBuildEdits: null,
       PendingBuildSince: "0001-01-01T00:00:00Z",
       Endpoints: ["http://localhost:9001/"],
-      ResourceInfo: {
+      K8sResourceInfo: {
         PodName: "dan-vigoda-67d79bd8d5-w77q4",
         PodCreationTime: "2019-04-22T11:00:02-04:00",
         PodUpdateStartTime: "0001-01-01T00:00:00Z",
@@ -430,7 +429,7 @@ function allResourcesOK(): any {
       PendingBuildEdits: null,
       PendingBuildSince: "0001-01-01T00:00:00Z",
       Endpoints: ["http://localhost:9002/"],
-      ResourceInfo: {
+      K8sResourceInfo: {
         PodName: "dan-snack-f885fb46f-d5z2t",
         PodCreationTime: "2019-04-22T11:00:04-04:00",
         PodUpdateStartTime: "0001-01-01T00:00:00Z",
@@ -474,7 +473,7 @@ function allResourcesOK(): any {
       PendingBuildEdits: null,
       PendingBuildSince: "0001-01-01T00:00:00Z",
       Endpoints: ["http://localhost:9003/"],
-      ResourceInfo: {
+      K8sResourceInfo: {
         PodName: "dan-doggos-596cc68bd9-w87f8",
         PodCreationTime: "2019-04-22T11:00:07-04:00",
         PodUpdateStartTime: "0001-01-01T00:00:00Z",
@@ -519,7 +518,7 @@ function allResourcesOK(): any {
       PendingBuildEdits: null,
       PendingBuildSince: "0001-01-01T00:00:00Z",
       Endpoints: ["http://localhost:9004/"],
-      ResourceInfo: {
+      K8sResourceInfo: {
         PodName: "dan-fortune-76bcccc6bb-lzzx4",
         PodCreationTime: "2019-04-22T11:00:09-04:00",
         PodUpdateStartTime: "0001-01-01T00:00:00Z",
@@ -563,7 +562,7 @@ function allResourcesOK(): any {
       PendingBuildEdits: null,
       PendingBuildSince: "0001-01-01T00:00:00Z",
       Endpoints: ["http://localhost:9005/"],
-      ResourceInfo: {
+      K8sResourceInfo: {
         PodName: "dan-hypothesizer-84b486bbfd-qrqd6",
         PodCreationTime: "2019-04-22T11:00:11-04:00",
         PodUpdateStartTime: "0001-01-01T00:00:00Z",
@@ -608,7 +607,7 @@ function allResourcesOK(): any {
       PendingBuildEdits: null,
       PendingBuildSince: "0001-01-01T00:00:00Z",
       Endpoints: ["http://localhost:9006/"],
-      ResourceInfo: {
+      K8sResourceInfo: {
         PodName: "dan-spoonerisms-bb9577494-lq5w9",
         PodCreationTime: "2019-04-22T11:00:12-04:00",
         PodUpdateStartTime: "0001-01-01T00:00:00Z",
@@ -652,7 +651,7 @@ function allResourcesOK(): any {
       PendingBuildEdits: null,
       PendingBuildSince: "0001-01-01T00:00:00Z",
       Endpoints: ["http://localhost:9007/"],
-      ResourceInfo: {
+      K8sResourceInfo: {
         PodName: "dan-emoji-6765c9676c-7d655",
         PodCreationTime: "2019-04-22T11:00:13-04:00",
         PodUpdateStartTime: "0001-01-01T00:00:00Z",
@@ -696,7 +695,7 @@ function allResourcesOK(): any {
       PendingBuildEdits: null,
       PendingBuildSince: "0001-01-01T00:00:00Z",
       Endpoints: ["http://localhost:9008/"],
-      ResourceInfo: {
+      K8sResourceInfo: {
         PodName: "dan-words-5bfdf8db84-vdqz4",
         PodCreationTime: "2019-04-22T11:00:15-04:00",
         PodUpdateStartTime: "0001-01-01T00:00:00Z",
@@ -741,7 +740,7 @@ function allResourcesOK(): any {
       PendingBuildEdits: null,
       PendingBuildSince: "0001-01-01T00:00:00Z",
       Endpoints: ["http://localhost:9009/"],
-      ResourceInfo: {
+      K8sResourceInfo: {
         PodName: "dan-secrets-79c8bb5c79-7hwp6",
         PodCreationTime: "2019-04-22T11:00:17-04:00",
         PodUpdateStartTime: "0001-01-01T00:00:00Z",
@@ -785,15 +784,13 @@ function allResourcesOK(): any {
       PendingBuildEdits: null,
       PendingBuildSince: "0001-01-01T00:00:00Z",
       Endpoints: null,
-      ResourceInfo: {
+      K8sResourceInfo: {
         PodName: "echo-hi-92tww",
         PodCreationTime: "2019-04-22T10:59:56-04:00",
         PodUpdateStartTime: "0001-01-01T00:00:00Z",
         PodStatus: "Completed",
         PodRestarts: 0,
         PodLog: "",
-        YAML:
-          "apiVersion: batch/v1\nkind: Job\nmetadata:\n  creationTimestamp: null\n  name: echo-hi\nspec:\n  backoffLimit: 4\n  template:\n    metadata:\n      creationTimestamp: null\n    spec:\n      containers:\n      - command:\n        - echo\n        - hi\n        image: alpine\n        name: echohi\n        resources: {}\n      restartPolicy: Never\nstatus: {}\n",
       },
       RuntimeStatus: "ok",
       IsTiltfile: false,
@@ -831,7 +828,7 @@ function allResourcesOK(): any {
       PendingBuildEdits: null,
       PendingBuildSince: "0001-01-01T00:00:00Z",
       Endpoints: null,
-      ResourceInfo: {
+      K8sResourceInfo: {
         PodName: "sleep",
         PodCreationTime: "2019-04-22T11:00:18-04:00",
         PodUpdateStartTime: "0001-01-01T00:00:00Z",
@@ -875,7 +872,7 @@ function allResourcesOK(): any {
       PendingBuildEdits: null,
       PendingBuildSince: "0001-01-01T00:00:00Z",
       Endpoints: ["http://localhost:9999/"],
-      ResourceInfo: {
+      K8sResourceInfo: {
         PodName: "hello-world-9f4c9b98b-cvxqn",
         PodCreationTime: "2019-04-22T10:59:56-04:00",
         PodUpdateStartTime: "0001-01-01T00:00:00Z",
@@ -919,7 +916,7 @@ function allResourcesOK(): any {
       PendingBuildEdits: null,
       PendingBuildSince: "0001-01-01T00:00:00Z",
       Endpoints: null,
-      ResourceInfo: {
+      K8sResourceInfo: {
         PodName: "",
         PodCreationTime: "0001-01-01T00:00:00Z",
         PodUpdateStartTime: "0001-01-01T00:00:00Z",
@@ -992,7 +989,7 @@ function allResourcesOK(): any {
       PendingBuildEdits: null,
       PendingBuildSince: "0001-01-01T00:00:00Z",
       Endpoints: null,
-      ResourceInfo: {
+      YAMLResourceInfo: {
         K8sResources: [
           "k8sRole-pod-reader",
           "k8sRoleBinding-read-pods",
@@ -1049,7 +1046,7 @@ function oneResourceFailedToBuild(): any {
       PendingBuildEdits: ["main.go"],
       PendingBuildSince: "0001-01-01T00:00:00Z",
       Endpoints: ["http://localhost:9002/"],
-      ResourceInfo: {
+      K8sResourceInfo: {
         PodName: "dan-snack-f885fb46f-d5z2t",
         PodCreationTime: "2019-04-22T11:00:04-04:00",
         PodUpdateStartTime: "2019-04-22T11:05:07.250689-04:00",
@@ -1100,7 +1097,6 @@ function oneResourceBuilding() {
       PendingBuildEdits: null,
       PendingBuildSince: "0001-01-01T00:00:00Z",
       Endpoints: null,
-      ResourceInfo: null,
       RuntimeStatus: "ok",
       IsTiltfile: true,
       ShowBuildStatus: false,
@@ -1137,7 +1133,7 @@ function oneResourceBuilding() {
       PendingBuildEdits: null,
       PendingBuildSince: "0001-01-01T00:00:00Z",
       Endpoints: ["http://localhost:9000/"],
-      ResourceInfo: {
+      K8sResourceInfo: {
         PodName: "dan-fe-7cdc8f978f-vp94d",
         PodCreationTime: "2019-04-22T11:00:01-04:00",
         PodUpdateStartTime: "0001-01-01T00:00:00Z",
@@ -1181,7 +1177,7 @@ function oneResourceBuilding() {
       PendingBuildEdits: null,
       PendingBuildSince: "0001-01-01T00:00:00Z",
       Endpoints: ["http://localhost:9001/"],
-      ResourceInfo: {
+      K8sResourceInfo: {
         PodName: "dan-vigoda-67d79bd8d5-w77q4",
         PodCreationTime: "2019-04-22T11:00:02-04:00",
         PodUpdateStartTime: "0001-01-01T00:00:00Z",
@@ -1237,7 +1233,7 @@ function oneResourceBuilding() {
       PendingBuildEdits: ["main.go"],
       PendingBuildSince: "2019-04-22T11:20:44.672903-04:00",
       Endpoints: ["http://localhost:9002/"],
-      ResourceInfo: {
+      K8sResourceInfo: {
         PodName: "dan-snack-65f9775f49-gcc8d",
         PodCreationTime: "2019-04-22T11:05:58-04:00",
         PodUpdateStartTime: "2019-04-22T11:20:44.674248-04:00",
@@ -1296,7 +1292,7 @@ function oneResourceCrashedOnStart(): any {
       PendingBuildEdits: null,
       PendingBuildSince: "0001-01-01T00:00:00Z",
       Endpoints: ["http://localhost:9002/"],
-      ResourceInfo: {
+      K8sResourceInfo: {
         PodName: "dan-snack-cd4d74d7b-lg8sh",
         PodCreationTime: "2019-04-22T13:34:59-04:00",
         PodUpdateStartTime: "0001-01-01T00:00:00Z",
@@ -1352,7 +1348,7 @@ function oneResourceManualTriggerDirty(): any {
       HasPendingChanges: false,
       Endpoints: null,
       PodID: "",
-      ResourceInfo: {
+      K8sResourceInfo: {
         PodName: "",
         PodCreationTime: "",
         PodUpdateStartTime: "",
@@ -1405,7 +1401,7 @@ function oneResourceManualTriggerDirty(): any {
       HasPendingChanges: true,
       Endpoints: null,
       PodID: "dan-snack-85c688bffb-txf7z",
-      ResourceInfo: {
+      K8sResourceInfo: {
         PodName: "dan-snack-85c688bffb-txf7z",
         PodCreationTime: "2019-06-12T12:33:48-04:00",
         PodUpdateStartTime: "0001-01-01T00:00:00Z",

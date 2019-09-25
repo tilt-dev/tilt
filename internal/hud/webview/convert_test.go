@@ -81,7 +81,7 @@ func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 	assert.Equal(t, nil, r.LastBuild().Error)
 
 	expectedInfo := YAMLResourceInfo{K8sResources: []string{"sancho:deployment"}}
-	assert.Equal(t, expectedInfo, r.ResourceInfo)
+	assert.Equal(t, expectedInfo, *r.YAMLResourceInfo)
 }
 
 func TestStateToViewTiltfileLog(t *testing.T) {

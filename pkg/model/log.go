@@ -76,6 +76,16 @@ func (l Log) MarshalJSON() ([]byte, error) {
 	return json.Marshal(l.String())
 }
 
+func (l *Log) UnmarshalJSON(data []byte) error {
+	var s string
+	err := json.Unmarshal(data, &s)
+	if err != nil {
+		return err
+	}
+	l.lines = linesFromString(s)
+	return nil
+}
+
 func (l Log) ScrubSecretsStartingAt(secrets SecretSet, index int) {
 	for i := index; i < len(l.lines); i++ {
 		l.lines[i] = secrets.Scrub(l.lines[i])
