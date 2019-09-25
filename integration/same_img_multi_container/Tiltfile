@@ -8,12 +8,15 @@ include('../Tiltfile')
 default_registry(read_json('tilt_option.json', {})
                  .get('default_registry', 'gcr.io/windmill-test-containers/servantes'))
 
-codepath = '/go/src/github.com/windmilleng/integration/same_img_multi_container'
+# We've specifically constructed this image to have
+# 1) A sync step
+# 2) A RUN step that executes at build time (cp source.txt compiled.txt)
+# 3) A RUN step that executes when the container restarts (cp compiled.txt index.html)
 docker_build('sameimg', '.',
              live_update=[
-                 sync('.', codepath),
-                 run('go install {}'.format(codepath)),
-                 run('{}/restart.sh'.format(codepath))
+                 sync('.', '/src'),
+                 run('cp source.txt compiled.txt'),
+                 run('/src/restart.sh')
              ])
 k8s_yaml('sameimg.yaml')
 k8s_resource('sameimg', port_forwards=['8100:8000', '8101:8001'])
