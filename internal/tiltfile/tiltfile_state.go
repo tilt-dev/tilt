@@ -521,8 +521,6 @@ func (s *tiltfileState) assembleImages() error {
 		var depImages []reference.Named
 		if imageBuilder.dbDockerfile != "" {
 			depImages, err = imageBuilder.dbDockerfile.FindImages()
-		} else {
-			depImages, err = imageBuilder.baseDockerfile.FindImages()
 		}
 
 		if err != nil {
@@ -1065,12 +1063,9 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				Dockerfile:  image.dbDockerfile.String(),
 				BuildPath:   image.dbBuildPath,
 				BuildArgs:   image.dbBuildArgs,
-				FastBuild:   s.fastBuildForImage(image),
 				LiveUpdate:  lu,
 				TargetStage: model.DockerBuildTarget(image.targetStage),
 			})
-		case FastBuild:
-			iTarget = iTarget.WithBuildDetails(s.fastBuildForImage(image))
 		case CustomBuild:
 			r := model.CustomBuild{
 				Command:     image.customCommand,
@@ -1078,13 +1073,6 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				Tag:         image.customTag,
 				DisablePush: image.disablePush,
 				LiveUpdate:  lu,
-			}
-			if len(image.syncs) > 0 || len(image.runs) > 0 {
-				r.Fast = model.FastBuild{
-					Syncs:     s.syncsToDomain(image),
-					Runs:      image.runs,
-					HotReload: image.hotReload,
-				}
 			}
 			iTarget = iTarget.WithBuildDetails(r)
 			// TODO(dbentley): validate that syncs is a subset of deps

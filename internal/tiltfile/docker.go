@@ -18,23 +18,15 @@ import (
 var fastBuildDeletedErr = fmt.Errorf("fast_build is no longer supported. live_update provides the same functionality with less set-up: https://docs.tilt.dev/live_update_tutorial.html . If you run into problems, let us know: https://tilt.dev/contact")
 
 type dockerImage struct {
-	tiltfilePath       string
-	baseDockerfilePath string
-	baseDockerfile     dockerfile.Dockerfile
-	configurationRef   container.RefSelector
-	deploymentRef      reference.Named
-	cachePaths         []string
-	matchInEnvVars     bool
-	ignores            []string
-	onlys              []string
-	entrypoint         model.Cmd // optional: if specified, we override the image entrypoint/k8s command with this
-	targetStage        string    // optional: if specified, we build a particular target in the dockerfile
-
-	// fast-build properties -- will be deprecated
-	syncs        []pathSync
-	runs         []model.Run
-	fbEntrypoint string
-	hotReload    bool
+	tiltfilePath     string
+	configurationRef container.RefSelector
+	deploymentRef    reference.Named
+	cachePaths       []string
+	matchInEnvVars   bool
+	ignores          []string
+	onlys            []string
+	entrypoint       model.Cmd // optional: if specified, we override the image entrypoint/k8s command with this
+	targetStage      string    // optional: if specified, we build a particular target in the dockerfile
 
 	dbDockerfilePath string
 	dbDockerfile     dockerfile.Dockerfile
@@ -62,17 +54,12 @@ type dockerImageBuildType int
 const (
 	UnknownBuild = iota
 	DockerBuild
-	FastBuild
 	CustomBuild
 )
 
 func (d *dockerImage) Type() dockerImageBuildType {
 	if d.dbBuildPath != "" {
 		return DockerBuild
-	}
-
-	if d.baseDockerfilePath != "" {
-		return FastBuild
 	}
 
 	if d.customCommand != "" {
@@ -230,15 +217,6 @@ func (s *tiltfileState) parseOnly(val starlark.Value) ([]string, error) {
 	return paths, nil
 }
 
-func (s *tiltfileState) fastBuildForImage(image *dockerImage) model.FastBuild {
-	return model.FastBuild{
-		BaseDockerfile: image.baseDockerfile.String(),
-		Syncs:          s.syncsToDomain(image),
-		Runs:           image.runs,
-		Entrypoint:     model.ToShellCmd(image.fbEntrypoint),
-		HotReload:      image.hotReload,
-	}
-}
 func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef string
 	var command string
@@ -434,21 +412,6 @@ func (b *fastBuild) AttrNames() []string {
 	return []string{}
 }
 
-type pathSync struct {
-	src        string
-	mountPoint string
-}
-
-func (s *tiltfileState) syncsToDomain(image *dockerImage) []model.Sync {
-	var result []model.Sync
-
-	for _, sync := range image.syncs {
-		result = append(result, model.Sync{LocalPath: sync.src, ContainerPath: sync.mountPoint})
-	}
-
-	return result
-}
-
 func isGitRepoBase(path string) bool {
 	return ospath.IsDir(filepath.Join(path, ".git"))
 }
@@ -474,11 +437,10 @@ func reposForPaths(paths []string) []model.LocalGitRepo {
 
 func (s *tiltfileState) reposForImage(image *dockerImage) []model.LocalGitRepo {
 	var paths []string
-	for _, sync := range image.syncs {
-		paths = append(paths, sync.src)
+	for _, sync := range image.liveUpdate.SyncSteps() {
+		paths = append(paths, sync.LocalPath)
 	}
 	paths = append(paths,
-		image.baseDockerfilePath,
 		image.dbDockerfilePath,
 		image.dbBuildPath,
 		image.tiltfilePath)
@@ -570,8 +532,8 @@ func onlysToDockerignoreContents(onlys []string) string {
 func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Dockerignore {
 	var paths []string
 
-	for _, sync := range image.syncs {
-		paths = append(paths, sync.src)
+	for _, sync := range image.liveUpdate.SyncSteps() {
+		paths = append(paths, sync.LocalPath)
 	}
 	switch image.Type() {
 	case DockerBuild:
