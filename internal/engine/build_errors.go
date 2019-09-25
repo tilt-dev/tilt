@@ -55,13 +55,13 @@ var _ error = DontFallBackError{}
 
 // A permanent error indicates that the whole build pipeline needs to stop.
 // It will never recover, even on subsequent rebuilds.
-func isPermanentError(err error) bool {
+func isFatalError(err error) bool {
 	cause := errors.Cause(err)
 	return cause == context.Canceled
 }
 
 func shouldFallBackForErr(err error) bool {
-	if isPermanentError(err) {
+	if isFatalError(err) {
 		return false
 	}
 

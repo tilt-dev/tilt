@@ -63,7 +63,7 @@ func NewStoreForTesting() (st *Store, getActions func() []Action) {
 
 		errorAction, isErrorAction := action.(ErrorAction)
 		if isErrorAction {
-			s.PermanentError = errorAction.Error
+			s.FatalError = errorAction.Error
 		}
 	})
 
@@ -169,8 +169,8 @@ func (s *Store) maybeFinished() (bool, error) {
 	state := s.RLockState()
 	defer s.RUnlockState()
 
-	if state.PermanentError != nil {
-		return true, state.PermanentError
+	if state.FatalError == context.Canceled {
+		return true, state.FatalError
 	}
 
 	if state.UserExited {

@@ -43,7 +43,7 @@ type EngineState struct {
 	// would require better tools for triaging output to different streams.
 	BuildControllerActionCount int
 
-	PermanentError error
+	FatalError error
 
 	// The user has indicated they want to exit
 	UserExited bool
@@ -568,6 +568,7 @@ func StateToView(s EngineState) view.View {
 	}
 
 	ret.Log = s.Log
+	ret.FatalError = s.FatalError
 
 	return ret
 }

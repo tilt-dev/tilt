@@ -84,7 +84,7 @@ func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 
 	ret = r.maybeAddFullScreenLog(v, vs, ret)
 
-	ret = r.maybeAddAlertModal(vs, ret)
+	ret = r.maybeAddAlertModal(v, vs, ret)
 
 	return ret
 }
@@ -105,12 +105,19 @@ func (r *Renderer) maybeAddFullScreenLog(v view.View, vs view.ViewState, layout 
 	return layout
 }
 
-func (r *Renderer) maybeAddAlertModal(vs view.ViewState, layout rty.Component) rty.Component {
-	if vs.AlertMessage != "" {
+func (r *Renderer) maybeAddAlertModal(v view.View, vs view.ViewState, layout rty.Component) rty.Component {
+	alertMsg := ""
+	if v.FatalError != nil {
+		alertMsg = fmt.Sprintf("Tilt has encountered a fatal error: %s\nOnce you fix this issue you'll need to restart Tilt. In the meantime feel free to browse through the UI.", v.FatalError.Error())
+	} else if vs.AlertMessage != "" {
+		alertMsg = vs.AlertMessage
+	}
+
+	if alertMsg != "" {
 		l := rty.NewLines()
 		l.Add(rty.TextString(""))
 
-		msg := "   " + vs.AlertMessage + "   "
+		msg := "   " + alertMsg + "   "
 		l.Add(rty.Fg(rty.TextString(msg), tcell.ColorDefault))
 		l.Add(rty.TextString(""))
 

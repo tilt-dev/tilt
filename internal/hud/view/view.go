@@ -187,6 +187,7 @@ type View struct {
 	Resources     []Resource
 	IsProfiling   bool
 	LogTimestamps bool
+	FatalError    error
 }
 
 func (v View) TiltfileErrorMessage() string {
