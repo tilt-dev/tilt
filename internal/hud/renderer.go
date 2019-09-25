@@ -107,8 +107,8 @@ func (r *Renderer) maybeAddFullScreenLog(v view.View, vs view.ViewState, layout 
 
 func (r *Renderer) maybeAddAlertModal(v view.View, vs view.ViewState, layout rty.Component) rty.Component {
 	alertMsg := ""
-	if v.PermanentError != nil {
-		alertMsg = fmt.Sprintf("Tilt has encountered a permanent error: %s\nOnce you fix this issue you'll need to restart Tilt. In the meantime feel free to browse through the UI.", v.PermanentError.Error())
+	if v.FatalError != nil {
+		alertMsg = fmt.Sprintf("Tilt has encountered a fatal error: %s\nOnce you fix this issue you'll need to restart Tilt. In the meantime feel free to browse through the UI.", v.FatalError.Error())
 	} else if vs.AlertMessage != "" {
 		alertMsg = vs.AlertMessage
 	}

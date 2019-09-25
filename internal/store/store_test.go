@@ -109,6 +109,6 @@ var TestReducer = Reducer(func(ctx context.Context, s *EngineState, action Actio
 	case CompletedBuildAction:
 		s.CompletedBuildCount++
 	case DoneAction:
-		s.PermanentError = context.Canceled
+		s.FatalError = context.Canceled
 	}
 })

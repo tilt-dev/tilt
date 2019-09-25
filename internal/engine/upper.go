@@ -133,6 +133,9 @@ func (u Upper) Init(ctx context.Context, action InitAction) error {
 }
 
 func upperReducerFn(ctx context.Context, state *store.EngineState, action store.Action) {
+	if state.FatalError != nil {
+		return
+	}
 	logAction, isLogAction := action.(store.LogAction)
 	if isLogAction {
 		handleLogAction(state, logAction)
@@ -204,7 +207,7 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 	}
 
 	if err != nil {
-		state.PermanentError = err
+		state.FatalError = err
 	}
 }
 
@@ -272,7 +275,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	ms.NeedsRebuildFromCrash = false
 
 	if err != nil {
-		if isPermanentError(err) {
+		if isFatalError(err) {
 			return err
 		} else if engineState.WatchFiles {
 			l := logger.Get(ctx)
@@ -661,7 +664,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 
 func handleExitAction(state *store.EngineState, action hud.ExitAction) {
 	if action.Err != nil {
-		state.PermanentError = action.Err
+		state.FatalError = action.Err
 	} else {
 		state.UserExited = true
 	}
