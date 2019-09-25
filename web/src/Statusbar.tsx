@@ -36,9 +36,9 @@ class StatusItem {
     this.currentBuild = res.CurrentBuild
     this.buildHistory = res.BuildHistory
     this.lastBuild = res.BuildHistory ? res.BuildHistory[0] : null
-    this.podStatus = res.ResourceInfo && res.ResourceInfo.PodStatus
+    this.podStatus = res.K8sResourceInfo && res.K8sResourceInfo.PodStatus
     this.podStatusMessage =
-      res.ResourceInfo && res.ResourceInfo.PodStatusMessage
+      res.K8sResourceInfo && res.K8sResourceInfo.PodStatusMessage
     this.pendingBuildSince = res.PendingBuildSince
     this.pendingBuildEdits = res.PendingBuildEdits
   }

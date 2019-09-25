@@ -1,7 +1,6 @@
 import { oneResource } from "./testdata.test"
 import { zeroTime } from "./time"
 import { combinedStatus, warnings } from "./status"
-import { isK8sResourceInfo } from "./alerts"
 
 function emptyResource() {
   let res = oneResource()
@@ -55,9 +54,8 @@ describe("combinedStatus", () => {
     let res = emptyResource()
     res.BuildHistory = [{ StartTime: ts }]
     res.RuntimeStatus = "ok"
-    if (isK8sResourceInfo(res.ResourceInfo)) {
-      res.ResourceInfo.PodRestarts = 1
-    }
+    if (!res.K8sResourceInfo) throw new Error("missing k8s info")
+    res.K8sResourceInfo.PodRestarts = 1
     expect(combinedStatus(res)).toBe("ok")
   })
 
@@ -66,9 +64,8 @@ describe("combinedStatus", () => {
     let res = emptyResource()
     res.BuildHistory = [{ StartTime: ts }]
     res.RuntimeStatus = "ok"
-    if (isK8sResourceInfo(res.ResourceInfo)) {
-      res.ResourceInfo.PodRestarts = 1
-    }
+    if (!res.K8sResourceInfo) throw new Error("missing k8s info")
+    res.K8sResourceInfo.PodRestarts = 1
     expect(warnings(res)).toEqual(["Container restarted"])
   })
 })

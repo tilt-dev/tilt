@@ -83,7 +83,6 @@ func StateToWebView(s store.EngineState) View {
 			CurrentBuild:       ToWebViewBuildRecord(currentBuild),
 			Endpoints:          endpoints,
 			PodID:              podID,
-			ResourceInfo:       resourceInfoView(mt),
 			ShowBuildStatus:    len(mt.Manifest.ImageTargets) > 0 || mt.Manifest.IsDC(),
 			CombinedLog:        ms.CombinedLog,
 			CrashLog:           ms.CrashLog,
@@ -91,7 +90,8 @@ func StateToWebView(s store.EngineState) View {
 			HasPendingChanges:  hasPendingChanges,
 		}
 
-		r.RuntimeStatus = runtimeStatus(r.ResourceInfo)
+		populateResourceInfoView(mt, &r)
+		r.RuntimeStatus = runtimeStatus(r.ResourceInfo())
 
 		ret.Resources = append(ret.Resources, r)
 	}
@@ -134,24 +134,29 @@ func tiltfileResourceView(s store.EngineState) Resource {
 	return tr
 }
 
-func resourceInfoView(mt *store.ManifestTarget) ResourceInfoView {
+func populateResourceInfoView(mt *store.ManifestTarget, r *Resource) {
 	if mt.Manifest.IsUnresourcedYAMLManifest() {
-		return YAMLResourceInfo{
+		r.YAMLResourceInfo = &YAMLResourceInfo{
 			K8sResources: mt.Manifest.K8sTarget().DisplayNames,
 		}
+		return
 	}
+
 	if mt.Manifest.IsDC() {
 		dc := mt.Manifest.DockerComposeTarget()
 		dcState := mt.State.DCRuntimeState()
-		return NewDCResourceInfo(dc.ConfigPaths, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
+		info := NewDCResourceInfo(dc.ConfigPaths, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
+		r.DCResourceInfo = &info
+		return
 	}
 	if mt.Manifest.IsLocal() {
-		return LocalResourceInfo{}
+		r.LocalResourceInfo = &LocalResourceInfo{}
+		return
 	}
 	if mt.Manifest.IsK8s() {
 		kState := mt.State.K8sRuntimeState()
 		pod := kState.MostRecentPod()
-		return K8sResourceInfo{
+		r.K8sResourceInfo = &K8sResourceInfo{
 			PodName:            pod.PodID.String(),
 			PodCreationTime:    pod.StartedAt,
 			PodUpdateStartTime: pod.UpdateStartTime,
@@ -161,6 +166,7 @@ func resourceInfoView(mt *store.ManifestTarget) ResourceInfoView {
 			PodRestarts:        pod.VisibleContainerRestarts(),
 			PodLog:             pod.Log(),
 		}
+		return
 	}
 
 	panic("Unrecognized manifest type (not one of: k8s, DC, local)")

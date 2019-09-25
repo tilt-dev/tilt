@@ -29,7 +29,7 @@ function crashRebuild(r: Resource): boolean {
 }
 
 function podStatusHasError(r: Resource) {
-  let rInfo = <K8sResourceInfo>r.ResourceInfo
+  let rInfo = <K8sResourceInfo>r.K8sResourceInfo
   let podStatus = rInfo.PodStatus
   let podStatusMessage = rInfo.PodStatusMessage
   if (podStatus == null) {
@@ -39,7 +39,7 @@ function podStatusHasError(r: Resource) {
 }
 
 function podRestarted(r: Resource) {
-  let rInfo = <K8sResourceInfo>r.ResourceInfo
+  let rInfo = <K8sResourceInfo>r.K8sResourceInfo
   return rInfo.PodRestarts > 0
 }
 
@@ -50,27 +50,12 @@ function buildFailed(resource: Resource) {
   )
 }
 
-function isK8sResourceInfo(
-  resourceInfo: K8sResourceInfo | DCResourceInfo
-): resourceInfo is K8sResourceInfo {
-  return (<K8sResourceInfo>resourceInfo).PodName !== undefined
-}
-
-function mustK8sResourceInfo(
-  resourceInfo: K8sResourceInfo | DCResourceInfo
-): K8sResourceInfo {
-  if (!isK8sResourceInfo(resourceInfo)) {
-    throw new Error(`Not K8sResourceInfo: ${resourceInfo}`)
-  }
-  return resourceInfo
-}
-
 //This function determines what kind of alert should be made based on the functions defined
 //above
 function getResourceAlerts(r: Resource): Array<Alert> {
   let result: Array<Alert> = []
 
-  if (isK8sResourceInfo(r.ResourceInfo)) {
+  if (r.K8sResourceInfo) {
     // K8s alerts
     if (podStatusHasError(r)) {
       result.push(podStatusIsErrAlert(r))
@@ -98,7 +83,7 @@ function numberOfAlerts(resource: Resource): number {
 //The following functions create the alerts based on their types, since
 // they use different information from the resource to contruct their messages
 function podStatusIsErrAlert(resource: Resource): Alert {
-  let rInfo = <K8sResourceInfo>resource.ResourceInfo
+  let rInfo = <K8sResourceInfo>resource.K8sResourceInfo
   let podStatus = rInfo.PodStatus
   let podStatusMessage = rInfo.PodStatusMessage
   let msg = ""
@@ -116,7 +101,7 @@ function podStatusIsErrAlert(resource: Resource): Alert {
   }
 }
 function podRestartAlert(r: Resource): Alert {
-  let rInfo: K8sResourceInfo = <K8sResourceInfo>r.ResourceInfo
+  let rInfo: K8sResourceInfo = <K8sResourceInfo>r.K8sResourceInfo
   let msg = r.CrashLog || ""
   let header = `Restarts: ${rInfo.PodRestarts.toString()}`
 
@@ -151,7 +136,7 @@ function podRestartAlert(r: Resource): Alert {
   }
 }
 function crashRebuildAlert(r: Resource): Alert {
-  let rInfo = <K8sResourceInfo>r.ResourceInfo
+  let rInfo = <K8sResourceInfo>r.K8sResourceInfo
   let msg = r.CrashLog || ""
   return {
     alertType: CrashRebuildErrorType,
@@ -202,6 +187,4 @@ export {
   crashRebuildAlert,
   podRestartAlert,
   hasAlert,
-  isK8sResourceInfo,
-  mustK8sResourceInfo,
 }

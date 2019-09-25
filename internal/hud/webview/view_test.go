@@ -1,17 +1,45 @@
 package webview
 
 import (
+	"bytes"
 	"encoding/json"
+	"io/ioutil"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // The view data model is not allowed to have any private properties,
 // because these properties need to be serialized to JSON for the web UI.
 func TestMarshalView(t *testing.T) {
 	assertCanMarshal(t, reflect.TypeOf(View{}), reflect.TypeOf(View{}))
+}
+
+func TestJSONRoundTrip(t *testing.T) {
+	testdataPath := filepath.Join("testdata", "snapshot.json")
+	contents, err := ioutil.ReadFile(testdataPath)
+	assert.NoError(t, err)
+
+	decoder := json.NewDecoder(bytes.NewBuffer(contents))
+	var view View
+	err = decoder.Decode(&view)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	buf := bytes.NewBuffer(nil)
+	encoder := json.NewEncoder(buf)
+	encoder.SetIndent("", "  ")
+	err = encoder.Encode(view)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, buf.String(), string(contents))
 }
 
 // v: the type to check.
@@ -32,16 +60,9 @@ func assertCanMarshal(t *testing.T, v reflect.Type, owner reflect.Type) {
 		assertCanMarshal(t, v.Key(), owner)
 	case reflect.Interface:
 		// We only allow certain interfaces with a well-defined set of values.
-		// NOTE(nick): I honestly think we should forbid interfaces in any data model that
-		// we need to send across a network, but that's a bigger change.
 		switch v.String() {
 		case "error":
 			// ok
-			return
-		case "webview.ResourceInfoView":
-			assertCanMarshal(t, reflect.TypeOf(K8sResourceInfo{}), v)
-			assertCanMarshal(t, reflect.TypeOf(DCResourceInfo{}), v)
-			assertCanMarshal(t, reflect.TypeOf(YAMLResourceInfo{}), v)
 			return
 		}
 		t.Errorf("View needs to be serializable. This type in the view don't make sense: %s in %s", v, owner)

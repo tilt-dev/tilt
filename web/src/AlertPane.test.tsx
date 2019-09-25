@@ -3,11 +3,7 @@ import AlertPane from "./AlertPane"
 import renderer from "react-test-renderer"
 import { oneResourceUnrecognizedError } from "./testdata.test"
 import { Resource, TriggerMode } from "./types"
-import {
-  getResourceAlerts,
-  isK8sResourceInfo,
-  mustK8sResourceInfo,
-} from "./alerts"
+import { getResourceAlerts } from "./alerts"
 import PathBuilder from "./PathBuilder"
 import { mount } from "enzyme"
 
@@ -42,11 +38,10 @@ it("renders one container start error", () => {
       Error: null,
     },
   ]
-  if (isK8sResourceInfo(resource.ResourceInfo)) {
-    resource.ResourceInfo.PodCreationTime = ts
-    resource.ResourceInfo.PodStatus = "Error"
-    resource.ResourceInfo.PodRestarts = 2
-  }
+  if (!resource.K8sResourceInfo) throw new Error("Missing k8s info")
+  resource.K8sResourceInfo.PodCreationTime = ts
+  resource.K8sResourceInfo.PodStatus = "Error"
+  resource.K8sResourceInfo.PodRestarts = 2
   resource.Alerts = getResourceAlerts(resource)
 
   let resources = [resource]
@@ -59,10 +54,8 @@ it("renders one container start error", () => {
   expect(tree).toMatchSnapshot()
 
   // the podStatus will flap between "Error" and "CrashLoopBackOff"
-  if (isK8sResourceInfo(resource.ResourceInfo)) {
-    resource.ResourceInfo.PodStatus = "CrashLoopBackOff"
-    resource.ResourceInfo.PodRestarts = 3
-  }
+  resource.K8sResourceInfo.PodStatus = "CrashLoopBackOff"
+  resource.K8sResourceInfo.PodRestarts = 3
   const newTree = renderer
     .create(
       <AlertPane pathBuilder={pb} resources={resources as Array<Resource>} />
@@ -75,7 +68,8 @@ it("renders pod restart dismiss button", () => {
   let resource = fillResourceFields()
   const ts = "1,555,970,585,039"
   resource.CrashLog = "Eeeeek there is a problem"
-  let rInfo = mustK8sResourceInfo(resource.ResourceInfo)
+  let rInfo = resource.K8sResourceInfo
+  if (!rInfo) throw new Error("Missing k8s info")
   rInfo.PodName = "pod-name"
   rInfo.PodCreationTime = ts
   rInfo.PodStatus = "Running"
@@ -113,11 +107,10 @@ it("shows that a container has restarted", () => {
       Error: null,
     },
   ]
-  if (isK8sResourceInfo(resource.ResourceInfo)) {
-    resource.ResourceInfo.PodStatus = "ok"
-    resource.ResourceInfo.PodCreationTime = ts
-    resource.ResourceInfo.PodRestarts = 1
-  }
+  if (!resource.K8sResourceInfo) throw new Error("missing k8s info")
+  resource.K8sResourceInfo.PodStatus = "ok"
+  resource.K8sResourceInfo.PodCreationTime = ts
+  resource.K8sResourceInfo.PodRestarts = 1
   resource.Alerts = getResourceAlerts(resource)
   let resources = [resource]
 
@@ -141,10 +134,9 @@ it("shows that a crash rebuild has occurred", () => {
       IsCrashRebuild: true,
     },
   ]
-  if (isK8sResourceInfo(resource.ResourceInfo)) {
-    resource.ResourceInfo.PodCreationTime = ts
-    resource.ResourceInfo.PodStatus = "ok"
-  }
+  if (!resource.K8sResourceInfo) throw new Error("missing k8s info")
+  resource.K8sResourceInfo.PodCreationTime = ts
+  resource.K8sResourceInfo.PodStatus = "ok"
   resource.Alerts = getResourceAlerts(resource)
 
   let resources = [resource]
@@ -170,10 +162,9 @@ it("renders multiple lines of a crash log", () => {
       IsCrashRebuild: true,
     },
   ]
-  if (isK8sResourceInfo(resource.ResourceInfo)) {
-    resource.ResourceInfo.PodCreationTime = ts
-    resource.ResourceInfo.PodStatus = "ok"
-  }
+  if (!resource.K8sResourceInfo) throw new Error("missing k8s info")
+  resource.K8sResourceInfo.PodCreationTime = ts
+  resource.K8sResourceInfo.PodStatus = "ok"
   resource.Alerts = getResourceAlerts(resource)
 
   let resources = [resource]
@@ -199,10 +190,9 @@ it("renders warnings", () => {
       Warnings: ["Hi I'm a warning"],
     },
   ]
-  if (isK8sResourceInfo(resource.ResourceInfo)) {
-    resource.ResourceInfo.PodCreationTime = ts
-    resource.ResourceInfo.PodStatus = "ok"
-  }
+  if (!resource.K8sResourceInfo) throw new Error("missing k8s info")
+  resource.K8sResourceInfo.PodCreationTime = ts
+  resource.K8sResourceInfo.PodStatus = "ok"
   resource.Alerts = getResourceAlerts(resource)
 
   let resources = [resource]
@@ -245,7 +235,7 @@ function fillResourceFields(): Resource {
     PendingBuildEdits: [],
     PendingBuildReason: 0,
     PendingBuildSince: "",
-    ResourceInfo: {
+    K8sResourceInfo: {
       PodName: "",
       PodCreationTime: "",
       PodUpdateStartTime: "",

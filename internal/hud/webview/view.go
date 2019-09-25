@@ -119,16 +119,36 @@ type Resource struct {
 	Endpoints []string
 	PodID     k8s.PodID
 
-	// TODO(nick): Remove ResourceInfoView. This is fundamentally a bad
-	// data structure for the webview because the webview loses the Go type
-	// on serialization to JS.
-	ResourceInfo  ResourceInfoView
+	// Only one of these resource info fields will be populated
+	K8sResourceInfo   *K8sResourceInfo   `json:",omitempty"`
+	DCResourceInfo    *DCResourceInfo    `json:",omitempty"`
+	YAMLResourceInfo  *YAMLResourceInfo  `json:",omitempty"`
+	LocalResourceInfo *LocalResourceInfo `json:",omitempty"`
+
 	RuntimeStatus RuntimeStatus
 
 	IsTiltfile      bool
 	ShowBuildStatus bool // if true, we show status & time in 'Build Status'; else, "N/A"
 	CombinedLog     model.Log
 	CrashLog        model.Log
+}
+
+func (r Resource) ResourceInfo() ResourceInfoView {
+	if r.K8sResourceInfo != nil {
+		return *r.K8sResourceInfo
+	}
+	if r.DCResourceInfo != nil {
+		return *r.DCResourceInfo
+	}
+	if r.YAMLResourceInfo != nil {
+		return *r.YAMLResourceInfo
+	}
+	if r.LocalResourceInfo != nil {
+		return *r.LocalResourceInfo
+	}
+
+	// return an empty info, just to avoid NPEs
+	return K8sResourceInfo{}
 }
 
 func (r Resource) LastBuild() BuildRecord {

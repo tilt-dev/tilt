@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -353,11 +352,7 @@ func TestMaybeSendToTriggerQueue_notManualManifest(t *testing.T) {
 func TestHandleNewSnapshot(t *testing.T) {
 	f := newTestFixture(t)
 
-	wd, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
-	sp := filepath.Join(wd, "testdata", "snapshot.json")
+	sp := filepath.Join("..", "webview", "testdata", "snapshot.json")
 	snap, err := ioutil.ReadFile(sp)
 	if err != nil {
 		t.Fatal(err)

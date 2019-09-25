@@ -37,7 +37,6 @@
       "HasPendingChanges": false,
       "Endpoints": null,
       "PodID": "",
-      "ResourceInfo": null,
       "RuntimeStatus": "ok",
       "IsTiltfile": true,
       "ShowBuildStatus": false,
@@ -73,15 +72,15 @@
         "http://localhost:8087/"
       ],
       "PodID": "",
-      "ResourceInfo": {
+      "K8sResourceInfo": {
         "PodName": "",
         "PodCreationTime": "0001-01-01T00:00:00Z",
         "PodUpdateStartTime": "0001-01-01T00:00:00Z",
         "PodStatus": "",
         "PodStatusMessage": "",
+        "AllContainersReady": false,
         "PodRestarts": 0,
-        "PodLog": "",
-        "YAML": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  labels:\n    app: alert-frontend\n  name: alert-frontend\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: alert-frontend\n  strategy: {}\n  template:\n    metadata:\n      labels:\n        app: alert-frontend\n    spec:\n      containers:\n      - env:\n        - name: GOOGLE_APPLICATION_CREDENTIALS\n          value: /var/secrets/google/blorg-dev-cc7165b01011.json\n        - name: WINDMILL_ENV\n          value: dev\n        image: gcr.io/blorg-dev/alert-frontend\n        name: alert-frontend\n        ports:\n        - containerPort: 8087\n        readinessProbe:\n          httpGet:\n            path: /healthz\n            port: 8087\n          initialDelaySeconds: 5\n          periodSeconds: 5\n        resources:\n          requests:\n            cpu: 10m\n        volumeMounts:\n        - mountPath: /var/secrets/google\n          name: google-cloud-key\n      volumes:\n      - name: google-cloud-key\n        secret:\n          secretName: firebase-key\n\n---\napiVersion: v1\nkind: Service\nmetadata:\n  labels:\n    app: alert-frontend\n  name: alert-frontend\nspec:\n  ports:\n  - port: 80\n    protocol: TCP\n    targetPort: 8087\n  selector:\n    app: alert-frontend\n  type: NodePort\n"
+        "PodLog": ""
       },
       "RuntimeStatus": "pending",
       "IsTiltfile": false,
@@ -118,15 +117,15 @@
         "http://localhost:8088/"
       ],
       "PodID": "",
-      "ResourceInfo": {
+      "K8sResourceInfo": {
         "PodName": "",
         "PodCreationTime": "0001-01-01T00:00:00Z",
         "PodUpdateStartTime": "0001-01-01T00:00:00Z",
         "PodStatus": "",
         "PodStatusMessage": "",
+        "AllContainersReady": false,
         "PodRestarts": 0,
-        "PodLog": "",
-        "YAML": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  labels:\n    app: alert-storage\n  name: alert-storage\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: alert-storage\n  strategy: {}\n  template:\n    metadata:\n      labels:\n        app: alert-storage\n    spec:\n      containers:\n      - env:\n        - name: GOOGLE_APPLICATION_CREDENTIALS\n          value: /var/secrets/google/blorg-dev-cc7165b01011.json\n        - name: WINDMILL_ENV\n          value: local\n        image: gcr.io/blorg-dev/alert-storage\n        name: alert-storage\n        ports:\n        - containerPort: 8088\n        readinessProbe:\n          httpGet:\n            path: /healthz\n            port: 8088\n          initialDelaySeconds: 5\n          periodSeconds: 5\n        resources:\n          requests:\n            cpu: 10m\n        volumeMounts:\n        - mountPath: /var/secrets/google\n          name: google-cloud-key\n      volumes:\n      - name: google-cloud-key\n        secret:\n          secretName: firebase-key\n\n---\napiVersion: v1\nkind: Service\nmetadata:\n  labels:\n    app: alert-storage\n  name: alert-storage\nspec:\n  ports:\n  - port: 80\n    protocol: TCP\n    targetPort: 8088\n  selector:\n    app: alert-storage\n  type: NodePort\n"
+        "PodLog": ""
       },
       "RuntimeStatus": "pending",
       "IsTiltfile": false,
@@ -172,15 +171,15 @@
         "http://localhost:8080/"
       ],
       "PodID": "",
-      "ResourceInfo": {
+      "K8sResourceInfo": {
         "PodName": "",
         "PodCreationTime": "0001-01-01T00:00:00Z",
         "PodUpdateStartTime": "0001-01-01T00:00:00Z",
         "PodStatus": "",
         "PodStatusMessage": "",
+        "AllContainersReady": false,
         "PodRestarts": 0,
-        "PodLog": "",
-        "YAML": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  labels:\n    app: firestore\n  name: firestore\nspec:\n  selector:\n    matchLabels:\n      app: firestore\n  strategy: {}\n  template:\n    metadata:\n      labels:\n        app: firestore\n    spec:\n      containers:\n      - env:\n        - name: FIRESTORE_PROJECT_ID\n          value: alerts\n        image: pathmotion/firestore-emulator-docker\n        name: firestore\n        ports:\n        - containerPort: 8080\n        resources:\n          requests:\n            cpu: 10m\n\n---\napiVersion: v1\nkind: Service\nmetadata:\n  labels:\n    app: firestore\n  name: firestore\nspec:\n  ports:\n  - port: 8080\n    protocol: TCP\n    targetPort: 8080\n  selector:\n    app: firestore\n  type: LoadBalancer\n"
+        "PodLog": ""
       },
       "RuntimeStatus": "pending",
       "IsTiltfile": false,
@@ -224,7 +223,7 @@
       "HasPendingChanges": false,
       "Endpoints": null,
       "PodID": "",
-      "ResourceInfo": {
+      "YAMLResourceInfo": {
         "K8sResources": [
           "firebase-key:secret"
         ]
@@ -252,5 +251,7 @@
     "Version": "",
     "Date": "",
     "Dev": false
-  }
+  },
+  "TiltCloudUsername": "",
+  "TiltCloudSchemeHost": ""
 }

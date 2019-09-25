@@ -13,7 +13,7 @@ import { Resource, K8sResourceInfo, TriggerMode } from "./types"
 describe("getResourceAlerts", () => {
   it("K8Resource: shows that a pod status of error is an alert", () => {
     let r: Resource = k8sResource()
-    let rInfo = <K8sResourceInfo>r.ResourceInfo
+    let rInfo = <K8sResourceInfo>r.K8sResourceInfo
     rInfo.PodStatus = "Error"
     rInfo.PodStatusMessage = "I'm a pod in Error"
 
@@ -32,7 +32,8 @@ describe("getResourceAlerts", () => {
 
   it("K8s Resource: should show pod restart alert ", () => {
     let r: Resource = k8sResource()
-    let rInfo = <K8sResourceInfo>r.ResourceInfo
+    let rInfo = r.K8sResourceInfo
+    if (!rInfo) throw new Error("missing k8s info")
     rInfo.PodRestarts = 1
     let actual = getResourceAlerts(r).map(a => {
       delete a.dismissHandler
@@ -89,7 +90,8 @@ describe("getResourceAlerts", () => {
         Error: null,
       },
     ]
-    let rInfo = <K8sResourceInfo>r.ResourceInfo
+    let rInfo = r.K8sResourceInfo
+    if (!rInfo) throw new Error("missing k8s info")
     rInfo.PodCreationTime = "10:00AM"
 
     let actual = getResourceAlerts(r)
@@ -134,7 +136,8 @@ describe("getResourceAlerts", () => {
 
   it("K8s Resource: should show a pod restart alert and a build failed alert", () => {
     let r: Resource = k8sResource()
-    let rInfo = <K8sResourceInfo>r.ResourceInfo
+    let rInfo = r.K8sResourceInfo
+    if (!rInfo) throw new Error("missing k8s info")
     rInfo.PodRestarts = 1 // triggers pod restart alert
     rInfo.PodCreationTime = "10:00AM"
 
@@ -212,7 +215,8 @@ describe("getResourceAlerts", () => {
 
   it("K8s Resource: should show number of alerts a resource has", () => {
     let r: Resource = k8sResource()
-    let rInfo = <K8sResourceInfo>r.ResourceInfo
+    let rInfo = r.K8sResourceInfo
+    if (!rInfo) throw new Error("missing k8s info")
     rInfo.PodRestarts = 1
     r.Alerts = getResourceAlerts(r)
     let actualNum = numberOfAlerts(r)
@@ -369,7 +373,7 @@ function k8sResource(): Resource {
     PendingBuildEdits: [],
     PendingBuildReason: 0,
     PendingBuildSince: "",
-    ResourceInfo: {
+    K8sResourceInfo: {
       PodName: "testPod",
       PodCreationTime: "",
       PodUpdateStartTime: "",
@@ -421,7 +425,7 @@ function dcResource(): Resource {
     HasPendingChanges: false,
     Endpoints: ["http://localhost:9007/"],
     PodID: "",
-    ResourceInfo: {
+    DCResourceInfo: {
       ConfigPaths: [""],
       ContainerStatus: "OK",
       ContainerID: "",
