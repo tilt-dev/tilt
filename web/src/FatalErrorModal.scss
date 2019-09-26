@@ -1,0 +1,25 @@
+@import "constants";
+@import "ReactModal";
+
+.FatalErrorModal-pane {
+  display: flex;
+  flex-direction: column;
+  font-size: $font-size;
+  padding-top: $spacing-unit * 0.75;
+  padding-bottom: $spacing-unit;
+  padding-left: $spacing-unit;
+  padding-right: $spacing-unit;
+}
+
+.FatalErrorModal-title {
+  margin: 0;
+  font-family: $font-sans-serif;
+  font-size: $font-size-small;
+  text-transform: uppercase;
+  background-color: $color-red;
+  color: $color-white;
+  padding-top: $spacing-unit / 4;
+  padding-bottom: $spacing-unit / 4;
+  padding-left: $spacing-unit;
+  padding-right: $spacing-unit;
+}

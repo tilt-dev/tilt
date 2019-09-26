@@ -180,6 +180,8 @@ type View struct {
 
 	TiltCloudUsername   string
 	TiltCloudSchemeHost string
+
+	FatalError string
 }
 
 func (v View) Resource(n model.ManifestName) (Resource, bool) {

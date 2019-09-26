@@ -1,6 +1,6 @@
 import HUD from "./HUD"
 import { getResourceAlerts } from "./alerts"
-import { Resource } from "./types"
+import { ShowFatalErrorModal } from "./types"
 
 // A Websocket that automatically retries.
 
@@ -92,6 +92,7 @@ class AppController {
         IsSidebarClosed: false,
         SnapshotLink: "",
         showSnapshotModal: false,
+        showFatalErrorModal: ShowFatalErrorModal.Default,
       })
       this.createNewSocket()
       return
@@ -118,6 +119,7 @@ class AppController {
         IsSidebarClosed: false,
         SnapshotLink: "",
         showSnapshotModal: false,
+        showFatalErrorModal: ShowFatalErrorModal.Default,
       })
       this.createNewSocket()
     }, timeout)

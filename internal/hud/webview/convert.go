@@ -103,6 +103,9 @@ func StateToWebView(s store.EngineState) View {
 	ret.FeatureFlags = s.Features
 	ret.TiltCloudUsername = s.TiltCloudUsername
 	ret.TiltCloudSchemeHost = cloud.URL(s.CloudAddress).String()
+	if s.FatalError != nil {
+		ret.FatalError = s.FatalError.Error()
+	}
 
 	return ret
 }
