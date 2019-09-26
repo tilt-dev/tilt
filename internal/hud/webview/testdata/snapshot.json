@@ -253,5 +253,6 @@
     "Dev": false
   },
   "TiltCloudUsername": "",
-  "TiltCloudSchemeHost": ""
+  "TiltCloudSchemeHost": "",
+  "FatalError": ""
 }
