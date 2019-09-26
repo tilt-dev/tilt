@@ -103,3 +103,9 @@ export type Snapshot = {
   SnapshotLink: string
   showSnapshotModal: boolean
 }
+
+export enum ShowFatalErrorModal {
+  Default,
+  Show,
+  Hide,
+}

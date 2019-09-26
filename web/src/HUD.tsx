@@ -13,7 +13,13 @@ import { History, UnregisterCallback } from "history"
 import { incr, pathToTag } from "./analytics"
 import TopBar from "./TopBar"
 import "./HUD.scss"
-import { TiltBuild, ResourceView, Resource, Snapshot } from "./types"
+import {
+  TiltBuild,
+  ResourceView,
+  Resource,
+  Snapshot,
+  ShowFatalErrorModal,
+} from "./types"
 import AlertPane from "./AlertPane"
 import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
@@ -22,6 +28,7 @@ import { numberOfAlerts } from "./alerts"
 import Features from "./feature"
 import ShareSnapshotModal from "./ShareSnapshotModal"
 import cleanStateForSnapshotPOST from "./snapshot_sanitizer"
+import FatalErrorModal from "./FatalErrorModal"
 
 type HudProps = {
   history: History
@@ -39,6 +46,7 @@ type HudView = {
   FeatureFlags: { [featureFlag: string]: boolean }
   TiltCloudUsername: string
   TiltCloudSchemeHost: string
+  FatalError: string | null
 }
 
 type HudState = {
@@ -47,6 +55,7 @@ type HudState = {
   IsSidebarClosed: boolean
   SnapshotLink: string
   showSnapshotModal: boolean
+  showFatalErrorModal: ShowFatalErrorModal
 }
 
 type NewSnapshotResponse = {
@@ -88,6 +97,7 @@ class HUD extends Component<HudProps, HudState> {
         SailEnabled: false,
         SailURL: "",
         NeedsAnalyticsNudge: false,
+        FatalError: null,
         RunningTiltBuild: {
           Version: "",
           Date: "",
@@ -105,6 +115,7 @@ class HUD extends Component<HudProps, HudState> {
       IsSidebarClosed: false,
       SnapshotLink: "",
       showSnapshotModal: false,
+      showFatalErrorModal: ShowFatalErrorModal.Default,
     }
 
     this.toggleSidebar = this.toggleSidebar.bind(this)
@@ -347,9 +358,11 @@ class HUD extends Component<HudProps, HudState> {
     let runningVersion = view && view.RunningTiltBuild
     let latestVersion = view && view.LatestTiltBuild
     let shareSnapshotModal = this.renderShareSnapshotModal(view)
+    let fatalErrorModal = this.renderFatalErrorModal(view)
     return (
       <div className="HUD">
         <AnalyticsNudge needsNudge={needsNudge} />
+        {fatalErrorModal}
         {shareSnapshotModal}
         <Switch>
           <Route
@@ -465,6 +478,19 @@ class HUD extends Component<HudProps, HudState> {
         tiltCloudUsername={tiltCloudUsername}
         tiltCloudSchemeHost={tiltCloudSchemeHost}
         isOpen={this.state.showSnapshotModal}
+      />
+    )
+  }
+
+  renderFatalErrorModal(view: HudView | null) {
+    let error = view && view.FatalError
+    let handleClose = () =>
+      this.setState({ showFatalErrorModal: ShowFatalErrorModal.Hide })
+    return (
+      <FatalErrorModal
+        error={error}
+        showFatalErrorModal={this.state.showFatalErrorModal}
+        handleClose={handleClose}
       />
     )
   }
