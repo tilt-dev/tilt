@@ -12,7 +12,7 @@ type props = {
 export default class FatalErrorModal extends PureComponent<props> {
   render() {
     let showModal =
-      this.props.error !== null &&
+      Boolean(this.props.error) &&
       (this.props.showFatalErrorModal === ShowFatalErrorModal.Default ||
         this.props.showFatalErrorModal === ShowFatalErrorModal.Show)
     return (
