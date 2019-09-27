@@ -275,6 +275,8 @@ const (
 	enableFeatureN  = "enable_feature"
 	disableFeatureN = "disable_feature"
 
+	disableSnapshotsN = "disable_snapshots"
+
 	// other functions
 	failN    = "fail"
 	blobN    = "blob"
@@ -446,6 +448,8 @@ func (s *tiltfileState) predeclared() starlark.StringDict {
 
 	addBuiltin(r, enableFeatureN, s.enableFeature)
 	addBuiltin(r, disableFeatureN, s.disableFeature)
+
+	addBuiltin(r, disableSnapshotsN, s.disableSnapshots)
 
 	addBuiltin(r, setTeamN, s.setTeam)
 

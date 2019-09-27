@@ -3498,6 +3498,16 @@ func TestDisableObsoleteFeature(t *testing.T) {
 	f.loadAssertWarnings("Obsolete feature flag: obsoleteflag")
 }
 
+func TestDisableSnapshots(t *testing.T) {
+	f := newFixture(t)
+	f.setupFoo()
+
+	f.file("Tiltfile", `disable_snapshots()`)
+	f.load()
+
+	f.assertFeature(feature.Snapshots, false)
+}
+
 func TestDockerBuildEntrypoint(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -3852,6 +3862,7 @@ func (f *fixture) newTiltfileLoader() TiltfileLoader {
 		"testflag_enabled":               feature.Value{Enabled: true},
 		"obsoleteflag":                   feature.Value{Status: feature.Obsolete, Enabled: true},
 		feature.MultipleContainersPerPod: feature.Value{Enabled: false},
+		feature.Snapshots:                feature.Value{Enabled: true},
 	}
 	return ProvideTiltfileLoader(f.ta, f.kCli, dcc, f.k8sContext, f.k8sEnv, features)
 }
