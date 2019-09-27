@@ -1,14 +1,19 @@
 @import "constants";
 @import "ReactModal";
 
+.ShareSnapshotModal {
+  width: 736px;
+}
 .ShareSnapshotModal-pane {
   display: flex;
-  flex-direction: column;
   font-size: $font-size;
-  padding-top: $spacing-unit * 0.75;
+  padding-top: $spacing-unit;
   padding-bottom: $spacing-unit;
-  padding-left: $spacing-unit;
-  padding-right: $spacing-unit;
+  padding-left: $spacing-unit * 3;
+  padding-right: $spacing-unit * 3;
+}
+.ShareSnapshotModal-pane + .ShareSnapshotModal-pane {
+  border-top: 2px dotted $color-gray-light;
 }
 
 .ShareSnapshotModal-title {
@@ -18,18 +23,33 @@
   text-transform: uppercase;
   background-color: $color-gray-light;
   color: $color-white;
-  padding-top: $spacing-unit / 4;
-  padding-bottom: $spacing-unit / 4;
+  padding-top: $spacing-unit / 2;
+  padding-bottom: $spacing-unit / 2;
   padding-left: $spacing-unit;
   padding-right: $spacing-unit;
 }
-
-.ShareSnapshotModal-pane + .ShareSnapshotModal-pane {
-  border-top: 1px dotted $color-gray-dark;
+.ShareSnapshotModal-description {
+  font-weight: 700;
 }
-
-// Get Link
-$ShareSnapshotModal-button-width: 95px;
+.ShareSnapshotModal-intro {
+  display: flex;
+  margin-top: $spacing-unit;
+}
+.ShareSnapshotModal-introImage {
+  width: 200px;
+}
+.ShareSnapshotModal-examples {
+  margin-left: $spacing-unit * 1.5;
+}
+.ShareSnapshotModal-examples > li {
+  margin-bottom: $spacing-unit / 4;
+}
+.ShareSnapshotModal-getStarted {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-right: $spacing-unit * -2;
+}
 
 .ShareSnapshotModal-shareLink {
   display: flex;
@@ -44,8 +64,11 @@ $ShareSnapshotModal-button-width: 95px;
   padding-bottom: $spacing-unit / 6;
   padding-left: $spacing-unit / 3;
   padding-right: $spacing-unit / 3;
-  width: calc(100% - #{$ShareSnapshotModal-button-width});
   box-sizing: border-box;
+  display: inline-block;
+  flex-grow: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ShareSnapshotModal-shareLink-url {
@@ -58,57 +81,40 @@ $ShareSnapshotModal-button-width: 95px;
 .ShareSnapshotModal-shareLink-placeholder {
   color: $color-gray-lightest;
 }
-
 .ShareSnapshotModal-button {
   cursor: pointer;
   font-family: $font-sans-serif;
-  font-size: $font-size-smallest;
   text-transform: uppercase;
-  background-color: $color-gray-dark;
   color: $color-white;
-  border: 0 none;
+  border: 0;
   padding-top: $spacing-unit / 3;
   padding-bottom: $spacing-unit / 3;
   padding-left: $spacing-unit / 2;
   padding-right: $spacing-unit / 2;
   text-decoration: none;
-  text-align: center;
-  width: $ShareSnapshotModal-button-width;
-}
-
-// Tilt Cloud Marketing
-
-.ShareSnapshotModal-tiltCloudButtonForm {
+  transition: background-color 300ms;
   display: flex;
-  margin-top: $spacing-unit / 2;
+  justify-content: center;
   align-items: center;
-  justify-content: space-between;
-  color: $color-gray-light;
 }
-
-.ShareSnapshotModal-tiltCloudButtonForm-spacer {
-  border-top: 1px dotted $color-gray-light;
-  height: 0;
-  flex: 1;
-  margin-left: $spacing-unit / 3;
-  margin-right: $spacing-unit / 3;
-  box-sizing: content-box;
-}
-
-.ShareSnapshotModal-tiltCloudButton {
-  cursor: pointer;
-  font-family: $font-sans-serif;
+.ShareSnapshotModal-button--inline {
   font-size: $font-size-smallest;
-  text-transform: uppercase;
-  background-color: $color-blue;
-  color: $color-white;
-  border: 0 none;
-  padding-top: $spacing-unit / 3;
-  padding-bottom: $spacing-unit / 3;
-  padding-left: $spacing-unit / 2;
-  padding-right: $spacing-unit / 2;
+  background-color: $color-gray-dark;
+  min-width: 95px;
+  box-sizing: border-box;
 }
-
-.ShareSnapshotModal-tiltCloudButton:hover {
+.ShareSnapshotModal-button--inline:hover {
+  background-color: $color-gray-light;
+}
+.ShareSnapshotModal-button--cta {
+  font-size: $font-size-small;
   background-color: $color-blue-light;
+  box-shadow: -$spacing-unit / 6 $spacing-unit / 6 0 2px $color-gray-dark;
+  margin-left: $spacing-unit;
+}
+.ShareSnapshotModal-button--cta:hover {
+  background-color: $color-blue;
+}
+.ShareSnapshotModal-loginState {
+  margin-top: $spacing-unit / 2;
 }

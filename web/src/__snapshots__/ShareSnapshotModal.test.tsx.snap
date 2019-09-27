@@ -34,44 +34,50 @@ exports[`ShareSnapshotModal renders with modal open w/ known username 1`] = `
       Share a Shapshot
     </h2>
     <div
-      className="ShareSnapshotModal-pane"
+      className="ShareSnapshotModal-pane u-flexColumn"
     >
-      <p>
-        Get a link to a snapshot -- a browsable, sharable view of the current state of your Tilt session.
-      </p>
-      <section
-        className="ShareSnapshotModal-shareLink"
+      <div
+        className="ShareSnapshotModal-description"
       >
+        Get a link to a snapshot — a browsable, sharable view of the current state of your Tilt session.
+      </div>
+      <div>
         <div
-          className="ShareSnapshotModal-shareLink-urlBox"
+          className="ShareSnapshotModal-shareLink"
         >
-          <p
-            className="ShareSnapshotModal-shareLink-url"
+          <div
+            className="ShareSnapshotModal-shareLink-urlBox"
           >
-            http://test.com
-          </p>
+            <p
+              className="ShareSnapshotModal-shareLink-url"
+            >
+              http://test.com
+            </p>
+          </div>
+          <a
+            className="ShareSnapshotModal-button ShareSnapshotModal-button--inline"
+            href="http://test.com"
+            target="_blank"
+          >
+            Open
+          </a>
         </div>
-        <a
-          className="ShareSnapshotModal-button"
-          href="http://test.com"
-          target="_blank"
+        <div
+          className="ShareSnapshotModal-loginState"
         >
-          Open
-        </a>
-      </section>
-      <p
-        className="ShareSnapshotModal-user"
-      >
-        Sharing as 
-        <strong>
-          tacocat
-        </strong>
-      </p>
+          Sharing as 
+          <strong>
+            tacocat
+          </strong>
+        </div>
+      </div>
     </div>
     <div
       className="ShareSnapshotModal-pane"
     >
-      <p>
+      <div
+        className="ShareSnapshotModal-description"
+      >
         Manage your snapshots on
          
         <a
@@ -80,7 +86,9 @@ exports[`ShareSnapshotModal renders with modal open w/ known username 1`] = `
         >
           TiltCloud
         </a>
-      </p>
+         
+        →
+      </div>
     </div>
   </div>
 </div>
@@ -118,71 +126,69 @@ exports[`ShareSnapshotModal renders with modal open w/o known username 1`] = `
       Share a Shapshot
     </h2>
     <div
-      className="ShareSnapshotModal-pane"
+      className="ShareSnapshotModal-pane u-flexColumn"
     >
-      <p>
-        Get a link to a snapshot -- a browsable, sharable view of the current state of your Tilt session.
-      </p>
-      <section
-        className="ShareSnapshotModal-shareLink"
+      <div
+        className="ShareSnapshotModal-description"
       >
+        Get a link to a snapshot — a browsable, sharable view of the current state of your Tilt session.
+      </div>
+      <div>
         <div
-          className="ShareSnapshotModal-shareLink-urlBox"
+          className="ShareSnapshotModal-intro"
         >
-          <p
-            className="ShareSnapshotModal-shareLink-url"
+          <div
+            className="u-inlineBlock"
           >
-            http://test.com
-          </p>
+            <img
+              className="ShareSnapshotModal-introImage"
+              src="share-snapshot-intro.png"
+            />
+          </div>
+          <div
+            className="u-inlineBlock"
+          >
+            <ul
+              className="ShareSnapshotModal-examples"
+            >
+              <li>
+                Share errors easily
+              </li>
+              <li>
+                Explore logs in-context
+              </li>
+              <li>
+                Work together to figure out the problem
+              </li>
+            </ul>
+          </div>
         </div>
-        <a
-          className="ShareSnapshotModal-button"
-          href="http://test.com"
-          target="_blank"
+        <div
+          className="ShareSnapshotModal-getStarted"
         >
-          Open
-        </a>
-      </section>
-      <p
-        className="ShareSnapshotModal-user"
-      >
-        Sharing as 
-        <strong>
-          [anonymous user]
-        </strong>
-      </p>
-    </div>
-    <div
-      className="ShareSnapshotModal-pane"
-    >
-      <section>
-        <p>
-          Connect Tilt to TiltCloud to share under your name and manage your snapshots.
-        </p>
-        <form
-          action="https://cloud.tilt.dev/start_register_token"
-          className="ShareSnapshotModal-tiltCloudButtonForm"
-          method="POST"
-          onSubmit={[Function]}
-          target="_blank"
-        >
-          <p>
-            You'll need a GitHub account
-          </p>
-          <span
-            className="ShareSnapshotModal-tiltCloudButtonForm-spacer"
-          />
-          <input
-            className="ShareSnapshotModal-tiltCloudButton"
-            type="submit"
-            value="Connect to TiltCloud"
-          />
-          <input
-            name="token"
-            type="hidden"
-          />
-        </form>
-      </section>
+          <div
+            className="u-inlineBlock"
+          >
+            Link Tilt to TiltCloud
+          </div>
+          <form
+            action="https://cloud.tilt.dev/start_register_token"
+            method="POST"
+            onSubmit={[Function]}
+            target="_blank"
+          >
+            <input
+              name="token"
+              type="hidden"
+            />
+            <input
+              className="ShareSnapshotModal-button ShareSnapshotModal-button--cta"
+              type="submit"
+              value="Get Started"
+            />
+          </form>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -220,70 +226,69 @@ exports[`ShareSnapshotModal renders without snapshotUrl 1`] = `
       Share a Shapshot
     </h2>
     <div
-      className="ShareSnapshotModal-pane"
+      className="ShareSnapshotModal-pane u-flexColumn"
     >
-      <p>
-        Get a link to a snapshot -- a browsable, sharable view of the current state of your Tilt session.
-      </p>
-      <section
-        className="ShareSnapshotModal-shareLink"
+      <div
+        className="ShareSnapshotModal-description"
       >
+        Get a link to a snapshot — a browsable, sharable view of the current state of your Tilt session.
+      </div>
+      <div>
         <div
-          className="ShareSnapshotModal-shareLink-urlBox"
+          className="ShareSnapshotModal-intro"
         >
-          <p
-            className="ShareSnapshotModal-shareLink-placeholder"
+          <div
+            className="u-inlineBlock"
           >
-            No Link Generated Yet
-          </p>
+            <img
+              className="ShareSnapshotModal-introImage"
+              src="share-snapshot-intro.png"
+            />
+          </div>
+          <div
+            className="u-inlineBlock"
+          >
+            <ul
+              className="ShareSnapshotModal-examples"
+            >
+              <li>
+                Share errors easily
+              </li>
+              <li>
+                Explore logs in-context
+              </li>
+              <li>
+                Work together to figure out the problem
+              </li>
+            </ul>
+          </div>
         </div>
-        <button
-          className="ShareSnapshotModal-button"
-          onClick={[Function]}
+        <div
+          className="ShareSnapshotModal-getStarted"
         >
-          Get Link
-        </button>
-      </section>
-      <p
-        className="ShareSnapshotModal-user"
-      >
-        Sharing as 
-        <strong>
-          [anonymous user]
-        </strong>
-      </p>
-    </div>
-    <div
-      className="ShareSnapshotModal-pane"
-    >
-      <section>
-        <p>
-          Connect Tilt to TiltCloud to share under your name and manage your snapshots.
-        </p>
-        <form
-          action="https://cloud.tilt.dev/start_register_token"
-          className="ShareSnapshotModal-tiltCloudButtonForm"
-          method="POST"
-          onSubmit={[Function]}
-          target="_blank"
-        >
-          <p>
-            You'll need a GitHub account
-          </p>
-          <span
-            className="ShareSnapshotModal-tiltCloudButtonForm-spacer"
-          />
-          <input
-            className="ShareSnapshotModal-tiltCloudButton"
-            type="submit"
-            value="Connect to TiltCloud"
-          />
-          <input
-            name="token"
-            type="hidden"
-          />
-        </form>
-      </section>
+          <div
+            className="u-inlineBlock"
+          >
+            Link Tilt to TiltCloud
+          </div>
+          <form
+            action="https://cloud.tilt.dev/start_register_token"
+            method="POST"
+            onSubmit={[Function]}
+            target="_blank"
+          >
+            <input
+              name="token"
+              type="hidden"
+            />
+            <input
+              className="ShareSnapshotModal-button ShareSnapshotModal-button--cta"
+              type="submit"
+              value="Get Started"
+            />
+          </form>
+        </div>
+      </div>
     </div>
   </div>
 </div>
