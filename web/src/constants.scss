@@ -68,3 +68,11 @@ $animation-timing: 200ms;
   display: none !important;
   visibility: hidden !important;
 }
+.u-flexColumn {
+  display: flex !important;
+  flex-direction: column !important;
+}
+.u-flexRow {
+  display: flex !important;
+  flex-direction: row !important;
+}

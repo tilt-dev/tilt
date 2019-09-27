@@ -2,6 +2,7 @@ import React, { PureComponent } from "react"
 import Modal from "react-modal"
 import "./ShareSnapshotModal.scss"
 import cookies from "js-cookie"
+import intro from "./assets/png/share-snapshot-intro.png"
 
 type props = {
   handleSendSnapshot: () => void
@@ -14,9 +15,6 @@ type props = {
 
 export default class ShareSnapshotModal extends PureComponent<props> {
   render() {
-    let tcUser = this.props.tiltCloudUsername
-    let user = tcUser ? tcUser : "[anonymous user]"
-    let link = this.renderShareLink()
     return (
       <Modal
         onRequestClose={this.props.handleClose}
@@ -24,25 +22,77 @@ export default class ShareSnapshotModal extends PureComponent<props> {
         className="ShareSnapshotModal"
       >
         <h2 className="ShareSnapshotModal-title">Share a Shapshot</h2>
-        <div className="ShareSnapshotModal-pane">
-          <p>
-            Get a link to a snapshot -- a browsable, sharable view of the
-            current state of your Tilt session.
-          </p>
-          {link}
-          <p className="ShareSnapshotModal-user">
-            Sharing as <strong>{user}</strong>
-          </p>
+        <div className="ShareSnapshotModal-pane u-flexColumn">
+          <div className="ShareSnapshotModal-description">
+            Get a link to a snapshot — a browsable, sharable view of the current
+            state of your Tilt session.
+          </div>
+          {this.renderCallToAction()}
         </div>
-        <div className="ShareSnapshotModal-pane">{this.tiltCloudCopy()}</div>
+        {this.maybeRenderManageSnapshots()}
       </Modal>
+    )
+  }
+
+  renderCallToAction() {
+    if (this.props.tiltCloudUsername) {
+      return (
+        <div>
+          {this.renderShareLink()}
+          {this.renderLoginState()}
+        </div>
+      )
+    }
+    return (
+      <div>
+        {this.renderIntro()}
+        {this.renderGetStarted()}
+      </div>
+    )
+  }
+
+  renderIntro() {
+    return (
+      <div className="ShareSnapshotModal-intro">
+        <div className="u-inlineBlock">
+          <img src={intro} className="ShareSnapshotModal-introImage" />
+        </div>
+        <div className="u-inlineBlock">
+          <ul className="ShareSnapshotModal-examples">
+            <li>Share errors easily</li>
+            <li>Explore logs in-context</li>
+            <li>Work together to figure out the problem</li>
+          </ul>
+        </div>
+      </div>
+    )
+  }
+
+  renderGetStarted() {
+    return (
+      <div className="ShareSnapshotModal-getStarted">
+        <div className="u-inlineBlock">Link Tilt to TiltCloud</div>
+        <form
+          action={this.props.tiltCloudSchemeHost + "/start_register_token"}
+          target="_blank"
+          method="POST"
+          onSubmit={ShareSnapshotModal.notifyTiltOfRegistration}
+        >
+          <input name="token" type="hidden" value={cookies.get("Tilt-Token")} />
+          <input
+            type="submit"
+            className="ShareSnapshotModal-button ShareSnapshotModal-button--cta"
+            value="Get Started"
+          />
+        </form>
+      </div>
     )
   }
 
   renderShareLink() {
     const hasLink = this.props.snapshotUrl !== ""
     return (
-      <section className="ShareSnapshotModal-shareLink">
+      <div className="ShareSnapshotModal-shareLink">
         <div className="ShareSnapshotModal-shareLink-urlBox">
           {hasLink ? (
             <p className="ShareSnapshotModal-shareLink-url">
@@ -54,70 +104,60 @@ export default class ShareSnapshotModal extends PureComponent<props> {
             </p>
           )}
         </div>
-        {!hasLink && (
-          <button
-            className="ShareSnapshotModal-button"
-            onClick={this.props.handleSendSnapshot}
-          >
-            Get Link
-          </button>
-        )}
-        {hasLink && (
-          <a
-            className="ShareSnapshotModal-button"
-            href={this.props.snapshotUrl}
-            target="_blank"
-          >
-            Open
-          </a>
-        )}
-      </section>
+        {this.renderGetLinkButton()}
+      </div>
     )
   }
 
-  tiltCloudCopy() {
-    if (!this.props.tiltCloudUsername) {
+  renderGetLinkButton() {
+    const hasLink = this.props.snapshotUrl !== ""
+    if (hasLink) {
       return (
-        <section>
-          <p>
-            Connect Tilt to TiltCloud to share under your name and manage your
-            snapshots.
-          </p>
-          <form
-            className="ShareSnapshotModal-tiltCloudButtonForm"
-            action={this.props.tiltCloudSchemeHost + "/start_register_token"}
-            target="_blank"
-            method="POST"
-            onSubmit={ShareSnapshotModal.notifyTiltOfRegistration}
-          >
-            <p>You'll need a GitHub account</p>
-            <span className="ShareSnapshotModal-tiltCloudButtonForm-spacer" />
-            <input
-              className="ShareSnapshotModal-tiltCloudButton"
-              type="submit"
-              value="Connect to TiltCloud"
-            />
-            <input
-              name="token"
-              type="hidden"
-              value={cookies.get("Tilt-Token")}
-            />
-          </form>
-        </section>
+        <a
+          className="ShareSnapshotModal-button ShareSnapshotModal-button--inline"
+          href={this.props.snapshotUrl}
+          target="_blank"
+        >
+          Open
+        </a>
       )
-    } else {
-      return (
-        <p>
+    }
+    return (
+      <button
+        className="ShareSnapshotModal-button ShareSnapshotModal-button--inline"
+        onClick={this.props.handleSendSnapshot}
+      >
+        Get Link
+      </button>
+    )
+  }
+
+  renderLoginState() {
+    return (
+      <div className="ShareSnapshotModal-loginState">
+        Sharing as <strong>{this.props.tiltCloudUsername}</strong>
+      </div>
+    )
+  }
+
+  maybeRenderManageSnapshots() {
+    if (!this.props.tiltCloudUsername) {
+      return null
+    }
+    return (
+      <div className="ShareSnapshotModal-pane">
+        <div className="ShareSnapshotModal-description">
           Manage your snapshots on{" "}
           <a
             href={this.props.tiltCloudSchemeHost + "/snapshots"}
             target="_blank"
           >
             TiltCloud
-          </a>
-        </p>
-      )
-    }
+          </a>{" "}
+          →
+        </div>
+      </div>
+    )
   }
 
   static notifyTiltOfRegistration() {
