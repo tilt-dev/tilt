@@ -2745,6 +2745,34 @@ data:
 	})
 }
 
+func TestShortSecretNotScrubbed(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	tiltfile := `
+print('about to print secret: s')
+k8s_yaml('secret.yaml')`
+	f.WriteFile("Tiltfile", tiltfile)
+	f.WriteFile("secret.yaml", `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-secret
+stringData:
+  client-secret: s
+`)
+
+	f.loadAndStart()
+
+	f.waitForCompletedBuildCount(1)
+
+	f.withState(func(state store.EngineState) {
+		log := state.Log.String()
+		assert.Contains(t, log, "about to print secret: s")
+		assert.NotContains(t, log, "redacted")
+	})
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex

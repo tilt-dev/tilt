@@ -6,6 +6,11 @@ import (
 	"fmt"
 )
 
+// Don't scrub secrets less than 5 characters,
+// to avoid weird behavior where we scrub too much
+// https://app.clubhouse.io/windmill/story/3568/small-secrets-lead-to-weird-behavior
+const minSecretLengthToScrub = 5
+
 // Secrets are different than other kinds of build/deploy outputs.
 //
 // Once something is marked as a secret, we want to scrub it from all logs
@@ -53,6 +58,9 @@ type Secret struct {
 }
 
 func (s Secret) Scrub(text []byte) []byte {
+	if len(s.Value) < minSecretLengthToScrub {
+		return text
+	}
 	if bytes.Contains(text, s.Value) {
 		text = bytes.ReplaceAll(text, s.Value, s.Replacement)
 	}
