@@ -35,7 +35,9 @@
     "test": "react-scripts test",
     "test-debug": "react-scripts --inspect-brk test --runInBand --no-cache",
     "eject": "react-scripts eject",
-    "check": "prettier --check \"src/**/*.ts*\" && tsc -p ."
+    "check": "prettier --check \"src/**/*.ts*\" && tsc -p .",
+    "storybook": "start-storybook -p 9009 -s public",
+    "build-storybook": "build-storybook -s public"
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -47,16 +49,20 @@
     "not op_mini all"
   ],
   "devDependencies": {
-    "@types/react-test-renderer": "^16.9.0",
-    "@types/jest": "^24.0.11",
+    "@storybook/addon-actions": "^5.2.1",
+    "@storybook/addon-links": "^5.2.1",
+    "@storybook/addons": "^5.2.1",
+    "@storybook/react": "^5.2.1",
     "@types/enzyme": "^3.9.1",
     "@types/enzyme-adapter-react-16": "^1.0.5",
-    "react-test-renderer": "^16.9.0",
+    "@types/jest": "^24.0.11",
+    "@types/react-test-renderer": "^16.9.0",
     "enzyme": "^3.9.0",
     "enzyme-adapter-react-16": "^1.11.2",
     "enzyme-to-json": "^3.3.5",
     "jest-fetch-mock": "^2.1.2",
-    "prettier": "1.16.4"
+    "prettier": "1.16.4",
+    "react-test-renderer": "^16.9.0"
   },
   "engines": {
     "node": ">=11.0.0"
