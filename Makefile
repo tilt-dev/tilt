@@ -157,3 +157,6 @@ prettier:
 	cd web && yarn install
 	cd web && yarn run prettier --write "src/**/*.ts*"
 
+storybook:
+	cd web && yarn install
+	cd web && yarn storybook
