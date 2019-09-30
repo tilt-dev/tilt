@@ -15,11 +15,11 @@ jobs:
 
   build-js:
     docker:
-      - image: circleci/node:11
+      - image: circleci/node:12
     steps:
       - checkout
       - run: make check-js test-js
-        
+
   build-windows:
     docker:
       - image: circleci/golang:1.12
@@ -38,7 +38,7 @@ jobs:
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker
       # Delete any existing clusters, for `circleci local execute` mode
-      - run: kind delete cluster --name=integration || exit 0 
+      - run: kind delete cluster --name=integration || exit 0
       - run: docker kill portforward || exit 0
       - run: docker rm portforward || exit 0
       - run: /go/portforward.sh start
