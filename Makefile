@@ -106,7 +106,7 @@ goimports:
 	goimports -w -l $(GOIMPORTS_LOCAL_ARG) $$(go list -f {{.Dir}} ./...)
 
 verify_goimports:
-	# any files printed here need to be formatted by `goimports $(GOIMPORTS_LOCAL_ARG)`
+	# any files printed here need to be formatted by running `make goimports`
 	bash -c 'diff <(goimports -l $(GOIMPORTS_LOCAL_ARG) $$(go list -f {{.Dir}} ./...)) <(echo -n)'
 
 benchmark:
