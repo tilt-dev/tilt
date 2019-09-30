@@ -20,6 +20,15 @@ jobs:
       - checkout
       - run: make check-js test-js
 
+  publish-assets:
+    docker:
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:168fcc4ab364bf330a7a524b07da56cf54c2fe134b2e78be78f6b7c2791a5d2f
+    steps:
+      - checkout
+      - run: echo $GCLOUD_SERVICE_KEY > /tmp/gcloud-service-key.json
+      - run: gcloud auth activate-service-account --key-file=/tmp/gcloud-service-key.json
+      - run: ./scripts/upload-assets.py $CIRCLE_SHA1
+
   build-windows:
     docker:
       - image: circleci/golang:1.12
@@ -101,3 +110,9 @@ workflows:
       - build-windows:
           requires:
             - build-linux
+      - publish-assets:
+          requires:
+            - build-js
+          filters:
+            branches:
+              only: master
