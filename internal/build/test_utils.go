@@ -56,7 +56,14 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 		t.Fatal(err)
 	}
 
-	dCli := docker.NewDockerClient(ctx, docker.Env(dEnv)).(*docker.Cli)
+	dCli := docker.NewDockerClient(ctx, docker.Env(dEnv))
+	_, ok := dCli.(*docker.Cli)
+	// If it wasn't an actual Docker client, it's an exploding client
+	if !ok {
+		cli := dCli.(docker.Client)
+		// Call the simplest interface function that returns the error which originally occurred in NewDockerClient()
+		t.Fatal(cli.CheckConnected())
+	}
 	ps := NewPipelineState(ctx, 3, fakeClock{})
 
 	labels := dockerfile.Labels(map[dockerfile.Label]dockerfile.LabelValue{
@@ -66,7 +73,7 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,
 		ctx:            ctx,
-		dCli:           dCli,
+		dCli:           dCli.(*docker.Cli),
 		b:              NewDockerImageBuilder(dCli, labels),
 		cb:             NewCacheBuilder(dCli),
 		reaper:         NewImageReaper(dCli),
