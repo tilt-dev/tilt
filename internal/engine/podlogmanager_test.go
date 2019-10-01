@@ -31,7 +31,9 @@ func TestLogs(t *testing.T) {
 
 	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!")
 
+	start := time.Now()
 	state := f.store.LockMutableStateForTesting()
+	state.TiltStartTime = start
 	state.WatchFiles = true
 
 	p := store.Pod{
@@ -45,6 +47,7 @@ func TestLogs(t *testing.T) {
 
 	f.plm.OnChange(f.ctx, f.store)
 	f.AssertOutputContains("hello world!")
+	assert.Equal(t, start, f.kClient.LastPodLogStartTime)
 }
 
 func TestLogActions(t *testing.T) {

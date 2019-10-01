@@ -68,7 +68,12 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 				stateWatches[key] = true
 
 				existing, isActive := m.watches[key]
-				startWatchTime := time.Unix(0, 0)
+
+				// Only stream logs that have happened since Tilt started.
+				//
+				// TODO(nick): We should really record when we started the `kubectl apply`,
+				// and only stream logs since that happened.
+				startWatchTime := state.TiltStartTime
 				if isActive {
 					if existing.ctx.Err() == nil {
 						// The active pod watcher is still tailing the logs,
