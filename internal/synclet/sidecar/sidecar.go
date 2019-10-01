@@ -26,7 +26,7 @@ func getImageName() string {
 // When we deploy Tilt for development, we override this with LDFLAGS
 var SyncletTag = "v20190904"
 
-const SyncletImageEnvVar = "SYNCLET_IMAGE"
+const SyncletImageEnvVar = "TILT_SYNCLET_IMAGE"
 const SyncletImageName = "gcr.io/windmill-public-containers/tilt-synclet"
 const SyncletContainerName = "tilt-synclet"
 
