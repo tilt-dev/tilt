@@ -45,6 +45,7 @@ type FakeK8sClient struct {
 	LastPodQueryImage     reference.NamedTagged
 
 	PodLogsByPodAndContainer map[PodAndCName]BufferCloser
+	LastPodLogStartTime      time.Time
 	ContainerLogsError       error
 
 	podWatcherMu sync.Mutex
@@ -265,6 +266,7 @@ func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName cont
 	}
 
 	// If we have specific logs for this pod/container combo, return those
+	c.LastPodLogStartTime = startTime
 	if buf, ok := c.PodLogsByPodAndContainer[PodAndCName{pID, cName}]; ok {
 		return buf, nil
 	}
