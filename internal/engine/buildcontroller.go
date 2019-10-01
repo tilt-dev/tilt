@@ -305,7 +305,7 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 
 	for _, spec := range specs {
 		id := spec.ID()
-		if id.Type != model.TargetTypeImage && id.Type != model.TargetTypeDockerCompose {
+		if id.Type != model.TargetTypeImage && id.Type != model.TargetTypeDockerCompose && id.Type != model.TargetTypeLocal {
 			continue
 		}
 

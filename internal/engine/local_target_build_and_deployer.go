@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"os/exec"
+	"time"
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/store"
@@ -33,6 +34,13 @@ func (bd *LocalTargetBuildAndDeployer) BuildAndDeploy(ctx context.Context, st st
 	if err != nil {
 		// (Never fall back from the LocalTargetBaD, none of our other BaDs can handle this target)
 		return store.BuildResultSet{}, DontFallBackErrorf("Command %q failed: %v", targ.Cmd.String(), err)
+	}
+
+	if state := stateSet[targ.ID()]; state.IsEmpty() {
+		// HACK(maia): on initial build, give the file change a little extra time to
+		// propagate through, to increase the chance that we pick it up before we start
+		// the next build (otherwise, we may build that next resource twice).
+		time.Sleep(250 * time.Millisecond)
 	}
 
 	return bd.successfulBuildResult(targ), nil
