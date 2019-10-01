@@ -15,10 +15,12 @@ func syncletPrivileged() *bool {
 	return &val
 }
 
+const defaultSyncletImageName = "gcr.io/windmill-public-containers/tilt-synclet"
+
 func getImageName() string {
 	v := os.Getenv(SyncletImageEnvVar)
 	if v == "" {
-		return SyncletImageName
+		return defaultSyncletImageName
 	}
 	return v
 }
@@ -27,7 +29,10 @@ func getImageName() string {
 var SyncletTag = "v20190904"
 
 const SyncletImageEnvVar = "TILT_SYNCLET_IMAGE"
-const SyncletImageName = "gcr.io/windmill-public-containers/tilt-synclet"
+
+// TODO(nick): Revamp this to not rely on global init
+var SyncletImageName = getImageName()
+
 const SyncletContainerName = "tilt-synclet"
 
 var SyncletImageRef = container.MustParseNamed(SyncletImageName)
