@@ -25,10 +25,6 @@ if version == "latest":
     "git", "describe", "--tags", "--abbrev=0"
   ])).strip()
 
-if not re.match('^v[0-9]+[.][0-9]+[.][0-9]+', version):
-  print("Usage: scripts/upload-assets.py VERSION")
-  sys.exit(1)
-
 dir_url = ("https://storage.googleapis.com/tilt-static-assets/%s/" % version)
 url = dir_url + "index.html"
 print("Uploading to %s" % dir_url)
@@ -40,6 +36,12 @@ if status == 0:
   sys.exit(1)
 
 os.chdir("web")
-os.system('yarn install')
-os.system('yarn run build')
+status = os.system('yarn install')
+if status != 0:
+  print("Error executing yarn install")
+  sys.exit(status)
+status = os.system('CI=false yarn run build')
+if status != 0:
+  print("Error executing yarn run build")
+  sys.exit(status)
 os.system('gsutil cp -r build "gs://tilt-static-assets/%s"' % version)
