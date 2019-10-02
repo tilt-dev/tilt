@@ -4672,7 +4672,7 @@ func (f *fixture) setupExpand() {
 func (f *fixture) setupHelm() {
 	f.file("helm/Chart.yaml", chartYAML)
 	f.file("helm/values.yaml", valuesYAML)
-	f.file("dev/helm/values-dev.yaml", valuesDevYAML) // make sure we can pull in a values.yaml file from outisde chart dir
+	f.file("dev/helm/values-dev.yaml", valuesDevYAML) // make sure we can pull in a values.yaml file from outside chart dir
 
 	f.file("helm/templates/_helpers.tpl", helpersTPL)
 	f.file("helm/templates/deployment.yaml", deploymentYAML)
