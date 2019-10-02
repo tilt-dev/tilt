@@ -3,6 +3,7 @@ import Modal from "react-modal"
 import "./ShareSnapshotModal.scss"
 import cookies from "js-cookie"
 import intro from "./assets/png/share-snapshot-intro.png"
+import { ReactComponent as ArrowSvg } from "./assets/svg/arrow.svg"
 
 type props = {
   handleSendSnapshot: () => void
@@ -22,13 +23,13 @@ export default class ShareSnapshotModal extends PureComponent<props> {
         className="ShareSnapshotModal"
       >
         <h2 className="ShareSnapshotModal-title">Share a Shapshot</h2>
-        <div className="ShareSnapshotModal-pane u-flexColumn">
-          <div className="ShareSnapshotModal-description">
+        <section className="ShareSnapshotModal-pane u-flexColumn">
+          <p className="ShareSnapshotModal-description">
             Get a link to a snapshot — a browsable, sharable view of the current
             state of your Tilt session.
-          </div>
+          </p>
           {this.renderCallToAction()}
-        </div>
+        </section>
         {this.maybeRenderManageSnapshots()}
       </Modal>
     )
@@ -37,17 +38,17 @@ export default class ShareSnapshotModal extends PureComponent<props> {
   renderCallToAction() {
     if (this.props.tiltCloudUsername) {
       return (
-        <div>
+        <section className="ShareSnapshotModal-shareLinkWrap">
           {this.renderShareLink()}
           {this.renderLoginState()}
-        </div>
+        </section>
       )
     }
     return (
-      <div>
+      <section>
         {this.renderIntro()}
         {this.renderGetStarted()}
-      </div>
+      </section>
     )
   }
 
@@ -57,12 +58,19 @@ export default class ShareSnapshotModal extends PureComponent<props> {
         <div className="u-inlineBlock">
           <img src={intro} className="ShareSnapshotModal-introImage" />
         </div>
-        <div className="u-inlineBlock">
-          <ul className="ShareSnapshotModal-examples">
+        <div className="u-inlineBlock ShareSnapshotModal-details">
+          <ul className="ShareSnapshotModal-detailsList">
             <li>Share errors easily</li>
             <li>Explore logs in-context</li>
             <li>Work together to figure out the problem</li>
           </ul>
+          <a
+            className="ShareSnapshotModal-docsLink"
+            href="https://docs.tilt.dev/snapshots.html"
+            target="_blank"
+          >
+            Learn more in our docs
+          </a>
         </div>
       </div>
     )
@@ -71,7 +79,9 @@ export default class ShareSnapshotModal extends PureComponent<props> {
   renderGetStarted() {
     return (
       <div className="ShareSnapshotModal-getStarted">
-        <div className="u-inlineBlock">Link Tilt to TiltCloud</div>
+        <p className="u-inlineBlock">
+          Link Tilt to TiltCloud (just takes a minute)
+        </p>
         <form
           action={this.props.tiltCloudSchemeHost + "/start_register_token"}
           target="_blank"
@@ -134,9 +144,9 @@ export default class ShareSnapshotModal extends PureComponent<props> {
 
   renderLoginState() {
     return (
-      <div className="ShareSnapshotModal-loginState">
+      <p className="ShareSnapshotModal-loginState">
         Sharing as <strong>{this.props.tiltCloudUsername}</strong>
-      </div>
+      </p>
     )
   }
 
@@ -145,18 +155,19 @@ export default class ShareSnapshotModal extends PureComponent<props> {
       return null
     }
     return (
-      <div className="ShareSnapshotModal-pane">
-        <div className="ShareSnapshotModal-description">
+      <section className="ShareSnapshotModal-manageSnapshots">
+        <p>
           Manage your snapshots on{" "}
           <a
+            className="ShareSnapshotModal-tiltCloudLink"
             href={this.props.tiltCloudSchemeHost + "/snapshots"}
             target="_blank"
           >
-            TiltCloud
-          </a>{" "}
-          →
-        </div>
-      </div>
+            <span>TiltCloud</span>
+            <ArrowSvg />
+          </a>
+        </p>
+      </section>
     )
   }
 
