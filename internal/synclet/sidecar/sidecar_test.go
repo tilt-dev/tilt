@@ -17,10 +17,13 @@ func TestInjectSyncletSidecar(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	syncletRef, _ := syncletImageRefFromName(DefaultSyncletImageName)
+	syncletContainer := ProvideSyncletContainer(syncletRef)
+
 	assert.Equal(t, 1, len(entities))
 	entity := entities[0]
 	selector := container.MustParseSelector("gcr.io/some-project-162817/sancho")
-	newEntity, replaced, err := InjectSyncletSidecar(entity, selector)
+	newEntity, replaced, err := InjectSyncletSidecar(entity, selector, syncletContainer)
 	if err != nil {
 		t.Fatal(err)
 	} else if !replaced {
@@ -32,8 +35,8 @@ func TestInjectSyncletSidecar(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !strings.Contains(result, SyncletImageName) {
-		t.Errorf("could not find image in yaml (%s):\n%s", SyncletImageName, result)
+	if !strings.Contains(result, DefaultSyncletImageName) {
+		t.Errorf("could not find image in yaml (%s):\n%s", DefaultSyncletImageName, result)
 	}
 }
 
@@ -43,10 +46,13 @@ func TestInjectSyncletSidecarMultipleContainers(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	syncletRef, _ := syncletImageRefFromName(DefaultSyncletImageName)
+	syncletContainer := ProvideSyncletContainer(syncletRef)
+
 	assert.Equal(t, 1, len(entities))
 	entity := entities[0]
 	selector := container.MustParseSelector("dockerhub.io/client:0.1.0-dev")
-	newEntity, replaced, err := InjectSyncletSidecar(entity, selector)
+	newEntity, replaced, err := InjectSyncletSidecar(entity, selector, syncletContainer)
 	if err != nil {
 		t.Fatal(err)
 	} else if !replaced {
@@ -58,7 +64,8 @@ func TestInjectSyncletSidecarMultipleContainers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if strings.Count(result, SyncletImageName) != 1 {
-		t.Errorf("expected synclet to be injected once, actually injected %d times", strings.Count(result, SyncletImageName))
+	if strings.Count(result, DefaultSyncletImageName) != 1 {
+		t.Errorf("expected synclet to be injected once, actually injected %d times",
+			strings.Count(result, DefaultSyncletImageName))
 	}
 }

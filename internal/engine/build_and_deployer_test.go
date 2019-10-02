@@ -77,7 +77,7 @@ func TestGKEDeploy(t *testing.T) {
 		t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.Yaml)
 	}
 
-	if !strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName) {
+	if !strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
 		t.Errorf("Should deploy the synclet on docker-for-desktop: %s", f.k8s.Yaml)
 	}
 }
@@ -106,7 +106,7 @@ func TestDockerForMacDeploy(t *testing.T) {
 		t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.Yaml)
 	}
 
-	if strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName) {
+	if strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
 		t.Errorf("Should not deploy the synclet on docker-for-desktop: %s", f.k8s.Yaml)
 	}
 }
@@ -341,7 +341,7 @@ func TestDockerBuildWithNestedFastBuildDeploysSynclet(t *testing.T) {
 		t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.Yaml)
 	}
 
-	if !strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName) {
+	if !strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
 		t.Errorf("Should deploy the synclet for a docker build with a nested fast build: %s", f.k8s.Yaml)
 	}
 }
@@ -619,7 +619,7 @@ func TestCustomBuildWithFastBuild(t *testing.T) {
 		t.Errorf("Expected 1 push to docker, actual: %d", f.docker.PushCount)
 	}
 
-	if !strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName) {
+	if !strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
 		t.Errorf("Should deploy the synclet for a custom build with a fast build: %s", f.k8s.Yaml)
 	}
 }
@@ -646,7 +646,7 @@ func TestCustomBuildWithoutFastBuild(t *testing.T) {
 		t.Errorf("Expected 1 push to docker, actual: %d", f.docker.PushCount)
 	}
 
-	if strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName) {
+	if strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
 		t.Errorf("Should not deploy the synclet for a custom build: %s", f.k8s.Yaml)
 	}
 }
@@ -674,7 +674,7 @@ func TestCustomBuildDeterministicTag(t *testing.T) {
 		t.Errorf("Expected 1 push to docker, actual: %d", f.docker.PushCount)
 	}
 
-	if strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName) {
+	if strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
 		t.Errorf("Should not deploy the synclet for a custom build: %s", f.k8s.Yaml)
 	}
 }
@@ -731,7 +731,7 @@ func TestDockerComposeImageBuild(t *testing.T) {
 
 	assert.Equal(t, 1, f.docker.BuildCount)
 	assert.Equal(t, 0, f.docker.PushCount)
-	if strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName) {
+	if strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
 		t.Errorf("Should not deploy the synclet for a docker-compose build: %s", f.k8s.Yaml)
 	}
 	assert.Len(t, f.dcCli.UpCalls, 1)
@@ -757,7 +757,7 @@ func TestDockerComposeInPlaceUpdate(t *testing.T) {
 	assert.Equal(t, 1, len(f.docker.ExecCalls))
 	assert.Equal(t, 0, f.sCli.UpdateContainerCount,
 		"Expected no synclet UpdateContainer call, actual: %d", f.sCli.UpdateContainerCount)
-	if strings.Contains(f.k8s.Yaml, sidecar.SyncletImageName) {
+	if strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
 		t.Errorf("Should not deploy the synclet for a docker-compose build: %s", f.k8s.Yaml)
 	}
 	f.assertContainerRestarts(1)
