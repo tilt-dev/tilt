@@ -43,7 +43,7 @@ var MainDefaults = Defaults{
 		Status:  Active,
 	},
 	Snapshots: Value{
-		Enabled: false,
+		Enabled: true,
 		Status:  Active,
 	},
 }
