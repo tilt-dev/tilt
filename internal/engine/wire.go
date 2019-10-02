@@ -11,6 +11,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/containerupdate"
 	"github.com/windmilleng/tilt/internal/synclet"
+	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
@@ -27,6 +28,7 @@ var DeployerBaseWireSet = wire.NewSet(
 	wire.Value(dockerfile.Labels{}),
 	wire.Value(UpperReducer),
 
+	sidecar.WireSet,
 	minikube.ProvideMinikubeClient,
 	build.DefaultImageBuilder,
 	build.NewCacheBuilder,

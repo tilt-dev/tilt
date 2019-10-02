@@ -33,6 +33,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/token"
 	"github.com/windmilleng/tilt/pkg/assets"
@@ -102,7 +103,11 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	}
 	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
 	dockerContainerUpdater := containerupdate.NewDockerContainerUpdater(switchCli)
-	syncletManager := containerupdate.NewSyncletManager(client)
+	syncletImageRef, err := sidecar.ProvideSyncletImageRef(ctx)
+	if err != nil {
+		return demo.Script{}, err
+	}
+	syncletManager := containerupdate.NewSyncletManager(client, syncletImageRef)
 	syncletUpdater := containerupdate.NewSyncletUpdater(syncletManager)
 	execUpdater := containerupdate.NewExecUpdater(client)
 	engineUpdateModeFlag := provideUpdateModeFlag()
@@ -119,7 +124,8 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, clock)
 	clusterName := k8s.ProvideClusterName(ctx, config)
 	kindPusher := engine.NewKINDPusher(clusterName)
-	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, client, env, analytics2, updateMode, clock, runtime, kindPusher)
+	syncletContainer := sidecar.ProvideSyncletContainer(syncletImageRef)
+	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, client, env, analytics2, updateMode, clock, runtime, kindPusher, syncletContainer)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	imageAndCacheBuilder := engine.NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, updateMode)
 	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageAndCacheBuilder, clock)
@@ -231,7 +237,11 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	}
 	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
 	dockerContainerUpdater := containerupdate.NewDockerContainerUpdater(switchCli)
-	syncletManager := containerupdate.NewSyncletManager(client)
+	syncletImageRef, err := sidecar.ProvideSyncletImageRef(ctx)
+	if err != nil {
+		return Threads{}, err
+	}
+	syncletManager := containerupdate.NewSyncletManager(client, syncletImageRef)
 	syncletUpdater := containerupdate.NewSyncletUpdater(syncletManager)
 	execUpdater := containerupdate.NewExecUpdater(client)
 	engineUpdateModeFlag := provideUpdateModeFlag()
@@ -248,7 +258,8 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, clock)
 	clusterName := k8s.ProvideClusterName(ctx, config)
 	kindPusher := engine.NewKINDPusher(clusterName)
-	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, client, env, analytics2, updateMode, clock, runtime, kindPusher)
+	syncletContainer := sidecar.ProvideSyncletContainer(syncletImageRef)
+	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, client, env, analytics2, updateMode, clock, runtime, kindPusher, syncletContainer)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	imageAndCacheBuilder := engine.NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, updateMode)
 	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageAndCacheBuilder, clock)

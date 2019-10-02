@@ -1,12 +1,14 @@
 package sidecar
 
 import (
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 )
 
 // Inject the synclet into any Pod
-func InjectSyncletSidecar(entity k8s.K8sEntity, selector container.RefSelector) (k8s.K8sEntity, bool, error) {
+func InjectSyncletSidecar(entity k8s.K8sEntity, selector container.RefSelector, container SyncletContainer) (k8s.K8sEntity, bool, error) {
 	entity = entity.DeepCopy()
 
 	pods, err := k8s.ExtractPods(&entity)
@@ -29,7 +31,7 @@ func InjectSyncletSidecar(entity k8s.K8sEntity, selector container.RefSelector) 
 		vol := SyncletVolume.DeepCopy()
 		pod.Volumes = append(pod.Volumes, *vol)
 
-		container := SyncletContainer.DeepCopy()
+		container := (*v1.Container)(container).DeepCopy()
 		pod.Containers = append(pod.Containers, *container)
 	}
 	return entity, replaced, nil

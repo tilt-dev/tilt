@@ -20,6 +20,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/internal/synclet"
+	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/tilt/pkg/logger"
 )
 
@@ -45,7 +46,12 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(docker2)
 	execCustomBuilder := build.NewExecCustomBuilder(docker2, clock)
-	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, kClient, env, analytics2, engineUpdateMode, clock, runtime, kp)
+	syncletImageRef, err := sidecar.ProvideSyncletImageRef(ctx)
+	if err != nil {
+		return nil, err
+	}
+	syncletContainer := sidecar.ProvideSyncletContainer(syncletImageRef)
+	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, kClient, env, analytics2, engineUpdateMode, clock, runtime, kp, syncletContainer)
 	engineImageAndCacheBuilder := NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, engineUpdateMode)
 	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcc, docker2, engineImageAndCacheBuilder, clock)
 	localTargetBuildAndDeployer := NewLocalTargetBuildAndDeployer(clock)
@@ -70,7 +76,12 @@ func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kC
 	if err != nil {
 		return nil, err
 	}
-	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, kClient, env, analytics2, updateMode, clock, runtime, kp)
+	syncletImageRef, err := sidecar.ProvideSyncletImageRef(ctx)
+	if err != nil {
+		return nil, err
+	}
+	syncletContainer := sidecar.ProvideSyncletContainer(syncletImageRef)
+	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, kClient, env, analytics2, updateMode, clock, runtime, kp, syncletContainer)
 	return imageBuildAndDeployer, nil
 }
 
@@ -120,7 +131,7 @@ var (
 
 // wire.go:
 
-var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), minikube.ProvideMinikubeClient, build.DefaultImageBuilder, build.NewCacheBuilder, build.NewDockerImageBuilder, build.NewExecCustomBuilder, wire.Bind(new(build.CustomBuilder), new(build.ExecCustomBuilder)), NewLocalTargetBuildAndDeployer,
+var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), sidecar.WireSet, minikube.ProvideMinikubeClient, build.DefaultImageBuilder, build.NewCacheBuilder, build.NewDockerImageBuilder, build.NewExecCustomBuilder, wire.Bind(new(build.CustomBuilder), new(build.ExecCustomBuilder)), NewLocalTargetBuildAndDeployer,
 	NewImageBuildAndDeployer, containerupdate.NewDockerContainerUpdater, containerupdate.NewSyncletUpdater, containerupdate.NewExecUpdater, NewLiveUpdateBuildAndDeployer,
 	NewDockerComposeBuildAndDeployer,
 	NewImageAndCacheBuilder,

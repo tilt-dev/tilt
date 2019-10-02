@@ -49,15 +49,16 @@ func NewKINDPusher(clusterName k8s.ClusterName) KINDPusher {
 }
 
 type ImageBuildAndDeployer struct {
-	ib            build.ImageBuilder
-	icb           *imageAndCacheBuilder
-	k8sClient     k8s.Client
-	env           k8s.Env
-	runtime       container.Runtime
-	analytics     *analytics.TiltAnalytics
-	injectSynclet bool
-	clock         build.Clock
-	kp            KINDPusher
+	ib               build.ImageBuilder
+	icb              *imageAndCacheBuilder
+	k8sClient        k8s.Client
+	env              k8s.Env
+	runtime          container.Runtime
+	analytics        *analytics.TiltAnalytics
+	injectSynclet    bool
+	clock            build.Clock
+	kp               KINDPusher
+	syncletContainer sidecar.SyncletContainer
 }
 
 func NewImageBuildAndDeployer(
@@ -71,16 +72,18 @@ func NewImageBuildAndDeployer(
 	c build.Clock,
 	runtime container.Runtime,
 	kp KINDPusher,
+	syncletContainer sidecar.SyncletContainer,
 ) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
-		ib:        b,
-		icb:       NewImageAndCacheBuilder(b, cacheBuilder, customBuilder, updMode),
-		k8sClient: k8sClient,
-		env:       env,
-		analytics: analytics,
-		clock:     c,
-		runtime:   runtime,
-		kp:        kp,
+		ib:               b,
+		icb:              NewImageAndCacheBuilder(b, cacheBuilder, customBuilder, updMode),
+		k8sClient:        k8sClient,
+		env:              env,
+		analytics:        analytics,
+		clock:            c,
+		runtime:          runtime,
+		kp:               kp,
+		syncletContainer: syncletContainer,
 	}
 }
 
@@ -316,7 +319,7 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 					injectedRefSelector := container.NewRefSelector(ref).WithExactMatch()
 
 					var sidecarInjected bool
-					e, sidecarInjected, err = sidecar.InjectSyncletSidecar(e, injectedRefSelector)
+					e, sidecarInjected, err = sidecar.InjectSyncletSidecar(e, injectedRefSelector, ibd.syncletContainer)
 					if err != nil {
 						return nil, err
 					}

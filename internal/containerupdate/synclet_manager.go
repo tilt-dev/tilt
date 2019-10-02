@@ -20,12 +20,13 @@ import (
 	"github.com/windmilleng/tilt/internal/synclet"
 )
 
-type newCliFn func(ctx context.Context, kCli k8s.Client, podID k8s.PodID, ns k8s.Namespace) (synclet.SyncletClient, error)
+type newCliFn func(ctx context.Context, kCli k8s.Client, syncletRef sidecar.SyncletImageRef, podID k8s.PodID, ns k8s.Namespace) (synclet.SyncletClient, error)
 type SyncletManager struct {
-	kCli      k8s.Client
-	mutex     *sync.Mutex
-	clients   map[k8s.PodID]synclet.SyncletClient
-	newClient newCliFn
+	kCli            k8s.Client
+	mutex           *sync.Mutex
+	clients         map[k8s.PodID]synclet.SyncletClient
+	newClient       newCliFn
+	syncletImageRef sidecar.SyncletImageRef
 
 	// Ensures that we don't try to setup a client multiple times if it keeps failing.
 	clientWarmAttempted map[k8s.PodID]bool
@@ -49,28 +50,33 @@ func (t tunneledSyncletClient) Close() error {
 	return nil
 }
 
-func NewSyncletManager(kCli k8s.Client) SyncletManager {
+func NewSyncletManager(kCli k8s.Client, syncletImageRef sidecar.SyncletImageRef) SyncletManager {
 	return SyncletManager{
 		kCli:                kCli,
 		mutex:               new(sync.Mutex),
 		clients:             make(map[k8s.PodID]synclet.SyncletClient),
 		clientWarmAttempted: make(map[k8s.PodID]bool),
+		syncletImageRef:     syncletImageRef,
 		newClient:           newSyncletClient,
 	}
 }
 
 func NewSyncletManagerForTests(kCli k8s.Client, sCli synclet.SyncletClient, fake *synclet.TestSyncletClient) SyncletManager {
-	newClientFn := func(ctx context.Context, kCli k8s.Client, podID k8s.PodID, ns k8s.Namespace) (synclet.SyncletClient, error) {
+	newClientFn := func(ctx context.Context, kCli k8s.Client, syncletRef sidecar.SyncletImageRef, podID k8s.PodID, ns k8s.Namespace) (synclet.SyncletClient, error) {
 		fake.PodID = podID
 		fake.Namespace = ns
 		return sCli, nil
 	}
+
+	ref := sidecar.SyncletImageRef(container.MustParseNamedTagged(
+		fmt.Sprintf("%s:%s", sidecar.DefaultSyncletImageName, "latest")))
 
 	return SyncletManager{
 		kCli:                kCli,
 		mutex:               new(sync.Mutex),
 		clients:             make(map[k8s.PodID]synclet.SyncletClient),
 		clientWarmAttempted: make(map[k8s.PodID]bool),
+		syncletImageRef:     ref,
 		newClient:           newClientFn,
 	}
 }
@@ -157,7 +163,7 @@ func (sm SyncletManager) clientForPodInternal(ctx context.Context, podID k8s.Pod
 		return client, nil
 	}
 
-	client, err := sm.newClient(ctx, sm.kCli, podID, ns)
+	client, err := sm.newClient(ctx, sm.kCli, sm.syncletImageRef, podID, ns)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating synclet client")
 	}
@@ -178,7 +184,7 @@ func (sm SyncletManager) forgetPod(ctx context.Context, podID k8s.PodID) error {
 	return client.Close()
 }
 
-func newSyncletClient(ctx context.Context, kCli k8s.Client, podID k8s.PodID, ns k8s.Namespace) (synclet.SyncletClient, error) {
+func newSyncletClient(ctx context.Context, kCli k8s.Client, syncletImageRef sidecar.SyncletImageRef, podID k8s.PodID, ns k8s.Namespace) (synclet.SyncletClient, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SidecarSyncletManager-newSidecarSyncletClient")
 	defer span.Finish()
 
@@ -188,7 +194,8 @@ func newSyncletClient(ctx context.Context, kCli k8s.Client, podID k8s.PodID, ns 
 	}
 
 	// Make sure that the synclet container is ready and not crashlooping.
-	_, err = k8s.WaitForContainerReady(ctx, kCli, pod, container.NewRefSelector(sidecar.SyncletImageRef))
+	syncletSelector := container.NameSelector(syncletImageRef)
+	_, err = k8s.WaitForContainerReady(ctx, kCli, pod, syncletSelector)
 	if err != nil {
 		return nil, errors.Wrap(err, "newSyncletClient")
 	}
