@@ -1044,7 +1044,7 @@ func TestHelmArgs(t *testing.T) {
 	f.setupHelm()
 
 	f.file("Tiltfile", `
-yml = helm('./helm', name='rose-quartz', namespace='garnet', values=['./helm/values.yaml', './helm/values-dev.yaml'])
+yml = helm('./helm', name='rose-quartz', namespace='garnet', values=['./dev/helm/values-dev.yaml'])
 k8s_yaml(yml)
 `)
 
@@ -1056,6 +1056,8 @@ k8s_yaml(yml)
 	assert.Contains(t, yaml, "namespace: garnet")
 	assert.Contains(t, yaml, "namespaceLabel: garnet")
 	assert.Contains(t, yaml, "name: nginx-dev")
+
+	f.assertConfigFiles("./helm/", "./dev/helm/values-dev.yaml", ".tiltignore", "Tiltfile")
 }
 
 func TestHelmInvalidDirectory(t *testing.T) {
@@ -4670,7 +4672,7 @@ func (f *fixture) setupExpand() {
 func (f *fixture) setupHelm() {
 	f.file("helm/Chart.yaml", chartYAML)
 	f.file("helm/values.yaml", valuesYAML)
-	f.file("helm/values-dev.yaml", valuesDevYAML)
+	f.file("dev/helm/values-dev.yaml", valuesDevYAML) // make sure we can pull in a values.yaml file from outside chart dir
 
 	f.file("helm/templates/_helpers.tpl", helpersTPL)
 	f.file("helm/templates/deployment.yaml", deploymentYAML)

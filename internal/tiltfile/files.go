@@ -298,6 +298,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	}
 	for _, valueFile := range valueFiles {
 		cmd = append(cmd, "--values", valueFile)
+		s.recordConfigFile(s.absPath(thread, valueFile))
 	}
 
 	stdout, err := s.execLocalCmd(thread, exec.Command(cmd[0], cmd[1:]...), false)
