@@ -64,7 +64,13 @@ export default class ShareSnapshotModal extends PureComponent<props> {
             <li>Explore logs in-context</li>
             <li>Work together to figure out the problem</li>
           </ul>
-          <a className="ShareSnapshotModal-docsLink" href="https://docs.tilt.dev/snapshots.html" target="_blank">Learn more in our docs</a>
+          <a
+            className="ShareSnapshotModal-docsLink"
+            href="https://docs.tilt.dev/snapshots.html"
+            target="_blank"
+          >
+            Learn more in our docs
+          </a>
         </div>
       </div>
     )
@@ -73,7 +79,9 @@ export default class ShareSnapshotModal extends PureComponent<props> {
   renderGetStarted() {
     return (
       <div className="ShareSnapshotModal-getStarted">
-        <p className="u-inlineBlock">Link Tilt to TiltCloud (just takes a minute)</p>
+        <p className="u-inlineBlock">
+          Link Tilt to TiltCloud (just takes a minute)
+        </p>
         <form
           action={this.props.tiltCloudSchemeHost + "/start_register_token"}
           target="_blank"
@@ -156,9 +164,8 @@ export default class ShareSnapshotModal extends PureComponent<props> {
             target="_blank"
           >
             <span>TiltCloud</span>
-            <ArrowSvg/>
+            <ArrowSvg />
           </a>
-
         </p>
       </section>
     )

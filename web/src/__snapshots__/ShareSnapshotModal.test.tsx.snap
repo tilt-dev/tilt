@@ -33,15 +33,17 @@ exports[`ShareSnapshotModal renders with modal open w/ known username 1`] = `
     >
       Share a Shapshot
     </h2>
-    <div
+    <section
       className="ShareSnapshotModal-pane u-flexColumn"
     >
-      <div
+      <p
         className="ShareSnapshotModal-description"
       >
         Get a link to a snapshot — a browsable, sharable view of the current state of your Tilt session.
-      </div>
-      <div>
+      </p>
+      <section
+        className="ShareSnapshotModal-shareLinkWrap"
+      >
         <div
           className="ShareSnapshotModal-shareLink"
         >
@@ -62,34 +64,36 @@ exports[`ShareSnapshotModal renders with modal open w/ known username 1`] = `
             Open
           </a>
         </div>
-        <div
+        <p
           className="ShareSnapshotModal-loginState"
         >
           Sharing as 
           <strong>
             tacocat
           </strong>
-        </div>
-      </div>
-    </div>
-    <div
-      className="ShareSnapshotModal-pane"
+        </p>
+      </section>
+    </section>
+    <section
+      className="ShareSnapshotModal-manageSnapshots"
     >
-      <div
-        className="ShareSnapshotModal-description"
-      >
+      <p>
         Manage your snapshots on
          
         <a
+          className="ShareSnapshotModal-tiltCloudLink"
           href="https://cloud.tilt.dev/snapshots"
           target="_blank"
         >
-          TiltCloud
+          <span>
+            TiltCloud
+          </span>
+          <svg>
+            arrow.svg
+          </svg>
         </a>
-         
-        →
-      </div>
-    </div>
+      </p>
+    </section>
   </div>
 </div>
 `;
@@ -125,15 +129,15 @@ exports[`ShareSnapshotModal renders with modal open w/o known username 1`] = `
     >
       Share a Shapshot
     </h2>
-    <div
+    <section
       className="ShareSnapshotModal-pane u-flexColumn"
     >
-      <div
+      <p
         className="ShareSnapshotModal-description"
       >
         Get a link to a snapshot — a browsable, sharable view of the current state of your Tilt session.
-      </div>
-      <div>
+      </p>
+      <section>
         <div
           className="ShareSnapshotModal-intro"
         >
@@ -146,10 +150,10 @@ exports[`ShareSnapshotModal renders with modal open w/o known username 1`] = `
             />
           </div>
           <div
-            className="u-inlineBlock"
+            className="u-inlineBlock ShareSnapshotModal-details"
           >
             <ul
-              className="ShareSnapshotModal-examples"
+              className="ShareSnapshotModal-detailsList"
             >
               <li>
                 Share errors easily
@@ -161,16 +165,23 @@ exports[`ShareSnapshotModal renders with modal open w/o known username 1`] = `
                 Work together to figure out the problem
               </li>
             </ul>
+            <a
+              className="ShareSnapshotModal-docsLink"
+              href="https://docs.tilt.dev/snapshots.html"
+              target="_blank"
+            >
+              Learn more in our docs
+            </a>
           </div>
         </div>
         <div
           className="ShareSnapshotModal-getStarted"
         >
-          <div
+          <p
             className="u-inlineBlock"
           >
-            Link Tilt to TiltCloud
-          </div>
+            Link Tilt to TiltCloud (just takes a minute)
+          </p>
           <form
             action="https://cloud.tilt.dev/start_register_token"
             method="POST"
@@ -188,8 +199,8 @@ exports[`ShareSnapshotModal renders with modal open w/o known username 1`] = `
             />
           </form>
         </div>
-      </div>
-    </div>
+      </section>
+    </section>
   </div>
 </div>
 `;
@@ -225,15 +236,15 @@ exports[`ShareSnapshotModal renders without snapshotUrl 1`] = `
     >
       Share a Shapshot
     </h2>
-    <div
+    <section
       className="ShareSnapshotModal-pane u-flexColumn"
     >
-      <div
+      <p
         className="ShareSnapshotModal-description"
       >
         Get a link to a snapshot — a browsable, sharable view of the current state of your Tilt session.
-      </div>
-      <div>
+      </p>
+      <section>
         <div
           className="ShareSnapshotModal-intro"
         >
@@ -246,10 +257,10 @@ exports[`ShareSnapshotModal renders without snapshotUrl 1`] = `
             />
           </div>
           <div
-            className="u-inlineBlock"
+            className="u-inlineBlock ShareSnapshotModal-details"
           >
             <ul
-              className="ShareSnapshotModal-examples"
+              className="ShareSnapshotModal-detailsList"
             >
               <li>
                 Share errors easily
@@ -261,16 +272,23 @@ exports[`ShareSnapshotModal renders without snapshotUrl 1`] = `
                 Work together to figure out the problem
               </li>
             </ul>
+            <a
+              className="ShareSnapshotModal-docsLink"
+              href="https://docs.tilt.dev/snapshots.html"
+              target="_blank"
+            >
+              Learn more in our docs
+            </a>
           </div>
         </div>
         <div
           className="ShareSnapshotModal-getStarted"
         >
-          <div
+          <p
             className="u-inlineBlock"
           >
-            Link Tilt to TiltCloud
-          </div>
+            Link Tilt to TiltCloud (just takes a minute)
+          </p>
           <form
             action="https://cloud.tilt.dev/start_register_token"
             method="POST"
@@ -288,8 +306,8 @@ exports[`ShareSnapshotModal renders without snapshotUrl 1`] = `
             />
           </form>
         </div>
-      </div>
-    </div>
+      </section>
+    </section>
   </div>
 </div>
 `;
