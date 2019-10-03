@@ -36,12 +36,8 @@ if status == 0:
   sys.exit(1)
 
 os.chdir("web")
-status = os.system('yarn install')
-if status != 0:
-  print("Error executing yarn install")
-  sys.exit(status)
-status = os.system('CI=false yarn run build')
-if status != 0:
-  print("Error executing yarn run build")
-  sys.exit(status)
-os.system('gsutil cp -r build "gs://tilt-static-assets/%s"' % version)
+subprocess.check_call(["yarn", "install"])
+e = os.environ.copy()
+e["CI"] = "false"
+subprocess.check_call(["yarn", "run", "build"], env=e)
+subprocess.check_call(["gsutil", "cp", "-r", "build", "gs://tilt-static-assets/%s" % version])
