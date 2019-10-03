@@ -437,9 +437,6 @@ func reposForPaths(paths []string) []model.LocalGitRepo {
 
 func (s *tiltfileState) reposForImage(image *dockerImage) []model.LocalGitRepo {
 	var paths []string
-	for _, sync := range image.liveUpdate.SyncSteps() {
-		paths = append(paths, sync.LocalPath)
-	}
 	paths = append(paths,
 		image.dbDockerfilePath,
 		image.dbBuildPath,
@@ -479,14 +476,19 @@ func (s *tiltfileState) dockerignoresFromPathsAndContextFilters(paths []string, 
 			continue
 		}
 
-		result = append(result, model.Dockerignore{
-			LocalPath: path,
-			Contents:  ignoreContents,
-		})
-		result = append(result, model.Dockerignore{
-			LocalPath: path,
-			Contents:  onlyContents,
-		})
+		if ignoreContents != "" {
+			result = append(result, model.Dockerignore{
+				LocalPath: path,
+				Contents:  ignoreContents,
+			})
+		}
+
+		if onlyContents != "" {
+			result = append(result, model.Dockerignore{
+				LocalPath: path,
+				Contents:  onlyContents,
+			})
+		}
 
 		contents, err := s.readFile(filepath.Join(path, ".dockerignore"))
 		if err != nil {
@@ -531,10 +533,6 @@ func onlysToDockerignoreContents(onlys []string) string {
 
 func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Dockerignore {
 	var paths []string
-
-	for _, sync := range image.liveUpdate.SyncSteps() {
-		paths = append(paths, sync.LocalPath)
-	}
 	switch image.Type() {
 	case DockerBuild:
 		paths = append(paths, image.dbBuildPath)
