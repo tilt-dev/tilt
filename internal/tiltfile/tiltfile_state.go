@@ -133,10 +133,14 @@ func newTiltfileState(
 // Path to the Tiltfile at the bottom of the call stack.
 func (s *tiltfileState) currentTiltfilePath(t *starlark.Thread) string {
 	depth := t.CallStackDepth()
-	if depth == 0 {
-		panic("internal error: currentTiltfilePath must be called from an active starlark thread")
+	for i := 0; i < depth; i++ {
+		filename := t.CallFrame(i).Pos.Filename()
+		if filename == "<builtin>" {
+			continue
+		}
+		return filename
 	}
-	return t.CallFrame(depth - 1).Pos.Filename()
+	panic("internal error: currentTiltfilePath must be called from an active starlark thread")
 }
 
 // print() for fulfilling the starlark thread callback
@@ -146,7 +150,7 @@ func (s *tiltfileState) print(_ *starlark.Thread, msg string) {
 
 // load() for fulfilling the starlark thread callback
 func (s *tiltfileState) load(thread *starlark.Thread, f string) (starlark.StringDict, error) {
-	return s.exec(s.absPath(thread, f))
+	return s.exec(thread, s.absPath(thread, f))
 }
 
 func (s *tiltfileState) starlarkThread() *starlark.Thread {
@@ -159,7 +163,7 @@ func (s *tiltfileState) starlarkThread() *starlark.Thread {
 // Load loads the Tiltfile in `filename`, and returns the manifests matching `matching`.
 func (s *tiltfileState) loadManifests(absFilename string, matching map[string]bool) ([]model.Manifest, error) {
 	s.logger.Infof("Beginning Tiltfile execution")
-	_, err := s.exec(absFilename)
+	_, err := s.exec(s.starlarkThread(), absFilename)
 	if err != nil {
 		if err, ok := err.(*starlark.EvalError); ok {
 			return nil, errors.New(err.Backtrace())
