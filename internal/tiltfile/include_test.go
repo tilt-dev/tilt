@@ -1,6 +1,7 @@
 package tiltfile
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -82,6 +83,23 @@ include('./foo/Tiltfile')
 		"no such file or directory")
 }
 
+func TestIncludeError(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+include('./foo/Tiltfile')
+`)
+	f.file("foo/Tiltfile", `
+local('exit 1')
+`)
+
+	f.loadErrString(
+		fmt.Sprintf("%s/Tiltfile:2:8: in <toplevel>", f.Path()),
+		fmt.Sprintf("%s/foo/Tiltfile:2:6: in <toplevel>", f.Path()),
+		"exit status 1")
+}
+
 func TestLoadFunction(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -99,4 +117,25 @@ shout()
 	assert.Equal(t,
 		"Beginning Tiltfile execution\nboo\nSuccessfully loaded Tiltfile\n",
 		f.out.String())
+}
+
+func TestLoadError(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+load('./foo/Tiltfile', "x")
+`)
+	f.file("foo/Tiltfile", `
+x = 1
+local('exit 1')
+`)
+
+	// TODO(nick): Currently this doesn't include the complete
+	// trace, because we need an upstream starlark fix.
+	// https://github.com/google/starlark-go/pull/244
+	f.loadErrString(
+		fmt.Sprintf("%s/Tiltfile:2:1: in <toplevel>", f.Path()),
+		"cannot load ./foo/Tiltfile",
+		"exit status 1")
 }

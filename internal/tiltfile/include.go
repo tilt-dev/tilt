@@ -33,11 +33,11 @@ func (s *tiltfileState) include(thread *starlark.Thread, fn *starlark.Builtin, a
 		return nil, err
 	}
 
-	_, err = s.exec(s.absPath(thread, p))
+	_, err = s.exec(thread, s.absPath(thread, p))
 	return starlark.None, err
 }
 
-func (s *tiltfileState) exec(tiltfilePath string) (starlark.StringDict, error) {
+func (s *tiltfileState) exec(t *starlark.Thread, tiltfilePath string) (starlark.StringDict, error) {
 	if !filepath.IsAbs(tiltfilePath) {
 		return starlark.StringDict{}, fmt.Errorf("internal error: tiltfilePath must be absolute")
 	}
@@ -55,9 +55,7 @@ func (s *tiltfileState) exec(tiltfilePath string) (starlark.StringDict, error) {
 	}
 	s.configFiles = append(s.configFiles, tiltfilePath, tiltIgnorePath(tiltfilePath))
 
-	newT := s.starlarkThread()
-	newT.Name = tiltfilePath
-	exports, err := starlark.ExecFile(newT, tiltfilePath, nil, s.predeclared())
+	exports, err := starlark.ExecFile(t, tiltfilePath, nil, s.predeclared())
 	s.loadCache[tiltfilePath] = loadCacheEntry{
 		status:  loadStatusDone,
 		exports: exports,
