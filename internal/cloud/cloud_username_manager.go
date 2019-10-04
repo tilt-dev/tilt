@@ -19,6 +19,7 @@ import (
 const timeoutAfterError = 5 * time.Minute
 
 const TiltTokenHeaderName = "X-Tilt-Token"
+const TiltTeamIDNameHeaderName = "X-Tilt-TeamID"
 
 func NewUsernameManager(client HttpClient) *CloudUsernameManager {
 	return &CloudUsernameManager{client: client}
