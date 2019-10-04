@@ -279,6 +279,7 @@ func (s *HeadsUpServer) newSnapshotURL() string {
 func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Request) {
 	st := s.store.RLockState()
 	token := st.Token
+	teamID := st.TeamName
 	s.store.RUnlockState()
 
 	request, err := http.NewRequest(http.MethodPost, s.newSnapshotURL(), req.Body)
@@ -288,6 +289,9 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 	}
 
 	request.Header.Set(cloud.TiltTokenHeaderName, token.String())
+	if teamID != "" {
+		request.Header.Set(cloud.TiltTeamIDNameHeaderName, teamID)
+	}
 	response, err := s.httpCli.Do(request)
 	if err != nil {
 		log.Printf("Error creating snapshot: %v\n", err)
