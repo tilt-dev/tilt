@@ -25,5 +25,11 @@ func (b TiltBuild) AnalyticsVersion() string {
 }
 
 func (b TiltBuild) WebVersion() WebVersion {
-	return WebVersion(fmt.Sprintf("v%s", b.Version))
+	var v string
+	if b.Dev {
+		v = b.Version
+	} else {
+		v = fmt.Sprintf("v%s", b.Version)
+	}
+	return WebVersion(v)
 }

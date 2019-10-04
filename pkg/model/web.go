@@ -10,7 +10,7 @@ import (
 
 type NoBrowser bool // flag for disabling automatic browser opening
 
-// Web version of the form vA.B.C, where A, B, and C are integers.
+// Web version of the form vA.B.C, where A, B, and C are integers OR abcd for a dev commit SHA
 // Used for fetching web assets
 type WebVersion string
 

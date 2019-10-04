@@ -1,6 +1,7 @@
 package assets
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"testing"
@@ -77,6 +78,20 @@ func TestBuildUrlForReqWithVersionParamAndVersionPrefix(t *testing.T) {
 	u, v := s.urlAndVersionForReq(req)
 	assert.Equal(t, expected, u.String())
 	assert.Equal(t, "v111.222.333", v)
+}
+
+func TestSHAUrlForReq(t *testing.T) {
+	// get a new version here
+	sha := "8bf2ea29eacff3a407272eb5631edbd1a14a0936"
+	s, err := newProdServer(testUrl, model.WebVersion(sha))
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := fmt.Sprintf("https://fake.tilt.dev/%s/index.html", sha)
+	req := reqForTest(t, "/", "")
+	u, v := s.urlAndVersionForReq(req)
+	assert.Equal(t, expected, u.String())
+	assert.Equal(t, sha, v)
 }
 
 func prodServerForTest(t *testing.T) prodServer {
