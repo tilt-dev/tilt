@@ -27,19 +27,21 @@ func UnpackArgs(t *starlark.Thread, fnName string, args starlark.Tuple, kwargs [
 
 // A starlark execution environment.
 type Environment struct {
-	unpackArgs  ArgUnpacker
-	loadCache   map[string]loadCacheEntry
-	predeclared starlark.StringDict
-	print       func(thread *starlark.Thread, msg string)
-	extensions  []Extension
+	unpackArgs     ArgUnpacker
+	loadCache      map[string]loadCacheEntry
+	predeclared    starlark.StringDict
+	print          func(thread *starlark.Thread, msg string)
+	extensions     []Extension
+	fakeFileSystem map[string]string
 }
 
 func newEnvironment(extensions ...Extension) *Environment {
 	return &Environment{
-		unpackArgs:  starlark.UnpackArgs,
-		loadCache:   make(map[string]loadCacheEntry),
-		extensions:  append([]Extension{}, extensions...),
-		predeclared: starlark.StringDict{},
+		unpackArgs:     starlark.UnpackArgs,
+		loadCache:      make(map[string]loadCacheEntry),
+		extensions:     append([]Extension{}, extensions...),
+		predeclared:    starlark.StringDict{},
+		fakeFileSystem: nil,
 	}
 }
 
@@ -73,6 +75,12 @@ func (e *Environment) AddValue(name string, val starlark.Value) {
 
 func (e *Environment) SetPrint(print func(thread *starlark.Thread, msg string)) {
 	e.print = print
+}
+
+// Set a fake file system so that we can write tests that don't
+// touch the file system. Expressed as a map from paths to contents.
+func (e *Environment) SetFakeFileSystem(files map[string]string) {
+	e.fakeFileSystem = files
 }
 
 func (e *Environment) start(path string) error {
@@ -124,7 +132,16 @@ func (e *Environment) exec(t *starlark.Thread, path string) (starlark.StringDict
 		}
 	}
 
-	exports, err := starlark.ExecFile(t, path, nil, e.predeclared)
+	var contentBytes interface{} = nil
+	if e.fakeFileSystem != nil {
+		contents, ok := e.fakeFileSystem[path]
+		if !ok {
+			return starlark.StringDict{}, fmt.Errorf("Not in fake file system: %s", path)
+		}
+		contentBytes = []byte(contents)
+	}
+
+	exports, err := starlark.ExecFile(t, path, contentBytes, e.predeclared)
 	e.loadCache[path] = loadCacheEntry{
 		status:  loadStatusDone,
 		exports: exports,
