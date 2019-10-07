@@ -29,6 +29,7 @@ describe("ShareSnapshotModal", () => {
           snapshotUrl="http://test.com"
           tiltCloudUsername={null}
           tiltCloudSchemeHost={"https://cloud.tilt.dev"}
+          tiltCloudTeamID={null}
         />
       )
       .toJSON()
@@ -46,6 +47,7 @@ describe("ShareSnapshotModal", () => {
           snapshotUrl="http://test.com"
           tiltCloudUsername={"tacocat"}
           tiltCloudSchemeHost={"https://cloud.tilt.dev"}
+          tiltCloudTeamID={null}
         />
       )
       .toJSON()
@@ -63,6 +65,7 @@ describe("ShareSnapshotModal", () => {
           snapshotUrl=""
           tiltCloudUsername={null}
           tiltCloudSchemeHost={"https://cloud.tilt.dev"}
+          tiltCloudTeamID={null}
         />
       )
       .toJSON()
@@ -80,6 +83,25 @@ describe("ShareSnapshotModal", () => {
           snapshotUrl="http://test.com"
           tiltCloudUsername={null}
           tiltCloudSchemeHost={"https://cloud.tilt.dev"}
+          tiltCloudTeamID={null}
+        />
+      )
+      .toJSON()
+
+    expect(tree).toMatchSnapshot()
+  })
+
+  it("renders team link", () => {
+    const tree = renderer
+      .create(
+        <ShareSnapshotModal
+          handleSendSnapshot={fakeSendsnapshot}
+          handleClose={fakeHandleCloseModal}
+          isOpen={true}
+          snapshotUrl="http://test.com"
+          tiltCloudUsername={"Hello"}
+          tiltCloudSchemeHost={"https://cloud.tilt.dev"}
+          tiltCloudTeamID={"abcdefg"}
         />
       )
       .toJSON()
