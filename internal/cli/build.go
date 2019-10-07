@@ -21,6 +21,7 @@ import (
 // on every release, it's often not that big a deal.
 const devVersion = "0.10.13"
 
+var commitSHA string
 var globalTiltInfo model.TiltBuild
 
 func SetTiltInfo(info model.TiltBuild) {
@@ -71,9 +72,15 @@ func defaultBuildDate() string {
 
 // Returns a build datestamp in the format 2018-08-30
 func defaultTiltInfo() model.TiltBuild {
+	var v string
+	if commitSHA == "" {
+		v = devVersion
+	} else {
+		v = commitSHA
+	}
 	return model.TiltBuild{
 		Date:    defaultBuildDate(),
-		Version: devVersion,
+		Version: v,
 		Dev:     true,
 	}
 }

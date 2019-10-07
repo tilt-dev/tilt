@@ -28,7 +28,7 @@ proto: scripts/protocc/protocc.py
 
 # Build a binary that uses synclet:latest
 install:
-	go install ./cmd/tilt/...
+	go install -ldflags "-X 'github.com/windmilleng/tilt/internal/cli.commitSHA=$$(git merge-base master HEAD)'" ./cmd/tilt/...
 
 install-dev:
 	@if ! [[ -e "$(SYNCLET_DEV_IMAGE_TAG_FILE)" ]]; then echo "No dev synclet found. Run make synclet-dev."; exit 1; fi
