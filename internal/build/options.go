@@ -8,6 +8,8 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
+var BuiltByTiltLabel = map[string]string{"builtby": "tilt"}
+
 func Options(archive io.Reader, args model.DockerBuildArgs, target model.DockerBuildTarget) docker.BuildOptions {
 	return docker.BuildOptions{
 		Context:    archive,
@@ -15,6 +17,7 @@ func Options(archive io.Reader, args model.DockerBuildArgs, target model.DockerB
 		Remove:     shouldRemoveImage(),
 		BuildArgs:  manifestBuildArgsToDockerBuildArgs(args),
 		Target:     string(target),
+		Labels:     BuiltByTiltLabel,
 	}
 }
 

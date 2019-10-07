@@ -17,6 +17,8 @@ import (
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/windmilleng/tilt/internal/build"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -27,6 +29,19 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/pkg/model"
 )
+
+func TestDockerImageHasBuiltByLabel(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	manifest := NewSanchoDockerBuildManifest(f)
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, build.BuiltByTiltLabel, f.docker.BuildOptions.Labels)
+}
 
 func TestDockerBuildWithCache(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
