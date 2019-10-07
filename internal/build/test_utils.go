@@ -15,6 +15,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/stretchr/testify/assert"
 
 	wmcontainer "github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
@@ -172,6 +173,27 @@ func (f *dockerBuildFixture) assertImageNotExists(ref reference.NamedTagged) {
 	if err == nil || !client.IsErrNotFound(err) {
 		f.t.Errorf("Expected image %q to fail with ErrNotFound, got: %v", ref, err)
 	}
+}
+
+func (f *dockerBuildFixture) assertImageHasLabels(ref reference.Named, expected map[string]string) {
+	inspect, _, err := f.dCli.ImageInspectWithRaw(f.ctx, ref.String())
+	if err != nil {
+		f.t.Fatalf("error inspecting image %s: %v", ref.String(), err)
+	}
+
+	if inspect.Config == nil {
+		f.t.Fatalf("'inspect' result for image %s has nil config", ref.String())
+	}
+
+	actual := inspect.Config.Labels
+	for k, expectV := range expected {
+		actualV, ok := actual[k]
+		if assert.True(f.t, ok, "key %q not found in actual labels: %v", k, actual) {
+			assert.Equal(f.t, expectV, actualV, "actual label (%s = %s) did not match expected (%s = %s)",
+				k, actualV, k, expectV)
+		}
+	}
+
 }
 
 func (f *dockerBuildFixture) assertFilesInImage(ref reference.NamedTagged, expectedFiles []expectedFile) {

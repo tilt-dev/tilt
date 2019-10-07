@@ -39,6 +39,8 @@ ADD dir/c.txt .
 		t.Fatal(err)
 	}
 
+	f.assertImageHasLabels(ref, BuiltByTiltLabel)
+
 	pcs := []expectedFile{
 		expectedFile{Path: "/src/a.txt", Contents: "a"},
 		expectedFile{Path: "/src/b.txt", Contents: "a"},

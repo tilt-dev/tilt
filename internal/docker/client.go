@@ -411,6 +411,7 @@ func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options Bu
 	opts.Context = options.Context
 	opts.BuildArgs = options.BuildArgs
 	opts.Dockerfile = options.Dockerfile
+	opts.Labels = options.Labels
 	opts.Tags = options.Tags
 	opts.Target = options.Target
 
