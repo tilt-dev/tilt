@@ -72,16 +72,11 @@ func defaultBuildDate() string {
 
 // Returns a build datestamp in the format 2018-08-30
 func defaultTiltInfo() model.TiltBuild {
-	var v string
-	if commitSHA == "" {
-		v = devVersion
-	} else {
-		v = commitSHA
-	}
 	return model.TiltBuild{
-		Date:    defaultBuildDate(),
-		Version: v,
-		Dev:     true,
+		Date:      defaultBuildDate(),
+		Version:   devVersion,
+		CommitSHA: commitSHA,
+		Dev:       true,
 	}
 }
 
