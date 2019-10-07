@@ -48,8 +48,8 @@ const errorDivStyle = `
   flex-direction: column;
 `
 
-var versionRe = regexp.MustCompile(`/(v\d+\.\d+\.\d+)/.*`) // matches `/vA.B.C/...`
-var shaRe = regexp.MustCompile(`/([0-9a-f]{5,40})\/.*`)    // matches /8bf2ea29eacff3a407272eb5631edbd1a14a0936/...
+var versionRe = regexp.MustCompile(`^/(v\d+\.\d+\.\d+)/.*`) // matches `/vA.B.C/...`
+var shaRe = regexp.MustCompile(`^/([0-9a-f]{5,40})\/.*`)    // matches /8bf2ea29eacff3a407272eb5631edbd1a14a0936/...
 
 type Server interface {
 	http.Handler
