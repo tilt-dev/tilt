@@ -86,6 +86,9 @@ type tiltfileState struct {
 
 	teamName string
 
+	dockerPruneDisabled   bool
+	dockerPruneMaxAgeSecs int64
+
 	logger   logger.Logger
 	warnings []string
 }
@@ -282,9 +285,10 @@ const (
 	disableSnapshotsN = "disable_snapshots"
 
 	// other functions
-	failN    = "fail"
-	blobN    = "blob"
-	setTeamN = "set_team"
+	failN               = "fail"
+	blobN               = "blob"
+	setTeamN            = "set_team"
+	dockerPruneOptionsN = "docker_prune_options"
 )
 
 type triggerMode int
@@ -456,6 +460,8 @@ func (s *tiltfileState) predeclared() starlark.StringDict {
 	addBuiltin(r, disableSnapshotsN, s.disableSnapshots)
 
 	addBuiltin(r, setTeamN, s.setTeam)
+
+	addBuiltin(r, dockerPruneOptionsN, s.dockerPruneOptions)
 
 	s.predeclaredMap = r
 
@@ -1246,6 +1252,20 @@ func (s *tiltfileState) setTeam(thread *starlark.Thread, fn *starlark.Builtin, a
 	}
 
 	s.teamName = teamName
+
+	return starlark.None, nil
+}
+
+func (s *tiltfileState) dockerPruneOptions(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var disable bool
+	var maxAgeSecs int64
+	if err := s.unpackArgs(fn.Name(), args, kwargs,
+		"disable?", &disable,
+		"max_age_secs?", &maxAgeSecs); err != nil {
+		return nil, err
+	}
+	s.dockerPruneDisabled = disable
+	s.dockerPruneMaxAgeSecs = maxAgeSecs
 
 	return starlark.None, nil
 }

@@ -153,6 +153,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	tlr.Error = err
 	tlr.Manifests = manifests
 	tlr.TeamName = s.teamName
+	// TODO: tlr.dockerPruneDisabled / MaxAgeSecs...
 
 	printWarnings(s)
 	s.logger.Infof("Successfully loaded Tiltfile")

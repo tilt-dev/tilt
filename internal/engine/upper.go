@@ -483,6 +483,7 @@ func handleConfigsReloaded(
 	state *store.EngineState,
 	event configs.ConfigsReloadedAction,
 ) {
+	// TODO: store dockerPruneDisabled/maxAgeSecs
 	manifests := event.Manifests
 	if state.InitialBuildsQueued == 0 {
 		state.InitialBuildsQueued = len(manifests)
@@ -539,7 +540,6 @@ func handleConfigsReloaded(
 				}
 			}
 		}
-
 		return
 	}
 

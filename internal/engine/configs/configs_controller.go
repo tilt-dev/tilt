@@ -111,15 +111,16 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 	}
 
 	st.Dispatch(ConfigsReloadedAction{
-		Manifests:                     tlr.Manifests,
-		ConfigFiles:                   tlr.ConfigFiles,
-		TiltIgnoreContents:            tlr.TiltIgnoreContents,
-		FinishTime:                    cc.clock(),
-		Err:                           tlr.Error,
-		Warnings:                      tlr.Warnings,
-		Features:                      tlr.FeatureFlags,
-		TeamName:                      tlr.TeamName,
-		Secrets:                       tlr.Secrets,
+		Manifests:          tlr.Manifests,
+		ConfigFiles:        tlr.ConfigFiles,
+		TiltIgnoreContents: tlr.TiltIgnoreContents,
+		FinishTime:         cc.clock(),
+		Err:                tlr.Error,
+		Warnings:           tlr.Warnings,
+		Features:           tlr.FeatureFlags,
+		TeamName:           tlr.TeamName,
+		Secrets:            tlr.Secrets,
+		// TODO: tlr.dockerprunedisabled/maxagesecs
 		GlobalLogLineCountAtExecStart: globalLogLineCountAtExecStart,
 	})
 }
