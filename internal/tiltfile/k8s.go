@@ -889,7 +889,9 @@ func (s *tiltfileState) calculateResourceNames(workloads []k8s.K8sEntity) ([]str
 func (s *tiltfileState) workloadToResourceFunctionNames(workloads []k8s.K8sEntity) ([]string, error) {
 	takenNames := make(map[string]k8s.K8sEntity)
 	ret := make([]string, len(workloads))
-	thread := s.starlarkThread()
+	thread := &starlark.Thread{
+		Print: s.print,
+	}
 	for i, e := range workloads {
 		id := newK8sObjectID(e)
 		name, err := s.workloadToResourceFunction.fn(thread, id)

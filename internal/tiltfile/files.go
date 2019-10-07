@@ -12,6 +12,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/sliceutils"
+	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 	"github.com/windmilleng/tilt/pkg/logger"
 
 	"github.com/ghodss/yaml"
@@ -24,8 +25,7 @@ import (
 const localLogPrefix = " → "
 
 type gitRepo struct {
-	basePath    string
-	argUnpacker argUnpacker
+	basePath string
 }
 
 func (s *tiltfileState) newGitRepo(t *starlark.Thread, path string) (*gitRepo, error) {
@@ -39,7 +39,7 @@ func (s *tiltfileState) newGitRepo(t *starlark.Thread, path string) (*gitRepo, e
 		return nil, fmt.Errorf("%s isn't a valid git repo: it doesn't have a .git/ directory", absPath)
 	}
 
-	return &gitRepo{basePath: absPath, argUnpacker: s.unpackArgs}, nil
+	return &gitRepo{basePath: absPath}, nil
 }
 
 func (s *tiltfileState) localGitRepo(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -88,7 +88,7 @@ func (gr *gitRepo) AttrNames() []string {
 
 func (gr *gitRepo) path(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path string
-	err := gr.argUnpacker(fn.Name(), args, kwargs, "paths", &path)
+	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "paths", &path)
 	if err != nil {
 		return nil, err
 	}

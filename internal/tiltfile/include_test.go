@@ -44,7 +44,7 @@ include('../Tiltfile')
 include('./foo/Tiltfile')
 `)
 
-	f.loadErrString("Circular tiltfile load")
+	f.loadErrString("Circular load")
 }
 
 func TestIncludeTriangular(t *testing.T) {
