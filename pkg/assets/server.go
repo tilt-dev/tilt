@@ -48,8 +48,8 @@ const errorDivStyle = `
   flex-direction: column;
 `
 
-var versionRe = regexp.MustCompile(`/(v\d+\.\d+\.\d+)/.*`)       // matches `/vA.B.C/...`
-var shaRe = regexp.MustCompile(`(?m)\/(\b[0-9a-f]{5,40}\b)\/.*`) // matches /8bf2ea29eacff3a407272eb5631edbd1a14a0936/...
+var versionRe = regexp.MustCompile(`/(v\d+\.\d+\.\d+)/.*`) // matches `/vA.B.C/...`
+var shaRe = regexp.MustCompile(`/([0-9a-f]{5,40})\/.*`)    // matches /8bf2ea29eacff3a407272eb5631edbd1a14a0936/...
 
 type Server interface {
 	http.Handler
@@ -224,7 +224,8 @@ func (s prodServer) urlAndVersionForReq(req *http.Request) (url.URL, string) {
 		// If url contains a version prefix, don't attach another version
 		u.Path = path.Join(u.Path, origPath)
 		return u, matches[1]
-	} else if matches = shaRe.FindStringSubmatch(origPath); len(matches) > 1 {
+	}
+	if matches := shaRe.FindStringSubmatch(origPath); len(matches) > 1 {
 		u.Path = path.Join(u.Path, origPath)
 		return u, matches[1]
 	}
