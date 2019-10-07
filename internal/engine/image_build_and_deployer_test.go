@@ -13,10 +13,11 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/wmclient/pkg/dirs"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/windmilleng/tilt/internal/build"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
