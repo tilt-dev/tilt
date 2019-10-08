@@ -229,6 +229,10 @@ func SupportsBuildkit(v types.Version, env Env) bool {
 func CreateClientOpts(ctx context.Context, env Env) ([]func(client *client.Client) error, error) {
 	result := make([]func(client *client.Client) error, 0)
 
+	// Set scheme = HTTP so we can ping the server (otherwise we can't
+	// accurately negotiate versions with the server below).
+	result = append(result, client.WithScheme("http"))
+
 	if env.CertPath != "" {
 		options := tlsconfig.Options{
 			CAFile:             filepath.Join(env.CertPath, "ca.pem"),
@@ -254,7 +258,7 @@ func CreateClientOpts(ctx context.Context, env Env) ([]func(client *client.Clien
 	if env.APIVersion != "" {
 		result = append(result, client.WithVersion(env.APIVersion))
 	} else {
-		// NegotateAPIVersion makes the docker client negotiate down to a lower version
+		// NegotiateAPIVersion makes the docker client negotiate down to a lower version
 		// if 'defaultVersion' is newer than the server version.
 		result = append(result, client.WithVersion(defaultVersion), NegotiateAPIVersion(ctx))
 	}
