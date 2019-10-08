@@ -19,6 +19,8 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/sliceutils"
+	"github.com/windmilleng/tilt/internal/tiltfile/include"
+	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
@@ -38,7 +40,6 @@ type tiltfileState struct {
 	features        feature.FeatureSet
 
 	// added to during execution
-	loadCache          map[string]loadCacheEntry
 	configFiles        []string
 	buildIndex         *buildIndex
 	k8s                []*k8sResource
@@ -64,7 +65,6 @@ type tiltfileState struct {
 	// for assembly
 	usedImages map[string]bool
 
-	predeclaredMap starlark.StringDict
 	// count how many times each builtin is called, for analytics
 	builtinCallCounts map[string]int
 	// how many times each arg is used on each builtin
@@ -126,7 +126,6 @@ func newTiltfileState(
 		localResources:             []localResource{},
 		triggerMode:                TriggerModeAuto,
 		features:                   features,
-		loadCache:                  make(map[string]loadCacheEntry),
 	}
 }
 
@@ -148,22 +147,11 @@ func (s *tiltfileState) print(_ *starlark.Thread, msg string) {
 	s.logger.Infof("%s", msg)
 }
 
-// load() for fulfilling the starlark thread callback
-func (s *tiltfileState) load(thread *starlark.Thread, f string) (starlark.StringDict, error) {
-	return s.exec(thread, s.absPath(thread, f))
-}
-
-func (s *tiltfileState) starlarkThread() *starlark.Thread {
-	return &starlark.Thread{
-		Print: s.print,
-		Load:  s.load,
-	}
-}
-
 // Load loads the Tiltfile in `filename`, and returns the manifests matching `matching`.
 func (s *tiltfileState) loadManifests(absFilename string, matching map[string]bool) ([]model.Manifest, error) {
 	s.logger.Infof("Beginning Tiltfile execution")
-	_, err := s.exec(s.starlarkThread(), absFilename)
+
+	err := starkit.ExecFile(absFilename, s, include.IncludeFn{})
 	if err != nil {
 		if err, ok := err.(*starlark.EvalError); ok {
 			return nil, errors.New(err.Backtrace())
@@ -343,15 +331,16 @@ func starlarkTriggerModeToModel(triggerMode triggerMode) (model.TriggerMode, err
 	}
 }
 
-type builtin func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)
-
 // count how many times each builtin is called, for analytics
-func (s *tiltfileState) makeBuiltinReporting(name string, f builtin) builtin {
-	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		s.builtinCallCounts[name]++
-		return f(thread, fn, args, kwargs)
-	}
+func (s *tiltfileState) OnBuiltinCall(name string, fn *starlark.Builtin) {
+	s.builtinCallCounts[name]++
 }
+
+func (s *tiltfileState) OnExec(tiltfilePath string) {
+	s.configFiles = append(s.configFiles, tiltfilePath, tiltIgnorePath(tiltfilePath))
+}
+
+type builtin func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)
 
 // wrap a builtin such that it's only allowed to run when we have a known safe k8s context
 // (none (e.g., docker-compose), local, or specified by `allow_k8s_contexts`)
@@ -368,8 +357,6 @@ before this function call in your Tiltfile. Otherwise, switch k8s contexts and r
 		return f(thread, fn, args, kwargs)
 	}
 }
-
-type argUnpacker func(fnname string, args starlark.Tuple, kwargs []starlark.Tuple, pairs ...interface{}) error
 
 func (s *tiltfileState) unpackArgs(fnname string, args starlark.Tuple, kwargs []starlark.Tuple, pairs ...interface{}) error {
 	err := starlark.UnpackArgs(fnname, args, kwargs, pairs...)
@@ -398,68 +385,57 @@ func (s *tiltfileState) unpackArgs(fnname string, args starlark.Tuple, kwargs []
 	return err
 }
 
-func (s *tiltfileState) predeclared() starlark.StringDict {
-	if s.predeclaredMap != nil {
-		return s.predeclaredMap
-	}
+// TODO(nick): Split these into separate extensions
+func (s *tiltfileState) OnStart(e *starkit.Environment) {
+	e.SetArgUnpacker(s.unpackArgs)
+	e.SetPrint(s.print)
 
-	addBuiltin := func(r starlark.StringDict, name string, fn builtin) {
-		r[name] = starlark.NewBuiltin(name, s.makeBuiltinReporting(name, fn))
-	}
+	e.AddBuiltin(localN, s.potentiallyK8sUnsafeBuiltin(s.local))
+	e.AddBuiltin(readFileN, s.skylarkReadFile)
+	e.AddBuiltin(watchFileN, s.watchFile)
 
-	r := make(starlark.StringDict)
+	e.AddBuiltin(dockerBuildN, s.dockerBuild)
+	e.AddBuiltin(fastBuildN, s.fastBuild)
+	e.AddBuiltin(customBuildN, s.customBuild)
+	e.AddBuiltin(defaultRegistryN, s.defaultRegistry)
+	e.AddBuiltin(dockerComposeN, s.dockerCompose)
+	e.AddBuiltin(dcResourceN, s.dcResource)
+	e.AddBuiltin(k8sResourceAssemblyVersionN, s.k8sResourceAssemblyVersionFn)
+	e.AddBuiltin(k8sYamlN, s.k8sYaml)
+	e.AddBuiltin(filterYamlN, s.filterYaml)
+	e.AddBuiltin(k8sResourceN, s.k8sResource)
+	e.AddBuiltin(localResourceN, s.localResource)
+	e.AddBuiltin(portForwardN, s.portForward)
+	e.AddBuiltin(k8sKindN, s.k8sKind)
+	e.AddBuiltin(k8sImageJSONPathN, s.k8sImageJsonPath)
+	e.AddBuiltin(workloadToResourceFunctionN, s.workloadToResourceFunctionFn)
+	e.AddBuiltin(k8sContextN, s.k8sContext)
+	e.AddBuiltin(allowK8SContexts, s.allowK8SContexts)
+	e.AddBuiltin(localGitRepoN, s.localGitRepo)
+	e.AddBuiltin(kustomizeN, s.kustomize)
+	e.AddBuiltin(helmN, s.helm)
+	e.AddBuiltin(failN, s.fail)
+	e.AddBuiltin(blobN, s.blob)
+	e.AddBuiltin(listdirN, s.listdir)
+	e.AddBuiltin(decodeJSONN, s.decodeJSON)
+	e.AddBuiltin(readJSONN, s.readJson)
+	e.AddBuiltin(readYAMLN, s.readYaml)
 
-	addBuiltin(r, localN, s.potentiallyK8sUnsafeBuiltin(s.local))
-	addBuiltin(r, readFileN, s.skylarkReadFile)
-	addBuiltin(r, watchFileN, s.watchFile)
+	e.AddBuiltin(triggerModeN, s.triggerModeFn)
+	e.AddValue(triggerModeAutoN, TriggerModeAuto)
+	e.AddValue(triggerModeManualN, TriggerModeManual)
 
-	addBuiltin(r, dockerBuildN, s.dockerBuild)
-	addBuiltin(r, fastBuildN, s.fastBuild)
-	addBuiltin(r, customBuildN, s.customBuild)
-	addBuiltin(r, defaultRegistryN, s.defaultRegistry)
-	addBuiltin(r, dockerComposeN, s.dockerCompose)
-	addBuiltin(r, dcResourceN, s.dcResource)
-	addBuiltin(r, k8sResourceAssemblyVersionN, s.k8sResourceAssemblyVersionFn)
-	addBuiltin(r, k8sYamlN, s.k8sYaml)
-	addBuiltin(r, filterYamlN, s.filterYaml)
-	addBuiltin(r, k8sResourceN, s.k8sResource)
-	addBuiltin(r, localResourceN, s.localResource)
-	addBuiltin(r, portForwardN, s.portForward)
-	addBuiltin(r, k8sKindN, s.k8sKind)
-	addBuiltin(r, k8sImageJSONPathN, s.k8sImageJsonPath)
-	addBuiltin(r, workloadToResourceFunctionN, s.workloadToResourceFunctionFn)
-	addBuiltin(r, k8sContextN, s.k8sContext)
-	addBuiltin(r, allowK8SContexts, s.allowK8SContexts)
-	addBuiltin(r, localGitRepoN, s.localGitRepo)
-	addBuiltin(r, kustomizeN, s.kustomize)
-	addBuiltin(r, helmN, s.helm)
-	addBuiltin(r, failN, s.fail)
-	addBuiltin(r, blobN, s.blob)
-	addBuiltin(r, listdirN, s.listdir)
-	addBuiltin(r, decodeJSONN, s.decodeJSON)
-	addBuiltin(r, readJSONN, s.readJson)
-	addBuiltin(r, readYAMLN, s.readYaml)
-	addBuiltin(r, includeN, s.include)
+	e.AddBuiltin(fallBackOnN, s.liveUpdateFallBackOn)
+	e.AddBuiltin(syncN, s.liveUpdateSync)
+	e.AddBuiltin(runN, s.liveUpdateRun)
+	e.AddBuiltin(restartContainerN, s.liveUpdateRestartContainer)
 
-	addBuiltin(r, triggerModeN, s.triggerModeFn)
-	r[triggerModeAutoN] = TriggerModeAuto
-	r[triggerModeManualN] = TriggerModeManual
+	e.AddBuiltin(enableFeatureN, s.enableFeature)
+	e.AddBuiltin(disableFeatureN, s.disableFeature)
 
-	addBuiltin(r, fallBackOnN, s.liveUpdateFallBackOn)
-	addBuiltin(r, syncN, s.liveUpdateSync)
-	addBuiltin(r, runN, s.liveUpdateRun)
-	addBuiltin(r, restartContainerN, s.liveUpdateRestartContainer)
+	e.AddBuiltin(disableSnapshotsN, s.disableSnapshots)
 
-	addBuiltin(r, enableFeatureN, s.enableFeature)
-	addBuiltin(r, disableFeatureN, s.disableFeature)
-
-	addBuiltin(r, disableSnapshotsN, s.disableSnapshots)
-
-	addBuiltin(r, setTeamN, s.setTeam)
-
-	s.predeclaredMap = r
-
-	return r
+	e.AddBuiltin(setTeamN, s.setTeam)
 }
 
 // Returns the current orchestrator.
@@ -1272,3 +1248,7 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 
 	return result, nil
 }
+
+var _ starkit.Extension = &tiltfileState{}
+var _ starkit.OnExecExtension = &tiltfileState{}
+var _ starkit.OnBuiltinCallExtension = &tiltfileState{}
