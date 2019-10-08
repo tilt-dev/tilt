@@ -10,7 +10,7 @@ import (
 )
 
 func TestProvideDevWebVersion(t *testing.T) {
-	assert.Equal(t, devVersion, string(provideWebVersion(provideTiltInfo())))
+	assert.Equal(t, fmt.Sprintf("v%s", devVersion), string(provideWebVersion(provideTiltInfo())))
 }
 
 func TestProvideProdWebVersion(t *testing.T) {

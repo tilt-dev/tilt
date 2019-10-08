@@ -244,11 +244,13 @@
   "NeedsAnalyticsNudge": false,
   "RunningTiltBuild": {
     "Version": "0.9.7",
+    "CommitSHA": "",
     "Date": "2019-08-08",
     "Dev": true
   },
   "LatestTiltBuild": {
     "Version": "",
+    "CommitSHA": "",
     "Date": "",
     "Dev": false
   },

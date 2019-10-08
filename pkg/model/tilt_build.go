@@ -7,9 +7,10 @@ import (
 // Information on a build of the Tilt binary
 type TiltBuild struct {
 	// Version w/o leading "v"
-	Version string
-	Date    string
-	Dev     bool
+	Version   string
+	CommitSHA string
+	Date      string
+	Dev       bool
 }
 
 func (b TiltBuild) Empty() bool {
@@ -25,11 +26,6 @@ func (b TiltBuild) AnalyticsVersion() string {
 }
 
 func (b TiltBuild) WebVersion() WebVersion {
-	var v string
-	if b.Dev {
-		v = b.Version
-	} else {
-		v = fmt.Sprintf("v%s", b.Version)
-	}
+	v := fmt.Sprintf("v%s", b.Version)
 	return WebVersion(v)
 }

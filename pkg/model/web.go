@@ -10,9 +10,13 @@ import (
 
 type NoBrowser bool // flag for disabling automatic browser opening
 
-// Web version of the form vA.B.C, where A, B, and C are integers OR abcd for a dev commit SHA
+// Web version of the form vA.B.C, where A, B, and C are integers
 // Used for fetching web assets
 type WebVersion string
+
+// Web version of the form aaaaaaa where a is a hex letter
+// Used for fetching web assets
+type WebSHA string
 
 // Mode for developing Tilt web UX.
 //
