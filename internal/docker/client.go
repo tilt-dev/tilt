@@ -33,6 +33,17 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
+// Label that we attach to all of the images we build.
+const (
+	BuiltBy = "builtby"
+	Tilt    = "tilt"
+)
+
+var (
+	BuiltByTiltLabel    = map[string]string{BuiltBy: Tilt}
+	BuiltByTiltLabelStr = fmt.Sprintf("%s=%s", BuiltBy, Tilt)
+)
+
 // Version info
 // https://docs.docker.com/develop/sdk/#api-version-matrix
 //
@@ -418,9 +429,10 @@ func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options Bu
 	opts.Context = options.Context
 	opts.BuildArgs = options.BuildArgs
 	opts.Dockerfile = options.Dockerfile
-	opts.Labels = options.Labels
 	opts.Tags = options.Tags
 	opts.Target = options.Target
+
+	opts.Labels = BuiltByTiltLabel // label all images as built by us
 
 	return c.Client.ImageBuild(ctx, buildContext, opts)
 }

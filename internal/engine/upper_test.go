@@ -2956,7 +2956,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
 
-	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc, tvc, tas, ewm, tcum)
+	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc,
+		tvc, tas, ewm, tcum, NewDockerPruner(dockerClient))
 	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {

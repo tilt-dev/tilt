@@ -12,6 +12,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/pkg/model"
 )
@@ -39,7 +40,7 @@ ADD dir/c.txt .
 		t.Fatal(err)
 	}
 
-	f.assertImageHasLabels(ref, BuiltByTiltLabel)
+	f.assertImageHasLabels(ref, docker.BuiltByTiltLabel)
 
 	pcs := []expectedFile{
 		expectedFile{Path: "/src/a.txt", Contents: "a"},
