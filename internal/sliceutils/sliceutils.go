@@ -30,12 +30,15 @@ func QuotedStringList(list []string) string {
 }
 
 func BulletedIndentedStringList(list []string) string {
-	result := make([]string, len(list)+1)
-	result[0] = ""
-	for i, s := range list {
-		result[i+1] = s
+	if len(list) == 0 {
+		return ""
 	}
-	return strings.Join(result, "\n\t- ")
+
+	result := make([]string, len(list))
+	for i, s := range list {
+		result[i] = s
+	}
+	return "\t- " + strings.Join(result, "\n\t- ")
 }
 
 func StringSliceEquals(a, b []string) bool {

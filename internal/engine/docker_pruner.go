@@ -6,11 +6,15 @@ import (
 
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/pkg/logger"
 )
 
 // How often to prune Docker images while Tilt is running
-// TODO: configurable from Tiltfile for special cases
 const dockerPruneInterval = time.Hour * 12
+
+// Prune Docker objects older than this
+// TODO: configurable from Tiltfile for special cases
+const dockerUntilInterval = time.Hour * 6
 
 type DockerPruner struct {
 	dCli docker.Client
@@ -66,13 +70,12 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 }
 
 func (dp *DockerPruner) prune(ctx context.Context, st store.RStore) {
-	// TODO:
-	//   - prune images with label: builtby=tilt and older than timestamp X
-	//   - (timestamp configurable in Tiltfile)
-	//   - write useful output / errors to log
-	//
 	// For future: dispatch event with output/errors to be recorded
 	//   in engineState.TiltSystemState on store (analogous to TiltfileState)
+	err := dp.dCli.Prune(ctx, dockerUntilInterval) // TODO: get from somewhere
+	if err != nil {
+		logger.Get(ctx).Infof("[Docker prune] error running docker prune: %v", err)
+	}
 }
 
 var _ store.Subscriber = &BuildController{}
