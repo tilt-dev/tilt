@@ -29,7 +29,8 @@ func ProvideSubscribers(
 	tvc *TiltVersionChecker,
 	ta *TiltAnalyticsSubscriber,
 	ewm *k8swatch.EventWatchManager,
-	tcum *cloud.CloudUsernameManager) []store.Subscriber {
+	tcum *cloud.CloudUsernameManager,
+	dp *DockerPruner) []store.Subscriber {
 	return []store.Subscriber{
 		hud,
 		pw,
@@ -50,5 +51,6 @@ func ProvideSubscribers(
 		ta,
 		ewm,
 		tcum,
+		dp,
 	}
 }

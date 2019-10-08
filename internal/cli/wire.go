@@ -89,6 +89,8 @@ var BaseWireSet = wire.NewSet(
 	store.NewStore,
 	wire.Bind(new(store.RStore), new(store.Store)),
 
+	engine.NewDockerPruner,
+
 	provideTiltInfo,
 	engine.ProvideSubscribers,
 	engine.NewUpper,
