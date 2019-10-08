@@ -531,10 +531,29 @@ func (c *Cli) Prune(ctx context.Context, age time.Duration) error {
 		filters.Arg("until", age.String()),
 	)
 
+	containerReport, err := c.Client.ContainersPrune(ctx, f)
+	if err != nil {
+		return err
+	}
+	spew.Dump(containerReport)
+
+	opts := types.BuildCachePruneOptions{
+		All:         true,
+		KeepStorage: 524288000, // 500MB -- TODO: make configurable
+		Filters:     f,
+	}
+	cacheReport, err := c.Client.BuildCachePrune(ctx, opts)
+	if err != nil {
+		return err
+	}
+	spew.Dump(cacheReport)
+
+	f.Add("dangling", "0") // prune all images, not just dangling ones
 	imgReport, err := c.Client.ImagesPrune(ctx, f)
 	if err != nil {
 		return err
 	}
 	spew.Dump(imgReport)
+
 	return nil
 }
