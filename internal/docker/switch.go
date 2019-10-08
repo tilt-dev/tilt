@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
@@ -85,6 +86,9 @@ func (c *switchCli) ImageList(ctx context.Context, options types.ImageListOption
 }
 func (c *switchCli) ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error) {
 	return c.client().ImageRemove(ctx, imageID, options)
+}
+func (c *switchCli) Prune(ctx context.Context, age time.Duration) error {
+	return c.client().Prune(ctx, age)
 }
 
 var _ Client = &switchCli{}

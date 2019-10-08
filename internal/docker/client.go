@@ -14,11 +14,13 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/config"
 	cliflags "github.com/docker/cli/cli/flags"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/registry"
 	"github.com/docker/go-connections/tlsconfig"
@@ -100,6 +102,8 @@ type Client interface {
 	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
 	ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error)
 	ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error)
+
+	Prune(ctx context.Context, age time.Duration) error
 }
 
 type ExitError struct {
@@ -518,4 +522,19 @@ func (c *Cli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.C
 		}
 		return nil
 	}
+}
+
+func (c *Cli) Prune(ctx context.Context, age time.Duration) error {
+	// TODO: if API Version < 1.30, return error(not supported)
+	f := filters.NewArgs(
+		filters.Arg("label", BuiltByTiltLabelStr),
+		filters.Arg("until", age.String()),
+	)
+
+	imgReport, err := c.Client.ImagesPrune(ctx, f)
+	if err != nil {
+		return err
+	}
+	spew.Dump(imgReport)
+	return nil
 }

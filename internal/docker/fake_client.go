@@ -238,6 +238,10 @@ func (c *FakeClient) ImageRemove(ctx context.Context, imageID string, options ty
 	return nil, nil
 }
 
+func (c *FakeClient) Prune(ctx context.Context, age time.Duration) error {
+	return nil
+}
+
 var _ Client = &FakeClient{}
 
 type fakeDockerResponse struct {

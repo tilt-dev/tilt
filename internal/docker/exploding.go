@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 	"io"
+	"time"
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
@@ -66,6 +67,9 @@ func (c explodingClient) ImageList(ctx context.Context, options types.ImageListO
 }
 func (c explodingClient) ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error) {
 	return nil, c.err
+}
+func (c explodingClient) Prune(ctx context.Context, age time.Duration) error {
+	return c.err
 }
 
 var _ Client = &explodingClient{}

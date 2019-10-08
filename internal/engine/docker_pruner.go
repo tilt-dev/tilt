@@ -36,6 +36,8 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 		return
 	}
 
+	// TODO: if API Version < 1.30, return error(not supported)
+
 	state := st.RLockState()
 	defer st.RUnlockState()
 
