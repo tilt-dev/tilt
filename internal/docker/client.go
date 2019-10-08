@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/config"
 	cliflags "github.com/docker/cli/cli/flags"
@@ -29,6 +28,7 @@ import (
 	"github.com/moby/buildkit/session/auth/authprovider"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/sliceutils"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/pkg/logger"
@@ -525,17 +525,18 @@ func (c *Cli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.C
 }
 
 func (c *Cli) Prune(ctx context.Context, age time.Duration) error {
-	// TODO: if API Version < 1.30, return error(not supported)
+	l := logger.Get(ctx)
+	if err := c.Client.NewVersionError("1.30", "image | container prune with filter: label"); err != nil {
+		l.Debugf("[Docker Prune] skipping Docker prune, Docker API version too low:\t%v", err)
+		fmt.Printf("[Docker Prune] skipping Docker prune, Docker API version too low:\t%v", err)
+		return nil
+	}
+
+	// TODO: if API Version < 1.30, return error(not supported) -- doesn't support `label` filter
 	f := filters.NewArgs(
 		filters.Arg("label", BuiltByTiltLabelStr),
 		filters.Arg("until", age.String()),
 	)
-
-	containerReport, err := c.Client.ContainersPrune(ctx, f)
-	if err != nil {
-		return err
-	}
-	spew.Dump(containerReport)
 
 	opts := types.BuildCachePruneOptions{
 		All:         true,
@@ -544,16 +545,63 @@ func (c *Cli) Prune(ctx context.Context, age time.Duration) error {
 	}
 	cacheReport, err := c.Client.BuildCachePrune(ctx, opts)
 	if err != nil {
+		if !strings.Contains(err.Error(), `"build prune" requires API version`) {
+			return err
+		}
+		l.Debugf("[Docker Prune] skipping build cache prune, Docker API version too low:\t%s", err)
+		fmt.Printf("[Docker Prune] skipping build cache prune, Docker API version too low:\t%s", err)
+	} else {
+		prettyPrintCachePruneReport(cacheReport, l)
+	}
+
+	containerReport, err := c.Client.ContainersPrune(ctx, f)
+	if err != nil {
 		return err
 	}
-	spew.Dump(cacheReport)
+	prettyPrintContainersPruneReport(containerReport, l)
 
 	f.Add("dangling", "0") // prune all images, not just dangling ones
 	imgReport, err := c.Client.ImagesPrune(ctx, f)
 	if err != nil {
 		return err
 	}
-	spew.Dump(imgReport)
+	prettyPrintImagesPruneReport(imgReport, l)
 
 	return nil
+}
+
+func prettyPrintCachePruneReport(report *types.BuildCachePruneReport, l logger.Logger) {
+	// TODO: human-readable space reclaimed
+	l.Infof("[Docker Prune] removed %d caches, reclaimed %d bytes", len(report.CachesDeleted), report.SpaceReclaimed)
+	if len(report.CachesDeleted) > 0 {
+		l.Debugf(sliceutils.BulletedIndentedStringList(report.CachesDeleted))
+	}
+}
+
+func prettyPrintContainersPruneReport(report types.ContainersPruneReport, l logger.Logger) {
+	// TODO: human-readable space reclaimed
+	l.Infof("[Docker Prune] removed %d containers, reclaimed %d bytes", len(report.ContainersDeleted), report.SpaceReclaimed)
+	if len(report.ContainersDeleted) > 0 {
+		l.Debugf(sliceutils.BulletedIndentedStringList(report.ContainersDeleted))
+	}
+}
+
+func prettyPrintImagesPruneReport(report types.ImagesPruneReport, l logger.Logger) {
+	// TODO: human-readable space reclaimed
+	l.Infof("[Docker Prune] removed %d caches, reclaimed %d bytes", len(report.ImagesDeleted), report.SpaceReclaimed)
+	if len(report.ImagesDeleted) > 0 {
+		for _, img := range report.ImagesDeleted {
+			l.Debugf("\t- %s", prettyStringImgDeleteItem(img))
+		}
+	}
+}
+
+func prettyStringImgDeleteItem(img types.ImageDeleteResponseItem) string {
+	if img.Deleted != "" {
+		return fmt.Sprintf("deleted: %s", img.Deleted)
+	}
+	if img.Untagged != "" {
+		return fmt.Sprintf("untagged: %s", img.Untagged)
+	}
+	return ""
 }

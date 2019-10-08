@@ -41,8 +41,8 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	// wait until state has been kinda initialized
-	if !state.TiltStartTime.IsZero() && state.LastTiltfileError() == nil {
+	// wait until state has been kinda initialized, and there's at least one Docker build
+	if !state.TiltStartTime.IsZero() && state.LastTiltfileError() == nil && state.HasDockerBuild() {
 		dp.started = true
 		go func() {
 			select {

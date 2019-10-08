@@ -200,6 +200,17 @@ func (e EngineState) LastTiltfileError() error {
 	return e.TiltfileState.LastBuild().Error
 }
 
+func (e *EngineState) HasDockerBuild() bool {
+	for _, m := range e.Manifests() {
+		for _, targ := range m.ImageTargets {
+			if targ.IsDockerBuild() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // TODO(nick): This will eventually implement TargetStatus
 type BuildStatus struct {
 	// Stores the times of all the pending changes,
