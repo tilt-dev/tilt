@@ -229,10 +229,6 @@ func SupportsBuildkit(v types.Version, env Env) bool {
 func CreateClientOpts(ctx context.Context, env Env) ([]func(client *client.Client) error, error) {
 	result := make([]func(client *client.Client) error, 0)
 
-	// Set scheme = HTTP so we can ping the server (otherwise we can't
-	// accurately negotiate versions with the server below).
-	result = append(result, client.WithScheme("http"))
-
 	if env.CertPath != "" {
 		options := tlsconfig.Options{
 			CAFile:             filepath.Join(env.CertPath, "ca.pem"),
@@ -249,6 +245,10 @@ func CreateClientOpts(ctx context.Context, env Env) ([]func(client *client.Clien
 			Transport:     &http.Transport{TLSClientConfig: tlsc},
 			CheckRedirect: client.CheckRedirect,
 		}))
+	} else {
+		// Set scheme = HTTP so we can ping the server (otherwise we can't
+		// accurately negotiate versions with the server below).
+		result = append(result, client.WithScheme("http"))
 	}
 
 	if env.Host != "" {
