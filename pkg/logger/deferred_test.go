@@ -38,3 +38,21 @@ func TestDeferredLoggerOriginal(t *testing.T) {
 
 	assert.Equal(t, "Hello world\nGoodbye world\n", out1.String())
 }
+
+func TestDeferredLoggerCopiesBytes(t *testing.T) {
+	out := &bytes.Buffer{}
+	logger := NewLogger(DebugLvl, out)
+	ctx := WithLogger(context.Background(), logger)
+	deferLogger := NewDeferredLogger(ctx)
+
+	data := make([]byte, 0, 100)
+	data2 := append(data, []byte("Hello")...)
+	deferLogger.Writer(DebugLvl).Write(data2)
+	data3 := append(data, []byte("Goodbye")...)
+	deferLogger.Writer(DebugLvl).Write(data3)
+
+	assert.Equal(t, "", out.String())
+
+	deferLogger.SetOutput(logger)
+	assert.Equal(t, "HelloGoodbye", out.String())
+}

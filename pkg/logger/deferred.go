@@ -24,7 +24,7 @@ func NewDeferredLogger(ctx context.Context) *DeferredLogger {
 			dLogger.output.Write(level, string(b))
 			return nil
 		}
-		dLogger.entries = append(dLogger.entries, logEntry{level: level, b: b})
+		dLogger.entries = append(dLogger.entries, logEntry{level: level, b: append([]byte{}, b...)})
 		return nil
 	})
 	dLogger.Logger = fLogger
