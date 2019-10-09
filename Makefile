@@ -89,11 +89,11 @@ dev-js:
 
 check-js:
 	cd web && yarn install
-	cd web && yarn run check
+	cd web && CI=true yarn run check
 
 build-js:
-	cd web && yarn install
-	cd web && yarn build
+	cd web && CI=true yarn install
+	cd web && CI=true yarn build
 
 test-js:
 	cd web && yarn install
