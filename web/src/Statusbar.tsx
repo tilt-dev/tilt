@@ -1,4 +1,4 @@
-import React, { Component, PureComponent, ReactElement } from "react"
+import React, { PureComponent, ReactElement } from "react"
 import { ReactComponent as LogoSvg } from "./assets/svg/logo.svg"
 import { ReactComponent as ErrorSvg } from "./assets/svg/error.svg"
 import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
@@ -119,16 +119,24 @@ class Statusbar extends PureComponent<StatusBarProps> {
       runningVersion &&
       runningVersion.Version &&
       !runningVersion.Dev &&
-      runningVersion.Version != latestVersion.Version
+      runningVersion.Version !== latestVersion.Version
     ) {
       content = (
         <a
           href="https://docs.tilt.dev/upgrade.html"
           className="Statusbar-tiltPanel-link"
           target="_blank"
+          rel="noopener noreferrer"
         >
           <p className="Statusbar-tiltPanel-upgradeTooltip">
-            ✨ Get Tilt v{latestVersion.Version}! ✨<br />
+            <span role="img" aria-label="Decorative sparkling stars">
+              ✨
+            </span>
+            Get Tilt v{latestVersion.Version}!{" "}
+            <span role="img" aria-label="Decorative sparkling stars">
+              ✨
+            </span>
+            <br />
             (You're running v{runningVersion.Version})
           </p>
           {content}

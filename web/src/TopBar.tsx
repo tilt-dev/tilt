@@ -1,5 +1,5 @@
 import React, { PureComponent } from "react"
-import { ResourceView, Snapshot } from "./types"
+import { ResourceView } from "./types"
 import "./TopBar.scss"
 import TabNav from "./TabNav"
 

@@ -1,4 +1,4 @@
-import TimeAgo, { Formatter, Suffix, Unit } from "react-timeago"
+import { Formatter, Suffix, Unit } from "react-timeago"
 // @ts-ignore
 import enStrings from "react-timeago/lib/language-strings/en-short.js"
 // @ts-ignore
