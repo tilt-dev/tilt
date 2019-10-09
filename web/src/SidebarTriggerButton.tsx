@@ -1,6 +1,5 @@
 import React, { PureComponent } from "react"
 import { TriggerMode } from "./types"
-import { ReactComponent as TriggerSvg } from "./assets/svg/trigger.svg"
 import "./SidebarTriggerButton.scss"
 
 type SidebarTriggerButtonProps = {

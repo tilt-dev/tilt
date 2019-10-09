@@ -56,7 +56,11 @@ export default class ShareSnapshotModal extends PureComponent<props> {
     return (
       <div className="ShareSnapshotModal-intro">
         <div className="u-inlineBlock">
-          <img src={intro} className="ShareSnapshotModal-introImage" />
+          <img
+            src={intro}
+            className="ShareSnapshotModal-introImage"
+            alt="hand holding up a copy of the Tilt User Interface"
+          />
         </div>
         <div className="u-inlineBlock ShareSnapshotModal-details">
           <ul className="ShareSnapshotModal-detailsList">
@@ -68,6 +72,7 @@ export default class ShareSnapshotModal extends PureComponent<props> {
             className="ShareSnapshotModal-docsLink"
             href="https://docs.tilt.dev/snapshots.html"
             target="_blank"
+            rel="noopener noreferrer"
           >
             Learn more in our docs
           </a>
@@ -127,6 +132,7 @@ export default class ShareSnapshotModal extends PureComponent<props> {
           className="ShareSnapshotModal-button ShareSnapshotModal-button--inline"
           href={this.props.snapshotUrl}
           target="_blank"
+          rel="noopener noreferrer"
         >
           Open
         </a>
@@ -162,6 +168,7 @@ export default class ShareSnapshotModal extends PureComponent<props> {
             className="ShareSnapshotModal-tiltCloudLink"
             href={this.props.tiltCloudSchemeHost + "/snapshots"}
             target="_blank"
+            rel="noopener noreferrer"
           >
             <span>TiltCloud</span>
             <ArrowSvg />

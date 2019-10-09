@@ -35,7 +35,7 @@ class PathBuilder {
   }
 
   isLocal() {
-    return this.host.indexOf("localhost") == 0
+    return this.host.indexOf("localhost") === 0
   }
 
   isSnapshot(): boolean {

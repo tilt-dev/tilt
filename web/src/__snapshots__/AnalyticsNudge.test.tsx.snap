@@ -31,6 +31,7 @@ exports[`hides nudge if !needsNudge and no request made 1`] = `
     Welcome to Tilt! May we collect usage data to help us improve? (
     <a
       href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
+      rel="noopener noreferrer"
       target="_blank"
     >
       Read more
@@ -62,6 +63,7 @@ exports[`hides nudge if dismissed, even if needsNudge = true 1`] = `
     Welcome to Tilt! May we collect usage data to help us improve? (
     <a
       href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
+      rel="noopener noreferrer"
       target="_blank"
     >
       Read more
@@ -97,6 +99,7 @@ exports[`shows failure message with response body 1`] = `
      (
     <a
       href="https://tilt.dev/contact"
+      rel="noopener noreferrer"
       target="_blank"
     >
       contact us
@@ -122,6 +125,7 @@ exports[`shows nudge if needsNudge 1`] = `
     Welcome to Tilt! May we collect usage data to help us improve? (
     <a
       href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
+      rel="noopener noreferrer"
       target="_blank"
     >
       Read more

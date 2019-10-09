@@ -5,7 +5,7 @@ import TimeAgo from "react-timeago"
 import "./AlertPane.scss"
 import { Resource } from "./types"
 import { timeAgoFormatter } from "./timeFormatters"
-import { Alert, hasAlert } from "./alerts"
+import { hasAlert } from "./alerts"
 import PathBuilder from "./PathBuilder"
 
 type AlertsProps = {

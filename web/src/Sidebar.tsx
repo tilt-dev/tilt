@@ -16,7 +16,6 @@ import PathBuilder from "./PathBuilder"
 import { timeAgoFormatter } from "./timeFormatters"
 import SidebarIcon from "./SidebarIcon"
 import SidebarTriggerButton from "./SidebarTriggerButton"
-import { number } from "prop-types"
 import { numberOfAlerts } from "./alerts"
 
 class SidebarItem {

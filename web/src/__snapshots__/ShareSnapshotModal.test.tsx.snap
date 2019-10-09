@@ -59,6 +59,7 @@ exports[`ShareSnapshotModal renders with modal open w/ known username 1`] = `
           <a
             className="ShareSnapshotModal-button ShareSnapshotModal-button--inline"
             href="http://test.com"
+            rel="noopener noreferrer"
             target="_blank"
           >
             Open
@@ -83,6 +84,7 @@ exports[`ShareSnapshotModal renders with modal open w/ known username 1`] = `
         <a
           className="ShareSnapshotModal-tiltCloudLink"
           href="https://cloud.tilt.dev/snapshots"
+          rel="noopener noreferrer"
           target="_blank"
         >
           <span>
@@ -145,6 +147,7 @@ exports[`ShareSnapshotModal renders with modal open w/o known username 1`] = `
             className="u-inlineBlock"
           >
             <img
+              alt="hand holding up a copy of the Tilt User Interface"
               className="ShareSnapshotModal-introImage"
               src="share-snapshot-intro.png"
             />
@@ -168,6 +171,7 @@ exports[`ShareSnapshotModal renders with modal open w/o known username 1`] = `
             <a
               className="ShareSnapshotModal-docsLink"
               href="https://docs.tilt.dev/snapshots.html"
+              rel="noopener noreferrer"
               target="_blank"
             >
               Learn more in our docs
@@ -252,6 +256,7 @@ exports[`ShareSnapshotModal renders without snapshotUrl 1`] = `
             className="u-inlineBlock"
           >
             <img
+              alt="hand holding up a copy of the Tilt User Interface"
               className="ShareSnapshotModal-introImage"
               src="share-snapshot-intro.png"
             />
@@ -275,6 +280,7 @@ exports[`ShareSnapshotModal renders without snapshotUrl 1`] = `
             <a
               className="ShareSnapshotModal-docsLink"
               href="https://docs.tilt.dev/snapshots.html"
+              rel="noopener noreferrer"
               target="_blank"
             >
               Learn more in our docs

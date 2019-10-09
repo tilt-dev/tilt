@@ -17,7 +17,12 @@ class PreviewPane extends PureComponent<PreviewProps> {
 
     let content
     if (this.props.endpoint) {
-      content = <iframe src={this.props.endpoint} />
+      content = (
+        <iframe
+          src={this.props.endpoint}
+          title={this.props.endpoint + " preview"}
+        />
+      )
     } else {
       content = (
         <section className="Pane-empty-message">
