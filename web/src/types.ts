@@ -102,6 +102,7 @@ export type Snapshot = {
   IsSidebarClosed: boolean
   SnapshotLink: string
   showSnapshotModal: boolean
+  path?: string
 }
 
 export enum ShowFatalErrorModal {

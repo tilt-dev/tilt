@@ -142,6 +142,10 @@ class HUD extends Component<HudProps, HudState> {
     this.setState(state)
   }
 
+  setHistoryLocation(path: string) {
+    this.props.history.replace(path)
+  }
+
   toggleSidebar() {
     this.setState(prevState => {
       return {
@@ -165,6 +169,7 @@ class HUD extends Component<HudProps, HudState> {
   sendSnapshot(snapshot: Snapshot) {
     let url = `//${window.location.host}/api/snapshot/new`
     let sanitizedSnapshot = cleanStateForSnapshotPOST(snapshot)
+    sanitizedSnapshot.path = this.props.history.location.pathname
     fetch(url, {
       method: "post",
       body: JSON.stringify(sanitizedSnapshot),

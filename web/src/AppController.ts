@@ -14,7 +14,7 @@ class AppController {
   disposed: boolean = false
 
   /**
-   * @param url The url of the websocket to pull data from
+   * @param url The url to pull data from
    * @param component The top-level component for the app.
    *     Has one method, setAppState, that sets the global state of the
    *     app. This state has two properties
@@ -133,6 +133,9 @@ class AppController {
         data.View.Resources = this.setDefaultResourceInfo(data.View.Resources)
         // @ts-ignore
         this.component.setAppState({ View: data.View })
+        if (data.path) {
+          this.component.setHistoryLocation(data.path)
+        }
       })
       .catch(err => {
         // TODO(dmiller): set app state with an error message
