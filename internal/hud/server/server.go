@@ -255,15 +255,11 @@ func MaybeSendToTriggerQueue(st store.RStore, name string) error {
 	mName := model.ManifestName(name)
 
 	state := st.RLockState()
-	m, ok := state.Manifest(mName)
+	_, ok := state.Manifest(mName)
 	st.RUnlockState()
 
 	if !ok {
 		return fmt.Errorf("no manifest found with name '%s'", mName)
-	}
-
-	if m.TriggerMode != model.TriggerModeManual {
-		return fmt.Errorf("can only trigger updates for manifests of TriggerModeManual")
 	}
 
 	st.Dispatch(AppendToTriggerQueueAction{Name: mName})

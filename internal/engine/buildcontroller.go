@@ -168,7 +168,9 @@ func buildTargets(manifest model.Manifest) []model.TargetSpec {
 
 // Extract a set of build states from a manifest for BuildAndDeploy.
 func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.TargetSpec, ms *store.ManifestState) store.BuildStateSet {
-	buildStateSet := store.BuildStateSet{}
+	result := store.BuildStateSet{}
+
+	anyFilesChanged := false
 
 	for _, spec := range specs {
 		id := spec.ID()
@@ -177,11 +179,14 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 		}
 
 		status := ms.BuildStatus(id)
-		filesChanged := make([]string, 0, len(status.PendingFileChanges))
+		var filesChanged []string
 		for file, _ := range status.PendingFileChanges {
 			filesChanged = append(filesChanged, file)
 		}
 		sort.Strings(filesChanged)
+		if len(filesChanged) > 0 {
+			anyFilesChanged = true
+		}
 
 		buildState := store.NewBuildState(status.LastSuccessfulResult, filesChanged)
 
@@ -211,10 +216,18 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 				}
 			}
 		}
-		buildStateSet[id] = buildState
+		result[id] = buildState
 	}
 
-	return buildStateSet
+	// If there are no files changed across the entire state set, then this is a force update.
+	// We want to do an image build of each image.
+	if !anyFilesChanged {
+		for k, v := range result {
+			result[k] = v.WithForceUpdate(true)
+		}
+	}
+
+	return result
 }
 
 var _ store.Subscriber = &BuildController{}

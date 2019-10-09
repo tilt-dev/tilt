@@ -40,9 +40,9 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
       fill = Color.red
     }
 
-    if (props.triggerMode === TriggerMode.TriggerModeManual) {
-      return this.renderManual(fill)
-    }
+      /* if (props.triggerMode === TriggerMode.TriggerModeManual) {
+       *   return this.renderManual(fill)
+       * } */
 
     return this.renderAuto(fill)
   }
