@@ -1869,9 +1869,12 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:87b39a5573d0bc55c0d4ec61072fb661115aae0c754e44edc8e977c2196a6259"
+  digest = "1:23864f2edc12c29c113bcfc2222aa02a48aa302c21168ac6249f9e521e9a31f8"
   name = "k8s.io/component-base"
-  packages = ["version"]
+  packages = [
+    "cli/flag",
+    "version",
+  ]
   pruneopts = "UT"
   revision = "61bc4cc48c91118b272b37f356826d1a9ff06603"
 
@@ -1897,7 +1900,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f08b3a1d6f492e6d9239654dd56aeb13bea1695245fbdfaea831d55d59cb1b11"
+  digest = "1:221abe5b0a2a6fdb4f9a3438e4ff7037d58183ed9d5dee5ce53604d0d5ef3357"
   name = "k8s.io/kubectl"
   packages = [
     "pkg/cmd/apply",
@@ -1913,6 +1916,7 @@
     "pkg/util",
     "pkg/util/i18n",
     "pkg/util/interrupt",
+    "pkg/util/logs",
     "pkg/util/openapi",
     "pkg/util/openapi/validation",
     "pkg/util/templates",
@@ -2091,12 +2095,14 @@
     "k8s.io/client-go/transport/spdy",
     "k8s.io/client-go/util/exec",
     "k8s.io/client-go/util/jsonpath",
+    "k8s.io/component-base/cli/flag",
     "k8s.io/klog",
     "k8s.io/kubectl/pkg/cmd/apply",
     "k8s.io/kubectl/pkg/cmd/delete",
     "k8s.io/kubectl/pkg/cmd/replace",
     "k8s.io/kubectl/pkg/cmd/util",
     "k8s.io/kubectl/pkg/scheme",
+    "k8s.io/kubectl/pkg/util/logs",
     "sigs.k8s.io/kustomize/pkg/constants",
     "sigs.k8s.io/kustomize/pkg/types",
     "sigs.k8s.io/yaml",
