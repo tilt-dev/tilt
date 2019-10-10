@@ -67,7 +67,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	liveUpdInfos := make([]liveUpdInfo, 0, len(liveUpdateStateSet))
 
 	if len(liveUpdateStateSet) == 0 {
-		return nil, RedirectToNextBuilderInfof("no targets for LiveUpdate found")
+		return nil, SilentRedirectToNextBuilderf("no targets for LiveUpdate found")
 	}
 
 	for _, luStateTree := range liveUpdateStateSet {
