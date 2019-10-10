@@ -18,36 +18,81 @@ package containerd
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 
+	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/images"
+	"github.com/containerd/containerd/images/archive"
+	"github.com/containerd/containerd/platforms"
+	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 type importOpts struct {
+	indexName    string
+	imageRefT    func(string) string
+	dgstRefT     func(digest.Digest) string
+	allPlatforms bool
+	compress     bool
 }
 
 // ImportOpt allows the caller to specify import specific options
-type ImportOpt func(c *importOpts) error
+type ImportOpt func(*importOpts) error
 
-func resolveImportOpt(opts ...ImportOpt) (importOpts, error) {
-	var iopts importOpts
-	for _, o := range opts {
-		if err := o(&iopts); err != nil {
-			return iopts, err
-		}
+// WithImageRefTranslator is used to translate the index reference
+// to an image reference for the image store.
+func WithImageRefTranslator(f func(string) string) ImportOpt {
+	return func(c *importOpts) error {
+		c.imageRefT = f
+		return nil
 	}
-	return iopts, nil
+}
+
+// WithDigestRef is used to create digest images for each
+// manifest in the index.
+func WithDigestRef(f func(digest.Digest) string) ImportOpt {
+	return func(c *importOpts) error {
+		c.dgstRefT = f
+		return nil
+	}
+}
+
+// WithIndexName creates a tag pointing to the imported index
+func WithIndexName(name string) ImportOpt {
+	return func(c *importOpts) error {
+		c.indexName = name
+		return nil
+	}
+}
+
+// WithAllPlatforms is used to import content for all platforms.
+func WithAllPlatforms(allPlatforms bool) ImportOpt {
+	return func(c *importOpts) error {
+		c.allPlatforms = allPlatforms
+		return nil
+	}
+}
+
+// WithImportCompression compresses uncompressed layers on import.
+// This is used for import formats which do not include the manifest.
+func WithImportCompression() ImportOpt {
+	return func(c *importOpts) error {
+		c.compress = true
+		return nil
+	}
 }
 
 // Import imports an image from a Tar stream using reader.
 // Caller needs to specify importer. Future version may use oci.v1 as the default.
-// Note that unreferrenced blobs may be imported to the content store as well.
-func (c *Client) Import(ctx context.Context, importer images.Importer, reader io.Reader, opts ...ImportOpt) ([]Image, error) {
-	_, err := resolveImportOpt(opts...) // unused now
-	if err != nil {
-		return nil, err
+// Note that unreferenced blobs may be imported to the content store as well.
+func (c *Client) Import(ctx context.Context, reader io.Reader, opts ...ImportOpt) ([]images.Image, error) {
+	var iopts importOpts
+	for _, o := range opts {
+		if err := o(&iopts); err != nil {
+			return nil, err
+		}
 	}
 
 	ctx, done, err := c.WithLease(ctx)
@@ -56,63 +101,105 @@ func (c *Client) Import(ctx context.Context, importer images.Importer, reader io
 	}
 	defer done(ctx)
 
-	imgrecs, err := importer.Import(ctx, c.ContentStore(), reader)
+	var aio []archive.ImportOpt
+	if iopts.compress {
+		aio = append(aio, archive.WithImportCompression())
+	}
+
+	index, err := archive.ImportIndex(ctx, c.ContentStore(), reader, aio...)
 	if err != nil {
-		// is.Update() is not called on error
 		return nil, err
 	}
 
-	is := c.ImageService()
-	var images []Image
-	for _, imgrec := range imgrecs {
-		if updated, err := is.Update(ctx, imgrec, "target"); err != nil {
+	var (
+		imgs []images.Image
+		cs   = c.ContentStore()
+		is   = c.ImageService()
+	)
+
+	if iopts.indexName != "" {
+		imgs = append(imgs, images.Image{
+			Name:   iopts.indexName,
+			Target: index,
+		})
+	}
+	var platformMatcher = platforms.All
+	if !iopts.allPlatforms {
+		platformMatcher = c.platform
+	}
+
+	var handler images.HandlerFunc = func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		// Only save images at top level
+		if desc.Digest != index.Digest {
+			return images.Children(ctx, cs, desc)
+		}
+
+		p, err := content.ReadBlob(ctx, cs, desc)
+		if err != nil {
+			return nil, err
+		}
+
+		var idx ocispec.Index
+		if err := json.Unmarshal(p, &idx); err != nil {
+			return nil, err
+		}
+
+		for _, m := range idx.Manifests {
+			name := imageName(m.Annotations, iopts.imageRefT)
+			if name != "" {
+				imgs = append(imgs, images.Image{
+					Name:   name,
+					Target: m,
+				})
+			}
+			if iopts.dgstRefT != nil {
+				ref := iopts.dgstRefT(m.Digest)
+				if ref != "" {
+					imgs = append(imgs, images.Image{
+						Name:   ref,
+						Target: m,
+					})
+				}
+			}
+		}
+
+		return idx.Manifests, nil
+	}
+
+	handler = images.FilterPlatforms(handler, platformMatcher)
+	handler = images.SetChildrenLabels(cs, handler)
+	if err := images.Walk(ctx, handler, index); err != nil {
+		return nil, err
+	}
+
+	for i := range imgs {
+		img, err := is.Update(ctx, imgs[i], "target")
+		if err != nil {
 			if !errdefs.IsNotFound(err) {
 				return nil, err
 			}
 
-			created, err := is.Create(ctx, imgrec)
+			img, err = is.Create(ctx, imgs[i])
 			if err != nil {
 				return nil, err
 			}
-
-			imgrec = created
-		} else {
-			imgrec = updated
 		}
-
-		images = append(images, NewImage(c, imgrec))
+		imgs[i] = img
 	}
-	return images, nil
+
+	return imgs, nil
 }
 
-type exportOpts struct {
-}
-
-// ExportOpt allows the caller to specify export-specific options
-type ExportOpt func(c *exportOpts) error
-
-func resolveExportOpt(opts ...ExportOpt) (exportOpts, error) {
-	var eopts exportOpts
-	for _, o := range opts {
-		if err := o(&eopts); err != nil {
-			return eopts, err
+func imageName(annotations map[string]string, ociCleanup func(string) string) string {
+	name := annotations[images.AnnotationImageName]
+	if name != "" {
+		return name
+	}
+	name = annotations[ocispec.AnnotationRefName]
+	if name != "" {
+		if ociCleanup != nil {
+			name = ociCleanup(name)
 		}
 	}
-	return eopts, nil
-}
-
-// Export exports an image to a Tar stream.
-// OCI format is used by default.
-// It is up to caller to put "org.opencontainers.image.ref.name" annotation to desc.
-// TODO(AkihiroSuda): support exporting multiple descriptors at once to a single archive stream.
-func (c *Client) Export(ctx context.Context, exporter images.Exporter, desc ocispec.Descriptor, opts ...ExportOpt) (io.ReadCloser, error) {
-	_, err := resolveExportOpt(opts...) // unused now
-	if err != nil {
-		return nil, err
-	}
-	pr, pw := io.Pipe()
-	go func() {
-		pw.CloseWithError(exporter.Export(ctx, c.ContentStore(), desc, pw))
-	}()
-	return pr, nil
+	return name
 }

@@ -15,6 +15,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/versions"
+	"github.com/docker/docker/errdefs"
 	"github.com/pkg/errors"
 )
 
@@ -47,15 +48,6 @@ func (cli *Client) post(ctx context.Context, path string, query url.Values, obj 
 
 func (cli *Client) postRaw(ctx context.Context, path string, query url.Values, body io.Reader, headers map[string][]string) (serverResponse, error) {
 	return cli.sendRequest(ctx, "POST", path, query, body, headers)
-}
-
-// put sends an http request to the docker API using the method PUT.
-func (cli *Client) put(ctx context.Context, path string, query url.Values, obj interface{}, headers map[string][]string) (serverResponse, error) {
-	body, headers, err := encodeBody(obj, headers)
-	if err != nil {
-		return serverResponse{}, err
-	}
-	return cli.sendRequest(ctx, "PUT", path, query, body, headers)
 }
 
 // putRaw sends an http request to the docker API using the method PUT.
@@ -114,15 +106,16 @@ func (cli *Client) buildRequest(method, path string, body io.Reader, headers hea
 }
 
 func (cli *Client) sendRequest(ctx context.Context, method, path string, query url.Values, body io.Reader, headers headers) (serverResponse, error) {
-	req, err := cli.buildRequest(method, cli.getAPIPath(path, query), body, headers)
+	req, err := cli.buildRequest(method, cli.getAPIPath(ctx, path, query), body, headers)
 	if err != nil {
 		return serverResponse{}, err
 	}
 	resp, err := cli.doRequest(ctx, req)
 	if err != nil {
-		return resp, err
+		return resp, errdefs.FromStatusCode(err, resp.statusCode)
 	}
-	return resp, cli.checkResponseErr(resp)
+	err = cli.checkResponseErr(resp)
+	return resp, errdefs.FromStatusCode(err, resp.statusCode)
 }
 
 func (cli *Client) doRequest(ctx context.Context, req *http.Request) (serverResponse, error) {
@@ -176,7 +169,13 @@ func (cli *Client) doRequest(ctx context.Context, req *http.Request) (serverResp
 		// this is localised - for example in French the error would be
 		// `open //./pipe/docker_engine: Le fichier spécifié est introuvable.`
 		if strings.Contains(err.Error(), `open //./pipe/docker_engine`) {
-			err = errors.New(err.Error() + " In the default daemon configuration on Windows, the docker client must be run elevated to connect. This error may also indicate that the docker daemon is not running.")
+			// Checks if client is running with elevated privileges
+			if f, elevatedErr := os.Open("\\\\.\\PHYSICALDRIVE0"); elevatedErr == nil {
+				err = errors.Wrap(err, "In the default daemon configuration on Windows, the docker client must be run with elevated privileges to connect.")
+			} else {
+				f.Close()
+				err = errors.Wrap(err, "This error may indicate that the docker daemon is not running.")
+			}
 		}
 
 		return serverResp, errors.Wrap(err, "error during connect")

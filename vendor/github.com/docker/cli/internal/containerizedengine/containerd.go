@@ -7,6 +7,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/remotes/docker"
+	clitypes "github.com/docker/cli/types"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/pkg/jsonmessage"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -15,7 +16,7 @@ import (
 // NewClient returns a new containerizedengine client
 // This client can be used to manage the lifecycle of
 // dockerd running as a container on containerd.
-func NewClient(sockPath string) (Client, error) {
+func NewClient(sockPath string) (clitypes.ContainerizedClient, error) {
 	if sockPath == "" {
 		sockPath = containerdSockPath
 	}
@@ -23,17 +24,17 @@ func NewClient(sockPath string) (Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return baseClient{
+	return &baseClient{
 		cclient: cclient,
 	}, nil
 }
 
 // Close will close the underlying clients
-func (c baseClient) Close() error {
+func (c *baseClient) Close() error {
 	return c.cclient.Close()
 }
 
-func (c baseClient) pullWithAuth(ctx context.Context, imageName string, out OutStream,
+func (c *baseClient) pullWithAuth(ctx context.Context, imageName string, out clitypes.OutStream,
 	authConfig *types.AuthConfig) (containerd.Image, error) {
 
 	resolver := docker.NewResolver(docker.ResolverOptions{

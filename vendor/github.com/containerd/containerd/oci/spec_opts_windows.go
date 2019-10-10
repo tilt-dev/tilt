@@ -20,70 +20,53 @@ package oci
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 
 	"github.com/containerd/containerd/containers"
-	"github.com/containerd/containerd/content"
-	"github.com/containerd/containerd/images"
-	"github.com/opencontainers/image-spec/specs-go/v1"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/pkg/errors"
 )
 
-// WithImageConfig configures the spec to from the configuration of an Image
-func WithImageConfig(image Image) SpecOpts {
-	return func(ctx context.Context, client Client, _ *containers.Container, s *Spec) error {
-		setProcess(s)
-		ic, err := image.Config(ctx)
-		if err != nil {
-			return err
-		}
-		var (
-			ociimage v1.Image
-			config   v1.ImageConfig
-		)
-		switch ic.MediaType {
-		case v1.MediaTypeImageConfig, images.MediaTypeDockerSchema2Config:
-			p, err := content.ReadBlob(ctx, image.ContentStore(), ic)
-			if err != nil {
-				return err
-			}
-			if err := json.Unmarshal(p, &ociimage); err != nil {
-				return err
-			}
-			config = ociimage.Config
-		default:
-			return fmt.Errorf("unknown image config media type %s", ic.MediaType)
-		}
-		s.Process.Env = config.Env
-		s.Process.Args = append(config.Entrypoint, config.Cmd...)
-		s.Process.User = specs.User{
-			Username: config.User,
-		}
-		return nil
-	}
-}
-
-// WithTTY sets the information on the spec as well as the environment variables for
-// using a TTY
-func WithTTY(width, height int) SpecOpts {
+// WithWindowsCPUCount sets the `Windows.Resources.CPU.Count` section to the
+// `count` specified.
+func WithWindowsCPUCount(count uint64) SpecOpts {
 	return func(_ context.Context, _ Client, _ *containers.Container, s *Spec) error {
-		setProcess(s)
-		s.Process.Terminal = true
-		if s.Process.ConsoleSize == nil {
-			s.Process.ConsoleSize = &specs.Box{}
+		if s.Windows.Resources == nil {
+			s.Windows.Resources = &specs.WindowsResources{}
 		}
-		s.Process.ConsoleSize.Width = uint(width)
-		s.Process.ConsoleSize.Height = uint(height)
+		if s.Windows.Resources.CPU == nil {
+			s.Windows.Resources.CPU = &specs.WindowsCPUResources{}
+		}
+		s.Windows.Resources.CPU.Count = &count
 		return nil
 	}
 }
 
-// WithUsername sets the username on the process
-func WithUsername(username string) SpecOpts {
-	return func(ctx context.Context, client Client, c *containers.Container, s *Spec) error {
-		setProcess(s)
-		s.Process.User.Username = username
+// WithWindowsIgnoreFlushesDuringBoot sets `Windows.IgnoreFlushesDuringBoot`.
+func WithWindowsIgnoreFlushesDuringBoot() SpecOpts {
+	return func(_ context.Context, _ Client, _ *containers.Container, s *Spec) error {
+		if s.Windows == nil {
+			s.Windows = &specs.Windows{}
+		}
+		s.Windows.IgnoreFlushesDuringBoot = true
 		return nil
 	}
+}
+
+// WithWindowNetworksAllowUnqualifiedDNSQuery sets `Windows.IgnoreFlushesDuringBoot`.
+func WithWindowNetworksAllowUnqualifiedDNSQuery() SpecOpts {
+	return func(_ context.Context, _ Client, _ *containers.Container, s *Spec) error {
+		if s.Windows == nil {
+			s.Windows = &specs.Windows{}
+		}
+		if s.Windows.Network == nil {
+			s.Windows.Network = &specs.WindowsNetwork{}
+		}
+
+		s.Windows.Network.AllowUnqualifiedDNSQuery = true
+		return nil
+	}
+}
+
+func deviceFromPath(path, permissions string) (*specs.LinuxDevice, error) {
+	return nil, errors.New("device from path not supported on Windows")
 }

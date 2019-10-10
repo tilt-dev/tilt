@@ -11,7 +11,9 @@ import (
 	"runtime"
 	"strings"
 
+	configtypes "github.com/docker/cli/cli/config/types"
 	"github.com/docker/cli/cli/debug"
+	"github.com/docker/cli/cli/streams"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	registrytypes "github.com/docker/docker/api/types/registry"
@@ -26,16 +28,22 @@ func ElectAuthServer(ctx context.Context, cli Cli) string {
 	// used. This is essential in cross-platforms environment, where for
 	// example a Linux client might be interacting with a Windows daemon, hence
 	// the default registry URL might be Windows specific.
-	serverAddress := registry.IndexServer
-	if info, err := cli.Client().Info(ctx); err != nil && debug.IsEnabled() {
-		// Only report the warning if we're in debug mode to prevent nagging during engine initialization workflows
-		fmt.Fprintf(cli.Err(), "Warning: failed to get default registry endpoint from daemon (%v). Using system default: %s\n", err, serverAddress)
-	} else if info.IndexServerAddress == "" && debug.IsEnabled() {
-		fmt.Fprintf(cli.Err(), "Warning: Empty registry endpoint from daemon. Using system default: %s\n", serverAddress)
-	} else {
-		serverAddress = info.IndexServerAddress
+	info, err := cli.Client().Info(ctx)
+	if err != nil {
+		// Daemon is not responding so use system default.
+		if debug.IsEnabled() {
+			// Only report the warning if we're in debug mode to prevent nagging during engine initialization workflows
+			fmt.Fprintf(cli.Err(), "Warning: failed to get default registry endpoint from daemon (%v). Using system default: %s\n", err, registry.IndexServer)
+		}
+		return registry.IndexServer
 	}
-	return serverAddress
+	if info.IndexServerAddress == "" {
+		if debug.IsEnabled() {
+			fmt.Fprintf(cli.Err(), "Warning: Empty registry endpoint from daemon. Using system default: %s\n", registry.IndexServer)
+		}
+		return registry.IndexServer
+	}
+	return info.IndexServerAddress
 }
 
 // EncodeAuthToBase64 serializes the auth configuration as JSON base64 payload
@@ -76,7 +84,7 @@ func ResolveAuthConfig(ctx context.Context, cli Cli, index *registrytypes.IndexI
 	}
 
 	a, _ := cli.ConfigFile().GetAuthConfig(configKey)
-	return a
+	return types.AuthConfig(a)
 }
 
 // GetDefaultAuthConfig gets the default auth config given a serverAddress
@@ -85,23 +93,24 @@ func GetDefaultAuthConfig(cli Cli, checkCredStore bool, serverAddress string, is
 	if !isDefaultRegistry {
 		serverAddress = registry.ConvertToHostname(serverAddress)
 	}
-	var authconfig types.AuthConfig
+	var authconfig configtypes.AuthConfig
 	var err error
 	if checkCredStore {
 		authconfig, err = cli.ConfigFile().GetAuthConfig(serverAddress)
 	} else {
-		authconfig = types.AuthConfig{}
+		authconfig = configtypes.AuthConfig{}
 	}
 	authconfig.ServerAddress = serverAddress
 	authconfig.IdentityToken = ""
-	return &authconfig, err
+	res := types.AuthConfig(authconfig)
+	return &res, err
 }
 
 // ConfigureAuth handles prompting of user's username and password if needed
 func ConfigureAuth(cli Cli, flUser, flPassword string, authconfig *types.AuthConfig, isDefaultRegistry bool) error {
 	// On Windows, force the use of the regular OS stdin stream. Fixes #14336/#14210
 	if runtime.GOOS == "windows" {
-		cli.SetIn(NewInStream(os.Stdin))
+		cli.SetIn(streams.NewIn(os.Stdin))
 	}
 
 	// Some links documenting this:

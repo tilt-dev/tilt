@@ -91,7 +91,7 @@ func NewImageManifest(ref reference.Named, desc ocispec.Descriptor, manifest *sc
 	}
 }
 
-// SerializableNamed is a reference.Named that can be serialzied and deserialized
+// SerializableNamed is a reference.Named that can be serialized and deserialized
 // from JSON
 type SerializableNamed struct {
 	reference.Named

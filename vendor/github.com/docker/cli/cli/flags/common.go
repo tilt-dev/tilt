@@ -37,6 +37,7 @@ type CommonOptions struct {
 	TLS        bool
 	TLSVerify  bool
 	TLSOptions *tlsconfig.Options
+	Context    string
 }
 
 // NewCommonOptions returns a new CommonOptions
@@ -70,6 +71,8 @@ func (commonOpts *CommonOptions) InstallFlags(flags *pflag.FlagSet) {
 	// opts.ValidateHost is not used here, so as to allow connection helpers
 	hostOpt := opts.NewNamedListOptsRef("hosts", &commonOpts.Hosts, nil)
 	flags.VarP(hostOpt, "host", "H", "Daemon socket(s) to connect to")
+	flags.StringVarP(&commonOpts.Context, "context", "c", "",
+		`Name of the context to use to connect to the daemon (overrides DOCKER_HOST env var and default context set with "docker context use")`)
 }
 
 // SetDefaultOptions sets default values for options after flag parsing is

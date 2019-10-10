@@ -28,12 +28,12 @@ import (
 //
 // The resources specified in this object are used to create tasks from the container.
 type Container struct {
-	// ID uniquely identifies the container in a nameapace.
+	// ID uniquely identifies the container in a namespace.
 	//
 	// This property is required and cannot be changed after creation.
 	ID string
 
-	// Labels provide metadata extension for a contaienr.
+	// Labels provide metadata extension for a container.
 	//
 	// These are optional and fully mutable.
 	Labels map[string]string
@@ -49,7 +49,7 @@ type Container struct {
 	// This property is required and immutable.
 	Runtime RuntimeInfo
 
-	// Spec should carry the the runtime specification used to implement the
+	// Spec should carry the runtime specification used to implement the
 	// container.
 	//
 	// This field is required but mutable.
@@ -86,6 +86,10 @@ type RuntimeInfo struct {
 
 // Store interacts with the underlying container storage
 type Store interface {
+	// Get a container using the id.
+	//
+	// Container object is returned on success. If the id is not known to the
+	// store, an error will be returned.
 	Get(ctx context.Context, id string) (Container, error)
 
 	// List returns containers that match one or more of the provided filters.

@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -42,7 +43,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-const manifestSizeLimit = 8e6 // 8MB
+const (
+	manifestSizeLimit            = 8e6 // 8MB
+	labelDockerSchema1EmptyLayer = "containerd.io/docker.schema1.empty-layer"
+)
 
 type blobState struct {
 	diffID digest.Digest
@@ -212,15 +216,26 @@ func (c *Converter) Convert(ctx context.Context, opts ...ConvertOpt) (ocispec.De
 
 	ref := remotes.MakeRefKey(ctx, desc)
 	if err := content.WriteBlob(ctx, c.contentStore, ref, bytes.NewReader(mb), desc, content.WithLabels(labels)); err != nil {
-		return ocispec.Descriptor{}, errors.Wrap(err, "failed to write config")
+		return ocispec.Descriptor{}, errors.Wrap(err, "failed to write image manifest")
 	}
 
 	ref = remotes.MakeRefKey(ctx, config)
 	if err := content.WriteBlob(ctx, c.contentStore, ref, bytes.NewReader(b), config); err != nil {
-		return ocispec.Descriptor{}, errors.Wrap(err, "failed to write config")
+		return ocispec.Descriptor{}, errors.Wrap(err, "failed to write image config")
 	}
 
 	return desc, nil
+}
+
+// ReadStripSignature reads in a schema1 manifest and returns a byte array
+// with the "signatures" field stripped
+func ReadStripSignature(schema1Blob io.Reader) ([]byte, error) {
+	b, err := ioutil.ReadAll(io.LimitReader(schema1Blob, manifestSizeLimit)) // limit to 8MB
+	if err != nil {
+		return nil, err
+	}
+
+	return stripSignature(b)
 }
 
 func (c *Converter) fetchManifest(ctx context.Context, desc ocispec.Descriptor) error {
@@ -231,13 +246,8 @@ func (c *Converter) fetchManifest(ctx context.Context, desc ocispec.Descriptor) 
 		return err
 	}
 
-	b, err := ioutil.ReadAll(io.LimitReader(rc, manifestSizeLimit)) // limit to 8MB
+	b, err := ReadStripSignature(rc)
 	rc.Close()
-	if err != nil {
-		return err
-	}
-
-	b, err = stripSignature(b)
 	if err != nil {
 		return err
 	}
@@ -272,8 +282,14 @@ func (c *Converter) fetchBlob(ctx context.Context, desc ocispec.Descriptor) erro
 			return err
 		}
 
-		// TODO: Check if blob -> diff id mapping already exists
-		// TODO: Check if blob empty label exists
+		reuse, err := c.reuseLabelBlobState(ctx, desc)
+		if err != nil {
+			return err
+		}
+
+		if reuse {
+			return nil
+		}
 
 		ra, err := c.contentStore.ReaderAt(ctx, desc)
 		if err != nil {
@@ -343,12 +359,69 @@ func (c *Converter) fetchBlob(ctx context.Context, desc ocispec.Descriptor) erro
 
 	state := calc.State()
 
+	cinfo := content.Info{
+		Digest: desc.Digest,
+		Labels: map[string]string{
+			"containerd.io/uncompressed": state.diffID.String(),
+			labelDockerSchema1EmptyLayer: strconv.FormatBool(state.empty),
+		},
+	}
+
+	if _, err := c.contentStore.Update(ctx, cinfo, "labels.containerd.io/uncompressed", fmt.Sprintf("labels.%s", labelDockerSchema1EmptyLayer)); err != nil {
+		return errors.Wrap(err, "failed to update uncompressed label")
+	}
+
 	c.mu.Lock()
 	c.blobMap[desc.Digest] = state
 	c.layerBlobs[state.diffID] = desc
 	c.mu.Unlock()
 
 	return nil
+}
+
+func (c *Converter) reuseLabelBlobState(ctx context.Context, desc ocispec.Descriptor) (bool, error) {
+	cinfo, err := c.contentStore.Info(ctx, desc.Digest)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to get blob info")
+	}
+	desc.Size = cinfo.Size
+
+	diffID, ok := cinfo.Labels["containerd.io/uncompressed"]
+	if !ok {
+		return false, nil
+	}
+
+	emptyVal, ok := cinfo.Labels[labelDockerSchema1EmptyLayer]
+	if !ok {
+		return false, nil
+	}
+
+	isEmpty, err := strconv.ParseBool(emptyVal)
+	if err != nil {
+		log.G(ctx).WithField("id", desc.Digest).Warnf("failed to parse bool from label %s: %v", labelDockerSchema1EmptyLayer, isEmpty)
+		return false, nil
+	}
+
+	bState := blobState{empty: isEmpty}
+
+	if bState.diffID, err = digest.Parse(diffID); err != nil {
+		log.G(ctx).WithField("id", desc.Digest).Warnf("failed to parse digest from label containerd.io/uncompressed: %v", diffID)
+		return false, nil
+	}
+
+	// NOTE: there is no need to read header to get compression method
+	// because there are only two kinds of methods.
+	if bState.diffID == desc.Digest {
+		desc.MediaType = images.MediaTypeDockerSchema2Layer
+	} else {
+		desc.MediaType = images.MediaTypeDockerSchema2LayerGzip
+	}
+
+	c.mu.Lock()
+	c.blobMap[desc.Digest] = bState
+	c.layerBlobs[bState.diffID] = desc
+	c.mu.Unlock()
+	return true, nil
 }
 
 func (c *Converter) schema1ManifestHistory() ([]ocispec.History, []digest.Digest, error) {
