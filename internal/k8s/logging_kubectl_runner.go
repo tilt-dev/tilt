@@ -40,6 +40,12 @@ func (k loggingKubectlRunner) adjustedVerbosity(argv []string) []string {
 		// don't add -v0 so that in the normal case we're not doing anything surprising
 		return argv
 	}
+
+	// TODO(nick): this is currently broken
+	if true {
+		return argv
+	}
+
 	// We're not gonna worry about the case where the input args already have a -v.
 	// Empirically, kubectl's behavior is to use the last -v arg it receives, so some call that specifies its own
 	//   -v would get its -v, and not whatever the user specified on the command line.
