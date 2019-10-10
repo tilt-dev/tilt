@@ -28,6 +28,7 @@ import (
 	"github.com/moby/buildkit/session/auth/authprovider"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tilt/internal/sliceutils"
 
 	"github.com/windmilleng/tilt/internal/container"

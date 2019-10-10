@@ -6,6 +6,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
+
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/minikube"
 
