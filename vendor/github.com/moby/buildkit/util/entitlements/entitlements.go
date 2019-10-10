@@ -1,19 +1,26 @@
 package entitlements
 
-import (
-	"github.com/pkg/errors"
-)
+import "github.com/pkg/errors"
 
 type Entitlement string
 
 const (
-	EntitlementSecurityInsecure Entitlement = "security.insecure"
-	EntitlementNetworkHost      Entitlement = "network.host"
+	EntitlementSecurityConfined   Entitlement = "security.confined"
+	EntitlementSecurityUnconfined Entitlement = "security.unconfined" // unimplemented
+	EntitlementNetworkHost        Entitlement = "network.host"
+	EntitlementNetworkNone        Entitlement = "network.none"
 )
 
 var all = map[Entitlement]struct{}{
-	EntitlementSecurityInsecure: {},
-	EntitlementNetworkHost:      {},
+	EntitlementSecurityConfined:   {},
+	EntitlementSecurityUnconfined: {},
+	EntitlementNetworkHost:        {},
+	EntitlementNetworkNone:        {},
+}
+
+var defaults = map[Entitlement]struct{}{
+	EntitlementSecurityConfined: {},
+	EntitlementNetworkNone:      {},
 }
 
 func Parse(s string) (Entitlement, error) {
@@ -49,6 +56,9 @@ func WhiteList(allowed, supported []Entitlement) (Set, error) {
 		m[e] = struct{}{}
 	}
 
+	for e := range defaults {
+		m[e] = struct{}{}
+	}
 	return Set(m), nil
 }
 

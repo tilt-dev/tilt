@@ -1394,8 +1394,7 @@
   revision = "1d60e4601c6fd243af51cc01ddf169918a5407ca"
 
 [[projects]]
-  branch = "master"
-  digest = "1:79323c144c05a360edf0e1a6b09baab2869c2a505416f9388197466eca57fe17"
+  digest = "1:472c0e63d8616370d491527328221a335377c085ef2891305f224e84af80354b"
   name = "golang.org/x/sys"
   packages = [
     "unix",
@@ -1403,7 +1402,7 @@
     "windows/registry",
   ]
   pruneopts = "UT"
-  revision = "b09406accb4736d857a32bf9444cd7edae2ffa79"
+  revision = "0c1ff786ef13daa914a3351c5e6b0321aed5960e"
 
 [[projects]]
   digest = "1:28756bf526c1af662d24519f2fa7abca7237bebb06e3e02941b2b6e5b6ceb7b9"

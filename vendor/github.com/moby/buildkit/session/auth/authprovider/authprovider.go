@@ -2,8 +2,7 @@ package authprovider
 
 import (
 	"context"
-	"io"
-	"sync"
+	"io/ioutil"
 
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
@@ -12,20 +11,14 @@ import (
 	"google.golang.org/grpc"
 )
 
-func NewDockerAuthProvider(stderr io.Writer) session.Attachable {
+func NewDockerAuthProvider() session.Attachable {
 	return &authProvider{
-		config: config.LoadDefaultConfigFile(stderr),
+		config: config.LoadDefaultConfigFile(ioutil.Discard),
 	}
 }
 
 type authProvider struct {
 	config *configfile.ConfigFile
-
-	// The need for this mutex is not well understood.
-	// Without it, the docker cli on OS X hangs when
-	// reading credentials from docker-credential-osxkeychain.
-	// See issue https://github.com/docker/cli/issues/1862
-	mu sync.Mutex
 }
 
 func (ap *authProvider) Register(server *grpc.Server) {
@@ -33,8 +26,6 @@ func (ap *authProvider) Register(server *grpc.Server) {
 }
 
 func (ap *authProvider) Credentials(ctx context.Context, req *auth.CredentialsRequest) (*auth.CredentialsResponse, error) {
-	ap.mu.Lock()
-	defer ap.mu.Unlock()
 	if req.Host == "registry-1.docker.io" {
 		req.Host = "https://index.docker.io/v1/"
 	}
