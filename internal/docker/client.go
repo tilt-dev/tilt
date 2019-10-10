@@ -255,19 +255,12 @@ func CreateClientOpts(ctx context.Context, env Env) ([]client.Opt, error) {
 	if env.APIVersion != "" {
 		result = append(result, client.WithVersion(env.APIVersion))
 	} else {
-		// NegotateAPIVersion makes the docker client negotiate down to a lower version
-		// if 'defaultVersion' is newer than the server version.
-		result = append(result, client.WithVersion(defaultVersion), NegotiateAPIVersion(ctx))
+		// WithAPIVersionNegotiation makes the Docker client negotiate down to a lower
+		// version if Docker's current API version is newer than the server version.
+		result = append(result, client.WithAPIVersionNegotiation())
 	}
 
 	return result, nil
-}
-
-func NegotiateAPIVersion(ctx context.Context) func(client *client.Client) error {
-	return func(client *client.Client) error {
-		client.NegotiateAPIVersion(ctx)
-		return nil
-	}
 }
 
 type dockerCreds struct {
