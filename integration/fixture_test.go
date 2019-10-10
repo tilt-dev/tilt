@@ -135,7 +135,7 @@ func (f *fixture) TiltUpCmd(name string) *exec.Cmd {
 	if name != "" {
 		args = append(args, name)
 	}
-	args = append(args, "--watch=false", "--debug", "--hud=false", "--port=0")
+	args = append(args, "--watch=false", "--debug", "--hud=false", "--port=0", "--klog=1")
 	return f.tiltCmd(args, os.Stdout)
 }
 
@@ -163,12 +163,12 @@ func (f *fixture) runInBackground(cmd *exec.Cmd) {
 }
 
 func (f *fixture) TiltWatch() {
-	cmd := f.tiltCmd([]string{"up", "--debug", "--hud=false", "--port=0"}, os.Stdout)
+	cmd := f.tiltCmd([]string{"up", "--debug", "--hud=false", "--port=0", "--klog=1"}, os.Stdout)
 	f.runInBackground(cmd)
 }
 
 func (f *fixture) TiltWatchExec() {
-	cmd := f.tiltCmd([]string{"up", "--debug", "--hud=false", "--port=0", "--update-mode", "exec"}, os.Stdout)
+	cmd := f.tiltCmd([]string{"up", "--debug", "--hud=false", "--port=0", "--klog=1", "--update-mode", "exec"}, os.Stdout)
 	f.runInBackground(cmd)
 }
 
