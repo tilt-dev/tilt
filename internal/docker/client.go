@@ -38,13 +38,13 @@ import (
 
 // Label that we attach to all of the images we build.
 const (
-	BuiltBy = "builtby"
-	Tilt    = "tilt"
+	BuiltByLabel = "builtby"
+	BuiltByValue = "tilt"
 )
 
 var (
-	BuiltByTiltLabel    = map[string]string{BuiltBy: Tilt}
-	BuiltByTiltLabelStr = fmt.Sprintf("%s=%s", BuiltBy, Tilt)
+	BuiltByTiltLabel    = map[string]string{BuiltByLabel: BuiltByValue}
+	BuiltByTiltLabelStr = fmt.Sprintf("%s=%s", BuiltByLabel, BuiltByValue)
 )
 
 // Version info
@@ -529,11 +529,9 @@ func (c *Cli) Prune(ctx context.Context, age time.Duration) error {
 	l := logger.Get(ctx)
 	if err := c.Client.NewVersionError("1.30", "image | container prune with filter: label"); err != nil {
 		l.Debugf("[Docker Prune] skipping Docker prune, Docker API version too low:\t%v", err)
-		fmt.Printf("[Docker Prune] skipping Docker prune, Docker API version too low:\t%v", err)
 		return nil
 	}
 
-	// TODO: if API Version < 1.30, return error(not supported) -- doesn't support `label` filter
 	f := filters.NewArgs(
 		filters.Arg("label", BuiltByTiltLabelStr),
 		filters.Arg("until", age.String()),
@@ -550,7 +548,6 @@ func (c *Cli) Prune(ctx context.Context, age time.Duration) error {
 			return err
 		}
 		l.Debugf("[Docker Prune] skipping build cache prune, Docker API version too low:\t%s", err)
-		fmt.Printf("[Docker Prune] skipping build cache prune, Docker API version too low:\t%s", err)
 	} else {
 		prettyPrintCachePruneReport(cacheReport, l)
 	}
