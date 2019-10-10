@@ -306,7 +306,6 @@ func (c *Cli) initCreds(ctx context.Context) dockerCreds {
 					return c.Client.DialHijack(ctx, "/session", proto, meta)
 				}
 				_ = session.Run(ctx, dialSession)
-				_ = session.Run(ctx, dialSession)
 			}()
 			creds.sessionID = session.ID()
 		}
