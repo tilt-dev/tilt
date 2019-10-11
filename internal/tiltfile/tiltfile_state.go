@@ -88,8 +88,8 @@ type tiltfileState struct {
 	teamName string
 
 	dockerPruneDisabled  bool
-	dockerPruneNumBuilds int
 	dockerPruneMaxAge    time.Duration
+	dockerPruneNumBuilds int
 	dockerPruneInterval  time.Duration
 
 	logger   logger.Logger
@@ -1240,19 +1240,25 @@ func (s *tiltfileState) dockerPruneSettings(thread *starlark.Thread, fn *starlar
 	var intervalHrs, numBuilds, maxAgeMins int
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"disable?", &disable,
-		"interval_hrs?", &intervalHrs,
+		"max_age_mins?", &maxAgeMins,
 		"num_builds?", &numBuilds,
-		"max_age_mins?", &maxAgeMins); err != nil {
+		"interval_hrs?", &intervalHrs); err != nil {
 		return nil, err
 	}
 
 	if disable && (intervalHrs != 0 || numBuilds != 0 || maxAgeMins != 0) {
 		return nil, fmt.Errorf("can't disable Docker Prune (`disabled=True`) and pass additional settings")
 	}
+
+	if numBuilds != 0 && intervalHrs != 0 {
+		return nil, fmt.Errorf("can't specify both 'prune every X builds' and 'prune every Y hours'; please pass " +
+			"only one of `num_builds` and `interval_hrs`")
+	}
+
 	s.dockerPruneDisabled = disable
-	s.dockerPruneInterval = time.Duration(intervalHrs) * time.Hour
-	s.dockerPruneNumBuilds = numBuilds
 	s.dockerPruneMaxAge = time.Duration(maxAgeMins) * time.Minute
+	s.dockerPruneNumBuilds = numBuilds
+	s.dockerPruneInterval = time.Duration(intervalHrs) * time.Hour
 
 	return starlark.None, nil
 }

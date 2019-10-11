@@ -3848,15 +3848,14 @@ func TestDockerPruneSettings(t *testing.T) {
 	defer f.TearDown()
 
 	f.file("Tiltfile", `
-docker_prune_settings(interval_hrs=1, num_builds=2, max_age_mins=3)
+docker_prune_settings(max_age_mins=111, num_builds=222)
 `)
 
 	f.load()
 	res := f.loadResult.DockerPruneSettings
 
-	assert.Equal(t, time.Hour, res.Interval)
-	assert.Equal(t, 2, res.NumBuilds)
-	assert.Equal(t, time.Minute*3, res.MaxAge)
+	assert.Equal(t, time.Minute*111, res.MaxAge)
+	assert.Equal(t, 222, res.NumBuilds)
 }
 
 func TestDockerPruneSettingsDisablePlusOtherArgs(t *testing.T) {
@@ -3868,6 +3867,17 @@ docker_prune_settings(disable=True, interval_hrs=123)
 `)
 
 	f.loadErrString("can't disable Docker Prune (`disabled=True`) and pass additional settings")
+}
+
+func TestDockerPruneSettingsCantSetNumBuildsAndInterval(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+docker_prune_settings(num_builds=123, interval_hrs=456)
+`)
+
+	f.loadErrString("please pass only one of `num_builds` and `interval_hrs`")
 }
 
 type fixture struct {

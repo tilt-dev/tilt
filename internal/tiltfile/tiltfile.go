@@ -156,9 +156,9 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	tlr.TeamName = s.teamName
 	tlr.DockerPruneSettings = model.DockerPruneSettings{
 		Disabled:  s.dockerPruneDisabled,
-		Interval:  s.dockerPruneInterval,
 		MaxAge:    s.dockerPruneMaxAge,
 		NumBuilds: s.dockerPruneNumBuilds,
+		Interval:  s.dockerPruneInterval,
 	}
 
 	printWarnings(s)
