@@ -19,6 +19,7 @@ import (
 	cliflags "github.com/docker/cli/cli/flags"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/registry"
 	"github.com/docker/go-connections/tlsconfig"
@@ -31,6 +32,17 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
+)
+
+// Label that we attach to all of the images we build.
+const (
+	BuiltByLabel = "builtby"
+	BuiltByValue = "tilt"
+)
+
+var (
+	BuiltByTiltLabel    = map[string]string{BuiltByLabel: BuiltByValue}
+	BuiltByTiltLabelStr = fmt.Sprintf("%s=%s", BuiltByLabel, BuiltByValue)
 )
 
 // Version info
@@ -89,6 +101,11 @@ type Client interface {
 	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
 	ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error)
 	ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error)
+
+	NewVersionError(APIrequired, feature string) error
+	BuildCachePrune(ctx context.Context, opts types.BuildCachePruneOptions) (*types.BuildCachePruneReport, error)
+	ContainersPrune(ctx context.Context, pruneFilters filters.Args) (types.ContainersPruneReport, error)
+	ImagesPrune(ctx context.Context, pruneFilters filters.Args) (types.ImagesPruneReport, error)
 }
 
 type ExitError struct {
@@ -418,9 +435,10 @@ func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options Bu
 	opts.Context = options.Context
 	opts.BuildArgs = options.BuildArgs
 	opts.Dockerfile = options.Dockerfile
-	opts.Labels = options.Labels
 	opts.Tags = options.Tags
 	opts.Target = options.Target
+
+	opts.Labels = BuiltByTiltLabel // label all images as built by us
 
 	return c.Client.ImageBuild(ctx, buildContext, opts)
 }

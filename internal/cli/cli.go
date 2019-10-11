@@ -51,6 +51,7 @@ func Execute() {
 	addCommand(rootCmd, &downCmd{}, a)
 	addCommand(rootCmd, &demoCmd{}, a)
 	addCommand(rootCmd, &versionCmd{}, a)
+	addCommand(rootCmd, &dockerPruneCmd{}, a)
 	rootCmd.AddCommand(newKubectlCmd())
 
 	if len(os.Args) > 2 && os.Args[1] == "kubectl" {

@@ -13,6 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/tools/clientcmd/api"
 
+	"github.com/windmilleng/tilt/internal/engine/dockerprune"
+
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/cloud"
@@ -85,6 +87,8 @@ var BaseWireSet = wire.NewSet(
 	provideLogActions,
 	store.NewStore,
 	wire.Bind(new(store.RStore), new(store.Store)),
+
+	dockerprune.NewDockerPruner,
 
 	provideTiltInfo,
 	engine.ProvideSubscribers,

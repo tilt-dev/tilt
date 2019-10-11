@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/filters"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -66,6 +67,18 @@ func (c explodingClient) ImageList(ctx context.Context, options types.ImageListO
 }
 func (c explodingClient) ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error) {
 	return nil, c.err
+}
+func (c explodingClient) NewVersionError(APIrequired, feature string) error {
+	return c.err
+}
+func (c explodingClient) BuildCachePrune(ctx context.Context, opts types.BuildCachePruneOptions) (*types.BuildCachePruneReport, error) {
+	return nil, c.err
+}
+func (c explodingClient) ContainersPrune(ctx context.Context, pruneFilters filters.Args) (types.ContainersPruneReport, error) {
+	return types.ContainersPruneReport{}, c.err
+}
+func (c explodingClient) ImagesPrune(ctx context.Context, pruneFilters filters.Args) (types.ImagesPruneReport, error) {
+	return types.ImagesPruneReport{}, c.err
 }
 
 var _ Client = &explodingClient{}

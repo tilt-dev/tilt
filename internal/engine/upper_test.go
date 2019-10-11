@@ -25,6 +25,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/windmilleng/tilt/internal/engine/dockerprune"
+
 	"github.com/windmilleng/tilt/internal/cloud"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/containerupdate"
@@ -2929,12 +2931,15 @@ func newTestFixture(t *testing.T) *testFixture {
 		tiltVersionCheckDelay: versionCheckInterval,
 	}
 
+	dp := dockerprune.NewDockerPruner(dockerClient)
+	dp.DisableForTesting()
+
 	tiltVersionCheckTimerMaker := func(d time.Duration) <-chan time.Time {
 		return time.After(ret.tiltVersionCheckDelay)
 	}
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
 
-	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, tvc, tas, ewm, tcum)
+	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, tvc, tas, ewm, tcum, dp)
 	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {

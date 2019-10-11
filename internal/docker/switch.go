@@ -7,6 +7,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/filters"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -85,6 +86,18 @@ func (c *switchCli) ImageList(ctx context.Context, options types.ImageListOption
 }
 func (c *switchCli) ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error) {
 	return c.client().ImageRemove(ctx, imageID, options)
+}
+func (c *switchCli) NewVersionError(APIrequired, feature string) error {
+	return c.client().NewVersionError(APIrequired, feature)
+}
+func (c *switchCli) BuildCachePrune(ctx context.Context, opts types.BuildCachePruneOptions) (*types.BuildCachePruneReport, error) {
+	return c.client().BuildCachePrune(ctx, opts)
+}
+func (c *switchCli) ContainersPrune(ctx context.Context, pruneFilters filters.Args) (types.ContainersPruneReport, error) {
+	return c.client().ContainersPrune(ctx, pruneFilters)
+}
+func (c *switchCli) ImagesPrune(ctx context.Context, pruneFilters filters.Args) (types.ImagesPruneReport, error) {
+	return c.client().ImagesPrune(ctx, pruneFilters)
 }
 
 var _ Client = &switchCli{}
