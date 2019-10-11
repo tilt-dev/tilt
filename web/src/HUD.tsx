@@ -299,14 +299,10 @@ class HUD extends Component<HudProps, HudState> {
             podID={podID}
             podStatus={podStatus}
           />
-          <LogPane
-            log={logs}
-            isExpanded={isSidebarClosed}
-          />
+          <LogPane log={logs} isExpanded={isSidebarClosed} />
         </>
       )
     }
-
 
     let combinedLog = ""
     if (view) {
@@ -432,10 +428,7 @@ class HUD extends Component<HudProps, HudState> {
             exact
             path={this.path("/")}
             render={() => (
-              <LogPane
-                log={combinedLog}
-                isExpanded={isSidebarClosed}
-              />
+              <LogPane log={combinedLog} isExpanded={isSidebarClosed} />
             )}
           />
           <Route

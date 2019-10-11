@@ -1,4 +1,4 @@
-import React, {PureComponent} from "react"
+import React, { PureComponent } from "react"
 
 type ResourceInfoProps = {
   podID: string
@@ -37,11 +37,12 @@ class ResourceInfo extends PureComponent<ResourceInfoProps> {
       </div>
     )
 
-    if (endpoints || podID) return (
-      <section className="resourceBar">
-        {podIDEl}
-        {endpointsEl}
-      </section>
+    if (endpoints || podID)
+      return (
+        <section className="resourceBar">
+          {podIDEl}
+          {endpointsEl}
+        </section>
       )
   }
 }

@@ -171,11 +171,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       </p>
     )
 
-    return (
-      <section className={classes}>
-        {logLines}
-      </section>
-    )
+    return <section className={classes}>{logLines}</section>
   }
 }
 
