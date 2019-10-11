@@ -19,21 +19,21 @@ var (
 	cachesPruned     = []string{"cacheA", "cacheB", "cacheC"}
 	containersPruned = []string{"containerA", "containerB", "containerC"}
 	imagesPruned     = []string{"imageA", "imageB", "imageC"}
-	until            = 11 * time.Hour
+	maxAge           = 11 * time.Hour
 )
 
 func TestDockerPruneFilters(t *testing.T) {
 	f := newFixture().withPruneOutput(cachesPruned, containersPruned, imagesPruned)
-	err := f.dp.prune(f.ctx, until)
+	err := f.dp.prune(f.ctx, maxAge)
 	require.NoError(t, err)
 
 	expectedFilters := filters.NewArgs(
 		filters.Arg("label", docker.BuiltByTiltLabelStr),
-		filters.Arg("until", until.String()),
+		filters.Arg("until", maxAge.String()),
 	)
 	expectedImageFilters := filters.NewArgs(
 		filters.Arg("label", docker.BuiltByTiltLabelStr),
-		filters.Arg("until", until.String()),
+		filters.Arg("until", maxAge.String()),
 		filters.Arg("dangling", "0"),
 	)
 
@@ -44,7 +44,7 @@ func TestDockerPruneFilters(t *testing.T) {
 
 func TestDockerPruneOutput(t *testing.T) {
 	f := newFixture().withPruneOutput(cachesPruned, containersPruned, imagesPruned)
-	err := f.dp.prune(f.ctx, until)
+	err := f.dp.prune(f.ctx, maxAge)
 	require.NoError(t, err)
 
 	logs := f.logs.String()
@@ -59,7 +59,7 @@ func TestDockerPruneOutput(t *testing.T) {
 func TestDockerPruneVersionTooLow(t *testing.T) {
 	f := newFixture()
 	f.dCli.ThrowNewVersionError = true
-	err := f.dp.prune(f.ctx, until)
+	err := f.dp.prune(f.ctx, maxAge)
 	require.NoError(t, err) // should log failure but not throw error
 
 	logs := f.logs.String()
@@ -74,7 +74,7 @@ func TestDockerPruneVersionTooLow(t *testing.T) {
 func TestDockerPruneSkipCachePruneIfVersionTooLow(t *testing.T) {
 	f := newFixture()
 	f.dCli.BuildCachePruneErr = f.dCli.VersionError("1.2.3", "build prune")
-	err := f.dp.prune(f.ctx, until)
+	err := f.dp.prune(f.ctx, maxAge)
 	require.NoError(t, err) // should log failure but not throw error
 
 	logs := f.logs.String()
@@ -88,7 +88,7 @@ func TestDockerPruneSkipCachePruneIfVersionTooLow(t *testing.T) {
 func TestDockerPruneReturnsCachePruneError(t *testing.T) {
 	f := newFixture()
 	f.dCli.BuildCachePruneErr = fmt.Errorf("this is a real error, NOT an API version error")
-	err := f.dp.prune(f.ctx, until) // For all errors besides API version error, expect them to return
+	err := f.dp.prune(f.ctx, maxAge) // For all errors besides API version error, expect them to return
 	require.NotNil(t, err)
 	assert.Contains(t, err.Error(), "this is a real error")
 

@@ -20,7 +20,7 @@ const dockerPruneInterval = time.Hour
 
 // Prune Docker objects older than this
 // TODO: configurable from Tiltfile for special cases
-const dockerUntilInterval = time.Hour * 6
+const defaultMaxAge = time.Hour * 6
 
 type DockerPruner struct {
 	dCli docker.Client
@@ -65,7 +65,7 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 		go func() {
 			select {
 			case <-time.After(time.Minute * 2):
-				dp.Prune(ctx, dockerUntilInterval) // report once pretty soon after startup...
+				dp.Prune(ctx, defaultMaxAge) // report once pretty soon after startup...
 			case <-ctx.Done():
 				return
 			}
@@ -74,7 +74,7 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 				select {
 				case <-time.After(dockerPruneInterval):
 					// and once every <interval> thereafter
-					dp.Prune(ctx, dockerUntilInterval)
+					dp.Prune(ctx, defaultMaxAge)
 				case <-ctx.Done():
 					return
 				}
@@ -83,16 +83,16 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 	}
 }
 
-func (dp *DockerPruner) Prune(ctx context.Context, until time.Duration) {
+func (dp *DockerPruner) Prune(ctx context.Context, maxAge time.Duration) {
 	// For future: dispatch event with output/errors to be recorded
 	//   in engineState.TiltSystemState on store (analogous to TiltfileState)
-	err := dp.prune(ctx, until)
+	err := dp.prune(ctx, maxAge)
 	if err != nil {
 		logger.Get(ctx).Infof("[Docker Prune] error running docker prune: %v", err)
 	}
 }
 
-func (dp *DockerPruner) prune(ctx context.Context, untilInterval time.Duration) error {
+func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration) error {
 	l := logger.Get(ctx)
 	if err := dp.sufficientVersionError(); err != nil {
 		l.Debugf("[Docker Prune] skipping Docker prune, Docker API version too low:\t%v", err)
@@ -101,7 +101,7 @@ func (dp *DockerPruner) prune(ctx context.Context, untilInterval time.Duration) 
 
 	f := filters.NewArgs(
 		filters.Arg("label", docker.BuiltByTiltLabelStr),
-		filters.Arg("until", untilInterval.String()),
+		filters.Arg("until", maxAge.String()),
 	)
 
 	opts := types.BuildCachePruneOptions{
