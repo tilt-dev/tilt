@@ -15,7 +15,7 @@ import (
 )
 
 // How often to prune Docker images while Tilt is running
-const dockerPruneInterval = time.Hour * 12
+const dockerPruneInterval = time.Hour
 
 // Prune Docker objects older than this
 // TODO: configurable from Tiltfile for special cases
@@ -47,10 +47,16 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 		return
 	}
 
-	// TODO: if API Version < 1.30, return error(not supported)
-
 	state := st.RLockState()
 	defer st.RUnlockState()
+
+	if state.DockerPruneSettings.Disabled {
+		return
+	}
+
+	if err := dp.sufficientVersionError(); err != nil {
+		return
+	}
 
 	// wait until state has been kinda initialized, and there's at least one Docker build
 	if !state.TiltStartTime.IsZero() && state.LastTiltfileError() == nil && state.HasDockerBuild() {
@@ -87,7 +93,7 @@ func (dp *DockerPruner) Prune(ctx context.Context, until time.Duration) {
 
 func (dp *DockerPruner) prune(ctx context.Context, untilInterval time.Duration) error {
 	l := logger.Get(ctx)
-	if err := dp.dCli.NewVersionError("1.30", "image | container prune with filter: label"); err != nil {
+	if err := dp.sufficientVersionError(); err != nil {
 		l.Debugf("[Docker Prune] skipping Docker prune, Docker API version too low:\t%v", err)
 		return nil
 	}
@@ -126,6 +132,10 @@ func (dp *DockerPruner) prune(ctx context.Context, untilInterval time.Duration) 
 	prettyPrintImagesPruneReport(imgReport, l)
 
 	return nil
+}
+
+func (dp *DockerPruner) sufficientVersionError() error {
+	return dp.dCli.NewVersionError("1.30", "image | container prune with filter: label")
 }
 
 func prettyPrintCachePruneReport(report *types.BuildCachePruneReport, l logger.Logger) {
