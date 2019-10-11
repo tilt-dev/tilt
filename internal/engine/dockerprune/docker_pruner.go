@@ -1,4 +1,4 @@
-package engine
+package dockerprune
 
 import (
 	"context"
@@ -81,7 +81,7 @@ func (dp *DockerPruner) Prune(ctx context.Context, until time.Duration) {
 	//   in engineState.TiltSystemState on store (analogous to TiltfileState)
 	err := dp.prune(ctx, until)
 	if err != nil {
-		logger.Get(ctx).Infof("[Docker prune] error running docker prune: %v", err)
+		logger.Get(ctx).Infof("[Docker Prune] error running docker prune: %v", err)
 	}
 }
 

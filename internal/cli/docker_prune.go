@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/engine"
+	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 	"github.com/windmilleng/tilt/pkg/logger"
 )
 
@@ -39,7 +39,7 @@ func (c *dockerPruneCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	dp := engine.NewDockerPruner(dCli)
+	dp := dockerprune.NewDockerPruner(dCli)
 
 	until, err := time.ParseDuration(c.untilStr)
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"github.com/windmilleng/tilt/internal/cloud"
 	"github.com/windmilleng/tilt/internal/containerupdate"
 	"github.com/windmilleng/tilt/internal/engine/configs"
+	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
@@ -30,7 +31,7 @@ func ProvideSubscribers(
 	ta *TiltAnalyticsSubscriber,
 	ewm *k8swatch.EventWatchManager,
 	tcum *cloud.CloudUsernameManager,
-	dp *DockerPruner) []store.Subscriber {
+	dp *dockerprune.DockerPruner) []store.Subscriber {
 	return []store.Subscriber{
 		hud,
 		pw,
