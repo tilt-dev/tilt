@@ -20,6 +20,7 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/tiltfile/include"
+	"github.com/windmilleng/tilt/internal/tiltfile/os"
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -151,7 +152,7 @@ func (s *tiltfileState) print(_ *starlark.Thread, msg string) {
 func (s *tiltfileState) loadManifests(absFilename string, matching map[string]bool) ([]model.Manifest, error) {
 	s.logger.Infof("Beginning Tiltfile execution")
 
-	err := starkit.ExecFile(absFilename, s, include.IncludeFn{})
+	err := starkit.ExecFile(absFilename, s, include.IncludeFn{}, os.NewExtension())
 	if err != nil {
 		if err, ok := err.(*starlark.EvalError); ok {
 			return nil, errors.New(err.Backtrace())
@@ -386,56 +387,211 @@ func (s *tiltfileState) unpackArgs(fnname string, args starlark.Tuple, kwargs []
 }
 
 // TODO(nick): Split these into separate extensions
-func (s *tiltfileState) OnStart(e *starkit.Environment) {
+func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 	e.SetArgUnpacker(s.unpackArgs)
 	e.SetPrint(s.print)
 
-	e.AddBuiltin(localN, s.potentiallyK8sUnsafeBuiltin(s.local))
-	e.AddBuiltin(readFileN, s.skylarkReadFile)
-	e.AddBuiltin(watchFileN, s.watchFile)
+	err := e.AddBuiltin(localN, s.potentiallyK8sUnsafeBuiltin(s.local))
+	if err != nil {
+		return err
+	}
 
-	e.AddBuiltin(dockerBuildN, s.dockerBuild)
-	e.AddBuiltin(fastBuildN, s.fastBuild)
-	e.AddBuiltin(customBuildN, s.customBuild)
-	e.AddBuiltin(defaultRegistryN, s.defaultRegistry)
-	e.AddBuiltin(dockerComposeN, s.dockerCompose)
-	e.AddBuiltin(dcResourceN, s.dcResource)
-	e.AddBuiltin(k8sResourceAssemblyVersionN, s.k8sResourceAssemblyVersionFn)
-	e.AddBuiltin(k8sYamlN, s.k8sYaml)
-	e.AddBuiltin(filterYamlN, s.filterYaml)
-	e.AddBuiltin(k8sResourceN, s.k8sResource)
-	e.AddBuiltin(localResourceN, s.localResource)
-	e.AddBuiltin(portForwardN, s.portForward)
-	e.AddBuiltin(k8sKindN, s.k8sKind)
-	e.AddBuiltin(k8sImageJSONPathN, s.k8sImageJsonPath)
-	e.AddBuiltin(workloadToResourceFunctionN, s.workloadToResourceFunctionFn)
-	e.AddBuiltin(k8sContextN, s.k8sContext)
-	e.AddBuiltin(allowK8SContexts, s.allowK8SContexts)
-	e.AddBuiltin(localGitRepoN, s.localGitRepo)
-	e.AddBuiltin(kustomizeN, s.kustomize)
-	e.AddBuiltin(helmN, s.helm)
-	e.AddBuiltin(failN, s.fail)
-	e.AddBuiltin(blobN, s.blob)
-	e.AddBuiltin(listdirN, s.listdir)
-	e.AddBuiltin(decodeJSONN, s.decodeJSON)
-	e.AddBuiltin(readJSONN, s.readJson)
-	e.AddBuiltin(readYAMLN, s.readYaml)
+	err = e.AddBuiltin(readFileN, s.skylarkReadFile)
+	if err != nil {
+		return err
+	}
 
-	e.AddBuiltin(triggerModeN, s.triggerModeFn)
-	e.AddValue(triggerModeAutoN, TriggerModeAuto)
-	e.AddValue(triggerModeManualN, TriggerModeManual)
+	err = e.AddBuiltin(watchFileN, s.watchFile)
+	if err != nil {
+		return err
+	}
 
-	e.AddBuiltin(fallBackOnN, s.liveUpdateFallBackOn)
-	e.AddBuiltin(syncN, s.liveUpdateSync)
-	e.AddBuiltin(runN, s.liveUpdateRun)
-	e.AddBuiltin(restartContainerN, s.liveUpdateRestartContainer)
+	err = e.AddBuiltin(dockerBuildN, s.dockerBuild)
+	if err != nil {
+		return err
+	}
 
-	e.AddBuiltin(enableFeatureN, s.enableFeature)
-	e.AddBuiltin(disableFeatureN, s.disableFeature)
+	err = e.AddBuiltin(fastBuildN, s.fastBuild)
+	if err != nil {
+		return err
+	}
 
-	e.AddBuiltin(disableSnapshotsN, s.disableSnapshots)
+	err = e.AddBuiltin(customBuildN, s.customBuild)
+	if err != nil {
+		return err
+	}
 
-	e.AddBuiltin(setTeamN, s.setTeam)
+	err = e.AddBuiltin(defaultRegistryN, s.defaultRegistry)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(dockerComposeN, s.dockerCompose)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(dcResourceN, s.dcResource)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(k8sResourceAssemblyVersionN, s.k8sResourceAssemblyVersionFn)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(k8sYamlN, s.k8sYaml)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(filterYamlN, s.filterYaml)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(k8sResourceN, s.k8sResource)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(localResourceN, s.localResource)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(portForwardN, s.portForward)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(k8sKindN, s.k8sKind)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(k8sImageJSONPathN, s.k8sImageJsonPath)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(workloadToResourceFunctionN, s.workloadToResourceFunctionFn)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(k8sContextN, s.k8sContext)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(allowK8SContexts, s.allowK8SContexts)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(localGitRepoN, s.localGitRepo)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(kustomizeN, s.kustomize)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(helmN, s.helm)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(failN, s.fail)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(blobN, s.blob)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(listdirN, s.listdir)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(decodeJSONN, s.decodeJSON)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(readJSONN, s.readJson)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(readYAMLN, s.readYaml)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(triggerModeN, s.triggerModeFn)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddValue(triggerModeAutoN, TriggerModeAuto)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddValue(triggerModeManualN, TriggerModeManual)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(fallBackOnN, s.liveUpdateFallBackOn)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(syncN, s.liveUpdateSync)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(runN, s.liveUpdateRun)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(restartContainerN, s.liveUpdateRestartContainer)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(enableFeatureN, s.enableFeature)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(disableFeatureN, s.disableFeature)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(disableSnapshotsN, s.disableSnapshots)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(setTeamN, s.setTeam)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Returns the current orchestrator.
