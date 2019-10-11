@@ -36,6 +36,9 @@
   branch = "master"
   name = "golang.org/x/net"
 
+# Grab an old version to avoid Docker breakage from change to
+# x/sys/windows.SecurityAttributes (https://github.com/golang/go/issues/34610).
+# Waiting on Docker update to deal w/ the change (https://github.com/moby/moby/pull/40021).
 [[override]]
   name = "golang.org/x/sys"
   revision = "0c1ff786ef13daa914a3351c5e6b0321aed5960e"
