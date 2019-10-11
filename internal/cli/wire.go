@@ -61,8 +61,6 @@ var BaseWireSet = wire.NewSet(
 
 	dockercompose.NewDockerComposeClient,
 
-	build.NewImageReaper,
-
 	tiltfile.ProvideTiltfileLoader,
 
 	clockwork.NewRealClock,
@@ -73,7 +71,6 @@ var BaseWireSet = wire.NewSet(
 	k8swatch.NewPodWatcher,
 	k8swatch.NewServiceWatcher,
 	k8swatch.NewEventWatchManager,
-	engine.NewImageController,
 	configs.NewConfigsController,
 	engine.NewDockerComposeEventWatcher,
 	engine.NewDockerComposeLogManager,

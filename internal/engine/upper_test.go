@@ -27,7 +27,6 @@ import (
 
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 
-	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/cloud"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/containerupdate"
@@ -1031,25 +1030,6 @@ go build ./...
 	err := f.Stop()
 	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
-}
-
-// Checks that the image reaper kicks in and GCs old images.
-func TestReapOldBuilds(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-	manifest := f.newManifest("foobar")
-
-	f.docker.ImageListCount++
-
-	f.Start([]model.Manifest{manifest}, true)
-
-	f.PollUntil("images reaped", func() bool {
-		return len(f.docker.RemovedImageIDs) > 0
-	})
-
-	assert.Equal(t, []string{"build-id-0"}, f.docker.RemovedImageIDs)
-	err := f.Stop()
-	assert.Nil(t, err)
 }
 
 func TestHudUpdated(t *testing.T) {
@@ -2888,7 +2868,6 @@ func newTestFixture(t *testing.T) *testFixture {
 	timerMaker := makeFakeTimerMaker(t)
 
 	dockerClient := docker.NewFakeClient()
-	reaper := build.NewImageReaper(dockerClient)
 
 	kCli := k8s.NewFakeK8sClient()
 	of := k8s.ProvideOwnerFetcher(kCli)
@@ -2911,7 +2890,6 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	fwm := NewWatchManager(watcher.newSub, timerMaker.maker())
 	pfc := NewPortForwardController(kCli)
-	ic := NewImageController(reaper)
 	tas := NewTiltAnalyticsSubscriber(ta)
 	ar := ProvideAnalyticsReporter(ta, st)
 
@@ -2961,8 +2939,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
 
-	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc,
-		tvc, tas, ewm, tcum, dp)
+	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, tvc, tas, ewm, tcum, dp)
 	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {

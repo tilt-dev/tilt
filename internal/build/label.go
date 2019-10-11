@@ -17,6 +17,5 @@ const (
 )
 
 const (
-	BuildModeScratch  dockerfile.LabelValue = "scratch"
-	BuildModeExisting dockerfile.LabelValue = "existing"
+	BuildModeScratch dockerfile.LabelValue = "scratch"
 )
