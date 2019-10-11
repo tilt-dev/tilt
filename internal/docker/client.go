@@ -525,7 +525,3 @@ func (c *Cli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.C
 		return nil
 	}
 }
-
-func (c *Cli) Prune(ctx context.Context, age time.Duration) error {
-	return nil
-}
