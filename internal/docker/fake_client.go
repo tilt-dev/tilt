@@ -10,6 +10,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/filters"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -99,6 +100,17 @@ type FakeClient struct {
 	Images            map[string]types.ImageInspect
 	Orchestrator      model.Orchestrator
 	CheckConnectedErr error
+
+	ThrowNewVersionError   bool
+	BuildCachePruneErr     error
+	BuildCachePruneOpts    types.BuildCachePruneOptions
+	BuildCachesPruned      []string
+	ContainersPruneErr     error
+	ContainersPruneFilters filters.Args
+	ContainersPruned       []string
+	ImagesPruneErr         error
+	ImagesPruneFilters     filters.Args
+	ImagesPruned           []string
 }
 
 func NewFakeClient() *FakeClient {
@@ -238,8 +250,65 @@ func (c *FakeClient) ImageRemove(ctx context.Context, imageID string, options ty
 	return nil, nil
 }
 
-func (c *FakeClient) Prune(ctx context.Context, age time.Duration) error {
+func (c *FakeClient) NewVersionError(APIrequired, feature string) error {
+	if c.ThrowNewVersionError {
+		c.ThrowNewVersionError = false
+		return c.newVersionError(APIrequired, feature)
+	}
 	return nil
+}
+
+func (c *FakeClient) newVersionError(APIrequired, feature string) error {
+	return fmt.Errorf("%q requires API version %s, but the Docker daemon API version is... something else", feature, APIrequired)
+}
+
+func (c *FakeClient) BuildCachePrune(ctx context.Context, opts types.BuildCachePruneOptions) (*types.BuildCachePruneReport, error) {
+	if err := c.BuildCachePruneErr; err != nil {
+		c.BuildCachePruneErr = nil
+		return nil, err
+	}
+
+	c.BuildCachePruneOpts = opts
+	report := &types.BuildCachePruneReport{
+		CachesDeleted:  c.BuildCachesPruned,
+		SpaceReclaimed: uint64(len(c.BuildCachesPruned)),
+	}
+	c.BuildCachesPruned = nil
+	return report, nil
+}
+
+func (c *FakeClient) ContainersPrune(ctx context.Context, pruneFilters filters.Args) (types.ContainersPruneReport, error) {
+	if err := c.ContainersPruneErr; err != nil {
+		c.ContainersPruneErr = nil
+		return types.ContainersPruneReport{}, err
+	}
+
+	c.ContainersPruneFilters = pruneFilters
+	report := types.ContainersPruneReport{
+		ContainersDeleted: c.ContainersPruned,
+		SpaceReclaimed:    uint64(len(c.ContainersPruned)),
+	}
+	c.ContainersPruned = nil
+	return report, nil
+}
+
+func (c *FakeClient) ImagesPrune(ctx context.Context, pruneFilters filters.Args) (types.ImagesPruneReport, error) {
+	if err := c.ImagesPruneErr; err != nil {
+		c.ImagesPruneErr = nil
+		return types.ImagesPruneReport{}, err
+	}
+
+	c.ImagesPruneFilters = pruneFilters
+	imgsDeleted := make([]types.ImageDeleteResponseItem, len(c.ImagesPruned))
+	for i, img := range c.ImagesPruned {
+		imgsDeleted[i] = types.ImageDeleteResponseItem{Deleted: img}
+	}
+	report := types.ImagesPruneReport{
+		ImagesDeleted:  imgsDeleted,
+		SpaceReclaimed: uint64(len(imgsDeleted)),
+	}
+	c.ImagesPruned = nil
+	return report, nil
 }
 
 var _ Client = &FakeClient{}

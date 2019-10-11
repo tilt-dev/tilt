@@ -2951,13 +2951,16 @@ func newTestFixture(t *testing.T) *testFixture {
 		tiltVersionCheckDelay: versionCheckInterval,
 	}
 
+	dp := NewDockerPruner(dockerClient)
+	dp.DisableForTesting()
+
 	tiltVersionCheckTimerMaker := func(d time.Duration) <-chan time.Time {
 		return time.After(ret.tiltVersionCheckDelay)
 	}
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
 
 	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, ic, cc, dcw, dclm, pm, sm, ar, hudsc,
-		tvc, tas, ewm, tcum, NewDockerPruner(dockerClient))
+		tvc, tas, ewm, tcum, dp)
 	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {
