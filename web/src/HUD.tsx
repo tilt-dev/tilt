@@ -5,6 +5,7 @@ import LoadingScreen from "./LoadingScreen"
 import Sidebar, { SidebarItem } from "./Sidebar"
 import Statusbar, { StatusItem } from "./Statusbar"
 import LogPane from "./LogPane"
+import ResourceInfo from "./ResourceInfo"
 import K8sViewPane from "./K8sViewPane"
 import PreviewPane from "./PreviewPane"
 import PathBuilder from "./PathBuilder"
@@ -292,15 +293,20 @@ class HUD extends Component<HudProps, HudState> {
         podStatus = (r.K8sResourceInfo && r.K8sResourceInfo.PodStatus) || ""
       }
       return (
-        <LogPane
-          log={logs}
-          isExpanded={isSidebarClosed}
-          endpoints={endpoints}
-          podID={podID}
-          podStatus={podStatus}
-        />
+        <>
+          <ResourceInfo
+            endpoints={endpoints}
+            podID={podID}
+            podStatus={podStatus}
+          />
+          <LogPane
+            log={logs}
+            isExpanded={isSidebarClosed}
+          />
+        </>
       )
     }
+
 
     let combinedLog = ""
     if (view) {
@@ -429,9 +435,6 @@ class HUD extends Component<HudProps, HudState> {
               <LogPane
                 log={combinedLog}
                 isExpanded={isSidebarClosed}
-                podID={""}
-                endpoints={[]}
-                podStatus={""}
               />
             )}
           />

@@ -9,9 +9,6 @@ type LogPaneProps = {
   log: string
   message?: string
   isExpanded: boolean
-  podID: string
-  endpoints: string[]
-  podStatus: string
 }
 type LogPaneState = {
   autoscroll: boolean
@@ -176,13 +173,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 
     return (
       <section className={classes}>
-        {(endpoints || podID) && (
-          <section className="resourceBar">
-            {podIDEl}
-            {endpointsEl}
-          </section>
-        )}
-        <section className="logText">{logLines}</section>
+        {logLines}
       </section>
     )
   }
