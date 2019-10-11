@@ -12,7 +12,6 @@ it("shows snapshot url", () => {
       <MemoryRouter>
         <TopBar
           logUrl="/r/foo"
-          previewUrl="/r/foo/preview"
           alertsUrl="/r/foo/alerts"
           resourceView={ResourceView.Alerts}
           numberOfAlerts={1}
@@ -33,7 +32,6 @@ it("shows snapshot owner", () => {
       <MemoryRouter>
         <TopBar
           logUrl="/r/foo"
-          previewUrl="/r/foo/preview"
           alertsUrl="/r/foo/alerts"
           resourceView={ResourceView.Alerts}
           numberOfAlerts={1}

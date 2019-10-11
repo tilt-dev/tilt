@@ -1,42 +1,5 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`previews resources 1`] = `
-<nav
-  className="TabNav"
->
-  <ul>
-    <li>
-      <a
-        className="tabLink "
-        href="/r/foo"
-        onClick={[Function]}
-      >
-        Logs
-      </a>
-    </li>
-    <li>
-      <a
-        className="tabLink tabLink--is-selected"
-        href="/r/foo/preview"
-        onClick={[Function]}
-      >
-        Preview
-      </a>
-    </li>
-    <li>
-      <a
-        className="tabLink tabLink--errors "
-        href="/r/foo/alerts"
-        onClick={[Function]}
-      >
-        Alerts
-        
-      </a>
-    </li>
-  </ul>
-</nav>
-`;
-
 exports[`shows error pane 1`] = `
 <nav
   className="TabNav"
@@ -49,15 +12,6 @@ exports[`shows error pane 1`] = `
         onClick={[Function]}
       >
         Logs
-      </a>
-    </li>
-    <li>
-      <a
-        className="tabLink "
-        href="/r/foo/preview"
-        onClick={[Function]}
-      >
-        Preview
       </a>
     </li>
     <li>
@@ -90,15 +44,6 @@ exports[`shows logs 1`] = `
     </li>
     <li>
       <a
-        className="tabLink "
-        href="/r/foo/preview"
-        onClick={[Function]}
-      >
-        Preview
-      </a>
-    </li>
-    <li>
-      <a
         className="tabLink tabLink--errors "
         href="/r/foo/alerts"
         onClick={[Function]}
@@ -123,15 +68,6 @@ exports[`shows the number of errors in the error tab 1`] = `
         onClick={[Function]}
       >
         Logs
-      </a>
-    </li>
-    <li>
-      <a
-        className="tabLink "
-        href="/r/foo/preview"
-        onClick={[Function]}
-      >
-        Preview
       </a>
     </li>
     <li>
