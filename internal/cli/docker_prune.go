@@ -8,7 +8,6 @@ import (
 
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
-	"github.com/windmilleng/tilt/pkg/logger"
 )
 
 type dockerPruneCmd struct {
@@ -31,9 +30,6 @@ func (c *dockerPruneCmd) run(ctx context.Context, args []string) error {
 	a.Incr("cmd.dockerPrune", nil)
 	a.IncrIfUnopted("analytics.up.optdefault")
 	defer a.Flush(time.Second)
-
-	deferred := logger.NewDeferredLogger(ctx)
-	ctx = redirectLogs(ctx, deferred)
 
 	dCli, err := wireDockerClusterClient(ctx)
 	if err != nil {
