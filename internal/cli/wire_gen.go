@@ -11,10 +11,11 @@ import (
 
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
-	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 	"github.com/windmilleng/wmclient/pkg/dirs"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/tools/clientcmd/api"
+
+	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
