@@ -2,6 +2,9 @@ import React, { Component } from "react"
 import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
 import AnsiLine from "./AnsiLine"
 import "./LogPane.scss"
+import ReactDOM from "react-dom"
+import { SnapshotHiglight } from "./types"
+import classNames from "classnames"
 
 const WHEEL_DEBOUNCE_MS = 250
 
@@ -9,6 +12,10 @@ type LogPaneProps = {
   log: string
   message?: string
   isExpanded: boolean
+  handleSetHighlight: (highlight: SnapshotHiglight) => void
+  handleClearHiglight: () => void
+  highlight: SnapshotHiglight | null
+  isSnapshot: boolean
 }
 type LogPaneState = {
   autoscroll: boolean
@@ -29,6 +36,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 
     this.refreshAutoScroll = this.refreshAutoScroll.bind(this)
     this.handleWheel = this.handleWheel.bind(this)
+    this.handleSelectionChange = this.handleSelectionChange.bind(this)
   }
 
   componentDidMount() {
@@ -38,6 +46,62 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 
     window.addEventListener("scroll", this.refreshAutoScroll, { passive: true })
     window.addEventListener("wheel", this.handleWheel, { passive: true })
+    if (!this.props.isSnapshot) {
+      document.addEventListener("selectionchange", this.handleSelectionChange, {
+        passive: true,
+      })
+    }
+  }
+
+  private handleSelectionChange() {
+    let selection = document.getSelection()
+    if (selection && selection.focusNode && selection.anchorNode) {
+      let node = ReactDOM.findDOMNode(this)
+      let beginning = selection.focusNode
+      let end = selection.anchorNode
+
+      // if end is before beginning
+      if (
+        beginning.compareDocumentPosition(end) &
+        Node.DOCUMENT_POSITION_PRECEDING
+      ) {
+        // swap beginning and end
+        ;[beginning, end] = [end, beginning]
+      }
+
+      if (selection.isCollapsed) {
+        this.props.handleClearHiglight()
+      } else if (
+        node &&
+        node.contains(beginning) &&
+        node.contains(end) &&
+        !node.isEqualNode(beginning) &&
+        !node.isEqualNode(end)
+      ) {
+        let beginningLogLine = this.findLogLineID(beginning.parentElement)
+        let endingLogLine = this.findLogLineID(end.parentElement)
+
+        if (beginningLogLine && endingLogLine) {
+          this.props.handleSetHighlight({
+            beginningLogID: beginningLogLine,
+            endingLogID: endingLogLine,
+            highlightedText: selection.toString(),
+          })
+        }
+      }
+    }
+  }
+
+  findLogLineID(el: HTMLElement | null): string | null {
+    if (el === null) {
+      return null
+    } else if (el && el.className.startsWith("logLine")) {
+      return el.className.split(" ")[0]
+    } else if (el) {
+      return this.findLogLineID(el.parentElement)
+    }
+
+    return null
   }
 
   componentDidUpdate() {
@@ -119,11 +183,33 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 
     let logLines: Array<React.ReactElement> = []
     let lines = log.split("\n")
-    logLines = lines.map(
-      (line: string, i: number): React.ReactElement => {
-        return <AnsiLine key={"logLine" + i} line={line} />
+
+    let sawBeginning = false
+    let sawEnd = false
+    let highlight = this.props.highlight
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i]
+      const key = "logLine" + i
+      let classes = [key]
+
+      if (highlight) {
+        if (highlight.beginningLogID === key) {
+          sawBeginning = true
+        }
+        if (highlight.endingLogID === key) {
+          classes.push("highlighted")
+          sawEnd = true
+        }
+        if (sawBeginning && !sawEnd) {
+          classes.push("highlighted")
+        }
       }
-    )
+
+      logLines.push(
+        <AnsiLine key={key} className={classNames(classes)} line={l} />
+      )
+    }
+
     logLines.push(
       <p
         key="logEnd"

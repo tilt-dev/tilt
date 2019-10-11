@@ -124,3 +124,6 @@ a.resourceInfo-value:hover {
 .ansi-white {
   color: $color-white;
 }
+.highlighted {
+  background-color: rgba($color: $color-blue, $alpha: $translucent);
+}

@@ -102,6 +102,13 @@ export type Snapshot = {
   SnapshotLink: string
   showSnapshotModal: boolean
   path?: string
+  snapshotHighlight?: SnapshotHiglight | null
+}
+
+export type SnapshotHiglight = {
+  beginningLogID: string
+  endingLogID: string
+  highlightedText: string
 }
 
 export enum ShowFatalErrorModal {

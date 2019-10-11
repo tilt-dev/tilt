@@ -3,11 +3,22 @@ import ReactDOM from "react-dom"
 import LogPane from "./LogPane"
 import renderer from "react-test-renderer"
 
+const fakeHandleSetHighlight = () => {}
+const fakeHandleClearHighlight = () => {}
+
 it("renders without crashing", () => {
   let div = document.createElement("div")
   Element.prototype.scrollIntoView = jest.fn()
   ReactDOM.render(
-    <LogPane log="hello\nworld\nfoo" message="world" isExpanded={false} />,
+    <LogPane
+      log="hello\nworld\nfoo"
+      message="world"
+      isExpanded={false}
+      handleSetHighlight={fakeHandleSetHighlight}
+      handleClearHiglight={fakeHandleClearHighlight}
+      highlight={null}
+      isSnapshot={false}
+    />,
     div
   )
   ReactDOM.unmountComponentAtNode(div)
@@ -16,7 +27,16 @@ it("renders without crashing", () => {
 it("renders logs", () => {
   const log = "hello\nworld\nfoo\nbar"
   const tree = renderer
-    .create(<LogPane log={log} isExpanded={false} />)
+    .create(
+      <LogPane
+        log={log}
+        isExpanded={false}
+        handleSetHighlight={fakeHandleSetHighlight}
+        handleClearHiglight={fakeHandleClearHighlight}
+        highlight={null}
+        isSnapshot={false}
+      />
+    )
     .toJSON()
 
   expect(tree).toMatchSnapshot()
@@ -354,7 +374,39 @@ it("renders logs with leading whitespace and ANSI codes", () => {
         ╎ [4/5] RUN cd /app && yarn install
         ╎ [5/5] ADD src /app`
   const tree = renderer
-    .create(<LogPane log={log} isExpanded={false} />)
+    .create(
+      <LogPane
+        log={log}
+        isExpanded={false}
+        handleSetHighlight={fakeHandleSetHighlight}
+        handleClearHiglight={fakeHandleClearHighlight}
+        highlight={null}
+        isSnapshot={false}
+      />
+    )
+    .toJSON()
+
+  expect(tree).toMatchSnapshot()
+})
+
+it("renders highlighted lines if it's not a snapshot", () => {
+  const log = "hello\nworld\nfoo\nbar"
+  const highlight = {
+    beginningLogID: "logLine2",
+    endingLogID: "logLine3",
+    highlightedText: "foo\nbar",
+  }
+  const tree = renderer
+    .create(
+      <LogPane
+        log={log}
+        isExpanded={false}
+        handleSetHighlight={fakeHandleSetHighlight}
+        handleClearHiglight={fakeHandleClearHighlight}
+        highlight={highlight}
+        isSnapshot={false}
+      />
+    )
     .toJSON()
 
   expect(tree).toMatchSnapshot()

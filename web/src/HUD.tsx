@@ -19,6 +19,7 @@ import {
   Resource,
   Snapshot,
   ShowFatalErrorModal,
+  SnapshotHiglight,
 } from "./types"
 import AlertPane from "./AlertPane"
 import AnalyticsNudge from "./AnalyticsNudge"
@@ -56,6 +57,7 @@ type HudState = {
   SnapshotLink: string
   showSnapshotModal: boolean
   showFatalErrorModal: ShowFatalErrorModal
+  snapshotHiglight: SnapshotHiglight | null
 }
 
 type NewSnapshotResponse = {
@@ -117,9 +119,12 @@ class HUD extends Component<HudProps, HudState> {
       SnapshotLink: "",
       showSnapshotModal: false,
       showFatalErrorModal: ShowFatalErrorModal.Default,
+      snapshotHiglight: null,
     }
 
     this.toggleSidebar = this.toggleSidebar.bind(this)
+    this.handleClearHighlight = this.handleClearHighlight.bind(this)
+    this.handleSetHighlight = this.handleSetHighlight.bind(this)
   }
 
   componentDidMount() {
@@ -163,6 +168,7 @@ class HUD extends Component<HudProps, HudState> {
     let url = `//${window.location.host}/api/snapshot/new`
     let sanitizedSnapshot = cleanStateForSnapshotPOST(snapshot)
     sanitizedSnapshot.path = this.props.history.location.pathname
+    sanitizedSnapshot.snapshotHighlight = this.state.snapshotHiglight
     fetch(url, {
       method: "post",
       body: JSON.stringify(sanitizedSnapshot),
@@ -178,6 +184,18 @@ class HUD extends Component<HudProps, HudState> {
           .catch(err => console.error(err))
       })
       .catch(err => console.error(err))
+  }
+
+  handleSetHighlight(highlight: SnapshotHiglight) {
+    this.setState({
+      snapshotHiglight: highlight,
+    })
+  }
+
+  handleClearHighlight() {
+    this.setState({
+      snapshotHiglight: null,
+    })
   }
 
   render() {
@@ -219,8 +237,9 @@ class HUD extends Component<HudProps, HudState> {
       )
     }
 
-    let handleOpenModal = () => this.setState({ showSnapshotModal: true })
-
+    let handleOpenModal = () => {
+      this.setState({ showSnapshotModal: true })
+    }
     let topBarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name =
         props.match.params && props.match.params.name
@@ -289,7 +308,14 @@ class HUD extends Component<HudProps, HudState> {
             podID={podID}
             podStatus={podStatus}
           />
-          <LogPane log={logs} isExpanded={isSidebarClosed} />
+          <LogPane
+            log={logs}
+            isExpanded={isSidebarClosed}
+            handleSetHighlight={this.handleSetHighlight}
+            handleClearHiglight={this.handleClearHighlight}
+            highlight={this.state.snapshotHiglight}
+            isSnapshot={this.pathBuilder.isSnapshot()}
+          />
         </>
       )
     }
@@ -376,7 +402,14 @@ class HUD extends Component<HudProps, HudState> {
             exact
             path={this.path("/")}
             render={() => (
-              <LogPane log={combinedLog} isExpanded={isSidebarClosed} />
+              <LogPane
+                log={combinedLog}
+                isExpanded={isSidebarClosed}
+                handleSetHighlight={this.handleSetHighlight}
+                handleClearHiglight={this.handleClearHighlight}
+                highlight={this.state.snapshotHiglight}
+                isSnapshot={this.pathBuilder.isSnapshot()}
+              />
             )}
           />
           <Route

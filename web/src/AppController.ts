@@ -100,6 +100,7 @@ class AppController {
         SnapshotLink: "",
         showSnapshotModal: false,
         showFatalErrorModal: ShowFatalErrorModal.Default,
+        snapshotHiglight: null,
       })
       this.createNewSocket()
       return
@@ -127,6 +128,7 @@ class AppController {
         SnapshotLink: "",
         showSnapshotModal: false,
         showFatalErrorModal: ShowFatalErrorModal.Default,
+        snapshotHiglight: null,
       })
       this.createNewSocket()
     }, timeout)

@@ -1,10 +1,12 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`renders logs 1`] = `
+exports[`renders highlighted lines if it's not a snapshot 1`] = `
 <section
   className="LogPane "
 >
-  <code>
+  <code
+    className="logLine0"
+  >
     <span
       className={null}
       style={null}
@@ -12,7 +14,9 @@ exports[`renders logs 1`] = `
       hello
     </span>
   </code>
-  <code>
+  <code
+    className="logLine1"
+  >
     <span
       className={null}
       style={null}
@@ -20,7 +24,9 @@ exports[`renders logs 1`] = `
       world
     </span>
   </code>
-  <code>
+  <code
+    className="logLine2 highlighted"
+  >
     <span
       className={null}
       style={null}
@@ -28,7 +34,61 @@ exports[`renders logs 1`] = `
       foo
     </span>
   </code>
-  <code>
+  <code
+    className="logLine3 highlighted"
+  >
+    <span
+      className={null}
+      style={null}
+    >
+      bar
+    </span>
+  </code>
+  <p
+    className="logEnd"
+  >
+    █
+  </p>
+</section>
+`;
+
+exports[`renders logs 1`] = `
+<section
+  className="LogPane "
+>
+  <code
+    className="logLine0"
+  >
+    <span
+      className={null}
+      style={null}
+    >
+      hello
+    </span>
+  </code>
+  <code
+    className="logLine1"
+  >
+    <span
+      className={null}
+      style={null}
+    >
+      world
+    </span>
+  </code>
+  <code
+    className="logLine2"
+  >
+    <span
+      className={null}
+      style={null}
+    >
+      foo
+    </span>
+  </code>
+  <code
+    className="logLine3"
+  >
     <span
       className={null}
       style={null}
@@ -48,7 +108,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
 <section
   className="LogPane "
 >
-  <code>
+  <code
+    className="logLine0"
+  >
     <span
       className={null}
       style={null}
@@ -56,7 +118,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       [32mStarting Tilt (v0.7.10-dev, built 2019-04-10)…
     </span>
   </code>
-  <code>
+  <code
+    className="logLine1"
+  >
     <span
       className={null}
       style={null}
@@ -64,7 +128,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Beginning Tiltfile execution
     </span>
   </code>
-  <code>
+  <code
+    className="logLine2"
+  >
     <span
       className={null}
       style={null}
@@ -72,7 +138,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"whoami"\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine3"
+  >
     <span
       className={null}
       style={null}
@@ -80,7 +148,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           Installing Tilt NodeJS dependencies…
     </span>
   </code>
-  <code>
+  <code
+    className="logLine4"
+  >
     <span
       className={null}
       style={null}
@@ -88,7 +158,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fe.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine5"
+  >
     <span
       className={null}
       style={null}
@@ -96,7 +168,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/vigoda.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine6"
+  >
     <span
       className={null}
       style={null}
@@ -104,7 +178,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/snack.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine7"
+  >
     <span
       className={null}
       style={null}
@@ -112,7 +188,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/doggos.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine8"
+  >
     <span
       className={null}
       style={null}
@@ -120,7 +198,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fortune.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine9"
+  >
     <span
       className={null}
       style={null}
@@ -128,7 +208,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hypothesizer.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine10"
+  >
     <span
       className={null}
       style={null}
@@ -136,7 +218,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/spoonerisms.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine11"
+  >
     <span
       className={null}
       style={null}
@@ -144,7 +228,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/emoji.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine12"
+  >
     <span
       className={null}
       style={null}
@@ -152,7 +238,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/words.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine13"
+  >
     <span
       className={null}
       style={null}
@@ -160,7 +248,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/secrets.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine14"
+  >
     <span
       className={null}
       style={null}
@@ -168,7 +258,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/job.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine15"
+  >
     <span
       className={null}
       style={null}
@@ -176,7 +268,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/sleeper.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine16"
+  >
     <span
       className={null}
       style={null}
@@ -184,7 +278,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hello_world.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine17"
+  >
     <span
       className={null}
       style={null}
@@ -192,7 +288,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/tick.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine18"
+  >
     <span
       className={null}
       style={null}
@@ -200,7 +298,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] WARNING: This Tiltfile is using k8s resource assembly version 1, which has been deprecated. It will no longer be supported after 2019-04-17. Sorry for the inconvenience! See https://tilt.dev/resource_assembly_migration.html for information on how to migrate.
     </span>
   </code>
-  <code>
+  <code
+    className="logLine19"
+  >
     <span
       className={null}
       style={null}
@@ -208,7 +308,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile]
     </span>
   </code>
-  <code>
+  <code
+    className="logLine20"
+  >
     <span
       className={null}
       style={null}
@@ -216,7 +318,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Successfully loaded Tiltfile
     </span>
   </code>
-  <code>
+  <code
+    className="logLine21"
+  >
     <span
       className={null}
       style={null}
@@ -236,8 +340,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Applying via kubectl
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine22"
+  />
+  <code
+    className="logLine23"
+  >
     <span
       className={null}
       style={null}
@@ -263,7 +371,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
        ├──────────────────────────────────────────────
     </span>
   </code>
-  <code>
+  <code
+    className="logLine24"
+  >
     <span
       className={null}
       style={null}
@@ -283,7 +393,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Deploying
     </span>
   </code>
-  <code>
+  <code
+    className="logLine25"
+  >
     <span
       className={null}
       style={null}
@@ -303,7 +415,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Parsing Kubernetes config YAML
     </span>
   </code>
-  <code>
+  <code
+    className="logLine26"
+  >
     <span
       className={null}
       style={null}
@@ -323,8 +437,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Applying via kubectl
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine27"
+  />
+  <code
+    className="logLine28"
+  >
     <span
       className={null}
       style={null}
@@ -344,7 +462,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 1 - 4.138s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine29"
+  >
     <span
       className={null}
       style={null}
@@ -364,9 +484,15 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Done in: 4.138s
     </span>
   </code>
-  <code />
-  <code />
-  <code>
+  <code
+    className="logLine30"
+  />
+  <code
+    className="logLine31"
+  />
+  <code
+    className="logLine32"
+  >
     <span
       className={null}
       style={null}
@@ -392,7 +518,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
        ├──────────────────────────────────────────────
     </span>
   </code>
-  <code>
+  <code
+    className="logLine33"
+  >
     <span
       className={null}
       style={null}
@@ -412,7 +540,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Deploying
     </span>
   </code>
-  <code>
+  <code
+    className="logLine34"
+  >
     <span
       className={null}
       style={null}
@@ -432,7 +562,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Parsing Kubernetes config YAML
     </span>
   </code>
-  <code>
+  <code
+    className="logLine35"
+  >
     <span
       className={null}
       style={null}
@@ -452,8 +584,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Applying via kubectl
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine36"
+  />
+  <code
+    className="logLine37"
+  >
     <span
       className={null}
       style={null}
@@ -473,7 +609,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 1 - 0.556s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine38"
+  >
     <span
       className={null}
       style={null}
@@ -493,9 +631,15 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Done in: 0.556s
     </span>
   </code>
-  <code />
-  <code />
-  <code>
+  <code
+    className="logLine39"
+  />
+  <code
+    className="logLine40"
+  />
+  <code
+    className="logLine41"
+  >
     <span
       className={null}
       style={null}
@@ -521,7 +665,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
        ├──────────────────────────────────────────────
     </span>
   </code>
-  <code>
+  <code
+    className="logLine42"
+  >
     <span
       className={null}
       style={null}
@@ -541,7 +687,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Deploying
     </span>
   </code>
-  <code>
+  <code
+    className="logLine43"
+  >
     <span
       className={null}
       style={null}
@@ -561,7 +709,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Parsing Kubernetes config YAML
     </span>
   </code>
-  <code>
+  <code
+    className="logLine44"
+  >
     <span
       className={null}
       style={null}
@@ -581,8 +731,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Applying via kubectl
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine45"
+  />
+  <code
+    className="logLine46"
+  >
     <span
       className={null}
       style={null}
@@ -602,7 +756,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 1 - 0.450s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine47"
+  >
     <span
       className={null}
       style={null}
@@ -622,9 +778,15 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Done in: 0.450s
     </span>
   </code>
-  <code />
-  <code />
-  <code>
+  <code
+    className="logLine48"
+  />
+  <code
+    className="logLine49"
+  />
+  <code
+    className="logLine50"
+  >
     <span
       className={null}
       style={null}
@@ -650,7 +812,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
        ├──────────────────────────────────────────────
     </span>
   </code>
-  <code>
+  <code
+    className="logLine51"
+  >
     <span
       className={null}
       style={null}
@@ -670,7 +834,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Building Dockerfile: [docker.io/library/fe]
     </span>
   </code>
-  <code>
+  <code
+    className="logLine52"
+  >
     <span
       className={null}
       style={null}
@@ -678,7 +844,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           Building Dockerfile:
     </span>
   </code>
-  <code>
+  <code
+    className="logLine53"
+  >
     <span
       className={null}
       style={null}
@@ -686,8 +854,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             FROM golang:1.10
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine54"
+  />
+  <code
+    className="logLine55"
+  >
     <span
       className={null}
       style={null}
@@ -695,8 +867,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             RUN apt update && apt install -y unzip time make
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine56"
+  />
+  <code
+    className="logLine57"
+  >
     <span
       className={null}
       style={null}
@@ -704,8 +880,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             ENV PROTOC_VERSION 3.5.1
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine58"
+  />
+  <code
+    className="logLine59"
+  >
     <span
       className={null}
       style={null}
@@ -713,8 +893,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             RUN wget https://github.com/google/protobuf/releases/download/v\${PROTOC_VERSION}/protoc-\${PROTOC_VERSION}-linux-x86_64.zip &&         unzip protoc-\${PROTOC_VERSION}-linux-x86_64.zip -d protoc &&         mv protoc/bin/protoc /usr/bin/protoc
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine60"
+  />
+  <code
+    className="logLine61"
+  >
     <span
       className={null}
       style={null}
@@ -722,8 +906,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             RUN go get github.com/golang/protobuf/protoc-gen-go
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine62"
+  />
+  <code
+    className="logLine63"
+  >
     <span
       className={null}
       style={null}
@@ -731,7 +919,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             ADD . /go/src/github.com/windmilleng/servantes/fe
     </span>
   </code>
-  <code>
+  <code
+    className="logLine64"
+  >
     <span
       className={null}
       style={null}
@@ -739,7 +929,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             RUN go install github.com/windmilleng/servantes/fe
     </span>
   </code>
-  <code>
+  <code
+    className="logLine65"
+  >
     <span
       className={null}
       style={null}
@@ -747,9 +939,15 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             ENTRYPOINT /go/bin/fe
     </span>
   </code>
-  <code />
-  <code />
-  <code>
+  <code
+    className="logLine66"
+  />
+  <code
+    className="logLine67"
+  />
+  <code
+    className="logLine68"
+  >
     <span
       className={null}
       style={null}
@@ -769,7 +967,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Tarring context…
     </span>
   </code>
-  <code>
+  <code
+    className="logLine69"
+  >
     <span
       className={null}
       style={null}
@@ -777,7 +977,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ Created tarball (size: 24 MB)
     </span>
   </code>
-  <code>
+  <code
+    className="logLine70"
+  >
     <span
       className={null}
       style={null}
@@ -797,7 +999,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Building image
     </span>
   </code>
-  <code>
+  <code
+    className="logLine71"
+  >
     <span
       className={null}
       style={null}
@@ -805,7 +1009,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [1/6] FROM docker.io/library/golang:1.10
     </span>
   </code>
-  <code>
+  <code
+    className="logLine72"
+  >
     <span
       className={null}
       style={null}
@@ -813,7 +1019,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [2/6] RUN apt update && apt install -y unzip time make
     </span>
   </code>
-  <code>
+  <code
+    className="logLine73"
+  >
     <span
       className={null}
       style={null}
@@ -821,7 +1029,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [3/6] RUN wget https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip &&   unzip protoc-3.5.1-linux-x86_64.zip -d protoc &&   mv protoc/bin/protoc /usr/bin/protoc
     </span>
   </code>
-  <code>
+  <code
+    className="logLine74"
+  >
     <span
       className={null}
       style={null}
@@ -829,7 +1039,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [4/6] RUN go get github.com/golang/protobuf/protoc-gen-go
     </span>
   </code>
-  <code>
+  <code
+    className="logLine75"
+  >
     <span
       className={null}
       style={null}
@@ -837,7 +1049,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [5/6] ADD . /go/src/github.com/windmilleng/servantes/fe
     </span>
   </code>
-  <code>
+  <code
+    className="logLine76"
+  >
     <span
       className={null}
       style={null}
@@ -845,8 +1059,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [6/6] RUN go install github.com/windmilleng/servantes/fe
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine77"
+  />
+  <code
+    className="logLine78"
+  >
     <span
       className={null}
       style={null}
@@ -866,7 +1084,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Pushing gcr.io/windmill-public-containers/servantes/fe:tilt-2540b7769f4b0e45
     </span>
   </code>
-  <code>
+  <code
+    className="logLine79"
+  >
     <span
       className={null}
       style={null}
@@ -874,8 +1094,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ Skipping push
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine80"
+  />
+  <code
+    className="logLine81"
+  >
     <span
       className={null}
       style={null}
@@ -895,7 +1119,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Deploying
     </span>
   </code>
-  <code>
+  <code
+    className="logLine82"
+  >
     <span
       className={null}
       style={null}
@@ -915,7 +1141,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Parsing Kubernetes config YAML
     </span>
   </code>
-  <code>
+  <code
+    className="logLine83"
+  >
     <span
       className={null}
       style={null}
@@ -935,8 +1163,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Applying via kubectl
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine84"
+  />
+  <code
+    className="logLine85"
+  >
     <span
       className={null}
       style={null}
@@ -956,7 +1188,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 1 - 7.630s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine86"
+  >
     <span
       className={null}
       style={null}
@@ -976,7 +1210,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 2 - 0.000s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine87"
+  >
     <span
       className={null}
       style={null}
@@ -996,7 +1232,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 3 - 0.249s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine88"
+  >
     <span
       className={null}
       style={null}
@@ -1016,9 +1254,15 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Done in: 7.880s
     </span>
   </code>
-  <code />
-  <code />
-  <code>
+  <code
+    className="logLine89"
+  />
+  <code
+    className="logLine90"
+  />
+  <code
+    className="logLine91"
+  >
     <span
       className={null}
       style={null}
@@ -1044,7 +1288,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
        ├──────────────────────────────────────────────
     </span>
   </code>
-  <code>
+  <code
+    className="logLine92"
+  >
     <span
       className={null}
       style={null}
@@ -1064,7 +1310,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Building Dockerfile: [docker.io/library/vigoda]
     </span>
   </code>
-  <code>
+  <code
+    className="logLine93"
+  >
     <span
       className={null}
       style={null}
@@ -1072,7 +1320,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           Building Dockerfile:
     </span>
   </code>
-  <code>
+  <code
+    className="logLine94"
+  >
     <span
       className={null}
       style={null}
@@ -1080,8 +1330,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             FROM golang:1.10
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine95"
+  />
+  <code
+    className="logLine96"
+  >
     <span
       className={null}
       style={null}
@@ -1089,7 +1343,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             ADD . /go/src/github.com/windmilleng/servantes/vigoda
     </span>
   </code>
-  <code>
+  <code
+    className="logLine97"
+  >
     <span
       className={null}
       style={null}
@@ -1097,8 +1353,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             RUN go install github.com/windmilleng/servantes/vigoda
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine98"
+  />
+  <code
+    className="logLine99"
+  >
     <span
       className={null}
       style={null}
@@ -1106,8 +1366,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             ENTRYPOINT /go/bin/vigoda
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine100"
+  />
+  <code
+    className="logLine101"
+  >
     <span
       className={null}
       style={null}
@@ -1127,7 +1391,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Tarring context…
     </span>
   </code>
-  <code>
+  <code
+    className="logLine102"
+  >
     <span
       className={null}
       style={null}
@@ -1135,7 +1401,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ Created tarball (size: 8.7 kB)
     </span>
   </code>
-  <code>
+  <code
+    className="logLine103"
+  >
     <span
       className={null}
       style={null}
@@ -1155,7 +1423,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Building image
     </span>
   </code>
-  <code>
+  <code
+    className="logLine104"
+  >
     <span
       className={null}
       style={null}
@@ -1163,7 +1433,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [1/3] FROM docker.io/library/golang:1.10
     </span>
   </code>
-  <code>
+  <code
+    className="logLine105"
+  >
     <span
       className={null}
       style={null}
@@ -1171,7 +1443,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/vigoda
     </span>
   </code>
-  <code>
+  <code
+    className="logLine106"
+  >
     <span
       className={null}
       style={null}
@@ -1179,8 +1453,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [3/3] RUN go install github.com/windmilleng/servantes/vigoda
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine107"
+  />
+  <code
+    className="logLine108"
+  >
     <span
       className={null}
       style={null}
@@ -1200,7 +1478,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Pushing gcr.io/windmill-public-containers/servantes/vigoda:tilt-2d369271c8091f68
     </span>
   </code>
-  <code>
+  <code
+    className="logLine109"
+  >
     <span
       className={null}
       style={null}
@@ -1208,8 +1488,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ Skipping push
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine110"
+  />
+  <code
+    className="logLine111"
+  >
     <span
       className={null}
       style={null}
@@ -1229,7 +1513,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Deploying
     </span>
   </code>
-  <code>
+  <code
+    className="logLine112"
+  >
     <span
       className={null}
       style={null}
@@ -1249,7 +1535,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Parsing Kubernetes config YAML
     </span>
   </code>
-  <code>
+  <code
+    className="logLine113"
+  >
     <span
       className={null}
       style={null}
@@ -1269,8 +1557,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Applying via kubectl
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine114"
+  />
+  <code
+    className="logLine115"
+  >
     <span
       className={null}
       style={null}
@@ -1290,7 +1582,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 1 - 1.017s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine116"
+  >
     <span
       className={null}
       style={null}
@@ -1310,7 +1604,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 2 - 0.000s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine117"
+  >
     <span
       className={null}
       style={null}
@@ -1330,7 +1626,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 3 - 0.168s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine118"
+  >
     <span
       className={null}
       style={null}
@@ -1350,9 +1648,15 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Done in: 1.185s
     </span>
   </code>
-  <code />
-  <code />
-  <code>
+  <code
+    className="logLine119"
+  />
+  <code
+    className="logLine120"
+  />
+  <code
+    className="logLine121"
+  >
     <span
       className={null}
       style={null}
@@ -1378,7 +1682,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
        ├──────────────────────────────────────────────
     </span>
   </code>
-  <code>
+  <code
+    className="logLine122"
+  >
     <span
       className={null}
       style={null}
@@ -1398,7 +1704,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Building Dockerfile: [docker.io/library/snack]
     </span>
   </code>
-  <code>
+  <code
+    className="logLine123"
+  >
     <span
       className={null}
       style={null}
@@ -1406,7 +1714,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           Building Dockerfile:
     </span>
   </code>
-  <code>
+  <code
+    className="logLine124"
+  >
     <span
       className={null}
       style={null}
@@ -1414,8 +1724,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             FROM golang:1.10
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine125"
+  />
+  <code
+    className="logLine126"
+  >
     <span
       className={null}
       style={null}
@@ -1423,7 +1737,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             ADD . /go/src/github.com/windmilleng/servantes/snack
     </span>
   </code>
-  <code>
+  <code
+    className="logLine127"
+  >
     <span
       className={null}
       style={null}
@@ -1431,8 +1747,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             RUN go install github.com/windmilleng/servantes/snack
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine128"
+  />
+  <code
+    className="logLine129"
+  >
     <span
       className={null}
       style={null}
@@ -1440,8 +1760,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             ENTRYPOINT /go/bin/snack
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine130"
+  />
+  <code
+    className="logLine131"
+  >
     <span
       className={null}
       style={null}
@@ -1461,7 +1785,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Tarring context…
     </span>
   </code>
-  <code>
+  <code
+    className="logLine132"
+  >
     <span
       className={null}
       style={null}
@@ -1469,7 +1795,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ Created tarball (size: 9.7 kB)
     </span>
   </code>
-  <code>
+  <code
+    className="logLine133"
+  >
     <span
       className={null}
       style={null}
@@ -1489,7 +1817,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Building image
     </span>
   </code>
-  <code>
+  <code
+    className="logLine134"
+  >
     <span
       className={null}
       style={null}
@@ -1497,7 +1827,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [1/3] FROM docker.io/library/golang:1.10
     </span>
   </code>
-  <code>
+  <code
+    className="logLine135"
+  >
     <span
       className={null}
       style={null}
@@ -1505,7 +1837,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           Starting Tilt webpack server…
     </span>
   </code>
-  <code>
+  <code
+    className="logLine136"
+  >
     <span
       className={null}
       style={null}
@@ -1513,7 +1847,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           fe          ┊ 2019/04/10 15:37:37 Starting Servantes FE on :8080
     </span>
   </code>
-  <code>
+  <code
+    className="logLine137"
+  >
     <span
       className={null}
       style={null}
@@ -1521,7 +1857,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/snack
     </span>
   </code>
-  <code>
+  <code
+    className="logLine138"
+  >
     <span
       className={null}
       style={null}
@@ -1529,8 +1867,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [3/3] RUN go install github.com/windmilleng/servantes/snack
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine139"
+  />
+  <code
+    className="logLine140"
+  >
     <span
       className={null}
       style={null}
@@ -1550,7 +1892,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Pushing gcr.io/windmill-public-containers/servantes/snack:tilt-731280d503bbbcf5
     </span>
   </code>
-  <code>
+  <code
+    className="logLine141"
+  >
     <span
       className={null}
       style={null}
@@ -1558,8 +1902,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ Skipping push
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine142"
+  />
+  <code
+    className="logLine143"
+  >
     <span
       className={null}
       style={null}
@@ -1579,7 +1927,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Deploying
     </span>
   </code>
-  <code>
+  <code
+    className="logLine144"
+  >
     <span
       className={null}
       style={null}
@@ -1599,7 +1949,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Parsing Kubernetes config YAML
     </span>
   </code>
-  <code>
+  <code
+    className="logLine145"
+  >
     <span
       className={null}
       style={null}
@@ -1619,8 +1971,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Applying via kubectl
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine146"
+  />
+  <code
+    className="logLine147"
+  >
     <span
       className={null}
       style={null}
@@ -1640,7 +1996,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 1 - 2.878s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine148"
+  >
     <span
       className={null}
       style={null}
@@ -1660,7 +2018,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 2 - 0.000s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine149"
+  >
     <span
       className={null}
       style={null}
@@ -1680,7 +2040,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 3 - 0.322s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine150"
+  >
     <span
       className={null}
       style={null}
@@ -1700,9 +2062,15 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Done in: 3.200s
     </span>
   </code>
-  <code />
-  <code />
-  <code>
+  <code
+    className="logLine151"
+  />
+  <code
+    className="logLine152"
+  />
+  <code
+    className="logLine153"
+  >
     <span
       className={null}
       style={null}
@@ -1728,7 +2096,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
        ├──────────────────────────────────────────────
     </span>
   </code>
-  <code>
+  <code
+    className="logLine154"
+  >
     <span
       className={null}
       style={null}
@@ -1748,7 +2118,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Building Dockerfile: [docker.io/library/doggos]
     </span>
   </code>
-  <code>
+  <code
+    className="logLine155"
+  >
     <span
       className={null}
       style={null}
@@ -1756,7 +2128,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           Building Dockerfile:
     </span>
   </code>
-  <code>
+  <code
+    className="logLine156"
+  >
     <span
       className={null}
       style={null}
@@ -1764,8 +2138,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             FROM golang:1.10
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine157"
+  />
+  <code
+    className="logLine158"
+  >
     <span
       className={null}
       style={null}
@@ -1773,7 +2151,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             ADD . /go/src/github.com/windmilleng/servantes/doggos
     </span>
   </code>
-  <code>
+  <code
+    className="logLine159"
+  >
     <span
       className={null}
       style={null}
@@ -1781,8 +2161,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             RUN go install github.com/windmilleng/servantes/doggos
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine160"
+  />
+  <code
+    className="logLine161"
+  >
     <span
       className={null}
       style={null}
@@ -1790,8 +2174,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             ENTRYPOINT /go/bin/doggos
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine162"
+  />
+  <code
+    className="logLine163"
+  >
     <span
       className={null}
       style={null}
@@ -1811,7 +2199,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Tarring context…
     </span>
   </code>
-  <code>
+  <code
+    className="logLine164"
+  >
     <span
       className={null}
       style={null}
@@ -1819,7 +2209,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ Created tarball (size: 7.7 kB)
     </span>
   </code>
-  <code>
+  <code
+    className="logLine165"
+  >
     <span
       className={null}
       style={null}
@@ -1839,7 +2231,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Building image
     </span>
   </code>
-  <code>
+  <code
+    className="logLine166"
+  >
     <span
       className={null}
       style={null}
@@ -1847,7 +2241,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           vigoda      ┊ 2019/04/10 15:37:39 Starting Vigoda Health Check Service on :8081
     </span>
   </code>
-  <code>
+  <code
+    className="logLine167"
+  >
     <span
       className={null}
       style={null}
@@ -1855,7 +2251,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [1/3] FROM docker.io/library/golang:1.10
     </span>
   </code>
-  <code>
+  <code
+    className="logLine168"
+  >
     <span
       className={null}
       style={null}
@@ -1863,7 +2261,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/doggos
     </span>
   </code>
-  <code>
+  <code
+    className="logLine169"
+  >
     <span
       className={null}
       style={null}
@@ -1871,8 +2271,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [3/3] RUN go install github.com/windmilleng/servantes/doggos
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine170"
+  />
+  <code
+    className="logLine171"
+  >
     <span
       className={null}
       style={null}
@@ -1892,7 +2296,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Pushing gcr.io/windmill-public-containers/servantes/doggos:tilt-28a4e6fab0991d2f
     </span>
   </code>
-  <code>
+  <code
+    className="logLine172"
+  >
     <span
       className={null}
       style={null}
@@ -1900,8 +2306,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ Skipping push
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine173"
+  />
+  <code
+    className="logLine174"
+  >
     <span
       className={null}
       style={null}
@@ -1921,7 +2331,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Building Dockerfile: [docker.io/library/sidecar]
     </span>
   </code>
-  <code>
+  <code
+    className="logLine175"
+  >
     <span
       className={null}
       style={null}
@@ -1929,7 +2341,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           Building Dockerfile:
     </span>
   </code>
-  <code>
+  <code
+    className="logLine176"
+  >
     <span
       className={null}
       style={null}
@@ -1937,8 +2351,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             FROM alpine
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine177"
+  />
+  <code
+    className="logLine178"
+  >
     <span
       className={null}
       style={null}
@@ -1946,7 +2364,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             ADD loud_sidecar.sh /
     </span>
   </code>
-  <code>
+  <code
+    className="logLine179"
+  >
     <span
       className={null}
       style={null}
@@ -1954,9 +2374,15 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             ENTRYPOINT ["/loud_sidecar.sh"]
     </span>
   </code>
-  <code />
-  <code />
-  <code>
+  <code
+    className="logLine180"
+  />
+  <code
+    className="logLine181"
+  />
+  <code
+    className="logLine182"
+  >
     <span
       className={null}
       style={null}
@@ -1976,7 +2402,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Tarring context…
     </span>
   </code>
-  <code>
+  <code
+    className="logLine183"
+  >
     <span
       className={null}
       style={null}
@@ -1984,7 +2412,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ Created tarball (size: 4.6 kB)
     </span>
   </code>
-  <code>
+  <code
+    className="logLine184"
+  >
     <span
       className={null}
       style={null}
@@ -2004,7 +2434,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Building image
     </span>
   </code>
-  <code>
+  <code
+    className="logLine185"
+  >
     <span
       className={null}
       style={null}
@@ -2012,7 +2444,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           vigoda      ┊ 2019/04/10 15:37:41 Server status: All good
     </span>
   </code>
-  <code>
+  <code
+    className="logLine186"
+  >
     <span
       className={null}
       style={null}
@@ -2020,7 +2454,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [1/2] FROM docker.io/library/alpine
     </span>
   </code>
-  <code>
+  <code
+    className="logLine187"
+  >
     <span
       className={null}
       style={null}
@@ -2028,8 +2464,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [2/2] ADD loud_sidecar.sh /
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine188"
+  />
+  <code
+    className="logLine189"
+  >
     <span
       className={null}
       style={null}
@@ -2049,7 +2489,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Pushing gcr.io/windmill-public-containers/servantes/sidecar:tilt-4fb31b5179f3ad01
     </span>
   </code>
-  <code>
+  <code
+    className="logLine190"
+  >
     <span
       className={null}
       style={null}
@@ -2057,8 +2499,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ Skipping push
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine191"
+  />
+  <code
+    className="logLine192"
+  >
     <span
       className={null}
       style={null}
@@ -2078,7 +2524,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Deploying
     </span>
   </code>
-  <code>
+  <code
+    className="logLine193"
+  >
     <span
       className={null}
       style={null}
@@ -2098,7 +2546,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Parsing Kubernetes config YAML
     </span>
   </code>
-  <code>
+  <code
+    className="logLine194"
+  >
     <span
       className={null}
       style={null}
@@ -2118,8 +2568,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Applying via kubectl
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine195"
+  />
+  <code
+    className="logLine196"
+  >
     <span
       className={null}
       style={null}
@@ -2139,7 +2593,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 1 - 1.629s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine197"
+  >
     <span
       className={null}
       style={null}
@@ -2159,7 +2615,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 2 - 0.000s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine198"
+  >
     <span
       className={null}
       style={null}
@@ -2179,7 +2637,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 3 - 2.024s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine199"
+  >
     <span
       className={null}
       style={null}
@@ -2199,7 +2659,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 4 - 0.000s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine200"
+  >
     <span
       className={null}
       style={null}
@@ -2219,7 +2681,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 5 - 0.218s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine201"
+  >
     <span
       className={null}
       style={null}
@@ -2239,9 +2703,15 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Done in: 3.871s
     </span>
   </code>
-  <code />
-  <code />
-  <code>
+  <code
+    className="logLine202"
+  />
+  <code
+    className="logLine203"
+  />
+  <code
+    className="logLine204"
+  >
     <span
       className={null}
       style={null}
@@ -2267,7 +2737,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
        ├──────────────────────────────────────────────
     </span>
   </code>
-  <code>
+  <code
+    className="logLine205"
+  >
     <span
       className={null}
       style={null}
@@ -2287,7 +2759,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Building Dockerfile: [docker.io/library/fortune]
     </span>
   </code>
-  <code>
+  <code
+    className="logLine206"
+  >
     <span
       className={null}
       style={null}
@@ -2295,7 +2769,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           Building Dockerfile:
     </span>
   </code>
-  <code>
+  <code
+    className="logLine207"
+  >
     <span
       className={null}
       style={null}
@@ -2303,8 +2779,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             FROM golang:1.10
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine208"
+  />
+  <code
+    className="logLine209"
+  >
     <span
       className={null}
       style={null}
@@ -2312,8 +2792,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             RUN apt update && apt install -y unzip time make
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine210"
+  />
+  <code
+    className="logLine211"
+  >
     <span
       className={null}
       style={null}
@@ -2321,8 +2805,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             ENV PROTOC_VERSION 3.5.1
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine212"
+  />
+  <code
+    className="logLine213"
+  >
     <span
       className={null}
       style={null}
@@ -2330,8 +2818,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             RUN wget https://github.com/google/protobuf/releases/download/v\${PROTOC_VERSION}/protoc-\${PROTOC_VERSION}-linux-x86_64.zip &&         unzip protoc-\${PROTOC_VERSION}-linux-x86_64.zip -d protoc &&         mv protoc/bin/protoc /usr/bin/protoc
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine214"
+  />
+  <code
+    className="logLine215"
+  >
     <span
       className={null}
       style={null}
@@ -2339,8 +2831,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             RUN go get github.com/golang/protobuf/protoc-gen-go
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine216"
+  />
+  <code
+    className="logLine217"
+  >
     <span
       className={null}
       style={null}
@@ -2348,7 +2844,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             ADD . /go/src/github.com/windmilleng/servantes/fortune
     </span>
   </code>
-  <code>
+  <code
+    className="logLine218"
+  >
     <span
       className={null}
       style={null}
@@ -2356,7 +2854,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             RUN cd /go/src/github.com/windmilleng/servantes/fortune && make proto
     </span>
   </code>
-  <code>
+  <code
+    className="logLine219"
+  >
     <span
       className={null}
       style={null}
@@ -2364,8 +2864,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             RUN go install github.com/windmilleng/servantes/fortune
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine220"
+  />
+  <code
+    className="logLine221"
+  >
     <span
       className={null}
       style={null}
@@ -2373,9 +2877,15 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             ENTRYPOINT /go/bin/fortune
     </span>
   </code>
-  <code />
-  <code />
-  <code>
+  <code
+    className="logLine222"
+  />
+  <code
+    className="logLine223"
+  />
+  <code
+    className="logLine224"
+  >
     <span
       className={null}
       style={null}
@@ -2395,7 +2905,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Tarring context…
     </span>
   </code>
-  <code>
+  <code
+    className="logLine225"
+  >
     <span
       className={null}
       style={null}
@@ -2403,7 +2915,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ Created tarball (size: 16 kB)
     </span>
   </code>
-  <code>
+  <code
+    className="logLine226"
+  >
     <span
       className={null}
       style={null}
@@ -2423,7 +2937,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Building image
     </span>
   </code>
-  <code>
+  <code
+    className="logLine227"
+  >
     <span
       className={null}
       style={null}
@@ -2431,7 +2947,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           snack       ┊ 2019/04/10 15:37:41 Starting Snack Service on :8083
     </span>
   </code>
-  <code>
+  <code
+    className="logLine228"
+  >
     <span
       className={null}
       style={null}
@@ -2439,7 +2957,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           vigoda      ┊ 2019/04/10 15:37:43 Server status: All good
     </span>
   </code>
-  <code>
+  <code
+    className="logLine229"
+  >
     <span
       className={null}
       style={null}
@@ -2447,7 +2967,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [1/7] FROM docker.io/library/golang:1.10
     </span>
   </code>
-  <code>
+  <code
+    className="logLine230"
+  >
     <span
       className={null}
       style={null}
@@ -2455,7 +2977,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [2/7] RUN apt update && apt install -y unzip time make
     </span>
   </code>
-  <code>
+  <code
+    className="logLine231"
+  >
     <span
       className={null}
       style={null}
@@ -2463,7 +2987,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [3/7] RUN wget https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip &&   unzip protoc-3.5.1-linux-x86_64.zip -d protoc &&   mv protoc/bin/protoc /usr/bin/protoc
     </span>
   </code>
-  <code>
+  <code
+    className="logLine232"
+  >
     <span
       className={null}
       style={null}
@@ -2471,7 +2997,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [4/7] RUN go get github.com/golang/protobuf/protoc-gen-go
     </span>
   </code>
-  <code>
+  <code
+    className="logLine233"
+  >
     <span
       className={null}
       style={null}
@@ -2479,7 +3007,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [5/7] ADD . /go/src/github.com/windmilleng/servantes/fortune
     </span>
   </code>
-  <code>
+  <code
+    className="logLine234"
+  >
     <span
       className={null}
       style={null}
@@ -2487,7 +3017,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [6/7] RUN cd /go/src/github.com/windmilleng/servantes/fortune && make proto
     </span>
   </code>
-  <code>
+  <code
+    className="logLine235"
+  >
     <span
       className={null}
       style={null}
@@ -2495,8 +3027,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [7/7] RUN go install github.com/windmilleng/servantes/fortune
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine236"
+  />
+  <code
+    className="logLine237"
+  >
     <span
       className={null}
       style={null}
@@ -2516,7 +3052,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Pushing gcr.io/windmill-public-containers/servantes/fortune:tilt-7e4331cb0b073360
     </span>
   </code>
-  <code>
+  <code
+    className="logLine238"
+  >
     <span
       className={null}
       style={null}
@@ -2524,8 +3062,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ Skipping push
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine239"
+  />
+  <code
+    className="logLine240"
+  >
     <span
       className={null}
       style={null}
@@ -2545,7 +3087,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Deploying
     </span>
   </code>
-  <code>
+  <code
+    className="logLine241"
+  >
     <span
       className={null}
       style={null}
@@ -2565,7 +3109,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Parsing Kubernetes config YAML
     </span>
   </code>
-  <code>
+  <code
+    className="logLine242"
+  >
     <span
       className={null}
       style={null}
@@ -2585,8 +3131,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Applying via kubectl
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine243"
+  />
+  <code
+    className="logLine244"
+  >
     <span
       className={null}
       style={null}
@@ -2606,7 +3156,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 1 - 1.634s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine245"
+  >
     <span
       className={null}
       style={null}
@@ -2626,7 +3178,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 2 - 0.000s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine246"
+  >
     <span
       className={null}
       style={null}
@@ -2646,7 +3200,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 3 - 0.279s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine247"
+  >
     <span
       className={null}
       style={null}
@@ -2666,9 +3222,15 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Done in: 1.914s
     </span>
   </code>
-  <code />
-  <code />
-  <code>
+  <code
+    className="logLine248"
+  />
+  <code
+    className="logLine249"
+  />
+  <code
+    className="logLine250"
+  >
     <span
       className={null}
       style={null}
@@ -2694,7 +3256,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
        ├──────────────────────────────────────────────
     </span>
   </code>
-  <code>
+  <code
+    className="logLine251"
+  >
     <span
       className={null}
       style={null}
@@ -2714,7 +3278,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Building Dockerfile: [docker.io/library/hypothesizer]
     </span>
   </code>
-  <code>
+  <code
+    className="logLine252"
+  >
     <span
       className={null}
       style={null}
@@ -2722,7 +3288,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           Building Dockerfile:
     </span>
   </code>
-  <code>
+  <code
+    className="logLine253"
+  >
     <span
       className={null}
       style={null}
@@ -2730,8 +3298,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             FROM python:3.6
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine254"
+  />
+  <code
+    className="logLine255"
+  >
     <span
       className={null}
       style={null}
@@ -2739,7 +3311,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             ADD . /app
     </span>
   </code>
-  <code>
+  <code
+    className="logLine256"
+  >
     <span
       className={null}
       style={null}
@@ -2747,8 +3321,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             RUN cd /app && pip install -r requirements.txt
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine257"
+  />
+  <code
+    className="logLine258"
+  >
     <span
       className={null}
       style={null}
@@ -2768,7 +3346,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Tarring context…
     </span>
   </code>
-  <code>
+  <code
+    className="logLine259"
+  >
     <span
       className={null}
       style={null}
@@ -2776,7 +3356,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ Created tarball (size: 6.1 kB)
     </span>
   </code>
-  <code>
+  <code
+    className="logLine260"
+  >
     <span
       className={null}
       style={null}
@@ -2796,7 +3378,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Building image
     </span>
   </code>
-  <code>
+  <code
+    className="logLine261"
+  >
     <span
       className={null}
       style={null}
@@ -2804,7 +3388,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           vigoda      ┊ 2019/04/10 15:37:45 Server status: All good
     </span>
   </code>
-  <code>
+  <code
+    className="logLine262"
+  >
     <span
       className={null}
       style={null}
@@ -2812,7 +3398,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [1/3] FROM docker.io/library/python:3.6@sha256:fcbf363c285f331894b33f2577e0426182b989c750133a989abaaa4edea324e9
     </span>
   </code>
-  <code>
+  <code
+    className="logLine263"
+  >
     <span
       className={null}
       style={null}
@@ -2820,7 +3408,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [2/3] ADD . /app
     </span>
   </code>
-  <code>
+  <code
+    className="logLine264"
+  >
     <span
       className={null}
       style={null}
@@ -2828,8 +3418,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [3/3] RUN cd /app && pip install -r requirements.txt
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine265"
+  />
+  <code
+    className="logLine266"
+  >
     <span
       className={null}
       style={null}
@@ -2849,7 +3443,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Pushing gcr.io/windmill-public-containers/servantes/hypothesizer:tilt-e2e22b5b98437e29
     </span>
   </code>
-  <code>
+  <code
+    className="logLine267"
+  >
     <span
       className={null}
       style={null}
@@ -2857,8 +3453,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ Skipping push
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine268"
+  />
+  <code
+    className="logLine269"
+  >
     <span
       className={null}
       style={null}
@@ -2878,7 +3478,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Deploying
     </span>
   </code>
-  <code>
+  <code
+    className="logLine270"
+  >
     <span
       className={null}
       style={null}
@@ -2898,7 +3500,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Parsing Kubernetes config YAML
     </span>
   </code>
-  <code>
+  <code
+    className="logLine271"
+  >
     <span
       className={null}
       style={null}
@@ -2918,8 +3522,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Applying via kubectl
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine272"
+  />
+  <code
+    className="logLine273"
+  >
     <span
       className={null}
       style={null}
@@ -2939,7 +3547,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 1 - 2.119s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine274"
+  >
     <span
       className={null}
       style={null}
@@ -2959,7 +3569,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 2 - 0.000s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine275"
+  >
     <span
       className={null}
       style={null}
@@ -2979,7 +3591,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Step 3 - 0.517s
     </span>
   </code>
-  <code>
+  <code
+    className="logLine276"
+  >
     <span
       className={null}
       style={null}
@@ -2999,9 +3613,15 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Done in: 2.636s
     </span>
   </code>
-  <code />
-  <code />
-  <code>
+  <code
+    className="logLine277"
+  />
+  <code
+    className="logLine278"
+  />
+  <code
+    className="logLine279"
+  >
     <span
       className={null}
       style={null}
@@ -3027,7 +3647,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
        ├──────────────────────────────────────────────
     </span>
   </code>
-  <code>
+  <code
+    className="logLine280"
+  >
     <span
       className={null}
       style={null}
@@ -3047,7 +3669,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Building Dockerfile: [docker.io/library/spoonerisms]
     </span>
   </code>
-  <code>
+  <code
+    className="logLine281"
+  >
     <span
       className={null}
       style={null}
@@ -3055,7 +3679,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           Building Dockerfile:
     </span>
   </code>
-  <code>
+  <code
+    className="logLine282"
+  >
     <span
       className={null}
       style={null}
@@ -3063,8 +3689,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             FROM node:10
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine283"
+  />
+  <code
+    className="logLine284"
+  >
     <span
       className={null}
       style={null}
@@ -3072,7 +3702,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             ADD package.json /app/package.json
     </span>
   </code>
-  <code>
+  <code
+    className="logLine285"
+  >
     <span
       className={null}
       style={null}
@@ -3080,7 +3712,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             ADD yarn.lock /app/yarn.lock
     </span>
   </code>
-  <code>
+  <code
+    className="logLine286"
+  >
     <span
       className={null}
       style={null}
@@ -3088,8 +3722,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             RUN cd /app && yarn install
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine287"
+  />
+  <code
+    className="logLine288"
+  >
     <span
       className={null}
       style={null}
@@ -3097,8 +3735,12 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             ADD src /app
     </span>
   </code>
-  <code />
-  <code>
+  <code
+    className="logLine289"
+  />
+  <code
+    className="logLine290"
+  >
     <span
       className={null}
       style={null}
@@ -3106,9 +3748,15 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
             ENTRYPOINT [ "node", "/app/index.js" ]
     </span>
   </code>
-  <code />
-  <code />
-  <code>
+  <code
+    className="logLine291"
+  />
+  <code
+    className="logLine292"
+  />
+  <code
+    className="logLine293"
+  >
     <span
       className={null}
       style={null}
@@ -3128,7 +3776,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Tarring context…
     </span>
   </code>
-  <code>
+  <code
+    className="logLine294"
+  >
     <span
       className={null}
       style={null}
@@ -3136,7 +3786,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ Created tarball (size: 459 kB)
     </span>
   </code>
-  <code>
+  <code
+    className="logLine295"
+  >
     <span
       className={null}
       style={null}
@@ -3156,7 +3808,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
       Building image
     </span>
   </code>
-  <code>
+  <code
+    className="logLine296"
+  >
     <span
       className={null}
       style={null}
@@ -3164,7 +3818,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Beginning Tiltfile execution
     </span>
   </code>
-  <code>
+  <code
+    className="logLine297"
+  >
     <span
       className={null}
       style={null}
@@ -3172,7 +3828,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"whoami"\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine298"
+  >
     <span
       className={null}
       style={null}
@@ -3180,7 +3838,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile]        HI
     </span>
   </code>
-  <code>
+  <code
+    className="logLine299"
+  >
     <span
       className={null}
       style={null}
@@ -3188,7 +3848,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fe.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine300"
+  >
     <span
       className={null}
       style={null}
@@ -3196,7 +3858,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/vigoda.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine301"
+  >
     <span
       className={null}
       style={null}
@@ -3204,7 +3868,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/snack.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine302"
+  >
     <span
       className={null}
       style={null}
@@ -3212,7 +3878,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/doggos.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine303"
+  >
     <span
       className={null}
       style={null}
@@ -3220,7 +3888,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fortune.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine304"
+  >
     <span
       className={null}
       style={null}
@@ -3228,7 +3898,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hypothesizer.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine305"
+  >
     <span
       className={null}
       style={null}
@@ -3236,7 +3908,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/spoonerisms.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine306"
+  >
     <span
       className={null}
       style={null}
@@ -3244,7 +3918,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/emoji.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine307"
+  >
     <span
       className={null}
       style={null}
@@ -3252,7 +3928,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/words.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine308"
+  >
     <span
       className={null}
       style={null}
@@ -3260,7 +3938,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/secrets.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine309"
+  >
     <span
       className={null}
       style={null}
@@ -3268,7 +3948,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/job.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine310"
+  >
     <span
       className={null}
       style={null}
@@ -3276,7 +3958,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/sleeper.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine311"
+  >
     <span
       className={null}
       style={null}
@@ -3284,7 +3968,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hello_world.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine312"
+  >
     <span
       className={null}
       style={null}
@@ -3292,7 +3978,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/tick.yaml""\`
     </span>
   </code>
-  <code>
+  <code
+    className="logLine313"
+  >
     <span
       className={null}
       style={null}
@@ -3300,7 +3988,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           vigoda      ┊ 2019/04/10 15:37:47 Server status: All good
     </span>
   </code>
-  <code>
+  <code
+    className="logLine314"
+  >
     <span
       className={null}
       style={null}
@@ -3308,7 +3998,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] WARNING: This Tiltfile is using k8s resource assembly version 1, which has been deprecated. It will no longer be supported after 2019-04-17. Sorry for the inconvenience! See https://tilt.dev/resource_assembly_migration.html for information on how to migrate.
     </span>
   </code>
-  <code>
+  <code
+    className="logLine315"
+  >
     <span
       className={null}
       style={null}
@@ -3316,7 +4008,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile]
     </span>
   </code>
-  <code>
+  <code
+    className="logLine316"
+  >
     <span
       className={null}
       style={null}
@@ -3324,7 +4018,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           [Tiltfile] Successfully loaded Tiltfile
     </span>
   </code>
-  <code>
+  <code
+    className="logLine317"
+  >
     <span
       className={null}
       style={null}
@@ -3332,7 +4028,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           doggos      ┊ [doggos] 2019/04/10 15:37:45 Starting Doggos Service on :8083
     </span>
   </code>
-  <code>
+  <code
+    className="logLine318"
+  >
     <span
       className={null}
       style={null}
@@ -3340,7 +4038,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           doggos      ┊ [sidecar] I'm a loud sidecar! [Wed Apr 10 15:37:46 UTC 2019]
     </span>
   </code>
-  <code>
+  <code
+    className="logLine319"
+  >
     <span
       className={null}
       style={null}
@@ -3348,7 +4048,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           doggos      ┊ [sidecar] I'm a loud sidecar! [Wed Apr 10 15:37:48 UTC 2019]
     </span>
   </code>
-  <code>
+  <code
+    className="logLine320"
+  >
     <span
       className={null}
       style={null}
@@ -3356,7 +4058,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
           doggos      ┊ [doggos] 2019/04/10 15:37:49 Heartbeat
     </span>
   </code>
-  <code>
+  <code
+    className="logLine321"
+  >
     <span
       className={null}
       style={null}
@@ -3364,7 +4068,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [1/5] FROM docker.io/library/node:10
     </span>
   </code>
-  <code>
+  <code
+    className="logLine322"
+  >
     <span
       className={null}
       style={null}
@@ -3372,7 +4078,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [2/5] ADD package.json /app/package.json
     </span>
   </code>
-  <code>
+  <code
+    className="logLine323"
+  >
     <span
       className={null}
       style={null}
@@ -3380,7 +4088,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [3/5] ADD yarn.lock /app/yarn.lock
     </span>
   </code>
-  <code>
+  <code
+    className="logLine324"
+  >
     <span
       className={null}
       style={null}
@@ -3388,7 +4098,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
               ╎ [4/5] RUN cd /app && yarn install
     </span>
   </code>
-  <code>
+  <code
+    className="logLine325"
+  >
     <span
       className={null}
       style={null}
