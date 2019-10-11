@@ -1,4 +1,5 @@
 import React, { PureComponent } from "react"
+import "./ResourceInfo.scss"
 
 type ResourceInfoProps = {
   podID: string
