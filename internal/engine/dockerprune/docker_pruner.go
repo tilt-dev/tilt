@@ -146,7 +146,7 @@ func prettyPrintContainersPruneReport(report types.ContainersPruneReport, l logg
 
 func prettyPrintImagesPruneReport(report types.ImagesPruneReport, l logger.Logger) {
 	// TODO: human-readable space reclaimed
-	l.Infof("[Docker Prune] removed %d caches, reclaimed %d bytes", len(report.ImagesDeleted), report.SpaceReclaimed)
+	l.Infof("[Docker Prune] removed %d images, reclaimed %d bytes", len(report.ImagesDeleted), report.SpaceReclaimed)
 	if len(report.ImagesDeleted) > 0 {
 		for _, img := range report.ImagesDeleted {
 			l.Debugf("\t- %s", prettyStringImgDeleteItem(img))

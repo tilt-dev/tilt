@@ -253,12 +253,12 @@ func (c *FakeClient) ImageRemove(ctx context.Context, imageID string, options ty
 func (c *FakeClient) NewVersionError(APIrequired, feature string) error {
 	if c.ThrowNewVersionError {
 		c.ThrowNewVersionError = false
-		return c.newVersionError(APIrequired, feature)
+		return c.VersionError(APIrequired, feature)
 	}
 	return nil
 }
 
-func (c *FakeClient) newVersionError(APIrequired, feature string) error {
+func (c *FakeClient) VersionError(APIrequired, feature string) error {
 	return fmt.Errorf("%q requires API version %s, but the Docker daemon API version is... something else", feature, APIrequired)
 }
 
@@ -268,7 +268,11 @@ func (c *FakeClient) BuildCachePrune(ctx context.Context, opts types.BuildCacheP
 		return nil, err
 	}
 
-	c.BuildCachePruneOpts = opts
+	c.BuildCachePruneOpts = types.BuildCachePruneOptions{
+		All:         opts.All,
+		KeepStorage: opts.KeepStorage,
+		Filters:     opts.Filters.Clone(),
+	}
 	report := &types.BuildCachePruneReport{
 		CachesDeleted:  c.BuildCachesPruned,
 		SpaceReclaimed: uint64(len(c.BuildCachesPruned)),
@@ -283,7 +287,7 @@ func (c *FakeClient) ContainersPrune(ctx context.Context, pruneFilters filters.A
 		return types.ContainersPruneReport{}, err
 	}
 
-	c.ContainersPruneFilters = pruneFilters
+	c.ContainersPruneFilters = pruneFilters.Clone()
 	report := types.ContainersPruneReport{
 		ContainersDeleted: c.ContainersPruned,
 		SpaceReclaimed:    uint64(len(c.ContainersPruned)),
@@ -298,7 +302,7 @@ func (c *FakeClient) ImagesPrune(ctx context.Context, pruneFilters filters.Args)
 		return types.ImagesPruneReport{}, err
 	}
 
-	c.ImagesPruneFilters = pruneFilters
+	c.ImagesPruneFilters = pruneFilters.Clone()
 	imgsDeleted := make([]types.ImageDeleteResponseItem, len(c.ImagesPruned))
 	for i, img := range c.ImagesPruned {
 		imgsDeleted[i] = types.ImageDeleteResponseItem{Deleted: img}
