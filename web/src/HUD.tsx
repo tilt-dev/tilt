@@ -295,7 +295,6 @@ class HUD extends Component<HudProps, HudState> {
       combinedLog = view.Log
     }
 
-
     let errorRoute = (props: RouteComponentProps<any>) => {
       let name = props.match.params ? props.match.params.name : ""
       let er = resources.find(r => r.Name === name)
@@ -405,7 +404,7 @@ class HUD extends Component<HudProps, HudState> {
             path={this.path("/r/:name/alerts")}
             render={errorRoute}
           />
-         <Route component={NoMatch} />
+          <Route component={NoMatch} />
         </Switch>
       </div>
     )
