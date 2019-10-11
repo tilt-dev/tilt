@@ -104,11 +104,15 @@ func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration) error {
 		filters.Arg("until", maxAge.String()),
 	)
 
-	opts := types.BuildCachePruneOptions{
-		All:         true,
-		KeepStorage: 524288000, // 500MB -- TODO: make configurable
-		Filters:     f,
+	fWithDangling := f.Clone()
+	fWithDangling.Add("dangling", "0") // prune all images, not just dangling ones
+	imgReport, err := dp.dCli.ImagesPrune(ctx, fWithDangling)
+	if err != nil {
+		return err
 	}
+	prettyPrintImagesPruneReport(imgReport, l)
+
+	opts := types.BuildCachePruneOptions{Filters: f}
 	cacheReport, err := dp.dCli.BuildCachePrune(ctx, opts)
 	if err != nil {
 		if !strings.Contains(err.Error(), `"build prune" requires API version`) {
@@ -125,13 +129,6 @@ func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration) error {
 	}
 	prettyPrintContainersPruneReport(containerReport, l)
 
-	f.Add("dangling", "0") // prune all images, not just dangling ones
-	imgReport, err := dp.dCli.ImagesPrune(ctx, f)
-	if err != nil {
-		return err
-	}
-	prettyPrintImagesPruneReport(imgReport, l)
-
 	return nil
 }
 
@@ -139,24 +136,12 @@ func (dp *DockerPruner) sufficientVersionError() error {
 	return dp.dCli.NewVersionError("1.30", "image | container prune with filter: label")
 }
 
-func prettyPrintCachePruneReport(report *types.BuildCachePruneReport, l logger.Logger) {
-	// TODO: human-readable space reclaimed
-	l.Infof("[Docker Prune] removed %d caches, reclaimed %d bytes", len(report.CachesDeleted), report.SpaceReclaimed)
-	if len(report.CachesDeleted) > 0 {
-		l.Debugf(sliceutils.BulletedIndentedStringList(report.CachesDeleted))
-	}
-}
-
-func prettyPrintContainersPruneReport(report types.ContainersPruneReport, l logger.Logger) {
-	// TODO: human-readable space reclaimed
-	l.Infof("[Docker Prune] removed %d containers, reclaimed %d bytes", len(report.ContainersDeleted), report.SpaceReclaimed)
-	if len(report.ContainersDeleted) > 0 {
-		l.Debugf(sliceutils.BulletedIndentedStringList(report.ContainersDeleted))
-	}
-}
-
 func prettyPrintImagesPruneReport(report types.ImagesPruneReport, l logger.Logger) {
 	// TODO: human-readable space reclaimed
+	if len(report.ImagesDeleted) == 0 {
+		return
+	}
+
 	l.Infof("[Docker Prune] removed %d images, reclaimed %d bytes", len(report.ImagesDeleted), report.SpaceReclaimed)
 	if len(report.ImagesDeleted) > 0 {
 		for _, img := range report.ImagesDeleted {
@@ -173,4 +158,28 @@ func prettyStringImgDeleteItem(img types.ImageDeleteResponseItem) string {
 		return fmt.Sprintf("untagged: %s", img.Untagged)
 	}
 	return ""
+}
+
+func prettyPrintCachePruneReport(report *types.BuildCachePruneReport, l logger.Logger) {
+	// TODO: human-readable space reclaimed
+	if len(report.CachesDeleted) == 0 {
+		return
+	}
+
+	l.Infof("[Docker Prune] removed %d caches, reclaimed %d bytes", len(report.CachesDeleted), report.SpaceReclaimed)
+	if len(report.CachesDeleted) > 0 {
+		l.Debugf(sliceutils.BulletedIndentedStringList(report.CachesDeleted))
+	}
+}
+
+func prettyPrintContainersPruneReport(report types.ContainersPruneReport, l logger.Logger) {
+	// TODO: human-readable space reclaimed
+	if len(report.ContainersDeleted) == 0 {
+		return
+	}
+
+	l.Infof("[Docker Prune] removed %d containers, reclaimed %d bytes", len(report.ContainersDeleted), report.SpaceReclaimed)
+	if len(report.ContainersDeleted) > 0 {
+		l.Debugf(sliceutils.BulletedIndentedStringList(report.ContainersDeleted))
+	}
 }

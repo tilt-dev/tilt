@@ -80,7 +80,7 @@ func TestDockerPruneSkipCachePruneIfVersionTooLow(t *testing.T) {
 	logs := f.logs.String()
 	assert.Contains(t, logs, "skipping build cache prune")
 
-	// Should have called subsequent prune funcs as normal
+	// Should have called the other prune funcs as normal
 	assert.NotEmpty(t, f.dCli.ContainersPruneFilters)
 	assert.NotEmpty(t, f.dCli.ImagesPruneFilters)
 }
@@ -95,9 +95,8 @@ func TestDockerPruneReturnsCachePruneError(t *testing.T) {
 	logs := f.logs.String()
 	assert.NotContains(t, logs, "skipping build cache prune")
 
-	// Should NOT have called any subsequent prune funcs
-	assert.Empty(t, f.dCli.ContainersPruneFilters)
-	assert.Empty(t, f.dCli.ImagesPruneFilters)
+	assert.NotEmpty(t, f.dCli.ImagesPruneFilters)  // called ImagesPrune before encountered error
+	assert.Empty(t, f.dCli.ContainersPruneFilters) // should NOT have called any prune funcs AFTER CachePrune
 }
 
 type dockerPruneFixture struct {
