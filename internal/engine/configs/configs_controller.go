@@ -120,6 +120,7 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 		Features:                      tlr.FeatureFlags,
 		TeamName:                      tlr.TeamName,
 		Secrets:                       tlr.Secrets,
+		DockerPruneSettings:           tlr.DockerPruneSettings,
 		GlobalLogLineCountAtExecStart: globalLogLineCountAtExecStart,
 	})
 }

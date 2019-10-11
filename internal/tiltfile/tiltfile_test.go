@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
@@ -3840,6 +3841,33 @@ k8s_yaml('secret.yaml')
 	assert.Equal(t, "client-secret", secrets["world"].Key)
 	assert.Equal(t, "world", string(secrets["world"].Value))
 	assert.Equal(t, "d29ybGQ=", string(secrets["world"].ValueEncoded))
+}
+
+func TestDockerPruneSettings(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+docker_prune_settings(interval_hrs=1, num_builds=2, max_age_mins=3)
+`)
+
+	f.load()
+	res := f.loadResult.DockerPruneSettings
+
+	assert.Equal(t, time.Hour, res.Interval)
+	assert.Equal(t, 2, res.NumBuilds)
+	assert.Equal(t, time.Minute*3, res.MaxAge)
+}
+
+func TestDockerPruneSettingsDisablePlusOtherArgs(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+docker_prune_settings(disable=True, interval_hrs=123)
+`)
+
+	f.loadErrString("can't disable Docker Prune (`disabled=True`) and pass additional settings")
 }
 
 type fixture struct {

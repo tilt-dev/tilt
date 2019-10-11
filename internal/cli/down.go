@@ -48,6 +48,8 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps) error {
 		return err
 	}
 
+	tlr.DockerPruneSettings.Disabled = true // don't docker prune on tilt down
+
 	entities, err := engine.ParseYAMLFromManifests(tlr.Manifests...)
 	if err != nil {
 		return errors.Wrap(err, "Parsing manifest YAML")

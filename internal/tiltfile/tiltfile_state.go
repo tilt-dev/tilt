@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"go.starlark.net/syntax"
 
@@ -85,6 +86,11 @@ type tiltfileState struct {
 	triggerModeCallPosition syntax.Position
 
 	teamName string
+
+	dockerPruneDisabled  bool
+	dockerPruneNumBuilds int
+	dockerPruneMaxAge    time.Duration
+	dockerPruneInterval  time.Duration
 
 	logger   logger.Logger
 	warnings []string
@@ -270,9 +276,10 @@ const (
 	disableSnapshotsN = "disable_snapshots"
 
 	// other functions
-	failN    = "fail"
-	blobN    = "blob"
-	setTeamN = "set_team"
+	failN                = "fail"
+	blobN                = "blob"
+	setTeamN             = "set_team"
+	dockerPruneSettingsN = "docker_prune_settings"
 )
 
 type triggerMode int
@@ -436,6 +443,8 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) {
 	e.AddBuiltin(disableSnapshotsN, s.disableSnapshots)
 
 	e.AddBuiltin(setTeamN, s.setTeam)
+
+	e.AddBuiltin(dockerPruneSettingsN, s.dockerPruneSettings)
 }
 
 // Returns the current orchestrator.
@@ -1222,6 +1231,28 @@ func (s *tiltfileState) setTeam(thread *starlark.Thread, fn *starlark.Builtin, a
 	}
 
 	s.teamName = teamName
+
+	return starlark.None, nil
+}
+
+func (s *tiltfileState) dockerPruneSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var disable bool
+	var intervalHrs, numBuilds, maxAgeMins int
+	if err := s.unpackArgs(fn.Name(), args, kwargs,
+		"disable?", &disable,
+		"interval_hrs?", &intervalHrs,
+		"num_builds?", &numBuilds,
+		"max_age_mins?", &maxAgeMins); err != nil {
+		return nil, err
+	}
+
+	if disable && (intervalHrs != 0 || numBuilds != 0 || maxAgeMins != 0) {
+		return nil, fmt.Errorf("can't disable Docker Prune (`disabled=True`) and pass additional settings")
+	}
+	s.dockerPruneDisabled = disable
+	s.dockerPruneInterval = time.Duration(intervalHrs) * time.Hour
+	s.dockerPruneNumBuilds = numBuilds
+	s.dockerPruneMaxAge = time.Duration(maxAgeMins) * time.Minute
 
 	return starlark.None, nil
 }

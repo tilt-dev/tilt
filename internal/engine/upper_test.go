@@ -2755,6 +2755,28 @@ stringData:
 	})
 }
 
+func TestDisableDockerPrune(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", simpleTiltfile)
+	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
+	f.WriteFile("snack.yaml", simpleYAML)
+
+	f.WriteFile("Tiltfile", `
+docker_prune_settings(disable=True)
+`+simpleTiltfile)
+
+	f.loadAndStart()
+
+	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
+		return len(state.TiltfileState.BuildHistory) == 1
+	})
+	f.withState(func(state store.EngineState) {
+		assert.True(t, state.DockerPruneSettings.Disabled)
+	})
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
@@ -2849,6 +2871,7 @@ type testFixture struct {
 	tfl                   tiltfile.TiltfileLoader
 	ghc                   *github.FakeClient
 	opter                 *testOpter
+	dp                    *dockerprune.DockerPruner
 	tiltVersionCheckDelay time.Duration
 
 	onchangeCh chan bool
@@ -2908,6 +2931,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	ewm := k8swatch.NewEventWatchManager(kCli, of)
 	tcum := cloud.NewUsernameManager(httptest.NewFakeClient())
 
+	dp := dockerprune.NewDockerPruner(dockerClient)
+	dp.DisableForTesting()
+
 	ret := &testFixture{
 		TempDirFixture:        f,
 		ctx:                   ctx,
@@ -2928,11 +2954,9 @@ func newTestFixture(t *testing.T) *testFixture {
 		tfl:                   tfl,
 		ghc:                   ghc,
 		opter:                 to,
+		dp:                    dp,
 		tiltVersionCheckDelay: versionCheckInterval,
 	}
-
-	dp := dockerprune.NewDockerPruner(dockerClient)
-	dp.DisableForTesting()
 
 	tiltVersionCheckTimerMaker := func(d time.Duration) <-chan time.Time {
 		return time.After(ret.tiltVersionCheckDelay)
