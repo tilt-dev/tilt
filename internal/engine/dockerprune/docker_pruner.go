@@ -15,6 +15,12 @@ import (
 	"github.com/windmilleng/tilt/pkg/logger"
 )
 
+// How often to prune Docker images while Tilt is running
+const defaultInterval = time.Hour
+
+// Prune Docker objects older than this
+const defaultMaxAge = time.Hour * 6
+
 type DockerPruner struct {
 	dCli docker.Client
 
@@ -53,6 +59,10 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 		return
 	}
 
+	interval := settings.Interval
+	if interval == 0 {
+		interval = defaultInterval
+	}
 	// wait until state has been kinda initialized, and there's at least one Docker build
 	if !state.TiltStartTime.IsZero() && state.LastTiltfileError() == nil && state.HasDockerBuild() {
 		dp.started = true
@@ -66,7 +76,7 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 
 			for {
 				select {
-				case <-time.After(settings.Interval):
+				case <-time.After(interval):
 					// and once every <interval> thereafter
 					dp.Prune(ctx, settings.MaxAge)
 				case <-ctx.Done():
@@ -80,6 +90,11 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 func (dp *DockerPruner) Prune(ctx context.Context, maxAge time.Duration) {
 	// For future: dispatch event with output/errors to be recorded
 	//   in engineState.TiltSystemState on store (analogous to TiltfileState)
+
+	if maxAge == 0 {
+		maxAge = defaultMaxAge
+	}
+
 	err := dp.prune(ctx, maxAge)
 	if err != nil {
 		logger.Get(ctx).Infof("[Docker Prune] error running docker prune: %v", err)
