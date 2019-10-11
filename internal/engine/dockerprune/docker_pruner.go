@@ -24,8 +24,10 @@ const defaultMaxAge = time.Hour * 6
 type DockerPruner struct {
 	dCli docker.Client
 
-	started            bool
 	disabledForTesting bool
+
+	lastPruneBuildCount int
+	lastPruneTime       time.Time
 }
 
 var _ store.Subscriber = &DockerPruner{}
@@ -43,10 +45,6 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 		return
 	}
 
-	if dp.started {
-		return
-	}
-
 	state := st.RLockState()
 	defer st.RUnlockState()
 
@@ -59,32 +57,46 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 		return
 	}
 
+	// If user doesn't have at least one Docker build, they probably don't care about pruning
+	if !state.HasDockerBuild() {
+		return
+	}
+
+	// Don't prune WHILE we're building something, in case of weird side-effects.
+	// TODO: more robust check here
+	if state.CurrentlyBuilding != "" {
+		return
+	}
+
+	// Prune as soon after startup as we can
+	if dp.lastPruneTime.IsZero() {
+		dp.PruneAndRecordState(ctx, settings.MaxAge, state.CompletedBuildCount)
+		return
+	}
+
+	// "Prune every X builds" takes precedence over "prune every Y hours"
+	if settings.NumBuilds != 0 {
+		buildsSince := state.CompletedBuildCount - dp.lastPruneBuildCount
+		if buildsSince >= settings.NumBuilds {
+			dp.PruneAndRecordState(ctx, settings.MaxAge, state.CompletedBuildCount)
+		}
+		return
+	}
+
 	interval := settings.Interval
 	if interval == 0 {
 		interval = defaultInterval
 	}
-	// wait until state has been kinda initialized, and there's at least one Docker build
-	if !state.TiltStartTime.IsZero() && state.LastTiltfileError() == nil && state.HasDockerBuild() {
-		dp.started = true
-		go func() {
-			select {
-			case <-time.After(time.Minute * 2):
-				dp.Prune(ctx, settings.MaxAge) // report once pretty soon after startup...
-			case <-ctx.Done():
-				return
-			}
 
-			for {
-				select {
-				case <-time.After(interval):
-					// and once every <interval> thereafter
-					dp.Prune(ctx, settings.MaxAge)
-				case <-ctx.Done():
-					return
-				}
-			}
-		}()
+	if time.Since(dp.lastPruneTime) >= interval {
+		dp.PruneAndRecordState(ctx, settings.MaxAge, state.CompletedBuildCount)
 	}
+}
+
+func (dp *DockerPruner) PruneAndRecordState(ctx context.Context, maxAge time.Duration, curBuildCount int) {
+	dp.Prune(ctx, maxAge)
+	dp.lastPruneTime = time.Now()
+	dp.lastPruneBuildCount = curBuildCount
 }
 
 func (dp *DockerPruner) Prune(ctx context.Context, maxAge time.Duration) {
