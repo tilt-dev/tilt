@@ -36,8 +36,8 @@ func NewDockerPruner(dCli docker.Client) *DockerPruner {
 	return &DockerPruner{dCli: dCli}
 }
 
-func (dp *DockerPruner) DisableForTesting() {
-	dp.disabledForTesting = true
+func (dp *DockerPruner) DisabledForTesting(disabled bool) {
+	dp.disabledForTesting = disabled
 }
 
 func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
@@ -68,8 +68,8 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 		return
 	}
 
-	// Prune as soon after startup as we can
-	if dp.lastPruneTime.IsZero() {
+	// Prune as soon after startup as we can (waiting until we've built SOMETHING)
+	if dp.lastPruneTime.IsZero() && state.CompletedBuildCount > 0 {
 		dp.PruneAndRecordState(ctx, settings.MaxAge, state.CompletedBuildCount)
 		return
 	}

@@ -2932,7 +2932,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	tcum := cloud.NewUsernameManager(httptest.NewFakeClient())
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
-	dp.DisableForTesting()
+	dp.DisabledForTesting(true)
 
 	ret := &testFixture{
 		TempDirFixture:        f,
