@@ -82,7 +82,7 @@ class HUD extends Component<HudProps, HudState> {
       window.location.host,
       window.location.pathname
     )
-    this.controller = new AppController(this.pathBuilder.getDataUrl(), this)
+    this.controller = new AppController(this.pathBuilder, this)
     this.history = props.history
     this.unlisten = this.history.listen((location, _) => {
       let tags = { type: pathToTag(location.pathname) }
