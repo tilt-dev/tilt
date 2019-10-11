@@ -11,9 +11,6 @@ it("renders without crashing", () => {
       log="hello\nworld\nfoo"
       message="world"
       isExpanded={false}
-      endpoints={[]}
-      podID={"foobar"}
-      podStatus={"Running"}
     />,
     div
   )
@@ -27,9 +24,6 @@ it("renders logs", () => {
       <LogPane
         log={log}
         isExpanded={false}
-        endpoints={[]}
-        podID={"foobar"}
-        podStatus={"Running"}
       />
     )
     .toJSON()
@@ -373,9 +367,6 @@ it("renders logs with leading whitespace and ANSI codes", () => {
       <LogPane
         log={log}
         isExpanded={false}
-        endpoints={[]}
-        podID={"foobar"}
-        podStatus={"Running"}
       />
     )
     .toJSON()
