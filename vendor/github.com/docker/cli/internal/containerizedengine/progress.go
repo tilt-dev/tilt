@@ -64,7 +64,7 @@ outer:
 				}
 			}
 
-			err := updateNonActive(ctx, ongoing, cs, statuses, keys, activeSeen, &done, start)
+			err := updateNonActive(ctx, ongoing, cs, statuses, &keys, activeSeen, &done, start)
 			if err != nil {
 				continue outer
 			}
@@ -92,11 +92,11 @@ outer:
 	}
 }
 
-func updateNonActive(ctx context.Context, ongoing *jobs, cs content.Store, statuses map[string]statusInfo, keys []string, activeSeen map[string]struct{}, done *bool, start time.Time) error {
+func updateNonActive(ctx context.Context, ongoing *jobs, cs content.Store, statuses map[string]statusInfo, keys *[]string, activeSeen map[string]struct{}, done *bool, start time.Time) error {
 
 	for _, j := range ongoing.jobs() {
 		key := remotes.MakeRefKey(ctx, j)
-		keys = append(keys, key)
+		*keys = append(*keys, key)
 		if _, ok := activeSeen[key]; ok {
 			continue
 		}

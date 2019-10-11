@@ -23,7 +23,6 @@ import (
 	"bufio"
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -36,6 +35,7 @@ import (
 	"github.com/Microsoft/go-winio"
 	"github.com/Microsoft/hcsshim"
 	"github.com/containerd/containerd/sys"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -74,7 +74,7 @@ func tarName(p string) (string, error) {
 	// in file names, it is mostly safe to replace however we must
 	// check just in case
 	if strings.Contains(p, "/") {
-		return "", fmt.Errorf("Windows path contains forward slash: %s", p)
+		return "", fmt.Errorf("windows path contains forward slash: %s", p)
 	}
 
 	return strings.Replace(p, string(os.PathSeparator), "/", -1), nil
@@ -107,10 +107,6 @@ func openFile(name string, flag int, perm os.FileMode) (*os.File, error) {
 	return sys.OpenFileSequential(name, flag, perm)
 }
 
-func mkdirAll(path string, perm os.FileMode) error {
-	return sys.MkdirAll(path, perm)
-}
-
 func mkdir(path string, perm os.FileMode) error {
 	return os.Mkdir(path, perm)
 }
@@ -130,11 +126,7 @@ func skipFile(hdr *tar.Header) bool {
 	// specific or Linux-specific, this warning should be changed to an error
 	// to cater for the situation where someone does manage to upload a Linux
 	// image but have it tagged as Windows inadvertently.
-	if strings.Contains(hdr.Name, ":") {
-		return true
-	}
-
-	return false
+	return strings.Contains(hdr.Name, ":")
 }
 
 // handleTarTypeBlockCharFifo is an OS-specific helper function used by
@@ -157,16 +149,8 @@ func setxattr(path, key, value string) error {
 	return errors.New("xattrs not supported on Windows")
 }
 
-// apply applies a tar stream of an OCI style diff tar of a Windows layer.
-// See https://github.com/opencontainers/image-spec/blob/master/layer.md#applying-changesets
-func apply(ctx context.Context, root string, tr *tar.Reader, options ApplyOptions) (size int64, err error) {
-	if options.IsWindowsContainerLayer {
-		return applyWindowsLayer(ctx, root, tr, options)
-	}
-	return applyNaive(ctx, root, tr, options)
-}
-
-// applyWindowsLayer applies a tar stream of an OCI style diff tar of a Windows layer.
+// applyWindowsLayer applies a tar stream of an OCI style diff tar of a Windows
+// layer using the hcsshim layer writer and backup streams.
 // See https://github.com/opencontainers/image-spec/blob/master/layer.md#applying-changesets
 func applyWindowsLayer(ctx context.Context, root string, tr *tar.Reader, options ApplyOptions) (size int64, err error) {
 	home, id := filepath.Split(root)
@@ -174,7 +158,7 @@ func applyWindowsLayer(ctx context.Context, root string, tr *tar.Reader, options
 		HomeDir: home,
 	}
 
-	w, err := hcsshim.NewLayerWriter(info, id, options.ParentLayerPaths)
+	w, err := hcsshim.NewLayerWriter(info, id, options.Parents)
 	if err != nil {
 		return 0, err
 	}
@@ -446,4 +430,15 @@ func writeBackupStreamFromTarFile(w io.Writer, t *tar.Reader, hdr *tar.Header) (
 			return nil, err
 		}
 	}
+}
+
+func copyDirInfo(fi os.FileInfo, path string) error {
+	if err := os.Chmod(path, fi.Mode()); err != nil {
+		return errors.Wrapf(err, "failed to chmod %s", path)
+	}
+	return nil
+}
+
+func copyUpXAttrs(dst, src string) error {
+	return nil
 }

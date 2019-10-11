@@ -19,7 +19,7 @@ package images
 import (
 	"context"
 	"encoding/json"
-	"strings"
+	"sort"
 	"time"
 
 	"github.com/containerd/containerd/content"
@@ -93,7 +93,7 @@ type Store interface {
 //
 // The caller can then use the descriptor to resolve and process the
 // configuration of the image.
-func (image *Image) Config(ctx context.Context, provider content.Provider, platform string) (ocispec.Descriptor, error) {
+func (image *Image) Config(ctx context.Context, provider content.Provider, platform platforms.MatchComparer) (ocispec.Descriptor, error) {
 	return Config(ctx, provider, image.Target, platform)
 }
 
@@ -101,7 +101,7 @@ func (image *Image) Config(ctx context.Context, provider content.Provider, platf
 //
 // These are used to verify that a set of layers unpacked to the expected
 // values.
-func (image *Image) RootFS(ctx context.Context, provider content.Provider, platform string) ([]digest.Digest, error) {
+func (image *Image) RootFS(ctx context.Context, provider content.Provider, platform platforms.MatchComparer) ([]digest.Digest, error) {
 	desc, err := image.Config(ctx, provider, platform)
 	if err != nil {
 		return nil, err
@@ -110,7 +110,7 @@ func (image *Image) RootFS(ctx context.Context, provider content.Provider, platf
 }
 
 // Size returns the total size of an image's packed resources.
-func (image *Image) Size(ctx context.Context, provider content.Provider, platform string) (int64, error) {
+func (image *Image) Size(ctx context.Context, provider content.Provider, platform platforms.MatchComparer) (int64, error) {
 	var size int64
 	return size, Walk(ctx, Handlers(HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		if desc.Size < 0 {
@@ -118,30 +118,33 @@ func (image *Image) Size(ctx context.Context, provider content.Provider, platfor
 		}
 		size += desc.Size
 		return nil, nil
-	}), FilterPlatforms(ChildrenHandler(provider), platform)), image.Target)
+	}), LimitManifests(FilterPlatforms(ChildrenHandler(provider), platform), platform, 1)), image.Target)
+}
+
+type platformManifest struct {
+	p *ocispec.Platform
+	m *ocispec.Manifest
 }
 
 // Manifest resolves a manifest from the image for the given platform.
+//
+// When a manifest descriptor inside of a manifest index does not have
+// a platform defined, the platform from the image config is considered.
+//
+// If the descriptor points to a non-index manifest, then the manifest is
+// unmarshalled and returned without considering the platform inside of the
+// config.
 //
 // TODO(stevvooe): This violates the current platform agnostic approach to this
 // package by returning a specific manifest type. We'll need to refactor this
 // to return a manifest descriptor or decide that we want to bring the API in
 // this direction because this abstraction is not needed.`
-func Manifest(ctx context.Context, provider content.Provider, image ocispec.Descriptor, platform string) (ocispec.Manifest, error) {
+func Manifest(ctx context.Context, provider content.Provider, image ocispec.Descriptor, platform platforms.MatchComparer) (ocispec.Manifest, error) {
 	var (
-		matcher  platforms.Matcher
-		m        *ocispec.Manifest
-		p        ocispec.Platform
+		limit    = 1
+		m        []platformManifest
 		wasIndex bool
 	)
-	if platform != "" {
-		var err error
-		p, err = platforms.Parse(platform)
-		if err != nil {
-			return ocispec.Manifest{}, err
-		}
-		matcher = platforms.NewMatcher(p)
-	}
 
 	if err := Walk(ctx, HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		switch desc.MediaType {
@@ -156,8 +159,8 @@ func Manifest(ctx context.Context, provider content.Provider, image ocispec.Desc
 				return nil, err
 			}
 
-			if platform != "" {
-				if desc.Platform != nil && !matcher.Match(*desc.Platform) {
+			if desc.Digest != image.Digest && platform != nil {
+				if desc.Platform != nil && !platform.Match(*desc.Platform) {
 					return nil, nil
 				}
 
@@ -172,14 +175,17 @@ func Manifest(ctx context.Context, provider content.Provider, image ocispec.Desc
 						return nil, err
 					}
 
-					if !matcher.Match(platforms.Normalize(ocispec.Platform{OS: image.OS, Architecture: image.Architecture})) {
+					if !platform.Match(platforms.Normalize(ocispec.Platform{OS: image.OS, Architecture: image.Architecture})) {
 						return nil, nil
 					}
 
 				}
 			}
 
-			m = &manifest
+			m = append(m, platformManifest{
+				p: desc.Platform,
+				m: &manifest,
+			})
 
 			return nil, nil
 		case MediaTypeDockerSchema2ManifestList, ocispec.MediaTypeImageIndex:
@@ -193,36 +199,47 @@ func Manifest(ctx context.Context, provider content.Provider, image ocispec.Desc
 				return nil, err
 			}
 
-			if platform == "" {
+			if platform == nil {
 				return idx.Manifests, nil
 			}
 
 			var descs []ocispec.Descriptor
 			for _, d := range idx.Manifests {
-				if d.Platform == nil || matcher.Match(*d.Platform) {
+				if d.Platform == nil || platform.Match(*d.Platform) {
 					descs = append(descs, d)
 				}
 			}
 
+			sort.SliceStable(descs, func(i, j int) bool {
+				if descs[i].Platform == nil {
+					return false
+				}
+				if descs[j].Platform == nil {
+					return true
+				}
+				return platform.Less(*descs[i].Platform, *descs[j].Platform)
+			})
+
 			wasIndex = true
 
+			if len(descs) > limit {
+				return descs[:limit], nil
+			}
 			return descs, nil
-
 		}
 		return nil, errors.Wrapf(errdefs.ErrNotFound, "unexpected media type %v for %v", desc.MediaType, desc.Digest)
 	}), image); err != nil {
 		return ocispec.Manifest{}, err
 	}
 
-	if m == nil {
+	if len(m) == 0 {
 		err := errors.Wrapf(errdefs.ErrNotFound, "manifest %v", image.Digest)
 		if wasIndex {
-			err = errors.Wrapf(errdefs.ErrNotFound, "no match for current platform %s in manifest %v", platforms.Format(p), image.Digest)
+			err = errors.Wrapf(errdefs.ErrNotFound, "no match for platform in manifest %v", image.Digest)
 		}
 		return ocispec.Manifest{}, err
 	}
-
-	return *m, nil
+	return *m[0].m, nil
 }
 
 // Config resolves the image configuration descriptor using a content provided
@@ -230,7 +247,7 @@ func Manifest(ctx context.Context, provider content.Provider, image ocispec.Desc
 //
 // The caller can then use the descriptor to resolve and process the
 // configuration of the image.
-func Config(ctx context.Context, provider content.Provider, image ocispec.Descriptor, platform string) (ocispec.Descriptor, error) {
+func Config(ctx context.Context, provider content.Provider, image ocispec.Descriptor, platform platforms.MatchComparer) (ocispec.Descriptor, error) {
 	manifest, err := Manifest(ctx, provider, image, platform)
 	if err != nil {
 		return ocispec.Descriptor{}, err
@@ -276,7 +293,7 @@ func Platforms(ctx context.Context, provider content.Provider, image ocispec.Des
 // in the provider.
 //
 // If there is a problem resolving content, an error will be returned.
-func Check(ctx context.Context, provider content.Provider, image ocispec.Descriptor, platform string) (available bool, required, present, missing []ocispec.Descriptor, err error) {
+func Check(ctx context.Context, provider content.Provider, image ocispec.Descriptor, platform platforms.MatchComparer) (available bool, required, present, missing []ocispec.Descriptor, err error) {
 	mfst, err := Manifest(ctx, provider, image, platform)
 	if err != nil {
 		if errdefs.IsNotFound(err) {
@@ -340,15 +357,11 @@ func Children(ctx context.Context, provider content.Provider, desc ocispec.Descr
 		}
 
 		descs = append(descs, index.Manifests...)
-	case MediaTypeDockerSchema2Layer, MediaTypeDockerSchema2LayerGzip,
-		MediaTypeDockerSchema2LayerForeign, MediaTypeDockerSchema2LayerForeignGzip,
-		MediaTypeDockerSchema2Config, ocispec.MediaTypeImageConfig,
-		ocispec.MediaTypeImageLayer, ocispec.MediaTypeImageLayerGzip,
-		ocispec.MediaTypeImageLayerNonDistributable, ocispec.MediaTypeImageLayerNonDistributableGzip,
-		MediaTypeContainerd1Checkpoint, MediaTypeContainerd1CheckpointConfig:
-		// childless data types.
-		return nil, nil
 	default:
+		if IsLayerType(desc.MediaType) || IsKnownConfig(desc.MediaType) {
+			// childless data types.
+			return nil, nil
+		}
 		log.G(ctx).Warnf("encountered unknown type %v; children may not be fetched", desc.MediaType)
 	}
 
@@ -370,23 +383,4 @@ func RootFS(ctx context.Context, provider content.Provider, configDesc ocispec.D
 		return nil, err
 	}
 	return config.RootFS.DiffIDs, nil
-}
-
-// IsCompressedDiff returns true if mediaType is a known compressed diff media type.
-// It returns false if the media type is a diff, but not compressed. If the media type
-// is not a known diff type, it returns errdefs.ErrNotImplemented
-func IsCompressedDiff(ctx context.Context, mediaType string) (bool, error) {
-	switch mediaType {
-	case ocispec.MediaTypeImageLayer, MediaTypeDockerSchema2Layer:
-	case ocispec.MediaTypeImageLayerGzip, MediaTypeDockerSchema2LayerGzip:
-		return true, nil
-	default:
-		// Still apply all generic media types *.tar[.+]gzip and *.tar
-		if strings.HasSuffix(mediaType, ".tar.gzip") || strings.HasSuffix(mediaType, ".tar+gzip") {
-			return true, nil
-		} else if !strings.HasSuffix(mediaType, ".tar") {
-			return false, errdefs.ErrNotImplemented
-		}
-	}
-	return false, nil
 }

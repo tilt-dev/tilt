@@ -71,7 +71,7 @@ type Manifest struct {
 	Layers []distribution.Descriptor `json:"layers"`
 }
 
-// References returnes the descriptors of this manifests references.
+// References returns the descriptors of this manifests references.
 func (m Manifest) References() []distribution.Descriptor {
 	references := make([]distribution.Descriptor, 0, 1+len(m.Layers))
 	references = append(references, m.Config)
@@ -106,7 +106,7 @@ func FromStruct(m Manifest) (*DeserializedManifest, error) {
 
 // UnmarshalJSON populates a new Manifest struct from JSON data.
 func (m *DeserializedManifest) UnmarshalJSON(b []byte) error {
-	m.canonical = make([]byte, len(b), len(b))
+	m.canonical = make([]byte, len(b))
 	// store manifest in canonical
 	copy(m.canonical, b)
 

@@ -60,12 +60,29 @@
   version = "v0.4.11"
 
 [[projects]]
-  digest = "1:f6d342da7c7b4d3d6cce98cf8f09f480afeacd53dcf176be8edc53138ca0266a"
+  digest = "1:202bd5fb18d2d38b8f3d111cce6d90ed02ae6b7b9c80be96b71289d2bddd83ea"
   name = "github.com/Microsoft/hcsshim"
-  packages = ["."]
+  packages = [
+    ".",
+    "internal/guestrequest",
+    "internal/guid",
+    "internal/hcs",
+    "internal/hcserror",
+    "internal/hns",
+    "internal/interop",
+    "internal/logfields",
+    "internal/longpath",
+    "internal/mergemaps",
+    "internal/safefile",
+    "internal/schema1",
+    "internal/schema2",
+    "internal/timeout",
+    "internal/wclayer",
+    "osversion",
+  ]
   pruneopts = "UT"
-  revision = "0acf63599bff447edf6bbfb8bbb38cb5fb33aa1e"
-  version = "v0.6.14"
+  revision = "f92b8fb9c92e17da496af5a69e3ee13fbe9916e1"
+  version = "v0.8.6"
 
 [[projects]]
   digest = "1:a2682518d905d662d984ef9959984ef87cecb777d379bfa9d9fe40e78069b3e4"
@@ -161,7 +178,7 @@
   revision = "3a0bb77429bd3a61596f5e8a3172445844342120"
 
 [[projects]]
-  digest = "1:74f3cdda4388065baed6dd3952be91b4b532751743f370afa15f76d88a382106"
+  digest = "1:a88c7357e618d3c08576a4b65cb12cdd01cae609dece53542172728ed8e96c20"
   name = "github.com/containerd/containerd"
   packages = [
     ".",
@@ -186,13 +203,14 @@
     "content/proxy",
     "defaults",
     "diff",
-    "diff/apply",
     "errdefs",
     "events",
     "events/exchange",
     "filters",
     "identifiers",
     "images",
+    "images/archive",
+    "labels",
     "leases",
     "leases/proxy",
     "log",
@@ -208,22 +226,22 @@
     "remotes/docker/schema1",
     "rootfs",
     "runtime/linux/runctypes",
-    "runtime/restart",
+    "runtime/v2/runc/options",
     "snapshots",
     "snapshots/proxy",
     "sys",
+    "version",
   ]
   pruneopts = "UT"
-  revision = "ac18e6008772193e9c837687156391ee2a1675cd"
-  version = "v1.2.0-beta.1"
+  revision = "36cf5b690dcc00ff0f34ff7799209050c3d0c59a"
+  version = "v1.3.0"
 
 [[projects]]
   branch = "master"
-  digest = "1:14ec65aaf4c54e1526a8839b24d11e2350aeb6e11ba76ecc0ca9ae615a269b37"
+  digest = "1:b618fde56d5e23e9febe9847b1479c3cfe3a517810f69f4d325e8c83f8571342"
   name = "github.com/containerd/continuity"
   packages = [
     "fs",
-    "pathdriver",
     "syscallx",
     "sysx",
   ]
@@ -237,6 +255,14 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "3d5202aec260678c48179c56f40e6f38a095738c"
+
+[[projects]]
+  branch = "master"
+  digest = "1:6d66a41dbbc6819902f1589d0550bc01c18032c0a598a7cd656731e6df73861b"
+  name = "github.com/containerd/ttrpc"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "92c8520ef9f86600c650dd540266a007bf03670f"
 
 [[projects]]
   branch = "master"
@@ -271,33 +297,40 @@
   version = "v3.2.0"
 
 [[projects]]
-  digest = "1:3f986c010b69e676e626eca47d077590fc46e7e8eaf5a3b6e709eb928e2d2c16"
+  digest = "1:d71c5cf14729255cc02551b1120113e73b62fa786849f416c4d326f717d6714a"
   name = "github.com/docker/cli"
   packages = [
-    "cli",
     "cli/command",
     "cli/config",
     "cli/config/configfile",
     "cli/config/credentials",
+    "cli/config/types",
     "cli/connhelper",
+    "cli/connhelper/commandconn",
     "cli/connhelper/ssh",
+    "cli/context",
+    "cli/context/docker",
+    "cli/context/store",
     "cli/debug",
     "cli/flags",
     "cli/manifest/store",
     "cli/manifest/types",
     "cli/registry/client",
+    "cli/streams",
     "cli/trust",
+    "cli/version",
     "internal/containerizedengine",
-    "internal/pkg/containerized",
+    "internal/versions",
     "opts",
+    "types",
   ]
   pruneopts = "UT"
-  revision = "08cf36daa65e22771cc47365ff1507c156c4a459"
-  version = "v18.09.0-ce-tp4"
+  revision = "50bb8c70f308c352be3de40103727dda10bf725f"
+  version = "v19.03.3-beta1"
 
 [[projects]]
   branch = "master"
-  digest = "1:f1f31b528a2372f530c48ee54831c02449f19635913bbd5fa3ab837d6611874f"
+  digest = "1:971e78cddeb22d56e705f866fc6c831690407a8cf51944c5e5bc3366a6804a6e"
   name = "github.com/docker/distribution"
   packages = [
     ".",
@@ -318,11 +351,11 @@
     "uuid",
   ]
   pruneopts = "UT"
-  revision = "059f301d548d58085032e6af149a08352221f792"
+  revision = "ae2e973db9365d6f8401ffb6bfc603f3cd76b111"
 
 [[projects]]
   branch = "master"
-  digest = "1:93e0662db9c1255285818ecc4399cbe8b098f2dc3dea3f58fbc5990c5594630a"
+  digest = "1:5fa9443469114d3e5d64604b1da630324338f8b0669884778dc9108ed5c0919b"
   name = "github.com/docker/docker"
   packages = [
     "api",
@@ -346,7 +379,6 @@
     "errdefs",
     "pkg/fileutils",
     "pkg/homedir",
-    "pkg/idtools",
     "pkg/ioutils",
     "pkg/jsonmessage",
     "pkg/longpath",
@@ -360,7 +392,7 @@
     "registry/resumable",
   ]
   pruneopts = "UT"
-  revision = "740349757396d8f1ad573d4b78148baca9c979aa"
+  revision = "6f069f14e6a76f2a3cdf50a089e67429581d7cc8"
 
 [[projects]]
   digest = "1:8866486038791fe65ea1abf660041423954b1f3fb99ea6a0ad8424422e943458"
@@ -1362,8 +1394,7 @@
   revision = "1d60e4601c6fd243af51cc01ddf169918a5407ca"
 
 [[projects]]
-  branch = "master"
-  digest = "1:5ebcbadd8f6a3d1c1ac51a8d52723e909ad42aa40b88a2380e31fd464909b243"
+  digest = "1:472c0e63d8616370d491527328221a335377c085ef2891305f224e84af80354b"
   name = "golang.org/x/sys"
   packages = [
     "unix",
@@ -1371,7 +1402,7 @@
     "windows/registry",
   ]
   pruneopts = "UT"
-  revision = "d99a578cf41bfccdeaf48b0845c823a4b8b0ad5e"
+  revision = "0c1ff786ef13daa914a3351c5e6b0321aed5960e"
 
 [[projects]]
   digest = "1:28756bf526c1af662d24519f2fa7abca7237bebb06e3e02941b2b6e5b6ceb7b9"
@@ -1450,16 +1481,18 @@
   revision = "c66870c02cf823ceb633bcd05be3c7cda29976f4"
 
 [[projects]]
-  digest = "1:047efbc3c9a51f3002b0002f92543857d372654a676fb6b01931982cd80467dd"
+  digest = "1:7d3dc9da8a606ed421ace211357afdc4bdd8ee8eb7dd2c38677c71d2382a7dee"
   name = "google.golang.org/grpc"
   packages = [
     ".",
     "balancer",
     "balancer/base",
     "balancer/roundrobin",
+    "binarylog/grpc_binarylog_v1",
     "codes",
     "connectivity",
     "credentials",
+    "credentials/internal",
     "encoding",
     "encoding/proto",
     "grpclog",
@@ -1467,9 +1500,13 @@
     "health/grpc_health_v1",
     "internal",
     "internal/backoff",
+    "internal/balancerload",
+    "internal/binarylog",
     "internal/channelz",
     "internal/envconfig",
     "internal/grpcrand",
+    "internal/grpcsync",
+    "internal/syscall",
     "internal/transport",
     "keepalive",
     "metadata",
@@ -1478,13 +1515,14 @@
     "resolver",
     "resolver/dns",
     "resolver/passthrough",
+    "serviceconfig",
     "stats",
     "status",
     "tap",
   ]
   pruneopts = "UT"
-  revision = "32fb0ac620c32ba40a4626ddf94d90d12cce3455"
-  version = "v1.14.0"
+  revision = "f6d0f9ee430895e87ef1ceb5ac8f39725bafceef"
+  version = "v1.24.0"
 
 [[projects]]
   digest = "1:653e04c4515b37169ef5874d752f4254e63b4aedb5c8b3a4118e9e3a4e3503e1"
@@ -1977,6 +2015,14 @@
   pruneopts = "UT"
   revision = "fd68e9863619f6ec2fdd8625fe1f02e7c877e480"
   version = "v1.1.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:9132eacc44d9bd1e03145ea2e9d4888800da7773d6edebb401f8cd34c9fb8380"
+  name = "vbom.ml/util"
+  packages = ["sortorder"]
+  pruneopts = "UT"
+  revision = "efcd4e0f97874370259c7d93e12aad57911dea81"
 
 [solve-meta]
   analyzer-name = "dep"

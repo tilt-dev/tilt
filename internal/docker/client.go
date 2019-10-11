@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -226,8 +227,8 @@ func SupportsBuildkit(v types.Version, env Env) bool {
 // DOCKER_API_VERSION to set the version of the API to reach, leave empty for latest.
 // DOCKER_CERT_PATH to load the TLS certificates from.
 // DOCKER_TLS_VERIFY to enable or disable TLS verification, off by default.
-func CreateClientOpts(ctx context.Context, env Env) ([]func(client *client.Client) error, error) {
-	result := make([]func(client *client.Client) error, 0)
+func CreateClientOpts(ctx context.Context, env Env) ([]client.Opt, error) {
+	result := make([]client.Opt, 0)
 
 	if env.CertPath != "" {
 		options := tlsconfig.Options{
@@ -301,7 +302,10 @@ func (c *Cli) initCreds(ctx context.Context) dockerCreds {
 				}()
 
 				// Start the server
-				_ = session.Run(ctx, c.Client.DialSession)
+				dialSession := func(ctx context.Context, proto string, meta map[string][]string) (net.Conn, error) {
+					return c.Client.DialHijack(ctx, "/session", proto, meta)
+				}
+				_ = session.Run(ctx, dialSession)
 			}()
 			creds.sessionID = session.ID()
 		}
@@ -311,7 +315,11 @@ func (c *Cli) initCreds(ctx context.Context) dockerCreds {
 		// If we fail to get credentials for some reason, that's OK.
 		// even the docker CLI ignores this:
 		// https://github.com/docker/cli/blob/23446275646041f9b598d64c51be24d5d0e49376/cli/command/image/build.go#L386
-		authConfigs, _ := configFile.GetAllCredentials()
+		credentials, _ := configFile.GetAllCredentials()
+		authConfigs := make(map[string]types.AuthConfig, len(credentials))
+		for k, auth := range credentials {
+			authConfigs[k] = types.AuthConfig(auth)
+		}
 		creds.authConfigs = authConfigs
 	}
 
@@ -370,7 +378,13 @@ func (c *Cli) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.Read
 
 	logger.Get(ctx).Infof("Authenticating to image repo: %s", repoInfo.Index.Name)
 	infoWriter := logger.Get(ctx).Writer(logger.InfoLvl)
-	cli := command.NewDockerCli(nil, infoWriter, infoWriter, true)
+	cli, err := command.NewDockerCli(
+		command.WithCombinedStreams(infoWriter),
+		command.WithContentTrust(true),
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "ImagePush#NewDockerCli")
+	}
 
 	err = cli.Initialize(cliflags.NewClientOptions())
 	if err != nil {

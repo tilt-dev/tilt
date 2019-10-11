@@ -27,34 +27,22 @@ import (
 	"github.com/containerd/containerd/archive/compression"
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
-	"github.com/containerd/containerd/platforms"
 	"github.com/pkg/errors"
 )
 
 // Install a binary image into the opt service
 func (c *Client) Install(ctx context.Context, image Image, opts ...InstallOpts) error {
-	resp, err := c.IntrospectionService().Plugins(ctx, &introspectionapi.PluginsRequest{
-		Filters: []string{
-			"id==opt",
-		},
-	})
-	if err != nil {
-		return err
-	}
-	if len(resp.Plugins) != 1 {
-		return errors.New("opt service not enabled")
-	}
-	path := resp.Plugins[0].Exports["path"]
-	if path == "" {
-		return errors.New("opt path not exported")
-	}
 	var config InstallConfig
 	for _, o := range opts {
 		o(&config)
 	}
+	path, err := c.getInstallPath(ctx, config)
+	if err != nil {
+		return err
+	}
 	var (
 		cs       = image.ContentStore()
-		platform = platforms.Default()
+		platform = c.platform
 	)
 	manifest, err := images.Manifest(ctx, cs, image.Target(), platform)
 	if err != nil {
@@ -70,7 +58,6 @@ func (c *Client) Install(ctx context.Context, image Image, opts ...InstallOpts) 
 		if err != nil {
 			return err
 		}
-		defer r.Close()
 		if _, err := archive.Apply(ctx, path, r, archive.WithFilter(func(hdr *tar.Header) (bool, error) {
 			d := filepath.Dir(hdr.Name)
 			result := d == "bin"
@@ -84,8 +71,32 @@ func (c *Client) Install(ctx context.Context, image Image, opts ...InstallOpts) 
 			}
 			return result, nil
 		})); err != nil {
+			r.Close()
 			return err
 		}
+		r.Close()
 	}
 	return nil
+}
+
+func (c *Client) getInstallPath(ctx context.Context, config InstallConfig) (string, error) {
+	if config.Path != "" {
+		return config.Path, nil
+	}
+	resp, err := c.IntrospectionService().Plugins(ctx, &introspectionapi.PluginsRequest{
+		Filters: []string{
+			"id==opt",
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if len(resp.Plugins) != 1 {
+		return "", errors.New("opt service not enabled")
+	}
+	path := resp.Plugins[0].Exports["path"]
+	if path == "" {
+		return "", errors.New("opt path not exported")
+	}
+	return path, nil
 }
