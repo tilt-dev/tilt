@@ -3,15 +3,19 @@ import { getResourceAlerts } from "./alerts"
 import { ShowFatalErrorModal } from "./types"
 import PathBuilder from "./PathBuilder"
 
-// A Websocket that automatically retries.
+interface HUDInt {
+  setAppState: (state: any) => void
+  setHistoryLocation: (path: string) => void
+}
 
+// A Websocket that automatically retries.
 class AppController {
   url: string
   loadCount: number
   liveSocket: boolean
   tryConnectCount: number
   socket: WebSocket | null = null
-  component: HUD
+  component: HUDInt
   disposed: boolean = false
   pb: PathBuilder
 
@@ -23,7 +27,7 @@ class AppController {
    *     - Message (string): A status message about the state of the socket
    *     - View (Object): A JSON serialization of the Go struct in internal/renderer/view
    */
-  constructor(pathBuilder: PathBuilder, component: HUD) {
+  constructor(pathBuilder: PathBuilder, component: HUDInt) {
     if (!component.setAppState) {
       throw new Error("App component has no setAppState method")
     }
