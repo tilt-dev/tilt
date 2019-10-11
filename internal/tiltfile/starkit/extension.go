@@ -5,7 +5,7 @@ import "go.starlark.net/starlark"
 // An extension to a starlark execution environment.
 type Extension interface {
 	// Called when execution begins.
-	OnStart(e *Environment)
+	OnStart(e *Environment) error
 }
 
 type OnExecExtension interface {
