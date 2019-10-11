@@ -9,6 +9,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
+	"github.com/windmilleng/tilt/internal/engine/runtimelog"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
@@ -262,7 +263,7 @@ func prunePods(ms *store.ManifestState) {
 	}
 }
 
-func handlePodLogAction(state *store.EngineState, action PodLogAction) {
+func handlePodLogAction(state *store.EngineState, action runtimelog.PodLogAction) {
 	manifestName := action.Source()
 	ms, ok := state.ManifestState(manifestName)
 	if !ok {

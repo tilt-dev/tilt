@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/windmilleng/tilt/internal/engine/runtimelog"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/logger"
@@ -103,10 +104,10 @@ func (m *PortForwardController) OnChange(ctx context.Context, st store.RStore) {
 
 	for _, entry := range toStart {
 		// Treat port-forwarding errors as part of the pod log
-		actionWriter := PodLogActionWriter{
-			store:        st,
-			podID:        entry.podID,
-			manifestName: entry.name,
+		actionWriter := runtimelog.PodLogActionWriter{
+			Store:        st,
+			PodID:        entry.podID,
+			ManifestName: entry.name,
 		}
 		ctx := entry.ctx
 		ctx = logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), actionWriter))
