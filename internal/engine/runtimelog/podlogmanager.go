@@ -1,4 +1,4 @@
-package engine
+package runtimelog
 
 import (
 	"context"
@@ -173,9 +173,9 @@ func (m *PodLogManager) consumeLogs(watch PodLogWatch, st store.RStore) {
 	}()
 
 	var actionWriter io.Writer = PodLogActionWriter{
-		store:        st,
-		manifestName: name,
-		podID:        pID,
+		Store:        st,
+		ManifestName: name,
+		PodID:        pID,
 	}
 	if watch.shouldPrefix {
 		prefix := fmt.Sprintf("[%s] ", watch.cName)
@@ -209,15 +209,15 @@ type podLogKey struct {
 }
 
 type PodLogActionWriter struct {
-	store        store.RStore
-	podID        k8s.PodID
-	manifestName model.ManifestName
+	Store        store.RStore
+	PodID        k8s.PodID
+	ManifestName model.ManifestName
 }
 
 func (w PodLogActionWriter) Write(p []byte) (n int, err error) {
-	w.store.Dispatch(PodLogAction{
-		PodID:    w.podID,
-		LogEvent: store.NewLogEvent(w.manifestName, p),
+	w.Store.Dispatch(PodLogAction{
+		PodID:    w.PodID,
+		LogEvent: store.NewLogEvent(w.ManifestName, p),
 	})
 	return len(p), nil
 }

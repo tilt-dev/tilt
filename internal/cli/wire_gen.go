@@ -28,6 +28,7 @@ import (
 	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
+	"github.com/windmilleng/tilt/internal/engine/runtimelog"
 	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
@@ -82,7 +83,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 		return demo.Script{}, err
 	}
 	serviceWatcher := k8swatch.NewServiceWatcher(client, ownerFetcher, nodeIP)
-	podLogManager := engine.NewPodLogManager(client)
+	podLogManager := runtimelog.NewPodLogManager(client)
 	portForwardController := engine.NewPortForwardController(client)
 	fsWatcherMaker := engine.ProvideFsWatcherMaker()
 	timerMaker := engine.ProvideTimerMaker()
@@ -138,7 +139,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, client, dockerComposeClient, kubeContext, env, defaults)
 	configsController := configs.NewConfigsController(tiltfileLoader, switchCli)
 	dockerComposeEventWatcher := engine.NewDockerComposeEventWatcher(dockerComposeClient)
-	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
+	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
 	analyticsReporter := engine.ProvideAnalyticsReporter(analytics2, storeStore)
 	tiltBuild := provideTiltInfo()
@@ -215,7 +216,7 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 		return Threads{}, err
 	}
 	serviceWatcher := k8swatch.NewServiceWatcher(client, ownerFetcher, nodeIP)
-	podLogManager := engine.NewPodLogManager(client)
+	podLogManager := runtimelog.NewPodLogManager(client)
 	portForwardController := engine.NewPortForwardController(client)
 	fsWatcherMaker := engine.ProvideFsWatcherMaker()
 	timerMaker := engine.ProvideTimerMaker()
@@ -271,7 +272,7 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, client, dockerComposeClient, kubeContext, env, defaults)
 	configsController := configs.NewConfigsController(tiltfileLoader, switchCli)
 	dockerComposeEventWatcher := engine.NewDockerComposeEventWatcher(dockerComposeClient)
-	dockerComposeLogManager := engine.NewDockerComposeLogManager(dockerComposeClient)
+	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
 	analyticsReporter := engine.ProvideAnalyticsReporter(analytics2, storeStore)
 	tiltBuild := provideTiltInfo()
@@ -501,7 +502,7 @@ var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.DetectNodeIP, k8s.ProvideCluste
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet,
-	provideKubectlLogLevel, docker.SwitchWireSet, dockercompose.NewDockerComposeClient, tiltfile.ProvideTiltfileLoader, clockwork.NewRealClock, engine.DeployerWireSet, engine.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, k8swatch.NewPodWatcher, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, configs.NewConfigsController, engine.NewDockerComposeEventWatcher, engine.NewDockerComposeLogManager, engine.NewProfilerManager, engine.NewGithubClientFactory, engine.NewTiltVersionChecker, cloud.ProvideHttpClient, cloud.NewUsernameManager, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.ProvideSubscribers, engine.NewUpper, engine.NewTiltAnalyticsSubscriber, engine.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, provideWebVersion,
+	provideKubectlLogLevel, docker.SwitchWireSet, dockercompose.NewDockerComposeClient, tiltfile.ProvideTiltfileLoader, clockwork.NewRealClock, engine.DeployerWireSet, runtimelog.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, k8swatch.NewPodWatcher, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, configs.NewConfigsController, engine.NewDockerComposeEventWatcher, runtimelog.NewDockerComposeLogManager, engine.NewProfilerManager, engine.NewGithubClientFactory, engine.NewTiltVersionChecker, cloud.ProvideHttpClient, cloud.NewUsernameManager, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.ProvideSubscribers, engine.NewUpper, engine.NewTiltAnalyticsSubscriber, engine.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, provideWebVersion,
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
