@@ -77,8 +77,7 @@ var BaseWireSet = wire.NewSet(
 	engine.NewProfilerManager,
 	engine.NewGithubClientFactory,
 	engine.NewTiltVersionChecker,
-	cloud.ProvideHttpClient,
-	cloud.NewUsernameManager,
+	cloud.WireSet,
 
 	provideClock,
 	hud.NewRenderer,
@@ -109,11 +108,9 @@ var BaseWireSet = wire.NewSet(
 	server.ProvideHeadsUpServer,
 	assets.ProvideAssetServer,
 	server.ProvideHeadsUpServerController,
-	server.ProvideHttpClient,
 
 	dirs.UseWindmillDir,
 	token.GetOrCreateToken,
-	cloud.ProvideAddress,
 
 	provideThreads,
 	engine.NewKINDPusher,

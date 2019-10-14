@@ -155,17 +155,17 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	if err != nil {
 		return demo.Script{}, err
 	}
-	httpClient := server.ProvideHttpClient()
+	httpClient := cloud.ProvideHttpClient()
 	address := cloud.ProvideAddress()
-	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics2, httpClient, address)
+	snapshotUploader := cloud.NewSnapshotUploader(httpClient, address)
+	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics2, snapshotUploader)
 	modelNoBrowser := provideNoBrowserFlag()
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer, webURL, modelNoBrowser)
 	githubClientFactory := engine.NewGithubClientFactory()
 	tiltVersionChecker := engine.NewTiltVersionChecker(githubClientFactory, timerMaker)
 	tiltAnalyticsSubscriber := engine.NewTiltAnalyticsSubscriber(analytics2)
 	eventWatchManager := k8swatch.NewEventWatchManager(client, ownerFetcher)
-	cloudHttpClient := cloud.ProvideHttpClient()
-	cloudUsernameManager := cloud.NewUsernameManager(cloudHttpClient)
+	cloudUsernameManager := cloud.NewUsernameManager(httpClient)
 	dockerPruner := dockerprune.NewDockerPruner(switchCli)
 	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, tiltVersionChecker, tiltAnalyticsSubscriber, eventWatchManager, cloudUsernameManager, dockerPruner)
 	upper := engine.NewUpper(ctx, storeStore, v2)
@@ -289,17 +289,17 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	if err != nil {
 		return Threads{}, err
 	}
-	httpClient := server.ProvideHttpClient()
+	httpClient := cloud.ProvideHttpClient()
 	address := cloud.ProvideAddress()
-	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics2, httpClient, address)
+	snapshotUploader := cloud.NewSnapshotUploader(httpClient, address)
+	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics2, snapshotUploader)
 	modelNoBrowser := provideNoBrowserFlag()
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer, webURL, modelNoBrowser)
 	githubClientFactory := engine.NewGithubClientFactory()
 	tiltVersionChecker := engine.NewTiltVersionChecker(githubClientFactory, timerMaker)
 	tiltAnalyticsSubscriber := engine.NewTiltAnalyticsSubscriber(analytics2)
 	eventWatchManager := k8swatch.NewEventWatchManager(client, ownerFetcher)
-	cloudHttpClient := cloud.ProvideHttpClient()
-	cloudUsernameManager := cloud.NewUsernameManager(cloudHttpClient)
+	cloudUsernameManager := cloud.NewUsernameManager(httpClient)
 	dockerPruner := dockerprune.NewDockerPruner(switchCli)
 	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, tiltVersionChecker, tiltAnalyticsSubscriber, eventWatchManager, cloudUsernameManager, dockerPruner)
 	upper := engine.NewUpper(ctx, storeStore, v2)
@@ -505,12 +505,12 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics) (
 var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.DetectNodeIP, k8s.ProvideClusterName, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientset, k8s.ProvideRESTConfig, k8s.ProvidePortForwardClient, k8s.ProvideConfigNamespace, k8s.ProvideKubectlRunner, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient, k8s.ProvideOwnerFetcher)
 
 var BaseWireSet = wire.NewSet(
-	K8sWireSet, tiltfile.WireSet, provideKubectlLogLevel, docker.SwitchWireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, runtimelog.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, k8swatch.NewPodWatcher, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, configs.NewConfigsController, engine.NewDockerComposeEventWatcher, runtimelog.NewDockerComposeLogManager, engine.NewProfilerManager, engine.NewGithubClientFactory, engine.NewTiltVersionChecker, cloud.ProvideHttpClient, cloud.NewUsernameManager, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.ProvideSubscribers, engine.NewUpper, engine.NewTiltAnalyticsSubscriber, engine.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, provideWebVersion,
+	K8sWireSet, tiltfile.WireSet, provideKubectlLogLevel, docker.SwitchWireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, runtimelog.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, k8swatch.NewPodWatcher, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, configs.NewConfigsController, engine.NewDockerComposeEventWatcher, runtimelog.NewDockerComposeLogManager, engine.NewProfilerManager, engine.NewGithubClientFactory, engine.NewTiltVersionChecker, cloud.WireSet, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.ProvideSubscribers, engine.NewUpper, engine.NewTiltAnalyticsSubscriber, engine.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, provideWebVersion,
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
 	provideWebDevPort,
-	provideNoBrowserFlag, server.ProvideHeadsUpServer, assets.ProvideAssetServer, server.ProvideHeadsUpServerController, server.ProvideHttpClient, dirs.UseWindmillDir, token.GetOrCreateToken, cloud.ProvideAddress, provideThreads, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
+	provideNoBrowserFlag, server.ProvideHeadsUpServer, assets.ProvideAssetServer, server.ProvideHeadsUpServerController, dirs.UseWindmillDir, token.GetOrCreateToken, provideThreads, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
 )
 
 type Threads struct {
