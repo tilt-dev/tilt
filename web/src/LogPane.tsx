@@ -92,9 +92,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
   }
 
   findLogLineID(el: HTMLElement | null): string | null {
-    if (el === null) {
-      return null
-    } else if (el && el.attributes.getNamedItem("data-lineid")) {
+    if (el && el.attributes.getNamedItem("data-lineid")) {
       let lineID = el.attributes.getNamedItem("data-lineid")
       if (lineID) {
         return lineID.value
