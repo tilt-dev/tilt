@@ -7,7 +7,6 @@ import Statusbar, { StatusItem } from "./Statusbar"
 import LogPane from "./LogPane"
 import ResourceInfo from "./ResourceInfo"
 import K8sViewPane from "./K8sViewPane"
-import PreviewPane from "./PreviewPane"
 import PathBuilder from "./PathBuilder"
 import { Route, Switch, RouteComponentProps } from "react-router-dom"
 import { History, UnregisterCallback } from "history"
@@ -22,7 +21,6 @@ import {
   ShowFatalErrorModal,
 } from "./types"
 import AlertPane from "./AlertPane"
-import PreviewList from "./PreviewList"
 import AnalyticsNudge from "./AnalyticsNudge"
 import NotFound from "./NotFound"
 import { numberOfAlerts } from "./alerts"
@@ -157,14 +155,6 @@ class HUD extends Component<HudProps, HudState> {
     })
   }
 
-  getPreviewForName(name: string, resources: Array<SidebarItem>): string {
-    if (name) {
-      return `/r/${name}/preview`
-    }
-
-    return `/preview`
-  }
-
   path(relPath: string) {
     return this.pathBuilder.path(relPath)
   }
@@ -244,7 +234,6 @@ class HUD extends Component<HudProps, HudState> {
             <TopBar
               logUrl={this.path("/")} // redirect to home page
               alertsUrl={this.path("/alerts")}
-              previewUrl={this.path("/preview")}
               resourceView={t}
               numberOfAlerts={numAlerts}
               showSnapshotButton={showSnapshot}
@@ -265,7 +254,6 @@ class HUD extends Component<HudProps, HudState> {
           alertsUrl={
             name === "" ? this.path("/alerts") : this.path(`/r/${name}/alerts`)
           }
-          previewUrl={this.path(this.getPreviewForName(name, sidebarItems))}
           resourceView={t}
           numberOfAlerts={numAlerts}
           showSnapshotButton={showSnapshot}
@@ -311,32 +299,6 @@ class HUD extends Component<HudProps, HudState> {
       combinedLog = view.Log
     }
 
-    let previewRoute = (props: RouteComponentProps<any>) => {
-      let name = props.match.params ? props.match.params.name : ""
-      let endpoint = ""
-      if (view && name) {
-        let r = view.Resources.find(r => r.Name === name)
-        if (r === undefined) {
-          return <Route component={NotFound} />
-        }
-        endpoint = r ? r.Endpoints && r.Endpoints[0] : ""
-      }
-
-      if (view && endpoint === "") {
-        let resourceNamesWithEndpoints = view.Resources.filter(
-          r => r.Endpoints && r.Endpoints.length > 0
-        ).map(r => r.Name)
-        return (
-          <PreviewList
-            resourcesWithEndpoints={resourceNamesWithEndpoints}
-            pathBuilder={this.pathBuilder}
-          />
-        )
-      }
-
-      return <PreviewPane endpoint={endpoint} isExpanded={isSidebarClosed} />
-    }
-
     let errorRoute = (props: RouteComponentProps<any>) => {
       let name = props.match.params ? props.match.params.name : ""
       let er = resources.find(r => r.Name === name)
@@ -379,14 +341,6 @@ class HUD extends Component<HudProps, HudState> {
             render={topBarRoute.bind(null, ResourceView.Alerts)}
           />
           <Route
-            path={this.path("/r/:name/preview")}
-            render={topBarRoute.bind(null, ResourceView.Preview)}
-          />
-          <Route
-            path={this.path("/preview")}
-            render={topBarRoute.bind(null, ResourceView.Preview)}
-          />
-          <Route
             path={this.path("/r/:name")}
             render={topBarRoute.bind(null, ResourceView.Log)}
           />
@@ -404,14 +358,6 @@ class HUD extends Component<HudProps, HudState> {
           <Route
             path={this.path("/alerts")}
             render={sidebarRoute.bind(null, ResourceView.Alerts)}
-          />
-          <Route
-            path={this.path("/r/:name/preview")}
-            render={sidebarRoute.bind(null, ResourceView.Preview)}
-          />
-          <Route
-            path={this.path("/preview")}
-            render={sidebarRoute.bind(null, ResourceView.Preview)}
           />
           <Route
             path={this.path("/r/:name")}
@@ -440,7 +386,6 @@ class HUD extends Component<HudProps, HudState> {
               <AlertPane pathBuilder={this.pathBuilder} resources={resources} />
             )}
           />
-          <Route exact path={this.path("/preview")} render={previewRoute} />
           <Route exact path={this.path("/r/:name")} render={logsRoute} />
           <Route
             exact
@@ -456,11 +401,6 @@ class HUD extends Component<HudProps, HudState> {
             exact
             path={this.path("/r/:name/alerts")}
             render={errorRoute}
-          />
-          <Route
-            exact
-            path={this.path("/r/:name/preview")}
-            render={previewRoute}
           />
           <Route component={NoMatch} />
         </Switch>

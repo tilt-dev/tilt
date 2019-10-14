@@ -57,6 +57,7 @@ exports[`ShareSnapshotModal renders team link 1`] = `
           <a
             className="ShareSnapshotModal-button ShareSnapshotModal-button--inline"
             href="http://test.com"
+            rel="noopener noreferrer"
             target="_blank"
           >
             Open
@@ -81,6 +82,7 @@ exports[`ShareSnapshotModal renders team link 1`] = `
         <a
           className="ShareSnapshotModal-tiltCloudLink"
           href="https://cloud.tilt.dev/snapshots"
+          rel="noopener noreferrer"
           target="_blank"
         >
           <span>

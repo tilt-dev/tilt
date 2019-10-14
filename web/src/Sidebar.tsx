@@ -98,9 +98,7 @@ class Sidebar extends PureComponent<SidebarProps> {
 
     let listItems = this.props.items.map(item => {
       let link = `/r/${item.name}`
-      if (this.props.resourceView === ResourceView.Preview) {
-        link += "/preview"
-      } else if (this.props.resourceView === ResourceView.Alerts) {
+      if (this.props.resourceView === ResourceView.Alerts) {
         link += "/alerts"
       }
 

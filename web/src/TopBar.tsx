@@ -4,7 +4,6 @@ import "./TopBar.scss"
 import TabNav from "./TabNav"
 
 type TopBarProps = {
-  previewUrl: string
   logUrl: string
   alertsUrl: string
   resourceView: ResourceView
@@ -19,7 +18,6 @@ class TopBar extends PureComponent<TopBarProps> {
     return (
       <div className="TopBar">
         <TabNav
-          previewUrl={this.props.previewUrl}
           logUrl={this.props.logUrl}
           alertsUrl={this.props.alertsUrl}
           resourceView={this.props.resourceView}
