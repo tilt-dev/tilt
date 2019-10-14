@@ -17,7 +17,7 @@ it("renders without crashing", () => {
       handleSetHighlight={fakeHandleSetHighlight}
       handleClearHiglight={fakeHandleClearHighlight}
       highlight={null}
-      isSnapshot={false}
+      highlightsEnabled={false}
     />,
     div
   )
@@ -34,7 +34,7 @@ it("renders logs", () => {
         handleSetHighlight={fakeHandleSetHighlight}
         handleClearHiglight={fakeHandleClearHighlight}
         highlight={null}
-        isSnapshot={false}
+        highlightsEnabled={false}
       />
     )
     .toJSON()
@@ -381,7 +381,7 @@ it("renders logs with leading whitespace and ANSI codes", () => {
         handleSetHighlight={fakeHandleSetHighlight}
         handleClearHiglight={fakeHandleClearHighlight}
         highlight={null}
-        isSnapshot={false}
+        highlightsEnabled={false}
       />
     )
     .toJSON()
@@ -404,7 +404,7 @@ it("renders highlighted lines if it's not a snapshot", () => {
         handleSetHighlight={fakeHandleSetHighlight}
         handleClearHiglight={fakeHandleClearHighlight}
         highlight={highlight}
-        isSnapshot={false}
+        highlightsEnabled={false}
       />
     )
     .toJSON()

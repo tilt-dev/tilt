@@ -14,7 +14,7 @@ type LogPaneProps = {
   handleSetHighlight: (highlight: SnapshotHiglight) => void
   handleClearHiglight: () => void
   highlight: SnapshotHiglight | null
-  isSnapshot: boolean
+  highlightsEnabled: boolean
 }
 type LogPaneState = {
   autoscroll: boolean
@@ -45,14 +45,13 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 
     window.addEventListener("scroll", this.refreshAutoScroll, { passive: true })
     window.addEventListener("wheel", this.handleWheel, { passive: true })
-    if (!this.props.isSnapshot) {
+    if (this.props.highlightsEnabled) {
       document.addEventListener("selectionchange", this.handleSelectionChange, {
         passive: true,
       })
     }
   }
 
-  // TODO(dmiller): this needs to detect if it isn't mounted any more and do nothing?
   private handleSelectionChange() {
     let selection = document.getSelection()
     if (selection && selection.focusNode && selection.anchorNode) {
@@ -123,7 +122,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     if (this.rafID) {
       clearTimeout(this.rafID)
     }
-    if (!this.props.isSnapshot) {
+    if (this.props.highlightsEnabled) {
       document.removeEventListener(
         "selectionchange",
         this.handleSelectionChange

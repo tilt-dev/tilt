@@ -282,6 +282,10 @@ class HUD extends Component<HudProps, HudState> {
       )
     }
 
+    let highlightsEnabled =
+      !this.pathBuilder.isSnapshot() &&
+      features.isEnabled("snapshot_highlights")
+
     let logsRoute = (props: RouteComponentProps<any>) => {
       let name =
         props.match.params && props.match.params.name
@@ -314,7 +318,7 @@ class HUD extends Component<HudProps, HudState> {
             handleSetHighlight={this.handleSetHighlight}
             handleClearHiglight={this.handleClearHighlight}
             highlight={this.state.snapshotHiglight}
-            isSnapshot={this.pathBuilder.isSnapshot()}
+            highlightsEnabled={highlightsEnabled}
           />
         </>
       )
@@ -408,7 +412,7 @@ class HUD extends Component<HudProps, HudState> {
                 handleSetHighlight={this.handleSetHighlight}
                 handleClearHiglight={this.handleClearHighlight}
                 highlight={this.state.snapshotHiglight}
-                isSnapshot={this.pathBuilder.isSnapshot()}
+                highlightsEnabled={highlightsEnabled}
               />
             )}
           />
