@@ -1,22 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: oneup
+  name: analytics
   namespace: tilt-integration
   labels:
-    app: oneup
+    app: analytics
 spec:
   selector:
     matchLabels:
-      app: oneup
+      app: analytics
   template:
     metadata:
       labels:
-        app: oneup
+        app: analytics
     spec:
       containers:
-      - name: oneup
-        image: oneup
-        command: ["/go/bin/oneup"]
+      - name: analytics
+        image: analytics
         ports:
         - containerPort: 8000
