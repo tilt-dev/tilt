@@ -2,14 +2,10 @@
 
 .LogPane {
   width: 100%;
-  margin-top: $tabnav-height;
+  margin-top: $tabnav-height + $resourceInfo-height;
   margin-right: $sidebar-width;
   margin-bottom: $statusbar-height;
   transition: margin ease $animation-timing;
-}
-
-.logText {
-  margin-top: $resourceInfo-height;
   padding: $spacing-unit / 2;
 }
 
@@ -50,46 +46,6 @@
   padding-left: $spacing-unit / 2;
   padding-right: $sidebar-width + $spacing-unit / 2;
   border-bottom: 1px dotted $color-gray-light;
-}
-
-.resourceInfo {
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  white-space: nowrap;
-}
-.resourceInfo + .resourceInfo {
-  margin-left: $spacing-unit / 2;
-  border-left: 1px dotted $color-gray-light;
-  padding-left: $spacing-unit / 2;
-}
-.resourceInfo-label {
-  text-transform: uppercase;
-  color: $color-gray-light;
-  font-weight: bold;
-  margin-right: $spacing-unit / 4;
-}
-.resourceInfo-value {
-  display: inline-block;
-  font-family: $font-monospace;
-  user-select: all;
-  margin: 0;
-  text-overflow: ellipsis;
-  overflow: hidden;
-}
-a.resourceInfo-value {
-  text-decoration: none;
-}
-a.resourceInfo-value:hover {
-  text-decoration: underline;
-}
-.resourceInfo-value + .resourceInfo-value::before {
-  content: "";
-  margin-left: $spacing-unit / 2;
-  padding-left: $spacing-unit / 2;
-  height: $spacing-unit / 2;
-  display: inline-block;
-  border-left: 1px solid $color-gray-light;
 }
 
 .LogPane code {
