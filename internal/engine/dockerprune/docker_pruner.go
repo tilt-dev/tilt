@@ -128,14 +128,21 @@ func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration) error {
 		filters.Arg("until", maxAge.String()),
 	)
 
-	fWithDangling := f.Clone()
-	fWithDangling.Add("dangling", "0") // prune all images, not just dangling ones
-	imgReport, err := dp.dCli.ImagesPrune(ctx, fWithDangling)
+	// PRUNE CONTAINERS
+	containerReport, err := dp.dCli.ContainersPrune(ctx, f)
 	if err != nil {
 		return err
 	}
-	prettyPrintImagesPruneReport(imgReport, l)
+	prettyPrintContainersPruneReport(containerReport, l)
 
+	// PRUNE IMAGES
+	imageReport, err := dp.deleteOldImages(ctx, maxAge)
+	if err != nil {
+		return err
+	}
+	prettyPrintImagesPruneReport(imageReport, l)
+
+	// PRUNE BUILD CACHE
 	opts := types.BuildCachePruneOptions{Filters: f}
 	cacheReport, err := dp.dCli.BuildCachePrune(ctx, opts)
 	if err != nil {
@@ -147,13 +154,52 @@ func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration) error {
 		prettyPrintCachePruneReport(cacheReport, l)
 	}
 
-	containerReport, err := dp.dCli.ContainersPrune(ctx, f)
-	if err != nil {
-		return err
-	}
-	prettyPrintContainersPruneReport(containerReport, l)
-
 	return nil
+}
+
+func (dp *DockerPruner) deleteOldImages(ctx context.Context, maxAge time.Duration) (types.ImagesPruneReport, error) {
+	opts := types.ImageListOptions{
+		Filters: filters.NewArgs(
+			filters.Arg("label", docker.BuiltByTiltLabelStr),
+		),
+	}
+	imgs, err := dp.dCli.ImageList(ctx, opts)
+	if err != nil {
+		return types.ImagesPruneReport{}, err
+	}
+
+	toDelete := make(map[string]uint64) // map imageID to size in bytes
+	for _, imgSummary := range imgs {
+		inspect, _, err := dp.dCli.ImageInspectWithRaw(ctx, imgSummary.ID)
+		if err != nil {
+			logger.Get(ctx).Debugf("[Docker prune] error inspecting image '%s': %v", imgSummary.ID, err)
+			continue
+		}
+
+		if time.Since(inspect.Metadata.LastTagTime) >= maxAge {
+			toDelete[inspect.ID] = uint64(inspect.Size)
+		}
+	}
+
+	rmOpts := types.ImageRemoveOptions{PruneChildren: true}
+	var responseItems []types.ImageDeleteResponseItem
+	var reclaimedBytes uint64
+
+	for imgID, bytes := range toDelete {
+		items, err := dp.dCli.ImageRemove(ctx, imgID, rmOpts)
+		// No good way to detect in-use images from `inspect` output, so just silently ignore
+		if err != nil && !strings.Contains(err.Error(), "image is being used by running container") {
+			logger.Get(ctx).Debugf("[Docker prune] error removing image '%s': %v", imgID, err)
+			continue
+		}
+		responseItems = append(responseItems, items...)
+		reclaimedBytes += bytes
+	}
+
+	return types.ImagesPruneReport{
+		ImagesDeleted:  responseItems,
+		SpaceReclaimed: reclaimedBytes,
+	}, nil
 }
 
 func (dp *DockerPruner) sufficientVersionError() error {

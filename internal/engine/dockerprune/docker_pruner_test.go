@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +22,7 @@ import (
 var (
 	cachesPruned     = []string{"cacheA", "cacheB", "cacheC"}
 	containersPruned = []string{"containerA", "containerB", "containerC"}
-	imagesPruned     = []string{"imageA", "imageB", "imageC"}
+	numImages        = 3
 	maxAge           = 11 * time.Hour
 )
 
@@ -33,8 +34,8 @@ func twoHrsAgo() time.Time {
 	return time.Now().Add(-2 * time.Hour)
 }
 
-func TestDockerPruneFilters(t *testing.T) {
-	f := newFixture(t).withPruneOutput(cachesPruned, containersPruned, imagesPruned)
+func TestPruneFilters(t *testing.T) {
+	f := newFixture(t).withPruneOutput(cachesPruned, containersPruned, numImages)
 	err := f.dp.prune(f.ctx, maxAge)
 	require.NoError(t, err)
 
@@ -44,17 +45,17 @@ func TestDockerPruneFilters(t *testing.T) {
 	)
 	expectedImageFilters := filters.NewArgs(
 		filters.Arg("label", docker.BuiltByTiltLabelStr),
-		filters.Arg("until", maxAge.String()),
-		filters.Arg("dangling", "0"),
 	)
 
 	assert.Equal(t, expectedFilters, f.dCli.BuildCachePruneOpts.Filters, "build cache prune filters")
 	assert.Equal(t, expectedFilters, f.dCli.ContainersPruneFilters, "container prune filters")
-	assert.Equal(t, expectedImageFilters, f.dCli.ImagesPruneFilters, "image prune filters")
+	if assert.Len(t, f.dCli.ImageListOpts, 1, "expect exactly one call to ImageList") {
+		assert.Equal(t, expectedImageFilters, f.dCli.ImageListOpts[0].Filters, "image prune filters")
+	}
 }
 
-func TestDockerPruneOutput(t *testing.T) {
-	f := newFixture(t).withPruneOutput(cachesPruned, containersPruned, imagesPruned)
+func TestPruneOutput(t *testing.T) {
+	f := newFixture(t).withPruneOutput(cachesPruned, containersPruned, numImages)
 	err := f.dp.prune(f.ctx, maxAge)
 	require.NoError(t, err)
 
@@ -63,11 +64,11 @@ func TestDockerPruneOutput(t *testing.T) {
 	assert.Contains(t, logs, "- cacheC")
 	assert.Contains(t, logs, "[Docker Prune] removed 3 containers, reclaimed 3 bytes")
 	assert.Contains(t, logs, "- containerC")
-	assert.Contains(t, logs, "[Docker Prune] removed 3 images, reclaimed 3 bytes")
-	assert.Contains(t, logs, "- deleted: imageC")
+	assert.Contains(t, logs, "[Docker Prune] removed 3 images, reclaimed 6 bytes")
+	assert.Contains(t, logs, "- deleted: build-id-2")
 }
 
-func TestDockerPruneVersionTooLow(t *testing.T) {
+func TestPruneVersionTooLow(t *testing.T) {
 	f := newFixture(t)
 	f.dCli.ThrowNewVersionError = true
 	err := f.dp.prune(f.ctx, maxAge)
@@ -79,11 +80,12 @@ func TestDockerPruneVersionTooLow(t *testing.T) {
 	// Should NOT have called any of the prune funcs
 	assert.Empty(t, f.dCli.BuildCachePruneOpts)
 	assert.Empty(t, f.dCli.ContainersPruneFilters)
-	assert.Empty(t, f.dCli.ImagesPruneFilters)
+	assert.Empty(t, f.dCli.ImageListOpts)
+	assert.Empty(t, f.dCli.RemovedImageIDs)
 }
 
-func TestDockerPruneSkipCachePruneIfVersionTooLow(t *testing.T) {
-	f := newFixture(t)
+func TestPruneSkipCachePruneIfVersionTooLow(t *testing.T) {
+	f := newFixture(t).withPruneOutput(cachesPruned, containersPruned, numImages)
 	f.dCli.BuildCachePruneErr = f.dCli.VersionError("1.2.3", "build prune")
 	err := f.dp.prune(f.ctx, maxAge)
 	require.NoError(t, err) // should log failure but not throw error
@@ -91,13 +93,14 @@ func TestDockerPruneSkipCachePruneIfVersionTooLow(t *testing.T) {
 	logs := f.logs.String()
 	assert.Contains(t, logs, "skipping build cache prune")
 
-	// Should have called the other prune funcs as normal
+	// Should have called previous prune funcs as normal
 	assert.NotEmpty(t, f.dCli.ContainersPruneFilters)
-	assert.NotEmpty(t, f.dCli.ImagesPruneFilters)
+	assert.NotEmpty(t, f.dCli.ImageListOpts)
+	assert.NotEmpty(t, f.dCli.RemovedImageIDs)
 }
 
-func TestDockerPruneReturnsCachePruneError(t *testing.T) {
-	f := newFixture(t)
+func TestPruneReturnsCachePruneError(t *testing.T) {
+	f := newFixture(t).withPruneOutput(cachesPruned, containersPruned, numImages)
 	f.dCli.BuildCachePruneErr = fmt.Errorf("this is a real error, NOT an API version error")
 	err := f.dp.prune(f.ctx, maxAge) // For all errors besides API version error, expect them to return
 	require.NotNil(t, err)
@@ -106,8 +109,33 @@ func TestDockerPruneReturnsCachePruneError(t *testing.T) {
 	logs := f.logs.String()
 	assert.NotContains(t, logs, "skipping build cache prune")
 
-	assert.NotEmpty(t, f.dCli.ImagesPruneFilters)  // called ImagesPrune before encountered error
-	assert.Empty(t, f.dCli.ContainersPruneFilters) // should NOT have called any prune funcs AFTER CachePrune
+	// Should have called previous prune funcs as normal
+	assert.NotEmpty(t, f.dCli.ContainersPruneFilters)
+	assert.NotEmpty(t, f.dCli.ImageListOpts)
+	assert.NotEmpty(t, f.dCli.RemovedImageIDs)
+}
+
+func TestDeleteOldImages(t *testing.T) {
+	f := newFixture(t)
+	maxAge := 3 * time.Hour
+	f.withImageInspect(0, 25, time.Hour)   // young enough, won't be pruned
+	f.withImageInspect(1, 50, 4*time.Hour) // older than max age, will be pruned
+	f.withImageInspect(2, 75, 6*time.Hour) // older than max age, will be pruned
+
+	report, err := f.dp.deleteOldImages(f.ctx, maxAge)
+	require.NoError(t, err)
+
+	assert.Len(t, report.ImagesDeleted, 2, "expected exactly two deleted images")
+	assert.Equal(t, 125, int(report.SpaceReclaimed), "expected space reclaimed")
+
+	expectedDeleted := []string{"build-id-1", "build-id-2"}
+	assert.Equal(t, expectedDeleted, f.dCli.RemovedImageIDs)
+
+	expectedFilters := filters.NewArgs(filters.Arg("label", docker.BuiltByTiltLabelStr))
+	if assert.Len(t, f.dCli.ImageListOpts, 1, "expected exactly one call to ImageList") {
+		assert.Equal(t, expectedFilters, f.dCli.ImageListOpts[0].Filters,
+			"expected ImageList to called with label=builtby:tilt filter")
+	}
 }
 
 func TestDockerPrunerSinceNBuilds(t *testing.T) {
@@ -256,12 +284,11 @@ func TestDockerPrunerMaxAgeFromSettings(t *testing.T) {
 	f.dp.OnChange(f.ctx, f.st)
 
 	f.assertPrune()
-	untilVals := f.dCli.ImagesPruneFilters.Get("until")
+	untilVals := f.dCli.ContainersPruneFilters.Get("until")
 	require.Len(t, untilVals, 1, "unexpected number of filters for \"until\"")
 	assert.Equal(t, untilVals[0], maxAge.String())
 }
 
-// Test currently building
 type dockerPruneFixture struct {
 	t    *testing.T
 	ctx  context.Context
@@ -290,11 +317,25 @@ func newFixture(t *testing.T) *dockerPruneFixture {
 	}
 }
 
-func (dpf *dockerPruneFixture) withPruneOutput(caches, containers, images []string) *dockerPruneFixture {
+func (dpf *dockerPruneFixture) withPruneOutput(caches, containers []string, numImages int) *dockerPruneFixture {
 	dpf.dCli.BuildCachesPruned = caches
 	dpf.dCli.ContainersPruned = containers
-	dpf.dCli.ImagesPruned = images
+	for i := 0; i < numImages; i++ {
+		dpf.withImageInspect(i, i+1, 48*time.Hour) // make each image 2 days old (def older than maxAge)
+	}
 	return dpf
+}
+
+func (dpf *dockerPruneFixture) withImageInspect(i, size int, timeSinceLastTag time.Duration) {
+	id := fmt.Sprintf("build-id-%d", i)
+	dpf.dCli.Images[id] = types.ImageInspect{
+		ID:   id,
+		Size: int64(size),
+		Metadata: types.ImageMetadata{
+			LastTagTime: time.Now().Add(-1 * timeSinceLastTag),
+		},
+	}
+	dpf.dCli.ImageListCount += 1
 }
 
 func (dpf *dockerPruneFixture) withDockerManifestAlreadyBuilt() {
@@ -354,8 +395,8 @@ func (dpf *dockerPruneFixture) withDockerPruneSettings(enabled bool, maxAge time
 }
 
 func (dpf *dockerPruneFixture) pruneCalled() bool {
-	// ImagePrune was called -- we use this as a proxy for dp.Prune having been called.
-	return dpf.dCli.ImagesPruneFilters.Len() > 0
+	// ContainerPrune was called -- we use this as a proxy for dp.Prune having been called.
+	return dpf.dCli.ContainersPruneFilters.Len() > 0
 }
 
 func (dpf *dockerPruneFixture) assertPrune() {

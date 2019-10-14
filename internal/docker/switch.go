@@ -96,8 +96,5 @@ func (c *switchCli) BuildCachePrune(ctx context.Context, opts types.BuildCachePr
 func (c *switchCli) ContainersPrune(ctx context.Context, pruneFilters filters.Args) (types.ContainersPruneReport, error) {
 	return c.client().ContainersPrune(ctx, pruneFilters)
 }
-func (c *switchCli) ImagesPrune(ctx context.Context, pruneFilters filters.Args) (types.ImagesPruneReport, error) {
-	return c.client().ImagesPrune(ctx, pruneFilters)
-}
 
 var _ Client = &switchCli{}
