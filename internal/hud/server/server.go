@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
@@ -49,19 +48,21 @@ type HeadsUpServer struct {
 	store             *store.Store
 	router            *mux.Router
 	a                 *tiltanalytics.TiltAnalytics
+	uploader          cloud.SnapshotUploader
 	numWebsocketConns int32
-	httpCli           httpClient
-	cloudAddress      string
 }
 
-func ProvideHeadsUpServer(store *store.Store, assetServer assets.Server, analytics *tiltanalytics.TiltAnalytics, httpClient httpClient, cloudAddress cloud.Address) *HeadsUpServer {
+func ProvideHeadsUpServer(
+	store *store.Store,
+	assetServer assets.Server,
+	analytics *tiltanalytics.TiltAnalytics,
+	uploader cloud.SnapshotUploader) *HeadsUpServer {
 	r := mux.NewRouter().UseEncodedPath()
 	s := &HeadsUpServer{
-		store:        store,
-		router:       r,
-		a:            analytics,
-		httpCli:      httpClient,
-		cloudAddress: string(cloudAddress),
+		store:    store,
+		router:   r,
+		a:        analytics,
+		uploader: uploader,
 	}
 
 	r.HandleFunc("/api/view", s.ViewJSON)
@@ -258,23 +259,6 @@ func MaybeSendToTriggerQueue(st store.RStore, name string) error {
 type snapshotURLJson struct {
 	Url string `json:"url"`
 }
-type SnapshotID string
-
-type snapshotIDResponse struct {
-	ID string
-}
-
-func (s *HeadsUpServer) templateSnapshotURL(id SnapshotID) string {
-	u := cloud.URL(s.cloudAddress)
-	u.Path = fmt.Sprintf("snapshot/%s", id)
-	return u.String()
-}
-
-func (s *HeadsUpServer) newSnapshotURL() string {
-	u := cloud.URL(s.cloudAddress)
-	u.Path = "/api/snapshot/new"
-	return u.String()
-}
 
 func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Request) {
 	st := s.store.RLockState()
@@ -282,64 +266,31 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 	teamID := st.TeamName
 	s.store.RUnlockState()
 
-	request, err := http.NewRequest(http.MethodPost, s.newSnapshotURL(), req.Body)
+	id, err := s.uploader.Upload(token, teamID, req.Body)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error making request: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	request.Header.Set(cloud.TiltTokenHeaderName, token.String())
-	if teamID != "" {
-		request.Header.Set(cloud.TiltTeamIDNameHeaderName, teamID)
-	}
-	response, err := s.httpCli.Do(request)
-	if err != nil {
-		log.Printf("Error creating snapshot: %v\n", err)
+		log.Printf("Error creating snapshot: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		_, err := w.Write([]byte(err.Error()))
-		if err != nil {
-			log.Printf("Error writing error to response: %v\n", err)
-		}
+		_, _ = w.Write([]byte(err.Error()))
 		return
 	}
 
-	responseWithID, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		log.Printf("Error reading response when creating snapshot: %v\n", err)
-		log.Printf("Error reading responseWithID: %v\n", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	//unpack response with snapshot ID
-	var resp snapshotIDResponse
-	err = json.Unmarshal(responseWithID, &resp)
-	if err != nil || resp.ID == "" {
-		log.Printf("Error unpacking snapshot response JSON: %v\nJSON: %s\n", err, responseWithID)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	//create URL with snapshot ID
-	var ID SnapshotID
-	ID = SnapshotID(resp.ID)
 	responsePayload := snapshotURLJson{
-		Url: s.templateSnapshotURL(ID),
+		Url: s.uploader.IDToSnapshotURL(id),
 	}
 
 	//encode URL to JSON format
 	urlJS, err := json.Marshal(responsePayload)
 	if err != nil {
-		log.Printf("Error to marshal url JSON response %v\n", err)
+		log.Printf("Error to marshal url JSON response %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	//write URL to header
-	w.WriteHeader(response.StatusCode)
+	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(urlJS)
 	if err != nil {
-		log.Printf("Error writing URL response: %v\n", err)
+		log.Printf("Error writing URL response: %v", err)
 		return
 	}
 
@@ -347,12 +298,4 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 
 func (s *HeadsUpServer) userStartedTiltCloudRegistration(w http.ResponseWriter, req *http.Request) {
 	s.store.Dispatch(store.UserStartedTiltCloudRegistrationAction{})
-}
-
-type httpClient interface {
-	Do(*http.Request) (*http.Response, error)
-}
-
-func ProvideHttpClient() httpClient {
-	return http.DefaultClient
 }

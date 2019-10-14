@@ -22,6 +22,7 @@ const MultipleContainersPerPod = "multiple_containers_per_pod"
 const Events = "events"
 const Snapshots = "snapshots"
 const SnapshotHighlights = "snapshot_highlights"
+const SnapshotsAutoUpload = "snapshots-auto-upload"
 
 // The Value a flag can have. Status should never be changed.
 type Value struct {
@@ -48,6 +49,10 @@ var MainDefaults = Defaults{
 		Status:  Active,
 	},
 	SnapshotHighlights: Value{
+		Enabled: false,
+		Status:  Active,
+	},
+	SnapshotsAutoUpload: Value{
 		Enabled: false,
 		Status:  Active,
 	},
