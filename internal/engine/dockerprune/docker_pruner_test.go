@@ -25,6 +25,10 @@ var (
 	maxAge           = 11 * time.Hour
 )
 
+var buildHistory = []model.BuildRecord{
+	model.BuildRecord{StartTime: time.Now().Add(-24 * time.Hour)},
+}
+
 func twoHrsAgo() time.Time {
 	return time.Now().Add(-2 * time.Hour)
 }
@@ -108,7 +112,7 @@ func TestDockerPruneReturnsCachePruneError(t *testing.T) {
 
 func TestDockerPrunerSinceNBuilds(t *testing.T) {
 	f := newFixture(t)
-	f.withDockerManifest()
+	f.withDockerManifestAlreadyBuilt()
 	f.withBuildCount(11)
 	f.withDockerPruneSettings(false, 0, 5, 0)
 	f.dp.lastPruneBuildCount = 5
@@ -121,7 +125,7 @@ func TestDockerPrunerSinceNBuilds(t *testing.T) {
 
 func TestDockerPrunerNotEnoughBuilds(t *testing.T) {
 	f := newFixture(t)
-	f.withDockerManifest()
+	f.withDockerManifestAlreadyBuilt()
 	f.withBuildCount(11)
 	f.withDockerPruneSettings(false, 0, 10, 0)
 	f.dp.lastPruneBuildCount = 5
@@ -134,7 +138,7 @@ func TestDockerPrunerNotEnoughBuilds(t *testing.T) {
 
 func TestDockerPrunerSinceInterval(t *testing.T) {
 	f := newFixture(t)
-	f.withDockerManifest()
+	f.withDockerManifestAlreadyBuilt()
 	f.withDockerPruneSettings(false, 0, 0, 30*time.Minute)
 	f.dp.lastPruneTime = twoHrsAgo()
 
@@ -145,7 +149,7 @@ func TestDockerPrunerSinceInterval(t *testing.T) {
 
 func TestDockerPrunerSinceDefaultInterval(t *testing.T) {
 	f := newFixture(t)
-	f.withDockerManifest()
+	f.withDockerManifestAlreadyBuilt()
 	f.withDockerPruneSettings(false, 0, 0, 0)
 	f.dp.lastPruneTime = time.Now().Add(-1 * (defaultInterval + time.Minute))
 
@@ -156,7 +160,7 @@ func TestDockerPrunerSinceDefaultInterval(t *testing.T) {
 
 func TestDockerPrunerNotEnoughTimeElapsed(t *testing.T) {
 	f := newFixture(t)
-	f.withDockerManifest()
+	f.withDockerManifestAlreadyBuilt()
 	f.withDockerPruneSettings(false, 0, 0, 3*time.Hour)
 	f.dp.lastPruneTime = twoHrsAgo()
 
@@ -167,7 +171,7 @@ func TestDockerPrunerNotEnoughTimeElapsed(t *testing.T) {
 
 func TestDockerPrunerSinceDefaultIntervalNotEnoughTime(t *testing.T) {
 	f := newFixture(t)
-	f.withDockerManifest()
+	f.withDockerManifestAlreadyBuilt()
 	f.withDockerPruneSettings(false, 0, 0, 0)
 	f.dp.lastPruneTime = time.Now().Add(-1 * defaultInterval).Add(20 * time.Minute)
 
@@ -178,7 +182,7 @@ func TestDockerPrunerSinceDefaultIntervalNotEnoughTime(t *testing.T) {
 
 func TestDockerPrunerFirstRun(t *testing.T) {
 	f := newFixture(t)
-	f.withDockerManifest()
+	f.withDockerManifestAlreadyBuilt()
 	f.withBuildCount(5)
 	f.withDockerPruneSettings(false, 0, 10, 0)
 
@@ -189,7 +193,7 @@ func TestDockerPrunerFirstRun(t *testing.T) {
 
 func TestDockerPrunerFirstRunButNoCompletedBuilds(t *testing.T) {
 	f := newFixture(t)
-	f.withDockerManifest()
+	f.withDockerManifestAlreadyBuilt()
 	f.withBuildCount(0)
 	f.withDockerPruneSettings(false, 0, 10, 0)
 
@@ -200,7 +204,7 @@ func TestDockerPrunerFirstRunButNoCompletedBuilds(t *testing.T) {
 
 func TestDockerPrunerNoDockerManifests(t *testing.T) {
 	f := newFixture(t)
-	f.withUnbuiltManifest()
+	f.withK8sOnlyManifest()
 	f.withBuildCount(11)
 	f.withDockerPruneSettings(false, 0, 5, 0)
 
@@ -211,7 +215,7 @@ func TestDockerPrunerNoDockerManifests(t *testing.T) {
 
 func TestDockerPrunerDisabled(t *testing.T) {
 	f := newFixture(t)
-	f.withDockerManifest()
+	f.withDockerManifestAlreadyBuilt()
 	f.withDockerPruneSettings(true, 0, 0, 0)
 
 	f.dp.OnChange(f.ctx, f.st)
@@ -221,8 +225,19 @@ func TestDockerPrunerDisabled(t *testing.T) {
 
 func TestDockerPrunerCurrentlyBuilding(t *testing.T) {
 	f := newFixture(t)
-	f.withDockerManifest()
+	f.withDockerManifestAlreadyBuilt()
 	f.withCurrentlyBuilding("idk something")
+	f.withDockerPruneSettings(false, 0, 0, time.Hour)
+	f.dp.lastPruneTime = twoHrsAgo()
+
+	f.dp.OnChange(f.ctx, f.st)
+
+	f.assertNoPrune()
+}
+
+func TestDockerPrunerPendingBuild(t *testing.T) {
+	f := newFixture(t)
+	f.withDockerManifestUnbuilt() // manifest not yet built will be pending, so we should not prune
 	f.withDockerPruneSettings(false, 0, 0, time.Hour)
 	f.dp.lastPruneTime = twoHrsAgo()
 
@@ -233,7 +248,7 @@ func TestDockerPrunerCurrentlyBuilding(t *testing.T) {
 
 func TestDockerPrunerMaxAgeFromSettings(t *testing.T) {
 	f := newFixture(t)
-	f.withDockerManifest()
+	f.withDockerManifestAlreadyBuilt()
 	f.withBuildCount(5)
 	maxAge := time.Hour
 	f.withDockerPruneSettings(false, maxAge, 10, 0)
@@ -248,7 +263,7 @@ func TestDockerPrunerMaxAgeFromSettings(t *testing.T) {
 
 func TestDockerPrunerDefaultMaxAge(t *testing.T) {
 	f := newFixture(t)
-	f.withDockerManifest()
+	f.withDockerManifestAlreadyBuilt()
 	f.withBuildCount(5)
 	f.withDockerPruneSettings(false, 0, 10, 0)
 
@@ -296,20 +311,33 @@ func (dpf *dockerPruneFixture) withPruneOutput(caches, containers, images []stri
 	return dpf
 }
 
-func (dpf *dockerPruneFixture) withDockerManifest() {
+func (dpf *dockerPruneFixture) withDockerManifestAlreadyBuilt() {
+	dpf.withDockerManifest(true)
+}
+
+func (dpf *dockerPruneFixture) withDockerManifestUnbuilt() {
+	dpf.withDockerManifest(false)
+}
+
+func (dpf *dockerPruneFixture) withDockerManifest(alreadyBuilt bool) {
 	m := model.Manifest{Name: "some-docker-manifest"}.WithImageTarget(
 		model.ImageTarget{
 			BuildDetails: model.DockerBuild{},
 		})
-	dpf.withManifestTarget(store.NewManifestTarget(m))
+	dpf.withManifestTarget(store.NewManifestTarget(m), alreadyBuilt)
 }
 
-func (dpf *dockerPruneFixture) withUnbuiltManifest() {
+func (dpf *dockerPruneFixture) withK8sOnlyManifest() {
 	m := model.Manifest{Name: "i'm-k8s-only"}.WithDeployTarget(model.K8sTarget{})
-	dpf.withManifestTarget(store.NewManifestTarget(m))
+	dpf.withManifestTarget(store.NewManifestTarget(m), true)
 }
 
-func (dpf *dockerPruneFixture) withManifestTarget(mt *store.ManifestTarget) {
+func (dpf *dockerPruneFixture) withManifestTarget(mt *store.ManifestTarget, alreadyBuilt bool) {
+	if alreadyBuilt {
+		// spoof build history so we think this manifest has already been built (i.e. isn't pending)
+		mt.State.BuildHistory = buildHistory
+	}
+
 	store := dpf.st.LockMutableStateForTesting()
 	store.UpsertManifestTarget(mt)
 	dpf.st.UnlockMutableState()
