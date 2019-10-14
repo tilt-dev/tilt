@@ -95,8 +95,12 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
   findLogLineID(el: HTMLElement | null): string | null {
     if (el === null) {
       return null
-    } else if (el && el.className.startsWith("logLine")) {
-      return el.className.split(" ")[0]
+    } else if (el && el.attributes.getNamedItem("data-lineid")) {
+      let lineID = el.attributes.getNamedItem("data-lineid")
+      if (lineID) {
+        return lineID.value
+      }
+      return null
     } else if (el) {
       return this.findLogLineID(el.parentElement)
     }
@@ -190,23 +194,29 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     for (let i = 0; i < lines.length; i++) {
       const l = lines[i]
       const key = "logLine" + i
-      let classes = [key]
 
+      let shouldHighlight = false
       if (highlight) {
-        if (highlight.beginningLogID === key) {
+        if (highlight.beginningLogID === i.toString()) {
           sawBeginning = true
         }
-        if (highlight.endingLogID === key) {
-          classes.push("highlighted")
+        if (highlight.endingLogID === i.toString()) {
+          shouldHighlight = true
           sawEnd = true
         }
         if (sawBeginning && !sawEnd) {
-          classes.push("highlighted")
+          shouldHighlight = true
         }
       }
 
       logLines.push(
-        <AnsiLine key={key} className={classNames(classes)} line={l} />
+        <div data-lineID={i}>
+          <AnsiLine
+            key={key}
+            className={shouldHighlight ? "highlighted" : ""}
+            line={l}
+          />
+        </div>
       )
     }
 
