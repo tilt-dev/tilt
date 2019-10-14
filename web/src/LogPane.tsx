@@ -4,7 +4,6 @@ import AnsiLine from "./AnsiLine"
 import "./LogPane.scss"
 import ReactDOM from "react-dom"
 import { SnapshotHiglight } from "./types"
-import classNames from "classnames"
 
 const WHEEL_DEBOUNCE_MS = 250
 
