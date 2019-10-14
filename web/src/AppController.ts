@@ -1,32 +1,39 @@
 import HUD from "./HUD"
 import { getResourceAlerts } from "./alerts"
 import { ShowFatalErrorModal } from "./types"
+import PathBuilder from "./PathBuilder"
+
+interface HUDInt {
+  setAppState: (state: any) => void
+  setHistoryLocation: (path: string) => void
+}
 
 // A Websocket that automatically retries.
-
 class AppController {
   url: string
   loadCount: number
   liveSocket: boolean
   tryConnectCount: number
   socket: WebSocket | null = null
-  component: HUD
+  component: HUDInt
   disposed: boolean = false
+  pb: PathBuilder
 
   /**
-   * @param url The url to pull data from
+   * @param pathBuilder a PathBuilder
    * @param component The top-level component for the app.
    *     Has one method, setAppState, that sets the global state of the
    *     app. This state has two properties
    *     - Message (string): A status message about the state of the socket
    *     - View (Object): A JSON serialization of the Go struct in internal/renderer/view
    */
-  constructor(url: string, component: HUD) {
+  constructor(pathBuilder: PathBuilder, component: HUDInt) {
     if (!component.setAppState) {
       throw new Error("App component has no setAppState method")
     }
 
-    this.url = url
+    this.pb = pathBuilder
+    this.url = pathBuilder.getDataUrl()
     this.component = component
     this.tryConnectCount = 0
     this.liveSocket = false
@@ -134,7 +141,7 @@ class AppController {
         // @ts-ignore
         this.component.setAppState({ View: data.View })
         if (data.path) {
-          this.component.setHistoryLocation(data.path)
+          this.component.setHistoryLocation(this.pb.path(data.path))
         }
       })
       .catch(err => {
