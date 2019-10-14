@@ -1,5 +1,6 @@
 import React, { PureComponent } from "react"
 import { ResourceView, SnapshotHiglight } from "./types"
+import { ReactComponent as SnapshotSvg } from "./assets/svg/snapshot.svg"
 import "./TopBar.scss"
 import TabNav from "./TabNav"
 
@@ -37,8 +38,9 @@ class TopBar extends PureComponent<TopBarProps> {
     let highlight = this.props.highlight
     return (
       <section className="TopBar-snapshotUrlWrap">
-        <button onClick={this.props.handleOpenModal}>
-          {highlight ? "Share Highlight" : "Share Snapshot"}
+        <button onClick={this.props.handleOpenModal} className={`TopBar-snapshotButton ${highlight ? "isHighlighted" : ""}`}>
+          <SnapshotSvg className="TopBar-snapshotSvg"/>
+          <span>Create a <br/>Snapshot</span>
         </button>
       </section>
     )
