@@ -1,4 +1,6 @@
-version: 2
+version: 2.1
+orbs:
+  slack: circleci/slack@3.4.0
 jobs:
   build-linux:
     docker:
@@ -12,6 +14,8 @@ jobs:
       - run: make check-go
       - store_test_results:
           path: test-results
+      - slack/notify-on-failure:
+          only_for_branches: master
 
   build-js:
     docker:
@@ -19,6 +23,8 @@ jobs:
     steps:
       - checkout
       - run: make check-js test-js
+      - slack/notify-on-failure:
+          only_for_branches: master
 
   publish-assets:
     docker:
@@ -28,6 +34,8 @@ jobs:
       - run: echo $GCLOUD_SERVICE_KEY > /tmp/gcloud-service-key.json
       - run: gcloud auth activate-service-account --key-file=/tmp/gcloud-service-key.json
       - run: ./scripts/upload-assets.py $CIRCLE_SHA1
+      - slack/notify-on-failure:
+          only_for_branches: master
 
   build-windows:
     docker:
@@ -37,6 +45,8 @@ jobs:
       - checkout
       # Currently, we only check to make sure Windows binaries compile
       - run: GOOS=windows go install github.com/windmilleng/tilt/cmd/tilt
+      - slack/notify-on-failure:
+          only_for_branches: master
 
   build-integration:
     docker:
@@ -59,6 +69,8 @@ jobs:
              make integration"
       - store_test_results:
           path: test-results
+      - slack/notify-on-failure:
+          only_for_branches: master
 
   build-macos:
     macos:
@@ -91,6 +103,8 @@ jobs:
       - run: gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./internal/watch/...
       - store_test_results:
           path: test-results
+      - slack/notify-on-failure:
+          only_for_branches: master
 
 workflows:
   version: 2
