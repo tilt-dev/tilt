@@ -125,7 +125,10 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       clearTimeout(this.rafID)
     }
     if (!this.props.isSnapshot) {
-      window.removeEventListener("selectionchange", this.handleSelectionChange)
+      document.removeEventListener(
+        "selectionchange",
+        this.handleSelectionChange
+      )
     }
   }
 
