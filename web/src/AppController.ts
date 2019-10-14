@@ -1,4 +1,3 @@
-import HUD from "./HUD"
 import { getResourceAlerts } from "./alerts"
 import { ShowFatalErrorModal } from "./types"
 import PathBuilder from "./PathBuilder"
@@ -100,6 +99,7 @@ class AppController {
         SnapshotLink: "",
         showSnapshotModal: false,
         showFatalErrorModal: ShowFatalErrorModal.Default,
+        snapshotHiglight: null,
       })
       this.createNewSocket()
       return
@@ -127,6 +127,7 @@ class AppController {
         SnapshotLink: "",
         showSnapshotModal: false,
         showFatalErrorModal: ShowFatalErrorModal.Default,
+        snapshotHiglight: null,
       })
       this.createNewSocket()
     }, timeout)

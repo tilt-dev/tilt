@@ -19,6 +19,7 @@ import {
   Resource,
   Snapshot,
   ShowFatalErrorModal,
+  SnapshotHiglight,
 } from "./types"
 import AlertPane from "./AlertPane"
 import AnalyticsNudge from "./AnalyticsNudge"
@@ -56,6 +57,7 @@ type HudState = {
   SnapshotLink: string
   showSnapshotModal: boolean
   showFatalErrorModal: ShowFatalErrorModal
+  snapshotHiglight: SnapshotHiglight | null
 }
 
 type NewSnapshotResponse = {
@@ -117,9 +119,12 @@ class HUD extends Component<HudProps, HudState> {
       SnapshotLink: "",
       showSnapshotModal: false,
       showFatalErrorModal: ShowFatalErrorModal.Default,
+      snapshotHiglight: null,
     }
 
     this.toggleSidebar = this.toggleSidebar.bind(this)
+    this.handleClearHighlight = this.handleClearHighlight.bind(this)
+    this.handleSetHighlight = this.handleSetHighlight.bind(this)
   }
 
   componentDidMount() {
@@ -163,6 +168,7 @@ class HUD extends Component<HudProps, HudState> {
     let url = `//${window.location.host}/api/snapshot/new`
     let sanitizedSnapshot = cleanStateForSnapshotPOST(snapshot)
     sanitizedSnapshot.path = this.props.history.location.pathname
+    sanitizedSnapshot.snapshotHighlight = this.state.snapshotHiglight
     fetch(url, {
       method: "post",
       body: JSON.stringify(sanitizedSnapshot),
@@ -180,6 +186,33 @@ class HUD extends Component<HudProps, HudState> {
       .catch(err => console.error(err))
   }
 
+  highlightsEnabled(): boolean {
+    return (
+      !this.pathBuilder.isSnapshot() &&
+      this.getFeatures().isEnabled("snapshot_highlights")
+    )
+  }
+
+  private getFeatures(): Features {
+    if (this.state.View) {
+      return new Features(this.state.View.FeatureFlags)
+    }
+
+    return new Features({})
+  }
+
+  handleSetHighlight(highlight: SnapshotHiglight) {
+    this.setState({
+      snapshotHiglight: highlight,
+    })
+  }
+
+  handleClearHighlight() {
+    this.setState({
+      snapshotHiglight: null,
+    })
+  }
+
   render() {
     let view = this.state.View
     let needsNudge = view ? view.NeedsAnalyticsNudge : false
@@ -192,18 +225,18 @@ class HUD extends Component<HudProps, HudState> {
     let toggleSidebar = this.toggleSidebar
     let statusItems = resources.map(res => new StatusItem(res))
     let sidebarItems = resources.map(res => new SidebarItem(res))
-    var features: Features
-    if (this.state.View) {
-      features = new Features(this.state.View.FeatureFlags)
-    } else {
-      features = new Features({})
-    }
+
     let showSnapshot =
-      features.isEnabled("snapshots") && !this.pathBuilder.isSnapshot()
+      this.getFeatures().isEnabled("snapshots") &&
+      !this.pathBuilder.isSnapshot()
     let snapshotOwner: string | null = null
     if (this.pathBuilder.isSnapshot() && this.state.View) {
       snapshotOwner = this.state.View.TiltCloudUsername
     }
+
+    let highlightsEnabled =
+      !this.pathBuilder.isSnapshot() &&
+      this.getFeatures().isEnabled("snapshot_highlights")
 
     let sidebarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name = props.match.params.name
@@ -219,8 +252,9 @@ class HUD extends Component<HudProps, HudState> {
       )
     }
 
-    let handleOpenModal = () => this.setState({ showSnapshotModal: true })
-
+    let handleOpenModal = () => {
+      this.setState({ showSnapshotModal: true })
+    }
     let topBarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name =
         props.match.params && props.match.params.name
@@ -239,6 +273,7 @@ class HUD extends Component<HudProps, HudState> {
               showSnapshotButton={showSnapshot}
               snapshotOwner={snapshotOwner}
               handleOpenModal={handleOpenModal}
+              highlight={this.state.snapshotHiglight}
             />
           )
         }
@@ -259,6 +294,7 @@ class HUD extends Component<HudProps, HudState> {
           showSnapshotButton={showSnapshot}
           snapshotOwner={snapshotOwner}
           handleOpenModal={handleOpenModal}
+          highlight={this.state.snapshotHiglight}
         />
       )
     }
@@ -289,7 +325,14 @@ class HUD extends Component<HudProps, HudState> {
             podID={podID}
             podStatus={podStatus}
           />
-          <LogPane log={logs} isExpanded={isSidebarClosed} />
+          <LogPane
+            log={logs}
+            isExpanded={isSidebarClosed}
+            handleSetHighlight={this.handleSetHighlight}
+            handleClearHiglight={this.handleClearHighlight}
+            highlight={this.state.snapshotHiglight}
+            highlightsEnabled={highlightsEnabled}
+          />
         </>
       )
     }
@@ -376,7 +419,14 @@ class HUD extends Component<HudProps, HudState> {
             exact
             path={this.path("/")}
             render={() => (
-              <LogPane log={combinedLog} isExpanded={isSidebarClosed} />
+              <LogPane
+                log={combinedLog}
+                isExpanded={isSidebarClosed}
+                handleSetHighlight={this.handleSetHighlight}
+                handleClearHiglight={this.handleClearHighlight}
+                highlight={this.state.snapshotHiglight}
+                highlightsEnabled={highlightsEnabled}
+              />
             )}
           />
           <Route

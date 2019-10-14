@@ -1,41 +1,125 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`renders highlighted lines 1`] = `
+<section
+  className="LogPane "
+>
+  <div
+    className="logLine "
+    data-lineid={0}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+        hello
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={1}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+        world
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={2}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+        foo
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={3}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+        bar
+      </span>
+    </code>
+  </div>
+  <p
+    className="logEnd"
+  >
+    █
+  </p>
+</section>
+`;
+
 exports[`renders logs 1`] = `
 <section
   className="LogPane "
 >
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-      hello
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-      world
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-      foo
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-      bar
-    </span>
-  </code>
+  <div
+    className="logLine "
+    data-lineid={0}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+        hello
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={1}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+        world
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={2}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+        foo
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={3}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+        bar
+      </span>
+    </code>
+  </div>
   <p
     className="logEnd"
   >
@@ -48,3354 +132,4984 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
 <section
   className="LogPane "
 >
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-      [32mStarting Tilt (v0.7.10-dev, built 2019-04-10)…
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Beginning Tiltfile execution
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"whoami"\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          Installing Tilt NodeJS dependencies…
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fe.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/vigoda.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/snack.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/doggos.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fortune.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hypothesizer.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/spoonerisms.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/emoji.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/words.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/secrets.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/job.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/sleeper.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hello_world.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/tick.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] WARNING: This Tiltfile is using k8s resource assembly version 1, which has been deprecated. It will no longer be supported after 2019-04-17. Sorry for the inconvenience! See https://tilt.dev/resource_assembly_migration.html for information on how to migrate.
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile]
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Successfully loaded Tiltfile
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Applying via kubectl
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      ──┤ Building: 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      hello-world
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-       ├──────────────────────────────────────────────
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 1/1 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Deploying
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Parsing Kubernetes config YAML
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Applying via kubectl
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 1 - 4.138s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Done in: 4.138s
-    </span>
-  </code>
-  <code />
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      ──┤ Building: 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      echo-hi
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-       ├──────────────────────────────────────────────
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 1/1 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Deploying
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Parsing Kubernetes config YAML
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Applying via kubectl
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 1 - 0.556s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Done in: 0.556s
-    </span>
-  </code>
-  <code />
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      ──┤ Building: 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      tick
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-       ├──────────────────────────────────────────────
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 1/1 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Deploying
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Parsing Kubernetes config YAML
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Applying via kubectl
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 1 - 0.450s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Done in: 0.450s
-    </span>
-  </code>
-  <code />
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      ──┤ Building: 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      fe
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-       ├──────────────────────────────────────────────
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 1/3 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Building Dockerfile: [docker.io/library/fe]
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          Building Dockerfile:
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            FROM golang:1.10
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            RUN apt update && apt install -y unzip time make
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            ENV PROTOC_VERSION 3.5.1
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            RUN wget https://github.com/google/protobuf/releases/download/v\${PROTOC_VERSION}/protoc-\${PROTOC_VERSION}-linux-x86_64.zip &&         unzip protoc-\${PROTOC_VERSION}-linux-x86_64.zip -d protoc &&         mv protoc/bin/protoc /usr/bin/protoc
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            RUN go get github.com/golang/protobuf/protoc-gen-go
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            ADD . /go/src/github.com/windmilleng/servantes/fe
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            RUN go install github.com/windmilleng/servantes/fe
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            ENTRYPOINT /go/bin/fe
-    </span>
-  </code>
-  <code />
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Tarring context…
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ Created tarball (size: 24 MB)
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Building image
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [1/6] FROM docker.io/library/golang:1.10
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [2/6] RUN apt update && apt install -y unzip time make
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [3/6] RUN wget https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip &&   unzip protoc-3.5.1-linux-x86_64.zip -d protoc &&   mv protoc/bin/protoc /usr/bin/protoc
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [4/6] RUN go get github.com/golang/protobuf/protoc-gen-go
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [5/6] ADD . /go/src/github.com/windmilleng/servantes/fe
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [6/6] RUN go install github.com/windmilleng/servantes/fe
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 2/3 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Pushing gcr.io/windmill-public-containers/servantes/fe:tilt-2540b7769f4b0e45
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ Skipping push
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 3/3 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Deploying
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Parsing Kubernetes config YAML
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Applying via kubectl
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 1 - 7.630s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 2 - 0.000s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 3 - 0.249s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Done in: 7.880s
-    </span>
-  </code>
-  <code />
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      ──┤ Building: 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      vigoda
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-       ├──────────────────────────────────────────────
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 1/3 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Building Dockerfile: [docker.io/library/vigoda]
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          Building Dockerfile:
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            FROM golang:1.10
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            ADD . /go/src/github.com/windmilleng/servantes/vigoda
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            RUN go install github.com/windmilleng/servantes/vigoda
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            ENTRYPOINT /go/bin/vigoda
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Tarring context…
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ Created tarball (size: 8.7 kB)
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Building image
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [1/3] FROM docker.io/library/golang:1.10
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/vigoda
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [3/3] RUN go install github.com/windmilleng/servantes/vigoda
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 2/3 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Pushing gcr.io/windmill-public-containers/servantes/vigoda:tilt-2d369271c8091f68
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ Skipping push
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 3/3 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Deploying
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Parsing Kubernetes config YAML
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Applying via kubectl
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 1 - 1.017s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 2 - 0.000s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 3 - 0.168s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Done in: 1.185s
-    </span>
-  </code>
-  <code />
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      ──┤ Building: 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      snack
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-       ├──────────────────────────────────────────────
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 1/3 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Building Dockerfile: [docker.io/library/snack]
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          Building Dockerfile:
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            FROM golang:1.10
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            ADD . /go/src/github.com/windmilleng/servantes/snack
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            RUN go install github.com/windmilleng/servantes/snack
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            ENTRYPOINT /go/bin/snack
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Tarring context…
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ Created tarball (size: 9.7 kB)
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Building image
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [1/3] FROM docker.io/library/golang:1.10
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          Starting Tilt webpack server…
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          fe          ┊ 2019/04/10 15:37:37 Starting Servantes FE on :8080
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/snack
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [3/3] RUN go install github.com/windmilleng/servantes/snack
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 2/3 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Pushing gcr.io/windmill-public-containers/servantes/snack:tilt-731280d503bbbcf5
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ Skipping push
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 3/3 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Deploying
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Parsing Kubernetes config YAML
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Applying via kubectl
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 1 - 2.878s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 2 - 0.000s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 3 - 0.322s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Done in: 3.200s
-    </span>
-  </code>
-  <code />
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      ──┤ Building: 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      doggos
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-       ├──────────────────────────────────────────────
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 1/5 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Building Dockerfile: [docker.io/library/doggos]
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          Building Dockerfile:
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            FROM golang:1.10
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            ADD . /go/src/github.com/windmilleng/servantes/doggos
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            RUN go install github.com/windmilleng/servantes/doggos
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            ENTRYPOINT /go/bin/doggos
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Tarring context…
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ Created tarball (size: 7.7 kB)
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Building image
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          vigoda      ┊ 2019/04/10 15:37:39 Starting Vigoda Health Check Service on :8081
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [1/3] FROM docker.io/library/golang:1.10
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/doggos
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [3/3] RUN go install github.com/windmilleng/servantes/doggos
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 2/5 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Pushing gcr.io/windmill-public-containers/servantes/doggos:tilt-28a4e6fab0991d2f
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ Skipping push
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 3/5 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Building Dockerfile: [docker.io/library/sidecar]
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          Building Dockerfile:
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            FROM alpine
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            ADD loud_sidecar.sh /
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            ENTRYPOINT ["/loud_sidecar.sh"]
-    </span>
-  </code>
-  <code />
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Tarring context…
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ Created tarball (size: 4.6 kB)
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Building image
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          vigoda      ┊ 2019/04/10 15:37:41 Server status: All good
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [1/2] FROM docker.io/library/alpine
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [2/2] ADD loud_sidecar.sh /
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 4/5 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Pushing gcr.io/windmill-public-containers/servantes/sidecar:tilt-4fb31b5179f3ad01
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ Skipping push
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 5/5 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Deploying
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Parsing Kubernetes config YAML
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Applying via kubectl
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 1 - 1.629s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 2 - 0.000s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 3 - 2.024s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 4 - 0.000s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 5 - 0.218s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Done in: 3.871s
-    </span>
-  </code>
-  <code />
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      ──┤ Building: 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      fortune
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-       ├──────────────────────────────────────────────
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 1/3 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Building Dockerfile: [docker.io/library/fortune]
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          Building Dockerfile:
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            FROM golang:1.10
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            RUN apt update && apt install -y unzip time make
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            ENV PROTOC_VERSION 3.5.1
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            RUN wget https://github.com/google/protobuf/releases/download/v\${PROTOC_VERSION}/protoc-\${PROTOC_VERSION}-linux-x86_64.zip &&         unzip protoc-\${PROTOC_VERSION}-linux-x86_64.zip -d protoc &&         mv protoc/bin/protoc /usr/bin/protoc
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            RUN go get github.com/golang/protobuf/protoc-gen-go
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            ADD . /go/src/github.com/windmilleng/servantes/fortune
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            RUN cd /go/src/github.com/windmilleng/servantes/fortune && make proto
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            RUN go install github.com/windmilleng/servantes/fortune
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            ENTRYPOINT /go/bin/fortune
-    </span>
-  </code>
-  <code />
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Tarring context…
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ Created tarball (size: 16 kB)
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Building image
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          snack       ┊ 2019/04/10 15:37:41 Starting Snack Service on :8083
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          vigoda      ┊ 2019/04/10 15:37:43 Server status: All good
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [1/7] FROM docker.io/library/golang:1.10
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [2/7] RUN apt update && apt install -y unzip time make
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [3/7] RUN wget https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip &&   unzip protoc-3.5.1-linux-x86_64.zip -d protoc &&   mv protoc/bin/protoc /usr/bin/protoc
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [4/7] RUN go get github.com/golang/protobuf/protoc-gen-go
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [5/7] ADD . /go/src/github.com/windmilleng/servantes/fortune
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [6/7] RUN cd /go/src/github.com/windmilleng/servantes/fortune && make proto
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [7/7] RUN go install github.com/windmilleng/servantes/fortune
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 2/3 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Pushing gcr.io/windmill-public-containers/servantes/fortune:tilt-7e4331cb0b073360
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ Skipping push
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 3/3 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Deploying
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Parsing Kubernetes config YAML
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Applying via kubectl
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 1 - 1.634s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 2 - 0.000s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 3 - 0.279s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Done in: 1.914s
-    </span>
-  </code>
-  <code />
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      ──┤ Building: 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      hypothesizer
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-       ├──────────────────────────────────────────────
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 1/3 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Building Dockerfile: [docker.io/library/hypothesizer]
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          Building Dockerfile:
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            FROM python:3.6
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            ADD . /app
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            RUN cd /app && pip install -r requirements.txt
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Tarring context…
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ Created tarball (size: 6.1 kB)
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Building image
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          vigoda      ┊ 2019/04/10 15:37:45 Server status: All good
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [1/3] FROM docker.io/library/python:3.6@sha256:fcbf363c285f331894b33f2577e0426182b989c750133a989abaaa4edea324e9
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [2/3] ADD . /app
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [3/3] RUN cd /app && pip install -r requirements.txt
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 2/3 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Pushing gcr.io/windmill-public-containers/servantes/hypothesizer:tilt-e2e22b5b98437e29
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ Skipping push
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 3/3 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Deploying
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Parsing Kubernetes config YAML
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Applying via kubectl
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 1 - 2.119s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 2 - 0.000s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Step 3 - 0.517s
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Done in: 2.636s
-    </span>
-  </code>
-  <code />
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      ──┤ Building: 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      spoonerisms
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-       ├──────────────────────────────────────────────
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-      STEP 1/3 — 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Building Dockerfile: [docker.io/library/spoonerisms]
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          Building Dockerfile:
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            FROM node:10
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            ADD package.json /app/package.json
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            ADD yarn.lock /app/yarn.lock
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            RUN cd /app && yarn install
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            ADD src /app
-    </span>
-  </code>
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-            ENTRYPOINT [ "node", "/app/index.js" ]
-    </span>
-  </code>
-  <code />
-  <code />
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Tarring context…
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ Created tarball (size: 459 kB)
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          
-    </span>
-    <span
-      className="ansi-blue"
-      style={null}
-    >
-        │ 
-    </span>
-    <span
-      className={null}
-      style={null}
-    >
-      Building image
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Beginning Tiltfile execution
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"whoami"\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile]        HI
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fe.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/vigoda.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/snack.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/doggos.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fortune.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hypothesizer.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/spoonerisms.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/emoji.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/words.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/secrets.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/job.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/sleeper.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hello_world.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/tick.yaml""\`
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          vigoda      ┊ 2019/04/10 15:37:47 Server status: All good
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] WARNING: This Tiltfile is using k8s resource assembly version 1, which has been deprecated. It will no longer be supported after 2019-04-17. Sorry for the inconvenience! See https://tilt.dev/resource_assembly_migration.html for information on how to migrate.
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile]
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          [Tiltfile] Successfully loaded Tiltfile
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          doggos      ┊ [doggos] 2019/04/10 15:37:45 Starting Doggos Service on :8083
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          doggos      ┊ [sidecar] I'm a loud sidecar! [Wed Apr 10 15:37:46 UTC 2019]
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          doggos      ┊ [sidecar] I'm a loud sidecar! [Wed Apr 10 15:37:48 UTC 2019]
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-          doggos      ┊ [doggos] 2019/04/10 15:37:49 Heartbeat
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [1/5] FROM docker.io/library/node:10
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [2/5] ADD package.json /app/package.json
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [3/5] ADD yarn.lock /app/yarn.lock
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [4/5] RUN cd /app && yarn install
-    </span>
-  </code>
-  <code>
-    <span
-      className={null}
-      style={null}
-    >
-              ╎ [5/5] ADD src /app
-    </span>
-  </code>
+  <div
+    className="logLine "
+    data-lineid={0}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+        [32mStarting Tilt (v0.7.10-dev, built 2019-04-10)…
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={1}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Beginning Tiltfile execution
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={2}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"whoami"\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={3}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            Installing Tilt NodeJS dependencies…
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={4}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fe.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={5}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/vigoda.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={6}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/snack.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={7}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/doggos.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={8}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fortune.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={9}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hypothesizer.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={10}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/spoonerisms.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={11}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/emoji.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={12}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/words.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={13}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/secrets.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={14}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/job.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={15}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/sleeper.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={16}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hello_world.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={17}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/tick.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={18}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] WARNING: This Tiltfile is using k8s resource assembly version 1, which has been deprecated. It will no longer be supported after 2019-04-17. Sorry for the inconvenience! See https://tilt.dev/resource_assembly_migration.html for information on how to migrate.
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={19}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile]
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={20}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Successfully loaded Tiltfile
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={21}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Applying via kubectl
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={22}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={23}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        ──┤ Building: 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        hello-world
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+         ├──────────────────────────────────────────────
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={24}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 1/1 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Deploying
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={25}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Parsing Kubernetes config YAML
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={26}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Applying via kubectl
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={27}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={28}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 1 - 4.138s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={29}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Done in: 4.138s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={30}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={31}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={32}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        ──┤ Building: 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        echo-hi
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+         ├──────────────────────────────────────────────
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={33}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 1/1 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Deploying
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={34}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Parsing Kubernetes config YAML
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={35}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Applying via kubectl
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={36}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={37}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 1 - 0.556s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={38}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Done in: 0.556s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={39}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={40}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={41}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        ──┤ Building: 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        tick
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+         ├──────────────────────────────────────────────
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={42}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 1/1 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Deploying
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={43}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Parsing Kubernetes config YAML
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={44}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Applying via kubectl
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={45}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={46}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 1 - 0.450s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={47}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Done in: 0.450s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={48}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={49}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={50}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        ──┤ Building: 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        fe
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+         ├──────────────────────────────────────────────
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={51}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 1/3 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Building Dockerfile: [docker.io/library/fe]
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={52}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            Building Dockerfile:
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={53}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              FROM golang:1.10
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={54}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={55}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              RUN apt update && apt install -y unzip time make
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={56}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={57}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              ENV PROTOC_VERSION 3.5.1
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={58}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={59}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              RUN wget https://github.com/google/protobuf/releases/download/v\${PROTOC_VERSION}/protoc-\${PROTOC_VERSION}-linux-x86_64.zip &&         unzip protoc-\${PROTOC_VERSION}-linux-x86_64.zip -d protoc &&         mv protoc/bin/protoc /usr/bin/protoc
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={60}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={61}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              RUN go get github.com/golang/protobuf/protoc-gen-go
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={62}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={63}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              ADD . /go/src/github.com/windmilleng/servantes/fe
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={64}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              RUN go install github.com/windmilleng/servantes/fe
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={65}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              ENTRYPOINT /go/bin/fe
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={66}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={67}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={68}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Tarring context…
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={69}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ Created tarball (size: 24 MB)
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={70}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Building image
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={71}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [1/6] FROM docker.io/library/golang:1.10
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={72}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [2/6] RUN apt update && apt install -y unzip time make
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={73}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [3/6] RUN wget https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip &&   unzip protoc-3.5.1-linux-x86_64.zip -d protoc &&   mv protoc/bin/protoc /usr/bin/protoc
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={74}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [4/6] RUN go get github.com/golang/protobuf/protoc-gen-go
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={75}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [5/6] ADD . /go/src/github.com/windmilleng/servantes/fe
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={76}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [6/6] RUN go install github.com/windmilleng/servantes/fe
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={77}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={78}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 2/3 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Pushing gcr.io/windmill-public-containers/servantes/fe:tilt-2540b7769f4b0e45
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={79}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ Skipping push
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={80}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={81}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 3/3 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Deploying
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={82}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Parsing Kubernetes config YAML
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={83}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Applying via kubectl
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={84}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={85}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 1 - 7.630s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={86}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 2 - 0.000s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={87}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 3 - 0.249s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={88}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Done in: 7.880s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={89}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={90}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={91}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        ──┤ Building: 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        vigoda
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+         ├──────────────────────────────────────────────
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={92}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 1/3 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Building Dockerfile: [docker.io/library/vigoda]
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={93}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            Building Dockerfile:
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={94}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              FROM golang:1.10
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={95}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={96}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              ADD . /go/src/github.com/windmilleng/servantes/vigoda
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={97}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              RUN go install github.com/windmilleng/servantes/vigoda
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={98}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={99}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              ENTRYPOINT /go/bin/vigoda
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={100}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={101}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Tarring context…
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={102}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ Created tarball (size: 8.7 kB)
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={103}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Building image
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={104}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [1/3] FROM docker.io/library/golang:1.10
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={105}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/vigoda
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={106}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [3/3] RUN go install github.com/windmilleng/servantes/vigoda
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={107}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={108}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 2/3 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Pushing gcr.io/windmill-public-containers/servantes/vigoda:tilt-2d369271c8091f68
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={109}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ Skipping push
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={110}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={111}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 3/3 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Deploying
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={112}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Parsing Kubernetes config YAML
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={113}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Applying via kubectl
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={114}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={115}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 1 - 1.017s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={116}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 2 - 0.000s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={117}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 3 - 0.168s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={118}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Done in: 1.185s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={119}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={120}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={121}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        ──┤ Building: 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        snack
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+         ├──────────────────────────────────────────────
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={122}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 1/3 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Building Dockerfile: [docker.io/library/snack]
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={123}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            Building Dockerfile:
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={124}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              FROM golang:1.10
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={125}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={126}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              ADD . /go/src/github.com/windmilleng/servantes/snack
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={127}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              RUN go install github.com/windmilleng/servantes/snack
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={128}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={129}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              ENTRYPOINT /go/bin/snack
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={130}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={131}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Tarring context…
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={132}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ Created tarball (size: 9.7 kB)
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={133}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Building image
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={134}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [1/3] FROM docker.io/library/golang:1.10
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={135}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            Starting Tilt webpack server…
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={136}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            fe          ┊ 2019/04/10 15:37:37 Starting Servantes FE on :8080
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={137}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/snack
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={138}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [3/3] RUN go install github.com/windmilleng/servantes/snack
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={139}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={140}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 2/3 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Pushing gcr.io/windmill-public-containers/servantes/snack:tilt-731280d503bbbcf5
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={141}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ Skipping push
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={142}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={143}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 3/3 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Deploying
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={144}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Parsing Kubernetes config YAML
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={145}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Applying via kubectl
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={146}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={147}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 1 - 2.878s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={148}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 2 - 0.000s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={149}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 3 - 0.322s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={150}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Done in: 3.200s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={151}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={152}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={153}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        ──┤ Building: 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        doggos
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+         ├──────────────────────────────────────────────
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={154}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 1/5 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Building Dockerfile: [docker.io/library/doggos]
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={155}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            Building Dockerfile:
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={156}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              FROM golang:1.10
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={157}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={158}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              ADD . /go/src/github.com/windmilleng/servantes/doggos
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={159}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              RUN go install github.com/windmilleng/servantes/doggos
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={160}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={161}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              ENTRYPOINT /go/bin/doggos
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={162}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={163}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Tarring context…
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={164}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ Created tarball (size: 7.7 kB)
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={165}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Building image
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={166}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            vigoda      ┊ 2019/04/10 15:37:39 Starting Vigoda Health Check Service on :8081
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={167}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [1/3] FROM docker.io/library/golang:1.10
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={168}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/doggos
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={169}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [3/3] RUN go install github.com/windmilleng/servantes/doggos
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={170}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={171}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 2/5 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Pushing gcr.io/windmill-public-containers/servantes/doggos:tilt-28a4e6fab0991d2f
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={172}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ Skipping push
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={173}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={174}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 3/5 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Building Dockerfile: [docker.io/library/sidecar]
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={175}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            Building Dockerfile:
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={176}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              FROM alpine
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={177}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={178}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              ADD loud_sidecar.sh /
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={179}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              ENTRYPOINT ["/loud_sidecar.sh"]
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={180}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={181}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={182}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Tarring context…
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={183}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ Created tarball (size: 4.6 kB)
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={184}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Building image
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={185}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            vigoda      ┊ 2019/04/10 15:37:41 Server status: All good
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={186}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [1/2] FROM docker.io/library/alpine
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={187}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [2/2] ADD loud_sidecar.sh /
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={188}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={189}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 4/5 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Pushing gcr.io/windmill-public-containers/servantes/sidecar:tilt-4fb31b5179f3ad01
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={190}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ Skipping push
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={191}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={192}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 5/5 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Deploying
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={193}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Parsing Kubernetes config YAML
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={194}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Applying via kubectl
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={195}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={196}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 1 - 1.629s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={197}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 2 - 0.000s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={198}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 3 - 2.024s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={199}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 4 - 0.000s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={200}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 5 - 0.218s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={201}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Done in: 3.871s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={202}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={203}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={204}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        ──┤ Building: 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        fortune
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+         ├──────────────────────────────────────────────
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={205}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 1/3 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Building Dockerfile: [docker.io/library/fortune]
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={206}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            Building Dockerfile:
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={207}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              FROM golang:1.10
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={208}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={209}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              RUN apt update && apt install -y unzip time make
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={210}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={211}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              ENV PROTOC_VERSION 3.5.1
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={212}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={213}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              RUN wget https://github.com/google/protobuf/releases/download/v\${PROTOC_VERSION}/protoc-\${PROTOC_VERSION}-linux-x86_64.zip &&         unzip protoc-\${PROTOC_VERSION}-linux-x86_64.zip -d protoc &&         mv protoc/bin/protoc /usr/bin/protoc
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={214}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={215}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              RUN go get github.com/golang/protobuf/protoc-gen-go
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={216}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={217}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              ADD . /go/src/github.com/windmilleng/servantes/fortune
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={218}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              RUN cd /go/src/github.com/windmilleng/servantes/fortune && make proto
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={219}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              RUN go install github.com/windmilleng/servantes/fortune
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={220}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={221}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              ENTRYPOINT /go/bin/fortune
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={222}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={223}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={224}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Tarring context…
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={225}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ Created tarball (size: 16 kB)
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={226}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Building image
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={227}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            snack       ┊ 2019/04/10 15:37:41 Starting Snack Service on :8083
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={228}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            vigoda      ┊ 2019/04/10 15:37:43 Server status: All good
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={229}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [1/7] FROM docker.io/library/golang:1.10
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={230}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [2/7] RUN apt update && apt install -y unzip time make
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={231}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [3/7] RUN wget https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip &&   unzip protoc-3.5.1-linux-x86_64.zip -d protoc &&   mv protoc/bin/protoc /usr/bin/protoc
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={232}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [4/7] RUN go get github.com/golang/protobuf/protoc-gen-go
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={233}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [5/7] ADD . /go/src/github.com/windmilleng/servantes/fortune
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={234}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [6/7] RUN cd /go/src/github.com/windmilleng/servantes/fortune && make proto
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={235}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [7/7] RUN go install github.com/windmilleng/servantes/fortune
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={236}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={237}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 2/3 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Pushing gcr.io/windmill-public-containers/servantes/fortune:tilt-7e4331cb0b073360
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={238}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ Skipping push
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={239}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={240}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 3/3 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Deploying
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={241}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Parsing Kubernetes config YAML
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={242}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Applying via kubectl
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={243}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={244}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 1 - 1.634s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={245}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 2 - 0.000s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={246}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 3 - 0.279s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={247}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Done in: 1.914s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={248}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={249}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={250}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        ──┤ Building: 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        hypothesizer
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+         ├──────────────────────────────────────────────
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={251}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 1/3 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Building Dockerfile: [docker.io/library/hypothesizer]
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={252}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            Building Dockerfile:
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={253}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              FROM python:3.6
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={254}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={255}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              ADD . /app
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={256}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              RUN cd /app && pip install -r requirements.txt
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={257}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={258}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Tarring context…
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={259}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ Created tarball (size: 6.1 kB)
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={260}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Building image
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={261}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            vigoda      ┊ 2019/04/10 15:37:45 Server status: All good
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={262}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [1/3] FROM docker.io/library/python:3.6@sha256:fcbf363c285f331894b33f2577e0426182b989c750133a989abaaa4edea324e9
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={263}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [2/3] ADD . /app
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={264}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [3/3] RUN cd /app && pip install -r requirements.txt
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={265}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={266}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 2/3 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Pushing gcr.io/windmill-public-containers/servantes/hypothesizer:tilt-e2e22b5b98437e29
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={267}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ Skipping push
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={268}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={269}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 3/3 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Deploying
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={270}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Parsing Kubernetes config YAML
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={271}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Applying via kubectl
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={272}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={273}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 1 - 2.119s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={274}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 2 - 0.000s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={275}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Step 3 - 0.517s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={276}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Done in: 2.636s
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={277}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={278}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={279}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        ──┤ Building: 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        spoonerisms
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+         ├──────────────────────────────────────────────
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={280}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+        STEP 1/3 — 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Building Dockerfile: [docker.io/library/spoonerisms]
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={281}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            Building Dockerfile:
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={282}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              FROM node:10
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={283}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={284}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              ADD package.json /app/package.json
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={285}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              ADD yarn.lock /app/yarn.lock
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={286}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              RUN cd /app && yarn install
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={287}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={288}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              ADD src /app
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={289}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={290}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+              ENTRYPOINT [ "node", "/app/index.js" ]
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={291}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={292}
+  >
+    <code />
+  </div>
+  <div
+    className="logLine "
+    data-lineid={293}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Tarring context…
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={294}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ Created tarball (size: 459 kB)
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={295}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            
+      </span>
+      <span
+        className="ansi-blue"
+        style={null}
+      >
+          │ 
+      </span>
+      <span
+        className={null}
+        style={null}
+      >
+        Building image
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={296}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Beginning Tiltfile execution
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={297}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"whoami"\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={298}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile]        HI
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={299}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fe.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={300}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/vigoda.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={301}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/snack.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={302}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/doggos.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={303}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fortune.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={304}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hypothesizer.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={305}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/spoonerisms.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={306}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/emoji.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={307}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/words.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={308}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/secrets.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={309}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/job.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={310}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/sleeper.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={311}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hello_world.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={312}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/tick.yaml""\`
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={313}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            vigoda      ┊ 2019/04/10 15:37:47 Server status: All good
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={314}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] WARNING: This Tiltfile is using k8s resource assembly version 1, which has been deprecated. It will no longer be supported after 2019-04-17. Sorry for the inconvenience! See https://tilt.dev/resource_assembly_migration.html for information on how to migrate.
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={315}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile]
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={316}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            [Tiltfile] Successfully loaded Tiltfile
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={317}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            doggos      ┊ [doggos] 2019/04/10 15:37:45 Starting Doggos Service on :8083
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={318}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            doggos      ┊ [sidecar] I'm a loud sidecar! [Wed Apr 10 15:37:46 UTC 2019]
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={319}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            doggos      ┊ [sidecar] I'm a loud sidecar! [Wed Apr 10 15:37:48 UTC 2019]
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={320}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+            doggos      ┊ [doggos] 2019/04/10 15:37:49 Heartbeat
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={321}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [1/5] FROM docker.io/library/node:10
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={322}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [2/5] ADD package.json /app/package.json
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={323}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [3/5] ADD yarn.lock /app/yarn.lock
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={324}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [4/5] RUN cd /app && yarn install
+      </span>
+    </code>
+  </div>
+  <div
+    className="logLine "
+    data-lineid={325}
+  >
+    <code>
+      <span
+        className={null}
+        style={null}
+      >
+                ╎ [5/5] ADD src /app
+      </span>
+    </code>
+  </div>
   <p
     className="logEnd"
   >

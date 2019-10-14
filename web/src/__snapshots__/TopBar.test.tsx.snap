@@ -86,9 +86,19 @@ exports[`shows snapshot url 1`] = `
       className="TopBar-snapshotUrlWrap"
     >
       <button
+        className="TopBar-snapshotButton "
         onClick={[Function]}
       >
-        Share Snapshot
+        <svg
+          className="TopBar-snapshotSvg"
+        >
+          snapshot.svg
+        </svg>
+        <span>
+          Create a 
+          <br />
+          Snapshot
+        </span>
       </button>
     </section>
   </section>
