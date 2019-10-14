@@ -2763,7 +2763,6 @@ func TestDisableDockerPrune(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	f.WriteFile("Tiltfile", simpleTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
 	f.WriteFile("snack.yaml", simpleYAML)
 
@@ -2777,7 +2776,25 @@ docker_prune_settings(disable=True)
 		return len(state.TiltfileState.BuildHistory) == 1
 	})
 	f.withState(func(state store.EngineState) {
-		assert.True(t, state.DockerPruneSettings.Disabled)
+		assert.False(t, state.DockerPruneSettings.Enabled)
+	})
+}
+
+func TestDockerPruneEnabledByDefault(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", simpleTiltfile)
+	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
+	f.WriteFile("snack.yaml", simpleYAML)
+
+	f.loadAndStart()
+
+	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
+		return len(state.TiltfileState.BuildHistory) == 1
+	})
+	f.withState(func(state store.EngineState) {
+		assert.True(t, state.DockerPruneSettings.Enabled)
 	})
 }
 

@@ -155,7 +155,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	tlr.Manifests = manifests
 	tlr.TeamName = s.teamName
 	tlr.DockerPruneSettings = model.DockerPruneSettings{
-		Disabled:  s.dockerPruneDisabled,
+		Enabled:   !s.dockerPruneDisabled,
 		MaxAge:    s.dockerPruneMaxAge,
 		NumBuilds: s.dockerPruneNumBuilds,
 		Interval:  s.dockerPruneInterval,

@@ -59,7 +59,7 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 	nextToBuild := buildcontrol.NextManifestNameToBuild(state)
 	st.RUnlockState()
 
-	if settings.Disabled {
+	if !settings.Enabled {
 		return
 	}
 

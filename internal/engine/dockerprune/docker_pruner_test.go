@@ -114,7 +114,7 @@ func TestDockerPrunerSinceNBuilds(t *testing.T) {
 	f := newFixture(t)
 	f.withDockerManifestAlreadyBuilt()
 	f.withBuildCount(11)
-	f.withDockerPruneSettings(false, 0, 5, 0)
+	f.withDockerPruneSettings(true, 0, 5, 0)
 	f.dp.lastPruneBuildCount = 5
 	f.dp.lastPruneTime = twoHrsAgo()
 
@@ -127,7 +127,7 @@ func TestDockerPrunerNotEnoughBuilds(t *testing.T) {
 	f := newFixture(t)
 	f.withDockerManifestAlreadyBuilt()
 	f.withBuildCount(11)
-	f.withDockerPruneSettings(false, 0, 10, 0)
+	f.withDockerPruneSettings(true, 0, 10, 0)
 	f.dp.lastPruneBuildCount = 5
 	f.dp.lastPruneTime = twoHrsAgo()
 
@@ -139,7 +139,7 @@ func TestDockerPrunerNotEnoughBuilds(t *testing.T) {
 func TestDockerPrunerSinceInterval(t *testing.T) {
 	f := newFixture(t)
 	f.withDockerManifestAlreadyBuilt()
-	f.withDockerPruneSettings(false, 0, 0, 30*time.Minute)
+	f.withDockerPruneSettings(true, 0, 0, 30*time.Minute)
 	f.dp.lastPruneTime = twoHrsAgo()
 
 	f.dp.OnChange(f.ctx, f.st)
@@ -150,7 +150,7 @@ func TestDockerPrunerSinceInterval(t *testing.T) {
 func TestDockerPrunerSinceDefaultInterval(t *testing.T) {
 	f := newFixture(t)
 	f.withDockerManifestAlreadyBuilt()
-	f.withDockerPruneSettings(false, 0, 0, 0)
+	f.withDockerPruneSettings(true, 0, 0, 0)
 	f.dp.lastPruneTime = time.Now().Add(-1 * (defaultInterval + time.Minute))
 
 	f.dp.OnChange(f.ctx, f.st)
@@ -161,7 +161,7 @@ func TestDockerPrunerSinceDefaultInterval(t *testing.T) {
 func TestDockerPrunerNotEnoughTimeElapsed(t *testing.T) {
 	f := newFixture(t)
 	f.withDockerManifestAlreadyBuilt()
-	f.withDockerPruneSettings(false, 0, 0, 3*time.Hour)
+	f.withDockerPruneSettings(true, 0, 0, 3*time.Hour)
 	f.dp.lastPruneTime = twoHrsAgo()
 
 	f.dp.OnChange(f.ctx, f.st)
@@ -172,7 +172,7 @@ func TestDockerPrunerNotEnoughTimeElapsed(t *testing.T) {
 func TestDockerPrunerSinceDefaultIntervalNotEnoughTime(t *testing.T) {
 	f := newFixture(t)
 	f.withDockerManifestAlreadyBuilt()
-	f.withDockerPruneSettings(false, 0, 0, 0)
+	f.withDockerPruneSettings(true, 0, 0, 0)
 	f.dp.lastPruneTime = time.Now().Add(-1 * defaultInterval).Add(20 * time.Minute)
 
 	f.dp.OnChange(f.ctx, f.st)
@@ -184,7 +184,7 @@ func TestDockerPrunerFirstRun(t *testing.T) {
 	f := newFixture(t)
 	f.withDockerManifestAlreadyBuilt()
 	f.withBuildCount(5)
-	f.withDockerPruneSettings(false, 0, 10, 0)
+	f.withDockerPruneSettings(true, 0, 10, 0)
 
 	f.dp.OnChange(f.ctx, f.st)
 
@@ -195,7 +195,7 @@ func TestDockerPrunerFirstRunButNoCompletedBuilds(t *testing.T) {
 	f := newFixture(t)
 	f.withDockerManifestAlreadyBuilt()
 	f.withBuildCount(0)
-	f.withDockerPruneSettings(false, 0, 10, 0)
+	f.withDockerPruneSettings(true, 0, 10, 0)
 
 	f.dp.OnChange(f.ctx, f.st)
 
@@ -206,7 +206,7 @@ func TestDockerPrunerNoDockerManifests(t *testing.T) {
 	f := newFixture(t)
 	f.withK8sOnlyManifest()
 	f.withBuildCount(11)
-	f.withDockerPruneSettings(false, 0, 5, 0)
+	f.withDockerPruneSettings(true, 0, 5, 0)
 
 	f.dp.OnChange(f.ctx, f.st)
 
@@ -216,7 +216,7 @@ func TestDockerPrunerNoDockerManifests(t *testing.T) {
 func TestDockerPrunerDisabled(t *testing.T) {
 	f := newFixture(t)
 	f.withDockerManifestAlreadyBuilt()
-	f.withDockerPruneSettings(true, 0, 0, 0)
+	f.withDockerPruneSettings(false, 0, 0, 0)
 
 	f.dp.OnChange(f.ctx, f.st)
 
@@ -227,7 +227,7 @@ func TestDockerPrunerCurrentlyBuilding(t *testing.T) {
 	f := newFixture(t)
 	f.withDockerManifestAlreadyBuilt()
 	f.withCurrentlyBuilding("idk something")
-	f.withDockerPruneSettings(false, 0, 0, time.Hour)
+	f.withDockerPruneSettings(true, 0, 0, time.Hour)
 	f.dp.lastPruneTime = twoHrsAgo()
 
 	f.dp.OnChange(f.ctx, f.st)
@@ -238,7 +238,7 @@ func TestDockerPrunerCurrentlyBuilding(t *testing.T) {
 func TestDockerPrunerPendingBuild(t *testing.T) {
 	f := newFixture(t)
 	f.withDockerManifestUnbuilt() // manifest not yet built will be pending, so we should not prune
-	f.withDockerPruneSettings(false, 0, 0, time.Hour)
+	f.withDockerPruneSettings(true, 0, 0, time.Hour)
 	f.dp.lastPruneTime = twoHrsAgo()
 
 	f.dp.OnChange(f.ctx, f.st)
@@ -251,7 +251,7 @@ func TestDockerPrunerMaxAgeFromSettings(t *testing.T) {
 	f.withDockerManifestAlreadyBuilt()
 	f.withBuildCount(5)
 	maxAge := time.Hour
-	f.withDockerPruneSettings(false, maxAge, 10, 0)
+	f.withDockerPruneSettings(true, maxAge, 10, 0)
 
 	f.dp.OnChange(f.ctx, f.st)
 
@@ -265,7 +265,7 @@ func TestDockerPrunerDefaultMaxAge(t *testing.T) {
 	f := newFixture(t)
 	f.withDockerManifestAlreadyBuilt()
 	f.withBuildCount(5)
-	f.withDockerPruneSettings(false, 0, 10, 0)
+	f.withDockerPruneSettings(true, 0, 10, 0)
 
 	f.dp.OnChange(f.ctx, f.st)
 
@@ -355,9 +355,9 @@ func (dpf *dockerPruneFixture) withCurrentlyBuilding(mn model.ManifestName) {
 	dpf.st.UnlockMutableState()
 }
 
-func (dpf *dockerPruneFixture) withDockerPruneSettings(disabled bool, maxAge time.Duration, numBuilds int, interval time.Duration) {
+func (dpf *dockerPruneFixture) withDockerPruneSettings(enabled bool, maxAge time.Duration, numBuilds int, interval time.Duration) {
 	settings := model.DockerPruneSettings{
-		Disabled:  disabled,
+		Enabled:   enabled,
 		MaxAge:    maxAge,
 		NumBuilds: numBuilds,
 		Interval:  interval,
