@@ -1,5 +1,20 @@
 @import "constants.scss";
 
+.resourceBar {
+  position: fixed;
+  top: $tabnav-height;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  height: $resourceInfo-height;
+  background-color: $color-gray-dark;
+  padding-left: $spacing-unit / 2;
+  padding-right: $sidebar-width + $spacing-unit / 2;
+  border-bottom: 1px dotted $color-gray-light;
+}
+
 .resourceInfo {
   display: flex;
   align-items: center;
