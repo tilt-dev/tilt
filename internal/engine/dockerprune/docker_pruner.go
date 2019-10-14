@@ -9,6 +9,8 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 
+	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
+
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/store"
@@ -52,7 +54,9 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 	state := st.RLockState()
 	settings := state.DockerPruneSettings
 	inProgBuild := state.CurrentlyBuilding
+	curBuildCount := state.CompletedBuildCount
 	hasDockerBuild := state.HasDockerBuild()
+	nextToBuild := buildcontrol.NextManifestNameToBuild(state)
 	st.RUnlockState()
 
 	if settings.Disabled {
@@ -64,23 +68,10 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 		return
 	}
 
-	// Don't prune WHILE we're building something, in case of weird side-effects.
-	if inProgBuild != "" {
+	// Don't prune while we're building or about to build something, in case of weird side-effects.
+	if inProgBuild != "" || nextToBuild != "" {
 		return
 	}
-
-	select {
-	case <-time.After(25 * time.Millisecond):
-	}
-	state = st.RLockState()
-	inProgBuild = state.CurrentlyBuilding
-	curBuildCount := state.CompletedBuildCount
-	st.RUnlockState()
-
-	if inProgBuild != "" {
-		return
-	}
-	// Okay, now we're DEFINITELY (probably) not building anything
 
 	// Prune as soon after startup as we can (waiting until we've built SOMETHING)
 	if dp.lastPruneTime.IsZero() && curBuildCount > 0 {
