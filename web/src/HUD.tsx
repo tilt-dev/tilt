@@ -73,7 +73,6 @@ class HUD extends Component<HudProps, HudState> {
   private controller: AppController
   private history: History
   private unlisten: UnregisterCallback
-  private features: Features | null
 
   constructor(props: HudProps) {
     super(props)
@@ -126,7 +125,6 @@ class HUD extends Component<HudProps, HudState> {
     this.toggleSidebar = this.toggleSidebar.bind(this)
     this.handleClearHighlight = this.handleClearHighlight.bind(this)
     this.handleSetHighlight = this.handleSetHighlight.bind(this)
-    this.features = null
   }
 
   componentDidMount() {
@@ -197,12 +195,10 @@ class HUD extends Component<HudProps, HudState> {
 
   private getFeatures(): Features {
     if (this.state.View) {
-      this.features = new Features(this.state.View.FeatureFlags)
-    } else {
-      this.features = new Features({})
+      return new Features(this.state.View.FeatureFlags)
     }
 
-    return this.features
+    return new Features({})
   }
 
   handleSetHighlight(highlight: SnapshotHiglight) {
