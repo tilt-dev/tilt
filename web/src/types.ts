@@ -2,7 +2,6 @@ import { Alert } from "./alerts"
 
 export enum ResourceView {
   Log,
-  Preview,
   Alerts,
 }
 

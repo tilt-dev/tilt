@@ -10,27 +10,8 @@ it("shows logs", () => {
       <MemoryRouter>
         <TabNav
           logUrl="/r/foo"
-          previewUrl="/r/foo/preview"
           alertsUrl="/r/foo/alerts"
           resourceView={ResourceView.Log}
-          numberOfAlerts={0}
-        />
-      </MemoryRouter>
-    )
-    .toJSON()
-
-  expect(tree).toMatchSnapshot()
-})
-
-it("previews resources", () => {
-  const tree = renderer
-    .create(
-      <MemoryRouter>
-        <TabNav
-          logUrl="/r/foo"
-          previewUrl="/r/foo/preview"
-          alertsUrl="/r/foo/alerts"
-          resourceView={ResourceView.Preview}
           numberOfAlerts={0}
         />
       </MemoryRouter>
@@ -46,7 +27,6 @@ it("shows error pane", () => {
       <MemoryRouter>
         <TabNav
           logUrl="/r/foo"
-          previewUrl="/r/foo/preview"
           alertsUrl="/r/foo/alerts"
           resourceView={ResourceView.Alerts}
           numberOfAlerts={0}
@@ -64,7 +44,6 @@ it("shows the number of errors in the error tab", () => {
       <MemoryRouter>
         <TabNav
           logUrl="/r/foo"
-          previewUrl="/r/foo/preview"
           alertsUrl="/r/foo/alerts"
           resourceView={ResourceView.Alerts}
           numberOfAlerts={27}
