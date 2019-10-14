@@ -277,6 +277,7 @@ class HUD extends Component<HudProps, HudState> {
               showSnapshotButton={showSnapshot}
               snapshotOwner={snapshotOwner}
               handleOpenModal={handleOpenModal}
+              highlight={this.state.snapshotHiglight}
             />
           )
         }
@@ -297,6 +298,7 @@ class HUD extends Component<HudProps, HudState> {
           showSnapshotButton={showSnapshot}
           snapshotOwner={snapshotOwner}
           handleOpenModal={handleOpenModal}
+          highlight={this.state.snapshotHiglight}
         />
       )
     }

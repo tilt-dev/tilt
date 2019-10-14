@@ -1,5 +1,5 @@
 import React, { PureComponent } from "react"
-import { ResourceView } from "./types"
+import { ResourceView, SnapshotHiglight } from "./types"
 import "./TopBar.scss"
 import TabNav from "./TabNav"
 
@@ -11,6 +11,7 @@ type TopBarProps = {
   showSnapshotButton: boolean
   snapshotOwner: string | null
   handleOpenModal: () => void
+  highlight: SnapshotHiglight | null
 }
 
 class TopBar extends PureComponent<TopBarProps> {
@@ -33,9 +34,12 @@ class TopBar extends PureComponent<TopBarProps> {
   }
 
   renderSnapshotModal() {
+    let highlight = this.props.highlight
     return (
       <section className="TopBar-snapshotUrlWrap">
-        <button onClick={this.props.handleOpenModal}>Share Snapshot</button>
+        <button onClick={this.props.handleOpenModal}>
+          {highlight ? "Share Highlight" : "Share Snapshot"}
+        </button>
       </section>
     )
   }
