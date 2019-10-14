@@ -31,6 +31,7 @@ import (
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
+	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
 	"github.com/windmilleng/tilt/internal/tiltfile/testdata"
 	"github.com/windmilleng/tilt/internal/yaml"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -3866,7 +3867,9 @@ func (f *fixture) newTiltfileLoader() TiltfileLoader {
 		feature.MultipleContainersPerPod: feature.Value{Enabled: false},
 		feature.Snapshots:                feature.Value{Enabled: true},
 	}
-	return ProvideTiltfileLoader(f.ta, f.kCli, dcc, f.k8sContext, f.k8sEnv, features)
+
+	k8sContextExt := k8scontext.NewExtension(f.k8sContext, f.k8sEnv)
+	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, dcc, features)
 }
 
 func newFixture(t *testing.T) *fixture {

@@ -20,6 +20,7 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/tiltfile/include"
+	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
 	"github.com/windmilleng/tilt/internal/tiltfile/os"
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 	"github.com/windmilleng/tilt/pkg/logger"
@@ -35,8 +36,7 @@ type tiltfileState struct {
 	// set at creation
 	ctx             context.Context
 	dcCli           dockercompose.DockerComposeClient
-	kubeContext     k8s.KubeContext
-	kubeEnv         k8s.Env
+	k8sContextExt   *k8scontext.Extension
 	privateRegistry container.Registry
 	features        feature.FeatureSet
 
@@ -61,7 +61,6 @@ type tiltfileState struct {
 	k8sResourceAssemblyVersion       int
 	k8sResourceAssemblyVersionReason k8sResourceAssemblyVersionReason
 	workloadToResourceFunction       workloadToResourceFunction
-	allowedK8SContexts               []k8s.KubeContext
 
 	// for assembly
 	usedImages map[string]bool
@@ -103,15 +102,13 @@ const (
 func newTiltfileState(
 	ctx context.Context,
 	dcCli dockercompose.DockerComposeClient,
-	kubeContext k8s.KubeContext,
-	kubeEnv k8s.Env,
+	k8sContextExt *k8scontext.Extension,
 	privateRegistry container.Registry,
 	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
 		ctx:                        ctx,
 		dcCli:                      dcCli,
-		kubeContext:                kubeContext,
-		kubeEnv:                    kubeEnv,
+		k8sContextExt:              k8sContextExt,
 		privateRegistry:            privateRegistry,
 		buildIndex:                 newBuildIndex(),
 		k8sByName:                  make(map[string]*k8sResource),
@@ -152,7 +149,11 @@ func (s *tiltfileState) print(_ *starlark.Thread, msg string) {
 func (s *tiltfileState) loadManifests(absFilename string, matching map[string]bool) ([]model.Manifest, error) {
 	s.logger.Infof("Beginning Tiltfile execution")
 
-	err := starkit.ExecFile(absFilename, s, include.IncludeFn{}, os.NewExtension())
+	err := starkit.ExecFile(absFilename,
+		s,
+		include.IncludeFn{},
+		os.NewExtension(),
+		s.k8sContextExt)
 	if err != nil {
 		if err, ok := err.(*starlark.EvalError); ok {
 			return nil, errors.New(err.Backtrace())
@@ -173,12 +174,13 @@ func (s *tiltfileState) loadManifests(absFilename string, matching map[string]bo
 			return nil, err
 		}
 
-		err = s.validateK8SContext()
-		if err != nil {
+		isAllowed := s.k8sContextExt.IsAllowed()
+		if !isAllowed {
+			kubeContext := s.k8sContextExt.KubeContext()
 			return nil, fmt.Errorf(`Stop! %s might be production.
 If you're sure you want to deploy there, add:
 allow_k8s_contexts('%s')
-to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, s.kubeContext, s.kubeContext)
+to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext, kubeContext)
 		}
 	} else {
 		manifests, err = s.translateDC(resources.dc)
@@ -237,8 +239,6 @@ const (
 	k8sKindN                    = "k8s_kind"
 	k8sImageJSONPathN           = "k8s_image_json_path"
 	workloadToResourceFunctionN = "workload_to_resource_function"
-	k8sContextN                 = "k8s_context"
-	allowK8SContexts            = "allow_k8s_contexts"
 
 	// file functions
 	localGitRepoN = "local_git_repo"
@@ -251,7 +251,6 @@ const (
 	decodeJSONN   = "decode_json"
 	readJSONN     = "read_json"
 	readYAMLN     = "read_yaml"
-	includeN      = "include"
 
 	// live update functions
 	fallBackOnN       = "fall_back_on"
@@ -347,12 +346,13 @@ type builtin func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.T
 // (none (e.g., docker-compose), local, or specified by `allow_k8s_contexts`)
 func (s *tiltfileState) potentiallyK8sUnsafeBuiltin(f builtin) builtin {
 	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		err := s.validateK8SContext()
-		if err != nil {
+		isAllowed := s.k8sContextExt.IsAllowed()
+		if !isAllowed {
+			kubeContext := s.k8sContextExt.KubeContext()
 			return nil, fmt.Errorf(`Refusing to run '%s' because %s might be a production kube context.
 If you're sure you want to continue add:
 allow_k8s_contexts('%s')
-before this function call in your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, fn.Name(), s.kubeContext, s.kubeContext)
+before this function call in your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, fn.Name(), kubeContext, kubeContext)
 		}
 
 		return f(thread, fn, args, kwargs)
@@ -477,16 +477,6 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 	}
 
 	err = e.AddBuiltin(workloadToResourceFunctionN, s.workloadToResourceFunctionFn)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(k8sContextN, s.k8sContext)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(allowK8SContexts, s.allowK8SContexts)
 	if err != nil {
 		return err
 	}

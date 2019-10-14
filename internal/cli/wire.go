@@ -56,13 +56,12 @@ var K8sWireSet = wire.NewSet(
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet,
+	tiltfile.WireSet,
 	provideKubectlLogLevel,
 
 	docker.SwitchWireSet,
 
 	dockercompose.NewDockerComposeClient,
-
-	tiltfile.ProvideTiltfileLoader,
 
 	clockwork.NewRealClock,
 	engine.DeployerWireSet,
