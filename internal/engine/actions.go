@@ -24,13 +24,6 @@ type BuildLogAction struct {
 
 func (BuildLogAction) Action() {}
 
-type PodLogAction struct {
-	store.LogEvent
-	PodID k8s.PodID
-}
-
-func (PodLogAction) Action() {}
-
 type DeployIDAction struct {
 	TargetID model.TargetID
 	DeployID model.DeployID
@@ -119,12 +112,6 @@ type DockerComposeEventAction struct {
 }
 
 func (DockerComposeEventAction) Action() {}
-
-type DockerComposeLogAction struct {
-	store.LogEvent
-}
-
-func (DockerComposeLogAction) Action() {}
 
 type LatestVersionAction struct {
 	Build model.TiltBuild

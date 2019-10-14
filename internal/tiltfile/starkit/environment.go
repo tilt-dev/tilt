@@ -3,6 +3,7 @@ package starkit
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
@@ -54,7 +55,7 @@ func (e *Environment) SetArgUnpacker(unpackArgs ArgUnpacker) {
 // All builtins will be wrapped to invoke OnBuiltinCall on every extension.
 //
 // All builtins should use starkit.UnpackArgs to get instrumentation.
-func (e *Environment) AddBuiltin(name string, b func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)) {
+func (e *Environment) AddBuiltin(name string, b func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)) error {
 	wrapped := starlark.NewBuiltin(name, func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		for _, ext := range e.extensions {
 			onBuiltinCallExt, ok := ext.(OnBuiltinCallExtension)
@@ -66,11 +67,36 @@ func (e *Environment) AddBuiltin(name string, b func(thread *starlark.Thread, fn
 		return b(thread, fn, args, kwargs)
 	})
 
-	e.predeclared[name] = wrapped
+	return e.AddValue(name, wrapped)
 }
 
-func (e *Environment) AddValue(name string, val starlark.Value) {
-	e.predeclared[name] = val
+func (e *Environment) AddValue(name string, val starlark.Value) error {
+	split := strings.Split(name, ".")
+
+	// Handle the simple case first.
+	if len(split) == 1 {
+		e.predeclared[name] = val
+		return nil
+	}
+
+	if len(split) == 2 {
+		var currentModule Module
+		predeclaredVal, ok := e.predeclared[split[0]]
+		if ok {
+			predeclaredDict, ok := predeclaredVal.(Module)
+			if !ok {
+				return fmt.Errorf("Module conflict at %s. Existing: %s", name, predeclaredVal)
+			}
+			currentModule = predeclaredDict
+		} else {
+			currentModule = Module{name: split[0], attrs: starlark.StringDict{}}
+			e.predeclared[split[0]] = currentModule
+		}
+		currentModule.attrs[split[1]] = val
+		return nil
+	}
+
+	return fmt.Errorf("multi-level modules not supported yet")
 }
 
 func (e *Environment) SetPrint(print func(thread *starlark.Thread, msg string)) {
@@ -90,7 +116,10 @@ func (e *Environment) start(path string) error {
 	}
 
 	for _, ext := range e.extensions {
-		ext.OnStart(e)
+		err := ext.OnStart(e)
+		if err != nil {
+			return errors.Wrapf(err, "%T", ext)
+		}
 	}
 
 	t := &starlark.Thread{

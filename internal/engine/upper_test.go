@@ -36,6 +36,7 @@ import (
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
+	"github.com/windmilleng/tilt/internal/engine/runtimelog"
 	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/github"
 	"github.com/windmilleng/tilt/internal/hud"
@@ -54,6 +55,7 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/servicebuilder"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/tiltfile"
+	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
 	"github.com/windmilleng/tilt/internal/token"
 	"github.com/windmilleng/tilt/internal/watch"
 	"github.com/windmilleng/tilt/pkg/assets"
@@ -1164,7 +1166,7 @@ func TestPodEventOrdering(t *testing.T) {
 				f.store.Dispatch(k8swatch.NewPodChangeAction(pb.Build(), manifest.Name, pb.DeploymentUID()))
 			}
 
-			f.upper.store.Dispatch(PodLogAction{
+			f.upper.store.Dispatch(runtimelog.PodLogAction{
 				PodID:    k8s.PodID(podBNow.PodID()),
 				LogEvent: store.NewLogEvent("fe", []byte("pod b log\n")),
 			})
@@ -2905,7 +2907,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	st := store.NewStore(UpperReducer, store.LogActionsFlag(false))
 	st.AddSubscriber(ctx, fSub)
 
-	plm := NewPodLogManager(kCli)
+	plm := runtimelog.NewPodLogManager(kCli)
 	bc := NewBuildController(b)
 
 	err := os.Mkdir(f.JoinPath(".git"), os.FileMode(0777))
@@ -2917,12 +2919,13 @@ func newTestFixture(t *testing.T) *testFixture {
 	pfc := NewPortForwardController(kCli)
 	tas := NewTiltAnalyticsSubscriber(ta)
 	ar := ProvideAnalyticsReporter(ta, st)
+	k8sContextExt := k8scontext.NewExtension("fake-context", k8s.EnvDockerDesktop)
 
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
-	tfl := tiltfile.ProvideTiltfileLoader(ta, kCli, fakeDcc, "fake-context", k8s.EnvDockerDesktop, feature.MainDefaults)
+	tfl := tiltfile.ProvideTiltfileLoader(ta, kCli, k8sContextExt, fakeDcc, feature.MainDefaults)
 	cc := configs.NewConfigsController(tfl, dockerClient)
 	dcw := NewDockerComposeEventWatcher(fakeDcc)
-	dclm := NewDockerComposeLogManager(fakeDcc)
+	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
 	pm := NewProfilerManager()
 	sCli := synclet.NewTestSyncletClient(dockerClient)
 	sGRPCCli, err := synclet.FakeGRPCWrapper(ctx, sCli)
@@ -3230,7 +3233,7 @@ func (f *testFixture) startPod(pod *v1.Pod, manifestName model.ManifestName) {
 }
 
 func (f *testFixture) podLog(pod *v1.Pod, manifestName model.ManifestName, s string) {
-	f.upper.store.Dispatch(PodLogAction{
+	f.upper.store.Dispatch(runtimelog.PodLogAction{
 		PodID:    k8s.PodID(pod.Name),
 		LogEvent: store.NewLogEvent(manifestName, []byte(s+"\n")),
 	})

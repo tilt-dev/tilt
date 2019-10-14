@@ -6,6 +6,7 @@ import (
 	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
+	"github.com/windmilleng/tilt/internal/engine/runtimelog"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/store"
@@ -15,13 +16,13 @@ func ProvideSubscribers(
 	hud hud.HeadsUpDisplay,
 	pw *k8swatch.PodWatcher,
 	sw *k8swatch.ServiceWatcher,
-	plm *PodLogManager,
+	plm *runtimelog.PodLogManager,
 	pfc *PortForwardController,
 	fwm *WatchManager,
 	bc *BuildController,
 	cc *configs.ConfigsController,
 	dcw *DockerComposeEventWatcher,
-	dclm *DockerComposeLogManager,
+	dclm *runtimelog.DockerComposeLogManager,
 	pm *ProfilerManager,
 	sm containerupdate.SyncletManager,
 	ar *AnalyticsReporter,

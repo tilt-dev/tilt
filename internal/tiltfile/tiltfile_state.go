@@ -21,6 +21,8 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/tiltfile/include"
+	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
+	"github.com/windmilleng/tilt/internal/tiltfile/os"
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -35,8 +37,7 @@ type tiltfileState struct {
 	// set at creation
 	ctx             context.Context
 	dcCli           dockercompose.DockerComposeClient
-	kubeContext     k8s.KubeContext
-	kubeEnv         k8s.Env
+	k8sContextExt   *k8scontext.Extension
 	privateRegistry container.Registry
 	features        feature.FeatureSet
 
@@ -61,7 +62,6 @@ type tiltfileState struct {
 	k8sResourceAssemblyVersion       int
 	k8sResourceAssemblyVersionReason k8sResourceAssemblyVersionReason
 	workloadToResourceFunction       workloadToResourceFunction
-	allowedK8SContexts               []k8s.KubeContext
 
 	// for assembly
 	usedImages map[string]bool
@@ -108,15 +108,13 @@ const (
 func newTiltfileState(
 	ctx context.Context,
 	dcCli dockercompose.DockerComposeClient,
-	kubeContext k8s.KubeContext,
-	kubeEnv k8s.Env,
+	k8sContextExt *k8scontext.Extension,
 	privateRegistry container.Registry,
 	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
 		ctx:                        ctx,
 		dcCli:                      dcCli,
-		kubeContext:                kubeContext,
-		kubeEnv:                    kubeEnv,
+		k8sContextExt:              k8sContextExt,
 		privateRegistry:            privateRegistry,
 		buildIndex:                 newBuildIndex(),
 		k8sByName:                  make(map[string]*k8sResource),
@@ -157,7 +155,11 @@ func (s *tiltfileState) print(_ *starlark.Thread, msg string) {
 func (s *tiltfileState) loadManifests(absFilename string, matching map[string]bool) ([]model.Manifest, error) {
 	s.logger.Infof("Beginning Tiltfile execution")
 
-	err := starkit.ExecFile(absFilename, s, include.IncludeFn{})
+	err := starkit.ExecFile(absFilename,
+		s,
+		include.IncludeFn{},
+		os.NewExtension(),
+		s.k8sContextExt)
 	if err != nil {
 		if err, ok := err.(*starlark.EvalError); ok {
 			return nil, errors.New(err.Backtrace())
@@ -178,12 +180,13 @@ func (s *tiltfileState) loadManifests(absFilename string, matching map[string]bo
 			return nil, err
 		}
 
-		err = s.validateK8SContext()
-		if err != nil {
+		isAllowed := s.k8sContextExt.IsAllowed()
+		if !isAllowed {
+			kubeContext := s.k8sContextExt.KubeContext()
 			return nil, fmt.Errorf(`Stop! %s might be production.
 If you're sure you want to deploy there, add:
 allow_k8s_contexts('%s')
-to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, s.kubeContext, s.kubeContext)
+to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext, kubeContext)
 		}
 	} else {
 		manifests, err = s.translateDC(resources.dc)
@@ -242,8 +245,6 @@ const (
 	k8sKindN                    = "k8s_kind"
 	k8sImageJSONPathN           = "k8s_image_json_path"
 	workloadToResourceFunctionN = "workload_to_resource_function"
-	k8sContextN                 = "k8s_context"
-	allowK8SContexts            = "allow_k8s_contexts"
 
 	// file functions
 	localGitRepoN = "local_git_repo"
@@ -256,7 +257,6 @@ const (
 	decodeJSONN   = "decode_json"
 	readJSONN     = "read_json"
 	readYAMLN     = "read_yaml"
-	includeN      = "include"
 
 	// live update functions
 	fallBackOnN       = "fall_back_on"
@@ -353,12 +353,13 @@ type builtin func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.T
 // (none (e.g., docker-compose), local, or specified by `allow_k8s_contexts`)
 func (s *tiltfileState) potentiallyK8sUnsafeBuiltin(f builtin) builtin {
 	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		err := s.validateK8SContext()
-		if err != nil {
+		isAllowed := s.k8sContextExt.IsAllowed()
+		if !isAllowed {
+			kubeContext := s.k8sContextExt.KubeContext()
 			return nil, fmt.Errorf(`Refusing to run '%s' because %s might be a production kube context.
 If you're sure you want to continue add:
 allow_k8s_contexts('%s')
-before this function call in your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, fn.Name(), s.kubeContext, s.kubeContext)
+before this function call in your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, fn.Name(), kubeContext, kubeContext)
 		}
 
 		return f(thread, fn, args, kwargs)
@@ -393,58 +394,206 @@ func (s *tiltfileState) unpackArgs(fnname string, args starlark.Tuple, kwargs []
 }
 
 // TODO(nick): Split these into separate extensions
-func (s *tiltfileState) OnStart(e *starkit.Environment) {
+func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 	e.SetArgUnpacker(s.unpackArgs)
 	e.SetPrint(s.print)
 
-	e.AddBuiltin(localN, s.potentiallyK8sUnsafeBuiltin(s.local))
-	e.AddBuiltin(readFileN, s.skylarkReadFile)
-	e.AddBuiltin(watchFileN, s.watchFile)
+	err := e.AddBuiltin(localN, s.potentiallyK8sUnsafeBuiltin(s.local))
+	if err != nil {
+		return err
+	}
 
-	e.AddBuiltin(dockerBuildN, s.dockerBuild)
-	e.AddBuiltin(fastBuildN, s.fastBuild)
-	e.AddBuiltin(customBuildN, s.customBuild)
-	e.AddBuiltin(defaultRegistryN, s.defaultRegistry)
-	e.AddBuiltin(dockerComposeN, s.dockerCompose)
-	e.AddBuiltin(dcResourceN, s.dcResource)
-	e.AddBuiltin(k8sResourceAssemblyVersionN, s.k8sResourceAssemblyVersionFn)
-	e.AddBuiltin(k8sYamlN, s.k8sYaml)
-	e.AddBuiltin(filterYamlN, s.filterYaml)
-	e.AddBuiltin(k8sResourceN, s.k8sResource)
-	e.AddBuiltin(localResourceN, s.localResource)
-	e.AddBuiltin(portForwardN, s.portForward)
-	e.AddBuiltin(k8sKindN, s.k8sKind)
-	e.AddBuiltin(k8sImageJSONPathN, s.k8sImageJsonPath)
-	e.AddBuiltin(workloadToResourceFunctionN, s.workloadToResourceFunctionFn)
-	e.AddBuiltin(k8sContextN, s.k8sContext)
-	e.AddBuiltin(allowK8SContexts, s.allowK8SContexts)
-	e.AddBuiltin(localGitRepoN, s.localGitRepo)
-	e.AddBuiltin(kustomizeN, s.kustomize)
-	e.AddBuiltin(helmN, s.helm)
-	e.AddBuiltin(failN, s.fail)
-	e.AddBuiltin(blobN, s.blob)
-	e.AddBuiltin(listdirN, s.listdir)
-	e.AddBuiltin(decodeJSONN, s.decodeJSON)
-	e.AddBuiltin(readJSONN, s.readJson)
-	e.AddBuiltin(readYAMLN, s.readYaml)
+	err = e.AddBuiltin(readFileN, s.skylarkReadFile)
+	if err != nil {
+		return err
+	}
 
-	e.AddBuiltin(triggerModeN, s.triggerModeFn)
-	e.AddValue(triggerModeAutoN, TriggerModeAuto)
-	e.AddValue(triggerModeManualN, TriggerModeManual)
+	err = e.AddBuiltin(watchFileN, s.watchFile)
+	if err != nil {
+		return err
+	}
 
-	e.AddBuiltin(fallBackOnN, s.liveUpdateFallBackOn)
-	e.AddBuiltin(syncN, s.liveUpdateSync)
-	e.AddBuiltin(runN, s.liveUpdateRun)
-	e.AddBuiltin(restartContainerN, s.liveUpdateRestartContainer)
+	err = e.AddBuiltin(dockerBuildN, s.dockerBuild)
+	if err != nil {
+		return err
+	}
 
-	e.AddBuiltin(enableFeatureN, s.enableFeature)
-	e.AddBuiltin(disableFeatureN, s.disableFeature)
+	err = e.AddBuiltin(fastBuildN, s.fastBuild)
+	if err != nil {
+		return err
+	}
 
-	e.AddBuiltin(disableSnapshotsN, s.disableSnapshots)
+	err = e.AddBuiltin(customBuildN, s.customBuild)
+	if err != nil {
+		return err
+	}
 
-	e.AddBuiltin(setTeamN, s.setTeam)
+	err = e.AddBuiltin(defaultRegistryN, s.defaultRegistry)
+	if err != nil {
+		return err
+	}
 
-	e.AddBuiltin(dockerPruneSettingsN, s.dockerPruneSettings)
+	err = e.AddBuiltin(dockerComposeN, s.dockerCompose)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(dcResourceN, s.dcResource)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(k8sResourceAssemblyVersionN, s.k8sResourceAssemblyVersionFn)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(k8sYamlN, s.k8sYaml)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(filterYamlN, s.filterYaml)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(k8sResourceN, s.k8sResource)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(localResourceN, s.localResource)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(portForwardN, s.portForward)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(k8sKindN, s.k8sKind)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(k8sImageJSONPathN, s.k8sImageJsonPath)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(workloadToResourceFunctionN, s.workloadToResourceFunctionFn)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(localGitRepoN, s.localGitRepo)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(kustomizeN, s.kustomize)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(helmN, s.helm)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(failN, s.fail)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(blobN, s.blob)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(listdirN, s.listdir)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(decodeJSONN, s.decodeJSON)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(readJSONN, s.readJson)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(readYAMLN, s.readYaml)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(triggerModeN, s.triggerModeFn)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddValue(triggerModeAutoN, TriggerModeAuto)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddValue(triggerModeManualN, TriggerModeManual)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(fallBackOnN, s.liveUpdateFallBackOn)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(syncN, s.liveUpdateSync)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(runN, s.liveUpdateRun)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(restartContainerN, s.liveUpdateRestartContainer)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(enableFeatureN, s.enableFeature)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(disableFeatureN, s.disableFeature)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(disableSnapshotsN, s.disableSnapshots)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(setTeamN, s.setTeam)
+	if err != nil {
+		return err
+	}
+
+	err = e.AddBuiltin(dockerPruneSettingsN, s.dockerPruneSettings)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Returns the current orchestrator.

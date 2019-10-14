@@ -47,6 +47,7 @@ type HudView = {
   FeatureFlags: { [featureFlag: string]: boolean }
   TiltCloudUsername: string
   TiltCloudSchemeHost: string
+  TiltCloudTeamID: string
   FatalError: string | null
 }
 
@@ -82,7 +83,7 @@ class HUD extends Component<HudProps, HudState> {
       window.location.host,
       window.location.pathname
     )
-    this.controller = new AppController(this.pathBuilder.getDataUrl(), this)
+    this.controller = new AppController(this.pathBuilder, this)
     this.history = props.history
     this.unlisten = this.history.listen((location, _) => {
       let tags = { type: pathToTag(location.pathname) }
@@ -112,6 +113,7 @@ class HUD extends Component<HudProps, HudState> {
         FeatureFlags: {},
         TiltCloudUsername: "",
         TiltCloudSchemeHost: "",
+        TiltCloudTeamID: "",
       },
       IsSidebarClosed: false,
       SnapshotLink: "",
@@ -471,6 +473,7 @@ class HUD extends Component<HudProps, HudState> {
     let handleSendSnapshot = () => this.sendSnapshot(this.state)
     let tiltCloudUsername = (view && view.TiltCloudUsername) || null
     let tiltCloudSchemeHost = (view && view.TiltCloudSchemeHost) || ""
+    let tiltCloudTeamID = (view && view.TiltCloudTeamID) || null
     return (
       <ShareSnapshotModal
         handleSendSnapshot={handleSendSnapshot}
@@ -478,6 +481,7 @@ class HUD extends Component<HudProps, HudState> {
         snapshotUrl={this.state.SnapshotLink}
         tiltCloudUsername={tiltCloudUsername}
         tiltCloudSchemeHost={tiltCloudSchemeHost}
+        tiltCloudTeamID={tiltCloudTeamID}
         isOpen={this.state.showSnapshotModal}
       />
     )

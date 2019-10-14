@@ -3,7 +3,7 @@ import { mount } from "enzyme"
 import SidebarTriggerButton from "./SidebarTriggerButton"
 import { TriggerMode } from "./types"
 
-describe("SidebarTriggerButtoon", () => {
+describe("SidebarTriggerButton", () => {
   beforeEach(() => {
     fetchMock.resetMocks()
   })

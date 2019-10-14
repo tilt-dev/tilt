@@ -14,8 +14,8 @@ import (
 type IncludeFn struct {
 }
 
-func (IncludeFn) OnStart(e *starkit.Environment) {
-	e.AddBuiltin("include", include)
+func (IncludeFn) OnStart(e *starkit.Environment) error {
+	return e.AddBuiltin("include", include)
 }
 
 func include(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
