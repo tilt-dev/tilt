@@ -1,4 +1,3 @@
-import HUD from "./HUD"
 import { getResourceAlerts } from "./alerts"
 import { ShowFatalErrorModal } from "./types"
 import PathBuilder from "./PathBuilder"
