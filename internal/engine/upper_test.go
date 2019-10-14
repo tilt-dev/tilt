@@ -2912,6 +2912,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	ghc := &github.FakeClient{}
 	ewm := k8swatch.NewEventWatchManager(kCli, of)
 	tcum := cloud.NewUsernameManager(httptest.NewFakeClient())
+	csu := cloud.NewSnapshotUploader(httptest.NewFakeClient(), "fake-cloud.tilt.dev")
 
 	ret := &testFixture{
 		TempDirFixture:        f,
@@ -2944,7 +2945,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
 
-	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, tvc, tas, ewm, tcum, dp)
+	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, tvc, tas, ewm, tcum, csu, dp)
 	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {

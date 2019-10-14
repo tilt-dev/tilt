@@ -48,7 +48,7 @@ type HeadsUpServer struct {
 	store             *store.Store
 	router            *mux.Router
 	a                 *tiltanalytics.TiltAnalytics
-	uploader          cloud.SnapshotUploader
+	uploader          *cloud.SnapshotUploader
 	numWebsocketConns int32
 }
 
@@ -56,7 +56,7 @@ func ProvideHeadsUpServer(
 	store *store.Store,
 	assetServer assets.Server,
 	analytics *tiltanalytics.TiltAnalytics,
-	uploader cloud.SnapshotUploader) *HeadsUpServer {
+	uploader *cloud.SnapshotUploader) *HeadsUpServer {
 	r := mux.NewRouter().UseEncodedPath()
 	s := &HeadsUpServer{
 		store:    store,

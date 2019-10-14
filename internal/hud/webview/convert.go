@@ -6,9 +6,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/windmilleng/tilt/internal/cloud"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
+	"github.com/windmilleng/tilt/internal/network"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -102,7 +102,7 @@ func StateToWebView(s store.EngineState) View {
 	ret.LatestTiltBuild = s.LatestTiltBuild
 	ret.FeatureFlags = s.Features
 	ret.TiltCloudUsername = s.TiltCloudUsername
-	ret.TiltCloudSchemeHost = cloud.URL(s.CloudAddress).String()
+	ret.TiltCloudSchemeHost = network.HostToURL(s.CloudAddress).String()
 	ret.TiltCloudTeamID = s.TeamName
 	if s.FatalError != nil {
 		ret.FatalError = s.FatalError.Error()
