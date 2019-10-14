@@ -53,6 +53,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     }
   }
 
+  // TODO(dmiller): this needs to detect if it isn't mounted any more and do nothing?
   private handleSelectionChange() {
     let selection = document.getSelection()
     if (selection && selection.focusNode && selection.anchorNode) {
@@ -122,6 +123,9 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     window.removeEventListener("wheel", this.handleWheel)
     if (this.rafID) {
       clearTimeout(this.rafID)
+    }
+    if (!this.props.isSnapshot) {
+      window.removeEventListener("selectionchange", this.handleSelectionChange)
     }
   }
 
@@ -210,12 +214,8 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       }
 
       logLines.push(
-        <div data-lineID={i}>
-          <AnsiLine
-            key={key}
-            className={shouldHighlight ? "highlighted" : ""}
-            line={l}
-          />
+        <div key={key} data-lineid={i}>
+          <AnsiLine className={shouldHighlight ? "highlighted" : ""} line={l} />
         </div>
       )
     }
