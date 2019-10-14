@@ -25,6 +25,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
+
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 
 	"github.com/windmilleng/tilt/internal/cloud"
@@ -802,7 +804,7 @@ k8s_yaml('snack.yaml')`
 	})
 
 	f.withState(func(state store.EngineState) {
-		assert.Equal(t, "", nextManifestNameToBuild(state).String())
+		assert.Equal(t, "", buildcontrol.NextManifestNameToBuild(state).String())
 	})
 }
 
@@ -1293,7 +1295,7 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 
 	f.WaitUntil("builds ready & changed file recorded", func(st store.EngineState) bool {
 		ms, _ := st.ManifestState(manifest.Name)
-		return nextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
+		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
 	})
 	f.store.Dispatch(BuildStartedAction{
 		ManifestName: manifest.Name,
@@ -1305,7 +1307,7 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	})
 
 	f.WaitUntil("nothing waiting for build", func(st store.EngineState) bool {
-		return st.CompletedBuildCount == 1 && nextManifestNameToBuild(st) == ""
+		return st.CompletedBuildCount == 1 && buildcontrol.NextManifestNameToBuild(st) == ""
 	})
 
 	f.podEvent(podbuilder.New(t, manifest).WithPodID("mypod").WithContainerID("myfunnycontainerid").Build(), manifest.Name)
@@ -1315,7 +1317,7 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	})
 
 	f.WaitUntil("manifest queued for build b/c it's crashing", func(st store.EngineState) bool {
-		return nextManifestNameToBuild(st) == manifest.Name
+		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name
 	})
 }
 
@@ -1333,7 +1335,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 	f.store.Dispatch(newTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a"))
 	f.WaitUntil("builds ready & changed file recorded", func(st store.EngineState) bool {
 		ms, _ := st.ManifestState(manifest.Name)
-		return nextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
+		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
 	})
 	f.store.Dispatch(BuildStartedAction{
 		ManifestName: manifest.Name,
@@ -1353,7 +1355,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 		return ms.NeedsRebuildFromCrash
 	})
 	f.WaitUntil("manifest queued for build b/c it's crashing", func(st store.EngineState) bool {
-		return nextManifestNameToBuild(st) == manifest.Name
+		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name
 	})
 }
 
@@ -1371,7 +1373,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	f.store.Dispatch(newTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a"))
 	f.WaitUntil("builds ready & changed file recorded", func(st store.EngineState) bool {
 		ms, _ := st.ManifestState(manifest.Name)
-		return nextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
+		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
 	})
 
 	f.store.Dispatch(BuildStartedAction{
@@ -1391,13 +1393,13 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 
 	f.store.Dispatch(k8swatch.NewPodChangeAction(pb.Build(), manifest.Name, ancestorUID))
 	f.WaitUntil("nothing waiting for build", func(st store.EngineState) bool {
-		return st.CompletedBuildCount == 1 && nextManifestNameToBuild(st) == ""
+		return st.CompletedBuildCount == 1 && buildcontrol.NextManifestNameToBuild(st) == ""
 	})
 
 	// Start another fake build
 	f.store.Dispatch(newTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a"))
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
-		return nextManifestNameToBuild(st) == manifest.Name
+		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name
 	})
 	f.store.Dispatch(BuildStartedAction{
 		ManifestName: manifest.Name,
@@ -1417,7 +1419,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	})
 
 	f.WaitUntil("manifest queued for build b/c it's crashing", func(st store.EngineState) bool {
-		return nextManifestNameToBuild(st) == manifest.Name
+		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name
 	})
 }
 
