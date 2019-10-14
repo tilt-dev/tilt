@@ -213,7 +213,11 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       }
 
       logLines.push(
-        <div key={key} data-lineid={i} className={`logLine ${shouldHighlight ? "highlighted" : ""}`} >
+        <div
+          key={key}
+          data-lineid={i}
+          className={`logLine ${shouldHighlight ? "highlighted" : ""}`}
+        >
           <AnsiLine line={l} />
         </div>
       )
