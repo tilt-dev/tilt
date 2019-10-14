@@ -73,6 +73,7 @@ class HUD extends Component<HudProps, HudState> {
   private controller: AppController
   private history: History
   private unlisten: UnregisterCallback
+  private features: Features | null
 
   constructor(props: HudProps) {
     super(props)
@@ -125,6 +126,7 @@ class HUD extends Component<HudProps, HudState> {
     this.toggleSidebar = this.toggleSidebar.bind(this)
     this.handleClearHighlight = this.handleClearHighlight.bind(this)
     this.handleSetHighlight = this.handleSetHighlight.bind(this)
+    this.features = null
   }
 
   componentDidMount() {
@@ -186,6 +188,23 @@ class HUD extends Component<HudProps, HudState> {
       .catch(err => console.error(err))
   }
 
+  highlightsEnabled(): boolean {
+    return (
+      !this.pathBuilder.isSnapshot() &&
+      this.getFeatures().isEnabled("snapshot_highlights")
+    )
+  }
+
+  private getFeatures(): Features {
+    if (this.state.View) {
+      this.features = new Features(this.state.View.FeatureFlags)
+    } else {
+      this.features = new Features({})
+    }
+
+    return this.features
+  }
+
   handleSetHighlight(highlight: SnapshotHiglight) {
     this.setState({
       snapshotHiglight: highlight,
@@ -210,18 +229,18 @@ class HUD extends Component<HudProps, HudState> {
     let toggleSidebar = this.toggleSidebar
     let statusItems = resources.map(res => new StatusItem(res))
     let sidebarItems = resources.map(res => new SidebarItem(res))
-    var features: Features
-    if (this.state.View) {
-      features = new Features(this.state.View.FeatureFlags)
-    } else {
-      features = new Features({})
-    }
+
     let showSnapshot =
-      features.isEnabled("snapshots") && !this.pathBuilder.isSnapshot()
+      this.getFeatures().isEnabled("snapshots") &&
+      !this.pathBuilder.isSnapshot()
     let snapshotOwner: string | null = null
     if (this.pathBuilder.isSnapshot() && this.state.View) {
       snapshotOwner = this.state.View.TiltCloudUsername
     }
+
+    let highlightsEnabled =
+      !this.pathBuilder.isSnapshot() &&
+      this.getFeatures().isEnabled("snapshot_highlights")
 
     let sidebarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name = props.match.params.name
@@ -281,10 +300,6 @@ class HUD extends Component<HudProps, HudState> {
         />
       )
     }
-
-    let highlightsEnabled =
-      !this.pathBuilder.isSnapshot() &&
-      features.isEnabled("snapshot_highlights")
 
     let logsRoute = (props: RouteComponentProps<any>) => {
       let name =
