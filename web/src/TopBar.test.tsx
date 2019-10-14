@@ -18,6 +18,7 @@ it("shows snapshot url", () => {
           showSnapshotButton={true}
           snapshotOwner={null}
           handleOpenModal={fakeHandleOpenModal}
+          highlight={null}
         />
       </MemoryRouter>
     )
@@ -38,6 +39,7 @@ it("shows snapshot owner", () => {
           showSnapshotButton={false}
           snapshotOwner="foo"
           handleOpenModal={fakeHandleOpenModal}
+          highlight={null}
         />
       </MemoryRouter>
     )
