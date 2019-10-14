@@ -45,40 +45,54 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 		return
 	}
 
-	state := st.RLockState()
-	defer st.RUnlockState()
-
-	settings := state.DockerPruneSettings
-	if settings.Disabled {
-		return
-	}
-
 	if err := dp.sufficientVersionError(); err != nil {
 		return
 	}
 
+	state := st.RLockState()
+	settings := state.DockerPruneSettings
+	inProgBuild := state.CurrentlyBuilding
+	hasDockerBuild := state.HasDockerBuild()
+	st.RUnlockState()
+
+	if settings.Disabled {
+		return
+	}
+
 	// If user doesn't have at least one Docker build, they probably don't care about pruning
-	if !state.HasDockerBuild() {
+	if !hasDockerBuild {
 		return
 	}
 
 	// Don't prune WHILE we're building something, in case of weird side-effects.
-	// TODO: more robust check here
-	if state.CurrentlyBuilding != "" {
+	if inProgBuild != "" {
 		return
 	}
 
+	select {
+	case <-time.After(25 * time.Millisecond):
+	}
+	state = st.RLockState()
+	inProgBuild = state.CurrentlyBuilding
+	curBuildCount := state.CompletedBuildCount
+	st.RUnlockState()
+
+	if inProgBuild != "" {
+		return
+	}
+	// Okay, now we're DEFINITELY (probably) not building anything
+
 	// Prune as soon after startup as we can (waiting until we've built SOMETHING)
-	if dp.lastPruneTime.IsZero() && state.CompletedBuildCount > 0 {
-		dp.PruneAndRecordState(ctx, settings.MaxAge, state.CompletedBuildCount)
+	if dp.lastPruneTime.IsZero() && curBuildCount > 0 {
+		dp.PruneAndRecordState(ctx, settings.MaxAge, curBuildCount)
 		return
 	}
 
 	// "Prune every X builds" takes precedence over "prune every Y hours"
 	if settings.NumBuilds != 0 {
-		buildsSince := state.CompletedBuildCount - dp.lastPruneBuildCount
+		buildsSince := curBuildCount - dp.lastPruneBuildCount
 		if buildsSince >= settings.NumBuilds {
-			dp.PruneAndRecordState(ctx, settings.MaxAge, state.CompletedBuildCount)
+			dp.PruneAndRecordState(ctx, settings.MaxAge, curBuildCount)
 		}
 		return
 	}

@@ -285,6 +285,10 @@ type dockerCreds struct {
 	sessionID   string
 }
 
+func (c *Cli) images(ctx context.Context) {
+	c.Client.ImageList()
+}
+
 // When we pull from a private docker registry, we have to get credentials
 // from somewhere. These credentials are not stored on the server. The client
 // is responsible for managing them.
