@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`renders highlighted lines if it's not a snapshot 1`] = `
+exports[`renders highlighted lines 1`] = `
 <section
   className="LogPane "
 >

@@ -389,7 +389,7 @@ it("renders logs with leading whitespace and ANSI codes", () => {
   expect(tree).toMatchSnapshot()
 })
 
-it("renders highlighted lines if it's not a snapshot", () => {
+it("renders highlighted lines", () => {
   const log = "hello\nworld\nfoo\nbar"
   const highlight = {
     beginningLogID: "logLine2",
