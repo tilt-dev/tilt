@@ -11,6 +11,7 @@ type props = {
   snapshotUrl: string
   tiltCloudUsername: string | null
   tiltCloudSchemeHost: string
+  tiltCloudTeamID: string | null
   isOpen: boolean
 }
 
@@ -174,6 +175,21 @@ export default class ShareSnapshotModal extends PureComponent<props> {
             <ArrowSvg />
           </a>
         </p>
+        {this.props.tiltCloudTeamID ? (
+          <p>
+            View snapshots from your{" "}
+            <a
+              className="ShareSnapshotModal-tiltCloudLink"
+              href={`${this.props.tiltCloudSchemeHost}/team/${
+                this.props.tiltCloudTeamID
+              }/snapshots`}
+              target="_blank"
+            >
+              <span>team</span>
+              <ArrowSvg />
+            </a>
+          </p>
+        ) : null}
       </section>
     )
   }

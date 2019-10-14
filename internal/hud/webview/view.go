@@ -180,6 +180,7 @@ type View struct {
 
 	TiltCloudUsername   string
 	TiltCloudSchemeHost string
+	TiltCloudTeamID     string
 
 	FatalError string
 }
