@@ -17,7 +17,7 @@ var SwitchWireSet = wire.NewSet(
 	ProvideSwitchCli,
 	ProvideLocalEnv,
 	ProvideClusterEnv,
-	wire.Bind(new(Client), new(switchCli)))
+	wire.Bind(new(Client), new(*switchCli)))
 
 // Bind a docker client that talks to the in-cluster Docker daemon.
 var ClusterWireSet = wire.NewSet(

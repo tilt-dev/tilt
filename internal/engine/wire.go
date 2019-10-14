@@ -34,7 +34,7 @@ var DeployerBaseWireSet = wire.NewSet(
 	build.NewCacheBuilder,
 	build.NewDockerImageBuilder,
 	build.NewExecCustomBuilder,
-	wire.Bind(new(build.CustomBuilder), new(build.ExecCustomBuilder)),
+	wire.Bind(new(build.CustomBuilder), new(*build.ExecCustomBuilder)),
 
 	// BuildOrder
 	NewLocalTargetBuildAndDeployer,
@@ -47,7 +47,7 @@ var DeployerBaseWireSet = wire.NewSet(
 	NewImageAndCacheBuilder,
 	DefaultBuildOrder,
 
-	wire.Bind(new(BuildAndDeployer), new(CompositeBuildAndDeployer)),
+	wire.Bind(new(BuildAndDeployer), new(*CompositeBuildAndDeployer)),
 	NewCompositeBuildAndDeployer,
 	ProvideUpdateMode,
 )
