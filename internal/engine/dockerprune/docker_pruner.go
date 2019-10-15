@@ -105,21 +105,21 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 }
 
 func (dp *DockerPruner) PruneAndRecordState(ctx context.Context, maxAge time.Duration, imgSelectors []container.RefSelector, curBuildCount int) {
-	dp.Prune(ctx, maxAge, imgSelectors, false)
+	dp.Prune(ctx, maxAge, imgSelectors)
 	dp.lastPruneTime = time.Now()
 	dp.lastPruneBuildCount = curBuildCount
 }
 
-func (dp *DockerPruner) Prune(ctx context.Context, maxAge time.Duration, imgSelectors []container.RefSelector, verbose bool) {
+func (dp *DockerPruner) Prune(ctx context.Context, maxAge time.Duration, imgSelectors []container.RefSelector) {
 	// For future: dispatch event with output/errors to be recorded
 	//   in engineState.TiltSystemState on store (analogous to TiltfileState)
-	err := dp.prune(ctx, maxAge, imgSelectors, verbose)
+	err := dp.prune(ctx, maxAge, imgSelectors)
 	if err != nil {
 		logger.Get(ctx).Infof("[Docker Prune] error running docker prune: %v", err)
 	}
 }
 
-func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration, imgSelectors []container.RefSelector, verbose bool) error {
+func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration, imgSelectors []container.RefSelector) error {
 	l := logger.Get(ctx)
 	if err := dp.sufficientVersionError(); err != nil {
 		l.Debugf("[Docker Prune] skipping Docker prune, Docker API version too low:\t%v", err)
@@ -136,14 +136,14 @@ func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration, imgSele
 	if err != nil {
 		return err
 	}
-	prettyPrintContainersPruneReport(containerReport, l, verbose)
+	prettyPrintContainersPruneReport(containerReport, l)
 
 	// PRUNE IMAGES
 	imageReport, err := dp.deleteOldImages(ctx, maxAge, imgSelectors)
 	if err != nil {
 		return err
 	}
-	prettyPrintImagesPruneReport(imageReport, l, verbose)
+	prettyPrintImagesPruneReport(imageReport, l)
 
 	// PRUNE BUILD CACHE
 	opts := types.BuildCachePruneOptions{Filters: f}
@@ -154,7 +154,7 @@ func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration, imgSele
 		}
 		l.Debugf("[Docker Prune] skipping build cache prune, Docker API version too low:\t%s", err)
 	} else {
-		prettyPrintCachePruneReport(cacheReport, l, verbose)
+		prettyPrintCachePruneReport(cacheReport, l)
 	}
 
 	return nil
@@ -224,9 +224,9 @@ func (dp *DockerPruner) sufficientVersionError() error {
 	return dp.dCli.NewVersionError("1.30", "image | container prune with filter: label")
 }
 
-func prettyPrintImagesPruneReport(report types.ImagesPruneReport, l logger.Logger, verbose bool) {
+func prettyPrintImagesPruneReport(report types.ImagesPruneReport, l logger.Logger) {
 	// TODO: human-readable space reclaimed
-	if len(report.ImagesDeleted) == 0 && !verbose {
+	if len(report.ImagesDeleted) == 0 && l.Level() < logger.DebugLvl {
 		return
 	}
 
@@ -248,9 +248,9 @@ func prettyStringImgDeleteItem(img types.ImageDeleteResponseItem) string {
 	return ""
 }
 
-func prettyPrintCachePruneReport(report *types.BuildCachePruneReport, l logger.Logger, verbose bool) {
+func prettyPrintCachePruneReport(report *types.BuildCachePruneReport, l logger.Logger) {
 	// TODO: human-readable space reclaimed
-	if len(report.CachesDeleted) == 0 && !verbose {
+	if len(report.CachesDeleted) == 0 && l.Level() < logger.DebugLvl {
 		return
 	}
 
@@ -260,9 +260,9 @@ func prettyPrintCachePruneReport(report *types.BuildCachePruneReport, l logger.L
 	}
 }
 
-func prettyPrintContainersPruneReport(report types.ContainersPruneReport, l logger.Logger, verbose bool) {
+func prettyPrintContainersPruneReport(report types.ContainersPruneReport, l logger.Logger) {
 	// TODO: human-readable space reclaimed
-	if len(report.ContainersDeleted) == 0 && !verbose {
+	if len(report.ContainersDeleted) == 0 && l.Level() < logger.DebugLvl {
 		return
 	}
 

@@ -76,7 +76,7 @@ func (c *dockerPruneCmd) run(ctx context.Context, args []string) error {
 	}
 
 	// TODO: print the commands being run
-	dp.Prune(ctx, maxAge, imgSelectors, true)
+	dp.Prune(ctx, maxAge, imgSelectors)
 
 	return nil
 }
