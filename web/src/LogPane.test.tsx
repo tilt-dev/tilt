@@ -15,7 +15,7 @@ it("renders without crashing", () => {
       message="world"
       isExpanded={false}
       handleSetHighlight={fakeHandleSetHighlight}
-      handleClearHiglight={fakeHandleClearHighlight}
+      handleClearHighlight={fakeHandleClearHighlight}
       highlight={null}
       highlightsEnabled={false}
     />,
@@ -32,7 +32,7 @@ it("renders logs", () => {
         log={log}
         isExpanded={false}
         handleSetHighlight={fakeHandleSetHighlight}
-        handleClearHiglight={fakeHandleClearHighlight}
+        handleClearHighlight={fakeHandleClearHighlight}
         highlight={null}
         highlightsEnabled={false}
       />
@@ -379,7 +379,7 @@ it("renders logs with leading whitespace and ANSI codes", () => {
         log={log}
         isExpanded={false}
         handleSetHighlight={fakeHandleSetHighlight}
-        handleClearHiglight={fakeHandleClearHighlight}
+        handleClearHighlight={fakeHandleClearHighlight}
         highlight={null}
         highlightsEnabled={false}
       />
@@ -402,7 +402,7 @@ it("renders highlighted lines", () => {
         log={log}
         isExpanded={false}
         handleSetHighlight={fakeHandleSetHighlight}
-        handleClearHiglight={fakeHandleClearHighlight}
+        handleClearHighlight={fakeHandleClearHighlight}
         highlight={highlight}
         highlightsEnabled={false}
       />

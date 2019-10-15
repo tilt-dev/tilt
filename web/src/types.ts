@@ -102,10 +102,10 @@ export type Snapshot = {
   SnapshotLink: string
   showSnapshotModal: boolean
   path?: string
-  snapshotHighlight?: SnapshotHiglight | null
+  snapshotHighlight?: SnapshotHighlight | null
 }
 
-export type SnapshotHiglight = {
+export type SnapshotHighlight = {
   beginningLogID: string
   endingLogID: string
   highlightedText: string

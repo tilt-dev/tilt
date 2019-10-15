@@ -1,5 +1,5 @@
 import React, { PureComponent } from "react"
-import { ResourceView, SnapshotHiglight } from "./types"
+import { ResourceView, SnapshotHighlight } from "./types"
 import { ReactComponent as SnapshotSvg } from "./assets/svg/snapshot.svg"
 import "./TopBar.scss"
 import TabNav from "./TabNav"
@@ -12,7 +12,7 @@ type TopBarProps = {
   showSnapshotButton: boolean
   snapshotOwner: string | null
   handleOpenModal: () => void
-  highlight: SnapshotHiglight | null
+  highlight: SnapshotHighlight | null
 }
 
 class TopBar extends PureComponent<TopBarProps> {

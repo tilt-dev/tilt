@@ -3,7 +3,7 @@ import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gr
 import AnsiLine from "./AnsiLine"
 import "./LogPane.scss"
 import ReactDOM from "react-dom"
-import { SnapshotHiglight } from "./types"
+import { SnapshotHighlight } from "./types"
 
 const WHEEL_DEBOUNCE_MS = 250
 
@@ -11,9 +11,9 @@ type LogPaneProps = {
   log: string
   message?: string
   isExpanded: boolean
-  handleSetHighlight: (highlight: SnapshotHiglight) => void
-  handleClearHiglight: () => void
-  highlight: SnapshotHiglight | null
+  handleSetHighlight: (highlight: SnapshotHighlight) => void
+  handleClearHighlight: () => void
+  highlight: SnapshotHighlight | null
   highlightsEnabled: boolean
 }
 type LogPaneState = {
@@ -69,7 +69,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       }
 
       if (selection.isCollapsed) {
-        this.props.handleClearHiglight()
+        this.props.handleClearHighlight()
       } else if (
         node &&
         node.contains(beginning) &&
