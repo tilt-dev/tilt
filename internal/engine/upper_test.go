@@ -2853,6 +2853,7 @@ type testFixture struct {
 	tfl                   tiltfile.TiltfileLoader
 	ghc                   *github.FakeClient
 	opter                 *testOpter
+	dp                    *dockerprune.DockerPruner
 	tiltVersionCheckDelay time.Duration
 
 	onchangeCh chan bool
@@ -2913,6 +2914,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	ewm := k8swatch.NewEventWatchManager(kCli, of)
 	tcum := cloud.NewUsernameManager(httptest.NewFakeClient())
 
+	dp := dockerprune.NewDockerPruner(dockerClient)
+	dp.DisabledForTesting(true)
+
 	ret := &testFixture{
 		TempDirFixture:        f,
 		ctx:                   ctx,
@@ -2933,11 +2937,9 @@ func newTestFixture(t *testing.T) *testFixture {
 		tfl:                   tfl,
 		ghc:                   ghc,
 		opter:                 to,
+		dp:                    dp,
 		tiltVersionCheckDelay: versionCheckInterval,
 	}
-
-	dp := dockerprune.NewDockerPruner(dockerClient)
-	dp.DisableForTesting()
 
 	tiltVersionCheckTimerMaker := func(d time.Duration) <-chan time.Time {
 		return time.After(ret.tiltVersionCheckDelay)

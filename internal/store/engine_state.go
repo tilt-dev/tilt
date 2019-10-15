@@ -85,15 +85,7 @@ type EngineState struct {
 	TokenKnownUnregistered                      bool // to distinguish whether an empty TiltCloudUsername means "we haven't checked" or "we checked and the token isn't registered"
 	WaitingForTiltCloudUsernamePostRegistration bool
 
-	DockerPruneSettings DockerPruneSettings
-}
-
-type DockerPruneSettings struct {
-	Disabled bool
-}
-
-func defaultDockerPruneSettings() DockerPruneSettings {
-	return DockerPruneSettings{Disabled: true} // for now, always disabled until we can configure it
+	DockerPruneSettings model.DockerPruneSettings
 }
 
 func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.ManifestName {
@@ -284,7 +276,6 @@ func NewState() *EngineState {
 	ret.ManifestTargets = make(map[model.ManifestName]*ManifestTarget)
 	ret.PendingConfigFileChanges = make(map[string]time.Time)
 	ret.Secrets = model.SecretSet{}
-	ret.DockerPruneSettings = defaultDockerPruneSettings()
 	return ret
 }
 
