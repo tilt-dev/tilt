@@ -18,8 +18,7 @@ import (
 )
 
 type dockerPruneCmd struct {
-	maxAgeStr string
-	fileName  string
+	fileName string
 }
 
 type dpDeps struct {
@@ -40,7 +39,6 @@ func (c *dockerPruneCmd) register() *cobra.Command {
 		Short: "run docker prune as Tilt does",
 	}
 
-	cmd.Flags().StringVar(&c.maxAgeStr, "maxAge", "6h", "max age of image to keep (as go duration string, e.g. 1h30m, 12h")
 	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
 
 	return cmd
@@ -70,13 +68,8 @@ func (c *dockerPruneCmd) run(ctx context.Context, args []string) error {
 
 	dp := dockerprune.NewDockerPruner(deps.dCli)
 
-	maxAge, err := time.ParseDuration(c.maxAgeStr)
-	if err != nil {
-		return err
-	}
-
 	// TODO: print the commands being run
-	dp.Prune(ctx, maxAge, imgSelectors)
+	dp.Prune(ctx, tlr.DockerPruneSettings.MaxAge, imgSelectors)
 
 	return nil
 }
