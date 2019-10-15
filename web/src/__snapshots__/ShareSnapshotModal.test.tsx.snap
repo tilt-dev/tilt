@@ -63,14 +63,18 @@ exports[`ShareSnapshotModal renders team link 1`] = `
             Open
           </a>
         </div>
-        <p
-          className="ShareSnapshotModal-loginState"
+        <section
+          className="ShareSnapshotModal-shareLinkInfo"
         >
-          Sharing as 
-          <strong>
-            Hello
-          </strong>
-        </p>
+          <p
+            className="ShareSnapshotModal-loginState"
+          >
+            Sharing as 
+            <strong>
+              Hello
+            </strong>
+          </p>
+        </section>
       </section>
     </section>
     <section
@@ -179,14 +183,18 @@ exports[`ShareSnapshotModal renders with modal open w/ known username 1`] = `
             Open
           </a>
         </div>
-        <p
-          className="ShareSnapshotModal-loginState"
+        <section
+          className="ShareSnapshotModal-shareLinkInfo"
         >
-          Sharing as 
-          <strong>
-            tacocat
-          </strong>
-        </p>
+          <p
+            className="ShareSnapshotModal-loginState"
+          >
+            Sharing as 
+            <strong>
+              tacocat
+            </strong>
+          </p>
+        </section>
       </section>
     </section>
     <section

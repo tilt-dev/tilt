@@ -394,7 +394,6 @@ it("renders highlighted lines", () => {
   const highlight = {
     beginningLogID: "logLine2",
     endingLogID: "logLine3",
-    highlightedText: "foo\nbar",
   }
   const tree = renderer
     .create(
@@ -405,6 +404,7 @@ it("renders highlighted lines", () => {
         handleClearHighlight={fakeHandleClearHighlight}
         highlight={highlight}
         highlightsEnabled={false}
+        modalIsOpen={false}
       />
     )
     .toJSON()

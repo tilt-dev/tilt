@@ -466,6 +466,12 @@ class HUD extends Component<HudProps, HudState> {
     let tiltCloudUsername = (view && view.TiltCloudUsername) || null
     let tiltCloudSchemeHost = (view && view.TiltCloudSchemeHost) || ""
     let tiltCloudTeamID = (view && view.TiltCloudTeamID) || null
+    let highlightedLines = this.state.snapshotHighlight
+      ? Math.abs(
+          parseInt(this.state.snapshotHighlight.endingLogID) -
+            parseInt(this.state.snapshotHighlight.beginningLogID)
+        ) + 1
+      : null
     return (
       <ShareSnapshotModal
         handleSendSnapshot={handleSendSnapshot}
@@ -475,6 +481,7 @@ class HUD extends Component<HudProps, HudState> {
         tiltCloudSchemeHost={tiltCloudSchemeHost}
         tiltCloudTeamID={tiltCloudTeamID}
         isOpen={this.state.showSnapshotModal}
+        highlightedLines={highlightedLines}
       />
     )
   }

@@ -85,7 +85,6 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
           this.props.handleSetHighlight({
             beginningLogID: beginningLogLine,
             endingLogID: endingLogLine,
-            highlightedText: selection.toString(),
           })
         }
       }
@@ -113,7 +112,10 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       this.lastElement.scrollIntoView()
     }
     if (this.props.modalIsOpen) {
-      document.removeEventListener("selectionchange", this.handleSelectionChange)
+      document.removeEventListener(
+        "selectionchange",
+        this.handleSelectionChange
+      )
     } else if (this.props.highlightsEnabled && !this.props.modalIsOpen) {
       document.addEventListener("selectionchange", this.handleSelectionChange, {
         passive: true,
