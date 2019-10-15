@@ -123,6 +123,11 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics *analytics.
 	return demo.Script{}, nil
 }
 
+func wireDockerPrune(ctx context.Context, analytics *analytics.TiltAnalytics) (dpDeps, error) {
+	wire.Build(BaseWireSet, newDPDeps)
+	return dpDeps{}, nil
+}
+
 func wireThreads(ctx context.Context, analytics *analytics.TiltAnalytics) (Threads, error) {
 	wire.Build(BaseWireSet, build.ProvideClock)
 	return Threads{}, nil

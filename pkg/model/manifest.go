@@ -230,6 +230,17 @@ func (m Manifest) Empty() bool {
 	return m.Equal(Manifest{})
 }
 
+func RefSelectorsForManifests(manifests []Manifest) []container.RefSelector {
+	var res []container.RefSelector
+	for _, m := range manifests {
+		for _, iTarg := range m.ImageTargets {
+			sel := container.NameSelector(iTarg.DeploymentRef).WithNameMatch()
+			res = append(res, sel)
+		}
+	}
+	return res
+}
+
 var _ TargetSpec = Manifest{}
 
 type Sync struct {

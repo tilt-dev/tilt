@@ -49,7 +49,7 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 	if err := dp.sufficientVersionError(); err != nil {
 		if !dp.insufficientVersionErrLogged {
 			logger.Get(ctx).Infof(
-				"[Docker prune] Docker API version too low for Tilt to run Docker Prune:\n\t%v", err,
+				"[Docker Prune] Docker API version too low for Tilt to run Docker Prune:\n\t%v", err,
 			)
 			dp.insufficientVersionErrLogged = true
 		}
@@ -62,13 +62,7 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 	curBuildCount := state.CompletedBuildCount
 	hasDockerBuild := state.HasDockerBuild()
 	nextToBuild := buildcontrol.NextManifestNameToBuild(state)
-	var imgSelectors []container.RefSelector
-	for _, m := range state.Manifests() {
-		for _, iTarg := range m.ImageTargets {
-			sel := container.NameSelector(iTarg.DeploymentRef).WithNameMatch()
-			imgSelectors = append(imgSelectors, sel)
-		}
-	}
+	imgSelectors := model.RefSelectorsForManifests(state.Manifests())
 	st.RUnlockState()
 
 	if !settings.Enabled {
@@ -181,20 +175,21 @@ func (dp *DockerPruner) deleteOldImages(ctx context.Context, maxAge time.Duratio
 	for _, imgSummary := range imgs {
 		inspect, _, err := dp.dCli.ImageInspectWithRaw(ctx, imgSummary.ID)
 		if err != nil {
-			logger.Get(ctx).Debugf("[Docker prune] error inspecting image '%s': %v", imgSummary.ID, err)
+			logger.Get(ctx).Debugf("[Docker Prune] error inspecting image '%s': %v", imgSummary.ID, err)
 			continue
 		}
 
 		namedRefs, err := container.ParseNamedMulti(inspect.RepoTags)
 		if err != nil {
-			logger.Get(ctx).Debugf("[Docker prune] error parsing repo tags for '%s': %v", imgSummary.ID, err)
+			logger.Get(ctx).Debugf("[Docker Prune] error parsing repo tags for '%s': %v", imgSummary.ID, err)
 			continue
 		}
 
 		if time.Since(inspect.Metadata.LastTagTime) >= maxAge && container.AnyMatch(namedRefs, selectors) {
 			if len(inspect.RepoTags) > 1 {
-				logger.Get(ctx).Debugf("[Docker prune] cannot prune image %s (tags: %s); `docker image remove --force` "+
-					"required to remove an image with multiple tags (\"image is referenced in one or more repositories\"),",
+				logger.Get(ctx).Debugf("[Docker Prune] cannot prune image %s (tags: %s); `docker image remove --force` "+
+					"required to remove an image with multiple tags (Docker throws error: "+
+					"\"image is referenced in one or more repositories\")",
 					inspect.ID, strings.Join(inspect.RepoTags, ", "))
 				continue
 			}
@@ -211,7 +206,7 @@ func (dp *DockerPruner) deleteOldImages(ctx context.Context, maxAge time.Duratio
 		if err != nil {
 			// No good way to detect in-use images from `inspect` output, so just ignore those errors
 			if !strings.Contains(err.Error(), "image is being used by running container") {
-				logger.Get(ctx).Debugf("[Docker prune] error removing image '%s': %v", imgID, err)
+				logger.Get(ctx).Debugf("[Docker Prune] error removing image '%s': %v", imgID, err)
 			}
 			continue
 		}
@@ -231,7 +226,7 @@ func (dp *DockerPruner) sufficientVersionError() error {
 
 func prettyPrintImagesPruneReport(report types.ImagesPruneReport, l logger.Logger) {
 	// TODO: human-readable space reclaimed
-	if len(report.ImagesDeleted) == 0 {
+	if len(report.ImagesDeleted) == 0 && l.Level() < logger.DebugLvl {
 		return
 	}
 
@@ -255,7 +250,7 @@ func prettyStringImgDeleteItem(img types.ImageDeleteResponseItem) string {
 
 func prettyPrintCachePruneReport(report *types.BuildCachePruneReport, l logger.Logger) {
 	// TODO: human-readable space reclaimed
-	if len(report.CachesDeleted) == 0 {
+	if len(report.CachesDeleted) == 0 && l.Level() < logger.DebugLvl {
 		return
 	}
 
@@ -267,7 +262,7 @@ func prettyPrintCachePruneReport(report *types.BuildCachePruneReport, l logger.L
 
 func prettyPrintContainersPruneReport(report types.ContainersPruneReport, l logger.Logger) {
 	// TODO: human-readable space reclaimed
-	if len(report.ContainersDeleted) == 0 {
+	if len(report.ContainersDeleted) == 0 && l.Level() < logger.DebugLvl {
 		return
 	}
 
