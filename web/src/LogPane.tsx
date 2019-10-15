@@ -15,6 +15,7 @@ type LogPaneProps = {
   handleClearHighlight: () => void
   highlight: SnapshotHighlight | null
   highlightsEnabled: boolean
+  modalIsOpen: boolean
 }
 type LogPaneState = {
   autoscroll: boolean
@@ -101,7 +102,6 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     } else if (el) {
       return this.findLogLineID(el.parentElement)
     }
-
     return null
   }
 
@@ -111,6 +111,13 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     }
     if (this.lastElement) {
       this.lastElement.scrollIntoView()
+    }
+    if (this.props.modalIsOpen) {
+      document.removeEventListener("selectionchange", this.handleSelectionChange)
+    } else if (this.props.highlightsEnabled && !this.props.modalIsOpen) {
+      document.addEventListener("selectionchange", this.handleSelectionChange, {
+        passive: true,
+      })
     }
   }
 
