@@ -40,7 +40,7 @@ func twoHrsAgo() time.Time {
 
 func TestPruneFilters(t *testing.T) {
 	f, imgSelectors := newFixture(t).withPruneOutput(cachesPruned, containersPruned, numImages)
-	err := f.dp.prune(f.ctx, maxAge, imgSelectors)
+	err := f.dp.prune(f.ctx, maxAge, imgSelectors, false)
 	require.NoError(t, err)
 
 	expectedFilters := filters.NewArgs(
@@ -60,7 +60,7 @@ func TestPruneFilters(t *testing.T) {
 
 func TestPruneOutput(t *testing.T) {
 	f, imgSelectors := newFixture(t).withPruneOutput(cachesPruned, containersPruned, numImages)
-	err := f.dp.prune(f.ctx, maxAge, imgSelectors)
+	err := f.dp.prune(f.ctx, maxAge, imgSelectors, false)
 	require.NoError(t, err)
 
 	logs := f.logs.String()
@@ -72,10 +72,21 @@ func TestPruneOutput(t *testing.T) {
 	assert.Contains(t, logs, "- deleted: build-id-2")
 }
 
+func TestPruneOutputVerbose(t *testing.T) {
+	f := newFixture(t)
+	err := f.dp.prune(f.ctx, maxAge, nil, true)
+	require.NoError(t, err)
+
+	logs := f.logs.String()
+	assert.Contains(t, logs, "[Docker Prune] removed 0 caches, reclaimed 0 bytes")
+	assert.Contains(t, logs, "[Docker Prune] removed 0 containers, reclaimed 0 bytes")
+	assert.Contains(t, logs, "[Docker Prune] removed 0 images, reclaimed 0 bytes")
+}
+
 func TestPruneVersionTooLow(t *testing.T) {
 	f, imgSelectors := newFixture(t).withPruneOutput(cachesPruned, containersPruned, numImages)
 	f.dCli.ThrowNewVersionError = true
-	err := f.dp.prune(f.ctx, maxAge, imgSelectors)
+	err := f.dp.prune(f.ctx, maxAge, imgSelectors, false)
 	require.NoError(t, err) // should log failure but not throw error
 
 	logs := f.logs.String()
@@ -91,7 +102,7 @@ func TestPruneVersionTooLow(t *testing.T) {
 func TestPruneSkipCachePruneIfVersionTooLow(t *testing.T) {
 	f, imgSelectors := newFixture(t).withPruneOutput(cachesPruned, containersPruned, numImages)
 	f.dCli.BuildCachePruneErr = f.dCli.VersionError("1.2.3", "build prune")
-	err := f.dp.prune(f.ctx, maxAge, imgSelectors)
+	err := f.dp.prune(f.ctx, maxAge, imgSelectors, false)
 	require.NoError(t, err) // should log failure but not throw error
 
 	logs := f.logs.String()
@@ -106,7 +117,7 @@ func TestPruneSkipCachePruneIfVersionTooLow(t *testing.T) {
 func TestPruneReturnsCachePruneError(t *testing.T) {
 	f, imgSelectors := newFixture(t).withPruneOutput(cachesPruned, containersPruned, numImages)
 	f.dCli.BuildCachePruneErr = fmt.Errorf("this is a real error, NOT an API version error")
-	err := f.dp.prune(f.ctx, maxAge, imgSelectors)
+	err := f.dp.prune(f.ctx, maxAge, imgSelectors, false)
 	require.NotNil(t, err) // For all errors besides API version error, expect them to return
 	assert.Contains(t, err.Error(), "this is a real error")
 

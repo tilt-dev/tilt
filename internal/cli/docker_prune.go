@@ -2,9 +2,12 @@ package cli
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 
 	"github.com/windmilleng/tilt/internal/docker"
@@ -49,6 +52,10 @@ func (c *dockerPruneCmd) run(ctx context.Context, args []string) error {
 	a.IncrIfUnopted("analytics.up.optdefault")
 	defer a.Flush(time.Second)
 
+	// (Most relevant output from dockerpruner is at the `debug` level)
+	l := logger.NewLogger(logger.DebugLvl, os.Stdout)
+	ctx = logger.WithLogger(ctx, l)
+
 	deps, err := wireDockerPrune(ctx, a)
 	if err != nil {
 		return err
@@ -69,7 +76,7 @@ func (c *dockerPruneCmd) run(ctx context.Context, args []string) error {
 	}
 
 	// TODO: print the commands being run
-	dp.Prune(ctx, maxAge, imgSelectors)
+	dp.Prune(ctx, maxAge, imgSelectors, true)
 
 	return nil
 }
