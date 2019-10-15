@@ -1,7 +1,10 @@
 package cloud
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"net/http"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -10,6 +13,8 @@ import (
 
 	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/internal/token"
+	"github.com/windmilleng/tilt/pkg/logger"
 )
 
 type UpdateUploader struct {
@@ -45,31 +50,63 @@ type update struct {
 	// TODO(nick): auto-create Snapshot IDs?
 }
 
+type teamID struct {
+	ID string `json:"id"`
+}
+
+type updatePayload struct {
+	TeamID  teamID   `json:"team_id"`
+	Updates []update `json:"updates"`
+}
+
+func (p updatePayload) empty() bool {
+	return len(p.Updates) == 0
+}
+
+type updateTask struct {
+	token         token.Token
+	updatePayload updatePayload
+}
+
+func (t updateTask) empty() bool {
+	return t.updatePayload.empty()
+}
+
+func (t updateTask) updates() []update {
+	return t.updatePayload.Updates
+}
+
+func (u *UpdateUploader) putUpdatesURL() string {
+	url := URL(string(u.addr))
+	url.Path = "/api/usage/putUpdates"
+	return url.String()
+}
+
 // Check the engine state to see if we have any updates.
-func (u *UpdateUploader) makeUpdates(st store.RStore) []update {
+func (u *UpdateUploader) makeUpdates(st store.RStore) updateTask {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
 	// Check if this feature is disabled
 	if !state.Features[feature.UpdateHistory] {
-		return nil
+		return updateTask{}
 	}
 
 	// If we don't have an authenticated token or team-name,
 	// we won't be able to upload anything anyway.
 	if state.Token == "" || state.TeamName == "" {
-		return nil
+		return updateTask{}
 	}
 
 	// Do a quick check to see if any builds have completed since we last checked.
 	if state.CompletedBuildCount == 0 || state.CompletedBuildCount <= u.lastCompletedBuildCount {
-		return nil
+		return updateTask{}
 	}
 
 	// OK, we know we have work to do!
 
 	highWaterMark := u.lastFinishTime
-	result := []update{}
+	updates := []update{}
 	for _, target := range state.ManifestTargets {
 		manifest := target.Manifest
 		status := target.State
@@ -98,7 +135,7 @@ func (u *UpdateUploader) makeUpdates(st store.RStore) []update {
 				resultDescription = record.Error.Error()
 			}
 
-			result = append(result, update{
+			updates = append(updates, update{
 				Service: updateServiceSpec{
 					Name: manifest.Name.String(),
 				},
@@ -117,17 +154,47 @@ func (u *UpdateUploader) makeUpdates(st store.RStore) []update {
 	u.lastFinishTime = highWaterMark
 	u.lastCompletedBuildCount = state.CompletedBuildCount
 
-	return result
+	return updateTask{
+		token: state.Token,
+		updatePayload: updatePayload{
+			TeamID:  teamID{ID: state.TeamName},
+			Updates: updates,
+		},
+	}
 }
 
-func (u *UpdateUploader) sendUpdates(ctx context.Context, updates []update) {
+func (u *UpdateUploader) sendUpdates(ctx context.Context, task updateTask) {
+	buf := bytes.NewBuffer(nil)
+	encoder := json.NewEncoder(buf)
+	err := encoder.Encode(task.updatePayload)
+	if err != nil {
+		logger.Get(ctx).Infof("Error encoding updates: %v", err)
+		return
+	}
 
+	request, err := http.NewRequest(http.MethodPost, u.putUpdatesURL(), buf)
+	if err != nil {
+		logger.Get(ctx).Infof("Error sending updates: %v", err)
+		return
+	}
+
+	request.Header.Set(TiltTokenHeaderName, task.token.String())
+	response, err := u.client.Do(request)
+	if err != nil {
+		logger.Get(ctx).Infof("Error sending updates: %v", err)
+		return
+	}
+	defer func() {
+		_ = response.Body.Close()
+	}()
+
+	logger.Get(ctx).Infof("Update records reported to %s", u.addr)
 }
 
 func (u *UpdateUploader) OnChange(ctx context.Context, st store.RStore) {
-	updates := u.makeUpdates(st)
-	if len(updates) > 0 {
-		u.sendUpdates(ctx, updates)
+	task := u.makeUpdates(st)
+	if !task.empty() {
+		u.sendUpdates(ctx, task)
 	}
 }
 

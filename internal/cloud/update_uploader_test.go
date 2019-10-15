@@ -3,6 +3,7 @@ package cloud
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"testing"
 	"time"
 
@@ -23,24 +24,35 @@ func TestOneUpdate(t *testing.T) {
 	f := newUpdateFixture(t)
 	defer f.TearDown()
 
-	assert.Equal(t, 0, len(f.uu.makeUpdates(f.store)))
+	assert.Equal(t, 0, len(f.uu.makeUpdates(f.store).updates()))
 
 	f.AddCompletedBuild("sancho", nil)
-	assert.Equal(t, 1, len(f.uu.makeUpdates(f.store)))
-	assert.Equal(t, 0, len(f.uu.makeUpdates(f.store)))
+	task := f.uu.makeUpdates(f.store)
+	assert.Equal(t, 1, len(task.updates()))
+	assert.Equal(t, 0, len(f.uu.makeUpdates(f.store).updates()))
+
+	f.uu.sendUpdates(f.ctx, task)
+	requests := f.httpClient.Requests
+	if assert.Equal(t, 1, len(requests)) {
+		body, err := ioutil.ReadAll(requests[0].Body)
+		assert.NoError(t, err)
+		expected := `{"team_id":{"id":"fake-team"},"updates":[{"service":{"name":"sancho"},"start_time":{"seconds":449884800},"duration":{"seconds":60},"is_live_update":false,"result":0,"result_description":""}]}
+`
+		assert.Equal(t, expected, string(body))
+	}
 }
 
 func TestTwoUpdates(t *testing.T) {
 	f := newUpdateFixture(t)
 	defer f.TearDown()
 
-	assert.Equal(t, 0, len(f.uu.makeUpdates(f.store)))
+	assert.Equal(t, 0, len(f.uu.makeUpdates(f.store).updates()))
 
 	f.AddCompletedBuild("sancho", nil)
 	f.AddCompletedBuild("sancho", nil)
 	f.AddCompletedBuild("blorg", nil)
-	assert.Equal(t, 3, len(f.uu.makeUpdates(f.store)))
-	assert.Equal(t, 0, len(f.uu.makeUpdates(f.store)))
+	assert.Equal(t, 3, len(f.uu.makeUpdates(f.store).updates()))
+	assert.Equal(t, 0, len(f.uu.makeUpdates(f.store).updates()))
 }
 
 type updateFixture struct {
