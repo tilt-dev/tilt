@@ -79,6 +79,7 @@ var BaseWireSet = wire.NewSet(
 	engine.NewTiltVersionChecker,
 	cloud.ProvideHttpClient,
 	cloud.NewUsernameManager,
+	cloud.NewUpdateUploader,
 
 	provideClock,
 	hud.NewRenderer,
