@@ -8,6 +8,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/docker/go-units"
+
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -276,7 +278,7 @@ func (c *FakeClient) BuildCachePrune(ctx context.Context, opts types.BuildCacheP
 	}
 	report := &types.BuildCachePruneReport{
 		CachesDeleted:  c.BuildCachesPruned,
-		SpaceReclaimed: uint64(len(c.BuildCachesPruned)),
+		SpaceReclaimed: uint64(units.MB * len(c.BuildCachesPruned)), // 1MB per cache pruned
 	}
 	c.BuildCachesPruned = nil
 	return report, nil
@@ -291,7 +293,7 @@ func (c *FakeClient) ContainersPrune(ctx context.Context, pruneFilters filters.A
 	c.ContainersPruneFilters = pruneFilters.Clone()
 	report := types.ContainersPruneReport{
 		ContainersDeleted: c.ContainersPruned,
-		SpaceReclaimed:    uint64(len(c.ContainersPruned)),
+		SpaceReclaimed:    uint64(units.MB * len(c.ContainersPruned)), // 1MB per container pruned
 	}
 	c.ContainersPruned = nil
 	return report, nil
