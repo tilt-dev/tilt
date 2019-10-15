@@ -3857,19 +3857,10 @@ docker_prune_settings(max_age_mins=111, num_builds=222)
 	f.load()
 	res := f.loadResult.DockerPruneSettings
 
+	assert.True(t, res.Enabled)
 	assert.Equal(t, time.Minute*111, res.MaxAge)
 	assert.Equal(t, 222, res.NumBuilds)
-}
-
-func TestDockerPruneSettingsDisablePlusOtherArgs(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.file("Tiltfile", `
-docker_prune_settings(disable=True, interval_hrs=123)
-`)
-
-	f.loadErrString("can't disable Docker Prune (`disabled=True`) and pass additional settings")
+	assert.Equal(t, model.DockerPruneDefaultInterval, res.Interval) // default
 }
 
 func TestDockerPruneSettingsCantSetNumBuildsAndInterval(t *testing.T) {
@@ -3881,6 +3872,40 @@ docker_prune_settings(num_builds=123, interval_hrs=456)
 `)
 
 	f.loadErrString("please pass only one of `num_builds` and `interval_hrs`")
+}
+
+func TestDockerPruneSettingsDefaultsWhenCalled(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+docker_prune_settings(num_builds=123)
+`)
+
+	f.load()
+	res := f.loadResult.DockerPruneSettings
+
+	assert.True(t, res.Enabled)
+	assert.Equal(t, model.DockerPruneDefaultMaxAge, res.MaxAge)
+	assert.Equal(t, 123, res.NumBuilds)
+	assert.Equal(t, model.DockerPruneDefaultInterval, res.Interval)
+}
+
+func TestDockerPruneSettingsDefaultsWhenNotCalled(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+print('nothing to see here')
+`)
+
+	f.load()
+	res := f.loadResult.DockerPruneSettings
+
+	assert.True(t, res.Enabled)
+	assert.Equal(t, model.DockerPruneDefaultMaxAge, res.MaxAge)
+	assert.Equal(t, 0, res.NumBuilds)
+	assert.Equal(t, model.DockerPruneDefaultInterval, res.Interval)
 }
 
 type fixture struct {

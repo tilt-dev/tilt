@@ -20,7 +20,9 @@ type Extension struct {
 func NewExtension() *Extension {
 	return &Extension{
 		settings: model.DockerPruneSettings{
-			Enabled: true,
+			Enabled:  true,
+			MaxAge:   model.DockerPruneDefaultMaxAge,
+			Interval: model.DockerPruneDefaultInterval,
 		},
 	}
 }
@@ -40,19 +42,19 @@ func (e *Extension) dockerPruneSettings(thread *starlark.Thread, fn *starlark.Bu
 		return nil, err
 	}
 
-	if disable && (intervalHrs != 0 || numBuilds != 0 || maxAgeMins != 0) {
-		return nil, fmt.Errorf("can't disable Docker Prune (`disabled=True`) and pass additional settings")
-	}
-
 	if numBuilds != 0 && intervalHrs != 0 {
 		return nil, fmt.Errorf("can't specify both 'prune every X builds' and 'prune every Y hours'; please pass " +
 			"only one of `num_builds` and `interval_hrs`")
 	}
 
 	e.settings.Enabled = !disable
-	e.settings.MaxAge = time.Duration(maxAgeMins) * time.Minute
+	if maxAgeMins != 0 {
+		e.settings.MaxAge = time.Duration(maxAgeMins) * time.Minute
+	}
 	e.settings.NumBuilds = numBuilds
-	e.settings.Interval = time.Duration(intervalHrs) * time.Hour
+	if intervalHrs != 0 {
+		e.settings.Interval = time.Duration(intervalHrs) * time.Hour
+	}
 
 	return starlark.None, nil
 }

@@ -276,6 +276,7 @@ func NewState() *EngineState {
 	ret.ManifestTargets = make(map[model.ManifestName]*ManifestTarget)
 	ret.PendingConfigFileChanges = make(map[string]time.Time)
 	ret.Secrets = model.SecretSet{}
+	ret.DockerPruneSettings = model.DefaultDockerPruneSettings()
 	return ret
 }
 

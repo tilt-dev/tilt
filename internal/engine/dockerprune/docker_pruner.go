@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/windmilleng/tilt/pkg/model"
 
 	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 
@@ -16,12 +17,6 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/logger"
 )
-
-// How often to prune Docker images while Tilt is running
-const defaultInterval = time.Hour
-
-// Prune Docker objects older than this
-const defaultMaxAge = time.Hour * 6
 
 type DockerPruner struct {
 	dCli docker.Client
@@ -97,7 +92,7 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 
 	interval := settings.Interval
 	if interval == 0 {
-		interval = defaultInterval
+		interval = model.DockerPruneDefaultInterval
 	}
 
 	if time.Since(dp.lastPruneTime) >= interval {
@@ -116,7 +111,7 @@ func (dp *DockerPruner) Prune(ctx context.Context, maxAge time.Duration) {
 	//   in engineState.TiltSystemState on store (analogous to TiltfileState)
 
 	if maxAge == 0 {
-		maxAge = defaultMaxAge
+		maxAge = model.DockerPruneDefaultMaxAge
 	}
 
 	err := dp.prune(ctx, maxAge)
