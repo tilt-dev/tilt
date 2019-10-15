@@ -37,32 +37,26 @@ class TopBar extends PureComponent<TopBarProps> {
   renderSnapshotModal() {
     let highlight = this.props.highlight
     return (
-      <section className="TopBar-snapshotUrlWrap">
-        <button
-          onClick={this.props.handleOpenModal}
-          className={`TopBar-snapshotButton ${
-            highlight ? "isHighlighted" : ""
-          }`}
-        >
-          <SnapshotSvg className="TopBar-snapshotSvg" />
-          <span>
-            Create a <br />
-            Snapshot
-          </span>
-        </button>
-      </section>
+      <button
+        onClick={this.props.handleOpenModal}
+        className={`TopBar-snapshotButton ${
+          highlight ? "isHighlighted" : ""
+        }`}
+      >
+        <SnapshotSvg className="TopBar-snapshotSvg" />
+        <span>
+          Create a <br />
+          Snapshot
+        </span>
+      </button>
     )
   }
 
   renderSnapshotOwner() {
     if (this.props.snapshotOwner) {
       return (
-        <section className="TopBar-snapshotUrlWrap">
-          Snapshot shared by {this.props.snapshotOwner}
-        </section>
+        <p className="TopBar-snapshotOwner">Snapshot shared by <strong>{this.props.snapshotOwner}</strong></p>
       )
-    } else {
-      return null
     }
   }
 }
