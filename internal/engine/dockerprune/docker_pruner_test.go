@@ -261,20 +261,6 @@ func TestDockerPrunerMaxAgeFromSettings(t *testing.T) {
 	assert.Equal(t, untilVals[0], maxAge.String())
 }
 
-func TestDockerPrunerDefaultMaxAge(t *testing.T) {
-	f := newFixture(t)
-	f.withDockerManifestAlreadyBuilt()
-	f.withBuildCount(5)
-	f.withDockerPruneSettings(true, 0, 10, 0)
-
-	f.dp.OnChange(f.ctx, f.st)
-
-	f.assertPrune()
-	untilVals := f.dCli.ImagesPruneFilters.Get("until")
-	require.Len(t, untilVals, 1, "unexpected number of filters for \"until\"")
-	assert.Equal(t, untilVals[0], model.DockerPruneDefaultMaxAge.String())
-}
-
 // Test currently building
 type dockerPruneFixture struct {
 	t    *testing.T

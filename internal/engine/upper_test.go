@@ -2795,6 +2795,8 @@ func TestDockerPruneEnabledByDefault(t *testing.T) {
 	})
 	f.withState(func(state store.EngineState) {
 		assert.True(t, state.DockerPruneSettings.Enabled)
+		assert.Equal(t, model.DockerPruneDefaultMaxAge, state.DockerPruneSettings.MaxAge)
+		assert.Equal(t, model.DockerPruneDefaultInterval, state.DockerPruneSettings.Interval)
 	})
 }
 
