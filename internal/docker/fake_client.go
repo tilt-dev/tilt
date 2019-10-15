@@ -80,6 +80,7 @@ type FakeClient struct {
 	BuildErrorToThrow error // next call to Build will throw this err (after which we clear the error)
 
 	ImageListCount int
+	ImageListOpts  []types.ImageListOptions
 
 	TagCount  int
 	TagSource string
@@ -108,9 +109,6 @@ type FakeClient struct {
 	ContainersPruneErr     error
 	ContainersPruneFilters filters.Args
 	ContainersPruned       []string
-	ImagesPruneErr         error
-	ImagesPruneFilters     filters.Args
-	ImagesPruned           []string
 }
 
 func NewFakeClient() *FakeClient {
@@ -234,6 +232,7 @@ func (c *FakeClient) ImageInspectWithRaw(ctx context.Context, imageID string) (t
 }
 
 func (c *FakeClient) ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error) {
+	c.ImageListOpts = append(c.ImageListOpts, options)
 	summaries := make([]types.ImageSummary, c.ImageListCount)
 	for i := range summaries {
 		summaries[i] = types.ImageSummary{
@@ -247,7 +246,9 @@ func (c *FakeClient) ImageList(ctx context.Context, options types.ImageListOptio
 func (c *FakeClient) ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error) {
 	c.RemovedImageIDs = append(c.RemovedImageIDs, imageID)
 	sort.Strings(c.RemovedImageIDs)
-	return nil, nil
+	return []types.ImageDeleteResponseItem{
+		types.ImageDeleteResponseItem{Deleted: imageID},
+	}, nil
 }
 
 func (c *FakeClient) NewVersionError(APIrequired, feature string) error {
@@ -293,25 +294,6 @@ func (c *FakeClient) ContainersPrune(ctx context.Context, pruneFilters filters.A
 		SpaceReclaimed:    uint64(len(c.ContainersPruned)),
 	}
 	c.ContainersPruned = nil
-	return report, nil
-}
-
-func (c *FakeClient) ImagesPrune(ctx context.Context, pruneFilters filters.Args) (types.ImagesPruneReport, error) {
-	if err := c.ImagesPruneErr; err != nil {
-		c.ImagesPruneErr = nil
-		return types.ImagesPruneReport{}, err
-	}
-
-	c.ImagesPruneFilters = pruneFilters.Clone()
-	imgsDeleted := make([]types.ImageDeleteResponseItem, len(c.ImagesPruned))
-	for i, img := range c.ImagesPruned {
-		imgsDeleted[i] = types.ImageDeleteResponseItem{Deleted: img}
-	}
-	report := types.ImagesPruneReport{
-		ImagesDeleted:  imgsDeleted,
-		SpaceReclaimed: uint64(len(imgsDeleted)),
-	}
-	c.ImagesPruned = nil
 	return report, nil
 }
 

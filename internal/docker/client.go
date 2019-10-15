@@ -105,7 +105,6 @@ type Client interface {
 	NewVersionError(APIrequired, feature string) error
 	BuildCachePrune(ctx context.Context, opts types.BuildCachePruneOptions) (*types.BuildCachePruneReport, error)
 	ContainersPrune(ctx context.Context, pruneFilters filters.Args) (types.ContainersPruneReport, error)
-	ImagesPrune(ctx context.Context, pruneFilters filters.Args) (types.ImagesPruneReport, error)
 }
 
 type ExitError struct {

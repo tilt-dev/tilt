@@ -77,8 +77,5 @@ func (c explodingClient) BuildCachePrune(ctx context.Context, opts types.BuildCa
 func (c explodingClient) ContainersPrune(ctx context.Context, pruneFilters filters.Args) (types.ContainersPruneReport, error) {
 	return types.ContainersPruneReport{}, c.err
 }
-func (c explodingClient) ImagesPrune(ctx context.Context, pruneFilters filters.Args) (types.ImagesPruneReport, error) {
-	return types.ImagesPruneReport{}, c.err
-}
 
 var _ Client = &explodingClient{}

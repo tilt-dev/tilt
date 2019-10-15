@@ -3861,17 +3861,6 @@ docker_prune_settings(max_age_mins=111, num_builds=222)
 	assert.Equal(t, model.DockerPruneDefaultInterval, res.Interval) // default
 }
 
-func TestDockerPruneSettingsCantSetNumBuildsAndInterval(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.file("Tiltfile", `
-docker_prune_settings(num_builds=123, interval_hrs=456)
-`)
-
-	f.loadErrString("please pass only one of `num_builds` and `interval_hrs`")
-}
-
 func TestDockerPruneSettingsDefaultsWhenCalled(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
