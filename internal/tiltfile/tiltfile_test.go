@@ -20,6 +20,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
+
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
@@ -3907,7 +3909,8 @@ func (f *fixture) newTiltfileLoader() TiltfileLoader {
 	}
 
 	k8sContextExt := k8scontext.NewExtension(f.k8sContext, f.k8sEnv)
-	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, dcc, features)
+	dpExt := dockerprune.NewExtension()
+	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, dpExt, dcc, features)
 }
 
 func newFixture(t *testing.T) *fixture {

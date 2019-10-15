@@ -55,6 +55,7 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/servicebuilder"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/tiltfile"
+	tiltfile_dockerprune "github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
 	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
 	"github.com/windmilleng/tilt/internal/token"
 	"github.com/windmilleng/tilt/internal/watch"
@@ -2936,10 +2937,10 @@ func newTestFixture(t *testing.T) *testFixture {
 	pfc := NewPortForwardController(kCli)
 	tas := NewTiltAnalyticsSubscriber(ta)
 	ar := ProvideAnalyticsReporter(ta, st)
-	k8sContextExt := k8scontext.NewExtension("fake-context", k8s.EnvDockerDesktop)
-
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
-	tfl := tiltfile.ProvideTiltfileLoader(ta, kCli, k8sContextExt, fakeDcc, feature.MainDefaults)
+	k8sContextExt := k8scontext.NewExtension("fake-context", k8s.EnvDockerDesktop)
+	dpExt := tiltfile_dockerprune.NewExtension()
+	tfl := tiltfile.ProvideTiltfileLoader(ta, kCli, k8sContextExt, dpExt, fakeDcc, feature.MainDefaults)
 	cc := configs.NewConfigsController(tfl, dockerClient)
 	dcw := NewDockerComposeEventWatcher(fakeDcc)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)

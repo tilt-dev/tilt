@@ -6,9 +6,10 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	"go.starlark.net/syntax"
+
+	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
@@ -38,6 +39,7 @@ type tiltfileState struct {
 	ctx             context.Context
 	dcCli           dockercompose.DockerComposeClient
 	k8sContextExt   *k8scontext.Extension
+	dpExt           *dockerprune.Extension
 	privateRegistry container.Registry
 	features        feature.FeatureSet
 
@@ -87,11 +89,6 @@ type tiltfileState struct {
 
 	teamName string
 
-	dockerPruneDisabled  bool
-	dockerPruneMaxAge    time.Duration
-	dockerPruneNumBuilds int
-	dockerPruneInterval  time.Duration
-
 	logger   logger.Logger
 	warnings []string
 }
@@ -109,12 +106,14 @@ func newTiltfileState(
 	ctx context.Context,
 	dcCli dockercompose.DockerComposeClient,
 	k8sContextExt *k8scontext.Extension,
+	dpExt *dockerprune.Extension,
 	privateRegistry container.Registry,
 	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
 		ctx:                        ctx,
 		dcCli:                      dcCli,
 		k8sContextExt:              k8sContextExt,
+		dpExt:                      dpExt,
 		privateRegistry:            privateRegistry,
 		buildIndex:                 newBuildIndex(),
 		k8sByName:                  make(map[string]*k8sResource),
@@ -159,7 +158,9 @@ func (s *tiltfileState) loadManifests(absFilename string, matching map[string]bo
 		s,
 		include.IncludeFn{},
 		os.NewExtension(),
-		s.k8sContextExt)
+		s.k8sContextExt,
+		s.dpExt,
+	)
 	if err != nil {
 		if err, ok := err.(*starlark.EvalError); ok {
 			return nil, errors.New(err.Backtrace())
@@ -276,10 +277,9 @@ const (
 	disableSnapshotsN = "disable_snapshots"
 
 	// other functions
-	failN                = "fail"
-	blobN                = "blob"
-	setTeamN             = "set_team"
-	dockerPruneSettingsN = "docker_prune_settings"
+	failN    = "fail"
+	blobN    = "blob"
+	setTeamN = "set_team"
 )
 
 type triggerMode int
@@ -584,11 +584,6 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 	}
 
 	err = e.AddBuiltin(setTeamN, s.setTeam)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(dockerPruneSettingsN, s.dockerPruneSettings)
 	if err != nil {
 		return err
 	}
@@ -1380,34 +1375,6 @@ func (s *tiltfileState) setTeam(thread *starlark.Thread, fn *starlark.Builtin, a
 	}
 
 	s.teamName = teamName
-
-	return starlark.None, nil
-}
-
-func (s *tiltfileState) dockerPruneSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var disable bool
-	var intervalHrs, numBuilds, maxAgeMins int
-	if err := s.unpackArgs(fn.Name(), args, kwargs,
-		"disable?", &disable,
-		"max_age_mins?", &maxAgeMins,
-		"num_builds?", &numBuilds,
-		"interval_hrs?", &intervalHrs); err != nil {
-		return nil, err
-	}
-
-	if disable && (intervalHrs != 0 || numBuilds != 0 || maxAgeMins != 0) {
-		return nil, fmt.Errorf("can't disable Docker Prune (`disabled=True`) and pass additional settings")
-	}
-
-	if numBuilds != 0 && intervalHrs != 0 {
-		return nil, fmt.Errorf("can't specify both 'prune every X builds' and 'prune every Y hours'; please pass " +
-			"only one of `num_builds` and `interval_hrs`")
-	}
-
-	s.dockerPruneDisabled = disable
-	s.dockerPruneMaxAge = time.Duration(maxAgeMins) * time.Minute
-	s.dockerPruneNumBuilds = numBuilds
-	s.dockerPruneInterval = time.Duration(intervalHrs) * time.Hour
 
 	return starlark.None, nil
 }
