@@ -389,7 +389,9 @@ func newTestFixture(t *testing.T) *serverFixture {
 	a := analytics.NewMemoryAnalytics()
 	a, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
 	httpClient := fakeHttpClient{}
-	serv := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, httpClient, cloud.Address("nonexistent.example.com"))
+	addr := cloud.Address("nonexistent.example.com")
+	uploader := cloud.NewSnapshotUploader(httpClient, addr)
+	serv := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, uploader)
 
 	return &serverFixture{
 		t:          t,
