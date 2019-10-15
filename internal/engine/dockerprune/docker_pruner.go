@@ -9,6 +9,8 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 
+	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
+
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/store"
@@ -16,17 +18,19 @@ import (
 )
 
 // How often to prune Docker images while Tilt is running
-const dockerPruneInterval = time.Hour
+const defaultInterval = time.Hour
 
 // Prune Docker objects older than this
-// TODO: configurable from Tiltfile for special cases
 const defaultMaxAge = time.Hour * 6
 
 type DockerPruner struct {
 	dCli docker.Client
 
-	started            bool
-	disabledForTesting bool
+	disabledForTesting           bool
+	insufficientVersionErrLogged bool
+
+	lastPruneBuildCount int
+	lastPruneTime       time.Time
 }
 
 var _ store.Subscriber = &DockerPruner{}
@@ -35,8 +39,8 @@ func NewDockerPruner(dCli docker.Client) *DockerPruner {
 	return &DockerPruner{dCli: dCli}
 }
 
-func (dp *DockerPruner) DisableForTesting() {
-	dp.disabledForTesting = true
+func (dp *DockerPruner) DisabledForTesting(disabled bool) {
+	dp.disabledForTesting = disabled
 }
 
 func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
@@ -44,48 +48,77 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 		return
 	}
 
-	if dp.started {
+	if err := dp.sufficientVersionError(); err != nil {
+		if !dp.insufficientVersionErrLogged {
+			logger.Get(ctx).Infof(
+				"[Docker prune] Docker API version too low for Tilt to run Docker Prune:\n\t%v", err,
+			)
+			dp.insufficientVersionErrLogged = true
+		}
 		return
 	}
 
 	state := st.RLockState()
-	defer st.RUnlockState()
+	settings := state.DockerPruneSettings
+	inProgBuild := state.CurrentlyBuilding
+	curBuildCount := state.CompletedBuildCount
+	hasDockerBuild := state.HasDockerBuild()
+	nextToBuild := buildcontrol.NextManifestNameToBuild(state)
+	st.RUnlockState()
 
-	if state.DockerPruneSettings.Disabled {
+	if !settings.Enabled {
 		return
 	}
 
-	if err := dp.sufficientVersionError(); err != nil {
+	// If user doesn't have at least one Docker build, they probably don't care about pruning
+	if !hasDockerBuild {
 		return
 	}
 
-	// wait until state has been kinda initialized, and there's at least one Docker build
-	if !state.TiltStartTime.IsZero() && state.LastTiltfileError() == nil && state.HasDockerBuild() {
-		dp.started = true
-		go func() {
-			select {
-			case <-time.After(time.Minute * 2):
-				dp.Prune(ctx, defaultMaxAge) // report once pretty soon after startup...
-			case <-ctx.Done():
-				return
-			}
-
-			for {
-				select {
-				case <-time.After(dockerPruneInterval):
-					// and once every <interval> thereafter
-					dp.Prune(ctx, defaultMaxAge)
-				case <-ctx.Done():
-					return
-				}
-			}
-		}()
+	// Don't prune while we're building or about to build something, in case of weird side-effects.
+	if inProgBuild != "" || nextToBuild != "" {
+		return
 	}
+
+	// Prune as soon after startup as we can (waiting until we've built SOMETHING)
+	if dp.lastPruneTime.IsZero() && curBuildCount > 0 {
+		dp.PruneAndRecordState(ctx, settings.MaxAge, curBuildCount)
+		return
+	}
+
+	// "Prune every X builds" takes precedence over "prune every Y hours"
+	if settings.NumBuilds != 0 {
+		buildsSince := curBuildCount - dp.lastPruneBuildCount
+		if buildsSince >= settings.NumBuilds {
+			dp.PruneAndRecordState(ctx, settings.MaxAge, curBuildCount)
+		}
+		return
+	}
+
+	interval := settings.Interval
+	if interval == 0 {
+		interval = defaultInterval
+	}
+
+	if time.Since(dp.lastPruneTime) >= interval {
+		dp.PruneAndRecordState(ctx, settings.MaxAge, curBuildCount)
+	}
+}
+
+func (dp *DockerPruner) PruneAndRecordState(ctx context.Context, maxAge time.Duration, curBuildCount int) {
+	dp.Prune(ctx, maxAge)
+	dp.lastPruneTime = time.Now()
+	dp.lastPruneBuildCount = curBuildCount
 }
 
 func (dp *DockerPruner) Prune(ctx context.Context, maxAge time.Duration) {
 	// For future: dispatch event with output/errors to be recorded
 	//   in engineState.TiltSystemState on store (analogous to TiltfileState)
+
+	if maxAge == 0 {
+		maxAge = defaultMaxAge
+	}
+
 	err := dp.prune(ctx, maxAge)
 	if err != nil {
 		logger.Get(ctx).Infof("[Docker Prune] error running docker prune: %v", err)
