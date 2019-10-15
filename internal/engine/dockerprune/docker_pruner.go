@@ -65,8 +65,7 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 	var imgSelectors []container.RefSelector
 	for _, m := range state.Manifests() {
 		for _, iTarg := range m.ImageTargets {
-			sel := iTarg.ConfigurationRef
-			sel.AsNamedOnly()
+			sel := container.NameSelector(iTarg.DeploymentRef).WithNameMatch()
 			imgSelectors = append(imgSelectors, sel)
 		}
 	}
