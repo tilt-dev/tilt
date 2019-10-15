@@ -110,11 +110,6 @@ func (dp *DockerPruner) PruneAndRecordState(ctx context.Context, maxAge time.Dur
 func (dp *DockerPruner) Prune(ctx context.Context, maxAge time.Duration) {
 	// For future: dispatch event with output/errors to be recorded
 	//   in engineState.TiltSystemState on store (analogous to TiltfileState)
-
-	if maxAge == 0 {
-		maxAge = model.DockerPruneDefaultMaxAge
-	}
-
 	err := dp.prune(ctx, maxAge)
 	if err != nil {
 		logger.Get(ctx).Infof("[Docker Prune] error running docker prune: %v", err)
