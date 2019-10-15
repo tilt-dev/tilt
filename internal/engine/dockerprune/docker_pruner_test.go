@@ -27,7 +27,7 @@ var (
 	containersPruned = []string{"containerA", "containerB", "containerC"}
 	numImages        = 3
 	maxAge           = 11 * time.Hour
-	refSelector      = container.NameSelector(container.MustParseNamed("some-ref"))
+	ref              = container.MustParseNamed("some-ref")
 )
 
 var buildHistory = []model.BuildRecord{
@@ -356,8 +356,8 @@ func (dpf *dockerPruneFixture) withDockerManifestUnbuilt() {
 func (dpf *dockerPruneFixture) withDockerManifest(alreadyBuilt bool) {
 	m := model.Manifest{Name: "some-docker-manifest"}.WithImageTarget(
 		model.ImageTarget{
-			ConfigurationRef: refSelector,
-			BuildDetails:     model.DockerBuild{},
+			DeploymentRef: ref,
+			BuildDetails:  model.DockerBuild{},
 		})
 	dpf.withManifestTarget(store.NewManifestTarget(m), alreadyBuilt)
 }
