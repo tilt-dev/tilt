@@ -44,7 +44,8 @@ func (c *dockerPruneCmd) run(ctx context.Context, args []string) error {
 	}
 
 	// TODO: print the commands being run
-	dp.Prune(ctx, maxAge)
+	// ❗️ fix this - load Tiltfile and pass image selectors ❗
+	dp.Prune(ctx, maxAge, nil)
 
 	return nil
 }

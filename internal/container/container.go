@@ -34,6 +34,18 @@ func ParseNamed(s string) (reference.Named, error) {
 	return reference.ParseNormalizedNamed(s)
 }
 
+func ParseNamedMulti(strs []string) ([]reference.Named, error) {
+	var err error
+	res := make([]reference.Named, len(strs))
+	for i, s := range strs {
+		res[i], err = reference.ParseNormalizedNamed(s)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
 func ParseNamedTagged(s string) (reference.NamedTagged, error) {
 	ref, err := reference.ParseNormalizedNamed(s)
 	if err != nil {
