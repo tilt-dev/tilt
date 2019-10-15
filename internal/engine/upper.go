@@ -353,7 +353,8 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	if mt.Manifest.IsDC() {
 		state, _ := ms.RuntimeState.(dockercompose.State)
 
-		dcResult := cb.Result[mt.Manifest.DockerComposeTarget().ID()]
+		result := cb.Result[mt.Manifest.DockerComposeTarget().ID()]
+		dcResult, _ := result.(store.DockerComposeBuildResult)
 		cid := dcResult.DockerComposeContainerID
 		if cid != "" {
 			state = state.WithContainerID(cid)

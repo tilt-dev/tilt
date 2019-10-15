@@ -132,22 +132,22 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	err = q.RunBuilds(func(target model.TargetSpec, state store.BuildState, depResults []store.BuildResult) (store.BuildResult, error) {
 		iTarget, ok := target.(model.ImageTarget)
 		if !ok {
-			return store.BuildResult{}, fmt.Errorf("Not an image target: %T", target)
+			return nil, fmt.Errorf("Not an image target: %T", target)
 		}
 
 		iTarget, err := injectImageDependencies(iTarget, iTargetMap, depResults)
 		if err != nil {
-			return store.BuildResult{}, err
+			return nil, err
 		}
 
 		ref, err := ibd.icb.Build(ctx, iTarget, state, ps)
 		if err != nil {
-			return store.BuildResult{}, err
+			return nil, err
 		}
 
 		ref, err = ibd.push(ctx, ref, ps, iTarget, kTarget)
 		if err != nil {
-			return store.BuildResult{}, err
+			return nil, err
 		}
 
 		anyInPlaceBuild = anyInPlaceBuild ||
@@ -291,9 +291,9 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 		}
 
 		for _, depID := range depIDs {
-			ref := results[depID].Image
+			ref := store.ImageFromBuildResult(results[depID])
 			if ref == nil {
-				return nil, fmt.Errorf("Internal error: missing build result for dependency ID: %s", depID)
+				return nil, fmt.Errorf("Internal error: missing image build result for dependency ID: %s", depID)
 			}
 
 			iTarget := iTargetMap[depID]
@@ -373,11 +373,16 @@ func injectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.Tar
 	}
 
 	for _, dep := range deps {
-		modified, err := ast.InjectImageDigest(iTargetMap[dep.TargetID].ConfigurationRef, dep.Image)
+		image := store.ImageFromBuildResult(dep)
+		if image == nil {
+			return model.ImageTarget{}, fmt.Errorf("Internal error: image is nil")
+		}
+		id := dep.TargetID()
+		modified, err := ast.InjectImageDigest(iTargetMap[id].ConfigurationRef, image)
 		if err != nil {
 			return model.ImageTarget{}, errors.Wrap(err, "injectImageDependencies")
 		} else if !modified {
-			return model.ImageTarget{}, fmt.Errorf("Could not inject image %q into Dockerfile of image %q", dep.Image, iTarget.ConfigurationRef)
+			return model.ImageTarget{}, fmt.Errorf("Could not inject image %q into Dockerfile of image %q", image, iTarget.ConfigurationRef)
 		}
 	}
 

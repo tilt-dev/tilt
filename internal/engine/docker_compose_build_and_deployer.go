@@ -81,12 +81,12 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	err = q.RunBuilds(func(target model.TargetSpec, state store.BuildState, depResults []store.BuildResult) (store.BuildResult, error) {
 		iTarget, ok := target.(model.ImageTarget)
 		if !ok {
-			return store.BuildResult{}, fmt.Errorf("Not an image target: %T", target)
+			return nil, fmt.Errorf("Not an image target: %T", target)
 		}
 
 		iTarget, err := injectImageDependencies(iTarget, iTargetMap, depResults)
 		if err != nil {
-			return store.BuildResult{}, err
+			return nil, err
 		}
 
 		expectedRef := iTarget.ConfigurationRef
@@ -96,12 +96,12 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		// service at once, we'll have to match up image build results to DC target by ref.
 		ref, err := bd.icb.Build(ctx, iTarget, currentState[iTarget.ID()], ps)
 		if err != nil {
-			return store.BuildResult{}, err
+			return nil, err
 		}
 
 		ref, err = bd.tagWithExpected(ctx, ref, expectedRef)
 		if err != nil {
-			return store.BuildResult{}, err
+			return nil, err
 		}
 
 		return store.NewImageBuildResult(iTarget.ID(), ref), nil

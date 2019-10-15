@@ -143,7 +143,7 @@ func (icb *imageAndCacheBuilder) createCacheInputs(iTarget model.ImageTarget) bu
 
 func (icb *imageAndCacheBuilder) maybeCreateCacheFrom(ctx context.Context, cacheInputs build.CacheInputs, sourceRef reference.NamedTagged, state store.BuildState, image model.ImageTarget, oldCacheRef reference.NamedTagged) {
 	// Only create the cache the first time we build the image.
-	if !state.LastResult.IsEmpty() {
+	if state.LastResult != nil {
 		return
 	}
 

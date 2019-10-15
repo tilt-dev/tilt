@@ -182,7 +182,7 @@ func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deploy
 	var result store.BuildResult
 	containerIDs := b.nextLiveUpdateContainerIDs
 	if len(containerIDs) > 0 {
-		result = store.NewLiveUpdateBuildResult(iTarget.ID(), containerIDs)
+		result = store.NewLiveUpdateBuildResult(iTarget.ID(), nt, containerIDs)
 	} else {
 		result = store.NewImageBuildResult(iTarget.ID(), nt)
 	}
@@ -1197,7 +1197,8 @@ func TestPodEventContainerStatus(t *testing.T) {
 
 	var ref reference.NamedTagged
 	f.WaitUntilManifestState("image appears", "foobar", func(ms store.ManifestState) bool {
-		ref = ms.BuildStatus(manifest.ImageTargetAt(0).ID()).LastSuccessfulResult.Image
+		result := ms.BuildStatus(manifest.ImageTargetAt(0).ID()).LastSuccessfulResult
+		ref = store.ImageFromBuildResult(result)
 		return ref != nil
 	})
 
@@ -1573,7 +1574,8 @@ func TestPodContainerStatus(t *testing.T) {
 
 	var ref reference.NamedTagged
 	f.WaitUntilManifestState("image appears", "fe", func(ms store.ManifestState) bool {
-		ref = ms.BuildStatus(manifest.ImageTargetAt(0).ID()).LastSuccessfulResult.Image
+		result := ms.BuildStatus(manifest.ImageTargetAt(0).ID()).LastSuccessfulResult
+		ref = store.ImageFromBuildResult(result)
 		return ref != nil
 	})
 
@@ -1914,7 +1916,8 @@ func TestUpper_ServiceEvent(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
 
-	uid := f.b.resultsByID[manifest.K8sTarget().ID()].DeployedUIDs[0]
+	result := f.b.resultsByID[manifest.K8sTarget().ID()]
+	uid := result.(store.K8sBuildResult).DeployedUIDs[0]
 	svc := servicebuilder.New(t, manifest).WithUID(uid).WithPort(8080).WithIP("1.2.3.4").Build()
 	k8swatch.DispatchServiceChange(f.store, svc, manifest.Name, "")
 
@@ -1945,7 +1948,8 @@ func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 	f.Start([]model.Manifest{manifest}, true)
 	f.waitForCompletedBuildCount(1)
 
-	uid := f.b.resultsByID[manifest.K8sTarget().ID()].DeployedUIDs[0]
+	result := f.b.resultsByID[manifest.K8sTarget().ID()]
+	uid := result.(store.K8sBuildResult).DeployedUIDs[0]
 	sb := servicebuilder.New(t, manifest).WithUID(uid).WithPort(8080).WithIP("1.2.3.4")
 	svc := sb.Build()
 	k8swatch.DispatchServiceChange(f.store, svc, manifest.Name, "")
@@ -3236,7 +3240,12 @@ func (f *testFixture) lastDeployedUID(manifestName model.ManifestName) types.UID
 	f.withManifestTarget(manifestName, func(mt store.ManifestTarget) {
 		manifest = mt.Manifest
 	})
-	uids := f.b.resultsByID[manifest.K8sTarget().ID()].DeployedUIDs
+	result := f.b.resultsByID[manifest.K8sTarget().ID()]
+	k8sResult, ok := result.(store.K8sBuildResult)
+	if !ok {
+		return ""
+	}
+	uids := k8sResult.DeployedUIDs
 	if len(uids) > 0 {
 		return uids[0]
 	}
@@ -3491,7 +3500,7 @@ func deployResultSet(manifest model.Manifest, uid types.UID) store.BuildResultSe
 func liveUpdateResultSet(manifest model.Manifest, id container.ID) store.BuildResultSet {
 	resultSet := store.BuildResultSet{}
 	for _, iTarget := range manifest.ImageTargets {
-		resultSet[iTarget.ID()] = store.NewLiveUpdateBuildResult(iTarget.ID(), []container.ID{id})
+		resultSet[iTarget.ID()] = store.NewLiveUpdateBuildResult(iTarget.ID(), nil, []container.ID{id})
 	}
 	return resultSet
 }

@@ -56,7 +56,7 @@ func TestSuccessfulCommand(t *testing.T) {
 	res, err := f.ltbad.BuildAndDeploy(f.ctx, f.st, []model.TargetSpec{targ}, store.BuildStateSet{})
 	require.Nil(t, err)
 
-	assert.Equal(t, targ.ID(), res[targ.ID()].TargetID)
+	assert.Equal(t, targ.ID(), res[targ.ID()].TargetID())
 
 	assert.Contains(t, f.out.String(), "hello world", "expect cmd stdout in logs")
 }
@@ -72,7 +72,7 @@ func TestWorkdir(t *testing.T) {
 	res, err := f.ltbad.BuildAndDeploy(f.ctx, f.st, []model.TargetSpec{targ}, store.BuildStateSet{})
 	require.Nil(t, err)
 
-	assert.Equal(t, targ.ID(), res[targ.ID()].TargetID)
+	assert.Equal(t, targ.ID(), res[targ.ID()].TargetID())
 
 	expectedOut := fmt.Sprintf("the directory is %s", workdir)
 	assert.Contains(t, f.out.String(), expectedOut, "expect cmd stdout (with appropriate pwd) in logs")
@@ -92,7 +92,7 @@ func TestExtractOneLocalTarget(t *testing.T) {
 	res, err := f.ltbad.BuildAndDeploy(f.ctx, f.st, specs, store.BuildStateSet{})
 	require.Nil(t, err)
 
-	assert.Equal(t, targ.ID(), res[targ.ID()].TargetID)
+	assert.Equal(t, targ.ID(), res[targ.ID()].TargetID())
 
 	assert.Contains(t, f.out.String(), "hello world", "expect cmd stdout in logs")
 }

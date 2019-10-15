@@ -163,7 +163,7 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 	}
 
 	for tid, res := range result {
-		if !expectUpdatedTargs[tid] && !res.IsEmpty() {
+		if !expectUpdatedTargs[tid] && res != nil {
 			t.Fatalf("got non empty result for target %s when didn't expect one. Result: %v", tid, res)
 		}
 		// mark this target as seen
@@ -171,7 +171,8 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 
 		if len(tCase.runningContainersByTarget) > 0 {
 			// We expect to have operated on the containers that the test specified
-			assert.ElementsMatch(t, res.LiveUpdatedContainerIDs, tCase.runningContainersByTarget[tid])
+			lRes := res.(store.LiveUpdateBuildResult)
+			assert.ElementsMatch(t, lRes.LiveUpdatedContainerIDs, tCase.runningContainersByTarget[tid])
 		} else {
 			// We set up the test with RunningContainer = DefaultContainer; expect to have operated on that.
 			assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyLiveUpdatedContainerID().String())

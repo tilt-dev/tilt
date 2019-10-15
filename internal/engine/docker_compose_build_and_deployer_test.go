@@ -40,7 +40,9 @@ func TestDockerComposeTargetBuilt(t *testing.T) {
 		assert.Equal(t, "fe", call.ServiceName.String())
 		assert.True(t, call.ShouldBuild)
 	}
-	assert.Equal(t, expectedContainerID, res[dcTarg.ID()].DockerComposeContainerID.String())
+
+	dRes := res[dcTarg.ID()].(store.DockerComposeBuildResult)
+	assert.Equal(t, expectedContainerID, dRes.DockerComposeContainerID.String())
 }
 
 func TestTiltBuildsImage(t *testing.T) {
