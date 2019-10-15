@@ -9,6 +9,8 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 
+	"github.com/windmilleng/tilt/internal/container"
+
 	"github.com/windmilleng/tilt/pkg/model"
 
 	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
@@ -60,6 +62,14 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 	curBuildCount := state.CompletedBuildCount
 	hasDockerBuild := state.HasDockerBuild()
 	nextToBuild := buildcontrol.NextManifestNameToBuild(state)
+	var imgSelectors []container.RefSelector
+	for _, m := range state.Manifests() {
+		for _, iTarg := range m.ImageTargets {
+			sel := iTarg.ConfigurationRef
+			sel.AsNamedOnly()
+			imgSelectors = append(imgSelectors, sel)
+		}
+	}
 	st.RUnlockState()
 
 	if !settings.Enabled {
@@ -78,7 +88,7 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 
 	// Prune as soon after startup as we can (waiting until we've built SOMETHING)
 	if dp.lastPruneTime.IsZero() && curBuildCount > 0 {
-		dp.PruneAndRecordState(ctx, settings.MaxAge, curBuildCount)
+		dp.PruneAndRecordState(ctx, settings.MaxAge, imgSelectors, curBuildCount)
 		return
 	}
 
@@ -86,7 +96,7 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 	if settings.NumBuilds != 0 {
 		buildsSince := curBuildCount - dp.lastPruneBuildCount
 		if buildsSince >= settings.NumBuilds {
-			dp.PruneAndRecordState(ctx, settings.MaxAge, curBuildCount)
+			dp.PruneAndRecordState(ctx, settings.MaxAge, imgSelectors, curBuildCount)
 		}
 		return
 	}
@@ -97,26 +107,26 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 	}
 
 	if time.Since(dp.lastPruneTime) >= interval {
-		dp.PruneAndRecordState(ctx, settings.MaxAge, curBuildCount)
+		dp.PruneAndRecordState(ctx, settings.MaxAge, imgSelectors, curBuildCount)
 	}
 }
 
-func (dp *DockerPruner) PruneAndRecordState(ctx context.Context, maxAge time.Duration, curBuildCount int) {
-	dp.Prune(ctx, maxAge)
+func (dp *DockerPruner) PruneAndRecordState(ctx context.Context, maxAge time.Duration, imgSelectors []container.RefSelector, curBuildCount int) {
+	dp.Prune(ctx, maxAge, imgSelectors)
 	dp.lastPruneTime = time.Now()
 	dp.lastPruneBuildCount = curBuildCount
 }
 
-func (dp *DockerPruner) Prune(ctx context.Context, maxAge time.Duration) {
+func (dp *DockerPruner) Prune(ctx context.Context, maxAge time.Duration, imgSelectors []container.RefSelector) {
 	// For future: dispatch event with output/errors to be recorded
 	//   in engineState.TiltSystemState on store (analogous to TiltfileState)
-	err := dp.prune(ctx, maxAge)
+	err := dp.prune(ctx, maxAge, imgSelectors)
 	if err != nil {
 		logger.Get(ctx).Infof("[Docker Prune] error running docker prune: %v", err)
 	}
 }
 
-func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration) error {
+func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration, imgSelectors []container.RefSelector) error {
 	l := logger.Get(ctx)
 	if err := dp.sufficientVersionError(); err != nil {
 		l.Debugf("[Docker Prune] skipping Docker prune, Docker API version too low:\t%v", err)
@@ -136,7 +146,7 @@ func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration) error {
 	prettyPrintContainersPruneReport(containerReport, l)
 
 	// PRUNE IMAGES
-	imageReport, err := dp.deleteOldImages(ctx, maxAge)
+	imageReport, err := dp.deleteOldImages(ctx, maxAge, imgSelectors)
 	if err != nil {
 		return err
 	}
@@ -157,7 +167,7 @@ func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration) error {
 	return nil
 }
 
-func (dp *DockerPruner) deleteOldImages(ctx context.Context, maxAge time.Duration) (types.ImagesPruneReport, error) {
+func (dp *DockerPruner) deleteOldImages(ctx context.Context, maxAge time.Duration, selectors []container.RefSelector) (types.ImagesPruneReport, error) {
 	opts := types.ImageListOptions{
 		Filters: filters.NewArgs(
 			filters.Arg("label", docker.BuiltByTiltLabelStr),
@@ -176,7 +186,13 @@ func (dp *DockerPruner) deleteOldImages(ctx context.Context, maxAge time.Duratio
 			continue
 		}
 
-		if time.Since(inspect.Metadata.LastTagTime) >= maxAge {
+		named, err := container.ParseNamed(inspect.ID)
+		if err != nil {
+			logger.Get(ctx).Debugf("[Docker prune] error parsing image ref '%s': %v", imgSummary.ID, err)
+			continue
+		}
+
+		if time.Since(inspect.Metadata.LastTagTime) >= maxAge && container.MatchesAny(named, selectors) {
 			toDelete[inspect.ID] = uint64(inspect.Size)
 		}
 	}

@@ -92,3 +92,12 @@ func (s RefSelector) String() string {
 	}
 	return s.ref.String()
 }
+
+func MatchesAny(toMatch reference.Named, selectors []RefSelector) bool {
+	for _, sel := range selectors {
+		if sel.Matches(toMatch) {
+			return true
+		}
+	}
+	return false
+}
