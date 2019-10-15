@@ -11,8 +11,7 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 )
 
-// Implements functions for dealing with the Kubernetes context.
-// Exposes an API for other plugins to get and validate the allowed k8s context.
+// Implements functions for dealing with Docker Prune settings.
 type Extension struct {
 	settings model.DockerPruneSettings
 }

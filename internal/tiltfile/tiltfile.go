@@ -84,14 +84,13 @@ func ProvideTiltfileLoader(
 	analytics *analytics.TiltAnalytics,
 	kCli k8s.Client,
 	k8sContextExt *k8scontext.Extension,
-	dpExt *dockerprune.Extension,
 	dcCli dockercompose.DockerComposeClient,
 	fDefaults feature.Defaults) TiltfileLoader {
 	return tiltfileLoader{
 		analytics:     analytics,
 		kCli:          kCli,
 		k8sContextExt: k8sContextExt,
-		dpExt:         dpExt,
+		dpExt:         dockerprune.NewExtension(),
 		dcCli:         dcCli,
 		fDefaults:     fDefaults,
 	}
