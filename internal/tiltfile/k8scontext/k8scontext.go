@@ -15,7 +15,7 @@ import (
 type Extension struct {
 	context            k8s.KubeContext
 	env                k8s.Env
-	allowedK8SContexts []k8s.KubeContext
+	allowedK8sContexts []k8s.KubeContext
 }
 
 func NewExtension(context k8s.KubeContext, env k8s.Env) *Extension {
@@ -26,6 +26,8 @@ func NewExtension(context k8s.KubeContext, env k8s.Env) *Extension {
 }
 
 func (e *Extension) OnStart(env *starkit.Environment) error {
+	e.allowedK8sContexts = nil
+
 	err := env.AddBuiltin("allow_k8s_contexts", e.allowK8sContexts)
 	if err != nil {
 		return err
@@ -51,7 +53,7 @@ func (e *Extension) IsAllowed() bool {
 		return true
 	}
 
-	for _, c := range e.allowedK8SContexts {
+	for _, c := range e.allowedK8sContexts {
 		if c == e.context {
 			return true
 		}
@@ -71,7 +73,7 @@ func (e *Extension) allowK8sContexts(thread *starlark.Thread, fn *starlark.Built
 	for _, c := range value.ValueOrSequenceToSlice(contexts) {
 		switch val := c.(type) {
 		case starlark.String:
-			e.allowedK8SContexts = append(e.allowedK8SContexts, k8s.KubeContext(val))
+			e.allowedK8sContexts = append(e.allowedK8sContexts, k8s.KubeContext(val))
 		default:
 			return nil, fmt.Errorf("allow_k8s_contexts contexts must be a string or a sequence of strings; found a %T", val)
 
