@@ -26,7 +26,8 @@ const defaultMaxAge = time.Hour * 6
 type DockerPruner struct {
 	dCli docker.Client
 
-	disabledForTesting bool
+	disabledForTesting           bool
+	insufficientVersionErrLogged bool
 
 	lastPruneBuildCount int
 	lastPruneTime       time.Time
@@ -48,6 +49,12 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 	}
 
 	if err := dp.sufficientVersionError(); err != nil {
+		if !dp.insufficientVersionErrLogged {
+			logger.Get(ctx).Infof(
+				"[Docker prune] Docker API version too low for Tilt to run Docker Prune:\n\t%v", err,
+			)
+			dp.insufficientVersionErrLogged = true
+		}
 		return
 	}
 
