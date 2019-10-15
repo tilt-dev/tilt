@@ -2759,6 +2759,47 @@ stringData:
 	})
 }
 
+func TestDisableDockerPrune(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
+	f.WriteFile("snack.yaml", simpleYAML)
+
+	f.WriteFile("Tiltfile", `
+docker_prune_settings(disable=True)
+`+simpleTiltfile)
+
+	f.loadAndStart()
+
+	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
+		return len(state.TiltfileState.BuildHistory) == 1
+	})
+	f.withState(func(state store.EngineState) {
+		assert.False(t, state.DockerPruneSettings.Enabled)
+	})
+}
+
+func TestDockerPruneEnabledByDefault(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", simpleTiltfile)
+	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
+	f.WriteFile("snack.yaml", simpleYAML)
+
+	f.loadAndStart()
+
+	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
+		return len(state.TiltfileState.BuildHistory) == 1
+	})
+	f.withState(func(state store.EngineState) {
+		assert.True(t, state.DockerPruneSettings.Enabled)
+		assert.Equal(t, model.DockerPruneDefaultMaxAge, state.DockerPruneSettings.MaxAge)
+		assert.Equal(t, model.DockerPruneDefaultInterval, state.DockerPruneSettings.Interval)
+	})
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
@@ -2897,9 +2938,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	pfc := NewPortForwardController(kCli)
 	tas := NewTiltAnalyticsSubscriber(ta)
 	ar := ProvideAnalyticsReporter(ta, st)
-	k8sContextExt := k8scontext.NewExtension("fake-context", k8s.EnvDockerDesktop)
-
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
+	k8sContextExt := k8scontext.NewExtension("fake-context", k8s.EnvDockerDesktop)
 	tfl := tiltfile.ProvideTiltfileLoader(ta, kCli, k8sContextExt, fakeDcc, feature.MainDefaults)
 	cc := configs.NewConfigsController(tfl, dockerClient)
 	dcw := NewDockerComposeEventWatcher(fakeDcc)

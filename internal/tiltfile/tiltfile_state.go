@@ -9,6 +9,8 @@ import (
 
 	"go.starlark.net/syntax"
 
+	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
+
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
@@ -37,6 +39,7 @@ type tiltfileState struct {
 	ctx             context.Context
 	dcCli           dockercompose.DockerComposeClient
 	k8sContextExt   *k8scontext.Extension
+	dpExt           *dockerprune.Extension
 	privateRegistry container.Registry
 	features        feature.FeatureSet
 
@@ -103,12 +106,14 @@ func newTiltfileState(
 	ctx context.Context,
 	dcCli dockercompose.DockerComposeClient,
 	k8sContextExt *k8scontext.Extension,
+	dpExt *dockerprune.Extension,
 	privateRegistry container.Registry,
 	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
 		ctx:                        ctx,
 		dcCli:                      dcCli,
 		k8sContextExt:              k8sContextExt,
+		dpExt:                      dpExt,
 		privateRegistry:            privateRegistry,
 		buildIndex:                 newBuildIndex(),
 		k8sByName:                  make(map[string]*k8sResource),
@@ -153,7 +158,9 @@ func (s *tiltfileState) loadManifests(absFilename string, matching map[string]bo
 		s,
 		include.IncludeFn{},
 		os.NewExtension(),
-		s.k8sContextExt)
+		s.k8sContextExt,
+		s.dpExt,
+	)
 	if err != nil {
 		if err, ok := err.(*starlark.EvalError); ok {
 			return nil, errors.New(err.Backtrace())

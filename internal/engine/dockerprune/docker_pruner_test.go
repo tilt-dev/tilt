@@ -151,7 +151,7 @@ func TestDockerPrunerSinceDefaultInterval(t *testing.T) {
 	f := newFixture(t)
 	f.withDockerManifestAlreadyBuilt()
 	f.withDockerPruneSettings(true, 0, 0, 0)
-	f.dp.lastPruneTime = time.Now().Add(-1 * (defaultInterval + time.Minute))
+	f.dp.lastPruneTime = time.Now().Add(-1 * (model.DockerPruneDefaultInterval + time.Minute))
 
 	f.dp.OnChange(f.ctx, f.st)
 
@@ -173,7 +173,7 @@ func TestDockerPrunerSinceDefaultIntervalNotEnoughTime(t *testing.T) {
 	f := newFixture(t)
 	f.withDockerManifestAlreadyBuilt()
 	f.withDockerPruneSettings(true, 0, 0, 0)
-	f.dp.lastPruneTime = time.Now().Add(-1 * defaultInterval).Add(20 * time.Minute)
+	f.dp.lastPruneTime = time.Now().Add(-1 * model.DockerPruneDefaultInterval).Add(20 * time.Minute)
 
 	f.dp.OnChange(f.ctx, f.st)
 
@@ -259,20 +259,6 @@ func TestDockerPrunerMaxAgeFromSettings(t *testing.T) {
 	untilVals := f.dCli.ImagesPruneFilters.Get("until")
 	require.Len(t, untilVals, 1, "unexpected number of filters for \"until\"")
 	assert.Equal(t, untilVals[0], maxAge.String())
-}
-
-func TestDockerPrunerDefaultMaxAge(t *testing.T) {
-	f := newFixture(t)
-	f.withDockerManifestAlreadyBuilt()
-	f.withBuildCount(5)
-	f.withDockerPruneSettings(true, 0, 10, 0)
-
-	f.dp.OnChange(f.ctx, f.st)
-
-	f.assertPrune()
-	untilVals := f.dCli.ImagesPruneFilters.Get("until")
-	require.Len(t, untilVals, 1, "unexpected number of filters for \"until\"")
-	assert.Equal(t, untilVals[0], defaultMaxAge.String())
 }
 
 // Test currently building

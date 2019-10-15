@@ -540,9 +540,10 @@ func handleConfigsReloaded(
 				}
 			}
 		}
-
 		return
 	}
+
+	state.DockerPruneSettings = event.DockerPruneSettings
 
 	newDefOrder := make([]model.ManifestName, len(manifests))
 	for i, m := range manifests {
