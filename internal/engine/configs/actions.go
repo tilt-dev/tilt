@@ -19,12 +19,13 @@ type ConfigsReloadedAction struct {
 	TiltIgnoreContents string
 	ConfigFiles        []string
 
-	FinishTime time.Time
-	Err        error
-	Warnings   []string
-	Features   map[string]bool
-	TeamName   string
-	Secrets    model.SecretSet
+	FinishTime          time.Time
+	Err                 error
+	Warnings            []string
+	Features            map[string]bool
+	TeamName            string
+	Secrets             model.SecretSet
+	DockerPruneSettings model.DockerPruneSettings
 
 	// The length of the global log when Tiltfile execution started.
 	// Useful for knowing how far back in time we have to scrub secrets.

@@ -32,14 +32,15 @@ func init() {
 }
 
 type TiltfileLoadResult struct {
-	Manifests          []model.Manifest
-	ConfigFiles        []string
-	Warnings           []string
-	TiltIgnoreContents string
-	FeatureFlags       map[string]bool
-	TeamName           string
-	Secrets            model.SecretSet
-	Error              error
+	Manifests           []model.Manifest
+	ConfigFiles         []string
+	Warnings            []string
+	TiltIgnoreContents  string
+	FeatureFlags        map[string]bool
+	TeamName            string
+	Secrets             model.SecretSet
+	Error               error
+	DockerPruneSettings model.DockerPruneSettings
 }
 
 func (r TiltfileLoadResult) Orchestrator() model.Orchestrator {
@@ -153,6 +154,12 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	tlr.Error = err
 	tlr.Manifests = manifests
 	tlr.TeamName = s.teamName
+	tlr.DockerPruneSettings = model.DockerPruneSettings{
+		Enabled:   !s.dockerPruneDisabled,
+		MaxAge:    s.dockerPruneMaxAge,
+		NumBuilds: s.dockerPruneNumBuilds,
+		Interval:  s.dockerPruneInterval,
+	}
 
 	printWarnings(s)
 	s.logger.Infof("Successfully loaded Tiltfile")

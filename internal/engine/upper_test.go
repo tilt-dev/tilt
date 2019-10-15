@@ -2759,6 +2759,45 @@ stringData:
 	})
 }
 
+func TestDisableDockerPrune(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
+	f.WriteFile("snack.yaml", simpleYAML)
+
+	f.WriteFile("Tiltfile", `
+docker_prune_settings(disable=True)
+`+simpleTiltfile)
+
+	f.loadAndStart()
+
+	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
+		return len(state.TiltfileState.BuildHistory) == 1
+	})
+	f.withState(func(state store.EngineState) {
+		assert.False(t, state.DockerPruneSettings.Enabled)
+	})
+}
+
+func TestDockerPruneEnabledByDefault(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", simpleTiltfile)
+	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
+	f.WriteFile("snack.yaml", simpleYAML)
+
+	f.loadAndStart()
+
+	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
+		return len(state.TiltfileState.BuildHistory) == 1
+	})
+	f.withState(func(state store.EngineState) {
+		assert.True(t, state.DockerPruneSettings.Enabled)
+	})
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
