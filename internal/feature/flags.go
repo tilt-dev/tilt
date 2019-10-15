@@ -21,6 +21,7 @@ const (
 const MultipleContainersPerPod = "multiple_containers_per_pod"
 const Events = "events"
 const Snapshots = "snapshots"
+const UpdateHistory = "update_history"
 const SnapshotHighlights = "snapshot_highlights"
 
 // The Value a flag can have. Status should never be changed.
@@ -45,6 +46,10 @@ var MainDefaults = Defaults{
 	},
 	Snapshots: Value{
 		Enabled: true,
+		Status:  Active,
+	},
+	UpdateHistory: Value{
+		Enabled: false,
 		Status:  Active,
 	},
 	SnapshotHighlights: Value{

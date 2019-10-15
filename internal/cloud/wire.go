@@ -6,4 +6,5 @@ var WireSet = wire.NewSet(
 	ProvideAddress,
 	ProvideHttpClient,
 	NewUsernameManager,
-	NewSnapshotUploader)
+	NewSnapshotUploader,
+	NewUpdateUploader)
