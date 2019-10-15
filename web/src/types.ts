@@ -91,8 +91,6 @@ export type Snapshot = {
     Resources: Array<Resource>
     Log: string
     LogTimestamps: boolean
-    SailEnabled: boolean
-    SailURL: string
     NeedsAnalyticsNudge: boolean
     RunningTiltBuild: TiltBuild
     LatestTiltBuild: TiltBuild

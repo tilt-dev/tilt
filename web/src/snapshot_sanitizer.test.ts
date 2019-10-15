@@ -8,8 +8,6 @@ const testSnapshot = {
     Resources: [oneResource()],
     Log: "",
     LogTimestamps: false,
-    SailEnabled: false,
-    SailURL: "",
     NeedsAnalyticsNudge: false,
     RunningTiltBuild: {
       Version: "",
