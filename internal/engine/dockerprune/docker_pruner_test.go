@@ -122,9 +122,9 @@ func TestPruneReturnsCachePruneError(t *testing.T) {
 func TestDeleteOldImages(t *testing.T) {
 	f := newFixture(t)
 	maxAge := 3 * time.Hour
-	_ = f.withImageInspect(0, 25, time.Hour)      // young enough, won't be pruned
-	ref := f.withImageInspect(1, 50, 4*time.Hour) // older than max age, will be pruned
-	_ = f.withImageInspect(2, 75, 6*time.Hour)    // older than max age but doesn't match passed ref selectors
+	_, _ = f.withImageInspect(0, 25, time.Hour)      // young enough, won't be pruned
+	_, ref := f.withImageInspect(1, 50, 4*time.Hour) // older than max age, will be pruned
+	_, _ = f.withImageInspect(2, 75, 6*time.Hour)    // older than max age but doesn't match passed ref selectors
 	report, err := f.dp.deleteOldImages(f.ctx, maxAge, []container.RefSelector{container.NameSelector(ref)})
 	require.NoError(t, err)
 
@@ -139,6 +139,23 @@ func TestDeleteOldImages(t *testing.T) {
 		assert.Equal(t, expectedFilters, f.dCli.ImageListOpts[0].Filters,
 			"expected ImageList to called with label=builtby:tilt filter")
 	}
+}
+
+func TestDeleteOldImagesDontRemoveImageWithMultipleTags(t *testing.T) {
+	f := newFixture(t)
+	maxAge := 3 * time.Hour
+	id, ref := f.withImageInspect(0, 50, 4*time.Hour)
+	inspect := f.dCli.Images[id]
+	inspect.RepoTags = append(f.dCli.Images[id].RepoTags, "some-additional-tag")
+	f.dCli.Images[id] = inspect
+
+	report, err := f.dp.deleteOldImages(f.ctx, maxAge, []container.RefSelector{container.NameSelector(ref)})
+	require.NoError(t, err) // error is silent
+
+	assert.Len(t, report.ImagesDeleted, 0, "expected no deleted images")
+	assert.Equal(t, 0, int(report.SpaceReclaimed), "expected space reclaimed")
+
+	assert.Contains(t, f.logs.String(), "`docker image remove --force` required to remove an image with multiple tags")
 }
 
 func TestDockerPrunerSinceNBuilds(t *testing.T) {
@@ -326,23 +343,25 @@ func (dpf *dockerPruneFixture) withPruneOutput(caches, containers []string, numI
 
 	selectors := make([]container.RefSelector, numImages)
 	for i := 0; i < numImages; i++ {
-		ref := dpf.withImageInspect(i, i+1, 48*time.Hour) // make each image 2 days old (def older than maxAge)
+		_, ref := dpf.withImageInspect(i, i+1, 48*time.Hour) // make each image 2 days old (def older than maxAge)
 		selectors[i] = container.NameSelector(ref)
 	}
 	return dpf, selectors
 }
 
-func (dpf *dockerPruneFixture) withImageInspect(i, size int, timeSinceLastTag time.Duration) reference.Named {
-	id := fmt.Sprintf("build-id-%d", i)
+func (dpf *dockerPruneFixture) withImageInspect(i, size int, timeSinceLastTag time.Duration) (id string, ref reference.Named) {
+	id = fmt.Sprintf("build-id-%d", i)
+	tag := fmt.Sprintf("%s-tag", id)
 	dpf.dCli.Images[id] = types.ImageInspect{
-		ID:   id,
-		Size: int64(size),
+		ID:       id,
+		RepoTags: []string{tag},
+		Size:     int64(size),
 		Metadata: types.ImageMetadata{
 			LastTagTime: time.Now().Add(-1 * timeSinceLastTag),
 		},
 	}
 	dpf.dCli.ImageListCount += 1
-	return container.MustParseNamed(id)
+	return id, container.MustParseNamed(tag)
 }
 
 func (dpf *dockerPruneFixture) withDockerManifestAlreadyBuilt() {

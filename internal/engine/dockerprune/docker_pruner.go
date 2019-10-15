@@ -185,13 +185,19 @@ func (dp *DockerPruner) deleteOldImages(ctx context.Context, maxAge time.Duratio
 			continue
 		}
 
-		named, err := container.ParseNamed(inspect.ID)
+		namedRefs, err := container.ParseNamedMulti(inspect.RepoTags)
 		if err != nil {
-			logger.Get(ctx).Debugf("[Docker prune] error parsing image ref '%s': %v", imgSummary.ID, err)
+			logger.Get(ctx).Debugf("[Docker prune] error parsing repo tags for '%s': %v", imgSummary.ID, err)
 			continue
 		}
 
-		if time.Since(inspect.Metadata.LastTagTime) >= maxAge && container.MatchesAny(named, selectors) {
+		if time.Since(inspect.Metadata.LastTagTime) >= maxAge && container.AnyMatch(namedRefs, selectors) {
+			if len(inspect.RepoTags) > 1 {
+				logger.Get(ctx).Debugf("[Docker prune] cannot prune image %s (tags: %s); `docker image remove --force` "+
+					"required to remove an image with multiple tags (\"image is referenced in one or more repositories\"),",
+					inspect.ID, strings.Join(inspect.RepoTags, ", "))
+				continue
+			}
 			toDelete[inspect.ID] = uint64(inspect.Size)
 		}
 	}
