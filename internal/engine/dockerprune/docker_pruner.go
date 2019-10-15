@@ -187,9 +187,11 @@ func (dp *DockerPruner) deleteOldImages(ctx context.Context, maxAge time.Duratio
 
 	for imgID, bytes := range toDelete {
 		items, err := dp.dCli.ImageRemove(ctx, imgID, rmOpts)
-		// No good way to detect in-use images from `inspect` output, so just silently ignore
-		if err != nil && !strings.Contains(err.Error(), "image is being used by running container") {
-			logger.Get(ctx).Debugf("[Docker prune] error removing image '%s': %v", imgID, err)
+		if err != nil {
+			// No good way to detect in-use images from `inspect` output, so just ignore those errors
+			if !strings.Contains(err.Error(), "image is being used by running container") {
+				logger.Get(ctx).Debugf("[Docker prune] error removing image '%s': %v", imgID, err)
+			}
 			continue
 		}
 		responseItems = append(responseItems, items...)
