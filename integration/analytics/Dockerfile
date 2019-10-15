@@ -1,5 +1,4 @@
-FROM golang:1.11-alpine
-WORKDIR /go/src/github.com/windmilleng/integration/oneup
+FROM busybox
+WORKDIR /src
 ADD . .
-RUN go install github.com/windmilleng/integration/oneup
-ENTRYPOINT /go/bin/oneup
+ENTRYPOINT busybox httpd -f -p 8000

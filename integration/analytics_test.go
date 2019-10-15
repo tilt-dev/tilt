@@ -101,11 +101,11 @@ func TestOptedIn(t *testing.T) {
 
 	f.SetOpt(analytics.OptIn)
 
-	f.TiltUp("oneup")
+	f.TiltUp("analytics")
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
-	f.WaitForAllPodsReady(ctx, "app=oneup")
+	f.WaitForAllPodsReady(ctx, "app=analytics")
 
 	var observedEventNames []string
 	for _, c := range f.mss.ma.Counts {
@@ -131,11 +131,11 @@ func TestOptedOut(t *testing.T) {
 
 	f.SetOpt(analytics.OptOut)
 
-	f.TiltUp("oneup")
+	f.TiltUp("analytics")
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
-	f.WaitForAllPodsReady(ctx, "app=oneup")
+	f.WaitForAllPodsReady(ctx, "app=analytics")
 
 	var observedEventNames []string
 	for _, c := range f.mss.ma.Counts {
@@ -151,11 +151,11 @@ func TestOptDefault(t *testing.T) {
 
 	f.SetOpt(analytics.OptDefault)
 
-	f.TiltUp("oneup")
+	f.TiltUp("analytics")
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
-	f.WaitForAllPodsReady(ctx, "app=oneup")
+	f.WaitForAllPodsReady(ctx, "app=analytics")
 
 	var metricNames []string
 
