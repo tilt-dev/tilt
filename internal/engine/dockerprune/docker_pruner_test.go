@@ -12,6 +12,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/windmilleng/tilt/internal/container"
 
 	"github.com/windmilleng/tilt/internal/store"
