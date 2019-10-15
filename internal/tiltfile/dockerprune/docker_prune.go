@@ -17,16 +17,15 @@ type Extension struct {
 }
 
 func NewExtension() *Extension {
-	return &Extension{
-		settings: model.DockerPruneSettings{
-			Enabled:  true,
-			MaxAge:   model.DockerPruneDefaultMaxAge,
-			Interval: model.DockerPruneDefaultInterval,
-		},
-	}
+	return &Extension{}
 }
 
 func (e *Extension) OnStart(env *starkit.Environment) error {
+	e.settings = model.DockerPruneSettings{
+		Enabled:  true,
+		MaxAge:   model.DockerPruneDefaultMaxAge,
+		Interval: model.DockerPruneDefaultInterval,
+	}
 	return env.AddBuiltin("docker_prune_settings", e.dockerPruneSettings)
 }
 
