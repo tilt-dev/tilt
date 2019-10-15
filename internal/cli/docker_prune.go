@@ -6,27 +6,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/tiltfile"
-
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 )
 
 type dockerPruneCmd struct {
 	maxAgeStr string
-}
-
-type dpDeps struct {
-	dCli docker.Client
-	tfl  tiltfile.TiltfileLoader
-}
-
-func newDPDeps(dCli docker.Client, tfl tiltfile.TiltfileLoader) dpDeps {
-	return dpDeps{
-		dCli: dCli,
-		tfl:  tfl,
-	}
 }
 
 func (c *dockerPruneCmd) register() *cobra.Command {
