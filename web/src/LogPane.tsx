@@ -116,7 +116,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
         "selectionchange",
         this.handleSelectionChange
       )
-    } else if (this.props.highlightsEnabled && !this.props.modalIsOpen) {
+    } else if (this.props.highlightsEnabled) {
       document.addEventListener("selectionchange", this.handleSelectionChange, {
         passive: true,
       })

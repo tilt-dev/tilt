@@ -468,8 +468,8 @@ class HUD extends Component<HudProps, HudState> {
     let tiltCloudTeamID = (view && view.TiltCloudTeamID) || null
     let highlightedLines = this.state.snapshotHighlight
       ? Math.abs(
-          parseInt(this.state.snapshotHighlight.endingLogID) -
-            parseInt(this.state.snapshotHighlight.beginningLogID)
+          parseInt(this.state.snapshotHighlight.endingLogID, 10) -
+            parseInt(this.state.snapshotHighlight.beginningLogID, 10)
         ) + 1
       : null
     return (

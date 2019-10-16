@@ -46,14 +46,14 @@ export default class ShareSnapshotModal extends PureComponent<props> {
           {this.renderShareLinkInfo()}
         </section>
       )
-    } else {
-      return (
-        <section>
-          {this.renderIntro()}
-          {this.renderGetStarted()}
-        </section>
-      )
     }
+
+    return (
+      <section>
+        {this.renderIntro()}
+        {this.renderGetStarted()}
+      </section>
+    )
   }
 
   renderIntro() {

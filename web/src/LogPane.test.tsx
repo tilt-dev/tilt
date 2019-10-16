@@ -18,6 +18,7 @@ it("renders without crashing", () => {
       handleClearHighlight={fakeHandleClearHighlight}
       highlight={null}
       highlightsEnabled={false}
+      modalIsOpen={false}
     />,
     div
   )
@@ -35,6 +36,7 @@ it("renders logs", () => {
         handleClearHighlight={fakeHandleClearHighlight}
         highlight={null}
         highlightsEnabled={false}
+        modalIsOpen={false}
       />
     )
     .toJSON()
@@ -382,6 +384,7 @@ it("renders logs with leading whitespace and ANSI codes", () => {
         handleClearHighlight={fakeHandleClearHighlight}
         highlight={null}
         highlightsEnabled={false}
+        modalIsOpen={false}
       />
     )
     .toJSON()
