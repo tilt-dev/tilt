@@ -53,7 +53,10 @@ describe("AppController", () => {
       endingLogID: "6",
     }
     fetchMock.mockResponse(
-      JSON.stringify({ View: { Resources: [] }, snapshotHighlight: snapshotHighlight })
+      JSON.stringify({
+        View: { Resources: [] },
+        snapshotHighlight: snapshotHighlight,
+      })
     )
 
     let pb = new PathBuilder("/**/cloud.tilt.dev", "/snapshot/aaaaaa")
@@ -62,6 +65,8 @@ describe("AppController", () => {
 
     await flushPromises()
     expect(fakeSetAppState.mock.calls.length).toBe(4)
-    expect(fakeSetAppState.mock.calls[3][0]).toStrictEqual({snapshotHighlight: snapshotHighlight})
+    expect(fakeSetAppState.mock.calls[3][0]).toStrictEqual({
+      snapshotHighlight: snapshotHighlight,
+    })
   })
 })

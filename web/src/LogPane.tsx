@@ -61,7 +61,11 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       )
     }
 
-    if (this.props.highlightsEnabled && prevProps.modalIsOpen && !this.props.modalIsOpen) {
+    if (
+      this.props.highlightsEnabled &&
+      prevProps.modalIsOpen &&
+      !this.props.modalIsOpen
+    ) {
       document.addEventListener("selectionchange", this.handleSelectionChange, {
         passive: true,
       })
@@ -94,7 +98,6 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       )
     }
   }
-
 
   private handleSelectionChange() {
     let selection = document.getSelection()

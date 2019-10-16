@@ -145,7 +145,9 @@ class AppController {
           this.component.setHistoryLocation(this.pb.path(data.path))
         }
         if (data.snapshotHighlight) {
-          this.component.setAppState({snapshotHighlight: data.snapshotHighlight})
+          this.component.setAppState({
+            snapshotHighlight: data.snapshotHighlight,
+          })
         }
       })
       .catch(err => {
