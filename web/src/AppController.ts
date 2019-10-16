@@ -144,6 +144,9 @@ class AppController {
         if (data.path) {
           this.component.setHistoryLocation(this.pb.path(data.path))
         }
+        if (data.snapshotHighlight) {
+          this.component.setAppState({snapshotHighlight: data.snapshotHighlight})
+        }
       })
       .catch(err => {
         // TODO(dmiller): set app state with an error message
