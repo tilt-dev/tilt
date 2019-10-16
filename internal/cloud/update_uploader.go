@@ -79,7 +79,7 @@ func (t updateTask) updates() []update {
 
 func (u *UpdateUploader) putUpdatesURL() string {
 	url := URL(string(u.addr))
-	url.Path = "/api/usage/putUpdates"
+	url.Path = "/api/usage/team/put_updates"
 	return url.String()
 }
 
