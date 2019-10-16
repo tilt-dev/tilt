@@ -114,9 +114,13 @@
 .ShareSnapshotModal-shareLink-placeholder {
   color: $color-gray-lightest;
 }
-.ShareSnapshotModal-loginState {
+.ShareSnapshotModal-shareLinkInfo {
+  display: flex;
+  justify-content: space-between;
   margin-top: $spacing-unit * 0.3;
 }
+
+// Tilt Cloud Info
 .ShareSnapshotModal-manageSnapshots {
   font-family: $font-sans-serif;
   font-size: $font-size-small;

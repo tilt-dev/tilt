@@ -3,7 +3,7 @@ import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gr
 import AnsiLine from "./AnsiLine"
 import "./LogPane.scss"
 import ReactDOM from "react-dom"
-import { SnapshotHiglight } from "./types"
+import { SnapshotHighlight } from "./types"
 
 const WHEEL_DEBOUNCE_MS = 250
 
@@ -11,10 +11,11 @@ type LogPaneProps = {
   log: string
   message?: string
   isExpanded: boolean
-  handleSetHighlight: (highlight: SnapshotHiglight) => void
-  handleClearHiglight: () => void
-  highlight: SnapshotHiglight | null
+  handleSetHighlight: (highlight: SnapshotHighlight) => void
+  handleClearHighlight: () => void
+  highlight: SnapshotHighlight | null
   highlightsEnabled: boolean
+  modalIsOpen: boolean
 }
 type LogPaneState = {
   autoscroll: boolean
@@ -69,7 +70,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       }
 
       if (selection.isCollapsed) {
-        this.props.handleClearHiglight()
+        this.props.handleClearHighlight()
       } else if (
         node &&
         node.contains(beginning) &&
@@ -84,7 +85,6 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
           this.props.handleSetHighlight({
             beginningLogID: beginningLogLine,
             endingLogID: endingLogLine,
-            highlightedText: selection.toString(),
           })
         }
       }
@@ -101,7 +101,6 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     } else if (el) {
       return this.findLogLineID(el.parentElement)
     }
-
     return null
   }
 
@@ -111,6 +110,16 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     }
     if (this.lastElement) {
       this.lastElement.scrollIntoView()
+    }
+    if (this.props.modalIsOpen) {
+      document.removeEventListener(
+        "selectionchange",
+        this.handleSelectionChange
+      )
+    } else if (this.props.highlightsEnabled) {
+      document.addEventListener("selectionchange", this.handleSelectionChange, {
+        passive: true,
+      })
     }
   }
 

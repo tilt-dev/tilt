@@ -19,7 +19,7 @@ import {
   Resource,
   Snapshot,
   ShowFatalErrorModal,
-  SnapshotHiglight,
+  SnapshotHighlight,
 } from "./types"
 import AlertPane from "./AlertPane"
 import AnalyticsNudge from "./AnalyticsNudge"
@@ -55,7 +55,7 @@ type HudState = {
   SnapshotLink: string
   showSnapshotModal: boolean
   showFatalErrorModal: ShowFatalErrorModal
-  snapshotHiglight: SnapshotHiglight | null
+  snapshotHighlight: SnapshotHighlight | null
 }
 
 type NewSnapshotResponse = {
@@ -115,7 +115,7 @@ class HUD extends Component<HudProps, HudState> {
       SnapshotLink: "",
       showSnapshotModal: false,
       showFatalErrorModal: ShowFatalErrorModal.Default,
-      snapshotHiglight: null,
+      snapshotHighlight: null,
     }
 
     this.toggleSidebar = this.toggleSidebar.bind(this)
@@ -164,7 +164,7 @@ class HUD extends Component<HudProps, HudState> {
     let url = `//${window.location.host}/api/snapshot/new`
     let sanitizedSnapshot = cleanStateForSnapshotPOST(snapshot)
     sanitizedSnapshot.path = this.props.history.location.pathname
-    sanitizedSnapshot.snapshotHighlight = this.state.snapshotHiglight
+    sanitizedSnapshot.snapshotHighlight = this.state.snapshotHighlight
     fetch(url, {
       method: "post",
       body: JSON.stringify(sanitizedSnapshot),
@@ -197,15 +197,15 @@ class HUD extends Component<HudProps, HudState> {
     return new Features({})
   }
 
-  handleSetHighlight(highlight: SnapshotHiglight) {
+  handleSetHighlight(highlight: SnapshotHighlight) {
     this.setState({
-      snapshotHiglight: highlight,
+      snapshotHighlight: highlight,
     })
   }
 
   handleClearHighlight() {
     this.setState({
-      snapshotHiglight: null,
+      snapshotHighlight: null,
     })
   }
 
@@ -269,7 +269,7 @@ class HUD extends Component<HudProps, HudState> {
               showSnapshotButton={showSnapshot}
               snapshotOwner={snapshotOwner}
               handleOpenModal={handleOpenModal}
-              highlight={this.state.snapshotHiglight}
+              highlight={this.state.snapshotHighlight}
             />
           )
         }
@@ -290,7 +290,7 @@ class HUD extends Component<HudProps, HudState> {
           showSnapshotButton={showSnapshot}
           snapshotOwner={snapshotOwner}
           handleOpenModal={handleOpenModal}
-          highlight={this.state.snapshotHiglight}
+          highlight={this.state.snapshotHighlight}
         />
       )
     }
@@ -325,9 +325,10 @@ class HUD extends Component<HudProps, HudState> {
             log={logs}
             isExpanded={isSidebarClosed}
             handleSetHighlight={this.handleSetHighlight}
-            handleClearHiglight={this.handleClearHighlight}
-            highlight={this.state.snapshotHiglight}
+            handleClearHighlight={this.handleClearHighlight}
+            highlight={this.state.snapshotHighlight}
             highlightsEnabled={highlightsEnabled}
+            modalIsOpen={this.state.showSnapshotModal}
           />
         </>
       )
@@ -419,9 +420,10 @@ class HUD extends Component<HudProps, HudState> {
                 log={combinedLog}
                 isExpanded={isSidebarClosed}
                 handleSetHighlight={this.handleSetHighlight}
-                handleClearHiglight={this.handleClearHighlight}
-                highlight={this.state.snapshotHiglight}
+                handleClearHighlight={this.handleClearHighlight}
+                highlight={this.state.snapshotHighlight}
                 highlightsEnabled={highlightsEnabled}
+                modalIsOpen={this.state.showSnapshotModal}
               />
             )}
           />
@@ -460,6 +462,12 @@ class HUD extends Component<HudProps, HudState> {
     let tiltCloudUsername = (view && view.TiltCloudUsername) || null
     let tiltCloudSchemeHost = (view && view.TiltCloudSchemeHost) || ""
     let tiltCloudTeamID = (view && view.TiltCloudTeamID) || null
+    let highlightedLines = this.state.snapshotHighlight
+      ? Math.abs(
+          parseInt(this.state.snapshotHighlight.endingLogID, 10) -
+            parseInt(this.state.snapshotHighlight.beginningLogID, 10)
+        ) + 1
+      : null
     return (
       <ShareSnapshotModal
         handleSendSnapshot={handleSendSnapshot}
@@ -469,6 +477,7 @@ class HUD extends Component<HudProps, HudState> {
         tiltCloudSchemeHost={tiltCloudSchemeHost}
         tiltCloudTeamID={tiltCloudTeamID}
         isOpen={this.state.showSnapshotModal}
+        highlightedLines={highlightedLines}
       />
     )
   }

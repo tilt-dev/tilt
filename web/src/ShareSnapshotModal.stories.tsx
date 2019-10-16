@@ -19,6 +19,7 @@ let signedOut = () => {
       tiltCloudSchemeHost={"https://cloud.tilt.dev"}
       tiltCloudTeamID={""}
       isOpen={true}
+      highlightedLines={null}
     />
   )
 }
@@ -33,6 +34,7 @@ let signedIn = () => {
       tiltCloudSchemeHost={"https://cloud.tilt.dev"}
       tiltCloudTeamID={""}
       isOpen={true}
+      highlightedLines={null}
     />
   )
 }
@@ -47,6 +49,7 @@ let withUrl = () => {
       tiltCloudSchemeHost={"https://cloud.tilt.dev"}
       tiltCloudTeamID={""}
       isOpen={true}
+      highlightedLines={null}
     />
   )
 }
@@ -63,6 +66,7 @@ let withUrlOverflow = () => {
       tiltCloudSchemeHost={"https://cloud.tilt.dev"}
       tiltCloudTeamID={""}
       isOpen={true}
+      highlightedLines={null}
     />
   )
 }
@@ -77,6 +81,7 @@ let withTeam = () => {
       tiltCloudSchemeHost={"https://cloud.tilt.dev"}
       tiltCloudTeamID={"3e8e3af3-52e7-4f86-9006-9b1cce9ec85d"}
       isOpen={true}
+      highlightedLines={null}
     />
   )
 }

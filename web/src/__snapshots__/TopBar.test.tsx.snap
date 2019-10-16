@@ -36,12 +36,14 @@ exports[`shows snapshot owner 1`] = `
   <section
     className="TopBar-tools"
   >
-    <section
-      className="TopBar-snapshotUrlWrap"
+    <p
+      className="TopBar-snapshotOwner"
     >
       Snapshot shared by 
-      foo
-    </section>
+      <strong>
+        foo
+      </strong>
+    </p>
   </section>
 </div>
 `;
@@ -82,25 +84,21 @@ exports[`shows snapshot url 1`] = `
   <section
     className="TopBar-tools"
   >
-    <section
-      className="TopBar-snapshotUrlWrap"
+    <button
+      className="TopBar-snapshotButton "
+      onClick={[Function]}
     >
-      <button
-        className="TopBar-snapshotButton "
-        onClick={[Function]}
+      <svg
+        className="TopBar-snapshotSvg"
       >
-        <svg
-          className="TopBar-snapshotSvg"
-        >
-          snapshot.svg
-        </svg>
-        <span>
-          Create a 
-          <br />
-          Snapshot
-        </span>
-      </button>
-    </section>
+        snapshot.svg
+      </svg>
+      <span>
+        Create a 
+        <br />
+        Snapshot
+      </span>
+    </button>
   </section>
 </div>
 `;

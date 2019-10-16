@@ -1,5 +1,5 @@
 import React, { PureComponent } from "react"
-import { ResourceView, SnapshotHiglight } from "./types"
+import { ResourceView, SnapshotHighlight } from "./types"
 import { ReactComponent as SnapshotSvg } from "./assets/svg/snapshot.svg"
 import "./TopBar.scss"
 import TabNav from "./TabNav"
@@ -12,7 +12,7 @@ type TopBarProps = {
   showSnapshotButton: boolean
   snapshotOwner: string | null
   handleOpenModal: () => void
-  highlight: SnapshotHiglight | null
+  highlight: SnapshotHighlight | null
 }
 
 class TopBar extends PureComponent<TopBarProps> {
@@ -37,32 +37,26 @@ class TopBar extends PureComponent<TopBarProps> {
   renderSnapshotModal() {
     let highlight = this.props.highlight
     return (
-      <section className="TopBar-snapshotUrlWrap">
-        <button
-          onClick={this.props.handleOpenModal}
-          className={`TopBar-snapshotButton ${
-            highlight ? "isHighlighted" : ""
-          }`}
-        >
-          <SnapshotSvg className="TopBar-snapshotSvg" />
-          <span>
-            Create a <br />
-            Snapshot
-          </span>
-        </button>
-      </section>
+      <button
+        onClick={this.props.handleOpenModal}
+        className={`TopBar-snapshotButton ${highlight ? "isHighlighted" : ""}`}
+      >
+        <SnapshotSvg className="TopBar-snapshotSvg" />
+        <span>
+          Create a <br />
+          Snapshot
+        </span>
+      </button>
     )
   }
 
   renderSnapshotOwner() {
     if (this.props.snapshotOwner) {
       return (
-        <section className="TopBar-snapshotUrlWrap">
-          Snapshot shared by {this.props.snapshotOwner}
-        </section>
+        <p className="TopBar-snapshotOwner">
+          Snapshot shared by <strong>{this.props.snapshotOwner}</strong>
+        </p>
       )
-    } else {
-      return null
     }
   }
 }

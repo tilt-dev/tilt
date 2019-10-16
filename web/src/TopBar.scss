@@ -24,13 +24,6 @@
   justify-content: flex-end;
 }
 
-.TopBar-snapshotUrlWrap {
-  flex: 1;
-  display: flex;
-  justify-content: flex-end;
-}
-
-
 .TopBar-snapshotButton {
   border: 1px solid transparent;
   font-family: $font-sans-serif;
@@ -47,32 +40,25 @@
   transition: border-color;
   transition-duration: $animation-timing;
 }
-
+.TopBar-snapshotButton:hover {
+  cursor: pointer;
+  background-color: $color-gray-dark;
+  border-color: $color-blue-light;
+}
 .TopBar-snapshotButton span {
   text-align: left;
 }
-
 .TopBar-snapshotButton.isHighlighted {
   border-color: $color-blue-light;
 }
-
 .TopBar-snapshotSvg {
   width: 18px;
   height: auto;
   margin-right: $spacing-unit / 3;
 }
-
-.TopBar-snapshotUrlWrap button:hover {
-  cursor: pointer;
-  background-color: $color-gray-dark;
-  border-color: $color-blue-light;
+.TopBar-snapshotOwner {
+  font-family: $font-sans-serif;
+  font-size: $font-size-small;
+  color: $color-gray-lightest;
+  margin-right: $spacing-unit / 2;
 }
-
-.TopBar-snapshotUrl {
-  background-color: $color-gray-dark;
-  border: 1px solid $color-gray-darkest;
-  padding-left: $spacing-unit / 2;
-  padding-right: $spacing-unit / 2;
-  user-select: all;
-}
-

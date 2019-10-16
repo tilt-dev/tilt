@@ -4,6 +4,7 @@ import "./ShareSnapshotModal.scss"
 import cookies from "js-cookie"
 import intro from "./assets/png/share-snapshot-intro.png"
 import { ReactComponent as ArrowSvg } from "./assets/svg/arrow.svg"
+import { SnapshotHighlight } from "./types"
 
 type props = {
   handleSendSnapshot: () => void
@@ -13,6 +14,7 @@ type props = {
   tiltCloudSchemeHost: string
   tiltCloudTeamID: string | null
   isOpen: boolean
+  highlightedLines: number | null
 }
 
 export default class ShareSnapshotModal extends PureComponent<props> {
@@ -41,10 +43,11 @@ export default class ShareSnapshotModal extends PureComponent<props> {
       return (
         <section className="ShareSnapshotModal-shareLinkWrap">
           {this.renderShareLink()}
-          {this.renderLoginState()}
+          {this.renderShareLinkInfo()}
         </section>
       )
     }
+
     return (
       <section>
         {this.renderIntro()}
@@ -149,11 +152,19 @@ export default class ShareSnapshotModal extends PureComponent<props> {
     )
   }
 
-  renderLoginState() {
+  renderShareLinkInfo() {
+    let lines = this.props.highlightedLines
     return (
-      <p className="ShareSnapshotModal-loginState">
-        Sharing as <strong>{this.props.tiltCloudUsername}</strong>
-      </p>
+      <section className="ShareSnapshotModal-shareLinkInfo">
+        <p className="ShareSnapshotModal-loginState">
+          Sharing as <strong>{this.props.tiltCloudUsername}</strong>
+        </p>
+        {lines && (
+          <p>
+            {lines} Line{lines > 1 ? "s" : ""} Highlighted
+          </p>
+        )}
+      </section>
     )
   }
 

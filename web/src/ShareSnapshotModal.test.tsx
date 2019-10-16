@@ -30,6 +30,7 @@ describe("ShareSnapshotModal", () => {
           tiltCloudUsername={null}
           tiltCloudSchemeHost={"https://cloud.tilt.dev"}
           tiltCloudTeamID={null}
+          highlightedLines={null}
         />
       )
       .toJSON()
@@ -48,6 +49,7 @@ describe("ShareSnapshotModal", () => {
           tiltCloudUsername={"tacocat"}
           tiltCloudSchemeHost={"https://cloud.tilt.dev"}
           tiltCloudTeamID={null}
+          highlightedLines={null}
         />
       )
       .toJSON()
@@ -66,6 +68,7 @@ describe("ShareSnapshotModal", () => {
           tiltCloudUsername={null}
           tiltCloudSchemeHost={"https://cloud.tilt.dev"}
           tiltCloudTeamID={null}
+          highlightedLines={null}
         />
       )
       .toJSON()
@@ -84,6 +87,7 @@ describe("ShareSnapshotModal", () => {
           tiltCloudUsername={null}
           tiltCloudSchemeHost={"https://cloud.tilt.dev"}
           tiltCloudTeamID={null}
+          highlightedLines={null}
         />
       )
       .toJSON()
@@ -102,6 +106,7 @@ describe("ShareSnapshotModal", () => {
           tiltCloudUsername={"Hello"}
           tiltCloudSchemeHost={"https://cloud.tilt.dev"}
           tiltCloudTeamID={"abcdefg"}
+          highlightedLines={null}
         />
       )
       .toJSON()
