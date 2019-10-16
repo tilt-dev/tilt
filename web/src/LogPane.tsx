@@ -16,6 +16,7 @@ type LogPaneProps = {
   highlight: SnapshotHighlight | null
   highlightsEnabled: boolean
   modalIsOpen: boolean
+  name: string
 }
 type LogPaneState = {
   autoscroll: boolean
@@ -43,7 +44,6 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     if (this.lastElement !== null) {
       this.lastElement.scrollIntoView()
     }
-
     window.addEventListener("scroll", this.refreshAutoScroll, { passive: true })
     window.addEventListener("wheel", this.handleWheel, { passive: true })
     if (this.props.highlightsEnabled) {
@@ -53,22 +53,31 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     }
   }
 
-  componentDidUpdate() {
+  componentDidUpdate(prevProps: LogPaneProps) {
+    if (this.props.highlightsEnabled && this.props.modalIsOpen) {
+      document.removeEventListener(
+        "selectionchange",
+        this.handleSelectionChange
+      )
+    }
+
+    if (this.props.highlightsEnabled && prevProps.modalIsOpen && !this.props.modalIsOpen) {
+      document.addEventListener("selectionchange", this.handleSelectionChange, {
+        passive: true,
+      })
+    }
+
+    if (this.props.name !== prevProps.name) {
+      let selection = document.getSelection()
+      this.props.handleClearHighlight()
+      selection && selection.removeAllRanges()
+    }
+
     if (!this.state.autoscroll) {
       return
     }
     if (this.lastElement) {
       this.lastElement.scrollIntoView()
-    }
-    if (this.props.modalIsOpen) {
-      document.removeEventListener(
-        "selectionchange",
-        this.handleSelectionChange
-      )
-    } else if (this.props.highlightsEnabled) {
-      document.addEventListener("selectionchange", this.handleSelectionChange, {
-        passive: true,
-      })
     }
   }
 
