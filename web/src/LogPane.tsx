@@ -53,6 +53,40 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     }
   }
 
+  componentDidUpdate() {
+    if (!this.state.autoscroll) {
+      return
+    }
+    if (this.lastElement) {
+      this.lastElement.scrollIntoView()
+    }
+    if (this.props.modalIsOpen) {
+      document.removeEventListener(
+        "selectionchange",
+        this.handleSelectionChange
+      )
+    } else if (this.props.highlightsEnabled) {
+      document.addEventListener("selectionchange", this.handleSelectionChange, {
+        passive: true,
+      })
+    }
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("scroll", this.refreshAutoScroll)
+    window.removeEventListener("wheel", this.handleWheel)
+    if (this.rafID) {
+      clearTimeout(this.rafID)
+    }
+    if (this.props.highlightsEnabled) {
+      document.removeEventListener(
+        "selectionchange",
+        this.handleSelectionChange
+      )
+    }
+  }
+
+
   private handleSelectionChange() {
     let selection = document.getSelection()
     if (selection && selection.focusNode && selection.anchorNode) {
@@ -102,39 +136,6 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       return this.findLogLineID(el.parentElement)
     }
     return null
-  }
-
-  componentDidUpdate() {
-    if (!this.state.autoscroll) {
-      return
-    }
-    if (this.lastElement) {
-      this.lastElement.scrollIntoView()
-    }
-    if (this.props.modalIsOpen) {
-      document.removeEventListener(
-        "selectionchange",
-        this.handleSelectionChange
-      )
-    } else if (this.props.highlightsEnabled) {
-      document.addEventListener("selectionchange", this.handleSelectionChange, {
-        passive: true,
-      })
-    }
-  }
-
-  componentWillUnmount() {
-    window.removeEventListener("scroll", this.refreshAutoScroll)
-    window.removeEventListener("wheel", this.handleWheel)
-    if (this.rafID) {
-      clearTimeout(this.rafID)
-    }
-    if (this.props.highlightsEnabled) {
-      document.removeEventListener(
-        "selectionchange",
-        this.handleSelectionChange
-      )
-    }
   }
 
   private handleWheel(event: WheelEvent) {
