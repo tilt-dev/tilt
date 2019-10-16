@@ -36,7 +36,7 @@ func TestOneUpdate(t *testing.T) {
 	if assert.Equal(t, 1, len(requests)) {
 		body, err := ioutil.ReadAll(requests[0].Body)
 		assert.NoError(t, err)
-		expected := `{"team_id":{"id":"fake-team"},"updates":[{"service":{"name":"sancho"},"start_time":{"seconds":449884800},"duration":{"seconds":60},"is_live_update":false,"result":0,"result_description":""}]}
+		expected := `{"team_id":{"id":"fake-team"},"updates":[{"service":{"name":"sancho"},"start_time":"1984-04-04T00:00:00Z","duration":"1m0s","is_live_update":false,"result":0,"result_description":""}]}
 `
 		assert.Equal(t, expected, string(body))
 	}
