@@ -54,23 +54,6 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
   }
 
   componentDidUpdate(prevProps: LogPaneProps) {
-    if (this.props.highlightsEnabled && this.props.modalIsOpen) {
-      document.removeEventListener(
-        "selectionchange",
-        this.handleSelectionChange
-      )
-    }
-
-    if (
-      this.props.highlightsEnabled &&
-      prevProps.modalIsOpen &&
-      !this.props.modalIsOpen
-    ) {
-      document.addEventListener("selectionchange", this.handleSelectionChange, {
-        passive: true,
-      })
-    }
-
     if (!this.state.autoscroll) {
       return
     }
@@ -95,7 +78,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 
   private handleSelectionChange() {
     let selection = document.getSelection()
-    if (selection && selection.focusNode && selection.anchorNode) {
+    if (selection && selection.focusNode && selection.anchorNode && !this.props.modalIsOpen) {
       let node = ReactDOM.findDOMNode(this)
       let beginning = selection.focusNode
       let end = selection.anchorNode
