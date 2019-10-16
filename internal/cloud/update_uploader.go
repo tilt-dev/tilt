@@ -4,12 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"time"
-
-	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/duration"
-	"github.com/golang/protobuf/ptypes/timestamp"
 
 	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/store"
@@ -39,10 +36,10 @@ type updateServiceSpec struct {
 }
 
 type update struct {
-	Service      updateServiceSpec    `json:"service"`
-	StartTime    *timestamp.Timestamp `json:"start_time"`
-	Duration     *duration.Duration   `json:"duration"`
-	IsLiveUpdate bool                 `json:"is_live_update"`
+	Service      updateServiceSpec `json:"service"`
+	StartTime    string            `json:"start_time"`
+	Duration     string            `json:"duration"`
+	IsLiveUpdate bool              `json:"is_live_update"`
 
 	// 0 = SUCCESS, 1 = FAILURE
 	Result            int    `json:"result"`
@@ -123,12 +120,6 @@ func (u *UpdateUploader) makeUpdates(st store.RStore) updateTask {
 				highWaterMark = record.FinishTime
 			}
 
-			startTime, err := ptypes.TimestampProto(record.StartTime)
-			if err != nil {
-				// Just silently ignore errors.
-				continue
-			}
-
 			resultCode := 0
 			resultDescription := ""
 			if record.Error != nil {
@@ -140,8 +131,8 @@ func (u *UpdateUploader) makeUpdates(st store.RStore) updateTask {
 				Service: updateServiceSpec{
 					Name: manifest.Name.String(),
 				},
-				StartTime:         startTime,
-				Duration:          ptypes.DurationProto(record.Duration()),
+				StartTime:         record.StartTime.Format(time.RFC3339),
+				Duration:          record.Duration().String(),
 				IsLiveUpdate:      record.HasBuildType(model.BuildTypeLiveUpdate),
 				Result:            resultCode,
 				ResultDescription: resultDescription,
@@ -182,6 +173,14 @@ func (u *UpdateUploader) sendUpdates(ctx context.Context, task updateTask) {
 	if err != nil {
 		logger.Get(ctx).Infof("Error sending updates: %v", err)
 		return
+	}
+	if response.StatusCode != http.StatusOK {
+		b, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			logger.Get(ctx).Infof("Error reading update-send response body: %v", err)
+			return
+		}
+		logger.Get(ctx).Infof("Error sending updates. status: %s. response: %s", response.Status, b)
 	}
 	defer func() {
 		_ = response.Body.Close()
