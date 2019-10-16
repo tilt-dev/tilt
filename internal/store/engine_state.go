@@ -230,7 +230,7 @@ func newBuildStatus() *BuildStatus {
 }
 
 func (s BuildStatus) IsEmpty() bool {
-	return len(s.PendingFileChanges) == 0 && s.LastSuccessfulResult.IsEmpty()
+	return len(s.PendingFileChanges) == 0 && s.LastSuccessfulResult == nil
 }
 
 type ManifestState struct {

@@ -794,9 +794,10 @@ func TestLiveUpdateWithRunFailureReturnsContainerIDs(t *testing.T) {
 
 	iTargID := manifest.ImageTargetAt(0).ID()
 	result := resultSet[iTargID]
-	require.False(t, result.IsEmpty(), "expected build result for image target %s", iTargID)
-	require.Len(t, result.LiveUpdatedContainerIDs, 1)
-	require.Equal(t, result.LiveUpdatedContainerIDs[0].String(), k8s.MagicTestContainerID)
+	res, ok := result.(store.LiveUpdateBuildResult)
+	require.True(t, ok, "expected build result for image target %s", iTargID)
+	require.Len(t, res.LiveUpdatedContainerIDs, 1)
+	require.Equal(t, res.LiveUpdatedContainerIDs[0].String(), k8s.MagicTestContainerID)
 
 	// LiveUpdate failed due to RunStepError, should NOT fall back to image build
 	assert.Equal(t, 0, f.docker.BuildCount, "expect no image build -> no docker build calls")

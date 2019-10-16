@@ -86,6 +86,6 @@ func (bd *LocalTargetBuildAndDeployer) run(ctx context.Context, c model.Cmd, wd 
 }
 
 func (bd *LocalTargetBuildAndDeployer) successfulBuildResult(t model.LocalTarget) store.BuildResultSet {
-	br := store.BuildResult{TargetID: t.ID()}
+	br := store.NewLocalBuildResult(t.ID())
 	return store.BuildResultSet{t.ID(): br}
 }

@@ -91,7 +91,8 @@ func TestDeployTwinImages(t *testing.T) {
 
 	id := manifest.ImageTargetAt(0).ID()
 	expectedImage := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
-	assert.Equal(t, expectedImage, result[id].Image.String())
+	image := store.ImageFromBuildResult(result[id])
+	assert.Equal(t, expectedImage, image.String())
 	assert.Equalf(t, 2, strings.Count(f.k8s.Yaml, expectedImage),
 		"Expected image to update twice in YAML: %s", f.k8s.Yaml)
 }
@@ -114,12 +115,14 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 	assert.Equal(t, 2, f.docker.BuildCount)
 
 	expectedSanchoRef := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
-	assert.Equal(t, expectedSanchoRef, result[iTarget1.ID()].Image.String())
+	image := store.ImageFromBuildResult(result[iTarget1.ID()])
+	assert.Equal(t, expectedSanchoRef, image.String())
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSanchoRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 
 	expectedSidecarRef := "gcr.io/some-project-162817/sancho-sidecar:tilt-11cd0b38bc3ceb95"
-	assert.Equal(t, expectedSidecarRef, result[iTarget2.ID()].Image.String())
+	image = store.ImageFromBuildResult(result[iTarget2.ID()])
+	assert.Equal(t, expectedSidecarRef, image.String())
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSidecarRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 }
@@ -144,12 +147,14 @@ func TestDeployPodWithMultipleLiveUpdateImages(t *testing.T) {
 	assert.Equal(t, 2, f.docker.BuildCount)
 
 	expectedSanchoRef := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
-	assert.Equal(t, expectedSanchoRef, result[iTarget1.ID()].Image.String())
+	image := store.ImageFromBuildResult(result[iTarget1.ID()])
+	assert.Equal(t, expectedSanchoRef, image.String())
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSanchoRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 
 	expectedSidecarRef := "gcr.io/some-project-162817/sancho-sidecar:tilt-11cd0b38bc3ceb95"
-	assert.Equal(t, expectedSidecarRef, result[iTarget2.ID()].Image.String())
+	image = store.ImageFromBuildResult(result[iTarget2.ID()])
+	assert.Equal(t, expectedSidecarRef, image.String())
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSidecarRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 
@@ -213,11 +218,10 @@ func TestImageIsDirtyAfterContainerBuild(t *testing.T) {
 
 	manifest := NewSanchoDockerBuildManifest(f)
 	iTargetID1 := manifest.ImageTargets[0].ID()
-	result1 := store.BuildResult{
-		TargetID:                iTargetID1,
-		Image:                   container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"),
-		LiveUpdatedContainerIDs: []container.ID{container.ID("12345")},
-	}
+	result1 := store.NewLiveUpdateBuildResult(
+		iTargetID1,
+		container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"),
+		[]container.ID{container.ID("12345")})
 
 	stateSet := store.BuildStateSet{
 		iTargetID1: store.NewBuildState(result1, []string{}),
@@ -403,7 +407,8 @@ func TestDeployUsesInjectRef(t *testing.T) {
 			var observedImages []string
 			for i := range manifest.ImageTargets {
 				id := manifest.ImageTargets[i].ID()
-				observedImages = append(observedImages, result[id].Image.Name())
+				image := store.ImageFromBuildResult(result[id])
+				observedImages = append(observedImages, image.Name())
 			}
 
 			assert.ElementsMatch(t, test.expectedImages, observedImages)
