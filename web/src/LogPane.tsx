@@ -78,7 +78,12 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 
   private handleSelectionChange() {
     let selection = document.getSelection()
-    if (selection && selection.focusNode && selection.anchorNode && !this.props.modalIsOpen) {
+    if (
+      selection &&
+      selection.focusNode &&
+      selection.anchorNode &&
+      !this.props.modalIsOpen
+    ) {
       let node = ReactDOM.findDOMNode(this)
       let beginning = selection.focusNode
       let end = selection.anchorNode

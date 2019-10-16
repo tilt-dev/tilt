@@ -90,7 +90,6 @@ class HUD extends Component<HudProps, HudState> {
       this.handleClearHighlight()
       let selection = document.getSelection()
       selection && selection.removeAllRanges()
-
     })
 
     this.state = {
