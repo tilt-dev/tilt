@@ -15,6 +15,7 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/token"
 	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 type UpdateUploader struct {
@@ -139,11 +140,9 @@ func (u *UpdateUploader) makeUpdates(st store.RStore) updateTask {
 				Service: updateServiceSpec{
 					Name: manifest.Name.String(),
 				},
-				StartTime: startTime,
-				Duration:  ptypes.DurationProto(record.Duration()),
-
-				// TODO(nick): Fill in is_live_update
-
+				StartTime:         startTime,
+				Duration:          ptypes.DurationProto(record.Duration()),
+				IsLiveUpdate:      record.HasBuildType(model.BuildTypeLiveUpdate),
 				Result:            resultCode,
 				ResultDescription: resultDescription,
 			})

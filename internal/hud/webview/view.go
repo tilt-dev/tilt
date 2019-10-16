@@ -82,13 +82,23 @@ func (LocalResourceInfo) RuntimeLog() model.Log { return model.NewLog("") }
 func (LocalResourceInfo) Status() string        { return "" }
 
 type BuildRecord struct {
-	model.BuildRecord
+	Edits          []string
+	Error          error
+	Warnings       []string
+	StartTime      time.Time
+	FinishTime     time.Time // IsZero() == true for in-progress builds
+	Log            model.Log
 	IsCrashRebuild bool
 }
 
 func ToWebViewBuildRecord(br model.BuildRecord) BuildRecord {
 	return BuildRecord{
-		BuildRecord:    br,
+		Edits:          br.Edits,
+		Error:          br.Error,
+		Warnings:       br.Warnings,
+		StartTime:      br.StartTime,
+		FinishTime:     br.FinishTime,
+		Log:            br.Log,
 		IsCrashRebuild: br.Reason.IsCrashOnly(),
 	}
 }
