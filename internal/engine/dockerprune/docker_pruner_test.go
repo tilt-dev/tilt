@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/go-units"
+
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -64,12 +66,12 @@ func TestPruneOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	logs := f.logs.String()
-	assert.Contains(t, logs, "[Docker Prune] removed 3 caches, reclaimed 3 bytes")
-	assert.Contains(t, logs, "- cacheC")
-	assert.Contains(t, logs, "[Docker Prune] removed 3 containers, reclaimed 3 bytes")
+	assert.Contains(t, logs, "[Docker Prune] removed 3 containers, reclaimed 3MB")
 	assert.Contains(t, logs, "- containerC")
-	assert.Contains(t, logs, "[Docker Prune] removed 3 images, reclaimed 6 bytes")
+	assert.Contains(t, logs, "[Docker Prune] removed 3 images, reclaimed 6MB")
 	assert.Contains(t, logs, "- deleted: build-id-2")
+	assert.Contains(t, logs, "[Docker Prune] removed 3 caches, reclaimed 3MB")
+	assert.Contains(t, logs, "- cacheC")
 }
 
 func TestPruneVersionTooLow(t *testing.T) {
@@ -343,7 +345,7 @@ func (dpf *dockerPruneFixture) withPruneOutput(caches, containers []string, numI
 
 	selectors := make([]container.RefSelector, numImages)
 	for i := 0; i < numImages; i++ {
-		_, ref := dpf.withImageInspect(i, i+1, 48*time.Hour) // make each image 2 days old (def older than maxAge)
+		_, ref := dpf.withImageInspect(i, units.MB*(i+1), 48*time.Hour) // make each image 2 days old (def older than maxAge)
 		selectors[i] = container.NameSelector(ref)
 	}
 	return dpf, selectors

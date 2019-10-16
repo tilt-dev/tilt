@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/go-units"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 
@@ -225,12 +227,12 @@ func (dp *DockerPruner) sufficientVersionError() error {
 }
 
 func prettyPrintImagesPruneReport(report types.ImagesPruneReport, l logger.Logger) {
-	// TODO: human-readable space reclaimed
 	if len(report.ImagesDeleted) == 0 && l.Level() < logger.DebugLvl {
 		return
 	}
 
-	l.Infof("[Docker Prune] removed %d images, reclaimed %d bytes", len(report.ImagesDeleted), report.SpaceReclaimed)
+	l.Infof("[Docker Prune] removed %d images, reclaimed %s",
+		len(report.ImagesDeleted), humanSize(report.SpaceReclaimed))
 	if len(report.ImagesDeleted) > 0 {
 		for _, img := range report.ImagesDeleted {
 			l.Debugf("\t- %s", prettyStringImgDeleteItem(img))
@@ -249,25 +251,29 @@ func prettyStringImgDeleteItem(img types.ImageDeleteResponseItem) string {
 }
 
 func prettyPrintCachePruneReport(report *types.BuildCachePruneReport, l logger.Logger) {
-	// TODO: human-readable space reclaimed
 	if len(report.CachesDeleted) == 0 && l.Level() < logger.DebugLvl {
 		return
 	}
 
-	l.Infof("[Docker Prune] removed %d caches, reclaimed %d bytes", len(report.CachesDeleted), report.SpaceReclaimed)
+	l.Infof("[Docker Prune] removed %d caches, reclaimed %s",
+		len(report.CachesDeleted), humanSize(report.SpaceReclaimed))
 	if len(report.CachesDeleted) > 0 {
 		l.Debugf(sliceutils.BulletedIndentedStringList(report.CachesDeleted))
 	}
 }
 
 func prettyPrintContainersPruneReport(report types.ContainersPruneReport, l logger.Logger) {
-	// TODO: human-readable space reclaimed
 	if len(report.ContainersDeleted) == 0 && l.Level() < logger.DebugLvl {
 		return
 	}
 
-	l.Infof("[Docker Prune] removed %d containers, reclaimed %d bytes", len(report.ContainersDeleted), report.SpaceReclaimed)
+	l.Infof("[Docker Prune] removed %d containers, reclaimed %s",
+		len(report.ContainersDeleted), humanSize(report.SpaceReclaimed))
 	if len(report.ContainersDeleted) > 0 {
 		l.Debugf(sliceutils.BulletedIndentedStringList(report.ContainersDeleted))
 	}
+}
+
+func humanSize(bytes uint64) string {
+	return units.HumanSize(float64(bytes))
 }
