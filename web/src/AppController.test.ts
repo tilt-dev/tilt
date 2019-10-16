@@ -46,4 +46,27 @@ describe("AppController", () => {
     expect(fakeSetHistoryLocation.mock.calls.length).toBe(1)
     expect(fakeSetHistoryLocation.mock.calls[0][0]).toBe("/snapshot/aaaaaa/foo")
   })
+
+  it("sets view and highlight from snapshot", async () => {
+    let snapshotHighlight = {
+      beginningLogID: "1",
+      endingLogID: "6",
+    }
+    fetchMock.mockResponse(
+      JSON.stringify({
+        View: { Resources: [] },
+        snapshotHighlight: snapshotHighlight,
+      })
+    )
+
+    let pb = new PathBuilder("/**/cloud.tilt.dev", "/snapshot/aaaaaa")
+    let ac = new AppController(pb, HUD)
+    ac.setStateFromSnapshot()
+
+    await flushPromises()
+    expect(fakeSetAppState.mock.calls.length).toBe(4)
+    expect(fakeSetAppState.mock.calls[3][0]).toStrictEqual({
+      snapshotHighlight: snapshotHighlight,
+    })
+  })
 })

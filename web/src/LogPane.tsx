@@ -17,6 +17,7 @@ type LogPaneProps = {
   highlightsEnabled: boolean
   modalIsOpen: boolean
 }
+
 type LogPaneState = {
   autoscroll: boolean
   lastWheelEventTimeMs: number
@@ -43,7 +44,6 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     if (this.lastElement !== null) {
       this.lastElement.scrollIntoView()
     }
-
     window.addEventListener("scroll", this.refreshAutoScroll, { passive: true })
     window.addEventListener("wheel", this.handleWheel, { passive: true })
     if (this.props.highlightsEnabled) {
@@ -53,9 +53,37 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     }
   }
 
+  componentDidUpdate(prevProps: LogPaneProps) {
+    if (!this.state.autoscroll) {
+      return
+    }
+    if (this.lastElement) {
+      this.lastElement.scrollIntoView()
+    }
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("scroll", this.refreshAutoScroll)
+    window.removeEventListener("wheel", this.handleWheel)
+    if (this.rafID) {
+      clearTimeout(this.rafID)
+    }
+    if (this.props.highlightsEnabled) {
+      document.removeEventListener(
+        "selectionchange",
+        this.handleSelectionChange
+      )
+    }
+  }
+
   private handleSelectionChange() {
     let selection = document.getSelection()
-    if (selection && selection.focusNode && selection.anchorNode) {
+    if (
+      selection &&
+      selection.focusNode &&
+      selection.anchorNode &&
+      !this.props.modalIsOpen
+    ) {
       let node = ReactDOM.findDOMNode(this)
       let beginning = selection.focusNode
       let end = selection.anchorNode
@@ -102,39 +130,6 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       return this.findLogLineID(el.parentElement)
     }
     return null
-  }
-
-  componentDidUpdate() {
-    if (!this.state.autoscroll) {
-      return
-    }
-    if (this.lastElement) {
-      this.lastElement.scrollIntoView()
-    }
-    if (this.props.modalIsOpen) {
-      document.removeEventListener(
-        "selectionchange",
-        this.handleSelectionChange
-      )
-    } else if (this.props.highlightsEnabled) {
-      document.addEventListener("selectionchange", this.handleSelectionChange, {
-        passive: true,
-      })
-    }
-  }
-
-  componentWillUnmount() {
-    window.removeEventListener("scroll", this.refreshAutoScroll)
-    window.removeEventListener("wheel", this.handleWheel)
-    if (this.rafID) {
-      clearTimeout(this.rafID)
-    }
-    if (this.props.highlightsEnabled) {
-      document.removeEventListener(
-        "selectionchange",
-        this.handleSelectionChange
-      )
-    }
   }
 
   private handleWheel(event: WheelEvent) {
