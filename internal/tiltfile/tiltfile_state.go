@@ -38,8 +38,7 @@ type tiltfileState struct {
 	// set at creation
 	ctx             context.Context
 	dcCli           dockercompose.DockerComposeClient
-	k8sContextExt   *k8scontext.Extension
-	dpExt           *dockerprune.Extension
+	k8sContextExt   k8scontext.Extension
 	privateRegistry container.Registry
 	features        feature.FeatureSet
 
@@ -105,15 +104,13 @@ const (
 func newTiltfileState(
 	ctx context.Context,
 	dcCli dockercompose.DockerComposeClient,
-	k8sContextExt *k8scontext.Extension,
-	dpExt *dockerprune.Extension,
+	k8sContextExt k8scontext.Extension,
 	privateRegistry container.Registry,
 	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
 		ctx:                        ctx,
 		dcCli:                      dcCli,
 		k8sContextExt:              k8sContextExt,
-		dpExt:                      dpExt,
 		privateRegistry:            privateRegistry,
 		buildIndex:                 newBuildIndex(),
 		k8sByName:                  make(map[string]*k8sResource),
@@ -151,40 +148,47 @@ func (s *tiltfileState) print(_ *starlark.Thread, msg string) {
 }
 
 // Load loads the Tiltfile in `filename`, and returns the manifests matching `matching`.
-func (s *tiltfileState) loadManifests(absFilename string, matching map[string]bool) ([]model.Manifest, error) {
+//
+// TODO(nick): Eventually this will just return a starkit.Model, which will contain
+// all the mutable state collected by execution.
+func (s *tiltfileState) loadManifests(absFilename string, matching map[string]bool) ([]model.Manifest, starkit.Model, error) {
 	s.logger.Infof("Beginning Tiltfile execution")
 
-	err := starkit.ExecFile(absFilename,
+	result, err := starkit.ExecFile(absFilename,
 		s,
 		include.IncludeFn{},
 		os.NewExtension(),
 		s.k8sContextExt,
-		s.dpExt,
+		dockerprune.NewExtension(),
 	)
 	if err != nil {
 		if err, ok := err.(*starlark.EvalError); ok {
-			return nil, errors.New(err.Backtrace())
+			return nil, starkit.Model{}, errors.New(err.Backtrace())
 		}
-		return nil, err
+		return nil, starkit.Model{}, err
 	}
 
 	resources, unresourced, err := s.assemble()
 	if err != nil {
-		return nil, err
+		return nil, starkit.Model{}, err
 	}
 
 	var manifests []model.Manifest
+	k8sContextState, err := k8scontext.GetState(result)
+	if err != nil {
+		return nil, starkit.Model{}, err
+	}
 
 	if len(resources.k8s) > 0 {
 		manifests, err = s.translateK8s(resources.k8s)
 		if err != nil {
-			return nil, err
+			return nil, starkit.Model{}, err
 		}
 
-		isAllowed := s.k8sContextExt.IsAllowed()
+		isAllowed := k8sContextState.IsAllowed()
 		if !isAllowed {
-			kubeContext := s.k8sContextExt.KubeContext()
-			return nil, fmt.Errorf(`Stop! %s might be production.
+			kubeContext := k8sContextState.KubeContext()
+			return nil, starkit.Model{}, fmt.Errorf(`Stop! %s might be production.
 If you're sure you want to deploy there, add:
 allow_k8s_contexts('%s')
 to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext, kubeContext)
@@ -192,35 +196,35 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 	} else {
 		manifests, err = s.translateDC(resources.dc)
 		if err != nil {
-			return nil, err
+			return nil, starkit.Model{}, err
 		}
 	}
 
 	err = s.checkForUnconsumedLiveUpdateSteps()
 	if err != nil {
-		return nil, err
+		return nil, starkit.Model{}, err
 	}
 
 	localManifests, err := s.translateLocal()
 	if err != nil {
-		return nil, err
+		return nil, starkit.Model{}, err
 	}
 	manifests = append(manifests, localManifests...)
 
 	manifests, err = match(manifests, matching)
 	if err != nil {
-		return nil, err
+		return nil, starkit.Model{}, err
 	}
 
 	yamlManifest := model.Manifest{}
 	if len(unresourced) > 0 {
 		yamlManifest, err = k8s.NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, unresourced)
 		if err != nil {
-			return nil, err
+			return nil, starkit.Model{}, err
 		}
 		manifests = append(manifests, yamlManifest)
 	}
-	return manifests, nil
+	return manifests, result, nil
 }
 
 // Builtin functions
@@ -353,9 +357,19 @@ type builtin func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.T
 // (none (e.g., docker-compose), local, or specified by `allow_k8s_contexts`)
 func (s *tiltfileState) potentiallyK8sUnsafeBuiltin(f builtin) builtin {
 	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		isAllowed := s.k8sContextExt.IsAllowed()
+		model, err := starkit.ModelFromThread(thread)
+		if err != nil {
+			return nil, err
+		}
+
+		k8sContextState, err := k8scontext.GetState(model)
+		if err != nil {
+			return nil, err
+		}
+
+		isAllowed := k8sContextState.IsAllowed()
 		if !isAllowed {
-			kubeContext := s.k8sContextExt.KubeContext()
+			kubeContext := k8sContextState.KubeContext()
 			return nil, fmt.Errorf(`Refusing to run '%s' because %s might be a production kube context.
 If you're sure you want to continue add:
 allow_k8s_contexts('%s')

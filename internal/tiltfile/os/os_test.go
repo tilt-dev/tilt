@@ -18,7 +18,7 @@ func TestEnviron(t *testing.T) {
 print(os.environ['FAKE_ENV_VARIABLE'])
 `)
 
-	err := f.ExecFile("Tiltfile")
+	_, err := f.ExecFile("Tiltfile")
 	assert.NoError(t, err)
 	assert.Equal(t, "fakeValue\n", f.PrintOutput())
 }

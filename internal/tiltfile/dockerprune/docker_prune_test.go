@@ -11,25 +11,23 @@ import (
 )
 
 func TestDockerPrune(t *testing.T) {
-	f, ext := NewFixture(t)
-
+	f := NewFixture(t)
 	f.File("Tiltfile", `
 docker_prune_settings(disable=True, max_age_mins=1)
 `)
-	err := f.ExecFile("Tiltfile")
+	result, err := f.ExecFile("Tiltfile")
 	assert.NoError(t, err)
-	assert.False(t, ext.Settings().Enabled)
-	assert.Equal(t, time.Minute, ext.Settings().MaxAge)
+	assert.False(t, MustState(result).Enabled)
+	assert.Equal(t, time.Minute, MustState(result).MaxAge)
 
 	f.File("Tiltfile.empty", `
 `)
-	err = f.ExecFile("Tiltfile.empty")
+	result, err = f.ExecFile("Tiltfile.empty")
 	assert.NoError(t, err)
-	assert.True(t, ext.Settings().Enabled)
-	assert.Equal(t, model.DockerPruneDefaultMaxAge, ext.Settings().MaxAge)
+	assert.True(t, MustState(result).Enabled)
+	assert.Equal(t, model.DockerPruneDefaultMaxAge, MustState(result).MaxAge)
 }
 
-func NewFixture(tb testing.TB) (*starkit.Fixture, *Extension) {
-	ext := NewExtension()
-	return starkit.NewFixture(tb, ext), ext
+func NewFixture(tb testing.TB) *starkit.Fixture {
+	return starkit.NewFixture(tb, NewExtension())
 }

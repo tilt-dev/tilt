@@ -36,7 +36,7 @@ func (f *Fixture) OnStart(e *Environment) error {
 	return nil
 }
 
-func (f *Fixture) ExecFile(name string) error {
+func (f *Fixture) ExecFile(name string) (Model, error) {
 	extensions := append([]Extension{f}, f.extensions...)
 	return ExecFile(filepath.Join(f.path, name), extensions...)
 }

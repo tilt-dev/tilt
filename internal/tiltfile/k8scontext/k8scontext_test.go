@@ -10,22 +10,20 @@ import (
 )
 
 func TestAllowK8sContext(t *testing.T) {
-	f, ext := NewFixture(t, "gke-blorg", k8s.EnvGKE)
-
+	f := NewFixture(t, "gke-blorg", k8s.EnvGKE)
 	f.File("Tiltfile", `
 allow_k8s_contexts('gke-blorg')
 `)
-	err := f.ExecFile("Tiltfile")
+	model, err := f.ExecFile("Tiltfile")
 	assert.NoError(t, err)
-	assert.Equal(t, []k8s.KubeContext{"gke-blorg"}, ext.allowedK8sContexts)
-	assert.True(t, ext.IsAllowed())
+	assert.Equal(t, []k8s.KubeContext{"gke-blorg"}, MustState(model).allowed)
+	assert.True(t, MustState(model).IsAllowed())
 
-	err = f.ExecFile("Tiltfile")
+	model, err = f.ExecFile("Tiltfile")
 	assert.NoError(t, err)
-	assert.Equal(t, []k8s.KubeContext{"gke-blorg"}, ext.allowedK8sContexts)
+	assert.Equal(t, []k8s.KubeContext{"gke-blorg"}, MustState(model).allowed)
 }
 
-func NewFixture(tb testing.TB, ctx k8s.KubeContext, env k8s.Env) (*starkit.Fixture, *Extension) {
-	ext := NewExtension(ctx, env)
-	return starkit.NewFixture(tb, ext), ext
+func NewFixture(tb testing.TB, ctx k8s.KubeContext, env k8s.Env) *starkit.Fixture {
+	return starkit.NewFixture(tb, NewExtension(ctx, env))
 }

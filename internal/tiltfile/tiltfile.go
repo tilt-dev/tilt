@@ -12,13 +12,12 @@ import (
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
-
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/ospath"
+	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
 	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
 	"github.com/windmilleng/tilt/internal/tiltfile/value"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -83,14 +82,13 @@ func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, matchi
 func ProvideTiltfileLoader(
 	analytics *analytics.TiltAnalytics,
 	kCli k8s.Client,
-	k8sContextExt *k8scontext.Extension,
+	k8sContextExt k8scontext.Extension,
 	dcCli dockercompose.DockerComposeClient,
 	fDefaults feature.Defaults) TiltfileLoader {
 	return tiltfileLoader{
 		analytics:     analytics,
 		kCli:          kCli,
 		k8sContextExt: k8sContextExt,
-		dpExt:         dockerprune.NewExtension(),
 		dcCli:         dcCli,
 		fDefaults:     fDefaults,
 	}
@@ -101,8 +99,7 @@ type tiltfileLoader struct {
 	kCli      k8s.Client
 	dcCli     dockercompose.DockerComposeClient
 
-	k8sContextExt *k8scontext.Extension
-	dpExt         *dockerprune.Extension
+	k8sContextExt k8scontext.Extension
 	fDefaults     feature.Defaults
 }
 
@@ -148,9 +145,9 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	tlr.TiltIgnoreContents = string(tiltIgnoreContents)
 
 	privateRegistry := tfl.kCli.PrivateRegistry(ctx)
-	s := newTiltfileState(ctx, tfl.dcCli, tfl.k8sContextExt, tfl.dpExt, privateRegistry, feature.FromDefaults(tfl.fDefaults))
+	s := newTiltfileState(ctx, tfl.dcCli, tfl.k8sContextExt, privateRegistry, feature.FromDefaults(tfl.fDefaults))
 
-	manifests, err := s.loadManifests(absFilename, matching)
+	manifests, result, err := s.loadManifests(absFilename, matching)
 	tlr.Secrets = s.extractSecrets()
 	tlr.ConfigFiles = s.configFiles
 	tlr.Warnings = s.warnings
@@ -158,7 +155,15 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	tlr.Error = err
 	tlr.Manifests = manifests
 	tlr.TeamName = s.teamName
-	tlr.DockerPruneSettings = tfl.dpExt.Settings()
+
+	dps, err := dockerprune.GetState(result)
+	if err != nil {
+		if tlr.Error == nil {
+			tlr.Error = err
+		}
+		return tlr
+	}
+	tlr.DockerPruneSettings = dps
 
 	printWarnings(s)
 	s.logger.Infof("Successfully loaded Tiltfile")
