@@ -86,6 +86,11 @@ class HUD extends Component<HudProps, HudState> {
     this.unlisten = this.history.listen((location, _) => {
       let tags = { type: pathToTag(location.pathname) }
       incr("ui.web.navigation", tags)
+
+      this.handleClearHighlight()
+      let selection = document.getSelection()
+      selection && selection.removeAllRanges()
+
     })
 
     this.state = {
@@ -329,7 +334,6 @@ class HUD extends Component<HudProps, HudState> {
             highlight={this.state.snapshotHighlight}
             highlightsEnabled={highlightsEnabled}
             modalIsOpen={this.state.showSnapshotModal}
-            name={name}
           />
         </>
       )
@@ -425,7 +429,6 @@ class HUD extends Component<HudProps, HudState> {
                 highlight={this.state.snapshotHighlight}
                 highlightsEnabled={highlightsEnabled}
                 modalIsOpen={this.state.showSnapshotModal}
-                name="/"
               />
             )}
           />

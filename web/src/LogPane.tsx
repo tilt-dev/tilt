@@ -16,8 +16,8 @@ type LogPaneProps = {
   highlight: SnapshotHighlight | null
   highlightsEnabled: boolean
   modalIsOpen: boolean
-  name: string
 }
+
 type LogPaneState = {
   autoscroll: boolean
   lastWheelEventTimeMs: number
@@ -69,12 +69,6 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       document.addEventListener("selectionchange", this.handleSelectionChange, {
         passive: true,
       })
-    }
-
-    if (this.props.name !== prevProps.name) {
-      let selection = document.getSelection()
-      this.props.handleClearHighlight()
-      selection && selection.removeAllRanges()
     }
 
     if (!this.state.autoscroll) {
