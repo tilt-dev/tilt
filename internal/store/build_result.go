@@ -13,26 +13,18 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
-type BuildType string
-
-const BuildTypeImage BuildType = "image"
-const BuildTypeLiveUpdate BuildType = "live-update"
-const BuildTypeDockerCompose BuildType = "docker-compose"
-const BuildTypeK8s BuildType = "k8s"
-const BuildTypeLocal BuildType = "local"
-
 // The results of a successful build.
 type BuildResult interface {
 	TargetID() model.TargetID
-	BuildType() BuildType
+	BuildType() model.BuildType
 }
 
 type LocalBuildResult struct {
 	id model.TargetID
 }
 
-func (r LocalBuildResult) TargetID() model.TargetID { return r.id }
-func (r LocalBuildResult) BuildType() BuildType     { return BuildTypeLocal }
+func (r LocalBuildResult) TargetID() model.TargetID   { return r.id }
+func (r LocalBuildResult) BuildType() model.BuildType { return model.BuildTypeLocal }
 
 func NewLocalBuildResult(id model.TargetID) LocalBuildResult {
 	return LocalBuildResult{
@@ -49,8 +41,8 @@ type ImageBuildResult struct {
 	Image reference.NamedTagged
 }
 
-func (r ImageBuildResult) TargetID() model.TargetID { return r.id }
-func (r ImageBuildResult) BuildType() BuildType     { return BuildTypeImage }
+func (r ImageBuildResult) TargetID() model.TargetID   { return r.id }
+func (r ImageBuildResult) BuildType() model.BuildType { return model.BuildTypeImage }
 
 // For image targets.
 func NewImageBuildResult(id model.TargetID, image reference.NamedTagged) ImageBuildResult {
@@ -73,8 +65,8 @@ type LiveUpdateBuildResult struct {
 	LiveUpdatedContainerIDs []container.ID
 }
 
-func (r LiveUpdateBuildResult) TargetID() model.TargetID { return r.id }
-func (r LiveUpdateBuildResult) BuildType() BuildType     { return BuildTypeLiveUpdate }
+func (r LiveUpdateBuildResult) TargetID() model.TargetID   { return r.id }
+func (r LiveUpdateBuildResult) BuildType() model.BuildType { return model.BuildTypeLiveUpdate }
 
 // For in-place container updates.
 func NewLiveUpdateBuildResult(id model.TargetID, image reference.NamedTagged, containerIDs []container.ID) LiveUpdateBuildResult {
@@ -97,8 +89,8 @@ type DockerComposeBuildResult struct {
 	DockerComposeContainerID container.ID
 }
 
-func (r DockerComposeBuildResult) TargetID() model.TargetID { return r.id }
-func (r DockerComposeBuildResult) BuildType() BuildType     { return BuildTypeDockerCompose }
+func (r DockerComposeBuildResult) TargetID() model.TargetID   { return r.id }
+func (r DockerComposeBuildResult) BuildType() model.BuildType { return model.BuildTypeDockerCompose }
 
 // For docker compose deploy targets.
 func NewDockerComposeDeployResult(id model.TargetID, containerID container.ID) DockerComposeBuildResult {
@@ -115,8 +107,8 @@ type K8sBuildResult struct {
 	DeployedUIDs []types.UID
 }
 
-func (r K8sBuildResult) TargetID() model.TargetID { return r.id }
-func (r K8sBuildResult) BuildType() BuildType     { return BuildTypeK8s }
+func (r K8sBuildResult) TargetID() model.TargetID   { return r.id }
+func (r K8sBuildResult) BuildType() model.BuildType { return model.BuildTypeK8s }
 
 // For kubernetes deploy targets.
 func NewK8sDeployResult(id model.TargetID, uids []types.UID) BuildResult {
@@ -169,6 +161,20 @@ func MergeBuildResultsSet(a, b BuildResultSet) BuildResultSet {
 		res[k] = v
 	}
 	return res
+}
+
+func (set BuildResultSet) BuildTypes() []model.BuildType {
+	btMap := make(map[model.BuildType]bool, len(set))
+	for _, br := range set {
+		if br != nil {
+			btMap[br.BuildType()] = true
+		}
+	}
+	result := make([]model.BuildType, 0, len(btMap))
+	for key := range btMap {
+		result = append(result, key)
+	}
+	return result
 }
 
 // Returns a container ID iff it's the only container ID in the result set.
@@ -275,7 +281,7 @@ func (b BuildState) HasImage() bool {
 // changed since then, then we can re-use the previous result.
 func (b BuildState) NeedsImageBuild() bool {
 	lastBuildWasImgBuild := b.LastResult != nil &&
-		b.LastResult.BuildType() == BuildTypeImage
+		b.LastResult.BuildType() == model.BuildTypeImage
 	return !lastBuildWasImgBuild || len(b.FilesChangedSet) > 0
 }
 

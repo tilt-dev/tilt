@@ -6,6 +6,14 @@ import (
 
 const BuildHistoryLimit = 2
 
+type BuildType string
+
+const BuildTypeImage BuildType = "image"
+const BuildTypeLiveUpdate BuildType = "live-update"
+const BuildTypeDockerCompose BuildType = "docker-compose"
+const BuildTypeK8s BuildType = "k8s"
+const BuildTypeLocal BuildType = "local"
+
 type BuildRecord struct {
 	Edits      []string
 	Error      error
@@ -14,6 +22,7 @@ type BuildRecord struct {
 	FinishTime time.Time // IsZero() == true for in-progress builds
 	Reason     BuildReason
 	Log        Log `testdiff:"ignore"`
+	BuildTypes []BuildType
 }
 
 func (bs BuildRecord) Empty() bool {
@@ -28,4 +37,13 @@ func (bs BuildRecord) Duration() time.Duration {
 		return time.Since(bs.StartTime)
 	}
 	return bs.FinishTime.Sub(bs.StartTime)
+}
+
+func (r BuildRecord) HasBuildType(bt BuildType) bool {
+	for _, el := range r.BuildTypes {
+		if el == bt {
+			return true
+		}
+	}
+	return false
 }

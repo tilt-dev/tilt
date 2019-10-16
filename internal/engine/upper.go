@@ -281,6 +281,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	bs := ms.CurrentBuild
 	bs.Error = err
 	bs.FinishTime = time.Now()
+	bs.BuildTypes = cb.Result.BuildTypes()
 	ms.AddCompletedBuild(bs)
 
 	ms.CurrentBuild = model.BuildRecord{}
