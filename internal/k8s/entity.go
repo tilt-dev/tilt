@@ -8,10 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/windmilleng/tilt/internal/kustomize"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+
+	"github.com/windmilleng/tilt/internal/kustomize"
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
