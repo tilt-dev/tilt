@@ -112,7 +112,7 @@ func (u *UpdateUploader) makeUpdates(st store.RStore) updateTask {
 		for _, record := range status.BuildHistory {
 			// The BuildHistory is stored most-recent first, so we can stop iterating
 			// as soon as we see one newer than the high-water mark.
-			if record.FinishTime.Before(u.lastFinishTime) {
+			if !record.FinishTime.After(u.lastFinishTime) {
 				break
 			}
 
