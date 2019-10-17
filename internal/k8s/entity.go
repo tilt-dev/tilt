@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/windmilleng/tilt/internal/kustomize"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -49,6 +50,22 @@ func (emptyMeta) SetNamespace(ns string)                      {}
 
 var _ k8sMeta = emptyMeta{}
 var _ k8sMeta = &metav1.ObjectMeta{}
+
+type entityList []K8sEntity
+
+func (l entityList) Len() int { return len(l) }
+func (l entityList) Less(i, j int) bool {
+	// Sort entities by the priority of their Kind
+	indexI := kustomize.TypeOrders[l[i].GVK().Kind]
+	indexJ := kustomize.TypeOrders[l[j].GVK().Kind]
+
+	if indexI != indexJ {
+		return indexI < indexJ
+	}
+	return i < j
+}
+
+func (l entityList) Swap(i, j int) { l[i], l[j] = l[j], l[i] }
 
 func (e K8sEntity) ToObjectReference() v1.ObjectReference {
 	meta := e.meta()

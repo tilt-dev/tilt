@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
+	"github.com/windmilleng/tilt/internal/kustomize"
 )
 
 func TestTypedPodGVK(t *testing.T) {
@@ -225,8 +226,8 @@ func TestSortedMutableAndImmutableEntities(t *testing.T) {
 		},
 		{"no explicitly sorted kinds are immutable",
 			// If any kinds in the explicit sort list are also immutable, things will get weird
-			orderFirst,
-			orderFirst,
+			kustomize.OrderFirst,
+			kustomize.OrderFirst,
 			[]string{},
 		},
 	} {
