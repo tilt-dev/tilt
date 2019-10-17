@@ -16,6 +16,7 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 )
@@ -55,31 +56,25 @@ func TestUpsertOrder(t *testing.T) {
 		t.FailNow()
 	}
 
-	// three different calls: one for namespace (withDependents), one for job (immutable), one for deployment (mutable)
-	if !assert.Equal(t, 3, len(f.runner.calls)) {
-		t.FailNow()
-	}
+	// two different calls: one for mutable entities (namespace, deployment),
+	// one for immutable (job)
+	require.Len(t, f.runner.calls, 2)
 
 	call0 := f.runner.calls[0]
-	assert.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, call0.argv, "expected args for call 0")
-	call0Entities := mustParseYAML(t, call0.stdin) // compare entities instead of strings because str > entity > string gets weird
-	if assert.Len(t, call0Entities, 1, "expect each 'apply' called on yaml for only one entity") {
-		assert.Equal(t, eNamespace, call0Entities[0], "expect call 0 to have applied namespace")
-	}
+	require.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, call0.argv, "expected args for call 0")
+
+	// compare entities instead of strings because str > entity > string gets weird
+	call0Entities := mustParseYAML(t, call0.stdin)
+	require.Len(t, call0Entities, 2, "expect two mutable entities applied")
+	require.Equal(t, eNamespace, call0Entities[0], "expect call 0 to have applied namespace first")
+	require.Equal(t, eDeploy, call0Entities[1], "expect call 0 to have applied deployment second")
 
 	call1 := f.runner.calls[1]
-	assert.Equal(t, []string{"replace", "-o", "yaml", "--force", "-f", "-"}, call1.argv, "expected args for call 1")
+	require.Equal(t, []string{"replace", "-o", "yaml", "--force", "-f", "-"}, call1.argv, "expected args for call 1")
 	call1Entities := mustParseYAML(t, call1.stdin)
-	if assert.Len(t, call1Entities, 1, "expect each 'apply' called on yaml for only one entity") {
-		assert.Equal(t, eJob, call1Entities[0], "expect call 1 to have applied job")
-	}
+	require.Len(t, call1Entities, 1, "expect only one immutable entity applied")
+	require.Equal(t, eJob, call1Entities[0], "expect call 1 to have applied job")
 
-	call2 := f.runner.calls[2]
-	assert.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, call2.argv, "expected args for call 2")
-	call2Entities := mustParseYAML(t, call2.stdin)
-	if assert.Len(t, call2Entities, 1, "expect each 'apply' called on yaml for only one entity") {
-		assert.Equal(t, eDeploy, call2Entities[0], "expect call 2 to have applied deployment")
-	}
 }
 
 func TestUpsertStatefulsetForbidden(t *testing.T) {
