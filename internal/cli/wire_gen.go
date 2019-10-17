@@ -39,7 +39,6 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
 	"github.com/windmilleng/tilt/internal/token"
-	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -150,8 +149,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 		return demo.Script{}, err
 	}
 	webVersion := provideWebVersion(tiltBuild)
-	modelWebDevPort := provideWebDevPort()
-	assetsServer, err := assets.ProvideAssetServer(ctx, webMode, webVersion, modelWebDevPort)
+	assetsServer, err := provideAssetServer(webMode, webVersion)
 	if err != nil {
 		return demo.Script{}, err
 	}
@@ -327,8 +325,7 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 		return Threads{}, err
 	}
 	webVersion := provideWebVersion(tiltBuild)
-	modelWebDevPort := provideWebDevPort()
-	assetsServer, err := assets.ProvideAssetServer(ctx, webMode, webVersion, modelWebDevPort)
+	assetsServer, err := provideAssetServer(webMode, webVersion)
 	if err != nil {
 		return Threads{}, err
 	}
@@ -553,8 +550,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
-	provideWebDevPort,
-	provideNoBrowserFlag, server.ProvideHeadsUpServer, assets.ProvideAssetServer, server.ProvideHeadsUpServerController, dirs.UseWindmillDir, token.GetOrCreateToken, provideThreads, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
+	provideNoBrowserFlag, server.ProvideHeadsUpServer, provideAssetServer, server.ProvideHeadsUpServerController, dirs.UseWindmillDir, token.GetOrCreateToken, provideThreads, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
 )
 
 type Threads struct {

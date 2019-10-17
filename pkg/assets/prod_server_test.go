@@ -83,7 +83,7 @@ func TestBuildUrlForReqWithVersionParamAndVersionPrefix(t *testing.T) {
 func TestSHARootUrlForReq(t *testing.T) {
 	// get a new version here
 	sha := "8bf2ea29eacff3a407272eb5631edbd1a14a0936"
-	s, err := newProdServer(testUrl, model.WebVersion(sha))
+	s, err := NewProdServer(testUrl, model.WebVersion(sha))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +97,7 @@ func TestSHARootUrlForReq(t *testing.T) {
 func TestSHAStaticUrlForReq(t *testing.T) {
 	// get a new version here
 	sha := "8bf2ea29eacff3a407272eb5631edbd1a14a0936"
-	s, err := newProdServer(testUrl, model.WebVersion(sha))
+	s, err := NewProdServer(testUrl, model.WebVersion(sha))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func TestSHAStaticUrlForReq(t *testing.T) {
 }
 
 func prodServerForTest(t *testing.T) prodServer {
-	s, err := newProdServer(testUrl, versionDefault)
+	s, err := NewProdServer(testUrl, versionDefault)
 	if err != nil {
 		t.Fatal(err)
 	}
