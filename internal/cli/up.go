@@ -14,6 +14,7 @@ import (
 	"k8s.io/klog"
 
 	"github.com/windmilleng/tilt/internal/engine"
+	"github.com/windmilleng/tilt/web"
 
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/hud"
@@ -22,6 +23,7 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tracer"
+	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
@@ -186,9 +188,6 @@ func provideWebPort() model.WebPort {
 func provideNoBrowserFlag() model.NoBrowser {
 	return model.NoBrowser(noBrowser)
 }
-func provideWebDevPort() model.WebDevPort {
-	return model.WebDevPort(webDevPort)
-}
 
 func provideWebURL(webPort model.WebPort) (model.WebURL, error) {
 	if webPort == 0 {
@@ -200,4 +199,23 @@ func provideWebURL(webPort model.WebPort) (model.WebURL, error) {
 		return model.WebURL{}, err
 	}
 	return model.WebURL(*u), nil
+}
+
+func provideAssetServer(mode model.WebMode, version model.WebVersion) (assets.Server, error) {
+	if mode == model.ProdWebMode {
+		return assets.NewProdServer(assets.ProdAssetBucket, version)
+	}
+	if mode == model.PrecompiledWebMode || mode == model.LocalWebMode {
+		path, err := web.StaticPath()
+		if err != nil {
+			return nil, err
+		}
+		pkgDir := assets.PackageDir(path)
+		if mode == model.PrecompiledWebMode {
+			return assets.NewPrecompiledServer(pkgDir), nil
+		} else {
+			return assets.NewDevServer(pkgDir, model.WebDevPort(webDevPort))
+		}
+	}
+	return nil, model.UnrecognizedWebModeError(string(mode))
 }

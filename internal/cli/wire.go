@@ -33,7 +33,6 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/token"
-	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -103,10 +102,9 @@ var BaseWireSet = wire.NewSet(
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
-	provideWebDevPort,
 	provideNoBrowserFlag,
 	server.ProvideHeadsUpServer,
-	assets.ProvideAssetServer,
+	provideAssetServer,
 	server.ProvideHeadsUpServerController,
 
 	dirs.UseWindmillDir,
