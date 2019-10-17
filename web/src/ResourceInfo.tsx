@@ -31,7 +31,13 @@ class ResourceInfo extends PureComponent<ResourceInfoProps> {
           Endpoint{endpoints.length > 1 ? "s" : ""}:
         </div>
         {endpoints.map(ep => (
-          <a className="resourceInfo-value" href={ep} target="_blank" key={ep}>
+          <a
+            className="resourceInfo-value"
+            href={ep}
+            target="_blank"
+            rel="noopener noreferrer"
+            key={ep}
+          >
             {ep}
           </a>
         ))}

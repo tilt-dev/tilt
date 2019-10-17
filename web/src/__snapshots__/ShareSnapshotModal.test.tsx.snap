@@ -103,6 +103,7 @@ exports[`ShareSnapshotModal renders team link 1`] = `
         <a
           className="ShareSnapshotModal-tiltCloudLink"
           href="https://cloud.tilt.dev/team/abcdefg/snapshots"
+          rel="noopener noreferrer"
           target="_blank"
         >
           <span>

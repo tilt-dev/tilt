@@ -4,7 +4,6 @@ import "./ShareSnapshotModal.scss"
 import cookies from "js-cookie"
 import intro from "./assets/png/share-snapshot-intro.png"
 import { ReactComponent as ArrowSvg } from "./assets/svg/arrow.svg"
-import { SnapshotHighlight } from "./types"
 
 type props = {
   handleSendSnapshot: () => void
@@ -191,9 +190,8 @@ export default class ShareSnapshotModal extends PureComponent<props> {
             View snapshots from your{" "}
             <a
               className="ShareSnapshotModal-tiltCloudLink"
-              href={`${this.props.tiltCloudSchemeHost}/team/${
-                this.props.tiltCloudTeamID
-              }/snapshots`}
+              rel="noopener noreferrer"
+              href={`${this.props.tiltCloudSchemeHost}/team/${this.props.tiltCloudTeamID}/snapshots`}
               target="_blank"
             >
               <span>team</span>
@@ -206,9 +204,7 @@ export default class ShareSnapshotModal extends PureComponent<props> {
   }
 
   static notifyTiltOfRegistration() {
-    let url = `${window.location.protocol}//${
-      window.location.host
-    }/api/user_started_tilt_cloud_registration`
+    let url = `${window.location.protocol}//${window.location.host}/api/user_started_tilt_cloud_registration`
     fetch(url, {
       method: "POST",
       headers: {

@@ -95,6 +95,11 @@ build-js:
 	cd web && yarn install
 	cd web && yarn build
 
+# Publish the JS to a directory on-disk,
+# so that we can link to it from other packages.
+build-staging-js:
+	cd web && yarn install && yarn build && yarn link
+
 test-js:
 	cd web && yarn install
 	cd web && CI=true yarn test
