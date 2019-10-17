@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"net"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -78,6 +79,17 @@ func (r *registryAsync) Registry(ctx context.Context) container.Registry {
 
 		portSpecs := svc.Spec.Ports
 		if len(portSpecs) == 0 {
+			return
+		}
+
+		// Check to make sure localhost resolves to an IPv4 address. If it doesn't,
+		// then we won't be able to connect to the registry. See:
+		// https://github.com/windmilleng/tilt/issues/2369
+		ips, err := net.LookupIP("localhost")
+		if err != nil || len(ips) == 0 || ips[0].To4() == nil {
+			logger.Get(ctx).Infof("WARNING: Your /etc/hosts is resolving localhost to ::1 (IPv6).\n" +
+				"This breaks the microk8s image registry.\n" +
+				"Please fix your /etc/hosts to default to IPv4. This will make image pushes much faster.")
 			return
 		}
 
