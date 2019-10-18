@@ -187,3 +187,58 @@ func TestFindImagesCopyFrom(t *testing.T) {
 		assert.Equal(t, "gcr.io/image-a", images[0].String())
 	}
 }
+
+func TestMaybeSyntaxFlag(t *testing.T) {
+	for _, test := range []struct {
+		name             string
+		inputDF          string
+		expectSyntaxFlag string
+	}{
+		{
+			"no syntax flag",
+			`FROM foo
+
+RUN bar
+ENTRYPOINT baz`,
+			"",
+		},
+		{
+			"has syntax flag",
+			`# syntax = blah
+FROM foo
+RUN bar
+ENTRYPOINT baz`,
+			"# syntax = blah",
+		},
+		{
+			// idk if this is legal but the code should support it for now
+			"syntax flag not at beginning",
+			`FROM foo
+RUN bar
+# syntax = blah
+ENTRYPOINT baz`,
+			"# syntax = blah",
+		},
+		{
+			"lots of spaces",
+			"#   syntax  =    stuff   and   things",
+			"#   syntax  =    stuff   and   things",
+		},
+		{
+			"comment that's not a syntax flag",
+			"# syntax is hard", // yes, yes it is.
+			"",
+		},
+		{
+			"RUN statement that's not a syntax flag",
+			"RUN echo '# syntax = blah'",
+			"",
+		},
+	} {
+		t.Run(string(test.name), func(t *testing.T) {
+			input := Dockerfile(test.inputDF)
+			syntaxFlagStr := input.MaybeSyntaxFlag().String()
+			assert.Equal(t, test.expectSyntaxFlag, syntaxFlagStr)
+		})
+	}
+}

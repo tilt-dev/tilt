@@ -3,6 +3,7 @@ package dockerfile
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/docker/distribution/reference"
@@ -15,7 +16,13 @@ import (
 var ErrAddInDockerfile = fmt.Errorf("base Dockerfile contains an ADD/COPY, " +
 	"which is not currently supported -- move this to an add() call in your Tiltfile")
 
+var SyntaxFlagRe = regexp.MustCompile(`^#\s*syntax\s*=.*`)
+
 type Dockerfile string
+
+func (d Dockerfile) Empty() bool {
+	return d.String() == ""
+}
 
 // DockerfileFromExisting creates a new Dockerfile that uses the supplied image
 // as its base image with a FROM statement. This is necessary for iterative
@@ -60,6 +67,17 @@ func (d Dockerfile) RmPaths(pathsToRm []string) Dockerfile {
 		rmCmd.WriteString(fmt.Sprintf(" %s", p))
 	}
 	return d.Join(fmt.Sprintf("RUN %s", rmCmd.String()))
+}
+
+// Pull out the `# syntax = docker/xxx` line, if one exists.
+func (d Dockerfile) MaybeSyntaxFlag() Dockerfile {
+	lines := strings.Split(d.String(), "\n")
+	for _, l := range lines {
+		if SyntaxFlagRe.MatchString(l) {
+			return Dockerfile(l)
+		}
+	}
+	return Dockerfile("")
 }
 
 func (d Dockerfile) traverse(visit func(node *parser.Node) error) error {
