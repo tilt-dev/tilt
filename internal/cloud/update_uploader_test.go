@@ -55,6 +55,20 @@ func TestTwoUpdates(t *testing.T) {
 	assert.Equal(t, 0, len(f.uu.makeUpdates(f.store).updates()))
 }
 
+func TestWatermark(t *testing.T) {
+	f := newUpdateFixture(t)
+	defer f.TearDown()
+
+	assert.Equal(t, 0, len(f.uu.makeUpdates(f.store).updates()))
+
+	f.AddCompletedBuild("sancho", nil)
+	f.AddCompletedBuild("sancho", nil)
+	assert.Equal(t, 2, len(f.uu.makeUpdates(f.store).updates()))
+
+	f.AddCompletedBuild("blorg", nil)
+	assert.Equal(t, 1, len(f.uu.makeUpdates(f.store).updates()))
+}
+
 type updateFixture struct {
 	*tempdir.TempDirFixture
 	ctx        context.Context
