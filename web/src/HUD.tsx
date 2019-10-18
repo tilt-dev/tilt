@@ -186,13 +186,6 @@ class HUD extends Component<HudProps, HudState> {
       .catch(err => console.error(err))
   }
 
-  highlightsEnabled(): boolean {
-    return (
-      !this.pathBuilder.isSnapshot() &&
-      this.getFeatures().isEnabled("snapshot_highlights")
-    )
-  }
-
   private getFeatures(): Features {
     if (this.state.View) {
       return new Features(this.state.View.FeatureFlags)
@@ -233,10 +226,6 @@ class HUD extends Component<HudProps, HudState> {
     if (this.pathBuilder.isSnapshot() && this.state.View) {
       snapshotOwner = this.state.View.TiltCloudUsername
     }
-
-    let highlightsEnabled =
-      !this.pathBuilder.isSnapshot() &&
-      this.getFeatures().isEnabled("snapshot_highlights")
 
     let sidebarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name = props.match.params.name
@@ -331,7 +320,6 @@ class HUD extends Component<HudProps, HudState> {
             handleSetHighlight={this.handleSetHighlight}
             handleClearHighlight={this.handleClearHighlight}
             highlight={this.state.snapshotHighlight}
-            highlightsEnabled={highlightsEnabled}
             modalIsOpen={this.state.showSnapshotModal}
           />
         </>
@@ -426,7 +414,6 @@ class HUD extends Component<HudProps, HudState> {
                 handleSetHighlight={this.handleSetHighlight}
                 handleClearHighlight={this.handleClearHighlight}
                 highlight={this.state.snapshotHighlight}
-                highlightsEnabled={highlightsEnabled}
                 modalIsOpen={this.state.showSnapshotModal}
               />
             )}

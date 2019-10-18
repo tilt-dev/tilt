@@ -14,7 +14,6 @@ type LogPaneProps = {
   handleSetHighlight: (highlight: SnapshotHighlight) => void
   handleClearHighlight: () => void
   highlight: SnapshotHighlight | null
-  highlightsEnabled: boolean
   modalIsOpen: boolean
 }
 
@@ -46,11 +45,9 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     }
     window.addEventListener("scroll", this.refreshAutoScroll, { passive: true })
     window.addEventListener("wheel", this.handleWheel, { passive: true })
-    if (this.props.highlightsEnabled) {
-      document.addEventListener("selectionchange", this.handleSelectionChange, {
-        passive: true,
-      })
-    }
+    document.addEventListener("selectionchange", this.handleSelectionChange, {
+      passive: true,
+    })
   }
 
   componentDidUpdate(prevProps: LogPaneProps) {
@@ -68,12 +65,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     if (this.rafID) {
       clearTimeout(this.rafID)
     }
-    if (this.props.highlightsEnabled) {
-      document.removeEventListener(
-        "selectionchange",
-        this.handleSelectionChange
-      )
-    }
+    document.removeEventListener("selectionchange", this.handleSelectionChange)
   }
 
   private handleSelectionChange() {
