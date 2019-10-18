@@ -42,7 +42,7 @@ describe("sidebar", () => {
 
   it("renders list of resources", () => {
     let items = twoResourceView().Resources.map((res: Resource) => {
-      res.BuildHistory[0].Error = ""
+      res.BuildHistory[0].Error = "error!"
       return new SidebarItem(res)
     })
     const tree = renderer

@@ -57,6 +57,7 @@ describe("getResourceAlerts", () => {
       {
         Log: "Build error log",
         FinishTime: "10:00AM",
+        Error: "build failed",
       },
       {
         Log: "Build error 2",
@@ -147,6 +148,7 @@ describe("getResourceAlerts", () => {
       {
         Log: "Build error log",
         FinishTime: "10:00AM",
+        Error: "build failed",
       },
       {
         Log: "Build error 2",
@@ -184,6 +186,7 @@ describe("getResourceAlerts", () => {
         IsCrashRebuild: true,
         Warnings: ["Hi I am a warning"],
         FinishTime: "10:00am",
+        Error: "build failed",
       },
     ]
     let actual = getResourceAlerts(r)
@@ -381,7 +384,6 @@ function k8sResource(): Resource {
       PodStatusMessage: "",
       PodRestarts: 0,
       PodLog: "",
-      Endpoints: [],
     },
     RuntimeStatus: "",
     TriggerMode: TriggerMode.TriggerModeAuto,
