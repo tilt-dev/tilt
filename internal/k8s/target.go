@@ -15,14 +15,15 @@ func NewTarget(
 	extraPodSelectors []labels.Selector,
 	dependencyIDs []model.TargetID,
 	refInjectCounts map[string]int) (model.K8sTarget, error) {
-	yaml, err := SerializeSpecYAML(entities)
+	sorted := SortedEntities(entities)
+	yaml, err := SerializeSpecYAML(sorted)
 	if err != nil {
 		return model.K8sTarget{}, err
 	}
 
 	// Use a min component count of 2 for computing names,
 	// so that the resource type appears
-	displayNames := UniqueNames(entities, 2)
+	displayNames := UniqueNames(sorted, 2)
 
 	return model.K8sTarget{
 		Name:              name,

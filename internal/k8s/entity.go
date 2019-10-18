@@ -65,8 +65,13 @@ func (l entityList) Less(i, j int) bool {
 	}
 	return i < j
 }
-
 func (l entityList) Swap(i, j int) { l[i], l[j] = l[j], l[i] }
+
+func SortedEntities(entities []K8sEntity) []K8sEntity {
+	entList := entityList(CopyEntities(entities))
+	sort.Sort(entList)
+	return []K8sEntity(entList)
+}
 
 func (e K8sEntity) ToObjectReference() v1.ObjectReference {
 	meta := e.meta()
@@ -216,6 +221,14 @@ func (e K8sEntity) ImmutableOnceCreated() bool {
 
 func (e K8sEntity) DeepCopy() K8sEntity {
 	return NewK8sEntity(e.Obj.DeepCopyObject())
+}
+
+func CopyEntities(entities []K8sEntity) []K8sEntity {
+	res := make([]K8sEntity, len(entities))
+	for i, e := range entities {
+		res[i] = e.DeepCopy()
+	}
+	return res
 }
 
 // SortedMutableAndImmutableEntities returns two lists of k8s entities: mutable ones (that can simply be
