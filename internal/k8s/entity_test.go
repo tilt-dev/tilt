@@ -7,8 +7,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
+	"github.com/windmilleng/tilt/internal/kustomize"
 )
 
 func TestTypedPodGVK(t *testing.T) {
@@ -189,60 +192,90 @@ func TestHasKind(t *testing.T) {
 	assert.True(t, svc.HasKind("service"))
 }
 
-func TestEntitiesWithDependenciesAndRest(t *testing.T) {
-	eDeploy := mustParseYAML(t, testyaml.DoggosDeploymentYaml)[0]
-	eService := mustParseYAML(t, testyaml.DoggosServiceYaml)[0]
-	eCRD := mustParseYAML(t, testyaml.CRDYAML)[0]
-	eNamespace := mustParseYAML(t, testyaml.MyNamespaceYAML)[0]
-
+func TestSortedMutableAndImmutableEntities(t *testing.T) {
 	for _, test := range []struct {
-		name                   string
-		input                  []K8sEntity
-		expectedWithDependents []K8sEntity
-		expectedRest           []K8sEntity
+		name                       string
+		inputKindOrder             []string
+		expectedMutableKindOrder   []string
+		expectedImmutableKindOrder []string
 	}{
-		{"one namespace",
-			[]K8sEntity{eDeploy, eNamespace, eService},
-			[]K8sEntity{eNamespace},
-			[]K8sEntity{eDeploy, eService},
-		},
-		{"one crd",
-			[]K8sEntity{eDeploy, eCRD, eService},
-			[]K8sEntity{eCRD},
-			[]K8sEntity{eDeploy, eService},
-		},
-		{"namespace and crd",
-			[]K8sEntity{eDeploy, eCRD, eService, eNamespace},
-			[]K8sEntity{eNamespace, eCRD},
-			[]K8sEntity{eDeploy, eService},
-		},
-		{"namespace and crd preserves order of rest",
-			[]K8sEntity{eService, eCRD, eDeploy, eNamespace},
-			[]K8sEntity{eNamespace, eCRD},
-			[]K8sEntity{eService, eDeploy},
-		},
-		{"none with dependents",
-			[]K8sEntity{eDeploy, eService},
-			nil,
-			[]K8sEntity{eDeploy, eService},
-		},
-		{"only with dependents",
-			[]K8sEntity{eNamespace, eCRD},
-			[]K8sEntity{eNamespace, eCRD},
-			nil,
-		},
 		{"namespace first",
-			[]K8sEntity{eCRD, eNamespace},
-			[]K8sEntity{eNamespace, eCRD},
-			nil,
+			[]string{"Deployment", "Namespace", "Service"},
+			[]string{"Namespace", "Service", "Deployment"},
+			[]string{},
+		},
+		{"preserve immutable order",
+			[]string{"Job", "Pod"},
+			[]string{},
+			[]string{"Job", "Pod"},
+		},
+		{"mutable and immutable",
+			[]string{"Deployment", "Job", "Namespace", "Pod", "Service"},
+			[]string{"Namespace", "Service", "Deployment"},
+			[]string{"Job", "Pod"},
+		},
+		{"persistent volumes",
+			[]string{"PersistentVolumeClaim", "PersistentVolume"},
+			[]string{"PersistentVolume", "PersistentVolumeClaim"},
+			[]string{},
+		},
+		{"preserve order of mutable kinds not explicitly named",
+			[]string{"custom1", "custom2", "Secret", "custom3", "ConfigMap"},
+			[]string{"ConfigMap", "Secret", "custom1", "custom2", "custom3"},
+			[]string{},
+		},
+		{"no explicitly sorted kinds are immutable",
+			// If any kinds in the explicit sort list are also immutable, things will get weird
+			kustomize.OrderFirst,
+			kustomize.OrderFirst,
+			[]string{},
 		},
 	} {
 		t.Run(string(test.name), func(t *testing.T) {
-			withDependents, rest := EntitiesWithDependentsAndRest(test.input)
-			assert.Equal(t, test.expectedWithDependents, withDependents)
-			assert.Equal(t, test.expectedRest, rest)
+			input := entitiesWithKinds(test.inputKindOrder)
+			mutable, immutable := SortedMutableAndImmutableEntities(input)
+			assertKindOrder(t, test.expectedMutableKindOrder, mutable, "mutable entities")
+			assertKindOrder(t, test.expectedImmutableKindOrder, immutable, "immutable entities")
 		})
 	}
+}
+
+func entitiesWithKinds(kinds []string) []K8sEntity {
+	entities := make([]K8sEntity, len(kinds))
+	for i, k := range kinds {
+		entities[i] = entityWithKind(k)
+	}
+	return entities
+}
+
+func entityWithKind(kind string) K8sEntity {
+	return K8sEntity{
+		Obj: fakeObject{
+			kind: fakeKind(kind),
+		},
+	}
+}
+
+type fakeObject struct {
+	kind fakeKind
+}
+
+func (obj fakeObject) GetObjectKind() schema.ObjectKind { return obj.kind }
+func (obj fakeObject) DeepCopyObject() runtime.Object   { return obj }
+
+type fakeKind string
+
+func (k fakeKind) SetGroupVersionKind(gvk schema.GroupVersionKind) { panic("unsupported") }
+func (k fakeKind) GroupVersionKind() schema.GroupVersionKind {
+	return schema.GroupVersionKind{Kind: string(k)}
+}
+
+func assertKindOrder(t *testing.T, expectedKinds []string, actual []K8sEntity, msg string) {
+	actualKinds := make([]string, len(expectedKinds))
+	for i, e := range actual {
+		actualKinds[i] = e.GVK().Kind
+	}
+	assert.Equal(t, expectedKinds, actualKinds, msg)
 }
 
 func parseYAMLFromStrings(yaml ...string) ([]K8sEntity, error) {

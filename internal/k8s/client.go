@@ -244,17 +244,16 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) ([]K8sEntit
 
 	result := make([]K8sEntity, 0, len(entities))
 
-	// First apply all the entities on which something else might depend
-	withDependents, entities := EntitiesWithDependentsAndRest(entities)
-	if len(withDependents) > 0 {
-		newEntities, err := k.applyEntitiesAndMaybeForce(ctx, withDependents)
+	mutable, immutable := SortedMutableAndImmutableEntities(entities)
+
+	if len(mutable) > 0 {
+		newEntities, err := k.applyEntitiesAndMaybeForce(ctx, mutable)
 		if err != nil {
 			return nil, err
 		}
 		result = append(result, newEntities...)
 	}
 
-	immutable := ImmutableEntities(entities)
 	if len(immutable) > 0 {
 		newEntities, err := k.forceReplaceEntities(ctx, immutable)
 		if err != nil {
@@ -263,14 +262,6 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) ([]K8sEntit
 		result = append(result, newEntities...)
 	}
 
-	mutable := MutableEntities(entities)
-	if len(mutable) > 0 {
-		newEntities, err := k.applyEntitiesAndMaybeForce(ctx, mutable)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, newEntities...)
-	}
 	return result, nil
 }
 

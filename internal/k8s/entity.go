@@ -4,12 +4,15 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+
+	"github.com/windmilleng/tilt/internal/kustomize"
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
@@ -48,6 +51,22 @@ func (emptyMeta) SetNamespace(ns string)                      {}
 
 var _ k8sMeta = emptyMeta{}
 var _ k8sMeta = &metav1.ObjectMeta{}
+
+type entityList []K8sEntity
+
+func (l entityList) Len() int { return len(l) }
+func (l entityList) Less(i, j int) bool {
+	// Sort entities by the priority of their Kind
+	indexI := kustomize.TypeOrders[l[i].GVK().Kind]
+	indexJ := kustomize.TypeOrders[l[j].GVK().Kind]
+
+	if indexI != indexJ {
+		return indexI < indexJ
+	}
+	return i < j
+}
+
+func (l entityList) Swap(i, j int) { l[i], l[j] = l[j], l[i] }
 
 func (e K8sEntity) ToObjectReference() v1.ObjectReference {
 	meta := e.meta()
@@ -199,25 +218,21 @@ func (e K8sEntity) DeepCopy() K8sEntity {
 	return NewK8sEntity(e.Obj.DeepCopyObject())
 }
 
-// EntitiesWithDependentsAndRest returns two lists of k8s entities: those that may have dependencies,
-// which we will therefore want to apply first (i.e. namespaces and CRDs -- e.g. trying to create a
-// pod in a nonexistent namespace causes an error); and the rest of the entities.
-func EntitiesWithDependentsAndRest(entities []K8sEntity) (withDependents, rest []K8sEntity) {
-	var ns []K8sEntity
-	var crd []K8sEntity
-
+// SortedMutableAndImmutableEntities returns two lists of k8s entities: mutable ones (that can simply be
+// `kubectl apply`'d), and immutable ones (such as jobs and pods, which will need to be `--force`'d).
+// The entities will be sorted such that entities on which others may depend will be applied first
+// (e.g. a PersistentVolumeClaim depends on the corresponding PersistentVolume, so apply the PV first).
+func SortedMutableAndImmutableEntities(entities entityList) (mutable, immutable []K8sEntity) {
+	sort.Sort(entities)
 	for _, e := range entities {
-		kind := e.GVK().Kind
-		if kind == "Namespace" {
-			ns = append(ns, e)
-		} else if kind == "CustomResourceDefinition" {
-			crd = append(crd, e)
-		} else {
-			rest = append(rest, e)
+		if e.ImmutableOnceCreated() {
+			immutable = append(immutable, e)
+			continue
 		}
+		mutable = append(mutable, e)
 	}
 
-	return append(ns, crd...), rest
+	return mutable, immutable
 }
 
 func ImmutableEntities(entities []K8sEntity) []K8sEntity {
