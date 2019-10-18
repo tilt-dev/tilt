@@ -1,5 +1,5 @@
 import { getResourceAlerts } from "./alerts"
-import {K8sResourceInfo, ShowFatalErrorModal} from "./types"
+import { K8sResourceInfo, ShowFatalErrorModal } from "./types"
 import PathBuilder from "./PathBuilder"
 
 interface HUDInt {
