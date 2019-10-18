@@ -3,6 +3,7 @@ package k8s
 import (
 	"bytes"
 	"context"
+	goruntime "runtime"
 	"testing"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -18,6 +19,11 @@ import (
 )
 
 func TestRegistryFound(t *testing.T) {
+	// microk8s is linux-only
+	if goruntime.GOOS != "linux" {
+		t.SkipNow()
+	}
+
 	cs := &fake.Clientset{}
 	cs.AddReactor("*", "*", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		return true, &v1.Service{
@@ -40,6 +46,11 @@ func TestRegistryFound(t *testing.T) {
 }
 
 func TestRegistryNotFound(t *testing.T) {
+	// microk8s is linux-only
+	if goruntime.GOOS != "linux" {
+		t.SkipNow()
+	}
+
 	cs := &fake.Clientset{}
 	cs.AddReactor("*", "*", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		return true, nil, errors.NewNotFound(schema.GroupResource{Group: "core/v1", Resource: "service"}, "registry")
