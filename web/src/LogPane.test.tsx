@@ -17,7 +17,6 @@ it("renders without crashing", () => {
       handleSetHighlight={fakeHandleSetHighlight}
       handleClearHighlight={fakeHandleClearHighlight}
       highlight={null}
-      highlightsEnabled={false}
       modalIsOpen={false}
     />,
     div
@@ -35,7 +34,6 @@ it("renders logs", () => {
         handleSetHighlight={fakeHandleSetHighlight}
         handleClearHighlight={fakeHandleClearHighlight}
         highlight={null}
-        highlightsEnabled={false}
         modalIsOpen={false}
       />
     )
@@ -383,7 +381,6 @@ it("renders logs with leading whitespace and ANSI codes", () => {
         handleSetHighlight={fakeHandleSetHighlight}
         handleClearHighlight={fakeHandleClearHighlight}
         highlight={null}
-        highlightsEnabled={false}
         modalIsOpen={false}
       />
     )
@@ -406,7 +403,6 @@ it("renders highlighted lines", () => {
         handleSetHighlight={fakeHandleSetHighlight}
         handleClearHighlight={fakeHandleClearHighlight}
         highlight={highlight}
-        highlightsEnabled={false}
         modalIsOpen={false}
       />
     )
