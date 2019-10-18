@@ -18,7 +18,7 @@ x = 1
 y = x // 0
 `)
 
-	err := f.ExecFile("Tiltfile")
+	_, err := f.ExecFile("Tiltfile")
 	if assert.Error(t, err) {
 		backtrace := err.(*starlark.EvalError).Backtrace()
 		assert.Contains(t, backtrace, fmt.Sprintf("%s/Tiltfile:2:1: in <toplevel>", f.Path()))

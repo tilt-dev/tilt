@@ -11,11 +11,12 @@ import (
 
 // The main entrypoint to starkit.
 // Execute a file with a set of starlark extensions.
-func ExecFile(path string, extensions ...Extension) error {
+func ExecFile(path string, extensions ...Extension) (Model, error) {
 	return newEnvironment(extensions...).start(path)
 }
 
 const argUnpackerKey = "starkit.ArgUnpacker"
+const modelKey = "starkit.Model"
 
 // Unpacks args, using the arg unpacker on the current thread.
 func UnpackArgs(t *starlark.Thread, fnName string, args starlark.Tuple, kwargs []starlark.Tuple, pairs ...interface{}) error {
@@ -109,16 +110,27 @@ func (e *Environment) SetFakeFileSystem(files map[string]string) {
 	e.fakeFileSystem = files
 }
 
-func (e *Environment) start(path string) error {
+func (e *Environment) start(path string) (Model, error) {
 	path, err := filepath.Abs(path)
 	if err != nil {
-		return errors.Wrap(err, "environment#start")
+		return Model{}, errors.Wrap(err, "environment#start")
+	}
+
+	model := NewModel()
+	for _, ext := range e.extensions {
+		sExt, isStateful := ext.(StatefulExtension)
+		if isStateful {
+			err := model.createInitState(sExt)
+			if err != nil {
+				return Model{}, err
+			}
+		}
 	}
 
 	for _, ext := range e.extensions {
 		err := ext.OnStart(e)
 		if err != nil {
-			return errors.Wrapf(err, "%T", ext)
+			return Model{}, errors.Wrapf(err, "%T", ext)
 		}
 	}
 
@@ -126,10 +138,11 @@ func (e *Environment) start(path string) error {
 		Print: e.print,
 		Load:  e.load,
 	}
-	t.SetLocal(argUnpackerKey, e)
+	t.SetLocal(argUnpackerKey, e.unpackArgs)
+	t.SetLocal(modelKey, model)
 
 	_, err = e.exec(t, path)
-	return err
+	return model, err
 }
 
 func (e *Environment) load(t *starlark.Thread, path string) (starlark.StringDict, error) {

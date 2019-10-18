@@ -13,23 +13,25 @@ import (
 
 // Implements functions for dealing with Docker Prune settings.
 type Extension struct {
-	settings model.DockerPruneSettings
 }
 
-func NewExtension() *Extension {
-	return &Extension{}
+func NewExtension() Extension {
+	return Extension{}
 }
 
-func (e *Extension) OnStart(env *starkit.Environment) error {
-	e.settings = model.DockerPruneSettings{
+func (e Extension) NewState() interface{} {
+	return model.DockerPruneSettings{
 		Enabled:  true,
 		MaxAge:   model.DockerPruneDefaultMaxAge,
 		Interval: model.DockerPruneDefaultInterval,
 	}
+}
+
+func (e Extension) OnStart(env *starkit.Environment) error {
 	return env.AddBuiltin("docker_prune_settings", e.dockerPruneSettings)
 }
 
-func (e *Extension) dockerPruneSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (e Extension) dockerPruneSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var disable bool
 	var intervalHrs, numBuilds, maxAgeMins int
 	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
@@ -45,18 +47,33 @@ func (e *Extension) dockerPruneSettings(thread *starlark.Thread, fn *starlark.Bu
 			"only one of `num_builds` and `interval_hrs`")
 	}
 
-	e.settings.Enabled = !disable
-	if maxAgeMins != 0 {
-		e.settings.MaxAge = time.Duration(maxAgeMins) * time.Minute
-	}
-	e.settings.NumBuilds = numBuilds
-	if intervalHrs != 0 {
-		e.settings.Interval = time.Duration(intervalHrs) * time.Hour
-	}
+	err := starkit.SetState(thread, func(settings model.DockerPruneSettings) model.DockerPruneSettings {
+		settings.Enabled = !disable
+		if maxAgeMins != 0 {
+			settings.MaxAge = time.Duration(maxAgeMins) * time.Minute
+		}
+		settings.NumBuilds = numBuilds
+		if intervalHrs != 0 {
+			settings.Interval = time.Duration(intervalHrs) * time.Hour
+		}
+		return settings
+	})
 
-	return starlark.None, nil
+	return starlark.None, err
 }
 
-func (e *Extension) Settings() model.DockerPruneSettings {
-	return e.settings
+var _ starkit.StatefulExtension = Extension{}
+
+func MustState(model starkit.Model) model.DockerPruneSettings {
+	state, err := GetState(model)
+	if err != nil {
+		panic(err)
+	}
+	return state
+}
+
+func GetState(m starkit.Model) (model.DockerPruneSettings, error) {
+	var state model.DockerPruneSettings
+	err := m.Load(&state)
+	return state, err
 }
