@@ -3,7 +3,6 @@ package dockerfile
 import (
 	"fmt"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/docker/distribution/reference"
@@ -15,8 +14,6 @@ import (
 
 var ErrAddInDockerfile = fmt.Errorf("base Dockerfile contains an ADD/COPY, " +
 	"which is not currently supported -- move this to an add() call in your Tiltfile")
-
-var SyntaxDirectiveRe = regexp.MustCompile(`^#\s*syntax\s*=.*`)
 
 type Dockerfile string
 
@@ -67,17 +64,6 @@ func (d Dockerfile) RmPaths(pathsToRm []string) Dockerfile {
 		rmCmd.WriteString(fmt.Sprintf(" %s", p))
 	}
 	return d.Join(fmt.Sprintf("RUN %s", rmCmd.String()))
-}
-
-// Pull out the `# syntax = docker/xxx` directive, if one exists.
-func (d Dockerfile) SyntaxDirective() Dockerfile {
-	lines := strings.Split(d.String(), "\n")
-	for _, l := range lines {
-		if SyntaxDirectiveRe.MatchString(l) {
-			return Dockerfile(l)
-		}
-	}
-	return Dockerfile("")
 }
 
 func (d Dockerfile) traverse(visit func(node *parser.Node) error) error {

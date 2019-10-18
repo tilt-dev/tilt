@@ -278,7 +278,8 @@ func TestMultiStageDockerBuildPreservesSyntaxDirective(t *testing.T) {
 FROM sancho-base
 ADD . .
 RUN go install github.com/windmilleng/sancho
-ENTRYPOINT /go/bin/sancho`,
+ENTRYPOINT /go/bin/sancho
+`,
 		BuildPath: f.JoinPath("sancho"),
 	}).WithDependencyIDs([]model.TargetID{baseImage.ID()})
 
@@ -299,6 +300,7 @@ ENTRYPOINT /go/bin/sancho`,
 	expected := expectedFile{
 		Path: "Dockerfile",
 		Contents: `# syntax = docker/dockerfile:experimental
+
 FROM docker.io/library/sancho-base:tilt-11cd0b38bc3ceb95
 ADD . .
 RUN go install github.com/windmilleng/sancho

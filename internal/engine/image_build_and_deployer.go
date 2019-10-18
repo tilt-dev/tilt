@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
-	"strings"
 	"time"
 
 	"github.com/docker/distribution/reference"
@@ -390,13 +389,6 @@ func injectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.Tar
 	newDf, err := ast.Print()
 	if err != nil {
 		return model.ImageTarget{}, errors.Wrap(err, "injectImageDependencies")
-	}
-
-	// HACK(maia): until buildkit/parse supports `# syntax = ` directives, check whether the original
-	// DF has one and append it to the beginning of the new DF
-	syntaxDirective := df.SyntaxDirective()
-	if !syntaxDirective.Empty() {
-		newDf = syntaxDirective.Join(strings.TrimLeft(newDf.String(), " \n"))
 	}
 
 	switch bd := iTarget.BuildDetails.(type) {
