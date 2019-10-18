@@ -263,7 +263,7 @@ ENTRYPOINT /go/bin/sancho
 	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
 }
 
-func TestMultiStageDockerBuildPreservesSyntaxFlag(t *testing.T) {
+func TestMultiStageDockerBuildPreservesSyntaxDirective(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 

@@ -188,14 +188,14 @@ func TestFindImagesCopyFrom(t *testing.T) {
 	}
 }
 
-func TestMaybeSyntaxFlag(t *testing.T) {
+func TestSyntaxDirective(t *testing.T) {
 	for _, test := range []struct {
-		name             string
-		inputDF          string
-		expectSyntaxFlag string
+		name                  string
+		inputDF               string
+		expectSyntaxDirective string
 	}{
 		{
-			"no syntax flag",
+			"no syntax directive",
 			`FROM foo
 
 RUN bar
@@ -203,7 +203,7 @@ ENTRYPOINT baz`,
 			"",
 		},
 		{
-			"has syntax flag",
+			"has syntax directive",
 			`# syntax = blah
 FROM foo
 RUN bar
@@ -212,7 +212,7 @@ ENTRYPOINT baz`,
 		},
 		{
 			// idk if this is legal but the code should support it for now
-			"syntax flag not at beginning",
+			"syntax directive not at beginning",
 			`FROM foo
 RUN bar
 # syntax = blah
@@ -225,20 +225,20 @@ ENTRYPOINT baz`,
 			"#   syntax  =    stuff   and   things",
 		},
 		{
-			"comment that's not a syntax flag",
+			"comment that's not a syntax directive",
 			"# syntax is hard", // yes, yes it is.
 			"",
 		},
 		{
-			"RUN statement that's not a syntax flag",
+			"RUN statement that's not a syntax directive",
 			"RUN echo '# syntax = blah'",
 			"",
 		},
 	} {
 		t.Run(string(test.name), func(t *testing.T) {
 			input := Dockerfile(test.inputDF)
-			syntaxFlagStr := input.MaybeSyntaxFlag().String()
-			assert.Equal(t, test.expectSyntaxFlag, syntaxFlagStr)
+			syntaxDir := input.SyntaxDirective().String()
+			assert.Equal(t, test.expectSyntaxDirective, syntaxDir)
 		})
 	}
 }

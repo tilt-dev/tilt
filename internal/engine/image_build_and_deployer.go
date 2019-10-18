@@ -392,11 +392,11 @@ func injectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.Tar
 		return model.ImageTarget{}, errors.Wrap(err, "injectImageDependencies")
 	}
 
-	// HACK(maia): until buildkit/parse supports `# syntax = ` flags, check whether the original
+	// HACK(maia): until buildkit/parse supports `# syntax = ` directives, check whether the original
 	// DF has one and append it to the beginning of the new DF
-	syntaxFlag := df.MaybeSyntaxFlag()
-	if !syntaxFlag.Empty() {
-		newDf = syntaxFlag.Join(strings.TrimLeft(newDf.String(), " \n"))
+	syntaxDirective := df.SyntaxDirective()
+	if !syntaxDirective.Empty() {
+		newDf = syntaxDirective.Join(strings.TrimLeft(newDf.String(), " \n"))
 	}
 
 	switch bd := iTarget.BuildDetails.(type) {
