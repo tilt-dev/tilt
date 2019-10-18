@@ -80,13 +80,6 @@
   flex: 1;
 }
 
-.sidebarIcon {
-  width: $sidebar-item;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .resLink-name {
   flex: 1;
   white-space: nowrap;
@@ -119,26 +112,14 @@
   font-weight: normal;
   color: rgba($color-white, $translucent-ish);
 }
-
 .resLink.is-selected .resLink-timeAgo {
   color: $color-gray;
 }
-
 .resLink-timeAgo.empty {
   color: rgba($color-white, $translucent) !important;
 }
 
-.resLink-isDirty {
-  min-width: $spacing-unit * 0.8;
-  text-align: center;
-}
-
 // Collapse/Expand
-.Sidebar-spacer {
-  flex-grow: 1;
-  height: 0;
-}
-
 .Sidebar-toggle {
   background-color: $color-gray;
   border: 0 none;

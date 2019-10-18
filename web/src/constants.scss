@@ -36,8 +36,8 @@ $spacing-unit: 32px;
 
 $sidebar-width: $spacing-unit * 10;
 $sidebar-maxWidth: 25vw;
-$sidebar-collapsed-width: $spacing-unit * 1.5;
 $sidebar-item: $spacing-unit * 1.5;
+$sidebar-collapsed-width: $sidebar-item;
 $alert-badge: $spacing-unit * 0.75;
 
 $tabnav-height: $sidebar-item * 1.5;

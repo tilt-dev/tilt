@@ -1,14 +1,12 @@
 import React, { PureComponent } from "react"
 import { TriggerMode, RuntimeStatus, Build } from "./types"
 import { Color } from "./constants"
-import { ReactComponent as ManualSvg } from "./assets/svg/indicator-manual.svg"
-import { ReactComponent as ManualBuildingSvg } from "./assets/svg/indicator-manual-building.svg"
-import { ReactComponent as AutoSvg } from "./assets/svg/indicator-auto.svg"
-import { ReactComponent as AutoPendingSvg } from "./assets/svg/indicator-auto-pending.svg"
-import { ReactComponent as AutoBuildingSvg } from "./assets/svg/indicator-auto-building.svg"
+import { ReactComponent as DotSvg } from "./assets/svg/indicator-auto.svg"
+import { ReactComponent as DotPendingSvg } from "./assets/svg/indicator-auto-pending.svg"
+import { ReactComponent as DotBuildingSvg } from "./assets/svg/indicator-auto-building.svg"
+import "./SidebarIcon.scss"
 
 type SidebarIconProps = {
-  triggerMode: TriggerMode
   status: RuntimeStatus
   hasWarning: boolean
   isBuilding: boolean
@@ -16,13 +14,11 @@ type SidebarIconProps = {
   lastBuild: Build | null
 }
 
+// For testing
 export enum IconType {
-  DotAuto = "dotAuto",
-  DotAutoPending = "dotAutoPending",
-  DotAutoBuilding = "dotAutoBuilding",
-  DotManual = "dotManual",
-  DotManualPending = "dotManualPending",
-  DotManualBuilding = "dotManualBuilding",
+  StatusDefault = "default",
+  StatusPending = "pending",
+  StatusBuilding = "building",
 }
 
 export default class SidebarIcon extends PureComponent<SidebarIconProps> {
@@ -40,99 +36,37 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
       fill = Color.red
     }
 
-      /* if (props.triggerMode === TriggerMode.TriggerModeManual) {
-       *   return this.renderManual(fill)
-       * } */
-
-    return this.renderAuto(fill)
+    return <div className="SidebarIcon">{this.renderSvg(fill)}</div>
   }
 
-  renderAuto(fill: Color) {
+  renderSvg(fill: Color) {
     let props = this.props
     if (props.isBuilding) {
-      return this.dotAutoBuilding()
+      return this.building()
     }
 
     if (props.status === RuntimeStatus.Pending) {
-      return this.dotAutoPending()
+      return this.pending()
     }
 
-    return this.dotAuto(fill)
+    return this.default(fill)
   }
 
-  renderManual(fill: Color) {
-    let props = this.props
-    if (props.isBuilding) {
-      return this.dotManualBuilding()
-    }
-
-    if (props.isDirty) {
-      return this.dotManual(fill)
-    }
-
-    if (props.status === RuntimeStatus.Pending) {
-      return this.dotManualPending()
-    }
-
-    return this.dotManual(fill)
+  default(fill: Color) {
+    return <DotSvg className={IconType.StatusDefault} fill={fill} />
   }
 
-  dotAuto(fill: Color) {
-    return <AutoSvg className={`${IconType.DotAuto} auto`} fill={fill} />
-  }
-
-  dotAutoPending() {
+  pending() {
     let style = {
       animation: "glow 1s linear infinite",
     }
-    return (
-      <AutoPendingSvg
-        className={`${IconType.DotAutoPending} auto`}
-        style={style}
-      />
-    )
+    return <DotPendingSvg className={IconType.StatusPending} style={style} />
   }
 
-  dotAutoBuilding() {
+  building() {
     let style = {
       animation: "spin 1s linear infinite",
     }
-    return (
-      <AutoBuildingSvg
-        className={`${IconType.DotAutoBuilding} auto`}
-        style={style}
-      />
-    )
-  }
-
-  dotManual(fill: Color) {
-    return <ManualSvg className={`${IconType.DotManual} manual`} fill={fill} />
-  }
-
-  dotManualPending() {
-    let style = {
-      animation: "glow 1s linear infinite",
-    }
-
-    return (
-      <ManualSvg
-        className={`${IconType.DotManualPending} manual`}
-        style={style}
-        fill={Color.white}
-      />
-    )
-  }
-
-  dotManualBuilding() {
-    let style = {
-      animation: "spin 1s linear infinite",
-    }
-
-    return (
-      <ManualBuildingSvg
-        className={`${IconType.DotManualBuilding} manual`}
-        style={style}
-      />
-    )
+    return <DotBuildingSvg className={IconType.StatusBuilding} style={style} />
   }
 }
