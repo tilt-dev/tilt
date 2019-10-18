@@ -1,7 +1,7 @@
 @import "constants.scss";
 
 .LogPane {
-  width: 100%;
+  width: calc(100% - #{$sidebar-width});
   margin-top: $tabnav-height + $resourceInfo-height;
   margin-right: $sidebar-width;
   margin-bottom: $statusbar-height;
@@ -27,7 +27,7 @@
 }
 
 .LogPane--expanded {
-  margin-right: $sidebar-collapsed-width;
+  width: calc(100% - #{$sidebar-collapsed-width});
 }
 
 .LogPane-empty {
