@@ -1,10 +1,12 @@
-package cloud
+package cloudurl
 
 import (
 	"net/url"
 	"os"
 	"strings"
 )
+
+// this is in its own package to avoid circular dependencies
 
 // an address like cloud.tilt.dev or localhost:10450
 type Address string

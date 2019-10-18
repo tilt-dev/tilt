@@ -13,17 +13,17 @@ import (
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/tools/clientcmd/api"
 
-	"github.com/windmilleng/tilt/internal/engine/dockerprune"
-
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/cloud"
+	"github.com/windmilleng/tilt/internal/cloud/cloudurl"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/demo"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/engine/configs"
+	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
 	"github.com/windmilleng/tilt/internal/engine/runtimelog"
 	"github.com/windmilleng/tilt/internal/feature"
@@ -77,6 +77,7 @@ var BaseWireSet = wire.NewSet(
 	engine.NewGithubClientFactory,
 	engine.NewTiltVersionChecker,
 	cloud.WireSet,
+	cloudurl.ProvideAddress,
 
 	provideClock,
 	hud.NewRenderer,
@@ -136,10 +137,10 @@ type Threads struct {
 	upper        engine.Upper
 	tiltBuild    model.TiltBuild
 	token        token.Token
-	cloudAddress cloud.Address
+	cloudAddress cloudurl.Address
 }
 
-func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, b model.TiltBuild, token token.Token, cloudAddress cloud.Address) Threads {
+func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, b model.TiltBuild, token token.Token, cloudAddress cloudurl.Address) Threads {
 	return Threads{h, upper, b, token, cloudAddress}
 }
 

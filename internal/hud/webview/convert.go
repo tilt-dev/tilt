@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/windmilleng/tilt/internal/cloud"
+	"github.com/windmilleng/tilt/internal/cloud/cloudurl"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/ospath"
@@ -100,9 +100,12 @@ func StateToWebView(s store.EngineState) View {
 	ret.NeedsAnalyticsNudge = NeedsNudge(s)
 	ret.RunningTiltBuild = s.TiltBuildInfo
 	ret.LatestTiltBuild = s.LatestTiltBuild
-	ret.FeatureFlags = s.Features
+	ret.FeatureFlags = make(map[string]bool)
+	for k, v := range s.Features {
+		ret.FeatureFlags[k] = v
+	}
 	ret.TiltCloudUsername = s.TiltCloudUsername
-	ret.TiltCloudSchemeHost = cloud.URL(s.CloudAddress).String()
+	ret.TiltCloudSchemeHost = cloudurl.URL(s.CloudAddress).String()
 	ret.TiltCloudTeamID = s.TeamName
 	if s.FatalError != nil {
 		ret.FatalError = s.FatalError.Error()

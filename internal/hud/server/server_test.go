@@ -12,10 +12,12 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/cloud"
+	"github.com/windmilleng/tilt/internal/cloud/cloudurl"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/assets"
@@ -367,11 +369,9 @@ func TestHandleNewSnapshot(t *testing.T) {
 
 	handler.ServeHTTP(rr, req)
 
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
-	assert.Contains(t, rr.Body.String(), "https://nonexistent.example.com/snapshot/aaaaa")
+	require.Equal(t, http.StatusOK, rr.Code,
+		"handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+	require.Contains(t, rr.Body.String(), "https://nonexistent.example.com/snapshot/aaaaa")
 }
 
 type serverFixture struct {
@@ -389,7 +389,7 @@ func newTestFixture(t *testing.T) *serverFixture {
 	a := analytics.NewMemoryAnalytics()
 	a, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
 	httpClient := fakeHttpClient{}
-	addr := cloud.Address("nonexistent.example.com")
+	addr := cloudurl.Address("nonexistent.example.com")
 	uploader := cloud.NewSnapshotUploader(httpClient, addr)
 	serv := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, uploader)
 

@@ -83,7 +83,7 @@ func (LocalResourceInfo) Status() string        { return "" }
 
 type BuildRecord struct {
 	Edits          []string
-	Error          error
+	Error          string
 	Warnings       []string
 	StartTime      time.Time
 	FinishTime     time.Time // IsZero() == true for in-progress builds
@@ -92,9 +92,13 @@ type BuildRecord struct {
 }
 
 func ToWebViewBuildRecord(br model.BuildRecord) BuildRecord {
+	e := ""
+	if br.Error != nil {
+		e = br.Error.Error()
+	}
 	return BuildRecord{
 		Edits:          br.Edits,
-		Error:          br.Error,
+		Error:          e,
 		Warnings:       br.Warnings,
 		StartTime:      br.StartTime,
 		FinishTime:     br.FinishTime,
@@ -109,6 +113,14 @@ func ToWebViewBuildRecords(brs []model.BuildRecord) []BuildRecord {
 		ret[i] = ToWebViewBuildRecord(br)
 	}
 	return ret
+}
+
+type Alert struct {
+	AlertType    string `json:"alertType"`
+	Header       string `json:"header"`
+	Message      string `json:"msg"`
+	Timestamp    string `json:"timestamp"`
+	ResourceName string `json:"resourceName"`
 }
 
 type Resource struct {
@@ -141,6 +153,8 @@ type Resource struct {
 	ShowBuildStatus bool // if true, we show status & time in 'Build Status'; else, "N/A"
 	CombinedLog     model.Log
 	CrashLog        model.Log
+
+	Alerts []Alert
 }
 
 func (r Resource) ResourceInfo() ResourceInfoView {

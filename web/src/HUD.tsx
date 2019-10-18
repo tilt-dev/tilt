@@ -27,8 +27,8 @@ import NotFound from "./NotFound"
 import { numberOfAlerts } from "./alerts"
 import Features from "./feature"
 import ShareSnapshotModal from "./ShareSnapshotModal"
-import cleanStateForSnapshotPOST from "./snapshot_sanitizer"
 import FatalErrorModal from "./FatalErrorModal"
+import * as _ from "lodash"
 
 type HudProps = {
   history: History
@@ -164,14 +164,25 @@ class HUD extends Component<HudProps, HudState> {
     return this.pathBuilder.path(relPath)
   }
 
+  snapshotFromState(state: HudState): Snapshot {
+    let stateCopy = _.cloneDeep(state)
+    delete stateCopy.showFatalErrorModal
+    let ss = stateCopy as Snapshot
+    ss.path = this.props.history.location.pathname
+    ss.snapshotHighlight = this.state.snapshotHighlight
+    return ss
+  }
+
   sendSnapshot(snapshot: Snapshot) {
     let url = `//${window.location.host}/api/snapshot/new`
-    let sanitizedSnapshot = cleanStateForSnapshotPOST(snapshot)
-    sanitizedSnapshot.path = this.props.history.location.pathname
-    sanitizedSnapshot.snapshotHighlight = this.state.snapshotHighlight
+
+    if (!snapshot.View) {
+      return
+    }
+
     fetch(url, {
       method: "post",
-      body: JSON.stringify(sanitizedSnapshot),
+      body: JSON.stringify(snapshot),
     })
       .then(res => {
         res
@@ -208,6 +219,7 @@ class HUD extends Component<HudProps, HudState> {
 
   render() {
     let view = this.state.View
+
     let needsNudge = view ? view.NeedsAnalyticsNudge : false
     let message = this.state.Message
     let resources = (view && view.Resources) || []
@@ -449,7 +461,7 @@ class HUD extends Component<HudProps, HudState> {
 
   renderShareSnapshotModal(view: HudView | null) {
     let handleClose = () => this.setState({ showSnapshotModal: false })
-    let handleSendSnapshot = () => this.sendSnapshot(this.state)
+    let handleSendSnapshot = () => this.sendSnapshot(this.snapshotFromState(this.state))
     let tiltCloudUsername = (view && view.TiltCloudUsername) || null
     let tiltCloudSchemeHost = (view && view.TiltCloudSchemeHost) || ""
     let tiltCloudTeamID = (view && view.TiltCloudTeamID) || null

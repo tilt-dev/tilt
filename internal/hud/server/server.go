@@ -1,14 +1,20 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
+	"unsafe"
 
 	"github.com/gorilla/mux"
 	_ "github.com/gorilla/websocket"
+	jsoniter "github.com/json-iterator/go"
+	"github.com/modern-go/reflect2"
+	"github.com/pkg/errors"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
@@ -114,17 +120,13 @@ func (s *HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-type snapshot struct {
-	View webview.View
-}
-
 func (s *HeadsUpServer) SnapshotJSON(w http.ResponseWriter, req *http.Request) {
 	state := s.store.RLockState()
 	view := webview.StateToWebView(state)
 	s.store.RUnlockState()
 
 	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(snapshot{
+	err := json.NewEncoder(w).Encode(cloud.Snapshot{
 		View: view,
 	})
 	if err != nil {
@@ -260,17 +262,57 @@ type snapshotURLJson struct {
 	Url string `json:"url"`
 }
 
+// the default json decoding just blows up if a time.Time field is empty
+// this uses the default behavior, except empty string -> time.Time{}
+type timeAllowEmptyDecoder struct{}
+
+func (codec timeAllowEmptyDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
+	s := iter.ReadString()
+	var ret time.Time
+	if s != "" {
+		var err error
+		ret, err = time.Parse(time.RFC3339, s)
+		if err != nil {
+			iter.ReportError("timeAllowEmptyDecoder", errors.Wrapf(err, "decoding '%s'", s).Error())
+			return
+		}
+	}
+	*((*time.Time)(ptr)) = ret
+}
+
 func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Request) {
 	st := s.store.RLockState()
 	token := st.Token
 	teamID := st.TeamName
 	s.store.RUnlockState()
 
-	id, err := s.uploader.Upload(token, teamID, req.Body)
+	b, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		log.Printf("Error creating snapshot: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte(err.Error()))
+		msg := fmt.Sprintf("error reading body: %v", err)
+		log.Println(msg)
+		http.Error(w, msg, http.StatusInternalServerError)
+		return
+	}
+
+	c := jsoniter.ConfigDefault
+	de := jsoniter.DecoderExtension{reflect2.TypeOf(time.Time{}): timeAllowEmptyDecoder{}}
+	c.RegisterExtension(de)
+	var snapshot cloud.Snapshot
+	decoder := c.NewDecoder(bytes.NewBuffer(b))
+	decoder.DisallowUnknownFields()
+	err = decoder.Decode(&snapshot)
+	if err != nil {
+		msg := fmt.Sprintf("Error decoding snapshot: %v\n", err)
+		log.Println(msg)
+		http.Error(w, msg, http.StatusInternalServerError)
+		return
+	}
+
+	id, err := s.uploader.Upload(token, teamID, snapshot)
+	if err != nil {
+		msg := fmt.Sprintf("Error creating snapshot: %v", err)
+		log.Println(msg)
+		http.Error(w, msg, http.StatusInternalServerError)
 		return
 	}
 
@@ -281,8 +323,9 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 	//encode URL to JSON format
 	urlJS, err := json.Marshal(responsePayload)
 	if err != nil {
-		log.Printf("Error to marshal url JSON response %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		msg := fmt.Sprintf("Error to marshal url JSON response %v", err)
+		log.Println(msg)
+		http.Error(w, msg, http.StatusInternalServerError)
 		return
 	}
 
@@ -290,7 +333,9 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(urlJS)
 	if err != nil {
-		log.Printf("Error writing URL response: %v", err)
+		msg := fmt.Sprintf("Error writing URL response: %v", err)
+		log.Println(msg)
+		http.Error(w, msg, http.StatusInternalServerError)
 		return
 	}
 
