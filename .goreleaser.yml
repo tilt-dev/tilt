@@ -5,6 +5,8 @@ before:
 builds:
 - env:
   main: ./cmd/tilt/main.go
+  flags:
+  - -tags=osusergo
   goos:
   - linux
   - darwin
