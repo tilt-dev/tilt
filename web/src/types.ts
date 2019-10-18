@@ -1,5 +1,12 @@
 import { Alert } from "./alerts"
 
+export enum SocketState {
+  Loading,
+  Reconnecting,
+  Closed,
+  Active,
+}
+
 export enum ResourceView {
   Log,
   Alerts,
@@ -85,7 +92,6 @@ export type DCResourceInfo = {
 
 export type Snapshot = {
   // input of snapshot_storage
-  Message: string
   View: {
     Resources: Array<Resource>
     Log: string

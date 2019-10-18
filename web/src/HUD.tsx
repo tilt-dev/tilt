@@ -1,10 +1,10 @@
 import React, { Component } from "react"
 import AppController from "./AppController"
 import NoMatch from "./NoMatch"
-import LoadingScreen from "./LoadingScreen"
 import Sidebar, { SidebarItem } from "./Sidebar"
 import Statusbar, { StatusItem } from "./Statusbar"
 import LogPane from "./LogPane"
+import HeroScreen from "./HeroScreen"
 import ResourceInfo from "./ResourceInfo"
 import K8sViewPane from "./K8sViewPane"
 import PathBuilder from "./PathBuilder"
@@ -12,6 +12,7 @@ import { Route, Switch, RouteComponentProps } from "react-router-dom"
 import { History, UnregisterCallback } from "history"
 import { incr, pathToTag } from "./analytics"
 import TopBar from "./TopBar"
+import SocketBar from "./SocketBar"
 import "./HUD.scss"
 import {
   TiltBuild,
@@ -20,6 +21,7 @@ import {
   Snapshot,
   ShowFatalErrorModal,
   SnapshotHighlight,
+  SocketState,
 } from "./types"
 import AlertPane from "./AlertPane"
 import AnalyticsNudge from "./AnalyticsNudge"
@@ -49,13 +51,13 @@ type HudView = {
 }
 
 type HudState = {
-  Message: string
   View: HudView | null
   IsSidebarClosed: boolean
   SnapshotLink: string
   showSnapshotModal: boolean
   showFatalErrorModal: ShowFatalErrorModal
   snapshotHighlight: SnapshotHighlight | null
+  socketState: SocketState
 }
 
 type NewSnapshotResponse = {
@@ -93,7 +95,6 @@ class HUD extends Component<HudProps, HudState> {
     })
 
     this.state = {
-      Message: "",
       View: {
         Resources: [],
         Log: "",
@@ -120,6 +121,7 @@ class HUD extends Component<HudProps, HudState> {
       showSnapshotModal: false,
       showFatalErrorModal: ShowFatalErrorModal.Default,
       snapshotHighlight: null,
+      socketState: SocketState.Closed,
     }
 
     this.toggleSidebar = this.toggleSidebar.bind(this)
@@ -221,10 +223,9 @@ class HUD extends Component<HudProps, HudState> {
     let view = this.state.View
 
     let needsNudge = view ? view.NeedsAnalyticsNudge : false
-    let message = this.state.Message
     let resources = (view && view.Resources) || []
     if (!resources.length) {
-      return <LoadingScreen message={message} />
+      return <HeroScreen message={"Loading…"} />
     }
     let isSidebarClosed = this.state.IsSidebarClosed
     let toggleSidebar = this.toggleSidebar
@@ -377,6 +378,7 @@ class HUD extends Component<HudProps, HudState> {
     return (
       <div className="HUD">
         <AnalyticsNudge needsNudge={needsNudge} />
+        <SocketBar state={this.state.socketState} />
         {fatalErrorModal}
         {shareSnapshotModal}
         <Switch>

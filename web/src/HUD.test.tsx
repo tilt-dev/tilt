@@ -2,6 +2,7 @@ import React from "react"
 import ReactDOM from "react-dom"
 import { MemoryRouter } from "react-router"
 import HUD from "./HUD"
+import SocketBar from "./SocketBar"
 import { mount } from "enzyme"
 import {
   oneResourceView,
@@ -9,6 +10,7 @@ import {
   oneResourceNoAlerts,
 } from "./testdata.test"
 import { createMemoryHistory } from "history"
+import { SocketState } from "./types"
 
 declare global {
   namespace NodeJS {
@@ -46,13 +48,21 @@ it("renders without crashing", () => {
   ReactDOM.unmountComponentAtNode(div)
 })
 
-it("renders loading screen", async () => {
+it("renders reconnecting bar", async () => {
   const root = mount(emptyHUD())
   const hud = root.find(HUD)
   expect(hud.text()).toEqual(expect.stringContaining("Loading"))
 
-  hud.setState({ Message: "Disconnected" })
-  expect(hud.text()).toEqual(expect.stringContaining("Disconnected"))
+  hud.setState({
+    View: oneResourceView(),
+    socketState: SocketState.Reconnecting,
+  })
+
+  let socketBar = root.find(SocketBar)
+  expect(socketBar).toHaveLength(1)
+  expect(socketBar.at(0).text()).toEqual(
+    expect.stringContaining("Reconnecting")
+  )
 })
 
 it("renders resource", async () => {
@@ -187,7 +197,7 @@ it("log page for nonexistent resource shows error", async () => {
   const hud = root.find(HUD)
   hud.setState({ View: oneResourceView() })
 
-  let loadingScreen = root.find(".LoadingScreen")
+  let loadingScreen = root.find(".HeroScreen")
   expect(loadingScreen.at(0).text()).toEqual(
     "No resource found at /r/nonexistentresource"
   )
@@ -198,7 +208,7 @@ it("alerts page for nonexistent resource shows error", async () => {
   const hud = root.find(HUD)
   hud.setState({ View: oneResourceView() })
 
-  let loadingScreen = root.find(".LoadingScreen")
+  let loadingScreen = root.find(".HeroScreen")
   expect(loadingScreen.at(0).text()).toEqual(
     "No resource found at /r/nonexistentresource/alerts"
   )
