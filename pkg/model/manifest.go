@@ -368,12 +368,15 @@ func ToRuns(cmds []Cmd) []Run {
 }
 
 type PortForward struct {
-	// The port to expose on localhost of the current machine.
-	LocalPort int
-
 	// The port to connect to inside the deployed container.
 	// If 0, we will connect to the first containerPort.
 	ContainerPort int
+
+	// The port to expose on the current machine.
+	LocalPort int
+
+	// Optional host to bind to on the current machine (localhost by default)
+	Host *string
 }
 
 var imageTargetAllowUnexported = cmp.AllowUnexported(ImageTarget{})

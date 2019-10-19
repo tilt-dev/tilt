@@ -443,18 +443,20 @@ type portForwardCase struct {
 }
 
 func TestPortForward(t *testing.T) {
+	var goodHost = "0.0.0.0"
 	portForwardCases := []portForwardCase{
 		{"value_local", "8000", []model.PortForward{{LocalPort: 8000}}, ""},
-		{"value_local_negative", "-1", nil, "not in the range for a port"},
-		{"value_local_large", "8000000", nil, "not in the range for a port"},
+		{"value_local_negative", "-1", nil, "not in the valid range"},
+		{"value_local_large", "8000000", nil, "not in the valid range"},
 		{"value_string_local", "'10000'", []model.PortForward{{LocalPort: 10000}}, ""},
 		{"value_string_both", "'10000:8000'", []model.PortForward{{LocalPort: 10000, ContainerPort: 8000}}, ""},
-		{"value_string_garbage", "'garbage'", nil, "not in the range for a port"},
-		{"value_string_3x80", "'80:80:80'", nil, "not in the range for a port"},
-		{"value_string_empty", "''", nil, "not in the range for a port"},
+		{"value_string_garbage", "'garbage'", nil, "not in the valid range"},
+		{"value_string_empty", "''", nil, "not in the valid range"},
 		{"value_both", "port_forward(8001, 443)", []model.PortForward{{LocalPort: 8001, ContainerPort: 443}}, ""},
 		{"list", "[8000, port_forward(8001, 443)]", []model.PortForward{{LocalPort: 8000}, {LocalPort: 8001, ContainerPort: 443}}, ""},
 		{"list_string", "['8000', '8001:443']", []model.PortForward{{LocalPort: 8000}, {LocalPort: 8001, ContainerPort: 443}}, ""},
+		{"value_host_bad", "'bad+host:10000:8000'", nil, "not a valid hostname or IP address"},
+		{"value_host_good", "'" + goodHost + ":10000:8000'", []model.PortForward{{LocalPort: 10000, ContainerPort: 8000, Host: &goodHost}}, ""},
 	}
 
 	for _, c := range portForwardCases {
