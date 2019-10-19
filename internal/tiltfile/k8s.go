@@ -2,6 +2,7 @@ package tiltfile
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -775,6 +776,7 @@ func (s *tiltfileState) portForward(thread *starlark.Thread, fn *starlark.Builti
 type portForward struct {
 	local     int
 	container int
+	host      *string
 }
 
 var _ starlark.Value = portForward{}
@@ -800,35 +802,54 @@ func (f portForward) Hash() (uint32, error) {
 func intToPortForward(i starlark.Int) (portForward, error) {
 	n, ok := i.Int64()
 	if !ok {
-		return portForward{}, fmt.Errorf("portForward value %v is not representable as an int64", i)
+		return portForward{}, fmt.Errorf("portForward port value %v is not representable as an int64", i)
 	}
 	if n < 0 || n > 65535 {
-		return portForward{}, fmt.Errorf("portForward value %v is not in the range for a port [0-65535]", n)
+		return portForward{}, fmt.Errorf("portForward port value %v is not in the valid range [0-65535]", n)
 	}
 	return portForward{local: int(n)}, nil
 }
 
+const ipReStr = `^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`
+const hostnameReStr = `^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$`
+
+var validHost = regexp.MustCompile(ipReStr + "|" + hostnameReStr)
+
 func stringToPortForward(s starlark.String) (portForward, error) {
-	parts := strings.SplitN(string(s), ":", 2)
-	local, err := strconv.Atoi(parts[0])
+	parts := strings.SplitN(string(s), ":", 3)
+
+	var host *string
+	var localString string
+	if len(parts) == 3 {
+		localString = parts[1]
+		host = &parts[0]
+		if !validHost.MatchString(*host) {
+			return portForward{}, fmt.Errorf("portForward host value %q is not a valid hostname or IP address", localString)
+		}
+	} else {
+		localString = parts[0]
+	}
+
+	local, err := strconv.Atoi(localString)
 	if err != nil || local < 0 || local > 65535 {
-		return portForward{}, fmt.Errorf("portForward value %q is not in the range for a port [0-65535]", parts[0])
+		return portForward{}, fmt.Errorf("portForward port value %q is not in the valid range [0-65535]", localString)
 	}
 
 	var container int
-	if len(parts) == 2 {
-		container, err = strconv.Atoi(parts[1])
+	if len(parts) > 1 {
+		last := parts[len(parts)-1]
+		container, err = strconv.Atoi(last)
 		if err != nil || container < 0 || container > 65535 {
-			return portForward{}, fmt.Errorf("portForward value %q is not in the range for a port [0-65535]", parts[1])
+			return portForward{}, fmt.Errorf("portForward port value %q is not in the valid range [0-65535]", last)
 		}
 	}
-	return portForward{local: local, container: container}, nil
+	return portForward{local: local, container: container, host: host}, nil
 }
 
 func (s *tiltfileState) portForwardsToDomain(r *k8sResource) []model.PortForward {
 	var result []model.PortForward
 	for _, pf := range r.portForwards {
-		result = append(result, model.PortForward{LocalPort: pf.local, ContainerPort: pf.container})
+		result = append(result, model.PortForward{LocalPort: pf.local, ContainerPort: pf.container, Host: pf.host})
 	}
 	return result
 }

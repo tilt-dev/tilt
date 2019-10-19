@@ -21,7 +21,7 @@ import (
 type PortForwardClient interface {
 	// Creates a new port-forwarder that's bound to the given context's lifecycle.
 	// When the context is canceled, the port-forwarder will close.
-	CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, localPort int, remotePort int) (PortForwarder, error)
+	CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, localPort int, remotePort int, host *string) (PortForwarder, error)
 }
 
 type PortForwarder interface {
@@ -43,7 +43,7 @@ func (pf portForwarder) LocalPort() int {
 	return pf.localPort
 }
 
-func (k K8sClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int) (PortForwarder, error) {
+func (k K8sClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int, host *string) (PortForwarder, error) {
 	localPort := optionalLocalPort
 	if localPort == 0 {
 		// preferably, we'd set the localport to 0, and let the underlying function pick a port for us,
@@ -59,7 +59,7 @@ func (k K8sClient) CreatePortForwarder(ctx context.Context, namespace Namespace,
 		}
 	}
 
-	return k.portForwardClient.CreatePortForwarder(ctx, namespace, podID, localPort, remotePort)
+	return k.portForwardClient.CreatePortForwarder(ctx, namespace, podID, localPort, remotePort, host)
 }
 
 type portForwardClient struct {
@@ -82,7 +82,7 @@ func ProvidePortForwardClient(
 	}
 }
 
-func (c portForwardClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, localPort int, remotePort int) (PortForwarder, error) {
+func (c portForwardClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, localPort int, remotePort int, host *string) (PortForwarder, error) {
 	transport, upgrader, err := spdy.RoundTripperFor(c.config)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting roundtripper")
@@ -103,13 +103,27 @@ func (c portForwardClient) CreatePortForwarder(ctx context.Context, namespace Na
 	readyChan := make(chan struct{}, 1)
 
 	ports := []string{fmt.Sprintf("%d:%d", localPort, remotePort)}
-	pf, err := portforward.New(
-		dialer,
-		ports,
-		stopChan,
-		readyChan,
-		logger.Get(ctx).Writer(logger.DebugLvl),
-		logger.Get(ctx).Writer(logger.DebugLvl))
+
+	var pf *portforward.PortForwarder
+	if host == nil {
+		pf, err = portforward.New(
+			dialer,
+			ports,
+			stopChan,
+			readyChan,
+			logger.Get(ctx).Writer(logger.DebugLvl),
+			logger.Get(ctx).Writer(logger.DebugLvl))
+	} else {
+		addresses := []string{*host}
+		pf, err = portforward.NewOnAddresses(
+			dialer,
+			addresses,
+			ports,
+			stopChan,
+			readyChan,
+			logger.Get(ctx).Writer(logger.DebugLvl),
+			logger.Get(ctx).Writer(logger.DebugLvl))
+	}
 	if err != nil {
 		return nil, errors.Wrap(err, "error forwarding port")
 	}
@@ -151,6 +165,6 @@ type explodingPortForwardClient struct {
 	error error
 }
 
-func (c explodingPortForwardClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, localPort int, remotePort int) (PortForwarder, error) {
+func (c explodingPortForwardClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, localPort int, remotePort int, host *string) (PortForwarder, error) {
 	return nil, c.error
 }
