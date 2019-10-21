@@ -35,12 +35,14 @@
 .resourceInfo-value {
   display: inline-block;
   font-family: $font-monospace;
+  user-select: all;
   margin: 0;
   text-overflow: ellipsis;
   overflow: hidden;
 }
 a.resourceInfo-value {
   text-decoration: none;
+  user-select: auto;
 }
 a.resourceInfo-value:hover {
   text-decoration: underline;
