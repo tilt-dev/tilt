@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -192,37 +193,64 @@ func TestHasKind(t *testing.T) {
 	assert.True(t, svc.HasKind("service"))
 }
 
-func TestSortedMutableAndImmutableEntities(t *testing.T) {
+func TestSortEntities(t *testing.T) {
+	for _, test := range []struct {
+		name              string
+		inputKindOrder    []string
+		expectedKindOrder []string
+	}{
+		{"all explicitly sorted",
+			[]string{"Deployment", "Namespace", "Service"},
+			[]string{"Namespace", "Service", "Deployment"},
+		},
+		{"preserve order if not explicitly sorted",
+			[]string{"custom1", "custom2", "custom3"},
+			[]string{"custom1", "custom2", "custom3"},
+		},
+		{"preserve order if not explicitly sorted, also sort others",
+			[]string{"custom1", "custom2", "Secret", "custom3", "ConfigMap"},
+			[]string{"ConfigMap", "Secret", "custom1", "custom2", "custom3"},
+		},
+		{"pod and job not sorted",
+			[]string{"Pod", "Job", "Job", "Pod"},
+			[]string{"Pod", "Job", "Job", "Pod"},
+		},
+		{"preserve order if not explicitly sorted if many elements",
+			// sort.Sort started by comparing input[0] and input[6], which resulted in unexpected order.
+			// (didn't preserve order of "Job" vs. "Pod"). Make sure that doesn't happen anymore.
+			[]string{"Job", "PersistentVolumeClaim", "Service", "Pod", "ConfigMap", "PersistentVolume", "StatefulSet"},
+			[]string{"PersistentVolume", "PersistentVolumeClaim", "ConfigMap", "Service", "StatefulSet", "Job", "Pod"},
+		},
+	} {
+		t.Run(string(test.name), func(t *testing.T) {
+			input := entitiesWithKinds(test.inputKindOrder)
+			sorted := SortedEntities(input)
+			assertKindOrder(t, test.expectedKindOrder, sorted, "sorted entities")
+		})
+	}
+}
+
+func TestMutableAndImmutableEntities(t *testing.T) {
 	for _, test := range []struct {
 		name                       string
 		inputKindOrder             []string
 		expectedMutableKindOrder   []string
 		expectedImmutableKindOrder []string
 	}{
-		{"namespace first",
+		{"only mutable",
 			[]string{"Deployment", "Namespace", "Service"},
-			[]string{"Namespace", "Service", "Deployment"},
+			[]string{"Deployment", "Namespace", "Service"},
 			[]string{},
 		},
-		{"preserve immutable order",
+		{"only immutable",
 			[]string{"Job", "Pod"},
 			[]string{},
 			[]string{"Job", "Pod"},
 		},
-		{"mutable and immutable",
+		{"mutable and immutable interspersed",
 			[]string{"Deployment", "Job", "Namespace", "Pod", "Service"},
-			[]string{"Namespace", "Service", "Deployment"},
+			[]string{"Deployment", "Namespace", "Service"},
 			[]string{"Job", "Pod"},
-		},
-		{"persistent volumes",
-			[]string{"PersistentVolumeClaim", "PersistentVolume"},
-			[]string{"PersistentVolume", "PersistentVolumeClaim"},
-			[]string{},
-		},
-		{"preserve order of mutable kinds not explicitly named",
-			[]string{"custom1", "custom2", "Secret", "custom3", "ConfigMap"},
-			[]string{"ConfigMap", "Secret", "custom1", "custom2", "custom3"},
-			[]string{},
 		},
 		{"no explicitly sorted kinds are immutable",
 			// If any kinds in the explicit sort list are also immutable, things will get weird
@@ -233,7 +261,7 @@ func TestSortedMutableAndImmutableEntities(t *testing.T) {
 	} {
 		t.Run(string(test.name), func(t *testing.T) {
 			input := entitiesWithKinds(test.inputKindOrder)
-			mutable, immutable := SortedMutableAndImmutableEntities(input)
+			mutable, immutable := MutableAndImmutableEntities(input)
 			assertKindOrder(t, test.expectedMutableKindOrder, mutable, "mutable entities")
 			assertKindOrder(t, test.expectedImmutableKindOrder, immutable, "immutable entities")
 		})
@@ -271,6 +299,7 @@ func (k fakeKind) GroupVersionKind() schema.GroupVersionKind {
 }
 
 func assertKindOrder(t *testing.T, expectedKinds []string, actual []K8sEntity, msg string) {
+	require.Len(t, actual, len(expectedKinds), "len(expectedKinds) != len(actualKinds): "+msg)
 	actualKinds := make([]string, len(expectedKinds))
 	for i, e := range actual {
 		actualKinds[i] = e.GVK().Kind

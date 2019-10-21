@@ -45,7 +45,7 @@ func TestUpsert(t *testing.T) {
 	assert.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, f.runner.calls[0].argv)
 }
 
-func TestUpsertOrder(t *testing.T) {
+func TestUpsertMutableAndImmutable(t *testing.T) {
 	f := newClientTestFixture(t)
 	eDeploy := MustParseYAMLFromString(t, testyaml.SanchoYAML)[0]
 	eJob := MustParseYAMLFromString(t, testyaml.JobYAML)[0]
@@ -66,15 +66,16 @@ func TestUpsertOrder(t *testing.T) {
 	// compare entities instead of strings because str > entity > string gets weird
 	call0Entities := mustParseYAML(t, call0.stdin)
 	require.Len(t, call0Entities, 2, "expect two mutable entities applied")
-	require.Equal(t, eNamespace, call0Entities[0], "expect call 0 to have applied namespace first")
-	require.Equal(t, eDeploy, call0Entities[1], "expect call 0 to have applied deployment second")
+
+	// `apply` should preserve input order of entities (we sort them further upstream)
+	require.Equal(t, eDeploy, call0Entities[0], "expect call 0 to have applied deployment first (preserve input order)")
+	require.Equal(t, eNamespace, call0Entities[1], "expect call 0 to have applied namespace second (preserve input order)")
 
 	call1 := f.runner.calls[1]
 	require.Equal(t, []string{"replace", "-o", "yaml", "--force", "-f", "-"}, call1.argv, "expected args for call 1")
 	call1Entities := mustParseYAML(t, call1.stdin)
 	require.Len(t, call1Entities, 1, "expect only one immutable entity applied")
 	require.Equal(t, eJob, call1Entities[0], "expect call 1 to have applied job")
-
 }
 
 func TestUpsertStatefulsetForbidden(t *testing.T) {
