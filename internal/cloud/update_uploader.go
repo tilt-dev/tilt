@@ -19,21 +19,27 @@ import (
 type UpdateUploader struct {
 	client HttpClient
 	addr   cloudurl.Address
+	su     SnapshotUploader
 
 	lastCompletedBuildCount int
 	lastFinishTime          time.Time
 }
 
-func NewUpdateUploader(client HttpClient, addr cloudurl.Address) *UpdateUploader {
+func NewUpdateUploader(client HttpClient, addr cloudurl.Address, su SnapshotUploader) *UpdateUploader {
 	return &UpdateUploader{
 		client: client,
 		addr:   addr,
+		su:     su,
 	}
 }
 
 // TODO(nick): Generate these with protobufs.
 type updateServiceSpec struct {
 	Name string `json:"name"`
+}
+
+type snapshotID struct {
+	ID string `json:"id"`
 }
 
 type update struct {
@@ -46,7 +52,7 @@ type update struct {
 	Result            int    `json:"result"`
 	ResultDescription string `json:"result_description"`
 
-	// TODO(nick): auto-create Snapshot IDs?
+	SnapshotID snapshotID `json:"snapshot_id"`
 }
 
 type teamID struct {
@@ -82,7 +88,7 @@ func (u *UpdateUploader) putUpdatesURL() string {
 }
 
 // Check the engine state to see if we have any updates.
-func (u *UpdateUploader) makeUpdates(st store.RStore) updateTask {
+func (u *UpdateUploader) makeUpdates(ctx context.Context, st store.RStore) updateTask {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
@@ -103,6 +109,12 @@ func (u *UpdateUploader) makeUpdates(st store.RStore) updateTask {
 	}
 
 	// OK, we know we have work to do!
+
+	sID, err := u.su.TakeAndUpload(state)
+	if err != nil {
+		logger.Get(ctx).Infof("error posting snapshot: %v")
+		// if the upload failed, snapshotID will be empty, so we'll just send updates without a snapshot
+	}
 
 	highWaterMark := u.lastFinishTime
 	updates := []update{}
@@ -137,6 +149,7 @@ func (u *UpdateUploader) makeUpdates(st store.RStore) updateTask {
 				IsLiveUpdate:      record.HasBuildType(model.BuildTypeLiveUpdate),
 				Result:            resultCode,
 				ResultDescription: resultDescription,
+				SnapshotID:        snapshotID{string(sID)},
 			})
 		}
 
@@ -181,6 +194,7 @@ func (u *UpdateUploader) sendUpdates(ctx context.Context, task updateTask) {
 			logger.Get(ctx).Infof("Error reading update-send response body: %v", err)
 			return
 		}
+
 		logger.Get(ctx).Infof("Error sending updates. status: %s. response: %s", response.Status, b)
 	}
 	defer func() {
@@ -191,7 +205,7 @@ func (u *UpdateUploader) sendUpdates(ctx context.Context, task updateTask) {
 }
 
 func (u *UpdateUploader) OnChange(ctx context.Context, st store.RStore) {
-	task := u.makeUpdates(st)
+	task := u.makeUpdates(ctx, st)
 	if !task.empty() {
 		u.sendUpdates(ctx, task)
 	}
