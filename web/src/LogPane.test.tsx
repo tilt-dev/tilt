@@ -425,7 +425,7 @@ it("scrolls to highlighted lines in snapshot", () => {
     beginningLogID: "logLine2",
     endingLogID: "logLine3",
   }
-  const wrapper = mount(
+  const wrapper = mount<LogPane>(
     <LogPane
       log={longLog}
       isExpanded={false}
@@ -438,5 +438,35 @@ it("scrolls to highlighted lines in snapshot", () => {
   )
 
   expect(wrapper.instance().highlightRef.current).not.toBeNull()
-  expect(fakeScrollIntoView).toBeCalled()
+  expect(fakeScrollIntoView.mock.instances).toHaveLength(1)
+  expect(fakeScrollIntoView.mock.instances[0]).toBeInstanceOf(HTMLDivElement)
+  expect(fakeScrollIntoView).toBeCalledTimes(1)
+})
+
+it("does not scroll to highlighted lines if not snapshot", () => {
+  const fakeScrollIntoView = jest.fn()
+  Element.prototype.scrollIntoView = fakeScrollIntoView
+
+  const highlight = {
+    beginningLogID: "logLine2",
+    endingLogID: "logLine3",
+  }
+  const wrapper = mount<LogPane>(
+    <LogPane
+      log={longLog}
+      isExpanded={false}
+      handleSetHighlight={fakeHandleSetHighlight}
+      handleClearHighlight={fakeHandleClearHighlight}
+      highlight={highlight}
+      modalIsOpen={false}
+      isSnapshot={false}
+    />
+  )
+
+  expect(wrapper.instance().highlightRef.current).not.toBeNull()
+  expect(fakeScrollIntoView.mock.instances).toHaveLength(1)
+  expect(fakeScrollIntoView.mock.instances[0]).toBeInstanceOf(
+    HTMLParagraphElement
+  )
+  expect(fakeScrollIntoView).toBeCalledTimes(1)
 })

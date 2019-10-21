@@ -48,7 +48,6 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       this.props.isSnapshot &&
       this.highlightRef.current
     ) {
-      console.log(this.highlightRef.current)
       this.highlightRef.current.scrollIntoView()
     } else if (this.lastElement !== null) {
       this.lastElement.scrollIntoView()
