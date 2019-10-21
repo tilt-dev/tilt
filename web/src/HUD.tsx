@@ -300,6 +300,8 @@ class HUD extends Component<HudProps, HudState> {
       )
     }
 
+    let isSnapshot = this.pathBuilder.isSnapshot()
+
     let logsRoute = (props: RouteComponentProps<any>) => {
       let name =
         props.match.params && props.match.params.name
@@ -333,6 +335,7 @@ class HUD extends Component<HudProps, HudState> {
             handleClearHighlight={this.handleClearHighlight}
             highlight={this.state.snapshotHighlight}
             modalIsOpen={this.state.showSnapshotModal}
+            isSnapshot={isSnapshot}
           />
         </>
       )
@@ -427,6 +430,7 @@ class HUD extends Component<HudProps, HudState> {
                 handleClearHighlight={this.handleClearHighlight}
                 highlight={this.state.snapshotHighlight}
                 modalIsOpen={this.state.showSnapshotModal}
+                isSnapshot={isSnapshot}
               />
             )}
           />
