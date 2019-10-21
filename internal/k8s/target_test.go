@@ -9,12 +9,11 @@ import (
 )
 
 func TestNewTargetSortsK8sEntities(t *testing.T) {
-	entities := MustParseYAMLFromString(t, testyaml.PostgresYAML)
-	entities[1], entities[3] = entities[3], entities[1] // swap some stuff around for more significant sorting
+	entities := MustParseYAMLFromString(t, testyaml.OutOfOrderYaml)
 	targ, err := NewTarget("foo", entities, nil, nil, nil, nil)
 	require.NoError(t, err)
 
-	expectedKindOrder := []string{"PersistentVolume", "PersistentVolumeClaim", "ConfigMap", "Service", "StatefulSet"}
+	expectedKindOrder := []string{"PersistentVolume", "PersistentVolumeClaim", "ConfigMap", "Service", "StatefulSet", "Job", "Pod"}
 
 	actual, err := ParseYAMLFromString(targ.YAML)
 	require.NoError(t, err)
@@ -27,6 +26,8 @@ func TestNewTargetSortsK8sEntities(t *testing.T) {
 		"postgres-config:configmap",
 		"postgres:service",
 		"postgres:statefulset",
+		"blorg-job:job",
+		"sleep:pod",
 	}
 	assert.Equal(t, expectedDisplayNames, targ.DisplayNames)
 }

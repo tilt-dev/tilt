@@ -244,7 +244,7 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) ([]K8sEntit
 
 	result := make([]K8sEntity, 0, len(entities))
 
-	mutable, immutable := SortedMutableAndImmutableEntities(entities)
+	mutable, immutable := MutableAndImmutableEntities(entities)
 
 	if len(mutable) > 0 {
 		newEntities, err := k.applyEntitiesAndMaybeForce(ctx, mutable)

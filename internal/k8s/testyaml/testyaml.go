@@ -669,6 +669,126 @@ spec:
    app: postgres
 `
 
+// Requires significant sorting to get to an order that's "safe" for applying (see kustomize/ordering.go)
+const OutOfOrderYaml = `
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: blorg-job
+spec:
+  template:
+    spec:
+      containers:
+      - name: blorg-job
+        image: gcr.io/blorg-dev/blorg-backend:devel-nick
+        command: ["/app/server",  "-job=clean"]
+      restartPolicy: Never
+  backoffLimit: 4
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: postgres-pv-claim
+  labels:
+    app: postgres
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  type: NodePort
+  ports:
+   - port: 5432
+  selector:
+   app: postgres
+---
+apiVersion: v1
+kind: Pod
+metadata:
+ name: sleep
+ labels:
+   app: sleep
+spec:
+  restartPolicy: OnFailure
+  containers:
+  - name: sleep
+    image: gcr.io/windmill-public-containers/servantes/sleep
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  labels:
+    app: postgres
+data:
+  POSTGRES_DB: postgresdb
+  POSTGRES_USER: postgresadmin
+  POSTGRES_PASSWORD: admin123
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: postgres-pv-volume
+  labels:
+    type: local
+    app: postgres
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/mnt/data"
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  serviceName: postgres
+  replicas: 3
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    selector:
+    spec:
+      updateStrategy:
+        type: RollingUpdate
+      containers:
+        - name: postgres
+          image: postgres:10.4
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: postgres-config
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgredb
+      volumes:
+        - name: postgredb
+          persistentVolumeClaim:
+            claimName: postgres-pv-claim
+
+`
+
 const DoggosDeploymentYaml = `
 apiVersion: apps/v1
 kind: Deployment

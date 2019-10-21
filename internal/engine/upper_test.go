@@ -306,6 +306,35 @@ func TestUpper_Up(t *testing.T) {
 	assertLineMatches(t, lines, regexp.MustCompile("fake building .*foobar"))
 }
 
+func TestUpper_UpK8sEntityOrdering(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	postgresEntities, err := k8s.ParseYAMLFromString(testyaml.PostgresYAML)
+	yaml, err := k8s.SerializeSpecYAML(postgresEntities[:3]) // only take entities that don't belong to a workload
+	require.NoError(t, err)
+	f.WriteFile("Tiltfile", `k8s_yaml('postgres.yaml')`)
+	f.WriteFile("postgres.yaml", yaml)
+
+	err = f.upper.Init(f.ctx, InitAction{
+		TiltfilePath: f.JoinPath("Tiltfile"),
+	})
+	require.NoError(t, err)
+
+	call := f.nextCall()
+	entities, err := k8s.ParseYAMLFromString(call.k8s().YAML)
+	require.NoError(t, err)
+	expectedKindOrder := []string{"PersistentVolume", "PersistentVolumeClaim", "ConfigMap"}
+	actualKindOrder := make([]string, len(entities))
+	for i, e := range entities {
+		actualKindOrder[i] = e.GVK().Kind
+	}
+	assert.Equal(t, expectedKindOrder, actualKindOrder,
+		"YAML on the manifest should be in sorted order")
+
+	f.assertAllBuildsConsumed()
+}
+
 func TestUpper_WatchFalseNoManifestsExplicitlyNamed(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()

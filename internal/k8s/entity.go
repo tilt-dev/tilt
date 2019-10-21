@@ -59,7 +59,6 @@ func (l entityList) Less(i, j int) bool {
 	// Sort entities by the priority of their Kind
 	indexI := kustomize.TypeOrders[l[i].GVK().Kind]
 	indexJ := kustomize.TypeOrders[l[j].GVK().Kind]
-
 	if indexI != indexJ {
 		return indexI < indexJ
 	}
@@ -69,7 +68,7 @@ func (l entityList) Swap(i, j int) { l[i], l[j] = l[j], l[i] }
 
 func SortedEntities(entities []K8sEntity) []K8sEntity {
 	entList := entityList(CopyEntities(entities))
-	sort.Sort(entList)
+	sort.Stable(entList)
 	return []K8sEntity(entList)
 }
 
@@ -231,12 +230,10 @@ func CopyEntities(entities []K8sEntity) []K8sEntity {
 	return res
 }
 
-// SortedMutableAndImmutableEntities returns two lists of k8s entities: mutable ones (that can simply be
+// MutableAndImmutableEntities returns two lists of k8s entities: mutable ones (that can simply be
 // `kubectl apply`'d), and immutable ones (such as jobs and pods, which will need to be `--force`'d).
-// The entities will be sorted such that entities on which others may depend will be applied first
-// (e.g. a PersistentVolumeClaim depends on the corresponding PersistentVolume, so apply the PV first).
-func SortedMutableAndImmutableEntities(entities entityList) (mutable, immutable []K8sEntity) {
-	sort.Sort(entities)
+// (We assume input entities are already sorted in a safe order to apply -- see kustomize/ordering.go.)
+func MutableAndImmutableEntities(entities entityList) (mutable, immutable []K8sEntity) {
 	for _, e := range entities {
 		if e.ImmutableOnceCreated() {
 			immutable = append(immutable, e)
