@@ -119,8 +119,7 @@ func (a AST) Print() (Dockerfile, error) {
 
 	directiveFmt := "# %s = %s\n"
 	for k, v := range a.directives {
-		dir := fmt.Sprintf(directiveFmt, k, v)
-		_, err := buf.Write([]byte(dir))
+		_, err := fmt.Fprintf(buf, directiveFmt, k, v)
 		if err != nil {
 			return "", err
 		}
