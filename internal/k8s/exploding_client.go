@@ -53,7 +53,7 @@ func (ec *explodingClient) ContainerLogs(ctx context.Context, podID PodID, cName
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int, host *string) (PortForwarder, error) {
+func (ec *explodingClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int, host string) (PortForwarder, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 

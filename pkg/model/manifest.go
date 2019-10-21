@@ -376,7 +376,7 @@ type PortForward struct {
 	LocalPort int
 
 	// Optional host to bind to on the current machine (localhost by default)
-	Host *string
+	Host string
 }
 
 var imageTargetAllowUnexported = cmp.AllowUnexported(ImageTarget{})
