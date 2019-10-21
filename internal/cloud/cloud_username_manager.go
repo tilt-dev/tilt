@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/cloud/cloudurl"
+
 	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/logger"
@@ -67,7 +69,7 @@ func (c *CloudUsernameManager) CheckUsername(ctx context.Context, st store.RStor
 		c.mu.Unlock()
 	}()
 
-	u := URL(state.CloudAddress)
+	u := cloudurl.URL(state.CloudAddress)
 	u.Path = "/api/whoami"
 
 	if blocking {

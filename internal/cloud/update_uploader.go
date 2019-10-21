@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/cloud/cloudurl"
 	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/token"
@@ -17,13 +18,13 @@ import (
 
 type UpdateUploader struct {
 	client HttpClient
-	addr   Address
+	addr   cloudurl.Address
 
 	lastCompletedBuildCount int
 	lastFinishTime          time.Time
 }
 
-func NewUpdateUploader(client HttpClient, addr Address) *UpdateUploader {
+func NewUpdateUploader(client HttpClient, addr cloudurl.Address) *UpdateUploader {
 	return &UpdateUploader{
 		client: client,
 		addr:   addr,
@@ -75,7 +76,7 @@ func (t updateTask) updates() []update {
 }
 
 func (u *UpdateUploader) putUpdatesURL() string {
-	url := URL(string(u.addr))
+	url := cloudurl.URL(string(u.addr))
 	url.Path = "/api/usage/team/put_updates"
 	return url.String()
 }

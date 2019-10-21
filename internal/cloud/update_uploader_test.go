@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/cloud/cloudurl"
+
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 
@@ -81,7 +83,7 @@ type updateFixture struct {
 func newUpdateFixture(t *testing.T) *updateFixture {
 	f := tempdir.NewTempDirFixture(t)
 	httpClient := httptest.NewFakeClient()
-	addr := Address("cloud-test.tilt.dev")
+	addr := cloudurl.Address("cloud-test.tilt.dev")
 	uu := NewUpdateUploader(httpClient, addr)
 	st, _ := store.NewStoreForTesting()
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()

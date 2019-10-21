@@ -1,39 +1,48 @@
 package cloud
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 
 	"github.com/pkg/errors"
 
+	"github.com/windmilleng/tilt/internal/cloud/cloudurl"
+	"github.com/windmilleng/tilt/internal/hud/webview"
+	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/token"
 )
 
 type SnapshotID string
 
-type SnapshotUploader struct {
-	client HttpClient
-	addr   Address
+type SnapshotUploader interface {
+	TakeAndUpload(state store.EngineState) (SnapshotID, error)
+	Upload(token token.Token, teamID string, snapshot Snapshot) (SnapshotID, error)
+	IDToSnapshotURL(id SnapshotID) string
 }
 
-func NewSnapshotUploader(client HttpClient, addr Address) SnapshotUploader {
-	return SnapshotUploader{
+type snapshotUploader struct {
+	client HttpClient
+	addr   cloudurl.Address
+}
+
+func NewSnapshotUploader(client HttpClient, addr cloudurl.Address) SnapshotUploader {
+	return snapshotUploader{
 		client: client,
 		addr:   addr,
 	}
 }
 
-func (s SnapshotUploader) newSnapshotURL() string {
-	u := URL(string(s.addr))
+func (s snapshotUploader) newSnapshotURL() string {
+	u := cloudurl.URL(string(s.addr))
 	u.Path = "/api/snapshot/new"
 	return u.String()
 }
 
-func (s SnapshotUploader) IDToSnapshotURL(id SnapshotID) string {
-	u := URL(string(s.addr))
+func (s snapshotUploader) IDToSnapshotURL(id SnapshotID) string {
+	u := cloudurl.URL(string(s.addr))
 	u.Path = fmt.Sprintf("snapshot/%s", id)
 	return u.String()
 }
@@ -42,8 +51,44 @@ type snapshotIDResponse struct {
 	ID string
 }
 
-func (s SnapshotUploader) Upload(token token.Token, teamID string, reader io.Reader) (SnapshotID, error) {
-	request, err := http.NewRequest(http.MethodPost, s.newSnapshotURL(), reader)
+type snapshotHighlight struct {
+	BeginningLogID string
+	EndingLogID    string
+}
+
+type Snapshot struct {
+	Message           string
+	View              webview.View
+	IsSidebarClosed   bool
+	SnapshotLink      string
+	ShowSnapshotModal bool
+	Path              string
+	SnapshotHighlight snapshotHighlight
+}
+
+func (s snapshotUploader) TakeAndUpload(state store.EngineState) (SnapshotID, error) {
+	return s.Upload(state.Token, state.TeamName, Snapshot{View: webview.StateToWebView(state)})
+}
+
+func cleanSnapshot(snapshot Snapshot) Snapshot {
+	snapshot.SnapshotLink = ""
+	snapshot.ShowSnapshotModal = false
+	if snapshot.View.FeatureFlags != nil {
+		snapshot.View.FeatureFlags["snapshots"] = false
+	}
+
+	return snapshot
+}
+
+func (s snapshotUploader) Upload(token token.Token, teamID string, snapshot Snapshot) (SnapshotID, error) {
+	snapshot = cleanSnapshot(snapshot)
+
+	b := &bytes.Buffer{}
+	err := json.NewEncoder(b).Encode(snapshot)
+	if err != nil {
+		return "", errors.Wrap(err, "encoding snapshot")
+	}
+	request, err := http.NewRequest(http.MethodPost, s.newSnapshotURL(), b)
 	if err != nil {
 		return "", errors.Wrap(err, "Upload NewRequest")
 	}

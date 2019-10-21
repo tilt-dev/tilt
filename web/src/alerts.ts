@@ -45,9 +45,7 @@ function podRestarted(r: Resource) {
 
 // Errors for both DC and K8s Resources
 function buildFailed(resource: Resource) {
-  return (
-    resource.BuildHistory.length > 0 && resource.BuildHistory[0].Error !== null
-  )
+  return resource.BuildHistory.length > 0 && resource.BuildHistory[0].Error
 }
 
 //This function determines what kind of alert should be made based on the functions defined

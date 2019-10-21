@@ -243,7 +243,6 @@ function fillResourceFields(): Resource {
       PodStatusMessage: "",
       PodRestarts: 0,
       PodLog: "",
-      Endpoints: [],
     },
     RuntimeStatus: "",
     TriggerMode: TriggerMode.TriggerModeAuto,

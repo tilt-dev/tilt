@@ -1,5 +1,5 @@
 import { getResourceAlerts } from "./alerts"
-import { ShowFatalErrorModal } from "./types"
+import { K8sResourceInfo, ShowFatalErrorModal } from "./types"
 import PathBuilder from "./PathBuilder"
 
 interface HUDInt {
@@ -61,7 +61,7 @@ class AppController {
   setDefaultResourceInfo(resources: Array<any>): Array<any> {
     return resources.map(r => {
       if (!r.K8sResourceInfo && !r.DCResourceInfo) {
-        r.K8sResourceInfo = {
+        let ri: K8sResourceInfo = {
           PodName: "",
           PodCreationTime: "",
           PodUpdateStartTime: "",
@@ -69,8 +69,8 @@ class AppController {
           PodStatusMessage: "",
           PodRestarts: 0,
           PodLog: "",
-          Endpoints: [],
         }
+        r.K8sResourceInfo = ri
       }
       r.Alerts = getResourceAlerts(r)
       return r
