@@ -112,7 +112,7 @@ func (u *UpdateUploader) makeUpdates(ctx context.Context, st store.RStore) updat
 
 	sID, err := u.su.TakeAndUpload(state)
 	if err != nil {
-		logger.Get(ctx).Infof("error posting snapshot: %v")
+		logger.Get(ctx).Infof("error posting snapshot: %v", err)
 		// if the upload failed, snapshotID will be empty, so we'll just send updates without a snapshot
 	}
 
