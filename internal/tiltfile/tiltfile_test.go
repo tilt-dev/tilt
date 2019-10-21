@@ -326,6 +326,14 @@ k8s_resource("the-deployment", "foo")
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "configMap.yaml", "deployment.yaml", "kustomization.yaml", "service.yaml")
 }
 
+func TestKustomizeError(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", "kustomize('.')")
+	f.loadErrString("unable to find one of 'kustomization.yaml', 'kustomization.yml' or 'Kustomization'")
+}
+
 func TestKustomization(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

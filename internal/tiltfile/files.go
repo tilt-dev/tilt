@@ -212,11 +212,7 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, c *exec.Cmd, logOutput 
 			return "", fmt.Errorf("command %q failed.\nerror: %v", c.Args, err)
 		}
 
-		errorMessage := fmt.Sprintf("command %q failed.\nerror: %v\nstdout: %q", c.Args, err, stdout.String())
-		exitError, ok := err.(*exec.ExitError)
-		if ok {
-			errorMessage += fmt.Sprintf("\nstderr: %q", string(exitError.Stderr))
-		}
+		errorMessage := fmt.Sprintf("command %q failed.\nerror: %v\nstdout: %q\nstderr: %q", c.Args, err, stdout.String(), stderr.String())
 		return "", errors.New(errorMessage)
 	}
 
