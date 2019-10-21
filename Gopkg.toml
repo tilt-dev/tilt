@@ -104,3 +104,9 @@
 [[override]]
   name = "github.com/russross/blackfriday"
   version = "v1.5"
+
+# pull in the commit that adds containerd 1.3.0 support
+# (can't pin a lower version of containerd because one of our other deps needs 1.3.0)
+[[constraint]]
+    name = "github.com/moby/buildkit"
+    revision = "d5108d038d214c7b30c1e9678882135146163df7"

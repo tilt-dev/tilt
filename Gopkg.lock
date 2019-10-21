@@ -355,7 +355,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:5fa9443469114d3e5d64604b1da630324338f8b0669884778dc9108ed5c0919b"
+  digest = "1:dc997131efbe180fcb76b9033d45bcb2beb2aadcc2232fdb510515fafe43dc04"
   name = "github.com/docker/docker"
   packages = [
     "api",
@@ -381,8 +381,10 @@
     "pkg/homedir",
     "pkg/ioutils",
     "pkg/jsonmessage",
+    "pkg/locker",
     "pkg/longpath",
     "pkg/mount",
+    "pkg/signal",
     "pkg/stringid",
     "pkg/system",
     "pkg/tarsum",
@@ -680,6 +682,14 @@
   revision = "24818f796faf91cd76ec7bddd72458fbced7a6c1"
 
 [[projects]]
+  branch = "master"
+  digest = "1:473e7c5cbc58c538bce66e0ca2a033d31a3e7d9c6d5d96c6df1657b588bddac3"
+  name = "github.com/google/shlex"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "c34317bd91bf98fab745d77b03933cf8769299fe"
+
+[[projects]]
   digest = "1:3a26588bc48b96825977c1b3df964f8fd842cd6860cc26370588d3563433cf11"
   name = "github.com/google/uuid"
   packages = ["."]
@@ -917,15 +927,19 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:c23d4a239d83dd4a5aa80d3aa4c318440c0e5b8889c413af8af47b40115b04cf"
+  digest = "1:4c376ec3d813da728c03cfa4a0ea6313722ff85a1b64358a90da9989892497c5"
   name = "github.com/moby/buildkit"
   packages = [
     "api/services/control",
     "api/types",
+    "client/llb",
+    "client/llb/imagemetaresolver",
     "frontend/dockerfile/command",
+    "frontend/dockerfile/dockerfile2llb",
     "frontend/dockerfile/instructions",
     "frontend/dockerfile/parser",
+    "frontend/dockerfile/shell",
+    "frontend/gateway/client",
     "identity",
     "session",
     "session/auth",
@@ -933,10 +947,14 @@
     "solver/pb",
     "util/apicaps",
     "util/apicaps/pb",
+    "util/contentutil",
     "util/entitlements",
+    "util/imageutil",
+    "util/leaseutil",
+    "util/system",
   ]
   pruneopts = "UT"
-  revision = "94cc96a0ed84cbbfdc74416ad96dc530a3b40a60"
+  revision = "d5108d038d214c7b30c1e9678882135146163df7"
 
 [[projects]]
   digest = "1:33422d238f147d247752996a26574ac48dcf472976eda7f5134015f06bf16563"
@@ -1228,6 +1246,14 @@
   pruneopts = "UT"
   revision = "d6e1431feb32348e0650bf7551ac5cffd01d857b"
   version = "v0.6.1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:84860652d50e272b499dc254d0ca62eb045d25c19e410a71f2321dd5f65e41a6"
+  name = "github.com/tonistiigi/fsutil"
+  packages = ["types"]
+  pruneopts = "UT"
+  revision = "0f039a052ca1da01626278199624b62aed9b3729"
 
 [[projects]]
   digest = "1:ac6f26e917fd2fb3194a7ebe2baf6fb32de2f2fbfed130c18aac0e758a6e1d22"
@@ -2044,6 +2070,7 @@
     "github.com/docker/docker/pkg/jsonmessage",
     "github.com/docker/docker/registry",
     "github.com/docker/go-connections/tlsconfig",
+    "github.com/docker/go-units",
     "github.com/fatih/color",
     "github.com/gdamore/tcell",
     "github.com/ghodss/yaml",
@@ -2063,6 +2090,7 @@
     "github.com/mitchellh/go-homedir",
     "github.com/moby/buildkit/api/services/control",
     "github.com/moby/buildkit/frontend/dockerfile/command",
+    "github.com/moby/buildkit/frontend/dockerfile/dockerfile2llb",
     "github.com/moby/buildkit/frontend/dockerfile/instructions",
     "github.com/moby/buildkit/frontend/dockerfile/parser",
     "github.com/moby/buildkit/identity",

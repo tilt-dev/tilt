@@ -263,6 +263,53 @@ ENTRYPOINT /go/bin/sancho
 	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
 }
 
+func TestMultiStageDockerBuildPreservesSyntaxDirective(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	baseImage := model.NewImageTarget(SanchoBaseRef).WithBuildDetails(model.DockerBuild{
+		Dockerfile: `FROM golang:1.10`,
+		BuildPath:  f.JoinPath("sancho-base"),
+	})
+
+	srcImage := model.NewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
+		Dockerfile: `# syntax = docker/dockerfile:experimental
+
+FROM sancho-base
+ADD . .
+RUN go install github.com/windmilleng/sancho
+ENTRYPOINT /go/bin/sancho
+`,
+		BuildPath: f.JoinPath("sancho"),
+	}).WithDependencyIDs([]model.TargetID{baseImage.ID()})
+
+	m := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithImageTargets(baseImage, srcImage).
+		Build()
+
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(m), store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 2, f.docker.BuildCount)
+	assert.Equal(t, 1, f.docker.PushCount)
+	assert.Equal(t, 0, f.kp.pushCount)
+
+	expected := expectedFile{
+		Path: "Dockerfile",
+		Contents: `# syntax = docker/dockerfile:experimental
+
+FROM docker.io/library/sancho-base:tilt-11cd0b38bc3ceb95
+ADD . .
+RUN go install github.com/windmilleng/sancho
+ENTRYPOINT /go/bin/sancho
+`,
+	}
+	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
+}
+
 func TestMultiStageDockerBuildWithFirstImageDirty(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()

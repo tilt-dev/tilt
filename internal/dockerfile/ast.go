@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/moby/buildkit/frontend/dockerfile/command"
+	"github.com/moby/buildkit/frontend/dockerfile/dockerfile2llb"
 	"github.com/moby/buildkit/frontend/dockerfile/instructions"
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
 	"github.com/pkg/errors"
@@ -16,17 +17,19 @@ import (
 )
 
 type AST struct {
-	result *parser.Result
+	directives map[string]string
+	result     *parser.Result
 }
 
 func ParseAST(df Dockerfile) (AST, error) {
-	result, err := parser.Parse(bytes.NewBufferString(string(df)))
+	result, err := parser.Parse(newReader(df))
 	if err != nil {
 		return AST{}, errors.Wrap(err, "dockerfile.ParseAST")
 	}
 
 	return AST{
-		result: result,
+		directives: dockerfile2llb.ParseDirectives(newReader(df)),
+		result:     result,
 	}, nil
 }
 
@@ -113,6 +116,16 @@ func (a AST) traverseNode(node *parser.Node, visit func(*parser.Node) error) err
 func (a AST) Print() (Dockerfile, error) {
 	buf := bytes.NewBuffer(nil)
 	currentLine := 1
+
+	directiveFmt := "# %s = %s\n"
+	for k, v := range a.directives {
+		_, err := fmt.Fprintf(buf, directiveFmt, k, v)
+		if err != nil {
+			return "", err
+		}
+		currentLine++
+	}
+
 	for _, node := range a.result.AST.Children {
 		for currentLine < node.StartLine {
 			_, err := buf.Write([]byte("\n"))
@@ -222,4 +235,8 @@ func fmtLabel(node *parser.Node) string {
 		}
 	}
 	return strings.Join(assignments, " ")
+}
+
+func newReader(df Dockerfile) io.Reader {
+	return bytes.NewBufferString(string(df))
 }

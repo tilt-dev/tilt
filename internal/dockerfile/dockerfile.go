@@ -17,6 +17,10 @@ var ErrAddInDockerfile = fmt.Errorf("base Dockerfile contains an ADD/COPY, " +
 
 type Dockerfile string
 
+func (d Dockerfile) Empty() bool {
+	return d.String() == ""
+}
+
 // DockerfileFromExisting creates a new Dockerfile that uses the supplied image
 // as its base image with a FROM statement. This is necessary for iterative
 // Docker builds.

@@ -80,6 +80,25 @@ RUN echo bye
 `)
 }
 
+func TestPrintSyntaxDirective(t *testing.T) {
+	assertPrintSame(t, `# syntax = foobarbaz
+
+FROM golang:10
+RUN echo hi
+RUN echo bye
+`)
+}
+
+func TestPrintMultipleDirectives(t *testing.T) {
+	assertPrintSame(t, `# foo = bar
+# baz = beep
+
+FROM golang:10
+RUN echo hi
+RUN echo bye
+`)
+}
+
 // Convert the dockerfile into an AST, print it, and then
 // assert that the result is the same as the original.
 func assertPrintSame(t *testing.T, original string) {
