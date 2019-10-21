@@ -158,7 +158,7 @@ func (m *PortForwardController) onePortForward(ctx context.Context, entry portFo
 	ns := entry.namespace
 	podID := entry.podID
 
-	pf, err := m.kClient.CreatePortForwarder(ctx, ns, podID, forward.LocalPort, forward.ContainerPort)
+	pf, err := m.kClient.CreatePortForwarder(ctx, ns, podID, forward.LocalPort, forward.ContainerPort, forward.Host)
 	if err != nil {
 		return err
 	}
