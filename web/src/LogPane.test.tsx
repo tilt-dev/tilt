@@ -399,6 +399,7 @@ it("renders highlighted lines", () => {
   const highlight = {
     beginningLogID: "logLine2",
     endingLogID: "logLine3",
+    text: "foo\nbar",
   }
   const tree = renderer
     .create(
@@ -424,6 +425,7 @@ it("scrolls to highlighted lines in snapshot", () => {
   const highlight = {
     beginningLogID: "logLine2",
     endingLogID: "logLine3",
+    text: "foo\nbar",
   }
   const wrapper = mount<LogPane>(
     <LogPane
@@ -450,6 +452,7 @@ it("does not scroll to highlighted lines if not snapshot", () => {
   const highlight = {
     beginningLogID: "logLine2",
     endingLogID: "logLine3",
+    text: "foo\nbar",
   }
   const wrapper = mount<LogPane>(
     <LogPane

@@ -54,6 +54,7 @@ type snapshotIDResponse struct {
 type snapshotHighlight struct {
 	BeginningLogID string
 	EndingLogID    string
+	Text           string
 }
 
 type Snapshot struct {
