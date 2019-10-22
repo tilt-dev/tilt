@@ -2,6 +2,7 @@ package tiltfile
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -65,9 +66,10 @@ include('./bar/Tiltfile')
 	f.load()
 
 	// make sure foo/Tiltfile is only loaded once
-	assert.Equal(t,
-		"Beginning Tiltfile execution\nfoo\nSuccessfully loaded Tiltfile\n",
-		f.out.String())
+	assertContainsOnce(
+		t,
+		f.out.String(),
+		"Beginning Tiltfile execution\nfoo\nSuccessfully loaded Tiltfile")
 }
 
 func TestIncludeMissing(t *testing.T) {
@@ -114,9 +116,11 @@ shout()
 `)
 
 	f.load()
-	assert.Equal(t,
-		"Beginning Tiltfile execution\nboo\nSuccessfully loaded Tiltfile\n",
-		f.out.String())
+	assertContainsOnce(
+		t,
+		f.out.String(),
+		"Beginning Tiltfile execution\nboo\nSuccessfully loaded Tiltfile")
+
 }
 
 func TestLoadError(t *testing.T) {
@@ -138,4 +142,9 @@ local('exit 1')
 		fmt.Sprintf("%s/Tiltfile:2:1: in <toplevel>", f.Path()),
 		"cannot load ./foo/Tiltfile",
 		"exit status 1")
+}
+
+func assertContainsOnce(t *testing.T, s, contains string) {
+	assert.Contains(t, s, contains)
+	assert.Equal(t, 1, strings.Count(s, contains))
 }

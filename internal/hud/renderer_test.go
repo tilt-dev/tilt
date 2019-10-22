@@ -13,6 +13,7 @@ import (
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/rty"
+	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/model"
 
 	"github.com/gdamore/tcell"
@@ -672,7 +673,7 @@ func TestTiltfileResource(t *testing.T) {
 	v := view.View{
 		Resources: []view.Resource{
 			{
-				Name:       view.TiltfileResourceName,
+				Name:       store.TiltfileManifestName,
 				IsTiltfile: true,
 			},
 		},
@@ -688,7 +689,7 @@ func TestTiltfileResourceWithWarning(t *testing.T) {
 	v := view.View{
 		Resources: []view.Resource{
 			{
-				Name:       view.TiltfileResourceName,
+				Name:       store.TiltfileManifestName,
 				IsTiltfile: true,
 				BuildHistory: []model.BuildRecord{
 					{
@@ -714,7 +715,7 @@ func TestTiltfileResourcePending(t *testing.T) {
 	v := view.View{
 		Resources: []view.Resource{
 			{
-				Name:       view.TiltfileResourceName,
+				Name:       store.TiltfileManifestName,
 				IsTiltfile: true,
 				CurrentBuild: model.BuildRecord{
 					Edits:     []string{"Tiltfile"},

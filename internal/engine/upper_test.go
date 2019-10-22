@@ -1084,7 +1084,7 @@ func TestHudUpdated(t *testing.T) {
 	assert.Equal(t, nil, err)
 
 	assert.Equal(t, 2, len(f.hud.LastView.Resources))
-	assert.Equal(t, view.TiltfileResourceName, f.hud.LastView.Resources[0].Name.String())
+	assert.Equal(t, store.TiltfileManifestName, f.hud.LastView.Resources[0].Name)
 	rv := f.hud.LastView.Resources[1]
 	assert.Equal(t, manifest.Name, model.ManifestName(rv.Name))
 	assert.Equal(t, f.Path(), rv.DirectoriesWatched[0])

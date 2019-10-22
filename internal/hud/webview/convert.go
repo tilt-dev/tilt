@@ -8,7 +8,6 @@ import (
 
 	"github.com/windmilleng/tilt/internal/cloud/cloudurl"
 	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -124,7 +123,7 @@ func tiltfileResourceView(s store.EngineState) Resource {
 	ltfb.Edits = ospath.FileListDisplayNames([]string{filepath.Dir(s.TiltfilePath)}, ltfb.Edits)
 
 	tr := Resource{
-		Name:         view.TiltfileResourceName,
+		Name:         store.TiltfileManifestName,
 		IsTiltfile:   true,
 		CurrentBuild: ToWebViewBuildRecord(ctfb),
 		BuildHistory: []BuildRecord{
