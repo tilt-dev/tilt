@@ -15,6 +15,7 @@ type LogPaneProps = {
   handleClearHighlight: () => void
   highlight: SnapshotHighlight | null
   modalIsOpen: boolean
+  isSnapshot: boolean
 }
 
 type LogPaneState = {
@@ -23,6 +24,7 @@ type LogPaneState = {
 }
 
 class LogPane extends Component<LogPaneProps, LogPaneState> {
+  highlightRef: React.RefObject<HTMLDivElement>
   private lastElement: HTMLDivElement | null = null
   private rafID: number | null = null
 
@@ -37,10 +39,17 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     this.refreshAutoScroll = this.refreshAutoScroll.bind(this)
     this.handleWheel = this.handleWheel.bind(this)
     this.handleSelectionChange = this.handleSelectionChange.bind(this)
+    this.highlightRef = React.createRef()
   }
 
   componentDidMount() {
-    if (this.lastElement !== null) {
+    if (
+      this.props.highlight &&
+      this.props.isSnapshot &&
+      this.highlightRef.current
+    ) {
+      this.highlightRef.current.scrollIntoView()
+    } else if (this.lastElement !== null) {
       this.lastElement.scrollIntoView()
     }
     window.addEventListener("scroll", this.refreshAutoScroll, { passive: true })
@@ -208,8 +217,9 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
         }
       }
 
-      logLines.push(
+      let el = (
         <div
+          ref={i === 0 ? this.highlightRef : null}
           key={key}
           data-lineid={i}
           className={`logLine ${shouldHighlight ? "highlighted" : ""}`}
@@ -217,6 +227,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
           <AnsiLine line={l} />
         </div>
       )
+      logLines.push(el)
     }
 
     logLines.push(

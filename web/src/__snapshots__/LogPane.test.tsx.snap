@@ -154,7 +154,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Beginning Tiltfile execution
+          [Tiltfile] Beginning Tiltfile execution
       </span>
     </code>
   </div>
@@ -167,7 +167,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"whoami"\`
+          [Tiltfile] Running \`"whoami"\`
       </span>
     </code>
   </div>
@@ -180,7 +180,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            Installing Tilt NodeJS dependencies…
+          Installing Tilt NodeJS dependencies…
       </span>
     </code>
   </div>
@@ -193,7 +193,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fe.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fe.yaml""\`
       </span>
     </code>
   </div>
@@ -206,7 +206,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/vigoda.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/vigoda.yaml""\`
       </span>
     </code>
   </div>
@@ -219,7 +219,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/snack.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/snack.yaml""\`
       </span>
     </code>
   </div>
@@ -232,7 +232,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/doggos.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/doggos.yaml""\`
       </span>
     </code>
   </div>
@@ -245,7 +245,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fortune.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fortune.yaml""\`
       </span>
     </code>
   </div>
@@ -258,7 +258,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hypothesizer.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hypothesizer.yaml""\`
       </span>
     </code>
   </div>
@@ -271,7 +271,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/spoonerisms.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/spoonerisms.yaml""\`
       </span>
     </code>
   </div>
@@ -284,7 +284,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/emoji.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/emoji.yaml""\`
       </span>
     </code>
   </div>
@@ -297,7 +297,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/words.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/words.yaml""\`
       </span>
     </code>
   </div>
@@ -310,7 +310,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/secrets.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/secrets.yaml""\`
       </span>
     </code>
   </div>
@@ -323,7 +323,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/job.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/job.yaml""\`
       </span>
     </code>
   </div>
@@ -336,7 +336,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/sleeper.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/sleeper.yaml""\`
       </span>
     </code>
   </div>
@@ -349,7 +349,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hello_world.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hello_world.yaml""\`
       </span>
     </code>
   </div>
@@ -362,7 +362,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/tick.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/tick.yaml""\`
       </span>
     </code>
   </div>
@@ -375,7 +375,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] WARNING: This Tiltfile is using k8s resource assembly version 1, which has been deprecated. It will no longer be supported after 2019-04-17. Sorry for the inconvenience! See https://tilt.dev/resource_assembly_migration.html for information on how to migrate.
+          [Tiltfile] WARNING: This Tiltfile is using k8s resource assembly version 1, which has been deprecated. It will no longer be supported after 2019-04-17. Sorry for the inconvenience! See https://tilt.dev/resource_assembly_migration.html for information on how to migrate.
       </span>
     </code>
   </div>
@@ -388,7 +388,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile]
+          [Tiltfile]
       </span>
     </code>
   </div>
@@ -401,7 +401,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Successfully loaded Tiltfile
+          [Tiltfile] Successfully loaded Tiltfile
       </span>
     </code>
   </div>
@@ -414,7 +414,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -445,7 +445,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -476,7 +476,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -501,7 +501,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -526,7 +526,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -557,7 +557,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -582,7 +582,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -619,7 +619,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -650,7 +650,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -675,7 +675,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -700,7 +700,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -731,7 +731,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -756,7 +756,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -793,7 +793,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -824,7 +824,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -849,7 +849,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -874,7 +874,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -905,7 +905,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -930,7 +930,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -967,7 +967,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -998,7 +998,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -1023,7 +1023,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            Building Dockerfile:
+          Building Dockerfile:
       </span>
     </code>
   </div>
@@ -1036,7 +1036,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              FROM golang:1.10
+            FROM golang:1.10
       </span>
     </code>
   </div>
@@ -1055,7 +1055,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              RUN apt update && apt install -y unzip time make
+            RUN apt update && apt install -y unzip time make
       </span>
     </code>
   </div>
@@ -1074,7 +1074,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              ENV PROTOC_VERSION 3.5.1
+            ENV PROTOC_VERSION 3.5.1
       </span>
     </code>
   </div>
@@ -1093,7 +1093,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              RUN wget https://github.com/google/protobuf/releases/download/v\${PROTOC_VERSION}/protoc-\${PROTOC_VERSION}-linux-x86_64.zip &&         unzip protoc-\${PROTOC_VERSION}-linux-x86_64.zip -d protoc &&         mv protoc/bin/protoc /usr/bin/protoc
+            RUN wget https://github.com/google/protobuf/releases/download/v\${PROTOC_VERSION}/protoc-\${PROTOC_VERSION}-linux-x86_64.zip &&       unzip protoc-\${PROTOC_VERSION}-linux-x86_64.zip -d protoc &&       mv protoc/bin/protoc /usr/bin/protoc
       </span>
     </code>
   </div>
@@ -1112,7 +1112,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              RUN go get github.com/golang/protobuf/protoc-gen-go
+            RUN go get github.com/golang/protobuf/protoc-gen-go
       </span>
     </code>
   </div>
@@ -1131,7 +1131,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              ADD . /go/src/github.com/windmilleng/servantes/fe
+            ADD . /go/src/github.com/windmilleng/servantes/fe
       </span>
     </code>
   </div>
@@ -1144,7 +1144,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              RUN go install github.com/windmilleng/servantes/fe
+            RUN go install github.com/windmilleng/servantes/fe
       </span>
     </code>
   </div>
@@ -1157,7 +1157,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              ENTRYPOINT /go/bin/fe
+            ENTRYPOINT /go/bin/fe
       </span>
     </code>
   </div>
@@ -1182,7 +1182,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -1207,7 +1207,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ Created tarball (size: 24 MB)
+              ╎ Created tarball (size: 24 MB)
       </span>
     </code>
   </div>
@@ -1220,7 +1220,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -1245,7 +1245,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [1/6] FROM docker.io/library/golang:1.10
+              ╎ [1/6] FROM docker.io/library/golang:1.10
       </span>
     </code>
   </div>
@@ -1258,7 +1258,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [2/6] RUN apt update && apt install -y unzip time make
+              ╎ [2/6] RUN apt update && apt install -y unzip time make
       </span>
     </code>
   </div>
@@ -1271,7 +1271,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [3/6] RUN wget https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip &&   unzip protoc-3.5.1-linux-x86_64.zip -d protoc &&   mv protoc/bin/protoc /usr/bin/protoc
+              ╎ [3/6] RUN wget https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip &&   unzip protoc-3.5.1-linux-x86_64.zip -d protoc &&   mv protoc/bin/protoc /usr/bin/protoc
       </span>
     </code>
   </div>
@@ -1284,7 +1284,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [4/6] RUN go get github.com/golang/protobuf/protoc-gen-go
+              ╎ [4/6] RUN go get github.com/golang/protobuf/protoc-gen-go
       </span>
     </code>
   </div>
@@ -1297,7 +1297,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [5/6] ADD . /go/src/github.com/windmilleng/servantes/fe
+              ╎ [5/6] ADD . /go/src/github.com/windmilleng/servantes/fe
       </span>
     </code>
   </div>
@@ -1310,7 +1310,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [6/6] RUN go install github.com/windmilleng/servantes/fe
+              ╎ [6/6] RUN go install github.com/windmilleng/servantes/fe
       </span>
     </code>
   </div>
@@ -1329,7 +1329,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -1354,7 +1354,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ Skipping push
+              ╎ Skipping push
       </span>
     </code>
   </div>
@@ -1373,7 +1373,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -1398,7 +1398,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -1423,7 +1423,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -1454,7 +1454,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -1479,7 +1479,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -1504,7 +1504,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -1529,7 +1529,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -1566,7 +1566,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -1597,7 +1597,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -1622,7 +1622,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            Building Dockerfile:
+          Building Dockerfile:
       </span>
     </code>
   </div>
@@ -1635,7 +1635,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              FROM golang:1.10
+            FROM golang:1.10
       </span>
     </code>
   </div>
@@ -1654,7 +1654,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              ADD . /go/src/github.com/windmilleng/servantes/vigoda
+            ADD . /go/src/github.com/windmilleng/servantes/vigoda
       </span>
     </code>
   </div>
@@ -1667,7 +1667,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              RUN go install github.com/windmilleng/servantes/vigoda
+            RUN go install github.com/windmilleng/servantes/vigoda
       </span>
     </code>
   </div>
@@ -1686,7 +1686,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              ENTRYPOINT /go/bin/vigoda
+            ENTRYPOINT /go/bin/vigoda
       </span>
     </code>
   </div>
@@ -1705,7 +1705,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -1730,7 +1730,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ Created tarball (size: 8.7 kB)
+              ╎ Created tarball (size: 8.7 kB)
       </span>
     </code>
   </div>
@@ -1743,7 +1743,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -1768,7 +1768,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [1/3] FROM docker.io/library/golang:1.10
+              ╎ [1/3] FROM docker.io/library/golang:1.10
       </span>
     </code>
   </div>
@@ -1781,7 +1781,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/vigoda
+              ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/vigoda
       </span>
     </code>
   </div>
@@ -1794,7 +1794,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [3/3] RUN go install github.com/windmilleng/servantes/vigoda
+              ╎ [3/3] RUN go install github.com/windmilleng/servantes/vigoda
       </span>
     </code>
   </div>
@@ -1813,7 +1813,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -1838,7 +1838,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ Skipping push
+              ╎ Skipping push
       </span>
     </code>
   </div>
@@ -1857,7 +1857,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -1882,7 +1882,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -1907,7 +1907,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -1938,7 +1938,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -1963,7 +1963,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -1988,7 +1988,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -2013,7 +2013,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -2050,7 +2050,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -2081,7 +2081,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -2106,7 +2106,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            Building Dockerfile:
+          Building Dockerfile:
       </span>
     </code>
   </div>
@@ -2119,7 +2119,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              FROM golang:1.10
+            FROM golang:1.10
       </span>
     </code>
   </div>
@@ -2138,7 +2138,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              ADD . /go/src/github.com/windmilleng/servantes/snack
+            ADD . /go/src/github.com/windmilleng/servantes/snack
       </span>
     </code>
   </div>
@@ -2151,7 +2151,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              RUN go install github.com/windmilleng/servantes/snack
+            RUN go install github.com/windmilleng/servantes/snack
       </span>
     </code>
   </div>
@@ -2170,7 +2170,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              ENTRYPOINT /go/bin/snack
+            ENTRYPOINT /go/bin/snack
       </span>
     </code>
   </div>
@@ -2189,7 +2189,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -2214,7 +2214,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ Created tarball (size: 9.7 kB)
+              ╎ Created tarball (size: 9.7 kB)
       </span>
     </code>
   </div>
@@ -2227,7 +2227,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -2252,7 +2252,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [1/3] FROM docker.io/library/golang:1.10
+              ╎ [1/3] FROM docker.io/library/golang:1.10
       </span>
     </code>
   </div>
@@ -2265,7 +2265,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            Starting Tilt webpack server…
+          Starting Tilt webpack server…
       </span>
     </code>
   </div>
@@ -2278,7 +2278,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            fe          ┊ 2019/04/10 15:37:37 Starting Servantes FE on :8080
+          fe          ┊ 2019/04/10 15:37:37 Starting Servantes FE on :8080
       </span>
     </code>
   </div>
@@ -2291,7 +2291,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/snack
+              ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/snack
       </span>
     </code>
   </div>
@@ -2304,7 +2304,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [3/3] RUN go install github.com/windmilleng/servantes/snack
+              ╎ [3/3] RUN go install github.com/windmilleng/servantes/snack
       </span>
     </code>
   </div>
@@ -2323,7 +2323,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -2348,7 +2348,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ Skipping push
+              ╎ Skipping push
       </span>
     </code>
   </div>
@@ -2367,7 +2367,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -2392,7 +2392,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -2417,7 +2417,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -2448,7 +2448,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -2473,7 +2473,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -2498,7 +2498,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -2523,7 +2523,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -2560,7 +2560,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -2591,7 +2591,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -2616,7 +2616,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            Building Dockerfile:
+          Building Dockerfile:
       </span>
     </code>
   </div>
@@ -2629,7 +2629,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              FROM golang:1.10
+            FROM golang:1.10
       </span>
     </code>
   </div>
@@ -2648,7 +2648,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              ADD . /go/src/github.com/windmilleng/servantes/doggos
+            ADD . /go/src/github.com/windmilleng/servantes/doggos
       </span>
     </code>
   </div>
@@ -2661,7 +2661,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              RUN go install github.com/windmilleng/servantes/doggos
+            RUN go install github.com/windmilleng/servantes/doggos
       </span>
     </code>
   </div>
@@ -2680,7 +2680,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              ENTRYPOINT /go/bin/doggos
+            ENTRYPOINT /go/bin/doggos
       </span>
     </code>
   </div>
@@ -2699,7 +2699,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -2724,7 +2724,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ Created tarball (size: 7.7 kB)
+              ╎ Created tarball (size: 7.7 kB)
       </span>
     </code>
   </div>
@@ -2737,7 +2737,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -2762,7 +2762,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            vigoda      ┊ 2019/04/10 15:37:39 Starting Vigoda Health Check Service on :8081
+          vigoda      ┊ 2019/04/10 15:37:39 Starting Vigoda Health Check Service on :8081
       </span>
     </code>
   </div>
@@ -2775,7 +2775,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [1/3] FROM docker.io/library/golang:1.10
+              ╎ [1/3] FROM docker.io/library/golang:1.10
       </span>
     </code>
   </div>
@@ -2788,7 +2788,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/doggos
+              ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/doggos
       </span>
     </code>
   </div>
@@ -2801,7 +2801,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [3/3] RUN go install github.com/windmilleng/servantes/doggos
+              ╎ [3/3] RUN go install github.com/windmilleng/servantes/doggos
       </span>
     </code>
   </div>
@@ -2820,7 +2820,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -2845,7 +2845,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ Skipping push
+              ╎ Skipping push
       </span>
     </code>
   </div>
@@ -2864,7 +2864,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -2889,7 +2889,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            Building Dockerfile:
+          Building Dockerfile:
       </span>
     </code>
   </div>
@@ -2902,7 +2902,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              FROM alpine
+            FROM alpine
       </span>
     </code>
   </div>
@@ -2921,7 +2921,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              ADD loud_sidecar.sh /
+            ADD loud_sidecar.sh /
       </span>
     </code>
   </div>
@@ -2934,7 +2934,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              ENTRYPOINT ["/loud_sidecar.sh"]
+            ENTRYPOINT ["/loud_sidecar.sh"]
       </span>
     </code>
   </div>
@@ -2959,7 +2959,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -2984,7 +2984,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ Created tarball (size: 4.6 kB)
+              ╎ Created tarball (size: 4.6 kB)
       </span>
     </code>
   </div>
@@ -2997,7 +2997,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -3022,7 +3022,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            vigoda      ┊ 2019/04/10 15:37:41 Server status: All good
+          vigoda      ┊ 2019/04/10 15:37:41 Server status: All good
       </span>
     </code>
   </div>
@@ -3035,7 +3035,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [1/2] FROM docker.io/library/alpine
+              ╎ [1/2] FROM docker.io/library/alpine
       </span>
     </code>
   </div>
@@ -3048,7 +3048,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [2/2] ADD loud_sidecar.sh /
+              ╎ [2/2] ADD loud_sidecar.sh /
       </span>
     </code>
   </div>
@@ -3067,7 +3067,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -3092,7 +3092,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ Skipping push
+              ╎ Skipping push
       </span>
     </code>
   </div>
@@ -3111,7 +3111,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -3136,7 +3136,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -3161,7 +3161,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -3192,7 +3192,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -3217,7 +3217,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -3242,7 +3242,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -3267,7 +3267,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -3292,7 +3292,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -3317,7 +3317,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -3354,7 +3354,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -3385,7 +3385,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -3410,7 +3410,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            Building Dockerfile:
+          Building Dockerfile:
       </span>
     </code>
   </div>
@@ -3423,7 +3423,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              FROM golang:1.10
+            FROM golang:1.10
       </span>
     </code>
   </div>
@@ -3442,7 +3442,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              RUN apt update && apt install -y unzip time make
+            RUN apt update && apt install -y unzip time make
       </span>
     </code>
   </div>
@@ -3461,7 +3461,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              ENV PROTOC_VERSION 3.5.1
+            ENV PROTOC_VERSION 3.5.1
       </span>
     </code>
   </div>
@@ -3480,7 +3480,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              RUN wget https://github.com/google/protobuf/releases/download/v\${PROTOC_VERSION}/protoc-\${PROTOC_VERSION}-linux-x86_64.zip &&         unzip protoc-\${PROTOC_VERSION}-linux-x86_64.zip -d protoc &&         mv protoc/bin/protoc /usr/bin/protoc
+            RUN wget https://github.com/google/protobuf/releases/download/v\${PROTOC_VERSION}/protoc-\${PROTOC_VERSION}-linux-x86_64.zip &&       unzip protoc-\${PROTOC_VERSION}-linux-x86_64.zip -d protoc &&       mv protoc/bin/protoc /usr/bin/protoc
       </span>
     </code>
   </div>
@@ -3499,7 +3499,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              RUN go get github.com/golang/protobuf/protoc-gen-go
+            RUN go get github.com/golang/protobuf/protoc-gen-go
       </span>
     </code>
   </div>
@@ -3518,7 +3518,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              ADD . /go/src/github.com/windmilleng/servantes/fortune
+            ADD . /go/src/github.com/windmilleng/servantes/fortune
       </span>
     </code>
   </div>
@@ -3531,7 +3531,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              RUN cd /go/src/github.com/windmilleng/servantes/fortune && make proto
+            RUN cd /go/src/github.com/windmilleng/servantes/fortune && make proto
       </span>
     </code>
   </div>
@@ -3544,7 +3544,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              RUN go install github.com/windmilleng/servantes/fortune
+            RUN go install github.com/windmilleng/servantes/fortune
       </span>
     </code>
   </div>
@@ -3563,7 +3563,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              ENTRYPOINT /go/bin/fortune
+            ENTRYPOINT /go/bin/fortune
       </span>
     </code>
   </div>
@@ -3588,7 +3588,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -3613,7 +3613,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ Created tarball (size: 16 kB)
+              ╎ Created tarball (size: 16 kB)
       </span>
     </code>
   </div>
@@ -3626,7 +3626,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -3651,7 +3651,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            snack       ┊ 2019/04/10 15:37:41 Starting Snack Service on :8083
+          snack       ┊ 2019/04/10 15:37:41 Starting Snack Service on :8083
       </span>
     </code>
   </div>
@@ -3664,7 +3664,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            vigoda      ┊ 2019/04/10 15:37:43 Server status: All good
+          vigoda      ┊ 2019/04/10 15:37:43 Server status: All good
       </span>
     </code>
   </div>
@@ -3677,7 +3677,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [1/7] FROM docker.io/library/golang:1.10
+              ╎ [1/7] FROM docker.io/library/golang:1.10
       </span>
     </code>
   </div>
@@ -3690,7 +3690,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [2/7] RUN apt update && apt install -y unzip time make
+              ╎ [2/7] RUN apt update && apt install -y unzip time make
       </span>
     </code>
   </div>
@@ -3703,7 +3703,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [3/7] RUN wget https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip &&   unzip protoc-3.5.1-linux-x86_64.zip -d protoc &&   mv protoc/bin/protoc /usr/bin/protoc
+              ╎ [3/7] RUN wget https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip &&   unzip protoc-3.5.1-linux-x86_64.zip -d protoc &&   mv protoc/bin/protoc /usr/bin/protoc
       </span>
     </code>
   </div>
@@ -3716,7 +3716,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [4/7] RUN go get github.com/golang/protobuf/protoc-gen-go
+              ╎ [4/7] RUN go get github.com/golang/protobuf/protoc-gen-go
       </span>
     </code>
   </div>
@@ -3729,7 +3729,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [5/7] ADD . /go/src/github.com/windmilleng/servantes/fortune
+              ╎ [5/7] ADD . /go/src/github.com/windmilleng/servantes/fortune
       </span>
     </code>
   </div>
@@ -3742,7 +3742,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [6/7] RUN cd /go/src/github.com/windmilleng/servantes/fortune && make proto
+              ╎ [6/7] RUN cd /go/src/github.com/windmilleng/servantes/fortune && make proto
       </span>
     </code>
   </div>
@@ -3755,7 +3755,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [7/7] RUN go install github.com/windmilleng/servantes/fortune
+              ╎ [7/7] RUN go install github.com/windmilleng/servantes/fortune
       </span>
     </code>
   </div>
@@ -3774,7 +3774,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -3799,7 +3799,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ Skipping push
+              ╎ Skipping push
       </span>
     </code>
   </div>
@@ -3818,7 +3818,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -3843,7 +3843,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -3868,7 +3868,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -3899,7 +3899,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -3924,7 +3924,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -3949,7 +3949,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -3974,7 +3974,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -4011,7 +4011,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -4042,7 +4042,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -4067,7 +4067,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            Building Dockerfile:
+          Building Dockerfile:
       </span>
     </code>
   </div>
@@ -4080,7 +4080,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              FROM python:3.6
+            FROM python:3.6
       </span>
     </code>
   </div>
@@ -4099,7 +4099,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              ADD . /app
+            ADD . /app
       </span>
     </code>
   </div>
@@ -4112,7 +4112,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              RUN cd /app && pip install -r requirements.txt
+            RUN cd /app && pip install -r requirements.txt
       </span>
     </code>
   </div>
@@ -4131,7 +4131,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -4156,7 +4156,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ Created tarball (size: 6.1 kB)
+              ╎ Created tarball (size: 6.1 kB)
       </span>
     </code>
   </div>
@@ -4169,7 +4169,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -4194,7 +4194,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            vigoda      ┊ 2019/04/10 15:37:45 Server status: All good
+          vigoda      ┊ 2019/04/10 15:37:45 Server status: All good
       </span>
     </code>
   </div>
@@ -4207,7 +4207,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [1/3] FROM docker.io/library/python:3.6@sha256:fcbf363c285f331894b33f2577e0426182b989c750133a989abaaa4edea324e9
+              ╎ [1/3] FROM docker.io/library/python:3.6@sha256:fcbf363c285f331894b33f2577e0426182b989c750133a989abaaa4edea324e9
       </span>
     </code>
   </div>
@@ -4220,7 +4220,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [2/3] ADD . /app
+              ╎ [2/3] ADD . /app
       </span>
     </code>
   </div>
@@ -4233,7 +4233,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [3/3] RUN cd /app && pip install -r requirements.txt
+              ╎ [3/3] RUN cd /app && pip install -r requirements.txt
       </span>
     </code>
   </div>
@@ -4252,7 +4252,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -4277,7 +4277,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ Skipping push
+              ╎ Skipping push
       </span>
     </code>
   </div>
@@ -4296,7 +4296,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -4321,7 +4321,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -4346,7 +4346,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -4377,7 +4377,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -4402,7 +4402,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -4427,7 +4427,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -4452,7 +4452,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -4489,7 +4489,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -4520,7 +4520,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -4545,7 +4545,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            Building Dockerfile:
+          Building Dockerfile:
       </span>
     </code>
   </div>
@@ -4558,7 +4558,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              FROM node:10
+            FROM node:10
       </span>
     </code>
   </div>
@@ -4577,7 +4577,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              ADD package.json /app/package.json
+            ADD package.json /app/package.json
       </span>
     </code>
   </div>
@@ -4590,7 +4590,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              ADD yarn.lock /app/yarn.lock
+            ADD yarn.lock /app/yarn.lock
       </span>
     </code>
   </div>
@@ -4603,7 +4603,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              RUN cd /app && yarn install
+            RUN cd /app && yarn install
       </span>
     </code>
   </div>
@@ -4622,7 +4622,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              ADD src /app
+            ADD src /app
       </span>
     </code>
   </div>
@@ -4641,7 +4641,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-              ENTRYPOINT [ "node", "/app/index.js" ]
+            ENTRYPOINT [ "node", "/app/index.js" ]
       </span>
     </code>
   </div>
@@ -4666,7 +4666,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -4691,7 +4691,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ Created tarball (size: 459 kB)
+              ╎ Created tarball (size: 459 kB)
       </span>
     </code>
   </div>
@@ -4704,7 +4704,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            
+          
       </span>
       <span
         className="ansi-blue"
@@ -4729,7 +4729,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Beginning Tiltfile execution
+          [Tiltfile] Beginning Tiltfile execution
       </span>
     </code>
   </div>
@@ -4742,7 +4742,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"whoami"\`
+          [Tiltfile] Running \`"whoami"\`
       </span>
     </code>
   </div>
@@ -4755,7 +4755,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile]        HI
+          [Tiltfile]        HI
       </span>
     </code>
   </div>
@@ -4768,7 +4768,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fe.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fe.yaml""\`
       </span>
     </code>
   </div>
@@ -4781,7 +4781,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/vigoda.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/vigoda.yaml""\`
       </span>
     </code>
   </div>
@@ -4794,7 +4794,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/snack.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/snack.yaml""\`
       </span>
     </code>
   </div>
@@ -4807,7 +4807,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/doggos.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/doggos.yaml""\`
       </span>
     </code>
   </div>
@@ -4820,7 +4820,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fortune.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/fortune.yaml""\`
       </span>
     </code>
   </div>
@@ -4833,7 +4833,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hypothesizer.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hypothesizer.yaml""\`
       </span>
     </code>
   </div>
@@ -4846,7 +4846,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/spoonerisms.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/spoonerisms.yaml""\`
       </span>
     </code>
   </div>
@@ -4859,7 +4859,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/emoji.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/emoji.yaml""\`
       </span>
     </code>
   </div>
@@ -4872,7 +4872,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/words.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/words.yaml""\`
       </span>
     </code>
   </div>
@@ -4885,7 +4885,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/secrets.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/secrets.yaml""\`
       </span>
     </code>
   </div>
@@ -4898,7 +4898,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/job.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/job.yaml""\`
       </span>
     </code>
   </div>
@@ -4911,7 +4911,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/sleeper.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/sleeper.yaml""\`
       </span>
     </code>
   </div>
@@ -4924,7 +4924,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hello_world.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/hello_world.yaml""\`
       </span>
     </code>
   </div>
@@ -4937,7 +4937,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/tick.yaml""\`
+          [Tiltfile] Running \`"m4 -Dvarowner=dan "deploy/tick.yaml""\`
       </span>
     </code>
   </div>
@@ -4950,7 +4950,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            vigoda      ┊ 2019/04/10 15:37:47 Server status: All good
+          vigoda      ┊ 2019/04/10 15:37:47 Server status: All good
       </span>
     </code>
   </div>
@@ -4963,7 +4963,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] WARNING: This Tiltfile is using k8s resource assembly version 1, which has been deprecated. It will no longer be supported after 2019-04-17. Sorry for the inconvenience! See https://tilt.dev/resource_assembly_migration.html for information on how to migrate.
+          [Tiltfile] WARNING: This Tiltfile is using k8s resource assembly version 1, which has been deprecated. It will no longer be supported after 2019-04-17. Sorry for the inconvenience! See https://tilt.dev/resource_assembly_migration.html for information on how to migrate.
       </span>
     </code>
   </div>
@@ -4976,7 +4976,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile]
+          [Tiltfile]
       </span>
     </code>
   </div>
@@ -4989,7 +4989,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            [Tiltfile] Successfully loaded Tiltfile
+          [Tiltfile] Successfully loaded Tiltfile
       </span>
     </code>
   </div>
@@ -5002,7 +5002,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            doggos      ┊ [doggos] 2019/04/10 15:37:45 Starting Doggos Service on :8083
+          doggos      ┊ [doggos] 2019/04/10 15:37:45 Starting Doggos Service on :8083
       </span>
     </code>
   </div>
@@ -5015,7 +5015,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            doggos      ┊ [sidecar] I'm a loud sidecar! [Wed Apr 10 15:37:46 UTC 2019]
+          doggos      ┊ [sidecar] I'm a loud sidecar! [Wed Apr 10 15:37:46 UTC 2019]
       </span>
     </code>
   </div>
@@ -5028,7 +5028,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            doggos      ┊ [sidecar] I'm a loud sidecar! [Wed Apr 10 15:37:48 UTC 2019]
+          doggos      ┊ [sidecar] I'm a loud sidecar! [Wed Apr 10 15:37:48 UTC 2019]
       </span>
     </code>
   </div>
@@ -5041,7 +5041,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-            doggos      ┊ [doggos] 2019/04/10 15:37:49 Heartbeat
+          doggos      ┊ [doggos] 2019/04/10 15:37:49 Heartbeat
       </span>
     </code>
   </div>
@@ -5054,7 +5054,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [1/5] FROM docker.io/library/node:10
+              ╎ [1/5] FROM docker.io/library/node:10
       </span>
     </code>
   </div>
@@ -5067,7 +5067,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [2/5] ADD package.json /app/package.json
+              ╎ [2/5] ADD package.json /app/package.json
       </span>
     </code>
   </div>
@@ -5080,7 +5080,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [3/5] ADD yarn.lock /app/yarn.lock
+              ╎ [3/5] ADD yarn.lock /app/yarn.lock
       </span>
     </code>
   </div>
@@ -5093,7 +5093,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [4/5] RUN cd /app && yarn install
+              ╎ [4/5] RUN cd /app && yarn install
       </span>
     </code>
   </div>
@@ -5106,7 +5106,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
         className={null}
         style={null}
       >
-                ╎ [5/5] ADD src /app
+              ╎ [5/5] ADD src /app
       </span>
     </code>
   </div>
