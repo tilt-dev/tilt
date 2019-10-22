@@ -71,8 +71,11 @@ func TestBuildControllerTooManyPodsForLiveUpdateErrorMessage(t *testing.T) {
 	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
 
-	assert.Contains(t, f.log.String(), "can only get container info for a single pod",
-		"should print error message when trying to get Running Containers for manifest with more than one pod")
+	err = call.oneState().RunningContainerError
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "can only get container info for a single pod",
+			"should print error message when trying to get Running Containers for manifest with more than one pod")
+	}
 }
 
 func TestBuildControllerTooManyPodsForDockerBuildNoErrorMessage(t *testing.T) {
