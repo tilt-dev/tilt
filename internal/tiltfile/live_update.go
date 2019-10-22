@@ -10,6 +10,7 @@ import (
 
 	"go.starlark.net/starlark"
 
+	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -149,7 +150,7 @@ func (s *tiltfileState) liveUpdateSync(thread *starlark.Thread, fn *starlark.Bui
 	}
 
 	ret := liveUpdateSyncStep{
-		localPath:  s.absPath(thread, localPath),
+		localPath:  starkit.AbsPath(thread, localPath),
 		remotePath: remotePath,
 		position:   thread.CallFrame(1).Pos,
 	}
@@ -210,7 +211,7 @@ func (s *tiltfileState) liveUpdateStepToModel(t *starlark.Thread, l liveUpdateSt
 			Command: model.ToShellCmd(x.command),
 			Triggers: model.PathSet{
 				Paths:         x.triggers,
-				BaseDirectory: s.absWorkingDir(t),
+				BaseDirectory: starkit.AbsWorkingDir(t),
 			},
 		}, nil
 	case liveUpdateRestartContainerStep:
@@ -239,7 +240,7 @@ func (s *tiltfileState) liveUpdateFromSteps(t *starlark.Thread, maybeSteps starl
 		modelSteps = append(modelSteps, ms)
 	}
 
-	return model.NewLiveUpdate(modelSteps, s.absWorkingDir(t))
+	return model.NewLiveUpdate(modelSteps, starkit.AbsWorkingDir(t))
 }
 
 func (s *tiltfileState) consumeLiveUpdateStep(stepToConsume liveUpdateStep) {

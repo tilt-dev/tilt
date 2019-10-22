@@ -14,6 +14,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -58,7 +59,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	s.dc = dcResourceSet{
 		configPaths:  configPaths,
 		services:     services,
-		tiltfilePath: s.currentTiltfilePath(thread),
+		tiltfilePath: starkit.CurrentExecPath(thread),
 	}
 
 	return starlark.None, nil
