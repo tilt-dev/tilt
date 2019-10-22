@@ -29,7 +29,7 @@ type gitRepo struct {
 }
 
 func (s *tiltfileState) newGitRepo(t *starlark.Thread, path string) (*gitRepo, error) {
-	absPath := s.absPath(t, path)
+	absPath := starkit.AbsPath(t, path)
 	_, err := os.Stat(absPath)
 	if err != nil {
 		return nil, fmt.Errorf("Reading paths %s: %v", absPath, err)
@@ -105,24 +105,10 @@ func (s *tiltfileState) absPathFromStarlarkValue(thread *starlark.Thread, v star
 	case *gitRepo:
 		return v.makeLocalPath("."), nil
 	case starlark.String:
-		return s.absPath(thread, string(v)), nil
+		return starkit.AbsPath(thread, string(v)), nil
 	default:
 		return "", fmt.Errorf("expected gitRepo | string. Actual type: %T", v)
 	}
-}
-
-// When running the Tilt demo, the current working directory is arbitrary.
-// So we want to resolve paths relative to the dir where the Tiltfile lives,
-// not relative to the working directory.
-func (s *tiltfileState) absPath(t *starlark.Thread, path string) string {
-	if filepath.IsAbs(path) {
-		return path
-	}
-	return filepath.Join(s.absWorkingDir(t), path)
-}
-
-func (s *tiltfileState) absWorkingDir(t *starlark.Thread) string {
-	return filepath.Dir(s.currentTiltfilePath(t))
 }
 
 func (s *tiltfileState) recordConfigFile(f string) {
@@ -195,7 +181,7 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, c *exec.Cmd, logOutput 
 	stderr := bytes.NewBuffer(nil)
 
 	// TODO(nick): Should this also inject any docker.Env overrides?
-	c.Dir = s.absWorkingDir(t)
+	c.Dir = starkit.AbsWorkingDir(t)
 	c.Stdout = stdout
 	c.Stderr = stderr
 
@@ -294,7 +280,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	}
 	for _, valueFile := range valueFiles {
 		cmd = append(cmd, "--values", valueFile)
-		s.recordConfigFile(s.absPath(thread, valueFile))
+		s.recordConfigFile(starkit.AbsPath(thread, valueFile))
 	}
 
 	stdout, err := s.execLocalCmd(thread, exec.Command(cmd[0], cmd[1:]...), false)

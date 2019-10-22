@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 	"github.com/windmilleng/tilt/pkg/model"
 
 	"go.starlark.net/starlark"
@@ -47,7 +48,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	res := localResource{
 		name:        name,
 		cmd:         model.ToShellCmd(cmd),
-		workdir:     filepath.Dir(s.currentTiltfilePath(thread)),
+		workdir:     filepath.Dir(starkit.CurrentExecPath(thread)),
 		deps:        depsStrings,
 		triggerMode: triggerMode,
 		repos:       repos,

@@ -129,19 +129,6 @@ func newTiltfileState(
 	}
 }
 
-// Path to the Tiltfile at the bottom of the call stack.
-func (s *tiltfileState) currentTiltfilePath(t *starlark.Thread) string {
-	depth := t.CallStackDepth()
-	for i := 0; i < depth; i++ {
-		filename := t.CallFrame(i).Pos.Filename()
-		if filename == "<builtin>" {
-			continue
-		}
-		return filename
-	}
-	panic("internal error: currentTiltfilePath must be called from an active starlark thread")
-}
-
 // print() for fulfilling the starlark thread callback
 func (s *tiltfileState) print(_ *starlark.Thread, msg string) {
 	s.logger.Infof("%s", msg)
