@@ -323,7 +323,7 @@ func (c *FakeK8sClient) applyWasCalled() bool {
 	return c.Yaml != ""
 }
 
-func (c *FakeK8sClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int, host *string) (PortForwarder, error) {
+func (c *FakeK8sClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int, host string) (PortForwarder, error) {
 	pfc := &(c.FakePortForwardClient)
 	return pfc.CreatePortForwarder(ctx, namespace, podID, optionalLocalPort, remotePort, host)
 }
@@ -398,12 +398,12 @@ type FakePortForwardClient struct {
 	CreatePortForwardCallCount int
 	LastForwardPortPodID       PodID
 	LastForwardPortRemotePort  int
-	LastForwardPortHost        *string
+	LastForwardPortHost        string
 	LastForwarder              FakePortForwarder
 	LastForwardContext         context.Context
 }
 
-func (c *FakePortForwardClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int, host *string) (PortForwarder, error) {
+func (c *FakePortForwardClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int, host string) (PortForwarder, error) {
 	c.CreatePortForwardCallCount++
 	c.LastForwardContext = ctx
 	c.LastForwardPortPodID = podID

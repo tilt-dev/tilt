@@ -202,7 +202,7 @@ func newSyncletClient(ctx context.Context, kCli k8s.Client, syncletImageRef side
 
 	// TODO(nick): We need a better way to kill the client when the pod dies.
 	ctx, cancel := context.WithCancel(ctx)
-	pf, err := kCli.CreatePortForwarder(ctx, ns, podID, 0, synclet.Port, nil)
+	pf, err := kCli.CreatePortForwarder(ctx, ns, podID, 0, synclet.Port, "")
 	if err != nil {
 		cancel()
 		return nil, errors.Wrapf(err, "failed opening tunnel to synclet pod '%s'", podID)
