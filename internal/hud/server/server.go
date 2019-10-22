@@ -299,7 +299,11 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 	c.RegisterExtension(de)
 	var snapshot cloud.Snapshot
 	decoder := c.NewDecoder(bytes.NewBuffer(b))
-	decoder.DisallowUnknownFields()
+
+	// TODO(nick): Add more strict decoding once we have better safeguards for making
+	// sure the Go and JS types are in-sync.
+	// decoder.DisallowUnknownFields()
+
 	err = decoder.Decode(&snapshot)
 	if err != nil {
 		msg := fmt.Sprintf("Error decoding snapshot: %v\n", err)

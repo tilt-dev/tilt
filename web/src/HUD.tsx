@@ -18,7 +18,6 @@ import {
   TiltBuild,
   ResourceView,
   Resource,
-  Snapshot,
   ShowFatalErrorModal,
   SnapshotHighlight,
   SocketState,
@@ -58,6 +57,13 @@ type HudState = {
   showFatalErrorModal: ShowFatalErrorModal
   snapshotHighlight: SnapshotHighlight | null
   socketState: SocketState
+}
+
+export type Snapshot = {
+  View: HudView | null
+  IsSidebarClosed: boolean
+  Path?: string
+  SnapshotHighlight?: SnapshotHighlight | null
 }
 
 type NewSnapshotResponse = {
@@ -167,12 +173,12 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   snapshotFromState(state: HudState): Snapshot {
-    let stateCopy = _.cloneDeep(state)
-    delete stateCopy.showFatalErrorModal
-    let ss = stateCopy as Snapshot
-    ss.path = this.props.history.location.pathname
-    ss.snapshotHighlight = this.state.snapshotHighlight
-    return ss
+    return {
+      View: _.cloneDeep(state.View),
+      IsSidebarClosed: state.IsSidebarClosed,
+      Path: this.props.history.location.pathname,
+      SnapshotHighlight: _.cloneDeep(state.snapshotHighlight),
+    }
   }
 
   sendSnapshot(snapshot: Snapshot) {
