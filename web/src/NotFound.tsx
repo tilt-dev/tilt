@@ -1,5 +1,5 @@
 import React from "react"
-import LoadingScreen from "./LoadingScreen"
+import HeroScreen from "./HeroScreen"
 
 type location = {
   location: {
@@ -12,7 +12,7 @@ let NotFound = ({ location }: location) => {
       No resource found at <code>{location.pathname}</code>
     </div>
   )
-  return <LoadingScreen message={message} />
+  return <HeroScreen message={message} />
 }
 
 export default NotFound

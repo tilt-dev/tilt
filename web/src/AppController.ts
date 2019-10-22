@@ -1,5 +1,5 @@
 import { getResourceAlerts } from "./alerts"
-import { K8sResourceInfo, ShowFatalErrorModal } from "./types"
+import { K8sResourceInfo, ShowFatalErrorModal, SocketState } from "./types"
 import PathBuilder from "./PathBuilder"
 
 interface HUDInt {
@@ -22,9 +22,7 @@ class AppController {
    * @param pathBuilder a PathBuilder
    * @param component The top-level component for the app.
    *     Has one method, setAppState, that sets the global state of the
-   *     app. This state has two properties
-   *     - Message (string): A status message about the state of the socket
-   *     - View (Object): A JSON serialization of the Go struct in internal/renderer/view
+   *     app.
    */
   constructor(pathBuilder: PathBuilder, component: HUDInt) {
     if (!component.setAppState) {
@@ -54,7 +52,10 @@ class AppController {
 
       data.Resources = this.setDefaultResourceInfo(data.Resources)
       // @ts-ignore
-      this.component.setAppState({ View: data })
+      this.component.setAppState({
+        View: data,
+        socketState: SocketState.Active,
+      })
     })
   }
 
@@ -93,13 +94,7 @@ class AppController {
 
     if (wasAlive) {
       this.component.setAppState({
-        View: null,
-        Message: "Disconnected…",
-        IsSidebarClosed: false,
-        SnapshotLink: "",
-        showSnapshotModal: false,
-        showFatalErrorModal: ShowFatalErrorModal.Default,
-        snapshotHighlight: null,
+        socketState: SocketState.Closed,
       })
       this.createNewSocket()
       return
@@ -119,15 +114,11 @@ class AppController {
       if (this.disposed) {
         return
       }
-      let message = this.loadCount ? "Reconnecting…" : "Loading…"
+      let state = this.loadCount
+        ? SocketState.Reconnecting
+        : SocketState.Loading
       this.component.setAppState({
-        View: null,
-        Message: message,
-        IsSidebarClosed: false,
-        SnapshotLink: "",
-        showSnapshotModal: false,
-        showFatalErrorModal: ShowFatalErrorModal.Default,
-        snapshotHighlight: null,
+        socketState: state,
       })
       this.createNewSocket()
     }, timeout)

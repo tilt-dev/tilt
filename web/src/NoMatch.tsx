@@ -1,5 +1,5 @@
 import React from "react"
-import LoadingScreen from "./LoadingScreen"
+import HeroScreen from "./HeroScreen"
 
 type location = {
   location: {
@@ -13,7 +13,7 @@ let NoMatch = ({ location }: location) => {
       No match for <code>{location.pathname}</code>
     </div>
   )
-  return <LoadingScreen message={message} />
+  return <HeroScreen message={message} />
 }
 
 export default NoMatch
