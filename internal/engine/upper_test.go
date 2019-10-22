@@ -2987,7 +2987,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	ghc := &github.FakeClient{}
 	ewm := k8swatch.NewEventWatchManager(kCli, of)
 	tcum := cloud.NewUsernameManager(httptest.NewFakeClient())
-	cuu := cloud.NewUpdateUploader(httptest.NewFakeClient(), "cloud-test.tilt.dev")
+	cuu := cloud.NewUpdateUploader(httptest.NewFakeClient(), "cloud-test.tilt.dev", &fakeSnapshotUploader{})
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
 	dp.DisabledForTesting(true)
@@ -3563,4 +3563,23 @@ func entityWithUID(t *testing.T, yaml string, uid string) k8s.K8sEntity {
 	k8s.SetUIDForTest(t, &e, uid)
 
 	return e
+}
+
+type fakeSnapshotUploader struct {
+	count int
+}
+
+var _ cloud.SnapshotUploader = &fakeSnapshotUploader{}
+
+func (f *fakeSnapshotUploader) TakeAndUpload(state store.EngineState) (cloud.SnapshotID, error) {
+	f.count++
+	return cloud.SnapshotID(fmt.Sprintf("snapshot%d", f.count)), nil
+}
+
+func (f *fakeSnapshotUploader) Upload(token token.Token, teamID string, snapshot cloud.Snapshot) (cloud.SnapshotID, error) {
+	panic("not implemented")
+}
+
+func (f *fakeSnapshotUploader) IDToSnapshotURL(id cloud.SnapshotID) string {
+	panic("not implemented")
 }

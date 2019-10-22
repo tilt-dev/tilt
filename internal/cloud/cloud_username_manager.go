@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/windmilleng/tilt/internal/cloud/cloudurl"
-
 	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/logger"
