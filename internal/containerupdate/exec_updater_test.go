@@ -81,7 +81,7 @@ func TestUpdateContainerTarsArchive(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expectedCmd := []string{"tar", "-C", "/", "-x", "-v", "-f", "-"}
+	expectedCmd := []string{"tar", "-C", "/", "-x", "-f", "-"}
 	if assert.Len(t, f.kCli.ExecCalls, 1, "expect exactly 1 k8s exec call") {
 		call := f.kCli.ExecCalls[0]
 		assert.Equal(t, expectedCmd, call.Cmd)

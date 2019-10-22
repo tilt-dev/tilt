@@ -49,7 +49,7 @@ func (cu *ExecUpdater) UpdateContainer(ctx context.Context, cInfo store.Containe
 	}
 
 	err := cu.kCli.Exec(ctx, cInfo.PodID, cInfo.ContainerName, cInfo.Namespace,
-		[]string{"tar", "-C", "/", "-x", "-v", "-f", "-"}, archiveToCopy, w, w)
+		[]string{"tar", "-C", "/", "-x", "-f", "-"}, archiveToCopy, w, w)
 	if err != nil {
 		return err
 	}
