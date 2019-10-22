@@ -58,11 +58,8 @@ type snapshotHighlight struct {
 }
 
 type Snapshot struct {
-	Message           string
 	View              webview.View
 	IsSidebarClosed   bool
-	SnapshotLink      string
-	ShowSnapshotModal bool
 	Path              string
 	SnapshotHighlight snapshotHighlight
 }
@@ -72,12 +69,7 @@ func (s snapshotUploader) TakeAndUpload(state store.EngineState) (SnapshotID, er
 }
 
 func cleanSnapshot(snapshot Snapshot) Snapshot {
-	snapshot.SnapshotLink = ""
-	snapshot.ShowSnapshotModal = false
-	if snapshot.View.FeatureFlags != nil {
-		snapshot.View.FeatureFlags["snapshots"] = false
-	}
-
+	snapshot.View.FeatureFlags = nil
 	return snapshot
 }
 

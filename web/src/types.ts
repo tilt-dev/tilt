@@ -90,24 +90,6 @@ export type DCResourceInfo = {
   StartTime: string
 }
 
-export type Snapshot = {
-  // input of snapshot_storage
-  View: {
-    Resources: Array<Resource>
-    Log: string
-    LogTimestamps: boolean
-    NeedsAnalyticsNudge: boolean
-    RunningTiltBuild: TiltBuild
-    LatestTiltBuild: TiltBuild
-    FeatureFlags: { [featureFlag: string]: boolean }
-  } | null
-  IsSidebarClosed: boolean
-  SnapshotLink: string
-  showSnapshotModal: boolean
-  path?: string
-  snapshotHighlight?: SnapshotHighlight | null
-}
-
 export type SnapshotHighlight = {
   beginningLogID: string
   endingLogID: string
