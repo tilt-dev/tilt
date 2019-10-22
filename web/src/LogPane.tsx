@@ -88,6 +88,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       let node = ReactDOM.findDOMNode(this)
       let beginning = selection.focusNode
       let end = selection.anchorNode
+      let text = selection.toString()
 
       // if end is before beginning
       if (
@@ -114,6 +115,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
           this.props.handleSetHighlight({
             beginningLogID: beginningLogLine,
             endingLogID: endingLogLine,
+            text: text,
           })
         }
       }

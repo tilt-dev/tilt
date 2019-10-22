@@ -111,6 +111,7 @@ export type Snapshot = {
 export type SnapshotHighlight = {
   beginningLogID: string
   endingLogID: string
+  text: string
 }
 
 export enum ShowFatalErrorModal {
