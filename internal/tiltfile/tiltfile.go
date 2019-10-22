@@ -166,8 +166,10 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	tlr.DockerPruneSettings = dps
 
 	printWarnings(s)
-	s.logger.Infof("Successfully loaded Tiltfile")
-	tfl.reportTiltfileLoaded(s.builtinCallCounts, s.builtinArgCounts, time.Since(start))
+
+	duration := time.Since(start)
+	s.logger.Infof("Successfully loaded Tiltfile (%s)", duration)
+	tfl.reportTiltfileLoaded(s.builtinCallCounts, s.builtinArgCounts, duration)
 
 	return tlr
 }

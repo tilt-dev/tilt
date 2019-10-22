@@ -587,18 +587,14 @@ func StateToView(s EngineState) view.View {
 	return ret
 }
 
+const TiltfileManifestName = model.ManifestName("(Tiltfile)")
+
 func tiltfileResourceView(s EngineState) view.Resource {
-	ltfb := s.TiltfileState.LastBuild()
-	if !s.TiltfileState.CurrentBuild.Empty() {
-		ltfb.Log = s.TiltfileState.CurrentBuild.Log
-	}
 	tr := view.Resource{
-		Name:         view.TiltfileResourceName,
+		Name:         TiltfileManifestName,
 		IsTiltfile:   true,
 		CurrentBuild: s.TiltfileState.CurrentBuild,
-		BuildHistory: []model.BuildRecord{
-			ltfb,
-		},
+		BuildHistory: s.TiltfileState.BuildHistory,
 	}
 	if !s.TiltfileState.CurrentBuild.Empty() {
 		tr.PendingBuildSince = s.TiltfileState.CurrentBuild.StartTime

@@ -118,10 +118,8 @@ func (u *UpdateUploader) makeUpdates(ctx context.Context, st store.RStore) updat
 
 	highWaterMark := u.lastFinishTime
 	updates := []update{}
-	for _, target := range state.ManifestTargets {
-		manifest := target.Manifest
-		status := target.State
 
+	processManifestState := func(name model.ManifestName, status store.ManifestState) {
 		for _, record := range status.BuildHistory {
 			// The BuildHistory is stored most-recent first, so we can stop iterating
 			// as soon as we see one newer than the high-water mark.
@@ -142,7 +140,7 @@ func (u *UpdateUploader) makeUpdates(ctx context.Context, st store.RStore) updat
 
 			updates = append(updates, update{
 				Service: updateServiceSpec{
-					Name: manifest.Name.String(),
+					Name: name.String(),
 				},
 				StartTime:         record.StartTime.Format(time.RFC3339),
 				Duration:          record.Duration().String(),
@@ -152,7 +150,11 @@ func (u *UpdateUploader) makeUpdates(ctx context.Context, st store.RStore) updat
 				SnapshotID:        snapshotID{string(sID)},
 			})
 		}
+	}
 
+	processManifestState(store.TiltfileManifestName, state.TiltfileState)
+	for _, target := range state.ManifestTargets {
+		processManifestState(target.Manifest.Name, *(target.State))
 	}
 
 	u.lastFinishTime = highWaterMark

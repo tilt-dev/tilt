@@ -44,6 +44,28 @@ func TestOneUpdate(t *testing.T) {
 	}
 }
 
+func TestTiltfileUpdate(t *testing.T) {
+	f := newUpdateFixture(t)
+	defer f.TearDown()
+
+	assert.Equal(t, 0, len(f.uu.makeUpdates(f.ctx, f.store).updates()))
+
+	f.AddCompletedBuild(store.TiltfileManifestName, nil)
+	task := f.uu.makeUpdates(f.ctx, f.store)
+	assert.Equal(t, 1, len(task.updates()))
+	assert.Equal(t, 0, len(f.uu.makeUpdates(f.ctx, f.store).updates()))
+
+	f.uu.sendUpdates(f.ctx, task)
+	requests := f.httpClient.Requests
+	if assert.Equal(t, 1, len(requests)) {
+		body, err := ioutil.ReadAll(requests[0].Body)
+		assert.NoError(t, err)
+		expected := `{"team_id":{"id":"fake-team"},"updates":[{"service":{"name":"(Tiltfile)"},"start_time":"1984-04-04T00:00:00Z","duration":"1m0s","is_live_update":false,"result":0,"result_description":"","snapshot_id":{"id":"snapshot1"}}]}
+`
+		assert.Equal(t, expected, string(body))
+	}
+}
+
 func TestTwoUpdates(t *testing.T) {
 	f := newUpdateFixture(t)
 	defer f.TearDown()
@@ -123,10 +145,17 @@ func (f *updateFixture) AddCompletedBuild(name model.ManifestName, err error) {
 		FinishTime: f.clock.Now().Add(time.Minute),
 		Error:      err,
 	}
-	ms, ok := state.ManifestState(name)
-	if !ok {
-		panic(fmt.Errorf("no manifest with name %s", name))
+	var ms *store.ManifestState
+	if name == store.TiltfileManifestName {
+		ms = &state.TiltfileState
+	} else {
+		var ok bool
+		ms, ok = state.ManifestState(name)
+		if !ok {
+			panic(fmt.Errorf("no manifest with name %s", name))
+		}
 	}
+
 	ms.AddCompletedBuild(record)
 	state.CompletedBuildCount++
 	f.clock.Advance(2 * time.Minute)
