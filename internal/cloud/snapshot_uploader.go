@@ -52,16 +52,16 @@ type snapshotIDResponse struct {
 }
 
 type snapshotHighlight struct {
-	BeginningLogID string
-	EndingLogID    string
-	Text           string
+	BeginningLogID string `json:"beginningLogID"`
+	EndingLogID    string `json:"endingLogID"`
+	Text           string `json:"text"`
 }
 
 type Snapshot struct {
 	View              webview.View
 	IsSidebarClosed   bool
-	Path              string
-	SnapshotHighlight snapshotHighlight
+	Path              string            `json:"path"`
+	SnapshotHighlight snapshotHighlight `json:"snapshotHighlight"`
 }
 
 func (s snapshotUploader) TakeAndUpload(state store.EngineState) (SnapshotID, error) {
