@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
+	"github.com/windmilleng/tilt/internal/tiltfile/value"
 	"github.com/windmilleng/tilt/pkg/model"
 
 	"go.starlark.net/starlark"
@@ -36,7 +37,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	depsVals := starlarkValueOrSequenceToSlice(deps)
 	var depsStrings []string
 	for _, v := range depsVals {
-		path, err := s.absPathFromStarlarkValue(thread, v)
+		path, err := value.ValueToAbsPath(thread, v)
 		if err != nil {
 			return nil, fmt.Errorf("deps must be a string or a sequence of strings; found a %T", v)
 		}

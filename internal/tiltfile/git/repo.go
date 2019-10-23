@@ -8,6 +8,7 @@ import (
 	"go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
+	"github.com/windmilleng/tilt/internal/tiltfile/value"
 )
 
 type Repo struct {
@@ -61,3 +62,5 @@ func (gr *Repo) path(thread *starlark.Thread, fn *starlark.Builtin, args starlar
 func (gr *Repo) MakeLocalPath(path string) string {
 	return filepath.Join(gr.basePath, path)
 }
+
+var _ value.PathMaker = &Repo{}
