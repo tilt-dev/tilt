@@ -16,6 +16,7 @@
     "@types/react-timeago": "^4.1.0",
     "@types/styled-components": "^4.1.19",
     "ansi-to-react": "^5.0.0",
+    "google-protobuf": "^3.10.0",
     "grpc-web": "^1.0.6",
     "history": "^4.9.0",
     "js-cookie": "^2.2.1",
