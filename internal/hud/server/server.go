@@ -66,7 +66,8 @@ func ProvideHeadsUpServer(
 	store *store.Store,
 	assetServer assets.Server,
 	analytics *tiltanalytics.TiltAnalytics,
-	uploader cloud.SnapshotUploader) *HeadsUpServer {
+	uploader cloud.SnapshotUploader,
+	ctx context.Context) (*HeadsUpServer, error) {
 	r := mux.NewRouter().UseEncodedPath()
 	grpcMux := runtime.NewServeMux()
 	s := &HeadsUpServer{
@@ -77,10 +78,9 @@ func ProvideHeadsUpServer(
 		grpcMux:  grpcMux,
 	}
 
-	err := proto_webview.RegisterViewServiceHandlerServer(context.TODO(), grpcMux, s)
+	err := proto_webview.RegisterViewServiceHandlerServer(ctx, grpcMux, s)
 	if err != nil {
-		// TODO(dmiller) what should we do here?
-		panic(err)
+		return nil, err
 	}
 
 	r.HandleFunc("/api/view", s.ViewJSON)
@@ -98,7 +98,7 @@ func ProvideHeadsUpServer(
 
 	r.PathPrefix("/").Handler(s.cookieWrapper(assetServer))
 
-	return s
+	return s, nil
 }
 
 type funcHandler struct {
