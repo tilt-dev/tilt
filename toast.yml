@@ -1,0 +1,30 @@
+image: golang:1.12-alpine
+tasks:
+  apk_update:
+    command: apk update
+  install_protoc_deps:
+    dependencies:
+      - apk_update
+    command: apk add protobuf protobuf-dev git
+  install_protoc_gen_go:
+    dependencies:
+      - install_protoc_deps
+    command: go get -u github.com/golang/protobuf/protoc-gen-go github.com/golang/protobuf/jsonpb github.com/golang/protobuf/proto github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway google.golang.org/grpc
+  install_git:
+    dependencies:
+      - apk_update
+    command: apk add git
+  install_goimports:
+    dependencies:
+      - install_git
+    command: go get golang.org/x/tools/cmd/goimports
+  proto:
+    dependencies:
+      - install_protoc_gen_go
+      - install_goimports
+    input_paths:
+      - pkg/webview/view.proto
+    output_paths:
+      - pkg/webview/view.pb.go
+      - pkg/webview/view.pb.gw.go
+    command: protoc -I. -I/usr/include -I"$(go env GOPATH)"/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis --grpc-gateway_out=logtostderr=true:. --go_out=plugins=grpc,paths=source_relative:. pkg/webview/view.proto && goimports -local github.com/windmilleng/tft -w pkg/webview/view.pb.go

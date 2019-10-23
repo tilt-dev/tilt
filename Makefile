@@ -24,7 +24,7 @@ scripts/protocc/protocc.py: scripts/protocc
 	git submodule update
 
 proto: scripts/protocc/protocc.py
-	python3 scripts/protocc/protocc.py --out go
+	python3 scripts/protocc/protocc.py --out go && toast proto
 
 # Build a binary that uses synclet:latest
 install:

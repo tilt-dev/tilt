@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package webview;
+
+import "google/api/annotations.proto";
+
+// TODO(dmiller) fill this in
+message Resource {}
+
+message TiltBuild {
+  string version = 1;
+  string commitSHA = 2;
+  string date = 3;
+  bool dev = 4;
+}
+
+message View {
+  string log = 1;
+  repeated Resource resources = 2;
+  bool logTimestamps = 3;
+
+  map<string, bool> featureFlags = 4;
+
+  bool needAnalyticsNudge = 5;
+
+  TiltBuild runningTiltBuild = 6;
+  TiltBuild latestTiltBuild = 7;
+
+  string tiltCloudUsername = 8;
+  string tiltCloudSchemeHost = 9;
+  string tiltCloudTeamID = 10;
+
+  string fatalError = 11;
+}
+
+message GetViewRequest {}
+
+service ViewService {
+  rpc GetView(GetViewRequest) returns (View) {
+    option (google.api.http) = {
+      get: "/api/proto/view"
+    };
+  }
+}

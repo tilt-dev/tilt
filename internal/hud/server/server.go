@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/gorilla/mux"
 	_ "github.com/gorilla/websocket"
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/modern-go/reflect2"
 	"github.com/pkg/errors"
@@ -24,6 +26,7 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/model"
+	proto_webview "github.com/windmilleng/tilt/pkg/webview"
 )
 
 const httpTimeOut = 5 * time.Second
@@ -56,6 +59,7 @@ type HeadsUpServer struct {
 	a                 *tiltanalytics.TiltAnalytics
 	uploader          cloud.SnapshotUploader
 	numWebsocketConns int32
+	grpcMux           *runtime.ServeMux
 }
 
 func ProvideHeadsUpServer(
@@ -64,12 +68,16 @@ func ProvideHeadsUpServer(
 	analytics *tiltanalytics.TiltAnalytics,
 	uploader cloud.SnapshotUploader) *HeadsUpServer {
 	r := mux.NewRouter().UseEncodedPath()
+	grpcMux := runtime.NewServeMux()
 	s := &HeadsUpServer{
 		store:    store,
 		router:   r,
 		a:        analytics,
 		uploader: uploader,
+		grpcMux:  grpcMux,
 	}
+
+	proto_webview.RegisterViewServiceHandlerServer(context.TODO(), grpcMux, s)
 
 	r.HandleFunc("/api/view", s.ViewJSON)
 	r.HandleFunc("/api/analytics", s.HandleAnalytics)
@@ -81,6 +89,8 @@ func ProvideHeadsUpServer(
 	r.HandleFunc("/api/snapshot/{snapshot_id}", s.SnapshotJSON)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
 	r.HandleFunc("/api/user_started_tilt_cloud_registration", s.userStartedTiltCloudRegistration)
+
+	r.PathPrefix("/api/proto").Handler(s.grpcMux)
 
 	r.PathPrefix("/").Handler(s.cookieWrapper(assetServer))
 
@@ -343,6 +353,12 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
+}
+
+func (s *HeadsUpServer) GetView(ctx context.Context, req *proto_webview.GetViewRequest) (*proto_webview.View, error) {
+	return &proto_webview.View{
+		FatalError: "AHHH FATAL ERROR",
+	}, nil
 }
 
 func (s *HeadsUpServer) userStartedTiltCloudRegistration(w http.ResponseWriter, req *http.Request) {

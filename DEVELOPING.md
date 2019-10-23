@@ -41,6 +41,7 @@ Other development commands:
 
 - **[wire](https://github.com/google/wire)**: `go get -u github.com/google/wire/cmd/wire` (to update generated dependency injection code)
 - **[goimports](https://godoc.org/golang.org/x/tools/cmd/goimports)**: `go get -u golang.org/x/tools/cmd/goimports` (to sort imports, IDE-specific installation instructions in the link). You should configure goimports to run with `-local github.com/windmill/tilt`
+- **[toast](https://github.com/stepchowfun/toast)**: `curl https://raw.githubusercontent.com/stepchowfun/toast/master/install.sh -LSfs | sh` Used for generating some protobuf files
 - Our Python scripts are in Python 3.6.0. To run them:
   - **[pyenv](https://github.com/pyenv/pyenv#installation)**
   - **python**: `pyenv install`
