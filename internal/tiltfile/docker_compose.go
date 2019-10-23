@@ -93,11 +93,12 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 		return nil, fmt.Errorf("dc_resource: `name` must not be empty")
 	}
 
-	var imageRefAsStr string
+	var imageRefAsStr *string
 	switch imageVal := imageVal.(type) {
 	case nil: // optional arg, this is fine
 	case starlark.String:
-		imageRefAsStr = string(imageVal)
+		s := string(imageVal)
+		imageRefAsStr = &s
 	default:
 		return nil, fmt.Errorf("image arg must be a string; got %T", imageVal)
 	}
@@ -109,11 +110,13 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 
 	svc.TriggerMode = triggerMode
 
-	normalized, err := container.ParseNamed(imageRefAsStr)
-	if err != nil {
-		return nil, err
+	if imageRefAsStr != nil {
+		normalized, err := container.ParseNamed(*imageRefAsStr)
+		if err != nil {
+			return nil, err
+		}
+		svc.imageRefFromUser = normalized
 	}
-	svc.imageRefFromUser = normalized
 
 	return starlark.None, nil
 }
