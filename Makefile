@@ -23,8 +23,11 @@ scripts/protocc/protocc.py: scripts/protocc
 	git submodule init
 	git submodule update
 
-proto: scripts/protocc/protocc.py
-	python3 scripts/protocc/protocc.py --out go && toast proto
+toast.yaml:
+	toast proto
+
+proto: scripts/protocc/protocc.py toast.yaml
+	python3 scripts/protocc/protocc.py --out go
 
 # Build a binary that uses synclet:latest
 install:
