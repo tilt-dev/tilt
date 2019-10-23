@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tilt-web
+spec:
+  selector:
+    matchLabels:
+      app: tilt-web
+  template:
+    metadata:
+      labels:
+        app: tilt-web
+    spec:
+      containers:
+      - name: tilt-web
+        image: tilt-web
+        env:
+        - name: PORT
+          value: "3000"
+        - name: HOST
+          value: "0.0.0.0"
+        command: ["yarn", "run", "start"]
+        ports:
+        - containerPort: 3000
+          name: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tilt-web
+spec:
+  ports:
+  - name: http
+    port: 3000
+    targetPort: 3000
+  selector:
+    app: tilt-web
