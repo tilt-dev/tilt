@@ -1,4 +1,4 @@
-image: gcr.io/windmill-public-containers/tilt-toast@sha256:232b4f5b187da1bedc3bd6fcc0d07a8d33c169fa9430ac0105da7efb5a65ca9f
+image: gcr.io/windmill-public-containers/tilt-toast@sha256:481cd7eb12dc5b82ea5f6832b2895f914a6b21621dbb122ea5290ae73bb0d1b3
 tasks:
   proto:
     input_paths:
@@ -6,7 +6,33 @@ tasks:
     output_paths:
       - pkg/webview/view.pb.go
       - pkg/webview/view.pb.gw.go
-    command: protoc -I. -I/usr/include -I"$(go env GOPATH)"/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis --grpc-gateway_out=logtostderr=true:. --go_out=plugins=grpc,paths=source_relative:. pkg/webview/view.proto && goimports -local github.com/windmilleng/tft -w pkg/webview/view.pb.go
+      - pkg/webview/view.swagger.json
+    command: |
+      set -euo pipefail
+      mkdir -p web/src
+      protoc \
+       -I. \
+       -I/usr/include \
+       -I"$(go env GOPATH)"/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
+       --grpc-gateway_out=logtostderr=true:. \
+       --swagger_out=logtostderr=true:. \
+       --go_out=plugins=grpc,paths=source_relative:. \
+       pkg/webview/view.proto
+      goimports -local github.com/windmilleng/tilt -w pkg/webview/view.pb.go
+      
+  proto-ts:
+    dependencies:
+      - proto
+    input_paths:
+      - pkg/webview/view.swagger.json
+    output_paths:
+      - web/src/view.d.ts
+    command: |
+      set -euo pipefail
+      swagger-to-ts pkg/webview/view.swagger.json --camelcase --output web/src/view.d.ts
+      cd web && prettier --write src/view.d.ts
+      
+      
   wire:
     location: /go/src/github.com/windmilleng/tilt
     input_paths:

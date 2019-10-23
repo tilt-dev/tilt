@@ -9,7 +9,7 @@ message Resource {}
 
 message TiltBuild {
   string version = 1;
-  string commit_SHA = 2;
+  string commitSHA = 2;
   string date = 3;
   bool dev = 4;
 }
@@ -28,7 +28,7 @@ message View {
 
   string tilt_cloud_username = 8;
   string tilt_cloud_schemeHost = 9;
-  string tilt_cloud_team_ID = 10;
+  string tilt_cloud_teamID = 10;
 
   string fatal_error = 11;
 }

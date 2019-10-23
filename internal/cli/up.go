@@ -13,10 +13,8 @@ import (
 	"golang.org/x/sync/errgroup"
 	"k8s.io/klog"
 
-	"github.com/windmilleng/tilt/internal/engine"
-	"github.com/windmilleng/tilt/web"
-
 	"github.com/windmilleng/tilt/internal/analytics"
+	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/output"
@@ -26,6 +24,7 @@ import (
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/windmilleng/tilt/web"
 )
 
 const DefaultWebPort = 10350
