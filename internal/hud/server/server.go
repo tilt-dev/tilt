@@ -77,7 +77,11 @@ func ProvideHeadsUpServer(
 		grpcMux:  grpcMux,
 	}
 
-	proto_webview.RegisterViewServiceHandlerServer(context.TODO(), grpcMux, s)
+	err := proto_webview.RegisterViewServiceHandlerServer(context.TODO(), grpcMux, s)
+	if err != nil {
+		// TODO(dmiller) what should we do here?
+		panic(err)
+	}
 
 	r.HandleFunc("/api/view", s.ViewJSON)
 	r.HandleFunc("/api/analytics", s.HandleAnalytics)
