@@ -62,7 +62,7 @@ type TiltfileLoader interface {
 	// We want to be very careful not to treat non-zero exit codes like an error.
 	// Because even if the Tiltfile has errors, we might need to watch files
 	// or return partial results (like enabled features).
-	Load(ctx context.Context, filename string, matching map[string]bool) TiltfileLoadResult
+	Load(ctx context.Context, filename string, requestedManifests []model.ManifestName) TiltfileLoadResult
 }
 
 type FakeTiltfileLoader struct {
@@ -75,7 +75,7 @@ func NewFakeTiltfileLoader() *FakeTiltfileLoader {
 	return &FakeTiltfileLoader{}
 }
 
-func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool) TiltfileLoadResult {
+func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, requestedManifests []model.ManifestName) TiltfileLoadResult {
 	return tfl.Result
 }
 
@@ -112,7 +112,7 @@ func printWarnings(s *tiltfileState) {
 }
 
 // Load loads the Tiltfile in `filename`
-func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching map[string]bool) TiltfileLoadResult {
+func (tfl tiltfileLoader) Load(ctx context.Context, filename string, requestedManifests []model.ManifestName) TiltfileLoadResult {
 	start := time.Now()
 	absFilename, err := ospath.RealAbs(filename)
 	if err != nil {
@@ -147,7 +147,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, matching ma
 	privateRegistry := tfl.kCli.PrivateRegistry(ctx)
 	s := newTiltfileState(ctx, tfl.dcCli, tfl.k8sContextExt, privateRegistry, feature.FromDefaults(tfl.fDefaults))
 
-	manifests, result, err := s.loadManifests(absFilename, matching)
+	manifests, result, err := s.loadManifests(absFilename, requestedManifests)
 	tlr.Secrets = s.extractSecrets()
 	tlr.ConfigFiles = s.configFiles
 	tlr.Warnings = s.warnings

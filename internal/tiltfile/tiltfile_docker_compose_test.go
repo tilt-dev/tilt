@@ -516,7 +516,7 @@ dc_resource('foo', 'gcr.io/foo')
 	f.loadErrString("docker_build/custom_build.entrypoint not supported for Docker Compose resources")
 }
 
-func (f *fixture) assertDcManifest(name string, opts ...interface{}) model.Manifest {
+func (f *fixture) assertDcManifest(name model.ManifestName, opts ...interface{}) model.Manifest {
 	m := f.assertNextManifest(name)
 
 	if !m.IsDC() {

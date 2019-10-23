@@ -138,7 +138,7 @@ func (s *tiltfileState) print(_ *starlark.Thread, msg string) {
 //
 // TODO(nick): Eventually this will just return a starkit.Model, which will contain
 // all the mutable state collected by execution.
-func (s *tiltfileState) loadManifests(absFilename string, matching map[string]bool) ([]model.Manifest, starkit.Model, error) {
+func (s *tiltfileState) loadManifests(absFilename string, requested []model.ManifestName) ([]model.Manifest, starkit.Model, error) {
 	s.logger.Infof("Beginning Tiltfile execution")
 
 	result, err := starkit.ExecFile(absFilename,
@@ -198,7 +198,7 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 	}
 	manifests = append(manifests, localManifests...)
 
-	manifests, err = match(manifests, matching)
+	manifests, err = match(manifests, requested)
 	if err != nil {
 		return nil, starkit.Model{}, err
 	}
@@ -1004,28 +1004,33 @@ func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef container.Re
 }
 
 // If the user requested only a subset of manifests, filter those manifests out.
-func match(manifests []model.Manifest, matching map[string]bool) ([]model.Manifest, error) {
-	if len(matching) == 0 {
+func match(manifests []model.Manifest, requestedManifests []model.ManifestName) ([]model.Manifest, error) {
+	if len(requestedManifests) == 0 {
 		return manifests, nil
 	}
 
+	requestedManifestsByName := make(map[model.ManifestName]bool)
+	for _, n := range requestedManifests {
+		requestedManifestsByName[n] = true
+	}
+
 	var result []model.Manifest
-	matched := make(map[string]bool, len(matching))
+	matched := make(map[model.ManifestName]bool, len(requestedManifests))
 	var unmatchedNames []string
 	for _, m := range manifests {
-		if !matching[string(m.Name)] {
+		if !requestedManifestsByName[m.Name] {
 			unmatchedNames = append(unmatchedNames, m.Name.String())
 			continue
 		}
 		result = append(result, m)
-		matched[string(m.Name)] = true
+		matched[m.Name] = true
 	}
 
-	if len(matched) != len(matching) {
+	if len(matched) != len(requestedManifests) {
 		var missing []string
-		for k := range matching {
+		for _, k := range requestedManifests {
 			if !matched[k] {
-				missing = append(missing, k)
+				missing = append(missing, string(k))
 			}
 		}
 

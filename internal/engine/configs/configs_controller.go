@@ -78,11 +78,6 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 	startTime := cc.clock()
 	st.Dispatch(ConfigsReloadStartedAction{FilesChanged: filesChanged, StartTime: startTime})
 
-	matching := map[string]bool{}
-	for _, m := range initManifests {
-		matching[string(m)] = true
-	}
-
 	actionWriter := NewTiltfileLogWriter(st)
 	ctx = logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), actionWriter))
 
@@ -94,7 +89,7 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 	}
 	st.RUnlockState()
 
-	tlr := cc.tfl.Load(ctx, tiltfilePath, matching)
+	tlr := cc.tfl.Load(ctx, tiltfilePath, initManifests)
 	if tlr.Error == nil && len(tlr.Manifests) == 0 {
 		tlr.Error = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
 	}
