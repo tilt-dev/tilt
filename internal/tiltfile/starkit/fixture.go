@@ -3,9 +3,12 @@ package starkit
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"go.starlark.net/starlark"
 )
 
@@ -16,6 +19,7 @@ type Fixture struct {
 	path       string
 	fs         map[string]string
 	out        *bytes.Buffer
+	useRealFS  bool // Use a real filesystem
 }
 
 func NewFixture(tb testing.TB, extensions ...Extension) *Fixture {
@@ -29,7 +33,10 @@ func NewFixture(tb testing.TB, extensions ...Extension) *Fixture {
 }
 
 func (f *Fixture) OnStart(e *Environment) error {
-	e.SetFakeFileSystem(f.fs)
+	if !f.useRealFS {
+		e.SetFakeFileSystem(f.fs)
+	}
+
 	e.SetPrint(func(t *starlark.Thread, msg string) {
 		_, _ = fmt.Fprintf(f.out, "%s\n", msg)
 	})
@@ -51,5 +58,21 @@ func (f *Fixture) Path() string {
 
 func (f *Fixture) File(name, contents string) {
 	fullPath := filepath.Join(f.path, name)
+	if f.useRealFS {
+		dir := filepath.Dir(fullPath)
+		err := os.MkdirAll(dir, os.FileMode(0755))
+		assert.NoError(f.tb, err)
+
+		err = ioutil.WriteFile(fullPath, []byte(contents), os.FileMode(0644))
+		assert.NoError(f.tb, err)
+		return
+	}
 	f.fs[fullPath] = contents
+}
+
+func (f *Fixture) UseRealFS() {
+	path, err := ioutil.TempDir("", f.tb.Name())
+	assert.NoError(f.tb, err)
+	f.path = path
+	f.useRealFS = true
 }
