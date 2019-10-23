@@ -23,7 +23,10 @@ scripts/protocc/protocc.py: scripts/protocc
 	git submodule init
 	git submodule update
 
-proto: scripts/protocc/protocc.py
+toast.yaml:
+	toast proto
+
+proto: scripts/protocc/protocc.py toast.yaml
 	python3 scripts/protocc/protocc.py --out go
 
 # Build a binary that uses synclet:latest
@@ -165,3 +168,7 @@ prettier:
 storybook:
 	cd web && yarn install
 	cd web && yarn storybook
+
+tilt-toast-container:
+	docker build -t gcr.io/windmill-public-containers/tilt-toast -f Dockerfile.toast .circleci
+	docker push gcr.io/windmill-public-containers/tilt-toast

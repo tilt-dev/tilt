@@ -157,7 +157,10 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	httpClient := cloud.ProvideHttpClient()
 	address := cloudurl.ProvideAddress()
 	snapshotUploader := cloud.NewSnapshotUploader(httpClient, address)
-	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics2, snapshotUploader)
+	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics2, snapshotUploader)
+	if err != nil {
+		return demo.Script{}, err
+	}
 	modelNoBrowser := provideNoBrowserFlag()
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer, webURL, modelNoBrowser)
 	githubClientFactory := engine.NewGithubClientFactory()
@@ -333,7 +336,10 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	httpClient := cloud.ProvideHttpClient()
 	address := cloudurl.ProvideAddress()
 	snapshotUploader := cloud.NewSnapshotUploader(httpClient, address)
-	headsUpServer := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics2, snapshotUploader)
+	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics2, snapshotUploader)
+	if err != nil {
+		return Threads{}, err
+	}
 	modelNoBrowser := provideNoBrowserFlag()
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer, webURL, modelNoBrowser)
 	githubClientFactory := engine.NewGithubClientFactory()
