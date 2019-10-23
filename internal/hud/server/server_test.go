@@ -354,7 +354,7 @@ func TestMaybeSendToTriggerQueue_notManualManifest(t *testing.T) {
 func TestHandleNewSnapshot(t *testing.T) {
 	f := newTestFixture(t)
 
-	sp := filepath.Join("..", "webview", "testdata", "snapshot.json")
+	sp := filepath.Join("..", "..", "..", "pkg", "hud", "webview", "testdata", "snapshot.json")
 	snap, err := ioutil.ReadFile(sp)
 	if err != nil {
 		t.Fatal(err)

@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"sync/atomic"
 
-	"github.com/windmilleng/tilt/internal/hud/webview"
+	"github.com/windmilleng/tilt/pkg/hud/webview"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/logger"
 

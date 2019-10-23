@@ -19,7 +19,7 @@ import (
 
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/cloud"
-	"github.com/windmilleng/tilt/internal/hud/webview"
+	"github.com/windmilleng/tilt/pkg/hud/webview"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/assets"
