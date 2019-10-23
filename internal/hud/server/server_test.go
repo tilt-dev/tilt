@@ -391,7 +391,10 @@ func newTestFixture(t *testing.T) *serverFixture {
 	httpClient := fakeHttpClient{}
 	addr := cloudurl.Address("nonexistent.example.com")
 	uploader := cloud.NewSnapshotUploader(httpClient, addr)
-	serv := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, uploader)
+	serv, err := server.ProvideHeadsUpServer(st, assets.NewFakeServer(), ta, uploader, context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	return &serverFixture{
 		t:          t,
