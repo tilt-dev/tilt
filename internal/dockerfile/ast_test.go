@@ -89,15 +89,26 @@ RUN echo bye
 `)
 }
 
-func TestPrintMultipleDirectives(t *testing.T) {
-	t.Skipf("Broken by aaa50e5adb83efdde909dec8b00eaa1c5f737276, Maia will fix")
-	assertPrintSame(t, `# foo = bar
-# baz = beep
+func TestMultipleDirectivesOrderDeterministic(t *testing.T) {
+	orig := `# z = zzz
+# y = yyy
+# x = xxx
+# b = bbb
+# a = aaa
 
 FROM golang:10
-RUN echo hi
-RUN echo bye
-`)
+`
+	// directives should be sorted alphabetically by key-
+	expected := `# a = aaa
+# b = bbb
+# x = xxx
+# y = yyy
+# z = zzz
+
+FROM golang:10
+`
+
+	assertPrint(t, orig, expected)
 }
 
 // Convert the dockerfile into an AST, print it, and then

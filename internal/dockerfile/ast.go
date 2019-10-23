@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 
 	"github.com/docker/distribution/reference"
@@ -118,7 +119,10 @@ func (a AST) Print() (Dockerfile, error) {
 	currentLine := 1
 
 	directiveFmt := "# %s = %s\n"
-	for k, v := range a.directives {
+	for _, k := range sortedKeys(a.directives) {
+		// order of directives in a docker makes no semantic difference; we
+		// rehydrate directives in sorted order so output is deterministic
+		v := a.directives[k]
 		_, err := fmt.Fprintf(buf, directiveFmt, k, v)
 		if err != nil {
 			return "", err
@@ -239,4 +243,13 @@ func fmtLabel(node *parser.Node) string {
 
 func newReader(df Dockerfile) io.Reader {
 	return bytes.NewBufferString(string(df))
+}
+
+func sortedKeys(m map[string]string) []string {
+	var keys []string
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
