@@ -38,7 +38,7 @@ message GetViewRequest {}
 service ViewService {
   rpc GetView(GetViewRequest) returns (View) {
     option (google.api.http) = {
-      get: "/api/proto/view"
+      get: "/webview.ViewService/GetView"
     };
   }
 }

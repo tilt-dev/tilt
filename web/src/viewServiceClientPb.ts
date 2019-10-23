@@ -1,3 +1,4 @@
+/* eslint-disable */
 /**
  * @fileoverview gRPC-Web generated client stub for webview
  * @enhanceable
@@ -7,9 +8,6 @@
 // GENERATED CODE -- DO NOT EDIT!
 
 import * as grpcWeb from "grpc-web"
-
-// NOTE(dmiller): why do we have to delete this?
-//import * as google_api_annotations_pb from '../../google/api/annotations_pb';
 
 import { GetViewRequest, View } from "./view_pb"
 

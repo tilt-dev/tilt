@@ -139,7 +139,7 @@ func RegisterViewServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 }
 
 var (
-	pattern_ViewService_GetView_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"api", "proto", "view"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_ViewService_GetView_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"webview.ViewService", "GetView"}, "", runtime.AssumeColonVerbOpt(true)))
 )
 
 var (

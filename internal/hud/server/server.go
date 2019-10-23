@@ -94,7 +94,7 @@ func ProvideHeadsUpServer(
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
 	r.HandleFunc("/api/user_started_tilt_cloud_registration", s.userStartedTiltCloudRegistration)
 
-	r.PathPrefix("/api/proto").Handler(s.grpcMux)
+	r.PathPrefix("/webview.ViewService/").Handler(s.grpcMux)
 
 	r.PathPrefix("/").Handler(s.cookieWrapper(assetServer))
 
