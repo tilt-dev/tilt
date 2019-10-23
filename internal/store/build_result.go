@@ -221,6 +221,9 @@ type BuildState struct {
 	FilesChangedSet map[string]bool
 
 	RunningContainers []ContainerInfo
+
+	// If we had an error retrieving running containers
+	RunningContainerError error
 }
 
 func NewBuildState(result BuildResult, files []string) BuildState {
@@ -236,6 +239,11 @@ func NewBuildState(result BuildResult, files []string) BuildState {
 
 func (b BuildState) WithRunningContainers(cInfos []ContainerInfo) BuildState {
 	b.RunningContainers = cInfos
+	return b
+}
+
+func (b BuildState) WithRunningContainerError(err error) BuildState {
+	b.RunningContainerError = err
 	return b
 }
 

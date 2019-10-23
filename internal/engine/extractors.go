@@ -63,6 +63,10 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 			return nil, SilentRedirectToNextBuilderf("In-place build requires either FastBuild or LiveUpdate")
 		}
 
+		if state.RunningContainerError != nil {
+			return nil, RedirectToNextBuilderInfof("%v", state.RunningContainerError)
+		}
+
 		// Now that we have fast build information, we know this CAN be updated in
 		// a container(s). Check to see if we have enough information about the
 		// container(s) that would need to be updated.

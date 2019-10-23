@@ -200,12 +200,10 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 				if manifest.IsK8s() {
 					cInfos, err := store.RunningContainersForTargetForOnePod(iTarget, ms.K8sRuntimeState())
 					if err != nil {
-						// Couldn't get running container info; surface an error IF target has LiveUpdate instructions.
-						if !iTarget.AnyFastBuildInfo().Empty() || !iTarget.AnyLiveUpdateInfo().Empty() {
-							logger.Get(ctx).Infof("CANNOT PERFORM LIVE UPDATE ON IMAGE %s:\n\t%v", iTarget.ID(), err)
-						}
+						buildState = buildState.WithRunningContainerError(err)
+					} else {
+						buildState = buildState.WithRunningContainers(cInfos)
 					}
-					buildState = buildState.WithRunningContainers(cInfos)
 				}
 
 				if manifest.IsDC() {
