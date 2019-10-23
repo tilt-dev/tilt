@@ -9,7 +9,7 @@ message Resource {}
 
 message TiltBuild {
   string version = 1;
-  string commitSHA = 2;
+  string commit_SHA = 2;
   string date = 3;
   bool dev = 4;
 }
@@ -17,20 +17,20 @@ message TiltBuild {
 message View {
   string log = 1;
   repeated Resource resources = 2;
-  bool logTimestamps = 3;
+  bool log_timestamps = 3;
 
-  map<string, bool> featureFlags = 4;
+  map<string, bool> feature_flags = 4;
 
-  bool needAnalyticsNudge = 5;
+  bool need_analytics_nudge = 5;
 
-  TiltBuild runningTiltBuild = 6;
-  TiltBuild latestTiltBuild = 7;
+  TiltBuild running_tilt_build = 6;
+  TiltBuild latest_tilt_build = 7;
 
-  string tiltCloudUsername = 8;
-  string tiltCloudSchemeHost = 9;
-  string tiltCloudTeamID = 10;
+  string tilt_cloud_username = 8;
+  string tilt_cloud_schemeHost = 9;
+  string tilt_cloud_team_ID = 10;
 
-  string fatalError = 11;
+  string fatal_error = 11;
 }
 
 message GetViewRequest {}

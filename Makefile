@@ -174,8 +174,6 @@ storybook:
 	cd web && yarn install
 	cd web && yarn storybook
 
-tilt-container:
+tilt-toast-container:
 	docker build -t gcr.io/windmill-public-containers/tilt-toast -f Dockerfile.toast .circleci
 	docker push gcr.io/windmill-public-containers/tilt-toast
-
-

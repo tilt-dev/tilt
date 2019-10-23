@@ -157,7 +157,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	httpClient := cloud.ProvideHttpClient()
 	address := cloudurl.ProvideAddress()
 	snapshotUploader := cloud.NewSnapshotUploader(httpClient, address)
-	headsUpServer, err := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics2, snapshotUploader, ctx)
+	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics2, snapshotUploader)
 	if err != nil {
 		return demo.Script{}, err
 	}
@@ -336,7 +336,7 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	httpClient := cloud.ProvideHttpClient()
 	address := cloudurl.ProvideAddress()
 	snapshotUploader := cloud.NewSnapshotUploader(httpClient, address)
-	headsUpServer, err := server.ProvideHeadsUpServer(storeStore, assetsServer, analytics2, snapshotUploader, ctx)
+	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics2, snapshotUploader)
 	if err != nil {
 		return Threads{}, err
 	}

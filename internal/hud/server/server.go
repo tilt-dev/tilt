@@ -63,11 +63,11 @@ type HeadsUpServer struct {
 }
 
 func ProvideHeadsUpServer(
+	ctx context.Context,
 	store *store.Store,
 	assetServer assets.Server,
 	analytics *tiltanalytics.TiltAnalytics,
-	uploader cloud.SnapshotUploader,
-	ctx context.Context) (*HeadsUpServer, error) {
+	uploader cloud.SnapshotUploader) (*HeadsUpServer, error) {
 	r := mux.NewRouter().UseEncodedPath()
 	grpcMux := runtime.NewServeMux()
 	s := &HeadsUpServer{

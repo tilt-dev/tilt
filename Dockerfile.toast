@@ -1,5 +1,6 @@
 FROM golang:1.12-alpine
 RUN apk update
-RUN apk add protobuf protobuf-dev git
+RUN apk add protobuf protobuf-dev git wget
 RUN go get -u github.com/golang/protobuf/protoc-gen-go github.com/golang/protobuf/jsonpb github.com/golang/protobuf/proto github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway google.golang.org/grpc
 RUN go get golang.org/x/tools/cmd/goimports
+RUN cd /tmp && wget https://github.com/grpc/grpc-web/releases/download/1.0.6/protoc-gen-grpc-web-1.0.6-linux-x86_64 && mv protoc-gen-grpc-web-1.0.6-linux-x86_64 /usr/local/bin/protoc-gen-grpc-web && chmod +x /usr/local/bin/protoc-gen-grpc-web
