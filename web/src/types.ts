@@ -101,3 +101,34 @@ export enum ShowFatalErrorModal {
   Show,
   Hide,
 }
+
+export type WebView = {
+  Resources: Array<Resource>
+  Log: string
+  LogTimestamps: boolean
+  NeedsAnalyticsNudge: boolean
+  RunningTiltBuild: TiltBuild
+  LatestTiltBuild: TiltBuild
+  FeatureFlags: { [featureFlag: string]: boolean }
+  TiltCloudUsername: string
+  TiltCloudSchemeHost: string
+  TiltCloudTeamID: string
+  FatalError: string | null
+}
+
+export type Snapshot = {
+  View: WebView
+  IsSidebarClosed: boolean
+  path?: string
+  snapshotHighlight?: SnapshotHighlight | null
+}
+
+export type HudState = {
+  View: WebView
+  IsSidebarClosed: boolean
+  SnapshotLink: string
+  showSnapshotModal: boolean
+  showFatalErrorModal: ShowFatalErrorModal
+  snapshotHighlight: SnapshotHighlight | null
+  socketState: SocketState
+}

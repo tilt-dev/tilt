@@ -15,12 +15,13 @@ import TopBar from "./TopBar"
 import SocketBar from "./SocketBar"
 import "./HUD.scss"
 import {
-  TiltBuild,
+  HudState,
   ResourceView,
-  Resource,
   ShowFatalErrorModal,
+  Snapshot,
   SnapshotHighlight,
   SocketState,
+  WebView,
 } from "./types"
 import AlertPane from "./AlertPane"
 import AnalyticsNudge from "./AnalyticsNudge"
@@ -33,37 +34,6 @@ import * as _ from "lodash"
 
 type HudProps = {
   history: History
-}
-
-type HudView = {
-  Resources: Array<Resource>
-  Log: string
-  LogTimestamps: boolean
-  NeedsAnalyticsNudge: boolean
-  RunningTiltBuild: TiltBuild
-  LatestTiltBuild: TiltBuild
-  FeatureFlags: { [featureFlag: string]: boolean }
-  TiltCloudUsername: string
-  TiltCloudSchemeHost: string
-  TiltCloudTeamID: string
-  FatalError: string | null
-}
-
-type HudState = {
-  View: HudView | null
-  IsSidebarClosed: boolean
-  SnapshotLink: string
-  showSnapshotModal: boolean
-  showFatalErrorModal: ShowFatalErrorModal
-  snapshotHighlight: SnapshotHighlight | null
-  socketState: SocketState
-}
-
-export type Snapshot = {
-  View: HudView | null
-  IsSidebarClosed: boolean
-  Path?: string
-  SnapshotHighlight?: SnapshotHighlight | null
 }
 
 type NewSnapshotResponse = {
@@ -152,7 +122,7 @@ class HUD extends Component<HudProps, HudState> {
     this.unlisten()
   }
 
-  setAppState(state: HudState) {
+  setAppState<K extends keyof HudState>(state: Pick<HudState, K>) {
     this.setState(state)
   }
 
@@ -174,10 +144,10 @@ class HUD extends Component<HudProps, HudState> {
 
   snapshotFromState(state: HudState): Snapshot {
     return {
-      View: _.cloneDeep(state.View),
-      IsSidebarClosed: state.IsSidebarClosed,
-      Path: this.props.history.location.pathname,
-      SnapshotHighlight: _.cloneDeep(state.snapshotHighlight),
+      View: _.cloneDeep(state.View || null),
+      IsSidebarClosed: !!state.IsSidebarClosed,
+      path: this.props.history.location.pathname,
+      snapshotHighlight: _.cloneDeep(state.snapshotHighlight),
     }
   }
 
@@ -233,7 +203,9 @@ class HUD extends Component<HudProps, HudState> {
     if (!resources.length) {
       return <HeroScreen message={"Loading…"} />
     }
-    let isSidebarClosed = this.state.IsSidebarClosed
+    let isSidebarClosed = !!this.state.IsSidebarClosed
+    let snapshotHighlight = this.state.snapshotHighlight || null
+    let showSnapshotModal = !!this.state.showSnapshotModal
     let toggleSidebar = this.toggleSidebar
     let statusItems = resources.map(res => new StatusItem(res))
     let sidebarItems = resources.map(res => new SidebarItem(res))
@@ -281,7 +253,7 @@ class HUD extends Component<HudProps, HudState> {
               showSnapshotButton={showSnapshot}
               snapshotOwner={snapshotOwner}
               handleOpenModal={handleOpenModal}
-              highlight={this.state.snapshotHighlight}
+              highlight={snapshotHighlight}
             />
           )
         }
@@ -302,7 +274,7 @@ class HUD extends Component<HudProps, HudState> {
           showSnapshotButton={showSnapshot}
           snapshotOwner={snapshotOwner}
           handleOpenModal={handleOpenModal}
-          highlight={this.state.snapshotHighlight}
+          highlight={snapshotHighlight}
         />
       )
     }
@@ -340,8 +312,8 @@ class HUD extends Component<HudProps, HudState> {
             isExpanded={isSidebarClosed}
             handleSetHighlight={this.handleSetHighlight}
             handleClearHighlight={this.handleClearHighlight}
-            highlight={this.state.snapshotHighlight}
-            modalIsOpen={this.state.showSnapshotModal}
+            highlight={snapshotHighlight}
+            modalIsOpen={showSnapshotModal}
             isSnapshot={isSnapshot}
           />
         </>
@@ -437,7 +409,7 @@ class HUD extends Component<HudProps, HudState> {
                 handleSetHighlight={this.handleSetHighlight}
                 handleClearHighlight={this.handleClearHighlight}
                 highlight={this.state.snapshotHighlight}
-                modalIsOpen={this.state.showSnapshotModal}
+                modalIsOpen={showSnapshotModal}
                 isSnapshot={isSnapshot}
               />
             )}
@@ -471,7 +443,7 @@ class HUD extends Component<HudProps, HudState> {
     )
   }
 
-  renderShareSnapshotModal(view: HudView | null) {
+  renderShareSnapshotModal(view: WebView | null) {
     let handleClose = () => this.setState({ showSnapshotModal: false })
     let handleSendSnapshot = () =>
       this.sendSnapshot(this.snapshotFromState(this.state))
@@ -498,7 +470,7 @@ class HUD extends Component<HudProps, HudState> {
     )
   }
 
-  renderFatalErrorModal(view: HudView | null) {
+  renderFatalErrorModal(view: WebView | null) {
     let error = view && view.FatalError
     let handleClose = () =>
       this.setState({ showFatalErrorModal: ShowFatalErrorModal.Hide })

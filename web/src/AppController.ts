@@ -1,9 +1,16 @@
 import { getResourceAlerts } from "./alerts"
-import { K8sResourceInfo, ShowFatalErrorModal, SocketState } from "./types"
+import {
+  K8sResourceInfo,
+  SocketState,
+  WebView,
+  Snapshot,
+  Resource,
+  HudState,
+} from "./types"
 import PathBuilder from "./PathBuilder"
 
-interface HUDInt {
-  setAppState: (state: any) => void
+interface HudInt {
+  setAppState: <K extends keyof HudState>(state: Pick<HudState, K>) => void
   setHistoryLocation: (path: string) => void
 }
 
@@ -14,7 +21,7 @@ class AppController {
   liveSocket: boolean
   tryConnectCount: number
   socket: WebSocket | null = null
-  component: HUDInt
+  component: HudInt
   disposed: boolean = false
   pb: PathBuilder
 
@@ -24,7 +31,7 @@ class AppController {
    *     Has one method, setAppState, that sets the global state of the
    *     app.
    */
-  constructor(pathBuilder: PathBuilder, component: HUDInt) {
+  constructor(pathBuilder: PathBuilder, component: HudInt) {
     if (!component.setAppState) {
       throw new Error("App component has no setAppState method")
     }
@@ -48,7 +55,7 @@ class AppController {
       this.liveSocket = true
       this.tryConnectCount = 0
 
-      let data = JSON.parse(event.data)
+      let data: WebView = JSON.parse(event.data)
 
       data.Resources = this.setDefaultResourceInfo(data.Resources)
       // @ts-ignore
@@ -59,7 +66,7 @@ class AppController {
     })
   }
 
-  setDefaultResourceInfo(resources: Array<any>): Array<any> {
+  setDefaultResourceInfo(resources: Array<Resource>): Array<Resource> {
     return resources.map(r => {
       if (!r.K8sResourceInfo && !r.DCResourceInfo) {
         let ri: K8sResourceInfo = {
@@ -114,7 +121,7 @@ class AppController {
       if (this.disposed) {
         return
       }
-      let state = this.loadCount
+      let state: SocketState = this.loadCount
         ? SocketState.Reconnecting
         : SocketState.Loading
       this.component.setAppState({
@@ -128,10 +135,16 @@ class AppController {
     let url = this.url
     fetch(url)
       .then(resp => resp.json())
-      .then(data => {
-        data.View.Resources = this.setDefaultResourceInfo(data.View.Resources)
-        // @ts-ignore
-        this.component.setAppState({ View: data.View })
+      .then((data: Snapshot) => {
+        data.View = data.View || {}
+
+        let resources = (data.View && data.View.Resources) || []
+        data.View.Resources = this.setDefaultResourceInfo(resources)
+
+        this.component.setAppState({
+          View: data.View,
+          IsSidebarClosed: data.IsSidebarClosed,
+        })
         if (data.path) {
           this.component.setHistoryLocation(this.pb.path(data.path))
         }
