@@ -1,3 +1,5 @@
+/* eslint-disable */
+// NOTE(dmiller): ^I have to add this
 /**
  * @fileoverview
  * @enhanceable
