@@ -13,7 +13,6 @@ var jspb = require('google-protobuf');
 var goog = jspb;
 var global = Function('return this')();
 
-var google_api_annotations_pb = require('../../google/api/annotations_pb.js');
 goog.exportSymbol('proto.webview.GetViewRequest', null, global);
 goog.exportSymbol('proto.webview.Resource', null, global);
 goog.exportSymbol('proto.webview.TiltBuild', null, global);

@@ -113,7 +113,7 @@ class HUD extends Component<HudProps, HudState> {
       return
     }
     // TODO(dmiller): remove this
-    let client = new ViewServiceClient("localhost")
+    let client = new ViewServiceClient("")
     let req = new GetViewRequest()
     client.getView(req, null, (err, response) => {
       console.log("Err: ", err)
