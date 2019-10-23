@@ -10,9 +10,9 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/cloud/cloudurl"
-	"github.com/windmilleng/tilt/pkg/hud/webview"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/token"
+	"github.com/windmilleng/tilt/pkg/hud/webview"
 )
 
 type SnapshotID string

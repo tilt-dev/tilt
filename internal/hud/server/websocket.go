@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"sync/atomic"
 
-	"github.com/windmilleng/tilt/pkg/hud/webview"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/pkg/hud/webview"
 	"github.com/windmilleng/tilt/pkg/logger"
 
 	"github.com/gorilla/websocket"
