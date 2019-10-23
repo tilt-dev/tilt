@@ -31,6 +31,8 @@ import Features from "./feature"
 import ShareSnapshotModal from "./ShareSnapshotModal"
 import FatalErrorModal from "./FatalErrorModal"
 import * as _ from "lodash"
+import { ViewServiceClient } from "./viewServiceClientPb"
+import { GetViewRequest } from "./view_pb"
 
 type HudProps = {
   history: History
@@ -110,6 +112,14 @@ class HUD extends Component<HudProps, HudState> {
       // we don't want to run any bootstrapping code in the test environment
       return
     }
+    // TODO(dmiller): remove this
+    let client = new ViewServiceClient("localhost")
+    let req = new GetViewRequest()
+    client.getView(req, null, (err, response) => {
+      console.log("Err: ", err)
+      console.log("Response: ", response)
+    })
+
     if (this.pathBuilder.isSnapshot()) {
       this.controller.setStateFromSnapshot()
     } else {

@@ -1,4 +1,4 @@
-image: gcr.io/windmill-public-containers/tilt-toast@sha256:a6717cfce82671ab4536a2a6d8bdbe83eb45dd5386e86f70fbec1d64b95dd7e6
+image: gcr.io/windmill-public-containers/tilt-toast@sha256:3596eb666cb026d1770ecef6712f988cacfa8085021877dea3a77bbafa17c79a
 tasks:
   proto:
     input_paths:
@@ -6,4 +6,5 @@ tasks:
     output_paths:
       - pkg/webview/view.pb.go
       - pkg/webview/view.pb.gw.go
-    command: protoc -I. -I/usr/include -I"$(go env GOPATH)"/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis --grpc-gateway_out=logtostderr=true:. --go_out=plugins=grpc,paths=source_relative:. pkg/webview/view.proto && goimports -local github.com/windmilleng/tft -w pkg/webview/view.pb.go
+      - web/src/
+    command: apk add tree && mkdir -p web/src && protoc -I. -I/usr/include -I"$(go env GOPATH)"/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis --grpc-gateway_out=logtostderr=true:. --go_out=plugins=grpc,paths=source_relative:. --js_out=import_style=typescript:web/src --grpc-web_out=import_style=typescript,mode=grpcwebtext:web/src pkg/webview/view.proto && goimports -local github.com/windmilleng/tft -w pkg/webview/view.pb.go && mv web/src/Pkg/webview/* web/src && mv web/src/pkg/webview/* web/src && rm -rf web/src/Pkg && rm -rf web/src/pkg && tree .
