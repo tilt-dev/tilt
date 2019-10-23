@@ -12,6 +12,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/sliceutils"
+	"github.com/windmilleng/tilt/internal/tiltfile/git"
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 	"github.com/windmilleng/tilt/pkg/logger"
 
@@ -24,86 +25,10 @@ import (
 
 const localLogPrefix = " → "
 
-type gitRepo struct {
-	basePath string
-}
-
-func (s *tiltfileState) newGitRepo(t *starlark.Thread, path string) (*gitRepo, error) {
-	absPath := starkit.AbsPath(t, path)
-	_, err := os.Stat(absPath)
-	if err != nil {
-		return nil, fmt.Errorf("Reading paths %s: %v", absPath, err)
-	}
-
-	if _, err := os.Stat(filepath.Join(absPath, ".git")); os.IsNotExist(err) {
-		return nil, fmt.Errorf("%s isn't a valid git repo: it doesn't have a .git/ directory", absPath)
-	}
-
-	return &gitRepo{basePath: absPath}, nil
-}
-
-func (s *tiltfileState) localGitRepo(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var path string
-	err := s.unpackArgs(fn.Name(), args, kwargs, "paths", &path)
-	if err != nil {
-		return nil, err
-	}
-
-	return s.newGitRepo(thread, path)
-}
-
-var _ starlark.Value = &gitRepo{}
-
-func (gr *gitRepo) String() string {
-	return fmt.Sprintf("[gitRepo] '%v'", gr.basePath)
-}
-
-func (gr *gitRepo) Type() string {
-	return "gitRepo"
-}
-
-func (gr *gitRepo) Freeze() {}
-
-func (gr *gitRepo) Truth() starlark.Bool {
-	return gr.basePath != ""
-}
-
-func (*gitRepo) Hash() (uint32, error) {
-	return 0, errors.New("unhashable type: gitRepo")
-}
-
-func (gr *gitRepo) Attr(name string) (starlark.Value, error) {
-	switch name {
-	case "paths":
-		return starlark.NewBuiltin(name, gr.path), nil
-	default:
-		return nil, nil
-	}
-
-}
-
-func (gr *gitRepo) AttrNames() []string {
-	return []string{"paths"}
-}
-
-func (gr *gitRepo) path(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var path string
-	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "paths", &path)
-	if err != nil {
-		return nil, err
-	}
-
-	return starlark.String(gr.makeLocalPath(path)), nil
-}
-
-func (gr *gitRepo) makeLocalPath(path string) string {
-	return filepath.Join(gr.basePath, path)
-}
-
 func (s *tiltfileState) absPathFromStarlarkValue(thread *starlark.Thread, v starlark.Value) (string, error) {
 	switch v := v.(type) {
-	case *gitRepo:
-		return v.makeLocalPath("."), nil
+	case *git.Repo:
+		return v.MakeLocalPath("."), nil
 	case starlark.String:
 		return starkit.AbsPath(thread, string(v)), nil
 	default:

@@ -10,6 +10,7 @@ import (
 	"go.starlark.net/syntax"
 
 	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
+	"github.com/windmilleng/tilt/internal/tiltfile/git"
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
@@ -144,6 +145,7 @@ func (s *tiltfileState) loadManifests(absFilename string, matching map[string]bo
 	result, err := starkit.ExecFile(absFilename,
 		s,
 		include.IncludeFn{},
+		git.NewExtension(),
 		os.NewExtension(),
 		s.k8sContextExt,
 		dockerprune.NewExtension(),
@@ -239,16 +241,15 @@ const (
 	workloadToResourceFunctionN = "workload_to_resource_function"
 
 	// file functions
-	localGitRepoN = "local_git_repo"
-	localN        = "local"
-	readFileN     = "read_file"
-	watchFileN    = "watch_file"
-	kustomizeN    = "kustomize"
-	helmN         = "helm"
-	listdirN      = "listdir"
-	decodeJSONN   = "decode_json"
-	readJSONN     = "read_json"
-	readYAMLN     = "read_yaml"
+	localN      = "local"
+	readFileN   = "read_file"
+	watchFileN  = "watch_file"
+	kustomizeN  = "kustomize"
+	helmN       = "helm"
+	listdirN    = "listdir"
+	decodeJSONN = "decode_json"
+	readJSONN   = "read_json"
+	readYAMLN   = "read_yaml"
 
 	// live update functions
 	fallBackOnN       = "fall_back_on"
@@ -485,11 +486,6 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 	}
 
 	err = e.AddBuiltin(workloadToResourceFunctionN, s.workloadToResourceFunctionFn)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(localGitRepoN, s.localGitRepo)
 	if err != nil {
 		return err
 	}
