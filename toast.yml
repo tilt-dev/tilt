@@ -1,4 +1,4 @@
-image: gcr.io/windmill-public-containers/tilt-toast@sha256:0862c48dfc01239f1c9bf8ae0ab54a5c116d2c32bc8a36462c0b76fb308de429
+image: gcr.io/windmill-public-containers/tilt-toast@sha256:232b4f5b187da1bedc3bd6fcc0d07a8d33c169fa9430ac0105da7efb5a65ca9f
 tasks:
   proto:
     input_paths:
@@ -15,4 +15,4 @@ tasks:
       - ./internal/cli/wire_gen.go
       - ./internal/synclet/wire_gen.go
       - ./internal/engine/wire_gen.go
-    command: wire ./internal/engine && wire ./internal/cli && wire ./internal/synclet && goimports -local github.com/windmilleng/tft -w internal/cli/wire_gen.go internal/synclet/wire_gen.go internal/engine/wire_gen.go
+    command: wire ./internal/engine && wire ./internal/cli && wire ./internal/synclet && make goimports
