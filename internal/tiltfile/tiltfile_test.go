@@ -3077,9 +3077,9 @@ func TestTriggerModeDC(t *testing.T) {
 			case TriggerModeUnset:
 				dcResourceDirective = ""
 			case TriggerModeManual:
-				dcResourceDirective = "dc_resource('foo', 'gcr.io/foo', trigger_mode=TRIGGER_MODE_MANUAL)"
+				dcResourceDirective = "dc_resource('foo', trigger_mode=TRIGGER_MODE_MANUAL)"
 			case TriggerModeAuto:
-				dcResourceDirective = "dc_resource('foo', 'gcr.io/foo', trigger_mode=TRIGGER_MODE_AUTO)"
+				dcResourceDirective = "dc_resource('foo', trigger_mode=TRIGGER_MODE_AUTO)"
 			}
 
 			f.file("Tiltfile", fmt.Sprintf(`
@@ -3858,6 +3858,20 @@ k8s_yaml('secret.yaml')
 	assert.Equal(t, "client-secret", secrets["world"].Key)
 	assert.Equal(t, "world", string(secrets["world"].Value))
 	assert.Equal(t, "d29ybGQ=", string(secrets["world"].ValueEncoded))
+}
+
+func TestDCResourceNoImage(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("docker-compose.yml", simpleConfig)
+	f.file("Tiltfile", `
+docker_compose('docker-compose.yml')
+dc_resource('foo', trigger_mode=TRIGGER_MODE_AUTO)
+`)
+
+	f.load()
 }
 
 func TestDockerPruneSettings(t *testing.T) {
