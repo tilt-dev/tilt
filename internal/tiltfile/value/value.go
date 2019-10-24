@@ -1,7 +1,11 @@
 package value
 
 import (
+	"fmt"
+
 	"go.starlark.net/starlark"
+
+	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 )
 
 // If `v` is a `starlark.Sequence`, return a slice of its elements
@@ -22,4 +26,22 @@ func ValueOrSequenceToSlice(v starlark.Value) []starlark.Value {
 	} else {
 		return []starlark.Value{v}
 	}
+}
+
+func ValueToAbsPath(thread *starlark.Thread, v starlark.Value) (string, error) {
+	pathMaker, ok := v.(PathMaker)
+	if ok {
+		return pathMaker.MakeLocalPath("."), nil
+	}
+
+	str, ok := v.(starlark.String)
+	if ok {
+		return starkit.AbsPath(thread, string(str)), nil
+	}
+
+	return "", fmt.Errorf("expected path | string. Actual type: %T", v)
+}
+
+type PathMaker interface {
+	MakeLocalPath(relPath string) string
 }

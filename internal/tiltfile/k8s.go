@@ -17,6 +17,7 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/sliceutils"
+	"github.com/windmilleng/tilt/internal/tiltfile/value"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -688,7 +689,7 @@ func (s *tiltfileState) yamlEntitiesFromSkylarkValue(thread *starlark.Thread, v 
 	case *blob:
 		return parseYAMLFromBlob(*v)
 	default:
-		yamlPath, err := s.absPathFromStarlarkValue(thread, v)
+		yamlPath, err := value.ValueToAbsPath(thread, v)
 		if err != nil {
 			return nil, err
 		}

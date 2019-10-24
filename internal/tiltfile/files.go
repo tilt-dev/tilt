@@ -12,8 +12,8 @@ import (
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/sliceutils"
-	"github.com/windmilleng/tilt/internal/tiltfile/git"
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
+	"github.com/windmilleng/tilt/internal/tiltfile/value"
 	"github.com/windmilleng/tilt/pkg/logger"
 
 	"github.com/ghodss/yaml"
@@ -24,17 +24,6 @@ import (
 )
 
 const localLogPrefix = " → "
-
-func (s *tiltfileState) absPathFromStarlarkValue(thread *starlark.Thread, v starlark.Value) (string, error) {
-	switch v := v.(type) {
-	case *git.Repo:
-		return v.MakeLocalPath("."), nil
-	case starlark.String:
-		return starkit.AbsPath(thread, string(v)), nil
-	default:
-		return "", fmt.Errorf("expected gitRepo | string. Actual type: %T", v)
-	}
-}
 
 func (s *tiltfileState) recordConfigFile(f string) {
 	s.configFiles = sliceutils.AppendWithoutDupes(s.configFiles, f)
@@ -52,7 +41,7 @@ func (s *tiltfileState) watchFile(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, err
 	}
 
-	p, err := s.absPathFromStarlarkValue(thread, path)
+	p, err := value.ValueToAbsPath(thread, path)
 	if err != nil {
 		return nil, fmt.Errorf("invalid type for paths: %v", err)
 	}
@@ -70,7 +59,7 @@ func (s *tiltfileState) skylarkReadFile(thread *starlark.Thread, fn *starlark.Bu
 		return nil, err
 	}
 
-	p, err := s.absPathFromStarlarkValue(thread, path)
+	p, err := value.ValueToAbsPath(thread, path)
 	if err != nil {
 		return nil, fmt.Errorf("invalid type for paths: %v", err)
 	}
@@ -141,7 +130,7 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, err
 	}
 
-	kustomizePath, err := s.absPathFromStarlarkValue(thread, path)
+	kustomizePath, err := value.ValueToAbsPath(thread, path)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
@@ -175,7 +164,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, err
 	}
 
-	localPath, err := s.absPathFromStarlarkValue(thread, path)
+	localPath, err := value.ValueToAbsPath(thread, path)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
@@ -256,7 +245,7 @@ func (s *tiltfileState) listdir(thread *starlark.Thread, fn *starlark.Builtin, a
 		return nil, err
 	}
 
-	localPath, err := s.absPathFromStarlarkValue(thread, dir)
+	localPath, err := value.ValueToAbsPath(thread, dir)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
@@ -292,7 +281,7 @@ func (s *tiltfileState) readYaml(thread *starlark.Thread, fn *starlark.Builtin, 
 		return nil, err
 	}
 
-	localPath, err := s.absPathFromStarlarkValue(thread, path)
+	localPath, err := value.ValueToAbsPath(thread, path)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
@@ -345,7 +334,7 @@ func (s *tiltfileState) readJson(thread *starlark.Thread, fn *starlark.Builtin, 
 		return nil, err
 	}
 
-	localPath, err := s.absPathFromStarlarkValue(thread, path)
+	localPath, err := value.ValueToAbsPath(thread, path)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}

@@ -15,6 +15,7 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
+	"github.com/windmilleng/tilt/internal/tiltfile/value"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -39,7 +40,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	pathSlice := starlarkValueOrSequenceToSlice(configPathsValue)
 	var configPaths []string
 	for _, v := range pathSlice {
-		path, err := s.absPathFromStarlarkValue(thread, v)
+		path, err := value.ValueToAbsPath(thread, v)
 		if err != nil {
 			return nil, fmt.Errorf("docker_compose files must be a string or a sequence of strings; found a %T", v)
 		}

@@ -11,6 +11,7 @@ import (
 	"go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
+	"github.com/windmilleng/tilt/internal/tiltfile/value"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -128,7 +129,7 @@ func (s *tiltfileState) liveUpdateFallBackOn(thread *starlark.Thread, fn *starla
 	filesSlice := starlarkValueOrSequenceToSlice(files)
 	var paths []string
 	for _, f := range filesSlice {
-		path, err := s.absPathFromStarlarkValue(thread, f)
+		path, err := value.ValueToAbsPath(thread, f)
 		if err != nil {
 			return nil, fmt.Errorf("fall_back_on step contained value '%s' of type '%s'. it may only contain strings", f, f.Type())
 		}

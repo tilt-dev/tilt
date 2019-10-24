@@ -13,6 +13,7 @@ import (
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
+	"github.com/windmilleng/tilt/internal/tiltfile/value"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -99,7 +100,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	if contextVal == nil {
 		return nil, fmt.Errorf("Argument 2 (context): empty but is required")
 	}
-	context, err := s.absPathFromStarlarkValue(thread, contextVal)
+	context, err := value.ValueToAbsPath(thread, contextVal)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +133,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 			return nil, fmt.Errorf("Argument (dockerfile_contents): must be string or blob.")
 		}
 	} else if dockerfilePathVal != nil {
-		dockerfilePath, err = s.absPathFromStarlarkValue(thread, dockerfilePathVal)
+		dockerfilePath, err = value.ValueToAbsPath(thread, dockerfilePathVal)
 		if err != nil {
 			return nil, err
 		}
@@ -261,7 +262,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	defer iter.Done()
 	var v starlark.Value
 	for iter.Next(&v) {
-		p, err := s.absPathFromStarlarkValue(thread, v)
+		p, err := value.ValueToAbsPath(thread, v)
 		if err != nil {
 			return nil, fmt.Errorf("Argument 3 (deps): %v", err)
 		}
