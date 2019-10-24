@@ -16,11 +16,11 @@ type ResourceInfoView interface {
 }
 
 type DCResourceInfo struct {
-	ConfigPaths     []string
-	ContainerStatus dockercompose.Status
-	ContainerID     container.ID
-	Log             model.Log
-	StartTime       time.Time
+	ConfigPaths     []string             `json:"configPaths"`
+	ContainerStatus dockercompose.Status `json:"containerStatus"`
+	ContainerID     container.ID         `json:"containerID"`
+	Log             model.Log            `json:"log"`
+	StartTime       time.Time            `json:"startTime"`
 }
 
 func NewDCResourceInfo(configPaths []string, status dockercompose.Status, cID container.ID, log model.Log, startTime time.Time) DCResourceInfo {
@@ -40,14 +40,14 @@ func (dcInfo DCResourceInfo) RuntimeLog() model.Log { return dcInfo.Log }
 func (dcInfo DCResourceInfo) Status() string        { return string(dcInfo.ContainerStatus) }
 
 type K8sResourceInfo struct {
-	PodName            string
-	PodCreationTime    time.Time
-	PodUpdateStartTime time.Time
-	PodStatus          string
-	PodStatusMessage   string
-	AllContainersReady bool
-	PodRestarts        int
-	PodLog             model.Log
+	PodName            string    `json:"podName"`
+	PodCreationTime    time.Time `json:"podCreationTime"`
+	PodUpdateStartTime time.Time `json:"podUpdateStartTime"`
+	PodStatus          string    `json:"podStatus"`
+	PodStatusMessage   string    `json:"podStatusMessage"`
+	AllContainersReady bool      `json:"allContainersReady"`
+	PodRestarts        int       `json:"podRestarts"`
+	PodLog             model.Log `json:"podLog"`
 }
 
 var _ ResourceInfoView = K8sResourceInfo{}
@@ -63,7 +63,7 @@ func (k8sInfo K8sResourceInfo) Status() string {
 }
 
 type YAMLResourceInfo struct {
-	K8sResources []string
+	K8sResources []string `json:"k8sResources"`
 }
 
 var _ ResourceInfoView = YAMLResourceInfo{}
@@ -82,13 +82,13 @@ func (LocalResourceInfo) RuntimeLog() model.Log { return model.NewLog("") }
 func (LocalResourceInfo) Status() string        { return "" }
 
 type BuildRecord struct {
-	Edits          []string
-	Error          string
-	Warnings       []string
-	StartTime      time.Time
-	FinishTime     time.Time // IsZero() == true for in-progress builds
-	Log            model.Log
-	IsCrashRebuild bool
+	Edits          []string  `json:"edits"`
+	Error          string    `json:"error"`
+	Warnings       []string  `json:"warnings"`
+	StartTime      time.Time `json:"startTime"`
+	FinishTime     time.Time `json:"finishTime"` // IsZero() == true for in-progress builds
+	Log            model.Log `json:"log"`
+	IsCrashRebuild bool      `json:"isCrashRebuild"`
 }
 
 func ToWebViewBuildRecord(br model.BuildRecord) BuildRecord {
@@ -124,37 +124,37 @@ type Alert struct {
 }
 
 type Resource struct {
-	Name               model.ManifestName
-	DirectoriesWatched []string
-	PathsWatched       []string
-	LastDeployTime     time.Time
-	TriggerMode        model.TriggerMode
+	Name               model.ManifestName `json:"name"`
+	DirectoriesWatched []string           `json:"directoriesWatched"`
+	PathsWatched       []string           `json:"pathsWatched"`
+	LastDeployTime     time.Time          `json:"lastDeployTime"`
+	TriggerMode        model.TriggerMode  `json:"triggerMode"`
 
-	BuildHistory []BuildRecord
-	CurrentBuild BuildRecord
+	BuildHistory []BuildRecord `json:"buildHistory"`
+	CurrentBuild BuildRecord   `json:"currentBuild"`
 
-	PendingBuildReason model.BuildReason
-	PendingBuildEdits  []string
-	PendingBuildSince  time.Time
-	HasPendingChanges  bool
+	PendingBuildReason model.BuildReason `json:"pendingBuildReason"`
+	PendingBuildEdits  []string          `json:"pendingBuildEdits"`
+	PendingBuildSince  time.Time         `json:"pendingBuildSince"`
+	HasPendingChanges  bool              `json:"hasPendingChanges"`
 
-	Endpoints []string
-	PodID     k8s.PodID
+	Endpoints []string  `json:"endpoints"`
+	PodID     k8s.PodID `json:"podID"`
 
 	// Only one of these resource info fields will be populated
-	K8sResourceInfo   *K8sResourceInfo   `json:",omitempty"`
-	DCResourceInfo    *DCResourceInfo    `json:",omitempty"`
-	YAMLResourceInfo  *YAMLResourceInfo  `json:",omitempty"`
-	LocalResourceInfo *LocalResourceInfo `json:",omitempty"`
+	K8sResourceInfo   *K8sResourceInfo   `json:"k8sResourceInfo,omitempty"`
+	DCResourceInfo    *DCResourceInfo    `json:"dcResourceInfo,omitempty"`
+	YAMLResourceInfo  *YAMLResourceInfo  `json:"yamlResourceInfo,omitempty"`
+	LocalResourceInfo *LocalResourceInfo `json:"localResourceInfo,omitempty"`
 
-	RuntimeStatus RuntimeStatus
+	RuntimeStatus RuntimeStatus `json:"runtimeStatus"`
 
-	IsTiltfile      bool
-	ShowBuildStatus bool // if true, we show status & time in 'Build Status'; else, "N/A"
-	CombinedLog     model.Log
-	CrashLog        model.Log
+	IsTiltfile      bool      `json:"isTiltfile"`
+	ShowBuildStatus bool      `json:"showBuildStatus"` // if true, we show status & time in 'Build Status'; else, "N/A"
+	CombinedLog     model.Log `json:"combinedLog"`
+	CrashLog        model.Log `json:"crashLog"`
 
-	Alerts []Alert
+	Alerts []Alert `json:"alerts"`
 }
 
 func (r Resource) ResourceInfo() ResourceInfoView {
@@ -190,23 +190,30 @@ const (
 	RuntimeStatusError   RuntimeStatus = "error"
 )
 
+type TiltBuild struct {
+	Version   string `json:"version"`
+	CommitSHA string `json:"commitSHA"`
+	Date      string `json:"date"`
+	Dev       bool   `json:"dev"`
+}
+
 type View struct {
-	Log           model.Log
-	Resources     []Resource
-	LogTimestamps bool
+	Log           model.Log  `json:"log"`
+	Resources     []Resource `json:"resources"`
+	LogTimestamps bool       `json:"logTimestamps"`
 
-	FeatureFlags map[string]bool
+	FeatureFlags map[string]bool `json:"featureFlags"`
 
-	NeedsAnalyticsNudge bool
+	NeedsAnalyticsNudge bool `json:"needsAnalyticsNudge"`
 
-	RunningTiltBuild model.TiltBuild
-	LatestTiltBuild  model.TiltBuild
+	RunningTiltBuild TiltBuild `json:"runningTiltBuild"`
+	LatestTiltBuild  TiltBuild `json:"latestTiltBuild"`
 
-	TiltCloudUsername   string
-	TiltCloudSchemeHost string
-	TiltCloudTeamID     string
+	TiltCloudUsername   string `json:"tiltCloudUsername"`
+	TiltCloudSchemeHost string `json:"tiltCloudSchemeHost"`
+	TiltCloudTeamID     string `json:"tiltCloudTeamID"`
 
-	FatalError string
+	FatalError string `json:"fatalError"`
 }
 
 func (v View) Resource(n model.ManifestName) (Resource, bool) {

@@ -57,10 +57,10 @@ class AppController {
 
       let data: WebView = JSON.parse(event.data)
 
-      data.Resources = this.setDefaultResourceInfo(data.Resources)
+      data.resources = this.setDefaultResourceInfo(data.resources)
       // @ts-ignore
       this.component.setAppState({
-        View: data,
+        view: data,
         socketState: SocketState.Active,
       })
     })
@@ -68,19 +68,19 @@ class AppController {
 
   setDefaultResourceInfo(resources: Array<Resource>): Array<Resource> {
     return resources.map(r => {
-      if (!r.K8sResourceInfo && !r.DCResourceInfo) {
+      if (!r.k8sResourceInfo && !r.dcResourceInfo) {
         let ri: K8sResourceInfo = {
-          PodName: "",
-          PodCreationTime: "",
-          PodUpdateStartTime: "",
-          PodStatus: "",
-          PodStatusMessage: "",
-          PodRestarts: 0,
-          PodLog: "",
+          podName: "",
+          podCreationTime: "",
+          podUpdateStartTime: "",
+          podStatus: "",
+          podStatusMessage: "",
+          podRestarts: 0,
+          podLog: "",
         }
-        r.K8sResourceInfo = ri
+        r.k8sResourceInfo = ri
       }
-      r.Alerts = getResourceAlerts(r)
+      r.alerts = getResourceAlerts(r)
       return r
     })
   }
@@ -136,14 +136,14 @@ class AppController {
     fetch(url)
       .then(resp => resp.json())
       .then((data: Snapshot) => {
-        data.View = data.View || {}
+        data.view = data.view || {}
 
-        let resources = (data.View && data.View.Resources) || []
-        data.View.Resources = this.setDefaultResourceInfo(resources)
+        let resources = (data.view && data.view.resources) || []
+        data.view.resources = this.setDefaultResourceInfo(resources)
 
         this.component.setAppState({
-          View: data.View,
-          IsSidebarClosed: data.IsSidebarClosed,
+          view: data.view,
+          isSidebarClosed: data.isSidebarClosed,
         })
         if (data.path) {
           this.component.setHistoryLocation(this.pb.path(data.path))

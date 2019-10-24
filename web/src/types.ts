@@ -18,19 +18,19 @@ export enum TriggerMode {
 }
 
 export type Build = {
-  Error: {} | string | null
-  StartTime: string
-  Log: string
-  FinishTime: string
-  Edits: Array<string> | null
-  IsCrashRebuild: boolean
-  Warnings: Array<string> | null
+  error: {} | string | null
+  startTime: string
+  log: string
+  finishTime: string
+  edits: Array<string> | null
+  isCrashRebuild: boolean
+  warnings: Array<string> | null
 }
 
 export type TiltBuild = {
-  Version: string
-  Date: string
-  Dev: boolean
+  version: string
+  date: string
+  dev: boolean
 }
 
 // what is the status of the resource in the cluster
@@ -52,42 +52,42 @@ export enum ResourceStatus {
 }
 
 export type Resource = {
-  Name: string
-  CombinedLog: string
-  BuildHistory: Array<any>
-  CrashLog: string
-  CurrentBuild: any
-  DirectoriesWatched: Array<any>
-  Endpoints: Array<string>
-  PodID: string
-  IsTiltfile: boolean
-  LastDeployTime: string
-  PathsWatched: Array<string>
-  PendingBuildEdits: Array<string>
-  PendingBuildReason: number
-  PendingBuildSince: string
-  K8sResourceInfo?: K8sResourceInfo
-  DCResourceInfo?: DCResourceInfo
-  RuntimeStatus: string
-  TriggerMode: TriggerMode
-  HasPendingChanges: boolean
-  Alerts: Array<Alert>
+  name: string
+  combinedLog: string
+  buildHistory: Array<any>
+  crashLog: string
+  currentBuild: any
+  directoriesWatched: Array<any>
+  endpoints: Array<string>
+  podID: string
+  isTiltfile: boolean
+  lastDeployTime: string
+  pathsWatched: Array<string>
+  pendingBuildEdits: Array<string>
+  pendingBuildReason: number
+  pendingBuildSince: string
+  k8sResourceInfo?: K8sResourceInfo
+  dcResourceInfo?: DCResourceInfo
+  runtimeStatus: string
+  triggerMode: TriggerMode
+  hasPendingChanges: boolean
+  alerts: Array<Alert>
 }
 export type K8sResourceInfo = {
-  PodName: string
-  PodCreationTime: string
-  PodUpdateStartTime: string
-  PodStatus: string
-  PodStatusMessage: string
-  PodRestarts: number
-  PodLog: string
+  podName: string
+  podCreationTime: string
+  podUpdateStartTime: string
+  podStatus: string
+  podStatusMessage: string
+  podRestarts: number
+  podLog: string
 }
 export type DCResourceInfo = {
-  ConfigPaths: Array<string>
-  ContainerStatus: string
-  ContainerID: string
-  Log: string
-  StartTime: string
+  configPaths: Array<string>
+  containerStatus: string
+  containerID: string
+  log: string
+  startTime: string
 }
 
 export type SnapshotHighlight = {
@@ -103,30 +103,30 @@ export enum ShowFatalErrorModal {
 }
 
 export type WebView = {
-  Resources: Array<Resource>
-  Log: string
-  LogTimestamps: boolean
-  NeedsAnalyticsNudge: boolean
-  RunningTiltBuild: TiltBuild
-  LatestTiltBuild: TiltBuild
-  FeatureFlags: { [featureFlag: string]: boolean }
-  TiltCloudUsername: string
-  TiltCloudSchemeHost: string
-  TiltCloudTeamID: string
-  FatalError: string | null
+  resources: Array<Resource>
+  log: string
+  logTimestamps: boolean
+  needsAnalyticsNudge: boolean
+  runningTiltBuild: TiltBuild
+  latestTiltBuild: TiltBuild
+  featureFlags: { [featureFlag: string]: boolean }
+  tiltCloudUsername: string
+  tiltCloudSchemeHost: string
+  tiltCloudTeamID: string
+  fatalError: string | null
 }
 
 export type Snapshot = {
-  View: WebView
-  IsSidebarClosed: boolean
+  view: WebView
+  isSidebarClosed: boolean
   path?: string
   snapshotHighlight?: SnapshotHighlight | null
 }
 
 export type HudState = {
-  View: WebView
-  IsSidebarClosed: boolean
-  SnapshotLink: string
+  view: WebView
+  isSidebarClosed: boolean
+  snapshotLink: string
   showSnapshotModal: boolean
   showFatalErrorModal: ShowFatalErrorModal
   snapshotHighlight: SnapshotHighlight | null

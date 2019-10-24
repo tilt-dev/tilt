@@ -8,9 +8,9 @@ import { TiltBuild } from "./types"
 
 describe("StatusBar", () => {
   let runningVersion: TiltBuild = {
-    Version: "v0.8.1",
-    Date: "1970-01-01",
-    Dev: false,
+    version: "v0.8.1",
+    date: "1970-01-01",
+    dev: false,
   }
   it("renders without crashing", () => {
     const tree = renderer
@@ -30,9 +30,9 @@ describe("StatusBar", () => {
   })
 
   it("renders two items both errors", () => {
-    let items = twoResourceView().Resources.map((res: any) => {
-      res.CurrentBuild = {}
-      res.PendingBuildSince = ""
+    let items = twoResourceView().resources.map((res: any) => {
+      res.currentBuild = {}
+      res.pendingBuildSince = ""
       return new StatusItem(res)
     })
     let statusbar = mount(
@@ -53,9 +53,9 @@ describe("StatusBar", () => {
   })
 
   it("renders two items both errors snapshot", () => {
-    let items = twoResourceView().Resources.map((res: any) => {
-      res.CurrentBuild = {}
-      res.PendingBuildSince = ""
+    let items = twoResourceView().resources.map((res: any) => {
+      res.currentBuild = {}
+      res.pendingBuildSince = ""
       return new StatusItem(res)
     })
     const tree = renderer
@@ -76,11 +76,11 @@ describe("StatusBar", () => {
 
   it("renders two items all ok snapshot", () => {
     let view = twoResourceView()
-    view.Resources.forEach((res: any) => {
-      res.BuildHistory[0].Error = ""
+    view.resources.forEach((res: any) => {
+      res.buildHistory[0].error = ""
     })
 
-    let items = view.Resources.map((res: any) => new StatusItem(res))
+    let items = view.resources.map((res: any) => new StatusItem(res))
     const tree = renderer
       .create(
         <MemoryRouter>
@@ -99,10 +99,10 @@ describe("StatusBar", () => {
 
   it("renders two items all ok", () => {
     let view = twoResourceView()
-    view.Resources.forEach((res: any) => {
-      res.BuildHistory[0].Error = ""
+    view.resources.forEach((res: any) => {
+      res.buildHistory[0].error = ""
     })
-    let items = view.Resources.map((res: any) => new StatusItem(res))
+    let items = view.resources.map((res: any) => new StatusItem(res))
     let statusbar = mount(
       <MemoryRouter>
         <Statusbar
@@ -122,12 +122,12 @@ describe("StatusBar", () => {
 
   it("renders an upgrade badge when the version is out of date", () => {
     let view = twoResourceView()
-    view.Resources.forEach((res: any) => {
-      res.BuildHistory[0].Error = ""
+    view.resources.forEach((res: any) => {
+      res.buildHistory[0].error = ""
     })
-    let items = view.Resources.map((res: any) => new StatusItem(res))
+    let items = view.resources.map((res: any) => new StatusItem(res))
     let latestVersion = runningVersion
-    latestVersion.Version = "10.0.0"
+    latestVersion.version = "10.0.0"
     const tree = renderer
       .create(
         <MemoryRouter>
@@ -146,11 +146,11 @@ describe("StatusBar", () => {
 
   it("does not render an upgrade badge when there is no latestVersion", () => {
     let view = twoResourceView()
-    view.Resources.forEach((res: any) => {
-      res.BuildHistory[0].Error = ""
+    view.resources.forEach((res: any) => {
+      res.buildHistory[0].error = ""
     })
-    let items = view.Resources.map((res: any) => new StatusItem(res))
-    let latestVersion = { Version: "", Date: "", Dev: false }
+    let items = view.resources.map((res: any) => new StatusItem(res))
+    let latestVersion = { version: "", date: "", dev: false }
     const tree = renderer
       .create(
         <MemoryRouter>
@@ -169,14 +169,14 @@ describe("StatusBar", () => {
 
   it("does not render an upgrade badge when runningVersion is dev", () => {
     let view = twoResourceView()
-    view.Resources.forEach((res: any) => {
-      res.BuildHistory[0].Error = ""
+    view.resources.forEach((res: any) => {
+      res.buildHistory[0].error = ""
     })
-    let items = view.Resources.map((res: any) => new StatusItem(res))
+    let items = view.resources.map((res: any) => new StatusItem(res))
     let latestVersion = runningVersion
-    latestVersion.Version = "10.0.0"
+    latestVersion.version = "10.0.0"
     let devRunningVersion = runningVersion
-    devRunningVersion.Dev = true
+    devRunningVersion.dev = true
     const tree = renderer
       .create(
         <MemoryRouter>

@@ -37,8 +37,8 @@ const makePendingBuild = (r: ResourceWithBuilds): BuildTuple => {
 const makeBuildHistory = (r: ResourceWithBuilds, b: Build): BuildTuple => {
   return {
     name: r.name,
-    since: b.StartTime,
-    edits: b.Edits || [],
+    since: b.startTime,
+    edits: b.edits || [],
   }
 }
 

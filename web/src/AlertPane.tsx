@@ -42,7 +42,7 @@ class AlertPane extends PureComponent<AlertsProps> {
 
     let alertResources = resources.filter(r => hasAlert(r))
     alertResources.forEach(resource => {
-      resource.Alerts.forEach(alert => {
+      resource.alerts.forEach(alert => {
         let dismissButton = <div />
         if (alert.dismissHandler && isLocal) {
           dismissButton = (
@@ -55,7 +55,7 @@ class AlertPane extends PureComponent<AlertsProps> {
           )
         }
         alertElements.push(
-          <li key={alert.alertType + resource.Name} className="AlertPane-item">
+          <li key={alert.alertType + resource.name} className="AlertPane-item">
             <header>
               <div className="AlertPane-headerDiv">
                 <h3 className="AlertPane-headerDiv-header">{alert.header}</h3>

@@ -4,7 +4,7 @@ import { podStatusIsCrash, podStatusIsError } from "./constants"
 
 const combinedStatusMessage = (resources: Array<StatusItem>): string => {
   let buildingResources = resources.filter(
-    r => !isZeroTime(r.currentBuild.StartTime)
+    r => !isZeroTime(r.currentBuild.startTime)
   )
 
   if (buildingResources.length > 0) {
@@ -19,7 +19,7 @@ const combinedStatusMessage = (resources: Array<StatusItem>): string => {
   }
 
   let resourcesWithBuildErrors = resources.filter(r => {
-    return r.lastBuild && r.lastBuild.Error
+    return r.lastBuild && r.lastBuild.error
   })
 
   if (resourcesWithBuildErrors.length > 0) {

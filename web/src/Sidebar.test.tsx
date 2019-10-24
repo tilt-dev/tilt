@@ -41,8 +41,8 @@ describe("sidebar", () => {
   })
 
   it("renders list of resources", () => {
-    let items = twoResourceView().Resources.map((res: Resource) => {
-      res.BuildHistory[0].Error = "error!"
+    let items = twoResourceView().resources.map((res: Resource) => {
+      res.buildHistory[0].error = "error!"
       return new SidebarItem(res)
     })
     const tree = renderer
@@ -66,8 +66,8 @@ describe("sidebar", () => {
   it("abbreviates durations under a minute", () => {
     let items = [4, 9, 19, 29, 39, 49, 54].map(d => {
       let res = oneResource()
-      res.Name = `resource${d}`
-      res.LastDeployTime = new Date(Date.now() - d * 1000).toISOString()
+      res.name = `resource${d}`
+      res.lastDeployTime = new Date(Date.now() - d * 1000).toISOString()
       return new SidebarItem(res)
     })
 
@@ -90,8 +90,8 @@ describe("sidebar", () => {
   })
 
   it("renders resources that haven't been built yet", () => {
-    let items = twoResourceView().Resources.map((res: any) => {
-      res.LastDeployTime = "0001-01-01T00:00:00Z"
+    let items = twoResourceView().resources.map((res: any) => {
+      res.lastDeployTime = "0001-01-01T00:00:00Z"
       return new SidebarItem(res)
     })
     const tree = renderer
@@ -113,8 +113,8 @@ describe("sidebar", () => {
   })
 
   it("renders resources with manual trigger mode", () => {
-    let items = twoResourceView().Resources.map((res: any) => {
-      res.TriggerMode = TriggerMode.TriggerModeManual
+    let items = twoResourceView().resources.map((res: any) => {
+      res.triggerMode = TriggerMode.TriggerModeManual
       return new SidebarItem(res)
     })
     const tree = renderer

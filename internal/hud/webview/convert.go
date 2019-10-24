@@ -97,8 +97,18 @@ func StateToWebView(s store.EngineState) View {
 
 	ret.Log = s.Log
 	ret.NeedsAnalyticsNudge = NeedsNudge(s)
-	ret.RunningTiltBuild = s.TiltBuildInfo
-	ret.LatestTiltBuild = s.LatestTiltBuild
+	ret.RunningTiltBuild = TiltBuild{
+		Version:   s.TiltBuildInfo.Version,
+		CommitSHA: s.TiltBuildInfo.CommitSHA,
+		Dev:       s.TiltBuildInfo.Dev,
+		Date:      s.TiltBuildInfo.Date,
+	}
+	ret.LatestTiltBuild = TiltBuild{
+		Version:   s.LatestTiltBuild.Version,
+		CommitSHA: s.LatestTiltBuild.CommitSHA,
+		Dev:       s.LatestTiltBuild.Dev,
+		Date:      s.LatestTiltBuild.Date,
+	}
 	ret.FeatureFlags = make(map[string]bool)
 	for k, v := range s.Features {
 		ret.FeatureFlags[k] = v

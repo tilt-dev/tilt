@@ -6,15 +6,15 @@ import { RuntimeStatus, ResourceStatus, Resource } from "./types"
 // 2) Otherwise, if there's a build error or runtime error, this is "error".
 // 3) Otherwise, we fallback to runtime status.
 function combinedStatus(res: Resource): RuntimeStatus {
-  let status = res.RuntimeStatus
-  let currentBuild = res.CurrentBuild
+  let status = res.runtimeStatus
+  let currentBuild = res.currentBuild
   let hasCurrentBuild = Boolean(
-    currentBuild && !isZeroTime(currentBuild.StartTime)
+    currentBuild && !isZeroTime(currentBuild.startTime)
   )
-  let hasPendingBuild = !isZeroTime(res.PendingBuildSince)
-  let buildHistory = res.BuildHistory || []
+  let hasPendingBuild = !isZeroTime(res.pendingBuildSince)
+  let buildHistory = res.buildHistory || []
   let lastBuild = buildHistory[0]
-  let lastBuildError = lastBuild ? lastBuild.Error : ""
+  let lastBuildError = lastBuild ? lastBuild.error : ""
 
   if (hasCurrentBuild || hasPendingBuild) {
     return RuntimeStatus.Pending
@@ -36,12 +36,12 @@ function combinedStatus(res: Resource): RuntimeStatus {
 }
 
 function warnings(res: any): string[] {
-  let buildHistory = res.BuildHistory || []
+  let buildHistory = res.buildHistory || []
   let lastBuild = buildHistory[0]
-  let warnings = (lastBuild && lastBuild.Warnings) || []
+  let warnings = (lastBuild && lastBuild.warnings) || []
   warnings = Array.from(warnings)
 
-  if (res.K8sResourceInfo && res.K8sResourceInfo.PodRestarts > 0) {
+  if (res.k8sResourceInfo && res.k8sResourceInfo.podRestarts > 0) {
     warnings.push("Container restarted")
   }
 
