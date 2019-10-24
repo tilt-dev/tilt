@@ -8,6 +8,7 @@ tasks:
       - pkg/webview/view.pb.gw.go
       - web/src/
     command: |
+      set -euo pipefail
       mkdir -p web/src
       protoc \
        -I. \
