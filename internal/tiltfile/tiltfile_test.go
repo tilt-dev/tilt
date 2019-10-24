@@ -3925,6 +3925,138 @@ print('nothing to see here')
 	assert.Equal(t, model.DockerPruneDefaultInterval, res.Interval)
 }
 
+func TestK8SDependsOn(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFooAndBar()
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+
+docker_build('gcr.io/bar', 'bar')
+k8s_yaml('bar.yaml')
+k8s_resource('bar', resource_deps=['foo'])
+`)
+
+	f.load()
+	f.assertNextManifest("foo", resourceDeps())
+	f.assertNextManifest("bar", resourceDeps("foo"))
+}
+
+func TestDCDependsOn(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.file("docker-compose.yml", twoServiceConfig)
+	f.file("Tiltfile", `
+docker_compose('docker-compose.yml')
+dc_resource('bar', resource_deps=['foo'])
+`)
+
+	f.load()
+	f.assertNextManifest("foo", resourceDeps())
+	f.assertNextManifest("bar", resourceDeps("foo"))
+}
+
+func TestLocalDependsOn(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource('foo', 'echo foo')
+local_resource('bar', 'echo bar', resource_deps=['foo'])
+`)
+
+	f.load()
+	f.assertNextManifest("foo", resourceDeps())
+	f.assertNextManifest("bar", resourceDeps("foo"))
+}
+
+func TestDependsOnMissingResource(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource('bar', 'echo bar', resource_deps=['foo'])
+`)
+
+	f.loadErrString("resource bar specified a dependency on unknown resource fo")
+}
+
+func TestDependsOnSelf(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource('bar', 'echo bar', resource_deps=['bar'])
+`)
+
+	f.loadErrString("resource bar specified a dependency on itself")
+}
+
+func TestDependsOnCycle(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource('foo', 'echo foo', resource_deps=['baz'])
+local_resource('bar', 'echo bar', resource_deps=['foo'])
+local_resource('baz', 'echo baz', resource_deps=['bar'])
+`)
+
+	f.loadErrString("cycle detected in resource dependency graph", "bar -> foo", "foo -> baz", "baz -> bar")
+}
+
+func TestDependsOnPulledInOnPartialLoad(t *testing.T) {
+	for _, tc := range []struct {
+		name            string
+		resourcesToLoad []model.ManifestName
+		expected        []model.ManifestName
+	}{
+		{
+			name:            "a",
+			resourcesToLoad: []model.ManifestName{"a"},
+			expected:        []model.ManifestName{"a"},
+		},
+		{
+			name:            "c",
+			resourcesToLoad: []model.ManifestName{"c"},
+			expected:        []model.ManifestName{"a", "b", "c"},
+		},
+		{
+			name:            "d, e",
+			resourcesToLoad: []model.ManifestName{"d", "e"},
+			expected:        []model.ManifestName{"a", "b", "d", "e"},
+		},
+		{
+			name:            "e",
+			resourcesToLoad: []model.ManifestName{"e"},
+			expected:        []model.ManifestName{"e"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+
+			f.file("Tiltfile", `
+local_resource('a', 'echo a')
+local_resource('b', 'echo b', resource_deps=['a'])
+local_resource('c', 'echo c', resource_deps=['b'])
+local_resource('d', 'echo d', resource_deps=['b'])
+local_resource('e', 'echo e')
+`)
+
+			f.load(tc.resourcesToLoad...)
+			f.assertNumManifests(len(tc.expected))
+			for _, e := range tc.expected {
+				f.assertNextManifest(e)
+			}
+		})
+	}
+}
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer
@@ -4356,6 +4488,8 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 			assert.Equal(f.t, opt, m.K8sTarget().PortForwards)
 		case model.TriggerMode:
 			assert.Equal(f.t, opt, m.TriggerMode)
+		case resourceDependenciesHelper:
+			assert.Equal(f.t, opt.deps, m.ResourceDependencies)
 		case funcOpt:
 			assert.True(f.t, opt(f.t, m))
 		default:
@@ -4561,6 +4695,18 @@ func fileChangeFilters(path string) matchPathHelper {
 		missing:    true,
 		fileChange: true,
 	}
+}
+
+type resourceDependenciesHelper struct {
+	deps []model.ManifestName
+}
+
+func resourceDeps(deps ...string) resourceDependenciesHelper {
+	var mns []model.ManifestName
+	for _, d := range deps {
+		mns = append(mns, model.ManifestName(d))
+	}
+	return resourceDependenciesHelper{deps: mns}
 }
 
 type imageHelper struct {

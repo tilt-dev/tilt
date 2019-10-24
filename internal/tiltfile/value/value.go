@@ -45,3 +45,21 @@ func ValueToAbsPath(thread *starlark.Thread, v starlark.Value) (string, error) {
 type PathMaker interface {
 	MakeLocalPath(relPath string) string
 }
+
+func SequenceToStringSlice(seq starlark.Sequence) ([]string, error) {
+	if seq == nil {
+		return nil, nil
+	}
+	it := seq.Iterate()
+	defer it.Done()
+	var ret []string
+	var v starlark.Value
+	for it.Next(&v) {
+		s, ok := v.(starlark.String)
+		if !ok {
+			return nil, fmt.Errorf("'%v' is a %T, not a string", v, v)
+		}
+		ret = append(ret, string(s))
+	}
+	return ret, nil
+}
