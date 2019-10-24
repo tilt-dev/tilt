@@ -1,4 +1,4 @@
-.PHONY: all proto install lint test test-go check-js test-js integration wire-check wire ensure check-go goimports
+.PHONY: all proto install lint test test-go check-js test-js integration wire-check wire ensure check-go goimports proto-webview proto-webview-ts
 
 check-go: lint errcheck verify_goimports wire-check test-go
 all: check-go check-js test-js
@@ -23,11 +23,14 @@ scripts/protocc/protocc.py: scripts/protocc
 	git submodule init
 	git submodule update
 
-toast.yaml:
+proto: scripts/protocc/protocc.py
+	python3 scripts/protocc/protocc.py --out go
+
+proto-webview:
 	toast proto
 
-proto: scripts/protocc/protocc.py toast.yaml
-	python3 scripts/protocc/protocc.py --out go
+proto-webview-ts:
+	toast proto-ts
 
 # Build a binary that uses synclet:latest
 install:

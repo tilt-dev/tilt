@@ -1,0 +1,106 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "pkg/webview/view.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/api/proto/view": {
+      "get": {
+        "operationId": "GetView",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/webviewView"
+            }
+          }
+        },
+        "tags": [
+          "ViewService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "webviewResource": {
+      "type": "object",
+      "title": "TODO(dmiller) fill this in"
+    },
+    "webviewTiltBuild": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "commitSHA": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string"
+        },
+        "dev": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "webviewView": {
+      "type": "object",
+      "properties": {
+        "log": {
+          "type": "string"
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/webviewResource"
+          }
+        },
+        "log_timestamps": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "feature_flags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "boolean",
+            "format": "boolean"
+          }
+        },
+        "need_analytics_nudge": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "running_tilt_build": {
+          "$ref": "#/definitions/webviewTiltBuild"
+        },
+        "latest_tilt_build": {
+          "$ref": "#/definitions/webviewTiltBuild"
+        },
+        "tilt_cloud_username": {
+          "type": "string"
+        },
+        "tilt_cloud_schemeHost": {
+          "type": "string"
+        },
+        "tilt_cloud_teamID": {
+          "type": "string"
+        },
+        "fatal_error": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
