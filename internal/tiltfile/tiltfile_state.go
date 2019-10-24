@@ -1003,7 +1003,7 @@ func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef container.Re
 	return nil
 }
 
-// If the user requested only a subset of manifests, filter those manifests out.
+// If the user requested only a subset of manifests, get just those manifests
 func match(manifests []model.Manifest, requestedManifests []model.ManifestName) ([]model.Manifest, error) {
 	if len(requestedManifests) == 0 {
 		return manifests, nil
