@@ -107,6 +107,9 @@ func (u Upper) Start(
 	}
 
 	var manifestNames []model.ManifestName
+	for _, arg := range args {
+		manifestNames = append(manifestNames, model.ManifestName(arg))
+	}
 
 	configFiles := []string{absTfPath}
 
