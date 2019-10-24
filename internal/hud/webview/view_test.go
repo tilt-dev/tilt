@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"unicode"
 	"unicode/utf8"
@@ -76,12 +77,6 @@ func assertCanMarshal(t *testing.T, v reflect.Type, owner reflect.Type) {
 		assertCanMarshal(t, v.Elem(), owner)
 		assertCanMarshal(t, v.Key(), owner)
 	case reflect.Interface:
-		// We only allow certain interfaces with a well-defined set of values.
-		switch v.String() {
-		case "error":
-			// ok
-			return
-		}
 		t.Errorf("View needs to be serializable. This type in the view don't make sense: %s in %s", v, owner)
 
 	case reflect.Chan, reflect.Func:
@@ -93,6 +88,13 @@ func assertCanMarshal(t *testing.T, v reflect.Type, owner reflect.Type) {
 				t.Errorf("All fields in the WebView need to be serializable to web. Unexported fields are forbidden: %s in %s",
 					field.Name, v)
 			}
+			tag := field.Tag.Get("json")
+			jsonName := strings.SplitN(tag, ",", 2)[0]
+			if !isValidJSONField(jsonName) {
+				t.Errorf("All fields in the WebView need to be serializable to valid lower-case JSON fields. Field name: %s. Json tag: %s",
+					field.Name, jsonName)
+			}
+
 			assertCanMarshal(t, field.Type, v)
 		}
 	}
@@ -101,4 +103,13 @@ func assertCanMarshal(t *testing.T, v reflect.Type, owner reflect.Type) {
 func isExported(id string) bool {
 	r, _ := utf8.DecodeRuneInString(id)
 	return unicode.IsUpper(r)
+}
+
+func isValidJSONField(field string) bool {
+	if strings.Contains(field, "_") {
+		return false
+	}
+
+	r, _ := utf8.DecodeRuneInString(field)
+	return unicode.IsLower(r)
 }

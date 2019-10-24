@@ -35,17 +35,17 @@ class SidebarItem {
    * Create a pared down SidebarItem from a ResourceView
    */
   constructor(res: Resource) {
-    this.name = res.Name
+    this.name = res.name
     this.status = combinedStatus(res)
     this.hasWarnings = warnings(res).length > 0
-    this.hasEndpoints = (res.Endpoints || []).length > 0
-    this.lastDeployTime = res.LastDeployTime
-    this.pendingBuildSince = res.PendingBuildSince
-    this.currentBuildStartTime = res.CurrentBuild.StartTime
+    this.hasEndpoints = (res.endpoints || []).length > 0
+    this.lastDeployTime = res.lastDeployTime
+    this.pendingBuildSince = res.pendingBuildSince
+    this.currentBuildStartTime = res.currentBuild.startTime
     this.alertCount = numberOfAlerts(res)
-    this.triggerMode = res.TriggerMode
-    this.hasPendingChanges = res.HasPendingChanges
-    let buildHistory = res.BuildHistory || []
+    this.triggerMode = res.triggerMode
+    this.hasPendingChanges = res.hasPendingChanges
+    let buildHistory = res.buildHistory || []
     if (buildHistory.length > 0) {
       this.lastBuild = buildHistory[0]
     }

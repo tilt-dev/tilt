@@ -7,13 +7,13 @@ import { Color } from "./constants"
 type Ignore = boolean
 
 const buildWithError = {
-  Error: {},
-  StartTime: "start time",
-  Log: "foobar",
-  FinishTime: "finish time",
-  Edits: ["foo.go"],
-  IsCrashRebuild: false,
-  Warnings: [],
+  error: {},
+  startTime: "start time",
+  log: "foobar",
+  finishTime: "finish time",
+  edits: ["foo.go"],
+  isCrashRebuild: false,
+  warnings: [],
 }
 
 const cases: Array<

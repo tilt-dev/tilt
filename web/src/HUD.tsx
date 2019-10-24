@@ -71,29 +71,29 @@ class HUD extends Component<HudProps, HudState> {
     })
 
     this.state = {
-      View: {
-        Resources: [],
-        Log: "",
-        LogTimestamps: false,
-        NeedsAnalyticsNudge: false,
-        FatalError: null,
-        RunningTiltBuild: {
-          Version: "",
-          Date: "",
-          Dev: false,
+      view: {
+        resources: [],
+        log: "",
+        logTimestamps: false,
+        needsAnalyticsNudge: false,
+        fatalError: null,
+        runningTiltBuild: {
+          version: "",
+          date: "",
+          dev: false,
         },
-        LatestTiltBuild: {
-          Version: "",
-          Date: "",
-          Dev: false,
+        latestTiltBuild: {
+          version: "",
+          date: "",
+          dev: false,
         },
-        FeatureFlags: {},
-        TiltCloudUsername: "",
-        TiltCloudSchemeHost: "",
-        TiltCloudTeamID: "",
+        featureFlags: {},
+        tiltCloudUsername: "",
+        tiltCloudSchemeHost: "",
+        tiltCloudTeamID: "",
       },
-      IsSidebarClosed: false,
-      SnapshotLink: "",
+      isSidebarClosed: false,
+      snapshotLink: "",
       showSnapshotModal: false,
       showFatalErrorModal: ShowFatalErrorModal.Default,
       snapshotHighlight: null,
@@ -133,7 +133,7 @@ class HUD extends Component<HudProps, HudState> {
   toggleSidebar() {
     this.setState(prevState => {
       return {
-        IsSidebarClosed: !prevState.IsSidebarClosed,
+        isSidebarClosed: !prevState.isSidebarClosed,
       }
     })
   }
@@ -144,8 +144,8 @@ class HUD extends Component<HudProps, HudState> {
 
   snapshotFromState(state: HudState): Snapshot {
     return {
-      View: _.cloneDeep(state.View || null),
-      IsSidebarClosed: !!state.IsSidebarClosed,
+      view: _.cloneDeep(state.view || null),
+      isSidebarClosed: !!state.isSidebarClosed,
       path: this.props.history.location.pathname,
       snapshotHighlight: _.cloneDeep(state.snapshotHighlight),
     }
@@ -154,7 +154,7 @@ class HUD extends Component<HudProps, HudState> {
   sendSnapshot(snapshot: Snapshot) {
     let url = `//${window.location.host}/api/snapshot/new`
 
-    if (!snapshot.View) {
+    if (!snapshot.view) {
       return
     }
 
@@ -167,7 +167,7 @@ class HUD extends Component<HudProps, HudState> {
           .json()
           .then((value: NewSnapshotResponse) => {
             this.setState({
-              SnapshotLink: value.url,
+              snapshotLink: value.url,
             })
           })
           .catch(err => console.error(err))
@@ -176,8 +176,8 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   private getFeatures(): Features {
-    if (this.state.View) {
-      return new Features(this.state.View.FeatureFlags)
+    if (this.state.view) {
+      return new Features(this.state.view.featureFlags)
     }
 
     return new Features({})
@@ -196,14 +196,14 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   render() {
-    let view = this.state.View
+    let view = this.state.view
 
-    let needsNudge = view ? view.NeedsAnalyticsNudge : false
-    let resources = (view && view.Resources) || []
+    let needsNudge = view ? view.needsAnalyticsNudge : false
+    let resources = (view && view.resources) || []
     if (!resources.length) {
       return <HeroScreen message={"Loading…"} />
     }
-    let isSidebarClosed = !!this.state.IsSidebarClosed
+    let isSidebarClosed = !!this.state.isSidebarClosed
     let snapshotHighlight = this.state.snapshotHighlight || null
     let showSnapshotModal = !!this.state.showSnapshotModal
     let toggleSidebar = this.toggleSidebar
@@ -214,8 +214,8 @@ class HUD extends Component<HudProps, HudState> {
       this.getFeatures().isEnabled("snapshots") &&
       !this.pathBuilder.isSnapshot()
     let snapshotOwner: string | null = null
-    if (this.pathBuilder.isSnapshot() && this.state.View) {
-      snapshotOwner = this.state.View.TiltCloudUsername
+    if (this.pathBuilder.isSnapshot() && this.state.view) {
+      snapshotOwner = this.state.view.tiltCloudUsername
     }
 
     let sidebarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
@@ -242,7 +242,7 @@ class HUD extends Component<HudProps, HudState> {
           : ""
       let numAlerts = 0
       if (name) {
-        let selectedResource = resources.find(r => r.Name === name)
+        let selectedResource = resources.find(r => r.name === name)
         if (selectedResource === undefined) {
           return (
             <TopBar
@@ -291,14 +291,14 @@ class HUD extends Component<HudProps, HudState> {
       let podID = ""
       let podStatus = ""
       if (view && name) {
-        let r = view.Resources.find(r => r.Name === name)
+        let r = view.resources.find(r => r.name === name)
         if (r === undefined) {
           return <Route component={NotFound} />
         }
-        logs = (r && r.CombinedLog) || ""
-        endpoints = (r && r.Endpoints) || []
-        podID = (r && r.PodID) || ""
-        podStatus = (r.K8sResourceInfo && r.K8sResourceInfo.PodStatus) || ""
+        logs = (r && r.combinedLog) || ""
+        endpoints = (r && r.endpoints) || []
+        podID = (r && r.podID) || ""
+        podStatus = (r.k8sResourceInfo && r.k8sResourceInfo.podStatus) || ""
       }
       return (
         <>
@@ -322,12 +322,12 @@ class HUD extends Component<HudProps, HudState> {
 
     let combinedLog = ""
     if (view) {
-      combinedLog = view.Log
+      combinedLog = view.log
     }
 
     let errorRoute = (props: RouteComponentProps<any>) => {
       let name = props.match.params ? props.match.params.name : ""
-      let er = resources.find(r => r.Name === name)
+      let er = resources.find(r => r.name === name)
       if (er === undefined) {
         return <Route component={NotFound} />
       }
@@ -352,8 +352,8 @@ class HUD extends Component<HudProps, HudState> {
         </div>
       )
     }
-    let runningVersion = view && view.RunningTiltBuild
-    let latestVersion = view && view.LatestTiltBuild
+    let runningVersion = view && view.runningTiltBuild
+    let latestVersion = view && view.latestTiltBuild
     let shareSnapshotModal = this.renderShareSnapshotModal(view)
     let fatalErrorModal = this.renderFatalErrorModal(view)
     return (
@@ -447,9 +447,9 @@ class HUD extends Component<HudProps, HudState> {
     let handleClose = () => this.setState({ showSnapshotModal: false })
     let handleSendSnapshot = () =>
       this.sendSnapshot(this.snapshotFromState(this.state))
-    let tiltCloudUsername = (view && view.TiltCloudUsername) || null
-    let tiltCloudSchemeHost = (view && view.TiltCloudSchemeHost) || ""
-    let tiltCloudTeamID = (view && view.TiltCloudTeamID) || null
+    let tiltCloudUsername = (view && view.tiltCloudUsername) || null
+    let tiltCloudSchemeHost = (view && view.tiltCloudSchemeHost) || ""
+    let tiltCloudTeamID = (view && view.tiltCloudTeamID) || null
     let highlightedLines = this.state.snapshotHighlight
       ? Math.abs(
           parseInt(this.state.snapshotHighlight.endingLogID, 10) -
@@ -460,7 +460,7 @@ class HUD extends Component<HudProps, HudState> {
       <ShareSnapshotModal
         handleSendSnapshot={handleSendSnapshot}
         handleClose={handleClose}
-        snapshotUrl={this.state.SnapshotLink}
+        snapshotUrl={this.state.snapshotLink}
         tiltCloudUsername={tiltCloudUsername}
         tiltCloudSchemeHost={tiltCloudSchemeHost}
         tiltCloudTeamID={tiltCloudTeamID}
@@ -471,7 +471,7 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   renderFatalErrorModal(view: WebView | null) {
-    let error = view && view.FatalError
+    let error = view && view.fatalError
     let handleClose = () =>
       this.setState({ showFatalErrorModal: ShowFatalErrorModal.Hide })
     return (

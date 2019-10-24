@@ -27,20 +27,20 @@ class StatusItem {
    * Create a pared down StatusItem from a ResourceView
    */
   constructor(res: any) {
-    this.name = res.Name
+    this.name = res.name
     this.warningCount = warnings(res).length
 
     let status = combinedStatus(res)
     this.up = status === "ok"
     this.hasError = status === "error"
-    this.currentBuild = res.CurrentBuild
-    this.buildHistory = res.BuildHistory
-    this.lastBuild = res.BuildHistory ? res.BuildHistory[0] : null
-    this.podStatus = res.K8sResourceInfo && res.K8sResourceInfo.PodStatus
+    this.currentBuild = res.currentBuild
+    this.buildHistory = res.buildHistory
+    this.lastBuild = res.buildHistory ? res.buildHistory[0] : null
+    this.podStatus = res.k8sResourceInfo && res.k8sResourceInfo.podStatus
     this.podStatusMessage =
-      res.K8sResourceInfo && res.K8sResourceInfo.PodStatusMessage
-    this.pendingBuildSince = res.PendingBuildSince
-    this.pendingBuildEdits = res.PendingBuildEdits
+      res.k8sResourceInfo && res.k8sResourceInfo.podStatusMessage
+    this.pendingBuildSince = res.pendingBuildSince
+    this.pendingBuildEdits = res.pendingBuildEdits
   }
 }
 
@@ -115,11 +115,11 @@ class Statusbar extends PureComponent<StatusBarProps> {
     let content: ReactElement = <LogoSvg className="Statusbar-logo" />
     if (
       latestVersion &&
-      latestVersion.Version &&
+      latestVersion.version &&
       runningVersion &&
-      runningVersion.Version &&
-      !runningVersion.Dev &&
-      runningVersion.Version !== latestVersion.Version
+      runningVersion.version &&
+      !runningVersion.dev &&
+      runningVersion.version !== latestVersion.version
     ) {
       content = (
         <a
@@ -132,12 +132,12 @@ class Statusbar extends PureComponent<StatusBarProps> {
             <span role="img" aria-label="Decorative sparkling stars">
               ✨
             </span>
-            Get Tilt v{latestVersion.Version}!{" "}
+            Get Tilt v{latestVersion.version}!{" "}
             <span role="img" aria-label="Decorative sparkling stars">
               ✨
             </span>
             <br />
-            (You're running v{runningVersion.Version})
+            (You're running v{runningVersion.version})
           </p>
           {content}
           <UpdateAvailableSvg />
