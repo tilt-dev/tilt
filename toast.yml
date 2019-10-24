@@ -30,7 +30,6 @@ tasks:
     command: |
       set -euo pipefail
       swagger-to-ts pkg/webview/view.swagger.json --camelcase --output web/src/view.d.ts
-      cd web && prettier --write src/view.d.ts
       
       
   wire:
