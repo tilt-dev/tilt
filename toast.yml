@@ -16,6 +16,7 @@ tasks:
       - internal
       - pkg
       - synclet
+      - web
       - vendor
       - Makefile
     output_paths:
