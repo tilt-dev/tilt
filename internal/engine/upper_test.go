@@ -2465,6 +2465,28 @@ func TestEmptyTiltfile(t *testing.T) {
 	})
 }
 
+func TestUpperStart(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	tok := token.Token("unit test token")
+	cloudAddress := "nonexistent.example.com"
+
+	f.WriteFile("Tiltfile", "")
+	go f.upper.Start(f.ctx, []string{"foo", "bar"}, model.TiltBuild{}, false, f.JoinPath("Tiltfile"), true, analytics.OptIn, tok, cloudAddress)
+	f.WaitUntil("init action processed", func(state store.EngineState) bool {
+		return !state.TiltStartTime.IsZero()
+	})
+
+	f.withState(func(state store.EngineState) {
+		require.Equal(t, []model.ManifestName{"foo", "bar"}, state.InitManifests)
+		require.Equal(t, f.JoinPath("Tiltfile"), state.TiltfilePath)
+		require.Equal(t, tok, state.Token)
+		require.Equal(t, analytics.OptIn, state.AnalyticsOpt)
+		require.Equal(t, cloudAddress, state.CloudAddress)
+	})
+}
+
 func TestWatchManifestsWithCommonAncestor(t *testing.T) {
 	f := newTestFixture(t)
 	m1, m2 := NewManifestsWithCommonAncestor(f)

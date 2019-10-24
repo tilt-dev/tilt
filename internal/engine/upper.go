@@ -107,10 +107,8 @@ func (u Upper) Start(
 	}
 
 	var manifestNames []model.ManifestName
-	matching := map[string]bool{}
 	for _, arg := range args {
 		manifestNames = append(manifestNames, model.ManifestName(arg))
-		matching[arg] = true
 	}
 
 	configFiles := []string{absTfPath}

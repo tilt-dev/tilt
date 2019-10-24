@@ -762,7 +762,7 @@ docker_build('gcr.io/bar', 'bar')
 k8s_yaml('bar.yaml')
 `)
 
-	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap("baz"))
+	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), []model.ManifestName{"baz"})
 	err := tlr.Error
 	if assert.Error(t, err) {
 		assert.Equal(t, `You specified some resources that could not be found: "baz"
@@ -1861,7 +1861,7 @@ type k8sKindTest struct {
 	expectImage          bool
 	expectedError        string
 	preamble             string
-	expectedResourceName string
+	expectedResourceName model.ManifestName
 }
 
 func TestK8sKind(t *testing.T) {
@@ -1898,7 +1898,7 @@ k8s_kind(%s)
 				if test.expectedError != "" {
 					t.Fatal("invalid test: cannot expect both workload and error")
 				}
-				expectedResourceName := "mycrd"
+				expectedResourceName := model.ManifestName("mycrd")
 				if test.expectedResourceName != "" {
 					expectedResourceName = test.expectedResourceName
 				}
@@ -4055,24 +4055,16 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 	f.file(path, s)
 }
 
-func matchMap(names ...string) map[string]bool {
-	m := make(map[string]bool, len(names))
-	for _, n := range names {
-		m[n] = true
-	}
-	return m
-}
-
 // Default load. Fails if there are any warnings.
-func (f *fixture) load(names ...string) {
+func (f *fixture) load(names ...model.ManifestName) {
 	f.loadAllowWarnings(names...)
 	if len(f.loadResult.Warnings) != 0 {
 		f.t.Fatalf("Unexpected no warnings. Actual: %s", f.loadResult.Warnings)
 	}
 }
 
-func (f *fixture) loadResourceAssemblyV1(names ...string) {
-	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
+func (f *fixture) loadResourceAssemblyV1(names ...model.ManifestName) {
+	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), names)
 	err := tlr.Error
 	if err != nil {
 		f.t.Fatal(err)
@@ -4083,8 +4075,8 @@ func (f *fixture) loadResourceAssemblyV1(names ...string) {
 
 // Load the manifests, expecting warnings.
 // Warnings should be asserted later with assertWarnings
-func (f *fixture) loadAllowWarnings(names ...string) {
-	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), matchMap(names...))
+func (f *fixture) loadAllowWarnings(names ...model.ManifestName) {
+	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), names)
 	err := tlr.Error
 	if err != nil {
 		f.t.Fatal(err)
@@ -4144,7 +4136,7 @@ func (f *fixture) assertNoMoreManifests() {
 // Helper func for asserting that the next manifest is Unresourced
 // k8s YAML containing the given k8s entities.
 func (f *fixture) assertNextManifestUnresourced(expectedEntities ...string) model.Manifest {
-	next := f.assertNextManifest(model.UnresourcedYAMLManifestName.String())
+	next := f.assertNextManifest(model.UnresourcedYAMLManifestName)
 
 	entities, err := k8s.ParseYAML(bytes.NewBufferString(next.K8sTarget().YAML))
 	assert.NoError(f.t, err)
@@ -4160,7 +4152,7 @@ func (f *fixture) assertNextManifestUnresourced(expectedEntities ...string) mode
 type funcOpt func(*testing.T, model.Manifest) bool
 
 // assert functions and helpers
-func (f *fixture) assertNextManifest(name string, opts ...interface{}) model.Manifest {
+func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{}) model.Manifest {
 	if len(f.loadResult.Manifests) == 0 {
 		f.t.Fatalf("no more manifests; trying to find %q (did you call `f.load`?)", name)
 	}
