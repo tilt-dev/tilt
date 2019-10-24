@@ -1052,12 +1052,19 @@ k8s_yaml(yml)
 
 	f.load()
 
-	m := f.assertNextManifestUnresourced("rose-quartz-helloworld-chart")
+	m := f.assertNextManifestUnresourced("garnet", "rose-quartz-helloworld-chart")
 	yaml := m.K8sTarget().YAML
 	assert.Contains(t, yaml, "release: rose-quartz")
 	assert.Contains(t, yaml, "namespace: garnet")
 	assert.Contains(t, yaml, "namespaceLabel: garnet")
 	assert.Contains(t, yaml, "name: nginx-dev")
+
+	entities, err := k8s.ParseYAMLFromString(yaml)
+	require.NoError(t, err)
+
+	names := k8s.UniqueNames(entities, 2)
+	expectedNames := []string{"garnet:namespace", "rose-quartz-helloworld-chart:service"}
+	assert.ElementsMatch(t, expectedNames, names)
 
 	f.assertConfigFiles("./helm/", "./dev/helm/values-dev.yaml", ".tiltignore", "Tiltfile")
 }

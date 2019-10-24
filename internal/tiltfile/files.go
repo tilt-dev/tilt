@@ -207,17 +207,21 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	yaml := filterHelmTestYAML(string(stdout))
 
 	if namespace != "" {
-		// helm template --namespace doesn't inject the namespace,
-		// so we have to do that ourselves :\
+		// helm template --namespace doesn't inject the namespace, nor provide
+		// YAML that defines the namespace, so we have to do both ourselves :\
 		// https://github.com/helm/helm/issues/5465
-		entities, err := k8s.ParseYAMLFromString(yaml)
+		entities := []k8s.K8sEntity{k8s.NewNamespaceEntity(namespace)}
+		parsed, err := k8s.ParseYAMLFromString(yaml)
 		if err != nil {
 			return nil, err
 		}
 
-		for i, e := range entities {
-			entities[i] = e.WithNamespace(namespace)
+		for i, e := range parsed {
+			parsed[i] = e.WithNamespace(namespace)
 		}
+
+		entities = append(entities, parsed...)
+
 		yaml, err = k8s.SerializeSpecYAML(entities)
 		if err != nil {
 			return nil, err
