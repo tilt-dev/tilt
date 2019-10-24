@@ -121,9 +121,8 @@ errcheck:
 timing: install
 	./scripts/timing.py
 
-WIRE_PATHS = engine cli synclet
 wire:
-	$(foreach path,$(WIRE_PATHS),wire ./internal/$(path) && goimports -w $(GOIMPORTS_LOCAL_ARG) internal/$(path) &&) true
+	toast wire
 
 wire-check:
 	wire check ./internal/engine
