@@ -10,7 +10,14 @@ tasks:
   wire:
     location: /go/src/github.com/windmilleng/tilt
     input_paths:
-      - .
+      - assets
+      - cmd
+      - integration
+      - internal
+      - pkg
+      - synclet
+      - vendor
+      - Makefile
     output_paths:
       - ./internal/cli/wire_gen.go
       - ./internal/synclet/wire_gen.go
