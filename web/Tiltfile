@@ -1,9 +1,5 @@
 # -*- mode: Python -*-
 
-enable_feature("update_history")
-set_team("tilt")
-default_registry('gcr.io/blorg-dev')
-
 docker_build("tilt-web", ".",
              live_update=[
                sync("src", "/app/src")
