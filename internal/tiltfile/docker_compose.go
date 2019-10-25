@@ -72,6 +72,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 	var name string
 	var imageVal starlark.Value
 	var triggerMode triggerMode
+	var resourceDepsVal starlark.Sequence
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
@@ -86,6 +87,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 		"image?", &imageVal,
 
 		"trigger_mode?", &triggerMode,
+		"resource_deps?", &resourceDepsVal,
 	); err != nil {
 		return nil, err
 	}
@@ -118,6 +120,12 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 		}
 		svc.imageRefFromUser = normalized
 	}
+
+	rds, err := value.SequenceToStringSlice(resourceDepsVal)
+	if err != nil {
+		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
+	}
+	svc.resourceDeps = rds
 
 	return starlark.None, nil
 }
@@ -156,6 +164,8 @@ type dcService struct {
 	PublishedPorts []int
 
 	TriggerMode triggerMode
+
+	resourceDeps []string
 }
 
 func (svc dcService) ImageRef() reference.Named {
@@ -257,9 +267,16 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 	if err != nil {
 		return model.Manifest{}, nil, err
 	}
+
+	var mds []model.ManifestName
+	for _, md := range service.resourceDeps {
+		mds = append(mds, model.ManifestName(md))
+	}
+
 	m := model.Manifest{
-		Name:        model.ManifestName(service.Name),
-		TriggerMode: um,
+		Name:                 model.ManifestName(service.Name),
+		TriggerMode:          um,
+		ResourceDependencies: mds,
 	}.WithDeployTarget(dcInfo)
 
 	if service.DfPath == "" {

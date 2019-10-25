@@ -4,32 +4,36 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/pkg/errors"
+	"go.starlark.net/starlark"
+
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 	"github.com/windmilleng/tilt/internal/tiltfile/value"
 	"github.com/windmilleng/tilt/pkg/model"
-
-	"go.starlark.net/starlark"
 )
 
 type localResource struct {
-	name        string
-	cmd         model.Cmd
-	workdir     string
-	deps        []string
-	triggerMode triggerMode
-	repos       []model.LocalGitRepo
+	name         string
+	cmd          model.Cmd
+	workdir      string
+	deps         []string
+	triggerMode  triggerMode
+	repos        []model.LocalGitRepo
+	resourceDeps []string
 }
 
 func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var name, cmd string
 	var triggerMode triggerMode
 	var deps starlark.Value
+	var resourceDepsVal starlark.Sequence
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
 		"cmd", &cmd,
 		"deps?", &deps,
 		"trigger_mode?", &triggerMode,
+		"resource_deps?", &resourceDepsVal,
 	); err != nil {
 		return nil, err
 	}
@@ -46,13 +50,19 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 
 	repos := reposForPaths(depsStrings)
 
+	resourceDeps, err := value.SequenceToStringSlice(resourceDepsVal)
+	if err != nil {
+		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
+	}
+
 	res := localResource{
-		name:        name,
-		cmd:         model.ToShellCmd(cmd),
-		workdir:     filepath.Dir(starkit.CurrentExecPath(thread)),
-		deps:        depsStrings,
-		triggerMode: triggerMode,
-		repos:       repos,
+		name:         name,
+		cmd:          model.ToShellCmd(cmd),
+		workdir:      filepath.Dir(starkit.CurrentExecPath(thread)),
+		deps:         depsStrings,
+		triggerMode:  triggerMode,
+		repos:        repos,
+		resourceDeps: resourceDeps,
 	}
 	s.localResources = append(s.localResources, res)
 

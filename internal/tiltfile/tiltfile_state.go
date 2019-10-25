@@ -7,14 +7,11 @@ import (
 	"regexp"
 	"strings"
 
-	"go.starlark.net/syntax"
-
-	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
-	"github.com/windmilleng/tilt/internal/tiltfile/git"
-
 	"github.com/docker/distribution/reference"
+	"github.com/looplab/tarjan"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -22,6 +19,8 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/sliceutils"
+	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
+	"github.com/windmilleng/tilt/internal/tiltfile/git"
 	"github.com/windmilleng/tilt/internal/tiltfile/include"
 	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
 	"github.com/windmilleng/tilt/internal/tiltfile/os"
@@ -213,6 +212,12 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 		}
 		manifests = append(manifests, yamlManifest)
 	}
+
+	err = validateResourceDependencies(manifests)
+	if err != nil {
+		return nil, starkit.Model{}, err
+	}
+
 	return manifests, result, nil
 }
 
@@ -726,6 +731,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 			r.extraPodSelectors = opts.extraPodSelectors
 			r.portForwards = opts.portForwards
 			r.triggerMode = opts.triggerMode
+			r.resourceDeps = opts.resourceDeps
 			if opts.newName != "" && opts.newName != r.name {
 				if _, ok := s.k8sByName[opts.newName]; ok {
 					return fmt.Errorf("k8s_resource at %s specified to rename '%s' to '%s', but there is already a resource with that name", opts.tiltfilePosition.String(), r.name, opts.newName)
@@ -999,40 +1005,69 @@ func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef container.Re
 	return nil
 }
 
+func unmatchedManifestNames(manifests []model.Manifest, requestedManifests []model.ManifestName) []string {
+	requestedManifestsByName := make(map[model.ManifestName]bool)
+	for _, m := range requestedManifests {
+		requestedManifestsByName[m] = true
+	}
+
+	var ret []string
+	for _, m := range manifests {
+		if _, ok := requestedManifestsByName[m.Name]; !ok {
+			ret = append(ret, string(m.Name))
+		}
+	}
+
+	return ret
+}
+
+// add `manifestToAdd` and all of its transitive deps to `result`
+func addManifestAndDeps(result map[model.ManifestName]bool, allManifestsByName map[model.ManifestName]model.Manifest, manifestToAdd model.ManifestName) {
+	if result[manifestToAdd] {
+		return
+	}
+	result[manifestToAdd] = true
+	for _, dep := range allManifestsByName[manifestToAdd].ResourceDependencies {
+		addManifestAndDeps(result, allManifestsByName, dep)
+	}
+}
+
 // If the user requested only a subset of manifests, get just those manifests
 func match(manifests []model.Manifest, requestedManifests []model.ManifestName) ([]model.Manifest, error) {
 	if len(requestedManifests) == 0 {
 		return manifests, nil
 	}
 
-	requestedManifestsByName := make(map[model.ManifestName]bool)
-	for _, n := range requestedManifests {
-		requestedManifestsByName[n] = true
+	manifestsByName := make(map[model.ManifestName]model.Manifest)
+	for _, m := range manifests {
+		manifestsByName[m.Name] = m
+	}
+
+	manifestsToRun := make(map[model.ManifestName]bool)
+	var unknownNames []string
+
+	for _, m := range requestedManifests {
+		if _, ok := manifestsByName[m]; !ok {
+			unknownNames = append(unknownNames, string(m))
+			continue
+		}
+
+		addManifestAndDeps(manifestsToRun, manifestsByName, m)
 	}
 
 	var result []model.Manifest
-	matched := make(map[model.ManifestName]bool, len(requestedManifests))
-	var unmatchedNames []string
 	for _, m := range manifests {
-		if !requestedManifestsByName[m.Name] {
-			unmatchedNames = append(unmatchedNames, m.Name.String())
-			continue
+		if manifestsToRun[m.Name] {
+			result = append(result, m)
 		}
-		result = append(result, m)
-		matched[m.Name] = true
 	}
 
-	if len(matched) != len(requestedManifests) {
-		var missing []string
-		for _, k := range requestedManifests {
-			if !matched[k] {
-				missing = append(missing, string(k))
-			}
-		}
+	if len(unknownNames) > 0 {
+		unmatchedNames := unmatchedManifestNames(manifests, requestedManifests)
 
 		return nil, fmt.Errorf(`You specified some resources that could not be found: %s
 Is this a typo? Existing resources in Tiltfile: %s`,
-			sliceutils.QuotedStringList(missing),
+			sliceutils.QuotedStringList(unknownNames),
 			sliceutils.QuotedStringList(unmatchedNames))
 	}
 
@@ -1047,9 +1082,15 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 		if err != nil {
 			return nil, err
 		}
+
+		var mds []model.ManifestName
+		for _, md := range r.resourceDeps {
+			mds = append(mds, model.ManifestName(md))
+		}
 		m := model.Manifest{
-			Name:        mn,
-			TriggerMode: tm,
+			Name:                 mn,
+			TriggerMode:          tm,
+			ResourceDependencies: mds,
 		}
 
 		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, r.portForwards, r.extraPodSelectors, r.dependencyIDs, r.imageRefMap)
@@ -1393,15 +1434,60 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 
 		paths := append(r.deps, r.workdir)
 		lt := model.NewLocalTarget(model.TargetName(r.name), r.cmd, r.workdir, r.deps).WithRepos(reposForPaths(paths))
+		var mds []model.ManifestName
+		for _, md := range r.resourceDeps {
+			mds = append(mds, model.ManifestName(md))
+		}
 		m := model.Manifest{
-			Name:        mn,
-			TriggerMode: tm,
+			Name:                 mn,
+			TriggerMode:          tm,
+			ResourceDependencies: mds,
 		}.WithDeployTarget(lt)
 
 		result = append(result, m)
 	}
 
 	return result, nil
+}
+
+func validateResourceDependencies(ms []model.Manifest) error {
+	// make sure that:
+	// 1. all deps exist
+	// 2. we have a DAG
+
+	knownResources := make(map[model.ManifestName]bool)
+	for _, m := range ms {
+		knownResources[m.Name] = true
+	}
+
+	// construct the graph and make sure all edges are valid
+	edges := make(map[interface{}][]interface{})
+	for _, m := range ms {
+		for _, b := range m.ResourceDependencies {
+			if m.Name == b {
+				return fmt.Errorf("resource %s specified a dependency on itself", m.Name)
+			}
+			if _, ok := knownResources[b]; !ok {
+				return fmt.Errorf("resource %s specified a dependency on unknown resource %s", m.Name, b)
+			}
+			edges[m.Name] = append(edges[m.Name], b)
+		}
+	}
+
+	// check for cycles
+	connections := tarjan.Connections(edges)
+	for _, g := range connections {
+		if len(g) > 1 {
+			var nodes []string
+			for i := range g {
+				nodes = append(nodes, string(g[len(g)-i-1].(model.ManifestName)))
+			}
+			nodes = append(nodes, string(g[len(g)-1].(model.ManifestName)))
+			return fmt.Errorf("cycle detected in resource dependency graph: %s", strings.Join(nodes, " -> "))
+		}
+	}
+
+	return nil
 }
 
 var _ starkit.Extension = &tiltfileState{}

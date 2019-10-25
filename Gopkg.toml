@@ -110,3 +110,7 @@
 [[constraint]]
     name = "github.com/moby/buildkit"
     revision = "d5108d038d214c7b30c1e9678882135146163df7"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/looplab/tarjan"

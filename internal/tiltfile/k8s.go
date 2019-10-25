@@ -50,6 +50,8 @@ type k8sResource struct {
 	dependencyIDs []model.TargetID
 
 	triggerMode triggerMode
+
+	resourceDeps []string
 }
 
 const deprecatedResourceAssemblyV1Warning = "This Tiltfile is using k8s resource assembly version 1, which has been " +
@@ -64,6 +66,7 @@ type k8sResourceOptions struct {
 	triggerMode       triggerMode
 	tiltfilePosition  syntax.Position
 	consumed          bool
+	resourceDeps      []string
 }
 
 func (r *k8sResource) addRefSelector(selector container.RefSelector) {
@@ -363,6 +366,7 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 	var portForwardsVal starlark.Value
 	var extraPodSelectorsVal starlark.Value
 	var triggerMode triggerMode
+	var resourceDepsVal starlark.Sequence
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"workload", &workload,
@@ -370,6 +374,7 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		"port_forwards?", &portForwardsVal,
 		"extra_pod_selectors?", &extraPodSelectorsVal,
 		"trigger_mode?", &triggerMode,
+		"resource_deps?", &resourceDepsVal,
 	); err != nil {
 		return nil, err
 	}
@@ -392,12 +397,18 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		return nil, fmt.Errorf("%s already called for %s, at %s", fn.Name(), workload, opts.tiltfilePosition.String())
 	}
 
+	resourceDeps, err := value.SequenceToStringSlice(resourceDepsVal)
+	if err != nil {
+		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
+	}
+
 	s.k8sResourceOptions[workload] = k8sResourceOptions{
 		newName:           newName,
 		portForwards:      portForwards,
 		extraPodSelectors: extraPodSelectors,
 		tiltfilePosition:  thread.CallFrame(1).Pos,
 		triggerMode:       triggerMode,
+		resourceDeps:      resourceDeps,
 	}
 
 	return starlark.None, nil
