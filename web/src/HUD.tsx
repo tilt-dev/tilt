@@ -306,7 +306,9 @@ class HUD extends Component<HudProps, HudState> {
           teamSnapshotsUrl={this.getTeamSnapshotsUrl()}
           teamUpdatesUrl={this.getTeamUpdatesUrl()}
           facetsUrl={
-            name !== "" && this.state.view.featureFlags && this.state.view.featureFlags["facets"]
+            name !== "" &&
+            this.state.view.featureFlags &&
+            this.state.view.featureFlags["facets"]
               ? this.path(`/r/${name}/facets`)
               : null
           }
