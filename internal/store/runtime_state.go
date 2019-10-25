@@ -15,14 +15,21 @@ import (
 
 type RuntimeState interface {
 	RuntimeState()
+	HasEverBeenReady() bool
 }
 
 // Currently just a placeholder, as a LocalResource has no runtime state, only "build"
 // state. In future, we may use this to store runtime state for long-running processes
 // kicked off via a LocalResource.
-type LocalRuntimeState struct{}
+type LocalRuntimeState struct {
+	HasFinishedAtLeastOnce bool
+}
 
 func (LocalRuntimeState) RuntimeState() {}
+
+func (l LocalRuntimeState) HasEverBeenReady() bool {
+	return l.HasFinishedAtLeastOnce
+}
 
 var _ RuntimeState = LocalRuntimeState{}
 
@@ -35,6 +42,8 @@ type K8sRuntimeState struct {
 	Pods           map[k8s.PodID]*Pod
 	LBs            map[k8s.ServiceName]*url.URL
 	DeployedUIDSet UIDSet
+
+	LastReadyTime time.Time
 }
 
 func (K8sRuntimeState) RuntimeState() {}
@@ -52,6 +61,10 @@ func NewK8sRuntimeState(pods ...Pod) K8sRuntimeState {
 		LBs:            make(map[k8s.ServiceName]*url.URL),
 		DeployedUIDSet: NewUIDSet(),
 	}
+}
+
+func (s K8sRuntimeState) HasEverBeenReady() bool {
+	return !s.LastReadyTime.IsZero()
 }
 
 func (s K8sRuntimeState) PodLen() int {
@@ -158,6 +171,10 @@ func (p Pod) AllContainerPorts() []int32 {
 }
 
 func (p Pod) AllContainersReady() bool {
+	if len(p.Containers) == 0 {
+		return false
+	}
+
 	for _, c := range p.Containers {
 		if !c.Ready {
 			return false

@@ -52,11 +52,12 @@ func (evt Event) IsStopEvent() bool {
 }
 
 type State struct {
-	Status      Status
-	ContainerID container.ID
-	CurrentLog  model.Log
-	StartTime   time.Time
-	IsStopping  bool
+	Status        Status
+	ContainerID   container.ID
+	CurrentLog    model.Log
+	StartTime     time.Time
+	IsStopping    bool
+	LastReadyTime time.Time
 }
 
 func (State) RuntimeState() {}
@@ -85,7 +86,16 @@ func (s State) WithStartTime(time time.Time) State {
 	return s
 }
 
+func (s State) WithLastReadyTime(time time.Time) State {
+	s.LastReadyTime = time
+	return s
+}
+
 func (s State) WithStopping(stopping bool) State {
 	s.IsStopping = stopping
 	return s
+}
+
+func (s State) HasEverBeenReady() bool {
+	return !s.LastReadyTime.IsZero()
 }

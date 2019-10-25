@@ -69,6 +69,7 @@ type PodBuilder struct {
 	// If there's no entry at index i, we'll use a dummy value.
 	imageRefs map[int]string
 	cIDs      map[int]string
+	cReady    map[int]bool
 }
 
 func New(t testing.TB, manifest model.Manifest) PodBuilder {
@@ -77,6 +78,7 @@ func New(t testing.TB, manifest model.Manifest) PodBuilder {
 		manifest:       manifest,
 		imageRefs:      make(map[int]string),
 		cIDs:           make(map[int]string),
+		cReady:         make(map[int]bool),
 		extraPodLabels: make(map[string]string),
 	}
 }
@@ -132,6 +134,15 @@ func (b PodBuilder) WithContainerIDAtIndex(cID container.ID, index int) PodBuild
 	} else {
 		b.cIDs[index] = fmt.Sprintf("%s%s", k8s.ContainerIDPrefix, cID)
 	}
+	return b
+}
+
+func (b PodBuilder) WithContainerReady(ready bool) PodBuilder {
+	return b.WithContainerReadyAtIndex(ready, 0)
+}
+
+func (b PodBuilder) WithContainerReadyAtIndex(ready bool, index int) PodBuilder {
+	b.cReady[index] = ready
 	return b
 }
 
@@ -275,10 +286,14 @@ func (b PodBuilder) buildContainerStatuses(spec v1.PodSpec) []v1.ContainerStatus
 		if i == 0 {
 			restartCount = b.restartCount
 		}
+		ready, ok := b.cReady[i]
+		// if not specified, default to true
+		ready = !ok || ready
+
 		result[i] = v1.ContainerStatus{
 			Name:         cSpec.Name,
 			Image:        b.buildImage(cSpec.Image, i),
-			Ready:        true,
+			Ready:        ready,
 			ContainerID:  b.buildContainerID(i),
 			RestartCount: int32(restartCount),
 		}
