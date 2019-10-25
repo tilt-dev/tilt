@@ -51,6 +51,7 @@ type snapshotIDResponse struct {
 	ID string
 }
 
+// TODO(nick): Represent these with protobufs
 type snapshotHighlight struct {
 	BeginningLogID string `json:"beginningLogID"`
 	EndingLogID    string `json:"endingLogID"`
@@ -58,8 +59,8 @@ type snapshotHighlight struct {
 }
 
 type Snapshot struct {
-	View              webview.View
-	IsSidebarClosed   bool
+	View              webview.View      `json:"view"`
+	IsSidebarClosed   bool              `json:"isSidebarClosed"`
 	Path              string            `json:"path"`
 	SnapshotHighlight snapshotHighlight `json:"snapshotHighlight"`
 }

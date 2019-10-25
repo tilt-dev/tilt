@@ -3,6 +3,7 @@ package server_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -372,15 +373,24 @@ func TestHandleNewSnapshot(t *testing.T) {
 	require.Equal(t, http.StatusOK, rr.Code,
 		"handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
 	require.Contains(t, rr.Body.String(), "https://nonexistent.example.com/snapshot/aaaaa")
+
+	lastReq := f.snapshotHTTP.lastReq
+	if assert.NotNil(t, lastReq) {
+		snapshot := cloud.Snapshot{}
+		decoder := json.NewDecoder(lastReq.Body)
+		decoder.Decode(&snapshot)
+		assert.Equal(t, "0.10.13", snapshot.View.RunningTiltBuild.Version)
+	}
 }
 
 type serverFixture struct {
-	t          *testing.T
-	serv       *server.HeadsUpServer
-	a          *analytics.MemoryAnalytics
-	ta         *tiltanalytics.TiltAnalytics
-	st         *store.Store
-	getActions func() []store.Action
+	t            *testing.T
+	serv         *server.HeadsUpServer
+	a            *analytics.MemoryAnalytics
+	ta           *tiltanalytics.TiltAnalytics
+	st           *store.Store
+	getActions   func() []store.Action
+	snapshotHTTP *fakeHTTPClient
 }
 
 func newTestFixture(t *testing.T) *serverFixture {
@@ -388,27 +398,32 @@ func newTestFixture(t *testing.T) *serverFixture {
 	go st.Loop(context.Background())
 	a := analytics.NewMemoryAnalytics()
 	a, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
-	httpClient := fakeHttpClient{}
+	snapshotHTTP := &fakeHTTPClient{}
 	addr := cloudurl.Address("nonexistent.example.com")
-	uploader := cloud.NewSnapshotUploader(httpClient, addr)
+	uploader := cloud.NewSnapshotUploader(snapshotHTTP, addr)
 	serv, err := server.ProvideHeadsUpServer(context.Background(), st, assets.NewFakeServer(), ta, uploader)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	return &serverFixture{
-		t:          t,
-		serv:       serv,
-		a:          a,
-		ta:         ta,
-		st:         st,
-		getActions: getActions,
+		t:            t,
+		serv:         serv,
+		a:            a,
+		ta:           ta,
+		st:           st,
+		getActions:   getActions,
+		snapshotHTTP: snapshotHTTP,
 	}
 }
 
-type fakeHttpClient struct{}
+type fakeHTTPClient struct {
+	lastReq *http.Request
+}
 
-func (f fakeHttpClient) Do(req *http.Request) (*http.Response, error) {
+func (f *fakeHTTPClient) Do(req *http.Request) (*http.Response, error) {
+	f.lastReq = req
+
 	return &http.Response{
 		StatusCode: http.StatusOK,
 		Body:       ioutil.NopCloser(bytes.NewReader([]byte(`{"ID":"aaaaa"}`))),
