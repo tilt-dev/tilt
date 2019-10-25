@@ -13,6 +13,8 @@ type TopBarProps = {
   snapshotOwner: string | null
   handleOpenModal: () => void
   highlight: SnapshotHighlight | null
+  teamSnapshotsUrl: string | null
+  teamUpdatesUrl: string | null
 }
 
 class TopBar extends PureComponent<TopBarProps> {
@@ -25,12 +27,46 @@ class TopBar extends PureComponent<TopBarProps> {
           resourceView={this.props.resourceView}
           numberOfAlerts={this.props.numberOfAlerts}
         />
-        <section className="TopBar-tools">
+        <div className="TopBar-tools">
+          {this.maybeRenderTeamSnapshotsButton()}
+          {this.maybeRenderTeamUpdatesButton()}
           {this.props.showSnapshotButton
             ? this.renderSnapshotModal()
             : this.renderSnapshotOwner()}
-        </section>
+        </div>
       </div>
+    )
+  }
+
+  maybeRenderTeamSnapshotsButton() {
+    if (!this.props.teamSnapshotsUrl) {
+      return null
+    }
+    return (
+      <a
+        href={this.props.teamSnapshotsUrl}
+        target="_blank"
+        rel="noreferrer noopener"
+        className={`TopBar-toolsButton`}
+      >
+        <span>Team Snapshots</span>
+      </a>
+    )
+  }
+
+  maybeRenderTeamUpdatesButton() {
+    if (!this.props.teamUpdatesUrl) {
+      return null
+    }
+    return (
+      <a
+        href={this.props.teamUpdatesUrl}
+        target="_blank"
+        rel="noreferrer noopener"
+        className={`TopBar-toolsButton`}
+      >
+        <span>Team Updates</span>
+      </a>
     )
   }
 
@@ -39,7 +75,7 @@ class TopBar extends PureComponent<TopBarProps> {
     return (
       <button
         onClick={this.props.handleOpenModal}
-        className={`TopBar-snapshotButton ${highlight ? "isHighlighted" : ""}`}
+        className={`TopBar-toolsButton ${highlight ? "isHighlighted" : ""}`}
       >
         <SnapshotSvg className="TopBar-snapshotSvg" />
         <span>
