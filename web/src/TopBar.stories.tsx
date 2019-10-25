@@ -22,6 +22,7 @@ function topBarDefault() {
         highlight={null}
         teamSnapshotsUrl={""}
         teamUpdatesUrl={""}
+        facetsUrl="/r/foo/facets"
       />
     </MemoryRouter>
   )
@@ -41,6 +42,7 @@ function topBarTeam() {
         highlight={null}
         teamSnapshotsUrl={"/team/snapshots"}
         teamUpdatesUrl={"/team/updates"}
+        facetsUrl="/r/foo/facets"
       />
     </MemoryRouter>
   )

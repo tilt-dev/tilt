@@ -15,6 +15,7 @@ type TopBarProps = {
   highlight: SnapshotHighlight | null
   teamSnapshotsUrl: string | null
   teamUpdatesUrl: string | null
+  facetsUrl: string | null
 }
 
 class TopBar extends PureComponent<TopBarProps> {
@@ -24,6 +25,7 @@ class TopBar extends PureComponent<TopBarProps> {
         <TabNav
           logUrl={this.props.logUrl}
           alertsUrl={this.props.alertsUrl}
+          facetsUrl={this.props.facetsUrl}
           resourceView={this.props.resourceView}
           numberOfAlerts={this.props.numberOfAlerts}
         />

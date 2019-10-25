@@ -95,6 +95,7 @@ function oneResource(): Resource {
     isTiltfile: false,
     pathsWatched: [],
     alerts: [],
+    facets: [],
   }
   return resource
 }
@@ -264,6 +265,7 @@ function twoResourceView(): view {
     },
     hasPendingChanges: false,
     alerts: [],
+    facets: [],
   }
   return { resources: [vigoda, snack] }
 }

@@ -31,6 +31,7 @@ import Features from "./feature"
 import ShareSnapshotModal from "./ShareSnapshotModal"
 import FatalErrorModal from "./FatalErrorModal"
 import * as _ from "lodash"
+import FacetsPane from "./FacetsPane"
 
 type HudProps = {
   history: History
@@ -280,6 +281,7 @@ class HUD extends Component<HudProps, HudState> {
               highlight={snapshotHighlight}
               teamSnapshotsUrl={this.getTeamSnapshotsUrl()}
               teamUpdatesUrl={this.getTeamUpdatesUrl()}
+              facetsUrl={null}
             />
           )
         }
@@ -303,6 +305,11 @@ class HUD extends Component<HudProps, HudState> {
           highlight={snapshotHighlight}
           teamSnapshotsUrl={this.getTeamSnapshotsUrl()}
           teamUpdatesUrl={this.getTeamUpdatesUrl()}
+          facetsUrl={
+            name !== "" && this.state.view.featureFlags && this.state.view.featureFlags["facets"]
+              ? this.path(`/r/${name}/facets`)
+              : null
+          }
         />
       )
     }
@@ -363,6 +370,16 @@ class HUD extends Component<HudProps, HudState> {
         return <AlertPane pathBuilder={this.pathBuilder} resources={[er]} />
       }
     }
+    let facetsRoute = (props: RouteComponentProps<any>) => {
+      let name = props.match.params ? props.match.params.name : ""
+      let fr = resources.find(r => r.name == name)
+      if (fr === undefined) {
+        return <Route component={NotFound} />
+      }
+      if (fr) {
+        return <FacetsPane resource={fr} />
+      }
+    }
     let snapshotRoute = () => {
       return (
         <div className="SnapshotMessage">
@@ -396,6 +413,10 @@ class HUD extends Component<HudProps, HudState> {
             render={topBarRoute.bind(null, ResourceView.Alerts)}
           />
           <Route
+            path={this.path("/r/:name/facets")}
+            render={topBarRoute.bind(null, ResourceView.Facets)}
+          />
+          <Route
             path={this.path("/r/:name")}
             render={topBarRoute.bind(null, ResourceView.Log)}
           />
@@ -409,6 +430,10 @@ class HUD extends Component<HudProps, HudState> {
           <Route
             path={this.path("/r/:name/alerts")}
             render={sidebarRoute.bind(null, ResourceView.Alerts)}
+          />
+          <Route
+            path={this.path("/r/:name/facets")}
+            render={sidebarRoute.bind(null, ResourceView.Facets)}
           />
           <Route
             path={this.path("/alerts")}
@@ -464,6 +489,11 @@ class HUD extends Component<HudProps, HudState> {
             exact
             path={this.path("/r/:name/alerts")}
             render={errorRoute}
+          />
+          <Route
+            exact
+            path={this.path("/r/:name/facets")}
+            render={facetsRoute}
           />
           <Route component={NoMatch} />
         </Switch>
