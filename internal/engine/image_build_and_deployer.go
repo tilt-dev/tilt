@@ -236,7 +236,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 		}
 		uids = append(uids, entity.UID())
 	}
-	results[kTarget.ID()] = store.NewK8sDeployResult(kTarget.ID(), uids)
+	results[kTarget.ID()] = store.NewK8sDeployResult(kTarget.ID(), uids, deployed)
 
 	return results, nil
 }

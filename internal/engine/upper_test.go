@@ -260,7 +260,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 			b.nextDeployedUID = ""
 		}
 		uids := []types.UID{uid}
-		result[call.k8s().ID()] = store.NewK8sDeployResult(call.k8s().ID(), uids)
+		result[call.k8s().ID()] = store.NewK8sDeployResult(call.k8s().ID(), uids, nil)
 	}
 
 	b.nextLiveUpdateContainerIDs = nil
@@ -3545,7 +3545,7 @@ func deployResultSet(manifest model.Manifest, uid types.UID) store.BuildResultSe
 		resultSet[iTarget.ID()] = store.NewImageBuildResult(iTarget.ID(), ref)
 	}
 	ktID := manifest.K8sTarget().ID()
-	resultSet[ktID] = store.NewK8sDeployResult(ktID, []types.UID{uid})
+	resultSet[ktID] = store.NewK8sDeployResult(ktID, []types.UID{uid}, nil)
 	return resultSet
 }
 

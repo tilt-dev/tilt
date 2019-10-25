@@ -68,9 +68,15 @@ func (t *ManifestTarget) Facets(secrets model.SecretSet) []model.Facet {
 		})
 	}
 
-	if t.Manifest.IsK8s() {
-		s := string(secrets.Scrub([]byte(t.Manifest.K8sTarget().YAML)))
-		ret = append(ret, model.Facet{Name: "k8s_yaml", Value: s})
+	for _, targetID := range t.Spec().DependencyIDs() {
+		bs := t.State.BuildStatus(targetID)
+		if bs.LastResult != nil {
+			ret = append(ret, bs.LastResult.Facets()...)
+		}
+	}
+
+	for _, f := range ret {
+		f.Value = string(secrets.Scrub([]byte(f.Value)))
 	}
 
 	return ret

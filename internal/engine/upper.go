@@ -285,6 +285,10 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	ms.CurrentBuild = model.BuildRecord{}
 	ms.NeedsRebuildFromCrash = false
 
+	for id, result := range cb.Result {
+		ms.MutableBuildStatus(id).LastResult = result
+	}
+
 	if err != nil {
 		if isFatalError(err) {
 			return err

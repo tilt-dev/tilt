@@ -17,6 +17,7 @@ import (
 type BuildResult interface {
 	TargetID() model.TargetID
 	BuildType() model.BuildType
+	Facets() []model.Facet
 }
 
 type LocalBuildResult struct {
@@ -25,6 +26,7 @@ type LocalBuildResult struct {
 
 func (r LocalBuildResult) TargetID() model.TargetID   { return r.id }
 func (r LocalBuildResult) BuildType() model.BuildType { return model.BuildTypeLocal }
+func (r LocalBuildResult) Facets() []model.Facet      { return nil }
 
 func NewLocalBuildResult(id model.TargetID) LocalBuildResult {
 	return LocalBuildResult{
@@ -43,6 +45,7 @@ type ImageBuildResult struct {
 
 func (r ImageBuildResult) TargetID() model.TargetID   { return r.id }
 func (r ImageBuildResult) BuildType() model.BuildType { return model.BuildTypeImage }
+func (r ImageBuildResult) Facets() []model.Facet      { return nil }
 
 // For image targets.
 func NewImageBuildResult(id model.TargetID, image reference.NamedTagged) ImageBuildResult {
@@ -67,6 +70,7 @@ type LiveUpdateBuildResult struct {
 
 func (r LiveUpdateBuildResult) TargetID() model.TargetID   { return r.id }
 func (r LiveUpdateBuildResult) BuildType() model.BuildType { return model.BuildTypeLiveUpdate }
+func (r LiveUpdateBuildResult) Facets() []model.Facet      { return nil }
 
 // For in-place container updates.
 func NewLiveUpdateBuildResult(id model.TargetID, image reference.NamedTagged, containerIDs []container.ID) LiveUpdateBuildResult {
@@ -91,6 +95,7 @@ type DockerComposeBuildResult struct {
 
 func (r DockerComposeBuildResult) TargetID() model.TargetID   { return r.id }
 func (r DockerComposeBuildResult) BuildType() model.BuildType { return model.BuildTypeDockerCompose }
+func (r DockerComposeBuildResult) Facets() []model.Facet      { return nil }
 
 // For docker compose deploy targets.
 func NewDockerComposeDeployResult(id model.TargetID, containerID container.ID) DockerComposeBuildResult {
@@ -105,16 +110,30 @@ type K8sBuildResult struct {
 
 	// The UIDs that we deployed to a Kubernetes cluster.
 	DeployedUIDs []types.UID
+
+	AppliedEntitiesText string
 }
 
 func (r K8sBuildResult) TargetID() model.TargetID   { return r.id }
 func (r K8sBuildResult) BuildType() model.BuildType { return model.BuildTypeK8s }
+func (r K8sBuildResult) Facets() []model.Facet {
+
+	return []model.Facet{
+		{
+			Name:  "applied yaml",
+			Value: r.AppliedEntitiesText,
+		},
+	}
+}
 
 // For kubernetes deploy targets.
-func NewK8sDeployResult(id model.TargetID, uids []types.UID) BuildResult {
+func NewK8sDeployResult(id model.TargetID, uids []types.UID, appliedEntities []k8s.K8sEntity) BuildResult {
+	appliedEntitiesYaml, _ := k8s.SerializeSpecYAML(appliedEntities)
+
 	return K8sBuildResult{
-		id:           id,
-		DeployedUIDs: uids,
+		id:                  id,
+		DeployedUIDs:        uids,
+		AppliedEntitiesText: appliedEntitiesYaml,
 	}
 }
 

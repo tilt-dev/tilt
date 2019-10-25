@@ -221,6 +221,7 @@ type BuildStatus struct {
 	PendingFileChanges map[string]time.Time
 
 	LastSuccessfulResult BuildResult
+	LastResult           BuildResult
 }
 
 func newBuildStatus() *BuildStatus {
