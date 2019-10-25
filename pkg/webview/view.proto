@@ -4,6 +4,11 @@ package webview;
 
 import "google/api/annotations.proto";
 
+/*
+ * NOTE(dmiller): times listed here are strings for backwards compatibility purposes.
+ * Future time fields should use the built in protobuf timestamp type.
+ */
+
 enum TriggerMode {
   TRIGGER_MODE_AUTO = 0;
   TRIGGER_MODE_MANUAL = 1;

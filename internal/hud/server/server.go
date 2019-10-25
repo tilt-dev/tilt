@@ -69,7 +69,7 @@ func ProvideHeadsUpServer(
 	analytics *tiltanalytics.TiltAnalytics,
 	uploader cloud.SnapshotUploader) (*HeadsUpServer, error) {
 	r := mux.NewRouter().UseEncodedPath()
-	grpcMux := runtime.NewServeMux(runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{OrigName:false}))
+	grpcMux := runtime.NewServeMux(runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{OrigName: false}))
 	s := &HeadsUpServer{
 		store:    store,
 		router:   r,
@@ -362,6 +362,7 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 func (s *HeadsUpServer) GetView(ctx context.Context, req *proto_webview.GetViewRequest) (*proto_webview.View, error) {
 	state := s.store.RLockState()
 	view := webview.StateToProtoView(state)
+	s.store.RUnlockState()
 
 	return view, nil
 }
