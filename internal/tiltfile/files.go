@@ -210,16 +210,28 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		// helm template --namespace doesn't inject the namespace, nor provide
 		// YAML that defines the namespace, so we have to do both ourselves :\
 		// https://github.com/helm/helm/issues/5465
-		entities := []k8s.K8sEntity{k8s.NewNamespaceEntity(namespace)}
 		parsed, err := k8s.ParseYAMLFromString(yaml)
 		if err != nil {
 			return nil, err
 		}
 
+		var haveYAMLForNamespace bool
 		for i, e := range parsed {
+			if e.GVK().Kind == "Namespace" && e.Name() == namespace {
+				// Chart already has YAML for the --namespace passed, we don't need to insert it
+				haveYAMLForNamespace = true
+				continue
+			}
 			parsed[i] = e.WithNamespace(namespace)
 		}
 
+		var entities []k8s.K8sEntity
+		if !haveYAMLForNamespace {
+			// User is relying on Helm to create the namespace, which it does independent
+			// of the YAML it generates, so we need to make sure the new namespace is included
+			// in the YAML.
+			entities = []k8s.K8sEntity{k8s.NewNamespaceEntity(namespace)}
+		}
 		entities = append(entities, parsed...)
 
 		yaml, err = k8s.SerializeSpecYAML(entities)

@@ -181,6 +181,18 @@ spec:
 {{- end -}}
 `
 
+// Best practice is to NOT specify a namespace in your chart, and use --namespace
+// instead, but I bet there's a user out there doing this.
+const namespaceYAML = `{{- if .Values.namespace.enabled -}}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace.name }}
+  labels:
+    somePersistedLabel: indeed
+{{- end -}}
+`
+
 const serviceYAML = `apiVersion: v1
 kind: Service
 metadata:

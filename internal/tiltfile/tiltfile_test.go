@@ -1069,6 +1069,60 @@ k8s_yaml(yml)
 	f.assertConfigFiles("./helm/", "./dev/helm/values-dev.yaml", ".tiltignore", "Tiltfile")
 }
 
+func TestHelmNamespaceFlagDoesNotInsertNSEntityIfNSInChart(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupHelm()
+
+	valuesWithNamespace := `
+namespace:
+  enabled: true
+  name: foobarbaz`
+	f.file("helm/extra_values.yaml", valuesWithNamespace)
+
+	f.file("Tiltfile", `
+yml = helm('./helm', name='rose-quartz', namespace="foobarbaz", values=['./helm/extra_values.yaml'])
+k8s_yaml(yml)
+`)
+
+	f.load()
+
+	m := f.assertNextManifestUnresourced("foobarbaz", "rose-quartz-helloworld-chart")
+	yaml := m.K8sTarget().YAML
+
+	entities, err := k8s.ParseYAMLFromString(yaml)
+	require.NoError(t, err)
+	require.Len(t, entities, 2)
+	e := entities[0]
+	require.Equal(t, "Namespace", e.GVK().Kind)
+	assert.Equal(t, "foobarbaz", e.Name())
+	assert.Equal(t, "indeed", e.Labels()["somePersistedLabel"],
+		"label originally specified in chart YAML should persist")
+}
+
+func TestHelmNamespaceFlagInsertsNSEntityIfDifferentNSInChart(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupHelm()
+
+	valuesWithNamespace := `
+namespace:
+  enabled: true
+  name: not-the-one-specified-in-flag` // what kind of jerk would do this?
+	f.file("helm/extra_values.yaml", valuesWithNamespace)
+
+	f.file("Tiltfile", `
+yml = helm('./helm', name='rose-quartz', namespace="foobarbaz", values=['./helm/extra_values.yaml'])
+k8s_yaml(yml)
+`)
+
+	f.load()
+
+	f.assertNextManifestUnresourced("foobarbaz", "not-the-one-specified-in-flag", "rose-quartz-helloworld-chart")
+}
+
 func TestHelmInvalidDirectory(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -4762,6 +4816,7 @@ func (f *fixture) setupHelm() {
 	f.file("helm/templates/deployment.yaml", deploymentYAML)
 	f.file("helm/templates/ingress.yaml", ingressYAML)
 	f.file("helm/templates/service.yaml", serviceYAML)
+	f.file("helm/templates/namespace.yaml", namespaceYAML)
 }
 
 func (f *fixture) setupHelmWithRequirements() {
