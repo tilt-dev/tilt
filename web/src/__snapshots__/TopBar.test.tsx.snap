@@ -33,7 +33,7 @@ exports[`shows snapshot owner 1`] = `
       </li>
     </ul>
   </nav>
-  <section
+  <div
     className="TopBar-tools"
   >
     <p
@@ -44,7 +44,7 @@ exports[`shows snapshot owner 1`] = `
         foo
       </strong>
     </p>
-  </section>
+  </div>
 </div>
 `;
 
@@ -81,11 +81,11 @@ exports[`shows snapshot url 1`] = `
       </li>
     </ul>
   </nav>
-  <section
+  <div
     className="TopBar-tools"
   >
     <button
-      className="TopBar-snapshotButton "
+      className="TopBar-toolsButton "
       onClick={[Function]}
     >
       <svg
@@ -99,6 +99,6 @@ exports[`shows snapshot url 1`] = `
         Snapshot
       </span>
     </button>
-  </section>
+  </div>
 </div>
 `;

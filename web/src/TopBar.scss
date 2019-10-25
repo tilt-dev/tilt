@@ -24,7 +24,7 @@
   justify-content: flex-end;
 }
 
-.TopBar-snapshotButton {
+.TopBar-toolsButton {
   border: 1px solid transparent;
   font-family: $font-sans-serif;
   font-size: $font-size-smallest;
@@ -39,16 +39,17 @@
   padding-bottom: $spacing-unit / 4;
   transition: border-color;
   transition-duration: $animation-timing;
+  text-decoration: none;
 }
-.TopBar-snapshotButton:hover {
+.TopBar-toolsButton:hover {
   cursor: pointer;
   background-color: $color-gray-dark;
   border-color: $color-blue-light;
 }
-.TopBar-snapshotButton span {
+.TopBar-toolsButton span {
   text-align: left;
 }
-.TopBar-snapshotButton.isHighlighted {
+.TopBar-toolsButton.isHighlighted {
   border-color: $color-blue-light;
 }
 .TopBar-snapshotSvg {

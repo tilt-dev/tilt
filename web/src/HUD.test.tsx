@@ -221,7 +221,7 @@ it("renders snapshot button if snapshots are enabled and this isn't a snapshot v
   view.featureFlags = { snapshots: true }
   hud.setState({ view: view })
 
-  let snapshotSection = root.find(".TopBar-snapshotButton")
+  let snapshotSection = root.find(".TopBar-toolsButton")
   expect(snapshotSection.exists()).toBe(true)
 })
 
@@ -241,6 +241,6 @@ it("doesn't render snapshot button if snapshots are enabled and this is a snapsh
   view.featureFlags = { snapshots: true }
   hud.setState({ view: view })
 
-  let snapshotSection = root.find(".TopBar-snapshotButton")
+  let snapshotSection = root.find(".TopBar-toolsButton")
   expect(snapshotSection.exists()).toBe(false)
 })
