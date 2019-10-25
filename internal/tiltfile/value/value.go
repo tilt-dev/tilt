@@ -36,7 +36,7 @@ func ValueToAbsPath(thread *starlark.Thread, v starlark.Value) (string, error) {
 
 	str, ok := v.(starlark.String)
 	if ok {
-		return starkit.AbsPath(thread, string(str)), nil
+		return starkit.AbsPath(thread, string(str))
 	}
 
 	return "", fmt.Errorf("expected path | string. Actual type: %T", v)

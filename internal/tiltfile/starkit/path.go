@@ -1,18 +1,25 @@
 package starkit
 
 import (
+	"fmt"
 	"path/filepath"
+	"strings"
 
 	"go.starlark.net/starlark"
 )
 
 // We want to resolve paths relative to the dir where the currently executing file lives,
 // not relative to the working directory.
-func AbsPath(t *starlark.Thread, path string) string {
-	if filepath.IsAbs(path) {
-		return path
+func AbsPath(t *starlark.Thread, path string) (string, error) {
+	if strings.HasPrefix(path, "~/") || path == "~" {
+		return "", fmt.Errorf(
+			"Tiltfile does not support expansion of '~', please provide an absolute path (you provided: %q)", path)
 	}
-	return filepath.Join(AbsWorkingDir(t), path)
+
+	if filepath.IsAbs(path) {
+		return path, nil
+	}
+	return filepath.Join(AbsWorkingDir(t), path), nil
 }
 
 func AbsWorkingDir(t *starlark.Thread) string {

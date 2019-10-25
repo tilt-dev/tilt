@@ -194,7 +194,11 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	}
 	for _, valueFile := range valueFiles {
 		cmd = append(cmd, "--values", valueFile)
-		s.recordConfigFile(starkit.AbsPath(thread, valueFile))
+		absPath, err := starkit.AbsPath(thread, valueFile)
+		if err != nil {
+			return nil, err
+		}
+		s.recordConfigFile(absPath)
 	}
 
 	stdout, err := s.execLocalCmd(thread, exec.Command(cmd[0], cmd[1:]...), false)

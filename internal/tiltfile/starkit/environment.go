@@ -146,7 +146,11 @@ func (e *Environment) start(path string) (Model, error) {
 }
 
 func (e *Environment) load(t *starlark.Thread, path string) (starlark.StringDict, error) {
-	return e.exec(t, AbsPath(t, path))
+	absPath, err := AbsPath(t, path)
+	if err != nil {
+		return nil, err
+	}
+	return e.exec(t, absPath)
 }
 
 func (e *Environment) exec(t *starlark.Thread, path string) (starlark.StringDict, error) {

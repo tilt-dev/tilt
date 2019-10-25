@@ -21,8 +21,12 @@ func (Extension) OnStart(env *starkit.Environment) error {
 }
 
 func NewGitRepo(t *starlark.Thread, path string) (*Repo, error) {
-	absPath := starkit.AbsPath(t, path)
-	_, err := os.Stat(absPath)
+	absPath, err := starkit.AbsPath(t, path)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = os.Stat(absPath)
 	if err != nil {
 		return nil, fmt.Errorf("Reading paths %s: %v", absPath, err)
 	}

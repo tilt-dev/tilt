@@ -150,8 +150,13 @@ func (s *tiltfileState) liveUpdateSync(thread *starlark.Thread, fn *starlark.Bui
 		return nil, err
 	}
 
+	localPath, err := starkit.AbsPath(thread, localPath)
+	if err != nil {
+		return nil, err
+	}
+
 	ret := liveUpdateSyncStep{
-		localPath:  starkit.AbsPath(thread, localPath),
+		localPath:  localPath,
 		remotePath: remotePath,
 		position:   thread.CallFrame(1).Pos,
 	}

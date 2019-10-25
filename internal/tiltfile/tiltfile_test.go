@@ -2273,6 +2273,13 @@ k8s_yaml('')
 	f.loadErrString("error reading yaml file")
 }
 
+func TestTildeInPathNotSupported(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.file("Tiltfile", `docker_build('gcr.io/awesome-image', '~/my/docker/context')`)
+	f.loadErrString("Tiltfile does not support expansion of '~'")
+}
+
 func TestParseJSON(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
