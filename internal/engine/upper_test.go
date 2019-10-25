@@ -3259,7 +3259,9 @@ func (f *testFixture) nextCallComplete(msgAndArgs ...interface{}) buildAndDeploy
 func (f *testFixture) nextCall(msgAndArgs ...interface{}) buildAndDeployCall {
 	msg := "timed out waiting for BuildAndDeployCall"
 	if len(msgAndArgs) > 0 {
-		msg = fmt.Sprintf("timed out waiting for BuildAndDeployCall: %s", msgAndArgs...)
+		format := msgAndArgs[0].(string)
+		args := msgAndArgs[1:]
+		msg = fmt.Sprintf("timed out waiting for BuildAndDeployCall: %s", fmt.Sprintf(format, args...))
 	}
 
 	for {

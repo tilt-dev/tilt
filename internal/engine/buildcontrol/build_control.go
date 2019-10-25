@@ -21,10 +21,11 @@ func NextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 
 	targets := state.Targets()
 
-	// If any of the manifest target's haven't been built yet, build them now.
+	// If any of the manifest targets haven't been built yet, build them now.
 	unbuilt := FindUnbuiltTargets(targets)
-	if len(unbuilt) > 0 {
-		return NextUnbuiltTargetToBuild(unbuilt)
+	candidates := RemoveTargetsWaitingOnDependencies(state, unbuilt)
+	if len(candidates) > 0 {
+		return NextUnbuiltTargetToBuild(candidates)
 	}
 
 	// Next prioritize builds that crashed and need a rebuilt to have up-to-date code.
@@ -34,7 +35,7 @@ func NextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 		}
 	}
 
-	// Next prioritize builds that are have been manually triggered.
+	// Next prioritize builds that have been manually triggered.
 	if len(state.TriggerQueue) > 0 {
 		mn := state.TriggerQueue[0]
 		mt, ok := state.ManifestTargets[mn]
@@ -52,6 +53,33 @@ func NextManifestNameToBuild(state store.EngineState) model.ManifestName {
 		return ""
 	}
 	return mt.Manifest.Name
+}
+
+func isWaitingOnDependencies(state store.EngineState, mt *store.ManifestTarget) bool {
+	// dependencies only block the first build, so if this manifest has ever built, ignore dependencies
+	if mt.State.StartedFirstBuild() {
+		return false
+	}
+
+	for _, mn := range mt.Manifest.ResourceDependencies {
+		ms, ok := state.ManifestState(mn)
+		if !ok || ms == nil || ms.RuntimeState == nil || !ms.RuntimeState.HasEverBeenReady() {
+			return true
+		}
+	}
+
+	return false
+}
+
+func RemoveTargetsWaitingOnDependencies(state store.EngineState, mts []*store.ManifestTarget) []*store.ManifestTarget {
+	var ret []*store.ManifestTarget
+	for _, mt := range mts {
+		if !isWaitingOnDependencies(state, mt) {
+			ret = append(ret, mt)
+		}
+	}
+
+	return ret
 }
 
 // Helper function for ordering targets that have never been built before.

@@ -372,8 +372,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	}
 
 	if mt.Manifest.IsLocal() {
-		// dummy value to indicate that this is a LocalResource (LR's have no runtime state, only build state)
-		ms.RuntimeState = store.LocalRuntimeState{}
+		ms.RuntimeState = store.LocalRuntimeState{HasFinishedAtLeastOnce: true}
 	}
 
 	if engineState.WatchFiles {
@@ -726,6 +725,8 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 	if evt.IsStartupEvent() {
 		state = state.WithStartTime(time.Now())
 		state = state.WithStopping(false)
+		// NB: this will differ from StartTime once we support DC health checks
+		state = state.WithLastReadyTime(time.Now())
 	}
 
 	if evt.IsStopEvent() {

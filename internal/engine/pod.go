@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
@@ -51,6 +52,12 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 		// Tilt run, so we're just attaching to an existing pod
 		// with some old history.
 		podInfo.BaselineRestarts = podInfo.AllContainerRestarts()
+	}
+
+	if podInfo.AllContainersReady() {
+		runtime := ms.K8sRuntimeState()
+		runtime.LastReadyTime = time.Now()
+		ms.RuntimeState = runtime
 	}
 
 	if len(podInfo.Containers) == 0 {

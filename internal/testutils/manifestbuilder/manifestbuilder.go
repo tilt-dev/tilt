@@ -27,6 +27,7 @@ type ManifestBuilder struct {
 	dcConfigPaths   []string
 	localCmd        string
 	localDeps       []string
+	resourceDeps    []string
 
 	iTargets []model.ImageTarget
 }
@@ -92,17 +93,27 @@ func (b ManifestBuilder) WithLiveUpdateAtIndex(lu model.LiveUpdate, index int) M
 	return b
 }
 
+func (b ManifestBuilder) WithResourceDeps(deps ...string) ManifestBuilder {
+	b.resourceDeps = deps
+	return b
+}
+
 func (b ManifestBuilder) Build() model.Manifest {
+	var rds []model.ManifestName
+	for _, dep := range b.resourceDeps {
+		rds = append(rds, model.ManifestName(dep))
+	}
+
 	if b.k8sYAML != "" {
 		return assembleK8s(
-			model.Manifest{Name: b.name},
+			model.Manifest{Name: b.name, ResourceDependencies: rds},
 			model.K8sTarget{YAML: b.k8sYAML, ExtraPodSelectors: b.k8sPodSelectors},
 			b.iTargets...)
 	}
 
 	if len(b.dcConfigPaths) > 0 {
 		return assembleDC(
-			model.Manifest{Name: b.name},
+			model.Manifest{Name: b.name, ResourceDependencies: rds},
 			model.DockerComposeTarget{
 				Name:        model.TargetName(b.name),
 				ConfigPaths: b.dcConfigPaths,
@@ -112,7 +123,7 @@ func (b ManifestBuilder) Build() model.Manifest {
 
 	if b.localCmd != "" {
 		lt := model.NewLocalTarget(model.TargetName(b.name), model.ToShellCmd(b.localCmd), b.f.Path(), b.localDeps)
-		return model.Manifest{Name: b.name}.WithDeployTarget(lt)
+		return model.Manifest{Name: b.name, ResourceDependencies: rds}.WithDeployTarget(lt)
 	}
 
 	b.f.T().Fatalf("No deploy target specified: %s", b.name)
