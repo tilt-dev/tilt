@@ -33,7 +33,7 @@ func NewImageAndCacheBuilder(ib build.ImageBuilder, cb build.CacheBuilder, custb
 func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, ps *build.PipelineState) (reference.NamedTagged, error) {
 	var n reference.NamedTagged
 
-	userFacingRefName := iTarget.ConfigurationRef.String()
+	userFacingRefName := reference.FamiliarString(iTarget.ConfigurationRef)
 	refToBuild := iTarget.DeploymentRef
 	cacheInputs := icb.createCacheInputs(iTarget)
 	cacheRef, err := icb.cb.FetchCache(ctx, cacheInputs)

@@ -75,22 +75,6 @@ func MustParseNamed(s string) reference.Named {
 	return n
 }
 
-func NormalizeRef(ref string) (string, error) {
-	named, err := ParseNamed(ref)
-	if err != nil {
-		return "", err
-	}
-	return named.String(), nil
-}
-
-func MustNormalizeRef(ref string) string {
-	normalized, err := NormalizeRef(ref)
-	if err != nil {
-		panic(err)
-	}
-	return normalized
-}
-
 func NewIDSet(ids ...ID) map[ID]bool {
 	result := make(map[ID]bool, len(ids))
 	for _, id := range ids {
