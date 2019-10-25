@@ -2,6 +2,7 @@ package tiltfile
 
 import (
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
 	"strings"
 
@@ -12,6 +13,8 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/ospath"
+	"github.com/windmilleng/tilt/internal/sliceutils"
+	"github.com/windmilleng/tilt/internal/tiltfile/io"
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 	"github.com/windmilleng/tilt/internal/tiltfile/value"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -125,8 +128,8 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	}
 	if dockerfileContentsVal != nil {
 		switch v := dockerfileContentsVal.(type) {
-		case *blob:
-			dockerfileContents = v.text
+		case io.Blob:
+			dockerfileContents = v.Text
 		case starlark.String:
 			dockerfileContents = v.GoString()
 		default:
@@ -138,13 +141,13 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 			return nil, err
 		}
 
-		bs, err := s.readFile(dockerfilePath)
+		bs, err := io.ReadFile(thread, dockerfilePath)
 		if err != nil {
 			return nil, errors.Wrap(err, "error reading dockerfile")
 		}
 		dockerfileContents = string(bs)
 	} else {
-		bs, err := s.readFile(dockerfilePath)
+		bs, err := io.ReadFile(thread, dockerfilePath)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error reading dockerfile")
 		}
@@ -492,7 +495,10 @@ func (s *tiltfileState) dockerignoresFromPathsAndContextFilters(paths []string, 
 			})
 		}
 
-		contents, err := s.readFile(filepath.Join(path, ".dockerignore"))
+		diFile := filepath.Join(path, ".dockerignore")
+		s.postExecReadFiles = sliceutils.AppendWithoutDupes(s.postExecReadFiles, diFile)
+
+		contents, err := ioutil.ReadFile(diFile)
 		if err != nil {
 			continue
 		}
