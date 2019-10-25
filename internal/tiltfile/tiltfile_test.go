@@ -4231,13 +4231,14 @@ func (f *fixture) loadAllowWarnings(names ...model.ManifestName) {
 }
 
 func unusedImageWarning(unusedImage string, suggestedImages []string) string {
-	ret := fmt.Sprintf("Image not used in any resource:\n    ✕ %s", unusedImage)
+	ret := fmt.Sprintf("Image not used in any deploy config:\n    ✕ %s", unusedImage)
 	if len(suggestedImages) > 0 {
 		ret = ret + fmt.Sprintf("\nDid you mean…")
 		for _, s := range suggestedImages {
 			ret = ret + fmt.Sprintf("\n    - %s", s)
 		}
 	}
+	ret = ret + fmt.Sprintf("\nSkipping this image build")
 	return ret
 }
 

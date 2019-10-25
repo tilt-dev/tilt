@@ -100,7 +100,7 @@ func (idx *buildIndex) assertAllMatched() error {
 				matchLines = append(matchLines, fmt.Sprintf("    - %s", match))
 			}
 
-			return fmt.Errorf("Image not used in any resource:\n    ✕ %v\n%s",
+			return fmt.Errorf("Image not used in any deploy config:\n    ✕ %v\n%s\nSkipping this image build",
 				image.configurationRef.String(), strings.Join(matchLines, "\n"))
 		}
 	}
