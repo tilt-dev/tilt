@@ -69,7 +69,7 @@ func ProvideHeadsUpServer(
 	analytics *tiltanalytics.TiltAnalytics,
 	uploader cloud.SnapshotUploader) (*HeadsUpServer, error) {
 	r := mux.NewRouter().UseEncodedPath()
-	grpcMux := runtime.NewServeMux()
+	grpcMux := runtime.NewServeMux(runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{OrigName:false}))
 	s := &HeadsUpServer{
 		store:    store,
 		router:   r,
@@ -360,9 +360,10 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 }
 
 func (s *HeadsUpServer) GetView(ctx context.Context, req *proto_webview.GetViewRequest) (*proto_webview.View, error) {
-	return &proto_webview.View{
-		FatalError: "AHHH FATAL ERROR",
-	}, nil
+	state := s.store.RLockState()
+	view := webview.StateToProtoView(state)
+
+	return view, nil
 }
 
 func (s *HeadsUpServer) userStartedTiltCloudRegistration(w http.ResponseWriter, req *http.Request) {
