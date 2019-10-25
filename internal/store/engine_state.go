@@ -434,10 +434,6 @@ func (ms *ManifestState) HasPendingChangesBefore(highWaterMark time.Time) (bool,
 	return ok, earliest
 }
 
-func (ms *ManifestState) BlockDependentManifests() bool {
-	return !ms.RuntimeState.HasEverBeenReady()
-}
-
 var _ model.TargetStatus = &ManifestState{}
 
 type YAMLManifestState struct {

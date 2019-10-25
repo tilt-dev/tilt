@@ -54,15 +54,15 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 		podInfo.BaselineRestarts = podInfo.AllContainerRestarts()
 	}
 
+	if len(podInfo.Containers) == 0 {
+		// not enough info to do anything else
+		return
+	}
+
 	if podInfo.AllContainersReady() {
 		runtime := ms.K8sRuntimeState()
 		runtime.LastReadyTime = time.Now()
 		ms.RuntimeState = runtime
-	}
-
-	if len(podInfo.Containers) == 0 {
-		// not enough info to do anything else
-		return
 	}
 
 	fwdsValid := portForwardsAreValid(manifest, *podInfo)
