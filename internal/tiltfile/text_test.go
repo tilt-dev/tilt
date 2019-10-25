@@ -93,6 +93,8 @@ ingress:
     # - secretName: chart-example-tls
     #   hosts:
     #     - chart-example.local
+namespace:
+  enabled: false
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
@@ -178,6 +180,18 @@ spec:
   tls:
 {{ toYaml .Values.ingress.tls | indent 4 }}
   {{- end -}}
+{{- end -}}
+`
+
+// Best practice is to NOT specify a namespace in your chart, and use --namespace
+// instead, but I bet there's a user out there doing this.
+const namespaceYAML = `{{- if .Values.namespace.enabled -}}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace.name }}
+  labels:
+    somePersistedLabel: indeed
 {{- end -}}
 `
 

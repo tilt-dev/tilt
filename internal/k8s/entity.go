@@ -395,3 +395,22 @@ func (e K8sEntity) HasKind(kind string) bool {
 	// TODO(maia): support kind aliases (e.g. "po" for "pod")
 	return strings.ToLower(e.GVK().Kind) == strings.ToLower(kind)
 }
+
+func NewNamespaceEntity(name string) K8sEntity {
+	yaml := fmt.Sprintf(`apiVersion: v1
+kind: Namespace
+metadata:
+  name: %s
+`, name)
+	entities, err := ParseYAMLFromString(yaml)
+
+	// Something is wrong with our format string; this is definitely on us
+	if err != nil {
+		panic(fmt.Sprintf("unexpected error making new namespace: %v", err))
+	} else if len(entities) != 1 {
+		// Something is wrong with our format string; this is definitely on us
+		panic(fmt.Sprintf(
+			"unexpected error making new namespace: got %d entities, expected exactly one", len(entities)))
+	}
+	return entities[0]
+}
