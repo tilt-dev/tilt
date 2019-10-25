@@ -1,7 +1,7 @@
 const zeroTime = "0001-01-01T00:00:00Z"
 
 function isZeroTime(time: string) {
-  return !time || time === zeroTime
+  return !time || time === zeroTime || time === ""
 }
 
 export { isZeroTime, zeroTime }

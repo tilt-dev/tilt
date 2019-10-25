@@ -7,7 +7,10 @@ import (
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/pkg/model"
+
+	"github.com/golang/protobuf/ptypes"
 	proto_webview "github.com/windmilleng/tilt/pkg/webview"
+	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
 type ResourceInfoView interface {
@@ -40,7 +43,7 @@ func NewProtoDCResourceInfo(configPaths []string, status dockercompose.Status, c
 		ContainerStatus: string(status),
 		ContainerID:     string(cID),
 		Log:             log.String(),
-		StartTime:       startTime.String(),
+		StartTime:       timeToProto(startTime),
 	}
 }
 
@@ -118,17 +121,27 @@ func ToWebViewBuildRecord(br model.BuildRecord) BuildRecord {
 	}
 }
 
+func timeToProto(t time.Time) *timestamp.Timestamp {
+	ts, err := ptypes.TimestampProto(t)
+	if err != nil {
+		return nil
+	}
+
+	return ts
+}
+
 func ToProtoBuildRecord(br model.BuildRecord) *proto_webview.BuildRecord {
 	e := ""
 	if br.Error != nil {
 		e = br.Error.Error()
 	}
+
 	return &proto_webview.BuildRecord{
 		Edits:          br.Edits,
 		Error:          e,
 		Warnings:       br.Warnings,
-		StartTime:      br.StartTime.String(),
-		FinishTime:     br.FinishTime.String(),
+		StartTime:      timeToProto(br.StartTime),
+		FinishTime:     timeToProto(br.FinishTime),
 		Log:            br.Log.String(),
 		IsCrashRebuild: br.Reason.IsCrashOnly(),
 	}

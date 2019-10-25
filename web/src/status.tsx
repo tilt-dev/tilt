@@ -16,6 +16,10 @@ function combinedStatus(res: Resource): RuntimeStatus {
   let lastBuild = buildHistory[0]
   let lastBuildError = lastBuild ? lastBuild.error : ""
 
+  // if (res.name === "fortune") {
+  //   debugger
+  // }
+
   if (hasCurrentBuild || hasPendingBuild) {
     return RuntimeStatus.Pending
   }

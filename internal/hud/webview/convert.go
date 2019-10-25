@@ -192,23 +192,23 @@ func StateToProtoView(s store.EngineState) *proto_webview.View {
 			Name:               name.String(),
 			DirectoriesWatched: relWatchDirs,
 			PathsWatched:       relWatchPaths,
-			LastDeployTime:     ms.LastSuccessfulDeployTime.String(),
+			LastDeployTime:     timeToProto(ms.LastSuccessfulDeployTime),
 			BuildHistory:       ToProtoBuildRecords(buildHistory),
 			PendingBuildEdits:  pendingBuildEdits,
-			PendingBuildSince:  pendingBuildSince.String(),
-			PendingBuildReason: int64(ms.NextBuildReason()),
+			PendingBuildSince:  timeToProto(pendingBuildSince),
+			PendingBuildReason: int32(ms.NextBuildReason()),
 			CurrentBuild:       ToProtoBuildRecord(currentBuild),
 			Endpoints:          endpoints,
 			PodID:              podID.String(),
 			ShowBuildStatus:    len(mt.Manifest.ImageTargets) > 0 || mt.Manifest.IsDC(),
 			CombinedLog:        ms.CombinedLog.String(),
 			CrashLog:           ms.CrashLog.String(),
-			TriggerMode:        triggerModeToProtoTriggerMode(mt.Manifest.TriggerMode),
+			TriggerMode:        int32(mt.Manifest.TriggerMode),
 			HasPendingChanges:  hasPendingChanges,
 		}
 
 		riv := protoPopulateResourceInfoView(mt, r)
-		r.RuntimeStatus = riv.Status()
+		r.RuntimeStatus = string(runtimeStatus(riv))
 
 		ret.Resources = append(ret.Resources, r)
 	}
@@ -239,14 +239,6 @@ func StateToProtoView(s store.EngineState) *proto_webview.View {
 	}
 
 	return ret
-}
-
-func triggerModeToProtoTriggerMode(tm model.TriggerMode) proto_webview.TriggerMode {
-	if tm == model.TriggerModeAuto {
-		return proto_webview.TriggerMode_TRIGGER_MODE_AUTO
-	}
-
-	return proto_webview.TriggerMode_TRIGGER_MODE_MANUAL
 }
 
 func tiltfileResourceView(s store.EngineState) Resource {
@@ -296,9 +288,9 @@ func tiltfileResourceProto(s store.EngineState) *proto_webview.Resource {
 		RuntimeStatus: string(RuntimeStatusOK),
 	}
 	if !ctfb.Empty() {
-		tr.PendingBuildSince = ctfb.StartTime.String()
+		tr.PendingBuildSince = timeToProto(ctfb.StartTime)
 	} else {
-		tr.LastDeployTime = ltfb.FinishTime.String()
+		tr.LastDeployTime = timeToProto(ltfb.FinishTime)
 	}
 	return tr
 }
@@ -323,9 +315,9 @@ func tiltfileResourceProtoView(s store.EngineState) *proto_webview.Resource {
 		RuntimeStatus: string(RuntimeStatusOK),
 	}
 	if !ctfb.Empty() {
-		tr.PendingBuildSince = ctfb.StartTime.String()
+		tr.PendingBuildSince = timeToProto(ctfb.StartTime)
 	} else {
-		tr.LastDeployTime = ltfb.FinishTime.String()
+		tr.LastDeployTime = timeToProto(ltfb.FinishTime)
 	}
 	return tr
 }
@@ -396,12 +388,12 @@ func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Re
 		pod := kState.MostRecentPod()
 		r.K8SResourceInfo = &proto_webview.K8SResourceInfo{
 			PodName:            pod.PodID.String(),
-			PodCreationTime:    pod.StartedAt.String(),
-			PodUpdateStartTime: pod.UpdateStartTime.String(),
+			PodCreationTime:    timeToProto(pod.StartedAt),
+			PodUpdateStartTime: timeToProto(pod.UpdateStartTime),
 			PodStatus:          pod.Status,
 			PodStatusMessage:   strings.Join(pod.StatusMessages, "\n"),
 			AllContainersReady: pod.AllContainersReady(),
-			PodRestarts:        int64(pod.VisibleContainerRestarts()),
+			PodRestarts:        int32(pod.VisibleContainerRestarts()),
 			PodLog:             pod.Log().String(),
 		}
 		return &K8sResourceInfo{
@@ -421,12 +413,14 @@ func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Re
 
 func runtimeStatus(res ResourceInfoView) RuntimeStatus {
 	_, isLocal := res.(LocalResourceInfo)
-	if isLocal {
+	_, isLocalPtr := res.(*LocalResourceInfo)
+	if isLocal || isLocalPtr {
 		return RuntimeStatusOK
 	}
 	// if we have no images to build, we have no runtime status monitoring.
 	_, isYAML := res.(YAMLResourceInfo)
-	if isYAML {
+	_, isYAMLPtr := res.(*YAMLResourceInfo)
+	if isYAML || isYAMLPtr {
 		return RuntimeStatusOK
 	}
 

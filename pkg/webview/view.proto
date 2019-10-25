@@ -3,35 +3,26 @@ syntax = "proto3";
 package webview;
 
 import "google/api/annotations.proto";
-
-/*
- * NOTE(dmiller): times listed here are strings for backwards compatibility purposes.
- * Future time fields should use the built in protobuf timestamp type.
- */
-
-enum TriggerMode {
-  TRIGGER_MODE_AUTO = 0;
-  TRIGGER_MODE_MANUAL = 1;
-}
+import "google/protobuf/timestamp.proto";
 
 message BuildRecord {
   repeated string edits = 1;
   string error = 2;
   repeated string warnings = 3;
-  string start_time = 4;
-  string finish_time  = 5;
+  google.protobuf.Timestamp start_time = 4;
+  google.protobuf.Timestamp finish_time  = 5;
   string log = 6;
   bool is_crash_rebuild = 7;
 }
 
 message K8sResourceInfo {
   string pod_name = 1;
-  string pod_creation_time = 2;
-  string pod_update_start_time = 3;
+  google.protobuf.Timestamp pod_creation_time = 2;
+  google.protobuf.Timestamp pod_update_start_time = 3;
   string pod_status = 4;
   string pod_status_message = 5;
   bool all_containers_ready = 6;
-  int64 pod_restarts = 7;
+  int32 pod_restarts = 7;
   string pod_log = 8;
 }
 
@@ -40,7 +31,7 @@ message DCResourceInfo {
   string container_status = 2;
   string containerID = 3;
   string log = 4;
-  string start_time = 5;
+  google.protobuf.Timestamp start_time = 5;
 }
 
 message YAMLResourceInfo {
@@ -53,7 +44,7 @@ message Alert {
   string alert_type = 1;
   string header = 2;
   string message = 3;
-  string timestamp = 4;
+  google.protobuf.Timestamp timestamp = 4;
   string resource_name = 5;
 }
 
@@ -61,13 +52,13 @@ message Resource {
   string name = 1;
   repeated string directories_watched = 2;
   repeated string paths_watched = 3;
-  string last_deploy_time = 4;
-  TriggerMode trigger_mode = 5;
+  google.protobuf.Timestamp last_deploy_time = 4;
+  int32 trigger_mode = 5;
   repeated BuildRecord build_history = 6;
   BuildRecord current_build = 7;
-  int64 pending_build_reason = 8;
+  int32 pending_build_reason = 8;
   repeated string pending_build_edits = 9;
-  string pending_build_since = 10;
+  google.protobuf.Timestamp pending_build_since = 10;
   bool has_pending_changes = 11;
   repeated string endpoints = 12;
   string podID = 13;

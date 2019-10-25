@@ -121,6 +121,28 @@ func (c *fakeConn) AssertClose(t *testing.T, done chan bool) {
 	}
 }
 
+func (c *fakeConn) NextWriter(messagetype int) (io.WriteCloser, error) {
+	return c.writer(), nil
+}
+
+func (c *fakeConn) writer() io.WriteCloser {
+	return &fakeConnWriter{c: c}
+}
+
+type fakeConnWriter struct {
+	c *fakeConn
+}
+
+func (f *fakeConnWriter) Write(p []byte) (int, error) {
+	return len(p), nil
+}
+
+func (f *fakeConnWriter) Close() error {
+	cb := make(chan error)
+	f.c.writeCh <- msg{callback: cb}
+	return <-cb
+}
+
 type msg struct {
 	callback chan error
 }

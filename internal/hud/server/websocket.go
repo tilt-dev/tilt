@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sync/atomic"
 
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/logger"
@@ -28,6 +29,7 @@ type WebsocketConn interface {
 	NextReader() (int, io.Reader, error)
 	Close() error
 	WriteJSON(v interface{}) error
+	NextWriter(messageType int) (io.WriteCloser, error)
 }
 
 var _ WebsocketConn = &websocket.Conn{}
@@ -66,7 +68,8 @@ func (ws WebsocketSubscriber) Stream(ctx context.Context, store *store.Store) {
 
 func (ws WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore) {
 	state := s.RLockState()
-	view := webview.StateToWebView(state)
+	// view := webview.StateToWebView(state)
+	view := webview.StateToProtoView(state)
 
 	if view.NeedsAnalyticsNudge && !state.AnalyticsNudgeSurfaced {
 		// If we're showing the nudge and no one's told the engine
@@ -75,7 +78,14 @@ func (ws WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore) {
 	}
 	s.RUnlockState()
 
-	err := ws.conn.WriteJSON(view)
+	jsEncoder := &runtime.JSONPb{OrigName: false, EmitDefaults: true}
+	w, err := ws.conn.NextWriter(websocket.TextMessage)
+	if err != nil {
+		logger.Get(ctx).Verbosef("getting writer: %v", err)
+	}
+	defer w.Close()
+
+	err = jsEncoder.NewEncoder(w).Encode(view)
 	if err != nil {
 		logger.Get(ctx).Verbosef("sending webview data: %v", err)
 	}
