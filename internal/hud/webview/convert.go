@@ -68,7 +68,7 @@ func StateToWebView(s store.EngineState) View {
 
 		var facets []model.Facet
 		if s.Features[feature.Facets] {
-			facets = mt.Facets()
+			facets = mt.Facets(s.Secrets)
 		}
 
 		// NOTE(nick): Right now, the UX is designed to show the output exactly one

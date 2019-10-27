@@ -29,7 +29,7 @@ func (t ManifestTarget) Status() model.TargetStatus {
 
 var _ model.Target = &ManifestTarget{}
 
-func (mt *ManifestTarget) Facets() []model.Facet {
+func (mt *ManifestTarget) Facets(secrets model.SecretSet) []model.Facet {
 	var ret []model.Facet
 
 	if !mt.Status().LastBuild().Empty() {
@@ -69,7 +69,8 @@ func (mt *ManifestTarget) Facets() []model.Facet {
 	}
 
 	if mt.Manifest.IsK8s() {
-		ret = append(ret, model.Facet{Name: "k8s_yaml", Value: mt.Manifest.K8sTarget().YAML})
+		s := string(secrets.Scrub([]byte(mt.Manifest.K8sTarget().YAML)))
+		ret = append(ret, model.Facet{Name: "k8s_yaml", Value: s})
 	}
 
 	return ret
