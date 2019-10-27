@@ -29,19 +29,19 @@ func (t ManifestTarget) Status() model.TargetStatus {
 
 var _ model.Target = &ManifestTarget{}
 
-func (mt *ManifestTarget) Facets(secrets model.SecretSet) []model.Facet {
+func (t *ManifestTarget) Facets(secrets model.SecretSet) []model.Facet {
 	var ret []model.Facet
 
-	if !mt.Status().LastBuild().Empty() {
+	if !t.Status().LastBuild().Empty() {
 		ret = append(ret, model.Facet{
 			Name:  "Last Build Log",
-			Value: mt.Status().LastBuild().Log.String(),
+			Value: t.Status().LastBuild().Log.String(),
 		})
 	}
 
-	if len(mt.State.BuildHistory) != 0 {
+	if len(t.State.BuildHistory) != 0 {
 		sb := strings.Builder{}
-		histories := mt.State.BuildHistory
+		histories := t.State.BuildHistory
 		if len(histories) > 20 {
 			histories = histories[:20]
 		}
@@ -68,8 +68,8 @@ func (mt *ManifestTarget) Facets(secrets model.SecretSet) []model.Facet {
 		})
 	}
 
-	if mt.Manifest.IsK8s() {
-		s := string(secrets.Scrub([]byte(mt.Manifest.K8sTarget().YAML)))
+	if t.Manifest.IsK8s() {
+		s := string(secrets.Scrub([]byte(t.Manifest.K8sTarget().YAML)))
 		ret = append(ret, model.Facet{Name: "k8s_yaml", Value: s})
 	}
 
