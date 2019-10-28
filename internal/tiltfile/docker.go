@@ -247,7 +247,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	ref, err := reference.ParseNormalizedNamed(dockerRef)
+	ref, err := container.ParseNamed(dockerRef)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 1 (ref): can't parse %q: %v", dockerRef, err)
 	}

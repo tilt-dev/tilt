@@ -286,7 +286,7 @@ func (s *tiltfileState) k8sResourceV1(thread *starlark.Thread, fn *starlark.Buil
 	}
 
 	if imageRefAsStr != "" {
-		imageRef, err := reference.ParseNormalizedNamed(imageRefAsStr)
+		imageRef, err := container.ParseNamed(imageRefAsStr)
 		if err != nil {
 			return nil, err
 		}

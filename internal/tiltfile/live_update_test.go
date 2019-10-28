@@ -125,7 +125,7 @@ func TestLiveUpdateDockerBuildUnqualifiedImageName(t *testing.T) {
 
 	f.load("foo")
 
-	f.assertNextManifest("foo", db(imageNormalized("foo"), f.expectedLU))
+	f.assertNextManifest("foo", db(image("foo"), f.expectedLU))
 }
 
 func TestLiveUpdateDockerBuildQualifiedImageName(t *testing.T) {
@@ -152,7 +152,7 @@ docker_build('foo', 'foo', live_update=%s)`
 
 	f.load("foo")
 
-	i := imageNormalized("foo")
+	i := image("foo")
 	i.deploymentRef = "gcr.io/foo"
 	f.assertNextManifest("foo", db(i, f.expectedLU))
 }
@@ -166,7 +166,7 @@ func TestLiveUpdateCustomBuild(t *testing.T) {
 
 	f.load("foo")
 
-	f.assertNextManifest("foo", cb(imageNormalized("foo"), f.expectedLU))
+	f.assertNextManifest("foo", cb(image("foo"), f.expectedLU))
 }
 
 func TestLiveUpdateSyncFilesOutsideOfDockerBuildContext(t *testing.T) {

@@ -60,7 +60,7 @@ func (b CacheBuilder) cacheRef(inputs CacheInputs) (CacheRef, error) {
 }
 
 func (b CacheBuilder) makeCacheDockerfile(baseDf dockerfile.Dockerfile, sourceRef reference.NamedTagged, cachePaths []string) dockerfile.Dockerfile {
-	df := dockerfile.Dockerfile(fmt.Sprintf("FROM %s as tilt-source", sourceRef.String()))
+	df := dockerfile.Dockerfile(fmt.Sprintf("FROM %s as tilt-source", reference.FamiliarString(sourceRef)))
 	df = df.Join(string(baseDf))
 
 	lines := []string{}
