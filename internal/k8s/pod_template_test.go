@@ -23,7 +23,7 @@ func TestInjectPodTemplateHash(t *testing.T) {
 	preInjectOrigYAML, err := SerializeSpecYAML([]K8sEntity{orig})
 	require.NoError(t, err)
 
-	injected, _, err := InjectPodTemplateSpecHash(orig)
+	injected, err := InjectPodTemplateSpecHash(orig)
 	require.NoError(t, err)
 
 	// make sure we haven't mutated the original object

@@ -71,17 +71,19 @@ type PodBuilder struct {
 	cIDs      map[int]string
 	cReady    map[int]bool
 
-	podTemplateSpecHash k8s.PodTemplateSpecHash
+	setPodTemplateSpecHash bool
+	podTemplateSpecHash    k8s.PodTemplateSpecHash
 }
 
 func New(t testing.TB, manifest model.Manifest) PodBuilder {
 	return PodBuilder{
-		t:              t,
-		manifest:       manifest,
-		imageRefs:      make(map[int]string),
-		cIDs:           make(map[int]string),
-		cReady:         make(map[int]bool),
-		extraPodLabels: make(map[string]string),
+		t:                      t,
+		manifest:               manifest,
+		imageRefs:              make(map[int]string),
+		cIDs:                   make(map[int]string),
+		cReady:                 make(map[int]bool),
+		extraPodLabels:         make(map[string]string),
+		setPodTemplateSpecHash: true,
 	}
 }
 
@@ -96,6 +98,11 @@ func (b PodBuilder) ManifestName() model.ManifestName {
 
 func (b PodBuilder) WithTemplateSpecHash(s k8s.PodTemplateSpecHash) PodBuilder {
 	b.podTemplateSpecHash = s
+	return b
+}
+
+func (b PodBuilder) WithNoTemplateSpecHash() PodBuilder {
+	b.setPodTemplateSpecHash = false
 	return b
 }
 
@@ -254,15 +261,17 @@ func (b PodBuilder) buildLabels(tSpec *v1.PodTemplateSpec) map[string]string {
 		labels[k] = v
 	}
 
-	podTemplateSpecHash := b.podTemplateSpecHash
-	if podTemplateSpecHash == "" {
-		var err error
-		podTemplateSpecHash, err = k8s.HashPodTemplateSpec(tSpec)
-		if err != nil {
-			panic(fmt.Sprintf("error computing pod template spec hash: %v", err))
+	if b.setPodTemplateSpecHash {
+		podTemplateSpecHash := b.podTemplateSpecHash
+		if podTemplateSpecHash == "" {
+			var err error
+			podTemplateSpecHash, err = k8s.HashPodTemplateSpec(tSpec)
+			if err != nil {
+				panic(fmt.Sprintf("error computing pod template spec hash: %v", err))
+			}
 		}
+		labels[k8s.TiltPodTemplateHashLabel] = string(podTemplateSpecHash)
 	}
-	labels[k8s.TiltPodTemplateHashLabel] = string(podTemplateSpecHash)
 
 	return labels
 }

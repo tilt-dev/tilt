@@ -208,7 +208,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 	ps.StartBuildStep(ctx, "Injecting images into Kubernetes YAML")
 
 	deployID := model.NewDeployID()
-	newK8sEntities, podTemplateSpecHashes, err := ibd.createEntitiesToDeploy(ctx, iTargetMap, kTarget, results, needsSynclet)
+	newK8sEntities, err := ibd.createEntitiesToDeploy(ctx, iTargetMap, kTarget, results, needsSynclet)
 	if err != nil {
 		return nil, err
 	}
@@ -229,12 +229,18 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 
 	// TODO(nick): Do something with this result
 	uids := []types.UID{}
+	podTemplateSpecHashes := []k8s.PodTemplateSpecHash{}
 	for _, entity := range deployed {
 		uid := entity.UID()
 		if uid == "" {
 			return nil, fmt.Errorf("Entity not deployed correctly: %v", entity)
 		}
 		uids = append(uids, entity.UID())
+		hs, err := k8s.PodTemplateSpecHashes(entity)
+		if err != nil {
+			return nil, errors.Wrap(err, "reading pod template spec hashes")
+		}
+		podTemplateSpecHashes = append(podTemplateSpecHashes, hs...)
 	}
 	results[kTarget.ID()] = store.NewK8sDeployResult(kTarget.ID(), uids, podTemplateSpecHashes)
 
@@ -250,17 +256,15 @@ func (ibd *ImageBuildAndDeployer) indentLogger(ctx context.Context) (context.Con
 
 func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 	iTargetMap map[model.TargetID]model.ImageTarget, k8sTarget model.K8sTarget,
-	results store.BuildResultSet, needsSynclet bool) ([]k8s.K8sEntity, []k8s.PodTemplateSpecHash, error) {
+	results store.BuildResultSet, needsSynclet bool) ([]k8s.K8sEntity, error) {
 	newK8sEntities := []k8s.K8sEntity{}
 
 	// TODO(nick): The parsed YAML should probably be a part of the model?
 	// It doesn't make much sense to re-parse it and inject labels on every deploy.
 	entities, err := k8s.ParseYAMLFromString(k8sTarget.YAML)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-
-	var podTemplateSpecHashes []k8s.PodTemplateSpecHash
 
 	depIDs := k8sTarget.DependencyIDs()
 	injectedDepIDs := map[model.TargetID]bool{}
@@ -270,7 +274,7 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 			k8s.TiltManagedByLabel(),
 		})
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "deploy")
+			return nil, errors.Wrap(err, "deploy")
 		}
 
 		// For development, image pull policy should never be set to "Always",
@@ -278,7 +282,7 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 		// set "Always" for development are shooting their own feet.
 		e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		// StatefulSet pods should be managed in parallel. See:
@@ -295,7 +299,7 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 		for _, depID := range depIDs {
 			ref := store.ImageFromBuildResult(results[depID])
 			if ref == nil {
-				return nil, nil, fmt.Errorf("Internal error: missing image build result for dependency ID: %s", depID)
+				return nil, fmt.Errorf("Internal error: missing image build result for dependency ID: %s", depID)
 			}
 
 			iTarget := iTargetMap[depID]
@@ -305,7 +309,7 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 			var replaced bool
 			e, replaced, err = k8s.InjectImageDigest(e, selector, ref, matchInEnvVars, policy)
 			if err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 			if replaced {
 				injectedDepIDs[depID] = true
@@ -313,7 +317,7 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 				if !iTarget.OverrideCmd.Empty() {
 					e, err = k8s.InjectCommand(e, ref, iTarget.OverrideCmd)
 					if err != nil {
-						return nil, nil, err
+						return nil, err
 					}
 				}
 
@@ -323,10 +327,10 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 					var sidecarInjected bool
 					e, sidecarInjected, err = sidecar.InjectSyncletSidecar(e, injectedRefSelector, ibd.syncletContainer)
 					if err != nil {
-						return nil, nil, err
+						return nil, err
 					}
 					if !sidecarInjected {
-						return nil, nil, fmt.Errorf("Could not inject synclet: %v", e)
+						return nil, fmt.Errorf("Could not inject synclet: %v", e)
 					}
 					injectedSynclet = true
 				}
@@ -335,23 +339,21 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 
 		// This needs to be after all the other injections, to ensure the hash includes the Tilt-generated
 		// image tag, etc
-		e, hashes, err := k8s.InjectPodTemplateSpecHash(e)
+		e, err := k8s.InjectPodTemplateSpecHash(e)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "injecting pod template hash")
+			return nil, errors.Wrap(err, "injecting pod template hash")
 		}
-
-		podTemplateSpecHashes = append(podTemplateSpecHashes, hashes...)
 
 		newK8sEntities = append(newK8sEntities, e)
 	}
 
 	for _, depID := range depIDs {
 		if !injectedDepIDs[depID] {
-			return nil, nil, fmt.Errorf("Docker image missing from yaml: %s", depID)
+			return nil, fmt.Errorf("Docker image missing from yaml: %s", depID)
 		}
 	}
 
-	return newK8sEntities, podTemplateSpecHashes, nil
+	return newK8sEntities, nil
 }
 
 // If we're using docker-for-desktop as our k8s backend,

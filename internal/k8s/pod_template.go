@@ -8,7 +8,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-const TiltPodTemplateHashLabel = "tilt-pod-template-hash"
+const TiltPodTemplateHashLabel = "tilt.dev/pod-template-hash"
 
 type PodTemplateSpecHash string
 
@@ -25,23 +25,34 @@ func HashPodTemplateSpec(spec *v1.PodTemplateSpec) (PodTemplateSpecHash, error) 
 
 // Iterate through the fields of a k8s entity and add the pod template spec hash on all
 // pod template specs
-func InjectPodTemplateSpecHash(entity K8sEntity) (K8sEntity, []PodTemplateSpecHash, error) {
+func InjectPodTemplateSpecHash(entity K8sEntity) (K8sEntity, error) {
 	entity = entity.DeepCopy()
 	templateSpecs, err := ExtractPodTemplateSpec(&entity)
 	if err != nil {
-		return K8sEntity{}, nil, err
+		return K8sEntity{}, err
 	}
-
-	var hashes []PodTemplateSpecHash
 
 	for _, ts := range templateSpecs {
 		h, err := HashPodTemplateSpec(ts)
 		if err != nil {
-			return K8sEntity{}, nil, errors.Wrap(err, "calculating hash")
+			return K8sEntity{}, errors.Wrap(err, "calculating hash")
 		}
 		ts.Labels[TiltPodTemplateHashLabel] = string(h)
-		hashes = append(hashes, h)
 	}
 
-	return entity, hashes, nil
+	return entity, nil
+}
+
+func PodTemplateSpecHashes(entity K8sEntity) ([]PodTemplateSpecHash, error) {
+	templateSpecs, err := ExtractPodTemplateSpec(&entity)
+	if err != nil {
+		return nil, err
+	}
+
+	var ret []PodTemplateSpecHash
+	for _, ts := range templateSpecs {
+		ret = append(ret, PodTemplateSpecHash(ts.Labels[TiltPodTemplateHashLabel]))
+	}
+
+	return ret, nil
 }

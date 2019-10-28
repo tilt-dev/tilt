@@ -86,6 +86,7 @@ func TestPodWatchExtraSelectors(t *testing.T) {
 
 	p := podbuilder.New(t, manifest).
 		WithPodLabel("foo", "bar").
+		WithNoTemplateSpecHash().
 		Build()
 
 	f.kClient.EmitPod(ls1, p)
@@ -108,9 +109,8 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 
 	p := podbuilder.New(t, manifest).
 		WithPodLabel("foo", "bar").
+		WithNoTemplateSpecHash().
 		Build()
-
-	f.addPodTemplateSpecHashForPod(manifest, p)
 
 	f.kClient.EmitPod(ls1, p)
 
@@ -137,12 +137,14 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 	p3 := podbuilder.New(t, manifest2).
 		WithPodID("pod3").
 		WithPodLabel("foo", "bar").
+		WithNoTemplateSpecHash().
 		Build()
 	f.kClient.EmitPod(ls1, p3)
 
 	p4 := podbuilder.New(t, manifest2).
 		WithPodID("pod4").
 		WithPodLabel("baz", "quu").
+		WithNoTemplateSpecHash().
 		Build()
 	f.kClient.EmitPod(ls2, p4)
 
