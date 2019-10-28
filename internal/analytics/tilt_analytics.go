@@ -6,6 +6,10 @@ import (
 	"github.com/windmilleng/wmclient/pkg/analytics"
 )
 
+const TagVersion = "version"
+const TagOS = "os"
+const TagGitRepoHash = "git.origin"
+
 // An Analytics that:
 // 1. Has `IncrIfUnopted` to report anonymous metrics only for users who have not opted in/out (or the choice that they
 //    did opt in/out).
@@ -44,7 +48,15 @@ func NewMemoryTiltAnalyticsForTest(opter AnalyticsOpter) (*analytics.MemoryAnaly
 }
 
 func (ta *TiltAnalytics) GlobalTag(name string) (string, bool) {
-	return ta.GlobalTag(name)
+	return ta.a.GlobalTag(name)
+}
+func (ta *TiltAnalytics) MachineHash() string {
+	id, _ := ta.GlobalTag(analytics.TagMachine)
+	return id
+}
+func (ta *TiltAnalytics) GitRepoHash() string {
+	id, _ := ta.GlobalTag(TagGitRepoHash)
+	return id
 }
 func (ta *TiltAnalytics) Opt() analytics.Opt {
 	return ta.opt

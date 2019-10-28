@@ -8,6 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	wmanalytics "github.com/windmilleng/wmclient/pkg/analytics"
+
 	"github.com/windmilleng/tilt/internal/analytics"
 )
 
@@ -118,7 +120,28 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 
 	fmt.Println("---")
 	fmt.Println("Thanks for seeing the Tilt Doctor!")
-	fmt.Println("Please send this info along when filing bug reports. 💗")
+	fmt.Println("Please send the info above when filing bug reports. 💗")
+
+	fmt.Println("")
+	fmt.Println("The info below helps us understand how you're using Tilt so we can improve,")
+	fmt.Println("but is not required to ask for help.")
+
+	fmt.Println("---")
+	fmt.Println("Analytics Settings")
+
+	a := analytics.Get(ctx)
+	opt := a.Opt()
+	fmt.Printf("- Mode: %s\n", opt)
+
+	machineHash := "[redacted]"
+	gitRepoHash := "[redacted]"
+	if opt == wmanalytics.OptIn {
+		machineHash = a.MachineHash()
+		gitRepoHash = a.GitRepoHash()
+	}
+
+	fmt.Printf("- Machine: %s\n", machineHash)
+	fmt.Printf("- Repo: %s\n", gitRepoHash)
 
 	return nil
 }
