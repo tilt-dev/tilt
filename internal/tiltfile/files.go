@@ -84,7 +84,14 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
 
-	yaml, err := s.execLocalCmd(thread, exec.Command("kustomize", "build", kustomizePath), false)
+	cmd := []string{"kustomize", "build", kustomizePath}
+
+	_, err = exec.LookPath(cmd[0])
+	if err != nil {
+		cmd = []string{"kubectl", "kustomize", kustomizePath}
+	}
+
+	yaml, err := s.execLocalCmd(thread, exec.Command(cmd[0], cmd[1:]...), false)
 	if err != nil {
 		return nil, err
 	}
