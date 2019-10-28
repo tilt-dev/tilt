@@ -12,7 +12,7 @@ type OnExecExtension interface {
 	Extension
 
 	// Called before each new Starlark file is loaded
-	OnExec(path string)
+	OnExec(t *starlark.Thread, path string) error
 }
 
 type OnBuiltinCallExtension interface {

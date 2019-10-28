@@ -17,6 +17,7 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/sliceutils"
+	"github.com/windmilleng/tilt/internal/tiltfile/io"
 	"github.com/windmilleng/tilt/internal/tiltfile/value"
 	"github.com/windmilleng/tilt/pkg/model"
 )
@@ -221,14 +222,14 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 
 	var source string
 	switch y := yamlValue.(type) {
-	case *blob:
-		source = y.source
+	case io.Blob:
+		source = y.Source
 	default:
 		source = "filter_yaml"
 	}
 
 	return starlark.Tuple{
-		newBlob(matchingStr, source), newBlob(restStr, source),
+		io.NewBlob(matchingStr, source), io.NewBlob(restStr, source),
 	}, nil
 }
 
@@ -336,7 +337,7 @@ func (s *tiltfileState) isProbablyK8sResourceV1Call(args starlark.Tuple, kwargs 
 		switch x := args[1].(type) {
 		case starlark.Sequence:
 			return true, "second arg was a sequence"
-		case *blob:
+		case io.Blob:
 			return true, "second arg was a blob"
 		// if a Tiltfile contains `k8s_resource('foo', 'foo.yaml')`
 		// in v1, the second arg is a yaml file name
@@ -685,10 +686,10 @@ func (s *tiltfileState) yamlEntitiesFromSkylarkValueOrList(thread *starlark.Thre
 	return ret, nil
 }
 
-func parseYAMLFromBlob(blob blob) ([]k8s.K8sEntity, error) {
+func parseYAMLFromBlob(blob io.Blob) ([]k8s.K8sEntity, error) {
 	ret, err := k8s.ParseYAMLFromString(blob.String())
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error reading yaml from %s", blob.source)
+		return nil, errors.Wrapf(err, "Error reading yaml from %s", blob.Source)
 	}
 	return ret, nil
 }
@@ -697,14 +698,14 @@ func (s *tiltfileState) yamlEntitiesFromSkylarkValue(thread *starlark.Thread, v 
 	switch v := v.(type) {
 	case nil:
 		return nil, nil
-	case *blob:
-		return parseYAMLFromBlob(*v)
+	case io.Blob:
+		return parseYAMLFromBlob(v)
 	default:
 		yamlPath, err := value.ValueToAbsPath(thread, v)
 		if err != nil {
 			return nil, err
 		}
-		bs, err := s.readFile(yamlPath)
+		bs, err := io.ReadFile(thread, yamlPath)
 		if err != nil {
 			return nil, errors.Wrap(err, "error reading yaml file")
 		}

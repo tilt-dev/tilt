@@ -17,7 +17,9 @@ import (
 	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/ospath"
+	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
+	"github.com/windmilleng/tilt/internal/tiltfile/io"
 	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
 	"github.com/windmilleng/tilt/internal/tiltfile/value"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -148,22 +150,19 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, requestedMa
 	s := newTiltfileState(ctx, tfl.dcCli, tfl.k8sContextExt, privateRegistry, feature.FromDefaults(tfl.fDefaults))
 
 	manifests, result, err := s.loadManifests(absFilename, requestedManifests)
+
+	ioState, _ := io.GetState(result)
+	tlr.ConfigFiles = sliceutils.AppendWithoutDupes(ioState.Files, s.postExecReadFiles...)
+
+	dps, _ := dockerprune.GetState(result)
+	tlr.DockerPruneSettings = dps
+
 	tlr.Secrets = s.extractSecrets()
-	tlr.ConfigFiles = s.configFiles
 	tlr.Warnings = s.warnings
 	tlr.FeatureFlags = s.features.ToEnabled()
 	tlr.Error = err
 	tlr.Manifests = manifests
 	tlr.TeamName = s.teamName
-
-	dps, err := dockerprune.GetState(result)
-	if err != nil {
-		if tlr.Error == nil {
-			tlr.Error = err
-		}
-		return tlr
-	}
-	tlr.DockerPruneSettings = dps
 
 	printWarnings(s)
 
