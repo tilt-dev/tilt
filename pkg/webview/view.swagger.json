@@ -33,9 +33,211 @@
     }
   },
   "definitions": {
+    "webviewAlert": {
+      "type": "object",
+      "properties": {
+        "alert_type": {
+          "type": "string"
+        },
+        "header": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string"
+        },
+        "resource_name": {
+          "type": "string"
+        }
+      }
+    },
+    "webviewBuildRecord": {
+      "type": "object",
+      "properties": {
+        "edits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "error": {
+          "type": "string"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "start_time": {
+          "type": "string"
+        },
+        "finish_time": {
+          "type": "string"
+        },
+        "log": {
+          "type": "string"
+        },
+        "is_crash_rebuild": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "webviewDCResourceInfo": {
+      "type": "object",
+      "properties": {
+        "config_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "container_status": {
+          "type": "string"
+        },
+        "containerID": {
+          "type": "string"
+        },
+        "log": {
+          "type": "string"
+        },
+        "start_time": {
+          "type": "string"
+        }
+      }
+    },
+    "webviewK8sResourceInfo": {
+      "type": "object",
+      "properties": {
+        "pod_name": {
+          "type": "string"
+        },
+        "pod_creation_time": {
+          "type": "string"
+        },
+        "pod_update_start_time": {
+          "type": "string"
+        },
+        "pod_status": {
+          "type": "string"
+        },
+        "pod_status_message": {
+          "type": "string"
+        },
+        "all_containers_ready": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "pod_restarts": {
+          "type": "string",
+          "format": "int64"
+        },
+        "pod_log": {
+          "type": "string"
+        }
+      }
+    },
+    "webviewLocalResourceInfo": {
+      "type": "object"
+    },
     "webviewResource": {
       "type": "object",
-      "title": "TODO(dmiller) fill this in"
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "directories_watched": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "paths_watched": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "last_deploy_time": {
+          "type": "string"
+        },
+        "trigger_mode": {
+          "$ref": "#/definitions/webviewTriggerMode"
+        },
+        "build_history": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/webviewBuildRecord"
+          }
+        },
+        "current_build": {
+          "$ref": "#/definitions/webviewBuildRecord"
+        },
+        "pending_build_reason": {
+          "type": "string",
+          "format": "int64"
+        },
+        "pending_build_edits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "pending_build_since": {
+          "type": "string"
+        },
+        "has_pending_changes": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "endpoints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "podID": {
+          "type": "string"
+        },
+        "k8s_resource_info": {
+          "$ref": "#/definitions/webviewK8sResourceInfo"
+        },
+        "dc_resource_info": {
+          "$ref": "#/definitions/webviewDCResourceInfo"
+        },
+        "yaml_resource_info": {
+          "$ref": "#/definitions/webviewYAMLResourceInfo"
+        },
+        "local_resource_info": {
+          "$ref": "#/definitions/webviewLocalResourceInfo"
+        },
+        "runtime_status": {
+          "type": "string"
+        },
+        "is_tiltfile": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "show_build_status": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "combined_log": {
+          "type": "string"
+        },
+        "crash_log": {
+          "type": "string"
+        },
+        "alerts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/webviewAlert"
+          }
+        }
+      }
     },
     "webviewTiltBuild": {
       "type": "object",
@@ -54,6 +256,14 @@
           "format": "boolean"
         }
       }
+    },
+    "webviewTriggerMode": {
+      "type": "string",
+      "enum": [
+        "TRIGGER_MODE_AUTO",
+        "TRIGGER_MODE_MANUAL"
+      ],
+      "default": "TRIGGER_MODE_AUTO"
     },
     "webviewView": {
       "type": "object",
@@ -78,7 +288,7 @@
             "format": "boolean"
           }
         },
-        "need_analytics_nudge": {
+        "needs_analytics_nudge": {
           "type": "boolean",
           "format": "boolean"
         },
@@ -99,6 +309,17 @@
         },
         "fatal_error": {
           "type": "string"
+        }
+      }
+    },
+    "webviewYAMLResourceInfo": {
+      "type": "object",
+      "properties": {
+        "k8s_resources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     }
