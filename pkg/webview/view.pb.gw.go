@@ -54,7 +54,7 @@ var (
 )
 
 func request_ViewService_UploadSnapshot_0(ctx context.Context, marshaler runtime.Marshaler, client ViewServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq SnapshotPayload
+	var protoReq Snapshot
 	var metadata runtime.ServerMetadata
 
 	if err := req.ParseForm(); err != nil {
@@ -70,7 +70,7 @@ func request_ViewService_UploadSnapshot_0(ctx context.Context, marshaler runtime
 }
 
 func local_request_ViewService_UploadSnapshot_0(ctx context.Context, marshaler runtime.Marshaler, server ViewServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq SnapshotPayload
+	var protoReq Snapshot
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_ViewService_UploadSnapshot_0); err != nil {
