@@ -49,7 +49,6 @@ func Execute() {
 	addCommand(rootCmd, &dockerCmd{}, a)
 	addCommand(rootCmd, &doctorCmd{}, a)
 	addCommand(rootCmd, &downCmd{}, a)
-	addCommand(rootCmd, &demoCmd{}, a)
 	addCommand(rootCmd, &versionCmd{}, a)
 	addCommand(rootCmd, &dockerPruneCmd{}, a)
 	rootCmd.AddCommand(newKubectlCmd())
