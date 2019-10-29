@@ -68,14 +68,14 @@ func initAnalytics(rootCmd *cobra.Command) (*tiltanalytics.TiltAnalytics, error)
 
 func globalTags() map[string]string {
 	ret := map[string]string{
-		"version": provideTiltInfo().AnalyticsVersion(),
-		"os":      runtime.GOOS,
+		tiltanalytics.TagVersion: provideTiltInfo().AnalyticsVersion(),
+		tiltanalytics.TagOS:      runtime.GOOS,
 	}
 
 	// store a hash of the git remote to help us guess how many users are running it on the same repository
 	origin := normalizeGitRemote(gitOrigin("."))
 	if origin != "" {
-		ret["git.origin"] = tiltanalytics.HashMD5(origin)
+		ret[tiltanalytics.TagGitRepoHash] = tiltanalytics.HashMD5(origin)
 	}
 
 	return ret
