@@ -61,6 +61,7 @@ import (
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
+	proto_webview "github.com/windmilleng/tilt/pkg/webview"
 )
 
 var originalWD string
@@ -3600,7 +3601,7 @@ func (f *fakeSnapshotUploader) TakeAndUpload(state store.EngineState) (cloud.Sna
 	return cloud.SnapshotID(fmt.Sprintf("snapshot%d", f.count)), nil
 }
 
-func (f *fakeSnapshotUploader) Upload(token token.Token, teamID string, snapshot cloud.Snapshot) (cloud.SnapshotID, error) {
+func (f *fakeSnapshotUploader) Upload(token token.Token, teamID string, snapshot *proto_webview.Snapshot) (cloud.SnapshotID, error) {
 	panic("not implemented")
 }
 
