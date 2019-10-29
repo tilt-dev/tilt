@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,156 +20,180 @@ const (
 )
 
 func TestIndexRequest(t *testing.T) {
-	var recvReq *http.Request
-	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		recvReq = req
-		res.Write([]byte(indexHTML))
-	}))
-	defer testServer.Close()
+	f := newProdServerFixture(t)
+	defer f.TearDown()
 
 	req := httptest.NewRequest("GET", "/", bytes.NewBuffer(nil))
 	res := httptest.NewRecorder()
-	server, err := NewProdServer(AssetBucket(testServer.URL), versionDefault)
-	assert.NoError(t, err)
-
-	server.ServeHTTP(res, req)
-	if assert.NotNil(t, recvReq) {
-		assert.Equal(t, recvReq.URL.Path, "/v1.2.3/index.html")
+	f.server.ServeHTTP(res, req)
+	if assert.NotNil(t, f.recvReq) {
+		assert.Equal(t, f.recvReq.URL.Path, "/v1.2.3/index.html")
 	}
 	assert.Contains(t, res.Body.String(), `<script src="/v1.2.3/static/js/2.f1bd84e9.chunk.js">`)
 }
 
 func TestChunkRequest(t *testing.T) {
-	var recvReq *http.Request
-	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		recvReq = req
-		res.Write([]byte(indexHTML))
-	}))
-	defer testServer.Close()
+	f := newProdServerFixture(t)
+	defer f.TearDown()
 
 	req := httptest.NewRequest("GET", "/v1.2.3/static/js/2.f1bd84e9.chunk.js", bytes.NewBuffer(nil))
 	res := httptest.NewRecorder()
-	server, err := NewProdServer(AssetBucket(testServer.URL), versionDefault)
-	assert.NoError(t, err)
 
-	server.ServeHTTP(res, req)
-	if assert.NotNil(t, recvReq) {
-		assert.Equal(t, recvReq.URL.Path, "/v1.2.3/static/js/2.f1bd84e9.chunk.js")
+	f.server.ServeHTTP(res, req)
+	if assert.NotNil(t, f.recvReq) {
+		assert.Equal(t, f.recvReq.URL.Path, "/v1.2.3/static/js/2.f1bd84e9.chunk.js")
 	}
-}
-
-func TestBuildUrlForReq(t *testing.T) {
-	s := prodServerForTest(t)
-	expected := "https://fake.tilt.dev/v1.2.3/index.html"
-	req := reqForTest(t, "/", "")
-	u, v := s.urlAndVersionForReq(req)
-	assert.Equal(t, expected, u.String())
-	assert.Equal(t, string(versionDefault), v)
 }
 
 func TestBuildUrlForReqRedirectsToIndex(t *testing.T) {
-	s := prodServerForTest(t)
-	expected := "https://fake.tilt.dev/v1.2.3/index.html"
-	req := reqForTest(t, "/some/random/path", "")
-	u, v := s.urlAndVersionForReq(req)
-	assert.Equal(t, expected, u.String())
-	assert.Equal(t, string(versionDefault), v)
+	f := newProdServerFixture(t)
+	defer f.TearDown()
+
+	req := httptest.NewRequest("GET", "/some/random/path", bytes.NewBuffer(nil))
+	res := httptest.NewRecorder()
+	f.server.ServeHTTP(res, req)
+	if assert.NotNil(t, f.recvReq) {
+		assert.Equal(t, f.recvReq.URL.Path, "/v1.2.3/index.html")
+	}
+	assert.Contains(t, res.Body.String(), `<script src="/v1.2.3/static/js/2.f1bd84e9.chunk.js">`)
 }
 
 func TestBuildUrlForReqRespectsStatic(t *testing.T) {
-	s := prodServerForTest(t)
-	expected := "https://fake.tilt.dev/v1.2.3/static/stuff.html"
-	req := reqForTest(t, "/static/stuff.html", "")
-	u, v := s.urlAndVersionForReq(req)
-	assert.Equal(t, expected, u.String())
-	assert.Equal(t, string(versionDefault), v)
+	f := newProdServerFixture(t)
+	defer f.TearDown()
+
+	req := httptest.NewRequest("GET", "/v1.2.3/static/stuff.html", bytes.NewBuffer(nil))
+	res := httptest.NewRecorder()
+	f.server.ServeHTTP(res, req)
+	if assert.NotNil(t, f.recvReq) {
+		assert.Equal(t, f.recvReq.URL.Path, "/v1.2.3/static/stuff.html")
+	}
+	assert.Contains(t, res.Body.String(), `some-content`)
 }
 
 func TestBuildUrlForReqRespectsVersion(t *testing.T) {
-	s := prodServerForTest(t)
-	expected := "https://fake.tilt.dev/v111.222.333/stuff.html"
-	req := reqForTest(t, "/v111.222.333/stuff.html", "")
-	u, v := s.urlAndVersionForReq(req)
-	assert.Equal(t, expected, u.String())
-	assert.Equal(t, "v111.222.333", v)
+	f := newProdServerFixture(t)
+	defer f.TearDown()
+
+	req := httptest.NewRequest("GET", "/v111.222.333/stuff.html", bytes.NewBuffer(nil))
+	res := httptest.NewRecorder()
+	f.server.ServeHTTP(res, req)
+	if assert.NotNil(t, f.recvReq) {
+		assert.Equal(t, f.recvReq.URL.Path, "/v111.222.333/stuff.html")
+	}
+	assert.Contains(t, res.Body.String(), `some-content`)
 }
 
 func TestBuildUrlForReqWithVersionParam(t *testing.T) {
-	s := prodServerForTest(t)
-	expected := "https://fake.tilt.dev/v6.6.6/index.html"
-	req := reqForTest(t, "/", version666)
-	u, v := s.urlAndVersionForReq(req)
-	assert.Equal(t, expected, u.String())
-	assert.Equal(t, string(version666), v)
+	f := newProdServerFixture(t)
+	defer f.TearDown()
+
+	req := httptest.NewRequest("GET", "/", bytes.NewBuffer(nil))
+	attachQueryVersion(req, string(version666))
+
+	res := httptest.NewRecorder()
+	f.server.ServeHTTP(res, req)
+	if assert.NotNil(t, f.recvReq) {
+		assert.Equal(t, f.recvReq.URL.Path, "/v6.6.6/index.html")
+	}
+	assert.Contains(t, res.Body.String(), `<script src="/v6.6.6/static/js/2.f1bd84e9.chunk.js">`)
 }
 
 func TestBuildUrlForReqWithVersionParamAndStaticPath(t *testing.T) {
-	s := prodServerForTest(t)
-	expected := "https://fake.tilt.dev/v6.6.6/static/stuff.html"
-	req := reqForTest(t, "/static/stuff.html", version666)
-	u, v := s.urlAndVersionForReq(req)
-	assert.Equal(t, expected, u.String())
-	assert.Equal(t, string(version666), v)
+	f := newProdServerFixture(t)
+	defer f.TearDown()
+
+	req := httptest.NewRequest("GET", "/static/stuff.html", bytes.NewBuffer(nil))
+	attachQueryVersion(req, string(version666))
+
+	res := httptest.NewRecorder()
+	f.server.ServeHTTP(res, req)
+	if assert.NotNil(t, f.recvReq) {
+		assert.Equal(t, f.recvReq.URL.Path, "/v6.6.6/static/stuff.html")
+	}
+	assert.Contains(t, res.Body.String(), `some-content`)
 }
 
 func TestBuildUrlForReqWithVersionParamAndVersionPrefix(t *testing.T) {
-	s := prodServerForTest(t)
-	expected := "https://fake.tilt.dev/v111.222.333/stuff.html"
-	req := reqForTest(t, "/v111.222.333/stuff.html", version666)
-	u, v := s.urlAndVersionForReq(req)
-	assert.Equal(t, expected, u.String())
-	assert.Equal(t, "v111.222.333", v)
+	f := newProdServerFixture(t)
+	defer f.TearDown()
+
+	req := httptest.NewRequest("GET", "/v111.222.333/stuff.html", bytes.NewBuffer(nil))
+	attachQueryVersion(req, string(version666))
+
+	res := httptest.NewRecorder()
+	f.server.ServeHTTP(res, req)
+	if assert.NotNil(t, f.recvReq) {
+		assert.Equal(t, f.recvReq.URL.Path, "/v111.222.333/stuff.html")
+	}
+	assert.Contains(t, res.Body.String(), `some-content`)
 }
 
 func TestSHARootUrlForReq(t *testing.T) {
-	// get a new version here
+	f := newProdServerFixture(t)
+	defer f.TearDown()
+
 	sha := "8bf2ea29eacff3a407272eb5631edbd1a14a0936"
-	s, err := NewProdServer(testUrl, model.WebVersion(sha))
-	if err != nil {
-		t.Fatal(err)
+	f.server.defaultVersion = model.WebVersion(sha)
+	req := httptest.NewRequest("GET", "/", bytes.NewBuffer(nil))
+	res := httptest.NewRecorder()
+	f.server.ServeHTTP(res, req)
+	if assert.NotNil(t, f.recvReq) {
+		assert.Equal(t, f.recvReq.URL.Path, fmt.Sprintf("/%s/index.html", sha))
 	}
-	expected := fmt.Sprintf("https://fake.tilt.dev/%s/index.html", sha)
-	req := reqForTest(t, "/", "")
-	u, v := s.urlAndVersionForReq(req)
-	assert.Equal(t, expected, u.String())
-	assert.Equal(t, sha, v)
+	assert.Contains(t, res.Body.String(), fmt.Sprintf(`<script src="/%s/static/js/2.f1bd84e9.chunk.js">`, sha))
 }
 
 func TestSHAStaticUrlForReq(t *testing.T) {
-	// get a new version here
+	f := newProdServerFixture(t)
+	defer f.TearDown()
+
 	sha := "8bf2ea29eacff3a407272eb5631edbd1a14a0936"
-	s, err := NewProdServer(testUrl, model.WebVersion(sha))
-	if err != nil {
-		t.Fatal(err)
+	f.server.defaultVersion = model.WebVersion(sha)
+	req := httptest.NewRequest("GET", fmt.Sprintf("/%s/static/stuff.html", sha), bytes.NewBuffer(nil))
+	res := httptest.NewRecorder()
+	f.server.ServeHTTP(res, req)
+	if assert.NotNil(t, f.recvReq) {
+		assert.Equal(t, f.recvReq.URL.Path, fmt.Sprintf("/%s/static/stuff.html", sha))
 	}
-	expected := fmt.Sprintf("https://fake.tilt.dev/%s/static/stuff.html", sha)
-	req := reqForTest(t, fmt.Sprintf("/%s/static/stuff.html", sha), "")
-	u, v := s.urlAndVersionForReq(req)
-	assert.Equal(t, expected, u.String())
-	assert.Equal(t, sha, v)
+	assert.Contains(t, res.Body.String(), `some-content`)
 }
 
-func prodServerForTest(t *testing.T) prodServer {
-	s, err := NewProdServer(testUrl, versionDefault)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return s
+type fixture struct {
+	testServer *httptest.Server
+	server     prodServer
+	recvReq    *http.Request
 }
 
-func reqForTest(t *testing.T, path string, version model.WebVersion) *http.Request {
-	u, err := url.Parse(path)
-	if err != nil {
-		t.Fatal(err)
-	}
+func newProdServerFixture(t *testing.T) *fixture {
+	f := &fixture{}
 
-	if version != "" {
-		q := u.Query()
-		q.Set(WebVersionKey, string(version))
-		u.RawQuery = q.Encode()
-	}
+	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		f.recvReq = req
+		if strings.HasSuffix(req.URL.Path, "index.html") {
+			res.Write([]byte(indexHTML))
+		} else {
+			res.Write([]byte("some-content"))
+		}
+	}))
+	f.testServer = testServer
 
-	return &http.Request{URL: u}
+	server, err := NewProdServer(AssetBucket(testServer.URL), versionDefault)
+	assert.NoError(t, err)
+
+	f.server = server
+
+	return f
+}
+
+func (f *fixture) TearDown() {
+	f.testServer.Close()
+}
+
+func attachQueryVersion(req *http.Request, v string) {
+	q := req.URL.Query()
+	q.Set(WebVersionKey, v)
+	req.URL.RawQuery = q.Encode()
 }
 
 // Copied from
