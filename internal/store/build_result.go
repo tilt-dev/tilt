@@ -130,13 +130,16 @@ func (r K8sBuildResult) Facets() []model.Facet {
 
 // For kubernetes deploy targets.
 func NewK8sDeployResult(id model.TargetID, uids []types.UID, hashes []k8s.PodTemplateSpecHash, appliedEntities []k8s.K8sEntity) BuildResult {
-	appliedEntitiesYaml, _ := k8s.SerializeSpecYAML(appliedEntities)
+	appliedEntitiesText, err := k8s.SerializeSpecYAML(appliedEntities)
+	if err != nil {
+		appliedEntitiesText = fmt.Sprintf("unable to serialize entities to yaml: %s", err.Error())
+	}
 
 	return K8sBuildResult{
 		id:                    id,
 		DeployedUIDs:          uids,
 		PodTemplateSpecHashes: hashes,
-		AppliedEntitiesText:   appliedEntitiesYaml,
+		AppliedEntitiesText:   appliedEntitiesText,
 	}
 }
 
@@ -247,7 +250,7 @@ func (set BuildResultSet) OneAndOnlyLiveUpdatedContainerID() container.ID {
 // All methods that return a new BuildState should first clone the existing build state.
 type BuildState struct {
 	// The last successful build.
-	LastResult BuildResult
+	LastSuccessfulResult BuildResult
 
 	// Files changed since the last result was build.
 	// This must be liberal: it's ok if this has too many files, but not ok if it has too few.
@@ -265,8 +268,8 @@ func NewBuildState(result BuildResult, files []string) BuildState {
 		set[f] = true
 	}
 	return BuildState{
-		LastResult:      result,
-		FilesChangedSet: set,
+		LastSuccessfulResult: result,
+		FilesChangedSet:      set,
 	}
 }
 
@@ -289,7 +292,7 @@ func (b BuildState) OneContainerInfo() ContainerInfo {
 	return b.RunningContainers[0]
 }
 func (b BuildState) LastImageAsString() string {
-	img := ImageFromBuildResult(b.LastResult)
+	img := ImageFromBuildResult(b.LastSuccessfulResult)
 	if img == nil {
 		return ""
 	}
@@ -310,19 +313,19 @@ func (b BuildState) FilesChanged() []string {
 
 // A build state is empty if there are no previous results.
 func (b BuildState) IsEmpty() bool {
-	return b.LastResult == nil
+	return b.LastSuccessfulResult == nil
 }
 
 func (b BuildState) HasImage() bool {
-	return ImageFromBuildResult(b.LastResult) != nil
+	return ImageFromBuildResult(b.LastSuccessfulResult) != nil
 }
 
 // Whether the image represented by this state needs to be built.
 // If the image has already been built, and no files have been
 // changed since then, then we can re-use the previous result.
 func (b BuildState) NeedsImageBuild() bool {
-	lastBuildWasImgBuild := b.LastResult != nil &&
-		b.LastResult.BuildType() == model.BuildTypeImage
+	lastBuildWasImgBuild := b.LastSuccessfulResult != nil &&
+		b.LastSuccessfulResult.BuildType() == model.BuildTypeImage
 	return !lastBuildWasImgBuild || len(b.FilesChangedSet) > 0
 }
 
