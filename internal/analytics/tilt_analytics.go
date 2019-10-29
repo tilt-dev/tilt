@@ -43,6 +43,9 @@ func NewMemoryTiltAnalyticsForTest(opter AnalyticsOpter) (*analytics.MemoryAnaly
 	return ma, NewTiltAnalytics(analytics.OptIn, opter, ma, "v0.0.0")
 }
 
+func (ta *TiltAnalytics) GlobalTag(name string) (string, bool) {
+	return ta.GlobalTag(name)
+}
 func (ta *TiltAnalytics) Opt() analytics.Opt {
 	return ta.opt
 

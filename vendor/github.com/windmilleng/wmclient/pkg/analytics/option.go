@@ -28,13 +28,13 @@ func WithHTTPClient(client HTTPClient) Option {
 // Sets the UserID. Defaults to a user ID based on a hash of a machine identifier.
 func WithUserID(userID string) Option {
 	return Option(func(a *remoteAnalytics) {
-		a.globalTags[keyUser] = userID
+		a.globalTags[TagUser] = userID
 	})
 }
 
 func WithMachineID(machineID string) Option {
 	return Option(func(a *remoteAnalytics) {
-		a.globalTags[keyMachine] = machineID
+		a.globalTags[TagMachine] = machineID
 	})
 }
 

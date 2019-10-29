@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/denisbrodbeck/machineid"
+	"github.com/spf13/cobra"
 )
 
 const statsEndpt = "https://events.windmill.build/report"
@@ -23,10 +23,10 @@ const statsTimeout = time.Minute
 
 // keys for request to stats server
 const (
-	keyDuration = "duration"
-	keyName     = "name"
-	keyUser     = "user"
-	keyMachine  = "machine"
+	TagDuration = "duration"
+	TagName     = "name"
+	TagUser     = "user"
+	TagMachine  = "machine"
 )
 
 var cli = &http.Client{Timeout: statsTimeout}
@@ -65,6 +65,7 @@ type Analytics interface {
 	IncrAnonymous(name string, tags map[string]string)
 	Timer(name string, dur time.Duration, tags map[string]string)
 	Flush(timeout time.Duration)
+	GlobalTag(name string) (string, bool)
 }
 
 type remoteAnalytics struct {
@@ -122,7 +123,7 @@ func NewRemoteAnalytics(appName string, options ...Option) (*remoteAnalytics, er
 		enabled:    enabled,
 		logger:     stdLogger{},
 		wg:         &sync.WaitGroup{},
-		globalTags: map[string]string{keyUser: getUserID(), keyMachine: getMachineID()},
+		globalTags: map[string]string{TagUser: getUserID(), TagMachine: getMachineID()},
 	}
 	for _, o := range options {
 		o(a)
@@ -135,7 +136,7 @@ func (a *remoteAnalytics) namespaced(name string) string {
 }
 
 func (a *remoteAnalytics) baseReqBody(name string, includeGlobalTags bool, tags map[string]string) map[string]interface{} {
-	req := map[string]interface{}{keyName: a.namespaced(name)}
+	req := map[string]interface{}{TagName: a.namespaced(name)}
 	if includeGlobalTags {
 		for k, v := range a.globalTags {
 			req[k] = v
@@ -161,6 +162,11 @@ func (a *remoteAnalytics) makeReq(reqBody map[string]interface{}) (*http.Request
 	req.Header.Add(contentType, contentTypeJson)
 
 	return req, nil
+}
+
+func (a *remoteAnalytics) GlobalTag(name string) (string, bool) {
+	val, ok := a.globalTags[name]
+	return val, ok
 }
 
 func (a *remoteAnalytics) Count(name string, tags map[string]string, n int) {
@@ -260,7 +266,7 @@ func (a *remoteAnalytics) Flush(timeout time.Duration) {
 
 func (a *remoteAnalytics) timerReq(name string, dur time.Duration, tags map[string]string) (*http.Request, error) {
 	reqBody := a.baseReqBody(name, true, tags)
-	reqBody[keyDuration] = dur
+	reqBody[TagDuration] = dur
 	return a.makeReq(reqBody)
 }
 
@@ -283,6 +289,10 @@ type TimeEvent struct {
 
 func NewMemoryAnalytics() *MemoryAnalytics {
 	return &MemoryAnalytics{}
+}
+
+func (a *MemoryAnalytics) GlobalTag(name string) (string, bool) {
+	return "", false
 }
 
 func (a *MemoryAnalytics) Count(name string, tags map[string]string, n int) {
