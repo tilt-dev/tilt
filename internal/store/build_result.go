@@ -153,10 +153,6 @@ func ImageFromBuildResult(r BuildResult) reference.NamedTagged {
 	return nil
 }
 
-// type BuildResultSet2 struct {
-// 	PerTarget
-// }
-
 type BuildResultSet map[model.TargetID]BuildResult
 
 func (set BuildResultSet) LiveUpdatedContainerIDs() []container.ID {
@@ -261,7 +257,7 @@ type BuildState struct {
 	FilesChangedSet map[string]bool
 
 	// Whether there was a manual trigger
-	ForceUpdate bool
+	NeedsForceUpdate bool
 
 	RunningContainers []ContainerInfo
 
@@ -291,7 +287,7 @@ func (b BuildState) WithRunningContainerError(err error) BuildState {
 }
 
 func (b BuildState) WithForceUpdate(forceUpdate bool) BuildState {
-	b.ForceUpdate = forceUpdate
+	b.NeedsForceUpdate = forceUpdate
 	return b
 }
 
@@ -338,7 +334,7 @@ func (b BuildState) HasImage() bool {
 func (b BuildState) NeedsImageBuild() bool {
 	lastBuildWasImgBuild := b.LastSuccessfulResult != nil &&
 		b.LastSuccessfulResult.BuildType() == model.BuildTypeImage
-	return !lastBuildWasImgBuild || len(b.FilesChangedSet) > 0 || b.ForceUpdate
+	return !lastBuildWasImgBuild || len(b.FilesChangedSet) > 0 || b.NeedsForceUpdate
 }
 
 type BuildStateSet map[model.TargetID]BuildState

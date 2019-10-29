@@ -47,8 +47,8 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 			return nil, SilentRedirectToNextBuilderf("In-place build does not support initial deploy")
 		}
 
-		if state.ForceUpdate {
-			return nil, RedirectToNextBuilderInfof("Force update (triggered manually, not automatically, with no dirty files)")
+		if state.NeedsForceUpdate {
+			return nil, SilentRedirectToNextBuilderf("Force update (triggered manually, not automatically, with no dirty files)")
 		}
 
 		hasFileChangesIDs, err := hasFileChangesTree(g, iTarget, stateSet)

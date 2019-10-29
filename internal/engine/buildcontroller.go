@@ -221,6 +221,10 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 
 	// If there are no files changed across the entire state set, then this is a force update.
 	// We want to do an image build of each image.
+	// TODO(maia): I think that instead of storing this on every build state, we can can figure
+	//  out that it's a force update when creating the BuildEntry (in `needsBuild`), store that
+	//  as the BuildReason, and pass the whole BuildEntry to the builder (so the builder can
+	//  know whether to skip in-place builds)
 	if !anyFilesChanged {
 		for k, v := range result {
 			result[k] = v.WithForceUpdate(true)
