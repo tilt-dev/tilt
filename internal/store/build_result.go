@@ -105,16 +105,19 @@ type K8sBuildResult struct {
 
 	// The UIDs that we deployed to a Kubernetes cluster.
 	DeployedUIDs []types.UID
+
+	PodTemplateSpecHashes []k8s.PodTemplateSpecHash
 }
 
 func (r K8sBuildResult) TargetID() model.TargetID   { return r.id }
 func (r K8sBuildResult) BuildType() model.BuildType { return model.BuildTypeK8s }
 
 // For kubernetes deploy targets.
-func NewK8sDeployResult(id model.TargetID, uids []types.UID) BuildResult {
+func NewK8sDeployResult(id model.TargetID, uids []types.UID, hashes []k8s.PodTemplateSpecHash) BuildResult {
 	return K8sBuildResult{
-		id:           id,
-		DeployedUIDs: uids,
+		id:                    id,
+		DeployedUIDs:          uids,
+		PodTemplateSpecHashes: hashes,
 	}
 }
 
@@ -147,6 +150,17 @@ func (set BuildResultSet) DeployedUIDSet() UIDSet {
 		r, ok := r.(K8sBuildResult)
 		if ok {
 			result.Add(r.DeployedUIDs...)
+		}
+	}
+	return result
+}
+
+func (set BuildResultSet) DeployedPodTemplateSpecHashes() PodTemplateSpecHashSet {
+	result := NewPodTemplateSpecHashSet()
+	for _, r := range set {
+		r, ok := r.(K8sBuildResult)
+		if ok {
+			result.Add(r.PodTemplateSpecHashes...)
 		}
 	}
 	return result
