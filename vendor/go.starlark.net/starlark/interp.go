@@ -503,7 +503,10 @@ loop:
 			dict, err2 := thread.Load(thread, module)
 			thread.beginProfSpan()
 			if err2 != nil {
-				err = fmt.Errorf("cannot load %s: %v", module, err2)
+				err = wrappedError{
+					msg:   fmt.Sprintf("cannot load %s: %v", module, err2),
+					cause: err2,
+				}
 				break loop
 			}
 
@@ -588,6 +591,21 @@ loop:
 	fr.locals = nil
 
 	return result, err
+}
+
+type wrappedError struct {
+	msg   string
+	cause error
+}
+
+func (e wrappedError) Error() string {
+	return e.msg
+}
+
+// Implements the xerrors.Wrapper interface
+// https://godoc.org/golang.org/x/xerrors#Wrapper
+func (e wrappedError) Unwrap() error {
+	return e.cause
 }
 
 // mandatory is a sentinel value used in a function's defaults tuple

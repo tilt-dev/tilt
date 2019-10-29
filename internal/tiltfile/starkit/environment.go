@@ -170,7 +170,10 @@ func (e *Environment) exec(t *starlark.Thread, path string) (starlark.StringDict
 	for _, ext := range e.extensions {
 		onExecExt, ok := ext.(OnExecExtension)
 		if ok {
-			onExecExt.OnExec(path)
+			err := onExecExt.OnExec(t, path)
+			if err != nil {
+				return starlark.StringDict{}, err
+			}
 		}
 	}
 

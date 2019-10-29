@@ -49,7 +49,7 @@ func (a AST) traverseImageRefs(visitor func(node *parser.Node, ref reference.Nam
 			}
 			newRef := visitor(node, ref)
 			if newRef != nil {
-				node.Next.Value = newRef.String()
+				node.Next.Value = reference.FamiliarString(newRef)
 			}
 
 		case command.Copy:
@@ -76,7 +76,7 @@ func (a AST) traverseImageRefs(visitor func(node *parser.Node, ref reference.Nam
 			if newRef != nil {
 				for i, flag := range node.Flags {
 					if strings.HasPrefix(flag, "--from=") {
-						node.Flags[i] = fmt.Sprintf("--from=%s", newRef.String())
+						node.Flags[i] = fmt.Sprintf("--from=%s", reference.FamiliarString(newRef))
 					}
 				}
 			}

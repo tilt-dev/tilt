@@ -255,7 +255,7 @@ func TestMultiStageDockerBuild(t *testing.T) {
 	expected := expectedFile{
 		Path: "Dockerfile",
 		Contents: `
-FROM docker.io/library/sancho-base:tilt-11cd0b38bc3ceb95
+FROM sancho-base:tilt-11cd0b38bc3ceb95
 ADD . .
 RUN go install github.com/windmilleng/sancho
 ENTRYPOINT /go/bin/sancho
@@ -302,7 +302,7 @@ ENTRYPOINT /go/bin/sancho
 		Path: "Dockerfile",
 		Contents: `# syntax = docker/dockerfile:experimental
 
-FROM docker.io/library/sancho-base:tilt-11cd0b38bc3ceb95
+FROM sancho-base:tilt-11cd0b38bc3ceb95
 ADD . .
 RUN go install github.com/windmilleng/sancho
 ENTRYPOINT /go/bin/sancho
@@ -338,7 +338,7 @@ func TestMultiStageDockerBuildWithFirstImageDirty(t *testing.T) {
 	expected := expectedFile{
 		Path: "Dockerfile",
 		Contents: `
-FROM docker.io/library/sancho-base:tilt-11cd0b38bc3ceb95
+FROM sancho-base:tilt-11cd0b38bc3ceb95
 ADD . .
 RUN go install github.com/windmilleng/sancho
 ENTRYPOINT /go/bin/sancho
@@ -375,7 +375,7 @@ func TestMultiStageDockerBuildWithSecondImageDirty(t *testing.T) {
 	expected := expectedFile{
 		Path: "Dockerfile",
 		Contents: `
-FROM docker.io/library/sancho-base:tilt-prebuilt1
+FROM sancho-base:tilt-prebuilt1
 ADD . .
 RUN go install github.com/windmilleng/sancho
 ENTRYPOINT /go/bin/sancho

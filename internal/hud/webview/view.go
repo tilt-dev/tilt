@@ -7,6 +7,7 @@ import (
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/pkg/model"
+	proto_webview "github.com/windmilleng/tilt/pkg/webview"
 )
 
 type ResourceInfoView interface {
@@ -30,6 +31,16 @@ func NewDCResourceInfo(configPaths []string, status dockercompose.Status, cID co
 		ContainerID:     cID,
 		Log:             log,
 		StartTime:       startTime,
+	}
+}
+
+func NewProtoDCResourceInfo(configPaths []string, status dockercompose.Status, cID container.ID, log model.Log, startTime time.Time) *proto_webview.DCResourceInfo {
+	return &proto_webview.DCResourceInfo{
+		ConfigPaths:     configPaths,
+		ContainerStatus: string(status),
+		ContainerID:     string(cID),
+		Log:             log.String(),
+		StartTime:       startTime.String(),
 	}
 }
 
@@ -105,6 +116,30 @@ func ToWebViewBuildRecord(br model.BuildRecord) BuildRecord {
 		Log:            br.Log,
 		IsCrashRebuild: br.Reason.IsCrashOnly(),
 	}
+}
+
+func ToProtoBuildRecord(br model.BuildRecord) *proto_webview.BuildRecord {
+	e := ""
+	if br.Error != nil {
+		e = br.Error.Error()
+	}
+	return &proto_webview.BuildRecord{
+		Edits:          br.Edits,
+		Error:          e,
+		Warnings:       br.Warnings,
+		StartTime:      br.StartTime.String(),
+		FinishTime:     br.FinishTime.String(),
+		Log:            br.Log.String(),
+		IsCrashRebuild: br.Reason.IsCrashOnly(),
+	}
+}
+
+func ToProtoBuildRecords(brs []model.BuildRecord) []*proto_webview.BuildRecord {
+	ret := make([]*proto_webview.BuildRecord, len(brs))
+	for i, br := range brs {
+		ret[i] = ToProtoBuildRecord(br)
+	}
+	return ret
 }
 
 func ToWebViewBuildRecords(brs []model.BuildRecord) []BuildRecord {

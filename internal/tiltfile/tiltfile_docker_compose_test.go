@@ -375,7 +375,7 @@ dc_resource('foo', 'fooimage')
 
 	f.load()
 
-	m := f.assertNextManifest("foo", db(imageNormalized("fooimage")))
+	m := f.assertNextManifest("foo", db(image("fooimage")))
 	assert.True(t, m.ImageTargetAt(0).IsDockerBuild())
 	assert.False(t, m.ImageTargetAt(0).IsFastBuild())
 
@@ -464,7 +464,6 @@ docker_compose('docker-compose.yml')
     ✕ gcr.typo.io/foo
 Did you mean…
     - gcr.io/foo
-    - docker.io/library/golang
 Skipping this image build`)
 }
 

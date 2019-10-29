@@ -1000,7 +1000,7 @@ func (fcomp *fcomp) set(id *syntax.Ident) {
 	case resolve.Global:
 		fcomp.emit1(SETGLOBAL, uint32(bind.Index))
 	default:
-		log.Fatalf("%s: set(%s): not global/local/cell (%d)", id.NamePos, id.Name, bind.Scope)
+		log.Panicf("%s: set(%s): not global/local/cell (%d)", id.NamePos, id.Name, bind.Scope)
 	}
 }
 
@@ -1028,7 +1028,7 @@ func (fcomp *fcomp) lookup(id *syntax.Ident) {
 	case resolve.Universal:
 		fcomp.emit1(UNIVERSAL, fcomp.pcomp.nameIndex(id.Name))
 	default:
-		log.Fatalf("%s: compiler.lookup(%s): scope = %d", id.NamePos, id.Name, bind.Scope)
+		log.Panicf("%s: compiler.lookup(%s): scope = %d", id.NamePos, id.Name, bind.Scope)
 	}
 }
 
@@ -1224,7 +1224,7 @@ func (fcomp *fcomp) stmt(stmt syntax.Stmt) {
 
 	default:
 		start, _ := stmt.Span()
-		log.Fatalf("%s: exec: unexpected statement %T", start, stmt)
+		log.Panicf("%s: exec: unexpected statement %T", start, stmt)
 	}
 }
 
@@ -1374,7 +1374,7 @@ func (fcomp *fcomp) expr(e syntax.Expr) {
 		case syntax.TILDE:
 			fcomp.emit(TILDE)
 		default:
-			log.Fatalf("%s: unexpected unary op: %s", e.OpPos, e.Op)
+			log.Panicf("%s: unexpected unary op: %s", e.OpPos, e.Op)
 		}
 
 	case *syntax.BinaryExpr:
@@ -1436,7 +1436,7 @@ func (fcomp *fcomp) expr(e syntax.Expr) {
 
 	default:
 		start, _ := e.Span()
-		log.Fatalf("%s: unexpected expr %T", start, e)
+		log.Panicf("%s: unexpected expr %T", start, e)
 	}
 }
 
@@ -1619,7 +1619,7 @@ func (fcomp *fcomp) binop(pos syntax.Position, op syntax.Token) {
 		fcomp.emit(Opcode(op-syntax.EQL) + EQL)
 
 	default:
-		log.Fatalf("%s: unexpected binary op: %s", pos, op)
+		log.Panicf("%s: unexpected binary op: %s", pos, op)
 	}
 }
 
@@ -1778,7 +1778,7 @@ func (fcomp *fcomp) comprehension(comp *syntax.Comprehension, clauseIndex int) {
 	}
 
 	start, _ := clause.Span()
-	log.Fatalf("%s: unexpected comprehension clause %T", start, clause)
+	log.Panicf("%s: unexpected comprehension clause %T", start, clause)
 }
 
 func (fcomp *fcomp) function(f *resolve.Function) {

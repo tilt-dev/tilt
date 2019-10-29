@@ -5,13 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
-	"path/filepath"
 
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/sliceutils"
+	tiltfile_io "github.com/windmilleng/tilt/internal/tiltfile/io"
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 	"github.com/windmilleng/tilt/internal/tiltfile/value"
 	"github.com/windmilleng/tilt/pkg/logger"
@@ -24,55 +22,6 @@ import (
 )
 
 const localLogPrefix = " → "
-
-func (s *tiltfileState) recordConfigFile(f string) {
-	s.configFiles = sliceutils.AppendWithoutDupes(s.configFiles, f)
-}
-
-func (s *tiltfileState) readFile(p string) ([]byte, error) {
-	s.recordConfigFile(p)
-	return ioutil.ReadFile(p)
-}
-
-func (s *tiltfileState) watchFile(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var path starlark.Value
-	err := s.unpackArgs(fn.Name(), args, kwargs, "paths", &path)
-	if err != nil {
-		return nil, err
-	}
-
-	p, err := value.ValueToAbsPath(thread, path)
-	if err != nil {
-		return nil, fmt.Errorf("invalid type for paths: %v", err)
-	}
-
-	s.recordConfigFile(p)
-
-	return starlark.None, nil
-}
-
-func (s *tiltfileState) skylarkReadFile(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var path starlark.Value
-	defaultReturn := ""
-	err := s.unpackArgs(fn.Name(), args, kwargs, "paths", &path, "default?", &defaultReturn)
-	if err != nil {
-		return nil, err
-	}
-
-	p, err := value.ValueToAbsPath(thread, path)
-	if err != nil {
-		return nil, fmt.Errorf("invalid type for paths: %v", err)
-	}
-
-	bs, err := s.readFile(p)
-	if os.IsNotExist(err) {
-		bs = []byte(defaultReturn)
-	} else if err != nil {
-		return nil, err
-	}
-
-	return newBlob(string(bs), fmt.Sprintf("file: %s", p)), nil
-}
 
 func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var command string
@@ -87,7 +36,7 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 		return nil, err
 	}
 
-	return newBlob(out, fmt.Sprintf("local: %s", command)), nil
+	return tiltfile_io.NewBlob(out, fmt.Sprintf("local: %s", command)), nil
 }
 
 func (s *tiltfileState) execLocalCmd(t *starlark.Thread, c *exec.Cmd, logOutput bool) (string, error) {
@@ -135,7 +84,14 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
 
-	yaml, err := s.execLocalCmd(thread, exec.Command("kustomize", "build", kustomizePath), false)
+	cmd := []string{"kustomize", "build", kustomizePath}
+
+	_, err = exec.LookPath(cmd[0])
+	if err != nil {
+		cmd = []string{"kubectl", "kustomize", kustomizePath}
+	}
+
+	yaml, err := s.execLocalCmd(thread, exec.Command(cmd[0], cmd[1:]...), false)
 	if err != nil {
 		return nil, err
 	}
@@ -144,10 +100,13 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, fmt.Errorf("internal error: %v", err)
 	}
 	for _, d := range deps {
-		s.recordConfigFile(d)
+		err := tiltfile_io.RecordReadFile(thread, d)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return newBlob(yaml, fmt.Sprintf("kustomize: %s", kustomizePath)), nil
+	return tiltfile_io.NewBlob(yaml, fmt.Sprintf("kustomize: %s", kustomizePath)), nil
 }
 
 func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -194,7 +153,10 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	}
 	for _, valueFile := range valueFiles {
 		cmd = append(cmd, "--values", valueFile)
-		s.recordConfigFile(starkit.AbsPath(thread, valueFile))
+		err := tiltfile_io.RecordReadFile(thread, starkit.AbsPath(thread, valueFile))
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	stdout, err := s.execLocalCmd(thread, exec.Command(cmd[0], cmd[1:]...), false)
@@ -202,7 +164,10 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, err
 	}
 
-	s.recordConfigFile(localPath)
+	err = tiltfile_io.RecordReadFile(thread, localPath)
+	if err != nil {
+		return nil, err
+	}
 
 	yaml := filterHelmTestYAML(string(stdout))
 
@@ -240,54 +205,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		}
 	}
 
-	return newBlob(yaml, fmt.Sprintf("helm: %s", localPath)), nil
-}
-
-func (s *tiltfileState) blob(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var input starlark.String
-	err := s.unpackArgs(fn.Name(), args, kwargs, "input", &input)
-	if err != nil {
-		return nil, err
-	}
-
-	return newBlob(input.GoString(), "Tiltfile blob() call"), nil
-}
-
-func (s *tiltfileState) listdir(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var dir starlark.String
-	var recursive bool
-	err := s.unpackArgs(fn.Name(), args, kwargs, "dir", &dir, "recursive?", &recursive)
-	if err != nil {
-		return nil, err
-	}
-
-	localPath, err := value.ValueToAbsPath(thread, dir)
-	if err != nil {
-		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
-	}
-	s.recordConfigFile(localPath)
-	var files []string
-	err = filepath.Walk(localPath, func(path string, info os.FileInfo, err error) error {
-		if path == localPath {
-			return nil
-		}
-		if !info.IsDir() {
-			files = append(files, path)
-		} else if info.IsDir() && !recursive {
-			return filepath.SkipDir
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	var ret []starlark.Value
-	for _, f := range files {
-		ret = append(ret, starlark.String(f))
-	}
-
-	return starlark.NewList(ret), nil
+	return tiltfile_io.NewBlob(yaml, fmt.Sprintf("helm: %s", localPath)), nil
 }
 
 func (s *tiltfileState) readYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -302,7 +220,7 @@ func (s *tiltfileState) readYaml(thread *starlark.Thread, fn *starlark.Builtin, 
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
 
-	contents, err := s.readFile(localPath)
+	contents, err := tiltfile_io.ReadFile(thread, localPath)
 	if err != nil {
 		// Return the default value if the file doesn't exist AND a default value was given
 		if os.IsNotExist(err) && defaultValue != nil {
@@ -355,7 +273,7 @@ func (s *tiltfileState) readJson(thread *starlark.Thread, fn *starlark.Builtin, 
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
 
-	contents, err := s.readFile(localPath)
+	contents, err := tiltfile_io.ReadFile(thread, localPath)
 	if err != nil {
 		// Return the default value if the file doesn't exist AND a default value was given
 		if os.IsNotExist(err) && defaultValue != nil {
