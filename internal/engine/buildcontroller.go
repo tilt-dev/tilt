@@ -227,7 +227,7 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 	//  know whether to skip in-place builds)
 	if !anyFilesChanged {
 		for k, v := range result {
-			result[k] = v.WithForceUpdate(true)
+			result[k] = v.WithNeedsForceUpdate(true)
 		}
 	}
 

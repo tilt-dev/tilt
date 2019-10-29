@@ -317,6 +317,32 @@ func TestUpdateMultipleContainersWithSameTarArchiveOnRunStepFailure(t *testing.T
 	}
 }
 
+func TestSkipLiveUpdateIfForceUpdate(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	m := NewSanchoLiveUpdateManifest(f)
+
+	cInfo := store.ContainerInfo{
+		PodID:         "mypod",
+		ContainerID:   "cid1",
+		ContainerName: "container1",
+		Namespace:     "ns-foo",
+	}
+
+	state := store.BuildState{
+		LastSuccessfulResult: alreadyBuilt,
+		RunningContainers:    []store.ContainerInfo{cInfo},
+		NeedsForceUpdate:     true, // should make us skip LiveUpdate
+	}
+
+	stateSet := store.BuildStateSet{m.ImageTargetAt(0).ID(): state}
+
+	_, err := f.lubad.BuildAndDeploy(f.ctx, f.st, m.TargetSpecs(), stateSet)
+	require.NotNil(t, err)
+	assert.Contains(t, err.Error(), "Force update", "expected error contents not found")
+}
+
 type lcbadFixture struct {
 	*tempdir.TempDirFixture
 	t     testing.TB

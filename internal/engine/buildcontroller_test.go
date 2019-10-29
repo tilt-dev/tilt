@@ -51,7 +51,7 @@ func TestBuildControllerTooManyPodsForLiveUpdateErrorMessage(t *testing.T) {
 	manifest := NewSanchoLiveUpdateManifest(f)
 	f.Start([]model.Manifest{manifest}, true)
 
-	// intial build
+	// initial build
 	call := f.nextCall()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
@@ -467,7 +467,7 @@ func TestRecordLiveUpdatedContainerIDsForFailedLiveUpdate(t *testing.T) {
 	})
 }
 
-func TestBuildControllerManualTrigger(t *testing.T) {
+func TestBuildControllerManualTriggerWithFileChanges(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	mName := model.ManifestName("foobar")
@@ -479,9 +479,6 @@ func TestBuildControllerManualTrigger(t *testing.T) {
 	f.nextCall()
 	f.waitForCompletedBuildCount(1)
 
-	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: mName})
-	f.assertNoCall("manifest has no pending changes, so shouldn't build even if we try to trigger it")
-
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
 	f.WaitUntil("pending change appears", func(st store.EngineState) bool {
 		return len(st.BuildStatus(manifest.ImageTargetAt(0).ID()).PendingFileChanges) > 0
@@ -490,7 +487,38 @@ func TestBuildControllerManualTrigger(t *testing.T) {
 
 	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: mName})
 	call := f.nextCall()
-	assert.Equal(t, []string{f.JoinPath("main.go")}, call.oneState().FilesChanged())
+	state := call.oneState()
+	assert.Equal(t, []string{f.JoinPath("main.go")}, state.FilesChanged())
+	assert.False(t, state.NeedsForceUpdate) // it was NOT a force update, b/c there were changed files
+	f.waitForCompletedBuildCount(2)
+
+	f.WaitUntil("manifest removed from queue", func(st store.EngineState) bool {
+		for _, mn := range st.TriggerQueue {
+			if mn == mName {
+				return false
+			}
+		}
+		return true
+	})
+}
+
+func TestBuildControllerManualTriggerWithoutFileChangesForceUpdates(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	mName := model.ManifestName("foobar")
+
+	manifest := f.newManifest(mName.String())
+	manifests := []model.Manifest{manifest}
+	f.Start(manifests, true)
+
+	f.nextCall()
+	f.waitForCompletedBuildCount(1)
+
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: mName})
+	call := f.nextCall()
+	state := call.oneState()
+	assert.Empty(t, state.FilesChanged())
+	assert.True(t, state.NeedsForceUpdate)
 	f.waitForCompletedBuildCount(2)
 
 	f.WaitUntil("manifest removed from queue", func(st store.EngineState) bool {

@@ -286,8 +286,8 @@ func (b BuildState) WithRunningContainerError(err error) BuildState {
 	return b
 }
 
-func (b BuildState) WithForceUpdate(forceUpdate bool) BuildState {
-	b.NeedsForceUpdate = forceUpdate
+func (b BuildState) WithNeedsForceUpdate(needsForceUpdate bool) BuildState {
+	b.NeedsForceUpdate = needsForceUpdate
 	return b
 }
 
