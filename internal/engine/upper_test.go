@@ -2958,7 +2958,7 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	fwm := NewWatchManager(watcher.newSub, timerMaker.maker())
 	pfc := NewPortForwardController(kCli)
-	au := engineanalytics.NewAnalyticsUpdater(ta)
+	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdUpTags{})
 	ar := engineanalytics.ProvideAnalyticsReporter(ta, st)
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	k8sContextExt := k8scontext.NewExtension("fake-context", k8s.EnvDockerDesktop)

@@ -91,17 +91,17 @@ var (
 	_wireDefaultsValue = feature.MainDefaults
 )
 
-func wireThreads(ctx context.Context, analytics3 *analytics.TiltAnalytics) (Threads, error) {
+func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdUpTags analytics2.CmdUpTags) (CmdUpDeps, error) {
 	v := provideClock()
 	renderer := hud.NewRenderer(v)
 	modelWebPort := provideWebPort()
 	webURL, err := provideWebURL(modelWebPort)
 	if err != nil {
-		return Threads{}, err
+		return CmdUpDeps{}, err
 	}
 	headsUpDisplay, err := hud.NewDefaultHeadsUpDisplay(renderer, webURL, analytics3)
 	if err != nil {
-		return Threads{}, err
+		return CmdUpDeps{}, err
 	}
 	reducer := _wireReducerValue
 	storeLogActionsFlag := provideLogActions()
@@ -109,7 +109,7 @@ func wireThreads(ctx context.Context, analytics3 *analytics.TiltAnalytics) (Thre
 	clientConfig := k8s.ProvideClientConfig()
 	config, err := k8s.ProvideKubeConfig(clientConfig)
 	if err != nil {
-		return Threads{}, err
+		return CmdUpDeps{}, err
 	}
 	env := k8s.ProvideEnv(ctx, config)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
@@ -118,7 +118,7 @@ func wireThreads(ctx context.Context, analytics3 *analytics.TiltAnalytics) (Thre
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubeContext, err := k8s.ProvideKubeContext(config)
 	if err != nil {
-		return Threads{}, err
+		return CmdUpDeps{}, err
 	}
 	int2 := provideKubectlLogLevel()
 	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, int2)
@@ -127,7 +127,7 @@ func wireThreads(ctx context.Context, analytics3 *analytics.TiltAnalytics) (Thre
 	podWatcher := k8swatch.NewPodWatcher(client, ownerFetcher)
 	nodeIP, err := k8s.DetectNodeIP(ctx, env)
 	if err != nil {
-		return Threads{}, err
+		return CmdUpDeps{}, err
 	}
 	serviceWatcher := k8swatch.NewServiceWatcher(client, ownerFetcher, nodeIP)
 	podLogManager := runtimelog.NewPodLogManager(client)
@@ -139,22 +139,22 @@ func wireThreads(ctx context.Context, analytics3 *analytics.TiltAnalytics) (Thre
 	minikubeClient := minikube.ProvideMinikubeClient()
 	clusterEnv, err := docker.ProvideClusterEnv(ctx, env, runtime, minikubeClient)
 	if err != nil {
-		return Threads{}, err
+		return CmdUpDeps{}, err
 	}
 	localEnv, err := docker.ProvideLocalEnv(ctx, clusterEnv)
 	if err != nil {
-		return Threads{}, err
+		return CmdUpDeps{}, err
 	}
 	localClient := docker.ProvideLocalCli(ctx, localEnv)
 	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
 	if err != nil {
-		return Threads{}, err
+		return CmdUpDeps{}, err
 	}
 	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
 	dockerContainerUpdater := containerupdate.NewDockerContainerUpdater(switchCli)
 	syncletImageRef, err := sidecar.ProvideSyncletImageRef(ctx)
 	if err != nil {
-		return Threads{}, err
+		return CmdUpDeps{}, err
 	}
 	syncletManager := containerupdate.NewSyncletManager(client, syncletImageRef)
 	syncletUpdater := containerupdate.NewSyncletUpdater(syncletManager)
@@ -162,7 +162,7 @@ func wireThreads(ctx context.Context, analytics3 *analytics.TiltAnalytics) (Thre
 	engineUpdateModeFlag := provideUpdateModeFlag()
 	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env, runtime)
 	if err != nil {
-		return Threads{}, err
+		return CmdUpDeps{}, err
 	}
 	liveUpdateBuildAndDeployer := engine.NewLiveUpdateBuildAndDeployer(dockerContainerUpdater, syncletUpdater, execUpdater, updateMode, env, runtime)
 	labels := _wireLabelsValue
@@ -193,25 +193,25 @@ func wireThreads(ctx context.Context, analytics3 *analytics.TiltAnalytics) (Thre
 	tiltBuild := provideTiltInfo()
 	webMode, err := provideWebMode(tiltBuild)
 	if err != nil {
-		return Threads{}, err
+		return CmdUpDeps{}, err
 	}
 	webVersion := provideWebVersion(tiltBuild)
 	assetsServer, err := provideAssetServer(webMode, webVersion)
 	if err != nil {
-		return Threads{}, err
+		return CmdUpDeps{}, err
 	}
 	httpClient := cloud.ProvideHttpClient()
 	address := cloudurl.ProvideAddress()
 	snapshotUploader := cloud.NewSnapshotUploader(httpClient, address)
 	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, snapshotUploader)
 	if err != nil {
-		return Threads{}, err
+		return CmdUpDeps{}, err
 	}
 	modelNoBrowser := provideNoBrowserFlag()
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer, webURL, modelNoBrowser)
 	githubClientFactory := engine.NewGithubClientFactory()
 	tiltVersionChecker := engine.NewTiltVersionChecker(githubClientFactory, timerMaker)
-	analyticsUpdater := analytics2.NewAnalyticsUpdater(analytics3)
+	analyticsUpdater := analytics2.NewAnalyticsUpdater(analytics3, cmdUpTags)
 	eventWatchManager := k8swatch.NewEventWatchManager(client, ownerFetcher)
 	cloudUsernameManager := cloud.NewUsernameManager(httpClient)
 	updateUploader := cloud.NewUpdateUploader(httpClient, address, snapshotUploader)
@@ -220,14 +220,14 @@ func wireThreads(ctx context.Context, analytics3 *analytics.TiltAnalytics) (Thre
 	upper := engine.NewUpper(ctx, storeStore, v2)
 	windmillDir, err := dirs.UseWindmillDir()
 	if err != nil {
-		return Threads{}, err
+		return CmdUpDeps{}, err
 	}
 	tokenToken, err := token.GetOrCreateToken(windmillDir)
 	if err != nil {
-		return Threads{}, err
+		return CmdUpDeps{}, err
 	}
-	threads := provideThreads(headsUpDisplay, upper, tiltBuild, tokenToken, address)
-	return threads, nil
+	cmdUpDeps := provideCmdUpDeps(headsUpDisplay, upper, tiltBuild, tokenToken, address)
+	return cmdUpDeps, nil
 }
 
 var (
@@ -429,10 +429,10 @@ var BaseWireSet = wire.NewSet(
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
-	provideNoBrowserFlag, server.ProvideHeadsUpServer, provideAssetServer, server.ProvideHeadsUpServerController, dirs.UseWindmillDir, token.GetOrCreateToken, provideThreads, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
+	provideNoBrowserFlag, server.ProvideHeadsUpServer, provideAssetServer, server.ProvideHeadsUpServerController, dirs.UseWindmillDir, token.GetOrCreateToken, provideCmdUpDeps, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
 )
 
-type Threads struct {
+type CmdUpDeps struct {
 	hud          hud.HeadsUpDisplay
 	upper        engine.Upper
 	tiltBuild    model.TiltBuild
@@ -440,8 +440,8 @@ type Threads struct {
 	cloudAddress cloudurl.Address
 }
 
-func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, b model.TiltBuild, token2 token.Token, cloudAddress cloudurl.Address) Threads {
-	return Threads{h, upper, b, token2, cloudAddress}
+func provideCmdUpDeps(h hud.HeadsUpDisplay, upper engine.Upper, b model.TiltBuild, token2 token.Token, cloudAddress cloudurl.Address) CmdUpDeps {
+	return CmdUpDeps{h, upper, b, token2, cloudAddress}
 }
 
 type DownDeps struct {

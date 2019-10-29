@@ -15,6 +15,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/engine"
+	engineanalytics "github.com/windmilleng/tilt/internal/engine/analytics"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/output"
@@ -68,10 +69,11 @@ func (c *upCmd) register() *cobra.Command {
 
 func (c *upCmd) run(ctx context.Context, args []string) error {
 	a := analytics.Get(ctx)
-	a.Incr("cmd.up", map[string]string{
+	cmdUpTags := engineanalytics.CmdUpTags(map[string]string{
 		"watch": fmt.Sprintf("%v", c.watch),
 		"mode":  string(updateModeFlag),
 	})
+	a.Incr("cmd.up", cmdUpTags.AsMap())
 	a.IncrIfUnopted("analytics.up.optdefault")
 	defer a.Flush(time.Second)
 
@@ -93,7 +95,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		logOutput("Tilt analytics manually disabled by environment")
 	}
 
-	threads, err := wireThreads(ctx, a)
+	threads, err := wireCmdUp(ctx, a, cmdUpTags)
 	if err != nil {
 		deferred.SetOutput(deferred.Original())
 		return err
