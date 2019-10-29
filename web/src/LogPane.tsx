@@ -13,7 +13,7 @@ type LogPaneProps = {
   isExpanded: boolean
   handleSetHighlight: (highlight: SnapshotHighlight) => void
   handleClearHighlight: () => void
-  highlight: SnapshotHighlight | null
+  highlight: SnapshotHighlight | null | undefined
   modalIsOpen: boolean
   isSnapshot: boolean
 }

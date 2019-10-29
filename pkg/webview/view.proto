@@ -135,6 +135,7 @@ service ViewService {
   rpc UploadSnapshot(Snapshot) returns (UploadSnapshotResponse) {
     option (google.api.http) = {
       post: "/api/snapshot/new"
+      body: "*"
     };
   }
 }

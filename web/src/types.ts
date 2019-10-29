@@ -116,7 +116,7 @@ export type WebView = {
   tiltCloudUsername: string
   tiltCloudSchemeHost: string
   tiltCloudTeamID: string
-  fatalError: string | null
+  fatalError: string | undefined
 }
 
 export type Snapshot = {
@@ -132,6 +132,6 @@ export type HudState = {
   snapshotLink: string
   showSnapshotModal: boolean
   showFatalErrorModal: ShowFatalErrorModal
-  snapshotHighlight: SnapshotHighlight | null
+  snapshotHighlight: SnapshotHighlight | undefined
   socketState: SocketState
 }

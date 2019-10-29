@@ -312,8 +312,7 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 	de := jsoniter.DecoderExtension{reflect2.TypeOf(time.Time{}): timeAllowEmptyDecoder{}}
 	c.RegisterExtension(de)
 	var snapshot *proto_webview.Snapshot
-	jsDecoder := &runtime.JSONPb{OrigName: false, EmitDefaults: true}
-	decoder := jsDecoder.NewDecoder(bytes.NewBuffer(b))
+	decoder := c.NewDecoder(bytes.NewBuffer(b))
 
 	// TODO(nick): Add more strict decoding once we have better safeguards for making
 	// sure the Go and JS types are in-sync.

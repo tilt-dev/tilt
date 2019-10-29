@@ -26,6 +26,16 @@
             }
           }
         },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/webviewSnapshot"
+            }
+          }
+        ],
         "tags": [
           "ViewService"
         ]
@@ -278,6 +288,24 @@
           "items": {
             "$ref": "#/definitions/webviewFacet"
           }
+        }
+      }
+    },
+    "webviewSnapshot": {
+      "type": "object",
+      "properties": {
+        "view": {
+          "$ref": "#/definitions/webviewView"
+        },
+        "is_sidebar_closed": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "path": {
+          "type": "string"
+        },
+        "snapshot_highlight": {
+          "$ref": "#/definitions/webviewSnapshotHighlight"
         }
       }
     },

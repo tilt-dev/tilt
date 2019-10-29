@@ -29,6 +29,12 @@ declare namespace OpenAPI2 {
     endingLogId?: string;
     text?: string;
   }
+  export interface webviewSnapshot {
+    view?: webviewView;
+    isSidebarClosed?: boolean;
+    path?: string;
+    snapshotHighlight?: webviewSnapshotHighlight;
+  }
   export interface webviewResource {
     name?: string;
     directoriesWatched?: string[];

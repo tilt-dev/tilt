@@ -4,7 +4,7 @@ import { ShowFatalErrorModal } from "./types"
 import "./FatalErrorModal.scss"
 
 type props = {
-  error: string | null
+  error: string | null | undefined
   showFatalErrorModal: ShowFatalErrorModal
   handleClose: () => void
 }
