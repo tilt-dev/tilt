@@ -15,6 +15,7 @@ import (
 	proto_webview "github.com/windmilleng/tilt/pkg/webview"
 )
 
+// TODO(dmiller): delete this
 func StateToWebView(s store.EngineState) View {
 	ret := View{}
 
