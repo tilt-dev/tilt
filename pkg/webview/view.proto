@@ -48,6 +48,11 @@ message Alert {
   string resource_name = 5;
 }
 
+message Facet {
+  string name = 1;
+  string value = 2;
+}
+
 message Resource {
   string name = 1;
   repeated string directories_watched = 2;
@@ -72,6 +77,7 @@ message Resource {
   string combined_log = 21;
   string crash_log = 22;
   repeated Alert alerts = 23;
+  repeated Facet facets = 24;
 }
 
 message TiltBuild {

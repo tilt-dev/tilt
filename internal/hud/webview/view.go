@@ -123,10 +123,11 @@ func ToWebViewBuildRecord(br model.BuildRecord) BuildRecord {
 	}
 }
 
+// TODO(dmiller) this should probably return an error
 func timeToProto(t time.Time) *timestamp.Timestamp {
 	ts, err := ptypes.TimestampProto(t)
 	if err != nil {
-		return nil
+		panic(err)
 	}
 
 	return ts

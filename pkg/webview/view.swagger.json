@@ -113,6 +113,17 @@
         }
       }
     },
+    "webviewFacet": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
     "webviewK8sResourceInfo": {
       "type": "object",
       "properties": {
@@ -244,6 +255,12 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/webviewAlert"
+          }
+        },
+        "facets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/webviewFacet"
           }
         }
       }

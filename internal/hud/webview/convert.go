@@ -12,6 +12,7 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/model"
+
 	proto_webview "github.com/windmilleng/tilt/pkg/webview"
 )
 
@@ -184,6 +185,11 @@ func StateToProtoView(s store.EngineState) *proto_webview.View {
 
 		podID := ms.MostRecentPod().PodID
 
+		var facets []model.Facet
+		if s.Features[feature.Facets] {
+			facets = mt.Facets(s.Secrets)
+		}
+
 		// NOTE(nick): Right now, the UX is designed to show the output exactly one
 		// pod. A better UI might summarize the pods in other ways (e.g., show the
 		// "most interesting" pod that's crash looping, or show logs from all pods
@@ -206,6 +212,7 @@ func StateToProtoView(s store.EngineState) *proto_webview.View {
 			CrashLog:           ms.CrashLog.String(),
 			TriggerMode:        int32(mt.Manifest.TriggerMode),
 			HasPendingChanges:  hasPendingChanges,
+			Facets:             model.FacetsToProto(facets),
 		}
 
 		riv := protoPopulateResourceInfoView(mt, r)
