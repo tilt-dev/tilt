@@ -83,7 +83,12 @@ func (ws WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore) {
 	if err != nil {
 		logger.Get(ctx).Verbosef("getting writer: %v", err)
 	}
-	defer w.Close()
+	defer func() {
+		err := w.Close()
+		if err != nil {
+			logger.Get(ctx).Verbosef("error closing websocket: %v", err)
+		}
+	}()
 
 	err = jsEncoder.NewEncoder(w).Encode(view)
 	if err != nil {
