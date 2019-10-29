@@ -98,8 +98,8 @@ func StateToWebView(s store.EngineState) View {
 			Facets:             facets,
 		}
 
-		populateResourceInfoView(mt, &r)
-		r.RuntimeStatus = runtimeStatus(r.ResourceInfo())
+		riv := populateResourceInfoView(mt, &r)
+		r.RuntimeStatus = runtimeStatus(riv)
 
 		ret.Resources = append(ret.Resources, r)
 	}
@@ -323,12 +323,12 @@ func tiltfileResourceProtoView(s store.EngineState) *proto_webview.Resource {
 	return tr
 }
 
-func populateResourceInfoView(mt *store.ManifestTarget, r *Resource) {
+func populateResourceInfoView(mt *store.ManifestTarget, r *Resource) ResourceInfoView {
 	if mt.Manifest.IsUnresourcedYAMLManifest() {
 		r.YAMLResourceInfo = &YAMLResourceInfo{
 			K8sResources: mt.Manifest.K8sTarget().DisplayNames,
 		}
-		return
+		return r.YAMLResourceInfo
 	}
 
 	if mt.Manifest.IsDC() {
@@ -336,11 +336,11 @@ func populateResourceInfoView(mt *store.ManifestTarget, r *Resource) {
 		dcState := mt.State.DCRuntimeState()
 		info := NewDCResourceInfo(dc.ConfigPaths, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
 		r.DCResourceInfo = &info
-		return
+		return r.DCResourceInfo
 	}
 	if mt.Manifest.IsLocal() {
 		r.LocalResourceInfo = &LocalResourceInfo{}
-		return
+		return r.LocalResourceInfo
 	}
 	if mt.Manifest.IsK8s() {
 		kState := mt.State.K8sRuntimeState()
@@ -355,7 +355,7 @@ func populateResourceInfoView(mt *store.ManifestTarget, r *Resource) {
 			PodRestarts:        pod.VisibleContainerRestarts(),
 			PodLog:             pod.Log(),
 		}
-		return
+		return r.K8sResourceInfo
 	}
 
 	panic("Unrecognized manifest type (not one of: k8s, DC, local)")
@@ -413,15 +413,13 @@ func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Re
 }
 
 func runtimeStatus(res ResourceInfoView) RuntimeStatus {
-	_, isLocal := res.(LocalResourceInfo)
-	_, isLocalPtr := res.(*LocalResourceInfo)
-	if isLocal || isLocalPtr {
+	_, isLocal := res.(*LocalResourceInfo)
+	if isLocal {
 		return RuntimeStatusOK
 	}
 	// if we have no images to build, we have no runtime status monitoring.
-	_, isYAML := res.(YAMLResourceInfo)
-	_, isYAMLPtr := res.(*YAMLResourceInfo)
-	if isYAML || isYAMLPtr {
+	_, isYAML := res.(*YAMLResourceInfo)
+	if isYAML {
 		return RuntimeStatusOK
 	}
 
