@@ -1,12 +1,16 @@
 package tiltfile
 
-import "go.starlark.net/starlark"
+import (
+	"go.starlark.net/starlark"
+
+	"github.com/windmilleng/tilt/internal/tiltfile/io"
+)
 
 // Wrapper around starlark.AsString
 func AsString(x starlark.Value) (string, bool) {
-	b, ok := x.(*blob)
+	b, ok := x.(io.Blob)
 	if ok {
-		return b.text, true
+		return b.Text, true
 	}
 	return starlark.AsString(x)
 }

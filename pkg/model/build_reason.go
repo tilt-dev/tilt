@@ -31,8 +31,8 @@ func (r BuildReason) IsCrashOnly() bool {
 var translations = map[BuildReason]string{
 	BuildReasonFlagChangedFiles: "changed files",
 	BuildReasonFlagConfig:       "config changed",
-	BuildReasonFlagCrash:        "pod crashed",
-	BuildReasonFlagInit:         "tilt up",
+	BuildReasonFlagCrash:        "pod crashed, lost live_update changes",
+	BuildReasonFlagInit:         "initial build",
 }
 
 func (r BuildReason) String() string {

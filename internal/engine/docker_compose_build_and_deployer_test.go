@@ -126,7 +126,7 @@ func TestMultiStageDockerCompose(t *testing.T) {
 	expected := expectedFile{
 		Path: "Dockerfile",
 		Contents: `
-FROM docker.io/library/sancho-base:latest
+FROM sancho-base:latest
 ADD . .
 RUN go install github.com/windmilleng/sancho
 ENTRYPOINT /go/bin/sancho
@@ -158,7 +158,7 @@ func TestMultiStageDockerComposeWithOnlyOneDirtyImage(t *testing.T) {
 	expected := expectedFile{
 		Path: "Dockerfile",
 		Contents: `
-FROM docker.io/library/sancho-base:tilt-prebuilt
+FROM sancho-base:tilt-prebuilt
 ADD . .
 RUN go install github.com/windmilleng/sancho
 ENTRYPOINT /go/bin/sancho

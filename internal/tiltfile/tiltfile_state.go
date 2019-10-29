@@ -22,6 +22,7 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
 	"github.com/windmilleng/tilt/internal/tiltfile/git"
 	"github.com/windmilleng/tilt/internal/tiltfile/include"
+	"github.com/windmilleng/tilt/internal/tiltfile/io"
 	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
 	"github.com/windmilleng/tilt/internal/tiltfile/os"
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
@@ -43,7 +44,6 @@ type tiltfileState struct {
 	features        feature.FeatureSet
 
 	// added to during execution
-	configFiles        []string
 	buildIndex         *buildIndex
 	k8s                []*k8sResource
 	k8sByName          map[string]*k8sResource
@@ -88,8 +88,9 @@ type tiltfileState struct {
 
 	teamName string
 
-	logger   logger.Logger
-	warnings []string
+	logger            logger.Logger
+	warnings          []string
+	postExecReadFiles []string
 }
 
 type k8sResourceAssemblyVersionReason int
@@ -115,7 +116,6 @@ func newTiltfileState(
 		buildIndex:                 newBuildIndex(),
 		k8sByName:                  make(map[string]*k8sResource),
 		k8sImageJSONPaths:          make(map[k8sObjectSelector][]k8s.JSONPath),
-		configFiles:                []string{},
 		usedImages:                 make(map[string]bool),
 		logger:                     logger.Get(ctx),
 		builtinCallCounts:          make(map[string]int),
@@ -136,6 +136,9 @@ func (s *tiltfileState) print(_ *starlark.Thread, msg string) {
 
 // Load loads the Tiltfile in `filename`, and returns the manifests matching `matching`.
 //
+// This often returns a starkit.Model even on error, because the starkit.Model
+// has a record of what happened during the execution (what files were read, etc).
+//
 // TODO(nick): Eventually this will just return a starkit.Model, which will contain
 // all the mutable state collected by execution.
 func (s *tiltfileState) loadManifests(absFilename string, requested []model.ManifestName) ([]model.Manifest, starkit.Model, error) {
@@ -146,37 +149,35 @@ func (s *tiltfileState) loadManifests(absFilename string, requested []model.Mani
 		include.IncludeFn{},
 		git.NewExtension(),
 		os.NewExtension(),
+		io.NewExtension(),
 		s.k8sContextExt,
 		dockerprune.NewExtension(),
 	)
 	if err != nil {
-		if err, ok := err.(*starlark.EvalError); ok {
-			return nil, starkit.Model{}, errors.New(err.Backtrace())
-		}
-		return nil, starkit.Model{}, err
+		return nil, result, starkit.UnpackBacktrace(err)
 	}
 
 	resources, unresourced, err := s.assemble()
 	if err != nil {
-		return nil, starkit.Model{}, err
+		return nil, result, err
 	}
 
 	var manifests []model.Manifest
 	k8sContextState, err := k8scontext.GetState(result)
 	if err != nil {
-		return nil, starkit.Model{}, err
+		return nil, result, err
 	}
 
 	if len(resources.k8s) > 0 {
 		manifests, err = s.translateK8s(resources.k8s)
 		if err != nil {
-			return nil, starkit.Model{}, err
+			return nil, result, err
 		}
 
 		isAllowed := k8sContextState.IsAllowed()
 		if !isAllowed {
 			kubeContext := k8sContextState.KubeContext()
-			return nil, starkit.Model{}, fmt.Errorf(`Stop! %s might be production.
+			return nil, result, fmt.Errorf(`Stop! %s might be production.
 If you're sure you want to deploy there, add:
 allow_k8s_contexts('%s')
 to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext, kubeContext)
@@ -184,24 +185,24 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 	} else {
 		manifests, err = s.translateDC(resources.dc)
 		if err != nil {
-			return nil, starkit.Model{}, err
+			return nil, result, err
 		}
 	}
 
 	err = s.checkForUnconsumedLiveUpdateSteps()
 	if err != nil {
-		return nil, starkit.Model{}, err
+		return nil, result, err
 	}
 
 	localManifests, err := s.translateLocal()
 	if err != nil {
-		return nil, starkit.Model{}, err
+		return nil, result, err
 	}
 	manifests = append(manifests, localManifests...)
 
 	manifests, err = match(manifests, requested)
 	if err != nil {
-		return nil, starkit.Model{}, err
+		return nil, result, err
 	}
 
 	yamlManifest := model.Manifest{}
@@ -247,11 +248,8 @@ const (
 
 	// file functions
 	localN      = "local"
-	readFileN   = "read_file"
-	watchFileN  = "watch_file"
 	kustomizeN  = "kustomize"
 	helmN       = "helm"
-	listdirN    = "listdir"
 	decodeJSONN = "decode_json"
 	readJSONN   = "read_json"
 	readYAMLN   = "read_yaml"
@@ -275,7 +273,6 @@ const (
 
 	// other functions
 	failN    = "fail"
-	blobN    = "blob"
 	setTeamN = "set_team"
 )
 
@@ -340,8 +337,8 @@ func (s *tiltfileState) OnBuiltinCall(name string, fn *starlark.Builtin) {
 	s.builtinCallCounts[name]++
 }
 
-func (s *tiltfileState) OnExec(tiltfilePath string) {
-	s.configFiles = append(s.configFiles, tiltfilePath, tiltIgnorePath(tiltfilePath))
+func (s *tiltfileState) OnExec(t *starlark.Thread, tiltfilePath string) error {
+	return io.RecordReadFile(t, tiltIgnorePath(tiltfilePath))
 }
 
 type builtin func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)
@@ -406,16 +403,6 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 	e.SetPrint(s.print)
 
 	err := e.AddBuiltin(localN, s.potentiallyK8sUnsafeBuiltin(s.local))
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(readFileN, s.skylarkReadFile)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(watchFileN, s.watchFile)
 	if err != nil {
 		return err
 	}
@@ -506,16 +493,6 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 	}
 
 	err = e.AddBuiltin(failN, s.fail)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(blobN, s.blob)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(listdirN, s.listdir)
 	if err != nil {
 		return err
 	}
@@ -1310,10 +1287,10 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 
 		// TODO(maia): might get config files from dc.yml that are overridden by imageTarget :-/
 		// e.g. dc.yml specifies one Dockerfile but the imageTarget specifies another
-		s.configFiles = sliceutils.DedupedAndSorted(append(s.configFiles, configFiles...))
+		s.postExecReadFiles = sliceutils.AppendWithoutDupes(s.postExecReadFiles, configFiles...)
 	}
 	if len(dc.configPaths) != 0 {
-		s.configFiles = sliceutils.DedupedAndSorted(append(s.configFiles, dc.configPaths...))
+		s.postExecReadFiles = sliceutils.AppendWithoutDupes(s.postExecReadFiles, dc.configPaths...)
 	}
 
 	return result, nil

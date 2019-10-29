@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -57,7 +58,8 @@ func (t *ManifestTarget) Facets(secrets model.SecretSet) []model.Facet {
 			sb.WriteString("\n")
 			sb.WriteString(fmt.Sprintf("  Duration: %s\n", br.Duration().String()))
 			if len(br.Edits) > 0 {
-				sb.WriteString(fmt.Sprintf("  Edits: %v\n", br.Edits))
+				edits := ospath.FileListDisplayNames(t.Manifest.LocalPaths(), br.Edits)
+				sb.WriteString(fmt.Sprintf("  Changed files: %s\n", strings.Join(edits, ", ")))
 			}
 			sb.WriteString(("\n\n"))
 		}

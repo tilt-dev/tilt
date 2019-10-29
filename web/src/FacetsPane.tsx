@@ -33,13 +33,12 @@ class FacetsPane extends PureComponent<FacetsProps> {
     if (!this.props.resource.facets) {
       return new Array<JSX.Element>()
     }
-    console.log("facets: " + JSON.stringify(this.props.resource.facets))
     return this.props.resource.facets.map(facet => {
       return (
         <li className="FacetsPane-item">
           <header>
             <div className="FacetsPane-headerDiv">
-              <h3 className="FacetsPane-headerDiv-header">{facet.name}</h3>
+              <h3>{facet.name}</h3>
             </div>
           </header>
           <section>{logToLines(facet.value)}</section>

@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
@@ -56,6 +57,12 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 	if len(podInfo.Containers) == 0 {
 		// not enough info to do anything else
 		return
+	}
+
+	if podInfo.AllContainersReady() {
+		runtime := ms.K8sRuntimeState()
+		runtime.LastReadyTime = time.Now()
+		ms.RuntimeState = runtime
 	}
 
 	fwdsValid := portForwardsAreValid(manifest, *podInfo)

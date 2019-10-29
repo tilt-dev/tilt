@@ -751,3 +751,116 @@ func TestBuildControllerLocalResourcesBeforeClusterResources(t *testing.T) {
 	}
 	assert.Equal(t, expectedBuildOrder, observedBuildOrder)
 }
+
+func TestBuildControllerResourceDeps(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	depGraph := map[string][]string{
+		"a": {"e"},
+		"b": {"e"},
+		"c": {"d", "g"},
+		"d": {},
+		"e": {"d", "f"},
+		"f": {"c"},
+		"g": {},
+	}
+
+	var manifests []model.Manifest
+	manifestsByName := make(map[string]model.Manifest)
+	for name, deps := range depGraph {
+		m := f.newManifest(name)
+		for _, dep := range deps {
+			m.ResourceDependencies = append(m.ResourceDependencies, model.ManifestName(dep))
+		}
+		manifests = append(manifests, m)
+		manifestsByName[name] = m
+	}
+
+	f.Start(manifests, true)
+
+	var observedOrder []string
+	for i := range manifests {
+		call := f.nextCall("%dth build. have built: %v", i, observedOrder)
+		name := call.k8s().Name.String()
+		observedOrder = append(observedOrder, name)
+		pb := podbuilder.New(t, manifestsByName[name]).WithContainerReady(true)
+		f.podEvent(pb.Build(), model.ManifestName(name))
+	}
+
+	var expectedManifests []string
+	for name := range depGraph {
+		expectedManifests = append(expectedManifests, name)
+	}
+
+	// make sure everything built
+	require.ElementsMatch(t, expectedManifests, observedOrder)
+
+	buildIndexes := make(map[string]int)
+	for i, n := range observedOrder {
+		buildIndexes[n] = i
+	}
+
+	// make sure it happened in an acceptable order
+	for name, deps := range depGraph {
+		for _, dep := range deps {
+			require.Truef(t, buildIndexes[name] > buildIndexes[dep], "%s built before %s, contrary to resource deps", name, dep)
+		}
+	}
+}
+
+// normally, local builds go before k8s builds
+// if the local build depends on the k8s build, the k8s build should go first
+func TestBuildControllerResourceDepTrumpsLocalResourcePriority(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	k8sManifest := f.newManifest("foo")
+	localManifest := manifestbuilder.New(f, "bar").
+		WithLocalResource("echo bar", nil).
+		WithResourceDeps("foo").Build()
+	manifests := []model.Manifest{localManifest, k8sManifest}
+	f.Start(manifests, true)
+
+	var observedBuildOrder []string
+	for i := 0; i < len(manifests); i++ {
+		call := f.nextCall()
+		if !call.k8s().Empty() {
+			observedBuildOrder = append(observedBuildOrder, call.k8s().Name.String())
+			pb := podbuilder.New(t, k8sManifest).WithContainerReady(true)
+			f.podEvent(pb.Build(), k8sManifest.Name)
+			continue
+		}
+		observedBuildOrder = append(observedBuildOrder, call.local().Name.String())
+	}
+
+	expectedBuildOrder := []string{"foo", "bar"}
+	assert.Equal(t, expectedBuildOrder, observedBuildOrder)
+}
+
+// bar depends on foo, we build foo three times before marking it ready, and make sure bar waits
+func TestBuildControllerResourceDepTrumpsInitialBuild(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	foo := f.newManifest("foo")
+	bar := f.newManifest("bar")
+	bar.ResourceDependencies = []model.ManifestName{"foo"}
+	manifests := []model.Manifest{foo, bar}
+	f.Start(manifests, true)
+
+	call := f.nextCall()
+	require.Equal(t, "foo", call.k8s().Name.String())
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
+	call = f.nextCall()
+	require.Equal(t, "foo", call.k8s().Name.String())
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
+	call = f.nextCall()
+	require.Equal(t, "foo", call.k8s().Name.String())
+
+	// now mark foo ready so that bar can build
+	pb := podbuilder.New(t, foo).WithContainerReady(true)
+	f.podEvent(pb.Build(), foo.Name)
+	call = f.nextCall()
+	require.Equal(t, "bar", call.k8s().Name.String())
+}

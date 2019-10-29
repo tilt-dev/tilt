@@ -111,6 +111,8 @@ type K8sBuildResult struct {
 	// The UIDs that we deployed to a Kubernetes cluster.
 	DeployedUIDs []types.UID
 
+	PodTemplateSpecHashes []k8s.PodTemplateSpecHash
+
 	AppliedEntitiesText string
 }
 
@@ -127,13 +129,14 @@ func (r K8sBuildResult) Facets() []model.Facet {
 }
 
 // For kubernetes deploy targets.
-func NewK8sDeployResult(id model.TargetID, uids []types.UID, appliedEntities []k8s.K8sEntity) BuildResult {
+func NewK8sDeployResult(id model.TargetID, uids []types.UID, hashes []k8s.PodTemplateSpecHash, appliedEntities []k8s.K8sEntity) BuildResult {
 	appliedEntitiesYaml, _ := k8s.SerializeSpecYAML(appliedEntities)
 
 	return K8sBuildResult{
-		id:                  id,
-		DeployedUIDs:        uids,
-		AppliedEntitiesText: appliedEntitiesYaml,
+		id:                    id,
+		DeployedUIDs:          uids,
+		PodTemplateSpecHashes: hashes,
+		AppliedEntitiesText:   appliedEntitiesYaml,
 	}
 }
 
@@ -166,6 +169,17 @@ func (set BuildResultSet) DeployedUIDSet() UIDSet {
 		r, ok := r.(K8sBuildResult)
 		if ok {
 			result.Add(r.DeployedUIDs...)
+		}
+	}
+	return result
+}
+
+func (set BuildResultSet) DeployedPodTemplateSpecHashes() PodTemplateSpecHashSet {
+	result := NewPodTemplateSpecHashSet()
+	for _, r := range set {
+		r, ok := r.(K8sBuildResult)
+		if ok {
+			result.Add(r.PodTemplateSpecHashes...)
 		}
 	}
 	return result

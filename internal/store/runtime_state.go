@@ -15,14 +15,21 @@ import (
 
 type RuntimeState interface {
 	RuntimeState()
+	HasEverBeenReady() bool
 }
 
 // Currently just a placeholder, as a LocalResource has no runtime state, only "build"
 // state. In future, we may use this to store runtime state for long-running processes
 // kicked off via a LocalResource.
-type LocalRuntimeState struct{}
+type LocalRuntimeState struct {
+	HasFinishedAtLeastOnce bool
+}
 
 func (LocalRuntimeState) RuntimeState() {}
+
+func (l LocalRuntimeState) HasEverBeenReady() bool {
+	return l.HasFinishedAtLeastOnce
+}
 
 var _ RuntimeState = LocalRuntimeState{}
 
@@ -32,9 +39,12 @@ type K8sRuntimeState struct {
 	// In many cases, this will be a Deployment UID.
 	PodAncestorUID types.UID
 
-	Pods           map[k8s.PodID]*Pod
-	LBs            map[k8s.ServiceName]*url.URL
-	DeployedUIDSet UIDSet
+	Pods                           map[k8s.PodID]*Pod
+	LBs                            map[k8s.ServiceName]*url.URL
+	DeployedUIDSet                 UIDSet
+	DeployedPodTemplateSpecHashSet PodTemplateSpecHashSet
+
+	LastReadyTime time.Time
 }
 
 func (K8sRuntimeState) RuntimeState() {}
@@ -48,10 +58,15 @@ func NewK8sRuntimeState(pods ...Pod) K8sRuntimeState {
 		podMap[p.PodID] = &p
 	}
 	return K8sRuntimeState{
-		Pods:           podMap,
-		LBs:            make(map[k8s.ServiceName]*url.URL),
-		DeployedUIDSet: NewUIDSet(),
+		Pods:                           podMap,
+		LBs:                            make(map[k8s.ServiceName]*url.URL),
+		DeployedUIDSet:                 NewUIDSet(),
+		DeployedPodTemplateSpecHashSet: NewPodTemplateSpecHashSet(),
 	}
+}
+
+func (s K8sRuntimeState) HasEverBeenReady() bool {
+	return !s.LastReadyTime.IsZero()
 }
 
 func (s K8sRuntimeState) PodLen() int {
@@ -158,6 +173,10 @@ func (p Pod) AllContainerPorts() []int32 {
 }
 
 func (p Pod) AllContainersReady() bool {
+	if len(p.Containers) == 0 {
+		return false
+	}
+
 	for _, c := range p.Containers {
 		if !c.Ready {
 			return false
@@ -192,4 +211,20 @@ func (s UIDSet) Add(uids ...types.UID) {
 
 func (s UIDSet) Contains(uid types.UID) bool {
 	return s[uid]
+}
+
+type PodTemplateSpecHashSet map[k8s.PodTemplateSpecHash]bool
+
+func NewPodTemplateSpecHashSet() PodTemplateSpecHashSet {
+	return make(map[k8s.PodTemplateSpecHash]bool)
+}
+
+func (s PodTemplateSpecHashSet) Add(hashes ...k8s.PodTemplateSpecHash) {
+	for _, hash := range hashes {
+		s[hash] = true
+	}
+}
+
+func (s PodTemplateSpecHashSet) Contains(hash k8s.PodTemplateSpecHash) bool {
+	return s[hash]
 }

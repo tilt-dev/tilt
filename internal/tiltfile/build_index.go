@@ -37,7 +37,7 @@ func (idx *buildIndex) addImage(img *dockerImage) error {
 	name := selector.RefName()
 	_, hasExisting := idx.imagesBySelector[selector.String()]
 	if hasExisting {
-		return fmt.Errorf("Image for ref %q has already been defined", selector.String())
+		return fmt.Errorf("Image for ref %q has already been defined", reference.FamiliarString(selector))
 	}
 
 	idx.imagesBySelector[selector.String()] = img
@@ -73,9 +73,10 @@ func (idx *buildIndex) findBuilderByID(id model.TargetID) *dockerImage {
 // Check to see if we have a build target for that image,
 // and mark that build target as consumed by an larger target.
 func (idx *buildIndex) findBuilderForConsumedImage(ref reference.Named) *dockerImage {
-	if !idx.consumedImageNameMap[ref.Name()] {
-		idx.consumedImageNameMap[ref.Name()] = true
-		idx.consumedImageNames = append(idx.consumedImageNames, ref.Name())
+	name := reference.FamiliarName(ref)
+	if !idx.consumedImageNameMap[name] {
+		idx.consumedImageNameMap[name] = true
+		idx.consumedImageNames = append(idx.consumedImageNames, name)
 	}
 
 	for _, image := range idx.images {
@@ -93,15 +94,20 @@ func (idx *buildIndex) assertAllMatched() error {
 			bagSizes := []int{2, 3, 4}
 			cm := closestmatch.New(idx.consumedImageNames, bagSizes)
 			matchLines := []string{}
-			for i, match := range cm.ClosestN(image.configurationRef.RefName(), 3) {
-				if i == 0 {
-					matchLines = append(matchLines, "Did you mean…")
+			for i, match := range cm.ClosestN(image.configurationRef.RefFamiliarName(), 3) {
+				// If there are no matches, the closestmatch library sometimes returns
+				// an empty string
+				if match == "" {
+					break
 				}
-				matchLines = append(matchLines, fmt.Sprintf("    - %s", match))
+				if i == 0 {
+					matchLines = append(matchLines, "Did you mean…\n")
+				}
+				matchLines = append(matchLines, fmt.Sprintf("    - %s\n", match))
 			}
 
-			return fmt.Errorf("Image not used in any deploy config:\n    ✕ %v\n%s\nSkipping this image build",
-				image.configurationRef.String(), strings.Join(matchLines, "\n"))
+			return fmt.Errorf("Image not used in any deploy config:\n    ✕ %v\n%sSkipping this image build",
+				reference.FamiliarString(image.configurationRef), strings.Join(matchLines, ""))
 		}
 	}
 	return nil

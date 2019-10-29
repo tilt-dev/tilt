@@ -260,7 +260,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 			b.nextDeployedUID = ""
 		}
 		uids := []types.UID{uid}
-		result[call.k8s().ID()] = store.NewK8sDeployResult(call.k8s().ID(), uids, nil)
+		result[call.k8s().ID()] = store.NewK8sDeployResult(call.k8s().ID(), uids, nil, nil)
 	}
 
 	b.nextLiveUpdateContainerIDs = nil
@@ -3259,7 +3259,9 @@ func (f *testFixture) nextCallComplete(msgAndArgs ...interface{}) buildAndDeploy
 func (f *testFixture) nextCall(msgAndArgs ...interface{}) buildAndDeployCall {
 	msg := "timed out waiting for BuildAndDeployCall"
 	if len(msgAndArgs) > 0 {
-		msg = fmt.Sprintf("timed out waiting for BuildAndDeployCall: %s", msgAndArgs...)
+		format := msgAndArgs[0].(string)
+		args := msgAndArgs[1:]
+		msg = fmt.Sprintf("timed out waiting for BuildAndDeployCall: %s", fmt.Sprintf(format, args...))
 	}
 
 	for {
@@ -3545,7 +3547,7 @@ func deployResultSet(manifest model.Manifest, uid types.UID) store.BuildResultSe
 		resultSet[iTarget.ID()] = store.NewImageBuildResult(iTarget.ID(), ref)
 	}
 	ktID := manifest.K8sTarget().ID()
-	resultSet[ktID] = store.NewK8sDeployResult(ktID, []types.UID{uid}, nil)
+	resultSet[ktID] = store.NewK8sDeployResult(ktID, []types.UID{uid}, nil, nil)
 	return resultSet
 }
 

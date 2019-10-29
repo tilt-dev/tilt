@@ -101,7 +101,7 @@ ADD . .
 		assert.True(t, modified)
 		assert.Equal(t, `
 FROM golang:1.10
-COPY --from=docker.io/vandelay/common:deadbeef /usr/src/common/package.json /usr/src/common/yarn.lock /usr/src/common/
+COPY --from=vandelay/common:deadbeef /usr/src/common/package.json /usr/src/common/yarn.lock /usr/src/common/
 ADD . .
 `, string(newDf))
 	}
@@ -129,7 +129,7 @@ ADD . .
 		}
 		assert.Equal(t, `
 FROM golang:1.10
-COPY --from=docker.io/vandelay/common:deadbeef /usr/src/common/package.json /usr/src/common/yarn.lock
+COPY --from=vandelay/common:deadbeef /usr/src/common/package.json /usr/src/common/yarn.lock
 ADD . .
 `, string(newDf))
 	}
@@ -144,7 +144,7 @@ ADD . .
 		}
 		assert.Equal(t, `
 FROM golang:1.10
-COPY --from=docker.io/vandelay/common:deadbeef /usr/src/common/package.json /usr/src/common/yarn.lock
+COPY --from=vandelay/common:deadbeef /usr/src/common/package.json /usr/src/common/yarn.lock
 ADD . .
 `, string(newDf))
 	}

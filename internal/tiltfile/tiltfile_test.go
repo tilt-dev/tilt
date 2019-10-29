@@ -148,7 +148,7 @@ k8s_yaml('foo.yaml')
 	f.load()
 
 	f.assertNextManifest("foo",
-		db(imageNormalized("fooimage")),
+		db(image("fooimage")),
 		deployment("foo"))
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
@@ -1052,14 +1052,75 @@ k8s_yaml(yml)
 
 	f.load()
 
-	m := f.assertNextManifestUnresourced("rose-quartz-helloworld-chart")
+	m := f.assertNextManifestUnresourced("garnet", "rose-quartz-helloworld-chart")
 	yaml := m.K8sTarget().YAML
 	assert.Contains(t, yaml, "release: rose-quartz")
 	assert.Contains(t, yaml, "namespace: garnet")
 	assert.Contains(t, yaml, "namespaceLabel: garnet")
 	assert.Contains(t, yaml, "name: nginx-dev")
 
+	entities, err := k8s.ParseYAMLFromString(yaml)
+	require.NoError(t, err)
+
+	names := k8s.UniqueNames(entities, 2)
+	expectedNames := []string{"garnet:namespace", "rose-quartz-helloworld-chart:service"}
+	assert.ElementsMatch(t, expectedNames, names)
+
 	f.assertConfigFiles("./helm/", "./dev/helm/values-dev.yaml", ".tiltignore", "Tiltfile")
+}
+
+func TestHelmNamespaceFlagDoesNotInsertNSEntityIfNSInChart(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupHelm()
+
+	valuesWithNamespace := `
+namespace:
+  enabled: true
+  name: foobarbaz`
+	f.file("helm/extra_values.yaml", valuesWithNamespace)
+
+	f.file("Tiltfile", `
+yml = helm('./helm', name='rose-quartz', namespace="foobarbaz", values=['./helm/extra_values.yaml'])
+k8s_yaml(yml)
+`)
+
+	f.load()
+
+	m := f.assertNextManifestUnresourced("foobarbaz", "rose-quartz-helloworld-chart")
+	yaml := m.K8sTarget().YAML
+
+	entities, err := k8s.ParseYAMLFromString(yaml)
+	require.NoError(t, err)
+	require.Len(t, entities, 2)
+	e := entities[0]
+	require.Equal(t, "Namespace", e.GVK().Kind)
+	assert.Equal(t, "foobarbaz", e.Name())
+	assert.Equal(t, "indeed", e.Labels()["somePersistedLabel"],
+		"label originally specified in chart YAML should persist")
+}
+
+func TestHelmNamespaceFlagInsertsNSEntityIfDifferentNSInChart(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupHelm()
+
+	valuesWithNamespace := `
+namespace:
+  enabled: true
+  name: not-the-one-specified-in-flag` // what kind of jerk would do this?
+	f.file("helm/extra_values.yaml", valuesWithNamespace)
+
+	f.file("Tiltfile", `
+yml = helm('./helm', name='rose-quartz', namespace="foobarbaz", values=['./helm/extra_values.yaml'])
+k8s_yaml(yml)
+`)
+
+	f.load()
+
+	f.assertNextManifestUnresourced("foobarbaz", "not-the-one-specified-in-flag", "rose-quartz-helloworld-chart")
 }
 
 func TestHelmInvalidDirectory(t *testing.T) {
@@ -1236,7 +1297,7 @@ docker_build('gcr.io/foo:stable', '.')
 k8s_yaml('foo.yaml')
 `)
 
-	w := unusedImageWarning("gcr.io/foo:stable", []string{"gcr.io/foo", "docker.io/library/golang"})
+	w := unusedImageWarning("gcr.io/foo:stable", []string{"gcr.io/foo"})
 	f.loadAssertWarnings(w)
 }
 
@@ -1252,7 +1313,7 @@ docker_build('gcr.io/foo:stable', '.')
 k8s_yaml('foo.yaml')
 `)
 
-	w := unusedImageWarning("gcr.io/foo:stable", []string{"gcr.io/foo", "docker.io/library/golang"})
+	w := unusedImageWarning("gcr.io/foo:stable", []string{"gcr.io/foo"})
 	f.loadAssertWarnings(w)
 }
 
@@ -1581,7 +1642,7 @@ docker_build('gcr.typo.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 `)
 
-	w := unusedImageWarning("gcr.typo.io/foo", []string{"gcr.io/foo", "docker.io/library/golang"})
+	w := unusedImageWarning("gcr.typo.io/foo", []string{"gcr.io/foo"})
 	f.loadAssertWarnings(w)
 }
 
@@ -1920,7 +1981,7 @@ k8s_kind(%s)
 					t.Fatal("invalid test: cannot expect image without expecting workload")
 				}
 				if test.expectedError == "" {
-					w := unusedImageWarning("docker.io/test/mycrd-env", []string{"docker.io/library/golang"})
+					w := unusedImageWarning("docker.io/test/mycrd-env", []string{})
 					f.loadAssertWarnings(w)
 				} else {
 					f.loadErrString(test.expectedError)
@@ -2041,7 +2102,7 @@ func TestExtraImageLocationDeploymentEnvVarDoesntMatchIfNotSpecified(t *testing.
 docker_build('gcr.io/foo', 'foo')
 docker_build('gcr.io/foo-fetcher', 'foo-fetcher')
 	`)
-	f.loadAssertWarnings(unusedImageWarning("gcr.io/foo-fetcher", []string{"gcr.io/foo", "docker.io/library/golang"}))
+	f.loadAssertWarnings(unusedImageWarning("gcr.io/foo-fetcher", []string{"gcr.io/foo"}))
 	f.assertNextManifest("foo",
 		db(
 			image("gcr.io/foo"),
@@ -2103,7 +2164,7 @@ k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_I
 				)
 			} else {
 				if test.expectedError == "" {
-					w := unusedImageWarning("gcr.io/foo-fetcher", []string{"gcr.io/foo", "docker.io/library/golang"})
+					w := unusedImageWarning("gcr.io/foo-fetcher", []string{"gcr.io/foo"})
 					f.loadAssertWarnings(w)
 				} else {
 					f.loadErrString(test.expectedError)
@@ -4327,11 +4388,14 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 			if ref.Empty() {
 				f.t.Fatalf("manifest %v has no more image refs; expected %q", m.Name, opt.image.ref)
 			}
-			if !assert.Equal(f.t, opt.image.ref, ref.String(), "manifest %v image ref", m.Name) {
+
+			expectedConfigRef := container.MustParseNamed(opt.image.ref)
+			if !assert.Equal(f.t, expectedConfigRef.String(), ref.String(), "manifest %v image ref", m.Name) {
 				f.t.FailNow()
 			}
 
-			if !assert.Equal(f.t, opt.image.deploymentRef, image.DeploymentRef.String(), "manifest %v image injected ref", m.Name) {
+			expectedDeployRef := container.MustParseNamed(opt.image.deploymentRef)
+			if !assert.Equal(f.t, expectedDeployRef.String(), image.DeploymentRef.String(), "manifest %v image injected ref", m.Name) {
 				f.t.FailNow()
 			}
 
@@ -4364,7 +4428,8 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 		case cbHelper:
 			image := nextImageTarget()
 			ref := image.ConfigurationRef
-			if !assert.Equal(f.t, opt.image.ref, ref.String(), "manifest %v image ref", m.Name) {
+			expectedRef := container.MustParseNamed(opt.image.ref)
+			if !assert.Equal(f.t, expectedRef.String(), ref.String(), "manifest %v image ref", m.Name) {
 				f.t.FailNow()
 			}
 
@@ -4720,10 +4785,6 @@ func image(ref string) imageHelper {
 	return imageHelper{ref: ref, deploymentRef: ref}
 }
 
-func imageNormalized(ref string) imageHelper {
-	return image(container.MustNormalizeRef(ref))
-}
-
 func (ih imageHelper) withInjectedRef(injectedRef string) imageHelper {
 	ih.deploymentRef = injectedRef
 	return ih
@@ -4902,6 +4963,7 @@ func (f *fixture) setupHelm() {
 	f.file("helm/templates/deployment.yaml", deploymentYAML)
 	f.file("helm/templates/ingress.yaml", ingressYAML)
 	f.file("helm/templates/service.yaml", serviceYAML)
+	f.file("helm/templates/namespace.yaml", namespaceYAML)
 }
 
 func (f *fixture) setupHelmWithRequirements() {
