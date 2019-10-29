@@ -135,12 +135,9 @@ x = 1
 local('exit 1')
 `)
 
-	// TODO(nick): Currently this doesn't include the complete
-	// trace, because we need an upstream starlark fix.
-	// https://github.com/google/starlark-go/pull/244
 	f.loadErrString(
 		fmt.Sprintf("%s/Tiltfile:2:1: in <toplevel>", f.Path()),
-		"cannot load ./foo/Tiltfile",
+		fmt.Sprintf("%s/foo/Tiltfile:3:6: in <toplevel>", f.Path()),
 		"exit status 1")
 }
 
