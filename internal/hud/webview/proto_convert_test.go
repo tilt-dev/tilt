@@ -18,6 +18,15 @@ import (
 	proto_webview "github.com/windmilleng/tilt/pkg/webview"
 )
 
+func stateToProtoView(t *testing.T, s store.EngineState) *proto_webview.View {
+	v, err := StateToProtoView(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return v
+}
+
 func TestProtoStateToWebViewMultipleSyncs(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
@@ -38,7 +47,7 @@ func TestProtoStateToWebViewMultipleSyncs(t *testing.T) {
 	}
 	ms.MutableBuildStatus(m.ImageTargets[0].ID()).PendingFileChanges =
 		map[string]time.Time{"/a/b/d": time.Now(), "/a/b/c/d/e": time.Now()}
-	v := StateToProtoView(*state)
+	v := stateToProtoView(t, *state)
 
 	if !assert.Equal(t, 2, len(v.Resources)) {
 		return
@@ -62,7 +71,7 @@ func TestProtoStateToWebViewPortForwards(t *testing.T) {
 		},
 	})
 	state := newState([]model.Manifest{m})
-	v := StateToProtoView(*state)
+	v := stateToProtoView(t, *state)
 	res, _ := findResource(m.Name, v)
 	assert.Equal(t,
 		[]string{"http://localhost:7000/", "http://localhost:8000/"},
@@ -73,7 +82,7 @@ func TestProtoStateToViewUnresourcedYAMLManifest(t *testing.T) {
 	m, err := k8s.NewK8sOnlyManifestFromYAML(testyaml.SanchoYAML)
 	assert.NoError(t, err)
 	state := newState([]model.Manifest{m})
-	v := StateToProtoView(*state)
+	v := stateToProtoView(t, *state)
 
 	assert.Equal(t, 2, len(v.Resources))
 
@@ -92,7 +101,7 @@ func TestProtoStateToViewTiltfileLog(t *testing.T) {
 		false,
 		"",
 		nil)
-	v := StateToProtoView(*es)
+	v := stateToProtoView(t, *es)
 	r, ok := findResource("(Tiltfile)", v)
 	require.True(t, ok, "no resource named (Tiltfile) found")
 	assert.Equal(t, "hello", r.CombinedLog)
@@ -121,7 +130,7 @@ func TestProtoNeedsNudgeSet(t *testing.T) {
 	targ.State = &store.ManifestState{}
 	state.UpsertManifestTarget(targ)
 
-	v := StateToProtoView(*state)
+	v := stateToProtoView(t, *state)
 
 	assert.False(t, v.NeedsAnalyticsNudge,
 		"LastSuccessfulDeployTime not set, so NeedsNudge should not be set")
@@ -129,7 +138,7 @@ func TestProtoNeedsNudgeSet(t *testing.T) {
 	targ.State = &store.ManifestState{LastSuccessfulDeployTime: time.Now()}
 	state.UpsertManifestTarget(targ)
 
-	v = StateToProtoView(*state)
+	v = stateToProtoView(t, *state)
 	assert.True(t, v.NeedsAnalyticsNudge)
 }
 
@@ -141,7 +150,7 @@ func TestProtoTriggerMode(t *testing.T) {
 	targ.State = &store.ManifestState{}
 	state.UpsertManifestTarget(targ)
 
-	v := StateToProtoView(*state)
+	v := stateToProtoView(t, *state)
 	assert.Equal(t, 2, len(v.Resources))
 
 	newM, _ := findResource(model.ManifestName("foo"), v)
@@ -152,7 +161,7 @@ func TestProtoFeatureFlags(t *testing.T) {
 	state := newState(nil)
 	state.Features = map[string]bool{"foo_feature": true}
 
-	v := StateToProtoView(*state)
+	v := stateToProtoView(t, *state)
 	assert.Equal(t, v.FeatureFlags, map[string]bool{"foo_feature": true})
 }
 
@@ -175,7 +184,7 @@ func TestProtoReadinessCheckFailing(t *testing.T) {
 		},
 	}
 
-	v := StateToProtoView(*state)
+	v := stateToProtoView(t, *state)
 	rv, ok := findResource(m.Name, v)
 	require.True(t, ok)
 	require.Equal(t, RuntimeStatusPending, RuntimeStatus(rv.RuntimeStatus))
@@ -191,7 +200,7 @@ func TestProtoLocalResource(t *testing.T) {
 	}.WithDeployTarget(lt)
 
 	state := newState([]model.Manifest{m})
-	v := StateToProtoView(*state)
+	v := stateToProtoView(t, *state)
 
 	assert.Equal(t, 2, len(v.Resources))
 	r := v.Resources[1]
