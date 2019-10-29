@@ -35,20 +35,20 @@ class SidebarItem {
    * Create a pared down SidebarItem from a ResourceView
    */
   constructor(res: Resource) {
-      this.name = res.name
-      this.status = combinedStatus(res)
-      this.hasWarnings = warnings(res).length > 0
-      this.hasEndpoints = (res.endpoints || []).length > 0
-      this.lastDeployTime = res.lastDeployTime
-      this.pendingBuildSince = res.pendingBuildSince
-      this.currentBuildStartTime = res.currentBuild.startTime
-      this.alertCount = numberOfAlerts(res)
-      this.triggerMode = res.triggerMode
-      this.hasPendingChanges = res.hasPendingChanges
-      let buildHistory = res.buildHistory || []
-      if (buildHistory.length > 0) {
-          this.lastBuild = buildHistory[0]
-      }
+    this.name = res.name
+    this.status = combinedStatus(res)
+    this.hasWarnings = warnings(res).length > 0
+    this.hasEndpoints = (res.endpoints || []).length > 0
+    this.lastDeployTime = res.lastDeployTime
+    this.pendingBuildSince = res.pendingBuildSince
+    this.currentBuildStartTime = res.currentBuild.startTime
+    this.alertCount = numberOfAlerts(res)
+    this.triggerMode = res.triggerMode
+    this.hasPendingChanges = res.hasPendingChanges
+    let buildHistory = res.buildHistory || []
+    if (buildHistory.length > 0) {
+      this.lastBuild = buildHistory[0]
+    }
   }
 }
 
@@ -90,6 +90,8 @@ class Sidebar extends PureComponent<SidebarProps> {
           ) : (
             ""
           )}
+          <span className="resLink-timeAgo empty">—</span>
+          <span className="resLink-isDirty" />
         </Link>
       </li>
     )
@@ -123,14 +125,23 @@ class Sidebar extends PureComponent<SidebarProps> {
       }
       return (
         <li key={item.name}>
+          <SidebarTriggerButton
+            isSelected={isSelected}
+            resourceName={item.name}
+            isReady={item.hasPendingChanges && !building}
+            triggerMode={item.triggerMode}
+          />
           <Link className={classes} to={pb.path(link)}>
-            <SidebarIcon
-              status={item.status}
-              hasWarning={item.hasWarnings}
-              isBuilding={building}
-              isDirty={item.hasPendingChanges}
-              lastBuild={item.lastBuild}
-            />
+            <div className="sidebarIcon">
+              <SidebarIcon
+                status={item.status}
+                triggerMode={item.triggerMode}
+                hasWarning={item.hasWarnings}
+                isBuilding={building}
+                isDirty={item.hasPendingChanges}
+                lastBuild={item.lastBuild}
+              />
+            </div>
             <p className="resLink-name" title={item.name}>
               {item.name}
             </p>
@@ -142,12 +153,9 @@ class Sidebar extends PureComponent<SidebarProps> {
             <span className={`resLink-timeAgo ${hasBuilt ? "" : "empty"}`}>
               {hasBuilt ? timeAgo : "—"}
             </span>
-            <SidebarTriggerButton
-              isSelected={isSelected}
-              resourceName={item.name}
-              isReady={item.hasPendingChanges && !building}
-              triggerMode={item.triggerMode}
-            />
+            <span className="resLink-isDirty">
+              {item.hasPendingChanges && isManualTriggerMode ? "*" : null}
+            </span>
           </Link>
         </li>
       )
@@ -161,6 +169,7 @@ class Sidebar extends PureComponent<SidebarProps> {
             {listItems}
           </ul>
         </nav>
+        <div className="Sidebar-spacer">&nbsp;</div>
         <button className="Sidebar-toggle" onClick={this.props.toggleSidebar}>
           <ChevronSvg /> Collapse
         </button>

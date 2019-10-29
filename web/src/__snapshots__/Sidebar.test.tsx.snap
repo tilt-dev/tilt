@@ -26,6 +26,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           >
             7
           </span>
+          <span
+            className="resLink-timeAgo empty"
+          >
+            —
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
       <li>
@@ -35,10 +43,10 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           onClick={[Function]}
         >
           <div
-            className="SidebarIcon"
+            className="sidebarIcon"
           >
             <svg
-              className="building"
+              className="dotAutoBuilding auto"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -69,11 +77,8 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               &lt;5s
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          isReady
-        }"
-            onClick={[Function]}
+          <span
+            className="resLink-isDirty"
           />
         </a>
       </li>
@@ -84,10 +89,10 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           onClick={[Function]}
         >
           <div
-            className="SidebarIcon"
+            className="sidebarIcon"
           >
             <svg
-              className="building"
+              className="dotAutoBuilding auto"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -118,11 +123,8 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               &lt;15s
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          isReady
-        }"
-            onClick={[Function]}
+          <span
+            className="resLink-isDirty"
           />
         </a>
       </li>
@@ -133,10 +135,10 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           onClick={[Function]}
         >
           <div
-            className="SidebarIcon"
+            className="sidebarIcon"
           >
             <svg
-              className="building"
+              className="dotAutoBuilding auto"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -167,11 +169,8 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               &lt;30s
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          isReady
-        }"
-            onClick={[Function]}
+          <span
+            className="resLink-isDirty"
           />
         </a>
       </li>
@@ -182,10 +181,10 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           onClick={[Function]}
         >
           <div
-            className="SidebarIcon"
+            className="sidebarIcon"
           >
             <svg
-              className="building"
+              className="dotAutoBuilding auto"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -216,11 +215,8 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               &lt;30s
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          isReady
-        }"
-            onClick={[Function]}
+          <span
+            className="resLink-isDirty"
           />
         </a>
       </li>
@@ -231,10 +227,10 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           onClick={[Function]}
         >
           <div
-            className="SidebarIcon"
+            className="sidebarIcon"
           >
             <svg
-              className="building"
+              className="dotAutoBuilding auto"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -265,11 +261,8 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               &lt;45s
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          isReady
-        }"
-            onClick={[Function]}
+          <span
+            className="resLink-isDirty"
           />
         </a>
       </li>
@@ -280,10 +273,10 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           onClick={[Function]}
         >
           <div
-            className="SidebarIcon"
+            className="sidebarIcon"
           >
             <svg
-              className="building"
+              className="dotAutoBuilding auto"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -314,11 +307,8 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               &lt;1m
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          isReady
-        }"
-            onClick={[Function]}
+          <span
+            className="resLink-isDirty"
           />
         </a>
       </li>
@@ -329,10 +319,10 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           onClick={[Function]}
         >
           <div
-            className="SidebarIcon"
+            className="sidebarIcon"
           >
             <svg
-              className="building"
+              className="dotAutoBuilding auto"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -363,16 +353,18 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               &lt;1m
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          isReady
-        }"
-            onClick={[Function]}
+          <span
+            className="resLink-isDirty"
           />
         </a>
       </li>
     </ul>
   </nav>
+  <div
+    className="Sidebar-spacer"
+  >
+     
+  </div>
   <button
     className="Sidebar-toggle"
     onClick={null}
@@ -407,6 +399,14 @@ exports[`sidebar renders * next to dirty manual trigger mode resources 1`] = `
             All
           </span>
           
+          <span
+            className="resLink-timeAgo empty"
+          >
+            —
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
       <li>
@@ -416,10 +416,10 @@ exports[`sidebar renders * next to dirty manual trigger mode resources 1`] = `
           onClick={[Function]}
         >
           <div
-            className="SidebarIcon"
+            className="sidebarIcon"
           >
             <svg
-              className="default"
+              className="dotAuto auto"
               fill="#20ba31"
             >
               indicator-auto.svg
@@ -442,32 +442,31 @@ exports[`sidebar renders * next to dirty manual trigger mode resources 1`] = `
               1yr
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          isReady
-        }"
-            onClick={[Function]}
+          <span
+            className="resLink-isDirty"
           />
         </a>
       </li>
       <li>
+        <button
+          className="SidebarTriggerButton 
+          isReady
+        }"
+          onClick={[Function]}
+        />
         <a
           className="resLink"
           href="/r/snack"
           onClick={[Function]}
         >
           <div
-            className="SidebarIcon"
+            className="sidebarIcon"
           >
             <svg
-              className="pending"
-              style={
-                Object {
-                  "animation": "glow 1s linear infinite",
-                }
-              }
+              className="dotManual manual"
+              fill="#20ba31"
             >
-              indicator-auto-pending.svg
+              indicator-manual.svg
             </svg>
           </div>
           <p
@@ -487,16 +486,20 @@ exports[`sidebar renders * next to dirty manual trigger mode resources 1`] = `
               1yr
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          isReady
-        }"
-            onClick={[Function]}
-          />
+          <span
+            className="resLink-isDirty"
+          >
+            *
+          </span>
         </a>
       </li>
     </ul>
   </nav>
+  <div
+    className="Sidebar-spacer"
+  >
+     
+  </div>
   <button
     className="Sidebar-toggle"
     onClick={null}
@@ -531,10 +534,23 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
             All
           </span>
           
+          <span
+            className="resLink-timeAgo empty"
+          >
+            —
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
     </ul>
   </nav>
+  <div
+    className="Sidebar-spacer"
+  >
+     
+  </div>
   <button
     className="Sidebar-toggle"
     onClick={null}
@@ -573,6 +589,14 @@ exports[`sidebar renders list of resources 1`] = `
           >
             2
           </span>
+          <span
+            className="resLink-timeAgo empty"
+          >
+            —
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
       <li>
@@ -582,10 +606,10 @@ exports[`sidebar renders list of resources 1`] = `
           onClick={[Function]}
         >
           <div
-            className="SidebarIcon"
+            className="sidebarIcon"
           >
             <svg
-              className="building"
+              className="dotAutoBuilding auto"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -616,11 +640,8 @@ exports[`sidebar renders list of resources 1`] = `
               &lt;5s
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          isReady
-        }"
-            onClick={[Function]}
+          <span
+            className="resLink-isDirty"
           />
         </a>
       </li>
@@ -631,10 +652,10 @@ exports[`sidebar renders list of resources 1`] = `
           onClick={[Function]}
         >
           <div
-            className="SidebarIcon"
+            className="sidebarIcon"
           >
             <svg
-              className="building"
+              className="dotAutoBuilding auto"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -665,16 +686,18 @@ exports[`sidebar renders list of resources 1`] = `
               &lt;15s
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          isReady
-        }"
-            onClick={[Function]}
+          <span
+            className="resLink-isDirty"
           />
         </a>
       </li>
     </ul>
   </nav>
+  <div
+    className="Sidebar-spacer"
+  >
+     
+  </div>
   <button
     className="Sidebar-toggle"
     onClick={null}
@@ -713,6 +736,14 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           >
             2
           </span>
+          <span
+            className="resLink-timeAgo empty"
+          >
+            —
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
       <li>
@@ -722,10 +753,10 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           onClick={[Function]}
         >
           <div
-            className="SidebarIcon"
+            className="sidebarIcon"
           >
             <svg
-              className="building"
+              className="dotAutoBuilding auto"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -751,11 +782,8 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           >
             —
           </span>
-          <button
-            className="SidebarTriggerButton 
-          isReady
-        }"
-            onClick={[Function]}
+          <span
+            className="resLink-isDirty"
           />
         </a>
       </li>
@@ -766,10 +794,10 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           onClick={[Function]}
         >
           <div
-            className="SidebarIcon"
+            className="sidebarIcon"
           >
             <svg
-              className="building"
+              className="dotAutoBuilding auto"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
@@ -795,16 +823,18 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           >
             —
           </span>
-          <button
-            className="SidebarTriggerButton 
-          isReady
-        }"
-            onClick={[Function]}
+          <span
+            className="resLink-isDirty"
           />
         </a>
       </li>
     </ul>
   </nav>
+  <div
+    className="Sidebar-spacer"
+  >
+     
+  </div>
   <button
     className="Sidebar-toggle"
     onClick={null}
@@ -843,26 +873,40 @@ exports[`sidebar renders resources with manual trigger mode 1`] = `
           >
             2
           </span>
+          <span
+            className="resLink-timeAgo empty"
+          >
+            —
+          </span>
+          <span
+            className="resLink-isDirty"
+          />
         </a>
       </li>
       <li>
+        <button
+          className="SidebarTriggerButton 
+          
+        }"
+          onClick={[Function]}
+        />
         <a
           className="resLink resLink--building"
           href="/r/vigoda"
           onClick={[Function]}
         >
           <div
-            className="SidebarIcon"
+            className="sidebarIcon"
           >
             <svg
-              className="building"
+              className="dotManualBuilding manual"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
                 }
               }
             >
-              indicator-auto-building.svg
+              indicator-manual-building.svg
             </svg>
           </div>
           <p
@@ -886,32 +930,35 @@ exports[`sidebar renders resources with manual trigger mode 1`] = `
               &lt;5s
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          isReady
-        }"
-            onClick={[Function]}
+          <span
+            className="resLink-isDirty"
           />
         </a>
       </li>
       <li>
+        <button
+          className="SidebarTriggerButton 
+          
+        }"
+          onClick={[Function]}
+        />
         <a
           className="resLink resLink--building"
           href="/r/snack"
           onClick={[Function]}
         >
           <div
-            className="SidebarIcon"
+            className="sidebarIcon"
           >
             <svg
-              className="building"
+              className="dotManualBuilding manual"
               style={
                 Object {
                   "animation": "spin 1s linear infinite",
                 }
               }
             >
-              indicator-auto-building.svg
+              indicator-manual-building.svg
             </svg>
           </div>
           <p
@@ -935,16 +982,18 @@ exports[`sidebar renders resources with manual trigger mode 1`] = `
               &lt;15s
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          isReady
-        }"
-            onClick={[Function]}
+          <span
+            className="resLink-isDirty"
           />
         </a>
       </li>
     </ul>
   </nav>
+  <div
+    className="Sidebar-spacer"
+  >
+     
+  </div>
   <button
     className="Sidebar-toggle"
     onClick={null}
