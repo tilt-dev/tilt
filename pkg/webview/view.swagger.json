@@ -46,7 +46,8 @@
           "type": "string"
         },
         "timestamp": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "resource_name": {
           "type": "string"
@@ -72,10 +73,12 @@
           }
         },
         "start_time": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "finish_time": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "log": {
           "type": "string"
@@ -105,6 +108,18 @@
           "type": "string"
         },
         "start_time": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "webviewFacet": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
           "type": "string"
         }
       }
@@ -116,10 +131,12 @@
           "type": "string"
         },
         "pod_creation_time": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "pod_update_start_time": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "pod_status": {
           "type": "string"
@@ -132,8 +149,8 @@
           "format": "boolean"
         },
         "pod_restarts": {
-          "type": "string",
-          "format": "int64"
+          "type": "integer",
+          "format": "int32"
         },
         "pod_log": {
           "type": "string"
@@ -162,10 +179,12 @@
           }
         },
         "last_deploy_time": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "trigger_mode": {
-          "$ref": "#/definitions/webviewTriggerMode"
+          "type": "integer",
+          "format": "int32"
         },
         "build_history": {
           "type": "array",
@@ -177,8 +196,8 @@
           "$ref": "#/definitions/webviewBuildRecord"
         },
         "pending_build_reason": {
-          "type": "string",
-          "format": "int64"
+          "type": "integer",
+          "format": "int32"
         },
         "pending_build_edits": {
           "type": "array",
@@ -187,7 +206,8 @@
           }
         },
         "pending_build_since": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "has_pending_changes": {
           "type": "boolean",
@@ -236,6 +256,12 @@
           "items": {
             "$ref": "#/definitions/webviewAlert"
           }
+        },
+        "facets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/webviewFacet"
+          }
         }
       }
     },
@@ -256,14 +282,6 @@
           "format": "boolean"
         }
       }
-    },
-    "webviewTriggerMode": {
-      "type": "string",
-      "enum": [
-        "TRIGGER_MODE_AUTO",
-        "TRIGGER_MODE_MANUAL"
-      ],
-      "default": "TRIGGER_MODE_AUTO"
     },
     "webviewView": {
       "type": "object",

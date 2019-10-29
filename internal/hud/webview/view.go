@@ -1,5 +1,6 @@
 package webview
 
+// TODO(dmiller): delete these tests once StateToWebView is deleted
 import (
 	"time"
 
@@ -7,6 +8,10 @@ import (
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/pkg/model"
+
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/timestamp"
+
 	proto_webview "github.com/windmilleng/tilt/pkg/webview"
 )
 
@@ -34,14 +39,18 @@ func NewDCResourceInfo(configPaths []string, status dockercompose.Status, cID co
 	}
 }
 
-func NewProtoDCResourceInfo(configPaths []string, status dockercompose.Status, cID container.ID, log model.Log, startTime time.Time) *proto_webview.DCResourceInfo {
+func NewProtoDCResourceInfo(configPaths []string, status dockercompose.Status, cID container.ID, log model.Log, startTime time.Time) (*proto_webview.DCResourceInfo, error) {
+	start, err := timeToProto(startTime)
+	if err != nil {
+		return nil, err
+	}
 	return &proto_webview.DCResourceInfo{
 		ConfigPaths:     configPaths,
 		ContainerStatus: string(status),
 		ContainerID:     string(cID),
 		Log:             log.String(),
-		StartTime:       startTime.String(),
-	}
+		StartTime:       start,
+	}, nil
 }
 
 var _ ResourceInfoView = DCResourceInfo{}
@@ -118,28 +127,51 @@ func ToWebViewBuildRecord(br model.BuildRecord) BuildRecord {
 	}
 }
 
-func ToProtoBuildRecord(br model.BuildRecord) *proto_webview.BuildRecord {
+func timeToProto(t time.Time) (*timestamp.Timestamp, error) {
+	ts, err := ptypes.TimestampProto(t)
+	if err != nil {
+		return nil, err
+	}
+
+	return ts, nil
+}
+
+func ToProtoBuildRecord(br model.BuildRecord) (*proto_webview.BuildRecord, error) {
 	e := ""
 	if br.Error != nil {
 		e = br.Error.Error()
 	}
+
+	start, err := timeToProto(br.StartTime)
+	if err != nil {
+		return nil, err
+	}
+	finish, err := timeToProto(br.FinishTime)
+	if err != nil {
+		return nil, err
+	}
+
 	return &proto_webview.BuildRecord{
 		Edits:          br.Edits,
 		Error:          e,
 		Warnings:       br.Warnings,
-		StartTime:      br.StartTime.String(),
-		FinishTime:     br.FinishTime.String(),
+		StartTime:      start,
+		FinishTime:     finish,
 		Log:            br.Log.String(),
 		IsCrashRebuild: br.Reason.IsCrashOnly(),
-	}
+	}, nil
 }
 
-func ToProtoBuildRecords(brs []model.BuildRecord) []*proto_webview.BuildRecord {
+func ToProtoBuildRecords(brs []model.BuildRecord) ([]*proto_webview.BuildRecord, error) {
 	ret := make([]*proto_webview.BuildRecord, len(brs))
 	for i, br := range brs {
-		ret[i] = ToProtoBuildRecord(br)
+		r, err := ToProtoBuildRecord(br)
+		if err != nil {
+			return nil, err
+		}
+		ret[i] = r
 	}
-	return ret
+	return ret, nil
 }
 
 func ToWebViewBuildRecords(brs []model.BuildRecord) []BuildRecord {
@@ -251,13 +283,4 @@ type View struct {
 	TiltCloudTeamID     string `json:"tiltCloudTeamID"`
 
 	FatalError string `json:"fatalError"`
-}
-
-func (v View) Resource(n model.ManifestName) (Resource, bool) {
-	for _, res := range v.Resources {
-		if res.Name == n {
-			return res, true
-		}
-	}
-	return Resource{}, false
 }
