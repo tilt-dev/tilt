@@ -13,6 +13,7 @@ it("shows snapshot url", () => {
         <TopBar
           logUrl="/r/foo"
           alertsUrl="/r/foo/alerts"
+          facetsUrl={null}
           resourceView={ResourceView.Alerts}
           numberOfAlerts={1}
           showSnapshotButton={true}
@@ -36,6 +37,7 @@ it("shows snapshot owner", () => {
         <TopBar
           logUrl="/r/foo"
           alertsUrl="/r/foo/alerts"
+          facetsUrl={null}
           resourceView={ResourceView.Alerts}
           numberOfAlerts={1}
           showSnapshotButton={false}

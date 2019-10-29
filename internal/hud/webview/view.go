@@ -190,6 +190,8 @@ type Resource struct {
 	CrashLog        model.Log `json:"crashLog"`
 
 	Alerts []Alert `json:"alerts"`
+
+	Facets []model.Facet `json:"facets"`
 }
 
 func (r Resource) ResourceInfo() ResourceInfoView {

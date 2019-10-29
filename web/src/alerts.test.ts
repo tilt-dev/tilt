@@ -389,6 +389,7 @@ function k8sResource(): Resource {
     triggerMode: TriggerMode.TriggerModeAuto,
     hasPendingChanges: true,
     alerts: [],
+    facets: [],
   }
 }
 
@@ -437,5 +438,6 @@ function dcResource(): Resource {
     combinedLog: "",
     crashLog: "",
     alerts: [],
+    facets: [],
   }
 }

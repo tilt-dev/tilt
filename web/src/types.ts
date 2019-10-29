@@ -1,4 +1,5 @@
 import { Alert } from "./alerts"
+import { Facet } from "./facets"
 
 export enum SocketState {
   Loading,
@@ -10,6 +11,7 @@ export enum SocketState {
 export enum ResourceView {
   Log,
   Alerts,
+  Facets = 2,
 }
 
 export enum TriggerMode {
@@ -72,6 +74,7 @@ export type Resource = {
   triggerMode: TriggerMode
   hasPendingChanges: boolean
   alerts: Array<Alert>
+  facets: Array<Facet>
 }
 export type K8sResourceInfo = {
   podName: string

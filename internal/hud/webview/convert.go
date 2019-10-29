@@ -8,6 +8,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/cloud/cloudurl"
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -66,6 +67,11 @@ func StateToWebView(s store.EngineState) View {
 
 		podID := ms.MostRecentPod().PodID
 
+		var facets []model.Facet
+		if s.Features[feature.Facets] {
+			facets = mt.Facets(s.Secrets)
+		}
+
 		// NOTE(nick): Right now, the UX is designed to show the output exactly one
 		// pod. A better UI might summarize the pods in other ways (e.g., show the
 		// "most interesting" pod that's crash looping, or show logs from all pods
@@ -88,6 +94,7 @@ func StateToWebView(s store.EngineState) View {
 			CrashLog:           ms.CrashLog,
 			TriggerMode:        mt.Manifest.TriggerMode,
 			HasPendingChanges:  hasPendingChanges,
+			Facets:             facets,
 		}
 
 		populateResourceInfoView(mt, &r)

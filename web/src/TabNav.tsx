@@ -6,6 +6,7 @@ import "./TabNav.scss"
 type NavProps = {
   logUrl: string
   alertsUrl: string
+  facetsUrl: string | null
   resourceView: ResourceView
   numberOfAlerts: number
 }
@@ -14,6 +15,7 @@ class TabNav extends PureComponent<NavProps> {
   render() {
     let logIsSelected = this.props.resourceView === ResourceView.Log
     let alertsIsSelected = this.props.resourceView === ResourceView.Alerts
+    let facetsIsSelected = this.props.resourceView === ResourceView.Facets
 
     // The number of alerts should be for the selected resource
     return (
@@ -46,6 +48,18 @@ class TabNav extends PureComponent<NavProps> {
               )}
             </Link>
           </li>
+          {this.props.facetsUrl === null ? null : (
+            <li>
+              <Link
+                className={`tabLink ${
+                  facetsIsSelected ? "tabLink--is-selected" : ""
+                }`}
+                to={this.props.facetsUrl}
+              >
+                Facets
+              </Link>
+            </li>
+          )}
         </ul>
       </nav>
     )

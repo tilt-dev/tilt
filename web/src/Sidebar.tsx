@@ -98,8 +98,13 @@ class Sidebar extends PureComponent<SidebarProps> {
 
     let listItems = this.props.items.map(item => {
       let link = `/r/${item.name}`
-      if (this.props.resourceView === ResourceView.Alerts) {
-        link += "/alerts"
+      switch (this.props.resourceView) {
+        case ResourceView.Alerts:
+          link += "/alerts"
+          break
+        case ResourceView.Facets:
+          link += "/facets"
+          break
       }
 
       let formatter = timeAgoFormatter

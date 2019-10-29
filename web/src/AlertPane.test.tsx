@@ -248,5 +248,6 @@ function fillResourceFields(): Resource {
     triggerMode: TriggerMode.TriggerModeAuto,
     hasPendingChanges: true,
     alerts: [],
+    facets: [],
   }
 }

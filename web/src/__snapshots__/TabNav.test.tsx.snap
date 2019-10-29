@@ -1,5 +1,42 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`shows a facets tab 1`] = `
+<nav
+  className="TabNav"
+>
+  <ul>
+    <li>
+      <a
+        className="tabLink "
+        href="/r/foo"
+        onClick={[Function]}
+      >
+        Logs
+      </a>
+    </li>
+    <li>
+      <a
+        className="tabLink tabLink--errors "
+        href="/r/foo/alerts"
+        onClick={[Function]}
+      >
+        Alerts
+        
+      </a>
+    </li>
+    <li>
+      <a
+        className="tabLink tabLink--is-selected"
+        href="/r/foo/facets"
+        onClick={[Function]}
+      >
+        Facets
+      </a>
+    </li>
+  </ul>
+</nav>
+`;
+
 exports[`shows error pane 1`] = `
 <nav
   className="TabNav"

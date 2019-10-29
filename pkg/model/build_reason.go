@@ -1,5 +1,7 @@
 package model
 
+import "strings"
+
 type BuildReason int
 
 const BuildReasonNone = BuildReason(0)
@@ -24,4 +26,22 @@ func (r BuildReason) Has(flag BuildReason) bool {
 
 func (r BuildReason) IsCrashOnly() bool {
 	return r == BuildReasonFlagCrash
+}
+
+var translations = map[BuildReason]string{
+	BuildReasonFlagChangedFiles: "changed files",
+	BuildReasonFlagConfig:       "config changed",
+	BuildReasonFlagCrash:        "pod crashed, lost live_update changes",
+	BuildReasonFlagInit:         "initial build",
+}
+
+func (r BuildReason) String() string {
+	rs := []string{}
+
+	for k, v := range translations {
+		if r.Has(k) {
+			rs = append(rs, v)
+		}
+	}
+	return strings.Join(rs, " | ")
 }

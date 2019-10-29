@@ -11,6 +11,7 @@ it("shows logs", () => {
         <TabNav
           logUrl="/r/foo"
           alertsUrl="/r/foo/alerts"
+          facetsUrl={null}
           resourceView={ResourceView.Log}
           numberOfAlerts={0}
         />
@@ -28,6 +29,7 @@ it("shows error pane", () => {
         <TabNav
           logUrl="/r/foo"
           alertsUrl="/r/foo/alerts"
+          facetsUrl={null}
           resourceView={ResourceView.Alerts}
           numberOfAlerts={0}
         />
@@ -45,8 +47,27 @@ it("shows the number of errors in the error tab", () => {
         <TabNav
           logUrl="/r/foo"
           alertsUrl="/r/foo/alerts"
+          facetsUrl={null}
           resourceView={ResourceView.Alerts}
           numberOfAlerts={27}
+        />
+      </MemoryRouter>
+    )
+    .toJSON()
+
+  expect(tree).toMatchSnapshot()
+})
+
+it("shows a facets tab", () => {
+  const tree = renderer
+    .create(
+      <MemoryRouter>
+        <TabNav
+          logUrl="/r/foo"
+          alertsUrl="/r/foo/alerts"
+          facetsUrl="/r/foo/facets"
+          resourceView={ResourceView.Facets}
+          numberOfAlerts={0}
         />
       </MemoryRouter>
     )
