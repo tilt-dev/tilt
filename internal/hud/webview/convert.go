@@ -133,10 +133,14 @@ func StateToWebView(s store.EngineState) View {
 	return ret
 }
 
-func StateToProtoView(s store.EngineState) *proto_webview.View {
+func StateToProtoView(s store.EngineState) (*proto_webview.View, error) {
 	ret := &proto_webview.View{}
 
-	ret.Resources = append(ret.Resources, tiltfileResourceProtoView(s))
+	rpv, err := tiltfileResourceProtoView(s)
+	if err != nil {
+		return nil, err
+	}
+	ret.Resources = append(ret.Resources, rpv)
 
 	for _, name := range s.ManifestDefinitionOrder {
 		mt, ok := s.ManifestTargets[name]
@@ -190,21 +194,38 @@ func StateToProtoView(s store.EngineState) *proto_webview.View {
 			facets = mt.Facets(s.Secrets)
 		}
 
+		bh, err := ToProtoBuildRecords(buildHistory)
+		if err != nil {
+			return nil, err
+		}
+		lastDeploy, err := timeToProto(ms.LastSuccessfulDeployTime)
+		if err != nil {
+			return nil, err
+		}
+		cb, err := ToProtoBuildRecord(currentBuild)
+		if err != nil {
+			return nil, err
+		}
+
 		// NOTE(nick): Right now, the UX is designed to show the output exactly one
 		// pod. A better UI might summarize the pods in other ways (e.g., show the
 		// "most interesting" pod that's crash looping, or show logs from all pods
 		// at once).
 		hasPendingChanges, pendingBuildSince := ms.HasPendingChanges()
+		pbs, err := timeToProto(pendingBuildSince)
+		if err != nil {
+			return nil, err
+		}
 		r := &proto_webview.Resource{
 			Name:               name.String(),
 			DirectoriesWatched: relWatchDirs,
 			PathsWatched:       relWatchPaths,
-			LastDeployTime:     timeToProto(ms.LastSuccessfulDeployTime),
-			BuildHistory:       ToProtoBuildRecords(buildHistory),
+			LastDeployTime:     lastDeploy,
+			BuildHistory:       bh,
 			PendingBuildEdits:  pendingBuildEdits,
-			PendingBuildSince:  timeToProto(pendingBuildSince),
+			PendingBuildSince:  pbs,
 			PendingBuildReason: int32(ms.NextBuildReason()),
-			CurrentBuild:       ToProtoBuildRecord(currentBuild),
+			CurrentBuild:       cb,
 			Endpoints:          endpoints,
 			PodID:              podID.String(),
 			ShowBuildStatus:    len(mt.Manifest.ImageTargets) > 0 || mt.Manifest.IsDC(),
@@ -215,7 +236,10 @@ func StateToProtoView(s store.EngineState) *proto_webview.View {
 			Facets:             model.FacetsToProto(facets),
 		}
 
-		riv := protoPopulateResourceInfoView(mt, r)
+		riv, err := protoPopulateResourceInfoView(mt, r)
+		if err != nil {
+			return nil, err
+		}
 		r.RuntimeStatus = string(runtimeStatus(riv))
 
 		ret.Resources = append(ret.Resources, r)
@@ -246,7 +270,7 @@ func StateToProtoView(s store.EngineState) *proto_webview.View {
 		ret.FatalError = s.FatalError.Error()
 	}
 
-	return ret
+	return ret, nil
 }
 
 func tiltfileResourceView(s store.EngineState) Resource {
@@ -276,7 +300,7 @@ func tiltfileResourceView(s store.EngineState) Resource {
 	return tr
 }
 
-func tiltfileResourceProto(s store.EngineState) *proto_webview.Resource {
+func tiltfileResourceProtoView(s store.EngineState) (*proto_webview.Resource, error) {
 	ltfb := s.TiltfileState.LastBuild()
 	ctfb := s.TiltfileState.CurrentBuild
 	if !ctfb.Empty() {
@@ -285,49 +309,38 @@ func tiltfileResourceProto(s store.EngineState) *proto_webview.Resource {
 
 	ltfb.Edits = ospath.FileListDisplayNames([]string{filepath.Dir(s.TiltfilePath)}, ltfb.Edits)
 
+	pctfb, err := ToProtoBuildRecord(ctfb)
+	if err != nil {
+		return nil, err
+	}
+	pltfb, err := ToProtoBuildRecord(ltfb)
+	if err != nil {
+		return nil, err
+	}
 	tr := &proto_webview.Resource{
 		Name:         store.TiltfileManifestName.String(),
 		IsTiltfile:   true,
-		CurrentBuild: ToProtoBuildRecord(ctfb),
+		CurrentBuild: pctfb,
 		BuildHistory: []*proto_webview.BuildRecord{
-			ToProtoBuildRecord(ltfb),
+			pltfb,
 		},
 		CombinedLog:   s.TiltfileState.CombinedLog.String(),
 		RuntimeStatus: string(RuntimeStatusOK),
 	}
+	start, err := timeToProto(ctfb.StartTime)
+	if err != nil {
+		return nil, err
+	}
+	finish, err := timeToProto(ltfb.FinishTime)
+	if err != nil {
+		return nil, err
+	}
 	if !ctfb.Empty() {
-		tr.PendingBuildSince = timeToProto(ctfb.StartTime)
+		tr.PendingBuildSince = start
 	} else {
-		tr.LastDeployTime = timeToProto(ltfb.FinishTime)
+		tr.LastDeployTime = finish
 	}
-	return tr
-}
-
-func tiltfileResourceProtoView(s store.EngineState) *proto_webview.Resource {
-	ltfb := s.TiltfileState.LastBuild()
-	ctfb := s.TiltfileState.CurrentBuild
-	if !ctfb.Empty() {
-		ltfb.Log = ctfb.Log
-	}
-
-	ltfb.Edits = ospath.FileListDisplayNames([]string{filepath.Dir(s.TiltfilePath)}, ltfb.Edits)
-
-	tr := &proto_webview.Resource{
-		Name:         string(store.TiltfileManifestName),
-		IsTiltfile:   true,
-		CurrentBuild: ToProtoBuildRecord(ctfb),
-		BuildHistory: []*proto_webview.BuildRecord{
-			ToProtoBuildRecord(ltfb),
-		},
-		CombinedLog:   s.TiltfileState.CombinedLog.String(),
-		RuntimeStatus: string(RuntimeStatusOK),
-	}
-	if !ctfb.Empty() {
-		tr.PendingBuildSince = timeToProto(ctfb.StartTime)
-	} else {
-		tr.LastDeployTime = timeToProto(ltfb.FinishTime)
-	}
-	return tr
+	return tr, nil
 }
 
 func populateResourceInfoView(mt *store.ManifestTarget, r *Resource) ResourceInfoView {
@@ -368,7 +381,7 @@ func populateResourceInfoView(mt *store.ManifestTarget, r *Resource) ResourceInf
 	panic("Unrecognized manifest type (not one of: k8s, DC, local)")
 }
 
-func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Resource) ResourceInfoView {
+func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Resource) (ResourceInfoView, error) {
 	if mt.Manifest.IsUnresourcedYAMLManifest() {
 		r.YamlResourceInfo = &proto_webview.YAMLResourceInfo{
 			K8SResources: mt.Manifest.K8sTarget().DisplayNames,
@@ -376,28 +389,39 @@ func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Re
 		riv := &YAMLResourceInfo{
 			K8sResources: mt.Manifest.K8sTarget().DisplayNames,
 		}
-		return riv
+		return riv, nil
 	}
 
 	if mt.Manifest.IsDC() {
 		dc := mt.Manifest.DockerComposeTarget()
 		dcState := mt.State.DCRuntimeState()
-		info := NewProtoDCResourceInfo(dc.ConfigPaths, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
+		info, err := NewProtoDCResourceInfo(dc.ConfigPaths, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
+		if err != nil {
+			return nil, err
+		}
 		riv := NewDCResourceInfo(dc.ConfigPaths, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
 		r.DcResourceInfo = info
-		return riv
+		return riv, nil
 	}
 	if mt.Manifest.IsLocal() {
 		r.LocalResourceInfo = &proto_webview.LocalResourceInfo{}
-		return &LocalResourceInfo{}
+		return &LocalResourceInfo{}, nil
 	}
 	if mt.Manifest.IsK8s() {
 		kState := mt.State.K8sRuntimeState()
 		pod := kState.MostRecentPod()
+		create, err := timeToProto(pod.StartedAt)
+		if err != nil {
+			return nil, err
+		}
+		updateStart, err := timeToProto(pod.UpdateStartTime)
+		if err != nil {
+			return nil, err
+		}
 		r.K8SResourceInfo = &proto_webview.K8SResourceInfo{
 			PodName:            pod.PodID.String(),
-			PodCreationTime:    timeToProto(pod.StartedAt),
-			PodUpdateStartTime: timeToProto(pod.UpdateStartTime),
+			PodCreationTime:    create,
+			PodUpdateStartTime: updateStart,
 			PodStatus:          pod.Status,
 			PodStatusMessage:   strings.Join(pod.StatusMessages, "\n"),
 			AllContainersReady: pod.AllContainersReady(),
@@ -413,7 +437,7 @@ func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Re
 			AllContainersReady: pod.AllContainersReady(),
 			PodRestarts:        pod.VisibleContainerRestarts(),
 			PodLog:             pod.Log(),
-		}
+		}, nil
 	}
 
 	panic("Unrecognized manifest type (not one of: k8s, DC, local)")

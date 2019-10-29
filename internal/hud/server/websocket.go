@@ -69,7 +69,11 @@ func (ws WebsocketSubscriber) Stream(ctx context.Context, store *store.Store) {
 
 func (ws WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore) {
 	state := s.RLockState()
-	view := webview.StateToProtoView(state)
+	view, err := webview.StateToProtoView(state)
+	if err != nil {
+		logger.Get(ctx).Infof("error converting view to proto for websocket: %v", err)
+		return
+	}
 
 	if view.NeedsAnalyticsNudge && !state.AnalyticsNudgeSurfaced {
 		// If we're showing the nudge and no one's told the engine

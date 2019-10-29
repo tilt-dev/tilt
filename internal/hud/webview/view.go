@@ -39,14 +39,18 @@ func NewDCResourceInfo(configPaths []string, status dockercompose.Status, cID co
 	}
 }
 
-func NewProtoDCResourceInfo(configPaths []string, status dockercompose.Status, cID container.ID, log model.Log, startTime time.Time) *proto_webview.DCResourceInfo {
+func NewProtoDCResourceInfo(configPaths []string, status dockercompose.Status, cID container.ID, log model.Log, startTime time.Time) (*proto_webview.DCResourceInfo, error) {
+	start, err := timeToProto(startTime)
+	if err != nil {
+		return nil, err
+	}
 	return &proto_webview.DCResourceInfo{
 		ConfigPaths:     configPaths,
 		ContainerStatus: string(status),
 		ContainerID:     string(cID),
 		Log:             log.String(),
-		StartTime:       timeToProto(startTime),
-	}
+		StartTime:       start,
+	}, nil
 }
 
 var _ ResourceInfoView = DCResourceInfo{}
@@ -123,39 +127,51 @@ func ToWebViewBuildRecord(br model.BuildRecord) BuildRecord {
 	}
 }
 
-// TODO(dmiller) this should probably return an error
-func timeToProto(t time.Time) *timestamp.Timestamp {
+func timeToProto(t time.Time) (*timestamp.Timestamp, error) {
 	ts, err := ptypes.TimestampProto(t)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return ts
+	return ts, nil
 }
 
-func ToProtoBuildRecord(br model.BuildRecord) *proto_webview.BuildRecord {
+func ToProtoBuildRecord(br model.BuildRecord) (*proto_webview.BuildRecord, error) {
 	e := ""
 	if br.Error != nil {
 		e = br.Error.Error()
+	}
+
+	start, err := timeToProto(br.StartTime)
+	if err != nil {
+		return nil, err
+	}
+	finish, err := timeToProto(br.FinishTime)
+	if err != nil {
+		return nil, err
 	}
 
 	return &proto_webview.BuildRecord{
 		Edits:          br.Edits,
 		Error:          e,
 		Warnings:       br.Warnings,
-		StartTime:      timeToProto(br.StartTime),
-		FinishTime:     timeToProto(br.FinishTime),
+		StartTime:      start,
+		FinishTime:     finish,
 		Log:            br.Log.String(),
 		IsCrashRebuild: br.Reason.IsCrashOnly(),
-	}
+	}, nil
 }
 
-func ToProtoBuildRecords(brs []model.BuildRecord) []*proto_webview.BuildRecord {
+func ToProtoBuildRecords(brs []model.BuildRecord) ([]*proto_webview.BuildRecord, error) {
 	ret := make([]*proto_webview.BuildRecord, len(brs))
 	for i, br := range brs {
-		ret[i] = ToProtoBuildRecord(br)
+		r, err := ToProtoBuildRecord(br)
+		if err != nil {
+			return nil, err
+		}
+		ret[i] = r
 	}
-	return ret
+	return ret, nil
 }
 
 func ToWebViewBuildRecords(brs []model.BuildRecord) []BuildRecord {

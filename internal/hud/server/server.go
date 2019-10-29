@@ -26,7 +26,6 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/model"
-	proto_webview "github.com/windmilleng/tilt/pkg/webview"
 )
 
 const httpTimeOut = 5 * time.Second
@@ -114,13 +113,17 @@ func (s *HeadsUpServer) Router() http.Handler {
 
 func (s *HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
 	state := s.store.RLockState()
-	view := webview.StateToProtoView(state)
+	view, err := webview.StateToProtoView(state)
 	s.store.RUnlockState()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error converting view to proto: %v", err), http.StatusInternalServerError)
+		return
+	}
 
 	jsEncoder := &runtime.JSONPb{OrigName: false, EmitDefaults: true}
 
 	w.Header().Set("Content-Type", "application/json")
-	err := jsEncoder.NewEncoder(w).Encode(view)
+	err = jsEncoder.NewEncoder(w).Encode(view)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error rendering view payload: %v", err), http.StatusInternalServerError)
 	}
@@ -349,14 +352,6 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-}
-
-func (s *HeadsUpServer) GetView(ctx context.Context, req *proto_webview.GetViewRequest) (*proto_webview.View, error) {
-	state := s.store.RLockState()
-	view := webview.StateToProtoView(state)
-	s.store.RUnlockState()
-
-	return view, nil
 }
 
 func (s *HeadsUpServer) userStartedTiltCloudRegistration(w http.ResponseWriter, req *http.Request) {
