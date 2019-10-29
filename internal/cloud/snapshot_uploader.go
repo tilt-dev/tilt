@@ -7,19 +7,21 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/cloud/cloudurl"
 	"github.com/windmilleng/tilt/internal/hud/webview"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/token"
+	proto_webview "github.com/windmilleng/tilt/pkg/webview"
 )
 
 type SnapshotID string
 
 type SnapshotUploader interface {
 	TakeAndUpload(state store.EngineState) (SnapshotID, error)
-	Upload(token token.Token, teamID string, snapshot Snapshot) (SnapshotID, error)
+	Upload(token token.Token, teamID string, snapshot *proto_webview.Snapshot) (SnapshotID, error)
 	IDToSnapshotURL(id SnapshotID) string
 }
 
@@ -66,19 +68,24 @@ type Snapshot struct {
 }
 
 func (s snapshotUploader) TakeAndUpload(state store.EngineState) (SnapshotID, error) {
-	return s.Upload(state.Token, state.TeamName, Snapshot{View: webview.StateToWebView(state)})
+	view, err := webview.StateToProtoView(state)
+	if err != nil {
+		return "", err
+	}
+	return s.Upload(state.Token, state.TeamName, &proto_webview.Snapshot{View: view})
 }
 
-func cleanSnapshot(snapshot Snapshot) Snapshot {
+func cleanSnapshot(snapshot *proto_webview.Snapshot) *proto_webview.Snapshot {
 	snapshot.View.FeatureFlags = nil
 	return snapshot
 }
 
-func (s snapshotUploader) Upload(token token.Token, teamID string, snapshot Snapshot) (SnapshotID, error) {
+func (s snapshotUploader) Upload(token token.Token, teamID string, snapshot *proto_webview.Snapshot) (SnapshotID, error) {
 	snapshot = cleanSnapshot(snapshot)
 
 	b := &bytes.Buffer{}
-	err := json.NewEncoder(b).Encode(snapshot)
+	jsEncoder := &runtime.JSONPb{OrigName: false, EmitDefaults: true}
+	err := jsEncoder.NewEncoder(b).Encode(snapshot)
 	if err != nil {
 		return "", errors.Wrap(err, "encoding snapshot")
 	}

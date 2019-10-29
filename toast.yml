@@ -19,7 +19,6 @@ tasks:
        --go_out=plugins=grpc,paths=source_relative:. \
        pkg/webview/view.proto
       goimports -local github.com/windmilleng/tilt -w pkg/webview/view.pb.go
-      
   proto-ts:
     dependencies:
       - proto
@@ -30,8 +29,6 @@ tasks:
     command: |
       set -euo pipefail
       swagger-to-ts pkg/webview/view.swagger.json --camelcase --output web/src/view.d.ts
-      
-      
   wire:
     location: /go/src/github.com/windmilleng/tilt
     input_paths:

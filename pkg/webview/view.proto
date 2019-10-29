@@ -108,10 +108,33 @@ message View {
 
 message GetViewRequest {}
 
+message SnapshotHighlight {
+  string beginning_log_id = 1;
+  string ending_log_id = 2;
+  string text = 3;
+}
+
+message Snapshot {
+  View view = 1;
+  bool is_sidebar_closed = 2;
+  string path = 3;
+  SnapshotHighlight snapshot_highlight = 4;
+}
+
+message UploadSnapshotResponse {
+  string url = 1;
+}
+
 service ViewService {
   rpc GetView(GetViewRequest) returns (View) {
     option (google.api.http) = {
-      get: "/api/proto/view"
+      get: "/api/view"
+    };
+  }
+
+  rpc UploadSnapshot(Snapshot) returns (UploadSnapshotResponse) {
+    option (google.api.http) = {
+      post: "/api/snapshot/new"
     };
   }
 }

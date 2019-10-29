@@ -143,7 +143,7 @@ class HUD extends Component<HudProps, HudState> {
     return this.pathBuilder.path(relPath)
   }
 
-  snapshotFromState(state: HudState): Snapshot {
+  snapshotFromState(state: HudState): OpenAPI2.webviewView {
     return {
       view: _.cloneDeep(state.view || null),
       isSidebarClosed: !!state.isSidebarClosed,

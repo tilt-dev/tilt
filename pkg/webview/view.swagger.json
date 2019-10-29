@@ -15,7 +15,23 @@
     "application/json"
   ],
   "paths": {
-    "/api/proto/view": {
+    "/api/snapshot/new": {
+      "post": {
+        "operationId": "UploadSnapshot",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/webviewUploadSnapshotResponse"
+            }
+          }
+        },
+        "tags": [
+          "ViewService"
+        ]
+      }
+    },
+    "/api/view": {
       "get": {
         "operationId": "GetView",
         "responses": {
@@ -265,6 +281,20 @@
         }
       }
     },
+    "webviewSnapshotHighlight": {
+      "type": "object",
+      "properties": {
+        "beginning_log_id": {
+          "type": "string"
+        },
+        "ending_log_id": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      }
+    },
     "webviewTiltBuild": {
       "type": "object",
       "properties": {
@@ -280,6 +310,14 @@
         "dev": {
           "type": "boolean",
           "format": "boolean"
+        }
+      }
+    },
+    "webviewUploadSnapshotResponse": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string"
         }
       }
     },

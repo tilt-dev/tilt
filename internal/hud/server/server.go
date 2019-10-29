@@ -26,6 +26,7 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/model"
+	proto_webview "github.com/windmilleng/tilt/pkg/webview"
 )
 
 const httpTimeOut = 5 * time.Second
@@ -131,11 +132,15 @@ func (s *HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
 
 func (s *HeadsUpServer) SnapshotJSON(w http.ResponseWriter, req *http.Request) {
 	state := s.store.RLockState()
-	view := webview.StateToWebView(state)
+	view, err := webview.StateToProtoView(state)
 	s.store.RUnlockState()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error converting view to proto: %v", err), http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(cloud.Snapshot{
+	err = json.NewEncoder(w).Encode(&proto_webview.Snapshot{
 		View: view,
 	})
 	if err != nil {
@@ -306,8 +311,9 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 	c := jsoniter.ConfigDefault
 	de := jsoniter.DecoderExtension{reflect2.TypeOf(time.Time{}): timeAllowEmptyDecoder{}}
 	c.RegisterExtension(de)
-	var snapshot cloud.Snapshot
-	decoder := c.NewDecoder(bytes.NewBuffer(b))
+	var snapshot *proto_webview.Snapshot
+	jsDecoder := &runtime.JSONPb{OrigName: false, EmitDefaults: true}
+	decoder := jsDecoder.NewDecoder(bytes.NewBuffer(b))
 
 	// TODO(nick): Add more strict decoding once we have better safeguards for making
 	// sure the Go and JS types are in-sync.
@@ -320,6 +326,8 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 		http.Error(w, msg, http.StatusInternalServerError)
 		return
 	}
+
+	fmt.Printf("SNAPSHOT: %+v\n", snapshot)
 
 	id, err := s.uploader.Upload(token, teamID, snapshot)
 	if err != nil {
