@@ -134,7 +134,7 @@ func TestSHARootUrlForReq(t *testing.T) {
 	defer f.TearDown()
 
 	sha := "8bf2ea29eacff3a407272eb5631edbd1a14a0936"
-	f.server.defaultVersion = model.WebVersion(sha)
+	f.SetupServerWithVersion(model.WebVersion(sha))
 	req := httptest.NewRequest("GET", "/", bytes.NewBuffer(nil))
 	res := httptest.NewRecorder()
 	f.server.ServeHTTP(res, req)
@@ -149,7 +149,7 @@ func TestSHAStaticUrlForReq(t *testing.T) {
 	defer f.TearDown()
 
 	sha := "8bf2ea29eacff3a407272eb5631edbd1a14a0936"
-	f.server.defaultVersion = model.WebVersion(sha)
+	f.SetupServerWithVersion(model.WebVersion(sha))
 	req := httptest.NewRequest("GET", fmt.Sprintf("/%s/static/stuff.html", sha), bytes.NewBuffer(nil))
 	res := httptest.NewRecorder()
 	f.server.ServeHTTP(res, req)
@@ -159,14 +159,29 @@ func TestSHAStaticUrlForReq(t *testing.T) {
 	assert.Contains(t, res.Body.String(), `some-content`)
 }
 
+func TestStripPrefixIndexRequest(t *testing.T) {
+	f := newProdServerFixture(t)
+	defer f.TearDown()
+
+	req := httptest.NewRequest("GET", "/tilt-assets", bytes.NewBuffer(nil))
+	res := httptest.NewRecorder()
+	handler := StripPrefix("/tilt-assets", f.server)
+	handler.ServeHTTP(res, req)
+	if assert.NotNil(t, f.recvReq) {
+		assert.Equal(t, f.recvReq.URL.Path, "/v1.2.3/index.html")
+	}
+	assert.Contains(t, res.Body.String(), `<script src="/tilt-assets/v1.2.3/static/js/2.f1bd84e9.chunk.js">`)
+}
+
 type fixture struct {
+	t          *testing.T
 	testServer *httptest.Server
 	server     prodServer
 	recvReq    *http.Request
 }
 
 func newProdServerFixture(t *testing.T) *fixture {
-	f := &fixture{}
+	f := &fixture{t: t}
 
 	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		f.recvReq = req
@@ -177,13 +192,14 @@ func newProdServerFixture(t *testing.T) *fixture {
 		}
 	}))
 	f.testServer = testServer
-
-	server, err := NewProdServer(AssetBucket(testServer.URL), versionDefault)
-	assert.NoError(t, err)
-
-	f.server = server
-
+	f.SetupServerWithVersion(versionDefault)
 	return f
+}
+
+func (f *fixture) SetupServerWithVersion(v model.WebVersion) {
+	server, err := NewProdServer(AssetBucket(f.testServer.URL), v)
+	assert.NoError(f.t, err)
+	f.server = server
 }
 
 func (f *fixture) TearDown() {
