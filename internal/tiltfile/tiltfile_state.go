@@ -154,10 +154,7 @@ func (s *tiltfileState) loadManifests(absFilename string, requested []model.Mani
 		dockerprune.NewExtension(),
 	)
 	if err != nil {
-		if err, ok := err.(*starlark.EvalError); ok {
-			return nil, result, errors.New(err.Backtrace())
-		}
-		return nil, result, err
+		return nil, result, starkit.UnpackBacktrace(err)
 	}
 
 	resources, unresourced, err := s.assemble()
