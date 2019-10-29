@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	engineanalytics "github.com/windmilleng/tilt/internal/engine/analytics"
 	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
@@ -2594,14 +2595,14 @@ func TestSetAnalyticsOpt(t *testing.T) {
 
 	// if we don't wait for 1 here, it's possible the state flips to out and back to in before the subscriber sees it,
 	// and we end up with no events
-	f.opter.waitUntilCount(t, 1)
+	f.opter.WaitUntilCount(t, 1)
 
 	f.store.Dispatch(store.AnalyticsOptAction{Opt: analytics.OptIn})
 	f.WaitUntil("opted in", func(state store.EngineState) bool {
 		return state.AnalyticsOpt == analytics.OptIn
 	})
 
-	f.opter.waitUntilCount(t, 2)
+	f.opter.WaitUntilCount(t, 2)
 
 	err := f.Stop()
 	if !assert.NoError(t, err) {
@@ -2894,41 +2895,6 @@ func makeFakeTimerMaker(t *testing.T) fakeTimerMaker {
 	return fakeTimerMaker{restTimerLock, maxTimerLock, t}
 }
 
-type testOpter struct {
-	calls []analytics.Opt
-	mu    sync.Mutex
-}
-
-func (to *testOpter) SetOpt(opt analytics.Opt) error {
-	to.mu.Lock()
-	defer to.mu.Unlock()
-	to.calls = append(to.calls, opt)
-	return nil
-}
-
-func (to *testOpter) Calls() []analytics.Opt {
-	to.mu.Lock()
-	defer to.mu.Unlock()
-	return append([]analytics.Opt{}, to.calls...)
-}
-
-func (to *testOpter) waitUntilCount(t *testing.T, expectedCount int) {
-	timeout := time.After(time.Second)
-	for {
-		select {
-		case <-time.After(5 * time.Millisecond):
-			actualCount := len(to.Calls())
-			if actualCount == expectedCount {
-				return
-			}
-		case <-timeout:
-			actualCount := len(to.Calls())
-			t.Errorf("waiting for opt setting count to be %d. opt setting count is currently %d", expectedCount, actualCount)
-			t.FailNow()
-		}
-	}
-}
-
 type testFixture struct {
 	*tempdir.TempDirFixture
 	ctx                   context.Context
@@ -2949,7 +2915,7 @@ type testFixture struct {
 	dcc                   *dockercompose.FakeDCClient
 	tfl                   tiltfile.TiltfileLoader
 	ghc                   *github.FakeClient
-	opter                 *testOpter
+	opter                 *engineanalytics.FakeOpter
 	dp                    *dockerprune.DockerPruner
 	tiltVersionCheckDelay time.Duration
 
@@ -2960,7 +2926,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	f := tempdir.NewTempDirFixture(t)
 
 	log := bufsync.NewThreadSafeBuffer()
-	to := &testOpter{}
+	to := &engineanalytics.FakeOpter{}
 	ctx, _, ta := testutils.ForkedCtxAndAnalyticsWithOpterForTest(log, to)
 	ctx, cancel := context.WithCancel(ctx)
 
@@ -2992,8 +2958,8 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	fwm := NewWatchManager(watcher.newSub, timerMaker.maker())
 	pfc := NewPortForwardController(kCli)
-	tas := NewTiltAnalyticsSubscriber(ta)
-	ar := ProvideAnalyticsReporter(ta, st)
+	au := engineanalytics.NewAnalyticsUpdater(ta)
+	ar := engineanalytics.ProvideAnalyticsReporter(ta, st)
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	k8sContextExt := k8scontext.NewExtension("fake-context", k8s.EnvDockerDesktop)
 	tfl := tiltfile.ProvideTiltfileLoader(ta, kCli, k8sContextExt, fakeDcc, feature.MainDefaults)
@@ -3043,7 +3009,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
 
-	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, tvc, tas, ewm, tcum, cuu, dp)
+	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, tvc, au, ewm, tcum, cuu, dp)
 	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {

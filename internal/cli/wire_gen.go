@@ -26,6 +26,7 @@ import (
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/engine"
+	analytics2 "github.com/windmilleng/tilt/internal/engine/analytics"
 	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
@@ -45,7 +46,7 @@ import (
 
 // Injectors from wire.go:
 
-func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics.TiltAnalytics) (demo.Script, error) {
+func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics3 *analytics.TiltAnalytics) (demo.Script, error) {
 	reducer := _wireReducerValue
 	storeLogActionsFlag := provideLogActions()
 	storeStore := store.NewStore(reducer, storeLogActionsFlag)
@@ -56,7 +57,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	if err != nil {
 		return demo.Script{}, err
 	}
-	headsUpDisplay, err := hud.NewDefaultHeadsUpDisplay(renderer, webURL, analytics2)
+	headsUpDisplay, err := hud.NewDefaultHeadsUpDisplay(renderer, webURL, analytics3)
 	if err != nil {
 		return demo.Script{}, err
 	}
@@ -128,7 +129,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	clusterName := k8s.ProvideClusterName(ctx, config)
 	kindPusher := engine.NewKINDPusher(clusterName)
 	syncletContainer := sidecar.ProvideSyncletContainer(syncletImageRef)
-	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, client, env, analytics2, updateMode, clock, runtime, kindPusher, syncletContainer)
+	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, client, env, analytics3, updateMode, clock, runtime, kindPusher, syncletContainer)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	imageAndCacheBuilder := engine.NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, updateMode)
 	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageAndCacheBuilder, clock)
@@ -138,12 +139,12 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
 	extension := k8scontext.NewExtension(kubeContext, env)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, client, extension, dockerComposeClient, defaults)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, client, extension, dockerComposeClient, defaults)
 	configsController := configs.NewConfigsController(tiltfileLoader, switchCli)
 	dockerComposeEventWatcher := engine.NewDockerComposeEventWatcher(dockerComposeClient)
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
-	analyticsReporter := engine.ProvideAnalyticsReporter(analytics2, storeStore)
+	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore)
 	tiltBuild := provideTiltInfo()
 	webMode, err := provideWebMode(tiltBuild)
 	if err != nil {
@@ -157,7 +158,7 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	httpClient := cloud.ProvideHttpClient()
 	address := cloudurl.ProvideAddress()
 	snapshotUploader := cloud.NewSnapshotUploader(httpClient, address)
-	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics2, snapshotUploader)
+	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, snapshotUploader)
 	if err != nil {
 		return demo.Script{}, err
 	}
@@ -165,12 +166,12 @@ func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics2 *analytics
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer, webURL, modelNoBrowser)
 	githubClientFactory := engine.NewGithubClientFactory()
 	tiltVersionChecker := engine.NewTiltVersionChecker(githubClientFactory, timerMaker)
-	tiltAnalyticsSubscriber := engine.NewTiltAnalyticsSubscriber(analytics2)
+	analyticsUpdater := analytics2.NewAnalyticsUpdater(analytics3)
 	eventWatchManager := k8swatch.NewEventWatchManager(client, ownerFetcher)
 	cloudUsernameManager := cloud.NewUsernameManager(httpClient)
 	updateUploader := cloud.NewUpdateUploader(httpClient, address, snapshotUploader)
 	dockerPruner := dockerprune.NewDockerPruner(switchCli)
-	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, tiltVersionChecker, tiltAnalyticsSubscriber, eventWatchManager, cloudUsernameManager, updateUploader, dockerPruner)
+	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, tiltVersionChecker, analyticsUpdater, eventWatchManager, cloudUsernameManager, updateUploader, dockerPruner)
 	upper := engine.NewUpper(ctx, storeStore, v2)
 	script := demo.NewScript(upper, headsUpDisplay, client, env, storeStore, branch, runtime, tiltfileLoader)
 	return script, nil
@@ -182,7 +183,7 @@ var (
 	_wireDefaultsValue = feature.MainDefaults
 )
 
-func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics) (dpDeps, error) {
+func wireDockerPrune(ctx context.Context, analytics3 *analytics.TiltAnalytics) (dpDeps, error) {
 	clientConfig := k8s.ProvideClientConfig()
 	config, err := k8s.ProvideKubeConfig(clientConfig)
 	if err != nil {
@@ -219,12 +220,12 @@ func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics) (
 	extension := k8scontext.NewExtension(kubeContext, env)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, client, extension, dockerComposeClient, defaults)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, client, extension, dockerComposeClient, defaults)
 	cliDpDeps := newDPDeps(switchCli, tiltfileLoader)
 	return cliDpDeps, nil
 }
 
-func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Threads, error) {
+func wireThreads(ctx context.Context, analytics3 *analytics.TiltAnalytics) (Threads, error) {
 	v := provideClock()
 	renderer := hud.NewRenderer(v)
 	modelWebPort := provideWebPort()
@@ -232,7 +233,7 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	if err != nil {
 		return Threads{}, err
 	}
-	headsUpDisplay, err := hud.NewDefaultHeadsUpDisplay(renderer, webURL, analytics2)
+	headsUpDisplay, err := hud.NewDefaultHeadsUpDisplay(renderer, webURL, analytics3)
 	if err != nil {
 		return Threads{}, err
 	}
@@ -307,7 +308,7 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	clusterName := k8s.ProvideClusterName(ctx, config)
 	kindPusher := engine.NewKINDPusher(clusterName)
 	syncletContainer := sidecar.ProvideSyncletContainer(syncletImageRef)
-	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, client, env, analytics2, updateMode, clock, runtime, kindPusher, syncletContainer)
+	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, client, env, analytics3, updateMode, clock, runtime, kindPusher, syncletContainer)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	imageAndCacheBuilder := engine.NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, updateMode)
 	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageAndCacheBuilder, clock)
@@ -317,12 +318,12 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
 	extension := k8scontext.NewExtension(kubeContext, env)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, client, extension, dockerComposeClient, defaults)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, client, extension, dockerComposeClient, defaults)
 	configsController := configs.NewConfigsController(tiltfileLoader, switchCli)
 	dockerComposeEventWatcher := engine.NewDockerComposeEventWatcher(dockerComposeClient)
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
-	analyticsReporter := engine.ProvideAnalyticsReporter(analytics2, storeStore)
+	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore)
 	tiltBuild := provideTiltInfo()
 	webMode, err := provideWebMode(tiltBuild)
 	if err != nil {
@@ -336,7 +337,7 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	httpClient := cloud.ProvideHttpClient()
 	address := cloudurl.ProvideAddress()
 	snapshotUploader := cloud.NewSnapshotUploader(httpClient, address)
-	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics2, snapshotUploader)
+	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, snapshotUploader)
 	if err != nil {
 		return Threads{}, err
 	}
@@ -344,12 +345,12 @@ func wireThreads(ctx context.Context, analytics2 *analytics.TiltAnalytics) (Thre
 	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer, webURL, modelNoBrowser)
 	githubClientFactory := engine.NewGithubClientFactory()
 	tiltVersionChecker := engine.NewTiltVersionChecker(githubClientFactory, timerMaker)
-	tiltAnalyticsSubscriber := engine.NewTiltAnalyticsSubscriber(analytics2)
+	analyticsUpdater := analytics2.NewAnalyticsUpdater(analytics3)
 	eventWatchManager := k8swatch.NewEventWatchManager(client, ownerFetcher)
 	cloudUsernameManager := cloud.NewUsernameManager(httpClient)
 	updateUploader := cloud.NewUpdateUploader(httpClient, address, snapshotUploader)
 	dockerPruner := dockerprune.NewDockerPruner(switchCli)
-	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, tiltVersionChecker, tiltAnalyticsSubscriber, eventWatchManager, cloudUsernameManager, updateUploader, dockerPruner)
+	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, tiltVersionChecker, analyticsUpdater, eventWatchManager, cloudUsernameManager, updateUploader, dockerPruner)
 	upper := engine.NewUpper(ctx, storeStore, v2)
 	windmillDir, err := dirs.UseWindmillDir()
 	if err != nil {
@@ -553,7 +554,7 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics) (
 var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.DetectNodeIP, k8s.ProvideClusterName, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientset, k8s.ProvideRESTConfig, k8s.ProvidePortForwardClient, k8s.ProvideConfigNamespace, k8s.ProvideKubectlRunner, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient, k8s.ProvideOwnerFetcher)
 
 var BaseWireSet = wire.NewSet(
-	K8sWireSet, tiltfile.WireSet, provideKubectlLogLevel, docker.SwitchWireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, runtimelog.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, k8swatch.NewPodWatcher, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, configs.NewConfigsController, engine.NewDockerComposeEventWatcher, runtimelog.NewDockerComposeLogManager, engine.NewProfilerManager, engine.NewGithubClientFactory, engine.NewTiltVersionChecker, cloud.WireSet, cloudurl.ProvideAddress, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.ProvideSubscribers, engine.NewUpper, engine.NewTiltAnalyticsSubscriber, engine.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, provideWebVersion,
+	K8sWireSet, tiltfile.WireSet, provideKubectlLogLevel, docker.SwitchWireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, runtimelog.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, k8swatch.NewPodWatcher, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, configs.NewConfigsController, engine.NewDockerComposeEventWatcher, runtimelog.NewDockerComposeLogManager, engine.NewProfilerManager, engine.NewGithubClientFactory, engine.NewTiltVersionChecker, cloud.WireSet, cloudurl.ProvideAddress, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.ProvideSubscribers, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, provideWebVersion,
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,

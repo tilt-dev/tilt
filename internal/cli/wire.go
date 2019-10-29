@@ -22,6 +22,7 @@ import (
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/engine"
+	engineanalytics "github.com/windmilleng/tilt/internal/engine/analytics"
 	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
@@ -92,8 +93,8 @@ var BaseWireSet = wire.NewSet(
 	provideTiltInfo,
 	engine.ProvideSubscribers,
 	engine.NewUpper,
-	engine.NewTiltAnalyticsSubscriber,
-	engine.ProvideAnalyticsReporter,
+	engineanalytics.NewAnalyticsUpdater,
+	engineanalytics.ProvideAnalyticsReporter,
 	provideUpdateModeFlag,
 	engine.NewWatchManager,
 	engine.ProvideFsWatcherMaker,
