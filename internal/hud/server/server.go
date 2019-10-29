@@ -326,8 +326,6 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	fmt.Printf("SNAPSHOT: %+v\n", snapshot)
-
 	id, err := s.uploader.Upload(token, teamID, snapshot)
 	if err != nil {
 		msg := fmt.Sprintf("Error creating snapshot: %v", err)
