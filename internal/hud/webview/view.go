@@ -266,12 +266,3 @@ type View struct {
 
 	FatalError string `json:"fatalError"`
 }
-
-func (v View) Resource(n model.ManifestName) (Resource, bool) {
-	for _, res := range v.Resources {
-		if res.Name == n {
-			return res, true
-		}
-	}
-	return Resource{}, false
-}
