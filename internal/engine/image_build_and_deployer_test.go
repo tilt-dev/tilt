@@ -543,10 +543,14 @@ func (f *ibdFixture) firstPodTemplateSpecHash() k8s.PodTemplateSpecHash {
 		f.T().Fatal(err)
 	}
 
+	// if you want to use this from a test that applies more than one entity, it will have to change
 	require.Equal(f.T(), 1, len(entities), "expected only one entity. Yaml contained: %s", f.k8s.Yaml)
 
+	require.IsType(f.T(), &v1.Deployment{}, entities[0].Obj)
 	d := entities[0].Obj.(*v1.Deployment)
-	return k8s.PodTemplateSpecHash(d.Spec.Template.Labels[k8s.TiltPodTemplateHashLabel])
+	ret := k8s.PodTemplateSpecHash(d.Spec.Template.Labels[k8s.TiltPodTemplateHashLabel])
+	require.NotEqual(f.T(), ret, k8s.PodTemplateSpecHash(""))
+	return ret
 }
 
 func TestDeployInjectsPodTemplateSpecHash(t *testing.T) {
@@ -562,7 +566,6 @@ func TestDeployInjectsPodTemplateSpecHash(t *testing.T) {
 
 	hash := f.firstPodTemplateSpecHash()
 
-	require.NotEqual(t, hash, "")
 	require.True(t, resultSet.DeployedPodTemplateSpecHashes().Contains(hash))
 }
 

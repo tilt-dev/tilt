@@ -339,7 +339,7 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 
 		// This needs to be after all the other injections, to ensure the hash includes the Tilt-generated
 		// image tag, etc
-		e, err := k8s.InjectPodTemplateSpecHash(e)
+		e, err := k8s.InjectPodTemplateSpecHashes(e)
 		if err != nil {
 			return nil, errors.Wrap(err, "injecting pod template hash")
 		}

@@ -25,7 +25,7 @@ func HashPodTemplateSpec(spec *v1.PodTemplateSpec) (PodTemplateSpecHash, error) 
 
 // Iterate through the fields of a k8s entity and add the pod template spec hash on all
 // pod template specs
-func InjectPodTemplateSpecHash(entity K8sEntity) (K8sEntity, error) {
+func InjectPodTemplateSpecHashes(entity K8sEntity) (K8sEntity, error) {
 	entity = entity.DeepCopy()
 	templateSpecs, err := ExtractPodTemplateSpec(&entity)
 	if err != nil {
