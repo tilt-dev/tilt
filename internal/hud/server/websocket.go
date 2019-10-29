@@ -69,7 +69,6 @@ func (ws WebsocketSubscriber) Stream(ctx context.Context, store *store.Store) {
 
 func (ws WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore) {
 	state := s.RLockState()
-	// view := webview.StateToWebView(state)
 	view := webview.StateToProtoView(state)
 
 	if view.NeedsAnalyticsNudge && !state.AnalyticsNudgeSurfaced {
