@@ -242,7 +242,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 		}
 		podTemplateSpecHashes = append(podTemplateSpecHashes, hs...)
 	}
-	results[kTarget.ID()] = store.NewK8sDeployResult(kTarget.ID(), uids, podTemplateSpecHashes)
+	results[kTarget.ID()] = store.NewK8sDeployResult(kTarget.ID(), uids, podTemplateSpecHashes, deployed)
 
 	return results, nil
 }

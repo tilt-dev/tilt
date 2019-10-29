@@ -17,6 +17,7 @@ import (
 type BuildResult interface {
 	TargetID() model.TargetID
 	BuildType() model.BuildType
+	Facets() []model.Facet
 }
 
 type LocalBuildResult struct {
@@ -25,6 +26,7 @@ type LocalBuildResult struct {
 
 func (r LocalBuildResult) TargetID() model.TargetID   { return r.id }
 func (r LocalBuildResult) BuildType() model.BuildType { return model.BuildTypeLocal }
+func (r LocalBuildResult) Facets() []model.Facet      { return nil }
 
 func NewLocalBuildResult(id model.TargetID) LocalBuildResult {
 	return LocalBuildResult{
@@ -43,6 +45,7 @@ type ImageBuildResult struct {
 
 func (r ImageBuildResult) TargetID() model.TargetID   { return r.id }
 func (r ImageBuildResult) BuildType() model.BuildType { return model.BuildTypeImage }
+func (r ImageBuildResult) Facets() []model.Facet      { return nil }
 
 // For image targets.
 func NewImageBuildResult(id model.TargetID, image reference.NamedTagged) ImageBuildResult {
@@ -67,6 +70,7 @@ type LiveUpdateBuildResult struct {
 
 func (r LiveUpdateBuildResult) TargetID() model.TargetID   { return r.id }
 func (r LiveUpdateBuildResult) BuildType() model.BuildType { return model.BuildTypeLiveUpdate }
+func (r LiveUpdateBuildResult) Facets() []model.Facet      { return nil }
 
 // For in-place container updates.
 func NewLiveUpdateBuildResult(id model.TargetID, image reference.NamedTagged, containerIDs []container.ID) LiveUpdateBuildResult {
@@ -91,6 +95,7 @@ type DockerComposeBuildResult struct {
 
 func (r DockerComposeBuildResult) TargetID() model.TargetID   { return r.id }
 func (r DockerComposeBuildResult) BuildType() model.BuildType { return model.BuildTypeDockerCompose }
+func (r DockerComposeBuildResult) Facets() []model.Facet      { return nil }
 
 // For docker compose deploy targets.
 func NewDockerComposeDeployResult(id model.TargetID, containerID container.ID) DockerComposeBuildResult {
@@ -107,17 +112,34 @@ type K8sBuildResult struct {
 	DeployedUIDs []types.UID
 
 	PodTemplateSpecHashes []k8s.PodTemplateSpecHash
+
+	AppliedEntitiesText string
 }
 
 func (r K8sBuildResult) TargetID() model.TargetID   { return r.id }
 func (r K8sBuildResult) BuildType() model.BuildType { return model.BuildTypeK8s }
+func (r K8sBuildResult) Facets() []model.Facet {
+
+	return []model.Facet{
+		{
+			Name:  "applied yaml",
+			Value: r.AppliedEntitiesText,
+		},
+	}
+}
 
 // For kubernetes deploy targets.
-func NewK8sDeployResult(id model.TargetID, uids []types.UID, hashes []k8s.PodTemplateSpecHash) BuildResult {
+func NewK8sDeployResult(id model.TargetID, uids []types.UID, hashes []k8s.PodTemplateSpecHash, appliedEntities []k8s.K8sEntity) BuildResult {
+	appliedEntitiesText, err := k8s.SerializeSpecYAML(appliedEntities)
+	if err != nil {
+		appliedEntitiesText = fmt.Sprintf("unable to serialize entities to yaml: %s", err.Error())
+	}
+
 	return K8sBuildResult{
 		id:                    id,
 		DeployedUIDs:          uids,
 		PodTemplateSpecHashes: hashes,
+		AppliedEntitiesText:   appliedEntitiesText,
 	}
 }
 
@@ -228,7 +250,7 @@ func (set BuildResultSet) OneAndOnlyLiveUpdatedContainerID() container.ID {
 // All methods that return a new BuildState should first clone the existing build state.
 type BuildState struct {
 	// The last successful build.
-	LastResult BuildResult
+	LastSuccessfulResult BuildResult
 
 	// Files changed since the last result was build.
 	// This must be liberal: it's ok if this has too many files, but not ok if it has too few.
@@ -246,8 +268,8 @@ func NewBuildState(result BuildResult, files []string) BuildState {
 		set[f] = true
 	}
 	return BuildState{
-		LastResult:      result,
-		FilesChangedSet: set,
+		LastSuccessfulResult: result,
+		FilesChangedSet:      set,
 	}
 }
 
@@ -270,7 +292,7 @@ func (b BuildState) OneContainerInfo() ContainerInfo {
 	return b.RunningContainers[0]
 }
 func (b BuildState) LastImageAsString() string {
-	img := ImageFromBuildResult(b.LastResult)
+	img := ImageFromBuildResult(b.LastSuccessfulResult)
 	if img == nil {
 		return ""
 	}
@@ -291,19 +313,19 @@ func (b BuildState) FilesChanged() []string {
 
 // A build state is empty if there are no previous results.
 func (b BuildState) IsEmpty() bool {
-	return b.LastResult == nil
+	return b.LastSuccessfulResult == nil
 }
 
 func (b BuildState) HasImage() bool {
-	return ImageFromBuildResult(b.LastResult) != nil
+	return ImageFromBuildResult(b.LastSuccessfulResult) != nil
 }
 
 // Whether the image represented by this state needs to be built.
 // If the image has already been built, and no files have been
 // changed since then, then we can re-use the previous result.
 func (b BuildState) NeedsImageBuild() bool {
-	lastBuildWasImgBuild := b.LastResult != nil &&
-		b.LastResult.BuildType() == model.BuildTypeImage
+	lastBuildWasImgBuild := b.LastSuccessfulResult != nil &&
+		b.LastSuccessfulResult.BuildType() == model.BuildTypeImage
 	return !lastBuildWasImgBuild || len(b.FilesChangedSet) > 0
 }
 

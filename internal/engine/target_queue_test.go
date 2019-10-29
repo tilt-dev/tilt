@@ -38,7 +38,7 @@ func TestTargetQueue_DepsBuilt(t *testing.T) {
 	f := newTargetQueueFixture(t)
 
 	fooTarget := model.NewImageTarget(container.MustParseSelector("foo"))
-	s1 := store.BuildState{LastResult: store.NewImageBuildResult(fooTarget.ID(), container.MustParseNamedTagged("foo:1234"))}
+	s1 := store.BuildState{LastSuccessfulResult: store.NewImageBuildResult(fooTarget.ID(), container.MustParseNamedTagged("foo:1234"))}
 	barTarget := model.NewImageTarget(container.MustParseSelector("bar")).WithDependencyIDs([]model.TargetID{fooTarget.ID()})
 	s2 := store.BuildState{}
 
@@ -51,7 +51,7 @@ func TestTargetQueue_DepsBuilt(t *testing.T) {
 	f.run(targets, buildStateSet)
 
 	barCall := newFakeBuildHandlerCall(barTarget, s2, 1, []store.BuildResult{
-		store.NewImageBuildResult(fooTarget.ID(), store.ImageFromBuildResult(s1.LastResult)),
+		store.NewImageBuildResult(fooTarget.ID(), store.ImageFromBuildResult(s1.LastSuccessfulResult)),
 	})
 
 	// foo has a valid last result, so only bar gets rebuilt
@@ -67,7 +67,7 @@ func TestTargetQueue_DepsUnbuilt(t *testing.T) {
 	fooTarget := model.NewImageTarget(container.MustParseSelector("foo"))
 	s1 := store.BuildState{}
 	barTarget := model.NewImageTarget(container.MustParseSelector("bar")).WithDependencyIDs([]model.TargetID{fooTarget.ID()})
-	var s2 = store.BuildState{LastResult: store.NewImageBuildResult(
+	var s2 = store.BuildState{LastSuccessfulResult: store.NewImageBuildResult(
 		barTarget.ID(),
 		container.MustParseNamedTagged("bar:54321"),
 	)}
@@ -95,7 +95,7 @@ func TestTargetQueue_IncrementalBuild(t *testing.T) {
 
 	fooTarget := model.NewImageTarget(container.MustParseSelector("foo"))
 	s1 := store.BuildState{
-		LastResult: store.NewImageBuildResult(
+		LastSuccessfulResult: store.NewImageBuildResult(
 			fooTarget.ID(),
 			container.MustParseNamedTagged("foo:1234"),
 		),
@@ -120,7 +120,7 @@ func TestTargetQueue_CachedBuild(t *testing.T) {
 
 	fooTarget := model.NewImageTarget(container.MustParseSelector("foo"))
 	s1 := store.BuildState{
-		LastResult: store.NewImageBuildResult(
+		LastSuccessfulResult: store.NewImageBuildResult(
 			fooTarget.ID(),
 			container.MustParseNamedTagged("foo:1234"),
 		),
@@ -140,7 +140,7 @@ func TestTargetQueue_DepsBuiltButReaped(t *testing.T) {
 	f := newTargetQueueFixture(t)
 
 	fooTarget := model.NewImageTarget(container.MustParseSelector("foo"))
-	s1 := store.BuildState{LastResult: store.NewImageBuildResult(fooTarget.ID(), container.MustParseNamedTagged("foo:1234"))}
+	s1 := store.BuildState{LastSuccessfulResult: store.NewImageBuildResult(fooTarget.ID(), container.MustParseNamedTagged("foo:1234"))}
 	barTarget := model.NewImageTarget(container.MustParseSelector("bar")).WithDependencyIDs([]model.TargetID{fooTarget.ID()})
 	s2 := store.BuildState{}
 
@@ -150,7 +150,7 @@ func TestTargetQueue_DepsBuiltButReaped(t *testing.T) {
 		barTarget.ID(): s2,
 	}
 
-	f.setMissingImage(store.ImageFromBuildResult(s1.LastResult))
+	f.setMissingImage(store.ImageFromBuildResult(s1.LastSuccessfulResult))
 
 	f.run(targets, buildStateSet)
 
