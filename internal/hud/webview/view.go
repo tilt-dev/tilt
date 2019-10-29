@@ -9,8 +9,9 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 
 	"github.com/golang/protobuf/ptypes"
-	proto_webview "github.com/windmilleng/tilt/pkg/webview"
 	"github.com/golang/protobuf/ptypes/timestamp"
+
+	proto_webview "github.com/windmilleng/tilt/pkg/webview"
 )
 
 type ResourceInfoView interface {
