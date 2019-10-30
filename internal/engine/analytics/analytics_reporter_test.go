@@ -172,7 +172,8 @@ type analyticsReporterTestFixture struct {
 
 func newAnalyticsReporterTestFixture() *analyticsReporterTestFixture {
 	st, _ := store.NewStoreForTesting()
-	ma, a := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
+	opter := tiltanalytics.NewFakeOpter(analytics.OptIn)
+	ma, a := tiltanalytics.NewMemoryTiltAnalyticsForTest(opter)
 	ar := AnalyticsReporter{
 		a:       a,
 		store:   st,

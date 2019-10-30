@@ -91,7 +91,7 @@ func (u Upper) Start(
 	watch bool,
 	fileName string,
 	useActionWriter bool,
-	analyticsOpt analytics.Opt,
+	analyticsUserOpt analytics.Opt,
 	token token.Token,
 	cloudAddress string,
 ) error {
@@ -114,15 +114,15 @@ func (u Upper) Start(
 	configFiles := []string{absTfPath}
 
 	return u.Init(ctx, InitAction{
-		WatchFiles:    watch,
-		TiltfilePath:  absTfPath,
-		ConfigFiles:   configFiles,
-		InitManifests: manifestNames,
-		TiltBuild:     b,
-		StartTime:     startTime,
-		AnalyticsOpt:  analyticsOpt,
-		Token:         token,
-		CloudAddress:  cloudAddress,
+		WatchFiles:       watch,
+		TiltfilePath:     absTfPath,
+		ConfigFiles:      configFiles,
+		InitManifests:    manifestNames,
+		TiltBuild:        b,
+		StartTime:        startTime,
+		AnalyticsUserOpt: analyticsUserOpt,
+		Token:            token,
+		CloudAddress:     cloudAddress,
 	})
 }
 
@@ -201,8 +201,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleDumpEngineStateAction(ctx, state)
 	case LatestVersionAction:
 		handleLatestVersionAction(state, action)
-	case store.AnalyticsOptAction:
-		handleAnalyticsOptAction(state, action)
+	case store.AnalyticsUserOptAction:
+		handleAnalyticsUserOptAction(state, action)
 	case store.AnalyticsNudgeSurfacedAction:
 		handleAnalyticsNudgeSurfacedAction(ctx, state)
 	case store.TiltCloudUserLookedUpAction:
@@ -692,7 +692,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.TiltfilePath = action.TiltfilePath
 	engineState.ConfigFiles = action.ConfigFiles
 	engineState.InitManifests = action.InitManifests
-	engineState.AnalyticsOpt = action.AnalyticsOpt
+	engineState.AnalyticsUserOpt = action.AnalyticsUserOpt
 	engineState.WatchFiles = action.WatchFiles
 	engineState.CloudAddress = action.CloudAddress
 	engineState.Token = action.Token
@@ -770,8 +770,8 @@ func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, acti
 	state.TiltfileState.CombinedLog = model.AppendLog(state.TiltfileState.CombinedLog, action, state.LogTimestamps, "", state.Secrets)
 }
 
-func handleAnalyticsOptAction(state *store.EngineState, action store.AnalyticsOptAction) {
-	state.AnalyticsOpt = action.Opt
+func handleAnalyticsUserOptAction(state *store.EngineState, action store.AnalyticsUserOptAction) {
+	state.AnalyticsUserOpt = action.Opt
 }
 
 // The first time we hear that the analytics nudge was surfaced, record a metric.

@@ -3,6 +3,8 @@ package configs
 import (
 	"time"
 
+	"github.com/windmilleng/wmclient/pkg/analytics"
+
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/model"
 )
@@ -19,13 +21,14 @@ type ConfigsReloadedAction struct {
 	TiltIgnoreContents string
 	ConfigFiles        []string
 
-	FinishTime          time.Time
-	Err                 error
-	Warnings            []string
-	Features            map[string]bool
-	TeamName            string
-	Secrets             model.SecretSet
-	DockerPruneSettings model.DockerPruneSettings
+	FinishTime           time.Time
+	Err                  error
+	Warnings             []string
+	Features             map[string]bool
+	TeamName             string
+	Secrets              model.SecretSet
+	DockerPruneSettings  model.DockerPruneSettings
+	AnalyticsTiltfileOpt analytics.Opt
 
 	// The length of the global log when Tiltfile execution started.
 	// Useful for knowing how far back in time we have to scrub secrets.

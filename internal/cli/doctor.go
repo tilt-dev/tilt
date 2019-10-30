@@ -130,8 +130,8 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 	fmt.Println("Analytics Settings")
 
 	a := analytics.Get(ctx)
-	opt := a.Opt()
-	fmt.Printf("- Mode: %s\n", opt)
+	opt := a.UserOpt()
+	fmt.Printf("- User Mode: %s\n", opt)
 
 	machineHash := "[redacted]"
 	gitRepoHash := "[redacted]"

@@ -26,11 +26,15 @@ func testCases(expectedWhenOptedIn, expectedWhenOptedOut, expectedWhenNoOpt bool
 	}
 }
 
-type optSetting struct {
+type userOptSetting struct {
 	opt analytics.Opt
 }
 
-func (os *optSetting) SetOpt(opt analytics.Opt) error {
+func (os *userOptSetting) ReadUserOpt() (analytics.Opt, error) {
+	return os.opt, nil
+}
+
+func (os *userOptSetting) SetUserOpt(opt analytics.Opt) error {
 	os.opt = opt
 	return nil
 }
@@ -39,8 +43,8 @@ func TestCount(t *testing.T) {
 	for _, test := range testCases(true, false, false) {
 		t.Run(test.name, func(t *testing.T) {
 			ma := analytics.NewMemoryAnalytics()
-			os := &optSetting{}
-			a := NewTiltAnalytics(test.opt, os, ma, versionTest)
+			os := &userOptSetting{opt: test.opt}
+			a, _ := NewTiltAnalytics(os, ma, versionTest)
 			a.Count("foo", testTags, 1)
 			var expectedCounts []analytics.CountEvent
 			if test.expectRecord {
@@ -59,8 +63,8 @@ func TestIncr(t *testing.T) {
 	for _, test := range testCases(true, false, false) {
 		t.Run(test.name, func(t *testing.T) {
 			ma := analytics.NewMemoryAnalytics()
-			os := &optSetting{}
-			a := NewTiltAnalytics(test.opt, os, ma, versionTest)
+			os := &userOptSetting{opt: test.opt}
+			a, _ := NewTiltAnalytics(os, ma, versionTest)
 			a.Incr("foo", testTags)
 			var expectedCounts []analytics.CountEvent
 			if test.expectRecord {
@@ -79,8 +83,8 @@ func TestTimer(t *testing.T) {
 	for _, test := range testCases(true, false, false) {
 		t.Run(test.name, func(t *testing.T) {
 			ma := analytics.NewMemoryAnalytics()
-			os := &optSetting{}
-			a := NewTiltAnalytics(test.opt, os, ma, versionTest)
+			os := &userOptSetting{opt: test.opt}
+			a, _ := NewTiltAnalytics(os, ma, versionTest)
 			a.Timer("foo", time.Second, testTags)
 			var expectedTimes []analytics.TimeEvent
 			if test.expectRecord {
@@ -99,8 +103,8 @@ func TestIncrIfUnopted(t *testing.T) {
 	for _, test := range testCases(false, false, true) {
 		t.Run(test.name, func(t *testing.T) {
 			ma := analytics.NewMemoryAnalytics()
-			os := &optSetting{}
-			a := NewTiltAnalytics(test.opt, os, ma, versionTest)
+			os := &userOptSetting{opt: test.opt}
+			a, _ := NewTiltAnalytics(os, ma, versionTest)
 			a.IncrIfUnopted("foo")
 			var expectedCounts []analytics.CountEvent
 			if test.expectRecord {
@@ -117,9 +121,9 @@ func TestIncrIfUnopted(t *testing.T) {
 
 func analyticsViaTransition(t *testing.T, initialOpt, newOpt analytics.Opt) (*TiltAnalytics, *analytics.MemoryAnalytics) {
 	ma := analytics.NewMemoryAnalytics()
-	os := &optSetting{}
-	a := NewTiltAnalytics(initialOpt, os, ma, versionTest)
-	err := a.SetOpt(newOpt)
+	os := &userOptSetting{opt: initialOpt}
+	a, _ := NewTiltAnalytics(os, ma, versionTest)
+	err := a.SetUserOpt(newOpt)
 	if !assert.NoError(t, err) {
 		assert.FailNow(t, err.Error())
 	}

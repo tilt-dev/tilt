@@ -9,6 +9,7 @@ import (
 
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
@@ -70,7 +71,9 @@ type EngineState struct {
 	LatestTiltBuild model.TiltBuild
 
 	// Analytics Info
-	AnalyticsOpt           analytics.Opt // changes to this field will propagate into the TiltAnalytics subscriber + we'll record them as user choice
+
+	AnalyticsUserOpt       analytics.Opt // changes to this field will propagate into the TiltAnalytics subscriber + we'll record them as user choice
+	AnalyticsTiltfileOpt   analytics.Opt // Set by the Tiltfile. Overrides the UserOpt.
 	AnalyticsNudgeSurfaced bool          // this flag is set the first time we show the analytics nudge to the user.
 
 	Features map[string]bool
@@ -86,6 +89,18 @@ type EngineState struct {
 	WaitingForTiltCloudUsernamePostRegistration bool
 
 	DockerPruneSettings model.DockerPruneSettings
+}
+
+// Merge analytics opt-in status from different sources.
+// The Tiltfile opt-in takes precedence over the user opt-in.
+func (e *EngineState) AnalyticsEffectiveOpt() analytics.Opt {
+	if tiltanalytics.IsAnalyticsDisabledFromEnv() {
+		return analytics.OptOut
+	}
+	if e.AnalyticsTiltfileOpt != analytics.OptDefault {
+		return e.AnalyticsTiltfileOpt
+	}
+	return e.AnalyticsUserOpt
 }
 
 func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.ManifestName {

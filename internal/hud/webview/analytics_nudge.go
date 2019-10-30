@@ -7,7 +7,7 @@ import (
 )
 
 func NeedsNudge(st store.EngineState) bool {
-	if st.AnalyticsOpt != analytics.OptDefault {
+	if st.AnalyticsEffectiveOpt() != analytics.OptDefault {
 		// already opted in/out
 		return false
 	}

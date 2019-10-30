@@ -55,7 +55,7 @@ func TestNeedsNudgeGreenManifest(t *testing.T) {
 func TestNeedsNudgeAlreadyOpted(t *testing.T) {
 	state := store.NewState()
 
-	state.AnalyticsOpt = analytics.OptIn
+	state.AnalyticsUserOpt = analytics.OptIn
 	m := model.Manifest{Name: "server"}
 	targ := store.NewManifestTarget(m)
 	targ.State = &store.ManifestState{LastSuccessfulDeployTime: time.Now()}

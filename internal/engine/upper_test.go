@@ -2485,7 +2485,7 @@ func TestUpperStart(t *testing.T) {
 		require.Equal(t, []model.ManifestName{"foo", "bar"}, state.InitManifests)
 		require.Equal(t, f.JoinPath("Tiltfile"), state.TiltfilePath)
 		require.Equal(t, tok, state.Token)
-		require.Equal(t, analytics.OptIn, state.AnalyticsOpt)
+		require.Equal(t, analytics.OptIn, state.AnalyticsEffectiveOpt())
 		require.Equal(t, cloudAddress, state.CloudAddress)
 	})
 }
@@ -2585,23 +2585,23 @@ func TestSetAnalyticsOpt(t *testing.T) {
 	defer f.TearDown()
 
 	opt := func(ia InitAction) InitAction {
-		ia.AnalyticsOpt = analytics.OptIn
+		ia.AnalyticsUserOpt = analytics.OptIn
 		return ia
 	}
 
 	f.Start([]model.Manifest{}, true, opt)
-	f.store.Dispatch(store.AnalyticsOptAction{Opt: analytics.OptOut})
+	f.store.Dispatch(store.AnalyticsUserOptAction{Opt: analytics.OptOut})
 	f.WaitUntil("opted out", func(state store.EngineState) bool {
-		return state.AnalyticsOpt == analytics.OptOut
+		return state.AnalyticsEffectiveOpt() == analytics.OptOut
 	})
 
 	// if we don't wait for 1 here, it's possible the state flips to out and back to in before the subscriber sees it,
 	// and we end up with no events
 	f.opter.WaitUntilCount(t, 1)
 
-	f.store.Dispatch(store.AnalyticsOptAction{Opt: analytics.OptIn})
+	f.store.Dispatch(store.AnalyticsUserOptAction{Opt: analytics.OptIn})
 	f.WaitUntil("opted in", func(state store.EngineState) bool {
-		return state.AnalyticsOpt == analytics.OptIn
+		return state.AnalyticsEffectiveOpt() == analytics.OptIn
 	})
 
 	f.opter.WaitUntilCount(t, 2)
@@ -2989,7 +2989,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	f := tempdir.NewTempDirFixture(t)
 
 	log := bufsync.NewThreadSafeBuffer()
-	to := &tiltanalytics.FakeOpter{}
+	to := tiltanalytics.NewFakeOpter(analytics.OptIn)
 	ctx, _, ta := testutils.ForkedCtxAndAnalyticsWithOpterForTest(log, to)
 	ctx, cancel := context.WithCancel(ctx)
 

@@ -172,7 +172,7 @@ func (s *HeadsUpServer) HandleAnalyticsOpt(w http.ResponseWriter, req *http.Requ
 		s.a.IncrIfUnopted("analytics.opt.in")
 	}
 
-	s.store.Dispatch(store.AnalyticsOptAction{Opt: opt})
+	s.store.Dispatch(store.AnalyticsUserOptAction{Opt: opt})
 }
 
 func (s *HeadsUpServer) HandleAnalytics(w http.ResponseWriter, req *http.Request) {

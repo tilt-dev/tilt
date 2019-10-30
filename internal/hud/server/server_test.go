@@ -135,7 +135,7 @@ func TestHandleAnalyticsErrorsIfNotIncr(t *testing.T) {
 func TestHandleAnalyticsOptIn(t *testing.T) {
 	f := newTestFixture(t)
 
-	err := f.ta.SetOpt(analytics.OptDefault)
+	err := f.ta.SetUserOpt(analytics.OptDefault)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,8 +157,8 @@ func TestHandleAnalyticsOptIn(t *testing.T) {
 			status, http.StatusOK)
 	}
 
-	action := store.WaitForAction(t, reflect.TypeOf(store.AnalyticsOptAction{}), f.getActions)
-	assert.Equal(t, store.AnalyticsOptAction{Opt: analytics.OptIn}, action)
+	action := store.WaitForAction(t, reflect.TypeOf(store.AnalyticsUserOptAction{}), f.getActions)
+	assert.Equal(t, store.AnalyticsUserOptAction{Opt: analytics.OptIn}, action)
 
 	f.a.Flush(time.Millisecond)
 
@@ -400,7 +400,8 @@ func newTestFixture(t *testing.T) *serverFixture {
 	st, getActions := store.NewStoreForTesting()
 	go st.Loop(context.Background())
 	a := analytics.NewMemoryAnalytics()
-	a, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(tiltanalytics.NullOpter{})
+	opter := tiltanalytics.NewFakeOpter(analytics.OptIn)
+	a, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(opter)
 	snapshotHTTP := &fakeHTTPClient{}
 	addr := cloudurl.Address("nonexistent.example.com")
 	uploader := cloud.NewSnapshotUploader(snapshotHTTP, addr)
