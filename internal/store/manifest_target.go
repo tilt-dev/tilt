@@ -77,8 +77,9 @@ func (t *ManifestTarget) Facets(secrets model.SecretSet) []model.Facet {
 		}
 	}
 
-	for _, f := range ret {
+	for i, f := range ret {
 		f.Value = string(secrets.Scrub([]byte(f.Value)))
+		ret[i] = f
 	}
 
 	return ret
