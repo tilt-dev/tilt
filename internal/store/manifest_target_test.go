@@ -24,7 +24,7 @@ func TestManifestTarget_FacetsSecretsScrubbed(t *testing.T) {
 	actual := mt.Facets(secrets)
 	expected := []model.Facet{
 		{
-			Name:  "k8s_yaml",
+			Name:  "applied yaml",
 			Value: "text [redacted secret foo:password] moretext",
 		},
 	}
