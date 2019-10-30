@@ -17,8 +17,8 @@ message BuildRecord {
 
 message K8sResourceInfo {
   string pod_name = 1;
-  google.protobuf.Timestamp pod_creation_time = 2;
-  google.protobuf.Timestamp pod_update_start_time = 3;
+  string pod_creation_time = 2;
+  string pod_update_start_time = 3;
   string pod_status = 4;
   string pod_status_message = 5;
   bool all_containers_ready = 6;
@@ -108,10 +108,35 @@ message View {
 
 message GetViewRequest {}
 
+message SnapshotHighlight {
+  string beginning_logID = 1;
+  string ending_logID = 2;
+  string text = 3;
+}
+
+message Snapshot {
+  View view = 1;
+  bool is_sidebar_closed = 2;
+  string path = 3;
+  SnapshotHighlight snapshot_highlight = 4;
+  string snapshot_link = 5;
+}
+
+message UploadSnapshotResponse {
+  string url = 1;
+}
+
 service ViewService {
   rpc GetView(GetViewRequest) returns (View) {
     option (google.api.http) = {
-      get: "/api/proto/view"
+      get: "/api/view"
+    };
+  }
+
+  rpc UploadSnapshot(Snapshot) returns (UploadSnapshotResponse) {
+    option (google.api.http) = {
+      post: "/api/snapshot/new"
+      body: "*"
     };
   }
 }

@@ -15,7 +15,6 @@ import (
 	_ "github.com/gorilla/websocket"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/modern-go/reflect2"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
@@ -26,6 +25,7 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/model"
+	proto_webview "github.com/windmilleng/tilt/pkg/webview"
 )
 
 const httpTimeOut = 5 * time.Second
@@ -131,11 +131,15 @@ func (s *HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
 
 func (s *HeadsUpServer) SnapshotJSON(w http.ResponseWriter, req *http.Request) {
 	state := s.store.RLockState()
-	view := webview.StateToWebView(state)
+	view, err := webview.StateToProtoView(state)
 	s.store.RUnlockState()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error converting view to proto: %v", err), http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(cloud.Snapshot{
+	err = json.NewEncoder(w).Encode(&proto_webview.Snapshot{
 		View: view,
 	})
 	if err != nil {
@@ -303,11 +307,9 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	c := jsoniter.ConfigDefault
-	de := jsoniter.DecoderExtension{reflect2.TypeOf(time.Time{}): timeAllowEmptyDecoder{}}
-	c.RegisterExtension(de)
-	var snapshot cloud.Snapshot
-	decoder := c.NewDecoder(bytes.NewBuffer(b))
+	jspb := &runtime.JSONPb{OrigName: false, EmitDefaults: true}
+	decoder := jspb.NewDecoder(bytes.NewBuffer(b))
+	var snapshot *proto_webview.Snapshot
 
 	// TODO(nick): Add more strict decoding once we have better safeguards for making
 	// sure the Go and JS types are in-sync.

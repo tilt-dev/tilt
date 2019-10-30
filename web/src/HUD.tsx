@@ -77,7 +77,7 @@ class HUD extends Component<HudProps, HudState> {
         log: "",
         logTimestamps: false,
         needsAnalyticsNudge: false,
-        fatalError: null,
+        fatalError: undefined,
         runningTiltBuild: {
           version: "",
           date: "",
@@ -97,7 +97,7 @@ class HUD extends Component<HudProps, HudState> {
       snapshotLink: "",
       showSnapshotModal: false,
       showFatalErrorModal: ShowFatalErrorModal.Default,
-      snapshotHighlight: null,
+      snapshotHighlight: undefined,
       socketState: SocketState.Closed,
     }
 
@@ -143,7 +143,7 @@ class HUD extends Component<HudProps, HudState> {
     return this.pathBuilder.path(relPath)
   }
 
-  snapshotFromState(state: HudState): Snapshot {
+  snapshotFromState(state: HudState): Proto.webviewSnapshot {
     return {
       view: _.cloneDeep(state.view || null),
       isSidebarClosed: !!state.isSidebarClosed,
@@ -152,23 +152,25 @@ class HUD extends Component<HudProps, HudState> {
     }
   }
 
-  sendSnapshot(snapshot: Snapshot) {
+  sendSnapshot(snapshot: Proto.webviewSnapshot) {
     let url = `//${window.location.host}/api/snapshot/new`
 
     if (!snapshot.view) {
       return
     }
 
+    let body = JSON.stringify(snapshot)
+
     fetch(url, {
       method: "post",
-      body: JSON.stringify(snapshot),
+      body: body,
     })
       .then(res => {
         res
           .json()
-          .then((value: NewSnapshotResponse) => {
+          .then((value: Proto.webviewUploadSnapshotResponse) => {
             this.setState({
-              snapshotLink: value.url,
+              snapshotLink: value.url ? value.url : "",
             })
           })
           .catch(err => console.error(err))
@@ -192,7 +194,7 @@ class HUD extends Component<HudProps, HudState> {
 
   handleClearHighlight() {
     this.setState({
-      snapshotHighlight: null,
+      snapshotHighlight: undefined,
     })
   }
 

@@ -3,7 +3,6 @@ package server_test
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/windmilleng/wmclient/pkg/analytics"
@@ -23,6 +23,7 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/model"
+	proto_webview "github.com/windmilleng/tilt/pkg/webview"
 )
 
 func TestHandleAnalyticsEmptyRequest(t *testing.T) {
@@ -376,10 +377,12 @@ func TestHandleNewSnapshot(t *testing.T) {
 
 	lastReq := f.snapshotHTTP.lastReq
 	if assert.NotNil(t, lastReq) {
-		snapshot := cloud.Snapshot{}
-		decoder := json.NewDecoder(lastReq.Body)
+		var snapshot proto_webview.Snapshot
+		jspb := &runtime.JSONPb{OrigName: false, EmitDefaults: true}
+		decoder := jspb.NewDecoder(lastReq.Body)
 		decoder.Decode(&snapshot)
 		assert.Equal(t, "0.10.13", snapshot.View.RunningTiltBuild.Version)
+		assert.Equal(t, "43", snapshot.SnapshotHighlight.BeginningLogID)
 	}
 }
 

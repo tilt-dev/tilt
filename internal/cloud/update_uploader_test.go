@@ -20,6 +20,7 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/token"
 	"github.com/windmilleng/tilt/pkg/model"
+	proto_webview "github.com/windmilleng/tilt/pkg/webview"
 )
 
 func TestOneUpdate(t *testing.T) {
@@ -172,7 +173,7 @@ func (f *fakeSnapshotUploader) TakeAndUpload(state store.EngineState) (SnapshotI
 	return SnapshotID(fmt.Sprintf("snapshot%d", f.count)), nil
 }
 
-func (f *fakeSnapshotUploader) Upload(token token.Token, teamID string, snapshot Snapshot) (SnapshotID, error) {
+func (f *fakeSnapshotUploader) Upload(token token.Token, teamID string, snapshot *proto_webview.Snapshot) (SnapshotID, error) {
 	panic("not implemented")
 }
 
