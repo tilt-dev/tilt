@@ -26,13 +26,13 @@ func TestOneWatch(t *testing.T) {
 	f.CurlUntil(ctx, "http://localhost:31234", "🍄 One-Up! 🍄")
 
 	// Introduce a syntax error
-	f.ReplaceContents("main.go", "One-Up", "One-Up\"")
+	f.ReplaceContents("compile.sh", "One-Up", "One-Up\"")
 
 	f.WaitUntil(ctx, "live_update syntax error", func() (string, error) {
 		return f.logs.String(), nil
 	}, "FAILED TO UPDATE CONTAINER")
 
-	f.ReplaceContents("main.go", "One-Up\"", "Two-Up")
+	f.ReplaceContents("compile.sh", "One-Up\"", "Two-Up")
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
