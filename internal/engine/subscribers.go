@@ -3,6 +3,7 @@ package engine
 import (
 	"github.com/windmilleng/tilt/internal/cloud"
 	"github.com/windmilleng/tilt/internal/containerupdate"
+	"github.com/windmilleng/tilt/internal/engine/analytics"
 	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
@@ -25,10 +26,10 @@ func ProvideSubscribers(
 	dclm *runtimelog.DockerComposeLogManager,
 	pm *ProfilerManager,
 	sm containerupdate.SyncletManager,
-	ar *AnalyticsReporter,
+	ar *analytics.AnalyticsReporter,
 	hudsc *server.HeadsUpServerController,
 	tvc *TiltVersionChecker,
-	ta *TiltAnalyticsSubscriber,
+	au *analytics.AnalyticsUpdater,
 	ewm *k8swatch.EventWatchManager,
 	tcum *cloud.CloudUsernameManager,
 	cuu *cloud.UpdateUploader,
@@ -49,7 +50,7 @@ func ProvideSubscribers(
 		ar,
 		hudsc,
 		tvc,
-		ta,
+		au,
 		ewm,
 		tcum,
 		cuu,

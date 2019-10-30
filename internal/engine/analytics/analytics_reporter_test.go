@@ -1,4 +1,4 @@
-package engine
+package analytics
 
 import (
 	"errors"

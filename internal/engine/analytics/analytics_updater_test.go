@@ -1,4 +1,4 @@
-package engine
+package analytics
 
 import (
 	"context"
@@ -12,9 +12,9 @@ import (
 )
 
 func TestOnChange(t *testing.T) {
-	to := &testOpter{}
+	to := &FakeOpter{}
 	_, a := tiltanalytics.NewMemoryTiltAnalyticsForTest(to)
-	tas := NewTiltAnalyticsSubscriber(a)
+	tas := NewAnalyticsUpdater(a)
 	st, _ := store.NewStoreForTesting()
 	state := st.LockMutableStateForTesting()
 	state.AnalyticsOpt = analytics.OptOut

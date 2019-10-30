@@ -1,4 +1,4 @@
-package engine
+package analytics
 
 import (
 	"context"
@@ -8,15 +8,15 @@ import (
 	"github.com/windmilleng/tilt/pkg/logger"
 )
 
-type TiltAnalyticsSubscriber struct {
+type AnalyticsUpdater struct {
 	ta *analytics.TiltAnalytics
 }
 
-func NewTiltAnalyticsSubscriber(ta *analytics.TiltAnalytics) *TiltAnalyticsSubscriber {
-	return &TiltAnalyticsSubscriber{ta: ta}
+func NewAnalyticsUpdater(ta *analytics.TiltAnalytics) *AnalyticsUpdater {
+	return &AnalyticsUpdater{ta: ta}
 }
 
-func (sub *TiltAnalyticsSubscriber) OnChange(ctx context.Context, st store.RStore) {
+func (sub *AnalyticsUpdater) OnChange(ctx context.Context, st store.RStore) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 	if state.AnalyticsOpt != sub.ta.Opt() {
@@ -27,4 +27,4 @@ func (sub *TiltAnalyticsSubscriber) OnChange(ctx context.Context, st store.RStor
 	}
 }
 
-var _ store.Subscriber = &TiltAnalyticsSubscriber{}
+var _ store.Subscriber = &AnalyticsUpdater{}
