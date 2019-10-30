@@ -111,7 +111,7 @@ var BaseWireSet = wire.NewSet(
 	dirs.UseWindmillDir,
 	token.GetOrCreateToken,
 
-	provideThreads,
+	provideCmdUpDeps,
 	engine.NewKINDPusher,
 
 	wire.Value(feature.MainDefaults),
@@ -122,12 +122,12 @@ func wireDockerPrune(ctx context.Context, analytics *analytics.TiltAnalytics) (d
 	return dpDeps{}, nil
 }
 
-func wireThreads(ctx context.Context, analytics *analytics.TiltAnalytics) (Threads, error) {
+func wireCmdUp(ctx context.Context, analytics *analytics.TiltAnalytics, cmdUpTags engineanalytics.CmdUpTags) (CmdUpDeps, error) {
 	wire.Build(BaseWireSet, build.ProvideClock)
-	return Threads{}, nil
+	return CmdUpDeps{}, nil
 }
 
-type Threads struct {
+type CmdUpDeps struct {
 	hud          hud.HeadsUpDisplay
 	upper        engine.Upper
 	tiltBuild    model.TiltBuild
@@ -135,8 +135,8 @@ type Threads struct {
 	cloudAddress cloudurl.Address
 }
 
-func provideThreads(h hud.HeadsUpDisplay, upper engine.Upper, b model.TiltBuild, token token.Token, cloudAddress cloudurl.Address) Threads {
-	return Threads{h, upper, b, token, cloudAddress}
+func provideCmdUpDeps(h hud.HeadsUpDisplay, upper engine.Upper, b model.TiltBuild, token token.Token, cloudAddress cloudurl.Address) CmdUpDeps {
+	return CmdUpDeps{h, upper, b, token, cloudAddress}
 }
 
 func wireKubeContext(ctx context.Context) (k8s.KubeContext, error) {
