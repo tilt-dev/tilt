@@ -3861,7 +3861,7 @@ func TestLocalResourceIgnoreOnly(t *testing.T) {
 	f.file(".dockerignore", "**/**.c")
 	f.file("Tiltfile", "include('proj/Tiltfile')")
 	f.file("proj/Tiltfile", `
-local_resource("test", "echo hi", ["foo"], ignore=["**/*.a", "foo/bar.d"], only=["**/bar.*", "foo/baz"])
+local_resource("test", "echo hi", ["foo"], ignore=["**/*.a", "foo/bar.d"], only=["foo/bar.a", "foo/bar.b", "foo/bar.c", "foo/bar.d", "foo/baz"])
 `)
 
 	f.setupFoo()
@@ -3890,6 +3890,17 @@ local_resource("test", "echo hi", ["foo"], ignore=["**/*.a", "foo/bar.d"], only=
 		require.NoError(t, err)
 		require.Equal(t, tc.expectMatch, matches, tc.path)
 	}
+}
+
+func TestLocalResourceFailsOnGlobsInOnly(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource("test", "echo hi", ["foo"], ignore=["**/*.a", "foo/bar.d"], only=["**/bar.*", "foo/baz"])
+`)
+
+	f.loadErrString("'only' does not support '*' file globs")
 }
 
 func (f *fixture) assertRepos(expectedLocalPaths []string, repos []model.LocalGitRepo) {

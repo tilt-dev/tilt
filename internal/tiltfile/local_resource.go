@@ -66,7 +66,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
-	onlys, err := parseValuesToStrings(onlysVal, "only")
+	onlys, err := s.parseOnly(onlysVal)
 	if err != nil {
 		return nil, err
 	}
