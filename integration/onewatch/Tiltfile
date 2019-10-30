@@ -8,9 +8,9 @@ docker_build('gcr.io/windmill-test-containers/integration/onewatch',
              '.',
              dockerfile='Dockerfile',
              live_update=[
-               sync('.', '/go/src/github.com/windmilleng/tilt/integration/onewatch'),
-               run('go install github.com/windmilleng/tilt/integration/onewatch'),
-               run('./restart.sh'),
+               sync('.', '/src'),
+               run('/src/compile.sh'),
+               run('/src/restart.sh'),
              ])
 
 k8s_resource("onewatch", port_forwards=["31234:8000"])
