@@ -36,7 +36,8 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
       fill = Color.red
     }
 
-    return <div className="SidebarIcon">{this.renderSvg(fill)}</div>
+    return <div className={"SidebarIcon"+ (this.props.isDirty ? " isDirty" : "")}>{this.renderSvg(fill)}</div>
+
   }
 
   renderSvg(fill: Color) {

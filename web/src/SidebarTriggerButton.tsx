@@ -7,6 +7,7 @@ type SidebarTriggerButtonProps = {
   isReady: boolean
   triggerMode: TriggerMode
   isSelected: boolean
+  isDirty: boolean
 }
 
 const triggerUpdate = (name: string): void => {
@@ -32,6 +33,7 @@ export default class SidebarTriggerButton extends PureComponent<
         onClick={() => triggerUpdate(props.resourceName)}
         className={`SidebarTriggerButton ${props.isSelected ? "isSelected" : ""}
           ${props.isReady ? "isReady" : "isReady"}
+          ${props.isDirty ? "isDirty" : ""}
         }`}
       />
     )

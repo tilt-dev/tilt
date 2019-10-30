@@ -3,7 +3,6 @@
 .SidebarTriggerButton {
   background-position: center center;
   background-repeat: no-repeat;
-  /* background-image: url(assets/svg/trigger-button-disabled.svg); */
   background-color: transparent;
   border: 0 none;
   height: $sidebar-item;
@@ -13,32 +12,68 @@
   justify-content: center;
 }
 
+$trigger-button-color: $color-gray-light;
+$trigger-button-hover-color: $color-white;
+$trigger-button-active-color: $color-green;
+$trigger-button-selected-color: $color-gray-dark;
+
 .SidebarTriggerButton.isReady {
-  background-color: $color-gray-light;
+  background-color: $trigger-button-color;
   -webkit-mask: url(assets/svg/trigger-button.svg) no-repeat 50% 50%;
   mask: url(assets/svg/trigger-button.svg) no-repeat 50% 50%;
 
   cursor: pointer;
 }
 
-.SidebarTriggerButton.isReady:hover {
-  background-color: $color-white;
+.SidebarTriggerButton.isReady:hover, .SidebarTriggerButton.isReady.isDirty:hover {
+  background-color: $trigger-button-hover-color;
+  animation: none;
 }
 
-.SidebarTriggerButton.isReady:active {
-  background-color: $color-green;
+.SidebarTriggerButton.isReady:active, .SidebarTriggerButton.isReady.isSelected:active{
+  background-color: $trigger-button-active-color;
+  animation: none;
+}
+
+.SidebarTriggerButton.isReady.isDirty{
+  animation: 3s linear 0s infinite normal none running blink-unselected;
 }
 
 /* the resource containing the button is selected*/
 .SidebarTriggerButton.isReady.isSelected {
-  background-color: $color-gray-dark;
+  background-color: $trigger-button-selected-color;
 }
 
-.SidebarTriggerButton.isReady.isSelected:hover {
-  background-color: $color-purple; // I can't find a good color where the hover contrast is enough
+.SidebarTriggerButton.isReady.isSelected:hover, .SidebarTriggerButton.isReady.isSelected.isDirty:hover {
+  // I can't find a good color where the hover contrast is enough
+  background-color: $color-purple;
+  animation: none;
 }
 
-.SidebarTriggerButton.isReady.isSelected:active {
-  background-color: $color-green;
+.SidebarTriggerButton.isReady.isSelected.isDirty{
+  animation: 3s linear 0s infinite normal none running blink-selected;
 }
 
+@keyframes blink-unselected {
+  0% {
+    background-color: $trigger-button-color;
+  }
+  50% {
+    background-color: $color-red;
+  }
+  100% {
+    background-color: $trigger-button-color;
+  }
+}
+
+@keyframes blink-selected{
+  0% {
+    background-color: $trigger-button-selected-color;
+  }
+  50% {
+    background-color: $color-red;
+  }
+  100% {
+    background-color: $trigger-button-selected-color;
+  }
+}

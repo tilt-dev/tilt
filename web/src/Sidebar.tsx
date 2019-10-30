@@ -144,6 +144,7 @@ class Sidebar extends PureComponent<SidebarProps> {
             </span>
             <SidebarTriggerButton
               isSelected={isSelected}
+              isDirty={item.hasPendingChanges}
               resourceName={item.name}
               isReady={item.hasPendingChanges && !building}
               triggerMode={item.triggerMode}
