@@ -189,7 +189,7 @@ func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deploy
 	return result
 }
 
-func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, state store.BuildStateSet) (store.BuildResultSet, error) {
+func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, state store.BuildStateSet) (brs store.BuildResultSet, err error) {
 	b.buildCount++
 
 	call := buildAndDeployCall{count: b.buildCount, specs: specs, state: state}
@@ -215,7 +215,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 			b.t.Error("writing to fakeBuildAndDeployer would block. either there's a bug or the buffer size needs to be increased")
 		}
 
-		logger.Get(ctx).Infof("fake building %s", ids)
+		logger.Get(ctx).Infof("fake built %s. error: %v", ids, err)
 	}()
 
 	dID := podbuilder.FakeDeployID
@@ -266,7 +266,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	b.nextLiveUpdateContainerIDs = nil
 	b.nextDockerComposeContainerID = ""
 
-	err := b.nextBuildFailure
+	err = b.nextBuildFailure
 	b.nextBuildFailure = nil
 
 	for key, val := range result {
@@ -303,7 +303,7 @@ func TestUpper_Up(t *testing.T) {
 	state := f.upper.store.RLockState()
 	defer f.upper.store.RUnlockState()
 	lines := strings.Split(state.ManifestTargets[manifest.Name].Status().LastBuild().Log.String(), "\n")
-	assertLineMatches(t, lines, regexp.MustCompile("fake building .*foobar"))
+	assertLineMatches(t, lines, regexp.MustCompile("fake built .*foobar"))
 }
 
 func TestUpper_UpK8sEntityOrdering(t *testing.T) {
@@ -2853,6 +2853,67 @@ func TestDockerPruneEnabledByDefault(t *testing.T) {
 		assert.True(t, state.DockerPruneSettings.Enabled)
 		assert.Equal(t, model.DockerPruneDefaultMaxAge, state.DockerPruneSettings.MaxAge)
 		assert.Equal(t, model.DockerPruneDefaultInterval, state.DockerPruneSettings.Interval)
+	})
+}
+
+func TestHasEverBeenReadyK8s(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	m := f.newManifest("foobar")
+	f.Start([]model.Manifest{m}, true)
+
+	f.waitForCompletedBuildCount(1)
+	f.withManifestState(m.Name, func(ms store.ManifestState) {
+		require.False(t, ms.RuntimeState.HasEverBeenReady())
+	})
+
+	pb := podbuilder.New(t, m).WithContainerReady(true)
+	f.podEvent(pb.Build(), m.Name)
+	f.WaitUntilManifestState("flagged ready", m.Name, func(state store.ManifestState) bool {
+		return state.RuntimeState.HasEverBeenReady()
+	})
+}
+
+func TestHasEverBeenReadyLocal(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	m := manifestbuilder.New(f, "foobar").WithLocalResource("foo", []string{f.Path()}).Build()
+	f.b.nextBuildFailure = errors.New("failure!")
+	f.Start([]model.Manifest{m}, true)
+
+	// first build will fail, HasEverBeenReady should be false
+	f.waitForCompletedBuildCount(1)
+	f.withManifestState(m.Name, func(ms store.ManifestState) {
+		require.False(t, ms.RuntimeState.HasEverBeenReady())
+	})
+
+	// second build will succeed, HasEverBeenReady should be true
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("bar", "main.go"))
+	f.WaitUntilManifestState("flagged ready", m.Name, func(state store.ManifestState) bool {
+		return state.RuntimeState.HasEverBeenReady()
+	})
+}
+
+func TestHasEverBeenReadyDC(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	m, _ := f.setupDCFixture()
+	f.Start([]model.Manifest{m}, true)
+
+	f.waitForCompletedBuildCount(1)
+	f.withManifestState(m.Name, func(ms store.ManifestState) {
+		require.NotNil(t, ms.RuntimeState)
+		require.False(t, ms.RuntimeState.HasEverBeenReady())
+	})
+
+	// second build will succeed, HasEverBeenReady should be true
+	err := f.dcc.SendEvent(dcContainerEvtForManifest(m, dockercompose.ActionStart))
+	require.NoError(t, err)
+	f.WaitUntilManifestState("flagged ready", m.Name, func(state store.ManifestState) bool {
+		return state.RuntimeState.HasEverBeenReady()
 	})
 }
 
