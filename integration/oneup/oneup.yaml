@@ -17,6 +17,5 @@ spec:
       containers:
       - name: oneup
         image: oneup
-        command: ["/go/bin/oneup"]
         ports:
         - containerPort: 8000
