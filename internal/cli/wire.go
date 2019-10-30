@@ -18,7 +18,6 @@ import (
 	"github.com/windmilleng/tilt/internal/cloud"
 	"github.com/windmilleng/tilt/internal/cloud/cloudurl"
 	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/demo"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/engine"
@@ -117,11 +116,6 @@ var BaseWireSet = wire.NewSet(
 
 	wire.Value(feature.MainDefaults),
 )
-
-func wireDemo(ctx context.Context, branch demo.RepoBranch, analytics *analytics.TiltAnalytics) (demo.Script, error) {
-	wire.Build(BaseWireSet, demo.NewScript, build.ProvideClock)
-	return demo.Script{}, nil
-}
 
 func wireDockerPrune(ctx context.Context, analytics *analytics.TiltAnalytics) (dpDeps, error) {
 	wire.Build(BaseWireSet, newDPDeps)
