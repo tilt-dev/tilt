@@ -3790,7 +3790,7 @@ local_resource("test", "echo hi", ["foo/bar", "foo/a.txt"])
 	require.Equal(t, []string{path2, path1}, lt.Dependencies())
 	f.assertRepos([]string{f.Path()}, lt.LocalRepos())
 
-	f.assertConfigFiles("Tiltfile", ".tiltignore", ".dockerignore")
+	f.assertConfigFiles("Tiltfile", ".tiltignore")
 
 	filter, err := ignore.CreateFileChangeFilter(lt)
 	if err != nil {
