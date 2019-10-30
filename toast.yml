@@ -40,7 +40,7 @@ tasks:
       - internal
       - pkg
       - synclet
-      - web
+      - web/web.go
       - vendor
       - Makefile
     output_paths:
