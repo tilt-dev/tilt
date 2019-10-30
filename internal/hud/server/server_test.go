@@ -353,7 +353,6 @@ func TestMaybeSendToTriggerQueue_notManualManifest(t *testing.T) {
 	store.AssertNoActionOfType(t, reflect.TypeOf(server.AppendToTriggerQueueAction{}), f.getActions)
 }
 
-// TODO(dmiller): fix me
 func TestHandleNewSnapshot(t *testing.T) {
 	f := newTestFixture(t)
 
