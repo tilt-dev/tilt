@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -843,24 +844,67 @@ func TestBuildControllerResourceDepTrumpsInitialBuild(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	foo := f.newManifest("foo")
-	bar := f.newManifest("bar")
-	bar.ResourceDependencies = []model.ManifestName{"foo"}
+	foo := manifestbuilder.New(f, "foo").
+		WithLocalResource("foo cmd", []string{f.JoinPath("foo")}).
+		Build()
+	bar := manifestbuilder.New(f, "bar").
+		WithLocalResource("bar cmd", []string{f.JoinPath("bar")}).
+		WithResourceDeps("foo").
+		Build()
 	manifests := []model.Manifest{foo, bar}
+	f.b.nextBuildFailure = errors.New("failure")
 	f.Start(manifests, true)
 
 	call := f.nextCall()
-	require.Equal(t, "foo", call.k8s().Name.String())
-	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
-	call = f.nextCall()
-	require.Equal(t, "foo", call.k8s().Name.String())
-	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
-	call = f.nextCall()
-	require.Equal(t, "foo", call.k8s().Name.String())
+	require.Equal(t, "foo", call.local().Name.String())
 
-	// now mark foo ready so that bar can build
-	pb := podbuilder.New(t, foo).WithContainerReady(true)
-	f.podEvent(pb.Build(), foo.Name)
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("foo", "main.go"))
+	f.b.nextBuildFailure = errors.New("failure")
 	call = f.nextCall()
-	require.Equal(t, "bar", call.k8s().Name.String())
+	require.Equal(t, "foo", call.local().Name.String())
+
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("foo", "main.go"))
+	call = f.nextCall()
+	require.Equal(t, "foo", call.local().Name.String())
+
+	// now that the foo build has succeeded, bar should get queued
+	call = f.nextCall()
+	require.Equal(t, "bar", call.local().Name.String())
+}
+
+// bar depends on foo, we build foo three times before marking it ready, and make sure bar waits
+func TestBuildControllerResourceDepTrumpsPendingBuild(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	foo := manifestbuilder.New(f, "foo").
+		WithLocalResource("foo cmd", []string{f.JoinPath("foo")}).
+		Build()
+	bar := manifestbuilder.New(f, "bar").
+		WithLocalResource("bar cmd", []string{f.JoinPath("bar")}).
+		WithResourceDeps("foo").
+		Build()
+
+	manifests := []model.Manifest{bar, foo}
+	f.b.nextBuildFailure = errors.New("failure")
+	f.Start(manifests, true)
+
+	// trigger a change for bar so that it would try to build if not for its resource dep
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("bar", "main.go"))
+
+	call := f.nextCall()
+	require.Equal(t, "foo", call.local().Name.String())
+
+	f.b.nextBuildFailure = errors.New("failure")
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("foo", "main.go"))
+	call = f.nextCall()
+	require.Equal(t, "foo", call.local().Name.String())
+
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("foo", "main2.go"))
+	call = f.nextCall()
+	require.Equal(t, "foo", call.local().Name.String())
+
+	// since the foo build succeeded, bar should now queue
+	call = f.nextCall()
+	require.Equal(t, "bar", call.local().Name.String())
 }

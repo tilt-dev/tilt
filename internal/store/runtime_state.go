@@ -22,13 +22,13 @@ type RuntimeState interface {
 // state. In future, we may use this to store runtime state for long-running processes
 // kicked off via a LocalResource.
 type LocalRuntimeState struct {
-	HasFinishedAtLeastOnce bool
+	HasSucceededAtLeastOnce bool
 }
 
 func (LocalRuntimeState) RuntimeState() {}
 
 func (l LocalRuntimeState) HasEverBeenReady() bool {
-	return l.HasFinishedAtLeastOnce
+	return l.HasSucceededAtLeastOnce
 }
 
 var _ RuntimeState = LocalRuntimeState{}

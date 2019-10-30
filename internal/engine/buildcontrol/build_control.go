@@ -19,13 +19,14 @@ func NextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 		return nil
 	}
 
-	targets := state.Targets()
+	targets := RemoveTargetsWaitingOnDependencies(state, state.Targets())
 
 	// If any of the manifest targets haven't been built yet, build them now.
 	unbuilt := FindUnbuiltTargets(targets)
-	candidates := RemoveTargetsWaitingOnDependencies(state, unbuilt)
-	if len(candidates) > 0 {
-		return NextUnbuiltTargetToBuild(candidates)
+
+	if len(unbuilt) > 0 {
+		ret := NextUnbuiltTargetToBuild(unbuilt)
+		return ret
 	}
 
 	// Next prioritize builds that crashed and need a rebuilt to have up-to-date code.

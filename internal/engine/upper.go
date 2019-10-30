@@ -385,7 +385,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	}
 
 	if mt.Manifest.IsLocal() {
-		ms.RuntimeState = store.LocalRuntimeState{HasFinishedAtLeastOnce: true}
+		ms.RuntimeState = store.LocalRuntimeState{HasSucceededAtLeastOnce: err == nil}
 	}
 
 	if engineState.WatchFiles {
