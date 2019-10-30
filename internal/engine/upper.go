@@ -357,7 +357,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		deployedPodTemplateSpecHashSet := cb.Result.DeployedPodTemplateSpecHashes()
 		if len(deployedPodTemplateSpecHashSet) > 0 {
 			state := ms.GetOrCreateK8sRuntimeState()
-			state.DeployedPodTemplateSpecHashSet = deployedPodTemplateSpecHashSet
+			state.DeployedPodTemplateSpecHashSet.Union(deployedPodTemplateSpecHashSet)
 			ms.RuntimeState = state
 		}
 	}

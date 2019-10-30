@@ -228,3 +228,9 @@ func (s PodTemplateSpecHashSet) Add(hashes ...k8s.PodTemplateSpecHash) {
 func (s PodTemplateSpecHashSet) Contains(hash k8s.PodTemplateSpecHash) bool {
 	return s[hash]
 }
+
+func (s PodTemplateSpecHashSet) Union(s2 PodTemplateSpecHashSet) {
+	for hash := range s2 {
+		s[hash] = true
+	}
+}
