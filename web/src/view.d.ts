@@ -34,6 +34,7 @@ declare namespace OpenAPI2 {
     isSidebarClosed?: boolean;
     path?: string;
     snapshotHighlight?: webviewSnapshotHighlight;
+    snapshotLink?: string;
   }
   export interface webviewResource {
     name?: string;

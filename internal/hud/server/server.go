@@ -15,7 +15,6 @@ import (
 	_ "github.com/gorilla/websocket"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/modern-go/reflect2"
 	"github.com/pkg/errors"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
@@ -308,11 +307,9 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	c := jsoniter.ConfigDefault
-	de := jsoniter.DecoderExtension{reflect2.TypeOf(time.Time{}): timeAllowEmptyDecoder{}}
-	c.RegisterExtension(de)
+	jspb := &runtime.JSONPb{OrigName: false, EmitDefaults: true}
+	decoder := jspb.NewDecoder(bytes.NewBuffer(b))
 	var snapshot *proto_webview.Snapshot
-	decoder := c.NewDecoder(bytes.NewBuffer(b))
 
 	// TODO(nick): Add more strict decoding once we have better safeguards for making
 	// sure the Go and JS types are in-sync.

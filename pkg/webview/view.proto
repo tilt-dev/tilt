@@ -119,6 +119,7 @@ message Snapshot {
   bool is_sidebar_closed = 2;
   string path = 3;
   SnapshotHighlight snapshot_highlight = 4;
+  string snapshot_link = 5;
 }
 
 message UploadSnapshotResponse {

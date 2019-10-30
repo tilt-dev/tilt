@@ -306,6 +306,9 @@
         },
         "snapshot_highlight": {
           "$ref": "#/definitions/webviewSnapshotHighlight"
+        },
+        "snapshot_link": {
+          "type": "string"
         }
       }
     },
