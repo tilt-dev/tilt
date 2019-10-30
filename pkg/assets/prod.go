@@ -106,15 +106,6 @@ func RewriteContentURLs(req *http.Request, content []byte) []byte {
 	return bytes.ReplaceAll(content, []byte("/static/"), []byte(fmt.Sprintf("%s/static/", prefix)))
 }
 
-// injectVersion updates all links to "/static/..." to instead point to "/vA.B.C/static/..."
-// We do this b/c asset index.html's may contain links to "/static/..." that don't specify the
-// version prefix, but leave it up to the asset server to resolve. Now that the asset server
-// may serve multiple versions at once, we need to specify.
-func (s prodServer) injectVersion(html []byte, version string) []byte {
-	newPrefix := fmt.Sprintf("/%s/static/", version)
-	return bytes.ReplaceAll(html, []byte("/static/"), []byte(newPrefix))
-}
-
 func copyHeader(dst, src http.Header) {
 	for k, vv := range src {
 		for _, v := range vv {
