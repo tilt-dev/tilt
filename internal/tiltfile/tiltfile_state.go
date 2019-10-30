@@ -1410,7 +1410,10 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 		}
 
 		paths := append(r.deps, r.workdir)
-		lt := model.NewLocalTarget(model.TargetName(r.name), r.cmd, r.workdir, r.deps).WithRepos(reposForPaths(paths))
+		ignores := s.dockerignoresFromPathsAndContextFilters(paths, r.ignores, r.onlys)
+		lt := model.NewLocalTarget(model.TargetName(r.name), r.cmd, r.workdir, r.deps).
+			WithRepos(reposForPaths(paths)).
+			WithIgnores(ignores)
 		var mds []model.ManifestName
 		for _, md := range r.resourceDeps {
 			mds = append(mds, model.ManifestName(md))

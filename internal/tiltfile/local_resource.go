@@ -20,6 +20,8 @@ type localResource struct {
 	triggerMode  triggerMode
 	repos        []model.LocalGitRepo
 	resourceDeps []string
+	ignores      []string
+	onlys        []string
 }
 
 func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -27,6 +29,8 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	var triggerMode triggerMode
 	var deps starlark.Value
 	var resourceDepsVal starlark.Sequence
+	var ignoresVal starlark.Value
+	var onlysVal starlark.Value
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
@@ -34,6 +38,8 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		"deps?", &deps,
 		"trigger_mode?", &triggerMode,
 		"resource_deps?", &resourceDepsVal,
+		"ignore?", &ignoresVal,
+		"only?", &onlysVal,
 	); err != nil {
 		return nil, err
 	}
@@ -55,6 +61,16 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
 	}
 
+	ignores, err := parseValuesToStrings(ignoresVal, "ignore")
+	if err != nil {
+		return nil, err
+	}
+
+	onlys, err := parseValuesToStrings(onlysVal, "only")
+	if err != nil {
+		return nil, err
+	}
+
 	res := localResource{
 		name:         name,
 		cmd:          model.ToShellCmd(cmd),
@@ -63,6 +79,8 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		triggerMode:  triggerMode,
 		repos:        repos,
 		resourceDeps: resourceDeps,
+		ignores:      ignores,
+		onlys:        onlys,
 	}
 	s.localResources = append(s.localResources, res)
 

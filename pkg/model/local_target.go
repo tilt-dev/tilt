@@ -11,6 +11,7 @@ type LocalTarget struct {
 	Cmd     Cmd
 	Workdir string   // directory from which this Cmd should be run
 	deps    []string // a list of ABSOLUTE file paths that are dependencies of this target
+	ignores []Dockerignore
 
 	repos []LocalGitRepo
 }
@@ -30,6 +31,11 @@ func (lt LocalTarget) Empty() bool { return lt.Cmd.Empty() }
 
 func (lt LocalTarget) WithRepos(repos []LocalGitRepo) LocalTarget {
 	lt.repos = append(append([]LocalGitRepo{}, lt.repos...), repos...)
+	return lt
+}
+
+func (lt LocalTarget) WithIgnores(ignores []Dockerignore) LocalTarget {
+	lt.ignores = ignores
 	return lt
 }
 
@@ -64,7 +70,7 @@ func (lt LocalTarget) LocalRepos() []LocalGitRepo {
 }
 
 func (lt LocalTarget) Dockerignores() []Dockerignore {
-	return nil
+	return lt.ignores
 }
 
 func (lt LocalTarget) IgnoredLocalDirectories() []string {

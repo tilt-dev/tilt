@@ -3790,7 +3790,7 @@ local_resource("test", "echo hi", ["foo/bar", "foo/a.txt"])
 	require.Equal(t, []string{path2, path1}, lt.Dependencies())
 	f.assertRepos([]string{f.Path()}, lt.LocalRepos())
 
-	f.assertConfigFiles("Tiltfile", ".tiltignore")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", ".dockerignore")
 
 	filter, err := ignore.CreateFileChangeFilter(lt)
 	if err != nil {
@@ -3852,6 +3852,39 @@ local_resource("toplvl-local", "echo hello world", ["foo/baz", "foo/a.txt"])
 		f.JoinPath("foo/baz"),
 		f.Path(),
 	}, ltTop.LocalRepos())
+}
+
+func TestLocalResourceIgnoreOnly(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource("test", "echo hi", ["foo"], ignore="**/*.a", only="**/bar.*")
+`)
+
+	f.setupFoo()
+	f.file(".gitignore", "*.txt")
+	f.load()
+
+	f.assertNumManifests(1)
+
+	filter, err := ignore.CreateFileChangeFilter(f.loadResult.Manifests[0].LocalTarget())
+	require.NoError(t, err)
+
+	// true because it doesn't match only
+	matches, err := filter.Matches(f.JoinPath("foo/asdf"))
+	require.NoError(t, err)
+	require.Equal(t, true, matches)
+
+	// true because it matches only and ignore
+	matches, err = filter.Matches(f.JoinPath("foo/bar.a"))
+	require.NoError(t, err)
+	require.Equal(t, true, matches)
+
+	// false because it matches only but not ignore
+	matches, err = filter.Matches(f.JoinPath("foo/bar.b"))
+	require.NoError(t, err)
+	require.Equal(t, false, matches)
 }
 
 func (f *fixture) assertRepos(expectedLocalPaths []string, repos []model.LocalGitRepo) {
