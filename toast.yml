@@ -29,7 +29,7 @@ tasks:
       - web/src/view.d.ts
     command: |
       set -euo pipefail
-      swagger-to-ts pkg/webview/view.swagger.json --camelcase --output web/src/view.d.ts
+      swagger-to-ts pkg/webview/view.swagger.json --camelcase --wrapper "declare namespace Proto" --output web/src/view.d.ts
 
   wire:
     location: /go/src/github.com/windmilleng/tilt

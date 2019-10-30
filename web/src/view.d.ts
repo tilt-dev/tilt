@@ -1,4 +1,4 @@
-declare namespace OpenAPI2 {
+declare namespace Proto {
   export interface webviewYAMLResourceInfo {
     k8sResources?: string[];
   }

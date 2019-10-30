@@ -143,7 +143,7 @@ class HUD extends Component<HudProps, HudState> {
     return this.pathBuilder.path(relPath)
   }
 
-  snapshotFromState(state: HudState): OpenAPI2.webviewSnapshot {
+  snapshotFromState(state: HudState): Proto.webviewSnapshot {
     return {
       view: _.cloneDeep(state.view || null),
       isSidebarClosed: !!state.isSidebarClosed,
@@ -152,7 +152,7 @@ class HUD extends Component<HudProps, HudState> {
     }
   }
 
-  sendSnapshot(snapshot: OpenAPI2.webviewSnapshot) {
+  sendSnapshot(snapshot: Proto.webviewSnapshot) {
     let url = `//${window.location.host}/api/snapshot/new`
 
     if (!snapshot.view) {
@@ -168,7 +168,7 @@ class HUD extends Component<HudProps, HudState> {
       .then(res => {
         res
           .json()
-          .then((value: OpenAPI2.webviewUploadSnapshotResponse) => {
+          .then((value: Proto.webviewUploadSnapshotResponse) => {
             this.setState({
               snapshotLink: value.url ? value.url : "",
             })
