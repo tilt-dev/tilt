@@ -12,7 +12,7 @@ import (
 )
 
 func TestOnChange(t *testing.T) {
-	to := &FakeOpter{}
+	to := &tiltanalytics.FakeOpter{}
 	_, a := tiltanalytics.NewMemoryTiltAnalyticsForTest(to)
 	cmdUpTags := CmdUpTags(map[string]string{"watch": "true"})
 	au := NewAnalyticsUpdater(a, cmdUpTags)
@@ -24,7 +24,7 @@ func TestOnChange(t *testing.T) {
 }
 
 func TestReportOnOptIn(t *testing.T) {
-	to := &FakeOpter{}
+	to := &tiltanalytics.FakeOpter{}
 	mem, a := tiltanalytics.NewMemoryTiltAnalyticsForTest(to)
 	a.SetOpt(analytics.OptDefault)
 

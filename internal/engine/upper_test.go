@@ -30,6 +30,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/cloud"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/containerupdate"
@@ -2915,7 +2916,7 @@ type testFixture struct {
 	dcc                   *dockercompose.FakeDCClient
 	tfl                   tiltfile.TiltfileLoader
 	ghc                   *github.FakeClient
-	opter                 *engineanalytics.FakeOpter
+	opter                 *tiltanalytics.FakeOpter
 	dp                    *dockerprune.DockerPruner
 	tiltVersionCheckDelay time.Duration
 
@@ -2926,7 +2927,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	f := tempdir.NewTempDirFixture(t)
 
 	log := bufsync.NewThreadSafeBuffer()
-	to := &engineanalytics.FakeOpter{}
+	to := &tiltanalytics.FakeOpter{}
 	ctx, _, ta := testutils.ForkedCtxAndAnalyticsWithOpterForTest(log, to)
 	ctx, cancel := context.WithCancel(ctx)
 

@@ -186,14 +186,3 @@ func TestOptTransitionIncrIfUnopted(t *testing.T) {
 		})
 	}
 }
-
-type testOpter struct {
-	calls []analytics.Opt
-}
-
-func (t *testOpter) SetOpt(opt analytics.Opt) error {
-	t.calls = append(t.calls, opt)
-	return nil
-}
-
-var _ AnalyticsOpter = &testOpter{}
