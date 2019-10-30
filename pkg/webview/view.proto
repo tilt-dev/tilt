@@ -109,8 +109,8 @@ message View {
 message GetViewRequest {}
 
 message SnapshotHighlight {
-  string beginning_log_id = 1;
-  string ending_log_id = 2;
+  string beginning_logID = 1;
+  string ending_logID = 2;
   string text = 3;
 }
 

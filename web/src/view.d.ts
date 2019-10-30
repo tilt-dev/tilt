@@ -25,8 +25,8 @@ declare namespace OpenAPI2 {
     dev?: boolean;
   }
   export interface webviewSnapshotHighlight {
-    beginningLogId?: string;
-    endingLogId?: string;
+    beginningLogID?: string;
+    endingLogID?: string;
     text?: string;
   }
   export interface webviewSnapshot {

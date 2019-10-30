@@ -315,10 +315,10 @@
     "webviewSnapshotHighlight": {
       "type": "object",
       "properties": {
-        "beginning_log_id": {
+        "beginning_logID": {
           "type": "string"
         },
-        "ending_log_id": {
+        "ending_logID": {
           "type": "string"
         },
         "text": {

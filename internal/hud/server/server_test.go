@@ -382,6 +382,7 @@ func TestHandleNewSnapshot(t *testing.T) {
 		decoder := jspb.NewDecoder(lastReq.Body)
 		decoder.Decode(&snapshot)
 		assert.Equal(t, "0.10.13", snapshot.View.RunningTiltBuild.Version)
+		assert.Equal(t, "43", snapshot.SnapshotHighlight.BeginningLogID)
 	}
 }
 

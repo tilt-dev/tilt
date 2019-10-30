@@ -503,5 +503,9 @@
   "snapshotLink": "",
   "showSnapshotModal": false,
   "path": "",
-  "snapshotHighlight": { "beginningLogID": "", "endingLogID": "" }
+  "snapshotHighlight": {
+    "beginningLogID": "43",
+    "endingLogID": "45",
+    "text": "Update records reported to cloud.tilt.dev\nUpdate records reported to cloud.tilt.dev\nalert-stora…┊     ╎ copy /context /"
+  }
 }
