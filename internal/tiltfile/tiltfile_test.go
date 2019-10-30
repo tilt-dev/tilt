@@ -3858,8 +3858,10 @@ func TestLocalResourceIgnoreOnly(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.file("Tiltfile", `
-local_resource("test", "echo hi", ["foo"], ignore="**/*.a", only="**/bar.*")
+	f.file(".dockerignore", "**/**.c")
+	f.file("Tiltfile", "include('proj/Tiltfile')")
+	f.file("proj/Tiltfile", `
+local_resource("test", "echo hi", ["foo"], ignore=["**/*.a", "foo/bar.d"], only=["**/bar.*", "foo/baz"])
 `)
 
 	f.setupFoo()
@@ -3871,20 +3873,23 @@ local_resource("test", "echo hi", ["foo"], ignore="**/*.a", only="**/bar.*")
 	filter, err := ignore.CreateFileChangeFilter(f.loadResult.Manifests[0].LocalTarget())
 	require.NoError(t, err)
 
-	// true because it doesn't match only
-	matches, err := filter.Matches(f.JoinPath("foo/asdf"))
-	require.NoError(t, err)
-	require.Equal(t, true, matches)
-
-	// true because it matches only and ignore
-	matches, err = filter.Matches(f.JoinPath("foo/bar.a"))
-	require.NoError(t, err)
-	require.Equal(t, true, matches)
-
-	// false because it matches only but not ignore
-	matches, err = filter.Matches(f.JoinPath("foo/bar.b"))
-	require.NoError(t, err)
-	require.Equal(t, false, matches)
+	for _, tc := range []struct {
+		path        string
+		expectMatch bool
+	}{
+		{"proj/foo/asdf", true},   // doesn't match only - ignore
+		{"proj/foo/bar.a", true},  // matches only and ignore - ignore
+		{"proj/foo/bar.b", false}, // matches only and not ignore - don't ignore
+		{"proj/foo/bar.c", false}, // matches only and dockerignore, but we don't use dockerignore for local_resource - don't ignore
+		{"proj/foo/bar.d", true},  // matches only and ignore w/o wildcard path - ignore (validate we're evaluating from workdir)
+		{"baz", true},             // outside of workdir so doesn't match only - ignore
+		{"foo/baz", true},         // outside of workdir so doesn't match only - ignore
+		{"proj/foo/baz", false},   // matches a path explicitly specified by only - don't ignore
+	} {
+		matches, err := filter.Matches(f.JoinPath(tc.path))
+		require.NoError(t, err)
+		require.Equal(t, tc.expectMatch, matches, tc.path)
+	}
 }
 
 func (f *fixture) assertRepos(expectedLocalPaths []string, repos []model.LocalGitRepo) {
