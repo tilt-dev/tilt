@@ -29,7 +29,8 @@ var versionRe = regexp.MustCompile(`^/(v\d+\.\d+\.\d+)/.*`) // matches `/vA.B.C/
 var shaRe = regexp.MustCompile(`^/([0-9a-f]{5,40})\/.*`)    // matches /8bf2ea29eacff3a407272eb5631edbd1a14a0936/...
 
 type prodServer struct {
-	baseUrl        *url.URL
+	http.Handler
+	baseURL        *url.URL
 	defaultVersion model.WebVersion
 }
 
@@ -38,10 +39,12 @@ func NewProdServer(bucket AssetBucket, version model.WebVersion) (prodServer, er
 	if err != nil {
 		return prodServer{}, errors.Wrap(err, "NewProdServer")
 	}
-	return prodServer{
-		baseUrl:        loc,
+	s := prodServer{
+		baseURL:        loc,
 		defaultVersion: version,
-	}, nil
+	}
+	s.Handler = InferVersion(version, http.HandlerFunc(s.fetchFromAssetBucket))
+	return s, nil
 }
 
 func (s prodServer) TearDown(ctx context.Context) {
@@ -50,7 +53,7 @@ func (s prodServer) TearDown(ctx context.Context) {
 // This doesn't actually do any setup right now.
 func (s prodServer) Serve(ctx context.Context) error {
 	logger.Get(ctx).Verbosef("Serving Tilt production web assets from %s with default version %s",
-		s.baseUrl, s.defaultVersion)
+		s.baseURL, s.defaultVersion)
 	<-ctx.Done()
 	return nil
 }
@@ -58,9 +61,10 @@ func (s prodServer) Serve(ctx context.Context) error {
 // NOTE(nick): The reverse proxy in httputil makes the storage server 500 and I have no idea
 // why. But this only needs a very limited GET interface without query params,
 // so just make the request by hand.
-func (s prodServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	outurl, version := s.urlAndVersionForReq(req)
-	outreq, err := http.NewRequest("GET", outurl.String(), bytes.NewBuffer(nil))
+func (s prodServer) fetchFromAssetBucket(w http.ResponseWriter, req *http.Request) {
+	u := *s.baseURL
+	u.Path = path.Join(u.Path, req.URL.Path)
+	outreq, err := http.NewRequest("GET", u.String(), bytes.NewBuffer(nil))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -81,38 +85,25 @@ func (s prodServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	outres.Header.Del("Content-Length")
 	copyHeader(w.Header(), outres.Header)
 
+	resBody, err := ioutil.ReadAll(outres.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	w.WriteHeader(outres.StatusCode)
-	resBody, _ := ioutil.ReadAll(outres.Body)
-	resBodyWithVersion := s.injectVersion(resBody, version)
-	_, _ = w.Write(resBodyWithVersion)
+	_, _ = w.Write(RewriteContentURLs(req, resBody))
 }
 
-func (s prodServer) urlAndVersionForReq(req *http.Request) (url.URL, string) {
-	u := *s.baseUrl
-	origPath := req.URL.Path
-
-	if matches := versionRe.FindStringSubmatch(origPath); len(matches) > 1 {
-		// If url contains a version prefix, don't attach another version
-		u.Path = path.Join(u.Path, origPath)
-		return u, matches[1]
-	}
-	if matches := shaRe.FindStringSubmatch(origPath); len(matches) > 1 {
-		u.Path = path.Join(u.Path, origPath)
-		return u, matches[1]
+func RewriteContentURLs(req *http.Request, content []byte) []byte {
+	path := req.URL.Path
+	shouldRewrite := strings.HasSuffix(path, ".html") || strings.HasSuffix(path, ".css")
+	if !shouldRewrite {
+		return content
 	}
 
-	if !(strings.HasPrefix(origPath, "/static/")) {
-		// redirect everything else to the main entry point.
-		origPath = "index.html"
-	}
-
-	version := req.URL.Query().Get(WebVersionKey)
-	if version == "" {
-		version = string(s.defaultVersion)
-	}
-
-	u.Path = path.Join(u.Path, version, origPath)
-	return u, version
+	prefix := getPublicPathPrefix(req)
+	return bytes.ReplaceAll(content, []byte("/static/"), []byte(fmt.Sprintf("%s/static/", prefix)))
 }
 
 // injectVersion updates all links to "/static/..." to instead point to "/vA.B.C/static/..."
