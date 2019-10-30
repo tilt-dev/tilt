@@ -3,7 +3,7 @@
 .SidebarTriggerButton {
   background-position: center center;
   background-repeat: no-repeat;
-  background-image: url(assets/svg/trigger-button-disabled.svg);
+  /* background-image: url(assets/svg/trigger-button-disabled.svg); */
   background-color: transparent;
   border: 0 none;
   height: $sidebar-item;
@@ -14,18 +14,31 @@
 }
 
 .SidebarTriggerButton.isReady {
-  background-image: url(assets/svg/trigger-button.svg);
+  background-color: $color-gray-light;
+  -webkit-mask: url(assets/svg/trigger-button.svg) no-repeat 50% 50%;
+  mask: url(assets/svg/trigger-button.svg) no-repeat 50% 50%;
+
   cursor: pointer;
 }
 
-.SidebarTriggerButton.isReady:active {
-  background-image: url(assets/svg/trigger-button-down.svg);
+.SidebarTriggerButton.isReady:hover {
+  background-color: $color-white;
 }
 
+.SidebarTriggerButton.isReady:active {
+  background-color: $color-green;
+}
+
+/* the resource containing the button is selected*/
 .SidebarTriggerButton.isReady.isSelected {
-  background-image: url(assets/svg/trigger-button-inverted.svg);
+  background-color: $color-gray-dark;
+}
+
+.SidebarTriggerButton.isReady.isSelected:hover {
+  background-color: $color-purple; // I can't find a good color where the hover contrast is enough
 }
 
 .SidebarTriggerButton.isReady.isSelected:active {
-  background-image: url(assets/svg/trigger-button-inverted-down.svg);
+  background-color: $color-green;
 }
+
