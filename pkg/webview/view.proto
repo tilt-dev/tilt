@@ -17,8 +17,8 @@ message BuildRecord {
 
 message K8sResourceInfo {
   string pod_name = 1;
-  google.protobuf.Timestamp pod_creation_time = 2;
-  google.protobuf.Timestamp pod_update_start_time = 3;
+  string pod_creation_time = 2;
+  string pod_update_start_time = 3;
   string pod_status = 4;
   string pod_status_message = 5;
   bool all_containers_ready = 6;

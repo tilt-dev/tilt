@@ -410,18 +410,10 @@ func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Re
 	if mt.Manifest.IsK8s() {
 		kState := mt.State.K8sRuntimeState()
 		pod := kState.MostRecentPod()
-		create, err := timeToProto(pod.StartedAt)
-		if err != nil {
-			return nil, err
-		}
-		updateStart, err := timeToProto(pod.UpdateStartTime)
-		if err != nil {
-			return nil, err
-		}
 		r.K8SResourceInfo = &proto_webview.K8SResourceInfo{
 			PodName:            pod.PodID.String(),
-			PodCreationTime:    create,
-			PodUpdateStartTime: updateStart,
+			PodCreationTime:    pod.StartedAt.String(),
+			PodUpdateStartTime: pod.UpdateStartTime.String(),
 			PodStatus:          pod.Status,
 			PodStatusMessage:   strings.Join(pod.StatusMessages, "\n"),
 			AllContainersReady: pod.AllContainersReady(),
