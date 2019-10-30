@@ -5,7 +5,7 @@ include('../Tiltfile')
 custom_build(
   'gcr.io/windmill-test-containers/integration/oneup-custom',
   'docker build -t $EXPECTED_REF .',
-  ["Dockerfile", "main.go"],
+  ["Dockerfile", "index.html"],
  )
 k8s_yaml('oneup_custom.yaml')
 k8s_resource('oneup-custom', port_forwards=8100)

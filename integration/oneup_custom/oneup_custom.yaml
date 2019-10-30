@@ -17,6 +17,5 @@ spec:
       containers:
       - name: oneup-custom
         image: gcr.io/windmill-test-containers/integration/oneup-custom
-        command: ["/go/bin/oneup_custom"]
         ports:
         - containerPort: 8000
