@@ -72,7 +72,7 @@ type InitAction struct {
 	TiltBuild model.TiltBuild
 	StartTime time.Time
 
-	AnalyticsOpt analytics.Opt
+	AnalyticsUserOpt analytics.Opt
 
 	CloudAddress string
 	Token        token.Token

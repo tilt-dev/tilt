@@ -91,7 +91,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	logOutput(fmt.Sprintf("Starting Tilt (%s)…", buildStamp()))
 
-	if isAnalyticsDisabledFromEnv() {
+	if analytics.IsAnalyticsDisabledFromEnv() {
 		logOutput("Tilt analytics manually disabled by environment")
 	}
 
@@ -133,7 +133,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	g.Go(func() error {
 		defer cancel()
-		return upper.Start(ctx, args, threads.tiltBuild, c.watch, c.fileName, c.hud, a.Opt(), threads.token, string(threads.cloudAddress))
+		return upper.Start(ctx, args, threads.tiltBuild, c.watch, c.fileName, c.hud, a.UserOpt(), threads.token, string(threads.cloudAddress))
 	})
 
 	err = g.Wait()

@@ -114,11 +114,11 @@ func objRefHumanReadable(obj v1.ObjectReference) string {
 	return s
 }
 
-type AnalyticsOptAction struct {
+type AnalyticsUserOptAction struct {
 	Opt analytics.Opt
 }
 
-func (AnalyticsOptAction) Action() {}
+func (AnalyticsUserOptAction) Action() {}
 
 type AnalyticsNudgeSurfacedAction struct{}
 

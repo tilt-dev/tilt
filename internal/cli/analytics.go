@@ -15,7 +15,6 @@ import (
 )
 
 const tiltAppName = "tilt"
-const disableAnalyticsEnvVar = "TILT_DISABLE_ANALYTICS"
 const analyticsURLEnvVar = "TILT_ANALYTICS_URL"
 
 // Testing analytics locally:
@@ -28,7 +27,11 @@ type analyticsOpter struct{}
 
 var _ tiltanalytics.AnalyticsOpter = analyticsOpter{}
 
-func (ao analyticsOpter) SetOpt(opt analytics.Opt) error {
+func (ao analyticsOpter) ReadUserOpt() (analytics.Opt, error) {
+	return analytics.OptStatus()
+}
+
+func (ao analyticsOpter) SetUserOpt(opt analytics.Opt) error {
 	return analytics.SetOpt(opt)
 }
 
@@ -50,20 +53,7 @@ func initAnalytics(rootCmd *cobra.Command) (*tiltanalytics.TiltAnalytics, error)
 	}
 
 	rootCmd.AddCommand(analyticsCmd)
-
-	var analyticsOpt analytics.Opt
-	if isAnalyticsDisabledFromEnv() {
-		analyticsOpt = analytics.OptOut
-	} else {
-		analyticsOpt, err = analytics.OptStatus()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	a := tiltanalytics.NewTiltAnalytics(analyticsOpt, analyticsOpter{}, backingAnalytics, provideTiltInfo().AnalyticsVersion())
-
-	return a, nil
+	return tiltanalytics.NewTiltAnalytics(analyticsOpter{}, backingAnalytics, provideTiltInfo().AnalyticsVersion())
 }
 
 func globalTags() map[string]string {
@@ -113,8 +103,4 @@ func normalizeGitRemote(s string) string {
 	}
 
 	return u.String()
-}
-
-func isAnalyticsDisabledFromEnv() bool {
-	return os.Getenv(disableAnalyticsEnvVar) != ""
 }

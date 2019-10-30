@@ -12,12 +12,15 @@ import (
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 
+	wmanalytics "github.com/windmilleng/wmclient/pkg/analytics"
+
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/sliceutils"
+	tiltfileanalytics "github.com/windmilleng/tilt/internal/tiltfile/analytics"
 	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
 	"github.com/windmilleng/tilt/internal/tiltfile/io"
 	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
@@ -44,6 +47,7 @@ type TiltfileLoadResult struct {
 	Secrets             model.SecretSet
 	Error               error
 	DockerPruneSettings model.DockerPruneSettings
+	AnalyticsOpt        wmanalytics.Opt
 }
 
 func (r TiltfileLoadResult) Orchestrator() model.Orchestrator {
@@ -156,6 +160,9 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, requestedMa
 
 	dps, _ := dockerprune.GetState(result)
 	tlr.DockerPruneSettings = dps
+
+	aSettings, _ := tiltfileanalytics.GetState(result)
+	tlr.AnalyticsOpt = aSettings.Opt
 
 	tlr.Secrets = s.extractSecrets()
 	tlr.Warnings = s.warnings

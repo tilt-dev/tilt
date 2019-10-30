@@ -12,26 +12,26 @@ import (
 )
 
 func TestOnChange(t *testing.T) {
-	to := &tiltanalytics.FakeOpter{}
+	to := tiltanalytics.NewFakeOpter(analytics.OptIn)
 	_, a := tiltanalytics.NewMemoryTiltAnalyticsForTest(to)
 	cmdUpTags := CmdUpTags(map[string]string{"watch": "true"})
 	au := NewAnalyticsUpdater(a, cmdUpTags)
 	st, _ := store.NewStoreForTesting()
-	setOpt(st, analytics.OptOut)
+	setUserOpt(st, analytics.OptOut)
 	au.OnChange(context.Background(), st)
 
 	assert.Equal(t, []analytics.Opt{analytics.OptOut}, to.Calls())
 }
 
 func TestReportOnOptIn(t *testing.T) {
-	to := &tiltanalytics.FakeOpter{}
+	to := tiltanalytics.NewFakeOpter(analytics.OptIn)
 	mem, a := tiltanalytics.NewMemoryTiltAnalyticsForTest(to)
-	a.SetOpt(analytics.OptDefault)
+	a.SetUserOpt(analytics.OptDefault)
 
 	cmdUpTags := CmdUpTags(map[string]string{"watch": "true"})
 	au := NewAnalyticsUpdater(a, cmdUpTags)
 	st, _ := store.NewStoreForTesting()
-	setOpt(st, analytics.OptIn)
+	setUserOpt(st, analytics.OptIn)
 	au.OnChange(context.Background(), st)
 
 	assert.Equal(t, []analytics.Opt{analytics.OptDefault, analytics.OptIn}, to.Calls())
@@ -41,16 +41,16 @@ func TestReportOnOptIn(t *testing.T) {
 	}
 
 	// opt-out then back in again, and make sure it doesn't get re-reported.
-	setOpt(st, analytics.OptOut)
+	setUserOpt(st, analytics.OptOut)
 	au.OnChange(context.Background(), st)
 
-	setOpt(st, analytics.OptIn)
+	setUserOpt(st, analytics.OptIn)
 	au.OnChange(context.Background(), st)
 	assert.Equal(t, 1, len(mem.Counts))
 }
 
-func setOpt(st *store.Store, opt analytics.Opt) {
+func setUserOpt(st *store.Store, opt analytics.Opt) {
 	state := st.LockMutableStateForTesting()
 	defer st.UnlockMutableState()
-	state.AnalyticsOpt = opt
+	state.AnalyticsUserOpt = opt
 }
