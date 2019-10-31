@@ -256,6 +256,9 @@ type BuildState struct {
 	// This must be liberal: it's ok if this has too many files, but not ok if it has too few.
 	FilesChangedSet map[string]bool
 
+	// Whether there was a manual trigger
+	NeedsForceUpdate bool
+
 	RunningContainers []ContainerInfo
 
 	// If we had an error retrieving running containers
@@ -280,6 +283,11 @@ func (b BuildState) WithRunningContainers(cInfos []ContainerInfo) BuildState {
 
 func (b BuildState) WithRunningContainerError(err error) BuildState {
 	b.RunningContainerError = err
+	return b
+}
+
+func (b BuildState) WithNeedsForceUpdate(needsForceUpdate bool) BuildState {
+	b.NeedsForceUpdate = needsForceUpdate
 	return b
 }
 
@@ -326,7 +334,7 @@ func (b BuildState) HasImage() bool {
 func (b BuildState) NeedsImageBuild() bool {
 	lastBuildWasImgBuild := b.LastSuccessfulResult != nil &&
 		b.LastSuccessfulResult.BuildType() == model.BuildTypeImage
-	return !lastBuildWasImgBuild || len(b.FilesChangedSet) > 0
+	return !lastBuildWasImgBuild || len(b.FilesChangedSet) > 0 || b.NeedsForceUpdate
 }
 
 type BuildStateSet map[model.TargetID]BuildState

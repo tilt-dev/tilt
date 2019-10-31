@@ -244,26 +244,22 @@ func (s *HeadsUpServer) HandleTrigger(w http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	err = MaybeSendToTriggerQueue(s.store, payload.ManifestNames[0])
+	err = SendToTriggerQueue(s.store, payload.ManifestNames[0])
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 }
 
-func MaybeSendToTriggerQueue(st store.RStore, name string) error {
+func SendToTriggerQueue(st store.RStore, name string) error {
 	mName := model.ManifestName(name)
 
 	state := st.RLockState()
-	m, ok := state.Manifest(mName)
+	_, ok := state.Manifest(mName)
 	st.RUnlockState()
 
 	if !ok {
 		return fmt.Errorf("no manifest found with name '%s'", mName)
-	}
-
-	if m.TriggerMode != model.TriggerModeManual {
-		return fmt.Errorf("can only trigger updates for manifests of TriggerModeManual")
 	}
 
 	st.Dispatch(AppendToTriggerQueueAction{Name: mName})

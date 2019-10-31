@@ -168,7 +168,9 @@ func buildTargets(manifest model.Manifest) []model.TargetSpec {
 
 // Extract a set of build states from a manifest for BuildAndDeploy.
 func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.TargetSpec, ms *store.ManifestState) store.BuildStateSet {
-	buildStateSet := store.BuildStateSet{}
+	result := store.BuildStateSet{}
+
+	anyFilesChanged := false
 
 	for _, spec := range specs {
 		id := spec.ID()
@@ -177,11 +179,14 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 		}
 
 		status := ms.BuildStatus(id)
-		filesChanged := make([]string, 0, len(status.PendingFileChanges))
+		var filesChanged []string
 		for file, _ := range status.PendingFileChanges {
 			filesChanged = append(filesChanged, file)
 		}
 		sort.Strings(filesChanged)
+		if len(filesChanged) > 0 {
+			anyFilesChanged = true
+		}
 
 		buildState := store.NewBuildState(status.LastSuccessfulResult, filesChanged)
 
@@ -211,10 +216,22 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 				}
 			}
 		}
-		buildStateSet[id] = buildState
+		result[id] = buildState
 	}
 
-	return buildStateSet
+	// If there are no files changed across the entire state set, then this is a force update.
+	// We want to do an image build of each image.
+	// TODO(maia): I think that instead of storing this on every build state, we can can figure
+	//  out that it's a force update when creating the BuildEntry (in `needsBuild`), store that
+	//  as the BuildReason, and pass the whole BuildEntry to the builder (so the builder can
+	//  know whether to skip in-place builds)
+	if !anyFilesChanged {
+		for k, v := range result {
+			result[k] = v.WithNeedsForceUpdate(true)
+		}
+	}
+
+	return result
 }
 
 var _ store.Subscriber = &BuildController{}
