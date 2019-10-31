@@ -16,7 +16,9 @@ describe("SidebarTriggerButton", () => {
         isSelected={true}
         resourceName="doggos"
         triggerMode={TriggerMode.TriggerModeManual}
-        isReady={true}
+        hasBuilt={true}
+        isBuilding={false}
+        hasPendingChanges={false}
       />
     )
 

@@ -110,8 +110,6 @@ class Sidebar extends PureComponent<SidebarProps> {
       let building = !isZeroTime(item.currentBuildStartTime)
       let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
       let isSelected = this.props.selected === item.name
-      let isManualTriggerMode =
-        item.triggerMode === TriggerMode.TriggerModeManual
 
       let classes = "resLink"
       if (building) {
@@ -144,9 +142,10 @@ class Sidebar extends PureComponent<SidebarProps> {
             </span>
             <SidebarTriggerButton
               isSelected={isSelected}
-              isDirty={item.hasPendingChanges}
+              hasPendingChanges={item.hasPendingChanges}
               resourceName={item.name}
-              isReady={item.hasPendingChanges && !building}
+              hasBuilt={hasBuilt}
+              isBuilding={building}
               triggerMode={item.triggerMode}
             />
           </Link>
