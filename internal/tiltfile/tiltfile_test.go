@@ -3854,14 +3854,14 @@ local_resource("toplvl-local", "echo hello world", ["foo/baz", "foo/a.txt"])
 	}, ltTop.LocalRepos())
 }
 
-func TestLocalResourceIgnoreOnly(t *testing.T) {
+func TestLocalResourceIgnore(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
 	f.file(".dockerignore", "**/**.c")
 	f.file("Tiltfile", "include('proj/Tiltfile')")
 	f.file("proj/Tiltfile", `
-local_resource("test", "echo hi", ["foo"], ignore=["**/*.a", "foo/bar.d"], only=["foo/bar.a", "foo/bar.b", "foo/bar.c", "foo/bar.d", "foo/baz"])
+local_resource("test", "echo hi", deps=["foo"], ignore=["**/*.a", "foo/bar.d"])
 `)
 
 	f.setupFoo()
@@ -3877,14 +3877,10 @@ local_resource("test", "echo hi", ["foo"], ignore=["**/*.a", "foo/bar.d"], only=
 		path        string
 		expectMatch bool
 	}{
-		{"proj/foo/asdf", true},   // doesn't match only - ignore
-		{"proj/foo/bar.a", true},  // matches only and ignore - ignore
-		{"proj/foo/bar.b", false}, // matches only and not ignore - don't ignore
-		{"proj/foo/bar.c", false}, // matches only and dockerignore, but we don't use dockerignore for local_resource - don't ignore
-		{"proj/foo/bar.d", true},  // matches only and ignore w/o wildcard path - ignore (validate we're evaluating from workdir)
-		{"baz", true},             // outside of workdir so doesn't match only - ignore
-		{"foo/baz", true},         // outside of workdir so doesn't match only - ignore
-		{"proj/foo/baz", false},   // matches a path explicitly specified by only - don't ignore
+		{"proj/foo/bar.a", true},
+		{"proj/foo/bar.b", false},
+		{"proj/foo/baz/bar.a", true},
+		{"proj/foo/bar.d", true},
 	} {
 		matches, err := filter.Matches(f.JoinPath(tc.path))
 		require.NoError(t, err)

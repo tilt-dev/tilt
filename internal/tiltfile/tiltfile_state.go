@@ -1416,10 +1416,6 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 		if ignoreContents != "" {
 			ignores = append(ignores, model.Dockerignore{Contents: ignoreContents, LocalPath: r.workdir})
 		}
-		onlyContents := onlysToDockerignoreContents(r.onlys)
-		if onlyContents != "" {
-			ignores = append(ignores, model.Dockerignore{Contents: onlyContents, LocalPath: r.workdir})
-		}
 
 		lt := model.NewLocalTarget(model.TargetName(r.name), r.cmd, r.workdir, r.deps).
 			WithRepos(reposForPaths(paths)).
