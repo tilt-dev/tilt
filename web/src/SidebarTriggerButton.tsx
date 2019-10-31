@@ -45,7 +45,7 @@ export default class SidebarTriggerButton extends PureComponent<
       props.hasBuilt &&
       (!props.hasPendingChanges || isManualTriggerMode)
     let isDirty = props.hasPendingChanges && isManualTriggerMode
-    
+
     return (
       <button
         onClick={() => triggerUpdate(props.resourceName)}
