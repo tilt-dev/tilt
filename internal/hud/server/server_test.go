@@ -331,7 +331,7 @@ func TestSendToTriggerQueue_automaticManifest(t *testing.T) {
 	mt := store.ManifestTarget{
 		Manifest: model.Manifest{
 			Name:        "foobar",
-			TriggerMode: model.TriggerModeAuto, // can now enqueue manifests regardless of TriggerMode
+			TriggerMode: model.TriggerModeAuto,
 		},
 	}
 	state := f.st.LockMutableStateForTesting()
