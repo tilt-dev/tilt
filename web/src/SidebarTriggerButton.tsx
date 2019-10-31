@@ -1,5 +1,5 @@
-import React, {PureComponent} from "react"
-import {TriggerMode} from "./types"
+import React, { PureComponent } from "react"
+import { TriggerMode } from "./types"
 import "./SidebarTriggerButton.scss"
 
 type SidebarTriggerButtonProps = {
@@ -27,11 +27,10 @@ const triggerUpdate = (name: string): void => {
 export default class SidebarTriggerButton extends PureComponent<
   SidebarTriggerButtonProps
 > {
-
   render() {
     let props = this.props
     let isManualTriggerMode =
-        props.triggerMode === TriggerMode.TriggerModeManual
+      props.triggerMode === TriggerMode.TriggerModeManual
 
     // isReady (i.e. trigger button will appear) if:
     // 1. resource not currently building, AND
@@ -41,17 +40,17 @@ export default class SidebarTriggerButton extends PureComponent<
     //    manual resource)
     // TODO: don't show trigger button if a manual resource has been queued for build (currently
     //   have no way to detect this)
-    let isReady = !props.isBuilding && props.hasBuilt && (!props.hasPendingChanges || isManualTriggerMode)
+    let isReady =
+      !props.isBuilding &&
+      props.hasBuilt &&
+      (!props.hasPendingChanges || isManualTriggerMode)
     let isDirty = props.hasPendingChanges && isManualTriggerMode
-
-    console.log(props)
-    console.log("is ready?", isReady)
-
+    
     return (
       <button
         onClick={() => triggerUpdate(props.resourceName)}
         className={`SidebarTriggerButton ${props.isSelected ? "isSelected" : ""}
-          ${isReady ? " isReady": ""}${isDirty ? " isDirty" : ""}`}
+          ${isReady ? " isReady" : ""}${isDirty ? " isDirty" : ""}`}
       />
     )
   }
