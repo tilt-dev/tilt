@@ -3888,17 +3888,6 @@ local_resource("test", "echo hi", deps=["foo"], ignore=["**/*.a", "foo/bar.d"])
 	}
 }
 
-func TestLocalResourceFailsOnGlobsInOnly(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.file("Tiltfile", `
-local_resource("test", "echo hi", ["foo"], ignore=["**/*.a", "foo/bar.d"], only=["**/bar.*", "foo/baz"])
-`)
-
-	f.loadErrString("'only' does not support '*' file globs")
-}
-
 func (f *fixture) assertRepos(expectedLocalPaths []string, repos []model.LocalGitRepo) {
 	var actualLocalPaths []string
 	for _, r := range repos {
