@@ -5,6 +5,8 @@ package webview;
 import "google/api/annotations.proto";
 import "google/protobuf/timestamp.proto";
 
+option go_package = "github.com/windmilleng/tilt/pkg/webview";
+
 message BuildRecord {
   repeated string edits = 1;
   string error = 2;
