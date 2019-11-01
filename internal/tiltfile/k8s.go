@@ -170,17 +170,9 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 		return nil, err
 	}
 
-	var metaLabels map[string]string
-	if labelsValue != nil {
-		d, ok := labelsValue.(*starlark.Dict)
-		if !ok {
-			return nil, fmt.Errorf("kwarg `labels`: expected dict, got %T", labelsValue)
-		}
-
-		metaLabels, err = skylarkStringDictToGoMap(d)
-		if err != nil {
-			return nil, fmt.Errorf("kwarg `labels`: %v", err)
-		}
+	metaLabels, err := value.ValueToStringMap(labelsValue)
+	if err != nil {
+		return nil, fmt.Errorf("kwarg `labels`: %v", err)
 	}
 
 	entities, err := s.yamlEntitiesFromSkylarkValueOrList(thread, yamlValue)
