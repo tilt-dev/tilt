@@ -73,7 +73,7 @@
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time"
+          "title": "TODO(dmiller): this should be a timestamp, but sometimes incorrectly formatted times get set here\nlike when there's a Pod that has PodStatusError.\nWe should figure out how those times are being set, and fix them to parse as protobuf.Timestamp\ncorrectly"
         },
         "resource_name": {
           "type": "string"
