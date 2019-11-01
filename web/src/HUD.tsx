@@ -18,7 +18,6 @@ import {
   HudState,
   ResourceView,
   ShowFatalErrorModal,
-  Snapshot,
   SnapshotHighlight,
   SocketState,
   WebView,
@@ -376,7 +375,7 @@ class HUD extends Component<HudProps, HudState> {
     }
     let facetsRoute = (props: RouteComponentProps<any>) => {
       let name = props.match.params ? props.match.params.name : ""
-      let fr = resources.find(r => r.name == name)
+      let fr = resources.find(r => r.name === name)
       if (fr === undefined) {
         return <Route component={NotFound} />
       }
