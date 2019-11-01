@@ -221,6 +221,18 @@ class HUD extends Component<HudProps, HudState> {
     return `${tiltCloudSchemeHost}/team/${teamId}/snapshots`
   }
 
+  private snapshotOwner(): string | null {
+    let snapshotOwner: string | null = null
+    if (this.pathBuilder.isSnapshot() && this.state.view) {
+      snapshotOwner = this.state.view.tiltCloudUsername
+    }
+    return snapshotOwner
+  }
+
+  private handleOpenModal() {
+    this.setState({ showSnapshotModal: true })
+  }
+
   render() {
     let view = this.state.view
 
@@ -229,38 +241,47 @@ class HUD extends Component<HudProps, HudState> {
     if (!resources.length) {
       return <HeroScreen message={"Loading…"} />
     }
-    let isSidebarClosed = !!this.state.isSidebarClosed
-    let snapshotHighlight = this.state.snapshotHighlight || null
-    let showSnapshotModal = !!this.state.showSnapshotModal
-    let toggleSidebar = this.toggleSidebar
     let statusItems = resources.map(res => new StatusItem(res))
-    let sidebarItems = resources.map(res => new SidebarItem(res))
 
+    let runningVersion = view && view.runningTiltBuild
+    let latestVersion = view && view.latestTiltBuild
+    let shareSnapshotModal = this.renderShareSnapshotModal(view)
+    let fatalErrorModal = this.renderFatalErrorModal(view)
+
+    let statusbar = (
+      <Statusbar
+        items={statusItems}
+        alertsUrl={this.path("/alerts")}
+        runningVersion={runningVersion}
+        latestVersion={latestVersion}
+      />
+    )
+
+    return (
+      <div className="HUD">
+        <AnalyticsNudge needsNudge={needsNudge} />
+        <SocketBar state={this.state.socketState} />
+        {fatalErrorModal}
+        {shareSnapshotModal}
+
+        {this.renderTopBarSwitch()}
+        {this.renderSidebarSwitch()}
+        {statusbar}
+        {this.renderMainPaneSwitch()}
+      </div>
+    )
+  }
+
+  renderTopBarSwitch() {
+    let view = this.state.view
+    let resources = (view && view.resources) || []
     let showSnapshot =
       this.getFeatures().isEnabled("snapshots") &&
       !this.pathBuilder.isSnapshot()
-    let snapshotOwner: string | null = null
-    if (this.pathBuilder.isSnapshot() && this.state.view) {
-      snapshotOwner = this.state.view.tiltCloudUsername
-    }
 
-    let sidebarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
-      let name = props.match.params.name
-      return (
-        <Sidebar
-          selected={name}
-          items={sidebarItems}
-          isClosed={isSidebarClosed}
-          toggleSidebar={toggleSidebar}
-          resourceView={t}
-          pathBuilder={this.pathBuilder}
-        />
-      )
-    }
+    let snapshotHighlight = this.state.snapshotHighlight || null
 
-    let handleOpenModal = () => {
-      this.setState({ showSnapshotModal: true })
-    }
+    let props = this.props
     let topBarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name =
         props.match.params && props.match.params.name
@@ -277,8 +298,8 @@ class HUD extends Component<HudProps, HudState> {
               resourceView={t}
               numberOfAlerts={numAlerts}
               showSnapshotButton={showSnapshot}
-              snapshotOwner={snapshotOwner}
-              handleOpenModal={handleOpenModal}
+              snapshotOwner={this.snapshotOwner()}
+              handleOpenModal={this.handleOpenModal}
               highlight={snapshotHighlight}
               teamSnapshotsUrl={this.getTeamSnapshotsUrl()}
               teamUpdatesUrl={this.getTeamUpdatesUrl()}
@@ -301,8 +322,8 @@ class HUD extends Component<HudProps, HudState> {
           resourceView={t}
           numberOfAlerts={numAlerts}
           showSnapshotButton={showSnapshot}
-          snapshotOwner={snapshotOwner}
-          handleOpenModal={handleOpenModal}
+          snapshotOwner={this.snapshotOwner()}
+          handleOpenModal={this.handleOpenModal}
           highlight={snapshotHighlight}
           teamSnapshotsUrl={this.getTeamSnapshotsUrl()}
           teamUpdatesUrl={this.getTeamUpdatesUrl()}
@@ -317,8 +338,77 @@ class HUD extends Component<HudProps, HudState> {
       )
     }
 
-    let isSnapshot = this.pathBuilder.isSnapshot()
+    return (
+      <Switch>
+        <Route
+          path={this.path("/r/:name/alerts")}
+          render={topBarRoute.bind(null, ResourceView.Alerts)}
+        />
+        <Route
+          path={this.path("/r/:name/facets")}
+          render={topBarRoute.bind(null, ResourceView.Facets)}
+        />
+        <Route
+          path={this.path("/r/:name")}
+          render={topBarRoute.bind(null, ResourceView.Log)}
+        />
+        <Route
+          path={this.path("/alerts")}
+          render={topBarRoute.bind(null, ResourceView.Alerts)}
+        />
+        <Route render={topBarRoute.bind(null, ResourceView.Log)} />
+      </Switch>
+    )
+  }
 
+  renderSidebarSwitch() {
+    let view = this.state.view
+    let resources = (view && view.resources) || []
+    let sidebarItems = resources.map(res => new SidebarItem(res))
+    let isSidebarClosed = !!this.state.isSidebarClosed
+    let sidebarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
+      let name = props.match.params.name
+      return (
+        <Sidebar
+          selected={name}
+          items={sidebarItems}
+          isClosed={isSidebarClosed}
+          toggleSidebar={this.toggleSidebar}
+          resourceView={t}
+          pathBuilder={this.pathBuilder}
+        />
+      )
+    }
+    return (
+      <Switch>
+        <Route
+          path={this.path("/r/:name/alerts")}
+          render={sidebarRoute.bind(null, ResourceView.Alerts)}
+        />
+        <Route
+          path={this.path("/r/:name/facets")}
+          render={sidebarRoute.bind(null, ResourceView.Facets)}
+        />
+        <Route
+          path={this.path("/alerts")}
+          render={sidebarRoute.bind(null, ResourceView.Alerts)}
+        />
+        <Route
+          path={this.path("/r/:name")}
+          render={sidebarRoute.bind(null, ResourceView.Log)}
+        />
+        <Route render={sidebarRoute.bind(null, ResourceView.Log)} />
+      </Switch>
+    )
+  }
+
+  renderMainPaneSwitch() {
+    let view = this.state.view
+    let resources = (view && view.resources) || []
+    let isSidebarClosed = !!this.state.isSidebarClosed
+    let snapshotHighlight = this.state.snapshotHighlight || null
+    let showSnapshotModal = !!this.state.showSnapshotModal
+    let isSnapshot = this.pathBuilder.isSnapshot()
     let logsRoute = (props: RouteComponentProps<any>) => {
       let name =
         props.match.params && props.match.params.name
@@ -400,107 +490,46 @@ class HUD extends Component<HudProps, HudState> {
         </div>
       )
     }
-    let runningVersion = view && view.runningTiltBuild
-    let latestVersion = view && view.latestTiltBuild
-    let shareSnapshotModal = this.renderShareSnapshotModal(view)
-    let fatalErrorModal = this.renderFatalErrorModal(view)
+
     return (
-      <div className="HUD">
-        <AnalyticsNudge needsNudge={needsNudge} />
-        <SocketBar state={this.state.socketState} />
-        {fatalErrorModal}
-        {shareSnapshotModal}
-        <Switch>
-          <Route
-            path={this.path("/r/:name/alerts")}
-            render={topBarRoute.bind(null, ResourceView.Alerts)}
-          />
-          <Route
-            path={this.path("/r/:name/facets")}
-            render={topBarRoute.bind(null, ResourceView.Facets)}
-          />
-          <Route
-            path={this.path("/r/:name")}
-            render={topBarRoute.bind(null, ResourceView.Log)}
-          />
-          <Route
-            path={this.path("/alerts")}
-            render={topBarRoute.bind(null, ResourceView.Alerts)}
-          />
-          <Route render={topBarRoute.bind(null, ResourceView.Log)} />
-        </Switch>
-        <Switch>
-          <Route
-            path={this.path("/r/:name/alerts")}
-            render={sidebarRoute.bind(null, ResourceView.Alerts)}
-          />
-          <Route
-            path={this.path("/r/:name/facets")}
-            render={sidebarRoute.bind(null, ResourceView.Facets)}
-          />
-          <Route
-            path={this.path("/alerts")}
-            render={sidebarRoute.bind(null, ResourceView.Alerts)}
-          />
-          <Route
-            path={this.path("/r/:name")}
-            render={sidebarRoute.bind(null, ResourceView.Log)}
-          />
-          <Route render={sidebarRoute.bind(null, ResourceView.Log)} />
-        </Switch>
-        <Statusbar
-          items={statusItems}
-          alertsUrl={this.path("/alerts")}
-          runningVersion={runningVersion}
-          latestVersion={latestVersion}
+      <Switch>
+        <Route
+          exact
+          path={this.path("/")}
+          render={() => (
+            <LogPane
+              log={combinedLog}
+              isExpanded={isSidebarClosed}
+              handleSetHighlight={this.handleSetHighlight}
+              handleClearHighlight={this.handleClearHighlight}
+              highlight={this.state.snapshotHighlight}
+              modalIsOpen={showSnapshotModal}
+              isSnapshot={isSnapshot}
+            />
+          )}
         />
-        <Switch>
-          <Route
-            exact
-            path={this.path("/")}
-            render={() => (
-              <LogPane
-                log={combinedLog}
-                isExpanded={isSidebarClosed}
-                handleSetHighlight={this.handleSetHighlight}
-                handleClearHighlight={this.handleClearHighlight}
-                highlight={this.state.snapshotHighlight}
-                modalIsOpen={showSnapshotModal}
-                isSnapshot={isSnapshot}
-              />
-            )}
-          />
-          <Route
-            exact
-            path={this.path("/alerts")}
-            render={() => (
-              <AlertPane pathBuilder={this.pathBuilder} resources={resources} />
-            )}
-          />
-          <Route exact path={this.path("/r/:name")} render={logsRoute} />
-          <Route
-            exact
-            path={this.path("/snapshot/:snap_id")}
-            render={snapshotRoute}
-          />
-          <Route
-            exact
-            path={this.path("/r/:name/k8s")}
-            render={() => <K8sViewPane />}
-          />
-          <Route
-            exact
-            path={this.path("/r/:name/alerts")}
-            render={errorRoute}
-          />
-          <Route
-            exact
-            path={this.path("/r/:name/facets")}
-            render={facetsRoute}
-          />
-          <Route component={NoMatch} />
-        </Switch>
-      </div>
+        <Route
+          exact
+          path={this.path("/alerts")}
+          render={() => (
+            <AlertPane pathBuilder={this.pathBuilder} resources={resources} />
+          )}
+        />
+        <Route exact path={this.path("/r/:name")} render={logsRoute} />
+        <Route
+          exact
+          path={this.path("/snapshot/:snap_id")}
+          render={snapshotRoute}
+        />
+        <Route
+          exact
+          path={this.path("/r/:name/k8s")}
+          render={() => <K8sViewPane />}
+        />
+        <Route exact path={this.path("/r/:name/alerts")} render={errorRoute} />
+        <Route exact path={this.path("/r/:name/facets")} render={facetsRoute} />
+        <Route component={NoMatch} />
+      </Switch>
     )
   }
 
