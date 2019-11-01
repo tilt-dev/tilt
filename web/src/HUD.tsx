@@ -473,23 +473,6 @@ class HUD extends Component<HudProps, HudState> {
         return <FacetsPane resource={fr} />
       }
     }
-    let snapshotRoute = () => {
-      return (
-        <div className="SnapshotMessage">
-          <h1>Welcome to a Tilt snapshot!</h1>
-          <p>
-            In here you can look around and check out a "snapshot" of a Tilt
-            session.
-          </p>
-          <p>
-            Snapshots are static freeze frame points in time. Nothing will
-            change. Feel free to poke around and see what the person who sent
-            you this snapshot saw when they sent it to you.
-          </p>
-          <p>Have fun!</p>
-        </div>
-      )
-    }
 
     return (
       <Switch>
@@ -516,11 +499,6 @@ class HUD extends Component<HudProps, HudState> {
           )}
         />
         <Route exact path={this.path("/r/:name")} render={logsRoute} />
-        <Route
-          exact
-          path={this.path("/snapshot/:snap_id")}
-          render={snapshotRoute}
-        />
         <Route
           exact
           path={this.path("/r/:name/k8s")}
