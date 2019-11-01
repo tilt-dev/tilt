@@ -77,9 +77,8 @@ func subtract(a, b []PodWatch) []PodWatch {
 
 type podWatchTaskList struct {
 	watcherTaskList
-	setup                   []PodWatch
-	teardown                []PodWatch
-	podTemplateSpecHashSets map[model.ManifestName]store.PodTemplateSpecHashSet
+	setup    []PodWatch
+	teardown []PodWatch
 }
 
 func (w *PodWatcher) diff(ctx context.Context, st store.RStore) podWatchTaskList {
@@ -91,25 +90,21 @@ func (w *PodWatcher) diff(ctx context.Context, st store.RStore) podWatchTaskList
 
 	taskList := createWatcherTaskList(state, w.knownDeployedUIDs)
 	var neededWatches []PodWatch
-	podTemplateSpecHashSets := make(map[model.ManifestName]store.PodTemplateSpecHashSet)
 	for _, mt := range state.Targets() {
 		for _, ls := range mt.Manifest.K8sTarget().ExtraPodSelectors {
 			if !ls.Empty() {
 				neededWatches = append(neededWatches, PodWatch{name: mt.Manifest.Name, labels: ls})
 			}
 		}
-		podTemplateSpecHashSets[mt.Manifest.Name] = mt.State.K8sRuntimeState().DeployedPodTemplateSpecHashSet
 	}
-
 	if taskList.needsWatch {
 		neededWatches = append(neededWatches, PodWatch{labels: k8s.ManagedByTiltSelector()})
 	}
 
 	return podWatchTaskList{
-		watcherTaskList:         taskList,
-		setup:                   subtract(neededWatches, w.watches),
-		teardown:                subtract(w.watches, neededWatches),
-		podTemplateSpecHashSets: podTemplateSpecHashSets,
+		watcherTaskList: taskList,
+		setup:           subtract(neededWatches, w.watches),
+		teardown:        subtract(w.watches, neededWatches),
 	}
 }
 
@@ -135,7 +130,7 @@ func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {
 	}
 
 	if len(taskList.newUIDs) > 0 {
-		w.setupNewUIDs(ctx, st, taskList.newUIDs, taskList.podTemplateSpecHashSets)
+		w.setupNewUIDs(ctx, st, taskList.newUIDs)
 	}
 }
 
@@ -157,33 +152,11 @@ func (w *PodWatcher) removeWatch(toRemove PodWatch) {
 	}
 }
 
-// We inject a label to all pod template specs so that we can tell if it came from a pod template we've deployed
-// since startup.
-// This is to solve the problem where:
-// 1. start Tilt, which applies a deployment and creates a pod
-// 2. kill Tilt, change some code that goes into the pod's image
-// 3. start Tilt, which reapplies that same deployment
-// At this point, we want a new pod to be created, and we don't care about the old pod. However, since
-// changing a deployment's PodTemplateSpec does not cause the deployment to get a new UID, the deployment
-// applied in (3) has the same UID as the deployment applied in (1), so when we get an event for the
-// undesired pod from (1), we trace it back to the deployment we applied in (3), and emit an event.
-// To deal with this, we inject a hash of the pod template spec into the pod template itself, and only
-// emit events from pods with known pod template spec hashes.
-func hasOKPodTemplateSpecHash(pod *v1.Pod, set store.PodTemplateSpecHashSet) bool {
-	// if it doesn't have a label, just let it through - maybe it's from a CRD w/ no pod template spec
-	hash, ok := pod.Labels[k8s.TiltPodTemplateHashLabel]
-	if !ok {
-		return true
-	}
-
-	return set.Contains(k8s.PodTemplateSpecHash(hash))
-}
-
 // When new UIDs are deployed, go through all our known pods and dispatch
 // new actions. This handles the case where we get the Pod change event
 // before the deploy id shows up in the manifest, which is way more common than
 // you would think.
-func (w *PodWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs map[types.UID]model.ManifestName, podTemplateSpecHashes map[model.ManifestName]store.PodTemplateSpecHashSet) {
+func (w *PodWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs map[types.UID]model.ManifestName) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -191,12 +164,7 @@ func (w *PodWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs 
 		w.knownDeployedUIDs[uid] = mn
 
 		pod, ok := w.knownPods[uid]
-
 		if ok {
-			set, ok := podTemplateSpecHashes[mn]
-			if ok && !hasOKPodTemplateSpecHash(pod, set) {
-				continue
-			}
 			st.Dispatch(NewPodChangeAction(pod, mn, uid))
 			continue
 		}
@@ -205,10 +173,6 @@ func (w *PodWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs 
 		for podUID := range descendants {
 			pod, ok := w.knownPods[podUID]
 			if ok {
-				set, ok := podTemplateSpecHashes[mn]
-				if ok && !hasOKPodTemplateSpecHash(pod, set) {
-					continue
-				}
 				st.Dispatch(NewPodChangeAction(pod, mn, uid))
 			}
 		}
@@ -310,16 +274,6 @@ func (w *PodWatcher) dispatchPodChange(ctx context.Context, pod *v1.Pod, st stor
 
 	mn, ancestorUID := w.triagePodUpdate(pod, objTree)
 	if mn == "" {
-		return
-	}
-
-	state := st.RLockState()
-	defer st.RUnlockState()
-
-	m, ok := state.ManifestTargets[mn]
-	if !ok ||
-		!m.Manifest.IsK8s() ||
-		!hasOKPodTemplateSpecHash(pod, m.State.K8sRuntimeState().DeployedPodTemplateSpecHashSet) {
 		return
 	}
 

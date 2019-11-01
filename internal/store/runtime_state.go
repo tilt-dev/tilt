@@ -39,10 +39,9 @@ type K8sRuntimeState struct {
 	// In many cases, this will be a Deployment UID.
 	PodAncestorUID types.UID
 
-	Pods                           map[k8s.PodID]*Pod
-	LBs                            map[k8s.ServiceName]*url.URL
-	DeployedUIDSet                 UIDSet
-	DeployedPodTemplateSpecHashSet PodTemplateSpecHashSet
+	Pods           map[k8s.PodID]*Pod
+	LBs            map[k8s.ServiceName]*url.URL
+	DeployedUIDSet UIDSet
 
 	LastReadyTime time.Time
 }
@@ -58,10 +57,9 @@ func NewK8sRuntimeState(pods ...Pod) K8sRuntimeState {
 		podMap[p.PodID] = &p
 	}
 	return K8sRuntimeState{
-		Pods:                           podMap,
-		LBs:                            make(map[k8s.ServiceName]*url.URL),
-		DeployedUIDSet:                 NewUIDSet(),
-		DeployedPodTemplateSpecHashSet: NewPodTemplateSpecHashSet(),
+		Pods:           podMap,
+		LBs:            make(map[k8s.ServiceName]*url.URL),
+		DeployedUIDSet: NewUIDSet(),
 	}
 }
 
@@ -211,20 +209,4 @@ func (s UIDSet) Add(uids ...types.UID) {
 
 func (s UIDSet) Contains(uid types.UID) bool {
 	return s[uid]
-}
-
-type PodTemplateSpecHashSet map[k8s.PodTemplateSpecHash]bool
-
-func NewPodTemplateSpecHashSet() PodTemplateSpecHashSet {
-	return make(map[k8s.PodTemplateSpecHash]bool)
-}
-
-func (s PodTemplateSpecHashSet) Add(hashes ...k8s.PodTemplateSpecHash) {
-	for _, hash := range hashes {
-		s[hash] = true
-	}
-}
-
-func (s PodTemplateSpecHashSet) Contains(hash k8s.PodTemplateSpecHash) bool {
-	return s[hash]
 }

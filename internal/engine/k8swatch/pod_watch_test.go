@@ -7,19 +7,20 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
 	"github.com/windmilleng/tilt/internal/testutils/podbuilder"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
+
+	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/model"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestPodWatch(t *testing.T) {
@@ -36,7 +37,6 @@ func TestPodWatch(t *testing.T) {
 
 	// Simulate the Deployment UID in the engine state
 	f.addDeployedUID(manifest, pb.DeploymentUID())
-	f.addPodTemplateSpecHashForPod(manifest, p)
 	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
 
 	f.kClient.EmitPod(ls, p)
@@ -57,8 +57,6 @@ func TestPodWatchChangeEventBeforeUID(t *testing.T) {
 	ls := k8s.ManagedByTiltSelector()
 	pb := podbuilder.New(t, manifest)
 	p := pb.Build()
-
-	f.addPodTemplateSpecHashForPod(manifest, p)
 
 	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
 	f.kClient.EmitPod(ls, p)
@@ -86,9 +84,7 @@ func TestPodWatchExtraSelectors(t *testing.T) {
 
 	p := podbuilder.New(t, manifest).
 		WithPodLabel("foo", "bar").
-		WithNoTemplateSpecHash().
 		Build()
-
 	f.kClient.EmitPod(ls1, p)
 
 	f.assertObservedPods(p)
@@ -109,9 +105,7 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 
 	p := podbuilder.New(t, manifest).
 		WithPodLabel("foo", "bar").
-		WithNoTemplateSpecHash().
 		Build()
-
 	f.kClient.EmitPod(ls1, p)
 
 	f.assertObservedPods(p)
@@ -127,7 +121,6 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 
 	pb2 := podbuilder.New(t, manifest2).WithPodID("pod2")
 	p2 := pb2.Build()
-	f.addPodTemplateSpecHashForPod(manifest2, p2)
 	f.addDeployedUID(manifest2, pb2.DeploymentUID())
 	f.kClient.InjectEntityByName(pb2.ObjectTreeEntities()...)
 	f.kClient.EmitPod(ls, p2)
@@ -137,53 +130,22 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 	p3 := podbuilder.New(t, manifest2).
 		WithPodID("pod3").
 		WithPodLabel("foo", "bar").
-		WithNoTemplateSpecHash().
 		Build()
 	f.kClient.EmitPod(ls1, p3)
 
 	p4 := podbuilder.New(t, manifest2).
 		WithPodID("pod4").
 		WithPodLabel("baz", "quu").
-		WithNoTemplateSpecHash().
 		Build()
 	f.kClient.EmitPod(ls2, p4)
 
 	p5 := podbuilder.New(t, manifest2).
 		WithPodID("pod5").
 		Build()
-	f.addPodTemplateSpecHashForPod(manifest2, p5)
 	f.kClient.EmitPod(ls, p5)
 
 	f.assertObservedPods(p4, p5)
 	assert.Equal(t, []model.ManifestName{manifest2.Name, manifest2.Name}, f.manifestNames)
-}
-
-func TestPodWithWrongTemplateSpecHashIsIgnored(t *testing.T) {
-	f := newPWFixture(t)
-	defer f.TearDown()
-
-	manifest := f.addManifestWithSelectors("server")
-
-	f.pw.OnChange(f.ctx, f.store)
-
-	ls := k8s.ManagedByTiltSelector()
-	pb := podbuilder.New(t, manifest).WithPodID("1").WithTemplateSpecHash("foobar")
-	p1 := pb.Build()
-
-	pb = podbuilder.New(t, manifest).WithPodID("2")
-	p2 := pb.Build()
-
-	// Simulate the Deployment UID in the engine state
-	f.addDeployedUID(manifest, pb.DeploymentUID())
-	f.addPodTemplateSpecHashForPod(manifest, p2)
-	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
-
-	f.kClient.EmitPod(ls, p1)
-	f.kClient.EmitPod(ls, p2)
-
-	f.assertWatchedSelectors(ls)
-
-	f.assertObservedPods(p2)
 }
 
 type podStatusTestCase struct {
@@ -327,27 +289,6 @@ func (f *pwFixture) addDeployedUID(m model.Manifest, uid types.UID) {
 	runtimeState.DeployedUIDSet[uid] = true
 }
 
-func (f *pwFixture) addPodTemplateSpecHashForPod(m model.Manifest, pod *corev1.Pod) {
-	hash, ok := pod.Labels[k8s.TiltPodTemplateHashLabel]
-	if !ok {
-		f.t.Fatalf("pod %s has no pod template spec hash label", pod.Name)
-	}
-	f.addPodTemplateSpecHash(m, k8s.PodTemplateSpecHash(hash))
-}
-
-func (f *pwFixture) addPodTemplateSpecHash(m model.Manifest, hash k8s.PodTemplateSpecHash) {
-	defer f.pw.OnChange(f.ctx, f.store)
-
-	state := f.store.LockMutableStateForTesting()
-	defer f.store.UnlockMutableState()
-	mState, ok := state.ManifestState(m.Name)
-	if !ok {
-		f.t.Fatalf("Unknown manifest: %s", m.Name)
-	}
-	runtimeState := mState.GetOrCreateK8sRuntimeState()
-	runtimeState.DeployedPodTemplateSpecHashSet[hash] = true
-}
-
 func (f *pwFixture) assertObservedPods(pods ...*corev1.Pod) {
 	start := time.Now()
 	for time.Since(start) < 200*time.Millisecond {
@@ -356,7 +297,9 @@ func (f *pwFixture) assertObservedPods(pods ...*corev1.Pod) {
 		}
 	}
 
-	require.ElementsMatch(f.t, pods, f.pods)
+	if !assert.ElementsMatch(f.t, pods, f.pods) {
+		f.t.FailNow()
+	}
 }
 
 func (f *pwFixture) assertWatchedSelectors(ls ...labels.Selector) {
