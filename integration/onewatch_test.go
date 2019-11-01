@@ -4,6 +4,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -53,6 +54,11 @@ func TestOneWatch(t *testing.T) {
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 	f.CurlUntil(ctx, "http://localhost:31234", "🍄 Two-Up! 🍄")
+
+	// Unfortunately "WaitForAllPodsReady" isn't that accurate and can pull in terminating pods
+	// too. Sleep here to increase the chance that pods are in the right state when we check.
+	fmt.Println("> Waiting for dead pods to get into 'terminating' state")
+	time.Sleep(2 * time.Second)
 
 	newTwoUpPods := f.WaitForAllPodsReady(ctx, "app=onewatch")
 	require.NotEqual(t, twoUpPods, newTwoUpPods)
