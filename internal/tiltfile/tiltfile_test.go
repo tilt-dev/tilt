@@ -3854,6 +3854,40 @@ local_resource("toplvl-local", "echo hello world", ["foo/baz", "foo/a.txt"])
 	}, ltTop.LocalRepos())
 }
 
+func TestLocalResourceIgnore(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file(".dockerignore", "**/**.c")
+	f.file("Tiltfile", "include('proj/Tiltfile')")
+	f.file("proj/Tiltfile", `
+local_resource("test", "echo hi", deps=["foo"], ignore=["**/*.a", "foo/bar.d"])
+`)
+
+	f.setupFoo()
+	f.file(".gitignore", "*.txt")
+	f.load()
+
+	f.assertNumManifests(1)
+
+	filter, err := ignore.CreateFileChangeFilter(f.loadResult.Manifests[0].LocalTarget())
+	require.NoError(t, err)
+
+	for _, tc := range []struct {
+		path        string
+		expectMatch bool
+	}{
+		{"proj/foo/bar.a", true},
+		{"proj/foo/bar.b", false},
+		{"proj/foo/baz/bar.a", true},
+		{"proj/foo/bar.d", true},
+	} {
+		matches, err := filter.Matches(f.JoinPath(tc.path))
+		require.NoError(t, err)
+		require.Equal(t, tc.expectMatch, matches, tc.path)
+	}
+}
+
 func (f *fixture) assertRepos(expectedLocalPaths []string, repos []model.LocalGitRepo) {
 	var actualLocalPaths []string
 	for _, r := range repos {
