@@ -7,7 +7,7 @@
 
 # When releasing Tilt, the releaser should update this version number
 # AFTER they upload new binaries.
-VERSION="0.10.16"
+VERSION="0.10.17"
 BREW=$(which brew)
 
 set -e
