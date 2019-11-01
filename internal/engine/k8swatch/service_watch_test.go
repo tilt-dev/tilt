@@ -51,9 +51,9 @@ func TestServiceWatch(t *testing.T) {
 
 // In many environments, we will get a Service change event
 // faster than the `kubectl apply` finishes. So we need to hold onto
-// the Service and dispatch an event when the UID returne by `kubectl apply`
+// the Service and dispatch an event when the UID returned by `kubectl apply`
 // shows up.
-func TestServiceWatchDeployIDDelayed(t *testing.T) {
+func TestServiceWatchUIDDelayed(t *testing.T) {
 	f := newSWFixture(t)
 	defer f.TearDown()
 

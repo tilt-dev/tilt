@@ -24,31 +24,6 @@ type BuildLogAction struct {
 
 func (BuildLogAction) Action() {}
 
-type DeployIDAction struct {
-	TargetID model.TargetID
-	DeployID model.DeployID
-}
-
-func (DeployIDAction) Action() {}
-
-func NewDeployIDAction(id model.TargetID, dID model.DeployID) DeployIDAction {
-	return DeployIDAction{
-		TargetID: id,
-		DeployID: dID,
-	}
-
-}
-func NewDeployIDActionsForTargets(ids []model.TargetID, dID model.DeployID) []DeployIDAction {
-	actions := make([]DeployIDAction, len(ids))
-	for i, id := range ids {
-		actions[i] = DeployIDAction{
-			TargetID: id,
-			DeployID: dID,
-		}
-	}
-	return actions
-}
-
 type BuildCompleteAction struct {
 	Result store.BuildResultSet
 	Error  error

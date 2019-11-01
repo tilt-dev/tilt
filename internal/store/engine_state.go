@@ -252,8 +252,6 @@ func (s BuildStatus) IsEmpty() bool {
 type ManifestState struct {
 	Name model.ManifestName
 
-	DeployID model.DeployID // ID we have assigned to the current deploy (helps find expected k8s objects)
-
 	BuildStatuses map[model.TargetID]*BuildStatus
 	RuntimeState  RuntimeState
 

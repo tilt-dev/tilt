@@ -164,8 +164,6 @@ type fakeBuildAndDeployer struct {
 	// If not set, we will auto-generate an ID.
 	nextDockerComposeContainerID container.ID
 
-	nextDeployID model.DeployID
-
 	nextDeployedUID types.UID
 
 	// Set this to simulate the build failing. Do not set this directly, use fixture.SetNextBuildFailure
@@ -220,17 +218,6 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 
 		logger.Get(ctx).Infof("fake built %s. error: %v", ids, err)
 	}()
-
-	dID := podbuilder.FakeDeployID
-	if b.nextDeployID != 0 {
-		dID = b.nextDeployID
-		b.nextDeployID = 0
-	}
-
-	deployIDActions := NewDeployIDActionsForTargets(ids, dID)
-	for _, a := range deployIDActions {
-		st.Dispatch(a)
-	}
 
 	result := store.BuildResultSet{}
 	for _, iTarget := range model.ExtractImageTargets(specs) {
@@ -1264,8 +1251,6 @@ func TestPodEventContainerStatusWithoutImage(t *testing.T) {
 	}.WithDeployTarget(model.K8sTarget{
 		YAML: SanchoYAML,
 	})
-	deployID := model.DeployID(123)
-	f.b.nextDeployID = deployID
 	ref := container.MustParseNamedTagged("dockerhub/we-didnt-build-this:foo")
 	f.Start([]model.Manifest{manifest}, true)
 
@@ -1273,7 +1258,7 @@ func TestPodEventContainerStatusWithoutImage(t *testing.T) {
 		return len(ms.BuildHistory) > 0
 	})
 
-	pod := podbuilder.New(f.T(), manifest).WithDeployID(deployID).Build()
+	pod := podbuilder.New(f.T(), manifest).Build()
 	pod.Status = k8s.FakePodStatus(ref, "Running")
 
 	// If we have no image target to match container status by image ref,
@@ -1831,7 +1816,6 @@ func TestUpperBuildImmediatelyAfterCrashRebuild(t *testing.T) {
 		assert.Equal(t, podbuilder.FakeContainerIDSet(1), ms.LiveUpdatedContainerIDs)
 	})
 
-	f.b.nextDeployID = podbuilder.FakeDeployID + 1
 	// Restart the pod with a new container id, to simulate a container restart.
 	f.podEvent(podbuilder.New(t, manifest).
 		WithPodID("pod-id").
