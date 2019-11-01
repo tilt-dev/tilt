@@ -108,17 +108,9 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	var sba map[string]string
-	if buildArgs != nil {
-		d, ok := buildArgs.(*starlark.Dict)
-		if !ok {
-			return nil, fmt.Errorf("Argument 3 (build_args): expected dict, got %T", buildArgs)
-		}
-
-		sba, err = skylarkStringDictToGoMap(d)
-		if err != nil {
-			return nil, fmt.Errorf("Argument 3 (build_args): %v", err)
-		}
+	sba, err := value.ValueToStringMap(buildArgs)
+	if err != nil {
+		return nil, fmt.Errorf("Argument 3 (build_args): %v", err)
 	}
 
 	dockerfilePath := filepath.Join(context, "Dockerfile")

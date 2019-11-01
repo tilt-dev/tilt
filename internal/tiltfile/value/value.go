@@ -28,6 +28,47 @@ func ValueOrSequenceToSlice(v starlark.Value) []starlark.Value {
 	}
 }
 
+func ValueToStringMap(v starlark.Value) (map[string]string, error) {
+	var result map[string]string
+	if v != nil && v != starlark.None {
+		d, ok := v.(*starlark.Dict)
+		if !ok {
+			return nil, fmt.Errorf("expected dict, got %T", v)
+		}
+
+		var err error
+		result, err = skylarkStringDictToGoMap(d)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+func skylarkStringDictToGoMap(d *starlark.Dict) (map[string]string, error) {
+	r := map[string]string{}
+
+	for _, tuple := range d.Items() {
+		kV, ok := AsString(tuple[0])
+		if !ok {
+			return nil, fmt.Errorf("key is not a string: %T (%v)", tuple[0], tuple[0])
+		}
+
+		k := string(kV)
+
+		vV, ok := AsString(tuple[1])
+		if !ok {
+			return nil, fmt.Errorf("value is not a string: %T (%v)", tuple[1], tuple[1])
+		}
+
+		v := string(vV)
+
+		r[k] = v
+	}
+
+	return r, nil
+}
+
 func ValueToAbsPath(thread *starlark.Thread, v starlark.Value) (string, error) {
 	pathMaker, ok := v.(PathMaker)
 	if ok {

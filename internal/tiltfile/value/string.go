@@ -1,16 +1,16 @@
-package tiltfile
+package value
 
-import (
-	"go.starlark.net/starlark"
+import "go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/tiltfile/io"
-)
+type ImplicitStringer interface {
+	ImplicitString() string
+}
 
 // Wrapper around starlark.AsString
 func AsString(x starlark.Value) (string, bool) {
-	b, ok := x.(io.Blob)
+	is, ok := x.(ImplicitStringer)
 	if ok {
-		return b.Text, true
+		return is.ImplicitString(), true
 	}
 	return starlark.AsString(x)
 }

@@ -128,7 +128,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
 
-	valueFiles, ok := AsStringOrStringList(valueFilesV)
+	valueFiles, ok := value.AsStringOrStringList(valueFilesV)
 	if !ok {
 		return nil, fmt.Errorf("Argument 'values' must be string or list of strings. Actual: %T",
 			valueFilesV)

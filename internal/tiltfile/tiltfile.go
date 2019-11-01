@@ -185,30 +185,6 @@ func tiltIgnorePath(tiltfilePath string) string {
 	return filepath.Join(filepath.Dir(tiltfilePath), TiltIgnoreFileName)
 }
 
-func skylarkStringDictToGoMap(d *starlark.Dict) (map[string]string, error) {
-	r := map[string]string{}
-
-	for _, tuple := range d.Items() {
-		kV, ok := AsString(tuple[0])
-		if !ok {
-			return nil, fmt.Errorf("key is not a string: %T (%v)", tuple[0], tuple[0])
-		}
-
-		k := string(kV)
-
-		vV, ok := AsString(tuple[1])
-		if !ok {
-			return nil, fmt.Errorf("value is not a string: %T (%v)", tuple[1], tuple[1])
-		}
-
-		v := string(vV)
-
-		r[k] = v
-	}
-
-	return r, nil
-}
-
 func starlarkValueOrSequenceToSlice(v starlark.Value) []starlark.Value {
 	return value.ValueOrSequenceToSlice(v)
 }
