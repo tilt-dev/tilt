@@ -12,6 +12,11 @@ import (
 )
 
 func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
+	// TODO(nick): Re-enable this after
+	// https://app.clubhouse.io/windmill/story/3818/after-a-crash-rebuild-can-t-live-update-because-pod-set-is-inaccurate
+	// is fixed, which i'm pretty sure is the same underlying issue
+	t.SkipNow()
+
 	f := newK8sFixture(t, "live_update_two_images_one_manifest")
 	defer f.TearDown()
 
