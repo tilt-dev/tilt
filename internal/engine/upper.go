@@ -177,8 +177,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		err = handleBuildCompleted(ctx, state, action)
 	case BuildStartedAction:
 		handleBuildStarted(ctx, state, action)
-	case DeployIDAction:
-		handleDeployIDAction(ctx, state, action)
 	case configs.ConfigsReloadStartedAction:
 		handleConfigsReloadStarted(ctx, state, action)
 	case configs.ConfigsReloadedAction:
@@ -384,18 +382,6 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	}
 
 	return nil
-}
-
-func handleDeployIDAction(ctx context.Context, state *store.EngineState, action DeployIDAction) {
-	mns := state.ManifestNamesForTargetID(action.TargetID)
-	for _, mn := range mns {
-		ms, ok := state.ManifestState(mn)
-		if !ok {
-			continue
-		}
-
-		ms.DeployID = action.DeployID
-	}
 }
 
 func appendToTriggerQueue(state *store.EngineState, mn model.ManifestName) {

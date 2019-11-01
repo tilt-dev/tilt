@@ -17,7 +17,6 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
-const FakeDeployID = model.DeployID(1234567890)
 const fakeContainerID = container.ID("myTestContainer")
 
 func FakeContainerID() container.ID {
@@ -60,7 +59,6 @@ type PodBuilder struct {
 	phase          string
 	creationTime   time.Time
 	deletionTime   time.Time
-	deployID       model.DeployID
 	restartCount   int
 	extraPodLabels map[string]string
 	deploymentUID  types.UID
@@ -156,11 +154,6 @@ func (b PodBuilder) WithDeletionTime(deletionTime time.Time) PodBuilder {
 	return b
 }
 
-func (b PodBuilder) WithDeployID(deployID model.DeployID) PodBuilder {
-	b.deployID = deployID
-	return b
-}
-
 func (b PodBuilder) PodID() string {
 	if b.podID != "" {
 		return b.podID
@@ -235,10 +228,6 @@ func (b PodBuilder) buildDeletionTime() *metav1.Time {
 }
 
 func (b PodBuilder) buildLabels(tSpec *v1.PodTemplateSpec) map[string]string {
-	deployID := b.deployID
-	if deployID.Empty() {
-		deployID = FakeDeployID
-	}
 	labels := k8s.NewTiltLabelMap()
 	for k, v := range tSpec.Labels {
 		labels[k] = v

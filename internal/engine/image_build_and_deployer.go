@@ -207,13 +207,10 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 
 	ps.StartBuildStep(ctx, "Injecting images into Kubernetes YAML")
 
-	deployID := model.NewDeployID()
 	newK8sEntities, err := ibd.createEntitiesToDeploy(ctx, iTargetMap, kTarget, results, needsSynclet)
 	if err != nil {
 		return nil, err
 	}
-
-	st.Dispatch(NewDeployIDAction(kTarget.ID(), deployID))
 
 	ctx, l := ibd.indentLogger(ctx)
 

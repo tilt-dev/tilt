@@ -71,7 +71,7 @@ func TestEventWatchManager_watchError(t *testing.T) {
 	f.assertActions(expected)
 }
 
-func TestEventWatchManager_eventBeforeDeployID(t *testing.T) {
+func TestEventWatchManager_eventBeforeUID(t *testing.T) {
 	f := newEWMFixture(t)
 	defer f.TearDown()
 
