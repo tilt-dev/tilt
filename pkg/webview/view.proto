@@ -46,7 +46,11 @@ message Alert {
   string alert_type = 1;
   string header = 2;
   string message = 3;
-  google.protobuf.Timestamp timestamp = 4;
+  // TODO(dmiller): this should be a timestamp, but sometimes incorrectly formatted times get set here
+  // like when there's a Pod that has PodStatusError.
+  // We should figure out how those times are being set, and fix them to parse as protobuf.Timestamp
+  // correctly
+  string timestamp = 4;
   string resource_name = 5;
 }
 
