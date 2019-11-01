@@ -5,7 +5,6 @@ tasks:
       - pkg/webview/view.proto
     output_paths:
       - pkg/webview/view.pb.go
-      - pkg/webview/view.pb.gw.go
       - pkg/webview/view.swagger.json
     command: |
       set -euo pipefail

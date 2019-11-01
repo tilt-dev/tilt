@@ -351,9 +351,13 @@ func (m *LocalResourceInfo) XXX_DiscardUnknown() {
 var xxx_messageInfo_LocalResourceInfo proto.InternalMessageInfo
 
 type Alert struct {
-	AlertType            string   `protobuf:"bytes,1,opt,name=alert_type,json=alertType,proto3" json:"alert_type,omitempty"`
-	Header               string   `protobuf:"bytes,2,opt,name=header,proto3" json:"header,omitempty"`
-	Message              string   `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	AlertType string `protobuf:"bytes,1,opt,name=alert_type,json=alertType,proto3" json:"alert_type,omitempty"`
+	Header    string `protobuf:"bytes,2,opt,name=header,proto3" json:"header,omitempty"`
+	Message   string `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	// TODO(dmiller): this should be a timestamp, but sometimes incorrectly formatted times get set here
+	// like when there's a Pod that has PodStatusError.
+	// We should figure out how those times are being set, and fix them to parse as protobuf.Timestamp
+	// correctly
 	Timestamp            string   `protobuf:"bytes,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	ResourceName         string   `protobuf:"bytes,5,opt,name=resource_name,json=resourceName,proto3" json:"resource_name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
