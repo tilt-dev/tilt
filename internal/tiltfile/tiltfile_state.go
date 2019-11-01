@@ -402,169 +402,59 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 	e.SetArgUnpacker(s.unpackArgs)
 	e.SetPrint(s.print)
 
-	err := e.AddBuiltin(localN, s.potentiallyK8sUnsafeBuiltin(s.local))
-	if err != nil {
-		return err
+	for _, b := range []struct {
+		name    string
+		builtin builtin
+	}{
+		{localN, s.potentiallyK8sUnsafeBuiltin(s.local)},
+		{dockerBuildN, s.dockerBuild},
+		{fastBuildN, s.fastBuild},
+		{customBuildN, s.customBuild},
+		{defaultRegistryN, s.defaultRegistry},
+		{dockerComposeN, s.dockerCompose},
+		{dcResourceN, s.dcResource},
+		{k8sResourceAssemblyVersionN, s.k8sResourceAssemblyVersionFn},
+		{k8sYamlN, s.k8sYaml},
+		{filterYamlN, s.filterYaml},
+		{k8sResourceN, s.k8sResource},
+		{localResourceN, s.localResource},
+		{portForwardN, s.portForward},
+		{k8sKindN, s.k8sKind},
+		{k8sImageJSONPathN, s.k8sImageJsonPath},
+		{workloadToResourceFunctionN, s.workloadToResourceFunctionFn},
+		{kustomizeN, s.kustomize},
+		{helmN, s.helm},
+		{failN, s.fail},
+		{decodeJSONN, s.decodeJSON},
+		{readJSONN, s.readJson},
+		{readYAMLN, s.readYaml},
+		{triggerModeN, s.triggerModeFn},
+		{fallBackOnN, s.liveUpdateFallBackOn},
+		{syncN, s.liveUpdateSync},
+		{runN, s.liveUpdateRun},
+		{restartContainerN, s.liveUpdateRestartContainer},
+		{enableFeatureN, s.enableFeature},
+		{disableFeatureN, s.disableFeature},
+		{disableSnapshotsN, s.disableSnapshots},
+		{setTeamN, s.setTeam},
+	} {
+		err := e.AddBuiltin(b.name, b.builtin)
+		if err != nil {
+			return err
+		}
 	}
 
-	err = e.AddBuiltin(dockerBuildN, s.dockerBuild)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(fastBuildN, s.fastBuild)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(customBuildN, s.customBuild)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(defaultRegistryN, s.defaultRegistry)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(dockerComposeN, s.dockerCompose)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(dcResourceN, s.dcResource)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(k8sResourceAssemblyVersionN, s.k8sResourceAssemblyVersionFn)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(k8sYamlN, s.k8sYaml)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(filterYamlN, s.filterYaml)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(k8sResourceN, s.k8sResource)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(localResourceN, s.localResource)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(portForwardN, s.portForward)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(k8sKindN, s.k8sKind)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(k8sImageJSONPathN, s.k8sImageJsonPath)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(workloadToResourceFunctionN, s.workloadToResourceFunctionFn)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(kustomizeN, s.kustomize)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(helmN, s.helm)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(failN, s.fail)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(decodeJSONN, s.decodeJSON)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(readJSONN, s.readJson)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(readYAMLN, s.readYaml)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(triggerModeN, s.triggerModeFn)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddValue(triggerModeAutoN, TriggerModeAuto)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddValue(triggerModeManualN, TriggerModeManual)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(fallBackOnN, s.liveUpdateFallBackOn)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(syncN, s.liveUpdateSync)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(runN, s.liveUpdateRun)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(restartContainerN, s.liveUpdateRestartContainer)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(enableFeatureN, s.enableFeature)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(disableFeatureN, s.disableFeature)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(disableSnapshotsN, s.disableSnapshots)
-	if err != nil {
-		return err
-	}
-
-	err = e.AddBuiltin(setTeamN, s.setTeam)
-	if err != nil {
-		return err
+	for _, v := range []struct {
+		name  string
+		value starlark.Value
+	}{
+		{triggerModeAutoN, TriggerModeAuto},
+		{triggerModeManualN, TriggerModeManual},
+	} {
+		err := e.AddValue(v.name, v.value)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
