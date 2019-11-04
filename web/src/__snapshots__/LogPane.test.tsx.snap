@@ -2,7 +2,7 @@
 
 exports[`renders highlighted lines 1`] = `
 <section
-  className="LogPane "
+  className="LogPane"
 >
   <div
     className="logLine "
@@ -66,7 +66,7 @@ exports[`renders highlighted lines 1`] = `
 
 exports[`renders logs 1`] = `
 <section
-  className="LogPane "
+  className="LogPane"
 >
   <div
     className="logLine "
@@ -130,7 +130,7 @@ exports[`renders logs 1`] = `
 
 exports[`renders logs with leading whitespace and ANSI codes 1`] = `
 <section
-  className="LogPane "
+  className="LogPane"
 >
   <div
     className="logLine "

@@ -40,7 +40,8 @@ $sidebar-item: $spacing-unit * 1.5;
 $sidebar-collapsed-width: $sidebar-item;
 $alert-badge: $spacing-unit * 0.75;
 
-$tabnav-height: $sidebar-item * 1.5;
+$topbar-height: $spacing-unit * 2.25;
+$tabnav-height: $topbar-height;
 $resourceInfo-height: $spacing-unit * 1.5;
 $analyticsNudge-height: $tabnav-height * 1.5;
 

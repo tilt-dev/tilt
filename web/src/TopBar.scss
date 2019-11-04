@@ -1,11 +1,7 @@
 @import "constants";
 
 .TopBar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  padding-right: $sidebar-width;
+  display: block;
   background-color: $color-gray-darkest;
   box-shadow: inset 0px -2px 10px 0px rgba($color-black, $translucent);
   z-index: $z-topBar;

@@ -10,7 +10,6 @@ const WHEEL_DEBOUNCE_MS = 250
 type LogPaneProps = {
   log: string
   message?: string
-  isExpanded: boolean
   handleSetHighlight: (highlight: SnapshotHighlight) => void
   handleClearHighlight: () => void
   highlight: SnapshotHighlight | null | undefined
@@ -181,7 +180,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
   }
 
   render() {
-    let classes = `LogPane ${this.props.isExpanded ? "LogPane--expanded" : ""}`
+    let classes = `LogPane`
 
     let log = this.props.log
     if (!log || log.length === 0) {

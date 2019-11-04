@@ -1,9 +1,6 @@
 @import "constants";
 
 .AlertPane {
-  margin-top: $tabnav-height;
-  margin-right: $sidebar-width;
-  margin-bottom: $statusbar-height;
   padding: $spacing-unit / 2;
   width: 100%;
   display: flex;
