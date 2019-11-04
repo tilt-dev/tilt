@@ -95,7 +95,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdUpTa
 	v := provideClock()
 	renderer := hud.NewRenderer(v)
 	modelWebPort := provideWebPort()
-	webURL, err := provideWebURL(modelWebPort)
+	modelWebHost := provideWebHost()
+	webURL, err := provideWebURL(modelWebHost, modelWebPort)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -208,7 +209,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdUpTa
 		return CmdUpDeps{}, err
 	}
 	modelNoBrowser := provideNoBrowserFlag()
-	headsUpServerController := server.ProvideHeadsUpServerController(modelWebPort, headsUpServer, assetsServer, webURL, modelNoBrowser)
+	headsUpServerController := server.ProvideHeadsUpServerController(modelWebHost, modelWebPort, headsUpServer, assetsServer, webURL, modelNoBrowser)
 	githubClientFactory := engine.NewGithubClientFactory()
 	tiltVersionChecker := engine.NewTiltVersionChecker(githubClientFactory, timerMaker)
 	analyticsUpdater := analytics2.NewAnalyticsUpdater(analytics3, cmdUpTags)
@@ -428,6 +429,7 @@ var BaseWireSet = wire.NewSet(
 	K8sWireSet, tiltfile.WireSet, provideKubectlLogLevel, docker.SwitchWireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, runtimelog.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, k8swatch.NewPodWatcher, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, configs.NewConfigsController, engine.NewDockerComposeEventWatcher, runtimelog.NewDockerComposeLogManager, engine.NewProfilerManager, engine.NewGithubClientFactory, engine.NewTiltVersionChecker, cloud.WireSet, cloudurl.ProvideAddress, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.ProvideSubscribers, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, provideWebVersion,
 	provideWebMode,
 	provideWebURL,
+	provideWebHost,
 	provideWebPort,
 	provideNoBrowserFlag, server.ProvideHeadsUpServer, provideAssetServer, server.ProvideHeadsUpServerController, dirs.UseWindmillDir, token.GetOrCreateToken, provideCmdUpDeps, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
 )

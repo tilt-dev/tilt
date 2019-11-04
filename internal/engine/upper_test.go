@@ -3018,7 +3018,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	sGRPCCli, err := synclet.FakeGRPCWrapper(ctx, sCli)
 	assert.NoError(t, err)
 	sm := containerupdate.NewSyncletManagerForTests(kCli, sGRPCCli, sCli)
-	hudsc := server.ProvideHeadsUpServerController(0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{}, false)
+	hudsc := server.ProvideHeadsUpServerController("localhost", 0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{}, false)
 	ghc := &github.FakeClient{}
 	ewm := k8swatch.NewEventWatchManager(kCli, of)
 	tcum := cloud.NewUsernameManager(httptest.NewFakeClient())

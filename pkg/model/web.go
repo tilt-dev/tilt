@@ -75,6 +75,7 @@ var emptyWebMode = WebMode("")
 var _ flag.Value = &emptyWebMode
 var _ pflag.Value = &emptyWebMode
 
+type WebHost string
 type WebPort int
 type WebDevPort int
 type WebURL url.URL
