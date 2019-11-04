@@ -28,12 +28,14 @@ import (
 	"github.com/windmilleng/tilt/web"
 )
 
+const DefaultWebHost = "localhost"
 const DefaultWebPort = 10350
 const DefaultWebDevPort = 46764
 
 var updateModeFlag string = string(engine.UpdateModeAuto)
 var webModeFlag model.WebMode = model.DefaultWebMode
 var webPort = 0
+var webHost = DefaultWebHost
 var webDevPort = 0
 var noBrowser bool = false
 var logActionsFlag bool = false
@@ -59,6 +61,7 @@ func (c *upCmd) register() *cobra.Command {
 	cmd.Flags().BoolVar(&c.hud, "hud", true, "If true, tilt will open in HUD mode.")
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
 	cmd.Flags().IntVar(&webPort, "port", DefaultWebPort, "Port for the Tilt HTTP server. Set to 0 to disable.")
+	cmd.Flags().StringVar(&webHost, "host", DefaultWebHost, "Host for the Tilt HTTP server. Set to 0.0.0.0 to listen on all interfaces.")
 	cmd.Flags().IntVar(&webDevPort, "webdev-port", DefaultWebDevPort, "Port for the Tilt Dev Webpack server. Only applies when using --web-mode=local")
 	cmd.Flags().Lookup("logactions").Hidden = true
 	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
@@ -182,6 +185,10 @@ func provideWebMode(b model.TiltBuild) (model.WebMode, error) {
 	return "", model.UnrecognizedWebModeError(string(webModeFlag))
 }
 
+func provideWebHost() model.WebHost {
+	return model.WebHost(webHost)
+}
+
 func provideWebPort() model.WebPort {
 	return model.WebPort(webPort)
 }
@@ -190,12 +197,12 @@ func provideNoBrowserFlag() model.NoBrowser {
 	return model.NoBrowser(noBrowser)
 }
 
-func provideWebURL(webPort model.WebPort) (model.WebURL, error) {
+func provideWebURL(webHost model.WebHost, webPort model.WebPort) (model.WebURL, error) {
 	if webPort == 0 {
 		return model.WebURL{}, nil
 	}
 
-	u, err := url.Parse(fmt.Sprintf("http://localhost:%d/", webPort))
+	u, err := url.Parse(fmt.Sprintf("http://%s:%d/", webHost, webPort))
 	if err != nil {
 		return model.WebURL{}, err
 	}

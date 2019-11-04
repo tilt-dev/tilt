@@ -5,11 +5,9 @@ import (
 	"net"
 )
 
-const Localhost = "localhost"
-
-// An address spec for listening on localhost ONLY
-func LocalhostBindAddr(port int) string {
-	return fmt.Sprintf("%s:%d", Localhost, port)
+// An address spec for listening on a specified host and port
+func BindAddr(host string, port int) string {
+	return fmt.Sprintf("%s:%d", host, port)
 }
 
 // An address spec for listening on a port on 0.0.0.0.
