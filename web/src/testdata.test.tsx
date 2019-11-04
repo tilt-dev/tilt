@@ -96,6 +96,7 @@ function oneResource(): Resource {
     pathsWatched: [],
     alerts: [],
     facets: [],
+    queued: false,
   }
   return resource
 }
@@ -266,6 +267,7 @@ function twoResourceView(): view {
     hasPendingChanges: false,
     alerts: [],
     facets: [],
+    queued: false,
   }
   return { resources: [vigoda, snack] }
 }

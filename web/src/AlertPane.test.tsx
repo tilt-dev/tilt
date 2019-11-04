@@ -249,5 +249,6 @@ function fillResourceFields(): Resource {
     hasPendingChanges: true,
     alerts: [],
     facets: [],
+    queued: false,
   }
 }

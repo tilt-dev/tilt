@@ -390,6 +390,7 @@ function k8sResource(): Resource {
     hasPendingChanges: true,
     alerts: [],
     facets: [],
+    queued: false,
   }
 }
 
@@ -439,5 +440,6 @@ function dcResource(): Resource {
     crashLog: "",
     alerts: [],
     facets: [],
+    queued: false,
   }
 }

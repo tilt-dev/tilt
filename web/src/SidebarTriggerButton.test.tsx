@@ -19,6 +19,7 @@ describe("SidebarTriggerButton", () => {
         hasBuilt={true}
         isBuilding={false}
         hasPendingChanges={false}
+        isQueued={false}
       />
     )
 
