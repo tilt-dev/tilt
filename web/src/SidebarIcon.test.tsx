@@ -1,7 +1,7 @@
 import React from "react"
 import { mount } from "enzyme"
 import SidebarIcon, { IconType } from "./SidebarIcon"
-import { RuntimeStatus, TriggerMode, Build } from "./types"
+import { RuntimeStatus, Build } from "./types"
 import { Color } from "./constants"
 
 type Ignore = boolean
@@ -22,7 +22,6 @@ const cases: Array<
     RuntimeStatus,
     boolean,
     boolean,
-    TriggerMode,
     Color | Ignore,
     IconType | Ignore,
     boolean,
@@ -34,18 +33,6 @@ const cases: Array<
     RuntimeStatus.Pending,
     false,
     true,
-    TriggerMode.TriggerModeAuto,
-    false,
-    false,
-    false,
-    null,
-  ],
-  [
-    "manual mode, building with any status or warning state → loader",
-    RuntimeStatus.Ok,
-    false,
-    true,
-    TriggerMode.TriggerModeAuto,
     false,
     false,
     false,
@@ -56,18 +43,6 @@ const cases: Array<
     RuntimeStatus.Ok,
     false,
     false,
-    TriggerMode.TriggerModeAuto,
-    Color.green,
-    false,
-    false,
-    null,
-  ],
-  [
-    "manual mode, status ok and no warning → green ring",
-    RuntimeStatus.Ok,
-    false,
-    false,
-    TriggerMode.TriggerModeManual,
     Color.green,
     false,
     false,
@@ -78,18 +53,6 @@ const cases: Array<
     RuntimeStatus.Error,
     false,
     false,
-    TriggerMode.TriggerModeAuto,
-    Color.red,
-    false,
-    false,
-    null,
-  ],
-  [
-    "manual mode, status error and no warning → red ring",
-    RuntimeStatus.Error,
-    false,
-    false,
-    TriggerMode.TriggerModeManual,
     Color.red,
     false,
     false,
@@ -100,18 +63,6 @@ const cases: Array<
     RuntimeStatus.Error,
     true,
     false,
-    TriggerMode.TriggerModeAuto,
-    Color.red,
-    false,
-    false,
-    null,
-  ],
-  [
-    "manual mode, status error with warnings → red ring",
-    RuntimeStatus.Error,
-    true,
-    false,
-    TriggerMode.TriggerModeManual,
     Color.red,
     false,
     false,
@@ -122,18 +73,6 @@ const cases: Array<
     RuntimeStatus.Ok,
     true,
     false,
-    TriggerMode.TriggerModeAuto,
-    Color.yellow,
-    false,
-    false,
-    null,
-  ],
-  [
-    "manual mode, status ok with warning → yellow ring",
-    RuntimeStatus.Ok,
-    true,
-    false,
-    TriggerMode.TriggerModeManual,
     Color.yellow,
     false,
     false,
@@ -144,9 +83,8 @@ const cases: Array<
     RuntimeStatus.Pending,
     false,
     false,
-    TriggerMode.TriggerModeAuto,
     false,
-    IconType.DotAutoPending,
+    IconType.StatusPending,
     false,
     null,
   ],
@@ -155,55 +93,10 @@ const cases: Array<
     RuntimeStatus.Pending,
     true,
     false,
-    TriggerMode.TriggerModeAuto,
     false,
-    IconType.DotAutoPending,
-    false,
-    null,
-  ],
-  [
-    "manual mode, status pending and no warnings → glowing ring",
-    RuntimeStatus.Pending,
-    false,
-    false,
-    TriggerMode.TriggerModeManual,
-    false,
-    IconType.DotManualPending,
+    IconType.StatusPending,
     false,
     null,
-  ],
-  [
-    "manual mode, status pending with warnings → glowing ring",
-    RuntimeStatus.Pending,
-    true,
-    false,
-    TriggerMode.TriggerModeManual,
-    false,
-    IconType.DotManualPending,
-    false,
-    null,
-  ],
-  [
-    "manual mode, status pending with last build in error → red ring",
-    RuntimeStatus.Pending,
-    false,
-    false,
-    TriggerMode.TriggerModeManual,
-    Color.red,
-    IconType.DotManual,
-    true,
-    buildWithError,
-  ],
-  [
-    "manual mode, status error, not dirty, with last build in error → red ring",
-    RuntimeStatus.Error,
-    false,
-    false,
-    TriggerMode.TriggerModeManual,
-    Color.red,
-    IconType.DotManual,
-    false,
-    buildWithError,
   ],
 ]
 
@@ -214,7 +107,6 @@ test.each(cases)(
     status,
     hasWarning,
     isBuilding,
-    triggerMode,
     fillColor,
     iconType,
     isDirty,
@@ -224,16 +116,11 @@ test.each(cases)(
       <SidebarIcon
         status={status}
         hasWarning={hasWarning}
-        triggerMode={triggerMode}
         isBuilding={isBuilding}
         isDirty={isDirty}
         lastBuild={lastBuild}
       />
     )
-
-    const triggerClass =
-      triggerMode === TriggerMode.TriggerModeAuto ? "svg.auto" : "svg.manual"
-    expect(root.find(triggerClass)).toHaveLength(1)
 
     if (fillColor !== false) {
       expect(root.find(`svg[fill="${fillColor}"]`)).toHaveLength(1)

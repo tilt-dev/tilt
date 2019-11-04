@@ -2,12 +2,8 @@ import React from "react"
 import renderer from "react-test-renderer"
 import { MemoryRouter } from "react-router"
 import Sidebar, { SidebarItem } from "./Sidebar"
-import {
-  oneResource,
-  twoResourceView,
-  oneResourceManualTriggerDirty,
-} from "./testdata.test"
-import { ResourceView, TriggerMode, Resource } from "./types"
+import { oneResource, twoResourceView } from "./testdata.test"
+import { Resource, ResourceView, TriggerMode } from "./types"
 import PathBuilder from "./PathBuilder"
 
 let pathBuilder = new PathBuilder("localhost", "/")
@@ -91,6 +87,7 @@ describe("sidebar", () => {
 
   it("renders resources that haven't been built yet", () => {
     let items = twoResourceView().resources.map((res: any) => {
+      // currently building, no completed builds
       res.lastDeployTime = "0001-01-01T00:00:00Z"
       return new SidebarItem(res)
     })
@@ -112,11 +109,22 @@ describe("sidebar", () => {
     expect(tree).toMatchSnapshot()
   })
 
-  it("renders resources with manual trigger mode", () => {
-    let items = twoResourceView().resources.map((res: any) => {
-      res.triggerMode = TriggerMode.TriggerModeManual
+  it("shows ready + dirty trigger button for manual resource with pending changes", () => {
+    let items = twoResourceView().resources.map((res: Resource, i: number) => {
+      res.triggerMode = TriggerMode.TriggerModeManual // both manual
+      res.currentBuild = {} // not currently building
+      if (i == 0) {
+        // only first resource has pending changes -- only this one should have class `isDirty`
+        res.hasPendingChanges = true
+        res.pendingBuildSince = new Date(Date.now()).toISOString()
+      } else {
+        res.hasPendingChanges = false
+        res.pendingBuildSince = "0001-01-01T00:00:00Z"
+      }
+
       return new SidebarItem(res)
     })
+
     const tree = renderer
       .create(
         <MemoryRouter initialEntries={["/"]}>
@@ -135,10 +143,68 @@ describe("sidebar", () => {
     expect(tree).toMatchSnapshot()
   })
 
-  it("renders * next to dirty manual trigger mode resources", () => {
-    let items = oneResourceManualTriggerDirty().map(
-      (i: any) => new SidebarItem(i)
-    )
+  it("never shows dirty trigger button for automatic resources", () => {
+    let items = twoResourceView().resources.map((res: Resource, i: number) => {
+      res.currentBuild = {} // not currently building
+
+      if (i == 0) {
+        // first resource has pending changes -- but is automatic, should NOT
+        // have a dirty trigger button (and button should be !isReady)
+        res.hasPendingChanges = true
+        res.pendingBuildSince = new Date(Date.now()).toISOString()
+      } else {
+        res.hasPendingChanges = false
+        res.pendingBuildSince = "0001-01-01T00:00:00Z"
+      }
+      return new SidebarItem(res)
+    })
+
+    const tree = renderer
+      .create(
+        <MemoryRouter initialEntries={["/"]}>
+          <Sidebar
+            isClosed={false}
+            items={items}
+            selected=""
+            toggleSidebar={null}
+            resourceView={ResourceView.Log}
+            pathBuilder={pathBuilder}
+          />
+        </MemoryRouter>
+      )
+      .toJSON()
+
+    expect(tree).toMatchSnapshot()
+  })
+
+  it("trigger button not ready if resource is building", () => {
+    let res = oneResource() // by default this resource is in the process of building
+    let items = [new SidebarItem(res)]
+
+    const tree = renderer
+      .create(
+        <MemoryRouter initialEntries={["/"]}>
+          <Sidebar
+            isClosed={false}
+            items={items}
+            selected=""
+            toggleSidebar={null}
+            resourceView={ResourceView.Log}
+            pathBuilder={pathBuilder}
+          />
+        </MemoryRouter>
+      )
+      .toJSON()
+
+    expect(tree).toMatchSnapshot()
+  })
+
+  it("trigger button not ready if resource waiting for first build", () => {
+    let res = oneResource()
+    res.currentBuild = {}
+    res.lastDeployTime = "0001-01-01T00:00:00Z"
+    let items = [new SidebarItem(res)]
+
     const tree = renderer
       .create(
         <MemoryRouter initialEntries={["/"]}>

@@ -90,8 +90,6 @@ class Sidebar extends PureComponent<SidebarProps> {
           ) : (
             ""
           )}
-          <span className="resLink-timeAgo empty">—</span>
-          <span className="resLink-isDirty" />
         </Link>
       </li>
     )
@@ -112,8 +110,6 @@ class Sidebar extends PureComponent<SidebarProps> {
       let building = !isZeroTime(item.currentBuildStartTime)
       let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
       let isSelected = this.props.selected === item.name
-      let isManualTriggerMode =
-        item.triggerMode === TriggerMode.TriggerModeManual
 
       let classes = "resLink"
       if (building) {
@@ -125,23 +121,14 @@ class Sidebar extends PureComponent<SidebarProps> {
       }
       return (
         <li key={item.name}>
-          <SidebarTriggerButton
-            isSelected={isSelected}
-            resourceName={item.name}
-            isReady={item.hasPendingChanges && !building}
-            triggerMode={item.triggerMode}
-          />
           <Link className={classes} to={pb.path(link)}>
-            <div className="sidebarIcon">
-              <SidebarIcon
-                status={item.status}
-                triggerMode={item.triggerMode}
-                hasWarning={item.hasWarnings}
-                isBuilding={building}
-                isDirty={item.hasPendingChanges}
-                lastBuild={item.lastBuild}
-              />
-            </div>
+            <SidebarIcon
+              status={item.status}
+              hasWarning={item.hasWarnings}
+              isBuilding={building}
+              isDirty={item.hasPendingChanges}
+              lastBuild={item.lastBuild}
+            />
             <p className="resLink-name" title={item.name}>
               {item.name}
             </p>
@@ -153,9 +140,14 @@ class Sidebar extends PureComponent<SidebarProps> {
             <span className={`resLink-timeAgo ${hasBuilt ? "" : "empty"}`}>
               {hasBuilt ? timeAgo : "—"}
             </span>
-            <span className="resLink-isDirty">
-              {item.hasPendingChanges && isManualTriggerMode ? "*" : null}
-            </span>
+            <SidebarTriggerButton
+              isSelected={isSelected}
+              hasPendingChanges={item.hasPendingChanges}
+              resourceName={item.name}
+              hasBuilt={hasBuilt}
+              isBuilding={building}
+              triggerMode={item.triggerMode}
+            />
           </Link>
         </li>
       )
@@ -169,7 +161,6 @@ class Sidebar extends PureComponent<SidebarProps> {
             {listItems}
           </ul>
         </nav>
-        <div className="Sidebar-spacer">&nbsp;</div>
         <button className="Sidebar-toggle" onClick={this.props.toggleSidebar}>
           <ChevronSvg /> Collapse
         </button>

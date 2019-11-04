@@ -3,8 +3,6 @@
 .SidebarTriggerButton {
   background-position: center center;
   background-repeat: no-repeat;
-  background-image: url(assets/svg/trigger-button-disabled.svg);
-  position: absolute;
   background-color: transparent;
   border: 0 none;
   height: $sidebar-item;
@@ -14,19 +12,50 @@
   justify-content: center;
 }
 
+$trigger-button-color: $color-gray-light;
+$trigger-button-hover-color: $color-white;
+$trigger-button-active-color: $color-green;
+
 .SidebarTriggerButton.isReady {
-  background-image: url(assets/svg/trigger-button.svg);
+  background-color: $trigger-button-color;
+  -webkit-mask: url(assets/svg/trigger-button.svg) no-repeat 50% 50%;
+  mask: url(assets/svg/trigger-button.svg) no-repeat 50% 50%;
+
   cursor: pointer;
 }
 
-.SidebarTriggerButton.isReady:active {
-  background-image: url(assets/svg/trigger-button-down.svg);
-}
-
+/* the resource containing the button is selected*/
 .SidebarTriggerButton.isReady.isSelected {
-  background-image: url(assets/svg/trigger-button-inverted.svg);
+  background-color: $trigger-button-color;
 }
 
-.SidebarTriggerButton.isReady.isSelected:active {
-  background-image: url(assets/svg/trigger-button-inverted-down.svg);
+.SidebarTriggerButton.isReady:hover {
+  background-color: $trigger-button-hover-color;
+}
+.SidebarTriggerButton.isReady.isSelected:hover{
+  background-color: $color-black
+}
+
+.SidebarTriggerButton.isReady:active {
+  // make it bigger on click
+  -webkit-mask-size: 40%;
+  mask-size: 40%;
+}
+
+.SidebarTriggerButton.isReady.isDirty {
+  background-color: inherit;
+  -webkit-mask: none;
+  mask: none;
+  background-image: url(assets/svg/trigger-button-manual.svg);
+  opacity: 0.7;
+}
+
+.SidebarTriggerButton.isReady.isDirty:hover, .SidebarTriggerButton.isReady.isSelected.isDirty:hover{
+  background-color: inherit;
+  opacity: 1;
+}
+
+.SidebarTriggerButton.isReady.isDirty:active {
+  // make it bigger on click
+  background-size: 70%;
 }
