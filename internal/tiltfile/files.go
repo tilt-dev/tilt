@@ -114,11 +114,13 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	var name string
 	var namespace string
 	var valueFilesV starlark.Value
+	var setV starlark.Value
 	err := s.unpackArgs(fn.Name(), args, kwargs,
 		"paths", &path,
 		"name?", &name,
 		"namespace?", &namespace,
-		"values?", &valueFilesV)
+		"values?", &valueFilesV,
+		"set?", &setV)
 	if err != nil {
 		return nil, err
 	}
@@ -132,6 +134,11 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	if !ok {
 		return nil, fmt.Errorf("Argument 'values' must be string or list of strings. Actual: %T",
 			valueFilesV)
+	}
+
+	set, ok := value.AsStringOrStringList(setV)
+	if !ok {
+		return nil, fmt.Errorf("Argument 'set' must be string or list of strings. Actual: %T", setV)
 	}
 
 	info, err := os.Stat(localPath)
@@ -157,6 +164,9 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		if err != nil {
 			return nil, err
 		}
+	}
+	for _, setArg := range set {
+		cmd = append(cmd, "--set", setArg)
 	}
 
 	stdout, err := s.execLocalCmd(thread, exec.Command(cmd[0], cmd[1:]...), false)
