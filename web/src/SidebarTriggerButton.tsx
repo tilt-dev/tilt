@@ -49,7 +49,10 @@ export default class SidebarTriggerButton extends PureComponent<
 
     return (
       <button
-        onClick={() => triggerUpdate(props.resourceName)}
+        onClick={(e: React.MouseEvent) => {
+          e.preventDefault() // don't select the resource in the sidebar
+          triggerUpdate(props.resourceName)
+        }}
         className={`SidebarTriggerButton ${props.isSelected ? "isSelected" : ""}
           ${isReady ? " isReady" : ""}${isDirty ? " isDirty" : ""}${
           props.isQueued ? " isQueued" : ""

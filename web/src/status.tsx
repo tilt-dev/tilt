@@ -1,5 +1,5 @@
 import { isZeroTime } from "./time"
-import { RuntimeStatus, ResourceStatus, Resource } from "./types"
+import { Resource, ResourceStatus, RuntimeStatus, TriggerMode } from "./types"
 
 // A combination of runtime status and build status over a resource view.
 // 1) If there's a current or pending build, this is "pending".
@@ -11,7 +11,9 @@ function combinedStatus(res: Resource): RuntimeStatus {
   let hasCurrentBuild = Boolean(
     currentBuild && !isZeroTime(currentBuild.startTime)
   )
-  let hasPendingBuild = !isZeroTime(res.pendingBuildSince)
+  let hasPendingBuild =
+    !isZeroTime(res.pendingBuildSince) &&
+    res.triggerMode != TriggerMode.TriggerModeManual
   let buildHistory = res.buildHistory || []
   let lastBuild = buildHistory[0]
   let lastBuildError = lastBuild ? lastBuild.error : ""

@@ -944,14 +944,10 @@ exports[`sidebar shows ready + dirty trigger button for manual resource with pen
             className="SidebarIcon"
           >
             <svg
-              className="pending"
-              style={
-                Object {
-                  "animation": "glow 1s linear infinite",
-                }
-              }
+              className="default"
+              fill="#f6685c"
             >
-              indicator-auto-pending.svg
+              indicator-auto.svg
             </svg>
           </div>
           <p
