@@ -259,7 +259,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	defer func() {
 		engineState.CurrentlyBuilding = ""
 
-		if engineState.CompletedBuildCount == engineState.InitialBuildsQueued {
+		if engineState.InitialBuildsCompleted() {
 			logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
 		}
 	}()
@@ -469,9 +469,6 @@ func handleConfigsReloaded(
 	event configs.ConfigsReloadedAction,
 ) {
 	manifests := event.Manifests
-	if state.InitialBuildsQueued == 0 {
-		state.InitialBuildsQueued = len(manifests)
-	}
 
 	b := state.TiltfileState.CurrentBuild
 
