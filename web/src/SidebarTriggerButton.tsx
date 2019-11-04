@@ -55,5 +55,3 @@ export default class SidebarTriggerButton extends PureComponent<
     )
   }
 }
-
-// ${props.isBuilding || !props.hasBuilt || (props.hasPendingChanges && !isManualTriggerMode) ? "": "isReady"}
