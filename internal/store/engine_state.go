@@ -201,6 +201,15 @@ func (e EngineState) Targets() []*ManifestTarget {
 	return result
 }
 
+func (e *EngineState) ManifestInTriggerQueue(mn model.ManifestName) bool {
+	for _, queued := range e.TriggerQueue {
+		if queued == mn {
+			return true
+		}
+	}
+	return false
+}
+
 func (e EngineState) RelativeTiltfilePath() (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {

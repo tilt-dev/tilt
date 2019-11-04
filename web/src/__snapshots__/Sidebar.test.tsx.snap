@@ -688,6 +688,96 @@ exports[`sidebar renders list of resources 1`] = `
 </section>
 `;
 
+exports[`sidebar renders queued resource with class .isQueued and NOT .isReady 1`] = `
+<section
+  className="Sidebar"
+>
+  <nav
+    className="Sidebar-resources"
+  >
+    <ul
+      className="Sidebar-list"
+    >
+      <li>
+        <a
+          className="resLink resLink--all is-selected"
+          href="/"
+          onClick={[Function]}
+        >
+          <span
+            className="resLink--all-name"
+          >
+            All
+          </span>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+        </a>
+      </li>
+      <li>
+        <a
+          className="resLink"
+          href="/r/vigoda"
+          onClick={[Function]}
+        >
+          <div
+            className="SidebarIcon"
+          >
+            <svg
+              className="pending"
+              style={
+                Object {
+                  "animation": "glow 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-pending.svg
+            </svg>
+          </div>
+          <p
+            className="resLink-name"
+            title="vigoda"
+          >
+            vigoda
+          </p>
+          <span
+            className="resLink-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="resLink-timeAgo "
+          >
+            <time
+              dateTime="2017-12-21T15:36:07.000Z"
+              title="2017-12-21T15:36:07.000Z"
+            >
+              &lt;5s
+            </time>
+          </span>
+          <button
+            className="SidebarTriggerButton 
+           isQueued"
+            onClick={[Function]}
+          />
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <button
+    className="Sidebar-toggle"
+    onClick={null}
+  >
+    <svg>
+      chevron.svg
+    </svg>
+     Collapse
+  </button>
+</section>
+`;
+
 exports[`sidebar renders resources that haven't been built yet 1`] = `
 <section
   className="Sidebar"

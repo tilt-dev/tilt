@@ -84,6 +84,7 @@ message Resource {
   string crash_log = 22;
   repeated Alert alerts = 23;
   repeated Facet facets = 24;
+  bool queued = 25;
 }
 
 message TiltBuild {

@@ -9,6 +9,7 @@ type SidebarTriggerButtonProps = {
   triggerMode: TriggerMode
   isSelected: boolean
   hasPendingChanges: boolean
+  isQueued: boolean
 }
 
 const triggerUpdate = (name: string): void => {
@@ -34,13 +35,13 @@ export default class SidebarTriggerButton extends PureComponent<
 
     // isReady (i.e. trigger button will appear) if:
     // 1. resource not currently building, AND
-    // 2. resource has built at least once (i.e. we're not waiting for the first build), AND
+    // 2. resource is not queued to build, AND
+    // 3. resource has built at least once (i.e. we're not waiting for the first build), AND
     //    ^ this will need to change with TRIGGER_MODE_MANUAL_NO_INITIAL
-    // 3. resource doesn't have a pending build (i.e. no pending changes, OR pending changes but it's a
-    //    manual resource)
-    // TODO: don't show trigger button if a manual resource has been queued for build (currently
-    //   have no way to detect this)
+    // 4. resource doesn't have a pending auto-build (i.e. no pending changes, OR pending
+    //    changes but it's a manual resource)
     let isReady =
+      !props.isQueued &&
       !props.isBuilding &&
       props.hasBuilt &&
       (!props.hasPendingChanges || isManualTriggerMode)
@@ -50,7 +51,9 @@ export default class SidebarTriggerButton extends PureComponent<
       <button
         onClick={() => triggerUpdate(props.resourceName)}
         className={`SidebarTriggerButton ${props.isSelected ? "isSelected" : ""}
-          ${isReady ? " isReady" : ""}${isDirty ? " isDirty" : ""}`}
+          ${isReady ? " isReady" : ""}${isDirty ? " isDirty" : ""}${
+          props.isQueued ? " isQueued" : ""
+        }`}
       />
     )
   }
