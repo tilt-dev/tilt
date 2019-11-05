@@ -32,8 +32,8 @@
 }
 
 .SidebarItem {
-  right: 0;
   border-bottom: 1px solid rgba($color-gray-lightest, $translucent);
+  width: 100%;
   color: $color-white;
   background-color: $color-gray;
   display: flex;
@@ -45,7 +45,7 @@
   display: flex;
   align-items: center;
   text-decoration: none;
-  flex-grow: 1;
+  width: calc(100% - #{$sidebar-item});
 }
 .SidebarItem:hover {
   background-color: rgba($color-gray-dark, $translucent);
