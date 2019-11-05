@@ -77,7 +77,9 @@ class TopBar extends PureComponent<TopBarProps> {
     return (
       <button
         onClick={this.props.handleOpenModal}
-        className={`TopBar-toolsButton ${highlight ? "isHighlighted" : ""}`}
+        className={`TopBar-toolsButton TopBar-createSnapshotButton ${
+          highlight ? "isHighlighted" : ""
+        }`}
       >
         <SnapshotSvg className="TopBar-snapshotSvg" />
         <span>
