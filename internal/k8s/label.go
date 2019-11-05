@@ -3,6 +3,7 @@ package k8s
 import (
 	"reflect"
 
+	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	v1 "k8s.io/api/core/v1"
@@ -33,19 +34,22 @@ func OverwriteLabels(entity K8sEntity, labels []model.LabelPair) (K8sEntity, err
 	return injectLabels(entity, labels, true)
 }
 
+func applyLabelsToMap(orig *map[string]string, labels []model.LabelPair, overwrite bool) {
+	if overwrite {
+		*orig = nil
+	}
+	for _, label := range labels {
+		if *orig == nil {
+			*orig = make(map[string]string, 1)
+		}
+		(*orig)[label.Key] = label.Value
+	}
+}
+
 // injectLabels injects the given labels into the given k8sEntity
 // (if `overwrite`, replacing existing labels)
 func injectLabels(entity K8sEntity, labels []model.LabelPair, overwrite bool) (K8sEntity, error) {
 	entity = entity.DeepCopy()
-
-	switch obj := entity.Obj.(type) {
-	case *appsv1beta1.Deployment:
-		allowLabelChangesInAppsDeploymentBeta1(obj)
-	case *appsv1beta2.Deployment:
-		allowLabelChangesInAppsDeploymentBeta2(obj)
-	case *extv1beta1.Deployment:
-		allowLabelChangesInExtDeploymentBeta1(obj)
-	}
 
 	// Don't modify persistent volume claims
 	// because they're supposed to be immutable.
@@ -57,16 +61,22 @@ func injectLabels(entity K8sEntity, labels []model.LabelPair, overwrite bool) (K
 		return K8sEntity{}, err
 	}
 
+	switch obj := entity.Obj.(type) {
+	case *appsv1beta1.Deployment:
+		allowLabelChangesInAppsDeploymentBeta1(obj)
+		applyLabelsToMap(&obj.Spec.Selector.MatchLabels, labels, overwrite)
+	case *appsv1beta2.Deployment:
+		allowLabelChangesInAppsDeploymentBeta2(obj)
+		applyLabelsToMap(&obj.Spec.Selector.MatchLabels, labels, overwrite)
+	case *extv1beta1.Deployment:
+		allowLabelChangesInExtDeploymentBeta1(obj)
+		applyLabelsToMap(&obj.Spec.Selector.MatchLabels, labels, overwrite)
+	case *appsv1.Deployment:
+		applyLabelsToMap(&obj.Spec.Selector.MatchLabels, labels, overwrite)
+	}
+
 	for _, meta := range metas {
-		if overwrite {
-			meta.Labels = nil
-		}
-		for _, label := range labels {
-			if meta.Labels == nil {
-				meta.Labels = make(map[string]string, 1)
-			}
-			meta.Labels[label.Key] = label.Value
-		}
+		applyLabelsToMap(&meta.Labels, labels, overwrite)
 	}
 	return entity, nil
 }
