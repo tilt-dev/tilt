@@ -345,7 +345,6 @@ it("renders without crashing", () => {
     <LogPane
       log="hello\nworld\nfoo"
       message="world"
-      isExpanded={false}
       handleSetHighlight={fakeHandleSetHighlight}
       handleClearHighlight={fakeHandleClearHighlight}
       highlight={null}
@@ -363,7 +362,6 @@ it("renders logs", () => {
     .create(
       <LogPane
         log={log}
-        isExpanded={false}
         handleSetHighlight={fakeHandleSetHighlight}
         handleClearHighlight={fakeHandleClearHighlight}
         highlight={null}
@@ -381,7 +379,6 @@ it("renders logs with leading whitespace and ANSI codes", () => {
     .create(
       <LogPane
         log={longLog}
-        isExpanded={false}
         handleSetHighlight={fakeHandleSetHighlight}
         handleClearHighlight={fakeHandleClearHighlight}
         highlight={null}
@@ -405,7 +402,6 @@ it("renders highlighted lines", () => {
     .create(
       <LogPane
         log={log}
-        isExpanded={false}
         handleSetHighlight={fakeHandleSetHighlight}
         handleClearHighlight={fakeHandleClearHighlight}
         highlight={highlight}
@@ -430,7 +426,6 @@ it("scrolls to highlighted lines in snapshot", () => {
   const wrapper = mount<LogPane>(
     <LogPane
       log={longLog}
-      isExpanded={false}
       handleSetHighlight={fakeHandleSetHighlight}
       handleClearHighlight={fakeHandleClearHighlight}
       highlight={highlight}
@@ -457,7 +452,6 @@ it("does not scroll to highlighted lines if not snapshot", () => {
   const wrapper = mount<LogPane>(
     <LogPane
       log={longLog}
-      isExpanded={false}
       handleSetHighlight={fakeHandleSetHighlight}
       handleClearHighlight={fakeHandleClearHighlight}
       highlight={highlight}

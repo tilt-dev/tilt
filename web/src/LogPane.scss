@@ -1,11 +1,8 @@
 @import "constants.scss";
 
 .LogPane {
-  width: calc(100% - #{$sidebar-width});
-  margin-top: $tabnav-height + $resourceInfo-height;
-  margin-right: $sidebar-width;
-  margin-bottom: $statusbar-height;
-  transition: margin ease $animation-timing;
+  padding: $spacing-unit / 2 0;
+  width: 100%;
 }
 
 @keyframes blink {
@@ -19,15 +16,11 @@
     opacity: 1;
   }
 }
+
 .logEnd {
   animation: blink 1s infinite;
   animation-timing-function: ease;
   padding-left: $spacing-unit / 2;
-  padding-bottom: $spacing-unit / 2;
-}
-
-.LogPane--expanded {
-  width: calc(100% - #{$sidebar-collapsed-width});
 }
 
 .LogPane-empty {

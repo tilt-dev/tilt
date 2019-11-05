@@ -8,6 +8,7 @@ import HeroScreen from "./HeroScreen"
 import ResourceInfo from "./ResourceInfo"
 import K8sViewPane from "./K8sViewPane"
 import PathBuilder from "./PathBuilder"
+import { matchPath } from "react-router"
 import { Route, Switch, RouteComponentProps } from "react-router-dom"
 import { History, UnregisterCallback } from "history"
 import { incr, pathToTag } from "./analytics"
@@ -31,6 +32,7 @@ import ShareSnapshotModal from "./ShareSnapshotModal"
 import FatalErrorModal from "./FatalErrorModal"
 import * as _ from "lodash"
 import FacetsPane from "./FacetsPane"
+import HUDGrid from "./HUDGrid"
 
 type HudProps = {
   history: History
@@ -265,11 +267,43 @@ class HUD extends Component<HudProps, HudState> {
         {fatalErrorModal}
         {shareSnapshotModal}
 
-        {this.renderTopBarSwitch()}
         {this.renderSidebarSwitch()}
         {statusbar}
-        {this.renderMainPaneSwitch()}
+
+        <HUDGrid
+          topBar={this.renderTopBarSwitch()}
+          resourceBar={this.renderResourceBar()}
+          isSidebarClosed={!!this.state.isSidebarClosed}
+        >
+          {this.renderMainPaneSwitch()}
+        </HUDGrid>
       </div>
+    )
+  }
+
+  renderResourceBar() {
+    let match = matchPath(String(this.props.history.location.pathname), {
+      path: this.path("/r/:name"),
+      exact: true,
+    })
+    let params: any = match && match.params
+    let name = params && params.name
+    if (!name) {
+      return null
+    }
+
+    let view = this.state.view
+    let resources = (view && view.resources) || []
+    let r = resources.find(r => r.name === name)
+    if (!r) {
+      return null
+    }
+
+    let endpoints = (r && r.endpoints) || []
+    let podID = (r && r.podID) || ""
+    let podStatus = (r.k8sResourceInfo && r.k8sResourceInfo.podStatus) || ""
+    return (
+      <ResourceInfo endpoints={endpoints} podID={podID} podStatus={podStatus} />
     )
   }
 
@@ -282,7 +316,6 @@ class HUD extends Component<HudProps, HudState> {
 
     let snapshotHighlight = this.state.snapshotHighlight || null
 
-    let props = this.props
     let topBarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name =
         props.match.params && props.match.params.name
@@ -406,7 +439,6 @@ class HUD extends Component<HudProps, HudState> {
   renderMainPaneSwitch() {
     let view = this.state.view
     let resources = (view && view.resources) || []
-    let isSidebarClosed = !!this.state.isSidebarClosed
     let snapshotHighlight = this.state.snapshotHighlight || null
     let showSnapshotModal = !!this.state.showSnapshotModal
     let isSnapshot = this.pathBuilder.isSnapshot()
@@ -416,36 +448,22 @@ class HUD extends Component<HudProps, HudState> {
           ? props.match.params.name
           : ""
       let logs = ""
-      let endpoints: Array<string> = []
-      let podID = ""
-      let podStatus = ""
       if (view && name) {
         let r = view.resources.find(r => r.name === name)
         if (r === undefined) {
           return <Route component={NotFound} />
         }
         logs = (r && r.combinedLog) || ""
-        endpoints = (r && r.endpoints) || []
-        podID = (r && r.podID) || ""
-        podStatus = (r.k8sResourceInfo && r.k8sResourceInfo.podStatus) || ""
       }
       return (
-        <>
-          <ResourceInfo
-            endpoints={endpoints}
-            podID={podID}
-            podStatus={podStatus}
-          />
-          <LogPane
-            log={logs}
-            isExpanded={isSidebarClosed}
-            handleSetHighlight={this.handleSetHighlight}
-            handleClearHighlight={this.handleClearHighlight}
-            highlight={snapshotHighlight}
-            modalIsOpen={showSnapshotModal}
-            isSnapshot={isSnapshot}
-          />
-        </>
+        <LogPane
+          log={logs}
+          handleSetHighlight={this.handleSetHighlight}
+          handleClearHighlight={this.handleClearHighlight}
+          highlight={snapshotHighlight}
+          modalIsOpen={showSnapshotModal}
+          isSnapshot={isSnapshot}
+        />
       )
     }
 
@@ -483,7 +501,6 @@ class HUD extends Component<HudProps, HudState> {
           render={() => (
             <LogPane
               log={combinedLog}
-              isExpanded={isSidebarClosed}
               handleSetHighlight={this.handleSetHighlight}
               handleClearHighlight={this.handleClearHighlight}
               highlight={this.state.snapshotHighlight}

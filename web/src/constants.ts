@@ -7,6 +7,24 @@ export enum Color {
   gray = "#93a1a1",
 }
 
+// Heights, expressed in pixels.
+let unit = 32
+export enum Height {
+  unit = unit,
+  topBar = unit * 2.25,
+  statusbar = unit * 1.5,
+  resourceBar = unit * 1.5,
+}
+
+export enum Width {
+  sidebar = unit * 10,
+  sidebarCollapsed = unit * 1.5,
+}
+
+export enum ZIndex {
+  topFrame = 500,
+}
+
 // Pod Status
 const podStatusError = "Error"
 const podStatusCrashLoopBackOff = "CrashLoopBackOff"
