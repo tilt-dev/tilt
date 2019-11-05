@@ -144,13 +144,13 @@ class Sidebar extends PureComponent<SidebarProps> {
             </span>
           </Link>
           <SidebarTriggerButton
-              isSelected={isSelected}
-              hasPendingChanges={item.hasPendingChanges}
-              resourceName={item.name}
-              hasBuilt={hasBuilt}
-              isBuilding={building}
-              triggerMode={item.triggerMode}
-              isQueued={item.queued}
+            isSelected={isSelected}
+            hasPendingChanges={item.hasPendingChanges}
+            resourceName={item.name}
+            hasBuilt={hasBuilt}
+            isBuilding={building}
+            triggerMode={item.triggerMode}
+            isQueued={item.queued}
           />
         </li>
       )
