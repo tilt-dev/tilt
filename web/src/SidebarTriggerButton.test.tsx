@@ -19,6 +19,7 @@ describe("SidebarTriggerButton", () => {
         hasBuilt={true}
         isBuilding={false}
         hasPendingChanges={false}
+        isQueued={false}
       />
     )
 
@@ -32,5 +33,27 @@ describe("SidebarTriggerButton", () => {
     expect(fetchMock.mock.calls[0][1].body).toEqual(
       JSON.stringify({ manifest_names: ["doggos"] })
     )
+  })
+
+  it("disables button when resource is queued", () => {
+    fetchMock.mockResponse(JSON.stringify({}))
+
+    const root = mount(
+      <SidebarTriggerButton
+        isSelected={true}
+        resourceName="doggos"
+        triggerMode={TriggerMode.TriggerModeManual}
+        hasBuilt={true}
+        isBuilding={false}
+        hasPendingChanges={false}
+        isQueued={true}
+      />
+    )
+
+    let element = root.find(".SidebarTriggerButton")
+    expect(element).toHaveLength(1)
+    element.simulate("click")
+
+    expect(fetchMock.mock.calls.length).toEqual(0)
   })
 })

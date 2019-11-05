@@ -1,4 +1,5 @@
 @import "constants";
+@import "animations";
 
 .SidebarTriggerButton {
   background-position: center center;
@@ -40,6 +41,14 @@ $trigger-button-active-color: $color-green;
   // make it bigger on click
   -webkit-mask-size: 40%;
   mask-size: 40%;
+}
+
+
+.SidebarTriggerButton.isQueued {
+  background-color: $trigger-button-color;
+  -webkit-mask: url(assets/svg/trigger-button.svg) no-repeat 50% 50%;
+  mask: url(assets/svg/trigger-button.svg) no-repeat 50% 50%;
+  animation: spin 1s linear infinite;
 }
 
 .SidebarTriggerButton.isReady.isDirty {

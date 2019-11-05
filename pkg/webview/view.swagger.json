@@ -286,6 +286,10 @@
           "items": {
             "$ref": "#/definitions/webviewFacet"
           }
+        },
+        "queued": {
+          "type": "boolean",
+          "format": "boolean"
         }
       }
     },

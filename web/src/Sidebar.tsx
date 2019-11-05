@@ -29,6 +29,7 @@ class SidebarItem {
   alertCount: number
   triggerMode: TriggerMode
   hasPendingChanges: boolean
+  queued: boolean
   lastBuild: Build | null = null
 
   /**
@@ -45,6 +46,7 @@ class SidebarItem {
     this.alertCount = numberOfAlerts(res)
     this.triggerMode = res.triggerMode
     this.hasPendingChanges = res.hasPendingChanges
+    this.queued = res.queued
     let buildHistory = res.buildHistory || []
     if (buildHistory.length > 0) {
       this.lastBuild = buildHistory[0]
@@ -148,6 +150,7 @@ class Sidebar extends PureComponent<SidebarProps> {
             hasBuilt={hasBuilt}
             isBuilding={building}
             triggerMode={item.triggerMode}
+            isQueued={item.queued}
           />
         </li>
       )

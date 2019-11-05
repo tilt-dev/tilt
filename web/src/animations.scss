@@ -1,0 +1,28 @@
+@import "constants";
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes glow {
+  0% {
+    fill-opacity: $translucent;
+  }
+  50% {
+    fill-opacity: $translucent-ish;
+  }
+  100% {
+    fill-opacity: $translucent;
+  }
+}
+
+@keyframes barberpole {
+  100% {
+    background-position: 100% 100%;
+  }
+}

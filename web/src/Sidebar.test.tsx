@@ -222,4 +222,28 @@ describe("sidebar", () => {
 
     expect(tree).toMatchSnapshot()
   })
+
+  it("renders queued resource with class .isQueued and NOT .isReady", () => {
+    let res = oneResource()
+    res.currentBuild = {}
+    res.queued = true
+    let items = [new SidebarItem(res)]
+
+    const tree = renderer
+      .create(
+        <MemoryRouter initialEntries={["/"]}>
+          <Sidebar
+            isClosed={false}
+            items={items}
+            selected=""
+            toggleSidebar={null}
+            resourceView={ResourceView.Log}
+            pathBuilder={pathBuilder}
+          />
+        </MemoryRouter>
+      )
+      .toJSON()
+
+    expect(tree).toMatchSnapshot()
+  })
 })

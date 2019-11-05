@@ -75,6 +75,7 @@ export type Resource = {
   hasPendingChanges: boolean
   alerts: Array<Alert>
   facets: Array<Facet>
+  queued: boolean
 }
 export type K8sResourceInfo = {
   podName: string

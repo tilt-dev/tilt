@@ -99,6 +99,7 @@ func StateToProtoView(s store.EngineState) (*proto_webview.View, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		r := &proto_webview.Resource{
 			Name:               name.String(),
 			DirectoriesWatched: relWatchDirs,
@@ -117,6 +118,7 @@ func StateToProtoView(s store.EngineState) (*proto_webview.View, error) {
 			TriggerMode:        int32(mt.Manifest.TriggerMode),
 			HasPendingChanges:  hasPendingChanges,
 			Facets:             model.FacetsToProto(facets),
+			Queued:             s.ManifestInTriggerQueue(name),
 		}
 
 		riv, err := protoPopulateResourceInfoView(mt, r)

@@ -77,7 +77,9 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         <button
           className="SidebarTriggerButton 
           "
+          disabled={true}
           onClick={[Function]}
+          title="Cannot trigger an update while resource is building or build is pending."
         />
       </li>
       <li
@@ -127,7 +129,9 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         <button
           className="SidebarTriggerButton 
           "
+          disabled={true}
           onClick={[Function]}
+          title="Cannot trigger an update while resource is building or build is pending."
         />
       </li>
       <li
@@ -177,7 +181,9 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         <button
           className="SidebarTriggerButton 
           "
+          disabled={true}
           onClick={[Function]}
+          title="Cannot trigger an update while resource is building or build is pending."
         />
       </li>
       <li
@@ -227,7 +233,9 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         <button
           className="SidebarTriggerButton 
           "
+          disabled={true}
           onClick={[Function]}
+          title="Cannot trigger an update while resource is building or build is pending."
         />
       </li>
       <li
@@ -277,7 +285,9 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         <button
           className="SidebarTriggerButton 
           "
+          disabled={true}
           onClick={[Function]}
+          title="Cannot trigger an update while resource is building or build is pending."
         />
       </li>
       <li
@@ -327,7 +337,9 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         <button
           className="SidebarTriggerButton 
           "
+          disabled={true}
           onClick={[Function]}
+          title="Cannot trigger an update while resource is building or build is pending."
         />
       </li>
       <li
@@ -377,7 +389,9 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         <button
           className="SidebarTriggerButton 
           "
+          disabled={true}
           onClick={[Function]}
+          title="Cannot trigger an update while resource is building or build is pending."
         />
       </li>
     </ul>
@@ -471,7 +485,9 @@ exports[`sidebar never shows dirty trigger button for automatic resources 1`] = 
         <button
           className="SidebarTriggerButton 
           "
+          disabled={true}
           onClick={[Function]}
+          title="Cannot trigger an update while resource is building or build is pending."
         />
       </li>
       <li
@@ -517,7 +533,9 @@ exports[`sidebar never shows dirty trigger button for automatic resources 1`] = 
         <button
           className="SidebarTriggerButton 
            isReady"
+          disabled={false}
           onClick={[Function]}
+          title="Force a rebuild/update for this resource."
         />
       </li>
     </ul>
@@ -651,7 +669,9 @@ exports[`sidebar renders list of resources 1`] = `
         <button
           className="SidebarTriggerButton 
           "
+          disabled={true}
           onClick={[Function]}
+          title="Cannot trigger an update while resource is building or build is pending."
         />
       </li>
       <li
@@ -701,7 +721,105 @@ exports[`sidebar renders list of resources 1`] = `
         <button
           className="SidebarTriggerButton 
           "
+          disabled={true}
           onClick={[Function]}
+          title="Cannot trigger an update while resource is building or build is pending."
+        />
+      </li>
+    </ul>
+  </nav>
+  <button
+    className="Sidebar-toggle"
+    onClick={null}
+  >
+    <svg>
+      chevron.svg
+    </svg>
+     Collapse
+  </button>
+</section>
+`;
+
+exports[`sidebar renders queued resource with class .isQueued and NOT .isReady 1`] = `
+<section
+  className="Sidebar"
+>
+  <nav
+    className="Sidebar-resources"
+  >
+    <ul
+      className="Sidebar-list"
+    >
+      <li
+        className="SidebarItem SidebarItem--all is-selected"
+      >
+        <a
+          className="SidebarItem-link"
+          href="/"
+          onClick={[Function]}
+        >
+          <span
+            className="SidebarItem--all-name"
+          >
+            All
+          </span>
+          <span
+            className="SidebarItem-alertBadge"
+          >
+            1
+          </span>
+        </a>
+      </li>
+      <li
+        className="SidebarItem"
+      >
+        <a
+          className="SidebarItem-link"
+          href="/r/vigoda"
+          onClick={[Function]}
+        >
+          <div
+            className="SidebarIcon"
+          >
+            <svg
+              className="pending"
+              style={
+                Object {
+                  "animation": "glow 1s linear infinite",
+                }
+              }
+            >
+              indicator-auto-pending.svg
+            </svg>
+          </div>
+          <p
+            className="SidebarItem-name"
+            title="vigoda"
+          >
+            vigoda
+          </p>
+          <span
+            className="SidebarItem-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="SidebarItem-timeAgo "
+          >
+            <time
+              dateTime="2017-12-21T15:36:07.000Z"
+              title="2017-12-21T15:36:07.000Z"
+            >
+              &lt;5s
+            </time>
+          </span>
+        </a>
+        <button
+          className="SidebarTriggerButton 
+           isQueued"
+          disabled={true}
+          onClick={[Function]}
+          title="Cannot trigger an update if resource is already queued for build."
         />
       </li>
     </ul>
@@ -790,7 +908,9 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
         <button
           className="SidebarTriggerButton 
           "
+          disabled={true}
           onClick={[Function]}
+          title="Cannot trigger an update while resource is building or build is pending."
         />
       </li>
       <li
@@ -835,7 +955,9 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
         <button
           className="SidebarTriggerButton 
           "
+          disabled={true}
           onClick={[Function]}
+          title="Cannot trigger an update while resource is building or build is pending."
         />
       </li>
     </ul>
@@ -894,14 +1016,10 @@ exports[`sidebar shows ready + dirty trigger button for manual resource with pen
             className="SidebarIcon"
           >
             <svg
-              className="pending"
-              style={
-                Object {
-                  "animation": "glow 1s linear infinite",
-                }
-              }
+              className="default"
+              fill="#f6685c"
             >
-              indicator-auto-pending.svg
+              indicator-auto.svg
             </svg>
           </div>
           <p
@@ -929,7 +1047,9 @@ exports[`sidebar shows ready + dirty trigger button for manual resource with pen
         <button
           className="SidebarTriggerButton 
            isReady isDirty"
+          disabled={false}
           onClick={[Function]}
+          title="This manual resource has pending file changes; click to trigger an update."
         />
       </li>
       <li
@@ -975,7 +1095,9 @@ exports[`sidebar shows ready + dirty trigger button for manual resource with pen
         <button
           className="SidebarTriggerButton 
            isReady"
+          disabled={false}
           onClick={[Function]}
+          title="Force a rebuild/update for this resource."
         />
       </li>
     </ul>
@@ -1069,7 +1191,9 @@ exports[`sidebar trigger button not ready if resource is building 1`] = `
         <button
           className="SidebarTriggerButton 
           "
+          disabled={true}
           onClick={[Function]}
+          title="Cannot trigger an update while resource is building or build is pending."
         />
       </li>
     </ul>
@@ -1158,7 +1282,9 @@ exports[`sidebar trigger button not ready if resource waiting for first build 1`
         <button
           className="SidebarTriggerButton 
           "
+          disabled={true}
           onClick={[Function]}
+          title="Cannot trigger an update while resource is building or build is pending."
         />
       </li>
     </ul>
