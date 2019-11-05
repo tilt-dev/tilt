@@ -408,6 +408,96 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
 </section>
 `;
 
+exports[`sidebar disables trigger button for Tiltfile 1`] = `
+<section
+  className="Sidebar"
+>
+  <nav
+    className="Sidebar-resources"
+  >
+    <ul
+      className="Sidebar-list"
+    >
+      <li
+        className="SidebarItem SidebarItem--all is-selected"
+      >
+        <a
+          className="SidebarItem-link"
+          href="/"
+          onClick={[Function]}
+        >
+          <span
+            className="SidebarItem--all-name"
+          >
+            All
+          </span>
+          <span
+            className="SidebarItem-alertBadge"
+          >
+            1
+          </span>
+        </a>
+      </li>
+      <li
+        className="SidebarItem"
+      >
+        <a
+          className="SidebarItem-link"
+          href="/r/(Tiltfile)"
+          onClick={[Function]}
+        >
+          <div
+            className="SidebarIcon"
+          >
+            <svg
+              className="default"
+              fill="#f6685c"
+            >
+              indicator-auto.svg
+            </svg>
+          </div>
+          <p
+            className="SidebarItem-name"
+            title="(Tiltfile)"
+          >
+            (Tiltfile)
+          </p>
+          <span
+            className="SidebarItem-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="SidebarItem-timeAgo "
+          >
+            <time
+              dateTime="2017-12-21T15:36:07.000Z"
+              title="2017-12-21T15:36:07.000Z"
+            >
+              &lt;5s
+            </time>
+          </span>
+        </a>
+        <button
+          className="SidebarTriggerButton "
+          disabled={true}
+          title="Cannot trigger an update to the Tiltfile."
+        />
+      </li>
+    </ul>
+  </nav>
+  <button
+    className="Sidebar-toggle"
+    onClick={null}
+  >
+    <svg>
+      chevron.svg
+    </svg>
+     Collapse
+  </button>
+</section>
+`;
+
 exports[`sidebar never shows dirty trigger button for automatic resources 1`] = `
 <section
   className="Sidebar"

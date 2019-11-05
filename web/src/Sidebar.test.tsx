@@ -246,4 +246,31 @@ describe("sidebar", () => {
 
     expect(tree).toMatchSnapshot()
   })
+
+  it("disables trigger button for Tiltfile", () => {
+    let res = oneResource()
+    res.name = "(Tiltfile)"
+    res.currentBuild = {} // not currently building
+    res.hasPendingChanges = false
+    res.pendingBuildSince = "0001-01-01T00:00:00Z"
+
+    let items = [new SidebarItem(res)]
+
+    const tree = renderer
+      .create(
+        <MemoryRouter initialEntries={["/"]}>
+          <Sidebar
+            isClosed={false}
+            items={items}
+            selected=""
+            toggleSidebar={null}
+            resourceView={ResourceView.Log}
+            pathBuilder={pathBuilder}
+          />
+        </MemoryRouter>
+      )
+      .toJSON()
+
+    expect(tree).toMatchSnapshot()
+  })
 })
