@@ -1371,7 +1371,6 @@ function oneResourceManualTriggerDirty(): any {
   ]
 }
 
-it("loads ok", () => {})
 export {
   oneResource,
   oneResourceView,

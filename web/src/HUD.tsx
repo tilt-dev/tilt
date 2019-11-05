@@ -103,6 +103,7 @@ class HUD extends Component<HudProps, HudState> {
     this.toggleSidebar = this.toggleSidebar.bind(this)
     this.handleClearHighlight = this.handleClearHighlight.bind(this)
     this.handleSetHighlight = this.handleSetHighlight.bind(this)
+    this.handleOpenModal = this.handleOpenModal.bind(this)
   }
 
   componentDidMount() {

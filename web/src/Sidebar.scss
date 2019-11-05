@@ -32,29 +32,32 @@
   list-style: none;
 }
 
-.resLink {
+.SidebarItem {
   right: 0;
   border-bottom: 1px solid rgba($color-gray-lightest, $translucent);
   color: $color-white;
   background-color: $color-gray;
-  text-decoration: none;
   display: flex;
   align-items: center;
   height: $sidebar-item;
-  transition-property: color;
-  transition-duration: $animation-timing;
-  transition-timing-function: linear;
+  transition: color $animation-timing linear, background-color $animation-timing linear;
 }
-.resLink:hover {
+.SidebarItem-link {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  flex-grow: 1;
+}
+.SidebarItem:hover {
   background-color: rgba($color-gray-dark, $translucent);
   color: $color-blue-light;
 }
-.resLink.is-selected {
+.SidebarItem.is-selected {
   background-color: $color-white;
   color: $color-gray;
 }
 
-.resLink--building {
+.SidebarItem--building {
   background: repeating-linear-gradient(
     225deg,
     rgba($color-gray-light, $translucent),
@@ -66,7 +69,7 @@
   animation: barberpole 8s linear infinite;
 }
 
-.resLink--all::before {
+.SidebarItem--all::before {
   content: "┌";
   color: $color-gray-light;
   margin-top: $spacing-unit / 4; // Visually center
@@ -76,19 +79,19 @@
   justify-content: center;
 }
 
-.resLink--all-name {
+.SidebarItem--all-name {
   text-transform: uppercase;
   flex: 1;
 }
 
-.resLink-name {
+.SidebarItem-name {
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.resLink-alertBadge {
+.SidebarItem-alertBadge {
   font-family: $font-sans-serif;
   font-size: $font-size-smallest;
   background-color: $color-white;
@@ -102,21 +105,21 @@
   margin-right: $spacing-unit / 2;
 }
 
-.resLink.is-selected .resLink-alertBadge {
+.SidebarItem.is-selected .SidebarItem-alertBadge {
   background-color: $color-gray-darkest;
   color: $color-white;
 }
 
-.resLink-timeAgo {
+.SidebarItem-timeAgo {
   min-width: $spacing-unit * 0.8;
   text-align: right;
   font-weight: normal;
   color: rgba($color-white, $translucent-ish);
 }
-.resLink.is-selected .resLink-timeAgo {
+.SidebarItem.is-selected .SidebarItem-timeAgo {
   color: $color-gray;
 }
-.resLink-timeAgo.empty {
+.SidebarItem-timeAgo.empty {
   color: rgba($color-white, $translucent) !important;
 }
 

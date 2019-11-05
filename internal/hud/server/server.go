@@ -75,6 +75,7 @@ func ProvideHeadsUpServer(
 	}
 
 	r.HandleFunc("/api/view", s.ViewJSON)
+	r.HandleFunc("/api/dump/engine", s.DumpEngineJSON)
 	r.HandleFunc("/api/analytics", s.HandleAnalytics)
 	r.HandleFunc("/api/analytics_opt", s.HandleAnalyticsOpt)
 	r.HandleFunc("/api/trigger", s.HandleTrigger)
@@ -126,6 +127,18 @@ func (s *HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
 	err = jsEncoder.NewEncoder(w).Encode(view)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error rendering view payload: %v", err), http.StatusInternalServerError)
+	}
+}
+
+// Dump the JSON engine over http. Only intended for 'tilt dump engine'.
+func (s *HeadsUpServer) DumpEngineJSON(w http.ResponseWriter, req *http.Request) {
+	state := s.store.RLockState()
+	defer s.store.RUnlockState()
+
+	encoder := store.CreateEngineStateEncoder(w)
+	err := encoder.Encode(state)
+	if err != nil {
+		log.Printf("Error encoding: %v", err)
 	}
 }
 

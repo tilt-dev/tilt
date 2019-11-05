@@ -71,7 +71,7 @@ class Sidebar extends PureComponent<SidebarProps> {
       classes.push("is-closed")
     }
 
-    let allItemClasses = "resLink resLink--all"
+    let allItemClasses = "SidebarItem SidebarItem--all"
     if (!this.props.selected) {
       allItemClasses += " is-selected"
     }
@@ -84,11 +84,11 @@ class Sidebar extends PureComponent<SidebarProps> {
       .reduce((sum, current) => sum + current, 0)
 
     let allItem = (
-      <li>
-        <Link className={allItemClasses} to={allLink}>
-          <span className="resLink--all-name">All</span>
+      <li className={allItemClasses}>
+        <Link className="SidebarItem-link" to={allLink}>
+          <span className="SidebarItem--all-name">All</span>
           {totalAlerts > 0 ? (
-            <span className="resLink-alertBadge">{totalAlerts}</span>
+            <span className="SidebarItem-alertBadge">{totalAlerts}</span>
           ) : (
             ""
           )}
@@ -113,17 +113,17 @@ class Sidebar extends PureComponent<SidebarProps> {
       let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
       let isSelected = this.props.selected === item.name
 
-      let classes = "resLink"
+      let classes = "SidebarItem"
       if (building) {
-        classes += " resLink--building"
+        classes += " SidebarItem--building"
       }
 
       if (isSelected) {
         classes += " is-selected"
       }
       return (
-        <li key={item.name}>
-          <Link className={classes} to={pb.path(link)}>
+        <li key={item.name} className={classes}>
+          <Link className="SidebarItem-link" to={pb.path(link)}>
             <SidebarIcon
               status={item.status}
               hasWarning={item.hasWarnings}
@@ -131,18 +131,19 @@ class Sidebar extends PureComponent<SidebarProps> {
               isDirty={item.hasPendingChanges}
               lastBuild={item.lastBuild}
             />
-            <p className="resLink-name" title={item.name}>
+            <p className="SidebarItem-name" title={item.name}>
               {item.name}
             </p>
             {item.alertCount > 0 ? (
-              <span className="resLink-alertBadge">{item.alertCount}</span>
+              <span className="SidebarItem-alertBadge">{item.alertCount}</span>
             ) : (
               ""
             )}
-            <span className={`resLink-timeAgo ${hasBuilt ? "" : "empty"}`}>
+            <span className={`SidebarItem-timeAgo ${hasBuilt ? "" : "empty"}`}>
               {hasBuilt ? timeAgo : "—"}
             </span>
-            <SidebarTriggerButton
+          </Link>
+          <SidebarTriggerButton
               isSelected={isSelected}
               hasPendingChanges={item.hasPendingChanges}
               resourceName={item.name}
@@ -150,8 +151,7 @@ class Sidebar extends PureComponent<SidebarProps> {
               isBuilding={building}
               triggerMode={item.triggerMode}
               isQueued={item.queued}
-            />
-          </Link>
+          />
         </li>
       )
     })

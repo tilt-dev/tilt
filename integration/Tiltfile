@@ -1,6 +1,6 @@
 # -*- mode: Python -*-
 
 # HACK: load namespaces on `tilt up` but not on `tilt down`
-load_namespace = not str(local('echo $SKIP_NAMESPACE')).strip()
+load_namespace = not os.environ.get('SKIP_NAMESPACE', '')
 if load_namespace:
   k8s_yaml('namespace.yaml')

@@ -6,7 +6,7 @@ import {
   oneResourceErrImgPull,
   oneResourceImagePullBackOff,
   oneResourceUnrecognizedError,
-} from "./testdata.test"
+} from "./testdata"
 import { combinedStatusMessage } from "./combinedStatusMessage"
 import { StatusItem } from "./Statusbar"
 

@@ -31,10 +31,6 @@ type EngineState struct {
 	CurrentlyBuilding model.ManifestName
 	WatchFiles        bool
 
-	// How many builds were queued on startup (i.e., how many manifests there were
-	// after initial Tiltfile load)
-	InitialBuildsQueued int
-
 	// How many builds have been completed (pass or fail) since starting tilt
 	CompletedBuildCount int
 
@@ -235,6 +231,25 @@ func (e *EngineState) HasDockerBuild() bool {
 		}
 	}
 	return false
+}
+
+func (e *EngineState) InitialBuildsCompleted() bool {
+	if e.ManifestTargets == nil || len(e.ManifestTargets) == 0 {
+		return false
+	}
+
+	for _, mt := range e.ManifestTargets {
+		if mt.Manifest.TriggerMode != model.TriggerModeAuto {
+			continue
+		}
+
+		ms, _ := e.ManifestState(mt.Manifest.Name)
+		if ms == nil || ms.LastBuild().Empty() {
+			return false
+		}
+	}
+
+	return true
 }
 
 // TODO(nick): This will eventually implement TargetStatus

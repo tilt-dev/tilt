@@ -1,7 +1,7 @@
 import React from "react"
 import AlertPane from "./AlertPane"
 import renderer from "react-test-renderer"
-import { oneResourceUnrecognizedError } from "./testdata.test"
+import { oneResourceUnrecognizedError } from "./testdata"
 import { Resource, TriggerMode } from "./types"
 import { getResourceAlerts } from "./alerts"
 import PathBuilder from "./PathBuilder"
