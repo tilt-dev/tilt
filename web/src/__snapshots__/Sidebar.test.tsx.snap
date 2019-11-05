@@ -74,6 +74,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           "
             disabled={true}
             onClick={[Function]}
+            title="Cannot trigger an update while resource is building or build is pending."
           />
         </a>
       </li>
@@ -123,6 +124,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           "
             disabled={true}
             onClick={[Function]}
+            title="Cannot trigger an update while resource is building or build is pending."
           />
         </a>
       </li>
@@ -172,6 +174,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           "
             disabled={true}
             onClick={[Function]}
+            title="Cannot trigger an update while resource is building or build is pending."
           />
         </a>
       </li>
@@ -221,6 +224,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           "
             disabled={true}
             onClick={[Function]}
+            title="Cannot trigger an update while resource is building or build is pending."
           />
         </a>
       </li>
@@ -270,6 +274,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           "
             disabled={true}
             onClick={[Function]}
+            title="Cannot trigger an update while resource is building or build is pending."
           />
         </a>
       </li>
@@ -319,6 +324,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           "
             disabled={true}
             onClick={[Function]}
+            title="Cannot trigger an update while resource is building or build is pending."
           />
         </a>
       </li>
@@ -368,6 +374,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           "
             disabled={true}
             onClick={[Function]}
+            title="Cannot trigger an update while resource is building or build is pending."
           />
         </a>
       </li>
@@ -459,6 +466,7 @@ exports[`sidebar never shows dirty trigger button for automatic resources 1`] = 
           "
             disabled={true}
             onClick={[Function]}
+            title="Cannot trigger an update while resource is building or build is pending."
           />
         </a>
       </li>
@@ -504,6 +512,7 @@ exports[`sidebar never shows dirty trigger button for automatic resources 1`] = 
            isReady"
             disabled={false}
             onClick={[Function]}
+            title="Force a rebuild/update for this resource."
           />
         </a>
       </li>
@@ -633,6 +642,7 @@ exports[`sidebar renders list of resources 1`] = `
           "
             disabled={true}
             onClick={[Function]}
+            title="Cannot trigger an update while resource is building or build is pending."
           />
         </a>
       </li>
@@ -682,6 +692,7 @@ exports[`sidebar renders list of resources 1`] = `
           "
             disabled={true}
             onClick={[Function]}
+            title="Cannot trigger an update while resource is building or build is pending."
           />
         </a>
       </li>
@@ -773,6 +784,7 @@ exports[`sidebar renders queued resource with class .isQueued and NOT .isReady 1
            isQueued"
             disabled={true}
             onClick={[Function]}
+            title="Cannot trigger an update if resource is already queued for build."
           />
         </a>
       </li>
@@ -859,6 +871,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           "
             disabled={true}
             onClick={[Function]}
+            title="Cannot trigger an update while resource is building or build is pending."
           />
         </a>
       </li>
@@ -903,6 +916,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           "
             disabled={true}
             onClick={[Function]}
+            title="Cannot trigger an update while resource is building or build is pending."
           />
         </a>
       </li>
@@ -990,6 +1004,7 @@ exports[`sidebar shows ready + dirty trigger button for manual resource with pen
            isReady isDirty"
             disabled={false}
             onClick={[Function]}
+            title="This manual resource has pending file changes; click to trigger an update."
           />
         </a>
       </li>
@@ -1035,6 +1050,7 @@ exports[`sidebar shows ready + dirty trigger button for manual resource with pen
            isReady"
             disabled={false}
             onClick={[Function]}
+            title="Force a rebuild/update for this resource."
           />
         </a>
       </li>
@@ -1126,6 +1142,7 @@ exports[`sidebar trigger button not ready if resource is building 1`] = `
           "
             disabled={true}
             onClick={[Function]}
+            title="Cannot trigger an update while resource is building or build is pending."
           />
         </a>
       </li>
@@ -1212,6 +1229,7 @@ exports[`sidebar trigger button not ready if resource waiting for first build 1`
           "
             disabled={true}
             onClick={[Function]}
+            title="Cannot trigger an update while resource is building or build is pending."
           />
         </a>
       </li>

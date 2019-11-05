@@ -25,6 +25,22 @@ const triggerUpdate = (name: string): void => {
   })
 }
 
+const titleText = (
+  isReady: boolean,
+  isDirty: boolean,
+  isQueued: boolean
+): string => {
+  if (isQueued) {
+    return "Cannot trigger an update if resource is already queued for build."
+  } else if (!isReady) {
+    return "Cannot trigger an update while resource is building or build is pending."
+  } else if (isDirty) {
+    return "This manual resource has pending file changes; click to trigger an update."
+  } else {
+    return "Force a rebuild/update for this resource."
+  }
+}
+
 export default class SidebarTriggerButton extends PureComponent<
   SidebarTriggerButtonProps
 > {
@@ -58,6 +74,7 @@ export default class SidebarTriggerButton extends PureComponent<
           props.isQueued ? " isQueued" : ""
         }`}
         disabled={!isReady}
+        title={titleText(isReady, isDirty, props.isQueued)}
       />
     )
   }
