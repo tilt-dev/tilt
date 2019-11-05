@@ -12,6 +12,7 @@ function twoItemSidebar() {
   let items = twoResourceView().resources.map(
     (res: Resource) => new SidebarItem(res)
   )
+  items[0].name = "snapshot-frontend-binary-long-name"
   return (
     <MemoryRouter initialEntries={["/"]}>
       <Sidebar
@@ -25,6 +26,26 @@ function twoItemSidebar() {
     </MemoryRouter>
   )
 }
+
+function twoItemSidebarClosed() {
+  let items = twoResourceView().resources.map(
+    (res: Resource) => new SidebarItem(res)
+  )
+  items[0].name = "snapshot-frontend-binary-long-name"
+  return (
+    <MemoryRouter initialEntries={["/"]}>
+      <Sidebar
+        isClosed={true}
+        items={items}
+        selected=""
+        toggleSidebar={null}
+        resourceView={ResourceView.Log}
+        pathBuilder={pathBuilder}
+      />
+    </MemoryRouter>
+  )
+}
+
 function oneItemWithTrigger() {
   let items = oneResourceView().resources.map((res: Resource) => {
     let item = new SidebarItem(res)
@@ -49,4 +70,5 @@ function oneItemWithTrigger() {
 
 storiesOf("Sidebar", module)
   .add("two-items", twoItemSidebar)
+  .add("two-items-closed", twoItemSidebarClosed)
   .add("one-item-with-trigger", oneItemWithTrigger)
