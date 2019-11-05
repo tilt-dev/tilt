@@ -85,7 +85,7 @@ exports[`shows snapshot url 1`] = `
     className="TopBar-tools"
   >
     <button
-      className="TopBar-toolsButton "
+      className="TopBar-toolsButton TopBar-createSnapshotButton "
       onClick={[Function]}
     >
       <svg
