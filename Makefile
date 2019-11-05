@@ -78,10 +78,10 @@ shorttest:
 
 integration:
 ifneq ($(CIRCLECI),true)
-		go test -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s ./integration
+		go test -v -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s ./integration
 else
 		mkdir -p test-results
-		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./integration -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s
+		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./integration -v -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s
 endif
 
 # Run the integration tests on kind
