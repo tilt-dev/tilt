@@ -8,7 +8,7 @@ import {
   oneResourceView,
   twoResourceView,
   oneResourceNoAlerts,
-} from "./testdata.test"
+} from "./testdata"
 import { createMemoryHistory } from "history"
 import { SocketState } from "./types"
 import ReactModal from "react-modal"

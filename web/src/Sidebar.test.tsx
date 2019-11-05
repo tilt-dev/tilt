@@ -2,7 +2,7 @@ import React from "react"
 import renderer from "react-test-renderer"
 import { MemoryRouter } from "react-router"
 import Sidebar, { SidebarItem } from "./Sidebar"
-import { oneResource, twoResourceView } from "./testdata.test"
+import { oneResource, twoResourceView } from "./testdata"
 import { Resource, ResourceView, TriggerMode } from "./types"
 import PathBuilder from "./PathBuilder"
 
