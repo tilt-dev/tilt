@@ -163,12 +163,12 @@ func (f *fixture) runInBackground(cmd *exec.Cmd) {
 }
 
 func (f *fixture) TiltWatch() {
-	cmd := f.tiltCmd([]string{"up", "--debug", "--hud=false", "--port=0", "--klog=1"}, os.Stdout)
+	cmd := f.tiltCmd([]string{"up", "--debug", "--hud=false", "--web-mode=prod", "--no-browser", "--klog=1"}, os.Stdout)
 	f.runInBackground(cmd)
 }
 
 func (f *fixture) TiltWatchExec() {
-	cmd := f.tiltCmd([]string{"up", "--debug", "--hud=false", "--port=0", "--klog=1", "--update-mode", "exec"}, os.Stdout)
+	cmd := f.tiltCmd([]string{"up", "--debug", "--hud=false", "--web-mode=prod", "--no-browser", "--klog=1", "--update-mode", "exec"}, os.Stdout)
 	f.runInBackground(cmd)
 }
 
@@ -197,6 +197,17 @@ func (f *fixture) ReplaceContents(fileBaseName, original, replacement string) {
 }
 
 func (f *fixture) StartTearDown() {
+	if f.tearingDown {
+		return
+	}
+
+	if f.t.Failed() {
+		fmt.Printf("Test failed, dumping engine state\n----\n")
+		cmd := f.tiltCmd([]string{"dump", "engine"}, os.Stdout)
+		_ = cmd.Run()
+		fmt.Printf("\n----\n")
+	}
+
 	f.cancel()
 	f.ctx = context.Background()
 	f.tearingDown = true
