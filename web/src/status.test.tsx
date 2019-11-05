@@ -1,4 +1,4 @@
-import { oneResource } from "./testdata.test"
+import { oneResource } from "./testdata"
 import { zeroTime } from "./time"
 import { combinedStatus, warnings } from "./status"
 

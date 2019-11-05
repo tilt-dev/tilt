@@ -2,7 +2,7 @@ import React from "react"
 import renderer from "react-test-renderer"
 import Statusbar, { StatusItem } from "./Statusbar"
 import { mount } from "enzyme"
-import { twoResourceView } from "./testdata.test"
+import { twoResourceView } from "./testdata"
 import { MemoryRouter } from "react-router"
 import { TiltBuild } from "./types"
 

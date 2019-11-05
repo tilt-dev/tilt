@@ -10,27 +10,31 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
     <ul
       className="Sidebar-list"
     >
-      <li>
+      <li
+        className="SidebarItem SidebarItem--all is-selected"
+      >
         <a
-          className="resLink resLink--all is-selected"
+          className="SidebarItem-link"
           href="/"
           onClick={[Function]}
         >
           <span
-            className="resLink--all-name"
+            className="SidebarItem--all-name"
           >
             All
           </span>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             7
           </span>
         </a>
       </li>
-      <li>
+      <li
+        className="SidebarItem SidebarItem--building"
+      >
         <a
-          className="resLink resLink--building"
+          className="SidebarItem-link"
           href="/r/resource4"
           onClick={[Function]}
         >
@@ -49,18 +53,18 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             </svg>
           </div>
           <p
-            className="resLink-name"
+            className="SidebarItem-name"
             title="resource4"
           >
             resource4
           </p>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo "
+            className="SidebarItem-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:36:03.000Z"
@@ -69,16 +73,18 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               &lt;5s
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          "
-            onClick={[Function]}
-          />
         </a>
+        <button
+          className="SidebarTriggerButton 
+          "
+          onClick={[Function]}
+        />
       </li>
-      <li>
+      <li
+        className="SidebarItem SidebarItem--building"
+      >
         <a
-          className="resLink resLink--building"
+          className="SidebarItem-link"
           href="/r/resource9"
           onClick={[Function]}
         >
@@ -97,18 +103,18 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             </svg>
           </div>
           <p
-            className="resLink-name"
+            className="SidebarItem-name"
             title="resource9"
           >
             resource9
           </p>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo "
+            className="SidebarItem-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:35:58.000Z"
@@ -117,16 +123,18 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               &lt;15s
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          "
-            onClick={[Function]}
-          />
         </a>
+        <button
+          className="SidebarTriggerButton 
+          "
+          onClick={[Function]}
+        />
       </li>
-      <li>
+      <li
+        className="SidebarItem SidebarItem--building"
+      >
         <a
-          className="resLink resLink--building"
+          className="SidebarItem-link"
           href="/r/resource19"
           onClick={[Function]}
         >
@@ -145,18 +153,18 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             </svg>
           </div>
           <p
-            className="resLink-name"
+            className="SidebarItem-name"
             title="resource19"
           >
             resource19
           </p>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo "
+            className="SidebarItem-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:35:48.000Z"
@@ -165,16 +173,18 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               &lt;30s
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          "
-            onClick={[Function]}
-          />
         </a>
+        <button
+          className="SidebarTriggerButton 
+          "
+          onClick={[Function]}
+        />
       </li>
-      <li>
+      <li
+        className="SidebarItem SidebarItem--building"
+      >
         <a
-          className="resLink resLink--building"
+          className="SidebarItem-link"
           href="/r/resource29"
           onClick={[Function]}
         >
@@ -193,18 +203,18 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             </svg>
           </div>
           <p
-            className="resLink-name"
+            className="SidebarItem-name"
             title="resource29"
           >
             resource29
           </p>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo "
+            className="SidebarItem-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:35:38.000Z"
@@ -213,16 +223,18 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               &lt;30s
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          "
-            onClick={[Function]}
-          />
         </a>
+        <button
+          className="SidebarTriggerButton 
+          "
+          onClick={[Function]}
+        />
       </li>
-      <li>
+      <li
+        className="SidebarItem SidebarItem--building"
+      >
         <a
-          className="resLink resLink--building"
+          className="SidebarItem-link"
           href="/r/resource39"
           onClick={[Function]}
         >
@@ -241,18 +253,18 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             </svg>
           </div>
           <p
-            className="resLink-name"
+            className="SidebarItem-name"
             title="resource39"
           >
             resource39
           </p>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo "
+            className="SidebarItem-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:35:28.000Z"
@@ -261,16 +273,18 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               &lt;45s
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          "
-            onClick={[Function]}
-          />
         </a>
+        <button
+          className="SidebarTriggerButton 
+          "
+          onClick={[Function]}
+        />
       </li>
-      <li>
+      <li
+        className="SidebarItem SidebarItem--building"
+      >
         <a
-          className="resLink resLink--building"
+          className="SidebarItem-link"
           href="/r/resource49"
           onClick={[Function]}
         >
@@ -289,18 +303,18 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             </svg>
           </div>
           <p
-            className="resLink-name"
+            className="SidebarItem-name"
             title="resource49"
           >
             resource49
           </p>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo "
+            className="SidebarItem-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:35:18.000Z"
@@ -309,16 +323,18 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               &lt;1m
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          "
-            onClick={[Function]}
-          />
         </a>
+        <button
+          className="SidebarTriggerButton 
+          "
+          onClick={[Function]}
+        />
       </li>
-      <li>
+      <li
+        className="SidebarItem SidebarItem--building"
+      >
         <a
-          className="resLink resLink--building"
+          className="SidebarItem-link"
           href="/r/resource54"
           onClick={[Function]}
         >
@@ -337,18 +353,18 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             </svg>
           </div>
           <p
-            className="resLink-name"
+            className="SidebarItem-name"
             title="resource54"
           >
             resource54
           </p>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo "
+            className="SidebarItem-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:35:13.000Z"
@@ -357,12 +373,12 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               &lt;1m
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          "
-            onClick={[Function]}
-          />
         </a>
+        <button
+          className="SidebarTriggerButton 
+          "
+          onClick={[Function]}
+        />
       </li>
     </ul>
   </nav>
@@ -388,27 +404,31 @@ exports[`sidebar never shows dirty trigger button for automatic resources 1`] = 
     <ul
       className="Sidebar-list"
     >
-      <li>
+      <li
+        className="SidebarItem SidebarItem--all is-selected"
+      >
         <a
-          className="resLink resLink--all is-selected"
+          className="SidebarItem-link"
           href="/"
           onClick={[Function]}
         >
           <span
-            className="resLink--all-name"
+            className="SidebarItem--all-name"
           >
             All
           </span>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             2
           </span>
         </a>
       </li>
-      <li>
+      <li
+        className="SidebarItem"
+      >
         <a
-          className="resLink"
+          className="SidebarItem-link"
           href="/r/vigoda"
           onClick={[Function]}
         >
@@ -427,18 +447,18 @@ exports[`sidebar never shows dirty trigger button for automatic resources 1`] = 
             </svg>
           </div>
           <p
-            className="resLink-name"
+            className="SidebarItem-name"
             title="vigoda"
           >
             vigoda
           </p>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo "
+            className="SidebarItem-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:36:07.000Z"
@@ -447,16 +467,18 @@ exports[`sidebar never shows dirty trigger button for automatic resources 1`] = 
               &lt;5s
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          "
-            onClick={[Function]}
-          />
         </a>
+        <button
+          className="SidebarTriggerButton 
+          "
+          onClick={[Function]}
+        />
       </li>
-      <li>
+      <li
+        className="SidebarItem"
+      >
         <a
-          className="resLink"
+          className="SidebarItem-link"
           href="/r/snack"
           onClick={[Function]}
         >
@@ -471,18 +493,18 @@ exports[`sidebar never shows dirty trigger button for automatic resources 1`] = 
             </svg>
           </div>
           <p
-            className="resLink-name"
+            className="SidebarItem-name"
             title="snack"
           >
             snack
           </p>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo "
+            className="SidebarItem-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:35:57.000Z"
@@ -491,12 +513,12 @@ exports[`sidebar never shows dirty trigger button for automatic resources 1`] = 
               &lt;15s
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-           isReady"
-            onClick={[Function]}
-          />
         </a>
+        <button
+          className="SidebarTriggerButton 
+           isReady"
+          onClick={[Function]}
+        />
       </li>
     </ul>
   </nav>
@@ -522,14 +544,16 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
     <ul
       className="Sidebar-list"
     >
-      <li>
+      <li
+        className="SidebarItem SidebarItem--all is-selected"
+      >
         <a
-          className="resLink resLink--all is-selected"
+          className="SidebarItem-link"
           href="/"
           onClick={[Function]}
         >
           <span
-            className="resLink--all-name"
+            className="SidebarItem--all-name"
           >
             All
           </span>
@@ -560,27 +584,31 @@ exports[`sidebar renders list of resources 1`] = `
     <ul
       className="Sidebar-list"
     >
-      <li>
+      <li
+        className="SidebarItem SidebarItem--all is-selected"
+      >
         <a
-          className="resLink resLink--all is-selected"
+          className="SidebarItem-link"
           href="/"
           onClick={[Function]}
         >
           <span
-            className="resLink--all-name"
+            className="SidebarItem--all-name"
           >
             All
           </span>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             2
           </span>
         </a>
       </li>
-      <li>
+      <li
+        className="SidebarItem SidebarItem--building"
+      >
         <a
-          className="resLink resLink--building"
+          className="SidebarItem-link"
           href="/r/vigoda"
           onClick={[Function]}
         >
@@ -599,18 +627,18 @@ exports[`sidebar renders list of resources 1`] = `
             </svg>
           </div>
           <p
-            className="resLink-name"
+            className="SidebarItem-name"
             title="vigoda"
           >
             vigoda
           </p>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo "
+            className="SidebarItem-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:36:07.000Z"
@@ -619,16 +647,18 @@ exports[`sidebar renders list of resources 1`] = `
               &lt;5s
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          "
-            onClick={[Function]}
-          />
         </a>
+        <button
+          className="SidebarTriggerButton 
+          "
+          onClick={[Function]}
+        />
       </li>
-      <li>
+      <li
+        className="SidebarItem SidebarItem--building"
+      >
         <a
-          className="resLink resLink--building"
+          className="SidebarItem-link"
           href="/r/snack"
           onClick={[Function]}
         >
@@ -647,18 +677,18 @@ exports[`sidebar renders list of resources 1`] = `
             </svg>
           </div>
           <p
-            className="resLink-name"
+            className="SidebarItem-name"
             title="snack"
           >
             snack
           </p>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo "
+            className="SidebarItem-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:35:57.000Z"
@@ -667,12 +697,12 @@ exports[`sidebar renders list of resources 1`] = `
               &lt;15s
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          "
-            onClick={[Function]}
-          />
         </a>
+        <button
+          className="SidebarTriggerButton 
+          "
+          onClick={[Function]}
+        />
       </li>
     </ul>
   </nav>
@@ -698,27 +728,31 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
     <ul
       className="Sidebar-list"
     >
-      <li>
+      <li
+        className="SidebarItem SidebarItem--all is-selected"
+      >
         <a
-          className="resLink resLink--all is-selected"
+          className="SidebarItem-link"
           href="/"
           onClick={[Function]}
         >
           <span
-            className="resLink--all-name"
+            className="SidebarItem--all-name"
           >
             All
           </span>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             2
           </span>
         </a>
       </li>
-      <li>
+      <li
+        className="SidebarItem SidebarItem--building"
+      >
         <a
-          className="resLink resLink--building"
+          className="SidebarItem-link"
           href="/r/vigoda"
           onClick={[Function]}
         >
@@ -737,31 +771,33 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             </svg>
           </div>
           <p
-            className="resLink-name"
+            className="SidebarItem-name"
             title="vigoda"
           >
             vigoda
           </p>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo empty"
+            className="SidebarItem-timeAgo empty"
           >
             —
           </span>
-          <button
-            className="SidebarTriggerButton 
-          "
-            onClick={[Function]}
-          />
         </a>
+        <button
+          className="SidebarTriggerButton 
+          "
+          onClick={[Function]}
+        />
       </li>
-      <li>
+      <li
+        className="SidebarItem SidebarItem--building"
+      >
         <a
-          className="resLink resLink--building"
+          className="SidebarItem-link"
           href="/r/snack"
           onClick={[Function]}
         >
@@ -780,27 +816,27 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             </svg>
           </div>
           <p
-            className="resLink-name"
+            className="SidebarItem-name"
             title="snack"
           >
             snack
           </p>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo empty"
+            className="SidebarItem-timeAgo empty"
           >
             —
           </span>
-          <button
-            className="SidebarTriggerButton 
-          "
-            onClick={[Function]}
-          />
         </a>
+        <button
+          className="SidebarTriggerButton 
+          "
+          onClick={[Function]}
+        />
       </li>
     </ul>
   </nav>
@@ -826,27 +862,31 @@ exports[`sidebar shows ready + dirty trigger button for manual resource with pen
     <ul
       className="Sidebar-list"
     >
-      <li>
+      <li
+        className="SidebarItem SidebarItem--all is-selected"
+      >
         <a
-          className="resLink resLink--all is-selected"
+          className="SidebarItem-link"
           href="/"
           onClick={[Function]}
         >
           <span
-            className="resLink--all-name"
+            className="SidebarItem--all-name"
           >
             All
           </span>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             2
           </span>
         </a>
       </li>
-      <li>
+      <li
+        className="SidebarItem"
+      >
         <a
-          className="resLink"
+          className="SidebarItem-link"
           href="/r/vigoda"
           onClick={[Function]}
         >
@@ -865,18 +905,18 @@ exports[`sidebar shows ready + dirty trigger button for manual resource with pen
             </svg>
           </div>
           <p
-            className="resLink-name"
+            className="SidebarItem-name"
             title="vigoda"
           >
             vigoda
           </p>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo "
+            className="SidebarItem-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:36:07.000Z"
@@ -885,16 +925,18 @@ exports[`sidebar shows ready + dirty trigger button for manual resource with pen
               &lt;5s
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-           isReady isDirty"
-            onClick={[Function]}
-          />
         </a>
+        <button
+          className="SidebarTriggerButton 
+           isReady isDirty"
+          onClick={[Function]}
+        />
       </li>
-      <li>
+      <li
+        className="SidebarItem"
+      >
         <a
-          className="resLink"
+          className="SidebarItem-link"
           href="/r/snack"
           onClick={[Function]}
         >
@@ -909,18 +951,18 @@ exports[`sidebar shows ready + dirty trigger button for manual resource with pen
             </svg>
           </div>
           <p
-            className="resLink-name"
+            className="SidebarItem-name"
             title="snack"
           >
             snack
           </p>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo "
+            className="SidebarItem-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:35:57.000Z"
@@ -929,12 +971,12 @@ exports[`sidebar shows ready + dirty trigger button for manual resource with pen
               &lt;15s
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-           isReady"
-            onClick={[Function]}
-          />
         </a>
+        <button
+          className="SidebarTriggerButton 
+           isReady"
+          onClick={[Function]}
+        />
       </li>
     </ul>
   </nav>
@@ -960,27 +1002,31 @@ exports[`sidebar trigger button not ready if resource is building 1`] = `
     <ul
       className="Sidebar-list"
     >
-      <li>
+      <li
+        className="SidebarItem SidebarItem--all is-selected"
+      >
         <a
-          className="resLink resLink--all is-selected"
+          className="SidebarItem-link"
           href="/"
           onClick={[Function]}
         >
           <span
-            className="resLink--all-name"
+            className="SidebarItem--all-name"
           >
             All
           </span>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             1
           </span>
         </a>
       </li>
-      <li>
+      <li
+        className="SidebarItem SidebarItem--building"
+      >
         <a
-          className="resLink resLink--building"
+          className="SidebarItem-link"
           href="/r/vigoda"
           onClick={[Function]}
         >
@@ -999,18 +1045,18 @@ exports[`sidebar trigger button not ready if resource is building 1`] = `
             </svg>
           </div>
           <p
-            className="resLink-name"
+            className="SidebarItem-name"
             title="vigoda"
           >
             vigoda
           </p>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo "
+            className="SidebarItem-timeAgo "
           >
             <time
               dateTime="2017-12-21T15:36:07.000Z"
@@ -1019,12 +1065,12 @@ exports[`sidebar trigger button not ready if resource is building 1`] = `
               &lt;5s
             </time>
           </span>
-          <button
-            className="SidebarTriggerButton 
-          "
-            onClick={[Function]}
-          />
         </a>
+        <button
+          className="SidebarTriggerButton 
+          "
+          onClick={[Function]}
+        />
       </li>
     </ul>
   </nav>
@@ -1050,27 +1096,31 @@ exports[`sidebar trigger button not ready if resource waiting for first build 1`
     <ul
       className="Sidebar-list"
     >
-      <li>
+      <li
+        className="SidebarItem SidebarItem--all is-selected"
+      >
         <a
-          className="resLink resLink--all is-selected"
+          className="SidebarItem-link"
           href="/"
           onClick={[Function]}
         >
           <span
-            className="resLink--all-name"
+            className="SidebarItem--all-name"
           >
             All
           </span>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             1
           </span>
         </a>
       </li>
-      <li>
+      <li
+        className="SidebarItem"
+      >
         <a
-          className="resLink"
+          className="SidebarItem-link"
           href="/r/vigoda"
           onClick={[Function]}
         >
@@ -1089,27 +1139,27 @@ exports[`sidebar trigger button not ready if resource waiting for first build 1`
             </svg>
           </div>
           <p
-            className="resLink-name"
+            className="SidebarItem-name"
             title="vigoda"
           >
             vigoda
           </p>
           <span
-            className="resLink-alertBadge"
+            className="SidebarItem-alertBadge"
           >
             1
           </span>
           <span
-            className="resLink-timeAgo empty"
+            className="SidebarItem-timeAgo empty"
           >
             —
           </span>
-          <button
-            className="SidebarTriggerButton 
-          "
-            onClick={[Function]}
-          />
         </a>
+        <button
+          className="SidebarTriggerButton 
+          "
+          onClick={[Function]}
+        />
       </li>
     </ul>
   </nav>
