@@ -57,6 +57,7 @@ export default class SidebarTriggerButton extends PureComponent<
           ${isReady ? " isReady" : ""}${isDirty ? " isDirty" : ""}${
           props.isQueued ? " isQueued" : ""
         }`}
+        disabled={!isReady}
       />
     )
   }

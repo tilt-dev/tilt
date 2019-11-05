@@ -49,7 +49,6 @@ $trigger-button-active-color: $color-green;
   -webkit-mask: url(assets/svg/trigger-button.svg) no-repeat 50% 50%;
   mask: url(assets/svg/trigger-button.svg) no-repeat 50% 50%;
   animation: spin 1s linear infinite;
-  pointer-events: none; // disable click
 }
 
 .SidebarTriggerButton.isReady.isDirty {

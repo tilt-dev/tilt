@@ -72,6 +72,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           <button
             className="SidebarTriggerButton 
           "
+            disabled={true}
             onClick={[Function]}
           />
         </a>
@@ -120,6 +121,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           <button
             className="SidebarTriggerButton 
           "
+            disabled={true}
             onClick={[Function]}
           />
         </a>
@@ -168,6 +170,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           <button
             className="SidebarTriggerButton 
           "
+            disabled={true}
             onClick={[Function]}
           />
         </a>
@@ -216,6 +219,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           <button
             className="SidebarTriggerButton 
           "
+            disabled={true}
             onClick={[Function]}
           />
         </a>
@@ -264,6 +268,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           <button
             className="SidebarTriggerButton 
           "
+            disabled={true}
             onClick={[Function]}
           />
         </a>
@@ -312,6 +317,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           <button
             className="SidebarTriggerButton 
           "
+            disabled={true}
             onClick={[Function]}
           />
         </a>
@@ -360,6 +366,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           <button
             className="SidebarTriggerButton 
           "
+            disabled={true}
             onClick={[Function]}
           />
         </a>
@@ -450,6 +457,7 @@ exports[`sidebar never shows dirty trigger button for automatic resources 1`] = 
           <button
             className="SidebarTriggerButton 
           "
+            disabled={true}
             onClick={[Function]}
           />
         </a>
@@ -494,6 +502,7 @@ exports[`sidebar never shows dirty trigger button for automatic resources 1`] = 
           <button
             className="SidebarTriggerButton 
            isReady"
+            disabled={false}
             onClick={[Function]}
           />
         </a>
@@ -622,6 +631,7 @@ exports[`sidebar renders list of resources 1`] = `
           <button
             className="SidebarTriggerButton 
           "
+            disabled={true}
             onClick={[Function]}
           />
         </a>
@@ -670,6 +680,7 @@ exports[`sidebar renders list of resources 1`] = `
           <button
             className="SidebarTriggerButton 
           "
+            disabled={true}
             onClick={[Function]}
           />
         </a>
@@ -760,6 +771,7 @@ exports[`sidebar renders queued resource with class .isQueued and NOT .isReady 1
           <button
             className="SidebarTriggerButton 
            isQueued"
+            disabled={true}
             onClick={[Function]}
           />
         </a>
@@ -845,6 +857,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           <button
             className="SidebarTriggerButton 
           "
+            disabled={true}
             onClick={[Function]}
           />
         </a>
@@ -888,6 +901,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           <button
             className="SidebarTriggerButton 
           "
+            disabled={true}
             onClick={[Function]}
           />
         </a>
@@ -974,6 +988,7 @@ exports[`sidebar shows ready + dirty trigger button for manual resource with pen
           <button
             className="SidebarTriggerButton 
            isReady isDirty"
+            disabled={false}
             onClick={[Function]}
           />
         </a>
@@ -1018,6 +1033,7 @@ exports[`sidebar shows ready + dirty trigger button for manual resource with pen
           <button
             className="SidebarTriggerButton 
            isReady"
+            disabled={false}
             onClick={[Function]}
           />
         </a>
@@ -1108,6 +1124,7 @@ exports[`sidebar trigger button not ready if resource is building 1`] = `
           <button
             className="SidebarTriggerButton 
           "
+            disabled={true}
             onClick={[Function]}
           />
         </a>
@@ -1193,6 +1210,7 @@ exports[`sidebar trigger button not ready if resource waiting for first build 1`
           <button
             className="SidebarTriggerButton 
           "
+            disabled={true}
             onClick={[Function]}
           />
         </a>
