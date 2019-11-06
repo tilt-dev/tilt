@@ -12,6 +12,8 @@ import (
 )
 
 func TestWatchExec(t *testing.T) {
+	t.Skip() // TODO(nick): fix me
+
 	f := newK8sFixture(t, "onewatch_exec")
 	defer f.TearDown()
 
