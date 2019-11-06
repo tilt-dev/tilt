@@ -226,14 +226,20 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 
 	// TODO(nick): Do something with this result
 	uids := []types.UID{}
+	podTemplateSpecHashes := []k8s.PodTemplateSpecHash{}
 	for _, entity := range deployed {
 		uid := entity.UID()
 		if uid == "" {
 			return nil, fmt.Errorf("Entity not deployed correctly: %v", entity)
 		}
 		uids = append(uids, entity.UID())
+		hs, err := k8s.PodTemplateSpecHashes(entity)
+		if err != nil {
+			return nil, errors.Wrap(err, "reading pod template spec hashes")
+		}
+		podTemplateSpecHashes = append(podTemplateSpecHashes, hs...)
 	}
-	results[kTarget.ID()] = store.NewK8sDeployResult(kTarget.ID(), uids, deployed)
+	results[kTarget.ID()] = store.NewK8sDeployResult(kTarget.ID(), uids, podTemplateSpecHashes, deployed)
 
 	return results, nil
 }
@@ -327,6 +333,14 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 				}
 			}
 		}
+
+		// This needs to be after all the other injections, to ensure the hash includes the Tilt-generated
+		// image tag, etc
+		e, err := k8s.InjectPodTemplateSpecHashes(e)
+		if err != nil {
+			return nil, errors.Wrap(err, "injecting pod template hash")
+		}
+
 		newK8sEntities = append(newK8sEntities, e)
 	}
 

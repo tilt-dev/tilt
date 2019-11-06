@@ -68,16 +68,20 @@ type PodBuilder struct {
 	imageRefs map[int]string
 	cIDs      map[int]string
 	cReady    map[int]bool
+
+	setPodTemplateSpecHash bool
+	podTemplateSpecHash    k8s.PodTemplateSpecHash
 }
 
 func New(t testing.TB, manifest model.Manifest) PodBuilder {
 	return PodBuilder{
-		t:              t,
-		manifest:       manifest,
-		imageRefs:      make(map[int]string),
-		cIDs:           make(map[int]string),
-		cReady:         make(map[int]bool),
-		extraPodLabels: make(map[string]string),
+		t:                      t,
+		manifest:               manifest,
+		imageRefs:              make(map[int]string),
+		cIDs:                   make(map[int]string),
+		cReady:                 make(map[int]bool),
+		extraPodLabels:         make(map[string]string),
+		setPodTemplateSpecHash: true,
 	}
 }
 
@@ -88,6 +92,16 @@ func (b PodBuilder) WithPodLabel(key, val string) PodBuilder {
 
 func (b PodBuilder) ManifestName() model.ManifestName {
 	return b.manifest.Name
+}
+
+func (b PodBuilder) WithTemplateSpecHash(s k8s.PodTemplateSpecHash) PodBuilder {
+	b.podTemplateSpecHash = s
+	return b
+}
+
+func (b PodBuilder) WithNoTemplateSpecHash() PodBuilder {
+	b.setPodTemplateSpecHash = false
+	return b
 }
 
 func (b PodBuilder) RestartCount() int {
@@ -235,6 +249,19 @@ func (b PodBuilder) buildLabels(tSpec *v1.PodTemplateSpec) map[string]string {
 	for k, v := range b.extraPodLabels {
 		labels[k] = v
 	}
+
+	if b.setPodTemplateSpecHash {
+		podTemplateSpecHash := b.podTemplateSpecHash
+		if podTemplateSpecHash == "" {
+			var err error
+			podTemplateSpecHash, err = k8s.HashPodTemplateSpec(tSpec)
+			if err != nil {
+				panic(fmt.Sprintf("error computing pod template spec hash: %v", err))
+			}
+		}
+		labels[k8s.TiltPodTemplateHashLabel] = string(podTemplateSpecHash)
+	}
+
 	return labels
 }
 
