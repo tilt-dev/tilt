@@ -55,9 +55,32 @@ func TestInjectLabelDeployment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// We expect both the Deployment and the PodTemplate to get the labels.
-	assert.Equal(t, 2, strings.Count(result, "tier: test"))
-	assert.Equal(t, 2, strings.Count(result, "owner: me"))
+	// We expect the Deployment, the Selector, and the PodTemplate to get the labels.
+	assert.Equal(t, 3, strings.Count(result, "tier: test"))
+	assert.Equal(t, 3, strings.Count(result, "owner: me"))
+}
+
+func TestInjectLabelDeploymentMakeSelectorMatchOnConflict(t *testing.T) {
+	entity := parseOneEntity(t, testyaml.SanchoYAML)
+	newEntity, err := InjectLabels(entity, []model.LabelPair{
+		{
+			Key:   "app",
+			Value: "panza",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// We expect the Deployment, the Selector, and the PodTemplate to get the labels.
+	assert.Equal(t, 3, strings.Count(result, "app: panza"))
+	// we've replaced the "app: sancho" in the selector
+	assert.Equal(t, 0, strings.Count(result, "app: sancho"))
 }
 
 func TestInjectLabelDeploymentBeta1(t *testing.T) {
@@ -77,7 +100,7 @@ func TestInjectLabelDeploymentBeta1(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, 2, strings.Count(result, "owner: me"))
+	assert.Equal(t, 3, strings.Count(result, "owner: me"))
 
 	// Assert that matchLabels were injected
 	assert.Contains(t, result, "matchLabels")
@@ -102,7 +125,7 @@ func TestInjectLabelDeploymentBeta2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, 2, strings.Count(result, "owner: me"))
+	assert.Equal(t, 3, strings.Count(result, "owner: me"))
 
 	// Assert that matchLabels were injected
 	assert.Contains(t, result, "matchLabels")
@@ -127,7 +150,7 @@ func TestInjectLabelExtDeploymentBeta1(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, 2, strings.Count(result, "owner: me"))
+	assert.Equal(t, 3, strings.Count(result, "owner: me"))
 
 	// Assert that matchLabels were injected
 	assert.Contains(t, result, "matchLabels")
@@ -158,9 +181,9 @@ func TestInjectStatefulSet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Only inject once: in the top-level metadata and the pod template,
+	// Only inject twice: in the top-level metadata, the pod template, and the match selectors,
 	// not the volume claim template
-	assert.Equal(t, 2, strings.Count(result, "tilt-runid: deadbeef"))
+	assert.Equal(t, 3, strings.Count(result, "tilt-runid: deadbeef"))
 }
 
 func TestSelectorMatchesLabels(t *testing.T) {

@@ -61,6 +61,25 @@ func extractObjectMetas(obj interface{}, filter func(v reflect.Value) bool) ([]*
 	return result, nil
 }
 
+func extractSelectors(obj interface{}, filter func(v reflect.Value) bool) ([]*metav1.LabelSelector, error) {
+	extracted, err := newExtractor(reflect.TypeOf(metav1.LabelSelector{})).
+		withFilter(filter).
+		extractPointersFrom(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*metav1.LabelSelector, len(extracted))
+	for i, e := range extracted {
+		c, ok := e.(*metav1.LabelSelector)
+		if !ok {
+			return nil, fmt.Errorf("ExtractSelectors: expected LabelSelector, actual %T", e)
+		}
+		result[i] = c
+	}
+	return result, nil
+}
+
 func extractEnvVars(obj interface{}) ([]*v1.EnvVar, error) {
 	extracted, err := newExtractor(reflect.TypeOf(v1.EnvVar{})).extractPointersFrom(obj)
 	if err != nil {

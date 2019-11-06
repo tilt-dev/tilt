@@ -33,6 +33,18 @@ func OverwriteLabels(entity K8sEntity, labels []model.LabelPair) (K8sEntity, err
 	return injectLabels(entity, labels, true)
 }
 
+func applyLabelsToMap(orig *map[string]string, labels []model.LabelPair, overwrite bool) {
+	if overwrite {
+		*orig = nil
+	}
+	for _, label := range labels {
+		if *orig == nil {
+			*orig = make(map[string]string, 1)
+		}
+		(*orig)[label.Key] = label.Value
+	}
+}
+
 // injectLabels injects the given labels into the given k8sEntity
 // (if `overwrite`, replacing existing labels)
 func injectLabels(entity K8sEntity, labels []model.LabelPair, overwrite bool) (K8sEntity, error) {
@@ -58,15 +70,14 @@ func injectLabels(entity K8sEntity, labels []model.LabelPair, overwrite bool) (K
 	}
 
 	for _, meta := range metas {
-		if overwrite {
-			meta.Labels = nil
-		}
-		for _, label := range labels {
-			if meta.Labels == nil {
-				meta.Labels = make(map[string]string, 1)
-			}
-			meta.Labels[label.Key] = label.Value
-		}
+		applyLabelsToMap(&meta.Labels, labels, overwrite)
+	}
+
+	selectors, err := extractSelectors(&entity, func(v reflect.Value) bool {
+		return v.Type() != pvc
+	})
+	for _, selector := range selectors {
+		applyLabelsToMap(&selector.MatchLabels, labels, overwrite)
 	}
 	return entity, nil
 }
