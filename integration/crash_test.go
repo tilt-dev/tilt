@@ -19,6 +19,8 @@ func TestCrash(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	out := bytes.NewBuffer(nil)
-	_ = f.tiltCmd([]string{"up", "--watch=false", "--hud=false"}, out).Run()
+	res, err := f.tilt.Up([]string{"--watch=false"}, out)
+	assert.NoError(t, err)
+	<-res.Done()
 	assert.Contains(t, out.String(), "Cannot start Tilt")
 }

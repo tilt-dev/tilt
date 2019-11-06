@@ -16,11 +16,7 @@ func TestIdempotent(t *testing.T) {
 	f := newK8sFixture(t, "idempotent")
 	defer f.TearDown()
 
-	cmd := f.TiltUpCmd("idempotent")
-	err := cmd.Run()
-	if err != nil {
-		t.Fatalf("First 'tilt up' failed: %v", err)
-	}
+	f.TiltUp("idempotent")
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()

@@ -30,7 +30,7 @@ func newAnalyticsFixture(t *testing.T) *analyticsFixture {
 		k8sFixture: newK8sFixture(t, "analytics"),
 		tempDir:    td,
 	}
-	af.tiltEnviron[WindmillDirEnvVarName] = td.Path()
+	af.tilt.Environ[WindmillDirEnvVarName] = td.Path()
 
 	af.SetupAnalyticsServer()
 
@@ -43,8 +43,8 @@ func (af *analyticsFixture) SetupAnalyticsServer() {
 		af.t.FailNow()
 	}
 	af.mss = mss
-	delete(af.tiltEnviron, "TILT_DISABLE_ANALYTICS")
-	af.tiltEnviron[AnalyticsUrlEnvVarName] = fmt.Sprintf("http://localhost:%d/report", port)
+	delete(af.tilt.Environ, "TILT_DISABLE_ANALYTICS")
+	af.tilt.Environ[AnalyticsUrlEnvVarName] = fmt.Sprintf("http://localhost:%d/report", port)
 }
 
 func (af *analyticsFixture) TearDown() {
