@@ -39,7 +39,7 @@ func TestOneUpdate(t *testing.T) {
 	if assert.Equal(t, 1, len(requests)) {
 		body, err := ioutil.ReadAll(requests[0].Body)
 		assert.NoError(t, err)
-		expected := `{"team_id":{"id":"fake-team"},"updates":[{"service":{"name":"sancho"},"start_time":"1984-04-04T00:00:00Z","duration":"1m0s","is_live_update":false,"result":0,"result_description":"","snapshot_id":{"id":"snapshot1"}}]}
+		expected := `{"team_id":{"id":"fake-team"},"updates":[{"service":{"name":"sancho"},"start_time":"1984-04-04T00:00:00Z","duration":"1m0s","is_live_update":false,"result":0,"result_description":"","snapshot_id":{"id":""}}]}
 `
 		assert.Equal(t, expected, string(body))
 	}
@@ -61,7 +61,7 @@ func TestTiltfileUpdate(t *testing.T) {
 	if assert.Equal(t, 1, len(requests)) {
 		body, err := ioutil.ReadAll(requests[0].Body)
 		assert.NoError(t, err)
-		expected := `{"team_id":{"id":"fake-team"},"updates":[{"service":{"name":"(Tiltfile)"},"start_time":"1984-04-04T00:00:00Z","duration":"1m0s","is_live_update":false,"result":0,"result_description":"","snapshot_id":{"id":"snapshot1"}}]}
+		expected := `{"team_id":{"id":"fake-team"},"updates":[{"service":{"name":"(Tiltfile)"},"start_time":"1984-04-04T00:00:00Z","duration":"1m0s","is_live_update":false,"result":0,"result_description":"","snapshot_id":{"id":""}}]}
 `
 		assert.Equal(t, expected, string(body))
 	}
@@ -101,15 +101,13 @@ type updateFixture struct {
 	uu         *UpdateUploader
 	store      *store.Store
 	clock      clockwork.FakeClock
-	su         *fakeSnapshotUploader
 }
 
 func newUpdateFixture(t *testing.T) *updateFixture {
 	f := tempdir.NewTempDirFixture(t)
 	httpClient := httptest.NewFakeClient()
 	addr := cloudurl.Address("cloud-test.tilt.dev")
-	su := &fakeSnapshotUploader{}
-	uu := NewUpdateUploader(httpClient, addr, su)
+	uu := NewUpdateUploader(httpClient, addr)
 	st, _ := store.NewStoreForTesting()
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 
@@ -133,7 +131,6 @@ func newUpdateFixture(t *testing.T) *updateFixture {
 		uu:             uu,
 		store:          st,
 		clock:          clockwork.NewFakeClock(),
-		su:             su,
 	}
 }
 

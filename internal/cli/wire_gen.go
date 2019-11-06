@@ -94,8 +94,8 @@ var (
 func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdUpTags analytics2.CmdUpTags) (CmdUpDeps, error) {
 	v := provideClock()
 	renderer := hud.NewRenderer(v)
-	modelWebPort := provideWebPort()
 	modelWebHost := provideWebHost()
+	modelWebPort := provideWebPort()
 	webURL, err := provideWebURL(modelWebHost, modelWebPort)
 	if err != nil {
 		return CmdUpDeps{}, err
@@ -215,7 +215,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdUpTa
 	analyticsUpdater := analytics2.NewAnalyticsUpdater(analytics3, cmdUpTags)
 	eventWatchManager := k8swatch.NewEventWatchManager(client, ownerFetcher)
 	cloudUsernameManager := cloud.NewUsernameManager(httpClient)
-	updateUploader := cloud.NewUpdateUploader(httpClient, address, snapshotUploader)
+	updateUploader := cloud.NewUpdateUploader(httpClient, address)
 	dockerPruner := dockerprune.NewDockerPruner(switchCli)
 	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, tiltVersionChecker, analyticsUpdater, eventWatchManager, cloudUsernameManager, updateUploader, dockerPruner)
 	upper := engine.NewUpper(ctx, storeStore, v2)
@@ -429,8 +429,8 @@ var BaseWireSet = wire.NewSet(
 	K8sWireSet, tiltfile.WireSet, provideKubectlLogLevel, docker.SwitchWireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, runtimelog.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, k8swatch.NewPodWatcher, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, configs.NewConfigsController, engine.NewDockerComposeEventWatcher, runtimelog.NewDockerComposeLogManager, engine.NewProfilerManager, engine.NewGithubClientFactory, engine.NewTiltVersionChecker, cloud.WireSet, cloudurl.ProvideAddress, provideClock, hud.NewRenderer, hud.NewDefaultHeadsUpDisplay, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.ProvideSubscribers, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, provideWebVersion,
 	provideWebMode,
 	provideWebURL,
-	provideWebHost,
 	provideWebPort,
+	provideWebHost,
 	provideNoBrowserFlag, server.ProvideHeadsUpServer, provideAssetServer, server.ProvideHeadsUpServerController, dirs.UseWindmillDir, token.GetOrCreateToken, provideCmdUpDeps, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
 )
 
