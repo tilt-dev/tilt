@@ -26,7 +26,7 @@ func TestOneDockerCompose(t *testing.T) {
 
 	f.CurlUntil(ctx, "onedc", "localhost:8000", "🍄 One-Up! 🍄")
 
-	f.ReplaceContents("compile.sh", "One-Up", "Two-Up")
+	f.ReplaceContents("main.go", "One-Up", "Two-Up")
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
