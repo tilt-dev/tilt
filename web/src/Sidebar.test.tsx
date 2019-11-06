@@ -112,7 +112,7 @@ describe("sidebar", () => {
 
   it("shows ready + dirty trigger button for manual resource with pending changes", () => {
     let items = twoResourceView().resources.map((res: Resource, i: number) => {
-      res.triggerMode = TriggerMode.TriggerModeManual // both manual
+      res.triggerMode = TriggerMode.TriggerModeManualAfterInitial // both manual
       res.currentBuild = {} // not currently building
       if (i == 0) {
         // only first resource has pending changes -- only this one should have class `isDirty`

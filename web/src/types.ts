@@ -16,7 +16,8 @@ export enum ResourceView {
 
 export enum TriggerMode {
   TriggerModeAuto,
-  TriggerModeManual,
+  TriggerModeManualAfterInitial,
+  TriggerModeManualIncludingInitial,
 }
 
 export type Build = {
@@ -40,17 +41,16 @@ export enum RuntimeStatus {
   Ok = "ok",
   Pending = "pending",
   Error = "error",
-  Unknown = "unknown",
+  NotApplicable = "not_applicable",
 }
 
 // What is the status of the resource with respect to Tilt
 export enum ResourceStatus {
-  BuildQueued, // in auto, if you have changed a file but an affected build hasn't started yet. In manual after you have clicked build, before it has started building
-  Building,
-  Error,
-  Warning,
-  Deploying,
-  Deployed, // defer to RuntimeStatus
+  Building, // Tilt is actively doing something (e.g., docker build or kubectl apply)
+  Pending, // not building, healthy, or unhealthy, but presumably on its way to one of those (e.g., queued to build, or ContainerCreating)
+  Healthy, // e.g., build succeeded and pod is running and healthy
+  Unhealthy, // e.g., last build failed, or CrashLoopBackOff
+  None, // e.g., a manual build that has never executed
 }
 
 export type Resource = {

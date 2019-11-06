@@ -27,15 +27,15 @@ const triggerUpdate = (name: string): void => {
 }
 
 const titleText = (
-  isReady: boolean,
-  isDirty: boolean,
+  clickable: boolean,
+  clickMe: boolean,
   isQueued: boolean
 ): string => {
   if (isQueued) {
     return "Cannot trigger an update if resource is already queued for build."
-  } else if (!isReady) {
+  } else if (!clickable) {
     return "Cannot trigger an update while resource is building or build is pending."
-  } else if (isDirty) {
+  } else if (clickMe) {
     return "This manual resource has pending file changes; click to trigger an update."
   } else {
     return "Force a rebuild/update for this resource."
@@ -60,22 +60,18 @@ export default class SidebarTriggerButton extends PureComponent<
       )
     }
 
-    let isManualTriggerMode =
-      props.triggerMode === TriggerMode.TriggerModeManual
+    let isManualTriggerMode = props.triggerMode !== TriggerMode.TriggerModeAuto
 
-    // isReady (i.e. trigger button will appear) if:
-    // 1. resource not currently building, AND
-    // 2. resource is not queued to build, AND
-    // 3. resource has built at least once (i.e. we're not waiting for the first build), AND
-    //    ^ this will need to change with TRIGGER_MODE_MANUAL_NO_INITIAL
-    // 4. resource doesn't have a pending auto-build (i.e. no pending changes, OR pending
-    //    changes but it's a manual resource)
-    let isReady =
-      !props.isQueued &&
-      !props.isBuilding &&
-      props.hasBuilt &&
-      (!props.hasPendingChanges || isManualTriggerMode)
-    let isDirty = props.hasPendingChanges && isManualTriggerMode
+    // clickable (i.e. trigger button will appear) if it doesn't already have some kind of pending / active build
+    let clickable =
+      !props.isQueued && // already queued for manual run
+      !props.isBuilding && // currently building
+      !(
+        props.triggerMode !== TriggerMode.TriggerModeManualIncludingInitial &&
+        !props.hasBuilt
+      ) && // waiting to perform its initial build
+      !(props.hasPendingChanges && !isManualTriggerMode) // waiting to perform an auto-triggered build in response to a change
+    let clickMe = props.hasPendingChanges && isManualTriggerMode
 
     return (
       <button
@@ -83,11 +79,11 @@ export default class SidebarTriggerButton extends PureComponent<
           triggerUpdate(props.resourceName)
         }}
         className={`SidebarTriggerButton ${props.isSelected ? "isSelected" : ""}
-          ${isReady ? " isReady" : ""}${isDirty ? " isDirty" : ""}${
+          ${clickable ? " clickable" : ""}${clickMe ? " clickMe" : ""}${
           props.isQueued ? " isQueued" : ""
         }`}
-        disabled={!isReady}
-        title={titleText(isReady, isDirty, props.isQueued)}
+        disabled={!clickable}
+        title={titleText(clickable, clickMe, props.isQueued)}
       />
     )
   }

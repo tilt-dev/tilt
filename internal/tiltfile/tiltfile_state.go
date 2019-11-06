@@ -280,10 +280,10 @@ type triggerMode int
 
 func (m triggerMode) String() string {
 	switch m {
-	case TriggerModeManual:
-		return triggerModeManualN
 	case TriggerModeAuto:
 		return triggerModeAutoN
+	case TriggerModeManual:
+		return triggerModeManualN
 	default:
 		return fmt.Sprintf("unknown trigger mode with value %d", m)
 	}
@@ -321,12 +321,19 @@ func (s *tiltfileState) triggerModeForResource(resourceTriggerMode triggerMode) 
 	}
 }
 
-func starlarkTriggerModeToModel(triggerMode triggerMode) (model.TriggerMode, error) {
+func starlarkTriggerModeToModel(triggerMode triggerMode, autoInit bool) (model.TriggerMode, error) {
 	switch triggerMode {
-	case TriggerModeManual:
-		return model.TriggerModeManual, nil
 	case TriggerModeAuto:
+		if !autoInit {
+			return 0, errors.New("auto_init=False incompatible with trigger_mode=TRIGGER_MODE_AUTO")
+		}
 		return model.TriggerModeAuto, nil
+	case TriggerModeManual:
+		if autoInit {
+			return model.TriggerModeManualAfterInitial, nil
+		} else {
+			return model.TriggerModeManualIncludingInitial, nil
+		}
 	default:
 		return 0, fmt.Errorf("unknown triggerMode %v", triggerMode)
 	}
@@ -945,7 +952,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 	var result []model.Manifest
 	for _, r := range resources {
 		mn := model.ManifestName(r.name)
-		tm, err := starlarkTriggerModeToModel(s.triggerModeForResource(r.triggerMode))
+		tm, err := starlarkTriggerModeToModel(s.triggerModeForResource(r.triggerMode), true)
 		if err != nil {
 			return nil, err
 		}
@@ -1294,7 +1301,7 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 
 	for _, r := range s.localResources {
 		mn := model.ManifestName(r.name)
-		tm, err := starlarkTriggerModeToModel(s.triggerModeForResource(r.triggerMode))
+		tm, err := starlarkTriggerModeToModel(s.triggerModeForResource(r.triggerMode), r.autoInit)
 		if err != nil {
 			return nil, err
 		}

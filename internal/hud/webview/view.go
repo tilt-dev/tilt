@@ -254,9 +254,10 @@ func (r Resource) LastBuild() BuildRecord {
 type RuntimeStatus string
 
 const (
-	RuntimeStatusOK      RuntimeStatus = "ok"
-	RuntimeStatusPending RuntimeStatus = "pending"
-	RuntimeStatusError   RuntimeStatus = "error"
+	RuntimeStatusOK            RuntimeStatus = "ok"
+	RuntimeStatusPending       RuntimeStatus = "pending"
+	RuntimeStatusError         RuntimeStatus = "error"
+	RuntimeStatusNotApplicable RuntimeStatus = "not_applicable"
 )
 
 type TiltBuild struct {

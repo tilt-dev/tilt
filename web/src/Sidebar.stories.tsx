@@ -49,7 +49,7 @@ function twoItemSidebarClosed() {
 function oneItemWithTrigger() {
   let items = oneResourceView().resources.map((res: Resource) => {
     let item = new SidebarItem(res)
-    item.triggerMode = TriggerMode.TriggerModeManual
+    item.triggerMode = TriggerMode.TriggerModeManualAfterInitial
     item.hasPendingChanges = true
     item.currentBuildStartTime = ""
     return item

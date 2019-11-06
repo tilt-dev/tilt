@@ -22,7 +22,7 @@ func NextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 	targets := RemoveTargetsWaitingOnDependencies(state, state.Targets())
 
 	// If any of the manifest targets haven't been built yet, build them now.
-	unbuilt := FindUnbuiltTargets(targets)
+	unbuilt := FindTargetsNeedingInitialBuild(targets)
 
 	if len(unbuilt) > 0 {
 		ret := NextUnbuiltTargetToBuild(unbuilt)
@@ -151,7 +151,7 @@ func EarliestPendingAutoTriggerTarget(targets []*store.ManifestTarget) *store.Ma
 	for _, mt := range targets {
 		ok, newTime := mt.State.HasPendingChangesBefore(earliest)
 		if ok {
-			if mt.Manifest.TriggerMode == model.TriggerModeManual {
+			if !mt.Manifest.TriggerMode.AutoOnChange() {
 				// Don't trigger update of a manual manifest just b/c if has
 				// pending changes; must come through the TriggerQueue, above.
 				continue
@@ -164,10 +164,10 @@ func EarliestPendingAutoTriggerTarget(targets []*store.ManifestTarget) *store.Ma
 	return choice
 }
 
-func FindUnbuiltTargets(targets []*store.ManifestTarget) []*store.ManifestTarget {
+func FindTargetsNeedingInitialBuild(targets []*store.ManifestTarget) []*store.ManifestTarget {
 	result := []*store.ManifestTarget{}
 	for _, target := range targets {
-		if !target.State.StartedFirstBuild() {
+		if !target.State.StartedFirstBuild() && target.Manifest.TriggerMode.AutoInitial() {
 			result = append(result, target)
 		}
 	}

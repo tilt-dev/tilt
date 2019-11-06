@@ -6,7 +6,7 @@ import { ReactComponent as UpdateAvailableSvg } from "./assets/svg/update-availa
 import { combinedStatus, warnings } from "./status"
 import "./Statusbar.scss"
 import { combinedStatusMessage } from "./combinedStatusMessage"
-import { Build, TiltBuild } from "./types"
+import { Build, ResourceStatus, RuntimeStatus, TiltBuild } from "./types"
 import mostRecentBuildToDisplay from "./mostRecentBuild"
 import { Link } from "react-router-dom"
 
@@ -31,8 +31,8 @@ class StatusItem {
     this.warningCount = warnings(res).length
 
     let status = combinedStatus(res)
-    this.up = status === "ok"
-    this.hasError = status === "error"
+    this.up = status === ResourceStatus.Healthy
+    this.hasError = status === ResourceStatus.Unhealthy
     this.currentBuild = res.currentBuild
     this.buildHistory = res.buildHistory
     this.lastBuild = res.buildHistory ? res.buildHistory[0] : null
