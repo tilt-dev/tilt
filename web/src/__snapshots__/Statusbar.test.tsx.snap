@@ -54,23 +54,31 @@ exports[`StatusBar does not render an upgrade badge when runningVersion is dev 1
   <section
     className="Statusbar-panel Statusbar-statusMsgPanel"
   >
-    <p
-      className="Statusbar-statusMsgPanel-child"
-    >
+    <div>
       Updating vigoda…
-    </p>
-    <p
-      className="Statusbar-statusMsgPanel-child Statusbar-statusMsgPanel-child--lastEdit"
+    </div>
+    <div
+      className="LastEditStatus"
     >
       <span
-        className="Statusbar-statusMsgPanel-label"
+        className="LastEditStatus-label"
       >
         Last Edit:
       </span>
       <span>
-        vigoda ‣ main.go[+2 more]
+        <span
+          className="LastEditStatus-name"
+          data-tip="main.go[+ 2 more]"
+        >
+          vigoda
+        </span>
+        <span
+          className="LastEditStatus-details"
+        >
+           ‣ main.go[+ 2 more]
+        </span>
       </span>
-    </p>
+    </div>
   </section>
   <section
     className="Statusbar-panel Statusbar-progressPanel"
@@ -150,23 +158,31 @@ exports[`StatusBar does not render an upgrade badge when there is no latestVersi
   <section
     className="Statusbar-panel Statusbar-statusMsgPanel"
   >
-    <p
-      className="Statusbar-statusMsgPanel-child"
-    >
+    <div>
       Updating vigoda…
-    </p>
-    <p
-      className="Statusbar-statusMsgPanel-child Statusbar-statusMsgPanel-child--lastEdit"
+    </div>
+    <div
+      className="LastEditStatus"
     >
       <span
-        className="Statusbar-statusMsgPanel-label"
+        className="LastEditStatus-label"
       >
         Last Edit:
       </span>
       <span>
-        vigoda ‣ main.go[+2 more]
+        <span
+          className="LastEditStatus-name"
+          data-tip="main.go[+ 2 more]"
+        >
+          vigoda
+        </span>
+        <span
+          className="LastEditStatus-details"
+        >
+           ‣ main.go[+ 2 more]
+        </span>
       </span>
-    </p>
+    </div>
   </section>
   <section
     className="Statusbar-panel Statusbar-progressPanel"
@@ -246,23 +262,31 @@ exports[`StatusBar renders an upgrade badge when the version is out of date 1`] 
   <section
     className="Statusbar-panel Statusbar-statusMsgPanel"
   >
-    <p
-      className="Statusbar-statusMsgPanel-child"
-    >
+    <div>
       Updating vigoda…
-    </p>
-    <p
-      className="Statusbar-statusMsgPanel-child Statusbar-statusMsgPanel-child--lastEdit"
+    </div>
+    <div
+      className="LastEditStatus"
     >
       <span
-        className="Statusbar-statusMsgPanel-label"
+        className="LastEditStatus-label"
       >
         Last Edit:
       </span>
       <span>
-        vigoda ‣ main.go[+2 more]
+        <span
+          className="LastEditStatus-name"
+          data-tip="main.go[+ 2 more]"
+        >
+          vigoda
+        </span>
+        <span
+          className="LastEditStatus-details"
+        >
+           ‣ main.go[+ 2 more]
+        </span>
       </span>
-    </p>
+    </div>
   </section>
   <section
     className="Statusbar-panel Statusbar-progressPanel"
@@ -342,23 +366,31 @@ exports[`StatusBar renders two items all ok snapshot 1`] = `
   <section
     className="Statusbar-panel Statusbar-statusMsgPanel"
   >
-    <p
-      className="Statusbar-statusMsgPanel-child"
-    >
+    <div>
       Updating vigoda…
-    </p>
-    <p
-      className="Statusbar-statusMsgPanel-child Statusbar-statusMsgPanel-child--lastEdit"
+    </div>
+    <div
+      className="LastEditStatus"
     >
       <span
-        className="Statusbar-statusMsgPanel-label"
+        className="LastEditStatus-label"
       >
         Last Edit:
       </span>
       <span>
-        vigoda ‣ main.go[+2 more]
+        <span
+          className="LastEditStatus-name"
+          data-tip="main.go[+ 2 more]"
+        >
+          vigoda
+        </span>
+        <span
+          className="LastEditStatus-details"
+        >
+           ‣ main.go[+ 2 more]
+        </span>
       </span>
-    </p>
+    </div>
   </section>
   <section
     className="Statusbar-panel Statusbar-progressPanel"
@@ -438,23 +470,31 @@ exports[`StatusBar renders two items both errors snapshot 1`] = `
   <section
     className="Statusbar-panel Statusbar-statusMsgPanel"
   >
-    <p
-      className="Statusbar-statusMsgPanel-child"
-    >
+    <div>
       Build failed: vigoda
-    </p>
-    <p
-      className="Statusbar-statusMsgPanel-child Statusbar-statusMsgPanel-child--lastEdit"
+    </div>
+    <div
+      className="LastEditStatus"
     >
       <span
-        className="Statusbar-statusMsgPanel-label"
+        className="LastEditStatus-label"
       >
         Last Edit:
       </span>
       <span>
-        vigoda ‣ main.go[+1 more]
+        <span
+          className="LastEditStatus-name"
+          data-tip="main.go[+ 1 more]"
+        >
+          vigoda
+        </span>
+        <span
+          className="LastEditStatus-details"
+        >
+           ‣ main.go[+ 1 more]
+        </span>
       </span>
-    </p>
+    </div>
   </section>
   <section
     className="Statusbar-panel Statusbar-progressPanel"
@@ -534,23 +574,21 @@ exports[`StatusBar renders without crashing 1`] = `
   <section
     className="Statusbar-panel Statusbar-statusMsgPanel"
   >
-    <p
-      className="Statusbar-statusMsgPanel-child"
-    >
+    <div>
       
-    </p>
-    <p
-      className="Statusbar-statusMsgPanel-child Statusbar-statusMsgPanel-child--lastEdit"
+    </div>
+    <div
+      className="LastEditStatus"
     >
       <span
-        className="Statusbar-statusMsgPanel-label"
+        className="LastEditStatus-label"
       >
         Last Edit:
       </span>
       <span>
         —
       </span>
-    </p>
+    </div>
   </section>
   <section
     className="Statusbar-panel Statusbar-progressPanel"

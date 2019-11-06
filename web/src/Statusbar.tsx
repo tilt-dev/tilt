@@ -97,16 +97,25 @@ class Statusbar extends PureComponent<StatusBarProps> {
     )
   }
 
-  statusMessagePanel(build: any, editMessage: string) {
+  statusMessagePanel(build: any, edits: string) {
+    let lastEdit = <span>—</span>
+    if (build && edits) {
+      lastEdit = (
+        <span>
+          <span className="LastEditStatus-name" data-tip={edits}>
+            {build.name}
+          </span>
+          <span className="LastEditStatus-details">{" ‣ " + edits}</span>
+        </span>
+      )
+    }
     return (
       <section className="Statusbar-panel Statusbar-statusMsgPanel">
-        <p className="Statusbar-statusMsgPanel-child">
-          {combinedStatusMessage(this.props.items)}
-        </p>
-        <p className="Statusbar-statusMsgPanel-child Statusbar-statusMsgPanel-child--lastEdit">
-          <span className="Statusbar-statusMsgPanel-label">Last Edit:</span>
-          <span>{build ? editMessage : "—"}</span>
-        </p>
+        <div>{combinedStatusMessage(this.props.items)}</div>
+        <div className="LastEditStatus">
+          <span className="LastEditStatus-label">Last Edit:</span>
+          {lastEdit}
+        </div>
       </section>
     )
   }
@@ -168,9 +177,9 @@ class Statusbar extends PureComponent<StatusBarProps> {
     let build = mostRecentBuildToDisplay(this.props.items)
     let editMessage = ""
     if (build && build.edits.length > 0) {
-      editMessage = `${build.name} ‣ ${build.edits[0]}`
+      editMessage = `${build.edits[0]}`
       if (build.edits.length > 1) {
-        editMessage += `[+${build.edits.length - 1} more]`
+        editMessage += `[+ ${build.edits.length - 1} more]`
       }
     }
     let statusMessagePanel = this.statusMessagePanel(build, editMessage)

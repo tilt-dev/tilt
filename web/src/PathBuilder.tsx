@@ -2,17 +2,11 @@
 
 class PathBuilder {
   private host: string
-  private roomId: string = ""
   private snapId: string = ""
 
   constructor(host: string, pathname: string) {
     this.host = host
 
-    const roomRe = new RegExp("^/view/([^/]+)")
-    let roomMatch = roomRe.exec(pathname)
-    if (roomMatch) {
-      this.roomId = roomMatch[1]
-    }
     const snapshotRe = new RegExp("^/snapshot/([^/]+)")
     let snapMatch = snapshotRe.exec(pathname)
     if (snapMatch) {
@@ -21,17 +15,10 @@ class PathBuilder {
   }
 
   getDataUrl() {
-    let scheme = "wss"
-    if (this.isLocal()) {
-      scheme = "ws"
-    }
     if (this.isSnapshot()) {
       return this.snapshotDataUrl()
     }
-    if (this.roomId) {
-      return `${scheme}://${this.host}/join/${this.roomId}`
-    }
-    return `${scheme}://${this.host}/ws/view`
+    return `ws://${this.host}/ws/view`
   }
 
   isLocal() {
@@ -55,9 +42,6 @@ class PathBuilder {
   }
 
   rootPath() {
-    if (this.roomId) {
-      return `/view/${this.roomId}`
-    }
     if (this.isSnapshot()) {
       return this.snapshotPathBase()
     }

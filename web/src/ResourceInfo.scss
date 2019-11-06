@@ -27,6 +27,10 @@
   color: $color-gray-light;
   font-weight: bold;
   margin-right: $spacing-unit / 4;
+  
+  @media (max-width: $tablet-width) {
+    display: none;
+  }
 }
 .resourceInfo-value {
   display: inline-block;

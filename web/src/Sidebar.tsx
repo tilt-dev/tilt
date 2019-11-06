@@ -85,8 +85,9 @@ class Sidebar extends PureComponent<SidebarProps> {
 
     let allItem = (
       <li className={allItemClasses}>
-        <Link className="SidebarItem-link" to={allLink}>
-          <span className="SidebarItem--all-name">All</span>
+        <Link className="SidebarItem-link" to={allLink} title="All">
+          <div className="SidebarItem-allIcon">┌</div>
+          <span className="SidebarItem-name">All</span>
           {totalAlerts > 0 ? (
             <span className="SidebarItem-alertBadge">{totalAlerts}</span>
           ) : (
@@ -123,7 +124,11 @@ class Sidebar extends PureComponent<SidebarProps> {
       }
       return (
         <li key={item.name} className={classes}>
-          <Link className="SidebarItem-link" to={pb.path(link)}>
+          <Link
+            className="SidebarItem-link"
+            to={pb.path(link)}
+            title={item.name}
+          >
             <SidebarIcon
               status={item.status}
               hasWarning={item.hasWarnings}
@@ -131,9 +136,7 @@ class Sidebar extends PureComponent<SidebarProps> {
               isDirty={item.hasPendingChanges}
               lastBuild={item.lastBuild}
             />
-            <p className="SidebarItem-name" title={item.name}>
-              {item.name}
-            </p>
+            <p className="SidebarItem-name">{item.name}</p>
             {item.alertCount > 0 ? (
               <span className="SidebarItem-alertBadge">{item.alertCount}</span>
             ) : (
