@@ -1,6 +1,7 @@
 import { oneResource } from "./testdata"
 import { zeroTime } from "./time"
 import { combinedStatus, warnings } from "./status"
+import { ResourceStatus } from "./types"
 
 function emptyResource() {
   let res = oneResource()
@@ -14,7 +15,7 @@ function emptyResource() {
 describe("combinedStatus", () => {
   it("pending when no build info", () => {
     let res = emptyResource()
-    expect(combinedStatus(res)).toBe("pending")
+    expect(combinedStatus(res)).toBe(ResourceStatus.Pending)
   })
 
   it("pending when current build", () => {
@@ -22,7 +23,7 @@ describe("combinedStatus", () => {
     let res = emptyResource()
     res.currentBuild = { startTime: ts }
     res.runtimeStatus = "ok"
-    expect(combinedStatus(res)).toBe("pending")
+    expect(combinedStatus(res)).toBe(ResourceStatus.Building)
   })
 
   it("ok when runtime ok", () => {
@@ -30,7 +31,7 @@ describe("combinedStatus", () => {
     let res = emptyResource()
     res.buildHistory = [{ startTime: ts }]
     res.runtimeStatus = "ok"
-    expect(combinedStatus(res)).toBe("ok")
+    expect(combinedStatus(res)).toBe(ResourceStatus.Healthy)
   })
 
   it("error when runtime error", () => {
@@ -38,7 +39,7 @@ describe("combinedStatus", () => {
     let res = emptyResource()
     res.buildHistory = [{ startTime: ts }]
     res.runtimeStatus = "error"
-    expect(combinedStatus(res)).toBe("error")
+    expect(combinedStatus(res)).toBe(ResourceStatus.Unhealthy)
   })
 
   it("error when last build error", () => {
@@ -46,7 +47,7 @@ describe("combinedStatus", () => {
     let res = emptyResource()
     res.buildHistory = [{ startTime: ts, error: "error" }]
     res.runtimeStatus = "ok"
-    expect(combinedStatus(res)).toBe("error")
+    expect(combinedStatus(res)).toBe(ResourceStatus.Unhealthy)
   })
 
   it("container restarts aren't errors", () => {
@@ -56,7 +57,7 @@ describe("combinedStatus", () => {
     res.runtimeStatus = "ok"
     if (!res.k8sResourceInfo) throw new Error("missing k8s info")
     res.k8sResourceInfo.podRestarts = 1
-    expect(combinedStatus(res)).toBe("ok")
+    expect(combinedStatus(res)).toBe(ResourceStatus.Healthy)
   })
 
   it("container restarts are warnings", () => {

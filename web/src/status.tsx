@@ -5,8 +5,7 @@ import { Resource, ResourceStatus, RuntimeStatus, TriggerMode } from "./types"
 // 1) If there's a current or pending build, this is "pending".
 // 2) Otherwise, if there's a build error or runtime error, this is "error".
 // 3) Otherwise, we fallback to runtime status.
-function combinedStatus(res: Resource): RuntimeStatus {
-  let status = res.runtimeStatus
+function combinedStatus(res: Resource): ResourceStatus {
   let currentBuild = res.currentBuild
   let hasCurrentBuild = Boolean(
     currentBuild && !isZeroTime(currentBuild.startTime)
@@ -18,23 +17,31 @@ function combinedStatus(res: Resource): RuntimeStatus {
   let lastBuild = buildHistory[0]
   let lastBuildError = lastBuild ? lastBuild.error : ""
 
-  if (hasCurrentBuild || hasPendingBuild) {
-    return RuntimeStatus.Pending
+  if (hasCurrentBuild) {
+    return ResourceStatus.Building
+  }
+  if (hasPendingBuild) {
+    return ResourceStatus.Pending
   }
   if (lastBuildError) {
-    return RuntimeStatus.Error
+    return ResourceStatus.Unhealthy
   }
 
-  switch (status) {
+  switch (res.runtimeStatus) {
     case RuntimeStatus.Error:
-      return RuntimeStatus.Error
+      return ResourceStatus.Unhealthy
     case RuntimeStatus.Pending:
-      return RuntimeStatus.Pending
+      return ResourceStatus.Pending
     case RuntimeStatus.Ok:
-      return RuntimeStatus.Ok
-    default:
-      return RuntimeStatus.Unknown
+      return ResourceStatus.Healthy
+    case RuntimeStatus.NotApplicable:
+      if (res.buildHistory.length > 0) {
+        return ResourceStatus.Healthy
+      } else {
+        return ResourceStatus.None
+      }
   }
+  return ResourceStatus.None
 }
 
 function warnings(res: any): string[] {
@@ -50,8 +57,4 @@ function warnings(res: any): string[] {
   return warnings
 }
 
-function tiltStatus(res: Resource): ResourceStatus {
-  return ResourceStatus.Building
-}
-
-export { combinedStatus, warnings, tiltStatus }
+export { combinedStatus, warnings }
