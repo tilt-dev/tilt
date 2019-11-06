@@ -69,8 +69,7 @@
   animation: barberpole 8s linear infinite;
 }
 
-.SidebarItem--all::before {
-  content: "┌";
+.SidebarItem-allIcon {
   color: $color-gray-light;
   margin-top: $spacing-unit / 4; // Visually center
   width: $sidebar-item;
@@ -79,16 +78,14 @@
   justify-content: center;
 }
 
-.SidebarItem--all-name {
-  text-transform: uppercase;
-  flex: 1;
-}
-
 .SidebarItem-name {
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.SidebarItem--all .SidebarItem-name {
+  text-transform: uppercase;
 }
 
 .SidebarItem-alertBadge {

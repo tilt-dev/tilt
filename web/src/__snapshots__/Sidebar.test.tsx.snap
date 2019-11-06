@@ -17,9 +17,15 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="SidebarItem-link"
           href="/"
           onClick={[Function]}
+          title="All"
         >
+          <div
+            className="SidebarItem-allIcon"
+          >
+            ┌
+          </div>
           <span
-            className="SidebarItem--all-name"
+            className="SidebarItem-name"
           >
             All
           </span>
@@ -37,6 +43,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="SidebarItem-link"
           href="/r/resource4"
           onClick={[Function]}
+          title="resource4"
         >
           <div
             className="SidebarIcon"
@@ -54,7 +61,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
           <p
             className="SidebarItem-name"
-            title="resource4"
           >
             resource4
           </p>
@@ -89,6 +95,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="SidebarItem-link"
           href="/r/resource9"
           onClick={[Function]}
+          title="resource9"
         >
           <div
             className="SidebarIcon"
@@ -106,7 +113,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
           <p
             className="SidebarItem-name"
-            title="resource9"
           >
             resource9
           </p>
@@ -141,6 +147,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="SidebarItem-link"
           href="/r/resource19"
           onClick={[Function]}
+          title="resource19"
         >
           <div
             className="SidebarIcon"
@@ -158,7 +165,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
           <p
             className="SidebarItem-name"
-            title="resource19"
           >
             resource19
           </p>
@@ -193,6 +199,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="SidebarItem-link"
           href="/r/resource29"
           onClick={[Function]}
+          title="resource29"
         >
           <div
             className="SidebarIcon"
@@ -210,7 +217,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
           <p
             className="SidebarItem-name"
-            title="resource29"
           >
             resource29
           </p>
@@ -245,6 +251,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="SidebarItem-link"
           href="/r/resource39"
           onClick={[Function]}
+          title="resource39"
         >
           <div
             className="SidebarIcon"
@@ -262,7 +269,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
           <p
             className="SidebarItem-name"
-            title="resource39"
           >
             resource39
           </p>
@@ -297,6 +303,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="SidebarItem-link"
           href="/r/resource49"
           onClick={[Function]}
+          title="resource49"
         >
           <div
             className="SidebarIcon"
@@ -314,7 +321,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
           <p
             className="SidebarItem-name"
-            title="resource49"
           >
             resource49
           </p>
@@ -349,6 +355,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="SidebarItem-link"
           href="/r/resource54"
           onClick={[Function]}
+          title="resource54"
         >
           <div
             className="SidebarIcon"
@@ -366,7 +373,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
           <p
             className="SidebarItem-name"
-            title="resource54"
           >
             resource54
           </p>
@@ -425,9 +431,15 @@ exports[`sidebar never shows dirty trigger button for automatic resources 1`] = 
           className="SidebarItem-link"
           href="/"
           onClick={[Function]}
+          title="All"
         >
+          <div
+            className="SidebarItem-allIcon"
+          >
+            ┌
+          </div>
           <span
-            className="SidebarItem--all-name"
+            className="SidebarItem-name"
           >
             All
           </span>
@@ -445,6 +457,7 @@ exports[`sidebar never shows dirty trigger button for automatic resources 1`] = 
           className="SidebarItem-link"
           href="/r/vigoda"
           onClick={[Function]}
+          title="vigoda"
         >
           <div
             className="SidebarIcon"
@@ -462,7 +475,6 @@ exports[`sidebar never shows dirty trigger button for automatic resources 1`] = 
           </div>
           <p
             className="SidebarItem-name"
-            title="vigoda"
           >
             vigoda
           </p>
@@ -497,6 +509,7 @@ exports[`sidebar never shows dirty trigger button for automatic resources 1`] = 
           className="SidebarItem-link"
           href="/r/snack"
           onClick={[Function]}
+          title="snack"
         >
           <div
             className="SidebarIcon"
@@ -510,7 +523,6 @@ exports[`sidebar never shows dirty trigger button for automatic resources 1`] = 
           </div>
           <p
             className="SidebarItem-name"
-            title="snack"
           >
             snack
           </p>
@@ -569,9 +581,15 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
           className="SidebarItem-link"
           href="/"
           onClick={[Function]}
+          title="All"
         >
+          <div
+            className="SidebarItem-allIcon"
+          >
+            ┌
+          </div>
           <span
-            className="SidebarItem--all-name"
+            className="SidebarItem-name"
           >
             All
           </span>
@@ -609,9 +627,15 @@ exports[`sidebar renders list of resources 1`] = `
           className="SidebarItem-link"
           href="/"
           onClick={[Function]}
+          title="All"
         >
+          <div
+            className="SidebarItem-allIcon"
+          >
+            ┌
+          </div>
           <span
-            className="SidebarItem--all-name"
+            className="SidebarItem-name"
           >
             All
           </span>
@@ -629,6 +653,7 @@ exports[`sidebar renders list of resources 1`] = `
           className="SidebarItem-link"
           href="/r/vigoda"
           onClick={[Function]}
+          title="vigoda"
         >
           <div
             className="SidebarIcon"
@@ -646,7 +671,6 @@ exports[`sidebar renders list of resources 1`] = `
           </div>
           <p
             className="SidebarItem-name"
-            title="vigoda"
           >
             vigoda
           </p>
@@ -681,6 +705,7 @@ exports[`sidebar renders list of resources 1`] = `
           className="SidebarItem-link"
           href="/r/snack"
           onClick={[Function]}
+          title="snack"
         >
           <div
             className="SidebarIcon"
@@ -698,7 +723,6 @@ exports[`sidebar renders list of resources 1`] = `
           </div>
           <p
             className="SidebarItem-name"
-            title="snack"
           >
             snack
           </p>
@@ -757,9 +781,15 @@ exports[`sidebar renders queued resource with class .isQueued and NOT .isReady 1
           className="SidebarItem-link"
           href="/"
           onClick={[Function]}
+          title="All"
         >
+          <div
+            className="SidebarItem-allIcon"
+          >
+            ┌
+          </div>
           <span
-            className="SidebarItem--all-name"
+            className="SidebarItem-name"
           >
             All
           </span>
@@ -777,6 +807,7 @@ exports[`sidebar renders queued resource with class .isQueued and NOT .isReady 1
           className="SidebarItem-link"
           href="/r/vigoda"
           onClick={[Function]}
+          title="vigoda"
         >
           <div
             className="SidebarIcon"
@@ -794,7 +825,6 @@ exports[`sidebar renders queued resource with class .isQueued and NOT .isReady 1
           </div>
           <p
             className="SidebarItem-name"
-            title="vigoda"
           >
             vigoda
           </p>
@@ -853,9 +883,15 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           className="SidebarItem-link"
           href="/"
           onClick={[Function]}
+          title="All"
         >
+          <div
+            className="SidebarItem-allIcon"
+          >
+            ┌
+          </div>
           <span
-            className="SidebarItem--all-name"
+            className="SidebarItem-name"
           >
             All
           </span>
@@ -873,6 +909,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           className="SidebarItem-link"
           href="/r/vigoda"
           onClick={[Function]}
+          title="vigoda"
         >
           <div
             className="SidebarIcon"
@@ -890,7 +927,6 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           </div>
           <p
             className="SidebarItem-name"
-            title="vigoda"
           >
             vigoda
           </p>
@@ -920,6 +956,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           className="SidebarItem-link"
           href="/r/snack"
           onClick={[Function]}
+          title="snack"
         >
           <div
             className="SidebarIcon"
@@ -937,7 +974,6 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           </div>
           <p
             className="SidebarItem-name"
-            title="snack"
           >
             snack
           </p>
@@ -991,9 +1027,15 @@ exports[`sidebar shows ready + dirty trigger button for manual resource with pen
           className="SidebarItem-link"
           href="/"
           onClick={[Function]}
+          title="All"
         >
+          <div
+            className="SidebarItem-allIcon"
+          >
+            ┌
+          </div>
           <span
-            className="SidebarItem--all-name"
+            className="SidebarItem-name"
           >
             All
           </span>
@@ -1011,6 +1053,7 @@ exports[`sidebar shows ready + dirty trigger button for manual resource with pen
           className="SidebarItem-link"
           href="/r/vigoda"
           onClick={[Function]}
+          title="vigoda"
         >
           <div
             className="SidebarIcon"
@@ -1024,7 +1067,6 @@ exports[`sidebar shows ready + dirty trigger button for manual resource with pen
           </div>
           <p
             className="SidebarItem-name"
-            title="vigoda"
           >
             vigoda
           </p>
@@ -1059,6 +1101,7 @@ exports[`sidebar shows ready + dirty trigger button for manual resource with pen
           className="SidebarItem-link"
           href="/r/snack"
           onClick={[Function]}
+          title="snack"
         >
           <div
             className="SidebarIcon"
@@ -1072,7 +1115,6 @@ exports[`sidebar shows ready + dirty trigger button for manual resource with pen
           </div>
           <p
             className="SidebarItem-name"
-            title="snack"
           >
             snack
           </p>
@@ -1131,9 +1173,15 @@ exports[`sidebar trigger button not ready if resource is building 1`] = `
           className="SidebarItem-link"
           href="/"
           onClick={[Function]}
+          title="All"
         >
+          <div
+            className="SidebarItem-allIcon"
+          >
+            ┌
+          </div>
           <span
-            className="SidebarItem--all-name"
+            className="SidebarItem-name"
           >
             All
           </span>
@@ -1151,6 +1199,7 @@ exports[`sidebar trigger button not ready if resource is building 1`] = `
           className="SidebarItem-link"
           href="/r/vigoda"
           onClick={[Function]}
+          title="vigoda"
         >
           <div
             className="SidebarIcon"
@@ -1168,7 +1217,6 @@ exports[`sidebar trigger button not ready if resource is building 1`] = `
           </div>
           <p
             className="SidebarItem-name"
-            title="vigoda"
           >
             vigoda
           </p>
@@ -1227,9 +1275,15 @@ exports[`sidebar trigger button not ready if resource waiting for first build 1`
           className="SidebarItem-link"
           href="/"
           onClick={[Function]}
+          title="All"
         >
+          <div
+            className="SidebarItem-allIcon"
+          >
+            ┌
+          </div>
           <span
-            className="SidebarItem--all-name"
+            className="SidebarItem-name"
           >
             All
           </span>
@@ -1247,6 +1301,7 @@ exports[`sidebar trigger button not ready if resource waiting for first build 1`
           className="SidebarItem-link"
           href="/r/vigoda"
           onClick={[Function]}
+          title="vigoda"
         >
           <div
             className="SidebarIcon"
@@ -1264,7 +1319,6 @@ exports[`sidebar trigger button not ready if resource waiting for first build 1`
           </div>
           <p
             className="SidebarItem-name"
-            title="vigoda"
           >
             vigoda
           </p>
