@@ -16,6 +16,7 @@ var defaultJSONIterator = json.Config{}.Froze()
 func CreateEngineStateEncoder(w io.Writer) *json.Encoder {
 	config := json.Config{SortMapKeys: true}.Froze()
 	config.RegisterExtension(newEngineStateExtension())
+	config.RegisterExtension(&privateFieldsExtension{})
 	return config.NewEncoder(w)
 }
 
