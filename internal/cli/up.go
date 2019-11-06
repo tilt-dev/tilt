@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/mattn/go-isatty"
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
@@ -123,7 +125,8 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	if c.hud {
+	hudEnabled := c.hud && isatty.IsTerminal(os.Stdout.Fd())
+	if hudEnabled {
 		err := output.CaptureAllOutput(logger.Get(ctx).Writer(logger.InfoLvl))
 		if err != nil {
 			logger.Get(ctx).Infof("Error capturing stdout and stderr: %v", err)
@@ -136,7 +139,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	g.Go(func() error {
 		defer cancel()
-		return upper.Start(ctx, args, threads.tiltBuild, c.watch, c.fileName, c.hud, a.UserOpt(), threads.token, string(threads.cloudAddress))
+		return upper.Start(ctx, args, threads.tiltBuild, c.watch, c.fileName, hudEnabled, a.UserOpt(), threads.token, string(threads.cloudAddress))
 	})
 
 	err = g.Wait()

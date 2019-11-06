@@ -177,6 +177,10 @@ func (s *Store) maybeFinished() (bool, error) {
 		return true, nil
 	}
 
+	if state.FatalError != nil && !state.HUDEnabled {
+		return true, state.FatalError
+	}
+
 	if len(state.ManifestTargets) == 0 {
 		return false, nil
 	}

@@ -90,7 +90,7 @@ func (u Upper) Start(
 	b model.TiltBuild,
 	watch bool,
 	fileName string,
-	useActionWriter bool,
+	hudEnabled bool,
 	analyticsUserOpt analytics.Opt,
 	token token.Token,
 	cloudAddress string,
@@ -123,6 +123,7 @@ func (u Upper) Start(
 		AnalyticsUserOpt: analyticsUserOpt,
 		Token:            token,
 		CloudAddress:     cloudAddress,
+		HUDEnabled:       hudEnabled,
 	})
 }
 
@@ -665,6 +666,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.WatchFiles = action.WatchFiles
 	engineState.CloudAddress = action.CloudAddress
 	engineState.Token = action.Token
+	engineState.HUDEnabled = action.HUDEnabled
 
 	// NOTE(dmiller): this kicks off a Tiltfile build
 	engineState.PendingConfigFileChanges[action.TiltfilePath] = time.Now()

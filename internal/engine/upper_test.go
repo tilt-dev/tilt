@@ -510,7 +510,10 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	f.SetNextBuildFailure(buildFailedToken)
 
 	f.setManifests([]model.Manifest{manifest})
-	err := f.upper.Init(f.ctx, InitAction{TiltfilePath: f.JoinPath("Tiltfile")})
+	err := f.upper.Init(f.ctx, InitAction{
+		TiltfilePath: f.JoinPath("Tiltfile"),
+		HUDEnabled:   true,
+	})
 	require.Nil(t, err)
 	f.WaitUntilManifestState("build has failed", manifest.ManifestName(), func(st store.ManifestState) bool {
 		return st.LastBuild().Error != nil
@@ -3079,6 +3082,7 @@ func (f *testFixture) startWithInitManifests(initManifests []model.ManifestName,
 	ia := InitAction{
 		WatchFiles:   watchFiles,
 		TiltfilePath: f.JoinPath("Tiltfile"),
+		HUDEnabled:   true,
 	}
 	for _, o := range initOptions {
 		ia = o(ia)
@@ -3445,6 +3449,7 @@ func (f *testFixture) loadAndStart() {
 	ia := InitAction{
 		WatchFiles:   true,
 		TiltfilePath: f.JoinPath("Tiltfile"),
+		HUDEnabled:   true,
 	}
 	f.Init(ia)
 }
