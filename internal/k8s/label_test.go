@@ -181,9 +181,9 @@ func TestInjectStatefulSet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Only inject once: in the top-level metadata and the pod template,
+	// Only inject twice: in the top-level metadata, the pod template, and the match selectors,
 	// not the volume claim template
-	assert.Equal(t, 2, strings.Count(result, "tilt-runid: deadbeef"))
+	assert.Equal(t, 3, strings.Count(result, "tilt-runid: deadbeef"))
 }
 
 func TestSelectorMatchesLabels(t *testing.T) {

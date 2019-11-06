@@ -3,7 +3,6 @@ package k8s
 import (
 	"reflect"
 
-	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	v1 "k8s.io/api/core/v1"
@@ -51,6 +50,15 @@ func applyLabelsToMap(orig *map[string]string, labels []model.LabelPair, overwri
 func injectLabels(entity K8sEntity, labels []model.LabelPair, overwrite bool) (K8sEntity, error) {
 	entity = entity.DeepCopy()
 
+	switch obj := entity.Obj.(type) {
+	case *appsv1beta1.Deployment:
+		allowLabelChangesInAppsDeploymentBeta1(obj)
+	case *appsv1beta2.Deployment:
+		allowLabelChangesInAppsDeploymentBeta2(obj)
+	case *extv1beta1.Deployment:
+		allowLabelChangesInExtDeploymentBeta1(obj)
+	}
+
 	// Don't modify persistent volume claims
 	// because they're supposed to be immutable.
 	pvc := reflect.TypeOf(v1.PersistentVolumeClaim{})
@@ -61,22 +69,15 @@ func injectLabels(entity K8sEntity, labels []model.LabelPair, overwrite bool) (K
 		return K8sEntity{}, err
 	}
 
-	switch obj := entity.Obj.(type) {
-	case *appsv1beta1.Deployment:
-		allowLabelChangesInAppsDeploymentBeta1(obj)
-		applyLabelsToMap(&obj.Spec.Selector.MatchLabels, labels, overwrite)
-	case *appsv1beta2.Deployment:
-		allowLabelChangesInAppsDeploymentBeta2(obj)
-		applyLabelsToMap(&obj.Spec.Selector.MatchLabels, labels, overwrite)
-	case *extv1beta1.Deployment:
-		allowLabelChangesInExtDeploymentBeta1(obj)
-		applyLabelsToMap(&obj.Spec.Selector.MatchLabels, labels, overwrite)
-	case *appsv1.Deployment:
-		applyLabelsToMap(&obj.Spec.Selector.MatchLabels, labels, overwrite)
-	}
-
 	for _, meta := range metas {
 		applyLabelsToMap(&meta.Labels, labels, overwrite)
+	}
+
+	selectors, err := extractSelectors(&entity, func(v reflect.Value) bool {
+		return v.Type() != pvc
+	})
+	for _, selector := range selectors {
+		applyLabelsToMap(&selector.MatchLabels, labels, overwrite)
 	}
 	return entity, nil
 }
