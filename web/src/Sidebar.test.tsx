@@ -1,4 +1,5 @@
 import React from "react"
+import { mount } from "enzyme"
 import renderer from "react-test-renderer"
 import { MemoryRouter } from "react-router"
 import Sidebar, { SidebarItem } from "./Sidebar"
@@ -250,27 +251,33 @@ describe("sidebar", () => {
   it("disables trigger button for Tiltfile", () => {
     let res = oneResource()
     res.name = "(Tiltfile)"
+    res.isTiltfile = true
     res.currentBuild = {} // not currently building
     res.hasPendingChanges = false
     res.pendingBuildSince = "0001-01-01T00:00:00Z"
 
     let items = [new SidebarItem(res)]
 
-    const tree = renderer
-      .create(
-        <MemoryRouter initialEntries={["/"]}>
-          <Sidebar
-            isClosed={false}
-            items={items}
-            selected=""
-            toggleSidebar={null}
-            resourceView={ResourceView.Log}
-            pathBuilder={pathBuilder}
-          />
-        </MemoryRouter>
-      )
-      .toJSON()
+    const root = mount(
+      <MemoryRouter initialEntries={["/"]}>
+        <Sidebar
+          isClosed={false}
+          items={items}
+          selected=""
+          toggleSidebar={null}
+          resourceView={ResourceView.Log}
+          pathBuilder={pathBuilder}
+        />
+      </MemoryRouter>
+    )
 
-    expect(tree).toMatchSnapshot()
+    let element = root.find(".SidebarTriggerButton")
+    expect(element).toHaveLength(1)
+    expect(element.hasClass("isReady")).toBeFalsy()
+    expect(element.hasClass("isDirty")).toBeFalsy()
+    expect(element.hasClass("isSelected")).toBeFalsy()
+    expect(element.hasClass("isQueuedq")).toBeFalsy()
+    expect(element.prop("disabled")).toBeTruthy()
+    expect(element.prop("title")).toContain("Tiltfile")
   })
 })

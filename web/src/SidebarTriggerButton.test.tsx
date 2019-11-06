@@ -13,6 +13,7 @@ describe("SidebarTriggerButton", () => {
 
     const root = mount(
       <SidebarTriggerButton
+        isTiltfile={false}
         isSelected={true}
         resourceName="doggos"
         triggerMode={TriggerMode.TriggerModeManual}
@@ -40,6 +41,7 @@ describe("SidebarTriggerButton", () => {
 
     const root = mount(
       <SidebarTriggerButton
+        isTiltfile={false}
         isSelected={true}
         resourceName="doggos"
         triggerMode={TriggerMode.TriggerModeManual}

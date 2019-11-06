@@ -4,6 +4,7 @@ import "./SidebarTriggerButton.scss"
 
 type SidebarTriggerButtonProps = {
   resourceName: string
+  isTiltfile: boolean
   isBuilding: boolean
   hasBuilt: boolean
   triggerMode: TriggerMode
@@ -46,7 +47,7 @@ export default class SidebarTriggerButton extends PureComponent<
 > {
   render() {
     let props = this.props
-    if (props.resourceName == "(Tiltfile)") {
+    if (props.isTiltfile) {
       // can't force update the Tiltfile
       return (
         <button
