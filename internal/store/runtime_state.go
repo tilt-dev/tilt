@@ -41,8 +41,8 @@ type K8sRuntimeState struct {
 
 	Pods                           map[k8s.PodID]*Pod
 	LBs                            map[k8s.ServiceName]*url.URL
-	DeployedUIDSet                 UIDSet
-	DeployedPodTemplateSpecHashSet PodTemplateSpecHashSet
+	DeployedUIDSet                 UIDSet                 // for the most recent successful deploy
+	DeployedPodTemplateSpecHashSet PodTemplateSpecHashSet // for the most recent successful deploy
 
 	LastReadyTime time.Time
 }
@@ -102,6 +102,16 @@ func (s K8sRuntimeState) MostRecentPod() Pod {
 	}
 
 	return bestPod
+}
+
+func (s K8sRuntimeState) HasOKPodTemplateSpecHash(pod *v1.Pod) bool {
+	// if it doesn't have a label, just let it through - maybe it's from a CRD w/ no pod template spec
+	hash, ok := pod.Labels[k8s.TiltPodTemplateHashLabel]
+	if !ok {
+		return true
+	}
+
+	return s.DeployedPodTemplateSpecHashSet.Contains(k8s.PodTemplateSpecHash(hash))
 }
 
 type Pod struct {

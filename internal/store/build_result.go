@@ -111,6 +111,7 @@ type K8sBuildResult struct {
 	// The UIDs that we deployed to a Kubernetes cluster.
 	DeployedUIDs []types.UID
 
+	// Hashes of the pod template specs that we deployed to a Kubernetes cluster.
 	PodTemplateSpecHashes []k8s.PodTemplateSpecHash
 
 	AppliedEntitiesText string
