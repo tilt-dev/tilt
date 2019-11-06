@@ -3022,7 +3022,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	ghc := &github.FakeClient{}
 	ewm := k8swatch.NewEventWatchManager(kCli, of)
 	tcum := cloud.NewUsernameManager(httptest.NewFakeClient())
-	cuu := cloud.NewUpdateUploader(httptest.NewFakeClient(), "cloud-test.tilt.dev", &fakeSnapshotUploader{})
+	cuu := cloud.NewUpdateUploader(httptest.NewFakeClient(), "cloud-test.tilt.dev")
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
 	dp.DisabledForTesting(true)

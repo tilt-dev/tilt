@@ -19,17 +19,15 @@ import (
 type UpdateUploader struct {
 	client HttpClient
 	addr   cloudurl.Address
-	su     SnapshotUploader
 
 	lastCompletedBuildCount int
 	lastFinishTime          time.Time
 }
 
-func NewUpdateUploader(client HttpClient, addr cloudurl.Address, su SnapshotUploader) *UpdateUploader {
+func NewUpdateUploader(client HttpClient, addr cloudurl.Address) *UpdateUploader {
 	return &UpdateUploader{
 		client: client,
 		addr:   addr,
-		su:     su,
 	}
 }
 
@@ -110,12 +108,6 @@ func (u *UpdateUploader) makeUpdates(ctx context.Context, st store.RStore) updat
 
 	// OK, we know we have work to do!
 
-	sID, err := u.su.TakeAndUpload(state)
-	if err != nil {
-		logger.Get(ctx).Infof("error posting snapshot: %v", err)
-		// if the upload failed, snapshotID will be empty, so we'll just send updates without a snapshot
-	}
-
 	highWaterMark := u.lastFinishTime
 	updates := []update{}
 
@@ -147,7 +139,6 @@ func (u *UpdateUploader) makeUpdates(ctx context.Context, st store.RStore) updat
 				IsLiveUpdate:      record.HasBuildType(model.BuildTypeLiveUpdate),
 				Result:            resultCode,
 				ResultDescription: resultDescription,
-				SnapshotID:        snapshotID{string(sID)},
 			})
 		}
 	}
