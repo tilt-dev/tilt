@@ -20,6 +20,7 @@ import { numberOfAlerts } from "./alerts"
 
 class SidebarItem {
   name: string
+  isTiltfile: boolean
   status: RuntimeStatus
   hasWarnings: boolean
   hasEndpoints: boolean
@@ -37,6 +38,7 @@ class SidebarItem {
    */
   constructor(res: Resource) {
     this.name = res.name
+    this.isTiltfile = res.isTiltfile
     this.status = combinedStatus(res)
     this.hasWarnings = warnings(res).length > 0
     this.hasEndpoints = (res.endpoints || []).length > 0
@@ -147,9 +149,10 @@ class Sidebar extends PureComponent<SidebarProps> {
             </span>
           </Link>
           <SidebarTriggerButton
+            resourceName={item.name}
+            isTiltfile={item.isTiltfile}
             isSelected={isSelected}
             hasPendingChanges={item.hasPendingChanges}
-            resourceName={item.name}
             hasBuilt={hasBuilt}
             isBuilding={building}
             triggerMode={item.triggerMode}
