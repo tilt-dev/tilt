@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
@@ -29,6 +31,9 @@ func TestToJSON(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	assert.Contains(t, buf.String(), "YAML")
+	assert.Contains(t, buf.String(), "kind: Deployment")
 
 	// Make sure the data can decode successfully.
 	decoder := json.NewDecoder(bytes.NewBufferString(buf.String()))
