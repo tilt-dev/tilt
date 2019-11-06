@@ -41,6 +41,7 @@ type EngineState struct {
 	BuildControllerActionCount int
 
 	FatalError error
+	HUDEnabled bool
 
 	// The user has indicated they want to exit
 	UserExited bool

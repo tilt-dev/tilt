@@ -51,6 +51,7 @@ type InitAction struct {
 
 	CloudAddress string
 	Token        token.Token
+	HUDEnabled   bool
 }
 
 func (InitAction) Action() {}
