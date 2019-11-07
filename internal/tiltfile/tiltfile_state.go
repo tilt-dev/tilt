@@ -19,6 +19,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/sliceutils"
+	"github.com/windmilleng/tilt/internal/tiltfile/analytics"
 	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
 	"github.com/windmilleng/tilt/internal/tiltfile/git"
 	"github.com/windmilleng/tilt/internal/tiltfile/include"
@@ -152,6 +153,7 @@ func (s *tiltfileState) loadManifests(absFilename string, requested []model.Mani
 		io.NewExtension(),
 		s.k8sContextExt,
 		dockerprune.NewExtension(),
+		analytics.NewExtension(),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)
