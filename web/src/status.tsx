@@ -16,15 +16,20 @@ function combinedStatus(res: Resource): ResourceStatus {
   let buildHistory = res.buildHistory || []
   let lastBuild = buildHistory[0]
   let lastBuildError = lastBuild ? lastBuild.error : ""
+  let hasWarnings = warnings(res).length > 0
 
   if (hasCurrentBuild) {
     return ResourceStatus.Building
-  }
-  if (hasPendingBuild) {
+  } else if (hasPendingBuild) {
     return ResourceStatus.Pending
-  }
-  if (lastBuildError) {
+  } else if (lastBuildError) {
     return ResourceStatus.Unhealthy
+  } else if (hasWarnings) {
+    if (res.runtimeStatus === RuntimeStatus.Error) {
+      return ResourceStatus.Unhealthy
+    } else {
+      return ResourceStatus.Warning
+    }
   }
 
   switch (res.runtimeStatus) {

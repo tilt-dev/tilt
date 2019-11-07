@@ -22,7 +22,6 @@ class SidebarItem {
   name: string
   isTiltfile: boolean
   status: ResourceStatus
-  hasWarnings: boolean
   hasEndpoints: boolean
   lastDeployTime: string
   pendingBuildSince: string
@@ -40,7 +39,6 @@ class SidebarItem {
     this.name = res.name
     this.isTiltfile = res.isTiltfile
     this.status = combinedStatus(res)
-    this.hasWarnings = warnings(res).length > 0
     this.hasEndpoints = (res.endpoints || []).length > 0
     this.lastDeployTime = res.lastDeployTime
     this.pendingBuildSince = res.pendingBuildSince

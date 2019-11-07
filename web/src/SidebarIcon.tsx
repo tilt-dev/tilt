@@ -28,6 +28,8 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
         return this.building()
       case ResourceStatus.Pending:
         return this.pending()
+      case ResourceStatus.Warning:
+        return this.default(Color.yellow)
       case ResourceStatus.Healthy:
         return this.default(Color.green)
       case ResourceStatus.Unhealthy:
