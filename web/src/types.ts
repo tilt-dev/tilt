@@ -49,6 +49,7 @@ export enum ResourceStatus {
   Pending, // not building, healthy, or unhealthy, but presumably on its way to one of those (e.g., queued to build, or ContainerCreating)
   Healthy, // e.g., build succeeded and pod is running and healthy
   Unhealthy, // e.g., last build failed, or CrashLoopBackOff
+  Warning, // e.g., an undismissed restart
   None, // e.g., a manual build that has never executed
 }
 

@@ -13,6 +13,7 @@ const cases: Array<
   ["healthy", ResourceStatus.Healthy, Color.green, IconType.StatusDefault],
   ["unhealthy", ResourceStatus.Unhealthy, Color.red, IconType.StatusDefault],
   ["building", ResourceStatus.Building, false, IconType.StatusBuilding],
+  ["warning", ResourceStatus.Warning, Color.yellow, IconType.StatusDefault],
   ["none", ResourceStatus.None, Color.gray, IconType.StatusDefault],
 ]
 
