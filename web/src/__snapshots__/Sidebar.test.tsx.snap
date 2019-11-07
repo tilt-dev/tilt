@@ -544,7 +544,7 @@ exports[`sidebar never shows dirty trigger button for automatic resources 1`] = 
         </a>
         <button
           className="SidebarTriggerButton 
-           isReady"
+           clickable"
           disabled={false}
           onClick={[Function]}
           title="Force a rebuild/update for this resource."
@@ -1088,7 +1088,7 @@ exports[`sidebar shows ready + dirty trigger button for manual resource with pen
         </a>
         <button
           className="SidebarTriggerButton 
-           isReady isDirty"
+           clickable clickMe"
           disabled={false}
           onClick={[Function]}
           title="This manual resource has pending file changes; click to trigger an update."
@@ -1136,7 +1136,7 @@ exports[`sidebar shows ready + dirty trigger button for manual resource with pen
         </a>
         <button
           className="SidebarTriggerButton 
-           isReady"
+           clickable"
           disabled={false}
           onClick={[Function]}
           title="Force a rebuild/update for this resource."
