@@ -21,44 +21,46 @@ func TestLiveUpdateAfterCrashRebuild(t *testing.T) {
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 	fmt.Println("> Waiting for pods from initial build")
-	oneUpPods := f.WaitForAllPodsReady(ctx, "app=live-update-after-crash-rebuild")
+	initialBuildPods := f.WaitForAllPodsReady(ctx, "app=live-update-after-crash-rebuild")
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 	f.CurlUntil(ctx, "http://localhost:31234", "🍄 One-Up! 🍄")
 
 	// Live update
+	fmt.Println("> Perform a live update")
 	f.ReplaceContents("compile.sh", "One-Up", "Two-Up")
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
-	fmt.Println("> Perform a live update")
 	f.CurlUntil(ctx, "http://localhost:31234", "🍄 Two-Up! 🍄")
 
 	// Check that the pods were changed in place, and that we didn't create new ones
-	twoUpPods := f.WaitForAllPodsReady(ctx, "app=live-update-after-crash-rebuild")
-	require.Equal(t, oneUpPods, twoUpPods)
+	afterLiveUpdatePods := f.WaitForAllPodsReady(ctx, "app=live-update-after-crash-rebuild")
+	require.Equal(t, initialBuildPods, afterLiveUpdatePods)
 
-	if len(twoUpPods) != 1 {
-		t.Fatalf("Expected one pod, actual: %v", twoUpPods)
+	if len(afterLiveUpdatePods) != 1 {
+		t.Fatalf("Expected one pod, actual: %v", afterLiveUpdatePods)
 	}
 
 	// Delete the pod and make sure it got replaced with something that prints the
 	// same thing (crash rebuild).
 	fmt.Println("> Kill pod, wait for crash rebuild")
-	f.runCommandSilently("kubectl", "delete", "pod", twoUpPods[0], namespaceFlag)
+	f.runCommandSilently("kubectl", "delete", "pod", afterLiveUpdatePods[0], namespaceFlag)
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 	f.CurlUntil(ctx, "http://localhost:31234", "🍄 Two-Up! 🍄")
 
-	// Unfortunately "WaitForAllPodsReady" isn't that accurate and can pull in terminating pods
-	// too. Sleep here to increase the chance that pods are in the right state when we check.
-	fmt.Println("> (Waiting for dead pods to get into 'terminating' state)")
+	// Unfortunately "WaitForAllPodsReady" actually checks for CONTAINER status,
+	// and may pull in terminating pods (a container may be "ready" while its pod
+	// is "terminating". We need to fix this, but in the meantime, sleep here to
+	// increase the chance that containers are in the right state when we check.
+	fmt.Println("> (Waiting for containers on dead pods to be !ready) ")
 	time.Sleep(2 * time.Second)
 
-	newTwoUpPods := f.WaitForAllPodsReady(ctx, "app=live-update-after-crash-rebuild")
-	require.NotEqual(t, twoUpPods, newTwoUpPods)
+	afterCrashRebuildPods := f.WaitForAllPodsReady(ctx, "app=live-update-after-crash-rebuild")
+	require.NotEqual(t, afterLiveUpdatePods, afterCrashRebuildPods)
 
 	// Another live update! Make sure that, after the crash rebuild, we're able to run more
 	// live updates (i.e. that we have one and only one pod associated w/ the manifest)
@@ -69,8 +71,8 @@ func TestLiveUpdateAfterCrashRebuild(t *testing.T) {
 	defer cancel()
 	f.CurlUntil(ctx, "http://localhost:31234", "🍄 Three-Up! 🍄")
 
-	threeUpPods := f.WaitForAllPodsReady(ctx, "app=live-update-after-crash-rebuild")
+	afterSecondLiveUpdatePods := f.WaitForAllPodsReady(ctx, "app=live-update-after-crash-rebuild")
 
 	// Check that the pods were changed in place, and that we didn't create new ones
-	require.Equal(t, newTwoUpPods, threeUpPods)
+	require.Equal(t, afterCrashRebuildPods, afterSecondLiveUpdatePods)
 }
