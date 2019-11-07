@@ -203,7 +203,10 @@ describe("sidebar", () => {
   it("trigger button not ready if resource waiting for first build", () => {
     let res = oneResource()
     res.currentBuild = {}
-    res.lastDeployTime = "0001-01-01T00:00:00Z"
+    res.buildHistory = []
+    res.lastDeployTime = ""
+    res.hasPendingChanges = false
+    res.pendingBuildSince = ""
     let items = [new SidebarItem(res)]
 
     const tree = renderer
@@ -228,6 +231,32 @@ describe("sidebar", () => {
     let res = oneResource()
     res.currentBuild = {}
     res.queued = true
+    let items = [new SidebarItem(res)]
+
+    const tree = renderer
+      .create(
+        <MemoryRouter initialEntries={["/"]}>
+          <Sidebar
+            isClosed={false}
+            items={items}
+            selected=""
+            toggleSidebar={null}
+            resourceView={ResourceView.Log}
+            pathBuilder={pathBuilder}
+          />
+        </MemoryRouter>
+      )
+      .toJSON()
+
+    expect(tree).toMatchSnapshot()
+  })
+
+  it("shows a trigger button for resource that failed its initial build", () => {
+    let res = oneResource()
+    res.lastDeployTime = ""
+    res.currentBuild = false
+    res.hasPendingChanges = false
+    res.pendingBuildSince = ""
     let items = [new SidebarItem(res)]
 
     const tree = renderer
