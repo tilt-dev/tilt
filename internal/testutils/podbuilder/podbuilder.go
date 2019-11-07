@@ -366,6 +366,12 @@ func (b PodBuilder) Build() *v1.Pod {
 	b.validateImageRefs(numContainers)
 	b.validateContainerIDs(numContainers)
 
+	// Generate buildLabels from the incoming pod spec, before we've modified it,
+	// so that it matches the spec we generate from the manifest itself.
+	// Can override this behavior by setting b.PodTemplateSpecHash (or
+	// by setting b.setPodTemplateSpecHash = false )
+	labels := b.buildLabels(tSpec)
+
 	for i, container := range spec.Containers {
 		container.Image = b.buildImage(container.Image, i)
 		spec.Containers[i] = container
@@ -376,7 +382,7 @@ func (b PodBuilder) Build() *v1.Pod {
 			Name:              b.PodID(),
 			CreationTimestamp: b.buildCreationTime(),
 			DeletionTimestamp: b.buildDeletionTime(),
-			Labels:            b.buildLabels(tSpec),
+			Labels:            labels,
 			UID:               b.buildPodUID(),
 			OwnerReferences: []metav1.OwnerReference{
 				k8s.RuntimeObjToOwnerRef(b.buildReplicaSet()),

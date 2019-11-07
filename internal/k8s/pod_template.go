@@ -43,7 +43,9 @@ func InjectPodTemplateSpecHashes(entity K8sEntity) (K8sEntity, error) {
 	return entity, nil
 }
 
-func PodTemplateSpecHashes(entity K8sEntity) ([]PodTemplateSpecHash, error) {
+// ReadPodTemplateSpecHashes pulls the PodTemplateSpecHash that Tilt injected
+// into this entity's metadata during deploy (if any)
+func ReadPodTemplateSpecHashes(entity K8sEntity) ([]PodTemplateSpecHash, error) {
 	templateSpecs, err := ExtractPodTemplateSpec(&entity)
 	if err != nil {
 		return nil, err

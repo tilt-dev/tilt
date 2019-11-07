@@ -233,7 +233,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 			return nil, fmt.Errorf("Entity not deployed correctly: %v", entity)
 		}
 		uids = append(uids, entity.UID())
-		hs, err := k8s.PodTemplateSpecHashes(entity)
+		hs, err := k8s.ReadPodTemplateSpecHashes(entity)
 		if err != nil {
 			return nil, errors.Wrap(err, "reading pod template spec hashes")
 		}
