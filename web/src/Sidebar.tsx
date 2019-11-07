@@ -145,7 +145,11 @@ class Sidebar extends PureComponent<SidebarProps> {
             ) : (
               ""
             )}
-            <span className={`SidebarItem-timeAgo ${hasSuccessfullyDeployed ? "" : "empty"}`}>
+            <span
+              className={`SidebarItem-timeAgo ${
+                hasSuccessfullyDeployed ? "" : "empty"
+              }`}
+            >
               {hasSuccessfullyDeployed ? timeAgo : "—"}
             </span>
           </Link>
