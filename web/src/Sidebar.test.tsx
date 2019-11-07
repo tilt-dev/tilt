@@ -150,7 +150,7 @@ describe("sidebar", () => {
 
       if (i == 0) {
         // first resource has pending changes -- but is automatic, should NOT
-        // have a dirty trigger button (and button should be !isReady)
+        // have a clickMe button (and button should be !clickable)
         res.hasPendingChanges = true
         res.pendingBuildSince = new Date(Date.now()).toISOString()
       } else {
@@ -273,10 +273,10 @@ describe("sidebar", () => {
 
     let element = root.find(".SidebarTriggerButton")
     expect(element).toHaveLength(1)
-    expect(element.hasClass("isReady")).toBeFalsy()
-    expect(element.hasClass("isDirty")).toBeFalsy()
+    expect(element.hasClass("clickable")).toBeFalsy()
+    expect(element.hasClass("clickMe")).toBeFalsy()
     expect(element.hasClass("isSelected")).toBeFalsy()
-    expect(element.hasClass("isQueuedq")).toBeFalsy()
+    expect(element.hasClass("isQueued")).toBeFalsy()
     expect(element.prop("disabled")).toBeTruthy()
     expect(element.prop("title")).toContain("Tiltfile")
   })
