@@ -323,12 +323,12 @@ func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Re
 func runtimeStatus(res ResourceInfoView) RuntimeStatus {
 	_, isLocal := res.(*LocalResourceInfo)
 	if isLocal {
-		return RuntimeStatusOK
+		return RuntimeStatusNotApplicable
 	}
 	// if we have no images to build, we have no runtime status monitoring.
 	_, isYAML := res.(*YAMLResourceInfo)
 	if isYAML {
-		return RuntimeStatusOK
+		return RuntimeStatusNotApplicable
 	}
 
 	result, ok := runtimeStatusMap[res.Status()]

@@ -1,5 +1,5 @@
 import React, { PureComponent } from "react"
-import { TriggerMode, RuntimeStatus, Build } from "./types"
+import { Build, ResourceStatus } from "./types"
 import { Color } from "./constants"
 import { ReactComponent as DotSvg } from "./assets/svg/indicator-auto.svg"
 import { ReactComponent as DotPendingSvg } from "./assets/svg/indicator-auto-pending.svg"
@@ -7,11 +7,7 @@ import { ReactComponent as DotBuildingSvg } from "./assets/svg/indicator-auto-bu
 import "./SidebarIcon.scss"
 
 type SidebarIconProps = {
-  status: RuntimeStatus
-  hasWarning: boolean
-  isBuilding: boolean
-  isDirty: boolean
-  lastBuild: Build | null
+  status: ResourceStatus
 }
 
 // For testing
@@ -23,33 +19,22 @@ export enum IconType {
 
 export default class SidebarIcon extends PureComponent<SidebarIconProps> {
   render() {
-    let props = this.props
-    let fill = Color.green
-    let dirtyBuildWithError =
-      props.isDirty && props.lastBuild && props.lastBuild.error
-
-    if (props.status === RuntimeStatus.Error) {
-      fill = Color.red
-    } else if (props.hasWarning) {
-      fill = Color.yellow
-    } else if (dirtyBuildWithError) {
-      fill = Color.red
-    }
-
-    return <div className="SidebarIcon">{this.renderSvg(fill)}</div>
+    return <div className="SidebarIcon">{this.svg()}</div>
   }
 
-  renderSvg(fill: Color) {
-    let props = this.props
-    if (props.isBuilding) {
-      return this.building()
+  svg() {
+    switch (this.props.status) {
+      case ResourceStatus.Building:
+        return this.building()
+      case ResourceStatus.Pending:
+        return this.pending()
+      case ResourceStatus.Healthy:
+        return this.default(Color.green)
+      case ResourceStatus.Unhealthy:
+        return this.default(Color.red)
+      case ResourceStatus.None:
+        return this.default(Color.gray)
     }
-
-    if (props.status === RuntimeStatus.Pending) {
-      return this.pending()
-    }
-
-    return this.default(fill)
   }
 
   default(fill: Color) {

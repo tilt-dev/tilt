@@ -6,9 +6,9 @@ import "./Sidebar.scss"
 import {
   ResourceView,
   TriggerMode,
-  RuntimeStatus,
   Build,
   Resource,
+  ResourceStatus,
 } from "./types"
 import TimeAgo from "react-timeago"
 import { isZeroTime } from "./time"
@@ -21,7 +21,7 @@ import { numberOfAlerts } from "./alerts"
 class SidebarItem {
   name: string
   isTiltfile: boolean
-  status: RuntimeStatus
+  status: ResourceStatus
   hasWarnings: boolean
   hasEndpoints: boolean
   lastDeployTime: string
@@ -131,13 +131,7 @@ class Sidebar extends PureComponent<SidebarProps> {
             to={pb.path(link)}
             title={item.name}
           >
-            <SidebarIcon
-              status={item.status}
-              hasWarning={item.hasWarnings}
-              isBuilding={building}
-              isDirty={item.hasPendingChanges}
-              lastBuild={item.lastBuild}
-            />
+            <SidebarIcon status={item.status} />
             <p className="SidebarItem-name">{item.name}</p>
             {item.alertCount > 0 ? (
               <span className="SidebarItem-alertBadge">{item.alertCount}</span>
