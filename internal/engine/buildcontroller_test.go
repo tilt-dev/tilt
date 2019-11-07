@@ -653,7 +653,7 @@ func TestBuildControllerNoBuildManifestsFirst(t *testing.T) {
 
 	for _, i := range []int{3, 7, 8} {
 		manifests[i] = manifestbuilder.New(f, model.ManifestName(fmt.Sprintf("unbuilt%d", i+1))).
-			WithK8sYAML("fake-yaml").
+			WithK8sYAML(SanchoYAML).
 			Build()
 	}
 	f.Start(manifests, true)
@@ -692,7 +692,8 @@ func TestBuildControllerUnresourcedYAMLFirst(t *testing.T) {
 		f.newManifest("built4"),
 	}
 
-	manifests = append(manifests, manifestbuilder.New(f, model.UnresourcedYAMLManifestName).WithK8sYAML("fake-yaml").Build())
+	manifests = append(manifests, manifestbuilder.New(f, model.UnresourcedYAMLManifestName).
+		WithK8sYAML(testyaml.SecretYaml).Build())
 	f.Start(manifests, true)
 
 	var observedBuildOrder []string
@@ -748,7 +749,7 @@ func TestBuildControllerLocalResourcesBeforeClusterResources(t *testing.T) {
 		f.newManifest("clusterBuilt1"),
 		f.newManifest("clusterBuilt2"),
 		manifestbuilder.New(f, "clusterUnbuilt").
-			WithK8sYAML("fake-yaml").Build(),
+			WithK8sYAML(SanchoYAML).Build(),
 		manifestbuilder.New(f, "local1").
 			WithLocalResource("echo local1", nil).Build(),
 		f.newManifest("clusterBuilt3"),
@@ -756,7 +757,8 @@ func TestBuildControllerLocalResourcesBeforeClusterResources(t *testing.T) {
 			WithLocalResource("echo local2", nil).Build(),
 	}
 
-	manifests = append(manifests, manifestbuilder.New(f, model.UnresourcedYAMLManifestName).WithK8sYAML("also-fake-yaml").Build())
+	manifests = append(manifests, manifestbuilder.New(f, model.UnresourcedYAMLManifestName).
+		WithK8sYAML(testyaml.SecretYaml).Build())
 	f.Start(manifests, true)
 
 	var observedBuildOrder []string
