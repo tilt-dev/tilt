@@ -530,7 +530,8 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   renderShareSnapshotModal(view: WebView | null) {
-    let handleClose = () => this.setState({ showSnapshotModal: false })
+    let handleClose = () =>
+      this.setState({ showSnapshotModal: false, snapshotLink: "" })
     let handleSendSnapshot = () =>
       this.sendSnapshot(this.snapshotFromState(this.state))
     let tiltCloudUsername = (view && view.tiltCloudUsername) || null
