@@ -912,7 +912,7 @@ trigger_mode(TRIGGER_MODE_MANUAL)`, origTiltfile)
 
 	f.assertNoCall("A change to TriggerMode shouldn't trigger an update (doesn't invalidate current build)")
 	f.WaitUntilManifest("triggerMode has changed on manifest", "snack", func(mt store.ManifestTarget) bool {
-		return mt.Manifest.TriggerMode == model.TriggerModeManual
+		return mt.Manifest.TriggerMode == model.TriggerModeManualAfterInitial
 	})
 
 	err := f.Stop()
@@ -937,9 +937,9 @@ k8s_yaml('snack.yaml')`
 	// First call: with the old manifests
 	_ = f.nextCall("initial build")
 	var imageTargetID model.TargetID
-	f.WaitUntilManifest("manifest has triggerMode = auto (default)", "snack", func(mt store.ManifestTarget) bool {
+	f.WaitUntilManifest("manifest has triggerMode = manual_after_initial", "snack", func(mt store.ManifestTarget) bool {
 		imageTargetID = mt.Manifest.ImageTargetAt(0).ID() // grab for later
-		return mt.Manifest.TriggerMode == model.TriggerModeManual
+		return mt.Manifest.TriggerMode == model.TriggerModeManualAfterInitial
 	})
 
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("src/main.go"))
@@ -961,6 +961,42 @@ k8s_yaml('snack.yaml')`
 	f.WaitUntil("manifest is no longer in trigger queue", func(st store.EngineState) bool {
 		return len(st.TriggerQueue) == 0
 	})
+
+	err := f.Stop()
+	assert.Nil(t, err)
+	f.assertAllBuildsConsumed()
+}
+
+func TestConfigChange_ManifestIncludingInitialBuildsIfTriggerModeChangedToManualAfterInitial(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	foo := f.newManifest("foo").WithTriggerMode(model.TriggerModeManualIncludingInitial)
+	bar := f.newManifest("bar")
+
+	f.Start([]model.Manifest{foo, bar}, true)
+
+	// foo should be skipped, and just bar built
+	call := f.nextCallComplete("initial build")
+	require.Equal(t, bar.ImageTargetAt(0), call.firstImgTarg())
+
+	// since foo is "Manual", it should not be built on startup
+	// make sure there's nothing waiting to build
+	f.withState(func(state store.EngineState) {
+		n := buildcontrol.NextManifestNameToBuild(state)
+		require.Equal(t, model.ManifestName(""), n)
+	})
+
+	// change the trigger mode
+	foo = foo.WithTriggerMode(model.TriggerModeManualAfterInitial)
+	f.store.Dispatch(configs.ConfigsReloadedAction{
+		Manifests: []model.Manifest{foo, bar},
+	})
+
+	// now that it is a trigger mode that should build on startup, a build should kick off
+	// even though we didn't trigger anything
+	call = f.nextCallComplete("second build")
+	require.Equal(t, foo.ImageTargetAt(0), call.firstImgTarg())
 
 	err := f.Stop()
 	assert.Nil(t, err)
@@ -3267,18 +3303,24 @@ func (f *testFixture) WaitUntilManifestState(msg string, name model.ManifestName
 	})
 }
 
+// gets the args for the next BaD call and blocks until that build is reflected in EngineState
 func (f *testFixture) nextCallComplete(msgAndArgs ...interface{}) buildAndDeployCall {
 	call := f.nextCall(msgAndArgs...)
 	f.waitForCompletedBuildCount(call.count)
 	return call
 }
 
+// gets the args passed to the next call to the BaDer
+// note that if you're using this to block until a build happens, it only blocks until the BaDer itself finishes
+// so it can return before the build has actually been processed by the upper or the EngineState reflects
+// the completed build.
+// using `nextCallComplete` will ensure you block until the EngineState reflects the completed build.
 func (f *testFixture) nextCall(msgAndArgs ...interface{}) buildAndDeployCall {
 	msg := "timed out waiting for BuildAndDeployCall"
 	if len(msgAndArgs) > 0 {
 		format := msgAndArgs[0].(string)
 		args := msgAndArgs[1:]
-		msg = fmt.Sprintf("timed out waiting for BuildAndDeployCall: %s", fmt.Sprintf(format, args...))
+		msg = fmt.Sprintf("%s: %s", msg, fmt.Sprintf(format, args...))
 	}
 
 	for {

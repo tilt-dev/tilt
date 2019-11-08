@@ -263,7 +263,7 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 		WithPublishedPorts(service.PublishedPorts).
 		WithIgnoredLocalDirectories(service.MountedLocalDirs)
 
-	um, err := starlarkTriggerModeToModel(s.triggerModeForResource(service.TriggerMode))
+	um, err := starlarkTriggerModeToModel(s.triggerModeForResource(service.TriggerMode), true)
 	if err != nil {
 		return model.Manifest{}, nil, err
 	}

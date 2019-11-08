@@ -240,7 +240,7 @@ func (e *EngineState) InitialBuildsCompleted() bool {
 	}
 
 	for _, mt := range e.ManifestTargets {
-		if mt.Manifest.TriggerMode != model.TriggerModeAuto {
+		if !mt.Manifest.TriggerMode.AutoInitial() {
 			continue
 		}
 
