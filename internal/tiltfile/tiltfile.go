@@ -25,6 +25,7 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile/io"
 	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
 	"github.com/windmilleng/tilt/internal/tiltfile/value"
+	"github.com/windmilleng/tilt/internal/tiltfile/version"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -48,6 +49,7 @@ type TiltfileLoadResult struct {
 	Error               error
 	DockerPruneSettings model.DockerPruneSettings
 	AnalyticsOpt        wmanalytics.Opt
+	VersionSettings     version.Settings
 }
 
 func (r TiltfileLoadResult) Orchestrator() model.Orchestrator {
@@ -170,6 +172,9 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, requestedMa
 	tlr.Error = err
 	tlr.Manifests = manifests
 	tlr.TeamName = s.teamName
+
+	vs, _ := version.GetState(result)
+	tlr.VersionSettings = vs
 
 	printWarnings(s)
 

@@ -10,8 +10,7 @@ type Settings struct {
 	CheckUpdates bool
 }
 
-type Extension struct {
-}
+type Extension struct{}
 
 func NewExtension() Extension {
 	return Extension{}

@@ -65,7 +65,8 @@ type EngineState struct {
 	TiltfileState ManifestState
 
 	// from GitHub
-	LatestTiltBuild model.TiltBuild
+	LatestTiltBuild     model.TiltBuild
+	CheckVersionUpdates bool
 
 	// Analytics Info
 
@@ -316,6 +317,7 @@ func NewState() *EngineState {
 	ret.PendingConfigFileChanges = make(map[string]time.Time)
 	ret.Secrets = model.SecretSet{}
 	ret.DockerPruneSettings = model.DefaultDockerPruneSettings()
+	ret.CheckVersionUpdates = true
 	return ret
 }
 
