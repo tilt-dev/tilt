@@ -250,6 +250,7 @@ class HUD extends Component<HudProps, HudState> {
     let runningVersion = view && view.runningTiltBuild
     let latestVersion = view && view.latestTiltBuild
     const versionSettings = view && view.versionSettings
+    const checkUpdates = versionSettings ? versionSettings.checkUpdates : true
     let shareSnapshotModal = this.renderShareSnapshotModal(view)
     let fatalErrorModal = this.renderFatalErrorModal(view)
 
@@ -259,7 +260,7 @@ class HUD extends Component<HudProps, HudState> {
         alertsUrl={this.path("/alerts")}
         runningVersion={runningVersion}
         latestVersion={latestVersion}
-        checkVersion={versionSettings.checkUpdates}
+        checkVersion={checkUpdates}
       />
     )
 
