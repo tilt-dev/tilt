@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: live-update-after-crash-rebuild
+  namespace: tilt-integration
+  labels:
+    app: live-update-after-crash-rebuild
+spec:
+  selector:
+    matchLabels:
+      app: live-update-after-crash-rebuild
+  template:
+    metadata:
+      labels:
+        app: live-update-after-crash-rebuild
+    spec:
+      containers:
+      - name: live-update-after-crash-rebuild
+        image: gcr.io/windmill-test-containers/integration/live_update_after_crash_rebuild
+        ports:
+        - containerPort: 8000
