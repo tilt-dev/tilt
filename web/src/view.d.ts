@@ -10,6 +10,7 @@ declare namespace Proto {
     needsAnalyticsNudge?: boolean;
     runningTiltBuild?: webviewTiltBuild;
     latestTiltBuild?: webviewTiltBuild;
+    checkVersionUpdates?: boolean;
     tiltCloudUsername?: string;
     tiltCloudSchemeHost?: string;
     tiltCloudTeamID?: string;
@@ -61,6 +62,7 @@ declare namespace Proto {
     crashLog?: string;
     alerts?: webviewAlert[];
     facets?: webviewFacet[];
+    queued?: boolean;
   }
   export interface webviewLocalResourceInfo {}
   export interface webviewK8sResourceInfo {

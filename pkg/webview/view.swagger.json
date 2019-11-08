@@ -387,6 +387,10 @@
         "latest_tilt_build": {
           "$ref": "#/definitions/webviewTiltBuild"
         },
+        "check_version_updates": {
+          "type": "boolean",
+          "format": "boolean"
+        },
         "tilt_cloud_username": {
           "type": "string"
         },

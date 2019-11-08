@@ -155,6 +155,8 @@ func StateToProtoView(s store.EngineState) (*proto_webview.View, error) {
 		ret.FatalError = s.FatalError.Error()
 	}
 
+	ret.CheckVersionUpdates = s.CheckVersionUpdates
+
 	return ret, nil
 }
 

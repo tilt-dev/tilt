@@ -104,6 +104,110 @@ exports[`StatusBar does not render an upgrade badge when runningVersion is dev 1
 </div>
 `;
 
+exports[`StatusBar does not render an upgrade badge when the version is out of date if version check is disabled 1`] = `
+<div
+  className="Statusbar"
+>
+  <section
+    className="Statusbar-panel Statusbar-errWarnPanel"
+  >
+    <div
+      className="Statusbar-errWarnPanel-child"
+    >
+      <svg
+        className="Statusbar-errWarnPanel-icon "
+      >
+        error.svg
+      </svg>
+      <p>
+        <span
+          className="Statusbar-errWarnPanel-count Statusbar-errWarnPanel-count--error"
+        >
+          0
+        </span>
+         
+        <a
+          href="/alerts"
+          onClick={[Function]}
+        >
+          error
+          s
+        </a>
+      </p>
+    </div>
+    <div
+      className="Statusbar-errWarnPanel-child"
+    >
+      <svg
+        className="Statusbar-errWarnPanel-icon "
+      >
+        warning.svg
+      </svg>
+      <p>
+        <span
+          className="Statusbar-errWarnPanel-count"
+        >
+          0
+        </span>
+         
+        warning
+        s
+      </p>
+    </div>
+  </section>
+  <section
+    className="Statusbar-panel Statusbar-statusMsgPanel"
+  >
+    <div>
+      Updating vigoda…
+    </div>
+    <div
+      className="LastEditStatus"
+    >
+      <span
+        className="LastEditStatus-label"
+      >
+        Last Edit:
+      </span>
+      <span>
+        <span
+          className="LastEditStatus-name"
+          data-tip="main.go[+ 2 more]"
+        >
+          vigoda
+        </span>
+        <span
+          className="LastEditStatus-details"
+        >
+           ‣ main.go[+ 2 more]
+        </span>
+      </span>
+    </div>
+  </section>
+  <section
+    className="Statusbar-panel Statusbar-progressPanel"
+  >
+    <p>
+      <strong>
+        0
+      </strong>
+      /
+      2
+       running
+    </p>
+  </section>
+  <section
+    className="Statusbar-tiltPanel"
+  >
+    <svg
+      className="Statusbar-logo"
+    >
+      logo.svg
+    </svg>
+  </section>
+</div>
+`;
+
 exports[`StatusBar does not render an upgrade badge when there is no latestVersion 1`] = `
 <div
   className="Statusbar"

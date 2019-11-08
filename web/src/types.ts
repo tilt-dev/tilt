@@ -118,6 +118,7 @@ export type WebView = {
   tiltCloudSchemeHost: string
   tiltCloudTeamID: string
   fatalError: string | undefined
+  checkVersionUpdates: boolean
 }
 
 export type Snapshot = {
