@@ -40,7 +40,8 @@ type fixture struct {
 	logs          *bufsync.ThreadSafeBuffer
 	cmds          []*exec.Cmd
 	originalFiles map[string]string
-	tiltEnviron   map[string]string
+	tilt          *TiltDriver
+	activeTiltUp  *TiltUpResponse
 	tearingDown   bool
 }
 
@@ -51,6 +52,9 @@ func newFixture(t *testing.T, dir string) *fixture {
 		t.Fatal(err)
 	}
 
+	client := NewTiltDriver()
+	client.Environ["TILT_DISABLE_ANALYTICS"] = "true"
+
 	ctx, cancel := context.WithCancel(context.Background())
 	f := &fixture{
 		t:             t,
@@ -59,10 +63,7 @@ func newFixture(t *testing.T, dir string) *fixture {
 		dir:           dir,
 		logs:          bufsync.NewThreadSafeBuffer(),
 		originalFiles: make(map[string]string),
-		tiltEnviron: map[string]string{
-			"TILT_DISABLE_ANALYTICS": "true",
-			"TILT_K8S_EVENTS":        "true",
-		},
+		tilt:          client,
 	}
 
 	if !installed {
@@ -106,8 +107,9 @@ func (f *fixture) WaitUntil(ctx context.Context, msg string, fun func() (string,
 		}
 
 		select {
+		case <-f.activeTiltDone():
+			f.t.Fatalf("Tilt died while waiting: %v", f.activeTiltErr())
 		case <-ctx.Done():
-			f.KillProcs()
 			f.t.Fatalf("Timed out waiting for expected result (%s)\n"+
 				"Expected: %s\n"+
 				"Actual: %s\n"+
@@ -118,58 +120,62 @@ func (f *fixture) WaitUntil(ctx context.Context, msg string, fun func() (string,
 	}
 }
 
-func (f *fixture) tiltCmd(tiltArgs []string, outWriter io.Writer) *exec.Cmd {
-	outWriter = io.MultiWriter(f.logs, outWriter)
-	cmd := exec.CommandContext(f.ctx, "tilt", tiltArgs...)
-	cmd.Stdout = outWriter
-	cmd.Stderr = outWriter
-	cmd.Env = append(os.Environ())
-	for k, v := range f.tiltEnviron {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+func (f *fixture) activeTiltDone() <-chan struct{} {
+	if f.activeTiltUp != nil {
+		return f.activeTiltUp.Done()
 	}
-	return cmd
+	neverDone := make(chan struct{})
+	return neverDone
 }
 
-func (f *fixture) TiltUpCmd(name string) *exec.Cmd {
-	args := []string{"up"}
-	if name != "" {
-		args = append(args, name)
+func (f *fixture) activeTiltErr() error {
+	if f.activeTiltUp != nil {
+		return f.activeTiltUp.Err()
 	}
-	args = append(args, "--watch=false", "--debug", "--hud=false", "--port=0", "--klog=1")
-	return f.tiltCmd(args, os.Stdout)
+	return nil
+}
+
+func (f *fixture) LogWriter() io.Writer {
+	return io.MultiWriter(f.logs, os.Stdout)
 }
 
 func (f *fixture) TiltUp(name string) {
-	cmd := f.TiltUpCmd(name)
-	f.runInBackground(cmd)
-}
-
-func (f *fixture) runInBackground(cmd *exec.Cmd) {
-	err := cmd.Start()
-	if err != nil {
-		f.t.Fatal(err)
+	args := []string{"--watch=false"}
+	if name != "" {
+		args = append(args, name)
 	}
-
-	f.cmds = append(f.cmds, cmd)
-	go func() {
-		err = cmd.Wait()
+	response, err := f.tilt.Up(args, f.LogWriter())
+	if err != nil {
+		f.t.Fatalf("TiltUp %s: %v", name, err)
+	}
+	select {
+	case <-response.Done():
+		err := response.Err()
 		if err != nil {
-			fmt.Printf("error running command: %v\n", err)
-			if ee, ok := err.(*exec.ExitError); ok {
-				fmt.Printf("stderr: %q\n", ee.Stderr)
-			}
+			f.t.Fatalf("TiltUp %s: %v", name, err)
 		}
-	}()
+	case <-f.ctx.Done():
+		err := f.ctx.Err()
+		if err != nil {
+			f.t.Fatalf("TiltUp %s: %v", name, err)
+		}
+	}
 }
 
 func (f *fixture) TiltWatch() {
-	cmd := f.tiltCmd([]string{"up", "--debug", "--hud=false", "--web-mode=prod", "--no-browser", "--klog=1"}, os.Stdout)
-	f.runInBackground(cmd)
+	response, err := f.tilt.Up(nil, f.LogWriter())
+	if err != nil {
+		f.t.Fatalf("TiltWatch: %v", err)
+	}
+	f.activeTiltUp = response
 }
 
 func (f *fixture) TiltWatchExec() {
-	cmd := f.tiltCmd([]string{"up", "--debug", "--hud=false", "--web-mode=prod", "--no-browser", "--klog=1", "--update-mode", "exec"}, os.Stdout)
-	f.runInBackground(cmd)
+	response, err := f.tilt.Up([]string{"--update-mode=exec"}, f.LogWriter())
+	if err != nil {
+		f.t.Fatalf("TiltWatchExec: %v", err)
+	}
+	f.activeTiltUp = response
 }
 
 func (f *fixture) ReplaceContents(fileBaseName, original, replacement string) {
@@ -201,11 +207,16 @@ func (f *fixture) StartTearDown() {
 		return
 	}
 
-	if f.t.Failed() {
+	isTiltStillUp := f.activeTiltUp != nil && f.activeTiltUp.Err() == nil
+	if f.t.Failed() && isTiltStillUp {
 		fmt.Printf("Test failed, dumping engine state\n----\n")
-		cmd := f.tiltCmd([]string{"dump", "engine"}, os.Stdout)
-		_ = cmd.Run()
+		err := f.tilt.DumpEngine(os.Stdout)
+		if err != nil {
+			fmt.Printf("Error: %v", err)
+		}
 		fmt.Printf("\n----\n")
+
+		f.activeTiltUp.KillAndDumpThreads()
 	}
 
 	f.cancel()
@@ -214,13 +225,11 @@ func (f *fixture) StartTearDown() {
 }
 
 func (f *fixture) KillProcs() {
-	for _, cmd := range f.cmds {
-		process := cmd.Process
-		if process != nil {
-			process.Kill()
-		}
+	if f.activeTiltUp != nil {
+		f.activeTiltUp.Kill()
 	}
 }
+
 func (f *fixture) TearDown() {
 	f.StartTearDown()
 
@@ -240,10 +249,9 @@ func (f *fixture) TearDown() {
 	// If users want to do the same thing in practice, it might be worth
 	// adding better in-product hooks (e.g., `tilt down --preserve-namespace`),
 	// or more scriptability in the Tiltfile.
-	f.tiltEnviron["SKIP_NAMESPACE"] = "true"
+	f.tilt.Environ["SKIP_NAMESPACE"] = "true"
 
-	cmd := f.tiltCmd([]string{"down"}, os.Stdout)
-	err := cmd.Run()
+	err := f.tilt.Down(os.Stdout)
 	if err != nil {
 		f.t.Errorf("Running tilt down: %v", err)
 	}

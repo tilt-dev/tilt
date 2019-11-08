@@ -121,6 +121,8 @@ func (f *k8sFixture) WaitForAllPodsInPhase(ctx context.Context, selector string,
 		}
 
 		select {
+		case <-f.activeTiltDone():
+			f.t.Fatalf("Tilt died while waiting for pods to be ready: %v", f.activeTiltErr())
 		case <-ctx.Done():
 			f.t.Fatalf("Timed out waiting for pods to be ready. Selector: %s. Output:\n:%s\n", selector, output)
 		case <-time.After(200 * time.Millisecond):
@@ -221,7 +223,7 @@ func (f *k8sFixture) setupNewKubeConfig() {
 	}
 	f.kubeconfigPath = f.tempDir.JoinPath(kubeconfigBaseName)
 	f.tempDir.WriteFile(f.kubeconfigPath, string(current))
-	f.fixture.tiltEnviron["KUBECONFIG"] = f.kubeconfigPath
+	f.fixture.tilt.Environ["KUBECONFIG"] = f.kubeconfigPath
 	log.Printf("New kubeconfig: %s", f.kubeconfigPath)
 }
 
