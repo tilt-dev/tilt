@@ -19,15 +19,8 @@ CIRCLECI := $(if $(CIRCLECI),$(CIRCLECI),false)
 
 GOIMPORTS_LOCAL_ARG := -local github.com/windmilleng/tilt
 
-scripts/protocc/protocc.py: scripts/protocc
-	git submodule init
-	git submodule update
-
-proto: scripts/protocc/protocc.py
-	python3 scripts/protocc/protocc.py --out go
-
-# generate go and ts proto files for webview
-proto-webview:
+proto:
+	toast synclet-proto
 	toast proto-ts
 
 # Build a binary that uses synclet:latest
