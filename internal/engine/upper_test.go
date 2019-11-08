@@ -3269,7 +3269,7 @@ func (f *testFixture) WaitUntilManifestState(msg string, name model.ManifestName
 
 func (f *testFixture) nextCallComplete(msgAndArgs ...interface{}) buildAndDeployCall {
 	call := f.nextCall(msgAndArgs...)
-	f.waitForCompletedBuildCount(call.count)
+	f.waitForCompletedBuildCountAtLeast(call.count)
 	return call
 }
 
@@ -3361,6 +3361,12 @@ func (f *testFixture) notifyAndWaitForPodStatus(pod *v1.Pod, mn model.ManifestNa
 
 	f.WaitUntilManifestState("pod status change seen", mn, func(state store.ManifestState) bool {
 		return pred(state.MostRecentPod())
+	})
+}
+
+func (f *testFixture) waitForCompletedBuildCountAtLeast(count int) {
+	f.WaitUntil(fmt.Sprintf("%d builds done", count), func(state store.EngineState) bool {
+		return state.CompletedBuildCount >= count
 	})
 }
 
