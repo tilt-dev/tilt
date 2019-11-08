@@ -49,7 +49,7 @@ type TiltfileLoadResult struct {
 	Error               error
 	DockerPruneSettings model.DockerPruneSettings
 	AnalyticsOpt        wmanalytics.Opt
-	VersionSettings     version.Settings
+	VersionSettings     model.VersionSettings
 }
 
 func (r TiltfileLoadResult) Orchestrator() model.Orchestrator {

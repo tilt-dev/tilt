@@ -2912,10 +2912,13 @@ func TestVersionSettingsStoredOnState(t *testing.T) {
 
 	f.Start([]model.Manifest{}, true)
 
-	f.store.Dispatch(configs.ConfigsReloadedAction{CheckVersionUpdates: false})
+	vs := model.VersionSettings{
+		CheckUpdates: false,
+	}
+	f.store.Dispatch(configs.ConfigsReloadedAction{VersionSettings: vs})
 
 	f.WaitUntil("CheckVersionUpdates is set to false", func(state store.EngineState) bool {
-		return state.CheckVersionUpdates == false
+		return state.VersionSettings.CheckUpdates == false
 	})
 }
 

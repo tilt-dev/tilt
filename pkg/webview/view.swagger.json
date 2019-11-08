@@ -354,6 +354,15 @@
         }
       }
     },
+    "webviewVersionSettings": {
+      "type": "object",
+      "properties": {
+        "check_updates": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
     "webviewView": {
       "type": "object",
       "properties": {
@@ -387,9 +396,8 @@
         "latest_tilt_build": {
           "$ref": "#/definitions/webviewTiltBuild"
         },
-        "check_version_updates": {
-          "type": "boolean",
-          "format": "boolean"
+        "version_settings": {
+          "$ref": "#/definitions/webviewVersionSettings"
         },
         "tilt_cloud_username": {
           "type": "string"

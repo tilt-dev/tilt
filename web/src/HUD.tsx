@@ -89,7 +89,7 @@ class HUD extends Component<HudProps, HudState> {
           date: "",
           dev: false,
         },
-        checkVersionUpdates: true,
+        versionSettings: { checkUpdates: true },
         featureFlags: {},
         tiltCloudUsername: "",
         tiltCloudSchemeHost: "",
@@ -249,7 +249,7 @@ class HUD extends Component<HudProps, HudState> {
 
     let runningVersion = view && view.runningTiltBuild
     let latestVersion = view && view.latestTiltBuild
-    const checkVersion = view && view.checkVersionUpdates
+    const versionSettings = view && view.versionSettings
     let shareSnapshotModal = this.renderShareSnapshotModal(view)
     let fatalErrorModal = this.renderFatalErrorModal(view)
 
@@ -259,7 +259,7 @@ class HUD extends Component<HudProps, HudState> {
         alertsUrl={this.path("/alerts")}
         runningVersion={runningVersion}
         latestVersion={latestVersion}
-        checkVersion={checkVersion}
+        checkVersion={versionSettings.checkUpdates}
       />
     )
 

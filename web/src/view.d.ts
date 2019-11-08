@@ -10,11 +10,14 @@ declare namespace Proto {
     needsAnalyticsNudge?: boolean;
     runningTiltBuild?: webviewTiltBuild;
     latestTiltBuild?: webviewTiltBuild;
-    checkVersionUpdates?: boolean;
+    versionSettings?: webviewVersionSettings;
     tiltCloudUsername?: string;
     tiltCloudSchemeHost?: string;
     tiltCloudTeamID?: string;
     fatalError?: string;
+  }
+  export interface webviewVersionSettings {
+    checkUpdates?: boolean;
   }
   export interface webviewUploadSnapshotResponse {
     url?: string;

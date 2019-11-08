@@ -4,11 +4,8 @@ import (
 	"go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
+	"github.com/windmilleng/tilt/pkg/model"
 )
-
-type Settings struct {
-	CheckUpdates bool
-}
 
 type Extension struct{}
 
@@ -17,7 +14,7 @@ func NewExtension() Extension {
 }
 
 func (e Extension) NewState() interface{} {
-	return Settings{
+	return model.VersionSettings{
 		CheckUpdates: true,
 	}
 }
@@ -33,7 +30,7 @@ func setUpgradeSettings(thread *starlark.Thread, fn *starlark.Builtin, args star
 		return nil, err
 	}
 
-	err := starkit.SetState(thread, func(settings Settings) Settings {
+	err := starkit.SetState(thread, func(settings model.VersionSettings) model.VersionSettings {
 		if checkUpdates {
 			settings.CheckUpdates = true
 		} else {
@@ -47,7 +44,7 @@ func setUpgradeSettings(thread *starlark.Thread, fn *starlark.Builtin, args star
 
 var _ starkit.StatefulExtension = Extension{}
 
-func MustState(model starkit.Model) Settings {
+func MustState(model starkit.Model) model.VersionSettings {
 	state, err := GetState(model)
 	if err != nil {
 		panic(err)
@@ -55,8 +52,8 @@ func MustState(model starkit.Model) Settings {
 	return state
 }
 
-func GetState(m starkit.Model) (Settings, error) {
-	var state Settings
+func GetState(m starkit.Model) (model.VersionSettings, error) {
+	var state model.VersionSettings
 	err := m.Load(&state)
 	return state, err
 }
