@@ -1010,6 +1010,99 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
 </section>
 `;
 
+exports[`sidebar shows a trigger button for resource that failed its initial build 1`] = `
+<section
+  className="Sidebar"
+>
+  <nav
+    className="Sidebar-resources"
+  >
+    <ul
+      className="Sidebar-list"
+    >
+      <li
+        className="SidebarItem SidebarItem--all is-selected"
+      >
+        <a
+          className="SidebarItem-link"
+          href="/"
+          onClick={[Function]}
+          title="All"
+        >
+          <div
+            className="SidebarItem-allIcon"
+          >
+            ┌
+          </div>
+          <span
+            className="SidebarItem-name"
+          >
+            All
+          </span>
+          <span
+            className="SidebarItem-alertBadge"
+          >
+            1
+          </span>
+        </a>
+      </li>
+      <li
+        className="SidebarItem"
+      >
+        <a
+          className="SidebarItem-link"
+          href="/r/vigoda"
+          onClick={[Function]}
+          title="vigoda"
+        >
+          <div
+            className="SidebarIcon"
+          >
+            <svg
+              className="default"
+              fill="#f6685c"
+            >
+              indicator-auto.svg
+            </svg>
+          </div>
+          <p
+            className="SidebarItem-name"
+          >
+            vigoda
+          </p>
+          <span
+            className="SidebarItem-alertBadge"
+          >
+            1
+          </span>
+          <span
+            className="SidebarItem-timeAgo empty"
+          >
+            —
+          </span>
+        </a>
+        <button
+          className="SidebarTriggerButton 
+           isReady"
+          disabled={false}
+          onClick={[Function]}
+          title="Force a rebuild/update for this resource."
+        />
+      </li>
+    </ul>
+  </nav>
+  <button
+    className="Sidebar-toggle"
+    onClick={null}
+  >
+    <svg>
+      chevron.svg
+    </svg>
+     Collapse
+  </button>
+</section>
+`;
+
 exports[`sidebar shows ready + dirty trigger button for manual resource with pending changes 1`] = `
 <section
   className="Sidebar"
@@ -1287,11 +1380,7 @@ exports[`sidebar trigger button not ready if resource waiting for first build 1`
           >
             All
           </span>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
-          </span>
+          
         </a>
       </li>
       <li
@@ -1307,14 +1396,10 @@ exports[`sidebar trigger button not ready if resource waiting for first build 1`
             className="SidebarIcon"
           >
             <svg
-              className="pending"
-              style={
-                Object {
-                  "animation": "glow 1s linear infinite",
-                }
-              }
+              className="default"
+              fill="#20ba31"
             >
-              indicator-auto-pending.svg
+              indicator-auto.svg
             </svg>
           </div>
           <p
@@ -1322,11 +1407,7 @@ exports[`sidebar trigger button not ready if resource waiting for first build 1`
           >
             vigoda
           </p>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
-          </span>
+          
           <span
             className="SidebarItem-timeAgo empty"
           >

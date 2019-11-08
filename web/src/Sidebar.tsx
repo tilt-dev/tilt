@@ -109,7 +109,8 @@ class Sidebar extends PureComponent<SidebarProps> {
       }
 
       let formatter = timeAgoFormatter
-      let hasBuilt = !isZeroTime(item.lastDeployTime)
+      let hasSuccessfullyDeployed = !isZeroTime(item.lastDeployTime)
+      let hasBuilt = item.lastBuild !== null
       let building = !isZeroTime(item.currentBuildStartTime)
       let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
       let isSelected = this.props.selected === item.name
@@ -136,8 +137,12 @@ class Sidebar extends PureComponent<SidebarProps> {
             ) : (
               ""
             )}
-            <span className={`SidebarItem-timeAgo ${hasBuilt ? "" : "empty"}`}>
-              {hasBuilt ? timeAgo : "—"}
+            <span
+              className={`SidebarItem-timeAgo ${
+                hasSuccessfullyDeployed ? "" : "empty"
+              }`}
+            >
+              {hasSuccessfullyDeployed ? timeAgo : "—"}
             </span>
           </Link>
           <SidebarTriggerButton
