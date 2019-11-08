@@ -61,6 +61,7 @@ declare namespace Proto {
     crashLog?: string;
     alerts?: webviewAlert[];
     facets?: webviewFacet[];
+    queued?: boolean;
   }
   export interface webviewLocalResourceInfo {}
   export interface webviewK8sResourceInfo {
