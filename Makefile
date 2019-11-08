@@ -26,10 +26,8 @@ scripts/protocc/protocc.py: scripts/protocc
 proto: scripts/protocc/protocc.py
 	python3 scripts/protocc/protocc.py --out go
 
+# generate go and ts proto files for webview
 proto-webview:
-	toast proto
-
-proto-webview-ts:
 	toast proto-ts
 
 # Build a binary that uses synclet:latest
