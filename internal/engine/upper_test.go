@@ -981,7 +981,7 @@ func TestConfigChange_ManifestIncludingInitialBuildsIfTriggerModeChangedToManual
 	require.Equal(t, bar.ImageTargetAt(0), call.firstImgTarg())
 
 	// since foo is "Manual", it should not be built on startup
-	// make sure the "queue" is empty
+	// make sure there's nothing waiting to build
 	f.withState(func(state store.EngineState) {
 		n := buildcontrol.NextManifestNameToBuild(state)
 		require.Equal(t, model.ManifestName(""), n)
@@ -3303,12 +3303,18 @@ func (f *testFixture) WaitUntilManifestState(msg string, name model.ManifestName
 	})
 }
 
+// gets the args for the next BaD call and blocks until that build is reflected in EngineState
 func (f *testFixture) nextCallComplete(msgAndArgs ...interface{}) buildAndDeployCall {
 	call := f.nextCall(msgAndArgs...)
 	f.waitForCompletedBuildCount(call.count)
 	return call
 }
 
+// gets the args passed to the next call to the BaDer
+// note that if you're using this to block until a build happens, it only blocks until the BaDer itself finishes
+// so it can return before the build has actually been processed by the upper or the EngineState reflects
+// the completed build.
+// using `nextCallComplete` will ensure you block until the EngineState reflects the completed build.
 func (f *testFixture) nextCall(msgAndArgs ...interface{}) buildAndDeployCall {
 	msg := "timed out waiting for BuildAndDeployCall"
 	if len(msgAndArgs) > 0 {

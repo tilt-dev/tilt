@@ -485,6 +485,7 @@ func TestBuildControllerManualTriggerWithFileChanges(t *testing.T) {
 			manifests := []model.Manifest{manifest}
 			f.Start(manifests, true)
 
+			// if we expect an initial build from the manifest, wait for it to complete
 			if manifest.TriggerMode.AutoInitial() {
 				f.nextCallComplete()
 			}
