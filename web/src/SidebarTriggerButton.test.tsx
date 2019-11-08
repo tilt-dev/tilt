@@ -16,7 +16,7 @@ describe("SidebarTriggerButton", () => {
         isTiltfile={false}
         isSelected={true}
         resourceName="doggos"
-        triggerMode={TriggerMode.TriggerModeManual}
+        triggerMode={TriggerMode.TriggerModeManualAfterInitial}
         hasBuilt={true}
         isBuilding={false}
         hasPendingChanges={false}
@@ -44,7 +44,7 @@ describe("SidebarTriggerButton", () => {
         isTiltfile={false}
         isSelected={true}
         resourceName="doggos"
-        triggerMode={TriggerMode.TriggerModeManual}
+        triggerMode={TriggerMode.TriggerModeManualAfterInitial}
         hasBuilt={true}
         isBuilding={false}
         hasPendingChanges={false}
@@ -57,5 +57,28 @@ describe("SidebarTriggerButton", () => {
     element.simulate("click")
 
     expect(fetchMock.mock.calls.length).toEqual(0)
+  })
+
+  it("shows the button for TriggerModeManualIncludingInitial", () => {
+    fetchMock.mockResponse(JSON.stringify({}))
+
+    const root = mount(
+      <SidebarTriggerButton
+        isSelected={true}
+        isTiltfile={false}
+        resourceName="doggos"
+        triggerMode={TriggerMode.TriggerModeManualIncludingInitial}
+        hasBuilt={false}
+        isBuilding={false}
+        hasPendingChanges={false}
+        isQueued={false}
+      />
+    )
+
+    let element = root.find(".SidebarTriggerButton")
+    expect(element).toHaveLength(1)
+    element.simulate("click")
+
+    expect(fetchMock.mock.calls.length).toEqual(1)
   })
 })

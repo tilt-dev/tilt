@@ -530,7 +530,7 @@ func TestPendingBuildInManualTriggerMode(t *testing.T) {
 				Name:              "vigoda",
 				PendingBuildSince: ts.Add(-5 * time.Second),
 				PendingBuildEdits: []string{"main.go"},
-				TriggerMode:       model.TriggerModeManual,
+				TriggerMode:       model.TriggerModeManualAfterInitial,
 				ResourceInfo:      view.K8sResourceInfo{},
 			},
 		},

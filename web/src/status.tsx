@@ -12,7 +12,7 @@ function combinedStatus(res: Resource): ResourceStatus {
   )
   let hasPendingBuild =
     !isZeroTime(res.pendingBuildSince) &&
-    res.triggerMode != TriggerMode.TriggerModeManual
+    res.triggerMode === TriggerMode.TriggerModeAuto
   let buildHistory = res.buildHistory || []
   let lastBuild = buildHistory[0]
   let lastBuildError = lastBuild ? lastBuild.error : ""

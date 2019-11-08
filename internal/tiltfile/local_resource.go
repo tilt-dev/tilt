@@ -18,6 +18,7 @@ type localResource struct {
 	workdir      string
 	deps         []string
 	triggerMode  triggerMode
+	autoInit     bool
 	repos        []model.LocalGitRepo
 	resourceDeps []string
 	ignores      []string
@@ -29,6 +30,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	var deps starlark.Value
 	var resourceDepsVal starlark.Sequence
 	var ignoresVal starlark.Value
+	autoInit := true
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
@@ -37,6 +39,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		"trigger_mode?", &triggerMode,
 		"resource_deps?", &resourceDepsVal,
 		"ignore?", &ignoresVal,
+		"auto_init?", &autoInit,
 	); err != nil {
 		return nil, err
 	}
@@ -69,6 +72,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		workdir:      filepath.Dir(starkit.CurrentExecPath(thread)),
 		deps:         depsStrings,
 		triggerMode:  triggerMode,
+		autoInit:     autoInit,
 		repos:        repos,
 		resourceDeps: resourceDeps,
 		ignores:      ignores,

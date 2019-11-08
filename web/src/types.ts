@@ -16,7 +16,8 @@ export enum ResourceView {
 
 export enum TriggerMode {
   TriggerModeAuto,
-  TriggerModeManual,
+  TriggerModeManualAfterInitial,
+  TriggerModeManualIncludingInitial,
 }
 
 export type Build = {

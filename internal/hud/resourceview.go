@@ -81,7 +81,7 @@ func statusColor(res view.Resource) tcell.Color {
 	if !res.CurrentBuild.Empty() && !res.CurrentBuild.Reason.IsCrashOnly() {
 		return cPending
 	} else if !res.PendingBuildSince.IsZero() && !res.PendingBuildReason.IsCrashOnly() {
-		if res.TriggerMode == model.TriggerModeAuto {
+		if res.TriggerMode.AutoOnChange() {
 			return cPending
 		} else {
 			return cLightText
