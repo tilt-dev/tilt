@@ -20,10 +20,10 @@ func (e Extension) NewState() interface{} {
 }
 
 func (Extension) OnStart(env *starkit.Environment) error {
-	return env.AddBuiltin("version_settings", setUpgradeSettings)
+	return env.AddBuiltin("version_settings", setVersionSettings)
 }
 
-func setUpgradeSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func setVersionSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var checkUpdates bool
 	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
 		"check_updates", &checkUpdates); err != nil {

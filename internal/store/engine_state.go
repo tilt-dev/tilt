@@ -64,8 +64,7 @@ type EngineState struct {
 
 	TiltfileState ManifestState
 
-	// from GitHub
-	LatestTiltBuild model.TiltBuild
+	LatestTiltBuild model.TiltBuild // from GitHub
 	VersionSettings model.VersionSettings
 
 	// Analytics Info
