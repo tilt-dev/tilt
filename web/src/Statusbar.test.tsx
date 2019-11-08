@@ -209,21 +209,20 @@ describe("StatusBar", () => {
     let items = view.resources.map((res: any) => new StatusItem(res))
     let latestVersion = runningVersion
     latestVersion.version = "10.0.0"
-    const tree = renderer
-      .create(
-        <MemoryRouter>
-          <Statusbar
-            items={items}
-            alertsUrl="/alerts"
-            runningVersion={runningVersion}
-            latestVersion={latestVersion}
-            checkVersion={false}
-          />
-        </MemoryRouter>
-      )
-      .toJSON()
+    const root = mount(
+      <MemoryRouter>
+        <Statusbar
+          items={items}
+          alertsUrl="/alerts"
+          runningVersion={runningVersion}
+          latestVersion={latestVersion}
+          checkVersion={false}
+        />
+      </MemoryRouter>
+    )
 
-    expect(tree).toMatchSnapshot()
+    let el = root.find(".Statusbar-tiltPanel-upgradeTooltip")
+    expect(el).toHaveLength(0)
   })
 })
 
