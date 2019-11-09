@@ -260,8 +260,13 @@ class HUD extends Component<HudProps, HudState> {
       />
     )
 
+    let hudClasses = ["HUD"]
+    if (this.pathBuilder.isSnapshot()) {
+      hudClasses.push("is-snapshot")
+    }
+
     return (
-      <div className="HUD">
+      <div className={hudClasses.join(" ")}>
         <AnalyticsNudge needsNudge={needsNudge} />
         <SocketBar state={this.state.socketState} />
         {fatalErrorModal}

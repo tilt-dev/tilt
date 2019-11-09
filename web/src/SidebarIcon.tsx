@@ -1,5 +1,5 @@
 import React, { PureComponent } from "react"
-import { Build, ResourceStatus } from "./types"
+import { ResourceStatus } from "./types"
 import { Color } from "./constants"
 import { ReactComponent as DotSvg } from "./assets/svg/indicator-auto.svg"
 import { ReactComponent as DotPendingSvg } from "./assets/svg/indicator-auto-pending.svg"

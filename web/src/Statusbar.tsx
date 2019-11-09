@@ -6,7 +6,7 @@ import { ReactComponent as UpdateAvailableSvg } from "./assets/svg/update-availa
 import { combinedStatus, warnings } from "./status"
 import "./Statusbar.scss"
 import { combinedStatusMessage } from "./combinedStatusMessage"
-import { Build, ResourceStatus, RuntimeStatus, TiltBuild } from "./types"
+import { Build, ResourceStatus, TiltBuild } from "./types"
 import mostRecentBuildToDisplay from "./mostRecentBuild"
 import { Link } from "react-router-dom"
 
