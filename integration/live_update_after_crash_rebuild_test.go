@@ -12,6 +12,7 @@ import (
 )
 
 func TestLiveUpdateAfterCrashRebuild(t *testing.T) {
+	t.Skip("test is flaky - https://app.clubhouse.io/windmill/story/3919/testliveupdateaftercrashrebuild-is-flaky")
 	f := newK8sFixture(t, "live_update_after_crash_rebuild")
 	defer f.TearDown()
 	f.SetRestrictedCredentials()
