@@ -14,6 +14,15 @@ import (
 func TestLiveUpdateAfterCrashRebuild(t *testing.T) {
 	f := newK8sFixture(t, "live_update_after_crash_rebuild")
 	defer f.TearDown()
+
+	// TODO(matt) fix flakiness and remove this debug logging
+	succeeded := false
+	defer func() {
+		if !succeeded {
+			o := f.runCommandGetOutput("kubectl get pod -ntilt-integration -lapp=live-update-after-crash-rebuild -ojson")
+			fmt.Println(o)
+		}
+	}()
 	f.SetRestrictedCredentials()
 
 	f.TiltWatch()
@@ -75,4 +84,5 @@ func TestLiveUpdateAfterCrashRebuild(t *testing.T) {
 
 	// Check that the pods were changed in place, and that we didn't create new ones
 	require.Equal(t, afterCrashRebuildPods, afterSecondLiveUpdatePods)
+	succeeded = true
 }
