@@ -7,6 +7,10 @@
   min-height: 100vh;
 }
 
+.HUD.is-snapshot * {
+  animation: none !important;
+}
+
 .Pane-empty-message {
   padding-top: 15%;
   display: flex;
