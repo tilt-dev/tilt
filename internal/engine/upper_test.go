@@ -2943,6 +2943,21 @@ func TestHasEverBeenReadyDC(t *testing.T) {
 	})
 }
 
+func TestVersionSettingsStoredOnState(t *testing.T) {
+	f := newTestFixture(t)
+
+	f.Start([]model.Manifest{}, true)
+
+	vs := model.VersionSettings{
+		CheckUpdates: false,
+	}
+	f.store.Dispatch(configs.ConfigsReloadedAction{VersionSettings: vs})
+
+	f.WaitUntil("CheckVersionUpdates is set to false", func(state store.EngineState) bool {
+		return state.VersionSettings.CheckUpdates == false
+	})
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex

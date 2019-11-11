@@ -118,6 +118,7 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 		AnalyticsTiltfileOpt:          tlr.AnalyticsOpt,
 		DockerPruneSettings:           tlr.DockerPruneSettings,
 		GlobalLogLineCountAtExecStart: globalLogLineCountAtExecStart,
+		VersionSettings:               tlr.VersionSettings,
 	})
 }
 
