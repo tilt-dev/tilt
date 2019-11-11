@@ -7,6 +7,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
@@ -404,6 +405,15 @@ func (ms *ManifestState) StartedFirstBuild() bool {
 
 func (ms *ManifestState) MostRecentPod() Pod {
 	return ms.K8sRuntimeState().MostRecentPod()
+}
+
+func (ms *ManifestState) PodWithID(pid k8s.PodID) (*Pod, bool) {
+	for id, pod := range ms.K8sRuntimeState().Pods {
+		if id == pid {
+			return pod, true
+		}
+	}
+	return nil, false
 }
 
 func (ms *ManifestState) HasPendingFileChanges() bool {
