@@ -8,9 +8,12 @@ type AnsiLineProps = {
 
 let AnsiLine = React.memo(function(props: AnsiLineProps) {
   return (
-    <Ansi linkify={false} useClasses={true} className={props.className}>
-      {props.line}
-    </Ansi>
+    <React.Fragment>
+      <Ansi linkify={false} useClasses={true} className={props.className}>
+        {props.line}
+      </Ansi>
+      <br />
+    </React.Fragment>
   )
 })
 

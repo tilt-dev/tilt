@@ -436,7 +436,7 @@ it("scrolls to highlighted lines in snapshot", () => {
 
   expect(wrapper.instance().highlightRef.current).not.toBeNull()
   expect(fakeScrollIntoView.mock.instances).toHaveLength(1)
-  expect(fakeScrollIntoView.mock.instances[0]).toBeInstanceOf(HTMLDivElement)
+  expect(fakeScrollIntoView.mock.instances[0]).toBeInstanceOf(HTMLSpanElement)
   expect(fakeScrollIntoView).toBeCalledTimes(1)
 })
 

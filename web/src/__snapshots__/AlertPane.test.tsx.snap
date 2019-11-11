@@ -48,6 +48,7 @@ exports[`renders multiple lines of a crash log 1`] = `
             Eeeeek the container crashed
           </span>
         </code>
+        <br />
         <code>
           <span
             className={null}
@@ -56,6 +57,7 @@ exports[`renders multiple lines of a crash log 1`] = `
             no but really it crashed
           </span>
         </code>
+        <br />
       </section>
       <div />
     </li>
@@ -128,6 +130,7 @@ exports[`renders one container start error 1`] = `
             Eeeeek there is a problem
           </span>
         </code>
+        <br />
       </section>
       <div />
     </li>
@@ -183,6 +186,7 @@ exports[`renders one container start error 2`] = `
             Eeeeek there is a problem
           </span>
         </code>
+        <br />
       </section>
       <div />
     </li>
@@ -238,6 +242,7 @@ exports[`renders one container unrecognized error 1`] = `
             Detailed message on GarbleError
           </span>
         </code>
+        <br />
       </section>
       <div />
     </li>
@@ -293,6 +298,7 @@ exports[`renders warnings 1`] = `
             Eeeeek the container crashed
           </span>
         </code>
+        <br />
       </section>
       <div />
     </li>
@@ -339,6 +345,7 @@ exports[`renders warnings 1`] = `
             Hi I'm a warning
           </span>
         </code>
+        <br />
       </section>
       <div />
     </li>
@@ -394,6 +401,7 @@ exports[`shows that a container has restarted 1`] = `
             Eeeeek the container crashed
           </span>
         </code>
+        <br />
       </section>
       <button
         className="AlertPane-dismissButton"
@@ -454,6 +462,7 @@ exports[`shows that a crash rebuild has occurred 1`] = `
             Eeeeek the container crashed
           </span>
         </code>
+        <br />
       </section>
       <div />
     </li>
