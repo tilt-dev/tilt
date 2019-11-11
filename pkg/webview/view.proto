@@ -94,6 +94,10 @@ message TiltBuild {
   bool dev = 4;
 }
 
+message VersionSettings {
+  bool check_updates = 1;
+}
+
 message View {
   string log = 1;
   repeated Resource resources = 2;
@@ -105,6 +109,7 @@ message View {
 
   TiltBuild running_tilt_build = 6;
   TiltBuild latest_tilt_build = 7;
+  VersionSettings version_settings = 12;
 
   string tilt_cloud_username = 8;
   string tilt_cloud_schemeHost = 9;
@@ -133,6 +138,7 @@ message UploadSnapshotResponse {
   string url = 1;
 }
 
+// These services need to be here for the generated TS to be generated
 service ViewService {
   rpc GetView(GetViewRequest) returns (View) {
     option (google.api.http) = {
