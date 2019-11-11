@@ -11,6 +11,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/pkg/logger"
@@ -60,7 +61,7 @@ func (b CacheBuilder) cacheRef(inputs CacheInputs) (CacheRef, error) {
 }
 
 func (b CacheBuilder) makeCacheDockerfile(baseDf dockerfile.Dockerfile, sourceRef reference.NamedTagged, cachePaths []string) dockerfile.Dockerfile {
-	df := dockerfile.Dockerfile(fmt.Sprintf("FROM %s as tilt-source", reference.FamiliarString(sourceRef)))
+	df := dockerfile.Dockerfile(fmt.Sprintf("FROM %s as tilt-source", container.FamiliarString(sourceRef)))
 	df = df.Join(string(baseDf))
 
 	lines := []string{}

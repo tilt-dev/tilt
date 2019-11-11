@@ -7,6 +7,7 @@ import (
 	"github.com/docker/distribution/reference"
 
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/store"
@@ -33,7 +34,7 @@ func NewImageAndCacheBuilder(ib build.ImageBuilder, cb build.CacheBuilder, custb
 func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, ps *build.PipelineState) (reference.NamedTagged, error) {
 	var n reference.NamedTagged
 
-	userFacingRefName := reference.FamiliarString(iTarget.ConfigurationRef)
+	userFacingRefName := container.FamiliarString(iTarget.ConfigurationRef)
 	refToBuild := iTarget.DeploymentRef
 	cacheInputs := icb.createCacheInputs(iTarget)
 	cacheRef, err := icb.cb.FetchCache(ctx, cacheInputs)

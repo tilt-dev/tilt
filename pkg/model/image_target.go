@@ -40,7 +40,7 @@ func NewImageTarget(ref container.RefSelector) ImageTarget {
 func ImageID(ref container.RefSelector) TargetID {
 	name := TargetName("")
 	if !ref.Empty() {
-		name = TargetName(ref.String())
+		name = TargetName(container.FamiliarString(ref))
 	}
 	return TargetID{
 		Type: TargetTypeImage,

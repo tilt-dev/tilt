@@ -9,6 +9,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/opencontainers/go-digest"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/pkg/logger"
 )
@@ -43,8 +44,8 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, comm
 
 	l := logger.Get(ctx)
 	l.Infof("Custom Build: Injecting Environment Variables")
-	l.Infof("EXPECTED_REF=%s", reference.FamiliarString(expectedRef))
-	env := append(os.Environ(), fmt.Sprintf("EXPECTED_REF=%s", reference.FamiliarString(expectedRef)))
+	l.Infof("EXPECTED_REF=%s", container.FamiliarString(expectedRef))
+	env := append(os.Environ(), fmt.Sprintf("EXPECTED_REF=%s", container.FamiliarString(expectedRef)))
 
 	for _, e := range b.dCli.Env().AsEnviron() {
 		env = append(env, e)

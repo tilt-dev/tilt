@@ -7,6 +7,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/schollz/closestmatch"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -37,7 +38,7 @@ func (idx *buildIndex) addImage(img *dockerImage) error {
 	name := selector.RefName()
 	_, hasExisting := idx.imagesBySelector[selector.String()]
 	if hasExisting {
-		return fmt.Errorf("Image for ref %q has already been defined", reference.FamiliarString(selector))
+		return fmt.Errorf("Image for ref %q has already been defined", container.FamiliarString(selector))
 	}
 
 	idx.imagesBySelector[selector.String()] = img
@@ -107,7 +108,7 @@ func (idx *buildIndex) assertAllMatched() error {
 			}
 
 			return fmt.Errorf("Image not used in any deploy config:\n    ✕ %v\n%sSkipping this image build",
-				reference.FamiliarString(image.configurationRef), strings.Join(matchLines, ""))
+				container.FamiliarString(image.configurationRef), strings.Join(matchLines, ""))
 		}
 	}
 	return nil
