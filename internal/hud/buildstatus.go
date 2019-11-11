@@ -46,7 +46,7 @@ func makeBuildStatus(res view.Resource, triggerMode model.TriggerMode) buildStat
 		reason = res.CurrentBuild.Reason
 	} else if !res.PendingBuildSince.IsZero() && !res.PendingBuildReason.IsCrashOnly() {
 		status = "Pending"
-		if triggerMode == model.TriggerModeAuto {
+		if triggerMode.AutoOnChange() {
 			duration = time.Since(res.PendingBuildSince)
 		}
 		edits = res.PendingBuildEdits

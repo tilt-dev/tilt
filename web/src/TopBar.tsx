@@ -41,7 +41,7 @@ class TopBar extends PureComponent<TopBarProps> {
   }
 
   maybeRenderTeamSnapshotsButton() {
-    if (!this.props.teamSnapshotsUrl) {
+    if (!this.props.teamSnapshotsUrl || this.isSnapshot()) {
       return null
     }
     return (
@@ -56,8 +56,12 @@ class TopBar extends PureComponent<TopBarProps> {
     )
   }
 
+  isSnapshot() {
+    return !!this.props.snapshotOwner
+  }
+
   maybeRenderTeamUpdatesButton() {
-    if (!this.props.teamUpdatesUrl) {
+    if (!this.props.teamUpdatesUrl || this.isSnapshot()) {
       return null
     }
     return (

@@ -8,9 +8,9 @@ docker_build('gcr.io/windmill-test-containers/integration/live_update_after_cras
              '.',
              dockerfile='Dockerfile',
              live_update=[
-               sync('.', '/src'),
-               run('/src/compile.sh'),
-               run('/src/restart.sh'),
+               sync('.', '/app'),
+               run('/app/compile.sh'),
+               run('/app/restart.sh'),
              ])
 
 k8s_resource("live-update-after-crash-rebuild", port_forwards=["31234:8000"])

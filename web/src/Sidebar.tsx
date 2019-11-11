@@ -1,7 +1,7 @@
 import React, { PureComponent } from "react"
 import { ReactComponent as ChevronSvg } from "./assets/svg/chevron.svg"
 import { Link } from "react-router-dom"
-import { combinedStatus, warnings } from "./status"
+import { combinedStatus } from "./status"
 import "./Sidebar.scss"
 import {
   ResourceView,

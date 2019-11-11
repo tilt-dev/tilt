@@ -568,6 +568,8 @@ func handleConfigsReloaded(
 	state.Features = event.Features
 	state.TeamName = event.TeamName
 
+	state.VersionSettings = event.VersionSettings
+
 	// Remove pending file changes that were consumed by this build.
 	for file, modTime := range state.PendingConfigFileChanges {
 		if modTime.Before(state.TiltfileState.LastBuild().StartTime) {

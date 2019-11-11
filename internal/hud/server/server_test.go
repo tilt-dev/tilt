@@ -305,7 +305,7 @@ func TestSendToTriggerQueue_manualManifest(t *testing.T) {
 	mt := store.ManifestTarget{
 		Manifest: model.Manifest{
 			Name:        "foobar",
-			TriggerMode: model.TriggerModeManual,
+			TriggerMode: model.TriggerModeManualAfterInitial,
 		},
 	}
 	state := f.st.LockMutableStateForTesting()

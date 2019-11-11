@@ -16,7 +16,8 @@ export enum ResourceView {
 
 export enum TriggerMode {
   TriggerModeAuto,
-  TriggerModeManual,
+  TriggerModeManualAfterInitial,
+  TriggerModeManualIncludingInitial,
 }
 
 export type Build = {
@@ -118,6 +119,9 @@ export type WebView = {
   tiltCloudSchemeHost: string
   tiltCloudTeamID: string
   fatalError: string | undefined
+  versionSettings: {
+    checkUpdates: boolean
+  }
 }
 
 export type Snapshot = {

@@ -3054,11 +3054,14 @@ func TestTriggerModeK8S(t *testing.T) {
 	}{
 		{"default", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
 		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, model.TriggerModeAuto},
-		{"explicit global manual", TriggerModeManual, TriggerModeUnset, model.TriggerModeManual},
+		{"explicit global manual", TriggerModeManual, TriggerModeUnset, model.TriggerModeManualAfterInitial},
+		{"explicit global manual after initial", TriggerModeManual, TriggerModeUnset, model.TriggerModeManualAfterInitial},
 		{"kr auto", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
-		{"kr manual", TriggerModeUnset, TriggerModeManual, model.TriggerModeManual},
+		{"kr manual", TriggerModeUnset, TriggerModeManual, model.TriggerModeManualAfterInitial},
+		{"kr manual after initial", TriggerModeUnset, TriggerModeManual, model.TriggerModeManualAfterInitial},
 		{"kr override auto", TriggerModeManual, TriggerModeAuto, model.TriggerModeAuto},
-		{"kr override manual", TriggerModeAuto, TriggerModeManual, model.TriggerModeManual},
+		{"kr override manual", TriggerModeAuto, TriggerModeManual, model.TriggerModeManualAfterInitial},
+		{"kr override manual after initial", TriggerModeAuto, TriggerModeManual, model.TriggerModeManualAfterInitial},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			f := newFixture(t)
@@ -3070,20 +3073,16 @@ func TestTriggerModeK8S(t *testing.T) {
 			switch testCase.globalSetting {
 			case TriggerModeUnset:
 				globalTriggerModeDirective = ""
-			case TriggerModeManual:
-				globalTriggerModeDirective = "trigger_mode(TRIGGER_MODE_MANUAL)"
-			case TriggerModeAuto:
-				globalTriggerModeDirective = "trigger_mode(TRIGGER_MODE_AUTO)"
+			default:
+				globalTriggerModeDirective = fmt.Sprintf("trigger_mode(%s)", testCase.globalSetting.String())
 			}
 
 			var k8sResourceDirective string
 			switch testCase.k8sResourceSetting {
 			case TriggerModeUnset:
 				k8sResourceDirective = ""
-			case TriggerModeManual:
-				k8sResourceDirective = "k8s_resource('foo', trigger_mode=TRIGGER_MODE_MANUAL)"
-			case TriggerModeAuto:
-				k8sResourceDirective = "k8s_resource('foo', trigger_mode=TRIGGER_MODE_AUTO)"
+			default:
+				k8sResourceDirective = fmt.Sprintf("k8s_resource('foo', trigger_mode=%s)", testCase.k8sResourceSetting.String())
 			}
 
 			f.file("Tiltfile", fmt.Sprintf(`
@@ -3110,11 +3109,11 @@ func TestTriggerModeDC(t *testing.T) {
 	}{
 		{"default", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
 		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, model.TriggerModeAuto},
-		{"explicit global manual", TriggerModeManual, TriggerModeUnset, model.TriggerModeManual},
+		{"explicit global manual", TriggerModeManual, TriggerModeUnset, model.TriggerModeManualAfterInitial},
 		{"dc auto", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
-		{"dc manual", TriggerModeUnset, TriggerModeManual, model.TriggerModeManual},
+		{"dc manual", TriggerModeUnset, TriggerModeManual, model.TriggerModeManualAfterInitial},
 		{"dc override auto", TriggerModeManual, TriggerModeAuto, model.TriggerModeAuto},
-		{"dc override manual", TriggerModeAuto, TriggerModeManual, model.TriggerModeManual},
+		{"dc override manual", TriggerModeAuto, TriggerModeManual, model.TriggerModeManualAfterInitial},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			f := newFixture(t)
@@ -3155,6 +3154,81 @@ docker_compose('docker-compose.yml')
 			f.assertNextManifest("foo", testCase.expectedTriggerMode)
 		})
 	}
+}
+
+func TestTriggerModeLocal(t *testing.T) {
+	for _, testCase := range []struct {
+		name                 string
+		globalSetting        triggerMode
+		localResourceSetting triggerMode
+		specifyAutoInit      bool
+		autoInit             bool
+		expectedTriggerMode  model.TriggerMode
+	}{
+		{"default", TriggerModeUnset, TriggerModeUnset, false, true, model.TriggerModeAuto},
+		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, false, true, model.TriggerModeAuto},
+		{"explicit global manual", TriggerModeManual, TriggerModeUnset, false, true, model.TriggerModeManualAfterInitial},
+		{"explicit global manual, autoInit=True", TriggerModeManual, TriggerModeUnset, true, true, model.TriggerModeManualAfterInitial},
+		{"explicit global manual, autoInit=False", TriggerModeManual, TriggerModeUnset, true, false, model.TriggerModeManualIncludingInitial},
+		{"local_resource auto", TriggerModeUnset, TriggerModeUnset, false, true, model.TriggerModeAuto},
+		{"local_resource manual", TriggerModeUnset, TriggerModeManual, false, true, model.TriggerModeManualAfterInitial},
+		{"local_resource manual, autoInit=True", TriggerModeUnset, TriggerModeManual, true, true, model.TriggerModeManualAfterInitial},
+		{"local_resource manual, autoInit=False", TriggerModeUnset, TriggerModeManual, true, false, model.TriggerModeManualIncludingInitial},
+		{"local_resource override auto", TriggerModeManual, TriggerModeAuto, false, true, model.TriggerModeAuto},
+		{"local_resource override manual", TriggerModeAuto, TriggerModeManual, false, true, model.TriggerModeManualAfterInitial},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+
+			var globalTriggerModeDirective string
+			switch testCase.globalSetting {
+			case TriggerModeUnset:
+				globalTriggerModeDirective = ""
+			case TriggerModeManual:
+				globalTriggerModeDirective = "trigger_mode(TRIGGER_MODE_MANUAL)"
+			case TriggerModeAuto:
+				globalTriggerModeDirective = "trigger_mode(TRIGGER_MODE_AUTO)"
+			}
+
+			resourceTriggerModeArg := ""
+			switch testCase.localResourceSetting {
+			case TriggerModeManual:
+				resourceTriggerModeArg = ", trigger_mode=TRIGGER_MODE_MANUAL"
+			case TriggerModeAuto:
+				resourceTriggerModeArg = ", trigger_mode=TRIGGER_MODE_AUTO"
+			}
+
+			autoInitArg := ""
+			if testCase.specifyAutoInit {
+				if testCase.autoInit {
+					autoInitArg = ", auto_init=True"
+				} else {
+					autoInitArg = ", auto_init=False"
+				}
+			}
+
+			localResourceDirective := fmt.Sprintf("local_resource('foo', 'echo hi'%s%s)", resourceTriggerModeArg, autoInitArg)
+
+			f.file("Tiltfile", fmt.Sprintf(`
+%s
+%s
+`, globalTriggerModeDirective, localResourceDirective))
+
+			f.load()
+
+			f.assertNumManifests(1)
+			f.assertNextManifest("foo", testCase.expectedTriggerMode)
+		})
+	}
+}
+
+func TestLocalResourceAutoTriggerModeAutoInitFalse(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", fmt.Sprintf(`local_resource("foo", "echo hi", auto_init=False)`))
+	f.loadErrString("auto_init=False incompatible with trigger_mode=TRIGGER_MODE_AUTO")
 }
 
 func TestTriggerModeInt(t *testing.T) {

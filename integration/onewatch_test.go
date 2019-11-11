@@ -31,7 +31,7 @@ func TestOneWatch(t *testing.T) {
 
 	f.WaitUntil(ctx, "live_update syntax error", func() (string, error) {
 		return f.logs.String(), nil
-	}, "FAILED TO UPDATE CONTAINER")
+	}, "Failed to update container")
 
 	f.ReplaceContents("compile.sh", "One-Up\"", "Two-Up")
 

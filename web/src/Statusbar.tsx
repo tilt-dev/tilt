@@ -6,7 +6,7 @@ import { ReactComponent as UpdateAvailableSvg } from "./assets/svg/update-availa
 import { combinedStatus, warnings } from "./status"
 import "./Statusbar.scss"
 import { combinedStatusMessage } from "./combinedStatusMessage"
-import { Build, ResourceStatus, RuntimeStatus, TiltBuild } from "./types"
+import { Build, ResourceStatus, TiltBuild } from "./types"
 import mostRecentBuildToDisplay from "./mostRecentBuild"
 import { Link } from "react-router-dom"
 
@@ -49,6 +49,7 @@ type StatusBarProps = {
   alertsUrl: string
   runningVersion: TiltBuild | null
   latestVersion: TiltBuild | null
+  checkVersion: boolean
 }
 
 class Statusbar extends PureComponent<StatusBarProps> {
@@ -120,9 +121,14 @@ class Statusbar extends PureComponent<StatusBarProps> {
     )
   }
 
-  tiltPanel(runningVersion: TiltBuild | null, latestVersion: TiltBuild | null) {
+  tiltPanel(
+    runningVersion: TiltBuild | null,
+    latestVersion: TiltBuild | null,
+    shouldCheckVersion: boolean
+  ) {
     let content: ReactElement = <LogoSvg className="Statusbar-logo" />
     if (
+      shouldCheckVersion &&
       latestVersion &&
       latestVersion.version &&
       runningVersion &&
@@ -189,7 +195,8 @@ class Statusbar extends PureComponent<StatusBarProps> {
 
     let tiltPanel = this.tiltPanel(
       this.props.runningVersion,
-      this.props.latestVersion
+      this.props.latestVersion,
+      this.props.checkVersion
     )
 
     return (

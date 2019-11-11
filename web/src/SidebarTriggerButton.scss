@@ -17,7 +17,7 @@ $trigger-button-color: $color-gray-light;
 $trigger-button-hover-color: $color-white;
 $trigger-button-active-color: $color-green;
 
-.SidebarTriggerButton.isReady {
+.SidebarTriggerButton.clickable {
   background-color: $trigger-button-color;
   -webkit-mask: url(assets/svg/trigger-button.svg) no-repeat 50% 50%;
   mask: url(assets/svg/trigger-button.svg) no-repeat 50% 50%;
@@ -26,18 +26,18 @@ $trigger-button-active-color: $color-green;
 }
 
 /* the resource containing the button is selected*/
-.SidebarTriggerButton.isReady.isSelected {
+.SidebarTriggerButton.clickable.isSelected {
   background-color: $trigger-button-color;
 }
 
-.SidebarTriggerButton.isReady:hover {
+.SidebarTriggerButton.clickable:hover {
   background-color: $trigger-button-hover-color;
 }
-.SidebarTriggerButton.isReady.isSelected:hover{
+.SidebarTriggerButton.clickable.isSelected:hover{
   background-color: $color-black
 }
 
-.SidebarTriggerButton.isReady:active {
+.SidebarTriggerButton.clickable:active {
   // make it bigger on click
   -webkit-mask-size: 40%;
   mask-size: 40%;
@@ -51,7 +51,7 @@ $trigger-button-active-color: $color-green;
   animation: spin 1s linear infinite;
 }
 
-.SidebarTriggerButton.isReady.isDirty {
+.SidebarTriggerButton.clickable.clickMe {
   background-color: inherit;
   -webkit-mask: none;
   mask: none;
@@ -59,12 +59,12 @@ $trigger-button-active-color: $color-green;
   opacity: 0.7;
 }
 
-.SidebarTriggerButton.isReady.isDirty:hover, .SidebarTriggerButton.isReady.isSelected.isDirty:hover{
+.SidebarTriggerButton.clickable.clickMe:hover, .SidebarTriggerButton.clickable.isSelected.clickMe:hover{
   background-color: inherit;
   opacity: 1;
 }
 
-.SidebarTriggerButton.isReady.isDirty:active {
+.SidebarTriggerButton.clickable.clickMe:active {
   // make it bigger on click
   background-size: 70%;
 }

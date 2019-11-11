@@ -1,6 +1,22 @@
 image: gcr.io/windmill-public-containers/tilt-toast@sha256:481cd7eb12dc5b82ea5f6832b2895f914a6b21621dbb122ea5290ae73bb0d1b3
 tasks:
-  proto:
+  synclet-proto:
+    input_paths:
+      - internal/synclet/synclet.proto
+    output_paths:
+      - internal/synclet/proto/synclet.pb.go
+    command: |
+      set -euo pipefail
+      protoc \
+       -I. \
+       -I/usr/include \
+       --go_out=plugins=grpc,paths=source_relative:. \
+       internal/synclet/synclet.proto
+      mkdir -p internal/synclet/proto
+      mv internal/synclet/synclet.pb.go internal/synclet/proto
+      goimports -local github.com/windmilleng/tilt -w internal/synclet/proto/synclet.pb.go
+
+  webview-proto:
     input_paths:
       - pkg/webview/view.proto
     output_paths:
@@ -21,7 +37,7 @@ tasks:
 
   proto-ts:
     dependencies:
-      - proto
+      - webview-proto
     input_paths:
       - pkg/webview/view.swagger.json
     output_paths:
