@@ -3408,7 +3408,7 @@ func (f *testFixture) notifyAndWaitForPodStatus(pod *v1.Pod, mn model.ManifestNa
 
 func (f *testFixture) waitForCompletedBuildCount(count int) {
 	f.WaitUntil(fmt.Sprintf("%d builds done", count), func(state store.EngineState) bool {
-		return state.CompletedBuildCount == count
+		return state.CompletedBuildCount >= count
 	})
 }
 
