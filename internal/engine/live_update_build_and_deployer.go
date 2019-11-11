@@ -149,8 +149,8 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 				// Keep running updates -- we want all containers to have the same files on them
 				// even if the Runs don't succeed
 				lastUserBuildFailure = err
-				logger.Get(ctx).Infof("  → FAILED TO UPDATE CONTAINER %s: run step %q failed with with exit code: %d",
-					cInfo.ContainerID, runFail.Cmd.String(), runFail.ExitCode)
+				logger.Get(ctx).Infof("  → Failed to update container %s: run step %q failed with with exit code: %d",
+					cInfo.ContainerID.ShortStr(), runFail.Cmd.String(), runFail.ExitCode)
 				continue
 			}
 
@@ -162,8 +162,8 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 			if lastUserBuildFailure != nil {
 				// This build succeeded, but previously at least one failed due to user error.
 				// We may have inconsistent state--bail, and fall back to full build.
-				return fmt.Errorf("INCONSISTENT STATE: container %s successfully updated, "+
-					"but last update failed with '%v'", cInfo.ContainerID, lastUserBuildFailure)
+				return fmt.Errorf("Failed to update container: container %s successfully updated, "+
+					"but last update failed with '%v'", cInfo.ContainerID.ShortStr(), lastUserBuildFailure)
 			}
 		}
 	}
