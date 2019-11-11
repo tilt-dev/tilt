@@ -1672,9 +1672,6 @@ func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 			f.Start([]model.Manifest{manifest}, true)
 
 			_ = f.nextCallComplete()
-			f.WaitUntilManifestState("manifest state appears", mName, func(state store.ManifestState) bool {
-				return true
-			})
 
 			// set up runtime state
 			st := f.store.LockMutableStateForTesting()
@@ -1718,7 +1715,6 @@ func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 					assert.Equal(t, ancestorUID, ms.K8sRuntimeState().PodAncestorUID,
 						"expect k8s runtime state to have current pod ancestor UID")
 				})
-
 			} else {
 				f.withManifestState(mName, func(ms store.ManifestState) {
 					_, ok := ms.PodWithID(podID)
@@ -1731,8 +1727,6 @@ func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 		})
 	}
 }
-
-// test existing pod updated if doesn't match ptsh
 
 func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 	f := newTestFixture(t)

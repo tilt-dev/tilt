@@ -7,8 +7,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/wmclient/pkg/analytics"
+
+	"github.com/windmilleng/tilt/internal/k8s"
 
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
