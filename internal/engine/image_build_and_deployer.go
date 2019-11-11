@@ -164,7 +164,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 }
 
 func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedTagged, ps *build.PipelineState, iTarget model.ImageTarget, kTarget model.K8sTarget) (reference.NamedTagged, error) {
-	ps.StartPipelineStep(ctx, "Pushing %s", reference.FamiliarString(ref))
+	ps.StartPipelineStep(ctx, "Pushing %s", container.FamiliarString(ref))
 	defer ps.EndPipelineStep(ctx)
 
 	cbSkip := false

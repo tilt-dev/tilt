@@ -1547,8 +1547,8 @@ k8s_yaml('auth.yaml')
 
 	m := f.assertNextManifest("auth", deployment("auth"))
 	assert.Equal(t, []string{
-		"docker.io/vandelay/common",
-		"docker.io/vandelay/auth",
+		"vandelay/common",
+		"vandelay/auth",
 	}, f.imageTargetNames(m))
 }
 
@@ -1573,8 +1573,8 @@ k8s_yaml('app.yaml')
 
 	m := f.assertNextManifest("app", deployment("app"), deployment("app-jessie"))
 	assert.Equal(t, []string{
-		"docker.io/vandelay/app",
-		"docker.io/vandelay/app:jessie",
+		"vandelay/app",
+		"vandelay/app:jessie",
 	}, f.imageTargetNames(m))
 }
 
@@ -1597,8 +1597,8 @@ k8s_yaml('app.yaml')
 
 	f.load()
 
-	f.assertNextManifest("app", deployment("app", image("docker.io/vandelay/app")))
-	f.assertNextManifest("app-jessie", deployment("app-jessie", image("docker.io/vandelay/app:jessie")))
+	f.assertNextManifest("app", deployment("app", image("vandelay/app")))
+	f.assertNextManifest("app-jessie", deployment("app-jessie", image("vandelay/app:jessie")))
 }
 
 func TestImagesWithSameNameDifferentManifests(t *testing.T) {
@@ -1623,12 +1623,12 @@ k8s_resource('jessie', image='vandelay/app:jessie')
 
 	m := f.assertNextManifest("jessie", deployment("app-jessie"))
 	assert.Equal(t, []string{
-		"docker.io/vandelay/app:jessie",
+		"vandelay/app:jessie",
 	}, f.imageTargetNames(m))
 
 	m = f.assertNextManifest("app", deployment("app"))
 	assert.Equal(t, []string{
-		"docker.io/vandelay/app",
+		"vandelay/app",
 	}, f.imageTargetNames(m))
 }
 
@@ -1888,7 +1888,7 @@ docker_build('test/mycrd-env', 'env')
 	f.load("mycrd")
 	f.assertNextManifest("mycrd",
 		db(
-			image("docker.io/test/mycrd-env"),
+			image("test/mycrd-env"),
 		),
 		k8sObject("mycrd", "Environment"),
 	)
@@ -1966,7 +1966,7 @@ k8s_kind(%s)
 				f.load(expectedResourceName)
 				var imageOpt interface{}
 				if test.expectImage {
-					imageOpt = db(image("docker.io/test/mycrd-env"))
+					imageOpt = db(image("test/mycrd-env"))
 				} else {
 					imageOpt = funcOpt(func(t *testing.T, m model.Manifest) bool {
 						return assert.Equal(t, 0, len(m.ImageTargets))
@@ -1981,7 +1981,7 @@ k8s_kind(%s)
 					t.Fatal("invalid test: cannot expect image without expecting workload")
 				}
 				if test.expectedError == "" {
-					w := unusedImageWarning("docker.io/test/mycrd-env", []string{})
+					w := unusedImageWarning("test/mycrd-env", []string{})
 					f.loadAssertWarnings(w)
 				} else {
 					f.loadErrString(test.expectedError)
@@ -2022,10 +2022,10 @@ docker_build('test/mycrd-env', 'env')
 	f.load("mycrd")
 	f.assertNextManifest("mycrd",
 		db(
-			image("docker.io/test/mycrd-env"),
+			image("test/mycrd-env"),
 		),
 		db(
-			image("docker.io/test/mycrd-builder"),
+			image("test/mycrd-builder"),
 		),
 		k8sObject("mycrd", "Environment"),
 	)

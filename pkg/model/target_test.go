@@ -20,14 +20,14 @@ func TestTopSort(t *testing.T) {
 	cases := []topSortCase{
 		topSortCase{
 			inputs: []TargetSpec{newDepTarget("a", "b")},
-			err:    "Missing target dependency: docker.io/library/b",
+			err:    "Missing target dependency: b",
 		},
 		topSortCase{
 			inputs: []TargetSpec{
 				newDepTarget("a", "b"),
 				newDepTarget("b", "a"),
 			},
-			err: "Found a cycle at target: docker.io/library/a",
+			err: "Found a cycle at target: a",
 		},
 		topSortCase{
 			inputs: []TargetSpec{
@@ -35,7 +35,7 @@ func TestTopSort(t *testing.T) {
 				newDepTarget("b", "c"),
 				newDepTarget("c", "a"),
 			},
-			err: "Found a cycle at target: docker.io/library/a",
+			err: "Found a cycle at target: a",
 		},
 		topSortCase{
 			inputs: []TargetSpec{

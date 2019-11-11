@@ -3,9 +3,9 @@ package engine
 import (
 	"fmt"
 
-	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -76,7 +76,7 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 		// a container(s). Check to see if we have enough information about the
 		// container(s) that would need to be updated.
 		if len(state.RunningContainers) == 0 {
-			return nil, RedirectToNextBuilderInfof("don't have info for running container of image %q (often a result of the deployment not yet being ready)", reference.FamiliarString(iTarget.DeploymentRef))
+			return nil, RedirectToNextBuilderInfof("don't have info for running container of image %q (often a result of the deployment not yet being ready)", container.FamiliarString(iTarget.DeploymentRef))
 		}
 
 		filesChanged, err := filesChangedTree(g, iTarget, stateSet)
