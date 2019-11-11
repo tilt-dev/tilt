@@ -114,15 +114,13 @@ func maybeTrackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*s
 	ns := k8s.NamespaceFromPod(pod)
 	hasSynclet := sidecar.PodSpecContainsSynclet(pod.Spec)
 	runtime := ms.GetOrCreateK8sRuntimeState()
-	currentDeploy := runtime.HasOKPodTemplateSpecHash(pod)
+	isCurrentDeploy := runtime.HasOKPodTemplateSpecHash(pod) // pod is from the most recent Tilt deploy
 
 	// Case 1: We haven't seen pods for this ancestor yet.
 	ancestorUID := action.AncestorUID
 	isAncestorMatch := ancestorUID != ""
 	if runtime.PodAncestorUID == "" ||
 		(isAncestorMatch && runtime.PodAncestorUID != ancestorUID) {
-		runtime.PodAncestorUID = ancestorUID
-		runtime.Pods = make(map[k8s.PodID]*store.Pod)
 		podInfo := &store.Pod{
 			PodID:      podID,
 			StartedAt:  startedAt,
@@ -130,7 +128,15 @@ func maybeTrackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*s
 			Namespace:  ns,
 			HasSynclet: hasSynclet,
 		}
-		maybeAttachPodToManifest(ms, runtime, podInfo, currentDeploy)
+		if isCurrentDeploy {
+			// Only attach a new pod to the runtime state if it's from the current deploy;
+			// if it's from an old deploy/an old Tilt run, we don't want to be checking it
+			// for status etc.
+			runtime.PodAncestorUID = ancestorUID
+			runtime.Pods = make(map[k8s.PodID]*store.Pod)
+			runtime.Pods[podID] = podInfo
+			ms.RuntimeState = runtime
+		}
 		return podInfo, true
 	}
 
@@ -145,23 +151,17 @@ func maybeTrackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*s
 			Namespace:  ns,
 			HasSynclet: hasSynclet,
 		}
-		maybeAttachPodToManifest(ms, runtime, podInfo, currentDeploy)
+		if isCurrentDeploy {
+			// Only attach a new pod to the runtime state if it's from the current deploy;
+			// if it's from an old deploy/an old Tilt run, we don't want to be checking it
+			// for status etc.
+			runtime.Pods[podID] = podInfo
+		}
 		return podInfo, true
 	}
 
 	// CASE 3: This pod is already in the PodSet, nothing to do.
 	return podInfo, false
-}
-
-func maybeAttachPodToManifest(ms *store.ManifestState, runtime store.K8sRuntimeState,
-	pod *store.Pod, currentDeploy bool) {
-	// Only attach a new pod to the runtime state if it's from the current deploy;
-	// if it's from an old deploy/an old Tilt run, we don't want to be checking it
-	// for status etc.
-	if currentDeploy {
-		runtime.Pods[pod.PodID] = pod
-		ms.RuntimeState = runtime
-	}
 }
 
 // Convert a Kubernetes Pod into a list if simpler Container models to store in the engine state.
