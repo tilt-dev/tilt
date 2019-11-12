@@ -19,7 +19,7 @@ import (
 )
 
 func handlePodChangeAction(ctx context.Context, state *store.EngineState, action k8swatch.PodChangeAction) {
-	mt := matchPodChangeToManifest(state, action)
+	mt := matchPodChangeToManifest(ctx, state, action)
 	if mt == nil {
 		return
 	}
@@ -27,7 +27,7 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 	pod := action.Pod
 	ms := mt.State
 	manifest := mt.Manifest
-	podInfo, isNew := trackPod(ms, action)
+	podInfo, isNew := trackPod(ctx, ms, action)
 	podID := k8s.PodIDFromPod(pod)
 	if podInfo.PodID != podID {
 		// This is an event from an old pod.
@@ -35,7 +35,11 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 	}
 
 	// Update the status
-	podInfo.Deleting = pod.DeletionTimestamp != nil && !pod.DeletionTimestamp.IsZero()
+	deleting := pod.DeletionTimestamp != nil && !pod.DeletionTimestamp.IsZero()
+	podInfo.Deleting = deleting
+	if deleting {
+		logger.Get(ctx).Infof("🗑 deleting pod %s!!!", pod.Name)
+	}
 	podInfo.Phase = pod.Status.Phase
 	podInfo.Status = k8swatch.PodStatusToString(*pod)
 	podInfo.StatusMessages = k8swatch.PodStatusErrorMessages(*pod)
@@ -81,12 +85,18 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 
 // Find the ManifestTarget for the PodChangeAction,
 // and confirm that it matches what we've deployed.
-func matchPodChangeToManifest(state *store.EngineState, action k8swatch.PodChangeAction) *store.ManifestTarget {
+func matchPodChangeToManifest(ctx context.Context, state *store.EngineState, action k8swatch.PodChangeAction) *store.ManifestTarget {
+	logger.Get(ctx).Infof("-----\n\n🤔 processing PodChangeAction for pod: %s", action.Pod.Name)
+	if action.Pod.DeletionTimestamp != nil {
+		logger.Get(ctx).Infof("\t🗑 pod deletion timestamp: %s", action.Pod.DeletionTimestamp.String())
+	}
+
 	manifestName := action.ManifestName
 	ancestorUID := action.AncestorUID
 	mt, ok := state.ManifestTargets[manifestName]
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.
+		logger.Get(ctx).Infof("🤔 discarding PodChangeAction: couldn't find manifest with name")
 		return nil
 	}
 
@@ -97,6 +107,7 @@ func matchPodChangeToManifest(state *store.EngineState, action k8swatch.PodChang
 	// deployed UID set anymore, we can ignore it.
 	isAncestorMatch := ancestorUID != ""
 	if isAncestorMatch && !runtime.DeployedUIDSet.Contains(ancestorUID) {
+		logger.Get(ctx).Infof("🤔 discarding PodChangeAction: action has UID not found in deployedUIDs set")
 		return nil
 	}
 	return mt
@@ -106,7 +117,7 @@ func matchPodChangeToManifest(state *store.EngineState, action k8swatch.PodChang
 // If not, create a new tracking object.
 // Returns a store.Pod that the caller can mutate, and true
 // if this is the first time we've seen this pod.
-func trackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*store.Pod, bool) {
+func trackPod(ctx context.Context, ms *store.ManifestState, action k8swatch.PodChangeAction) (*store.Pod, bool) {
 	pod := action.Pod
 	podID := k8s.PodIDFromPod(pod)
 	startedAt := pod.CreationTimestamp.Time
@@ -120,6 +131,7 @@ func trackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*store.
 	isAncestorMatch := ancestorUID != ""
 	if runtime.PodAncestorUID == "" ||
 		(isAncestorMatch && runtime.PodAncestorUID != ancestorUID) {
+		logger.Get(ctx).Infof("🤔 maybeTrackPod: haven't seen pods for this ancestor yet")
 		runtime.PodAncestorUID = ancestorUID
 		runtime.Pods = make(map[k8s.PodID]*store.Pod)
 		pod := &store.Pod{
@@ -138,6 +150,7 @@ func trackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*store.
 	if !ok {
 		// CASE 2: We have a set of pods for this ancestor UID, but not this
 		// particular pod -- record it
+		logger.Get(ctx).Infof("🤔 maybeTrackPod: have seen pods for this ancestor, but haven't seen THIS pod")
 		podInfo = &store.Pod{
 			PodID:      podID,
 			StartedAt:  startedAt,
@@ -150,6 +163,7 @@ func trackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*store.
 	}
 
 	// CASE 3: This pod is already in the PodSet, nothing to do.
+	logger.Get(ctx).Infof("🤔 maybeTrackPod: pod already in PodSet")
 	return podInfo, false
 }
 
