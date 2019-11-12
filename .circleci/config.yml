@@ -125,8 +125,6 @@ workflows:
           requires:
             - build-linux
       - publish-assets:
-          requires:
-            - build-js
           filters:
             branches:
               only: master
