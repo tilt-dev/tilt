@@ -543,6 +543,39 @@ func TestBuildControllerManualTriggerWithoutFileChangesForceUpdates(t *testing.T
 	})
 }
 
+// it should be a force update if there have been no file changes since the last build
+// make sure file changes prior to the last build are ignored for this purpose
+func TestBuildControllerManualTriggerWithFileChangesSinceLastSuccessfulBuildButBeforeLastBuild(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	mName := model.ManifestName("foobar")
+
+	manifest := f.newManifest(mName.String())
+	manifests := []model.Manifest{manifest}
+	f.Start(manifests, true)
+
+	f.nextCallComplete()
+
+	f.b.nextBuildFailure = errors.New("build failure!")
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
+	f.nextCallComplete()
+
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: mName})
+	call := f.nextCallComplete()
+	state := call.oneState()
+	assert.Equal(t, []string{f.JoinPath("main.go")}, state.FilesChanged())
+	assert.True(t, state.NeedsForceUpdate)
+
+	f.WaitUntil("manifest removed from queue", func(st store.EngineState) bool {
+		for _, mn := range st.TriggerQueue {
+			if mn == mName {
+				return false
+			}
+		}
+		return true
+	})
+}
+
 func TestBuildQueueOrdering(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()

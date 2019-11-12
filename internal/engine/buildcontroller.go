@@ -170,7 +170,7 @@ func buildTargets(manifest model.Manifest) []model.TargetSpec {
 func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.TargetSpec, ms *store.ManifestState) store.BuildStateSet {
 	result := store.BuildStateSet{}
 
-	anyFilesChanged := false
+	anyFilesChangedSinceLastBuild := false
 
 	for _, spec := range specs {
 		id := spec.ID()
@@ -180,13 +180,13 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 
 		status := ms.BuildStatus(id)
 		var filesChanged []string
-		for file, _ := range status.PendingFileChanges {
+		for file, ts := range status.PendingFileChanges {
 			filesChanged = append(filesChanged, file)
+			if ms.LastBuild().Empty() || ts.After(ms.LastBuild().StartTime) {
+				anyFilesChangedSinceLastBuild = true
+			}
 		}
 		sort.Strings(filesChanged)
-		if len(filesChanged) > 0 {
-			anyFilesChanged = true
-		}
 
 		buildState := store.NewBuildState(status.LastSuccessfulResult, filesChanged)
 
@@ -225,7 +225,7 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 	//  out that it's a force update when creating the BuildEntry (in `needsBuild`), store that
 	//  as the BuildReason, and pass the whole BuildEntry to the builder (so the builder can
 	//  know whether to skip in-place builds)
-	if !anyFilesChanged {
+	if !anyFilesChangedSinceLastBuild {
 		for k, v := range result {
 			result[k] = v.WithNeedsForceUpdate(true)
 		}
