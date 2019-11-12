@@ -34,6 +34,15 @@ const ExampleBuildOutputV1_23 = `{"stream":"Run 1/1 : FROM alpine"}
 	{"stream":"Successfully tagged hi:latest\n"}
 `
 
+// same as ExampleBuildOutput1 but with a different digest
+const ExampleBuildOutput2 = `{"stream":"Run 1/1 : FROM alpine"}
+	{"stream":"\n"}
+	{"stream":" ---\u003e 20372c132963\n"}
+	{"aux":{"ID":"sha256:20372c132963eb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af20372c132963"}}
+	{"stream":"Successfully built 20372c132963\n"}
+	{"stream":"Successfully tagged hi:latest\n"}
+`
+
 const ExamplePushSHA1 = "sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1"
 
 var ExamplePushOutput1 = `{"status":"The push refers to repository [localhost:5005/myimage]"}

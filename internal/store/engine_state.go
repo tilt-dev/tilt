@@ -9,6 +9,8 @@ import (
 
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
+	"github.com/windmilleng/tilt/internal/k8s"
+
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -407,6 +409,15 @@ func (ms *ManifestState) StartedFirstBuild() bool {
 
 func (ms *ManifestState) MostRecentPod() Pod {
 	return ms.K8sRuntimeState().MostRecentPod()
+}
+
+func (ms *ManifestState) PodWithID(pid k8s.PodID) (*Pod, bool) {
+	for id, pod := range ms.K8sRuntimeState().Pods {
+		if id == pid {
+			return pod, true
+		}
+	}
+	return nil, false
 }
 
 func (ms *ManifestState) HasPendingFileChanges() bool {
