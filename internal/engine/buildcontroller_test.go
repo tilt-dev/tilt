@@ -543,6 +543,8 @@ func TestBuildControllerManualTriggerWithoutFileChangesForceUpdates(t *testing.T
 	})
 }
 
+// it should be a force update if there have been no file changes since the last build
+// make sure file changes prior to the last build are ignored for this purpose
 func TestBuildControllerManualTriggerWithFileChangesSinceLastSuccessfulBuildButBeforeLastBuild(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
