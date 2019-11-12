@@ -38,7 +38,10 @@ type DontFallBackError struct {
 	error
 }
 
-func WrapDontFallBackError(err error) DontFallBackError {
+func WrapDontFallBackError(err error) error {
+	if err == nil {
+		return nil
+	}
 	return DontFallBackError{err}
 }
 
