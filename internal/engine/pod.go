@@ -36,7 +36,11 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 	}
 
 	// Update the status
-	podInfo.Deleting = pod.DeletionTimestamp != nil && !pod.DeletionTimestamp.IsZero()
+	deleting := pod.DeletionTimestamp != nil && !pod.DeletionTimestamp.IsZero()
+	podInfo.Deleting = deleting
+	if deleting {
+		logger.Get(ctx).Infof("🗑 deleting pod!!! %s", spew.Sdump(pod))
+	}
 	podInfo.Phase = pod.Status.Phase
 	podInfo.Status = k8swatch.PodStatusToString(*pod)
 	podInfo.StatusMessages = k8swatch.PodStatusErrorMessages(*pod)
@@ -83,7 +87,11 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 // Find the ManifestTarget for the PodChangeAction,
 // and confirm that it matches what we've deployed.
 func matchPodChangeToManifest(ctx context.Context, state *store.EngineState, action k8swatch.PodChangeAction) *store.ManifestTarget {
-	logger.Get(ctx).Infof("🤔 processing PodChangeaction: %s", spew.Sdump(action))
+	logger.Get(ctx).Infof("-----\n\n🤔 processing PodChangeAction for pod: %s", action.Pod.Name)
+	if action.Pod.DeletionTimestamp != nil {
+		logger.Get(ctx).Infof("\t🗑 pod deletion timestamp: %s", action.Pod.DeletionTimestamp.String())
+	}
+
 	manifestName := action.ManifestName
 	ancestorUID := action.AncestorUID
 	mt, ok := state.ManifestTargets[manifestName]

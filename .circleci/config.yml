@@ -111,20 +111,20 @@ workflows:
   build:
     # The linux job is cheaper than the others, so run that first.
     jobs:
-      - build-linux
-      - build-js:
-          requires:
-            - build-linux
-      - build-macos:
-          requires:
-            - build-linux
-      - build-integration:
-          requires:
-            - build-linux
-      - build-windows:
-          requires:
-            - build-linux
-      - publish-assets:
-          filters:
-            branches:
-              only: master
+#      - build-linux
+#      - build-js:
+#          requires:
+#            - build-linux
+#      - build-macos:
+#          requires:
+#            - build-linux
+      - build-integration
+#          requires:
+#            - build-linux
+#      - build-windows:
+#          requires:
+#            - build-linux
+#      - publish-assets:
+#          filters:
+#            branches:
+#              only: master
