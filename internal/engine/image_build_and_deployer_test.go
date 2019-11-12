@@ -13,6 +13,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/windmilleng/wmclient/pkg/dirs"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -534,6 +535,64 @@ func TestDeployInjectsOverrideCommand(t *testing.T) {
 
 	assert.Equal(t, cmd.Argv, c.Command)
 	assert.Empty(t, c.Args)
+}
+
+func (f *ibdFixture) firstPodTemplateSpecHash() k8s.PodTemplateSpecHash {
+	entities, err := k8s.ParseYAMLFromString(f.k8s.Yaml)
+	if err != nil {
+		f.T().Fatal(err)
+	}
+
+	// if you want to use this from a test that applies more than one entity, it will have to change
+	require.Equal(f.T(), 1, len(entities), "expected only one entity. Yaml contained: %s", f.k8s.Yaml)
+
+	require.IsType(f.T(), &v1.Deployment{}, entities[0].Obj)
+	d := entities[0].Obj.(*v1.Deployment)
+	ret := k8s.PodTemplateSpecHash(d.Spec.Template.Labels[k8s.TiltPodTemplateHashLabel])
+	require.NotEqual(f.T(), ret, k8s.PodTemplateSpecHash(""))
+	return ret
+}
+
+func TestDeployInjectsPodTemplateSpecHash(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	manifest := NewSanchoDockerBuildManifest(f)
+
+	resultSet, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hash := f.firstPodTemplateSpecHash()
+
+	require.True(t, resultSet.DeployedPodTemplateSpecHashes().Contains(hash))
+}
+
+func TestDeployPodTemplateSpecHashChangesWhenImageChanges(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	manifest := NewSanchoDockerBuildManifest(f)
+
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hash1 := f.firstPodTemplateSpecHash()
+
+	// now change the image digest and build again
+	f.docker.BuildOutput = docker.ExampleBuildOutput2
+
+	_, err = f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hash2 := f.firstPodTemplateSpecHash()
+
+	require.NotEqual(t, hash1, hash2)
 }
 
 func TestDeployInjectOverrideCommandClearsOldCommandAndArgs(t *testing.T) {
