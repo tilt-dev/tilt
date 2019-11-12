@@ -1686,7 +1686,7 @@ func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 		name                      string
 		ptshMatch                 bool // does the pod template spec hash of incoming pod event match the PTSH we most recently deployed?
 		ancestorSeen              bool // does the k8s runtime state already know about the ancestor UID of our pod?
-		withExistingPod           bool // instantiate runtime state with an old version of the pod we're getting events for
+		podSeen                   bool // instantiate runtime state with an old version of the pod we're getting events for
 		expectUpdatePodOnManifest bool // expect pod event to cause an update to manifestState.Pods
 	}{
 		{"new ancestor + ptsh OK", true, false, false, true},
@@ -1720,7 +1720,7 @@ func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 				runtime.PodAncestorUID = ancestorUID
 			}
 
-			if test.withExistingPod {
+			if test.podSeen {
 				runtime.Pods[podID] = &store.Pod{
 					PodID:  podID,
 					Status: "Running",
