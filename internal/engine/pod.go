@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 
@@ -39,7 +38,7 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 	deleting := pod.DeletionTimestamp != nil && !pod.DeletionTimestamp.IsZero()
 	podInfo.Deleting = deleting
 	if deleting {
-		logger.Get(ctx).Infof("🗑 deleting pod!!! %s", spew.Sdump(pod))
+		logger.Get(ctx).Infof("🗑 deleting pod %s!!!", pod.Name)
 	}
 	podInfo.Phase = pod.Status.Phase
 	podInfo.Status = k8swatch.PodStatusToString(*pod)
