@@ -306,6 +306,28 @@ func (d *dockerImageBuilder) getDigestFromBuildOutput(ctx context.Context, reade
 	return digest, nil
 }
 
+var dockerBuildCleanupRexes = []*regexp.Regexp{
+	// the "runc did not determinate sucessfully" just seems redundant on top of "executor failed running"
+	regexp.MustCompile("(executor failed running.*): runc did not terminate sucessfully"), // sucessfully (sic)
+	// when a file is missing, it generates an error like "failed to compute cache key: foo.txt not found: not found"
+	// most of that seems redundant and/or confusing
+	regexp.MustCompile("failed to compute cache key: (.* not found): not found"),
+}
+
+// buildkit emits errors that might be useful for people who are into buildkit internals, but aren't really
+// at the optimal level for people who just wanna build something
+// ideally we'll get buildkit to emit errors with more structure so that we don't have to rely on string manipulation,
+// but to have impact via that route, we've got to get the change in and users have to upgrade to a version of docker
+// that has that change. So let's clean errors up here until that's in a good place.
+func cleanupDockerBuildError(err string) string {
+	// this is pretty much always the same, and meaningless noise to most users
+	ret := strings.TrimPrefix(err, "failed to solve with frontend dockerfile.v0: failed to build LLB: ")
+	for _, re := range dockerBuildCleanupRexes {
+		ret = re.ReplaceAllString(ret, "$1")
+	}
+	return ret
+}
+
 // Docker API commands stream back a sequence of JSON messages.
 //
 // The result of the command is in a JSON object with field "aux".
@@ -354,11 +376,11 @@ func readDockerOutput(ctx context.Context, reader io.Reader, writer io.Writer) (
 		}
 
 		if message.ErrorMessage != "" {
-			return dockerOutput{}, errors.New(message.ErrorMessage)
+			return dockerOutput{}, errors.New(cleanupDockerBuildError(message.ErrorMessage))
 		}
 
 		if message.Error != nil {
-			return dockerOutput{}, errors.New(message.Error.Message)
+			return dockerOutput{}, errors.New(cleanupDockerBuildError(message.Error.Message))
 		}
 
 		if messageIsFromBuildkit(message) {

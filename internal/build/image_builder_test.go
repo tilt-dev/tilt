@@ -3,12 +3,15 @@ package build
 import (
 	"archive/tar"
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"strings"
 	"testing"
 
 	"github.com/docker/docker/api/types"
 	"github.com/opencontainers/go-digest"
+	"github.com/stretchr/testify/require"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
@@ -161,4 +164,66 @@ LABEL "tilt.buildMode"="scratch"
 LABEL "tilt.test"="1"`,
 	}
 	testutils.AssertFileInTar(f.t, tar.NewReader(f.fakeDocker.BuildOptions.Context), expected)
+}
+
+func makeDockerBuildErrorOutput(s string) string {
+	b := &bytes.Buffer{}
+	err := json.NewEncoder(b).Encode(s)
+	if err != nil {
+		panic(err)
+	}
+
+	return fmt.Sprintf(`{"errorDetail":{"message":%s},"error":%s}`, b.String(), b.String())
+}
+
+func TestCleanUpBuildKitErrors(t *testing.T) {
+	for _, tc := range []struct {
+		buildKitError     string
+		expectedTiltError string
+	}{
+		// actual error currently emitted by buildkit when a `RUN` fails
+		{
+			buildKitError:     "failed to solve with frontend dockerfile.v0: failed to build LLB: executor failed running [/bin/sh -c go install github.com/windmilleng/servantes/vigoda]: runc did not terminate sucessfully",
+			expectedTiltError: "executor failed running [/bin/sh -c go install github.com/windmilleng/servantes/vigoda]",
+		},
+		// artificial error - in case docker for some reason doesn't have "executor failed running", don't trim "runc did not terminate sucessfully"
+		{
+			buildKitError:     "failed to solve with frontend dockerfile.v0: failed to build LLB: [/bin/sh -c go install github.com/windmilleng/servantes/vigoda]: runc did not terminate sucessfully",
+			expectedTiltError: "[/bin/sh -c go install github.com/windmilleng/servantes/vigoda]: runc did not terminate sucessfully",
+		},
+		// actual error currently emitted by buildkit when an `ADD` file is missing
+		{
+			buildKitError:     `failed to solve with frontend dockerfile.v0: failed to build LLB: failed to compute cache key: "/foo.txt" not found: not found`,
+			expectedTiltError: `"/foo.txt" not found`,
+		},
+		// artificial error - in case docker fails to emit the double "not found", don't trim the one at the end
+		// output in this case could do without the "failed to compute cache key", but this test is just ensuring we
+		// err on the side of caution, rather than that we're emitting an optimal message for an artificial error
+		{
+			buildKitError:     `failed to solve with frontend dockerfile.v0: failed to build LLB: failed to compute cache key: "/foo.txt": not found`,
+			expectedTiltError: `failed to compute cache key: "/foo.txt": not found`,
+		},
+		// artificial error - in case docker doesn't say "not found" at all
+		{
+			buildKitError:     `failed to solve with frontend dockerfile.v0: failed to build LLB: failed to compute cache key: "/foo.txt"`,
+			expectedTiltError: `failed to compute cache key: "/foo.txt"`,
+		},
+		// check an unanticipated error that still has the annoying preamble
+		{
+			buildKitError:     "failed to solve with frontend dockerfile.v0: failed to build LLB: who knows, some made up explosion",
+			expectedTiltError: "who knows, some made up explosion",
+		},
+	} {
+		t.Run(tc.expectedTiltError, func(t *testing.T) {
+			f := newFakeDockerBuildFixture(t)
+			defer f.teardown()
+
+			ctx, _, _ := testutils.CtxAndAnalyticsForTest()
+			s := makeDockerBuildErrorOutput(tc.buildKitError)
+			w := &bytes.Buffer{}
+			_, err := f.b.getDigestFromBuildOutput(ctx, strings.NewReader(s), w)
+			require.NotNil(t, err)
+			require.Equal(t, fmt.Sprintf("ImageBuild: %s", tc.expectedTiltError), err.Error())
+		})
+	}
 }
