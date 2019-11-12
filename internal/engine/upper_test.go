@@ -1680,6 +1680,7 @@ func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 	nonMatchingHash := k8s.PodTemplateSpecHash("danger-will-robinson")
 	ancestorUID := types.UID("some-ancestor")
 	podID := k8s.PodID("special-pod")
+	otherPodID := k8s.PodID("other-pod")
 	mName := model.ManifestName("foobar")
 
 	tests := []struct {
@@ -1687,16 +1688,72 @@ func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 		ptshMatch                 bool // does the pod template spec hash of incoming pod event match the PTSH we most recently deployed?
 		ancestorSeen              bool // does the k8s runtime state already know about the ancestor UID of our pod?
 		podSeen                   bool // instantiate runtime state with an old version of the pod we're getting events for
+		haveAdditionalPod         bool // runtime state knows about another pod besides the one we're getting events for
 		expectUpdatePodOnManifest bool // expect pod event to cause an update to manifestState.Pods
 	}{
-		{"new ancestor + ptsh OK", true, false, false, true},
-		{"new ancestor + ptsh not OK", false, false, false, false},
-		{"existing ancestor/new pod + ptsh OK", true, true, false, true},
-		{"existing ancestor/new pod + ptsh not OK", false, true, false, false},
-		{"existing pod + ptsh OK", true, true, true, true},
-		{"existing pod + ptsh not OK", false, true, true, true},
+		{name: "new ancestor + ptsh OK",
+			ptshMatch:                 true,
+			ancestorSeen:              false,
+			podSeen:                   false,
+			haveAdditionalPod:         false,
+			expectUpdatePodOnManifest: true,
+		}, {name: "new ancestor + ptsh not OK",
+			ptshMatch:                 false,
+			ancestorSeen:              false,
+			podSeen:                   false,
+			haveAdditionalPod:         false,
+			expectUpdatePodOnManifest: false,
+		}, {name: "existing ancestor/new pod + ptsh OK",
+			ptshMatch:                 true,
+			ancestorSeen:              true,
+			podSeen:                   false,
+			haveAdditionalPod:         false,
+			expectUpdatePodOnManifest: true,
+		}, {name: "existing ancestor/new pod + ptsh OK + additional pod",
+			ptshMatch:                 true,
+			ancestorSeen:              true,
+			podSeen:                   false,
+			haveAdditionalPod:         true,
+			expectUpdatePodOnManifest: true,
+		}, {name: "existing ancestor/new pod + ptsh not OK",
+			ptshMatch:                 false,
+			ancestorSeen:              true,
+			podSeen:                   false,
+			haveAdditionalPod:         false,
+			expectUpdatePodOnManifest: false,
+		}, {name: "existing ancestor/new pod + ptsh not OK + additional pod",
+			ptshMatch:                 false,
+			ancestorSeen:              true,
+			podSeen:                   false,
+			haveAdditionalPod:         true,
+			expectUpdatePodOnManifest: false,
+		}, {name: "existing pod + ptsh OK",
+			ptshMatch:                 true,
+			ancestorSeen:              true,
+			podSeen:                   true,
+			haveAdditionalPod:         false,
+			expectUpdatePodOnManifest: true,
+		}, {name: "existing pod + ptsh OK + additional pod",
+			ptshMatch:                 true,
+			ancestorSeen:              true,
+			podSeen:                   true,
+			haveAdditionalPod:         true,
+			expectUpdatePodOnManifest: true,
+		}, {name: "existing pod + ptsh not OK",
+			ptshMatch:                 false,
+			ancestorSeen:              true,
+			podSeen:                   true,
+			haveAdditionalPod:         false,
+			expectUpdatePodOnManifest: true,
+		},
+		{name: "existing pod + ptsh not OK + additional pod",
+			ptshMatch:                 false,
+			ancestorSeen:              true,
+			podSeen:                   true,
+			haveAdditionalPod:         true,
+			expectUpdatePodOnManifest: true,
+		},
 	}
-
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			f := newTestFixture(t)
@@ -1726,6 +1783,12 @@ func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 					Status: "Running",
 				}
 			}
+			if test.haveAdditionalPod {
+				runtime.Pods[otherPodID] = &store.Pod{
+					PodID:  otherPodID,
+					Status: "Running",
+				}
+			}
 			ms.RuntimeState = runtime
 			f.store.UnlockMutableState()
 
@@ -1752,9 +1815,17 @@ func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 						"expect k8s runtime state to have current pod ancestor UID")
 				})
 			} else {
+				time.Sleep(10 * time.Millisecond)
 				f.withManifestState(mName, func(ms store.ManifestState) {
 					_, ok := ms.PodWithID(podID)
 					assert.False(t, ok, "expect manifest to NOT have pod with ID %q", podID)
+				})
+			}
+
+			if test.haveAdditionalPod {
+				f.withManifestState(mName, func(ms store.ManifestState) {
+					_, ok := ms.PodWithID(otherPodID)
+					assert.True(t, ok, "expect manifest to have pod with ID %q", otherPodID)
 				})
 			}
 
