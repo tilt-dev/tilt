@@ -209,12 +209,19 @@ func (f *fixture) StartTearDown() {
 
 	isTiltStillUp := f.activeTiltUp != nil && f.activeTiltUp.Err() == nil
 	if f.t.Failed() && isTiltStillUp {
-		fmt.Printf("Test failed, dumping engine state\n----\n")
-		err := f.tilt.DumpEngine(os.Stdout)
+		fmt.Printf("Test failed, dumping pods...\n----\n")
+		cmd := exec.Command("kubectl", "get", "pods", "-n", "tilt-integration")
+		out, err := cmd.CombinedOutput()
 		if err != nil {
-			fmt.Printf("Error: %v", err)
+			fmt.Printf("Error 😬: %v", err)
 		}
-		fmt.Printf("\n----\n")
+		fmt.Println("📦 `kubectl get pods` result:\n---")
+		fmt.Println(string(out))
+		// err := f.tilt.DumpEngine(os.Stdout)
+		// if err != nil {
+		// 	fmt.Printf("Error: %v", err)
+		// }
+		// fmt.Printf("\n----\n")
 
 		f.activeTiltUp.KillAndDumpThreads()
 	}
