@@ -345,20 +345,11 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	}
 
 	manifest := mt.Manifest
-	if manifest.IsK8s() {
-		deployedUIDSet := cb.Result.DeployedUIDSet()
-		if len(deployedUIDSet) > 0 {
-			state := ms.GetOrCreateK8sRuntimeState()
-			state.DeployedUIDSet = deployedUIDSet
-			ms.RuntimeState = state
-		}
-
-		deployedPodTemplateSpecHashSet := cb.Result.DeployedPodTemplateSpecHashes()
-		if len(deployedPodTemplateSpecHashSet) > 0 {
-			state := ms.GetOrCreateK8sRuntimeState()
-			state.DeployedPodTemplateSpecHashSet = deployedPodTemplateSpecHashSet
-			ms.RuntimeState = state
-		}
+	deployedUIDSet := cb.Result.DeployedUIDSet()
+	if manifest.IsK8s() && len(deployedUIDSet) > 0 {
+		state := ms.GetOrCreateK8sRuntimeState()
+		state.DeployedUIDSet = deployedUIDSet
+		ms.RuntimeState = state
 	}
 
 	if mt.Manifest.IsDC() {

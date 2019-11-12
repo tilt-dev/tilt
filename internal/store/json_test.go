@@ -23,7 +23,7 @@ func TestToJSON(t *testing.T) {
 	state := newState([]model.Manifest{m})
 
 	mState, _ := state.ManifestState("fe")
-	mState.MutableBuildStatus(m.K8sTarget().ID()).LastResult = NewK8sDeployResult(m.K8sTarget().ID(), nil, nil, nil)
+	mState.MutableBuildStatus(m.K8sTarget().ID()).LastResult = NewK8sDeployResult(m.K8sTarget().ID(), nil, nil)
 
 	buf := bytes.NewBuffer(nil)
 	encoder := CreateEngineStateEncoder(buf)
