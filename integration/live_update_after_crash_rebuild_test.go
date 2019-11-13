@@ -61,6 +61,9 @@ func TestLiveUpdateAfterCrashRebuild(t *testing.T) {
 
 	afterCrashRebuildPods := pw.withDisallowedPodIDs(afterLiveUpdatePods).wait()
 
+	for i := 1; i <= 1; i++ {
+		time.Sleep(time.Millisecond * 20)
+	}
 	// Another live update! Make sure that, after the crash rebuild, we're able to run more
 	// live updates (i.e. that we have one and only one pod associated w/ the manifest)
 	fmt.Println("> Perform another live update")
