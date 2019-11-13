@@ -217,11 +217,12 @@ func (f *fixture) StartTearDown() {
 		}
 		fmt.Println("📦 `kubectl get pods` result:\n---")
 		fmt.Println(string(out))
-		// err := f.tilt.DumpEngine(os.Stdout)
-		// if err != nil {
-		// 	fmt.Printf("Error: %v", err)
-		// }
-		// fmt.Printf("\n----\n")
+		fmt.Printf("\n----\n")
+		err = f.tilt.DumpEngine(os.Stdout)
+		if err != nil {
+			fmt.Printf("Error: %v", err)
+		}
+		fmt.Printf("\n----\n")
 
 		f.activeTiltUp.KillAndDumpThreads()
 	}

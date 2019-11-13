@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/debug"
+	"strings"
 
 	"github.com/fatih/color"
 
@@ -106,6 +108,9 @@ func (l logger) Debugf(format string, a ...interface{}) {
 }
 
 func (l logger) writef(level Level, format string, a ...interface{}) {
+	if strings.Contains(format, "an error occurred when try to find container") {
+		_, _ = fmt.Fprintf(l.writer, "%s", debug.Stack())
+	}
 	if l.level >= level {
 		// swallowing errors because:
 		// 1) if we can't write to the log, what else are we going to do?
@@ -116,6 +121,9 @@ func (l logger) writef(level Level, format string, a ...interface{}) {
 }
 
 func (l logger) Write(level Level, s string) {
+	if strings.Contains(s, "an error occurred when try to find container") {
+		_, _ = fmt.Fprintf(l.writer, "%s", debug.Stack())
+	}
 	if l.level >= level {
 		// swallowing errors because:
 		// 1) if we can't write to the log, what else are we going to do?
