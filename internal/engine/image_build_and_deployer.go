@@ -155,12 +155,13 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		return store.NewImageBuildResult(iTarget.ID(), ref), nil
 	})
 	if err != nil {
-		return store.BuildResultSet{}, err
+		return store.BuildResultSet{}, WrapDontFallBackError(err)
 	}
 
 	// (If we pass an empty list of refs here (as we will do if only deploying
 	// yaml), we just don't inject any image refs into the yaml, nbd.
-	return ibd.deploy(ctx, st, ps, iTargetMap, kTarget, q.results, anyInPlaceBuild)
+	brs, err := ibd.deploy(ctx, st, ps, iTargetMap, kTarget, q.results, anyInPlaceBuild)
+	return brs, WrapDontFallBackError(err)
 }
 
 func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedTagged, ps *build.PipelineState, iTarget model.ImageTarget, kTarget model.K8sTarget) (reference.NamedTagged, error) {

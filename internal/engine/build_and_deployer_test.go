@@ -778,6 +778,24 @@ func TestReturnLastUnexpectedError(t *testing.T) {
 	}
 }
 
+func TestDockerBuildErrorLogged(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	defer f.TearDown()
+
+	// next Docker build will throw an unexpected error -- this is one we want to return,
+	// even if subsequent builders throw expected errors.
+	f.docker.BuildErrorToThrow = fmt.Errorf("no one expects the unexpected error")
+
+	manifest := NewSanchoDockerBuildManifest(f)
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "no one expects the unexpected error")
+	}
+
+	logs := f.logs.String()
+	require.Equal(t, 1, strings.Count(logs, "no one expects the unexpected error"))
+}
+
 func TestLiveUpdateWithRunFailureReturnsContainerIDs(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
