@@ -4,9 +4,9 @@ import AnsiLine from "./AnsiLine"
 import "./LogPane.scss"
 import ReactDOM from "react-dom"
 import { SnapshotHighlight } from "./types"
+import findLogLineID from "./findLogLine"
 
 const WHEEL_DEBOUNCE_MS = 250
-const LINE_ID_ATTR_NAME = "data-lineid"
 
 type LogPaneProps = {
   log: string
@@ -108,8 +108,8 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
         !node.isEqualNode(beginning) &&
         !node.isEqualNode(end)
       ) {
-        let beginningLogLine = this.findLogLineID(beginning)
-        let endingLogLine = this.findLogLineID(end)
+        let beginningLogLine = findLogLineID(beginning)
+        let endingLogLine = findLogLineID(end)
 
         if (beginningLogLine && endingLogLine) {
           this.props.handleSetHighlight({
@@ -121,23 +121,6 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       }
     }
   }
-
-  findLogLineID(el: HTMLElement | Node | null): string | null {
-    if (el === null) {
-      return null
-    }
-
-    if (el instanceof HTMLElement && el.getAttribute(LINE_ID_ATTR_NAME)) {
-      return el.getAttribute(LINE_ID_ATTR_NAME)
-    } else if (el instanceof HTMLElement) {
-      return this.findLogLineID(el.parentElement)
-    } else if (el instanceof Node) {
-      return this.findLogLineID(el.parentNode)
-    }
-
-    return null
-  }
-
   private handleWheel(event: WheelEvent) {
     if (event.deltaY < 0) {
       this.setState({ autoscroll: false, lastWheelEventTimeMs: Date.now() })
