@@ -3,6 +3,7 @@ package k8swatch
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -190,13 +191,22 @@ func (w *PodWatcher) recordPodUpdate(pod *v1.Pod) bool {
 	uid := pod.UID
 	oldPod, ok := w.knownPods[uid]
 
+	oldResourceVersion, err := strconv.Atoi(oldPod.ResourceVersion)
+	if err != nil {
+		return true
+	}
+	newResourceVersion, err := strconv.Atoi(pod.ResourceVersion)
+	if err != nil {
+		return true
+	}
+
 	// Throw out updates that are older than what we currently have.
 	//
 	// Note that this code also dispatches actions for updates where the new
 	// ResourceVersion == the old ResourceVersion. We do this deliberately to make
 	// testing much easier, because the test harness doesn't need to keep track of
 	// ResourceVersions.
-	olderThanKnown := ok && oldPod.ResourceVersion > pod.ResourceVersion
+	olderThanKnown := ok && oldResourceVersion > newResourceVersion
 	if olderThanKnown {
 		return false
 	}
@@ -263,14 +273,15 @@ func (w *PodWatcher) triagePodUpdate(pod *v1.Pod, objTree k8s.ObjectRefTree) (mo
 func PodToString(pod *v1.Pod) string {
 	var cstrs []string
 	for _, c := range pod.Status.ContainerStatuses {
-		cstrs = append(cstrs, fmt.Sprintf("id:%s,status:%s", c.Name, c.State))
+		cstrs = append(cstrs, fmt.Sprintf("id:%s,status:%s", c.ContainerID, c.State))
 	}
 	deletionTimestamp := ""
 	if pod.DeletionTimestamp != nil {
 		deletionTimestamp = pod.DeletionTimestamp.Format(time.RFC3339)
 	}
-	return fmt.Sprintf("id %s, deletion timestamp: %s, phase: %s, containers: %s",
+	return fmt.Sprintf("id %s, resourceVersion %s, deletion timestamp: %s, phase: %s, containers: %s",
 		pod.Name,
+		pod.ResourceVersion,
 		deletionTimestamp,
 		pod.Status.Phase,
 		strings.Join(cstrs, " "))
