@@ -265,9 +265,13 @@ func PodToString(pod *v1.Pod) string {
 	for _, c := range pod.Status.ContainerStatuses {
 		cstrs = append(cstrs, fmt.Sprintf("id:%s,status:%s", c.Name, c.State))
 	}
+	deletionTimestamp := ""
+	if pod.DeletionTimestamp != nil {
+		deletionTimestamp = pod.DeletionTimestamp.Format(time.RFC3339)
+	}
 	return fmt.Sprintf("id %s, deletion timestamp: %s, phase: %s, containers: %s",
 		pod.Name,
-		pod.DeletionTimestamp.Format(time.RFC3339),
+		deletionTimestamp,
 		pod.Status.Phase,
 		strings.Join(cstrs, " "))
 }
