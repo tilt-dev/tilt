@@ -108,13 +108,8 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
         !node.isEqualNode(beginning) &&
         !node.isEqualNode(end)
       ) {
-        let beginningLogLine = this.findLogLineID(beginning.parentElement)
-        let endingLogLine: string | null = null
-        if (this.isElement(end)) {
-          endingLogLine = end.getAttribute(LINE_ID_ATTR_NAME)
-        } else {
-          endingLogLine = this.findLogLineID(end.parentElement)
-        }
+        let beginningLogLine = this.findLogLineID(beginning)
+        let endingLogLine = this.findLogLineID(end)
 
         if (beginningLogLine && endingLogLine) {
           this.props.handleSetHighlight({
@@ -127,20 +122,19 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     }
   }
 
-  isElement(n: any): n is Element {
-    return (n as Element).getAttribute !== undefined
-  }
-
-  findLogLineID(el: HTMLElement | null): string | null {
-    if (el && el.attributes.getNamedItem(LINE_ID_ATTR_NAME)) {
-      let lineID = el.attributes.getNamedItem(LINE_ID_ATTR_NAME)
-      if (lineID) {
-        return lineID.value
-      }
+  findLogLineID(el: HTMLElement | Node | null): string | null {
+    if (el === null) {
       return null
-    } else if (el) {
-      return this.findLogLineID(el.parentElement)
     }
+
+    if (el instanceof HTMLElement && el.getAttribute(LINE_ID_ATTR_NAME)) {
+      return el.getAttribute(LINE_ID_ATTR_NAME)
+    } else if (el instanceof HTMLElement) {
+      return this.findLogLineID(el.parentElement)
+    } else if (el instanceof Node) {
+      return this.findLogLineID(el.parentNode)
+    }
+
     return null
   }
 
