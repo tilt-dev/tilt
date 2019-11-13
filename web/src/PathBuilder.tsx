@@ -21,12 +21,12 @@ class PathBuilder {
     return `ws://${this.host}/ws/view`
   }
 
-  isLocal() {
-    return this.host.indexOf("localhost") === 0
-  }
-
   isSnapshot(): boolean {
     return this.snapId !== ""
+  }
+
+  private isLocal() {
+    return this.host.indexOf("localhost") === 0
   }
 
   private snapshotDataUrl(): string {
