@@ -72,7 +72,7 @@ ifneq ($(CIRCLECI),true)
 		go test -v -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s ./integration
 else
 		mkdir -p test-results
-		go test ./integration -count 100 -failfast -v -p $(GO_PARALLEL_JOBS) -tags 'integration'
+		go test ./integration -count 100 -failfast -v -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 7200s
 endif
 
 # Run the integration tests on kind
