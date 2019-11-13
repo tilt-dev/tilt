@@ -274,6 +274,8 @@ func (w *PodWatcher) dispatchPodChange(ctx context.Context, pod *v1.Pod, st stor
 
 	mn, ancestorUID := w.triagePodUpdate(pod, objTree)
 	if mn == "" {
+		// XXX
+		logger.Get(ctx).Infof("no manifest name throwing pod event out")
 		return
 	}
 

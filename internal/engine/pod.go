@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 
@@ -19,6 +20,7 @@ import (
 )
 
 func handlePodChangeAction(ctx context.Context, state *store.EngineState, action k8swatch.PodChangeAction) {
+	logger.Get(ctx).Infof("got pod action %s", spew.Sdump(action))
 	mt := matchPodChangeToManifest(ctx, state, action)
 	if mt == nil {
 		return
@@ -60,7 +62,10 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 		podInfo.BaselineRestarts = podInfo.AllContainerRestarts()
 	}
 
+	logger.Get(ctx).Infof("😴 after all that shit, BestPod: %s", ms.MostRecentPod().PodID)
+
 	if len(podInfo.Containers) == 0 {
+		logger.Get(ctx).Infof("😥 not enough containers")
 		// not enough info to do anything else
 		return
 	}
@@ -83,8 +88,6 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 		ms.CrashLog = podInfo.CurrentLog
 		podInfo.CurrentLog = model.Log{}
 	}
-
-	logger.Get(ctx).Infof("😴 after all that shit, BestPod: %s", ms.MostRecentPod().PodID)
 }
 
 // Find the ManifestTarget for the PodChangeAction,

@@ -204,6 +204,7 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 			if ok {
 				if manifest.IsK8s() {
 					cInfos, err := store.RunningContainersForTargetForOnePod(iTarget, ms.K8sRuntimeState())
+					logger.Get(ctx).Infof("getting ")
 					if err != nil {
 						buildState = buildState.WithRunningContainerError(err)
 					} else {
