@@ -259,10 +259,6 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, cb BuildCompleteAction) error {
 	defer func() {
 		engineState.CurrentlyBuilding = ""
-
-		if engineState.InitialBuildsCompleted() {
-			logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
-		}
 	}()
 
 	engineState.CompletedBuildCount++
@@ -376,10 +372,6 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 	if mt.Manifest.IsLocal() {
 		ms.RuntimeState = store.LocalRuntimeState{HasSucceededAtLeastOnce: err == nil}
-	}
-
-	if engineState.WatchFiles {
-		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 	}
 
 	return nil
