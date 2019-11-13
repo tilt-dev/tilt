@@ -210,7 +210,7 @@ func (f *fixture) StartTearDown() {
 	isTiltStillUp := f.activeTiltUp != nil && f.activeTiltUp.Err() == nil
 	if f.t.Failed() && isTiltStillUp {
 		fmt.Printf("Test failed, dumping pods...\n----\n")
-		cmd := exec.Command("kubectl", "get", "pods", "-n", "tilt-integration")
+		cmd := exec.Command("kubectl", "get", "pods", "-ojson", "-n", "tilt-integration")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			fmt.Printf("Error 😬: %v", err)

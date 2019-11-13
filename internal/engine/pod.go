@@ -20,7 +20,7 @@ import (
 )
 
 func handlePodChangeAction(ctx context.Context, state *store.EngineState, action k8swatch.PodChangeAction) {
-	logger.Get(ctx).Infof("%s got pod action %s", spew.Sdump(action), time.Now().Format(time.RFC3339))
+	logger.Get(ctx).Infof("%s got pod action %s", time.Now().Format(time.RFC3339), spew.Sdump(action))
 	mt := matchPodChangeToManifest(ctx, state, action)
 	if mt == nil {
 		return

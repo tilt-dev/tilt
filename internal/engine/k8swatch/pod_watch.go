@@ -263,6 +263,8 @@ func (w *PodWatcher) dispatchPodChange(ctx context.Context, pod *v1.Pod, st stor
 	// doing a potentially expensive object tree lookup
 	ok := w.recordPodUpdate(pod)
 	if !ok {
+		// XXX
+		logger.Get(ctx).Infof("throwing out update because it's got an old resource version")
 		return
 	}
 

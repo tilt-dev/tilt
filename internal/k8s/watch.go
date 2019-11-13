@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/windmilleng/tilt/pkg/logger"
+
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -154,11 +156,13 @@ func (kCli K8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan
 		UpdateFunc: func(oldObj interface{}, newObj interface{}) {
 			oldPod, ok := oldObj.(*v1.Pod)
 			if !ok {
+				logger.Get(ctx).Infof("throwing out event because oldObj is not a pod. it's a %T", oldObj)
 				return
 			}
 
 			newPod, ok := newObj.(*v1.Pod)
 			if !ok {
+				logger.Get(ctx).Infof("throwing out event because newObj is not a pod. it's a %T", newObj)
 				return
 			}
 
