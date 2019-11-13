@@ -340,6 +340,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		bestPod := ms.MostRecentPod()
 		if bestPod.StartedAt.After(bs.StartTime) ||
 			bestPod.UpdateStartTime.Equal(bs.StartTime) {
+			logger.Get(ctx).Infof("💥 checking for container crash after a completed build")
 			checkForContainerCrash(ctx, engineState, mt)
 		}
 	}

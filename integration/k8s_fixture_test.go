@@ -409,6 +409,7 @@ func (pw podWaiter) wait() []string {
 		}
 		if okToReturn &&
 			(pw.expectedPodCount == -1 || pw.expectedPodCount == len(podPhases)) {
+			fmt.Println("WAIT result:", podIDs)
 			return podIDs
 		}
 

@@ -3,6 +3,7 @@ package store
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/docker/distribution/reference"
 	"k8s.io/apimachinery/pkg/types"
@@ -403,7 +404,11 @@ func AllRunningContainers(mt *ManifestTarget) []ContainerInfo {
 // (If this image is running on multiple pods, return an error.)
 func RunningContainersForTargetForOnePod(iTarget model.ImageTarget, runtimeState K8sRuntimeState) ([]ContainerInfo, error) {
 	if runtimeState.PodLen() > 1 {
-		return nil, fmt.Errorf("can only get container info for a single pod; image target %s has %d pods", iTarget.ID(), runtimeState.PodLen())
+		podIDs := []string{}
+		for id := range runtimeState.Pods {
+			podIDs = append(podIDs, string(id))
+		}
+		return nil, fmt.Errorf("can only get container info for a single pod; image target %s has %d pods: %s", iTarget.ID(), runtimeState.PodLen(), strings.Join(podIDs, ", "))
 	}
 
 	if runtimeState.PodLen() == 0 {
