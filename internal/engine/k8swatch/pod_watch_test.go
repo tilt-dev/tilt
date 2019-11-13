@@ -69,7 +69,10 @@ func TestPodWatchChangeEventBeforeUID(t *testing.T) {
 	f.assertObservedPods(p)
 }
 
-func TestPodWatchOldResourceVersion(t *testing.T) {
+// We had a bug where if newPod.resourceVersion < oldPod.resourceVersion (using string comparison!)
+// then we'd ignore the new pod. This meant, e.g., once we got an update for resourceVersion "9", we'd
+// ignore updates for resourceVersions "10" through "89" and "100" through "899"
+func TestPodWatchResourceVersionStringLessThan(t *testing.T) {
 	f := newPWFixture(t)
 	defer f.TearDown()
 
