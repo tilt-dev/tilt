@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 
@@ -20,7 +19,7 @@ import (
 )
 
 func handlePodChangeAction(ctx context.Context, state *store.EngineState, action k8swatch.PodChangeAction) {
-	logger.Get(ctx).Infof("%s got pod action %s", time.Now().Format(time.RFC3339), spew.Sdump(action))
+	logger.Get(ctx).Infof("%s got pod action %", time.Now().Format(time.RFC3339), k8swatch.PodToString(action.Pod))
 	mt := matchPodChangeToManifest(ctx, state, action)
 	if mt == nil {
 		return

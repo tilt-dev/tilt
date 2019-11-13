@@ -3,7 +3,9 @@ package k8swatch
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -258,13 +260,25 @@ func (w *PodWatcher) triagePodUpdate(pod *v1.Pod, objTree k8s.ObjectRefTree) (mo
 	return "", ""
 }
 
+func PodToString(pod *v1.Pod) string {
+	var cstrs []string
+	for _, c := range pod.Status.ContainerStatuses {
+		cstrs = append(cstrs, fmt.Sprintf("id:%s,status:%s", c.Name, c.State))
+	}
+	return fmt.Sprintf("id %s, deletion timestamp: %s, phase: %s, containers: %s",
+		pod.Name,
+		pod.DeletionTimestamp.Format(time.RFC3339),
+		pod.Status.Phase,
+		strings.Join(cstrs, " "))
+}
+
 func (w *PodWatcher) dispatchPodChange(ctx context.Context, pod *v1.Pod, st store.RStore) {
 	// Check to see if we can discard this pod quickly before
 	// doing a potentially expensive object tree lookup
 	ok := w.recordPodUpdate(pod)
 	if !ok {
 		// XXX
-		logger.Get(ctx).Infof("throwing out update because it's got an old resource version")
+		logger.Get(ctx).Infof("throwing out update because it's got an old resource version for: ", PodToString(pod))
 		return
 	}
 
