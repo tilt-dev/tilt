@@ -69,6 +69,33 @@ func TestPodWatchChangeEventBeforeUID(t *testing.T) {
 	f.assertObservedPods(p)
 }
 
+func TestPodWatchOldResourceVersion(t *testing.T) {
+	f := newPWFixture(t)
+	defer f.TearDown()
+
+	manifest := f.addManifestWithSelectors("server")
+
+	f.pw.OnChange(f.ctx, f.store)
+
+	ls := k8s.ManagedByTiltSelector()
+	pb := podbuilder.New(t, manifest).WithResourceVersion("9")
+
+	// Simulate the Deployment UID in the engine state
+	f.addDeployedUID(manifest, pb.DeploymentUID())
+	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
+
+	p1 := pb.Build()
+	f.kClient.EmitPod(ls, p1)
+
+	f.assertObservedPods(p1)
+	f.assertWatchedSelectors(ls)
+
+	p2 := pb.WithResourceVersion("10").Build()
+	f.kClient.EmitPod(ls, p2)
+
+	f.assertObservedPods(p1, p2)
+}
+
 func TestPodWatchExtraSelectors(t *testing.T) {
 	f := newPWFixture(t)
 	defer f.TearDown()

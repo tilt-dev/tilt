@@ -179,30 +179,6 @@ func (w *PodWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs 
 	}
 }
 
-// Record the pod update, and return true if this is newer than
-// the state we already know about.
-func (w *PodWatcher) recordPodUpdate(pod *v1.Pod) bool {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
-	uid := pod.UID
-	oldPod, ok := w.knownPods[uid]
-
-	// Throw out updates that are older than what we currently have.
-	//
-	// Note that this code also dispatches actions for updates where the new
-	// ResourceVersion == the old ResourceVersion. We do this deliberately to make
-	// testing much easier, because the test harness doesn't need to keep track of
-	// ResourceVersions.
-	olderThanKnown := ok && oldPod.ResourceVersion > pod.ResourceVersion
-	if olderThanKnown {
-		return false
-	}
-
-	w.knownPods[uid] = pod
-	return true
-}
-
 // Check to see if this pod corresponds to any of our manifests.
 //
 // Currently, we do this by comparing the pod UID and its owner UIDs against
@@ -216,6 +192,7 @@ func (w *PodWatcher) triagePodUpdate(pod *v1.Pod, objTree k8s.ObjectRefTree) (mo
 	defer w.mu.Unlock()
 
 	uid := pod.UID
+	w.knownPods[uid] = pod
 
 	// Set up the descendent pod UID index
 	for _, ownerUID := range objTree.UIDs() {
@@ -259,13 +236,6 @@ func (w *PodWatcher) triagePodUpdate(pod *v1.Pod, objTree k8s.ObjectRefTree) (mo
 }
 
 func (w *PodWatcher) dispatchPodChange(ctx context.Context, pod *v1.Pod, st store.RStore) {
-	// Check to see if we can discard this pod quickly before
-	// doing a potentially expensive object tree lookup
-	ok := w.recordPodUpdate(pod)
-	if !ok {
-		return
-	}
-
 	objTree, err := w.ownerFetcher.OwnerTreeOf(ctx, k8s.NewK8sEntity(pod))
 	if err != nil {
 		logger.Get(ctx).Infof("Handling pod update (%q): %v", pod.Name, err)
