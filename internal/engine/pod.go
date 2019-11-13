@@ -31,6 +31,8 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 	podID := k8s.PodIDFromPod(pod)
 	if podInfo.PodID != podID {
 		// This is an event from an old pod.
+		logger.Get(ctx).Infof("👵🏻 old pod?!")
+		logger.Get(ctx).Infof("\t podInfo.PodID: %s; podID: %s\n", podInfo.PodID, podID)
 		return
 	}
 
@@ -81,6 +83,8 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 		ms.CrashLog = podInfo.CurrentLog
 		podInfo.CurrentLog = model.Log{}
 	}
+
+	logger.Get(ctx).Infof("😴 after all that shit, BestPod: %s", ms.MostRecentPod().PodID)
 }
 
 // Find the ManifestTarget for the PodChangeAction,
