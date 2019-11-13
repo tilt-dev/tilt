@@ -46,9 +46,11 @@ func (m *PortForwardController) diff(ctx context.Context, st store.RStore) (toSt
 		if podID == "" {
 			continue
 		}
+		logger.Get(ctx).Infof("🔎 most recent pod (port fwd controller):", podID)
 
 		// Only do port-forwarding if the pod is running.
 		if pod.Phase != v1.PodRunning && !pod.Deleting {
+			logger.Get(ctx).Infof("🔎 (will not port fwd bc !podRunning or podDeleting)")
 			continue
 		}
 
