@@ -204,7 +204,16 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 			if ok {
 				if manifest.IsK8s() {
 					cInfos, err := store.RunningContainersForTargetForOnePod(iTarget, ms.K8sRuntimeState())
-					logger.Get(ctx).Infof("getting ")
+					var allPodIDs []string
+					for podID := range ms.K8sRuntimeState().Pods {
+						allPodIDs = append(allPodIDs, string(podID))
+					}
+
+					var selectedPodIDs []string
+					for _, cInfo := range cInfos {
+						selectedPodIDs = append(selectedPodIDs, string(cInfo.PodID))
+					}
+					logger.Get(ctx).Infof("getting running containers\nall pod ids: %v\nselected pod ids: %v", allPodIDs, selectedPodIDs)
 					if err != nil {
 						buildState = buildState.WithRunningContainerError(err)
 					} else {
