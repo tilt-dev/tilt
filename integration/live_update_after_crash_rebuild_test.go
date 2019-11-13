@@ -16,6 +16,9 @@ import (
 func TestLiveUpdateAfterCrashRebuild(t *testing.T) {
 	f := newK8sFixture(t, "live_update_after_crash_rebuild")
 	defer f.TearDown()
+	defer func() {
+		fmt.Printf("%s failed", time.Now().Format(time.RFC3339))
+	}()
 
 	f.SetRestrictedCredentials()
 
