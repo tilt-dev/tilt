@@ -25,16 +25,8 @@ class PathBuilder {
     return this.snapId !== ""
   }
 
-  private isLocal() {
-    return this.host.indexOf("localhost") === 0
-  }
-
   private snapshotDataUrl(): string {
-    let scheme = "https"
-    if (this.isLocal()) {
-      scheme = "http"
-    }
-    return `${scheme}://${this.host}/api/snapshot/${this.snapId}`
+    return `/api/snapshot/${this.snapId}`
   }
 
   private snapshotPathBase(): string {
