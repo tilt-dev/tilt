@@ -3,7 +3,6 @@ package k8swatch
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -188,30 +187,7 @@ func (w *PodWatcher) recordPodUpdate(pod *v1.Pod) bool {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	uid := pod.UID
-	oldPod, ok := w.knownPods[uid]
-
-	oldResourceVersion, err := strconv.Atoi(oldPod.ResourceVersion)
-	if err != nil {
-		return true
-	}
-	newResourceVersion, err := strconv.Atoi(pod.ResourceVersion)
-	if err != nil {
-		return true
-	}
-
-	// Throw out updates that are older than what we currently have.
-	//
-	// Note that this code also dispatches actions for updates where the new
-	// ResourceVersion == the old ResourceVersion. We do this deliberately to make
-	// testing much easier, because the test harness doesn't need to keep track of
-	// ResourceVersions.
-	olderThanKnown := ok && oldResourceVersion > newResourceVersion
-	if olderThanKnown {
-		return false
-	}
-
-	w.knownPods[uid] = pod
+	w.knownPods[pod.UID] = pod
 	return true
 }
 
