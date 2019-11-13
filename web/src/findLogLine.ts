@@ -7,12 +7,12 @@ export default function findLogLineID(
     return null
   }
 
-  if (el instanceof HTMLElement && el.getAttribute(LINE_ID_ATTR_NAME)) {
-    return el.getAttribute(LINE_ID_ATTR_NAME)
-  } else if (el instanceof HTMLElement) {
-    return findLogLineID(el.parentElement)
+  if ((el as HTMLElement).getAttribute(LINE_ID_ATTR_NAME)) {
+    return (el as HTMLElement).getAttribute(LINE_ID_ATTR_NAME)
+  } else if ((el as HTMLElement).parentNode) {
+    return findLogLineID((el as HTMLElement).parentElement)
   } else if (el instanceof Node) {
-    return findLogLineID(el.parentNode)
+    return findLogLineID((el as Node).parentNode)
   }
 
   return null

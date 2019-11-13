@@ -5211,13 +5211,13 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="1919" class="logLine "><code><span>doggos      ┊ [sidecar] I'm a loud sidecar!</span></code>
 <br>
-</span><span id="end1" data-lineid="1920" class="logLine "><code><span>vigoda      ┊ 2019/11/13 22:44:43 Server status: All good</span></code>
+</span><span id="start1" data-lineid="1920" class="logLine "><code><span id="start2">vigoda      ┊ 2019/11/13 22:44:43 Server status: All good</span></code>
 <br>
 </span><span data-lineid="1921" class="logLine "><code><span>doggos      ┊ [sidecar] I'm a loud sidecar!</span></code>
 <br>
 </span><span data-lineid="1922" class="logLine "><code><span>doggos      ┊ [doggos] 2019/11/13 22:44:44 Heartbeat</span></code>
 <br>
-</span><span id="start1" data-lineid="1923" class="logLine "><code><span>vigoda      ┊ 2019/11/13 22:44:45 Server status: All good</span></code>
+</span><span id="end1" data-lineid="1923" class="logLine "><code><span>vigoda      ┊ 2019/11/13 22:44:45 Server status: All good</span></code>
 <br>
 </span><span data-lineid="1924" class="logLine "><code></code><br></span>
 <p class="logEnd">█</p>
