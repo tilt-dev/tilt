@@ -69,16 +69,20 @@ type PodBuilder struct {
 	imageRefs map[int]string
 	cIDs      map[int]string
 	cReady    map[int]bool
+
+	setPodTemplateSpecHash bool
+	podTemplateSpecHash    k8s.PodTemplateSpecHash
 }
 
 func New(t testing.TB, manifest model.Manifest) PodBuilder {
 	return PodBuilder{
-		t:              t,
-		manifest:       manifest,
-		imageRefs:      make(map[int]string),
-		cIDs:           make(map[int]string),
-		cReady:         make(map[int]bool),
-		extraPodLabels: make(map[string]string),
+		t:                      t,
+		manifest:               manifest,
+		imageRefs:              make(map[int]string),
+		cIDs:                   make(map[int]string),
+		cReady:                 make(map[int]bool),
+		extraPodLabels:         make(map[string]string),
+		setPodTemplateSpecHash: true,
 	}
 }
 
@@ -89,6 +93,16 @@ func (b PodBuilder) WithPodLabel(key, val string) PodBuilder {
 
 func (b PodBuilder) ManifestName() model.ManifestName {
 	return b.manifest.Name
+}
+
+func (b PodBuilder) WithTemplateSpecHash(s k8s.PodTemplateSpecHash) PodBuilder {
+	b.podTemplateSpecHash = s
+	return b
+}
+
+func (b PodBuilder) WithNoTemplateSpecHash() PodBuilder {
+	b.setPodTemplateSpecHash = false
+	return b
 }
 
 func (b PodBuilder) RestartCount() int {
@@ -241,6 +255,19 @@ func (b PodBuilder) buildLabels(tSpec *v1.PodTemplateSpec) map[string]string {
 	for k, v := range b.extraPodLabels {
 		labels[k] = v
 	}
+
+	if b.setPodTemplateSpecHash {
+		podTemplateSpecHash := b.podTemplateSpecHash
+		if podTemplateSpecHash == "" {
+			var err error
+			podTemplateSpecHash, err = k8s.HashPodTemplateSpec(tSpec)
+			if err != nil {
+				panic(fmt.Sprintf("error computing pod template spec hash: %v", err))
+			}
+		}
+		labels[k8s.TiltPodTemplateHashLabel] = string(podTemplateSpecHash)
+	}
+
 	return labels
 }
 
@@ -345,6 +372,12 @@ func (b PodBuilder) Build() *v1.Pod {
 	b.validateImageRefs(numContainers)
 	b.validateContainerIDs(numContainers)
 
+	// Generate buildLabels from the incoming pod spec, before we've modified it,
+	// so that it matches the spec we generate from the manifest itself.
+	// Can override this behavior by setting b.PodTemplateSpecHash (or
+	// by setting b.setPodTemplateSpecHash = false )
+	labels := b.buildLabels(tSpec)
+
 	for i, container := range spec.Containers {
 		container.Image = b.buildImage(container.Image, i)
 		spec.Containers[i] = container
@@ -355,7 +388,7 @@ func (b PodBuilder) Build() *v1.Pod {
 			Name:              b.PodID(),
 			CreationTimestamp: b.buildCreationTime(),
 			DeletionTimestamp: b.buildDeletionTime(),
-			Labels:            b.buildLabels(tSpec),
+			Labels:            labels,
 			UID:               b.buildPodUID(),
 			OwnerReferences: []metav1.OwnerReference{
 				k8s.RuntimeObjToOwnerRef(b.buildReplicaSet()),
