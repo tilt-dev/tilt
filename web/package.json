@@ -15,6 +15,7 @@
     "@types/react-select": "^2.0.15",
     "@types/react-timeago": "^4.1.0",
     "@types/styled-components": "^4.1.19",
+    "@types/jsdom": "^12.2.4",
     "ansi-to-react": "^5.0.0",
     "history": "^4.9.0",
     "js-cookie": "^2.2.1",
@@ -63,6 +64,7 @@
     "enzyme-adapter-react-16": "^1.11.2",
     "enzyme-to-json": "^3.3.5",
     "jest-fetch-mock": "^2.1.2",
+    "jsdom": "^15.2.1",
     "prettier": "1.18.2",
     "react-test-renderer": "^16.9.0"
   },

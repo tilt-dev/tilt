@@ -38,13 +38,13 @@ class AlertPane extends PureComponent<AlertsProps> {
     let formatter = timeAgoFormatter
     let alertElements: Array<JSX.Element> = []
     let resources = this.props.resources
-    let isLocal = this.props.pathBuilder.isLocal()
+    let isSnapshot = this.props.pathBuilder.isSnapshot()
 
     let alertResources = resources.filter(r => hasAlert(r))
     alertResources.forEach(resource => {
       resource.alerts.forEach(alert => {
         let dismissButton = <div />
-        if (alert.dismissHandler && isLocal) {
+        if (alert.dismissHandler && !isSnapshot) {
           dismissButton = (
             <button
               className="AlertPane-dismissButton"

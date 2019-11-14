@@ -112,9 +112,6 @@ benchmark:
 errcheck:
 	errcheck -ignoretests -ignoregenerated ./...
 
-timing: install
-	./scripts/timing.py
-
 wire:
 	toast wire
 

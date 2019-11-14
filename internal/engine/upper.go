@@ -259,19 +259,25 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, cb BuildCompleteAction) error {
 	defer func() {
 		engineState.CurrentlyBuilding = ""
-
-		if engineState.InitialBuildsCompleted() {
-			logger.Get(ctx).Debugf("[timing.py] finished initial build") // hook for timing.py
-		}
 	}()
 
 	engineState.CompletedBuildCount++
 	engineState.BuildControllerActionCount++
-	err := cb.Error
 
 	mt, ok := engineState.ManifestTargets[engineState.CurrentlyBuilding]
 	if !ok {
 		return nil
+	}
+
+	err := cb.Error
+	if err != nil {
+		p := logger.Red(logger.Get(ctx)).Sprintf("Build Failed:")
+		s := fmt.Sprintf("%s %v", p, err)
+		a := BuildLogAction{
+			LogEvent: store.NewLogEvent(mt.Manifest.Name, []byte(s)),
+		}
+		handleLogAction(engineState, a)
+		handleBuildLogAction(engineState, a)
 	}
 
 	ms := mt.State
@@ -279,6 +285,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	bs.Error = err
 	bs.FinishTime = time.Now()
 	bs.BuildTypes = cb.Result.BuildTypes()
+
 	ms.AddCompletedBuild(bs)
 
 	ms.CurrentBuild = model.BuildRecord{}
@@ -291,11 +298,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	if err != nil {
 		if isFatalError(err) {
 			return err
-		} else if engineState.WatchFiles {
-			l := logger.Get(ctx)
-			p := logger.Red(l).Sprintf("Build Failed:")
-			l.Infof("%s %v", p, err)
-		} else {
+		} else if !engineState.WatchFiles {
 			return errors.Wrap(err, "Build Failed")
 		}
 	} else {
@@ -345,11 +348,20 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	}
 
 	manifest := mt.Manifest
-	deployedUIDSet := cb.Result.DeployedUIDSet()
-	if manifest.IsK8s() && len(deployedUIDSet) > 0 {
-		state := ms.GetOrCreateK8sRuntimeState()
-		state.DeployedUIDSet = deployedUIDSet
-		ms.RuntimeState = state
+	if manifest.IsK8s() {
+		deployedUIDSet := cb.Result.DeployedUIDSet()
+		if len(deployedUIDSet) > 0 {
+			state := ms.GetOrCreateK8sRuntimeState()
+			state.DeployedUIDSet = deployedUIDSet
+			ms.RuntimeState = state
+		}
+
+		deployedPodTemplateSpecHashSet := cb.Result.DeployedPodTemplateSpecHashes()
+		if len(deployedPodTemplateSpecHashSet) > 0 {
+			state := ms.GetOrCreateK8sRuntimeState()
+			state.DeployedPodTemplateSpecHashSet = deployedPodTemplateSpecHashSet
+			ms.RuntimeState = state
+		}
 	}
 
 	if mt.Manifest.IsDC() {
@@ -376,10 +388,6 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 	if mt.Manifest.IsLocal() {
 		ms.RuntimeState = store.LocalRuntimeState{HasSucceededAtLeastOnce: err == nil}
-	}
-
-	if engineState.WatchFiles {
-		logger.Get(ctx).Debugf("[timing.py] finished build from file change") // hook for timing.py
 	}
 
 	return nil

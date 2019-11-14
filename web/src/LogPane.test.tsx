@@ -2,7 +2,7 @@ import React from "react"
 import ReactDOM from "react-dom"
 import LogPane from "./LogPane"
 import renderer from "react-test-renderer"
-import { mount, shallow } from "enzyme"
+import { mount } from "enzyme"
 
 const fakeHandleSetHighlight = () => {}
 const fakeHandleClearHighlight = () => {}
