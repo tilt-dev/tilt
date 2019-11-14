@@ -31,11 +31,12 @@ type LiveUpdateBuildAndDeployer struct {
 	updMode UpdateMode
 	env     k8s.Env
 	runtime container.Runtime
+	clock   build.Clock
 }
 
 func NewLiveUpdateBuildAndDeployer(dcu *containerupdate.DockerContainerUpdater,
 	scu *containerupdate.SyncletUpdater, ecu *containerupdate.ExecUpdater,
-	updMode UpdateMode, env k8s.Env, runtime container.Runtime) *LiveUpdateBuildAndDeployer {
+	updMode UpdateMode, env k8s.Env, runtime container.Runtime, c build.Clock) *LiveUpdateBuildAndDeployer {
 	return &LiveUpdateBuildAndDeployer{
 		dcu:     dcu,
 		scu:     scu,
@@ -43,6 +44,7 @@ func NewLiveUpdateBuildAndDeployer(dcu *containerupdate.DockerContainerUpdater,
 		updMode: updMode,
 		env:     env,
 		runtime: runtime,
+		clock:   c,
 	}
 }
 
@@ -81,13 +83,21 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		}
 	}
 
+	ps := build.NewPipelineState(ctx, len(liveUpdInfos), lubad.clock)
+	err = nil
+	defer func() {
+		ps.End(ctx, err)
+	}()
+
 	var dontFallBackErr error
 	for _, info := range liveUpdInfos {
-		err = lubad.buildAndDeploy(ctx, containerUpdater, info.iTarget, info.state, info.changedFiles, info.runs, info.hotReload)
+		ps.StartPipelineStep(ctx, "updating image %s", info.iTarget.DeploymentRef.Name())
+		err = lubad.buildAndDeploy(ctx, ps, containerUpdater, info.iTarget, info.state, info.changedFiles, info.runs, info.hotReload)
 		if err != nil {
 			if !IsDontFallBackError(err) {
 				// something went wrong, we want to fall back -- bail and
 				// let the next builder take care of it
+				ps.EndPipelineStep(ctx)
 				return store.BuildResultSet{}, err
 			}
 			// if something went wrong due to USER failure (i.e. run step failed),
@@ -95,11 +105,14 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 			// a consistent state, then return this error, i.e. don't fall back.
 			dontFallBackErr = err
 		}
+		ps.EndPipelineStep(ctx)
 	}
-	return createResultSet(liveUpdateStateSet, liveUpdInfos), dontFallBackErr
+
+	err = dontFallBackErr
+	return createResultSet(liveUpdateStateSet, liveUpdInfos), err
 }
 
-func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu containerupdate.ContainerUpdater, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) error {
+func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps *build.PipelineState, cu containerupdate.ContainerUpdater, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "LiveUpdateBuildAndDeployer-buildAndDeploy")
 	span.SetTag("target", iTarget.ConfigurationRef.String())
 	defer span.Finish()
@@ -111,7 +124,11 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 
 	l := logger.Get(ctx)
 	cIDStr := container.ShortStrs(store.IDsForInfos(state.RunningContainers))
-	l.Infof("  → Updating container(s): %s", cIDStr)
+	suffix := ""
+	if len(state.RunningContainers) != 1 {
+		suffix = "(s)"
+	}
+	ps.StartBuildStep(ctx, "Updating container%s: %s", suffix, cIDStr)
 
 	filter := ignore.CreateBuildContextFilter(iTarget)
 	boiledSteps, err := build.BoilRuns(runs, changedFiles)
@@ -126,14 +143,14 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, cu 
 	}
 
 	if len(toRemove) > 0 {
-		l.Infof("Will delete %d file(s) from container(s): %s", len(toRemove), cIDStr)
+		l.Infof("Will delete %d file(s) from container%s: %s", len(toRemove), suffix, cIDStr)
 		for _, pm := range toRemove {
 			l.Infof("- '%s' (matched local path: '%s')", pm.ContainerPath, pm.LocalPath)
 		}
 	}
 
 	if len(toArchive) > 0 {
-		l.Infof("Will copy %d file(s) to container(s): %s", len(toArchive), cIDStr)
+		l.Infof("Will copy %d file(s) to container%s: %s", len(toArchive), suffix, cIDStr)
 		for _, pm := range toArchive {
 			l.Infof("- %s", pm.PrettyStr())
 		}
