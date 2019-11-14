@@ -66,6 +66,7 @@
 
 // ...only show last few lines
 .AlertPane-item code:nth-last-child(-n + 8) {
+  display: inline;
   min-height: $spacing-unit / 2; // Respect blank lines
   height: auto;
   opacity: 1;
