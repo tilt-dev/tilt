@@ -108,7 +108,7 @@ func StateToProtoView(s store.EngineState) (*proto_webview.View, error) {
 			BuildHistory:       bh,
 			PendingBuildEdits:  pendingBuildEdits,
 			PendingBuildSince:  pbs,
-			PendingBuildReason: int32(ms.NextBuildReason()),
+			PendingBuildReason: int32(mt.NextBuildReason()),
 			CurrentBuild:       cb,
 			Endpoints:          endpoints,
 			PodID:              podID.String(),

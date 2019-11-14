@@ -54,7 +54,7 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 	manifest := mt.Manifest
 	firstBuild := !ms.StartedFirstBuild()
 
-	buildReason := ms.NextBuildReason()
+	buildReason := mt.NextBuildReason()
 	targets := buildTargets(manifest)
 	buildStateSet := buildStateSet(ctx, manifest, targets, ms)
 
