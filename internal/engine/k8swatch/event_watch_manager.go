@@ -117,30 +117,6 @@ func (m *EventWatchManager) setupNewUIDs(ctx context.Context, st store.RStore, n
 	}
 }
 
-// Record the event update, and return true if this is newer than
-// the state we already know about.
-func (m *EventWatchManager) recordEventUpdate(event *v1.Event) bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	uid := event.UID
-	oldEvent, ok := m.knownEvents[uid]
-
-	// Throw out updates that are older than what we currently have.
-	//
-	// Note that this code also dispatches actions for updates where the new
-	// ResourceVersion == the old ResourceVersion. We do this deliberately to make
-	// testing much easier, because the test harness doesn't need to keep track of
-	// ResourceVersions.
-	olderThanKnown := ok && oldEvent.ResourceVersion > event.ResourceVersion
-	if olderThanKnown {
-		return false
-	}
-
-	m.knownEvents[uid] = event
-	return true
-}
-
 // Check to see if this event corresponds to any of our manifests.
 //
 // We do this by comparing the event's InvolvedObject UID and its owner UIDs
@@ -154,6 +130,7 @@ func (m *EventWatchManager) triageEventUpdate(event *v1.Event, objTree k8s.Objec
 	defer m.mu.Unlock()
 
 	uid := event.UID
+	m.knownEvents[uid] = event
 
 	// Set up the descendent index of the involved object
 	for _, ownerUID := range objTree.UIDs() {
@@ -177,11 +154,6 @@ func (m *EventWatchManager) triageEventUpdate(event *v1.Event, objTree k8s.Objec
 }
 
 func (m *EventWatchManager) dispatchEventChange(ctx context.Context, event *v1.Event, st store.RStore) {
-	ok := m.recordEventUpdate(event)
-	if !ok {
-		return
-	}
-
 	objTree, err := m.ownerFetcher.OwnerTreeOfRef(ctx, event.InvolvedObject)
 	if err != nil {
 		logger.Get(ctx).Infof("Error handling event update (%q): %v", event.Name, err)

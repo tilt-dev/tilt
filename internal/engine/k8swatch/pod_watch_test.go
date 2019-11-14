@@ -69,6 +69,36 @@ func TestPodWatchChangeEventBeforeUID(t *testing.T) {
 	f.assertObservedPods(p)
 }
 
+// We had a bug where if newPod.resourceVersion < oldPod.resourceVersion (using string comparison!)
+// then we'd ignore the new pod. This meant, e.g., once we got an update for resourceVersion "9", we'd
+// ignore updates for resourceVersions "10" through "89" and "100" through "899"
+func TestPodWatchResourceVersionStringLessThan(t *testing.T) {
+	f := newPWFixture(t)
+	defer f.TearDown()
+
+	manifest := f.addManifestWithSelectors("server")
+
+	f.pw.OnChange(f.ctx, f.store)
+
+	ls := k8s.ManagedByTiltSelector()
+	pb := podbuilder.New(t, manifest).WithResourceVersion("9")
+
+	// Simulate the Deployment UID in the engine state
+	f.addDeployedUID(manifest, pb.DeploymentUID())
+	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
+
+	p1 := pb.Build()
+	f.kClient.EmitPod(ls, p1)
+
+	f.assertObservedPods(p1)
+	f.assertWatchedSelectors(ls)
+
+	p2 := pb.WithResourceVersion("10").Build()
+	f.kClient.EmitPod(ls, p2)
+
+	f.assertObservedPods(p1, p2)
+}
+
 func TestPodWatchExtraSelectors(t *testing.T) {
 	f := newPWFixture(t)
 	defer f.TearDown()

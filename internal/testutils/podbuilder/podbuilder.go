@@ -55,13 +55,14 @@ type PodBuilder struct {
 	t        testing.TB
 	manifest model.Manifest
 
-	podID          string
-	phase          string
-	creationTime   time.Time
-	deletionTime   time.Time
-	restartCount   int
-	extraPodLabels map[string]string
-	deploymentUID  types.UID
+	podID           string
+	phase           string
+	creationTime    time.Time
+	deletionTime    time.Time
+	restartCount    int
+	extraPodLabels  map[string]string
+	deploymentUID   types.UID
+	resourceVersion string
 
 	// keyed by container index -- i.e. the first container will have image: imageRefs[0] and ID: cIDs[0], etc.
 	// If there's no entry at index i, we'll use a dummy value.
@@ -96,6 +97,11 @@ func (b PodBuilder) RestartCount() int {
 
 func (b PodBuilder) WithRestartCount(restartCount int) PodBuilder {
 	b.restartCount = restartCount
+	return b
+}
+
+func (b PodBuilder) WithResourceVersion(rv string) PodBuilder {
+	b.resourceVersion = rv
 	return b
 }
 
@@ -354,6 +360,7 @@ func (b PodBuilder) Build() *v1.Pod {
 			OwnerReferences: []metav1.OwnerReference{
 				k8s.RuntimeObjToOwnerRef(b.buildReplicaSet()),
 			},
+			ResourceVersion: b.resourceVersion,
 		},
 		Spec: spec,
 		Status: v1.PodStatus{
