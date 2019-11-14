@@ -24,5 +24,15 @@ describe("findLogLine", () => {
     expect(actual).toBe("1920")
   })
 
-  // TODO(dmiller): how to test the last case, that there's a Node that is passed in instead of an HTMLElement
+  fit("handles being passed a node instead of an element", () => {
+    const dom = new JSDOM(logPaneDOM)
+    const node = dom.window.document.getElementById("start2")
+    if (node === null) {
+      expect(node).not.toBeNull()
+      return
+    }
+
+    const actual = findLogLineID(node.firstChild)
+    expect(actual).toBe("1920")
+  })
 })
