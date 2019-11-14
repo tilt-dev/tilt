@@ -164,7 +164,8 @@ type fakeBuildAndDeployer struct {
 	// If not set, we will auto-generate an ID.
 	nextDockerComposeContainerID container.ID
 
-	nextDeployedUID types.UID
+	nextDeployedUID           types.UID
+	nextPodTemplateSpecHashes []k8s.PodTemplateSpecHash
 
 	// Set this to simulate the build failing. Do not set this directly, use fixture.SetNextBuildFailure
 	nextBuildFailure error
@@ -243,14 +244,20 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		result[call.dc().ID()] = store.NewDockerComposeDeployResult(call.dc().ID(), dcContainerID)
 	}
 
-	if !call.k8s().Empty() {
+	if kTarg := call.k8s(); !kTarg.Empty() {
 		uid := types.UID(uuid.New().String())
 		if b.nextDeployedUID != "" {
 			uid = b.nextDeployedUID
 			b.nextDeployedUID = ""
 		}
 		uids := []types.UID{uid}
-		result[call.k8s().ID()] = store.NewK8sDeployResult(call.k8s().ID(), uids, nil)
+
+		templateSpecHashes := podTemplateSpecHashesForTarg(b.t, kTarg)
+		if len(b.nextPodTemplateSpecHashes) != 0 {
+			templateSpecHashes = b.nextPodTemplateSpecHashes
+			b.nextPodTemplateSpecHashes = nil
+		}
+		result[call.k8s().ID()] = store.NewK8sDeployResult(call.k8s().ID(), uids, templateSpecHashes, nil)
 	}
 
 	b.nextLiveUpdateContainerIDs = nil
@@ -1386,8 +1393,12 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 
 	name := model.ManifestName("foobar")
 	manifest := f.newManifest(name.String())
+	ptsh := k8s.PodTemplateSpecHash("abc123hash")
 
 	f.Start([]model.Manifest{manifest}, true)
+
+	// (recognize incoming pods with this ptsh as belonging to this manifest)
+	f.registerDeployedPodTemplateSpecHashToManifest(name, ptsh)
 
 	// Start a fake build
 	f.store.Dispatch(newTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a"))
@@ -1401,7 +1412,8 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 	})
 
 	// Simulate k8s restarting the container due to a crash.
-	f.podEvent(podbuilder.New(t, manifest).WithContainerID("myfunnycontainerid").Build(), manifest.Name)
+	f.podEvent(podbuilder.New(t, manifest).WithContainerID("myfunnycontainerid").
+		WithTemplateSpecHash(ptsh).Build(), manifest.Name)
 
 	// ...and finish the build. Even though this action comes in AFTER the pod
 	// event w/ unexpected container,  we should still be able to detect the mismatch.
@@ -1424,6 +1436,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 
 	name := model.ManifestName("foobar")
 	manifest := f.newManifest(name.String())
+	ptsh := k8s.PodTemplateSpecHash("abc123hash")
 
 	f.Start([]model.Manifest{manifest}, true)
 
@@ -1444,9 +1457,10 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 		WithPodID("mypod").
 		WithContainerID("normal-container-id").
 		WithCreationTime(podStartTime).
-		WithDeploymentUID(ancestorUID)
+		WithDeploymentUID(ancestorUID).
+		WithTemplateSpecHash(ptsh)
 	f.store.Dispatch(BuildCompleteAction{
-		Result: deployResultSet(manifest, ancestorUID),
+		Result: deployResultSet(manifest, ancestorUID, []k8s.PodTemplateSpecHash{ptsh}),
 	})
 
 	f.store.Dispatch(k8swatch.NewPodChangeAction(pb.Build(), manifest.Name, ancestorUID))
@@ -1659,6 +1673,166 @@ func TestPodContainerStatus(t *testing.T) {
 	assert.NoError(t, err)
 
 	f.assertAllBuildsConsumed()
+}
+
+func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
+	deployedHash := k8s.PodTemplateSpecHash("some-hash-abc")
+	nonMatchingHash := k8s.PodTemplateSpecHash("danger-will-robinson")
+	ancestorUID := types.UID("some-ancestor")
+	podID := k8s.PodID("special-pod")
+	otherPodID := k8s.PodID("other-pod")
+	mName := model.ManifestName("foobar")
+
+	tests := []struct {
+		name                      string
+		ptshMatch                 bool // does the pod template spec hash of incoming pod event match the PTSH we most recently deployed?
+		ancestorSeen              bool // does the k8s runtime state already know about the ancestor UID of our pod?
+		podSeen                   bool // instantiate runtime state with an old version of the pod we're getting events for
+		haveAdditionalPod         bool // runtime state knows about another pod besides the one we're getting events for
+		expectUpdatePodOnManifest bool // expect pod event to cause an update to manifestState.Pods
+	}{
+		{name: "new ancestor + ptsh OK",
+			ptshMatch:                 true,
+			ancestorSeen:              false,
+			podSeen:                   false,
+			haveAdditionalPod:         false,
+			expectUpdatePodOnManifest: true,
+		}, {name: "new ancestor + ptsh not OK",
+			ptshMatch:                 false,
+			ancestorSeen:              false,
+			podSeen:                   false,
+			haveAdditionalPod:         false,
+			expectUpdatePodOnManifest: false,
+		}, {name: "existing ancestor/new pod + ptsh OK",
+			ptshMatch:                 true,
+			ancestorSeen:              true,
+			podSeen:                   false,
+			haveAdditionalPod:         false,
+			expectUpdatePodOnManifest: true,
+		}, {name: "existing ancestor/new pod + ptsh OK + additional pod",
+			ptshMatch:                 true,
+			ancestorSeen:              true,
+			podSeen:                   false,
+			haveAdditionalPod:         true,
+			expectUpdatePodOnManifest: true,
+		}, {name: "existing ancestor/new pod + ptsh not OK",
+			ptshMatch:                 false,
+			ancestorSeen:              true,
+			podSeen:                   false,
+			haveAdditionalPod:         false,
+			expectUpdatePodOnManifest: false,
+		}, {name: "existing ancestor/new pod + ptsh not OK + additional pod",
+			ptshMatch:                 false,
+			ancestorSeen:              true,
+			podSeen:                   false,
+			haveAdditionalPod:         true,
+			expectUpdatePodOnManifest: false,
+		}, {name: "existing pod + ptsh OK",
+			ptshMatch:                 true,
+			ancestorSeen:              true,
+			podSeen:                   true,
+			haveAdditionalPod:         false,
+			expectUpdatePodOnManifest: true,
+		}, {name: "existing pod + ptsh OK + additional pod",
+			ptshMatch:                 true,
+			ancestorSeen:              true,
+			podSeen:                   true,
+			haveAdditionalPod:         true,
+			expectUpdatePodOnManifest: true,
+		}, {name: "existing pod + ptsh not OK",
+			ptshMatch:                 false,
+			ancestorSeen:              true,
+			podSeen:                   true,
+			haveAdditionalPod:         false,
+			expectUpdatePodOnManifest: true,
+		},
+		{name: "existing pod + ptsh not OK + additional pod",
+			ptshMatch:                 false,
+			ancestorSeen:              true,
+			podSeen:                   true,
+			haveAdditionalPod:         true,
+			expectUpdatePodOnManifest: true,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			f := newTestFixture(t)
+			defer f.TearDown()
+			manifest := f.newManifest(mName.String())
+
+			f.b.nextDeployedUID = ancestorUID
+			f.b.nextPodTemplateSpecHashes = []k8s.PodTemplateSpecHash{deployedHash}
+			f.Start([]model.Manifest{manifest}, true)
+
+			_ = f.nextCallComplete()
+
+			// set up runtime state
+			st := f.store.LockMutableStateForTesting()
+			ms, ok := st.ManifestState(model.ManifestName(mName))
+			require.True(t, ok, "couldn't find manifest state for %s", mName)
+
+			runtime := ms.GetOrCreateK8sRuntimeState()
+			runtime.Pods = make(map[k8s.PodID]*store.Pod)
+			if test.ancestorSeen {
+				runtime.PodAncestorUID = ancestorUID
+			}
+
+			if test.podSeen {
+				runtime.Pods[podID] = &store.Pod{
+					PodID:  podID,
+					Status: "Running",
+				}
+			}
+			if test.haveAdditionalPod {
+				runtime.Pods[otherPodID] = &store.Pod{
+					PodID:  otherPodID,
+					Status: "Running",
+				}
+			}
+			ms.RuntimeState = runtime
+			f.store.UnlockMutableState()
+
+			// Dispatch pod event
+			podHash := deployedHash
+			if !test.ptshMatch {
+				podHash = nonMatchingHash
+			}
+			pod := podbuilder.New(f.T(), manifest).
+				WithPodID(podID.String()).
+				WithTemplateSpecHash(podHash).
+				WithPhase("CrashLoopBackOff").
+				Build()
+			f.podEvent(pod, manifest.Name)
+
+			if test.expectUpdatePodOnManifest {
+				f.WaitUntilManifestState("pod on manifest state with updated status", mName,
+					func(ms store.ManifestState) bool {
+						foundPod, ok := ms.PodWithID(podID)
+						return ok && foundPod.Status == "CrashLoopBackOff"
+					})
+				f.withManifestState(mName, func(ms store.ManifestState) {
+					assert.Equal(t, ancestorUID, ms.K8sRuntimeState().PodAncestorUID,
+						"expect k8s runtime state to have current pod ancestor UID")
+				})
+			} else {
+				time.Sleep(10 * time.Millisecond)
+				f.withManifestState(mName, func(ms store.ManifestState) {
+					_, ok := ms.PodWithID(podID)
+					assert.False(t, ok, "expect manifest to NOT have pod with ID %q", podID)
+				})
+			}
+
+			if test.haveAdditionalPod {
+				f.withManifestState(mName, func(ms store.ManifestState) {
+					_, ok := ms.PodWithID(otherPodID)
+					assert.True(t, ok, "expect manifest to have pod with ID %q", otherPodID)
+				})
+			}
+
+			assert.NoError(t, f.Stop())
+			f.assertAllBuildsConsumed()
+		})
+	}
 }
 
 func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
@@ -3617,6 +3791,45 @@ func (f *testFixture) hudResource(name model.ManifestName) view.Resource {
 	return res
 }
 
+// registerDeployedPodTemplateSpecHashToManifest stores the given hash on the k8sRuntimeState for the
+// specified manifest (so that we will recognize incoming pod events with the same hash
+// as belonging to this manifest).
+func (f *testFixture) registerDeployedPodTemplateSpecHashToManifest(name model.ManifestName, ptsh k8s.PodTemplateSpecHash) {
+	st := f.store.LockMutableStateForTesting()
+	ms, ok := st.ManifestState(name)
+	require.True(f.T(), ok, "no manifest found on state matching name %q", name)
+	runtime := ms.GetOrCreateK8sRuntimeState()
+	runtime.DeployedPodTemplateSpecHashSet.Add(ptsh)
+	ms.RuntimeState = runtime
+	f.store.UnlockMutableState()
+}
+
+func podTemplateSpecHashesForTarg(t *testing.T, targ model.K8sTarget) []k8s.PodTemplateSpecHash {
+	entities, err := k8s.ParseYAMLFromString(targ.YAML)
+	require.NoError(t, err)
+
+	var ptsh []k8s.PodTemplateSpecHash
+	for _, e := range entities {
+		hashes := podTemplateSpecHashes(t, &e)
+		ptsh = append(ptsh, hashes...)
+	}
+
+	return ptsh
+}
+
+func podTemplateSpecHashes(t *testing.T, e *k8s.K8sEntity) []k8s.PodTemplateSpecHash {
+	templateSpecs, err := k8s.ExtractPodTemplateSpec(e)
+	require.NoError(t, err)
+
+	var hashes []k8s.PodTemplateSpecHash
+	for _, ts := range templateSpecs {
+		h, err := k8s.HashPodTemplateSpec(ts)
+		require.NoError(t, err)
+		hashes = append(hashes, h)
+	}
+	return hashes
+}
+
 type fixtureSub struct {
 	ch chan bool
 }
@@ -3633,14 +3846,14 @@ func dcContainerEvtForManifest(m model.Manifest, action dockercompose.Action) do
 	}
 }
 
-func deployResultSet(manifest model.Manifest, uid types.UID) store.BuildResultSet {
+func deployResultSet(manifest model.Manifest, uid types.UID, hashes []k8s.PodTemplateSpecHash) store.BuildResultSet {
 	resultSet := store.BuildResultSet{}
 	for _, iTarget := range manifest.ImageTargets {
 		ref, _ := reference.WithTag(iTarget.DeploymentRef, "deadbeef")
 		resultSet[iTarget.ID()] = store.NewImageBuildResult(iTarget.ID(), ref)
 	}
 	ktID := manifest.K8sTarget().ID()
-	resultSet[ktID] = store.NewK8sDeployResult(ktID, []types.UID{uid}, nil)
+	resultSet[ktID] = store.NewK8sDeployResult(ktID, []types.UID{uid}, hashes, nil)
 	return resultSet
 }
 
