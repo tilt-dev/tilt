@@ -114,7 +114,7 @@ func maybeTrackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*s
 	ns := k8s.NamespaceFromPod(pod)
 	hasSynclet := sidecar.PodSpecContainsSynclet(pod.Spec)
 	runtime := ms.GetOrCreateK8sRuntimeState()
-	isCurrentDeploy := runtime.HasOKPodTemplateSpecHash(pod) // pod is from the most recent Tilt deploy
+	isCurrentDeploy := runtime.HasOKPodTemplateSpecHash(pod) // is pod from the most recent Tilt deploy?
 
 	// Case 1: We haven't seen pods for this ancestor yet.
 	ancestorUID := action.AncestorUID
