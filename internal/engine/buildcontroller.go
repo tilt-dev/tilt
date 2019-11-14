@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
@@ -113,26 +114,31 @@ func (c *BuildController) buildAndDeploy(ctx context.Context, st store.RStore, e
 	return c.b.BuildAndDeploy(ctx, st, targets, entry.buildStateSet)
 }
 
+// ideally narrow enough that it doesn't wrap on "normal" resolutions
+const buildLineLength = 55
+
 func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 	firstBuild := entry.firstBuild
 	name := entry.name
 	changedFiles := entry.filesChanged
 
 	l := logger.Get(ctx)
+	var prefix string
 	if firstBuild {
-		p := logger.Blue(l).Sprintf("──┤ Building: ")
-		s := logger.Blue(l).Sprintf(" ├──────────────────────────────────────────────")
-		l.Infof("\n%s%s%s", p, name, s)
+		prefix = "──┤ Building:"
 	} else {
 		if len(changedFiles) > 0 {
 			p := logger.Green(l).Sprintf("%d changed: ", len(changedFiles))
 			l.Infof("\n%s%v\n", p, ospath.FormatFileChangeList(changedFiles))
 		}
 
-		rp := logger.Blue(l).Sprintf("──┤ Rebuilding: ")
-		rs := logger.Blue(l).Sprintf(" ├────────────────────────────────────────────")
-		l.Infof("\n%s%s%s", rp, name, rs)
+		prefix = "──┤ Rebuilding: "
 	}
+
+	p := logger.Blue(l).Sprintf("%s", prefix)
+	suffix := " ├" + strings.Repeat("─", buildLineLength-len(name)-len(prefix)-2)
+	s := logger.Blue(l).Sprintf(suffix)
+	l.Infof("\n%s%s%s", p, name, s)
 }
 
 type BuildLogActionWriter struct {
