@@ -267,11 +267,21 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 	engineState.CompletedBuildCount++
 	engineState.BuildControllerActionCount++
-	err := cb.Error
 
 	mt, ok := engineState.ManifestTargets[engineState.CurrentlyBuilding]
 	if !ok {
 		return nil
+	}
+
+	err := cb.Error
+	if err != nil {
+		p := logger.Red(logger.Get(ctx)).Sprintf("Build Failed:")
+		s := fmt.Sprintf("%s %v", p, err)
+		a := BuildLogAction{
+			LogEvent: store.NewLogEvent(mt.Manifest.Name, []byte(s)),
+		}
+		handleLogAction(engineState, a)
+		handleBuildLogAction(engineState, a)
 	}
 
 	ms := mt.State
@@ -279,6 +289,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	bs.Error = err
 	bs.FinishTime = time.Now()
 	bs.BuildTypes = cb.Result.BuildTypes()
+
 	ms.AddCompletedBuild(bs)
 
 	ms.CurrentBuild = model.BuildRecord{}
@@ -291,11 +302,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	if err != nil {
 		if isFatalError(err) {
 			return err
-		} else if engineState.WatchFiles {
-			l := logger.Get(ctx)
-			p := logger.Red(l).Sprintf("Build Failed:")
-			l.Infof("%s %v", p, err)
-		} else {
+		} else if !engineState.WatchFiles {
 			return errors.Wrap(err, "Build Failed")
 		}
 	} else {

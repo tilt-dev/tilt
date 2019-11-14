@@ -778,7 +778,8 @@ func TestReturnLastUnexpectedError(t *testing.T) {
 	}
 }
 
-func TestDockerBuildErrorLogged(t *testing.T) {
+// errors get logged by the upper, so make sure our builder isn't logging the error redundantly
+func TestDockerBuildErrorNotLogged(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
@@ -793,7 +794,7 @@ func TestDockerBuildErrorLogged(t *testing.T) {
 	}
 
 	logs := f.logs.String()
-	require.Equal(t, 1, strings.Count(logs, "no one expects the unexpected error"))
+	require.Equal(t, 0, strings.Count(logs, "no one expects the unexpected error"))
 }
 
 func TestLiveUpdateWithRunFailureReturnsContainerIDs(t *testing.T) {
