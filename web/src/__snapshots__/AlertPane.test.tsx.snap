@@ -46,18 +46,18 @@ exports[`renders multiple lines of a crash log 1`] = `
             style={null}
           >
             Eeeeek the container crashed
+
           </span>
         </code>
-        <br />
         <code>
           <span
             className={null}
             style={null}
           >
             no but really it crashed
+
           </span>
         </code>
-        <br />
       </section>
       <div />
     </li>
@@ -128,9 +128,9 @@ exports[`renders one container start error 1`] = `
             style={null}
           >
             Eeeeek there is a problem
+
           </span>
         </code>
-        <br />
       </section>
       <div />
     </li>
@@ -184,9 +184,9 @@ exports[`renders one container start error 2`] = `
             style={null}
           >
             Eeeeek there is a problem
+
           </span>
         </code>
-        <br />
       </section>
       <div />
     </li>
@@ -240,9 +240,9 @@ exports[`renders one container unrecognized error 1`] = `
             style={null}
           >
             Detailed message on GarbleError
+
           </span>
         </code>
-        <br />
       </section>
       <div />
     </li>
@@ -296,9 +296,9 @@ exports[`renders warnings 1`] = `
             style={null}
           >
             Eeeeek the container crashed
+
           </span>
         </code>
-        <br />
       </section>
       <div />
     </li>
@@ -343,9 +343,9 @@ exports[`renders warnings 1`] = `
             style={null}
           >
             Hi I'm a warning
+
           </span>
         </code>
-        <br />
       </section>
       <div />
     </li>
@@ -399,9 +399,9 @@ exports[`shows that a container has restarted 1`] = `
             style={null}
           >
             Eeeeek the container crashed
+
           </span>
         </code>
-        <br />
       </section>
       <button
         className="AlertPane-dismissButton"
@@ -460,9 +460,9 @@ exports[`shows that a crash rebuild has occurred 1`] = `
             style={null}
           >
             Eeeeek the container crashed
+
           </span>
         </code>
-        <br />
       </section>
       <div />
     </li>
