@@ -328,6 +328,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	f.podEvent(pb.WithContainerID("funnyContainerID").Build(), manifest.Name)
 	call = f.nextCall()
 	assert.True(t, call.oneState().OneContainerInfo().Empty())
+	assert.False(t, call.oneState().NeedsForceUpdate)
 	f.waitForCompletedBuildCount(3)
 
 	f.withManifestState("fe", func(ms store.ManifestState) {

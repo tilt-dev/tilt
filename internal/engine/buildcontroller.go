@@ -225,7 +225,8 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 	//  out that it's a force update when creating the BuildEntry (in `needsBuild`), store that
 	//  as the BuildReason, and pass the whole BuildEntry to the builder (so the builder can
 	//  know whether to skip in-place builds)
-	if !anyFilesChangedSinceLastBuild {
+	// if we're on a crash rebuild, then there won't have been any files changed for that reason
+	if !ms.NeedsRebuildFromCrash && !anyFilesChangedSinceLastBuild {
 		for k, v := range result {
 			result[k] = v.WithNeedsForceUpdate(true)
 		}
