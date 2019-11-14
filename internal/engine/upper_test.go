@@ -2707,6 +2707,24 @@ alert-injes…┊ ghij`)
 	assert.Nil(t, err)
 }
 
+func TestBuildErrorLoggedOnceByUpper(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	manifest := f.newManifest("alert-injester")
+	err := errors.New("cats and dogs, living together")
+	f.b.nextBuildFailure = err
+
+	f.Start([]model.Manifest{manifest}, true)
+
+	f.waitForCompletedBuildCount(1)
+
+	// so the test name says "once", but the fake builder also logs once, so we get it twice
+	f.withState(func(state store.EngineState) {
+		require.Equal(t, 2, strings.Count(state.Log.String(), err.Error()))
+	})
+}
+
 func TestTiltfileChangedFilesOnlyLoggedAfterFirstBuild(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()

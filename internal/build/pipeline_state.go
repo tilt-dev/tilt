@@ -49,26 +49,23 @@ func NewPipelineState(ctx context.Context, totalStepCount int, c Clock) *Pipelin
 // and NOT:
 //     defer ps.End(ctx, err)
 func (ps *PipelineState) End(ctx context.Context, err error) {
+	ps.curPipelineStep = 0
+	ps.curBuildStep = 0
+
+	if err != nil {
+		return
+	}
+
 	l := logger.Get(ctx)
 	prefix := logger.Blue(l).Sprint("  │ ")
 
 	elapsed := ps.c.Now().Sub(ps.curPipelineStart)
-
-	if err != nil {
-		prefix := logger.Red(l).Sprint("ERROR:")
-		l.Infof("%s %s", prefix, err.Error())
-		ps.curPipelineStep = 0
-		ps.curBuildStep = 0
-		return
-	}
 
 	for i, duration := range ps.pipelineStepDurations {
 		l.Infof("%sStep %d - %.3fs", prefix, i+1, duration.Seconds())
 	}
 
 	l.Infof("%sDone in: %.3fs \n", prefix, elapsed.Seconds())
-	ps.curPipelineStep = 0
-	ps.curBuildStep = 0
 }
 
 func (ps *PipelineState) StartPipelineStep(ctx context.Context, format string, a ...interface{}) {
