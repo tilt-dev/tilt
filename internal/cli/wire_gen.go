@@ -165,12 +165,12 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdUpTa
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
-	liveUpdateBuildAndDeployer := engine.NewLiveUpdateBuildAndDeployer(dockerContainerUpdater, syncletUpdater, execUpdater, updateMode, env, runtime)
+	clock := build.ProvideClock()
+	liveUpdateBuildAndDeployer := engine.NewLiveUpdateBuildAndDeployer(dockerContainerUpdater, syncletUpdater, execUpdater, updateMode, env, runtime, clock)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	cacheBuilder := build.NewCacheBuilder(switchCli)
-	clock := build.ProvideClock()
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, clock)
 	clusterName := k8s.ProvideClusterName(ctx, config)
 	kindPusher := engine.NewKINDPusher(clusterName)

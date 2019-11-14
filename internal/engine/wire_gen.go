@@ -40,7 +40,7 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 	if err != nil {
 		return nil, err
 	}
-	liveUpdateBuildAndDeployer := NewLiveUpdateBuildAndDeployer(dockerContainerUpdater, syncletUpdater, execUpdater, engineUpdateMode, env, runtime)
+	liveUpdateBuildAndDeployer := NewLiveUpdateBuildAndDeployer(dockerContainerUpdater, syncletUpdater, execUpdater, engineUpdateMode, env, runtime, clock)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
