@@ -58,10 +58,8 @@
 
 // Hide all lines by default
 .AlertPane-item code {
-  display: block;
+  display: none;
   white-space: pre-wrap;
-  height: 0;
-  opacity: 0;
 }
 
 // ...only show last few lines
