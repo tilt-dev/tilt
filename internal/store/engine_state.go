@@ -429,18 +429,18 @@ func (ms *ManifestState) HasPendingFileChanges() bool {
 	return false
 }
 
-func (ms *ManifestState) NextBuildReason() model.BuildReason {
+func (mt *ManifestTarget) NextBuildReason() model.BuildReason {
 	reason := model.BuildReasonNone
-	if ms.HasPendingFileChanges() {
+	if mt.State.HasPendingFileChanges() {
 		reason = reason.With(model.BuildReasonFlagChangedFiles)
 	}
-	if !ms.PendingManifestChange.IsZero() {
+	if !mt.State.PendingManifestChange.IsZero() {
 		reason = reason.With(model.BuildReasonFlagConfig)
 	}
-	if !ms.StartedFirstBuild() {
+	if !mt.State.StartedFirstBuild() && mt.Manifest.TriggerMode.AutoInitial() {
 		reason = reason.With(model.BuildReasonFlagInit)
 	}
-	if ms.NeedsRebuildFromCrash {
+	if mt.State.NeedsRebuildFromCrash {
 		reason = reason.With(model.BuildReasonFlagCrash)
 	}
 	return reason
@@ -624,7 +624,7 @@ func StateToView(s EngineState) view.View {
 			BuildHistory:       buildHistory,
 			PendingBuildEdits:  pendingBuildEdits,
 			PendingBuildSince:  pendingBuildSince,
-			PendingBuildReason: ms.NextBuildReason(),
+			PendingBuildReason: mt.NextBuildReason(),
 			CurrentBuild:       currentBuild,
 			CrashLog:           ms.CrashLog,
 			Endpoints:          endpoints,

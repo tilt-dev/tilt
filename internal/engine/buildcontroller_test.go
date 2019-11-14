@@ -469,6 +469,37 @@ func TestRecordLiveUpdatedContainerIDsForFailedLiveUpdate(t *testing.T) {
 	})
 }
 
+func TestBuildControllerManualTriggerBuildReasonInit(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		triggerMode model.TriggerMode
+	}{
+		{"manual including initial", model.TriggerModeManualIncludingInitial},
+		{"manual after initial", model.TriggerModeManualAfterInitial},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newTestFixture(t)
+			defer f.TearDown()
+			mName := model.ManifestName("foobar")
+
+			manifest := f.newManifest(mName.String()).WithTriggerMode(tc.triggerMode)
+			manifests := []model.Manifest{manifest}
+			f.Start(manifests, true)
+
+			// make sure there's a first build
+			if !manifest.TriggerMode.AutoInitial() {
+				f.store.Dispatch(server.AppendToTriggerQueueAction{Name: mName})
+			}
+
+			f.nextCallComplete()
+
+			f.withManifestState(mName, func(ms store.ManifestState) {
+				require.Equal(t, tc.triggerMode.AutoInitial(), ms.LastBuild().Reason.Has(model.BuildReasonFlagInit))
+			})
+		})
+	}
+}
+
 func TestBuildControllerManualTriggerWithFileChanges(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
