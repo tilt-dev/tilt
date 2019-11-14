@@ -1,21 +1,21 @@
 const LINE_ID_ATTR_NAME = "data-lineid"
 
-export default function findLogLineID(
-  el: HTMLElement | Node | null
-): string | null {
-  if (el === null) {
+export default function findLogLineID(node: Node | null): string | null {
+  if (node === null) {
     return null
   }
 
+  let el = node as HTMLElement
+
   if (
-    typeof (el as HTMLElement).getAttribute === "function" &&
-    (el as HTMLElement).getAttribute(LINE_ID_ATTR_NAME)
+    typeof el.getAttribute === "function" &&
+    el.getAttribute(LINE_ID_ATTR_NAME)
   ) {
-    return (el as HTMLElement).getAttribute(LINE_ID_ATTR_NAME)
-  } else if ((el as HTMLElement).parentNode) {
-    return findLogLineID((el as HTMLElement).parentElement)
-  } else if (el instanceof Node) {
-    return findLogLineID((el as Node).parentNode)
+    return el.getAttribute(LINE_ID_ATTR_NAME)
+  } else if (el.parentNode) {
+    return findLogLineID(el.parentElement)
+  } else if (node instanceof Node) {
+    return findLogLineID((node as Node).parentNode)
   }
 
   return null
