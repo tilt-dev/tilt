@@ -1022,3 +1022,30 @@ func TestBuildControllerResourceDepTrumpsPendingBuild(t *testing.T) {
 	call = f.nextCall()
 	require.Equal(t, "bar", call.local().Name.String())
 }
+
+func TestLogsLongResourceName(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	mn := strings.Repeat("foobar", 30)
+
+	manifest := f.newManifest(mn)
+	f.Start([]model.Manifest{manifest}, true)
+
+	call := f.nextCallComplete()
+	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
+	assert.Equal(t, []string{}, call.oneState().FilesChanged())
+
+	// this might be an annoying test since it depends on log formatting
+	// its goal is to ensure we don't have dumb math that causes integer underflow or panics when it gets a long manifest name
+	// thus, it just makes sure that we log that the manifest is building and we don't error,
+	// and tries to limit how much it checks the formatting
+	f.withState(func(state store.EngineState) {
+		expectedLine := fmt.Sprintf("Building:%s", mn)
+		assert.Contains(t, state.Log.String(), expectedLine)
+	})
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+}
