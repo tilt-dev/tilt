@@ -11,22 +11,14 @@ import PathBuilder from "./PathBuilder"
 
 let pathBuilder = new PathBuilder("localhost", "/")
 
-let assertTriggerButtonProps = (
-  button: any,
-  expectClickable: boolean,
-  expectClickMe: boolean,
-  expectIsSelected: boolean,
-  expectIsQueued: boolean,
-  expectDisabled: boolean,
-  expectTooltip: string
-) => {
-  expect(button.hasClass("clickable")).toEqual(expectClickable)
-  expect(button.hasClass("clickMe")).toEqual(expectClickMe)
-  expect(button.hasClass("isSelected")).toEqual(expectIsSelected)
-  expect(button.hasClass("isQueued")).toEqual(expectIsQueued)
-  expect(button.prop("disabled")).toEqual(expectDisabled)
-  expect(button.prop("title")).toEqual(expectTooltip)
+let expectClickable = (button: any, expected: boolean) => {
+  expect(button.hasClass("clickable")).toEqual(expected)
+  expect(button.prop("disabled")).toEqual(!expected)
 }
+let expectClickMe = (button: any, expected: boolean) => { expect(button.hasClass("clickMe")).toEqual(expected)}
+let expectIsSelected = (button: any, expected: boolean) => { expect(button.hasClass("isSelected")).toEqual(expected)}
+let expectIsQueued = (button: any, expected: boolean) => { expect(button.hasClass("isQueued")).toEqual(expected)}
+let expectWithTooltip = (button: any, expected: string) => { expect(button.prop("title")).toEqual(expected)}
 
 describe("SidebarTriggerButton", () => {
   beforeEach(() => {
@@ -139,28 +131,20 @@ describe("SidebarTriggerButton", () => {
     let buttons = root.find(".SidebarTriggerButton")
     expect(buttons).toHaveLength(2)
 
-    // Manual resource with pending changes
-    assertTriggerButtonProps(
-      buttons.at(0),
-      true,
-      true,
-      false,
-      false,
-      false,
-      TriggerButtonTooltip.ManualResourcePendingChanges
-    )
+    let b0 = buttons.at(0) // Manual resource with pending changes
+    let b1 = buttons.at(1) // Manual resource, no pending changes
 
-    // Manual resource, no pending changes
-    assertTriggerButtonProps(
-      buttons.at(1),
-      true,
-      false,
-      false,
-      false,
-      false,
-      TriggerButtonTooltip.ClickToForce
-    )
+    expectClickable(b0, true)
+    expectClickMe(b0, true)
+    expectIsQueued(b0, false)
+    expectWithTooltip(b0, TriggerButtonTooltip.ManualResourcePendingChanges)
+
+    expectClickable(b1, true)
+    expectClickMe(b1, false)
+    expectIsQueued(b1, false)
+    expectWithTooltip(b1, TriggerButtonTooltip.ClickToForce)
   })
+
 
   it("never shows clickMe trigger button for automatic resources", () => {
     let items = twoResourceView().resources.map((res: Resource, i: number) => {
@@ -193,28 +177,19 @@ describe("SidebarTriggerButton", () => {
 
     let buttons = root.find(".SidebarTriggerButton")
     expect(buttons).toHaveLength(2)
+    let b0 = buttons.at(0) // Automatic resource with pending changes
+    let b1 = buttons.at(1) // Automatic resource, no pending changes
 
-    // Automatic resource with pending changes -- !.clickMe, !.clickable
-    assertTriggerButtonProps(
-      buttons.at(0),
-      false,
-      false,
-      false,
-      false,
-      true,
-      TriggerButtonTooltip.UpdateInProgOrPending
-    )
+    expectClickable(b0, false)
+    expectClickMe(b0, false)
+    expectIsQueued(b0, false)
+    expectWithTooltip(b0, TriggerButtonTooltip.UpdateInProgOrPending)
 
-    // Automatic resource, no pending changes
-    assertTriggerButtonProps(
-      buttons.at(1),
-      true,
-      false,
-      false,
-      false,
-      false,
-      TriggerButtonTooltip.ClickToForce
-    )
+    expectClickable(b1, true)
+    expectClickMe(b1, false)
+    expectIsQueued(b1, false)
+    expectWithTooltip(b1, TriggerButtonTooltip.ClickToForce)
+
   })
 
   it("trigger button not clickable if resource is building", () => {
@@ -237,15 +212,10 @@ describe("SidebarTriggerButton", () => {
     let button = root.find(".SidebarTriggerButton")
     expect(button).toHaveLength(1)
 
-    assertTriggerButtonProps(
-      button,
-      false,
-      false,
-      false,
-      false,
-      true,
-      TriggerButtonTooltip.UpdateInProgOrPending
-    )
+    expectClickable(button, false)
+    expectClickMe(button, false)
+    expectIsQueued(button, false)
+    expectWithTooltip(button, TriggerButtonTooltip.UpdateInProgOrPending)
   })
 
   it("trigger button not clickable if resource waiting for first build", () => {
@@ -273,15 +243,10 @@ describe("SidebarTriggerButton", () => {
     let button = root.find(".SidebarTriggerButton")
     expect(button).toHaveLength(1)
 
-    assertTriggerButtonProps(
-      button,
-      false,
-      false,
-      false,
-      false,
-      true,
-      TriggerButtonTooltip.UpdateInProgOrPending
-    )
+    expectClickable(button, false)
+    expectClickMe(button, false)
+    expectIsQueued(button, false)
+    expectWithTooltip(button, TriggerButtonTooltip.UpdateInProgOrPending)
   })
 
   it("renders queued resource with class .isQueued and NOT .clickable", () => {
@@ -306,15 +271,10 @@ describe("SidebarTriggerButton", () => {
     let button = root.find(".SidebarTriggerButton")
     expect(button).toHaveLength(1)
 
-    assertTriggerButtonProps(
-      button,
-      false,
-      false,
-      false,
-      true,
-      true,
-      TriggerButtonTooltip.AlreadyQueued
-    )
+    expectClickable(button, false)
+    expectClickMe(button, false)
+    expectIsQueued(button, true)
+    expectWithTooltip(button, TriggerButtonTooltip.AlreadyQueued)
   })
 
   it("shows a trigger button for resource that failed its initial build", () => {
@@ -341,15 +301,10 @@ describe("SidebarTriggerButton", () => {
     let button = root.find(".SidebarTriggerButton")
     expect(button).toHaveLength(1)
 
-    assertTriggerButtonProps(
-      button,
-      true,
-      false,
-      false,
-      false,
-      false,
-      TriggerButtonTooltip.ClickToForce
-    )
+    expectClickable(button, true)
+    expectClickMe(button, false)
+    expectIsQueued(button, false)
+    expectWithTooltip(button, TriggerButtonTooltip.ClickToForce)
   })
 
   it("disables trigger button for Tiltfile", () => {
@@ -377,14 +332,10 @@ describe("SidebarTriggerButton", () => {
 
     let button = root.find(".SidebarTriggerButton")
     expect(button).toHaveLength(1)
-    assertTriggerButtonProps(
-      button,
-      false,
-      false,
-      false,
-      false,
-      true,
-      TriggerButtonTooltip.CannotTriggerTiltfile
-    )
+
+    expectClickable(button, false)
+    expectClickMe(button, false)
+    expectIsQueued(button, false)
+    expectWithTooltip(button, TriggerButtonTooltip.CannotTriggerTiltfile)
   })
 })
