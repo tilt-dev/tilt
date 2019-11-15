@@ -19,7 +19,7 @@ import (
 // For distributed binaries, version is automatically baked
 // into the binary with goreleaser. If this doesn't get updated
 // on every release, it's often not that big a deal.
-const devVersion = "0.10.19"
+const devVersion = "0.10.20"
 
 var commitSHA string
 var globalTiltInfo model.TiltBuild
