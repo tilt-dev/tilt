@@ -17,7 +17,6 @@ it("shows snapshot url", () => {
           resourceView={ResourceView.Alerts}
           numberOfAlerts={1}
           showSnapshotButton={true}
-          snapshotOwner={null}
           handleOpenModal={fakeHandleOpenModal}
           highlight={null}
         />
@@ -28,7 +27,7 @@ it("shows snapshot url", () => {
   expect(tree).toMatchSnapshot()
 })
 
-it("shows snapshot owner", () => {
+it("doesn't render snapshot button if it's a snapshot", () => {
   const tree = renderer
     .create(
       <MemoryRouter>
@@ -39,7 +38,6 @@ it("shows snapshot owner", () => {
           resourceView={ResourceView.Alerts}
           numberOfAlerts={1}
           showSnapshotButton={false}
-          snapshotOwner="foo"
           handleOpenModal={fakeHandleOpenModal}
           highlight={null}
         />

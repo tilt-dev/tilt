@@ -10,7 +10,6 @@ type TopBarProps = {
   resourceView: ResourceView
   numberOfAlerts: number
   showSnapshotButton: boolean
-  snapshotOwner: string | null
   handleOpenModal: () => void
   highlight: SnapshotHighlight | null
   facetsUrl: string | null
@@ -28,16 +27,10 @@ class TopBar extends PureComponent<TopBarProps> {
           numberOfAlerts={this.props.numberOfAlerts}
         />
         <div className="TopBar-tools">
-          {this.props.showSnapshotButton
-            ? this.renderSnapshotModal()
-            : this.renderSnapshotOwner()}
+          {this.props.showSnapshotButton ? this.renderSnapshotModal() : ""}
         </div>
       </div>
     )
-  }
-
-  isSnapshot() {
-    return !!this.props.snapshotOwner
   }
 
   renderSnapshotModal() {
@@ -56,16 +49,6 @@ class TopBar extends PureComponent<TopBarProps> {
         </span>
       </button>
     )
-  }
-
-  renderSnapshotOwner() {
-    if (this.props.snapshotOwner) {
-      return (
-        <p className="TopBar-snapshotOwner">
-          Snapshot shared by <strong>{this.props.snapshotOwner}</strong>
-        </p>
-      )
-    }
   }
 }
 
