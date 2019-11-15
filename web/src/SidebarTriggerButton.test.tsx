@@ -15,10 +15,18 @@ let expectClickable = (button: any, expected: boolean) => {
   expect(button.hasClass("clickable")).toEqual(expected)
   expect(button.prop("disabled")).toEqual(!expected)
 }
-let expectClickMe = (button: any, expected: boolean) => { expect(button.hasClass("clickMe")).toEqual(expected)}
-let expectIsSelected = (button: any, expected: boolean) => { expect(button.hasClass("isSelected")).toEqual(expected)}
-let expectIsQueued = (button: any, expected: boolean) => { expect(button.hasClass("isQueued")).toEqual(expected)}
-let expectWithTooltip = (button: any, expected: string) => { expect(button.prop("title")).toEqual(expected)}
+let expectClickMe = (button: any, expected: boolean) => {
+  expect(button.hasClass("clickMe")).toEqual(expected)
+}
+let expectIsSelected = (button: any, expected: boolean) => {
+  expect(button.hasClass("isSelected")).toEqual(expected)
+}
+let expectIsQueued = (button: any, expected: boolean) => {
+  expect(button.hasClass("isQueued")).toEqual(expected)
+}
+let expectWithTooltip = (button: any, expected: string) => {
+  expect(button.prop("title")).toEqual(expected)
+}
 
 describe("SidebarTriggerButton", () => {
   beforeEach(() => {
@@ -145,6 +153,36 @@ describe("SidebarTriggerButton", () => {
     expectWithTooltip(b1, TriggerButtonTooltip.ClickToForce)
   })
 
+  it("shows selected trigger button for selected resource", () => {
+    let items = twoResourceView().resources.map((res: Resource, i: number) => {
+      res.triggerMode = TriggerMode.TriggerModeManualAfterInitial // both manual
+      res.currentBuild = {} // not currently building
+      if (i == 0) {
+        res.name = "selected resource"
+      }
+
+      return new SidebarItem(res)
+    })
+
+    const root = mount(
+      <MemoryRouter initialEntries={["/"]}>
+        <Sidebar
+          isClosed={false}
+          items={items}
+          selected="selected resource"
+          toggleSidebar={null}
+          resourceView={ResourceView.Log}
+          pathBuilder={pathBuilder}
+        />
+      </MemoryRouter>
+    )
+
+    let buttons = root.find(".SidebarTriggerButton")
+    expect(buttons).toHaveLength(2)
+
+    expectIsSelected(buttons.at(0), true) // Selected resource
+    expectIsSelected(buttons.at(1), false) // Non-selected resource
+  })
 
   it("never shows clickMe trigger button for automatic resources", () => {
     let items = twoResourceView().resources.map((res: Resource, i: number) => {
@@ -189,7 +227,6 @@ describe("SidebarTriggerButton", () => {
     expectClickMe(b1, false)
     expectIsQueued(b1, false)
     expectWithTooltip(b1, TriggerButtonTooltip.ClickToForce)
-
   })
 
   it("trigger button not clickable if resource is building", () => {
