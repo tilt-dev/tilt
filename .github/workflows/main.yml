@@ -1,0 +1,13 @@
+name: enforce-proto-separate-pr
+
+on: [pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - uses: lots0logs/gh-action-get-changed-files@1.0.2
+    - name: Print changed files
+      run: cat ${HOME}/files.json
