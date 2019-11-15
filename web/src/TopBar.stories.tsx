@@ -20,8 +20,6 @@ function topBarDefault() {
         snapshotOwner={null}
         handleOpenModal={openModal}
         highlight={null}
-        teamSnapshotsUrl={""}
-        teamUpdatesUrl={""}
         facetsUrl="/r/foo/facets"
       />
     </MemoryRouter>
@@ -40,8 +38,6 @@ function topBarTeam() {
         snapshotOwner={null}
         handleOpenModal={openModal}
         highlight={null}
-        teamSnapshotsUrl={"/team/snapshots"}
-        teamUpdatesUrl={"/team/updates"}
         facetsUrl="/r/foo/facets"
       />
     </MemoryRouter>

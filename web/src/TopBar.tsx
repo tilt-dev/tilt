@@ -13,8 +13,6 @@ type TopBarProps = {
   snapshotOwner: string | null
   handleOpenModal: () => void
   highlight: SnapshotHighlight | null
-  teamSnapshotsUrl: string | null
-  teamUpdatesUrl: string | null
   facetsUrl: string | null
 }
 
@@ -30,8 +28,6 @@ class TopBar extends PureComponent<TopBarProps> {
           numberOfAlerts={this.props.numberOfAlerts}
         />
         <div className="TopBar-tools">
-          {this.maybeRenderTeamSnapshotsButton()}
-          {this.maybeRenderTeamUpdatesButton()}
           {this.props.showSnapshotButton
             ? this.renderSnapshotModal()
             : this.renderSnapshotOwner()}
@@ -40,40 +36,8 @@ class TopBar extends PureComponent<TopBarProps> {
     )
   }
 
-  maybeRenderTeamSnapshotsButton() {
-    if (!this.props.teamSnapshotsUrl || this.isSnapshot()) {
-      return null
-    }
-    return (
-      <a
-        href={this.props.teamSnapshotsUrl}
-        target="_blank"
-        rel="noreferrer noopener"
-        className={`TopBar-toolsButton`}
-      >
-        <span>Team Snapshots</span>
-      </a>
-    )
-  }
-
   isSnapshot() {
     return !!this.props.snapshotOwner
-  }
-
-  maybeRenderTeamUpdatesButton() {
-    if (!this.props.teamUpdatesUrl || this.isSnapshot()) {
-      return null
-    }
-    return (
-      <a
-        href={this.props.teamUpdatesUrl}
-        target="_blank"
-        rel="noreferrer noopener"
-        className={`TopBar-toolsButton`}
-      >
-        <span>Team Updates</span>
-      </a>
-    )
   }
 
   renderSnapshotModal() {

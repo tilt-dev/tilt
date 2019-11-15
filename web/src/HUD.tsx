@@ -201,30 +201,6 @@ class HUD extends Component<HudProps, HudState> {
     })
   }
 
-  getTeamUpdatesUrl(): string {
-    let isUpdateHistoryEnabled = this.getFeatures().isEnabled("update_history")
-    if (!isUpdateHistoryEnabled) {
-      return ""
-    }
-    let view = this.state.view
-    let teamId = view.tiltCloudTeamID
-    if (!teamId) {
-      return ""
-    }
-    let tiltCloudSchemeHost = view.tiltCloudSchemeHost || ""
-    return `${tiltCloudSchemeHost}/team/${teamId}/updates`
-  }
-
-  getTeamSnapshotsUrl(): string {
-    let view = this.state.view
-    let teamId = view.tiltCloudTeamID
-    if (!teamId) {
-      return ""
-    }
-    let tiltCloudSchemeHost = view.tiltCloudSchemeHost || ""
-    return `${tiltCloudSchemeHost}/team/${teamId}/snapshots`
-  }
-
   private snapshotOwner(): string | null {
     let snapshotOwner: string | null = null
     if (this.pathBuilder.isSnapshot() && this.state.view) {
@@ -344,8 +320,6 @@ class HUD extends Component<HudProps, HudState> {
               snapshotOwner={this.snapshotOwner()}
               handleOpenModal={this.handleOpenModal}
               highlight={snapshotHighlight}
-              teamSnapshotsUrl={this.getTeamSnapshotsUrl()}
-              teamUpdatesUrl={this.getTeamUpdatesUrl()}
               facetsUrl={null}
             />
           )
@@ -368,8 +342,6 @@ class HUD extends Component<HudProps, HudState> {
           snapshotOwner={this.snapshotOwner()}
           handleOpenModal={this.handleOpenModal}
           highlight={snapshotHighlight}
-          teamSnapshotsUrl={this.getTeamSnapshotsUrl()}
-          teamUpdatesUrl={this.getTeamUpdatesUrl()}
           facetsUrl={
             name !== "" &&
             this.state.view.featureFlags &&
