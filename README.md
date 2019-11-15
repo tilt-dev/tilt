@@ -51,11 +51,11 @@ us in [the **#tilt** channel](https://kubernetes.slack.com/messages/CESBL84MV/).
 We tweet [@tilt_dev](https://twitter.com/tilt_dev) and
 blog about building Tilt at [blog.tilt.dev](https://blog.tilt.dev).
 
-We expect everyone in our community (users, contributors, followers, and employees alike) to abide by our [**Code of Conduct**](https://docs.tilt.dev/code_of_conduct.html).
+We expect everyone in our community (users, contributors, followers, and employees alike) to abide by our [**Code of Conduct**](CODE_OF_CONDUCT.md).
 
 ## Development
 
-To make changes to Tilt, read the [developer guide](DEVELOPING.md).
+To make changes to Tilt, read the [contributing guide](CONTRIBUTING.md).
 
 For bugs and feature requests, file an [issue](https://github.com/windmilleng/tilt/issues)
 or check out the [feature roadmap](https://github.com/orgs/windmilleng/projects/3).
