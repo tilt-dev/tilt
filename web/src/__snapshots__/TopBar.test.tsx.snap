@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`shows snapshot owner 1`] = `
+exports[`doesn't render snapshot button if it's a snapshot 1`] = `
 <div
   className="TopBar"
 >
@@ -36,14 +36,7 @@ exports[`shows snapshot owner 1`] = `
   <div
     className="TopBar-tools"
   >
-    <p
-      className="TopBar-snapshotOwner"
-    >
-      Snapshot shared by 
-      <strong>
-        foo
-      </strong>
-    </p>
+    
   </div>
 </div>
 `;

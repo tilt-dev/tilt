@@ -17,7 +17,6 @@ function topBarDefault() {
         resourceView={ResourceView.Alerts}
         numberOfAlerts={1}
         showSnapshotButton={true}
-        snapshotOwner={null}
         handleOpenModal={openModal}
         highlight={null}
         facetsUrl="/r/foo/facets"
@@ -35,7 +34,6 @@ function topBarTeam() {
         resourceView={ResourceView.Alerts}
         numberOfAlerts={1}
         showSnapshotButton={true}
-        snapshotOwner={null}
         handleOpenModal={openModal}
         highlight={null}
         facetsUrl="/r/foo/facets"

@@ -201,14 +201,6 @@ class HUD extends Component<HudProps, HudState> {
     })
   }
 
-  private snapshotOwner(): string | null {
-    let snapshotOwner: string | null = null
-    if (this.pathBuilder.isSnapshot() && this.state.view) {
-      snapshotOwner = this.state.view.tiltCloudUsername
-    }
-    return snapshotOwner
-  }
-
   private handleOpenModal() {
     this.setState({ showSnapshotModal: true })
   }
@@ -317,7 +309,6 @@ class HUD extends Component<HudProps, HudState> {
               resourceView={t}
               numberOfAlerts={numAlerts}
               showSnapshotButton={showSnapshot}
-              snapshotOwner={this.snapshotOwner()}
               handleOpenModal={this.handleOpenModal}
               highlight={snapshotHighlight}
               facetsUrl={null}
@@ -339,7 +330,6 @@ class HUD extends Component<HudProps, HudState> {
           resourceView={t}
           numberOfAlerts={numAlerts}
           showSnapshotButton={showSnapshot}
-          snapshotOwner={this.snapshotOwner()}
           handleOpenModal={this.handleOpenModal}
           highlight={snapshotHighlight}
           facetsUrl={
