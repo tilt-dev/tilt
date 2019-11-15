@@ -2,6 +2,13 @@ import React, { PureComponent } from "react"
 import { TriggerMode } from "./types"
 import "./SidebarTriggerButton.scss"
 
+export enum TriggerButtonTooltip {
+  AlreadyQueued = "Cannot trigger an update if resource is already queued for update.",
+  ManualResourcePendingChanges = "This manual resource has pending file changes; click to trigger an update.",
+  UpdateInProgOrPending = "Cannot trigger an update while resource is updating or update is pending.",
+  ClickToForce = "Force a rebuild/update for this resource.",
+  CannotTriggerTiltfile = "Cannot trigger an update to the Tiltfile.",
+}
 type SidebarTriggerButtonProps = {
   resourceName: string
   isTiltfile: boolean
@@ -32,13 +39,13 @@ const titleText = (
   isQueued: boolean
 ): string => {
   if (isQueued) {
-    return "Cannot trigger an update if resource is already queued for build."
+    return TriggerButtonTooltip.AlreadyQueued
   } else if (!clickable) {
-    return "Cannot trigger an update while resource is building or build is pending."
+    return TriggerButtonTooltip.UpdateInProgOrPending
   } else if (clickMe) {
-    return "This manual resource has pending file changes; click to trigger an update."
+    return TriggerButtonTooltip.ManualResourcePendingChanges
   } else {
-    return "Force a rebuild/update for this resource."
+    return TriggerButtonTooltip.ClickToForce
   }
 }
 
@@ -55,7 +62,7 @@ export default class SidebarTriggerButton extends PureComponent<
             props.isSelected ? "isSelected" : ""
           }`}
           disabled
-          title={"Cannot trigger an update to the Tiltfile."}
+          title={TriggerButtonTooltip.CannotTriggerTiltfile}
         />
       )
     }
