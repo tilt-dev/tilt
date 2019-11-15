@@ -117,6 +117,10 @@ func (c *BuildController) buildAndDeploy(ctx context.Context, st store.RStore, e
 // ideally narrow enough that it doesn't wrap on "normal" resolutions
 const buildLineLength = 55
 
+// if name is long, then the whole thing won't even fit in buildLineLength. Show at least minSuffixLineLength
+// ──┤ Rebuilding: ├────────
+const minSuffixLineLength = 8
+
 func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 	firstBuild := entry.firstBuild
 	name := entry.name
@@ -136,7 +140,11 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 	}
 
 	p := logger.Blue(l).Sprintf("%s", prefix)
-	suffix := " ├" + strings.Repeat("─", buildLineLength-len(name)-len(prefix)-2)
+	trailingDashCount := buildLineLength - len(name) - len(prefix) - 2
+	if trailingDashCount < minSuffixLineLength {
+		trailingDashCount = minSuffixLineLength
+	}
+	suffix := " ├" + strings.Repeat("─", trailingDashCount)
 	s := logger.Blue(l).Sprintf(suffix)
 	l.Infof("\n%s%s%s", p, name, s)
 }
