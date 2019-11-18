@@ -47,7 +47,7 @@ func (e Extension) dockerPruneSettings(thread *starlark.Thread, fn *starlark.Bui
 			"only one of `num_builds` and `interval_hrs`")
 	}
 
-	err := starkit.SetState(thread, func(settings model.DockerPruneSettings) model.DockerPruneSettings {
+	err := starkit.SetState(thread, func(settings model.DockerPruneSettings) (model.DockerPruneSettings, error) {
 		settings.Enabled = !disable
 		if maxAgeMins != 0 {
 			settings.MaxAge = time.Duration(maxAgeMins) * time.Minute
@@ -56,7 +56,7 @@ func (e Extension) dockerPruneSettings(thread *starlark.Thread, fn *starlark.Bui
 		if intervalHrs != 0 {
 			settings.Interval = time.Duration(intervalHrs) * time.Hour
 		}
-		return settings
+		return settings, nil
 	})
 
 	return starlark.None, err

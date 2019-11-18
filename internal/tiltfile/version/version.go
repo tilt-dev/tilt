@@ -30,13 +30,13 @@ func setVersionSettings(thread *starlark.Thread, fn *starlark.Builtin, args star
 		return nil, err
 	}
 
-	err := starkit.SetState(thread, func(settings model.VersionSettings) model.VersionSettings {
+	err := starkit.SetState(thread, func(settings model.VersionSettings) (model.VersionSettings, error) {
 		if checkUpdates {
 			settings.CheckUpdates = true
 		} else {
 			settings.CheckUpdates = false
 		}
-		return settings
+		return settings, nil
 	})
 
 	return starlark.None, err

@@ -41,8 +41,8 @@ func SetState(t *starlark.Thread, valOrFn interface{}) error {
 	}
 
 	// We have a function! Validate its signature.
-	if typ.NumIn() != 1 || typ.NumOut() != 1 || typ.In(0) != typ.Out(0) {
-		return fmt.Errorf("Internal error: invalid SetState call: signature must be func(T): T")
+	if typ.NumIn() != 1 || typ.NumOut() != 2 || typ.In(0) != typ.Out(0) || typ.Out(1) != reflect.TypeOf((*error)(nil)).Elem() {
+		return fmt.Errorf("Internal error: invalid SetState call: signature must be func(T): (T, error)")
 	}
 
 	inTyp := typ.In(0)
@@ -54,6 +54,10 @@ func SetState(t *starlark.Thread, valOrFn interface{}) error {
 	}
 
 	outs := reflect.ValueOf(valOrFn).Call([]reflect.Value{reflect.ValueOf(existing)})
+
+	if !outs[1].IsNil() {
+		return outs[1].Interface().(error)
+	}
 
 	// We know this is valid because of the type validation check above.
 	model.state[inTyp] = outs[0].Interface()
