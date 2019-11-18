@@ -21,6 +21,7 @@ import (
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/tiltfile/analytics"
 	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
+	"github.com/windmilleng/tilt/internal/tiltfile/flags"
 	"github.com/windmilleng/tilt/internal/tiltfile/git"
 	"github.com/windmilleng/tilt/internal/tiltfile/include"
 	"github.com/windmilleng/tilt/internal/tiltfile/io"
@@ -156,6 +157,7 @@ func (s *tiltfileState) loadManifests(absFilename string, requested []model.Mani
 		dockerprune.NewExtension(),
 		analytics.NewExtension(),
 		version.NewExtension(),
+		flags.NewExtension(),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)
@@ -203,6 +205,14 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 		return nil, result, err
 	}
 	manifests = append(manifests, localManifests...)
+
+	flagsState, _ := flags.GetState(result)
+	if len(flagsState.Resources) > 0 {
+		requested = nil
+		for _, r := range flagsState.Resources {
+			requested = append(requested, model.ManifestName(r))
+		}
+	}
 
 	manifests, err = match(manifests, requested)
 	if err != nil {

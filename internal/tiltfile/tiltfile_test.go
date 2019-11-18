@@ -4226,6 +4226,48 @@ local_resource('e', 'echo e')
 	}
 }
 
+func TestSetResources(t *testing.T) {
+	for _, tc := range []struct {
+		name              string
+		argsResources     []model.ManifestName
+		tiltfileResources []model.ManifestName
+		expectedResources []model.ManifestName
+	}{
+		{"neither", nil, nil, []model.ManifestName{"a", "b"}},
+		{"args only", []model.ManifestName{"a"}, nil, []model.ManifestName{"a"}},
+		{"tiltfile only", nil, []model.ManifestName{"b"}, []model.ManifestName{"b"}},
+		{"both", []model.ManifestName{"a"}, []model.ManifestName{"b"}, []model.ManifestName{"b"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+
+			setResources := ""
+			if len(tc.tiltfileResources) > 0 {
+				rs := []string{}
+				for _, mn := range tc.tiltfileResources {
+					rs = append(rs, fmt.Sprintf("'%s'", mn))
+				}
+				setResources = fmt.Sprintf("flags.set_resources([%s])", strings.Join(rs, ", "))
+			}
+			f.file("Tiltfile", fmt.Sprintf(`
+local_resource('a', 'echo a')
+local_resource('b', 'echo b')
+%s
+`, setResources))
+
+			f.load(tc.argsResources...)
+
+			var observed []model.ManifestName
+			for _, m := range f.loadResult.Manifests {
+				observed = append(observed, m.Name)
+			}
+
+			require.Equal(t, tc.expectedResources, observed)
+		})
+	}
+}
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer
