@@ -100,7 +100,7 @@ func TestInjectLabelDeploymentMakeSelectorMatchOnConflict(t *testing.T) {
 		{"d.Spec.Template.Labels", d.Spec.Template.Labels},
 	})
 	// matchlabels only gets its existing 'app' label updated, it doesn't get any new labels added
-	verifyFields(t, []model.LabelPair{{"app", "panza"}}, []field{
+	verifyFields(t, []model.LabelPair{{Key: "app", Value: "panza"}}, []field{
 		{"d.Spec.Selector.MatchLabels", d.Spec.Selector.MatchLabels},
 	})
 }
@@ -194,32 +194,43 @@ func TestInjectStatefulSet(t *testing.T) {
 	}
 
 	expectedLPs := append(lps, []model.LabelPair{
-		{"app", "redis"},
-		{"chart", "redis-5.1.3"},
-		{"release", "test"},
+		{Key: "app", Value: "redis"},
+		{Key: "chart", Value: "redis-5.1.3"},
+		{Key: "release", Value: "test"},
 	}...)
 
 	ss := newEntity.Obj.(*v1beta2.StatefulSet)
-	verifyFields(t, append(expectedLPs, model.LabelPair{"heritage", "Tiller"}), []field{
+	verifyFields(t, append(expectedLPs, model.LabelPair{Key: "heritage", Value: "Tiller"}), []field{
 		{"ss.Labels", ss.Labels},
 	})
-	verifyFields(t, append(expectedLPs, model.LabelPair{"role", "master"}), []field{
+	verifyFields(t, append(expectedLPs, model.LabelPair{Key: "role", Value: "master"}), []field{
 		{"ss.Spec.Template.Labels", ss.Spec.Template.Labels},
 	})
-	verifyFields(t, []model.LabelPair{{"app", "redis"}, {"release", "test"}, {"role", "master"}}, []field{
-		{"ss.Spec.Selector.MatchLabels", ss.Spec.Selector.MatchLabels},
-	})
+	verifyFields(t,
+		[]model.LabelPair{
+			{Key: "app", Value: "redis"},
+			{Key: "release", Value: "test"},
+			{Key: "role", Value: "master"},
+		}, []field{
+			{"ss.Spec.Selector.MatchLabels", ss.Spec.Selector.MatchLabels},
+		})
 
-	verifyFields(t, []model.LabelPair{{"app", "redis"}, {"component", "master"}, {"heritage", "Tiller"}, {"release", "test"}}, []field{
-		{"ss.Spec.VolumeClaimTemplates[0].ObjectMeta.Labels", ss.Spec.VolumeClaimTemplates[0].ObjectMeta.Labels},
-	})
+	verifyFields(t,
+		[]model.LabelPair{
+			{Key: "app", Value: "redis"},
+			{Key: "component", Value: "master"},
+			{Key: "heritage", Value: "Tiller"},
+			{Key: "release", Value: "test"},
+		}, []field{
+			{"ss.Spec.VolumeClaimTemplates[0].ObjectMeta.Labels", ss.Spec.VolumeClaimTemplates[0].ObjectMeta.Labels},
+		})
 }
 
 func TestInjectService(t *testing.T) {
 	entity := parseOneEntity(t, testyaml.DoggosServiceYaml)
 	lps := []model.LabelPair{
-		{"foo", "bar"},
-		{"app", "cattos"},
+		{Key: "foo", Value: "bar"},
+		{Key: "app", Value: "cattos"},
 	}
 	newEntity, err := InjectLabels(entity, lps)
 	require.NoError(t, err)
@@ -227,13 +238,13 @@ func TestInjectService(t *testing.T) {
 	svc, ok := newEntity.Obj.(*v1.Service)
 	require.True(t, ok)
 
-	expectedLPs := append(lps, model.LabelPair{"whosAGoodBoy", "imAGoodBoy"})
+	expectedLPs := append(lps, model.LabelPair{Key: "whosAGoodBoy", Value: "imAGoodBoy"})
 	verifyFields(t, expectedLPs, []field{
 		{"svc.Labels", svc.Labels},
 	})
 
 	// selector only gets existing labels updated
-	verifyFields(t, []model.LabelPair{{"app", "cattos"}}, []field{
+	verifyFields(t, []model.LabelPair{{Key: "app", Value: "cattos"}}, []field{
 		{"svc.Spec.Selector", svc.Spec.Selector},
 	})
 }
