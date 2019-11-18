@@ -21,56 +21,53 @@ up-to-date in real-time. Think `docker build && kubectl apply` or `docker-compos
 
 ## Install Tilt
 
-If you don't know where to start, start here:
+Installing the `tilt` binary is a one-step command:
 
-[Complete Tilt User Guide](https://docs.tilt.dev/)
+```bash
+curl -fsSL https://raw.githubusercontent.com/windmilleng/tilt/master/scripts/install.sh | bash
+```
 
-Download the Tilt binary on
-[the github releases page](https://github.com/windmilleng/tilt/releases).
+For other installation options, see the [Installation Guide](https://docs.tilt.dev/install.html).
 
-Tilt expects that you already have Docker and `kubectl` installed. Alternately, you can
-skip Kubernetes altogether and run Tilt with your pre-existing `docker-compose.yml`.
-Read the more detailed [Installation Guide](https://docs.tilt.dev/install.html)
-to help you `tilt up` quickly.
+## Run Tilt
 
-## Configure Your Workflow to Share With Your Team
+Use [this guide](https://docs.tilt.dev/tutorial.html) to run Tilt on your project.
 
-Configure Tilt with a `Tiltfile`, written in a small subset of Python called
-[Starlark](https://github.com/bazelbuild/starlark#tour).
+Tilt automatically handles all the expert tricks for working in a Kubernetes dev environment:
 
-To get started, check out the [tutorial](https://docs.tilt.dev/tutorial.html) or dive into the
-[API reference](https://docs.tilt.dev/api.html).
+- Stands up any constellation of services, no matter how complex
 
-## Community
+- Watches your file system and update servers in seconds
 
-Questions? Comments? Just want to say hi?
+- Streams logs, events, and pod changes so that it can show you the problem when
+something breaks
 
-Find us on the Kubernetes slack. Get an invite at [slack.k8s.io](http://slack.k8s.io) and find
-us in [the **#tilt** channel](https://kubernetes.slack.com/messages/CESBL84MV/).
+## Don’t Tilt Alone, Take This
 
-We tweet [@tilt_dev](https://twitter.com/tilt_dev) and
-blog about building Tilt at [blog.tilt.dev](https://blog.tilt.dev).
+[![Tilt Cloud](assets/TiltCloud-illustration.svg)](https://docs.tilt.dev/snapshots.html)
+
+Are you seeing an error from a server that you don't even work on?
+
+With Tilt Cloud, create web-based interactive reproductions of your local cluster’s state.
+
+Save and share [a snapshot](https://docs.tilt.dev/snapshots.html) with your team
+so that they can dig into the problem later. A snapshot lets you explore the
+status of running services, errors, logs, and more.
+
+## Community & Contributions
+
+**Questions and feedback:** Join [the Kubernetes slack](http://slack.k8s.io) and
+ find us in the [#tilt](https://kubernetes.slack.com/messages/CESBL84MV/)
+ channel. Or [file an issue](https://github.com/windmilleng/tilt/issues).
+
+**Contribute:** Check out our [contribution](CONTRIBUTING.md) guidelines.
+
+**Follow along:** [@tilt_dev](https://twitter.com/tilt_dev) on Twitter. Updates
+and announcements on the [Tilt blog](https://blog.tilt.dev).
+
+**Help us make Tilt even better:** Run `tilt analytics opt in` to enable telemetry, so we can improve Tilt on every platform. Details in ["What does Tilt send?"](http://docs.tilt.dev/telemetry_faq.html).
 
 We expect everyone in our community (users, contributors, followers, and employees alike) to abide by our [**Code of Conduct**](CODE_OF_CONDUCT.md).
-
-## Development
-
-To make changes to Tilt, read the [contributing guide](CONTRIBUTING.md).
-
-For bugs and feature requests, file an [issue](https://github.com/windmilleng/tilt/issues)
-or check out the [feature roadmap](https://github.com/orgs/windmilleng/projects/3).
-
-## Telemetry and Privacy
-We're a small company trying to make Tilt awesomer. We can do this better if we understand which features people are using and which bugs people are running into. You can enable sending telemetry data to https://events.windmill.build in the UI or by running `tilt analytics opt in`. It really helps us!
-
-The data is meant to be about your use of Tilt (e.g., which Tiltfile or Web UI features do you use), not collecting data about you or your project. It's possible that some of the data we collect could include snippets of data about your project (e.g. that you have a service named `deathray-backend` or an error message that includes the string it failed to parse). We try to avoid this, but you should probably not opt-in if you're working on a classified project.
-
-We will not resell or give away this data. (Data may be sent to third parties, like Datadog,
-but only to help us analyze the data.)
-
-You can change your mind at any time by running `tilt analytics opt <in|out>` and restarting Tilt. Until you make a choice, Tilt will send a minimal amount of data (this helps us improve the installation/opting flow).
-
-Tilt connects to other online services for purposes like finding and downloading product updates and resources.
 
 ## License
 
