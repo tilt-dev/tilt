@@ -2,6 +2,12 @@ version: 2.1
 orbs:
   slack: circleci/slack@3.4.0
 jobs:
+  check-only-proto:
+    docker:
+      - image: circleci/python:3.6.4
+    steps:
+      - checkout
+      - run: python3 scripts/only-proto.py
   build-linux:
     docker:
       - image: gcr.io/windmill-public-containers/tilt-ci@sha256:715d57e55849eadeb27afc48f4b5b8a48d48af1b58337b9af061d99629ca57d7
@@ -111,7 +117,9 @@ workflows:
   build:
     # The linux job is cheaper than the others, so run that first.
     jobs:
-      - build-linux
+      - build-linux:
+          requires:
+            - check-only-proto
       - build-js:
           requires:
             - build-linux
