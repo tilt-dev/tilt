@@ -9,7 +9,7 @@ import (
 
 // SetState works like SetState in React. It can take a value or a function.
 //
-// That function should transform old state into new state.
+// That function should transform old state into new state. It can have the signature `func(T) T` or `func(T) (T, error)`.
 //
 // For example, an extension that accumulated strings might use
 // SetState() like this:
@@ -29,33 +29,42 @@ func SetState(t *starlark.Thread, valOrFn interface{}) error {
 		return fmt.Errorf("Internal error: Starlark not initialized correctly: starkit.Model not found")
 	}
 
-	isFn := typ.Kind() == reflect.Func
-	if !isFn {
-		// If there's already a value with this type in the state store, overwrite it.
-		_, ok := model.state[typ]
-		if !ok {
-			return fmt.Errorf("Internal error: Type not found in state store: %T", valOrFn)
-		}
-		model.state[typ] = valOrFn
-		return nil
+	if typ.Kind() != reflect.Func {
+		return setStateVal(model, typ, valOrFn)
+	} else {
+		return setStateFn(model, typ, valOrFn)
 	}
+}
 
-	// We have a function! Validate its signature.
-	if typ.NumIn() != 1 || typ.NumOut() != 2 || typ.In(0) != typ.Out(0) || typ.Out(1) != reflect.TypeOf((*error)(nil)).Elem() {
-		return fmt.Errorf("Internal error: invalid SetState call: signature must be func(T): (T, error)")
+func setStateVal(model Model, typ reflect.Type, val interface{}) error {
+	// If there's already a value with this type in the state store, overwrite it.
+	_, ok := model.state[typ]
+	if !ok {
+		return fmt.Errorf("Internal error: Type not found in state store: %T", val)
+	}
+	model.state[typ] = val
+	return nil
+}
+
+func setStateFn(model Model, typ reflect.Type, fn interface{}) error {
+	// Validate the function signature.
+	if typ.NumIn() != 1 ||
+		typ.NumOut() < 1 || typ.NumOut() > 2 ||
+		typ.In(0) != typ.Out(0) ||
+		(typ.NumOut() == 2 && typ.Out(1) != reflect.TypeOf((*error)(nil)).Elem()) {
+		return fmt.Errorf("Internal error: invalid SetState call: signature must be `func(T) T` or `func(t) (T, error)`")
 	}
 
 	inTyp := typ.In(0)
-
 	// Overwrite the value in the state store.
 	existing, ok := model.state[inTyp]
 	if !ok {
-		return fmt.Errorf("Internal error: Type not found in state store: %T", valOrFn)
+		return fmt.Errorf("Internal error: Type not found in state store: %T", inTyp)
 	}
 
-	outs := reflect.ValueOf(valOrFn).Call([]reflect.Value{reflect.ValueOf(existing)})
+	outs := reflect.ValueOf(fn).Call([]reflect.Value{reflect.ValueOf(existing)})
 
-	if !outs[1].IsNil() {
+	if typ.NumOut() == 2 && !outs[1].IsNil() {
 		return outs[1].Interface().(error)
 	}
 

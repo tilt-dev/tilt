@@ -64,12 +64,12 @@ func (e Extension) allowK8sContexts(thread *starlark.Thread, fn *starlark.Builti
 		}
 	}
 
-	err := starkit.SetState(thread, func(existing State) (State, error) {
+	err := starkit.SetState(thread, func(existing State) State {
 		return State{
 			context: existing.context,
 			env:     existing.env,
 			allowed: append(newContexts, existing.allowed...),
-		}, nil
+		}
 	})
 
 	return starlark.None, err

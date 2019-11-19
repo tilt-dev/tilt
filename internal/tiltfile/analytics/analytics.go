@@ -35,13 +35,13 @@ func setAnalyticsSettings(thread *starlark.Thread, fn *starlark.Builtin, args st
 		return nil, err
 	}
 
-	err := starkit.SetState(thread, func(settings Settings) (Settings, error) {
+	err := starkit.SetState(thread, func(settings Settings) Settings {
 		if enable {
 			settings.Opt = analytics.OptIn
 		} else {
 			settings.Opt = analytics.OptOut
 		}
-		return settings, nil
+		return settings
 	})
 
 	return starlark.None, err

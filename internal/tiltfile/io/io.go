@@ -160,9 +160,9 @@ func ReadFile(thread *starlark.Thread, p string) ([]byte, error) {
 }
 
 func RecordReadFile(t *starlark.Thread, files ...string) error {
-	return starkit.SetState(t, func(s ReadState) (ReadState, error) {
+	return starkit.SetState(t, func(s ReadState) ReadState {
 		s.Files = sliceutils.AppendWithoutDupes(s.Files, files...)
-		return s, nil
+		return s
 	})
 }
 
