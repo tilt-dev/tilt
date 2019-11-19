@@ -11,6 +11,6 @@ len_proto_changes = len(proto_changes)
 
 if len_proto_changes > 0 and len_proto_changes != len_changes:
   print("Changes must consist of either no proto changes, or only proto changes")
-  print("Saw these changes files:")
+  print("Saw these changed files:")
   print(filtered_changes)
   exit(1)
