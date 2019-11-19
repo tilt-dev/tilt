@@ -1,189 +1,252 @@
 package k8s
 
 import (
-	"fmt"
-	"strings"
 	"testing"
 
+	extbeta1 "k8s.io/api/extensions/v1beta1"
+
+	"k8s.io/api/apps/v1beta1"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/apps/v1beta2"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
+type field struct {
+	name string
+	m    map[string]string
+}
+
+func verifyFields(t *testing.T, expected []model.LabelPair, fields []field) {
+	em := make(map[string]string)
+	for _, l := range expected {
+		em[l.Key] = l.Value
+	}
+
+	for _, f := range fields {
+		require.Equal(t, em, f.m, f.name)
+	}
+}
+
 func TestInjectLabelPod(t *testing.T) {
 	entity := parseOneEntity(t, testyaml.LonelyPodYAML)
-	newEntity, err := InjectLabels(entity, []model.LabelPair{
+	lps := []model.LabelPair{
 		{
 			Key:   "tier",
 			Value: "test",
 		},
-	})
+	}
+	newEntity, err := InjectLabels(entity, lps)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
-	if err != nil {
-		t.Fatal(err)
-	}
+	p, ok := newEntity.Obj.(*v1.Pod)
+	require.True(t, ok)
 
-	if !strings.Contains(result, fmt.Sprintf("tier: test")) {
-		t.Errorf("labels did not appear in serialized yaml: %s", result)
-	}
+	verifyFields(t, lps, []field{{"pod.Labels", p.Labels}})
 }
 
 func TestInjectLabelDeployment(t *testing.T) {
 	entity := parseOneEntity(t, testyaml.SanchoYAML)
-	newEntity, err := InjectLabels(entity, []model.LabelPair{
-		{
-			Key:   "tier",
-			Value: "test",
-		},
-		{
-			Key:   "owner",
-			Value: "me",
-		},
+	lps := []model.LabelPair{
+		{Key: "tier", Value: "test"},
+		{Key: "owner", Value: "me"},
+	}
+	newEntity, err := InjectLabels(entity, lps)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	d, ok := newEntity.Obj.(*appsv1.Deployment)
+	require.True(t, ok)
+
+	appLP := model.LabelPair{Key: "app", Value: "sancho"}
+	expectedLPs := append(lps, appLP)
+
+	verifyFields(t, expectedLPs, []field{
+		{"d.Labels", d.Labels},
+		{"d.Spec.Template.Labels", d.Spec.Template.Labels},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// We expect the Deployment, the Selector, and the PodTemplate to get the labels.
-	assert.Equal(t, 3, strings.Count(result, "tier: test"))
-	assert.Equal(t, 3, strings.Count(result, "owner: me"))
+	// matchlabels is not updated
+	verifyFields(t, []model.LabelPair{appLP}, []field{
+		{"d.Spec.Selector.MatchLabels", d.Spec.Selector.MatchLabels},
+	})
 }
 
 func TestInjectLabelDeploymentMakeSelectorMatchOnConflict(t *testing.T) {
 	entity := parseOneEntity(t, testyaml.SanchoYAML)
-	newEntity, err := InjectLabels(entity, []model.LabelPair{
+	lps := []model.LabelPair{
 		{
 			Key:   "app",
 			Value: "panza",
 		},
+	}
+	newEntity, err := InjectLabels(entity, lps)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	d, ok := newEntity.Obj.(*appsv1.Deployment)
+	require.True(t, ok)
+
+	verifyFields(t, lps, []field{
+		{"d.Labels", d.Labels},
+		{"d.Spec.Template.Labels", d.Spec.Template.Labels},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// We expect the Deployment, the Selector, and the PodTemplate to get the labels.
-	assert.Equal(t, 3, strings.Count(result, "app: panza"))
-	// we've replaced the "app: sancho" in the selector
-	assert.Equal(t, 0, strings.Count(result, "app: sancho"))
+	// matchlabels only gets its existing 'app' label updated, it doesn't get any new labels added
+	verifyFields(t, []model.LabelPair{{Key: "app", Value: "panza"}}, []field{
+		{"d.Spec.Selector.MatchLabels", d.Spec.Selector.MatchLabels},
+	})
 }
 
 func TestInjectLabelDeploymentBeta1(t *testing.T) {
 	entity := parseOneEntity(t, testyaml.SanchoBeta1YAML)
-	newEntity, err := InjectLabels(entity, []model.LabelPair{
+	lps := []model.LabelPair{
 		{
 			Key:   "owner",
 			Value: "me",
 		},
+	}
+	newEntity, err := InjectLabels(entity, lps)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	d, ok := newEntity.Obj.(*v1beta1.Deployment)
+	require.True(t, ok)
+
+	expectedLPs := append(lps, model.LabelPair{Key: "app", Value: "sancho"})
+
+	verifyFields(t, expectedLPs, []field{
+		{"d.Labels", d.Labels},
+		{"d.Spec.Template.Labels", d.Spec.Template.Labels},
+		{"d.Spec.Selector.MatchLabels", d.Spec.Selector.MatchLabels},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, 3, strings.Count(result, "owner: me"))
-
-	// Assert that matchLabels were injected
-	assert.Contains(t, result, "matchLabels")
-	assert.Equal(t, 2, strings.Count(testyaml.SanchoBeta1YAML, "app: sancho"))
-	assert.Equal(t, 3, strings.Count(result, "app: sancho"))
 }
 
 func TestInjectLabelDeploymentBeta2(t *testing.T) {
 	entity := parseOneEntity(t, testyaml.SanchoBeta2YAML)
-	newEntity, err := InjectLabels(entity, []model.LabelPair{
+	lps := []model.LabelPair{
 		{
 			Key:   "owner",
 			Value: "me",
 		},
+	}
+	newEntity, err := InjectLabels(entity, lps)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	d, ok := newEntity.Obj.(*v1beta2.Deployment)
+	require.True(t, ok)
+
+	expectedLPs := append(lps, model.LabelPair{Key: "app", Value: "sancho"})
+
+	verifyFields(t, expectedLPs, []field{
+		{"d.Labels", d.Labels},
+		{"d.Spec.Template.Labels", d.Spec.Template.Labels},
+		{"d.Spec.Selector.MatchLabels", d.Spec.Selector.MatchLabels},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, 3, strings.Count(result, "owner: me"))
-
-	// Assert that matchLabels were injected
-	assert.Contains(t, result, "matchLabels")
-	assert.Equal(t, 2, strings.Count(testyaml.SanchoBeta1YAML, "app: sancho"))
-	assert.Equal(t, 3, strings.Count(result, "app: sancho"))
 }
 
 func TestInjectLabelExtDeploymentBeta1(t *testing.T) {
 	entity := parseOneEntity(t, testyaml.SanchoExtBeta1YAML)
-	newEntity, err := InjectLabels(entity, []model.LabelPair{
+	lps := []model.LabelPair{
 		{
 			Key:   "owner",
 			Value: "me",
 		},
+	}
+	newEntity, err := InjectLabels(entity, lps)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	d, ok := newEntity.Obj.(*extbeta1.Deployment)
+	require.True(t, ok)
+
+	expectedLPs := append(lps, model.LabelPair{Key: "app", Value: "sancho"})
+
+	verifyFields(t, expectedLPs, []field{
+		{"d.Labels", d.Labels},
+		{"d.Spec.Template.Labels", d.Spec.Template.Labels},
+		{"d.Spec.Selector.MatchLabels", d.Spec.Selector.MatchLabels},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, 3, strings.Count(result, "owner: me"))
-
-	// Assert that matchLabels were injected
-	assert.Contains(t, result, "matchLabels")
-	assert.Equal(t, 2, strings.Count(testyaml.SanchoBeta1YAML, "app: sancho"))
-	assert.Equal(t, 3, strings.Count(result, "app: sancho"))
 }
 
 func TestInjectStatefulSet(t *testing.T) {
 	entity := parseOneEntity(t, testyaml.RedisStatefulSetYAML)
-	newEntity, err := InjectLabels(entity, []model.LabelPair{
+	lps := []model.LabelPair{
 		{
 			Key:   "tilt-runid",
 			Value: "deadbeef",
 		},
+	}
+	newEntity, err := InjectLabels(entity, lps)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedLPs := append(lps, []model.LabelPair{
+		{Key: "app", Value: "redis"},
+		{Key: "chart", Value: "redis-5.1.3"},
+		{Key: "release", Value: "test"},
+	}...)
+
+	ss := newEntity.Obj.(*v1beta2.StatefulSet)
+	verifyFields(t, append(expectedLPs, model.LabelPair{Key: "heritage", Value: "Tiller"}), []field{
+		{"ss.Labels", ss.Labels},
 	})
-	if err != nil {
-		t.Fatal(err)
+	verifyFields(t, append(expectedLPs, model.LabelPair{Key: "role", Value: "master"}), []field{
+		{"ss.Spec.Template.Labels", ss.Spec.Template.Labels},
+	})
+	verifyFields(t,
+		[]model.LabelPair{
+			{Key: "app", Value: "redis"},
+			{Key: "release", Value: "test"},
+			{Key: "role", Value: "master"},
+		}, []field{
+			{"ss.Spec.Selector.MatchLabels", ss.Spec.Selector.MatchLabels},
+		})
+
+	verifyFields(t,
+		[]model.LabelPair{
+			{Key: "app", Value: "redis"},
+			{Key: "component", Value: "master"},
+			{Key: "heritage", Value: "Tiller"},
+			{Key: "release", Value: "test"},
+		}, []field{
+			{"ss.Spec.VolumeClaimTemplates[0].ObjectMeta.Labels", ss.Spec.VolumeClaimTemplates[0].ObjectMeta.Labels},
+		})
+}
+
+func TestInjectService(t *testing.T) {
+	entity := parseOneEntity(t, testyaml.DoggosServiceYaml)
+	lps := []model.LabelPair{
+		{Key: "foo", Value: "bar"},
+		{Key: "app", Value: "cattos"},
 	}
+	newEntity, err := InjectLabels(entity, lps)
+	require.NoError(t, err)
 
-	podTmpl := newEntity.Obj.(*v1beta2.StatefulSet).Spec.Template
-	vcTmpl := newEntity.Obj.(*v1beta2.StatefulSet).Spec.VolumeClaimTemplates[0]
+	svc, ok := newEntity.Obj.(*v1.Service)
+	require.True(t, ok)
 
-	assert.Equal(t, "deadbeef", podTmpl.ObjectMeta.Labels["tilt-runid"])
-	assert.Equal(t, "", vcTmpl.ObjectMeta.Labels["tilt-runid"])
+	expectedLPs := append(lps, model.LabelPair{Key: "whosAGoodBoy", Value: "imAGoodBoy"})
+	verifyFields(t, expectedLPs, []field{
+		{"svc.Labels", svc.Labels},
+	})
 
-	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Only inject twice: in the top-level metadata, the pod template, and the match selectors,
-	// not the volume claim template
-	assert.Equal(t, 3, strings.Count(result, "tilt-runid: deadbeef"))
+	// selector only gets existing labels updated
+	verifyFields(t, []model.LabelPair{{Key: "app", Value: "cattos"}}, []field{
+		{"svc.Spec.Selector", svc.Spec.Selector},
+	})
 }
 
 func TestSelectorMatchesLabels(t *testing.T) {
