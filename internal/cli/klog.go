@@ -55,6 +55,7 @@ func newFilteredWriter(underlying io.Writer, filterFunc func(s string) bool) io.
 }
 
 // everything on google indicates this warning is useless and should be ignored
+// https://github.com/kubernetes/kubernetes/issues/22024
 var isResourceVersionTooOldRegexp = regexp.MustCompile("reflector.go.*watch of.*ended with: too old resource version")
 
 // HACK(nick): The Kubernetes libs we use sometimes use klog to log things to
