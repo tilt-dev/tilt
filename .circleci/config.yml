@@ -117,6 +117,7 @@ workflows:
   build:
     # The linux job is cheaper than the others, so run that first.
     jobs:
+      - check-only-proto
       - build-linux:
           requires:
             - check-only-proto
