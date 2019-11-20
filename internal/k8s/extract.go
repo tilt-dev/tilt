@@ -80,6 +80,24 @@ func extractSelectors(obj interface{}, filter func(v reflect.Value) bool) ([]*me
 	return result, nil
 }
 
+func extractServiceSpecs(obj interface{}) ([]*v1.ServiceSpec, error) {
+	extracted, err := newExtractor(reflect.TypeOf(v1.ServiceSpec{})).
+		extractPointersFrom(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*v1.ServiceSpec, len(extracted))
+	for i, e := range extracted {
+		c, ok := e.(*v1.ServiceSpec)
+		if !ok {
+			return nil, fmt.Errorf("ExtractSelectors: expected ServiceSpec, actual %T", e)
+		}
+		result[i] = c
+	}
+	return result, nil
+}
+
 func extractEnvVars(obj interface{}) ([]*v1.EnvVar, error) {
 	extracted, err := newExtractor(reflect.TypeOf(v1.EnvVar{})).extractPointersFrom(obj)
 	if err != nil {
