@@ -206,13 +206,15 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 	}
 	manifests = append(manifests, localManifests...)
 
-	flagsState, _ := flags.GetState(result)
-	if len(flagsState.Resources) > 0 {
-		requested = nil
-		for _, r := range flagsState.Resources {
-			requested = append(requested, model.ManifestName(r))
+	// if none were requested, then default to all
+	if requested == nil {
+		for _, m := range manifests {
+			requested = append(requested, m.Name)
 		}
 	}
+
+	flagsState, _ := flags.GetState(result)
+	requested = flagsState.Resources(requested)
 
 	manifests, err = match(manifests, requested)
 	if err != nil {

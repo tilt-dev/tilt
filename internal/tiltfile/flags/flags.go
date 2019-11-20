@@ -4,13 +4,13 @@ import (
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/tiltfile/value"
-
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
+	"github.com/windmilleng/tilt/internal/tiltfile/value"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 type Settings struct {
-	Resources []string
+	resources []string
 }
 
 type Extension struct {
@@ -44,7 +44,7 @@ func setResources(thread *starlark.Thread, fn *starlark.Builtin, args starlark.T
 	}
 
 	err = starkit.SetState(thread, func(settings Settings) Settings {
-		settings.Resources = resources
+		settings.resources = resources
 		return settings
 	})
 	if err != nil {
@@ -68,4 +68,17 @@ func GetState(m starkit.Model) (Settings, error) {
 	var state Settings
 	err := m.Load(&state)
 	return state, err
+}
+
+func (s Settings) Resources(args []model.ManifestName) []model.ManifestName {
+	if s.resources == nil {
+		return args
+	}
+
+	var ret []model.ManifestName
+	for _, r := range s.resources {
+		ret = append(ret, model.ManifestName(r))
+	}
+
+	return ret
 }
