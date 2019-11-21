@@ -56,8 +56,8 @@ type EngineState struct {
 	TiltIgnoreContents       string
 	PendingConfigFileChanges map[string]time.Time
 
-	// InitManifests is the list of manifest names that we were told to init from the CLI.
-	InitManifests []model.ManifestName
+	// UserArgs are the post-tilt args, e.g., in `tilt up -- --hello goodbye`, it'd be [--hello goodbye]
+	UserArgs []string
 
 	TriggerQueue []model.ManifestName
 

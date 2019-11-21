@@ -11,8 +11,8 @@ import (
 
 // The main entrypoint to starkit.
 // Execute a file with a set of starlark extensions.
-func ExecFile(path string, extensions ...Extension) (Model, error) {
-	return newEnvironment(extensions...).start(path)
+func ExecFile(path string, args []string, extensions ...Extension) (Model, error) {
+	return newEnvironment(args, extensions...).start(path)
 }
 
 const argUnpackerKey = "starkit.ArgUnpacker"
@@ -35,15 +35,18 @@ type Environment struct {
 	print          func(thread *starlark.Thread, msg string)
 	extensions     []Extension
 	fakeFileSystem map[string]string
+	// args that were provided beyond tilt-recognized args
+	extraCmdLineArgs []string
 }
 
-func newEnvironment(extensions ...Extension) *Environment {
+func newEnvironment(args []string, extensions ...Extension) *Environment {
 	return &Environment{
-		unpackArgs:     starlark.UnpackArgs,
-		loadCache:      make(map[string]loadCacheEntry),
-		extensions:     append([]Extension{}, extensions...),
-		predeclared:    starlark.StringDict{},
-		fakeFileSystem: nil,
+		unpackArgs:       starlark.UnpackArgs,
+		loadCache:        make(map[string]loadCacheEntry),
+		extensions:       append([]Extension{}, extensions...),
+		predeclared:      starlark.StringDict{},
+		fakeFileSystem:   nil,
+		extraCmdLineArgs: args,
 	}
 }
 
@@ -108,6 +111,11 @@ func (e *Environment) SetPrint(print func(thread *starlark.Thread, msg string)) 
 // touch the file system. Expressed as a map from paths to contents.
 func (e *Environment) SetFakeFileSystem(files map[string]string) {
 	e.fakeFileSystem = files
+}
+
+// args that were provided beyond tilt-recognized args
+func (e *Environment) CmdLineArgs() []string {
+	return e.extraCmdLineArgs
 }
 
 func (e *Environment) start(path string) (Model, error) {

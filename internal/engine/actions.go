@@ -39,10 +39,10 @@ func NewBuildCompleteAction(result store.BuildResultSet, err error) BuildComplet
 }
 
 type InitAction struct {
-	WatchFiles    bool
-	TiltfilePath  string
-	ConfigFiles   []string
-	InitManifests []model.ManifestName
+	WatchFiles   bool
+	TiltfilePath string
+	ConfigFiles  []string
+	UserArgs     []string
 
 	TiltBuild model.TiltBuild
 	StartTime time.Time

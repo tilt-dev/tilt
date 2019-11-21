@@ -104,3 +104,11 @@ func SequenceToStringSlice(seq starlark.Sequence) ([]string, error) {
 	}
 	return ret, nil
 }
+
+func StringSliceToList(slice []string) *starlark.List {
+	v := []starlark.Value{}
+	for _, s := range slice {
+		v = append(v, starlark.String(s))
+	}
+	return starlark.NewList(v)
+}
