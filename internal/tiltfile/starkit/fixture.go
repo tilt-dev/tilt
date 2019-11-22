@@ -20,7 +20,6 @@ type Fixture struct {
 	fs         map[string]string
 	out        *bytes.Buffer
 	useRealFS  bool // Use a real filesystem
-	args       []string
 }
 
 func NewFixture(tb testing.TB, extensions ...Extension) *Fixture {
@@ -31,10 +30,6 @@ func NewFixture(tb testing.TB, extensions ...Extension) *Fixture {
 		fs:         make(map[string]string),
 		out:        bytes.NewBuffer(nil),
 	}
-}
-
-func (f *Fixture) SetArgs(args ...string) {
-	f.args = args
 }
 
 func (f *Fixture) OnStart(e *Environment) error {
@@ -50,7 +45,7 @@ func (f *Fixture) OnStart(e *Environment) error {
 
 func (f *Fixture) ExecFile(name string) (Model, error) {
 	extensions := append([]Extension{f}, f.extensions...)
-	return ExecFile(filepath.Join(f.path, name), f.args, extensions...)
+	return ExecFile(filepath.Join(f.path, name), extensions...)
 }
 
 func (f *Fixture) PrintOutput() string {

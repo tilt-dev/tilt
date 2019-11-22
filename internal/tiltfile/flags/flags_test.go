@@ -58,22 +58,35 @@ func TestSetResources(t *testing.T) {
 				args = append(args, string(a))
 			}
 
-			actual := MustState(result).Resources(args, []model.ManifestName{"a", "b"})
-			require.Equal(t, tc.expectedResources, actual)
+			manifests := []model.Manifest{{Name: "a"}, {Name: "b"}}
+			actual, err := MustState(result).Resources(args, manifests)
+			require.NoError(t, err)
+
+			expectedResourcesByName := make(map[model.ManifestName]bool)
+			for _, er := range tc.expectedResources {
+				expectedResourcesByName[er] = true
+			}
+			var expected []model.Manifest
+			for _, m := range manifests {
+				if expectedResourcesByName[m.Name] {
+					expected = append(expected, m)
+				}
+			}
+			require.Equal(t, expected, actual)
 		})
 	}
 }
 
 func TestParsePositional(t *testing.T) {
-	f := NewFixture(t)
+	foo := strings.Split("united states canada mexico panama haiti jamaica peru", " ")
+
+	f := NewFixture(t, foo...)
 	f.File("Tiltfile", `
 flags.define_string_list('foo', args=True)
 cfg = flags.parse()
 print(cfg['foo'])
 `)
 
-	foo := strings.Split("united states canada mexico panama haiti jamaica peru", " ")
-	f.SetArgs(foo...)
 	_, err := f.ExecFile("Tiltfile")
 	require.NoError(t, err)
 
@@ -81,19 +94,19 @@ print(cfg['foo'])
 }
 
 func TestParseKeyword(t *testing.T) {
-	f := NewFixture(t)
+	foo := strings.Split("republic dominican cuba caribbean greenland el salvador too", " ")
+	var args []string
+	for _, s := range foo {
+		args = append(args, []string{"-foo", s}...)
+	}
+
+	f := NewFixture(t, args...)
 	f.File("Tiltfile", `
 flags.define_string_list('foo')
 cfg = flags.parse()
 print(cfg['foo'])
 `)
 
-	foo := strings.Split("republic dominican cuba caribbean greenland el salvador too", " ")
-	var args []string
-	for _, s := range foo {
-		args = append(args, []string{"-foo", s}...)
-	}
-	f.SetArgs(args...)
 	_, err := f.ExecFile("Tiltfile")
 	require.NoError(t, err)
 
@@ -101,7 +114,9 @@ print(cfg['foo'])
 }
 
 func TestParsePositionalAndMultipleInterspersedKeyword(t *testing.T) {
-	f := NewFixture(t)
+	args := []string{"-bar", "puerto rico", "-baz", "colombia", "-bar", "venezuela", "-baz", "honduras", "-baz", "guyana", "and", "still"}
+	f := NewFixture(t, args...)
+
 	f.File("Tiltfile", `
 flags.define_string_list('foo', args=True)
 flags.define_string_list('bar')
@@ -112,7 +127,6 @@ print("bar:", cfg['bar'])
 print("baz:", cfg['baz'])
 `)
 
-	f.SetArgs("-bar", "puerto rico", "-baz", "colombia", "-bar", "venezuela", "-baz", "honduras", "-baz", "guyana", "and", "still")
 	_, err := f.ExecFile("Tiltfile")
 	require.NoError(t, err)
 
@@ -146,13 +160,12 @@ flags.define_string_list('foo')
 }
 
 func TestUndefinedArg(t *testing.T) {
-	f := NewFixture(t)
+	f := NewFixture(t, "-bar", "hello")
 	f.File("Tiltfile", `
 flags.define_string_list('foo')
 flags.parse()
 `)
 
-	f.SetArgs("-bar", "hello")
 	_, err := f.ExecFile("Tiltfile")
 	require.Error(t, err)
 	require.Equal(t, "flag provided but not defined: -bar", err.Error())
@@ -172,25 +185,23 @@ print("foo:",cfg['foo'])
 }
 
 func TestProvidedButUnexpectedPositionalArgs(t *testing.T) {
-	f := NewFixture(t)
+	f := NewFixture(t, "do", "re", "mi")
 	f.File("Tiltfile", `
 cfg = flags.parse()
 `)
 
-	f.SetArgs("do", "re", "mi")
 	_, err := f.ExecFile("Tiltfile")
 	require.Error(t, err)
 	require.Equal(t, "positional args were specified, but none were expected (no arg defined with args=True)", err.Error())
 }
 
 func TestUsage(t *testing.T) {
-	f := NewFixture(t)
+	f := NewFixture(t, "-bar", "hello")
 	f.File("Tiltfile", `
 flags.define_string_list('foo', usage='what can I foo for you today?')
 flags.parse()
 `)
 
-	f.SetArgs("-bar", "hello")
 	_, err := f.ExecFile("Tiltfile")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "flag provided but not defined: -bar")
@@ -200,21 +211,22 @@ flags.parse()
 
 // i.e., tilt up foo bar gets you resources foo and bar
 func TestDefaultTiltBehavior(t *testing.T) {
-	f := NewFixture(t)
+	f := NewFixture(t, "foo", "bar")
 	f.File("Tiltfile", `
 flags.define_string_list('resources', usage='which resources to load in Tilt', args=True)
 flags.set_resources(flags.parse()['resources'])
 `)
 
-	f.SetArgs("foo", "bar")
 	result, err := f.ExecFile("Tiltfile")
 	require.NoError(t, err)
 
-	actual := MustState(result).Resources([]string{"foo", "bar"}, []model.ManifestName{"foo", "bar", "baz"})
-	require.Equal(t, []model.ManifestName{"foo", "bar"}, actual)
+	manifests := []model.Manifest{{Name: "foo"}, {Name: "bar"}, {Name: "baz"}}
+	actual, err := MustState(result).Resources([]string{"foo", "bar"}, manifests)
+	require.NoError(t, err)
+	require.Equal(t, manifests[:2], actual)
 
 }
 
-func NewFixture(tb testing.TB) *starkit.Fixture {
-	return starkit.NewFixture(tb, NewExtension())
+func NewFixture(tb testing.TB, args ...string) *starkit.Fixture {
+	return starkit.NewFixture(tb, NewExtension(args))
 }
