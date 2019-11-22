@@ -19,7 +19,11 @@ func (s *stringList) flag() flag.Value {
 }
 
 func (s *stringList) starlark() starlark.Value {
-	return value.StringSliceToList(s.f.Values)
+	var v []string
+	if s.f != nil {
+		v = s.f.Values
+	}
+	return value.StringSliceToList(v)
 }
 
 func (s *stringList) setFromArgs(strs []string) {

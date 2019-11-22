@@ -171,10 +171,23 @@ flags.parse()
 	require.Equal(t, "flag provided but not defined: -bar", err.Error())
 }
 
-func TestUnprovidedArg(t *testing.T) {
+func TestUnprovidedKeywordArg(t *testing.T) {
 	f := NewFixture(t)
 	f.File("Tiltfile", `
 flags.define_string_list('foo')
+cfg = flags.parse()
+print("foo:",cfg['foo'])
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+	require.Contains(t, f.PrintOutput(), "foo: []")
+}
+
+func TestUnprovidedPositionalArg(t *testing.T) {
+	f := NewFixture(t)
+	f.File("Tiltfile", `
+flags.define_string_list('foo', args=True)
 cfg = flags.parse()
 print("foo:",cfg['foo'])
 `)
