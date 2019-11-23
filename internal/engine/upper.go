@@ -192,8 +192,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleStartProfilingAction(state)
 	case hud.StopProfilingAction:
 		handleStopProfilingAction(state)
-	case hud.SetLogTimestampsAction:
-		handleLogTimestampsAction(state, action)
 	case configs.TiltfileLogAction:
 		handleTiltfileLogAction(ctx, state, action)
 	case hud.DumpEngineStateAction:
@@ -424,10 +422,6 @@ func handleStartProfilingAction(state *store.EngineState) {
 	state.IsProfiling = true
 }
 
-func handleLogTimestampsAction(state *store.EngineState, action hud.SetLogTimestampsAction) {
-	state.LogTimestamps = action.Value
-}
-
 func handleFSEvent(
 	ctx context.Context,
 	state *store.EngineState,
@@ -585,7 +579,7 @@ func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
 		return
 	}
 
-	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, action, state.LogTimestamps, "", state.Secrets)
+	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, action, "", state.Secrets)
 }
 
 func handleLogAction(state *store.EngineState, action store.LogAction) {
@@ -601,7 +595,7 @@ func handleLogAction(state *store.EngineState, action store.LogAction) {
 		allLogPrefix = sourcePrefix(manifestName)
 	}
 
-	state.Log = model.AppendLog(state.Log, action, state.LogTimestamps, allLogPrefix, state.Secrets)
+	state.Log = model.AppendLog(state.Log, action, allLogPrefix, state.Secrets)
 
 	if manifestName == "" {
 		return
@@ -612,7 +606,7 @@ func handleLogAction(state *store.EngineState, action store.LogAction) {
 		// This is OK. The user could have edited the manifest recently.
 		return
 	}
-	ms.CombinedLog = model.AppendLog(ms.CombinedLog, action, state.LogTimestamps, "", state.Secrets)
+	ms.CombinedLog = model.AppendLog(ms.CombinedLog, action, "", state.Secrets)
 }
 
 func sourcePrefix(n model.ManifestName) string {
@@ -743,12 +737,12 @@ func handleDockerComposeLogAction(state *store.EngineState, action runtimelog.Do
 	}
 
 	dcState, _ := ms.RuntimeState.(dockercompose.State)
-	ms.RuntimeState = dcState.WithCurrentLog(model.AppendLog(dcState.CurrentLog, action, state.LogTimestamps, "", state.Secrets))
+	ms.RuntimeState = dcState.WithCurrentLog(model.AppendLog(dcState.CurrentLog, action, "", state.Secrets))
 }
 
 func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action configs.TiltfileLogAction) {
-	state.TiltfileState.CurrentBuild.Log = model.AppendLog(state.TiltfileState.CurrentBuild.Log, action, state.LogTimestamps, "", state.Secrets)
-	state.TiltfileState.CombinedLog = model.AppendLog(state.TiltfileState.CombinedLog, action, state.LogTimestamps, "", state.Secrets)
+	state.TiltfileState.CurrentBuild.Log = model.AppendLog(state.TiltfileState.CurrentBuild.Log, action, "", state.Secrets)
+	state.TiltfileState.CombinedLog = model.AppendLog(state.TiltfileState.CombinedLog, action, "", state.Secrets)
 }
 
 func handleAnalyticsUserOptAction(state *store.EngineState, action store.AnalyticsUserOptAction) {

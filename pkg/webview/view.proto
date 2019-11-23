@@ -101,7 +101,10 @@ message VersionSettings {
 message View {
   string log = 1;
   repeated Resource resources = 2;
-  bool log_timestamps = 3;
+
+  // We used to have a setting that allowed users to dynamically
+  // prepend timestamps in logs.
+  bool DEPRECATED_log_timestamps = 3;
 
   map<string, bool> feature_flags = 4;
 

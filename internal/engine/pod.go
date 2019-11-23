@@ -247,9 +247,9 @@ func checkForContainerCrash(ctx context.Context, state *store.EngineState, mt *s
 	msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Name)
 	le := store.NewLogEvent(ms.Name, []byte(msg+"\n"))
 	if len(ms.BuildHistory) > 0 {
-		ms.BuildHistory[0].Log = model.AppendLog(ms.BuildHistory[0].Log, le, state.LogTimestamps, "", state.Secrets)
+		ms.BuildHistory[0].Log = model.AppendLog(ms.BuildHistory[0].Log, le, "", state.Secrets)
 	}
-	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, le, state.LogTimestamps, "", state.Secrets)
+	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, le, "", state.Secrets)
 	handleLogAction(state, le)
 }
 
@@ -307,7 +307,7 @@ func handlePodLogAction(state *store.EngineState, action runtimelog.PodLogAction
 	}
 
 	podInfo := runtime.Pods[podID]
-	podInfo.CurrentLog = model.AppendLog(podInfo.CurrentLog, action, state.LogTimestamps, "", state.Secrets)
+	podInfo.CurrentLog = model.AppendLog(podInfo.CurrentLog, action, "", state.Secrets)
 }
 
 func handlePodResetRestartsAction(state *store.EngineState, action store.PodResetRestartsAction) {

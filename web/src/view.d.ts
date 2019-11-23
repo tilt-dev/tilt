@@ -5,7 +5,11 @@ declare namespace Proto {
   export interface webviewView {
     log?: string;
     resources?: webviewResource[];
-    logTimestamps?: boolean;
+    /**
+     * We used to have a field that allowed users to dynamically
+     * prepend timestamps in logs.
+     */
+    DEPRECATEDLogTimestamps?: boolean;
     featureFlags?: object;
     needsAnalyticsNudge?: boolean;
     runningTiltBuild?: webviewTiltBuild;

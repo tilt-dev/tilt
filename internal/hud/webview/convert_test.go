@@ -99,7 +99,6 @@ func TestStateToViewTiltfileLog(t *testing.T) {
 	es.TiltfileState.CombinedLog = model.AppendLog(
 		es.TiltfileState.CombinedLog,
 		store.NewLogEvent("Tiltfile", []byte("hello")),
-		false,
 		"",
 		nil)
 	v := stateToProtoView(t, *es)

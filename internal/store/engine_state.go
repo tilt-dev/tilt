@@ -61,8 +61,7 @@ type EngineState struct {
 
 	TriggerQueue []model.ManifestName
 
-	LogTimestamps bool
-	IsProfiling   bool
+	IsProfiling bool
 
 	TiltfileState ManifestState
 
@@ -559,8 +558,7 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {
 
 func StateToView(s EngineState) view.View {
 	ret := view.View{
-		IsProfiling:   s.IsProfiling,
-		LogTimestamps: s.LogTimestamps,
+		IsProfiling: s.IsProfiling,
 	}
 
 	ret.Resources = append(ret.Resources, tiltfileResourceView(s))

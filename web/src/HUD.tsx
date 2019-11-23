@@ -76,7 +76,6 @@ class HUD extends Component<HudProps, HudState> {
       view: {
         resources: [],
         log: "",
-        logTimestamps: false,
         needsAnalyticsNudge: false,
         fatalError: undefined,
         runningTiltBuild: {

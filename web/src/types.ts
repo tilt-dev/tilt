@@ -110,7 +110,6 @@ export enum ShowFatalErrorModal {
 export type WebView = {
   resources: Array<Resource>
   log: string
-  logTimestamps: boolean
   needsAnalyticsNudge: boolean
   runningTiltBuild: TiltBuild
   latestTiltBuild: TiltBuild

@@ -473,7 +473,6 @@
         "crashLog": ""
       }
     ],
-    "logTimestamps": false,
     "featureFlags": {
       "events": true,
       "multiple_containers_per_pod": true,
