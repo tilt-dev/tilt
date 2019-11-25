@@ -20,7 +20,7 @@ func TestCustomBuildSuccess(t *testing.T) {
 
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.dCli.Images["gcr.io/foo/bar:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
-	ref, err := f.cb.Build(f.ctx, container.MustParseNamed("gcr.io/foo/bar"), "true", "")
+	ref, err := f.cb.Build(f.ctx, container.MustParseNamed("gcr.io/foo/bar"), "true", "", false)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -28,18 +28,26 @@ func TestCustomBuildSuccess(t *testing.T) {
 	assert.Equal(f.t, container.MustParseNamed("gcr.io/foo/bar:tilt-11cd0eb38bc3ceb9"), ref)
 }
 
+func TestCustomBuildSuccessWithoutDocker(t *testing.T) {
+	f := newFakeCustomBuildFixture(t)
+
+	ref, err := f.cb.Build(f.ctx, container.MustParseNamed("gcr.io/foo/bar"), "true", "", true)
+	assert.NoError(f.t, err)
+	assert.Equal(f.t, container.MustParseNamed("gcr.io/foo/bar:tilt-build-1551202573"), ref)
+}
+
 func TestCustomBuildCmdFails(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
 
-	_, err := f.cb.Build(f.ctx, container.MustParseNamed("gcr.io/foo/bar"), "false", "")
+	_, err := f.cb.Build(f.ctx, container.MustParseNamed("gcr.io/foo/bar"), "false", "", false)
 	// TODO(dmiller) better error message
-	assert.EqualError(t, err, "exit status 1")
+	assert.EqualError(t, err, "Custom build command failed: exit status 1")
 }
 
 func TestCustomBuildImgNotFound(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
 
-	_, err := f.cb.Build(f.ctx, container.MustParseNamed("gcr.io/foo/bar"), "true", "")
+	_, err := f.cb.Build(f.ctx, container.MustParseNamed("gcr.io/foo/bar"), "true", "", false)
 	assert.Contains(t, err.Error(), "fake docker client error: object not found")
 }
 
@@ -48,7 +56,7 @@ func TestCustomBuildExpectedTag(t *testing.T) {
 
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.dCli.Images["gcr.io/foo/bar:the-tag"] = types.ImageInspect{ID: string(sha)}
-	ref, err := f.cb.Build(f.ctx, container.MustParseNamed("gcr.io/foo/bar"), "true", "the-tag")
+	ref, err := f.cb.Build(f.ctx, container.MustParseNamed("gcr.io/foo/bar"), "true", "the-tag", false)
 	if err != nil {
 		f.t.Fatal(err)
 	}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/opencontainers/go-digest"
+	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
@@ -15,7 +16,7 @@ import (
 )
 
 type CustomBuilder interface {
-	Build(ctx context.Context, ref reference.Named, command string, expectedTag string) (reference.NamedTagged, error)
+	Build(ctx context.Context, ref reference.Named, command string, expectedTag string, pushDisabled bool) (reference.NamedTagged, error)
 }
 
 type ExecCustomBuilder struct {
@@ -30,14 +31,14 @@ func NewExecCustomBuilder(dCli docker.Client, clock Clock) *ExecCustomBuilder {
 	}
 }
 
-func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, command string, expectedTag string) (reference.NamedTagged, error) {
+func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, command string, expectedTag string, pushDisabled bool) (reference.NamedTagged, error) {
 	if expectedTag == "" {
 		expectedTag = fmt.Sprintf("tilt-build-%d", b.clock.Now().Unix())
 	}
 
 	expectedRef, err := reference.WithTag(ref, expectedTag)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "CustomBuilder.Build")
 	}
 
 	cmd := exec.CommandContext(ctx, "sh", "-c", command)
@@ -60,29 +61,36 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, comm
 	l.Infof("Running custom build cmd %q", command)
 	err = cmd.Run()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Custom build command failed")
+	}
+
+	// If the command pushes the image itself, then we don't expect the image
+	// to be available in the docker image registry (because the command
+	// might have its own registry).
+	if pushDisabled {
+		return expectedRef, nil
 	}
 
 	inspect, _, err := b.dCli.ImageInspectWithRaw(ctx, expectedRef.String())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Verifying image in Docker")
 	}
 
 	dig := digest.Digest(inspect.ID)
 
 	tag, err := digestAsTag(dig)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "CustomBuilder.Build")
 	}
 
 	namedTagged, err := reference.WithTag(ref, tag)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "CustomBuilder.Build")
 	}
 
 	err = b.dCli.ImageTag(ctx, dig.String(), namedTagged.String())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "CustomBuilder.Build")
 	}
 
 	return namedTagged, nil

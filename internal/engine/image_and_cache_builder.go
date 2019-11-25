@@ -73,7 +73,7 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 	case model.CustomBuild:
 		ps.StartPipelineStep(ctx, "Building Custom Build: [%s]", userFacingRefName)
 		defer ps.EndPipelineStep(ctx)
-		ref, err := icb.custb.Build(ctx, refToBuild, bd.Command, bd.Tag)
+		ref, err := icb.custb.Build(ctx, refToBuild, bd.Command, bd.Tag, bd.DisablePush)
 		if err != nil {
 			return nil, err
 		}
