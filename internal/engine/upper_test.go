@@ -340,8 +340,8 @@ func TestUpper_WatchFalseNoManifestsExplicitlyNamed(t *testing.T) {
 	f.WriteFile("snack.yaml", simpleYAML)
 
 	err := f.upper.Init(f.ctx, InitAction{
-		TiltfilePath:  f.JoinPath("Tiltfile"),
-		InitManifests: nil, // equivalent to `tilt up --watch=false` (i.e. not specifying any manifest names)
+		TiltfilePath: f.JoinPath("Tiltfile"),
+		UserArgs:     nil, // equivalent to `tilt up --watch=false` (i.e. not specifying any manifest names)
 	})
 	close(f.b.calls)
 
@@ -2639,7 +2639,7 @@ func TestUpperStart(t *testing.T) {
 	})
 
 	f.withState(func(state store.EngineState) {
-		require.Equal(t, []model.ManifestName{"foo", "bar"}, state.InitManifests)
+		require.Equal(t, []string{"foo", "bar"}, state.UserArgs)
 		require.Equal(t, f.JoinPath("Tiltfile"), state.TiltfilePath)
 		require.Equal(t, tok, state.Token)
 		require.Equal(t, analytics.OptIn, state.AnalyticsEffectiveOpt())

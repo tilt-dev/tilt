@@ -5,56 +5,31 @@ import (
 	"go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
-	"github.com/windmilleng/tilt/internal/tiltfile/value"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
 type Settings struct {
-	resources []string
+	resources []model.ManifestName
+	argDef    ArgsDef
+
+	flagsParsed bool
 }
 
 type Extension struct {
+	cmdLineArgs []string
 }
 
-func NewExtension() Extension {
-	return Extension{}
+func NewExtension(args []string) *Extension {
+	return &Extension{cmdLineArgs: args}
 }
 
-func (e Extension) NewState() interface{} {
-	return Settings{}
-}
-
-func (Extension) OnStart(env *starkit.Environment) error {
-	return env.AddBuiltin("flags.set_resources", setResources)
-}
-
-func setResources(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var slResources starlark.Sequence
-	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
-		"resources",
-		&slResources,
-	)
-	if err != nil {
-		return starlark.None, err
+func (e *Extension) NewState() interface{} {
+	return Settings{
+		argDef: ArgsDef{args: make(map[string]argDef)},
 	}
-
-	resources, err := value.SequenceToStringSlice(slResources)
-	if err != nil {
-		return starlark.None, errors.Wrap(err, "resources must be a list of string")
-	}
-
-	err = starkit.SetState(thread, func(settings Settings) Settings {
-		settings.resources = resources
-		return settings
-	})
-	if err != nil {
-		return starlark.None, err
-	}
-
-	return starlark.None, nil
 }
 
-var _ starkit.StatefulExtension = Extension{}
+var _ starkit.StatefulExtension = &Extension{}
 
 func MustState(model starkit.Model) Settings {
 	state, err := GetState(model)
@@ -70,15 +45,52 @@ func GetState(m starkit.Model) (Settings, error) {
 	return state, err
 }
 
-func (s Settings) Resources(args []model.ManifestName) []model.ManifestName {
-	if s.resources == nil {
-		return args
+func (e *Extension) OnStart(env *starkit.Environment) error {
+	for _, b := range []struct {
+		name string
+		f    starkit.Function
+	}{
+		{"flags.set_resources", setResources},
+		{"flags.parse", e.parse},
+		{"flags.define_string_list", argDefinitionBuiltin(func() argValue {
+			return &stringList{}
+		})},
+	} {
+		err := env.AddBuiltin(b.name, b.f)
+		if err != nil {
+			return errors.Wrap(err, b.name)
+		}
 	}
 
-	var ret []model.ManifestName
-	for _, r := range s.resources {
-		ret = append(ret, model.ManifestName(r))
+	return nil
+}
+
+func (e *Extension) parse(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs)
+	if err != nil {
+		return starlark.None, err
 	}
 
-	return ret
+	err = starkit.SetState(thread, func(settings Settings) Settings {
+		settings.flagsParsed = true
+		return settings
+	})
+	if err != nil {
+		return starlark.None, err
+	}
+
+	m, err := starkit.ModelFromThread(thread)
+	if err != nil {
+		return starlark.None, err
+	}
+	settings, err := GetState(m)
+	if err != nil {
+		return starlark.None, err
+	}
+
+	ret, out, err := settings.argDef.parse(e.cmdLineArgs)
+	if out != "" {
+		thread.Print(thread, out)
+	}
+	return ret, err
 }

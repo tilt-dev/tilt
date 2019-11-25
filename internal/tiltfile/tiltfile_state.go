@@ -144,7 +144,7 @@ func (s *tiltfileState) print(_ *starlark.Thread, msg string) {
 //
 // TODO(nick): Eventually this will just return a starkit.Model, which will contain
 // all the mutable state collected by execution.
-func (s *tiltfileState) loadManifests(absFilename string, requested []model.ManifestName) ([]model.Manifest, starkit.Model, error) {
+func (s *tiltfileState) loadManifests(absFilename string, args []string) ([]model.Manifest, starkit.Model, error) {
 	s.logger.Infof("Beginning Tiltfile execution")
 
 	result, err := starkit.ExecFile(absFilename,
@@ -157,7 +157,7 @@ func (s *tiltfileState) loadManifests(absFilename string, requested []model.Mani
 		dockerprune.NewExtension(),
 		analytics.NewExtension(),
 		version.NewExtension(),
-		flags.NewExtension(),
+		flags.NewExtension(args),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)
@@ -206,19 +206,10 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 	}
 	manifests = append(manifests, localManifests...)
 
-	// if none were requested, then default to all
-	if requested == nil {
-		for _, m := range manifests {
-			requested = append(requested, m.Name)
-		}
-	}
-
 	flagsState, _ := flags.GetState(result)
-	requested = flagsState.Resources(requested)
-
-	manifests, err = match(manifests, requested)
+	manifests, err = flagsState.Resources(args, manifests)
 	if err != nil {
-		return nil, result, err
+		return nil, starkit.Model{}, err
 	}
 
 	yamlManifest := model.Manifest{}
@@ -893,75 +884,6 @@ func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef container.Re
 	}
 
 	return nil
-}
-
-func unmatchedManifestNames(manifests []model.Manifest, requestedManifests []model.ManifestName) []string {
-	requestedManifestsByName := make(map[model.ManifestName]bool)
-	for _, m := range requestedManifests {
-		requestedManifestsByName[m] = true
-	}
-
-	var ret []string
-	for _, m := range manifests {
-		if _, ok := requestedManifestsByName[m.Name]; !ok {
-			ret = append(ret, string(m.Name))
-		}
-	}
-
-	return ret
-}
-
-// add `manifestToAdd` and all of its transitive deps to `result`
-func addManifestAndDeps(result map[model.ManifestName]bool, allManifestsByName map[model.ManifestName]model.Manifest, manifestToAdd model.ManifestName) {
-	if result[manifestToAdd] {
-		return
-	}
-	result[manifestToAdd] = true
-	for _, dep := range allManifestsByName[manifestToAdd].ResourceDependencies {
-		addManifestAndDeps(result, allManifestsByName, dep)
-	}
-}
-
-// If the user requested only a subset of manifests, get just those manifests
-func match(manifests []model.Manifest, requestedManifests []model.ManifestName) ([]model.Manifest, error) {
-	if len(requestedManifests) == 0 {
-		return manifests, nil
-	}
-
-	manifestsByName := make(map[model.ManifestName]model.Manifest)
-	for _, m := range manifests {
-		manifestsByName[m.Name] = m
-	}
-
-	manifestsToRun := make(map[model.ManifestName]bool)
-	var unknownNames []string
-
-	for _, m := range requestedManifests {
-		if _, ok := manifestsByName[m]; !ok {
-			unknownNames = append(unknownNames, string(m))
-			continue
-		}
-
-		addManifestAndDeps(manifestsToRun, manifestsByName, m)
-	}
-
-	var result []model.Manifest
-	for _, m := range manifests {
-		if manifestsToRun[m.Name] {
-			result = append(result, m)
-		}
-	}
-
-	if len(unknownNames) > 0 {
-		unmatchedNames := unmatchedManifestNames(manifests, requestedManifests)
-
-		return nil, fmt.Errorf(`You specified some resources that could not be found: %s
-Is this a typo? Existing resources in Tiltfile: %s`,
-			sliceutils.QuotedStringList(unknownNames),
-			sliceutils.QuotedStringList(unmatchedNames))
-	}
-
-	return result, nil
 }
 
 func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest, error) {

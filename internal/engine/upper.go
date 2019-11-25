@@ -117,7 +117,7 @@ func (u Upper) Start(
 		WatchFiles:       watch,
 		TiltfilePath:     absTfPath,
 		ConfigFiles:      configFiles,
-		InitManifests:    manifestNames,
+		UserArgs:         args,
 		TiltBuild:        b,
 		StartTime:        startTime,
 		AnalyticsUserOpt: analyticsUserOpt,
@@ -665,7 +665,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.TiltStartTime = action.StartTime
 	engineState.TiltfilePath = action.TiltfilePath
 	engineState.ConfigFiles = action.ConfigFiles
-	engineState.InitManifests = action.InitManifests
+	engineState.UserArgs = action.UserArgs
 	engineState.AnalyticsUserOpt = action.AnalyticsUserOpt
 	engineState.WatchFiles = action.WatchFiles
 	engineState.CloudAddress = action.CloudAddress

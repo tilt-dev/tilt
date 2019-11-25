@@ -762,7 +762,7 @@ docker_build('gcr.io/bar', 'bar')
 k8s_yaml('bar.yaml')
 `)
 
-	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), []model.ManifestName{"baz"})
+	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), []string{"baz"})
 	err := tlr.Error
 	if assert.Error(t, err) {
 		assert.Equal(t, `You specified some resources that could not be found: "baz"
@@ -1963,7 +1963,7 @@ k8s_kind(%s)
 				if test.expectedResourceName != "" {
 					expectedResourceName = test.expectedResourceName
 				}
-				f.load(expectedResourceName)
+				f.load(string(expectedResourceName))
 				var imageOpt interface{}
 				if test.expectImage {
 					imageOpt = db(image("test/mycrd-env"))
@@ -4217,7 +4217,11 @@ local_resource('d', 'echo d', resource_deps=['b'])
 local_resource('e', 'echo e')
 `)
 
-			f.load(tc.resourcesToLoad...)
+			var args []string
+			for _, r := range tc.resourcesToLoad {
+				args = append(args, string(r))
+			}
+			f.load(args...)
 			f.assertNumManifests(len(tc.expected))
 			for _, e := range tc.expected {
 				f.assertNextManifest(e)
@@ -4371,14 +4375,14 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 }
 
 // Default load. Fails if there are any warnings.
-func (f *fixture) load(names ...model.ManifestName) {
-	f.loadAllowWarnings(names...)
+func (f *fixture) load(args ...string) {
+	f.loadAllowWarnings(args...)
 	if len(f.loadResult.Warnings) != 0 {
 		f.t.Fatalf("Unexpected no warnings. Actual: %s", f.loadResult.Warnings)
 	}
 }
 
-func (f *fixture) loadResourceAssemblyV1(names ...model.ManifestName) {
+func (f *fixture) loadResourceAssemblyV1(names ...string) {
 	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), names)
 	err := tlr.Error
 	if err != nil {
@@ -4390,8 +4394,8 @@ func (f *fixture) loadResourceAssemblyV1(names ...model.ManifestName) {
 
 // Load the manifests, expecting warnings.
 // Warnings should be asserted later with assertWarnings
-func (f *fixture) loadAllowWarnings(names ...model.ManifestName) {
-	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), names)
+func (f *fixture) loadAllowWarnings(args ...string) {
+	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), args)
 	err := tlr.Error
 	if err != nil {
 		f.t.Fatal(err)
