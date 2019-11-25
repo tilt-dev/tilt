@@ -28,7 +28,7 @@ func TestCustomBuildSuccess(t *testing.T) {
 	assert.Equal(f.t, container.MustParseNamed("gcr.io/foo/bar:tilt-11cd0eb38bc3ceb9"), ref)
 }
 
-func TestCustomBuildSuccessWithoutDocker(t *testing.T) {
+func TestCustomBuildSuccessSkipsLocalDocker(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
 
 	ref, err := f.cb.Build(f.ctx, container.MustParseNamed("gcr.io/foo/bar"), "true", "", true)

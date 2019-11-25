@@ -1060,11 +1060,12 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			})
 		case CustomBuild:
 			r := model.CustomBuild{
-				Command:     image.customCommand,
-				Deps:        image.customDeps,
-				Tag:         image.customTag,
-				DisablePush: image.disablePush,
-				LiveUpdate:  lu,
+				Command:          image.customCommand,
+				Deps:             image.customDeps,
+				Tag:              image.customTag,
+				DisablePush:      image.disablePush,
+				SkipsLocalDocker: image.skipsLocalDocker,
+				LiveUpdate:       lu,
 			}
 			iTarget = iTarget.WithBuildDetails(r)
 			// TODO(dbentley): validate that syncs is a subset of deps
