@@ -93,16 +93,20 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 	if tlr.Error == nil && len(tlr.Manifests) == 0 {
 		tlr.Error = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
 	}
-	if tlr.Error != nil {
-		logger.Get(ctx).Infof(tlr.Error.Error())
-	}
 
 	if tlr.Orchestrator() != model.OrchestratorUnknown {
 		cc.dockerClient.SetOrchestrator(tlr.Orchestrator())
+	}
+
+	if requiresDocker(tlr) {
 		dockerErr := cc.dockerClient.CheckConnected()
 		if tlr.Error == nil && dockerErr != nil {
 			tlr.Error = errors.Wrap(dockerErr, "Failed to connect to Docker")
 		}
+	}
+
+	if tlr.Error != nil {
+		logger.Get(ctx).Infof(tlr.Error.Error())
 	}
 
 	st.Dispatch(ConfigsReloadedAction{
@@ -148,4 +152,20 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 
 	// Release the state lock and load the tiltfile in a separate goroutine
 	go cc.loadTiltfile(ctx, st, args, filesChanged, tiltfilePath)
+}
+
+func requiresDocker(tlr tiltfile.TiltfileLoadResult) bool {
+	if tlr.Orchestrator() == model.OrchestratorDC {
+		return true
+	}
+
+	for _, m := range tlr.Manifests {
+		for _, iTarget := range m.ImageTargets {
+			if iTarget.IsDockerBuild() || iTarget.IsFastBuild() {
+				return true
+			}
+		}
+	}
+
+	return false
 }

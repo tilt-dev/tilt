@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/store"
@@ -47,12 +48,31 @@ func TestConfigsControllerDockerNotConnected(t *testing.T) {
 	f.addManifest("fe")
 	f.docker.CheckConnectedErr = fmt.Errorf("connection-error")
 
-	bar := manifestbuilder.New(f, "bar").WithK8sYAML(testyaml.SanchoYAML).Build()
+	bar := manifestbuilder.New(f, "bar").
+		WithK8sYAML(testyaml.SanchoYAML).
+		WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+		Build()
 	a := f.run(bar)
 
 	if assert.Error(t, a.Err) {
 		assert.Equal(t, "Failed to connect to Docker: connection-error", a.Err.Error())
 	}
+}
+
+func TestConfigsControllerDockerNotConnectedButNotRequired(t *testing.T) {
+	f := newCCFixture(t)
+	defer f.TearDown()
+
+	assert.Equal(t, model.OrchestratorUnknown, f.docker.Orchestrator)
+	f.addManifest("fe")
+	f.docker.CheckConnectedErr = fmt.Errorf("connection-error")
+
+	bar := manifestbuilder.New(f, "bar").
+		WithK8sYAML(testyaml.SanchoYAML).
+		Build()
+	a := f.run(bar)
+
+	assert.NoError(t, a.Err)
 }
 
 type ccFixture struct {
@@ -117,9 +137,12 @@ func (f *ccFixture) run(m model.Manifest) ConfigsReloadedAction {
 		}
 	}()
 
+	f.st.SetUpSubscribersForTesting(f.ctx)
+
 	f.tfl.Result = tiltfile.TiltfileLoadResult{
 		Manifests: []model.Manifest{m},
 	}
+
 	f.st.NotifySubscribers(f.ctx)
 
 	a := store.WaitForAction(f.T(), reflect.TypeOf(ConfigsReloadedAction{}), f.getActions)
@@ -129,4 +152,20 @@ func (f *ccFixture) run(m model.Manifest) ConfigsReloadedAction {
 	}
 
 	return cra
+}
+
+const SanchoDockerfile = `
+FROM go:1.10
+ADD . .
+RUN go install github.com/windmilleng/sancho
+ENTRYPOINT /go/bin/sancho
+`
+
+var SanchoRef = container.MustParseSelector(testyaml.SanchoImage)
+
+func NewSanchoDockerBuildImageTarget(f *ccFixture) model.ImageTarget {
+	return model.NewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
+		Dockerfile: SanchoDockerfile,
+		BuildPath:  f.Path(),
+	})
 }

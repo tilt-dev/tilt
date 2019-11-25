@@ -26,14 +26,15 @@ import (
 type DockerPruner struct {
 	dCli docker.Client
 
-	disabledForTesting           bool
-	insufficientVersionErrLogged bool
+	disabledForTesting bool
+	disabledOnSetup    bool
 
 	lastPruneBuildCount int
 	lastPruneTime       time.Time
 }
 
 var _ store.Subscriber = &DockerPruner{}
+var _ store.SetUpper = &DockerPruner{}
 
 func NewDockerPruner(dCli docker.Client) *DockerPruner {
 	return &DockerPruner{dCli: dCli}
@@ -43,18 +44,25 @@ func (dp *DockerPruner) DisabledForTesting(disabled bool) {
 	dp.disabledForTesting = disabled
 }
 
-func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
-	if dp.disabledForTesting {
+func (dp *DockerPruner) SetUp(ctx context.Context) {
+	err := dp.dCli.CheckConnected()
+	if err != nil {
+		// If Docker is not responding at all, other parts of the system will log this.
+		dp.disabledOnSetup = true
 		return
 	}
 
 	if err := dp.sufficientVersionError(); err != nil {
-		if !dp.insufficientVersionErrLogged {
-			logger.Get(ctx).Infof(
-				"[Docker Prune] Docker API version too low for Tilt to run Docker Prune:\n\t%v", err,
-			)
-			dp.insufficientVersionErrLogged = true
-		}
+		logger.Get(ctx).Infof(
+			"[Docker Prune] Docker API version too low for Tilt to run Docker Prune:\n\t%v", err,
+		)
+		dp.disabledOnSetup = true
+		return
+	}
+}
+
+func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
+	if dp.disabledForTesting || dp.disabledOnSetup {
 		return
 	}
 
