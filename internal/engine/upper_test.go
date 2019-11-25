@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -3097,6 +3098,7 @@ func TestHasEverBeenReadyDC(t *testing.T) {
 
 func TestVersionSettingsStoredOnState(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 
 	f.Start([]model.Manifest{}, true)
 
@@ -3107,6 +3109,54 @@ func TestVersionSettingsStoredOnState(t *testing.T) {
 
 	f.WaitUntil("CheckVersionUpdates is set to false", func(state store.EngineState) bool {
 		return state.VersionSettings.CheckUpdates == false
+	})
+}
+
+// When flag.parse runs the first time and processes the user args, it writes out the merged flags
+// to tilt_config.json. Make sure that writing tilt_config.json did not trigger another
+// Tiltfile run with exactly the same effective config.
+func TestUserFlagMerge(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", `
+flags.define_string_list('foo')
+flags.define_string_list('bar')
+cfg = flags.parse()
+print('foo', cfg.get('foo', []))
+print('bar', cfg.get('bar', []))
+`)
+
+	f.WriteFile("tilt_config.json", `{"foo": ["1"], "bar": ["2"]}`)
+
+	f.Init(InitAction{
+		TiltfilePath: f.JoinPath("Tiltfile"),
+		WatchFiles:   true,
+		UserArgs:     []string{"--bar", "3"},
+	})
+
+	f.WaitUntil("tiltfile run once", func(es store.EngineState) bool {
+		return len(es.TiltfileState.BuildHistory) > 0
+	})
+
+	// check that the merged flags were written out correctly
+	tc, err := os.Open(f.JoinPath("tilt_config.json"))
+	require.NoError(t, err)
+	var m map[string][]string
+	err = json.NewDecoder(tc).Decode(&m)
+	require.NoError(t, err)
+	require.Equal(t, map[string][]string{"foo": {"1"}, "bar": {"3"}}, m)
+
+	// trigger another Tiltfile run to ensure that any potential second run with --bar 3 has happened
+	f.WriteConfigFiles("tilt_config.json", `{"foo": ["1"], "bar": ["4"]}`)
+	f.WaitUntil("tiltfile run again", func(es store.EngineState) bool {
+		return len(es.TiltfileState.BuildHistory) > 1
+	})
+
+	// make sure we only had one run with --bar 3
+	f.withState(func(es store.EngineState) {
+		s := es.Log.String()
+		require.True(t, strings.Count(s, `bar ["3"]`) == 1, `bar ["3"] should be written exactly once in '%s'`, s)
 	})
 }
 
@@ -3723,7 +3773,7 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 
 	f.dcc.ServicesOutput = "redis\nserver\n"
 
-	tlr := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	tlr := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil, model.FlagsState{})
 	if tlr.Error != nil {
 		f.T().Fatal(tlr.Error)
 	}

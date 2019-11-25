@@ -762,7 +762,7 @@ docker_build('gcr.io/bar', 'bar')
 k8s_yaml('bar.yaml')
 `)
 
-	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), []string{"baz"})
+	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), []string{"baz"}, model.FlagsState{})
 	err := tlr.Error
 	if assert.Error(t, err) {
 		assert.Equal(t, `You specified some resources that could not be found: "baz"
@@ -4383,7 +4383,7 @@ func (f *fixture) load(args ...string) {
 }
 
 func (f *fixture) loadResourceAssemblyV1(names ...string) {
-	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), names)
+	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), names, model.FlagsState{})
 	err := tlr.Error
 	if err != nil {
 		f.t.Fatal(err)
@@ -4395,7 +4395,7 @@ func (f *fixture) loadResourceAssemblyV1(names ...string) {
 // Load the manifests, expecting warnings.
 // Warnings should be asserted later with assertWarnings
 func (f *fixture) loadAllowWarnings(args ...string) {
-	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), args)
+	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), args, model.FlagsState{})
 	err := tlr.Error
 	if err != nil {
 		f.t.Fatal(err)
@@ -4422,7 +4422,7 @@ func (f *fixture) loadAssertWarnings(warnings ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), nil, model.FlagsState{})
 	err := tlr.Error
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")

@@ -87,6 +87,8 @@ type EngineState struct {
 	WaitingForTiltCloudUsernamePostRegistration bool
 
 	DockerPruneSettings model.DockerPruneSettings
+
+	FlagsState model.FlagsState
 }
 
 // Merge analytics opt-in status from different sources.

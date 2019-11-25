@@ -87,9 +87,10 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 	if !firstBuild {
 		logTiltfileChanges(ctx, filesChanged)
 	}
+	flagsState := state.FlagsState
 	st.RUnlockState()
 
-	tlr := cc.tfl.Load(ctx, tiltfilePath, args)
+	tlr := cc.tfl.Load(ctx, tiltfilePath, args, flagsState)
 	if tlr.Error == nil && len(tlr.Manifests) == 0 {
 		tlr.Error = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
 	}
@@ -119,6 +120,7 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 		DockerPruneSettings:           tlr.DockerPruneSettings,
 		GlobalLogLineCountAtExecStart: globalLogLineCountAtExecStart,
 		VersionSettings:               tlr.VersionSettings,
+		FlagsState:                    tlr.FlagsState,
 	})
 }
 

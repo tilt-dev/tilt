@@ -30,6 +30,7 @@ type ConfigsReloadedAction struct {
 	DockerPruneSettings  model.DockerPruneSettings
 	AnalyticsTiltfileOpt analytics.Opt
 	VersionSettings      model.VersionSettings
+	FlagsState           model.FlagsState
 
 	// The length of the global log when Tiltfile execution started.
 	// Useful for knowing how far back in time we have to scrub secrets.
