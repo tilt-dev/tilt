@@ -65,6 +65,8 @@ func (ad ArgsDef) parse(args []string) (v starlark.Value, output string, err err
 }
 
 // makes a new builtin with the given argValue constructor
+// newArgValue: a constructor for the `argValue` that we're making a function for
+//              (it's the same logic for all types, except for the `argValue` that gets saved)
 func argDefinitionBuiltin(newArgValue func() argValue) starkit.Function {
 	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var name string
