@@ -268,9 +268,8 @@ type TiltBuild struct {
 }
 
 type View struct {
-	Log           model.Log  `json:"log"`
-	Resources     []Resource `json:"resources"`
-	LogTimestamps bool       `json:"logTimestamps"`
+	Log       model.Log  `json:"log"`
+	Resources []Resource `json:"resources"`
 
 	FeatureFlags map[string]bool `json:"featureFlags"`
 

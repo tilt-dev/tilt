@@ -22,7 +22,6 @@ import (
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	engineanalytics "github.com/windmilleng/tilt/internal/engine/analytics"
@@ -2302,45 +2301,6 @@ func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
 	f.withManifestState(name, func(ms store.ManifestState) {
 		assert.NotContains(t, ms.CombinedLog.String(), "all systems are go",
 			"message for event of type 'normal' should not appear in log")
-	})
-
-	err := f.Stop()
-	assert.NoError(t, err)
-}
-
-func TestK8sEventLogTimestamp(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	st := f.store.LockMutableStateForTesting()
-	st.LogTimestamps = true
-	f.store.UnlockMutableState()
-
-	name := model.ManifestName("fe")
-	manifest := f.newManifest(string(name))
-
-	f.Start([]model.Manifest{manifest}, true)
-	f.waitForCompletedBuildCount(1)
-
-	ts := time.Now().Add(time.Hour * 36) // the future, i.e. timestamp that won't otherwise appear in our log
-
-	warnEvt := &v1.Event{
-		InvolvedObject: v1.ObjectReference{UID: f.lastDeployedUID(name)},
-		Message:        "something has happened zomg",
-		LastTimestamp:  metav1.Time{Time: ts},
-		Type:           v1.EventTypeWarning,
-	}
-	f.kClient.EmitEvent(f.ctx, warnEvt)
-
-	tsPrefix := model.TimestampPrefix(ts)
-	f.WaitUntil("event message appears in manifest log", func(st store.EngineState) bool {
-		ms, ok := st.ManifestState(name)
-		if !ok {
-			t.Fatalf("Manifest %s not found in state", name)
-		}
-
-		l := ms.CombinedLog.String()
-		return strings.Contains(l, "something has happened zomg") && strings.Contains(l, string(tsPrefix))
 	})
 
 	err := f.Stop()

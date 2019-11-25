@@ -149,7 +149,6 @@
       ]
     }
   ],
-  "logTimestamps": false,
   "featureFlags": {
     "events": true,
     "facets": true,

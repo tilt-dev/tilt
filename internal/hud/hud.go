@@ -238,8 +238,6 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			}
 		case tcell.KeyCtrlO:
 			go writeHeapProfile(ctx)
-		case tcell.KeyCtrlT:
-			dispatch(SetLogTimestampsAction{!h.currentView.LogTimestamps})
 		}
 
 	case *tcell.EventResize:

@@ -375,9 +375,10 @@
             "$ref": "#/definitions/webviewResource"
           }
         },
-        "log_timestamps": {
+        "DEPRECATED_log_timestamps": {
           "type": "boolean",
-          "format": "boolean"
+          "format": "boolean",
+          "description": "We used to have a field that allowed users to dynamically\nprepend timestamps in logs."
         },
         "feature_flags": {
           "type": "object",
