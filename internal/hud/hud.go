@@ -254,6 +254,21 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 }
 
 func (h *Hud) OnChange(ctx context.Context, st store.RStore) {
+	if !h.isRunning {
+		state := st.RLockState()
+		log := state.Log
+		st.RUnlockState()
+
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		// if the hud isn't running, make sure new logs are visible on stdout
+		err := h.setViewLogOnly(ctx, log)
+		if err != nil {
+			st.Dispatch(NewExitAction(err))
+		}
+		return
+	}
+
 	state := st.RLockState()
 	view := store.StateToView(state)
 	st.RUnlockState()
@@ -274,6 +289,10 @@ func (h *Hud) Refresh(ctx context.Context) error {
 
 // Must hold the lock
 func (h *Hud) setView(ctx context.Context, view view.View) error {
+	if !h.isRunning {
+		return fmt.Errorf("can only call setView if hud is running")
+	}
+
 	// if we're going from 1 resource (i.e., the Tiltfile) to more than 1, reset
 	// the resource selection, so that we're not scrolled to the bottom with the Tiltfile selected
 	if len(h.currentView.Resources) == 1 && len(view.Resources) > 1 {
@@ -282,10 +301,18 @@ func (h *Hud) setView(ctx context.Context, view view.View) error {
 	h.currentView = view
 	h.refreshSelectedIndex()
 
-	// if the hud isn't running, make sure new logs are visible on stdout
-	logLen := view.Log.Len()
+	return h.refresh(ctx)
+}
+
+// setViewLogOnly prints the new logs to stdout. (Should only be invoked if !h.isRunning)
+func (h *Hud) setViewLogOnly(ctx context.Context, log model.Log) error {
+	if h.isRunning {
+		return fmt.Errorf("cannot call setViewLogOnly if hud is running")
+	}
+
+	logLen := log.Len()
 	if !h.isRunning && h.currentViewState.ProcessedLogByteCount < logLen {
-		fmt.Print(view.Log.String()[h.currentViewState.ProcessedLogByteCount:])
+		fmt.Print(log.String()[h.currentViewState.ProcessedLogByteCount:])
 	}
 
 	h.currentViewState.ProcessedLogByteCount = logLen
