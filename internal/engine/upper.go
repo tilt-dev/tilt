@@ -206,6 +206,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleTiltCloudUserLookedUpAction(state, action)
 	case store.UserStartedTiltCloudRegistrationAction:
 		handleUserStartedTiltCloudRegistrationAction(state)
+	case store.PanicAction:
+		handlePanicAction(state, action)
 	case store.LogEvent:
 		// handled as a LogAction, do nothing
 
@@ -684,6 +686,10 @@ func handleExitAction(state *store.EngineState, action hud.ExitAction) {
 	} else {
 		state.UserExited = true
 	}
+}
+
+func handlePanicAction(state *store.EngineState, action store.PanicAction) {
+	state.PanicExited = action.Err
 }
 
 func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineState, action DockerComposeEventAction) {

@@ -48,6 +48,9 @@ type EngineState struct {
 	// The user has indicated they want to exit
 	UserExited bool
 
+	// We recovered from a panic(). We need to clean up the RTY and print the error.
+	PanicExited error
+
 	// The full log stream for tilt. This might deserve gc or file storage at some point.
 	Log model.Log `testdiff:"ignore"`
 
