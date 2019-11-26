@@ -86,6 +86,7 @@ func (ws WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore) {
 	w, err := ws.conn.NextWriter(websocket.TextMessage)
 	if err != nil {
 		logger.Get(ctx).Verbosef("getting writer: %v", err)
+		return
 	}
 	defer func() {
 		err := w.Close()

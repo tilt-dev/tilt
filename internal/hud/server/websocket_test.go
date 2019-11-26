@@ -70,6 +70,29 @@ func TestWebsocketReadErrDuringMsg(t *testing.T) {
 	conn.AssertClose(t, done)
 }
 
+func TestWebsocketNextWriterError(t *testing.T) {
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
+	st, _ := store.NewStoreForTesting()
+	st.SetUpSubscribersForTesting(ctx)
+
+	conn := newFakeConn()
+	conn.nextWriterError = fmt.Errorf("fake NextWriter error")
+	ws := NewWebsocketSubscriber(conn)
+	st.AddSubscriber(ctx, ws)
+
+	done := make(chan bool)
+	go func() {
+		ws.Stream(ctx, st)
+		close(done)
+	}()
+
+	st.NotifySubscribers(ctx)
+	time.Sleep(10 * time.Millisecond)
+
+	conn.readCh <- fmt.Errorf("read error")
+	conn.AssertClose(t, done)
+}
+
 type fakeConn struct {
 	// Write an error to this channel to stop the Read consumer
 	readCh chan error
@@ -78,6 +101,8 @@ type fakeConn struct {
 	writeCh chan msg
 
 	closed bool
+
+	nextWriterError error
 }
 
 func newFakeConn() *fakeConn {
@@ -122,6 +147,9 @@ func (c *fakeConn) AssertClose(t *testing.T, done chan bool) {
 }
 
 func (c *fakeConn) NextWriter(messagetype int) (io.WriteCloser, error) {
+	if c.nextWriterError != nil {
+		return nil, c.nextWriterError
+	}
 	return c.writer(), nil
 }
 
