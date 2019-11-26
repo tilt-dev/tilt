@@ -61,6 +61,16 @@ else
 		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -p $(GO_PARALLEL_JOBS) -timeout 80s
 endif
 
+test-go-helm-only:
+ifneq ($(CIRCLECI),true)
+		go test -p $(GO_PARALLEL_JOBS) -timeout 80s ./internal/tiltfile -run "(?i)(.*)Helm(.*)"
+else
+		mkdir -p test-results
+		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./internal/tiltfile -p $(GO_PARALLEL_JOBS) -timeout 80s -run "(?i)(.*)Helm(.*)"
+endif
+
+
+
 test: test-go test-js
 
 # skip some tests that are slow and not always relevant
