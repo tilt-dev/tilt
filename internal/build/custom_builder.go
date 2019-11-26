@@ -72,7 +72,9 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, comm
 
 	inspect, _, err := b.dCli.ImageInspectWithRaw(ctx, expectedRef.String())
 	if err != nil {
-		return nil, errors.Wrap(err, "Verifying image in Docker")
+		return nil, errors.Wrap(err, "Could not find image in Docker\n"+
+			"If your custom_build doesn't use Docker, you might need to use skips_local_docker=True, "+
+			"see https://docs.tilt.dev/custom_build.html\n")
 	}
 
 	dig := digest.Digest(inspect.ID)
