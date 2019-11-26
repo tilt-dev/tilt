@@ -16,7 +16,7 @@ import (
 )
 
 type CustomBuilder interface {
-	Build(ctx context.Context, ref reference.Named, command string, expectedTag string, pushDisabled bool) (reference.NamedTagged, error)
+	Build(ctx context.Context, ref reference.Named, command string, expectedTag string, skipsLocalDocker bool) (reference.NamedTagged, error)
 }
 
 type ExecCustomBuilder struct {
@@ -31,7 +31,7 @@ func NewExecCustomBuilder(dCli docker.Client, clock Clock) *ExecCustomBuilder {
 	}
 }
 
-func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, command string, expectedTag string, pushDisabled bool) (reference.NamedTagged, error) {
+func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, command string, expectedTag string, skipsLocalDocker bool) (reference.NamedTagged, error) {
 	if expectedTag == "" {
 		expectedTag = fmt.Sprintf("tilt-build-%d", b.clock.Now().Unix())
 	}
@@ -64,10 +64,9 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, comm
 		return nil, errors.Wrap(err, "Custom build command failed")
 	}
 
-	// If the command pushes the image itself, then we don't expect the image
-	// to be available in the docker image registry (because the command
-	// might have its own registry).
-	if pushDisabled {
+	// If the command skips the local docker registry, then we don't expect the image
+	// to be available (because the command has its own registry).
+	if skipsLocalDocker {
 		return expectedRef, nil
 	}
 

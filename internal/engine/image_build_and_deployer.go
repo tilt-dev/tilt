@@ -170,7 +170,7 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 
 	cbSkip := false
 	if iTarget.IsCustomBuild() {
-		cbSkip = iTarget.CustomBuildInfo().DisablePush
+		cbSkip = iTarget.CustomBuildInfo().SkipsPush()
 	}
 
 	// We can also skip the push of the image if it isn't used

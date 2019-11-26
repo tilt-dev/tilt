@@ -44,8 +44,9 @@ type dockerImage struct {
 	// Whether this has been matched up yet to a deploy resource.
 	matched bool
 
-	dependencyIDs []model.TargetID
-	disablePush   bool
+	dependencyIDs    []model.TargetID
+	disablePush      bool
+	skipsLocalDocker bool
 
 	liveUpdate model.LiveUpdate
 }
@@ -223,6 +224,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	var liveUpdateVal, ignoreVal starlark.Value
 	var matchInEnvVars bool
 	var entrypoint string
+	var skipsLocalDocker bool
 
 	err := s.unpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
@@ -230,6 +232,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		"deps", &deps,
 		"tag?", &tag,
 		"disable_push?", &disablePush,
+		"skips_local_docker?", &skipsLocalDocker,
 		"live_update?", &liveUpdateVal,
 		"match_in_env_vars?", &matchInEnvVars,
 		"ignore?", &ignoreVal,
@@ -285,6 +288,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		customDeps:       localDeps,
 		customTag:        tag,
 		disablePush:      disablePush,
+		skipsLocalDocker: skipsLocalDocker,
 		liveUpdate:       liveUpdate,
 		matchInEnvVars:   matchInEnvVars,
 		ignores:          ignores,

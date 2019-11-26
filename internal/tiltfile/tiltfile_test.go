@@ -1834,7 +1834,7 @@ custom_build(
 	f.load("foo")
 	f.assertNumManifests(1)
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "foo/.dockerignore")
-	f.assertNextManifest("foo",
+	m := f.assertNextManifest("foo",
 		cb(
 			image("gcr.io/foo"),
 			deps(f.JoinPath("foo")),
@@ -1842,6 +1842,7 @@ custom_build(
 			tag("my-great-tag"),
 		),
 		deployment("foo"))
+	assert.False(t, m.ImageTargets[0].CustomBuildInfo().SkipsPush())
 }
 
 func TestCustomBuildDisablePush(t *testing.T) {
@@ -1870,6 +1871,32 @@ hfb = custom_build(
 			disablePush(true),
 		),
 		deployment("foo"))
+}
+
+func TestCustomBuildSkipsLocalDocker(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	tiltfile := `
+k8s_yaml('foo.yaml')
+custom_build(
+  'gcr.io/foo',
+  'buildah bud -t $TAG foo && buildah push $TAG $TAG',
+	['foo'],
+	skips_local_docker=True,
+)`
+
+	f.setupFoo()
+	f.file("Tiltfile", tiltfile)
+
+	f.load("foo")
+	m := f.assertNextManifest("foo",
+		cb(
+			image("gcr.io/foo"),
+		),
+		deployment("foo"))
+	assert.True(t, m.ImageTargets[0].CustomBuildInfo().SkipsLocalDocker)
+	assert.True(t, m.ImageTargets[0].CustomBuildInfo().SkipsPush())
 }
 
 func TestExtraImageLocationOneImage(t *testing.T) {
