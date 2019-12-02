@@ -949,8 +949,7 @@ func (s *tiltfileState) checkForImpossibleLiveUpdates(m model.Manifest) error {
 		isDeployed := m.IsImageDeployed(iTarg)
 
 		// This check only applies to images with live updates.
-		isInPlaceUpdate := !iTarg.AnyFastBuildInfo().Empty() || !iTarg.AnyLiveUpdateInfo().Empty()
-		if !isInPlaceUpdate {
+		if iTarg.AnyLiveUpdateInfo().Empty() {
 			continue
 		}
 

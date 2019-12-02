@@ -317,10 +317,8 @@ dc_resource('foo', 'gcr.io/foo')
 	m := f.assertNextManifest("foo", db(image("gcr.io/foo")))
 	iTarget := m.ImageTargetAt(0)
 
-	// Make sure there's no fast build / live update in the default case.
+	// Make sure there's no live update in the default case.
 	assert.True(t, iTarget.IsDockerBuild())
-	assert.False(t, iTarget.IsFastBuild())
-	assert.True(t, iTarget.AnyFastBuildInfo().Empty())
 	assert.True(t, iTarget.AnyLiveUpdateInfo().Empty())
 
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
@@ -351,10 +349,8 @@ docker_compose('docker-compose.yml')
 	m := f.assertNextManifest("foo", db(image("gcr.io/as_specified_in_config")))
 	iTarget := m.ImageTargetAt(0)
 
-	// Make sure there's no fast build / live update in the default case.
+	// Make sure there's no live update in the default case.
 	assert.True(t, iTarget.IsDockerBuild())
-	assert.False(t, iTarget.IsFastBuild())
-	assert.True(t, iTarget.AnyFastBuildInfo().Empty())
 	assert.True(t, iTarget.AnyLiveUpdateInfo().Empty())
 
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
@@ -377,7 +373,6 @@ dc_resource('foo', 'fooimage')
 
 	m := f.assertNextManifest("foo", db(image("fooimage")))
 	assert.True(t, m.ImageTargetAt(0).IsDockerBuild())
-	assert.False(t, m.ImageTargetAt(0).IsFastBuild())
 
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	assert.Equal(t, m.DockerComposeTarget().ConfigPaths, []string{configPath})
@@ -401,11 +396,9 @@ dc_resource('bar', 'gcr.io/bar')
 
 	foo := f.assertNextManifest("foo", db(image("gcr.io/foo")))
 	assert.True(t, foo.ImageTargetAt(0).IsDockerBuild())
-	assert.False(t, foo.ImageTargetAt(0).IsFastBuild())
 
 	bar := f.assertNextManifest("bar", db(image("gcr.io/bar")))
 	assert.True(t, foo.ImageTargetAt(0).IsDockerBuild())
-	assert.False(t, foo.ImageTargetAt(0).IsFastBuild())
 
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	assert.Equal(t, foo.DockerComposeTarget().ConfigPaths, []string{configPath})
@@ -435,11 +428,9 @@ docker_compose('docker-compose.yml')
 
 	foo := f.assertNextManifest("foo", db(image("gcr.io/foo")))
 	assert.True(t, foo.ImageTargetAt(0).IsDockerBuild())
-	assert.False(t, foo.ImageTargetAt(0).IsFastBuild())
 
 	bar := f.assertNextManifest("bar", db(image("gcr.io/bar")))
 	assert.True(t, foo.ImageTargetAt(0).IsDockerBuild())
-	assert.False(t, foo.ImageTargetAt(0).IsFastBuild())
 
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	assert.Equal(t, foo.DockerComposeTarget().ConfigPaths, []string{configPath})
@@ -483,7 +474,6 @@ dc_resource('foo', img_name)
 
 	foo := f.assertNextManifest("foo", db(image("gcr.io/foo")))
 	assert.True(t, foo.ImageTargetAt(0).IsDockerBuild())
-	assert.False(t, foo.ImageTargetAt(0).IsFastBuild())
 
 	bar := f.assertNextManifest("bar")
 	assert.Empty(t, bar.ImageTargets)

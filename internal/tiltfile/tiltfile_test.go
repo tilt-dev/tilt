@@ -124,10 +124,8 @@ k8s_yaml('foo.yaml')
 
 	iTarget := m.ImageTargetAt(0)
 
-	// Make sure there's no fast build / live update in the default case.
+	// Make sure there's no live update in the default case.
 	assert.True(t, iTarget.IsDockerBuild())
-	assert.False(t, iTarget.IsFastBuild())
-	assert.True(t, iTarget.AnyFastBuildInfo().Empty())
 	assert.True(t, iTarget.AnyLiveUpdateInfo().Empty())
 }
 
@@ -1170,7 +1168,6 @@ k8s_yaml('foo.yaml')
 	f.load()
 	m := f.assertNextManifest("foo", db(image("gcr.io/foo")))
 	assert.True(t, m.ImageTargetAt(0).IsDockerBuild())
-	assert.False(t, m.ImageTargetAt(0).IsFastBuild())
 }
 
 func TestSanchoSidecar(t *testing.T) {
