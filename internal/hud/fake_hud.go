@@ -39,29 +39,23 @@ func (h *FakeHud) Run(ctx context.Context, dispatch func(action store.Action), r
 	return ctx.Err()
 }
 
-func (h *FakeHud) SetNarrationMessage(ctx context.Context, msg string) error {
-	return nil
-}
-
-func (h *FakeHud) Refresh(ctx context.Context) {}
-
 func (h *FakeHud) OnChange(ctx context.Context, st store.RStore) {
 	state := st.RLockState()
 	view := store.StateToView(state)
 	st.RUnlockState()
 
-	err := h.Update(view, h.viewState)
+	err := h.update(view, h.viewState)
 	if err != nil {
 		logger.Get(ctx).Infof("Error updating HUD: %v", err)
 	}
 }
 
-func (h *FakeHud) Close() {
+func (h *FakeHud) close() {
 	h.Closed = true
 	close(h.closeCh)
 }
 
-func (h *FakeHud) Update(v view.View, vs view.ViewState) error {
+func (h *FakeHud) update(v view.View, vs view.ViewState) error {
 	h.LastView = v
 	h.updates <- v
 	return nil

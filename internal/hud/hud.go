@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/pkg/logger"
 
 	"github.com/gdamore/tcell"
@@ -29,13 +30,12 @@ const DefaultRefreshInterval = 100 * time.Millisecond
 // (we don't currently worry about trying to know how big a page is, and instead just support pgup/dn as "faster arrows"
 const pgUpDownCount = 20
 
+type HudEnabled bool
+
 type HeadsUpDisplay interface {
 	store.Subscriber
 
 	Run(ctx context.Context, dispatch func(action store.Action), refreshRate time.Duration) error
-	Update(v view.View, vs view.ViewState) error
-	Close()
-	SetNarrationMessage(ctx context.Context, msg string) error
 }
 
 type Hud struct {
@@ -50,6 +50,13 @@ type Hud struct {
 }
 
 var _ HeadsUpDisplay = (*Hud)(nil)
+
+func ProvideHud(hudEnabled HudEnabled, renderer *Renderer, webURL model.WebURL, analytics *analytics.TiltAnalytics) (HeadsUpDisplay, error) {
+	if !hudEnabled {
+		return NewDisabledHud(), nil
+	}
+	return NewDefaultHeadsUpDisplay(renderer, webURL, analytics)
+}
 
 func NewDefaultHeadsUpDisplay(renderer *Renderer, webURL model.WebURL, analytics *analytics.TiltAnalytics) (HeadsUpDisplay, error) {
 	return &Hud{
@@ -69,6 +76,12 @@ func (h *Hud) SetNarrationMessage(ctx context.Context, msg string) error {
 }
 
 func (h *Hud) Run(ctx context.Context, dispatch func(action store.Action), refreshRate time.Duration) error {
+	// Redirect stdout and stderr into our logger
+	err := output.CaptureAllOutput(logger.Get(ctx).Writer(logger.InfoLvl))
+	if err != nil {
+		logger.Get(ctx).Infof("Error capturing stdout and stderr: %v", err)
+	}
+
 	h.mu.Lock()
 	h.isRunning = true
 	h.mu.Unlock()
@@ -254,21 +267,6 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 }
 
 func (h *Hud) OnChange(ctx context.Context, st store.RStore) {
-	if !h.isRunning {
-		state := st.RLockState()
-		log := state.Log
-		st.RUnlockState()
-
-		h.mu.Lock()
-		defer h.mu.Unlock()
-		// if the hud isn't running, make sure new logs are visible on stdout
-		err := h.setViewLogOnly(ctx, log)
-		if err != nil {
-			st.Dispatch(NewExitAction(err))
-		}
-		return
-	}
-
 	state := st.RLockState()
 	view := store.StateToView(state)
 	st.RUnlockState()
@@ -289,10 +287,6 @@ func (h *Hud) Refresh(ctx context.Context) error {
 
 // Must hold the lock
 func (h *Hud) setView(ctx context.Context, view view.View) error {
-	if !h.isRunning {
-		return fmt.Errorf("can only call setView if hud is running")
-	}
-
 	// if we're going from 1 resource (i.e., the Tiltfile) to more than 1, reset
 	// the resource selection, so that we're not scrolled to the bottom with the Tiltfile selected
 	if len(h.currentView.Resources) == 1 && len(view.Resources) > 1 {
@@ -300,6 +294,14 @@ func (h *Hud) setView(ctx context.Context, view view.View) error {
 	}
 	h.currentView = view
 	h.refreshSelectedIndex()
+
+	// if the hud isn't running, make sure new logs are visible on stdout
+	logLen := view.Log.Len()
+	if !h.isRunning && h.currentViewState.ProcessedLogByteCount < logLen {
+		fmt.Print(view.Log.String()[h.currentViewState.ProcessedLogByteCount:])
+	}
+
+	h.currentViewState.ProcessedLogByteCount = logLen
 
 	return h.refresh(ctx)
 }

@@ -20,7 +20,6 @@ import (
 	engineanalytics "github.com/windmilleng/tilt/internal/engine/analytics"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tracer"
@@ -100,7 +99,8 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		logOutput("Tilt analytics manually disabled by environment")
 	}
 
-	threads, err := wireCmdUp(ctx, a, cmdUpTags)
+	hudEnabled := c.hud && isatty.IsTerminal(os.Stdout.Fd())
+	threads, err := wireCmdUp(ctx, hud.HudEnabled(hudEnabled), a, cmdUpTags)
 	if err != nil {
 		deferred.SetOutput(deferred.Original())
 		return err
@@ -125,12 +125,8 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	hudEnabled := c.hud && isatty.IsTerminal(os.Stdout.Fd())
+
 	if hudEnabled {
-		err := output.CaptureAllOutput(logger.Get(ctx).Writer(logger.InfoLvl))
-		if err != nil {
-			logger.Get(ctx).Infof("Error capturing stdout and stderr: %v", err)
-		}
 		g.Go(func() error {
 			err := h.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
 			return err
