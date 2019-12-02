@@ -470,7 +470,8 @@ it("does not scroll to highlighted lines if not snapshot", () => {
 
 it("doesn't set selection event handler if snapshot", () => {
   const fakeAddEventListener = jest.fn()
-  global.addEventListener = fakeAddEventListener
+  const globalAny: any = global
+  globalAny.addEventListener = fakeAddEventListener
 
   const highlight = {
     beginningLogID: "logLine2",
