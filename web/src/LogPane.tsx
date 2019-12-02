@@ -52,11 +52,16 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     } else if (this.lastElement !== null) {
       this.lastElement.scrollIntoView()
     }
-    window.addEventListener("scroll", this.refreshAutoScroll, { passive: true })
+
+    if (!this.props.isSnapshot) {
+      window.addEventListener("scroll", this.refreshAutoScroll, {
+        passive: true,
+      })
+      document.addEventListener("selectionchange", this.handleSelectionChange, {
+        passive: true,
+      })
+    }
     window.addEventListener("wheel", this.handleWheel, { passive: true })
-    document.addEventListener("selectionchange", this.handleSelectionChange, {
-      passive: true,
-    })
   }
 
   componentDidUpdate(prevProps: LogPaneProps) {
