@@ -81,6 +81,10 @@ func ProvideEnv(ctx context.Context, config *api.Config) Env {
 		return EnvGKE
 	} else if Env(cn) == EnvKIND {
 		return EnvKIND
+	} else if strings.HasPrefix(cn, "kind-") {
+		// As of KinD 0.6.0, KinD uses a context name prefix
+		// https://github.com/kubernetes-sigs/kind/issues/1060
+		return EnvKIND
 	} else if cn == "microk8s-cluster" {
 		return EnvMicroK8s
 	}
@@ -105,6 +109,8 @@ func ProvideEnv(ctx context.Context, config *api.Config) Env {
 	//
 	// KIND internally looks for its clusters with `docker ps` + filters,
 	// which might be a route to explore if this isn't robust enough.
+	//
+	// This is for old pre-0.6.0 versions of KinD
 	if strings.HasPrefix(filepath.Base(loc), "kind-config-") {
 		return EnvKIND
 	}
