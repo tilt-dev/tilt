@@ -18,12 +18,9 @@ import (
 )
 
 var (
-	fb = model.FastBuild{HotReload: true}                                            // non-empty FastBuild
 	lu = model.LiveUpdate{Steps: []model.LiveUpdateStep{model.LiveUpdateSyncStep{}}} // non-empty LiveUpdate
 
 	imgTargDB       = model.ImageTarget{BuildDetails: model.DockerBuild{}}
-	imgTargFB       = model.ImageTarget{BuildDetails: fb}
-	imgTargDBWithFB = model.ImageTarget{BuildDetails: model.DockerBuild{FastBuild: fb}}
 	imgTargDBWithLU = model.ImageTarget{BuildDetails: model.DockerBuild{LiveUpdate: lu}}
 
 	kTarg = model.K8sTarget{}
@@ -45,9 +42,7 @@ var (
 func TestAnalyticsReporter_Everything(t *testing.T) {
 	tf := newAnalyticsReporterTestFixture()
 
-	tf.addManifest(tf.nextManifest().WithImageTarget(imgTargFB))                               // fastbuild
 	tf.addManifest(tf.nextManifest().WithImageTarget(imgTargDB).WithDeployTarget(kTarg))       // k8s
-	tf.addManifest(tf.nextManifest().WithImageTarget(imgTargDBWithFB))                         // anyfastbuild
 	tf.addManifest(tf.nextManifest().WithImageTarget(imgTargDBWithLU))                         // liveupdate
 	tf.addManifest(tf.nextManifest().WithDeployTarget(kTarg))                                  // k8s, unbuilt
 	tf.addManifest(tf.nextManifest().WithDeployTarget(kTarg))                                  // k8s, unbuilt
@@ -69,11 +64,9 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 
 	expectedTags := map[string]string{
 		"builds.completed_count":                              "3",
-		"resource.count":                                      "11",
+		"resource.count":                                      "9",
 		"resource.dockercompose.count":                        "3",
 		"resource.unbuiltresources.count":                     "3",
-		"resource.fastbuild.count":                            "1",
-		"resource.anyfastbuild.count":                         "2",
 		"resource.liveupdate.count":                           "3",
 		"resource.k8s.count":                                  "4",
 		"resource.sameimagemultiplecontainerliveupdate.count": "0", // tests for this below
@@ -134,7 +127,6 @@ func TestAnalyticsReporter_SameImageMultiContainer_NoIncr(t *testing.T) {
 func TestAnalyticsReporter_TiltfileError(t *testing.T) {
 	tf := newAnalyticsReporterTestFixture()
 
-	tf.addManifest(tf.nextManifest().WithImageTarget(model.ImageTarget{BuildDetails: model.FastBuild{}}))
 	tf.addManifest(tf.nextManifest().WithImageTarget(model.ImageTarget{BuildDetails: model.DockerBuild{}}))
 	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))
 	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))
