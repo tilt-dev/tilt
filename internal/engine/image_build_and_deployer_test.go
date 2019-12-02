@@ -385,7 +385,7 @@ ENTRYPOINT /go/bin/sancho
 }
 
 func TestKINDPush(t *testing.T) {
-	f := newIBDFixture(t, k8s.EnvKIND)
+	f := newIBDFixture(t, k8s.EnvKIND6)
 	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildManifest(f)
@@ -400,7 +400,7 @@ func TestKINDPush(t *testing.T) {
 }
 
 func TestCustomBuildDisablePush(t *testing.T) {
-	f := newIBDFixture(t, k8s.EnvKIND)
+	f := newIBDFixture(t, k8s.EnvKIND6)
 	defer f.TearDown()
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build"] = types.ImageInspect{ID: string(sha)}
@@ -417,7 +417,7 @@ func TestCustomBuildDisablePush(t *testing.T) {
 }
 
 func TestCustomBuildSkipsLocalDocker(t *testing.T) {
-	f := newIBDFixture(t, k8s.EnvKIND)
+	f := newIBDFixture(t, k8s.EnvKIND6)
 	defer f.TearDown()
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build"] = types.ImageInspect{ID: string(sha)}

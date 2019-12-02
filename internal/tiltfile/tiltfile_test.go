@@ -3820,7 +3820,8 @@ func TestK8SContextAcceptance(t *testing.T) {
 	}{
 		{"minikube", "minikube", k8s.EnvMinikube, false, nil},
 		{"docker-for-desktop", "docker-for-desktop", k8s.EnvDockerDesktop, false, nil},
-		{"kind", "KIND", k8s.EnvKIND, false, nil},
+		{"kind", "KIND", k8s.EnvKIND6, false, nil},
+		{"kind", "KIND", k8s.EnvKIND5, false, nil},
 		{"gke", "gke", k8s.EnvGKE, true, []string{"'gke'", "If you're sure", "switch k8s contexts", "allow_k8s_contexts"}},
 		{"allowed", "allowed-context", k8s.EnvGKE, false, nil},
 	} {

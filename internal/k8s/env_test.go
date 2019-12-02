@@ -78,11 +78,11 @@ func TestProvideEnv(t *testing.T) {
 		{EnvDockerDesktop, &api.Config{CurrentContext: "docker-for-desktop", Contexts: dockerDesktopContexts}},
 		{EnvDockerDesktop, &api.Config{CurrentContext: "docker-for-desktop", Contexts: dockerDesktopEdgeContexts}},
 		{EnvGKE, &api.Config{CurrentContext: "gke_blorg-dev_us-central1-b_blorg", Contexts: gkeContexts}},
-		{EnvKIND, &api.Config{CurrentContext: "kubernetes-admin@kind-1", Contexts: kind5Contexts}},
+		{EnvKIND5, &api.Config{CurrentContext: "kubernetes-admin@kind-1", Contexts: kind5Contexts}},
 		{EnvMicroK8s, &api.Config{CurrentContext: "microk8s", Contexts: microK8sContexts}},
 		{EnvK3D, &api.Config{CurrentContext: "default", Contexts: k3dContexts}},
-		{EnvKIND, &api.Config{CurrentContext: "default", Contexts: kind5NamedClusterContexts}},
-		{EnvKIND, &api.Config{CurrentContext: "kind-custom-name", Contexts: kind6Contexts}},
+		{EnvKIND5, &api.Config{CurrentContext: "default", Contexts: kind5NamedClusterContexts}},
+		{EnvKIND6, &api.Config{CurrentContext: "kind-custom-name", Contexts: kind6Contexts}},
 	}
 
 	for _, tt := range table {
