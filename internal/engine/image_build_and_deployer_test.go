@@ -54,36 +54,11 @@ ENTRYPOINT /go/bin/sancho
 	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
 }
 
-func TestBaseDockerfileWithCache(t *testing.T) {
-	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
-
-	manifest := NewSanchoFastBuildManifestWithCache(f, []string{"/root/.cache"})
-	cache := "gcr.io/some-project-162817/sancho:tilt-cache-3de427a264f80719a58a9abd456487b3"
-	f.docker.Images[cache] = types.ImageInspect{}
-
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expected := expectedFile{
-		Path: "Dockerfile",
-		Contents: `FROM gcr.io/some-project-162817/sancho:tilt-cache-3de427a264f80719a58a9abd456487b3
-LABEL "tilt.cache"="0"
-ADD . /
-RUN ["go", "install", "github.com/windmilleng/sancho"]
-ENTRYPOINT ["/go/bin/sancho"]
-LABEL "tilt.buildMode"="scratch"`,
-	}
-	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
-}
-
 func TestDeployTwinImages(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	sancho := NewSanchoFastBuildManifest(f)
+	sancho := NewSanchoDockerBuildManifest(f)
 	manifest := sancho.WithDeployTarget(sancho.K8sTarget().AppendYAML(SanchoTwinYAML))
 	result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
@@ -452,7 +427,6 @@ func TestDeployUsesInjectRef(t *testing.T) {
 		expectedImages []string
 	}{
 		{"docker build", func(f Fixture) model.Manifest { return NewSanchoDockerBuildManifest(f) }, expectedImages},
-		{"fast build", NewSanchoFastBuildManifest, expectedImages},
 		{"custom build", NewSanchoCustomBuildManifest, expectedImages},
 		{"live multi stage", NewSanchoLiveUpdateMultiStageManifest, append(expectedImages, "foo.com/sancho-base")},
 	}
@@ -725,7 +699,7 @@ func TestIBDDeployUIDs(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	manifest := NewSanchoFastBuildManifest(f)
+	manifest := NewSanchoDockerBuildManifest(f)
 	result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
