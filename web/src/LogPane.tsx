@@ -60,8 +60,8 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       document.addEventListener("selectionchange", this.handleSelectionChange, {
         passive: true,
       })
+      window.addEventListener("wheel", this.handleWheel, { passive: true })
     }
-    window.addEventListener("wheel", this.handleWheel, { passive: true })
   }
 
   componentDidUpdate(prevProps: LogPaneProps) {
@@ -82,7 +82,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     document.removeEventListener("selectionchange", this.handleSelectionChange)
   }
 
-  private handleSelectionChange() {
+  handleSelectionChange() {
     let selection = document.getSelection()
     if (
       selection &&

@@ -488,7 +488,13 @@ it("doesn't set selection event handler if snapshot", () => {
     />
   )
 
-  expect(fakeAddEventListener).not.toHaveBeenCalledWith(
-    wrapper.handleSelectionChange
+  let registeredEventHandlers = fakeAddEventListener.mock.calls.map(c => c[0])
+
+  expect(registeredEventHandlers).not.toEqual(
+    expect.arrayContaining(["selectionchange"])
   )
+  expect(registeredEventHandlers).not.toEqual(
+    expect.arrayContaining(["scroll"])
+  )
+  expect(registeredEventHandlers).not.toEqual(expect.arrayContaining(["wheel"]))
 })
