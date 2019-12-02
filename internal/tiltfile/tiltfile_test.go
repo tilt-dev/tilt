@@ -1806,7 +1806,16 @@ k8s_yaml(helm('helm'))
 `)
 
 	// TODO(dmiller): there should be a better assertion here
-	f.loadErrString("helm")
+
+	version, err := getHelmVersion()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if version == helmV2 {
+		f.loadErrString("from helm")
+	} else {
+		f.loadErrString("in helm")
+	}
 }
 
 func TestYamlErrorFromBlob(t *testing.T) {
