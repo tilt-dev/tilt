@@ -75,7 +75,7 @@ func (ar *AnalyticsReporter) report() {
 		}
 		var seenLU, multiImgLU, multiContainerLU bool
 		for _, it := range m.ImageTargets {
-			if !it.AnyLiveUpdateInfo().Empty() {
+			if !it.LiveUpdateInfo().Empty() {
 				if !seenLU {
 					seenLU = true
 					liveUpdateCount++

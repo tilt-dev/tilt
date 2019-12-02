@@ -883,7 +883,7 @@ k8s_yaml('snack.yaml')
 
 	f.withManifestTarget("snack", func(mt store.ManifestTarget) {
 		expectedCmd := model.ToShellCmd("changed")
-		assert.Equal(t, expectedCmd, mt.Manifest.ImageTargetAt(0).AnyLiveUpdateInfo().RunSteps()[0].Cmd,
+		assert.Equal(t, expectedCmd, mt.Manifest.ImageTargetAt(0).LiveUpdateInfo().RunSteps()[0].Cmd,
 			"Tiltfile change should have propagated to manifest")
 	})
 

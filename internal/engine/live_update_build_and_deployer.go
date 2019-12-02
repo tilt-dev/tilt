@@ -202,19 +202,7 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 	var runs []model.Run
 	var hotReload bool
 
-	if fbInfo := iTarget.AnyFastBuildInfo(); !fbInfo.Empty() {
-		var skipped []string
-		fileMappings, skipped, err = build.FilesToPathMappings(filesChanged, fbInfo.Syncs)
-		if err != nil {
-			return liveUpdInfo{}, err
-		}
-		if len(skipped) > 0 {
-			return liveUpdInfo{}, RedirectToNextBuilderInfof("found file(s) not matching a FastBuild sync, so "+
-				"performing a full build. (Files: %s)", strings.Join(skipped, ", "))
-		}
-		runs = fbInfo.Runs
-		hotReload = fbInfo.HotReload
-	} else if luInfo := iTarget.AnyLiveUpdateInfo(); !luInfo.Empty() {
+	if luInfo := iTarget.LiveUpdateInfo(); !luInfo.Empty() {
 		var skipped []string
 		fileMappings, skipped, err = build.FilesToPathMappings(filesChanged, luInfo.SyncSteps())
 		if err != nil {

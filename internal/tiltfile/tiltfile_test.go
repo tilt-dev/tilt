@@ -126,7 +126,7 @@ k8s_yaml('foo.yaml')
 
 	// Make sure there's no live update in the default case.
 	assert.True(t, iTarget.IsDockerBuild())
-	assert.True(t, iTarget.AnyLiveUpdateInfo().Empty())
+	assert.True(t, iTarget.LiveUpdateInfo().Empty())
 }
 
 // I.e. make sure that we handle de/normalization between `fooimage` <--> `docker.io/library/fooimage`
@@ -1414,8 +1414,8 @@ k8s_yaml('foo.yaml')
 	m := f.assertNextManifest("foo",
 		deployment("foo", image("gcr.io/image-a"), image("gcr.io/image-b")))
 
-	assert.True(t, m.ImageTargetAt(0).AnyLiveUpdateInfo().Empty())
-	assert.False(t, m.ImageTargetAt(1).AnyLiveUpdateInfo().Empty())
+	assert.True(t, m.ImageTargetAt(0).LiveUpdateInfo().Empty())
+	assert.False(t, m.ImageTargetAt(1).LiveUpdateInfo().Empty())
 }
 
 func TestImageDependencyCycle(t *testing.T) {
@@ -4570,7 +4570,7 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 							matcher.cmd.Argv, image.OverrideCmd.Argv)
 					}
 				case model.LiveUpdate:
-					lu := image.AnyLiveUpdateInfo()
+					lu := image.LiveUpdateInfo()
 					assert.False(f.t, lu.Empty())
 					assert.Equal(f.t, matcher, lu)
 				default:
@@ -4606,7 +4606,7 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 							matcher.cmd.Argv, image.OverrideCmd.Argv)
 					}
 				case model.LiveUpdate:
-					lu := image.AnyLiveUpdateInfo()
+					lu := image.LiveUpdateInfo()
 					assert.False(f.t, lu.Empty())
 					assert.Equal(f.t, matcher, lu)
 				}

@@ -62,10 +62,9 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 			continue
 		}
 
-		fbInfo := iTarget.AnyFastBuildInfo()
-		luInfo := iTarget.AnyLiveUpdateInfo()
-		if fbInfo.Empty() && luInfo.Empty() {
-			return nil, SilentRedirectToNextBuilderf("In-place build requires either FastBuild or LiveUpdate")
+		luInfo := iTarget.LiveUpdateInfo()
+		if luInfo.Empty() {
+			return nil, SilentRedirectToNextBuilderf("LiveUpdate requires that LiveUpdate details be specified")
 		}
 
 		if state.RunningContainerError != nil {

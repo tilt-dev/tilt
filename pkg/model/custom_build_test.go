@@ -50,7 +50,7 @@ func TestEmptyLiveUpdate(t *testing.T) {
 	it := ImageTarget{
 		BuildDetails: cb,
 	}
-	bi := it.AnyLiveUpdateInfo()
+	bi := it.LiveUpdateInfo()
 	assert.True(t, bi.Empty())
 }
 

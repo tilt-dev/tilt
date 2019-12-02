@@ -2,8 +2,6 @@ package model
 
 import (
 	"fmt"
-	"path/filepath"
-	"reflect"
 	"sort"
 
 	"github.com/docker/distribution/reference"
@@ -71,17 +69,6 @@ func (i ImageTarget) Validate() error {
 		if bd.BuildPath == "" {
 			return fmt.Errorf("[Validate] Image %q missing build path", i.ConfigurationRef)
 		}
-	case FastBuild:
-		if bd.BaseDockerfile == "" {
-			return fmt.Errorf("[Validate] Image %q missing base dockerfile", i.ConfigurationRef)
-		}
-
-		for _, mnt := range bd.Syncs {
-			if !filepath.IsAbs(mnt.LocalPath) {
-				return fmt.Errorf(
-					"[Validate] Image %q: mount must be an absolute path (got: %s)", i.ConfigurationRef, mnt.LocalPath)
-			}
-		}
 	case CustomBuild:
 		if bd.Command == "" {
 			return fmt.Errorf(
@@ -109,7 +96,7 @@ func (i ImageTarget) IsDockerBuild() bool {
 	return ok
 }
 
-func (i ImageTarget) AnyLiveUpdateInfo() LiveUpdate {
+func (i ImageTarget) LiveUpdateInfo() LiveUpdate {
 	switch details := i.BuildDetails.(type) {
 	case DockerBuild:
 		return details.LiveUpdate
@@ -118,32 +105,6 @@ func (i ImageTarget) AnyLiveUpdateInfo() LiveUpdate {
 	default:
 		return LiveUpdate{}
 	}
-}
-
-func (i ImageTarget) AnyFastBuildInfo() FastBuild {
-	switch details := i.BuildDetails.(type) {
-	case FastBuild:
-		return details
-	case DockerBuild:
-		return details.FastBuild
-	case CustomBuild:
-		return details.Fast
-	}
-	return FastBuild{}
-}
-
-// FastBuildInfo returns the TOP LEVEL BUILD DETAILS, if a FastBuild.
-// Does not return nested FastBuild details.
-func (i ImageTarget) TopFastBuildInfo() FastBuild {
-	ret, _ := i.BuildDetails.(FastBuild)
-	return ret
-}
-
-// IsFastBuild checks if the TOP LEVEL BUILD DETAILS are for a FastBuild.
-// (If this target is a DockerBuild || CustomBuild with a nested FastBuild, returns FALSE.)
-func (i ImageTarget) IsFastBuild() bool {
-	_, ok := i.BuildDetails.(FastBuild)
-	return ok
 }
 
 func (i ImageTarget) CustomBuildInfo() CustomBuild {
@@ -194,12 +155,6 @@ func (i ImageTarget) LocalPaths() []string {
 	switch bd := i.BuildDetails.(type) {
 	case DockerBuild:
 		return []string{bd.BuildPath}
-	case FastBuild:
-		result := make([]string, len(bd.Syncs))
-		for i, mount := range bd.Syncs {
-			result[i] = mount.LocalPath
-		}
-		return result
 	case CustomBuild:
 		return append([]string(nil), bd.Deps...)
 	}
@@ -241,7 +196,6 @@ type DockerBuild struct {
 	Dockerfile  string
 	BuildPath   string // the absolute path to the files
 	BuildArgs   DockerBuildArgs
-	FastBuild   FastBuild  // Optionally, can use FastBuild to update this build in place.
 	LiveUpdate  LiveUpdate // Optionally, can use LiveUpdate to update this build in place.
 	TargetStage DockerBuildTarget
 }
@@ -251,20 +205,6 @@ func (DockerBuild) buildDetails() {}
 type DockerBuildTarget string
 
 func (s DockerBuildTarget) String() string { return string(s) }
-
-type FastBuild struct {
-	BaseDockerfile string
-	Syncs          []Sync
-	Runs           []Run
-	Entrypoint     Cmd
-
-	// A HotReload container image knows how to automatically
-	// reload any changes in the container. No need to restart it.
-	HotReload bool
-}
-
-func (FastBuild) buildDetails()  {}
-func (fb FastBuild) Empty() bool { return reflect.DeepEqual(fb, FastBuild{}) }
 
 type CustomBuild struct {
 	Command string
@@ -277,7 +217,6 @@ type CustomBuild struct {
 	// export $EXPECTED_REF=name:expected_tag )
 	Tag string
 
-	Fast             FastBuild
 	LiveUpdate       LiveUpdate // Optionally, can use LiveUpdate to update this build in place.
 	DisablePush      bool
 	SkipsLocalDocker bool

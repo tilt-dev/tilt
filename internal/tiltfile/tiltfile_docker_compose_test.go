@@ -319,7 +319,7 @@ dc_resource('foo', 'gcr.io/foo')
 
 	// Make sure there's no live update in the default case.
 	assert.True(t, iTarget.IsDockerBuild())
-	assert.True(t, iTarget.AnyLiveUpdateInfo().Empty())
+	assert.True(t, iTarget.LiveUpdateInfo().Empty())
 
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	assert.Equal(t, m.DockerComposeTarget().ConfigPaths, []string{configPath})
@@ -351,7 +351,7 @@ docker_compose('docker-compose.yml')
 
 	// Make sure there's no live update in the default case.
 	assert.True(t, iTarget.IsDockerBuild())
-	assert.True(t, iTarget.AnyLiveUpdateInfo().Empty())
+	assert.True(t, iTarget.LiveUpdateInfo().Empty())
 
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	assert.Equal(t, m.DockerComposeTarget().ConfigPaths, []string{configPath})

@@ -949,7 +949,7 @@ func (s *tiltfileState) checkForImpossibleLiveUpdates(m model.Manifest) error {
 		isDeployed := m.IsImageDeployed(iTarg)
 
 		// This check only applies to images with live updates.
-		if iTarg.AnyLiveUpdateInfo().Empty() {
+		if iTarg.LiveUpdateInfo().Empty() {
 			continue
 		}
 
@@ -968,7 +968,7 @@ func (s *tiltfileState) checkForImpossibleLiveUpdates(m model.Manifest) error {
 }
 
 func (s *tiltfileState) validateLiveUpdate(iTarget model.ImageTarget, g model.TargetGraph) error {
-	lu := iTarget.AnyLiveUpdateInfo()
+	lu := iTarget.LiveUpdateInfo()
 	if lu.Empty() {
 		return nil
 	}
