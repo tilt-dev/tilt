@@ -151,10 +151,26 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, fmt.Errorf("helm() may only be called on directories with Chart.yaml: %q", localPath)
 	}
 
-	cmd := []string{"helm", "template", localPath}
-	if name != "" {
-		cmd = append(cmd, "--name", name)
+	version, err := getHelmVersion()
+	if err != nil {
+		return nil, err
 	}
+
+	var cmd []string
+
+	if version == helmV3 {
+		if name != "" {
+			cmd = []string{"helm", "template", name, localPath}
+		} else {
+			cmd = []string{"helm", "template", localPath, "--generate-name"}
+		}
+	} else {
+		cmd = []string{"helm", "template", localPath}
+		if name != "" {
+			cmd = append(cmd, "--name", name)
+		}
+	}
+
 	if namespace != "" {
 		cmd = append(cmd, "--namespace", namespace)
 	}
@@ -168,6 +184,8 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	for _, setArg := range set {
 		cmd = append(cmd, "--set", setArg)
 	}
+
+	s.logger.Infof("Running: %s", cmd)
 
 	stdout, err := s.execLocalCmd(thread, exec.Command(cmd[0], cmd[1:]...), false)
 	if err != nil {

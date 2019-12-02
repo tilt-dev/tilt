@@ -1804,7 +1804,18 @@ func TestYamlErrorFromHelm(t *testing.T) {
 	f.file("Tiltfile", `
 k8s_yaml(helm('helm'))
 `)
-	f.loadErrString("from helm")
+
+	// TODO(dmiller): there should be a better assertion here
+
+	version, err := getHelmVersion()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if version == helmV2 {
+		f.loadErrString("from helm")
+	} else {
+		f.loadErrString("in helm")
+	}
 }
 
 func TestYamlErrorFromBlob(t *testing.T) {
@@ -4483,6 +4494,10 @@ func (f *fixture) assertNoMoreManifests() {
 // Helper func for asserting that the next manifest is Unresourced
 // k8s YAML containing the given k8s entities.
 func (f *fixture) assertNextManifestUnresourced(expectedEntities ...string) model.Manifest {
+	lowercaseExpected := []string{}
+	for _, e := range expectedEntities {
+		lowercaseExpected = append(lowercaseExpected, strings.ToLower(e))
+	}
 	next := f.assertNextManifest(model.UnresourcedYAMLManifestName)
 
 	entities, err := k8s.ParseYAML(bytes.NewBufferString(next.K8sTarget().YAML))
@@ -4490,9 +4505,9 @@ func (f *fixture) assertNextManifestUnresourced(expectedEntities ...string) mode
 
 	entityNames := make([]string, len(entities))
 	for i, e := range entities {
-		entityNames[i] = e.Name()
+		entityNames[i] = strings.ToLower(e.Name())
 	}
-	assert.Equal(f.t, expectedEntities, entityNames)
+	assert.Equal(f.t, lowercaseExpected, entityNames)
 	return next
 }
 
