@@ -161,7 +161,7 @@ func requiresDocker(tlr tiltfile.TiltfileLoadResult) bool {
 
 	for _, m := range tlr.Manifests {
 		for _, iTarget := range m.ImageTargets {
-			if iTarget.IsDockerBuild() || iTarget.IsFastBuild() {
+			if iTarget.IsDockerBuild() {
 				return true
 			}
 		}

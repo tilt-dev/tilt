@@ -59,8 +59,8 @@ func ProvideAnalyticsReporter(a *analytics.TiltAnalytics, st *store.Store) *Anal
 func (ar *AnalyticsReporter) report() {
 	st := ar.store.RLockState()
 	defer ar.store.RUnlockState()
-	var dcCount, k8sCount, fastbuildBaseCount, anyFastbuildCount, liveUpdateCount,
-		unbuiltCount, sameImgMultiContainerLiveUpdate, multiImgLiveUpdate int
+	var dcCount, k8sCount, liveUpdateCount, unbuiltCount,
+		sameImgMultiContainerLiveUpdate, multiImgLiveUpdate int
 	for _, m := range st.Manifests() {
 		var refInjectCounts map[string]int
 		if m.IsK8s() {
@@ -75,13 +75,6 @@ func (ar *AnalyticsReporter) report() {
 		}
 		var seenLU, multiImgLU, multiContainerLU bool
 		for _, it := range m.ImageTargets {
-			if !it.AnyFastBuildInfo().Empty() {
-				anyFastbuildCount++
-				if it.IsFastBuild() {
-					fastbuildBaseCount++
-				}
-				break
-			}
 			if !it.AnyLiveUpdateInfo().Empty() {
 				if !seenLU {
 					seenLU = true
@@ -114,8 +107,6 @@ func (ar *AnalyticsReporter) report() {
 		stats["resource.count"] = strconv.Itoa(len(st.ManifestDefinitionOrder))
 		stats["resource.dockercompose.count"] = strconv.Itoa(dcCount)
 		stats["resource.k8s.count"] = strconv.Itoa(k8sCount)
-		stats["resource.fastbuild.count"] = strconv.Itoa(fastbuildBaseCount)
-		stats["resource.anyfastbuild.count"] = strconv.Itoa(anyFastbuildCount)
 		stats["resource.liveupdate.count"] = strconv.Itoa(liveUpdateCount)
 		stats["resource.unbuiltresources.count"] = strconv.Itoa(unbuiltCount)
 		stats["resource.sameimagemultiplecontainerliveupdate.count"] = strconv.Itoa(sameImgMultiContainerLiveUpdate)
