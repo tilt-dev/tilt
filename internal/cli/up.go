@@ -125,7 +125,6 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-
 	if hudEnabled {
 		g.Go(func() error {
 			err := h.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
