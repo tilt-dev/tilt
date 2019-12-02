@@ -65,7 +65,7 @@ func isHelmInstalled() bool {
 
 func getHelmVersion() (helmVersion, error) {
 	if !isHelmInstalled() {
-		return unknownHelmVersion, fmt.Errorf("Unable to find Helm installation. Make sure is there is a binary called `helm` available in your $PATH.")
+		return unknownHelmVersion, fmt.Errorf("Unable to find Helm installation. Make sure `helm` is on your $PATH.")
 	}
 
 	// NOTE(dmiller): I pass `--client` here even though that doesn't do anything in Helm v3.
