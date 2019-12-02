@@ -467,3 +467,28 @@ it("does not scroll to highlighted lines if not snapshot", () => {
   )
   expect(fakeScrollIntoView).toBeCalledTimes(1)
 })
+
+it("doesn't set selection event handler if snapshot", () => {
+  const fakeAddEventListener = jest.fn()
+  global.addEventListener = fakeAddEventListener
+
+  const highlight = {
+    beginningLogID: "logLine2",
+    endingLogID: "logLine3",
+    text: "foo\nbar",
+  }
+  const wrapper = mount<LogPane>(
+    <LogPane
+      log={longLog}
+      handleSetHighlight={fakeHandleSetHighlight}
+      handleClearHighlight={fakeHandleClearHighlight}
+      highlight={highlight}
+      modalIsOpen={false}
+      isSnapshot={true}
+    />
+  )
+
+  expect(fakeAddEventListener).not.toHaveBeenCalledWith(
+    wrapper.handleSelectionChange
+  )
+})
