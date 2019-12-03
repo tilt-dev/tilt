@@ -306,22 +306,6 @@ func (h *Hud) setView(ctx context.Context, view view.View) error {
 	return h.refresh(ctx)
 }
 
-// setViewLogOnly prints the new logs to stdout. (Should only be invoked if !h.isRunning)
-func (h *Hud) setViewLogOnly(ctx context.Context, log model.Log) error {
-	if h.isRunning {
-		return fmt.Errorf("cannot call setViewLogOnly if hud is running")
-	}
-
-	logLen := log.Len()
-	if !h.isRunning && h.currentViewState.ProcessedLogByteCount < logLen {
-		fmt.Print(log.String()[h.currentViewState.ProcessedLogByteCount:])
-	}
-
-	h.currentViewState.ProcessedLogByteCount = logLen
-
-	return h.refresh(ctx)
-}
-
 // Must hold the lock
 func (h *Hud) setViewState(ctx context.Context, currentViewState view.ViewState) error {
 	h.currentViewState = currentViewState
