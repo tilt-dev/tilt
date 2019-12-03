@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/windmilleng/tilt/internal/rty"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/windmilleng/tilt/pkg/model/logstore"
 
 	"github.com/gdamore/tcell"
 )
@@ -25,6 +27,7 @@ var clockForTest = func() time.Time { return time.Date(2017, 1, 1, 12, 0, 0, 0, 
 
 func newView(resources ...view.Resource) view.View {
 	return view.View{
+		LogReader: newLogReader(""),
 		Resources: resources,
 	}
 }
@@ -228,7 +231,7 @@ func TestRenderTiltLog(t *testing.T) {
 	rtf := newRendererTestFixture(t)
 
 	v := newView()
-	v.Log = model.NewLog(strings.Repeat("abcdefg", 30))
+	v.LogReader = newLogReader(strings.Repeat("abcdefg", 30))
 
 	vs := fakeViewState(0, view.CollapseNo)
 
@@ -437,7 +440,7 @@ func TestBrackets(t *testing.T) {
 		},
 		LastDeployTime: ts,
 	})
-	v.Log = model.NewLog(`[build] This line should be prefixed with 'build'
+	v.LogReader = newLogReader(`[build] This line should be prefixed with 'build'
 [hello world] This line should be prefixed with [hello world]
 [hello world] this line too
 `)
@@ -676,7 +679,7 @@ func TestRenderTabView(t *testing.T) {
 		},
 		LastDeployTime: now,
 	})
-	v.Log = model.NewLog(fmt.Sprintf("%s\n%s\n",
+	v.LogReader = newLogReader(fmt.Sprintf("%s\n%s\n",
 		v.Resources[0].LastBuild().Log.String(),
 		v.Resources[0].ResourceInfo.RuntimeLog()))
 
@@ -784,4 +787,9 @@ func fakeViewState(count int, collapse view.CollapseState) view.ViewState {
 		})
 	}
 	return vs
+}
+
+func newLogReader(msg string) logstore.Reader {
+	store := logstore.NewLogStoreForTesting(msg)
+	return logstore.NewReader(&sync.RWMutex{}, store)
 }

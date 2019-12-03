@@ -8,6 +8,7 @@ import (
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/rty"
 	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/windmilleng/tilt/pkg/model/logstore"
 )
 
 type TabView struct {
@@ -37,9 +38,12 @@ func (v *TabView) Build() rty.Component {
 
 func (v *TabView) log() string {
 	var ret model.Log
+	var reader logstore.Reader
+	var readerEmpty = true
 	switch v.tabState {
 	case view.TabAllLog:
-		ret = v.view.Log
+		reader = v.view.LogReader
+		readerEmpty = reader.Empty()
 	case view.TabBuildLog:
 		_, resource := selectedResource(v.view, v.viewState)
 		if !resource.CurrentBuild.Empty() {
@@ -56,6 +60,8 @@ func (v *TabView) log() string {
 
 	if !ret.Empty() {
 		return ret.Tail(logLineCount).String()
+	} else if !readerEmpty {
+		return reader.String()
 	} else {
 		return "(no logs received)"
 	}

@@ -28,7 +28,6 @@ import (
 	"github.com/windmilleng/tilt/internal/watch"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
-	"github.com/windmilleng/tilt/pkg/model/logstore"
 )
 
 // When we see a file change, wait this long to see if any other files have changed, and bundle all changes together.
@@ -491,7 +490,7 @@ func handleConfigsReloaded(
 
 	// Retroactively scrub secrets
 	b.Log.ScrubSecretsStartingAt(newSecrets, 0)
-	state.Log.ScrubSecretsStartingAt(newSecrets, event.GlobalLogLineCountAtExecStart)
+	state.LogStore.ScrubSecretsStartingAt(newSecrets, event.CheckpointAtExecStart)
 
 	// if the ConfigsReloadedAction came from a unit test, there might not be a current build
 	if !b.Empty() {
@@ -586,12 +585,7 @@ func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
 
 func handleLogAction(state *store.EngineState, action store.LogAction) {
 	manifestName := action.Source()
-	var allLogPrefix string
-	if manifestName != "" {
-		allLogPrefix = logstore.SourcePrefix(manifestName)
-	}
-
-	state.Log = model.AppendLog(state.Log, action, allLogPrefix, state.Secrets)
+	state.LogStore.Append(action, state.Secrets)
 
 	if manifestName == "" {
 		return

@@ -6,7 +6,10 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/windmilleng/tilt/pkg/model/logstore"
 )
+
+const LogLineCount = 50
 
 const TiltfileResourceName = "(Tiltfile)"
 
@@ -183,7 +186,7 @@ func (r Resource) IsCollapsed(rv ResourceViewState) bool {
 // Client should always hold this as a value struct, and copy it
 // whenever they need to mutate something.
 type View struct {
-	Log         model.Log
+	LogReader   logstore.Reader
 	Resources   []Resource
 	IsProfiling bool
 	FatalError  error
@@ -212,14 +215,14 @@ func (v View) Resource(n model.ManifestName) (Resource, bool) {
 }
 
 type ViewState struct {
-	ShowNarration         bool
-	NarrationMessage      string
-	Resources             []ResourceViewState
-	ProcessedLogByteCount int
-	AlertMessage          string
-	TabState              TabState
-	SelectedIndex         int
-	TiltLogState          TiltLogState
+	ShowNarration    bool
+	NarrationMessage string
+	Resources        []ResourceViewState
+	ProcessedLogs    logstore.Checkpoint
+	AlertMessage     string
+	TabState         TabState
+	SelectedIndex    int
+	TiltLogState     TiltLogState
 }
 
 type TabState int

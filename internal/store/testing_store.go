@@ -27,6 +27,10 @@ func (s *TestingStore) SetState(state EngineState) {
 	s.state = &state
 }
 
+func (s *TestingStore) StateMutex() *sync.RWMutex {
+	return &s.stateMu
+}
+
 func (s *TestingStore) RLockState() EngineState {
 	s.stateMu.RLock()
 	return *(s.state)

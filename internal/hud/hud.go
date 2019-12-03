@@ -267,12 +267,24 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 }
 
 func (h *Hud) OnChange(ctx context.Context, st store.RStore) {
-	state := st.RLockState()
-	view := store.StateToView(state)
-	st.RUnlockState()
-
 	h.mu.Lock()
 	defer h.mu.Unlock()
+
+	toPrint := ""
+
+	state := st.RLockState()
+	view := store.StateToView(state, st.StateMutex())
+
+	// if the hud isn't running, make sure new logs are visible on stdout
+	if !h.isRunning {
+		toPrint = state.LogStore.ContinuingString(h.currentViewState.ProcessedLogs)
+	}
+	h.currentViewState.ProcessedLogs = state.LogStore.Checkpoint()
+
+	st.RUnlockState()
+
+	fmt.Print(toPrint)
+
 	err := h.setView(ctx, view)
 	if err != nil {
 		st.Dispatch(NewExitAction(err))
@@ -294,14 +306,6 @@ func (h *Hud) setView(ctx context.Context, view view.View) error {
 	}
 	h.currentView = view
 	h.refreshSelectedIndex()
-
-	// if the hud isn't running, make sure new logs are visible on stdout
-	logLen := view.Log.Len()
-	if !h.isRunning && h.currentViewState.ProcessedLogByteCount < logLen {
-		fmt.Print(view.Log.String()[h.currentViewState.ProcessedLogByteCount:])
-	}
-
-	h.currentViewState.ProcessedLogByteCount = logLen
 
 	return h.refresh(ctx)
 }
