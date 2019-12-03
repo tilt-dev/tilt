@@ -1,6 +1,7 @@
 package flags
 
 import (
+	"os"
 	"path/filepath"
 	"time"
 
@@ -111,7 +112,7 @@ func (e *Extension) parse(thread *starlark.Thread, fn *starlark.Builtin, args st
 
 	err = io.RecordReadFile(thread, settings.FlagsState.ConfigPath)
 	if err != nil {
-		return starlark.None, errors.Wrapf(err, "recording read file %s", settings.FlagsState.ConfigPath)
+		return starlark.None, err
 	}
 
 	ret, mergedArgs, out, err := settings.argDef.parse(settings.FlagsState, e.cmdLineArgs)
@@ -120,6 +121,11 @@ func (e *Extension) parse(thread *starlark.Thread, fn *starlark.Builtin, args st
 	}
 	if err != nil {
 		return starlark.None, err
+	}
+
+	fi, err := os.Stat(settings.FlagsState.ConfigPath)
+	if err != nil {
+		return starlark.None, errors.Wrapf("statting %s", settings.FlagsState.ConfigPath)
 	}
 
 	if mergedArgs {

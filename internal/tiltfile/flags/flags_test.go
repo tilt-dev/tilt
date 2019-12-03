@@ -358,6 +358,40 @@ print("c=", cfg.get('c', []))
 	}
 }
 
+func TestUndefinedArgInConfigFile(t *testing.T) {
+	f := NewFixture(t, model.FlagsState{})
+	defer f.TearDown()
+
+	f.File("Tiltfile", `
+flags.define_string_list('foo')
+cfg = flags.parse()
+print("foo:",cfg.get('foo', []))
+`)
+
+	f.File("tilt_config.json", `{"bar": "1"}`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "specified unknown flag name 'bar'")
+}
+
+func TestWrongTypeArgInConfigFile(t *testing.T) {
+	f := NewFixture(t, model.FlagsState{})
+	defer f.TearDown()
+
+	f.File("Tiltfile", `
+flags.define_string_list('foo')
+cfg = flags.parse()
+print("foo:",cfg.get('foo', []))
+`)
+
+	f.File("tilt_config.json", `{"foo": "1"}`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "specified invalid value for flag foo: expected array")
+}
+
 func NewFixture(tb testing.TB, flagsState model.FlagsState, args ...string) *starkit.Fixture {
 	ret := starkit.NewFixture(tb, NewExtension(args, flagsState), io.NewExtension())
 	ret.UseRealFS()

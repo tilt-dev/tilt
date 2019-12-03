@@ -61,10 +61,7 @@ func (ad ArgsDef) parse(flagsState model.FlagsState, args []string) (v starlark.
 			return nil, false, output, errors.Wrapf(err, "error opening %s for writing", flagsState.ConfigPath)
 		}
 		defer func() {
-			err2 := f.Close()
-			if err2 != nil && err == nil {
-				err = errors.Wrapf(err2, "error closing %s", flagsState.ConfigPath)
-			}
+			_ = f.Close()
 		}()
 		enc := json.NewEncoder(f)
 		enc.SetIndent("", "  ")
