@@ -20,8 +20,8 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/tiltfile/analytics"
+	"github.com/windmilleng/tilt/internal/tiltfile/config"
 	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
-	"github.com/windmilleng/tilt/internal/tiltfile/flags"
 	"github.com/windmilleng/tilt/internal/tiltfile/git"
 	"github.com/windmilleng/tilt/internal/tiltfile/include"
 	"github.com/windmilleng/tilt/internal/tiltfile/io"
@@ -157,7 +157,7 @@ func (s *tiltfileState) loadManifests(absFilename string, args []string) ([]mode
 		dockerprune.NewExtension(),
 		analytics.NewExtension(),
 		version.NewExtension(),
-		flags.NewExtension(args),
+		config.NewExtension(args),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)
@@ -206,8 +206,8 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 	}
 	manifests = append(manifests, localManifests...)
 
-	flagsState, _ := flags.GetState(result)
-	manifests, err = flagsState.Resources(args, manifests)
+	flagsState, _ := config.GetState(result)
+	manifests, err = flagsState.EnabledResources(args, manifests)
 	if err != nil {
 		return nil, starkit.Model{}, err
 	}

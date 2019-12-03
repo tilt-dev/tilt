@@ -1,4 +1,4 @@
-package flags
+package config
 
 import (
 	"github.com/pkg/errors"
@@ -9,8 +9,8 @@ import (
 )
 
 type Settings struct {
-	resources []model.ManifestName
-	argDef    ArgsDef
+	enabledResources []model.ManifestName
+	argDef           ArgsDef
 
 	flagsParsed bool
 }
@@ -50,9 +50,9 @@ func (e *Extension) OnStart(env *starkit.Environment) error {
 		name string
 		f    starkit.Function
 	}{
-		{"flags.set_resources", setResources},
-		{"flags.parse", e.parse},
-		{"flags.define_string_list", argDefinitionBuiltin(func() argValue {
+		{"config.set_enabled_resources", setEnabledResources},
+		{"config.parse", e.parse},
+		{"config.define_string_list", argDefinitionBuiltin(func() argValue {
 			return &stringList{}
 		})},
 	} {

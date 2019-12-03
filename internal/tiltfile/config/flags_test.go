@@ -1,4 +1,4 @@
-package flags
+package config
 
 import (
 	"fmt"
@@ -21,13 +21,13 @@ func TestSetResources(t *testing.T) {
 		expectedResources []model.ManifestName
 	}{
 		{"neither", false, nil, nil, []model.ManifestName{"a", "b"}},
-		{"neither, with flags.parse", true, nil, nil, []model.ManifestName{"a", "b"}},
+		{"neither, with config.parse", true, nil, nil, []model.ManifestName{"a", "b"}},
 		{"args only", false, []model.ManifestName{"a"}, nil, []model.ManifestName{"a"}},
-		{"args only, with flags.parse", true, []model.ManifestName{"a"}, nil, []model.ManifestName{"a", "b"}},
+		{"args only, with config.parse", true, []model.ManifestName{"a"}, nil, []model.ManifestName{"a", "b"}},
 		{"tiltfile only", false, nil, []model.ManifestName{"b"}, []model.ManifestName{"b"}},
-		{"tiltfile only, with flags.parse", true, nil, []model.ManifestName{"b"}, []model.ManifestName{"b"}},
+		{"tiltfile only, with config.parse", true, nil, []model.ManifestName{"b"}, []model.ManifestName{"b"}},
 		{"both", false, []model.ManifestName{"a"}, []model.ManifestName{"b"}, []model.ManifestName{"b"}},
-		{"both, with flags.parse", true, []model.ManifestName{"a"}, []model.ManifestName{"b"}, []model.ManifestName{"b"}},
+		{"both, with config.parse", true, []model.ManifestName{"a"}, []model.ManifestName{"b"}, []model.ManifestName{"b"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := NewFixture(t)
@@ -38,12 +38,12 @@ func TestSetResources(t *testing.T) {
 				for _, mn := range tc.tiltfileResources {
 					rs = append(rs, fmt.Sprintf("'%s'", mn))
 				}
-				setResources = fmt.Sprintf("flags.set_resources([%s])", strings.Join(rs, ", "))
+				setResources = fmt.Sprintf("config.set_enabled_resources([%s])", strings.Join(rs, ", "))
 			}
 
 			flagsParse := ""
 			if tc.callFlagsParse {
-				flagsParse = "flags.parse()"
+				flagsParse = "config.parse()"
 			}
 
 			tiltfile := fmt.Sprintf("%s\n%s\n", setResources, flagsParse)
@@ -59,7 +59,7 @@ func TestSetResources(t *testing.T) {
 			}
 
 			manifests := []model.Manifest{{Name: "a"}, {Name: "b"}}
-			actual, err := MustState(result).Resources(args, manifests)
+			actual, err := MustState(result).EnabledResources(args, manifests)
 			require.NoError(t, err)
 
 			expectedResourcesByName := make(map[model.ManifestName]bool)
@@ -82,8 +82,8 @@ func TestParsePositional(t *testing.T) {
 
 	f := NewFixture(t, foo...)
 	f.File("Tiltfile", `
-flags.define_string_list('foo', args=True)
-cfg = flags.parse()
+config.define_string_list('foo', args=True)
+cfg = config.parse()
 print(cfg['foo'])
 `)
 
@@ -102,8 +102,8 @@ func TestParseKeyword(t *testing.T) {
 
 	f := NewFixture(t, args...)
 	f.File("Tiltfile", `
-flags.define_string_list('foo')
-cfg = flags.parse()
+config.define_string_list('foo')
+cfg = config.parse()
 print(cfg['foo'])
 `)
 
@@ -118,10 +118,10 @@ func TestParsePositionalAndMultipleInterspersedKeyword(t *testing.T) {
 	f := NewFixture(t, args...)
 
 	f.File("Tiltfile", `
-flags.define_string_list('foo', args=True)
-flags.define_string_list('bar')
-flags.define_string_list('baz')
-cfg = flags.parse()
+config.define_string_list('foo', args=True)
+config.define_string_list('bar')
+config.define_string_list('baz')
+cfg = config.parse()
 print("foo:", cfg['foo'])
 print("bar:", cfg['bar'])
 print("baz:", cfg['baz'])
@@ -138,8 +138,8 @@ print("baz:", cfg['baz'])
 func TestMultiplePositionalDefs(t *testing.T) {
 	f := NewFixture(t)
 	f.File("Tiltfile", `
-flags.define_string_list('foo', args=True)
-flags.define_string_list('bar', args=True)
+config.define_string_list('foo', args=True)
+config.define_string_list('bar', args=True)
 `)
 
 	_, err := f.ExecFile("Tiltfile")
@@ -150,8 +150,8 @@ flags.define_string_list('bar', args=True)
 func TestMultipleArgsSameName(t *testing.T) {
 	f := NewFixture(t)
 	f.File("Tiltfile", `
-flags.define_string_list('foo')
-flags.define_string_list('foo')
+config.define_string_list('foo')
+config.define_string_list('foo')
 `)
 
 	_, err := f.ExecFile("Tiltfile")
@@ -162,8 +162,8 @@ flags.define_string_list('foo')
 func TestUndefinedArg(t *testing.T) {
 	f := NewFixture(t, "-bar", "hello")
 	f.File("Tiltfile", `
-flags.define_string_list('foo')
-flags.parse()
+config.define_string_list('foo')
+config.parse()
 `)
 
 	_, err := f.ExecFile("Tiltfile")
@@ -174,8 +174,8 @@ flags.parse()
 func TestUnprovidedKeywordArg(t *testing.T) {
 	f := NewFixture(t)
 	f.File("Tiltfile", `
-flags.define_string_list('foo')
-cfg = flags.parse()
+config.define_string_list('foo')
+cfg = config.parse()
 print("foo:",cfg['foo'])
 `)
 
@@ -187,8 +187,8 @@ print("foo:",cfg['foo'])
 func TestUnprovidedPositionalArg(t *testing.T) {
 	f := NewFixture(t)
 	f.File("Tiltfile", `
-flags.define_string_list('foo', args=True)
-cfg = flags.parse()
+config.define_string_list('foo', args=True)
+cfg = config.parse()
 print("foo:",cfg['foo'])
 `)
 
@@ -200,7 +200,7 @@ print("foo:",cfg['foo'])
 func TestProvidedButUnexpectedPositionalArgs(t *testing.T) {
 	f := NewFixture(t, "do", "re", "mi")
 	f.File("Tiltfile", `
-cfg = flags.parse()
+cfg = config.parse()
 `)
 
 	_, err := f.ExecFile("Tiltfile")
@@ -211,8 +211,8 @@ cfg = flags.parse()
 func TestUsage(t *testing.T) {
 	f := NewFixture(t, "-bar", "hello")
 	f.File("Tiltfile", `
-flags.define_string_list('foo', usage='what can I foo for you today?')
-flags.parse()
+config.define_string_list('foo', usage='what can I foo for you today?')
+config.parse()
 `)
 
 	_, err := f.ExecFile("Tiltfile")
@@ -226,15 +226,15 @@ flags.parse()
 func TestDefaultTiltBehavior(t *testing.T) {
 	f := NewFixture(t, "foo", "bar")
 	f.File("Tiltfile", `
-flags.define_string_list('resources', usage='which resources to load in Tilt', args=True)
-flags.set_resources(flags.parse()['resources'])
+config.define_string_list('resources', usage='which resources to load in Tilt', args=True)
+config.set_enabled_resources(config.parse()['resources'])
 `)
 
 	result, err := f.ExecFile("Tiltfile")
 	require.NoError(t, err)
 
 	manifests := []model.Manifest{{Name: "foo"}, {Name: "bar"}, {Name: "baz"}}
-	actual, err := MustState(result).Resources([]string{"foo", "bar"}, manifests)
+	actual, err := MustState(result).EnabledResources([]string{"foo", "bar"}, manifests)
 	require.NoError(t, err)
 	require.Equal(t, manifests[:2], actual)
 
