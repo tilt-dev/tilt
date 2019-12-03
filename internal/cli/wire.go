@@ -81,7 +81,7 @@ var BaseWireSet = wire.NewSet(
 
 	provideClock,
 	hud.NewRenderer,
-	hud.NewDefaultHeadsUpDisplay,
+	hud.ProvideHud,
 
 	provideLogActions,
 	store.NewStore,
@@ -123,7 +123,7 @@ func wireDockerPrune(ctx context.Context, analytics *analytics.TiltAnalytics) (d
 	return dpDeps{}, nil
 }
 
-func wireCmdUp(ctx context.Context, analytics *analytics.TiltAnalytics, cmdUpTags engineanalytics.CmdUpTags) (CmdUpDeps, error) {
+func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics *analytics.TiltAnalytics, cmdUpTags engineanalytics.CmdUpTags) (CmdUpDeps, error) {
 	wire.Build(BaseWireSet, build.ProvideClock)
 	return CmdUpDeps{}, nil
 }
