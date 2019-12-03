@@ -3998,6 +3998,33 @@ local_resource("test", "echo hi", deps=["foo"], ignore=["**/*.a", "foo/bar.d"])
 	}
 }
 
+func TestCustomBuildStoresTiltfilePath(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `include('proj/Tiltfile')
+k8s_yaml("foo.yaml")`)
+	f.file("proj/Tiltfile", `
+custom_build(
+  'gcr.io/foo',
+  'build.sh',
+  ['foo']
+)
+`)
+	f.file("proj/build.sh", "docker build -t $EXPECTED_REF gcr.io/foo")
+	f.file("proj/Dockerfile", "FROM alpine")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+
+	f.load()
+	f.assertNumManifests(1)
+	f.assertNextManifest("foo", cb(
+		image("gcr.io/foo"),
+		deps(f.JoinPath("proj/foo")),
+		cmd("build.sh"),
+		tiltfile(f.JoinPath("proj")),
+	))
+}
+
 func (f *fixture) assertRepos(expectedLocalPaths []string, repos []model.LocalGitRepo) {
 	var actualLocalPaths []string
 	for _, r := range repos {
@@ -4596,6 +4623,8 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 					assert.Equal(f.t, matcher.deps, cbInfo.Deps)
 				case cmdHelper:
 					assert.Equal(f.t, matcher.cmd, cbInfo.Command)
+				case tiltfilePathHelper:
+					assert.Equal(f.t, matcher.path, cbInfo.TiltfilePath)
 				case tagHelper:
 					assert.Equal(f.t, matcher.tag, cbInfo.Tag)
 				case disablePushHelper:
@@ -5043,6 +5072,14 @@ type cmdHelper struct {
 
 func cmd(cmd string) cmdHelper {
 	return cmdHelper{cmd}
+}
+
+type tiltfilePathHelper struct {
+	path string
+}
+
+func tiltfile(path string) tiltfilePathHelper {
+	return tiltfilePathHelper{path}
 }
 
 type tagHelper struct {

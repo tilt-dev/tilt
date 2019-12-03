@@ -16,7 +16,7 @@ import (
 )
 
 type CustomBuilder interface {
-	Build(ctx context.Context, ref reference.Named, command string, expectedTag string, skipsLocalDocker bool) (reference.NamedTagged, error)
+	Build(ctx context.Context, ref reference.Named, tiltfilePath string, command string, expectedTag string, skipsLocalDocker bool) (reference.NamedTagged, error)
 }
 
 type ExecCustomBuilder struct {
@@ -31,7 +31,7 @@ func NewExecCustomBuilder(dCli docker.Client, clock Clock) *ExecCustomBuilder {
 	}
 }
 
-func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, command string, expectedTag string, skipsLocalDocker bool) (reference.NamedTagged, error) {
+func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, tiltfilePath string, command string, expectedTag string, skipsLocalDocker bool) (reference.NamedTagged, error) {
 	if expectedTag == "" {
 		expectedTag = fmt.Sprintf("tilt-build-%d", b.clock.Now().Unix())
 	}
@@ -42,6 +42,7 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, comm
 	}
 
 	cmd := exec.CommandContext(ctx, "sh", "-c", command)
+	cmd.Dir = tiltfilePath
 
 	l := logger.Get(ctx)
 	l.Infof("Custom Build: Injecting Environment Variables")

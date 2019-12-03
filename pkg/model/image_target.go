@@ -267,7 +267,8 @@ func (FastBuild) buildDetails()  {}
 func (fb FastBuild) Empty() bool { return reflect.DeepEqual(fb, FastBuild{}) }
 
 type CustomBuild struct {
-	Command string
+	TiltfilePath string
+	Command      string
 	// Deps is a list of file paths that are dependencies of this command.
 	Deps []string
 

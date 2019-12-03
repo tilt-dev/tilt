@@ -283,6 +283,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	}
 
 	img := &dockerImage{
+		tiltfilePath:     starkit.AbsWorkingDir(thread),
 		configurationRef: container.NewRefSelector(ref),
 		customCommand:    command,
 		customDeps:       localDeps,
