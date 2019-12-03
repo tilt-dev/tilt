@@ -1,4 +1,4 @@
-package flags
+package config
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
-func setResources(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func setEnabledResources(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var slResources starlark.Sequence
 	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
 		"resources",
@@ -33,7 +33,7 @@ func setResources(thread *starlark.Thread, fn *starlark.Builtin, args starlark.T
 	}
 
 	err = starkit.SetState(thread, func(settings Settings) Settings {
-		settings.resources = mns
+		settings.enabledResources = mns
 		return settings
 	})
 	if err != nil {
@@ -44,13 +44,13 @@ func setResources(thread *starlark.Thread, fn *starlark.Builtin, args starlark.T
 }
 
 // for the given args and list of full manifests, figure out which manifests the user actually selected
-func (s Settings) Resources(args []string, manifests []model.Manifest) ([]model.Manifest, error) {
-	// if the user called set_resources, that trumps everything
-	if s.resources != nil {
-		return match(manifests, s.resources)
+func (s Settings) EnabledResources(args []string, manifests []model.Manifest) ([]model.Manifest, error) {
+	// if the user called set_enabled_resources, that trumps everything
+	if s.enabledResources != nil {
+		return match(manifests, s.enabledResources)
 	}
 
-	// if the user has not called flags.parse and has specified args, use those to select which resources
+	// if the user has not called config.parse and has specified args, use those to select which resources
 	if args != nil && !s.flagsParsed {
 		var mns []model.ManifestName
 		for _, arg := range args {
@@ -59,7 +59,7 @@ func (s Settings) Resources(args []string, manifests []model.Manifest) ([]model.
 		return match(manifests, mns)
 	}
 
-	// otherwise, they get everything
+	// otherwise, they get all resources
 	return manifests, nil
 }
 
