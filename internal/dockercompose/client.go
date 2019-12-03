@@ -99,7 +99,7 @@ func (c *cmdDCClient) StreamLogs(ctx context.Context, configPaths []string, serv
 	for _, config := range configPaths {
 		args = append(args, "-f", config)
 	}
-	args = append(args, "logs", "-f", "-t", serviceName.String())
+	args = append(args, "logs", "--no-color", "-f", serviceName.String())
 	cmd := c.dcCommand(ctx, args)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
