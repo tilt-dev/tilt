@@ -173,7 +173,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdUpTa
 	cacheBuilder := build.NewCacheBuilder(switchCli)
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, clock)
 	clusterName := k8s.ProvideClusterName(ctx, config)
-	kindPusher := engine.NewKINDPusher(clusterName)
+	kindPusher := engine.NewKINDPusher(env, clusterName)
 	syncletContainer := sidecar.ProvideSyncletContainer(syncletImageRef)
 	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, client, env, analytics3, updateMode, clock, runtime, kindPusher, syncletContainer)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
