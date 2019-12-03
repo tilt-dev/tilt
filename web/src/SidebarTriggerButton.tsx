@@ -2,13 +2,14 @@ import React, { PureComponent } from "react"
 import { TriggerMode } from "./types"
 import "./SidebarTriggerButton.scss"
 
-export enum TriggerButtonTooltip {
-  AlreadyQueued = "Cannot trigger an update if resource is already queued for update.",
-  ManualResourcePendingChanges = "This manual resource has pending file changes; click to trigger an update.",
-  UpdateInProgOrPending = "Cannot trigger an update while resource is updating or update is pending.",
-  ClickToForce = "Force a rebuild/update for this resource.",
-  CannotTriggerTiltfile = "Cannot trigger an update to the Tiltfile.",
+export const TriggerButtonTooltip = {
+  AlreadyQueued: "Cannot trigger an update if resource is already queued for update.",
+  ManualResourcePendingChanges: "This manual resource has pending file changes; click to trigger an update.",
+  UpdateInProgOrPending: "Cannot trigger an update while resource is updating or update is pending.",
+  ClickToForce: "Force a rebuild/update for this resource.",
+  CannotTriggerTiltfile: "Cannot trigger an update to the Tiltfile.",
 }
+
 type SidebarTriggerButtonProps = {
   resourceName: string
   isTiltfile: boolean
