@@ -47,7 +47,6 @@ func (c *dockerPruneCmd) register() *cobra.Command {
 func (c *dockerPruneCmd) run(ctx context.Context, args []string) error {
 	a := analytics.Get(ctx)
 	a.Incr("cmd.dockerPrune", nil)
-	a.IncrIfUnopted("analytics.up.optdefault")
 	defer a.Flush(time.Second)
 
 	// (Most relevant output from dockerpruner is at the `debug` level)
