@@ -118,3 +118,13 @@ func TestLogTailPrefixes(t *testing.T) {
 	assert.Equal(t, "1\n2\nfe | 3\nfe | 4\n5\n", l.Tail(5).String())
 	assert.Equal(t, "1\n2\nfe | 3\nfe | 4\n5\n", l.Tail(6).String())
 }
+
+func TestLogTailParts(t *testing.T) {
+	l := NewLogStore()
+	l.Append(newGlobalLogEvent("a"), nil)
+	l.Append(newLogEvent("fe", time.Now(), "xy"), nil)
+	l.Append(newGlobalLogEvent("bc\n"), nil)
+	l.Append(newLogEvent("fe", time.Now(), "z\n"), nil)
+	assert.Equal(t, "fe | xyz\n", l.Tail(1).String())
+	assert.Equal(t, "abc\nfe | xyz\n", l.Tail(2).String())
+}

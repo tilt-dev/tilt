@@ -22,8 +22,8 @@ const logTruncationTarget = maxLogLengthInBytes / 2
 const newlineByte = byte('\n')
 
 type Span struct {
-	ManifestName  model.ManifestName
-	LastLineIndex int
+	ManifestName     model.ManifestName
+	LastSegmentIndex int
 }
 
 func (s *Span) Clone() *Span {
@@ -33,39 +33,38 @@ func (s *Span) Clone() *Span {
 
 type SpanID string
 
-type Line struct {
+type LogSegment struct {
 	SpanID SpanID
 	Time   time.Time
 	Text   []byte
+
+	// Continues a line from a previous segment.
+	ContinuesLine bool
 }
 
-func (l Line) Append(l2 Line) Line {
-	return Line{
-		SpanID: l.SpanID,
-		Time:   l.Time,
-		Text:   append(l.Text, l2.Text...),
-	}
+func (l LogSegment) StartsLine() bool {
+	return !l.ContinuesLine
 }
 
-func (l Line) IsComplete() bool {
-	lineLen := len(l.Text)
-	return lineLen > 0 && l.Text[lineLen-1] == newlineByte
+func (l LogSegment) IsComplete() bool {
+	segmentLen := len(l.Text)
+	return segmentLen > 0 && l.Text[segmentLen-1] == newlineByte
 }
 
-func (l Line) Len() int {
+func (l LogSegment) Len() int {
 	return len(l.Text)
 }
 
-func (l Line) String() string {
+func (l LogSegment) String() string {
 	return string(l.Text)
 }
 
-func linesFromBytes(spanID SpanID, time time.Time, bs []byte) []Line {
-	lines := []Line{}
+func segmentsFromBytes(spanID SpanID, time time.Time, bs []byte) []LogSegment {
+	segments := []LogSegment{}
 	lastBreak := 0
 	for i, b := range bs {
 		if b == newlineByte {
-			lines = append(lines, Line{
+			segments = append(segments, LogSegment{
 				SpanID: spanID,
 				Time:   time,
 				Text:   bs[lastBreak : i+1],
@@ -74,13 +73,13 @@ func linesFromBytes(spanID SpanID, time time.Time, bs []byte) []Line {
 		}
 	}
 	if lastBreak < len(bs) {
-		lines = append(lines, Line{
+		segments = append(segments, LogSegment{
 			SpanID: spanID,
 			Time:   time,
 			Text:   bs[lastBreak:],
 		})
 	}
-	return lines
+	return segments
 }
 
 type LogEvent interface {
@@ -101,16 +100,24 @@ type LogEvent interface {
 }
 
 type LogStore struct {
+	// A Span is a grouping of logs by their source.
+	// The term "Span" is taken from opentracing, and has similar associations.
 	spans map[SpanID]*Span
-	lines []Line
-	len   int
+
+	// We store logs as an append-only sequence of segments.
+	// Once a segment has been added, it should not be modified.
+	segments []LogSegment
+
+	// The number of bytes stored in this logstore. This is redundant bookkeeping so
+	// that we don't need to recompute it each time.
+	len int
 }
 
 func NewLogStore() *LogStore {
 	return &LogStore{
-		spans: make(map[SpanID]*Span),
-		lines: []Line{},
-		len:   0,
+		spans:    make(map[SpanID]*Span),
+		segments: []LogSegment{},
+		len:      0,
 	}
 }
 
@@ -120,35 +127,28 @@ func (s *LogStore) Append(le LogEvent, secrets model.SecretSet) {
 	spanID := SpanID(le.Source())
 	span, ok := s.spans[spanID]
 	if !ok {
-		span = &Span{ManifestName: le.Source(), LastLineIndex: -1}
+		span = &Span{ManifestName: le.Source(), LastSegmentIndex: -1}
 		s.spans[spanID] = span
 	}
 
 	msg := secrets.Scrub(le.Message())
 
 	isStartingNewLine := false
-	if span.LastLineIndex == -1 {
+	if span.LastSegmentIndex == -1 {
 		isStartingNewLine = true
-	} else if s.lines[span.LastLineIndex].IsComplete() {
+	} else if s.segments[span.LastSegmentIndex].IsComplete() {
 		isStartingNewLine = true
 	}
 
-	addedLines := linesFromBytes(spanID, le.Time(), msg)
-	if len(addedLines) == 0 {
+	added := segmentsFromBytes(spanID, le.Time(), msg)
+	if len(added) == 0 {
 		return
 	}
 
-	if isStartingNewLine {
-		s.lines = append(s.lines, addedLines...)
-		span.LastLineIndex = len(s.lines) - 1
-	} else {
-		s.lines[span.LastLineIndex] = s.lines[span.LastLineIndex].Append(addedLines[0])
-		s.lines = append(s.lines, addedLines[1:]...)
+	added[0].ContinuesLine = !isStartingNewLine
 
-		if len(addedLines) > 1 {
-			span.LastLineIndex = len(s.lines) - 1
-		}
-	}
+	s.segments = append(s.segments, added...)
+	span.LastSegmentIndex = len(s.segments) - 1
 
 	s.len += len(msg)
 	s.ensureMaxLength()
@@ -156,44 +156,136 @@ func (s *LogStore) Append(le LogEvent, secrets model.SecretSet) {
 
 // Get at most N lines from the tail of the log.
 func (s *LogStore) Tail(n int) *LogStore {
-	if len(s.lines) <= n {
+	if n <= 0 {
+		return NewLogStore()
+	}
+
+	// Traverse backwards until we have n lines.
+	remaining := n
+	start := len(s.segments) - 1
+	for ; start >= 0; start-- {
+		if s.segments[start].StartsLine() {
+			remaining--
+			if remaining <= 0 {
+				break
+			}
+		}
+	}
+
+	if remaining > 0 {
+		// If there aren't enough lines, just return the whole store.
 		return s
 	}
 
-	newLines := s.lines[len(s.lines)-n:]
-	newSpans := make(map[SpanID]*Span)
-	for _, line := range newLines {
-		newSpans[line.SpanID] = s.spans[line.SpanID].Clone()
+	startedSpans := make(map[SpanID]bool)
+	newSegments := []LogSegment{}
+	for i := start; i < len(s.segments); i++ {
+		segment := s.segments[i]
+		spanID := segment.SpanID
+
+		if !segment.StartsLine() && !startedSpans[spanID] {
+			// Skip any segments that start on lines from before the Tail started.
+			continue
+		}
+		newSegments = append(newSegments, segment)
+		startedSpans[spanID] = true
 	}
-	return &LogStore{spans: newSpans, lines: newLines}
+
+	newSpans := make(map[SpanID]*Span)
+	for _, segment := range newSegments {
+		newSpans[segment.SpanID] = s.spans[segment.SpanID].Clone()
+	}
+	newStore := &LogStore{spans: newSpans, segments: newSegments}
+	newStore.recomputeDerivedValues()
+	return newStore
+}
+
+func (s *LogStore) recomputeDerivedValues() {
+	s.len = s.computeLen()
+
+	// Reset the last segment index so we can rebuild them from scratch.
+	for _, span := range s.spans {
+		span.LastSegmentIndex = -1
+	}
+
+	// Rebuild information about line continuations.
+	for i, segment := range s.segments {
+		spanID := segment.SpanID
+		span := s.spans[spanID]
+
+		isStartingNewLine := false
+		if span.LastSegmentIndex == -1 {
+			isStartingNewLine = true
+		} else if s.segments[span.LastSegmentIndex].IsComplete() {
+			isStartingNewLine = true
+		}
+
+		s.segments[i].ContinuesLine = !isStartingNewLine
+		span.LastSegmentIndex = i
+	}
 }
 
 func (s *LogStore) String() string {
 	sb := strings.Builder{}
-	lastLine := Line{}
-	for i, line := range s.lines {
-		spanID := line.SpanID
-		if i > 0 && lastLine.SpanID != line.SpanID && !lastLine.IsComplete() {
-			// Insert a new line, so that we don't print two logs from different
-			// spans on the same line.
+	lastLineCompleted := false
+
+	// We want to print the log line-by-line, but we don't actually store the logs
+	// line-by-line. We store them as segments.
+	//
+	// This means we need to:
+	// 1) At segment x,
+	// 2) If x starts a new line, print it, then run ahead to print the rest of the line
+	//    until the entire line is consumed.
+	// 3) If x does not start a new line, skip it, because we assume it was handled
+	//    in a previous line.
+	//
+	// This can have some O(n^2) perf characteristics in the worst case, but
+	// for normal inputs should be fine.
+	for i, segment := range s.segments {
+		if !segment.StartsLine() {
+			continue
+		}
+
+		// If the last segment never completed, print a newline now, so that the
+		// logs from different sources don't blend together.
+		if i > 0 && !lastLineCompleted {
 			sb.WriteString("\n")
 		}
 
+		spanID := segment.SpanID
 		span := s.spans[spanID]
 		if span.ManifestName != "" {
 			sb.WriteString(fmt.Sprintf("%s | ", span.ManifestName))
 		}
-		sb.WriteString(string(line.Text))
+		sb.WriteString(string(segment.Text))
 
-		lastLine = line
+		// If this segment is not complete, run ahead and try to complete it.
+		if segment.IsComplete() {
+			lastLineCompleted = true
+			continue
+		}
+
+		lastLineCompleted = false
+		for currentIndex := i + 1; currentIndex <= span.LastSegmentIndex; currentIndex++ {
+			currentSeg := s.segments[currentIndex]
+			if currentSeg.SpanID != spanID {
+				continue
+			}
+
+			sb.WriteString(string(currentSeg.Text))
+			if currentSeg.IsComplete() {
+				lastLineCompleted = true
+				break
+			}
+		}
 	}
 	return sb.String()
 }
 
 func (s *LogStore) computeLen() int {
 	result := 0
-	for _, line := range s.lines {
-		result += line.Len()
+	for _, segment := range s.segments {
+		result += segment.Len()
 	}
 	return result
 }
@@ -206,21 +298,16 @@ func (s *LogStore) ensureMaxLength() {
 	// Figure out where we have to truncate.
 	bytesSpent := 0
 	truncationIndex := -1
-	for i := len(s.lines) - 1; i >= 0; i-- {
-		line := s.lines[i]
-		bytesSpent += line.Len()
+	for i := len(s.segments) - 1; i >= 0; i-- {
+		segment := s.segments[i]
+		bytesSpent += segment.Len()
 		if truncationIndex == -1 && bytesSpent > logTruncationTarget {
 			truncationIndex = i + 1
 		}
 		if bytesSpent > maxLogLengthInBytes {
-			s.lines = s.lines[truncationIndex:]
-			for _, span := range s.spans {
-				span.LastLineIndex -= truncationIndex
-				if span.LastLineIndex < 0 {
-					span.LastLineIndex = -1
-				}
-			}
-			s.len = s.computeLen()
+			s.segments = s.segments[truncationIndex:]
+			s.recomputeDerivedValues()
+			return
 		}
 	}
 }
