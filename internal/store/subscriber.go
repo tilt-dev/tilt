@@ -98,9 +98,12 @@ func (l *subscriberList) NotifyAll(ctx context.Context, store *Store) {
 	l.mu.Unlock()
 
 	for _, s := range subscribers {
+		s := s
 		s.dirtyBit.MarkDirty()
 
-		go s.notify(ctx, store)
+		SafeGo(store, func() {
+			s.notify(ctx, store)
+		})
 	}
 }
 

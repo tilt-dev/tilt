@@ -54,36 +54,11 @@ ENTRYPOINT /go/bin/sancho
 	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
 }
 
-func TestBaseDockerfileWithCache(t *testing.T) {
-	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
-
-	manifest := NewSanchoFastBuildManifestWithCache(f, []string{"/root/.cache"})
-	cache := "gcr.io/some-project-162817/sancho:tilt-cache-3de427a264f80719a58a9abd456487b3"
-	f.docker.Images[cache] = types.ImageInspect{}
-
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expected := expectedFile{
-		Path: "Dockerfile",
-		Contents: `FROM gcr.io/some-project-162817/sancho:tilt-cache-3de427a264f80719a58a9abd456487b3
-LABEL "tilt.cache"="0"
-ADD . /
-RUN ["go", "install", "github.com/windmilleng/sancho"]
-ENTRYPOINT ["/go/bin/sancho"]
-LABEL "tilt.buildMode"="scratch"`,
-	}
-	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
-}
-
 func TestDeployTwinImages(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	sancho := NewSanchoFastBuildManifest(f)
+	sancho := NewSanchoDockerBuildManifest(f)
 	manifest := sancho.WithDeployTarget(sancho.K8sTarget().AppendYAML(SanchoTwinYAML))
 	result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
@@ -385,7 +360,7 @@ ENTRYPOINT /go/bin/sancho
 }
 
 func TestKINDPush(t *testing.T) {
-	f := newIBDFixture(t, k8s.EnvKIND)
+	f := newIBDFixture(t, k8s.EnvKIND6)
 	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildManifest(f)
@@ -400,7 +375,7 @@ func TestKINDPush(t *testing.T) {
 }
 
 func TestCustomBuildDisablePush(t *testing.T) {
-	f := newIBDFixture(t, k8s.EnvKIND)
+	f := newIBDFixture(t, k8s.EnvKIND6)
 	defer f.TearDown()
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build"] = types.ImageInspect{ID: string(sha)}
@@ -409,8 +384,37 @@ func TestCustomBuildDisablePush(t *testing.T) {
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	assert.NoError(t, err)
 
-	// but we also didn't try to build or push an image
+	// We didn't try to build or push an image, but we did try to tag it
 	assert.Equal(t, 0, f.docker.BuildCount)
+	assert.Equal(t, 1, f.docker.TagCount)
+	assert.Equal(t, 0, f.kp.pushCount)
+	assert.Equal(t, 0, f.docker.PushCount)
+}
+
+func TestCustomBuildSkipsLocalDocker(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvKIND6)
+	defer f.TearDown()
+	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
+	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build"] = types.ImageInspect{ID: string(sha)}
+
+	cb := model.CustomBuild{
+		Command:          "true",
+		Deps:             []string{f.JoinPath("app")},
+		SkipsLocalDocker: true,
+		Tag:              "tilt-build",
+	}
+
+	manifest := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithImageTarget(model.NewImageTarget(SanchoRef).WithBuildDetails(cb)).
+		Build()
+
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	assert.NoError(t, err)
+
+	// We didn't try to build, tag, or push an image
+	assert.Equal(t, 0, f.docker.BuildCount)
+	assert.Equal(t, 0, f.docker.TagCount)
 	assert.Equal(t, 0, f.kp.pushCount)
 	assert.Equal(t, 0, f.docker.PushCount)
 }
@@ -423,7 +427,6 @@ func TestDeployUsesInjectRef(t *testing.T) {
 		expectedImages []string
 	}{
 		{"docker build", func(f Fixture) model.Manifest { return NewSanchoDockerBuildManifest(f) }, expectedImages},
-		{"fast build", NewSanchoFastBuildManifest, expectedImages},
 		{"custom build", NewSanchoCustomBuildManifest, expectedImages},
 		{"live multi stage", NewSanchoLiveUpdateMultiStageManifest, append(expectedImages, "foo.com/sancho-base")},
 	}
@@ -696,7 +699,7 @@ func TestIBDDeployUIDs(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	manifest := NewSanchoFastBuildManifest(f)
+	manifest := NewSanchoDockerBuildManifest(f)
 	result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)

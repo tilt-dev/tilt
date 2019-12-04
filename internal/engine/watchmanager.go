@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -243,6 +244,24 @@ func (w *WatchManager) createIgnoreMatcher(target WatchableTarget) (watch.PathMa
 	return model.NewCompositeMatcher([]model.PathMatcher{filter, w.tiltIgnore}), nil
 }
 
+// The Flag Config is sometimes written to by Tilt itself, and we don't want that to trigger
+// a Tiltfile execution. If the file's timestamp predates the time that Tilt wrote to the file,
+// assume that the notification is just for something Tilt already knows about and ignore it.
+func ignoreFlagConfigUpdate(filepath string, flagsState model.FlagsState) (ignored bool, err error) {
+	if filepath != flagsState.ConfigPath {
+		return false, nil
+	}
+	st, err := os.Stat(flagsState.ConfigPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		} else {
+			return true, err
+		}
+	}
+	return st.ModTime().Before(flagsState.LastArgsWrite), nil
+}
+
 func (w *WatchManager) dispatchFileChangesLoop(
 	ctx context.Context,
 	target WatchableTarget,
@@ -269,10 +288,21 @@ func (w *WatchManager) dispatchFileChangesLoop(
 			if !ok {
 				return
 			}
+			state := st.RLockState()
 			watchEvent := newTargetFilesChangedAction(target.ID())
 			for _, e := range fsEvents {
+				ignored, err := ignoreFlagConfigUpdate(e.Path(), state.FlagsState)
+				if err != nil {
+					logger.Get(ctx).Infof("error statting flags config file %s: %v", state.FlagsState.ConfigPath, err)
+					continue
+				}
+				if ignored {
+					continue
+				}
 				watchEvent.files = append(watchEvent.files, e.Path())
 			}
+
+			st.RUnlockState()
 
 			if len(watchEvent.files) > 0 {
 				st.Dispatch(watchEvent)

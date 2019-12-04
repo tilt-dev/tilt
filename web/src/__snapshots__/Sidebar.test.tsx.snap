@@ -85,7 +85,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           "
           disabled={true}
           onClick={[Function]}
-          title="Cannot trigger an update while resource is building or build is pending."
+          title="Cannot trigger an update while resource is updating or update is pending."
         />
       </li>
       <li
@@ -137,7 +137,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           "
           disabled={true}
           onClick={[Function]}
-          title="Cannot trigger an update while resource is building or build is pending."
+          title="Cannot trigger an update while resource is updating or update is pending."
         />
       </li>
       <li
@@ -189,7 +189,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           "
           disabled={true}
           onClick={[Function]}
-          title="Cannot trigger an update while resource is building or build is pending."
+          title="Cannot trigger an update while resource is updating or update is pending."
         />
       </li>
       <li
@@ -241,7 +241,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           "
           disabled={true}
           onClick={[Function]}
-          title="Cannot trigger an update while resource is building or build is pending."
+          title="Cannot trigger an update while resource is updating or update is pending."
         />
       </li>
       <li
@@ -293,7 +293,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           "
           disabled={true}
           onClick={[Function]}
-          title="Cannot trigger an update while resource is building or build is pending."
+          title="Cannot trigger an update while resource is updating or update is pending."
         />
       </li>
       <li
@@ -345,7 +345,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           "
           disabled={true}
           onClick={[Function]}
-          title="Cannot trigger an update while resource is building or build is pending."
+          title="Cannot trigger an update while resource is updating or update is pending."
         />
       </li>
       <li
@@ -397,157 +397,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           "
           disabled={true}
           onClick={[Function]}
-          title="Cannot trigger an update while resource is building or build is pending."
-        />
-      </li>
-    </ul>
-  </nav>
-  <button
-    className="Sidebar-toggle"
-    onClick={null}
-  >
-    <svg>
-      chevron.svg
-    </svg>
-     Collapse
-  </button>
-</section>
-`;
-
-exports[`sidebar never shows dirty trigger button for automatic resources 1`] = `
-<section
-  className="Sidebar"
->
-  <nav
-    className="Sidebar-resources"
-  >
-    <ul
-      className="Sidebar-list"
-    >
-      <li
-        className="SidebarItem SidebarItem--all is-selected"
-      >
-        <a
-          className="SidebarItem-link"
-          href="/"
-          onClick={[Function]}
-          title="All"
-        >
-          <div
-            className="SidebarItem-allIcon"
-          >
-            ┌
-          </div>
-          <span
-            className="SidebarItem-name"
-          >
-            All
-          </span>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            2
-          </span>
-        </a>
-      </li>
-      <li
-        className="SidebarItem"
-      >
-        <a
-          className="SidebarItem-link"
-          href="/r/vigoda"
-          onClick={[Function]}
-          title="vigoda"
-        >
-          <div
-            className="SidebarIcon"
-          >
-            <svg
-              className="pending"
-              style={
-                Object {
-                  "animation": "glow 1s linear infinite",
-                }
-              }
-            >
-              indicator-auto-pending.svg
-            </svg>
-          </div>
-          <p
-            className="SidebarItem-name"
-          >
-            vigoda
-          </p>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
-          </span>
-          <span
-            className="SidebarItem-timeAgo "
-          >
-            <time
-              dateTime="2017-12-21T15:36:07.000Z"
-              title="2017-12-21T15:36:07.000Z"
-            >
-              &lt;5s
-            </time>
-          </span>
-        </a>
-        <button
-          className="SidebarTriggerButton 
-          "
-          disabled={true}
-          onClick={[Function]}
-          title="Cannot trigger an update while resource is building or build is pending."
-        />
-      </li>
-      <li
-        className="SidebarItem"
-      >
-        <a
-          className="SidebarItem-link"
-          href="/r/snack"
-          onClick={[Function]}
-          title="snack"
-        >
-          <div
-            className="SidebarIcon"
-          >
-            <svg
-              className="default"
-              fill="#f6685c"
-            >
-              indicator-auto.svg
-            </svg>
-          </div>
-          <p
-            className="SidebarItem-name"
-          >
-            snack
-          </p>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
-          </span>
-          <span
-            className="SidebarItem-timeAgo "
-          >
-            <time
-              dateTime="2017-12-21T15:35:57.000Z"
-              title="2017-12-21T15:35:57.000Z"
-            >
-              &lt;15s
-            </time>
-          </span>
-        </a>
-        <button
-          className="SidebarTriggerButton 
-           clickable"
-          disabled={false}
-          onClick={[Function]}
-          title="Force a rebuild/update for this resource."
+          title="Cannot trigger an update while resource is updating or update is pending."
         />
       </li>
     </ul>
@@ -695,7 +545,7 @@ exports[`sidebar renders list of resources 1`] = `
           "
           disabled={true}
           onClick={[Function]}
-          title="Cannot trigger an update while resource is building or build is pending."
+          title="Cannot trigger an update while resource is updating or update is pending."
         />
       </li>
       <li
@@ -747,109 +597,7 @@ exports[`sidebar renders list of resources 1`] = `
           "
           disabled={true}
           onClick={[Function]}
-          title="Cannot trigger an update while resource is building or build is pending."
-        />
-      </li>
-    </ul>
-  </nav>
-  <button
-    className="Sidebar-toggle"
-    onClick={null}
-  >
-    <svg>
-      chevron.svg
-    </svg>
-     Collapse
-  </button>
-</section>
-`;
-
-exports[`sidebar renders queued resource with class .isQueued and NOT .isReady 1`] = `
-<section
-  className="Sidebar"
->
-  <nav
-    className="Sidebar-resources"
-  >
-    <ul
-      className="Sidebar-list"
-    >
-      <li
-        className="SidebarItem SidebarItem--all is-selected"
-      >
-        <a
-          className="SidebarItem-link"
-          href="/"
-          onClick={[Function]}
-          title="All"
-        >
-          <div
-            className="SidebarItem-allIcon"
-          >
-            ┌
-          </div>
-          <span
-            className="SidebarItem-name"
-          >
-            All
-          </span>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
-          </span>
-        </a>
-      </li>
-      <li
-        className="SidebarItem"
-      >
-        <a
-          className="SidebarItem-link"
-          href="/r/vigoda"
-          onClick={[Function]}
-          title="vigoda"
-        >
-          <div
-            className="SidebarIcon"
-          >
-            <svg
-              className="pending"
-              style={
-                Object {
-                  "animation": "glow 1s linear infinite",
-                }
-              }
-            >
-              indicator-auto-pending.svg
-            </svg>
-          </div>
-          <p
-            className="SidebarItem-name"
-          >
-            vigoda
-          </p>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
-          </span>
-          <span
-            className="SidebarItem-timeAgo "
-          >
-            <time
-              dateTime="2017-12-21T15:36:07.000Z"
-              title="2017-12-21T15:36:07.000Z"
-            >
-              &lt;5s
-            </time>
-          </span>
-        </a>
-        <button
-          className="SidebarTriggerButton 
-           isQueued"
-          disabled={true}
-          onClick={[Function]}
-          title="Cannot trigger an update if resource is already queued for build."
+          title="Cannot trigger an update while resource is updating or update is pending."
         />
       </li>
     </ul>
@@ -946,7 +694,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           "
           disabled={true}
           onClick={[Function]}
-          title="Cannot trigger an update while resource is building or build is pending."
+          title="Cannot trigger an update while resource is updating or update is pending."
         />
       </li>
       <li
@@ -993,433 +741,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           "
           disabled={true}
           onClick={[Function]}
-          title="Cannot trigger an update while resource is building or build is pending."
-        />
-      </li>
-    </ul>
-  </nav>
-  <button
-    className="Sidebar-toggle"
-    onClick={null}
-  >
-    <svg>
-      chevron.svg
-    </svg>
-     Collapse
-  </button>
-</section>
-`;
-
-exports[`sidebar shows a trigger button for resource that failed its initial build 1`] = `
-<section
-  className="Sidebar"
->
-  <nav
-    className="Sidebar-resources"
-  >
-    <ul
-      className="Sidebar-list"
-    >
-      <li
-        className="SidebarItem SidebarItem--all is-selected"
-      >
-        <a
-          className="SidebarItem-link"
-          href="/"
-          onClick={[Function]}
-          title="All"
-        >
-          <div
-            className="SidebarItem-allIcon"
-          >
-            ┌
-          </div>
-          <span
-            className="SidebarItem-name"
-          >
-            All
-          </span>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
-          </span>
-        </a>
-      </li>
-      <li
-        className="SidebarItem"
-      >
-        <a
-          className="SidebarItem-link"
-          href="/r/vigoda"
-          onClick={[Function]}
-          title="vigoda"
-        >
-          <div
-            className="SidebarIcon"
-          >
-            <svg
-              className="default"
-              fill="#f6685c"
-            >
-              indicator-auto.svg
-            </svg>
-          </div>
-          <p
-            className="SidebarItem-name"
-          >
-            vigoda
-          </p>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
-          </span>
-          <span
-            className="SidebarItem-timeAgo empty"
-          >
-            —
-          </span>
-        </a>
-        <button
-          className="SidebarTriggerButton 
-           clickable"
-          disabled={false}
-          onClick={[Function]}
-          title="Force a rebuild/update for this resource."
-        />
-      </li>
-    </ul>
-  </nav>
-  <button
-    className="Sidebar-toggle"
-    onClick={null}
-  >
-    <svg>
-      chevron.svg
-    </svg>
-     Collapse
-  </button>
-</section>
-`;
-
-exports[`sidebar shows ready + dirty trigger button for manual resource with pending changes 1`] = `
-<section
-  className="Sidebar"
->
-  <nav
-    className="Sidebar-resources"
-  >
-    <ul
-      className="Sidebar-list"
-    >
-      <li
-        className="SidebarItem SidebarItem--all is-selected"
-      >
-        <a
-          className="SidebarItem-link"
-          href="/"
-          onClick={[Function]}
-          title="All"
-        >
-          <div
-            className="SidebarItem-allIcon"
-          >
-            ┌
-          </div>
-          <span
-            className="SidebarItem-name"
-          >
-            All
-          </span>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            2
-          </span>
-        </a>
-      </li>
-      <li
-        className="SidebarItem"
-      >
-        <a
-          className="SidebarItem-link"
-          href="/r/vigoda"
-          onClick={[Function]}
-          title="vigoda"
-        >
-          <div
-            className="SidebarIcon"
-          >
-            <svg
-              className="default"
-              fill="#f6685c"
-            >
-              indicator-auto.svg
-            </svg>
-          </div>
-          <p
-            className="SidebarItem-name"
-          >
-            vigoda
-          </p>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
-          </span>
-          <span
-            className="SidebarItem-timeAgo "
-          >
-            <time
-              dateTime="2017-12-21T15:36:07.000Z"
-              title="2017-12-21T15:36:07.000Z"
-            >
-              &lt;5s
-            </time>
-          </span>
-        </a>
-        <button
-          className="SidebarTriggerButton 
-           clickable clickMe"
-          disabled={false}
-          onClick={[Function]}
-          title="This manual resource has pending file changes; click to trigger an update."
-        />
-      </li>
-      <li
-        className="SidebarItem"
-      >
-        <a
-          className="SidebarItem-link"
-          href="/r/snack"
-          onClick={[Function]}
-          title="snack"
-        >
-          <div
-            className="SidebarIcon"
-          >
-            <svg
-              className="default"
-              fill="#f6685c"
-            >
-              indicator-auto.svg
-            </svg>
-          </div>
-          <p
-            className="SidebarItem-name"
-          >
-            snack
-          </p>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
-          </span>
-          <span
-            className="SidebarItem-timeAgo "
-          >
-            <time
-              dateTime="2017-12-21T15:35:57.000Z"
-              title="2017-12-21T15:35:57.000Z"
-            >
-              &lt;15s
-            </time>
-          </span>
-        </a>
-        <button
-          className="SidebarTriggerButton 
-           clickable"
-          disabled={false}
-          onClick={[Function]}
-          title="Force a rebuild/update for this resource."
-        />
-      </li>
-    </ul>
-  </nav>
-  <button
-    className="Sidebar-toggle"
-    onClick={null}
-  >
-    <svg>
-      chevron.svg
-    </svg>
-     Collapse
-  </button>
-</section>
-`;
-
-exports[`sidebar trigger button not ready if resource is building 1`] = `
-<section
-  className="Sidebar"
->
-  <nav
-    className="Sidebar-resources"
-  >
-    <ul
-      className="Sidebar-list"
-    >
-      <li
-        className="SidebarItem SidebarItem--all is-selected"
-      >
-        <a
-          className="SidebarItem-link"
-          href="/"
-          onClick={[Function]}
-          title="All"
-        >
-          <div
-            className="SidebarItem-allIcon"
-          >
-            ┌
-          </div>
-          <span
-            className="SidebarItem-name"
-          >
-            All
-          </span>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
-          </span>
-        </a>
-      </li>
-      <li
-        className="SidebarItem SidebarItem--building"
-      >
-        <a
-          className="SidebarItem-link"
-          href="/r/vigoda"
-          onClick={[Function]}
-          title="vigoda"
-        >
-          <div
-            className="SidebarIcon"
-          >
-            <svg
-              className="building"
-              style={
-                Object {
-                  "animation": "spin 1s linear infinite",
-                }
-              }
-            >
-              indicator-auto-building.svg
-            </svg>
-          </div>
-          <p
-            className="SidebarItem-name"
-          >
-            vigoda
-          </p>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
-          </span>
-          <span
-            className="SidebarItem-timeAgo "
-          >
-            <time
-              dateTime="2017-12-21T15:36:07.000Z"
-              title="2017-12-21T15:36:07.000Z"
-            >
-              &lt;5s
-            </time>
-          </span>
-        </a>
-        <button
-          className="SidebarTriggerButton 
-          "
-          disabled={true}
-          onClick={[Function]}
-          title="Cannot trigger an update while resource is building or build is pending."
-        />
-      </li>
-    </ul>
-  </nav>
-  <button
-    className="Sidebar-toggle"
-    onClick={null}
-  >
-    <svg>
-      chevron.svg
-    </svg>
-     Collapse
-  </button>
-</section>
-`;
-
-exports[`sidebar trigger button not ready if resource waiting for first build 1`] = `
-<section
-  className="Sidebar"
->
-  <nav
-    className="Sidebar-resources"
-  >
-    <ul
-      className="Sidebar-list"
-    >
-      <li
-        className="SidebarItem SidebarItem--all is-selected"
-      >
-        <a
-          className="SidebarItem-link"
-          href="/"
-          onClick={[Function]}
-          title="All"
-        >
-          <div
-            className="SidebarItem-allIcon"
-          >
-            ┌
-          </div>
-          <span
-            className="SidebarItem-name"
-          >
-            All
-          </span>
-          
-        </a>
-      </li>
-      <li
-        className="SidebarItem"
-      >
-        <a
-          className="SidebarItem-link"
-          href="/r/vigoda"
-          onClick={[Function]}
-          title="vigoda"
-        >
-          <div
-            className="SidebarIcon"
-          >
-            <svg
-              className="default"
-              fill="#20ba31"
-            >
-              indicator-auto.svg
-            </svg>
-          </div>
-          <p
-            className="SidebarItem-name"
-          >
-            vigoda
-          </p>
-          
-          <span
-            className="SidebarItem-timeAgo empty"
-          >
-            —
-          </span>
-        </a>
-        <button
-          className="SidebarTriggerButton 
-          "
-          disabled={true}
-          onClick={[Function]}
-          title="Cannot trigger an update while resource is building or build is pending."
+          title="Cannot trigger an update while resource is updating or update is pending."
         />
       </li>
     </ul>

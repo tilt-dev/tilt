@@ -124,10 +124,8 @@ k8s_yaml('foo.yaml')
 
 	iTarget := m.ImageTargetAt(0)
 
-	// Make sure there's no fast build / live update in the default case.
+	// Make sure there's no live update in the default case.
 	assert.True(t, iTarget.IsDockerBuild())
-	assert.False(t, iTarget.IsFastBuild())
-	assert.True(t, iTarget.AnyFastBuildInfo().Empty())
 	assert.True(t, iTarget.AnyLiveUpdateInfo().Empty())
 }
 
@@ -1170,7 +1168,6 @@ k8s_yaml('foo.yaml')
 	f.load()
 	m := f.assertNextManifest("foo", db(image("gcr.io/foo")))
 	assert.True(t, m.ImageTargetAt(0).IsDockerBuild())
-	assert.False(t, m.ImageTargetAt(0).IsFastBuild())
 }
 
 func TestSanchoSidecar(t *testing.T) {
@@ -1804,7 +1801,18 @@ func TestYamlErrorFromHelm(t *testing.T) {
 	f.file("Tiltfile", `
 k8s_yaml(helm('helm'))
 `)
-	f.loadErrString("from helm")
+
+	// TODO(dmiller): there should be a better assertion here
+
+	version, err := getHelmVersion()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if version == helmV2 {
+		f.loadErrString("from helm")
+	} else {
+		f.loadErrString("in helm")
+	}
 }
 
 func TestYamlErrorFromBlob(t *testing.T) {
@@ -1834,7 +1842,7 @@ custom_build(
 	f.load("foo")
 	f.assertNumManifests(1)
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "foo/.dockerignore")
-	f.assertNextManifest("foo",
+	m := f.assertNextManifest("foo",
 		cb(
 			image("gcr.io/foo"),
 			deps(f.JoinPath("foo")),
@@ -1842,6 +1850,7 @@ custom_build(
 			tag("my-great-tag"),
 		),
 		deployment("foo"))
+	assert.False(t, m.ImageTargets[0].CustomBuildInfo().SkipsPush())
 }
 
 func TestCustomBuildDisablePush(t *testing.T) {
@@ -1870,6 +1879,32 @@ hfb = custom_build(
 			disablePush(true),
 		),
 		deployment("foo"))
+}
+
+func TestCustomBuildSkipsLocalDocker(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	tiltfile := `
+k8s_yaml('foo.yaml')
+custom_build(
+  'gcr.io/foo',
+  'buildah bud -t $TAG foo && buildah push $TAG $TAG',
+	['foo'],
+	skips_local_docker=True,
+)`
+
+	f.setupFoo()
+	f.file("Tiltfile", tiltfile)
+
+	f.load("foo")
+	m := f.assertNextManifest("foo",
+		cb(
+			image("gcr.io/foo"),
+		),
+		deployment("foo"))
+	assert.True(t, m.ImageTargets[0].CustomBuildInfo().SkipsLocalDocker)
+	assert.True(t, m.ImageTargets[0].CustomBuildInfo().SkipsPush())
 }
 
 func TestExtraImageLocationOneImage(t *testing.T) {
@@ -3782,7 +3817,8 @@ func TestK8SContextAcceptance(t *testing.T) {
 	}{
 		{"minikube", "minikube", k8s.EnvMinikube, false, nil},
 		{"docker-for-desktop", "docker-for-desktop", k8s.EnvDockerDesktop, false, nil},
-		{"kind", "KIND", k8s.EnvKIND, false, nil},
+		{"kind", "KIND", k8s.EnvKIND6, false, nil},
+		{"kind", "KIND", k8s.EnvKIND5, false, nil},
 		{"gke", "gke", k8s.EnvGKE, true, []string{"'gke'", "If you're sure", "switch k8s contexts", "allow_k8s_contexts"}},
 		{"allowed", "allowed-context", k8s.EnvGKE, false, nil},
 	} {
@@ -3960,6 +3996,33 @@ local_resource("test", "echo hi", deps=["foo"], ignore=["**/*.a", "foo/bar.d"])
 		require.NoError(t, err)
 		require.Equal(t, tc.expectMatch, matches, tc.path)
 	}
+}
+
+func TestCustomBuildStoresTiltfilePath(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `include('proj/Tiltfile')
+k8s_yaml("foo.yaml")`)
+	f.file("proj/Tiltfile", `
+custom_build(
+  'gcr.io/foo',
+  'build.sh',
+  ['foo']
+)
+`)
+	f.file("proj/build.sh", "docker build -t $EXPECTED_REF gcr.io/foo")
+	f.file("proj/Dockerfile", "FROM alpine")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+
+	f.load()
+	f.assertNumManifests(1)
+	f.assertNextManifest("foo", cb(
+		image("gcr.io/foo"),
+		deps(f.JoinPath("proj/foo")),
+		cmd("build.sh"),
+		workdir(f.JoinPath("proj")),
+	))
 }
 
 func (f *fixture) assertRepos(expectedLocalPaths []string, repos []model.LocalGitRepo) {
@@ -4456,6 +4519,10 @@ func (f *fixture) assertNoMoreManifests() {
 // Helper func for asserting that the next manifest is Unresourced
 // k8s YAML containing the given k8s entities.
 func (f *fixture) assertNextManifestUnresourced(expectedEntities ...string) model.Manifest {
+	lowercaseExpected := []string{}
+	for _, e := range expectedEntities {
+		lowercaseExpected = append(lowercaseExpected, strings.ToLower(e))
+	}
 	next := f.assertNextManifest(model.UnresourcedYAMLManifestName)
 
 	entities, err := k8s.ParseYAML(bytes.NewBufferString(next.K8sTarget().YAML))
@@ -4463,9 +4530,9 @@ func (f *fixture) assertNextManifestUnresourced(expectedEntities ...string) mode
 
 	entityNames := make([]string, len(entities))
 	for i, e := range entities {
-		entityNames[i] = e.Name()
+		entityNames[i] = strings.ToLower(e.Name())
 	}
-	assert.Equal(f.t, expectedEntities, entityNames)
+	assert.Equal(f.t, lowercaseExpected, entityNames)
 	return next
 }
 
@@ -4556,6 +4623,8 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 					assert.Equal(f.t, matcher.deps, cbInfo.Deps)
 				case cmdHelper:
 					assert.Equal(f.t, matcher.cmd, cbInfo.Command)
+				case workDirHelper:
+					assert.Equal(f.t, matcher.path, cbInfo.WorkDir)
 				case tagHelper:
 					assert.Equal(f.t, matcher.tag, cbInfo.Tag)
 				case disablePushHelper:
@@ -5003,6 +5072,14 @@ type cmdHelper struct {
 
 func cmd(cmd string) cmdHelper {
 	return cmdHelper{cmd}
+}
+
+type workDirHelper struct {
+	path string
+}
+
+func workdir(path string) workDirHelper {
+	return workDirHelper{path}
 }
 
 type tagHelper struct {

@@ -177,6 +177,10 @@ func (s *Store) maybeFinished() (bool, error) {
 		return true, nil
 	}
 
+	if state.PanicExited != nil {
+		return true, state.PanicExited
+	}
+
 	if state.FatalError != nil && !state.HUDEnabled {
 		return true, state.FatalError
 	}

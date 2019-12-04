@@ -23,9 +23,13 @@ const (
 	EnvMinikube      Env = "minikube"
 	EnvDockerDesktop Env = "docker-for-desktop"
 	EnvMicroK8s      Env = "microk8s"
-	EnvKIND          Env = "kind"
-	EnvK3D           Env = "k3d"
-	EnvNone          Env = "none" // k8s not running (not neces. a problem, e.g. if using Tilt x Docker Compose)
+
+	// Kind v0.6 substantially changed the protocol for detecting and pulling,
+	// so we represent them as two separate envs.
+	EnvKIND5 Env = "kind-0.5-"
+	EnvKIND6 Env = "kind-0.6+"
+	EnvK3D   Env = "k3d"
+	EnvNone  Env = "none" // k8s not running (not neces. a problem, e.g. if using Tilt x Docker Compose)
 )
 
 func (e Env) UsesLocalDockerRegistry() bool {
@@ -33,7 +37,7 @@ func (e Env) UsesLocalDockerRegistry() bool {
 }
 
 func (e Env) IsLocalCluster() bool {
-	return e == EnvMinikube || e == EnvDockerDesktop || e == EnvMicroK8s || e == EnvKIND || e == EnvK3D
+	return e == EnvMinikube || e == EnvDockerDesktop || e == EnvMicroK8s || e == EnvKIND5 || e == EnvKIND6 || e == EnvK3D
 }
 
 func ProvideKubeContext(config *api.Config) (KubeContext, error) {
@@ -79,8 +83,12 @@ func ProvideEnv(ctx context.Context, config *api.Config) Env {
 		// GKE cluster strings look like:
 		// gke_blorg-dev_us-central1-b_blorg
 		return EnvGKE
-	} else if Env(cn) == EnvKIND {
-		return EnvKIND
+	} else if cn == "kind" {
+		return EnvKIND5
+	} else if strings.HasPrefix(cn, "kind-") {
+		// As of KinD 0.6.0, KinD uses a context name prefix
+		// https://github.com/kubernetes-sigs/kind/issues/1060
+		return EnvKIND6
 	} else if cn == "microk8s-cluster" {
 		return EnvMicroK8s
 	}
@@ -105,8 +113,10 @@ func ProvideEnv(ctx context.Context, config *api.Config) Env {
 	//
 	// KIND internally looks for its clusters with `docker ps` + filters,
 	// which might be a route to explore if this isn't robust enough.
+	//
+	// This is for old pre-0.6.0 versions of KinD
 	if strings.HasPrefix(filepath.Base(loc), "kind-config-") {
-		return EnvKIND
+		return EnvKIND5
 	}
 
 	return EnvUnknown

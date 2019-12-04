@@ -4,14 +4,27 @@ orbs:
 jobs:
   build-linux:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:715d57e55849eadeb27afc48f4b5b8a48d48af1b58337b9af061d99629ca57d7
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:125580447b213fbb1d66522f9b0efb76ed736e49e95130f8a6fdcd868a05b645
     working_directory: /go/src/github.com/windmilleng/tilt
     steps:
       - checkout
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker
       - run: docker pull registry:2
+      - run: sudo mv /usr/bin/helm3 /usr/bin/helm
       - run: make check-go
+      - store_test_results:
+          path: test-results
+      - slack/notify-on-failure:
+          only_for_branches: master
+  helm2:
+    docker:
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:125580447b213fbb1d66522f9b0efb76ed736e49e95130f8a6fdcd868a05b645
+    working_directory: /go/src/github.com/windmilleng/tilt
+    steps:
+      - checkout
+      - run: sudo mv /usr/bin/helm2 /usr/bin/helm
+      - run: make test-go-helm-only
       - store_test_results:
           path: test-results
       - slack/notify-on-failure:
@@ -50,7 +63,7 @@ jobs:
 
   build-integration:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:3b5e271524846d41673978fc48b70e238ada670e19ac6841644c30545d64645d
+      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:400b39ce81072afbb54f308e42c59821cdfdb57ecbb9849a90c414b9e6668d94
     working_directory: /go/src/github.com/windmilleng/tilt
     steps:
       - checkout
@@ -62,8 +75,7 @@ jobs:
       - run: docker rm portforward || exit 0
       - run: /go/portforward.sh start
       - run: kind create cluster --name=integration
-      - run: "export KUBECONFIG=$(kind get kubeconfig-path --name=integration) &&
-             export APISERVER_PORT=$(kubectl config view -o jsonpath='{.clusters[].cluster.server}' | cut -d: -f 3 -) &&
+      - run: "export APISERVER_PORT=$(kubectl config view -o jsonpath='{.clusters[].cluster.server}' | cut -d: -f 3 -) &&
              /go/portforward.sh -wait $APISERVER_PORT &&
              kubectl get nodes &&
              make integration"
@@ -112,6 +124,7 @@ workflows:
     # The linux job is cheaper than the others, so run that first.
     jobs:
       - build-linux
+      - helm2
       - build-js:
           requires:
             - build-linux

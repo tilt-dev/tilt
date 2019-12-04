@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/pkg/logger"
 
 	"github.com/gdamore/tcell"
@@ -29,13 +30,12 @@ const DefaultRefreshInterval = 100 * time.Millisecond
 // (we don't currently worry about trying to know how big a page is, and instead just support pgup/dn as "faster arrows"
 const pgUpDownCount = 20
 
+type HudEnabled bool
+
 type HeadsUpDisplay interface {
 	store.Subscriber
 
 	Run(ctx context.Context, dispatch func(action store.Action), refreshRate time.Duration) error
-	Update(v view.View, vs view.ViewState) error
-	Close()
-	SetNarrationMessage(ctx context.Context, msg string) error
 }
 
 type Hud struct {
@@ -50,6 +50,13 @@ type Hud struct {
 }
 
 var _ HeadsUpDisplay = (*Hud)(nil)
+
+func ProvideHud(hudEnabled HudEnabled, renderer *Renderer, webURL model.WebURL, analytics *analytics.TiltAnalytics) (HeadsUpDisplay, error) {
+	if !hudEnabled {
+		return NewDisabledHud(), nil
+	}
+	return NewDefaultHeadsUpDisplay(renderer, webURL, analytics)
+}
 
 func NewDefaultHeadsUpDisplay(renderer *Renderer, webURL model.WebURL, analytics *analytics.TiltAnalytics) (HeadsUpDisplay, error) {
 	return &Hud{
@@ -69,6 +76,12 @@ func (h *Hud) SetNarrationMessage(ctx context.Context, msg string) error {
 }
 
 func (h *Hud) Run(ctx context.Context, dispatch func(action store.Action), refreshRate time.Duration) error {
+	// Redirect stdout and stderr into our logger
+	err := output.CaptureAllOutput(logger.Get(ctx).Writer(logger.InfoLvl))
+	if err != nil {
+		logger.Get(ctx).Infof("Error capturing stdout and stderr: %v", err)
+	}
+
 	h.mu.Lock()
 	h.isRunning = true
 	h.mu.Unlock()

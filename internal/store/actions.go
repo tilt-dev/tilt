@@ -152,3 +152,9 @@ func NewPodResetRestartsAction(podID k8s.PodID, mn model.ManifestName, visibleRe
 }
 
 func (PodResetRestartsAction) Action() {}
+
+type PanicAction struct {
+	Err error
+}
+
+func (PanicAction) Action() {}

@@ -267,6 +267,7 @@ func (FastBuild) buildDetails()  {}
 func (fb FastBuild) Empty() bool { return reflect.DeepEqual(fb, FastBuild{}) }
 
 type CustomBuild struct {
+	WorkDir string
 	Command string
 	// Deps is a list of file paths that are dependencies of this command.
 	Deps []string
@@ -277,9 +278,10 @@ type CustomBuild struct {
 	// export $EXPECTED_REF=name:expected_tag )
 	Tag string
 
-	Fast        FastBuild
-	LiveUpdate  LiveUpdate // Optionally, can use LiveUpdate to update this build in place.
-	DisablePush bool
+	Fast             FastBuild
+	LiveUpdate       LiveUpdate // Optionally, can use LiveUpdate to update this build in place.
+	DisablePush      bool
+	SkipsLocalDocker bool
 }
 
 func (CustomBuild) buildDetails() {}
@@ -287,6 +289,10 @@ func (CustomBuild) buildDetails() {}
 func (cb CustomBuild) WithTag(t string) CustomBuild {
 	cb.Tag = t
 	return cb
+}
+
+func (cb CustomBuild) SkipsPush() bool {
+	return cb.SkipsLocalDocker || cb.DisablePush
 }
 
 var _ TargetSpec = ImageTarget{}

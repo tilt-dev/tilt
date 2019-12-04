@@ -23,7 +23,7 @@ import (
 var fastBuildDeletedErr = fmt.Errorf("fast_build is no longer supported. live_update provides the same functionality with less set-up: https://docs.tilt.dev/live_update_tutorial.html . If you run into problems, let us know: https://tilt.dev/contact")
 
 type dockerImage struct {
-	tiltfilePath     string
+	workDir          string
 	configurationRef container.RefSelector
 	deploymentRef    reference.Named
 	cachePaths       []string
@@ -44,8 +44,9 @@ type dockerImage struct {
 	// Whether this has been matched up yet to a deploy resource.
 	matched bool
 
-	dependencyIDs []model.TargetID
-	disablePush   bool
+	dependencyIDs    []model.TargetID
+	disablePush      bool
+	skipsLocalDocker bool
 
 	liveUpdate model.LiveUpdate
 }
@@ -172,7 +173,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	}
 
 	r := &dockerImage{
-		tiltfilePath:     starkit.CurrentExecPath(thread),
+		workDir:          starkit.CurrentExecPath(thread),
 		dbDockerfilePath: dockerfilePath,
 		dbDockerfile:     dockerfile.Dockerfile(dockerfileContents),
 		dbBuildPath:      context,
@@ -223,6 +224,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	var liveUpdateVal, ignoreVal starlark.Value
 	var matchInEnvVars bool
 	var entrypoint string
+	var skipsLocalDocker bool
 
 	err := s.unpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
@@ -230,6 +232,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		"deps", &deps,
 		"tag?", &tag,
 		"disable_push?", &disablePush,
+		"skips_local_docker?", &skipsLocalDocker,
 		"live_update?", &liveUpdateVal,
 		"match_in_env_vars?", &matchInEnvVars,
 		"ignore?", &ignoreVal,
@@ -280,11 +283,13 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	}
 
 	img := &dockerImage{
+		workDir:          starkit.AbsWorkingDir(thread),
 		configurationRef: container.NewRefSelector(ref),
 		customCommand:    command,
 		customDeps:       localDeps,
 		customTag:        tag,
 		disablePush:      disablePush,
+		skipsLocalDocker: skipsLocalDocker,
 		liveUpdate:       liveUpdate,
 		matchInEnvVars:   matchInEnvVars,
 		ignores:          ignores,
@@ -437,7 +442,7 @@ func (s *tiltfileState) reposForImage(image *dockerImage) []model.LocalGitRepo {
 	paths = append(paths,
 		image.dbDockerfilePath,
 		image.dbBuildPath,
-		image.tiltfilePath)
+		image.workDir)
 
 	return reposForPaths(paths)
 }

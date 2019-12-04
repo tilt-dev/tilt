@@ -1119,12 +1119,42 @@ func TestHudUpdated(t *testing.T) {
 	err := f.Stop()
 	assert.Equal(t, nil, err)
 
-	assert.Equal(t, 2, len(f.hud.LastView.Resources))
-	assert.Equal(t, store.TiltfileManifestName, f.hud.LastView.Resources[0].Name)
-	rv := f.hud.LastView.Resources[1]
+	assert.Equal(t, 2, len(f.fakeHud().LastView.Resources))
+	assert.Equal(t, store.TiltfileManifestName, f.fakeHud().LastView.Resources[0].Name)
+	rv := f.fakeHud().LastView.Resources[1]
 	assert.Equal(t, manifest.Name, model.ManifestName(rv.Name))
 	assert.Equal(t, f.Path(), rv.DirectoriesWatched[0])
 	f.assertAllBuildsConsumed()
+}
+
+func TestDisabledHudUpdated(t *testing.T) {
+	h := hud.NewDisabledHud()
+	f := newTestFixtureWithHud(t, h)
+	defer f.TearDown()
+
+	manifest := f.newManifest("foobar")
+
+	f.Start([]model.Manifest{manifest}, true)
+	call := f.nextCall()
+	assert.True(t, call.oneState().IsEmpty())
+
+	// Make sure we're done logging stuff, then grab # processed bytes
+	time.Sleep(5 * time.Millisecond)
+	assert.True(t, f.disabledHud().ProcessedLogByteCount > 0)
+	oldByteCount := f.disabledHud().ProcessedLogByteCount
+
+	// Log something new, make sure it's reflected in the # processed bytes
+	msg := []byte("hello world!\n")
+	f.store.Dispatch(store.NewGlobalLogEvent(msg))
+	time.Sleep(5 * time.Millisecond)
+	byteCountDiff := f.disabledHud().ProcessedLogByteCount - oldByteCount
+	assert.Equal(t, len(msg), byteCountDiff)
+
+	err := f.Stop()
+	assert.Equal(t, nil, err)
+
+	f.assertAllBuildsConsumed()
+
 }
 
 func TestPodEvent(t *testing.T) {
@@ -3200,6 +3230,7 @@ func makeFakeTimerMaker(t *testing.T) fakeTimerMaker {
 
 type testFixture struct {
 	*tempdir.TempDirFixture
+	t                     *testing.T
 	ctx                   context.Context
 	cancel                func()
 	upper                 Upper
@@ -3208,7 +3239,7 @@ type testFixture struct {
 	timerMaker            *fakeTimerMaker
 	docker                *docker.FakeClient
 	kClient               *k8s.FakeK8sClient
-	hud                   *hud.FakeHud
+	hud                   hud.HeadsUpDisplay // so fixture may use either FakeHud or DisabledHud. See: f.FakeHud()/f.DisabledHud()
 	upperInitResult       chan error
 	log                   *bufsync.ThreadSafeBuffer
 	store                 *store.Store
@@ -3226,6 +3257,10 @@ type testFixture struct {
 }
 
 func newTestFixture(t *testing.T) *testFixture {
+	return newTestFixtureWithHud(t, hud.NewFakeHud())
+}
+
+func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	f := tempdir.NewTempDirFixture(t)
 
 	log := bufsync.NewThreadSafeBuffer()
@@ -3244,8 +3279,6 @@ func newTestFixture(t *testing.T) *testFixture {
 	of := k8s.ProvideOwnerFetcher(kCli)
 	pw := k8swatch.NewPodWatcher(kCli, of)
 	sw := k8swatch.NewServiceWatcher(kCli, of, "")
-
-	fakeHud := hud.NewFakeHud()
 
 	fSub := fixtureSub{ch: make(chan bool, 1000)}
 	st := store.NewStore(UpperReducer, store.LogActionsFlag(false))
@@ -3285,6 +3318,7 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	ret := &testFixture{
 		TempDirFixture:        f,
+		t:                     t,
 		ctx:                   ctx,
 		cancel:                cancel,
 		b:                     b,
@@ -3292,7 +3326,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		timerMaker:            &timerMaker,
 		docker:                dockerClient,
 		kClient:               kCli,
-		hud:                   fakeHud,
+		hud:                   h,
 		log:                   log,
 		store:                 st,
 		bc:                    bc,
@@ -3312,14 +3346,30 @@ func newTestFixture(t *testing.T) *testFixture {
 	}
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
 
-	subs := ProvideSubscribers(fakeHud, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, tvc, au, ewm, tcum, cuu, dp)
+	subs := ProvideSubscribers(h, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, tvc, au, ewm, tcum, cuu, dp)
 	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {
-		fakeHud.Run(ctx, ret.upper.Dispatch, hud.DefaultRefreshInterval)
+		h.Run(ctx, ret.upper.Dispatch, hud.DefaultRefreshInterval)
 	}()
 
 	return ret
+}
+
+func (f *testFixture) fakeHud() *hud.FakeHud {
+	fakeHud, ok := f.hud.(*hud.FakeHud)
+	if !ok {
+		f.t.Fatalf("called f.fakeHud() on a test fixure without a fakeHud (instead f.hud is of type: %T", f.hud)
+	}
+	return fakeHud
+}
+
+func (f *testFixture) disabledHud() *hud.DisabledHud {
+	disabledHud, ok := f.hud.(*hud.DisabledHud)
+	if !ok {
+		f.t.Fatalf("called f.disabledHud() on a test fixure without a disabledHud (instead f.hud is of type: %T", f.hud)
+	}
+	return disabledHud
 }
 
 // starts the upper with the given manifests, bypassing normal tiltfile loading
@@ -3433,11 +3483,11 @@ func (f *testFixture) SetNextBuildFailure(err error) {
 
 // Wait until the given view test passes.
 func (f *testFixture) WaitUntilHUD(msg string, isDone func(view.View) bool) {
-	f.hud.WaitUntil(f.T(), f.ctx, msg, isDone)
+	f.fakeHud().WaitUntil(f.T(), f.ctx, msg, isDone)
 }
 
 func (f *testFixture) WaitUntilHUDResource(msg string, name model.ManifestName, isDone func(view.Resource) bool) {
-	f.hud.WaitUntilResource(f.T(), f.ctx, msg, name, isDone)
+	f.fakeHud().WaitUntilResource(f.T(), f.ctx, msg, name, isDone)
 }
 
 // Wait until the given engine state test passes.
@@ -3794,7 +3844,7 @@ func (f *testFixture) setDCRunLogOutput(dc model.DockerComposeTarget, output <-c
 }
 
 func (f *testFixture) hudResource(name model.ManifestName) view.Resource {
-	res, ok := f.hud.LastView.Resource(name)
+	res, ok := f.fakeHud().LastView.Resource(name)
 	if !ok {
 		f.T().Fatalf("Resource not found: %s", name)
 	}

@@ -142,7 +142,7 @@ func TestBuildControllerDockerCompose(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	manifest := NewSanchoFastBuildDCManifest(f)
+	manifest := NewSanchoLiveUpdateDCManifest(f)
 	f.Start([]model.Manifest{manifest}, true)
 
 	call := f.nextCall()
@@ -800,7 +800,7 @@ func TestBuildControllerRespectDockerComposeOrder(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	sancho := NewSanchoFastBuildDCManifest(f)
+	sancho := NewSanchoLiveUpdateDCManifest(f)
 	redis := manifestbuilder.New(f, "redis").WithDockerCompose().Build()
 	donQuixote := manifestbuilder.New(f, "don-quixote").WithDockerCompose().Build()
 	manifests := []model.Manifest{redis, sancho, donQuixote}

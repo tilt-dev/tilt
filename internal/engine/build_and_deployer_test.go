@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -13,12 +12,14 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/opencontainers/go-digest"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/windmilleng/tilt/internal/build"
+
 	"github.com/windmilleng/wmclient/pkg/dirs"
 
-	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
@@ -86,7 +87,7 @@ func TestDockerForMacDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	manifest := NewSanchoFastBuildManifest(f)
+	manifest := NewSanchoDockerBuildManifest(f)
 	targets := buildTargets(manifest)
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
 	if err != nil {
@@ -111,14 +112,14 @@ func TestDockerForMacDeploy(t *testing.T) {
 	}
 }
 
-func TestNamespaceGKE(t *testing.T) {
+func TestSyncletNamespaceGKE(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
 	assert.Equal(t, "", string(f.sCli.Namespace))
 	assert.Equal(t, "", string(f.k8s.LastPodQueryNamespace))
 
-	manifest := NewSanchoFastBuildManifest(f)
+	manifest := NewSanchoLiveUpdateManifest(f)
 	targets := buildTargets(manifest)
 	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
 	if err != nil {
@@ -161,7 +162,7 @@ func TestContainerBuildLocal(t *testing.T) {
 	defer f.TearDown()
 
 	changed := f.WriteFile("a.txt", "a")
-	manifest := NewSanchoFastBuildManifest(f)
+	manifest := NewSanchoLiveUpdateManifest(f)
 	targets := buildTargets(manifest)
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
@@ -195,7 +196,7 @@ func TestContainerBuildSynclet(t *testing.T) {
 
 	changed := f.WriteFile("a.txt", "a")
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
-	manifest := NewSanchoFastBuildManifest(f)
+	manifest := NewSanchoLiveUpdateManifest(f)
 	targets := buildTargets(manifest)
 	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err != nil {
@@ -220,18 +221,8 @@ func TestContainerBuildLocalTriggeredRuns(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	changed := f.WriteFile("a.txt", "a")
-	manifest := NewSanchoFastBuildManifest(f)
-	iTarg := manifest.ImageTargetAt(0)
-	fb := iTarg.TopFastBuildInfo()
-	runs := []model.Run{
-		model.Run{Cmd: model.ToShellCmd("echo hello")},
-		model.Run{Cmd: model.ToShellCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
-		model.Run{Cmd: model.ToShellCmd("echo b"), Triggers: f.NewPathSet("b.txt")}, // does NOT match changed file
-	}
-	fb.Runs = runs
-	iTarg = iTarg.WithBuildDetails(fb)
-	manifest = manifest.WithImageTarget(iTarg)
+	manifest := NewSanchoLiveUpdateManifestWithTriggeredRuns(f, true)
+	changed := f.WriteFile("a.txt", "a") // matches one run trigger, not the other
 
 	targets := buildTargets(manifest)
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
@@ -264,18 +255,8 @@ func TestContainerBuildSyncletTriggeredRuns(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
-	changed := f.WriteFile("a.txt", "a")
-	manifest := NewSanchoFastBuildManifest(f)
-	iTarg := manifest.ImageTargetAt(0)
-	fb := iTarg.TopFastBuildInfo()
-	runs := []model.Run{
-		model.Run{Cmd: model.ToShellCmd("echo hello")},
-		model.Run{Cmd: model.ToShellCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
-		model.Run{Cmd: model.ToShellCmd("echo b"), Triggers: f.NewPathSet("b.txt")}, // does NOT match changed file
-	}
-	fb.Runs = runs
-	iTarg = iTarg.WithBuildDetails(fb)
-	manifest = manifest.WithImageTarget(iTarg)
+	manifest := NewSanchoLiveUpdateManifestWithTriggeredRuns(f, true)
+	changed := f.WriteFile("a.txt", "a") // matches one run trigger, not the other
 
 	targets := buildTargets(manifest)
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
@@ -300,13 +281,10 @@ func TestContainerBuildSyncletHotReload(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
-	changed := f.WriteFile("a.txt", "a")
+	manifest := NewSanchoLiveUpdateManifestWithTriggeredRuns(f, false)
+	changed := f.WriteFile("a.txt", "a") // matches one run trigger, not the other
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
-	manifest := NewSanchoFastBuildManifest(f)
-	iTarget := manifest.ImageTargetAt(0)
-	fbInfo := iTarget.TopFastBuildInfo()
-	fbInfo.HotReload = true
-	manifest = manifest.WithImageTarget(iTarget.WithBuildDetails(fbInfo))
+
 	targets := buildTargets(manifest)
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err != nil {
@@ -317,69 +295,7 @@ func TestContainerBuildSyncletHotReload(t *testing.T) {
 	f.assertContainerRestarts(0)
 }
 
-func TestDockerBuildWithNestedFastBuildDeploysSynclet(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
-	defer f.TearDown()
-
-	manifest := NewSanchoDockerBuildManifestWithNestedFastBuild(f)
-	targets := buildTargets(manifest)
-	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if f.docker.BuildCount != 1 {
-		t.Errorf("Expected 1 docker build, actual: %d", f.docker.BuildCount)
-	}
-
-	if f.docker.PushCount != 1 {
-		t.Errorf("Expected 1 docker push, actual: %d", f.docker.PushCount)
-	}
-
-	expectedYaml := "image: gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
-	if !strings.Contains(f.k8s.Yaml, expectedYaml) {
-		t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.Yaml)
-	}
-
-	if !strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
-		t.Errorf("Should deploy the synclet for a docker build with a nested fast build: %s", f.k8s.Yaml)
-	}
-}
-
-func TestDockerBuildWithNestedFastBuildContainerUpdate(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
-	defer f.TearDown()
-
-	changed := f.WriteFile("a.txt", "a")
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
-	manifest := NewSanchoDockerBuildManifestWithNestedFastBuild(f)
-	targets := buildTargets(manifest)
-	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if f.docker.BuildCount != 0 {
-		t.Errorf("Expected no docker build, actual: %d", f.docker.BuildCount)
-	}
-	if f.docker.PushCount != 0 {
-		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
-	}
-	if f.docker.CopyCount != 1 {
-		t.Errorf("Expected 1 copy to docker container call, actual: %d", f.docker.CopyCount)
-	}
-	if len(f.docker.ExecCalls) != 1 {
-		t.Errorf("Expected 1 exec in container call, actual: %d", len(f.docker.ExecCalls))
-	}
-	f.assertContainerRestarts(1)
-
-	id := manifest.ImageTargetAt(0).ID()
-	_, hasResult := result[id]
-	assert.True(t, hasResult)
-	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyLiveUpdatedContainerID().String())
-}
-
-func TestIncrementalBuildFailure(t *testing.T) {
+func TestLiveUpdateFailure(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
@@ -387,7 +303,7 @@ func TestIncrementalBuildFailure(t *testing.T) {
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 	f.docker.SetExecError(docker.ExitError{ExitCode: 1})
 
-	manifest := NewSanchoFastBuildManifest(f)
+	manifest := NewSanchoLiveUpdateManifest(f)
 	targets := buildTargets(manifest)
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	msg := "Run step \"go install github.com/windmilleng/sancho\" failed with exit code: 1"
@@ -411,7 +327,7 @@ func TestIncrementalBuildFailure(t *testing.T) {
 	f.assertContainerRestarts(0)
 }
 
-func TestIncrementalBuildKilled(t *testing.T) {
+func TestLiveUpdateTaskKilled(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
@@ -420,7 +336,7 @@ func TestIncrementalBuildKilled(t *testing.T) {
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 	f.docker.SetExecError(docker.ExitError{ExitCode: build.TaskKillExitCode})
 
-	manifest := NewSanchoFastBuildManifest(f)
+	manifest := NewSanchoLiveUpdateManifest(f)
 	targets := buildTargets(manifest)
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err != nil {
@@ -443,7 +359,7 @@ func TestFallBackToImageDeploy(t *testing.T) {
 	changed := f.WriteFile("a.txt", "a")
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 
-	manifest := NewSanchoFastBuildManifest(f)
+	manifest := NewSanchoLiveUpdateManifest(f)
 	targets := buildTargets(manifest)
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err != nil {
@@ -464,7 +380,7 @@ func TestNoFallbackForDontFallBackError(t *testing.T) {
 	changed := f.WriteFile("a.txt", "a")
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 
-	manifest := NewSanchoFastBuildManifest(f)
+	manifest := NewSanchoLiveUpdateManifest(f)
 	targets := buildTargets(manifest)
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err == nil {
@@ -480,11 +396,11 @@ func TestNoFallbackForDontFallBackError(t *testing.T) {
 	}
 }
 
-func TestIncrementalBuildTwice(t *testing.T) {
+func TestLiveUpdateTwice(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	manifest := NewSanchoFastBuildManifest(f)
+	manifest := NewSanchoLiveUpdateManifest(f)
 	targets := buildTargets(manifest)
 	aPath := f.WriteFile("a.txt", "a")
 	bPath := f.WriteFile("b.txt", "b")
@@ -518,11 +434,11 @@ func TestIncrementalBuildTwice(t *testing.T) {
 
 // Kill the pod after the first container update,
 // and make sure the next image build gets the right file updates.
-func TestIncrementalBuildTwiceDeadPod(t *testing.T) {
+func TestLiveUpdateTwiceDeadPod(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	manifest := NewSanchoFastBuildManifest(f)
+	manifest := NewSanchoLiveUpdateManifest(f)
 	targets := buildTargets(manifest)
 	aPath := f.WriteFile("a.txt", "a")
 	bPath := f.WriteFile("b.txt", "b")
@@ -561,7 +477,7 @@ func TestIgnoredFiles(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	manifest := NewSanchoFastBuildManifest(f)
+	manifest := NewSanchoDockerBuildManifest(f)
 
 	tiltfile := filepath.Join(f.Path(), "Tiltfile")
 	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).WithRepos([]model.LocalGitRepo{
@@ -583,27 +499,27 @@ func TestIgnoredFiles(t *testing.T) {
 	tr := tar.NewReader(f.docker.BuildOptions.Context)
 	testutils.AssertFilesInTar(t, tr, []expectedFile{
 		expectedFile{
-			Path:     "go/src/github.com/windmilleng/sancho/a.txt",
+			Path:     "a.txt",
 			Contents: "a",
 		},
 		expectedFile{
-			Path:    "go/src/github.com/windmilleng/sancho/.git/index",
+			Path:    ".git/index",
 			Missing: true,
 		},
 		expectedFile{
-			Path:    "go/src/github.com/windmilleng/sancho/Tiltfile",
+			Path:    "Tiltfile",
 			Missing: true,
 		},
 	})
 }
 
-func TestCustomBuildWithFastBuild(t *testing.T) {
+func TestCustomBuildWithLiveUpdate(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
 
-	manifest := NewSanchoCustomBuildManifestWithFastBuild(f)
+	manifest := NewSanchoCustomBuildManifestWithLiveUpdate(f)
 	targets := buildTargets(manifest)
 
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
@@ -620,11 +536,11 @@ func TestCustomBuildWithFastBuild(t *testing.T) {
 	}
 
 	if !strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
-		t.Errorf("Should deploy the synclet for a custom build with a fast build: %s", f.k8s.Yaml)
+		t.Errorf("Should deploy the synclet for a custom build with a live update: %s", f.k8s.Yaml)
 	}
 }
 
-func TestCustomBuildWithoutFastBuild(t *testing.T) {
+func TestCustomBuild(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
@@ -721,7 +637,7 @@ func TestDockerComposeImageBuild(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
-	manifest := NewSanchoFastBuildDCManifest(f)
+	manifest := NewSanchoLiveUpdateDCManifest(f)
 	targets := buildTargets(manifest)
 
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
@@ -737,11 +653,11 @@ func TestDockerComposeImageBuild(t *testing.T) {
 	assert.Len(t, f.dcCli.UpCalls, 1)
 }
 
-func TestDockerComposeInPlaceUpdate(t *testing.T) {
+func TestDockerComposeLiveUpdate(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
-	manifest := NewSanchoFastBuildDCManifest(f)
+	manifest := NewSanchoLiveUpdateDCManifest(f)
 	targets := buildTargets(manifest)
 	changed := f.WriteFile("a.txt", "a")
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
@@ -771,7 +687,7 @@ func TestReturnLastUnexpectedError(t *testing.T) {
 	// even if subsequent builders throw expected errors.
 	f.docker.BuildErrorToThrow = fmt.Errorf("no one expects the unexpected error")
 
-	manifest := NewSanchoFastBuildDCManifest(f)
+	manifest := NewSanchoLiveUpdateManifest(f)
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "no one expects the unexpected error")

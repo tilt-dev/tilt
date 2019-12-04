@@ -133,7 +133,7 @@ func ProvideK8sClient(
 	clientLoader clientcmd.ClientConfig) Client {
 	if env == EnvNone {
 		// No k8s, so no need to get any further configs
-		return &explodingClient{err: fmt.Errorf("Kubernetes context not set")}
+		return &explodingClient{err: fmt.Errorf("Kubernetes context not set in %s", clientLoader.ConfigAccess().GetLoadingPrecedence())}
 	}
 
 	restConfig, err := maybeRESTConfig.Config, maybeRESTConfig.Error

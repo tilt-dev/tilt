@@ -1,9 +1,8 @@
-package flags
+package config
 
 import (
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
@@ -16,8 +15,8 @@ import (
 const FlagsConfigFileName = "tilt_config.json"
 
 type Settings struct {
-	resources []model.ManifestName
-	argDef    ArgsDef
+	enabledResources []model.ManifestName
+	argDef           ArgsDef
 
 	flagsParsed bool
 	FlagsState  model.FlagsState
@@ -72,9 +71,9 @@ func (e *Extension) OnStart(env *starkit.Environment) error {
 		name string
 		f    starkit.Function
 	}{
-		{"flags.set_resources", setResources},
-		{"flags.parse", e.parse},
-		{"flags.define_string_list", argDefinitionBuiltin(func() argValue {
+		{"config.set_enabled_resources", setEnabledResources},
+		{"config.parse", e.parse},
+		{"config.define_string_list", argDefinitionBuiltin(func() argValue {
 			return &stringList{}
 		})},
 	} {
@@ -123,14 +122,13 @@ func (e *Extension) parse(thread *starlark.Thread, fn *starlark.Builtin, args st
 		return starlark.None, err
 	}
 
-	fi, err := os.Stat(settings.FlagsState.ConfigPath)
-	if err != nil {
-		return starlark.None, errors.Wrapf("statting %s", settings.FlagsState.ConfigPath)
-	}
-
 	if mergedArgs {
+		fi, err := os.Stat(settings.FlagsState.ConfigPath)
+		if err != nil {
+			return starlark.None, errors.Wrapf(err, "statting %s", settings.FlagsState.ConfigPath)
+		}
 		err = starkit.SetState(thread, func(settings Settings) Settings {
-			settings.FlagsState.LastArgsWrite = time.Now()
+			settings.FlagsState.LastArgsWrite = fi.ModTime()
 			return settings
 		})
 		if err != nil {

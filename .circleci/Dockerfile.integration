@@ -40,6 +40,6 @@ RUN go get gotest.tools/gotestsum
 RUN apt update && apt install -y jq
 
 # install Kind (Kubernetes in Docker)
-RUN curl -fLo ./kind-linux-amd64 https://github.com/kubernetes-sigs/kind/releases/download/v0.5.0/kind-linux-amd64 \
+RUN curl -fLo ./kind-linux-amd64 https://github.com/kubernetes-sigs/kind/releases/download/v0.6.0/kind-linux-amd64 \
   && chmod +x ./kind-linux-amd64 \
   && mv ./kind-linux-amd64 /go/bin/kind

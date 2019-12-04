@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -207,6 +206,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleTiltCloudUserLookedUpAction(state, action)
 	case store.UserStartedTiltCloudRegistrationAction:
 		handleUserStartedTiltCloudRegistrationAction(state)
+	case store.PanicAction:
+		handlePanicAction(state, action)
 	case store.LogEvent:
 		// handled as a LogAction, do nothing
 
@@ -423,21 +424,6 @@ func handleStartProfilingAction(state *store.EngineState) {
 	state.IsProfiling = true
 }
 
-// The Flag Config is sometimes written to by Tilt itself, and we don't want that to trigger
-// a Tiltfile execution. If the file's timestamp predates the time that Tilt wrote to the file,
-// assume that the notification is just for something Tilt already knows about and ignore it.
-func ignoreFlagConfigUpdate(state *store.EngineState) (ignored bool, err error) {
-	st, err := os.Stat(state.FlagsState.ConfigPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		} else {
-			return true, err
-		}
-	}
-	return st.ModTime().Before(state.FlagsState.LastArgsWrite), nil
-}
-
 func handleFSEvent(
 	ctx context.Context,
 	state *store.EngineState,
@@ -445,16 +431,6 @@ func handleFSEvent(
 
 	if event.targetID.Type == model.TargetTypeConfigs {
 		for _, f := range event.files {
-			if f == state.FlagsState.ConfigPath {
-				ignored, err := ignoreFlagConfigUpdate(state)
-				if err != nil {
-					logger.Get(ctx).Infof("error reading flag config file %s: %v", state.FlagsState.ConfigPath, err)
-					continue
-				}
-				if ignored {
-					continue
-				}
-			}
 			state.PendingConfigFileChanges[f] = event.time
 		}
 		return
@@ -712,6 +688,10 @@ func handleExitAction(state *store.EngineState, action hud.ExitAction) {
 	} else {
 		state.UserExited = true
 	}
+}
+
+func handlePanicAction(state *store.EngineState, action store.PanicAction) {
+	state.PanicExited = action.Err
 }
 
 func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineState, action DockerComposeEventAction) {

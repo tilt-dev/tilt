@@ -30,22 +30,6 @@ var SanchoRef = container.MustParseSelector(testyaml.SanchoImage)
 var SanchoBaseRef = container.MustParseSelector("sancho-base")
 var SanchoSidecarRef = container.MustParseSelector(testyaml.SanchoSidecarImage)
 
-func NewSanchoFastBuild(fixture Fixture) model.FastBuild {
-	return model.FastBuild{
-		BaseDockerfile: SanchoBaseDockerfile,
-		Syncs: []model.Sync{
-			model.Sync{
-				LocalPath:     fixture.Path(),
-				ContainerPath: "/go/src/github.com/windmilleng/sancho",
-			},
-		},
-		Runs: model.ToRuns([]model.Cmd{
-			model.Cmd{Argv: []string{"go", "install", "github.com/windmilleng/sancho"}},
-		}),
-		Entrypoint: model.Cmd{Argv: []string{"/go/bin/sancho"}},
-	}
-}
-
 func SyncStepsForApp(app string, fixture Fixture) []model.LiveUpdateSyncStep {
 	return []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
 		Source: fixture.Path(),
@@ -62,18 +46,6 @@ func RunStepsForApp(app string) []model.LiveUpdateRunStep {
 
 var SanchoRunSteps = RunStepsForApp("sancho")
 
-func NewSanchoFastBuildImage(fixture Fixture) model.ImageTarget {
-	fbInfo := NewSanchoFastBuild(fixture)
-	return model.NewImageTarget(SanchoRef).WithBuildDetails(fbInfo)
-}
-
-func NewSanchoFastBuildManifest(f Fixture) model.Manifest {
-	return manifestbuilder.New(f, "sancho").
-		WithK8sYAML(SanchoYAML).
-		WithImageTarget(NewSanchoFastBuildImage(f)).
-		Build()
-}
-
 func NewSanchoLiveUpdateManifest(f Fixture) model.Manifest {
 	return manifestbuilder.New(f, "sancho").
 		WithK8sYAML(SanchoYAML).
@@ -81,17 +53,37 @@ func NewSanchoLiveUpdateManifest(f Fixture) model.Manifest {
 		Build()
 }
 
-func NewSanchoFastBuildDCManifest(f Fixture) model.Manifest {
+func NewSanchoLiveUpdateManifestWithTriggeredRuns(f Fixture, shouldRestart bool) model.Manifest {
+	syncs := []model.LiveUpdateSyncStep{
+		{
+			Source: f.Path(),
+			Dest:   "/go/src/github.com/windmilleng/sancho",
+		},
+	}
+	runs := []model.LiveUpdateRunStep{
+		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo hello")},
+		model.LiveUpdateRunStep{
+			Command:  model.ToShellCmd("echo a"),
+			Triggers: model.NewPathSet([]string{"a.txt"}, f.Path()),
+		},
+		model.LiveUpdateRunStep{
+			Command:  model.ToShellCmd("echo b"),
+			Triggers: model.NewPathSet([]string{"b.txt"}, f.Path()),
+		},
+	}
+	lu := assembleLiveUpdate(syncs, runs, shouldRestart, nil, f)
 	return manifestbuilder.New(f, "sancho").
-		WithDockerCompose().
-		WithImageTarget(NewSanchoFastBuildImage(f)).
+		WithK8sYAML(testyaml.SanchoYAML).
+		WithImageTargets(NewSanchoDockerBuildImageTarget(f)).
+		WithLiveUpdateAtIndex(lu, 0).
 		Build()
 }
 
-func NewSanchoFastBuildManifestWithCache(fixture Fixture, paths []string) model.Manifest {
-	manifest := NewSanchoFastBuildManifest(fixture)
-	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).WithCachePaths(paths))
-	return manifest
+func NewSanchoLiveUpdateDCManifest(f Fixture) model.Manifest {
+	return manifestbuilder.New(f, "sancho").
+		WithDockerCompose().
+		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		Build()
 }
 
 func NewSanchoManifestWithImageInEnvVar(f Fixture) model.Manifest {
@@ -130,12 +122,11 @@ func NewSanchoCustomBuildManifestWithTag(fixture Fixture, tag string) model.Mani
 		Build()
 }
 
-func NewSanchoCustomBuildManifestWithFastBuild(fixture Fixture) model.Manifest {
-	fb := NewSanchoFastBuild(fixture)
+func NewSanchoCustomBuildManifestWithLiveUpdate(fixture Fixture) model.Manifest {
 	cb := model.CustomBuild{
-		Command: "true",
-		Deps:    []string{fixture.JoinPath("app")},
-		Fast:    fb,
+		Command:    "true",
+		Deps:       []string{fixture.JoinPath("app")},
+		LiveUpdate: NewSanchoLiveUpdate(fixture),
 	}
 
 	return manifestbuilder.New(fixture, "sancho").
@@ -170,7 +161,7 @@ func NewSanchoSyncOnlyImageTarget(f Fixture, syncs []model.LiveUpdateSyncStep) m
 	return imageTargetWithLiveUpdate(NewSanchoDockerBuildImageTarget(f), lu)
 }
 
-func NewSanchoLiveUpdateImageTarget(f Fixture) model.ImageTarget {
+func NewSanchoLiveUpdate(f Fixture) model.LiveUpdate {
 	syncs := []model.LiveUpdateSyncStep{
 		{
 			Source: f.Path(),
@@ -183,19 +174,15 @@ func NewSanchoLiveUpdateImageTarget(f Fixture) model.ImageTarget {
 		},
 	}
 
-	lu := assembleLiveUpdate(syncs, runs, true, []string{}, f)
-	return imageTargetWithLiveUpdate(NewSanchoDockerBuildImageTarget(f), lu)
+	return assembleLiveUpdate(syncs, runs, true, []string{}, f)
+}
+
+func NewSanchoLiveUpdateImageTarget(f Fixture) model.ImageTarget {
+	return imageTargetWithLiveUpdate(NewSanchoDockerBuildImageTarget(f), NewSanchoLiveUpdate(f))
 }
 
 func NewSanchoSidecarDockerBuildImageTarget(f Fixture) model.ImageTarget {
 	iTarget := NewSanchoDockerBuildImageTarget(f)
-	iTarget.ConfigurationRef = SanchoSidecarRef
-	iTarget.DeploymentRef = SanchoSidecarRef.AsNamedOnly()
-	return iTarget
-}
-
-func NewSanchoSidecarFastBuildImageTarget(f Fixture) model.ImageTarget {
-	iTarget := NewSanchoFastBuildImage(f)
 	iTarget.ConfigurationRef = SanchoSidecarRef
 	iTarget.DeploymentRef = SanchoSidecarRef.AsNamedOnly()
 	return iTarget
@@ -222,17 +209,6 @@ func NewSanchoDockerBuildManifestWithYaml(f Fixture, yaml string) model.Manifest
 func NewSanchoDockerBuildManifestWithCache(f Fixture, paths []string) model.Manifest {
 	manifest := NewSanchoDockerBuildManifest(f)
 	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).WithCachePaths(paths))
-	return manifest
-}
-
-func NewSanchoDockerBuildManifestWithNestedFastBuild(fixture Fixture) model.Manifest {
-	manifest := NewSanchoDockerBuildManifest(fixture)
-	iTarg := manifest.ImageTargetAt(0)
-	fb := NewSanchoFastBuild(fixture)
-	sb := iTarg.DockerBuildInfo()
-	sb.FastBuild = fb
-	iTarg = iTarg.WithBuildDetails(sb)
-	manifest = manifest.WithImageTarget(iTarg)
 	return manifest
 }
 
