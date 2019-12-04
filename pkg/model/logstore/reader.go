@@ -19,6 +19,10 @@ func (r Reader) Checkpoint() Checkpoint {
 }
 
 func (r Reader) Empty() bool {
+	if r.store == nil {
+		return true
+	}
+
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.store.Empty()

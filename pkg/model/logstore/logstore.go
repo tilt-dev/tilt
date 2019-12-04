@@ -15,8 +15,9 @@ const defaultMaxLogLengthInBytes = 120 * 1000
 const newlineByte = byte('\n')
 
 type Span struct {
-	ManifestName     model.ManifestName
-	LastSegmentIndex int
+	ManifestName      model.ManifestName
+	LastSegmentIndex  int
+	FirstSegmentIndex int
 }
 
 func (s *Span) Clone() *Span {
@@ -166,7 +167,11 @@ func (s *LogStore) Append(le LogEvent, secrets model.SecretSet) {
 	spanID := manifestNameToSpanID(le.Source())
 	span, ok := s.spans[spanID]
 	if !ok {
-		span = &Span{ManifestName: le.Source(), LastSegmentIndex: -1}
+		span = &Span{
+			ManifestName:      le.Source(),
+			LastSegmentIndex:  -1,
+			FirstSegmentIndex: len(s.segments),
+		}
 		s.spans[spanID] = span
 	}
 
@@ -252,6 +257,7 @@ func (s *LogStore) recomputeDerivedValues() {
 
 	// Reset the last segment index so we can rebuild them from scratch.
 	for _, span := range s.spans {
+		span.FirstSegmentIndex = -1
 		span.LastSegmentIndex = -1
 	}
 
@@ -259,6 +265,9 @@ func (s *LogStore) recomputeDerivedValues() {
 	for i, segment := range s.segments {
 		spanID := segment.SpanID
 		span := s.spans[spanID]
+		if span.FirstSegmentIndex == -1 {
+			span.FirstSegmentIndex = i
+		}
 
 		isStartingNewLine := false
 		if span.LastSegmentIndex == -1 {
@@ -269,6 +278,12 @@ func (s *LogStore) recomputeDerivedValues() {
 
 		s.segments[i].ContinuesLine = !isStartingNewLine
 		span.LastSegmentIndex = i
+	}
+
+	for spanID, span := range s.spans {
+		if span.FirstSegmentIndex == -1 {
+			delete(s.spans, spanID)
+		}
 	}
 }
 
@@ -322,8 +337,14 @@ func (s *LogStore) ContinuingString(checkpoint Checkpoint) string {
 }
 
 func (s *LogStore) String() string {
+	return s.ManifestLog("")
+}
+
+func (s *LogStore) ManifestLog(mn model.ManifestName) string {
 	sb := strings.Builder{}
 	lastLineCompleted := false
+	allLogs := mn == ""
+	filteredLogs := mn != ""
 
 	// We want to print the log line-by-line, but we don't actually store the logs
 	// line-by-line. We store them as segments.
@@ -337,23 +358,42 @@ func (s *LogStore) String() string {
 	//
 	// This can have some O(n^2) perf characteristics in the worst case, but
 	// for normal inputs should be fine.
-	for i, segment := range s.segments {
+	startIndex := 0
+	lastIndex := len(s.segments) - 1
+	if filteredLogs {
+		span, ok := s.spans[manifestNameToSpanID(mn)]
+		if !ok {
+			return ""
+		}
+
+		startIndex = span.FirstSegmentIndex
+		lastIndex = span.LastSegmentIndex
+	}
+
+	isFirstLine := true
+	for i := startIndex; i <= lastIndex; i++ {
+		segment := s.segments[i]
 		if !segment.StartsLine() {
+			continue
+		}
+
+		spanID := segment.SpanID
+		span := s.spans[spanID]
+		if filteredLogs && mn != span.ManifestName {
 			continue
 		}
 
 		// If the last segment never completed, print a newline now, so that the
 		// logs from different sources don't blend together.
-		if i > 0 && !lastLineCompleted {
+		if !isFirstLine && !lastLineCompleted {
 			sb.WriteString("\n")
 		}
 
-		spanID := segment.SpanID
-		span := s.spans[spanID]
-		if span.ManifestName != "" {
+		if allLogs && span.ManifestName != "" {
 			sb.WriteString(SourcePrefix(span.ManifestName))
 		}
 		sb.WriteString(string(segment.Text))
+		isFirstLine = false
 
 		// If this segment is not complete, run ahead and try to complete it.
 		if segment.IsComplete() {

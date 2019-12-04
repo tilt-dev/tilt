@@ -96,10 +96,8 @@ func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 
 func TestStateToViewTiltfileLog(t *testing.T) {
 	es := newState([]model.Manifest{})
-	es.TiltfileState.CombinedLog = model.AppendLog(
-		es.TiltfileState.CombinedLog,
-		store.NewLogEvent("Tiltfile", []byte("hello")),
-		"",
+	es.LogStore.Append(
+		store.NewLogEvent(store.TiltfileManifestName, []byte("hello")),
 		nil)
 	v := stateToProtoView(t, *es)
 	r, ok := findResource("(Tiltfile)", v)

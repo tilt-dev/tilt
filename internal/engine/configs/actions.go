@@ -44,3 +44,5 @@ type TiltfileLogAction struct {
 }
 
 func (TiltfileLogAction) Action() {}
+
+var _ store.LogAction = TiltfileLogAction{}
