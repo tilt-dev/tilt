@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
@@ -29,6 +28,7 @@ import (
 	"github.com/windmilleng/tilt/internal/watch"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/windmilleng/tilt/pkg/model/logstore"
 )
 
 // When we see a file change, wait this long to see if any other files have changed, and bundle all changes together.
@@ -594,7 +594,7 @@ func handleLogAction(state *store.EngineState, action store.LogAction) {
 
 	var allLogPrefix string
 	if manifestName != "" && !alreadyHasSourcePrefix {
-		allLogPrefix = sourcePrefix(manifestName)
+		allLogPrefix = logstore.SourcePrefix(manifestName)
 	}
 
 	state.Log = model.AppendLog(state.Log, action, allLogPrefix, state.Secrets)
@@ -609,17 +609,6 @@ func handleLogAction(state *store.EngineState, action store.LogAction) {
 		return
 	}
 	ms.CombinedLog = model.AppendLog(ms.CombinedLog, action, "", state.Secrets)
-}
-
-func sourcePrefix(n model.ManifestName) string {
-	max := 12
-	spaces := ""
-	if len(n) > max {
-		n = n[:max-1] + "…"
-	} else {
-		spaces = strings.Repeat(" ", max-len(n))
-	}
-	return fmt.Sprintf("%s%s┊ ", n, spaces)
 }
 
 func handleServiceEvent(ctx context.Context, state *store.EngineState, action k8swatch.ServiceChangeAction) {

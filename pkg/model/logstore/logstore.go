@@ -1,7 +1,6 @@
 package logstore
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -11,7 +10,7 @@ import (
 // At this limit, with one resource having a 120k log, render time was ~20ms and CPU usage was ~70% on an MBP.
 // 70% still isn't great when tilt doesn't really have any necessary work to do, but at least it's usable.
 // A render time of ~40ms was about when the interface started being noticeably laggy to me.
-const maxLogLengthInBytes = 120
+const maxLogLengthInBytes = 120 * 1000
 
 // After a log hits its limit, we need to truncate it to keep it small
 // we do this by cutting a big chunk at a time, so that we have rarer, larger changes, instead of
@@ -99,6 +98,12 @@ type LogEvent interface {
 	Source() model.ManifestName
 }
 
+// An abstract checkpoint in the log store, so we can
+// ask questions like "give me all logs since checkpoint X" and
+// "scrub everything since checkpoint Y". In practice, this
+// is just an index into the segment slice.
+type Checkpoint int
+
 type LogStore struct {
 	// A Span is a grouping of logs by their source.
 	// The term "Span" is taken from opentracing, and has similar associations.
@@ -113,6 +118,12 @@ type LogStore struct {
 	len int
 }
 
+func NewLogStoreForTesting(msg string) *LogStore {
+	s := NewLogStore()
+	s.Append(newGlobalTestLogEvent(msg), nil)
+	return s
+}
+
 func NewLogStore() *LogStore {
 	return &LogStore{
 		spans:    make(map[SpanID]*Span),
@@ -121,10 +132,21 @@ func NewLogStore() *LogStore {
 	}
 }
 
+func (s *LogStore) Checkpoint() Checkpoint {
+	return Checkpoint(len(s.segments))
+}
+
+func (s *LogStore) ScrubSecretsStartingAt(secrets model.SecretSet, checkpoint Checkpoint) {
+	index := int(checkpoint)
+	for i := index; i < len(s.segments); i++ {
+		s.segments[i].Text = secrets.Scrub(s.segments[i].Text)
+	}
+
+	s.len = s.computeLen()
+}
+
 func (s *LogStore) Append(le LogEvent, secrets model.SecretSet) {
-	// TODO(nick): This is a white lie until we have the code instrumented
-	// to create real span ids.
-	spanID := SpanID(le.Source())
+	spanID := manifestNameToSpanID(le.Source())
 	span, ok := s.spans[spanID]
 	if !ok {
 		span = &Span{ManifestName: le.Source(), LastSegmentIndex: -1}
@@ -152,6 +174,10 @@ func (s *LogStore) Append(le LogEvent, secrets model.SecretSet) {
 
 	s.len += len(msg)
 	s.ensureMaxLength()
+}
+
+func (s *LogStore) Empty() bool {
+	return len(s.segments) == 0
 }
 
 // Get at most N lines from the tail of the log.
@@ -225,6 +251,54 @@ func (s *LogStore) recomputeDerivedValues() {
 	}
 }
 
+// Returns logs incrementally from the given checkpoint.
+//
+// In many use cases, logs are printed to an append-only stream (like os.Stdout).
+// Once they've been printed, they can't be called back.
+// ContinuingString() tries to make reasonable product decisions about printing
+// all the logs that have streamed in since the given checkpoint.
+//
+// Typical usage, looks like:
+//
+// Print(store.ContinuingString(state.LastCheckpoint))
+// state.LastCheckpoint = store.Checkpoint()
+func (s *LogStore) ContinuingString(checkpoint Checkpoint) string {
+	isSameSpanContinuation := false
+	isChangingSpanContinuation := false
+	precedingIndex := int(checkpoint) - 1
+	if precedingIndex >= 0 && int(checkpoint) < len(s.segments) {
+		// Check the last thing we printed. If it was wasn't complete,
+		// we have to do some extra work to properly continue the previous print.
+		precedingSegment := s.segments[precedingIndex]
+		currentSegment := s.segments[checkpoint]
+		if !precedingSegment.IsComplete() {
+			// If this is the same span id, remove the prefix from this line.
+			if precedingSegment.SpanID == currentSegment.SpanID {
+				isSameSpanContinuation = true
+			} else {
+				isChangingSpanContinuation = true
+			}
+		}
+	}
+
+	tempSegments := s.segments[checkpoint:]
+	tempLogStore := &LogStore{
+		spans:    s.spans,
+		segments: tempSegments,
+	}
+	tempLogStore.recomputeDerivedValues()
+
+	if isSameSpanContinuation {
+		spanID := tempSegments[0].SpanID
+		span := s.spans[spanID]
+		return strings.TrimPrefix(tempLogStore.String(), SourcePrefix(span.ManifestName))
+	}
+	if isChangingSpanContinuation {
+		return "\n" + tempLogStore.String()
+	}
+	return tempLogStore.String()
+}
+
 func (s *LogStore) String() string {
 	sb := strings.Builder{}
 	lastLineCompleted := false
@@ -255,7 +329,7 @@ func (s *LogStore) String() string {
 		spanID := segment.SpanID
 		span := s.spans[spanID]
 		if span.ManifestName != "" {
-			sb.WriteString(fmt.Sprintf("%s | ", span.ManifestName))
+			sb.WriteString(SourcePrefix(span.ManifestName))
 		}
 		sb.WriteString(string(segment.Text))
 
@@ -310,4 +384,10 @@ func (s *LogStore) ensureMaxLength() {
 			return
 		}
 	}
+}
+
+// TODO(nick): This is a white lie until we have the code instrumented
+// to create real span ids.
+func manifestNameToSpanID(mn model.ManifestName) SpanID {
+	return SpanID(mn)
 }
