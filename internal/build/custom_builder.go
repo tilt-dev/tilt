@@ -13,10 +13,11 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 type CustomBuilder interface {
-	Build(ctx context.Context, ref reference.Named, workDir string, command string, expectedTag string, skipsLocalDocker bool) (reference.NamedTagged, error)
+	Build(ctx context.Context, ref reference.Named, cb model.CustomBuild) (reference.NamedTagged, error)
 }
 
 type ExecCustomBuilder struct {
@@ -31,7 +32,12 @@ func NewExecCustomBuilder(dCli docker.Client, clock Clock) *ExecCustomBuilder {
 	}
 }
 
-func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, workDir string, command string, expectedTag string, skipsLocalDocker bool) (reference.NamedTagged, error) {
+func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, cb model.CustomBuild) (reference.NamedTagged, error) {
+	workDir := cb.WorkDir
+	expectedTag := cb.Tag
+	command := cb.Command
+	skipsLocalDocker := cb.SkipsLocalDocker
+
 	if expectedTag == "" {
 		expectedTag = fmt.Sprintf("tilt-build-%d", b.clock.Now().Unix())
 	}
