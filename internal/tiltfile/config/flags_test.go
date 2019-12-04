@@ -20,22 +20,22 @@ import (
 func TestSetResources(t *testing.T) {
 	for _, tc := range []struct {
 		name              string
-		callFlagsParse    bool
-		argsResources     []model.ManifestName
+		callConfigParse   bool
+		args              []string
 		tiltfileResources []model.ManifestName
 		expectedResources []model.ManifestName
 	}{
 		{"neither", false, nil, nil, []model.ManifestName{"a", "b"}},
 		{"neither, with config.parse", true, nil, nil, []model.ManifestName{"a", "b"}},
-		{"args only", false, []model.ManifestName{"a"}, nil, []model.ManifestName{"a"}},
-		{"args only, with config.parse", true, []model.ManifestName{"a"}, nil, []model.ManifestName{"a", "b"}},
+		{"args only", false, []string{"a"}, nil, []model.ManifestName{"a"}},
+		{"args only, with config.parse", true, []string{"a"}, nil, []model.ManifestName{"a", "b"}},
 		{"tiltfile only", false, nil, []model.ManifestName{"b"}, []model.ManifestName{"b"}},
 		{"tiltfile only, with config.parse", true, nil, []model.ManifestName{"b"}, []model.ManifestName{"b"}},
-		{"both", false, []model.ManifestName{"a"}, []model.ManifestName{"b"}, []model.ManifestName{"b"}},
-		{"both, with config.parse", true, []model.ManifestName{"a"}, []model.ManifestName{"b"}, []model.ManifestName{"b"}},
+		{"both", false, []string{"a"}, []model.ManifestName{"b"}, []model.ManifestName{"b"}},
+		{"both, with config.parse", true, []string{"a"}, []model.ManifestName{"b"}, []model.ManifestName{"b"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			f := NewFixture(t, model.FlagsState{})
+			f := NewFixture(t, model.NewFlagsState(tc.args))
 			defer f.TearDown()
 
 			setResources := ""
@@ -47,25 +47,22 @@ func TestSetResources(t *testing.T) {
 				setResources = fmt.Sprintf("config.set_enabled_resources([%s])", strings.Join(rs, ", "))
 			}
 
-			flagsParse := ""
-			if tc.callFlagsParse {
-				flagsParse = "config.parse()"
+			configParse := ""
+			if tc.callConfigParse {
+				configParse = `
+config.define_string_list('resources', args=True)
+config.parse()`
 			}
 
-			tiltfile := fmt.Sprintf("%s\n%s\n", setResources, flagsParse)
+			tiltfile := fmt.Sprintf("%s\n%s\n", setResources, configParse)
 
 			f.File("Tiltfile", tiltfile)
 
 			result, err := f.ExecFile("Tiltfile")
 			require.NoError(t, err)
 
-			var args []string
-			for _, a := range tc.argsResources {
-				args = append(args, string(a))
-			}
-
 			manifests := []model.Manifest{{Name: "a"}, {Name: "b"}}
-			actual, err := MustState(result).EnabledResources(args, manifests)
+			actual, err := MustState(result).EnabledResources(manifests)
 			require.NoError(t, err)
 
 			expectedResourcesByName := make(map[model.ManifestName]bool)
@@ -84,9 +81,9 @@ func TestSetResources(t *testing.T) {
 }
 
 func TestParsePositional(t *testing.T) {
-	foo := strings.Split("united states canada mexico panama haiti jamaica peru", " ")
+	args := strings.Split("united states canada mexico panama haiti jamaica peru", " ")
 
-	f := NewFixture(t, model.FlagsState{}, foo...)
+	f := NewFixture(t, model.NewFlagsState(args))
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -98,7 +95,7 @@ print(cfg['foo'])
 	_, err := f.ExecFile("Tiltfile")
 	require.NoError(t, err)
 
-	require.Contains(t, f.PrintOutput(), value.StringSliceToList(foo).String())
+	require.Contains(t, f.PrintOutput(), value.StringSliceToList(args).String())
 }
 
 func TestParseKeyword(t *testing.T) {
@@ -108,7 +105,7 @@ func TestParseKeyword(t *testing.T) {
 		args = append(args, []string{"-foo", s}...)
 	}
 
-	f := NewFixture(t, model.FlagsState{}, args...)
+	f := NewFixture(t, model.NewFlagsState(args))
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -125,7 +122,7 @@ print(cfg['foo'])
 
 func TestParsePositionalAndMultipleInterspersedKeyword(t *testing.T) {
 	args := []string{"-bar", "puerto rico", "-baz", "colombia", "-bar", "venezuela", "-baz", "honduras", "-baz", "guyana", "and", "still"}
-	f := NewFixture(t, model.FlagsState{}, args...)
+	f := NewFixture(t, model.NewFlagsState(args))
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -175,7 +172,7 @@ config.define_string_list('foo')
 }
 
 func TestUndefinedArg(t *testing.T) {
-	f := NewFixture(t, model.FlagsState{}, "-bar", "hello")
+	f := NewFixture(t, model.NewFlagsState([]string{"-bar", "hello"}))
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -199,12 +196,12 @@ print("foo:",cfg['foo'])
 `)
 
 	_, err := f.ExecFile("Tiltfile")
-	require.NoError(t, err)
-	require.Contains(t, f.PrintOutput(), "foo: []")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), `key "foo" not in dict`)
 }
 
 func TestUnprovidedPositionalArg(t *testing.T) {
-	f := NewFixture(t)
+	f := NewFixture(t, model.FlagsState{})
 	f.File("Tiltfile", `
 config.define_string_list('foo', args=True)
 cfg = config.parse()
@@ -212,12 +209,12 @@ print("foo:",cfg['foo'])
 `)
 
 	_, err := f.ExecFile("Tiltfile")
-	require.NoError(t, err)
-	require.Contains(t, f.PrintOutput(), "foo: []")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), `key "foo" not in dict`)
 }
 
 func TestProvidedButUnexpectedPositionalArgs(t *testing.T) {
-	f := NewFixture(t, model.FlagsState{}, "do", "re", "mi")
+	f := NewFixture(t, model.NewFlagsState([]string{"do", "re", "mi"}))
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -230,7 +227,7 @@ cfg = config.parse()
 }
 
 func TestUsage(t *testing.T) {
-	f := NewFixture(t, model.FlagsState{}, "-bar", "hello")
+	f := NewFixture(t, model.NewFlagsState([]string{"-bar", "hello"}))
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -247,7 +244,7 @@ config.parse()
 
 // i.e., tilt up foo bar gets you resources foo and bar
 func TestDefaultTiltBehavior(t *testing.T) {
-	f := NewFixture(t, model.FlagsState{}, "foo", "bar")
+	f := NewFixture(t, model.NewFlagsState([]string{"foo", "bar"}))
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -330,14 +327,14 @@ func TestFlagsFromConfigAndArgs(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			f := NewFixture(t, model.FlagsState{LastArgsWrite: tc.startingArgsFlagsWrite}, tc.args...)
+			f := NewFixture(t, model.FlagsState{LastArgsWrite: tc.startingArgsFlagsWrite, Args: tc.args})
 			defer f.TearDown()
 
 			f.File("Tiltfile", `
-flags.define_string_list('a')
-flags.define_string_list('b')
-flags.define_string_list('c', args=True)
-cfg = flags.parse()
+config.define_string_list('a')
+config.define_string_list('b')
+config.define_string_list('c', args=True)
+cfg = config.parse()
 print("a=", cfg.get('a', []))
 print("b=", cfg.get('b', []))
 print("c=", cfg.get('c', []))
@@ -376,8 +373,8 @@ func TestUndefinedArgInConfigFile(t *testing.T) {
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
-flags.define_string_list('foo')
-cfg = flags.parse()
+config.define_string_list('foo')
+cfg = config.parse()
 print("foo:",cfg.get('foo', []))
 `)
 
@@ -393,8 +390,8 @@ func TestWrongTypeArgInConfigFile(t *testing.T) {
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
-flags.define_string_list('foo')
-cfg = flags.parse()
+config.define_string_list('foo')
+cfg = config.parse()
 print("foo:",cfg.get('foo', []))
 `)
 
@@ -405,8 +402,8 @@ print("foo:",cfg.get('foo', []))
 	require.Contains(t, err.Error(), "specified invalid value for flag foo: expected array")
 }
 
-func NewFixture(tb testing.TB, flagsState model.FlagsState, args ...string) *starkit.Fixture {
-	ret := starkit.NewFixture(tb, NewExtension(args, flagsState), io.NewExtension())
+func NewFixture(tb testing.TB, flagsState model.FlagsState) *starkit.Fixture {
+	ret := starkit.NewFixture(tb, NewExtension(flagsState), io.NewExtension())
 	ret.UseRealFS()
 	return ret
 }

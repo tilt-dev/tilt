@@ -43,7 +43,7 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 }
 
 func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) error {
-	tlr := downDeps.tfl.Load(ctx, c.fileName, args, model.FlagsState{})
+	tlr := downDeps.tfl.Load(ctx, c.fileName, model.NewFlagsState(args))
 	err := tlr.Error
 	if err != nil {
 		return err

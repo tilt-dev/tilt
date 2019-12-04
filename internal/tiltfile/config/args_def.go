@@ -79,7 +79,8 @@ func writeConfig(flagsState model.FlagsState, config argMap) error {
 	return nil
 }
 
-func (ad ArgsDef) mergeArgsIntoConfig(config argMap, state model.FlagsState) (ret argMap, output string, err error) {
+// merges the args into the config and persists the merged config to disk
+func (ad ArgsDef) incorporateArgs(config argMap, state model.FlagsState) (ret argMap, output string, err error) {
 	var flagsFromArgs argMap
 	flagsFromArgs, output, err = ad.parseArgs(state.Args)
 	if err != nil {
@@ -97,8 +98,7 @@ func (ad ArgsDef) mergeArgsIntoConfig(config argMap, state model.FlagsState) (re
 }
 
 func (ad ArgsDef) parse(flagsState model.FlagsState) (v starlark.Value, mergedArgs bool, output string, err error) {
-	var config argMap
-	config, err = ad.readFromFile(flagsState.ConfigPath)
+	config, err := ad.readFromFile(flagsState.ConfigPath)
 	if err != nil {
 		return starlark.None, false, "", err
 	}
@@ -106,7 +106,7 @@ func (ad ArgsDef) parse(flagsState model.FlagsState) (v starlark.Value, mergedAr
 	// if we have not yet merged the current set of args, merge them into the flags from the file
 	// and write them back out
 	if flagsState.LastArgsWrite.IsZero() {
-		config, output, err = ad.mergeArgsIntoConfig(config, flagsState)
+		config, output, err = ad.incorporateArgs(config, flagsState)
 		if err != nil {
 			return starlark.None, false, output, err
 		}

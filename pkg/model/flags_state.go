@@ -7,3 +7,7 @@ type FlagsState struct {
 	LastArgsWrite time.Time
 	Args          []string
 }
+
+func NewFlagsState(args []string) FlagsState {
+	return FlagsState{Args: args}
+}

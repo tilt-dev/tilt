@@ -2670,7 +2670,7 @@ func TestUpperStart(t *testing.T) {
 	})
 
 	f.withState(func(state store.EngineState) {
-		require.Equal(t, []string{"foo", "bar"}, state.UserArgs)
+		require.Equal(t, []string{"foo", "bar"}, state.FlagsState.Args)
 		require.Equal(t, f.JoinPath("Tiltfile"), state.TiltfilePath)
 		require.Equal(t, tok, state.Token)
 		require.Equal(t, analytics.OptIn, state.AnalyticsEffectiveOpt())
@@ -3150,9 +3150,9 @@ func TestUserFlagMerge(t *testing.T) {
 	defer f.TearDown()
 
 	f.WriteFile("Tiltfile", `
-flags.define_string_list('foo')
-flags.define_string_list('bar')
-cfg = flags.parse()
+config.define_string_list('foo')
+config.define_string_list('bar')
+cfg = config.parse()
 print('foo', cfg.get('foo', []))
 print('bar', cfg.get('bar', []))
 `)
@@ -3823,7 +3823,7 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 
 	f.dcc.ServicesOutput = "redis\nserver\n"
 
-	tlr := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil, model.FlagsState{})
+	tlr := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), model.FlagsState{})
 	if tlr.Error != nil {
 		f.T().Fatal(tlr.Error)
 	}

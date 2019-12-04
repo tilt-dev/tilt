@@ -71,7 +71,7 @@ type TiltfileLoader interface {
 	// We want to be very careful not to treat non-zero exit codes like an error.
 	// Because even if the Tiltfile has errors, we might need to watch files
 	// or return partial results (like enabled features).
-	Load(ctx context.Context, filename string, args []string, flagsState model.FlagsState) TiltfileLoadResult
+	Load(ctx context.Context, filename string, flagsState model.FlagsState) TiltfileLoadResult
 }
 
 type FakeTiltfileLoader struct {
@@ -84,7 +84,7 @@ func NewFakeTiltfileLoader() *FakeTiltfileLoader {
 	return &FakeTiltfileLoader{}
 }
 
-func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, args []string, flagsState model.FlagsState) TiltfileLoadResult {
+func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, flagsState model.FlagsState) TiltfileLoadResult {
 	return tfl.Result
 }
 
@@ -121,7 +121,7 @@ func printWarnings(s *tiltfileState) {
 }
 
 // Load loads the Tiltfile in `filename`
-func (tfl tiltfileLoader) Load(ctx context.Context, filename string, args []string, flagsState model.FlagsState) TiltfileLoadResult {
+func (tfl tiltfileLoader) Load(ctx context.Context, filename string, flagsState model.FlagsState) TiltfileLoadResult {
 	start := time.Now()
 	absFilename, err := ospath.RealAbs(filename)
 	if err != nil {

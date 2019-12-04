@@ -669,7 +669,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.TiltStartTime = action.StartTime
 	engineState.TiltfilePath = action.TiltfilePath
 	engineState.ConfigFiles = action.ConfigFiles
-	engineState.UserArgs = action.UserArgs
+	engineState.FlagsState.Args = action.UserArgs
 	engineState.AnalyticsUserOpt = action.AnalyticsUserOpt
 	engineState.WatchFiles = action.WatchFiles
 	engineState.CloudAddress = action.CloudAddress

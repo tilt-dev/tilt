@@ -59,7 +59,7 @@ func (c *dockerPruneCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	tlr := deps.tfl.Load(ctx, c.fileName, args, model.FlagsState{})
+	tlr := deps.tfl.Load(ctx, c.fileName, model.NewFlagsState(args))
 	if tlr.Error != nil {
 		return tlr.Error
 	}
