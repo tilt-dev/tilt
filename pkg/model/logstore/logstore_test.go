@@ -66,13 +66,13 @@ goodbye`, l.String())
 func TestLogTail(t *testing.T) {
 	l := NewLogStore()
 	l.Append(newGlobalTestLogEvent("1\n2\n3\n4\n5\n"), nil)
-	assert.Equal(t, "", l.Tail(0).String())
-	assert.Equal(t, "5\n", l.Tail(1).String())
-	assert.Equal(t, "4\n5\n", l.Tail(2).String())
-	assert.Equal(t, "3\n4\n5\n", l.Tail(3).String())
-	assert.Equal(t, "2\n3\n4\n5\n", l.Tail(4).String())
-	assert.Equal(t, "1\n2\n3\n4\n5\n", l.Tail(5).String())
-	assert.Equal(t, "1\n2\n3\n4\n5\n", l.Tail(6).String())
+	assert.Equal(t, "", l.Tail(0))
+	assert.Equal(t, "5\n", l.Tail(1))
+	assert.Equal(t, "4\n5\n", l.Tail(2))
+	assert.Equal(t, "3\n4\n5\n", l.Tail(3))
+	assert.Equal(t, "2\n3\n4\n5\n", l.Tail(4))
+	assert.Equal(t, "1\n2\n3\n4\n5\n", l.Tail(5))
+	assert.Equal(t, "1\n2\n3\n4\n5\n", l.Tail(6))
 }
 
 func TestLogTailPrefixes(t *testing.T) {
@@ -80,13 +80,13 @@ func TestLogTailPrefixes(t *testing.T) {
 	l.Append(newGlobalTestLogEvent("1\n2\n"), nil)
 	l.Append(newTestLogEvent("fe", time.Now(), "3\n4\n"), nil)
 	l.Append(newGlobalTestLogEvent("5\n"), nil)
-	assert.Equal(t, "", l.Tail(0).String())
-	assert.Equal(t, "5\n", l.Tail(1).String())
-	assert.Equal(t, "fe          ┊ 4\n5\n", l.Tail(2).String())
-	assert.Equal(t, "fe          ┊ 3\nfe          ┊ 4\n5\n", l.Tail(3).String())
-	assert.Equal(t, "2\nfe          ┊ 3\nfe          ┊ 4\n5\n", l.Tail(4).String())
-	assert.Equal(t, "1\n2\nfe          ┊ 3\nfe          ┊ 4\n5\n", l.Tail(5).String())
-	assert.Equal(t, "1\n2\nfe          ┊ 3\nfe          ┊ 4\n5\n", l.Tail(6).String())
+	assert.Equal(t, "", l.Tail(0))
+	assert.Equal(t, "5\n", l.Tail(1))
+	assert.Equal(t, "fe          ┊ 4\n5\n", l.Tail(2))
+	assert.Equal(t, "fe          ┊ 3\nfe          ┊ 4\n5\n", l.Tail(3))
+	assert.Equal(t, "2\nfe          ┊ 3\nfe          ┊ 4\n5\n", l.Tail(4))
+	assert.Equal(t, "1\n2\nfe          ┊ 3\nfe          ┊ 4\n5\n", l.Tail(5))
+	assert.Equal(t, "1\n2\nfe          ┊ 3\nfe          ┊ 4\n5\n", l.Tail(6))
 }
 
 func TestLogTailParts(t *testing.T) {
@@ -95,8 +95,8 @@ func TestLogTailParts(t *testing.T) {
 	l.Append(newTestLogEvent("fe", time.Now(), "xy"), nil)
 	l.Append(newGlobalTestLogEvent("bc\n"), nil)
 	l.Append(newTestLogEvent("fe", time.Now(), "z\n"), nil)
-	assert.Equal(t, "fe          ┊ xyz\n", l.Tail(1).String())
-	assert.Equal(t, "abc\nfe          ┊ xyz\n", l.Tail(2).String())
+	assert.Equal(t, "fe          ┊ xyz\n", l.Tail(1))
+	assert.Equal(t, "abc\nfe          ┊ xyz\n", l.Tail(2))
 }
 
 func TestContinuingString(t *testing.T) {
