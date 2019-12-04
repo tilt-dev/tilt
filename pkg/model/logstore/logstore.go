@@ -98,6 +98,10 @@ type LogEvent interface {
 // is just an index into the segment slice.
 type Checkpoint int
 
+// A central place for storing logs. Not thread-safe.
+//
+// If you need to read logs in a thread-safe way outside of
+// the normal Store state loop, take a look at logstore.Reader.
 type LogStore struct {
 	// A Span is a grouping of logs by their source.
 	// The term "Span" is taken from opentracing, and has similar associations.
@@ -194,9 +198,9 @@ func (s *LogStore) Empty() bool {
 }
 
 // Get at most N lines from the tail of the log.
-func (s *LogStore) Tail(n int) *LogStore {
+func (s *LogStore) Tail(n int) string {
 	if n <= 0 {
-		return NewLogStore()
+		return ""
 	}
 
 	// Traverse backwards until we have n lines.
@@ -213,7 +217,7 @@ func (s *LogStore) Tail(n int) *LogStore {
 
 	if remaining > 0 {
 		// If there aren't enough lines, just return the whole store.
-		return s
+		return s.String()
 	}
 
 	startedSpans := make(map[SpanID]bool)
@@ -230,13 +234,17 @@ func (s *LogStore) Tail(n int) *LogStore {
 		startedSpans[spanID] = true
 	}
 
-	newSpans := make(map[SpanID]*Span)
-	for _, segment := range newSegments {
-		newSpans[segment.SpanID] = s.spans[segment.SpanID].Clone()
+	tempStore := &LogStore{spans: s.cloneSpanMap(), segments: newSegments}
+	tempStore.recomputeDerivedValues()
+	return tempStore.String()
+}
+
+func (s *LogStore) cloneSpanMap() map[SpanID]*Span {
+	newSpans := make(map[SpanID]*Span, len(s.spans))
+	for spanID, span := range s.spans {
+		newSpans[spanID] = span.Clone()
 	}
-	newStore := &LogStore{spans: newSpans, segments: newSegments}
-	newStore.recomputeDerivedValues()
-	return newStore
+	return newSpans
 }
 
 func (s *LogStore) recomputeDerivedValues() {
@@ -297,7 +305,7 @@ func (s *LogStore) ContinuingString(checkpoint Checkpoint) string {
 
 	tempSegments := s.segments[checkpointIndex:]
 	tempLogStore := &LogStore{
-		spans:    s.spans,
+		spans:    s.cloneSpanMap(),
 		segments: tempSegments,
 	}
 	tempLogStore.recomputeDerivedValues()
