@@ -1058,7 +1058,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			})
 		case CustomBuild:
 			r := model.CustomBuild{
-				TiltfilePath:     image.tiltfilePath,
+				WorkDir:          image.workDir,
 				Command:          image.customCommand,
 				Deps:             image.customDeps,
 				Tag:              image.customTag,
@@ -1075,7 +1075,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 		iTarget = iTarget.
 			WithRepos(s.reposForImage(image)).
 			WithDockerignores(s.dockerignoresForImage(image)). // used even for custom build
-			WithTiltFilename(image.tiltfilePath).
+			WithTiltFilename(image.workDir).
 			WithDependencyIDs(image.dependencyIDs)
 
 		depTargets, err := s.imgTargetsForDependencyIDsHelper(image.dependencyIDs, claimStatus)

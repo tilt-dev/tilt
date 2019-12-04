@@ -4021,7 +4021,7 @@ custom_build(
 		image("gcr.io/foo"),
 		deps(f.JoinPath("proj/foo")),
 		cmd("build.sh"),
-		tiltfile(f.JoinPath("proj")),
+		workdir(f.JoinPath("proj")),
 	))
 }
 
@@ -4623,8 +4623,8 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 					assert.Equal(f.t, matcher.deps, cbInfo.Deps)
 				case cmdHelper:
 					assert.Equal(f.t, matcher.cmd, cbInfo.Command)
-				case tiltfilePathHelper:
-					assert.Equal(f.t, matcher.path, cbInfo.TiltfilePath)
+				case workDirHelper:
+					assert.Equal(f.t, matcher.path, cbInfo.WorkDir)
 				case tagHelper:
 					assert.Equal(f.t, matcher.tag, cbInfo.Tag)
 				case disablePushHelper:
@@ -5074,12 +5074,12 @@ func cmd(cmd string) cmdHelper {
 	return cmdHelper{cmd}
 }
 
-type tiltfilePathHelper struct {
+type workDirHelper struct {
 	path string
 }
 
-func tiltfile(path string) tiltfilePathHelper {
-	return tiltfilePathHelper{path}
+func workdir(path string) workDirHelper {
+	return workDirHelper{path}
 }
 
 type tagHelper struct {

@@ -23,7 +23,7 @@ import (
 var fastBuildDeletedErr = fmt.Errorf("fast_build is no longer supported. live_update provides the same functionality with less set-up: https://docs.tilt.dev/live_update_tutorial.html . If you run into problems, let us know: https://tilt.dev/contact")
 
 type dockerImage struct {
-	tiltfilePath     string
+	workDir          string
 	configurationRef container.RefSelector
 	deploymentRef    reference.Named
 	cachePaths       []string
@@ -173,7 +173,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	}
 
 	r := &dockerImage{
-		tiltfilePath:     starkit.CurrentExecPath(thread),
+		workDir:          starkit.CurrentExecPath(thread),
 		dbDockerfilePath: dockerfilePath,
 		dbDockerfile:     dockerfile.Dockerfile(dockerfileContents),
 		dbBuildPath:      context,
@@ -283,7 +283,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	}
 
 	img := &dockerImage{
-		tiltfilePath:     starkit.AbsWorkingDir(thread),
+		workDir:          starkit.AbsWorkingDir(thread),
 		configurationRef: container.NewRefSelector(ref),
 		customCommand:    command,
 		customDeps:       localDeps,
@@ -442,7 +442,7 @@ func (s *tiltfileState) reposForImage(image *dockerImage) []model.LocalGitRepo {
 	paths = append(paths,
 		image.dbDockerfilePath,
 		image.dbBuildPath,
-		image.tiltfilePath)
+		image.workDir)
 
 	return reposForPaths(paths)
 }
