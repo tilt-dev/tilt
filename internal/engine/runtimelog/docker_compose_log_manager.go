@@ -120,9 +120,10 @@ func (m *DockerComposeLogManager) consumeLogs(watch dockerComposeLogWatch, st st
 		_ = readCloser.Close()
 	}()
 
-	actionWriter := DockerComposeLogActionWriter{
-		store:        st,
-		manifestName: name,
+	actionWriter := &DockerComposeLogActionWriter{
+		store:             st,
+		manifestName:      name,
+		isStartingNewLine: true,
 	}
 	_, err = io.Copy(actionWriter, NewHardCancelReader(watch.ctx, readCloser))
 	if err != nil && watch.ctx.Err() == nil {
@@ -147,20 +148,56 @@ type dockerComposeLogWatch struct {
 type DockerComposeLogActionWriter struct {
 	store        store.RStore
 	manifestName model.ManifestName
+
+	// If the next Write() call is on a new line. True when the writer is first
+	// created, or when the previous line ends with "\n".
+	isStartingNewLine bool
 }
 
-func (w DockerComposeLogActionWriter) Write(p []byte) (n int, err error) {
-	if shouldFilterDCLog(p) {
+var newlineAsBytes = []byte("\n")
+var dividerAsBytes = []byte(" | ")
+var attachingToLogAsBytes = []byte("Attaching to ")
+
+func (w *DockerComposeLogActionWriter) Write(p []byte) (n int, err error) {
+	lines := bytes.Split(p, newlineAsBytes)
+	if w.shouldFilterDCLog(lines) {
+		lines = lines[1:]
+	}
+
+	start := 1
+	if w.isStartingNewLine {
+		start = 0
+	}
+
+	for i := start; i < len(lines); i++ {
+		indexOfDivider := bytes.Index(lines[i], dividerAsBytes)
+		if indexOfDivider >= 0 {
+			newStart := indexOfDivider + len(dividerAsBytes)
+			lines[i] = lines[i][newStart:]
+		}
+	}
+
+	if len(lines) == 0 {
 		return len(p), nil
 	}
+
+	// If the last line is empty, then we're starting a newline.
+	w.isStartingNewLine = len(lines[len(lines)-1]) == 0
+	newText := bytes.Join(lines, newlineAsBytes)
 	w.store.Dispatch(DockerComposeLogAction{
-		LogEvent: store.NewLogEvent(w.manifestName, p),
+		LogEvent: store.NewLogEvent(w.manifestName, newText),
 	})
 	return len(p), nil
 }
 
 var _ store.Subscriber = &DockerComposeLogManager{}
 
-func shouldFilterDCLog(p []byte) bool {
-	return bytes.HasPrefix(p, []byte("Attaching to "))
+func (w *DockerComposeLogActionWriter) shouldFilterDCLog(lines [][]byte) bool {
+	if !w.isStartingNewLine {
+		return false
+	}
+	if len(lines) == 0 {
+		return false
+	}
+	return bytes.HasPrefix(lines[0], attachingToLogAsBytes)
 }

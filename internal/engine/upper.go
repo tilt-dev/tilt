@@ -586,14 +586,8 @@ func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
 
 func handleLogAction(state *store.EngineState, action store.LogAction) {
 	manifestName := action.Source()
-	alreadyHasSourcePrefix := false
-	if _, isDCLog := action.(runtimelog.DockerComposeLogAction); isDCLog {
-		// DockerCompose logs are prefixed by the docker-compose engine
-		alreadyHasSourcePrefix = true
-	}
-
 	var allLogPrefix string
-	if manifestName != "" && !alreadyHasSourcePrefix {
+	if manifestName != "" {
 		allLogPrefix = logstore.SourcePrefix(manifestName)
 	}
 
