@@ -21,7 +21,7 @@ func TestLog_AppendOverLimit(t *testing.T) {
 	l := NewLogStore()
 	l.Append(newGlobalTestLogEvent("hello\n"), nil)
 	sb := strings.Builder{}
-	for i := 0; i < maxLogLengthInBytes/2; i++ {
+	for i := 0; i < l.maxLogLengthInBytes/2; i++ {
 		_, err := sb.WriteString("x\n")
 		if err != nil {
 			t.Fatalf("error in %T.WriteString: %+v", sb, err)
@@ -30,7 +30,7 @@ func TestLog_AppendOverLimit(t *testing.T) {
 
 	s := sb.String()
 	l.Append(newGlobalTestLogEvent(s), nil)
-	assert.Equal(t, s[:logTruncationTarget], l.String())
+	assert.Equal(t, s[:l.logTruncationTarget()], l.String())
 }
 
 func TestLogPrefix(t *testing.T) {
@@ -154,4 +154,29 @@ func TestContinuingStringTwoSources(t *testing.T) {
 	assert.Equal(t, "\nfe          ┊ xyz\nbc\n", l.ContinuingString(c2))
 	assert.Equal(t, "\nbc\nfe          ┊ z\n", l.ContinuingString(c3))
 	assert.Equal(t, "fe          ┊ z\n", l.ContinuingString(c4))
+}
+
+func TestContinuingStringAfterLimit(t *testing.T) {
+	l := NewLogStore()
+	l.maxLogLengthInBytes = 20
+
+	c1 := l.Checkpoint()
+	assert.Equal(t, "", l.ContinuingString(c1))
+
+	l.Append(newGlobalTestLogEvent("123456789\n"), nil)
+	c2 := l.Checkpoint()
+	assert.Equal(t, "123456789\n", l.String())
+	assert.Equal(t, "123456789\n", l.ContinuingString(c1))
+
+	l.Append(newGlobalTestLogEvent("abcdefghi\n"), nil)
+	c3 := l.Checkpoint()
+	assert.Equal(t, "123456789\nabcdefghi\n", l.String())
+	assert.Equal(t, "123456789\nabcdefghi\n", l.ContinuingString(c1))
+	assert.Equal(t, "abcdefghi\n", l.ContinuingString(c2))
+
+	l.Append(newGlobalTestLogEvent("jklmnopqr\n"), nil)
+	assert.Equal(t, "jklmnopqr\n", l.String())
+	assert.Equal(t, "jklmnopqr\n", l.ContinuingString(c1))
+	assert.Equal(t, "jklmnopqr\n", l.ContinuingString(c2))
+	assert.Equal(t, "jklmnopqr\n", l.ContinuingString(c3))
 }

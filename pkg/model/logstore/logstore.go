@@ -10,13 +10,7 @@ import (
 // At this limit, with one resource having a 120k log, render time was ~20ms and CPU usage was ~70% on an MBP.
 // 70% still isn't great when tilt doesn't really have any necessary work to do, but at least it's usable.
 // A render time of ~40ms was about when the interface started being noticeably laggy to me.
-const maxLogLengthInBytes = 120 * 1000
-
-// After a log hits its limit, we need to truncate it to keep it small
-// we do this by cutting a big chunk at a time, so that we have rarer, larger changes, instead of
-// a small change every time new data is written to the log
-// https://github.com/windmilleng/tilt/issues/1935#issuecomment-531390353
-const logTruncationTarget = maxLogLengthInBytes / 2
+const defaultMaxLogLengthInBytes = 120 * 1000
 
 const newlineByte = byte('\n')
 
@@ -116,6 +110,13 @@ type LogStore struct {
 	// The number of bytes stored in this logstore. This is redundant bookkeeping so
 	// that we don't need to recompute it each time.
 	len int
+
+	// Used for truncating the log. Set as a property so that we can change it
+	// for testing.
+	maxLogLengthInBytes int
+
+	// If the log is truncated, we need to adjust all checkpoints
+	checkpointOffset Checkpoint
 }
 
 func NewLogStoreForTesting(msg string) *LogStore {
@@ -126,18 +127,30 @@ func NewLogStoreForTesting(msg string) *LogStore {
 
 func NewLogStore() *LogStore {
 	return &LogStore{
-		spans:    make(map[SpanID]*Span),
-		segments: []LogSegment{},
-		len:      0,
+		spans:               make(map[SpanID]*Span),
+		segments:            []LogSegment{},
+		len:                 0,
+		maxLogLengthInBytes: defaultMaxLogLengthInBytes,
 	}
 }
 
 func (s *LogStore) Checkpoint() Checkpoint {
-	return Checkpoint(len(s.segments))
+	return Checkpoint(len(s.segments)) + s.checkpointOffset
+}
+
+func (s *LogStore) checkpointToIndex(c Checkpoint) int {
+	index := int(c - s.checkpointOffset)
+	if index < 0 {
+		return 0
+	}
+	if index > len(s.segments) {
+		return len(s.segments)
+	}
+	return index
 }
 
 func (s *LogStore) ScrubSecretsStartingAt(secrets model.SecretSet, checkpoint Checkpoint) {
-	index := int(checkpoint)
+	index := s.checkpointToIndex(checkpoint)
 	for i := index; i < len(s.segments); i++ {
 		s.segments[i].Text = secrets.Scrub(s.segments[i].Text)
 	}
@@ -265,12 +278,13 @@ func (s *LogStore) recomputeDerivedValues() {
 func (s *LogStore) ContinuingString(checkpoint Checkpoint) string {
 	isSameSpanContinuation := false
 	isChangingSpanContinuation := false
-	precedingIndex := int(checkpoint) - 1
-	if precedingIndex >= 0 && int(checkpoint) < len(s.segments) {
+	checkpointIndex := s.checkpointToIndex(checkpoint)
+	precedingIndex := checkpointIndex - 1
+	if precedingIndex >= 0 && checkpointIndex < len(s.segments) {
 		// Check the last thing we printed. If it was wasn't complete,
 		// we have to do some extra work to properly continue the previous print.
 		precedingSegment := s.segments[precedingIndex]
-		currentSegment := s.segments[checkpoint]
+		currentSegment := s.segments[checkpointIndex]
 		if !precedingSegment.IsComplete() {
 			// If this is the same span id, remove the prefix from this line.
 			if precedingSegment.SpanID == currentSegment.SpanID {
@@ -281,7 +295,7 @@ func (s *LogStore) ContinuingString(checkpoint Checkpoint) string {
 		}
 	}
 
-	tempSegments := s.segments[checkpoint:]
+	tempSegments := s.segments[checkpointIndex:]
 	tempLogStore := &LogStore{
 		spans:    s.spans,
 		segments: tempSegments,
@@ -364,8 +378,16 @@ func (s *LogStore) computeLen() int {
 	return result
 }
 
+// After a log hits its limit, we need to truncate it to keep it small
+// we do this by cutting a big chunk at a time, so that we have rarer, larger changes, instead of
+// a small change every time new data is written to the log
+// https://github.com/windmilleng/tilt/issues/1935#issuecomment-531390353
+func (s *LogStore) logTruncationTarget() int {
+	return s.maxLogLengthInBytes / 2
+}
+
 func (s *LogStore) ensureMaxLength() {
-	if s.len <= maxLogLengthInBytes {
+	if s.len <= s.maxLogLengthInBytes {
 		return
 	}
 
@@ -375,11 +397,12 @@ func (s *LogStore) ensureMaxLength() {
 	for i := len(s.segments) - 1; i >= 0; i-- {
 		segment := s.segments[i]
 		bytesSpent += segment.Len()
-		if truncationIndex == -1 && bytesSpent > logTruncationTarget {
+		if truncationIndex == -1 && bytesSpent > s.logTruncationTarget() {
 			truncationIndex = i + 1
 		}
-		if bytesSpent > maxLogLengthInBytes {
+		if bytesSpent > s.maxLogLengthInBytes {
 			s.segments = s.segments[truncationIndex:]
+			s.checkpointOffset += Checkpoint(truncationIndex)
 			s.recomputeDerivedValues()
 			return
 		}
