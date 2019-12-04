@@ -663,22 +663,20 @@ func TestBuildQueueOrdering(t *testing.T) {
 	f.waitForCompletedBuildCount(expectedInitialBuildCount + len(manifests))
 }
 
-// This test is tightly coupled with FastBuild, and needs to be
-// rewritten to use DockerBuild
 func TestBuildQueueAndAutobuildOrdering(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
 	// changes to this dir. will register with our manual manifests
-	syncDirManual := model.Sync{LocalPath: f.JoinPath("dirManual/"), ContainerPath: "/go"}
+	dirManual := f.JoinPath("dirManual/")
 	// changes to this dir. will register with our automatic manifests
-	syncDirAuto := model.Sync{LocalPath: f.JoinPath("dirAuto/"), ContainerPath: "/go"}
+	dirAuto := f.JoinPath("dirAuto/")
 
-	m1 := f.newFastBuildManifest("manifest1", []model.Sync{syncDirManual}).WithTriggerMode(model.TriggerModeManualAfterInitial)
-	m2 := f.newFastBuildManifest("manifest2", []model.Sync{syncDirManual}).WithTriggerMode(model.TriggerModeManualAfterInitial)
-	m3 := f.newFastBuildManifest("manifest3", []model.Sync{syncDirManual}).WithTriggerMode(model.TriggerModeManualIncludingInitial)
-	m4 := f.newFastBuildManifest("manifest4", []model.Sync{syncDirManual}).WithTriggerMode(model.TriggerModeManualIncludingInitial)
-	m5 := f.newFastBuildManifest("manifest5", []model.Sync{syncDirAuto}).WithTriggerMode(model.TriggerModeAuto)
+	m1 := f.newDockerBuildManifestWithBuildPath("manifest1", dirManual).WithTriggerMode(model.TriggerModeManualAfterInitial)
+	m2 := f.newDockerBuildManifestWithBuildPath("manifest2", dirManual).WithTriggerMode(model.TriggerModeManualAfterInitial)
+	m3 := f.newDockerBuildManifestWithBuildPath("manifest3", dirManual).WithTriggerMode(model.TriggerModeManualIncludingInitial)
+	m4 := f.newDockerBuildManifestWithBuildPath("manifest4", dirManual).WithTriggerMode(model.TriggerModeManualIncludingInitial)
+	m5 := f.newDockerBuildManifestWithBuildPath("manifest5", dirAuto).WithTriggerMode(model.TriggerModeAuto)
 
 	// attach to state in different order than we plan to trigger them
 	manifests := []model.Manifest{m5, m4, m2, m3, m1}
