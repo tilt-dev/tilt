@@ -24,6 +24,8 @@ type argValue interface {
 	IsSet() bool
 }
 
+type argMap map[string]argValue
+
 type argDef struct {
 	newValue func() argValue
 	usage    string
@@ -34,8 +36,68 @@ type ArgsDef struct {
 	args              map[string]argDef
 }
 
-func (ad ArgsDef) parse(flagsState model.FlagsState, args []string) (v starlark.Value, mergedArgs bool, output string, err error) {
-	var config map[string]argValue
+func (am argMap) toStarlark() (starlark.Mapping, error) {
+	ret := starlark.NewDict(len(am))
+	for k, v := range am {
+		err := ret.SetKey(starlark.String(k), v.starlark())
+		if err != nil {
+			return nil, err
+		}
+	}
+	return ret, nil
+}
+
+func mergeFlags(flagsFromConfig, flagsFromArgs argMap) argMap {
+	ret := make(argMap)
+	for k, v := range flagsFromConfig {
+		ret[k] = v
+	}
+
+	for k, v := range flagsFromArgs {
+		if v.IsSet() {
+			ret[k] = v
+		}
+	}
+
+	return ret
+}
+
+func writeConfig(flagsState model.FlagsState, config argMap) error {
+	f, err := os.Create(flagsState.ConfigPath)
+	if err != nil {
+		return errors.Wrapf(err, "error opening %s for writing", flagsState.ConfigPath)
+	}
+	defer func() {
+		_ = f.Close()
+	}()
+	enc := json.NewEncoder(f)
+	enc.SetIndent("", "  ")
+	err = json.NewEncoder(f).Encode(config)
+	if err != nil {
+		return errors.Wrapf(err, "error serializing config to %s", flagsState.ConfigPath)
+	}
+	return nil
+}
+
+func (ad ArgsDef) mergeArgsIntoConfig(config argMap, state model.FlagsState) (ret argMap, output string, err error) {
+	var flagsFromArgs argMap
+	flagsFromArgs, output, err = ad.parseArgs(state.Args)
+	if err != nil {
+		return nil, output, err
+	}
+
+	config = mergeFlags(config, flagsFromArgs)
+
+	err = writeConfig(state, config)
+	if err != nil {
+		return nil, output, err
+	}
+
+	return config, output, nil
+}
+
+func (ad ArgsDef) parse(flagsState model.FlagsState) (v starlark.Value, mergedArgs bool, output string, err error) {
+	var config argMap
 	config, err = ad.readFromFile(flagsState.ConfigPath)
 	if err != nil {
 		return starlark.None, false, "", err
@@ -44,52 +106,28 @@ func (ad ArgsDef) parse(flagsState model.FlagsState, args []string) (v starlark.
 	// if we have not yet merged the current set of args, merge them into the flags from the file
 	// and write them back out
 	if flagsState.LastArgsWrite.IsZero() {
-		var flagsFromArgs map[string]argValue
-		flagsFromArgs, output, err = ad.parseArgs(args)
+		config, output, err = ad.mergeArgsIntoConfig(config, flagsState)
 		if err != nil {
-			return nil, false, output, err
-		}
-
-		for k, v := range flagsFromArgs {
-			if v.IsSet() {
-				config[k] = v
-			}
-		}
-
-		f, err := os.Create(flagsState.ConfigPath)
-		if err != nil {
-			return nil, false, output, errors.Wrapf(err, "error opening %s for writing", flagsState.ConfigPath)
-		}
-		defer func() {
-			_ = f.Close()
-		}()
-		enc := json.NewEncoder(f)
-		enc.SetIndent("", "  ")
-		err = json.NewEncoder(f).Encode(config)
-		if err != nil {
-			return nil, false, output, errors.Wrapf(err, "error serializing config to %s", flagsState.ConfigPath)
+			return starlark.None, false, output, err
 		}
 
 		mergedArgs = true
 	}
 
-	ret := starlark.NewDict(len(ad.args))
-	for k, v := range config {
-		err := ret.SetKey(starlark.String(k), v.starlark())
-		if err != nil {
-			return nil, false, output, err
-		}
+	ret, err := config.toStarlark()
+	if err != nil {
+		return nil, mergedArgs, output, err
 	}
 
 	return ret, mergedArgs, output, nil
 }
 
-func (ad ArgsDef) parseArgs(args []string) (ret map[string]argValue, output string, err error) {
+func (ad ArgsDef) parseArgs(args []string) (ret argMap, output string, err error) {
 	fs := flag.NewFlagSet("", flag.ContinueOnError)
 	w := &bytes.Buffer{}
 	fs.SetOutput(w)
 
-	ret = make(map[string]argValue)
+	ret = make(argMap)
 	for name, def := range ad.args {
 		ret[name] = def.newValue()
 		if name == ad.positionalArgName {
@@ -114,8 +152,8 @@ func (ad ArgsDef) parseArgs(args []string) (ret map[string]argValue, output stri
 	return ret, w.String(), nil
 }
 
-func (ad ArgsDef) readFromFile(tiltConfigPath string) (ret map[string]argValue, err error) {
-	ret = make(map[string]argValue)
+func (ad ArgsDef) readFromFile(tiltConfigPath string) (ret argMap, err error) {
+	ret = make(argMap)
 	r, err := os.Open(tiltConfigPath)
 	if err != nil {
 		if os.IsNotExist(err) {

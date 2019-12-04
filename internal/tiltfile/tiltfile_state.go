@@ -144,7 +144,7 @@ func (s *tiltfileState) print(_ *starlark.Thread, msg string) {
 //
 // TODO(nick): Eventually this will just return a starkit.Model, which will contain
 // all the mutable state collected by execution.
-func (s *tiltfileState) loadManifests(absFilename string, args []string, flagsState model.FlagsState) ([]model.Manifest, starkit.Model, error) {
+func (s *tiltfileState) loadManifests(absFilename string, flagsState model.FlagsState) ([]model.Manifest, starkit.Model, error) {
 	s.logger.Infof("Beginning Tiltfile execution")
 	result, err := starkit.ExecFile(absFilename,
 		s,
@@ -156,7 +156,7 @@ func (s *tiltfileState) loadManifests(absFilename string, args []string, flagsSt
 		dockerprune.NewExtension(),
 		analytics.NewExtension(),
 		version.NewExtension(),
-		config.NewExtension(args),
+		config.NewExtension(flagsState),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)
@@ -206,7 +206,7 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 	manifests = append(manifests, localManifests...)
 
 	flagsSettings, _ := config.GetState(result)
-	manifests, err = flagsSettings.EnabledResources(args, manifests)
+	manifests, err = flagsSettings.EnabledResources(manifests)
 	if err != nil {
 		return nil, starkit.Model{}, err
 	}

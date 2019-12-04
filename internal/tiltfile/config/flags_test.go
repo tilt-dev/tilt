@@ -259,7 +259,7 @@ config.set_enabled_resources(config.parse()['resources'])
 	require.NoError(t, err)
 
 	manifests := []model.Manifest{{Name: "foo"}, {Name: "bar"}, {Name: "baz"}}
-	actual, err := MustState(result).EnabledResources([]string{"foo", "bar"}, manifests)
+	actual, err := MustState(result).EnabledResources(manifests)
 	require.NoError(t, err)
 	require.Equal(t, manifests[:2], actual)
 }

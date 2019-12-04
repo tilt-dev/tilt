@@ -23,12 +23,11 @@ type Settings struct {
 }
 
 type Extension struct {
-	cmdLineArgs []string
-	FlagsState  model.FlagsState
+	FlagsState model.FlagsState
 }
 
-func NewExtension(args []string, flagsState model.FlagsState) *Extension {
-	return &Extension{cmdLineArgs: args, FlagsState: flagsState}
+func NewExtension(flagsState model.FlagsState) *Extension {
+	return &Extension{FlagsState: flagsState}
 }
 
 func (e *Extension) NewState() interface{} {
@@ -114,7 +113,7 @@ func (e *Extension) parse(thread *starlark.Thread, fn *starlark.Builtin, args st
 		return starlark.None, err
 	}
 
-	ret, mergedArgs, out, err := settings.argDef.parse(settings.FlagsState, e.cmdLineArgs)
+	ret, mergedArgs, out, err := settings.argDef.parse(settings.FlagsState)
 	if out != "" {
 		thread.Print(thread, out)
 	}

@@ -44,11 +44,13 @@ func setEnabledResources(thread *starlark.Thread, fn *starlark.Builtin, args sta
 }
 
 // for the given args and list of full manifests, figure out which manifests the user actually selected
-func (s Settings) EnabledResources(args []string, manifests []model.Manifest) ([]model.Manifest, error) {
+func (s Settings) EnabledResources(manifests []model.Manifest) ([]model.Manifest, error) {
 	// if the user called set_enabled_resources, that trumps everything
 	if s.enabledResources != nil {
 		return match(manifests, s.enabledResources)
 	}
+
+	args := s.FlagsState.Args
 
 	// if the user has not called config.parse and has specified args, use those to select which resources
 	if args != nil && !s.flagsParsed {

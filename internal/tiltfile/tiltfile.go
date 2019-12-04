@@ -20,8 +20,8 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	tiltfileanalytics "github.com/windmilleng/tilt/internal/tiltfile/analytics"
+	"github.com/windmilleng/tilt/internal/tiltfile/config"
 	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
-	"github.com/windmilleng/tilt/internal/tiltfile/flags"
 	"github.com/windmilleng/tilt/internal/tiltfile/io"
 	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
 	"github.com/windmilleng/tilt/internal/tiltfile/value"
@@ -156,7 +156,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, args []stri
 	privateRegistry := tfl.kCli.PrivateRegistry(ctx)
 	s := newTiltfileState(ctx, tfl.dcCli, tfl.k8sContextExt, privateRegistry, feature.FromDefaults(tfl.fDefaults))
 
-	manifests, result, err := s.loadManifests(absFilename, args, flagsState)
+	manifests, result, err := s.loadManifests(absFilename, flagsState)
 
 	ioState, _ := io.GetState(result)
 	tlr.ConfigFiles = sliceutils.AppendWithoutDupes(ioState.Files, s.postExecReadFiles...)
@@ -167,7 +167,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, args []stri
 	aSettings, _ := tiltfileanalytics.GetState(result)
 	tlr.AnalyticsOpt = aSettings.Opt
 
-	flagsSettings, _ := flags.GetState(result)
+	flagsSettings, _ := config.GetState(result)
 	tlr.FlagsState = flagsSettings.FlagsState
 
 	tlr.Secrets = s.extractSecrets()
