@@ -38,11 +38,6 @@ type HudProps = {
   history: History
 }
 
-type NewSnapshotResponse = {
-  // output of snapshot_storage
-  url: string
-}
-
 // The Main HUD view, as specified in
 // https://docs.google.com/document/d/1VNIGfpC4fMfkscboW0bjYYFJl07um_1tsFrbN-Fu3FI/edit#heading=h.l8mmnclsuxl1
 class HUD extends Component<HudProps, HudState> {
@@ -207,16 +202,16 @@ class HUD extends Component<HudProps, HudState> {
   render() {
     let view = this.state.view
 
-    let needsNudge = view ? view.needsAnalyticsNudge : false
-    let resources = (view && view.resources) || []
+    let needsNudge = view?.needsAnalyticsNudge
+    let resources = view?.resources
     if (!resources.length) {
       return <HeroScreen message={"Loading…"} />
     }
     let statusItems = resources.map(res => new StatusItem(res))
 
-    let runningVersion = view && view.runningTiltBuild
-    let latestVersion = view && view.latestTiltBuild
-    const versionSettings = view && view.versionSettings
+    let runningVersion = view?.runningTiltBuild
+    let latestVersion = view?.latestTiltBuild
+    const versionSettings = view?.versionSettings
     const checkUpdates = versionSettings ? versionSettings.checkUpdates : true
     let shareSnapshotModal = this.renderShareSnapshotModal(view)
     let fatalErrorModal = this.renderFatalErrorModal(view)
@@ -262,21 +257,21 @@ class HUD extends Component<HudProps, HudState> {
       path: this.path("/r/:name"),
       exact: true,
     })
-    let params: any = match && match.params
-    let name = params && params.name
+    let params: any = match?.params
+    let name = params?.name
     if (!name) {
       return null
     }
 
     let view = this.state.view
-    let resources = (view && view.resources) || []
+    let resources = view?.resources ?? []
     let r = resources.find(r => r.name === name)
     if (!r) {
       return null
     }
 
-    let endpoints = (r && r.endpoints) || []
-    let podID = (r && r.podID) || ""
+    let endpoints = r?.endpoints ?? []
+    let podID = r?.podID ?? ""
     let podStatus = (r.k8sResourceInfo && r.k8sResourceInfo.podStatus) || ""
     return (
       <ResourceInfo endpoints={endpoints} podID={podID} podStatus={podStatus} />
@@ -285,7 +280,7 @@ class HUD extends Component<HudProps, HudState> {
 
   renderTopBarSwitch() {
     let view = this.state.view
-    let resources = (view && view.resources) || []
+    let resources = view?.resources ?? []
     let showSnapshot =
       this.getFeatures().isEnabled("snapshots") &&
       !this.pathBuilder.isSnapshot()
