@@ -212,7 +212,7 @@ class HUD extends Component<HudProps, HudState> {
     let runningVersion = view?.runningTiltBuild
     let latestVersion = view?.latestTiltBuild
     const versionSettings = view?.versionSettings
-    const checkUpdates = versionSettings ? versionSettings.checkUpdates : true
+    const checkUpdates = versionSettings?.checkUpdates ?? true
     let shareSnapshotModal = this.renderShareSnapshotModal(view)
     let fatalErrorModal = this.renderFatalErrorModal(view)
 
