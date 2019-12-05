@@ -202,9 +202,9 @@ class HUD extends Component<HudProps, HudState> {
   render() {
     let view = this.state.view
 
-    let needsNudge = view?.needsAnalyticsNudge
-    let resources = view?.resources
-    if (!resources.length) {
+    let needsNudge = view?.needsAnalyticsNudge ?? false
+    let resources = view?.resources ?? []
+    if (!resources?.length) {
       return <HeroScreen message={"Loading…"} />
     }
     let statusItems = resources.map(res => new StatusItem(res))
