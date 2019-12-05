@@ -6,9 +6,12 @@ import { Color } from "./constants"
 
 type Ignore = boolean
 
-const cases: Array<
-  [string, ResourceStatus, Color | Ignore, IconType | Ignore]
-> = [
+const cases: Array<[
+  string,
+  ResourceStatus,
+  Color | Ignore,
+  IconType | Ignore
+]> = [
   ["pending", ResourceStatus.Pending, false, IconType.StatusPending],
   ["healthy", ResourceStatus.Healthy, Color.green, IconType.StatusDefault],
   ["unhealthy", ResourceStatus.Unhealthy, Color.red, IconType.StatusDefault],
