@@ -5,6 +5,7 @@
   "dependencies": {
     "@types/history": "^4.7.2",
     "@types/js-cookie": "^2.2.2",
+    "@types/jsdom": "^12.2.4",
     "@types/lodash": "^4.14.138",
     "@types/node": "^12.7.12",
     "@types/react": "^16.9.0",
@@ -15,7 +16,6 @@
     "@types/react-select": "^2.0.15",
     "@types/react-timeago": "^4.1.0",
     "@types/styled-components": "^4.1.19",
-    "@types/jsdom": "^12.2.4",
     "ansi-to-react": "^5.0.0",
     "history": "^4.9.0",
     "js-cookie": "^2.2.1",
@@ -26,11 +26,11 @@
     "react-helmet": "^5.2.0",
     "react-modal": "^3.10.1",
     "react-router-dom": "^5.1.0",
-    "react-scripts": "3.2.0",
+    "react-scripts": "3.3.0",
     "react-select": "^2.4.2",
     "react-timeago": "^4.4.0",
     "styled-components": "^4.4.0",
-    "typescript": "^3.3.4000"
+    "typescript": "^3.7.3"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -65,7 +65,7 @@
     "enzyme-to-json": "^3.3.5",
     "jest-fetch-mock": "^2.1.2",
     "jsdom": "^15.2.1",
-    "prettier": "1.18.2",
+    "prettier": "1.19.1",
     "react-test-renderer": "^16.9.0"
   },
   "engines": {
