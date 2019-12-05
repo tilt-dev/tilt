@@ -18,6 +18,12 @@ func (r Reader) Checkpoint() Checkpoint {
 	return r.store.Checkpoint()
 }
 
+func (r Reader) Empty() bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.store.Empty()
+}
+
 func (r Reader) String() string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

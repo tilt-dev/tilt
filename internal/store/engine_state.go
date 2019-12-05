@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/windmilleng/wmclient/pkg/analytics"
@@ -18,6 +19,7 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/token"
 	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/windmilleng/tilt/pkg/model/logstore"
 )
 
 type EngineState struct {
@@ -51,8 +53,8 @@ type EngineState struct {
 	// We recovered from a panic(). We need to clean up the RTY and print the error.
 	PanicExited error
 
-	// The full log stream for tilt. This might deserve gc or file storage at some point.
-	Log model.Log `testdiff:"ignore"`
+	// All logs in Tilt, stored in a structured format.
+	LogStore *logstore.LogStore `testdiff:"ignore"`
 
 	TiltfilePath             string
 	ConfigFiles              []string
@@ -315,7 +317,7 @@ type ManifestState struct {
 
 func NewState() *EngineState {
 	ret := &EngineState{}
-	ret.Log = model.Log{}
+	ret.LogStore = logstore.NewLogStore()
 	ret.ManifestTargets = make(map[model.ManifestName]*ManifestTarget)
 	ret.PendingConfigFileChanges = make(map[string]time.Time)
 	ret.Secrets = model.SecretSet{}
@@ -559,7 +561,7 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {
 	return endpoints
 }
 
-func StateToView(s EngineState) view.View {
+func StateToView(s EngineState, mu *sync.RWMutex) view.View {
 	ret := view.View{
 		IsProfiling: s.IsProfiling,
 	}
@@ -635,7 +637,7 @@ func StateToView(s EngineState) view.View {
 		ret.Resources = append(ret.Resources, r)
 	}
 
-	ret.Log = s.Log
+	ret.LogReader = logstore.NewReader(mu, s.LogStore)
 	ret.FatalError = s.FatalError
 
 	return ret

@@ -130,7 +130,7 @@ func StateToProtoView(s store.EngineState) (*proto_webview.View, error) {
 		ret.Resources = append(ret.Resources, r)
 	}
 
-	ret.Log = s.Log.String()
+	ret.Log = s.LogStore.String()
 	ret.NeedsAnalyticsNudge = NeedsNudge(s)
 	ret.RunningTiltBuild = &proto_webview.TiltBuild{
 		Version:   s.TiltBuildInfo.Version,

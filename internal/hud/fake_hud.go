@@ -41,7 +41,7 @@ func (h *FakeHud) Run(ctx context.Context, dispatch func(action store.Action), r
 
 func (h *FakeHud) OnChange(ctx context.Context, st store.RStore) {
 	state := st.RLockState()
-	view := store.StateToView(state)
+	view := store.StateToView(state, st.StateMutex())
 	st.RUnlockState()
 
 	err := h.update(view, h.viewState)
