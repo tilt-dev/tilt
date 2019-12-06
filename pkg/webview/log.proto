@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package webview;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/windmilleng/tilt/pkg/webview";
+
+message LogSegment {
+  string span_id = 1;
+  google.protobuf.Timestamp time = 2;
+  string text = 3;
+}
+
+message LogSpan {
+  string manifest_name = 1;
+}
+
+message LogList {
+  map<string, LogSpan> spans = 1;
+  repeated LogSegment segments = 2;
+}
