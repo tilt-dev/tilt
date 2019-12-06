@@ -102,13 +102,16 @@ func (ws WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore) {
 	}
 
 	// A simple throttle -- don't call ws.OnChange too many times in quick succession,
-	// it eats up a lot of CPU/allocates a lot of memory.
-	// This is safe b/c the only thing ws.OnChange blocks is subsequent ws.OnChange calls.
+	//     it eats up a lot of CPU/allocates a lot of memory.
+	// This is safe b/c (as long as we're not holding a lock on the state, which
+	//     at this point in the code, we're not) the only thing ws.OnChange blocks
+	//     is subsequent ws.OnChange calls.
 	//
 	// In future, we can solve this problem more elegantly:
 	// - if multiple OnChange's come in within 100 ms, only call one (right now, if 10 OnChanges come in
 	//     in quick succession, we'll make 10 OnChange calls, each 100ms apart, and most will be no-ops)
-	// - replace our JSON marshaling with jsoniter (would involve writing our own proto marshaling code)
+	// - replace our JSON marshaling with jsoniter (would require either working around the lack
+	//     of an `EmitDefaults` option in jsoniter, or writing our own proto marshaling code)
 	time.Sleep(time.Millisecond * 100)
 }
 
