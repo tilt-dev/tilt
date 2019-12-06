@@ -4,7 +4,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
+	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/windmilleng/tilt/pkg/webview"
 )
 
 // At this limit, with one resource having a 120k log, render time was ~20ms and CPU usage was ~70% on an MBP.
@@ -334,6 +338,33 @@ func (s *LogStore) ContinuingString(checkpoint Checkpoint) string {
 		return "\n" + tempLogStore.String()
 	}
 	return tempLogStore.String()
+}
+
+func (s *LogStore) ToLogList() (*webview.LogList, error) {
+	spans := make(map[string]*webview.LogSpan, len(s.spans))
+	for spanID, span := range s.spans {
+		spans[string(spanID)] = &webview.LogSpan{
+			ManifestName: span.ManifestName.String(),
+		}
+	}
+
+	segments := make([]*webview.LogSegment, len(s.segments))
+	for i, segment := range s.segments {
+		time, err := ptypes.TimestampProto(segment.Time)
+		if err != nil {
+			return nil, errors.Wrap(err, "ToLogList")
+		}
+		segments[i] = &webview.LogSegment{
+			SpanId: string(segment.SpanID),
+			Time:   time,
+			Text:   string(segment.Text),
+		}
+	}
+
+	return &webview.LogList{
+		Spans:    spans,
+		Segments: segments,
+	}, nil
 }
 
 func (s *LogStore) String() string {

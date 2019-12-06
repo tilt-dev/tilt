@@ -16,13 +16,13 @@ import TopBar from "./TopBar"
 import SocketBar from "./SocketBar"
 import "./HUD.scss"
 import {
-  HudState,
   ResourceView,
   ShowFatalErrorModal,
   SnapshotHighlight,
   SocketState,
   WebView,
 } from "./types"
+import HudState from "./HudState"
 import AlertPane from "./AlertPane"
 import AnalyticsNudge from "./AnalyticsNudge"
 import NotFound from "./NotFound"
@@ -33,6 +33,7 @@ import FatalErrorModal from "./FatalErrorModal"
 import * as _ from "lodash"
 import FacetsPane from "./FacetsPane"
 import HUDGrid from "./HUDGrid"
+import LogStore from "./LogStore"
 
 type HudProps = {
   history: History
@@ -121,7 +122,17 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   setAppState<K extends keyof HudState>(state: Pick<HudState, K>) {
-    this.setState(state)
+    this.setState(prevState => {
+      let newState = _.clone(state) as any
+      let newLogList = newState.view?.logList
+      if (newLogList) {
+        // For now, just create a brand new log store.
+        // In the future, we'll do more complex merging.
+        newState.logStore = new LogStore()
+        newState.logStore.append(newLogList)
+      }
+      return newState
+    })
   }
 
   setHistoryLocation(path: string) {
@@ -413,12 +424,16 @@ class HUD extends Component<HudProps, HudState> {
           ? props.match.params.name
           : ""
       let logs = ""
-      if (view && name) {
-        let r = view.resources.find(r => r.name === name)
-        if (r === undefined) {
-          return <Route component={NotFound} />
+      if (name) {
+        if (this.state.logStore) {
+          logs = this.state.logStore.manifestLog(name)
+        } else if (view) {
+          let r = view.resources.find(r => r.name === name)
+          if (r === undefined) {
+            return <Route component={NotFound} />
+          }
+          logs = r?.combinedLog ?? ""
         }
-        logs = (r && r.combinedLog) || ""
       }
       return (
         <LogPane
@@ -430,11 +445,6 @@ class HUD extends Component<HudProps, HudState> {
           isSnapshot={isSnapshot}
         />
       )
-    }
-
-    let combinedLog = ""
-    if (view) {
-      combinedLog = view.log
     }
 
     let errorRoute = (props: RouteComponentProps<any>) => {
@@ -457,23 +467,28 @@ class HUD extends Component<HudProps, HudState> {
         return <FacetsPane resource={fr} />
       }
     }
+    let allLogsRoute = () => {
+      let allLogs = ""
+      if (this.state.logStore) {
+        allLogs = this.state.logStore.allLog()
+      } else if (view) {
+        allLogs = view.log
+      }
+      return (
+        <LogPane
+          log={allLogs}
+          handleSetHighlight={this.handleSetHighlight}
+          handleClearHighlight={this.handleClearHighlight}
+          highlight={this.state.snapshotHighlight}
+          modalIsOpen={showSnapshotModal}
+          isSnapshot={isSnapshot}
+        />
+      )
+    }
 
     return (
       <Switch>
-        <Route
-          exact
-          path={this.path("/")}
-          render={() => (
-            <LogPane
-              log={combinedLog}
-              handleSetHighlight={this.handleSetHighlight}
-              handleClearHighlight={this.handleClearHighlight}
-              highlight={this.state.snapshotHighlight}
-              modalIsOpen={showSnapshotModal}
-              isSnapshot={isSnapshot}
-            />
-          )}
-        />
+        <Route exact path={this.path("/")} render={allLogsRoute} />
         <Route
           exact
           path={this.path("/alerts")}

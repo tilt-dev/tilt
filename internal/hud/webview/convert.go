@@ -113,7 +113,6 @@ func StateToProtoView(s store.EngineState) (*proto_webview.View, error) {
 			Endpoints:          endpoints,
 			PodID:              podID.String(),
 			ShowBuildStatus:    len(mt.Manifest.ImageTargets) > 0 || mt.Manifest.IsDC(),
-			CombinedLog:        s.LogStore.ManifestLog(name),
 			CrashLog:           ms.CrashLog.String(),
 			TriggerMode:        int32(mt.Manifest.TriggerMode),
 			HasPendingChanges:  hasPendingChanges,
@@ -130,7 +129,12 @@ func StateToProtoView(s store.EngineState) (*proto_webview.View, error) {
 		ret.Resources = append(ret.Resources, r)
 	}
 
-	ret.Log = s.LogStore.String()
+	logList, err := s.LogStore.ToLogList()
+	if err != nil {
+		return nil, err
+	}
+
+	ret.LogList = logList
 	ret.NeedsAnalyticsNudge = NeedsNudge(s)
 	ret.RunningTiltBuild = &proto_webview.TiltBuild{
 		Version:   s.TiltBuildInfo.Version,
@@ -186,7 +190,6 @@ func tiltfileResourceProtoView(s store.EngineState) (*proto_webview.Resource, er
 		BuildHistory: []*proto_webview.BuildRecord{
 			pltfb,
 		},
-		CombinedLog:   s.LogStore.ManifestLog(store.TiltfileManifestName),
 		RuntimeStatus: string(RuntimeStatusOK),
 	}
 	start, err := timeToProto(ctfb.StartTime)

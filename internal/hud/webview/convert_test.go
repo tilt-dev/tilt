@@ -102,7 +102,8 @@ func TestStateToViewTiltfileLog(t *testing.T) {
 	v := stateToProtoView(t, *es)
 	r, ok := findResource("(Tiltfile)", v)
 	require.True(t, ok, "no resource named (Tiltfile) found")
-	assert.Equal(t, "hello", r.CombinedLog)
+	assert.Equal(t, "hello", string(v.LogList.Segments[0].Text))
+	assert.Equal(t, r.Name, string(v.LogList.Spans[r.Name].ManifestName))
 }
 
 func TestRelativeTiltfilePath(t *testing.T) {
