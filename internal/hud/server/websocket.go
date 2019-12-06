@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"sync/atomic"
+	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 
@@ -70,6 +71,7 @@ func (ws WebsocketSubscriber) Stream(ctx context.Context, store *store.Store) {
 func (ws WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore) {
 	state := s.RLockState()
 	view, err := webview.StateToProtoView(state)
+	s.RUnlockState()
 	if err != nil {
 		logger.Get(ctx).Infof("error converting view to proto for websocket: %v", err)
 		return
@@ -80,7 +82,6 @@ func (ws WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore) {
 		// state about it yet... tell the engine state.
 		s.Dispatch(store.AnalyticsNudgeSurfacedAction{})
 	}
-	s.RUnlockState()
 
 	jsEncoder := &runtime.JSONPb{OrigName: false, EmitDefaults: true}
 	w, err := ws.conn.NextWriter(websocket.TextMessage)
@@ -99,6 +100,16 @@ func (ws WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore) {
 	if err != nil {
 		logger.Get(ctx).Verbosef("sending webview data: %v", err)
 	}
+
+	// A simple throttle -- don't call ws.OnChange too many times in quick succession,
+	// it eats up a lot of CPU/allocates a lot of memory.
+	// This is safe b/c the only thing ws.OnChange blocks is subsequent ws.OnChange calls.
+	//
+	// In future, we can solve this problem more elegantly:
+	// - if multiple OnChange's come in within 100 ms, only call one (right now, if 10 OnChanges come in
+	//     in quick succession, we'll make 10 OnChange calls, each 100ms apart, and most will be no-ops)
+	// - replace our JSON marshaling with jsoniter (would involve writing our own proto marshaling code)
+	time.Sleep(time.Millisecond * 100)
 }
 
 func (s *HeadsUpServer) ViewWebsocket(w http.ResponseWriter, req *http.Request) {
