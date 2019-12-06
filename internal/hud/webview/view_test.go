@@ -1,64 +1,13 @@
 package webview
 
 import (
-	"bytes"
 	"encoding/json"
-	"io/ioutil"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 	"unicode"
 	"unicode/utf8"
-
-	"github.com/stretchr/testify/require"
-
-	"github.com/stretchr/testify/assert"
 )
-
-// The view data model is not allowed to have any private properties,
-// because these properties need to be serialized to JSON for the web UI.
-func TestMarshalView(t *testing.T) {
-	assertCanMarshal(t, reflect.TypeOf(View{}), reflect.TypeOf(View{}))
-}
-
-func TestJSONRoundTrip(t *testing.T) {
-	// this file can be generated via
-	// curl localhost:10350/api/snapshot/aaaa | jq '.View' > view.json
-	testdataPath := filepath.Join("testdata", "view.json")
-	contents, err := ioutil.ReadFile(testdataPath)
-	assert.NoError(t, err)
-
-	// why is this 1.5 round trips instead of 1?
-	// go produces output where && is changed to \u0026. I couldn't find a convenient mechanism to generate
-	// view.json that matched this.
-
-	// deserialize into a map[string]interface so that it'll have everything and observed will, also
-	decoder := json.NewDecoder(bytes.NewBuffer(contents))
-	decoder.DisallowUnknownFields()
-	expected := make(map[string]interface{})
-	err = decoder.Decode(&expected)
-	require.NoError(t, err)
-
-	// round-trip through an instance of `View`
-	decoder = json.NewDecoder(bytes.NewBuffer(contents))
-	decoder.DisallowUnknownFields()
-	var view View
-	err = decoder.Decode(&view)
-	require.NoError(t, err)
-	b := bytes.NewBuffer(nil)
-	encoder := json.NewEncoder(b)
-	err = encoder.Encode(view)
-	require.NoError(t, err)
-
-	// now put it back into a `map[string]interface` so that we can compare with `expected`
-	decoder = json.NewDecoder(b)
-	observed := make(map[string]interface{})
-	err = decoder.Decode(&observed)
-	require.NoError(t, err)
-
-	require.Equal(t, expected, observed)
-}
 
 // v: the type to check.
 // owner: the owner of this field, for display purposes.
