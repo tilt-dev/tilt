@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"strings"
 )
 
@@ -55,6 +56,15 @@ func parseVersion(version string) helmVersion {
 }
 
 func isHelmInstalled() bool {
+	if runtime.GOOS == "windows" {
+		cmd := exec.Command("where", "helm.exe")
+		if err := cmd.Run(); err != nil {
+			return false
+		}
+
+		return true
+	}
+
 	cmd := exec.Command("/bin/sh", "-c", "command -v helm")
 	if err := cmd.Run(); err != nil {
 		return false
@@ -65,7 +75,7 @@ func isHelmInstalled() bool {
 
 func getHelmVersion() (helmVersion, error) {
 	if !isHelmInstalled() {
-		return unknownHelmVersion, fmt.Errorf("Unable to find Helm installation. Make sure `helm` is on your $PATH.")
+		return unknownHelmVersion, unableToFindHelmErrorMessage()
 	}
 
 	// NOTE(dmiller): I pass `--client` here even though that doesn't do anything in Helm v3.
@@ -81,4 +91,15 @@ func getHelmVersion() (helmVersion, error) {
 	}
 
 	return parseVersion(string(out)), nil
+}
+
+func unableToFindHelmErrorMessage() error {
+	var binaryName string
+	if runtime.GOOS == "windows" {
+		binaryName = "helm.exe"
+	} else {
+		binaryName = "helm"
+	}
+
+	return fmt.Errorf("Unable to find Helm installation. Make sure `%s` is on your $PATH.", binaryName)
 }
