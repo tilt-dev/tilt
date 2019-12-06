@@ -184,6 +184,46 @@
     "webviewLocalResourceInfo": {
       "type": "object"
     },
+    "webviewLogList": {
+      "type": "object",
+      "properties": {
+        "spans": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/webviewLogSpan"
+          }
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/webviewLogSegment"
+          }
+        }
+      }
+    },
+    "webviewLogSegment": {
+      "type": "object",
+      "properties": {
+        "span_id": {
+          "type": "string"
+        },
+        "time": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "text": {
+          "type": "string"
+        }
+      }
+    },
+    "webviewLogSpan": {
+      "type": "object",
+      "properties": {
+        "manifest_name": {
+          "type": "string"
+        }
+      }
+    },
     "webviewResource": {
       "type": "object",
       "properties": {
@@ -378,7 +418,7 @@
         "DEPRECATED_log_timestamps": {
           "type": "boolean",
           "format": "boolean",
-          "description": "We used to have a field that allowed users to dynamically\nprepend timestamps in logs."
+          "description": "We used to have a setting that allowed users to dynamically\nprepend timestamps in logs."
         },
         "feature_flags": {
           "type": "object",
@@ -411,6 +451,9 @@
         },
         "fatal_error": {
           "type": "string"
+        },
+        "log_list": {
+          "$ref": "#/definitions/webviewLogList"
         }
       }
     },

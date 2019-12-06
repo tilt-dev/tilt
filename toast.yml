@@ -18,8 +18,10 @@ tasks:
 
   webview-proto:
     input_paths:
+      - pkg/webview/log.proto
       - pkg/webview/view.proto
     output_paths:
+      - pkg/webview/log.pb.go
       - pkg/webview/view.pb.go
       - pkg/webview/view.swagger.json
     command: |
@@ -32,8 +34,8 @@ tasks:
        --grpc-gateway_out=logtostderr=true:. \
        --swagger_out=logtostderr=true:. \
        --go_out=plugins=grpc,paths=source_relative:. \
-       pkg/webview/view.proto
-      goimports -local github.com/windmilleng/tilt -w pkg/webview/view.pb.go
+       pkg/webview/*.proto
+      goimports -local github.com/windmilleng/tilt -w pkg/webview/*.pb.go
 
   proto-ts:
     dependencies:
