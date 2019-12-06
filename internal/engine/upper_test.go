@@ -1036,9 +1036,9 @@ docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', ignor
 		return len(ms.BuildHistory) == 2
 	})
 
-	f.withManifestState("snack", func(ms store.ManifestState) {
+	f.withState(func(es store.EngineState) {
 		expected := fmt.Sprintf("1 changed: [%s]", f.JoinPath("Tiltfile"))
-		require.Contains(t, ms.CombinedLog.String(), expected)
+		require.Contains(t, es.LogStore.ManifestLog("snack"), expected)
 	})
 
 	err := f.Stop()
@@ -1966,10 +1966,11 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 	f.podLog(pb.Build(), name, "third string")
 
 	// the third instance is still up, so we want to show the log from the last crashed pod plus the log from the current pod
-	f.withManifestState(name, func(ms store.ManifestState) {
+	f.withState(func(es store.EngineState) {
+		ms, _ := es.ManifestState(name)
 		assert.Equal(t, "third string\n", ms.MostRecentPod().Log().String())
-		assert.Contains(t, ms.CombinedLog.String(), "second string\n")
-		assert.Contains(t, ms.CombinedLog.String(), "third string\n")
+		assert.Contains(t, es.LogStore.ManifestLog(name), "second string\n")
+		assert.Contains(t, es.LogStore.ManifestLog(name), "third string\n")
 		assert.Equal(t, ms.CrashLog.String(), "second string\n")
 	})
 
@@ -2272,13 +2273,7 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 	f.kClient.EmitEvent(f.ctx, warnEvt)
 
 	f.WaitUntil("event message appears in manifest log", func(st store.EngineState) bool {
-		ms, ok := st.ManifestState(name)
-		if !ok {
-			t.Fatalf("Manifest %s not found in state", name)
-		}
-
-		combinedLogString := ms.CombinedLog.String()
-		return strings.Contains(combinedLogString, "something has happened zomg")
+		return strings.Contains(st.LogStore.ManifestLog(name), "something has happened zomg")
 	})
 
 	f.withState(func(st store.EngineState) {
@@ -2330,8 +2325,8 @@ func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
 	f.kClient.EmitEvent(f.ctx, normalEvt)
 
 	time.Sleep(10 * time.Millisecond)
-	f.withManifestState(name, func(ms store.ManifestState) {
-		assert.NotContains(t, ms.CombinedLog.String(), "all systems are go",
+	f.withState(func(es store.EngineState) {
+		assert.NotContains(t, es.LogStore.String(), "all systems are go",
 			"message for event of type 'normal' should not appear in log")
 	})
 
@@ -2554,9 +2549,10 @@ func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	})
 
 	// recorded on manifest state
-	f.withManifestState(m.ManifestName(), func(st store.ManifestState) {
-		assert.Contains(t, st.DCRuntimeState().Log().String(), expected)
-		assert.Equal(t, 1, strings.Count(st.CombinedLog.String(), expected))
+	f.withState(func(es store.EngineState) {
+		ms, _ := es.ManifestState(m.ManifestName())
+		assert.Contains(t, ms.DCRuntimeState().Log().String(), expected)
+		assert.Equal(t, 1, strings.Count(es.LogStore.ManifestLog(m.ManifestName()), expected))
 	})
 }
 
@@ -2652,7 +2648,8 @@ func TestEmptyTiltfile(t *testing.T) {
 	})
 	f.withState(func(st store.EngineState) {
 		assert.Contains(t, st.TiltfileState.LastBuild().Error.Error(), "No resources found. Check out ")
-		assertContainsOnce(t, st.TiltfileState.CombinedLog.String(), "No resources found. Check out ")
+		assertContainsOnce(t, st.LogStore.String(), "No resources found. Check out ")
+		assertContainsOnce(t, st.LogStore.ManifestLog(store.TiltfileManifestName), "No resources found. Check out ")
 		assertContainsOnce(t, st.TiltfileState.LastBuild().Log.String(), "No resources found. Check out ")
 	})
 }

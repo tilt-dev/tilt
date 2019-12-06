@@ -18,6 +18,8 @@ import (
 // TODO(nick): We should probably get rid of ManifestName completely and just use TargetName everywhere.
 type ManifestName string
 
+const TiltfileManifestName = ManifestName("(Tiltfile)")
+
 func (m ManifestName) String() string         { return string(m) }
 func (m ManifestName) TargetName() TargetName { return TargetName(m) }
 

@@ -8,6 +8,9 @@ import (
 )
 
 func SourcePrefix(n model.ManifestName) string {
+	if n == "" || n == model.TiltfileManifestName {
+		return ""
+	}
 	max := 12
 	spaces := ""
 	if len(n) > max {

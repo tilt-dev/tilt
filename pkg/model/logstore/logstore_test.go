@@ -180,3 +180,28 @@ func TestContinuingStringAfterLimit(t *testing.T) {
 	assert.Equal(t, "jklmnopqr\n", l.ContinuingString(c2))
 	assert.Equal(t, "jklmnopqr\n", l.ContinuingString(c3))
 }
+
+func TestManifestLog(t *testing.T) {
+	l := NewLogStore()
+	l.Append(newGlobalTestLogEvent("1\n2\n"), nil)
+	l.Append(newTestLogEvent("fe", time.Now(), "3\n4\n"), nil)
+	l.Append(newGlobalTestLogEvent("5\n6\n"), nil)
+	l.Append(newTestLogEvent("fe", time.Now(), "7\n8\n"), nil)
+	l.Append(newTestLogEvent("back", time.Now(), "a\nb\n"), nil)
+	l.Append(newGlobalTestLogEvent("5\n6\n"), nil)
+	assert.Equal(t, "3\n4\n7\n8\n", l.ManifestLog("fe"))
+	assert.Equal(t, "a\nb\n", l.ManifestLog("back"))
+}
+
+func TestManifestLogContinuation(t *testing.T) {
+	l := NewLogStore()
+	l.Append(newGlobalTestLogEvent("1\n2\n"), nil)
+	l.Append(newTestLogEvent("fe", time.Now(), "34"), nil)
+	l.Append(newGlobalTestLogEvent("5\n6\n"), nil)
+	l.Append(newTestLogEvent("fe", time.Now(), "78"), nil)
+	l.Append(newTestLogEvent("back", time.Now(), "ab"), nil)
+	l.Append(newGlobalTestLogEvent("5\n6\n"), nil)
+	assert.Equal(t, "3478", l.ManifestLog("fe"))
+	assert.Equal(t, "ab", l.ManifestLog("back"))
+	assert.Equal(t, "1\n2\nfe          ┊ 3478\n5\n6\nback        ┊ ab\n5\n6\n", l.String())
+}

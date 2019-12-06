@@ -308,9 +308,6 @@ type ManifestState struct {
 	// around for a little while so we can show it in the UX.
 	CrashLog model.Log
 
-	// The log stream for this resource
-	CombinedLog model.Log `testdiff:"ignore"`
-
 	// If this manifest was changed, which config files led to the most recent change in manifest definition
 	ConfigFilesThatCausedChange []string
 }
@@ -643,7 +640,7 @@ func StateToView(s EngineState, mu *sync.RWMutex) view.View {
 	return ret
 }
 
-const TiltfileManifestName = model.ManifestName("(Tiltfile)")
+const TiltfileManifestName = model.TiltfileManifestName
 
 func tiltfileResourceView(s EngineState) view.Resource {
 	tr := view.Resource{

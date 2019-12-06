@@ -2,6 +2,7 @@ package configs
 
 import (
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 type tiltfileLogWriter struct {
@@ -14,7 +15,7 @@ func NewTiltfileLogWriter(s store.RStore) *tiltfileLogWriter {
 
 func (w *tiltfileLogWriter) Write(p []byte) (n int, err error) {
 	w.store.Dispatch(TiltfileLogAction{
-		LogEvent: store.NewGlobalLogEvent(p),
+		LogEvent: store.NewLogEvent(model.TiltfileManifestName, p),
 	})
 	return len(p), nil
 }

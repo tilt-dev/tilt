@@ -584,19 +584,7 @@ func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
 }
 
 func handleLogAction(state *store.EngineState, action store.LogAction) {
-	manifestName := action.Source()
 	state.LogStore.Append(action, state.Secrets)
-
-	if manifestName == "" {
-		return
-	}
-
-	ms, ok := state.ManifestState(manifestName)
-	if !ok {
-		// This is OK. The user could have edited the manifest recently.
-		return
-	}
-	ms.CombinedLog = model.AppendLog(ms.CombinedLog, action, "", state.Secrets)
 }
 
 func handleServiceEvent(ctx context.Context, state *store.EngineState, action k8swatch.ServiceChangeAction) {
@@ -725,7 +713,6 @@ func handleDockerComposeLogAction(state *store.EngineState, action runtimelog.Do
 
 func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action configs.TiltfileLogAction) {
 	state.TiltfileState.CurrentBuild.Log = model.AppendLog(state.TiltfileState.CurrentBuild.Log, action, "", state.Secrets)
-	state.TiltfileState.CombinedLog = model.AppendLog(state.TiltfileState.CombinedLog, action, "", state.Secrets)
 }
 
 func handleAnalyticsUserOptAction(state *store.EngineState, action store.AnalyticsUserOptAction) {
