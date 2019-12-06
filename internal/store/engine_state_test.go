@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
@@ -16,37 +17,30 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
-func TestStateToViewMultipleSyncs(t *testing.T) {
+func TestStateToViewRelativeEditPaths(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
-	}.WithImageTarget(model.ImageTarget{}.
-		WithBuildDetails(model.FastBuild{
-			Syncs: []model.Sync{
-				{LocalPath: "/a/b"},
-				{LocalPath: "/a/b/c"},
-			},
-		}),
-	)
+	}.WithDeployTarget(model.K8sTarget{}).WithImageTarget(model.ImageTarget{}.
+		WithBuildDetails(model.DockerBuild{BuildPath: "/a/b/c"}))
+
 	state := newState([]model.Manifest{m})
 	ms := state.ManifestTargets[m.Name].State
-	ms.CurrentBuild.Edits = []string{"/a/b/d", "/a/b/c/d/e"}
+	ms.CurrentBuild.Edits = []string{"/a/b/c/foo", "/a/b/c/d/e"}
 	ms.BuildHistory = []model.BuildRecord{
-		{Edits: []string{"/a/b/d", "/a/b/c/d/e"}},
+		{Edits: []string{"/a/b/c/foo", "/a/b/c/d/e"}},
 	}
 	ms.MutableBuildStatus(m.ImageTargets[0].ID()).PendingFileChanges =
-		map[string]time.Time{"/a/b/d": time.Now(), "/a/b/c/d/e": time.Now()}
+		map[string]time.Time{"/a/b/c/foo": time.Now(), "/a/b/c/d/e": time.Now()}
 	v := StateToView(*state)
 
-	if !assert.Equal(t, 2, len(v.Resources)) {
-		return
-	}
+	require.Len(t, v.Resources, 2)
 
 	r, _ := v.Resource(m.Name)
-	assert.Equal(t, []string{"d", "d/e"}, r.LastBuild().Edits)
+	assert.ElementsMatch(t, []string{"foo", "d/e"}, r.LastBuild().Edits)
 
 	sort.Strings(r.CurrentBuild.Edits)
-	assert.Equal(t, []string{"d", "d/e"}, r.CurrentBuild.Edits)
-	assert.Equal(t, []string{"d", "d/e"}, r.PendingBuildEdits)
+	assert.ElementsMatch(t, []string{"foo", "d/e"}, r.CurrentBuild.Edits)
+	assert.ElementsMatch(t, []string{"foo", "d/e"}, r.PendingBuildEdits)
 }
 
 func TestStateToViewPortForwards(t *testing.T) {

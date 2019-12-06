@@ -28,38 +28,30 @@ func stateToProtoView(t *testing.T, s store.EngineState) *proto_webview.View {
 	return v
 }
 
-func TestStateToWebViewMultipleSyncs(t *testing.T) {
+func TestStateToWebViewRelativeEditPaths(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
 	}.WithDeployTarget(model.K8sTarget{}).WithImageTarget(model.ImageTarget{}.
-		WithBuildDetails(model.FastBuild{
-			Syncs: []model.Sync{
-				{LocalPath: "/a/b"},
-				{LocalPath: "/a/b/c"},
-			},
-		}),
-	)
+		WithBuildDetails(model.DockerBuild{BuildPath: "/a/b/c"}))
 
 	state := newState([]model.Manifest{m})
 	ms := state.ManifestTargets[m.Name].State
-	ms.CurrentBuild.Edits = []string{"/a/b/d", "/a/b/c/d/e"}
+	ms.CurrentBuild.Edits = []string{"/a/b/c/foo", "/a/b/c/d/e"}
 	ms.BuildHistory = []model.BuildRecord{
-		{Edits: []string{"/a/b/d", "/a/b/c/d/e"}},
+		{Edits: []string{"/a/b/c/foo", "/a/b/c/d/e"}},
 	}
 	ms.MutableBuildStatus(m.ImageTargets[0].ID()).PendingFileChanges =
-		map[string]time.Time{"/a/b/d": time.Now(), "/a/b/c/d/e": time.Now()}
+		map[string]time.Time{"/a/b/c/foo": time.Now(), "/a/b/c/d/e": time.Now()}
 	v := stateToProtoView(t, *state)
 
-	if !assert.Equal(t, 2, len(v.Resources)) {
-		return
-	}
+	require.Len(t, v.Resources, 2)
 
 	r, _ := findResource(m.Name, v)
-	assert.Equal(t, []string{"d", "d/e"}, lastBuild(r).Edits)
+	assert.ElementsMatch(t, []string{"foo", "d/e"}, lastBuild(r).Edits)
 
 	sort.Strings(r.CurrentBuild.Edits)
-	assert.Equal(t, []string{"d", "d/e"}, r.CurrentBuild.Edits)
-	assert.Equal(t, []string{"d", "d/e"}, r.PendingBuildEdits)
+	assert.ElementsMatch(t, []string{"foo", "d/e"}, r.CurrentBuild.Edits)
+	assert.ElementsMatch(t, []string{"foo", "d/e"}, r.PendingBuildEdits)
 }
 
 func TestStateToWebViewPortForwards(t *testing.T) {
