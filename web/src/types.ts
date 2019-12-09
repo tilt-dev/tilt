@@ -129,13 +129,3 @@ export type Snapshot = {
   path?: string
   snapshotHighlight?: SnapshotHighlight | null
 }
-
-export type HudState = {
-  view: WebView
-  isSidebarClosed: boolean
-  snapshotLink: string
-  showSnapshotModal: boolean
-  showFatalErrorModal: ShowFatalErrorModal
-  snapshotHighlight: SnapshotHighlight | undefined
-  socketState: SocketState
-}

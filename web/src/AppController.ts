@@ -5,8 +5,8 @@ import {
   WebView,
   Snapshot,
   Resource,
-  HudState,
 } from "./types"
+import HudState from "./HudState"
 import PathBuilder from "./PathBuilder"
 
 interface HudInt {
