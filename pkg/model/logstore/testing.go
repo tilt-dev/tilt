@@ -20,8 +20,12 @@ func (l testLogEvent) Time() time.Time {
 	return l.ts
 }
 
-func (l testLogEvent) Source() model.ManifestName {
+func (l testLogEvent) ManifestName() model.ManifestName {
 	return l.name
+}
+
+func (l testLogEvent) SpanID() SpanID {
+	return ""
 }
 
 func newGlobalTestLogEvent(message string) testLogEvent {

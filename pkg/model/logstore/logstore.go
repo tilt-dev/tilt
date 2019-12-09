@@ -84,17 +84,11 @@ type LogEvent interface {
 	Message() []byte
 	Time() time.Time
 
-	// Ideally, all logs should be associated with a source.
-	//
-	// In practice, not all logs have an obvious source identifier,
-	// so this might be empty.
-	//
-	// Right now, that source is a ManifestName. But in the future,
-	// this might make more sense as another kind of identifier (like SpanID).
-	//
-	// (As of this writing, we have TargetID as an abstract build-time
-	// source identifier, but no generic run-time source identifier)
-	Source() model.ManifestName
+	// The manifest that this log is associated with.
+	ManifestName() model.ManifestName
+
+	// The SpanID that identifies what Span this is associated with in the LogStore.
+	SpanID() SpanID
 }
 
 // An abstract checkpoint in the log store, so we can
@@ -168,11 +162,17 @@ func (s *LogStore) ScrubSecretsStartingAt(secrets model.SecretSet, checkpoint Ch
 }
 
 func (s *LogStore) Append(le LogEvent, secrets model.SecretSet) {
-	spanID := manifestNameToSpanID(le.Source())
+	spanID := le.SpanID()
+	if spanID == "" {
+		// TODO(nick): We're currently in a transition period where
+		// not all logs have an appropriate SpanID. This should be removed once
+		// they do.
+		spanID = manifestNameToSpanID(le.ManifestName())
+	}
 	span, ok := s.spans[spanID]
 	if !ok {
 		span = &Span{
-			ManifestName:      le.Source(),
+			ManifestName:      le.ManifestName(),
 			LastSegmentIndex:  -1,
 			FirstSegmentIndex: len(s.segments),
 		}
@@ -371,6 +371,16 @@ func (s *LogStore) String() string {
 	return s.ManifestLog("")
 }
 
+func (s *LogStore) spansForManifest(mn model.ManifestName) map[SpanID]*Span {
+	result := make(map[SpanID]*Span)
+	for spanID, span := range s.spans {
+		if span.ManifestName == mn {
+			result[spanID] = span
+		}
+	}
+	return result
+}
+
 func (s *LogStore) ManifestLog(mn model.ManifestName) string {
 	sb := strings.Builder{}
 	lastLineCompleted := false
@@ -392,13 +402,24 @@ func (s *LogStore) ManifestLog(mn model.ManifestName) string {
 	startIndex := 0
 	lastIndex := len(s.segments) - 1
 	if filteredLogs {
-		span, ok := s.spans[manifestNameToSpanID(mn)]
-		if !ok {
+		spans := s.spansForManifest(mn)
+		earliestStartIndex := -1
+		latestEndIndex := -1
+		for _, span := range spans {
+			if earliestStartIndex == -1 || span.FirstSegmentIndex < earliestStartIndex {
+				earliestStartIndex = span.FirstSegmentIndex
+			}
+			if latestEndIndex == -1 || span.LastSegmentIndex > latestEndIndex {
+				latestEndIndex = span.LastSegmentIndex
+			}
+		}
+
+		if earliestStartIndex == -1 {
 			return ""
 		}
 
-		startIndex = span.FirstSegmentIndex
-		lastIndex = span.LastSegmentIndex
+		startIndex = earliestStartIndex
+		lastIndex = latestEndIndex
 	}
 
 	isFirstLine := true
