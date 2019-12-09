@@ -23,10 +23,11 @@ proto:
 	toast synclet-proto
 	toast proto-ts
 
-# Build a binary that uses synclet:latest
+# Build a binary that uses the synclet tag specified in sidecar.go
 install:
 	go install -ldflags "-X 'github.com/windmilleng/tilt/internal/cli.commitSHA=$$(git merge-base master HEAD)'" ./cmd/tilt/...
 
+# Build a binary that uses a dev synclet image produced by `make synclet-dev`
 install-dev:
 	@if ! [[ -e "$(SYNCLET_DEV_IMAGE_TAG_FILE)" ]]; then echo "No dev synclet found. Run make synclet-dev."; exit 1; fi
 	go install -ldflags "-X 'github.com/windmilleng/tilt/internal/synclet/sidecar.SyncletTag=$$(<$(SYNCLET_DEV_IMAGE_TAG_FILE))'" ./...
