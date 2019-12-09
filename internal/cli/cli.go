@@ -87,6 +87,14 @@ func preCommand(ctx context.Context, a *analytics.TiltAnalytics) (context.Contex
 
 	initKlog(l.Writer(logger.InfoLvl))
 
+	// if dir, err := dirs.UseWindmillDir(); err == nil {
+	// 	// TODO(dbentley): we can't error here, which is frustrating
+	// }
+
+	// if err := tracer.InitOpenTelemetry(dir); err != nil {
+	// 	log.Printf("Warning: error setting up open telemetry: %v", error)
+	// }
+
 	if trace {
 		backend, err := tracer.StringToTracerBackend(traceType)
 		if err != nil {

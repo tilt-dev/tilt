@@ -33,7 +33,9 @@ func ProvideSubscribers(
 	ewm *k8swatch.EventWatchManager,
 	tcum *cloud.CloudUsernameManager,
 	cuu *cloud.UpdateUploader,
-	dp *dockerprune.DockerPruner) []store.Subscriber {
+	dp *dockerprune.DockerPruner,
+	tc *TelemetryController,
+) []store.Subscriber {
 	return []store.Subscriber{
 		hud,
 		pw,
@@ -55,5 +57,6 @@ func ProvideSubscribers(
 		tcum,
 		cuu,
 		dp,
+		tc,
 	}
 }

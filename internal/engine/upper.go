@@ -208,7 +208,9 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 	case store.PanicAction:
 		handlePanicAction(state, action)
 	case store.LogEvent:
-		// handled as a LogAction, do nothing
+	// handled as a LogAction, do nothing
+	case TelemetryScriptRanAction:
+		handleTelemetryScriptRanAction(state, action)
 
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
@@ -746,4 +748,8 @@ func handleTiltCloudUserLookedUpAction(state *store.EngineState, action store.Ti
 
 func handleUserStartedTiltCloudRegistrationAction(state *store.EngineState) {
 	state.WaitingForTiltCloudUsernamePostRegistration = true
+}
+
+func handleTelemetryScriptRanAction(state *store.EngineState, action TelemetryScriptRanAction) {
+	state.LastTelemetryScriptRun = action.At
 }

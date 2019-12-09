@@ -40,6 +40,7 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
 	"github.com/windmilleng/tilt/internal/token"
+	"github.com/windmilleng/tilt/internal/tracer"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -217,12 +218,17 @@ func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics3 *analy
 	cloudUsernameManager := cloud.NewUsernameManager(httpClient)
 	updateUploader := cloud.NewUpdateUploader(httpClient, address)
 	dockerPruner := dockerprune.NewDockerPruner(switchCli)
-	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, tiltVersionChecker, analyticsUpdater, eventWatchManager, cloudUsernameManager, updateUploader, dockerPruner)
-	upper := engine.NewUpper(ctx, storeStore, v2)
 	windmillDir, err := dirs.UseWindmillDir()
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
+	locker, err := tracer.InitOpenTelemetry(windmillDir)
+	if err != nil {
+		return CmdUpDeps{}, err
+	}
+	telemetryController := engine.NewTelemetryController(locker, clock, windmillDir)
+	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, tiltVersionChecker, analyticsUpdater, eventWatchManager, cloudUsernameManager, updateUploader, dockerPruner, telemetryController)
+	upper := engine.NewUpper(ctx, storeStore, v2)
 	tokenToken, err := token.GetOrCreateToken(windmillDir)
 	if err != nil {
 		return CmdUpDeps{}, err
@@ -426,12 +432,12 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics) (
 var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.DetectNodeIP, k8s.ProvideClusterName, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientset, k8s.ProvideRESTConfig, k8s.ProvidePortForwardClient, k8s.ProvideConfigNamespace, k8s.ProvideKubectlRunner, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient, k8s.ProvideOwnerFetcher)
 
 var BaseWireSet = wire.NewSet(
-	K8sWireSet, tiltfile.WireSet, provideKubectlLogLevel, docker.SwitchWireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, runtimelog.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, k8swatch.NewPodWatcher, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, configs.NewConfigsController, engine.NewDockerComposeEventWatcher, runtimelog.NewDockerComposeLogManager, engine.NewProfilerManager, engine.NewGithubClientFactory, engine.NewTiltVersionChecker, cloud.WireSet, cloudurl.ProvideAddress, provideClock, hud.NewRenderer, hud.ProvideHud, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.ProvideSubscribers, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, provideWebVersion,
+	K8sWireSet, tiltfile.WireSet, provideKubectlLogLevel, docker.SwitchWireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, runtimelog.NewPodLogManager, engine.NewPortForwardController, engine.NewBuildController, k8swatch.NewPodWatcher, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, configs.NewConfigsController, engine.NewTelemetryController, engine.NewDockerComposeEventWatcher, runtimelog.NewDockerComposeLogManager, engine.NewProfilerManager, engine.NewGithubClientFactory, engine.NewTiltVersionChecker, cloud.WireSet, cloudurl.ProvideAddress, provideClock, hud.NewRenderer, hud.ProvideHud, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.ProvideSubscribers, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, engine.NewWatchManager, engine.ProvideFsWatcherMaker, engine.ProvideTimerMaker, provideWebVersion,
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
 	provideWebHost,
-	provideNoBrowserFlag, server.ProvideHeadsUpServer, provideAssetServer, server.ProvideHeadsUpServerController, dirs.UseWindmillDir, token.GetOrCreateToken, provideCmdUpDeps, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
+	provideNoBrowserFlag, server.ProvideHeadsUpServer, provideAssetServer, server.ProvideHeadsUpServerController, dirs.UseWindmillDir, token.GetOrCreateToken, tracer.InitOpenTelemetry, provideCmdUpDeps, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
 )
 
 type CmdUpDeps struct {

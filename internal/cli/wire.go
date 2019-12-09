@@ -33,6 +33,7 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/token"
+	"github.com/windmilleng/tilt/internal/tracer"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -71,6 +72,7 @@ var BaseWireSet = wire.NewSet(
 	k8swatch.NewServiceWatcher,
 	k8swatch.NewEventWatchManager,
 	configs.NewConfigsController,
+	engine.NewTelemetryController,
 	engine.NewDockerComposeEventWatcher,
 	runtimelog.NewDockerComposeLogManager,
 	engine.NewProfilerManager,
@@ -111,6 +113,7 @@ var BaseWireSet = wire.NewSet(
 
 	dirs.UseWindmillDir,
 	token.GetOrCreateToken,
+	tracer.InitOpenTelemetry,
 
 	provideCmdUpDeps,
 	engine.NewKINDPusher,
