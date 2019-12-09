@@ -19,6 +19,7 @@ import (
 	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
 	"github.com/windmilleng/tilt/internal/engine/runtimelog"
+	"github.com/windmilleng/tilt/internal/engine/telemetry"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -208,7 +209,9 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 	case store.PanicAction:
 		handlePanicAction(state, action)
 	case store.LogEvent:
-		// handled as a LogAction, do nothing
+	// handled as a LogAction, do nothing
+	case telemetry.TelemetryScriptRanAction:
+		handleTelemetryScriptRanAction(state, action)
 
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)
@@ -747,4 +750,8 @@ func handleTiltCloudUserLookedUpAction(state *store.EngineState, action store.Ti
 
 func handleUserStartedTiltCloudRegistrationAction(state *store.EngineState) {
 	state.WaitingForTiltCloudUsernamePostRegistration = true
+}
+
+func handleTelemetryScriptRanAction(state *store.EngineState, action telemetry.TelemetryScriptRanAction) {
+	state.LastTelemetryScriptRun = action.At
 }
