@@ -57,19 +57,6 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 		n = ref
 
 		go icb.maybeCreateCacheFrom(ctx, cacheInputs, ref, state, iTarget, cacheRef)
-	case model.FastBuild:
-		ps.StartPipelineStep(ctx, "Building from scratch: [%s]", userFacingRefName)
-		defer ps.EndPipelineStep(ctx)
-
-		df := icb.baseDockerfile(bd, cacheRef, iTarget.CachePaths())
-		runs := bd.Runs
-		ref, err := icb.ib.DeprecatedFastBuildImage(ctx, ps, refToBuild, df, bd.Syncs, ignore.CreateBuildContextFilter(iTarget), runs, bd.Entrypoint)
-
-		if err != nil {
-			return nil, err
-		}
-		n = ref
-		go icb.maybeCreateCacheFrom(ctx, cacheInputs, ref, state, iTarget, cacheRef)
 	case model.CustomBuild:
 		ps.StartPipelineStep(ctx, "Building Custom Build: [%s]", userFacingRefName)
 		defer ps.EndPipelineStep(ctx)
@@ -108,24 +95,8 @@ func (icb *imageAndCacheBuilder) dockerfile(image model.ImageTarget, cacheRef re
 		Append(restDf)
 }
 
-func (icb *imageAndCacheBuilder) baseDockerfile(fbInfo model.FastBuild,
-	cacheRef build.CacheRef, cachePaths []string) dockerfile.Dockerfile {
-	df := dockerfile.Dockerfile(fbInfo.BaseDockerfile)
-	if cacheRef == nil {
-		return df
-	}
-
-	if len(cachePaths) == 0 {
-		return df
-	}
-
-	// Use the cache as the new base dockerfile.
-	return dockerfile.FromExisting(cacheRef).
-		WithLabel(build.CacheImage, "0") // sadly there's no way to unset a label :sob:
-}
-
 func (icb *imageAndCacheBuilder) createCacheInputs(iTarget model.ImageTarget) build.CacheInputs {
-	baseDockerfile := dockerfile.Dockerfile(iTarget.TopFastBuildInfo().BaseDockerfile)
+	var baseDockerfile dockerfile.Dockerfile
 	if dbInfo, ok := iTarget.BuildDetails.(model.DockerBuild); ok {
 		df := dockerfile.Dockerfile(dbInfo.Dockerfile)
 		var ok bool

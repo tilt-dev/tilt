@@ -136,7 +136,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	ps := build.NewPipelineState(ctx, numStages, ibd.clock)
 	defer func() { ps.End(ctx, err) }()
 
-	var anyInPlaceBuild bool
+	var anyLiveUpdate bool
 
 	iTargetMap := model.ImageTargetsByID(iTargets)
 	err = q.RunBuilds(func(target model.TargetSpec, state store.BuildState, depResults []store.BuildResult) (store.BuildResult, error) {
@@ -160,8 +160,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 			return nil, err
 		}
 
-		anyInPlaceBuild = anyInPlaceBuild ||
-			!iTarget.AnyFastBuildInfo().Empty() || !iTarget.AnyLiveUpdateInfo().Empty()
+		anyLiveUpdate = anyLiveUpdate || !iTarget.LiveUpdateInfo().Empty()
 		return store.NewImageBuildResult(iTarget.ID(), ref), nil
 	})
 	if err != nil {
@@ -170,7 +169,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 
 	// (If we pass an empty list of refs here (as we will do if only deploying
 	// yaml), we just don't inject any image refs into the yaml, nbd.
-	brs, err := ibd.deploy(ctx, st, ps, iTargetMap, kTarget, q.results, anyInPlaceBuild)
+	brs, err := ibd.deploy(ctx, st, ps, iTargetMap, kTarget, q.results, anyLiveUpdate)
 	return brs, WrapDontFallBackError(err)
 }
 
@@ -383,8 +382,6 @@ func injectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.Tar
 	switch bd := iTarget.BuildDetails.(type) {
 	case model.DockerBuild:
 		df = dockerfile.Dockerfile(bd.Dockerfile)
-	case model.FastBuild:
-		df = dockerfile.Dockerfile(bd.BaseDockerfile)
 	default:
 		return model.ImageTarget{}, fmt.Errorf("image %q has no valid buildDetails", iTarget.ConfigurationRef)
 	}
@@ -413,14 +410,9 @@ func injectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.Tar
 		return model.ImageTarget{}, errors.Wrap(err, "injectImageDependencies")
 	}
 
-	switch bd := iTarget.BuildDetails.(type) {
-	case model.DockerBuild:
-		bd.Dockerfile = newDf.String()
-		iTarget = iTarget.WithBuildDetails(bd)
-	case model.FastBuild:
-		bd.BaseDockerfile = newDf.String()
-		iTarget = iTarget.WithBuildDetails(bd)
-	}
+	bd := iTarget.DockerBuildInfo()
+	bd.Dockerfile = newDf.String()
+	iTarget = iTarget.WithBuildDetails(bd)
 
 	return iTarget, nil
 }

@@ -70,86 +70,6 @@ var equalitytests = []struct {
 		false,
 	},
 	{
-		"FastBuild.BaseDockerfile unequal",
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{BaseDockerfile: "FROM node"})),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{BaseDockerfile: "FROM nope"})),
-		false,
-		true,
-	},
-	{
-		"FastBuild.BaseDockerfile equal",
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{BaseDockerfile: "FROM node"})),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{BaseDockerfile: "FROM node"})),
-		true,
-		false,
-	},
-	{
-		"FastBuild.Entrypoint equal",
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{
-				Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
-			})),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{
-				Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
-			})),
-		true,
-		false,
-	},
-	{
-		"FastBuild.BaseDockerfile unequal",
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{
-				Entrypoint: Cmd{Argv: []string{"echo", "hi"}},
-			})),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{
-				Entrypoint: Cmd{Argv: []string{"bash", "-c", "echo hi"}},
-			})),
-		false,
-		true,
-	},
-	{
-		"FastBuild.Syncs equal",
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Syncs: []Sync{sync1}})),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Syncs: []Sync{sync1}})),
-		true,
-		false,
-	},
-	{
-		"FastBuild.Syncs unequal (same elem, diff sync)",
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Syncs: []Sync{sync1}})),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Syncs: []Sync{sync2}})),
-		false,
-		true,
-	},
-	{
-		"FastBuild.Syncs unequal (mismatched numbers)",
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Syncs: []Sync{sync1}})),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Syncs: []Sync{sync1, sync2}})),
-		false,
-		true,
-	},
-	{
-		"FastBuild.Syncs nil/empty array equal",
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Syncs: nil})),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Syncs: []Sync{}})),
-		true,
-		false,
-	},
-	{
 		"PortForwards unequal",
 		Manifest{}.WithDeployTarget(K8sTarget{PortForwards: portFwd8000}),
 		Manifest{}.WithDeployTarget(K8sTarget{PortForwards: portFwd8001}),
@@ -162,60 +82,6 @@ var equalitytests = []struct {
 		Manifest{}.WithDeployTarget(K8sTarget{PortForwards: portFwd8000}),
 		true,
 		false,
-	},
-	{
-		"FastBuild.Runs equal",
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Runs: []Run{stepSayHi}},
-		)),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Runs: []Run{stepSayHi}},
-		)),
-		true,
-		false,
-	},
-	{
-		"FastBuild.Runs unequal",
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Runs: []Run{stepSayHi}},
-		)),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Runs: []Run{stepSayBye}},
-		)),
-		false,
-		true,
-	},
-	{
-		"FastBuild.Runs with trigger equal",
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Runs: []Run{stepSayHiTriggerFoo}},
-		)),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Runs: []Run{stepSayHiTriggerFoo}},
-		)),
-		true,
-		false,
-	},
-	{
-		"FastBuild.Runs with trigger unequal",
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Runs: []Run{stepSayHiTriggerFoo}},
-		)),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Runs: []Run{stepSayHiTriggerBar}})),
-		false,
-		true,
-	},
-	{
-		"FastBuild.Runs trigger with diff base dirs unequal",
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Runs: []Run{stepSayHiTriggerDirA}},
-		)),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(
-			FastBuild{Runs: []Run{stepSayHiTriggerDirB}},
-		)),
-		false,
-		true,
 	},
 	{
 		"DockerBuild.Dockerfile unequal",
@@ -472,32 +338,6 @@ func TestManifestEquality(t *testing.T) {
 			t.Errorf("Test case %s (#%d): Expected %+v => %+v InvalidatesBuild = %t, but got %t", c.name, i, c.m1, c.m2, c.expectedInvalidates, actualInvalidates)
 		}
 	}
-}
-
-func TestManifestValidateSyncRelativePath(t *testing.T) {
-	fbInfo := FastBuild{
-		BaseDockerfile: `FROM golang`,
-		Syncs: []Sync{
-			Sync{
-				LocalPath:     "./hello",
-				ContainerPath: "/src",
-			},
-		},
-	}
-
-	manifest := Manifest{
-		Name: "test",
-	}.WithImageTarget(ImageTarget{ConfigurationRef: img1}.WithBuildDetails(fbInfo))
-	err := manifest.Validate()
-
-	if assert.NotNil(t, err) {
-		assert.Contains(t, err.Error(), "must be an absolute path")
-	}
-
-	fbInfo.Syncs[0].LocalPath = "/abs/path/hello"
-	manifest = manifest.WithImageTarget(ImageTarget{ConfigurationRef: img1}.WithBuildDetails(fbInfo))
-	err = manifest.Validate()
-	assert.Nil(t, err)
 }
 
 func TestDCTargetValidate(t *testing.T) {

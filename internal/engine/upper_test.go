@@ -884,7 +884,7 @@ k8s_yaml('snack.yaml')
 
 	f.withManifestTarget("snack", func(mt store.ManifestTarget) {
 		expectedCmd := model.ToShellCmd("changed")
-		assert.Equal(t, expectedCmd, mt.Manifest.ImageTargetAt(0).AnyLiveUpdateInfo().RunSteps()[0].Cmd,
+		assert.Equal(t, expectedCmd, mt.Manifest.ImageTargetAt(0).LiveUpdateInfo().RunSteps()[0].Cmd,
 			"Tiltfile change should have propagated to manifest")
 	})
 
@@ -2361,40 +2361,6 @@ func TestHudExitWithError(t *testing.T) {
 	_ = f.WaitForNoExit()
 }
 
-// This test only makes sense in FastBuild.
-// In LiveUpdate, all syncs are captured by the build context,
-// so don't need to be watched independently.
-func TestNewSyncsAreWatched(t *testing.T) {
-	f := newTestFixture(t)
-	sync1 := model.Sync{LocalPath: "/go", ContainerPath: "/go"}
-	m1 := f.newFastBuildManifest("mani1", []model.Sync{sync1})
-	f.Start([]model.Manifest{
-		m1,
-	}, true)
-
-	f.waitForCompletedBuildCount(1)
-
-	sync2 := model.Sync{LocalPath: "/js", ContainerPath: "/go"}
-	m2 := f.newFastBuildManifest("mani1", []model.Sync{sync1, sync2})
-	f.store.Dispatch(configs.ConfigsReloadedAction{
-		Manifests: []model.Manifest{m2},
-	})
-
-	f.WaitUntilManifest("has new syncs", "mani1", func(mt store.ManifestTarget) bool {
-		return len(mt.Manifest.ImageTargetAt(0).TopFastBuildInfo().Syncs) == 2
-	})
-
-	f.PollUntil("watches set up", func() bool {
-		f.fwm.mu.Lock()
-		defer f.fwm.mu.Unlock()
-		watches, ok := f.fwm.targetWatches[m2.ImageTargetAt(0).ID()]
-		if !ok {
-			return false
-		}
-		return len(watches.target.Dependencies()) == 2
-	})
-}
-
 func TestNewConfigsAreWatchedAfterFailure(t *testing.T) {
 	f := newTestFixture(t)
 	f.loadAndStart()
@@ -3657,20 +3623,6 @@ func (f *testFixture) newManifest(name string) model.Manifest {
 		Build()
 }
 
-func (f *testFixture) newFastBuildManifest(name string, syncs []model.Sync) model.Manifest {
-	ref := container.MustParseNamed(name)
-	refSel := container.NewRefSelector(ref)
-	iTarget := model.NewImageTarget(refSel).
-		WithBuildDetails(model.FastBuild{
-			BaseDockerfile: `from golang:1.10`,
-			Syncs:          syncs,
-		})
-	return manifestbuilder.New(f, model.ManifestName(name)).
-		WithK8sYAML(SanchoYAML).
-		WithImageTarget(iTarget).
-		Build()
-}
-
 func (f *testFixture) newManifestWithRef(name string, ref reference.Named) model.Manifest {
 	refSel := container.NewRefSelector(ref)
 
@@ -3684,6 +3636,15 @@ func (f *testFixture) newManifestWithRef(name string, ref reference.Named) model
 		Build()
 }
 
+func (f *testFixture) newDockerBuildManifestWithBuildPath(name string, path string) model.Manifest {
+	db := model.DockerBuild{Dockerfile: "FROM alpine", BuildPath: path}
+	iTarget := NewSanchoLiveUpdateImageTarget(f).WithBuildDetails(db)
+	iTarget.ConfigurationRef = container.MustParseSelector(name) // each target should have a unique ID
+	return manifestbuilder.New(f, model.ManifestName(name)).
+		WithK8sYAML(SanchoYAML).
+		WithImageTarget(iTarget).
+		Build()
+}
 func (f *testFixture) newDCManifest(name string, DCYAMLRaw string, dockerfileContents string) model.Manifest {
 	f.WriteFile("docker-compose.yml", DCYAMLRaw)
 	return model.Manifest{
