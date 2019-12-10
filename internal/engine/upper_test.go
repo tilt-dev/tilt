@@ -1145,7 +1145,7 @@ func TestDisabledHudUpdated(t *testing.T) {
 
 	// Log something new, make sure it's reflected in the # processed bytes
 	msg := []byte("hello world!\n")
-	f.store.Dispatch(store.NewGlobalLogEvent(msg))
+	f.store.Dispatch(store.NewGlobalLogEvent(logger.InfoLvl, msg))
 	time.Sleep(5 * time.Millisecond)
 
 	checkpointDiff := f.disabledHud().ProcessedLogs - oldCheckpoint
@@ -1265,7 +1265,7 @@ func TestPodEventOrdering(t *testing.T) {
 
 			f.upper.store.Dispatch(runtimelog.PodLogAction{
 				PodID:    podBNow.PodID(),
-				LogEvent: store.NewLogEvent("fe", runtimelog.SpanIDForPod(podBNow.PodID()), []byte("pod b log\n")),
+				LogEvent: store.NewLogEvent("fe", runtimelog.SpanIDForPod(podBNow.PodID()), logger.InfoLvl, []byte("pod b log\n")),
 			})
 
 			f.WaitUntilManifestState("pod log seen", "fe", func(ms store.ManifestState) bool {
@@ -2815,7 +2815,7 @@ func TestBuildLogAction(t *testing.T) {
 	})
 
 	f.store.Dispatch(BuildLogAction{
-		LogEvent: store.NewLogEvent(manifest.Name, SpanIDForBuildLog(1), []byte(`a
+		LogEvent: store.NewLogEvent(manifest.Name, SpanIDForBuildLog(1), logger.InfoLvl, []byte(`a
 bc
 def
 ghij`)),
@@ -3559,7 +3559,7 @@ func (f *testFixture) podLog(pod *v1.Pod, manifestName model.ManifestName, s str
 	podID := k8s.PodID(pod.Name)
 	f.upper.store.Dispatch(runtimelog.PodLogAction{
 		PodID:    podID,
-		LogEvent: store.NewLogEvent(manifestName, runtimelog.SpanIDForPod(podID), []byte(s+"\n")),
+		LogEvent: store.NewLogEvent(manifestName, runtimelog.SpanIDForPod(podID), logger.InfoLvl, []byte(s+"\n")),
 	})
 
 	f.WaitUntilManifestState("pod log seen", manifestName, func(ms store.ManifestState) bool {

@@ -184,6 +184,16 @@
     "webviewLocalResourceInfo": {
       "type": "object"
     },
+    "webviewLogLevel": {
+      "type": "string",
+      "enum": [
+        "NONE",
+        "INFO",
+        "VERBOSE",
+        "DEBUG"
+      ],
+      "default": "NONE"
+    },
     "webviewLogList": {
       "type": "object",
       "properties": {
@@ -213,6 +223,9 @@
         },
         "text": {
           "type": "string"
+        },
+        "level": {
+          "$ref": "#/definitions/webviewLogLevel"
         }
       }
     },

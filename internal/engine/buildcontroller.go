@@ -93,7 +93,7 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 			manifestName: entry.name,
 			buildCount:   entry.buildCount,
 		}
-		ctx := logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), actionWriter))
+		ctx := logger.CtxWithLogHandler(ctx, actionWriter)
 
 		st.Dispatch(BuildStartedAction{
 			ManifestName: entry.name,
@@ -160,11 +160,11 @@ type BuildLogActionWriter struct {
 	buildCount   int
 }
 
-func (w BuildLogActionWriter) Write(p []byte) (n int, err error) {
+func (w BuildLogActionWriter) Write(level logger.Level, p []byte) error {
 	w.store.Dispatch(BuildLogAction{
-		LogEvent: store.NewLogEvent(w.manifestName, SpanIDForBuildLog(w.buildCount), p),
+		LogEvent: store.NewLogEvent(w.manifestName, SpanIDForBuildLog(w.buildCount), level, p),
 	})
-	return len(p), nil
+	return nil
 }
 
 func SpanIDForBuildLog(buildCount int) logstore.SpanID {

@@ -79,6 +79,7 @@ declare namespace Proto {
     spanId?: string;
     time?: string;
     text?: string;
+    level?: string;
   }
   export interface webviewLogList {
     spans?: object;

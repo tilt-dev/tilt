@@ -9,6 +9,12 @@ describe("LogStore", () => {
   function newGlobalSegment(text: string): Proto.webviewLogSegment {
     return { text: text, time: now() }
   }
+  function newGlobalLevelSegment(
+    level: string,
+    text: string
+  ): Proto.webviewLogSegment {
+    return { level: level, text: text, time: now() }
+  }
   function newManifestSegment(
     name: string,
     text: string
@@ -24,6 +30,20 @@ describe("LogStore", () => {
     })
 
     expect(logLinesToString(logs.allLog(), true)).toEqual("foobar\n")
+  })
+
+  it("handles changing levels", () => {
+    let logs = new LogStore()
+    logs.append({
+      spans: { "": {} },
+      segments: [
+        newGlobalLevelSegment("INFO", "foo"),
+        newGlobalLevelSegment("DEBUG", "bar"),
+        newGlobalLevelSegment("INFO", "baz"),
+      ],
+    })
+
+    expect(logLinesToString(logs.allLog(), true)).toEqual("foo\nbar\nbaz\n")
   })
 
   it("handles prefixes in all logs", () => {

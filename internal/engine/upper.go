@@ -274,7 +274,8 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		p := logger.Red(logger.Get(ctx)).Sprintf("Build Failed:")
 		s := fmt.Sprintf("%s %v", p, err)
 		a := BuildLogAction{
-			LogEvent: store.NewLogEvent(mt.Manifest.Name, SpanIDForBuildLog(buildCount), []byte(s)),
+			// TODO(nick): logger.ErrorLvl?
+			LogEvent: store.NewLogEvent(mt.Manifest.Name, SpanIDForBuildLog(buildCount), logger.InfoLvl, []byte(s)),
 		}
 		handleLogAction(engineState, a)
 		handleBuildLogAction(engineState, a)

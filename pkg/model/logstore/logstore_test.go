@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -15,6 +16,25 @@ func TestLog_AppendUnderLimit(t *testing.T) {
 	l.Append(newGlobalTestLogEvent("foo"), nil)
 	l.Append(newGlobalTestLogEvent("bar"), nil)
 	assert.Equal(t, "foobar", l.String())
+}
+
+func TestAppendDifferentLevels(t *testing.T) {
+	l := NewLogStore()
+	l.Append(newGlobalLevelTestLogEvent("foo", logger.InfoLvl), nil)
+	l.Append(newGlobalLevelTestLogEvent("bar", logger.DebugLvl), nil)
+	l.Append(newGlobalLevelTestLogEvent("baz", logger.InfoLvl), nil)
+	assert.Equal(t, "foo\nbar\nbaz", l.String())
+}
+
+func TestAppendDifferentLevelsMultiLines(t *testing.T) {
+	l := NewLogStore()
+	l.Append(newGlobalTestLogEvent("hello ... "), nil)
+	l.Append(newGlobalLevelTestLogEvent("foobar", logger.DebugLvl), nil)
+	l.Append(newGlobalTestLogEvent("world\nnext line of global log"), nil)
+	assert.Equal(t, "hello ... \nfoobar\nworld\nnext line of global log", l.String())
+
+	l.recomputeDerivedValues()
+	assert.Equal(t, "hello ... \nfoobar\nworld\nnext line of global log", l.String())
 }
 
 func TestLog_AppendOverLimit(t *testing.T) {
