@@ -1,26 +1,34 @@
 package config
 
 import (
+	"path/filepath"
+
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
+	"github.com/windmilleng/tilt/internal/tiltfile/io"
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 	"github.com/windmilleng/tilt/pkg/model"
 )
+
+const UserConfigFileName = "tilt_config.json"
 
 type Settings struct {
 	enabledResources []model.ManifestName
 	configDef        ConfigDef
 
+	configPath string
+
 	configParseCalled bool
+	UserConfigState   model.UserConfigState
 }
 
 type Extension struct {
-	cmdLineArgs []string
+	UserConfigState model.UserConfigState
 }
 
-func NewExtension(args []string) *Extension {
-	return &Extension{cmdLineArgs: args}
+func NewExtension(userConfigState model.UserConfigState) *Extension {
+	return &Extension{UserConfigState: userConfigState}
 }
 
 func (e *Extension) NewState() interface{} {
@@ -30,6 +38,19 @@ func (e *Extension) NewState() interface{} {
 }
 
 var _ starkit.StatefulExtension = &Extension{}
+
+func (e *Extension) OnExec(t *starlark.Thread, path string) error {
+	dir := filepath.Dir(path)
+	configPath := filepath.Join(dir, UserConfigFileName)
+
+	return starkit.SetState(t, func(settings Settings) Settings {
+		settings.UserConfigState = e.UserConfigState
+		settings.configPath = configPath
+		return settings
+	})
+}
+
+var _ starkit.OnExecExtension = &Extension{}
 
 func MustState(model starkit.Model) Settings {
 	state, err := GetState(model)
@@ -88,9 +109,18 @@ func (e *Extension) parse(thread *starlark.Thread, fn *starlark.Builtin, args st
 		return starlark.None, err
 	}
 
-	ret, out, err := settings.configDef.parse(e.cmdLineArgs)
+	err = io.RecordReadFile(thread, settings.configPath)
+	if err != nil {
+		return starlark.None, err
+	}
+
+	ret, out, err := settings.configDef.parse(settings.configPath, settings.UserConfigState.Args)
 	if out != "" {
 		thread.Print(thread, out)
 	}
-	return ret, err
+	if err != nil {
+		return starlark.None, err
+	}
+
+	return ret, nil
 }

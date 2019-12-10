@@ -58,7 +58,7 @@ func (c *dockerPruneCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	tlr := deps.tfl.Load(ctx, c.fileName, nil)
+	tlr := deps.tfl.Load(ctx, c.fileName, model.NewUserConfigState(args))
 	if tlr.Error != nil {
 		return tlr.Error
 	}

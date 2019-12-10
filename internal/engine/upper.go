@@ -485,6 +485,8 @@ func handleConfigsReloaded(
 		}
 	}
 
+	state.UserConfigState = event.UserConfigState
+
 	// Add all secrets, even if we failed.
 	state.Secrets.AddAll(event.Secrets)
 
@@ -632,7 +634,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.TiltStartTime = action.StartTime
 	engineState.TiltfilePath = action.TiltfilePath
 	engineState.ConfigFiles = action.ConfigFiles
-	engineState.UserArgs = action.UserArgs
+	engineState.UserConfigState.Args = action.UserArgs
 	engineState.AnalyticsUserOpt = action.AnalyticsUserOpt
 	engineState.WatchFiles = action.WatchFiles
 	engineState.CloudAddress = action.CloudAddress

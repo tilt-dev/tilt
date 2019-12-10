@@ -9,10 +9,9 @@ import (
 	"strconv"
 	"time"
 
+	wmanalytics "github.com/windmilleng/wmclient/pkg/analytics"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
-
-	wmanalytics "github.com/windmilleng/wmclient/pkg/analytics"
 
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/dockercompose"
@@ -21,6 +20,7 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	tiltfileanalytics "github.com/windmilleng/tilt/internal/tiltfile/analytics"
+	"github.com/windmilleng/tilt/internal/tiltfile/config"
 	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
 	"github.com/windmilleng/tilt/internal/tiltfile/io"
 	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
@@ -50,6 +50,7 @@ type TiltfileLoadResult struct {
 	DockerPruneSettings model.DockerPruneSettings
 	AnalyticsOpt        wmanalytics.Opt
 	VersionSettings     model.VersionSettings
+	UserConfigState     model.UserConfigState
 }
 
 func (r TiltfileLoadResult) Orchestrator() model.Orchestrator {
@@ -70,7 +71,7 @@ type TiltfileLoader interface {
 	// We want to be very careful not to treat non-zero exit codes like an error.
 	// Because even if the Tiltfile has errors, we might need to watch files
 	// or return partial results (like enabled features).
-	Load(ctx context.Context, filename string, args []string) TiltfileLoadResult
+	Load(ctx context.Context, filename string, userConfigState model.UserConfigState) TiltfileLoadResult
 }
 
 type FakeTiltfileLoader struct {
@@ -83,7 +84,7 @@ func NewFakeTiltfileLoader() *FakeTiltfileLoader {
 	return &FakeTiltfileLoader{}
 }
 
-func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, args []string) TiltfileLoadResult {
+func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, userConfigState model.UserConfigState) TiltfileLoadResult {
 	return tfl.Result
 }
 
@@ -120,7 +121,7 @@ func printWarnings(s *tiltfileState) {
 }
 
 // Load loads the Tiltfile in `filename`
-func (tfl tiltfileLoader) Load(ctx context.Context, filename string, args []string) TiltfileLoadResult {
+func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigState model.UserConfigState) TiltfileLoadResult {
 	start := time.Now()
 	absFilename, err := ospath.RealAbs(filename)
 	if err != nil {
@@ -155,7 +156,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, args []stri
 	privateRegistry := tfl.kCli.PrivateRegistry(ctx)
 	s := newTiltfileState(ctx, tfl.dcCli, tfl.k8sContextExt, privateRegistry, feature.FromDefaults(tfl.fDefaults))
 
-	manifests, result, err := s.loadManifests(absFilename, args)
+	manifests, result, err := s.loadManifests(absFilename, userConfigState)
 
 	ioState, _ := io.GetState(result)
 	tlr.ConfigFiles = sliceutils.AppendWithoutDupes(ioState.Files, s.postExecReadFiles...)
@@ -165,6 +166,9 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, args []stri
 
 	aSettings, _ := tiltfileanalytics.GetState(result)
 	tlr.AnalyticsOpt = aSettings.Opt
+
+	flagsSettings, _ := config.GetState(result)
+	tlr.UserConfigState = flagsSettings.UserConfigState
 
 	tlr.Secrets = s.extractSecrets()
 	tlr.Warnings = s.warnings

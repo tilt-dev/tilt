@@ -1,7 +1,10 @@
 package config
 
 import (
+	"bytes"
+	"encoding/json"
 	"flag"
+	"fmt"
 	"strings"
 
 	"go.starlark.net/starlark"
@@ -10,37 +13,58 @@ import (
 )
 
 type stringList struct {
-	f *Strings
+	Values []string
+	isSet  bool
 }
 
-func (s *stringList) flag() flag.Value {
-	s.f = &Strings{}
-	return s.f
-}
+var _ configValue = &stringList{}
+var _ flag.Value = &stringList{}
 
 func (s *stringList) starlark() starlark.Value {
-	var v []string
-	if s.f != nil {
-		v = s.f.Values
+	return value.StringSliceToList(s.Values)
+}
+
+func (s *stringList) IsSet() bool {
+	return s.isSet
+}
+
+func (s *stringList) MarshalJSON() ([]byte, error) {
+	ret := &bytes.Buffer{}
+	err := json.NewEncoder(ret).Encode(s.Values)
+	if err != nil {
+		return nil, err
 	}
-	return value.StringSliceToList(v)
+	return ret.Bytes(), nil
 }
 
-func (s *stringList) setFromArgs(strs []string) {
-	s.f = &Strings{Values: strs}
-}
+func (s *stringList) setFromInterface(i interface{}) error {
+	if i == nil {
+		s.Values = nil
+		return nil
+	}
+	is, ok := i.([]interface{})
+	if !ok {
+		return fmt.Errorf("expected array")
+	}
+	s.Values = nil
+	for _, elem := range is {
+		str, ok := elem.(string)
+		if !ok {
+			return fmt.Errorf("expected string, got %T", elem)
+		}
+		s.Values = append(s.Values, str)
+	}
 
-// Strings is a `flag.Value` for `string` arguments. (from https://github.com/sgreben/flagvar/blob/master/string.go)
-type Strings struct {
-	Values []string
-}
-
-// Set is flag.Value.Set
-func (fv *Strings) Set(v string) error {
-	fv.Values = append(fv.Values, v)
+	s.isSet = true
 	return nil
 }
 
-func (fv *Strings) String() string {
-	return strings.Join(fv.Values, ",")
+func (s *stringList) Set(v string) error {
+	s.Values = append(s.Values, v)
+	s.isSet = true
+	return nil
+}
+
+func (s *stringList) String() string {
+	return strings.Join(s.Values, ",")
 }

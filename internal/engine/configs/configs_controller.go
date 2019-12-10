@@ -73,7 +73,7 @@ func logTiltfileChanges(ctx context.Context, filesChanged map[string]bool) {
 }
 
 func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
-	args []string, filesChanged map[string]bool, tiltfilePath string) {
+	filesChanged map[string]bool, tiltfilePath string) {
 
 	startTime := cc.clock()
 	st.Dispatch(ConfigsReloadStartedAction{FilesChanged: filesChanged, StartTime: startTime})
@@ -87,9 +87,10 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 	if !firstBuild {
 		logTiltfileChanges(ctx, filesChanged)
 	}
+	userConfigState := state.UserConfigState
 	st.RUnlockState()
 
-	tlr := cc.tfl.Load(ctx, tiltfilePath, args)
+	tlr := cc.tfl.Load(ctx, tiltfilePath, userConfigState)
 	if tlr.Error == nil && len(tlr.Manifests) == 0 {
 		tlr.Error = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
 	}
@@ -123,6 +124,7 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 		DockerPruneSettings:   tlr.DockerPruneSettings,
 		CheckpointAtExecStart: checkpointAtExecStart,
 		VersionSettings:       tlr.VersionSettings,
+		UserConfigState:       tlr.UserConfigState,
 	})
 }
 
@@ -134,7 +136,6 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	args := state.UserArgs
 	if !cc.shouldBuild(state) {
 		return
 	}
@@ -151,7 +152,7 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 	}
 
 	// Release the state lock and load the tiltfile in a separate goroutine
-	go cc.loadTiltfile(ctx, st, args, filesChanged, tiltfilePath)
+	go cc.loadTiltfile(ctx, st, filesChanged, tiltfilePath)
 }
 
 func requiresDocker(tlr tiltfile.TiltfileLoadResult) bool {

@@ -21,7 +21,7 @@ func TestDown(t *testing.T) {
 	defer f.TearDown()
 
 	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: newK8sManifest()}
-	err := f.cmd.down(f.ctx, f.deps)
+	err := f.cmd.down(f.ctx, f.deps, nil)
 	assert.NoError(t, err)
 	assert.Contains(t, f.kCli.DeletedYaml, "sancho")
 }
@@ -32,7 +32,7 @@ func TestDownK8sFails(t *testing.T) {
 
 	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: newK8sManifest()}
 	f.kCli.DeleteError = fmt.Errorf("GARBLEGARBLE")
-	err := f.cmd.down(f.ctx, f.deps)
+	err := f.cmd.down(f.ctx, f.deps, nil)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "GARBLEGARBLE")
 	}
@@ -44,7 +44,7 @@ func TestDownDCFails(t *testing.T) {
 
 	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: newDCManifest()}
 	f.dcc.DownError = fmt.Errorf("GARBLEGARBLE")
-	err := f.cmd.down(f.ctx, f.deps)
+	err := f.cmd.down(f.ctx, f.deps, nil)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "GARBLEGARBLE")
 	}
