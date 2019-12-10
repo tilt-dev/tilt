@@ -21,7 +21,7 @@ func NewDeferredLogger(ctx context.Context) *DeferredLogger {
 		dLogger.mu.Lock()
 		defer dLogger.mu.Unlock()
 		if dLogger.output != nil {
-			dLogger.output.Write(level, string(b))
+			dLogger.output.Write(level, b)
 			return nil
 		}
 		dLogger.entries = append(dLogger.entries, logEntry{level: level, b: append([]byte{}, b...)})
@@ -37,7 +37,7 @@ func (dl *DeferredLogger) SetOutput(l Logger) {
 	defer dl.mu.Unlock()
 	dl.output = l
 	for _, entry := range dl.entries {
-		dl.output.Write(entry.level, string(entry.b))
+		dl.output.Write(entry.level, entry.b)
 	}
 	dl.entries = nil
 }
