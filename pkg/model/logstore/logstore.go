@@ -1,6 +1,7 @@
 package logstore
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -163,11 +164,8 @@ func (s *LogStore) ScrubSecretsStartingAt(secrets model.SecretSet, checkpoint Ch
 
 func (s *LogStore) Append(le LogEvent, secrets model.SecretSet) {
 	spanID := le.SpanID()
-	if spanID == "" {
-		// TODO(nick): We're currently in a transition period where
-		// not all logs have an appropriate SpanID. This should be removed once
-		// they do.
-		spanID = manifestNameToSpanID(le.ManifestName())
+	if spanID == "" && le.ManifestName() != "" {
+		spanID = SpanID(fmt.Sprintf("unknown:%s", le.ManifestName()))
 	}
 	span, ok := s.spans[spanID]
 	if !ok {
@@ -507,10 +505,4 @@ func (s *LogStore) ensureMaxLength() {
 			return
 		}
 	}
-}
-
-// TODO(nick): This is a white lie until we have the code instrumented
-// to create real span ids.
-func manifestNameToSpanID(mn model.ManifestName) SpanID {
-	return SpanID(mn)
 }
