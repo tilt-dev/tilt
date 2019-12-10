@@ -51,7 +51,7 @@ func (s Settings) EnabledResources(args []string, manifests []model.Manifest) ([
 	}
 
 	// if the user has not called config.parse and has specified args, use those to select which resources
-	if args != nil && !s.configParsed {
+	if args != nil && !s.configParseCalled {
 		var mns []model.ManifestName
 		for _, arg := range args {
 			mns = append(mns, model.ManifestName(arg))

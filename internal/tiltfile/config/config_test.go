@@ -205,7 +205,7 @@ cfg = config.parse()
 
 	_, err := f.ExecFile("Tiltfile")
 	require.Error(t, err)
-	require.Equal(t, "positional args were specified, but none were expected (no flag defined with args=True)", err.Error())
+	require.Equal(t, "positional args were specified, but none were expected (no setting defined with args=True)", err.Error())
 }
 
 func TestUsage(t *testing.T) {

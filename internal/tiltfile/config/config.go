@@ -12,7 +12,7 @@ type Settings struct {
 	enabledResources []model.ManifestName
 	configDef        ConfigDef
 
-	configParsed bool
+	configParseCalled bool
 }
 
 type Extension struct {
@@ -72,7 +72,7 @@ func (e *Extension) parse(thread *starlark.Thread, fn *starlark.Builtin, args st
 	}
 
 	err = starkit.SetState(thread, func(settings Settings) Settings {
-		settings.configParsed = true
+		settings.configParseCalled = true
 		return settings
 	})
 	if err != nil {
