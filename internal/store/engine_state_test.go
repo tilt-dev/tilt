@@ -3,7 +3,6 @@ package store
 import (
 	"os"
 	"path/filepath"
-	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -37,11 +36,9 @@ func TestStateToViewRelativeEditPaths(t *testing.T) {
 	require.Len(t, v.Resources, 2)
 
 	r, _ := v.Resource(m.Name)
-	assert.ElementsMatch(t, []string{"foo", "d/e"}, r.LastBuild().Edits)
-
-	sort.Strings(r.CurrentBuild.Edits)
-	assert.ElementsMatch(t, []string{"foo", "d/e"}, r.CurrentBuild.Edits)
-	assert.ElementsMatch(t, []string{"foo", "d/e"}, r.PendingBuildEdits)
+	assert.Equal(t, []string{"foo", "d/e"}, r.LastBuild().Edits)
+	assert.Equal(t, []string{"foo", "d/e"}, r.CurrentBuild.Edits)
+	assert.Equal(t, []string{"d/e", "foo"}, r.PendingBuildEdits) // these are sorted for deterministic ordering
 }
 
 func TestStateToViewPortForwards(t *testing.T) {
