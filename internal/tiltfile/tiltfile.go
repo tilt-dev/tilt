@@ -44,6 +44,7 @@ type TiltfileLoadResult struct {
 	TiltIgnoreContents  string
 	FeatureFlags        map[string]bool
 	TeamName            string
+	TelemetryCmd        model.Cmd
 	Secrets             model.SecretSet
 	Error               error
 	DockerPruneSettings model.DockerPruneSettings
@@ -171,6 +172,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 	tlr.Error = err
 	tlr.Manifests = manifests
 	tlr.TeamName = s.teamName
+	tlr.TelemetryCmd = s.telemetryCmd
 
 	vs, _ := version.GetState(result)
 	tlr.VersionSettings = vs
