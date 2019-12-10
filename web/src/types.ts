@@ -129,3 +129,14 @@ export type Snapshot = {
   path?: string
   snapshotHighlight?: SnapshotHighlight | null
 }
+
+// A plaintext representation of a line of the log,
+// with metadata to render it in isolation.
+//
+// The metadata should be stored as primitive fields
+// so that React's default caching behavior will kick in.
+export type LogLine = {
+  // We assume that 'text' does not contain a newline
+  text: string
+  manifestName: string
+}

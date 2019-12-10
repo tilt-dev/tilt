@@ -4,6 +4,8 @@
 // pkg/model/logstore/logstore.go
 // but with better support for incremental updates and rendering.
 
+import { LogLine } from "./types"
+
 type LogSpan = {
   manifestName: string
   lastSegmentIndex: number
@@ -81,7 +83,7 @@ class LogStore {
     })
   }
 
-  allLog() {
+  allLog(): LogLine[] {
     return this.manifestLog("")
   }
 
@@ -96,11 +98,11 @@ class LogStore {
     return result
   }
 
-  manifestLog(mn: string) {
+  manifestLog(mn: string): LogLine[] {
+    let result: LogLine[] = []
     let lastLineCompleted = false
     let allLogs = mn === ""
     let filteredLogs = mn !== ""
-    let result = ""
 
     // We want to print the log line-by-line, but we don't actually store the logs
     // line-by-line. We store them as segments.
@@ -134,7 +136,7 @@ class LogStore {
       }
 
       if (earliestStartIndex == -1) {
-        return ""
+        return []
       }
 
       startIndex = earliestStartIndex
@@ -142,6 +144,7 @@ class LogStore {
     }
 
     let isFirstLine = true
+    let currentLine = {}
     for (let i = startIndex; i <= lastIndex; i++) {
       let segment = this.segments[i]
       if (!segment.startsLine()) {
@@ -159,21 +162,19 @@ class LogStore {
         continue
       }
 
-      // If the last segment never completed, print a newline now, so that the
-      // logs from different sources don't blend together.
-      if (!isFirstLine && !lastLineCompleted) {
-        result += "\n"
-      }
-
-      if (allLogs && span.manifestName != "") {
-        result += sourcePrefix(span.manifestName)
-      }
-      result += segment.text
+      let currentLine = { manifestName: span.manifestName, text: segment.text }
       isFirstLine = false
 
       // If this segment is not complete, run ahead and try to complete it.
       if (segment.isComplete()) {
         lastLineCompleted = true
+
+        // strip off the newline
+        currentLine.text = currentLine.text.substring(
+          0,
+          currentLine.text.length - 1
+        )
+        result.push(currentLine)
         continue
       }
 
@@ -188,30 +189,23 @@ class LogStore {
           continue
         }
 
-        result += currentSeg.text
+        currentLine.text += currentSeg.text
         if (currentSeg.isComplete()) {
           lastLineCompleted = true
+
+          // strip off the newline
+          currentLine.text = currentLine.text.substring(
+            0,
+            currentLine.text.length - 1
+          )
           break
         }
       }
+      result.push(currentLine)
     }
 
     return result
   }
-}
-
-function sourcePrefix(n: string) {
-  if (n == "" || n == "(Tiltfile)") {
-    return ""
-  }
-  let max = 12
-  let spaces = ""
-  if (n.length > max) {
-    n = n.substring(0, max - 1) + "…"
-  } else {
-    spaces = " ".repeat(max - n.length)
-  }
-  return n + spaces + "┊ "
 }
 
 export default LogStore

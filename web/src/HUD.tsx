@@ -16,12 +16,14 @@ import TopBar from "./TopBar"
 import SocketBar from "./SocketBar"
 import "./HUD.scss"
 import {
+  LogLine,
   ResourceView,
   ShowFatalErrorModal,
   SnapshotHighlight,
   SocketState,
   WebView,
 } from "./types"
+import { logLinesFromString } from "./logs"
 import HudState from "./HudState"
 import AlertPane from "./AlertPane"
 import AnalyticsNudge from "./AnalyticsNudge"
@@ -423,21 +425,22 @@ class HUD extends Component<HudProps, HudState> {
         props.match.params && props.match.params.name
           ? props.match.params.name
           : ""
-      let logs = ""
+      let logLines: LogLine[] = []
       if (name) {
         if (this.state.logStore) {
-          logs = this.state.logStore.manifestLog(name)
+          logLines = this.state.logStore.manifestLog(name)
         } else if (view) {
           let r = view.resources.find(r => r.name === name)
           if (r === undefined) {
             return <Route component={NotFound} />
           }
-          logs = r?.combinedLog ?? ""
+          logLines = logLinesFromString(r?.combinedLog ?? "", name)
         }
       }
       return (
         <LogPane
-          log={logs}
+          logLines={logLines}
+          showManifestPrefix={false}
           handleSetHighlight={this.handleSetHighlight}
           handleClearHighlight={this.handleClearHighlight}
           highlight={snapshotHighlight}
@@ -468,15 +471,18 @@ class HUD extends Component<HudProps, HudState> {
       }
     }
     let allLogsRoute = () => {
-      let allLogs = ""
+      let allLogs: LogLine[] = []
       if (this.state.logStore) {
         allLogs = this.state.logStore.allLog()
-      } else if (view) {
-        allLogs = view.log
+      } else if (view?.log) {
+        allLogs = logLinesFromString(
+          "ERROR: Tilt Server and client protocol mismatch. This happens in dev mode if you have a new client talking to an old Tilt binary. Please re-compile Tilt"
+        )
       }
       return (
         <LogPane
-          log={allLogs}
+          logLines={allLogs}
+          showManifestPrefix={true}
           handleSetHighlight={this.handleSetHighlight}
           handleClearHighlight={this.handleClearHighlight}
           highlight={this.state.snapshotHighlight}
