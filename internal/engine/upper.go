@@ -573,7 +573,7 @@ func handleConfigsReloaded(
 }
 
 func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
-	manifestName := action.Source()
+	manifestName := action.ManifestName()
 	ms, ok := state.ManifestState(manifestName)
 	if !ok || state.CurrentlyBuilding != manifestName {
 		// This is OK. The user could have edited the manifest recently.
@@ -700,7 +700,7 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 }
 
 func handleDockerComposeLogAction(state *store.EngineState, action runtimelog.DockerComposeLogAction) {
-	manifestName := action.Source()
+	manifestName := action.ManifestName()
 	ms, ok := state.ManifestState(manifestName)
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.

@@ -85,6 +85,17 @@ class LogStore {
     return this.manifestLog("")
   }
 
+  spansForManifest(mn: string): { [key: string]: LogSpan } {
+    let result: { [key: string]: LogSpan } = {}
+    for (let spanId in this.spans) {
+      let span = this.spans[spanId]
+      if (span.manifestName == mn) {
+        result[spanId] = span
+      }
+    }
+    return result
+  }
+
   manifestLog(mn: string) {
     let lastLineCompleted = false
     let allLogs = mn === ""
@@ -106,13 +117,28 @@ class LogStore {
     let startIndex = 0
     let lastIndex = this.segments.length - 1
     if (filteredLogs) {
-      let span = this.spans[mn]
-      if (!span) {
+      let spans = this.spansForManifest(mn)
+      let earliestStartIndex = -1
+      let latestEndIndex = -1
+      for (let spanId in spans) {
+        let span = spans[spanId]
+        if (
+          earliestStartIndex == -1 ||
+          span.firstSegmentIndex < earliestStartIndex
+        ) {
+          earliestStartIndex = span.firstSegmentIndex
+        }
+        if (latestEndIndex == -1 || span.lastSegmentIndex > latestEndIndex) {
+          latestEndIndex = span.lastSegmentIndex
+        }
+      }
+
+      if (earliestStartIndex == -1) {
         return ""
       }
 
-      startIndex = span.firstSegmentIndex
-      lastIndex = span.lastSegmentIndex
+      startIndex = earliestStartIndex
+      lastIndex = latestEndIndex
     }
 
     let isFirstLine = true

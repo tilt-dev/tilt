@@ -9,6 +9,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/windmilleng/tilt/pkg/model/logstore"
 )
 
 type ErrorAction struct {
@@ -23,19 +24,7 @@ func NewErrorAction(err error) ErrorAction {
 
 type LogAction interface {
 	Action
-	model.LogEvent
-
-	// Ideally, all logs should be associated with a source.
-	//
-	// In practice, not all logs have an obvious source identifier,
-	// so this might be empty.
-	//
-	// Right now, that source is a ManifestName. But in the future,
-	// this might make more sense as another kind of identifier.
-	//
-	// (As of this writing, we have TargetID as an abstract build-time
-	// source identifier, but no generic run-time source identifier)
-	Source() model.ManifestName
+	logstore.LogEvent
 }
 
 type LogEvent struct {
@@ -46,7 +35,7 @@ type LogEvent struct {
 
 func (LogEvent) Action() {}
 
-func (le LogEvent) Source() model.ManifestName {
+func (le LogEvent) ManifestName() model.ManifestName {
 	return le.mn
 }
 
@@ -58,14 +47,8 @@ func (le LogEvent) Message() []byte {
 	return le.msg
 }
 
-func (le *LogEvent) ScrubSecret(secret model.Secret) {
-	le.msg = secret.Scrub(le.msg)
-}
-
-func (le *LogEvent) ScrubSecretSet(secrets model.SecretSet) {
-	for _, s := range secrets {
-		le.ScrubSecret(s)
-	}
+func (le LogEvent) SpanID() logstore.SpanID {
+	return ""
 }
 
 func NewLogEvent(mn model.ManifestName, b []byte) LogEvent {
