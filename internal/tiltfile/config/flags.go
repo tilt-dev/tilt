@@ -10,7 +10,7 @@ import (
 
 type Settings struct {
 	enabledResources []model.ManifestName
-	argDef           ArgsDef
+	flagsDef         FlagsDef
 
 	flagsParsed bool
 }
@@ -25,7 +25,7 @@ func NewExtension(args []string) *Extension {
 
 func (e *Extension) NewState() interface{} {
 	return Settings{
-		argDef: ArgsDef{args: make(map[string]argDef)},
+		flagsDef: FlagsDef{flagDefs: make(map[string]flagDef)},
 	}
 }
 
@@ -52,7 +52,7 @@ func (e *Extension) OnStart(env *starkit.Environment) error {
 	}{
 		{"config.set_enabled_resources", setEnabledResources},
 		{"config.parse", e.parse},
-		{"config.define_string_list", argDefinitionBuiltin(func() argValue {
+		{"config.define_string_list", flagDefinitionBuiltin(func() flagValue {
 			return &stringList{}
 		})},
 	} {
@@ -88,7 +88,7 @@ func (e *Extension) parse(thread *starlark.Thread, fn *starlark.Builtin, args st
 		return starlark.None, err
 	}
 
-	ret, out, err := settings.argDef.parse(e.cmdLineArgs)
+	ret, out, err := settings.flagsDef.parse(e.cmdLineArgs)
 	if out != "" {
 		thread.Print(thread, out)
 	}
