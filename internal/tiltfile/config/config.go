@@ -10,9 +10,9 @@ import (
 
 type Settings struct {
 	enabledResources []model.ManifestName
-	flagsDef         FlagsDef
+	configDef        ConfigDef
 
-	flagsParsed bool
+	configParsed bool
 }
 
 type Extension struct {
@@ -25,7 +25,7 @@ func NewExtension(args []string) *Extension {
 
 func (e *Extension) NewState() interface{} {
 	return Settings{
-		flagsDef: FlagsDef{flagDefs: make(map[string]flagDef)},
+		configDef: ConfigDef{configSettings: make(map[string]configSetting)},
 	}
 }
 
@@ -52,7 +52,7 @@ func (e *Extension) OnStart(env *starkit.Environment) error {
 	}{
 		{"config.set_enabled_resources", setEnabledResources},
 		{"config.parse", e.parse},
-		{"config.define_string_list", flagDefinitionBuiltin(func() flagValue {
+		{"config.define_string_list", configSettingDefinitionBuiltin(func() configValue {
 			return &stringList{}
 		})},
 	} {
@@ -72,7 +72,7 @@ func (e *Extension) parse(thread *starlark.Thread, fn *starlark.Builtin, args st
 	}
 
 	err = starkit.SetState(thread, func(settings Settings) Settings {
-		settings.flagsParsed = true
+		settings.configParsed = true
 		return settings
 	})
 	if err != nil {
@@ -88,7 +88,7 @@ func (e *Extension) parse(thread *starlark.Thread, fn *starlark.Builtin, args st
 		return starlark.None, err
 	}
 
-	ret, out, err := settings.flagsDef.parse(e.cmdLineArgs)
+	ret, out, err := settings.configDef.parse(e.cmdLineArgs)
 	if out != "" {
 		thread.Print(thread, out)
 	}
