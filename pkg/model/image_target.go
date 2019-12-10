@@ -207,6 +207,7 @@ type DockerBuildTarget string
 func (s DockerBuildTarget) String() string { return string(s) }
 
 type CustomBuild struct {
+	WorkDir string
 	Command string
 	// Deps is a list of file paths that are dependencies of this command.
 	Deps []string

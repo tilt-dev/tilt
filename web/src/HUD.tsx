@@ -16,13 +16,13 @@ import TopBar from "./TopBar"
 import SocketBar from "./SocketBar"
 import "./HUD.scss"
 import {
-  HudState,
   ResourceView,
   ShowFatalErrorModal,
   SnapshotHighlight,
   SocketState,
   WebView,
 } from "./types"
+import HudState from "./HudState"
 import AlertPane from "./AlertPane"
 import AnalyticsNudge from "./AnalyticsNudge"
 import NotFound from "./NotFound"
@@ -33,14 +33,10 @@ import FatalErrorModal from "./FatalErrorModal"
 import * as _ from "lodash"
 import FacetsPane from "./FacetsPane"
 import HUDGrid from "./HUDGrid"
+import LogStore from "./LogStore"
 
 type HudProps = {
   history: History
-}
-
-type NewSnapshotResponse = {
-  // output of snapshot_storage
-  url: string
 }
 
 // The Main HUD view, as specified in
@@ -126,7 +122,17 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   setAppState<K extends keyof HudState>(state: Pick<HudState, K>) {
-    this.setState(state)
+    this.setState(prevState => {
+      let newState = _.clone(state) as any
+      let newLogList = newState.view?.logList
+      if (newLogList) {
+        // For now, just create a brand new log store.
+        // In the future, we'll do more complex merging.
+        newState.logStore = new LogStore()
+        newState.logStore.append(newLogList)
+      }
+      return newState
+    })
   }
 
   setHistoryLocation(path: string) {
@@ -207,17 +213,17 @@ class HUD extends Component<HudProps, HudState> {
   render() {
     let view = this.state.view
 
-    let needsNudge = view ? view.needsAnalyticsNudge : false
-    let resources = (view && view.resources) || []
-    if (!resources.length) {
+    let needsNudge = view?.needsAnalyticsNudge ?? false
+    let resources = view?.resources ?? []
+    if (!resources?.length) {
       return <HeroScreen message={"Loading…"} />
     }
     let statusItems = resources.map(res => new StatusItem(res))
 
-    let runningVersion = view && view.runningTiltBuild
-    let latestVersion = view && view.latestTiltBuild
-    const versionSettings = view && view.versionSettings
-    const checkUpdates = versionSettings ? versionSettings.checkUpdates : true
+    let runningVersion = view?.runningTiltBuild
+    let latestVersion = view?.latestTiltBuild
+    const versionSettings = view?.versionSettings
+    const checkUpdates = versionSettings?.checkUpdates ?? true
     let shareSnapshotModal = this.renderShareSnapshotModal(view)
     let fatalErrorModal = this.renderFatalErrorModal(view)
 
@@ -262,21 +268,21 @@ class HUD extends Component<HudProps, HudState> {
       path: this.path("/r/:name"),
       exact: true,
     })
-    let params: any = match && match.params
-    let name = params && params.name
+    let params: any = match?.params
+    let name = params?.name
     if (!name) {
       return null
     }
 
     let view = this.state.view
-    let resources = (view && view.resources) || []
+    let resources = view?.resources ?? []
     let r = resources.find(r => r.name === name)
     if (!r) {
       return null
     }
 
-    let endpoints = (r && r.endpoints) || []
-    let podID = (r && r.podID) || ""
+    let endpoints = r?.endpoints ?? []
+    let podID = r?.podID ?? ""
     let podStatus = (r.k8sResourceInfo && r.k8sResourceInfo.podStatus) || ""
     return (
       <ResourceInfo endpoints={endpoints} podID={podID} podStatus={podStatus} />
@@ -285,7 +291,7 @@ class HUD extends Component<HudProps, HudState> {
 
   renderTopBarSwitch() {
     let view = this.state.view
-    let resources = (view && view.resources) || []
+    let resources = view?.resources ?? []
     let showSnapshot =
       this.getFeatures().isEnabled("snapshots") &&
       !this.pathBuilder.isSnapshot()
@@ -418,12 +424,16 @@ class HUD extends Component<HudProps, HudState> {
           ? props.match.params.name
           : ""
       let logs = ""
-      if (view && name) {
-        let r = view.resources.find(r => r.name === name)
-        if (r === undefined) {
-          return <Route component={NotFound} />
+      if (name) {
+        if (this.state.logStore) {
+          logs = this.state.logStore.manifestLog(name)
+        } else if (view) {
+          let r = view.resources.find(r => r.name === name)
+          if (r === undefined) {
+            return <Route component={NotFound} />
+          }
+          logs = r?.combinedLog ?? ""
         }
-        logs = (r && r.combinedLog) || ""
       }
       return (
         <LogPane
@@ -435,11 +445,6 @@ class HUD extends Component<HudProps, HudState> {
           isSnapshot={isSnapshot}
         />
       )
-    }
-
-    let combinedLog = ""
-    if (view) {
-      combinedLog = view.log
     }
 
     let errorRoute = (props: RouteComponentProps<any>) => {
@@ -462,23 +467,28 @@ class HUD extends Component<HudProps, HudState> {
         return <FacetsPane resource={fr} />
       }
     }
+    let allLogsRoute = () => {
+      let allLogs = ""
+      if (this.state.logStore) {
+        allLogs = this.state.logStore.allLog()
+      } else if (view) {
+        allLogs = view.log
+      }
+      return (
+        <LogPane
+          log={allLogs}
+          handleSetHighlight={this.handleSetHighlight}
+          handleClearHighlight={this.handleClearHighlight}
+          highlight={this.state.snapshotHighlight}
+          modalIsOpen={showSnapshotModal}
+          isSnapshot={isSnapshot}
+        />
+      )
+    }
 
     return (
       <Switch>
-        <Route
-          exact
-          path={this.path("/")}
-          render={() => (
-            <LogPane
-              log={combinedLog}
-              handleSetHighlight={this.handleSetHighlight}
-              handleClearHighlight={this.handleClearHighlight}
-              highlight={this.state.snapshotHighlight}
-              modalIsOpen={showSnapshotModal}
-              isSnapshot={isSnapshot}
-            />
-          )}
-        />
+        <Route exact path={this.path("/")} render={allLogsRoute} />
         <Route
           exact
           path={this.path("/alerts")}

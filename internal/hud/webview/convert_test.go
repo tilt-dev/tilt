@@ -88,15 +88,14 @@ func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 
 func TestStateToViewTiltfileLog(t *testing.T) {
 	es := newState([]model.Manifest{})
-	es.TiltfileState.CombinedLog = model.AppendLog(
-		es.TiltfileState.CombinedLog,
-		store.NewLogEvent("Tiltfile", []byte("hello")),
-		"",
+	es.LogStore.Append(
+		store.NewLogEvent(store.TiltfileManifestName, []byte("hello")),
 		nil)
 	v := stateToProtoView(t, *es)
 	r, ok := findResource("(Tiltfile)", v)
 	require.True(t, ok, "no resource named (Tiltfile) found")
-	assert.Equal(t, "hello", r.CombinedLog)
+	assert.Equal(t, "hello", string(v.LogList.Segments[0].Text))
+	assert.Equal(t, r.Name, string(v.LogList.Spans[r.Name].ManifestName))
 }
 
 func TestRelativeTiltfilePath(t *testing.T) {

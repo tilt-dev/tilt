@@ -62,6 +62,7 @@ import (
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/windmilleng/tilt/pkg/model/logstore"
 	proto_webview "github.com/windmilleng/tilt/pkg/webview"
 )
 
@@ -1035,9 +1036,9 @@ docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', ignor
 		return len(ms.BuildHistory) == 2
 	})
 
-	f.withManifestState("snack", func(ms store.ManifestState) {
+	f.withState(func(es store.EngineState) {
 		expected := fmt.Sprintf("1 changed: [%s]", f.JoinPath("Tiltfile"))
-		require.Contains(t, ms.CombinedLog.String(), expected)
+		require.Contains(t, es.LogStore.ManifestLog("snack"), expected)
 	})
 
 	err := f.Stop()
@@ -1139,15 +1140,16 @@ func TestDisabledHudUpdated(t *testing.T) {
 
 	// Make sure we're done logging stuff, then grab # processed bytes
 	time.Sleep(5 * time.Millisecond)
-	assert.True(t, f.disabledHud().ProcessedLogByteCount > 0)
-	oldByteCount := f.disabledHud().ProcessedLogByteCount
+	assert.True(t, f.disabledHud().ProcessedLogs > 0)
+	oldCheckpoint := f.disabledHud().ProcessedLogs
 
 	// Log something new, make sure it's reflected in the # processed bytes
 	msg := []byte("hello world!\n")
 	f.store.Dispatch(store.NewGlobalLogEvent(msg))
 	time.Sleep(5 * time.Millisecond)
-	byteCountDiff := f.disabledHud().ProcessedLogByteCount - oldByteCount
-	assert.Equal(t, len(msg), byteCountDiff)
+
+	checkpointDiff := f.disabledHud().ProcessedLogs - oldCheckpoint
+	assert.Equal(t, logstore.Checkpoint(1), checkpointDiff)
 
 	err := f.Stop()
 	assert.Equal(t, nil, err)
@@ -1964,10 +1966,11 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 	f.podLog(pb.Build(), name, "third string")
 
 	// the third instance is still up, so we want to show the log from the last crashed pod plus the log from the current pod
-	f.withManifestState(name, func(ms store.ManifestState) {
+	f.withState(func(es store.EngineState) {
+		ms, _ := es.ManifestState(name)
 		assert.Equal(t, "third string\n", ms.MostRecentPod().Log().String())
-		assert.Contains(t, ms.CombinedLog.String(), "second string\n")
-		assert.Contains(t, ms.CombinedLog.String(), "third string\n")
+		assert.Contains(t, es.LogStore.ManifestLog(name), "second string\n")
+		assert.Contains(t, es.LogStore.ManifestLog(name), "third string\n")
 		assert.Equal(t, ms.CrashLog.String(), "second string\n")
 	})
 
@@ -2270,17 +2273,11 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 	f.kClient.EmitEvent(f.ctx, warnEvt)
 
 	f.WaitUntil("event message appears in manifest log", func(st store.EngineState) bool {
-		ms, ok := st.ManifestState(name)
-		if !ok {
-			t.Fatalf("Manifest %s not found in state", name)
-		}
-
-		combinedLogString := ms.CombinedLog.String()
-		return strings.Contains(combinedLogString, "something has happened zomg")
+		return strings.Contains(st.LogStore.ManifestLog(name), "something has happened zomg")
 	})
 
 	f.withState(func(st store.EngineState) {
-		assert.Contains(t, st.Log.String(), "something has happened zomg", "event message not in global log")
+		assert.Contains(t, st.LogStore.String(), "something has happened zomg", "event message not in global log")
 	})
 
 	err := f.Stop()
@@ -2328,8 +2325,8 @@ func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
 	f.kClient.EmitEvent(f.ctx, normalEvt)
 
 	time.Sleep(10 * time.Millisecond)
-	f.withManifestState(name, func(ms store.ManifestState) {
-		assert.NotContains(t, ms.CombinedLog.String(), "all systems are go",
+	f.withState(func(es store.EngineState) {
+		assert.NotContains(t, es.LogStore.String(), "all systems are go",
 			"message for event of type 'normal' should not appear in log")
 	})
 
@@ -2492,7 +2489,7 @@ func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 
 	// recorded in global log
 	f.withState(func(st store.EngineState) {
-		assert.Contains(t, st.Log.String(), expected)
+		assert.Contains(t, st.LogStore.String(), expected)
 	})
 
 	// recorded on manifest state
@@ -2518,9 +2515,10 @@ func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	})
 
 	// recorded on manifest state
-	f.withManifestState(m.ManifestName(), func(st store.ManifestState) {
-		assert.Contains(t, st.DCRuntimeState().Log().String(), expected)
-		assert.Equal(t, 1, strings.Count(st.CombinedLog.String(), expected))
+	f.withState(func(es store.EngineState) {
+		ms, _ := es.ManifestState(m.ManifestName())
+		assert.Contains(t, ms.DCRuntimeState().Log().String(), expected)
+		assert.Equal(t, 1, strings.Count(es.LogStore.ManifestLog(m.ManifestName()), expected))
 	})
 }
 
@@ -2616,7 +2614,8 @@ func TestEmptyTiltfile(t *testing.T) {
 	})
 	f.withState(func(st store.EngineState) {
 		assert.Contains(t, st.TiltfileState.LastBuild().Error.Error(), "No resources found. Check out ")
-		assertContainsOnce(t, st.TiltfileState.CombinedLog.String(), "No resources found. Check out ")
+		assertContainsOnce(t, st.LogStore.String(), "No resources found. Check out ")
+		assertContainsOnce(t, st.LogStore.ManifestLog(store.TiltfileManifestName), "No resources found. Check out ")
 		assertContainsOnce(t, st.TiltfileState.LastBuild().Log.String(), "No resources found. Check out ")
 	})
 }
@@ -2827,7 +2826,7 @@ ghij`)),
 	})
 
 	f.withState(func(s store.EngineState) {
-		assert.Contains(t, s.Log.String(), `alert-injes…┊ a
+		assert.Contains(t, s.LogStore.String(), `alert-injes…┊ a
 alert-injes…┊ bc
 alert-injes…┊ def
 alert-injes…┊ ghij`)
@@ -2851,7 +2850,7 @@ func TestBuildErrorLoggedOnceByUpper(t *testing.T) {
 
 	// so the test name says "once", but the fake builder also logs once, so we get it twice
 	f.withState(func(state store.EngineState) {
-		require.Equal(t, 2, strings.Count(state.Log.String(), err.Error()))
+		require.Equal(t, 2, strings.Count(state.LogStore.String(), err.Error()))
 	})
 }
 
@@ -2874,7 +2873,7 @@ k8s_yaml('snack.yaml')`)
 
 	// we shouldn't log changes for first build
 	f.withState(func(state store.EngineState) {
-		require.NotContains(t, state.Log.String(), "changed: [")
+		require.NotContains(t, state.LogStore.String(), "changed: [")
 	})
 
 	f.WriteFile("Tiltfile", `
@@ -2888,7 +2887,7 @@ k8s_yaml('snack.yaml')`)
 
 	f.withState(func(state store.EngineState) {
 		expectedMessage := fmt.Sprintf("1 changed: [%s]", f.JoinPath("Tiltfile"))
-		require.Contains(t, state.Log.String(), expectedMessage)
+		require.Contains(t, state.LogStore.String(), expectedMessage)
 	})
 }
 
@@ -2954,7 +2953,7 @@ data:
 	f.waitForCompletedBuildCount(1)
 
 	f.withState(func(state store.EngineState) {
-		log := state.Log.String()
+		log := state.LogStore.String()
 		assert.Contains(t, log, "about to print secret")
 		assert.NotContains(t, log, "aGVsbG8=")
 		assert.Contains(t, log, "[redacted secret my-secret:client-secret]")
@@ -2983,7 +2982,7 @@ stringData:
 	f.waitForCompletedBuildCount(1)
 
 	f.withState(func(state store.EngineState) {
-		log := state.Log.String()
+		log := state.LogStore.String()
 		assert.Contains(t, log, "about to print secret: s")
 		assert.NotContains(t, log, "redacted")
 	})
@@ -3602,7 +3601,7 @@ func (f *testFixture) LogLines() []string {
 func (f *testFixture) TearDown() {
 	if f.T().Failed() {
 		f.withState(func(es store.EngineState) {
-			fmt.Println(es.Log.String())
+			fmt.Println(es.LogStore.String())
 		})
 	}
 	f.TempDirFixture.TearDown()

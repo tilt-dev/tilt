@@ -6,7 +6,7 @@ declare namespace Proto {
     log?: string;
     resources?: webviewResource[];
     /**
-     * We used to have a field that allowed users to dynamically
+     * We used to have a setting that allowed users to dynamically
      * prepend timestamps in logs.
      */
     DEPRECATEDLogTimestamps?: boolean;
@@ -19,6 +19,7 @@ declare namespace Proto {
     tiltCloudSchemeHost?: string;
     tiltCloudTeamID?: string;
     fatalError?: string;
+    logList?: webviewLogList;
   }
   export interface webviewVersionSettings {
     checkUpdates?: boolean;
@@ -70,6 +71,18 @@ declare namespace Proto {
     alerts?: webviewAlert[];
     facets?: webviewFacet[];
     queued?: boolean;
+  }
+  export interface webviewLogSpan {
+    manifestName?: string;
+  }
+  export interface webviewLogSegment {
+    spanId?: string;
+    time?: string;
+    text?: string;
+  }
+  export interface webviewLogList {
+    spans?: object;
+    segments?: webviewLogSegment[];
   }
   export interface webviewLocalResourceInfo {}
   export interface webviewK8sResourceInfo {

@@ -20,8 +20,8 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/tiltfile/analytics"
+	"github.com/windmilleng/tilt/internal/tiltfile/config"
 	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
-	"github.com/windmilleng/tilt/internal/tiltfile/flags"
 	"github.com/windmilleng/tilt/internal/tiltfile/git"
 	"github.com/windmilleng/tilt/internal/tiltfile/include"
 	"github.com/windmilleng/tilt/internal/tiltfile/io"
@@ -146,7 +146,6 @@ func (s *tiltfileState) print(_ *starlark.Thread, msg string) {
 // all the mutable state collected by execution.
 func (s *tiltfileState) loadManifests(absFilename string, args []string) ([]model.Manifest, starkit.Model, error) {
 	s.logger.Infof("Beginning Tiltfile execution")
-
 	result, err := starkit.ExecFile(absFilename,
 		s,
 		include.IncludeFn{},
@@ -157,7 +156,7 @@ func (s *tiltfileState) loadManifests(absFilename string, args []string) ([]mode
 		dockerprune.NewExtension(),
 		analytics.NewExtension(),
 		version.NewExtension(),
-		flags.NewExtension(args),
+		config.NewExtension(args),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)
@@ -206,8 +205,8 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 	}
 	manifests = append(manifests, localManifests...)
 
-	flagsState, _ := flags.GetState(result)
-	manifests, err = flagsState.Resources(args, manifests)
+	flagsState, _ := config.GetState(result)
+	manifests, err = flagsState.EnabledResources(args, manifests)
 	if err != nil {
 		return nil, starkit.Model{}, err
 	}
@@ -1059,6 +1058,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			})
 		case CustomBuild:
 			r := model.CustomBuild{
+				WorkDir:          image.workDir,
 				Command:          image.customCommand,
 				Deps:             image.customDeps,
 				Tag:              image.customTag,
@@ -1075,7 +1075,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 		iTarget = iTarget.
 			WithRepos(s.reposForImage(image)).
 			WithDockerignores(s.dockerignoresForImage(image)). // used even for custom build
-			WithTiltFilename(image.tiltfilePath).
+			WithTiltFilename(image.workDir).
 			WithDependencyIDs(image.dependencyIDs)
 
 		depTargets, err := s.imgTargetsForDependencyIDsHelper(image.dependencyIDs, claimStatus)

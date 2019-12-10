@@ -113,7 +113,6 @@ func StateToProtoView(s store.EngineState) (*proto_webview.View, error) {
 			Endpoints:          endpoints,
 			PodID:              podID.String(),
 			ShowBuildStatus:    len(mt.Manifest.ImageTargets) > 0 || mt.Manifest.IsDC(),
-			CombinedLog:        ms.CombinedLog.String(),
 			CrashLog:           ms.CrashLog.String(),
 			TriggerMode:        int32(mt.Manifest.TriggerMode),
 			HasPendingChanges:  hasPendingChanges,
@@ -130,7 +129,12 @@ func StateToProtoView(s store.EngineState) (*proto_webview.View, error) {
 		ret.Resources = append(ret.Resources, r)
 	}
 
-	ret.Log = s.Log.String()
+	logList, err := s.LogStore.ToLogList()
+	if err != nil {
+		return nil, err
+	}
+
+	ret.LogList = logList
 	ret.NeedsAnalyticsNudge = NeedsNudge(s)
 	ret.RunningTiltBuild = &proto_webview.TiltBuild{
 		Version:   s.TiltBuildInfo.Version,
@@ -162,33 +166,6 @@ func StateToProtoView(s store.EngineState) (*proto_webview.View, error) {
 	return ret, nil
 }
 
-func tiltfileResourceView(s store.EngineState) Resource {
-	ltfb := s.TiltfileState.LastBuild()
-	ctfb := s.TiltfileState.CurrentBuild
-	if !ctfb.Empty() {
-		ltfb.Log = ctfb.Log
-	}
-
-	ltfb.Edits = ospath.FileListDisplayNames([]string{filepath.Dir(s.TiltfilePath)}, ltfb.Edits)
-
-	tr := Resource{
-		Name:         store.TiltfileManifestName,
-		IsTiltfile:   true,
-		CurrentBuild: ToWebViewBuildRecord(ctfb),
-		BuildHistory: []BuildRecord{
-			ToWebViewBuildRecord(ltfb),
-		},
-		CombinedLog:   s.TiltfileState.CombinedLog,
-		RuntimeStatus: RuntimeStatusOK,
-	}
-	if !ctfb.Empty() {
-		tr.PendingBuildSince = ctfb.StartTime
-	} else {
-		tr.LastDeployTime = ltfb.FinishTime
-	}
-	return tr
-}
-
 func tiltfileResourceProtoView(s store.EngineState) (*proto_webview.Resource, error) {
 	ltfb := s.TiltfileState.LastBuild()
 	ctfb := s.TiltfileState.CurrentBuild
@@ -213,7 +190,6 @@ func tiltfileResourceProtoView(s store.EngineState) (*proto_webview.Resource, er
 		BuildHistory: []*proto_webview.BuildRecord{
 			pltfb,
 		},
-		CombinedLog:   s.TiltfileState.CombinedLog.String(),
 		RuntimeStatus: string(RuntimeStatusOK),
 	}
 	start, err := timeToProto(ctfb.StartTime)
@@ -230,44 +206,6 @@ func tiltfileResourceProtoView(s store.EngineState) (*proto_webview.Resource, er
 		tr.LastDeployTime = finish
 	}
 	return tr, nil
-}
-
-func populateResourceInfoView(mt *store.ManifestTarget, r *Resource) ResourceInfoView {
-	if mt.Manifest.IsUnresourcedYAMLManifest() {
-		r.YAMLResourceInfo = &YAMLResourceInfo{
-			K8sResources: mt.Manifest.K8sTarget().DisplayNames,
-		}
-		return r.YAMLResourceInfo
-	}
-
-	if mt.Manifest.IsDC() {
-		dc := mt.Manifest.DockerComposeTarget()
-		dcState := mt.State.DCRuntimeState()
-		info := NewDCResourceInfo(dc.ConfigPaths, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
-		r.DCResourceInfo = &info
-		return r.DCResourceInfo
-	}
-	if mt.Manifest.IsLocal() {
-		r.LocalResourceInfo = &LocalResourceInfo{}
-		return r.LocalResourceInfo
-	}
-	if mt.Manifest.IsK8s() {
-		kState := mt.State.K8sRuntimeState()
-		pod := kState.MostRecentPod()
-		r.K8sResourceInfo = &K8sResourceInfo{
-			PodName:            pod.PodID.String(),
-			PodCreationTime:    pod.StartedAt,
-			PodUpdateStartTime: pod.UpdateStartTime,
-			PodStatus:          pod.Status,
-			PodStatusMessage:   strings.Join(pod.StatusMessages, "\n"),
-			AllContainersReady: pod.AllContainersReady(),
-			PodRestarts:        pod.VisibleContainerRestarts(),
-			PodLog:             pod.Log(),
-		}
-		return r.K8sResourceInfo
-	}
-
-	panic("Unrecognized manifest type (not one of: k8s, DC, local)")
 }
 
 func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Resource) (ResourceInfoView, error) {

@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"sync"
 	"testing"
 	"time"
 
@@ -31,7 +32,7 @@ func TestStateToViewRelativeEditPaths(t *testing.T) {
 	}
 	ms.MutableBuildStatus(m.ImageTargets[0].ID()).PendingFileChanges =
 		map[string]time.Time{"/a/b/c/foo": time.Now(), "/a/b/c/d/e": time.Now()}
-	v := StateToView(*state)
+	v := StateToView(*state, &sync.RWMutex{})
 
 	require.Len(t, v.Resources, 2)
 
@@ -53,7 +54,7 @@ func TestStateToViewPortForwards(t *testing.T) {
 		},
 	})
 	state := newState([]model.Manifest{m})
-	v := StateToView(*state)
+	v := StateToView(*state, &sync.RWMutex{})
 	res, _ := v.Resource(m.Name)
 	assert.Equal(t,
 		[]string{"http://localhost:7000/", "http://localhost:8000/"},
@@ -64,7 +65,7 @@ func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 	m, err := k8s.NewK8sOnlyManifestFromYAML(testyaml.SanchoYAML)
 	assert.NoError(t, err)
 	state := newState([]model.Manifest{m})
-	v := StateToView(*state)
+	v := StateToView(*state, &sync.RWMutex{})
 
 	assert.Equal(t, 2, len(v.Resources))
 

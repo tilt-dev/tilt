@@ -7,6 +7,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/windmilleng/tilt/pkg/model/logstore"
 )
 
 type ConfigsReloadStartedAction struct {
@@ -31,9 +32,9 @@ type ConfigsReloadedAction struct {
 	AnalyticsTiltfileOpt analytics.Opt
 	VersionSettings      model.VersionSettings
 
-	// The length of the global log when Tiltfile execution started.
+	// A checkpoint into the logstore when Tiltfile execution started.
 	// Useful for knowing how far back in time we have to scrub secrets.
-	GlobalLogLineCountAtExecStart int
+	CheckpointAtExecStart logstore.Checkpoint
 }
 
 func (ConfigsReloadedAction) Action() {}
@@ -43,3 +44,5 @@ type TiltfileLogAction struct {
 }
 
 func (TiltfileLogAction) Action() {}
+
+var _ store.LogAction = TiltfileLogAction{}

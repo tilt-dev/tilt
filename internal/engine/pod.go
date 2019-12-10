@@ -282,7 +282,7 @@ func prunePods(ms *store.ManifestState) {
 }
 
 func handlePodLogAction(state *store.EngineState, action runtimelog.PodLogAction) {
-	manifestName := action.Source()
+	manifestName := action.ManifestName()
 	ms, ok := state.ManifestState(manifestName)
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.

@@ -4,6 +4,7 @@ package webview;
 
 import "google/api/annotations.proto";
 import "google/protobuf/timestamp.proto";
+import "pkg/webview/log.proto";
 
 option go_package = "github.com/windmilleng/tilt/pkg/webview";
 
@@ -119,6 +120,8 @@ message View {
   string tilt_cloud_teamID = 10;
 
   string fatal_error = 11;
+
+  LogList log_list = 13;
 }
 
 message GetViewRequest {}

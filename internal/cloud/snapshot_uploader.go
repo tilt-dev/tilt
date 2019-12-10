@@ -53,20 +53,6 @@ type snapshotIDResponse struct {
 	ID string
 }
 
-// TODO(nick): Represent these with protobufs
-type snapshotHighlight struct {
-	BeginningLogID string `json:"beginningLogID"`
-	EndingLogID    string `json:"endingLogID"`
-	Text           string `json:"text"`
-}
-
-type Snapshot struct {
-	View              webview.View      `json:"view"`
-	IsSidebarClosed   bool              `json:"isSidebarClosed"`
-	Path              string            `json:"path"`
-	SnapshotHighlight snapshotHighlight `json:"snapshotHighlight"`
-}
-
 func (s snapshotUploader) TakeAndUpload(state store.EngineState) (SnapshotID, error) {
 	view, err := webview.StateToProtoView(state)
 	if err != nil {

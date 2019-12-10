@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
@@ -491,7 +490,7 @@ func handleConfigsReloaded(
 
 	// Retroactively scrub secrets
 	b.Log.ScrubSecretsStartingAt(newSecrets, 0)
-	state.Log.ScrubSecretsStartingAt(newSecrets, event.GlobalLogLineCountAtExecStart)
+	state.LogStore.ScrubSecretsStartingAt(newSecrets, event.CheckpointAtExecStart)
 
 	// if the ConfigsReloadedAction came from a unit test, there might not be a current build
 	if !b.Empty() {
@@ -574,7 +573,7 @@ func handleConfigsReloaded(
 }
 
 func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
-	manifestName := action.Source()
+	manifestName := action.ManifestName()
 	ms, ok := state.ManifestState(manifestName)
 	if !ok || state.CurrentlyBuilding != manifestName {
 		// This is OK. The user could have edited the manifest recently.
@@ -585,41 +584,7 @@ func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
 }
 
 func handleLogAction(state *store.EngineState, action store.LogAction) {
-	manifestName := action.Source()
-	alreadyHasSourcePrefix := false
-	if _, isDCLog := action.(runtimelog.DockerComposeLogAction); isDCLog {
-		// DockerCompose logs are prefixed by the docker-compose engine
-		alreadyHasSourcePrefix = true
-	}
-
-	var allLogPrefix string
-	if manifestName != "" && !alreadyHasSourcePrefix {
-		allLogPrefix = sourcePrefix(manifestName)
-	}
-
-	state.Log = model.AppendLog(state.Log, action, allLogPrefix, state.Secrets)
-
-	if manifestName == "" {
-		return
-	}
-
-	ms, ok := state.ManifestState(manifestName)
-	if !ok {
-		// This is OK. The user could have edited the manifest recently.
-		return
-	}
-	ms.CombinedLog = model.AppendLog(ms.CombinedLog, action, "", state.Secrets)
-}
-
-func sourcePrefix(n model.ManifestName) string {
-	max := 12
-	spaces := ""
-	if len(n) > max {
-		n = n[:max-1] + "…"
-	} else {
-		spaces = strings.Repeat(" ", max-len(n))
-	}
-	return fmt.Sprintf("%s%s┊ ", n, spaces)
+	state.LogStore.Append(action, state.Secrets)
 }
 
 func handleServiceEvent(ctx context.Context, state *store.EngineState, action k8swatch.ServiceChangeAction) {
@@ -735,7 +700,7 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 }
 
 func handleDockerComposeLogAction(state *store.EngineState, action runtimelog.DockerComposeLogAction) {
-	manifestName := action.Source()
+	manifestName := action.ManifestName()
 	ms, ok := state.ManifestState(manifestName)
 	if !ok {
 		// This is OK. The user could have edited the manifest recently.
@@ -748,7 +713,6 @@ func handleDockerComposeLogAction(state *store.EngineState, action runtimelog.Do
 
 func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action configs.TiltfileLogAction) {
 	state.TiltfileState.CurrentBuild.Log = model.AppendLog(state.TiltfileState.CurrentBuild.Log, action, "", state.Secrets)
-	state.TiltfileState.CombinedLog = model.AppendLog(state.TiltfileState.CombinedLog, action, "", state.Secrets)
 }
 
 func handleAnalyticsUserOptAction(state *store.EngineState, action store.AnalyticsUserOptAction) {

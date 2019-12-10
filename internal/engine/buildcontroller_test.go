@@ -1040,7 +1040,7 @@ func TestLogsLongResourceName(t *testing.T) {
 	// and tries to limit how much it checks the formatting
 	f.withState(func(state store.EngineState) {
 		expectedLine := fmt.Sprintf("Building:%s", mn)
-		assert.Contains(t, state.Log.String(), expectedLine)
+		assert.Contains(t, state.LogStore.String(), expectedLine)
 	})
 
 	err := f.Stop()
