@@ -120,11 +120,10 @@ func StateToProtoView(s store.EngineState) (*proto_webview.View, error) {
 			Queued:             s.ManifestInTriggerQueue(name),
 		}
 
-		riv, err := protoPopulateResourceInfoView(mt, r)
+		err = protoPopulateResourceInfoView(mt, r)
 		if err != nil {
 			return nil, err
 		}
-		r.RuntimeStatus = string(runtimeStatus(riv))
 
 		ret.Resources = append(ret.Resources, r)
 	}
@@ -208,15 +207,14 @@ func tiltfileResourceProtoView(s store.EngineState) (*proto_webview.Resource, er
 	return tr, nil
 }
 
-func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Resource) (ResourceInfoView, error) {
+func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Resource) error {
+	r.RuntimeStatus = string(RuntimeStatusNotApplicable)
+
 	if mt.Manifest.IsUnresourcedYAMLManifest() {
 		r.YamlResourceInfo = &proto_webview.YAMLResourceInfo{
 			K8SResources: mt.Manifest.K8sTarget().DisplayNames,
 		}
-		riv := &YAMLResourceInfo{
-			K8sResources: mt.Manifest.K8sTarget().DisplayNames,
-		}
-		return riv, nil
+		return nil
 	}
 
 	if mt.Manifest.IsDC() {
@@ -224,15 +222,20 @@ func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Re
 		dcState := mt.State.DCRuntimeState()
 		info, err := NewProtoDCResourceInfo(dc.ConfigPaths, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		riv := NewDCResourceInfo(dc.ConfigPaths, dcState.Status, dcState.ContainerID, dcState.Log(), dcState.StartTime)
 		r.DcResourceInfo = info
-		return riv, nil
+
+		runtimeStatus, ok := runtimeStatusMap[string(dcState.Status)]
+		if !ok {
+			r.RuntimeStatus = string(RuntimeStatusError)
+		}
+		r.RuntimeStatus = string(runtimeStatus)
+		return nil
 	}
 	if mt.Manifest.IsLocal() {
 		r.LocalResourceInfo = &proto_webview.LocalResourceInfo{}
-		return &LocalResourceInfo{}, nil
+		return nil
 	}
 	if mt.Manifest.IsK8s() {
 		kState := mt.State.K8sRuntimeState()
@@ -247,38 +250,21 @@ func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Re
 			PodRestarts:        int32(pod.VisibleContainerRestarts()),
 			PodLog:             pod.Log().String(),
 		}
-		return &K8sResourceInfo{
-			PodName:            pod.PodID.String(),
-			PodCreationTime:    pod.StartedAt,
-			PodUpdateStartTime: pod.UpdateStartTime,
-			PodStatus:          pod.Status,
-			PodStatusMessage:   strings.Join(pod.StatusMessages, "\n"),
-			AllContainersReady: pod.AllContainersReady(),
-			PodRestarts:        pod.VisibleContainerRestarts(),
-			PodLog:             pod.Log(),
-		}, nil
+
+		status := pod.Status
+		if status == "Running" && !pod.AllContainersReady() {
+			status = "Pending"
+		}
+
+		runtimeStatus, ok := runtimeStatusMap[status]
+		if !ok {
+			r.RuntimeStatus = string(RuntimeStatusError)
+		}
+		r.RuntimeStatus = string(runtimeStatus)
+		return nil
 	}
 
 	panic("Unrecognized manifest type (not one of: k8s, DC, local)")
-}
-
-func runtimeStatus(res ResourceInfoView) RuntimeStatus {
-	_, isLocal := res.(*LocalResourceInfo)
-	if isLocal {
-		return RuntimeStatusNotApplicable
-	}
-	// if we have no images to build, we have no runtime status monitoring.
-	_, isYAML := res.(*YAMLResourceInfo)
-	if isYAML {
-		return RuntimeStatusNotApplicable
-	}
-
-	result, ok := runtimeStatusMap[res.Status()]
-	if !ok {
-		return RuntimeStatusError
-	}
-
-	return result
 }
 
 var runtimeStatusMap = map[string]RuntimeStatus{

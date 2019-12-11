@@ -14,30 +14,6 @@ import (
 	proto_webview "github.com/windmilleng/tilt/pkg/webview"
 )
 
-type ResourceInfoView interface {
-	resourceInfoView()
-	RuntimeLog() model.Log
-	Status() string
-}
-
-type DCResourceInfo struct {
-	ConfigPaths     []string             `json:"configPaths"`
-	ContainerStatus dockercompose.Status `json:"containerStatus"`
-	ContainerID     container.ID         `json:"containerID"`
-	Log             model.Log            `json:"log"`
-	StartTime       time.Time            `json:"startTime"`
-}
-
-func NewDCResourceInfo(configPaths []string, status dockercompose.Status, cID container.ID, log model.Log, startTime time.Time) DCResourceInfo {
-	return DCResourceInfo{
-		ConfigPaths:     configPaths,
-		ContainerStatus: status,
-		ContainerID:     cID,
-		Log:             log,
-		StartTime:       startTime,
-	}
-}
-
 func NewProtoDCResourceInfo(configPaths []string, status dockercompose.Status, cID container.ID, log model.Log, startTime time.Time) (*proto_webview.DCResourceInfo, error) {
 	start, err := timeToProto(startTime)
 	if err != nil {
@@ -51,54 +27,6 @@ func NewProtoDCResourceInfo(configPaths []string, status dockercompose.Status, c
 		StartTime:       start,
 	}, nil
 }
-
-var _ ResourceInfoView = DCResourceInfo{}
-
-func (DCResourceInfo) resourceInfoView()            {}
-func (dcInfo DCResourceInfo) RuntimeLog() model.Log { return dcInfo.Log }
-func (dcInfo DCResourceInfo) Status() string        { return string(dcInfo.ContainerStatus) }
-
-type K8sResourceInfo struct {
-	PodName            string    `json:"podName"`
-	PodCreationTime    time.Time `json:"podCreationTime"`
-	PodUpdateStartTime time.Time `json:"podUpdateStartTime"`
-	PodStatus          string    `json:"podStatus"`
-	PodStatusMessage   string    `json:"podStatusMessage"`
-	AllContainersReady bool      `json:"allContainersReady"`
-	PodRestarts        int       `json:"podRestarts"`
-	PodLog             model.Log `json:"podLog"`
-}
-
-var _ ResourceInfoView = K8sResourceInfo{}
-
-func (K8sResourceInfo) resourceInfoView()             {}
-func (k8sInfo K8sResourceInfo) RuntimeLog() model.Log { return k8sInfo.PodLog }
-func (k8sInfo K8sResourceInfo) Status() string {
-	status := k8sInfo.PodStatus
-	if status == "Running" && !k8sInfo.AllContainersReady {
-		status = "Pending"
-	}
-	return status
-}
-
-type YAMLResourceInfo struct {
-	K8sResources []string `json:"k8sResources"`
-}
-
-var _ ResourceInfoView = YAMLResourceInfo{}
-
-func (YAMLResourceInfo) resourceInfoView()              {}
-func (yamlInfo YAMLResourceInfo) RuntimeLog() model.Log { return model.NewLog("") }
-func (yamlInfo YAMLResourceInfo) Status() string        { return "" }
-
-// Local resources have no run time info, so it's all empty.
-type LocalResourceInfo struct{}
-
-var _ ResourceInfoView = LocalResourceInfo{}
-
-func (LocalResourceInfo) resourceInfoView()     {}
-func (LocalResourceInfo) RuntimeLog() model.Log { return model.NewLog("") }
-func (LocalResourceInfo) Status() string        { return "" }
 
 func timeToProto(t time.Time) (*timestamp.Timestamp, error) {
 	ts, err := ptypes.TimestampProto(t)
