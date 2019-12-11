@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"reflect"
 	"strings"
 	"sync"
@@ -20,35 +19,24 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
-var testScript model.Cmd = model.Cmd{
-	Argv: []string{"scripts/test.sh"},
-}
-
-func TestNoTelScriptTimeIsUpShouldNotDeleteFile(t *testing.T) {
+func TestTelNoScriptTimeIsUpShouldNotDeleteFile(t *testing.T) {
 	f := newTCFixture(t)
 	defer f.teardown()
-	tc := f.newTelemetryController()
-	ctx := context.Background()
 
-	f.writeToAnalyticsFile("hello world")
-	f.st.SetState(store.EngineState{})
-	tc.OnChange(ctx, f.st)
+	f.run()
 
 	f.assertNoErrors()
 	f.assertTelemetryFileEquals("hello world")
 }
 
-func TestNoTelScriptTimeIsNotUpShouldNotDeleteFile(t *testing.T) {
+func TestTelNoScriptTimeIsNotUpShouldNotDeleteFile(t *testing.T) {
 	f := newTCFixture(t)
 	defer f.teardown()
 	t1 := time.Now()
 	f.clock.now = t1
-	tc := f.newTelemetryController()
-	ctx := context.Background()
 
-	f.writeToAnalyticsFile("hello world")
-	f.st.SetState(store.EngineState{LastTelemetryScriptRun: t1})
-	tc.OnChange(ctx, f.st)
+	f.setLastRun(t1)
+	f.run()
 
 	f.assertNoErrors()
 	f.assertTelemetryFileEquals("hello world")
@@ -59,12 +47,10 @@ func TestTelScriptTimeIsNotUpShouldNotDeleteFile(t *testing.T) {
 	defer f.teardown()
 	t1 := time.Now()
 	f.clock.now = t1
-	tc := f.newTelemetryController()
-	ctx := context.Background()
 
-	f.writeToAnalyticsFile("hello world")
-	f.st.SetState(store.EngineState{LastTelemetryScriptRun: t1, TelemetryCmd: testScript})
-	tc.OnChange(ctx, f.st)
+	f.workCmd()
+	f.setLastRun(t1)
+	f.run()
 
 	f.assertNoErrors()
 	f.assertTelemetryFileEquals("hello world")
@@ -75,12 +61,9 @@ func TestTelScriptTimeIsUpShouldDeleteFileAndSetTime(t *testing.T) {
 	defer f.teardown()
 	t1 := time.Now()
 	f.clock.now = t1
-	tc := f.newTelemetryController()
-	ctx := context.Background()
 
-	f.writeToAnalyticsFile("hello world")
-	f.st.SetState(store.EngineState{TelemetryCmd: testScript})
-	tc.OnChange(ctx, f.st)
+	f.workCmd()
+	f.run()
 
 	f.assertNoErrors()
 	f.assertTelemetryScriptRanAtIs(t1)
@@ -93,14 +76,11 @@ func TestTelScriptFailsTimeIsUpShouldDeleteFileAndSetTime(t *testing.T) {
 	defer f.teardown()
 	t1 := time.Now()
 	f.clock.now = t1
-	tc := f.newTelemetryControllerWithTelemetryScriptThatFails()
-	ctx := context.Background()
 
-	f.writeToAnalyticsFile("hello world")
-	f.st.SetState(store.EngineState{TelemetryCmd: testScript})
-	tc.OnChange(ctx, f.st)
+	f.failCmd()
+	f.run()
 
-	f.assertError("executable file not found in $PATH")
+	f.assertError("exit status 1")
 	f.assertTelemetryFileEquals("hello world")
 	f.assertTelemetryScriptRanAtIs(t1)
 }
@@ -114,7 +94,8 @@ type tcFixture struct {
 	clock                    fakeClock
 	previousWorkingDirectory string
 	st                       *store.TestingStore
-	cmd                      *exec.Cmd
+	cmd                      string
+	lastRun                  time.Time
 }
 
 func newTCFixture(t *testing.T) *tcFixture {
@@ -150,19 +131,31 @@ cat > %s`, temp.JoinPath("scriptstdin")))
 	}
 }
 
-func (tcf *tcFixture) newTelemetryController() *TelemetryController {
-	return NewTelemetryController(tcf.lock, tcf.clock, tcf.dir, tcf.fakeSuccessExecer)
-}
-
-func (tcf *tcFixture) newTelemetryControllerWithTelemetryScriptThatFails() *TelemetryController {
-	return NewTelemetryController(tcf.lock, tcf.clock, tcf.dir, tcf.fakeFailExecer)
-}
-
 func (tcf *tcFixture) writeToAnalyticsFile(contents string) {
 	err := tcf.dir.WriteFile(tracer.OutgoingFilename, contents)
 	if err != nil {
 		tcf.t.Fatal(err)
 	}
+}
+
+func (tcf *tcFixture) workCmd() {
+	tcf.cmd = fmt.Sprintf("cat > %s", tcf.temp.JoinPath("scriptstdin"))
+}
+
+func (tcf *tcFixture) failCmd() {
+	tcf.cmd = "false"
+}
+
+func (tcf *tcFixture) setLastRun(t time.Time) {
+	tcf.lastRun = t
+}
+
+func (tcf *tcFixture) run() {
+	tcf.writeToAnalyticsFile("hello world")
+	tcf.st.SetState(store.EngineState{LastTelemetryScriptRun: tcf.lastRun, TelemetryCmd: model.ToShellCmd(tcf.cmd)})
+
+	tc := NewTelemetryController(tcf.lock, tcf.clock, tcf.dir)
+	tc.OnChange(tcf.ctx, tcf.st)
 }
 
 func (tcf *tcFixture) assertTelemetryFileIsEmpty() {
@@ -226,20 +219,6 @@ func (tcf *tcFixture) teardown() {
 	if err != nil {
 		tcf.t.Fatal(err)
 	}
-}
-
-func (tcf *tcFixture) fakeSuccessExecer(ctx context.Context, name string, arg ...string) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, "./testscript.sh")
-	tcf.cmd = cmd
-
-	return cmd
-}
-
-func (tcf *tcFixture) fakeFailExecer(ctx context.Context, name string, arg ...string) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, "nonsense")
-	tcf.cmd = cmd
-
-	return cmd
 }
 
 func (tcf *tcFixture) getActions() []store.Action {

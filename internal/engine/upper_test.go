@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -3297,7 +3296,7 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	}
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
 	dir := dirs.NewWindmillDirAt(f.Path())
-	tc := NewTelemetryController(&sync.Mutex{}, fakeClock{}, dir, exec.CommandContext)
+	tc := NewTelemetryController(&sync.Mutex{}, fakeClock{}, dir)
 
 	subs := ProvideSubscribers(h, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, tvc, au, ewm, tcum, cuu, dp, tc)
 	ret.upper = NewUpper(ctx, st, subs)

@@ -72,7 +72,6 @@ var BaseWireSet = wire.NewSet(
 	k8swatch.NewServiceWatcher,
 	k8swatch.NewEventWatchManager,
 	configs.NewConfigsController,
-	engine.ProvideExecer,
 	engine.NewTelemetryController,
 	engine.NewDockerComposeEventWatcher,
 	runtimelog.NewDockerComposeLogManager,
