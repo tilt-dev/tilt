@@ -222,7 +222,7 @@ func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics3 *analy
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
-	locker, err := tracer.InitOpenTelemetry(windmillDir)
+	locker, err := tracer.InitOpenTelemetry(ctx, windmillDir)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}

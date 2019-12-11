@@ -1,6 +1,7 @@
 package tracer
 
 import (
+	"context"
 	"encoding/json"
 	"sync"
 	"time"
@@ -8,6 +9,8 @@ import (
 	"github.com/windmilleng/wmclient/pkg/dirs"
 	exporttrace "go.opentelemetry.io/otel/sdk/export/trace"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+
+	"github.com/windmilleng/tilt/pkg/logger"
 )
 
 type Locker sync.Locker
@@ -25,19 +28,20 @@ type exporter struct {
 	needsFlush bool
 }
 
-func newExporter(dir *dirs.WindmillDir) (*exporter, error) {
+// TODO(dbentley): write tests for this
+func newExporter(ctx context.Context, dir *dirs.WindmillDir) (*exporter, error) {
 	r := &exporter{
 		dir:        dir,
 		spanDataCh: make(chan *exporttrace.SpanData),
 		stopCh:     make(chan struct{}),
 	}
-	go r.loop()
+	go r.loop(ctx)
 	return r, nil
 }
 
 const OutgoingFilename = "usage/outgoing.json"
 
-func (e *exporter) loop() {
+func (e *exporter) loop(ctx context.Context) {
 	var flushingCh chan struct{}
 	var timerCh <-chan time.Time
 	for {
@@ -67,37 +71,47 @@ func (e *exporter) loop() {
 		}
 
 		flushingCh = make(chan struct{})
-		go e.flush(flushingCh)
+		go e.flush(ctx, flushingCh)
 	}
 }
 
 const maxFileSize = 32 * 1024 // 128 MiB
 
-func (e *exporter) flush(flushingCh chan struct{}) {
-	// TODO(dbentley): what to do with errors?
-	// I think we should have a built-in resource like "tilt_system" that can show errors like this
+func (e *exporter) flush(ctx context.Context, flushingCh chan struct{}) {
 	e.outgoingMu.Lock()
 	defer e.outgoingMu.Unlock()
 	defer close(flushingCh)
 	q := e.queue
 	e.queue = nil
 
-	s, _ := e.dir.ReadFile(OutgoingFilename)
+	s, err := e.dir.ReadFile(OutgoingFilename)
+	if err != nil {
+		logger.Get(ctx).Infof("Error reading %s: %v", OutgoingFilename, err)
+		return
+	}
 
 	var existing []*exporttrace.SpanData
-	_ = json.Unmarshal([]byte(s), &existing)
+	err = json.Unmarshal([]byte(s), &existing)
+	if err != nil {
+		logger.Get(ctx).Infof("Error unmarshaling JSON: %v", err)
+		return
+	}
 
 	q = append(existing, q...)
 
-	bs, _ := json.MarshalIndent(q, "", "  ")
+	bs, err := json.MarshalIndent(q, "", "  ")
+	if err != nil {
+		logger.Get(ctx).Infof("Error indenting JSON: %v", err)
+		return
+	}
 	for len(bs) > maxFileSize {
 		q = q[len(q)/2:]
 		bs, _ = json.MarshalIndent(q, "", "  ")
 	}
 
-	err := e.dir.WriteFile(OutgoingFilename, string(bs))
+	err = e.dir.WriteFile(OutgoingFilename, string(bs))
 	if err != nil {
-		// TODO(dmiller)
+		logger.Get(ctx).Infof("Error writing %s: %v", OutgoingFilename, err)
 	}
 }
 
