@@ -3,6 +3,7 @@ package runtimelog
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/windmilleng/tilt/pkg/model/logstore"
 )
 
 // Collects logs from running docker-compose services.
@@ -185,7 +187,7 @@ func (w *DockerComposeLogActionWriter) Write(p []byte) (n int, err error) {
 	w.isStartingNewLine = len(lines[len(lines)-1]) == 0
 	newText := bytes.Join(lines, newlineAsBytes)
 	w.store.Dispatch(DockerComposeLogAction{
-		LogEvent: store.NewLogEvent(w.manifestName, newText),
+		LogEvent: store.NewLogEvent(w.manifestName, SpanIDForDCService(w.manifestName), newText),
 	})
 	return len(p), nil
 }
@@ -200,4 +202,8 @@ func (w *DockerComposeLogActionWriter) shouldFilterDCLog(lines [][]byte) bool {
 		return false
 	}
 	return bytes.HasPrefix(lines[0], attachingToLogAsBytes)
+}
+
+func SpanIDForDCService(mn model.ManifestName) logstore.SpanID {
+	return logstore.SpanID(fmt.Sprintf("dc:%s", mn))
 }

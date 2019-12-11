@@ -174,9 +174,9 @@ func (b PodBuilder) WithDeletionTime(deletionTime time.Time) PodBuilder {
 	return b
 }
 
-func (b PodBuilder) PodID() string {
+func (b PodBuilder) PodID() k8s.PodID {
 	if b.podID != "" {
-		return b.podID
+		return k8s.PodID(b.podID)
 	}
 	return "fakePodID"
 }
@@ -385,7 +385,7 @@ func (b PodBuilder) Build() *v1.Pod {
 
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:              b.PodID(),
+			Name:              string(b.PodID()),
 			CreationTimestamp: b.buildCreationTime(),
 			DeletionTimestamp: b.buildDeletionTime(),
 			Labels:            labels,

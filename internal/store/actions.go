@@ -29,6 +29,7 @@ type LogAction interface {
 
 type LogEvent struct {
 	mn        model.ManifestName
+	spanID    logstore.SpanID
 	timestamp time.Time
 	msg       []byte
 }
@@ -48,12 +49,13 @@ func (le LogEvent) Message() []byte {
 }
 
 func (le LogEvent) SpanID() logstore.SpanID {
-	return ""
+	return le.spanID
 }
 
-func NewLogEvent(mn model.ManifestName, b []byte) LogEvent {
+func NewLogEvent(mn model.ManifestName, spanID logstore.SpanID, b []byte) LogEvent {
 	return LogEvent{
 		mn:        mn,
+		spanID:    spanID,
 		timestamp: time.Now(),
 		msg:       append([]byte{}, b...),
 	}
@@ -62,6 +64,7 @@ func NewLogEvent(mn model.ManifestName, b []byte) LogEvent {
 func NewGlobalLogEvent(b []byte) LogEvent {
 	return LogEvent{
 		mn:        "",
+		spanID:    "",
 		timestamp: time.Now(),
 		msg:       append([]byte{}, b...),
 	}
@@ -84,6 +87,7 @@ func (kEvt K8sEventAction) ToLogAction(mn model.ManifestName) LogAction {
 
 	return LogEvent{
 		mn:        mn,
+		spanID:    logstore.SpanID(fmt.Sprintf("events:%s", mn)),
 		timestamp: kEvt.Event.LastTimestamp.Time,
 		msg:       []byte(msg),
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/store"
@@ -88,14 +89,15 @@ func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 
 func TestStateToViewTiltfileLog(t *testing.T) {
 	es := newState([]model.Manifest{})
+	spanID := configs.SpanIDForLoadCount(1)
 	es.LogStore.Append(
-		store.NewLogEvent(store.TiltfileManifestName, []byte("hello")),
+		store.NewLogEvent(store.TiltfileManifestName, spanID, []byte("hello")),
 		nil)
 	v := stateToProtoView(t, *es)
 	r, ok := findResource("(Tiltfile)", v)
 	require.True(t, ok, "no resource named (Tiltfile) found")
 	assert.Equal(t, "hello", string(v.LogList.Segments[0].Text))
-	assert.Equal(t, r.Name, string(v.LogList.Spans[r.Name].ManifestName))
+	assert.Equal(t, r.Name, string(v.LogList.Spans[string(spanID)].ManifestName))
 }
 
 func TestRelativeTiltfilePath(t *testing.T) {

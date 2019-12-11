@@ -1264,8 +1264,8 @@ func TestPodEventOrdering(t *testing.T) {
 			}
 
 			f.upper.store.Dispatch(runtimelog.PodLogAction{
-				PodID:    k8s.PodID(podBNow.PodID()),
-				LogEvent: store.NewLogEvent("fe", []byte("pod b log\n")),
+				PodID:    podBNow.PodID(),
+				LogEvent: store.NewLogEvent("fe", runtimelog.SpanIDForPod(podBNow.PodID()), []byte("pod b log\n")),
 			})
 
 			f.WaitUntilManifestState("pod log seen", "fe", func(ms store.ManifestState) bool {
@@ -2815,7 +2815,7 @@ func TestBuildLogAction(t *testing.T) {
 	})
 
 	f.store.Dispatch(BuildLogAction{
-		LogEvent: store.NewLogEvent(manifest.Name, []byte(`a
+		LogEvent: store.NewLogEvent(manifest.Name, SpanIDForBuildLog(1), []byte(`a
 bc
 def
 ghij`)),
@@ -3556,9 +3556,10 @@ func (f *testFixture) startPod(pod *v1.Pod, manifestName model.ManifestName) {
 }
 
 func (f *testFixture) podLog(pod *v1.Pod, manifestName model.ManifestName, s string) {
+	podID := k8s.PodID(pod.Name)
 	f.upper.store.Dispatch(runtimelog.PodLogAction{
-		PodID:    k8s.PodID(pod.Name),
-		LogEvent: store.NewLogEvent(manifestName, []byte(s+"\n")),
+		PodID:    podID,
+		LogEvent: store.NewLogEvent(manifestName, runtimelog.SpanIDForPod(podID), []byte(s+"\n")),
 	})
 
 	f.WaitUntilManifestState("pod log seen", manifestName, func(ms store.ManifestState) bool {
