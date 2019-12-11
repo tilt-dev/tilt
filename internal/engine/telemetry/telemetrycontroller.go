@@ -14,20 +14,23 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tracer"
 	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/windmilleng/tilt/pkg/model/logstore"
 )
 
 type Controller struct {
 	clock build.Clock
 	// lock is a lock that is used to control access from the span exporter and the telemetry controller to the file
-	lock tracer.Locker
-	dir  *dirs.WindmillDir
+	lock       tracer.Locker
+	dir        *dirs.WindmillDir
+	runCounter int
 }
 
 func NewController(lock tracer.Locker, clock build.Clock, dir *dirs.WindmillDir) *Controller {
 	return &Controller{
-		lock:  lock,
-		clock: clock,
-		dir:   dir,
+		lock:       lock,
+		clock:      clock,
+		dir:        dir,
+		runCounter: 0,
 	}
 }
 
@@ -38,6 +41,7 @@ func (t *Controller) OnChange(ctx context.Context, st store.RStore) {
 	st.RUnlockState()
 
 	t.maybeRunScript(ctx, tc, lastTelemetryRun, st)
+	t.runCounter++
 }
 
 func (t *Controller) maybeRunScript(ctx context.Context, tc model.Cmd, lastTelemetryRun time.Time, st store.RStore) {
@@ -52,13 +56,13 @@ func (t *Controller) maybeRunScript(ctx context.Context, tc model.Cmd, lastTelem
 	cmd := exec.CommandContext(ctx, tc.Argv[0], tc.Argv[1:]...)
 	file, err := t.dir.OpenFile(tracer.OutgoingFilename, os.O_RDONLY, 0644)
 	if err != nil {
-		logError(st, err)
+		t.logError(st, err)
 		return
 	}
 	defer func() {
 		err := file.Close()
 		if err != nil {
-			logError(st, err)
+			t.logError(st, err)
 		}
 	}()
 
@@ -66,7 +70,7 @@ func (t *Controller) maybeRunScript(ctx context.Context, tc model.Cmd, lastTelem
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		logError(st, fmt.Errorf("Telemetry script failed to run: %v\noutput: %s", err, out))
+		t.logError(st, fmt.Errorf("Telemetry script failed to run: %v\noutput: %s", err, out))
 	}
 	cmdSucceeded := err == nil
 
@@ -75,13 +79,14 @@ func (t *Controller) maybeRunScript(ctx context.Context, tc model.Cmd, lastTelem
 	// clear the file if the telemetry command succeeded
 	if cmdSucceeded {
 		if err = t.dir.WriteFile(tracer.OutgoingFilename, ""); err != nil {
-			logError(st, err)
+			t.logError(st, err)
 		}
 	}
 }
 
-func logError(st store.RStore, err error) {
+func (t *Controller) logError(st store.RStore, err error) {
+	spanID := logstore.SpanID(fmt.Sprintf("telemetry:%s", string(t.runCounter)))
 	st.Dispatch(configs.TiltfileLogAction{
-		LogEvent: store.NewLogEvent(model.TiltfileManifestName, []byte(err.Error())),
+		LogEvent: store.NewLogEvent(model.TiltfileManifestName, spanID, []byte(err.Error())),
 	})
 }
