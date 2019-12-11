@@ -3500,7 +3500,7 @@ func (f *testFixture) SetNextBuildFailure(err error) {
 	// Don't set the nextBuildFailure flag when a completed build needs to be processed
 	// by the state machine.
 	f.WaitUntil("build complete processed", func(state store.EngineState) bool {
-		return state.CurrentlyBuilding == ""
+		return len(state.CurrentlyBuilding) == 0
 	})
 	_ = f.store.RLockState()
 	f.b.nextBuildFailure = err

@@ -68,7 +68,7 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 
 	state := st.RLockState()
 	settings := state.DockerPruneSettings
-	inProgBuild := state.CurrentlyBuilding
+	buildInProg := len(state.CurrentlyBuilding) > 0
 	curBuildCount := state.CompletedBuildCount
 	hasDockerBuild := state.HasDockerBuild()
 	nextToBuild := buildcontrol.NextManifestNameToBuild(state)
@@ -85,7 +85,7 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 	}
 
 	// Don't prune while we're building or about to build something, in case of weird side-effects.
-	if inProgBuild != "" || nextToBuild != "" {
+	if buildInProg || nextToBuild != "" {
 		return
 	}
 

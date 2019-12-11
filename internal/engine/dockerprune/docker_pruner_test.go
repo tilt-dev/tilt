@@ -407,7 +407,7 @@ func (dpf *dockerPruneFixture) withBuildCount(count int) {
 
 func (dpf *dockerPruneFixture) withCurrentlyBuilding(mn model.ManifestName) {
 	store := dpf.st.LockMutableStateForTesting()
-	store.CurrentlyBuilding = mn
+	store.CurrentlyBuilding[mn] = true
 	dpf.st.UnlockMutableState()
 }
 

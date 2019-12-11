@@ -85,8 +85,6 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 		return
 	}
 
-	logger.Get(ctx).Infof("🛠 okay let's build %s! 🛠", entry.name)
-
 	go func() {
 		// Send the logs to both the EngineState and the normal log stream.
 		actionWriter := BuildLogActionWriter{
@@ -106,7 +104,7 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 		c.logBuildEntry(ctx, entry)
 
 		result, err := c.buildAndDeploy(ctx, st, entry)
-		st.Dispatch(buildcontrol.NewBuildCompleteAction(result, err))
+		st.Dispatch(buildcontrol.NewBuildCompleteAction(entry.name, result, err))
 	}()
 
 	// ~~ note -- possible race condition where we don't process the BuildStarted action in time

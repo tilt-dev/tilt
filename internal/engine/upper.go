@@ -261,21 +261,20 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action bu
 		ms.CrashLog = model.Log{}
 	}
 
-	// ~~ note: should be a set now
-	state.CurrentlyBuilding = mn
+	state.CurrentlyBuilding[mn] = true
 	removeFromTriggerQueue(state, mn)
 }
 
 func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, cb buildcontrol.BuildCompleteAction) error {
 	defer func() {
-		engineState.CurrentlyBuilding = ""
+		delete(engineState.CurrentlyBuilding, cb.ManifestName)
 	}()
 
 	buildCount := engineState.BuildControllerSlotsAvailable
 	engineState.CompletedBuildCount++
 	engineState.BuildControllerSlotsAvailable++
 
-	mt, ok := engineState.ManifestTargets[engineState.CurrentlyBuilding]
+	mt, ok := engineState.ManifestTargets[cb.ManifestName]
 	if !ok {
 		return nil
 	}
