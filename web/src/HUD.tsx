@@ -124,12 +124,18 @@ class HUD extends Component<HudProps, HudState> {
   setAppState<K extends keyof HudState>(state: Pick<HudState, K>) {
     this.setState(prevState => {
       let newState = _.clone(state) as any
+      newState.logStore = prevState.logStore ?? new LogStore()
+
       let newLogList = newState.view?.logList
       if (newLogList) {
-        // For now, just create a brand new log store.
-        // In the future, we'll do more complex merging.
-        newState.logStore = new LogStore()
-        newState.logStore.append(newLogList)
+        let fromCheckpoint = newLogList.fromCheckpoint ?? 0
+        if (fromCheckpoint > 0) {
+          newState.logStore.append(newLogList)
+        } else if (fromCheckpoint === 0) {
+          // if the fromCheckpoint is 0 or undefined, create a brand new log store.
+          newState.logStore = new LogStore()
+          newState.logStore.append(newLogList)
+        }
       }
       return newState
     })

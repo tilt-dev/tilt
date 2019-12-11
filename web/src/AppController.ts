@@ -43,6 +43,8 @@ class AppController {
   createNewSocket() {
     this.tryConnectCount++
     this.socket = new WebSocket(this.url)
+    let socket = this.socket
+
     this.socket.addEventListener("close", this.onSocketClose.bind(this))
     this.socket.addEventListener("message", event => {
       if (!this.liveSocket) {
@@ -52,6 +54,15 @@ class AppController {
       this.tryConnectCount = 0
 
       let data: Proto.webviewView = JSON.parse(event.data)
+      let toCheckpoint = data.logList?.toCheckpoint
+      if (toCheckpoint && toCheckpoint > 0) {
+        let tiltStartTime = data.tiltStartTime
+        let response: Proto.webviewAckWebsocketRequest = {
+          toCheckpoint,
+          tiltStartTime,
+        }
+        socket.send(JSON.stringify(response))
+      }
 
       // @ts-ignore
       this.component.setAppState({
