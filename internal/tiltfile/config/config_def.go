@@ -188,6 +188,10 @@ func configSettingDefinitionBuiltin(newConfigValue func() configValue) starkit.F
 		}
 
 		err = starkit.SetState(thread, func(settings Settings) (Settings, error) {
+			if settings.configParseCalled {
+				return settings, fmt.Errorf("%s cannot be called after config.parse is called", fn.Name())
+			}
+
 			if _, ok := settings.configDef.configSettings[name]; ok {
 				return settings, fmt.Errorf("%s defined multiple times", name)
 			}

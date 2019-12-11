@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/windmilleng/tilt/internal/tiltfile/include"
 	"github.com/windmilleng/tilt/internal/tiltfile/io"
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 	"github.com/windmilleng/tilt/internal/tiltfile/value"
@@ -374,8 +375,58 @@ print("foo:",cfg.get('foo', []))
 	require.Contains(t, err.Error(), "specified invalid value for setting foo: expected array")
 }
 
+func TestConfigParseFromMultipleDirs(t *testing.T) {
+	f := NewFixture(t, model.UserConfigState{})
+	defer f.TearDown()
+
+	f.File("Tiltfile", `
+config.define_string_list('foo')
+cfg = config.parse()
+include('inc/Tiltfile')
+`)
+
+	f.File("inc/Tiltfile", `
+cfg = config.parse()
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "config.parse can only be called from one Tiltfile working directory per run")
+	require.Contains(t, err.Error(), f.Path())
+	require.Contains(t, err.Error(), f.JoinPath("inc"))
+}
+
+func TestDefineSettingAfterParse(t *testing.T) {
+	f := NewFixture(t, model.UserConfigState{})
+	defer f.TearDown()
+
+	f.File("Tiltfile", `
+cfg = config.parse()
+config.define_string_list('foo')
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "config.define_string_list cannot be called after config.parse is called")
+}
+
+func TestConfigFileRecordedRead(t *testing.T) {
+	f := NewFixture(t, model.UserConfigState{})
+	defer f.TearDown()
+
+	f.File("Tiltfile", `
+cfg = config.parse()`)
+
+	result, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+
+	rs, err := io.GetState(result)
+	require.NoError(t, err)
+	require.Contains(t, rs.Files, f.JoinPath(UserConfigFileName))
+}
+
 func NewFixture(tb testing.TB, userConfigState model.UserConfigState) *starkit.Fixture {
-	ret := starkit.NewFixture(tb, NewExtension(userConfigState), io.NewExtension())
+	ret := starkit.NewFixture(tb, NewExtension(userConfigState), io.NewExtension(), include.IncludeFn{})
 	ret.UseRealFS()
 	return ret
 }

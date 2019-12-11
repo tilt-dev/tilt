@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -17,10 +18,11 @@ type Settings struct {
 	enabledResources []model.ManifestName
 	configDef        ConfigDef
 
-	configPath string
-
 	configParseCalled bool
 	UserConfigState   model.UserConfigState
+
+	// if parse has been called, the directory containing the Tiltfile that called it
+	seenWorkingDirectory string
 }
 
 type Extension struct {
@@ -38,19 +40,6 @@ func (e *Extension) NewState() interface{} {
 }
 
 var _ starkit.StatefulExtension = &Extension{}
-
-func (e *Extension) OnExec(t *starlark.Thread, path string) error {
-	dir := filepath.Dir(path)
-	configPath := filepath.Join(dir, UserConfigFileName)
-
-	return starkit.SetState(t, func(settings Settings) Settings {
-		settings.UserConfigState = e.UserConfigState
-		settings.configPath = configPath
-		return settings
-	})
-}
-
-var _ starkit.OnExecExtension = &Extension{}
 
 func MustState(model starkit.Model) Settings {
 	state, err := GetState(model)
@@ -92,9 +81,19 @@ func (e *Extension) parse(thread *starlark.Thread, fn *starlark.Builtin, args st
 		return starlark.None, err
 	}
 
-	err = starkit.SetState(thread, func(settings Settings) Settings {
+	wd := starkit.AbsWorkingDir(thread)
+
+	err = starkit.SetState(thread, func(settings Settings) (Settings, error) {
+		if settings.seenWorkingDirectory != "" && settings.seenWorkingDirectory != wd {
+			return settings, fmt.Errorf(
+				"%s can only be called from one Tiltfile working directory per run. It was called from %s and %s",
+				fn.Name(),
+				settings.seenWorkingDirectory,
+				wd)
+		}
+		settings.seenWorkingDirectory = wd
 		settings.configParseCalled = true
-		return settings
+		return settings, nil
 	})
 	if err != nil {
 		return starlark.None, err
@@ -109,12 +108,14 @@ func (e *Extension) parse(thread *starlark.Thread, fn *starlark.Builtin, args st
 		return starlark.None, err
 	}
 
-	err = io.RecordReadFile(thread, settings.configPath)
+	userConfigPath := filepath.Join(wd, UserConfigFileName)
+
+	err = io.RecordReadFile(thread, userConfigPath)
 	if err != nil {
 		return starlark.None, err
 	}
 
-	ret, out, err := settings.configDef.parse(settings.configPath, settings.UserConfigState.Args)
+	ret, out, err := settings.configDef.parse(userConfigPath, settings.UserConfigState.Args)
 	if out != "" {
 		thread.Print(thread, out)
 	}
