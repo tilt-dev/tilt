@@ -43,18 +43,6 @@ message YAMLResourceInfo {
 
 message LocalResourceInfo {}
 
-message Alert {
-  string alert_type = 1;
-  string header = 2;
-  string message = 3;
-  // TODO(dmiller): this should be a timestamp, but sometimes incorrectly formatted times get set here
-  // like when there's a Pod that has PodStatusError.
-  // We should figure out how those times are being set, and fix them to parse as protobuf.Timestamp
-  // correctly
-  string timestamp = 4;
-  string resource_name = 5;
-}
-
 message Facet {
   string name = 1;
   string value = 2;
@@ -83,7 +71,12 @@ message Resource {
   bool show_build_status = 20;
   string combined_log = 21;
   string crash_log = 22;
-  repeated Alert alerts = 23;
+
+  // Alerts are currently client-side only, and not
+  // sent in the payload.
+  reserved "alerts";
+  reserved 23;
+
   repeated Facet facets = 24;
   bool queued = 25;
 }
