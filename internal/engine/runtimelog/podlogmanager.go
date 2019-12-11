@@ -13,6 +13,7 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/windmilleng/tilt/pkg/model/logstore"
 )
 
 // Collects logs from deployed containers.
@@ -217,9 +218,13 @@ type PodLogActionWriter struct {
 func (w PodLogActionWriter) Write(p []byte) (n int, err error) {
 	w.Store.Dispatch(PodLogAction{
 		PodID:    w.PodID,
-		LogEvent: store.NewLogEvent(w.ManifestName, p),
+		LogEvent: store.NewLogEvent(w.ManifestName, SpanIDForPod(w.PodID), p),
 	})
 	return len(p), nil
+}
+
+func SpanIDForPod(podID k8s.PodID) logstore.SpanID {
+	return logstore.SpanID(fmt.Sprintf("pod:%s", podID))
 }
 
 var _ store.Subscriber = &PodLogManager{}

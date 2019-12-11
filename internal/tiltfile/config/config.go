@@ -19,7 +19,7 @@ type Settings struct {
 	configDef        ConfigDef
 
 	configParseCalled bool
-	UserConfigState   model.UserConfigState
+	userConfigState   model.UserConfigState
 
 	// if parse has been called, the directory containing the Tiltfile that called it
 	seenWorkingDirectory string
@@ -35,7 +35,8 @@ func NewExtension(userConfigState model.UserConfigState) *Extension {
 
 func (e *Extension) NewState() interface{} {
 	return Settings{
-		configDef: ConfigDef{configSettings: make(map[string]configSetting)},
+		configDef:       ConfigDef{configSettings: make(map[string]configSetting)},
+		userConfigState: e.UserConfigState,
 	}
 }
 
@@ -115,7 +116,7 @@ func (e *Extension) parse(thread *starlark.Thread, fn *starlark.Builtin, args st
 		return starlark.None, err
 	}
 
-	ret, out, err := settings.configDef.parse(userConfigPath, settings.UserConfigState.Args)
+	ret, out, err := settings.configDef.parse(userConfigPath, e.UserConfigState.Args)
 	if out != "" {
 		thread.Print(thread, out)
 	}

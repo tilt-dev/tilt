@@ -70,7 +70,7 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 
 		if redirectErr, ok := err.(RedirectToNextBuilder); ok {
 			s := fmt.Sprintf("falling back to next update method because: %v\n", err)
-			logger.Get(ctx).Write(redirectErr.level, s)
+			logger.Get(ctx).Write(redirectErr.level, []byte(s))
 		} else {
 			lastUnexpectedErr = err
 			if i+1 < len(composite.builders) {

@@ -91,7 +91,7 @@ func (s *SyncletCli) UpdateContainer(
 
 		level := protoLogLevelToLevel(reply.LogMessage.Level)
 
-		logger.Get(ctx).Write(level, string(reply.LogMessage.Message))
+		logger.Get(ctx).Write(level, reply.LogMessage.Message)
 	}
 }
 

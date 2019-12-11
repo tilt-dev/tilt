@@ -20,6 +20,7 @@ type ConfigsController struct {
 	tfl                tiltfile.TiltfileLoader
 	dockerClient       docker.Client
 	clock              func() time.Time
+	loadCount          int
 }
 
 func NewConfigsController(tfl tiltfile.TiltfileLoader, dockerClient docker.Client) *ConfigsController {
@@ -73,12 +74,12 @@ func logTiltfileChanges(ctx context.Context, filesChanged map[string]bool) {
 }
 
 func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
-	filesChanged map[string]bool, tiltfilePath string) {
+	filesChanged map[string]bool, tiltfilePath string, loadCount int) {
 
 	startTime := cc.clock()
 	st.Dispatch(ConfigsReloadStartedAction{FilesChanged: filesChanged, StartTime: startTime})
 
-	actionWriter := NewTiltfileLogWriter(st)
+	actionWriter := NewTiltfileLogWriter(st, loadCount)
 	ctx = logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), actionWriter))
 
 	state := st.RLockState()
@@ -124,7 +125,6 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 		DockerPruneSettings:   tlr.DockerPruneSettings,
 		CheckpointAtExecStart: checkpointAtExecStart,
 		VersionSettings:       tlr.VersionSettings,
-		UserConfigState:       tlr.UserConfigState,
 	})
 }
 
@@ -152,7 +152,10 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 	}
 
 	// Release the state lock and load the tiltfile in a separate goroutine
-	go cc.loadTiltfile(ctx, st, filesChanged, tiltfilePath)
+	cc.loadCount++
+
+	loadCount := cc.loadCount
+	go cc.loadTiltfile(ctx, st, filesChanged, tiltfilePath, loadCount)
 }
 
 func requiresDocker(tlr tiltfile.TiltfileLoadResult) bool {

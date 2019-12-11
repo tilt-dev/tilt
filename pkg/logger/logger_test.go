@@ -37,3 +37,10 @@ func TestWriteAcrossNestedLoggers(t *testing.T) {
 	assert.Equal(t, "|>ab\n|>cd\n|>e\n", out1.String())
 	assert.Equal(t, ">ab\n>cd\n>e\n", out2.String())
 }
+
+func TestWriteWithFormatPlaceholder(t *testing.T) {
+	out := bytes.NewBuffer(nil)
+	l := NewLogger(InfoLvl, out)
+	l.Write(InfoLvl, []byte("%s"))
+	assert.Equal(t, "%s", out.String())
+}

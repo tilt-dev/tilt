@@ -50,7 +50,7 @@ func (s Settings) EnabledResources(manifests []model.Manifest) ([]model.Manifest
 		return match(manifests, s.enabledResources)
 	}
 
-	args := s.UserConfigState.Args
+	args := s.userConfigState.Args
 
 	// if the user has not called config.parse and has specified args, use those to select which resources
 	if args != nil && !s.configParseCalled {

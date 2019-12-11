@@ -1,4 +1,5 @@
 import LogStore from "./LogStore"
+import { logLinesToString } from "./logs"
 
 describe("LogStore", () => {
   function now() {
@@ -22,7 +23,7 @@ describe("LogStore", () => {
       segments: [newGlobalSegment("foo"), newGlobalSegment("bar")],
     })
 
-    expect(logs.allLog()).toEqual("foobar")
+    expect(logLinesToString(logs.allLog(), true)).toEqual("foobar\n")
   })
 
   it("handles prefixes in all logs", () => {
@@ -36,7 +37,9 @@ describe("LogStore", () => {
       ],
     })
 
-    expect(logs.allLog()).toEqual("line1\nfe          ┊ line2\nline3\n")
+    expect(logLinesToString(logs.allLog(), true)).toEqual(
+      "line1\nfe          ┊ line2\nline3\n"
+    )
   })
 
   it("handles long-prefixes", () => {
@@ -53,7 +56,9 @@ describe("LogStore", () => {
       ],
     })
 
-    expect(logs.allLog()).toEqual("line1\ncockroachdb…┊ line2\nline3\n")
+    expect(logLinesToString(logs.allLog(), true)).toEqual(
+      "line1\ncockroachdb…┊ line2\nline3\n"
+    )
   })
 
   it("handles manifest logs", () => {
@@ -67,6 +72,6 @@ describe("LogStore", () => {
       ],
     })
 
-    expect(logs.manifestLog("fe")).toEqual("line2\n")
+    expect(logLinesToString(logs.manifestLog("fe"), false)).toEqual("line2\n")
   })
 })

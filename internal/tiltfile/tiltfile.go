@@ -20,7 +20,6 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	tiltfileanalytics "github.com/windmilleng/tilt/internal/tiltfile/analytics"
-	"github.com/windmilleng/tilt/internal/tiltfile/config"
 	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
 	"github.com/windmilleng/tilt/internal/tiltfile/io"
 	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
@@ -50,7 +49,6 @@ type TiltfileLoadResult struct {
 	DockerPruneSettings model.DockerPruneSettings
 	AnalyticsOpt        wmanalytics.Opt
 	VersionSettings     model.VersionSettings
-	UserConfigState     model.UserConfigState
 }
 
 func (r TiltfileLoadResult) Orchestrator() model.Orchestrator {
@@ -166,9 +164,6 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 
 	aSettings, _ := tiltfileanalytics.GetState(result)
 	tlr.AnalyticsOpt = aSettings.Opt
-
-	flagsSettings, _ := config.GetState(result)
-	tlr.UserConfigState = flagsSettings.UserConfigState
 
 	tlr.Secrets = s.extractSecrets()
 	tlr.Warnings = s.warnings

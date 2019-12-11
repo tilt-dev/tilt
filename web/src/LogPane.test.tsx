@@ -3,6 +3,7 @@ import ReactDOM from "react-dom"
 import LogPane from "./LogPane"
 import renderer from "react-test-renderer"
 import { mount } from "enzyme"
+import { logLinesFromString } from "./logs"
 
 const fakeHandleSetHighlight = () => {}
 const fakeHandleClearHighlight = () => {}
@@ -343,7 +344,8 @@ it("renders without crashing", () => {
   Element.prototype.scrollIntoView = jest.fn()
   ReactDOM.render(
     <LogPane
-      log="hello\nworld\nfoo"
+      logLines={logLinesFromString("hello\nworld\nfoo")}
+      showManifestPrefix={false}
       message="world"
       handleSetHighlight={fakeHandleSetHighlight}
       handleClearHighlight={fakeHandleClearHighlight}
@@ -361,7 +363,8 @@ it("renders logs", () => {
   const tree = renderer
     .create(
       <LogPane
-        log={log}
+        logLines={logLinesFromString(log)}
+        showManifestPrefix={false}
         handleSetHighlight={fakeHandleSetHighlight}
         handleClearHighlight={fakeHandleClearHighlight}
         highlight={null}
@@ -378,7 +381,8 @@ it("renders logs with leading whitespace and ANSI codes", () => {
   const tree = renderer
     .create(
       <LogPane
-        log={longLog}
+        logLines={logLinesFromString(longLog)}
+        showManifestPrefix={false}
         handleSetHighlight={fakeHandleSetHighlight}
         handleClearHighlight={fakeHandleClearHighlight}
         highlight={null}
@@ -401,7 +405,8 @@ it("renders highlighted lines", () => {
   const tree = renderer
     .create(
       <LogPane
-        log={log}
+        logLines={logLinesFromString(log)}
+        showManifestPrefix={false}
         handleSetHighlight={fakeHandleSetHighlight}
         handleClearHighlight={fakeHandleClearHighlight}
         highlight={highlight}
@@ -425,7 +430,8 @@ it("scrolls to highlighted lines in snapshot", () => {
   }
   const wrapper = mount<LogPane>(
     <LogPane
-      log={longLog}
+      logLines={logLinesFromString(longLog)}
+      showManifestPrefix={false}
       handleSetHighlight={fakeHandleSetHighlight}
       handleClearHighlight={fakeHandleClearHighlight}
       highlight={highlight}
@@ -451,7 +457,8 @@ it("does not scroll to highlighted lines if not snapshot", () => {
   }
   const wrapper = mount<LogPane>(
     <LogPane
-      log={longLog}
+      logLines={logLinesFromString(longLog)}
+      showManifestPrefix={false}
       handleSetHighlight={fakeHandleSetHighlight}
       handleClearHighlight={fakeHandleClearHighlight}
       highlight={highlight}
@@ -480,7 +487,8 @@ it("doesn't set selection event handler if snapshot", () => {
   }
   const wrapper = mount<LogPane>(
     <LogPane
-      log={longLog}
+      logLines={logLinesFromString(longLog)}
+      showManifestPrefix={false}
       handleSetHighlight={fakeHandleSetHighlight}
       handleClearHighlight={fakeHandleClearHighlight}
       highlight={highlight}

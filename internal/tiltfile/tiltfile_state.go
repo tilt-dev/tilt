@@ -156,7 +156,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		dockerprune.NewExtension(),
 		analytics.NewExtension(),
 		version.NewExtension(),
-		config.NewExtension(absFilename, userConfigState),
+		config.NewExtension(userConfigState),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)
