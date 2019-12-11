@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -25,7 +24,7 @@ func TestTelNoScriptTimeIsUpShouldNotDeleteFile(t *testing.T) {
 
 	f.run()
 
-	f.assertNoErrors()
+	f.assertNoLogs()
 	f.assertTelemetryFileEquals("hello world")
 }
 
@@ -38,7 +37,7 @@ func TestTelNoScriptTimeIsNotUpShouldNotDeleteFile(t *testing.T) {
 	f.setLastRun(t1)
 	f.run()
 
-	f.assertNoErrors()
+	f.assertNoLogs()
 	f.assertTelemetryFileEquals("hello world")
 }
 
@@ -52,7 +51,7 @@ func TestTelScriptTimeIsNotUpShouldNotDeleteFile(t *testing.T) {
 	f.setLastRun(t1)
 	f.run()
 
-	f.assertNoErrors()
+	f.assertNoLogs()
 	f.assertTelemetryFileEquals("hello world")
 }
 
@@ -65,7 +64,7 @@ func TestTelScriptTimeIsUpShouldDeleteFileAndSetTime(t *testing.T) {
 	f.workCmd()
 	f.run()
 
-	f.assertNoErrors()
+	f.assertNoLogs()
 	f.assertTelemetryScriptRanAtIs(t1)
 	f.assertTelemetryFileIsEmpty()
 	f.assertScriptCalledWith("hello world")
@@ -80,7 +79,7 @@ func TestTelScriptFailsTimeIsUpShouldDeleteFileAndSetTime(t *testing.T) {
 	f.failCmd()
 	f.run()
 
-	f.assertError("exit status 1")
+	f.assertLog("exit status 1")
 	f.assertTelemetryFileEquals("hello world")
 	f.assertTelemetryScriptRanAtIs(t1)
 }
@@ -176,22 +175,27 @@ func (tcf *tcFixture) assertTelemetryFileEquals(contents string) {
 	assert.Equal(tcf.t, contents, fileContents)
 }
 
-func (tcf *tcFixture) assertNoErrors() {
-	store.AssertNoActionOfType(tcf.t, reflect.TypeOf(store.ErrorAction{}), tcf.getActions)
-}
-
-func (tcf *tcFixture) assertError(errMsg string) {
+func (tcf *tcFixture) assertNoLogs() {
 	actions := tcf.st.Actions
 	for _, a := range actions {
-		if ea, ok := a.(store.ErrorAction); ok {
-			containsExpected := strings.Contains(ea.Error.Error(), errMsg)
+		if la, ok := a.(store.LogAction); ok {
+			tcf.t.Errorf("Expected no LogActions but found: %v", la)
+		}
+	}
+}
+
+func (tcf *tcFixture) assertLog(logMsg string) {
+	actions := tcf.st.Actions
+	for _, a := range actions {
+		if la, ok := a.(store.LogAction); ok {
+			containsExpected := strings.Contains(string(la.Message()), logMsg)
 			if containsExpected {
 				return
 			}
 		}
 	}
 
-	tcf.t.Errorf("Couldn't find expected errormsg %s in %v", errMsg, actions)
+	tcf.t.Errorf("Couldn't find expected log message %s in %v", logMsg, actions)
 }
 
 func (tcf *tcFixture) assertTelemetryScriptRanAtIs(t time.Time) {

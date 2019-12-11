@@ -9,8 +9,10 @@ import (
 	"github.com/windmilleng/wmclient/pkg/dirs"
 
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tracer"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 type TelemetryController struct {
@@ -28,7 +30,6 @@ func NewTelemetryController(lock tracer.Locker, clock build.Clock, dir *dirs.Win
 	}
 }
 
-// TODO(dmiller): make these errors log actions
 func (t *TelemetryController) OnChange(ctx context.Context, st store.RStore) {
 	state := st.RLockState()
 	lastTelemetryRun := state.LastTelemetryScriptRun
@@ -46,25 +47,36 @@ func (t *TelemetryController) OnChange(ctx context.Context, st store.RStore) {
 	cmd := exec.CommandContext(ctx, tc.Argv[0], tc.Argv[1:]...)
 	file, err := t.dir.OpenFile(tracer.OutgoingFilename, os.O_RDONLY, 0644)
 	if err != nil {
-		st.Dispatch(NewErrorAction(err))
+		logError(st, err)
 		return
 	}
-	defer file.Close()
+	defer func() {
+		err := file.Close()
+		if err != nil {
+			logError(st, err)
+		}
+	}()
 
 	cmd.Stdin = file
 
 	err = cmd.Run()
 	if err != nil {
-		st.Dispatch(NewErrorAction(err))
+		logError(st, err)
 	}
 	cmdSucceeded := err == nil
 
 	st.Dispatch(TelemetryScriptRanAction{At: t.clock.Now()})
 
-	// truncate the file if the telemetry command succeeded
+	// clear the file if the telemetry command succeeded
 	if cmdSucceeded {
 		if err = t.dir.WriteFile(tracer.OutgoingFilename, ""); err != nil {
-			st.Dispatch(NewErrorAction(err))
+			logError(st, err)
 		}
 	}
+}
+
+func logError(st store.RStore, err error) {
+	st.Dispatch(configs.TiltfileLogAction{
+		LogEvent: store.NewLogEvent(model.TiltfileManifestName, []byte(err.Error())),
+	})
 }
