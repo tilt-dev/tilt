@@ -41,7 +41,6 @@ func (f *Fixture) OnStart(e *Environment) error {
 
 	e.SetPrint(func(t *starlark.Thread, msg string) {
 		_, _ = fmt.Fprintf(f.out, "%s\n", msg)
-		_, _ = fmt.Printf("%s\n", msg)
 	})
 	return nil
 }
