@@ -12,10 +12,7 @@ import (
 var tracer apitrace.Tracer
 
 func InitOpenTelemetry(ctx context.Context, dir *dirs.WindmillDir) (Locker, error) {
-	exporter, err := newExporter(ctx, dir)
-	if err != nil {
-		return nil, err
-	}
+	exporter := newExporter(ctx, dir)
 
 	tp, err := sdktrace.NewProvider(
 		sdktrace.WithConfig(sdktrace.Config{DefaultSampler: sdktrace.AlwaysSample()}))
