@@ -42,7 +42,7 @@ type EngineState struct {
 	// doing one action at a time. In the future, we might
 	// want to allow it to parallelize builds better, but that
 	// would require better tools for triaging output to different streams.
-	BuildControllerActionCount int
+	BuildControllerSlotsAvailable int
 
 	FatalError error
 	HUDEnabled bool
@@ -323,6 +323,7 @@ func NewState() *EngineState {
 	ret.VersionSettings = model.VersionSettings{
 		CheckUpdates: true,
 	}
+	ret.BuildControllerSlotsAvailable = 3 // ~~ note: set this from configs one day!
 	return ret
 }
 
@@ -389,6 +390,10 @@ func (ms *ManifestState) IsK8s() bool {
 
 func (ms *ManifestState) ActiveBuild() model.BuildRecord {
 	return ms.CurrentBuild
+}
+
+func (ms *ManifestState) IsBuilding() bool {
+	return !ms.CurrentBuild.Empty()
 }
 
 func (ms *ManifestState) LastBuild() model.BuildRecord {

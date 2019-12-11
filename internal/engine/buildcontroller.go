@@ -42,9 +42,8 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	// Don't start the next build until the previous action has been recorded,
-	// so that we don't accidentally repeat the same build.
-	if c.lastActionCount == state.BuildControllerActionCount {
+	// no build slots available
+	if state.BuildControllerSlotsAvailable < 1 {
 		return buildEntry{}, false
 	}
 
@@ -53,7 +52,7 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 		return buildEntry{}, false
 	}
 
-	c.lastActionCount = state.BuildControllerActionCount
+	c.lastActionCount += 1 // do we still need this?
 	ms := mt.State
 	manifest := mt.Manifest
 	firstBuild := !ms.StartedFirstBuild()
@@ -86,6 +85,8 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 		return
 	}
 
+	logger.Get(ctx).Infof("🛠 okay let's build %s! 🛠", entry.name)
+
 	go func() {
 		// Send the logs to both the EngineState and the normal log stream.
 		actionWriter := BuildLogActionWriter{
@@ -107,6 +108,11 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 		result, err := c.buildAndDeploy(ctx, st, entry)
 		st.Dispatch(buildcontrol.NewBuildCompleteAction(result, err))
 	}()
+
+	// ~~ note -- possible race condition where we don't process the BuildStarted action in time
+	// and come back here and try to restart the same build
+	// this is a shitty way to mitigate it but will be ok for now?
+	time.Sleep(100 * time.Millisecond)
 }
 
 func (c *BuildController) buildAndDeploy(ctx context.Context, st store.RStore, entry buildEntry) (store.BuildResultSet, error) {
