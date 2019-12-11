@@ -5,7 +5,7 @@ import TimeAgo from "react-timeago"
 import "./AlertPane.scss"
 import { Resource } from "./types"
 import { timeAgoFormatter } from "./timeFormatters"
-import { hasAlert } from "./alerts"
+import { getResourceAlerts, hasAlert } from "./alerts"
 import PathBuilder from "./PathBuilder"
 
 type AlertsProps = {
@@ -42,7 +42,7 @@ class AlertPane extends PureComponent<AlertsProps> {
 
     let alertResources = resources.filter(r => hasAlert(r))
     alertResources.forEach(resource => {
-      resource.alerts.forEach(alert => {
+      getResourceAlerts(resource).forEach(alert => {
         let dismissButton = <div />
         if (alert.dismissHandler && !isSnapshot) {
           dismissButton = (

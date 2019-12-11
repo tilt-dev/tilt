@@ -1,4 +1,3 @@
-import { getResourceAlerts } from "./alerts"
 import {
   K8sResourceInfo,
   SocketState,
@@ -80,7 +79,6 @@ class AppController {
         }
         r.k8sResourceInfo = ri
       }
-      r.alerts = getResourceAlerts(r)
       return r
     })
   }
