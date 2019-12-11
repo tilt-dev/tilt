@@ -245,7 +245,6 @@ func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Re
 			PodStatusMessage:   strings.Join(pod.StatusMessages, "\n"),
 			AllContainersReady: pod.AllContainersReady(),
 			PodRestarts:        int32(pod.VisibleContainerRestarts()),
-			PodLog:             pod.Log().String(),
 		}
 		return &K8sResourceInfo{
 			PodName:            pod.PodID.String(),
