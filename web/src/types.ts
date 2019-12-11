@@ -74,7 +74,6 @@ export type Resource = {
   runtimeStatus: string
   triggerMode: TriggerMode
   hasPendingChanges: boolean
-  alerts: Array<Alert>
   facets: Array<Facet>
   queued: boolean
 }

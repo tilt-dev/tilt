@@ -3,7 +3,6 @@ import AlertPane from "./AlertPane"
 import renderer from "react-test-renderer"
 import { oneResourceUnrecognizedError } from "./testdata"
 import { Resource, TriggerMode } from "./types"
-import { getResourceAlerts } from "./alerts"
 import PathBuilder from "./PathBuilder"
 import { mount } from "enzyme"
 
@@ -42,7 +41,6 @@ it("renders one container start error", () => {
   resource.k8sResourceInfo.podCreationTime = ts
   resource.k8sResourceInfo.podStatus = "Error"
   resource.k8sResourceInfo.podRestarts = 2
-  resource.alerts = getResourceAlerts(resource)
 
   let resources = [resource]
 
@@ -74,7 +72,6 @@ it("renders pod restart dismiss button", () => {
   rInfo.podCreationTime = ts
   rInfo.podStatus = "Running"
   rInfo.podRestarts = 2
-  resource.alerts = getResourceAlerts(resource)
 
   let resources: Array<Resource> = [resource]
 
@@ -111,7 +108,6 @@ it("shows that a container has restarted", () => {
   resource.k8sResourceInfo.podStatus = "ok"
   resource.k8sResourceInfo.podCreationTime = ts
   resource.k8sResourceInfo.podRestarts = 1
-  resource.alerts = getResourceAlerts(resource)
   let resources = [resource]
 
   const tree = renderer
@@ -137,7 +133,6 @@ it("shows that a crash rebuild has occurred", () => {
   if (!resource.k8sResourceInfo) throw new Error("missing k8s info")
   resource.k8sResourceInfo.podCreationTime = ts
   resource.k8sResourceInfo.podStatus = "ok"
-  resource.alerts = getResourceAlerts(resource)
 
   let resources = [resource]
 
@@ -165,7 +160,6 @@ it("renders multiple lines of a crash log", () => {
   if (!resource.k8sResourceInfo) throw new Error("missing k8s info")
   resource.k8sResourceInfo.podCreationTime = ts
   resource.k8sResourceInfo.podStatus = "ok"
-  resource.alerts = getResourceAlerts(resource)
 
   let resources = [resource]
 
@@ -193,7 +187,6 @@ it("renders warnings", () => {
   if (!resource.k8sResourceInfo) throw new Error("missing k8s info")
   resource.k8sResourceInfo.podCreationTime = ts
   resource.k8sResourceInfo.podStatus = "ok"
-  resource.alerts = getResourceAlerts(resource)
 
   let resources = [resource]
 
@@ -208,7 +201,6 @@ it("renders warnings", () => {
 it("renders one container unrecognized error", () => {
   const ts = "1,555,970,585,039"
   let resource = oneResourceUnrecognizedError()
-  resource.alerts = getResourceAlerts(resource)
 
   let resources = [resource]
 
@@ -247,7 +239,6 @@ function fillResourceFields(): Resource {
     runtimeStatus: "",
     triggerMode: TriggerMode.TriggerModeAuto,
     hasPendingChanges: true,
-    alerts: [],
     facets: [],
     queued: false,
   }

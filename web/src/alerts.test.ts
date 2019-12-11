@@ -221,7 +221,6 @@ describe("getResourceAlerts", () => {
     let rInfo = r.k8sResourceInfo
     if (!rInfo) throw new Error("missing k8s info")
     rInfo.podRestarts = 1
-    r.alerts = getResourceAlerts(r)
     let actualNum = numberOfAlerts(r)
     let expectedNum = 1
 
@@ -388,7 +387,6 @@ function k8sResource(): Resource {
     runtimeStatus: "",
     triggerMode: TriggerMode.TriggerModeAuto,
     hasPendingChanges: true,
-    alerts: [],
     facets: [],
     queued: false,
   }
@@ -438,7 +436,6 @@ function dcResource(): Resource {
     isTiltfile: false,
     combinedLog: "",
     crashLog: "",
-    alerts: [],
     facets: [],
     queued: false,
   }
