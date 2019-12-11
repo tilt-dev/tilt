@@ -23,7 +23,6 @@ func NewProtoDCResourceInfo(configPaths []string, status dockercompose.Status, c
 		ConfigPaths:     configPaths,
 		ContainerStatus: string(status),
 		ContainerID:     string(cID),
-		Log:             log.String(),
 		StartTime:       start,
 	}, nil
 }
@@ -58,7 +57,6 @@ func ToProtoBuildRecord(br model.BuildRecord) (*proto_webview.BuildRecord, error
 		Warnings:       br.Warnings,
 		StartTime:      start,
 		FinishTime:     finish,
-		Log:            br.Log.String(),
 		IsCrashRebuild: br.Reason.IsCrashOnly(),
 	}, nil
 }
