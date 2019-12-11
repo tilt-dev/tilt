@@ -3,11 +3,13 @@ import { mount } from "enzyme"
 import SidebarTriggerButton, {
   TriggerButtonTooltip,
 } from "./SidebarTriggerButton"
-import { Resource, ResourceView, TriggerMode } from "./types"
+import { ResourceView, TriggerMode } from "./types"
 import { oneResource, twoResourceView } from "./testdata"
 import Sidebar, { SidebarItem } from "./Sidebar"
 import { MemoryRouter } from "react-router"
 import PathBuilder from "./PathBuilder"
+
+type Resource = Proto.webviewResource
 
 let pathBuilder = new PathBuilder("localhost", "/")
 
@@ -317,7 +319,7 @@ describe("SidebarTriggerButton", () => {
   it("shows a trigger button for resource that failed its initial build", () => {
     let res = oneResource()
     res.lastDeployTime = ""
-    res.currentBuild = false
+    res.currentBuild = {}
     res.hasPendingChanges = false
     res.pendingBuildSince = ""
     let items = [new SidebarItem(res)]

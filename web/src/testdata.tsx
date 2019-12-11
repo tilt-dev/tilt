@@ -1,6 +1,8 @@
 import { RouteComponentProps } from "react-router-dom"
 import { UnregisterCallback, Href } from "history"
-import { Resource, TriggerMode } from "./types"
+import { TriggerMode } from "./types"
+
+type Resource = Proto.webviewResource
 
 type view = {
   resources: Array<Resource>

@@ -4,8 +4,10 @@ import renderer from "react-test-renderer"
 import { MemoryRouter } from "react-router"
 import Sidebar, { SidebarItem } from "./Sidebar"
 import { oneResource, twoResourceView } from "./testdata"
-import { Resource, ResourceView, TriggerMode } from "./types"
+import { ResourceView, TriggerMode } from "./types"
 import PathBuilder from "./PathBuilder"
+
+type Resource = Proto.webviewResource
 
 let pathBuilder = new PathBuilder("localhost", "/")
 
@@ -39,7 +41,8 @@ describe("sidebar", () => {
 
   it("renders list of resources", () => {
     let items = twoResourceView().resources.map((res: Resource) => {
-      res.buildHistory[0].error = "error!"
+      let history = res.buildHistory ?? []
+      history[0].error = "error!"
       return new SidebarItem(res)
     })
     const tree = renderer

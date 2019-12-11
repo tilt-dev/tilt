@@ -2,9 +2,11 @@ import React from "react"
 import AlertPane from "./AlertPane"
 import renderer from "react-test-renderer"
 import { oneResourceUnrecognizedError } from "./testdata"
-import { Resource, TriggerMode } from "./types"
+import { TriggerMode } from "./types"
 import PathBuilder from "./PathBuilder"
 import { mount } from "enzyme"
+
+type Resource = Proto.webviewResource
 
 let pb = new PathBuilder("localhost", "")
 beforeEach(() => {
@@ -34,7 +36,6 @@ it("renders one container start error", () => {
     {
       log: "laa dee daa I'm not an error\nI'm serious",
       finishTime: ts,
-      error: null,
     },
   ]
   if (!resource.k8sResourceInfo) throw new Error("Missing k8s info")
@@ -101,7 +102,6 @@ it("shows that a container has restarted", () => {
     {
       log: "laa dee daa I'm not an error\nseriously",
       finishTime: ts,
-      error: null,
     },
   ]
   if (!resource.k8sResourceInfo) throw new Error("missing k8s info")
@@ -126,7 +126,6 @@ it("shows that a crash rebuild has occurred", () => {
     {
       log: "laa dee daa I'm not an error\nseriously",
       finishTime: ts,
-      error: null,
       isCrashRebuild: true,
     },
   ]
@@ -153,7 +152,6 @@ it("renders multiple lines of a crash log", () => {
     {
       log: "laa dee daa I'm not an error\nseriously",
       finishTime: ts,
-      error: null,
       isCrashRebuild: true,
     },
   ]
@@ -179,7 +177,6 @@ it("renders warnings", () => {
     {
       log: "laa dee daa I'm not an error\nseriously",
       finishTime: ts,
-      error: null,
       isCrashRebuild: true,
       warnings: ["Hi I'm a warning"],
     },
@@ -217,7 +214,6 @@ function fillResourceFields(): Resource {
     combinedLog: "",
     buildHistory: [],
     crashLog: "",
-    currentBuild: 0,
     directoriesWatched: [],
     endpoints: [],
     podID: "",
