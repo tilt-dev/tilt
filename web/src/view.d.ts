@@ -68,7 +68,6 @@ declare namespace Proto {
     showBuildStatus?: boolean;
     combinedLog?: string;
     crashLog?: string;
-    alerts?: webviewAlert[];
     facets?: webviewFacet[];
     queued?: boolean;
   }
@@ -114,12 +113,5 @@ declare namespace Proto {
     finishTime?: string;
     log?: string;
     isCrashRebuild?: boolean;
-  }
-  export interface webviewAlert {
-    alertType?: string;
-    header?: string;
-    message?: string;
-    timestamp?: string;
-    resourceName?: string;
   }
 }

@@ -59,27 +59,6 @@
     }
   },
   "definitions": {
-    "webviewAlert": {
-      "type": "object",
-      "properties": {
-        "alert_type": {
-          "type": "string"
-        },
-        "header": {
-          "type": "string"
-        },
-        "message": {
-          "type": "string"
-        },
-        "timestamp": {
-          "type": "string",
-          "title": "TODO(dmiller): this should be a timestamp, but sometimes incorrectly formatted times get set here\nlike when there's a Pod that has PodStatusError.\nWe should figure out how those times are being set, and fix them to parse as protobuf.Timestamp\ncorrectly"
-        },
-        "resource_name": {
-          "type": "string"
-        }
-      }
-    },
     "webviewBuildRecord": {
       "type": "object",
       "properties": {
@@ -314,12 +293,6 @@
         },
         "crash_log": {
           "type": "string"
-        },
-        "alerts": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/webviewAlert"
-          }
         },
         "facets": {
           "type": "array",
