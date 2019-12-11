@@ -221,20 +221,6 @@ func (tcf *tcFixture) teardown() {
 	}
 }
 
-// func (tcf *tcFixture) fakeSuccessExecer(ctx context.Context, name string, arg ...string) *exec.Cmd {
-// 	cmd := exec.CommandContext(ctx, "./testscript.sh")
-// 	tcf.cmd = cmd
-
-// 	return cmd
-// }
-
-// func (tcf *tcFixture) fakeFailExecer(ctx context.Context, name string, arg ...string) *exec.Cmd {
-// 	cmd := exec.CommandContext(ctx, "nonsense")
-// 	tcf.cmd = cmd
-
-// 	return cmd
-// }
-
 func (tcf *tcFixture) getActions() []store.Action {
 	return tcf.st.Actions
 }
