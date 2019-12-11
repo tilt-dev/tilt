@@ -5,6 +5,11 @@ declare namespace Proto {
   export interface webviewView {
     log?: string;
     resources?: webviewResource[];
+    /**
+     * We used to have a setting that allowed users to dynamically
+     * prepend timestamps in logs.
+     */
+    DEPRECATEDLogTimestamps?: boolean;
     featureFlags?: object;
     needsAnalyticsNudge?: boolean;
     runningTiltBuild?: webviewTiltBuild;
@@ -88,6 +93,7 @@ declare namespace Proto {
     podStatusMessage?: string;
     allContainersReady?: boolean;
     podRestarts?: number;
+    podLog?: string;
   }
   export interface webviewFacet {
     name?: string;
@@ -97,6 +103,7 @@ declare namespace Proto {
     configPaths?: string[];
     containerStatus?: string;
     containerID?: string;
+    log?: string;
     startTime?: string;
   }
   export interface webviewBuildRecord {
@@ -105,6 +112,7 @@ declare namespace Proto {
     warnings?: string[];
     startTime?: string;
     finishTime?: string;
+    log?: string;
     isCrashRebuild?: boolean;
   }
   export interface webviewAlert {

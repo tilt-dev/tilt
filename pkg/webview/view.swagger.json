@@ -106,6 +106,9 @@
           "type": "string",
           "format": "date-time"
         },
+        "log": {
+          "type": "string"
+        },
         "is_crash_rebuild": {
           "type": "boolean",
           "format": "boolean"
@@ -125,6 +128,9 @@
           "type": "string"
         },
         "containerID": {
+          "type": "string"
+        },
+        "log": {
           "type": "string"
         },
         "start_time": {
@@ -169,6 +175,9 @@
         "pod_restarts": {
           "type": "integer",
           "format": "int32"
+        },
+        "pod_log": {
+          "type": "string"
         }
       }
     },
@@ -405,6 +414,11 @@
           "items": {
             "$ref": "#/definitions/webviewResource"
           }
+        },
+        "DEPRECATED_log_timestamps": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "We used to have a setting that allowed users to dynamically\nprepend timestamps in logs."
         },
         "feature_flags": {
           "type": "object",

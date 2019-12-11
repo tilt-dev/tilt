@@ -14,8 +14,7 @@ message BuildRecord {
   repeated string warnings = 3;
   google.protobuf.Timestamp start_time = 4;
   google.protobuf.Timestamp finish_time  = 5;
-  reserved "log";
-  reserved 6;
+  string log = 6;
   bool is_crash_rebuild = 7;
 }
 
@@ -27,18 +26,14 @@ message K8sResourceInfo {
   string pod_status_message = 5;
   bool all_containers_ready = 6;
   int32 pod_restarts = 7;
-
-
-  reserved "pod_log";
-  reserved 8;
+  string pod_log = 8;
 }
 
 message DCResourceInfo {
   repeated string config_paths = 1;
   string container_status = 2;
   string containerID = 3;
-  reserved "log";
-  reserved 4;
+  string log = 4;
   google.protobuf.Timestamp start_time = 5;
 }
 
@@ -110,8 +105,7 @@ message View {
 
   // We used to have a setting that allowed users to dynamically
   // prepend timestamps in logs.
-  reserved "log_timestamps";
-  reserved 3;
+  bool DEPRECATED_log_timestamps = 3;
 
   map<string, bool> feature_flags = 4;
 
