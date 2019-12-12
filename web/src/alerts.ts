@@ -54,8 +54,8 @@ function buildFailed(resource: Resource) {
 
 //This function determines what kind of alert should be made based on the functions defined
 //above
-function getResourceAlerts(r: Resource): Array<Alert> {
-  let result: Array<Alert> = []
+function getResourceAlerts(r: Resource): Alert[] {
+  let result: Alert[] = []
 
   if (r.k8sResourceInfo) {
     // K8s alerts
@@ -160,9 +160,9 @@ function buildFailedAlert(resource: Resource): Alert {
     resourceName: resource.name ?? "",
   }
 }
-function warningsAlerts(resource: Resource): Array<Alert> {
-  let warnings: Array<string> = []
-  let alertArray: Array<Alert> = []
+function warningsAlerts(resource: Resource): Alert[] {
+  let warnings: string[] = []
+  let alertArray: Alert[] = []
   let history = resource.buildHistory ?? []
 
   if (history.length) {

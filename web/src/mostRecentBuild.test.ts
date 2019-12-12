@@ -2,7 +2,7 @@ import mostRecentBuildToDisplay, { ResourceWithBuilds } from "./mostRecentBuild"
 import { zeroTime } from "./time"
 
 it("returns null if there are no builds", () => {
-  const resources: Array<ResourceWithBuilds> = []
+  const resources: ResourceWithBuilds[] = []
 
   let actual = mostRecentBuildToDisplay(resources)
   expect(actual).toBeNull()
@@ -38,7 +38,7 @@ it("returns the most recent build if there are no pending builds", () => {
     pendingBuildEdits: null,
     pendingBuildSince: zeroTime,
   }
-  const resources: Array<ResourceWithBuilds> = [resource]
+  const resources: ResourceWithBuilds[] = [resource]
 
   let actual = mostRecentBuildToDisplay(resources)
   expect(actual).toEqual(expectedTuple)
@@ -72,7 +72,7 @@ it("returns null if there are no pending builds and the most recent build has no
     pendingBuildEdits: null,
     pendingBuildSince: zeroTime,
   }
-  const resources: Array<ResourceWithBuilds> = [resource]
+  const resources: ResourceWithBuilds[] = [resource]
 
   let actual = mostRecentBuildToDisplay(resources)
   expect(actual).toBeNull()

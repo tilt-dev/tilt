@@ -21,7 +21,7 @@ describe("getResourceAlerts", () => {
     rInfo.podStatusMessage = "I'm a pod in Error"
 
     let actual = getResourceAlerts(r)
-    let expectedAlerts: Array<Alert> = [
+    let expectedAlerts: Alert[] = [
       {
         alertType: PodStatusErrorType,
         msg: "I'm a pod in Error",
@@ -42,7 +42,7 @@ describe("getResourceAlerts", () => {
       delete a.dismissHandler
       return a
     })
-    let expectedAlerts: Array<Alert> = [
+    let expectedAlerts: Alert[] = [
       {
         alertType: PodRestartErrorType,
         msg: "",
@@ -67,7 +67,7 @@ describe("getResourceAlerts", () => {
       },
     ]
     let actual = getResourceAlerts(r)
-    let expectedAlerts: Array<Alert> = [
+    let expectedAlerts: Alert[] = [
       {
         alertType: BuildFailedErrorType,
         msg: "Build error log",
@@ -97,7 +97,7 @@ describe("getResourceAlerts", () => {
     rInfo.podCreationTime = "10:00AM"
 
     let actual = getResourceAlerts(r)
-    let expectedAlerts: Array<Alert> = [
+    let expectedAlerts: Alert[] = [
       {
         alertType: CrashRebuildErrorType,
         msg: "Hello I am a crash log",
@@ -123,7 +123,7 @@ describe("getResourceAlerts", () => {
       },
     ]
     let actual = getResourceAlerts(r)
-    let expectedAlerts: Array<Alert> = [
+    let expectedAlerts: Alert[] = [
       {
         alertType: WarningErrorType,
         msg: "Hi i'm a warning",
@@ -158,7 +158,7 @@ describe("getResourceAlerts", () => {
       delete a.dismissHandler
       return a
     })
-    let expectedAlerts: Array<Alert> = [
+    let expectedAlerts: Alert[] = [
       {
         alertType: PodRestartErrorType,
         msg: "I'm a pod that crashed",
@@ -190,7 +190,7 @@ describe("getResourceAlerts", () => {
       },
     ]
     let actual = getResourceAlerts(r)
-    let expectedAlerts: Array<Alert> = [
+    let expectedAlerts: Alert[] = [
       {
         alertType: CrashRebuildErrorType,
         msg: "Hello I am a crash log",
@@ -243,7 +243,7 @@ it("DC Resource: should show a warning alert using the first build history ", ()
     },
   ]
   let actual = getResourceAlerts(r)
-  let expectedAlerts: Array<Alert> = [
+  let expectedAlerts: Alert[] = [
     {
       alertType: WarningErrorType,
       msg: "Hi i'm a warning",
@@ -270,7 +270,7 @@ it("DC resource: should show a warning alert using the first build history ", ()
     },
   ]
   let actual = getResourceAlerts(r)
-  let expectedAlerts: Array<Alert> = [
+  let expectedAlerts: Alert[] = [
     {
       alertType: WarningErrorType,
       msg: "Hi i'm a warning",
@@ -296,7 +296,7 @@ it("DC Resource has build failed alert using first build history info ", () => {
     },
   ]
   let actual = getResourceAlerts(r)
-  let expectedAlerts: Array<Alert> = [
+  let expectedAlerts: Alert[] = [
     {
       alertType: BuildFailedErrorType,
       msg: "Hi you're build failed :'(",
@@ -338,7 +338,7 @@ it("renders a build error for both a K8s resource and DC resource ", () => {
   let k8sAlerts = getResourceAlerts(k8sresource)
 
   let actual = dcAlerts.concat(k8sAlerts)
-  let expectedAlerts: Array<Alert> = [
+  let expectedAlerts: Alert[] = [
     {
       alertType: BuildFailedErrorType,
       msg: "Hi your build failed :'(",
