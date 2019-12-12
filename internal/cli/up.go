@@ -50,8 +50,18 @@ type upCmd struct {
 
 func (c *upCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "up [<resource_name1>] [<resource_name2>] [...]",
-		Short: "stand up one or more resources (if no resource names specified, stand up all known resources specified in Tiltfile)",
+		Use:   "up [<Tiltfile args>]",
+		Short: "start Tilt with the given Tiltfile args",
+		Long: `
+Starts Tilt and runs services defined in the Tiltfile.
+
+By default:
+1) Tiltfile args are interpreted as the list of services to start, e.g. tilt up frontend backend.
+2) Running with no args starts all services defined in the Tiltfile
+
+This default behavior does not apply if the Tiltfile uses config.parse or config.set_enabled_resources.
+In that case, see (hopefully) comments in your Tiltfile and/or https://tilt.dev/user_config.html
+`,
 	}
 
 	cmd.Flags().BoolVar(&c.watch, "watch", true, "If true, services will be automatically rebuilt and redeployed when files change. Otherwise, each service will be started once.")

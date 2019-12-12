@@ -44,18 +44,25 @@ func (cc *ConfigsController) DisableForTesting(disabled bool) {
 // 2) There are pending file changes, and
 // 3) Those files have changed since the last Tiltfile build
 //    (so that we don't keep re-running a failed build)
+// 4) OR the command-line args have changed since the last Tiltfile build
 func (cc *ConfigsController) shouldBuild(state store.EngineState) bool {
 	isRunning := !state.TiltfileState.CurrentBuild.StartTime.IsZero()
 	if isRunning {
 		return false
 	}
 
+	lastStartTime := state.TiltfileState.LastBuild().StartTime
+
 	for _, changeTime := range state.PendingConfigFileChanges {
-		lastStartTime := state.TiltfileState.LastBuild().StartTime
 		if changeTime.After(lastStartTime) {
 			return true
 		}
 	}
+
+	if state.UserConfigState.ArgsChangeTime.After(lastStartTime) {
+		return true
+	}
+
 	return false
 }
 
@@ -74,7 +81,7 @@ func logTiltfileChanges(ctx context.Context, filesChanged map[string]bool) {
 }
 
 func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
-	filesChanged map[string]bool, tiltfilePath string, loadCount int) {
+	filesChanged map[string]bool, argsChanged bool, tiltfilePath string, loadCount int) {
 
 	startTime := cc.clock()
 	st.Dispatch(ConfigsReloadStartedAction{FilesChanged: filesChanged, StartTime: startTime})
@@ -89,6 +96,9 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 		logTiltfileChanges(ctx, filesChanged)
 	}
 	userConfigState := state.UserConfigState
+	if argsChanged {
+		logger.Get(ctx).Infof("Tiltfile args changed to: %v", userConfigState.Args)
+	}
 	st.RUnlockState()
 
 	tlr := cc.tfl.Load(ctx, tiltfilePath, userConfigState)
@@ -145,6 +155,8 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 		filesChanged[k] = true
 	}
 
+	argsChanged := state.UserConfigState.ArgsChangeTime.After(state.TiltfileState.LastBuild().StartTime)
+
 	tiltfilePath, err := state.RelativeTiltfilePath()
 	if err != nil {
 		st.Dispatch(store.NewErrorAction(err))
@@ -155,7 +167,7 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 	cc.loadCount++
 
 	loadCount := cc.loadCount
-	go cc.loadTiltfile(ctx, st, filesChanged, tiltfilePath, loadCount)
+	go cc.loadTiltfile(ctx, st, filesChanged, argsChanged, tiltfilePath, loadCount)
 }
 
 func requiresDocker(tlr tiltfile.TiltfileLoadResult) bool {
