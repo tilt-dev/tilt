@@ -2,7 +2,7 @@ import { isZeroTime } from "./time"
 import { StatusItem } from "./Statusbar"
 import { podStatusIsCrash, podStatusIsError } from "./constants"
 
-const combinedStatusMessage = (resources: Array<StatusItem>): string => {
+const combinedStatusMessage = (resources: StatusItem[]): string => {
   let buildingResources = resources.filter(
     r => !isZeroTime(r.currentBuild.startTime)
   )
