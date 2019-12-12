@@ -35,13 +35,13 @@ type EngineState struct {
 	CurrentlyBuilding map[model.ManifestName]bool
 	WatchFiles        bool
 
+	// For synchronizing BuildController -- wait until engine records all builds started
+	// so far before starting another build
+	StartedBuildCount int
+
 	// How many builds have been completed (pass or fail) since starting tilt
 	CompletedBuildCount int
 
-	// For synchronizing BuildController so that it's only
-	// doing one action at a time. In the future, we might
-	// want to allow it to parallelize builds better, but that
-	// would require better tools for triaging output to different streams.
 	BuildControllerSlotsAvailable int
 
 	FatalError error

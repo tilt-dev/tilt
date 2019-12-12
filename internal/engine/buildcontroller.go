@@ -17,7 +17,7 @@ import (
 
 type BuildController struct {
 	b                  BuildAndDeployer
-	lastActionCount    int
+	buildsStartedCount int // used to synchronize with state
 	disabledForTesting bool
 }
 
@@ -33,14 +33,20 @@ type buildEntry struct {
 
 func NewBuildController(b BuildAndDeployer) *BuildController {
 	return &BuildController{
-		b:               b,
-		lastActionCount: -1,
+		b:                  b,
+		buildsStartedCount: 0,
 	}
 }
 
 func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buildEntry, bool) {
 	state := st.RLockState()
 	defer st.RUnlockState()
+
+	// Don't start the next build until the previous action has been recorded,
+	// so that we don't accidentally repeat the same build.
+	if c.buildsStartedCount != state.StartedBuildCount {
+		return buildEntry{}, false
+	}
 
 	// no build slots available
 	if state.BuildControllerSlotsAvailable < 1 {
@@ -52,7 +58,7 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 		return buildEntry{}, false
 	}
 
-	c.lastActionCount += 1 // do we still need this?
+	c.buildsStartedCount += 1
 	ms := mt.State
 	manifest := mt.Manifest
 	firstBuild := !ms.StartedFirstBuild()
@@ -68,7 +74,7 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 		buildReason:   buildReason,
 		buildStateSet: buildStateSet,
 		filesChanged:  append(ms.ConfigFilesThatCausedChange, buildStateSet.FilesChanged()...),
-		buildCount:    c.lastActionCount,
+		buildCount:    c.buildsStartedCount,
 	}, true
 }
 
@@ -85,6 +91,14 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 		return
 	}
 
+	st.Dispatch(buildcontrol.BuildStartedAction{
+		ManifestName: entry.name,
+		StartTime:    time.Now(),
+		FilesChanged: entry.filesChanged,
+		Reason:       entry.buildReason,
+		SpanID:       SpanIDForBuildLog(entry.buildCount),
+	})
+
 	go func() {
 		// Send the logs to both the EngineState and the normal log stream.
 		actionWriter := BuildLogActionWriter{
@@ -94,23 +108,11 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 		}
 		ctx := logger.CtxWithLogHandler(ctx, actionWriter)
 
-		st.Dispatch(buildcontrol.BuildStartedAction{
-			ManifestName: entry.name,
-			StartTime:    time.Now(),
-			FilesChanged: entry.filesChanged,
-			Reason:       entry.buildReason,
-			SpanID:       SpanIDForBuildLog(entry.buildCount),
-		})
 		c.logBuildEntry(ctx, entry)
 
 		result, err := c.buildAndDeploy(ctx, st, entry)
 		st.Dispatch(buildcontrol.NewBuildCompleteAction(entry.name, result, err))
 	}()
-
-	// ~~ note -- possible race condition where we don't process the BuildStarted action in time
-	// and come back here and try to restart the same build
-	// this is a shitty way to mitigate it but will be ok for now?
-	time.Sleep(100 * time.Millisecond)
 }
 
 func (c *BuildController) buildAndDeploy(ctx context.Context, st store.RStore, entry buildEntry) (store.BuildResultSet, error) {
