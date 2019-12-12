@@ -398,25 +398,27 @@ it("renders logs with leading whitespace and ANSI codes", () => {
 it("renders highlighted lines", () => {
   const log = "hello\nworld\nfoo\nbar"
   const highlight = {
-    beginningLogID: "logLine2",
-    endingLogID: "logLine3",
+    beginningLogID: "2",
+    endingLogID: "3",
     text: "foo\nbar",
   }
-  const tree = renderer
-    .create(
-      <LogPane
-        logLines={logLinesFromString(log)}
-        showManifestPrefix={false}
-        handleSetHighlight={fakeHandleSetHighlight}
-        handleClearHighlight={fakeHandleClearHighlight}
-        highlight={highlight}
-        modalIsOpen={false}
-        isSnapshot={false}
-      />
-    )
-    .toJSON()
+  let el = (
+    <LogPane
+      logLines={logLinesFromString(log)}
+      showManifestPrefix={false}
+      handleSetHighlight={fakeHandleSetHighlight}
+      handleClearHighlight={fakeHandleClearHighlight}
+      highlight={highlight}
+      modalIsOpen={false}
+      isSnapshot={false}
+    />
+  )
+  const tree = renderer.create(el).toJSON()
 
   expect(tree).toMatchSnapshot()
+
+  let component = mount(el)
+  expect(component.find(".logLine.highlighted")).toHaveLength(2)
 })
 
 it("scrolls to highlighted lines in snapshot", () => {
@@ -424,8 +426,8 @@ it("scrolls to highlighted lines in snapshot", () => {
   Element.prototype.scrollIntoView = fakeScrollIntoView
 
   const highlight = {
-    beginningLogID: "logLine2",
-    endingLogID: "logLine3",
+    beginningLogID: "2",
+    endingLogID: "3",
     text: "foo\nbar",
   }
   const wrapper = mount<LogPane>(
@@ -443,6 +445,9 @@ it("scrolls to highlighted lines in snapshot", () => {
   expect(wrapper.instance().highlightRef.current).not.toBeNull()
   expect(fakeScrollIntoView.mock.instances).toHaveLength(1)
   expect(fakeScrollIntoView.mock.instances[0]).toBeInstanceOf(HTMLSpanElement)
+  expect(fakeScrollIntoView.mock.instances[0].innerHTML).toContain(
+    '[Tiltfile] Running `"whoami"`'
+  )
   expect(fakeScrollIntoView).toBeCalledTimes(1)
 })
 
@@ -451,8 +456,8 @@ it("does not scroll to highlighted lines if not snapshot", () => {
   Element.prototype.scrollIntoView = fakeScrollIntoView
 
   const highlight = {
-    beginningLogID: "logLine2",
-    endingLogID: "logLine3",
+    beginningLogID: "2",
+    endingLogID: "3",
     text: "foo\nbar",
   }
   const wrapper = mount<LogPane>(
@@ -481,8 +486,8 @@ it("doesn't set selection event handler if snapshot", () => {
   globalAny.addEventListener = fakeAddEventListener
 
   const highlight = {
-    beginningLogID: "logLine2",
-    endingLogID: "logLine3",
+    beginningLogID: "2",
+    endingLogID: "3",
     text: "foo\nbar",
   }
   const wrapper = mount<LogPane>(
