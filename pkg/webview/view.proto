@@ -29,7 +29,10 @@ message K8sResourceInfo {
   string pod_status_message = 5;
   bool all_containers_ready = 6;
   int32 pod_restarts = 7;
-  string pod_log = 8;
+
+  // pod logs are now in the log store
+  reserved "pod_log";
+  reserved 8;
 
   // The span id for this pod's logs in the main logstore
   string span_id = 9;
@@ -39,7 +42,11 @@ message DCResourceInfo {
   repeated string config_paths = 1;
   string container_status = 2;
   string containerID = 3;
-  string log = 4;
+
+  // service logs are now in the log store
+  reserved "log";
+  reserved 4;
+
   google.protobuf.Timestamp start_time = 5;
 
   // The span id for this docker-compose service's logs in the main logstore
@@ -78,7 +85,11 @@ message Resource {
   string runtime_status = 18;
   bool is_tiltfile = 19;
   bool show_build_status = 20;
-  string combined_log = 21;
+
+  // Resource logs are now stored in the log store.
+  reserved "combined_log";
+  reserved 21;
+
   string crash_log = 22;
 
   // Alerts are currently client-side only, and not

@@ -14,7 +14,7 @@ import (
 	proto_webview "github.com/windmilleng/tilt/pkg/webview"
 )
 
-func NewProtoDCResourceInfo(configPaths []string, status dockercompose.Status, cID container.ID, log model.Log, startTime time.Time) (*proto_webview.DCResourceInfo, error) {
+func NewProtoDCResourceInfo(configPaths []string, status dockercompose.Status, cID container.ID, startTime time.Time) (*proto_webview.DCResourceInfo, error) {
 	start, err := timeToProto(startTime)
 	if err != nil {
 		return nil, err
@@ -23,7 +23,6 @@ func NewProtoDCResourceInfo(configPaths []string, status dockercompose.Status, c
 		ConfigPaths:     configPaths,
 		ContainerStatus: string(status),
 		ContainerID:     string(cID),
-		Log:             log.String(),
 		StartTime:       start,
 	}, nil
 }

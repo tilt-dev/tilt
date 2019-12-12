@@ -66,7 +66,6 @@ declare namespace Proto {
     runtimeStatus?: string;
     isTiltfile?: boolean;
     showBuildStatus?: boolean;
-    combinedLog?: string;
     crashLog?: string;
     facets?: webviewFacet[];
     queued?: boolean;
@@ -93,7 +92,6 @@ declare namespace Proto {
     podStatusMessage?: string;
     allContainersReady?: boolean;
     podRestarts?: number;
-    podLog?: string;
     spanId?: string;
   }
   export interface webviewFacet {
@@ -104,7 +102,6 @@ declare namespace Proto {
     configPaths?: string[];
     containerStatus?: string;
     containerID?: string;
-    log?: string;
     startTime?: string;
     spanId?: string;
   }

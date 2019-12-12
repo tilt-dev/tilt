@@ -360,7 +360,6 @@ it("renders a build error for both a K8s resource and DC resource ", () => {
 function k8sResource(): Resource {
   return {
     name: "snack",
-    combinedLog: "",
     buildHistory: [],
     crashLog: "",
     directoriesWatched: [],
@@ -379,7 +378,6 @@ function k8sResource(): Resource {
       podStatus: "",
       podStatusMessage: "",
       podRestarts: 0,
-      podLog: "",
     },
     runtimeStatus: "",
     triggerMode: TriggerMode.TriggerModeAuto,
@@ -407,7 +405,6 @@ function dcResource(): Resource {
     currentBuild: {
       startTime: "0001-01-01T00:00:00Z",
       finishTime: "0001-01-01T00:00:00Z",
-      log: "",
       isCrashRebuild: false,
     },
     pendingBuildReason: 0,
@@ -420,12 +417,10 @@ function dcResource(): Resource {
       configPaths: [""],
       containerStatus: "OK",
       containerID: "",
-      log: "",
       startTime: "2019-08-07T11:43:36.900841-04:00",
     },
     runtimeStatus: "ok",
     isTiltfile: false,
-    combinedLog: "",
     crashLog: "",
     facets: [],
     queued: false,
