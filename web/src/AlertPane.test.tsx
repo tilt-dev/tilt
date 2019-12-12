@@ -211,7 +211,6 @@ it("renders one container unrecognized error", () => {
 function fillResourceFields(): Resource {
   return {
     name: "foo",
-    combinedLog: "",
     buildHistory: [],
     crashLog: "",
     directoriesWatched: [],
@@ -230,7 +229,6 @@ function fillResourceFields(): Resource {
       podStatus: "",
       podStatusMessage: "",
       podRestarts: 0,
-      podLog: "",
     },
     runtimeStatus: "",
     triggerMode: TriggerMode.TriggerModeAuto,

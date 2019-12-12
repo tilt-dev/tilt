@@ -72,7 +72,6 @@ class HUD extends Component<HudProps, HudState> {
     this.state = {
       view: {
         resources: [],
-        log: "",
         needsAnalyticsNudge: false,
         fatalError: undefined,
         runningTiltBuild: {
@@ -423,18 +422,17 @@ class HUD extends Component<HudProps, HudState> {
         props.match.params && props.match.params.name
           ? props.match.params.name
           : ""
-      let logLines: LogLine[] = []
-      if (name) {
-        if (this.state.logStore) {
-          logLines = this.state.logStore.manifestLog(name)
-        } else if (view) {
-          let r = resources.find(r => r.name === name)
-          if (r === undefined) {
-            return <Route component={NotFound} />
-          }
-          logLines = logLinesFromString(r?.combinedLog ?? "", name)
-        }
+
+      let r = resources.find(r => r.name === name)
+      if (r === undefined) {
+        return <Route component={NotFound} />
       }
+
+      let logLines: LogLine[] = []
+      if (name && this.state.logStore) {
+        logLines = this.state.logStore.manifestLog(name)
+      }
+
       return (
         <LogPane
           logLines={logLines}

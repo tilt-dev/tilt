@@ -113,9 +113,6 @@
         "containerID": {
           "type": "string"
         },
-        "log": {
-          "type": "string"
-        },
         "start_time": {
           "type": "string",
           "format": "date-time"
@@ -162,9 +159,6 @@
         "pod_restarts": {
           "type": "integer",
           "format": "int32"
-        },
-        "pod_log": {
-          "type": "string"
         },
         "span_id": {
           "type": "string",
@@ -312,9 +306,6 @@
         "show_build_status": {
           "type": "boolean",
           "format": "boolean"
-        },
-        "combined_log": {
-          "type": "string"
         },
         "crash_log": {
           "type": "string"
