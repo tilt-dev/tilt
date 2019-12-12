@@ -74,4 +74,36 @@ describe("LogStore", () => {
 
     expect(logLinesToString(logs.manifestLog("fe"), false)).toEqual("line2\n")
   })
+
+  it("handles multi-span manifest logs", () => {
+    let logs = new LogStore()
+    logs.append({
+      spans: {
+        "pod-a": { manifestName: "fe" },
+        "pod-b": { manifestName: "fe" },
+      },
+      segments: [
+        { spanId: "pod-a", text: "pod-a: line1\n", time: now() },
+        { spanId: "pod-b", text: "pod-b: line2\n", time: now() },
+        { spanId: "pod-a", text: "pod-a: line3\n", time: now() },
+      ],
+    })
+
+    expect(logLinesToString(logs.manifestLog("fe"), false)).toEqual(
+      "pod-a: line1\npod-b: line2\npod-a: line3\n"
+    )
+    expect(logLinesToString(logs.spanLog(["pod-a", "pod-b"]), false)).toEqual(
+      "pod-a: line1\npod-b: line2\npod-a: line3\n"
+    )
+    expect(logLinesToString(logs.spanLog(["pod-a"]), false)).toEqual(
+      "pod-a: line1\npod-a: line3\n"
+    )
+    expect(logLinesToString(logs.spanLog(["pod-b"]), false)).toEqual(
+      "pod-b: line2\n"
+    )
+    expect(logLinesToString(logs.spanLog(["pod-b"]), false)).toEqual(
+      "pod-b: line2\n"
+    )
+    expect(logLinesToString(logs.spanLog(["pod-c"]), false)).toEqual("")
+  })
 })

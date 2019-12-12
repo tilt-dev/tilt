@@ -84,7 +84,19 @@ class LogStore {
   }
 
   allLog(): LogLine[] {
-    return this.manifestLog("")
+    return this.logHelper(this.spans)
+  }
+
+  spanLog(spanIds: string[]): LogLine[] {
+    let spans: { [key: string]: LogSpan } = {}
+    spanIds.forEach(spanId => {
+      let span = this.spans[spanId]
+      if (span) {
+        spans[spanId] = span
+      }
+    })
+
+    return this.logHelper(spans)
   }
 
   spansForManifest(mn: string): { [key: string]: LogSpan } {
@@ -99,10 +111,13 @@ class LogStore {
   }
 
   manifestLog(mn: string): LogLine[] {
+    let spans = this.spansForManifest(mn)
+    return this.logHelper(spans)
+  }
+
+  logHelper(spansToLog: { [key: string]: LogSpan }): LogLine[] {
     let result: LogLine[] = []
     let lastLineCompleted = false
-    let allLogs = mn === ""
-    let filteredLogs = mn !== ""
 
     // We want to print the log line-by-line, but we don't actually store the logs
     // line-by-line. We store them as segments.
@@ -118,12 +133,13 @@ class LogStore {
     // for normal inputs should be fine.
     let startIndex = 0
     let lastIndex = this.segments.length - 1
-    if (filteredLogs) {
-      let spans = this.spansForManifest(mn)
+    let isFilteredLog =
+      Object.keys(spansToLog).length != Object.keys(this.spans).length
+    if (isFilteredLog) {
       let earliestStartIndex = -1
       let latestEndIndex = -1
-      for (let spanId in spans) {
-        let span = spans[spanId]
+      for (let spanId in spansToLog) {
+        let span = spansToLog[spanId]
         if (
           earliestStartIndex == -1 ||
           span.firstSegmentIndex < earliestStartIndex
@@ -152,13 +168,8 @@ class LogStore {
       }
 
       let spanId = segment.spanId
-      let span = this.spans[spanId]
+      let span = spansToLog[spanId]
       if (!span) {
-        // Something has gone terribly wrong
-        continue
-      }
-
-      if (filteredLogs && mn != span.manifestName) {
         continue
       }
 
