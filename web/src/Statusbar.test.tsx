@@ -4,7 +4,8 @@ import Statusbar, { StatusItem } from "./Statusbar"
 import { mount } from "enzyme"
 import { twoResourceView } from "./testdata"
 import { MemoryRouter } from "react-router"
-import { TiltBuild } from "./types"
+
+type TiltBuild = Proto.webviewTiltBuild
 
 describe("StatusBar", () => {
   let runningVersion: TiltBuild = {

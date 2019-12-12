@@ -1,5 +1,6 @@
-import { Build } from "./types"
 import { isZeroTime } from "./time"
+
+type Build = Proto.webviewBuildRecord
 
 export type ResourceWithBuilds = {
   name: string
@@ -29,7 +30,7 @@ type BuildTuple = {
 const makePendingBuild = (r: ResourceWithBuilds): BuildTuple => {
   return {
     name: r.name,
-    since: r.pendingBuildSince,
+    since: r.pendingBuildSince ?? "",
     edits: r.pendingBuildEdits || [],
   }
 }
@@ -37,7 +38,7 @@ const makePendingBuild = (r: ResourceWithBuilds): BuildTuple => {
 const makeBuildHistory = (r: ResourceWithBuilds, b: Build): BuildTuple => {
   return {
     name: r.name,
-    since: b.startTime,
+    since: b.startTime ?? "",
     edits: b.edits || [],
   }
 }

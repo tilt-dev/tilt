@@ -2,7 +2,8 @@ import React, { PureComponent } from "react"
 import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
 import AnsiLine from "./AnsiLine"
 import "./FacetsPane.scss"
-import { Resource } from "./types"
+
+type Resource = Proto.webviewResource
 
 type FacetsProps = {
   resource: Resource
@@ -41,7 +42,7 @@ class FacetsPane extends PureComponent<FacetsProps> {
               <h3>{facet.name}</h3>
             </div>
           </header>
-          <section>{logToLines(facet.value)}</section>
+          <section>{logToLines(facet.value ?? "")}</section>
         </li>
       )
     })

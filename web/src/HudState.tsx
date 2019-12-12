@@ -1,13 +1,8 @@
-import {
-  WebView,
-  ShowFatalErrorModal,
-  SnapshotHighlight,
-  SocketState,
-} from "./types"
+import { ShowFatalErrorModal, SnapshotHighlight, SocketState } from "./types"
 import LogStore from "./LogStore"
 
 type HudState = {
-  view: WebView
+  view: Proto.webviewView
   isSidebarClosed: boolean
   snapshotLink: string
   showSnapshotModal: boolean

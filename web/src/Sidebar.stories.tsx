@@ -4,8 +4,9 @@ import Sidebar, { SidebarItem } from "./Sidebar"
 import { oneResourceView, twoResourceView } from "./testdata"
 import PathBuilder from "./PathBuilder"
 import { MemoryRouter } from "react-router"
-import { ResourceView, TriggerMode, Resource } from "./types"
+import { ResourceView, TriggerMode } from "./types"
 
+type Resource = Proto.webviewResource
 let pathBuilder = new PathBuilder("localhost", "/")
 
 function twoItemSidebar() {

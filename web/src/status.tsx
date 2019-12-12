@@ -1,5 +1,7 @@
 import { isZeroTime } from "./time"
-import { Resource, ResourceStatus, RuntimeStatus, TriggerMode } from "./types"
+import { ResourceStatus, RuntimeStatus, TriggerMode } from "./types"
+
+type Resource = Proto.webviewResource
 
 // A combination of runtime status and build status over a resource view.
 // 1) If there's a current or pending build, this is "pending".
@@ -40,7 +42,7 @@ function combinedStatus(res: Resource): ResourceStatus {
     case RuntimeStatus.Ok:
       return ResourceStatus.Healthy
     case RuntimeStatus.NotApplicable:
-      if (res.buildHistory.length > 0) {
+      if (res.buildHistory?.length) {
         return ResourceStatus.Healthy
       } else {
         return ResourceStatus.None

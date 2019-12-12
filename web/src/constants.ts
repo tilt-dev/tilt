@@ -33,11 +33,11 @@ const podStatusErrImgPull = "ErrImagePull"
 const podStatusRunError = "RunContainerError"
 const podStatusStartError = "StartError"
 
-function podStatusIsCrash(status: string) {
+function podStatusIsCrash(status: string | undefined) {
   return status === podStatusError || status === podStatusCrashLoopBackOff
 }
 
-function podStatusIsError(status: string) {
+function podStatusIsError(status: string | undefined) {
   return (
     status === podStatusError ||
     status === podStatusCrashLoopBackOff ||

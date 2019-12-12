@@ -8,7 +8,10 @@ import {
   PodStatusErrorType,
   WarningErrorType,
 } from "./alerts"
-import { Resource, K8sResourceInfo, TriggerMode } from "./types"
+import { TriggerMode } from "./types"
+
+type Resource = Proto.webviewResource
+type K8sResourceInfo = Proto.webviewK8sResourceInfo
 
 describe("getResourceAlerts", () => {
   it("K8Resource: shows that a pod status of error is an alert", () => {
@@ -83,12 +86,10 @@ describe("getResourceAlerts", () => {
       {
         log: "Hello I am a log",
         isCrashRebuild: true,
-        error: null,
       },
       {
         log: "Hello I am a log 2 ",
         isCrashRebuild: true,
-        error: null,
       },
     ]
     let rInfo = r.k8sResourceInfo
@@ -114,7 +115,6 @@ describe("getResourceAlerts", () => {
       {
         log: "Hello I'm a log",
         warnings: ["Hi i'm a warning"],
-        error: null,
         finishTime: "10:00am",
       },
       {
@@ -235,7 +235,6 @@ it("DC Resource: should show a warning alert using the first build history ", ()
     {
       log: "Hello I'm a log",
       warnings: ["Hi i'm a warning"],
-      error: null,
       finishTime: "10:00am",
     },
     {
@@ -263,7 +262,6 @@ it("DC resource: should show a warning alert using the first build history ", ()
     {
       log: "Hello I'm a log",
       warnings: ["Hi i'm a warning"],
-      error: null,
       finishTime: "10:00am",
     },
     {
@@ -365,7 +363,6 @@ function k8sResource(): Resource {
     combinedLog: "",
     buildHistory: [],
     crashLog: "",
-    currentBuild: 0,
     directoriesWatched: [],
     endpoints: [],
     podID: "podID",
@@ -401,9 +398,6 @@ function dcResource(): Resource {
     triggerMode: 0,
     buildHistory: [
       {
-        edits: null,
-        error: null,
-        warnings: null,
         startTime: "2019-08-07T11:43:32.422237-04:00",
         finishTime: "2019-08-07T11:43:37.568626-04:00",
         log: "",
@@ -411,9 +405,6 @@ function dcResource(): Resource {
       },
     ],
     currentBuild: {
-      edits: null,
-      error: null,
-      warnings: null,
       startTime: "0001-01-01T00:00:00Z",
       finishTime: "0001-01-01T00:00:00Z",
       log: "",

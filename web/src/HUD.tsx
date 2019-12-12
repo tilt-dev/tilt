@@ -21,7 +21,6 @@ import {
   ShowFatalErrorModal,
   SnapshotHighlight,
   SocketState,
-  WebView,
 } from "./types"
 import { logLinesFromString } from "./logs"
 import HudState from "./HudState"
@@ -328,6 +327,7 @@ class HUD extends Component<HudProps, HudState> {
           .map(r => numberOfAlerts(r))
           .reduce((sum, current) => sum + current, 0)
       }
+      let isFacetsEnabled = this.getFeatures().isEnabled("facets")
       return (
         <TopBar
           logUrl={name === "" ? this.path("/") : this.path(`/r/${name}`)}
@@ -340,9 +340,7 @@ class HUD extends Component<HudProps, HudState> {
           handleOpenModal={this.handleOpenModal}
           highlight={snapshotHighlight}
           facetsUrl={
-            name !== "" &&
-            this.state.view.featureFlags &&
-            this.state.view.featureFlags["facets"]
+            name !== "" && isFacetsEnabled
               ? this.path(`/r/${name}/facets`)
               : null
           }
@@ -430,7 +428,7 @@ class HUD extends Component<HudProps, HudState> {
         if (this.state.logStore) {
           logLines = this.state.logStore.manifestLog(name)
         } else if (view) {
-          let r = view.resources.find(r => r.name === name)
+          let r = resources.find(r => r.name === name)
           if (r === undefined) {
             return <Route component={NotFound} />
           }
@@ -515,7 +513,7 @@ class HUD extends Component<HudProps, HudState> {
     )
   }
 
-  renderShareSnapshotModal(view: WebView | null) {
+  renderShareSnapshotModal(view: Proto.webviewView | null) {
     let handleClose = () =>
       this.setState({ showSnapshotModal: false, snapshotLink: "" })
     let handleSendSnapshot = () =>
@@ -543,7 +541,7 @@ class HUD extends Component<HudProps, HudState> {
     )
   }
 
-  renderFatalErrorModal(view: WebView | null) {
+  renderFatalErrorModal(view: Proto.webviewView | null) {
     let error = view && view.fatalError
     let handleClose = () =>
       this.setState({ showFatalErrorModal: ShowFatalErrorModal.Hide })
