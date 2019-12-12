@@ -21,8 +21,15 @@ type BuildRecord struct {
 	StartTime  time.Time
 	FinishTime time.Time // IsZero() == true for in-progress builds
 	Reason     BuildReason
-	Log        Log `testdiff:"ignore"`
+
+	// TODO(nick): Delete Log and use SpanID to load
+	// the log from the logstore.
+	Log Log `testdiff:"ignore"`
+
 	BuildTypes []BuildType
+
+	// The lookup key for the logs in the logstore.
+	SpanID LogSpanID
 }
 
 func (bs BuildRecord) Empty() bool {

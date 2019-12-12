@@ -91,6 +91,10 @@
         "is_crash_rebuild": {
           "type": "boolean",
           "format": "boolean"
+        },
+        "span_id": {
+          "type": "string",
+          "description": "The span id for this build record's logs in the main logstore."
         }
       }
     },
@@ -115,6 +119,10 @@
         "start_time": {
           "type": "string",
           "format": "date-time"
+        },
+        "span_id": {
+          "type": "string",
+          "title": "The span id for this docker-compose service's logs in the main logstore"
         }
       }
     },
@@ -157,6 +165,10 @@
         },
         "pod_log": {
           "type": "string"
+        },
+        "span_id": {
+          "type": "string",
+          "title": "The span id for this pod's logs in the main logstore"
         }
       }
     },

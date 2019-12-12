@@ -100,6 +100,7 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 			StartTime:    time.Now(),
 			FilesChanged: entry.filesChanged,
 			Reason:       entry.buildReason,
+			SpanID:       SpanIDForBuildLog(entry.buildCount),
 		})
 		c.logBuildEntry(ctx, entry)
 

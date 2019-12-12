@@ -60,6 +60,7 @@ func ToProtoBuildRecord(br model.BuildRecord) (*proto_webview.BuildRecord, error
 		FinishTime:     finish,
 		Log:            br.Log.String(),
 		IsCrashRebuild: br.Reason.IsCrashOnly(),
+		SpanId:         string(br.SpanID),
 	}, nil
 }
 

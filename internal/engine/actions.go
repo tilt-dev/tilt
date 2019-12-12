@@ -12,6 +12,7 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/token"
 	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/windmilleng/tilt/pkg/model/logstore"
 )
 
 func NewErrorAction(err error) store.ErrorAction {
@@ -69,6 +70,7 @@ type BuildStartedAction struct {
 	StartTime    time.Time
 	FilesChanged []string
 	Reason       model.BuildReason
+	SpanID       logstore.SpanID
 }
 
 func (BuildStartedAction) Action() {}

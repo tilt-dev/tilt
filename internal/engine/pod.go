@@ -127,6 +127,7 @@ func maybeTrackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*s
 			Status:     status,
 			Namespace:  ns,
 			HasSynclet: hasSynclet,
+			SpanID:     runtimelog.SpanIDForPod(podID),
 		}
 		if isCurrentDeploy {
 			// Only attach a new pod to the runtime state if it's from the current deploy;
@@ -150,6 +151,7 @@ func maybeTrackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*s
 			Status:     status,
 			Namespace:  ns,
 			HasSynclet: hasSynclet,
+			SpanID:     runtimelog.SpanIDForPod(podID),
 		}
 		if isCurrentDeploy {
 			// Only attach a new pod to the runtime state if it's from the current deploy;
