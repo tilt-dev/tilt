@@ -16,12 +16,14 @@ class LogSegment {
   spanId: string
   time: string
   text: string
+  level: string
   continuesLine: boolean
 
   constructor(seg: Proto.webviewLogSegment) {
     this.spanId = seg.spanId ?? ""
     this.time = seg.time ?? ""
     this.text = seg.text ?? ""
+    this.level = seg.level ?? "INFO"
     this.continuesLine = false
   }
 
@@ -31,6 +33,10 @@ class LogSegment {
 
   isComplete() {
     return this.text[this.text.length - 1] == "\n"
+  }
+
+  canContinueLine(seg: LogSegment) {
+    return this.level == seg.level && this.spanId == seg.spanId
   }
 }
 
@@ -69,8 +75,11 @@ class LogStore {
       let isStartingNewLine = false
       if (span.lastSegmentIndex == -1) {
         isStartingNewLine = true
-      } else if (this.segments[span.lastSegmentIndex].isComplete()) {
-        isStartingNewLine = true
+      } else {
+        let seg = this.segments[span.lastSegmentIndex]
+        if (seg.isComplete() || !seg.canContinueLine(newSegment)) {
+          isStartingNewLine = true
+        }
       }
 
       if (span.firstSegmentIndex == -1) {
@@ -198,6 +207,10 @@ class LogStore {
         let currentSeg = this.segments[currentIndex]
         if (currentSeg.spanId != spanId) {
           continue
+        }
+
+        if (!currentSeg.canContinueLine(segment)) {
+          break
         }
 
         currentLine.text += currentSeg.text

@@ -39,6 +39,10 @@ type Logger interface {
 	SupportsColor() bool
 }
 
+type LogHandler interface {
+	Write(level Level, bytes []byte) error
+}
+
 type Level int
 
 const (
@@ -98,6 +102,12 @@ func Blue(l Logger) *color.Color   { return getColor(l, color.FgBlue) }
 func Yellow(l Logger) *color.Color { return getColor(l, color.FgYellow) }
 func Green(l Logger) *color.Color  { return getColor(l, color.FgGreen) }
 func Red(l Logger) *color.Color    { return getColor(l, color.FgRed) }
+
+func CtxWithLogHandler(ctx context.Context, handler LogHandler) context.Context {
+	original := Get(ctx)
+	newLogger := NewFuncLogger(original.SupportsColor(), original.Level(), handler.Write)
+	return WithLogger(ctx, newLogger)
+}
 
 // Returns a context containing a logger that forks all of its output
 // to both the parent context's logger and to the given `io.Writer`

@@ -84,7 +84,7 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 	})
 
 	actionWriter := NewTiltfileLogWriter(st, loadCount)
-	ctx = logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), actionWriter))
+	ctx = logger.CtxWithLogHandler(ctx, actionWriter)
 
 	state := st.RLockState()
 	checkpointAtExecStart := state.LogStore.Checkpoint()
