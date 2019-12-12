@@ -1,4 +1,4 @@
-import React, { Component } from "react"
+import React, { Component, PureComponent } from "react"
 import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
 import AnsiLine from "./AnsiLine"
 import "./LogPane.scss"
@@ -33,7 +33,7 @@ type LogLineComponentProps = {
   showManifestPrefix: boolean
 }
 
-class LogLineComponent extends Component<LogLineComponentProps> {
+class LogLineComponent extends PureComponent<LogLineComponentProps> {
   private ref: React.RefObject<HTMLSpanElement> = React.createRef()
 
   scrollIntoView() {
