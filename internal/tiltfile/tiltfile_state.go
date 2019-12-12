@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/windmilleng/tilt/internal/tiltfile/starlarkstruct"
+
 	"github.com/docker/distribution/reference"
 	"github.com/looplab/tarjan"
 	"github.com/pkg/errors"
@@ -157,6 +159,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		analytics.NewExtension(),
 		version.NewExtension(),
 		config.NewExtension(userConfigState),
+		starlarkstruct.NewExtension(),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)

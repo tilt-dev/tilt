@@ -114,3 +114,7 @@
 [[constraint]]
   branch = "master"
   name = "github.com/looplab/tarjan"
+
+[[constraint]]
+  branch = "master"
+  name = "go.starlark.net"
