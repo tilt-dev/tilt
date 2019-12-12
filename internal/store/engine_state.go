@@ -93,8 +93,8 @@ type EngineState struct {
 
 	DockerPruneSettings model.DockerPruneSettings
 
-	TelemetryCmd           model.Cmd
-	LastTelemetryScriptRun time.Time
+	TelemetryCmd    model.Cmd
+	TelemetryStatus model.TelemetryStatus
 }
 
 // Merge analytics opt-in status from different sources.

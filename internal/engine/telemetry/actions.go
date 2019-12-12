@@ -1,9 +1,11 @@
 package telemetry
 
-import "time"
+import (
+	"github.com/windmilleng/tilt/pkg/model"
+)
 
 type TelemetryScriptRanAction struct {
-	At time.Time
+	Status model.TelemetryStatus
 }
 
 func (TelemetryScriptRanAction) Action() {}

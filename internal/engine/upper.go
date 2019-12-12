@@ -753,5 +753,5 @@ func handleUserStartedTiltCloudRegistrationAction(state *store.EngineState) {
 }
 
 func handleTelemetryScriptRanAction(state *store.EngineState, action telemetry.TelemetryScriptRanAction) {
-	state.LastTelemetryScriptRun = action.At
+	state.TelemetryStatus = action.Status
 }
