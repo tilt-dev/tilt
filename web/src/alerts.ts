@@ -1,4 +1,6 @@
 import { podStatusIsError, podStatusIsCrash } from "./constants"
+import { logLinesToString } from "./logs"
+import LogStore from "./LogStore"
 
 type Resource = Proto.webviewResource
 type K8sResourceInfo = Proto.webviewK8sResourceInfo
@@ -54,7 +56,7 @@ function buildFailed(resource: Resource) {
 
 //This function determines what kind of alert should be made based on the functions defined
 //above
-function getResourceAlerts(r: Resource): Alert[] {
+function getResourceAlerts(r: Resource, logStore: LogStore | null): Alert[] {
   let result: Alert[] = []
 
   if (r.k8sResourceInfo) {
@@ -70,7 +72,7 @@ function getResourceAlerts(r: Resource): Alert[] {
   }
 
   if (buildFailed(r)) {
-    result.push(buildFailedAlert(r))
+    result.push(buildFailedAlert(r, logStore))
   }
   if (warningsAlerts(r).length > 0) {
     result = result.concat(warningsAlerts(r))
@@ -79,7 +81,7 @@ function getResourceAlerts(r: Resource): Alert[] {
 }
 
 function numberOfAlerts(resource: Resource): number {
-  return getResourceAlerts(resource).length
+  return getResourceAlerts(resource, null).length
 }
 
 //The following functions create the alerts based on their types, since
@@ -148,10 +150,17 @@ function crashRebuildAlert(r: Resource): Alert {
     resourceName: r.name ?? "",
   }
 }
-function buildFailedAlert(resource: Resource): Alert {
+function buildFailedAlert(
+  resource: Resource,
+  logStore: LogStore | null
+): Alert {
   // both: DCResource and K8s Resource
   let history = resource.buildHistory ?? []
-  let msg = history[0].log || ""
+  let spanId = history[0].spanId || ""
+  let msg = "[missing error message]"
+  if (spanId && logStore) {
+    msg = logLinesToString(logStore.spanLog([spanId]), false)
+  }
   return {
     alertType: BuildFailedErrorType,
     header: "Build error",

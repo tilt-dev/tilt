@@ -127,7 +127,6 @@ declare namespace Proto {
     warnings?: string[];
     startTime?: string;
     finishTime?: string;
-    log?: string;
     isCrashRebuild?: boolean;
     /**
      * The span id for this build record's logs in the main logstore.

@@ -130,9 +130,6 @@
           "type": "string",
           "format": "date-time"
         },
-        "log": {
-          "type": "string"
-        },
         "is_crash_rebuild": {
           "type": "boolean",
           "format": "boolean"
