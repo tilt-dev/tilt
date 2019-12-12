@@ -21,13 +21,13 @@ export function logLinesToString(
 ): string {
   return lines
     .map(line => {
-      let text = line.text + "\n"
+      let text = line.text
       if (showManifestPrefix) {
         text = sourcePrefix(line.manifestName) + text
       }
       return text
     })
-    .join("")
+    .join("\n")
 }
 
 export function sourcePrefix(n: string) {
