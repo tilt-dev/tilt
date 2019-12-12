@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/wire"
 	"github.com/windmilleng/wmclient/pkg/dirs"
+	"go.opentelemetry.io/otel/sdk/trace"
 
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
@@ -21,6 +22,7 @@ import (
 	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
+	"github.com/windmilleng/tilt/internal/tracer"
 	"github.com/windmilleng/tilt/pkg/logger"
 )
 
@@ -56,12 +58,18 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcc, docker2, engineImageAndCacheBuilder, clock)
 	localTargetBuildAndDeployer := NewLocalTargetBuildAndDeployer(clock)
 	buildOrder := DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, engineUpdateMode, env, runtime)
-	compositeBuildAndDeployer := NewCompositeBuildAndDeployer(buildOrder)
+	spanProcessor := _wireSpanProcessorValue
+	traceTracer, err := tracer.InitOpenTelemetry(ctx, spanProcessor)
+	if err != nil {
+		return nil, err
+	}
+	compositeBuildAndDeployer := NewCompositeBuildAndDeployer(buildOrder, traceTracer)
 	return compositeBuildAndDeployer, nil
 }
 
 var (
-	_wireLabelsValue = dockerfile.Labels{}
+	_wireLabelsValue        = dockerfile.Labels{}
+	_wireSpanProcessorValue = (trace.SpanProcessor)(nil)
 )
 
 func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, env k8s.Env, dir *dirs.WindmillDir, clock build.Clock, kp KINDPusher, analytics2 *analytics.TiltAnalytics) (*ImageBuildAndDeployer, error) {
@@ -135,12 +143,12 @@ var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Valu
 	NewImageBuildAndDeployer, containerupdate.NewDockerContainerUpdater, containerupdate.NewSyncletUpdater, containerupdate.NewExecUpdater, NewLiveUpdateBuildAndDeployer,
 	NewDockerComposeBuildAndDeployer,
 	NewImageAndCacheBuilder,
-	DefaultBuildOrder, wire.Bind(new(BuildAndDeployer), new(*CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer,
+	DefaultBuildOrder, tracer.InitOpenTelemetry, wire.Bind(new(BuildAndDeployer), new(*CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer,
 	ProvideUpdateMode,
 )
 
 var DeployerWireSetTest = wire.NewSet(
-	DeployerBaseWireSet, containerupdate.NewSyncletManagerForTests, synclet.FakeGRPCWrapper,
+	DeployerBaseWireSet, containerupdate.NewSyncletManagerForTests, wire.InterfaceValue(new(trace.SpanProcessor), (trace.SpanProcessor)(nil)), synclet.FakeGRPCWrapper,
 )
 
 var DeployerWireSet = wire.NewSet(

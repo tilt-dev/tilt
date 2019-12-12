@@ -3,126 +3,127 @@ package tracer
 import (
 	"context"
 	"encoding/json"
-	"sync"
-	"time"
+	"fmt"
+	"io"
+	"strings"
 
-	"github.com/windmilleng/wmclient/pkg/dirs"
 	exporttrace "go.opentelemetry.io/otel/sdk/export/trace"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-
-	"github.com/windmilleng/tilt/pkg/logger"
 )
 
-type Locker sync.Locker
-
-type exporter struct {
-	outgoingMu sync.Mutex
-	dir        *dirs.WindmillDir
+// Exporter does 3 things:
+// 1) Accepts spans from OpenTelemetry.
+// 2) Stores spans (for now, in memory)
+// 3) Allows consumers to read spans they might want to send elsewhere
+// Numbers 2 and 3 access the same data, and so it's a concurrency issue.
+type Exporter struct {
 
 	// members for communicating with the loop() goroutine
-	spanDataCh chan *exporttrace.SpanData
-	stopCh     chan struct{}
 
-	// members only accessed by the loop() goroutine
-	queue      []*exporttrace.SpanData
-	needsFlush bool
+	// for OpenTelemetry Exporter
+	spanDataCh chan *exporttrace.SpanData
+
+	// for SpanSource
+	readReqCh  chan struct{}
+	readRespCh chan readResp
 }
 
-func newExporter(ctx context.Context, dir *dirs.WindmillDir) *exporter {
-	r := &exporter{
-		dir:        dir,
+// SpanSource is the interface for consumers (generally telemetry.Controller)
+type SpanSource interface {
+	// GetOutgoingSpans gives a consumer access to spans they should send
+	// The client must signal they're by sending 0 or 1 values over doneCh. True indicates the
+	// SpanSource should remove the data read; false or close indicates SpanSource should retain the data.
+	GetOutgoingSpans() (data io.Reader, doneCh chan<- bool, err error)
+}
+
+func NewExporter(ctx context.Context) *Exporter {
+	r := &Exporter{
 		spanDataCh: make(chan *exporttrace.SpanData),
-		stopCh:     make(chan struct{}),
+		readReqCh:  make(chan struct{}),
+		readRespCh: make(chan readResp),
 	}
 	go r.loop(ctx)
 	return r
 }
 
-const OutgoingFilename = "usage/outgoing.json"
+func (e *Exporter) loop(ctx context.Context) {
+	// spans that have come in and are waiting to be read by a consumer
+	var queue []*exporttrace.SpanData
 
-func (e *exporter) loop(ctx context.Context) {
-	var flushingCh chan struct{}
-	var timerCh <-chan time.Time
+	// what a consumer (generally telemetry.Controller) is reading right now
+	// we keep track of it so that if there's a script error, the data isn't lost forever
+	var beingRead []*exporttrace.SpanData
+	var readDoneCh chan bool
+
 	for {
 		select {
+		// New work coming in
 		case sd := <-e.spanDataCh:
-			e.queue = append(e.queue, sd)
-			if timerCh == nil {
-				timerCh = time.After(5 * time.Second)
+			// add to the queue
+			queue = append(queue, sd)
+		case <-e.readReqCh:
+			// send the queue to the reader
+			r, err := e.makeReader(queue)
+			if err != nil {
+				// oh wait, there's a problem encoding?
+				// tell the reader, and then clear the queue
+				e.readRespCh <- readResp{err: err}
+				queue = nil
+				break
 			}
-		case <-e.stopCh:
-			e.stopCh = nil
-			e.needsFlush = true
-		case <-timerCh:
-			timerCh = nil
-			e.needsFlush = true
-		case <-flushingCh:
-			flushingCh = nil
-		}
 
-		if !e.needsFlush || flushingCh != nil {
-			continue
-		}
+			// there's now a read in flight
+			readDoneCh = make(chan bool)
+			beingRead, queue = queue, nil
+			e.readRespCh <- readResp{r: r, doneCh: readDoneCh}
 
-		if len(e.queue) == 0 {
-			e.needsFlush = false
-			continue
+		// In-flight operations finishing
+		case delete := <-readDoneCh:
+			if !delete {
+				// They don't want to consume these yet, so add them back to the front of the queue
+				queue = append(beingRead, queue...)
+			}
+			beingRead = nil
 		}
-
-		flushingCh = make(chan struct{})
-		go e.flush(ctx, flushingCh)
 	}
 }
 
-const maxFileSize = 32 * 1024 // 128 MiB
-
-func (e *exporter) flush(ctx context.Context, flushingCh chan struct{}) {
-	e.outgoingMu.Lock()
-	defer e.outgoingMu.Unlock()
-	defer close(flushingCh)
-	q := e.queue
-	e.queue = nil
-
-	s, err := e.dir.ReadFile(OutgoingFilename)
-	if err != nil {
-		logger.Get(ctx).Infof("Error reading %s: %v", OutgoingFilename, err)
-		return
-	}
-
-	var existing []*exporttrace.SpanData
-	err = json.Unmarshal([]byte(s), &existing)
-	if err != nil {
-		logger.Get(ctx).Infof("Error unmarshaling JSON: %v", err)
-		return
-	}
-
-	q = append(existing, q...)
-
-	bs, err := json.MarshalIndent(q, "", "  ")
-	if err != nil {
-		logger.Get(ctx).Infof("Error indenting JSON: %v", err)
-		return
-	}
-	for len(bs) > maxFileSize {
-		q = q[len(q)/2:]
-		bs, _ = json.MarshalIndent(q, "", "  ")
-	}
-
-	err = e.dir.WriteFile(OutgoingFilename, string(bs))
-	if err != nil {
-		logger.Get(ctx).Infof("Error writing %s: %v", OutgoingFilename, err)
-	}
+// OpenTelemetry exporter methods
+func (e *Exporter) OnStart(sd *exporttrace.SpanData) {
 }
 
-func (e *exporter) OnStart(sd *exporttrace.SpanData) {
-}
-
-func (e *exporter) OnEnd(sd *exporttrace.SpanData) {
+func (e *Exporter) OnEnd(sd *exporttrace.SpanData) {
 	e.spanDataCh <- sd
 }
 
-func (e *exporter) Shutdown() {
-	close(e.stopCh)
+func (e *Exporter) Shutdown() {
+	// TODO(dbentley): handle shutdown
 }
 
-var _ sdktrace.SpanProcessor = (*exporter)(nil)
+// SpanSource
+func (e *Exporter) GetOutgoingSpans() (io.Reader, chan<- bool, error) {
+	e.readReqCh <- struct{}{}
+	resp := <-e.readRespCh
+	return resp.r, resp.doneCh, resp.err
+}
+
+type readResp struct {
+	r      io.Reader
+	doneCh chan bool
+	err    error
+}
+
+func (e *Exporter) makeReader(spans []*exporttrace.SpanData) (io.Reader, error) {
+	var b strings.Builder
+	w := json.NewEncoder(&b)
+	for _, span := range spans {
+		if err := w.Encode(span); err != nil {
+			return nil, fmt.Errorf("Error marshaling %v: %v", span, err)
+		}
+	}
+
+	return strings.NewReader(b.String()), nil
+}
+
+var _ sdktrace.SpanProcessor = (*Exporter)(nil)
+var _ SpanSource = (*Exporter)(nil)

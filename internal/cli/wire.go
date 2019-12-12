@@ -10,6 +10,7 @@ import (
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
 	"github.com/windmilleng/wmclient/pkg/dirs"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/tools/clientcmd/api"
 
@@ -112,9 +113,12 @@ var BaseWireSet = wire.NewSet(
 	provideAssetServer,
 	server.ProvideHeadsUpServerController,
 
+	tracer.NewExporter,
+	wire.Bind(new(sdktrace.SpanProcessor), new(*tracer.Exporter)),
+	wire.Bind(new(tracer.SpanSource), new(*tracer.Exporter)),
+
 	dirs.UseWindmillDir,
 	token.GetOrCreateToken,
-	tracer.InitOpenTelemetry,
 
 	provideCmdUpDeps,
 	engine.NewKINDPusher,

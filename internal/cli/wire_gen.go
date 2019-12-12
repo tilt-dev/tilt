@@ -12,6 +12,7 @@ import (
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
 	"github.com/windmilleng/wmclient/pkg/dirs"
+	trace2 "go.opentelemetry.io/otel/sdk/trace"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/tools/clientcmd/api"
 
@@ -183,7 +184,12 @@ func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics3 *analy
 	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageAndCacheBuilder, clock)
 	localTargetBuildAndDeployer := engine.NewLocalTargetBuildAndDeployer(clock)
 	buildOrder := engine.DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, updateMode, env, runtime)
-	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder)
+	exporter := tracer.NewExporter(ctx)
+	traceTracer, err := tracer.InitOpenTelemetry(ctx, exporter)
+	if err != nil {
+		return CmdUpDeps{}, err
+	}
+	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder, traceTracer)
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
 	extension := k8scontext.NewExtension(kubeContext, env)
 	defaults := _wireDefaultsValue
@@ -219,17 +225,13 @@ func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics3 *analy
 	cloudUsernameManager := cloud.NewUsernameManager(httpClient)
 	updateUploader := cloud.NewUpdateUploader(httpClient, address)
 	dockerPruner := dockerprune.NewDockerPruner(switchCli)
+	controller := telemetry.NewController(clock, exporter)
+	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, tiltVersionChecker, analyticsUpdater, eventWatchManager, cloudUsernameManager, updateUploader, dockerPruner, controller)
+	upper := engine.NewUpper(ctx, storeStore, v2)
 	windmillDir, err := dirs.UseWindmillDir()
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
-	locker, err := tracer.InitOpenTelemetry(ctx, windmillDir)
-	if err != nil {
-		return CmdUpDeps{}, err
-	}
-	telemetryController := telemetry.NewController(locker, clock, windmillDir)
-	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, tiltVersionChecker, analyticsUpdater, eventWatchManager, cloudUsernameManager, updateUploader, dockerPruner, telemetryController)
-	upper := engine.NewUpper(ctx, storeStore, v2)
 	tokenToken, err := token.GetOrCreateToken(windmillDir)
 	if err != nil {
 		return CmdUpDeps{}, err
@@ -438,7 +440,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebURL,
 	provideWebPort,
 	provideWebHost,
-	provideNoBrowserFlag, server.ProvideHeadsUpServer, provideAssetServer, server.ProvideHeadsUpServerController, dirs.UseWindmillDir, token.GetOrCreateToken, tracer.InitOpenTelemetry, provideCmdUpDeps, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
+	provideNoBrowserFlag, server.ProvideHeadsUpServer, provideAssetServer, server.ProvideHeadsUpServerController, tracer.NewExporter, wire.Bind(new(trace2.SpanProcessor), new(*tracer.Exporter)), wire.Bind(new(tracer.SpanSource), new(*tracer.Exporter)), dirs.UseWindmillDir, token.GetOrCreateToken, provideCmdUpDeps, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
 )
 
 type CmdUpDeps struct {
