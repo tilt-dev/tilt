@@ -233,8 +233,10 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       const key = "logLine" + i
 
       let shouldHighlight = false
+      let maybeHighlightRef = null
       if (highlight) {
         if (highlight.beginningLogID === i.toString()) {
+          maybeHighlightRef = this.highlightRef
           sawBeginning = true
         }
         if (highlight.endingLogID === i.toString()) {
@@ -248,7 +250,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 
       let el = (
         <LogLineComponent
-          ref={i === 0 ? this.highlightRef : null}
+          ref={maybeHighlightRef}
           key={key}
           text={l.text}
           manifestName={l.manifestName}

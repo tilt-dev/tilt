@@ -33,7 +33,7 @@ exports[`renders highlighted lines 1`] = `
     </code>
   </span>
   <span
-    className="logLine "
+    className="logLine highlighted"
     data-lineid={2}
   >
     <code>
@@ -47,7 +47,7 @@ exports[`renders highlighted lines 1`] = `
     </code>
   </span>
   <span
-    className="logLine "
+    className="logLine highlighted"
     data-lineid={3}
   >
     <code>
