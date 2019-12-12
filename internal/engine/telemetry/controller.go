@@ -56,12 +56,10 @@ func (t *Controller) OnChange(ctx context.Context, st store.RStore) {
 	r, releaseCh, err := t.spans.GetOutgoingSpans()
 	if err != nil {
 		t.logError(st, fmt.Errorf("Error gathering Telemetry data for experimental_telemetry_cmd", err))
-		return
 	}
 
 	defer close(releaseCh)
-	// exec the telemetry command, passing in the contents of the file on stdin
-	cmd := exec.CommandContext(ctx, tc.Argv[0], tc.Argv[1:]...)
+
 	cmd.Stdin = r
 
 	out, err := cmd.CombinedOutput()
