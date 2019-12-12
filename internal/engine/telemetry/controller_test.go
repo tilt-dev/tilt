@@ -5,17 +5,16 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/windmilleng/wmclient/pkg/dirs"
 
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/tracer"
 	"github.com/windmilleng/tilt/pkg/model"
+	exporttrace "go.opentelemetry.io/otel/sdk/export/trace"
 )
 
 func TestTelNoScriptTimeIsUpShouldNotDeleteFile(t *testing.T) {
@@ -25,7 +24,7 @@ func TestTelNoScriptTimeIsUpShouldNotDeleteFile(t *testing.T) {
 	f.run()
 
 	f.assertNoLogs()
-	f.assertTelemetryFileEquals("hello world")
+	f.assertSpansPresent()
 }
 
 func TestTelNoScriptTimeIsNotUpShouldNotDeleteFile(t *testing.T) {
@@ -38,7 +37,7 @@ func TestTelNoScriptTimeIsNotUpShouldNotDeleteFile(t *testing.T) {
 	f.run()
 
 	f.assertNoLogs()
-	f.assertTelemetryFileEquals("hello world")
+	f.assertSpansPresent()
 }
 
 func TestTelScriptTimeIsNotUpShouldNotDeleteFile(t *testing.T) {
@@ -52,7 +51,7 @@ func TestTelScriptTimeIsNotUpShouldNotDeleteFile(t *testing.T) {
 	f.run()
 
 	f.assertNoLogs()
-	f.assertTelemetryFileEquals("hello world")
+	f.assertSpansPresent()
 }
 
 func TestTelScriptTimeIsUpShouldDeleteFileAndSetTime(t *testing.T) {
@@ -67,7 +66,7 @@ func TestTelScriptTimeIsUpShouldDeleteFileAndSetTime(t *testing.T) {
 	f.assertNoLogs()
 	f.assertTelemetryScriptRanAtIs(t1)
 	f.assertTelemetryFileIsEmpty()
-	f.assertScriptCalledWith("hello world")
+	f.assertSpansPresent()
 }
 
 func TestTelScriptFailsTimeIsUpShouldDeleteFileAndSetTime(t *testing.T) {
@@ -80,21 +79,20 @@ func TestTelScriptFailsTimeIsUpShouldDeleteFileAndSetTime(t *testing.T) {
 	f.run()
 
 	f.assertLog("exit status 1")
-	f.assertTelemetryFileEquals("hello world")
+	f.assertSpansPresent()
 	f.assertTelemetryScriptRanAtIs(t1)
 }
 
 type tcFixture struct {
-	t                        *testing.T
-	ctx                      context.Context
-	temp                     *tempdir.TempDirFixture
-	dir                      *dirs.WindmillDir
-	lock                     *sync.Mutex
-	clock                    fakeClock
-	previousWorkingDirectory string
-	st                       *store.TestingStore
-	cmd                      string
-	lastRun                  time.Time
+	t         *testing.T
+	ctx       context.Context
+	temp      *tempdir.TempDirFixture
+	clock     fakeClock
+	st        *store.TestingStore
+	cmd       string
+	lastRun   time.Time
+	fakeSpans tracer.SpanSource
+	exporter  *tracer.Exporter
 }
 
 func newTCFixture(t *testing.T) *tcFixture {
@@ -103,12 +101,6 @@ func newTCFixture(t *testing.T) *tcFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = os.Chdir(temp.Path())
-	if err != nil {
-		t.Fatal(err)
-	}
-	dir := dirs.NewWindmillDirAt(temp.Path())
-	lock := &sync.Mutex{}
 
 	st := store.NewTestingStore()
 
@@ -119,21 +111,11 @@ func newTCFixture(t *testing.T) *tcFixture {
 cat > %s`, temp.JoinPath("scriptstdin")))
 
 	return &tcFixture{
-		t:                        t,
-		ctx:                      ctx,
-		temp:                     temp,
-		dir:                      dir,
-		lock:                     lock,
-		clock:                    fakeClock{now: time.Unix(1551202573, 0)},
-		previousWorkingDirectory: owd,
-		st:                       st,
-	}
-}
-
-func (tcf *tcFixture) writeToAnalyticsFile(contents string) {
-	err := tcf.dir.WriteFile(tracer.OutgoingFilename, contents)
-	if err != nil {
-		tcf.t.Fatal(err)
+		t:     t,
+		ctx:   ctx,
+		temp:  temp,
+		clock: fakeClock{now: time.Unix(1551202573, 0)},
+		st:    st,
 	}
 }
 
@@ -150,29 +132,22 @@ func (tcf *tcFixture) setLastRun(t time.Time) {
 }
 
 func (tcf *tcFixture) run() {
-	tcf.writeToAnalyticsFile("hello world")
-	tcf.st.SetState(store.EngineState{LastTelemetryScriptRun: tcf.lastRun, TelemetryCmd: model.ToShellCmd(tcf.cmd)})
+	spans := tcf.fakeSpans
+	if spans == nil {
+		exporter := tracer.NewExporter(tcf.ctx)
+		exporter.OnEnd(&exporttrace.SpanData{})
+		tcf.exporter = exporter
+		spans = exporter
+	}
 
-	tc := NewController(tcf.lock, tcf.clock, tcf.dir)
+	tcf.st.SetState(store.EngineState{
+		TelemetryStatus: model.TelemetryStatus{
+			LastRunAt: tcf.lastRun,
+		},
+		TelemetryCmd: model.ToShellCmd(tcf.cmd)})
+
+	tc := NewController(tcf.clock, spans)
 	tc.OnChange(tcf.ctx, tcf.st)
-}
-
-func (tcf *tcFixture) assertTelemetryFileIsEmpty() {
-	fileContents, err := tcf.dir.ReadFile(tracer.OutgoingFilename)
-	if err != nil {
-		tcf.t.Fatal(err)
-	}
-
-	assert.Empty(tcf.t, fileContents)
-}
-
-func (tcf *tcFixture) assertTelemetryFileEquals(contents string) {
-	fileContents, err := tcf.dir.ReadFile(tracer.OutgoingFilename)
-	if err != nil {
-		tcf.t.Fatal(err)
-	}
-
-	assert.Equal(tcf.t, contents, fileContents)
 }
 
 func (tcf *tcFixture) assertNoLogs() {
@@ -219,10 +194,6 @@ func (tcf *tcFixture) assertScriptCalledWith(expected string) {
 
 func (tcf *tcFixture) teardown() {
 	defer tcf.temp.TearDown()
-	err := os.Chdir(tcf.previousWorkingDirectory)
-	if err != nil {
-		tcf.t.Fatal(err)
-	}
 }
 
 func (tcf *tcFixture) getActions() []store.Action {

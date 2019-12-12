@@ -31,8 +31,8 @@ type Exporter struct {
 // SpanSource is the interface for consumers (generally telemetry.Controller)
 type SpanSource interface {
 	// GetOutgoingSpans gives a consumer access to spans they should send
-	// The client must signal they're by sending 0 or 1 values over doneCh. True indicates the
-	// SpanSource should remove the data read; false or close indicates SpanSource should retain the data.
+	// The client must send a value over doneCh; True indicates the
+	// SpanSource should remove the data read; false indicates SpanSource should retain the data.
 	GetOutgoingSpans() (data io.Reader, doneCh chan<- bool, err error)
 }
 

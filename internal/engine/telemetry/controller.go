@@ -58,13 +58,16 @@ func (t *Controller) OnChange(ctx context.Context, st store.RStore) {
 		t.logError(st, fmt.Errorf("Error gathering Telemetry data for experimental_telemetry_cmd", err))
 	}
 
-	defer close(releaseCh)
+	consumed := false
 
+	// run the command with the contents of the spans as jsonlines on stdin
+	cmd := exec.CommandContext(ctx, tc.Argv[0], tc.Argv[1:]...)
 	cmd.Stdin = r
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		t.logError(st, fmt.Errorf("Telemetry script failed to run: %v\noutput: %s", err, out))
+		t.logError(st, fmt.Errorf("Telemetry command failed: %v\noutput: %s", err, out))
+		releaseCh <- false
 		return
 	}
 
