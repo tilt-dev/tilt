@@ -16,6 +16,9 @@ message BuildRecord {
   google.protobuf.Timestamp finish_time  = 5;
   string log = 6;
   bool is_crash_rebuild = 7;
+
+  // The span id for this build record's logs in the main logstore.
+  string span_id = 8;
 }
 
 message K8sResourceInfo {
@@ -27,6 +30,9 @@ message K8sResourceInfo {
   bool all_containers_ready = 6;
   int32 pod_restarts = 7;
   string pod_log = 8;
+
+  // The span id for this pod's logs in the main logstore
+  string span_id = 9;
 }
 
 message DCResourceInfo {
@@ -35,6 +41,9 @@ message DCResourceInfo {
   string containerID = 3;
   string log = 4;
   google.protobuf.Timestamp start_time = 5;
+
+  // The span id for this docker-compose service's logs in the main logstore
+  string span_id = 6;
 }
 
 message YAMLResourceInfo {

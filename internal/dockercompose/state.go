@@ -52,12 +52,17 @@ func (evt Event) IsStopEvent() bool {
 }
 
 type State struct {
-	Status        Status
-	ContainerID   container.ID
-	CurrentLog    model.Log
+	Status      Status
+	ContainerID container.ID
+
+	// TODO(nick): Delete this and use SpanID to look up the log.
+	CurrentLog model.Log
+
 	StartTime     time.Time
 	IsStopping    bool
 	LastReadyTime time.Time
+
+	SpanID model.LogSpanID
 }
 
 func (State) RuntimeState() {}
@@ -68,6 +73,11 @@ func (s State) Log() model.Log {
 
 func (s State) WithCurrentLog(l model.Log) State {
 	s.CurrentLog = l
+	return s
+}
+
+func (s State) WithSpanID(spanID model.LogSpanID) State {
+	s.SpanID = spanID
 	return s
 }
 

@@ -299,7 +299,9 @@ func TestUpper_Up(t *testing.T) {
 
 	state := f.upper.store.RLockState()
 	defer f.upper.store.RUnlockState()
-	lines := strings.Split(state.ManifestTargets[manifest.Name].Status().LastBuild().Log.String(), "\n")
+
+	buildRecord := state.ManifestTargets[manifest.Name].Status().LastBuild()
+	lines := strings.Split(state.LogStore.SpanLog(buildRecord.SpanID), "\n")
 	assertLineMatches(t, lines, regexp.MustCompile("fake built .*foobar"))
 }
 
@@ -1968,10 +1970,12 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 	// the third instance is still up, so we want to show the log from the last crashed pod plus the log from the current pod
 	f.withState(func(es store.EngineState) {
 		ms, _ := es.ManifestState(name)
-		assert.Equal(t, "third string\n", ms.MostRecentPod().Log().String())
+		pod := ms.MostRecentPod()
+		assert.Equal(t, "third string\n", pod.Log().String())
 		assert.Contains(t, es.LogStore.ManifestLog(name), "second string\n")
 		assert.Contains(t, es.LogStore.ManifestLog(name), "third string\n")
 		assert.Equal(t, ms.CrashLog.String(), "second string\n")
+		assert.Contains(t, es.LogStore.SpanLog(pod.SpanID), "third string\n")
 	})
 
 	err := f.Stop()
@@ -2490,6 +2494,10 @@ func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 	// recorded in global log
 	f.withState(func(st store.EngineState) {
 		assert.Contains(t, st.LogStore.String(), expected)
+
+		ms, _ := st.ManifestState(m.ManifestName())
+		spanID := ms.LastBuild().SpanID
+		assert.Contains(t, st.LogStore.SpanLog(spanID), expected)
 	})
 
 	// recorded on manifest state
@@ -2616,7 +2624,10 @@ func TestEmptyTiltfile(t *testing.T) {
 		assert.Contains(t, st.TiltfileState.LastBuild().Error.Error(), "No resources found. Check out ")
 		assertContainsOnce(t, st.LogStore.String(), "No resources found. Check out ")
 		assertContainsOnce(t, st.LogStore.ManifestLog(store.TiltfileManifestName), "No resources found. Check out ")
-		assertContainsOnce(t, st.TiltfileState.LastBuild().Log.String(), "No resources found. Check out ")
+
+		buildRecord := st.TiltfileState.LastBuild()
+		assertContainsOnce(t, buildRecord.Log.String(), "No resources found. Check out ")
+		assertContainsOnce(t, st.LogStore.SpanLog(buildRecord.SpanID), "No resources found. Check out ")
 	})
 }
 
@@ -3563,8 +3574,9 @@ func (f *testFixture) podLog(pod *v1.Pod, manifestName model.ManifestName, s str
 		LogEvent: store.NewLogEvent(manifestName, runtimelog.SpanIDForPod(podID), []byte(s+"\n")),
 	})
 
-	f.WaitUntilManifestState("pod log seen", manifestName, func(ms store.ManifestState) bool {
-		return strings.Contains(ms.MostRecentPod().CurrentLog.String(), s)
+	f.WaitUntil("pod log seen", func(es store.EngineState) bool {
+		ms, _ := es.ManifestState(manifestName)
+		return strings.Contains(es.LogStore.SpanLog(ms.MostRecentPod().SpanID), s)
 	})
 }
 

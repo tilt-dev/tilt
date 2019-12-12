@@ -232,6 +232,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 		Edits:     append([]string{}, action.FilesChanged...),
 		StartTime: action.StartTime,
 		Reason:    action.Reason,
+		SpanID:    action.SpanID,
 	}
 	ms.ConfigFilesThatCausedChange = []string{}
 	ms.CurrentBuild = bs
@@ -463,6 +464,7 @@ func handleConfigsReloadStarted(
 		StartTime: event.StartTime,
 		Reason:    model.BuildReasonFlagConfig,
 		Edits:     filesChanged,
+		SpanID:    event.SpanID,
 	}
 
 	state.TiltfileState.CurrentBuild = status
@@ -660,8 +662,8 @@ func handlePanicAction(state *store.EngineState, action store.PanicAction) {
 
 func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineState, action DockerComposeEventAction) {
 	evt := action.Event
-	mn := evt.Service
-	ms, ok := engineState.ManifestState(model.ManifestName(mn))
+	mn := model.ManifestName(evt.Service)
+	ms, ok := engineState.ManifestState(mn)
 	if !ok {
 		// No corresponding manifest, nothing to do
 		return
@@ -674,7 +676,8 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 
 	state, _ := ms.RuntimeState.(dockercompose.State)
 
-	state = state.WithContainerID(container.ID(evt.ID))
+	state = state.WithContainerID(container.ID(evt.ID)).
+		WithSpanID(runtimelog.SpanIDForDCService(mn))
 
 	// For now, just guess at state.
 	status := evt.GuessStatus()

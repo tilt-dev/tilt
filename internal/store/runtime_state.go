@@ -134,6 +134,7 @@ type Pod struct {
 	HasSynclet bool
 
 	// The log for the currently active pod, if any
+	// TODO(nick): Delete this and use SpanID to look up the log.
 	CurrentLog model.Log `testdiff:"ignore"`
 
 	Containers []Container
@@ -141,6 +142,8 @@ type Pod struct {
 	// We want to show the user # of restarts since some baseline time
 	// i.e. Total Restarts - BaselineRestarts
 	BaselineRestarts int
+
+	SpanID model.LogSpanID
 }
 
 type Container struct {

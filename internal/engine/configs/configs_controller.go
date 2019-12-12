@@ -77,7 +77,11 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 	filesChanged map[string]bool, tiltfilePath string, loadCount int) {
 
 	startTime := cc.clock()
-	st.Dispatch(ConfigsReloadStartedAction{FilesChanged: filesChanged, StartTime: startTime})
+	st.Dispatch(ConfigsReloadStartedAction{
+		FilesChanged: filesChanged,
+		StartTime:    startTime,
+		SpanID:       SpanIDForLoadCount(loadCount),
+	})
 
 	actionWriter := NewTiltfileLogWriter(st, loadCount)
 	ctx = logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), actionWriter))

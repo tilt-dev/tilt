@@ -30,7 +30,7 @@ func (s *Span) Clone() *Span {
 	return &clone
 }
 
-type SpanID string
+type SpanID = model.LogSpanID
 
 type LogSegment struct {
 	SpanID SpanID
@@ -366,7 +366,7 @@ func (s *LogStore) ToLogList() (*webview.LogList, error) {
 }
 
 func (s *LogStore) String() string {
-	return s.ManifestLog("")
+	return s.logHelper(s.spans, true)
 }
 
 func (s *LogStore) spansForManifest(mn model.ManifestName) map[SpanID]*Span {
@@ -379,11 +379,24 @@ func (s *LogStore) spansForManifest(mn model.ManifestName) map[SpanID]*Span {
 	return result
 }
 
+func (s *LogStore) SpanLog(spanID SpanID) string {
+	spans := make(map[SpanID]*Span)
+	span, ok := s.spans[spanID]
+	if !ok {
+		return ""
+	}
+	spans[spanID] = span
+	return s.logHelper(spans, false)
+}
+
 func (s *LogStore) ManifestLog(mn model.ManifestName) string {
+	spans := s.spansForManifest(mn)
+	return s.logHelper(spans, false)
+}
+
+func (s *LogStore) logHelper(spansToLog map[SpanID]*Span, showManifestPrefix bool) string {
 	sb := strings.Builder{}
 	lastLineCompleted := false
-	allLogs := mn == ""
-	filteredLogs := mn != ""
 
 	// We want to print the log line-by-line, but we don't actually store the logs
 	// line-by-line. We store them as segments.
@@ -397,28 +410,23 @@ func (s *LogStore) ManifestLog(mn model.ManifestName) string {
 	//
 	// This can have some O(n^2) perf characteristics in the worst case, but
 	// for normal inputs should be fine.
-	startIndex := 0
-	lastIndex := len(s.segments) - 1
-	if filteredLogs {
-		spans := s.spansForManifest(mn)
-		earliestStartIndex := -1
-		latestEndIndex := -1
-		for _, span := range spans {
-			if earliestStartIndex == -1 || span.FirstSegmentIndex < earliestStartIndex {
-				earliestStartIndex = span.FirstSegmentIndex
-			}
-			if latestEndIndex == -1 || span.LastSegmentIndex > latestEndIndex {
-				latestEndIndex = span.LastSegmentIndex
-			}
+	earliestStartIndex := -1
+	latestEndIndex := -1
+	for _, span := range spansToLog {
+		if earliestStartIndex == -1 || span.FirstSegmentIndex < earliestStartIndex {
+			earliestStartIndex = span.FirstSegmentIndex
 		}
-
-		if earliestStartIndex == -1 {
-			return ""
+		if latestEndIndex == -1 || span.LastSegmentIndex > latestEndIndex {
+			latestEndIndex = span.LastSegmentIndex
 		}
-
-		startIndex = earliestStartIndex
-		lastIndex = latestEndIndex
 	}
+
+	if earliestStartIndex == -1 {
+		return ""
+	}
+
+	startIndex := earliestStartIndex
+	lastIndex := latestEndIndex
 
 	isFirstLine := true
 	for i := startIndex; i <= lastIndex; i++ {
@@ -429,7 +437,7 @@ func (s *LogStore) ManifestLog(mn model.ManifestName) string {
 
 		spanID := segment.SpanID
 		span := s.spans[spanID]
-		if filteredLogs && mn != span.ManifestName {
+		if _, ok := spansToLog[spanID]; !ok {
 			continue
 		}
 
@@ -439,7 +447,7 @@ func (s *LogStore) ManifestLog(mn model.ManifestName) string {
 			sb.WriteString("\n")
 		}
 
-		if allLogs && span.ManifestName != "" {
+		if showManifestPrefix && span.ManifestName != "" {
 			sb.WriteString(SourcePrefix(span.ManifestName))
 		}
 		sb.WriteString(string(segment.Text))

@@ -93,6 +93,7 @@ declare namespace Proto {
     allContainersReady?: boolean;
     podRestarts?: number;
     podLog?: string;
+    spanId?: string;
   }
   export interface webviewFacet {
     name?: string;
@@ -104,6 +105,7 @@ declare namespace Proto {
     containerID?: string;
     log?: string;
     startTime?: string;
+    spanId?: string;
   }
   export interface webviewBuildRecord {
     edits?: string[];
@@ -113,5 +115,9 @@ declare namespace Proto {
     finishTime?: string;
     log?: string;
     isCrashRebuild?: boolean;
+    /**
+     * The span id for this build record's logs in the main logstore.
+     */
+    spanId?: string;
   }
 }

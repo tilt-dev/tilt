@@ -13,6 +13,7 @@ import (
 type ConfigsReloadStartedAction struct {
 	FilesChanged map[string]bool
 	StartTime    time.Time
+	SpanID       logstore.SpanID
 }
 
 func (ConfigsReloadStartedAction) Action() {}
