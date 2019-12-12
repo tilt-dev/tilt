@@ -74,7 +74,7 @@ func logTiltfileChanges(ctx context.Context, filesChanged map[string]bool) {
 }
 
 func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
-	args []string, filesChanged map[string]bool, tiltfilePath string, loadCount int) {
+	filesChanged map[string]bool, tiltfilePath string, loadCount int) {
 
 	startTime := cc.clock()
 	st.Dispatch(ConfigsReloadStartedAction{FilesChanged: filesChanged, StartTime: startTime})
@@ -88,9 +88,10 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 	if !firstBuild {
 		logTiltfileChanges(ctx, filesChanged)
 	}
+	userConfigState := state.UserConfigState
 	st.RUnlockState()
 
-	tlr := cc.tfl.Load(ctx, tiltfilePath, args)
+	tlr := cc.tfl.Load(ctx, tiltfilePath, userConfigState)
 	if tlr.Error == nil && len(tlr.Manifests) == 0 {
 		tlr.Error = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
 	}
@@ -135,7 +136,6 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	args := state.UserArgs
 	if !cc.shouldBuild(state) {
 		return
 	}
@@ -155,7 +155,7 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
 	cc.loadCount++
 
 	loadCount := cc.loadCount
-	go cc.loadTiltfile(ctx, st, args, filesChanged, tiltfilePath, loadCount)
+	go cc.loadTiltfile(ctx, st, filesChanged, tiltfilePath, loadCount)
 }
 
 func requiresDocker(tlr tiltfile.TiltfileLoadResult) bool {

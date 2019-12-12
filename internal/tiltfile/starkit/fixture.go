@@ -6,9 +6,11 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.starlark.net/starlark"
 )
 
@@ -56,6 +58,10 @@ func (f *Fixture) Path() string {
 	return f.path
 }
 
+func (f *Fixture) JoinPath(elem ...string) string {
+	return filepath.Join(append([]string{f.path}, elem...)...)
+}
+
 func (f *Fixture) File(name, contents string) {
 	fullPath := filepath.Join(f.path, name)
 	if f.useRealFS {
@@ -71,8 +77,18 @@ func (f *Fixture) File(name, contents string) {
 }
 
 func (f *Fixture) UseRealFS() {
-	path, err := ioutil.TempDir("", f.tb.Name())
-	assert.NoError(f.tb, err)
+	// '/' is not allowed in filenames, so get that out of there
+	path, err := ioutil.TempDir("", strings.Replace(f.tb.Name(), "/", "_", -1))
+	require.NoError(f.tb, err)
 	f.path = path
 	f.useRealFS = true
+}
+
+func (f *Fixture) TearDown() {
+	if f.useRealFS {
+		err := os.RemoveAll(f.path)
+		if err != nil {
+			fmt.Printf("error cleaning up temp dir: %v", err)
+		}
+	}
 }

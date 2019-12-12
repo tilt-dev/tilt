@@ -2634,7 +2634,7 @@ func TestUpperStart(t *testing.T) {
 	})
 
 	f.withState(func(state store.EngineState) {
-		require.Equal(t, []string{"foo", "bar"}, state.UserArgs)
+		require.Equal(t, []string{"foo", "bar"}, state.UserConfigState.Args)
 		require.Equal(t, f.JoinPath("Tiltfile"), state.TiltfilePath)
 		require.Equal(t, tok, state.Token)
 		require.Equal(t, analytics.OptIn, state.AnalyticsEffectiveOpt())
@@ -3092,6 +3092,7 @@ func TestHasEverBeenReadyDC(t *testing.T) {
 
 func TestVersionSettingsStoredOnState(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 
 	f.Start([]model.Manifest{}, true)
 
@@ -3734,7 +3735,7 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 
 	f.dcc.ServicesOutput = "redis\nserver\n"
 
-	tlr := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), nil)
+	tlr := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), model.UserConfigState{})
 	if tlr.Error != nil {
 		f.T().Fatal(tlr.Error)
 	}
