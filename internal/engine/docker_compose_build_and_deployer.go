@@ -11,6 +11,7 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -57,7 +58,7 @@ func (bd *DockerComposeBuildAndDeployer) extract(specs []model.TargetSpec) ([]mo
 func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, currentState store.BuildStateSet) (store.BuildResultSet, error) {
 	iTargets, dcTargets := bd.extract(specs)
 	if len(dcTargets) != 1 {
-		return store.BuildResultSet{}, SilentRedirectToNextBuilderf(
+		return store.BuildResultSet{}, buildcontrol.SilentRedirectToNextBuilderf(
 			"DockerComposeBuildAndDeployer requires exactly one dcTarget (got %d)", len(dcTargets))
 	}
 	dcTarget := dcTargets[0]

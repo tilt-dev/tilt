@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -44,11 +45,11 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 	for _, iTarget := range deployedImages {
 		state := stateSet[iTarget.ID()]
 		if state.IsEmpty() {
-			return nil, SilentRedirectToNextBuilderf("In-place build does not support initial deploy")
+			return nil, buildcontrol.SilentRedirectToNextBuilderf("In-place build does not support initial deploy")
 		}
 
 		if state.NeedsForceUpdate {
-			return nil, SilentRedirectToNextBuilderf("Force update (triggered manually, not automatically, with no dirty files)")
+			return nil, buildcontrol.SilentRedirectToNextBuilderf("Force update (triggered manually, not automatically, with no dirty files)")
 		}
 
 		hasFileChangesIDs, err := hasFileChangesTree(g, iTarget, stateSet)
@@ -64,18 +65,18 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 
 		luInfo := iTarget.LiveUpdateInfo()
 		if luInfo.Empty() {
-			return nil, SilentRedirectToNextBuilderf("LiveUpdate requires that LiveUpdate details be specified")
+			return nil, buildcontrol.SilentRedirectToNextBuilderf("LiveUpdate requires that LiveUpdate details be specified")
 		}
 
 		if state.RunningContainerError != nil {
-			return nil, RedirectToNextBuilderInfof("%v", state.RunningContainerError)
+			return nil, buildcontrol.RedirectToNextBuilderInfof("%v", state.RunningContainerError)
 		}
 
 		// Now that we have fast build information, we know this CAN be updated in
 		// a container(s). Check to see if we have enough information about the
 		// container(s) that would need to be updated.
 		if len(state.RunningContainers) == 0 {
-			return nil, RedirectToNextBuilderInfof("don't have info for running container of image %q (often a result of the deployment not yet being ready)", container.FamiliarString(iTarget.DeploymentRef))
+			return nil, buildcontrol.RedirectToNextBuilderInfof("don't have info for running container of image %q (often a result of the deployment not yet being ready)", container.FamiliarString(iTarget.DeploymentRef))
 		}
 
 		filesChanged, err := filesChangedTree(g, iTarget, stateSet)

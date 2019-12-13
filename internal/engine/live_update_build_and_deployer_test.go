@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 	"github.com/windmilleng/tilt/internal/k8s"
 
 	"github.com/windmilleng/tilt/internal/build"
@@ -111,7 +112,7 @@ func TestDontFallBackOnUserError(t *testing.T) {
 
 	err := f.lubad.buildAndDeploy(f.ctx, f.ps, f.cu, model.ImageTarget{}, TestBuildState, nil, nil, false)
 	if assert.NotNil(t, err) {
-		assert.IsType(t, DontFallBackError{}, err)
+		assert.IsType(t, buildcontrol.DontFallBackError{}, err)
 	}
 }
 
@@ -356,7 +357,7 @@ type lcbadFixture struct {
 func newFixture(t testing.TB) *lcbadFixture {
 	// HACK(maia): we don't need any real container updaters on this LiveUpdBaD since we're testing
 	// a func further down the flow that takes a ContainerUpdater as an arg, so just pass nils
-	lubad := NewLiveUpdateBuildAndDeployer(nil, nil, nil, UpdateModeAuto, k8s.EnvDockerDesktop, container.RuntimeDocker, fakeClock{})
+	lubad := NewLiveUpdateBuildAndDeployer(nil, nil, nil, buildcontrol.UpdateModeAuto, k8s.EnvDockerDesktop, container.RuntimeDocker, fakeClock{})
 	fakeContainerUpdater := &containerupdate.FakeContainerUpdater{}
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	st, _ := store.NewStoreForTesting()

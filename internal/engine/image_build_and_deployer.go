@@ -18,6 +18,7 @@ import (
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockerfile"
+	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
@@ -78,7 +79,7 @@ func NewImageBuildAndDeployer(
 	k8sClient k8s.Client,
 	env k8s.Env,
 	analytics *analytics.TiltAnalytics,
-	updMode UpdateMode,
+	updMode buildcontrol.UpdateMode,
 	c build.Clock,
 	runtime container.Runtime,
 	kp KINDPusher,
@@ -105,7 +106,7 @@ func (ibd *ImageBuildAndDeployer) SetInjectSynclet(inject bool) {
 func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (resultSet store.BuildResultSet, err error) {
 	iTargets, kTargets := extractImageAndK8sTargets(specs)
 	if len(kTargets) != 1 {
-		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("ImageBuildAndDeployer does not support these specs")
+		return store.BuildResultSet{}, buildcontrol.SilentRedirectToNextBuilderf("ImageBuildAndDeployer does not support these specs")
 	}
 
 	kTarget := kTargets[0]
@@ -164,13 +165,13 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		return store.NewImageBuildResult(iTarget.ID(), ref), nil
 	})
 	if err != nil {
-		return store.BuildResultSet{}, WrapDontFallBackError(err)
+		return store.BuildResultSet{}, buildcontrol.WrapDontFallBackError(err)
 	}
 
 	// (If we pass an empty list of refs here (as we will do if only deploying
 	// yaml), we just don't inject any image refs into the yaml, nbd.
 	brs, err := ibd.deploy(ctx, st, ps, iTargetMap, kTarget, q.results, anyLiveUpdate)
-	return brs, WrapDontFallBackError(err)
+	return brs, buildcontrol.WrapDontFallBackError(err)
 }
 
 func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedTagged, ps *build.PipelineState, iTarget model.ImageTarget, kTarget model.K8sTarget) (reference.NamedTagged, error) {
