@@ -27,4 +27,17 @@ message LogSpan {
 message LogList {
   map<string, LogSpan> spans = 1;
   repeated LogSegment segments = 2;
+
+  // from_checkpoint and to_checkpoint express an interval on the
+  // central log-store, with an inclusive start and an exclusive end
+  //
+  // [from_checkpoint, to_checkpoint)
+  //
+  // An interval of [0, 0) means that the server isn't using
+  // the incremental load protocol.
+  //
+  // An interval of [-1, -1) means that the server doesn't have new logs
+  // to send down.
+  int32 from_checkpoint = 3;
+  int32 to_checkpoint = 4;
 }
