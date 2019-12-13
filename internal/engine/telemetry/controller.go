@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tracer"
 	"github.com/windmilleng/tilt/pkg/logger"
@@ -76,7 +75,13 @@ func (t *Controller) OnChange(ctx context.Context, st store.RStore) {
 
 func (t *Controller) logError(st store.RStore, err error) {
 	spanID := logstore.SpanID(fmt.Sprintf("telemetry:%s", string(t.runCounter)))
-	st.Dispatch(configs.TiltfileLogAction{
+	st.Dispatch(LogAction{
 		LogEvent: store.NewLogEvent(model.TiltfileManifestName, spanID, logger.InfoLvl, []byte(err.Error())),
 	})
 }
+
+type LogAction struct {
+	store.LogEvent
+}
+
+func (LogAction) Action() {}
