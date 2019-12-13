@@ -90,8 +90,7 @@ type EngineState struct {
 
 	DockerPruneSettings model.DockerPruneSettings
 
-	TelemetryCmd    model.Cmd
-	TelemetryStatus model.TelemetryStatus
+	TelemetryCmd model.Cmd
 
 	UserConfigState model.UserConfigState
 }

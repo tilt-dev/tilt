@@ -99,15 +99,16 @@ func TestTelScriptFailsTimeIsUpShouldDeleteFileAndSetTime(t *testing.T) {
 }
 
 type tcFixture struct {
-	t        *testing.T
-	ctx      context.Context
-	temp     *tempdir.TempDirFixture
-	clock    fakeClock
-	st       *store.TestingStore
-	cmd      string
-	lastRun  time.Time
-	spans    []*exporttrace.SpanData
-	exporter *tracer.Exporter
+	t          *testing.T
+	ctx        context.Context
+	temp       *tempdir.TempDirFixture
+	clock      fakeClock
+	st         *store.TestingStore
+	cmd        string
+	lastRun    time.Time
+	spans      []*exporttrace.SpanData
+	exporter   *tracer.Exporter
+	controller *Controller
 }
 
 func newTCFixture(t *testing.T) *tcFixture {
@@ -160,12 +161,11 @@ func (tcf *tcFixture) run() {
 	}
 
 	tcf.st.SetState(store.EngineState{
-		TelemetryStatus: model.TelemetryStatus{
-			LastRunAt: tcf.lastRun,
-		},
 		TelemetryCmd: model.ToShellCmd(tcf.cmd)})
 
 	tc := NewController(tcf.clock, tcf.exporter)
+	tc.lastRunAt = tcf.lastRun
+	tcf.controller = tc
 	tc.OnChange(tcf.ctx, tcf.st)
 }
 
@@ -193,14 +193,7 @@ func (tcf *tcFixture) assertLog(logMsg string) {
 }
 
 func (tcf *tcFixture) assertTelemetryScriptRanAtIs(t time.Time) {
-	for _, a := range tcf.st.Actions {
-		if tsra, ok := a.(TelemetryScriptRanAction); ok {
-			assert.True(tcf.t, tsra.Status.LastRunAt.Equal(t))
-			return
-		}
-	}
-
-	tcf.t.Errorf("Unable to find TelemetryScriptRanAction in %v", tcf.st.Actions)
+	assert.Equal(tcf.t, t, tcf.controller.lastRunAt)
 }
 
 func (tcf *tcFixture) assertCmdOutput(expected string) {

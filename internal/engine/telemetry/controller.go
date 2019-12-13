@@ -19,6 +19,7 @@ type Controller struct {
 	spans      tracer.SpanSource
 	clock      build.Clock
 	runCounter int
+	lastRunAt  time.Time
 }
 
 func NewController(clock build.Clock, spans tracer.SpanSource) *Controller {
@@ -33,13 +34,10 @@ var period = 60 * time.Second
 
 func (t *Controller) OnChange(ctx context.Context, st store.RStore) {
 	state := st.RLockState()
-	status := state.TelemetryStatus
 	tc := state.TelemetryCmd
 	st.RUnlockState()
 
-	if tc.Empty() ||
-		status.ControllerActionCount < t.runCounter ||
-		!status.LastRunAt.Add(period).Before(t.clock.Now()) {
+	if tc.Empty() || !t.lastRunAt.Add(period).Before(t.clock.Now()) {
 		return
 	}
 
@@ -47,11 +45,7 @@ func (t *Controller) OnChange(ctx context.Context, st store.RStore) {
 
 	defer func() {
 		// wrap in a func so we get the time at the end of this function, not the beginning
-		st.Dispatch(TelemetryScriptRanAction{
-			Status: model.TelemetryStatus{
-				LastRunAt:             t.clock.Now(),
-				ControllerActionCount: t.runCounter,
-			}})
+		t.lastRunAt = t.clock.Now()
 	}()
 
 	r, releaseCh, err := t.spans.GetOutgoingSpans()
