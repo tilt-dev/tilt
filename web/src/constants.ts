@@ -21,8 +21,17 @@ export enum Width {
   sidebarCollapsed = unit * 1.5,
 }
 
+export function SizeUnit(multiplier: number) {
+  let unit = 32
+  return `${unit * multiplier}px`
+}
+
 export enum ZIndex {
   topFrame = 500,
+}
+
+export enum AnimDuration {
+  default = "0.3s",
 }
 
 // Pod Status
