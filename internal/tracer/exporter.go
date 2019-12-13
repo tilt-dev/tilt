@@ -77,7 +77,7 @@ func (e *Exporter) loop(ctx context.Context) {
 				queue = nil
 				break
 			}
-			
+
 			// there's now a read in flight
 			readDoneCh = make(chan bool)
 			beingRead, queue = queue, nil

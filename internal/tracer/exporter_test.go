@@ -168,7 +168,7 @@ func (f *fixture) getSpanText() (*string, chan<- bool) {
 	if r == nil {
 		return nil, ch
 	}
-	
+
 	bs, err := ioutil.ReadAll(r)
 	if err != nil {
 		f.t.Fatalf("unexpected error %v", err)
@@ -199,7 +199,7 @@ func (f *fixture) getSpans() ([]*exporttrace.SpanData, chan<- bool) {
 	if len(result) == 0 {
 		f.t.Fatalf("Got an empty string from a non-nil Reader")
 	}
-	
+
 	return result, ch
 }
 

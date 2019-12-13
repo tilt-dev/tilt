@@ -11,11 +11,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	exporttrace "go.opentelemetry.io/otel/sdk/export/trace"
+
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/tracer"
 	"github.com/windmilleng/tilt/pkg/model"
-	exporttrace "go.opentelemetry.io/otel/sdk/export/trace"
 )
 
 func TestTelNoScriptTimeIsUpNoInvocation(t *testing.T) {
