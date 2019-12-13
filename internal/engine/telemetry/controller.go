@@ -33,7 +33,7 @@ var period = 60 * time.Second
 func (t *Controller) OnChange(ctx context.Context, st store.RStore) {
 	state := st.RLockState()
 	status := state.TelemetryStatus
-	tc := model.ToShellCmd("cat >> /home/dbentley/spans.txt")
+	tc := state.TelemetryCmd
 	st.RUnlockState()
 
 	if tc.Empty() ||
@@ -55,14 +55,13 @@ func (t *Controller) OnChange(ctx context.Context, st store.RStore) {
 
 	r, releaseCh, err := t.spans.GetOutgoingSpans()
 	if err != nil {
-		t.logError(st, fmt.Errorf("Error gathering Telemetry data for experimental_telemetry_cmd", err))
+		t.logError(st, fmt.Errorf("Error gathering Telemetry data for experimental_telemetry_cmd %v", err))
 	}
 
 	if r == nil {
+		releaseCh <- true
 		return
 	}
-	
-	consumed := false
 
 	// run the command with the contents of the spans as jsonlines on stdin
 	cmd := exec.CommandContext(ctx, tc.Argv[0], tc.Argv[1:]...)

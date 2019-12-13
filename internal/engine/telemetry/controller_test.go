@@ -3,6 +3,7 @@ package telemetry
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -35,7 +36,7 @@ func TestTelNoScriptTimeIsNotUpNoInvocation(t *testing.T) {
 	f.setLastRun(t1)
 	f.run()
 
-	f.assertNoInvoation()
+	f.assertNoInvocation()
 }
 
 func TestTelScriptTimeIsNotUpNoInvocation(t *testing.T) {
@@ -65,7 +66,7 @@ func TestTelScriptTimeIsUpNoSpansNoInvocation(t *testing.T) {
 	f.assertNoInvocation()
 }
 
-func TestTelScriptTimeIsUpShouldDeleteFileAndSetTime(t *testing.T) {
+func TestTelScriptTimeIsUpShouldClearSpansAndSetTime(t *testing.T) {
 	f := newTCFixture(t)
 	defer f.teardown()
 	t1 := time.Now()
@@ -74,8 +75,10 @@ func TestTelScriptTimeIsUpShouldDeleteFileAndSetTime(t *testing.T) {
 	f.workCmd()
 	f.run()
 
+	f.assertInvocation()
+	f.assertCmdOutput(`{"SpanContext":{"TraceID":"00000000000000000000000000000000","SpanID":"0000000000000000","TraceFlags":0},"ParentSpanID":"0000000000000000","SpanKind":0,"Name":"","StartTime":"0001-01-01T00:00:00Z","EndTime":"0001-01-01T00:00:00Z","Attributes":null,"MessageEvents":null,"Links":null,"Status":0,"HasRemoteParent":false,"DroppedAttributeCount":0,"DroppedMessageEventCount":0,"DroppedLinkCount":0,"ChildSpanCount":0}
+`)
 	f.assertNoLogs()
-	f.assertFileUpdated()
 	f.assertTelemetryScriptRanAtIs(t1)
 	f.assertNoSpans()
 }
@@ -95,49 +98,55 @@ func TestTelScriptFailsTimeIsUpShouldDeleteFileAndSetTime(t *testing.T) {
 }
 
 type tcFixture struct {
-	t         *testing.T
-	ctx       context.Context
-	temp      *tempdir.TempDirFixture
-	clock     fakeClock
-	st        *store.TestingStore
-	cmd       string
-	lastRun   time.Time
-	spans []*exporttrace.SpanData
-	exporter  *tracer.Exporter
+	t        *testing.T
+	ctx      context.Context
+	temp     *tempdir.TempDirFixture
+	clock    fakeClock
+	st       *store.TestingStore
+	cmd      string
+	lastRun  time.Time
+	spans    []*exporttrace.SpanData
+	exporter *tracer.Exporter
 }
 
 func newTCFixture(t *testing.T) *tcFixture {
 	temp := tempdir.NewTempDirFixture(t)
-	owd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	st := store.NewTestingStore()
 
 	ctx := context.Background()
 
-	// this is a script that writes stdin to a file so we can assert on it
-	temp.WriteFile("testscript.sh", fmt.Sprintf(`#!/bin/bash
-cat > %s`, temp.JoinPath("scriptstdin")))
-
 	return &tcFixture{
-		t:     t,
-		ctx:   ctx,
-		temp:  temp,
-		clock: fakeClock{now: time.Unix(1551202573, 0)},
-		st:    st,
-		exporter: 	tracer.NewExporter(ctx),
-		spans: []*exporttrace.SpanData{&exporttrace.SpanData{}},
+		t:        t,
+		ctx:      ctx,
+		temp:     temp,
+		clock:    fakeClock{now: time.Unix(1551202573, 0)},
+		st:       st,
+		exporter: tracer.NewExporter(ctx),
+		spans:    []*exporttrace.SpanData{&exporttrace.SpanData{}},
 	}
 }
 
 func (tcf *tcFixture) workCmd() {
-	tcf.cmd = fmt.Sprintf("cat > %s", tcf.temp.JoinPath("scriptstdin"))
+	tcf.cmd = fmt.Sprintf("touch %s; cat > %s", tcf.temp.JoinPath("ran.txt"), tcf.temp.JoinPath("scriptstdout"))
 }
 
 func (tcf *tcFixture) failCmd() {
-	tcf.cmd = "false"
+	tcf.cmd = fmt.Sprintf("touch %s; false", tcf.temp.JoinPath("ran.txt"))
+}
+
+func (tcf *tcFixture) assertNoInvocation() {
+	_, err := os.Stat(tcf.temp.JoinPath("ran.txt"))
+	if !os.IsNotExist(err) {
+		tcf.t.Fatalf("expected ran.txt to not exist")
+	}
+}
+
+func (tcf *tcFixture) assertInvocation() {
+	_, err := os.Stat(tcf.temp.JoinPath("ran.txt"))
+	if err != nil {
+		tcf.t.Fatalf("error stat'ing ran.txt: %v", err)
+	}
 }
 
 func (tcf *tcFixture) setLastRun(t time.Time) {
@@ -146,17 +155,16 @@ func (tcf *tcFixture) setLastRun(t time.Time) {
 
 func (tcf *tcFixture) run() {
 	for _, sd := range tcf.spans {
-		exporter.OnEnd(sd)
+		tcf.exporter.OnEnd(sd)
 	}
 
-	
 	tcf.st.SetState(store.EngineState{
 		TelemetryStatus: model.TelemetryStatus{
 			LastRunAt: tcf.lastRun,
 		},
 		TelemetryCmd: model.ToShellCmd(tcf.cmd)})
 
-	tc := NewController(tcf.clock, spans)
+	tc := NewController(tcf.clock, tcf.exporter)
 	tc.OnChange(tcf.ctx, tcf.st)
 }
 
@@ -186,7 +194,7 @@ func (tcf *tcFixture) assertLog(logMsg string) {
 func (tcf *tcFixture) assertTelemetryScriptRanAtIs(t time.Time) {
 	for _, a := range tcf.st.Actions {
 		if tsra, ok := a.(TelemetryScriptRanAction); ok {
-			assert.True(tcf.t, tsra.At.Equal(t))
+			assert.True(tcf.t, tsra.Status.LastRunAt.Equal(t))
 			return
 		}
 	}
@@ -194,12 +202,35 @@ func (tcf *tcFixture) assertTelemetryScriptRanAtIs(t time.Time) {
 	tcf.t.Errorf("Unable to find TelemetryScriptRanAction in %v", tcf.st.Actions)
 }
 
-func (tcf *tcFixture) assertScriptCalledWith(expected string) {
-	s, err := tcf.dir.ReadFile("scriptstdin")
+func (tcf *tcFixture) assertCmdOutput(expected string) {
+	bs, err := ioutil.ReadFile(tcf.temp.JoinPath("scriptstdout"))
 	if err != nil {
 		tcf.t.Fatal(err)
 	}
-	assert.Equal(tcf.t, expected, s)
+
+	assert.Equal(tcf.t, expected, string(bs))
+}
+
+func (tcf *tcFixture) assertSpansPresent() {
+	r, ch, err := tcf.exporter.GetOutgoingSpans()
+	if err != nil {
+		tcf.t.Fatalf("error getting spans: %v", err)
+	}
+	if r == nil {
+		tcf.t.Fatalf("no spans present")
+	}
+	ch <- false
+}
+
+func (tcf *tcFixture) assertNoSpans() {
+	r, ch, err := tcf.exporter.GetOutgoingSpans()
+	if err != nil {
+		tcf.t.Fatalf("error getting spans: %v", err)
+	}
+	if r != nil {
+		tcf.t.Fatalf("Got spans")
+	}
+	ch <- false
 }
 
 func (tcf *tcFixture) teardown() {
