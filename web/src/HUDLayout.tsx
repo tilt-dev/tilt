@@ -1,6 +1,6 @@
 import React from "react"
 import styled from "styled-components"
-import {AnimDuration, Height, Width, ZIndex} from "./constants"
+import { AnimDuration, Height, Width, ZIndex } from "./constants"
 
 // The HUD UI looks like this:
 //
@@ -46,7 +46,6 @@ import {AnimDuration, Height, Width, ZIndex} from "./constants"
 //    This way, scrolling anywhere on the page will scroll Main content.
 //    (Unless you scroll atop the Sidebar, which _is_ `overflow: auto` 👀)
 
-
 type HUDLayoutProps = {
   header: React.ReactNode
   stickyNav: React.ReactNode
@@ -63,33 +62,26 @@ let Root = styled.div`
   padding-right: ${Width.sidebar}px;
   padding-bottom: ${Height.statusbar}px;
   transition: padding-right ${AnimDuration.default} ease;
-  
-  
+
   &.is-sidebarCollapsed {
     padding-right: ${Width.sidebarCollapsed}px;
   }
 `
 
-let Header = styled.header`
-`
+let Header = styled.header``
 
 let StickyNav = styled.nav`
   position: sticky;
   top: 0;
 `
 
-let Main = styled.main`
-`
+let Main = styled.main``
 
 export default function HUDLayout(props: HUDLayoutProps) {
   return (
     <Root className={props.isSidebarClosed ? "is-sidebarCollapsed" : ""}>
-      <Header>
-        {props.header}
-      </Header>
-      <StickyNav>
-        {props.stickyNav}
-      </StickyNav>
+      <Header>{props.header}</Header>
+      <StickyNav>{props.stickyNav}</StickyNav>
       <Main>{props.children}</Main>
     </Root>
   )
