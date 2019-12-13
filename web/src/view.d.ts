@@ -5,6 +5,11 @@ declare namespace Proto {
   export interface webviewView {
     log?: string;
     resources?: webviewResource[];
+    /**
+     * We used to have a setting that allowed users to dynamically
+     * prepend timestamps in logs.
+     */
+    DEPRECATEDLogTimestamps?: boolean;
     featureFlags?: object;
     needsAnalyticsNudge?: boolean;
     runningTiltBuild?: webviewTiltBuild;
@@ -61,9 +66,7 @@ declare namespace Proto {
     runtimeStatus?: string;
     isTiltfile?: boolean;
     showBuildStatus?: boolean;
-    combinedLog?: string;
     crashLog?: string;
-    alerts?: webviewAlert[];
     facets?: webviewFacet[];
     queued?: boolean;
   }
@@ -74,6 +77,7 @@ declare namespace Proto {
     spanId?: string;
     time?: string;
     text?: string;
+    level?: string;
   }
   export interface webviewLogList {
     spans?: object;
@@ -88,6 +92,7 @@ declare namespace Proto {
     podStatusMessage?: string;
     allContainersReady?: boolean;
     podRestarts?: number;
+    spanId?: string;
   }
   export interface webviewFacet {
     name?: string;
@@ -98,6 +103,7 @@ declare namespace Proto {
     containerStatus?: string;
     containerID?: string;
     startTime?: string;
+    spanId?: string;
   }
   export interface webviewBuildRecord {
     edits?: string[];
@@ -105,13 +111,11 @@ declare namespace Proto {
     warnings?: string[];
     startTime?: string;
     finishTime?: string;
+    log?: string;
     isCrashRebuild?: boolean;
-  }
-  export interface webviewAlert {
-    alertType?: string;
-    header?: string;
-    message?: string;
-    timestamp?: string;
-    resourceName?: string;
+    /**
+     * The span id for this build record's logs in the main logstore.
+     */
+    spanId?: string;
   }
 }

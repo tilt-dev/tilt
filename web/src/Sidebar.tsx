@@ -3,13 +3,7 @@ import { ReactComponent as ChevronSvg } from "./assets/svg/chevron.svg"
 import { Link } from "react-router-dom"
 import { combinedStatus } from "./status"
 import "./Sidebar.scss"
-import {
-  ResourceView,
-  TriggerMode,
-  Build,
-  Resource,
-  ResourceStatus,
-} from "./types"
+import { ResourceView, TriggerMode, ResourceStatus } from "./types"
 import TimeAgo from "react-timeago"
 import { isZeroTime } from "./time"
 import PathBuilder from "./PathBuilder"
@@ -17,6 +11,9 @@ import { timeAgoFormatter } from "./timeFormatters"
 import SidebarIcon from "./SidebarIcon"
 import SidebarTriggerButton from "./SidebarTriggerButton"
 import { numberOfAlerts } from "./alerts"
+
+type Resource = Proto.webviewResource
+type Build = Proto.webviewBuildRecord
 
 class SidebarItem {
   name: string
@@ -36,17 +33,17 @@ class SidebarItem {
    * Create a pared down SidebarItem from a ResourceView
    */
   constructor(res: Resource) {
-    this.name = res.name
-    this.isTiltfile = res.isTiltfile
+    this.name = res.name ?? ""
+    this.isTiltfile = !!res.isTiltfile
     this.status = combinedStatus(res)
     this.hasEndpoints = (res.endpoints || []).length > 0
-    this.lastDeployTime = res.lastDeployTime
-    this.pendingBuildSince = res.pendingBuildSince
-    this.currentBuildStartTime = res.currentBuild.startTime
+    this.lastDeployTime = res.lastDeployTime ?? ""
+    this.pendingBuildSince = res.pendingBuildSince ?? ""
+    this.currentBuildStartTime = res.currentBuild?.startTime ?? ""
     this.alertCount = numberOfAlerts(res)
-    this.triggerMode = res.triggerMode
-    this.hasPendingChanges = res.hasPendingChanges
-    this.queued = res.queued
+    this.triggerMode = res.triggerMode ?? TriggerMode.TriggerModeAuto
+    this.hasPendingChanges = !!res.hasPendingChanges
+    this.queued = !!res.queued
     let buildHistory = res.buildHistory || []
     if (buildHistory.length > 0) {
       this.lastBuild = buildHistory[0]

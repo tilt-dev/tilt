@@ -2,7 +2,7 @@ import mostRecentBuildToDisplay, { ResourceWithBuilds } from "./mostRecentBuild"
 import { zeroTime } from "./time"
 
 it("returns null if there are no builds", () => {
-  const resources: Array<ResourceWithBuilds> = []
+  const resources: ResourceWithBuilds[] = []
 
   let actual = mostRecentBuildToDisplay(resources)
   expect(actual).toBeNull()
@@ -11,7 +11,6 @@ it("returns null if there are no builds", () => {
 it("returns the most recent build if there are no pending builds", () => {
   let recent = {
     edits: ["main.go"],
-    error: null,
     startTime: "2019-04-24T13:08:41.017623-04:00",
     finishTime: "2019-04-24T13:08:42.926608-04:00",
     log: "",
@@ -28,7 +27,6 @@ it("returns the most recent build if there are no pending builds", () => {
     buildHistory: [
       {
         edits: ["main.go"],
-        error: null,
         startTime: "2019-04-24T13:08:39.017623-04:00",
         finishTime: "2019-04-24T13:08:40.926608-04:00",
         log: "",
@@ -40,7 +38,7 @@ it("returns the most recent build if there are no pending builds", () => {
     pendingBuildEdits: null,
     pendingBuildSince: zeroTime,
   }
-  const resources: Array<ResourceWithBuilds> = [resource]
+  const resources: ResourceWithBuilds[] = [resource]
 
   let actual = mostRecentBuildToDisplay(resources)
   expect(actual).toEqual(expectedTuple)
@@ -48,8 +46,6 @@ it("returns the most recent build if there are no pending builds", () => {
 
 it("returns null if there are no pending builds and the most recent build has no edits", () => {
   let recent = {
-    edits: null,
-    error: null,
     startTime: "2019-04-24T13:08:41.017623-04:00",
     finishTime: "2019-04-24T13:08:42.926608-04:00",
     log: "",
@@ -65,8 +61,6 @@ it("returns null if there are no pending builds and the most recent build has no
     name: "snack",
     buildHistory: [
       {
-        edits: null,
-        error: null,
         startTime: "2019-04-24T13:08:39.017623-04:00",
         finishTime: "2019-04-24T13:08:40.926608-04:00",
         log: "",
@@ -78,7 +72,7 @@ it("returns null if there are no pending builds and the most recent build has no
     pendingBuildEdits: null,
     pendingBuildSince: zeroTime,
   }
-  const resources: Array<ResourceWithBuilds> = [resource]
+  const resources: ResourceWithBuilds[] = [resource]
 
   let actual = mostRecentBuildToDisplay(resources)
   expect(actual).toBeNull()
@@ -94,8 +88,6 @@ it("returns the pending build if there is one", () => {
     name: "snack",
     buildHistory: [
       {
-        edits: null,
-        error: null,
         startTime: "2019-04-24T13:08:39.017623-04:00",
         finishTime: "2019-04-24T13:08:40.926608-04:00",
         log: "",

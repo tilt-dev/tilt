@@ -11,6 +11,8 @@ import (
 
 func TestGitRepoPath(t *testing.T) {
 	f := NewFixture(t)
+	defer f.TearDown()
+
 	f.UseRealFS()
 	f.File("Tiltfile", `
 print(local_git_repo('.').paths('.git/index'))
@@ -24,6 +26,8 @@ print(local_git_repo('.').paths('.git/index'))
 
 func TestGitRepoBadMethodCall(t *testing.T) {
 	f := NewFixture(t)
+	defer f.TearDown()
+
 	f.UseRealFS()
 	f.File("Tiltfile", `
 local_git_repo('.').asdf()

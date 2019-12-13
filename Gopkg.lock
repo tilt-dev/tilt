@@ -1394,13 +1394,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:c26eb93cf047a5394784a8468499b36f2165755c2b2fd5298d0d740ce7653790"
+  digest = "1:59c0b165efc08ee308e45748ee9b0f1fded07e6f71d58e49a1edea9bc19ae053"
   name = "go.starlark.net"
   packages = [
     "internal/compile",
     "internal/spell",
     "resolve",
     "starlark",
+    "starlarkstruct",
     "syntax",
   ]
   pruneopts = "UT"
@@ -2169,6 +2170,9 @@
     "go.opentelemetry.io/otel/sdk/trace",
     "go.starlark.net/resolve",
     "go.starlark.net/starlark",
+    "go.starlark.net/resolve",
+    "go.starlark.net/starlark",
+    "go.starlark.net/starlarkstruct",
     "go.starlark.net/syntax",
     "golang.org/x/sync/errgroup",
     "google.golang.org/genproto/googleapis/api/annotations",

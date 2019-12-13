@@ -14,6 +14,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 	proto_webview "github.com/windmilleng/tilt/pkg/webview"
 )
@@ -91,7 +92,7 @@ func TestStateToViewTiltfileLog(t *testing.T) {
 	es := newState([]model.Manifest{})
 	spanID := configs.SpanIDForLoadCount(1)
 	es.LogStore.Append(
-		store.NewLogEvent(store.TiltfileManifestName, spanID, []byte("hello")),
+		store.NewLogEvent(store.TiltfileManifestName, spanID, logger.InfoLvl, []byte("hello")),
 		nil)
 	v := stateToProtoView(t, *es)
 	r, ok := findResource("(Tiltfile)", v)

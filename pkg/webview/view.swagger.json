@@ -59,27 +59,6 @@
     }
   },
   "definitions": {
-    "webviewAlert": {
-      "type": "object",
-      "properties": {
-        "alert_type": {
-          "type": "string"
-        },
-        "header": {
-          "type": "string"
-        },
-        "message": {
-          "type": "string"
-        },
-        "timestamp": {
-          "type": "string",
-          "title": "TODO(dmiller): this should be a timestamp, but sometimes incorrectly formatted times get set here\nlike when there's a Pod that has PodStatusError.\nWe should figure out how those times are being set, and fix them to parse as protobuf.Timestamp\ncorrectly"
-        },
-        "resource_name": {
-          "type": "string"
-        }
-      }
-    },
     "webviewBuildRecord": {
       "type": "object",
       "properties": {
@@ -106,9 +85,16 @@
           "type": "string",
           "format": "date-time"
         },
+        "log": {
+          "type": "string"
+        },
         "is_crash_rebuild": {
           "type": "boolean",
           "format": "boolean"
+        },
+        "span_id": {
+          "type": "string",
+          "description": "The span id for this build record's logs in the main logstore."
         }
       }
     },
@@ -130,6 +116,10 @@
         "start_time": {
           "type": "string",
           "format": "date-time"
+        },
+        "span_id": {
+          "type": "string",
+          "title": "The span id for this docker-compose service's logs in the main logstore"
         }
       }
     },
@@ -169,11 +159,25 @@
         "pod_restarts": {
           "type": "integer",
           "format": "int32"
+        },
+        "span_id": {
+          "type": "string",
+          "title": "The span id for this pod's logs in the main logstore"
         }
       }
     },
     "webviewLocalResourceInfo": {
       "type": "object"
+    },
+    "webviewLogLevel": {
+      "type": "string",
+      "enum": [
+        "NONE",
+        "INFO",
+        "VERBOSE",
+        "DEBUG"
+      ],
+      "default": "NONE"
     },
     "webviewLogList": {
       "type": "object",
@@ -204,6 +208,9 @@
         },
         "text": {
           "type": "string"
+        },
+        "level": {
+          "$ref": "#/definitions/webviewLogLevel"
         }
       }
     },
@@ -300,17 +307,8 @@
           "type": "boolean",
           "format": "boolean"
         },
-        "combined_log": {
-          "type": "string"
-        },
         "crash_log": {
           "type": "string"
-        },
-        "alerts": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/webviewAlert"
-          }
         },
         "facets": {
           "type": "array",
@@ -405,6 +403,11 @@
           "items": {
             "$ref": "#/definitions/webviewResource"
           }
+        },
+        "DEPRECATED_log_timestamps": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "We used to have a setting that allowed users to dynamically\nprepend timestamps in logs."
         },
         "feature_flags": {
           "type": "object",

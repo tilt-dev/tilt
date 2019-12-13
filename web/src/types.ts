@@ -20,22 +20,6 @@ export enum TriggerMode {
   TriggerModeManualIncludingInitial,
 }
 
-export type Build = {
-  error: {} | string | null
-  startTime: string
-  log: string
-  finishTime: string
-  edits: Array<string> | null
-  isCrashRebuild: boolean
-  warnings: Array<string> | null
-}
-
-export type TiltBuild = {
-  version: string
-  date: string
-  dev: boolean
-}
-
 // what is the status of the resource in the cluster
 export enum RuntimeStatus {
   Ok = "ok",
@@ -54,47 +38,6 @@ export enum ResourceStatus {
   None, // e.g., a manual build that has never executed
 }
 
-export type Resource = {
-  name: string
-  combinedLog: string
-  buildHistory: Array<any>
-  crashLog: string
-  currentBuild: any
-  directoriesWatched: Array<any>
-  endpoints: Array<string>
-  podID: string
-  isTiltfile: boolean
-  lastDeployTime: string
-  pathsWatched: Array<string>
-  pendingBuildEdits: Array<string>
-  pendingBuildReason: number
-  pendingBuildSince: string
-  k8sResourceInfo?: K8sResourceInfo
-  dcResourceInfo?: DCResourceInfo
-  runtimeStatus: string
-  triggerMode: TriggerMode
-  hasPendingChanges: boolean
-  alerts: Array<Alert>
-  facets: Array<Facet>
-  queued: boolean
-}
-export type K8sResourceInfo = {
-  podName: string
-  podCreationTime: string
-  podUpdateStartTime: string
-  podStatus: string
-  podStatusMessage: string
-  podRestarts: number
-  podLog: string
-}
-export type DCResourceInfo = {
-  configPaths: Array<string>
-  containerStatus: string
-  containerID: string
-  log: string
-  startTime: string
-}
-
 export type SnapshotHighlight = {
   beginningLogID: string
   endingLogID: string
@@ -107,24 +50,8 @@ export enum ShowFatalErrorModal {
   Hide,
 }
 
-export type WebView = {
-  resources: Array<Resource>
-  log: string
-  needsAnalyticsNudge: boolean
-  runningTiltBuild: TiltBuild
-  latestTiltBuild: TiltBuild
-  featureFlags: { [featureFlag: string]: boolean }
-  tiltCloudUsername: string
-  tiltCloudSchemeHost: string
-  tiltCloudTeamID: string
-  fatalError: string | undefined
-  versionSettings: {
-    checkUpdates: boolean
-  }
-}
-
 export type Snapshot = {
-  view: WebView
+  view: Proto.webviewView
   isSidebarClosed: boolean
   path?: string
   snapshotHighlight?: SnapshotHighlight | null

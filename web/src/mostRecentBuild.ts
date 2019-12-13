@@ -1,11 +1,12 @@
-import { Build } from "./types"
 import { isZeroTime } from "./time"
+
+type Build = Proto.webviewBuildRecord
 
 export type ResourceWithBuilds = {
   name: string
-  buildHistory: Array<Build>
+  buildHistory: Build[]
   pendingBuildSince: string
-  pendingBuildEdits: Array<string> | null
+  pendingBuildEdits: string[] | null
 }
 
 const buildByDate = (b1: BuildTuple, b2: BuildTuple) => {
@@ -23,13 +24,13 @@ const buildByDate = (b1: BuildTuple, b2: BuildTuple) => {
 type BuildTuple = {
   name: string
   since: string
-  edits: Array<string>
+  edits: string[]
 }
 
 const makePendingBuild = (r: ResourceWithBuilds): BuildTuple => {
   return {
     name: r.name,
-    since: r.pendingBuildSince,
+    since: r.pendingBuildSince ?? "",
     edits: r.pendingBuildEdits || [],
   }
 }
@@ -37,13 +38,13 @@ const makePendingBuild = (r: ResourceWithBuilds): BuildTuple => {
 const makeBuildHistory = (r: ResourceWithBuilds, b: Build): BuildTuple => {
   return {
     name: r.name,
-    since: b.startTime,
+    since: b.startTime ?? "",
     edits: b.edits || [],
   }
 }
 
 const mostRecentBuildToDisplay = (
-  resources: Array<ResourceWithBuilds>
+  resources: ResourceWithBuilds[]
 ): BuildTuple | null => {
   let r = null
   let pendingBuildsSorted = resources

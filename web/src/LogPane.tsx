@@ -1,11 +1,13 @@
-import React, { Component } from "react"
+import React, { Component, PureComponent } from "react"
 import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
 import AnsiLine from "./AnsiLine"
 import "./LogPane.scss"
 import ReactDOM from "react-dom"
 import { LogLine, SnapshotHighlight } from "./types"
 import { sourcePrefix } from "./logs"
+import color from "./color"
 import findLogLineID from "./findLogLine"
+import styled from "styled-components"
 
 const WHEEL_DEBOUNCE_MS = 250
 
@@ -33,7 +35,29 @@ type LogLineComponentProps = {
   showManifestPrefix: boolean
 }
 
-class LogLineComponent extends Component<LogLineComponentProps> {
+let LogLinePrefixRoot = styled.span`
+  user-select: none;
+  width: 6em;
+  display: inline-block;
+  border-right: 1px solid ${color.grayLightest};
+  padding-right: 16px;
+  margin-right: 16px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  color: ${color.grayLight};
+  flex-shrink: 0;
+
+  &::selection {
+    background-color: transparent;
+  }
+`
+
+let LogLinePrefix = React.memo((props: { name: string }) => {
+  return <LogLinePrefixRoot>{props.name}</LogLinePrefixRoot>
+})
+
+class LogLineComponent extends PureComponent<LogLineComponentProps> {
   private ref: React.RefObject<HTMLSpanElement> = React.createRef()
 
   scrollIntoView() {
@@ -44,9 +68,10 @@ class LogLineComponent extends Component<LogLineComponentProps> {
 
   render() {
     let props = this.props
+    let prefix = null
     let text = props.text
     if (props.showManifestPrefix) {
-      text = sourcePrefix(props.manifestName) + text
+      prefix = <LogLinePrefix name={props.manifestName} />
     }
     return (
       <span
@@ -54,7 +79,8 @@ class LogLineComponent extends Component<LogLineComponentProps> {
         data-lineid={props.lineId}
         className={`logLine ${props.shouldHighlight ? "highlighted" : ""}`}
       >
-        <AnsiLine line={text} />
+        {prefix}
+        <AnsiLine line={text} className={"logLine-content"} />
       </span>
     )
   }
@@ -233,8 +259,10 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       const key = "logLine" + i
 
       let shouldHighlight = false
+      let maybeHighlightRef = null
       if (highlight) {
         if (highlight.beginningLogID === i.toString()) {
+          maybeHighlightRef = this.highlightRef
           sawBeginning = true
         }
         if (highlight.endingLogID === i.toString()) {
@@ -248,7 +276,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 
       let el = (
         <LogLineComponent
-          ref={i === 0 ? this.highlightRef : null}
+          ref={maybeHighlightRef}
           key={key}
           text={l.text}
           manifestName={l.manifestName}

@@ -7,9 +7,9 @@ type featureFlags = { [featureFlag: string]: boolean }
 export default class Features {
   private flags: featureFlags
 
-  constructor(flags: featureFlags | null) {
+  constructor(flags: object | null | undefined) {
     if (flags) {
-      this.flags = flags
+      this.flags = flags as featureFlags
     } else {
       this.flags = {}
     }

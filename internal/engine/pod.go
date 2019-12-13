@@ -127,6 +127,7 @@ func maybeTrackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*s
 			Status:     status,
 			Namespace:  ns,
 			HasSynclet: hasSynclet,
+			SpanID:     runtimelog.SpanIDForPod(podID),
 		}
 		if isCurrentDeploy {
 			// Only attach a new pod to the runtime state if it's from the current deploy;
@@ -150,6 +151,7 @@ func maybeTrackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*s
 			Status:     status,
 			Namespace:  ns,
 			HasSynclet: hasSynclet,
+			SpanID:     runtimelog.SpanIDForPod(podID),
 		}
 		if isCurrentDeploy {
 			// Only attach a new pod to the runtime state if it's from the current deploy;
@@ -245,7 +247,8 @@ func checkForContainerCrash(ctx context.Context, state *store.EngineState, mt *s
 	ms.NeedsRebuildFromCrash = true
 	ms.LiveUpdatedContainerIDs = container.NewIDSet()
 	msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Name)
-	le := store.NewLogEvent(ms.Name, "build:0", []byte(msg+"\n"))
+	// TODO(nick): logger.WarningLvl?
+	le := store.NewLogEvent(ms.Name, "build:0", logger.InfoLvl, []byte(msg+"\n"))
 	if len(ms.BuildHistory) > 0 {
 		ms.BuildHistory[0].Log = model.AppendLog(ms.BuildHistory[0].Log, le, "", state.Secrets)
 	}

@@ -14,9 +14,11 @@ message BuildRecord {
   repeated string warnings = 3;
   google.protobuf.Timestamp start_time = 4;
   google.protobuf.Timestamp finish_time  = 5;
-  reserved "log";
-  reserved 6;
+  string log = 6;
   bool is_crash_rebuild = 7;
+
+  // The span id for this build record's logs in the main logstore.
+  string span_id = 8;
 }
 
 message K8sResourceInfo {
@@ -28,18 +30,27 @@ message K8sResourceInfo {
   bool all_containers_ready = 6;
   int32 pod_restarts = 7;
 
-
+  // pod logs are now in the log store
   reserved "pod_log";
   reserved 8;
+
+  // The span id for this pod's logs in the main logstore
+  string span_id = 9;
 }
 
 message DCResourceInfo {
   repeated string config_paths = 1;
   string container_status = 2;
   string containerID = 3;
+
+  // service logs are now in the log store
   reserved "log";
   reserved 4;
+
   google.protobuf.Timestamp start_time = 5;
+
+  // The span id for this docker-compose service's logs in the main logstore
+  string span_id = 6;
 }
 
 message YAMLResourceInfo {
@@ -47,18 +58,6 @@ message YAMLResourceInfo {
 }
 
 message LocalResourceInfo {}
-
-message Alert {
-  string alert_type = 1;
-  string header = 2;
-  string message = 3;
-  // TODO(dmiller): this should be a timestamp, but sometimes incorrectly formatted times get set here
-  // like when there's a Pod that has PodStatusError.
-  // We should figure out how those times are being set, and fix them to parse as protobuf.Timestamp
-  // correctly
-  string timestamp = 4;
-  string resource_name = 5;
-}
 
 message Facet {
   string name = 1;
@@ -86,9 +85,18 @@ message Resource {
   string runtime_status = 18;
   bool is_tiltfile = 19;
   bool show_build_status = 20;
-  string combined_log = 21;
+
+  // Resource logs are now stored in the log store.
+  reserved "combined_log";
+  reserved 21;
+
   string crash_log = 22;
-  repeated Alert alerts = 23;
+
+  // Alerts are currently client-side only, and not
+  // sent in the payload.
+  reserved "alerts";
+  reserved 23;
+
   repeated Facet facets = 24;
   bool queued = 25;
 }
@@ -110,8 +118,7 @@ message View {
 
   // We used to have a setting that allowed users to dynamically
   // prepend timestamps in logs.
-  reserved "log_timestamps";
-  reserved 3;
+  bool DEPRECATED_log_timestamps = 3;
 
   map<string, bool> feature_flags = 4;
 

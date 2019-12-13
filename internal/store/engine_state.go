@@ -61,9 +61,6 @@ type EngineState struct {
 	TiltIgnoreContents       string
 	PendingConfigFileChanges map[string]time.Time
 
-	// UserArgs are the post-tilt args, e.g., in `tilt up -- --hello goodbye`, it'd be [--hello goodbye]
-	UserArgs []string
-
 	TriggerQueue []model.ManifestName
 
 	IsProfiling bool
@@ -95,6 +92,8 @@ type EngineState struct {
 
 	TelemetryCmd    model.Cmd
 	TelemetryStatus model.TelemetryStatus
+  
+	UserConfigState model.UserConfigState
 }
 
 // Merge analytics opt-in status from different sources.

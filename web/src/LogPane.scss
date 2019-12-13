@@ -1,7 +1,7 @@
 @import "constants.scss";
 
 .LogPane {
-  padding: $spacing-unit / 2 0;
+  margin: $spacing-unit / 2 0;
   width: 100%;
 }
 
@@ -20,7 +20,7 @@
 .logEnd {
   animation: blink 1s infinite;
   animation-timing-function: ease;
-  padding-left: $spacing-unit / 2;
+  margin-left: $spacing-unit / 2;
 }
 
 .LogPane-empty {
@@ -28,12 +28,13 @@
 }
 
 .LogPane .logLine {
-  padding-left: $spacing-unit / 2;
-  padding-right: $spacing-unit / 2;
+  margin-left: $spacing-unit / 2;
+  margin-right: $spacing-unit / 2;
+  display: flex;
 }
 
-.LogPane code {
-  white-space: pre-wrap;
+.logLine-content {
+  white-space: pre;
   min-height: $spacing-unit / 2; // Respect blank lines
 }
 
@@ -41,7 +42,7 @@
   background-color: rgba($color-blue, $translucent);
 }
 
-.LogPane .highlighted {
+.LogPane .highlighted .logLine-content {
   background-color: rgba($color-blue, $translucent);
 }
 

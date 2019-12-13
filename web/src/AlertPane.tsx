@@ -3,10 +3,11 @@ import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gr
 import AnsiLine from "./AnsiLine"
 import TimeAgo from "react-timeago"
 import "./AlertPane.scss"
-import { Resource } from "./types"
 import { timeAgoFormatter } from "./timeFormatters"
-import { hasAlert } from "./alerts"
+import { getResourceAlerts, hasAlert } from "./alerts"
 import PathBuilder from "./PathBuilder"
+
+type Resource = Proto.webviewResource
 
 type AlertsProps = {
   pathBuilder: PathBuilder
@@ -42,7 +43,8 @@ class AlertPane extends PureComponent<AlertsProps> {
 
     let alertResources = resources.filter(r => hasAlert(r))
     alertResources.forEach(resource => {
-      resource.alerts.forEach(alert => {
+      let resName = resource.name ?? ""
+      getResourceAlerts(resource).forEach(alert => {
         let dismissButton = <div />
         if (alert.dismissHandler && !isSnapshot) {
           dismissButton = (
@@ -55,7 +57,7 @@ class AlertPane extends PureComponent<AlertsProps> {
           )
         }
         alertElements.push(
-          <li key={alert.alertType + resource.name} className="AlertPane-item">
+          <li key={alert.alertType + resName} className="AlertPane-item">
             <header>
               <div className="AlertPane-headerDiv">
                 <h3 className="AlertPane-headerDiv-header">{alert.header}</h3>

@@ -6,9 +6,12 @@ import { ReactComponent as UpdateAvailableSvg } from "./assets/svg/update-availa
 import { combinedStatus, warnings } from "./status"
 import "./Statusbar.scss"
 import { combinedStatusMessage } from "./combinedStatusMessage"
-import { Build, ResourceStatus, TiltBuild } from "./types"
+import { ResourceStatus } from "./types"
 import mostRecentBuildToDisplay from "./mostRecentBuild"
 import { Link } from "react-router-dom"
+
+type Build = Proto.webviewBuildRecord
+type TiltBuild = Proto.webviewTiltBuild
 
 class StatusItem {
   public warningCount: number = 0
@@ -47,8 +50,8 @@ class StatusItem {
 type StatusBarProps = {
   items: Array<StatusItem>
   alertsUrl: string
-  runningVersion: TiltBuild | null
-  latestVersion: TiltBuild | null
+  runningVersion: TiltBuild | null | undefined
+  latestVersion: TiltBuild | null | undefined
   checkVersion: boolean
 }
 
@@ -122,8 +125,8 @@ class Statusbar extends PureComponent<StatusBarProps> {
   }
 
   tiltPanel(
-    runningVersion: TiltBuild | null,
-    latestVersion: TiltBuild | null,
+    runningVersion: TiltBuild | null | undefined,
+    latestVersion: TiltBuild | null | undefined,
     shouldCheckVersion: boolean
   ) {
     let content: ReactElement = <LogoSvg className="Statusbar-logo" />

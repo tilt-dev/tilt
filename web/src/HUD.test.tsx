@@ -101,12 +101,22 @@ it("doesn't re-render the sidebar when the logs change", async () => {
   let resourceView = oneResourceView()
   hud.setState({ view: resourceView })
   let oldDOMNode = root.find(".Sidebar").getDOMNode()
-  let resource = resourceView.resources[0]
-  if (!resource.k8sResourceInfo) throw new Error("missing k8s info")
-  resource.k8sResourceInfo.podLog += "hello world\n"
-  hud.setState({ view: resourceView })
-  let newDOMNode = root.find(".Sidebar").getDOMNode()
 
+  function now() {
+    return new Date().toString()
+  }
+  resourceView.logList = {
+    spans: {
+      "": {},
+    },
+    segments: [
+      { text: "line1\n", time: now() },
+      { text: "line2\n", time: now() },
+    ],
+  }
+  hud.setState({ view: resourceView })
+
+  let newDOMNode = root.find(".Sidebar").getDOMNode()
   expect(oldDOMNode).toBe(newDOMNode)
 })
 

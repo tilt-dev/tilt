@@ -21,8 +21,17 @@ export enum Width {
   sidebarCollapsed = unit * 1.5,
 }
 
+export function SizeUnit(multiplier: number) {
+  let unit = 32
+  return `${unit * multiplier}px`
+}
+
 export enum ZIndex {
   topFrame = 500,
+}
+
+export enum AnimDuration {
+  default = "0.3s",
 }
 
 // Pod Status
@@ -33,11 +42,11 @@ const podStatusErrImgPull = "ErrImagePull"
 const podStatusRunError = "RunContainerError"
 const podStatusStartError = "StartError"
 
-function podStatusIsCrash(status: string) {
+function podStatusIsCrash(status: string | undefined) {
   return status === podStatusError || status === podStatusCrashLoopBackOff
 }
 
-function podStatusIsError(status: string) {
+function podStatusIsError(status: string | undefined) {
   return (
     status === podStatusError ||
     status === podStatusCrashLoopBackOff ||

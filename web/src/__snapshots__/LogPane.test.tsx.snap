@@ -8,7 +8,9 @@ exports[`renders highlighted lines 1`] = `
     className="logLine "
     data-lineid={0}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -22,7 +24,9 @@ exports[`renders highlighted lines 1`] = `
     className="logLine "
     data-lineid={1}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -33,10 +37,12 @@ exports[`renders highlighted lines 1`] = `
     </code>
   </span>
   <span
-    className="logLine "
+    className="logLine highlighted"
     data-lineid={2}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -47,10 +53,12 @@ exports[`renders highlighted lines 1`] = `
     </code>
   </span>
   <span
-    className="logLine "
+    className="logLine highlighted"
     data-lineid={3}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -76,7 +84,9 @@ exports[`renders logs 1`] = `
     className="logLine "
     data-lineid={0}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -90,7 +100,9 @@ exports[`renders logs 1`] = `
     className="logLine "
     data-lineid={1}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -104,7 +116,9 @@ exports[`renders logs 1`] = `
     className="logLine "
     data-lineid={2}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -118,7 +132,9 @@ exports[`renders logs 1`] = `
     className="logLine "
     data-lineid={3}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -144,7 +160,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={0}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -164,7 +182,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={1}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -178,7 +198,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={2}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -192,7 +214,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={3}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -206,7 +230,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={4}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -220,7 +246,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={5}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -234,7 +262,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={6}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -248,7 +278,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={7}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -262,7 +294,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={8}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -276,7 +310,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={9}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -290,7 +326,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={10}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -304,7 +342,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={11}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -318,7 +358,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={12}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -332,7 +374,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={13}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -346,7 +390,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={14}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -360,7 +406,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={15}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -374,7 +422,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={16}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -388,7 +438,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={17}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -402,7 +454,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={18}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -416,7 +470,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={19}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -430,7 +486,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={20}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -444,7 +502,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={21}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -470,7 +530,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={22}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -484,7 +546,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={23}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -522,7 +586,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={24}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -548,7 +614,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={25}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -574,7 +642,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={26}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -600,7 +670,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={27}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -614,7 +686,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={28}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -640,7 +714,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={29}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -666,7 +742,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={30}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -680,7 +758,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={31}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -694,7 +774,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={32}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -732,7 +814,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={33}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -758,7 +842,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={34}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -784,7 +870,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={35}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -810,7 +898,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={36}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -824,7 +914,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={37}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -850,7 +942,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={38}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -876,7 +970,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={39}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -890,7 +986,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={40}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -904,7 +1002,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={41}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -942,7 +1042,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={42}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -968,7 +1070,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={43}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -994,7 +1098,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={44}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1020,7 +1126,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={45}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1034,7 +1142,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={46}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1060,7 +1170,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={47}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1086,7 +1198,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={48}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1100,7 +1214,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={49}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1114,7 +1230,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={50}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1152,7 +1270,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={51}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1178,7 +1298,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={52}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1192,7 +1314,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={53}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1206,7 +1330,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={54}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1220,7 +1346,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={55}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1234,7 +1362,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={56}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1248,7 +1378,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={57}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1262,7 +1394,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={58}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1276,7 +1410,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={59}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1290,7 +1426,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={60}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1304,7 +1442,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={61}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1318,7 +1458,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={62}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1332,7 +1474,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={63}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1346,7 +1490,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={64}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1360,7 +1506,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={65}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1374,7 +1522,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={66}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1388,7 +1538,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={67}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1402,7 +1554,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={68}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1428,7 +1582,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={69}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1442,7 +1598,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={70}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1468,7 +1626,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={71}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1482,7 +1642,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={72}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1496,7 +1658,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={73}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1510,7 +1674,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={74}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1524,7 +1690,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={75}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1538,7 +1706,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={76}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1552,7 +1722,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={77}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1566,7 +1738,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={78}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1592,7 +1766,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={79}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1606,7 +1782,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={80}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1620,7 +1798,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={81}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1646,7 +1826,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={82}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1672,7 +1854,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={83}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1698,7 +1882,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={84}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1712,7 +1898,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={85}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1738,7 +1926,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={86}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1764,7 +1954,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={87}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1790,7 +1982,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={88}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1816,7 +2010,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={89}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1830,7 +2026,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={90}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1844,7 +2042,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={91}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1882,7 +2082,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={92}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1908,7 +2110,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={93}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1922,7 +2126,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={94}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1936,7 +2142,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={95}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1950,7 +2158,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={96}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1964,7 +2174,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={97}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1978,7 +2190,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={98}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -1992,7 +2206,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={99}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2006,7 +2222,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={100}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2020,7 +2238,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={101}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2046,7 +2266,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={102}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2060,7 +2282,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={103}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2086,7 +2310,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={104}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2100,7 +2326,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={105}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2114,7 +2342,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={106}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2128,7 +2358,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={107}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2142,7 +2374,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={108}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2168,7 +2402,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={109}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2182,7 +2418,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={110}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2196,7 +2434,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={111}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2222,7 +2462,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={112}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2248,7 +2490,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={113}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2274,7 +2518,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={114}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2288,7 +2534,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={115}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2314,7 +2562,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={116}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2340,7 +2590,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={117}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2366,7 +2618,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={118}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2392,7 +2646,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={119}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2406,7 +2662,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={120}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2420,7 +2678,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={121}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2458,7 +2718,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={122}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2484,7 +2746,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={123}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2498,7 +2762,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={124}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2512,7 +2778,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={125}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2526,7 +2794,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={126}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2540,7 +2810,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={127}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2554,7 +2826,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={128}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2568,7 +2842,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={129}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2582,7 +2858,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={130}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2596,7 +2874,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={131}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2622,7 +2902,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={132}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2636,7 +2918,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={133}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2662,7 +2946,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={134}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2676,7 +2962,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={135}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2690,7 +2978,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={136}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2704,7 +2994,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={137}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2718,7 +3010,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={138}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2732,7 +3026,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={139}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2746,7 +3042,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={140}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2772,7 +3070,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={141}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2786,7 +3086,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={142}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2800,7 +3102,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={143}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2826,7 +3130,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={144}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2852,7 +3158,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={145}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2878,7 +3186,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={146}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2892,7 +3202,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={147}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2918,7 +3230,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={148}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2944,7 +3258,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={149}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2970,7 +3286,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={150}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -2996,7 +3314,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={151}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3010,7 +3330,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={152}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3024,7 +3346,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={153}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3062,7 +3386,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={154}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3088,7 +3414,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={155}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3102,7 +3430,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={156}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3116,7 +3446,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={157}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3130,7 +3462,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={158}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3144,7 +3478,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={159}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3158,7 +3494,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={160}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3172,7 +3510,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={161}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3186,7 +3526,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={162}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3200,7 +3542,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={163}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3226,7 +3570,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={164}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3240,7 +3586,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={165}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3266,7 +3614,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={166}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3280,7 +3630,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={167}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3294,7 +3646,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={168}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3308,7 +3662,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={169}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3322,7 +3678,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={170}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3336,7 +3694,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={171}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3362,7 +3722,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={172}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3376,7 +3738,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={173}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3390,7 +3754,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={174}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3416,7 +3782,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={175}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3430,7 +3798,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={176}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3444,7 +3814,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={177}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3458,7 +3830,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={178}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3472,7 +3846,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={179}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3486,7 +3862,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={180}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3500,7 +3878,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={181}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3514,7 +3894,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={182}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3540,7 +3922,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={183}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3554,7 +3938,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={184}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3580,7 +3966,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={185}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3594,7 +3982,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={186}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3608,7 +3998,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={187}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3622,7 +4014,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={188}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3636,7 +4030,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={189}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3662,7 +4058,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={190}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3676,7 +4074,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={191}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3690,7 +4090,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={192}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3716,7 +4118,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={193}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3742,7 +4146,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={194}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3768,7 +4174,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={195}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3782,7 +4190,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={196}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3808,7 +4218,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={197}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3834,7 +4246,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={198}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3860,7 +4274,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={199}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3886,7 +4302,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={200}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3912,7 +4330,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={201}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3938,7 +4358,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={202}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3952,7 +4374,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={203}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -3966,7 +4390,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={204}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4004,7 +4430,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={205}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4030,7 +4458,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={206}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4044,7 +4474,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={207}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4058,7 +4490,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={208}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4072,7 +4506,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={209}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4086,7 +4522,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={210}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4100,7 +4538,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={211}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4114,7 +4554,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={212}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4128,7 +4570,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={213}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4142,7 +4586,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={214}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4156,7 +4602,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={215}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4170,7 +4618,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={216}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4184,7 +4634,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={217}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4198,7 +4650,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={218}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4212,7 +4666,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={219}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4226,7 +4682,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={220}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4240,7 +4698,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={221}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4254,7 +4714,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={222}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4268,7 +4730,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={223}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4282,7 +4746,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={224}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4308,7 +4774,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={225}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4322,7 +4790,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={226}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4348,7 +4818,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={227}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4362,7 +4834,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={228}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4376,7 +4850,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={229}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4390,7 +4866,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={230}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4404,7 +4882,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={231}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4418,7 +4898,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={232}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4432,7 +4914,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={233}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4446,7 +4930,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={234}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4460,7 +4946,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={235}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4474,7 +4962,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={236}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4488,7 +4978,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={237}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4514,7 +5006,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={238}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4528,7 +5022,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={239}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4542,7 +5038,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={240}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4568,7 +5066,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={241}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4594,7 +5094,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={242}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4620,7 +5122,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={243}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4634,7 +5138,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={244}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4660,7 +5166,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={245}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4686,7 +5194,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={246}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4712,7 +5222,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={247}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4738,7 +5250,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={248}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4752,7 +5266,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={249}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4766,7 +5282,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={250}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4804,7 +5322,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={251}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4830,7 +5350,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={252}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4844,7 +5366,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={253}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4858,7 +5382,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={254}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4872,7 +5398,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={255}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4886,7 +5414,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={256}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4900,7 +5430,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={257}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4914,7 +5446,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={258}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4940,7 +5474,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={259}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4954,7 +5490,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={260}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4980,7 +5518,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={261}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -4994,7 +5534,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={262}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5008,7 +5550,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={263}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5022,7 +5566,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={264}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5036,7 +5582,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={265}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5050,7 +5598,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={266}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5076,7 +5626,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={267}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5090,7 +5642,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={268}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5104,7 +5658,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={269}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5130,7 +5686,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={270}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5156,7 +5714,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={271}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5182,7 +5742,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={272}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5196,7 +5758,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={273}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5222,7 +5786,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={274}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5248,7 +5814,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={275}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5274,7 +5842,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={276}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5300,7 +5870,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={277}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5314,7 +5886,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={278}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5328,7 +5902,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={279}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5366,7 +5942,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={280}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5392,7 +5970,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={281}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5406,7 +5986,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={282}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5420,7 +6002,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={283}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5434,7 +6018,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={284}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5448,7 +6034,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={285}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5462,7 +6050,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={286}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5476,7 +6066,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={287}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5490,7 +6082,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={288}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5504,7 +6098,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={289}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5518,7 +6114,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={290}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5532,7 +6130,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={291}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5546,7 +6146,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={292}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5560,7 +6162,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={293}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5586,7 +6190,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={294}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5600,7 +6206,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={295}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5626,7 +6234,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={296}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5640,7 +6250,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={297}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5654,7 +6266,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={298}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5668,7 +6282,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={299}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5682,7 +6298,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={300}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5696,7 +6314,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={301}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5710,7 +6330,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={302}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5724,7 +6346,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={303}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5738,7 +6362,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={304}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5752,7 +6378,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={305}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5766,7 +6394,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={306}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5780,7 +6410,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={307}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5794,7 +6426,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={308}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5808,7 +6442,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={309}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5822,7 +6458,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={310}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5836,7 +6474,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={311}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5850,7 +6490,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={312}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5864,7 +6506,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={313}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5878,7 +6522,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={314}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5892,7 +6538,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={315}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5906,7 +6554,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={316}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5920,7 +6570,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={317}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5934,7 +6586,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={318}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5948,7 +6602,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={319}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5962,7 +6618,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={320}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5976,7 +6634,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={321}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -5990,7 +6650,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={322}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -6004,7 +6666,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={323}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -6018,7 +6682,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={324}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}
@@ -6032,7 +6698,9 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     className="logLine "
     data-lineid={325}
   >
-    <code>
+    <code
+      className="logLine-content"
+    >
       <span
         className={null}
         style={null}

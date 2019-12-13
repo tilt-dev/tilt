@@ -8,6 +8,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/pkg/errors"
 
+	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 	"github.com/windmilleng/tilt/pkg/webview"
 )
@@ -30,15 +31,21 @@ func (s *Span) Clone() *Span {
 	return &clone
 }
 
-type SpanID string
+type SpanID = model.LogSpanID
 
 type LogSegment struct {
 	SpanID SpanID
 	Time   time.Time
 	Text   []byte
+	Level  logger.Level
 
 	// Continues a line from a previous segment.
 	ContinuesLine bool
+}
+
+// Whether these two log segments may be printed on the same line
+func (l LogSegment) CanContinueLine(other LogSegment) bool {
+	return l.SpanID == other.SpanID && l.Level == other.Level
 }
 
 func (l LogSegment) StartsLine() bool {
@@ -58,13 +65,14 @@ func (l LogSegment) String() string {
 	return string(l.Text)
 }
 
-func segmentsFromBytes(spanID SpanID, time time.Time, bs []byte) []LogSegment {
+func segmentsFromBytes(spanID SpanID, time time.Time, level logger.Level, bs []byte) []LogSegment {
 	segments := []LogSegment{}
 	lastBreak := 0
 	for i, b := range bs {
 		if b == newlineByte {
 			segments = append(segments, LogSegment{
 				SpanID: spanID,
+				Level:  level,
 				Time:   time,
 				Text:   bs[lastBreak : i+1],
 			})
@@ -74,6 +82,7 @@ func segmentsFromBytes(spanID SpanID, time time.Time, bs []byte) []LogSegment {
 	if lastBreak < len(bs) {
 		segments = append(segments, LogSegment{
 			SpanID: spanID,
+			Level:  level,
 			Time:   time,
 			Text:   bs[lastBreak:],
 		})
@@ -84,6 +93,7 @@ func segmentsFromBytes(spanID SpanID, time time.Time, bs []byte) []LogSegment {
 type LogEvent interface {
 	Message() []byte
 	Time() time.Time
+	Level() logger.Level
 
 	// The manifest that this log is associated with.
 	ManifestName() model.ManifestName
@@ -178,20 +188,12 @@ func (s *LogStore) Append(le LogEvent, secrets model.SecretSet) {
 	}
 
 	msg := secrets.Scrub(le.Message())
-
-	isStartingNewLine := false
-	if span.LastSegmentIndex == -1 {
-		isStartingNewLine = true
-	} else if s.segments[span.LastSegmentIndex].IsComplete() {
-		isStartingNewLine = true
-	}
-
-	added := segmentsFromBytes(spanID, le.Time(), msg)
+	added := segmentsFromBytes(spanID, le.Time(), le.Level(), msg)
 	if len(added) == 0 {
 		return
 	}
 
-	added[0].ContinuesLine = !isStartingNewLine
+	added[0].ContinuesLine = s.computeContinuesLine(added[0], span)
 
 	s.segments = append(s.segments, added...)
 	span.LastSegmentIndex = len(s.segments) - 1
@@ -254,6 +256,22 @@ func (s *LogStore) cloneSpanMap() map[SpanID]*Span {
 	return newSpans
 }
 
+func (s *LogStore) computeContinuesLine(seg LogSegment, span *Span) bool {
+	if span.LastSegmentIndex == -1 {
+		return false
+	} else {
+		lastSeg := s.segments[span.LastSegmentIndex]
+		if lastSeg.IsComplete() {
+			return false
+		}
+		if !lastSeg.CanContinueLine(seg) {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (s *LogStore) recomputeDerivedValues() {
 	s.len = s.computeLen()
 
@@ -271,14 +289,7 @@ func (s *LogStore) recomputeDerivedValues() {
 			span.FirstSegmentIndex = i
 		}
 
-		isStartingNewLine := false
-		if span.LastSegmentIndex == -1 {
-			isStartingNewLine = true
-		} else if s.segments[span.LastSegmentIndex].IsComplete() {
-			isStartingNewLine = true
-		}
-
-		s.segments[i].ContinuesLine = !isStartingNewLine
+		s.segments[i].ContinuesLine = s.computeContinuesLine(segment, span)
 		span.LastSegmentIndex = i
 	}
 
@@ -312,7 +323,7 @@ func (s *LogStore) ContinuingString(checkpoint Checkpoint) string {
 		currentSegment := s.segments[checkpointIndex]
 		if !precedingSegment.IsComplete() {
 			// If this is the same span id, remove the prefix from this line.
-			if precedingSegment.SpanID == currentSegment.SpanID {
+			if precedingSegment.CanContinueLine(currentSegment) {
 				isSameSpanContinuation = true
 			} else {
 				isChangingSpanContinuation = true
@@ -354,6 +365,7 @@ func (s *LogStore) ToLogList() (*webview.LogList, error) {
 		}
 		segments[i] = &webview.LogSegment{
 			SpanId: string(segment.SpanID),
+			Level:  webview.LogLevel(segment.Level),
 			Time:   time,
 			Text:   string(segment.Text),
 		}
@@ -366,7 +378,7 @@ func (s *LogStore) ToLogList() (*webview.LogList, error) {
 }
 
 func (s *LogStore) String() string {
-	return s.ManifestLog("")
+	return s.logHelper(s.spans, true)
 }
 
 func (s *LogStore) spansForManifest(mn model.ManifestName) map[SpanID]*Span {
@@ -379,11 +391,24 @@ func (s *LogStore) spansForManifest(mn model.ManifestName) map[SpanID]*Span {
 	return result
 }
 
+func (s *LogStore) SpanLog(spanID SpanID) string {
+	spans := make(map[SpanID]*Span)
+	span, ok := s.spans[spanID]
+	if !ok {
+		return ""
+	}
+	spans[spanID] = span
+	return s.logHelper(spans, false)
+}
+
 func (s *LogStore) ManifestLog(mn model.ManifestName) string {
+	spans := s.spansForManifest(mn)
+	return s.logHelper(spans, false)
+}
+
+func (s *LogStore) logHelper(spansToLog map[SpanID]*Span, showManifestPrefix bool) string {
 	sb := strings.Builder{}
 	lastLineCompleted := false
-	allLogs := mn == ""
-	filteredLogs := mn != ""
 
 	// We want to print the log line-by-line, but we don't actually store the logs
 	// line-by-line. We store them as segments.
@@ -397,28 +422,23 @@ func (s *LogStore) ManifestLog(mn model.ManifestName) string {
 	//
 	// This can have some O(n^2) perf characteristics in the worst case, but
 	// for normal inputs should be fine.
-	startIndex := 0
-	lastIndex := len(s.segments) - 1
-	if filteredLogs {
-		spans := s.spansForManifest(mn)
-		earliestStartIndex := -1
-		latestEndIndex := -1
-		for _, span := range spans {
-			if earliestStartIndex == -1 || span.FirstSegmentIndex < earliestStartIndex {
-				earliestStartIndex = span.FirstSegmentIndex
-			}
-			if latestEndIndex == -1 || span.LastSegmentIndex > latestEndIndex {
-				latestEndIndex = span.LastSegmentIndex
-			}
+	earliestStartIndex := -1
+	latestEndIndex := -1
+	for _, span := range spansToLog {
+		if earliestStartIndex == -1 || span.FirstSegmentIndex < earliestStartIndex {
+			earliestStartIndex = span.FirstSegmentIndex
 		}
-
-		if earliestStartIndex == -1 {
-			return ""
+		if latestEndIndex == -1 || span.LastSegmentIndex > latestEndIndex {
+			latestEndIndex = span.LastSegmentIndex
 		}
-
-		startIndex = earliestStartIndex
-		lastIndex = latestEndIndex
 	}
+
+	if earliestStartIndex == -1 {
+		return ""
+	}
+
+	startIndex := earliestStartIndex
+	lastIndex := latestEndIndex
 
 	isFirstLine := true
 	for i := startIndex; i <= lastIndex; i++ {
@@ -429,7 +449,7 @@ func (s *LogStore) ManifestLog(mn model.ManifestName) string {
 
 		spanID := segment.SpanID
 		span := s.spans[spanID]
-		if filteredLogs && mn != span.ManifestName {
+		if _, ok := spansToLog[spanID]; !ok {
 			continue
 		}
 
@@ -439,7 +459,7 @@ func (s *LogStore) ManifestLog(mn model.ManifestName) string {
 			sb.WriteString("\n")
 		}
 
-		if allLogs && span.ManifestName != "" {
+		if showManifestPrefix && span.ManifestName != "" {
 			sb.WriteString(SourcePrefix(span.ManifestName))
 		}
 		sb.WriteString(string(segment.Text))
@@ -456,6 +476,10 @@ func (s *LogStore) ManifestLog(mn model.ManifestName) string {
 			currentSeg := s.segments[currentIndex]
 			if currentSeg.SpanID != spanID {
 				continue
+			}
+
+			if !currentSeg.CanContinueLine(segment) {
+				break
 			}
 
 			sb.WriteString(string(currentSeg.Text))

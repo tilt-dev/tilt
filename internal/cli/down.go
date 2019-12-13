@@ -11,6 +11,7 @@ import (
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 type downCmd struct {
@@ -38,11 +39,11 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	return c.down(ctx, downDeps)
+	return c.down(ctx, downDeps, args)
 }
 
-func (c *downCmd) down(ctx context.Context, downDeps DownDeps) error {
-	tlr := downDeps.tfl.Load(ctx, c.fileName, nil)
+func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) error {
+	tlr := downDeps.tfl.Load(ctx, c.fileName, model.NewUserConfigState(args))
 	err := tlr.Error
 	if err != nil {
 		return err
