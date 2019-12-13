@@ -30,10 +30,11 @@
 .LogPane .logLine {
   margin-left: $spacing-unit / 2;
   margin-right: $spacing-unit / 2;
+  display: flex;
 }
 
-.LogPane code {
-  white-space: pre-wrap;
+.logLine-content {
+  white-space: pre;
   min-height: $spacing-unit / 2; // Respect blank lines
 }
 
@@ -41,7 +42,7 @@
   background-color: rgba($color-blue, $translucent);
 }
 
-.LogPane .highlighted {
+.LogPane .highlighted .logLine-content {
   background-color: rgba($color-blue, $translucent);
 }
 
