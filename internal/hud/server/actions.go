@@ -7,3 +7,9 @@ type AppendToTriggerQueueAction struct {
 }
 
 func (AppendToTriggerQueueAction) Action() {}
+
+type SetTiltfileArgsAction struct {
+	Args []string
+}
+
+func (SetTiltfileArgsAction) Action() {}

@@ -3117,6 +3117,41 @@ func TestVersionSettingsStoredOnState(t *testing.T) {
 	})
 }
 
+func TestConfigArgsChangeCausesTiltfileRerun(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", `
+print('hello')
+config.define_string_list('foo')
+cfg = config.parse()
+print('foo=', cfg['foo'])`)
+
+	opt := func(ia InitAction) InitAction {
+		ia.UserArgs = []string{"--foo", "bar"}
+		return ia
+	}
+
+	f.loadAndStart(opt)
+
+	f.WaitUntil("first tiltfile build finishes", func(state store.EngineState) bool {
+		return len(state.TiltfileState.BuildHistory) == 1
+	})
+
+	f.withState(func(state store.EngineState) {
+		require.Contains(t, state.TiltfileState.LastBuild().Log.String(), `foo= ["bar"]`)
+	})
+	f.store.Dispatch(server.SetTiltfileArgsAction{Args: []string{"--foo", "baz", "--foo", "quu"}})
+
+	f.WaitUntil("second tiltfile build finishes", func(state store.EngineState) bool {
+		return len(state.TiltfileState.BuildHistory) == 2
+	})
+
+	f.withState(func(state store.EngineState) {
+		require.Contains(t, state.TiltfileState.LastBuild().Log.String(), `foo= ["baz", "quu"]`)
+	})
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
@@ -3678,11 +3713,14 @@ func (f *testFixture) assertAllBuildsConsumed() {
 	}
 }
 
-func (f *testFixture) loadAndStart() {
+func (f *testFixture) loadAndStart(initOptions ...initOption) {
 	ia := InitAction{
 		WatchFiles:   true,
 		TiltfilePath: f.JoinPath("Tiltfile"),
 		HUDEnabled:   true,
+	}
+	for _, opt := range initOptions {
+		ia = opt(ia)
 	}
 	f.Init(ia)
 }

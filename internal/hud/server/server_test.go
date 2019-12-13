@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -391,6 +392,29 @@ func TestHandleNewSnapshot(t *testing.T) {
 		assert.Equal(t, "0.10.13", snapshot.View.RunningTiltBuild.Version)
 		assert.Equal(t, "43", snapshot.SnapshotHighlight.BeginningLogID)
 	}
+}
+
+func TestSetTiltfileArgs(t *testing.T) {
+	f := newTestFixture(t)
+
+	json := `["--foo", "bar", "as df"]`
+	req, err := http.NewRequest("POST", "/api/set_tiltfile_args", strings.NewReader(json))
+	require.NoError(t, err)
+
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.serv.HandleSetTiltfileArgs)
+
+	handler.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code)
+
+	a := store.WaitForAction(t, reflect.TypeOf(server.SetTiltfileArgsAction{}), f.getActions)
+	action, ok := a.(server.SetTiltfileArgsAction)
+	if !ok {
+		t.Fatalf("Action was not of type '%T': %+v", server.SetTiltfileArgsAction{}, action)
+	}
+	assert.Equal(t, []string{"--foo", "bar", "as df"}, action.Args)
 }
 
 type serverFixture struct {

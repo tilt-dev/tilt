@@ -51,6 +51,7 @@ func Execute() {
 	addCommand(rootCmd, &downCmd{}, a)
 	addCommand(rootCmd, &versionCmd{}, a)
 	addCommand(rootCmd, &dockerPruneCmd{}, a)
+	addCommand(rootCmd, newArgsCmd(), a)
 
 	rootCmd.AddCommand(newKubectlCmd())
 	rootCmd.AddCommand(newDumpCmd())
