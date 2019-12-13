@@ -50,17 +50,22 @@ type upCmd struct {
 
 func (c *upCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "up [<Tiltfile args>]",
-		Short: "start Tilt with the given Tiltfile args",
+		Use:                   "up [<tilt flags>] [-- <Tiltfile args>]",
+		DisableFlagsInUseLine: true,
+		Short:                 "start Tilt with the given Tiltfile args",
 		Long: `
 Starts Tilt and runs services defined in the Tiltfile.
 
+There are two types of args:
+1) Tilt flags, listed below, which are handled entirely by Tilt.
+2) Tiltfile args, which can be anything, and are potentially accessed by config.parse in your Tiltfile.
+
 By default:
 1) Tiltfile args are interpreted as the list of services to start, e.g. tilt up frontend backend.
-2) Running with no args starts all services defined in the Tiltfile
+2) Running with no Tiltfile args starts all services defined in the Tiltfile
 
 This default behavior does not apply if the Tiltfile uses config.parse or config.set_enabled_resources.
-In that case, see (hopefully) comments in your Tiltfile and/or https://tilt.dev/user_config.html
+In that case, see https://tilt.dev/user_config.html and/or comments in your Tiltfile
 `,
 	}
 
