@@ -49,7 +49,7 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 	}
 
 	// no build slots available
-	if state.BuildControllerSlotsAvailable < 1 {
+	if state.AvailableBuildSlots() < 1 {
 		return buildEntry{}, false
 	}
 

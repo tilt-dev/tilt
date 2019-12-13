@@ -42,6 +42,7 @@ type EngineState struct {
 	// How many builds have been completed (pass or fail) since starting tilt
 	CompletedBuildCount int
 
+	MaxBuildSlots                 int
 	BuildControllerSlotsAvailable int
 
 	FatalError error
@@ -143,6 +144,16 @@ func (e *EngineState) BuildStatus(id model.TargetID) BuildStatus {
 		}
 	}
 	return BuildStatus{}
+}
+
+func (e *EngineState) AvailableBuildSlots() int {
+	currentlyBuilding := len(e.CurrentlyBuilding)
+	if currentlyBuilding >= e.MaxBuildSlots {
+		// this could happen if user decreases max build slots while
+		// multiple builds are in progress, no big deal
+		return 0
+	}
+	return e.MaxBuildSlots - currentlyBuilding
 }
 
 func (e *EngineState) UpsertManifestTarget(mt *ManifestTarget) {
@@ -327,7 +338,7 @@ func NewState() *EngineState {
 	ret.VersionSettings = model.VersionSettings{
 		CheckUpdates: true,
 	}
-	ret.BuildControllerSlotsAvailable = 3 // ~~ note: set this from configs one day!
+	ret.MaxBuildSlots = 3 // TODO(maia): set this via Tiltifle
 	ret.CurrentlyBuilding = make(map[model.ManifestName]bool)
 	return ret
 }
