@@ -92,7 +92,7 @@ type EngineState struct {
 
 	TelemetryCmd    model.Cmd
 	TelemetryStatus model.TelemetryStatus
-  
+
 	UserConfigState model.UserConfigState
 }
 
