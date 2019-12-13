@@ -59,8 +59,8 @@ func TestExporterString(t *testing.T) {
 	ch <- true
 	expected := `{"SpanContext":{"TraceID":"00000000000000000000000000000000","SpanID":"00f067aa0ba902b7","TraceFlags":0},"ParentSpanID":"0000000000000000","SpanKind":0,"Name":"foo","StartTime":"0001-01-01T00:00:00Z","EndTime":"0001-01-01T00:00:00Z","Attributes":null,"MessageEvents":null,"Links":null,"Status":0,"HasRemoteParent":false,"DroppedAttributeCount":0,"DroppedMessageEventCount":0,"DroppedLinkCount":0,"ChildSpanCount":0}
 `
-	if s != expected {
-		t.Fatalf("got %v; expected %v", s, expected)
+	if *s != expected {
+		t.Fatalf("got %v; expected %v", *s, expected)
 	}
 }
 
@@ -159,21 +159,31 @@ func (f *fixture) assertSpansEqual(expected []*exporttrace.SpanData, actual []*e
 	}
 }
 
-func (f *fixture) getSpanText() (string, chan<- bool) {
+func (f *fixture) getSpanText() (*string, chan<- bool) {
 	r, ch, err := f.ex.GetOutgoingSpans()
 	if err != nil {
 		f.t.Fatalf("unexpected error %v", err)
 	}
+
+	if r == nil {
+		return nil, ch
+	}
+	
 	bs, err := ioutil.ReadAll(r)
 	if err != nil {
 		f.t.Fatalf("unexpected error %v", err)
 	}
-	return string(bs), ch
+
+	result := string(bs)
+	return &result, ch
 }
 
 func (f *fixture) getSpans() ([]*exporttrace.SpanData, chan<- bool) {
 	s, ch := f.getSpanText()
-	r := strings.NewReader(s)
+	if s == nil {
+		return nil, ch
+	}
+	r := strings.NewReader(*s)
 	dec := json.NewDecoder(r)
 
 	var result []*exporttrace.SpanData
@@ -181,11 +191,15 @@ func (f *fixture) getSpans() ([]*exporttrace.SpanData, chan<- bool) {
 	for dec.More() {
 		var data SpanDataFromJSON
 		if err := dec.Decode(&data); err != nil {
-			f.t.Fatalf("unexpected error %v %q", err, s)
+			f.t.Fatalf("unexpected error %v %q", err, *s)
 		}
 		result = append(result, sdFromData(data))
 	}
 
+	if len(result) == 0 {
+		f.t.Fatalf("Got an empty string from a non-nil Reader")
+	}
+	
 	return result, ch
 }
 

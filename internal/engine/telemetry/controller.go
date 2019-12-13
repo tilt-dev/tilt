@@ -58,6 +58,10 @@ func (t *Controller) OnChange(ctx context.Context, st store.RStore) {
 		t.logError(st, fmt.Errorf("Error gathering Telemetry data for experimental_telemetry_cmd", err))
 	}
 
+	if r == nil {
+		return
+	}
+	
 	consumed := false
 
 	// run the command with the contents of the spans as jsonlines on stdin

@@ -31,6 +31,7 @@ type Exporter struct {
 // SpanSource is the interface for consumers (generally telemetry.Controller)
 type SpanSource interface {
 	// GetOutgoingSpans gives a consumer access to spans they should send
+	// Data may be nil (so the client knows there won't be any data)
 	// The client must send a value over doneCh; True indicates the
 	// SpanSource should remove the data read; false indicates SpanSource should retain the data.
 	GetOutgoingSpans() (data io.Reader, doneCh chan<- bool, err error)
@@ -63,6 +64,11 @@ func (e *Exporter) loop(ctx context.Context) {
 			queue = appendAndTrim(queue, sd)
 		case <-e.readReqCh:
 			// send the queue to the reader
+			if len(queue) == 0 {
+				// There's nothing pending, so send a nil reader and a channel the client can write to (because it's buffered with length 1)
+				e.readRespCh <- readResp{doneCh: make(chan bool, 1)}
+				break
+			}
 			r, err := e.makeReader(queue)
 			if err != nil {
 				// oh wait, there's a problem encoding?
@@ -71,7 +77,7 @@ func (e *Exporter) loop(ctx context.Context) {
 				queue = nil
 				break
 			}
-
+			
 			// there's now a read in flight
 			readDoneCh = make(chan bool)
 			beingRead, queue = queue, nil

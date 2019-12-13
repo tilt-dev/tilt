@@ -17,17 +17,16 @@ import (
 	exporttrace "go.opentelemetry.io/otel/sdk/export/trace"
 )
 
-func TestTelNoScriptTimeIsUpShouldNotDeleteFile(t *testing.T) {
+func TestTelNoScriptTimeIsUpNoInvocation(t *testing.T) {
 	f := newTCFixture(t)
 	defer f.teardown()
 
 	f.run()
 
-	f.assertNoLogs()
-	f.assertSpansPresent()
+	f.assertNoInvocation()
 }
 
-func TestTelNoScriptTimeIsNotUpShouldNotDeleteFile(t *testing.T) {
+func TestTelNoScriptTimeIsNotUpNoInvocation(t *testing.T) {
 	f := newTCFixture(t)
 	defer f.teardown()
 	t1 := time.Now()
@@ -36,11 +35,10 @@ func TestTelNoScriptTimeIsNotUpShouldNotDeleteFile(t *testing.T) {
 	f.setLastRun(t1)
 	f.run()
 
-	f.assertNoLogs()
-	f.assertSpansPresent()
+	f.assertNoInvoation()
 }
 
-func TestTelScriptTimeIsNotUpShouldNotDeleteFile(t *testing.T) {
+func TestTelScriptTimeIsNotUpNoInvocation(t *testing.T) {
 	f := newTCFixture(t)
 	defer f.teardown()
 	t1 := time.Now()
@@ -50,8 +48,21 @@ func TestTelScriptTimeIsNotUpShouldNotDeleteFile(t *testing.T) {
 	f.setLastRun(t1)
 	f.run()
 
-	f.assertNoLogs()
-	f.assertSpansPresent()
+	f.assertNoInvocation()
+}
+
+func TestTelScriptTimeIsUpNoSpansNoInvocation(t *testing.T) {
+	f := newTCFixture(t)
+	defer f.teardown()
+	t1 := time.Now()
+	f.clock.now = t1
+
+	f.spans = nil
+	f.workCmd()
+	f.setLastRun(t1)
+	f.run()
+
+	f.assertNoInvocation()
 }
 
 func TestTelScriptTimeIsUpShouldDeleteFileAndSetTime(t *testing.T) {
@@ -64,9 +75,9 @@ func TestTelScriptTimeIsUpShouldDeleteFileAndSetTime(t *testing.T) {
 	f.run()
 
 	f.assertNoLogs()
+	f.assertFileUpdated()
 	f.assertTelemetryScriptRanAtIs(t1)
-	f.assertTelemetryFileIsEmpty()
-	f.assertSpansPresent()
+	f.assertNoSpans()
 }
 
 func TestTelScriptFailsTimeIsUpShouldDeleteFileAndSetTime(t *testing.T) {
@@ -91,7 +102,7 @@ type tcFixture struct {
 	st        *store.TestingStore
 	cmd       string
 	lastRun   time.Time
-	fakeSpans tracer.SpanSource
+	spans []*exporttrace.SpanData
 	exporter  *tracer.Exporter
 }
 
@@ -116,6 +127,8 @@ cat > %s`, temp.JoinPath("scriptstdin")))
 		temp:  temp,
 		clock: fakeClock{now: time.Unix(1551202573, 0)},
 		st:    st,
+		exporter: 	tracer.NewExporter(ctx),
+		spans: []*exporttrace.SpanData{&exporttrace.SpanData{}},
 	}
 }
 
@@ -132,14 +145,11 @@ func (tcf *tcFixture) setLastRun(t time.Time) {
 }
 
 func (tcf *tcFixture) run() {
-	spans := tcf.fakeSpans
-	if spans == nil {
-		exporter := tracer.NewExporter(tcf.ctx)
-		exporter.OnEnd(&exporttrace.SpanData{})
-		tcf.exporter = exporter
-		spans = exporter
+	for _, sd := range tcf.spans {
+		exporter.OnEnd(sd)
 	}
 
+	
 	tcf.st.SetState(store.EngineState{
 		TelemetryStatus: model.TelemetryStatus{
 			LastRunAt: tcf.lastRun,
