@@ -20,42 +20,41 @@ let Main = styled.main`
   border-right: 1px dashed ${Color.white};
   border-bottom: 1px dashed ${Color.white};
   padding: ${SizeUnit(0.5)};
-  white-space: pre;
 `
 
-
-let mainLorem = `Lorem ipsum dolor sit amet, consectetur adipiscing elit, 
-sed do eiusmod tempor incididunt ut 
-labore et dolore magna aliqua. Ut enim ad minim veniam, 
-
-quis nostrud exercitation ullamco laboris nisi ut 
-aliquip ex ea commodo consequat. Duis aute irure dolor
-in reprehenderit in voluptate velit esse cillum 
-dolore eu fugiat nulla pariatur. 
-
-Excepteur sint occaecat cupidatat non proident, 
-sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, 
-sed do eiusmod tempor incididunt ut 
-labore et dolore magna aliqua. Ut enim ad minim veniam, 
-
-quis nostrud exercitation ullamco laboris nisi ut 
-aliquip ex ea commodo consequat. Duis aute irure dolor
-in reprehenderit in voluptate velit esse cillum 
-dolore eu fugiat nulla pariatur. 
-
-Excepteur sint occaecat cupidatat non proident, 
-sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-Platea dictumst quisque sagittis purus sit amet volutpat consequat mauris. 
-Eleifend mi in nulla posuere sollicitudin aliquam. 
-Lorem dolor sed viverra ipsum. Laoreet non curabitur gravida arcu ac tortor dignissim. 
-
-Tortor dignissim convallis aenean et tortor at. 
-Aliquam sem et tortor consequat id porta nibh. 
-Arcu ac tortor dignissim convallis aenean et tortor at.
-`
+let mainLorem = <p>
+  Lorem ipsum dolor sit amet, consectetur adipiscing elit,<br />
+  sed do eiusmod tempor incididunt ut<br />
+  labore et dolore magna aliqua. Ut enim ad minim veniam,<br />
+  <br />
+  quis nostrud exercitation ullamco laboris nisi ut<br />
+  aliquip ex ea commodo consequat. Duis aute irure dolor<br />
+  in reprehenderit in voluptate velit esse cillum<br />
+  dolore eu fugiat nulla pariatur.<br />
+  <br/>
+  Excepteur sint occaecat cupidatat non proident,<br/>
+  sunt in culpa qui officia deserunt mollit anim id est laborum.<br/>
+  <br/>
+  Lorem ipsum dolor sit amet, consectetur adipiscing elit,<br/>
+  sed do eiusmod tempor incididunt ut<br/>
+  labore et dolore magna aliqua. Ut enim ad minim veniam,<br/>
+  <br/>
+  quis nostrud exercitation ullamco laboris nisi ut<br/>
+  aliquip ex ea commodo consequat. Duis aute irure dolor<br/>
+  in reprehenderit in voluptate velit esse cillum<br/>
+  dolore eu fugiat nulla pariatur.<br/>
+  <br/>
+  Excepteur sint occaecat cupidatat non proident,<br/>
+  sunt in culpa qui officia deserunt mollit anim id est laborum.<br/>
+  <br/>
+  Platea dictumst quisque sagittis purus sit amet volutpat consequat mauris.<br/>
+  Eleifend mi in nulla posuere sollicitudin aliquam.<br/>
+  Lorem dolor sed viverra ipsum. Laoreet non curabitur gravida arcu ac tortor dignissim.<br/>
+  <br/>
+  Tortor dignissim convallis aenean et tortor at.<br/>
+  Aliquam sem et tortor consequat id porta nibh.<br/>
+  Arcu ac tortor dignissim convallis aenean et tortor at.<br/>
+</p>
 
 function layoutDefault() {
   return (
