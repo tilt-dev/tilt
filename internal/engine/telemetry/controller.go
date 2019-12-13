@@ -51,6 +51,7 @@ func (t *Controller) OnChange(ctx context.Context, st store.RStore) {
 	r, releaseCh, err := t.spans.GetOutgoingSpans()
 	if err != nil {
 		t.logError(st, fmt.Errorf("Error gathering Telemetry data for experimental_telemetry_cmd %v", err))
+		return
 	}
 
 	if r == nil {
