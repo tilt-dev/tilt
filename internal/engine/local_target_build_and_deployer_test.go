@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 
 	"github.com/windmilleng/tilt/internal/store"
@@ -109,7 +110,7 @@ func TestFailedCommand(t *testing.T) {
 	require.NotNil(t, err, "failed cmd should throw error")
 	assert.Contains(t, err.Error(),
 		"Command \"echo oh no; false\" failed: exit status 1")
-	assert.True(t, IsDontFallBackError(err), "expect DontFallBackError")
+	assert.True(t, buildcontrol.IsDontFallBackError(err), "expect DontFallBackError")
 
 	assert.Contains(t, f.out.String(), "oh no", "expect cmd stdout in logs")
 }

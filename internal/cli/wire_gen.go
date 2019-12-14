@@ -26,6 +26,7 @@ import (
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/engine"
 	analytics2 "github.com/windmilleng/tilt/internal/engine/analytics"
+	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
@@ -160,8 +161,8 @@ func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics3 *analy
 	syncletManager := containerupdate.NewSyncletManager(client, syncletImageRef)
 	syncletUpdater := containerupdate.NewSyncletUpdater(syncletManager)
 	execUpdater := containerupdate.NewExecUpdater(client)
-	engineUpdateModeFlag := provideUpdateModeFlag()
-	updateMode, err := engine.ProvideUpdateMode(engineUpdateModeFlag, env, runtime)
+	buildcontrolUpdateModeFlag := provideUpdateModeFlag()
+	updateMode, err := buildcontrol.ProvideUpdateMode(buildcontrolUpdateModeFlag, env, runtime)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}

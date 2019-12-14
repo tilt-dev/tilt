@@ -1395,12 +1395,12 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 		ms, _ := st.ManifestState(manifest.Name)
 		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
 	})
-	f.store.Dispatch(BuildStartedAction{
+	f.store.Dispatch(buildcontrol.BuildStartedAction{
 		ManifestName: manifest.Name,
 		StartTime:    time.Now(),
 	})
 
-	f.store.Dispatch(BuildCompleteAction{
+	f.store.Dispatch(buildcontrol.BuildCompleteAction{
 		Result: liveUpdateResultSet(manifest, "theOriginalContainer"),
 	})
 
@@ -1439,7 +1439,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 		ms, _ := st.ManifestState(manifest.Name)
 		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
 	})
-	f.store.Dispatch(BuildStartedAction{
+	f.store.Dispatch(buildcontrol.BuildStartedAction{
 		ManifestName: manifest.Name,
 		StartTime:    time.Now(),
 	})
@@ -1450,7 +1450,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 
 	// ...and finish the build. Even though this action comes in AFTER the pod
 	// event w/ unexpected container,  we should still be able to detect the mismatch.
-	f.store.Dispatch(BuildCompleteAction{
+	f.store.Dispatch(buildcontrol.BuildCompleteAction{
 		Result: liveUpdateResultSet(manifest, "theOriginalContainer"),
 	})
 
@@ -1480,7 +1480,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
 	})
 
-	f.store.Dispatch(BuildStartedAction{
+	f.store.Dispatch(buildcontrol.BuildStartedAction{
 		ManifestName: manifest.Name,
 		StartTime:    time.Now(),
 	})
@@ -1492,7 +1492,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 		WithCreationTime(podStartTime).
 		WithDeploymentUID(ancestorUID).
 		WithTemplateSpecHash(ptsh)
-	f.store.Dispatch(BuildCompleteAction{
+	f.store.Dispatch(buildcontrol.BuildCompleteAction{
 		Result: deployResultSet(manifest, ancestorUID, []k8s.PodTemplateSpecHash{ptsh}),
 	})
 
@@ -1506,7 +1506,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
 		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name
 	})
-	f.store.Dispatch(BuildStartedAction{
+	f.store.Dispatch(buildcontrol.BuildStartedAction{
 		ManifestName: manifest.Name,
 		StartTime:    time.Now(),
 	})
@@ -1515,7 +1515,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	pb = pb.WithContainerID("funny-container-id")
 	f.store.Dispatch(k8swatch.NewPodChangeAction(pb.Build(), manifest.Name, ancestorUID))
 
-	f.store.Dispatch(BuildCompleteAction{
+	f.store.Dispatch(buildcontrol.BuildCompleteAction{
 		Result: liveUpdateResultSet(manifest, "normal-container-id"),
 	})
 
@@ -2820,12 +2820,12 @@ func TestBuildLogAction(t *testing.T) {
 	manifest := f.newManifest("alert-injester")
 	f.Start([]model.Manifest{manifest}, true)
 
-	f.store.Dispatch(BuildStartedAction{
+	f.store.Dispatch(buildcontrol.BuildStartedAction{
 		ManifestName: manifest.Name,
 		StartTime:    time.Now(),
 	})
 
-	f.store.Dispatch(BuildLogAction{
+	f.store.Dispatch(buildcontrol.BuildLogAction{
 		LogEvent: store.NewLogEvent(manifest.Name, SpanIDForBuildLog(1), logger.InfoLvl, []byte(`a
 bc
 def

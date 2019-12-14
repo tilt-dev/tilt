@@ -16,8 +16,8 @@ import (
 	"k8s.io/klog"
 
 	"github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/engine"
 	engineanalytics "github.com/windmilleng/tilt/internal/engine/analytics"
+	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
@@ -33,7 +33,7 @@ const DefaultWebHost = "localhost"
 const DefaultWebPort = 10350
 const DefaultWebDevPort = 46764
 
-var updateModeFlag string = string(engine.UpdateModeAuto)
+var updateModeFlag string = string(buildcontrol.UpdateModeAuto)
 var webModeFlag model.WebMode = model.DefaultWebMode
 var webPort = 0
 var webHost = DefaultWebHost
@@ -71,8 +71,8 @@ In that case, see https://tilt.dev/user_config.html and/or comments in your Tilt
 
 	cmd.Flags().BoolVar(&c.watch, "watch", true, "If true, services will be automatically rebuilt and redeployed when files change. Otherwise, each service will be started once.")
 	cmd.Flags().Var(&webModeFlag, "web-mode", "Values: local, prod. Controls whether to use prod assets or a local dev server")
-	cmd.Flags().StringVar(&updateModeFlag, "update-mode", string(engine.UpdateModeAuto),
-		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", engine.AllUpdateModes))
+	cmd.Flags().StringVar(&updateModeFlag, "update-mode", string(buildcontrol.UpdateModeAuto),
+		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", buildcontrol.AllUpdateModes))
 	cmd.Flags().StringVar(&c.traceTags, "traceTags", "", "tags to add to spans for easy querying, of the form: key1=val1,key2=val2")
 	cmd.Flags().BoolVar(&c.hud, "hud", true, "If true, tilt will open in HUD mode.")
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
@@ -172,8 +172,8 @@ func logOutput(s string) {
 	log.Print(color.GreenString(s))
 }
 
-func provideUpdateModeFlag() engine.UpdateModeFlag {
-	return engine.UpdateModeFlag(updateModeFlag)
+func provideUpdateModeFlag() buildcontrol.UpdateModeFlag {
+	return buildcontrol.UpdateModeFlag(updateModeFlag)
 }
 
 func provideLogActions() store.LogActionsFlag {

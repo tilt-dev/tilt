@@ -9,6 +9,7 @@ import (
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockerfile"
+	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/logger"
@@ -19,10 +20,10 @@ type imageAndCacheBuilder struct {
 	ib         build.ImageBuilder
 	cb         build.CacheBuilder
 	custb      build.CustomBuilder
-	updateMode UpdateMode
+	updateMode buildcontrol.UpdateMode
 }
 
-func NewImageAndCacheBuilder(ib build.ImageBuilder, cb build.CacheBuilder, custb build.CustomBuilder, updateMode UpdateMode) *imageAndCacheBuilder {
+func NewImageAndCacheBuilder(ib build.ImageBuilder, cb build.CacheBuilder, custb build.CustomBuilder, updateMode buildcontrol.UpdateMode) *imageAndCacheBuilder {
 	return &imageAndCacheBuilder{
 		ib:         ib,
 		cb:         cb,

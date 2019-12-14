@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
 
@@ -64,13 +65,13 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 			return br, err
 		}
 
-		if !shouldFallBackForErr(err) {
+		if !buildcontrol.ShouldFallBackForErr(err) {
 			return br, err
 		}
 
-		if redirectErr, ok := err.(RedirectToNextBuilder); ok {
+		if redirectErr, ok := err.(buildcontrol.RedirectToNextBuilder); ok {
 			s := fmt.Sprintf("falling back to next update method because: %v\n", err)
-			logger.Get(ctx).Write(redirectErr.level, []byte(s))
+			logger.Get(ctx).Write(redirectErr.Level, []byte(s))
 		} else {
 			lastUnexpectedErr = err
 			if i+1 < len(composite.builders) {
@@ -88,18 +89,18 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 }
 
 func DefaultBuildOrder(lubad *LiveUpdateBuildAndDeployer, ibad *ImageBuildAndDeployer, dcbad *DockerComposeBuildAndDeployer,
-	ltbad *LocalTargetBuildAndDeployer, updMode UpdateMode, env k8s.Env, runtime container.Runtime) BuildOrder {
-	if updMode == UpdateModeImage || updMode == UpdateModeNaive {
+	ltbad *LocalTargetBuildAndDeployer, updMode buildcontrol.UpdateMode, env k8s.Env, runtime container.Runtime) BuildOrder {
+	if updMode == buildcontrol.UpdateModeImage || updMode == buildcontrol.UpdateModeNaive {
 		return BuildOrder{dcbad, ibad, ltbad}
 	}
 
-	if updMode == UpdateModeSynclet || shouldUseSynclet(updMode, env, runtime) {
+	if updMode == buildcontrol.UpdateModeSynclet || shouldUseSynclet(updMode, env, runtime) {
 		ibad.SetInjectSynclet(true)
 	}
 
 	return BuildOrder{lubad, dcbad, ibad, ltbad}
 }
 
-func shouldUseSynclet(updMode UpdateMode, env k8s.Env, runtime container.Runtime) bool {
-	return updMode == UpdateModeAuto && !env.UsesLocalDockerRegistry() && runtime == container.RuntimeDocker
+func shouldUseSynclet(updMode buildcontrol.UpdateMode, env k8s.Env, runtime container.Runtime) bool {
+	return updMode == buildcontrol.UpdateModeAuto && !env.UsesLocalDockerRegistry() && runtime == container.RuntimeDocker
 }

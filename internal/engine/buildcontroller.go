@@ -95,7 +95,7 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 		}
 		ctx := logger.CtxWithLogHandler(ctx, actionWriter)
 
-		st.Dispatch(BuildStartedAction{
+		st.Dispatch(buildcontrol.BuildStartedAction{
 			ManifestName: entry.name,
 			StartTime:    time.Now(),
 			FilesChanged: entry.filesChanged,
@@ -105,7 +105,7 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 		c.logBuildEntry(ctx, entry)
 
 		result, err := c.buildAndDeploy(ctx, st, entry)
-		st.Dispatch(NewBuildCompleteAction(result, err))
+		st.Dispatch(buildcontrol.NewBuildCompleteAction(result, err))
 	}()
 }
 
@@ -162,7 +162,7 @@ type BuildLogActionWriter struct {
 }
 
 func (w BuildLogActionWriter) Write(level logger.Level, p []byte) error {
-	w.store.Dispatch(BuildLogAction{
+	w.store.Dispatch(buildcontrol.BuildLogAction{
 		LogEvent: store.NewLogEvent(w.manifestName, SpanIDForBuildLog(w.buildCount), level, p),
 	})
 	return nil

@@ -126,6 +126,9 @@ errcheck:
 wire:
 	toast wire
 
+wire-dev:
+	wire ./internal/engine && wire ./internal/cli && wire ./internal/synclet
+
 wire-check:
 	wire check ./internal/engine
 	wire check ./internal/cli

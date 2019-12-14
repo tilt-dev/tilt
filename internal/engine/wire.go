@@ -10,6 +10,7 @@ import (
 	"github.com/windmilleng/wmclient/pkg/dirs"
 
 	"github.com/windmilleng/tilt/internal/containerupdate"
+	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 
@@ -49,7 +50,7 @@ var DeployerBaseWireSet = wire.NewSet(
 
 	wire.Bind(new(BuildAndDeployer), new(*CompositeBuildAndDeployer)),
 	NewCompositeBuildAndDeployer,
-	ProvideUpdateMode,
+	buildcontrol.ProvideUpdateMode,
 )
 
 var DeployerWireSetTest = wire.NewSet(
@@ -71,7 +72,7 @@ func provideBuildAndDeployer(
 	kClient k8s.Client,
 	dir *dirs.WindmillDir,
 	env k8s.Env,
-	updateMode UpdateModeFlag,
+	updateMode buildcontrol.UpdateModeFlag,
 	sCli *synclet.TestSyncletClient,
 	dcc dockercompose.DockerComposeClient,
 	clock build.Clock,
@@ -96,7 +97,7 @@ func provideImageBuildAndDeployer(
 	analytics *analytics.TiltAnalytics) (*ImageBuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
-		wire.Value(UpdateModeFlag(UpdateModeAuto)),
+		wire.Value(buildcontrol.UpdateModeFlag(buildcontrol.UpdateModeAuto)),
 		k8s.ProvideContainerRuntime,
 	)
 
@@ -114,7 +115,7 @@ func provideDockerComposeBuildAndDeployer(
 	dir *dirs.WindmillDir) (*DockerComposeBuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
-		wire.Value(UpdateModeFlag(UpdateModeAuto)),
+		wire.Value(buildcontrol.UpdateModeFlag(buildcontrol.UpdateModeAuto)),
 		build.ProvideClock,
 		provideKubectlLogLevelInfo,
 
