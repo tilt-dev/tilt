@@ -5,13 +5,17 @@ import { oneResourceUnrecognizedError } from "./testdata"
 import { TriggerMode } from "./types"
 import PathBuilder from "./PathBuilder"
 import { mount } from "enzyme"
+import LogStore from "./LogStore"
 
 type Resource = Proto.webviewResource
+
+let logStore = new LogStore()
 
 let pb = new PathBuilder("localhost", "")
 beforeEach(() => {
   fetchMock.resetMocks()
   Date.now = jest.fn(() => 1482363367071)
+  logStore = new LogStore()
 })
 
 it("renders no errors", () => {
@@ -20,7 +24,11 @@ it("renders no errors", () => {
 
   const tree = renderer
     .create(
-      <AlertPane pathBuilder={pb} resources={resources as Array<Resource>} />
+      <AlertPane
+        pathBuilder={pb}
+        resources={resources as Array<Resource>}
+        logStore={logStore}
+      />
     )
     .toJSON()
 
@@ -34,7 +42,6 @@ it("renders one container start error", () => {
   resource.crashLog = "Eeeeek there is a problem"
   resource.buildHistory = [
     {
-      log: "laa dee daa I'm not an error\nI'm serious",
       finishTime: ts,
     },
   ]
@@ -47,7 +54,11 @@ it("renders one container start error", () => {
 
   const tree = renderer
     .create(
-      <AlertPane pathBuilder={pb} resources={resources as Array<Resource>} />
+      <AlertPane
+        pathBuilder={pb}
+        resources={resources as Array<Resource>}
+        logStore={logStore}
+      />
     )
     .toJSON()
   expect(tree).toMatchSnapshot()
@@ -57,7 +68,11 @@ it("renders one container start error", () => {
   resource.k8sResourceInfo.podRestarts = 3
   const newTree = renderer
     .create(
-      <AlertPane pathBuilder={pb} resources={resources as Array<Resource>} />
+      <AlertPane
+        pathBuilder={pb}
+        resources={resources as Array<Resource>}
+        logStore={logStore}
+      />
     )
     .toJSON()
   expect(newTree).toMatchSnapshot()
@@ -76,7 +91,9 @@ it("renders pod restart dismiss button", () => {
 
   let resources: Array<Resource> = [resource]
 
-  let root = mount(<AlertPane pathBuilder={pb} resources={resources} />)
+  let root = mount(
+    <AlertPane pathBuilder={pb} resources={resources} logStore={logStore} />
+  )
   let button = root.find(".AlertPane-dismissButton")
   expect(button).toHaveLength(1)
   fetchMock.mockResponse(JSON.stringify({}))
@@ -100,7 +117,6 @@ it("shows that a container has restarted", () => {
   resource.crashLog = "Eeeeek the container crashed"
   resource.buildHistory = [
     {
-      log: "laa dee daa I'm not an error\nseriously",
       finishTime: ts,
     },
   ]
@@ -112,7 +128,11 @@ it("shows that a container has restarted", () => {
 
   const tree = renderer
     .create(
-      <AlertPane pathBuilder={pb} resources={resources as Array<Resource>} />
+      <AlertPane
+        pathBuilder={pb}
+        resources={resources as Array<Resource>}
+        logStore={logStore}
+      />
     )
     .toJSON()
   expect(tree).toMatchSnapshot()
@@ -124,7 +144,6 @@ it("shows that a crash rebuild has occurred", () => {
   resource.crashLog = "Eeeeek the container crashed"
   resource.buildHistory = [
     {
-      log: "laa dee daa I'm not an error\nseriously",
       finishTime: ts,
       isCrashRebuild: true,
     },
@@ -137,7 +156,11 @@ it("shows that a crash rebuild has occurred", () => {
 
   const tree = renderer
     .create(
-      <AlertPane pathBuilder={pb} resources={resources as Array<Resource>} />
+      <AlertPane
+        pathBuilder={pb}
+        resources={resources as Array<Resource>}
+        logStore={logStore}
+      />
     )
     .toJSON()
   expect(tree).toMatchSnapshot()
@@ -150,7 +173,6 @@ it("renders multiple lines of a crash log", () => {
   resource.crashLog = "Eeeeek the container crashed\nno but really it crashed"
   resource.buildHistory = [
     {
-      log: "laa dee daa I'm not an error\nseriously",
       finishTime: ts,
       isCrashRebuild: true,
     },
@@ -163,7 +185,11 @@ it("renders multiple lines of a crash log", () => {
 
   const tree = renderer
     .create(
-      <AlertPane pathBuilder={pb} resources={resources as Array<Resource>} />
+      <AlertPane
+        pathBuilder={pb}
+        resources={resources as Array<Resource>}
+        logStore={logStore}
+      />
     )
     .toJSON()
   expect(tree).toMatchSnapshot()
@@ -175,7 +201,6 @@ it("renders warnings", () => {
   resource.crashLog = "Eeeeek the container crashed"
   resource.buildHistory = [
     {
-      log: "laa dee daa I'm not an error\nseriously",
       finishTime: ts,
       isCrashRebuild: true,
       warnings: ["Hi I'm a warning"],
@@ -189,7 +214,11 @@ it("renders warnings", () => {
 
   const tree = renderer
     .create(
-      <AlertPane pathBuilder={pb} resources={resources as Array<Resource>} />
+      <AlertPane
+        pathBuilder={pb}
+        resources={resources as Array<Resource>}
+        logStore={logStore}
+      />
     )
     .toJSON()
   expect(tree).toMatchSnapshot()
@@ -202,7 +231,9 @@ it("renders one container unrecognized error", () => {
   let resources = [resource]
 
   const tree = renderer
-    .create(<AlertPane pathBuilder={pb} resources={resources} />)
+    .create(
+      <AlertPane pathBuilder={pb} resources={resources} logStore={logStore} />
+    )
     .toJSON()
   expect(tree).toMatchSnapshot()
 })
