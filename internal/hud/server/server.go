@@ -115,7 +115,7 @@ func (s *HeadsUpServer) Router() http.Handler {
 
 func (s *HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
 	state := s.store.RLockState()
-	view, err := webview.StateToProtoView(state)
+	view, err := webview.StateToProtoView(state, 0)
 	s.store.RUnlockState()
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error converting view to proto: %v", err), http.StatusInternalServerError)
@@ -145,7 +145,7 @@ func (s *HeadsUpServer) DumpEngineJSON(w http.ResponseWriter, req *http.Request)
 
 func (s *HeadsUpServer) SnapshotJSON(w http.ResponseWriter, req *http.Request) {
 	state := s.store.RLockState()
-	view, err := webview.StateToProtoView(state)
+	view, err := webview.StateToProtoView(state, 0)
 	s.store.RUnlockState()
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error converting view to proto: %v", err), http.StatusInternalServerError)

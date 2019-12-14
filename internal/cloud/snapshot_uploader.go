@@ -54,7 +54,7 @@ type snapshotIDResponse struct {
 }
 
 func (s snapshotUploader) TakeAndUpload(state store.EngineState) (SnapshotID, error) {
-	view, err := webview.StateToProtoView(state)
+	view, err := webview.StateToProtoView(state, 0)
 	if err != nil {
 		return "", err
 	}
