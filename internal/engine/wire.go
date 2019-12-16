@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/wire"
 	"github.com/windmilleng/wmclient/pkg/dirs"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
 	"github.com/windmilleng/tilt/internal/containerupdate"
 	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
@@ -21,6 +22,7 @@ import (
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/minikube"
+	"github.com/windmilleng/tilt/internal/tracer"
 	"github.com/windmilleng/tilt/pkg/logger"
 )
 
@@ -48,6 +50,8 @@ var DeployerBaseWireSet = wire.NewSet(
 	NewImageAndCacheBuilder,
 	DefaultBuildOrder,
 
+	tracer.InitOpenTelemetry,
+
 	wire.Bind(new(BuildAndDeployer), new(*CompositeBuildAndDeployer)),
 	NewCompositeBuildAndDeployer,
 	buildcontrol.ProvideUpdateMode,
@@ -56,6 +60,7 @@ var DeployerBaseWireSet = wire.NewSet(
 var DeployerWireSetTest = wire.NewSet(
 	DeployerBaseWireSet,
 	containerupdate.NewSyncletManagerForTests,
+	wire.InterfaceValue(new(sdktrace.SpanProcessor), (sdktrace.SpanProcessor)(nil)),
 
 	// A fake synclet wrapped in a GRPC interface
 	synclet.FakeGRPCWrapper,

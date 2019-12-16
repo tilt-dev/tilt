@@ -1374,6 +1374,25 @@
   version = "v0.18.0"
 
 [[projects]]
+  digest = "1:be33166a80d2a786fff80f85e96284fd23dd0013269cf4183a0b0893b5000166"
+  name = "go.opentelemetry.io/otel"
+  packages = [
+    "api/core",
+    "api/global",
+    "api/metric",
+    "api/trace",
+    "api/unit",
+    "sdk",
+    "sdk/export/trace",
+    "sdk/internal",
+    "sdk/trace",
+    "sdk/trace/internal",
+  ]
+  pruneopts = "UT"
+  revision = "d35ea75879d21c105df6f8a9dd4a600fef806c49"
+  version = "v0.2.0"
+
+[[projects]]
   branch = "master"
   digest = "1:59c0b165efc08ee308e45748ee9b0f1fded07e6f71d58e49a1edea9bc19ae053"
   name = "go.starlark.net"
@@ -2146,6 +2165,11 @@
     "github.com/windmilleng/wmclient/pkg/analytics",
     "github.com/windmilleng/wmclient/pkg/dirs",
     "github.com/windmilleng/wmclient/pkg/os/temp",
+    "go.opentelemetry.io/otel/api/global",
+    "go.opentelemetry.io/otel/sdk/export/trace",
+    "go.opentelemetry.io/otel/sdk/trace",
+    "go.starlark.net/resolve",
+    "go.starlark.net/starlark",
     "go.starlark.net/resolve",
     "go.starlark.net/starlark",
     "go.starlark.net/starlarkstruct",

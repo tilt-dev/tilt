@@ -10,6 +10,7 @@ import (
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
 	"github.com/windmilleng/wmclient/pkg/dirs"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/tools/clientcmd/api"
 
@@ -26,6 +27,7 @@ import (
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
 	"github.com/windmilleng/tilt/internal/engine/runtimelog"
+	"github.com/windmilleng/tilt/internal/engine/telemetry"
 	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
@@ -33,6 +35,7 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/token"
+	"github.com/windmilleng/tilt/internal/tracer"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -71,6 +74,7 @@ var BaseWireSet = wire.NewSet(
 	k8swatch.NewServiceWatcher,
 	k8swatch.NewEventWatchManager,
 	configs.NewConfigsController,
+	telemetry.NewController,
 	engine.NewDockerComposeEventWatcher,
 	runtimelog.NewDockerComposeLogManager,
 	engine.NewProfilerManager,
@@ -108,6 +112,10 @@ var BaseWireSet = wire.NewSet(
 	server.ProvideHeadsUpServer,
 	provideAssetServer,
 	server.ProvideHeadsUpServerController,
+
+	tracer.NewExporter,
+	wire.Bind(new(sdktrace.SpanProcessor), new(*tracer.Exporter)),
+	wire.Bind(new(tracer.SpanSource), new(*tracer.Exporter)),
 
 	dirs.UseWindmillDir,
 	token.GetOrCreateToken,

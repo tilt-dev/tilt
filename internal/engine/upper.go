@@ -211,7 +211,7 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 	case server.SetTiltfileArgsAction:
 		handleSetTiltfileArgsAction(state, action)
 	case store.LogEvent:
-		// handled as a LogAction, do nothing
+	// handled as a LogAction, do nothing
 
 	default:
 		err = fmt.Errorf("unrecognized action: %T", action)

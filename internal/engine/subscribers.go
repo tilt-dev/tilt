@@ -8,6 +8,7 @@ import (
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
 	"github.com/windmilleng/tilt/internal/engine/runtimelog"
+	"github.com/windmilleng/tilt/internal/engine/telemetry"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/store"
@@ -33,7 +34,9 @@ func ProvideSubscribers(
 	ewm *k8swatch.EventWatchManager,
 	tcum *cloud.CloudUsernameManager,
 	cuu *cloud.UpdateUploader,
-	dp *dockerprune.DockerPruner) []store.Subscriber {
+	dp *dockerprune.DockerPruner,
+	tc *telemetry.Controller,
+) []store.Subscriber {
 	return []store.Subscriber{
 		hud,
 		pw,
@@ -55,5 +58,6 @@ func ProvideSubscribers(
 		tcum,
 		cuu,
 		dp,
+		tc,
 	}
 }

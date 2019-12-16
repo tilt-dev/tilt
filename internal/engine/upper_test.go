@@ -26,6 +26,7 @@ import (
 
 	engineanalytics "github.com/windmilleng/tilt/internal/engine/analytics"
 	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
+	"github.com/windmilleng/tilt/internal/engine/telemetry"
 
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 
@@ -58,6 +59,7 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
 	"github.com/windmilleng/tilt/internal/token"
+	"github.com/windmilleng/tilt/internal/tracer"
 	"github.com/windmilleng/tilt/internal/watch"
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/logger"
@@ -3307,8 +3309,9 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 		return time.After(ret.tiltVersionCheckDelay)
 	}
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
+	tc := telemetry.NewController(fakeClock{}, tracer.NewExporter(ctx))
 
-	subs := ProvideSubscribers(h, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, tvc, au, ewm, tcum, cuu, dp)
+	subs := ProvideSubscribers(h, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, tvc, au, ewm, tcum, cuu, dp, tc)
 	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {

@@ -74,3 +74,9 @@ type UIDUpdateAction struct {
 }
 
 func (UIDUpdateAction) Action() {}
+
+type TelemetryScriptRanAction struct {
+	At time.Time
+}
+
+func (TelemetryScriptRanAction) Action() {}
