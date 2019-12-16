@@ -113,9 +113,9 @@ var BaseWireSet = wire.NewSet(
 	provideAssetServer,
 	server.ProvideHeadsUpServerController,
 
-	tracer.NewExporter,
-	wire.Bind(new(sdktrace.SpanProcessor), new(*tracer.Exporter)),
-	wire.Bind(new(tracer.SpanSource), new(*tracer.Exporter)),
+	tracer.NewSpanCollector,
+	wire.Bind(new(sdktrace.SpanProcessor), new(*tracer.SpanCollector)),
+	wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)),
 
 	dirs.UseWindmillDir,
 	token.GetOrCreateToken,

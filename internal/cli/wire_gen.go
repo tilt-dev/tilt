@@ -184,8 +184,8 @@ func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics3 *analy
 	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageAndCacheBuilder, clock)
 	localTargetBuildAndDeployer := engine.NewLocalTargetBuildAndDeployer(clock)
 	buildOrder := engine.DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, updateMode, env, runtime)
-	exporter := tracer.NewExporter(ctx)
-	traceTracer, err := tracer.InitOpenTelemetry(ctx, exporter)
+	spanCollector := tracer.NewSpanCollector(ctx)
+	traceTracer, err := tracer.InitOpenTelemetry(ctx, spanCollector)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -225,7 +225,7 @@ func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics3 *analy
 	cloudUsernameManager := cloud.NewUsernameManager(httpClient)
 	updateUploader := cloud.NewUpdateUploader(httpClient, address)
 	dockerPruner := dockerprune.NewDockerPruner(switchCli)
-	controller := telemetry.NewController(clock, exporter)
+	controller := telemetry.NewController(clock, spanCollector)
 	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, portForwardController, watchManager, buildController, configsController, dockerComposeEventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, tiltVersionChecker, analyticsUpdater, eventWatchManager, cloudUsernameManager, updateUploader, dockerPruner, controller)
 	upper := engine.NewUpper(ctx, storeStore, v2)
 	windmillDir, err := dirs.UseWindmillDir()
@@ -440,7 +440,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebURL,
 	provideWebPort,
 	provideWebHost,
-	provideNoBrowserFlag, server.ProvideHeadsUpServer, provideAssetServer, server.ProvideHeadsUpServerController, tracer.NewExporter, wire.Bind(new(trace2.SpanProcessor), new(*tracer.Exporter)), wire.Bind(new(tracer.SpanSource), new(*tracer.Exporter)), dirs.UseWindmillDir, token.GetOrCreateToken, provideCmdUpDeps, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
+	provideNoBrowserFlag, server.ProvideHeadsUpServer, provideAssetServer, server.ProvideHeadsUpServerController, tracer.NewSpanCollector, wire.Bind(new(trace2.SpanProcessor), new(*tracer.SpanCollector)), wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)), dirs.UseWindmillDir, token.GetOrCreateToken, provideCmdUpDeps, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
 )
 
 type CmdUpDeps struct {

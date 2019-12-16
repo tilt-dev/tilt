@@ -3309,7 +3309,7 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 		return time.After(ret.tiltVersionCheckDelay)
 	}
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
-	tc := telemetry.NewController(fakeClock{}, tracer.NewExporter(ctx))
+	tc := telemetry.NewController(fakeClock{}, tracer.NewSpanCollector(ctx))
 
 	subs := ProvideSubscribers(h, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, tvc, au, ewm, tcum, cuu, dp, tc)
 	ret.upper = NewUpper(ctx, st, subs)
