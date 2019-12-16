@@ -6,12 +6,14 @@ import "./AlertPane.scss"
 import { timeAgoFormatter } from "./timeFormatters"
 import { getResourceAlerts, hasAlert } from "./alerts"
 import PathBuilder from "./PathBuilder"
+import LogStore from "./LogStore"
 
 type Resource = Proto.webviewResource
 
 type AlertsProps = {
   pathBuilder: PathBuilder
   resources: Array<Resource>
+  logStore: LogStore | null
 }
 
 function logToLines(s: string) {
@@ -44,7 +46,7 @@ class AlertPane extends PureComponent<AlertsProps> {
     let alertResources = resources.filter(r => hasAlert(r))
     alertResources.forEach(resource => {
       let resName = resource.name ?? ""
-      getResourceAlerts(resource).forEach(alert => {
+      getResourceAlerts(resource, this.props.logStore).forEach(alert => {
         let dismissButton = <div />
         if (alert.dismissHandler && !isSnapshot) {
           dismissButton = (

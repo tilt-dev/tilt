@@ -1,4 +1,4 @@
-package engine
+package buildcontrol
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 // `level` indicates at what log level this error should be shown to the user
 type RedirectToNextBuilder struct {
 	error
-	level logger.Level
+	Level logger.Level
 }
 
 func WrapRedirectToNextBuilder(err error, level logger.Level) RedirectToNextBuilder {
@@ -58,13 +58,13 @@ var _ error = DontFallBackError{}
 
 // A permanent error indicates that the whole build pipeline needs to stop.
 // It will never recover, even on subsequent rebuilds.
-func isFatalError(err error) bool {
+func IsFatalError(err error) bool {
 	cause := errors.Cause(err)
 	return cause == context.Canceled
 }
 
-func shouldFallBackForErr(err error) bool {
-	if isFatalError(err) {
+func ShouldFallBackForErr(err error) bool {
+	if IsFatalError(err) {
 		return false
 	}
 

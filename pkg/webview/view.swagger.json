@@ -56,9 +56,54 @@
           "ViewService"
         ]
       }
+    },
+    "/websocket/ack": {
+      "post": {
+        "operationId": "AckWebsocket",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/webviewAckWebsocketResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/webviewAckWebsocketRequest"
+            }
+          }
+        ],
+        "tags": [
+          "WebsocketService"
+        ]
+      }
     }
   },
   "definitions": {
+    "webviewAckWebsocketRequest": {
+      "type": "object",
+      "properties": {
+        "to_checkpoint": {
+          "type": "integer",
+          "format": "int32",
+          "title": "The to_checkpoint on the received LogList"
+        },
+        "tilt_start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Allows us to synchronize on a running Tilt intance,\nso we can tell when we're talking to the same Tilt."
+        }
+      },
+      "description": "The webclient needs to notify the server what logs it has,\nso the server knows what to send.\n\nThe socket protocol doesn't have any concept of a StatusCode\nto confirm that the receiver got the message, so we need to send this\nin a separate message."
+    },
+    "webviewAckWebsocketResponse": {
+      "type": "object"
+    },
     "webviewBuildRecord": {
       "type": "object",
       "properties": {
@@ -84,9 +129,6 @@
         "finish_time": {
           "type": "string",
           "format": "date-time"
-        },
-        "log": {
-          "type": "string"
         },
         "is_crash_rebuild": {
           "type": "boolean",
@@ -193,6 +235,16 @@
           "items": {
             "$ref": "#/definitions/webviewLogSegment"
           }
+        },
+        "from_checkpoint": {
+          "type": "integer",
+          "format": "int32",
+          "description": "[from_checkpoint, to_checkpoint)\n\nAn interval of [0, 0) means that the server isn't using\nthe incremental load protocol.\n\nAn interval of [-1, -1) means that the server doesn't have new logs\nto send down.",
+          "title": "from_checkpoint and to_checkpoint express an interval on the\ncentral log-store, with an inclusive start and an exclusive end"
+        },
+        "to_checkpoint": {
+          "type": "integer",
+          "format": "int32"
         }
       }
     },
@@ -443,6 +495,11 @@
         },
         "log_list": {
           "$ref": "#/definitions/webviewLogList"
+        },
+        "tilt_start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Allows us to synchronize on a running Tilt intance,\nso we can tell when Tilt restarted."
         }
       }
     },

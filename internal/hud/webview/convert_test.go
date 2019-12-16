@@ -22,7 +22,7 @@ import (
 var fooManifest = model.Manifest{Name: "foo"}.WithDeployTarget(model.K8sTarget{})
 
 func stateToProtoView(t *testing.T, s store.EngineState) *proto_webview.View {
-	v, err := StateToProtoView(s)
+	v, err := StateToProtoView(s, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

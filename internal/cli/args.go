@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -24,8 +26,9 @@ func newArgsCmd() *argsCmd {
 
 func (c *argsCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "args [<tiltfile args>]",
-		Short: "Changes the Tiltfile args in use by a running Tilt",
+		Use:                   "args [<flags>] [-- <Tiltfile args>]",
+		DisableFlagsInUseLine: true,
+		Short:                 "Changes the Tiltfile args in use by a running Tilt",
 		Long: `Changes the Tiltfile args in use by a running Tilt.
 
 Note that this does not affect built-in Tilt args (e.g. --hud, --host), but rather the extra args that come after,
@@ -56,7 +59,8 @@ func (c *argsCmd) run(ctx context.Context, args []string) error {
 			return errors.New("--clear cannot be specified with other values. either use --clear to clear the args or specify args to replace the args with a new (non-empty) value")
 		}
 	}
-	url := fmt.Sprintf("http://localhost:%d/api/set_tiltfile_args", c.webPort)
+	schemeHostPort := fmt.Sprintf("http://localhost:%d", c.webPort)
+	url := path.Join(schemeHostPort, "api", "set_tiltfile_args")
 	body := &bytes.Buffer{}
 	err := json.NewEncoder(body).Encode(args)
 	if err != nil {
@@ -64,17 +68,24 @@ func (c *argsCmd) run(ctx context.Context, args []string) error {
 	}
 	res, err := c.post(url, "application/json", body)
 	if err != nil {
-		return errors.Wrapf(err, "could not connect to Tilt at %s", url)
+		return errors.Wrapf(err, "error making http request to Tilt at %s", url)
 	}
 	defer func() {
 		_ = res.Body.Close()
 	}()
 
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("error connecting to Tilt at %s: %d", url, res.StatusCode)
+		// don't print the response body for 404 since it's full of html and more noise than it's worth on the command line
+		if res.StatusCode != http.StatusNotFound {
+			_, err := io.Copy(os.Stderr, res.Body)
+			if err != nil {
+				return errors.Wrapf(err, "http request to Tilt returned non-OK status %s and writing the content of the http response failed", res.Status)
+			}
+		}
+		return fmt.Errorf("http request to Tilt failed: %s", res.Status)
 	}
 
-	fmt.Printf("changed config args for Tilt running on port %d to %v\n", webPort, args)
+	fmt.Printf("changed config args for Tilt running at %s to %v\n", schemeHostPort, args)
 
 	return nil
 }

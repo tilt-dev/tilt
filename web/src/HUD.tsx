@@ -124,12 +124,18 @@ class HUD extends Component<HudProps, HudState> {
   setAppState<K extends keyof HudState>(state: Pick<HudState, K>) {
     this.setState(prevState => {
       let newState = _.clone(state) as any
+      newState.logStore = prevState.logStore ?? new LogStore()
+
       let newLogList = newState.view?.logList
       if (newLogList) {
-        // For now, just create a brand new log store.
-        // In the future, we'll do more complex merging.
-        newState.logStore = new LogStore()
-        newState.logStore.append(newLogList)
+        let fromCheckpoint = newLogList.fromCheckpoint ?? 0
+        if (fromCheckpoint > 0) {
+          newState.logStore.append(newLogList)
+        } else if (fromCheckpoint === 0) {
+          // if the fromCheckpoint is 0 or undefined, create a brand new log store.
+          newState.logStore = new LogStore()
+          newState.logStore.append(newLogList)
+        }
       }
       return newState
     })
@@ -214,6 +220,7 @@ class HUD extends Component<HudProps, HudState> {
     let view = this.state.view
 
     let needsNudge = view?.needsAnalyticsNudge ?? false
+    let logStore = this.state.logStore ?? null
     let resources = view?.resources ?? []
     if (!resources?.length) {
       return <HeroScreen message={"Loading…"} />
@@ -412,6 +419,7 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   renderMainPaneSwitch() {
+    let logStore = this.state.logStore ?? null
     let view = this.state.view
     let resources = (view && view.resources) || []
     let snapshotHighlight = this.state.snapshotHighlight || null
@@ -429,8 +437,8 @@ class HUD extends Component<HudProps, HudState> {
       }
 
       let logLines: LogLine[] = []
-      if (name && this.state.logStore) {
-        logLines = this.state.logStore.manifestLog(name)
+      if (name && logStore) {
+        logLines = logStore.manifestLog(name)
       }
 
       return (
@@ -453,7 +461,13 @@ class HUD extends Component<HudProps, HudState> {
         return <Route component={NotFound} />
       }
       if (er) {
-        return <AlertPane pathBuilder={this.pathBuilder} resources={[er]} />
+        return (
+          <AlertPane
+            pathBuilder={this.pathBuilder}
+            resources={[er]}
+            logStore={logStore}
+          />
+        )
       }
     }
     let facetsRoute = (props: RouteComponentProps<any>) => {
@@ -468,8 +482,8 @@ class HUD extends Component<HudProps, HudState> {
     }
     let allLogsRoute = () => {
       let allLogs: LogLine[] = []
-      if (this.state.logStore) {
-        allLogs = this.state.logStore.allLog()
+      if (logStore) {
+        allLogs = logStore.allLog()
       } else if (view?.log) {
         allLogs = logLinesFromString(
           "ERROR: Tilt Server and client protocol mismatch. This happens in dev mode if you have a new client talking to an old Tilt binary. Please re-compile Tilt"
@@ -495,7 +509,11 @@ class HUD extends Component<HudProps, HudState> {
           exact
           path={this.path("/alerts")}
           render={() => (
-            <AlertPane pathBuilder={this.pathBuilder} resources={resources} />
+            <AlertPane
+              pathBuilder={this.pathBuilder}
+              resources={resources}
+              logStore={logStore}
+            />
           )}
         />
         <Route exact path={this.path("/r/:name")} render={logsRoute} />

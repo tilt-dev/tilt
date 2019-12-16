@@ -13,7 +13,6 @@ it("returns the most recent build if there are no pending builds", () => {
     edits: ["main.go"],
     startTime: "2019-04-24T13:08:41.017623-04:00",
     finishTime: "2019-04-24T13:08:42.926608-04:00",
-    log: "",
     isCrashRebuild: false,
     warnings: [],
   }
@@ -29,7 +28,6 @@ it("returns the most recent build if there are no pending builds", () => {
         edits: ["main.go"],
         startTime: "2019-04-24T13:08:39.017623-04:00",
         finishTime: "2019-04-24T13:08:40.926608-04:00",
-        log: "",
         isCrashRebuild: false,
         warnings: [],
       },
@@ -48,7 +46,6 @@ it("returns null if there are no pending builds and the most recent build has no
   let recent = {
     startTime: "2019-04-24T13:08:41.017623-04:00",
     finishTime: "2019-04-24T13:08:42.926608-04:00",
-    log: "",
     isCrashRebuild: false,
     warnings: [],
   }
@@ -63,7 +60,6 @@ it("returns null if there are no pending builds and the most recent build has no
       {
         startTime: "2019-04-24T13:08:39.017623-04:00",
         finishTime: "2019-04-24T13:08:40.926608-04:00",
-        log: "",
         isCrashRebuild: false,
         warnings: [],
       },
@@ -90,7 +86,6 @@ it("returns the pending build if there is one", () => {
       {
         startTime: "2019-04-24T13:08:39.017623-04:00",
         finishTime: "2019-04-24T13:08:40.926608-04:00",
-        log: "",
         isCrashRebuild: false,
         warnings: [],
       },

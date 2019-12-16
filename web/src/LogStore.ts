@@ -43,14 +43,33 @@ class LogSegment {
 class LogStore {
   spans: { [key: string]: LogSpan }
   segments: LogSegment[]
+  checkpoint: number
 
   constructor() {
     this.spans = {}
     this.segments = []
+    this.checkpoint = 0
   }
 
   append(logList: Proto.webviewLogList) {
     let newSpans = logList.spans as { [key: string]: Proto.webviewLogSpan }
+    let newSegments = logList.segments ?? []
+    let fromCheckpoint = logList.fromCheckpoint ?? 0
+    let toCheckpoint = logList.toCheckpoint ?? 0
+    if (fromCheckpoint < 0) {
+      return
+    }
+
+    if (fromCheckpoint < this.checkpoint) {
+      // The server is re-sending some logs we already have, so slice them off.
+      let deleteCount = this.checkpoint - fromCheckpoint
+      newSegments = newSegments.slice(deleteCount)
+    }
+
+    if (toCheckpoint > this.checkpoint) {
+      this.checkpoint = toCheckpoint
+    }
+
     for (let key in newSpans) {
       let exists = this.spans[key]
       if (!exists) {
@@ -62,8 +81,7 @@ class LogStore {
       }
     }
 
-    let segments = logList.segments ?? []
-    segments.forEach(segment => {
+    newSegments.forEach(segment => {
       let newSegment = new LogSegment(segment)
       let span = this.spans[newSegment.spanId]
       if (!span) {
