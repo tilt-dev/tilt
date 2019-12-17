@@ -2,6 +2,7 @@ package telemetry
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"go.starlark.net/starlark"
 
@@ -9,21 +10,14 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
-type Settings struct {
-	Cmd model.Cmd
-}
-
-type Extension struct {
-}
+type Extension struct{}
 
 func NewExtension() Extension {
 	return Extension{}
 }
 
 func (e Extension) NewState() interface{} {
-	return Settings{
-		Cmd: model.Cmd{},
-	}
+	return model.TelemetrySettings{}
 }
 
 func (Extension) OnStart(env *starkit.Environment) error {
@@ -41,23 +35,19 @@ func setTelemetryCmd(thread *starlark.Thread, fn *starlark.Builtin, args starlar
 		return starlark.None, fmt.Errorf("cmd cannot be empty")
 	}
 
-	var innerErr error
-	err = starkit.SetState(thread, func(settings Settings) Settings {
+	err = starkit.SetState(thread, func(settings model.TelemetrySettings) (model.TelemetrySettings, error) {
 		if len(settings.Cmd.Argv) > 0 {
-			innerErr = fmt.Errorf("%v called multiple times; already set to %v", fn.Name(), settings.Cmd)
-			return settings
+			return settings, fmt.Errorf("%v called multiple times; already set to %v", fn.Name(), settings.Cmd)
 		}
 
 		settings.Cmd = model.ToShellCmd(cmd)
+		settings.Workdir = filepath.Dir(starkit.CurrentExecPath(thread))
 
-		return settings
+		return settings, nil
 	})
 
 	if err != nil {
 		return starlark.None, err
-	}
-	if innerErr != nil {
-		return starlark.None, innerErr
 	}
 
 	return starlark.None, nil
@@ -65,7 +55,7 @@ func setTelemetryCmd(thread *starlark.Thread, fn *starlark.Builtin, args starlar
 
 var _ starkit.StatefulExtension = Extension{}
 
-func MustState(model starkit.Model) Settings {
+func MustState(model starkit.Model) model.TelemetrySettings {
 	state, err := GetState(model)
 	if err != nil {
 		panic(err)
@@ -73,8 +63,8 @@ func MustState(model starkit.Model) Settings {
 	return state
 }
 
-func GetState(m starkit.Model) (Settings, error) {
-	var state Settings
+func GetState(m starkit.Model) (model.TelemetrySettings, error) {
+	var state model.TelemetrySettings
 	err := m.Load(&state)
 	return state, err
 }

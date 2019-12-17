@@ -33,7 +33,8 @@ var period = 60 * time.Second
 
 func (t *Controller) OnChange(ctx context.Context, st store.RStore) {
 	state := st.RLockState()
-	tc := state.TelemetryCmd
+	ts := state.TelemetrySettings
+	tc := ts.Cmd
 	st.RUnlockState()
 
 	if tc.Empty() || !t.lastRunAt.Add(period).Before(t.clock.Now()) {
@@ -60,6 +61,7 @@ func (t *Controller) OnChange(ctx context.Context, st store.RStore) {
 
 	// run the command with the contents of the spans as jsonlines on stdin
 	cmd := exec.CommandContext(ctx, tc.Argv[0], tc.Argv[1:]...)
+	cmd.Dir = ts.Workdir
 	cmd.Stdin = r
 
 	out, err := cmd.CombinedOutput()
