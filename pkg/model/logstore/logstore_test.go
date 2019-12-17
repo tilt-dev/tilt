@@ -225,3 +225,34 @@ func TestManifestLogContinuation(t *testing.T) {
 	assert.Equal(t, "ab", l.ManifestLog("back"))
 	assert.Equal(t, "1\n2\nfe          ┊ 3478\n5\n6\nback        ┊ ab\n5\n6\n", l.String())
 }
+
+func TestLogIncremental(t *testing.T) {
+	l := NewLogStore()
+	l.Append(newGlobalTestLogEvent("line1\n"), nil)
+	l.Append(newGlobalTestLogEvent("line2\n"), nil)
+	l.Append(newGlobalTestLogEvent("line3\n"), nil)
+
+	list, err := l.ToLogList(0)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(list.Segments))
+	assert.Equal(t, int32(0), list.FromCheckpoint)
+	assert.Equal(t, int32(3), list.ToCheckpoint)
+
+	list, err = l.ToLogList(1)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(list.Segments))
+	assert.Equal(t, int32(1), list.FromCheckpoint)
+	assert.Equal(t, int32(3), list.ToCheckpoint)
+
+	list, err = l.ToLogList(3)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(list.Segments))
+	assert.Equal(t, int32(-1), list.FromCheckpoint)
+	assert.Equal(t, int32(-1), list.ToCheckpoint)
+
+	list, err = l.ToLogList(10)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(list.Segments))
+	assert.Equal(t, int32(-1), list.FromCheckpoint)
+	assert.Equal(t, int32(-1), list.ToCheckpoint)
+}

@@ -20,6 +20,11 @@ declare namespace Proto {
     tiltCloudTeamID?: string;
     fatalError?: string;
     logList?: webviewLogList;
+    /**
+     * Allows us to synchronize on a running Tilt intance,
+     * so we can tell when Tilt restarted.
+     */
+    tiltStartTime?: string;
   }
   export interface webviewVersionSettings {
     checkUpdates?: boolean;
@@ -82,6 +87,17 @@ declare namespace Proto {
   export interface webviewLogList {
     spans?: object;
     segments?: webviewLogSegment[];
+    /**
+     * [from_checkpoint, to_checkpoint)
+     *
+     * An interval of [0, 0) means that the server isn't using
+     * the incremental load protocol.
+     *
+     * An interval of [-1, -1) means that the server doesn't have new logs
+     * to send down.
+     */
+    fromCheckpoint?: number;
+    toCheckpoint?: number;
   }
   export interface webviewLocalResourceInfo {}
   export interface webviewK8sResourceInfo {
@@ -111,11 +127,19 @@ declare namespace Proto {
     warnings?: string[];
     startTime?: string;
     finishTime?: string;
-    log?: string;
     isCrashRebuild?: boolean;
     /**
      * The span id for this build record's logs in the main logstore.
      */
     spanId?: string;
+  }
+  export interface webviewAckWebsocketResponse {}
+  export interface webviewAckWebsocketRequest {
+    toCheckpoint?: number;
+    /**
+     * Allows us to synchronize on a running Tilt intance,
+     * so we can tell when we're talking to the same Tilt.
+     */
+    tiltStartTime?: string;
   }
 }

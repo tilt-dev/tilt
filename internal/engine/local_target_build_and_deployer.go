@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -25,7 +26,7 @@ func NewLocalTargetBuildAndDeployer(c build.Clock) *LocalTargetBuildAndDeployer 
 func (bd *LocalTargetBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (resultSet store.BuildResultSet, err error) {
 	targets := bd.extract(specs)
 	if len(targets) != 1 {
-		return store.BuildResultSet{}, SilentRedirectToNextBuilderf(
+		return store.BuildResultSet{}, buildcontrol.SilentRedirectToNextBuilderf(
 			"LocalTargetBuildAndDeployer requires exactly one LocalTarget (got %d)", len(targets))
 	}
 
@@ -33,7 +34,7 @@ func (bd *LocalTargetBuildAndDeployer) BuildAndDeploy(ctx context.Context, st st
 	err = bd.run(ctx, targ.Cmd, targ.Workdir)
 	if err != nil {
 		// (Never fall back from the LocalTargetBaD, none of our other BaDs can handle this target)
-		return store.BuildResultSet{}, DontFallBackErrorf("Command %q failed: %v", targ.Cmd.String(), err)
+		return store.BuildResultSet{}, buildcontrol.DontFallBackErrorf("Command %q failed: %v", targ.Cmd.String(), err)
 	}
 
 	if state := stateSet[targ.ID()]; state.IsEmpty() {

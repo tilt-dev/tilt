@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/windmilleng/tilt/internal/build"
+	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 
 	"github.com/windmilleng/wmclient/pkg/dirs"
 
@@ -375,7 +376,7 @@ func TestFallBackToImageDeploy(t *testing.T) {
 func TestNoFallbackForDontFallBackError(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
-	f.docker.SetExecError(DontFallBackErrorf("i'm melllting"))
+	f.docker.SetExecError(buildcontrol.DontFallBackErrorf("i'm melllting"))
 
 	changed := f.WriteFile("a.txt", "a")
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
@@ -969,7 +970,7 @@ func newBDFixture(t *testing.T, env k8s.Env, runtime container.Runtime) *bdFixtu
 	k8s := k8s.NewFakeK8sClient()
 	k8s.Runtime = runtime
 	sCli := synclet.NewTestSyncletClient(docker)
-	mode := UpdateModeFlag(UpdateModeAuto)
+	mode := buildcontrol.UpdateModeFlag(buildcontrol.UpdateModeAuto)
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	kp := &fakeKINDPusher{}
 	bd, err := provideBuildAndDeployer(ctx, docker, k8s, dir, env, mode, sCli, dcc, fakeClock{now: time.Unix(1551202573, 0)}, kp, ta)

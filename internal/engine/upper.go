@@ -16,6 +16,7 @@ import (
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
 	"github.com/windmilleng/tilt/internal/engine/runtimelog"
@@ -171,11 +172,11 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleK8sEvent(ctx, state, action)
 	case runtimelog.PodLogAction:
 		handlePodLogAction(state, action)
-	case BuildLogAction:
+	case buildcontrol.BuildLogAction:
 		handleBuildLogAction(state, action)
-	case BuildCompleteAction:
+	case buildcontrol.BuildCompleteAction:
 		err = handleBuildCompleted(ctx, state, action)
-	case BuildStartedAction:
+	case buildcontrol.BuildStartedAction:
 		handleBuildStarted(ctx, state, action)
 	case configs.ConfigsReloadStartedAction:
 		handleConfigsReloadStarted(ctx, state, action)
@@ -223,7 +224,7 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 
 var UpperReducer = store.Reducer(upperReducerFn)
 
-func handleBuildStarted(ctx context.Context, state *store.EngineState, action BuildStartedAction) {
+func handleBuildStarted(ctx context.Context, state *store.EngineState, action buildcontrol.BuildStartedAction) {
 	mn := action.ManifestName
 	ms, ok := state.ManifestState(mn)
 	if !ok {
@@ -258,7 +259,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	removeFromTriggerQueue(state, mn)
 }
 
-func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, cb BuildCompleteAction) error {
+func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, cb buildcontrol.BuildCompleteAction) error {
 	defer func() {
 		engineState.CurrentlyBuilding = ""
 	}()
@@ -276,7 +277,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	if err != nil {
 		p := logger.Red(logger.Get(ctx)).Sprintf("Build Failed:")
 		s := fmt.Sprintf("%s %v", p, err)
-		a := BuildLogAction{
+		a := buildcontrol.BuildLogAction{
 			// TODO(nick): logger.ErrorLvl?
 			LogEvent: store.NewLogEvent(mt.Manifest.Name, SpanIDForBuildLog(buildCount), logger.InfoLvl, []byte(s)),
 		}
@@ -300,7 +301,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	}
 
 	if err != nil {
-		if isFatalError(err) {
+		if buildcontrol.IsFatalError(err) {
 			return err
 		} else if !engineState.WatchFiles {
 			return errors.Wrap(err, "Build Failed")
@@ -578,7 +579,7 @@ func handleConfigsReloaded(
 	}
 }
 
-func handleBuildLogAction(state *store.EngineState, action BuildLogAction) {
+func handleBuildLogAction(state *store.EngineState, action buildcontrol.BuildLogAction) {
 	manifestName := action.ManifestName()
 	ms, ok := state.ManifestState(manifestName)
 	if !ok || state.CurrentlyBuilding != manifestName {

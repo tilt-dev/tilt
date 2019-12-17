@@ -12,11 +12,12 @@ import (
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/windmilleng/tilt/pkg/model/logstore"
 
 	proto_webview "github.com/windmilleng/tilt/pkg/webview"
 )
 
-func StateToProtoView(s store.EngineState) (*proto_webview.View, error) {
+func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*proto_webview.View, error) {
 	ret := &proto_webview.View{}
 
 	rpv, err := tiltfileResourceProtoView(s)
@@ -128,7 +129,7 @@ func StateToProtoView(s store.EngineState) (*proto_webview.View, error) {
 		ret.Resources = append(ret.Resources, r)
 	}
 
-	logList, err := s.LogStore.ToLogList()
+	logList, err := s.LogStore.ToLogList(logCheckpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -161,6 +162,12 @@ func StateToProtoView(s store.EngineState) (*proto_webview.View, error) {
 	ret.VersionSettings = &proto_webview.VersionSettings{
 		CheckUpdates: s.VersionSettings.CheckUpdates,
 	}
+
+	start, err := timeToProto(s.TiltStartTime)
+	if err != nil {
+		return nil, err
+	}
+	ret.TiltStartTime = start
 
 	return ret, nil
 }

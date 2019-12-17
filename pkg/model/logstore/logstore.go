@@ -149,7 +149,11 @@ func NewLogStore() *LogStore {
 }
 
 func (s *LogStore) Checkpoint() Checkpoint {
-	return Checkpoint(len(s.segments)) + s.checkpointOffset
+	return s.checkpointFromIndex(len(s.segments))
+}
+
+func (s *LogStore) checkpointFromIndex(index int) Checkpoint {
+	return Checkpoint(index) + s.checkpointOffset
 }
 
 func (s *LogStore) checkpointToIndex(c Checkpoint) int {
@@ -349,7 +353,7 @@ func (s *LogStore) ContinuingString(checkpoint Checkpoint) string {
 	return tempLogStore.String()
 }
 
-func (s *LogStore) ToLogList() (*webview.LogList, error) {
+func (s *LogStore) ToLogList(fromCheckpoint Checkpoint) (*webview.LogList, error) {
 	spans := make(map[string]*webview.LogSpan, len(s.spans))
 	for spanID, span := range s.spans {
 		spans[string(spanID)] = &webview.LogSpan{
@@ -357,23 +361,35 @@ func (s *LogStore) ToLogList() (*webview.LogList, error) {
 		}
 	}
 
-	segments := make([]*webview.LogSegment, len(s.segments))
-	for i, segment := range s.segments {
+	startIndex := s.checkpointToIndex(fromCheckpoint)
+	if startIndex >= len(s.segments) {
+		// No logs to send down.
+		return &webview.LogList{
+			FromCheckpoint: -1,
+			ToCheckpoint:   -1,
+		}, nil
+	}
+
+	segments := make([]*webview.LogSegment, 0, len(s.segments)-startIndex)
+	for i := startIndex; i < len(s.segments); i++ {
+		segment := s.segments[i]
 		time, err := ptypes.TimestampProto(segment.Time)
 		if err != nil {
 			return nil, errors.Wrap(err, "ToLogList")
 		}
-		segments[i] = &webview.LogSegment{
+		segments = append(segments, &webview.LogSegment{
 			SpanId: string(segment.SpanID),
 			Level:  webview.LogLevel(segment.Level),
 			Time:   time,
 			Text:   string(segment.Text),
-		}
+		})
 	}
 
 	return &webview.LogList{
-		Spans:    spans,
-		Segments: segments,
+		Spans:          spans,
+		Segments:       segments,
+		FromCheckpoint: int32(s.checkpointFromIndex(startIndex)),
+		ToCheckpoint:   int32(s.Checkpoint()),
 	}, nil
 }
 

@@ -126,4 +126,33 @@ describe("LogStore", () => {
     )
     expect(logLinesToString(logs.spanLog(["pod-c"]), false)).toEqual("")
   })
+
+  it("handles incremental logs", () => {
+    let logs = new LogStore()
+    logs.append({
+      spans: { "": {} },
+      segments: [newGlobalSegment("line1\n"), newGlobalSegment("line2\n")],
+      fromCheckpoint: 0,
+      toCheckpoint: 2,
+    })
+    logs.append({
+      spans: { "": {} },
+      segments: [newGlobalSegment("line3\n"), newGlobalSegment("line4\n")],
+      fromCheckpoint: 2,
+      toCheckpoint: 4,
+    })
+    logs.append({
+      spans: { "": {} },
+      segments: [
+        newGlobalSegment("line4\n"),
+        newGlobalSegment("line4\n"),
+        newGlobalSegment("line5\n"),
+      ],
+      fromCheckpoint: 2,
+      toCheckpoint: 5,
+    })
+    expect(logLinesToString(logs.allLog(), true)).toEqual(
+      "line1\nline2\nline3\nline4\nline5"
+    )
+  })
 })

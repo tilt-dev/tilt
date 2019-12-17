@@ -281,8 +281,6 @@ function allResourcesOK(): any {
           warnings: null,
           startTime: "2019-04-22T10:59:53.574652-04:00",
           finishTime: "2019-04-22T10:59:53.903047-04:00",
-          log:
-            'Beginning Tiltfile execution\nRunning `"whoami"`\nRunning `"m4 -Dvarowner=dan \\"deploy/fe.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/vigoda.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/snack.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/doggos.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/fortune.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/hypothesizer.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/spoonerisms.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/emoji.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/words.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/secrets.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/job.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/sleeper.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/hello_world.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/tick.yaml\\""`\nSuccessfully loaded Tiltfile\n',
         },
       ],
       currentBuild: {
@@ -291,7 +289,6 @@ function allResourcesOK(): any {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
       },
       pendingBuildReason: 0,
       pendingBuildEdits: null,
@@ -313,8 +310,6 @@ function allResourcesOK(): any {
           warnings: null,
           startTime: "2019-04-22T10:59:56.489417-04:00",
           finishTime: "2019-04-22T11:00:01.337284-04:00",
-          log:
-            "\n\u001b[34m──┤ Building: \u001b[0mfe\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/fe]\nBuilding Dockerfile:\n  FROM golang:1.10\n  \n  RUN apt update && apt install -y unzip time make\n  \n  ENV PROTOC_VERSION 3.5.1\n  \n  RUN wget https://github.com/google/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip && \\\n    unzip protoc-${PROTOC_VERSION}-linux-x86_64.zip -d protoc && \\\n    mv protoc/bin/protoc /usr/bin/protoc\n  \n  RUN go get github.com/golang/protobuf/protoc-gen-go\n  \n  ADD . /go/src/github.com/windmilleng/servantes/fe\n  RUN go install github.com/windmilleng/servantes/fe\n  ENTRYPOINT /go/bin/fe\n\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 24 MB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/6] FROM docker.io/library/golang:1.10\n    ╎ [2/6] RUN apt update && apt install -y unzip time make\n    ╎ [3/6] RUN wget https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip &&   unzip protoc-3.5.1-linux-x86_64.zip -d protoc &&   mv protoc/bin/protoc /usr/bin/protoc\n    ╎ [4/6] RUN go get github.com/golang/protobuf/protoc-gen-go\n    ╎ [5/6] ADD . /go/src/github.com/windmilleng/servantes/fe\n    ╎ [6/6] RUN go install github.com/windmilleng/servantes/fe\n\n\u001b[34mSTEP 2/3 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/fe:tilt-2540b7769f4b0e45\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/3 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 4.628s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 0.218s\n\u001b[34m  │ \u001b[0mDone in: 4.847s \n\n",
         },
       ],
       currentBuild: {
@@ -323,7 +318,6 @@ function allResourcesOK(): any {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
       },
       pendingBuildReason: 0,
       pendingBuildEdits: null,
@@ -352,8 +346,6 @@ function allResourcesOK(): any {
           warnings: null,
           startTime: "2019-04-22T11:00:01.337359-04:00",
           finishTime: "2019-04-22T11:00:02.810112-04:00",
-          log:
-            "\n\u001b[34m──┤ Building: \u001b[0mvigoda\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/vigoda]\nBuilding Dockerfile:\n  FROM golang:1.10\n  \n  ADD . /go/src/github.com/windmilleng/servantes/vigoda\n  RUN go install github.com/windmilleng/servantes/vigoda\n  \n  ENTRYPOINT /go/bin/vigoda\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 8.7 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/3] FROM docker.io/library/golang:1.10\n    ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/vigoda\n    ╎ [3/3] RUN go install github.com/windmilleng/servantes/vigoda\n\n\u001b[34mSTEP 2/3 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/vigoda:tilt-2d369271c8091f68\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/3 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 1.283s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 0.189s\n\u001b[34m  │ \u001b[0mDone in: 1.472s \n\n",
         },
       ],
       currentBuild: {
@@ -362,7 +354,6 @@ function allResourcesOK(): any {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
       },
       pendingBuildReason: 0,
       pendingBuildEdits: null,
@@ -391,8 +382,6 @@ function allResourcesOK(): any {
           warnings: null,
           startTime: "2019-04-22T11:00:02.810268-04:00",
           finishTime: "2019-04-22T11:00:04.242583-04:00",
-          log:
-            "\n\u001b[34m──┤ Building: \u001b[0msnack\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/snack]\nBuilding Dockerfile:\n  FROM golang:1.10\n  \n  ADD . /go/src/github.com/windmilleng/servantes/snack\n  RUN go install github.com/windmilleng/servantes/snack\n  \n  ENTRYPOINT /go/bin/snack\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 9.7 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/3] FROM docker.io/library/golang:1.10\n    ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/snack\n    ╎ [3/3] RUN go install github.com/windmilleng/servantes/snack\n\n\u001b[34mSTEP 2/3 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/snack:tilt-13631d4ed09f1a05\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/3 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 1.241s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 0.190s\n\u001b[34m  │ \u001b[0mDone in: 1.431s \n\n",
         },
       ],
       currentBuild: {
@@ -401,7 +390,6 @@ function allResourcesOK(): any {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
       },
       pendingBuildReason: 0,
       pendingBuildEdits: null,
@@ -430,8 +418,6 @@ function allResourcesOK(): any {
           warnings: null,
           startTime: "2019-04-22T11:00:04.242664-04:00",
           finishTime: "2019-04-22T11:00:07.804952-04:00",
-          log:
-            '\n\u001b[34m──┤ Building: \u001b[0mdoggos\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/5 — \u001b[0mBuilding Dockerfile: [docker.io/library/doggos]\nBuilding Dockerfile:\n  FROM golang:1.10\n  \n  ADD . /go/src/github.com/windmilleng/servantes/doggos\n  RUN go install github.com/windmilleng/servantes/doggos\n  \n  ENTRYPOINT /go/bin/doggos\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 7.7 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/3] FROM docker.io/library/golang:1.10\n    ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/doggos\n    ╎ [3/3] RUN go install github.com/windmilleng/servantes/doggos\n\n\u001b[34mSTEP 2/5 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/doggos:tilt-28a4e6fab0991d2f\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/5 — \u001b[0mBuilding Dockerfile: [docker.io/library/sidecar]\nBuilding Dockerfile:\n  FROM alpine\n  \n  ADD loud_sidecar.sh /\n  ENTRYPOINT ["/loud_sidecar.sh"]\n\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 4.6 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/2] FROM docker.io/library/alpine\n    ╎ [2/2] ADD loud_sidecar.sh /\n\n\u001b[34mSTEP 4/5 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/sidecar:tilt-4fb31b5179f3ad01\n    ╎ Skipping push\n\n\u001b[34mSTEP 5/5 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 1.856s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 1.483s\n\u001b[34m  │ \u001b[0mStep 4 - 0.000s\n\u001b[34m  │ \u001b[0mStep 5 - 0.222s\n\u001b[34m  │ \u001b[0mDone in: 3.561s \n\n',
         },
       ],
       currentBuild: {
@@ -440,7 +426,6 @@ function allResourcesOK(): any {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
       },
       pendingBuildReason: 0,
       pendingBuildEdits: null,
@@ -469,8 +454,6 @@ function allResourcesOK(): any {
           warnings: null,
           startTime: "2019-04-22T11:00:07.805076-04:00",
           finishTime: "2019-04-22T11:00:09.205568-04:00",
-          log:
-            "\n\u001b[34m──┤ Building: \u001b[0mfortune\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/fortune]\nBuilding Dockerfile:\n  FROM golang:1.10\n  \n  RUN apt update && apt install -y unzip time make\n  \n  ENV PROTOC_VERSION 3.5.1\n  \n  RUN wget https://github.com/google/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip && \\\n    unzip protoc-${PROTOC_VERSION}-linux-x86_64.zip -d protoc && \\\n    mv protoc/bin/protoc /usr/bin/protoc\n  \n  RUN go get github.com/golang/protobuf/protoc-gen-go\n  \n  ADD . /go/src/github.com/windmilleng/servantes/fortune\n  RUN cd /go/src/github.com/windmilleng/servantes/fortune && make proto\n  RUN go install github.com/windmilleng/servantes/fortune\n  \n  ENTRYPOINT /go/bin/fortune\n\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 16 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/7] FROM docker.io/library/golang:1.10\n    ╎ [2/7] RUN apt update && apt install -y unzip time make\n    ╎ [3/7] RUN wget https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip &&   unzip protoc-3.5.1-linux-x86_64.zip -d protoc &&   mv protoc/bin/protoc /usr/bin/protoc\n    ╎ [4/7] RUN go get github.com/golang/protobuf/protoc-gen-go\n    ╎ [5/7] ADD . /go/src/github.com/windmilleng/servantes/fortune\n    ╎ [6/7] RUN cd /go/src/github.com/windmilleng/servantes/fortune && make proto\n    ╎ [7/7] RUN go install github.com/windmilleng/servantes/fortune\n\n\u001b[34mSTEP 2/3 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/fortune:tilt-7e4331cb0b073360\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/3 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 1.226s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 0.173s\n\u001b[34m  │ \u001b[0mDone in: 1.399s \n\n",
         },
       ],
       currentBuild: {
@@ -479,7 +462,6 @@ function allResourcesOK(): any {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
       },
       pendingBuildReason: 0,
       pendingBuildEdits: null,
@@ -508,8 +490,6 @@ function allResourcesOK(): any {
           warnings: null,
           startTime: "2019-04-22T11:00:09.205679-04:00",
           finishTime: "2019-04-22T11:00:11.203881-04:00",
-          log:
-            "\n\u001b[34m──┤ Building: \u001b[0mhypothesizer\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/hypothesizer]\nBuilding Dockerfile:\n  FROM python:3.6\n  \n  ADD . /app\n  RUN cd /app && pip install -r requirements.txt\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 6.1 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/3] FROM docker.io/library/python:3.6@sha256:976cd81b859b13ef6c1366517f14bd13754f535fdb3eb41c252214fdd3245dde\n    ╎ [2/3] ADD . /app\n    ╎ [3/3] RUN cd /app && pip install -r requirements.txt\n\n\u001b[34mSTEP 2/3 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/hypothesizer:tilt-e2e22b5b98437e29\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/3 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 1.782s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 0.215s\n\u001b[34m  │ \u001b[0mDone in: 1.997s \n\n",
         },
       ],
       currentBuild: {
@@ -518,7 +498,6 @@ function allResourcesOK(): any {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
       },
       pendingBuildReason: 0,
       pendingBuildEdits: null,
@@ -547,8 +526,6 @@ function allResourcesOK(): any {
           warnings: null,
           startTime: "2019-04-22T11:00:11.20396-04:00",
           finishTime: "2019-04-22T11:00:12.421269-04:00",
-          log:
-            '\n\u001b[34m──┤ Building: \u001b[0mspoonerisms\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/spoonerisms]\nBuilding Dockerfile:\n  FROM node:10\n  \n  ADD package.json /app/package.json\n  ADD yarn.lock /app/yarn.lock\n  RUN cd /app && yarn install\n  \n  ADD src /app\n  \n  ENTRYPOINT [ "node", "/app/index.js" ]\n\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 459 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/5] FROM docker.io/library/node:10\n    ╎ [2/5] ADD package.json /app/package.json\n    ╎ [3/5] ADD yarn.lock /app/yarn.lock\n    ╎ [4/5] RUN cd /app && yarn install\n    ╎ [5/5] ADD src /app\n\n\u001b[34mSTEP 2/3 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/spoonerisms:tilt-b4b16ad1302bfca2\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/3 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 1.015s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 0.201s\n\u001b[34m  │ \u001b[0mDone in: 1.216s \n\n',
         },
       ],
       currentBuild: {
@@ -557,7 +534,6 @@ function allResourcesOK(): any {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
       },
       pendingBuildReason: 0,
       pendingBuildEdits: null,
@@ -586,8 +562,6 @@ function allResourcesOK(): any {
           warnings: null,
           startTime: "2019-04-22T11:00:12.421344-04:00",
           finishTime: "2019-04-22T11:00:13.94031-04:00",
-          log:
-            "\n\u001b[34m──┤ Building: \u001b[0memoji\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/emoji]\nBuilding Dockerfile:\n  FROM golang:1.10\n  \n  ADD . /go/src/github.com/windmilleng/servantes/emoji\n  RUN go install github.com/windmilleng/servantes/emoji\n  \n  ENTRYPOINT /go/bin/emoji\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 33 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/3] FROM docker.io/library/golang:1.10\n    ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/emoji\n    ╎ [3/3] RUN go install github.com/windmilleng/servantes/emoji\n\n\u001b[34mSTEP 2/3 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/emoji:tilt-a6e00fe8bd11bb7a\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/3 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 1.269s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 0.248s\n\u001b[34m  │ \u001b[0mDone in: 1.518s \n\n",
         },
       ],
       currentBuild: {
@@ -596,7 +570,6 @@ function allResourcesOK(): any {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
       },
       pendingBuildReason: 0,
       pendingBuildEdits: null,
@@ -625,8 +598,6 @@ function allResourcesOK(): any {
           warnings: null,
           startTime: "2019-04-22T11:00:13.940432-04:00",
           finishTime: "2019-04-22T11:00:15.745108-04:00",
-          log:
-            "\n\u001b[34m──┤ Building: \u001b[0mwords\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/words]\nBuilding Dockerfile:\n  FROM python:3.6\n  \n  ADD . /app\n  RUN cd /app && pip install -r requirements.txt\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 6.1 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/3] FROM docker.io/library/python:3.6@sha256:976cd81b859b13ef6c1366517f14bd13754f535fdb3eb41c252214fdd3245dde\n    ╎ [2/3] ADD . /app\n    ╎ [3/3] RUN cd /app && pip install -r requirements.txt\n\n\u001b[34mSTEP 2/3 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/words:tilt-edf98dac53c4f1bc\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/3 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 1.588s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 0.216s\n\u001b[34m  │ \u001b[0mDone in: 1.804s \n\n",
         },
       ],
       currentBuild: {
@@ -635,7 +606,6 @@ function allResourcesOK(): any {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
       },
       pendingBuildReason: 0,
       pendingBuildEdits: null,
@@ -664,8 +634,6 @@ function allResourcesOK(): any {
           warnings: null,
           startTime: "2019-04-22T11:00:15.745238-04:00",
           finishTime: "2019-04-22T11:00:17.035013-04:00",
-          log:
-            "\n\u001b[34m──┤ Building: \u001b[0msecrets\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/secrets]\nBuilding Dockerfile:\n  FROM golang:1.10\n  \n  ADD . /go/src/github.com/windmilleng/servantes/secrets\n  RUN go install github.com/windmilleng/servantes/secrets\n  \n  ENTRYPOINT /go/bin/secrets\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 7.7 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/3] FROM docker.io/library/golang:1.10\n    ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/secrets\n    ╎ [3/3] RUN go install github.com/windmilleng/servantes/secrets\n\n\u001b[34mSTEP 2/3 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/secrets:tilt-7f9376a1d8c74bb3\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/3 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 1.103s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 0.186s\n\u001b[34m  │ \u001b[0mDone in: 1.289s \n\n",
         },
       ],
       currentBuild: {
@@ -674,7 +642,6 @@ function allResourcesOK(): any {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
       },
       pendingBuildReason: 0,
       pendingBuildEdits: null,
@@ -703,8 +670,6 @@ function allResourcesOK(): any {
           warnings: null,
           startTime: "2019-04-22T10:59:53.906775-04:00",
           finishTime: "2019-04-22T10:59:56.010298-04:00",
-          log:
-            "\n\u001b[34m──┤ Building: \u001b[0mecho-hi\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/1 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 2.102s\n\u001b[34m  │ \u001b[0mDone in: 2.102s \n\n",
         },
       ],
       currentBuild: {
@@ -713,7 +678,6 @@ function allResourcesOK(): any {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
       },
       pendingBuildReason: 0,
       pendingBuildEdits: null,
@@ -742,8 +706,6 @@ function allResourcesOK(): any {
           warnings: null,
           startTime: "2019-04-22T11:00:17.035107-04:00",
           finishTime: "2019-04-22T11:00:18.621163-04:00",
-          log:
-            '\n\u001b[34m──┤ Building: \u001b[0msleep\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/sleep]\nBuilding Dockerfile:\n  FROM node:10\n  \n  ADD . /\n  \n  ENTRYPOINT [ "node", "index.js" ]\n\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 4.6 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/2] FROM docker.io/library/node:10\n    ╎ [2/2] ADD . /\n\n\u001b[34mSTEP 2/3 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/sleep:tilt-7175871cc674cce5\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/3 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 1.343s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 0.241s\n\u001b[34m  │ \u001b[0mDone in: 1.585s \n\n',
         },
       ],
       currentBuild: {
@@ -752,7 +714,6 @@ function allResourcesOK(): any {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
       },
       pendingBuildReason: 0,
       pendingBuildEdits: null,
@@ -781,8 +742,6 @@ function allResourcesOK(): any {
           warnings: null,
           startTime: "2019-04-22T10:59:56.010435-04:00",
           finishTime: "2019-04-22T10:59:56.300082-04:00",
-          log:
-            "\n\u001b[34m──┤ Building: \u001b[0mhello-world\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/1 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 0.289s\n\u001b[34m  │ \u001b[0mDone in: 0.289s \n\n",
         },
       ],
       currentBuild: {
@@ -791,7 +750,6 @@ function allResourcesOK(): any {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
       },
       pendingBuildReason: 0,
       pendingBuildEdits: null,
@@ -820,8 +778,6 @@ function allResourcesOK(): any {
           warnings: null,
           startTime: "2019-04-22T10:59:56.300168-04:00",
           finishTime: "2019-04-22T10:59:56.489329-04:00",
-          log:
-            "\n\u001b[34m──┤ Building: \u001b[0mtick\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/1 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 0.188s\n\u001b[34m  │ \u001b[0mDone in: 0.188s \n\n",
         },
       ],
       currentBuild: {
@@ -830,7 +786,6 @@ function allResourcesOK(): any {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
       },
       pendingBuildReason: 0,
       pendingBuildEdits: null,
@@ -889,7 +844,6 @@ function allResourcesOK(): any {
           warnings: null,
           startTime: "2019-04-22T10:59:53.913447-04:00",
           finishTime: "2019-04-22T10:59:56.007894-04:00",
-          log: "",
         },
       ],
       currentBuild: {
@@ -898,7 +852,6 @@ function allResourcesOK(): any {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
       },
       pendingBuildReason: 0,
       pendingBuildEdits: null,
@@ -932,8 +885,6 @@ function oneResourceFailedToBuild(): any {
           warnings: null,
           startTime: "2019-04-22T11:05:07.250689-04:00",
           finishTime: "2019-04-22T11:05:17.689819-04:00",
-          log:
-            "\n\u001b[32m1 changed: \u001b[0m[snack/main.go]\n\n\n\u001b[34m──┤ Rebuilding: \u001b[0msnack\u001b[34m ├────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/snack]\nBuilding Dockerfile:\n  FROM golang:1.10\n  \n  ADD . /go/src/github.com/windmilleng/servantes/snack\n  RUN go install github.com/windmilleng/servantes/snack\n  \n  ENTRYPOINT /go/bin/snack\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 9.7 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/3] FROM docker.io/library/golang:1.10\n    ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/snack\n    ╎ [3/3] RUN go install github.com/windmilleng/servantes/snack\n    ╎   → # github.com/windmilleng/servantes/snack\nsrc/github.com/windmilleng/servantes/snack/main.go:21:17: syntax error: unexpected newline, expecting comma or }\n\n    ╎ ERROR IN: [3/3] RUN go install github.com/windmilleng/servantes/snack\n\n\u001b[31mERROR:\u001b[0m ImageBuild: executor failed running [/bin/sh -c go install github.com/windmilleng/servantes/snack]: exit code: 2\n",
         },
         {
           edits: null,
@@ -941,8 +892,6 @@ function oneResourceFailedToBuild(): any {
           warnings: null,
           startTime: "2019-04-22T11:00:02.810268-04:00",
           finishTime: "2019-04-22T11:00:04.242583-04:00",
-          log:
-            "\n\u001b[34m──┤ Building: \u001b[0msnack\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/snack]\nBuilding Dockerfile:\n  FROM golang:1.10\n  \n  ADD . /go/src/github.com/windmilleng/servantes/snack\n  RUN go install github.com/windmilleng/servantes/snack\n  \n  ENTRYPOINT /go/bin/snack\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 9.7 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/3] FROM docker.io/library/golang:1.10\n    ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/snack\n    ╎ [3/3] RUN go install github.com/windmilleng/servantes/snack\n\n\u001b[34mSTEP 2/3 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/snack:tilt-13631d4ed09f1a05\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/3 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 1.241s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 0.190s\n\u001b[34m  │ \u001b[0mDone in: 1.431s \n\n",
         },
       ],
       currentBuild: {
@@ -951,7 +900,6 @@ function oneResourceFailedToBuild(): any {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
       },
       pendingBuildReason: 1,
       pendingBuildEdits: ["main.go"],
@@ -987,8 +935,6 @@ function oneResourceBuilding() {
           warnings: null,
           startTime: "2019-04-22T10:59:53.574652-04:00",
           finishTime: "2019-04-22T10:59:53.903047-04:00",
-          log:
-            'Beginning Tiltfile execution\nRunning `"whoami"`\nRunning `"m4 -Dvarowner=dan \\"deploy/fe.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/vigoda.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/snack.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/doggos.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/fortune.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/hypothesizer.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/spoonerisms.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/emoji.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/words.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/secrets.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/job.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/sleeper.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/hello_world.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/tick.yaml\\""`\nSuccessfully loaded Tiltfile\n',
         },
       ],
       currentBuild: {
@@ -997,7 +943,6 @@ function oneResourceBuilding() {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
       },
       pendingBuildReason: 0,
       pendingBuildEdits: null,
@@ -1019,8 +964,6 @@ function oneResourceBuilding() {
           warnings: null,
           startTime: "2019-04-22T10:59:56.489417-04:00",
           finishTime: "2019-04-22T11:00:01.337284-04:00",
-          log:
-            "\n\u001b[34m──┤ Building: \u001b[0mfe\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/fe]\nBuilding Dockerfile:\n  FROM golang:1.10\n  \n  RUN apt update && apt install -y unzip time make\n  \n  ENV PROTOC_VERSION 3.5.1\n  \n  RUN wget https://github.com/google/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip && \\\n    unzip protoc-${PROTOC_VERSION}-linux-x86_64.zip -d protoc && \\\n    mv protoc/bin/protoc /usr/bin/protoc\n  \n  RUN go get github.com/golang/protobuf/protoc-gen-go\n  \n  ADD . /go/src/github.com/windmilleng/servantes/fe\n  RUN go install github.com/windmilleng/servantes/fe\n  ENTRYPOINT /go/bin/fe\n\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 24 MB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/6] FROM docker.io/library/golang:1.10\n    ╎ [2/6] RUN apt update && apt install -y unzip time make\n    ╎ [3/6] RUN wget https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip &&   unzip protoc-3.5.1-linux-x86_64.zip -d protoc &&   mv protoc/bin/protoc /usr/bin/protoc\n    ╎ [4/6] RUN go get github.com/golang/protobuf/protoc-gen-go\n    ╎ [5/6] ADD . /go/src/github.com/windmilleng/servantes/fe\n    ╎ [6/6] RUN go install github.com/windmilleng/servantes/fe\n\n\u001b[34mSTEP 2/3 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/fe:tilt-2540b7769f4b0e45\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/3 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 4.628s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 0.218s\n\u001b[34m  │ \u001b[0mDone in: 4.847s \n\n",
         },
       ],
       currentBuild: {
@@ -1029,7 +972,6 @@ function oneResourceBuilding() {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
       },
       pendingBuildReason: 0,
       pendingBuildEdits: null,
@@ -1058,8 +1000,6 @@ function oneResourceBuilding() {
           warnings: null,
           startTime: "2019-04-22T11:00:01.337359-04:00",
           finishTime: "2019-04-22T11:00:02.810112-04:00",
-          log:
-            "\n\u001b[34m──┤ Building: \u001b[0mvigoda\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/vigoda]\nBuilding Dockerfile:\n  FROM golang:1.10\n  \n  ADD . /go/src/github.com/windmilleng/servantes/vigoda\n  RUN go install github.com/windmilleng/servantes/vigoda\n  \n  ENTRYPOINT /go/bin/vigoda\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 8.7 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/3] FROM docker.io/library/golang:1.10\n    ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/vigoda\n    ╎ [3/3] RUN go install github.com/windmilleng/servantes/vigoda\n\n\u001b[34mSTEP 2/3 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/vigoda:tilt-2d369271c8091f68\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/3 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 1.283s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 0.189s\n\u001b[34m  │ \u001b[0mDone in: 1.472s \n\n",
         },
       ],
       currentBuild: {
@@ -1068,7 +1008,6 @@ function oneResourceBuilding() {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
       },
       pendingBuildReason: 0,
       pendingBuildEdits: null,
@@ -1097,8 +1036,6 @@ function oneResourceBuilding() {
           warnings: null,
           startTime: "2019-04-22T11:05:53.676776-04:00",
           finishTime: "2019-04-22T11:05:58.928367-04:00",
-          log:
-            "\n\u001b[32m1 changed: \u001b[0m[snack/main.go]\n\n\n\u001b[34m──┤ Rebuilding: \u001b[0msnack\u001b[34m ├────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/snack]\nBuilding Dockerfile:\n  FROM golang:1.10\n  \n  ADD . /go/src/github.com/windmilleng/servantes/snack\n  RUN go install github.com/windmilleng/servantes/snack\n  \n  ENTRYPOINT /go/bin/snack\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 9.7 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/3] FROM docker.io/library/golang:1.10\n    ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/snack\n    ╎ [3/3] RUN go install github.com/windmilleng/servantes/snack\n\n\u001b[34mSTEP 2/3 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/snack:tilt-41cf0bdf0c8d3aa7\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/3 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 4.271s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 0.980s\n\u001b[34m  │ \u001b[0mDone in: 5.250s \n\n",
         },
         {
           edits: ["main.go"],
@@ -1106,8 +1043,6 @@ function oneResourceBuilding() {
           warnings: null,
           startTime: "2019-04-22T11:05:07.250689-04:00",
           finishTime: "2019-04-22T11:05:17.689819-04:00",
-          log:
-            "\n\u001b[32m1 changed: \u001b[0m[snack/main.go]\n\n\n\u001b[34m──┤ Rebuilding: \u001b[0msnack\u001b[34m ├────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/snack]\nBuilding Dockerfile:\n  FROM golang:1.10\n  \n  ADD . /go/src/github.com/windmilleng/servantes/snack\n  RUN go install github.com/windmilleng/servantes/snack\n  \n  ENTRYPOINT /go/bin/snack\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 9.7 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/3] FROM docker.io/library/golang:1.10\n    ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/snack\n    ╎ [3/3] RUN go install github.com/windmilleng/servantes/snack\n    ╎   → # github.com/windmilleng/servantes/snack\nsrc/github.com/windmilleng/servantes/snack/main.go:21:17: syntax error: unexpected newline, expecting comma or }\n\n    ╎ ERROR IN: [3/3] RUN go install github.com/windmilleng/servantes/snack\n\n\u001b[31mERROR:\u001b[0m ImageBuild: executor failed running [/bin/sh -c go install github.com/windmilleng/servantes/snack]: exit code: 2\n",
         },
       ],
       currentBuild: {
@@ -1116,8 +1051,6 @@ function oneResourceBuilding() {
         warnings: null,
         startTime: "2019-04-22T11:20:44.674248-04:00",
         finishTime: "0001-01-01T00:00:00Z",
-        log:
-          "\n\u001b[32m1 changed: \u001b[0m[snack/main.go]\n\n\n\u001b[34m──┤ Rebuilding: \u001b[0msnack\u001b[34m ├────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/snack]\nBuilding Dockerfile:\n  FROM golang:1.10\n  \n  ADD . /go/src/github.com/windmilleng/servantes/snack\n  RUN go install github.com/windmilleng/servantes/snack\n  \n  ENTRYPOINT /go/bin/snack\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 9.7 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/3] FROM docker.io/library/golang:1.10\n    ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/snack\n    ╎ [3/3] RUN go install github.com/windmilleng/servantes/snack\n",
       },
       pendingBuildReason: 1,
       pendingBuildEdits: ["main.go"],
@@ -1151,8 +1084,6 @@ function oneResourceCrashedOnStart(): any {
           warnings: null,
           startTime: "2019-04-22T13:34:57.084919-04:00",
           finishTime: "2019-04-22T13:34:59.442139-04:00",
-          log:
-            "\n\u001b[32m1 changed: \u001b[0m[snack/main.go]\n\n\n\u001b[34m──┤ Rebuilding: \u001b[0msnack\u001b[34m ├────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/snack]\nBuilding Dockerfile:\n  FROM golang:1.10\n  \n  ADD . /go/src/github.com/windmilleng/servantes/snack\n  RUN go install github.com/windmilleng/servantes/snack\n  \n  ENTRYPOINT /go/bin/snack\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 9.7 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/3] FROM docker.io/library/golang:1.10\n    ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/snack\n    ╎ [3/3] RUN go install github.com/windmilleng/servantes/snack\n\n\u001b[34mSTEP 2/3 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/snack:tilt-a2f42ad453eedd6d\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/3 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 2.134s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 0.222s\n\u001b[34m  │ \u001b[0mDone in: 2.356s \n\n",
         },
         {
           edits: null,
@@ -1160,8 +1091,6 @@ function oneResourceCrashedOnStart(): any {
           warnings: null,
           startTime: "2019-04-22T13:34:05.844691-04:00",
           finishTime: "2019-04-22T13:34:07.352812-04:00",
-          log:
-            "\n\u001b[34m──┤ Building: \u001b[0msnack\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/snack]\nBuilding Dockerfile:\n  FROM golang:1.10\n  \n  ADD . /go/src/github.com/windmilleng/servantes/snack\n  RUN go install github.com/windmilleng/servantes/snack\n  \n  ENTRYPOINT /go/bin/snack\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 9.7 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/3] FROM docker.io/library/golang:1.10\n    ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/snack\n    ╎ [3/3] RUN go install github.com/windmilleng/servantes/snack\n\n\u001b[34mSTEP 2/3 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/snack:tilt-44f988219ddc41f5\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/3 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 1.332s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 0.175s\n\u001b[34m  │ \u001b[0mDone in: 1.507s \n\n",
         },
       ],
       currentBuild: {
@@ -1170,7 +1099,6 @@ function oneResourceCrashedOnStart(): any {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
       },
       pendingBuildReason: 0,
       pendingBuildEdits: null,
@@ -1205,8 +1133,6 @@ function oneResourceManualTriggerDirty(): any {
           warnings: null,
           startTime: "2019-06-12T12:33:27.439018-04:00",
           finishTime: "2019-06-12T12:33:27.831613-04:00",
-          log:
-            'Beginning Tiltfile execution\nRunning `"whoami"`\nRunning `"m4 -Dvarowner=dan \\"deploy/fe.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/vigoda.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/snack.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/doggos.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/fortune.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/hypothesizer.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/spoonerisms.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/emoji.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/words.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/secrets.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/job.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/sleeper.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/hello_world.yaml\\""`\nRunning `"m4 -Dvarowner=dan \\"deploy/tick.yaml\\""`\nSuccessfully loaded Tiltfile\n',
           isCrashRebuild: false,
         },
       ],
@@ -1216,7 +1142,6 @@ function oneResourceManualTriggerDirty(): any {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
         isCrashRebuild: false,
       },
       pendingBuildReason: 0,
@@ -1252,8 +1177,6 @@ function oneResourceManualTriggerDirty(): any {
           warnings: null,
           startTime: "2019-06-12T12:33:42.848866-04:00",
           finishTime: "2019-06-12T12:33:48.331046-04:00",
-          log:
-            "\n\u001b[34m──┤ Building: \u001b[0msnack\u001b[34m ├──────────────────────────────────────────────\u001b[0m\n\u001b[34mSTEP 1/3 — \u001b[0mBuilding Dockerfile: [docker.io/library/snack]\nBuilding Dockerfile:\n  FROM golang:1.10\n  \n  ADD . /go/src/github.com/windmilleng/servantes/snack\n  RUN go install github.com/windmilleng/servantes/snack\n  \n  ENTRYPOINT /go/bin/snack\n\n\u001b[34m  │ \u001b[0mTarring context…\n    ╎ Created tarball (size: 10 kB)\n\u001b[34m  │ \u001b[0mBuilding image\n    ╎ [1/3] FROM docker.io/library/golang:1.10@sha256:6d5e79878a3e4f1b30b7aa4d24fb6ee6184e905a9b172fc72593935633be4c46\n    ╎ [2/3] ADD . /go/src/github.com/windmilleng/servantes/snack\n    ╎ [3/3] RUN go install github.com/windmilleng/servantes/snack\n\n\u001b[34mSTEP 2/3 — \u001b[0mPushing gcr.io/windmill-public-containers/servantes/snack:tilt-fcf849b0f0bc9396\n    ╎ Skipping push\n\n\u001b[34mSTEP 3/3 — \u001b[0mDeploying\n\u001b[34m  │ \u001b[0mParsing Kubernetes config YAML\n\u001b[34m  │ \u001b[0mApplying via kubectl\n\n\u001b[34m  │ \u001b[0mStep 1 - 5.314s\n\u001b[34m  │ \u001b[0mStep 2 - 0.000s\n\u001b[34m  │ \u001b[0mStep 3 - 0.168s\n\u001b[34m  │ \u001b[0mDone in: 5.482s \n\n",
           isCrashRebuild: false,
         },
       ],
@@ -1263,7 +1186,6 @@ function oneResourceManualTriggerDirty(): any {
         warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
-        log: "",
         isCrashRebuild: false,
       },
       pendingBuildReason: 1,
