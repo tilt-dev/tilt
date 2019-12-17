@@ -23,6 +23,7 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
 	"github.com/windmilleng/tilt/internal/tiltfile/io"
 	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
+	"github.com/windmilleng/tilt/internal/tiltfile/telemetry"
 	"github.com/windmilleng/tilt/internal/tiltfile/value"
 	"github.com/windmilleng/tilt/internal/tiltfile/version"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -44,6 +45,7 @@ type TiltfileLoadResult struct {
 	TiltIgnoreContents  string
 	FeatureFlags        map[string]bool
 	TeamName            string
+	TelemetrySettings   model.TelemetrySettings
 	Secrets             model.SecretSet
 	Error               error
 	DockerPruneSettings model.DockerPruneSettings
@@ -174,6 +176,9 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 
 	vs, _ := version.GetState(result)
 	tlr.VersionSettings = vs
+
+	telemetrySettings, _ := telemetry.GetState(result)
+	tlr.TelemetrySettings = telemetrySettings
 
 	printWarnings(s)
 

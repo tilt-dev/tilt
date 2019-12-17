@@ -570,6 +570,7 @@ func handleConfigsReloaded(
 
 	state.Features = event.Features
 	state.TeamName = event.TeamName
+	state.TelemetrySettings = event.TelemetrySettings
 
 	state.VersionSettings = event.VersionSettings
 

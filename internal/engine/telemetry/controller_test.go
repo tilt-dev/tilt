@@ -160,8 +160,13 @@ func (tcf *tcFixture) run() {
 		tcf.exporter.OnEnd(sd)
 	}
 
+	ts := model.TelemetrySettings{
+		Cmd:     model.ToShellCmd(tcf.cmd),
+		Workdir: tcf.temp.Path(),
+	}
 	tcf.st.SetState(store.EngineState{
-		TelemetryCmd: model.ToShellCmd(tcf.cmd)})
+		TelemetrySettings: ts,
+	})
 
 	tc := NewController(tcf.clock, tcf.exporter)
 	tc.lastRunAt = tcf.lastRun
