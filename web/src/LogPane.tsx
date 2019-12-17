@@ -4,8 +4,8 @@ import AnsiLine from "./AnsiLine"
 import "./LogPane.scss"
 import ReactDOM from "react-dom"
 import { LogLine, SnapshotHighlight } from "./types"
-import { sourcePrefix } from "./logs"
 import color from "./color"
+import { SizeUnit, Width } from "./constants"
 import findLogLineID from "./findLogLine"
 import styled from "styled-components"
 
@@ -37,15 +37,20 @@ type LogLineComponentProps = {
 
 let LogLinePrefixRoot = styled.span`
   user-select: none;
-  width: 6em;
+  width: calc(
+    ${Width.tabNav}px - ${SizeUnit(0.5)}
+  ); // Match height of tab above
+  box-sizing: border-box;
   display: inline-block;
-  border-right: 1px solid ${color.grayLightest};
-  padding-right: 16px;
-  margin-right: 16px;
+  background-color: ${color.grayDark};
+  border-right: 1px dotted ${color.grayLightest};
+  color: ${color.grayLightest};
+  padding-right: ${SizeUnit(0.5)};
+  margin-right: ${SizeUnit(0.5)};
+  text-align: right;
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
-  color: ${color.grayLight};
   flex-shrink: 0;
 
   &::selection {
@@ -54,7 +59,7 @@ let LogLinePrefixRoot = styled.span`
 `
 
 let LogLinePrefix = React.memo((props: { name: string }) => {
-  return <LogLinePrefixRoot>{props.name}</LogLinePrefixRoot>
+  return <LogLinePrefixRoot title={props.name}>{props.name}</LogLinePrefixRoot>
 })
 
 class LogLineComponent extends PureComponent<LogLineComponentProps> {

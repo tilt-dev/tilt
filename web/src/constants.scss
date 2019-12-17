@@ -43,6 +43,7 @@ $sidebar-collapsed-width: $sidebar-item;
 $alert-badge: $spacing-unit * 0.75;
 
 $topbar-height: $spacing-unit * 2.25;
+$tabnav-width: 160px; // Fits our current labels
 $tabnav-height: $topbar-height;
 $resourceInfo-height: $spacing-unit * 1.5;
 $analyticsNudge-height: $tabnav-height * 1.5;

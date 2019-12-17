@@ -19,6 +19,7 @@ export enum Height {
 export enum Width {
   sidebar = unit * 10,
   sidebarCollapsed = unit * 1.5,
+  tabNav = unit * 5, // Match constants.scss > $tabnav-width
 }
 
 export function SizeUnit(multiplier: number) {
