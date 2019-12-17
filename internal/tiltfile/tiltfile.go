@@ -23,6 +23,7 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
 	"github.com/windmilleng/tilt/internal/tiltfile/io"
 	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
+	"github.com/windmilleng/tilt/internal/tiltfile/telemetry"
 	"github.com/windmilleng/tilt/internal/tiltfile/value"
 	"github.com/windmilleng/tilt/internal/tiltfile/version"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -176,6 +177,9 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 
 	vs, _ := version.GetState(result)
 	tlr.VersionSettings = vs
+
+	telemetrySettings, _ := telemetry.GetState(result)
+	tlr.TelemetryCmd = telemetrySettings.Cmd
 
 	printWarnings(s)
 
