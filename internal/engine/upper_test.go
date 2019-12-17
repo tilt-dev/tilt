@@ -3154,6 +3154,22 @@ print('foo=', cfg['foo'])`)
 	})
 }
 
+func TestTelemetryLogAction(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.Start([]model.Manifest{}, true)
+
+	f.store.Dispatch(telemetry.LogAction{
+		LogEvent: store.NewLogEvent(model.TiltfileManifestName, "0", logger.InfoLvl, []byte("testing")),
+	})
+
+	f.WaitUntil("log is stored", func(state store.EngineState) bool {
+		l := state.LogStore.ManifestLog(store.TiltfileManifestName)
+		return strings.Contains(l, "testing")
+	})
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
