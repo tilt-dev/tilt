@@ -6,6 +6,10 @@
 
 import { LogLine } from "./types"
 
+// Firestore doesn't properly handle maps with keys equal to the empty string, so
+// we normalize all empty span ids to '_' client-side.
+const defaultSpanId = "_"
+
 type LogSpan = {
   manifestName: string
   lastSegmentIndex: number
@@ -20,7 +24,7 @@ class LogSegment {
   continuesLine: boolean
 
   constructor(seg: Proto.webviewLogSegment) {
-    this.spanId = seg.spanId ?? ""
+    this.spanId = seg.spanId || "_"
     this.time = seg.time ?? ""
     this.text = seg.text ?? ""
     this.level = seg.level ?? "INFO"
@@ -92,9 +96,10 @@ class LogStore {
     }
 
     for (let key in newSpans) {
-      let exists = this.spans[key]
+      let spanId = key || defaultSpanId
+      let exists = this.spans[spanId]
       if (!exists) {
-        this.spans[key] = {
+        this.spans[spanId] = {
           manifestName: newSpans[key].manifestName ?? "",
           firstSegmentIndex: -1,
           lastSegmentIndex: -1,
@@ -138,6 +143,7 @@ class LogStore {
   spanLog(spanIds: string[]): LogLine[] {
     let spans: { [key: string]: LogSpan } = {}
     spanIds.forEach(spanId => {
+      spanId = spanId ? spanId : defaultSpanId
       let span = this.spans[spanId]
       if (span) {
         spans[spanId] = span

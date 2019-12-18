@@ -299,13 +299,13 @@ it("loads logs incrementally", async () => {
   let snapshot = hud.snapshotFromState(hud.state)
   expect(snapshot.view?.logList).toEqual({
     spans: {
-      "": { manifestName: "" },
+      _: { manifestName: "" },
     },
     segments: [
-      { text: "line1\n", time: now, level: "INFO", spanId: "" },
-      { text: "line2\n", time: now, level: "INFO", spanId: "" },
-      { text: "line3\n", time: now, level: "INFO", spanId: "" },
-      { text: "line4\n", time: now, level: "INFO", spanId: "" },
+      { text: "line1\n", time: now, level: "INFO", spanId: "_" },
+      { text: "line2\n", time: now, level: "INFO", spanId: "_" },
+      { text: "line3\n", time: now, level: "INFO", spanId: "_" },
+      { text: "line4\n", time: now, level: "INFO", spanId: "_" },
     ],
   })
 })
