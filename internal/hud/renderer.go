@@ -15,6 +15,8 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
+const defaultLogPaneHeight = 8
+
 type Renderer struct {
 	rty    rty.RTY
 	screen tcell.Screen
@@ -133,7 +135,7 @@ func (r *Renderer) renderLogPane(v view.View, vs view.ViewState) rty.Component {
 	var height int
 	switch vs.TiltLogState {
 	case view.TiltLogShort:
-		height = 8
+		height = defaultLogPaneHeight
 	case view.TiltLogHalfScreen:
 		height = rty.GROW
 	case view.TiltLogFullScreen:
