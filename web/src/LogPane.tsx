@@ -33,6 +33,7 @@ type LogLineComponentProps = {
   lineId: number
   shouldHighlight: boolean
   showManifestPrefix: boolean
+  isContextChange: boolean
 }
 
 let LogLinePrefixRoot = styled.span`
@@ -43,7 +44,7 @@ let LogLinePrefixRoot = styled.span`
   box-sizing: border-box;
   display: inline-block;
   background-color: ${color.grayDark};
-  border-right: 1px dotted ${color.grayLightest};
+  border-right: 1px solid ${color.grayLightest};
   color: ${color.grayLightest};
   padding-right: ${SizeUnit(0.5)};
   margin-right: ${SizeUnit(0.5)};
@@ -56,10 +57,19 @@ let LogLinePrefixRoot = styled.span`
   &::selection {
     background-color: transparent;
   }
+
+  .logLine.is-contextChange > & {
+    margin-top: -1px;
+    border-top: 1px dotted ${color.grayLightest};
+  }
 `
 
 let LogLinePrefix = React.memo((props: { name: string }) => {
-  return <LogLinePrefixRoot title={props.name}>{props.name}</LogLinePrefixRoot>
+  let name = props.name
+  if (!name) {
+    name = "(global)"
+  }
+  return <LogLinePrefixRoot title={name}>{name}</LogLinePrefixRoot>
 })
 
 class LogLineComponent extends PureComponent<LogLineComponentProps> {
@@ -82,7 +92,9 @@ class LogLineComponent extends PureComponent<LogLineComponentProps> {
       <span
         ref={this.ref}
         data-lineid={props.lineId}
-        className={`logLine ${props.shouldHighlight ? "highlighted" : ""}`}
+        className={`logLine ${props.shouldHighlight ? "highlighted" : ""} ${
+          props.isContextChange ? "is-contextChange" : ""
+        }`}
       >
         {prefix}
         <AnsiLine line={text} className={"logLine-content"} />
@@ -259,6 +271,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     let sawBeginning = false
     let sawEnd = false
     let highlight = this.props.highlight
+    let lastManifestName = ""
     for (let i = 0; i < lines.length; i++) {
       const l = lines[i]
       const key = "logLine" + i
@@ -279,18 +292,22 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
         }
       }
 
+      let isContextChange = i > 0 && l.manifestName != lastManifestName
       let el = (
         <LogLineComponent
           ref={maybeHighlightRef}
           key={key}
           text={l.text}
           manifestName={l.manifestName}
+          isContextChange={isContextChange}
           lineId={i}
           showManifestPrefix={this.props.showManifestPrefix}
           shouldHighlight={shouldHighlight}
         />
       )
       logLineEls.push(el)
+
+      lastManifestName = l.manifestName
     }
 
     logLineEls.push(

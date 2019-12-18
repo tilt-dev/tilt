@@ -34,7 +34,7 @@
 }
 
 .logLine-content {
-  white-space: pre;
+  white-space: pre-wrap;
   min-height: $spacing-unit / 2; // Respect blank lines
 }
 

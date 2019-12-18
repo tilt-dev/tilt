@@ -11,6 +11,7 @@ export function logLinesFromString(
     return {
       text: text,
       manifestName: manifestName ?? "",
+      time: "",
     }
   })
 }
