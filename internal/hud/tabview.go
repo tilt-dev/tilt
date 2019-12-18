@@ -37,6 +37,11 @@ func (v *TabView) Build() rty.Component {
 }
 
 func (v *TabView) log() string {
+	var numLinesNeeded = logLineCount
+	if v.viewState.TiltLogState == view.TiltLogShort {
+		numLinesNeeded = defaultLogPaneHeight
+	}
+
 	var ret model.Log
 	var reader logstore.Reader
 	switch v.tabState {
@@ -57,9 +62,9 @@ func (v *TabView) log() string {
 	}
 
 	if !ret.Empty() {
-		return ret.Tail(logLineCount).String()
+		return ret.Tail(numLinesNeeded).String()
 	} else if !reader.Empty() {
-		return reader.String()
+		return reader.Tail(numLinesNeeded)
 	} else {
 		return "(no logs received)"
 	}
