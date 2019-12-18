@@ -3,6 +3,7 @@ package telemetry
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -107,7 +108,7 @@ type tcFixture struct {
 	cmd        string
 	lastRun    time.Time
 	spans      []*exporttrace.SpanData
-	exporter   *tracer.Exporter
+	sc         *tracer.SpanCollector
 	controller *Controller
 }
 
@@ -119,13 +120,13 @@ func newTCFixture(t *testing.T) *tcFixture {
 	ctx := context.Background()
 
 	return &tcFixture{
-		t:        t,
-		ctx:      ctx,
-		temp:     temp,
-		clock:    fakeClock{now: time.Unix(1551202573, 0)},
-		st:       st,
-		exporter: tracer.NewExporter(ctx),
-		spans:    []*exporttrace.SpanData{&exporttrace.SpanData{}},
+		t:     t,
+		ctx:   ctx,
+		temp:  temp,
+		clock: fakeClock{now: time.Unix(1551202573, 0)},
+		st:    st,
+		sc:    tracer.NewSpanCollector(ctx),
+		spans: []*exporttrace.SpanData{&exporttrace.SpanData{}},
 	}
 }
 
@@ -157,7 +158,7 @@ func (tcf *tcFixture) setLastRun(t time.Time) {
 
 func (tcf *tcFixture) run() {
 	for _, sd := range tcf.spans {
-		tcf.exporter.OnEnd(sd)
+		tcf.sc.OnEnd(sd)
 	}
 
 	ts := model.TelemetrySettings{
@@ -168,7 +169,7 @@ func (tcf *tcFixture) run() {
 		TelemetrySettings: ts,
 	})
 
-	tc := NewController(tcf.clock, tcf.exporter)
+	tc := NewController(tcf.clock, tcf.sc)
 	tc.lastRunAt = tcf.lastRun
 	tcf.controller = tc
 	tc.OnChange(tcf.ctx, tcf.st)
@@ -211,25 +212,17 @@ func (tcf *tcFixture) assertCmdOutput(expected string) {
 }
 
 func (tcf *tcFixture) assertSpansPresent() {
-	r, ch, err := tcf.exporter.GetOutgoingSpans()
+	_, _, err := tcf.sc.GetOutgoingSpans()
 	if err != nil {
 		tcf.t.Fatalf("error getting spans: %v", err)
 	}
-	if r == nil {
-		tcf.t.Fatalf("no spans present")
-	}
-	ch <- false
 }
 
 func (tcf *tcFixture) assertNoSpans() {
-	r, ch, err := tcf.exporter.GetOutgoingSpans()
-	if err != nil {
-		tcf.t.Fatalf("error getting spans: %v", err)
+	r, _, err := tcf.sc.GetOutgoingSpans()
+	if err != io.EOF {
+		tcf.t.Fatalf("Didn't get EOF for spans: %v %v", r, err)
 	}
-	if r != nil {
-		tcf.t.Fatalf("Got spans")
-	}
-	ch <- false
 }
 
 func (tcf *tcFixture) teardown() {

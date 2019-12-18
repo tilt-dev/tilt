@@ -3,6 +3,7 @@ package telemetry
 import (
 	"context"
 	"fmt"
+	"io"
 	"os/exec"
 	"time"
 
@@ -48,14 +49,11 @@ func (t *Controller) OnChange(ctx context.Context, st store.RStore) {
 		t.lastRunAt = t.clock.Now()
 	}()
 
-	r, releaseCh, err := t.spans.GetOutgoingSpans()
+	r, requeueFn, err := t.spans.GetOutgoingSpans()
 	if err != nil {
-		t.logError(st, fmt.Errorf("Error gathering Telemetry data for experimental_telemetry_cmd %v", err))
-		return
-	}
-
-	if r == nil {
-		releaseCh <- true
+		if err != io.EOF {
+			t.logError(st, fmt.Errorf("Error gathering Telemetry data for experimental_telemetry_cmd %v", err))
+		}
 		return
 	}
 
@@ -67,12 +65,9 @@ func (t *Controller) OnChange(ctx context.Context, st store.RStore) {
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.logError(st, fmt.Errorf("Telemetry command failed: %v\noutput: %s", err, out))
-		releaseCh <- false
+		requeueFn()
 		return
 	}
-
-	// tell the SpanSource to delete those spans
-	releaseCh <- true
 }
 
 func (t *Controller) logError(st store.RStore, err error) {
