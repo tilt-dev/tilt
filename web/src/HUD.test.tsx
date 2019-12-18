@@ -261,3 +261,51 @@ it("doesn't render snapshot button if snapshots are enabled and this is a snapsh
   let snapshotSection = root.find(".TopBar-toolsButton")
   expect(snapshotSection.exists()).toBe(false)
 })
+
+it("loads logs incrementally", async () => {
+  const root = mount(emptyHUD())
+  const hud = root.find(HUD).instance() as HUD
+
+  let now = new Date().toString()
+  let resourceView = oneResourceView()
+  resourceView.logList = {
+    spans: {
+      "": {},
+    },
+    segments: [
+      { text: "line1\n", time: now },
+      { text: "line2\n", time: now },
+    ],
+    fromCheckpoint: 0,
+    toCheckpoint: 2,
+  }
+  hud.setAppState({ view: resourceView })
+
+  let resourceView2 = oneResourceView()
+  resourceView2.logList = {
+    spans: {
+      "": {},
+    },
+    segments: [
+      { text: "line3\n", time: now },
+      { text: "line4\n", time: now },
+    ],
+    fromCheckpoint: 2,
+    toCheckpoint: 4,
+  }
+  hud.setAppState({ view: resourceView2 })
+
+  root.update()
+  let snapshot = hud.snapshotFromState(hud.state)
+  expect(snapshot.view?.logList).toEqual({
+    spans: {
+      "": { manifestName: "" },
+    },
+    segments: [
+      { text: "line1\n", time: now, level: "INFO", spanId: "" },
+      { text: "line2\n", time: now, level: "INFO", spanId: "" },
+      { text: "line3\n", time: now, level: "INFO", spanId: "" },
+      { text: "line4\n", time: now, level: "INFO", spanId: "" },
+    ],
+  })
+})

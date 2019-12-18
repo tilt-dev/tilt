@@ -3154,6 +3154,22 @@ print('foo=', cfg['foo'])`)
 	})
 }
 
+func TestTelemetryLogAction(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.Start([]model.Manifest{}, true)
+
+	f.store.Dispatch(telemetry.LogAction{
+		LogEvent: store.NewLogEvent(model.TiltfileManifestName, "0", logger.InfoLvl, []byte("testing")),
+	})
+
+	f.WaitUntil("log is stored", func(state store.EngineState) bool {
+		l := state.LogStore.ManifestLog(store.TiltfileManifestName)
+		return strings.Contains(l, "testing")
+	})
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
@@ -3309,7 +3325,7 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 		return time.After(ret.tiltVersionCheckDelay)
 	}
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
-	tc := telemetry.NewController(fakeClock{}, tracer.NewExporter(ctx))
+	tc := telemetry.NewController(fakeClock{}, tracer.NewSpanCollector(ctx))
 
 	subs := ProvideSubscribers(h, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, tvc, au, ewm, tcum, cuu, dp, tc)
 	ret.upper = NewUpper(ctx, st, subs)

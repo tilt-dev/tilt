@@ -28,6 +28,7 @@ type ConfigsReloadedAction struct {
 	Warnings             []string
 	Features             map[string]bool
 	TeamName             string
+	TelemetrySettings    model.TelemetrySettings
 	Secrets              model.SecretSet
 	DockerPruneSettings  model.DockerPruneSettings
 	AnalyticsTiltfileOpt analytics.Opt

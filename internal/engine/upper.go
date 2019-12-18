@@ -20,6 +20,7 @@ import (
 	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
 	"github.com/windmilleng/tilt/internal/engine/runtimelog"
+	"github.com/windmilleng/tilt/internal/engine/telemetry"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -211,6 +212,7 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 	case server.SetTiltfileArgsAction:
 		handleSetTiltfileArgsAction(state, action)
 	case store.LogEvent:
+	case telemetry.LogAction:
 	// handled as a LogAction, do nothing
 
 	default:
@@ -568,6 +570,7 @@ func handleConfigsReloaded(
 
 	state.Features = event.Features
 	state.TeamName = event.TeamName
+	state.TelemetrySettings = event.TelemetrySettings
 
 	state.VersionSettings = event.VersionSettings
 

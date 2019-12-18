@@ -647,18 +647,19 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:d2754cafcab0d22c13541618a8029a70a8959eb3525ff201fe971637e2274cd0"
+  digest = "1:248e9efd818d7156968df6d7d02018d2b7b6debf3ea21e81228cf0abb29b24cd"
   name = "github.com/google/go-cmp"
   packages = [
     "cmp",
     "cmp/cmpopts",
     "cmp/internal/diff",
+    "cmp/internal/flags",
     "cmp/internal/function",
     "cmp/internal/value",
   ]
   pruneopts = "UT"
-  revision = "3af367b6b30c263d47e8895973edcca9a49cf029"
-  version = "v0.2.0"
+  revision = "2d0692c2e9617365a95b295612ac0d4415ba4627"
+  version = "v0.3.1"
 
 [[projects]]
   digest = "1:a9d2a46fc25a136a81f7bb71f77a85419afd63974e4dcb5b9abc637e0e7be9aa"
@@ -849,6 +850,14 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "b84e30acd515aadc4b783ad4ff83aff3299bdfe0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:10b85f58562d487a3bd7da6ba5b895bc221d5ecbd89df9c7c5a36004e827ade1"
+  name = "github.com/liggitt/tabwriter"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "89fcab3d43de07060e4fd4c1547430ed57e87f24"
 
 [[projects]]
   digest = "1:078d0b47a888546a9f8810d64f76792f70b2fa564ad2bbe6dddd002c032ce7cf"
@@ -1374,14 +1383,11 @@
   version = "v0.18.0"
 
 [[projects]]
-  digest = "1:be33166a80d2a786fff80f85e96284fd23dd0013269cf4183a0b0893b5000166"
+  digest = "1:1a0d0725d1f9542c6eac0b761c767fef4f52ce8e634335bffc0523ba80f76439"
   name = "go.opentelemetry.io/otel"
   packages = [
     "api/core",
-    "api/global",
-    "api/metric",
     "api/trace",
-    "api/unit",
     "sdk",
     "sdk/export/trace",
     "sdk/internal",
@@ -1620,7 +1626,7 @@
   version = "v2.2.1"
 
 [[projects]]
-  digest = "1:3363ef5c237a77a65becb1aa86daf82eff76d9f7add0fca417a3dae8a17356ac"
+  digest = "1:811fa41d5256cb9cf6db2c656b74db45876ad581194199aa389386645a216914"
   name = "k8s.io/api"
   packages = [
     "admission/v1",
@@ -1646,8 +1652,10 @@
     "coordination/v1beta1",
     "core/v1",
     "discovery/v1alpha1",
+    "discovery/v1beta1",
     "events/v1beta1",
     "extensions/v1beta1",
+    "flowcontrol/v1alpha1",
     "imagepolicy/v1alpha1",
     "networking/v1",
     "networking/v1beta1",
@@ -1666,11 +1674,11 @@
     "storage/v1beta1",
   ]
   pruneopts = "UT"
-  revision = "95b840bb6a1f5f0462af804c8589396d294d4914"
-  version = "kubernetes-1.16.0"
+  revision = "4c9a86741a7ab3890dd9e0777e85d8eee48bf59c"
+  version = "kubernetes-1.17.0"
 
 [[projects]]
-  digest = "1:12e3a7ff97f5d0276395f053ece2a4b4a4361148a21e3286071479b32e30d823"
+  digest = "1:8b27e1dbea60e1b8e15587e196ba832eec7d41ab6704192ab77c7f045cefbd36"
   name = "k8s.io/apimachinery"
   packages = [
     "pkg/api/equality",
@@ -1701,6 +1709,7 @@
     "pkg/util/cache",
     "pkg/util/clock",
     "pkg/util/diff",
+    "pkg/util/duration",
     "pkg/util/errors",
     "pkg/util/framer",
     "pkg/util/httpstream",
@@ -1726,11 +1735,11 @@
     "third_party/forked/golang/reflect",
   ]
   pruneopts = "UT"
-  revision = "27d36303b6556f377b4f34e64705fa9024a12b0c"
-  version = "kubernetes-1.16.0"
+  revision = "79c2a76c473a20cdc4ce59cae4b72529b5d9d16b"
+  version = "kubernetes-1.17.0"
 
 [[projects]]
-  digest = "1:244061a36af793cc985f093a54c9796f216fdf4e41c06e72848b1a77d9cc7408"
+  digest = "1:8672eadb74af538b9fc402da780ef0cb1e6763010ff22c8ca3de386684112b01"
   name = "k8s.io/cli-runtime"
   packages = [
     "pkg/genericclioptions",
@@ -1747,11 +1756,11 @@
     "pkg/resource",
   ]
   pruneopts = "UT"
-  revision = "f783a3654da8387af6f52378b0611c2d81ea4dd8"
-  version = "kubernetes-1.16.0"
+  revision = "dbe977a4ce31c6d5f786c9394a3c8993095ad4fc"
+  version = "kubernetes-1.17.0"
 
 [[projects]]
-  digest = "1:e3777852bf30156c531ebaa966f2e0326cd056264c054e26984b750eaa9c3183"
+  digest = "1:9a1390e61f94092aa8a0297c077cd24005613e8fb56c2205f6713704fb827e19"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -1786,10 +1795,13 @@
     "informers/core/v1",
     "informers/discovery",
     "informers/discovery/v1alpha1",
+    "informers/discovery/v1beta1",
     "informers/events",
     "informers/events/v1beta1",
     "informers/extensions",
     "informers/extensions/v1beta1",
+    "informers/flowcontrol",
+    "informers/flowcontrol/v1alpha1",
     "informers/internalinterfaces",
     "informers/networking",
     "informers/networking/v1",
@@ -1858,10 +1870,14 @@
     "kubernetes/typed/core/v1/fake",
     "kubernetes/typed/discovery/v1alpha1",
     "kubernetes/typed/discovery/v1alpha1/fake",
+    "kubernetes/typed/discovery/v1beta1",
+    "kubernetes/typed/discovery/v1beta1/fake",
     "kubernetes/typed/events/v1beta1",
     "kubernetes/typed/events/v1beta1/fake",
     "kubernetes/typed/extensions/v1beta1",
     "kubernetes/typed/extensions/v1beta1/fake",
+    "kubernetes/typed/flowcontrol/v1alpha1",
+    "kubernetes/typed/flowcontrol/v1alpha1/fake",
     "kubernetes/typed/networking/v1",
     "kubernetes/typed/networking/v1/fake",
     "kubernetes/typed/networking/v1beta1",
@@ -1909,8 +1925,10 @@
     "listers/coordination/v1beta1",
     "listers/core/v1",
     "listers/discovery/v1alpha1",
+    "listers/discovery/v1beta1",
     "listers/events/v1beta1",
     "listers/extensions/v1beta1",
+    "listers/flowcontrol/v1alpha1",
     "listers/networking/v1",
     "listers/networking/v1beta1",
     "listers/node/v1alpha1",
@@ -1973,8 +1991,8 @@
     "util/retry",
   ]
   pruneopts = "UT"
-  revision = "1fbdaa4c8d908275eee958429b1cafc2591a2c5d"
-  version = "kubernetes-1.16.0"
+  revision = "c68b62b1efa14564a47d67c07f013dc3553937b9"
+  version = "kubernetes-1.17.0"
 
 [[projects]]
   branch = "master"
@@ -2008,8 +2026,7 @@
   revision = "e3762e86a74c878ffed47484592986685639c2cd"
 
 [[projects]]
-  branch = "master"
-  digest = "1:221abe5b0a2a6fdb4f9a3438e4ff7037d58183ed9d5dee5ce53604d0d5ef3357"
+  digest = "1:94a4f387ffdeb9a533ef8268ad5b98ba3f9fb540541b86c19fa61a41f9862300"
   name = "k8s.io/kubectl"
   packages = [
     "pkg/cmd/apply",
@@ -2033,7 +2050,8 @@
     "pkg/validation",
   ]
   pruneopts = "UT"
-  revision = "5bf870509147b4563a8a905fbb7e309cef9f4306"
+  revision = "04231514142e0d039c8cee57130e3e4af0d70d59"
+  version = "kubernetes-1.17.0"
 
 [[projects]]
   branch = "master"
@@ -2165,11 +2183,10 @@
     "github.com/windmilleng/wmclient/pkg/analytics",
     "github.com/windmilleng/wmclient/pkg/dirs",
     "github.com/windmilleng/wmclient/pkg/os/temp",
-    "go.opentelemetry.io/otel/api/global",
+    "go.opentelemetry.io/otel/api/core",
+    "go.opentelemetry.io/otel/api/trace",
     "go.opentelemetry.io/otel/sdk/export/trace",
     "go.opentelemetry.io/otel/sdk/trace",
-    "go.starlark.net/resolve",
-    "go.starlark.net/starlark",
     "go.starlark.net/resolve",
     "go.starlark.net/starlark",
     "go.starlark.net/starlarkstruct",

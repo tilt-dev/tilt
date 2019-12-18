@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/windmilleng/tilt/internal/tiltfile/starlarkstruct"
+	"github.com/windmilleng/tilt/internal/tiltfile/telemetry"
 
 	"github.com/docker/distribution/reference"
 	"github.com/looplab/tarjan"
@@ -91,7 +92,8 @@ type tiltfileState struct {
 	// for error reporting in case it's called twice
 	triggerModeCallPosition syntax.Position
 
-	teamName string
+	teamName     string
+	telemetryCmd model.Cmd
 
 	logger            logger.Logger
 	warnings          []string
@@ -160,6 +162,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		version.NewExtension(),
 		config.NewExtension(userConfigState),
 		starlarkstruct.NewExtension(),
+		telemetry.NewExtension(),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)
