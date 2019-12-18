@@ -51,6 +51,27 @@ class LogStore {
     this.checkpoint = 0
   }
 
+  toLogList(): Proto.webviewLogList {
+    let spans = {} as { [key: string]: Proto.webviewLogSpan }
+    for (let key in this.spans) {
+      spans[key] = { manifestName: this.spans[key].manifestName }
+    }
+
+    let segments = this.segments.map(
+      (segment): Proto.webviewLogSegment => {
+        let spanId = segment.spanId
+        let time = segment.time
+        let text = segment.text
+        let level = segment.level
+        return { spanId, time, text, level }
+      }
+    )
+    return {
+      spans: spans,
+      segments: segments,
+    }
+  }
+
   append(logList: Proto.webviewLogList) {
     let newSpans = logList.spans as { [key: string]: Proto.webviewLogSpan }
     let newSegments = logList.segments ?? []
