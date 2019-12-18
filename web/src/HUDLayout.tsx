@@ -61,7 +61,9 @@ let Root = styled.div`
   flex-direction: column;
   padding-right: ${Width.sidebar}px;
   padding-bottom: ${Height.statusbar}px;
+  width: 100%;
   transition: padding-right ${AnimDuration.default} ease;
+
 
   &.is-sidebarCollapsed {
     padding-right: ${Width.sidebarCollapsed}px;
@@ -71,6 +73,7 @@ let Root = styled.div`
 let Header = styled.header``
 
 let StickyNav = styled.nav`
+  
   position: sticky;
   top: 0;
 `

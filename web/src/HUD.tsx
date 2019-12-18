@@ -33,7 +33,7 @@ import ShareSnapshotModal from "./ShareSnapshotModal"
 import FatalErrorModal from "./FatalErrorModal"
 import * as _ from "lodash"
 import FacetsPane from "./FacetsPane"
-import HUDGrid from "./HUDGrid"
+import HUDLayout from "./HUDLayout"
 import LogStore from "./LogStore"
 
 type HudProps = {
@@ -259,13 +259,13 @@ class HUD extends Component<HudProps, HudState> {
         {this.renderSidebarSwitch()}
         {statusbar}
 
-        <HUDGrid
-          topBar={this.renderTopBarSwitch()}
-          resourceBar={this.renderResourceBar()}
+        <HUDLayout
+          stickyNav={this.renderTopBarSwitch()}
+          header={this.renderResourceBar()}
           isSidebarClosed={!!this.state.isSidebarClosed}
         >
           {this.renderMainPaneSwitch()}
-        </HUDGrid>
+        </HUDLayout>
       </div>
     )
   }
