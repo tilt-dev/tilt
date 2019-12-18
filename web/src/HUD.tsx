@@ -158,8 +158,12 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   snapshotFromState(state: HudState): Proto.webviewSnapshot {
+    let view = _.cloneDeep(state.view ?? null)
+    if (view && state.logStore) {
+      view.logList = state.logStore.toLogList()
+    }
     return {
-      view: _.cloneDeep(state.view || null),
+      view: view,
       isSidebarClosed: !!state.isSidebarClosed,
       path: this.props.history.location.pathname,
       snapshotHighlight: _.cloneDeep(state.snapshotHighlight),
