@@ -112,6 +112,8 @@ func newFixture(t *testing.T) *fixture {
 
 func (f *fixture) tearDown() {
 	f.assertEmpty()
+	f.sc.Shutdown()
+	f.sc.Close()
 }
 
 func (f *fixture) export(sd *exporttrace.SpanData) {

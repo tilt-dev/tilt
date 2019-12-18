@@ -33,7 +33,11 @@ type SpanSource interface {
 	// GetOutgoingSpans gives a consumer access to spans they should send
 	// If there are no outoing spans, err will be io.EOF
 	// rejectFn allows client to reject spans, so they can be requeued
+	// rejectFn must be called, if at all, before the next call to GetOutgoingSpans
 	GetOutgoingSpans() (data io.Reader, rejectFn func(), err error)
+
+	// Close closes the SpanSource; the client may not interact with this SpanSource after calling Close
+	Close() error
 }
 
 func NewSpanCollector(ctx context.Context) *SpanCollector {
@@ -51,16 +55,26 @@ func (c *SpanCollector) loop(ctx context.Context) {
 	var queue []*exporttrace.SpanData
 
 	for {
+		if c.spanDataCh == nil && c.readReqCh == nil {
+			return
+		}
 		select {
 		// New work coming in
-		case sd := <-c.spanDataCh:
+		case sd, ok := <-c.spanDataCh:
+			if !ok {
+				c.spanDataCh = nil
+				break
+			}
 			// add to the queue
 			queue = appendAndTrim(queue, sd)
-		case respCh := <-c.readReqCh:
+		case respCh, ok := <-c.readReqCh:
+			if !ok {
+				c.readReqCh = nil
+				break
+			}
 			// send the queue to the reader
 			respCh <- queue
 			queue = nil
-
 		// In-flight operations finishing
 		case sds := <-c.requeueCh:
 			queue = appendAndTrim(sds, queue...)
@@ -77,7 +91,7 @@ func (c *SpanCollector) OnEnd(sd *exporttrace.SpanData) {
 }
 
 func (c *SpanCollector) Shutdown() {
-	// TODO(dbentley): handle shutdown
+	close(c.spanDataCh)
 }
 
 // SpanSource
@@ -103,6 +117,11 @@ func (c *SpanCollector) GetOutgoingSpans() (io.Reader, func(), error) {
 	}
 
 	return strings.NewReader(b.String()), rejectFn, nil
+}
+
+func (c *SpanCollector) Close() error {
+	close(c.readReqCh)
+	return nil
 }
 
 const maxQueueSize = 1024 // round number that can hold a fair bit of data
