@@ -221,7 +221,10 @@ class LogStore {
         continue
       }
 
-      let currentLine = { manifestName: span.manifestName, text: segment.text }
+      let currentLine = {
+        manifestName: span.manifestName,
+        text: segment.text,
+      }
       isFirstLine = false
 
       // If this segment is not complete, run ahead and try to complete it.
