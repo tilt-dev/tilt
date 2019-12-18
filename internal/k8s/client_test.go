@@ -7,6 +7,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes/fake"
@@ -227,6 +228,17 @@ func (c clientTestFixture) addObject(obj runtime.Object) {
 	if err != nil {
 		c.t.Fatal(err)
 	}
+}
+
+func (c clientTestFixture) getPod(id PodID) *v1.Pod {
+	c.t.Helper()
+
+	pod, err := c.client.core.Pods(DefaultNamespace.String()).Get(id.String(), metav1.GetOptions{})
+	if err != nil {
+		c.t.Fatal(err)
+	}
+
+	return pod
 }
 
 func (c clientTestFixture) updatePod(pod *v1.Pod) {

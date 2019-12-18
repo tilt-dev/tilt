@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/windmilleng/tilt/internal/container"
 )
@@ -53,11 +52,7 @@ func TestWaitForContainerAlreadyAlive(t *testing.T) {
 	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
 	defer cancel()
 
-	pod, err := f.client.core.Pods("").Get(expectedPod.String(), metav1.GetOptions{})
-	if err != nil {
-		f.t.Fatal(err)
-	}
-
+	pod := f.getPod(expectedPod)
 	cStatus, err := WaitForContainerReady(ctx, f.client, pod, nt)
 	if err != nil {
 		t.Fatal(err)
@@ -76,10 +71,7 @@ func TestWaitForContainerSuccess(t *testing.T) {
 	f.addObject(&fakePodList)
 
 	nt := container.MustParseTaggedSelector(blorgDevImgStr)
-	pod, err := f.client.core.Pods("").Get(expectedPod.String(), metav1.GetOptions{})
-	if err != nil {
-		f.t.Fatal(err)
-	}
+	pod := f.getPod(expectedPod)
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
 	defer cancel()
@@ -103,7 +95,7 @@ func TestWaitForContainerSuccess(t *testing.T) {
 
 	<-f.watchNotify
 	f.updatePod(newPod)
-	err = <-result
+	err := <-result
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,10 +106,7 @@ func TestWaitForContainerFailure(t *testing.T) {
 	f.addObject(&fakePodList)
 
 	nt := container.MustParseTaggedSelector(blorgDevImgStr)
-	pod, err := f.client.core.Pods("").Get(expectedPod.String(), metav1.GetOptions{})
-	if err != nil {
-		f.t.Fatal(err)
-	}
+	pod := f.getPod(expectedPod)
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
 	defer cancel()
@@ -142,7 +131,7 @@ func TestWaitForContainerFailure(t *testing.T) {
 
 	<-f.watchNotify
 	f.updatePod(newPod)
-	err = <-result
+	err := <-result
 
 	expected := "Container will never be ready"
 	if err == nil || !strings.Contains(err.Error(), expected) {
@@ -155,10 +144,7 @@ func TestWaitForContainerUnschedulable(t *testing.T) {
 	f.addObject(&fakePodList)
 
 	nt := container.MustParseTaggedSelector(blorgDevImgStr)
-	pod, err := f.client.core.Pods("").Get(expectedPod.String(), metav1.GetOptions{})
-	if err != nil {
-		f.t.Fatal(err)
-	}
+	pod := f.getPod(expectedPod)
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
 	defer cancel()
@@ -183,7 +169,7 @@ func TestWaitForContainerUnschedulable(t *testing.T) {
 
 	<-f.watchNotify
 	f.updatePod(newPod)
-	err = <-result
+	err := <-result
 
 	expected := "Container will never be ready: 0/4 nodes are available: 4 Insufficient cpu."
 	if err == nil || !strings.Contains(err.Error(), expected) {
