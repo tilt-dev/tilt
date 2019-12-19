@@ -55,7 +55,7 @@ jobs:
     steps:
       - checkout
       # Currently, we only check to make sure Windows binaries compile
-      - run: GOOS=windows go install github.com/windmilleng/tilt/cmd/tilt
+      - run: GOOS=windows go install -mod vendor github.com/windmilleng/tilt/cmd/tilt
       - slack/notify-on-failure:
           only_for_branches: master
 
