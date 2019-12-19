@@ -19,7 +19,7 @@ features that we have in mind and might already be in-progress.
 If you just want to build Tilt:
 
 - **[make](https://www.gnu.org/software/make/)**
-- **[go 1.12](https://golang.org/dl/)**
+- **[go 1.13](https://golang.org/dl/)**
 - **[errcheck](https://github.com/kisielk/errcheck)**: `go get -u github.com/kisielk/errcheck` (to run lint)
 - [yarn](https://yarnpkg.com/lang/en/docs/install/) (for JS resources)
 
@@ -56,7 +56,7 @@ go get -u github.com/windmilleng/tilt/cmd/tilt
 ```
 
 The Go toolchain will checkout the Tilt repo somewhere on your GOPATH,
-usually under `~/go/src/github.com/windmilleng/tilt`. (See notes below if you're using Go modules).
+usually under `~/go/src/github.com/windmilleng/tilt`.
 
 To run the fast test suite, run:
 
@@ -91,14 +91,6 @@ There are plenty of toy projects to play with in the [integration](https://githu
 - [Frontend Demo](https://github.com/windmilleng/tilt-frontend-demo): Tilt + ReactJS
 - [Live Update Examples](https://github.com/windmilleng/live_update): contains Go and Python examples of Tilt's [Live Update](https://docs.tilt.dev/live_update_tutorial.html) functionality
 - [Sidecar Example](https://github.com/windmilleng/sidecar_example): simple Python app and home-rolled logging sidecar
-
-### Go Modules
-
-Currently, Tilt will not work with Go modules. See [this issue](https://github.com/windmilleng/tilt/issues/1520)
-for more details.
-
-If you're building Tilt from source, you must build it in your GOPATH.
-
 
 ## Performance
 ### Go Profile

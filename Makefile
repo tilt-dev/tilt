@@ -107,9 +107,6 @@ test-js:
 	cd web && yarn install
 	cd web && CI=true yarn test
 
-ensure:
-	dep ensure
-
 goimports:
 	goimports -w -l $(GOIMPORTS_LOCAL_ARG) $$(go list -f {{.Dir}} ./...)
 
