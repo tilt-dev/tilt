@@ -21,11 +21,16 @@ import (
 // messages (like Infof) append a newline to the string before passing it to
 // Write().
 type Logger interface {
+	// Warnings to show in the alert pane.
+	Warnf(format string, a ...interface{})
+
 	// log information that we always want to show
 	Infof(format string, a ...interface{})
+
 	// log information that a tilt user might not want to see on every run, but that they might find
 	// useful when debugging their Tiltfile/docker/k8s configs
 	Verbosef(format string, a ...interface{})
+
 	// log information that is likely to only be of interest to tilt developers
 	Debugf(format string, a ...interface{})
 
@@ -43,13 +48,30 @@ type LogHandler interface {
 	Write(level Level, bytes []byte) error
 }
 
-type Level int
+type Level struct {
+	// UGH, for backwards-compatibility, the serialized value doesn't say anything
+	// about relative priority.
+	id int32
 
-const (
-	NoneLvl = iota
-	InfoLvl
-	VerboseLvl
-	DebugLvl
+	severity int32
+}
+
+func (l Level) ToProtoID() int32 {
+	return l.id
+}
+
+// If l is the logger level, determine if we should display
+// logs of the given severity.
+func (l Level) ShouldDisplay(log Level) bool {
+	return l.severity <= log.severity
+}
+
+var (
+	NoneLvl    = Level{id: 0, severity: 0}
+	InfoLvl    = Level{id: 1, severity: 300}
+	VerboseLvl = Level{id: 2, severity: 200}
+	DebugLvl   = Level{id: 3, severity: 100}
+	WarnLvl    = Level{id: 4, severity: 400}
 )
 
 const loggerContextKey = "Logger"
@@ -78,7 +100,7 @@ func NewLogger(minLevel Level, writer io.Writer) Logger {
 		}
 	}
 	return NewFuncLogger(supportsColor, minLevel, func(level Level, bytes []byte) error {
-		if minLevel >= level {
+		if minLevel.ShouldDisplay(level) {
 			_, err := writer.Write(bytes)
 			return err
 		}
@@ -116,7 +138,7 @@ func CtxWithForkedOutput(ctx context.Context, writer io.Writer) context.Context 
 
 	write := func(level Level, b []byte) error {
 		l.Write(level, b)
-		if l.Level() >= level {
+		if l.Level().ShouldDisplay(level) {
 			b = append([]byte{}, b...)
 			_, err := writer.Write(b)
 			if err != nil {

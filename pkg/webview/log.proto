@@ -7,10 +7,13 @@ import "google/protobuf/timestamp.proto";
 option go_package = "github.com/windmilleng/tilt/pkg/webview";
 
 enum LogLevel {
+  // For backwards-compatibility, the int value doesn't say
+  // anything about relative severity.
   NONE = 0;
   INFO = 1;
   VERBOSE = 2;
   DEBUG = 3;
+  WARN = 4;
 }
 
 message LogSegment {

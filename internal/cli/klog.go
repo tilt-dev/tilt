@@ -11,6 +11,7 @@ import (
 	"k8s.io/klog"
 )
 
+// https://kubernetes.io/docs/reference/kubectl/cheatsheet/#kubectl-output-verbosity-and-debugging
 var klogLevel = 0
 
 type filteredWriter struct {

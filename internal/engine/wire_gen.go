@@ -24,7 +24,6 @@ import (
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/tilt/internal/tracer"
-	"github.com/windmilleng/tilt/pkg/logger"
 )
 
 // Injectors from wire.go:
@@ -156,5 +155,5 @@ var DeployerWireSet = wire.NewSet(
 )
 
 func provideKubectlLogLevelInfo() k8s.KubectlLogLevel {
-	return k8s.KubectlLogLevel(logger.InfoLvl)
+	return k8s.KubectlLogLevel(0)
 }
