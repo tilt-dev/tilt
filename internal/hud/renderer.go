@@ -278,16 +278,13 @@ func (r *Renderer) renderResources(v view.View, vs view.ViewState) rty.Component
 
 	if len(rs) > 0 {
 		for i, res := range rs {
-			l.Add(r.renderResource(res, vs.Resources[i], res.TriggerMode, selectedResource == res.Name.String()))
+			resView := NewResourceView(v.LogReader, res, vs.Resources[i], res.TriggerMode, selectedResource == res.Name.String(), r.clock)
+			l.Add(resView.Build())
 		}
 	}
 
 	cl.Add(l)
 	return cl
-}
-
-func (r *Renderer) renderResource(res view.Resource, rv view.ResourceViewState, triggerMode model.TriggerMode, selected bool) rty.Component {
-	return NewResourceView(res, rv, triggerMode, selected, r.clock).Build()
 }
 
 func (r *Renderer) SetUp() (chan tcell.Event, error) {

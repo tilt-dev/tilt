@@ -173,8 +173,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleK8sEvent(ctx, state, action)
 	case runtimelog.PodLogAction:
 		handlePodLogAction(state, action)
-	case buildcontrol.BuildLogAction:
-		handleBuildLogAction(state, action)
 	case buildcontrol.BuildCompleteAction:
 		err = handleBuildCompleted(ctx, state, action)
 	case buildcontrol.BuildStartedAction:
@@ -193,8 +191,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleStartProfilingAction(state)
 	case hud.StopProfilingAction:
 		handleStopProfilingAction(state)
-	case configs.TiltfileLogAction:
-		handleTiltfileLogAction(ctx, state, action)
 	case hud.DumpEngineStateAction:
 		handleDumpEngineStateAction(ctx, state)
 	case LatestVersionAction:
@@ -213,6 +209,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleSetTiltfileArgsAction(state, action)
 	case store.LogEvent:
 	case telemetry.LogAction:
+	case buildcontrol.BuildLogAction:
+	case configs.TiltfileLogAction:
 	// handled as a LogAction, do nothing
 
 	default:
@@ -284,7 +282,6 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 			LogEvent: store.NewLogEvent(mt.Manifest.Name, SpanIDForBuildLog(buildCount), logger.InfoLvl, []byte(s)),
 		}
 		handleLogAction(engineState, a)
-		handleBuildLogAction(engineState, a)
 	}
 
 	ms := mt.State
@@ -498,7 +495,6 @@ func handleConfigsReloaded(
 	state.Secrets.AddAll(event.Secrets)
 
 	// Retroactively scrub secrets
-	b.Log.ScrubSecretsStartingAt(newSecrets, 0)
 	state.LogStore.ScrubSecretsStartingAt(newSecrets, event.CheckpointAtExecStart)
 
 	// if the ConfigsReloadedAction came from a unit test, there might not be a current build
@@ -580,17 +576,6 @@ func handleConfigsReloaded(
 			delete(state.PendingConfigFileChanges, file)
 		}
 	}
-}
-
-func handleBuildLogAction(state *store.EngineState, action buildcontrol.BuildLogAction) {
-	manifestName := action.ManifestName()
-	ms, ok := state.ManifestState(manifestName)
-	if !ok || state.CurrentlyBuilding != manifestName {
-		// This is OK. The user could have edited the manifest recently.
-		return
-	}
-
-	ms.CurrentBuild.Log = model.AppendLog(ms.CurrentBuild.Log, action, "", state.Secrets)
 }
 
 func handleLogAction(state *store.EngineState, action store.LogAction) {
@@ -724,10 +709,6 @@ func handleDockerComposeLogAction(state *store.EngineState, action runtimelog.Do
 
 	dcState, _ := ms.RuntimeState.(dockercompose.State)
 	ms.RuntimeState = dcState.WithCurrentLog(model.AppendLog(dcState.CurrentLog, action, "", state.Secrets))
-}
-
-func handleTiltfileLogAction(ctx context.Context, state *store.EngineState, action configs.TiltfileLogAction) {
-	state.TiltfileState.CurrentBuild.Log = model.AppendLog(state.TiltfileState.CurrentBuild.Log, action, "", state.Secrets)
 }
 
 func handleAnalyticsUserOptAction(state *store.EngineState, action store.AnalyticsUserOptAction) {

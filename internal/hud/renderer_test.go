@@ -15,6 +15,7 @@ import (
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/rty"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 	"github.com/windmilleng/tilt/pkg/model/logstore"
 
@@ -30,6 +31,16 @@ func newView(resources ...view.Resource) view.View {
 		LogReader: newLogReader(""),
 		Resources: resources,
 	}
+}
+
+func newSpanLogReader(mn model.ManifestName, spanID logstore.SpanID, msg string) logstore.Reader {
+	logStore := logstore.NewLogStore()
+	logStore.Append(testLogEvent{mn: mn, spanID: spanID, time: time.Now(), msg: msg}, nil)
+	return logstore.NewReader(&sync.RWMutex{}, logStore)
+}
+
+func appendSpanLog(logStore *logstore.LogStore, mn model.ManifestName, spanID logstore.SpanID, msg string) {
+	logStore.Append(testLogEvent{mn: mn, spanID: spanID, time: time.Now(), msg: msg}, nil)
 }
 
 func TestRender(t *testing.T) {
@@ -50,10 +61,13 @@ func TestRender(t *testing.T) {
 		BuildHistory: []model.BuildRecord{{
 			FinishTime: time.Now(),
 			Error:      fmt.Errorf("oh no the build failed"),
-			Log:        model.NewLog("1\n2\n3\nthe compiler did not understand!\n5\n6\n7\n8\n"),
+			SpanID:     "vigoda:1",
 		}},
 		ResourceInfo: view.K8sResourceInfo{},
 	})
+	v.LogReader = newSpanLogReader("a-a-a-aaaaabe vigoda", "vigoda:1",
+		"1\n2\n3\nthe compiler did not understand!\n5\n6\n7\n8\n")
+
 	rtf.run("inline build log", 70, 20, v, plainVs)
 
 	v = newView(view.Resource{
@@ -61,7 +75,12 @@ func TestRender(t *testing.T) {
 		BuildHistory: []model.BuildRecord{{
 			FinishTime: time.Now(),
 			Error:      fmt.Errorf("oh no the build failed"),
-			Log: model.NewLog(`STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
+			SpanID:     "vigoda:1",
+		}},
+		ResourceInfo: view.K8sResourceInfo{},
+	})
+	v.LogReader = newSpanLogReader("a-a-a-aaaaabe vigoda", "vigoda:1",
+		`STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
   │ Tarring context…
   │ Applying via kubectl
     ╎ Created tarball (size: 11 kB)
@@ -72,10 +91,7 @@ func TestRender(t *testing.T) {
     ╎   → # github.com/windmilleng/servantes/snack
 src/github.com/windmilleng/servantes/snack/main.go:16:36: syntax error: unexpected newline, expecting comma or }
 
-ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/windmilleng/servantes/snack]: exit code 2`),
-		}},
-		ResourceInfo: view.K8sResourceInfo{},
-	})
+ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/windmilleng/servantes/snack]: exit code 2`)
 	rtf.run("inline build log with wrapping", 117, 20, v, plainVs)
 
 	v = newView(view.Resource{
@@ -85,20 +101,24 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 			PodName:     "vigoda-pod",
 			PodStatus:   "Running",
 			PodRestarts: 1,
-			PodLog:      model.NewLog("1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n"),
+			SpanID:      "vigoda:pod",
 		},
 	})
+	v.LogReader = newSpanLogReader("a-a-a-aaaaabe vigoda", "vigoda:pod",
+		"1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n")
 
 	rtf.run("pod log displayed inline", 70, 20, v, plainVs)
 
 	v = newView(view.Resource{
 		Name: "a-a-a-aaaaabe vigoda",
 		BuildHistory: []model.BuildRecord{{
-			Error: fmt.Errorf("broken go code!"),
-			Log:   model.NewLog("mashing keys is not a good way to generate code"),
+			Error:  fmt.Errorf("broken go code!"),
+			SpanID: "vigoda:1",
 		}},
 		ResourceInfo: view.K8sResourceInfo{},
 	})
+	v.LogReader = newSpanLogReader("a-a-a-aaaaabe vigoda", "vigoda:1",
+		"mashing keys is not a good way to generate code")
 	rtf.run("manifest error and build error", 70, 20, v, plainVs)
 
 	ts := time.Now().Add(-5 * time.Minute)
@@ -124,9 +144,11 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 			PodCreationTime: ts,
 			PodStatus:       "Running",
 			PodRestarts:     1,
-			PodLog:          model.NewLog("1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n"),
+			SpanID:          "vigoda:pod",
 		},
 	})
+	v.LogReader = newSpanLogReader("a-a-a-aaaaabe vigoda", "vigoda:pod",
+		"1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n")
 	rtf.run("all the data at once", 70, 20, v, plainVs)
 	rtf.run("all the data at once 50w", 50, 20, v, plainVs)
 	rtf.run("all the data at once 10w", 10, 20, v, plainVs)
@@ -168,15 +190,17 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/win
 			PodCreationTime: ts,
 			PodStatus:       "Running",
 			PodRestarts:     1,
-			PodLog: model.NewLog(`abe vigoda is crashing
+			SpanID:          "vigoda:pod",
+		},
+		Endpoints: []string{"1.2.3.4:8080"},
+	})
+	v.LogReader = newSpanLogReader("vigoda", "vigoda:pod",
+		`abe vigoda is crashing
 oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo
 oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo nooooooooooo noooooooooooo nooooooooooo
 oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo
 oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo nooooooooooo noooooooooooo nooooooooooo nooooooooooo noooooooooooo nooooooooooo
-oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`),
-		},
-		Endpoints: []string{"1.2.3.4:8080"},
-	})
+oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`)
 	rtf.run("pod log with inline wrapping", 70, 20, v, plainVs)
 
 	v = newView(view.Resource{
@@ -270,10 +294,12 @@ func TestAutoCollapseModes(t *testing.T) {
 		BuildHistory: []model.BuildRecord{{
 			FinishTime: time.Now(),
 			Error:      fmt.Errorf("oh no the build failed"),
-			Log:        model.NewLog("1\n2\n3\nthe compiler did not understand!\n5\n6\n7\n8\n"),
+			SpanID:     "vigoda:1",
 		}},
 		ResourceInfo: view.K8sResourceInfo{},
 	})
+	badView.LogReader = newSpanLogReader("vigoda", "vigoda:1",
+		"1\n2\n3\nthe compiler did not understand!\n5\n6\n7\n8\n")
 
 	autoVS := fakeViewState(1, view.CollapseAuto)
 	collapseYesVS := fakeViewState(1, view.CollapseYes)
@@ -293,20 +319,24 @@ func TestPodPending(t *testing.T) {
 		BuildHistory: []model.BuildRecord{{
 			StartTime:  ts,
 			FinishTime: ts,
-			Log: model.NewLog(`STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
-  │ Tarring context…
-  │ Applying via kubectl
-    ╎ Created tarball (size: 11 kB)
-  │ Building image
-`),
+			SpanID:     "vigoda:1",
 		}},
 		ResourceInfo: view.K8sResourceInfo{
 			PodName:   "vigoda-pod",
-			PodLog:    model.NewLog("serving on 8080"),
+			SpanID:    "vigoda:pod",
 			PodStatus: "",
 		},
 		LastDeployTime: ts,
 	})
+	logStore := logstore.NewLogStore()
+	appendSpanLog(logStore, "vigoda", "vigoda:1", `STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
+  │ Tarring context…
+  │ Applying via kubectl
+    ╎ Created tarball (size: 11 kB)
+  │ Building image
+`)
+	appendSpanLog(logStore, "vigoda", "vigoda:pod", "serving on 8080")
+	v.LogReader = logstore.NewReader(&sync.RWMutex{}, logStore)
 	vs := fakeViewState(1, view.CollapseAuto)
 
 	rtf.run("pending pod no status", 80, 20, v, vs)
@@ -329,7 +359,7 @@ func TestCrashingPodInlineCrashLog(t *testing.T) {
 		Endpoints: []string{"1.2.3.4:8080"},
 		CrashLog:  model.NewLog("Definitely borken"),
 		BuildHistory: []model.BuildRecord{{
-			Log:        model.NewLog("Building (1/2)\nBuilding (2/2)\n"),
+			SpanID:     "vigoda:1",
 			StartTime:  ts,
 			FinishTime: ts,
 			Reason:     model.BuildReasonFlagCrash,
@@ -337,12 +367,20 @@ func TestCrashingPodInlineCrashLog(t *testing.T) {
 		ResourceInfo: view.K8sResourceInfo{
 			PodName:            "vigoda-pod",
 			PodStatus:          "Error",
-			PodLog:             model.NewLog("Something's maybe wrong idk"),
+			SpanID:             "vigoda:pod",
 			PodUpdateStartTime: ts,
 			PodCreationTime:    ts.Add(-time.Minute),
 		},
 		LastDeployTime: ts,
 	})
+
+	logStore := logstore.NewLogStore()
+	appendSpanLog(logStore, "vigoda", "vigoda:1",
+		"Building (1/2)\nBuilding (2/2)\n")
+	appendSpanLog(logStore, "vigoda", "vigoda:pod",
+		"Something's maybe wrong idk")
+	v.LogReader = logstore.NewReader(&sync.RWMutex{}, logStore)
+
 	vs := fakeViewState(1, view.CollapseAuto)
 	rtf.run("crashing pod displays crash log inline if present", 70, 20, v, vs)
 }
@@ -355,7 +393,7 @@ func TestCrashingPodInlinePodLogIfNoCrashLog(t *testing.T) {
 		Name:      "vigoda",
 		Endpoints: []string{"1.2.3.4:8080"},
 		BuildHistory: []model.BuildRecord{{
-			Log:        model.NewLog("Building (1/2)\nBuilding (2/2)\n"),
+			SpanID:     "vigoda:1",
 			StartTime:  ts,
 			FinishTime: ts,
 			Reason:     model.BuildReasonFlagCrash,
@@ -363,12 +401,20 @@ func TestCrashingPodInlinePodLogIfNoCrashLog(t *testing.T) {
 		ResourceInfo: view.K8sResourceInfo{
 			PodName:            "vigoda-pod",
 			PodStatus:          "Error",
-			PodLog:             model.NewLog("Something's maybe wrong idk"),
+			SpanID:             "vigoda:pod",
 			PodUpdateStartTime: ts,
 			PodCreationTime:    ts.Add(-time.Minute),
 		},
 		LastDeployTime: ts,
 	})
+
+	logStore := logstore.NewLogStore()
+	appendSpanLog(logStore, "vigoda", "vigoda:1",
+		"Building (1/2)\nBuilding (2/2)\n")
+	appendSpanLog(logStore, "vigoda", "vigoda:pod",
+		"Something's maybe wrong idk")
+	v.LogReader = logstore.NewReader(&sync.RWMutex{}, logStore)
+
 	vs := fakeViewState(1, view.CollapseAuto)
 	rtf.run("crashing pod displays pod log inline if no crash log if present", 70, 20, v, vs)
 }
@@ -382,19 +428,27 @@ func TestNonCrashingPodNoInlineCrashLog(t *testing.T) {
 		Endpoints: []string{"1.2.3.4:8080"},
 		CrashLog:  model.NewLog("Definitely borken"),
 		BuildHistory: []model.BuildRecord{{
-			Log:        model.NewLog("Building (1/2)\nBuilding (2/2)\n"),
+			SpanID:     "vigoda:1",
 			StartTime:  ts,
 			FinishTime: ts,
 		}},
 		ResourceInfo: view.K8sResourceInfo{
 			PodName:            "vigoda-pod",
 			PodStatus:          "Running",
-			PodLog:             model.NewLog("Something's maybe wrong idk"),
+			SpanID:             "vigoda:pod",
 			PodUpdateStartTime: ts,
 			PodCreationTime:    ts.Add(-time.Minute),
 		},
 		LastDeployTime: ts,
 	})
+
+	logStore := logstore.NewLogStore()
+	appendSpanLog(logStore, "vigoda", "vigoda:1",
+		"Building (1/2)\nBuilding (2/2)\n")
+	appendSpanLog(logStore, "vigoda", "vigoda:pod",
+		"Something's maybe wrong idk")
+	v.LogReader = logstore.NewReader(&sync.RWMutex{}, logStore)
+
 	vs := fakeViewState(1, view.CollapseAuto)
 	rtf.run("non-crashing pod displays no logs inline even if crash log if present", 70, 20, v, vs)
 }
@@ -407,7 +461,7 @@ func TestCompletedPod(t *testing.T) {
 		Name:      "vigoda",
 		Endpoints: []string{"1.2.3.4:8080"},
 		BuildHistory: []model.BuildRecord{{
-			Log:        model.NewLog("Building (1/2)\nBuilding (2/2)\n"),
+			SpanID:     "vigoda:1",
 			StartTime:  ts,
 			FinishTime: ts,
 		}},
@@ -419,6 +473,8 @@ func TestCompletedPod(t *testing.T) {
 		},
 		LastDeployTime: ts,
 	})
+	v.LogReader = newSpanLogReader("vigoda", "vigoda:1",
+		"Building (1/2)\nBuilding (2/2)\n")
 	vs := fakeViewState(1, view.CollapseAuto)
 	rtf.run("Completed is a good status", 70, 20, v, vs)
 }
@@ -500,13 +556,14 @@ func TestDockerComposeUpExpanded(t *testing.T) {
 	now := time.Now()
 	v := newView(view.Resource{
 		Name:         "snack",
-		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, dockercompose.StatusUp, testCID, model.NewLog("hellllo"), now.Add(-5*time.Second)),
+		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, dockercompose.StatusUp, testCID, "snack:dc", now.Add(-5*time.Second)),
 		Endpoints:    []string{"http://localhost:3000"},
 		CurrentBuild: model.BuildRecord{
 			StartTime: now.Add(-5 * time.Second),
 			Reason:    model.BuildReasonFlagChangedFiles,
 		},
 	})
+	v.LogReader = newSpanLogReader("snack", "snack:dc", "hellllo")
 
 	vs := fakeViewState(1, view.CollapseNo)
 	rtf.run("docker-compose up expanded", 80, 20, v, vs)
@@ -518,12 +575,13 @@ func TestStatusBarDCRebuild(t *testing.T) {
 	now := time.Now()
 	v := newView(view.Resource{
 		Name:         "snack",
-		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, dockercompose.StatusDown, testCID, model.NewLog("hellllo"), now.Add(-5*time.Second)),
+		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, dockercompose.StatusDown, testCID, "snack:dc", now.Add(-5*time.Second)),
 		CurrentBuild: model.BuildRecord{
 			StartTime: now.Add(-5 * time.Second),
 			Reason:    model.BuildReasonFlagChangedFiles,
 		},
 	})
+	v.LogReader = newSpanLogReader("snack", "snack:dc", "hellllo")
 
 	vs := fakeViewState(1, view.CollapseYes)
 	rtf.run("status bar after intentional DC restart", 60, 20, v, vs)
@@ -535,8 +593,9 @@ func TestDetectDCCrashExpanded(t *testing.T) {
 	now := time.Now()
 	v := newView(view.Resource{
 		Name:         "snack",
-		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, dockercompose.StatusCrash, testCID, model.NewLog("hi im a crash"), now.Add(-5*time.Second)),
+		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, dockercompose.StatusCrash, testCID, "snack:dc", now.Add(-5*time.Second)),
 	})
+	v.LogReader = newSpanLogReader("snack", "snack:dc", "hi im a crash")
 
 	vs := fakeViewState(1, view.CollapseNo)
 	rtf.run("detected docker compose build crash expanded", 80, 20, v, vs)
@@ -548,8 +607,9 @@ func TestDetectDCCrashNotExpanded(t *testing.T) {
 	now := time.Now()
 	v := newView(view.Resource{
 		Name:         "snack",
-		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, dockercompose.StatusCrash, testCID, model.NewLog("hi im a crash"), now.Add(-5*time.Second)),
+		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, dockercompose.StatusCrash, testCID, "snack:dc", now.Add(-5*time.Second)),
 	})
+	v.LogReader = newSpanLogReader("snack", "snack:dc", "hi im a crash")
 
 	vs := fakeViewState(1, view.CollapseYes)
 	rtf.run("detected docker compose build crash not expanded", 80, 20, v, vs)
@@ -561,8 +621,9 @@ func TestDetectDCCrashAutoExpand(t *testing.T) {
 	now := time.Now()
 	v := newView(view.Resource{
 		Name:         "snack",
-		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, dockercompose.StatusCrash, testCID, model.NewLog("hi im a crash"), now.Add(-5*time.Second)),
+		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, dockercompose.StatusCrash, testCID, "snack:dc", now.Add(-5*time.Second)),
 	})
+	v.LogReader = newSpanLogReader("snack", "snack:dc", "hi im a crash")
 
 	vs := fakeViewState(1, view.CollapseAuto)
 	rtf.run("detected docker compose build crash auto expand", 80, 20, v, vs)
@@ -612,9 +673,10 @@ func TestTiltfileResourcePending(t *testing.T) {
 			Edits:     []string{"Tiltfile"},
 			StartTime: now.Add(-5 * time.Second),
 			Reason:    model.BuildReasonFlagConfig,
-			Log:       model.NewLog("Building..."),
+			SpanID:    "tiltfile:1",
 		},
 	})
+	v.LogReader = newSpanLogReader(store.TiltfileManifestName, "tiltfile:1", "Building...")
 
 	vs := fakeViewState(1, view.CollapseNo)
 	rtf.run("Tiltfile resource pending", 80, 20, v, vs)
@@ -628,10 +690,11 @@ func TestRenderEscapedNbsp(t *testing.T) {
 		BuildHistory: []model.BuildRecord{{
 			FinishTime: time.Now(),
 			Error:      fmt.Errorf("oh no the build failed"),
-			Log:        model.NewLog("\xa0 NBSP!"),
+			SpanID:     "vigoda:1",
 		}},
 		ResourceInfo: view.K8sResourceInfo{},
 	})
+	v.LogReader = newSpanLogReader("vigoda", "vigoda:1", "\xa0 NBSP!")
 	rtf.run("escaped nbsp", 70, 20, v, plainVs)
 }
 
@@ -647,10 +710,11 @@ func TestLineWrappingInInlineError(t *testing.T) {
 		BuildHistory: []model.BuildRecord{{
 			FinishTime: time.Now(),
 			Error:      fmt.Errorf("failure"),
-			Log:        model.NewLog(strings.Join(lines, "\n")),
+			SpanID:     "vigoda:1",
 		}},
 		ResourceInfo: view.K8sResourceInfo{},
 	})
+	v.LogReader = newSpanLogReader("vigoda", "vigoda:1", strings.Join(lines, "\n"))
 	rtf.run("line wrapping in inline error", 80, 40, v, vs)
 }
 
@@ -664,24 +728,26 @@ func TestRenderTabView(t *testing.T) {
 		BuildHistory: []model.BuildRecord{{
 			StartTime:  now.Add(-time.Minute),
 			FinishTime: now,
-			Log: model.NewLog(`STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
-  │ Tarring context…
-  │ Applying via kubectl
-    ╎ Created tarball (size: 11 kB)
-  │ Building image
-`),
+			SpanID:     "vigoda:1",
 		}},
 		ResourceInfo: view.K8sResourceInfo{
 			PodName:         "vigoda-pod",
 			PodCreationTime: now,
-			PodLog:          model.NewLog("serving on 8080"),
 			PodStatus:       "Running",
+			SpanID:          "vigoda:pod",
 		},
 		LastDeployTime: now,
 	})
-	v.LogReader = newLogReader(fmt.Sprintf("%s\n%s\n",
-		v.Resources[0].LastBuild().Log.String(),
-		v.Resources[0].ResourceInfo.RuntimeLog()))
+	logStore := logstore.NewLogStore()
+	appendSpanLog(logStore, "vigoda", "vigoda:1",
+		`STEP 1/2 — Building Dockerfile: [gcr.io/windmill-public-containers/servantes/snack]
+  │ Tarring context…
+  │ Applying via kubectl
+    ╎ Created tarball (size: 11 kB)
+  │ Building image
+`)
+	appendSpanLog(logStore, "vigoda", "vigoda:pod", "serving on 8080")
+	v.LogReader = logstore.NewReader(&sync.RWMutex{}, logStore)
 
 	rtf.run("log tab default", 117, 20, v, vs)
 
@@ -734,11 +800,13 @@ func TestErroredLocalResource(t *testing.T) {
 			model.BuildRecord{
 				FinishTime: time.Now(),
 				Error:      fmt.Errorf("help i'm trapped in an error factory"),
-				Log:        model.NewLog("1\n2\n3\nthe compiler did not understand!\n5\n6\n7\n8\n"),
+				SpanID:     "build:1",
 			},
 		},
 		ResourceInfo: view.LocalResourceInfo{},
 	})
+	v.LogReader = newSpanLogReader("yarn-add", "build:1",
+		"1\n2\n3\nthe compiler did not understand!\n5\n6\n7\n8\n")
 
 	vs := fakeViewState(1, view.CollapseAuto)
 	rtf.run("errored local resource", 80, 20, v, vs)
@@ -792,4 +860,31 @@ func fakeViewState(count int, collapse view.CollapseState) view.ViewState {
 func newLogReader(msg string) logstore.Reader {
 	store := logstore.NewLogStoreForTesting(msg)
 	return logstore.NewReader(&sync.RWMutex{}, store)
+}
+
+type testLogEvent struct {
+	mn     model.ManifestName
+	spanID logstore.SpanID
+	time   time.Time
+	msg    string
+}
+
+func (e testLogEvent) Message() []byte {
+	return []byte(e.msg)
+}
+
+func (e testLogEvent) Level() logger.Level {
+	return logger.InfoLvl
+}
+
+func (e testLogEvent) Time() time.Time {
+	return e.time
+}
+
+func (e testLogEvent) ManifestName() model.ManifestName {
+	return e.mn
+}
+
+func (e testLogEvent) SpanID() logstore.SpanID {
+	return e.spanID
 }

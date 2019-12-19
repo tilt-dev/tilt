@@ -13,6 +13,10 @@ func NewReader(mu *sync.RWMutex, store *LogStore) Reader {
 }
 
 func (r Reader) Checkpoint() Checkpoint {
+	if r.store == nil {
+		return 0
+	}
+
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.store.Checkpoint()
@@ -29,19 +33,41 @@ func (r Reader) Empty() bool {
 }
 
 func (r Reader) String() string {
+	if r.store == nil {
+		return ""
+	}
+
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.store.String()
 }
 
 func (r Reader) ContinuingString(c Checkpoint) string {
+	if r.store == nil {
+		return ""
+	}
+
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.store.ContinuingString(c)
 }
 
 func (r Reader) Tail(n int) string {
+	if r.store == nil {
+		return ""
+	}
+
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.store.Tail(n)
+}
+
+func (r Reader) TailSpan(n int, spanID SpanID) string {
+	if r.store == nil {
+		return ""
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.store.TailSpan(n, spanID)
 }

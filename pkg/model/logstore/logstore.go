@@ -212,15 +212,41 @@ func (s *LogStore) Empty() bool {
 
 // Get at most N lines from the tail of the log.
 func (s *LogStore) Tail(n int) string {
+	return s.tailHelper(n, s.spans, true)
+}
+
+// Get at most N lines from the tail of the span.
+func (s *LogStore) TailSpan(n int, spanID SpanID) string {
+	spans := make(map[SpanID]*Span)
+	span, ok := s.spans[spanID]
+	if !ok {
+		return ""
+	}
+	spans[spanID] = span
+	return s.tailHelper(n, spans, false)
+}
+
+// Get at most N lines from the tail of the log.
+func (s *LogStore) tailHelper(n int, spans map[SpanID]*Span, showManifestPrefix bool) string {
 	if n <= 0 {
 		return ""
 	}
 
 	// Traverse backwards until we have n lines.
 	remaining := n
-	start := len(s.segments) - 1
-	for ; start >= 0; start-- {
-		if s.segments[start].StartsLine() {
+	startIndex, lastIndex := s.startAndLastIndices(spans)
+	if startIndex == -1 {
+		return ""
+	}
+
+	current := lastIndex
+	for ; current >= startIndex; current-- {
+		segment := s.segments[current]
+		if _, ok := spans[segment.SpanID]; !ok {
+			continue
+		}
+
+		if segment.StartsLine() {
 			remaining--
 			if remaining <= 0 {
 				break
@@ -230,14 +256,17 @@ func (s *LogStore) Tail(n int) string {
 
 	if remaining > 0 {
 		// If there aren't enough lines, just return the whole store.
-		return s.String()
+		return s.logHelper(spans, showManifestPrefix)
 	}
 
 	startedSpans := make(map[SpanID]bool)
 	newSegments := []LogSegment{}
-	for i := start; i < len(s.segments); i++ {
+	for i := current; i <= lastIndex; i++ {
 		segment := s.segments[i]
 		spanID := segment.SpanID
+		if _, ok := spans[segment.SpanID]; !ok {
+			continue
+		}
 
 		if !segment.StartsLine() && !startedSpans[spanID] {
 			// Skip any segments that start on lines from before the Tail started.
@@ -249,7 +278,7 @@ func (s *LogStore) Tail(n int) string {
 
 	tempStore := &LogStore{spans: s.cloneSpanMap(), segments: newSegments}
 	tempStore.recomputeDerivedValues()
-	return tempStore.String()
+	return tempStore.logHelper(tempStore.spans, showManifestPrefix)
 }
 
 func (s *LogStore) cloneSpanMap() map[SpanID]*Span {
@@ -422,6 +451,27 @@ func (s *LogStore) ManifestLog(mn model.ManifestName) string {
 	return s.logHelper(spans, false)
 }
 
+func (s *LogStore) startAndLastIndices(spans map[SpanID]*Span) (startIndex, lastIndex int) {
+	earliestStartIndex := -1
+	latestEndIndex := -1
+	for _, span := range spans {
+		if earliestStartIndex == -1 || span.FirstSegmentIndex < earliestStartIndex {
+			earliestStartIndex = span.FirstSegmentIndex
+		}
+		if latestEndIndex == -1 || span.LastSegmentIndex > latestEndIndex {
+			latestEndIndex = span.LastSegmentIndex
+		}
+	}
+
+	if earliestStartIndex == -1 {
+		return -1, -1
+	}
+
+	startIndex = earliestStartIndex
+	lastIndex = latestEndIndex
+	return startIndex, lastIndex
+}
+
 func (s *LogStore) logHelper(spansToLog map[SpanID]*Span, showManifestPrefix bool) string {
 	sb := strings.Builder{}
 	lastLineCompleted := false
@@ -438,23 +488,10 @@ func (s *LogStore) logHelper(spansToLog map[SpanID]*Span, showManifestPrefix boo
 	//
 	// This can have some O(n^2) perf characteristics in the worst case, but
 	// for normal inputs should be fine.
-	earliestStartIndex := -1
-	latestEndIndex := -1
-	for _, span := range spansToLog {
-		if earliestStartIndex == -1 || span.FirstSegmentIndex < earliestStartIndex {
-			earliestStartIndex = span.FirstSegmentIndex
-		}
-		if latestEndIndex == -1 || span.LastSegmentIndex > latestEndIndex {
-			latestEndIndex = span.LastSegmentIndex
-		}
-	}
-
-	if earliestStartIndex == -1 {
+	startIndex, lastIndex := s.startAndLastIndices(spansToLog)
+	if startIndex == -1 {
 		return ""
 	}
-
-	startIndex := earliestStartIndex
-	lastIndex := latestEndIndex
 
 	isFirstLine := true
 	for i := startIndex; i <= lastIndex; i++ {
