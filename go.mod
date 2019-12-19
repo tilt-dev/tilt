@@ -5,27 +5,20 @@ go 1.13
 require (
 	cloud.google.com/go v0.38.0
 	contrib.go.opencensus.io/exporter/ocagent v0.2.0
-	github.com/Azure/azure-sdk-for-go v16.2.1+incompatible // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78
 	github.com/Azure/go-autorest v12.4.3+incompatible
 	github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e
 	github.com/Microsoft/go-winio v0.4.14
 	github.com/Microsoft/hcsshim v0.8.6
+	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/PuerkitoBio/purell v1.1.1
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578
-	github.com/Shopify/logrus-bugsnag v0.0.0-20171204204709-577dee27f20d // indirect
 	github.com/Shopify/sarama v1.18.0
+	github.com/Sirupsen/logrus v0.0.0-00010101000000-000000000000 // indirect
 	github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412
 	github.com/apache/thrift v0.0.0-20171203172758-327ebb6c2b6d
-	github.com/aws/aws-sdk-go v1.15.11 // indirect
 	github.com/beorn7/perks v1.0.0
-	github.com/bitly/go-simplejson v0.5.0 // indirect
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
-	github.com/bshuster-repo/logrus-logstash-hook v0.4.1 // indirect
-	github.com/bugsnag/bugsnag-go v0.0.0-20141110184014-b1d153021fcd // indirect
-	github.com/bugsnag/osext v0.0.0-20130617224835-0dd3f918b21b // indirect
-	github.com/bugsnag/panicwrap v0.0.0-20151223152923-e2c28503fcd0 // indirect
 	github.com/census-instrumentation/opencensus-proto v0.1.0
 	github.com/chai2010/gettext-go v0.0.0-20170215093142-bf70f2a70fb1
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd
@@ -36,9 +29,7 @@ require (
 	github.com/containerd/typeurl v0.0.0-20180627222232-a93fcdb778cd
 	github.com/davecgh/go-spew v1.1.1
 	github.com/denisbrodbeck/machineid v1.0.0
-	github.com/denverdino/aliyungo v0.0.0-20190125010748-a747050bb1ba // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/dnaeon/go-vcr v1.0.1 // indirect
 	github.com/docker/cli v0.0.0-20190924011848-50bb8c70f308
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker v1.14.0-0.20190319215453-e7b5f7dbe98c
@@ -48,7 +39,6 @@ require (
 	github.com/docker/go-events v0.0.0-20170721190031-9461782956ad
 	github.com/docker/go-metrics v0.0.0-20180209012529-399ea8c73916
 	github.com/docker/go-units v0.3.3
-	github.com/docker/libtrust v0.0.0-20150114040149-fa567046d9b1 // indirect
 	github.com/docker/spdystream v0.0.0-20170912183627-bc6354cbbc29
 	github.com/eapache/go-resiliency v1.1.0
 	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21
@@ -57,7 +47,6 @@ require (
 	github.com/evanphx/json-patch v4.2.0+incompatible
 	github.com/exponent-io/jsonpath v0.0.0-20151013193312-d6023ce2651d
 	github.com/fatih/color v1.7.0
-	github.com/garyburd/redigo v0.0.0-20150301180006-535138d7bcd7 // indirect
 	github.com/gdamore/encoding v1.0.0
 	github.com/gdamore/tcell v1.1.3
 	github.com/ghodss/yaml v1.0.0
@@ -81,7 +70,6 @@ require (
 	github.com/googleapis/gnostic v0.2.0
 	github.com/gophercloud/gophercloud v0.1.0
 	github.com/gorilla/context v1.1.1
-	github.com/gorilla/handlers v0.0.0-20150720190736-60c7bfde3e33 // indirect
 	github.com/gorilla/mux v1.7.2
 	github.com/gorilla/websocket v1.4.0
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79
@@ -91,7 +79,6 @@ require (
 	github.com/hashicorp/golang-lru v0.5.1
 	github.com/imdario/mergo v0.3.7
 	github.com/inconshreveable/mousetrap v1.0.0
-	github.com/jmespath/go-jmespath v0.0.0-20160803190731-bd40a432e4c7 // indirect
 	github.com/jonboulle/clockwork v0.1.0
 	github.com/json-iterator/go v1.1.7
 	github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
@@ -99,7 +86,6 @@ require (
 	github.com/looplab/tarjan v0.0.0-20161115091335-9cc6d6cebfb5
 	github.com/lucasb-eyer/go-colorful v1.0.2
 	github.com/mailru/easyjson v0.0.0-20190626092158-b2ccc519800e
-	github.com/marstr/guid v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.4
 	github.com/mattn/go-isatty v0.0.10
 	github.com/mattn/go-runewidth v0.0.4
@@ -107,12 +93,10 @@ require (
 	github.com/miekg/pkcs11 v0.0.0-20180817151620-df0db7a16a9e
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/go-wordwrap v1.0.0
-	github.com/mitchellh/osext v0.0.0-20151018003038-5e2d6d41470f // indirect
 	github.com/moby/buildkit v0.6.2-0.20190930214518-d5108d038d21
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
 	github.com/modern-go/reflect2 v1.0.1
 	github.com/morikuni/aec v1.0.0
-	github.com/ncw/swift v1.0.47 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/opencontainers/runc v1.0.0-rc8.0.20190621203724-f4982d86f7fd
@@ -132,10 +116,8 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20180503174638-e2704e165165
 	github.com/rivo/tview v0.0.0-20180926100353-bc39bf8d245d
 	github.com/russross/blackfriday v1.5.2
-	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/schollz/closestmatch v2.1.0+incompatible
 	github.com/sirupsen/logrus v1.4.2
-	github.com/smartystreets/goconvey v0.0.0-20190330032615-68dc04aab96a // indirect
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.4.0
@@ -148,9 +130,6 @@ require (
 	github.com/windmilleng/fsevents v0.0.0-20190206153914-2ad75e5ddeed
 	github.com/windmilleng/fsnotify v1.4.7
 	github.com/windmilleng/wmclient v0.0.0-20191029142206-4d42565d7ef1
-	github.com/yvasiyarov/go-metrics v0.0.0-20140926110328-57bccd1ccd43 // indirect
-	github.com/yvasiyarov/gorelic v0.0.0-20141212073537-a9bba5b9ab50 // indirect
-	github.com/yvasiyarov/newrelic_platform_go v0.0.0-20140908184405-b21fdbd4370f // indirect
 	go.opencensus.io v0.21.0
 	go.opentelemetry.io/otel v0.2.0
 	go.starlark.net v0.0.0-20191021185836-28350e608555
@@ -163,7 +142,6 @@ require (
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	google.golang.org/api v0.4.0
 	google.golang.org/appengine v1.5.0
-	google.golang.org/cloud v0.0.0-20151119220103-975617b05ea8 // indirect
 	google.golang.org/genproto v0.0.0-20191009194640-548a555dbc03
 	google.golang.org/grpc v1.24.0
 	gopkg.in/d4l3k/messagediff.v1 v1.2.1
@@ -183,6 +161,12 @@ require (
 	vbom.ml/util v0.0.0-20180919145318-efcd4e0f9787
 )
 
-replace github.com/docker/docker v1.14.0-0.20190319215453-e7b5f7dbe98c => github.com/docker/docker v1.4.2-0.20190319215453-e7b5f7dbe98c
-
-replace golang.org/x/crypto v0.0.0-20190129210102-0709b304e793 => golang.org/x/crypto v0.0.0-20180904163835-0709b304e793
+replace (
+	github.com/Azure/go-autorest => github.com/Azure/go-autorest v12.4.3+incompatible
+	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.0.6
+	github.com/docker/distribution => github.com/docker/distribution v0.0.0-20191008191456-ae2e973db936
+	github.com/docker/docker => github.com/docker/docker v1.4.2-0.20191010182919-6f069f14e6a7
+	//github.com/docker/docker => github.com/moby/moby v1.4.2-0.20170504205632-89658bed64c2
+	//github.com/docker/docker => github.com/docker/engine v1.4.2-0.20180816081446-320063a2ad06
+	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
+)
