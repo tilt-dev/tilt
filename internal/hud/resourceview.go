@@ -10,6 +10,7 @@ import (
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/rty"
 	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/windmilleng/tilt/pkg/model/logstore"
 )
 
 // These widths are determined experimentally, to see what shows up in a typical UX.
@@ -19,6 +20,7 @@ const BuildStatusCellMinWidth = 8
 const MaxInlineErrHeight = 6
 
 type ResourceView struct {
+	logReader   logstore.Reader
 	res         view.Resource
 	rv          view.ResourceViewState
 	triggerMode model.TriggerMode
@@ -27,9 +29,10 @@ type ResourceView struct {
 	clock func() time.Time
 }
 
-func NewResourceView(res view.Resource, rv view.ResourceViewState, triggerMode model.TriggerMode,
+func NewResourceView(logReader logstore.Reader, res view.Resource, rv view.ResourceViewState, triggerMode model.TriggerMode,
 	selected bool, clock func() time.Time) *ResourceView {
 	return &ResourceView{
+		logReader:   logReader,
 		res:         res,
 		rv:          rv,
 		triggerMode: triggerMode,
@@ -420,7 +423,8 @@ func (v *ResourceView) resourceExpandedRuntimeError() (rty.Component, bool) {
 	if isCrashing(v.res) {
 		runtimeLog := v.res.CrashLog.Tail(abbreviatedLogLineCount).String()
 		if runtimeLog == "" {
-			runtimeLog = v.res.ResourceInfo.RuntimeLog().Tail(abbreviatedLogLineCount).String()
+			spanID := v.res.ResourceInfo.RuntimeSpanID()
+			runtimeLog = v.logReader.TailSpan(abbreviatedLogLineCount, spanID)
 		}
 		abbrevLog := abbreviateLog(runtimeLog)
 		for _, logLine := range abbrevLog {
@@ -449,7 +453,8 @@ func (v *ResourceView) resourceExpandedBuildError() (rty.Component, bool) {
 	ok := false
 
 	if v.res.LastBuild().Error != nil {
-		abbrevLog := abbreviateLog(v.res.LastBuild().Log.Tail(abbreviatedLogLineCount).String())
+		spanID := v.res.LastBuild().SpanID
+		abbrevLog := abbreviateLog(v.logReader.TailSpan(abbreviatedLogLineCount, spanID))
 		for _, logLine := range abbrevLog {
 			pane.Add(rty.TextString(logLine))
 			ok = true

@@ -7,7 +7,6 @@ import (
 
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/rty"
-	"github.com/windmilleng/tilt/pkg/model"
 	"github.com/windmilleng/tilt/pkg/model/logstore"
 )
 
@@ -42,32 +41,34 @@ func (v *TabView) log() string {
 		numLinesNeeded = defaultLogPaneHeight
 	}
 
-	var ret model.Log
-	var reader logstore.Reader
+	var spanID logstore.SpanID
 	switch v.tabState {
-	case view.TabAllLog:
-		reader = v.view.LogReader
 	case view.TabBuildLog:
 		_, resource := selectedResource(v.view, v.viewState)
 		if !resource.CurrentBuild.Empty() {
-			ret = resource.CurrentBuild.Log
+			spanID = resource.CurrentBuild.SpanID
 		} else {
-			ret = resource.LastBuild().Log
+			spanID = resource.LastBuild().SpanID
 		}
 	case view.TabPodLog:
 		_, resource := selectedResource(v.view, v.viewState)
 		if resource.ResourceInfo != nil {
-			ret = resource.ResourceInfo.RuntimeLog()
+			spanID = resource.ResourceInfo.RuntimeSpanID()
 		}
 	}
 
-	if !ret.Empty() {
-		return ret.Tail(numLinesNeeded).String()
-	} else if !reader.Empty() {
-		return reader.Tail(numLinesNeeded)
-	} else {
+	reader := v.view.LogReader
+	result := ""
+	if v.tabState == view.TabAllLog {
+		result = reader.Tail(numLinesNeeded)
+	} else if spanID != "" {
+		result = reader.TailSpan(numLinesNeeded, spanID)
+	}
+
+	if result == "" {
 		return "(no logs received)"
 	}
+	return result
 }
 
 func (v *TabView) buildTab(text string) rty.Component {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/ospath"
 	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/windmilleng/tilt/pkg/model/logstore"
 )
 
 type ManifestTarget struct {
@@ -30,13 +31,14 @@ func (t ManifestTarget) Status() model.TargetStatus {
 
 var _ model.Target = &ManifestTarget{}
 
-func (t *ManifestTarget) Facets(secrets model.SecretSet) []model.Facet {
+func (t *ManifestTarget) Facets(logStore *logstore.LogStore, secrets model.SecretSet) []model.Facet {
 	var ret []model.Facet
 
 	if !t.Status().LastBuild().Empty() {
+		log := logStore.SpanLog(t.Status().LastBuild().SpanID)
 		ret = append(ret, model.Facet{
 			Name:  "Last Build Log",
-			Value: t.Status().LastBuild().Log.String(),
+			Value: log,
 		})
 	}
 

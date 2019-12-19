@@ -75,7 +75,7 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 
 		var facets []model.Facet
 		if s.Features[feature.Facets] {
-			facets = mt.Facets(s.Secrets)
+			facets = mt.Facets(s.LogStore, s.Secrets)
 		}
 
 		bh, err := ToProtoBuildRecords(buildHistory)
@@ -175,9 +175,6 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 func tiltfileResourceProtoView(s store.EngineState) (*proto_webview.Resource, error) {
 	ltfb := s.TiltfileState.LastBuild()
 	ctfb := s.TiltfileState.CurrentBuild
-	if !ctfb.Empty() {
-		ltfb.Log = ctfb.Log
-	}
 
 	ltfb.Edits = ospath.FileListDisplayNames([]string{filepath.Dir(s.TiltfilePath)}, ltfb.Edits)
 

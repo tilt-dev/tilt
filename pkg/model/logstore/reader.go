@@ -45,3 +45,9 @@ func (r Reader) Tail(n int) string {
 	defer r.mu.RUnlock()
 	return r.store.Tail(n)
 }
+
+func (r Reader) TailSpan(n int, spanID SpanID) string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.store.TailSpan(n, spanID)
+}

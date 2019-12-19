@@ -31,7 +31,7 @@ func (l testLogEvent) ManifestName() model.ManifestName {
 }
 
 func (l testLogEvent) SpanID() SpanID {
-	return ""
+	return SpanID(l.name)
 }
 
 func newGlobalTestLogEvent(message string) testLogEvent {
