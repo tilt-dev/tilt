@@ -166,7 +166,5 @@ replace (
 	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.0.6
 	github.com/docker/distribution => github.com/docker/distribution v0.0.0-20191008191456-ae2e973db936
 	github.com/docker/docker => github.com/docker/docker v1.4.2-0.20191010182919-6f069f14e6a7
-	//github.com/docker/docker => github.com/moby/moby v1.4.2-0.20170504205632-89658bed64c2
-	//github.com/docker/docker => github.com/docker/engine v1.4.2-0.20180816081446-320063a2ad06
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 )
