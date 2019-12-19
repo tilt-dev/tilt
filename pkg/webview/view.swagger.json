@@ -173,6 +173,10 @@
         },
         "value": {
           "type": "string"
+        },
+        "span_id": {
+          "type": "string",
+          "description": "If span_id is non-empty, that means the value is in the logstore\ninstead of in the value field."
         }
       }
     },

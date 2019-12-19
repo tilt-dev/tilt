@@ -65,6 +65,10 @@ message LocalResourceInfo {}
 message Facet {
   string name = 1;
   string value = 2;
+
+  // If span_id is non-empty, that means the value is in the logstore
+  // instead of in the value field.
+  string span_id = 3;
 }
 
 message Resource {

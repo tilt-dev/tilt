@@ -1,19 +1,21 @@
-import React, { PureComponent } from "react"
+import React, { Component } from "react"
 import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
 import AnsiLine from "./AnsiLine"
+import LogStore from "./LogStore"
 import "./FacetsPane.scss"
 
 type Resource = Proto.webviewResource
 
 type FacetsProps = {
   resource: Resource
+  logStore: LogStore | null
 }
 
 function logToLines(s: string) {
   return s.split("\n").map((l, i) => <AnsiLine key={"logLine" + i} line={l} />)
 }
 
-class FacetsPane extends PureComponent<FacetsProps> {
+class FacetsPane extends Component<FacetsProps> {
   render() {
     let el = (
       <section className="Pane-empty-message">
@@ -31,18 +33,24 @@ class FacetsPane extends PureComponent<FacetsProps> {
   }
 
   renderFacets(): Array<JSX.Element> {
-    if (!this.props.resource.facets) {
-      return new Array<JSX.Element>()
-    }
-    return this.props.resource.facets.map(facet => {
+    let facets = this.props.resource.facets ?? []
+    return facets.map((facet, facetIndex) => {
+      let logStore = this.props.logStore
+      let value = logToLines(facet.value ?? "")
+      if (facet.spanId && logStore) {
+        let lines = logStore.spanLog([facet.spanId])
+        value = lines.map((l, i) => (
+          <AnsiLine key={"logLine" + i} line={l.text} />
+        ))
+      }
       return (
-        <li className="FacetsPane-item">
+        <li key={"facet" + facetIndex} className="FacetsPane-item">
           <header>
             <div className="FacetsPane-headerDiv">
               <h3>{facet.name}</h3>
             </div>
           </header>
-          <section>{logToLines(facet.value ?? "")}</section>
+          <section>{value}</section>
         </li>
       )
     })

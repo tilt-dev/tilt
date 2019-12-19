@@ -75,7 +75,7 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 
 		var facets []model.Facet
 		if s.Features[feature.Facets] {
-			facets = mt.Facets(s.LogStore, s.Secrets)
+			facets = mt.Facets(s.Secrets)
 		}
 
 		bh, err := ToProtoBuildRecords(buildHistory)
