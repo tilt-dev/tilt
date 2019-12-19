@@ -95,9 +95,9 @@ type tiltfileState struct {
 	teamName     string
 	telemetryCmd model.Cmd
 
-	logger            logger.Logger
-	warnings          []string
-	postExecReadFiles []string
+	logger                           logger.Logger
+	warnedDeprecatedResourceAssembly bool
+	postExecReadFiles                []string
 }
 
 type k8sResourceAssemblyVersionReason int
@@ -518,7 +518,7 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 
 	err = s.buildIndex.assertAllMatched()
 	if err != nil {
-		s.warnings = append(s.warnings, err.Error())
+		s.logger.Warnf("%s", err.Error())
 	}
 
 	return resourceSet{

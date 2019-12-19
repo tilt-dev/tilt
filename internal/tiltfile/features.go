@@ -18,7 +18,7 @@ func (s *tiltfileState) enableFeature(thread *starlark.Thread, fn *starlark.Buil
 		if _, ok := err.(feature.ObsoleteError); !ok {
 			return nil, err
 		}
-		s.warnings = append(s.warnings, err.Error())
+		s.logger.Warnf("%s", err.Error())
 	}
 
 	return starlark.None, nil
@@ -36,7 +36,7 @@ func (s *tiltfileState) disableFeature(thread *starlark.Thread, fn *starlark.Bui
 		if _, ok := err.(feature.ObsoleteError); !ok {
 			return nil, err
 		}
-		s.warnings = append(s.warnings, err.Error())
+		s.logger.Warnf("%s", err.Error())
 	}
 
 	return starlark.None, nil
@@ -53,7 +53,7 @@ func (s *tiltfileState) disableSnapshots(thread *starlark.Thread, fn *starlark.B
 		if _, ok := err.(feature.ObsoleteError); !ok {
 			return nil, err
 		}
-		s.warnings = append(s.warnings, err.Error())
+		s.logger.Warnf("%s", err.Error())
 	}
 
 	return starlark.None, nil

@@ -36,6 +36,7 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
 	"github.com/windmilleng/tilt/internal/tiltfile/testdata"
 	"github.com/windmilleng/tilt/internal/yaml"
+	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -4306,6 +4307,7 @@ type fixture struct {
 	an *analytics.MemoryAnalytics
 
 	loadResult TiltfileLoadResult
+	warnings   []string
 }
 
 func (f *fixture) newTiltfileLoader() TiltfileLoader {
@@ -4323,6 +4325,7 @@ func (f *fixture) newTiltfileLoader() TiltfileLoader {
 }
 
 func newFixture(t *testing.T) *fixture {
+
 	out := new(bytes.Buffer)
 	ctx, ma, ta := testutils.ForkedCtxAndAnalyticsForTest(out)
 	f := tempdir.NewTempDirFixture(t)
@@ -4339,6 +4342,17 @@ func newFixture(t *testing.T) *fixture {
 		k8sContext:     "fake-context",
 		k8sEnv:         k8s.EnvDockerDesktop,
 	}
+
+	// Collect the warnings
+	l := logger.NewFuncLogger(false, logger.DebugLvl, func(level logger.Level, msg []byte) error {
+		if level == logger.WarnLvl {
+			r.warnings = append(r.warnings, string(msg))
+		}
+		out.Write(msg)
+		return nil
+	})
+	r.ctx = logger.WithLogger(r.ctx, l)
+
 	return r
 }
 
@@ -4440,8 +4454,8 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 // Default load. Fails if there are any warnings.
 func (f *fixture) load(args ...string) {
 	f.loadAllowWarnings(args...)
-	if len(f.loadResult.Warnings) != 0 {
-		f.t.Fatalf("Unexpected no warnings. Actual: %s", f.loadResult.Warnings)
+	if len(f.warnings) != 0 {
+		f.t.Fatalf("Unexpected no warnings. Actual: %s", f.warnings)
 	}
 }
 
@@ -4452,7 +4466,7 @@ func (f *fixture) loadResourceAssemblyV1(names ...string) {
 		f.t.Fatal(err)
 	}
 	f.loadResult = tlr
-	assert.Equal(f.t, []string{deprecatedResourceAssemblyV1Warning}, tlr.Warnings)
+	assert.Equal(f.t, []string{deprecatedResourceAssemblyV1Warning + "\n"}, f.warnings)
 }
 
 // Load the manifests, expecting warnings.
@@ -4801,11 +4815,11 @@ func (f *fixture) assertConfigFiles(filenames ...string) {
 func (f *fixture) assertWarnings(warnings ...string) {
 	var expected []string
 	for _, warning := range warnings {
-		expected = append(expected, warning)
+		expected = append(expected, warning+"\n")
 	}
 	sort.Strings(expected)
-	sort.Strings(f.loadResult.Warnings)
-	assert.Equal(f.t, expected, f.loadResult.Warnings)
+	sort.Strings(f.warnings)
+	assert.Equal(f.t, expected, f.warnings)
 }
 
 func (f *fixture) entities(y string) []k8s.K8sEntity {

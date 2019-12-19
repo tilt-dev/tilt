@@ -17,7 +17,6 @@ const BuildTypeLocal BuildType = "local"
 type BuildRecord struct {
 	Edits      []string
 	Error      error
-	Warnings   []string
 	StartTime  time.Time
 	FinishTime time.Time // IsZero() == true for in-progress builds
 	Reason     BuildReason
@@ -26,6 +25,10 @@ type BuildRecord struct {
 
 	// The lookup key for the logs in the logstore.
 	SpanID LogSpanID
+
+	// We count the warnings by looking up all the logs with Level=WARNING
+	// in the logstore. We store this number separately for ease of use.
+	WarningCount int
 }
 
 func (bs BuildRecord) Empty() bool {

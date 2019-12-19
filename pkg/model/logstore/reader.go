@@ -71,3 +71,13 @@ func (r Reader) TailSpan(n int, spanID SpanID) string {
 	defer r.mu.RUnlock()
 	return r.store.TailSpan(n, spanID)
 }
+
+func (r Reader) Warnings(spanID SpanID) []string {
+	if r.store == nil {
+		return nil
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.store.Warnings(spanID)
+}

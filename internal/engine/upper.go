@@ -289,6 +289,9 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	bs.Error = err
 	bs.FinishTime = time.Now()
 	bs.BuildTypes = cb.Result.BuildTypes()
+	if bs.SpanID != "" {
+		bs.WarningCount = len(engineState.LogStore.Warnings(bs.SpanID))
+	}
 
 	ms.AddCompletedBuild(bs)
 
@@ -501,7 +504,10 @@ func handleConfigsReloaded(
 	if !b.Empty() {
 		b.FinishTime = event.FinishTime
 		b.Error = event.Err
-		b.Warnings = event.Warnings
+
+		if b.SpanID != "" {
+			b.WarningCount = len(state.LogStore.Warnings(b.SpanID))
+		}
 
 		state.TiltfileState.AddCompletedBuild(b)
 	}
