@@ -221,9 +221,11 @@
         "NONE",
         "INFO",
         "VERBOSE",
-        "DEBUG"
+        "DEBUG",
+        "WARN"
       ],
-      "default": "NONE"
+      "default": "NONE",
+      "description": " - NONE: For backwards-compatibility, the int value doesn't say\nanything about relative severity."
     },
     "webviewLogList": {
       "type": "object",

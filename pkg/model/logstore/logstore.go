@@ -408,7 +408,7 @@ func (s *LogStore) ToLogList(fromCheckpoint Checkpoint) (*webview.LogList, error
 		}
 		segments = append(segments, &webview.LogSegment{
 			SpanId: string(segment.SpanID),
-			Level:  webview.LogLevel(segment.Level),
+			Level:  webview.LogLevel(segment.Level.ToProtoID()),
 			Time:   time,
 			Text:   string(segment.Text),
 		})

@@ -42,7 +42,7 @@ func NewDockerComposeClient(env docker.LocalEnv) DockerComposeClient {
 
 func (c *cmdDCClient) Up(ctx context.Context, configPaths []string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error {
 	var args []string
-	if logger.Get(ctx).Level() >= logger.VerboseLvl {
+	if logger.Get(ctx).Level().ShouldDisplay(logger.VerboseLvl) {
 		args = []string{"--verbose"}
 	}
 
@@ -72,7 +72,7 @@ func (c *cmdDCClient) Up(ctx context.Context, configPaths []string, serviceName 
 
 func (c *cmdDCClient) Down(ctx context.Context, configPaths []string, stdout, stderr io.Writer) error {
 	var args []string
-	if logger.Get(ctx).Level() >= logger.VerboseLvl {
+	if logger.Get(ctx).Level().ShouldDisplay(logger.VerboseLvl) {
 		args = []string{"--verbose"}
 	}
 	for _, config := range configPaths {
