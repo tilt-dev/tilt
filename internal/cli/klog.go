@@ -73,7 +73,8 @@ func initKlog(w io.Writer) {
 	klog.SetOutput(w)
 
 	flags := []string{
-		"--stderrthreshold", "FATAL",
+		"--stderrthreshold=FATAL",
+		"--logtostderr=false",
 	}
 
 	if klogLevel > 0 {
