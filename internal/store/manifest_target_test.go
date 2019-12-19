@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/windmilleng/tilt/pkg/model"
-	"github.com/windmilleng/tilt/pkg/model/logstore"
 )
 
 func TestManifestTarget_FacetsSecretsScrubbed(t *testing.T) {
@@ -22,7 +21,7 @@ func TestManifestTarget_FacetsSecretsScrubbed(t *testing.T) {
 	}
 	secrets := model.SecretSet{}
 	secrets.AddSecret("foo", "password", []byte(s))
-	actual := mt.Facets(logstore.NewLogStore(), secrets)
+	actual := mt.Facets(secrets)
 	expected := []model.Facet{
 		{
 			Name:  "applied yaml",

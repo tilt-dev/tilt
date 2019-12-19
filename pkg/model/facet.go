@@ -3,14 +3,16 @@ package model
 import "github.com/windmilleng/tilt/pkg/webview"
 
 type Facet struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
+	Name   string `json:"name"`
+	Value  string `json:"value"`
+	SpanID string `json:"span_id"`
 }
 
 func (f Facet) ToProto() *webview.Facet {
 	return &webview.Facet{
-		Name:  f.Name,
-		Value: f.Value,
+		Name:   f.Name,
+		Value:  f.Value,
+		SpanId: f.SpanID,
 	}
 }
 

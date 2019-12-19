@@ -35,12 +35,21 @@ var translations = map[BuildReason]string{
 	BuildReasonFlagInit:         "initial build",
 }
 
+var allBuildReasons = []BuildReason{
+	BuildReasonFlagInit,
+	BuildReasonFlagChangedFiles,
+	BuildReasonFlagConfig,
+	BuildReasonFlagCrash,
+}
+
 func (r BuildReason) String() string {
 	rs := []string{}
 
-	for k, v := range translations {
-		if r.Has(k) {
-			rs = append(rs, v)
+	// Use an array to iterate over the translations to ensure the iteration order
+	// is consistent.
+	for _, v := range allBuildReasons {
+		if r.Has(v) {
+			rs = append(rs, translations[v])
 		}
 	}
 	return strings.Join(rs, " | ")

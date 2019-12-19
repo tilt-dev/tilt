@@ -458,31 +458,27 @@ class HUD extends Component<HudProps, HudState> {
       )
     }
 
-    let errorRoute = (props: RouteComponentProps<any>) => {
+    let errorRoute = (props: RouteComponentProps<any>): React.ReactNode => {
       let name = props.match.params ? props.match.params.name : ""
       let er = resources.find(r => r.name === name)
-      if (er === undefined) {
+      if (!er) {
         return <Route component={NotFound} />
       }
-      if (er) {
-        return (
-          <AlertPane
-            pathBuilder={this.pathBuilder}
-            resources={[er]}
-            logStore={logStore}
-          />
-        )
-      }
+      return (
+        <AlertPane
+          pathBuilder={this.pathBuilder}
+          resources={[er]}
+          logStore={logStore}
+        />
+      )
     }
-    let facetsRoute = (props: RouteComponentProps<any>) => {
+    let facetsRoute = (props: RouteComponentProps<any>): React.ReactNode => {
       let name = props.match.params ? props.match.params.name : ""
       let fr = resources.find(r => r.name === name)
-      if (fr === undefined) {
+      if (!fr) {
         return <Route component={NotFound} />
       }
-      if (fr) {
-        return <FacetsPane resource={fr} />
-      }
+      return <FacetsPane resource={fr} logStore={logStore} />
     }
     let allLogsRoute = () => {
       let allLogs: LogLine[] = []

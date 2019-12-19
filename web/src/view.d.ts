@@ -113,6 +113,11 @@ declare namespace Proto {
   export interface webviewFacet {
     name?: string;
     value?: string;
+    /**
+     * If span_id is non-empty, that means the value is in the logstore
+     * instead of in the value field.
+     */
+    spanId?: string;
   }
   export interface webviewDCResourceInfo {
     configPaths?: string[];
