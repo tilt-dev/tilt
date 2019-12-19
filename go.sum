@@ -600,6 +600,7 @@ github.com/vishvananda/netlink v1.0.0/go.mod h1:+SR5DhBJrl6ZM7CoCKvpw5BKroDKQ+PJ
 github.com/vishvananda/netns v0.0.0-20180720170159-13995c7128cc/go.mod h1:ZjcWmFBXmLKZu9Nxj3WKYEafiSqer2rnvPr0en9UNpI=
 github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa h1:rW+Lu6281ed/4XGuVIa4/YebTRNvoUJlfJ44ktEVwZk=
 github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa/go.mod h1:2rx5KE5FLD0HRfkkpyn8JwbVLBdhgeiOb2D2D9LLKM4=
+github.com/windmilleng/fsevents v0.0.0-20190206153914-2ad75e5ddeed h1:xt+hAUJdHN2pN5Z9DCSuLuLMTVxjM1CyGJG2dfx4WY8=
 github.com/windmilleng/fsevents v0.0.0-20190206153914-2ad75e5ddeed/go.mod h1:feHoQi0H+lyL/mtPHePEI0Pan5Vd4LJmo/PaohCewks=
 github.com/windmilleng/fsnotify v1.4.7 h1:9PUoTe3ZaKO9JLtuHQzM8BaCcrDz8rQ7PmEGo6BAbCQ=
 github.com/windmilleng/fsnotify v1.4.7/go.mod h1:h3pBNCM04c2q++yj67m77Mof0ZG/mzQMh+OM7J+Umc0=
