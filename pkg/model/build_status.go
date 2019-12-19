@@ -22,10 +22,6 @@ type BuildRecord struct {
 	FinishTime time.Time // IsZero() == true for in-progress builds
 	Reason     BuildReason
 
-	// TODO(nick): Delete Log and use SpanID to load
-	// the log from the logstore.
-	Log Log `testdiff:"ignore"`
-
 	BuildTypes []BuildType
 
 	// The lookup key for the logs in the logstore.

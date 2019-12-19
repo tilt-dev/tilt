@@ -109,6 +109,20 @@ func TestLogTailPrefixes(t *testing.T) {
 	assert.Equal(t, "1\n2\nfe          ┊ 3\nfe          ┊ 4\n5\n", l.Tail(6))
 }
 
+func TestLogTailSpan(t *testing.T) {
+	l := NewLogStore()
+	l.Append(newGlobalTestLogEvent("1\n2\n"), nil)
+	l.Append(newTestLogEvent("fe", time.Now(), "3\n4\n"), nil)
+	l.Append(newGlobalTestLogEvent("5\n"), nil)
+	assert.Equal(t, "5\n", l.TailSpan(1, ""))
+	assert.Equal(t, "2\n5\n", l.TailSpan(2, ""))
+	assert.Equal(t, "1\n2\n5\n", l.TailSpan(3, ""))
+	assert.Equal(t, "4\n", l.TailSpan(1, "fe"))
+	assert.Equal(t, "3\n4\n", l.TailSpan(2, "fe"))
+	assert.Equal(t, "3\n4\n", l.TailSpan(3, "fe"))
+	assert.Equal(t, "3\n4\n", l.TailSpan(30, "fe"))
+}
+
 func TestLogTailParts(t *testing.T) {
 	l := NewLogStore()
 	l.Append(newGlobalTestLogEvent("a"), nil)

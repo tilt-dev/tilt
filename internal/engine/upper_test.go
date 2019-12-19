@@ -2501,11 +2501,6 @@ func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 		spanID := ms.LastBuild().SpanID
 		assert.Contains(t, st.LogStore.SpanLog(spanID), expected)
 	})
-
-	// recorded on manifest state
-	f.withManifestState(m.ManifestName(), func(st store.ManifestState) {
-		assert.Contains(t, st.LastBuild().Log.String(), expected)
-	})
 }
 
 func TestDockerComposeRecordsRunLogs(t *testing.T) {
@@ -2628,7 +2623,6 @@ func TestEmptyTiltfile(t *testing.T) {
 		assertContainsOnce(t, st.LogStore.ManifestLog(store.TiltfileManifestName), "No resources found. Check out ")
 
 		buildRecord := st.TiltfileState.LastBuild()
-		assertContainsOnce(t, buildRecord.Log.String(), "No resources found. Check out ")
 		assertContainsOnce(t, st.LogStore.SpanLog(buildRecord.SpanID), "No resources found. Check out ")
 	})
 }
@@ -2825,6 +2819,7 @@ func TestBuildLogAction(t *testing.T) {
 	f.store.Dispatch(buildcontrol.BuildStartedAction{
 		ManifestName: manifest.Name,
 		StartTime:    time.Now(),
+		SpanID:       SpanIDForBuildLog(1),
 	})
 
 	f.store.Dispatch(buildcontrol.BuildLogAction{
@@ -2834,8 +2829,10 @@ def
 ghij`)),
 	})
 
-	f.WaitUntilManifestState("log appears", manifest.Name, func(ms store.ManifestState) bool {
-		return ms.CurrentBuild.Log.Len() > 0
+	f.WaitUntil("log appears", func(es store.EngineState) bool {
+		ms, _ := es.ManifestState("alert-injester")
+		spanID := ms.CurrentBuild.SpanID
+		return spanID != "" && len(es.LogStore.SpanLog(spanID)) > 0
 	})
 
 	f.withState(func(s store.EngineState) {
@@ -3141,7 +3138,8 @@ print('foo=', cfg['foo'])`)
 	})
 
 	f.withState(func(state store.EngineState) {
-		require.Contains(t, state.TiltfileState.LastBuild().Log.String(), `foo= ["bar"]`)
+		spanID := state.TiltfileState.LastBuild().SpanID
+		require.Contains(t, state.LogStore.SpanLog(spanID), `foo= ["bar"]`)
 	})
 	f.store.Dispatch(server.SetTiltfileArgsAction{Args: []string{"--foo", "baz", "--foo", "quu"}})
 
@@ -3150,7 +3148,8 @@ print('foo=', cfg['foo'])`)
 	})
 
 	f.withState(func(state store.EngineState) {
-		require.Contains(t, state.TiltfileState.LastBuild().Log.String(), `foo= ["baz", "quu"]`)
+		spanID := state.TiltfileState.LastBuild().SpanID
+		require.Contains(t, state.LogStore.SpanLog(spanID), `foo= ["baz", "quu"]`)
 	})
 }
 

@@ -15,7 +15,7 @@ const TiltfileResourceName = "(Tiltfile)"
 
 type ResourceInfoView interface {
 	resourceInfoView()
-	RuntimeLog() model.Log
+	RuntimeSpanID() logstore.SpanID
 	Status() string
 }
 
@@ -23,25 +23,25 @@ type DCResourceInfo struct {
 	ConfigPaths     []string
 	ContainerStatus dockercompose.Status
 	ContainerID     container.ID
-	Log             model.Log
+	SpanID          logstore.SpanID
 	StartTime       time.Time
 }
 
-func NewDCResourceInfo(configPaths []string, status dockercompose.Status, cID container.ID, log model.Log, startTime time.Time) DCResourceInfo {
+func NewDCResourceInfo(configPaths []string, status dockercompose.Status, cID container.ID, spanID logstore.SpanID, startTime time.Time) DCResourceInfo {
 	return DCResourceInfo{
 		ConfigPaths:     configPaths,
 		ContainerStatus: status,
 		ContainerID:     cID,
-		Log:             log,
+		SpanID:          spanID,
 		StartTime:       startTime,
 	}
 }
 
 var _ ResourceInfoView = DCResourceInfo{}
 
-func (DCResourceInfo) resourceInfoView()            {}
-func (dcInfo DCResourceInfo) RuntimeLog() model.Log { return dcInfo.Log }
-func (dcInfo DCResourceInfo) Status() string        { return string(dcInfo.ContainerStatus) }
+func (DCResourceInfo) resourceInfoView()                     {}
+func (dcInfo DCResourceInfo) RuntimeSpanID() logstore.SpanID { return dcInfo.SpanID }
+func (dcInfo DCResourceInfo) Status() string                 { return string(dcInfo.ContainerStatus) }
 
 type K8sResourceInfo struct {
 	PodName            string
@@ -49,14 +49,14 @@ type K8sResourceInfo struct {
 	PodUpdateStartTime time.Time
 	PodStatus          string
 	PodRestarts        int
-	PodLog             model.Log
+	SpanID             logstore.SpanID
 }
 
 var _ ResourceInfoView = K8sResourceInfo{}
 
-func (K8sResourceInfo) resourceInfoView()             {}
-func (k8sInfo K8sResourceInfo) RuntimeLog() model.Log { return k8sInfo.PodLog }
-func (k8sInfo K8sResourceInfo) Status() string        { return k8sInfo.PodStatus }
+func (K8sResourceInfo) resourceInfoView()                      {}
+func (k8sInfo K8sResourceInfo) RuntimeSpanID() logstore.SpanID { return k8sInfo.SpanID }
+func (k8sInfo K8sResourceInfo) Status() string                 { return k8sInfo.PodStatus }
 
 type YAMLResourceInfo struct {
 	K8sResources []string
@@ -64,9 +64,9 @@ type YAMLResourceInfo struct {
 
 var _ ResourceInfoView = YAMLResourceInfo{}
 
-func (YAMLResourceInfo) resourceInfoView()              {}
-func (yamlInfo YAMLResourceInfo) RuntimeLog() model.Log { return model.NewLog("") }
-func (yamlInfo YAMLResourceInfo) Status() string        { return "" }
+func (YAMLResourceInfo) resourceInfoView()                       {}
+func (yamlInfo YAMLResourceInfo) RuntimeSpanID() logstore.SpanID { return "unknown" }
+func (yamlInfo YAMLResourceInfo) Status() string                 { return "" }
 
 type LocalResourceInfo struct {
 }
@@ -75,9 +75,9 @@ var _ ResourceInfoView = LocalResourceInfo{}
 
 var LocalResourceStatusPlaceholder = "local-resource-ok"
 
-func (LocalResourceInfo) resourceInfoView()     {}
-func (LocalResourceInfo) RuntimeLog() model.Log { return model.Log{} }                    // no runtime log, only build log
-func (LocalResourceInfo) Status() string        { return LocalResourceStatusPlaceholder } // no status independent of build status
+func (LocalResourceInfo) resourceInfoView()              {}
+func (LocalResourceInfo) RuntimeSpanID() logstore.SpanID { return "unknown" }
+func (LocalResourceInfo) Status() string                 { return LocalResourceStatusPlaceholder } // no status independent of build status
 
 type Resource struct {
 	Name               model.ManifestName
