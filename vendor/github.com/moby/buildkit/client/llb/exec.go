@@ -20,7 +20,6 @@ type Meta struct {
 	ProxyEnv   *ProxyEnv
 	ExtraHosts []HostIP
 	Network    pb.NetMode
-	Security   pb.SecurityMode
 }
 
 func NewExecOp(root Output, meta Meta, readOnly bool, c Constraints) *ExecOp {
@@ -53,7 +52,7 @@ type mount struct {
 	cacheID      string
 	tmpfs        bool
 	cacheSharing CacheMountSharingMode
-	noOutput     bool
+	// hasOutput bool
 }
 
 type ExecOp struct {
@@ -80,8 +79,6 @@ func (e *ExecOp) AddMount(target string, source Output, opt ...MountOption) Outp
 		m.output = source
 	} else if m.tmpfs {
 		m.output = &output{vertex: e, err: errors.Errorf("tmpfs mount for %s can't be used as a parent", target)}
-	} else if m.noOutput {
-		m.output = &output{vertex: e, err: errors.Errorf("mount marked no-output and %s can't be used as a parent", target)}
 	} else {
 		o := &output{vertex: e, getIndex: e.getMountIndexFn(m)}
 		if p := e.constraints.Platform; p != nil {
@@ -169,16 +166,11 @@ func (e *ExecOp) Marshal(c *Constraints) (digest.Digest, []byte, *pb.OpMetadata,
 	}
 
 	peo := &pb.ExecOp{
-		Meta:     meta,
-		Network:  e.meta.Network,
-		Security: e.meta.Security,
+		Meta:    meta,
+		Network: e.meta.Network,
 	}
 	if e.meta.Network != NetModeSandbox {
 		addCap(&e.constraints, pb.CapExecMetaNetwork)
-	}
-
-	if e.meta.Security != SecurityModeSandbox {
-		addCap(&e.constraints, pb.CapExecMetaSecurity)
 	}
 
 	if p := e.meta.ProxyEnv; p != nil {
@@ -250,7 +242,7 @@ func (e *ExecOp) Marshal(c *Constraints) (digest.Digest, []byte, *pb.OpMetadata,
 		}
 
 		outputIndex := pb.OutputIndex(-1)
-		if !m.noOutput && !m.readonly && m.cacheID == "" && !m.tmpfs {
+		if !m.readonly && m.cacheID == "" && !m.tmpfs {
 			outputIndex = pb.OutputIndex(outIndex)
 			outIndex++
 		}
@@ -346,7 +338,7 @@ func (e *ExecOp) getMountIndexFn(m *mount) func() (pb.OutputIndex, error) {
 
 		i := 0
 		for _, m2 := range e.mounts {
-			if m2.noOutput || m2.readonly || m2.cacheID != "" {
+			if m2.readonly || m2.cacheID != "" {
 				continue
 			}
 			if m == m2 {
@@ -387,10 +379,6 @@ func SourcePath(src string) MountOption {
 	}
 }
 
-func ForceNoOutput(m *mount) {
-	m.noOutput = true
-}
-
 func AsPersistentCacheDir(id string, sharing CacheMountSharingMode) MountOption {
 	return func(m *mount) {
 		m.cacheID = id
@@ -420,20 +408,12 @@ func Network(n pb.NetMode) RunOption {
 	})
 }
 
-func Security(s pb.SecurityMode) RunOption {
-	return runOptionFunc(func(ei *ExecInfo) {
-		ei.State = security(s)(ei.State)
-	})
-}
-
 func Shlex(str string) RunOption {
-	return runOptionFunc(func(ei *ExecInfo) {
-		ei.State = shlexf(str, false)(ei.State)
-	})
+	return Shlexf(str)
 }
 func Shlexf(str string, v ...interface{}) RunOption {
 	return runOptionFunc(func(ei *ExecInfo) {
-		ei.State = shlexf(str, true, v...)(ei.State)
+		ei.State = shlexf(str, v...)(ei.State)
 	})
 }
 
@@ -444,9 +424,7 @@ func Args(a []string) RunOption {
 }
 
 func AddEnv(key, value string) RunOption {
-	return runOptionFunc(func(ei *ExecInfo) {
-		ei.State = ei.State.AddEnv(key, value)
-	})
+	return AddEnvf(key, value)
 }
 
 func AddEnvf(key, value string, v ...interface{}) RunOption {
@@ -462,9 +440,7 @@ func User(str string) RunOption {
 }
 
 func Dir(str string) RunOption {
-	return runOptionFunc(func(ei *ExecInfo) {
-		ei.State = ei.State.Dir(str)
-	})
+	return Dirf(str)
 }
 func Dirf(str string, v ...interface{}) RunOption {
 	return runOptionFunc(func(ei *ExecInfo) {
@@ -646,9 +622,4 @@ const (
 	NetModeSandbox = pb.NetMode_UNSET
 	NetModeHost    = pb.NetMode_HOST
 	NetModeNone    = pb.NetMode_NONE
-)
-
-const (
-	SecurityModeInsecure = pb.SecurityMode_INSECURE
-	SecurityModeSandbox  = pb.SecurityMode_SANDBOX
 )

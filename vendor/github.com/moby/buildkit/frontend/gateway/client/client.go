@@ -43,15 +43,10 @@ type StatRequest struct {
 
 // SolveRequest is same as frontend.SolveRequest but avoiding dependency
 type SolveRequest struct {
-	Definition   *pb.Definition
-	Frontend     string
-	FrontendOpt  map[string]string
-	CacheImports []CacheOptionsEntry
-}
-
-type CacheOptionsEntry struct {
-	Type  string
-	Attrs map[string]string
+	Definition      *pb.Definition
+	Frontend        string
+	FrontendOpt     map[string]string
+	ImportCacheRefs []string
 }
 
 type WorkerInfo struct {

@@ -30,11 +30,6 @@ import (
 	"github.com/Microsoft/hcsshim"
 )
 
-const (
-	// SddlAdministratorsLocalSystem is local administrators plus NT AUTHORITY\System
-	SddlAdministratorsLocalSystem = "D:P(A;OICI;GA;;;BA)(A;OICI;GA;;;SY)"
-)
-
 // MkdirAllWithACL is a wrapper for MkdirAll that creates a directory
 // ACL'd for Builtin Administrators and Local System.
 func MkdirAllWithACL(path string, perm os.FileMode) error {
@@ -83,7 +78,7 @@ func mkdirall(path string, adminAndLocalSystem bool) error {
 
 	if j > 1 {
 		// Create parent
-		err = mkdirall(path[0:j-1], adminAndLocalSystem)
+		err = mkdirall(path[0:j-1], false)
 		if err != nil {
 			return err
 		}
@@ -117,7 +112,8 @@ func mkdirall(path string, adminAndLocalSystem bool) error {
 // and Local System.
 func mkdirWithACL(name string) error {
 	sa := syscall.SecurityAttributes{Length: 0}
-	sd, err := winio.SddlToSecurityDescriptor(SddlAdministratorsLocalSystem)
+	sddl := "D:P(A;OICI;GA;;;BA)(A;OICI;GA;;;SY)"
+	sd, err := winio.SddlToSecurityDescriptor(sddl)
 	if err != nil {
 		return &os.PathError{Op: "mkdir", Path: name, Err: err}
 	}

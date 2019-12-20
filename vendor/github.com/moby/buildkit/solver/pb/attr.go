@@ -21,5 +21,3 @@ const AttrImageResolveModeDefault = "default"
 const AttrImageResolveModeForcePull = "pull"
 const AttrImageResolveModePreferLocal = "local"
 const AttrImageRecordType = "image.recordtype"
-
-type IsFileAction = isFileAction_Action

@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/containerd/archive/compression"
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
+	"github.com/containerd/containerd/platforms"
 	"github.com/pkg/errors"
 )
 
@@ -42,7 +43,7 @@ func (c *Client) Install(ctx context.Context, image Image, opts ...InstallOpts) 
 	}
 	var (
 		cs       = image.ContentStore()
-		platform = c.platform
+		platform = platforms.Default()
 	)
 	manifest, err := images.Manifest(ctx, cs, image.Target(), platform)
 	if err != nil {
@@ -58,6 +59,7 @@ func (c *Client) Install(ctx context.Context, image Image, opts ...InstallOpts) 
 		if err != nil {
 			return err
 		}
+		defer r.Close()
 		if _, err := archive.Apply(ctx, path, r, archive.WithFilter(func(hdr *tar.Header) (bool, error) {
 			d := filepath.Dir(hdr.Name)
 			result := d == "bin"
@@ -71,10 +73,8 @@ func (c *Client) Install(ctx context.Context, image Image, opts ...InstallOpts) 
 			}
 			return result, nil
 		})); err != nil {
-			r.Close()
 			return err
 		}
-		r.Close()
 	}
 	return nil
 }

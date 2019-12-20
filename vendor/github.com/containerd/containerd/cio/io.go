@@ -18,13 +18,10 @@ package cio
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/containerd/containerd/defaults"
@@ -225,88 +222,46 @@ type DirectIO struct {
 	cio
 }
 
-var (
-	_ IO = &DirectIO{}
-	_ IO = &logURI{}
-)
-
-// LogURI provides the raw logging URI
-func LogURI(uri *url.URL) Creator {
-	return func(_ string) (IO, error) {
-		return &logURI{
-			config: Config{
-				Stdout: uri.String(),
-				Stderr: uri.String(),
-			},
-		}, nil
-	}
-}
-
-// BinaryIO forwards container STDOUT|STDERR directly to a logging binary
-func BinaryIO(binary string, args map[string]string) Creator {
-	return func(_ string) (IO, error) {
-		binary = filepath.Clean(binary)
-		if !strings.HasPrefix(binary, "/") {
-			return nil, errors.New("absolute path needed")
-		}
-		uri := &url.URL{
-			Scheme: "binary",
-			Path:   binary,
-		}
-		q := uri.Query()
-		for k, v := range args {
-			q.Set(k, v)
-		}
-		uri.RawQuery = q.Encode()
-		res := uri.String()
-		return &logURI{
-			config: Config{
-				Stdout: res,
-				Stderr: res,
-			},
-		}, nil
-	}
-}
+var _ IO = &DirectIO{}
 
 // LogFile creates a file on disk that logs the task's STDOUT,STDERR.
 // If the log file already exists, the logs will be appended to the file.
 func LogFile(path string) Creator {
 	return func(_ string) (IO, error) {
-		path = filepath.Clean(path)
-		if !strings.HasPrefix(path, "/") {
-			return nil, errors.New("absolute path needed")
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			return nil, err
 		}
-		uri := &url.URL{
-			Scheme: "file",
-			Path:   path,
+		f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return nil, err
 		}
-		res := uri.String()
-		return &logURI{
+		f.Close()
+		return &logIO{
 			config: Config{
-				Stdout: res,
-				Stderr: res,
+				Stdout: path,
+				Stderr: path,
 			},
 		}, nil
 	}
 }
 
-type logURI struct {
+type logIO struct {
 	config Config
 }
 
-func (l *logURI) Config() Config {
+func (l *logIO) Config() Config {
 	return l.config
 }
 
-func (l *logURI) Cancel() {
+func (l *logIO) Cancel() {
 
 }
 
-func (l *logURI) Wait() {
+func (l *logIO) Wait() {
 
 }
 
-func (l *logURI) Close() error {
+func (l *logIO) Close() error {
 	return nil
 }
 

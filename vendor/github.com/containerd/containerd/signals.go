@@ -20,11 +20,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // StopSignalLabel is a well-known containerd label for storing the stop
@@ -80,4 +82,24 @@ func GetOCIStopSignal(ctx context.Context, image Image, defaultSignal string) (s
 	}
 
 	return config.StopSignal, nil
+}
+
+// ParseSignal parses a given string into a syscall.Signal
+// it checks that the signal exists in the platform-appropriate signalMap
+func ParseSignal(rawSignal string) (syscall.Signal, error) {
+	s, err := strconv.Atoi(rawSignal)
+	if err == nil {
+		sig := syscall.Signal(s)
+		for _, msig := range signalMap {
+			if sig == msig {
+				return sig, nil
+			}
+		}
+		return -1, fmt.Errorf("unknown signal %q", rawSignal)
+	}
+	signal, ok := signalMap[strings.TrimPrefix(strings.ToUpper(rawSignal), "SIG")]
+	if !ok {
+		return -1, fmt.Errorf("unknown signal %q", rawSignal)
+	}
+	return signal, nil
 }
