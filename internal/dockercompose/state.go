@@ -55,9 +55,6 @@ type State struct {
 	Status      Status
 	ContainerID container.ID
 
-	// TODO(nick): Delete this and use SpanID to look up the log.
-	CurrentLog model.Log
-
 	StartTime     time.Time
 	IsStopping    bool
 	LastReadyTime time.Time
@@ -66,15 +63,6 @@ type State struct {
 }
 
 func (State) RuntimeState() {}
-
-func (s State) Log() model.Log {
-	return s.CurrentLog
-}
-
-func (s State) WithCurrentLog(l model.Log) State {
-	s.CurrentLog = l
-	return s
-}
 
 func (s State) WithSpanID(spanID model.LogSpanID) State {
 	s.SpanID = spanID

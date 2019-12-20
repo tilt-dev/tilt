@@ -1272,8 +1272,10 @@ func TestPodEventOrdering(t *testing.T) {
 				LogEvent: store.NewLogEvent("fe", runtimelog.SpanIDForPod(podBNow.PodID()), logger.InfoLvl, []byte("pod b log\n")),
 			})
 
-			f.WaitUntilManifestState("pod log seen", "fe", func(ms store.ManifestState) bool {
-				return strings.Contains(ms.MostRecentPod().Log().String(), "pod b log")
+			f.WaitUntil("pod log seen", func(state store.EngineState) bool {
+				ms, _ := state.ManifestState("fe")
+				spanID := ms.MostRecentPod().SpanID
+				return spanID != "" && strings.Contains(state.LogStore.SpanLog(spanID), "pod b log")
 			})
 
 			f.withManifestState("fe", func(ms store.ManifestState) {
@@ -1915,40 +1917,14 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 	f.podLog(pod, name, "second string")
 
-	f.withManifestState(name, func(ms store.ManifestState) {
-		assert.Equal(t, "second string\n", ms.MostRecentPod().Log().String())
+	f.withState(func(state store.EngineState) {
+		ms, _ := state.ManifestState(name)
+		spanID := ms.MostRecentPod().SpanID
+		assert.Equal(t, "first string\nsecond string\n", state.LogStore.SpanLog(spanID))
 	})
 
 	err := f.Stop()
 	assert.NoError(t, err)
-}
-
-func TestBuildResetsPodLog(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	name := model.ManifestName("foobar")
-	manifest := f.newManifest(name.String())
-
-	f.Start([]model.Manifest{manifest}, true)
-	f.waitForCompletedBuildCount(1)
-
-	pod := podbuilder.New(f.T(), manifest).Build()
-	f.startPod(pod, name)
-	f.podLog(pod, name, "first string")
-
-	f.withManifestState(name, func(ms store.ManifestState) {
-		assert.Equal(t, "first string\n", ms.MostRecentPod().Log().String())
-	})
-
-	f.upper.store.Dispatch(newTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a.go"))
-
-	f.waitForCompletedBuildCount(2)
-
-	f.withManifestState(name, func(ms store.ManifestState) {
-		assert.Equal(t, "", ms.MostRecentPod().Log().String())
-		assert.Equal(t, ms.LastBuild().StartTime, ms.MostRecentPod().UpdateStartTime)
-	})
 }
 
 func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
@@ -1973,10 +1949,10 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 	f.withState(func(es store.EngineState) {
 		ms, _ := es.ManifestState(name)
 		pod := ms.MostRecentPod()
-		assert.Equal(t, "third string\n", pod.Log().String())
+		assert.Contains(t, es.LogStore.SpanLog(pod.SpanID), "third string\n")
 		assert.Contains(t, es.LogStore.ManifestLog(name), "second string\n")
 		assert.Contains(t, es.LogStore.ManifestLog(name), "third string\n")
-		assert.Equal(t, ms.CrashLog.String(), "second string\n")
+		assert.Equal(t, ms.CrashLog.String(), "first string\nsecond string\n")
 		assert.Contains(t, es.LogStore.SpanLog(pod.SpanID), "third string\n")
 	})
 
@@ -2006,9 +1982,10 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 		return !pod.AllContainersReady()
 	})
 
-	// The second instance is down, so we don't include the first instance's log
-	f.withManifestState(name, func(ms store.ManifestState) {
-		assert.Equal(t, "second string\n", ms.MostRecentPod().Log().String())
+	f.withState(func(state store.EngineState) {
+		ms, _ := state.ManifestState(name)
+		spanID := ms.MostRecentPod().SpanID
+		assert.Equal(t, "first string\nsecond string\n", state.LogStore.SpanLog(spanID))
 	})
 
 	err := f.Stop()
@@ -2515,14 +2492,17 @@ func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	f.loadAndStart()
 	f.waitForCompletedBuildCount(2)
 
-	f.WaitUntilManifestState("wait until manifest state has a log", m.ManifestName(), func(st store.ManifestState) bool {
-		return !st.DCRuntimeState().Log().Empty()
+	f.WaitUntil("wait until manifest state has a log", func(state store.EngineState) bool {
+		ms, _ := state.ManifestState(m.ManifestName())
+		spanID := ms.DCRuntimeState().SpanID
+		return spanID != "" && state.LogStore.SpanLog(spanID) != ""
 	})
 
 	// recorded on manifest state
 	f.withState(func(es store.EngineState) {
 		ms, _ := es.ManifestState(m.ManifestName())
-		assert.Contains(t, ms.DCRuntimeState().Log().String(), expected)
+		spanID := ms.DCRuntimeState().SpanID
+		assert.Contains(t, es.LogStore.SpanLog(spanID), expected)
 		assert.Equal(t, 1, strings.Count(es.LogStore.ManifestLog(m.ManifestName()), expected))
 	})
 }
@@ -2540,8 +2520,10 @@ func TestDockerComposeFiltersRunLogs(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 
 	// recorded on manifest state
-	f.withManifestState(m.ManifestName(), func(st store.ManifestState) {
-		assert.NotContains(t, st.DCRuntimeState().Log().String(), expected)
+	f.withState(func(es store.EngineState) {
+		ms, _ := es.ManifestState(m.ManifestName())
+		spanID := ms.DCRuntimeState().SpanID
+		assert.NotContains(t, es.LogStore.SpanLog(spanID), expected)
 	})
 }
 

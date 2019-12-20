@@ -171,8 +171,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleServiceEvent(ctx, state, action)
 	case store.K8sEventAction:
 		handleK8sEvent(ctx, state, action)
-	case runtimelog.PodLogAction:
-		handlePodLogAction(state, action)
 	case buildcontrol.BuildCompleteAction:
 		err = handleBuildCompleted(ctx, state, action)
 	case buildcontrol.BuildStartedAction:
@@ -183,8 +181,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleConfigsReloaded(ctx, state, action)
 	case DockerComposeEventAction:
 		handleDockerComposeEvent(ctx, state, action)
-	case runtimelog.DockerComposeLogAction:
-		handleDockerComposeLogAction(state, action)
 	case server.AppendToTriggerQueueAction:
 		appendToTriggerQueue(state, action.Name)
 	case hud.StartProfilingAction:
@@ -211,6 +207,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 	case telemetry.LogAction:
 	case buildcontrol.BuildLogAction:
 	case configs.TiltfileLogAction:
+	case runtimelog.PodLogAction:
+	case runtimelog.DockerComposeLogAction:
 	// handled as a LogAction, do nothing
 
 	default:
@@ -226,6 +224,11 @@ var UpperReducer = store.Reducer(upperReducerFn)
 
 func handleBuildStarted(ctx context.Context, state *store.EngineState, action buildcontrol.BuildStartedAction) {
 	mn := action.ManifestName
+	manifest, ok := state.Manifest(mn)
+	if !ok {
+		return
+	}
+
 	ms, ok := state.ManifestState(mn)
 	if !ok {
 		return
@@ -242,11 +245,13 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action bu
 
 	if ms.IsK8s() {
 		for _, pod := range ms.K8sRuntimeState().Pods {
-			pod.CurrentLog = model.Log{}
 			pod.UpdateStartTime = action.StartTime
 		}
-	} else if ms.IsDC() {
-		ms.RuntimeState = ms.DCRuntimeState().WithCurrentLog(model.Log{})
+	} else if manifest.IsDC() {
+		// Attach the SpanID and initialize the runtime state if we haven't yet.
+		state, _ := ms.RuntimeState.(dockercompose.State)
+		state = state.WithSpanID(runtimelog.SpanIDForDCService(mn))
+		ms.RuntimeState = state
 	}
 
 	// Keep the crash log around until we have a rebuild
@@ -703,18 +708,6 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 	}
 
 	ms.RuntimeState = state
-}
-
-func handleDockerComposeLogAction(state *store.EngineState, action runtimelog.DockerComposeLogAction) {
-	manifestName := action.ManifestName()
-	ms, ok := state.ManifestState(manifestName)
-	if !ok {
-		// This is OK. The user could have edited the manifest recently.
-		return
-	}
-
-	dcState, _ := ms.RuntimeState.(dockercompose.State)
-	ms.RuntimeState = dcState.WithCurrentLog(model.AppendLog(dcState.CurrentLog, action, "", state.Secrets))
 }
 
 func handleAnalyticsUserOptAction(state *store.EngineState, action store.AnalyticsUserOptAction) {
