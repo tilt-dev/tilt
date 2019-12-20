@@ -305,7 +305,7 @@ func (c *Cli) initCreds(ctx context.Context) dockerCreds {
 		session, _ := session.NewSession(ctx, "tilt", sessionSharedKey)
 		if session != nil {
 			// TODO(dmiller) add a writer back here
-			provider := authprovider.NewDockerAuthProvider()
+			provider := authprovider.NewDockerAuthProvider(logger.Get(ctx).Writer(logger.InfoLvl))
 			session.Allow(provider)
 			go func() {
 				defer func() {

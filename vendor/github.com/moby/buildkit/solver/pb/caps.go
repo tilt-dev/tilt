@@ -30,18 +30,23 @@ const (
 
 	CapBuildOpLLBFileName apicaps.CapID = "source.buildop.llbfilename"
 
-	CapExecMetaBase            apicaps.CapID = "exec.meta.base"
-	CapExecMetaProxy           apicaps.CapID = "exec.meta.proxyenv"
-	CapExecMetaNetwork         apicaps.CapID = "exec.meta.network"
-	CapExecMetaSetsDefaultPath apicaps.CapID = "exec.meta.setsdefaultpath"
-	CapExecMountBind           apicaps.CapID = "exec.mount.bind"
-	CapExecMountCache          apicaps.CapID = "exec.mount.cache"
-	CapExecMountCacheSharing   apicaps.CapID = "exec.mount.cache.sharing"
-	CapExecMountSelector       apicaps.CapID = "exec.mount.selector"
-	CapExecMountTmpfs          apicaps.CapID = "exec.mount.tmpfs"
-	CapExecMountSecret         apicaps.CapID = "exec.mount.secret"
-	CapExecMountSSH            apicaps.CapID = "exec.mount.ssh"
-	CapExecCgroupsMounted      apicaps.CapID = "exec.cgroup"
+	CapExecMetaBase                  apicaps.CapID = "exec.meta.base"
+	CapExecMetaProxy                 apicaps.CapID = "exec.meta.proxyenv"
+	CapExecMetaNetwork               apicaps.CapID = "exec.meta.network"
+	CapExecMetaSecurity              apicaps.CapID = "exec.meta.security"
+	CapExecMetaSetsDefaultPath       apicaps.CapID = "exec.meta.setsdefaultpath"
+	CapExecMountBind                 apicaps.CapID = "exec.mount.bind"
+	CapExecMountBindReadWriteNoOuput apicaps.CapID = "exec.mount.bind.readwrite-nooutput"
+	CapExecMountCache                apicaps.CapID = "exec.mount.cache"
+	CapExecMountCacheSharing         apicaps.CapID = "exec.mount.cache.sharing"
+	CapExecMountSelector             apicaps.CapID = "exec.mount.selector"
+	CapExecMountTmpfs                apicaps.CapID = "exec.mount.tmpfs"
+	CapExecMountSecret               apicaps.CapID = "exec.mount.secret"
+	CapExecMountSSH                  apicaps.CapID = "exec.mount.ssh"
+	CapExecCgroupsMounted            apicaps.CapID = "exec.cgroup"
+
+	CapFileBase       apicaps.CapID = "file.base"
+	CapFileRmWildcard apicaps.CapID = "file.rm.wildcard"
 
 	CapConstraints apicaps.CapID = "constraints"
 	CapPlatform    apicaps.CapID = "platform"
@@ -179,7 +184,19 @@ func init() {
 	})
 
 	Caps.Init(apicaps.Cap{
+		ID:      CapExecMetaSecurity,
+		Enabled: true,
+		Status:  apicaps.CapStatusExperimental,
+	})
+
+	Caps.Init(apicaps.Cap{
 		ID:      CapExecMountBind,
+		Enabled: true,
+		Status:  apicaps.CapStatusExperimental,
+	})
+
+	Caps.Init(apicaps.Cap{
+		ID:      CapExecMountBindReadWriteNoOuput,
 		Enabled: true,
 		Status:  apicaps.CapStatusExperimental,
 	})
@@ -222,6 +239,22 @@ func init() {
 
 	Caps.Init(apicaps.Cap{
 		ID:      CapExecCgroupsMounted,
+		Enabled: true,
+		Status:  apicaps.CapStatusExperimental,
+	})
+
+	Caps.Init(apicaps.Cap{
+		ID:      CapFileBase,
+		Enabled: true,
+		Status:  apicaps.CapStatusPrerelease,
+		SupportedHint: map[string]string{
+			"docker":   "Docker v19.03",
+			"buildkit": "BuildKit v0.5.0",
+		},
+	})
+
+	Caps.Init(apicaps.Cap{
+		ID:      CapFileRmWildcard,
 		Enabled: true,
 		Status:  apicaps.CapStatusExperimental,
 	})

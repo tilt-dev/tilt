@@ -8,9 +8,11 @@ import (
 )
 
 const (
-	networkOptName  = "name"
-	networkOptAlias = "alias"
-	driverOpt       = "driver-opt"
+	networkOptName        = "name"
+	networkOptAlias       = "alias"
+	networkOptIPv4Address = "ip"
+	networkOptIPv6Address = "ip6"
+	driverOpt             = "driver-opt"
 )
 
 // NetworkAttachmentOpts represents the network options for endpoint creation
@@ -19,8 +21,8 @@ type NetworkAttachmentOpts struct {
 	Aliases      []string
 	DriverOpts   map[string]string
 	Links        []string // TODO add support for links in the csv notation of `--network`
-	IPv4Address  string   // TODO add support for IPv4-address in the csv notation of `--network`
-	IPv6Address  string   // TODO add support for IPv6-address in the csv notation of `--network`
+	IPv4Address  string
+	IPv6Address  string
 	LinkLocalIPs []string // TODO add support for LinkLocalIPs in the csv notation of `--network` ?
 }
 
@@ -60,6 +62,10 @@ func (n *NetworkOpt) Set(value string) error {
 				netOpt.Target = value
 			case networkOptAlias:
 				netOpt.Aliases = append(netOpt.Aliases, value)
+			case networkOptIPv4Address:
+				netOpt.IPv4Address = value
+			case networkOptIPv6Address:
+				netOpt.IPv6Address = value
 			case driverOpt:
 				key, value, err = parseDriverOpt(value)
 				if err == nil {

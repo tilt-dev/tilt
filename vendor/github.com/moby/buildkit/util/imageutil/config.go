@@ -3,12 +3,16 @@ package imageutil
 import (
 	"context"
 	"encoding/json"
+	"sync"
+	"time"
 
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
+	"github.com/containerd/containerd/leases"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/reference"
 	"github.com/containerd/containerd/remotes"
+	"github.com/moby/buildkit/util/leaseutil"
 	digest "github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -19,7 +23,19 @@ type ContentCache interface {
 	content.Provider
 }
 
-func Config(ctx context.Context, str string, resolver remotes.Resolver, cache ContentCache, p *specs.Platform) (digest.Digest, []byte, error) {
+var leasesMu sync.Mutex
+var leasesF []func(context.Context) error
+
+func CancelCacheLeases() {
+	leasesMu.Lock()
+	for _, f := range leasesF {
+		f(context.TODO())
+	}
+	leasesF = nil
+	leasesMu.Unlock()
+}
+
+func Config(ctx context.Context, str string, resolver remotes.Resolver, cache ContentCache, leaseManager leases.Manager, p *specs.Platform) (digest.Digest, []byte, error) {
 	// TODO: fix buildkit to take interface instead of struct
 	var platform platforms.MatchComparer
 	if p != nil {
@@ -30,6 +46,20 @@ func Config(ctx context.Context, str string, resolver remotes.Resolver, cache Co
 	ref, err := reference.Parse(str)
 	if err != nil {
 		return "", nil, errors.WithStack(err)
+	}
+
+	if leaseManager != nil {
+		ctx2, done, err := leaseutil.WithLease(ctx, leaseManager, leases.WithExpiration(5*time.Minute), leaseutil.MakeTemporary)
+		if err != nil {
+			return "", nil, errors.WithStack(err)
+		}
+		ctx = ctx2
+		defer func() {
+			// this lease is not deleted to allow other components to access manifest/config from cache. It will be deleted after 5 min deadline or on pruning inactive builder
+			leasesMu.Lock()
+			leasesF = append(leasesF, done)
+			leasesMu.Unlock()
+		}()
 	}
 
 	desc := specs.Descriptor{
@@ -62,11 +92,13 @@ func Config(ctx context.Context, str string, resolver remotes.Resolver, cache Co
 		return readSchema1Config(ctx, ref.String(), desc, fetcher, cache)
 	}
 
+	children := childrenConfigHandler(cache, platform)
+
 	handlers := []images.Handler{
 		remotes.FetchHandler(cache, fetcher),
-		childrenConfigHandler(cache, platform),
+		children,
 	}
-	if err := images.Dispatch(ctx, images.Handlers(handlers...), desc); err != nil {
+	if err := images.Dispatch(ctx, images.Handlers(handlers...), nil, desc); err != nil {
 		return "", nil, err
 	}
 	config, err := images.Config(ctx, cache, desc, platform)
@@ -135,17 +167,21 @@ func childrenConfigHandler(provider content.Provider, platform platforms.MatchCo
 func DetectManifestMediaType(ra content.ReaderAt) (string, error) {
 	// TODO: schema1
 
-	p := make([]byte, ra.Size())
-	if _, err := ra.ReadAt(p, 0); err != nil {
+	dt := make([]byte, ra.Size())
+	if _, err := ra.ReadAt(dt, 0); err != nil {
 		return "", err
 	}
 
+	return DetectManifestBlobMediaType(dt)
+}
+
+func DetectManifestBlobMediaType(dt []byte) (string, error) {
 	var mfst struct {
 		MediaType string          `json:"mediaType"`
 		Config    json.RawMessage `json:"config"`
 	}
 
-	if err := json.Unmarshal(p, &mfst); err != nil {
+	if err := json.Unmarshal(dt, &mfst); err != nil {
 		return "", err
 	}
 
