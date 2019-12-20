@@ -1,4 +1,4 @@
-.PHONY: all proto install lint test test-go check-js test-js integration wire-check wire ensure check-go goimports proto-webview proto-webview-ts
+.PHONY: all proto install lint test test-go check-js test-js integration wire-check wire ensure check-go goimports proto-webview proto-webview-ts vendor
 
 check-go: lint errcheck verify_goimports wire-check test-go
 all: check-go check-js test-js
@@ -173,3 +173,8 @@ storybook:
 tilt-toast-container:
 	docker build -t gcr.io/windmill-public-containers/tilt-toast -f Dockerfile.toast .circleci
 	docker push gcr.io/windmill-public-containers/tilt-toast
+
+ensure: vendor
+
+vendor:
+	go mod vendor
