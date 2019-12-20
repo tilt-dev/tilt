@@ -66,4 +66,5 @@ export type LogLine = {
   // We assume that 'text' does not contain a newline
   text: string
   manifestName: string
+  level: string
 }

@@ -26,22 +26,29 @@
 .LogPane-empty {
   margin: 0;
 }
-
+.logLine {
+  position: relative;
+}
 .LogPane .logLine {
   margin-left: $spacing-unit / 2;
   margin-right: $spacing-unit / 2;
   display: flex;
 }
-
+.logLine.is-warning::before {
+  content: " ";
+  position: absolute;
+  top: 0;
+  left: -$spacing-unit/2;
+  height: 100%;
+  border-left: 3px solid $color-yellow;
+}
 .logLine-content {
   white-space: pre-wrap;
   min-height: $spacing-unit / 2; // Respect blank lines
 }
-
 .LogPane ::selection {
   background-color: rgba($color-blue, $translucent);
 }
-
 .LogPane .highlighted .logLine-content {
   background-color: rgba($color-blue, $translucent);
 }

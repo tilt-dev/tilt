@@ -21,13 +21,15 @@ class LogSegment {
   time: string
   text: string
   level: string
+  anchor: boolean
   continuesLine: boolean
 
   constructor(seg: Proto.webviewLogSegment) {
-    this.spanId = seg.spanId || "_"
+    this.spanId = seg.spanId || defaultSpanId
     this.time = seg.time ?? ""
     this.text = seg.text ?? ""
     this.level = seg.level ?? "INFO"
+    this.anchor = seg.anchor ?? false
     this.continuesLine = false
   }
 
@@ -44,15 +46,29 @@ class LogSegment {
   }
 }
 
+type LogWarning = {
+  anchorIndex: number
+  spanId: string
+  text: string
+}
+
 class LogStore {
   spans: { [key: string]: LogSpan }
   segments: LogSegment[]
   checkpoint: number
 
+  // We index all the warnings up-front by span id.
+  warningIndex: { [key: string]: LogWarning[] }
+
   constructor() {
     this.spans = {}
     this.segments = []
     this.checkpoint = 0
+    this.warningIndex = {}
+  }
+
+  warnings(spanId: string): LogWarning[] {
+    return this.warningIndex[spanId] ?? []
   }
 
   toLogList(): Proto.webviewLogList {
@@ -230,6 +246,7 @@ class LogStore {
       let currentLine = {
         manifestName: span.manifestName,
         text: segment.text,
+        level: segment.level,
       }
       isFirstLine = false
 

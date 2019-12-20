@@ -30,6 +30,7 @@ type LogPaneState = {
 type LogLineComponentProps = {
   text: string
   manifestName: string
+  level: string
   lineId: number
   shouldHighlight: boolean
   showManifestPrefix: boolean
@@ -88,13 +89,21 @@ class LogLineComponent extends PureComponent<LogLineComponentProps> {
     if (props.showManifestPrefix) {
       prefix = <LogLinePrefix name={props.manifestName} />
     }
+    let classes = ["logLine"]
+    if (props.shouldHighlight) {
+      classes.push("highlighted")
+    }
+    if (props.level == "WARN") {
+      classes.push("is-warning")
+    }
+    if (props.isContextChange) {
+      classes.push("is-contextChange")
+    }
     return (
       <span
         ref={this.ref}
         data-lineid={props.lineId}
-        className={`logLine ${props.shouldHighlight ? "highlighted" : ""} ${
-          props.isContextChange ? "is-contextChange" : ""
-        }`}
+        className={classes.join(" ")}
       >
         {prefix}
         <AnsiLine line={text} className={"logLine-content"} />
@@ -298,6 +307,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
           ref={maybeHighlightRef}
           key={key}
           text={l.text}
+          level={l.level}
           manifestName={l.manifestName}
           isContextChange={isContextChange}
           lineId={i}
