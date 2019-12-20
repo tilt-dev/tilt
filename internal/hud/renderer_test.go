@@ -39,6 +39,20 @@ func newSpanLogReader(mn model.ManifestName, spanID logstore.SpanID, msg string)
 	return logstore.NewReader(&sync.RWMutex{}, logStore)
 }
 
+func newWarningLogReader(mn model.ManifestName, spanID logstore.SpanID, warnings []string) logstore.Reader {
+	logStore := logstore.NewLogStore()
+	for _, warning := range warnings {
+		logStore.Append(testLogEvent{
+			mn:     mn,
+			spanID: spanID,
+			time:   time.Now(),
+			msg:    warning,
+			level:  logger.WarnLvl,
+		}, nil)
+	}
+	return logstore.NewReader(&sync.RWMutex{}, logStore)
+}
+
 func appendSpanLog(logStore *logstore.LogStore, mn model.ManifestName, spanID logstore.SpanID, msg string) {
 	logStore.Append(testLogEvent{mn: mn, spanID: spanID, time: time.Now(), msg: msg}, nil)
 }
@@ -649,14 +663,19 @@ func TestTiltfileResourceWithWarning(t *testing.T) {
 		IsTiltfile: true,
 		BuildHistory: []model.BuildRecord{
 			{
-				Edits:      []string{"Tiltfile"},
-				StartTime:  now.Add(-5 * time.Second),
-				FinishTime: now.Add(-4 * time.Second),
-				Reason:     model.BuildReasonFlagConfig,
-				Warnings:   []string{"I am warning you", "Something is alarming here"},
+				Edits:        []string{"Tiltfile"},
+				StartTime:    now.Add(-5 * time.Second),
+				FinishTime:   now.Add(-4 * time.Second),
+				Reason:       model.BuildReasonFlagConfig,
+				WarningCount: 2,
+				SpanID:       "tiltfile:1",
 			},
 		},
 	})
+	v.LogReader = newWarningLogReader(
+		store.TiltfileManifestName,
+		"tiltfile:1",
+		[]string{"I am warning you\n", "Something is alarming here\n"})
 
 	vs := fakeViewState(1, view.CollapseNo)
 	rtf.run("Tiltfile resource with warning", 80, 20, v, vs)
@@ -867,6 +886,7 @@ type testLogEvent struct {
 	spanID logstore.SpanID
 	time   time.Time
 	msg    string
+	level  logger.Level
 }
 
 func (e testLogEvent) Message() []byte {
@@ -874,7 +894,10 @@ func (e testLogEvent) Message() []byte {
 }
 
 func (e testLogEvent) Level() logger.Level {
-	return logger.InfoLvl
+	if e.level == (logger.Level{}) {
+		return logger.InfoLvl
+	}
+	return e.level
 }
 
 func (e testLogEvent) Time() time.Time {

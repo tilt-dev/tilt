@@ -127,11 +127,19 @@ func (v *ResourceView) titleTextName() rty.Component {
 	if color == cPending {
 		name = fmt.Sprintf("%s %s", v.res.Name, v.spinner())
 	}
-	if len(warnings(v.res)) > 0 {
+	if len(v.warnings()) > 0 {
 		name = fmt.Sprintf("%s %s", v.res.Name, "— Warning ⚠️")
 	}
 	sb.Fg(tcell.ColorDefault).Text(name)
 	return sb.Build()
+}
+
+func (v *ResourceView) warnings() []string {
+	spanID := v.res.LastBuild().SpanID
+	if spanID == "" {
+		return nil
+	}
+	return v.logReader.Warnings(spanID)
 }
 
 func (v *ResourceView) titleText() rty.Component {
@@ -438,8 +446,10 @@ func (v *ResourceView) resourceExpandedRuntimeError() (rty.Component, bool) {
 func (v *ResourceView) resourceExpandedWarnings() (rty.Component, bool) {
 	pane := rty.NewConcatLayout(rty.DirVert)
 	ok := false
-	if len(warnings(v.res)) > 0 {
-		abbrevLog := abbreviateLog(strings.Join(warnings(v.res), "\n"))
+
+	warnings := v.warnings()
+	if len(warnings) > 0 {
+		abbrevLog := abbreviateLog(strings.Join(warnings, ""))
 		for _, logLine := range abbrevLog {
 			pane.Add(rty.TextString(logLine))
 			ok = true

@@ -16,7 +16,6 @@ import (
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/tiltfile/io"
 	"github.com/windmilleng/tilt/internal/tiltfile/value"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -226,7 +225,10 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 }
 
 func (s *tiltfileState) k8sResourceV1(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	s.warnings = sliceutils.AppendWithoutDupes(s.warnings, deprecatedResourceAssemblyV1Warning)
+	if !s.warnedDeprecatedResourceAssembly {
+		s.logger.Warnf("%s", deprecatedResourceAssemblyV1Warning)
+		s.warnedDeprecatedResourceAssembly = true
+	}
 
 	var name string
 	var yamlValue starlark.Value
@@ -881,8 +883,9 @@ func (s *tiltfileState) k8sResourceAssemblyVersionFn(thread *starlark.Thread, fn
 		return starlark.None, fmt.Errorf("invalid %s %d. Must be 1 or 2.", fn.Name(), version)
 	}
 
-	if version == 1 {
-		s.warnings = append(s.warnings, deprecatedResourceAssemblyV1Warning)
+	if version == 1 && !s.warnedDeprecatedResourceAssembly {
+		s.logger.Warnf("%s", deprecatedResourceAssemblyV1Warning)
+		s.warnedDeprecatedResourceAssembly = true
 	}
 
 	s.k8sResourceAssemblyVersion = version
