@@ -127,6 +127,8 @@ func (c *Endpoint) ClientOpts() ([]client.Opt, error) {
 	version := os.Getenv("DOCKER_API_VERSION")
 	if version != "" {
 		result = append(result, client.WithVersion(version))
+	} else {
+		result = append(result, client.WithAPIVersionNegotiation())
 	}
 	return result, nil
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/docker/distribution/manifest/schema2"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/api/errcode"
-	"github.com/docker/distribution/registry/api/v2"
+	v2 "github.com/docker/distribution/registry/api/v2"
 	distclient "github.com/docker/distribution/registry/client"
 	"github.com/docker/docker/registry"
 	digest "github.com/opencontainers/go-digest"
@@ -103,9 +103,6 @@ func pullManifestSchemaV2ImageConfig(ctx context.Context, dgst digest.Digest, re
 	}
 
 	verifier := dgst.Verifier()
-	if err != nil {
-		return nil, err
-	}
 	if _, err := verifier.Write(configJSON); err != nil {
 		return nil, err
 	}
@@ -212,7 +209,6 @@ func (c *client) iterateEndpoints(ctx context.Context, namedRef reference.Named,
 
 	confirmedTLSRegistries := make(map[string]bool)
 	for _, endpoint := range endpoints {
-
 		if endpoint.Version == registry.APIVersion1 {
 			logrus.Debugf("skipping v1 endpoint %s", endpoint.URL)
 			continue

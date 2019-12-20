@@ -265,7 +265,7 @@ func (b *Builder) Unstructured() *Builder {
 		localFn:      b.isLocal,
 		restMapperFn: b.restMapperFn,
 		clientFn:     b.getClient,
-		decoder:      &metadataValidatingDecoder{unstructured.UnstructuredJSONScheme},
+		decoder:      unstructured.UnstructuredJSONScheme,
 	}
 
 	return b
@@ -820,12 +820,6 @@ func (b *Builder) visitorResult() *Result {
 	}
 
 	if len(b.resources) != 0 {
-		for _, r := range b.resources {
-			_, err := b.mappingFor(r)
-			if err != nil {
-				return &Result{err: err}
-			}
-		}
 		return &Result{err: fmt.Errorf("resource(s) were provided, but no name, label selector, or --all flag specified")}
 	}
 	return &Result{err: missingResourceError}

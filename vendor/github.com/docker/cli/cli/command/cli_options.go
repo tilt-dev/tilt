@@ -9,7 +9,6 @@ import (
 	"github.com/docker/cli/cli/context/docker"
 	"github.com/docker/cli/cli/context/store"
 	"github.com/docker/cli/cli/streams"
-	clitypes "github.com/docker/cli/types"
 	"github.com/docker/docker/pkg/term"
 )
 
@@ -79,14 +78,6 @@ func WithContentTrustFromEnv() DockerCliOption {
 func WithContentTrust(enabled bool) DockerCliOption {
 	return func(cli *DockerCli) error {
 		cli.contentTrust = enabled
-		return nil
-	}
-}
-
-// WithContainerizedClient sets the containerized client constructor on a cli.
-func WithContainerizedClient(containerizedFn func(string) (clitypes.ContainerizedClient, error)) DockerCliOption {
-	return func(cli *DockerCli) error {
-		cli.newContainerizeClient = containerizedFn
 		return nil
 	}
 }

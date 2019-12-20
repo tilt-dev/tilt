@@ -248,7 +248,7 @@ func (t *tracker) List(gvr schema.GroupVersionResource, gvk schema.GroupVersionK
 		return list, nil
 	}
 
-	matchingObjs, err := filterByNamespace(objs, ns)
+	matchingObjs, err := filterByNamespaceAndName(objs, ns, "")
 	if err != nil {
 		return nil, err
 	}
@@ -282,19 +282,9 @@ func (t *tracker) Get(gvr schema.GroupVersionResource, ns, name string) (runtime
 		return nil, errNotFound
 	}
 
-	var matchingObjs []runtime.Object
-	for _, obj := range objs {
-		acc, err := meta.Accessor(obj)
-		if err != nil {
-			return nil, err
-		}
-		if acc.GetNamespace() != ns {
-			continue
-		}
-		if acc.GetName() != name {
-			continue
-		}
-		matchingObjs = append(matchingObjs, obj)
+	matchingObjs, err := filterByNamespaceAndName(objs, ns, name)
+	if err != nil {
+		return nil, err
 	}
 	if len(matchingObjs) == 0 {
 		return nil, errNotFound
@@ -482,10 +472,10 @@ func (t *tracker) Delete(gvr schema.GroupVersionResource, ns, name string) error
 	return errors.NewNotFound(gvr.GroupResource(), name)
 }
 
-// filterByNamespace returns all objects in the collection that
-// match provided namespace. Empty namespace matches
+// filterByNamespaceAndName returns all objects in the collection that
+// match provided namespace and name. Empty namespace matches
 // non-namespaced objects.
-func filterByNamespace(objs []runtime.Object, ns string) ([]runtime.Object, error) {
+func filterByNamespaceAndName(objs []runtime.Object, ns, name string) ([]runtime.Object, error) {
 	var res []runtime.Object
 
 	for _, obj := range objs {
@@ -494,6 +484,9 @@ func filterByNamespace(objs []runtime.Object, ns string) ([]runtime.Object, erro
 			return nil, err
 		}
 		if ns != "" && acc.GetNamespace() != ns {
+			continue
+		}
+		if name != "" && acc.GetName() != name {
 			continue
 		}
 		res = append(res, obj)
