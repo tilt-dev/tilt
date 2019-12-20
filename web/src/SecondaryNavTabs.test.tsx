@@ -1,6 +1,6 @@
 import React from "react"
 import renderer from "react-test-renderer"
-import TabNav from "./TabNav"
+import SecondaryNavTabs from "./SecondaryNavTabs"
 import { MemoryRouter } from "react-router"
 import { ResourceView } from "./types"
 
@@ -8,7 +8,7 @@ it("shows logs", () => {
   const tree = renderer
     .create(
       <MemoryRouter>
-        <TabNav
+        <SecondaryNavTabs
           logUrl="/r/foo"
           alertsUrl="/r/foo/alerts"
           facetsUrl={null}
@@ -26,7 +26,7 @@ it("shows error pane", () => {
   const tree = renderer
     .create(
       <MemoryRouter>
-        <TabNav
+        <SecondaryNavTabs
           logUrl="/r/foo"
           alertsUrl="/r/foo/alerts"
           facetsUrl={null}
@@ -44,7 +44,7 @@ it("shows the number of errors in the error tab", () => {
   const tree = renderer
     .create(
       <MemoryRouter>
-        <TabNav
+        <SecondaryNavTabs
           logUrl="/r/foo"
           alertsUrl="/r/foo/alerts"
           facetsUrl={null}
@@ -62,7 +62,7 @@ it("shows a facets tab", () => {
   const tree = renderer
     .create(
       <MemoryRouter>
-        <TabNav
+        <SecondaryNavTabs
           logUrl="/r/foo"
           alertsUrl="/r/foo/alerts"
           facetsUrl="/r/foo/facets"

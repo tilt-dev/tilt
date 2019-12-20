@@ -1,7 +1,7 @@
 import React, { PureComponent } from "react"
 import { Link } from "react-router-dom"
 import { ResourceView } from "./types"
-import "./TabNav.scss"
+// import "./SecondaryNavTabs.scss"
 
 type NavProps = {
   logUrl: string
@@ -11,7 +11,7 @@ type NavProps = {
   numberOfAlerts: number
 }
 
-class TabNav extends PureComponent<NavProps> {
+class SecondaryNavTabs extends PureComponent<NavProps> {
   render() {
     let logIsSelected = this.props.resourceView === ResourceView.Log
     let alertsIsSelected = this.props.resourceView === ResourceView.Alerts
@@ -19,7 +19,7 @@ class TabNav extends PureComponent<NavProps> {
 
     // The number of alerts should be for the selected resource
     return (
-      <nav className="TabNav">
+      <nav className="SecondaryNavTabs">
         <ul>
           <li>
             <Link
@@ -66,4 +66,4 @@ class TabNav extends PureComponent<NavProps> {
   }
 }
 
-export default TabNav
+export default SecondaryNavTabs

@@ -1,10 +1,32 @@
 // Duplicated styles from constants.scss
 export enum Color {
   green = "#20ba31",
+  blue = "#03c7d3",
   red = "#f6685c",
   yellow = "#fcb41e",
   white = "#ffffff",
-  gray = "#93a1a1",
+  offWhite = "#eef1f1",
+
+  grayLightest = "#93a1a1", // Solarized base1
+  grayLight = "#586e75", // Solarized base01
+  gray = "#073642", // Solarized base02
+  grayDark = "#002b36", // Solarized base03
+  grayDarkest = "#001b20",
+
+  text = "#073642",
+}
+
+export enum Font {
+  sansSerif = '"Montserrat", "Open Sans", "Helvetica", "Arial", sans-serif',
+  monospace = '"Inconsolata", "Monaco", "Courier New", "Courier", monospace',
+}
+
+export enum FontSize {
+  largest = "40px",
+  large = "26px",
+  default = "20px",
+  small = "16px",
+  smallest = "13px",
 }
 
 // Heights, expressed in pixels.

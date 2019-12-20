@@ -1,10 +1,13 @@
 @import "constants.scss";
 
+// DELETE THIS
+
+
 .resourceBar {
   display: flex;
   align-items: stretch;
   justify-content: flex-end;
-  height: $resourceInfo-height;
+  height: $resourceInfo-height * 3;
   background-color: $color-gray-dark;
   padding-left: $spacing-unit / 2;
   padding-right: $spacing-unit / 2;
