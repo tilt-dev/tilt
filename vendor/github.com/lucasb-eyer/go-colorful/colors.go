@@ -631,6 +631,90 @@ func (cl Color) DistanceCIE94(cr Color) float64 {
 	return math.Sqrt(vL2+vC2+vH2) * 0.01 // See above.
 }
 
+// DistanceCIEDE2000 uses the Delta E 2000 formula to calculate color
+// distance. It is more expensive but more accurate than both DistanceLab
+// and DistanceCIE94.
+func (cl Color) DistanceCIEDE2000(cr Color) float64 {
+	return cl.DistanceCIEDE2000klch(cr, 1.0, 1.0, 1.0)
+}
+
+// DistanceCIEDE2000klch uses the Delta E 2000 formula with custom values
+// for the weighting factors kL, kC, and kH.
+func (cl Color) DistanceCIEDE2000klch(cr Color, kl, kc, kh float64) float64 {
+	l1, a1, b1 := cl.Lab()
+	l2, a2, b2 := cr.Lab()
+
+	// As with CIE94, we scale up the ranges of L,a,b beforehand and scale
+	// them down again afterwards.
+	l1, a1, b1 = l1*100.0, a1*100.0, b1*100.0
+	l2, a2, b2 = l2*100.0, a2*100.0, b2*100.0
+
+	cab1 := math.Sqrt(sq(a1) + sq(b1))
+	cab2 := math.Sqrt(sq(a2) + sq(b2))
+	cabmean := (cab1 + cab2) / 2
+
+	g := 0.5 * (1 - math.Sqrt(math.Pow(cabmean, 7)/(math.Pow(cabmean, 7)+math.Pow(25, 7))))
+	ap1 := (1 + g) * a1
+	ap2 := (1 + g) * a2
+	cp1 := math.Sqrt(sq(ap1) + sq(b1))
+	cp2 := math.Sqrt(sq(ap2) + sq(b2))
+
+	hp1 := 0.0
+	if b1 != ap1 || ap1 != 0 {
+		hp1 = math.Atan2(b1, ap1)
+		if hp1 < 0 {
+			hp1 += math.Pi * 2
+		}
+		hp1 *= 180 / math.Pi
+	}
+	hp2 := 0.0
+	if b2 != ap2 || ap2 != 0 {
+		hp2 = math.Atan2(b2, ap2)
+		if hp2 < 0 {
+			hp2 += math.Pi * 2
+		}
+		hp2 *= 180 / math.Pi
+	}
+
+	deltaLp := l2 - l1
+	deltaCp := cp2 - cp1
+	dhp := 0.0
+	cpProduct := cp1 * cp2
+	if cpProduct != 0 {
+		dhp = hp2 - hp1
+		if dhp > 180 {
+			dhp -= 360
+		} else if dhp < -180 {
+			dhp += 360
+		}
+	}
+	deltaHp := 2 * math.Sqrt(cpProduct) * math.Sin(dhp/2*math.Pi/180)
+
+	lpmean := (l1 + l2) / 2
+	cpmean := (cp1 + cp2) / 2
+	hpmean := hp1 + hp2
+	if cpProduct != 0 {
+		hpmean /= 2
+		if math.Abs(hp1-hp2) > 180 {
+			if hp1+hp2 < 360 {
+				hpmean += 180
+			} else {
+				hpmean -= 180
+			}
+		}
+	}
+
+	t := 1 - 0.17*math.Cos((hpmean-30)*math.Pi/180) + 0.24*math.Cos(2*hpmean*math.Pi/180) + 0.32*math.Cos((3*hpmean+6)*math.Pi/180) - 0.2*math.Cos((4*hpmean-63)*math.Pi/180)
+	deltaTheta := 30 * math.Exp(-sq((hpmean-275)/25))
+	rc := 2 * math.Sqrt(math.Pow(cpmean, 7)/(math.Pow(cpmean, 7)+math.Pow(25, 7)))
+	sl := 1 + (0.015*sq(lpmean-50))/math.Sqrt(20+sq(lpmean-50))
+	sc := 1 + 0.045*cpmean
+	sh := 1 + 0.015*cpmean*t
+	rt := -math.Sin(2*deltaTheta*math.Pi/180) * rc
+
+	return math.Sqrt(sq(deltaLp/(kl*sl))+sq(deltaCp/(kc*sc))+sq(deltaHp/(kh*sh))+rt*(deltaCp/(kc*sc))*(deltaHp/(kh*sh))) * 0.01
+}
+
 // BlendLab blends two colors in the L*a*b* color-space, which should result in a smoother blend.
 // t == 0 results in c1, t == 1 results in c2
 func (c1 Color) BlendLab(c2 Color, t float64) Color {

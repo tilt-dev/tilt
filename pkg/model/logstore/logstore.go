@@ -41,6 +41,15 @@ type LogSegment struct {
 
 	// Continues a line from a previous segment.
 	ContinuesLine bool
+
+	// When we store warnings in the LogStore, we break them up into lines and
+	// store them as a series of line segments. 'Anchor' marks the beginning of a
+	// series of logs that should be kept together.
+	//
+	// Anchor warning1, line1
+	//        warning1, line2
+	// Anchor warning2, line1
+	Anchor bool
 }
 
 // Whether these two log segments may be printed on the same line
@@ -197,6 +206,10 @@ func (s *LogStore) Append(le LogEvent, secrets model.SecretSet) {
 		return
 	}
 
+	if le.Level() == logger.WarnLvl {
+		added[0].Anchor = true
+	}
+
 	added[0].ContinuesLine = s.computeContinuesLine(added[0], span)
 
 	s.segments = append(s.segments, added...)
@@ -217,12 +230,10 @@ func (s *LogStore) Tail(n int) string {
 
 // Get at most N lines from the tail of the span.
 func (s *LogStore) TailSpan(n int, spanID SpanID) string {
-	spans := make(map[SpanID]*Span)
-	span, ok := s.spans[spanID]
+	spans, ok := s.idToSpanMap(spanID)
 	if !ok {
 		return ""
 	}
-	spans[spanID] = span
 	return s.tailHelper(n, spans, false)
 }
 
@@ -408,9 +419,10 @@ func (s *LogStore) ToLogList(fromCheckpoint Checkpoint) (*webview.LogList, error
 		}
 		segments = append(segments, &webview.LogSegment{
 			SpanId: string(segment.SpanID),
-			Level:  webview.LogLevel(segment.Level),
+			Level:  webview.LogLevel(segment.Level.ToProtoID()),
 			Time:   time,
 			Text:   string(segment.Text),
+			Anchor: segment.Anchor,
 		})
 	}
 
@@ -436,14 +448,55 @@ func (s *LogStore) spansForManifest(mn model.ManifestName) map[SpanID]*Span {
 	return result
 }
 
-func (s *LogStore) SpanLog(spanID SpanID) string {
-	spans := make(map[SpanID]*Span)
+func (s *LogStore) idToSpanMap(spanID SpanID) (map[SpanID]*Span, bool) {
+	spans := make(map[SpanID]*Span, 1)
 	span, ok := s.spans[spanID]
+	if !ok {
+		return nil, false
+	}
+	spans[spanID] = span
+	return spans, true
+}
+
+func (s *LogStore) SpanLog(spanID SpanID) string {
+	spans, ok := s.idToSpanMap(spanID)
 	if !ok {
 		return ""
 	}
-	spans[spanID] = span
 	return s.logHelper(spans, false)
+}
+
+func (s *LogStore) Warnings(spanID SpanID) []string {
+	spans, ok := s.idToSpanMap(spanID)
+	if !ok {
+		return nil
+	}
+
+	startIndex, lastIndex := s.startAndLastIndices(spans)
+	if startIndex == -1 {
+		return nil
+	}
+
+	result := []string{}
+	sb := strings.Builder{}
+	for i := startIndex; i <= lastIndex; i++ {
+		segment := s.segments[i]
+		if segment.Level != logger.WarnLvl || spanID != segment.SpanID {
+			continue
+		}
+
+		if segment.Anchor && sb.Len() > 0 {
+			result = append(result, sb.String())
+			sb = strings.Builder{}
+		}
+
+		sb.WriteString(string(segment.Text))
+	}
+
+	if sb.Len() > 0 {
+		result = append(result, sb.String())
+	}
+	return result
 }
 
 func (s *LogStore) ManifestLog(mn model.ManifestName) string {

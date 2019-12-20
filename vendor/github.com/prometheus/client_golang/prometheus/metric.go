@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 
 	dto "github.com/prometheus/client_model/go"
 )
@@ -46,9 +46,8 @@ type Metric interface {
 	// While populating dto.Metric, it is the responsibility of the
 	// implementation to ensure validity of the Metric protobuf (like valid
 	// UTF-8 strings or syntactically valid metric and label names). It is
-	// recommended to sort labels lexicographically. (Implementers may find
-	// LabelPairSorter useful for that.) Callers of Write should still make
-	// sure of sorting if they depend on it.
+	// recommended to sort labels lexicographically. Callers of Write should
+	// still make sure of sorting if they depend on it.
 	Write(*dto.Metric) error
 	// TODO(beorn7): The original rationale of passing in a pre-allocated
 	// dto.Metric protobuf to save allocations has disappeared. The
@@ -60,8 +59,9 @@ type Metric interface {
 // implementation XXX has its own XXXOpts type, but in most cases, it is just be
 // an alias of this type (which might change when the requirement arises.)
 //
-// It is mandatory to set Name and Help to a non-empty string. All other fields
-// are optional and can safely be left at their zero value.
+// It is mandatory to set Name to a non-empty string. All other fields are
+// optional and can safely be left at their zero value, although it is strongly
+// encouraged to set a Help string.
 type Opts struct {
 	// Namespace, Subsystem, and Name are components of the fully-qualified
 	// name of the Metric (created by joining these components with
@@ -72,7 +72,7 @@ type Opts struct {
 	Subsystem string
 	Name      string
 
-	// Help provides information about this metric. Mandatory!
+	// Help provides information about this metric.
 	//
 	// Metrics with the same fully-qualified name must have the same Help
 	// string.
@@ -113,20 +113,19 @@ func BuildFQName(namespace, subsystem, name string) string {
 	return name
 }
 
-// LabelPairSorter implements sort.Interface. It is used to sort a slice of
-// dto.LabelPair pointers. This is useful for implementing the Write method of
-// custom metrics.
-type LabelPairSorter []*dto.LabelPair
+// labelPairSorter implements sort.Interface. It is used to sort a slice of
+// dto.LabelPair pointers.
+type labelPairSorter []*dto.LabelPair
 
-func (s LabelPairSorter) Len() int {
+func (s labelPairSorter) Len() int {
 	return len(s)
 }
 
-func (s LabelPairSorter) Swap(i, j int) {
+func (s labelPairSorter) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 
-func (s LabelPairSorter) Less(i, j int) bool {
+func (s labelPairSorter) Less(i, j int) bool {
 	return s[i].GetName() < s[j].GetName()
 }
 

@@ -173,6 +173,10 @@
         },
         "value": {
           "type": "string"
+        },
+        "span_id": {
+          "type": "string",
+          "description": "If span_id is non-empty, that means the value is in the logstore\ninstead of in the value field."
         }
       }
     },
@@ -217,9 +221,11 @@
         "NONE",
         "INFO",
         "VERBOSE",
-        "DEBUG"
+        "DEBUG",
+        "WARN"
       ],
-      "default": "NONE"
+      "default": "NONE",
+      "description": " - NONE: For backwards-compatibility, the int value doesn't say\nanything about relative severity."
     },
     "webviewLogList": {
       "type": "object",
@@ -263,6 +269,11 @@
         },
         "level": {
           "$ref": "#/definitions/webviewLogLevel"
+        },
+        "anchor": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "When we store warnings in the LogStore, we break them up into lines and\nstore them as a series of line segments. 'anchor' marks the beginning of a\nseries of logs that should be kept together.\n\nAnchor warning1, line1\n       warning1, line2\nAnchor warning2, line1"
         }
       }
     },

@@ -11,6 +11,7 @@ import (
 	"k8s.io/klog"
 )
 
+// https://kubernetes.io/docs/reference/kubectl/cheatsheet/#kubectl-output-verbosity-and-debugging
 var klogLevel = 0
 
 type filteredWriter struct {
@@ -73,7 +74,8 @@ func initKlog(w io.Writer) {
 	klog.SetOutput(w)
 
 	flags := []string{
-		"--stderrthreshold", "FATAL",
+		"--stderrthreshold=FATAL",
+		"--logtostderr=false",
 	}
 
 	if klogLevel > 0 {

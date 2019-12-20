@@ -304,7 +304,9 @@ func (c *Cli) initCreds(ctx context.Context) dockerCreds {
 	if c.builderVersion == types.BuilderBuildKit {
 		session, _ := session.NewSession(ctx, "tilt", sessionSharedKey)
 		if session != nil {
-			session.Allow(authprovider.NewDockerAuthProvider(logger.Get(ctx).Writer(logger.InfoLvl)))
+			// TODO(dmiller) add a writer back here
+			provider := authprovider.NewDockerAuthProvider(logger.Get(ctx).Writer(logger.InfoLvl))
+			session.Allow(provider)
 			go func() {
 				defer func() {
 					_ = session.Close()

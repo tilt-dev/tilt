@@ -215,10 +215,6 @@ func isInError(res view.Resource) bool {
 	return statusColor(res) == cBad
 }
 
-func warnings(res view.Resource) []string {
-	return res.LastBuild().Warnings
-}
-
 func isCrashing(res view.Resource) bool {
 	return (res.IsK8s() && res.K8sInfo().PodRestarts > 0) ||
 		res.LastBuild().Reason.Has(model.BuildReasonFlagCrash) ||

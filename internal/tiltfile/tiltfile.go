@@ -41,7 +41,6 @@ func init() {
 type TiltfileLoadResult struct {
 	Manifests           []model.Manifest
 	ConfigFiles         []string
-	Warnings            []string
 	TiltIgnoreContents  string
 	FeatureFlags        map[string]bool
 	TeamName            string
@@ -114,12 +113,6 @@ type tiltfileLoader struct {
 
 var _ TiltfileLoader = &tiltfileLoader{}
 
-func printWarnings(s *tiltfileState) {
-	for _, w := range s.warnings {
-		s.logger.Infof("WARNING: %s\n", w)
-	}
-}
-
 // Load loads the Tiltfile in `filename`
 func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigState model.UserConfigState) TiltfileLoadResult {
 	start := time.Now()
@@ -168,7 +161,6 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 	tlr.AnalyticsOpt = aSettings.Opt
 
 	tlr.Secrets = s.extractSecrets()
-	tlr.Warnings = s.warnings
 	tlr.FeatureFlags = s.features.ToEnabled()
 	tlr.Error = err
 	tlr.Manifests = manifests
@@ -179,8 +171,6 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 
 	telemetrySettings, _ := telemetry.GetState(result)
 	tlr.TelemetrySettings = telemetrySettings
-
-	printWarnings(s)
 
 	duration := time.Since(start)
 	s.logger.Infof("Successfully loaded Tiltfile (%s)", duration)

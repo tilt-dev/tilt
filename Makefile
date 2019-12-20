@@ -1,4 +1,4 @@
-.PHONY: all proto install lint test test-go check-js test-js integration wire-check wire ensure check-go goimports proto-webview proto-webview-ts
+.PHONY: all proto install lint test test-go check-js test-js integration wire-check wire ensure check-go goimports proto-webview proto-webview-ts vendor
 
 check-go: lint errcheck verify_goimports wire-check test-go
 all: check-go check-js test-js
@@ -25,16 +25,16 @@ proto:
 
 # Build a binary that uses the synclet tag specified in sidecar.go
 install:
-	go install -ldflags "-X 'github.com/windmilleng/tilt/internal/cli.commitSHA=$$(git merge-base master HEAD)'" ./cmd/tilt/...
+	go install -mod vendor -ldflags "-X 'github.com/windmilleng/tilt/internal/cli.commitSHA=$$(git merge-base master HEAD)'" ./cmd/tilt/...
 
 # Build a binary that uses a dev synclet image produced by `make synclet-dev`
 install-dev:
 	@if ! [[ -e "$(SYNCLET_DEV_IMAGE_TAG_FILE)" ]]; then echo "No dev synclet found. Run make synclet-dev."; exit 1; fi
-	go install -ldflags "-X 'github.com/windmilleng/tilt/internal/synclet/sidecar.SyncletTag=$$(<$(SYNCLET_DEV_IMAGE_TAG_FILE))'" ./...
+	go install -mod vendor -ldflags "-X 'github.com/windmilleng/tilt/internal/synclet/sidecar.SyncletTag=$$(<$(SYNCLET_DEV_IMAGE_TAG_FILE))'" ./...
 
 # disable optimizations and inlining, to allow more complete information when attaching a debugger or capturing a profile
 install-debug:
-	go install -gcflags "all=-N -l" ./...
+	go install -mod vendor -gcflags "all=-N -l" ./...
 
 define synclet-build-dev
 	echo $1 > $(SYNCLET_DEV_IMAGE_TAG_FILE)
@@ -49,25 +49,25 @@ synclet-dev: synclet-cache
 build-synclet-and-install: synclet-dev install-dev
 
 lint:
-	go vet -all -printfuncs=Verbosef,Infof,Debugf,PrintColorf ./...
+	go vet -mod vendor -all -printfuncs=Verbosef,Infof,Debugf,PrintColorf ./...
 
 build:
-	go test -p $(GO_PARALLEL_JOBS) -timeout 60s ./... -run nonsenseregex
+	go test -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 60s ./... -run nonsenseregex
 
 test-go:
 ifneq ($(CIRCLECI),true)
-		go test -p $(GO_PARALLEL_JOBS) -timeout 80s ./...
+		go test -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 80s ./...
 else
 		mkdir -p test-results
-		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -p $(GO_PARALLEL_JOBS) -timeout 80s
+		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 80s
 endif
 
 test-go-helm-only:
 ifneq ($(CIRCLECI),true)
-		go test -p $(GO_PARALLEL_JOBS) -timeout 80s ./internal/tiltfile -run "(?i)(.*)Helm(.*)"
+		go test -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 80s ./internal/tiltfile -run "(?i)(.*)Helm(.*)"
 else
 		mkdir -p test-results
-		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./internal/tiltfile -p $(GO_PARALLEL_JOBS) -timeout 80s -run "(?i)(.*)Helm(.*)"
+		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./internal/tiltfile -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 80s -run "(?i)(.*)Helm(.*)"
 endif
 
 
@@ -76,20 +76,20 @@ test: test-go test-js
 
 # skip some tests that are slow and not always relevant
 shorttest:
-	go test -p $(GO_PARALLEL_JOBS) -tags 'skipcontainertests' -timeout 60s ./...
+	go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags 'skipcontainertests' -timeout 60s ./...
 
 integration:
 ifneq ($(CIRCLECI),true)
-		go test -v -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s ./integration
+		go test -mod vendor -v -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s ./integration
 else
 		mkdir -p test-results
-		gotestsum --format standard-verbose --junitfile test-results/unit-tests.xml -- ./integration -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s
+		gotestsum --format standard-verbose --junitfile test-results/unit-tests.xml -- ./integration -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s
 endif
 
 # Run the integration tests on kind
 integration-kind:
 	kind create cluster --name=integration
-	KUBECONFIG="$(kind get kubeconfig-path --name="integration")" go test -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s ./integration
+	KUBECONFIG="$(kind get kubeconfig-path --name="integration")" go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s ./integration
 	kind delete cluster --name=integration
 
 dev-js:
@@ -107,9 +107,6 @@ test-js:
 	cd web && yarn install
 	cd web && CI=true yarn test
 
-ensure:
-	dep ensure
-
 goimports:
 	goimports -w -l $(GOIMPORTS_LOCAL_ARG) $$(go list -f {{.Dir}} ./...)
 
@@ -118,7 +115,7 @@ verify_goimports:
 	bash -c 'diff <(goimports -l $(GOIMPORTS_LOCAL_ARG) $$(go list -f {{.Dir}} ./...)) <(echo -n)'
 
 benchmark:
-	go test -run=XXX -bench=. ./...
+	go test -mod vendor -run=XXX -bench=. ./...
 
 errcheck:
 	errcheck -ignoretests -ignoregenerated ./...
@@ -176,3 +173,8 @@ storybook:
 tilt-toast-container:
 	docker build -t gcr.io/windmill-public-containers/tilt-toast -f Dockerfile.toast .circleci
 	docker push gcr.io/windmill-public-containers/tilt-toast
+
+ensure: vendor
+
+vendor:
+	go mod vendor

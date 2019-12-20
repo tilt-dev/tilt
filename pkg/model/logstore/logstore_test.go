@@ -270,3 +270,34 @@ func TestLogIncremental(t *testing.T) {
 	assert.Equal(t, int32(-1), list.FromCheckpoint)
 	assert.Equal(t, int32(-1), list.ToCheckpoint)
 }
+
+func TestWarnings(t *testing.T) {
+	l := NewLogStore()
+	l.Append(testLogEvent{
+		name:    "fe",
+		level:   logger.WarnLvl,
+		message: "Warning 1 line 1\nWarning 2 line 2\nWarning 3 line 3\n",
+	}, nil)
+	l.Append(testLogEvent{
+		name:    "fe",
+		level:   logger.WarnLvl,
+		message: "Warning 2 line 1\nWarning 2 line 2",
+	}, nil)
+	l.Append(testLogEvent{
+		name:    "fe",
+		level:   logger.WarnLvl,
+		message: "Warning 3 line 1\n",
+	}, nil)
+	l.Append(testLogEvent{
+		name:    "non-fe",
+		level:   logger.WarnLvl,
+		message: "Ignored warning\n",
+	}, nil)
+
+	warnings := l.Warnings("fe")
+	assert.Equal(t, warnings, []string{
+		"Warning 1 line 1\nWarning 2 line 2\nWarning 3 line 3\n",
+		"Warning 2 line 1\nWarning 2 line 2",
+		"Warning 3 line 1\n",
+	})
+}

@@ -45,7 +45,7 @@ type IntOrString struct {
 }
 
 // Type represents the stored type of IntOrString.
-type Type int64
+type Type int
 
 const (
 	Int    Type = iota // The IntOrString holds an int.

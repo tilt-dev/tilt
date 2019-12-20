@@ -23,7 +23,6 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/internal/tracer"
-	"github.com/windmilleng/tilt/pkg/logger"
 )
 
 var DeployerBaseWireSet = wire.NewSet(
@@ -110,7 +109,7 @@ func provideImageBuildAndDeployer(
 }
 
 func provideKubectlLogLevelInfo() k8s.KubectlLogLevel {
-	return k8s.KubectlLogLevel(logger.InfoLvl)
+	return k8s.KubectlLogLevel(0)
 }
 
 func provideDockerComposeBuildAndDeployer(

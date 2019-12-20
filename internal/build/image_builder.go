@@ -244,7 +244,7 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 	ps.StartBuildStep(ctx, "Tarring context…")
 
 	// NOTE(maia): some people want to know what files we're adding (b/c `ADD . /` isn't descriptive)
-	if logger.Get(ctx).Level() >= logger.VerboseLvl {
+	if logger.Get(ctx).Level().ShouldDisplay(logger.VerboseLvl) {
 		for _, pm := range paths {
 			ps.Printf(ctx, pm.PrettyStr())
 		}

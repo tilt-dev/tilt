@@ -235,7 +235,7 @@ func (dp *DockerPruner) sufficientVersionError() error {
 }
 
 func prettyPrintImagesPruneReport(report types.ImagesPruneReport, l logger.Logger) {
-	if len(report.ImagesDeleted) == 0 && l.Level() < logger.DebugLvl {
+	if len(report.ImagesDeleted) == 0 && !l.Level().ShouldDisplay(logger.DebugLvl) {
 		return
 	}
 
@@ -259,7 +259,7 @@ func prettyStringImgDeleteItem(img types.ImageDeleteResponseItem) string {
 }
 
 func prettyPrintCachePruneReport(report *types.BuildCachePruneReport, l logger.Logger) {
-	if len(report.CachesDeleted) == 0 && l.Level() < logger.DebugLvl {
+	if len(report.CachesDeleted) == 0 && !l.Level().ShouldDisplay(logger.DebugLvl) {
 		return
 	}
 
@@ -271,7 +271,7 @@ func prettyPrintCachePruneReport(report *types.BuildCachePruneReport, l logger.L
 }
 
 func prettyPrintContainersPruneReport(report types.ContainersPruneReport, l logger.Logger) {
-	if len(report.ContainersDeleted) == 0 && l.Level() < logger.DebugLvl {
+	if len(report.ContainersDeleted) == 0 && !l.Level().ShouldDisplay(logger.DebugLvl) {
 		return
 	}
 

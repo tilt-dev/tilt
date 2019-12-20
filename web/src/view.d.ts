@@ -83,6 +83,16 @@ declare namespace Proto {
     time?: string;
     text?: string;
     level?: string;
+    /**
+     * When we store warnings in the LogStore, we break them up into lines and
+     * store them as a series of line segments. 'anchor' marks the beginning of a
+     * series of logs that should be kept together.
+     *
+     * Anchor warning1, line1
+     *        warning1, line2
+     * Anchor warning2, line1
+     */
+    anchor?: boolean;
   }
   export interface webviewLogList {
     spans?: object;
@@ -113,6 +123,11 @@ declare namespace Proto {
   export interface webviewFacet {
     name?: string;
     value?: string;
+    /**
+     * If span_id is non-empty, that means the value is in the logstore
+     * instead of in the value field.
+     */
+    spanId?: string;
   }
   export interface webviewDCResourceInfo {
     configPaths?: string[];

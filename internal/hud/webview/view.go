@@ -7,6 +7,7 @@ import (
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/windmilleng/tilt/pkg/model/logstore"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -36,7 +37,7 @@ func timeToProto(t time.Time) (*timestamp.Timestamp, error) {
 	return ts, nil
 }
 
-func ToProtoBuildRecord(br model.BuildRecord) (*proto_webview.BuildRecord, error) {
+func ToProtoBuildRecord(br model.BuildRecord, logStore *logstore.LogStore) (*proto_webview.BuildRecord, error) {
 	e := ""
 	if br.Error != nil {
 		e = br.Error.Error()
@@ -51,10 +52,16 @@ func ToProtoBuildRecord(br model.BuildRecord) (*proto_webview.BuildRecord, error
 		return nil, err
 	}
 
+	warnings := []string{}
+	if br.SpanID != "" {
+		warnings = logStore.Warnings(br.SpanID)
+	}
+
 	return &proto_webview.BuildRecord{
-		Edits:          br.Edits,
-		Error:          e,
-		Warnings:       br.Warnings,
+		Edits: br.Edits,
+		Error: e,
+		// TODO(nick): Remove this, and compute it client-side.
+		Warnings:       warnings,
 		StartTime:      start,
 		FinishTime:     finish,
 		IsCrashRebuild: br.Reason.IsCrashOnly(),
@@ -62,10 +69,10 @@ func ToProtoBuildRecord(br model.BuildRecord) (*proto_webview.BuildRecord, error
 	}, nil
 }
 
-func ToProtoBuildRecords(brs []model.BuildRecord) ([]*proto_webview.BuildRecord, error) {
+func ToProtoBuildRecords(brs []model.BuildRecord, logStore *logstore.LogStore) ([]*proto_webview.BuildRecord, error) {
 	ret := make([]*proto_webview.BuildRecord, len(brs))
 	for i, br := range brs {
-		r, err := ToProtoBuildRecord(br)
+		r, err := ToProtoBuildRecord(br, logStore)
 		if err != nil {
 			return nil, err
 		}
