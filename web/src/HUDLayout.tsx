@@ -1,6 +1,6 @@
 import React from "react"
 import styled from "styled-components"
-import { AnimDuration, Height, Width, ZIndex } from "./constants"
+import * as s from "./style-helpers"
 
 // The HUD UI looks like this:
 //
@@ -59,13 +59,13 @@ type HUDLayoutProps = {
 let Root = styled.div`
   display: flex;
   flex-direction: column;
-  padding-right: ${Width.sidebar}px;
-  padding-bottom: ${Height.statusbar}px;
+  padding-right: ${s.Width.sidebar}px;
+  padding-bottom: ${s.Height.statusbar}px;
   width: 100%;
-  transition: padding-right ${AnimDuration.default} ease;
+  transition: padding-right ${s.AnimDuration.default} ease;
 
   &.is-sidebarCollapsed {
-    padding-right: ${Width.sidebarCollapsed}px;
+    padding-right: ${s.Width.sidebarCollapsed}px;
   }
 `
 

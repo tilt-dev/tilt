@@ -1,8 +1,8 @@
 import React, { PureComponent } from "react"
 import styled from "styled-components"
-import { Color, Font, FontSize, SizeUnit } from "./constants"
+import * as s from "./style-helpers"
 import { SnapshotHighlight } from "./types"
-import {ReactComponent as SnapshotSvg} from "./assets/svg/snapshot.svg"
+import { ReactComponent as SnapshotSvg } from "./assets/svg/snapshot.svg"
 
 type HUDHeaderProps = {
   name?: string
@@ -15,32 +15,26 @@ type HUDHeaderProps = {
 }
 
 let Root = styled.div`
-  padding: ${SizeUnit(0.5)};
-  background-color: ${Color.grayDarkest};
+  padding: ${s.SizeUnit(0.5)};
+  background-color: ${s.Color.grayDarkest};
 `
 
 let Title = styled.h2`
-  font-family: ${Font.sansSerif};
-  font-size: ${FontSize.default};
+  font-family: ${s.Font.sansSerif};
+  font-size: ${s.FontSize.default};
   margin: 0;
 `
 
-let PodStatus = styled.span`
+let PodStatus = styled.span``
 
-`
+let PortForward = styled.span``
 
-let PortForward = styled.span`
-
-`
-
-let PodId = styled.span`
-
-`
+let PodId = styled.span``
 
 let SnapshotButton = styled.button`
   border: 0;
   background-color: transparent;
-  color: ${Color.blue};
+  color: ${s.Color.blue};
 `
 
 class HUDHeader extends PureComponent<HUDHeaderProps> {
@@ -52,8 +46,9 @@ class HUDHeader extends PureComponent<HUDHeaderProps> {
       <>
         {podID && (
           <div className="resourceInfo">
-
-            <div className="resourceInfo-value">{podID} ({podStatus})</div>
+            <div className="resourceInfo-value">
+              {podID} ({podStatus})
+            </div>
           </div>
         )}
       </>
@@ -95,20 +90,21 @@ class HUDHeader extends PureComponent<HUDHeaderProps> {
   renderSnapshotButton() {
     let highlight = this.props.highlight
 
-    if (this.props.showSnapshotButton) return (
-      <SnapshotButton
-        onClick={this.props.handleOpenModal}
-        className={`SecondaryNav-toolsButton SecondaryNav-createSnapshotButton ${
-          highlight ? "isHighlighted" : ""
-        }`}
-      >
-        <SnapshotSvg className="SecondaryNav-snapshotSvg" />
-        <span>
-          Create a <br />
-          Snapshot
-        </span>
-      </SnapshotButton>
-    )
+    if (this.props.showSnapshotButton)
+      return (
+        <SnapshotButton
+          onClick={this.props.handleOpenModal}
+          className={`SecondaryNav-toolsButton SecondaryNav-createSnapshotButton ${
+            highlight ? "isHighlighted" : ""
+          }`}
+        >
+          <SnapshotSvg className="SecondaryNav-snapshotSvg" />
+          <span>
+            Create a <br />
+            Snapshot
+          </span>
+        </SnapshotButton>
+      )
   }
 }
 

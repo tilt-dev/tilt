@@ -1,12 +1,10 @@
 import React from "react"
 import renderer from "react-test-renderer"
+import SecondaryNav from "./SecondaryNav"
 import { MemoryRouter } from "react-router"
 import { ResourceView } from "./types"
-import SecondaryNav from "./SecondaryNav"
 
-const fakeHandleOpenModal = () => {}
-
-it("shows snapshot url", () => {
+it("shows logs", () => {
   const tree = renderer
     .create(
       <MemoryRouter>
@@ -14,11 +12,8 @@ it("shows snapshot url", () => {
           logUrl="/r/foo"
           alertsUrl="/r/foo/alerts"
           facetsUrl={null}
-          resourceView={ResourceView.Alerts}
-          numberOfAlerts={1}
-          showSnapshotButton={true}
-          handleOpenModal={fakeHandleOpenModal}
-          highlight={null}
+          resourceView={ResourceView.Log}
+          numberOfAlerts={0}
         />
       </MemoryRouter>
     )
@@ -27,7 +22,7 @@ it("shows snapshot url", () => {
   expect(tree).toMatchSnapshot()
 })
 
-it("doesn't render snapshot button if it's a snapshot", () => {
+it("shows error pane", () => {
   const tree = renderer
     .create(
       <MemoryRouter>
@@ -36,10 +31,43 @@ it("doesn't render snapshot button if it's a snapshot", () => {
           alertsUrl="/r/foo/alerts"
           facetsUrl={null}
           resourceView={ResourceView.Alerts}
-          numberOfAlerts={1}
-          showSnapshotButton={false}
-          handleOpenModal={fakeHandleOpenModal}
-          highlight={null}
+          numberOfAlerts={0}
+        />
+      </MemoryRouter>
+    )
+    .toJSON()
+
+  expect(tree).toMatchSnapshot()
+})
+
+it("shows the number of errors in the error tab", () => {
+  const tree = renderer
+    .create(
+      <MemoryRouter>
+        <SecondaryNav
+          logUrl="/r/foo"
+          alertsUrl="/r/foo/alerts"
+          facetsUrl={null}
+          resourceView={ResourceView.Alerts}
+          numberOfAlerts={27}
+        />
+      </MemoryRouter>
+    )
+    .toJSON()
+
+  expect(tree).toMatchSnapshot()
+})
+
+it("shows a facets tab", () => {
+  const tree = renderer
+    .create(
+      <MemoryRouter>
+        <SecondaryNav
+          logUrl="/r/foo"
+          alertsUrl="/r/foo/alerts"
+          facetsUrl="/r/foo/facets"
+          resourceView={ResourceView.Facets}
+          numberOfAlerts={0}
         />
       </MemoryRouter>
     )
