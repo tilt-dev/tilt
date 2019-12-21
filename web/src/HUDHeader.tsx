@@ -15,19 +15,18 @@ type HUDHeaderProps = {
 }
 
 let Root = styled.div`
+  display: flex;
   padding: ${s.SizeUnit(0.5)};
   background-color: ${s.Color.grayDarkest};
-`
-
-let Title = styled.h2`
-  font-family: ${s.Font.sansSerif};
-  font-size: ${s.FontSize.default};
-  margin: 0;
 `
 
 let PodStatus = styled.span``
 
 let PortForward = styled.span``
+
+let PortForwardLabel = styled.span``
+
+let PortForwardLink = styled.a``
 
 let PodId = styled.span``
 
@@ -64,55 +63,6 @@ let SnapshotButtonSvg = styled(SnapshotSvg)`
 `
 
 class HUDHeader extends PureComponent<HUDHeaderProps> {
-  render() {
-    let name = this.props.name ?? "Overview"
-    let podID = this.props.podID
-    let podStatus = this.props.podStatus
-    let podIDEl = podID && (
-      <>
-        {podID && (
-          <div className="resourceInfo">
-            <div className="resourceInfo-value">
-              {podID} ({podStatus})
-            </div>
-          </div>
-        )}
-      </>
-    )
-
-    let endpoints = this.props.endpoints ?? []
-    let endpointsEl = endpoints?.length > 0 && (
-      <div className="resourceInfo">
-        <div className="resourceInfo-label">
-          Port Forward{endpoints?.length > 1 ? "s" : ""}:
-        </div>
-        {endpoints?.map(ep => (
-          <a
-            className="resourceInfo-value"
-            href={ep}
-            target="_blank"
-            rel="noopener noreferrer"
-            key={ep}
-          >
-            {ep}
-          </a>
-        ))}
-      </div>
-    )
-
-    return (
-      <Root>
-        <Title>{name}</Title>
-
-        <PodStatus>({podStatus})</PodStatus>
-        <PodId>{podID}</PodId>
-        <PortForward>{endpointsEl}</PortForward>
-
-        {this.renderSnapshotButton()}
-      </Root>
-    )
-  }
-
   renderSnapshotButton() {
     let highlight = this.props.highlight
 
@@ -131,6 +81,40 @@ class HUDHeader extends PureComponent<HUDHeaderProps> {
           </span>
         </SnapshotButton>
       )
+  }
+
+  render() {
+    let podStatus = this.props.podStatus
+    let podID = this.props.podID
+
+    let endpoints = this.props.endpoints ?? []
+    let endpointsEl = endpoints?.length > 0 && (
+      <PortForward>
+        <PortForwardLabel>
+          Port-Forward{endpoints?.length > 1 ? "s" : ""}:
+        </PortForwardLabel>
+        {endpoints?.map(ep => (
+          <PortForwardLink
+            className="resourceInfo-value"
+            href={ep}
+            target="_blank"
+            rel="noopener noreferrer"
+            key={ep}
+          >
+            {ep}
+          </PortForwardLink>
+        ))}
+      </PortForward>
+    )
+
+    return (
+      <Root>
+        <PodStatus>({podStatus})</PodStatus>
+        <PodId>{podID}</PodId>
+        {endpointsEl}
+        {this.renderSnapshotButton()}
+      </Root>
+    )
   }
 }
 
