@@ -32,9 +32,35 @@ let PortForward = styled.span``
 let PodId = styled.span``
 
 let SnapshotButton = styled.button`
-  border: 0;
+  border: 1px solid transparent;
+  font-family: ${s.Font.sansSerif};
+  font-size: ${s.FontSize.smallest};
   background-color: transparent;
   color: ${s.Color.blue};
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  padding-left: ${s.SizeUnit(0.5)};
+  padding-right: ${s.SizeUnit(0.5)};
+  padding-top: ${s.SizeUnit(0.25)};
+  padding-bottom: ${s.SizeUnit(0.25)};
+  transition: border-color;
+  transition-duration: ${s.AnimDuration.default};
+  text-decoration: none;
+  cursor: pointer;
+  
+  &:hover {
+    background-color: ${s.Color.grayDark};
+    border-color: ${s.Color.blue};
+  }
+  
+  &.isHighlighted {
+    border-color: ${s.Color.blue};
+  }
+`
+
+let SnapshotButtonSvg = styled(SnapshotSvg)`
+  margin-right: ${s.SizeUnit(0.25)};
 `
 
 class HUDHeader extends PureComponent<HUDHeaderProps> {
@@ -98,7 +124,7 @@ class HUDHeader extends PureComponent<HUDHeaderProps> {
             highlight ? "isHighlighted" : ""
           }`}
         >
-          <SnapshotSvg className="SecondaryNav-snapshotSvg" />
+          <SnapshotButtonSvg />
           <span>
             Create a <br />
             Snapshot
