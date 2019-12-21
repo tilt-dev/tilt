@@ -5,7 +5,6 @@ import { SnapshotHighlight } from "./types"
 import { ReactComponent as SnapshotSvg } from "./assets/svg/snapshot.svg"
 
 type HUDHeaderProps = {
-  name?: string
   podID?: string
   endpoints?: string[]
   podStatus?: string
@@ -16,19 +15,36 @@ type HUDHeaderProps = {
 
 let Root = styled.div`
   display: flex;
-  padding: ${s.SizeUnit(0.5)};
+  align-items: center;
+  padding-top: ${s.SizeUnit(0.25)};
+  padding-left: ${s.SizeUnit(0.5)};
+  padding-right: ${s.SizeUnit(0.25)};
   background-color: ${s.Color.grayDarkest};
 `
+let ResourceInfo = styled.div`
+  flex: 1;
+  display: flex;
+  padding-right: ${s.SizeUnit(0.5)};
+`
 
-let PodStatus = styled.span``
-
-let PortForward = styled.span``
-
-let PortForwardLabel = styled.span``
-
-let PortForwardLink = styled.a``
+let PodStatus = styled.span`
+  font-family: ${s.Font.sansSerif};
+  font-size: ${s.FontSize.small};
+  flex: 1;
+`
 
 let PodId = styled.span``
+
+let PortForward = styled.span``
+let PortForwardLabel = styled.span`
+  color: ${s.Color.grayLight};
+  margin-left: ${s.SizeUnit(0.5)};
+  border-left: 1px solid ${s.Color.gray};
+  padding-left: ${s.SizeUnit(0.5)};
+  margin-right: ${s.SizeUnit(0.25)};
+`
+let PortForwardLink = styled.a``
+
 
 let SnapshotButton = styled.button`
   border: 1px solid transparent;
@@ -109,9 +125,15 @@ class HUDHeader extends PureComponent<HUDHeaderProps> {
 
     return (
       <Root>
-        <PodStatus>({podStatus})</PodStatus>
-        <PodId>{podID}</PodId>
-        {endpointsEl}
+        <ResourceInfo>
+          {podStatus &&
+          <PodStatus>{podStatus}</PodStatus>
+          }
+          {podID &&
+          <PodId>{podID}</PodId>
+          }
+          {endpointsEl}
+        </ResourceInfo>
         {this.renderSnapshotButton()}
       </Root>
     )

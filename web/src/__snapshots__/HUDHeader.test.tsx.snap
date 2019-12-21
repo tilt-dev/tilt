@@ -2,55 +2,27 @@
 
 exports[`doesn't render snapshot button if it's a snapshot 1`] = `
 <div
-  className="sc-bdVaJa bxUDrD"
+  className="sc-bdVaJa lkbuwB"
 >
-  <h2
-    className="sc-bwzfXH hMIJcV"
-  >
-    Overview
-  </h2>
-  <span
-    className="sc-htpNat KtFsv"
-  >
-    (
-    )
-  </span>
-  <span
-    className="sc-ifAKCX cFlEyZ"
-  />
-  <span
-    className="sc-bxivhb bUZGRr"
+  <div
+    className="sc-bwzfXH fdpnBr"
   />
 </div>
 `;
 
 exports[`shows snapshot url 1`] = `
 <div
-  className="sc-bdVaJa bxUDrD"
+  className="sc-bdVaJa lkbuwB"
 >
-  <h2
-    className="sc-bwzfXH hMIJcV"
-  >
-    Overview
-  </h2>
-  <span
-    className="sc-htpNat KtFsv"
-  >
-    (
-    )
-  </span>
-  <span
-    className="sc-ifAKCX cFlEyZ"
-  />
-  <span
-    className="sc-bxivhb bUZGRr"
+  <div
+    className="sc-bwzfXH fdpnBr"
   />
   <button
-    className="sc-EHOje dPeXyk snapshotButton "
+    className="sc-gzVnrw ieJGxp snapshotButton "
     onClick={[Function]}
   >
     <svg
-      className="SecondaryNav-snapshotSvg"
+      className="sc-htoDjs jYtsma"
     >
       snapshot.svg
     </svg>

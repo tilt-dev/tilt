@@ -289,7 +289,6 @@ class HUD extends Component<HudProps, HudState> {
     if (!name) {
       return (
         <HUDHeader
-          podID="Path not exact match"
           showSnapshotButton={showSnapshot}
           highlight={snapshotHighlight}
           handleOpenModal={this.handleOpenModal}
@@ -303,7 +302,6 @@ class HUD extends Component<HudProps, HudState> {
     if (!r) {
       return (
         <HUDHeader
-          podID="No Name match"
           showSnapshotButton={showSnapshot}
           highlight={snapshotHighlight}
           handleOpenModal={this.handleOpenModal}
@@ -316,7 +314,6 @@ class HUD extends Component<HudProps, HudState> {
     let podStatus = (r.k8sResourceInfo && r.k8sResourceInfo.podStatus) || ""
     return (
       <HUDHeader
-        name={name}
         endpoints={endpoints}
         podID={podID}
         podStatus={podStatus}
