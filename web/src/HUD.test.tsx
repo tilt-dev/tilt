@@ -141,7 +141,7 @@ it("renders tab nav", () => {
 
   let resourceView = oneResourceView()
   hud.setState({ view: resourceView })
-  let tabNavLinks = root.find(".TabNav Link")
+  let tabNavLinks = root.find(".secondaryNav Link")
   expect(tabNavLinks).toHaveLength(2)
 })
 
@@ -151,7 +151,7 @@ it("renders number of errors in tabnav when no resource is selected", () => {
 
   let resourceView = twoResourceView()
   hud.setState({ view: resourceView })
-  let errorTab = root.find(".tabLink--errors")
+  let errorTab = root.find(".secondaryNavLink--alerts")
   expect(errorTab.at(0).text()).toEqual("Alerts2")
 })
 
@@ -165,7 +165,7 @@ it("renders the number of errors a resource has in tabnav when a resource is sel
 
   let resourceView = twoResourceView()
   hud.setState({ view: resourceView })
-  let errorTab = root.find(".tabLink--errors")
+  let errorTab = root.find(".secondaryNavLink--alerts")
   expect(errorTab.at(0).text()).toEqual("Alerts1")
 })
 
@@ -178,7 +178,7 @@ it("renders two errors for a resource that has pod restarts and a build failure"
   if (!resource.k8sResourceInfo) throw new Error("missing k8s info")
   resource.k8sResourceInfo.podRestarts = 1
   hud.setState({ view: resourceView })
-  let errorTab = root.find(".tabLink--errors")
+  let errorTab = root.find(".secondaryNavLink--alerts")
   expect(errorTab.at(0).text()).toEqual("Alerts2")
 })
 
@@ -192,7 +192,7 @@ it("renders two errors for a resource that has pod restarts, a build failure and
   resource.k8sResourceInfo.podRestarts = 1
   resourceView.resources[0].runtimeStatus = "CrashLoopBackOff"
   hud.setState({ view: resourceView })
-  let errorTab = root.find(".tabLink--errors")
+  let errorTab = root.find(".secondaryNavLink--alerts")
   expect(errorTab.at(0).text()).toEqual("Alerts2")
 })
 
@@ -201,7 +201,7 @@ it("renders no error count in tabnav if there are no errors", () => {
   const hud = root.find(HUD)
 
   hud.setState({ view: { resources: [oneResourceNoAlerts()] } })
-  let errorTab = root.find(".tabLink--errors")
+  let errorTab = root.find(".secondaryNavLink--alerts")
   expect(errorTab.at(0).text()).toEqual("Alerts")
 })
 
@@ -234,7 +234,7 @@ it("renders snapshot button if snapshots are enabled and this isn't a snapshot v
   view.featureFlags = { snapshots: true }
   hud.setState({ view: view })
 
-  let button = root.find(".TopBar-createSnapshotButton")
+  let button = root.find(".snapshotButton")
   expect(button.exists()).toBe(true)
 
   button.simulate("click")

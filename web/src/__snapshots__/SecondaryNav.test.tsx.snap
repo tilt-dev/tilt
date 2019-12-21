@@ -1,0 +1,149 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`shows a facets tab 1`] = `
+<nav
+  className="sc-bdVaJa kJMsTa secondaryNav"
+>
+  <ul
+    className="sc-bwzfXH cLGadd"
+  >
+    <li
+      className="sc-htpNat KtFsv"
+    >
+      <a
+        className="sc-bxivhb iGOaYD"
+        href="/r/foo"
+        onClick={[Function]}
+      >
+        Logs
+      </a>
+    </li>
+    <li
+      className="sc-htpNat KtFsv"
+    >
+      <a
+        className="sc-bxivhb iGOaYD secondaryNavLink--alerts "
+        href="/r/foo/alerts"
+        onClick={[Function]}
+      >
+        Alerts
+      </a>
+    </li>
+    <li
+      className="sc-htpNat KtFsv"
+    >
+      <a
+        className="sc-bxivhb iGOaYD tabLink isSelected"
+        href="/r/foo/facets"
+        onClick={[Function]}
+      >
+        Facets
+      </a>
+    </li>
+  </ul>
+</nav>
+`;
+
+exports[`shows error pane 1`] = `
+<nav
+  className="sc-bdVaJa kJMsTa secondaryNav"
+>
+  <ul
+    className="sc-bwzfXH cLGadd"
+  >
+    <li
+      className="sc-htpNat KtFsv"
+    >
+      <a
+        className="sc-bxivhb iGOaYD"
+        href="/r/foo"
+        onClick={[Function]}
+      >
+        Logs
+      </a>
+    </li>
+    <li
+      className="sc-htpNat KtFsv"
+    >
+      <a
+        className="sc-bxivhb iGOaYD secondaryNavLink--alerts isSelected"
+        href="/r/foo/alerts"
+        onClick={[Function]}
+      >
+        Alerts
+      </a>
+    </li>
+  </ul>
+</nav>
+`;
+
+exports[`shows logs 1`] = `
+<nav
+  className="sc-bdVaJa kJMsTa secondaryNav"
+>
+  <ul
+    className="sc-bwzfXH cLGadd"
+  >
+    <li
+      className="sc-htpNat KtFsv"
+    >
+      <a
+        className="sc-bxivhb iGOaYD isSelected"
+        href="/r/foo"
+        onClick={[Function]}
+      >
+        Logs
+      </a>
+    </li>
+    <li
+      className="sc-htpNat KtFsv"
+    >
+      <a
+        className="sc-bxivhb iGOaYD secondaryNavLink--alerts "
+        href="/r/foo/alerts"
+        onClick={[Function]}
+      >
+        Alerts
+      </a>
+    </li>
+  </ul>
+</nav>
+`;
+
+exports[`shows the number of errors in the error tab 1`] = `
+<nav
+  className="sc-bdVaJa kJMsTa secondaryNav"
+>
+  <ul
+    className="sc-bwzfXH cLGadd"
+  >
+    <li
+      className="sc-htpNat KtFsv"
+    >
+      <a
+        className="sc-bxivhb iGOaYD"
+        href="/r/foo"
+        onClick={[Function]}
+      >
+        Logs
+      </a>
+    </li>
+    <li
+      className="sc-htpNat KtFsv"
+    >
+      <a
+        className="sc-bxivhb iGOaYD secondaryNavLink--alerts isSelected"
+        href="/r/foo/alerts"
+        onClick={[Function]}
+      >
+        Alerts
+        <div
+          className="sc-ifAKCX kVDpoh"
+        >
+          27
+        </div>
+      </a>
+    </li>
+  </ul>
+</nav>
+`;

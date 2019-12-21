@@ -94,7 +94,7 @@ class HUDHeader extends PureComponent<HUDHeaderProps> {
       return (
         <SnapshotButton
           onClick={this.props.handleOpenModal}
-          className={`SecondaryNav-toolsButton SecondaryNav-createSnapshotButton ${
+          className={`snapshotButton ${
             highlight ? "isHighlighted" : ""
           }`}
         >
