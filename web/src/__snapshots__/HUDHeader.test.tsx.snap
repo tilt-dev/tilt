@@ -18,7 +18,7 @@ exports[`shows snapshot url 1`] = `
     className="sc-bwzfXH fdpnBr"
   />
   <button
-    className="sc-gzVnrw ieJGxp snapshotButton "
+    className="sc-gzVnrw jlKHQi snapshotButton "
     onClick={[Function]}
   >
     <svg

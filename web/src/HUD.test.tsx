@@ -234,7 +234,7 @@ it("renders snapshot button if snapshots are enabled and this isn't a snapshot v
   view.featureFlags = { snapshots: true }
   hud.setState({ view: view })
 
-  let button = root.find(".snapshotButton")
+  let button = root.find("button.snapshotButton")
   expect(button.exists()).toBe(true)
 
   button.simulate("click")
