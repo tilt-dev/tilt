@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -1046,4 +1047,208 @@ func TestLogsLongResourceName(t *testing.T) {
 	err := f.Stop()
 	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
+}
+
+func TestBuildControllerWontBuildManifestThatsAlreadyBuilding(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	f.b.completeBuildsManually = true
+
+	// allow multiple builds at once; we care that we can't start multiple builds
+	// of the same manifest, even if there ARE build slots available.
+	f.setMaxBuildSlots(3)
+
+	manifest := f.newManifest("fe")
+	f.StartAndWaitForInitialBuilds([]model.Manifest{manifest}, true)
+	f.waitUntilNumBuildSlots(3)
+
+	// file change starts a build
+	build1Index := f.editFileAndWaitForManifestBuilding("fe", "A.txt")
+	f.waitUntilNumBuildSlots(2)
+
+	// a second file change doesn't start a second build, b/c 'fe' is already building
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("B.txt"))
+	f.waitUntilNumBuildSlots(2) // still two build slots available
+
+	// on completing the first build, build from second file change will start
+	build2Index := f.runAndWaitForManifestBuilding("fe", func() {
+		f.b.completeBuild(build1Index)
+		call := f.nextCall("expect build from first pending file change (A.txt)")
+		f.assertCallIsForManifestAndFiles(call, manifest, "A.txt")
+		f.waitForCompletedBuildCount(2)
+	})
+
+	f.b.completeBuild(build2Index)
+	call := f.nextCall("expect build from second pending file change (B.txt)")
+	f.assertCallIsForManifestAndFiles(call, manifest, "B.txt")
+	f.waitUntilManifestNotBuilding("fe")
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+}
+
+func TestBuildControllerWontBuildManifestIfNoSlotsAvailable(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	f.b.completeBuildsManually = true
+	f.setMaxBuildSlots(2)
+
+	manA := f.newDockerBuildManifestWithBuildPath("manA", f.JoinPath("a"))
+	manB := f.newDockerBuildManifestWithBuildPath("manB", f.JoinPath("b"))
+	manC := f.newDockerBuildManifestWithBuildPath("manC", f.JoinPath("c"))
+	f.StartAndWaitForInitialBuilds([]model.Manifest{manA, manB, manC}, true)
+
+	// start builds for all manifests (we only have 2 build slots)
+	indexA := f.editFileAndWaitForManifestBuilding("manA", "a/main.go")
+	indexB := f.editFileAndWaitForManifestBuilding("manB", "b/main.go")
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("c/main.go"))
+	f.waitUntilManifestNotBuilding("manC")
+
+	// Complete one build -- now there's a free build slot for 'manC'
+	indexC := f.runAndWaitForManifestBuilding("manC", func() {
+		f.b.completeBuild(indexA)
+		call := f.nextCall("expect manA build complete")
+		f.assertCallIsForManifestAndFiles(call, manA, "a/main.go")
+	})
+	f.waitUntilManifestBuilding("manC")
+
+	// complete the rest (can't guarantee order)
+	f.b.completeBuild(indexC)
+	f.b.completeBuild(indexB)
+	targetsFromCalls := f.imageTargsForNextNCalls(2)
+	require.Len(t, targetsFromCalls, 2)
+	assert.Contains(t, targetsFromCalls, manB.ImageTargetAt(0))
+	assert.Contains(t, targetsFromCalls, manC.ImageTargetAt(0))
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+}
+
+func TestCurrentlyBuildingMayExceedMaxBuildCount(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	f.b.completeBuildsManually = true
+	f.setMaxBuildSlots(3)
+
+	manA := f.newDockerBuildManifestWithBuildPath("manA", f.JoinPath("a"))
+	manB := f.newDockerBuildManifestWithBuildPath("manB", f.JoinPath("b"))
+	manC := f.newDockerBuildManifestWithBuildPath("manC", f.JoinPath("c"))
+	f.StartAndWaitForInitialBuilds([]model.Manifest{manA, manB, manC}, true)
+
+	// start builds for all manifests
+	manABuild1Index := f.editFileAndWaitForManifestBuilding("manA", "a/main.go")
+	manBBuild1Index := f.editFileAndWaitForManifestBuilding("manB", "b/main.go")
+	manCBuild1Index := f.editFileAndWaitForManifestBuilding("manC", "c/main.go")
+	f.waitUntilNumBuildSlots(0)
+
+	// decrease max build slots (now less than the number of current builds, but this is okay)
+	f.setMaxBuildSlots(2)
+	f.waitUntilNumBuildSlots(0)
+
+	// another file change for manB -- will try to start another build as soon as possible
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("b/other.go"))
+
+	f.b.completeBuild(manBBuild1Index)
+	call := f.nextCall("expect manB build complete")
+	require.Equal(t, manB.ImageTargetAt(0).ID(), call.firstImgTarg().ID())
+	require.Equal(t, []string{f.JoinPath("b/main.go")}, call.oneState().FilesChanged())
+
+	// we should NOT see another build for manB, even though it has a pending file change,
+	// b/c we don't have enough slots (since we decreased maxBuildSlots)
+	f.waitUntilNumBuildSlots(0)
+	f.waitUntilManifestNotBuilding("manB")
+
+	// now that we have an available slots again, manB will rebuild
+	manBBuild2Index := f.runAndWaitForManifestBuilding("manB", func() {
+		f.b.completeBuild(manABuild1Index)
+		call = f.nextCall("expect manA build complete")
+		require.Equal(t, manA.ImageTargetAt(0).ID(), call.firstImgTarg().ID())
+		require.Equal(t, []string{f.JoinPath("a/main.go")}, call.oneState().FilesChanged())
+	})
+
+	f.b.completeBuild(manBBuild2Index)
+	call = f.nextCall("expect manB build complete (second build)")
+	require.Equal(t, manB.ImageTargetAt(0).ID(), call.firstImgTarg().ID())
+	require.Equal(t, call.oneState().FilesChanged(), []string{f.JoinPath("b/other.go")})
+
+	f.b.completeBuild(manCBuild1Index)
+	call = f.nextCall("expect manC build complete")
+	require.Equal(t, manC.ImageTargetAt(0).ID(), call.firstImgTarg().ID())
+	require.Equal(t, []string{f.JoinPath("c/main.go")}, call.oneState().FilesChanged())
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+}
+
+// TO TEST: error stuff
+// TO TEST: buildcontroller.startedbuildcount unsynced w/ state - don't start new build
+
+func (f *testFixture) waitUntilManifestBuilding(name model.ManifestName) {
+	msg := fmt.Sprintf("manifest %q is building", name)
+	f.WaitUntilManifestState(msg, name, func(ms store.ManifestState) bool {
+		return ms.IsBuilding()
+	})
+
+	f.withState(func(st store.EngineState) {
+		_, ok := st.CurrentlyBuilding[name]
+		require.True(f.t, ok, "expected EngineState to reflect that %q is currently building", name)
+	})
+}
+
+func (f *testFixture) waitUntilBuildCountAtLeast(n int) {
+	ctx, _ := context.WithTimeout(f.ctx, time.Millisecond*200)
+	for {
+		if f.b.buildCount >= n {
+			return
+		}
+
+		select {
+		case <-ctx.Done():
+			f.T().Fatalf("Timed out waiting for buildCount >= %d", n)
+		case <-time.After(time.Millisecond * 5):
+		}
+	}
+}
+
+func (f *testFixture) waitUntilManifestNotBuilding(name model.ManifestName) {
+	msg := fmt.Sprintf("manifest %q is NOT building", name)
+	f.WaitUntilManifestState(msg, name, func(ms store.ManifestState) bool {
+		return !ms.IsBuilding()
+	})
+
+	f.withState(func(st store.EngineState) {
+		_, ok := st.CurrentlyBuilding[name]
+		require.False(f.t, ok, "expected EngineState to reflect that %q is NOT currently building", name)
+	})
+}
+
+func (f *testFixture) waitUntilNumBuildSlots(expected int) {
+	msg := fmt.Sprintf("%d build slots available", expected)
+	f.WaitUntil(msg, func(st store.EngineState) bool {
+		return expected == st.AvailableBuildSlots()
+	})
+}
+
+func (f *testFixture) editFileAndWaitForManifestBuilding(name model.ManifestName, path string) (buildIndex int) {
+	startBuildCount := f.b.buildCount
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath(path))
+	f.waitUntilManifestBuilding(name)
+	f.waitUntilBuildCountAtLeast(startBuildCount + 1)
+	return startBuildCount + 1
+}
+
+func (f *testFixture) runAndWaitForManifestBuilding(name model.ManifestName, fn func()) (buildIndex int) {
+	startBuildCount := f.b.buildCount
+	fn()
+	f.waitUntilManifestBuilding(name)
+	f.waitUntilBuildCountAtLeast(startBuildCount + 1)
+	return startBuildCount + 1
+}
+
+func (f *testFixture) assertCallIsForManifestAndFiles(call buildAndDeployCall, m model.Manifest, files ...string) {
+	assert.Equal(f.t, m.ImageTargetAt(0).ID(), call.firstImgTarg().ID())
+	assert.Equal(f.t, f.JoinPaths(files), call.oneState().FilesChanged())
 }

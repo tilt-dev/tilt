@@ -199,6 +199,7 @@ func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deploy
 }
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, state store.BuildStateSet) (brs store.BuildResultSet, err error) {
+	fmt.Println("~ calling BaD")
 	b.buildCount++
 	index := b.buildCount
 	b.registerBuild(index)
@@ -306,8 +307,10 @@ func (b *fakeBuildAndDeployer) getBuildCompletionChan(index int) (buildCompletio
 }
 
 func (b *fakeBuildAndDeployer) registerBuild(index int) {
+	fmt.Printf("~ registring build #%d\n", index)
 	if _, ok := b.getBuildCompletionChan(index); ok {
-		b.t.Fatalf("Tried to register build #%d, but it's already registered (i.e. completion chan already exists)", index)
+		// already in map, nothing to do
+		return
 	}
 	ch := make(buildCompletionChannel)
 	b.buildCompletionChans.Store(index, ch)
@@ -325,6 +328,7 @@ func (b *fakeBuildAndDeployer) waitUntilBuildCompleted(ctx context.Context, inde
 	case <-ctx.Done():
 	}
 
+	fmt.Printf("~ build #%d done!\n", index)
 	b.buildCompletionChans.Delete(index)
 }
 
@@ -338,11 +342,13 @@ func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 }
 
 func (b *fakeBuildAndDeployer) completeBuild(index int) {
+	fmt.Printf("~ completing build #%d\n", index)
 	ch, ok := b.getBuildCompletionChan(index)
 	if !ok {
-		// TODO(maia): maybe this should just create and close a channel for this key
-		b.t.Fatalf("tried to mark build #%d for for completion, but no completion channel registered (b.registerBuild(index) "+
-			"should already have been called--probably by b.BuildAndDeploy)", index)
+		fmt.Println("~~ chan doesn't exist, create it")
+		// If build chan doesn't exist, create and store it
+		ch = make(buildCompletionChannel)
+		b.buildCompletionChans.Store(index, ch)
 	}
 
 	close(ch)
@@ -3399,6 +3405,23 @@ func (f *testFixture) Start(manifests []model.Manifest, watchFiles bool, initOpt
 	f.startWithInitManifests(nil, manifests, watchFiles, initOptions...)
 }
 
+func (f *testFixture) StartAndWaitForInitialBuilds(manifests []model.Manifest, watchFiles bool, initOptions ...initOption) {
+	f.startWithInitManifests(nil, manifests, watchFiles, initOptions...)
+	if f.b.completeBuildsManually {
+		for i := range manifests {
+			f.b.completeBuild(i + 1) // builds are 1-indexed
+		}
+	}
+
+	expectedTargs := make([]model.ImageTarget, len(manifests))
+	for i, m := range manifests {
+		expectedTargs[i] = m.ImageTargetAt(0)
+		f.waitUntilManifestNotBuilding(m.Name)
+	}
+	actualTargs := f.imageTargsForNextNCalls(len(manifests), "wait for all initial builds")
+	require.ElementsMatch(f.t, expectedTargs, actualTargs, "did not see expected initial builds")
+}
+
 // starts the upper with the given manifests, bypassing normal tiltfile loading
 // Empty `initManifests` will run start ALL manifests
 func (f *testFixture) startWithInitManifests(initManifests []model.ManifestName, manifests []model.Manifest, watchFiles bool, initOptions ...initOption) {
@@ -3420,6 +3443,12 @@ func (f *testFixture) setManifests(manifests []model.Manifest) {
 	tfl.Result.Manifests = manifests
 	f.tfl = tfl
 	f.cc.SetTiltfileLoaderForTesting(tfl)
+}
+
+func (f *testFixture) setMaxBuildSlots(n int) {
+	state := f.store.LockMutableStateForTesting()
+	state.MaxBuildSlots = n
+	f.store.UnlockMutableState()
 }
 
 type initOption func(ia InitAction) InitAction
@@ -3622,6 +3651,15 @@ func (f *testFixture) nextCall(msgAndArgs ...interface{}) buildAndDeployCall {
 	}
 }
 
+func (f *testFixture) imageTargsForNextNCalls(n int, msgAndArgs ...interface{}) []model.ImageTarget {
+	targs := make([]model.ImageTarget, n)
+	for i := 0; i < n; i++ {
+		call := f.nextCall(msgAndArgs...)
+		targs[i] = call.firstImgTarg()
+	}
+	return targs
+}
+
 func (f *testFixture) assertNoCall(msgAndArgs ...interface{}) {
 	msg := "expected there to be no BuildAndDeployCalls, but found one"
 	if len(msgAndArgs) > 0 {
@@ -3748,7 +3786,7 @@ func (f *testFixture) newManifestWithRef(name string, ref reference.Named) model
 func (f *testFixture) newDockerBuildManifestWithBuildPath(name string, path string) model.Manifest {
 	db := model.DockerBuild{Dockerfile: "FROM alpine", BuildPath: path}
 	iTarget := NewSanchoLiveUpdateImageTarget(f).WithBuildDetails(db)
-	iTarget.ConfigurationRef = container.MustParseSelector(name) // each target should have a unique ID
+	iTarget.ConfigurationRef = container.MustParseSelector(strings.ToLower(name)) // each target should have a unique ID
 	return manifestbuilder.New(f, model.ManifestName(name)).
 		WithK8sYAML(SanchoYAML).
 		WithImageTarget(iTarget).
@@ -3766,6 +3804,7 @@ func (f *testFixture) newDCManifest(name string, DCYAMLRaw string, dockerfileCon
 }
 
 func (f *testFixture) assertAllBuildsConsumed() {
+	fmt.Println("*** calling it done")
 	close(f.b.calls)
 
 	for call := range f.b.calls {
