@@ -156,6 +156,10 @@ type fakeBuildAndDeployer struct {
 	t     *testing.T
 	calls chan buildAndDeployCall
 
+	resolveBuildsManually    bool
+	buildsAwaitingResolution map[int]bool
+	resolveBuildsMu          sync.Mutex
+
 	buildCount int
 
 	// Set this to simulate a container update that returns the container IDs
@@ -195,8 +199,15 @@ func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deploy
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, state store.BuildStateSet) (brs store.BuildResultSet, err error) {
 	b.buildCount++
+	count := b.buildCount
 
-	call := buildAndDeployCall{count: b.buildCount, specs: specs, state: state}
+	if !b.resolveBuildsManually {
+		// resolve builds automatically: mark the build for resolution now,,
+		// so we complete the build as soon as we start it
+		b.resolveBuildAtIndex(count)
+	}
+
+	call := buildAndDeployCall{count: count, specs: specs, state: state}
 	if call.dc().Empty() && call.k8s().Empty() && call.local().Empty() {
 		b.t.Fatalf("Invalid call: %+v", call)
 	}
@@ -272,16 +283,41 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		b.resultsByID[key] = val
 	}
 
+	// block until we know we're supposed to resolve this build
+	for {
+		if _, ok := b.buildsAwaitingResolution[count]; ok {
+			delete(b.buildsAwaitingResolution, count)
+			break
+		}
+
+		select {
+		case <-ctx.Done():
+			break
+		case <-time.After(time.Millisecond * 5):
+		}
+	}
+
 	return result, err
 }
 
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 	return &fakeBuildAndDeployer{
-		t:              t,
-		calls:          make(chan buildAndDeployCall, 20),
-		buildLogOutput: make(map[model.TargetID]string),
-		resultsByID:    store.BuildResultSet{},
+		t:                        t,
+		calls:                    make(chan buildAndDeployCall, 20),
+		buildsAwaitingResolution: make(map[int]bool),
+		buildLogOutput:           make(map[model.TargetID]string),
+		resultsByID:              store.BuildResultSet{},
 	}
+}
+
+func (b *fakeBuildAndDeployer) resolveBuildAtIndex(i int) {
+	b.resolveBuildsMu.Lock()
+	defer b.resolveBuildsMu.Unlock()
+
+	if _, ok := b.buildsAwaitingResolution[i]; ok {
+		b.t.Fatalf("Tried to mark build #%d for resolution, but build already marked", i)
+	}
+	b.buildsAwaitingResolution[i] = true
 }
 
 func TestUpper_Up(t *testing.T) {
