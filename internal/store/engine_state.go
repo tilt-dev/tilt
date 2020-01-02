@@ -42,8 +42,7 @@ type EngineState struct {
 	// How many builds have been completed (pass or fail) since starting tilt
 	CompletedBuildCount int
 
-	MaxBuildSlots                 int
-	BuildControllerSlotsAvailable int
+	MaxBuildSlots int
 
 	FatalError error
 	HUDEnabled bool
