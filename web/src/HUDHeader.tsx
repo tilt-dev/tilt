@@ -45,7 +45,6 @@ let PortForwardLabel = styled.span`
 `
 let PortForwardLink = styled.a``
 
-
 let SnapshotButton = styled.button`
   border: 1px solid transparent;
   font-family: ${s.Font.sansSerif};
@@ -63,12 +62,12 @@ let SnapshotButton = styled.button`
   transition-duration: ${s.AnimDuration.default};
   text-decoration: none;
   cursor: pointer;
-  
+
   &:hover {
     background-color: ${s.Color.grayDark};
     border-color: ${s.Color.blue};
   }
-  
+
   &.isHighlighted {
     border-color: ${s.Color.blue};
   }
@@ -86,9 +85,7 @@ class HUDHeader extends PureComponent<HUDHeaderProps> {
       return (
         <SnapshotButton
           onClick={this.props.handleOpenModal}
-          className={`snapshotButton ${
-            highlight ? "isHighlighted" : ""
-          }`}
+          className={`snapshotButton ${highlight ? "isHighlighted" : ""}`}
         >
           <SnapshotButtonSvg />
           <span>
@@ -126,12 +123,8 @@ class HUDHeader extends PureComponent<HUDHeaderProps> {
     return (
       <Root>
         <ResourceInfo>
-          {podStatus &&
-          <PodStatus>{podStatus}</PodStatus>
-          }
-          {podID &&
-          <PodId>{podID}</PodId>
-          }
+          {podStatus && <PodStatus>{podStatus}</PodStatus>}
+          {podID && <PodId>{podID}</PodId>}
           {endpointsEl}
         </ResourceInfo>
         {this.renderSnapshotButton()}

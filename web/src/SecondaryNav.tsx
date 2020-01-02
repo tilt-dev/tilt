@@ -84,13 +84,15 @@ class SecondaryNav extends PureComponent<NavProps> {
           </NavListItem>
           <NavListItem>
             <NavLink
-              className={`secondaryNavLink--alerts ${alertsIsSelected ? "isSelected" : ""}`}
+              className={`secondaryNavLink--alerts ${
+                alertsIsSelected ? "isSelected" : ""
+              }`}
               to={this.props.alertsUrl}
             >
               Alerts
-              {this.props.numberOfAlerts > 0 &&
+              {this.props.numberOfAlerts > 0 && (
                 <Badge>{this.props.numberOfAlerts}</Badge>
-              }
+              )}
             </NavLink>
           </NavListItem>
           {this.props.facetsUrl === null ? null : (
