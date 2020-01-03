@@ -705,6 +705,7 @@ k8s.io/cli-runtime/pkg/resource
 # k8s.io/client-go v0.0.0-20190918160344-1fbdaa4c8d90
 k8s.io/client-go/discovery
 k8s.io/client-go/discovery/cached/disk
+k8s.io/client-go/discovery/cached/memory
 k8s.io/client-go/discovery/fake
 k8s.io/client-go/dynamic
 k8s.io/client-go/dynamic/fake
