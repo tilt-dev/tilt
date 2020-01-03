@@ -70,6 +70,8 @@ import (
 
 var originalWD string
 
+type buildCompletionChannel chan bool
+
 func init() {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -156,6 +158,9 @@ type fakeBuildAndDeployer struct {
 	t     *testing.T
 	calls chan buildAndDeployCall
 
+	completeBuildsManually bool
+	buildCompletionChans   sync.Map // map[int]buildCompletionChannel; close channel at buildCompletionChans[n] to complete build #n
+
 	buildCount int
 
 	// Set this to simulate a container update that returns the container IDs
@@ -195,8 +200,16 @@ func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deploy
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, state store.BuildStateSet) (brs store.BuildResultSet, err error) {
 	b.buildCount++
+	index := b.buildCount
+	b.registerBuild(index)
 
-	call := buildAndDeployCall{count: b.buildCount, specs: specs, state: state}
+	if !b.completeBuildsManually {
+		// resolve builds automatically: mark the build for resolution now,,
+		// so we complete the build as soon as we start it
+		b.resolveBuild(index)
+	}
+
+	call := buildAndDeployCall{count: index, specs: specs, state: state}
 	if call.dc().Empty() && call.k8s().Empty() && call.local().Empty() {
 		b.t.Fatalf("Invalid call: %+v", call)
 	}
@@ -272,9 +285,47 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		b.resultsByID[key] = val
 	}
 
+	// block until we know we're supposed to resolve this build
+	b.waitUntilBuildCompleted(ctx, index)
+
 	return result, err
 }
+func (b *fakeBuildAndDeployer) getBuildCompletionChan(index int) (buildCompletionChannel, bool) {
+	var ch buildCompletionChannel
+	val, ok := b.buildCompletionChans.Load(index)
+	if ok {
+		var chanOk bool
+		ch, chanOk = val.(buildCompletionChannel)
+		if !chanOk {
+			panic(fmt.Sprintf("exected map value of type: buildCompletionChannel, got %T", val))
+		}
+	}
 
+	return ch, ok
+}
+
+func (b *fakeBuildAndDeployer) registerBuild(index int) {
+	if _, ok := b.getBuildCompletionChan(index); ok {
+		b.t.Fatalf("Tried to register build #%d, but it's already registered (i.e. completion chan already exists)", index)
+	}
+	ch := make(buildCompletionChannel)
+	b.buildCompletionChans.Store(index, ch)
+}
+
+func (b *fakeBuildAndDeployer) waitUntilBuildCompleted(ctx context.Context, index int) {
+	ch, ok := b.getBuildCompletionChan(index)
+	if !ok {
+		panic(fmt.Sprintf("no completion channel for build #%d (b.registerBuild should already have been called)", index))
+	}
+
+	// wait until channel for this build is closed, or context is canceled/finishes.
+	select {
+	case <-ch:
+	case <-ctx.Done():
+	}
+
+	b.buildCompletionChans.Delete(index)
+}
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 	return &fakeBuildAndDeployer{
 		t:              t,
@@ -282,6 +333,17 @@ func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 		buildLogOutput: make(map[model.TargetID]string),
 		resultsByID:    store.BuildResultSet{},
 	}
+}
+
+func (b *fakeBuildAndDeployer) resolveBuild(index int) {
+	ch, ok := b.getBuildCompletionChan(index)
+	if !ok {
+		// TODO(maia): maybe this should just create and close a channel for this key
+		b.t.Fatalf("tried to mark build #%d for for completion, but no completion channel registered (b.registerBuild(index) "+
+			"should already have been called--probably by b.BuildAndDeploy)", index)
+	}
+
+	close(ch)
 }
 
 func TestUpper_Up(t *testing.T) {
@@ -3277,7 +3339,7 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	ar := engineanalytics.ProvideAnalyticsReporter(ta, st)
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	k8sContextExt := k8scontext.NewExtension("fake-context", k8s.EnvDockerDesktop)
-	tfl := tiltfile.ProvideTiltfileLoader(ta, kCli, k8sContextExt, fakeDcc, feature.MainDefaults)
+	tfl := tiltfile.ProvideTiltfileLoader(ta, kCli, k8sContextExt, fakeDcc, "localhost", feature.MainDefaults)
 	cc := configs.NewConfigsController(tfl, dockerClient)
 	dcw := NewDockerComposeEventWatcher(fakeDcc)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
@@ -3675,6 +3737,12 @@ func (f *testFixture) TearDown() {
 	f.kClient.TearDown()
 	close(f.fsWatcher.events)
 	close(f.fsWatcher.errors)
+	f.b.buildCompletionChans.Range(func(key, value interface{}) bool {
+		if ch, ok := value.(buildCompletionChannel); ok {
+			close(ch)
+		}
+		return true
+	})
 	f.cancel()
 }
 

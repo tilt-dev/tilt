@@ -45,6 +45,7 @@ type tiltfileState struct {
 	// set at creation
 	ctx             context.Context
 	dcCli           dockercompose.DockerComposeClient
+	webHost         model.WebHost
 	k8sContextExt   k8scontext.Extension
 	privateRegistry container.Registry
 	features        feature.FeatureSet
@@ -112,12 +113,14 @@ const (
 func newTiltfileState(
 	ctx context.Context,
 	dcCli dockercompose.DockerComposeClient,
+	webHost model.WebHost,
 	k8sContextExt k8scontext.Extension,
 	privateRegistry container.Registry,
 	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
 		ctx:                        ctx,
 		dcCli:                      dcCli,
+		webHost:                    webHost,
 		k8sContextExt:              k8sContextExt,
 		privateRegistry:            privateRegistry,
 		buildIndex:                 newBuildIndex(),
@@ -910,7 +913,8 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 			ResourceDependencies: mds,
 		}
 
-		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, r.portForwards, r.extraPodSelectors, r.dependencyIDs, r.imageRefMap)
+		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.defaultedPortForwards(r.portForwards),
+			r.extraPodSelectors, r.dependencyIDs, r.imageRefMap)
 		if err != nil {
 			return nil, err
 		}
@@ -935,6 +939,29 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 	}
 
 	return result, nil
+}
+
+// Fill in default values in port-forwarding.
+//
+// In Kubernetes, "defaulted" is used as a verb to say "if a YAML value of a specification
+// was left blank, the API server should fill in the value with a default". See:
+//
+// https://kubernetes.io/docs/tasks/manage-kubernetes-objects/declarative-config/#default-field-values
+//
+// In Tilt, we typically do this in the Tiltfile loader post-execution.
+// Here, we default the port-forward Host to the WebHost.
+//
+// TODO(nick): I think the "right" way to do this is to give the starkit extension system
+// a "default"-ing hook that runs post-execution.
+func (s *tiltfileState) defaultedPortForwards(pfs []model.PortForward) []model.PortForward {
+	result := make([]model.PortForward, 0, len(pfs))
+	for _, pf := range pfs {
+		if pf.Host == "" {
+			pf.Host = string(s.webHost)
+		}
+		result = append(result, pf)
+	}
+	return result
 }
 
 // checkForImpossibleLiveUpdates logs a warning if the group of image targets contains

@@ -61,14 +61,7 @@ func (s snapshotUploader) TakeAndUpload(state store.EngineState) (SnapshotID, er
 	return s.Upload(state.Token, state.TeamName, &proto_webview.Snapshot{View: view})
 }
 
-func cleanSnapshot(snapshot *proto_webview.Snapshot) *proto_webview.Snapshot {
-	snapshot.View.FeatureFlags = nil
-	return snapshot
-}
-
 func (s snapshotUploader) Upload(token token.Token, teamID string, snapshot *proto_webview.Snapshot) (SnapshotID, error) {
-	snapshot = cleanSnapshot(snapshot)
-
 	b := &bytes.Buffer{}
 	jsEncoder := &runtime.JSONPb{OrigName: false, EmitDefaults: true}
 	err := jsEncoder.NewEncoder(b).Encode(snapshot)

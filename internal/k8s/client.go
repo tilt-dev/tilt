@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -160,12 +161,7 @@ func ProvideK8sClient(
 		return &explodingClient{fmt.Errorf("unable to create discovery client: %v", err)}
 	}
 
-	apiGroupResources, err := restmapper.GetAPIGroupResources(discoveryClient)
-	if err != nil {
-		return &explodingClient{fmt.Errorf("unable to fetch API Group Resources: %v", err)}
-	}
-
-	drm := restmapper.NewDiscoveryRESTMapper(apiGroupResources)
+	drm := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(discoveryClient))
 
 	// TODO(nick): I'm not happy about the way that pkg/browser uses global writers.
 	writer := logger.Get(ctx).Writer(logger.DebugLvl)
