@@ -2,16 +2,16 @@
 
 exports[`shows a facets tab 1`] = `
 <nav
-  className="sc-bdVaJa kJMsTa secondaryNav"
+  className="sc-bdVaJa fxbjhV secondaryNav"
 >
   <ul
     className="sc-bwzfXH cLGadd"
   >
     <li
-      className="sc-htpNat KtFsv"
+      className="sc-htpNat eDRDQF"
     >
       <a
-        className="sc-bxivhb iGOaYD"
+        className="sc-bxivhb eMMaIv"
         href="/r/foo"
         onClick={[Function]}
       >
@@ -19,10 +19,10 @@ exports[`shows a facets tab 1`] = `
       </a>
     </li>
     <li
-      className="sc-htpNat KtFsv"
+      className="sc-htpNat eDRDQF"
     >
       <a
-        className="sc-bxivhb iGOaYD secondaryNavLink--alerts "
+        className="sc-bxivhb eMMaIv secondaryNavLink--alerts "
         href="/r/foo/alerts"
         onClick={[Function]}
       >
@@ -30,10 +30,10 @@ exports[`shows a facets tab 1`] = `
       </a>
     </li>
     <li
-      className="sc-htpNat KtFsv"
+      className="sc-htpNat eDRDQF"
     >
       <a
-        className="sc-bxivhb iGOaYD tabLink isSelected"
+        className="sc-bxivhb eMMaIv tabLink isSelected"
         href="/r/foo/facets"
         onClick={[Function]}
       >
@@ -46,16 +46,16 @@ exports[`shows a facets tab 1`] = `
 
 exports[`shows error pane 1`] = `
 <nav
-  className="sc-bdVaJa kJMsTa secondaryNav"
+  className="sc-bdVaJa fxbjhV secondaryNav"
 >
   <ul
     className="sc-bwzfXH cLGadd"
   >
     <li
-      className="sc-htpNat KtFsv"
+      className="sc-htpNat eDRDQF"
     >
       <a
-        className="sc-bxivhb iGOaYD"
+        className="sc-bxivhb eMMaIv"
         href="/r/foo"
         onClick={[Function]}
       >
@@ -63,10 +63,10 @@ exports[`shows error pane 1`] = `
       </a>
     </li>
     <li
-      className="sc-htpNat KtFsv"
+      className="sc-htpNat eDRDQF"
     >
       <a
-        className="sc-bxivhb iGOaYD secondaryNavLink--alerts isSelected"
+        className="sc-bxivhb eMMaIv secondaryNavLink--alerts isSelected"
         href="/r/foo/alerts"
         onClick={[Function]}
       >
@@ -79,16 +79,16 @@ exports[`shows error pane 1`] = `
 
 exports[`shows logs 1`] = `
 <nav
-  className="sc-bdVaJa kJMsTa secondaryNav"
+  className="sc-bdVaJa fxbjhV secondaryNav"
 >
   <ul
     className="sc-bwzfXH cLGadd"
   >
     <li
-      className="sc-htpNat KtFsv"
+      className="sc-htpNat eDRDQF"
     >
       <a
-        className="sc-bxivhb iGOaYD isSelected"
+        className="sc-bxivhb eMMaIv isSelected"
         href="/r/foo"
         onClick={[Function]}
       >
@@ -96,10 +96,10 @@ exports[`shows logs 1`] = `
       </a>
     </li>
     <li
-      className="sc-htpNat KtFsv"
+      className="sc-htpNat eDRDQF"
     >
       <a
-        className="sc-bxivhb iGOaYD secondaryNavLink--alerts "
+        className="sc-bxivhb eMMaIv secondaryNavLink--alerts "
         href="/r/foo/alerts"
         onClick={[Function]}
       >
@@ -112,16 +112,16 @@ exports[`shows logs 1`] = `
 
 exports[`shows the number of errors in the error tab 1`] = `
 <nav
-  className="sc-bdVaJa kJMsTa secondaryNav"
+  className="sc-bdVaJa fxbjhV secondaryNav"
 >
   <ul
     className="sc-bwzfXH cLGadd"
   >
     <li
-      className="sc-htpNat KtFsv"
+      className="sc-htpNat eDRDQF"
     >
       <a
-        className="sc-bxivhb iGOaYD"
+        className="sc-bxivhb eMMaIv"
         href="/r/foo"
         onClick={[Function]}
       >
@@ -129,10 +129,10 @@ exports[`shows the number of errors in the error tab 1`] = `
       </a>
     </li>
     <li
-      className="sc-htpNat KtFsv"
+      className="sc-htpNat eDRDQF"
     >
       <a
-        className="sc-bxivhb iGOaYD secondaryNavLink--alerts isSelected"
+        className="sc-bxivhb eMMaIv secondaryNavLink--alerts isSelected"
         href="/r/foo/alerts"
         onClick={[Function]}
       >

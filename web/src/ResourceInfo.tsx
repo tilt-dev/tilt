@@ -8,20 +8,19 @@ type HUDHeaderProps = {
   podID?: string
   endpoints?: string[]
   podStatus?: string
-  showSnapshotButton?: boolean
-  handleOpenModal?: () => void
-  highlight?: SnapshotHighlight | null
+  showSnapshotButton: boolean
+  highlight: SnapshotHighlight | null
+  handleOpenModal: () => void
 }
 
 let Root = styled.div`
   display: flex;
   align-items: center;
-  padding-top: ${s.SizeUnit(0.25)};
+  height: ${s.Height.HUDheader - s.Height.secondaryNav}px;
   padding-left: ${s.SizeUnit(0.5)};
   padding-right: ${s.SizeUnit(0.25)};
-  background-color: ${s.Color.grayDarkest};
 `
-let ResourceInfo = styled.div`
+let ResourceInfoStyle = styled.div`
   flex: 1;
   display: flex;
   padding-right: ${s.SizeUnit(0.5)};
@@ -77,7 +76,7 @@ let SnapshotButtonSvg = styled(SnapshotSvg)`
   margin-right: ${s.SizeUnit(0.25)};
 `
 
-class HUDHeader extends PureComponent<HUDHeaderProps> {
+class ResourceInfo extends PureComponent<HUDHeaderProps> {
   renderSnapshotButton() {
     let highlight = this.props.highlight
 
@@ -122,15 +121,15 @@ class HUDHeader extends PureComponent<HUDHeaderProps> {
 
     return (
       <Root>
-        <ResourceInfo>
+        <ResourceInfoStyle>
           {podStatus && <PodStatus>{podStatus}</PodStatus>}
           {podID && <PodId>{podID}</PodId>}
           {endpointsEl}
-        </ResourceInfo>
+        </ResourceInfoStyle>
         {this.renderSnapshotButton()}
       </Root>
     )
   }
 }
 
-export default HUDHeader
+export default ResourceInfo

@@ -2,7 +2,7 @@ import React from "react"
 import renderer from "react-test-renderer"
 import { MemoryRouter } from "react-router"
 import { ResourceView, SnapshotHighlight } from "./types"
-import HUDHeader from "./HUDHeader"
+import ResourceInfo from "./ResourceInfo"
 
 const fakeHandleOpenModal = () => {}
 
@@ -10,7 +10,7 @@ it("shows snapshot url", () => {
   const tree = renderer
     .create(
       <MemoryRouter>
-        <HUDHeader
+        <ResourceInfo
           showSnapshotButton={true}
           handleOpenModal={fakeHandleOpenModal}
           highlight={null}
@@ -26,7 +26,7 @@ it("doesn't render snapshot button if it's a snapshot", () => {
   const tree = renderer
     .create(
       <MemoryRouter>
-        <HUDHeader showSnapshotButton={false} />
+        <ResourceInfo showSnapshotButton={false} />
       </MemoryRouter>
     )
     .toJSON()

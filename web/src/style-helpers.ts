@@ -53,7 +53,8 @@ export function SizeUnit(multiplier: number) {
 // Set sizes expressed in pixels:
 export enum Height {
   unit = unit,
-  topBar = unit * 2.25,
+  HUDheader = unit * 3,
+  secondaryNav = unit * 1.2,
   statusbar = unit * 1.5,
   resourceBar = unit * 1.5,
 }
@@ -65,7 +66,7 @@ export enum Width {
 }
 
 export enum ZIndex {
-  topFrame = 500,
+  HUDheader = 500,
 }
 
 export enum AnimDuration {

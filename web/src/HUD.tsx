@@ -5,7 +5,7 @@ import Sidebar, { SidebarItem } from "./Sidebar"
 import Statusbar, { StatusItem } from "./Statusbar"
 import LogPane from "./LogPane"
 import HeroScreen from "./HeroScreen"
-import HUDHeader from "./HUDHeader"
+import ResourceInfo from "./ResourceInfo"
 import K8sViewPane from "./K8sViewPane"
 import PathBuilder from "./PathBuilder"
 import { matchPath } from "react-router"
@@ -265,7 +265,6 @@ class HUD extends Component<HudProps, HudState> {
 
         <HUDLayout
           header={this.renderHUDHeader()}
-          stickyNav={this.renderSecondaryNav()}
           isSidebarClosed={!!this.state.isSidebarClosed}
         >
           {this.renderMainPaneSwitch()}
@@ -275,45 +274,36 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   renderHUDHeader() {
-    let showSnapshot =
-      this.getFeatures().isEnabled("snapshots") &&
-      !this.pathBuilder.isSnapshot()
+    return (
+      <>
+        {this.renderResourceInfo()}
+        {this.renderSecondaryNav()}
+      </>
+    )
+  }
 
-    let snapshotHighlight = this.state.snapshotHighlight || null
-
+  renderResourceInfo() {
     let match = matchPath(String(this.props.history.location.pathname), {
       path: this.path("/r/:name"),
     })
     let params: any = match?.params
     let name = params?.name
-    if (!name) {
-      return (
-        <HUDHeader
-          showSnapshotButton={showSnapshot}
-          highlight={snapshotHighlight}
-          handleOpenModal={this.handleOpenModal}
-        />
-      )
-    }
 
     let view = this.state.view
     let resources = view?.resources ?? []
-    let r = resources?.find(r => r.name === name)
-    if (!r) {
-      return (
-        <HUDHeader
-          showSnapshotButton={showSnapshot}
-          highlight={snapshotHighlight}
-          handleOpenModal={this.handleOpenModal}
-        />
-      )
-    }
+    let selectedResource = resources?.find(r => r.name === name)
 
-    let endpoints = r?.endpoints ?? []
-    let podID = r?.podID ?? ""
-    let podStatus = (r.k8sResourceInfo && r.k8sResourceInfo.podStatus) || ""
+    let endpoints = selectedResource?.endpoints ?? []
+    let podID = selectedResource?.podID ?? ""
+    let podStatus = (selectedResource?.k8sResourceInfo && selectedResource?.k8sResourceInfo.podStatus) || ""
+
+    let showSnapshot =
+      this.getFeatures().isEnabled("snapshots") &&
+      !this.pathBuilder.isSnapshot()
+    let snapshotHighlight = this.state.snapshotHighlight || null
+
     return (
-      <HUDHeader
+      <ResourceInfo
         endpoints={endpoints}
         podID={podID}
         podStatus={podStatus}
@@ -332,44 +322,32 @@ class HUD extends Component<HudProps, HudState> {
       t: ResourceView,
       props: RouteComponentProps<any>
     ) => {
-      let name =
-        props.match.params && props.match.params.name
-          ? props.match.params.name
-          : ""
+      let name = props.match.params?.name ?? ""
       let numAlerts = 0
+      let logUrl = name === "" ? this.path("/") : this.path(`/r/${name}`)
+      let alertsUrl = name === "" ? this.path("/alerts") : this.path(`/r/${name}/alerts`)
+
+      let isFacetsEnabled = this.getFeatures().isEnabled("facets")
+      let facetsUrl = name !== "" && isFacetsEnabled
+        ? this.path(`/r/${name}/facets`)
+        : null
+
       if (name) {
         let selectedResource = resources.find(r => r.name === name)
-        if (selectedResource === undefined) {
-          return (
-            <SecondaryNav
-              logUrl={this.path("/")} // redirect to home page
-              alertsUrl={this.path("/alerts")}
-              resourceView={t}
-              numberOfAlerts={numAlerts}
-              facetsUrl={null}
-            />
-          )
-        }
-        numAlerts = numberOfAlerts(selectedResource)
+        if (selectedResource) {numAlerts = numberOfAlerts(selectedResource)}
       } else {
         numAlerts = resources
           .map(r => numberOfAlerts(r))
           .reduce((sum, current) => sum + current, 0)
       }
-      let isFacetsEnabled = this.getFeatures().isEnabled("facets")
+
       return (
         <SecondaryNav
-          logUrl={name === "" ? this.path("/") : this.path(`/r/${name}`)}
-          alertsUrl={
-            name === "" ? this.path("/alerts") : this.path(`/r/${name}/alerts`)
-          }
+          logUrl={logUrl}
+          alertsUrl={alertsUrl}
           resourceView={t}
           numberOfAlerts={numAlerts}
-          facetsUrl={
-            name !== "" && isFacetsEnabled
-              ? this.path(`/r/${name}/facets`)
-              : null
-          }
+          facetsUrl={facetsUrl}
         />
       )
     }

@@ -13,8 +13,9 @@ type NavProps = {
 }
 
 let Root = styled.nav`
-  background-color: ${s.Color.grayDarkest};
-  box-shadow: inset 0px -2px 10px 0px rgba(${s.Color.black}, ${s.ColorAlpha.translucent});
+  height: ${s.Height.secondaryNav}px;
+  display: flex;
+  align-items: stretch;
 `
 
 let NavList = styled.ul`
@@ -22,7 +23,10 @@ let NavList = styled.ul`
   list-style: none;
 `
 
-let NavListItem = styled.li``
+let NavListItem = styled.li`
+  display: flex;
+  align-items: stretch;
+`
 
 let NavLink = styled(Link)`
   display: flex;
@@ -33,8 +37,6 @@ let NavLink = styled(Link)`
   text-decoration: none;
   width: ${s.Width.secondaryNavItem}px;
   text-align: center;
-  padding-top: ${s.SizeUnit(0.3)};
-  padding-bottom: ${s.SizeUnit(0.3)};
   border-top-left-radius: ${s.SizeUnit(0.2)};
   border-top-right-radius: ${s.SizeUnit(0.2)};
   color: ${s.Color.grayLight};

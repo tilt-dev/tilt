@@ -2,7 +2,7 @@
 
 exports[`doesn't render snapshot button if it's a snapshot 1`] = `
 <div
-  className="sc-bdVaJa lkbuwB"
+  className="sc-bdVaJa kyeOVJ"
 >
   <div
     className="sc-bwzfXH fdpnBr"
@@ -12,7 +12,7 @@ exports[`doesn't render snapshot button if it's a snapshot 1`] = `
 
 exports[`shows snapshot url 1`] = `
 <div
-  className="sc-bdVaJa lkbuwB"
+  className="sc-bdVaJa kyeOVJ"
 >
   <div
     className="sc-bwzfXH fdpnBr"

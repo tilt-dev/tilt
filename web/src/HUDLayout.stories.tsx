@@ -10,12 +10,6 @@ let Header = styled.header`
   padding: ${SizeUnit(0.5)};
 `
 
-let StickyNav = styled.nav`
-  background-color: ${Color.white};
-  color: ${Color.gray};
-  padding: ${SizeUnit(0.25)};
-`
-
 let Main = styled.main`
   border-right: 1px dashed ${Color.white};
   border-bottom: 1px dashed ${Color.white};
@@ -87,7 +81,6 @@ function layoutDefault() {
   return (
     <HUDLayout
       header={<Header>Header</Header>}
-      stickyNav={<StickyNav>Sticky Nav</StickyNav>}
       isSidebarClosed={false}
     >
       <Main>{mainLorem}</Main>
@@ -99,7 +92,6 @@ function layoutWithSidebarCollapsed() {
   return (
     <HUDLayout
       header={<Header>Header</Header>}
-      stickyNav={<StickyNav>Sticky Nav</StickyNav>}
       isSidebarClosed={true}
     >
       <Main>{mainLorem}</Main>
