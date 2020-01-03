@@ -285,20 +285,6 @@ func (h *Hud) OnChange(ctx context.Context, st store.RStore) {
 
 	fmt.Print(toPrint)
 
-	err := h.setView(ctx, view)
-	if err != nil {
-		st.Dispatch(NewExitAction(err))
-	}
-}
-
-func (h *Hud) Refresh(ctx context.Context) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	return h.refresh(ctx)
-}
-
-// Must hold the lock
-func (h *Hud) setView(ctx context.Context, view view.View) error {
 	// if we're going from 1 resource (i.e., the Tiltfile) to more than 1, reset
 	// the resource selection, so that we're not scrolled to the bottom with the Tiltfile selected
 	if len(h.currentView.Resources) == 1 && len(view.Resources) > 1 {
@@ -306,7 +292,11 @@ func (h *Hud) setView(ctx context.Context, view view.View) error {
 	}
 	h.currentView = view
 	h.refreshSelectedIndex()
+}
 
+func (h *Hud) Refresh(ctx context.Context) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	return h.refresh(ctx)
 }
 
