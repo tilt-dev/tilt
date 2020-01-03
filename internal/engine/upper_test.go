@@ -3048,13 +3048,32 @@ func TestHasEverBeenReadyK8s(t *testing.T) {
 
 	f.waitForCompletedBuildCount(1)
 	f.withManifestState(m.Name, func(ms store.ManifestState) {
-		require.False(t, ms.RuntimeState.HasEverBeenReady())
+		require.False(t, ms.RuntimeState.HasEverBeenReadyOrSucceeded())
 	})
 
 	pb := podbuilder.New(t, m).WithContainerReady(true)
 	f.podEvent(pb.Build(), m.Name)
 	f.WaitUntilManifestState("flagged ready", m.Name, func(state store.ManifestState) bool {
-		return state.RuntimeState.HasEverBeenReady()
+		return state.RuntimeState.HasEverBeenReadyOrSucceeded()
+	})
+}
+
+func TestHasEverBeenCompleteK8s(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	m := f.newManifest("foobar")
+	f.Start([]model.Manifest{m}, true)
+
+	f.waitForCompletedBuildCount(1)
+	f.withManifestState(m.Name, func(ms store.ManifestState) {
+		require.False(t, ms.RuntimeState.HasEverBeenReadyOrSucceeded())
+	})
+
+	pb := podbuilder.New(t, m).WithPhase(string(v1.PodSucceeded))
+	f.podEvent(pb.Build(), m.Name)
+	f.WaitUntilManifestState("flagged ready", m.Name, func(state store.ManifestState) bool {
+		return state.RuntimeState.HasEverBeenReadyOrSucceeded()
 	})
 }
 
@@ -3066,16 +3085,16 @@ func TestHasEverBeenReadyLocal(t *testing.T) {
 	f.b.nextBuildFailure = errors.New("failure!")
 	f.Start([]model.Manifest{m}, true)
 
-	// first build will fail, HasEverBeenReady should be false
+	// first build will fail, HasEverBeenReadyOrSucceeded should be false
 	f.waitForCompletedBuildCount(1)
 	f.withManifestState(m.Name, func(ms store.ManifestState) {
-		require.False(t, ms.RuntimeState.HasEverBeenReady())
+		require.False(t, ms.RuntimeState.HasEverBeenReadyOrSucceeded())
 	})
 
-	// second build will succeed, HasEverBeenReady should be true
+	// second build will succeed, HasEverBeenReadyOrSucceeded should be true
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("bar", "main.go"))
 	f.WaitUntilManifestState("flagged ready", m.Name, func(state store.ManifestState) bool {
-		return state.RuntimeState.HasEverBeenReady()
+		return state.RuntimeState.HasEverBeenReadyOrSucceeded()
 	})
 }
 
@@ -3089,14 +3108,14 @@ func TestHasEverBeenReadyDC(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 	f.withManifestState(m.Name, func(ms store.ManifestState) {
 		require.NotNil(t, ms.RuntimeState)
-		require.False(t, ms.RuntimeState.HasEverBeenReady())
+		require.False(t, ms.RuntimeState.HasEverBeenReadyOrSucceeded())
 	})
 
-	// second build will succeed, HasEverBeenReady should be true
+	// second build will succeed, HasEverBeenReadyOrSucceeded should be true
 	err := f.dcc.SendEvent(dcContainerEvtForManifest(m, dockercompose.ActionStart))
 	require.NoError(t, err)
 	f.WaitUntilManifestState("flagged ready", m.Name, func(state store.ManifestState) bool {
-		return state.RuntimeState.HasEverBeenReady()
+		return state.RuntimeState.HasEverBeenReadyOrSucceeded()
 	})
 }
 

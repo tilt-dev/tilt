@@ -59,9 +59,9 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 		return
 	}
 
-	if podInfo.AllContainersReady() {
+	if podInfo.AllContainersReady() || podInfo.Phase == v1.PodSucceeded {
 		runtime := ms.K8sRuntimeState()
-		runtime.LastReadyTime = time.Now()
+		runtime.LastReadyOrSucceededTime = time.Now()
 		ms.RuntimeState = runtime
 	}
 
