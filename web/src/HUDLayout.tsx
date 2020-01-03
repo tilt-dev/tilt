@@ -74,7 +74,7 @@ let Header = styled.header`
   box-shadow: inset 0px -2px 10px 0px rgba(${s.Color.black}, ${s.ColorAlpha.translucent});
   transition: padding-right ${s.AnimDuration.default} ease;
   z-index: ${s.ZIndex.HUDheader};
-  
+
   .is-sidebarCollapsed & {
     padding-right: ${s.Width.sidebarCollapsed}px;
   }

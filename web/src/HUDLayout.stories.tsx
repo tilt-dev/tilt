@@ -79,10 +79,7 @@ let mainLorem = (
 
 function layoutDefault() {
   return (
-    <HUDLayout
-      header={<Header>Header</Header>}
-      isSidebarClosed={false}
-    >
+    <HUDLayout header={<Header>Header</Header>} isSidebarClosed={false}>
       <Main>{mainLorem}</Main>
     </HUDLayout>
   )
@@ -90,10 +87,7 @@ function layoutDefault() {
 
 function layoutWithSidebarCollapsed() {
   return (
-    <HUDLayout
-      header={<Header>Header</Header>}
-      isSidebarClosed={true}
-    >
+    <HUDLayout header={<Header>Header</Header>} isSidebarClosed={true}>
       <Main>{mainLorem}</Main>
     </HUDLayout>
   )

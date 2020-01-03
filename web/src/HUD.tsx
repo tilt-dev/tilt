@@ -295,7 +295,10 @@ class HUD extends Component<HudProps, HudState> {
 
     let endpoints = selectedResource?.endpoints ?? []
     let podID = selectedResource?.podID ?? ""
-    let podStatus = (selectedResource?.k8sResourceInfo && selectedResource?.k8sResourceInfo.podStatus) || ""
+    let podStatus =
+      (selectedResource?.k8sResourceInfo &&
+        selectedResource?.k8sResourceInfo.podStatus) ||
+      ""
 
     let showSnapshot =
       this.getFeatures().isEnabled("snapshots") &&
@@ -325,16 +328,18 @@ class HUD extends Component<HudProps, HudState> {
       let name = props.match.params?.name ?? ""
       let numAlerts = 0
       let logUrl = name === "" ? this.path("/") : this.path(`/r/${name}`)
-      let alertsUrl = name === "" ? this.path("/alerts") : this.path(`/r/${name}/alerts`)
+      let alertsUrl =
+        name === "" ? this.path("/alerts") : this.path(`/r/${name}/alerts`)
 
       let isFacetsEnabled = this.getFeatures().isEnabled("facets")
-      let facetsUrl = name !== "" && isFacetsEnabled
-        ? this.path(`/r/${name}/facets`)
-        : null
+      let facetsUrl =
+        name !== "" && isFacetsEnabled ? this.path(`/r/${name}/facets`) : null
 
       if (name) {
         let selectedResource = resources.find(r => r.name === name)
-        if (selectedResource) {numAlerts = numberOfAlerts(selectedResource)}
+        if (selectedResource) {
+          numAlerts = numberOfAlerts(selectedResource)
+        }
       } else {
         numAlerts = resources
           .map(r => numberOfAlerts(r))
