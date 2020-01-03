@@ -34,12 +34,16 @@ let PodStatus = styled.span`
 
 let PodId = styled.span``
 
-let PortForward = styled.span``
+let PortForward = styled.span`
+  ${PodId} + & {
+    margin-left: ${s.SizeUnit(0.5)};
+    border-left: 1px solid ${s.Color.gray};
+    padding-left: ${s.SizeUnit(0.5)};
+  }
+`
+
 let PortForwardLabel = styled.span`
   color: ${s.Color.grayLight};
-  margin-left: ${s.SizeUnit(0.5)};
-  border-left: 1px solid ${s.Color.gray};
-  padding-left: ${s.SizeUnit(0.5)};
   margin-right: ${s.SizeUnit(0.25)};
 `
 let PortForwardLink = styled.a``
@@ -122,7 +126,7 @@ class ResourceInfo extends PureComponent<HUDHeaderProps> {
     return (
       <Root>
         <ResourceInfoStyle>
-          {podStatus && <PodStatus>{podStatus}</PodStatus>}
+          <PodStatus>{podStatus}</PodStatus>
           {podID && <PodId>{podID}</PodId>}
           {endpointsEl}
         </ResourceInfoStyle>
