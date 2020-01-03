@@ -72,6 +72,16 @@ var originalWD string
 
 type buildCompletionChannel chan bool
 
+func (bcc buildCompletionChannel) isClosed() bool {
+	select {
+	case <-bcc:
+		return true
+	default:
+	}
+
+	return false
+}
+
 func init() {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -204,9 +214,9 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	b.registerBuild(index)
 
 	if !b.completeBuildsManually {
-		// resolve builds automatically: mark the build for resolution now,,
-		// so we complete the build as soon as we start it
-		b.resolveBuild(index)
+		// i.e. we should complete builds automatically: mark the build for completion now,
+		// so we return immediately at the end of BuildAndDeploy.
+		b.completeBuild(index)
 	}
 
 	call := buildAndDeployCall{count: index, specs: specs, state: state}
@@ -293,15 +303,16 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 func (b *fakeBuildAndDeployer) getBuildCompletionChan(index int) (buildCompletionChannel, bool) {
 	var ch buildCompletionChannel
 	val, ok := b.buildCompletionChans.Load(index)
-	if ok {
-		var chanOk bool
-		ch, chanOk = val.(buildCompletionChannel)
-		if !chanOk {
-			panic(fmt.Sprintf("exected map value of type: buildCompletionChannel, got %T", val))
-		}
+	if !ok {
+		return nil, false
 	}
 
-	return ch, ok
+	ch, ok = val.(buildCompletionChannel)
+	if !ok {
+		panic(fmt.Sprintf("exected map value of type: buildCompletionChannel, got %T", val))
+	}
+
+	return ch, true
 }
 
 func (b *fakeBuildAndDeployer) registerBuild(index int) {
@@ -326,6 +337,7 @@ func (b *fakeBuildAndDeployer) waitUntilBuildCompleted(ctx context.Context, inde
 
 	b.buildCompletionChans.Delete(index)
 }
+
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 	return &fakeBuildAndDeployer{
 		t:              t,
@@ -335,7 +347,7 @@ func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 	}
 }
 
-func (b *fakeBuildAndDeployer) resolveBuild(index int) {
+func (b *fakeBuildAndDeployer) completeBuild(index int) {
 	ch, ok := b.getBuildCompletionChan(index)
 	if !ok {
 		// TODO(maia): maybe this should just create and close a channel for this key
@@ -3739,7 +3751,9 @@ func (f *testFixture) TearDown() {
 	close(f.fsWatcher.errors)
 	f.b.buildCompletionChans.Range(func(key, value interface{}) bool {
 		if ch, ok := value.(buildCompletionChannel); ok {
-			close(ch)
+			if !ch.isClosed() {
+				close(ch)
+			}
 		}
 		return true
 	})
