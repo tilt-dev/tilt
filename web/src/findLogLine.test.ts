@@ -24,7 +24,7 @@ describe("findLogLine", () => {
     expect(actual).toBe("1920")
   })
 
-  fit("handles being passed a node instead of an element", () => {
+  it("handles being passed a node instead of an element", () => {
     const dom = new JSDOM(logPaneDOM)
     const node = dom.window.document.getElementById("start2")
     if (node === null) {

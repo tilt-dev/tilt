@@ -93,25 +93,24 @@ There are plenty of toy projects to play with in the [integration](https://githu
 - [Sidecar Example](https://github.com/windmilleng/sidecar_example): simple Python app and home-rolled logging sidecar
 
 ## Performance
+
 ### Go Profile
-We use the built-in Go profiler to debug performance issues.
 
-When `tilt` is running, press `ctrl-p` to start the profile, and `ctrl-p` to stop it.
-You should see output like:
+Tilt exposes the standard Go pprof hooks over [HTTP](https://golang.org/pkg/net/http/pprof/).
 
-```
-starting pprof profile to tilt.profile
-stopped pprof profile to tilt.profile
-```
-
-This means that Tilt has successfully written profiling data to the file `tilt.profile`.
-In the directory where you ran Tilt, run:
+To look at a 30-second CPU profile:
 
 ```
-go tool pprof tilt.profile
+go tool pprof http://localhost:10350/debug/pprof/profile?seconds=30
 ```
 
-to open a special REPL that lets you explore the data.
+To look at the heap profile:
+
+```
+go tool pprof http://localhost:10350/debug/pprof/heap
+```
+
+This opens a special REPL that lets you explore the data.
 Type `web` in the REPL to see a CPU graph.
 
 For more information on pprof, see https://github.com/google/pprof/blob/master/doc/README.md.
