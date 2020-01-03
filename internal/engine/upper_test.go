@@ -72,16 +72,6 @@ var originalWD string
 
 type buildCompletionChannel chan bool
 
-func (bcc buildCompletionChannel) isClosed() bool {
-	select {
-	case <-bcc:
-		return true
-	default:
-	}
-
-	return false
-}
-
 func init() {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -3749,14 +3739,6 @@ func (f *testFixture) TearDown() {
 	f.kClient.TearDown()
 	close(f.fsWatcher.events)
 	close(f.fsWatcher.errors)
-	f.b.buildCompletionChans.Range(func(key, value interface{}) bool {
-		if ch, ok := value.(buildCompletionChannel); ok {
-			if !ch.isClosed() {
-				close(ch)
-			}
-		}
-		return true
-	})
 	f.cancel()
 }
 
