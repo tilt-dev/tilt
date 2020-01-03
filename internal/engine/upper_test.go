@@ -156,6 +156,7 @@ func (c buildAndDeployCall) oneState() store.BuildState {
 
 type fakeBuildAndDeployer struct {
 	t     *testing.T
+	mu    sync.Mutex
 	calls chan buildAndDeployCall
 
 	completeBuildsManually bool
@@ -199,6 +200,7 @@ func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deploy
 }
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, state store.BuildStateSet) (brs store.BuildResultSet, err error) {
+	b.mu.Lock()
 	b.buildCount++
 	index := b.buildCount
 	b.registerBuild(index)
@@ -285,6 +287,8 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		b.resultsByID[key] = val
 	}
 
+	b.mu.Unlock()
+
 	// block until we know we're supposed to resolve this build
 	b.waitUntilBuildCompleted(ctx, index)
 
@@ -307,7 +311,8 @@ func (b *fakeBuildAndDeployer) getBuildCompletionChan(index int) (buildCompletio
 
 func (b *fakeBuildAndDeployer) registerBuild(index int) {
 	if _, ok := b.getBuildCompletionChan(index); ok {
-		b.t.Fatalf("Tried to register build #%d, but it's already registered (i.e. completion chan already exists)", index)
+		// already in map, nothing to do
+		return
 	}
 	ch := make(buildCompletionChannel)
 	b.buildCompletionChans.Store(index, ch)
@@ -340,9 +345,9 @@ func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 func (b *fakeBuildAndDeployer) completeBuild(index int) {
 	ch, ok := b.getBuildCompletionChan(index)
 	if !ok {
-		// TODO(maia): maybe this should just create and close a channel for this key
-		b.t.Fatalf("tried to mark build #%d for for completion, but no completion channel registered (b.registerBuild(index) "+
-			"should already have been called--probably by b.BuildAndDeploy)", index)
+		// If build chan doesn't exist, create and store it
+		ch = make(buildCompletionChannel)
+		b.buildCompletionChans.Store(index, ch)
 	}
 
 	close(ch)
