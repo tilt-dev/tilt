@@ -156,6 +156,7 @@ func (c buildAndDeployCall) oneState() store.BuildState {
 
 type fakeBuildAndDeployer struct {
 	t     *testing.T
+	mu    sync.Mutex
 	calls chan buildAndDeployCall
 
 	completeBuildsManually bool
@@ -199,7 +200,7 @@ func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deploy
 }
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, state store.BuildStateSet) (brs store.BuildResultSet, err error) {
-	fmt.Println("~ calling BaD")
+	b.mu.Lock()
 	b.buildCount++
 	index := b.buildCount
 	b.registerBuild(index)
@@ -286,6 +287,8 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		b.resultsByID[key] = val
 	}
 
+	b.mu.Unlock()
+
 	// block until we know we're supposed to resolve this build
 	b.waitUntilBuildCompleted(ctx, index)
 
@@ -345,7 +348,6 @@ func (b *fakeBuildAndDeployer) completeBuild(index int) {
 	fmt.Printf("~ completing build #%d\n", index)
 	ch, ok := b.getBuildCompletionChan(index)
 	if !ok {
-		fmt.Println("~~ chan doesn't exist, create it")
 		// If build chan doesn't exist, create and store it
 		ch = make(buildCompletionChannel)
 		b.buildCompletionChans.Store(index, ch)
