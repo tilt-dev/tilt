@@ -74,8 +74,12 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 	checkForContainerCrash(ctx, state, mt)
 
 	if oldRestartTotal < podInfo.AllContainerRestarts() {
-		ms.CrashLog = podInfo.CurrentLog
-		podInfo.CurrentLog = model.Log{}
+		spanID := podInfo.SpanID
+		if spanID == "" {
+			ms.CrashLog = model.Log{}
+		} else {
+			ms.CrashLog = model.NewLog(state.LogStore.TailSpan(50, spanID))
+		}
 	}
 }
 
@@ -243,7 +247,13 @@ func checkForContainerCrash(ctx context.Context, state *store.EngineState, mt *s
 	// The pod isn't what we expect!
 	// TODO(nick): We should store the logs by container ID, and
 	// only put the container that crashed in the CrashLog.
-	ms.CrashLog = ms.MostRecentPod().CurrentLog
+	spanID := ms.MostRecentPod().SpanID
+	if spanID == "" {
+		ms.CrashLog = model.Log{}
+	} else {
+		ms.CrashLog = model.NewLog(state.LogStore.TailSpan(50, spanID))
+	}
+
 	ms.NeedsRebuildFromCrash = true
 	ms.LiveUpdatedContainerIDs = container.NewIDSet()
 	msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Name)
@@ -278,35 +288,6 @@ func prunePods(ms *store.ManifestState) {
 		// found nothing to delete, break out
 		return
 	}
-}
-
-func handlePodLogAction(state *store.EngineState, action runtimelog.PodLogAction) {
-	manifestName := action.ManifestName()
-	ms, ok := state.ManifestState(manifestName)
-	if !ok {
-		// This is OK. The user could have edited the manifest recently.
-		return
-	}
-
-	podID := action.PodID
-	runtime := ms.GetOrCreateK8sRuntimeState()
-	if !runtime.ContainsID(podID) {
-		// NOTE(nick): There are two cases where this could happen:
-		// 1) Pod 1 died and kubernetes started Pod 2. What should we do with
-		//    logs from Pod 1 that are still in the action queue?
-		//    This is an open product question. A future HUD may aggregate
-		//    logs across pod restarts.
-		// 2) Due to race conditions, we got the logs for Pod 1 before
-		//    we saw Pod 1 materialize on the Pod API. The best way to fix
-		//    this would be to make PodLogManager a subscriber that only
-		//    starts listening on logs once the pod has materialized.
-		//    We may prioritize this higher or lower based on how often
-		//    this happens in practice.
-		return
-	}
-
-	podInfo := runtime.Pods[podID]
-	podInfo.CurrentLog = model.AppendLog(podInfo.CurrentLog, action, "", state.Secrets)
 }
 
 func handlePodResetRestartsAction(state *store.EngineState, action store.PodResetRestartsAction) {

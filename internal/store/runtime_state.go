@@ -133,10 +133,6 @@ type Pod struct {
 
 	HasSynclet bool
 
-	// The log for the currently active pod, if any
-	// TODO(nick): Delete this and use SpanID to look up the log.
-	CurrentLog model.Log `testdiff:"ignore"`
-
 	Containers []Container
 
 	// We want to show the user # of restarts since some baseline time
@@ -171,10 +167,6 @@ func (p Pod) isAfter(p2 Pod) bool {
 		return false
 	}
 	return p.PodID > p2.PodID
-}
-
-func (p Pod) Log() model.Log {
-	return p.CurrentLog
 }
 
 func (p Pod) AllContainerPorts() []int32 {
