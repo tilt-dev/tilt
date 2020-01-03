@@ -538,7 +538,11 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {
 	portForwards := mt.Manifest.K8sTarget().PortForwards
 	if len(portForwards) > 0 {
 		for _, pf := range portForwards {
-			endpoints = append(endpoints, fmt.Sprintf("http://localhost:%d/", pf.LocalPort))
+			host := pf.Host
+			if host == "" {
+				host = "localhost"
+			}
+			endpoints = append(endpoints, fmt.Sprintf("http://%s:%d/", host, pf.LocalPort))
 		}
 		return endpoints
 	}

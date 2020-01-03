@@ -437,29 +437,44 @@ type portForwardCase struct {
 	expr     string
 	expected []model.PortForward
 	errorMsg string
+	webHost  model.WebHost
+}
+
+func newPortForwardSuccessCase(name, expr string, expected []model.PortForward) portForwardCase {
+	return portForwardCase{name: name, expr: expr, expected: expected}
+}
+
+func newPortForwardErrorCase(name, expr, errorMsg string) portForwardCase {
+	return portForwardCase{name: name, expr: expr, errorMsg: errorMsg}
 }
 
 func TestPortForward(t *testing.T) {
 	portForwardCases := []portForwardCase{
-		{"value_local", "8000", []model.PortForward{{LocalPort: 8000}}, ""},
-		{"value_local_negative", "-1", nil, "not in the valid range"},
-		{"value_local_large", "8000000", nil, "not in the valid range"},
-		{"value_string_local", "'10000'", []model.PortForward{{LocalPort: 10000}}, ""},
-		{"value_string_both", "'10000:8000'", []model.PortForward{{LocalPort: 10000, ContainerPort: 8000}}, ""},
-		{"value_string_garbage", "'garbage'", nil, "not in the valid range"},
-		{"value_string_empty", "''", nil, "not in the valid range"},
-		{"value_both", "port_forward(8001, 443)", []model.PortForward{{LocalPort: 8001, ContainerPort: 443}}, ""},
-		{"list", "[8000, port_forward(8001, 443)]", []model.PortForward{{LocalPort: 8000}, {LocalPort: 8001, ContainerPort: 443}}, ""},
-		{"list_string", "['8000', '8001:443']", []model.PortForward{{LocalPort: 8000}, {LocalPort: 8001, ContainerPort: 443}}, ""},
-		{"value_host_bad", "'bad+host:10000:8000'", nil, "not a valid hostname or IP address"},
-		{"value_host_good_ip", "'0.0.0.0:10000:8000'", []model.PortForward{{LocalPort: 10000, ContainerPort: 8000, Host: "0.0.0.0"}}, ""},
-		{"value_host_good_domain", "'tilt.dev:10000:8000'", []model.PortForward{{LocalPort: 10000, ContainerPort: 8000, Host: "tilt.dev"}}, ""},
+		newPortForwardSuccessCase("value_local", "8000", []model.PortForward{{LocalPort: 8000}}),
+		newPortForwardErrorCase("value_local_negative", "-1", "not in the valid range"),
+		newPortForwardErrorCase("value_local_large", "8000000", "not in the valid range"),
+		newPortForwardSuccessCase("value_string_local", "'10000'", []model.PortForward{{LocalPort: 10000}}),
+		newPortForwardSuccessCase("value_string_both", "'10000:8000'", []model.PortForward{{LocalPort: 10000, ContainerPort: 8000}}),
+		newPortForwardErrorCase("value_string_garbage", "'garbage'", "not in the valid range"),
+		newPortForwardErrorCase("value_string_empty", "''", "not in the valid range"),
+		newPortForwardSuccessCase("value_both", "port_forward(8001, 443)", []model.PortForward{{LocalPort: 8001, ContainerPort: 443}}),
+		newPortForwardSuccessCase("list", "[8000, port_forward(8001, 443)]", []model.PortForward{{LocalPort: 8000}, {LocalPort: 8001, ContainerPort: 443}}),
+		newPortForwardSuccessCase("list_string", "['8000', '8001:443']", []model.PortForward{{LocalPort: 8000}, {LocalPort: 8001, ContainerPort: 443}}),
+		newPortForwardErrorCase("value_host_bad", "'bad+host:10000:8000'", "not a valid hostname or IP address"),
+		newPortForwardSuccessCase("value_host_good_ip", "'0.0.0.0:10000:8000'", []model.PortForward{{LocalPort: 10000, ContainerPort: 8000, Host: "0.0.0.0"}}),
+		newPortForwardSuccessCase("value_host_good_domain", "'tilt.dev:10000:8000'", []model.PortForward{{LocalPort: 10000, ContainerPort: 8000, Host: "tilt.dev"}}),
+		portForwardCase{name: "default_web_host", expr: "8000", webHost: "0.0.0.0",
+			expected: []model.PortForward{{LocalPort: 8000, Host: "0.0.0.0"}}},
+		portForwardCase{name: "override_web_host", expr: "'tilt.dev:10000:8000'", webHost: "0.0.0.0",
+			expected: []model.PortForward{{LocalPort: 10000, ContainerPort: 8000, Host: "tilt.dev"}}},
 	}
 
 	for _, c := range portForwardCases {
 		t.Run(c.name, func(t *testing.T) {
 			f := newFixture(t)
 			defer f.TearDown()
+
+			f.webHost = c.webHost
 			f.setupFoo()
 			s := `
 docker_build('gcr.io/foo', 'foo')
@@ -4302,6 +4317,7 @@ type fixture struct {
 	kCli       *k8s.FakeK8sClient
 	k8sContext k8s.KubeContext
 	k8sEnv     k8s.Env
+	webHost    model.WebHost
 
 	ta *tiltanalytics.TiltAnalytics
 	an *analytics.MemoryAnalytics
@@ -4321,7 +4337,7 @@ func (f *fixture) newTiltfileLoader() TiltfileLoader {
 	}
 
 	k8sContextExt := k8scontext.NewExtension(f.k8sContext, f.k8sEnv)
-	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, dcc, features)
+	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, dcc, f.webHost, features)
 }
 
 func newFixture(t *testing.T) *fixture {
