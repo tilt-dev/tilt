@@ -310,7 +310,6 @@ func (b *fakeBuildAndDeployer) getBuildCompletionChan(index int) (buildCompletio
 }
 
 func (b *fakeBuildAndDeployer) registerBuild(index int) {
-	fmt.Printf("~ registring build #%d\n", index)
 	if _, ok := b.getBuildCompletionChan(index); ok {
 		// already in map, nothing to do
 		return
@@ -331,7 +330,6 @@ func (b *fakeBuildAndDeployer) waitUntilBuildCompleted(ctx context.Context, inde
 	case <-ctx.Done():
 	}
 
-	fmt.Printf("~ build #%d done!\n", index)
 	b.buildCompletionChans.Delete(index)
 }
 
@@ -345,7 +343,6 @@ func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 }
 
 func (b *fakeBuildAndDeployer) completeBuild(index int) {
-	fmt.Printf("~ completing build #%d\n", index)
 	ch, ok := b.getBuildCompletionChan(index)
 	if !ok {
 		// If build chan doesn't exist, create and store it
@@ -3407,8 +3404,8 @@ func (f *testFixture) Start(manifests []model.Manifest, watchFiles bool, initOpt
 	f.startWithInitManifests(nil, manifests, watchFiles, initOptions...)
 }
 
-func (f *testFixture) StartAndWaitForInitialBuilds(manifests []model.Manifest, watchFiles bool, initOptions ...initOption) {
-	f.startWithInitManifests(nil, manifests, watchFiles, initOptions...)
+func (f *testFixture) StartAndWaitForInitialBuilds(manifests []model.Manifest, initOptions ...initOption) {
+	f.startWithInitManifests(nil, manifests, true, initOptions...)
 	if f.b.completeBuildsManually {
 		for i := range manifests {
 			f.b.completeBuild(i + 1) // builds are 1-indexed
@@ -3806,7 +3803,6 @@ func (f *testFixture) newDCManifest(name string, DCYAMLRaw string, dockerfileCon
 }
 
 func (f *testFixture) assertAllBuildsConsumed() {
-	fmt.Println("*** calling it done")
 	close(f.b.calls)
 
 	for call := range f.b.calls {

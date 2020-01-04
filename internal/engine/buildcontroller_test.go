@@ -1059,7 +1059,7 @@ func TestBuildControllerWontBuildManifestThatsAlreadyBuilding(t *testing.T) {
 	f.setMaxBuildSlots(3)
 
 	manifest := f.newManifest("fe")
-	f.StartAndWaitForInitialBuilds([]model.Manifest{manifest}, true)
+	f.StartAndWaitForInitialBuilds([]model.Manifest{manifest})
 	f.waitUntilNumBuildSlots(3)
 
 	// file change starts a build
@@ -1097,13 +1097,12 @@ func TestBuildControllerWontBuildManifestIfNoSlotsAvailable(t *testing.T) {
 	manA := f.newDockerBuildManifestWithBuildPath("manA", f.JoinPath("a"))
 	manB := f.newDockerBuildManifestWithBuildPath("manB", f.JoinPath("b"))
 	manC := f.newDockerBuildManifestWithBuildPath("manC", f.JoinPath("c"))
-	f.StartAndWaitForInitialBuilds([]model.Manifest{manA, manB, manC}, true)
+	f.StartAndWaitForInitialBuilds([]model.Manifest{manA, manB, manC})
 
 	// start builds for all manifests (we only have 2 build slots)
 	indexA := f.editFileAndWaitForManifestBuilding("manA", "a/main.go")
 	indexB := f.editFileAndWaitForManifestBuilding("manB", "b/main.go")
-	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("c/main.go"))
-	f.waitUntilManifestNotBuilding("manC")
+	f.editFileAndAssertManifestNotBuilding("manC", "c/main.go")
 
 	// Complete one build -- now there's a free build slot for 'manC'
 	indexC := f.runAndWaitForManifestBuilding("manC", func() {
@@ -1111,15 +1110,9 @@ func TestBuildControllerWontBuildManifestIfNoSlotsAvailable(t *testing.T) {
 		call := f.nextCall("expect manA build complete")
 		f.assertCallIsForManifestAndFiles(call, manA, "a/main.go")
 	})
-	f.waitUntilManifestBuilding("manC")
 
 	// complete the rest (can't guarantee order)
-	f.b.completeBuild(indexC)
-	f.b.completeBuild(indexB)
-	targetsFromCalls := f.imageTargsForNextNCalls(2)
-	require.Len(t, targetsFromCalls, 2)
-	assert.Contains(t, targetsFromCalls, manB.ImageTargetAt(0))
-	assert.Contains(t, targetsFromCalls, manC.ImageTargetAt(0))
+	f.completeAndCheckBuildsForManifests([]int{indexB, indexC}, []model.Manifest{manB, manC})
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -1135,7 +1128,7 @@ func TestCurrentlyBuildingMayExceedMaxBuildCount(t *testing.T) {
 	manA := f.newDockerBuildManifestWithBuildPath("manA", f.JoinPath("a"))
 	manB := f.newDockerBuildManifestWithBuildPath("manB", f.JoinPath("b"))
 	manC := f.newDockerBuildManifestWithBuildPath("manC", f.JoinPath("c"))
-	f.StartAndWaitForInitialBuilds([]model.Manifest{manA, manB, manC}, true)
+	f.StartAndWaitForInitialBuilds([]model.Manifest{manA, manB, manC})
 
 	// start builds for all manifests
 	manABuild1Index := f.editFileAndWaitForManifestBuilding("manA", "a/main.go")
@@ -1183,8 +1176,82 @@ func TestCurrentlyBuildingMayExceedMaxBuildCount(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-// TO TEST: error stuff
-// TO TEST: buildcontroller.startedbuildcount unsynced w/ state - don't start new build
+func TestDontStartBuildIfControllerAndEngineUnsynced(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.b.completeBuildsManually = true
+	f.setMaxBuildSlots(3)
+
+	manA := f.newDockerBuildManifestWithBuildPath("manA", f.JoinPath("a"))
+	manB := f.newDockerBuildManifestWithBuildPath("manB", f.JoinPath("b"))
+	manifests := []model.Manifest{manA, manB}
+
+	f.StartAndWaitForInitialBuilds(manifests)
+
+	indexA := f.editFileAndWaitForManifestBuilding("manA", "a/main.go")
+
+	// deliberately de-sync engine state and build controller
+	st := f.store.LockMutableStateForTesting()
+	st.StartedBuildCount--
+	f.store.UnlockMutableState()
+
+	// this build won't start while state and build controller are out of sync
+	f.editFileAndAssertManifestNotBuilding("manB", "b/main.go")
+
+	// resync the two counts, manB build will start as expected
+	indexB := f.runAndWaitForManifestBuilding("manB", func() {
+		st := f.store.LockMutableStateForTesting()
+		st.StartedBuildCount++
+		f.store.UnlockMutableState()
+	})
+
+	// complete all builds (can't guarantee order)
+	f.completeAndCheckBuildsForManifests([]int{indexA, indexB}, manifests)
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+}
+
+func TestErrorHandlingWithMultipleBuilds(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	f.b.completeBuildsManually = true
+	f.setMaxBuildSlots(2)
+
+	errA := fmt.Errorf("errA")
+	errB := fmt.Errorf("errB")
+
+	manA := f.newDockerBuildManifestWithBuildPath("manA", f.JoinPath("a"))
+	manB := f.newDockerBuildManifestWithBuildPath("manB", f.JoinPath("b"))
+	manC := f.newDockerBuildManifestWithBuildPath("manC", f.JoinPath("c"))
+	f.StartAndWaitForInitialBuilds([]model.Manifest{manA, manB, manC})
+
+	// start builds for all manifests (we only have 2 build slots)
+	f.SetNextBuildFailure(errA)
+	indexA := f.editFileAndWaitForManifestBuilding("manA", "a/main.go")
+	f.SetNextBuildFailure(errB)
+	indexB := f.editFileAndWaitForManifestBuilding("manB", "b/main.go")
+	f.editFileAndAssertManifestNotBuilding("manC", "c/main.go")
+
+	// Complete one build -- 'manC' should start building, even though the build ended with an error
+	indexC := f.runAndWaitForManifestBuilding("manC", func() {
+		f.b.completeBuild(indexA)
+		call := f.nextCall("expect manA build complete")
+		f.assertCallIsForManifestAndFiles(call, manA, "a/main.go")
+		f.withManifestState("manA", func(ms store.ManifestState) {
+			require.Equal(t, errA, ms.LastBuild().Error)
+		})
+	})
+
+	// complete the rest
+	f.completeAndCheckBuildsForManifests([]int{indexB, indexC}, []model.Manifest{manB, manC})
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+}
 
 func (f *testFixture) waitUntilManifestBuilding(name model.ManifestName) {
 	msg := fmt.Sprintf("manifest %q is building", name)
@@ -1240,6 +1307,11 @@ func (f *testFixture) editFileAndWaitForManifestBuilding(name model.ManifestName
 	return startBuildCount + 1
 }
 
+func (f *testFixture) editFileAndAssertManifestNotBuilding(name model.ManifestName, path string) {
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath(path))
+	f.waitUntilManifestNotBuilding(name)
+}
+
 func (f *testFixture) runAndWaitForManifestBuilding(name model.ManifestName, fn func()) (buildIndex int) {
 	startBuildCount := f.b.buildCount
 	fn()
@@ -1251,4 +1323,20 @@ func (f *testFixture) runAndWaitForManifestBuilding(name model.ManifestName, fn 
 func (f *testFixture) assertCallIsForManifestAndFiles(call buildAndDeployCall, m model.Manifest, files ...string) {
 	assert.Equal(f.t, m.ImageTargetAt(0).ID(), call.firstImgTarg().ID())
 	assert.Equal(f.t, f.JoinPaths(files), call.oneState().FilesChanged())
+}
+
+func (f *testFixture) completeAndCheckBuildsForManifests(indexes []int, manifests []model.Manifest) {
+	if len(indexes) != len(manifests) {
+		f.t.Fatalf("can only complete + check builds for manifests when passed an equal number of indexes and manifests")
+	}
+
+	for _, i := range indexes {
+		f.b.completeBuild(i)
+	}
+
+	targetsFromCalls := f.imageTargsForNextNCalls(len(manifests))
+	require.Len(f.t, targetsFromCalls, len(manifests))
+	for _, m := range manifests {
+		assert.Contains(f.t, targetsFromCalls, m.ImageTargetAt(0))
+	}
 }
