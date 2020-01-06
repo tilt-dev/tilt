@@ -3523,9 +3523,12 @@ func (f *testFixture) WaitForNoExit() error {
 func (f *testFixture) SetNextBuildFailure(err error) {
 	// Don't set the nextBuildFailure flag when a completed build needs to be processed
 	// by the state machine.
+	fmt.Println("waiiiiting")
 	f.WaitUntil("build complete processed", func(state store.EngineState) bool {
-		return len(state.CurrentlyBuilding) == 0
+		return f.b.buildCount == f.bc.buildsStartedCount && f.b.buildCount == state.StartedBuildCount
+		// return len(state.CurrentlyBuilding) == 0
 	})
+	fmt.Println("done waiting")
 	_ = f.store.RLockState()
 	f.b.nextBuildFailure = err
 	f.store.RUnlockState()
