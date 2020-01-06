@@ -15,7 +15,16 @@ import (
 
 type RuntimeState interface {
 	RuntimeState()
-	HasEverBeenReady() bool
+
+	// There are two types of resource dependencies:
+	// - servers (Deployments) where what's important is that the server is running
+	// - tasks (Jobs, local resources) where what's important is that the job completed
+	// Currently, we don't try to distinguish between these two cases.
+	//
+	// In the future, it might make sense to check "IsBlocking()" or something,
+	// and alter the behavior based on whether the underlying resource is a server
+	// or a task.
+	HasEverBeenReadyOrSucceeded() bool
 }
 
 // Currently just a placeholder, as a LocalResource has no runtime state, only "build"
@@ -27,7 +36,7 @@ type LocalRuntimeState struct {
 
 func (LocalRuntimeState) RuntimeState() {}
 
-func (l LocalRuntimeState) HasEverBeenReady() bool {
+func (l LocalRuntimeState) HasEverBeenReadyOrSucceeded() bool {
 	return l.HasSucceededAtLeastOnce
 }
 
@@ -44,7 +53,7 @@ type K8sRuntimeState struct {
 	DeployedUIDSet                 UIDSet                 // for the most recent successful deploy
 	DeployedPodTemplateSpecHashSet PodTemplateSpecHashSet // for the most recent successful deploy
 
-	LastReadyTime time.Time
+	LastReadyOrSucceededTime time.Time
 }
 
 func (K8sRuntimeState) RuntimeState() {}
@@ -65,8 +74,8 @@ func NewK8sRuntimeState(pods ...Pod) K8sRuntimeState {
 	}
 }
 
-func (s K8sRuntimeState) HasEverBeenReady() bool {
-	return !s.LastReadyTime.IsZero()
+func (s K8sRuntimeState) HasEverBeenReadyOrSucceeded() bool {
+	return !s.LastReadyOrSucceededTime.IsZero()
 }
 
 func (s K8sRuntimeState) PodLen() int {
