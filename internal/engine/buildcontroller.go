@@ -105,7 +105,7 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 		c.logBuildEntry(ctx, entry)
 
 		result, err := c.buildAndDeploy(ctx, st, entry)
-		st.Dispatch(buildcontrol.NewBuildCompleteAction(result, err))
+		st.Dispatch(buildcontrol.NewBuildCompleteAction(entry.name, result, err))
 	}()
 }
 

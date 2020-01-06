@@ -1468,9 +1468,8 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 		StartTime:    time.Now(),
 	})
 
-	f.store.Dispatch(buildcontrol.BuildCompleteAction{
-		Result: liveUpdateResultSet(manifest, "theOriginalContainer"),
-	})
+	f.store.Dispatch(buildcontrol.NewBuildCompleteAction(name,
+		liveUpdateResultSet(manifest, "theOriginalContainer"), nil))
 
 	f.WaitUntil("nothing waiting for build", func(st store.EngineState) bool {
 		return st.CompletedBuildCount == 1 && buildcontrol.NextManifestNameToBuild(st) == ""
@@ -1518,9 +1517,8 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 
 	// ...and finish the build. Even though this action comes in AFTER the pod
 	// event w/ unexpected container,  we should still be able to detect the mismatch.
-	f.store.Dispatch(buildcontrol.BuildCompleteAction{
-		Result: liveUpdateResultSet(manifest, "theOriginalContainer"),
-	})
+	f.store.Dispatch(buildcontrol.NewBuildCompleteAction(name,
+		liveUpdateResultSet(manifest, "theOriginalContainer"), nil))
 
 	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {
 		return ms.NeedsRebuildFromCrash
@@ -1560,9 +1558,8 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 		WithCreationTime(podStartTime).
 		WithDeploymentUID(ancestorUID).
 		WithTemplateSpecHash(ptsh)
-	f.store.Dispatch(buildcontrol.BuildCompleteAction{
-		Result: deployResultSet(manifest, ancestorUID, []k8s.PodTemplateSpecHash{ptsh}),
-	})
+	f.store.Dispatch(buildcontrol.NewBuildCompleteAction(name,
+		deployResultSet(manifest, ancestorUID, []k8s.PodTemplateSpecHash{ptsh}), nil))
 
 	f.store.Dispatch(k8swatch.NewPodChangeAction(pb.Build(), manifest.Name, ancestorUID))
 	f.WaitUntil("nothing waiting for build", func(st store.EngineState) bool {
@@ -1583,9 +1580,8 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	pb = pb.WithContainerID("funny-container-id")
 	f.store.Dispatch(k8swatch.NewPodChangeAction(pb.Build(), manifest.Name, ancestorUID))
 
-	f.store.Dispatch(buildcontrol.BuildCompleteAction{
-		Result: liveUpdateResultSet(manifest, "normal-container-id"),
-	})
+	f.store.Dispatch(buildcontrol.NewBuildCompleteAction(name,
+		liveUpdateResultSet(manifest, "normal-container-id"), nil))
 
 	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {
 		return ms.NeedsRebuildFromCrash
@@ -3500,7 +3496,7 @@ func (f *testFixture) SetNextBuildFailure(err error) {
 	// Don't set the nextBuildFailure flag when a completed build needs to be processed
 	// by the state machine.
 	f.WaitUntil("build complete processed", func(state store.EngineState) bool {
-		return state.CurrentlyBuilding == ""
+		return len(state.CurrentlyBuilding) == 0
 	})
 	_ = f.store.RLockState()
 	f.b.nextBuildFailure = err
@@ -3752,7 +3748,7 @@ func (f *testFixture) newManifestWithRef(name string, ref reference.Named) model
 func (f *testFixture) newDockerBuildManifestWithBuildPath(name string, path string) model.Manifest {
 	db := model.DockerBuild{Dockerfile: "FROM alpine", BuildPath: path}
 	iTarget := NewSanchoLiveUpdateImageTarget(f).WithBuildDetails(db)
-	iTarget.ConfigurationRef = container.MustParseSelector(name) // each target should have a unique ID
+	iTarget.ConfigurationRef = container.MustParseSelector(strings.ToLower(name)) // each target should have a unique ID
 	return manifestbuilder.New(f, model.ManifestName(name)).
 		WithK8sYAML(SanchoYAML).
 		WithImageTarget(iTarget).

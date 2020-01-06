@@ -32,7 +32,7 @@ type EngineState struct {
 	// TODO(nick): This will eventually be a general Target index.
 	ManifestTargets map[model.ManifestName]*ManifestTarget
 
-	CurrentlyBuilding model.ManifestName
+	CurrentlyBuilding map[model.ManifestName]bool
 	WatchFiles        bool
 
 	// How many builds have been completed (pass or fail) since starting tilt
@@ -127,6 +127,10 @@ func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.Manife
 		}
 	}
 	return result
+}
+
+func (e *EngineState) IsCurrentlyBuilding(name model.ManifestName) bool {
+	return e.CurrentlyBuilding[name]
 }
 
 func (e *EngineState) BuildStatus(id model.TargetID) BuildStatus {
@@ -323,6 +327,7 @@ func NewState() *EngineState {
 	ret.VersionSettings = model.VersionSettings{
 		CheckUpdates: true,
 	}
+	ret.CurrentlyBuilding = make(map[model.ManifestName]bool)
 	return ret
 }
 
@@ -389,6 +394,10 @@ func (ms *ManifestState) IsK8s() bool {
 
 func (ms *ManifestState) ActiveBuild() model.BuildRecord {
 	return ms.CurrentBuild
+}
+
+func (ms *ManifestState) IsBuilding() bool {
+	return !ms.CurrentBuild.Empty()
 }
 
 func (ms *ManifestState) LastBuild() model.BuildRecord {
