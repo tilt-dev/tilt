@@ -25,15 +25,17 @@ type BuildLogAction struct {
 func (BuildLogAction) Action() {}
 
 type BuildCompleteAction struct {
-	Result store.BuildResultSet
-	Error  error
+	ManifestName model.ManifestName
+	Result       store.BuildResultSet
+	Error        error
 }
 
 func (BuildCompleteAction) Action() {}
 
-func NewBuildCompleteAction(result store.BuildResultSet, err error) BuildCompleteAction {
+func NewBuildCompleteAction(mn model.ManifestName, result store.BuildResultSet, err error) BuildCompleteAction {
 	return BuildCompleteAction{
-		Result: result,
-		Error:  err,
+		ManifestName: mn,
+		Result:       result,
+		Error:        err,
 	}
 }
