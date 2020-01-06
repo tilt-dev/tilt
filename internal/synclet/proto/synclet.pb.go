@@ -362,7 +362,7 @@ func (m *LogStyle) GetLevel() LogLevel {
 
 func init() {
 	proto.RegisterEnum("synclet.LogLevel", LogLevel_name, LogLevel_value)
-	proto.RegisterType((*Cmd)(nil), "synclet.UpdateCmd")
+	proto.RegisterType((*Cmd)(nil), "synclet.Cmd")
 	proto.RegisterType((*UpdateContainerRequest)(nil), "synclet.UpdateContainerRequest")
 	proto.RegisterType((*LogMessage)(nil), "synclet.LogMessage")
 	proto.RegisterType((*FailedRunStep)(nil), "synclet.FailedRunStep")
