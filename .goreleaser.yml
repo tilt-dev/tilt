@@ -13,8 +13,8 @@ builds:
   - windows
   goarch:
   - amd64
-archive:
-  name_template: "{{ .ProjectName }}.{{ .Version }}.{{ .Os }}.{{ .Arch }}"
+archives:
+- name_template: "{{ .ProjectName }}.{{ .Version }}.{{ .Os }}.{{ .Arch }}"
   replacements:
     windows: windows_ALPHA
     darwin: mac
@@ -31,8 +31,8 @@ changelog:
     exclude:
     - '^docs:'
     - '^test:'
-brew:
-  github:
+brews:
+- github:
     owner: windmilleng
     name: homebrew-tap
   commit_author:
