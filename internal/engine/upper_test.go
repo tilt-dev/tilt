@@ -294,35 +294,25 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 
 	return result, err
 }
-func (b *fakeBuildAndDeployer) getBuildCompletionChan(index int) (buildCompletionChannel, bool) {
-	var ch buildCompletionChannel
-	val, ok := b.buildCompletionChans.Load(index)
-	if !ok {
-		return nil, false
-	}
+func (b *fakeBuildAndDeployer) getOrCreateBuildCompletionChannel(index int) buildCompletionChannel {
+	ch := make(buildCompletionChannel)
+	val, _ := b.buildCompletionChans.LoadOrStore(index, ch)
 
+	var ok bool
 	ch, ok = val.(buildCompletionChannel)
 	if !ok {
 		panic(fmt.Sprintf("exected map value of type: buildCompletionChannel, got %T", val))
 	}
 
-	return ch, true
+	return ch
 }
 
 func (b *fakeBuildAndDeployer) registerBuild(index int) {
-	if _, ok := b.getBuildCompletionChan(index); ok {
-		// already in map, nothing to do
-		return
-	}
-	ch := make(buildCompletionChannel)
-	b.buildCompletionChans.Store(index, ch)
+	b.getOrCreateBuildCompletionChannel(index)
 }
 
 func (b *fakeBuildAndDeployer) waitUntilBuildCompleted(ctx context.Context, index int) {
-	ch, ok := b.getBuildCompletionChan(index)
-	if !ok {
-		panic(fmt.Sprintf("no completion channel for build #%d (b.registerBuild should already have been called)", index))
-	}
+	ch := b.getOrCreateBuildCompletionChannel(index)
 
 	// wait until channel for this build is closed, or context is canceled/finishes.
 	select {
@@ -343,13 +333,7 @@ func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 }
 
 func (b *fakeBuildAndDeployer) completeBuild(index int) {
-	ch, ok := b.getBuildCompletionChan(index)
-	if !ok {
-		// If build chan doesn't exist, create and store it
-		ch = make(buildCompletionChannel)
-		b.buildCompletionChans.Store(index, ch)
-	}
-
+	ch := b.getOrCreateBuildCompletionChannel(index)
 	close(ch)
 }
 
