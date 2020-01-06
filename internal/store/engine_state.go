@@ -337,7 +337,7 @@ func NewState() *EngineState {
 	ret.VersionSettings = model.VersionSettings{
 		CheckUpdates: true,
 	}
-	ret.MaxBuildSlots = 3 // TODO(maia): set this via Tiltifle
+	ret.MaxBuildSlots = 1
 	ret.CurrentlyBuilding = make(map[model.ManifestName]bool)
 	return ret
 }

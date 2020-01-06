@@ -294,35 +294,25 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 
 	return result, err
 }
-func (b *fakeBuildAndDeployer) getBuildCompletionChan(index int) (buildCompletionChannel, bool) {
-	var ch buildCompletionChannel
-	val, ok := b.buildCompletionChans.Load(index)
-	if !ok {
-		return nil, false
-	}
+func (b *fakeBuildAndDeployer) getOrCreateBuildCompletionChannel(index int) buildCompletionChannel {
+	ch := make(buildCompletionChannel)
+	val, _ := b.buildCompletionChans.LoadOrStore(index, ch)
 
+	var ok bool
 	ch, ok = val.(buildCompletionChannel)
 	if !ok {
 		panic(fmt.Sprintf("exected map value of type: buildCompletionChannel, got %T", val))
 	}
 
-	return ch, true
+	return ch
 }
 
 func (b *fakeBuildAndDeployer) registerBuild(index int) {
-	if _, ok := b.getBuildCompletionChan(index); ok {
-		// already in map, nothing to do
-		return
-	}
-	ch := make(buildCompletionChannel)
-	b.buildCompletionChans.Store(index, ch)
+	b.getOrCreateBuildCompletionChannel(index)
 }
 
 func (b *fakeBuildAndDeployer) waitUntilBuildCompleted(ctx context.Context, index int) {
-	ch, ok := b.getBuildCompletionChan(index)
-	if !ok {
-		panic(fmt.Sprintf("no completion channel for build #%d (b.registerBuild should already have been called)", index))
-	}
+	ch := b.getOrCreateBuildCompletionChannel(index)
 
 	// wait until channel for this build is closed, or context is canceled/finishes.
 	select {
@@ -343,13 +333,7 @@ func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 }
 
 func (b *fakeBuildAndDeployer) completeBuild(index int) {
-	ch, ok := b.getBuildCompletionChan(index)
-	if !ok {
-		// If build chan doesn't exist, create and store it
-		ch = make(buildCompletionChannel)
-		b.buildCompletionChans.Store(index, ch)
-	}
-
+	ch := b.getOrCreateBuildCompletionChannel(index)
 	close(ch)
 }
 
@@ -3095,13 +3079,32 @@ func TestHasEverBeenReadyK8s(t *testing.T) {
 
 	f.waitForCompletedBuildCount(1)
 	f.withManifestState(m.Name, func(ms store.ManifestState) {
-		require.False(t, ms.RuntimeState.HasEverBeenReady())
+		require.False(t, ms.RuntimeState.HasEverBeenReadyOrSucceeded())
 	})
 
 	pb := podbuilder.New(t, m).WithContainerReady(true)
 	f.podEvent(pb.Build(), m.Name)
 	f.WaitUntilManifestState("flagged ready", m.Name, func(state store.ManifestState) bool {
-		return state.RuntimeState.HasEverBeenReady()
+		return state.RuntimeState.HasEverBeenReadyOrSucceeded()
+	})
+}
+
+func TestHasEverBeenCompleteK8s(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	m := f.newManifest("foobar")
+	f.Start([]model.Manifest{m}, true)
+
+	f.waitForCompletedBuildCount(1)
+	f.withManifestState(m.Name, func(ms store.ManifestState) {
+		require.False(t, ms.RuntimeState.HasEverBeenReadyOrSucceeded())
+	})
+
+	pb := podbuilder.New(t, m).WithPhase(string(v1.PodSucceeded))
+	f.podEvent(pb.Build(), m.Name)
+	f.WaitUntilManifestState("flagged ready", m.Name, func(state store.ManifestState) bool {
+		return state.RuntimeState.HasEverBeenReadyOrSucceeded()
 	})
 }
 
@@ -3113,16 +3116,16 @@ func TestHasEverBeenReadyLocal(t *testing.T) {
 	f.b.nextBuildFailure = errors.New("failure!")
 	f.Start([]model.Manifest{m}, true)
 
-	// first build will fail, HasEverBeenReady should be false
+	// first build will fail, HasEverBeenReadyOrSucceeded should be false
 	f.waitForCompletedBuildCount(1)
 	f.withManifestState(m.Name, func(ms store.ManifestState) {
-		require.False(t, ms.RuntimeState.HasEverBeenReady())
+		require.False(t, ms.RuntimeState.HasEverBeenReadyOrSucceeded())
 	})
 
-	// second build will succeed, HasEverBeenReady should be true
+	// second build will succeed, HasEverBeenReadyOrSucceeded should be true
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("bar", "main.go"))
 	f.WaitUntilManifestState("flagged ready", m.Name, func(state store.ManifestState) bool {
-		return state.RuntimeState.HasEverBeenReady()
+		return state.RuntimeState.HasEverBeenReadyOrSucceeded()
 	})
 }
 
@@ -3136,14 +3139,14 @@ func TestHasEverBeenReadyDC(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 	f.withManifestState(m.Name, func(ms store.ManifestState) {
 		require.NotNil(t, ms.RuntimeState)
-		require.False(t, ms.RuntimeState.HasEverBeenReady())
+		require.False(t, ms.RuntimeState.HasEverBeenReadyOrSucceeded())
 	})
 
-	// second build will succeed, HasEverBeenReady should be true
+	// second build will succeed, HasEverBeenReadyOrSucceeded should be true
 	err := f.dcc.SendEvent(dcContainerEvtForManifest(m, dockercompose.ActionStart))
 	require.NoError(t, err)
 	f.WaitUntilManifestState("flagged ready", m.Name, func(state store.ManifestState) bool {
-		return state.RuntimeState.HasEverBeenReady()
+		return state.RuntimeState.HasEverBeenReadyOrSucceeded()
 	})
 }
 
@@ -3523,10 +3526,12 @@ func (f *testFixture) WaitForNoExit() error {
 func (f *testFixture) SetNextBuildFailure(err error) {
 	// Don't set the nextBuildFailure flag when a completed build needs to be processed
 	// by the state machine.
+
+	// no idea if this is right???
 	fmt.Println("waiiiiting")
 	f.WaitUntil("build complete processed", func(state store.EngineState) bool {
-		return f.b.buildCount == f.bc.buildsStartedCount && f.b.buildCount == state.StartedBuildCount
 		// return len(state.CurrentlyBuilding) == 0
+		return f.b.buildCount == f.bc.buildsStartedCount && f.b.buildCount == state.StartedBuildCount
 	})
 	fmt.Println("done waiting")
 	_ = f.store.RLockState()

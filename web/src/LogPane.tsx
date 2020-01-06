@@ -5,7 +5,7 @@ import "./LogPane.scss"
 import ReactDOM from "react-dom"
 import { LogLine, SnapshotHighlight } from "./types"
 import color from "./color"
-import { SizeUnit, Width } from "./constants"
+import { SizeUnit, Width } from "./style-helpers"
 import findLogLineID from "./findLogLine"
 import styled from "styled-components"
 
@@ -39,7 +39,7 @@ type LogLineComponentProps = {
 let LogLinePrefixRoot = styled.span`
   user-select: none;
   width: calc(
-    ${Width.tabNav}px - ${SizeUnit(0.5)}
+    ${Width.secondaryNavItem}px - ${SizeUnit(0.5)}
   ); // Match height of tab above
   box-sizing: border-box;
   display: inline-block;

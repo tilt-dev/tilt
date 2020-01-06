@@ -1,8 +1,8 @@
 import React from "react"
 import renderer from "react-test-renderer"
 import { MemoryRouter } from "react-router"
-import { ResourceView } from "./types"
-import TopBar from "./TopBar"
+import { ResourceView, SnapshotHighlight } from "./types"
+import ResourceInfo from "./ResourceInfo"
 
 const fakeHandleOpenModal = () => {}
 
@@ -10,12 +10,7 @@ it("shows snapshot url", () => {
   const tree = renderer
     .create(
       <MemoryRouter>
-        <TopBar
-          logUrl="/r/foo"
-          alertsUrl="/r/foo/alerts"
-          facetsUrl={null}
-          resourceView={ResourceView.Alerts}
-          numberOfAlerts={1}
+        <ResourceInfo
           showSnapshotButton={true}
           handleOpenModal={fakeHandleOpenModal}
           highlight={null}
@@ -31,12 +26,7 @@ it("doesn't render snapshot button if it's a snapshot", () => {
   const tree = renderer
     .create(
       <MemoryRouter>
-        <TopBar
-          logUrl="/r/foo"
-          alertsUrl="/r/foo/alerts"
-          facetsUrl={null}
-          resourceView={ResourceView.Alerts}
-          numberOfAlerts={1}
+        <ResourceInfo
           showSnapshotButton={false}
           handleOpenModal={fakeHandleOpenModal}
           highlight={null}

@@ -2,7 +2,7 @@ import React from "react"
 import { mount } from "enzyme"
 import SidebarIcon, { IconType } from "./SidebarIcon"
 import { ResourceStatus } from "./types"
-import { Color } from "./constants"
+import { Color } from "./style-helpers"
 
 type Ignore = boolean
 

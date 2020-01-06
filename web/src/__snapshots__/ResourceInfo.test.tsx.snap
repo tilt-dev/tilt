@@ -1,0 +1,44 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`doesn't render snapshot button if it's a snapshot 1`] = `
+<div
+  className="sc-bdVaJa kyeOVJ"
+>
+  <div
+    className="sc-bwzfXH fdpnBr"
+  >
+    <span
+      className="sc-htpNat dgyfiu"
+    />
+  </div>
+</div>
+`;
+
+exports[`shows snapshot url 1`] = `
+<div
+  className="sc-bdVaJa kyeOVJ"
+>
+  <div
+    className="sc-bwzfXH fdpnBr"
+  >
+    <span
+      className="sc-htpNat dgyfiu"
+    />
+  </div>
+  <button
+    className="sc-gzVnrw jlKHQi snapshotButton "
+    onClick={[Function]}
+  >
+    <svg
+      className="sc-htoDjs jYtsma"
+    >
+      snapshot.svg
+    </svg>
+    <span>
+      Create a 
+      <br />
+      Snapshot
+    </span>
+  </button>
+</div>
+`;

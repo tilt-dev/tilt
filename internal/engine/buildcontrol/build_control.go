@@ -65,7 +65,7 @@ func isWaitingOnDependencies(state store.EngineState, mt *store.ManifestTarget) 
 
 	for _, mn := range mt.Manifest.ResourceDependencies {
 		ms, ok := state.ManifestState(mn)
-		if !ok || ms == nil || ms.RuntimeState == nil || !ms.RuntimeState.HasEverBeenReady() {
+		if !ok || ms == nil || ms.RuntimeState == nil || !ms.RuntimeState.HasEverBeenReadyOrSucceeded() {
 			return true
 		}
 	}

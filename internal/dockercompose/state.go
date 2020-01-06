@@ -94,6 +94,6 @@ func (s State) WithStopping(stopping bool) State {
 	return s
 }
 
-func (s State) HasEverBeenReady() bool {
+func (s State) HasEverBeenReadyOrSucceeded() bool {
 	return !s.LastReadyTime.IsZero()
 }
