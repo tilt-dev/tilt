@@ -19,10 +19,10 @@ type LocalTarget struct {
 
 var _ TargetSpec = LocalTarget{}
 
-func NewLocalTarget(name TargetName, cmd Cmd, workdir string, deps []string) LocalTarget {
+func NewLocalTarget(name TargetName, updateCmd Cmd, workdir string, deps []string, serveCmd Cmd) LocalTarget {
 	return LocalTarget{
 		Name:      name,
-		UpdateCmd: cmd,
+		UpdateCmd: updateCmd,
 		Workdir:   workdir,
 		deps:      deps,
 	}
