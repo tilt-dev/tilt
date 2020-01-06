@@ -156,6 +156,7 @@ func (c buildAndDeployCall) oneState() store.BuildState {
 
 type fakeBuildAndDeployer struct {
 	t     *testing.T
+	mu    sync.Mutex
 	calls chan buildAndDeployCall
 
 	completeBuildsManually bool
@@ -199,6 +200,7 @@ func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deploy
 }
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, state store.BuildStateSet) (brs store.BuildResultSet, err error) {
+	b.mu.Lock()
 	b.buildCount++
 	index := b.buildCount
 	b.registerBuild(index)
@@ -285,39 +287,32 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		b.resultsByID[key] = val
 	}
 
+	b.mu.Unlock()
+
 	// block until we know we're supposed to resolve this build
 	b.waitUntilBuildCompleted(ctx, index)
 
 	return result, err
 }
-func (b *fakeBuildAndDeployer) getBuildCompletionChan(index int) (buildCompletionChannel, bool) {
-	var ch buildCompletionChannel
-	val, ok := b.buildCompletionChans.Load(index)
-	if !ok {
-		return nil, false
-	}
+func (b *fakeBuildAndDeployer) getOrCreateBuildCompletionChannel(index int) buildCompletionChannel {
+	ch := make(buildCompletionChannel)
+	val, _ := b.buildCompletionChans.LoadOrStore(index, ch)
 
+	var ok bool
 	ch, ok = val.(buildCompletionChannel)
 	if !ok {
 		panic(fmt.Sprintf("exected map value of type: buildCompletionChannel, got %T", val))
 	}
 
-	return ch, true
+	return ch
 }
 
 func (b *fakeBuildAndDeployer) registerBuild(index int) {
-	if _, ok := b.getBuildCompletionChan(index); ok {
-		b.t.Fatalf("Tried to register build #%d, but it's already registered (i.e. completion chan already exists)", index)
-	}
-	ch := make(buildCompletionChannel)
-	b.buildCompletionChans.Store(index, ch)
+	b.getOrCreateBuildCompletionChannel(index)
 }
 
 func (b *fakeBuildAndDeployer) waitUntilBuildCompleted(ctx context.Context, index int) {
-	ch, ok := b.getBuildCompletionChan(index)
-	if !ok {
-		panic(fmt.Sprintf("no completion channel for build #%d (b.registerBuild should already have been called)", index))
-	}
+	ch := b.getOrCreateBuildCompletionChannel(index)
 
 	// wait until channel for this build is closed, or context is canceled/finishes.
 	select {
@@ -338,13 +333,7 @@ func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 }
 
 func (b *fakeBuildAndDeployer) completeBuild(index int) {
-	ch, ok := b.getBuildCompletionChan(index)
-	if !ok {
-		// TODO(maia): maybe this should just create and close a channel for this key
-		b.t.Fatalf("tried to mark build #%d for for completion, but no completion channel registered (b.registerBuild(index) "+
-			"should already have been called--probably by b.BuildAndDeploy)", index)
-	}
-
+	ch := b.getOrCreateBuildCompletionChannel(index)
 	close(ch)
 }
 
