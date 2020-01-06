@@ -10,7 +10,7 @@ type LocalTarget struct {
 	Name      TargetName
 	UpdateCmd Cmd
 	ServeCmd  Cmd
-	Workdir   string   // directory from which this UpdateCmd should be run
+	Workdir   string   // directory from which the commands should be run
 	deps      []string // a list of ABSOLUTE file paths that are dependencies of this target
 	ignores   []Dockerignore
 
@@ -51,6 +51,7 @@ func (lt LocalTarget) DependencyIDs() []TargetID {
 	return nil
 }
 
+// TODO(dmiller): this should allow local targets with only server commands and no update commands
 func (lt LocalTarget) Validate() error {
 	if lt.UpdateCmd.Empty() {
 		return fmt.Errorf("[Validate] LocalTarget missing command")
