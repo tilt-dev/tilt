@@ -3524,18 +3524,20 @@ func (f *testFixture) WaitForNoExit() error {
 }
 
 func (f *testFixture) SetNextBuildFailure(err error) {
-	// Don't set the nextBuildFailure flag when a completed build needs to be processed
-	// by the state machine.
-
-	// no idea if this is right???
-	fmt.Println("waiiiiting")
-	f.WaitUntil("build complete processed", func(state store.EngineState) bool {
-		// return len(state.CurrentlyBuilding) == 0
-		return f.b.buildCount == f.bc.buildsStartedCount && f.b.buildCount == state.StartedBuildCount
+	// Before setting the nextBuildFailure, make sure that any in-flight builds (state.BuildStartedCount)
+	// have hit the buildAndDeployer (f.b.buildCount); by the time we've incremented buildCount and
+	// the fakeBaD mutex is unlocked, we've already grabbed the nextBuildFailure for that build,
+	// so we can freely set it here for a future build.
+	f.WaitUntil("any in-flight builds have hit the buildAndDeployer", func(state store.EngineState) bool {
+		f.b.mu.Lock()
+		f.b.mu.Unlock()
+		return f.b.buildCount == state.StartedBuildCount
 	})
-	fmt.Println("done waiting")
+
 	_ = f.store.RLockState()
+	f.b.mu.Lock()
 	f.b.nextBuildFailure = err
+	f.b.mu.Unlock()
 	f.store.RUnlockState()
 }
 

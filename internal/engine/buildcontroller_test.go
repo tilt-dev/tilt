@@ -1214,7 +1214,7 @@ func TestDontStartBuildIfControllerAndEngineUnsynced(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-func _TestErrorHandlingWithMultipleBuilds(t *testing.T) {
+func TestErrorHandlingWithMultipleBuilds(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	f.b.completeBuildsManually = true
@@ -1231,23 +1231,29 @@ func _TestErrorHandlingWithMultipleBuilds(t *testing.T) {
 	// start builds for all manifests (we only have 2 build slots)
 	f.SetNextBuildFailure(errA)
 	indexA := f.editFileAndWaitForManifestBuilding("manA", "a/main.go")
-	time.Sleep(time.Second)
 	f.SetNextBuildFailure(errB)
 	indexB := f.editFileAndWaitForManifestBuilding("manB", "b/main.go")
 	f.editFileAndAssertManifestNotBuilding("manC", "c/main.go")
 
-	// Complete one build -- 'manC' should start building, even though the build ended with an error
+	// Complete one build -- 'manC' should start building, even though the manA build ended with an error
 	indexC := f.runAndWaitForManifestBuilding("manC", func() {
 		f.b.completeBuild(indexA)
 		call := f.nextCall("expect manA build complete")
 		f.assertCallIsForManifestAndFiles(call, manA, "a/main.go")
-		f.withManifestState("manA", func(ms store.ManifestState) {
-			require.Equal(t, errA, ms.LastBuild().Error)
+		f.WaitUntilManifestState("last manA build reflects expected error", "manA", func(ms store.ManifestState) bool {
+			return ms.LastBuild().Error == errA
 		})
 	})
 
 	// complete the rest
 	f.completeAndCheckBuildsForManifests([]int{indexB, indexC}, []model.Manifest{manB, manC})
+	f.WaitUntilManifestState("last manB build reflects expected error", "manB", func(ms store.ManifestState) bool {
+		return ms.LastBuild().Error == errB
+	})
+	time.Sleep(10 * time.Millisecond)
+	f.WaitUntilManifestState("last manC build has no error", "manC", func(ms store.ManifestState) bool {
+		return ms.LastBuild().Error == nil
+	})
 
 	err := f.Stop()
 	assert.NoError(t, err)
