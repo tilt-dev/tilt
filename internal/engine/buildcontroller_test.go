@@ -1273,7 +1273,8 @@ func (f *testFixture) waitUntilManifestBuilding(name model.ManifestName) {
 }
 
 func (f *testFixture) waitUntilBuildCountAtLeast(n int) {
-	ctx, _ := context.WithTimeout(f.ctx, time.Millisecond*200)
+	ctx, cancel := context.WithTimeout(f.ctx, time.Millisecond*200)
+	defer cancel()
 	for {
 		if f.b.buildCount >= n {
 			return
