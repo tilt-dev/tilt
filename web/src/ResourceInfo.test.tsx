@@ -26,7 +26,11 @@ it("doesn't render snapshot button if it's a snapshot", () => {
   const tree = renderer
     .create(
       <MemoryRouter>
-        <ResourceInfo showSnapshotButton={false} />
+        <ResourceInfo
+          showSnapshotButton={false}
+          handleOpenModal={fakeHandleOpenModal}
+          highlight={null}
+        />
       </MemoryRouter>
     )
     .toJSON()
