@@ -1,6 +1,6 @@
 import React from "react"
 import { storiesOf } from "@storybook/react"
-import TopBar from "./TopBar"
+import SecondaryNav from "./SecondaryNav"
 import { MemoryRouter } from "react-router"
 import { ResourceView } from "./types"
 
@@ -11,14 +11,11 @@ function openModal() {
 function topBarDefault() {
   return (
     <MemoryRouter>
-      <TopBar
+      <SecondaryNav
         logUrl="/r/foo"
         alertsUrl="/r/foo/alerts"
         resourceView={ResourceView.Alerts}
         numberOfAlerts={1}
-        showSnapshotButton={true}
-        handleOpenModal={openModal}
-        highlight={null}
         facetsUrl="/r/foo/facets"
       />
     </MemoryRouter>
@@ -28,20 +25,17 @@ function topBarDefault() {
 function topBarTeam() {
   return (
     <MemoryRouter>
-      <TopBar
+      <SecondaryNav
         logUrl="/r/foo"
         alertsUrl="/r/foo/alerts"
         resourceView={ResourceView.Alerts}
         numberOfAlerts={1}
-        showSnapshotButton={true}
-        handleOpenModal={openModal}
-        highlight={null}
         facetsUrl="/r/foo/facets"
       />
     </MemoryRouter>
   )
 }
 
-storiesOf("TopBar", module)
+storiesOf("SecondaryNav", module)
   .add("default", topBarDefault)
   .add("team", topBarTeam)

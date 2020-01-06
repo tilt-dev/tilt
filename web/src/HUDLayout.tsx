@@ -1,6 +1,6 @@
 import React from "react"
 import styled from "styled-components"
-import { AnimDuration, Height, Width, ZIndex } from "./constants"
+import * as s from "./style-helpers"
 
 // The HUD UI looks like this:
 //
@@ -8,7 +8,6 @@ import { AnimDuration, Height, Width, ZIndex } from "./constants"
 //            | Header                     | Sidebar |
 //            |                            |         |
 //            +----------------------------+         |
-//  StickyNav +----------------------------+         |
 //            |                            |         |
 //            | Main                       |         |
 //            |                            |         |
@@ -26,9 +25,7 @@ import { AnimDuration, Height, Width, ZIndex } from "./constants"
 // 2) Sidebar abuts Main, and is collapsible.
 //    Sidebar never covers any content within HUDLayout.
 //
-// 3) StickyNav does not scroll offscreen, but sticks to the top.
-//
-// 4) Header, StickyNav, and Statusbar may temporarily cover Main content,
+// 3) Header and Statusbar may temporarily cover Main content,
 //    but scrolling should make any covered content visible.
 //
 //
@@ -40,39 +37,47 @@ import { AnimDuration, Height, Width, ZIndex } from "./constants"
 //    https://medium.engineering/the-case-of-the-eternal-blur-ab350b9653ea)
 //
 //    HUDLayout has side padding that dynamically matches the Sidebar width,
-//    and bottom padding that matches Statusbar height. So when Sidebar
-//    and Statusbar are put in place with `position: fixed`, nothing is covered.
+//    and top + bottom padding to respectively match Header and Statusbar.
+//    So when these latter elements are `position: fixed`, nothing is covered.
 //
 //    This way, scrolling anywhere on the page will scroll Main content.
 //    (Unless you scroll atop the Sidebar, which _is_ `overflow: auto` 👀)
 
 type HUDLayoutProps = {
   header: React.ReactNode
-  stickyNav: React.ReactNode
-
-  // The main pane
-  children: React.ReactNode
-
+  children: React.ReactNode // Main pane
   isSidebarClosed: boolean
 }
 
 let Root = styled.div`
   display: flex;
   flex-direction: column;
-  padding-right: ${Width.sidebar}px;
-  padding-bottom: ${Height.statusbar}px;
-  transition: padding-right ${AnimDuration.default} ease;
+  padding-top: ${s.Height.HUDheader}px;
+  padding-right: ${s.Width.sidebar}px;
+  padding-bottom: ${s.Height.statusbar}px;
+  width: 100%;
+  transition: padding-right ${s.AnimDuration.default} ease;
 
   &.is-sidebarCollapsed {
-    padding-right: ${Width.sidebarCollapsed}px;
+    padding-right: ${s.Width.sidebarCollapsed}px;
   }
 `
 
-let Header = styled.header``
-
-let StickyNav = styled.nav`
-  position: sticky;
+let Header = styled.header`
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
+  padding-right: ${s.Width.sidebar}px;
+  height: ${s.Height.HUDheader}px;
+  background-color: ${s.Color.grayDarkest};
+  box-shadow: inset 0px -2px 10px 0px rgba(${s.Color.black}, ${s.ColorAlpha.translucent});
+  transition: padding-right ${s.AnimDuration.default} ease;
+  z-index: ${s.ZIndex.HUDheader};
+
+  .is-sidebarCollapsed & {
+    padding-right: ${s.Width.sidebarCollapsed}px;
+  }
 `
 
 let Main = styled.main``
@@ -81,7 +86,6 @@ export default function HUDLayout(props: HUDLayoutProps) {
   return (
     <Root className={props.isSidebarClosed ? "is-sidebarCollapsed" : ""}>
       <Header>{props.header}</Header>
-      <StickyNav>{props.stickyNav}</StickyNav>
       <Main>{props.children}</Main>
     </Root>
   )

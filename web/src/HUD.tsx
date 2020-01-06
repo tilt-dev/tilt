@@ -12,7 +12,7 @@ import { matchPath } from "react-router"
 import { Route, Switch, RouteComponentProps } from "react-router-dom"
 import { History, UnregisterCallback } from "history"
 import { incr, pathToTag } from "./analytics"
-import TopBar from "./TopBar"
+import SecondaryNav from "./SecondaryNav"
 import SocketBar from "./SocketBar"
 import "./HUD.scss"
 import {
@@ -33,7 +33,7 @@ import ShareSnapshotModal from "./ShareSnapshotModal"
 import FatalErrorModal from "./FatalErrorModal"
 import * as _ from "lodash"
 import FacetsPane from "./FacetsPane"
-import HUDGrid from "./HUDGrid"
+import HUDLayout from "./HUDLayout"
 import LogStore from "./LogStore"
 
 type HudProps = {
@@ -263,97 +263,96 @@ class HUD extends Component<HudProps, HudState> {
         {this.renderSidebarSwitch()}
         {statusbar}
 
-        <HUDGrid
-          topBar={this.renderTopBarSwitch()}
-          resourceBar={this.renderResourceBar()}
+        <HUDLayout
+          header={this.renderHUDHeader()}
           isSidebarClosed={!!this.state.isSidebarClosed}
         >
           {this.renderMainPaneSwitch()}
-        </HUDGrid>
+        </HUDLayout>
       </div>
     )
   }
 
-  renderResourceBar() {
-    let match = matchPath(String(this.props.history.location.pathname), {
-      path: this.path("/r/:name"),
-      exact: true,
-    })
-    let params: any = match?.params
-    let name = params?.name
-    if (!name) {
-      return null
-    }
-
-    let view = this.state.view
-    let resources = view?.resources ?? []
-    let r = resources.find(r => r.name === name)
-    if (!r) {
-      return null
-    }
-
-    let endpoints = r?.endpoints ?? []
-    let podID = r?.podID ?? ""
-    let podStatus = (r.k8sResourceInfo && r.k8sResourceInfo.podStatus) || ""
+  renderHUDHeader() {
     return (
-      <ResourceInfo endpoints={endpoints} podID={podID} podStatus={podStatus} />
+      <>
+        {this.renderResourceInfo()}
+        {this.renderSecondaryNav()}
+      </>
     )
   }
 
-  renderTopBarSwitch() {
+  renderResourceInfo() {
+    let match = matchPath(String(this.props.history.location.pathname), {
+      path: this.path("/r/:name"),
+    })
+    let params: any = match?.params
+    let name = params?.name
+
     let view = this.state.view
     let resources = view?.resources ?? []
+    let selectedResource = resources?.find(r => r.name === name)
+
+    let endpoints = selectedResource?.endpoints ?? []
+    let podID = selectedResource?.podID ?? ""
+    let podStatus =
+      (selectedResource?.k8sResourceInfo &&
+        selectedResource?.k8sResourceInfo.podStatus) ||
+      ""
+
     let showSnapshot =
       this.getFeatures().isEnabled("snapshots") &&
       !this.pathBuilder.isSnapshot()
-
     let snapshotHighlight = this.state.snapshotHighlight || null
 
-    let topBarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
-      let name =
-        props.match.params && props.match.params.name
-          ? props.match.params.name
-          : ""
+    return (
+      <ResourceInfo
+        endpoints={endpoints}
+        podID={podID}
+        podStatus={podStatus}
+        showSnapshotButton={showSnapshot}
+        highlight={snapshotHighlight}
+        handleOpenModal={this.handleOpenModal}
+      />
+    )
+  }
+
+  renderSecondaryNav() {
+    let view = this.state.view
+    let resources = view?.resources ?? []
+
+    let secondaryNavRoute = (
+      t: ResourceView,
+      props: RouteComponentProps<any>
+    ) => {
+      let name = props.match.params?.name ?? ""
       let numAlerts = 0
+      let logUrl = name === "" ? this.path("/") : this.path(`/r/${name}`)
+      let alertsUrl =
+        name === "" ? this.path("/alerts") : this.path(`/r/${name}/alerts`)
+
+      let isFacetsEnabled = this.getFeatures().isEnabled("facets")
+      let facetsUrl =
+        name !== "" && isFacetsEnabled ? this.path(`/r/${name}/facets`) : null
+
       if (name) {
         let selectedResource = resources.find(r => r.name === name)
-        if (selectedResource === undefined) {
-          return (
-            <TopBar
-              logUrl={this.path("/")} // redirect to home page
-              alertsUrl={this.path("/alerts")}
-              resourceView={t}
-              numberOfAlerts={numAlerts}
-              showSnapshotButton={showSnapshot}
-              handleOpenModal={this.handleOpenModal}
-              highlight={snapshotHighlight}
-              facetsUrl={null}
-            />
-          )
+        if (selectedResource) {
+          numAlerts = numberOfAlerts(selectedResource)
         }
-        numAlerts = numberOfAlerts(selectedResource)
       } else {
         numAlerts = resources
           .map(r => numberOfAlerts(r))
           .reduce((sum, current) => sum + current, 0)
       }
-      let isFacetsEnabled = this.getFeatures().isEnabled("facets")
+
       return (
-        <TopBar
-          logUrl={name === "" ? this.path("/") : this.path(`/r/${name}`)}
-          alertsUrl={
-            name === "" ? this.path("/alerts") : this.path(`/r/${name}/alerts`)
-          }
+        <SecondaryNav
+          logUrl={logUrl}
+          alertsUrl={alertsUrl}
           resourceView={t}
           numberOfAlerts={numAlerts}
-          showSnapshotButton={showSnapshot}
-          handleOpenModal={this.handleOpenModal}
-          highlight={snapshotHighlight}
-          facetsUrl={
-            name !== "" && isFacetsEnabled
-              ? this.path(`/r/${name}/facets`)
-              : null
-          }
+          facetsUrl={facetsUrl}
         />
       )
     }
@@ -362,21 +361,21 @@ class HUD extends Component<HudProps, HudState> {
       <Switch>
         <Route
           path={this.path("/r/:name/alerts")}
-          render={topBarRoute.bind(null, ResourceView.Alerts)}
+          render={secondaryNavRoute.bind(null, ResourceView.Alerts)}
         />
         <Route
           path={this.path("/r/:name/facets")}
-          render={topBarRoute.bind(null, ResourceView.Facets)}
+          render={secondaryNavRoute.bind(null, ResourceView.Facets)}
         />
         <Route
           path={this.path("/r/:name")}
-          render={topBarRoute.bind(null, ResourceView.Log)}
+          render={secondaryNavRoute.bind(null, ResourceView.Log)}
         />
         <Route
           path={this.path("/alerts")}
-          render={topBarRoute.bind(null, ResourceView.Alerts)}
+          render={secondaryNavRoute.bind(null, ResourceView.Alerts)}
         />
-        <Route render={topBarRoute.bind(null, ResourceView.Log)} />
+        <Route render={secondaryNavRoute.bind(null, ResourceView.Log)} />
       </Switch>
     )
   }

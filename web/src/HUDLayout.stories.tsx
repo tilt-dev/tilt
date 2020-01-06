@@ -2,18 +2,12 @@ import React from "react"
 import { storiesOf } from "@storybook/react"
 import HUDLayout from "./HUDLayout"
 import styled from "styled-components"
-import { Color, Height, SizeUnit } from "./constants"
+import { Color, Height, SizeUnit } from "./style-helpers"
 
 let Header = styled.header`
   border-right: 1px dashed ${Color.white};
   height: 100px;
   padding: ${SizeUnit(0.5)};
-`
-
-let StickyNav = styled.nav`
-  background-color: ${Color.white};
-  color: ${Color.gray};
-  padding: ${SizeUnit(0.25)};
 `
 
 let Main = styled.main`
@@ -85,11 +79,7 @@ let mainLorem = (
 
 function layoutDefault() {
   return (
-    <HUDLayout
-      header={<Header>Header</Header>}
-      stickyNav={<StickyNav>Sticky Nav</StickyNav>}
-      isSidebarClosed={false}
-    >
+    <HUDLayout header={<Header>Header</Header>} isSidebarClosed={false}>
       <Main>{mainLorem}</Main>
     </HUDLayout>
   )
@@ -97,11 +87,7 @@ function layoutDefault() {
 
 function layoutWithSidebarCollapsed() {
   return (
-    <HUDLayout
-      header={<Header>Header</Header>}
-      stickyNav={<StickyNav>Sticky Nav</StickyNav>}
-      isSidebarClosed={true}
-    >
+    <HUDLayout header={<Header>Header</Header>} isSidebarClosed={true}>
       <Main>{mainLorem}</Main>
     </HUDLayout>
   )
