@@ -272,7 +272,7 @@ type Run struct {
 	// Required. The command to run.
 	Cmd Cmd
 	// Optional. If not specified, this command runs on every change.
-	// If specified, we only run the Cmd if the changed file matches a trigger.
+	// If specified, we only run the UpdateCmd if the changed file matches a trigger.
 	Triggers PathSet
 }
 

@@ -877,7 +877,7 @@ func TestLocalTargetDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
-	lt := model.LocalTarget{Cmd: model.ToShellCmd("echo hello world")}
+	lt := model.LocalTarget{UpdateCmd: model.ToShellCmd("echo hello world")}
 	res, err := f.bd.BuildAndDeploy(f.ctx, f.st, []model.TargetSpec{lt}, store.BuildStateSet{})
 	require.Nil(t, err)
 
@@ -892,7 +892,7 @@ func TestLocalTargetFailure(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
-	lt := model.LocalTarget{Cmd: model.ToShellCmd("echo oh no; false")}
+	lt := model.LocalTarget{UpdateCmd: model.ToShellCmd("echo oh no; false")}
 	res, err := f.bd.BuildAndDeploy(f.ctx, f.st, []model.TargetSpec{lt}, store.BuildStateSet{})
 	assert.Empty(t, res, "expect empty result for failed command")
 

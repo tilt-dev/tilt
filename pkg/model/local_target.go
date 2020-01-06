@@ -7,11 +7,12 @@ import (
 )
 
 type LocalTarget struct {
-	Name    TargetName
-	Cmd     Cmd
-	Workdir string   // directory from which this Cmd should be run
-	deps    []string // a list of ABSOLUTE file paths that are dependencies of this target
-	ignores []Dockerignore
+	Name      TargetName
+	UpdateCmd Cmd
+	ServeCmd  Cmd
+	Workdir   string   // directory from which this UpdateCmd should be run
+	deps      []string // a list of ABSOLUTE file paths that are dependencies of this target
+	ignores   []Dockerignore
 
 	repos []LocalGitRepo
 }
@@ -20,14 +21,14 @@ var _ TargetSpec = LocalTarget{}
 
 func NewLocalTarget(name TargetName, cmd Cmd, workdir string, deps []string) LocalTarget {
 	return LocalTarget{
-		Name:    name,
-		Cmd:     cmd,
-		Workdir: workdir,
-		deps:    deps,
+		Name:      name,
+		UpdateCmd: cmd,
+		Workdir:   workdir,
+		deps:      deps,
 	}
 }
 
-func (lt LocalTarget) Empty() bool { return lt.Cmd.Empty() }
+func (lt LocalTarget) Empty() bool { return lt.UpdateCmd.Empty() }
 
 func (lt LocalTarget) WithRepos(repos []LocalGitRepo) LocalTarget {
 	lt.repos = append(append([]LocalGitRepo{}, lt.repos...), repos...)
@@ -51,7 +52,7 @@ func (lt LocalTarget) DependencyIDs() []TargetID {
 }
 
 func (lt LocalTarget) Validate() error {
-	if lt.Cmd.Empty() {
+	if lt.UpdateCmd.Empty() {
 		return fmt.Errorf("[Validate] LocalTarget missing command")
 	}
 	if lt.Workdir == "" {

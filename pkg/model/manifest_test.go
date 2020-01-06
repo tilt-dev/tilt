@@ -302,7 +302,7 @@ var equalitytests = []struct {
 		true,
 	},
 	{
-		"LocalTarget.Cmd unequal",
+		"LocalTarget.UpdateCmd unequal",
 		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToShellCmd("beep boop"), "path/to/tiltfile", []string{"bar", "baz"})),
 		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToShellCmd("bippity boppity"), "path/to/tiltfile", []string{"bar", "baz"})),
 		false,
