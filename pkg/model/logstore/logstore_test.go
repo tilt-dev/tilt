@@ -276,7 +276,7 @@ func TestWarnings(t *testing.T) {
 	l.Append(testLogEvent{
 		name:    "fe",
 		level:   logger.WarnLvl,
-		message: "Warning 1 line 1\nWarning 2 line 2\nWarning 3 line 3\n",
+		message: "Warning 1 line 1\nWarning 1 line 2\nWarning 1 line 3\n",
 	}, nil)
 	l.Append(testLogEvent{
 		name:    "fe",
@@ -291,13 +291,21 @@ func TestWarnings(t *testing.T) {
 	l.Append(testLogEvent{
 		name:    "non-fe",
 		level:   logger.WarnLvl,
-		message: "Ignored warning\n",
+		message: "non-fe warning\n",
 	}, nil)
 
 	warnings := l.Warnings("fe")
 	assert.Equal(t, warnings, []string{
-		"Warning 1 line 1\nWarning 2 line 2\nWarning 3 line 3\n",
+		"Warning 1 line 1\nWarning 1 line 2\nWarning 1 line 3\n",
 		"Warning 2 line 1\nWarning 2 line 2",
 		"Warning 3 line 1\n",
 	})
+
+	assert.Equal(t, `fe          ┊ WARNING: Warning 1 line 1
+fe          ┊ Warning 1 line 2
+fe          ┊ Warning 1 line 3
+fe          ┊ WARNING: Warning 2 line 1
+fe          ┊ Warning 2 line 2Warning 3 line 1
+non-fe      ┊ WARNING: non-fe warning
+`, l.String())
 }

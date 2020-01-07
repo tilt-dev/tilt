@@ -67,8 +67,8 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 
 	fwdsValid := portForwardsAreValid(manifest, *podInfo)
 	if !fwdsValid {
-		logger.Get(ctx).Infof(
-			"WARNING: Resource %s is using port forwards, but no container ports on pod %s",
+		logger.Get(ctx).Warnf(
+			"Resource %s is using port forwards, but no container ports on pod %s",
 			manifest.Name, podInfo.PodID)
 	}
 	checkForContainerCrash(ctx, state, mt)
@@ -257,8 +257,7 @@ func checkForContainerCrash(ctx context.Context, state *store.EngineState, mt *s
 	ms.NeedsRebuildFromCrash = true
 	ms.LiveUpdatedContainerIDs = container.NewIDSet()
 	msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Name)
-	// TODO(nick): logger.WarningLvl?
-	le := store.NewLogEvent(ms.Name, "build:0", logger.InfoLvl, []byte(msg+"\n"))
+	le := store.NewLogEvent(ms.Name, ms.LastBuild().SpanID, logger.WarnLvl, []byte(msg+"\n"))
 	handleLogAction(state, le)
 }
 

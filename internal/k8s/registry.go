@@ -68,9 +68,9 @@ func (r *registryAsync) Registry(ctx context.Context) container.Registry {
 		svc, err := r.core.Services(microk8sRegistryNamespace).Get(microk8sRegistryName, metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
-				logger.Get(ctx).Infof("WARNING: You are running microk8s without a local image registry.\n" +
+				logger.Get(ctx).Warnf("You are running microk8s without a local image registry.\n" +
 					"Run: `sudo microk8s.enable registry`\n" +
-					"Tilt will use the local registry to speed up builds\n")
+					"Tilt will use the local registry to speed up builds")
 			} else {
 				logger.Get(ctx).Debugf("Error fetching services: %v", err)
 			}
@@ -87,7 +87,7 @@ func (r *registryAsync) Registry(ctx context.Context) container.Registry {
 		// https://github.com/windmilleng/tilt/issues/2369
 		ips, err := net.LookupIP("localhost")
 		if err != nil || len(ips) == 0 || ips[0].To4() == nil {
-			logger.Get(ctx).Infof("WARNING: Your /etc/hosts is resolving localhost to ::1 (IPv6).\n" +
+			logger.Get(ctx).Warnf("Your /etc/hosts is resolving localhost to ::1 (IPv6).\n" +
 				"This breaks the microk8s image registry.\n" +
 				"Please fix your /etc/hosts to default to IPv4. This will make image pushes much faster.")
 			return
