@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -1064,7 +1063,7 @@ func TestBuildControllerWontBuildManifestThatsAlreadyBuilding(t *testing.T) {
 	f.waitUntilNumBuildSlots(3)
 
 	// file change starts a build
-	build1Index := f.editFileAndWaitForManifestBuilding("fe", "A.txt")
+	f.editFileAndWaitForManifestBuilding("fe", "A.txt")
 	f.waitUntilNumBuildSlots(2)
 
 	// a second file change doesn't start a second build, b/c 'fe' is already building
@@ -1078,9 +1077,7 @@ func TestBuildControllerWontBuildManifestThatsAlreadyBuilding(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 
 	// we freed up a build slot; expect the second build to start
-	build2Index := build1Index + 1
 	f.waitUntilManifestBuilding("fe")
-	f.waitUntilBuildCountAtLeast(build2Index)
 
 	f.completeBuildForManifest(manifest)
 	call = f.nextCall("expect build from second pending file change (B.txt)")
@@ -1277,27 +1274,6 @@ func (f *testFixture) waitUntilManifestBuilding(name model.ManifestName) {
 	})
 }
 
-func (f *testFixture) waitUntilBuildCountAtLeast(n int) {
-	ctx, cancel := context.WithTimeout(f.ctx, time.Millisecond*200)
-	defer cancel()
-	for {
-		f.b.mu.Lock()
-		bc := f.b.buildCount
-		f.b.mu.Unlock()
-
-		if bc >= n {
-			return
-		}
-
-		select {
-		case <-ctx.Done():
-			f.T().Errorf("Timed out waiting for buildCount >= %d", n)
-			f.T().FailNow()
-		case <-time.After(time.Millisecond * 5):
-		}
-	}
-}
-
 func (f *testFixture) waitUntilManifestNotBuilding(name model.ManifestName) {
 	msg := fmt.Sprintf("manifest %q is NOT building", name)
 	f.WaitUntilManifestState(msg, name, func(ms store.ManifestState) bool {
@@ -1317,12 +1293,9 @@ func (f *testFixture) waitUntilNumBuildSlots(expected int) {
 	})
 }
 
-func (f *testFixture) editFileAndWaitForManifestBuilding(name model.ManifestName, path string) (buildIndex int) {
-	startBuildCount := f.b.buildCount
+func (f *testFixture) editFileAndWaitForManifestBuilding(name model.ManifestName, path string) {
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath(path))
 	f.waitUntilManifestBuilding(name)
-	f.waitUntilBuildCountAtLeast(startBuildCount + 1)
-	return startBuildCount + 1
 }
 
 func (f *testFixture) editFileAndAssertManifestNotBuilding(name model.ManifestName, path string) {
