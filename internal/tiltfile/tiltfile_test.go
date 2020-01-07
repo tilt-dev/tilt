@@ -3906,7 +3906,7 @@ local_resource("test", updateCmd="echo hi", deps=["foo/bar", "foo/a.txt"])
 	f.assertNumManifests(1)
 	path1 := "foo/bar"
 	path2 := "foo/a.txt"
-	m := f.assertNextManifest("test", lt(updateCmd("echo hi"), deps(path1, path2)), fileChangeMatches("foo/a.txt"))
+	m := f.assertNextManifest("test", localTarget(updateCmd("echo hi"), deps(path1, path2)), fileChangeMatches("foo/a.txt"))
 
 	lt := m.LocalTarget()
 	f.assertRepos([]string{f.Path()}, lt.LocalRepos())
@@ -3925,7 +3925,7 @@ local_resource("test", serveCmd="sleep 1000")
 	f.load()
 
 	f.assertNumManifests(1)
-	f.assertNextManifest("test", lt(serveCmd("sleep 1000")))
+	f.assertNextManifest("test", localTarget(serveCmd("sleep 1000")))
 
 	f.assertConfigFiles("Tiltfile", ".tiltignore")
 }
@@ -3941,7 +3941,7 @@ local_resource("test", updateCmd="echo hi", serveCmd="sleep 1000")
 	f.load()
 
 	f.assertNumManifests(1)
-	f.assertNextManifest("test", lt(updateCmd("echo hi"), serveCmd("sleep 1000")))
+	f.assertNextManifest("test", localTarget(updateCmd("echo hi"), serveCmd("sleep 1000")))
 
 	f.assertConfigFiles("Tiltfile", ".tiltignore")
 }
@@ -3977,7 +3977,7 @@ local_resource("toplvl-local", updateCmd="echo hello world", deps=["foo/baz", "f
 	f.load()
 
 	f.assertNumManifests(2)
-	mNested := f.assertNextManifest("nested-local", lt(updateCmd("echo nested"), deps("nested/foo/bar", "nested/more_nested/repo")))
+	mNested := f.assertNextManifest("nested-local", localTarget(updateCmd("echo nested"), deps("nested/foo/bar", "nested/more_nested/repo")))
 
 	ltNested := mNested.LocalTarget()
 	f.assertRepos([]string{
@@ -3985,7 +3985,7 @@ local_resource("toplvl-local", updateCmd="echo hello world", deps=["foo/baz", "f
 		f.JoinPath("nested/more_nested/repo"),
 	}, ltNested.LocalRepos())
 
-	mTop := f.assertNextManifest("toplvl-local", lt(updateCmd("echo hello world"), deps("foo/baz", "foo/a.txt")))
+	mTop := f.assertNextManifest("toplvl-local", localTarget(updateCmd("echo hello world"), deps("foo/baz", "foo/a.txt")))
 	ltTop := mTop.LocalTarget()
 	f.assertRepos([]string{
 		f.JoinPath("foo/baz"),
@@ -5184,7 +5184,7 @@ type localTargetHelper struct {
 	matchers []interface{}
 }
 
-func lt(opts ...interface{}) localTargetHelper {
+func localTarget(opts ...interface{}) localTargetHelper {
 	return localTargetHelper{matchers: opts}
 }
 
