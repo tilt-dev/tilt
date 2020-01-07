@@ -4794,7 +4794,7 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 					deps := f.JoinPaths(matcher.deps)
 					assert.ElementsMatch(f.t, deps, lt.Dependencies())
 				default:
-					f.t.Fatal(fmt.Sprintf("unknown matcher for local target %T", matcher))
+					f.t.Fatalf("unknown matcher for local target %T", matcher)
 				}
 			}
 		default:
