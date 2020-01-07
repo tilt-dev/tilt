@@ -8,8 +8,8 @@ import (
 
 type LocalTarget struct {
 	Name      TargetName
-	UpdateCmd Cmd
-	ServeCmd  Cmd
+	UpdateCmd Cmd      // e.g. `make proto`
+	ServeCmd  Cmd      // e.g. `python main.py`
 	Workdir   string   // directory from which the commands should be run
 	deps      []string // a list of ABSOLUTE file paths that are dependencies of this target
 	ignores   []Dockerignore
@@ -19,16 +19,19 @@ type LocalTarget struct {
 
 var _ TargetSpec = LocalTarget{}
 
-func NewLocalTarget(name TargetName, updateCmd Cmd, workdir string, deps []string, serveCmd Cmd) LocalTarget {
+func NewLocalTarget(name TargetName, updateCmd Cmd, serveCmd Cmd, deps []string, workdir string) LocalTarget {
 	return LocalTarget{
 		Name:      name,
 		UpdateCmd: updateCmd,
 		Workdir:   workdir,
 		deps:      deps,
+		ServeCmd:  serveCmd,
 	}
 }
 
-func (lt LocalTarget) Empty() bool { return lt.UpdateCmd.Empty() }
+func (lt LocalTarget) Empty() bool {
+	return lt.UpdateCmd.Empty() && lt.ServeCmd.Empty()
+}
 
 func (lt LocalTarget) WithRepos(repos []LocalGitRepo) LocalTarget {
 	lt.repos = append(append([]LocalGitRepo{}, lt.repos...), repos...)

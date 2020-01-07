@@ -250,7 +250,7 @@ func (f *dockerBuildFixture) startContainer(ctx context.Context, config *contain
 func containerConfigRunCmd(imgRef reference.NamedTagged, cmd model.Cmd) *container.Config {
 	config := containerConfig(imgRef)
 
-	// In Docker, both the Entrypoint and the UpdateCmd are used to determine what
+	// In Docker, both the Entrypoint and the Cmd are used to determine what
 	// process the container runtime uses, where Entrypoint takes precedence over
 	// command. We set both here to ensure that we don't get weird results due
 	// to inheritance.
