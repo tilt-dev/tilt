@@ -72,13 +72,13 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	serveCmd := model.ToShellCmd(serveCmdStr)
 
 	if updateCmd.Empty() && serveCmd.Empty() {
-		return nil, fmt.Errorf("local_resource must have an updateCmd or a serveCmd, but both were empty")
+		return nil, fmt.Errorf("local_resource must have an updateCmd and/or a serveCmd, but both were empty")
 	}
 
 	res := localResource{
 		name:         name,
-		updateCmd:    model.ToShellCmd(updateCmdStr),
-		serveCmd:     model.ToShellCmd(serveCmdStr),
+		updateCmd:    updateCmd,
+		serveCmd:     serveCmd,
 		workdir:      filepath.Dir(starkit.CurrentExecPath(thread)),
 		deps:         depsStrings,
 		triggerMode:  triggerMode,

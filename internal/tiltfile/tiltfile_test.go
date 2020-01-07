@@ -3954,7 +3954,7 @@ func TestLocalResourceNeitherUpdateOrServeCmd(t *testing.T) {
 local_resource("test")
 `)
 
-	f.loadErrString("local_resource must have an updateCmd or a serveCmd, but both were empty")
+	f.loadErrString("local_resource must have an updateCmd and/or a serveCmd, but both were empty")
 }
 
 func TestLocalResourceWorkdir(t *testing.T) {
