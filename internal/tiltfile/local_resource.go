@@ -41,7 +41,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		"resource_deps?", &resourceDepsVal,
 		"ignore?", &ignoresVal,
 		"auto_init?", &autoInit,
-		"serveCmd?", &serveCmdStr,
+		"serve_cmd?", &serveCmdStr,
 	); err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	serveCmd := model.ToShellCmd(serveCmdStr)
 
 	if updateCmd.Empty() && serveCmd.Empty() {
-		return nil, fmt.Errorf("local_resource must have an updateCmd and/or a serveCmd, but both were empty")
+		return nil, fmt.Errorf("local_resource must have a cmd and/or a serve_cmd, but both were empty")
 	}
 
 	res := localResource{

@@ -3919,7 +3919,7 @@ func TestLocalResourceOnlyServeCmd(t *testing.T) {
 	defer f.TearDown()
 
 	f.file("Tiltfile", `
-local_resource("test", serveCmd="sleep 1000")
+local_resource("test", serve_cmd="sleep 1000")
 `)
 
 	f.load()
@@ -3935,7 +3935,7 @@ func TestLocalResourceUpdateAndServeCmd(t *testing.T) {
 	defer f.TearDown()
 
 	f.file("Tiltfile", `
-local_resource("test", cmd="echo hi", serveCmd="sleep 1000")
+local_resource("test", cmd="echo hi", serve_cmd="sleep 1000")
 `)
 
 	f.load()
@@ -3954,7 +3954,7 @@ func TestLocalResourceNeitherUpdateOrServeCmd(t *testing.T) {
 local_resource("test")
 `)
 
-	f.loadErrString("local_resource must have an updateCmd and/or a serveCmd, but both were empty")
+	f.loadErrString("local_resource must have a cmd and/or a serve_cmd, but both were empty")
 }
 
 func TestLocalResourceWorkdir(t *testing.T) {
