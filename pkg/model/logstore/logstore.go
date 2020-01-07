@@ -568,6 +568,15 @@ func (s *LogStore) logHelper(spansToLog map[SpanID]*Span, showManifestPrefix boo
 		if showManifestPrefix && span.ManifestName != "" {
 			sb.WriteString(SourcePrefix(span.ManifestName))
 		}
+
+		if segment.Anchor {
+			if segment.Level == logger.WarnLvl {
+				sb.WriteString("WARNING: ")
+			}
+
+			// TODO(nick) Add logger.ErrorLvl
+		}
+
 		sb.WriteString(string(segment.Text))
 		isFirstLine = false
 
