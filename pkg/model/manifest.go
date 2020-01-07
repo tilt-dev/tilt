@@ -161,6 +161,8 @@ func (m Manifest) LocalPaths() []string {
 	switch di := m.deployTarget.(type) {
 	case DockerComposeTarget:
 		return di.LocalPaths()
+	case LocalTarget:
+		return di.Dependencies()
 	default:
 		paths := []string{}
 		for _, iTarget := range m.ImageTargets {
