@@ -1250,7 +1250,7 @@ func TestErrorHandlingWithMultipleBuilds(t *testing.T) {
 	f.WaitUntilManifestState("last manB build reflects expected error", "manB", func(ms store.ManifestState) bool {
 		return ms.LastBuild().Error == errB
 	})
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond) // let any BuildComplete actions finish processing, so we don't get false negative below
 	f.WaitUntilManifestState("last manC build has no error", "manC", func(ms store.ManifestState) bool {
 		return ms.LastBuild().Error == nil
 	})

@@ -3415,13 +3415,11 @@ func (f *testFixture) StartAndWaitForInitialBuilds(manifests []model.Manifest, i
 		}
 	}
 
-	expectedTargs := make([]model.ImageTarget, len(manifests))
-	for i, m := range manifests {
-		expectedTargs[i] = m.ImageTargetAt(0)
+	f.waitForCompletedBuildCount(len(manifests))
+	for _, m := range manifests {
 		f.waitUntilManifestNotBuilding(m.Name)
+		_ = f.nextCall()
 	}
-	actualTargs := f.imageTargsForNextNCalls(len(manifests), "wait for all initial builds")
-	require.ElementsMatch(f.t, expectedTargs, actualTargs, "did not see expected initial builds")
 }
 
 // starts the upper with the given manifests, bypassing normal tiltfile loading
@@ -3530,7 +3528,7 @@ func (f *testFixture) SetNextBuildFailure(err error) {
 	// so we can freely set it here for a future build.
 	f.WaitUntil("any in-flight builds have hit the buildAndDeployer", func(state store.EngineState) bool {
 		f.b.mu.Lock()
-		f.b.mu.Unlock()
+		defer f.b.mu.Unlock()
 		return f.b.buildCount == state.StartedBuildCount
 	})
 
