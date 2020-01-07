@@ -3904,8 +3904,8 @@ local_resource("test", "echo hi", ["foo/bar", "foo/a.txt"])
 	f.load()
 
 	f.assertNumManifests(1)
-	path1 := f.JoinPath("foo/bar")
-	path2 := f.JoinPath("foo/a.txt")
+	path1 := "foo/bar"
+	path2 := "foo/a.txt"
 	m := f.assertNextManifest("test", lt(updateCmd("echo hi"), deps(path1, path2)), fileChangeMatches("foo/a.txt"))
 
 	lt := m.LocalTarget()
@@ -3934,7 +3934,7 @@ local_resource("toplvl-local", "echo hello world", ["foo/baz", "foo/a.txt"])
 	f.load()
 
 	f.assertNumManifests(2)
-	mNested := f.assertNextManifest("nested-local", lt(updateCmd("echo nested"), deps(f.JoinPath("nested/foo/bar"), f.JoinPath("nested/more_nested/repo"))))
+	mNested := f.assertNextManifest("nested-local", lt(updateCmd("echo nested"), deps("nested/foo/bar", "nested/more_nested/repo")))
 
 	ltNested := mNested.LocalTarget()
 	f.assertRepos([]string{
@@ -3942,7 +3942,7 @@ local_resource("toplvl-local", "echo hello world", ["foo/baz", "foo/a.txt"])
 		f.JoinPath("nested/more_nested/repo"),
 	}, ltNested.LocalRepos())
 
-	mTop := f.assertNextManifest("toplvl-local", lt(updateCmd("echo hello world"), deps(f.JoinPath("foo/baz"), f.JoinPath("foo/a.txt"))))
+	mTop := f.assertNextManifest("toplvl-local", lt(updateCmd("echo hello world"), deps("foo/baz", "foo/a.txt")))
 	ltTop := mTop.LocalTarget()
 	f.assertRepos([]string{
 		f.JoinPath("foo/baz"),
@@ -4739,14 +4739,17 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 			assert.Equal(f.t, opt.deps, m.ResourceDependencies)
 		case funcOpt:
 			assert.True(f.t, opt(f.t, m))
-		case ltHelper:
+		case localTargetHelper:
 			lt := m.LocalTarget()
 			for _, matcher := range opt.matchers {
 				switch matcher := matcher.(type) {
 				case updateCmdHelper:
 					assert.Equal(f.t, matcher.cmd, lt.UpdateCmd.String())
 				case depsHelper:
-					assert.ElementsMatch(f.t, matcher.deps, lt.Dependencies())
+					deps := f.JoinPaths(matcher.deps)
+					assert.ElementsMatch(f.t, deps, lt.Dependencies())
+				default:
+					f.t.Fatal("unknown matcher for local target")
 				}
 			}
 		default:
@@ -5124,12 +5127,12 @@ func updateCmd(cmd string) updateCmdHelper {
 	return updateCmdHelper{cmd}
 }
 
-type ltHelper struct {
+type localTargetHelper struct {
 	matchers []interface{}
 }
 
-func lt(opts ...interface{}) ltHelper {
-	return ltHelper{matchers: opts}
+func lt(opts ...interface{}) localTargetHelper {
+	return localTargetHelper{matchers: opts}
 }
 
 // useful scenarios to setup
