@@ -1059,7 +1059,9 @@ func TestBuildControllerWontBuildManifestThatsAlreadyBuilding(t *testing.T) {
 	f.setMaxBuildSlots(3)
 
 	manifest := f.newManifest("fe")
-	f.StartAndWaitForInitialBuilds([]model.Manifest{manifest})
+	manifests := []model.Manifest{manifest}
+	f.startWithInitManifests(nil, manifests, true)
+	f.completeAndCheckInitManifests(manifests)
 	f.waitUntilNumBuildSlots(3)
 
 	// file change starts a build
@@ -1100,7 +1102,9 @@ func TestBuildControllerWontBuildManifestIfNoSlotsAvailable(t *testing.T) {
 	manA := f.newDockerBuildManifestWithBuildPath("manA", f.JoinPath("a"))
 	manB := f.newDockerBuildManifestWithBuildPath("manB", f.JoinPath("b"))
 	manC := f.newDockerBuildManifestWithBuildPath("manC", f.JoinPath("c"))
-	f.StartAndWaitForInitialBuilds([]model.Manifest{manA, manB, manC})
+	manifests := []model.Manifest{manA, manB, manC}
+	f.startWithInitManifests(nil, manifests, true)
+	f.completeAndCheckInitManifests(manifests)
 
 	// start builds for all manifests (we only have 2 build slots)
 	indexA := f.editFileAndWaitForManifestBuilding("manA", "a/main.go")
@@ -1134,7 +1138,9 @@ func TestCurrentlyBuildingMayExceedMaxBuildCount(t *testing.T) {
 	manA := f.newDockerBuildManifestWithBuildPath("manA", f.JoinPath("a"))
 	manB := f.newDockerBuildManifestWithBuildPath("manB", f.JoinPath("b"))
 	manC := f.newDockerBuildManifestWithBuildPath("manC", f.JoinPath("c"))
-	f.StartAndWaitForInitialBuilds([]model.Manifest{manA, manB, manC})
+	manifests := []model.Manifest{manA, manB, manC}
+	f.startWithInitManifests(nil, manifests, true)
+	f.completeAndCheckInitManifests(manifests)
 
 	// start builds for all manifests
 	manABuild1Index := f.editFileAndWaitForManifestBuilding("manA", "a/main.go")
@@ -1191,8 +1197,8 @@ func TestDontStartBuildIfControllerAndEngineUnsynced(t *testing.T) {
 	manA := f.newDockerBuildManifestWithBuildPath("manA", f.JoinPath("a"))
 	manB := f.newDockerBuildManifestWithBuildPath("manB", f.JoinPath("b"))
 	manifests := []model.Manifest{manA, manB}
-
-	f.StartAndWaitForInitialBuilds(manifests)
+	f.startWithInitManifests(nil, manifests, true)
+	f.completeAndCheckInitManifests(manifests)
 
 	indexA := f.editFileAndWaitForManifestBuilding("manA", "a/main.go")
 
@@ -1234,7 +1240,9 @@ func TestErrorHandlingWithMultipleBuilds(t *testing.T) {
 	manA := f.newDockerBuildManifestWithBuildPath("manA", f.JoinPath("a"))
 	manB := f.newDockerBuildManifestWithBuildPath("manB", f.JoinPath("b"))
 	manC := f.newDockerBuildManifestWithBuildPath("manC", f.JoinPath("c"))
-	f.StartAndWaitForInitialBuilds([]model.Manifest{manA, manB, manC})
+	manifests := []model.Manifest{manA, manB, manC}
+	f.startWithInitManifests(nil, manifests, true)
+	f.completeAndCheckInitManifests(manifests)
 
 	// start builds for all manifests (we only have 2 build slots)
 	f.SetNextBuildFailure(errA)
@@ -1286,13 +1294,18 @@ func (f *testFixture) waitUntilBuildCountAtLeast(n int) {
 	ctx, cancel := context.WithTimeout(f.ctx, time.Millisecond*200)
 	defer cancel()
 	for {
-		if f.b.buildCount >= n {
+		f.b.mu.Lock()
+		bc := f.b.buildCount
+		f.b.mu.Unlock()
+
+		if bc >= n {
 			return
 		}
 
 		select {
 		case <-ctx.Done():
-			f.T().Fatalf("Timed out waiting for buildCount >= %d", n)
+			f.T().Errorf("Timed out waiting for buildCount >= %d", n)
+			f.T().FailNow()
 		case <-time.After(time.Millisecond * 5):
 		}
 	}
@@ -1353,4 +1366,30 @@ func (f *testFixture) completeAndCheckBuildsForManifests(indexes []int, manifest
 		actualImageTargets = append(actualImageTargets, call.imageTargets())
 	}
 	require.ElementsMatch(f.t, expectedImageTargets, actualImageTargets)
+
+	for _, m := range manifests {
+		f.waitUntilManifestNotBuilding(m.Name)
+	}
+}
+
+func (f *testFixture) completeAndCheckInitManifests(manifests []model.Manifest) {
+	st := f.store.RLockState()
+	completedCount := st.CompletedBuildCount
+	f.store.RUnlockState()
+
+	if completedCount != 0 {
+		f.t.Fatalf("can only call `completeAndCheckInitManifests` when no builds have yet completed "+
+			"(found %d completed builds)", completedCount)
+	}
+
+	if !f.b.completeBuildsManually {
+		f.t.Fatalf("can only call `completeAndCheckInitManifests` when fakeBaD.completeBuildsManually is enabled")
+	}
+
+	indexes := make([]int, len(manifests))
+	for i := 0; i < len(manifests); i++ {
+		indexes[i] = i + 1
+	}
+
+	f.completeAndCheckBuildsForManifests(indexes, manifests)
 }

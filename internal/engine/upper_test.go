@@ -3407,21 +3407,6 @@ func (f *testFixture) Start(manifests []model.Manifest, watchFiles bool, initOpt
 	f.startWithInitManifests(nil, manifests, watchFiles, initOptions...)
 }
 
-func (f *testFixture) StartAndWaitForInitialBuilds(manifests []model.Manifest, initOptions ...initOption) {
-	f.startWithInitManifests(nil, manifests, true, initOptions...)
-	if f.b.completeBuildsManually {
-		for i := range manifests {
-			f.b.completeBuild(i + 1) // builds are 1-indexed
-		}
-	}
-
-	f.waitForCompletedBuildCount(len(manifests))
-	for _, m := range manifests {
-		f.waitUntilManifestNotBuilding(m.Name)
-		_ = f.nextCall()
-	}
-}
-
 // starts the upper with the given manifests, bypassing normal tiltfile loading
 // Empty `initManifests` will run start ALL manifests
 func (f *testFixture) startWithInitManifests(initManifests []model.ManifestName, manifests []model.Manifest, watchFiles bool, initOptions ...initOption) {
