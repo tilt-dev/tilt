@@ -3909,6 +3909,10 @@ func (f *testFixture) registerDeployedPodTemplateSpecHashToManifest(name model.M
 	f.store.UnlockMutableState()
 }
 
+func (f *testFixture) completeBuildForManifest(m model.Manifest) {
+	f.b.completeBuild(targetIDStringForManifest(m))
+}
+
 func podTemplateSpecHashesForTarg(t *testing.T, targ model.K8sTarget) []k8s.PodTemplateSpecHash {
 	entities, err := k8s.ParseYAMLFromString(targ.YAML)
 	require.NoError(t, err)
