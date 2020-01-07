@@ -1344,9 +1344,13 @@ func (f *testFixture) completeAndCheckBuildsForManifests(indexes []int, manifest
 		f.b.completeBuild(i)
 	}
 
-	targetsFromCalls := f.imageTargsForNextNCalls(len(manifests))
-	require.Len(f.t, targetsFromCalls, len(manifests))
-	for _, m := range manifests {
-		assert.Contains(f.t, targetsFromCalls, m.ImageTargetAt(0))
+	expectedImageTargets := make([][]model.ImageTarget, len(manifests))
+	var actualImageTargets [][]model.ImageTarget
+	for i, m := range manifests {
+		expectedImageTargets[i] = m.ImageTargets
+
+		call := f.nextCall("timed out waiting for call %d/%d", i+1, len(manifests))
+		actualImageTargets = append(actualImageTargets, call.imageTargets())
 	}
+	require.ElementsMatch(f.t, expectedImageTargets, actualImageTargets)
 }

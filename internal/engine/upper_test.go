@@ -3658,15 +3658,6 @@ func (f *testFixture) nextCall(msgAndArgs ...interface{}) buildAndDeployCall {
 	}
 }
 
-func (f *testFixture) imageTargsForNextNCalls(n int, msgAndArgs ...interface{}) []model.ImageTarget {
-	targs := make([]model.ImageTarget, n)
-	for i := 0; i < n; i++ {
-		call := f.nextCall(msgAndArgs...)
-		targs[i] = call.firstImgTarg()
-	}
-	return targs
-}
-
 func (f *testFixture) assertNoCall(msgAndArgs ...interface{}) {
 	msg := "expected there to be no BuildAndDeployCalls, but found one"
 	if len(msgAndArgs) > 0 {
