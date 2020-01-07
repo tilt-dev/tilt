@@ -161,13 +161,16 @@ func (m Manifest) LocalPaths() []string {
 	switch di := m.deployTarget.(type) {
 	case DockerComposeTarget:
 		return di.LocalPaths()
-	default:
+	case LocalTarget:
+		return di.Dependencies()
+	case ImageTarget, K8sTarget:
 		paths := []string{}
 		for _, iTarget := range m.ImageTargets {
 			paths = append(paths, iTarget.LocalPaths()...)
 		}
 		return sliceutils.DedupedAndSorted(paths)
 	}
+	panic(fmt.Sprintf("Unknown deploy target type (%T) while trying to get LocalPaths", m.deployTarget))
 }
 
 func (m Manifest) Validate() error {
