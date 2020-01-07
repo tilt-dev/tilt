@@ -14,7 +14,8 @@ import (
 
 type localResource struct {
 	name         string
-	cmd          model.Cmd
+	updateCmd    model.Cmd
+	serveCmd     model.Cmd
 	workdir      string
 	deps         []string
 	triggerMode  triggerMode
@@ -25,7 +26,7 @@ type localResource struct {
 }
 
 func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var name, cmd string
+	var name, updateCmdStr, serveCmdStr string
 	var triggerMode triggerMode
 	var deps starlark.Value
 	var resourceDepsVal starlark.Sequence
@@ -34,12 +35,13 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
-		"cmd", &cmd,
+		"cmd?", &updateCmdStr,
 		"deps?", &deps,
 		"trigger_mode?", &triggerMode,
 		"resource_deps?", &resourceDepsVal,
 		"ignore?", &ignoresVal,
 		"auto_init?", &autoInit,
+		"serve_cmd?", &serveCmdStr,
 	); err != nil {
 		return nil, err
 	}
@@ -66,9 +68,17 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
+	updateCmd := model.ToShellCmd(updateCmdStr)
+	serveCmd := model.ToShellCmd(serveCmdStr)
+
+	if updateCmd.Empty() && serveCmd.Empty() {
+		return nil, fmt.Errorf("local_resource must have a cmd and/or a serve_cmd, but both were empty")
+	}
+
 	res := localResource{
 		name:         name,
-		cmd:          model.ToShellCmd(cmd),
+		updateCmd:    updateCmd,
+		serveCmd:     serveCmd,
 		workdir:      filepath.Dir(starkit.CurrentExecPath(thread)),
 		deps:         depsStrings,
 		triggerMode:  triggerMode,
