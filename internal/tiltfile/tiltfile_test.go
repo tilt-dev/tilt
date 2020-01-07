@@ -3891,12 +3891,12 @@ local('echo hi')
 	}
 }
 
-func TestLocalResource(t *testing.T) {
+func TestLocalResourceOnlyUpdateCmd(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
 	f.file("Tiltfile", `
-local_resource("test", "echo hi", ["foo/bar", "foo/a.txt"])
+local_resource("test", updateCmd="echo hi", deps=["foo/bar", "foo/a.txt"])
 `)
 
 	f.setupFoo()
@@ -3914,16 +3914,59 @@ local_resource("test", "echo hi", ["foo/bar", "foo/a.txt"])
 	f.assertConfigFiles("Tiltfile", ".tiltignore")
 }
 
+func TestLocalResourceOnlyServeCmd(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource("test", serveCmd="sleep 1000")
+`)
+
+	f.load()
+
+	f.assertNumManifests(1)
+	f.assertNextManifest("test", lt(serveCmd("sleep 1000")))
+
+	f.assertConfigFiles("Tiltfile", ".tiltignore")
+}
+
+func TestLocalResourceUpdateAndServeCmd(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource("test", updateCmd="echo hi", serveCmd="sleep 1000")
+`)
+
+	f.load()
+
+	f.assertNumManifests(1)
+	f.assertNextManifest("test", lt(updateCmd("echo hi"), serveCmd("sleep 1000")))
+
+	f.assertConfigFiles("Tiltfile", ".tiltignore")
+}
+
+func TestLocalResourceNeitherUpdateOrServeCmd(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource("test")
+`)
+
+	f.loadErrString("local_resource must have an updateCmd or a serveCmd, but both were empty")
+}
+
 func TestLocalResourceWorkdir(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
 	f.file("nested/Tiltfile", `
-local_resource("nested-local", "echo nested", ["foo/bar", "more_nested/repo"])
+local_resource("nested-local", updateCmd="echo nested", deps=["foo/bar", "more_nested/repo"])
 `)
 	f.file("Tiltfile", `
 include('nested/Tiltfile')
-local_resource("toplvl-local", "echo hello world", ["foo/baz", "foo/a.txt"])
+local_resource("toplvl-local", updateCmd="echo hello world", deps=["foo/baz", "foo/a.txt"])
 `)
 
 	f.setupFoo()
@@ -4745,11 +4788,13 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 				switch matcher := matcher.(type) {
 				case updateCmdHelper:
 					assert.Equal(f.t, matcher.cmd, lt.UpdateCmd.String())
+				case serveCmdHelper:
+					assert.Equal(f.t, matcher.cmd, lt.ServeCmd.String())
 				case depsHelper:
 					deps := f.JoinPaths(matcher.deps)
 					assert.ElementsMatch(f.t, deps, lt.Dependencies())
 				default:
-					f.t.Fatal("unknown matcher for local target")
+					f.t.Fatal(fmt.Sprintf("unknown matcher for local target %T", matcher))
 				}
 			}
 		default:
@@ -5125,6 +5170,14 @@ type updateCmdHelper struct {
 
 func updateCmd(cmd string) updateCmdHelper {
 	return updateCmdHelper{cmd}
+}
+
+type serveCmdHelper struct {
+	cmd string
+}
+
+func serveCmd(cmd string) serveCmdHelper {
+	return serveCmdHelper{cmd}
 }
 
 type localTargetHelper struct {
