@@ -3896,7 +3896,7 @@ func TestLocalResourceOnlyUpdateCmd(t *testing.T) {
 	defer f.TearDown()
 
 	f.file("Tiltfile", `
-local_resource("test", updateCmd="echo hi", deps=["foo/bar", "foo/a.txt"])
+local_resource("test", "echo hi", deps=["foo/bar", "foo/a.txt"])
 `)
 
 	f.setupFoo()
@@ -3935,7 +3935,7 @@ func TestLocalResourceUpdateAndServeCmd(t *testing.T) {
 	defer f.TearDown()
 
 	f.file("Tiltfile", `
-local_resource("test", updateCmd="echo hi", serveCmd="sleep 1000")
+local_resource("test", cmd="echo hi", serveCmd="sleep 1000")
 `)
 
 	f.load()
@@ -3962,11 +3962,11 @@ func TestLocalResourceWorkdir(t *testing.T) {
 	defer f.TearDown()
 
 	f.file("nested/Tiltfile", `
-local_resource("nested-local", updateCmd="echo nested", deps=["foo/bar", "more_nested/repo"])
+local_resource("nested-local", "echo nested", deps=["foo/bar", "more_nested/repo"])
 `)
 	f.file("Tiltfile", `
 include('nested/Tiltfile')
-local_resource("toplvl-local", updateCmd="echo hello world", deps=["foo/baz", "foo/a.txt"])
+local_resource("toplvl-local", "echo hello world", deps=["foo/baz", "foo/a.txt"])
 `)
 
 	f.setupFoo()

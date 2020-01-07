@@ -35,13 +35,13 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
-		"updateCmd?", &updateCmdStr,
-		"serveCmd?", &serveCmdStr,
+		"cmd?", &updateCmdStr,
 		"deps?", &deps,
 		"trigger_mode?", &triggerMode,
 		"resource_deps?", &resourceDepsVal,
 		"ignore?", &ignoresVal,
 		"auto_init?", &autoInit,
+		"serveCmd?", &serveCmdStr,
 	); err != nil {
 		return nil, err
 	}
