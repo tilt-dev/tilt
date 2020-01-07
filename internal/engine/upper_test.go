@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -160,7 +161,8 @@ type fakeBuildAndDeployer struct {
 	calls chan buildAndDeployCall
 
 	completeBuildsManually bool
-	buildCompletionChans   sync.Map // map[int]buildCompletionChannel; close channel at buildCompletionChans[n] to complete build #n
+	buildCompletionChans   sync.Map // map[string]buildCompletionChannel; close channel at buildCompletionChans[k(targs)] to
+	// complete the build started for targs (where k(targs) generates a unique string key for the set of targets)
 
 	buildCount int
 
@@ -202,16 +204,16 @@ func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deploy
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, state store.BuildStateSet) (brs store.BuildResultSet, err error) {
 	b.mu.Lock()
 	b.buildCount++
-	index := b.buildCount
-	b.registerBuild(index)
+	buildKey := stringifyTargetIDs(specs)
+	b.registerBuild(buildKey)
 
 	if !b.completeBuildsManually {
 		// i.e. we should complete builds automatically: mark the build for completion now,
 		// so we return immediately at the end of BuildAndDeploy.
-		b.completeBuild(index)
+		b.completeBuild(buildKey)
 	}
 
-	call := buildAndDeployCall{count: index, specs: specs, state: state}
+	call := buildAndDeployCall{count: b.buildCount, specs: specs, state: state}
 	if call.dc().Empty() && call.k8s().Empty() && call.local().Empty() {
 		b.t.Fatalf("Invalid call: %+v", call)
 	}
@@ -290,13 +292,13 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	b.mu.Unlock()
 
 	// block until we know we're supposed to resolve this build
-	b.waitUntilBuildCompleted(ctx, index)
+	b.waitUntilBuildCompleted(ctx, buildKey)
 
 	return result, err
 }
-func (b *fakeBuildAndDeployer) getOrCreateBuildCompletionChannel(index int) buildCompletionChannel {
+func (b *fakeBuildAndDeployer) getOrCreateBuildCompletionChannel(key string) buildCompletionChannel {
 	ch := make(buildCompletionChannel)
-	val, _ := b.buildCompletionChans.LoadOrStore(index, ch)
+	val, _ := b.buildCompletionChans.LoadOrStore(key, ch)
 
 	var ok bool
 	ch, ok = val.(buildCompletionChannel)
@@ -307,12 +309,12 @@ func (b *fakeBuildAndDeployer) getOrCreateBuildCompletionChannel(index int) buil
 	return ch
 }
 
-func (b *fakeBuildAndDeployer) registerBuild(index int) {
-	b.getOrCreateBuildCompletionChannel(index)
+func (b *fakeBuildAndDeployer) registerBuild(key string) {
+	b.getOrCreateBuildCompletionChannel(key)
 }
 
-func (b *fakeBuildAndDeployer) waitUntilBuildCompleted(ctx context.Context, index int) {
-	ch := b.getOrCreateBuildCompletionChannel(index)
+func (b *fakeBuildAndDeployer) waitUntilBuildCompleted(ctx context.Context, key string) {
+	ch := b.getOrCreateBuildCompletionChannel(key)
 
 	// wait until channel for this build is closed, or context is canceled/finishes.
 	select {
@@ -320,7 +322,7 @@ func (b *fakeBuildAndDeployer) waitUntilBuildCompleted(ctx context.Context, inde
 	case <-ctx.Done():
 	}
 
-	b.buildCompletionChans.Delete(index)
+	b.buildCompletionChans.Delete(key)
 }
 
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
@@ -332,8 +334,8 @@ func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 	}
 }
 
-func (b *fakeBuildAndDeployer) completeBuild(index int) {
-	ch := b.getOrCreateBuildCompletionChannel(index)
+func (b *fakeBuildAndDeployer) completeBuild(key string) {
+	ch := b.getOrCreateBuildCompletionChannel(key)
 	close(ch)
 }
 
@@ -3907,6 +3909,10 @@ func (f *testFixture) registerDeployedPodTemplateSpecHashToManifest(name model.M
 	f.store.UnlockMutableState()
 }
 
+func (f *testFixture) completeBuildForManifest(m model.Manifest) {
+	f.b.completeBuild(targetIDStringForManifest(m))
+}
+
 func podTemplateSpecHashesForTarg(t *testing.T, targ model.K8sTarget) []k8s.PodTemplateSpecHash {
 	entities, err := k8s.ParseYAMLFromString(targ.YAML)
 	require.NoError(t, err)
@@ -4015,4 +4021,19 @@ func (f *fakeSnapshotUploader) Upload(token token.Token, teamID string, snapshot
 
 func (f *fakeSnapshotUploader) IDToSnapshotURL(id cloud.SnapshotID) string {
 	panic("not implemented")
+}
+
+// stringifyTargetIDs attempts to make a unique string to identify any set of targets
+// (order-agnostic) by sorting and then concatenating the target IDs.
+func stringifyTargetIDs(targets []model.TargetSpec) string {
+	ids := make([]string, len(targets))
+	for i, t := range targets {
+		ids[i] = t.ID().String()
+	}
+	sort.Strings(ids)
+	return strings.Join(ids, "::")
+}
+
+func targetIDStringForManifest(m model.Manifest) string {
+	return stringifyTargetIDs(m.TargetSpecs())
 }
