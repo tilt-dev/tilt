@@ -1070,16 +1070,19 @@ func TestBuildControllerWontBuildManifestThatsAlreadyBuilding(t *testing.T) {
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("B.txt"))
 	f.waitUntilNumBuildSlots(2) // still two build slots available
 
-	// on completing the first build, build from second file change will start
-	build2Index := f.runAndWaitForManifestBuilding("fe", func() {
-		f.b.completeBuild(build1Index)
-		call := f.nextCall("expect build from first pending file change (A.txt)")
-		f.assertCallIsForManifestAndFiles(call, manifest, "A.txt")
-		f.waitForCompletedBuildCount(2)
-	})
+	// complete the first build
+	f.b.completeBuild(build1Index)
+	call := f.nextCall("expect build from first pending file change (A.txt)")
+	f.assertCallIsForManifestAndFiles(call, manifest, "A.txt")
+	f.waitForCompletedBuildCount(2)
+
+	// we freed up a build slot; expect the second build to start
+	build2Index := build1Index + 1
+	f.waitUntilManifestBuilding("fe")
+	f.waitUntilBuildCountAtLeast(build2Index)
 
 	f.b.completeBuild(build2Index)
-	call := f.nextCall("expect build from second pending file change (B.txt)")
+	call = f.nextCall("expect build from second pending file change (B.txt)")
 	f.assertCallIsForManifestAndFiles(call, manifest, "B.txt")
 	f.waitUntilManifestNotBuilding("fe")
 
@@ -1104,12 +1107,15 @@ func TestBuildControllerWontBuildManifestIfNoSlotsAvailable(t *testing.T) {
 	indexB := f.editFileAndWaitForManifestBuilding("manB", "b/main.go")
 	f.editFileAndAssertManifestNotBuilding("manC", "c/main.go")
 
-	// Complete one build -- now there's a free build slot for 'manC'
-	indexC := f.runAndWaitForManifestBuilding("manC", func() {
-		f.b.completeBuild(indexA)
-		call := f.nextCall("expect manA build complete")
-		f.assertCallIsForManifestAndFiles(call, manA, "a/main.go")
-	})
+	// Complete one build...
+	f.b.completeBuild(indexA)
+	call := f.nextCall("expect manA build complete")
+	f.assertCallIsForManifestAndFiles(call, manA, "a/main.go")
+
+	// ...and now there's a free build slot for 'manC'
+	indexC := indexB + 1
+	f.waitUntilManifestBuilding("manC")
+	f.waitUntilBuildCountAtLeast(indexC)
 
 	// complete the rest (can't guarantee order)
 	f.completeAndCheckBuildsForManifests([]int{indexB, indexC}, []model.Manifest{manB, manC})
@@ -1145,31 +1151,30 @@ func TestCurrentlyBuildingMayExceedMaxBuildCount(t *testing.T) {
 
 	f.b.completeBuild(manBBuild1Index)
 	call := f.nextCall("expect manB build complete")
-	require.Equal(t, manB.ImageTargetAt(0).ID(), call.firstImgTarg().ID())
-	require.Equal(t, []string{f.JoinPath("b/main.go")}, call.oneState().FilesChanged())
+	f.assertCallIsForManifestAndFiles(call, manB, "b/main.go")
 
 	// we should NOT see another build for manB, even though it has a pending file change,
 	// b/c we don't have enough slots (since we decreased maxBuildSlots)
 	f.waitUntilNumBuildSlots(0)
 	f.waitUntilManifestNotBuilding("manB")
 
-	// now that we have an available slots again, manB will rebuild
-	manBBuild2Index := f.runAndWaitForManifestBuilding("manB", func() {
-		f.b.completeBuild(manABuild1Index)
-		call = f.nextCall("expect manA build complete")
-		require.Equal(t, manA.ImageTargetAt(0).ID(), call.firstImgTarg().ID())
-		require.Equal(t, []string{f.JoinPath("a/main.go")}, call.oneState().FilesChanged())
-	})
+	// complete another build...
+	f.b.completeBuild(manABuild1Index)
+	call = f.nextCall("expect manA build complete")
+	f.assertCallIsForManifestAndFiles(call, manA, "a/main.go")
+
+	// ...now that we have an available slots again, manB will rebuild
+	manBBuild2Index := f.b.buildCount + 1
+	f.waitUntilManifestBuilding("manB")
+	f.waitUntilBuildCountAtLeast(manBBuild1Index)
 
 	f.b.completeBuild(manBBuild2Index)
 	call = f.nextCall("expect manB build complete (second build)")
-	require.Equal(t, manB.ImageTargetAt(0).ID(), call.firstImgTarg().ID())
-	require.Equal(t, call.oneState().FilesChanged(), []string{f.JoinPath("b/other.go")})
+	f.assertCallIsForManifestAndFiles(call, manB, "b/other.go")
 
 	f.b.completeBuild(manCBuild1Index)
 	call = f.nextCall("expect manC build complete")
-	require.Equal(t, manC.ImageTargetAt(0).ID(), call.firstImgTarg().ID())
-	require.Equal(t, []string{f.JoinPath("c/main.go")}, call.oneState().FilesChanged())
+	f.assertCallIsForManifestAndFiles(call, manC, "c/main.go")
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -1198,13 +1203,16 @@ func TestDontStartBuildIfControllerAndEngineUnsynced(t *testing.T) {
 
 	// this build won't start while state and build controller are out of sync
 	f.editFileAndAssertManifestNotBuilding("manB", "b/main.go")
+	indexB := f.b.buildCount + 1
 
-	// resync the two counts, manB build will start as expected
-	indexB := f.runAndWaitForManifestBuilding("manB", func() {
-		st := f.store.LockMutableStateForTesting()
-		st.StartedBuildCount++
-		f.store.UnlockMutableState()
-	})
+	// resync the two counts...
+	st = f.store.LockMutableStateForTesting()
+	st.StartedBuildCount++
+	f.store.UnlockMutableState()
+
+	// ...and manB build will start as expected
+	f.waitUntilManifestBuilding("manB")
+	f.waitUntilBuildCountAtLeast(indexB)
 
 	// complete all builds (can't guarantee order)
 	f.completeAndCheckBuildsForManifests([]int{indexA, indexB}, manifests)
@@ -1234,25 +1242,27 @@ func TestErrorHandlingWithMultipleBuilds(t *testing.T) {
 	f.SetNextBuildFailure(errB)
 	indexB := f.editFileAndWaitForManifestBuilding("manB", "b/main.go")
 	f.editFileAndAssertManifestNotBuilding("manC", "c/main.go")
+	indexC := f.b.buildCount + 1
 
-	// Complete one build -- 'manC' should start building, even though the manA build ended with an error
-	indexC := f.runAndWaitForManifestBuilding("manC", func() {
-		f.b.completeBuild(indexA)
-		call := f.nextCall("expect manA build complete")
-		f.assertCallIsForManifestAndFiles(call, manA, "a/main.go")
-		f.WaitUntilManifestState("last manA build reflects expected error", "manA", func(ms store.ManifestState) bool {
-			return ms.LastBuild().Error == errA
-		})
+	// Complete one build...
+	f.b.completeBuild(indexA)
+	call := f.nextCall("expect manA build complete")
+	f.assertCallIsForManifestAndFiles(call, manA, "a/main.go")
+	f.WaitUntilManifestState("last manA build reflects expected error", "manA", func(ms store.ManifestState) bool {
+		return ms.LastBuild().Error == errA
 	})
+
+	// ...'manC' should start building, even though the manA build ended with an error
+	f.waitUntilManifestBuilding("manC")
+	f.waitUntilBuildCountAtLeast(indexC)
 
 	// complete the rest
 	f.completeAndCheckBuildsForManifests([]int{indexB, indexC}, []model.Manifest{manB, manC})
 	f.WaitUntilManifestState("last manB build reflects expected error", "manB", func(ms store.ManifestState) bool {
 		return ms.LastBuild().Error == errB
 	})
-	time.Sleep(10 * time.Millisecond) // let any BuildComplete actions finish processing, so we don't get false negative below
-	f.WaitUntilManifestState("last manC build has no error", "manC", func(ms store.ManifestState) bool {
-		return ms.LastBuild().Error == nil
+	f.WaitUntilManifestState("last manC build recorded and has no error", "manC", func(ms store.ManifestState) bool {
+		return len(ms.BuildHistory) == 2 && ms.LastBuild().Error == nil
 	})
 
 	err := f.Stop()
@@ -1318,14 +1328,6 @@ func (f *testFixture) editFileAndWaitForManifestBuilding(name model.ManifestName
 func (f *testFixture) editFileAndAssertManifestNotBuilding(name model.ManifestName, path string) {
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath(path))
 	f.waitUntilManifestNotBuilding(name)
-}
-
-func (f *testFixture) runAndWaitForManifestBuilding(name model.ManifestName, fn func()) (buildIndex int) {
-	startBuildCount := f.b.buildCount
-	fn()
-	f.waitUntilManifestBuilding(name)
-	f.waitUntilBuildCountAtLeast(startBuildCount + 1)
-	return startBuildCount + 1
 }
 
 func (f *testFixture) assertCallIsForManifestAndFiles(call buildAndDeployCall, m model.Manifest, files ...string) {
