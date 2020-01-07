@@ -163,13 +163,14 @@ func (m Manifest) LocalPaths() []string {
 		return di.LocalPaths()
 	case LocalTarget:
 		return di.Dependencies()
-	default:
+	case ImageTarget, K8sTarget:
 		paths := []string{}
 		for _, iTarget := range m.ImageTargets {
 			paths = append(paths, iTarget.LocalPaths()...)
 		}
 		return sliceutils.DedupedAndSorted(paths)
 	}
+	panic(fmt.Sprintf("Unknown deploy target type (%T) while trying to get LocalPaths", m.deployTarget))
 }
 
 func (m Manifest) Validate() error {
