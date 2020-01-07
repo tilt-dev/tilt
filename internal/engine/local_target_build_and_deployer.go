@@ -31,10 +31,10 @@ func (bd *LocalTargetBuildAndDeployer) BuildAndDeploy(ctx context.Context, st st
 	}
 
 	targ := targets[0]
-	err = bd.run(ctx, targ.Cmd, targ.Workdir)
+	err = bd.run(ctx, targ.UpdateCmd, targ.Workdir)
 	if err != nil {
 		// (Never fall back from the LocalTargetBaD, none of our other BaDs can handle this target)
-		return store.BuildResultSet{}, buildcontrol.DontFallBackErrorf("Command %q failed: %v", targ.Cmd.String(), err)
+		return store.BuildResultSet{}, buildcontrol.DontFallBackErrorf("Command %q failed: %v", targ.UpdateCmd.String(), err)
 	}
 
 	if state := stateSet[targ.ID()]; state.IsEmpty() {

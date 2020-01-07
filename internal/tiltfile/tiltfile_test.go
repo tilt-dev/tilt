@@ -3912,7 +3912,7 @@ local_resource("test", "echo hi", ["foo/bar", "foo/a.txt"])
 	lt := m.LocalTarget()
 	path1 := f.JoinPath("foo/bar")
 	path2 := f.JoinPath("foo/a.txt")
-	require.Equal(t, []string{"sh", "-c", "echo hi"}, lt.Cmd.Argv)
+	require.Equal(t, []string{"sh", "-c", "echo hi"}, lt.UpdateCmd.Argv)
 	require.Equal(t, []string{path2, path1}, lt.Dependencies())
 	f.assertRepos([]string{f.Path()}, lt.LocalRepos())
 
@@ -3955,7 +3955,7 @@ local_resource("toplvl-local", "echo hello world", ["foo/baz", "foo/a.txt"])
 	mNested := f.loadResult.Manifests[0]
 	require.Equal(t, "nested-local", mNested.Name.String())
 	ltNested := mNested.LocalTarget()
-	require.Equal(t, []string{"sh", "-c", "echo nested"}, ltNested.Cmd.Argv)
+	require.Equal(t, []string{"sh", "-c", "echo nested"}, ltNested.UpdateCmd.Argv)
 	require.ElementsMatch(t, []string{
 		f.JoinPath("nested/foo/bar"),
 		f.JoinPath("nested/more_nested/repo"),
@@ -3968,7 +3968,7 @@ local_resource("toplvl-local", "echo hello world", ["foo/baz", "foo/a.txt"])
 	mTop := f.loadResult.Manifests[1]
 	require.Equal(t, "toplvl-local", mTop.Name.String())
 	ltTop := mTop.LocalTarget()
-	require.Equal(t, []string{"sh", "-c", "echo hello world"}, ltTop.Cmd.Argv)
+	require.Equal(t, []string{"sh", "-c", "echo hello world"}, ltTop.UpdateCmd.Argv)
 	require.ElementsMatch(t, []string{
 		f.JoinPath("foo/baz"),
 		f.JoinPath("foo/a.txt"),

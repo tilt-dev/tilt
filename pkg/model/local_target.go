@@ -7,27 +7,31 @@ import (
 )
 
 type LocalTarget struct {
-	Name    TargetName
-	Cmd     Cmd
-	Workdir string   // directory from which this Cmd should be run
-	deps    []string // a list of ABSOLUTE file paths that are dependencies of this target
-	ignores []Dockerignore
+	Name      TargetName
+	UpdateCmd Cmd      // e.g. `make proto`
+	ServeCmd  Cmd      // e.g. `python main.py`
+	Workdir   string   // directory from which the commands should be run
+	deps      []string // a list of ABSOLUTE file paths that are dependencies of this target
+	ignores   []Dockerignore
 
 	repos []LocalGitRepo
 }
 
 var _ TargetSpec = LocalTarget{}
 
-func NewLocalTarget(name TargetName, cmd Cmd, workdir string, deps []string) LocalTarget {
+func NewLocalTarget(name TargetName, updateCmd Cmd, serveCmd Cmd, deps []string, workdir string) LocalTarget {
 	return LocalTarget{
-		Name:    name,
-		Cmd:     cmd,
-		Workdir: workdir,
-		deps:    deps,
+		Name:      name,
+		UpdateCmd: updateCmd,
+		Workdir:   workdir,
+		deps:      deps,
+		ServeCmd:  serveCmd,
 	}
 }
 
-func (lt LocalTarget) Empty() bool { return lt.Cmd.Empty() }
+func (lt LocalTarget) Empty() bool {
+	return lt.UpdateCmd.Empty() && lt.ServeCmd.Empty()
+}
 
 func (lt LocalTarget) WithRepos(repos []LocalGitRepo) LocalTarget {
 	lt.repos = append(append([]LocalGitRepo{}, lt.repos...), repos...)
@@ -50,8 +54,9 @@ func (lt LocalTarget) DependencyIDs() []TargetID {
 	return nil
 }
 
+// TODO(dmiller): this should allow local targets with only server commands and no update commands
 func (lt LocalTarget) Validate() error {
-	if lt.Cmd.Empty() {
+	if lt.UpdateCmd.Empty() {
 		return fmt.Errorf("[Validate] LocalTarget missing command")
 	}
 	if lt.Workdir == "" {
