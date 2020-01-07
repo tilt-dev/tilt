@@ -35,14 +35,14 @@ type EngineState struct {
 	CurrentlyBuilding map[model.ManifestName]bool
 	WatchFiles        bool
 
+	// For synchronizing BuildController -- wait until engine records all builds started
+	// so far before starting another build
+	StartedBuildCount int
+
 	// How many builds have been completed (pass or fail) since starting tilt
 	CompletedBuildCount int
 
-	// For synchronizing BuildController so that it's only
-	// doing one action at a time. In the future, we might
-	// want to allow it to parallelize builds better, but that
-	// would require better tools for triaging output to different streams.
-	BuildControllerActionCount int
+	MaxBuildSlots int
 
 	FatalError error
 	HUDEnabled bool
@@ -143,6 +143,16 @@ func (e *EngineState) BuildStatus(id model.TargetID) BuildStatus {
 		}
 	}
 	return BuildStatus{}
+}
+
+func (e *EngineState) AvailableBuildSlots() int {
+	currentlyBuilding := len(e.CurrentlyBuilding)
+	if currentlyBuilding >= e.MaxBuildSlots {
+		// this could happen if user decreases max build slots while
+		// multiple builds are in progress, no big deal
+		return 0
+	}
+	return e.MaxBuildSlots - currentlyBuilding
 }
 
 func (e *EngineState) UpsertManifestTarget(mt *ManifestTarget) {
@@ -327,6 +337,7 @@ func NewState() *EngineState {
 	ret.VersionSettings = model.VersionSettings{
 		CheckUpdates: true,
 	}
+	ret.MaxBuildSlots = 1
 	ret.CurrentlyBuilding = make(map[model.ManifestName]bool)
 	return ret
 }

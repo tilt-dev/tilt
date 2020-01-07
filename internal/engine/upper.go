@@ -223,6 +223,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 var UpperReducer = store.Reducer(upperReducerFn)
 
 func handleBuildStarted(ctx context.Context, state *store.EngineState, action buildcontrol.BuildStartedAction) {
+	state.StartedBuildCount++
+
 	mn := action.ManifestName
 	manifest, ok := state.Manifest(mn)
 	if !ok {
@@ -269,9 +271,8 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		delete(engineState.CurrentlyBuilding, cb.ManifestName)
 	}()
 
-	buildCount := engineState.BuildControllerActionCount
+	buildCount := engineState.CompletedBuildCount
 	engineState.CompletedBuildCount++
-	engineState.BuildControllerActionCount++
 
 	mt, ok := engineState.ManifestTargets[cb.ManifestName]
 	if !ok {

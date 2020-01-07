@@ -19,7 +19,8 @@ func NextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 		return nil
 	}
 
-	targets := RemoveTargetsWaitingOnDependencies(state, state.Targets())
+	targets := RemoveCurrentlyBuildingTargets(state.Targets())
+	targets = RemoveTargetsWaitingOnDependencies(state, targets)
 
 	// If any of the manifest targets haven't been built yet, build them now.
 	unbuilt := FindTargetsNeedingInitialBuild(targets)
@@ -70,6 +71,17 @@ func isWaitingOnDependencies(state store.EngineState, mt *store.ManifestTarget) 
 	}
 
 	return false
+}
+
+func RemoveCurrentlyBuildingTargets(mts []*store.ManifestTarget) []*store.ManifestTarget {
+	var ret []*store.ManifestTarget
+	for _, mt := range mts {
+		if !mt.State.IsBuilding() {
+			ret = append(ret, mt)
+		}
+	}
+
+	return ret
 }
 
 func RemoveTargetsWaitingOnDependencies(state store.EngineState, mts []*store.ManifestTarget) []*store.ManifestTarget {
