@@ -238,7 +238,9 @@ func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Re
 		return nil
 	}
 	if mt.Manifest.IsLocal() {
+		lState := mt.State.LocalRuntimeState()
 		r.LocalResourceInfo = &proto_webview.LocalResourceInfo{}
+		r.RuntimeStatus = local.StatusToString(lState.Status)
 		return nil
 	}
 	if mt.Manifest.IsK8s() {
