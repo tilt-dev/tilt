@@ -22,7 +22,7 @@ cache    | # Redis version=5.0.7, bits=64, commit=00000000, modified=0, pid=1, j
 	}
 	writer.Write([]byte(log))
 
-	actions := st.Actions
+	actions := st.Actions()
 	require.Equal(t, 1, len(actions))
 
 	expected := `# oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
@@ -46,7 +46,7 @@ cache    | # Redis version=5.0.7, bits=64, commit=00000000, modified=0, pid=1, j
 	writer.Write([]byte(log1))
 	writer.Write([]byte(log2))
 
-	actions := st.Actions
+	actions := st.Actions()
 	require.Equal(t, 2, len(actions))
 
 	expected1 := `# oO0OoO0`
