@@ -176,7 +176,7 @@ func (tcf *tcFixture) run() {
 }
 
 func (tcf *tcFixture) assertNoLogs() {
-	actions := tcf.st.Actions
+	actions := tcf.st.Actions()
 	for _, a := range actions {
 		if la, ok := a.(store.LogAction); ok {
 			tcf.t.Errorf("Expected no LogActions but found: %v", la)
@@ -185,7 +185,7 @@ func (tcf *tcFixture) assertNoLogs() {
 }
 
 func (tcf *tcFixture) assertLog(logMsg string) {
-	actions := tcf.st.Actions
+	actions := tcf.st.Actions()
 	for _, a := range actions {
 		if la, ok := a.(LogAction); ok {
 			containsExpected := strings.Contains(string(la.Message()), logMsg)
@@ -230,7 +230,7 @@ func (tcf *tcFixture) teardown() {
 }
 
 func (tcf *tcFixture) getActions() []store.Action {
-	return tcf.st.Actions
+	return tcf.st.Actions()
 }
 
 type fakeClock struct {
