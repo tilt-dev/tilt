@@ -41,6 +41,7 @@ func TestHandlesFailures(t *testing.T) {
 	f.start("false")
 
 	f.waitForError()
+	f.assertLogContains("Error execing ")
 }
 
 type processExecFixture struct {

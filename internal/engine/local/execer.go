@@ -6,6 +6,7 @@ import (
 	"io"
 	"os/exec"
 
+	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -73,6 +74,10 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan S
 
 	err = c.Wait()
 	if err != nil {
+		_, err = fmt.Fprintf(w, "Error execing %s: %v", cmd.String(), err)
+		if err != nil {
+			logger.Get(ctx).Infof("Unable to print exec output to writer: %v", err)
+		}
 		statusCh <- Error
 		return
 	}
