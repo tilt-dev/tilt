@@ -28,7 +28,7 @@ type buildEntry struct {
 	filesChanged  []string
 	buildReason   model.BuildReason
 	firstBuild    bool
-	buildCount    int
+	spanID        logstore.SpanID
 }
 
 func NewBuildController(b BuildAndDeployer) *BuildController {
@@ -73,7 +73,7 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 		buildReason:   buildReason,
 		buildStateSet: buildStateSet,
 		filesChanged:  append(ms.ConfigFilesThatCausedChange, buildStateSet.FilesChanged()...),
-		buildCount:    c.buildsStartedCount,
+		spanID:        SpanIDForBuildLog(c.buildsStartedCount),
 	}, true
 }
 
@@ -95,7 +95,7 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 		StartTime:    time.Now(),
 		FilesChanged: entry.filesChanged,
 		Reason:       entry.buildReason,
-		SpanID:       SpanIDForBuildLog(entry.buildCount),
+		SpanID:       entry.spanID,
 	})
 
 	go func() {
@@ -103,14 +103,14 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 		actionWriter := BuildLogActionWriter{
 			store:        st,
 			manifestName: entry.name,
-			buildCount:   entry.buildCount,
+			spanID:       entry.spanID,
 		}
 		ctx := logger.CtxWithLogHandler(ctx, actionWriter)
 
 		c.logBuildEntry(ctx, entry)
 
 		result, err := c.buildAndDeploy(ctx, st, entry)
-		st.Dispatch(buildcontrol.NewBuildCompleteAction(entry.name, result, err))
+		st.Dispatch(buildcontrol.NewBuildCompleteAction(entry.name, entry.spanID, result, err))
 	}()
 }
 
@@ -163,12 +163,12 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 type BuildLogActionWriter struct {
 	store        store.RStore
 	manifestName model.ManifestName
-	buildCount   int
+	spanID       logstore.SpanID
 }
 
 func (w BuildLogActionWriter) Write(level logger.Level, p []byte) error {
 	w.store.Dispatch(buildcontrol.BuildLogAction{
-		LogEvent: store.NewLogEvent(w.manifestName, SpanIDForBuildLog(w.buildCount), level, p),
+		LogEvent: store.NewLogEvent(w.manifestName, w.spanID, level, p),
 	})
 	return nil
 }

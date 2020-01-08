@@ -26,15 +26,17 @@ func (BuildLogAction) Action() {}
 
 type BuildCompleteAction struct {
 	ManifestName model.ManifestName
+	SpanID       logstore.SpanID
 	Result       store.BuildResultSet
 	Error        error
 }
 
 func (BuildCompleteAction) Action() {}
 
-func NewBuildCompleteAction(mn model.ManifestName, result store.BuildResultSet, err error) BuildCompleteAction {
+func NewBuildCompleteAction(mn model.ManifestName, spanID logstore.SpanID, result store.BuildResultSet, err error) BuildCompleteAction {
 	return BuildCompleteAction{
 		ManifestName: mn,
+		SpanID:       spanID,
 		Result:       result,
 		Error:        err,
 	}
