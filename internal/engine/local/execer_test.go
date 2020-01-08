@@ -78,15 +78,12 @@ func (f *processExecFixture) assertCmdSucceeds() {
 func (f *processExecFixture) waitForStatusAndNoError(expectedStatus Status) {
 	for {
 		select {
-		case status, ok := <-f.statusCh:
+		case status := <-f.statusCh:
 			if expectedStatus == status {
 				return
 			}
 			if expectedStatus == Error {
 				f.t.Error("Unexpected Error status")
-				return
-			}
-			if !ok {
 				return
 			}
 		case <-time.After(10 * time.Second):
