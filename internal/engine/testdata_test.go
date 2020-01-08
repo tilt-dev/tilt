@@ -206,12 +206,6 @@ func NewSanchoDockerBuildManifestWithYaml(f Fixture, yaml string) model.Manifest
 		Build()
 }
 
-func NewSanchoDockerBuildManifestWithCache(f Fixture, paths []string) model.Manifest {
-	manifest := NewSanchoDockerBuildManifest(f)
-	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).WithCachePaths(paths))
-	return manifest
-}
-
 func NewSanchoDockerBuildMultiStageManifest(fixture Fixture) model.Manifest {
 	baseImage := model.NewImageTarget(SanchoBaseRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: `FROM golang:1.10`,

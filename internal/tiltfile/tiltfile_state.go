@@ -1072,7 +1072,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			ConfigurationRef: image.configurationRef,
 			DeploymentRef:    image.deploymentRef,
 			MatchInEnvVars:   image.matchInEnvVars,
-		}.WithCachePaths(image.cachePaths)
+		}
 
 		if !image.entrypoint.Empty() {
 			iTarget = iTarget.WithOverrideCommand(image.entrypoint)
