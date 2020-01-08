@@ -12,21 +12,20 @@ import (
 	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
+// TODO(nick): Rename these builders. ImageBuilder should really be called DockerBuilder,
+// and this struct should be called ImageBuilder.
 type imageAndCacheBuilder struct {
 	ib         build.ImageBuilder
-	cb         build.CacheBuilder
 	custb      build.CustomBuilder
 	updateMode buildcontrol.UpdateMode
 }
 
-func NewImageAndCacheBuilder(ib build.ImageBuilder, cb build.CacheBuilder, custb build.CustomBuilder, updateMode buildcontrol.UpdateMode) *imageAndCacheBuilder {
+func NewImageAndCacheBuilder(ib build.ImageBuilder, custb build.CustomBuilder, updateMode buildcontrol.UpdateMode) *imageAndCacheBuilder {
 	return &imageAndCacheBuilder{
 		ib:         ib,
-		cb:         cb,
 		custb:      custb,
 		updateMode: updateMode,
 	}
@@ -37,18 +36,13 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 
 	userFacingRefName := container.FamiliarString(iTarget.ConfigurationRef)
 	refToBuild := iTarget.DeploymentRef
-	cacheInputs := icb.createCacheInputs(iTarget)
-	cacheRef, err := icb.cb.FetchCache(ctx, cacheInputs)
-	if err != nil {
-		return nil, err
-	}
 
 	switch bd := iTarget.BuildDetails.(type) {
 	case model.DockerBuild:
 		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", userFacingRefName)
 		defer ps.EndPipelineStep(ctx)
 
-		df := icb.dockerfile(iTarget, cacheRef)
+		df := dockerfile.Dockerfile(bd.Dockerfile)
 		ref, err := icb.ib.BuildImage(ctx, ps, refToBuild, df, bd.BuildPath,
 			ignore.CreateBuildContextFilter(iTarget), bd.BuildArgs, bd.TargetStage)
 
@@ -56,8 +50,6 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 			return nil, err
 		}
 		n = ref
-
-		go icb.maybeCreateCacheFrom(ctx, cacheInputs, ref, state, iTarget, cacheRef)
 	case model.CustomBuild:
 		ps.StartPipelineStep(ctx, "Building Custom Build: [%s]", userFacingRefName)
 		defer ps.EndPipelineStep(ctx)
@@ -73,65 +65,4 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 	}
 
 	return n, nil
-}
-
-func (icb *imageAndCacheBuilder) dockerfile(image model.ImageTarget, cacheRef reference.NamedTagged) dockerfile.Dockerfile {
-	df := dockerfile.Dockerfile(image.DockerBuildInfo().Dockerfile)
-	if cacheRef == nil {
-		return df
-	}
-
-	if len(image.CachePaths()) == 0 {
-		return df
-	}
-
-	_, restDf, ok := df.SplitIntoBaseDockerfile()
-	if !ok {
-		return df
-	}
-
-	// Replace all the lines before the ADD with a load from the Tilt cache.
-	return dockerfile.FromExisting(cacheRef).
-		WithLabel(build.CacheImage, "0"). // sadly there's no way to unset a label :sob:
-		Append(restDf)
-}
-
-func (icb *imageAndCacheBuilder) createCacheInputs(iTarget model.ImageTarget) build.CacheInputs {
-	var baseDockerfile dockerfile.Dockerfile
-	if dbInfo, ok := iTarget.BuildDetails.(model.DockerBuild); ok {
-		df := dockerfile.Dockerfile(dbInfo.Dockerfile)
-		var ok bool
-		baseDockerfile, _, ok = df.SplitIntoBaseDockerfile()
-		if !ok {
-			return build.CacheInputs{}
-		}
-	}
-
-	return build.CacheInputs{
-		Ref:            iTarget.ConfigurationRef.AsNamedOnly(),
-		CachePaths:     iTarget.CachePaths(),
-		BaseDockerfile: baseDockerfile,
-	}
-}
-
-func (icb *imageAndCacheBuilder) maybeCreateCacheFrom(ctx context.Context, cacheInputs build.CacheInputs, sourceRef reference.NamedTagged, state store.BuildState, image model.ImageTarget, oldCacheRef reference.NamedTagged) {
-	// Only create the cache the first time we build the image.
-	if state.LastSuccessfulResult != nil {
-		return
-	}
-
-	// Only create the cache if there is no existing cache
-	if oldCacheRef != nil {
-		return
-	}
-
-	var buildArgs model.DockerBuildArgs
-	if dbInfo, ok := image.BuildDetails.(model.DockerBuild); ok {
-		buildArgs = dbInfo.BuildArgs
-	}
-
-	err := icb.cb.CreateCacheFrom(ctx, cacheInputs, sourceRef, buildArgs)
-	if err != nil {
-		logger.Get(ctx).Debugf("Could not create cache: %v", err)
-	}
 }

@@ -21,12 +21,13 @@ import (
 )
 
 var fastBuildDeletedErr = fmt.Errorf("fast_build is no longer supported. live_update provides the same functionality with less set-up: https://docs.tilt.dev/live_update_tutorial.html . If you run into problems, let us know: https://tilt.dev/contact")
+var cacheObsoleteWarning = "docker_build(cache=...) is obsolete, and currently a no-op.\n" +
+	"You should switch to live_update to optimize your builds."
 
 type dockerImage struct {
 	workDir          string
 	configurationRef container.RefSelector
 	deploymentRef    reference.Named
-	cachePaths       []string
 	matchInEnvVars   bool
 	ignores          []string
 	onlys            []string
@@ -147,9 +148,8 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		dockerfileContents = string(bs)
 	}
 
-	cachePaths, err := s.cachePathsFromSkylarkValue(cacheVal)
-	if err != nil {
-		return nil, err
+	if cacheVal != nil {
+		s.logger.Warnf("%s", cacheObsoleteWarning)
 	}
 
 	liveUpdate, err := s.liveUpdateFromSteps(thread, liveUpdateVal)
@@ -179,7 +179,6 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		dbBuildPath:      context,
 		configurationRef: container.NewRefSelector(ref),
 		dbBuildArgs:      sba,
-		cachePaths:       cachePaths,
 		liveUpdate:       liveUpdate,
 		matchInEnvVars:   matchInEnvVars,
 		ignores:          ignores,
@@ -363,23 +362,6 @@ func parseValuesToStrings(value starlark.Value, param string) ([]string, error) 
 }
 func (s *tiltfileState) fastBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	return nil, fastBuildDeletedErr
-}
-
-func (s *tiltfileState) cachePathsFromSkylarkValue(val starlark.Value) ([]string, error) {
-	if val == nil {
-		return nil, nil
-	}
-	cachePaths := starlarkValueOrSequenceToSlice(val)
-
-	var ret []string
-	for _, v := range cachePaths {
-		str, ok := v.(starlark.String)
-		if !ok {
-			return nil, fmt.Errorf("cache param %v is a %T; must be a string", v, v)
-		}
-		ret = append(ret, string(str))
-	}
-	return ret, nil
 }
 
 // fastBuild exists just to error

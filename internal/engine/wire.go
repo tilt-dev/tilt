@@ -33,7 +33,6 @@ var DeployerBaseWireSet = wire.NewSet(
 	sidecar.WireSet,
 	minikube.ProvideMinikubeClient,
 	build.DefaultImageBuilder,
-	build.NewCacheBuilder,
 	build.NewDockerImageBuilder,
 	build.NewExecCustomBuilder,
 	wire.Bind(new(build.CustomBuilder), new(*build.ExecCustomBuilder)),

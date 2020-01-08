@@ -46,15 +46,14 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
-	cacheBuilder := build.NewCacheBuilder(docker2)
 	execCustomBuilder := build.NewExecCustomBuilder(docker2, clock)
 	syncletImageRef, err := sidecar.ProvideSyncletImageRef(ctx)
 	if err != nil {
 		return nil, err
 	}
 	syncletContainer := sidecar.ProvideSyncletContainer(syncletImageRef)
-	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, kClient, env, analytics2, buildcontrolUpdateMode, clock, runtime, kp, syncletContainer)
-	engineImageAndCacheBuilder := NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, buildcontrolUpdateMode)
+	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, execCustomBuilder, kClient, env, analytics2, buildcontrolUpdateMode, clock, runtime, kp, syncletContainer)
+	engineImageAndCacheBuilder := NewImageAndCacheBuilder(imageBuilder, execCustomBuilder, buildcontrolUpdateMode)
 	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcc, docker2, engineImageAndCacheBuilder, clock)
 	localTargetBuildAndDeployer := NewLocalTargetBuildAndDeployer(clock)
 	buildOrder := DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, buildcontrolUpdateMode, env, runtime)
@@ -76,7 +75,6 @@ func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kC
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
-	cacheBuilder := build.NewCacheBuilder(docker2)
 	execCustomBuilder := build.NewExecCustomBuilder(docker2, clock)
 	updateModeFlag := _wireUpdateModeFlagValue
 	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
@@ -89,7 +87,7 @@ func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kC
 		return nil, err
 	}
 	syncletContainer := sidecar.ProvideSyncletContainer(syncletImageRef)
-	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, cacheBuilder, execCustomBuilder, kClient, env, analytics2, updateMode, clock, runtime, kp, syncletContainer)
+	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, execCustomBuilder, kClient, env, analytics2, updateMode, clock, runtime, kp, syncletContainer)
 	return imageBuildAndDeployer, nil
 }
 
@@ -101,7 +99,6 @@ func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(dCli, labels)
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
-	cacheBuilder := build.NewCacheBuilder(dCli)
 	clock := build.ProvideClock()
 	execCustomBuilder := build.NewExecCustomBuilder(dCli, clock)
 	updateModeFlag := _wireBuildcontrolUpdateModeFlagValue
@@ -127,7 +124,7 @@ func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	if err != nil {
 		return nil, err
 	}
-	engineImageAndCacheBuilder := NewImageAndCacheBuilder(imageBuilder, cacheBuilder, execCustomBuilder, updateMode)
+	engineImageAndCacheBuilder := NewImageAndCacheBuilder(imageBuilder, execCustomBuilder, updateMode)
 	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcCli, dCli, engineImageAndCacheBuilder, clock)
 	return dockerComposeBuildAndDeployer, nil
 }
@@ -139,7 +136,7 @@ var (
 
 // wire.go:
 
-var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), sidecar.WireSet, minikube.ProvideMinikubeClient, build.DefaultImageBuilder, build.NewCacheBuilder, build.NewDockerImageBuilder, build.NewExecCustomBuilder, wire.Bind(new(build.CustomBuilder), new(*build.ExecCustomBuilder)), NewLocalTargetBuildAndDeployer,
+var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), sidecar.WireSet, minikube.ProvideMinikubeClient, build.DefaultImageBuilder, build.NewDockerImageBuilder, build.NewExecCustomBuilder, wire.Bind(new(build.CustomBuilder), new(*build.ExecCustomBuilder)), NewLocalTargetBuildAndDeployer,
 	NewImageBuildAndDeployer, containerupdate.NewDockerContainerUpdater, containerupdate.NewSyncletUpdater, containerupdate.NewExecUpdater, NewLiveUpdateBuildAndDeployer,
 	NewDockerComposeBuildAndDeployer,
 	NewImageAndCacheBuilder,

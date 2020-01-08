@@ -29,31 +29,6 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
-func TestDockerBuildWithCache(t *testing.T) {
-	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
-
-	manifest := NewSanchoDockerBuildManifestWithCache(f, []string{"/root/.cache"})
-	cache := "gcr.io/some-project-162817/sancho:tilt-cache-3de427a264f80719a58a9abd456487b3"
-	f.docker.Images[cache] = types.ImageInspect{}
-
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expected := expectedFile{
-		Path: "Dockerfile",
-		Contents: `FROM gcr.io/some-project-162817/sancho:tilt-cache-3de427a264f80719a58a9abd456487b3
-LABEL "tilt.cache"="0"
-ADD . .
-RUN go install github.com/windmilleng/sancho
-ENTRYPOINT /go/bin/sancho
-`,
-	}
-	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
-}
-
 func TestDeployTwinImages(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()

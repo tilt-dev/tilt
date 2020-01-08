@@ -365,8 +365,7 @@ func TestDockerBuildCache(t *testing.T) {
 k8s_yaml('foo.yaml')
 docker_build("gcr.io/foo", "foo", cache='/paths/to/cache')
 `)
-	f.load()
-	f.assertNextManifest("foo", dbWithCache(image("gcr.io/foo"), "/paths/to/cache"))
+	f.loadAssertWarnings(cacheObsoleteWarning)
 }
 
 func TestDuplicateResourceNames(t *testing.T) {
@@ -5074,10 +5073,6 @@ type dbHelper struct {
 
 func db(img imageHelper, opts ...interface{}) dbHelper {
 	return dbHelper{image: img, matchers: opts}
-}
-
-func dbWithCache(img imageHelper, cache string, opts ...interface{}) dbHelper {
-	return dbHelper{image: img, cache: cache, matchers: opts}
 }
 
 // custom build helper

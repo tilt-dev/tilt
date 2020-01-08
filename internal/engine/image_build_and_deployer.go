@@ -74,7 +74,6 @@ type ImageBuildAndDeployer struct {
 
 func NewImageBuildAndDeployer(
 	b build.ImageBuilder,
-	cacheBuilder build.CacheBuilder,
 	customBuilder build.CustomBuilder,
 	k8sClient k8s.Client,
 	env k8s.Env,
@@ -87,7 +86,7 @@ func NewImageBuildAndDeployer(
 ) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
 		ib:               b,
-		icb:              NewImageAndCacheBuilder(b, cacheBuilder, customBuilder, updMode),
+		icb:              NewImageAndCacheBuilder(b, customBuilder, updMode),
 		k8sClient:        k8sClient,
 		env:              env,
 		analytics:        analytics,
