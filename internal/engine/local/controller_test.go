@@ -81,21 +81,21 @@ func (f *fixture) resource(name string, cmd string, lastDeploy time.Time) {
 }
 
 func (f *fixture) step() {
-	f.st.Actions = nil
+	f.st.ClearActions()
 	f.st.SetState(f.state)
 	f.c.OnChange(f.ctx, f.st)
 	time.Sleep(10 * time.Millisecond)
 }
 
 func (f *fixture) assertNoStatus() {
-	actions := f.st.Actions
+	actions := f.st.Actions()
 	if len(actions) > 0 {
 		f.t.Fatalf("expected no actions")
 	}
 }
 
 func (f *fixture) assertStatus(name string, status Status, sequenceNum int) {
-	actions := f.st.Actions
+	actions := f.st.Actions()
 	for _, action := range actions {
 		stAction, ok := action.(LocalServeStatusAction)
 		if !ok ||
