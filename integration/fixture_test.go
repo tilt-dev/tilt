@@ -76,7 +76,7 @@ func newFixture(t *testing.T, dir string) *fixture {
 }
 
 func (f *fixture) installTilt() {
-	cmd := exec.CommandContext(f.ctx, "go", "install", "github.com/windmilleng/tilt/cmd/tilt")
+	cmd := exec.CommandContext(f.ctx, "go", "install", "-mod", "vendor", "github.com/windmilleng/tilt/cmd/tilt")
 	f.runOrFail(cmd, "Building tilt")
 }
 
