@@ -13,13 +13,13 @@ import (
 
 type Controller struct {
 	execer Execer
-	procs  map[model.ManifestName]*lastProcess
+	procs  map[model.ManifestName]*currentProcess
 }
 
 func NewController(execer Execer) *Controller {
 	return &Controller{
 		execer: execer,
-		procs:  make(map[model.ManifestName]*lastProcess),
+		procs:  make(map[model.ManifestName]*currentProcess),
 	}
 }
 
@@ -83,7 +83,7 @@ func (c *Controller) update(ctx context.Context, specs []ServeSpec, st store.RSt
 	}
 }
 
-func (c *Controller) shouldStart(spec ServeSpec, proc *lastProcess) bool {
+func (c *Controller) shouldStart(spec ServeSpec, proc *currentProcess) bool {
 	if proc.cancelFunc == nil {
 		// nothing is running, so start it
 		return true
@@ -108,9 +108,9 @@ func (c *Controller) stop(name model.ManifestName) {
 	proc.doneCh = nil
 }
 
-func (c *Controller) getOrMakeProc(name model.ManifestName) *lastProcess {
+func (c *Controller) getOrMakeProc(name model.ManifestName) *currentProcess {
 	if c.procs[name] == nil {
-		c.procs[name] = &lastProcess{}
+		c.procs[name] = &currentProcess{}
 	}
 
 	return c.procs[name]
@@ -146,8 +146,10 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 	proc.doneCh = c.execer.Start(ctx, spec.ServeCmd, logger.Get(ctx).Writer(logger.InfoLvl), statusCh)
 }
 
-// lastProcess represents the last process
-type lastProcess struct {
+// currentProcess represents the current process for a Manifest, so that Controller can
+// make sure there's at most one process per Manifest.
+// (note: it may not be running yet, or may have already finished)
+type currentProcess struct {
 	spec        ServeSpec
 	sequenceNum int
 	cancelFunc  context.CancelFunc
