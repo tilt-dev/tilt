@@ -9,4 +9,5 @@ type BuildOptions struct {
 	BuildArgs  map[string]*string
 	Tags       []string
 	Target     string
+	SSHSpecs   []string
 }

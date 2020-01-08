@@ -198,6 +198,10 @@ type DockerBuild struct {
 	BuildArgs   DockerBuildArgs
 	LiveUpdate  LiveUpdate // Optionally, can use LiveUpdate to update this build in place.
 	TargetStage DockerBuildTarget
+
+	// Pass SSH secrets to docker so it can clone private repos.
+	// https://docs.docker.com/develop/develop-images/build_enhancements/#using-ssh-to-access-private-data-in-builds
+	SSHSpecs []string
 }
 
 func (DockerBuild) buildDetails() {}

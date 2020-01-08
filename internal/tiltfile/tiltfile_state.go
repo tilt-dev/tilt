@@ -1088,6 +1088,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				BuildArgs:   image.dbBuildArgs,
 				LiveUpdate:  lu,
 				TargetStage: model.DockerBuildTarget(image.targetStage),
+				SSHSpecs:    image.sshSpecs,
 			})
 		case CustomBuild:
 			r := model.CustomBuild{

@@ -30,6 +30,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/docker/buildkit"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
@@ -284,6 +285,38 @@ type dockerCreds struct {
 	sessionID   string
 }
 
+func (c *Cli) startBuildkitSession(ctx context.Context, key string, sshSpecs []string) (*session.Session, error) {
+	session, err := session.NewSession(ctx, "tilt", key)
+	if err != nil {
+		return nil, err
+
+	}
+
+	provider := authprovider.NewDockerAuthProvider(logger.Get(ctx).Writer(logger.InfoLvl))
+	session.Allow(provider)
+
+	if len(sshSpecs) > 0 {
+		sshp, err := buildkit.ParseSSHSpecs(sshSpecs)
+		if err != nil {
+			return nil, errors.Wrapf(err, "could not parse ssh: %v", sshSpecs)
+		}
+		session.Allow(sshp)
+	}
+
+	go func() {
+		defer func() {
+			_ = session.Close()
+		}()
+
+		// Start the server
+		dialSession := func(ctx context.Context, proto string, meta map[string][]string) (net.Conn, error) {
+			return c.Client.DialHijack(ctx, "/session", proto, meta)
+		}
+		_ = session.Run(ctx, dialSession)
+	}()
+	return session, nil
+}
+
 // When we pull from a private docker registry, we have to get credentials
 // from somewhere. These credentials are not stored on the server. The client
 // is responsible for managing them.
@@ -302,22 +335,10 @@ func (c *Cli) initCreds(ctx context.Context) dockerCreds {
 	creds := dockerCreds{}
 
 	if c.builderVersion == types.BuilderBuildKit {
-		session, _ := session.NewSession(ctx, "tilt", sessionSharedKey)
-		if session != nil {
-			// TODO(dmiller) add a writer back here
-			provider := authprovider.NewDockerAuthProvider(logger.Get(ctx).Writer(logger.InfoLvl))
-			session.Allow(provider)
-			go func() {
-				defer func() {
-					_ = session.Close()
-				}()
-
-				// Start the server
-				dialSession := func(ctx context.Context, proto string, meta map[string][]string) (net.Conn, error) {
-					return c.Client.DialHijack(ctx, "/session", proto, meta)
-				}
-				_ = session.Run(ctx, dialSession)
-			}()
+		session, err := c.startBuildkitSession(ctx, sessionSharedKey, nil)
+		if err != nil {
+			logger.Get(ctx).Warnf("Docker BuildKit session failed to init: %v", err)
+		} else if session != nil {
 			creds.sessionID = session.ID()
 		}
 	} else {
@@ -428,10 +449,25 @@ func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options Bu
 		logger.Get(ctx).Verbosef("%v", c.initError)
 	}
 
+	var oneTimeSession *session.Session
+	sessionID := c.creds.sessionID
+	if len(options.SSHSpecs) > 0 {
+		if c.builderVersion != types.BuilderBuildKit {
+			return types.ImageBuildResponse{},
+				fmt.Errorf("Docker SSH secrets only work on Buildkit, but Buildkit has been disabled")
+		}
+
+		oneTimeSession, err := c.startBuildkitSession(ctx, identity.NewID(), options.SSHSpecs)
+		if err != nil {
+			return types.ImageBuildResponse{}, errors.Wrapf(err, "ImageBuild")
+		}
+		sessionID = oneTimeSession.ID()
+	}
+
 	opts := types.ImageBuildOptions{}
 	opts.Version = c.builderVersion
 	opts.AuthConfigs = c.creds.authConfigs
-	opts.SessionID = c.creds.sessionID
+	opts.SessionID = sessionID
 	opts.Remove = options.Remove
 	opts.Context = options.Context
 	opts.BuildArgs = options.BuildArgs
@@ -441,7 +477,18 @@ func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options Bu
 
 	opts.Labels = BuiltByTiltLabel // label all images as built by us
 
-	return c.Client.ImageBuild(ctx, buildContext, opts)
+	response, err := c.Client.ImageBuild(ctx, buildContext, opts)
+	if err != nil {
+		if oneTimeSession != nil {
+			_ = oneTimeSession.Close()
+		}
+		return response, err
+	}
+
+	if oneTimeSession != nil {
+		response.Body = WrapReadCloserWithTearDown(response.Body, oneTimeSession.Close)
+	}
+	return response, err
 }
 
 func (c *Cli) CopyToContainerRoot(ctx context.Context, container string, content io.Reader) error {
