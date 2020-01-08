@@ -206,7 +206,8 @@ func (s *LogStore) Append(le LogEvent, secrets model.SecretSet) {
 		return
 	}
 
-	if le.Level() == logger.WarnLvl {
+	level := le.Level()
+	if level.AsSevereAs(logger.WarnLvl) {
 		added[0].Anchor = true
 	}
 
@@ -570,11 +571,12 @@ func (s *LogStore) logHelper(spansToLog map[SpanID]*Span, showManifestPrefix boo
 		}
 
 		if segment.Anchor {
+			// TODO(nick): Add Terminal colors when supported.
 			if segment.Level == logger.WarnLvl {
 				sb.WriteString("WARNING: ")
+			} else if segment.Level == logger.ErrorLvl {
+				sb.WriteString("ERROR: ")
 			}
-
-			// TODO(nick) Add logger.ErrorLvl
 		}
 
 		sb.WriteString(string(segment.Text))

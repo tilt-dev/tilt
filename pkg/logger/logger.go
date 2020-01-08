@@ -24,6 +24,9 @@ type Logger interface {
 	// Warnings to show in the alert pane.
 	Warnf(format string, a ...interface{})
 
+	// Halting errors to show in the alert pane.
+	Errorf(format string, a ...interface{})
+
 	// log information that we always want to show
 	Infof(format string, a ...interface{})
 
@@ -66,12 +69,17 @@ func (l Level) ShouldDisplay(log Level) bool {
 	return l.severity <= log.severity
 }
 
+func (l Level) AsSevereAs(log Level) bool {
+	return l.severity >= log.severity
+}
+
 var (
 	NoneLvl    = Level{id: 0, severity: 0}
-	InfoLvl    = Level{id: 1, severity: 300}
-	VerboseLvl = Level{id: 2, severity: 200}
 	DebugLvl   = Level{id: 3, severity: 100}
+	VerboseLvl = Level{id: 2, severity: 200}
+	InfoLvl    = Level{id: 1, severity: 300}
 	WarnLvl    = Level{id: 4, severity: 400}
+	ErrorLvl   = Level{id: 5, severity: 500}
 )
 
 const loggerContextKey = "Logger"

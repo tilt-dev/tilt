@@ -95,6 +95,8 @@ class LogLineComponent extends PureComponent<LogLineComponentProps> {
     }
     if (props.level == "WARN") {
       classes.push("is-warning")
+    } else if (props.level == "ERROR") {
+      classes.push("is-error")
     }
     if (props.isContextChange) {
       classes.push("is-contextChange")
