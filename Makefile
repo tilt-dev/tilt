@@ -49,7 +49,7 @@ synclet-dev: synclet-cache
 build-synclet-and-install: synclet-dev install-dev
 
 lint:
-	go vet -mod vendor -all ./...
+	go vet -mod vendor -all -printfuncs=Verbosef,Infof,Debugf,PrintColorf ./...
 
 build:
 	go test -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 60s ./... -run nonsenseregex

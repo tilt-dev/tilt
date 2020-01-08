@@ -30,12 +30,12 @@ func fakeRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan Stat
 	defer close(doneCh)
 	defer close(statusCh)
 
-	fmt.Fprintf(w, "Starting cmd %v", cmd)
+	_, _ = fmt.Fprintf(w, "Starting cmd %v", cmd)
 
 	statusCh <- Running
 
 	<-ctx.Done()
-	fmt.Fprintf(w, "Finished cmd %v", cmd)
+	_, _ = fmt.Fprintf(w, "Finished cmd %v", cmd)
 
 	statusCh <- Done
 }
