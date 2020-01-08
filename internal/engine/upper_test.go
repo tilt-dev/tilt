@@ -1454,12 +1454,15 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 		ms, _ := st.ManifestState(manifest.Name)
 		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
 	})
+	spanID0 := SpanIDForBuildLog(0)
 	f.store.Dispatch(buildcontrol.BuildStartedAction{
 		ManifestName: manifest.Name,
 		StartTime:    time.Now(),
+		SpanID:       spanID0,
 	})
 
 	f.store.Dispatch(buildcontrol.NewBuildCompleteAction(name,
+		spanID0,
 		liveUpdateResultSet(manifest, "theOriginalContainer"), nil))
 
 	f.WaitUntil("nothing waiting for build", func(st store.EngineState) bool {
@@ -1497,9 +1500,11 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 		ms, _ := st.ManifestState(manifest.Name)
 		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
 	})
+	spanID0 := SpanIDForBuildLog(0)
 	f.store.Dispatch(buildcontrol.BuildStartedAction{
 		ManifestName: manifest.Name,
 		StartTime:    time.Now(),
+		SpanID:       spanID0,
 	})
 
 	// Simulate k8s restarting the container due to a crash.
@@ -1508,7 +1513,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 
 	// ...and finish the build. Even though this action comes in AFTER the pod
 	// event w/ unexpected container,  we should still be able to detect the mismatch.
-	f.store.Dispatch(buildcontrol.NewBuildCompleteAction(name,
+	f.store.Dispatch(buildcontrol.NewBuildCompleteAction(name, spanID0,
 		liveUpdateResultSet(manifest, "theOriginalContainer"), nil))
 
 	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {
@@ -1537,9 +1542,11 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
 	})
 
+	spanID0 := SpanIDForBuildLog(0)
 	f.store.Dispatch(buildcontrol.BuildStartedAction{
 		ManifestName: manifest.Name,
 		StartTime:    time.Now(),
+		SpanID:       spanID0,
 	})
 	podStartTime := time.Now()
 	ancestorUID := types.UID("fake-uid")
@@ -1550,6 +1557,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 		WithDeploymentUID(ancestorUID).
 		WithTemplateSpecHash(ptsh)
 	f.store.Dispatch(buildcontrol.NewBuildCompleteAction(name,
+		spanID0,
 		deployResultSet(manifest, ancestorUID, []k8s.PodTemplateSpecHash{ptsh}), nil))
 
 	f.store.Dispatch(k8swatch.NewPodChangeAction(pb.Build(), manifest.Name, ancestorUID))
@@ -1562,9 +1570,12 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
 		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name
 	})
+
+	spanID1 := SpanIDForBuildLog(1)
 	f.store.Dispatch(buildcontrol.BuildStartedAction{
 		ManifestName: manifest.Name,
 		StartTime:    time.Now(),
+		SpanID:       spanID1,
 	})
 
 	// Simulate a pod crash, then a build completion
@@ -1572,6 +1583,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	f.store.Dispatch(k8swatch.NewPodChangeAction(pb.Build(), manifest.Name, ancestorUID))
 
 	f.store.Dispatch(buildcontrol.NewBuildCompleteAction(name,
+		spanID1,
 		liveUpdateResultSet(manifest, "normal-container-id"), nil))
 
 	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {

@@ -271,7 +271,6 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		delete(engineState.CurrentlyBuilding, cb.ManifestName)
 	}()
 
-	buildCount := engineState.CompletedBuildCount
 	engineState.CompletedBuildCount++
 
 	mt, ok := engineState.ManifestTargets[cb.ManifestName]
@@ -285,7 +284,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		s := fmt.Sprintf("%s %v", p, err)
 		a := buildcontrol.BuildLogAction{
 			// TODO(nick): logger.ErrorLvl?
-			LogEvent: store.NewLogEvent(mt.Manifest.Name, SpanIDForBuildLog(buildCount), logger.InfoLvl, []byte(s)),
+			LogEvent: store.NewLogEvent(mt.Manifest.Name, cb.SpanID, logger.InfoLvl, []byte(s)),
 		}
 		handleLogAction(engineState, a)
 	}
