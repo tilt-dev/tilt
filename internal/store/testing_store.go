@@ -48,6 +48,13 @@ func (s *TestingStore) Dispatch(action Action) {
 	s.actions = append(s.actions, action)
 }
 
+func (s *TestingStore) ClearActions() {
+	s.actionsMu.Lock()
+	defer s.actionsMu.Unlock()
+
+	s.actions = nil
+}
+
 func (s *TestingStore) Actions() []Action {
 	s.actionsMu.RLock()
 	defer s.actionsMu.RUnlock()
