@@ -3275,6 +3275,7 @@ func TestLocalResourceServeChangeCmd(t *testing.T) {
 
 	err := f.Stop()
 	require.NoError(t, err)
+}
 
 func TestDefaultMaxBuildSlots(t *testing.T) {
 	f := newTestFixture(t)
@@ -3291,7 +3292,7 @@ func TestDefaultMaxBuildSlots(t *testing.T) {
 		return len(state.TiltfileState.BuildHistory) == 1
 	})
 	f.withState(func(state store.EngineState) {
-		assert.Equal(t, model.DefaultMaxBuildSlots, state.MaxBuildSlots)
+		assert.Equal(t, model.DefaultMaxBuildSlots, state.MaxParallelUpdates)
 	})
 }
 
@@ -3311,7 +3312,7 @@ max_parallel_updates(123)
 		return len(state.TiltfileState.BuildHistory) == 1
 	})
 	f.withState(func(state store.EngineState) {
-		assert.Equal(t, 123, state.MaxBuildSlots)
+		assert.Equal(t, 123, state.MaxParallelUpdates)
 	})
 }
 
@@ -3355,29 +3356,30 @@ func makeFakeTimerMaker(t *testing.T) fakeTimerMaker {
 
 type testFixture struct {
 	*tempdir.TempDirFixture
-	t                     *testing.T
-	ctx                   context.Context
-	cancel                func()
-	upper                 Upper
-	b                     *fakeBuildAndDeployer
-	fsWatcher             *fakeMultiWatcher
-	timerMaker            *fakeTimerMaker
-	docker                *docker.FakeClient
-	kClient               *k8s.FakeK8sClient
-	hud                   hud.HeadsUpDisplay // so fixture may use either FakeHud or DisabledHud. See: f.FakeHud()/f.DisabledHud()
-	upperInitResult       chan error
-	log                   *bufsync.ThreadSafeBuffer
-	store                 *store.Store
-	bc                    *BuildController
-	fwm                   *WatchManager
-	cc                    *configs.ConfigsController
-	dcc                   *dockercompose.FakeDCClient
-	tfl                   tiltfile.TiltfileLoader
-	ghc                   *github.FakeClient
-	opter                 *tiltanalytics.FakeOpter
-	dp                    *dockerprune.DockerPruner
-	fe                    *local.FakeExecer
-	tiltVersionCheckDelay time.Duration
+	t                          *testing.T
+	ctx                        context.Context
+	cancel                     func()
+	upper                      Upper
+	b                          *fakeBuildAndDeployer
+	fsWatcher                  *fakeMultiWatcher
+	timerMaker                 *fakeTimerMaker
+	docker                     *docker.FakeClient
+	kClient                    *k8s.FakeK8sClient
+	hud                        hud.HeadsUpDisplay // so fixture may use either FakeHud or DisabledHud. See: f.FakeHud()/f.DisabledHud()
+	upperInitResult            chan error
+	log                        *bufsync.ThreadSafeBuffer
+	store                      *store.Store
+	bc                         *BuildController
+	fwm                        *WatchManager
+	cc                         *configs.ConfigsController
+	dcc                        *dockercompose.FakeDCClient
+	tfl                        tiltfile.TiltfileLoader
+	ghc                        *github.FakeClient
+	opter                      *tiltanalytics.FakeOpter
+	dp                         *dockerprune.DockerPruner
+	fe                         *local.FakeExecer
+	tiltVersionCheckDelay      time.Duration
+	overrideMaxParallelUpdates int
 
 	onchangeCh chan bool
 }
@@ -3531,6 +3533,8 @@ func (f *testFixture) setManifests(manifests []model.Manifest) {
 }
 
 func (f *testFixture) setMaxParallelUpdates(n int) {
+	f.overrideMaxParallelUpdates = n
+
 	state := f.store.LockMutableStateForTesting()
 	state.MaxParallelUpdates = n
 	f.store.UnlockMutableState()
@@ -3566,6 +3570,9 @@ func (f *testFixture) Init(action InitAction) {
 	if len(state.ConfigFiles) > 0 {
 		// watchmanager also creates a watcher for config files
 		expectedWatchCount++
+	}
+	if f.overrideMaxParallelUpdates > 0 {
+		state.MaxParallelUpdates = f.overrideMaxParallelUpdates
 	}
 	f.store.UnlockMutableState()
 
