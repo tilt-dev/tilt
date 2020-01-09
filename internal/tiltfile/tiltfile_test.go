@@ -4362,6 +4362,14 @@ func TestMaxParallelUpdates(t *testing.T) {
 			tiltfile:            "update_settings(max_parallel_updates=-1)",
 			expectErrorContains: "must be >= 1",
 		},
+		{
+			// as more settings are configurable from this func, max_parallel_updates
+			// won't be a required arg and instead we should test that it gets
+			// set to the approprirate default; but for now, it IS required.
+			name:                "max_parallel_updates is required arg",
+			tiltfile:            "update_settings()",
+			expectErrorContains: "missing argument for max_parallel_updates",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newFixture(t)
