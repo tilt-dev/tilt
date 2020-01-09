@@ -4345,21 +4345,21 @@ func TestMaxParallelUpdates(t *testing.T) {
 		{
 			name:                  "default max parallel updates",
 			tiltfile:              "print('hello world')",
-			expectedMaxBuildSlots: model.DefaultMaxBuildSlots,
+			expectedMaxBuildSlots: model.DefaultMaxParallelUpdates,
 		},
 		{
 			name:                  "set max parallel updates",
-			tiltfile:              "max_parallel_updates(42)",
+			tiltfile:              "update_settings(max_parallel_updates=42)",
 			expectedMaxBuildSlots: 42,
 		},
 		{
 			name:                "NaN error",
-			tiltfile:            "max_parallel_updates('boop')",
+			tiltfile:            "update_settings(max_parallel_updates='boop')",
 			expectErrorContains: "got string, want int",
 		},
 		{
 			name:                "must be positive int",
-			tiltfile:            "max_parallel_updates(-1)",
+			tiltfile:            "update_settings(max_parallel_updates=-1)",
 			expectErrorContains: "must be >= 1",
 		},
 	} {
@@ -4375,8 +4375,8 @@ func TestMaxParallelUpdates(t *testing.T) {
 			}
 
 			f.load()
-			actualBuildSlots := f.loadResult.UpdateSettings.MaxBuildSlots
-			assert.Equal(t, tc.expectedMaxBuildSlots, actualBuildSlots, "expected vs. actual MaxBuildSlots")
+			actualBuildSlots := f.loadResult.UpdateSettings.MaxParallelUpdates
+			assert.Equal(t, tc.expectedMaxBuildSlots, actualBuildSlots, "expected vs. actual MaxParallelUpdates")
 		})
 	}
 }

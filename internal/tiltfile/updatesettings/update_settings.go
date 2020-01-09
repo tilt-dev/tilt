@@ -10,7 +10,7 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 )
 
-// Implements functions for dealing with Docker Prune settings.
+// Implements functions for dealing with update settings.
 type Extension struct {
 }
 
@@ -23,22 +23,23 @@ func (e Extension) NewState() interface{} {
 }
 
 func (e Extension) OnStart(env *starkit.Environment) error {
-	return env.AddBuiltin("max_parallel_updates", e.maxParallelUpdates)
+	return env.AddBuiltin("update_settings", e.updateSettings)
 }
 
-func (e Extension) maxParallelUpdates(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var n int
+func (e Extension) updateSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var maxParallelUpdates int
 	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
-		"n?", &n); err != nil {
+		"max_parallel_updates", &maxParallelUpdates); err != nil {
 		return nil, err
 	}
 
-	if n < 1 {
-		return nil, fmt.Errorf("max number of parallel updates must be >= 1(got: %d)", n)
+	if maxParallelUpdates < 1 {
+		return nil, fmt.Errorf("max number of parallel updates must be >= 1(got: %d)",
+			maxParallelUpdates)
 	}
 
 	err := starkit.SetState(thread, func(settings model.UpdateSettings) model.UpdateSettings {
-		settings.MaxBuildSlots = n
+		settings.MaxParallelUpdates = maxParallelUpdates
 		return settings
 	})
 

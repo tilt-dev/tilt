@@ -3292,7 +3292,7 @@ func TestDefaultMaxBuildSlots(t *testing.T) {
 		return len(state.TiltfileState.BuildHistory) == 1
 	})
 	f.withState(func(state store.EngineState) {
-		assert.Equal(t, model.DefaultMaxBuildSlots, state.MaxParallelUpdates)
+		assert.Equal(t, model.DefaultMaxParallelUpdates, state.MaxParallelUpdates)
 	})
 }
 
@@ -3304,7 +3304,7 @@ func TestSetMaxBuildSlots(t *testing.T) {
 	f.WriteFile("snack.yaml", simpleYAML)
 
 	f.WriteFile("Tiltfile", `
-max_parallel_updates(123)
+update_settings(max_parallel_updates=123)
 `+simpleTiltfile)
 	f.loadAndStart()
 

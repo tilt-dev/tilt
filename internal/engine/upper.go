@@ -587,7 +587,7 @@ func handleConfigsReloaded(
 	state.TelemetrySettings = event.TelemetrySettings
 	state.VersionSettings = event.VersionSettings
 
-	state.MaxBuildSlots = event.UpdateSettings.MaxBuildSlotsMinOne()
+	state.MaxBuildSlots = event.UpdateSettings.MaxParallelUpdatesMinOne()
 
 	// Remove pending file changes that were consumed by this build.
 	for file, modTime := range state.PendingConfigFileChanges {
