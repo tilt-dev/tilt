@@ -26,6 +26,7 @@ import (
 	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
+	"github.com/windmilleng/tilt/internal/engine/local"
 	"github.com/windmilleng/tilt/internal/engine/runtimelog"
 	"github.com/windmilleng/tilt/internal/engine/telemetry"
 	"github.com/windmilleng/tilt/internal/feature"
@@ -70,6 +71,8 @@ var BaseWireSet = wire.NewSet(
 	runtimelog.NewPodLogManager,
 	engine.NewPortForwardController,
 	engine.NewBuildController,
+	local.ProvideExecer,
+	local.NewController,
 	k8swatch.NewPodWatcher,
 	k8swatch.NewServiceWatcher,
 	k8swatch.NewEventWatchManager,

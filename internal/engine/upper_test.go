@@ -25,21 +25,20 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	engineanalytics "github.com/windmilleng/tilt/internal/engine/analytics"
-	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
-	"github.com/windmilleng/tilt/internal/engine/telemetry"
-
-	"github.com/windmilleng/tilt/internal/engine/dockerprune"
-
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/cloud"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/containerupdate"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
+	engineanalytics "github.com/windmilleng/tilt/internal/engine/analytics"
+	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 	"github.com/windmilleng/tilt/internal/engine/configs"
+	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
+	"github.com/windmilleng/tilt/internal/engine/local"
 	"github.com/windmilleng/tilt/internal/engine/runtimelog"
+	"github.com/windmilleng/tilt/internal/engine/telemetry"
 	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/github"
 	"github.com/windmilleng/tilt/internal/hud"
@@ -3233,6 +3232,52 @@ func TestTelemetryLogAction(t *testing.T) {
 	})
 }
 
+func TestLocalResourceServeWithNoUpdate(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	m := manifestbuilder.New(f, "foo").
+		WithLocalServeCmd("true").
+		Build()
+
+	f.Start([]model.Manifest{m}, true)
+
+	f.WaitUntil("resource is served", func(state store.EngineState) bool {
+		return strings.Contains(state.LogStore.ManifestLog(m.Name), "Starting cmd true")
+	})
+
+	err := f.Stop()
+	require.NoError(t, err)
+}
+
+func TestLocalResourceServeChangeCmd(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", "local_resource('foo', serve_cmd='true')")
+
+	f.loadAndStart()
+
+	f.WaitUntil("true is served", func(state store.EngineState) bool {
+		return strings.Contains(state.LogStore.ManifestLog("foo"), "Starting cmd true")
+	})
+
+	f.WriteFile("Tiltfile", "local_resource('foo', serve_cmd='false')")
+	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("Tiltfile"))
+
+	f.WaitUntil("false is served", func(state store.EngineState) bool {
+		return strings.Contains(state.LogStore.ManifestLog("foo"), "Starting cmd false")
+	})
+
+	f.withState(func(state store.EngineState) {
+		require.Contains(t, state.LogStore.ManifestLog("foo"), "cmd true canceled")
+	})
+
+	err := f.Stop()
+	require.NoError(t, err)
+
+}
+
 type fakeTimerMaker struct {
 	restTimerLock *sync.Mutex
 	maxTimerLock  *sync.Mutex
@@ -3294,6 +3339,7 @@ type testFixture struct {
 	ghc                   *github.FakeClient
 	opter                 *tiltanalytics.FakeOpter
 	dp                    *dockerprune.DockerPruner
+	fe                    *local.FakeExecer
 	tiltVersionCheckDelay time.Duration
 
 	onchangeCh chan bool
@@ -3355,6 +3401,8 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	ewm := k8swatch.NewEventWatchManager(kCli, of)
 	tcum := cloud.NewUsernameManager(httptest.NewFakeClient())
 	cuu := cloud.NewUpdateUploader(httptest.NewFakeClient(), "cloud-test.tilt.dev")
+	fe := local.NewFakeExecer()
+	lc := local.NewController(fe)
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
 	dp.DisabledForTesting(true)
@@ -3381,6 +3429,7 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 		ghc:                   ghc,
 		opter:                 to,
 		dp:                    dp,
+		fe:                    fe,
 		tiltVersionCheckDelay: versionCheckInterval,
 	}
 
@@ -3390,7 +3439,7 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
 	tc := telemetry.NewController(fakeClock{}, tracer.NewSpanCollector(ctx))
 
-	subs := ProvideSubscribers(h, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, tvc, au, ewm, tcum, cuu, dp, tc)
+	subs := ProvideSubscribers(h, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, tvc, au, ewm, tcum, cuu, dp, tc, lc)
 	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {

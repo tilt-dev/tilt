@@ -75,6 +75,7 @@ func (c *Controller) update(ctx context.Context, specs []ServeSpec, st store.RSt
 	// stop old ones
 	for _, name := range toStop {
 		c.stop(name)
+		delete(c.procs, name)
 	}
 
 	// now start them
@@ -99,6 +100,9 @@ func (c *Controller) shouldStart(spec ServeSpec, proc *currentProcess) bool {
 
 func (c *Controller) stop(name model.ManifestName) {
 	proc := c.procs[name]
+	if proc.stoppedCh != nil {
+		close(proc.stoppedCh)
+	}
 	if proc.cancelFunc == nil {
 		return
 	}
@@ -120,9 +124,10 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 	c.stop(spec.ManifestName)
 
 	proc := c.procs[spec.ManifestName]
+	proc.spec = spec
+	proc.stoppedCh = make(chan struct{})
 	proc.sequenceNum++
-	ctx, cancelFunc := context.WithCancel(ctx)
-	proc.cancelFunc = cancelFunc
+	ctx, proc.cancelFunc = context.WithCancel(ctx)
 
 	w := LocalServeLogActionWriter{
 		store:        st,
@@ -131,19 +136,43 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 	}
 	ctx = logger.CtxWithLogHandler(ctx, w)
 
-	statusCh := make(chan Status)
-	sequenceNum := proc.sequenceNum
-	go func() {
-		for status := range statusCh {
-			st.Dispatch(LocalServeStatusAction{
-				ManifestName: spec.ManifestName,
-				SequenceNum:  sequenceNum,
-				Status:       status,
-			})
-		}
-	}()
+	statusCh := make(chan status)
+
+	go processStatuses(statusCh, proc.stoppedCh, st, spec.ManifestName, proc.sequenceNum)
 
 	proc.doneCh = c.execer.Start(ctx, spec.ServeCmd, logger.Get(ctx).Writer(logger.InfoLvl), statusCh)
+}
+
+func processStatuses(
+	statusCh chan status,
+	stoppedCh chan struct{},
+	st store.RStore,
+	manifestName model.ManifestName,
+	sequenceNum int) {
+	stopped := false
+	for {
+		select {
+		case status, ok := <-statusCh:
+			if !ok {
+				return
+			}
+			if stopped {
+				continue
+			}
+			runtimeStatus := status.ToRuntime()
+			if runtimeStatus != "" {
+				// TODO(matt) when we get an error, the dot is red in the web ui, but green in the TUI
+				st.Dispatch(LocalServeStatusAction{
+					ManifestName: manifestName,
+					SequenceNum:  sequenceNum,
+					Status:       runtimeStatus,
+				})
+			}
+		case <-stoppedCh:
+			// if we stopped the process ourselves, we don't need to report any more status updates
+			stopped = true
+		}
+	}
 }
 
 // currentProcess represents the current process for a Manifest, so that Controller can
@@ -153,7 +182,10 @@ type currentProcess struct {
 	spec        ServeSpec
 	sequenceNum int
 	cancelFunc  context.CancelFunc
-	doneCh      chan struct{}
+	// closed when the process finishes executing, intentionally or not
+	doneCh chan struct{}
+	// closed when the controller intentionally stopped the process
+	stoppedCh chan struct{}
 }
 
 type LocalServeLogActionWriter struct {
@@ -163,9 +195,7 @@ type LocalServeLogActionWriter struct {
 }
 
 func (w LocalServeLogActionWriter) Write(level logger.Level, p []byte) error {
-	w.store.Dispatch(LocalServeLogAction{
-		LogEvent: store.NewLogEvent(w.manifestName, SpanIDForServeLog(w.sequenceNum), level, p),
-	})
+	w.store.Dispatch(store.NewLogEvent(w.manifestName, SpanIDForServeLog(w.sequenceNum), level, p))
 	return nil
 }
 
@@ -180,11 +210,22 @@ type ServeSpec struct {
 	TriggerTime  time.Time // TriggerTime is how Runner knows to restart; if it's newer than the TriggerTime of the currently running command, then Runner should restart it
 }
 
-type Status int
+type status int
 
 const (
-	Unknown Status = iota
-	Running
-	Done
-	Error
+	Unknown status = iota
+	Running status = iota
+	Done    status = iota
+	Error   status = iota
 )
+
+func (s status) ToRuntime() model.RuntimeStatus {
+	switch s {
+	case Running:
+		return model.RuntimeStatusOK
+	case Error:
+		return model.RuntimeStatusError
+	default:
+		return ""
+	}
+}

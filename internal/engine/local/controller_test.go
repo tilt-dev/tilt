@@ -2,8 +2,12 @@ package local
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
@@ -19,25 +23,52 @@ func TestNoop(t *testing.T) {
 	f.assertNoStatus()
 }
 
-func TestSimple(t *testing.T) {
+func TestUpdate(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
 
 	t1 := time.Unix(1, 0)
 	f.resource("foo", "true", t1)
 	f.step()
-	f.assertStatus("foo", Running, 1)
+	f.assertStatus("foo", model.RuntimeStatusOK, 1)
 
 	t2 := time.Unix(2, 0)
-	f.resource("foo", "", t2)
+	f.resource("foo", "false", t2)
 	f.step()
-	f.assertStatus("foo", Done, 1)
+	f.assertStatus("foo", model.RuntimeStatusOK, 2)
+	f.assertNoAction("error for cancel", func(action store.Action) bool {
+		a, ok := action.(LocalServeStatusAction)
+		if !ok {
+			return false
+		}
+		return a.ManifestName == "foo" && a.SequenceNum == 1 && a.Status == model.RuntimeStatusError
+	})
+	f.assertLogMessage("foo", "cmd true canceled")
+	f.assertLogMessage("foo", "Starting cmd false")
+}
+
+func TestFailure(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	t1 := time.Unix(1, 0)
+	f.resource("foo", "true", t1)
+	f.step()
+	f.assertStatus("foo", model.RuntimeStatusOK, 1)
+	f.assertLogMessage("foo", "Starting cmd true")
+
+	err := f.fe.stop("true", 5)
+	require.NoError(t, err)
+
+	f.assertStatus("foo", model.RuntimeStatusError, 1)
+	f.assertLogMessage("foo", "cmd true exited with code 5")
 }
 
 type fixture struct {
 	t      *testing.T
 	st     *store.TestingStore
 	state  store.EngineState
+	fe     *FakeExecer
 	c      *Controller
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -50,13 +81,16 @@ func newFixture(t *testing.T) *fixture {
 	l := logger.NewLogger(logger.DebugLvl, out)
 	ctx = logger.WithLogger(ctx, l)
 
+	fe := NewFakeExecer()
+
 	return &fixture{
 		t:  t,
 		st: store.NewTestingStore(),
 		state: store.EngineState{
 			ManifestTargets: make(map[model.ManifestName]*store.ManifestTarget),
 		},
-		c:      NewController(NewFakeExecer()),
+		fe:     fe,
+		c:      NewController(fe),
 		ctx:    ctx,
 		cancel: cancel,
 	}
@@ -84,7 +118,6 @@ func (f *fixture) step() {
 	f.st.ClearActions()
 	f.st.SetState(f.state)
 	f.c.OnChange(f.ctx, f.st)
-	time.Sleep(10 * time.Millisecond)
 }
 
 func (f *fixture) assertNoStatus() {
@@ -94,18 +127,54 @@ func (f *fixture) assertNoStatus() {
 	}
 }
 
-func (f *fixture) assertStatus(name string, status Status, sequenceNum int) {
-	actions := f.st.Actions()
-	for _, action := range actions {
+func (f *fixture) assertAction(msg string, pred func(action store.Action) bool) {
+	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
+	defer cancel()
+
+	for {
+		actions := f.st.Actions()
+		for _, action := range actions {
+			if pred(action) {
+				return
+			}
+		}
+		select {
+		case <-ctx.Done():
+			f.t.Fatalf("%s. seen actions: %v", msg, actions)
+		case <-time.After(20 * time.Millisecond):
+		}
+	}
+}
+
+func (f *fixture) assertNoAction(msg string, pred func(action store.Action) bool) {
+	for _, action := range f.st.Actions() {
+		require.Falsef(f.t, pred(action), "%s", msg)
+	}
+}
+
+func (f *fixture) assertStatus(name string, status model.RuntimeStatus, sequenceNum int) {
+	msg := fmt.Sprintf("didn't find name %s, status %v, sequence %d", name, status, sequenceNum)
+	pred := func(action store.Action) bool {
 		stAction, ok := action.(LocalServeStatusAction)
 		if !ok ||
 			stAction.ManifestName != model.ManifestName(name) ||
 			stAction.Status != status ||
 			stAction.SequenceNum != sequenceNum {
-			continue
+			return false
 		}
-		return
+		return true
 	}
 
-	f.t.Fatalf("didn't find name %s, status %v, sequence %d in %+v", name, status, sequenceNum, actions)
+	f.assertAction(msg, pred)
+}
+
+func (f *fixture) assertLogMessage(name string, messages ...string) {
+	for _, m := range messages {
+		msg := fmt.Sprintf("didn't find name %s, message %s", name, m)
+		pred := func(action store.Action) bool {
+			a, ok := action.(store.LogEvent)
+			return ok && strings.Contains(string(a.Message()), m)
+		}
+		f.assertAction(msg, pred)
+	}
 }

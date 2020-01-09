@@ -58,6 +58,10 @@ func (le LogEvent) SpanID() logstore.SpanID {
 	return le.spanID
 }
 
+func (le LogEvent) String() string {
+	return fmt.Sprintf("manifest: %s, spanID: %s, msg: %q", le.mn, le.spanID, le.msg)
+}
+
 func NewLogEvent(mn model.ManifestName, spanID logstore.SpanID, level logger.Level, b []byte) LogEvent {
 	return LogEvent{
 		mn:        mn,

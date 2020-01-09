@@ -54,13 +54,11 @@ func (lt LocalTarget) DependencyIDs() []TargetID {
 	return nil
 }
 
-// TODO(dmiller): this should allow local targets with only server commands and no update commands
 func (lt LocalTarget) Validate() error {
-	if lt.UpdateCmd.Empty() {
-		return fmt.Errorf("[Validate] LocalTarget missing command")
-	}
-	if lt.Workdir == "" {
-		return fmt.Errorf("[Validate] LocalTarget missing workdir")
+	if !lt.UpdateCmd.Empty() {
+		if lt.Workdir == "" {
+			return fmt.Errorf("[Validate] LocalTarget missing workdir")
+		}
 	}
 	return nil
 }

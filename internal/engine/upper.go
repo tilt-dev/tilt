@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/engine/local"
+
 	"github.com/davecgh/go-spew/spew"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -203,6 +205,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handlePanicAction(state, action)
 	case server.SetTiltfileArgsAction:
 		handleSetTiltfileArgsAction(state, action)
+	case local.LocalServeStatusAction:
+		handleLocalServeStatusAction(ctx, state, action)
 	case store.LogEvent:
 	case telemetry.LogAction:
 	case buildcontrol.BuildLogAction:
@@ -399,7 +403,10 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	}
 
 	if mt.Manifest.IsLocal() {
-		ms.RuntimeState = store.LocalRuntimeState{HasSucceededAtLeastOnce: err == nil}
+		ms.RuntimeState = store.LocalRuntimeState{
+			Status:                  model.RuntimeStatusNotApplicable,
+			HasSucceededAtLeastOnce: err == nil,
+		}
 	}
 
 	return nil
@@ -665,6 +672,17 @@ func handlePanicAction(state *store.EngineState, action store.PanicAction) {
 
 func handleSetTiltfileArgsAction(state *store.EngineState, action server.SetTiltfileArgsAction) {
 	state.UserConfigState = state.UserConfigState.WithArgs(action.Args)
+}
+
+func handleLocalServeStatusAction(ctx context.Context, state *store.EngineState, action local.LocalServeStatusAction) {
+	ms, ok := state.ManifestState(action.ManifestName)
+	if !ok {
+		logger.Get(ctx).Infof("got runtime status information for unknown local resource %s", action.ManifestName)
+	}
+
+	lrs := ms.GetOrCreateLocalRuntimeState()
+	lrs.Status = action.Status
+	ms.RuntimeState = lrs
 }
 
 func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineState, action DockerComposeEventAction) {

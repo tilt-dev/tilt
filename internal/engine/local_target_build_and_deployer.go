@@ -61,8 +61,7 @@ func (bd *LocalTargetBuildAndDeployer) extract(specs []model.TargetSpec) []model
 
 func (bd *LocalTargetBuildAndDeployer) run(ctx context.Context, c model.Cmd, wd string) error {
 	if len(c.Argv) == 0 {
-		panic("LocalTargetBuildAndDeployer tried to run empty command " +
-			"(should have been caught by Validate() )")
+		return nil
 	}
 
 	l := logger.Get(ctx)

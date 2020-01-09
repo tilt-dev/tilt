@@ -403,6 +403,20 @@ func (ms *ManifestState) IsK8s() bool {
 	return ok
 }
 
+func (ms *ManifestState) LocalRuntimeState() LocalRuntimeState {
+	ret, _ := ms.RuntimeState.(LocalRuntimeState)
+	return ret
+}
+
+func (ms *ManifestState) GetOrCreateLocalRuntimeState() LocalRuntimeState {
+	ret, ok := ms.RuntimeState.(LocalRuntimeState)
+	if !ok {
+		ret = LocalRuntimeState{}
+		ms.RuntimeState = ret
+	}
+	return ret
+}
+
 func (ms *ManifestState) ActiveBuild() model.BuildRecord {
 	return ms.CurrentBuild
 }
