@@ -100,11 +100,8 @@ func NewLogger(minLevel Level, writer io.Writer) Logger {
 		}
 	}
 	return NewFuncLogger(supportsColor, minLevel, func(level Level, bytes []byte) error {
-		if minLevel.ShouldDisplay(level) {
-			_, err := writer.Write(bytes)
-			return err
-		}
-		return nil
+		_, err := writer.Write(bytes)
+		return err
 	})
 }
 
