@@ -8,7 +8,6 @@ import (
 
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/internal/store"
@@ -42,9 +41,8 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", userFacingRefName)
 		defer ps.EndPipelineStep(ctx)
 
-		df := dockerfile.Dockerfile(bd.Dockerfile)
-		ref, err := icb.ib.BuildImage(ctx, ps, refToBuild, df, bd.BuildPath,
-			ignore.CreateBuildContextFilter(iTarget), bd.BuildArgs, bd.TargetStage)
+		ref, err := icb.ib.BuildImage(ctx, ps, refToBuild, bd,
+			ignore.CreateBuildContextFilter(iTarget))
 
 		if err != nil {
 			return nil, err

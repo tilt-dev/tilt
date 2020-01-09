@@ -36,8 +36,7 @@ type dockerImageBuilder struct {
 }
 
 type ImageBuilder interface {
-	BuildImage(ctx context.Context, ps *PipelineState, ref reference.Named, df dockerfile.Dockerfile, buildPath string, filter model.PathMatcher, buildArgs map[string]string,
-		targetStage model.DockerBuildTarget) (reference.NamedTagged, error)
+	BuildImage(ctx context.Context, ps *PipelineState, ref reference.Named, db model.DockerBuild, filter model.PathMatcher) (reference.NamedTagged, error)
 	DeprecatedFastBuildImage(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile, syncs []model.Sync, filter model.PathMatcher, runs []model.Run, entrypoint model.Cmd) (reference.NamedTagged, error)
 	PushImage(ctx context.Context, name reference.NamedTagged, writer io.Writer) (reference.NamedTagged, error)
 	TagImage(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
@@ -57,18 +56,17 @@ func NewDockerImageBuilder(dCli docker.Client, extraLabels dockerfile.Labels) *d
 	}
 }
 
-func (d *dockerImageBuilder) BuildImage(ctx context.Context, ps *PipelineState, ref reference.Named, df dockerfile.Dockerfile, buildPath string, filter model.PathMatcher,
-	buildArgs map[string]string, targetStage model.DockerBuildTarget) (reference.NamedTagged, error) {
+func (d *dockerImageBuilder) BuildImage(ctx context.Context, ps *PipelineState, ref reference.Named, db model.DockerBuild, filter model.PathMatcher) (reference.NamedTagged, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "dib-BuildImage")
 	defer span.Finish()
 
 	paths := []PathMapping{
 		{
-			LocalPath:     buildPath,
+			LocalPath:     db.BuildPath,
 			ContainerPath: "/",
 		},
 	}
-	return d.buildFromDf(ctx, ps, df, paths, filter, ref, buildArgs, targetStage)
+	return d.buildFromDf(ctx, ps, db, paths, filter, ref)
 }
 
 func (d *dockerImageBuilder) DeprecatedFastBuildImage(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile,
@@ -94,7 +92,9 @@ func (d *dockerImageBuilder) DeprecatedFastBuildImage(ctx context.Context, ps *P
 	}
 
 	df = d.applyLabels(df, BuildModeScratch)
-	return d.buildFromDf(ctx, ps, df, paths, filter, ref, model.DockerBuildArgs{}, "")
+	return d.buildFromDf(ctx, ps, model.DockerBuild{
+		Dockerfile: string(df),
+	}, paths, filter, ref)
 }
 
 func (d *dockerImageBuilder) applyLabels(df dockerfile.Dockerfile, buildMode dockerfile.LabelValue) dockerfile.Dockerfile {
@@ -236,8 +236,8 @@ func (d *dockerImageBuilder) ImageExists(ctx context.Context, ref reference.Name
 	return len(images) > 0, nil
 }
 
-func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState, df dockerfile.Dockerfile, paths []PathMapping, filter model.PathMatcher, ref reference.Named, buildArgs model.DockerBuildArgs, targetStage model.DockerBuildTarget) (reference.NamedTagged, error) {
-	logger.Get(ctx).Infof("Building Dockerfile:\n%s\n", indent(df.String(), "  "))
+func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState, db model.DockerBuild, paths []PathMapping, filter model.PathMatcher, ref reference.Named) (reference.NamedTagged, error) {
+	logger.Get(ctx).Infof("Building Dockerfile:\n%s\n", indent(db.Dockerfile, "  "))
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildFromDf")
 	defer span.Finish()
 
@@ -252,7 +252,7 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 
 	pr, pw := io.Pipe()
 	go func() {
-		err := tarContextAndUpdateDf(ctx, pw, df, paths, filter)
+		err := tarContextAndUpdateDf(ctx, pw, dockerfile.Dockerfile(db.Dockerfile), paths, filter)
 		if err != nil {
 			_ = pw.CloseWithError(err)
 		} else {
@@ -265,7 +265,7 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 	imageBuildResponse, err := d.dCli.ImageBuild(
 		ctx,
 		pr,
-		Options(pr, buildArgs, targetStage),
+		Options(pr, db),
 	)
 	spanBuild.Finish()
 	if err != nil {
