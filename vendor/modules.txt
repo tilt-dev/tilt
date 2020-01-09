@@ -343,6 +343,8 @@ github.com/moby/buildkit/identity
 github.com/moby/buildkit/session
 github.com/moby/buildkit/session/auth
 github.com/moby/buildkit/session/auth/authprovider
+github.com/moby/buildkit/session/sshforward
+github.com/moby/buildkit/session/sshforward/sshprovider
 github.com/moby/buildkit/solver/pb
 github.com/moby/buildkit/util/apicaps
 github.com/moby/buildkit/util/apicaps/pb
@@ -494,7 +496,15 @@ go.starlark.net/starlark
 go.starlark.net/starlarkstruct
 go.starlark.net/syntax
 # golang.org/x/crypto v0.0.0-20190923035154-9ee001bba392 => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
+golang.org/x/crypto/chacha20
+golang.org/x/crypto/curve25519
+golang.org/x/crypto/ed25519
+golang.org/x/crypto/ed25519/internal/edwards25519
+golang.org/x/crypto/internal/subtle
 golang.org/x/crypto/pbkdf2
+golang.org/x/crypto/poly1305
+golang.org/x/crypto/ssh
+golang.org/x/crypto/ssh/agent
 golang.org/x/crypto/ssh/terminal
 # golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553
 golang.org/x/net/context
@@ -517,6 +527,7 @@ golang.org/x/oauth2/jwt
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 # golang.org/x/sys v0.0.0-20191220142924-d4481acd189f
+golang.org/x/sys/cpu
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
