@@ -356,6 +356,20 @@ docker_build("gcr.io/foo", "foo", target='stage')
 	assert.Equal(t, "stage", m.ImageTargets[0].BuildDetails.(model.DockerBuild).TargetStage.String())
 }
 
+func TestDockerBuildSSH(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build("gcr.io/foo", "foo", ssh='default')
+`)
+	f.load()
+	m := f.assertNextManifest("foo")
+	assert.Equal(t, []string{"default"}, m.ImageTargets[0].BuildDetails.(model.DockerBuild).SSHSpecs)
+}
+
 func TestDockerBuildCache(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

@@ -29,6 +29,7 @@ type dockerImage struct {
 	configurationRef container.RefSelector
 	deploymentRef    reference.Named
 	matchInEnvVars   bool
+	sshSpecs         []string
 	ignores          []string
 	onlys            []string
 	entrypoint       model.Cmd // optional: if specified, we override the image entrypoint/k8s command with this
@@ -78,7 +79,7 @@ func (d *dockerImage) Type() dockerImageBuildType {
 
 func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef, entrypoint, targetStage string
-	var contextVal, dockerfilePathVal, buildArgs, dockerfileContentsVal, cacheVal, liveUpdateVal, ignoreVal, onlyVal starlark.Value
+	var contextVal, dockerfilePathVal, buildArgs, dockerfileContentsVal, cacheVal, liveUpdateVal, ignoreVal, onlyVal, sshVal starlark.Value
 	var matchInEnvVars bool
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
@@ -93,6 +94,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		"only?", &onlyVal,
 		"entrypoint?", &entrypoint,
 		"target?", &targetStage,
+		"ssh?", &sshVal,
 	); err != nil {
 		return nil, err
 	}
@@ -167,6 +169,11 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
+	ssh, ok := value.AsStringOrStringList(sshVal)
+	if !ok {
+		return nil, fmt.Errorf("Argument 'ssh' must be string or list of strings. Actual: %T", sshVal)
+	}
+
 	var entrypointCmd model.Cmd
 	if entrypoint != "" {
 		entrypointCmd = model.ToShellCmd(entrypoint)
@@ -181,6 +188,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		dbBuildArgs:      sba,
 		liveUpdate:       liveUpdate,
 		matchInEnvVars:   matchInEnvVars,
+		sshSpecs:         ssh,
 		ignores:          ignores,
 		onlys:            onlys,
 		entrypoint:       entrypointCmd,
