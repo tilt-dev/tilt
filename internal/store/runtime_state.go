@@ -27,10 +27,8 @@ type RuntimeState interface {
 	HasEverBeenReadyOrSucceeded() bool
 }
 
-// Currently just a placeholder, as a LocalResource has no runtime state, only "build"
-// state. In future, we may use this to store runtime state for long-running processes
-// kicked off via a LocalResource.
 type LocalRuntimeState struct {
+	Status                  model.RuntimeStatus
 	HasSucceededAtLeastOnce bool
 }
 

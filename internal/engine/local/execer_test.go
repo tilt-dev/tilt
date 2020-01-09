@@ -49,14 +49,14 @@ type processExecFixture struct {
 	ctx        context.Context
 	execer     *processExecer
 	testWriter *strings.Builder
-	statusCh   chan Status
+	statusCh   chan status
 }
 
 func newProcessExecFixture(t *testing.T) *processExecFixture {
 	execer := NewProcessExecer()
 	ctx := context.Background()
 	testWriter := &strings.Builder{}
-	statusCh := make(chan Status)
+	statusCh := make(chan status)
 
 	return &processExecFixture{
 		t:          t,
@@ -76,7 +76,7 @@ func (f *processExecFixture) assertCmdSucceeds() {
 	f.waitForStatusAndNoError(Done)
 }
 
-func (f *processExecFixture) waitForStatusAndNoError(expectedStatus Status) {
+func (f *processExecFixture) waitForStatusAndNoError(expectedStatus status) {
 	for {
 		select {
 		case status := <-f.statusCh:

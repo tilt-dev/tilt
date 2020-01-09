@@ -26,6 +26,7 @@ type ManifestBuilder struct {
 	k8sPodSelectors []labels.Selector
 	dcConfigPaths   []string
 	localCmd        string
+	localServeCmd   string
 	localDeps       []string
 	resourceDeps    []string
 
@@ -57,6 +58,11 @@ func (b ManifestBuilder) WithDockerCompose() ManifestBuilder {
 func (b ManifestBuilder) WithLocalResource(cmd string, deps []string) ManifestBuilder {
 	b.localCmd = cmd
 	b.localDeps = deps
+	return b
+}
+
+func (b ManifestBuilder) WithLocalServeCmd(cmd string) ManifestBuilder {
+	b.localServeCmd = cmd
 	return b
 }
 
@@ -121,8 +127,13 @@ func (b ManifestBuilder) Build() model.Manifest {
 			b.iTargets...)
 	}
 
-	if b.localCmd != "" {
-		lt := model.NewLocalTarget(model.TargetName(b.name), model.ToShellCmd(b.localCmd), model.Cmd{}, b.localDeps, b.f.Path())
+	if b.localCmd != "" || b.localServeCmd != "" {
+		lt := model.NewLocalTarget(
+			model.TargetName(b.name),
+			model.ToShellCmd(b.localCmd),
+			model.ToShellCmd(b.localServeCmd),
+			b.localDeps,
+			b.f.Path())
 		return model.Manifest{Name: b.name, ResourceDependencies: rds}.WithDeployTarget(lt)
 	}
 

@@ -80,12 +80,3 @@ func ToProtoBuildRecords(brs []model.BuildRecord, logStore *logstore.LogStore) (
 	}
 	return ret, nil
 }
-
-type RuntimeStatus string
-
-const (
-	RuntimeStatusOK            RuntimeStatus = "ok"
-	RuntimeStatusPending       RuntimeStatus = "pending"
-	RuntimeStatusError         RuntimeStatus = "error"
-	RuntimeStatusNotApplicable RuntimeStatus = "not_applicable"
-)

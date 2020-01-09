@@ -193,7 +193,7 @@ func tiltfileResourceProtoView(s store.EngineState) (*proto_webview.Resource, er
 		BuildHistory: []*proto_webview.BuildRecord{
 			pltfb,
 		},
-		RuntimeStatus: string(RuntimeStatusOK),
+		RuntimeStatus: string(model.RuntimeStatusOK),
 	}
 	start, err := timeToProto(ctfb.StartTime)
 	if err != nil {
@@ -212,7 +212,7 @@ func tiltfileResourceProtoView(s store.EngineState) (*proto_webview.Resource, er
 }
 
 func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Resource) error {
-	r.RuntimeStatus = string(RuntimeStatusNotApplicable)
+	r.RuntimeStatus = string(model.RuntimeStatusNotApplicable)
 
 	if mt.Manifest.IsUnresourcedYAMLManifest() {
 		r.YamlResourceInfo = &proto_webview.YAMLResourceInfo{
@@ -232,13 +232,15 @@ func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Re
 
 		runtimeStatus, ok := runtimeStatusMap[string(dcState.Status)]
 		if !ok {
-			r.RuntimeStatus = string(RuntimeStatusError)
+			r.RuntimeStatus = string(model.RuntimeStatusError)
 		}
 		r.RuntimeStatus = string(runtimeStatus)
 		return nil
 	}
 	if mt.Manifest.IsLocal() {
+		lState := mt.State.LocalRuntimeState()
 		r.LocalResourceInfo = &proto_webview.LocalResourceInfo{}
+		r.RuntimeStatus = string(lState.Status)
 		return nil
 	}
 	if mt.Manifest.IsK8s() {
@@ -261,7 +263,7 @@ func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Re
 
 		runtimeStatus, ok := runtimeStatusMap[status]
 		if !ok {
-			r.RuntimeStatus = string(RuntimeStatusError)
+			r.RuntimeStatus = string(model.RuntimeStatusError)
 		}
 		r.RuntimeStatus = string(runtimeStatus)
 		return nil
@@ -270,22 +272,22 @@ func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Re
 	panic("Unrecognized manifest type (not one of: k8s, DC, local)")
 }
 
-var runtimeStatusMap = map[string]RuntimeStatus{
-	"Running":                          RuntimeStatusOK,
-	"ContainerCreating":                RuntimeStatusPending,
-	"Pending":                          RuntimeStatusPending,
-	"PodInitializing":                  RuntimeStatusPending,
-	"Error":                            RuntimeStatusError,
-	"CrashLoopBackOff":                 RuntimeStatusError,
-	"ErrImagePull":                     RuntimeStatusError,
-	"ImagePullBackOff":                 RuntimeStatusError,
-	"RunContainerError":                RuntimeStatusError,
-	"StartError":                       RuntimeStatusError,
-	string(dockercompose.StatusInProg): RuntimeStatusPending,
-	string(dockercompose.StatusUp):     RuntimeStatusOK,
-	string(dockercompose.StatusDown):   RuntimeStatusError,
-	"Completed":                        RuntimeStatusOK,
+var runtimeStatusMap = map[string]model.RuntimeStatus{
+	"Running":                          model.RuntimeStatusOK,
+	"ContainerCreating":                model.RuntimeStatusPending,
+	"Pending":                          model.RuntimeStatusPending,
+	"PodInitializing":                  model.RuntimeStatusPending,
+	"Error":                            model.RuntimeStatusError,
+	"CrashLoopBackOff":                 model.RuntimeStatusError,
+	"ErrImagePull":                     model.RuntimeStatusError,
+	"ImagePullBackOff":                 model.RuntimeStatusError,
+	"RunContainerError":                model.RuntimeStatusError,
+	"StartError":                       model.RuntimeStatusError,
+	string(dockercompose.StatusInProg): model.RuntimeStatusPending,
+	string(dockercompose.StatusUp):     model.RuntimeStatusOK,
+	string(dockercompose.StatusDown):   model.RuntimeStatusError,
+	"Completed":                        model.RuntimeStatusOK,
 
 	// If the runtime status hasn't shown up yet, we assume it's pending.
-	"": RuntimeStatusPending,
+	"": model.RuntimeStatusPending,
 }
