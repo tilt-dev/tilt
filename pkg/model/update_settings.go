@@ -1,9 +1,9 @@
 package model
 
-var DefaultMaxParallelUpdates = 1
+var DefaultMaxParallelUpdates = 3
 
 type UpdateSettings struct {
-	MaxParallelUpdates int // max number of builds to run concurrently
+	MaxParallelUpdates int // max number of updates to run concurrently
 }
 
 func (us UpdateSettings) MaxParallelUpdatesMinOne() int {
