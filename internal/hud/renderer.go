@@ -51,23 +51,24 @@ var cBad = tcell.ColorRed
 var cPending = tcell.ColorYellow
 
 var statusColors = map[string]tcell.Color{
-	"Running":                          cGood,
-	"ContainerCreating":                cPending,
-	"Pending":                          cPending,
-	"PodInitializing":                  cPending,
-	"Error":                            cBad,
-	"CrashLoopBackOff":                 cBad,
-	"ErrImagePull":                     cBad,
-	"ImagePullBackOff":                 cBad,
-	"RunContainerError":                cBad,
-	"StartError":                       cBad,
-	string(dockercompose.StatusInProg): cPending,
-	string(dockercompose.StatusUp):     cGood,
-	string(dockercompose.StatusDown):   cBad,
-	"Completed":                        cGood,
-
-	// Placeholder. LocalResource has no runtime status; if build succeeds, should always be green
-	view.LocalResourceStatusPlaceholder: cGood,
+	"Running":                                cGood,
+	string(model.RuntimeStatusOK):            cGood,
+	string(model.RuntimeStatusNotApplicable): cGood,
+	"ContainerCreating":                      cPending,
+	"Pending":                                cPending,
+	"PodInitializing":                        cPending,
+	string(model.RuntimeStatusPending):       cPending,
+	"Error":                                  cBad,
+	"CrashLoopBackOff":                       cBad,
+	"ErrImagePull":                           cBad,
+	"ImagePullBackOff":                       cBad,
+	"RunContainerError":                      cBad,
+	"StartError":                             cBad,
+	string(model.RuntimeStatusError):         cBad,
+	string(dockercompose.StatusInProg):       cPending,
+	string(dockercompose.StatusUp):           cGood,
+	string(dockercompose.StatusDown):         cBad,
+	"Completed":                              cGood,
 }
 
 func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {

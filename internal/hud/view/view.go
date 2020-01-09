@@ -69,15 +69,18 @@ func (yamlInfo YAMLResourceInfo) RuntimeSpanID() logstore.SpanID { return "unkno
 func (yamlInfo YAMLResourceInfo) Status() string                 { return "" }
 
 type LocalResourceInfo struct {
+	status model.RuntimeStatus
+}
+
+func NewLocalResourceInfo(status model.RuntimeStatus) LocalResourceInfo {
+	return LocalResourceInfo{status: status}
 }
 
 var _ ResourceInfoView = LocalResourceInfo{}
 
-var LocalResourceStatusPlaceholder = "local-resource-ok"
-
-func (LocalResourceInfo) resourceInfoView()              {}
-func (LocalResourceInfo) RuntimeSpanID() logstore.SpanID { return "unknown" }
-func (LocalResourceInfo) Status() string                 { return LocalResourceStatusPlaceholder } // no status independent of build status
+func (lri LocalResourceInfo) resourceInfoView()              {}
+func (lri LocalResourceInfo) RuntimeSpanID() logstore.SpanID { return "unknown" }
+func (lri LocalResourceInfo) Status() string                 { return string(lri.status) }
 
 type Resource struct {
 	Name               model.ManifestName
