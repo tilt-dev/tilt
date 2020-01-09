@@ -33,6 +33,7 @@ type ConfigsReloadedAction struct {
 	DockerPruneSettings  model.DockerPruneSettings
 	AnalyticsTiltfileOpt analytics.Opt
 	VersionSettings      model.VersionSettings
+	UpdateSettings       model.UpdateSettings
 
 	// A checkpoint into the logstore when Tiltfile execution started.
 	// Useful for knowing how far back in time we have to scrub secrets.

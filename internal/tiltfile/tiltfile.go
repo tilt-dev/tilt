@@ -13,6 +13,8 @@ import (
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 
+	"github.com/windmilleng/tilt/internal/tiltfile/updatesettings"
+
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/feature"
@@ -50,6 +52,7 @@ type TiltfileLoadResult struct {
 	DockerPruneSettings model.DockerPruneSettings
 	AnalyticsOpt        wmanalytics.Opt
 	VersionSettings     model.VersionSettings
+	UpdateSettings      model.UpdateSettings
 }
 
 func (r TiltfileLoadResult) Orchestrator() model.Orchestrator {
@@ -174,6 +177,9 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 
 	telemetrySettings, _ := telemetry.GetState(result)
 	tlr.TelemetrySettings = telemetrySettings
+
+	us, _ := updatesettings.GetState(result)
+	tlr.UpdateSettings = us
 
 	duration := time.Since(start)
 	s.logger.Infof("Successfully loaded Tiltfile (%s)", duration)

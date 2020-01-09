@@ -4335,6 +4335,52 @@ local_resource('e', 'echo e')
 	}
 }
 
+func TestMaxParallelUpdates(t *testing.T) {
+	for _, tc := range []struct {
+		name                  string
+		tiltfile              string
+		expectErrorContains   string
+		expectedMaxBuildSlots int
+	}{
+		{
+			name:                  "default max parallel updates",
+			tiltfile:              "print('hello world')",
+			expectedMaxBuildSlots: model.DefaultMaxParallelUpdates,
+		},
+		{
+			name:                  "set max parallel updates",
+			tiltfile:              "update_settings(max_parallel_updates=42)",
+			expectedMaxBuildSlots: 42,
+		},
+		{
+			name:                "NaN error",
+			tiltfile:            "update_settings(max_parallel_updates='boop')",
+			expectErrorContains: "got string, want int",
+		},
+		{
+			name:                "must be positive int",
+			tiltfile:            "update_settings(max_parallel_updates=-1)",
+			expectErrorContains: "must be >= 1",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+
+			f.file("Tiltfile", tc.tiltfile)
+
+			if tc.expectErrorContains != "" {
+				f.loadErrString(tc.expectErrorContains)
+				return
+			}
+
+			f.load()
+			actualBuildSlots := f.loadResult.UpdateSettings.MaxParallelUpdates
+			assert.Equal(t, tc.expectedMaxBuildSlots, actualBuildSlots, "expected vs. actual MaxParallelUpdates")
+		})
+	}
+}
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer
