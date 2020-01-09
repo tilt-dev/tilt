@@ -3276,6 +3276,43 @@ func TestLocalResourceServeChangeCmd(t *testing.T) {
 	err := f.Stop()
 	require.NoError(t, err)
 
+func TestDefaultMaxBuildSlots(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
+	f.WriteFile("snack.yaml", simpleYAML)
+
+	f.WriteFile("Tiltfile", simpleTiltfile)
+
+	f.loadAndStart()
+
+	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
+		return len(state.TiltfileState.BuildHistory) == 1
+	})
+	f.withState(func(state store.EngineState) {
+		assert.Equal(t, model.DefaultMaxBuildSlots, state.MaxBuildSlots)
+	})
+}
+
+func TestSetMaxBuildSlots(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
+	f.WriteFile("snack.yaml", simpleYAML)
+
+	f.WriteFile("Tiltfile", `
+max_parallel_updates(123)
+`+simpleTiltfile)
+	f.loadAndStart()
+
+	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
+		return len(state.TiltfileState.BuildHistory) == 1
+	})
+	f.withState(func(state store.EngineState) {
+		assert.Equal(t, 123, state.MaxBuildSlots)
+	})
 }
 
 type fakeTimerMaker struct {

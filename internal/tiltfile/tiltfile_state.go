@@ -9,6 +9,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/tiltfile/starlarkstruct"
 	"github.com/windmilleng/tilt/internal/tiltfile/telemetry"
+	"github.com/windmilleng/tilt/internal/tiltfile/updatesettings"
 
 	"github.com/docker/distribution/reference"
 	"github.com/looplab/tarjan"
@@ -166,6 +167,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		config.NewExtension(userConfigState),
 		starlarkstruct.NewExtension(),
 		telemetry.NewExtension(),
+		updatesettings.NewExtension(),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)
