@@ -1055,7 +1055,7 @@ func TestBuildControllerWontBuildManifestThatsAlreadyBuilding(t *testing.T) {
 
 	// allow multiple builds at once; we care that we can't start multiple builds
 	// of the same manifest, even if there ARE build slots available.
-	f.setMaxBuildSlots(3)
+	f.setMaxParallelUpdates(3)
 
 	manifest := f.newManifest("fe")
 	f.startWithInitManifests(nil, []model.Manifest{manifest}, true)
@@ -1093,7 +1093,7 @@ func TestBuildControllerWontBuildManifestIfNoSlotsAvailable(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	f.b.completeBuildsManually = true
-	f.setMaxBuildSlots(2)
+	f.setMaxParallelUpdates(2)
 
 	manA := f.newDockerBuildManifestWithBuildPath("manA", f.JoinPath("a"))
 	manB := f.newDockerBuildManifestWithBuildPath("manB", f.JoinPath("b"))
@@ -1122,11 +1122,14 @@ func TestBuildControllerWontBuildManifestIfNoSlotsAvailable(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-func TestCurrentlyBuildingMayExceedMaxBuildCount(t *testing.T) {
+// It should be legal for a user to change MaxParallelUpdates while builds
+// are in progress (e.g. if there are 5 builds in progress and user sets
+// MaxParallelUpdates=3, nothing should explode.)
+func TestCurrentlyBuildingMayExceedMaxParallelUpdates(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	f.b.completeBuildsManually = true
-	f.setMaxBuildSlots(3)
+	f.setMaxParallelUpdates(3)
 
 	manA := f.newDockerBuildManifestWithBuildPath("manA", f.JoinPath("a"))
 	manB := f.newDockerBuildManifestWithBuildPath("manB", f.JoinPath("b"))
@@ -1140,8 +1143,8 @@ func TestCurrentlyBuildingMayExceedMaxBuildCount(t *testing.T) {
 	f.editFileAndWaitForManifestBuilding("manC", "c/main.go")
 	f.waitUntilNumBuildSlots(0)
 
-	// decrease max build slots (now less than the number of current builds, but this is okay)
-	f.setMaxBuildSlots(2)
+	// decrease maxParallelUpdates (now less than the number of current builds, but this is okay)
+	f.setMaxParallelUpdates(2)
 	f.waitUntilNumBuildSlots(0)
 
 	// another file change for manB -- will try to start another build as soon as possible
@@ -1152,7 +1155,7 @@ func TestCurrentlyBuildingMayExceedMaxBuildCount(t *testing.T) {
 	f.assertCallIsForManifestAndFiles(call, manB, "b/main.go")
 
 	// we should NOT see another build for manB, even though it has a pending file change,
-	// b/c we don't have enough slots (since we decreased maxBuildSlots)
+	// b/c we don't have enough slots (since we decreased maxParallelUpdates)
 	f.waitUntilNumBuildSlots(0)
 	f.waitUntilManifestNotBuilding("manB")
 
@@ -1182,7 +1185,7 @@ func TestDontStartBuildIfControllerAndEngineUnsynced(t *testing.T) {
 	defer f.TearDown()
 
 	f.b.completeBuildsManually = true
-	f.setMaxBuildSlots(3)
+	f.setMaxParallelUpdates(3)
 
 	manA := f.newDockerBuildManifestWithBuildPath("manA", f.JoinPath("a"))
 	manB := f.newDockerBuildManifestWithBuildPath("manB", f.JoinPath("b"))
@@ -1219,7 +1222,7 @@ func TestErrorHandlingWithMultipleBuilds(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	f.b.completeBuildsManually = true
-	f.setMaxBuildSlots(2)
+	f.setMaxParallelUpdates(2)
 
 	errA := fmt.Errorf("errA")
 	errB := fmt.Errorf("errB")

@@ -42,7 +42,7 @@ type EngineState struct {
 	// How many builds have been completed (pass or fail) since starting tilt
 	CompletedBuildCount int
 
-	MaxBuildSlots int
+	MaxParallelUpdates int
 
 	FatalError error
 	HUDEnabled bool
@@ -147,12 +147,12 @@ func (e *EngineState) BuildStatus(id model.TargetID) BuildStatus {
 
 func (e *EngineState) AvailableBuildSlots() int {
 	currentlyBuilding := len(e.CurrentlyBuilding)
-	if currentlyBuilding >= e.MaxBuildSlots {
+	if currentlyBuilding >= e.MaxParallelUpdates {
 		// this could happen if user decreases max build slots while
 		// multiple builds are in progress, no big deal
 		return 0
 	}
-	return e.MaxBuildSlots - currentlyBuilding
+	return e.MaxParallelUpdates - currentlyBuilding
 }
 
 func (e *EngineState) UpsertManifestTarget(mt *ManifestTarget) {
@@ -337,7 +337,7 @@ func NewState() *EngineState {
 	ret.VersionSettings = model.VersionSettings{
 		CheckUpdates: true,
 	}
-	ret.MaxBuildSlots = 1
+	ret.MaxParallelUpdates = 1
 	ret.CurrentlyBuilding = make(map[model.ManifestName]bool)
 	return ret
 }

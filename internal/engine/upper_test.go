@@ -3493,9 +3493,9 @@ func (f *testFixture) setManifests(manifests []model.Manifest) {
 	f.cc.SetTiltfileLoaderForTesting(tfl)
 }
 
-func (f *testFixture) setMaxBuildSlots(n int) {
+func (f *testFixture) setMaxParallelUpdates(n int) {
 	state := f.store.LockMutableStateForTesting()
-	state.MaxBuildSlots = n
+	state.MaxParallelUpdates = n
 	f.store.UnlockMutableState()
 }
 
