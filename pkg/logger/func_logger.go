@@ -39,11 +39,15 @@ func (l funcLogger) Debugf(format string, a ...interface{}) {
 }
 
 func (l funcLogger) Write(level Level, bytes []byte) {
-	_ = l.write(level, bytes)
+	if l.level.ShouldDisplay(level) {
+		_ = l.write(level, bytes)
+	}
 }
 
 func (l funcLogger) WriteString(level Level, s string) {
-	_ = l.write(level, []byte(s))
+	if l.level.ShouldDisplay(level) {
+		_ = l.write(level, []byte(s))
+	}
 }
 
 type FuncLoggerWriter struct {
