@@ -724,7 +724,7 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 			SpanID:             pod.SpanID,
 		}
 	case LocalRuntimeState:
-		return view.LocalResourceInfo{}
+		return view.NewLocalResourceInfo(state.Status)
 	default:
 		// This is silly but it was the old behavior.
 		return view.K8sResourceInfo{}

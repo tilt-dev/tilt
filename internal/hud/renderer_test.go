@@ -788,7 +788,7 @@ func TestPendingLocalResource(t *testing.T) {
 			StartTime: ts.Add(-5 * time.Second),
 			Edits:     []string{"node.json"},
 		},
-		ResourceInfo: view.LocalResourceInfo{},
+		ResourceInfo: view.NewLocalResourceInfo(model.RuntimeStatusPending),
 	})
 
 	vs := fakeViewState(1, view.CollapseAuto)
@@ -803,14 +803,14 @@ func TestFinishedLocalResource(t *testing.T) {
 		BuildHistory: []model.BuildRecord{
 			model.BuildRecord{FinishTime: time.Now()},
 		},
-		ResourceInfo: view.LocalResourceInfo{},
+		ResourceInfo: view.NewLocalResourceInfo(model.RuntimeStatusNotApplicable),
 	})
 
 	vs := fakeViewState(1, view.CollapseAuto)
 	rtf.run("finished local resource", 80, 20, v, vs)
 }
 
-func TestErroredLocalResource(t *testing.T) {
+func TestFailedBuildLocalResource(t *testing.T) {
 	rtf := newRendererTestFixture(t)
 
 	v := newView(view.Resource{
@@ -828,7 +828,22 @@ func TestErroredLocalResource(t *testing.T) {
 		"1\n2\n3\nthe compiler did not understand!\n5\n6\n7\n8\n")
 
 	vs := fakeViewState(1, view.CollapseAuto)
-	rtf.run("errored local resource", 80, 20, v, vs)
+	rtf.run("failed build local resource", 80, 20, v, vs)
+}
+
+func TestLocalResourceErroredServe(t *testing.T) {
+	rtf := newRendererTestFixture(t)
+
+	v := newView(view.Resource{
+		Name: "yarn-add",
+		BuildHistory: []model.BuildRecord{
+			model.BuildRecord{FinishTime: time.Now()},
+		},
+		ResourceInfo: view.NewLocalResourceInfo(model.RuntimeStatusError),
+	})
+
+	vs := fakeViewState(1, view.CollapseAuto)
+	rtf.run("local resource errored serve", 80, 20, v, vs)
 }
 
 type rendererTestFixture struct {
