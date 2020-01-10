@@ -43,7 +43,14 @@ func TestUpdate(t *testing.T) {
 		}
 		return a.ManifestName == "foo" && a.Status == model.RuntimeStatusError
 	})
-	f.assertLogMessage("foo", "cmd true canceled")
+	f.assertNoAction("log for cancel", func(action store.Action) bool {
+		a, ok := action.(store.LogEvent)
+		if !ok {
+			return false
+		}
+		return a.ManifestName() == "foo" && strings.Contains(string(a.Message()), "cmd true canceled")
+	})
+	f.fe.RequireNoKnownProcess(t, "true")
 	f.assertLogMessage("foo", "Starting cmd false")
 }
 
@@ -75,7 +82,7 @@ func TestUniqueSpanIDs(t *testing.T) {
 
 	fooStart := f.waitForLogEventContaining("Starting cmd foo.sh")
 	barStart := f.waitForLogEventContaining("Starting cmd bar.sh")
-	require.NotEqual(t, fooStart.SpanID(), barStart.SpanID())
+	require.NotEqual(t, fooStart.SpanID(), barStart.SpanID(), "different resources should have unique log span ids")
 }
 
 type fixture struct {

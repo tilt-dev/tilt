@@ -6,6 +6,9 @@ import (
 	"io"
 	"os/exec"
 	"sync"
+	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -94,6 +97,15 @@ func fakeRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan stat
 		// even an exit code of 0 is an error, because services aren't supposed to exit!
 		statusCh <- Error
 	}
+}
+
+func (fe *FakeExecer) RequireNoKnownProcess(t *testing.T, cmd string) {
+	fe.mu.Lock()
+	defer fe.mu.Unlock()
+
+	_, ok := fe.processes[cmd]
+
+	require.False(t, ok, "%T should not be tracking any process with cmd %q, but it is", FakeExecer{}, cmd)
 }
 
 func ProvideExecer() Execer {
