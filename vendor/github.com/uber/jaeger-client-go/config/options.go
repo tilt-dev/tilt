@@ -26,18 +26,20 @@ type Option func(c *Options)
 
 // Options control behavior of the client.
 type Options struct {
-	metrics             metrics.Factory
-	logger              jaeger.Logger
-	reporter            jaeger.Reporter
-	sampler             jaeger.Sampler
-	contribObservers    []jaeger.ContribObserver
-	observers           []jaeger.Observer
-	gen128Bit           bool
-	zipkinSharedRPCSpan bool
-	maxTagValueLength   int
-	tags                []opentracing.Tag
-	injectors           map[interface{}]jaeger.Injector
-	extractors          map[interface{}]jaeger.Extractor
+	metrics                     metrics.Factory
+	logger                      jaeger.Logger
+	reporter                    jaeger.Reporter
+	sampler                     jaeger.Sampler
+	contribObservers            []jaeger.ContribObserver
+	observers                   []jaeger.Observer
+	gen128Bit                   bool
+	poolSpans                   bool
+	zipkinSharedRPCSpan         bool
+	maxTagValueLength           int
+	noDebugFlagOnForcedSampling bool
+	tags                        []opentracing.Tag
+	injectors                   map[interface{}]jaeger.Injector
+	extractors                  map[interface{}]jaeger.Extractor
 }
 
 // Metrics creates an Option that initializes Metrics in the tracer,
@@ -78,7 +80,7 @@ func Observer(observer jaeger.Observer) Option {
 	}
 }
 
-// ContribObserver can be registered with the Tracer to recieve notifications
+// ContribObserver can be registered with the Tracer to receive notifications
 // about new spans.
 func ContribObserver(observer jaeger.ContribObserver) Option {
 	return func(c *Options) {
@@ -90,6 +92,13 @@ func ContribObserver(observer jaeger.ContribObserver) Option {
 func Gen128Bit(gen128Bit bool) Option {
 	return func(c *Options) {
 		c.gen128Bit = gen128Bit
+	}
+}
+
+// PoolSpans specifies whether to pool spans
+func PoolSpans(poolSpans bool) Option {
+	return func(c *Options) {
+		c.poolSpans = poolSpans
 	}
 }
 
@@ -106,6 +115,14 @@ func ZipkinSharedRPCSpan(zipkinSharedRPCSpan bool) Option {
 func MaxTagValueLength(maxTagValueLength int) Option {
 	return func(c *Options) {
 		c.maxTagValueLength = maxTagValueLength
+	}
+}
+
+// NoDebugFlagOnForcedSampling can be used to decide whether debug flag will be set or not
+// when calling span.setSamplingPriority to force sample a span.
+func NoDebugFlagOnForcedSampling(noDebugFlagOnForcedSampling bool) Option {
+	return func(c *Options) {
+		c.noDebugFlagOnForcedSampling = noDebugFlagOnForcedSampling
 	}
 }
 
