@@ -19,6 +19,7 @@ import (
 	"github.com/windmilleng/tilt/internal/network"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/windmilleng/tilt/pkg/procutil"
 )
 
 const errorBodyStyle = `
@@ -86,7 +87,7 @@ func (s *devServer) TearDown(ctx context.Context) {
 	defer s.mu.Unlock()
 
 	cmd := s.cmd
-	killProcessGroup(cmd)
+	procutil.KillProcessGroup(cmd)
 	s.disposed = true
 }
 
@@ -114,7 +115,7 @@ func (s *devServer) start(ctx context.Context, stdout, stderr io.Writer) (*exec.
 
 	// yarn will spawn the dev server as a subprocess, so set
 	// a process group id so we can murder them all.
-	setOptNewProcessGroup(attrs)
+	procutil.SetOptNewProcessGroup(attrs)
 
 	cmd.SysProcAttr = attrs
 

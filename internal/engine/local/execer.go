@@ -11,6 +11,7 @@ import (
 
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/windmilleng/tilt/pkg/procutil"
 )
 
 type Execer interface {
@@ -125,7 +126,9 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 	defer close(statusCh)
 
 	c := exec.Command(cmd.Argv[0], cmd.Argv[1:]...)
-	c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	c.SysProcAttr = &syscall.SysProcAttr{}
+	procutil.SetOptNewProcessGroup(c.SysProcAttr)
 	c.Stderr = w
 	c.Stdout = w
 
@@ -149,12 +152,12 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 	case <-ctx.Done():
 		err := syscall.Kill(c.Process.Pid, syscall.SIGINT)
 		if err != nil {
-			_ = killPG(c)
+			procutil.KillProcessGroup(c)
 		} else {
 			// wait and then send SIGKILL to the process group, unless the command finished
 			select {
 			case <-time.After(50 * time.Millisecond):
-				_ = killPG(c)
+				procutil.KillProcessGroup(c)
 			case <-doneCh:
 			}
 		}

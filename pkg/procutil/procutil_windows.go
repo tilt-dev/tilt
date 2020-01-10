@@ -1,17 +1,15 @@
 // +build windows
 
-package assets
+package procutil
 
 import (
 	"os/exec"
 	"syscall"
 )
 
-const createNewProcessGroupFlag = 0x00000200
-
 // https://docs.microsoft.com/en-us/windows/win32/procthread/process-creation-flags
 func setOptNewProcessGroup(attrs *syscall.SysProcAttr) {
-	attrs.CreationFlags = createNewProcessGroupFlag
+	attrs.CreationFlags = syscall.CREATE_NEW_PROCESS_GROUP
 }
 
 func killProcessGroup(cmd *exec.Cmd) {
