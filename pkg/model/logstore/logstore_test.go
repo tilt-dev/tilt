@@ -309,3 +309,35 @@ fe          ┊ Warning 2 line 2Warning 3 line 1
 non-fe      ┊ WARNING: non-fe warning
 `, l.String())
 }
+
+func TestErrors(t *testing.T) {
+	l := NewLogStore()
+	l.Append(testLogEvent{
+		name:    "fe",
+		level:   logger.ErrorLvl,
+		message: "Error 1 line 1\nError 1 line 2\nError 1 line 3\n",
+	}, nil)
+	l.Append(testLogEvent{
+		name:    "fe",
+		level:   logger.ErrorLvl,
+		message: "Error 2 line 1\nError 2 line 2",
+	}, nil)
+	l.Append(testLogEvent{
+		name:    "fe",
+		level:   logger.ErrorLvl,
+		message: "Error 3 line 1\n",
+	}, nil)
+	l.Append(testLogEvent{
+		name:    "non-fe",
+		level:   logger.ErrorLvl,
+		message: "non-fe warning\n",
+	}, nil)
+
+	assert.Equal(t, `fe          ┊ ERROR: Error 1 line 1
+fe          ┊ Error 1 line 2
+fe          ┊ Error 1 line 3
+fe          ┊ ERROR: Error 2 line 1
+fe          ┊ Error 2 line 2Error 3 line 1
+non-fe      ┊ ERROR: non-fe warning
+`, l.String())
+}

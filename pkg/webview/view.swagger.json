@@ -222,7 +222,8 @@
         "INFO",
         "VERBOSE",
         "DEBUG",
-        "WARN"
+        "WARN",
+        "ERROR"
       ],
       "default": "NONE",
       "description": " - NONE: For backwards-compatibility, the int value doesn't say\nanything about relative severity."

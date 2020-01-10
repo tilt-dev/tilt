@@ -34,13 +34,18 @@
   margin-right: $spacing-unit / 2;
   display: flex;
 }
-.logLine.is-warning::before {
+.logLine.is-warning::before, .logLine.is-error::before {
   content: " ";
   position: absolute;
   top: 0;
   left: -$spacing-unit/2;
   height: 100%;
-  border-left: 3px solid $color-yellow;
+}
+.logLine.is-warning::before {
+  border-left: 5px solid $color-yellow;
+}
+.logLine.is-error::before {
+  border-left: 5px solid $color-red;
 }
 .logLine-content {
   white-space: pre-wrap;

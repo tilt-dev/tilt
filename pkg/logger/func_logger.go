@@ -26,6 +26,10 @@ func (l funcLogger) Warnf(format string, a ...interface{}) {
 	l.WriteString(WarnLvl, fmt.Sprintf(format+"\n", a...))
 }
 
+func (l funcLogger) Errorf(format string, a ...interface{}) {
+	l.WriteString(ErrorLvl, fmt.Sprintf(format+"\n", a...))
+}
+
 func (l funcLogger) Infof(format string, a ...interface{}) {
 	l.WriteString(InfoLvl, fmt.Sprintf(format+"\n", a...))
 }

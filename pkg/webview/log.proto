@@ -14,6 +14,7 @@ enum LogLevel {
   VERBOSE = 2;
   DEBUG = 3;
   WARN = 4;
+  ERROR = 5;
 }
 
 message LogSegment {
