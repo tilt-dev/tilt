@@ -7,7 +7,7 @@ services:
 language: go
 
 go:
-  - "1.12.x"
+  - "1.11.x"
 
 go_import_path: github.com/docker/distribution
 
@@ -34,7 +34,7 @@ script:
   - export GOOS=$TRAVIS_GOOS
   - export CGO_ENABLED=$TRAVIS_CGO_ENABLED
   - DCO_VERBOSITY=-q script/validate/dco
-  - GOOS=linux GO111MODULE=off script/setup/install-dev-tools
+  - GOOS=linux script/setup/install-dev-tools
   - script/validate/vendor
   - go build -i .
   - make check
