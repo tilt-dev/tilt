@@ -3,6 +3,7 @@ package local
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/store"
@@ -101,9 +102,8 @@ func (c *Controller) shouldStart(spec ServeSpec, proc *currentProcess) bool {
 
 func (c *Controller) stop(name model.ManifestName) {
 	proc := c.procs[name]
-	if proc.stoppedCh != nil {
-		close(proc.stoppedCh)
-	}
+	// change the process's current number so that any further events received by the existing process will be considered out of date
+	proc.incrProcNum()
 	if proc.cancelFunc == nil {
 		return
 	}
@@ -126,38 +126,37 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 
 	proc := c.procs[spec.ManifestName]
 	proc.spec = spec
-	proc.stoppedCh = make(chan struct{})
 	c.procCount++
 	proc.procNum = c.procCount
 	ctx, proc.cancelFunc = context.WithCancel(ctx)
 
 	w := LocalServeLogActionWriter{
-		store:        st,
-		manifestName: spec.ManifestName,
-		procNum:      proc.procNum,
+		store:               st,
+		manifestName:        spec.ManifestName,
+		procNum:             proc.procNum,
+		stillHasSameProcNum: proc.stillHasSameProcNum(),
 	}
 	ctx = logger.CtxWithLogHandler(ctx, w)
 
 	statusCh := make(chan status)
 
-	go processStatuses(statusCh, proc.stoppedCh, st, spec.ManifestName)
+	go processStatuses(statusCh, st, spec.ManifestName, proc.stillHasSameProcNum())
 
 	proc.doneCh = c.execer.Start(ctx, spec.ServeCmd, logger.Get(ctx).Writer(logger.InfoLvl), statusCh)
 }
 
 func processStatuses(
 	statusCh chan status,
-	stoppedCh chan struct{},
 	st store.RStore,
-	manifestName model.ManifestName) {
-	stopped := false
+	manifestName model.ManifestName,
+	stillHasSameProcNum func() bool) {
 	for {
 		select {
 		case status, ok := <-statusCh:
 			if !ok {
 				return
 			}
-			if stopped {
+			if !stillHasSameProcNum() {
 				continue
 			}
 			runtimeStatus := status.ToRuntime()
@@ -168,9 +167,6 @@ func processStatuses(
 					Status:       runtimeStatus,
 				})
 			}
-		case <-stoppedCh:
-			// if we stopped the process ourselves, we don't need to report any more status updates
-			stopped = true
 		}
 	}
 }
@@ -184,17 +180,43 @@ type currentProcess struct {
 	cancelFunc context.CancelFunc
 	// closed when the process finishes executing, intentionally or not
 	doneCh chan struct{}
-	// closed when the controller intentionally stopped the process
-	stoppedCh chan struct{}
+
+	mu sync.Mutex
+}
+
+func (p *currentProcess) stillHasSameProcNum() func() bool {
+	s := p.currentProcNum()
+	return func() bool {
+		return s == p.currentProcNum()
+	}
+}
+
+func (p *currentProcess) incrProcNum() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.procNum++
+}
+
+func (p *currentProcess) currentProcNum() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	return p.procNum
 }
 
 type LocalServeLogActionWriter struct {
-	store        store.RStore
-	manifestName model.ManifestName
-	procNum      int
+	store               store.RStore
+	manifestName        model.ManifestName
+	stillHasSameProcNum func() bool
+	procNum             int
 }
 
 func (w LocalServeLogActionWriter) Write(level logger.Level, p []byte) error {
+	if !w.stillHasSameProcNum() {
+		return nil
+	}
+
 	w.store.Dispatch(store.NewLogEvent(w.manifestName, SpanIDForServeLog(w.procNum), level, p))
 	return nil
 }

@@ -3269,9 +3269,7 @@ func TestLocalResourceServeChangeCmd(t *testing.T) {
 		return strings.Contains(state.LogStore.ManifestLog("foo"), "Starting cmd false")
 	})
 
-	f.withState(func(state store.EngineState) {
-		require.Contains(t, state.LogStore.ManifestLog("foo"), "cmd true canceled")
-	})
+	f.fe.RequireNoKnownProcess(t, "true")
 
 	err := f.Stop()
 	require.NoError(t, err)
