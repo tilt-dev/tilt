@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 
 	"github.com/uber/jaeger-client-go"
@@ -52,7 +52,11 @@ const (
 // FromEnv uses environment variables to set the tracer's Configuration
 func FromEnv() (*Configuration, error) {
 	c := &Configuration{}
+	return c.FromEnv()
+}
 
+// FromEnv uses environment variables and overrides existing tracer's Configuration
+func (c *Configuration) FromEnv() (*Configuration, error) {
 	if e := os.Getenv(envServiceName); e != "" {
 		c.ServiceName = e
 	}
@@ -77,13 +81,21 @@ func FromEnv() (*Configuration, error) {
 		c.Tags = parseTags(e)
 	}
 
-	if s, err := samplerConfigFromEnv(); err == nil {
+	if c.Sampler == nil {
+		c.Sampler = &SamplerConfig{}
+	}
+
+	if s, err := c.Sampler.samplerConfigFromEnv(); err == nil {
 		c.Sampler = s
 	} else {
 		return nil, errors.Wrap(err, "cannot obtain sampler config from env")
 	}
 
-	if r, err := reporterConfigFromEnv(); err == nil {
+	if c.Reporter == nil {
+		c.Reporter = &ReporterConfig{}
+	}
+
+	if r, err := c.Reporter.reporterConfigFromEnv(); err == nil {
 		c.Reporter = r
 	} else {
 		return nil, errors.Wrap(err, "cannot obtain reporter config from env")
@@ -93,9 +105,7 @@ func FromEnv() (*Configuration, error) {
 }
 
 // samplerConfigFromEnv creates a new SamplerConfig based on the environment variables
-func samplerConfigFromEnv() (*SamplerConfig, error) {
-	sc := &SamplerConfig{}
-
+func (sc *SamplerConfig) samplerConfigFromEnv() (*SamplerConfig, error) {
 	if e := os.Getenv(envSamplerType); e != "" {
 		sc.Type = e
 	}
@@ -110,6 +120,9 @@ func samplerConfigFromEnv() (*SamplerConfig, error) {
 
 	if e := os.Getenv(envSamplerManagerHostPort); e != "" {
 		sc.SamplingServerURL = e
+	} else if e := os.Getenv(envAgentHost); e != "" {
+		// Fallback if we know the agent host - try the sampling endpoint there
+		sc.SamplingServerURL = fmt.Sprintf("http://%s:%d/sampling", e, jaeger.DefaultSamplingServerPort)
 	}
 
 	if e := os.Getenv(envSamplerMaxOperations); e != "" {
@@ -132,9 +145,7 @@ func samplerConfigFromEnv() (*SamplerConfig, error) {
 }
 
 // reporterConfigFromEnv creates a new ReporterConfig based on the environment variables
-func reporterConfigFromEnv() (*ReporterConfig, error) {
-	rc := &ReporterConfig{}
-
+func (rc *ReporterConfig) reporterConfigFromEnv() (*ReporterConfig, error) {
 	if e := os.Getenv(envReporterMaxQueueSize); e != "" {
 		if value, err := strconv.ParseInt(e, 10, 0); err == nil {
 			rc.QueueSize = int(value)
@@ -159,46 +170,35 @@ func reporterConfigFromEnv() (*ReporterConfig, error) {
 		}
 	}
 
-	host := jaeger.DefaultUDPSpanServerHost
-	ep := os.Getenv(envEndpoint)
-	if e := os.Getenv(envAgentHost); e != "" {
-		if ep != "" {
-			return nil, errors.Errorf("cannot set env vars %s and %s together", envAgentHost, envEndpoint)
-		}
-		host = e
-	}
-
-	port := jaeger.DefaultUDPSpanServerPort
-	if e := os.Getenv(envAgentPort); e != "" {
-		if ep != "" {
-			return nil, errors.Errorf("cannot set env vars %s and %s together", envAgentPort, envEndpoint)
-		}
-		if value, err := strconv.ParseInt(e, 10, 0); err == nil {
-			port = int(value)
-		} else {
-			return nil, errors.Wrapf(err, "cannot parse env var %s=%s", envAgentPort, e)
-		}
-	}
-
-	// the side effect of this is that we are building the default value, even if none of the env vars
-	// were not explicitly passed
-	rc.LocalAgentHostPort = fmt.Sprintf("%s:%d", host, port)
-
-	if ep != "" {
-		u, err := url.ParseRequestURI(ep)
+	if e := os.Getenv(envEndpoint); e != "" {
+		u, err := url.ParseRequestURI(e)
 		if err != nil {
-			return nil, errors.Wrapf(err, "cannot parse env var %s=%s", envEndpoint, ep)
+			return nil, errors.Wrapf(err, "cannot parse env var %s=%s", envEndpoint, e)
 		}
-		rc.CollectorEndpoint = fmt.Sprintf("%s", u)
-	}
+		rc.CollectorEndpoint = u.String()
+		user := os.Getenv(envUser)
+		pswd := os.Getenv(envPassword)
+		if user != "" && pswd == "" || user == "" && pswd != "" {
+			return nil, errors.Errorf("you must set %s and %s env vars together", envUser, envPassword)
+		}
+		rc.User = user
+		rc.Password = pswd
+	} else {
+		host := jaeger.DefaultUDPSpanServerHost
+		if e := os.Getenv(envAgentHost); e != "" {
+			host = e
+		}
 
-	user := os.Getenv(envUser)
-	pswd := os.Getenv(envPassword)
-	if user != "" && pswd == "" || user == "" && pswd != "" {
-		return nil, errors.Errorf("you must set %s and %s env vars together", envUser, envPassword)
+		port := jaeger.DefaultUDPSpanServerPort
+		if e := os.Getenv(envAgentPort); e != "" {
+			if value, err := strconv.ParseInt(e, 10, 0); err == nil {
+				port = int(value)
+			} else {
+				return nil, errors.Wrapf(err, "cannot parse env var %s=%s", envAgentPort, e)
+			}
+		}
+		rc.LocalAgentHostPort = fmt.Sprintf("%s:%d", host, port)
 	}
-	rc.User = user
-	rc.Password = pswd
 
 	return rc, nil
 }

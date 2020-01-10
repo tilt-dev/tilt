@@ -58,8 +58,6 @@ github.com/chai2010/gettext-go/gettext
 github.com/chai2010/gettext-go/gettext/mo
 github.com/chai2010/gettext-go/gettext/plural
 github.com/chai2010/gettext-go/gettext/po
-# github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd
-github.com/codahale/hdrhistogram
 # github.com/containerd/cgroups v0.0.0-20191220161829-06e718085901
 github.com/containerd/cgroups/stats/v1
 # github.com/containerd/containerd v1.3.1-0.20191217142032-9b5581cc9c5b
@@ -443,7 +441,7 @@ github.com/theupdateframework/notary/tuf/utils
 github.com/theupdateframework/notary/tuf/validation
 # github.com/tonistiigi/fsutil v0.0.0-20191018213012-0f039a052ca1
 github.com/tonistiigi/fsutil/types
-# github.com/uber/jaeger-client-go v2.15.0+incompatible
+# github.com/uber/jaeger-client-go v2.21.1+incompatible
 github.com/uber/jaeger-client-go
 github.com/uber/jaeger-client-go/config
 github.com/uber/jaeger-client-go/internal/baggage
@@ -461,7 +459,7 @@ github.com/uber/jaeger-client-go/thrift-gen/sampling
 github.com/uber/jaeger-client-go/thrift-gen/zipkincore
 github.com/uber/jaeger-client-go/transport
 github.com/uber/jaeger-client-go/utils
-# github.com/uber/jaeger-lib v1.5.0
+# github.com/uber/jaeger-lib v2.2.0+incompatible
 github.com/uber/jaeger-lib/metrics
 # github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
 github.com/whilp/git-urls
@@ -495,7 +493,9 @@ go.starlark.net/resolve
 go.starlark.net/starlark
 go.starlark.net/starlarkstruct
 go.starlark.net/syntax
-# golang.org/x/crypto v0.0.0-20190923035154-9ee001bba392 => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
+# go.uber.org/atomic v1.5.1
+go.uber.org/atomic
+# golang.org/x/crypto v0.0.0-20191205180655-e7c4368fe9dd => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 golang.org/x/crypto/chacha20
 golang.org/x/crypto/curve25519
 golang.org/x/crypto/ed25519
@@ -506,6 +506,9 @@ golang.org/x/crypto/poly1305
 golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/agent
 golang.org/x/crypto/ssh/terminal
+# golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f
+golang.org/x/lint
+golang.org/x/lint/golint
 # golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
@@ -545,6 +548,10 @@ golang.org/x/text/unicode/norm
 golang.org/x/text/width
 # golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 golang.org/x/time/rate
+# golang.org/x/tools v0.0.0-20200110213125-a7a6caa82ab2
+golang.org/x/tools/go/ast/astutil
+golang.org/x/tools/go/gcexportdata
+golang.org/x/tools/go/internal/gcimporter
 # google.golang.org/appengine v1.5.0
 google.golang.org/appengine
 google.golang.org/appengine/internal
