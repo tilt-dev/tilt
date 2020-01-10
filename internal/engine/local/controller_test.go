@@ -41,7 +41,7 @@ func TestUpdate(t *testing.T) {
 		if !ok {
 			return false
 		}
-		return a.ManifestName == "foo" && a.SequenceNum == 1 && a.Status == model.RuntimeStatusError
+		return a.ManifestName == "foo" && a.Status == model.RuntimeStatusError
 	})
 	f.assertLogMessage("foo", "cmd true canceled")
 	f.assertLogMessage("foo", "Starting cmd false")
@@ -62,6 +62,20 @@ func TestFailure(t *testing.T) {
 
 	f.assertStatus("foo", model.RuntimeStatusError, 1)
 	f.assertLogMessage("foo", "cmd true exited with code 5")
+}
+
+func TestUniqueSpanIDs(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	t1 := time.Unix(1, 0)
+	f.resource("foo", "foo.sh", t1)
+	f.resource("bar", "bar.sh", t1)
+	f.step()
+
+	fooStart := f.waitForLogEventContaining("Starting cmd foo.sh")
+	barStart := f.waitForLogEventContaining("Starting cmd bar.sh")
+	require.NotEqual(t, fooStart.SpanID(), barStart.SpanID())
 }
 
 type fixture struct {
@@ -158,8 +172,7 @@ func (f *fixture) assertStatus(name string, status model.RuntimeStatus, sequence
 		stAction, ok := action.(LocalServeStatusAction)
 		if !ok ||
 			stAction.ManifestName != model.ManifestName(name) ||
-			stAction.Status != status ||
-			stAction.SequenceNum != sequenceNum {
+			stAction.Status != status {
 			return false
 		}
 		return true
@@ -176,5 +189,25 @@ func (f *fixture) assertLogMessage(name string, messages ...string) {
 			return ok && strings.Contains(string(a.Message()), m)
 		}
 		f.assertAction(msg, pred)
+	}
+}
+
+func (f *fixture) waitForLogEventContaining(message string) store.LogEvent {
+	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
+	defer cancel()
+
+	for {
+		actions := f.st.Actions()
+		for _, action := range actions {
+			le, ok := action.(store.LogEvent)
+			if ok && strings.Contains(string(le.Message()), message) {
+				return le
+			}
+		}
+		select {
+		case <-ctx.Done():
+			f.t.Fatalf("timed out waiting for log event w/ message %q. seen actions: %v", message, actions)
+		case <-time.After(20 * time.Millisecond):
+		}
 	}
 }

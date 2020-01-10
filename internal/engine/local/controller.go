@@ -12,8 +12,9 @@ import (
 )
 
 type Controller struct {
-	execer Execer
-	procs  map[model.ManifestName]*currentProcess
+	execer    Execer
+	procs     map[model.ManifestName]*currentProcess
+	procCount int
 }
 
 func NewController(execer Execer) *Controller {
@@ -126,19 +127,20 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 	proc := c.procs[spec.ManifestName]
 	proc.spec = spec
 	proc.stoppedCh = make(chan struct{})
-	proc.sequenceNum++
+	c.procCount++
+	proc.procNum = c.procCount
 	ctx, proc.cancelFunc = context.WithCancel(ctx)
 
 	w := LocalServeLogActionWriter{
 		store:        st,
 		manifestName: spec.ManifestName,
-		sequenceNum:  proc.sequenceNum,
+		procNum:      proc.procNum,
 	}
 	ctx = logger.CtxWithLogHandler(ctx, w)
 
 	statusCh := make(chan status)
 
-	go processStatuses(statusCh, proc.stoppedCh, st, spec.ManifestName, proc.sequenceNum)
+	go processStatuses(statusCh, proc.stoppedCh, st, spec.ManifestName)
 
 	proc.doneCh = c.execer.Start(ctx, spec.ServeCmd, logger.Get(ctx).Writer(logger.InfoLvl), statusCh)
 }
@@ -147,8 +149,7 @@ func processStatuses(
 	statusCh chan status,
 	stoppedCh chan struct{},
 	st store.RStore,
-	manifestName model.ManifestName,
-	sequenceNum int) {
+	manifestName model.ManifestName) {
 	stopped := false
 	for {
 		select {
@@ -164,7 +165,6 @@ func processStatuses(
 				// TODO(matt) when we get an error, the dot is red in the web ui, but green in the TUI
 				st.Dispatch(LocalServeStatusAction{
 					ManifestName: manifestName,
-					SequenceNum:  sequenceNum,
 					Status:       runtimeStatus,
 				})
 			}
@@ -179,9 +179,9 @@ func processStatuses(
 // make sure there's at most one process per Manifest.
 // (note: it may not be running yet, or may have already finished)
 type currentProcess struct {
-	spec        ServeSpec
-	sequenceNum int
-	cancelFunc  context.CancelFunc
+	spec       ServeSpec
+	procNum    int
+	cancelFunc context.CancelFunc
 	// closed when the process finishes executing, intentionally or not
 	doneCh chan struct{}
 	// closed when the controller intentionally stopped the process
@@ -191,16 +191,16 @@ type currentProcess struct {
 type LocalServeLogActionWriter struct {
 	store        store.RStore
 	manifestName model.ManifestName
-	sequenceNum  int
+	procNum      int
 }
 
 func (w LocalServeLogActionWriter) Write(level logger.Level, p []byte) error {
-	w.store.Dispatch(store.NewLogEvent(w.manifestName, SpanIDForServeLog(w.sequenceNum), level, p))
+	w.store.Dispatch(store.NewLogEvent(w.manifestName, SpanIDForServeLog(w.procNum), level, p))
 	return nil
 }
 
-func SpanIDForServeLog(sequenceNum int) logstore.SpanID {
-	return logstore.SpanID(fmt.Sprintf("localserve:%d", sequenceNum))
+func SpanIDForServeLog(procNum int) logstore.SpanID {
+	return logstore.SpanID(fmt.Sprintf("localserve:%d", procNum))
 }
 
 // ServeSpec describes what Runner should be running

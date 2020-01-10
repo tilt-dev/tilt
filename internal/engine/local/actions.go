@@ -6,7 +6,6 @@ import (
 
 type LocalServeStatusAction struct {
 	ManifestName model.ManifestName
-	SequenceNum  int
 	Status       model.RuntimeStatus
 }
 
