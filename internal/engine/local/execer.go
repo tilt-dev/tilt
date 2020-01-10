@@ -117,10 +117,6 @@ func (e *processExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, s
 	return doneCh
 }
 
-func killPG(c *exec.Cmd) error {
-	return syscall.Kill(-c.Process.Pid, syscall.SIGKILL)
-}
-
 func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan status, doneCh chan struct{}) {
 	defer close(doneCh)
 	defer close(statusCh)
@@ -150,7 +146,7 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 		}
 		statusCh <- Error
 	case <-ctx.Done():
-		err := syscall.Kill(c.Process.Pid, syscall.SIGINT)
+		err := c.Process.Kill()
 		if err != nil {
 			procutil.KillProcessGroup(c)
 		} else {
