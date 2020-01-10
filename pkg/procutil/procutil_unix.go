@@ -1,17 +1,17 @@
 // +build !windows
 
-package assets
+package procutil
 
 import (
 	"os/exec"
 	"syscall"
 )
 
-func setOptNewProcessGroup(attrs *syscall.SysProcAttr) {
+func SetOptNewProcessGroup(attrs *syscall.SysProcAttr) {
 	attrs.Setpgid = true
 }
 
-func killProcessGroup(cmd *exec.Cmd) {
+func KillProcessGroup(cmd *exec.Cmd) {
 	if cmd != nil && cmd.Process != nil {
 		// Kill the entire process group.
 		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)

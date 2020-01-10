@@ -6,12 +6,15 @@ import (
 	"io"
 	"os/exec"
 	"sync"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/windmilleng/tilt/pkg/procutil"
 )
 
 type Execer interface {
@@ -130,31 +133,42 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 	defer close(doneCh)
 	defer close(statusCh)
 
-	c := exec.CommandContext(ctx, cmd.Argv[0], cmd.Argv[1:]...)
+	c := exec.Command(cmd.Argv[0], cmd.Argv[1:]...)
+
+	c.SysProcAttr = &syscall.SysProcAttr{}
+	procutil.SetOptNewProcessGroup(c.SysProcAttr)
 	c.Stderr = w
 	c.Stdout = w
 
-	err := c.Start()
-	if err != nil {
-		// TODO(dmiller): should this be different status than when the command fails? Unknown?
-		statusCh <- Error
-		return
-	}
+	errCh := make(chan error)
 
-	statusCh <- Running
+	go func() {
+		statusCh <- Running
+		errCh <- c.Run()
+	}()
 
-	err = c.Wait()
-	if err != nil {
-		// TODO(matt) don't log error if it was killed by tilt
-		// TODO(matt) how do we get this to show up as an error in the web UI?
-		_, err = fmt.Fprintf(w, "Error execing %s: %v", cmd.String(), err)
-		if err != nil {
-			logger.Get(ctx).Infof("Unable to print exec output to writer: %v", err)
+	select {
+	case err := <-errCh:
+		if err == nil {
+			logger.Get(ctx).Infof("%s exited with exit code 0", cmd.String())
+		} else if ee, ok := err.(*exec.ExitError); ok {
+			logger.Get(ctx).Infof("%s exited with exit code %d", cmd.String(), ee.ExitCode())
+		} else {
+			logger.Get(ctx).Infof("error execing %s: %v", cmd.String(), err)
 		}
 		statusCh <- Error
-		return
+	case <-ctx.Done():
+		err := c.Process.Kill()
+		if err != nil {
+			procutil.KillProcessGroup(c)
+		} else {
+			// wait and then send SIGKILL to the process group, unless the command finished
+			select {
+			case <-time.After(50 * time.Millisecond):
+				procutil.KillProcessGroup(c)
+			case <-doneCh:
+			}
+		}
+		statusCh <- Done
 	}
-
-	// TODO(matt) if the process exits w/ exit code 0, Tilt shows it as green - should it be red?
-	statusCh <- Done
 }
