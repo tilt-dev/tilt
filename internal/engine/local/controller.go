@@ -18,6 +18,9 @@ type Controller struct {
 	procCount int
 }
 
+var _ store.Subscriber = &Controller{}
+var _ store.TearDowner = &Controller{}
+
 func NewController(execer Execer) *Controller {
 	return &Controller{
 		execer: execer,
@@ -119,6 +122,12 @@ func (c *Controller) getOrMakeProc(name model.ManifestName) *currentProcess {
 	}
 
 	return c.procs[name]
+}
+
+func (c *Controller) TearDown(ctx context.Context) {
+	for name := range c.procs {
+		c.stop(name)
+	}
 }
 
 func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore) {
