@@ -11,8 +11,9 @@ type props = {
 
 export default class FatalErrorModal extends PureComponent<props> {
   render() {
+    let error = "ERROR\n".repeat(500)
     let showModal =
-      Boolean(this.props.error) &&
+      Boolean(error) &&
       (this.props.showFatalErrorModal === ShowFatalErrorModal.Default ||
         this.props.showFatalErrorModal === ShowFatalErrorModal.Show)
     return (
@@ -23,7 +24,7 @@ export default class FatalErrorModal extends PureComponent<props> {
       >
         <h2 className="FatalErrorModal-title">Fatal Error</h2>
         <div className="FatalErrorModal-pane">
-          <p>Tilt has encountered a fatal error: {this.props.error}</p>
+          <p>Tilt has encountered a fatal error: {error}</p>
           <p>
             Once you fix this issue you'll need to restart Tilt. In the meantime
             feel free to browse through the UI.
