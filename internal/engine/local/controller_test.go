@@ -85,6 +85,21 @@ func TestUniqueSpanIDs(t *testing.T) {
 	require.NotEqual(t, fooStart.SpanID(), barStart.SpanID(), "different resources should have unique log span ids")
 }
 
+func TestTearDown(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	t1 := time.Unix(1, 0)
+	f.resource("foo", "foo.sh", t1)
+	f.resource("bar", "bar.sh", t1)
+	f.step()
+
+	f.c.TearDown(f.ctx)
+
+	f.fe.RequireNoKnownProcess(t, "foo.sh")
+	f.fe.RequireNoKnownProcess(t, "bar.sh")
+}
+
 type fixture struct {
 	t      *testing.T
 	st     *store.TestingStore
