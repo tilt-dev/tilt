@@ -140,14 +140,14 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 	l := logger.Get(ctx)
 	var prefix string
 	if firstBuild {
-		prefix = "──┤ Building:"
+		prefix = "──┤ Updating:"
 	} else {
 		if len(changedFiles) > 0 {
 			p := logger.Green(l).Sprintf("%d changed: ", len(changedFiles))
 			l.Infof("\n%s%v\n", p, ospath.FormatFileChangeList(changedFiles))
 		}
 
-		prefix = "──┤ Rebuilding: "
+		prefix = "──┤ Updating: "
 	}
 
 	p := logger.Blue(l).Sprintf("%s", prefix)
