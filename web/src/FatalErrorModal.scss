@@ -9,6 +9,8 @@
   padding-bottom: $spacing-unit;
   padding-left: $spacing-unit;
   padding-right: $spacing-unit;
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
 .FatalErrorModal-title {
