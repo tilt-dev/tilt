@@ -133,6 +133,7 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 	defer close(doneCh)
 	defer close(statusCh)
 
+	logger.Get(ctx).Infof("Running serve cmd: %s", cmd.String())
 	c := exec.Command(cmd.Argv[0], cmd.Argv[1:]...)
 
 	c.SysProcAttr = &syscall.SysProcAttr{}
