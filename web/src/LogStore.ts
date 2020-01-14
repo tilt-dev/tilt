@@ -14,6 +14,7 @@ type LogSpan = {
   manifestName: string
   lastSegmentIndex: number
   firstSegmentIndex: number
+  lastGlobalLineIndex: number
 }
 
 class LogSegment {
@@ -23,6 +24,7 @@ class LogSegment {
   level: string
   anchor: boolean
   continuesLine: boolean
+  globalLineIndex: number
 
   constructor(seg: Proto.webviewLogSegment) {
     this.spanId = seg.spanId || defaultSpanId
@@ -31,6 +33,7 @@ class LogSegment {
     this.level = seg.level ?? "INFO"
     this.anchor = seg.anchor ?? false
     this.continuesLine = false
+    this.globalLineIndex = -1
   }
 
   startsLine() {
@@ -55,7 +58,9 @@ type LogWarning = {
 class LogStore {
   spans: { [key: string]: LogSpan }
   segments: LogSegment[]
+  lineCache: LogLine[]
   checkpoint: number
+  lastGlobalLineIndex: number
 
   // We index all the warnings up-front by span id.
   warningIndex: { [key: string]: LogWarning[] }
@@ -65,6 +70,8 @@ class LogStore {
     this.segments = []
     this.checkpoint = 0
     this.warningIndex = {}
+    this.lineCache = []
+    this.lastGlobalLineIndex = -1
   }
 
   warnings(spanId: string): LogWarning[] {
@@ -113,12 +120,22 @@ class LogStore {
 
     for (let key in newSpans) {
       let spanId = key || defaultSpanId
-      let exists = this.spans[spanId]
-      if (!exists) {
+      let existingSpan = this.spans[spanId]
+      if (
+        existingSpan &&
+        existingSpan.lastGlobalLineIndex != -1 &&
+        this.lineCache.length >= existingSpan.lastGlobalLineIndex
+      ) {
+        // Truncate the log line cache so that we regenerate the line.
+        this.lineCache.length = existingSpan.lastGlobalLineIndex
+      }
+
+      if (!existingSpan) {
         this.spans[spanId] = {
           manifestName: newSpans[key].manifestName ?? "",
           firstSegmentIndex: -1,
           lastSegmentIndex: -1,
+          lastGlobalLineIndex: -1,
         }
       }
     }
@@ -146,6 +163,12 @@ class LogStore {
         span.firstSegmentIndex = this.segments.length
       }
       span.lastSegmentIndex = this.segments.length
+
+      if (isStartingNewLine) {
+        this.lastGlobalLineIndex++
+        newSegment.globalLineIndex = this.lastGlobalLineIndex
+        span.lastGlobalLineIndex = this.lastGlobalLineIndex
+      }
 
       newSegment.continuesLine = !isStartingNewLine
       this.segments.push(newSegment)
@@ -187,7 +210,6 @@ class LogStore {
 
   logHelper(spansToLog: { [key: string]: LogSpan }): LogLine[] {
     let result: LogLine[] = []
-    let lastLineCompleted = false
 
     // We want to print the log line-by-line, but we don't actually store the logs
     // line-by-line. We store them as segments.
@@ -229,7 +251,6 @@ class LogStore {
       lastIndex = latestEndIndex
     }
 
-    let isFirstLine = true
     let currentLine = {}
     for (let i = startIndex; i <= lastIndex; i++) {
       let segment = this.segments[i]
@@ -243,57 +264,65 @@ class LogStore {
         continue
       }
 
-      let currentLine = {
-        manifestName: span.manifestName,
-        text: segment.text,
-        level: segment.level,
+      let line = this.lineCache[segment.globalLineIndex]
+      if (!line) {
+        line = this.createLogLineHelper(i, segment, span)
+        this.lineCache[segment.globalLineIndex] = line
       }
-      isFirstLine = false
+      result.push(line)
+    }
 
-      // If this segment is not complete, run ahead and try to complete it.
-      if (segment.isComplete()) {
-        lastLineCompleted = true
+    return result
+  }
 
+  private createLogLineHelper(
+    i: number,
+    segment: LogSegment,
+    span: LogSpan
+  ): LogLine {
+    let spanId = segment.spanId
+    let currentLine = {
+      manifestName: span.manifestName,
+      text: segment.text,
+      level: segment.level,
+    }
+
+    // If this segment is complete, we can return right now.
+    if (segment.isComplete()) {
+      // strip off the newline
+      currentLine.text = currentLine.text.substring(
+        0,
+        currentLine.text.length - 1
+      )
+      return currentLine
+    }
+
+    // Otherwise, if this segment is not complete, run ahead and complete the rest of the line.
+    for (
+      let currentIndex = i + 1;
+      currentIndex <= span.lastSegmentIndex;
+      currentIndex++
+    ) {
+      let currentSeg = this.segments[currentIndex]
+      if (currentSeg.spanId != spanId) {
+        continue
+      }
+
+      if (!currentSeg.canContinueLine(segment)) {
+        break
+      }
+
+      currentLine.text += currentSeg.text
+      if (currentSeg.isComplete()) {
         // strip off the newline
         currentLine.text = currentLine.text.substring(
           0,
           currentLine.text.length - 1
         )
-        result.push(currentLine)
-        continue
+        break
       }
-
-      lastLineCompleted = false
-      for (
-        let currentIndex = i + 1;
-        currentIndex <= span.lastSegmentIndex;
-        currentIndex++
-      ) {
-        let currentSeg = this.segments[currentIndex]
-        if (currentSeg.spanId != spanId) {
-          continue
-        }
-
-        if (!currentSeg.canContinueLine(segment)) {
-          break
-        }
-
-        currentLine.text += currentSeg.text
-        if (currentSeg.isComplete()) {
-          lastLineCompleted = true
-
-          // strip off the newline
-          currentLine.text = currentLine.text.substring(
-            0,
-            currentLine.text.length - 1
-          )
-          break
-        }
-      }
-      result.push(currentLine)
     }
-
-    return result
+    return currentLine
   }
 }
 
