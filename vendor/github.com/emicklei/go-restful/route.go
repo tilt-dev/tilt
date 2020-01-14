@@ -49,11 +49,15 @@ type Route struct {
 
 	//Overrides the container.contentEncodingEnabled
 	contentEncodingEnabled *bool
+
+	// indicate route path has custom verb
+	hasCustomVerb bool
 }
 
 // Initialize for Route
 func (r *Route) postBuild() {
 	r.pathParts = tokenizePath(r.Path)
+	r.hasCustomVerb = hasCustomVerb(r.Path)
 }
 
 // Create Request and Response from their http versions

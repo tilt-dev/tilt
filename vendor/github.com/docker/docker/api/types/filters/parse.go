@@ -36,15 +36,6 @@ func NewArgs(initialArgs ...KeyValuePair) Args {
 	return args
 }
 
-// Keys returns all the keys in list of Args
-func (args Args) Keys() []string {
-	keys := make([]string, 0, len(args.fields))
-	for k := range args.fields {
-		keys = append(keys, k)
-	}
-	return keys
-}
-
 // MarshalJSON returns a JSON byte representation of the Args
 func (args Args) MarshalJSON() ([]byte, error) {
 	if len(args.fields) == 0 {
@@ -66,7 +57,7 @@ func ToJSON(a Args) (string, error) {
 // then the encoded format will use an older legacy format where the values are a
 // list of strings, instead of a set.
 //
-// Deprecated: do not use in any new code; use ToJSON instead
+// Deprecated: Use ToJSON
 func ToParamWithVersion(version string, a Args) (string, error) {
 	if a.Len() == 0 {
 		return "", nil

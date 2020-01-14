@@ -61,3 +61,36 @@ func TestHelmUnknownVersion(t *testing.T) {
 
 	assert.Equal(t, expected, actual)
 }
+
+const fileRequirementsYAML = `dependencies:
+  - name: foobar 
+    version: 1.0.1
+    repository: file://./foobar`
+
+func TestLocalSubchartFileDependencies(t *testing.T) {
+	input := []byte(fileRequirementsYAML)
+	expected := "./foobar"
+	actual, err := localSubchartDependencies(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Contains(t, actual, expected)
+}
+
+const remoteRequirementsYAML = `
+dependencies:
+- name: etcd
+  version: 0.6.2
+  repository: https://kubernetes-charts-incubator.storage.googleapis.com/
+  condition: etcd.deployChart`
+
+func TestSubchartRemoteDependencies(t *testing.T) {
+	input := []byte(remoteRequirementsYAML)
+	actual, err := localSubchartDependencies(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Empty(t, actual)
+}

@@ -2,15 +2,23 @@ package tiltfile
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
+
+	"github.com/ghodss/yaml"
+	"helm.sh/helm/v3/pkg/chart"
 )
 
 // The helm template command outputs predictable yaml with a "Source:" comment,
 // so take advantage of that.
 const helmSeparator = "---\n"
+
+const helmFileRepository = "file://"
 
 var helmTestYAMLMatcher = regexp.MustCompile("^# Source: .*/tests/")
 
@@ -102,4 +110,38 @@ func unableToFindHelmErrorMessage() error {
 	}
 
 	return fmt.Errorf("Unable to find Helm installation. Make sure `%s` is on your $PATH.", binaryName)
+}
+
+func localSubchartDependenciesFromPath(chartPath string) ([]string, error) {
+	requirementsPath := filepath.Join(chartPath, "requirements.yaml")
+	_, err := os.Stat(requirementsPath)
+	var deps []string
+	if os.IsNotExist(err) {
+		return deps, nil
+	}
+
+	dat, err := ioutil.ReadFile(requirementsPath)
+	if err != nil {
+		return deps, err
+	}
+
+	return localSubchartDependencies(dat)
+}
+
+func localSubchartDependencies(dat []byte) ([]string, error) {
+	var deps []string
+	var metadata chart.Metadata
+
+	err := yaml.Unmarshal([]byte(dat), &metadata)
+	if err != nil {
+		return deps, err
+	}
+
+	for _, d := range metadata.Dependencies {
+		if strings.HasPrefix(d.Repository, helmFileRepository) {
+			deps = append(deps, strings.TrimPrefix(d.Repository, helmFileRepository))
+		}
+	}
+
+	return deps, nil
 }
