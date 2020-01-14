@@ -151,7 +151,8 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 
 	go processStatuses(statusCh, st, spec.ManifestName, proc.stillHasSameProcNum())
 
-	proc.doneCh = c.execer.Start(ctx, spec.ServeCmd, logger.Get(ctx).Writer(logger.InfoLvl), statusCh)
+	spanID := SpanIDForServeLog(proc.procNum)
+	proc.doneCh = c.execer.Start(ctx, spec.ServeCmd, logger.Get(ctx).Writer(logger.InfoLvl), statusCh, spanID)
 }
 
 func processStatuses(
@@ -175,6 +176,7 @@ func processStatuses(
 					ManifestName: manifestName,
 					Status:       runtimeStatus,
 					PID:          sm.pid,
+					SpanID:       sm.spanID,
 				})
 			}
 		}
@@ -245,6 +247,7 @@ type ServeSpec struct {
 type statusAndMetadata struct {
 	pid    int
 	status status
+	spanID model.LogSpanID
 }
 
 type status int

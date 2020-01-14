@@ -18,7 +18,7 @@ import (
 )
 
 type Execer interface {
-	Start(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata) chan struct{}
+	Start(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) chan struct{}
 }
 
 type fakeExecProcess struct {
@@ -37,7 +37,7 @@ func NewFakeExecer() *FakeExecer {
 	}
 }
 
-func (e *FakeExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata) chan struct{} {
+func (e *FakeExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) chan struct{} {
 	e.mu.Lock()
 	_, ok := e.processes[cmd.String()]
 	e.mu.Unlock()
@@ -121,15 +121,15 @@ func NewProcessExecer() *processExecer {
 	return &processExecer{}
 }
 
-func (e *processExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata) chan struct{} {
+func (e *processExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) chan struct{} {
 	doneCh := make(chan struct{})
 
-	go processRun(ctx, cmd, w, statusCh, doneCh)
+	go processRun(ctx, cmd, w, statusCh, doneCh, spanID)
 
 	return doneCh
 }
 
-func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, doneCh chan struct{}) {
+func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, doneCh chan struct{}, spanID model.LogSpanID) {
 	defer close(doneCh)
 	defer close(statusCh)
 
@@ -150,7 +150,7 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 			return
 		}
 
-		statusCh <- statusAndMetadata{status: Running, pid: c.Process.Pid}
+		statusCh <- statusAndMetadata{status: Running, pid: c.Process.Pid, spanID: spanID}
 		errCh <- c.Wait()
 	}()
 
@@ -163,7 +163,7 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 		} else {
 			logger.Get(ctx).Infof("error execing %s: %v", cmd.String(), err)
 		}
-		statusCh <- statusAndMetadata{status: Error}
+		statusCh <- statusAndMetadata{status: Error, spanID: spanID}
 	case <-ctx.Done():
 		err := c.Process.Kill()
 		if err != nil {
@@ -176,6 +176,6 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 			case <-doneCh:
 			}
 		}
-		statusCh <- statusAndMetadata{status: Done}
+		statusCh <- statusAndMetadata{status: Done, spanID: spanID}
 	}
 }

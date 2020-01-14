@@ -31,6 +31,7 @@ type LocalRuntimeState struct {
 	Status                  model.RuntimeStatus
 	HasSucceededAtLeastOnce bool
 	PID                     int
+	SpanID                  model.LogSpanID
 }
 
 func (LocalRuntimeState) RuntimeState() {}

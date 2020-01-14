@@ -71,16 +71,17 @@ func (yamlInfo YAMLResourceInfo) Status() string                 { return "" }
 type LocalResourceInfo struct {
 	status model.RuntimeStatus
 	pid    int
+	spanID model.LogSpanID
 }
 
-func NewLocalResourceInfo(status model.RuntimeStatus, pid int) LocalResourceInfo {
+func NewLocalResourceInfo(status model.RuntimeStatus, pid int, spanID model.LogSpanID) LocalResourceInfo {
 	return LocalResourceInfo{status: status}
 }
 
 var _ ResourceInfoView = LocalResourceInfo{}
 
 func (lri LocalResourceInfo) resourceInfoView()              {}
-func (lri LocalResourceInfo) RuntimeSpanID() logstore.SpanID { return "unknown" }
+func (lri LocalResourceInfo) RuntimeSpanID() logstore.SpanID { return lri.spanID }
 func (lri LocalResourceInfo) Status() string                 { return string(lri.status) }
 
 type Resource struct {
