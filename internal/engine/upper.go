@@ -681,6 +681,7 @@ func handleLocalServeStatusAction(ctx context.Context, state *store.EngineState,
 
 	lrs := ms.GetOrCreateLocalRuntimeState()
 	lrs.Status = action.Status
+	lrs.PID = action.PID
 	ms.RuntimeState = lrs
 }
 

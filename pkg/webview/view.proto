@@ -60,7 +60,9 @@ message YAMLResourceInfo {
   repeated string k8s_resources = 1;
 }
 
-message LocalResourceInfo {}
+message LocalResourceInfo {
+     int64 pid = 1;
+}
 
 message Facet {
   string name = 1;

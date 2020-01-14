@@ -109,7 +109,9 @@ declare namespace Proto {
     fromCheckpoint?: number;
     toCheckpoint?: number;
   }
-  export interface webviewLocalResourceInfo {}
+  export interface webviewLocalResourceInfo {
+    pid?: string;
+  }
   export interface webviewK8sResourceInfo {
     podName?: string;
     podCreationTime?: string;

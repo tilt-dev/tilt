@@ -70,9 +70,10 @@ func (yamlInfo YAMLResourceInfo) Status() string                 { return "" }
 
 type LocalResourceInfo struct {
 	status model.RuntimeStatus
+	pid    int
 }
 
-func NewLocalResourceInfo(status model.RuntimeStatus) LocalResourceInfo {
+func NewLocalResourceInfo(status model.RuntimeStatus, pid int) LocalResourceInfo {
 	return LocalResourceInfo{status: status}
 }
 

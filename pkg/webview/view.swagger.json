@@ -213,7 +213,13 @@
       }
     },
     "webviewLocalResourceInfo": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "pid": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
     },
     "webviewLogLevel": {
       "type": "string",

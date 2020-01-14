@@ -85,7 +85,7 @@ type processExecFixture struct {
 	cancel     context.CancelFunc
 	execer     *processExecer
 	testWriter *bufsync.ThreadSafeBuffer
-	statusCh   chan status
+	statusCh   chan statusAndMetadata
 }
 
 func newProcessExecFixture(t *testing.T) *processExecFixture {
@@ -93,7 +93,7 @@ func newProcessExecFixture(t *testing.T) *processExecFixture {
 	testWriter := bufsync.NewThreadSafeBuffer()
 	ctx, _, _ := testutils.ForkedCtxAndAnalyticsForTest(testWriter)
 	ctx, cancel := context.WithCancel(ctx)
-	statusCh := make(chan status)
+	statusCh := make(chan statusAndMetadata)
 
 	return &processExecFixture{
 		t:          t,
@@ -122,19 +122,19 @@ func (f *processExecFixture) assertCmdSucceeds() {
 func (f *processExecFixture) waitForStatusAndNoError(expectedStatus status) {
 	for {
 		select {
-		case status, ok := <-f.statusCh:
+		case sm, ok := <-f.statusCh:
 			if !ok {
 				f.t.Fatal("statusCh closed")
 			}
-			if expectedStatus == status {
+			if expectedStatus == sm.status {
 				return
 			}
 			if expectedStatus == Error {
-				f.t.Error("Unexpected Error status")
+				f.t.Error("Unexpected Error sm")
 				return
 			}
 		case <-time.After(10 * time.Second):
-			f.t.Fatal("Timed out waiting for cmd status")
+			f.t.Fatal("Timed out waiting for cmd sm")
 		}
 	}
 }
@@ -146,8 +146,8 @@ func (f *processExecFixture) assertLogContains(s string) {
 func (f *processExecFixture) waitForError() {
 	for {
 		select {
-		case status := <-f.statusCh:
-			if status == Error {
+		case sm := <-f.statusCh:
+			if sm.status == Error {
 				return
 			}
 		case <-time.After(10 * time.Second):

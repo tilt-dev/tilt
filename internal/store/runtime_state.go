@@ -30,6 +30,7 @@ type RuntimeState interface {
 type LocalRuntimeState struct {
 	Status                  model.RuntimeStatus
 	HasSucceededAtLeastOnce bool
+	PID                     int
 }
 
 func (LocalRuntimeState) RuntimeState() {}
