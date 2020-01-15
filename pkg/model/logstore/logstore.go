@@ -13,10 +13,11 @@ import (
 	"github.com/windmilleng/tilt/pkg/webview"
 )
 
-// At this limit, with one resource having a 120k log, render time was ~20ms and CPU usage was ~70% on an MBP.
-// 70% still isn't great when tilt doesn't really have any necessary work to do, but at least it's usable.
-// A render time of ~40ms was about when the interface started being noticeably laggy to me.
-const defaultMaxLogLengthInBytes = 120 * 1000
+// All parts of Tilt should display logs incrementally,
+// so there's no longer a CPU usage reason why logs can't grow unbounded.
+//
+// We currently cap logs just to prevent heap usage from blowing up unbounded.
+const defaultMaxLogLengthInBytes = 20 * 1000 * 1000
 
 const newlineByte = byte('\n')
 
