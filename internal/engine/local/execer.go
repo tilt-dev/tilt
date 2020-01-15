@@ -157,11 +157,11 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 	select {
 	case err := <-errCh:
 		if err == nil {
-			logger.Get(ctx).Infof("%s exited with exit code 0", cmd.String())
+			logger.Get(ctx).Errorf("%s exited with exit code 0", cmd.String())
 		} else if ee, ok := err.(*exec.ExitError); ok {
-			logger.Get(ctx).Infof("%s exited with exit code %d", cmd.String(), ee.ExitCode())
+			logger.Get(ctx).Errorf("%s exited with exit code %d", cmd.String(), ee.ExitCode())
 		} else {
-			logger.Get(ctx).Infof("error execing %s: %v", cmd.String(), err)
+			logger.Get(ctx).Errorf("error execing %s: %v", cmd.String(), err)
 		}
 		statusCh <- statusAndMetadata{status: Error, spanID: spanID}
 	case <-ctx.Done():
