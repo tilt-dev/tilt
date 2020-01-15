@@ -448,6 +448,7 @@ class HUD extends Component<HudProps, HudState> {
         <LogPane
           logLines={logLines}
           showManifestPrefix={false}
+          manifestName={name}
           handleSetHighlight={this.handleSetHighlight}
           handleClearHighlight={this.handleClearHighlight}
           highlight={snapshotHighlight}
@@ -492,6 +493,7 @@ class HUD extends Component<HudProps, HudState> {
         <LogPane
           logLines={allLogs}
           showManifestPrefix={true}
+          manifestName={""}
           handleSetHighlight={this.handleSetHighlight}
           handleClearHighlight={this.handleClearHighlight}
           highlight={this.state.snapshotHighlight}
