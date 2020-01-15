@@ -112,13 +112,14 @@ goimports:
 
 verify_goimports:
 	# any files printed here need to be formatted by running `make goimports`
-	bash -c 'diff <(goimports -l $(GOIMPORTS_LOCAL_ARG) $$(go list -f {{.Dir}} ./...)) <(echo -n)'
+	bash -c 'diff <(goimports -l $(GOIMPORTS_LOCAL_ARG) $$(go list -mod=vendor -f {{.Dir}} ./...)) <(echo -n)'
 
 benchmark:
 	go test -mod vendor -run=XXX -bench=. ./...
 
 errcheck:
-	errcheck -ignoretests -ignoregenerated ./...
+	# errcheck -ignoretests -ignoregenerated ./...
+  echo "WARNING: errcheck is currently disabled until we fix it to work with -mod vendor"
 
 wire:
 	toast wire
@@ -178,3 +179,9 @@ ensure: vendor
 
 vendor:
 	go mod vendor
+	# Patch client-go with our fixes to the informers.
+	# https://github.com/windmilleng/tilt/issues/2702
+	cp scripts/patch/cache/controller.go.patch vendor/k8s.io/client-go/tools/cache/controller.go
+	cp scripts/patch/cache/patch.go.patch vendor/k8s.io/client-go/tools/cache/patch.go
+	cp scripts/patch/cache/shared_informer.go.patch vendor/k8s.io/client-go/tools/cache/shared_informer.go
+	cp scripts/patch/cache/reflector.go.patch vendor/k8s.io/client-go/tools/cache/reflector.go

@@ -20,9 +20,14 @@ import (
 	kfake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	ktesting "k8s.io/client-go/testing"
+	"k8s.io/client-go/tools/cache"
 
 	"github.com/windmilleng/tilt/internal/testutils"
 )
+
+func TestTiltPatch(t *testing.T) {
+	assert.True(t, cache.IsTiltPatchApplied())
+}
 
 func TestK8sClient_WatchPods(t *testing.T) {
 	tf := newWatchTestFixture(t)
