@@ -75,7 +75,7 @@ type LocalResourceInfo struct {
 }
 
 func NewLocalResourceInfo(status model.RuntimeStatus, pid int, spanID model.LogSpanID) LocalResourceInfo {
-	return LocalResourceInfo{status: status}
+	return LocalResourceInfo{status: status, pid: pid, spanID: spanID}
 }
 
 var _ ResourceInfoView = LocalResourceInfo{}
