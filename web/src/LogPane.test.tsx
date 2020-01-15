@@ -344,6 +344,7 @@ it("renders without crashing", () => {
   Element.prototype.scrollIntoView = jest.fn()
   ReactDOM.render(
     <LogPane
+      manifestName={""}
       logLines={logLinesFromString("hello\nworld\nfoo")}
       showManifestPrefix={false}
       message="world"
@@ -363,6 +364,7 @@ it("renders logs", () => {
   const tree = renderer
     .create(
       <LogPane
+        manifestName={""}
         logLines={logLinesFromString(log)}
         showManifestPrefix={false}
         handleSetHighlight={fakeHandleSetHighlight}
@@ -381,6 +383,7 @@ it("renders logs with leading whitespace and ANSI codes", () => {
   const tree = renderer
     .create(
       <LogPane
+        manifestName={""}
         logLines={logLinesFromString(longLog)}
         showManifestPrefix={false}
         handleSetHighlight={fakeHandleSetHighlight}
@@ -404,6 +407,7 @@ it("renders highlighted lines", () => {
   }
   let el = (
     <LogPane
+      manifestName={""}
       logLines={logLinesFromString(log)}
       showManifestPrefix={false}
       handleSetHighlight={fakeHandleSetHighlight}
@@ -432,6 +436,7 @@ it("scrolls to highlighted lines in snapshot", () => {
   }
   const wrapper = mount<LogPane>(
     <LogPane
+      manifestName={""}
       logLines={logLinesFromString(longLog)}
       showManifestPrefix={false}
       handleSetHighlight={fakeHandleSetHighlight}
@@ -462,6 +467,7 @@ it("does not scroll to highlighted lines if not snapshot", () => {
   }
   const wrapper = mount<LogPane>(
     <LogPane
+      manifestName={""}
       logLines={logLinesFromString(longLog)}
       showManifestPrefix={false}
       handleSetHighlight={fakeHandleSetHighlight}
@@ -492,6 +498,7 @@ it("doesn't set selection event handler if snapshot", () => {
   }
   const wrapper = mount<LogPane>(
     <LogPane
+      manifestName={""}
       logLines={logLinesFromString(longLog)}
       showManifestPrefix={false}
       handleSetHighlight={fakeHandleSetHighlight}

@@ -12,6 +12,7 @@ import styled from "styled-components"
 const WHEEL_DEBOUNCE_MS = 250
 
 type LogPaneProps = {
+  manifestName: string
   logLines: LogLine[]
   showManifestPrefix: boolean
   message?: string
@@ -155,9 +156,19 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
   }
 
   componentDidUpdate(prevProps: LogPaneProps) {
-    if (!this.state.autoscroll) {
-      return
+    if (prevProps.manifestName != this.props.manifestName) {
+      this.setState({
+        autoscroll: true,
+        lastWheelEventTimeMs: 0,
+      })
+
+      this.scrollLastElementIntoView()
+    } else if (this.state.autoscroll) {
+      this.scrollLastElementIntoView()
     }
+  }
+
+  scrollLastElementIntoView() {
     if (this.lastElement.current?.scrollIntoView) {
       this.lastElement.current.scrollIntoView()
     }
