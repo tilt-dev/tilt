@@ -4417,7 +4417,7 @@ func (f *fixture) newTiltfileLoader() TiltfileLoader {
 	}
 
 	k8sContextExt := k8scontext.NewExtension(f.k8sContext, f.k8sEnv)
-	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, dcc, f.webHost, features)
+	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, dcc, f.webHost, features, f.k8sEnv)
 }
 
 func newFixture(t *testing.T) *fixture {

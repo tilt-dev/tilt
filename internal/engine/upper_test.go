@@ -3418,13 +3418,14 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 		t.Fatal(err)
 	}
 
+	env := k8s.EnvDockerDesktop
 	fwm := NewWatchManager(watcher.newSub, timerMaker.maker())
 	pfc := NewPortForwardController(kCli)
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdUpTags{})
-	ar := engineanalytics.ProvideAnalyticsReporter(ta, st)
+	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, env)
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
-	k8sContextExt := k8scontext.NewExtension("fake-context", k8s.EnvDockerDesktop)
-	tfl := tiltfile.ProvideTiltfileLoader(ta, kCli, k8sContextExt, fakeDcc, "localhost", feature.MainDefaults)
+	k8sContextExt := k8scontext.NewExtension("fake-context", env)
+	tfl := tiltfile.ProvideTiltfileLoader(ta, kCli, k8sContextExt, fakeDcc, "localhost", feature.MainDefaults, env)
 	cc := configs.NewConfigsController(tfl, dockerClient)
 	dcw := NewDockerComposeEventWatcher(fakeDcc)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)

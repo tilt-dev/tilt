@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/windmilleng/tilt/internal/analytics"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
 )
 
@@ -15,6 +16,7 @@ const analyticsReportingInterval = time.Minute * 15
 type AnalyticsReporter struct {
 	a       *analytics.TiltAnalytics
 	store   *store.Store
+	env     k8s.Env
 	started bool
 }
 
@@ -52,8 +54,13 @@ func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore) {
 
 var _ store.Subscriber = &AnalyticsReporter{}
 
-func ProvideAnalyticsReporter(a *analytics.TiltAnalytics, st *store.Store) *AnalyticsReporter {
-	return &AnalyticsReporter{a, st, false}
+func ProvideAnalyticsReporter(a *analytics.TiltAnalytics, st *store.Store, env k8s.Env) *AnalyticsReporter {
+	return &AnalyticsReporter{
+		a:       a,
+		store:   st,
+		env:     env,
+		started: false,
+	}
 }
 
 func (ar *AnalyticsReporter) report() {
@@ -97,6 +104,10 @@ func (ar *AnalyticsReporter) report() {
 	stats := map[string]string{
 		"up.starttime":           st.TiltStartTime.Format(time.RFC3339),
 		"builds.completed_count": strconv.Itoa(st.CompletedBuildCount),
+
+		// env should really be a global tag, but there's a circular dependency
+		// between the global tags and env initialization, so we add it manually.
+		"env": string(ar.env),
 	}
 
 	tiltfileIsInError := "false"

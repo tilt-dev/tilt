@@ -96,7 +96,8 @@ func ProvideTiltfileLoader(
 	k8sContextExt k8scontext.Extension,
 	dcCli dockercompose.DockerComposeClient,
 	webHost model.WebHost,
-	fDefaults feature.Defaults) TiltfileLoader {
+	fDefaults feature.Defaults,
+	env k8s.Env) TiltfileLoader {
 	return tiltfileLoader{
 		analytics:     analytics,
 		kCli:          kCli,
@@ -104,6 +105,7 @@ func ProvideTiltfileLoader(
 		dcCli:         dcCli,
 		webHost:       webHost,
 		fDefaults:     fDefaults,
+		env:           env,
 	}
 }
 
@@ -115,6 +117,7 @@ type tiltfileLoader struct {
 
 	k8sContextExt k8scontext.Extension
 	fDefaults     feature.Defaults
+	env           k8s.Env
 }
 
 var _ TiltfileLoader = &tiltfileLoader{}
@@ -200,6 +203,11 @@ func starlarkValueOrSequenceToSlice(v starlark.Value) []starlark.Value {
 func (tfl *tiltfileLoader) reportTiltfileLoaded(callCounts map[string]int,
 	argCounts map[string]map[string]int, loadDur time.Duration) {
 	tags := make(map[string]string)
+
+	// env should really be a global tag, but there's a circular dependency
+	// between the global tags and env initialization, so we add it manually.
+	tags["env"] = string(tfl.env)
+
 	for builtinName, count := range callCounts {
 		tags[fmt.Sprintf("tiltfile.invoked.%s", builtinName)] = strconv.Itoa(count)
 	}
