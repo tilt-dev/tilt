@@ -32,6 +32,30 @@ describe("LogStore", () => {
     expect(logLinesToString(logs.allLog(), true)).toEqual("foobar")
   })
 
+  it("handles caching", () => {
+    let logs = new LogStore()
+    logs.append({
+      spans: { "": {} },
+      segments: [newGlobalSegment("foo")],
+      fromCheckpoint: 0,
+      toCheckpoint: 1,
+    })
+
+    expect(logLinesToString(logs.allLog(), true)).toEqual("foo")
+    expect(logs.lineCache.length).toEqual(1)
+    expect(logs.allLog()[0]).toStrictEqual(logs.allLog()[0])
+
+    logs.append({
+      spans: { "": {} },
+      segments: [newGlobalSegment("bar")],
+      fromCheckpoint: 1,
+      toCheckpoint: 2,
+    })
+
+    expect(logLinesToString(logs.allLog(), true)).toEqual("foobar")
+    expect(logs.lineCache.length).toEqual(1)
+  })
+
   it("handles changing levels", () => {
     let logs = new LogStore()
     logs.append({
