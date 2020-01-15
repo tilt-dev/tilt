@@ -147,33 +147,36 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 	}
 	ctx = logger.CtxWithLogHandler(ctx, w)
 
-	statusCh := make(chan status)
+	statusCh := make(chan statusAndMetadata)
 
 	go processStatuses(statusCh, st, spec.ManifestName, proc.stillHasSameProcNum())
 
-	proc.doneCh = c.execer.Start(ctx, spec.ServeCmd, logger.Get(ctx).Writer(logger.InfoLvl), statusCh)
+	spanID := SpanIDForServeLog(proc.procNum)
+	proc.doneCh = c.execer.Start(ctx, spec.ServeCmd, logger.Get(ctx).Writer(logger.InfoLvl), statusCh, spanID)
 }
 
 func processStatuses(
-	statusCh chan status,
+	statusCh chan statusAndMetadata,
 	st store.RStore,
 	manifestName model.ManifestName,
 	stillHasSameProcNum func() bool) {
 	for {
 		select {
-		case status, ok := <-statusCh:
+		case sm, ok := <-statusCh:
 			if !ok {
 				return
 			}
 			if !stillHasSameProcNum() {
 				continue
 			}
-			runtimeStatus := status.ToRuntime()
+			runtimeStatus := sm.status.ToRuntime()
 			if runtimeStatus != "" {
 				// TODO(matt) when we get an error, the dot is red in the web ui, but green in the TUI
 				st.Dispatch(LocalServeStatusAction{
 					ManifestName: manifestName,
 					Status:       runtimeStatus,
+					PID:          sm.pid,
+					SpanID:       sm.spanID,
 				})
 			}
 		}
@@ -239,6 +242,12 @@ type ServeSpec struct {
 	ManifestName model.ManifestName
 	ServeCmd     model.Cmd
 	TriggerTime  time.Time // TriggerTime is how Runner knows to restart; if it's newer than the TriggerTime of the currently running command, then Runner should restart it
+}
+
+type statusAndMetadata struct {
+	pid    int
+	status status
+	spanID model.LogSpanID
 }
 
 type status int

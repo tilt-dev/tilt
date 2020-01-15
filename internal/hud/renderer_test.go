@@ -788,7 +788,7 @@ func TestPendingLocalResource(t *testing.T) {
 			StartTime: ts.Add(-5 * time.Second),
 			Edits:     []string{"node.json"},
 		},
-		ResourceInfo: view.NewLocalResourceInfo(model.RuntimeStatusPending),
+		ResourceInfo: view.NewLocalResourceInfo(model.RuntimeStatusPending, 0, model.LogSpanID("rt1")),
 	})
 
 	vs := fakeViewState(1, view.CollapseAuto)
@@ -803,7 +803,7 @@ func TestFinishedLocalResource(t *testing.T) {
 		BuildHistory: []model.BuildRecord{
 			model.BuildRecord{FinishTime: time.Now()},
 		},
-		ResourceInfo: view.NewLocalResourceInfo(model.RuntimeStatusNotApplicable),
+		ResourceInfo: view.NewLocalResourceInfo(model.RuntimeStatusNotApplicable, 0, model.LogSpanID("rt1")),
 	})
 
 	vs := fakeViewState(1, view.CollapseAuto)
@@ -839,7 +839,7 @@ func TestLocalResourceErroredServe(t *testing.T) {
 		BuildHistory: []model.BuildRecord{
 			model.BuildRecord{FinishTime: time.Now()},
 		},
-		ResourceInfo: view.NewLocalResourceInfo(model.RuntimeStatusError),
+		ResourceInfo: view.NewLocalResourceInfo(model.RuntimeStatusError, 0, model.LogSpanID("rt1")),
 	})
 
 	vs := fakeViewState(1, view.CollapseAuto)

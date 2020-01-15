@@ -18,7 +18,7 @@ import (
 )
 
 type Execer interface {
-	Start(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan status) chan struct{}
+	Start(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) chan struct{}
 }
 
 type fakeExecProcess struct {
@@ -37,7 +37,7 @@ func NewFakeExecer() *FakeExecer {
 	}
 }
 
-func (e *FakeExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan status) chan struct{} {
+func (e *FakeExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) chan struct{} {
 	e.mu.Lock()
 	_, ok := e.processes[cmd.String()]
 	e.mu.Unlock()
@@ -82,23 +82,23 @@ func (e *FakeExecer) stop(cmd string, exitCode int) error {
 	return nil
 }
 
-func fakeRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan status, doneCh chan struct{}, exitCh chan int) {
+func fakeRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, doneCh chan struct{}, exitCh chan int) {
 	defer close(doneCh)
 	defer close(statusCh)
 
 	_, _ = fmt.Fprintf(w, "Starting cmd %v", cmd)
 
-	statusCh <- Running
+	statusCh <- statusAndMetadata{status: Running}
 
 	select {
 	case <-ctx.Done():
 		_, _ = fmt.Fprintf(w, "cmd %v canceled", cmd)
 		// this was cleaned up by the controller, so it's not an error
-		statusCh <- Done
+		statusCh <- statusAndMetadata{status: Done}
 	case exitCode := <-exitCh:
 		_, _ = fmt.Fprintf(w, "cmd %v exited with code %d", cmd, exitCode)
 		// even an exit code of 0 is an error, because services aren't supposed to exit!
-		statusCh <- Error
+		statusCh <- statusAndMetadata{status: Error}
 	}
 }
 
@@ -121,15 +121,15 @@ func NewProcessExecer() *processExecer {
 	return &processExecer{}
 }
 
-func (e *processExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan status) chan struct{} {
+func (e *processExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) chan struct{} {
 	doneCh := make(chan struct{})
 
-	go processRun(ctx, cmd, w, statusCh, doneCh)
+	go processRun(ctx, cmd, w, statusCh, doneCh, spanID)
 
 	return doneCh
 }
 
-func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan status, doneCh chan struct{}) {
+func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, doneCh chan struct{}, spanID model.LogSpanID) {
 	defer close(doneCh)
 	defer close(statusCh)
 
@@ -144,8 +144,14 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 	errCh := make(chan error)
 
 	go func() {
-		statusCh <- Running
-		errCh <- c.Run()
+		err := c.Start()
+		if err != nil {
+			errCh <- err
+			return
+		}
+
+		statusCh <- statusAndMetadata{status: Running, pid: c.Process.Pid, spanID: spanID}
+		errCh <- c.Wait()
 	}()
 
 	select {
@@ -157,7 +163,7 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 		} else {
 			logger.Get(ctx).Infof("error execing %s: %v", cmd.String(), err)
 		}
-		statusCh <- Error
+		statusCh <- statusAndMetadata{status: Error, spanID: spanID}
 	case <-ctx.Done():
 		err := c.Process.Kill()
 		if err != nil {
@@ -170,6 +176,6 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 			case <-doneCh:
 			}
 		}
-		statusCh <- Done
+		statusCh <- statusAndMetadata{status: Done, spanID: spanID}
 	}
 }
