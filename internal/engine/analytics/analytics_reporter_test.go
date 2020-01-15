@@ -10,6 +10,7 @@ import (
 
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/k8s"
 
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
@@ -73,6 +74,7 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 		"resource.multipleimageliveupdate.count":              "1",
 		"tiltfile.error":                                      "false",
 		"up.starttime":                                        state.TiltStartTime.Format(time.RFC3339),
+		"env":                                                 string(k8s.EnvDockerDesktop),
 	}
 
 	tf.assertStats(t, expectedTags)
@@ -151,6 +153,7 @@ func TestAnalyticsReporter_TiltfileError(t *testing.T) {
 		"builds.completed_count": "3",
 		"tiltfile.error":         "true",
 		"up.starttime":           state.TiltStartTime.Format(time.RFC3339),
+		"env":                    string(k8s.EnvDockerDesktop),
 	}
 
 	tf.assertStats(t, expectedTags)
@@ -158,7 +161,7 @@ func TestAnalyticsReporter_TiltfileError(t *testing.T) {
 
 type analyticsReporterTestFixture struct {
 	manifestCount int
-	ar            AnalyticsReporter
+	ar            *AnalyticsReporter
 	ma            *analytics.MemoryAnalytics
 }
 
@@ -166,12 +169,7 @@ func newAnalyticsReporterTestFixture() *analyticsReporterTestFixture {
 	st, _ := store.NewStoreForTesting()
 	opter := tiltanalytics.NewFakeOpter(analytics.OptIn)
 	ma, a := tiltanalytics.NewMemoryTiltAnalyticsForTest(opter)
-	ar := AnalyticsReporter{
-		a:       a,
-		store:   st,
-		started: false,
-	}
-
+	ar := ProvideAnalyticsReporter(a, st, k8s.EnvDockerDesktop)
 	return &analyticsReporterTestFixture{
 		manifestCount: 0,
 		ar:            ar,
