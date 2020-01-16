@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
-	"path"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -60,15 +60,20 @@ func (c *argsCmd) run(ctx context.Context, args []string) error {
 		}
 	}
 	schemeHostPort := fmt.Sprintf("http://localhost:%d", c.webPort)
-	url := path.Join(schemeHostPort, "api", "set_tiltfile_args")
+	u, err := url.Parse(schemeHostPort)
+	if err != nil {
+		return errors.Wrap(err, "internal error forming URL")
+	}
+	u.Path = "/api/set_tiltfile_args"
 	body := &bytes.Buffer{}
-	err := json.NewEncoder(body).Encode(args)
+	err = json.NewEncoder(body).Encode(args)
 	if err != nil {
 		return errors.Wrap(err, "failed to encode args as json")
 	}
-	res, err := c.post(url, "application/json", body)
+	res, err := c.post(u.String(), "application/json", body)
 	if err != nil {
-		return errors.Wrapf(err, "error making http request to Tilt at %s", url)
+		fmt.Println("tilt args requires a running Tilt instance")
+		return errors.Wrapf(err, "error making http request to Tilt at %s", u.String())
 	}
 	defer func() {
 		_ = res.Body.Close()

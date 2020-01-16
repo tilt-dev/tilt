@@ -43,6 +43,7 @@ type fixture struct {
 	tilt          *TiltDriver
 	activeTiltUp  *TiltUpResponse
 	tearingDown   bool
+	tiltArgs      []string
 }
 
 func newFixture(t *testing.T, dir string) *fixture {
@@ -163,7 +164,7 @@ func (f *fixture) TiltUp(name string) {
 }
 
 func (f *fixture) TiltWatch() {
-	response, err := f.tilt.Up(nil, f.LogWriter())
+	response, err := f.tilt.Up(f.tiltArgs, f.LogWriter())
 	if err != nil {
 		f.t.Fatalf("TiltWatch: %v", err)
 	}
@@ -171,7 +172,7 @@ func (f *fixture) TiltWatch() {
 }
 
 func (f *fixture) TiltWatchExec() {
-	response, err := f.tilt.Up([]string{"--update-mode=exec"}, f.LogWriter())
+	response, err := f.tilt.Up(append([]string{"--update-mode=exec"}, f.tiltArgs...), f.LogWriter())
 	if err != nil {
 		f.t.Fatalf("TiltWatchExec: %v", err)
 	}

@@ -77,6 +77,11 @@ func (d *TiltDriver) Up(args []string, out io.Writer) (*TiltUpResponse, error) {
 	return response, nil
 }
 
+func (d *TiltDriver) Args(args []string, out io.Writer) error {
+	cmd := d.cmd(append([]string{"args"}, args...), out)
+	return cmd.Run()
+}
+
 type TiltUpResponse struct {
 	done chan struct{}
 	err  error
