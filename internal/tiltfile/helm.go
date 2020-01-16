@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
-	"helm.sh/helm/v3/pkg/chart"
 )
 
 // The helm template command outputs predictable yaml with a "Source:" comment,
@@ -128,9 +127,17 @@ func localSubchartDependenciesFromPath(chartPath string) ([]string, error) {
 	return localSubchartDependencies(dat)
 }
 
+type chartDependency struct {
+	Repository string
+}
+
+type chartMetadata struct {
+	Dependencies []chartDependency
+}
+
 func localSubchartDependencies(dat []byte) ([]string, error) {
 	var deps []string
-	var metadata chart.Metadata
+	var metadata chartMetadata
 
 	err := yaml.Unmarshal([]byte(dat), &metadata)
 	if err != nil {
