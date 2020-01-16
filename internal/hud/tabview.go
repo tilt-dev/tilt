@@ -50,7 +50,7 @@ func (v *TabView) log() string {
 		} else {
 			spanID = resource.LastBuild().SpanID
 		}
-	case view.TabPodLog:
+	case view.TabRuntimeLog:
 		_, resource := selectedResource(v.view, v.viewState)
 		if resource.ResourceInfo != nil {
 			spanID = resource.ResourceInfo.RuntimeSpanID()
@@ -89,10 +89,10 @@ func (v *TabView) buildTabs(isMax bool) rty.Component {
 		l.Add(v.buildTab("2: build log"))
 	}
 	l.Add(rty.TextString("│"))
-	if v.tabState == view.TabPodLog {
-		l.Add(v.buildTab("3: POD LOG"))
+	if v.tabState == view.TabRuntimeLog {
+		l.Add(v.buildTab("3: RUNTIME LOG"))
 	} else {
-		l.Add(v.buildTab("3: pod log"))
+		l.Add(v.buildTab("3: runtime log"))
 	}
 	l.Add(rty.TextString("│ "))
 	l.Add(renderPaneHeader(isMax))

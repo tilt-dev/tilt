@@ -196,7 +196,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				h.currentViewState.TabState = view.TabBuildLog
 			case r == '3':
 				h.recordInteraction("tab_pod_log")
-				h.currentViewState.TabState = view.TabPodLog
+				h.currentViewState.TabState = view.TabRuntimeLog
 			}
 		case tcell.KeyUp:
 			h.activeScroller().Up()

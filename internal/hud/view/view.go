@@ -235,7 +235,7 @@ type TabState int
 const (
 	TabAllLog TabState = iota
 	TabBuildLog
-	TabPodLog
+	TabRuntimeLog
 )
 
 type CollapseState int
