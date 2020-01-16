@@ -9,8 +9,6 @@ import { SizeUnit, Width } from "./style-helpers"
 import findLogLineID from "./findLogLine"
 import styled from "styled-components"
 
-const WHEEL_DEBOUNCE_MS = 250
-
 type LogPaneProps = {
   manifestName: string
   logLines: LogLine[]
@@ -21,11 +19,6 @@ type LogPaneProps = {
   highlight: SnapshotHighlight | null | undefined
   modalIsOpen: boolean
   isSnapshot: boolean
-}
-
-type LogPaneState = {
-  autoscroll: boolean
-  lastWheelEventTimeMs: number
 }
 
 type LogLineComponentProps = {
@@ -115,21 +108,24 @@ class LogLineComponent extends PureComponent<LogLineComponentProps> {
   }
 }
 
-class LogPane extends Component<LogPaneProps, LogPaneState> {
+class LogPane extends Component<LogPaneProps> {
   highlightRef: React.RefObject<LogLineComponent> = React.createRef()
   private lastElement: React.RefObject<HTMLParagraphElement> = React.createRef()
   private rafID: number | null = null
 
+  // Whether we're auto-scrolling to the bottom of the screen.
+  private autoscroll: boolean
+
+  // Track the pageYOffset to see if the user is scrolling upwards.
+  private pageYOffset: number
+
   constructor(props: LogPaneProps) {
     super(props)
 
-    this.state = {
-      autoscroll: true,
-      lastWheelEventTimeMs: 0,
-    }
+    this.autoscroll = true
+    this.pageYOffset = -1
 
-    this.refreshAutoScroll = this.refreshAutoScroll.bind(this)
-    this.handleWheel = this.handleWheel.bind(this)
+    this.onScroll = this.onScroll.bind(this)
     this.handleSelectionChange = this.handleSelectionChange.bind(this)
   }
 
@@ -145,25 +141,22 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     }
 
     if (!this.props.isSnapshot) {
-      window.addEventListener("scroll", this.refreshAutoScroll, {
+      window.addEventListener("scroll", this.onScroll, {
         passive: true,
       })
       document.addEventListener("selectionchange", this.handleSelectionChange, {
         passive: true,
       })
-      window.addEventListener("wheel", this.handleWheel, { passive: true })
     }
   }
 
   componentDidUpdate(prevProps: LogPaneProps) {
     if (prevProps.manifestName != this.props.manifestName) {
-      this.setState({
-        autoscroll: true,
-        lastWheelEventTimeMs: 0,
-      })
+      this.autoscroll = true
+      this.pageYOffset = -1
 
       this.scrollLastElementIntoView()
-    } else if (this.state.autoscroll) {
+    } else if (this.autoscroll) {
       this.scrollLastElementIntoView()
     }
   }
@@ -175,8 +168,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
   }
 
   componentWillUnmount() {
-    window.removeEventListener("scroll", this.refreshAutoScroll)
-    window.removeEventListener("wheel", this.handleWheel)
+    window.removeEventListener("scroll", this.onScroll)
     if (this.rafID) {
       clearTimeout(this.rafID)
     }
@@ -227,36 +219,53 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       }
     }
   }
-  private handleWheel(event: WheelEvent) {
-    if (event.deltaY < 0) {
-      this.setState({ autoscroll: false, lastWheelEventTimeMs: Date.now() })
+
+  private onScroll() {
+    let pageYOffset = window.pageYOffset
+    let oldPageYOffset = this.pageYOffset
+    let autoscroll = this.autoscroll
+
+    this.pageYOffset = pageYOffset
+    if (oldPageYOffset === -1 || oldPageYOffset === pageYOffset) {
+      return
+    }
+
+    // If we're scrolled horizontally, cancel the autoscroll.
+    if (window.pageXOffset > 0) {
+      this.autoscroll = false
+      return
+    }
+
+    // If we're autoscrolling, and the user scrolled up,
+    // cancel the autoscroll.
+    if (autoscroll && pageYOffset < oldPageYOffset) {
+      this.autoscroll = false
+      return
+    }
+
+    // If we're not autoscrolling, and the user scrolled down,
+    // we may have to re-engage the autoscroll.
+    if (!autoscroll && pageYOffset > oldPageYOffset) {
+      this.maybeEngageAutoscroll()
     }
   }
 
-  private refreshAutoScroll() {
+  maybeEngageAutoscroll() {
     if (this.rafID) {
       cancelAnimationFrame(this.rafID)
     }
 
     this.rafID = requestAnimationFrame(() => {
       let autoscroll = this.computeAutoScroll()
-      this.setState(prevState => {
-        let lastWheelEventTimeMs = prevState.lastWheelEventTimeMs
-        if (lastWheelEventTimeMs) {
-          if (Date.now() - lastWheelEventTimeMs < WHEEL_DEBOUNCE_MS) {
-            return prevState
-          }
-          return { autoscroll: false, lastWheelEventTimeMs: 0 }
-        }
-
-        return { autoscroll, lastWheelEventTimeMs: 0 }
-      })
+      if (autoscroll) {
+        this.autoscroll = true
+      }
     })
   }
 
   // Compute whether we should auto-scroll from the state of the DOM.
   // This forces a layout, so should be used sparingly.
-  computeAutoScroll() {
+  private computeAutoScroll() {
     // Always auto-scroll when we're recovering from a loading screen.
     if (!this.props.logLines?.length || !this.lastElement.current) {
       return true
