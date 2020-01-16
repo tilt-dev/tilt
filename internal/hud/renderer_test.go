@@ -773,7 +773,7 @@ func TestRenderTabView(t *testing.T) {
 	vs.TabState = view.TabBuildLog
 	rtf.run("log tab build", 117, 20, v, vs)
 
-	vs.TabState = view.TabPodLog
+	vs.TabState = view.TabRuntimeLog
 	rtf.run("log tab pod", 117, 20, v, vs)
 }
 
