@@ -112,15 +112,12 @@ func unableToFindHelmErrorMessage() error {
 }
 
 func localSubchartDependenciesFromPath(chartPath string) ([]string, error) {
-	requirementsPath := filepath.Join(chartPath, "requirements.yaml")
-	_, err := os.Stat(requirementsPath)
 	var deps []string
+	requirementsPath := filepath.Join(chartPath, "requirements.yaml")
+	dat, err := ioutil.ReadFile(requirementsPath)
 	if os.IsNotExist(err) {
 		return deps, nil
-	}
-
-	dat, err := ioutil.ReadFile(requirementsPath)
-	if err != nil {
+	} else if err != nil {
 		return deps, err
 	}
 
