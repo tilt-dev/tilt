@@ -39,6 +39,8 @@ func TestAppendDifferentLevelsMultiLines(t *testing.T) {
 
 func TestLog_AppendOverLimit(t *testing.T) {
 	l := NewLogStore()
+	l.maxLogLengthInBytes = 100
+
 	l.Append(newGlobalTestLogEvent("hello\n"), nil)
 	sb := strings.Builder{}
 	for i := 0; i < l.maxLogLengthInBytes/2; i++ {
