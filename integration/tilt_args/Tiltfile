@@ -1,0 +1,6 @@
+config.define_string_list('resources', args=True)
+cfg = config.parse()
+config.set_enabled_resources(cfg.get('resources', []))
+
+local_resource('foo', 'echo foo run')
+local_resource('bar', 'echo bar run')

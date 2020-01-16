@@ -45,4 +45,11 @@ func (b *ThreadSafeBuffer) WaitUntilContains(expected string, timeout time.Durat
 	return fmt.Errorf("Timeout. Expected %q. Actual: %s", expected, b.String())
 }
 
+func (b *ThreadSafeBuffer) Reset() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	b.buf.Reset()
+}
+
 var _ io.Writer = &ThreadSafeBuffer{}
