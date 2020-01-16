@@ -2,5 +2,7 @@ config.define_string_list('resources', args=True)
 cfg = config.parse()
 config.set_enabled_resources(cfg.get('resources', []))
 
-local_resource('foo', 'echo foo run')
-local_resource('bar', 'echo bar run')
+# dumb trick - put the args in quotes so that when the test looks for "foo run" or "bar run", they
+# match the output of echo, and not Tilt logging the command line
+local_resource('foo', 'echo "foo" "run"')
+local_resource('bar', 'echo "bar" "run"')
