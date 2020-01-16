@@ -12,9 +12,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
+
+	"github.com/windmilleng/tilt/pkg/logger"
 )
 
 type watcherFactory func(namespace string) watcher
@@ -89,6 +92,7 @@ func (kCli K8sClient) makeInformer(
 	if err != nil {
 		return nil, errors.Wrap(err, "makeInformer")
 	}
+
 	return resFactory.Informer(), nil
 }
 
@@ -123,7 +127,7 @@ func (kCli K8sClient) WatchEvents(ctx context.Context) (<-chan *v1.Event, error)
 		},
 	})
 
-	go informer.Run(ctx.Done())
+	go runInformer(ctx, "events", informer)
 
 	return ch, nil
 }
@@ -169,7 +173,7 @@ func (kCli K8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan
 		},
 	})
 
-	go informer.Run(ctx.Done())
+	go runInformer(ctx, "pods", informer)
 
 	return ch, nil
 }
@@ -197,7 +201,37 @@ func (kCli K8sClient) WatchServices(ctx context.Context, ls labels.Selector) (<-
 		},
 	})
 
-	go informer.Run(ctx.Done())
+	go runInformer(ctx, "services", informer)
 
 	return ch, nil
+}
+
+func runInformer(ctx context.Context, name string, informer cache.SharedInformer) {
+	originalDuration := 3 * time.Second
+	originalBackoff := wait.Backoff{
+		Steps:    1000,
+		Duration: originalDuration,
+		Factor:   3.0,
+		Jitter:   0.5,
+		Cap:      time.Hour,
+	}
+	backoff := originalBackoff
+	_ = informer.SetDropWatchHandler(func(err error, doneCh <-chan struct{}) {
+		sleepTime := originalDuration
+		if err != nil {
+			sleepTime = backoff.Step()
+			logger.Get(ctx).Warnf("Pausing k8s %s watcher for %s: %v",
+				name,
+				sleepTime.Truncate(time.Second),
+				err)
+		} else {
+			backoff = originalBackoff
+		}
+
+		select {
+		case <-doneCh:
+		case <-time.After(sleepTime):
+		}
+	})
+	informer.Run(ctx.Done())
 }
