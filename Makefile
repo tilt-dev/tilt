@@ -118,8 +118,11 @@ benchmark:
 	go test -mod vendor -run=XXX -bench=. ./...
 
 errcheck:
-	# errcheck -ignoretests -ignoregenerated ./...
-  echo "WARNING: errcheck is currently disabled until we fix it to work with -mod vendor"
+ifneq ($(CIRCLECI),true)
+	golangci-lint run
+else
+	golangci-lint run	 --out-format junit-xml
+endif
 
 wire:
 	toast wire

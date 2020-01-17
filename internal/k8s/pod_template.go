@@ -19,7 +19,10 @@ func HashPodTemplateSpec(spec *v1.PodTemplateSpec) (PodTemplateSpecHash, error) 
 	}
 
 	h := crypto.SHA1.New()
-	h.Write(data)
+	_, err = h.Write(data)
+	if err != nil {
+		return "", errors.Wrap(err, "writing to hash")
+	}
 	return PodTemplateSpecHash(fmt.Sprintf("%x", h.Sum(nil)[:10])), nil
 }
 
