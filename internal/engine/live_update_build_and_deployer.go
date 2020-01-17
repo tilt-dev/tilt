@@ -167,7 +167,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps 
 				// Keep running updates -- we want all containers to have the same files on them
 				// even if the Runs don't succeed
 				lastUserBuildFailure = err
-				logger.Get(ctx).Infof("  → Failed to update container %s: run step %q failed with with exit code: %d",
+				logger.Get(ctx).Infof("  → Failed to update container %s: run step %q failed with exit code: %d",
 					cInfo.ContainerID.ShortStr(), runFail.Cmd.String(), runFail.ExitCode)
 				continue
 			}
