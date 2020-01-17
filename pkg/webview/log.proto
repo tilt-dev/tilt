@@ -31,6 +31,10 @@ message LogSegment {
 	//        warning1, line2
 	// Anchor warning2, line1
   bool anchor = 5;
+
+  // Context-specific optional fields for a log segment.
+  // Used for experimenting with new types of log metadata.
+  map<string, string> fields = 6;
 }
 
 message LogSpan {
