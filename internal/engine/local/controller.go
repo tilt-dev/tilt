@@ -224,12 +224,12 @@ type LocalServeLogActionWriter struct {
 	procNum             int
 }
 
-func (w LocalServeLogActionWriter) Write(level logger.Level, p []byte) error {
+func (w LocalServeLogActionWriter) Write(level logger.Level, fields logger.Fields, p []byte) error {
 	if !w.stillHasSameProcNum() {
 		return nil
 	}
 
-	w.store.Dispatch(store.NewLogAction(w.manifestName, SpanIDForServeLog(w.procNum), level, p))
+	w.store.Dispatch(store.NewLogAction(w.manifestName, SpanIDForServeLog(w.procNum), level, fields, p))
 	return nil
 }
 

@@ -50,7 +50,7 @@ func newLogStyle(ctx context.Context) (*proto.LogStyle, error) {
 }
 
 func makeContext(ctx context.Context, logStyle *proto.LogStyle, f func(m *proto.LogMessage) error) (context.Context, error) {
-	writeLog := func(level logger.Level, bytes []byte) error {
+	writeLog := func(level logger.Level, fields logger.Fields, bytes []byte) error {
 		protoLevel, err := logLevelToProto(level)
 		if err != nil {
 			return err

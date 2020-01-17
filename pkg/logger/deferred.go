@@ -17,7 +17,7 @@ type DeferredLogger struct {
 func NewDeferredLogger(ctx context.Context) *DeferredLogger {
 	original := Get(ctx)
 	dLogger := &DeferredLogger{original: original}
-	fLogger := NewFuncLogger(original.SupportsColor(), original.Level(), func(level Level, b []byte) error {
+	fLogger := NewFuncLogger(original.SupportsColor(), original.Level(), func(level Level, fields Fields, b []byte) error {
 		dLogger.mu.Lock()
 		defer dLogger.mu.Unlock()
 		if dLogger.output != nil {
