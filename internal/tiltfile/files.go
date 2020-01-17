@@ -88,6 +88,7 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 
 	_, err = exec.LookPath(cmd[0])
 	if err != nil {
+		s.logger.Infof("Falling back to `kubectl kustomize` since `kubectl` was not found in PATH")
 		cmd = []string{"kubectl", "kustomize", kustomizePath}
 	}
 
