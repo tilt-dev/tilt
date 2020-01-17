@@ -328,6 +328,8 @@ func cleanupDockerBuildError(err string) string {
 	return ret
 }
 
+type dockerMessageID string
+
 // Docker API commands stream back a sequence of JSON messages.
 //
 // The result of the command is in a JSON object with field "aux".
@@ -340,6 +342,9 @@ func cleanupDockerBuildError(err string) string {
 func readDockerOutput(ctx context.Context, reader io.Reader, writer io.Writer) (dockerOutput, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-readDockerOutput")
 	defer span.Finish()
+
+	progressLastPrinted := make(map[dockerMessageID]time.Time)
+	progressPrintWait := make(map[dockerMessageID]time.Duration)
 
 	result := dockerOutput{}
 	decoder := json.NewDecoder(reader)
@@ -381,6 +386,29 @@ func readDockerOutput(ctx context.Context, reader io.Reader, writer io.Writer) (
 
 		if message.Error != nil {
 			return dockerOutput{}, errors.New(cleanupDockerBuildError(message.Error.Message))
+		}
+
+		id := dockerMessageID(message.ID)
+		if id != "" && message.Progress != nil {
+			// TODO(nick): Han and I have a plan for a more clever display
+			// algorithm, but for now just throttle the progress print a bit.
+			lastPrinted, hasBeenPrinted := progressLastPrinted[id]
+			waitDur := progressPrintWait[id]
+			shouldPrint := !hasBeenPrinted ||
+				message.Progress.Current == message.Progress.Total ||
+				time.Since(lastPrinted) > waitDur
+			shouldSkip := message.Progress.Current == 0 &&
+				(message.Status == "Waiting" || message.Status == "Preparing")
+			if shouldPrint && !shouldSkip {
+				_, _ = fmt.Fprintf(writer, "%s: %s %s\n",
+					id, message.Status, message.Progress.String())
+				progressLastPrinted[id] = time.Now()
+				if waitDur == 0 {
+					progressPrintWait[id] = 5 * time.Second
+				} else {
+					progressPrintWait[id] = 2 * waitDur
+				}
+			}
 		}
 
 		if messageIsFromBuildkit(message) {
