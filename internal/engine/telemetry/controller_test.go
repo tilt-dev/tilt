@@ -187,7 +187,7 @@ func (tcf *tcFixture) assertNoLogs() {
 func (tcf *tcFixture) assertLog(logMsg string) {
 	actions := tcf.st.Actions()
 	for _, a := range actions {
-		if la, ok := a.(LogAction); ok {
+		if la, ok := a.(store.LogAction); ok {
 			containsExpected := strings.Contains(string(la.Message()), logMsg)
 			if containsExpected {
 				return

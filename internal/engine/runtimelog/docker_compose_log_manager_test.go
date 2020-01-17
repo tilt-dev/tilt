@@ -28,7 +28,7 @@ cache    | # Redis version=5.0.7, bits=64, commit=00000000, modified=0, pid=1, j
 	expected := `# oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
 # Redis version=5.0.7, bits=64, commit=00000000, modified=0, pid=1, just started
 `
-	assert.Equal(t, expected, string(actions[0].(DockerComposeLogAction).Message()))
+	assert.Equal(t, expected, string(actions[0].(store.LogAction).Message()))
 }
 
 func TestBrokenLine(t *testing.T) {
@@ -50,10 +50,10 @@ cache    | # Redis version=5.0.7, bits=64, commit=00000000, modified=0, pid=1, j
 	require.Equal(t, 2, len(actions))
 
 	expected1 := `# oO0OoO0`
-	assert.Equal(t, expected1, string(actions[0].(DockerComposeLogAction).Message()))
+	assert.Equal(t, expected1, string(actions[0].(store.LogAction).Message()))
 
 	expected2 := `OoO0Oo Redis is starting oO0OoO0OoO0Oo
 # Redis version=5.0.7, bits=64, commit=00000000, modified=0, pid=1, just started
 `
-	assert.Equal(t, expected2, string(actions[1].(DockerComposeLogAction).Message()))
+	assert.Equal(t, expected2, string(actions[1].(store.LogAction).Message()))
 }

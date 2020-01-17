@@ -18,12 +18,6 @@ type BuildStartedAction struct {
 
 func (BuildStartedAction) Action() {}
 
-type BuildLogAction struct {
-	store.LogEvent
-}
-
-func (BuildLogAction) Action() {}
-
 type BuildCompleteAction struct {
 	ManifestName model.ManifestName
 	SpanID       logstore.SpanID

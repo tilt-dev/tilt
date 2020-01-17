@@ -92,7 +92,7 @@ func TestStateToViewTiltfileLog(t *testing.T) {
 	es := newState([]model.Manifest{})
 	spanID := configs.SpanIDForLoadCount(1)
 	es.LogStore.Append(
-		store.NewLogEvent(store.TiltfileManifestName, spanID, logger.InfoLvl, []byte("hello")),
+		store.NewLogAction(store.TiltfileManifestName, spanID, logger.InfoLvl, []byte("hello")),
 		nil)
 	v := stateToProtoView(t, *es)
 	r, ok := findResource("(Tiltfile)", v)

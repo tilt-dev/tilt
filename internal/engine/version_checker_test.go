@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/windmilleng/tilt/internal/engine/runtimelog"
 	"github.com/windmilleng/tilt/internal/github"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
@@ -68,11 +67,11 @@ const infiniteDelay = -1
 func newVersionCheckerFixture(t *testing.T) *versionCheckerFixture {
 	out := bufsync.NewThreadSafeBuffer()
 	reducer := func(ctx context.Context, state *store.EngineState, action store.Action) {
-		podLog, ok := action.(runtimelog.PodLogAction)
+		event, ok := action.(store.LogAction)
 		if !ok {
-			t.Errorf("Expected action type PodLogAction. Actual: %T", action)
+			t.Errorf("Expected action type LogAction. Actual: %T", action)
 		}
-		out.Write(podLog.LogEvent.Message())
+		out.Write(event.Message())
 	}
 
 	st := store.NewStore(store.Reducer(reducer), store.LogActionsFlag(false))

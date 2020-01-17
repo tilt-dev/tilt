@@ -19,9 +19,7 @@ func NewTiltfileLogWriter(s store.RStore, loadCount int) *tiltfileLogWriter {
 }
 
 func (w *tiltfileLogWriter) Write(level logger.Level, p []byte) error {
-	w.store.Dispatch(TiltfileLogAction{
-		LogEvent: store.NewLogEvent(model.TiltfileManifestName, SpanIDForLoadCount(w.loadCount), level, p),
-	})
+	w.store.Dispatch(store.NewLogAction(model.TiltfileManifestName, SpanIDForLoadCount(w.loadCount), level, p))
 	return nil
 }
 

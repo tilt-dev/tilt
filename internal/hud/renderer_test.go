@@ -35,14 +35,14 @@ func newView(resources ...view.Resource) view.View {
 
 func newSpanLogReader(mn model.ManifestName, spanID logstore.SpanID, msg string) logstore.Reader {
 	logStore := logstore.NewLogStore()
-	logStore.Append(testLogEvent{mn: mn, spanID: spanID, time: time.Now(), msg: msg}, nil)
+	logStore.Append(testLogAction{mn: mn, spanID: spanID, time: time.Now(), msg: msg}, nil)
 	return logstore.NewReader(&sync.RWMutex{}, logStore)
 }
 
 func newWarningLogReader(mn model.ManifestName, spanID logstore.SpanID, warnings []string) logstore.Reader {
 	logStore := logstore.NewLogStore()
 	for _, warning := range warnings {
-		logStore.Append(testLogEvent{
+		logStore.Append(testLogAction{
 			mn:     mn,
 			spanID: spanID,
 			time:   time.Now(),
@@ -54,7 +54,7 @@ func newWarningLogReader(mn model.ManifestName, spanID logstore.SpanID, warnings
 }
 
 func appendSpanLog(logStore *logstore.LogStore, mn model.ManifestName, spanID logstore.SpanID, msg string) {
-	logStore.Append(testLogEvent{mn: mn, spanID: spanID, time: time.Now(), msg: msg}, nil)
+	logStore.Append(testLogAction{mn: mn, spanID: spanID, time: time.Now(), msg: msg}, nil)
 }
 
 func TestRender(t *testing.T) {
@@ -896,7 +896,7 @@ func newLogReader(msg string) logstore.Reader {
 	return logstore.NewReader(&sync.RWMutex{}, store)
 }
 
-type testLogEvent struct {
+type testLogAction struct {
 	mn     model.ManifestName
 	spanID logstore.SpanID
 	time   time.Time
@@ -904,25 +904,25 @@ type testLogEvent struct {
 	level  logger.Level
 }
 
-func (e testLogEvent) Message() []byte {
+func (e testLogAction) Message() []byte {
 	return []byte(e.msg)
 }
 
-func (e testLogEvent) Level() logger.Level {
+func (e testLogAction) Level() logger.Level {
 	if e.level == (logger.Level{}) {
 		return logger.InfoLvl
 	}
 	return e.level
 }
 
-func (e testLogEvent) Time() time.Time {
+func (e testLogAction) Time() time.Time {
 	return e.time
 }
 
-func (e testLogEvent) ManifestName() model.ManifestName {
+func (e testLogAction) ManifestName() model.ManifestName {
 	return e.mn
 }
 
-func (e testLogEvent) SpanID() logstore.SpanID {
+func (e testLogAction) SpanID() logstore.SpanID {
 	return e.spanID
 }
