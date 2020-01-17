@@ -71,7 +71,14 @@ declare namespace Proto {
     runtimeStatus?: string;
     isTiltfile?: boolean;
     showBuildStatus?: boolean;
+    /**
+     * Obsoleted by crash_log_span_id.
+     */
     crashLog?: string;
+    /**
+     * A span id for the log that crashed.
+     */
+    crashLogSpanId?: string;
     facets?: webviewFacet[];
     queued?: boolean;
   }

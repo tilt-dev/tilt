@@ -378,7 +378,12 @@
           "format": "boolean"
         },
         "crash_log": {
-          "type": "string"
+          "type": "string",
+          "description": "Obsoleted by crash_log_span_id."
+        },
+        "crash_log_span_id": {
+          "type": "string",
+          "description": "A span id for the log that crashed."
         },
         "facets": {
           "type": "array",
