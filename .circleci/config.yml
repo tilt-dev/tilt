@@ -4,7 +4,7 @@ orbs:
 jobs:
   build-linux:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:9b29e9882dc5c8df2b415615c1078c0b6e9a87d3baddfe6cfd51aa891344a073
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:0868ccf686cba2adf4c6c82b9a5c7062eeea123de49283676b066060f3381d3a
 
     steps:
       - checkout
