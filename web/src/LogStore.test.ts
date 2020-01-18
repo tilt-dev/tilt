@@ -179,4 +179,35 @@ describe("LogStore", () => {
       "line1\nline2\nline3\nline4\nline5"
     )
   })
+
+  it("handles progressLogs", () => {
+    let logs = new LogStore()
+    logs.append({
+      spans: { "": {} },
+      segments: [
+        { text: "layer 1: Pending\n", fields: { progressID: "layer 1" } },
+        { text: "layer 2: Pending\n", fields: { progressID: "layer 2" } },
+        { text: "layer 3: Pending\n", fields: { progressID: "layer 3" } },
+      ],
+      fromCheckpoint: 0,
+      toCheckpoint: 2,
+    })
+
+    expect(logLinesToString(logs.allLog(), true)).toEqual(
+      "layer 1: Pending\nlayer 2: Pending\nlayer 3: Pending"
+    )
+
+    console.log("appending")
+    logs.append({
+      segments: [
+        { text: "layer 2: Finished\n", fields: { progressID: "layer 2" } },
+      ],
+      fromCheckpoint: 2,
+      toCheckpoint: 3,
+    })
+
+    expect(logLinesToString(logs.allLog(), true)).toEqual(
+      "layer 1: Pending\nlayer 2: Finished\nlayer 3: Pending"
+    )
+  })
 })

@@ -11,6 +11,7 @@ type testLogEvent struct {
 	name    model.ManifestName
 	level   logger.Level
 	ts      time.Time
+	fields  logger.Fields
 	message string
 }
 
@@ -28,6 +29,10 @@ func (l testLogEvent) Time() time.Time {
 
 func (l testLogEvent) ManifestName() model.ManifestName {
 	return l.name
+}
+
+func (l testLogEvent) Fields() logger.Fields {
+	return l.fields
 }
 
 func (l testLogEvent) SpanID() SpanID {

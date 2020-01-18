@@ -9,6 +9,7 @@ import { LogLine } from "./types"
 // Firestore doesn't properly handle maps with keys equal to the empty string, so
 // we normalize all empty span ids to '_' client-side.
 const defaultSpanId = "_"
+const fieldNameProgressId = "progressID"
 
 type LogSpan = {
   manifestName: string
@@ -28,6 +29,7 @@ class StoredLine {
   text: string
   level: string
   anchor: boolean
+  fields: { [key: string]: string } | null
 
   constructor(seg: Proto.webviewLogSegment) {
     this.spanId = seg.spanId || defaultSpanId
@@ -35,6 +37,14 @@ class StoredLine {
     this.text = seg.text ?? ""
     this.level = seg.level ?? "INFO"
     this.anchor = seg.anchor ?? false
+    this.fields = (seg.fields as { [key: string]: string }) ?? null
+  }
+
+  field(key: string) {
+    if (!this.fields) {
+      return ""
+    }
+    return this.fields[key] ?? ""
   }
 
   isComplete() {
@@ -150,7 +160,9 @@ class LogStore {
         isStartingNewLine = true
       } else {
         let line = this.lines[span.lastLineIndex]
-        if (line.isComplete() || !line.canContinueLine(candidate)) {
+        if (this.maybeOverwriteLine(candidate, span)) {
+          return
+        } else if (line.isComplete() || !line.canContinueLine(candidate)) {
           isStartingNewLine = true
         } else {
           line.text += candidate.text
@@ -168,6 +180,41 @@ class LogStore {
         this.lines.push(candidate)
       }
     })
+  }
+
+  // If this line has a progress id, see if we can overwrite a previous line.
+  // Return true if we were able to overwrite the line successfully.
+  private maybeOverwriteLine(candidate: StoredLine, span: LogSpan): boolean {
+    let progressId = candidate.field(fieldNameProgressId)
+    if (!progressId) {
+      return false
+    }
+
+    // Iterate backwards and figure out which line to overwrite.
+    for (let i = span.lastLineIndex - 1; i >= span.firstLineIndex; i--) {
+      let cur = this.lines[i]
+      if (cur.spanId != candidate.spanId) {
+        // skip lines from other spans
+        // TODO(nick): maybe we should track if spans are interleaved, and rearrange the
+        // lines to make more sense?
+        continue
+      }
+
+      // If we're outside the "progress" zone, we couldn't find it.
+      let curProgressId = cur.field(fieldNameProgressId)
+      if (!curProgressId) {
+        return false
+      }
+
+      if (progressId != curProgressId) {
+        continue
+      }
+
+      cur.text = candidate.text
+      delete this.lineCache[i]
+      return true
+    }
+    return false
   }
 
   allLog(): LogLine[] {
