@@ -281,6 +281,13 @@
           "type": "boolean",
           "format": "boolean",
           "description": "When we store warnings in the LogStore, we break them up into lines and\nstore them as a series of line segments. 'anchor' marks the beginning of a\nseries of logs that should be kept together.\n\nAnchor warning1, line1\n       warning1, line2\nAnchor warning2, line1"
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Context-specific optional fields for a log segment.\nUsed for experimenting with new types of log metadata."
         }
       }
     },

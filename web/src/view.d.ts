@@ -100,6 +100,11 @@ declare namespace Proto {
      * Anchor warning2, line1
      */
     anchor?: boolean;
+    /**
+     * Context-specific optional fields for a log segment.
+     * Used for experimenting with new types of log metadata.
+     */
+    fields?: object;
   }
   export interface webviewLogList {
     spans?: object;
