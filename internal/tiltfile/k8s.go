@@ -917,7 +917,7 @@ func (s *tiltfileState) workloadToResourceFunctionNames(workloads []k8s.K8sEntit
 		id := newK8sObjectID(e)
 		name, err := s.workloadToResourceFunction.fn(thread, id)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error determing resource name for '%s'", id.String())
+			return nil, errors.Wrapf(err, "error determining resource name for '%s'", id.String())
 		}
 
 		if conflictingWorkload, ok := takenNames[name]; ok {

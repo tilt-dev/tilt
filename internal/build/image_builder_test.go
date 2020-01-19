@@ -183,13 +183,13 @@ func TestCleanUpBuildKitErrors(t *testing.T) {
 	}{
 		// actual error currently emitted by buildkit when a `RUN` fails
 		{
-			buildKitError:     "failed to solve with frontend dockerfile.v0: failed to build LLB: executor failed running [/bin/sh -c go install github.com/windmilleng/servantes/vigoda]: runc did not terminate sucessfully",
+			buildKitError:     "failed to solve with frontend dockerfile.v0: failed to build LLB: executor failed running [/bin/sh -c go install github.com/windmilleng/servantes/vigoda]: runc did not terminate successfully",
 			expectedTiltError: "executor failed running [/bin/sh -c go install github.com/windmilleng/servantes/vigoda]",
 		},
-		// artificial error - in case docker for some reason doesn't have "executor failed running", don't trim "runc did not terminate sucessfully"
+		// artificial error - in case docker for some reason doesn't have "executor failed running", don't trim "runc did not terminate structcessfully"
 		{
-			buildKitError:     "failed to solve with frontend dockerfile.v0: failed to build LLB: [/bin/sh -c go install github.com/windmilleng/servantes/vigoda]: runc did not terminate sucessfully",
-			expectedTiltError: "[/bin/sh -c go install github.com/windmilleng/servantes/vigoda]: runc did not terminate sucessfully",
+			buildKitError:     "failed to solve with frontend dockerfile.v0: failed to build LLB: [/bin/sh -c go install github.com/windmilleng/servantes/vigoda]: runc did not terminate successfully",
+			expectedTiltError: "[/bin/sh -c go install github.com/windmilleng/servantes/vigoda]: runc did not terminate successfully",
 		},
 		// actual error currently emitted by buildkit when an `ADD` file is missing
 		{
