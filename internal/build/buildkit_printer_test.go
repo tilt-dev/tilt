@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	controlapi "github.com/moby/buildkit/api/services/control"
+
+	"github.com/windmilleng/tilt/pkg/logger"
 )
 
 // NOTE(dmiller): set at runtime with:
@@ -65,7 +67,7 @@ func TestBuildkitPrinter(t *testing.T) {
 			}
 
 			output := &strings.Builder{}
-			p := newBuildkitPrinter(output)
+			p := newBuildkitPrinter(logger.NewLogger(logger.InfoLvl, output))
 
 			for _, resp := range responses {
 				err := p.parseAndPrint(toVertexes(resp))

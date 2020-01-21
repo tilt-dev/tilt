@@ -38,7 +38,7 @@ type dockerImageBuilder struct {
 type ImageBuilder interface {
 	BuildImage(ctx context.Context, ps *PipelineState, ref reference.Named, db model.DockerBuild, filter model.PathMatcher) (reference.NamedTagged, error)
 	DeprecatedFastBuildImage(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile, syncs []model.Sync, filter model.PathMatcher, runs []model.Run, entrypoint model.Cmd) (reference.NamedTagged, error)
-	PushImage(ctx context.Context, name reference.NamedTagged, writer io.Writer) (reference.NamedTagged, error)
+	PushImage(ctx context.Context, name reference.NamedTagged) (reference.NamedTagged, error)
 	TagImage(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
 	ImageExists(ctx context.Context, ref reference.NamedTagged) (bool, error)
 }
@@ -202,7 +202,7 @@ func (d *dockerImageBuilder) TagImage(ctx context.Context, ref reference.Named, 
 // TODO(nick) In the future, I would like us to be smarter about checking if the kubernetes cluster
 // we're running in has access to the given registry. And if it doesn't, we should either emit an
 // error, or push to a registry that kubernetes does have access to (e.g., a local registry).
-func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedTagged, writer io.Writer) (reference.NamedTagged, error) {
+func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedTagged) (reference.NamedTagged, error) {
 	l := logger.Get(ctx)
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-PushImage")
@@ -220,7 +220,7 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 		}
 	}()
 
-	_, err = readDockerOutput(ctx, imagePushResponse, writer)
+	_, err = readDockerOutput(ctx, imagePushResponse)
 	if err != nil {
 		return nil, errors.Wrapf(err, "pushing image %q", ref.Name())
 	}
@@ -279,7 +279,7 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 		}
 	}()
 
-	digest, err := d.getDigestFromBuildOutput(ctx, imageBuildResponse.Body, ps.Writer(ctx))
+	digest, err := d.getDigestFromBuildOutput(ps.AttachLogger(ctx), imageBuildResponse.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -292,8 +292,8 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 	return nt, nil
 }
 
-func (d *dockerImageBuilder) getDigestFromBuildOutput(ctx context.Context, reader io.Reader, writer io.Writer) (digest.Digest, error) {
-	result, err := readDockerOutput(ctx, reader, writer)
+func (d *dockerImageBuilder) getDigestFromBuildOutput(ctx context.Context, reader io.Reader) (digest.Digest, error) {
+	result, err := readDockerOutput(ctx, reader)
 	if err != nil {
 		return "", errors.Wrap(err, "ImageBuild")
 	}
@@ -339,7 +339,7 @@ type dockerMessageID string
 // NOTE(nick): I haven't found a good document describing this protocol
 // but you can find it implemented in Docker here:
 // https://github.com/moby/moby/blob/1da7d2eebf0a7a60ce585f89a05cebf7f631019c/pkg/jsonmessage/jsonmessage.go#L139
-func readDockerOutput(ctx context.Context, reader io.Reader, writer io.Writer) (dockerOutput, error) {
+func readDockerOutput(ctx context.Context, reader io.Reader) (dockerOutput, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-readDockerOutput")
 	defer span.Finish()
 
@@ -350,7 +350,7 @@ func readDockerOutput(ctx context.Context, reader io.Reader, writer io.Writer) (
 	decoder := json.NewDecoder(reader)
 	var innerSpan opentracing.Span
 
-	b := newBuildkitPrinter(logger.Get(ctx).Writer(logger.InfoLvl))
+	b := newBuildkitPrinter(logger.Get(ctx))
 
 	for decoder.More() {
 		if innerSpan != nil {
@@ -371,10 +371,7 @@ func readDockerOutput(ctx context.Context, reader io.Reader, writer io.Writer) (
 				result.shortDigest = builtDigestMatch[1]
 			}
 
-			_, err = writer.Write([]byte(msg))
-			if err != nil {
-				return dockerOutput{}, errors.Wrap(err, "failed to write docker output")
-			}
+			logger.Get(ctx).Write(logger.InfoLvl, []byte(msg))
 			if strings.HasPrefix(msg, "Run") || strings.HasPrefix(msg, "Running") {
 				innerSpan, ctx = opentracing.StartSpanFromContext(ctx, msg)
 			}
@@ -400,7 +397,7 @@ func readDockerOutput(ctx context.Context, reader io.Reader, writer io.Writer) (
 			shouldSkip := message.Progress.Current == 0 &&
 				(message.Status == "Waiting" || message.Status == "Preparing")
 			if shouldPrint && !shouldSkip {
-				_, _ = fmt.Fprintf(writer, "%s: %s %s\n",
+				logger.Get(ctx).Infof("%s: %s %s",
 					id, message.Status, message.Progress.String())
 				progressLastPrinted[id] = time.Now()
 				if waitDur == 0 {

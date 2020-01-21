@@ -49,7 +49,7 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, c *exec.Cmd, logOutput 
 	c.Stderr = stderr
 
 	if logOutput {
-		logOutput := NewMutexWriter(logger.NewPrefixedWriter(localLogPrefix, s.logger.Writer(logger.InfoLvl)))
+		logOutput := logger.NewMutexWriter(logger.NewPrefixedLogger(localLogPrefix, s.logger).Writer(logger.InfoLvl))
 		c.Stdout = io.MultiWriter(stdout, logOutput)
 		c.Stderr = io.MultiWriter(stderr, logOutput)
 	}

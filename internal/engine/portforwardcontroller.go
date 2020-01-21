@@ -104,13 +104,11 @@ func (m *PortForwardController) OnChange(ctx context.Context, st store.RStore) {
 
 	for _, entry := range toStart {
 		// Treat port-forwarding errors as part of the pod log
-		actionWriter := runtimelog.PodLogActionWriter{
+		ctx := logger.CtxWithLogHandler(entry.ctx, runtimelog.PodLogActionWriter{
 			Store:        st,
 			PodID:        entry.podID,
 			ManifestName: entry.name,
-		}
-		ctx := entry.ctx
-		ctx = logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), actionWriter))
+		})
 
 		for _, forward := range entry.forwards {
 			entry := entry

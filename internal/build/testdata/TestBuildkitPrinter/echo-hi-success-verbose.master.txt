@@ -1,6 +1,6 @@
-    ╎ [1/2] FROM docker.io/library/busybox@sha256:c94cf1b87ccb80f2e6414ef913c748b105060debda482058d2b8d0fce39f11b9
-    ╎ [1/2] done | 702ms
-    ╎ [2/2] RUN echo hi
-    ╎   → hi
-    ╎ [2/2] done | 1.365s
-    ╎ exporting to image
+[1/2] FROM docker.io/library/busybox@sha256:c94cf1b87ccb80f2e6414ef913c748b105060debda482058d2b8d0fce39f11b9
+[1/2] done | 702ms
+[2/2] RUN echo hi
+  → hi
+[2/2] done | 1.365s
+exporting to image

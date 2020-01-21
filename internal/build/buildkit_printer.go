@@ -2,7 +2,6 @@ package build
 
 import (
 	"fmt"
-	"io"
 	"regexp"
 	"strings"
 	"time"
@@ -13,7 +12,7 @@ import (
 )
 
 type buildkitPrinter struct {
-	writer io.Writer
+	logger logger.Logger
 	vData  map[digest.Digest]*vertexAndLogs
 	vOrder []digest.Digest
 }
@@ -25,13 +24,13 @@ type vertex struct {
 	started         bool
 	completed       bool
 	startPrinted    bool
+	errorPrinted    bool
 	completePrinted bool
 	cached          bool
 	duration        time.Duration
 }
 
 const internalPrefix = "[internal]"
-const buildPrefix = "    ╎ "
 const logPrefix = "  → "
 
 var stageNameRegexp = regexp.MustCompile("^\\[.+\\]")
@@ -59,7 +58,7 @@ type vertexAndLogs struct {
 	vertex      *vertex
 	logs        []*vertexLog
 	logsPrinted int
-	logWriter   io.Writer
+	logger      logger.Logger
 }
 
 type vertexLog struct {
@@ -67,9 +66,9 @@ type vertexLog struct {
 	msg    []byte
 }
 
-func newBuildkitPrinter(writer io.Writer) *buildkitPrinter {
+func newBuildkitPrinter(l logger.Logger) *buildkitPrinter {
 	return &buildkitPrinter{
-		writer: logger.NewPrefixedWriter(buildPrefix, writer),
+		logger: l,
 		vData:  map[digest.Digest]*vertexAndLogs{},
 		vOrder: []digest.Digest{},
 	}
@@ -88,9 +87,9 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) e
 			}
 		} else {
 			b.vData[v.digest] = &vertexAndLogs{
-				vertex:    v,
-				logs:      []*vertexLog{},
-				logWriter: logger.NewPrefixedWriter(logPrefix, b.writer),
+				vertex: v,
+				logs:   []*vertexLog{},
+				logger: logger.NewPrefixedLogger(logPrefix, b.logger),
 			}
 
 			b.vOrder = append(b.vOrder, v.digest)
@@ -113,23 +112,18 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) e
 			if vl.vertex.cached {
 				cachePrefix = "[cached] "
 			}
-			_, _ = fmt.Fprintf(b.writer, "%s%s\n", cachePrefix, vl.vertex.name)
+			b.logger.Infof("%s%s", cachePrefix, vl.vertex.name)
 			vl.vertex.startPrinted = true
 		}
 
-		if vl.vertex.isError() {
-			_, _ = fmt.Fprintf(b.writer, "\nERROR IN: %s\n", vl.vertex.name)
-			err := b.flushLogs(vl)
-			if err != nil {
-				return err
-			}
+		if vl.vertex.isError() && !vl.vertex.errorPrinted {
+			// TODO(nick): Should this be logger.Errorf?
+			b.logger.Infof("\nERROR IN: %s", vl.vertex.name)
+			vl.vertex.errorPrinted = true
 		}
 
-		if !vl.vertex.isInternal() {
-			err := b.flushLogs(vl)
-			if err != nil {
-				return err
-			}
+		if vl.vertex.isError() || !vl.vertex.isInternal() {
+			b.flushLogs(vl)
 		}
 
 		if vl.vertex.completed &&
@@ -138,7 +132,9 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) e
 			!vl.vertex.cached &&
 			vl.vertex.duration > 200*time.Millisecond &&
 			!vl.vertex.isError() {
-			_, _ = fmt.Fprintf(b.writer, "%s done | %s\n",
+
+			// TODO(nick): Should this use the progress API once it's available?
+			b.logger.Infof("%s done | %s",
 				vl.vertex.stageName(),
 				vl.vertex.duration.Truncate(time.Millisecond))
 			vl.vertex.completePrinted = true
@@ -148,11 +144,10 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) e
 	return nil
 }
 
-func (b *buildkitPrinter) flushLogs(vl *vertexAndLogs) error {
+func (b *buildkitPrinter) flushLogs(vl *vertexAndLogs) {
 	for vl.logsPrinted < len(vl.logs) {
 		l := vl.logs[vl.logsPrinted]
 		vl.logsPrinted++
-		_, _ = vl.logWriter.Write([]byte(l.msg))
+		vl.logger.Write(logger.InfoLvl, []byte(l.msg))
 	}
-	return nil
 }

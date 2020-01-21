@@ -164,28 +164,31 @@ func (m *PodLogManager) consumeLogs(watch PodLogWatch, st store.RStore) {
 	containerName := watch.cName
 	ns := watch.namespace
 	startTime := watch.startWatchTime
-	readCloser, err := m.kClient.ContainerLogs(watch.ctx, pID, containerName, ns, startTime)
+	ctx := logger.CtxWithLogHandler(watch.ctx, PodLogActionWriter{
+		Store:        st,
+		ManifestName: name,
+		PodID:        pID,
+	})
+	if watch.shouldPrefix {
+		prefix := fmt.Sprintf("[%s] ", watch.cName)
+		ctx = logger.WithLogger(ctx, logger.NewPrefixedLogger(prefix, logger.Get(ctx)))
+	}
+
+	readCloser, err := m.kClient.ContainerLogs(ctx, pID, containerName, ns, startTime)
 	if err != nil {
-		logger.Get(watch.ctx).Infof("Error streaming %s logs: %v", name, err)
+		// TODO(nick): Should this be Warnf/Errorf?
+		logger.Get(ctx).Infof("Error streaming %s logs: %v", name, err)
 		return
 	}
 	defer func() {
 		_ = readCloser.Close()
 	}()
 
-	var actionWriter io.Writer = PodLogActionWriter{
-		Store:        st,
-		ManifestName: name,
-		PodID:        pID,
-	}
-	if watch.shouldPrefix {
-		prefix := fmt.Sprintf("[%s] ", watch.cName)
-		actionWriter = logger.NewPrefixedWriter(prefix, actionWriter)
-	}
-
-	_, err = io.Copy(actionWriter, NewHardCancelReader(watch.ctx, readCloser))
-	if err != nil && watch.ctx.Err() == nil {
-		logger.Get(watch.ctx).Infof("Error streaming %s logs: %v", name, err)
+	_, err = io.Copy(logger.Get(ctx).Writer(logger.InfoLvl),
+		NewHardCancelReader(ctx, readCloser))
+	if err != nil && ctx.Err() == nil {
+		// TODO(nick): Should this be Warnf/Errorf?
+		logger.Get(ctx).Infof("Error streaming %s logs: %v", name, err)
 		return
 	}
 }
@@ -215,9 +218,9 @@ type PodLogActionWriter struct {
 	ManifestName model.ManifestName
 }
 
-func (w PodLogActionWriter) Write(p []byte) (n int, err error) {
-	w.Store.Dispatch(store.NewLogAction(w.ManifestName, SpanIDForPod(w.PodID), logger.InfoLvl, nil, p))
-	return len(p), nil
+func (w PodLogActionWriter) Write(level logger.Level, fields logger.Fields, p []byte) error {
+	w.Store.Dispatch(store.NewLogAction(w.ManifestName, SpanIDForPod(w.PodID), level, fields, p))
+	return nil
 }
 
 func SpanIDForPod(podID k8s.PodID) logstore.SpanID {

@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"context"
 	"fmt"
-	"io"
 	"strings"
 	"testing"
 	"time"
@@ -746,7 +745,7 @@ type fakeKINDPusher struct {
 	pushCount int
 }
 
-func (kp *fakeKINDPusher) PushToKIND(ctx context.Context, ref reference.NamedTagged, w io.Writer) error {
+func (kp *fakeKINDPusher) PushToKIND(ctx context.Context, ref reference.NamedTagged) error {
 	kp.pushCount++
 	return nil
 }

@@ -1,6 +1,6 @@
-    ╎ [stage-1 1/3] FROM docker.io/library/busybox@sha256:c94cf1b87ccb80f2e6414ef913c748b105060debda482058d2b8d0fce39f11b9
-    ╎ [builder 2/2] RUN echo hi > hi.txt
-    ╎ [builder 2/2] done | 1.16s
-    ╎ [stage-1 2/3] COPY --from=builder /dest/hi.txt /src/hi.txt
-    ╎ 
-    ╎ ERROR IN: [stage-1 2/3] COPY --from=builder /dest/hi.txt /src/hi.txt
+[stage-1 1/3] FROM docker.io/library/busybox@sha256:c94cf1b87ccb80f2e6414ef913c748b105060debda482058d2b8d0fce39f11b9
+[builder 2/2] RUN echo hi > hi.txt
+[builder 2/2] done | 1.16s
+[stage-1 2/3] COPY --from=builder /dest/hi.txt /src/hi.txt
+
+ERROR IN: [stage-1 2/3] COPY --from=builder /dest/hi.txt /src/hi.txt

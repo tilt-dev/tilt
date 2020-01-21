@@ -25,6 +25,9 @@ func NewFuncLogger(supportsColor bool, level Level, write func(level Level, fiel
 }
 
 func (l funcLogger) WithFields(fields Fields) Logger {
+	if len(fields) == 0 {
+		return l
+	}
 	newFields := make(map[string]string, len(l.fields)+len(fields))
 	for k, v := range l.fields {
 		newFields[k] = v

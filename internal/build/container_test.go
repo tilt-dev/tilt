@@ -4,7 +4,6 @@
 package build
 
 import (
-	"io/ioutil"
 	"strings"
 	"testing"
 	"time"
@@ -215,7 +214,7 @@ func TestPush(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	namedTagged, err := f.b.PushImage(f.ctx, ref, ioutil.Discard)
+	namedTagged, err := f.b.PushImage(f.ctx, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -245,7 +244,7 @@ func TestPushInvalid(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = f.b.PushImage(f.ctx, ref, ioutil.Discard)
+	_, err = f.b.PushImage(f.ctx, ref)
 	msg := `pushing image "localhost:5005/myimage"`
 	if err == nil || !strings.Contains(err.Error(), msg) {
 		t.Fatalf("Expected error containing %q, actual: %v", msg, err)

@@ -3,7 +3,6 @@ package build
 import (
 	"context"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
@@ -101,12 +100,12 @@ func (ps *PipelineState) Printf(ctx context.Context, format string, a ...interfa
 	}
 }
 
-func (ps *PipelineState) Writer(ctx context.Context) io.Writer {
+func (ps *PipelineState) AttachLogger(ctx context.Context) context.Context {
 	l := logger.Get(ctx)
-	underlying := l.Writer(logger.InfoLvl)
 	if ps.curBuildStep == 0 {
-		return underlying
+		return ctx
 	} else {
-		return logger.NewPrefixedWriter(buildStepOutputPrefix, underlying)
+		return logger.WithLogger(ctx,
+			logger.NewPrefixedLogger(buildStepOutputPrefix, l))
 	}
 }
