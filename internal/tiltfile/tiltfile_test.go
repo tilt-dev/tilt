@@ -4440,7 +4440,7 @@ func newFixture(t *testing.T) *fixture {
 	}
 
 	// Collect the warnings
-	l := logger.NewFuncLogger(false, logger.DebugLvl, func(level logger.Level, msg []byte) error {
+	l := logger.NewFuncLogger(false, logger.DebugLvl, func(level logger.Level, fields logger.Fields, msg []byte) error {
 		if level == logger.WarnLvl {
 			r.warnings = append(r.warnings, string(msg))
 		}

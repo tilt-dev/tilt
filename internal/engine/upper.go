@@ -274,7 +274,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	err := cb.Error
 	if err != nil {
 		s := fmt.Sprintf("Build Failed: %v", err)
-		handleLogAction(engineState, store.NewLogAction(mt.Manifest.Name, cb.SpanID, logger.ErrorLvl, []byte(s)))
+		handleLogAction(engineState, store.NewLogAction(mt.Manifest.Name, cb.SpanID, logger.ErrorLvl, nil, []byte(s)))
 	}
 
 	ms := mt.State

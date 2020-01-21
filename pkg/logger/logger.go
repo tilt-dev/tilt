@@ -45,10 +45,17 @@ type Logger interface {
 	Level() Level
 
 	SupportsColor() bool
+
+	WithFields(fields Fields) Logger
 }
 
+// Allow arbitrary fields on a log.
+// Inspired by the logrus.Fields API
+// https://github.com/sirupsen/logrus
+type Fields map[string]string
+
 type LogHandler interface {
-	Write(level Level, bytes []byte) error
+	Write(level Level, fields Fields, bytes []byte) error
 }
 
 type Level struct {
@@ -107,7 +114,7 @@ func NewLogger(minLevel Level, writer io.Writer) Logger {
 			supportsColor = isatty.IsTerminal(fd) || isatty.IsCygwinTerminal(fd)
 		}
 	}
-	return NewFuncLogger(supportsColor, minLevel, func(level Level, bytes []byte) error {
+	return NewFuncLogger(supportsColor, minLevel, func(level Level, fields Fields, bytes []byte) error {
 		_, err := writer.Write(bytes)
 		return err
 	})
@@ -141,7 +148,7 @@ func CtxWithLogHandler(ctx context.Context, handler LogHandler) context.Context 
 func CtxWithForkedOutput(ctx context.Context, writer io.Writer) context.Context {
 	l := Get(ctx)
 
-	write := func(level Level, b []byte) error {
+	write := func(level Level, fields Fields, b []byte) error {
 		l.Write(level, b)
 		if l.Level().ShouldDisplay(level) {
 			b = append([]byte{}, b...)

@@ -27,6 +27,7 @@ type LogAction struct {
 	mn        model.ManifestName
 	spanID    logstore.SpanID
 	timestamp time.Time
+	fields    logger.Fields
 	msg       []byte
 	level     logger.Level
 }
@@ -45,6 +46,10 @@ func (le LogAction) Time() time.Time {
 	return le.timestamp
 }
 
+func (le LogAction) Fields() logger.Fields {
+	return le.fields
+}
+
 func (le LogAction) Message() []byte {
 	return le.msg
 }
@@ -57,13 +62,14 @@ func (le LogAction) String() string {
 	return fmt.Sprintf("manifest: %s, spanID: %s, msg: %q", le.mn, le.spanID, le.msg)
 }
 
-func NewLogAction(mn model.ManifestName, spanID logstore.SpanID, level logger.Level, b []byte) LogAction {
+func NewLogAction(mn model.ManifestName, spanID logstore.SpanID, level logger.Level, fields logger.Fields, b []byte) LogAction {
 	return LogAction{
 		mn:        mn,
 		spanID:    spanID,
 		level:     level,
 		timestamp: time.Now(),
 		msg:       append([]byte{}, b...),
+		fields:    fields,
 	}
 }
 
