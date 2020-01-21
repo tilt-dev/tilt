@@ -152,6 +152,17 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, fmt.Errorf("helm() may only be called on directories with Chart.yaml: %q", localPath)
 	}
 
+	deps, err := localSubchartDependenciesFromPath(localPath)
+	if err != nil {
+		return nil, err
+	}
+	for _, d := range deps {
+		err = tiltfile_io.RecordReadFile(thread, starkit.AbsPath(thread, d))
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	version, err := getHelmVersion()
 	if err != nil {
 		return nil, err

@@ -32,7 +32,7 @@ package version
 // build/mark_new_version.sh to reflect the new version, and then a
 // git annotated tag (using format vX.Y where X == Major version and Y
 // == Minor version) is created to point to the commit that updates
-// component-base/version/base.go
+// pkg/version/base.go
 var (
 	// TODO: Deprecate gitMajor and gitMinor, use only gitVersion
 	// instead. First step in deprecation, keep the fields but make
