@@ -23,12 +23,7 @@ func NewErrorAction(err error) ErrorAction {
 	return ErrorAction{Error: err}
 }
 
-type LogAction interface {
-	Action
-	logstore.LogEvent
-}
-
-type LogEvent struct {
+type LogAction struct {
 	mn        model.ManifestName
 	spanID    logstore.SpanID
 	timestamp time.Time
@@ -36,34 +31,34 @@ type LogEvent struct {
 	level     logger.Level
 }
 
-func (LogEvent) Action() {}
+func (LogAction) Action() {}
 
-func (le LogEvent) ManifestName() model.ManifestName {
+func (le LogAction) ManifestName() model.ManifestName {
 	return le.mn
 }
 
-func (le LogEvent) Level() logger.Level {
+func (le LogAction) Level() logger.Level {
 	return le.level
 }
 
-func (le LogEvent) Time() time.Time {
+func (le LogAction) Time() time.Time {
 	return le.timestamp
 }
 
-func (le LogEvent) Message() []byte {
+func (le LogAction) Message() []byte {
 	return le.msg
 }
 
-func (le LogEvent) SpanID() logstore.SpanID {
+func (le LogAction) SpanID() logstore.SpanID {
 	return le.spanID
 }
 
-func (le LogEvent) String() string {
+func (le LogAction) String() string {
 	return fmt.Sprintf("manifest: %s, spanID: %s, msg: %q", le.mn, le.spanID, le.msg)
 }
 
-func NewLogEvent(mn model.ManifestName, spanID logstore.SpanID, level logger.Level, b []byte) LogEvent {
-	return LogEvent{
+func NewLogAction(mn model.ManifestName, spanID logstore.SpanID, level logger.Level, b []byte) LogAction {
+	return LogAction{
 		mn:        mn,
 		spanID:    spanID,
 		level:     level,
@@ -72,8 +67,8 @@ func NewLogEvent(mn model.ManifestName, spanID logstore.SpanID, level logger.Lev
 	}
 }
 
-func NewGlobalLogEvent(level logger.Level, b []byte) LogEvent {
-	return LogEvent{
+func NewGlobalLogAction(level logger.Level, b []byte) LogAction {
+	return LogAction{
 		mn:        "",
 		spanID:    "",
 		level:     level,
@@ -97,7 +92,7 @@ func (kEvt K8sEventAction) ToLogAction(mn model.ManifestName) LogAction {
 	msg := fmt.Sprintf("[K8s EVENT: %s] %s\n",
 		objRefHumanReadable(kEvt.Event.InvolvedObject), kEvt.Event.Message)
 
-	return LogEvent{
+	return LogAction{
 		mn:        mn,
 		spanID:    logstore.SpanID(fmt.Sprintf("events:%s", mn)),
 		level:     logger.InfoLvl,

@@ -72,13 +72,5 @@ func (t *Controller) OnChange(ctx context.Context, st store.RStore) {
 
 func (t *Controller) logError(st store.RStore, err error) {
 	spanID := logstore.SpanID(fmt.Sprintf("telemetry:%s", string(t.runCounter)))
-	st.Dispatch(LogAction{
-		LogEvent: store.NewLogEvent(model.TiltfileManifestName, spanID, logger.InfoLvl, []byte(err.Error())),
-	})
+	st.Dispatch(store.NewLogAction(model.TiltfileManifestName, spanID, logger.InfoLvl, []byte(err.Error())))
 }
-
-type LogAction struct {
-	store.LogEvent
-}
-
-func (LogAction) Action() {}

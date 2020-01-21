@@ -186,9 +186,7 @@ func (w *DockerComposeLogActionWriter) Write(p []byte) (n int, err error) {
 	// If the last line is empty, then we're starting a newline.
 	w.isStartingNewLine = len(lines[len(lines)-1]) == 0
 	newText := bytes.Join(lines, newlineAsBytes)
-	w.store.Dispatch(DockerComposeLogAction{
-		LogEvent: store.NewLogEvent(w.manifestName, SpanIDForDCService(w.manifestName), logger.InfoLvl, newText),
-	})
+	w.store.Dispatch(store.NewLogAction(w.manifestName, SpanIDForDCService(w.manifestName), logger.InfoLvl, newText))
 	return len(p), nil
 }
 

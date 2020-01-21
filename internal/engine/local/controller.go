@@ -229,7 +229,7 @@ func (w LocalServeLogActionWriter) Write(level logger.Level, p []byte) error {
 		return nil
 	}
 
-	w.store.Dispatch(store.NewLogEvent(w.manifestName, SpanIDForServeLog(w.procNum), level, p))
+	w.store.Dispatch(store.NewLogAction(w.manifestName, SpanIDForServeLog(w.procNum), level, p))
 	return nil
 }
 

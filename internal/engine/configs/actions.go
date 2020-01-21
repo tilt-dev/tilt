@@ -5,7 +5,6 @@ import (
 
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
-	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/model"
 	"github.com/windmilleng/tilt/pkg/model/logstore"
 )
@@ -41,11 +40,3 @@ type ConfigsReloadedAction struct {
 }
 
 func (ConfigsReloadedAction) Action() {}
-
-type TiltfileLogAction struct {
-	store.LogEvent
-}
-
-func (TiltfileLogAction) Action() {}
-
-var _ store.LogAction = TiltfileLogAction{}

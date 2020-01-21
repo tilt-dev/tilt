@@ -216,10 +216,7 @@ type PodLogActionWriter struct {
 }
 
 func (w PodLogActionWriter) Write(p []byte) (n int, err error) {
-	w.Store.Dispatch(PodLogAction{
-		PodID:    w.PodID,
-		LogEvent: store.NewLogEvent(w.ManifestName, SpanIDForPod(w.PodID), logger.InfoLvl, p),
-	})
+	w.Store.Dispatch(store.NewLogAction(w.ManifestName, SpanIDForPod(w.PodID), logger.InfoLvl, p))
 	return len(p), nil
 }
 

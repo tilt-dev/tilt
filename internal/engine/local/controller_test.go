@@ -44,7 +44,7 @@ func TestUpdate(t *testing.T) {
 		return a.ManifestName == "foo" && a.Status == model.RuntimeStatusError
 	})
 	f.assertNoAction("log for cancel", func(action store.Action) bool {
-		a, ok := action.(store.LogEvent)
+		a, ok := action.(store.LogAction)
 		if !ok {
 			return false
 		}
@@ -207,21 +207,21 @@ func (f *fixture) assertLogMessage(name string, messages ...string) {
 	for _, m := range messages {
 		msg := fmt.Sprintf("didn't find name %s, message %s", name, m)
 		pred := func(action store.Action) bool {
-			a, ok := action.(store.LogEvent)
+			a, ok := action.(store.LogAction)
 			return ok && strings.Contains(string(a.Message()), m)
 		}
 		f.assertAction(msg, pred)
 	}
 }
 
-func (f *fixture) waitForLogEventContaining(message string) store.LogEvent {
+func (f *fixture) waitForLogEventContaining(message string) store.LogAction {
 	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
 	defer cancel()
 
 	for {
 		actions := f.st.Actions()
 		for _, action := range actions {
-			le, ok := action.(store.LogEvent)
+			le, ok := action.(store.LogAction)
 			if ok && strings.Contains(string(le.Message()), message) {
 				return le
 			}
