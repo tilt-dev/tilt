@@ -285,6 +285,10 @@ func prunePods(ms *store.ManifestState) {
 		}
 
 		// found nothing to delete, break out
+		// NOTE(dmiller): above comment is probably erroneous, but disabling this check because I'm not sure if this is safe to change
+		// original static analysis error:
+		// SA4004: the surrounding loop is unconditionally terminated (staticcheck)
+		//nolint:staticcheck
 		return
 	}
 }

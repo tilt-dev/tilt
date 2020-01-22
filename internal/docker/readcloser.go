@@ -21,7 +21,7 @@ func (w readCloserWrapper) Read(b []byte) (int, error) {
 }
 
 func (w readCloserWrapper) Close() error {
-	err1 := w.Close()
+	err1 := w.wrapped.Close()
 	err2 := w.tearDown()
 	if err1 != nil {
 		return err1

@@ -137,7 +137,7 @@ func TestFilter(t *testing.T) {
 	returnErr := func(e K8sEntity) (bool, error) {
 		return false, fmt.Errorf("omgwtfbbq")
 	}
-	popped, rest, err = Filter(entities, returnErr)
+	_, _, err = Filter(entities, returnErr)
 	if assert.Error(t, err, "expected Filter to propagate err from test func") {
 		assert.Equal(t, err.Error(), "omgwtfbbq")
 	}

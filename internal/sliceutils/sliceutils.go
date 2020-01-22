@@ -34,10 +34,8 @@ func BulletedIndentedStringList(list []string) string {
 		return ""
 	}
 
-	result := make([]string, len(list))
-	for i, s := range list {
-		result[i] = s
-	}
+	var result = make([]string, len(list))
+	copy(result, list)
 	return "\t- " + strings.Join(result, "\n\t- ")
 }
 

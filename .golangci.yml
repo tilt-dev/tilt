@@ -32,12 +32,28 @@ linters-settings:
     # default is false: such cases aren't reported by default.
     check-blank: false
 linters:
+  disable-all: true
   enable:
     - errcheck
-  disable-all: true
+    - megacheck
 issues:
   exclude-rules:
     # Exclude linters from running on tests files.
     - path: _test\.go
       linters:
         - errcheck
+    - linters:
+        - staticcheck
+      text: "SA1019:"
+    - linters:
+        - gosimple
+      text: "S1008:"
+    - linters:
+        - staticcheck
+      text: "is unused"
+    - linters:
+        - unused
+      text: "is unused"
+
+
+

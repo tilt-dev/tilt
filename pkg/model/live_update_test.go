@@ -33,7 +33,7 @@ func TestNewLiveUpdateRestartContainerNotLast(t *testing.T) {
 }
 
 func TestNewLiveUpdateSyncAfterRun(t *testing.T) {
-	steps := append([]LiveUpdateStep{LiveUpdateRunStep{}, LiveUpdateSyncStep{"foo", "bar"}})
+	steps := []LiveUpdateStep{LiveUpdateRunStep{}, LiveUpdateSyncStep{"foo", "bar"}}
 	_, err := NewLiveUpdate(steps, BaseDir)
 	if !assert.Error(t, err) {
 		return

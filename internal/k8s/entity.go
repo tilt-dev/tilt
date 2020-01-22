@@ -393,7 +393,7 @@ func (e K8sEntity) HasNamespace(ns string) bool {
 
 func (e K8sEntity) HasKind(kind string) bool {
 	// TODO(maia): support kind aliases (e.g. "po" for "pod")
-	return strings.ToLower(e.GVK().Kind) == strings.ToLower(kind)
+	return strings.EqualFold(e.GVK().Kind, kind)
 }
 
 func NewNamespaceEntity(name string) K8sEntity {

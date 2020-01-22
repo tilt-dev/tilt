@@ -82,8 +82,6 @@ func (cu *DockerContainerUpdater) rmPathsFromContainer(ctx context.Context, cID 
 
 func makeRmCmd(paths []string) []string {
 	cmd := []string{"rm", "-rf"}
-	for _, p := range paths {
-		cmd = append(cmd, p)
-	}
+	cmd = append(cmd, paths...)
 	return cmd
 }

@@ -143,20 +143,16 @@ func (w *fakeWatcher) loop() {
 	var q []watch.FileEvent
 	for {
 		if len(q) == 0 {
-			select {
-			case e, ok := <-w.inboundCh:
-				if !ok {
-					close(w.outboundCh)
-					return
-				}
-				q = append(q, e)
+			e, ok := <-w.inboundCh
+			if !ok {
+				close(w.outboundCh)
+				return
 			}
+			q = append(q, e)
 		} else {
 			e := q[0]
-			select {
-			case w.outboundCh <- e:
-				q = q[1:]
-			}
+			w.outboundCh <- e
+			q = q[1:]
 		}
 	}
 }

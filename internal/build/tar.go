@@ -45,7 +45,7 @@ func clearUIDAndGID(h *tar.Header) {
 }
 
 func (a *ArchiveBuilder) archiveDf(ctx context.Context, df dockerfile.Dockerfile) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-archiveDf")
+	span, _ := opentracing.StartSpanFromContext(ctx, "daemon-archiveDf")
 	defer span.Finish()
 	tarHeader := &tar.Header{
 		Name:       "Dockerfile",

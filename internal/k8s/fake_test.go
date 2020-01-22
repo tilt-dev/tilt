@@ -17,7 +17,7 @@ func fakePod(podID PodID, imageID string) *v1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            string(podID),
 			Namespace:       "default",
-			Labels:          make(map[string]string, 0),
+			Labels:          make(map[string]string),
 			ResourceVersion: fmt.Sprintf("%d", resourceVersion),
 		},
 		Spec: v1.PodSpec{

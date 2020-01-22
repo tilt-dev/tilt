@@ -313,7 +313,7 @@ func (b BuildState) LastImageAsString() string {
 // and for deterministic builds.
 func (b BuildState) FilesChanged() []string {
 	result := make([]string, 0, len(b.FilesChangedSet))
-	for file, _ := range b.FilesChangedSet {
+	for file := range b.FilesChangedSet {
 		result = append(result, file)
 	}
 	sort.Strings(result)

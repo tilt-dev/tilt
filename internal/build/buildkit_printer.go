@@ -34,7 +34,7 @@ const internalPrefix = "[internal]"
 const buildPrefix = "    ╎ "
 const logPrefix = "  → "
 
-var stageNameRegexp = regexp.MustCompile("^\\[.+\\]")
+var stageNameRegexp = regexp.MustCompile(`^\[.+\]`)
 
 func (v *vertex) isInternal() bool {
 	return strings.HasPrefix(v.name, internalPrefix)

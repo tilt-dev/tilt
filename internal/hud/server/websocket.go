@@ -47,7 +47,7 @@ var _ WebsocketConn = &websocket.Conn{}
 func NewWebsocketSubscriber(conn WebsocketConn) *WebsocketSubscriber {
 	return &WebsocketSubscriber{
 		conn:       conn,
-		streamDone: make(chan bool, 0),
+		streamDone: make(chan bool),
 	}
 }
 

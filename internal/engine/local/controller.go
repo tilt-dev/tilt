@@ -71,7 +71,7 @@ func (c *Controller) update(ctx context.Context, specs []ServeSpec, st store.RSt
 		}
 	}
 
-	for name, _ := range c.procs {
+	for name := range c.procs {
 		if !seen[name] {
 			toStop = append(toStop, name)
 		}
@@ -160,25 +160,19 @@ func processStatuses(
 	st store.RStore,
 	manifestName model.ManifestName,
 	stillHasSameProcNum func() bool) {
-	for {
-		select {
-		case sm, ok := <-statusCh:
-			if !ok {
-				return
-			}
-			if !stillHasSameProcNum() {
-				continue
-			}
-			runtimeStatus := sm.status.ToRuntime()
-			if runtimeStatus != "" {
-				// TODO(matt) when we get an error, the dot is red in the web ui, but green in the TUI
-				st.Dispatch(LocalServeStatusAction{
-					ManifestName: manifestName,
-					Status:       runtimeStatus,
-					PID:          sm.pid,
-					SpanID:       sm.spanID,
-				})
-			}
+	for sm := range statusCh {
+		if !stillHasSameProcNum() {
+			continue
+		}
+		runtimeStatus := sm.status.ToRuntime()
+		if runtimeStatus != "" {
+			// TODO(matt) when we get an error, the dot is red in the web ui, but green in the TUI
+			st.Dispatch(LocalServeStatusAction{
+				ManifestName: manifestName,
+				Status:       runtimeStatus,
+				PID:          sm.pid,
+				SpanID:       sm.spanID,
+			})
 		}
 	}
 }

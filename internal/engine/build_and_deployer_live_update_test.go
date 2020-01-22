@@ -154,7 +154,7 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 	if len(tCase.expectUpdatedTargets) > 0 {
 		expectUpdatedTargs = model.TargetIDSet(tCase.expectUpdatedTargets)
 	} else if len(tCase.runningContainersByTarget) > 0 {
-		for targID, _ := range tCase.runningContainersByTarget {
+		for targID := range tCase.runningContainersByTarget {
 			expectUpdatedTargs[targID] = true
 		}
 	} else {

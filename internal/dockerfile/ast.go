@@ -235,7 +235,7 @@ func fmtLabel(node *parser.Node) string {
 		if i+1 < len(cmd) {
 			assignments = append(assignments, fmt.Sprintf("%s=%s", cmd[i], cmd[i+1]))
 		} else {
-			assignments = append(assignments, fmt.Sprintf("%s", cmd[i]))
+			assignments = append(assignments, cmd[i])
 		}
 	}
 	return strings.Join(assignments, " ")

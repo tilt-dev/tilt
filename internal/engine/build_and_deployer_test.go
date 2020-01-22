@@ -132,7 +132,7 @@ func TestSyncletNamespaceGKE(t *testing.T) {
 
 	changed := f.WriteFile("a.txt", "a")
 	bs := resultToStateSet(result, []string{changed}, cInfo)
-	result, err = f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
+	_, err = f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
 	if err != nil {
 		t.Fatal(err)
 	}

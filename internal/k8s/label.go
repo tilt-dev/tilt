@@ -87,6 +87,9 @@ func injectLabels(entity K8sEntity, labels []model.LabelPair, overwrite bool) (K
 	selectors, err := extractSelectors(&entity, func(v reflect.Value) bool {
 		return v.Type() != pvc
 	})
+	if err != nil {
+		return K8sEntity{}, err
+	}
 	for _, selector := range selectors {
 		applyLabelsToMap(&selector.MatchLabels, labels, overwrite, false)
 	}
