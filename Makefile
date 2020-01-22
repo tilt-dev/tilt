@@ -1,6 +1,6 @@
 .PHONY: all proto install lint test test-go check-js test-js integration wire-check wire ensure check-go goimports proto-webview proto-webview-ts vendor
 
-check-go: lint errcheck verify_goimports wire-check test-go
+check-go: lint golangci-lint verify_goimports wire-check test-go
 all: check-go check-js test-js
 
 # There are 2 Go bugs that cause problems on CI:
@@ -117,7 +117,7 @@ verify_goimports:
 benchmark:
 	go test -mod vendor -run=XXX -bench=. ./...
 
-errcheck:
+golangci-lint:
 ifneq ($(CIRCLECI),true)
 	golangci-lint run
 else
