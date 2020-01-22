@@ -63,9 +63,7 @@ func TestArchivePathsIfExists(t *testing.T) {
 		}
 
 		err := ab.ArchivePathsIfExist(f.ctx, paths)
-		if err != nil {
-			require.NoError(t, err)
-		}
+		require.NoError(t, err)
 		assert.Equal(t, ab.Paths(), []string{f.JoinPath("a")})
 	}()
 
