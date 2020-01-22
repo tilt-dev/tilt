@@ -430,7 +430,6 @@ type serverFixture struct {
 func newTestFixture(t *testing.T) *serverFixture {
 	st, getActions := store.NewStoreForTesting()
 	go st.Loop(context.Background())
-	a := analytics.NewMemoryAnalytics()
 	opter := tiltanalytics.NewFakeOpter(analytics.OptIn)
 	a, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(opter)
 	snapshotHTTP := &fakeHTTPClient{}

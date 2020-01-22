@@ -247,9 +247,7 @@ func (f *wmFixture) SetTiltIgnoreContents(s string) {
 func targetFilesChangedActionsToPaths(actions []targetFilesChangedAction) []string {
 	var paths []string
 	for _, a := range actions {
-		for _, p := range a.files {
-			paths = append(paths, p)
-		}
+		paths = append(paths, a.files...)
 	}
 	return paths
 }

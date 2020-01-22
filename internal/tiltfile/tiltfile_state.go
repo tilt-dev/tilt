@@ -1014,9 +1014,7 @@ func (s *tiltfileState) validateLiveUpdate(iTarget model.ImageTarget, g model.Ta
 			return nil
 		}
 
-		for _, dep := range current.Dependencies() {
-			watchedPaths = append(watchedPaths, dep)
-		}
+		watchedPaths = append(watchedPaths, current.Dependencies()...)
 		return nil
 	})
 	if err != nil {

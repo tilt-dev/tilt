@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/dockerignore"
@@ -62,9 +63,7 @@ func TestArchivePathsIfExists(t *testing.T) {
 		}
 
 		err := ab.ArchivePathsIfExist(f.ctx, paths)
-		if err != nil {
-			f.t.Fatal(err)
-		}
+		require.NoError(t, err)
 		assert.Equal(t, ab.Paths(), []string{f.JoinPath("a")})
 	}()
 

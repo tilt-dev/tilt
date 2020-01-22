@@ -286,7 +286,7 @@ func (k K8sClient) applyEntitiesAndMaybeForce(ctx context.Context, entities []K8
 		// dependant pods get deleted rather than orphaned. We WANT these pods to be deleted
 		// and recreated so they have all the new labels, etc. of their controlling k8s entity.
 		logger.Get(ctx).Infof("Falling back to 'kubectl delete && apply' on immutable field error")
-		stdout, stderr, err = k.actOnEntities(ctx, []string{"delete"}, entities)
+		_, stderr, err = k.actOnEntities(ctx, []string{"delete"}, entities)
 		if err != nil {
 			return nil, errors.Wrapf(err, "kubectl delete (as part of delete && apply):\nstderr: %s", stderr)
 		}

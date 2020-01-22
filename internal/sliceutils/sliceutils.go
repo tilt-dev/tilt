@@ -34,11 +34,7 @@ func BulletedIndentedStringList(list []string) string {
 		return ""
 	}
 
-	result := make([]string, len(list))
-	for i, s := range list {
-		result[i] = s
-	}
-	return "\t- " + strings.Join(result, "\n\t- ")
+	return "\t- " + strings.Join(list, "\n\t- ")
 }
 
 func StringSliceEquals(a, b []string) bool {

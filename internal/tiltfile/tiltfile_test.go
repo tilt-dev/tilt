@@ -3816,9 +3816,7 @@ k8s_yaml('resource.yaml')
 	m := f.assertNextManifestUnresourced("doggos", "doggos")
 
 	displayNames := []string{}
-	for _, name := range m.K8sTarget().DisplayNames {
-		displayNames = append(displayNames, name)
-	}
+	displayNames = append(displayNames, m.K8sTarget().DisplayNames...)
 	assert.Equal(t, []string{"doggos:service:default::0", "doggos:service:default::1"}, displayNames)
 }
 

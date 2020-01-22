@@ -108,11 +108,6 @@ func (u Upper) Start(
 		return err
 	}
 
-	var manifestNames []model.ManifestName
-	for _, arg := range args {
-		manifestNames = append(manifestNames, model.ManifestName(arg))
-	}
-
 	configFiles := []string{absTfPath}
 
 	return u.Init(ctx, InitAction{
@@ -459,7 +454,7 @@ func handleConfigsReloadStarted(
 	event configs.ConfigsReloadStartedAction,
 ) {
 	filesChanged := []string{}
-	for f, _ := range event.FilesChanged {
+	for f := range event.FilesChanged {
 		filesChanged = append(filesChanged, f)
 	}
 	status := model.BuildRecord{

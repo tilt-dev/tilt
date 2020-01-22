@@ -15,6 +15,7 @@ import (
 
 func (k K8sClient) Exec(ctx context.Context, podID PodID, cName container.Name, n Namespace, cmd []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "k8s-Exec")
+	_ = ctx
 	span.SetTag("cmd", fmt.Sprintf("%v", cmd))
 	defer span.Finish()
 

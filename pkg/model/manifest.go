@@ -344,7 +344,7 @@ func (c Cmd) String() string {
 			quoted[i] = arg
 		}
 	}
-	return fmt.Sprintf("%s", strings.Join(quoted, " "))
+	return strings.Join(quoted, " ")
 }
 
 func (c Cmd) Empty() bool {

@@ -366,6 +366,7 @@ func TestUpper_UpK8sEntityOrdering(t *testing.T) {
 	defer f.TearDown()
 
 	postgresEntities, err := k8s.ParseYAMLFromString(testyaml.PostgresYAML)
+	require.NoError(t, err)
 	yaml, err := k8s.SerializeSpecYAML(postgresEntities[:3]) // only take entities that don't belong to a workload
 	require.NoError(t, err)
 	f.WriteFile("Tiltfile", `k8s_yaml('postgres.yaml')`)
