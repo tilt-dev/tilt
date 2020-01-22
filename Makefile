@@ -1,6 +1,5 @@
 .PHONY: all proto install lint test test-go check-js test-js integration wire-check wire ensure check-go goimports proto-webview proto-webview-ts vendor
 
-check-go: lint wire-check test-go
 all: check-go check-js test-js
 
 # There are 2 Go bugs that cause problems on CI:

@@ -12,7 +12,9 @@ jobs:
       - setup_remote_docker
       - run: docker pull registry:2
       - run: sudo mv /usr/bin/helm3 /usr/bin/helm
-      - run: make check-go
+      - run: make lint
+      - run: make wire-check
+      - run: make test-go
       - store_test_results:
           path: test-results
       - slack/notify-on-failure:
