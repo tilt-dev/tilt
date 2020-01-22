@@ -167,7 +167,8 @@ func SyncsToPathMappings(syncs []model.Sync) []PathMapping {
 
 // Return all the path mappings for local paths that do not exist.
 func MissingLocalPaths(ctx context.Context, mappings []PathMapping) (missing, rest []PathMapping, err error) {
-	span, _ := opentracing.StartSpanFromContext(ctx, "MissingLocalPaths")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "MissingLocalPaths")
+	_ = ctx
 	defer span.Finish()
 	for _, mapping := range mappings {
 		_, err := os.Stat(mapping.LocalPath)
