@@ -68,8 +68,6 @@ else
 		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./internal/tiltfile -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 80s -run "(?i)(.*)Helm(.*)"
 endif
 
-
-
 test: test-go test-js
 
 # skip some tests that are slow and not always relevant
@@ -116,7 +114,7 @@ ifneq ($(CIRCLECI),true)
 	golangci-lint run
 else
 	mkdir -p test-results
-	golangci-lint run	 --out-format junit-xml > test-results/lint.xml
+	golangci-lint run --concurrency 2 --out-format junit-xml > test-results/lint.xml
 endif
 
 wire:

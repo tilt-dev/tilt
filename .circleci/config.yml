@@ -13,6 +13,8 @@ jobs:
       - run: docker pull registry:2
       - run: sudo mv /usr/bin/helm3 /usr/bin/helm
       - run: make lint
+     - store_test_results:
+          path: test-results
       - run: make wire-check
       - run: make test-go
       - store_test_results:
