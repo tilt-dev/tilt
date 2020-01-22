@@ -115,7 +115,8 @@ golangci-lint:
 ifneq ($(CIRCLECI),true)
 	golangci-lint run
 else
-	golangci-lint run	 --out-format junit-xml
+	mkdir -p test-results
+	golangci-lint run	 --out-format junit-xml > test-results/lint.xml
 endif
 
 wire:
