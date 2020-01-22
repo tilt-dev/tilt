@@ -42,7 +42,7 @@ describe("LogStore", () => {
     })
 
     expect(logLinesToString(logs.allLog(), true)).toEqual("foo")
-    expect(logs.lineCache.length).toEqual(1)
+    expect(logs.lineCache[0].text).toEqual("foo")
     expect(logs.allLog()[0]).toStrictEqual(logs.allLog()[0])
 
     logs.append({
@@ -53,7 +53,7 @@ describe("LogStore", () => {
     })
 
     expect(logLinesToString(logs.allLog(), true)).toEqual("foobar")
-    expect(logs.lineCache.length).toEqual(1)
+    expect(logs.lineCache[0].text).toEqual("foobar")
   })
 
   it("handles changing levels", () => {
