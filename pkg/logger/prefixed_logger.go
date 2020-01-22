@@ -1,24 +1,30 @@
 package logger
 
 import (
-	"io"
 	"strings"
 )
 
 // sticks "prefix" at the start of every new line
-type prefixedWriter struct {
+type prefixedLogger struct {
+	Logger
+
+	original              Logger
 	prefix                string
-	underlying            io.Writer
 	indentBeforeNextWrite bool
 }
 
-var _ io.Writer = &prefixedWriter{}
+var _ Logger = &prefixedLogger{}
 
-func NewPrefixedWriter(prefix string, underlying io.Writer) *prefixedWriter {
-	return &prefixedWriter{prefix, underlying, true}
+func NewPrefixedLogger(prefix string, original Logger) *prefixedLogger {
+	result := &prefixedLogger{original: original, prefix: prefix, indentBeforeNextWrite: true}
+
+	delegate := NewFuncLogger(original.SupportsColor(), original.Level(), result.handleLog)
+	result.Logger = delegate
+
+	return result
 }
 
-func (i *prefixedWriter) Write(buf []byte) (n int, err error) {
+func (i *prefixedLogger) handleLog(level Level, fields Fields, buf []byte) error {
 	output := ""
 
 	if i.indentBeforeNextWrite {
@@ -46,10 +52,6 @@ func (i *prefixedWriter) Write(buf []byte) (n int, err error) {
 		i.indentBeforeNextWrite = false
 	}
 
-	_, err = i.underlying.Write([]byte(output))
-	if err != nil {
-		return 0, err
-	}
-
-	return len(buf), nil
+	i.original.WithFields(fields).Write(level, []byte(output))
+	return nil
 }

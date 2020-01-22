@@ -25,10 +25,10 @@ func TestCtxWithForkedOutput(t *testing.T) {
 func TestWriteAcrossNestedLoggers(t *testing.T) {
 	out1 := bytes.NewBuffer(nil)
 	out2 := bytes.NewBuffer(nil)
-	prefixedOut1 := NewPrefixedWriter("|", out1)
-	ctx := WithLogger(context.Background(), NewLogger(DebugLvl, prefixedOut1))
+	prefixedOut1 := NewPrefixedLogger("|", NewLogger(DebugLvl, out1))
+	ctx := WithLogger(context.Background(), prefixedOut1)
 	l := Get(CtxWithForkedOutput(ctx, out2))
-	w := NewPrefixedWriter(">", l.Writer(InfoLvl))
+	w := NewPrefixedLogger(">", l).Writer(InfoLvl)
 
 	w.Write([]byte("a"))
 	w.Write([]byte("b\nc"))

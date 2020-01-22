@@ -1,4 +1,4 @@
-package tiltfile
+package logger
 
 import (
 	"io"

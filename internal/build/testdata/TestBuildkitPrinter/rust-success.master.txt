@@ -1,36 +1,36 @@
-    ╎ [1/3] FROM docker.io/library/rust:slim@sha256:c578c49322bf0af20ce1517a3a59095b2462f0d5b7e54274e3a9aea3103fcac5
-    ╎ [1/3] done | 24.144s
-    ╎ [2/3] COPY . .
-    ╎ [2/3] done | 3.95s
-    ╎ [3/3] RUN cargo build
-    ╎   →     Updating crates.io index
-    ╎   →  Downloading crates ...
-    ╎   →   Downloaded time v0.1.42
-    ╎   →   Downloaded regex v0.1.80
-    ╎   →   Downloaded libc v0.2.59
-    ╎   →   Downloaded memchr v0.1.11
-    ╎   →   Downloaded regex-syntax v0.3.9
-    ╎   →   Downloaded thread_local v0.2.7
-    ╎   →   Downloaded utf8-ranges v0.1.3
-    ╎   →   Downloaded aho-corasick v0.5.3
-    ╎   →   Downloaded thread-id v2.0.0
-    ╎   →   Downloaded kernel32-sys v0.2.2
-    ╎   →   Downloaded winapi v0.2.8
-    ╎   →   Downloaded winapi-build v0.1.1
-    ╎   →    Compiling winapi-build v0.1.1
-    ╎   →    Compiling libc v0.2.59
-    ╎   →    Compiling winapi v0.2.8
-    ╎   →    Compiling regex-syntax v0.3.9
-    ╎   →    Compiling utf8-ranges v0.1.3
-    ╎   →    Compiling kernel32-sys v0.2.2
-    ╎   →    Compiling memchr v0.1.11
-    ╎   →    Compiling thread-id v2.0.0
-    ╎   →    Compiling time v0.1.42
-    ╎   →    Compiling thread_local v0.2.7
-    ╎   →    Compiling aho-corasick v0.5.3
-    ╎   →    Compiling regex v0.1.80
-    ╎   →    Compiling hello_world v0.1.0 (/usr/src/app)
-    ╎   →     Finished dev [unoptimized + debuginfo] target(s) in 28.39s
-    ╎ [3/3] done | 30.751s
-    ╎ exporting to image
-    ╎ exporting to image done | 843ms
+[1/3] FROM docker.io/library/rust:slim@sha256:c578c49322bf0af20ce1517a3a59095b2462f0d5b7e54274e3a9aea3103fcac5
+[1/3] done | 24.144s
+[2/3] COPY . .
+[2/3] done | 3.95s
+[3/3] RUN cargo build
+  →     Updating crates.io index
+  →  Downloading crates ...
+  →   Downloaded time v0.1.42
+  →   Downloaded regex v0.1.80
+  →   Downloaded libc v0.2.59
+  →   Downloaded memchr v0.1.11
+  →   Downloaded regex-syntax v0.3.9
+  →   Downloaded thread_local v0.2.7
+  →   Downloaded utf8-ranges v0.1.3
+  →   Downloaded aho-corasick v0.5.3
+  →   Downloaded thread-id v2.0.0
+  →   Downloaded kernel32-sys v0.2.2
+  →   Downloaded winapi v0.2.8
+  →   Downloaded winapi-build v0.1.1
+  →    Compiling winapi-build v0.1.1
+  →    Compiling libc v0.2.59
+  →    Compiling winapi v0.2.8
+  →    Compiling regex-syntax v0.3.9
+  →    Compiling utf8-ranges v0.1.3
+  →    Compiling kernel32-sys v0.2.2
+  →    Compiling memchr v0.1.11
+  →    Compiling thread-id v2.0.0
+  →    Compiling time v0.1.42
+  →    Compiling thread_local v0.2.7
+  →    Compiling aho-corasick v0.5.3
+  →    Compiling regex v0.1.80
+  →    Compiling hello_world v0.1.0 (/usr/src/app)
+  →     Finished dev [unoptimized + debuginfo] target(s) in 28.39s
+[3/3] done | 30.751s
+exporting to image
+exporting to image done | 843ms

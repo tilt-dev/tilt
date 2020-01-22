@@ -1,4 +1,4 @@
-    ╎ [1/2] FROM docker.io/library/busybox@sha256:c94cf1b87ccb80f2e6414ef913c748b105060debda482058d2b8d0fce39f11b9
-    ╎ [2/2] RUN sleep 5
-    ╎ [2/2] done | 6.07s
-    ╎ exporting to image
+[1/2] FROM docker.io/library/busybox@sha256:c94cf1b87ccb80f2e6414ef913c748b105060debda482058d2b8d0fce39f11b9
+[2/2] RUN sleep 5
+[2/2] done | 6.07s
+exporting to image

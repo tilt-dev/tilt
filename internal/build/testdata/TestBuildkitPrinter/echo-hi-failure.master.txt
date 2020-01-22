@@ -1,5 +1,5 @@
-    ╎ [1/2] FROM docker.io/library/busybox@sha256:c94cf1b87ccb80f2e6414ef913c748b105060debda482058d2b8d0fce39f11b9
-    ╎ [2/2] RUN echo hi && exit 1
-    ╎   → hi
-    ╎ 
-    ╎ ERROR IN: [2/2] RUN echo hi && exit 1
+[1/2] FROM docker.io/library/busybox@sha256:c94cf1b87ccb80f2e6414ef913c748b105060debda482058d2b8d0fce39f11b9
+[2/2] RUN echo hi && exit 1
+  → hi
+
+ERROR IN: [2/2] RUN echo hi && exit 1
