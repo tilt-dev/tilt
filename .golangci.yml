@@ -48,6 +48,7 @@ linters:
     - megacheck
     - govet
     - goimports
+    - structcheck
 issues:
   exclude-rules:
     # Exclude linters from running on tests files.

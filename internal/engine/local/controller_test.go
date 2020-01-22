@@ -108,7 +108,6 @@ type fixture struct {
 	c      *Controller
 	ctx    context.Context
 	cancel context.CancelFunc
-	locals []string
 }
 
 func newFixture(t *testing.T) *fixture {

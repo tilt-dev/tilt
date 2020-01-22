@@ -94,8 +94,7 @@ type tiltfileState struct {
 	// for error reporting in case it's called twice
 	triggerModeCallPosition syntax.Position
 
-	teamName     string
-	telemetryCmd model.Cmd
+	teamName string
 
 	logger                           logger.Logger
 	warnedDeprecatedResourceAssembly bool
