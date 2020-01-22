@@ -274,6 +274,22 @@ k8s_yaml(yaml)
 	assert.Contains(t, f.out.String(), " → kind: Deployment")
 }
 
+func TestLocalQuiet(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+local('echo foobar', quiet=True)
+`)
+
+	f.load()
+
+	assert.Contains(t, f.out.String(), "local: echo foobar")
+	assert.NotContains(t, f.out.String(), " → foobar")
+}
+
 func TestReadFile(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
