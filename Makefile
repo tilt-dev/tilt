@@ -1,6 +1,5 @@
 .PHONY: all proto install lint test test-go check-js test-js integration wire-check wire ensure check-go goimports proto-webview proto-webview-ts vendor
 
-check-go: lint golangci-lint verify_goimports wire-check test-go
 all: check-go check-js test-js
 
 # There are 2 Go bugs that cause problems on CI:
@@ -48,8 +47,7 @@ synclet-dev: synclet-cache
 
 build-synclet-and-install: synclet-dev install-dev
 
-lint:
-	go vet -mod vendor -all -printfuncs=Verbosef,Infof,Debugf,PrintColorf ./...
+lint: golangci-lint
 
 build:
 	go test -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 60s ./... -run nonsenseregex
@@ -69,8 +67,6 @@ else
 		mkdir -p test-results
 		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./internal/tiltfile -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 80s -run "(?i)(.*)Helm(.*)"
 endif
-
-
 
 test: test-go test-js
 
@@ -110,18 +106,15 @@ test-js:
 goimports:
 	goimports -w -l $(GOIMPORTS_LOCAL_ARG) $$(go list -f {{.Dir}} ./...)
 
-verify_goimports:
-	# any files printed here need to be formatted by running `make goimports`
-	bash -c 'diff <(goimports -l $(GOIMPORTS_LOCAL_ARG) $$(go list -mod=vendor -f {{.Dir}} ./...)) <(echo -n)'
-
 benchmark:
 	go test -mod vendor -run=XXX -bench=. ./...
 
 golangci-lint:
 ifneq ($(CIRCLECI),true)
-	golangci-lint run
+	golangci-lint run -v
 else
-	golangci-lint run	 --out-format junit-xml
+	mkdir -p test-results
+	golangci-lint run -v --out-format junit-xml > test-results/lint.xml
 endif
 
 wire:

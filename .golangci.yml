@@ -31,11 +31,23 @@ linters-settings:
     # report about assignment of errors to blank identifier: `num, _ := strconv.Atoi(numStr)`;
     # default is false: such cases aren't reported by default.
     check-blank: false
+  govet:
+    settings:
+      printf:
+        funcs:
+          - Verbosef
+          - Infof
+          - Debugf
+          - PrintColorf
+  goimports:
+    local-prefixes: github.com/windmilleng/tilt
 linters:
   disable-all: true
   enable:
     - errcheck
     - megacheck
+    - govet
+    - goimports
 issues:
   exclude-rules:
     # Exclude linters from running on tests files.
