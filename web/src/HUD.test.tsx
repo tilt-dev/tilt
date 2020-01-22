@@ -302,10 +302,10 @@ it("loads logs incrementally", async () => {
       _: { manifestName: "" },
     },
     segments: [
-      { text: "line1\n", time: now, level: "INFO", spanId: "_" },
-      { text: "line2\n", time: now, level: "INFO", spanId: "_" },
-      { text: "line3\n", time: now, level: "INFO", spanId: "_" },
-      { text: "line4\n", time: now, level: "INFO", spanId: "_" },
+      { text: "line1\n", time: now, spanId: "_" },
+      { text: "line2\n", time: now, spanId: "_" },
+      { text: "line3\n", time: now, spanId: "_" },
+      { text: "line4\n", time: now, spanId: "_" },
     ],
   })
 })
