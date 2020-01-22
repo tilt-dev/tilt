@@ -111,10 +111,10 @@ benchmark:
 
 golangci-lint:
 ifneq ($(CIRCLECI),true)
-	golangci-lint run
+	golangci-lint run -v
 else
 	mkdir -p test-results
-	golangci-lint run --concurrency 2 --out-format junit-xml > test-results/lint.xml
+	golangci-lint run -v --out-format junit-xml > test-results/lint.xml
 endif
 
 wire:
