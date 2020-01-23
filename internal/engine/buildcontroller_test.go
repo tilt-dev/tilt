@@ -86,7 +86,7 @@ func TestBuildControllerTooManyPodsForDockerBuildNoErrorMessage(t *testing.T) {
 	manifest := NewSanchoDockerBuildManifest(f)
 	f.Start([]model.Manifest{manifest}, true)
 
-	// intial build
+	// initial build
 	call := f.nextCall()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())

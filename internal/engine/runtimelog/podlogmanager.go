@@ -82,7 +82,7 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 						continue
 					}
 
-					// The active pod watcher got cancelled somehow,
+					// The active pod watcher got canceled somehow,
 					// so we need to create a new one that picks up
 					// where it left off.
 					startWatchTime = <-existing.terminationTime
