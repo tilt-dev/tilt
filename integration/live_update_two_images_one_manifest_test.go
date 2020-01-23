@@ -97,6 +97,6 @@ func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
-	allPodsAfterKillSparkle := f.WaitForAllPodsReady(f.ctx, "app=twoimages")
+	allPodsAfterKillSparkle := f.WaitForAllPodsReady(ctx, "app=twoimages")
 	assert.NotEqual(t, podsAfterBothLiveUpdate, allPodsAfterKillSparkle)
 }
