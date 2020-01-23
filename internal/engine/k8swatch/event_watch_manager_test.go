@@ -143,12 +143,6 @@ type ewmFixture struct {
 	store      *store.Store
 	getActions func() []store.Action
 	clock      clockwork.FakeClock
-
-	// old value of k8sEventsFeatureFlag env var, for teardown
-	// TODO(maia): remove this when we remove the feature flag
-	oldFeatureFlagVal string
-
-	objectCount int
 }
 
 func newEWMFixture(t *testing.T) *ewmFixture {

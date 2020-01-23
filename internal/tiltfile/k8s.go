@@ -65,7 +65,6 @@ type k8sResourceOptions struct {
 	extraPodSelectors []labels.Selector
 	triggerMode       triggerMode
 	tiltfilePosition  syntax.Position
-	consumed          bool
 	resourceDeps      []string
 }
 

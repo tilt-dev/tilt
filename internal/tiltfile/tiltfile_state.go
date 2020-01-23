@@ -94,8 +94,7 @@ type tiltfileState struct {
 	// for error reporting in case it's called twice
 	triggerModeCallPosition syntax.Position
 
-	teamName     string
-	telemetryCmd model.Cmd
+	teamName string
 
 	logger                           logger.Logger
 	warnedDeprecatedResourceAssembly bool
@@ -222,9 +221,8 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 		return nil, starkit.Model{}, err
 	}
 
-	yamlManifest := model.Manifest{}
 	if len(unresourced) > 0 {
-		yamlManifest, err = k8s.NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, unresourced)
+		yamlManifest, err := k8s.NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, unresourced)
 		if err != nil {
 			return nil, starkit.Model{}, err
 		}

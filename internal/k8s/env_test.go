@@ -10,11 +10,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 )
 
-type expectedEnv struct {
-	expected Env
-	string
-}
-
 type expectedConfig struct {
 	expected Env
 	input    *api.Config
