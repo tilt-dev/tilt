@@ -2,65 +2,6 @@ version: 2.1
 orbs:
   slack: circleci/slack@3.4.0
 jobs:
-  build-linux:
-    docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:0868ccf686cba2adf4c6c82b9a5c7062eeea123de49283676b066060f3381d3a
-
-    steps:
-      - checkout
-      - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
-      - setup_remote_docker
-      - run: docker pull registry:2
-      - run: sudo mv /usr/bin/helm3 /usr/bin/helm
-      - run: make lint
-      - run: make wire-check
-      - run: make test-go
-      - store_test_results:
-          path: test-results
-      - slack/notify-on-failure:
-          only_for_branches: master
-  helm2:
-    docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:125580447b213fbb1d66522f9b0efb76ed736e49e95130f8a6fdcd868a05b645
-    steps:
-      - checkout
-      - run: sudo mv /usr/bin/helm2 /usr/bin/helm
-      - run: make test-go-helm-only
-      - store_test_results:
-          path: test-results
-      - slack/notify-on-failure:
-          only_for_branches: master
-
-  build-js:
-    docker:
-      - image: circleci/node:12
-    steps:
-      - checkout
-      - run: make check-js test-js
-      - slack/notify-on-failure:
-          only_for_branches: master
-
-  publish-assets:
-    docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:168fcc4ab364bf330a7a524b07da56cf54c2fe134b2e78be78f6b7c2791a5d2f
-    steps:
-      - checkout
-      - run: echo $GCLOUD_SERVICE_KEY > /tmp/gcloud-service-key.json
-      - run: gcloud auth activate-service-account --key-file=/tmp/gcloud-service-key.json
-      - run: ./scripts/upload-assets.py $CIRCLE_SHA1
-      - slack/notify-on-failure:
-          only_for_branches: master
-
-  build-windows:
-    docker:
-      - image: circleci/golang:1.12
-    steps:
-      - checkout
-      # Currently, we only check to make sure Windows binaries compile
-      - run: GOOS=windows go install -mod vendor github.com/windmilleng/tilt/cmd/tilt
-      - slack/notify-on-failure:
-          only_for_branches: master
-
   build-integration:
     docker:
       - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:75e5d29da4ff2b06f5ae356b70935155499901218cdcabbbb7cebb31410c578c
@@ -83,59 +24,8 @@ jobs:
       - slack/notify-on-failure:
           only_for_branches: master
 
-  build-macos:
-    macos:
-      xcode: "10.0.0"
-
-    steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - homebrew_cache_v11
-      # Bump cache version when changing this.
-      - run: echo 'export HOMEBREW_PACKAGES="go@1.12"' >> $BASH_ENV
-      # Only update when brew doesn't know about some of the packages because:
-      # 1) not worth the cost, and
-      # 2) hits github in a way that leads to flakyness
-      - run: brew info ${HOMEBREW_PACKAGES} || brew update || true
-      - run: HOMEBREW_NO_AUTO_UPDATE=true brew install ${HOMEBREW_PACKAGES}
-      - save_cache:
-          paths:
-            - /usr/local/Homebrew
-          key: homebrew_cache_v11
-      - run: echo 'export PATH="/usr/local/opt/go@1.12/bin:$PATH"' >> $BASH_ENV
-      - run: curl -fsSL "https://github.com/gotestyourself/gotestsum/releases/download/v0.3.3/gotestsum_0.3.3_darwin_amd64.tar.gz" | sudo tar -xz -C /usr/local/bin gotestsum
-      # We can't run the container tests on macos because nested
-      # VMs don't work on circleci.
-      - run: mkdir -p test-results
-      # Only run watch tests, because these are currently the only tests that are OS-specific.
-      # In other Tilt tests, we mock out OS-specific components.
-      - run: gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- -mod vendor ./internal/watch/...
-      - store_test_results:
-          path: test-results
-      - slack/notify-on-failure:
-          only_for_branches: master
-
 workflows:
   version: 2
   build:
-    # The linux job is cheaper than the others, so run that first.
     jobs:
-      - build-linux
-      - helm2
-      - build-js:
-          requires:
-            - build-linux
-      - build-macos:
-          requires:
-            - build-linux
       - build-integration:
-          requires:
-            - build-linux
-      - build-windows:
-          requires:
-            - build-linux
-      - publish-assets:
-          filters:
-            branches:
-              only: master

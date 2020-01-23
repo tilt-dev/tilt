@@ -76,7 +76,7 @@ shorttest:
 
 integration:
 ifneq ($(CIRCLECI),true)
-		go test -mod vendor -v -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s ./integration
+		go test -mod vendor -v -count 100 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s -run TestLocalResourceCleanup ./integration
 else
 		mkdir -p test-results
 		gotestsum --format standard-verbose --junitfile test-results/unit-tests.xml -- ./integration -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s
