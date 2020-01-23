@@ -1,0 +1,2 @@
+local_resource('foo', serve_cmd='./hello.sh foo')
+local_resource('bar', serve_cmd='./hello.sh bar')

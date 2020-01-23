@@ -76,6 +76,10 @@ func newFixture(t *testing.T, dir string) *fixture {
 	return f
 }
 
+func (f *fixture) testDirPath(s string) string {
+	return filepath.Join(f.dir, s)
+}
+
 func (f *fixture) installTilt() {
 	cmd := exec.CommandContext(f.ctx, "go", "install", "-mod", "vendor", "github.com/windmilleng/tilt/cmd/tilt")
 	f.runOrFail(cmd, "Building tilt")
@@ -180,7 +184,7 @@ func (f *fixture) TiltWatchExec() {
 }
 
 func (f *fixture) ReplaceContents(fileBaseName, original, replacement string) {
-	file := filepath.Join(f.dir, fileBaseName)
+	file := f.testDirPath(fileBaseName)
 	contentsBytes, err := ioutil.ReadFile(file)
 	if err != nil {
 		f.t.Fatal(err)
