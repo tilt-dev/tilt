@@ -197,7 +197,6 @@ describe("LogStore", () => {
       "layer 1: Pending\nlayer 2: Pending\nlayer 3: Pending"
     )
 
-    console.log("appending")
     logs.append({
       segments: [
         { text: "layer 2: Finished\n", fields: { progressID: "layer 2" } },

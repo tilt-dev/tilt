@@ -21,6 +21,19 @@ type LogPaneProps = {
   isSnapshot: boolean
 }
 
+type LogPaneState = {
+  // The number of log lines to display
+  renderWindow: number
+}
+
+const renderWindowDefault = 50
+const renderWindowMinStep = 50
+
+// Rough estimate of the height of a log line.
+// Notice that log lines may have multiple visual lines of text, so
+// in practice the height is variable.
+const blankLogLineHeight = 30
+
 type LogLineComponentProps = {
   text: string
   manifestName: string
@@ -108,10 +121,11 @@ class LogLineComponent extends PureComponent<LogLineComponentProps> {
   }
 }
 
-class LogPane extends Component<LogPaneProps> {
+class LogPane extends Component<LogPaneProps, LogPaneState> {
   highlightRef: React.RefObject<LogLineComponent> = React.createRef()
   private lastElement: React.RefObject<HTMLParagraphElement> = React.createRef()
-  private rafID: number | null = null
+  private autoscrollRafID: number | null = null
+  private renderWindowRafID: number | null = null
 
   // Whether we're auto-scrolling to the bottom of the screen.
   private autoscroll: boolean
@@ -124,6 +138,9 @@ class LogPane extends Component<LogPaneProps> {
 
     this.autoscroll = true
     this.pageYOffset = -1
+    this.state = {
+      renderWindow: renderWindowDefault,
+    }
 
     this.onScroll = this.onScroll.bind(this)
     this.handleSelectionChange = this.handleSelectionChange.bind(this)
@@ -135,6 +152,7 @@ class LogPane extends Component<LogPaneProps> {
       this.props.isSnapshot &&
       this.highlightRef.current
     ) {
+      this.autoscroll = false
       this.highlightRef.current.scrollIntoView()
     } else if (this.lastElement.current?.scrollIntoView) {
       this.lastElement.current.scrollIntoView()
@@ -148,10 +166,44 @@ class LogPane extends Component<LogPaneProps> {
         passive: true,
       })
     }
+
+    this.maybeExpandRenderWindow()
+  }
+
+  private maybeExpandRenderWindow() {
+    if (this.renderWindowRafID) {
+      cancelAnimationFrame(this.renderWindowRafID)
+    }
+
+    this.renderWindowRafID = requestAnimationFrame(() =>
+      this.checkRenderWindow()
+    )
+  }
+
+  private checkRenderWindow() {
+    let blankWindowHeight = this.blankWindowHeight()
+    if (this.pageYOffset >= blankWindowHeight) {
+      return
+    }
+
+    let linesNeeded = Math.ceil(
+      (blankWindowHeight - this.pageYOffset) / blankLogLineHeight
+    )
+    let step = Math.max(renderWindowMinStep, linesNeeded)
+    let newRenderWindow = this.state.renderWindow + step
+    if (this.state.renderWindow < newRenderWindow) {
+      this.setState(prevState => {
+        if (prevState.renderWindow < newRenderWindow) {
+          return { renderWindow: newRenderWindow }
+        }
+        return null
+      })
+    }
   }
 
   componentDidUpdate(prevProps: LogPaneProps) {
     if (prevProps.manifestName != this.props.manifestName) {
+      this.setState({ renderWindow: renderWindowDefault })
       this.autoscroll = true
       this.pageYOffset = -1
 
@@ -159,6 +211,8 @@ class LogPane extends Component<LogPaneProps> {
     } else if (this.autoscroll) {
       this.scrollLastElementIntoView()
     }
+
+    this.maybeExpandRenderWindow()
   }
 
   scrollLastElementIntoView() {
@@ -169,8 +223,11 @@ class LogPane extends Component<LogPaneProps> {
 
   componentWillUnmount() {
     window.removeEventListener("scroll", this.onScroll)
-    if (this.rafID) {
-      clearTimeout(this.rafID)
+    if (this.autoscrollRafID) {
+      cancelAnimationFrame(this.autoscrollRafID)
+    }
+    if (this.renderWindowRafID) {
+      cancelAnimationFrame(this.renderWindowRafID)
     }
     document.removeEventListener("selectionchange", this.handleSelectionChange)
   }
@@ -248,14 +305,35 @@ class LogPane extends Component<LogPaneProps> {
     if (!autoscroll && pageYOffset > oldPageYOffset) {
       this.maybeEngageAutoscroll()
     }
+
+    // If the user scrolled up, check to see if we've scrolled outside the render window.
+    if (pageYOffset < oldPageYOffset) {
+      this.maybeExpandRenderWindow()
+    }
   }
 
-  maybeEngageAutoscroll() {
-    if (this.rafID) {
-      cancelAnimationFrame(this.rafID)
+  private renderWindowStart() {
+    let lines = this.props.logLines
+    let renderWindowStart = Math.max(0, lines.length - this.state.renderWindow)
+    if (this.props.highlight && this.props.isSnapshot) {
+      let highlightStart = Number(this.props.highlight.beginningLogID)
+      if (!isNaN(highlightStart)) {
+        renderWindowStart = Math.min(highlightStart, renderWindowStart)
+      }
+    }
+    return renderWindowStart
+  }
+
+  private blankWindowHeight() {
+    return blankLogLineHeight * this.renderWindowStart()
+  }
+
+  private maybeEngageAutoscroll() {
+    if (this.autoscrollRafID) {
+      cancelAnimationFrame(this.autoscrollRafID)
     }
 
-    this.rafID = requestAnimationFrame(() => {
+    this.autoscrollRafID = requestAnimationFrame(() => {
       let autoscroll = this.computeAutoScroll()
       if (autoscroll) {
         this.autoscroll = true
@@ -303,7 +381,15 @@ class LogPane extends Component<LogPaneProps> {
     let sawEnd = false
     let highlight = this.props.highlight
     let lastManifestName = ""
-    for (let i = 0; i < lines.length; i++) {
+    let renderWindowStart = this.renderWindowStart()
+    let blankWindowHeight = this.blankWindowHeight()
+    logLineEls.push(
+      <div key="blank" style={{ height: blankWindowHeight + "px" }}>
+        &nbsp;
+      </div>
+    )
+
+    for (let i = renderWindowStart; i < lines.length; i++) {
       const l = lines[i]
       const key = "logLine" + i
 
