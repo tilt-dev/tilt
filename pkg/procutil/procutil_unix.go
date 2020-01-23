@@ -20,5 +20,9 @@ func KillProcessGroup(cmd *exec.Cmd) {
 }
 
 func GracefullyShutdownProcess(p *os.Process) error {
+	if p == nil {
+		return nil
+	}
+
 	return syscall.Kill(-p.Pid, syscall.SIGTERM)
 }
