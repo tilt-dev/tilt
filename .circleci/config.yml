@@ -28,4 +28,4 @@ workflows:
   version: 2
   build:
     jobs:
-      - build-integration:
+      - build-integration
