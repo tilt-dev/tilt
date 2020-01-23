@@ -32,7 +32,7 @@ func TestLocalResourceCleanup(t *testing.T) {
 
 	select {
 	case <-f.activeTiltUp.done:
-	case <-time.After(2 * time.Second):
+	case <-time.After(4 * time.Second):
 		t.Fatal("Tilt failed to exit within 2 seconds of SIGTERM")
 	}
 
