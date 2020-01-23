@@ -398,8 +398,8 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (dockerOutput, erro
 			shouldSkip := message.Progress.Current == 0 &&
 				(message.Status == "Waiting" || message.Status == "Preparing")
 			if shouldPrint && !shouldSkip {
-				logger.Get(ctx).Infof("%s: %s %s",
-					id, message.Status, message.Progress.String())
+				logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameProgressID: message.ID}).
+					Infof("%s: %s %s", id, message.Status, message.Progress.String())
 				progressLastPrinted[id] = time.Now()
 				if waitDur == 0 {
 					progressPrintWait[id] = 5 * time.Second
