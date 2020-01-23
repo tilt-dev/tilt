@@ -9,7 +9,7 @@ import (
 // By default, StatefulSets use OrderedPodManagement.
 //
 // This is a bad policy for development. If the pod goes into a crash loop,
-// the StatefulSet operator will get wedged and require manual invervention.
+// the StatefulSet operator will get wedged and require manual intervention.
 // See:
 // https://github.com/windmilleng/tilt/issues/1962
 //

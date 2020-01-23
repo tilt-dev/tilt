@@ -308,6 +308,7 @@ func (d *dockerImageBuilder) getDigestFromBuildOutput(ctx context.Context, reade
 
 var dockerBuildCleanupRexes = []*regexp.Regexp{
 	// the "runc did not determinate sucessfully" just seems redundant on top of "executor failed running"
+	// nolint
 	regexp.MustCompile("(executor failed running.*): runc did not terminate sucessfully"), // sucessfully (sic)
 	// when a file is missing, it generates an error like "failed to compute cache key: foo.txt not found: not found"
 	// most of that seems redundant and/or confusing

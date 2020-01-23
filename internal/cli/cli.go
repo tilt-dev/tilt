@@ -109,7 +109,7 @@ func preCommand(ctx context.Context, a *analytics.TiltAnalytics) (context.Contex
 		cancel()
 
 		// If we get another SIGINT/SIGTERM, OR it takes too long for tilt to
-		// exit after cancelling context, just exit
+		// exit after canceling context, just exit
 		select {
 		case <-sigs:
 			l.Debugf("force quitting...")

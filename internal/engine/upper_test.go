@@ -151,7 +151,7 @@ func (c buildAndDeployCall) oneState() store.BuildState {
 	for _, v := range c.state {
 		return v
 	}
-	panic("space/time has unravelled, sorry")
+	panic("space/time has unraveled, sorry")
 }
 
 type fakeBuildAndDeployer struct {
