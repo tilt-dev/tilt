@@ -9,6 +9,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/windmilleng/tilt/tools/devlog"
+
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/output"
 	"github.com/windmilleng/tilt/internal/tracer"
@@ -112,9 +114,11 @@ func preCommand(ctx context.Context, a *analytics.TiltAnalytics) (context.Contex
 		// exit after canceling context, just exit
 		select {
 		case <-sigs:
+			devlog.Logf("got second sig, force quitting")
 			l.Debugf("force quitting...")
 			os.Exit(1)
 		case <-time.After(2 * time.Second):
+			devlog.Logf("context canceled but app didn't finish in 2 seconds, force quitting")
 			l.Debugf("Context canceled but app still running; forcibly exiting.")
 			os.Exit(1)
 		}

@@ -8,6 +8,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/windmilleng/tilt/tools/devlog"
+
 	"github.com/fatih/color"
 	"github.com/mattn/go-isatty"
 	"github.com/opentracing/opentracing-go"
@@ -149,7 +151,9 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	g.Go(func() error {
 		defer cancel()
-		return upper.Start(ctx, args, threads.tiltBuild, c.watch, c.fileName, hudEnabled, a.UserOpt(), threads.token, string(threads.cloudAddress))
+		err := upper.Start(ctx, args, threads.tiltBuild, c.watch, c.fileName, hudEnabled, a.UserOpt(), threads.token, string(threads.cloudAddress))
+		devlog.Logf("upper.Start finished with err %v", err)
+		return err
 	})
 
 	err = g.Wait()

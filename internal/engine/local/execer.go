@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/windmilleng/tilt/tools/devlog"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/windmilleng/tilt/pkg/logger"
@@ -165,14 +167,17 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 		}
 		statusCh <- statusAndMetadata{status: Error, spanID: spanID}
 	case <-ctx.Done():
+		devlog.Logf("shutting down %s", cmd.String())
 		err := procutil.GracefullyShutdownProcess(c.Process)
 		if err != nil {
+			devlog.Logf("error shutting down %s: %v, killing pg", cmd.String(), err)
 			procutil.KillProcessGroup(c)
 		} else {
 			// wait and then send SIGKILL to the process group, unless the command finished
 			select {
 			case <-time.After(50 * time.Millisecond):
 				procutil.KillProcessGroup(c)
+				devlog.Logf("timed out after 50ms, killed pg for %s", cmd.String())
 			case <-doneCh:
 			}
 		}
