@@ -10,4 +10,5 @@ type BuildOptions struct {
 	Tags       []string
 	Target     string
 	SSHSpecs   []string
+	Network    string
 }

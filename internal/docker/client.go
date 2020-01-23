@@ -474,6 +474,7 @@ func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options Bu
 	opts.Dockerfile = options.Dockerfile
 	opts.Tags = options.Tags
 	opts.Target = options.Target
+	opts.NetworkMode = options.Network
 
 	opts.Labels = BuiltByTiltLabel // label all images as built by us
 

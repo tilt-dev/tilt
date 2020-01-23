@@ -34,6 +34,7 @@ type dockerImage struct {
 	onlys            []string
 	entrypoint       model.Cmd // optional: if specified, we override the image entrypoint/k8s command with this
 	targetStage      string    // optional: if specified, we build a particular target in the dockerfile
+	network          string
 
 	dbDockerfilePath string
 	dbDockerfile     dockerfile.Dockerfile
@@ -79,7 +80,7 @@ func (d *dockerImage) Type() dockerImageBuildType {
 
 func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef, entrypoint, targetStage string
-	var contextVal, dockerfilePathVal, buildArgs, dockerfileContentsVal, cacheVal, liveUpdateVal, ignoreVal, onlyVal, sshVal starlark.Value
+	var contextVal, dockerfilePathVal, buildArgs, dockerfileContentsVal, cacheVal, liveUpdateVal, ignoreVal, onlyVal, sshVal, networkVal starlark.Value
 	var matchInEnvVars bool
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
@@ -95,6 +96,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		"entrypoint?", &entrypoint,
 		"target?", &targetStage,
 		"ssh?", &sshVal,
+		"network?", &networkVal,
 	); err != nil {
 		return nil, err
 	}
@@ -174,6 +176,14 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, fmt.Errorf("Argument 'ssh' must be string or list of strings. Actual: %T", sshVal)
 	}
 
+	network := ""
+	if networkVal != nil {
+		network, ok = value.AsString(networkVal)
+		if !ok {
+			return nil, fmt.Errorf("Argument 'network' must be string. Actual: %T", networkVal)
+		}
+	}
+
 	var entrypointCmd model.Cmd
 	if entrypoint != "" {
 		entrypointCmd = model.ToShellCmd(entrypoint)
@@ -193,6 +203,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		onlys:            onlys,
 		entrypoint:       entrypointCmd,
 		targetStage:      targetStage,
+		network:          network,
 	}
 	err = s.buildIndex.addImage(r)
 	if err != nil {
@@ -279,9 +290,9 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, errors.Wrap(err, "live_update")
 	}
 
-	ignores, error := parseValuesToStrings(ignoreVal, "ignore")
-	if error != nil {
-		return nil, error
+	ignores, err := parseValuesToStrings(ignoreVal, "ignore")
+	if err != nil {
+		return nil, err
 	}
 
 	var entrypointCmd model.Cmd
