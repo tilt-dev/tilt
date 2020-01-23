@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"sync"
 	"syscall"
@@ -166,7 +165,7 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 		}
 		statusCh <- statusAndMetadata{status: Error, spanID: spanID}
 	case <-ctx.Done():
-		err := c.Process.Signal(os.Interrupt)
+		err := procutil.GracefullyShutdownProcess(c.Process)
 		if err != nil {
 			procutil.KillProcessGroup(c)
 		} else {

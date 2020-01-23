@@ -38,6 +38,7 @@ require (
 	github.com/fatih/color v1.7.0
 	github.com/frankban/quicktest v1.7.2 // indirect
 	github.com/gdamore/tcell v1.1.3
+	github.com/gentlemanautomaton/graceful v0.0.0-20170727140743-803ae396410c
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/golang/protobuf v1.3.2

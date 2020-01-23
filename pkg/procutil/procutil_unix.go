@@ -3,6 +3,7 @@
 package procutil
 
 import (
+	"os"
 	"os/exec"
 	"syscall"
 )
@@ -16,4 +17,8 @@ func KillProcessGroup(cmd *exec.Cmd) {
 		// Kill the entire process group.
 		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 	}
+}
+
+func GracefullyShutdownProcess(p *os.Process) error {
+	return p.Signal(syscall.SIGTERM)
 }

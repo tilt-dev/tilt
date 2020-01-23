@@ -204,6 +204,8 @@ github.com/gdamore/encoding
 github.com/gdamore/tcell
 github.com/gdamore/tcell/terminfo
 github.com/gdamore/tcell/terminfo/dynamic
+# github.com/gentlemanautomaton/graceful v0.0.0-20170727140743-803ae396410c
+github.com/gentlemanautomaton/graceful
 # github.com/ghodss/yaml v1.0.0
 github.com/ghodss/yaml
 # github.com/go-logfmt/logfmt v0.4.0
