@@ -15,11 +15,12 @@ msg="$*"
 
 cleanup() {
   echo "cleaning up: $msg"
+  echo "$(date --rfc-3339=seconds) trapped cleanup: $msg" >> /tmp/tilt-log
   echo "cleaning up: $msg" >> cleanup.txt
   exit 1
 }
 
-trap cleanup SIGTERM
+trap cleanup SIGTERM SIGINT
 
 while true; do
   echo "hello! $msg #$n"

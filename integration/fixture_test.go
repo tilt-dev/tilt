@@ -38,7 +38,6 @@ type fixture struct {
 	cancel        func()
 	dir           string
 	logs          *bufsync.ThreadSafeBuffer
-	cmds          []*exec.Cmd
 	originalFiles map[string]string
 	tilt          *TiltDriver
 	activeTiltUp  *TiltUpResponse

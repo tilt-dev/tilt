@@ -49,11 +49,6 @@ type Logger interface {
 	WithFields(fields Fields) Logger
 }
 
-// Allow arbitrary fields on a log.
-// Inspired by the logrus.Fields API
-// https://github.com/sirupsen/logrus
-type Fields map[string]string
-
 type LogHandler interface {
 	Write(level Level, fields Fields, bytes []byte) error
 }

@@ -134,6 +134,9 @@ func (e *processExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, s
 func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, doneCh chan struct{}, spanID model.LogSpanID) {
 	defer close(doneCh)
 	defer close(statusCh)
+	defer func() {
+		devlog.Logf("processRun exited: %s", cmd.String())
+	}()
 
 	logger.Get(ctx).Infof("Running serve cmd: %s", cmd.String())
 	c := exec.Command(cmd.Argv[0], cmd.Argv[1:]...)
@@ -154,6 +157,7 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 
 		statusCh <- statusAndMetadata{status: Running, pid: c.Process.Pid, spanID: spanID}
 		errCh <- c.Wait()
+		devlog.Logf("command exited: %s", cmd.String())
 	}()
 
 	select {
@@ -173,11 +177,12 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 			devlog.Logf("error shutting down %s: %v, killing pg", cmd.String(), err)
 			procutil.KillProcessGroup(c)
 		} else {
+			timeout := 3 * time.Second
 			// wait and then send SIGKILL to the process group, unless the command finished
 			select {
-			case <-time.After(50 * time.Millisecond):
+			case <-time.After(timeout):
+				devlog.Logf("timed out after %s, killing pg for %s", timeout.String(), cmd.String())
 				procutil.KillProcessGroup(c)
-				devlog.Logf("timed out after 50ms, killed pg for %s", cmd.String())
 			case <-doneCh:
 			}
 		}

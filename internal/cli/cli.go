@@ -110,6 +110,8 @@ func preCommand(ctx context.Context, a *analytics.TiltAnalytics) (context.Contex
 
 		cancel()
 
+		timeout := 4 * time.Second
+
 		// If we get another SIGINT/SIGTERM, OR it takes too long for tilt to
 		// exit after canceling context, just exit
 		select {
@@ -117,8 +119,8 @@ func preCommand(ctx context.Context, a *analytics.TiltAnalytics) (context.Contex
 			devlog.Logf("got second sig, force quitting")
 			l.Debugf("force quitting...")
 			os.Exit(1)
-		case <-time.After(2 * time.Second):
-			devlog.Logf("context canceled but app didn't finish in 2 seconds, force quitting")
+		case <-time.After(timeout):
+			devlog.Logf("context canceled but app didn't finish in %s, force quitting", timeout)
 			l.Debugf("Context canceled but app still running; forcibly exiting.")
 			os.Exit(1)
 		}

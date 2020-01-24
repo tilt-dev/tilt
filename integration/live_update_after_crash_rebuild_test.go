@@ -29,16 +29,13 @@ func TestLiveUpdateAfterCrashRebuild(t *testing.T) {
 
 	f.TiltWatch()
 
-	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
-	defer cancel()
-
 	fmt.Println("> Waiting for pods from initial build")
 
 	pw = pw.withExpectedPodCount(1)
 
 	initialBuildPods := pw.withDisallowedPodIDs(initialPods).wait()
 
-	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
+	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 	f.CurlUntil(ctx, "http://localhost:31234", "🍄 One-Up! 🍄")
 

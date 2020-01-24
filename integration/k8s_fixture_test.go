@@ -182,7 +182,6 @@ func (f *k8sFixture) ForwardPort(name string, portMap string) {
 		f.t.Fatal(err)
 	}
 
-	f.cmds = append(f.cmds, cmd)
 	go func() {
 		err := cmd.Wait()
 		if err != nil && !f.tearingDown {

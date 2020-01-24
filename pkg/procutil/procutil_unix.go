@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
+
+	"github.com/pkg/errors"
 )
 
 func SetOptNewProcessGroup(attrs *syscall.SysProcAttr) {
@@ -20,5 +22,11 @@ func KillProcessGroup(cmd *exec.Cmd) {
 }
 
 func GracefullyShutdownProcess(p *os.Process) error {
-	return p.Signal(syscall.SIGTERM)
+	err := syscall.Kill(-p.Pid, syscall.SIGTERM)
+	if err != nil {
+		return errors.Wrap(err, "SIGTERM")
+	}
+
+	err = syscall.Kill(-p.Pid, syscall.SIGINT)
+	return errors.Wrap(err, "SIGINT")
 }

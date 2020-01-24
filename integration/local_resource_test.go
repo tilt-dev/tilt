@@ -43,7 +43,8 @@ func TestLocalResourceCleanup(t *testing.T) {
 
 	f.TiltWatch()
 
-	require.NoError(t, f.logs.WaitUntilContains("hello! bar #1", 4*time.Second))
+	require.NoError(t, f.logs.WaitUntilContains("hello! foo #1", 7*time.Second))
+	require.NoError(t, f.logs.WaitUntilContains("hello! bar #1", 7*time.Second))
 
 	// send a SIGTERM and make sure Tilt propagates it to its local_resource processes
 

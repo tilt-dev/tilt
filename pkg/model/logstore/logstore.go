@@ -39,6 +39,7 @@ type LogSegment struct {
 	Time   time.Time
 	Text   []byte
 	Level  logger.Level
+	Fields logger.Fields
 
 	// Continues a line from a previous segment.
 	ContinuesLine bool
@@ -75,7 +76,7 @@ func (l LogSegment) String() string {
 	return string(l.Text)
 }
 
-func segmentsFromBytes(spanID SpanID, time time.Time, level logger.Level, bs []byte) []LogSegment {
+func segmentsFromBytes(spanID SpanID, time time.Time, level logger.Level, fields logger.Fields, bs []byte) []LogSegment {
 	segments := []LogSegment{}
 	lastBreak := 0
 	for i, b := range bs {
@@ -85,6 +86,7 @@ func segmentsFromBytes(spanID SpanID, time time.Time, level logger.Level, bs []b
 				Level:  level,
 				Time:   time,
 				Text:   bs[lastBreak : i+1],
+				Fields: fields,
 			})
 			lastBreak = i + 1
 		}
@@ -95,6 +97,7 @@ func segmentsFromBytes(spanID SpanID, time time.Time, level logger.Level, bs []b
 			Level:  level,
 			Time:   time,
 			Text:   bs[lastBreak:],
+			Fields: fields,
 		})
 	}
 	return segments
@@ -104,6 +107,7 @@ type LogEvent interface {
 	Message() []byte
 	Time() time.Time
 	Level() logger.Level
+	Fields() logger.Fields
 
 	// The manifest that this log is associated with.
 	ManifestName() model.ManifestName
@@ -202,7 +206,7 @@ func (s *LogStore) Append(le LogEvent, secrets model.SecretSet) {
 	}
 
 	msg := secrets.Scrub(le.Message())
-	added := segmentsFromBytes(spanID, le.Time(), le.Level(), msg)
+	added := segmentsFromBytes(spanID, le.Time(), le.Level(), le.Fields(), msg)
 	if len(added) == 0 {
 		return
 	}
@@ -425,6 +429,7 @@ func (s *LogStore) ToLogList(fromCheckpoint Checkpoint) (*webview.LogList, error
 			Time:   time,
 			Text:   string(segment.Text),
 			Anchor: segment.Anchor,
+			Fields: segment.Fields,
 		})
 	}
 

@@ -902,6 +902,11 @@ type testLogAction struct {
 	time   time.Time
 	msg    string
 	level  logger.Level
+	fields logger.Fields
+}
+
+func (e testLogAction) Fields() logger.Fields {
+	return e.fields
 }
 
 func (e testLogAction) Message() []byte {

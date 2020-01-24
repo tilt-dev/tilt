@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 )
 
 var filename = "/tmp/tilt-log"
@@ -46,7 +47,7 @@ func (lf *logFile) maybeLoad() {
 // when it's awkward to Printf/use the real logger. Calls to this func should
 // never end up on `master.`
 func Logf(msg string, a ...interface{}) {
-	s := fmt.Sprintf(msg, a...)
+	s := fmt.Sprintf("%s: %s", time.Now().Format(time.RFC3339), fmt.Sprintf(msg, a...))
 	theLogfile.write(s + "\n")
 
 }

@@ -137,11 +137,6 @@ func TestOptedOut(t *testing.T) {
 	defer cancel()
 	f.WaitForAllPodsReady(ctx, "app=analytics")
 
-	var observedEventNames []string
-	for _, c := range f.mss.ma.Counts {
-		observedEventNames = append(observedEventNames, c.Name)
-	}
-
 	assert.Equal(t, 0, len(f.mss.ma.Counts))
 }
 
