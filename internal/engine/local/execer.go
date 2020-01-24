@@ -143,6 +143,8 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 
 	err := c.Start()
 	if err != nil {
+		logger.Get(ctx).Errorf("%s failed to start: %v", cmd.String(), err)
+		statusCh <- statusAndMetadata{status: Error, spanID: spanID}
 		return
 	}
 
