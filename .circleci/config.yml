@@ -38,10 +38,10 @@ jobs:
       - checkout
       - run: make check-js
       - run:
-        name: Run jest with JUnit Reporter
-        command: make test-js
-        environment:
-          JEST_JUNIT_OUTPUT_DIR: "reports/junit/js-test-results.xml"
+          name: Run jest with JUnit Reporter
+          command: make test-js
+          environment:
+            JEST_JUNIT_OUTPUT_DIR: "reports/junit/js-test-results.xml"
       - store_test_results:
           path: reports/junit
       - slack/notify-on-failure:
