@@ -79,6 +79,15 @@ func TestStopsGrandchildren(t *testing.T) {
 	f.waitForStatusAndNoError(Done)
 }
 
+func TestHandlesProcessThatFailsToStart(t *testing.T) {
+	f := newProcessExecFixture(t)
+	defer f.tearDown()
+
+	f.startMalformedCommand()
+	f.waitForError()
+	f.assertLogContains("failed to start: ")
+}
+
 type processExecFixture struct {
 	t          *testing.T
 	ctx        context.Context
@@ -107,6 +116,11 @@ func newProcessExecFixture(t *testing.T) *processExecFixture {
 
 func (f *processExecFixture) tearDown() {
 	f.cancel()
+}
+
+func (f *processExecFixture) startMalformedCommand() {
+	c := model.Cmd{Argv: []string{"\""}}
+	f.execer.Start(f.ctx, c, f.testWriter, f.statusCh, model.LogSpanID("rt1"))
 }
 
 func (f *processExecFixture) start(cmd string) {
