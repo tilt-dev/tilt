@@ -117,6 +117,7 @@ func newUpdateFixture(t *testing.T) *updateFixture {
 	state.Features = map[string]bool{feature.UpdateHistory: true}
 	state.Token = "fake-token"
 	state.TeamName = "fake-team"
+	state.TiltCloudUsername = "fake-username"
 
 	m1 := manifestbuilder.New(f, "sancho").WithK8sYAML(testyaml.SanchoYAML).Build()
 	state.UpsertManifestTarget(store.NewManifestTarget(m1))
