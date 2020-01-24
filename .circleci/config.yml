@@ -8,7 +8,7 @@ jobs:
     steps:
       - checkout
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
-      - run: setup_remote_docker
+      - setup_remote_docker
       # Delete any existing clusters, for `circleci local execute` mode
       - run: kind delete cluster --name=integration || exit 0
       - run: docker kill portforward || exit 0
