@@ -185,7 +185,7 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 			case <-time.After(timeout):
 				devlog.Logf("timed out after %s, killing pg for %s", timeout.String(), cmd.String())
 				procutil.KillProcessGroup(c)
-			case <-errCh:
+			case <-doneCh:
 			}
 		}
 		statusCh <- statusAndMetadata{status: Done, spanID: spanID}
