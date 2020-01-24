@@ -1,2 +1,2 @@
-local_resource('foo', serve_cmd='./hello.sh foo;echo done foo')
-local_resource('bar', serve_cmd='./hello.sh bar;echo done bar')
+local_resource('foo', serve_cmd='./hello.sh foo')
+local_resource('bar', serve_cmd='./hello.sh bar')
