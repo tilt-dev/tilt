@@ -108,7 +108,7 @@ func preCommand(ctx context.Context) (context.Context, func() error) {
 
 		cancel()
 
-		timeout := 4 * time.Second
+		timeout := 2 * time.Second
 
 		// If we get another SIGINT/SIGTERM, OR it takes too long for tilt to
 		// exit after canceling context, just exit

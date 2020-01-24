@@ -179,7 +179,7 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 			devlog.Logf("error shutting down %s: %v, killing pg", cmd.String(), err)
 			procutil.KillProcessGroup(c)
 		} else {
-			timeout := 3 * time.Second
+			timeout := 50 * time.Millisecond
 			// wait and then send SIGKILL to the process group, unless the command finished
 			select {
 			case <-time.After(timeout):

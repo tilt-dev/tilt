@@ -43,17 +43,19 @@ func TestLocalResourceCleanup(t *testing.T) {
 
 	f.TiltWatch()
 
-	require.NoError(t, f.logs.WaitUntilContains("hello! foo #1", 7*time.Second))
-	require.NoError(t, f.logs.WaitUntilContains("hello! bar #1", 7*time.Second))
+	require.NoError(t, f.logs.WaitUntilContains("hello! foo #1", time.Second))
+	require.NoError(t, f.logs.WaitUntilContains("hello! bar #1", time.Second))
 
 	// send a SIGTERM and make sure Tilt propagates it to its local_resource processes
 
 	require.NoError(t, f.activeTiltUp.process.Signal(syscall.SIGTERM))
 
+	timeout := 2 * time.Second
+
 	select {
 	case <-f.activeTiltUp.done:
-	case <-time.After(4 * time.Second):
-		t.Fatal("Tilt failed to exit within 4 seconds of SIGTERM")
+	case <-time.After(timeout):
+		t.Fatalf("Tilt failed to exit within %s of SIGTERM", timeout.String())
 	}
 
 	// hello.sh writes to cleanup.txt on SIGTERM
