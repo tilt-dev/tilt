@@ -512,8 +512,6 @@ it("doesn't set selection event handler if snapshot", () => {
   expect(registeredEventHandlers).not.toEqual(
     expect.arrayContaining(["selectionchange"])
   )
-  expect(registeredEventHandlers).not.toEqual(
-    expect.arrayContaining(["scroll"])
-  )
+  expect(registeredEventHandlers).toEqual(expect.arrayContaining(["scroll"]))
   expect(registeredEventHandlers).not.toEqual(expect.arrayContaining(["wheel"]))
 })
