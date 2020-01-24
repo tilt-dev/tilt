@@ -175,9 +175,3 @@ ensure: vendor
 
 vendor:
 	go mod vendor
-	# Patch client-go with our fixes to the informers.
-	# https://github.com/windmilleng/tilt/issues/2702
-	cp scripts/patch/cache/controller.go.patch vendor/k8s.io/client-go/tools/cache/controller.go
-	cp scripts/patch/cache/patch.go.patch vendor/k8s.io/client-go/tools/cache/patch.go
-	cp scripts/patch/cache/shared_informer.go.patch vendor/k8s.io/client-go/tools/cache/shared_informer.go
-	cp scripts/patch/cache/reflector.go.patch vendor/k8s.io/client-go/tools/cache/reflector.go
