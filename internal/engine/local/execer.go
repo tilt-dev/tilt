@@ -159,6 +159,7 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- c.Wait()
+		close(doneCh)
 		devlog.Logf("command exited: %s", cmd.String())
 	}()
 
