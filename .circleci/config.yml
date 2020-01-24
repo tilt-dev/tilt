@@ -41,9 +41,9 @@ jobs:
           name: Run jest with JUnit Reporter
           command: make test-js
           environment:
-            JEST_JUNIT_OUTPUT_DIR: "web/reports/junit/js-test-results.xml"
+            JEST_JUNIT_OUTPUT_DIR: "reports/junit/js-test-results.xml"
       - store_test_results:
-          path: reports/junit
+          path: web/reports/junit
       - slack/notify-on-failure:
           only_for_branches: master
 
