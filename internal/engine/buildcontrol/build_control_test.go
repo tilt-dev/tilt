@@ -29,6 +29,30 @@ func TestNextTargetToBuildDoesntReturnCurrentlyBuildingTarget(t *testing.T) {
 	f.assertNoTargetNextToBuild()
 }
 
+func TestCurrentBuildRecursive(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	m1 := manifestbuilder.New(f, "m1").WithK8sYAML(testyaml.SanchoYAML).WithResourceDeps("m2").Build()
+	mt1 := store.NewManifestTarget(m1)
+	f.st.UpsertManifestTarget(mt1)
+
+	m2 := manifestbuilder.New(f, "m2").WithK8sYAML(testyaml.SanchoYAML).WithResourceDeps("m3").Build()
+	mt2 := store.NewManifestTarget(m2)
+	f.st.UpsertManifestTarget(mt2)
+
+	m3 := manifestbuilder.New(f, "m3").WithK8sYAML(testyaml.SanchoYAML).Build()
+	mt3 := store.NewManifestTarget(m3)
+	f.st.UpsertManifestTarget(mt3)
+
+	f.assertNextTargetToBuild(m3.Name)
+
+	// If target is currently building, none of its deps should be next to build.
+	mt3.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+
+	f.assertNoTargetNextToBuild()
+}
+
 type testFixture struct {
 	*tempdir.TempDirFixture
 	t  *testing.T

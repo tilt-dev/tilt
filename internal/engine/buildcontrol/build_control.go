@@ -19,8 +19,9 @@ func NextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 		return nil
 	}
 
-	targets := RemoveCurrentlyBuildingTargets(state.Targets())
-	targets = RemoveTargetsWaitingOnDependencies(state, targets)
+	sortedTargets := TopologicalSort(state.Targets())
+	sortedTargets = RemoveCurrentlyBuildingTargetsAndDeps(sortedTargets)
+	targets := RemoveTargetsWaitingOnDependencies(state, []*store.ManifestTarget(sortedTargets))
 
 	// If any of the manifest targets haven't been built yet, build them now.
 	unbuilt := FindTargetsNeedingInitialBuild(targets)
@@ -49,6 +50,46 @@ func NextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 	return EarliestPendingAutoTriggerTarget(targets)
 }
 
+type TopSortedTargets []*store.ManifestTarget
+
+// Sort the resources in topological order,
+// so that a target always shows up before any targets that depend on it.
+func TopologicalSort(mts []*store.ManifestTarget) TopSortedTargets {
+	result := make([]*store.ManifestTarget, 0, len(mts))
+	consumed := make(map[model.ManifestName]bool, len(mts))
+	consuming := make(map[model.ManifestName]bool, len(mts))
+	nameToIndex := make(map[model.ManifestName]int, len(mts))
+	for i, mt := range mts {
+		nameToIndex[mt.Manifest.Name] = i
+	}
+
+	// Declare consume() separately because it's recursive.
+	var consume func(i int)
+	consume = func(i int) {
+		mt := mts[i]
+		mn := mt.Manifest.Name
+		if consumed[mn] || consuming[mn] {
+			return
+		}
+
+		consuming[mn] = true
+
+		// Make sure we consume all of a manifest's deps before adding it to the array.
+		for _, mn := range mt.Manifest.ResourceDependencies {
+			consume(nameToIndex[mn])
+		}
+
+		result = append(result, mt)
+		consumed[mn] = true
+	}
+
+	for i := range mts {
+		consume(i)
+	}
+
+	return result
+}
+
 func NextManifestNameToBuild(state store.EngineState) model.ManifestName {
 	mt := NextTargetToBuild(state)
 	if mt == nil {
@@ -73,10 +114,23 @@ func isWaitingOnDependencies(state store.EngineState, mt *store.ManifestTarget) 
 	return false
 }
 
-func RemoveCurrentlyBuildingTargets(mts []*store.ManifestTarget) []*store.ManifestTarget {
-	var ret []*store.ManifestTarget
+func RemoveCurrentlyBuildingTargetsAndDeps(mts TopSortedTargets) TopSortedTargets {
+	var ret TopSortedTargets
+	isBuilding := make(map[model.ManifestName]bool)
+	hasBuildingDep := make(map[model.ManifestName]bool)
 	for _, mt := range mts {
-		if !mt.State.IsBuilding() {
+		mn := mt.Manifest.Name
+		if mt.State.IsBuilding() {
+			isBuilding[mn] = true
+		}
+
+		for _, depName := range mt.Manifest.ResourceDependencies {
+			if isBuilding[depName] || hasBuildingDep[depName] {
+				hasBuildingDep[mn] = true
+			}
+		}
+
+		if !(isBuilding[mn] || hasBuildingDep[mn]) {
 			ret = append(ret, mt)
 		}
 	}
