@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/denisbrodbeck/machineid"
-	"github.com/spf13/cobra"
 )
 
 const statsEndpt = "https://events.windmill.build/report"
@@ -43,20 +42,6 @@ type stdLogger struct{}
 
 func (stdLogger) Printf(format string, v ...interface{}) {
 	log.Printf("[analytics] %s", fmt.Sprintf(format, v...))
-}
-
-func Init(appName string, options ...Option) (Analytics, *cobra.Command, error) {
-	a, err := NewRemoteAnalytics(appName, options...)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	c, err := initCLI()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return a, c, nil
 }
 
 type Analytics interface {

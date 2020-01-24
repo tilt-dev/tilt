@@ -461,8 +461,8 @@ it("does not scroll to highlighted lines if not snapshot", () => {
   Element.prototype.scrollIntoView = fakeScrollIntoView
 
   const highlight = {
-    beginningLogID: "2",
-    endingLogID: "3",
+    beginningLogID: "300",
+    endingLogID: "301",
     text: "foo\nbar",
   }
   const wrapper = mount<LogPane>(
@@ -480,9 +480,7 @@ it("does not scroll to highlighted lines if not snapshot", () => {
 
   expect(wrapper.instance().highlightRef.current).not.toBeNull()
   expect(fakeScrollIntoView.mock.instances).toHaveLength(1)
-  expect(fakeScrollIntoView.mock.instances[0]).toBeInstanceOf(
-    HTMLParagraphElement
-  )
+  expect(fakeScrollIntoView.mock.instances[0].className).toEqual("logEnd")
   expect(fakeScrollIntoView).toBeCalledTimes(1)
 })
 

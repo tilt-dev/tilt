@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
+	"github.com/windmilleng/tilt/pkg/logger"
 
-	"github.com/spf13/cobra"
 	giturls "github.com/whilp/git-urls"
 
 	"github.com/windmilleng/wmclient/pkg/analytics"
@@ -35,24 +35,33 @@ func (ao analyticsOpter) SetUserOpt(opt analytics.Opt) error {
 	return analytics.SetOpt(opt)
 }
 
-func initAnalytics(rootCmd *cobra.Command) (*tiltanalytics.TiltAnalytics, error) {
-	var analyticsCmd *cobra.Command
+type analyticsLogger struct {
+	logger logger.Logger
+}
+
+func (al analyticsLogger) Printf(fmt string, v ...interface{}) {
+	al.logger.Debugf(fmt, v...)
+}
+
+func newAnalytics(l logger.Logger) (*tiltanalytics.TiltAnalytics, error) {
 	var err error
 
 	options := []analytics.Option{}
 	// enabled: true because TiltAnalytics wraps the RemoteAnalytics and has its own guards for whether analytics
 	//   is enabled. When TiltAnalytics decides to pass a call through to RemoteAnalytics, it should always work.
-	options = append(options, analytics.WithGlobalTags(globalTags()), analytics.WithEnabled(true))
+	options = append(options,
+		analytics.WithGlobalTags(globalTags()),
+		analytics.WithEnabled(true),
+		analytics.WithLogger(analyticsLogger{logger: l}))
 	analyticsURL := os.Getenv(analyticsURLEnvVar)
 	if analyticsURL != "" {
 		options = append(options, analytics.WithReportURL(analyticsURL))
 	}
-	backingAnalytics, analyticsCmd, err := analytics.Init(tiltAppName, options...)
+	backingAnalytics, err := analytics.NewRemoteAnalytics(tiltAppName, options...)
 	if err != nil {
 		return nil, err
 	}
 
-	rootCmd.AddCommand(analyticsCmd)
 	return tiltanalytics.NewTiltAnalytics(analyticsOpter{}, backingAnalytics, provideTiltInfo().AnalyticsVersion())
 }
 

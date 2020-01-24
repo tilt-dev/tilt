@@ -3,21 +3,18 @@ package cli
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/windmilleng/tilt/tools/devlog"
-
-	"github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/output"
-	"github.com/windmilleng/tilt/internal/tracer"
-
 	"github.com/spf13/cobra"
 
+	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
+	"github.com/windmilleng/tilt/internal/output"
+	"github.com/windmilleng/tilt/internal/tracer"
 	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/windmilleng/tilt/tools/devlog"
 )
 
 var debug bool
@@ -41,19 +38,13 @@ func Execute() {
 		Short: "tilt creates Kubernetes Live Deploys that reflect changes seconds after they’re made",
 	}
 
-	a, err := initAnalytics(rootCmd)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	addCommand(rootCmd, &upCmd{}, a)
-	addCommand(rootCmd, &dockerCmd{}, a)
-	addCommand(rootCmd, &doctorCmd{}, a)
-	addCommand(rootCmd, &downCmd{}, a)
-	addCommand(rootCmd, &versionCmd{}, a)
-	addCommand(rootCmd, &dockerPruneCmd{}, a)
-	addCommand(rootCmd, newArgsCmd(), a)
+	addCommand(rootCmd, &upCmd{})
+	addCommand(rootCmd, &dockerCmd{})
+	addCommand(rootCmd, &doctorCmd{})
+	addCommand(rootCmd, &downCmd{})
+	addCommand(rootCmd, &versionCmd{})
+	addCommand(rootCmd, &dockerPruneCmd{})
+	addCommand(rootCmd, newArgsCmd())
 
 	rootCmd.AddCommand(newKubectlCmd())
 	rootCmd.AddCommand(newDumpCmd())
@@ -82,22 +73,29 @@ type tiltCmd interface {
 	run(ctx context.Context, args []string) error
 }
 
-func preCommand(ctx context.Context, a *analytics.TiltAnalytics) (context.Context, func() error) {
+func preCommand(ctx context.Context) (context.Context, func() error) {
 	cleanup := func() error { return nil }
 	l := logger.NewLogger(logLevel(verbose, debug), os.Stdout)
 	ctx = logger.WithLogger(ctx, l)
-	ctx = analytics.WithAnalytics(ctx, a)
+
+	a, err := newAnalytics(l)
+	if err != nil {
+		l.Errorf("Fatal error initializing analytics: %v", err)
+		os.Exit(1)
+	}
+
+	ctx = tiltanalytics.WithAnalytics(ctx, a)
 
 	initKlog(l.Writer(logger.InfoLvl))
 
 	if trace {
 		backend, err := tracer.StringToTracerBackend(traceType)
 		if err != nil {
-			log.Printf("Warning: invalid tracer backend: %v", err)
+			l.Warnf("invalid tracer backend: %v", err)
 		}
 		cleanup, err = tracer.Init(ctx, backend)
 		if err != nil {
-			log.Printf("Warning: unable to initialize tracer: %s", err)
+			l.Warnf("unable to initialize tracer: %s", err)
 		}
 	}
 
@@ -129,10 +127,10 @@ func preCommand(ctx context.Context, a *analytics.TiltAnalytics) (context.Contex
 	return ctx, cleanup
 }
 
-func addCommand(parent *cobra.Command, child tiltCmd, a *analytics.TiltAnalytics) {
+func addCommand(parent *cobra.Command, child tiltCmd) {
 	cobraChild := child.register()
 	cobraChild.Run = func(_ *cobra.Command, args []string) {
-		ctx, cleanup := preCommand(context.Background(), a)
+		ctx, cleanup := preCommand(context.Background())
 
 		err := child.run(ctx, args)
 

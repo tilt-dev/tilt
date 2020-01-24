@@ -48,7 +48,7 @@ func analyticsOpt(_ *cobra.Command, args []string) (outerErr error) {
 
 const choiceFile = "analytics/user/choice.txt"
 
-func initCLI() (*cobra.Command, error) {
+func NewCommand() *cobra.Command {
 	analytics := &cobra.Command{
 		Use:   "analytics",
 		Short: "info and status about windmill analytics",
@@ -61,6 +61,5 @@ func initCLI() (*cobra.Command, error) {
 		RunE:  analyticsOpt,
 	}
 	analytics.AddCommand(opt)
-
-	return analytics, nil
+	return analytics
 }

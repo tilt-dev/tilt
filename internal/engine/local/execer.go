@@ -146,16 +146,18 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 	c.Stderr = w
 	c.Stdout = w
 
-	errCh := make(chan error)
+	err := c.Start()
+	if err != nil {
+		logger.Get(ctx).Errorf("%s failed to start: %v", cmd.String(), err)
+		statusCh <- statusAndMetadata{status: Error, spanID: spanID}
+		return
+	}
 
+	statusCh <- statusAndMetadata{status: Running, pid: c.Process.Pid, spanID: spanID}
+
+	// This is to prevent this goroutine from blocking, since we know there's only going to be one result
+	errCh := make(chan error, 1)
 	go func() {
-		err := c.Start()
-		if err != nil {
-			errCh <- err
-			return
-		}
-
-		statusCh <- statusAndMetadata{status: Running, pid: c.Process.Pid, spanID: spanID}
 		errCh <- c.Wait()
 		devlog.Logf("command exited: %s", cmd.String())
 	}()

@@ -1,4 +1,4 @@
-package engine
+package buildcontrol
 
 import (
 	"context"
@@ -89,6 +89,10 @@ func NewImageTargetQueue(ctx context.Context, iTargets []model.ImageTarget, stat
 		needsOwnBuild: needsOwnBuild,
 		depsNeedBuild: depsNeedBuild,
 	}, nil
+}
+
+func (q *TargetQueue) Results() store.BuildResultSet {
+	return q.results
 }
 
 func (q *TargetQueue) CountDirty() int {

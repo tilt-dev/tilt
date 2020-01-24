@@ -93,7 +93,7 @@ require (
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
 	github.com/windmilleng/fsevents v0.0.0-20190206153914-2ad75e5ddeed
 	github.com/windmilleng/fsnotify v1.4.7
-	github.com/windmilleng/wmclient v0.0.0-20191029142206-4d42565d7ef1
+	github.com/windmilleng/wmclient v0.0.0-20200124175229-a66bcbc48340
 	github.com/xlab/handysort v0.0.0-20150421192137-fb3537ed64a1 // indirect
 	go.opencensus.io v0.22.2 // indirect
 	go.opentelemetry.io/otel v0.2.0

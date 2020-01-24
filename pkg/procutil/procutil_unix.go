@@ -6,8 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
-
-	"github.com/pkg/errors"
 )
 
 func SetOptNewProcessGroup(attrs *syscall.SysProcAttr) {
@@ -15,18 +13,18 @@ func SetOptNewProcessGroup(attrs *syscall.SysProcAttr) {
 }
 
 func KillProcessGroup(cmd *exec.Cmd) {
-	if cmd != nil && cmd.Process != nil {
-		// Kill the entire process group.
-		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+	if cmd == nil || cmd.Process == nil {
+		return
 	}
+
+	// Kill the entire process group.
+	_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 }
 
 func GracefullyShutdownProcess(p *os.Process) error {
-	err := syscall.Kill(-p.Pid, syscall.SIGTERM)
-	if err != nil {
-		return errors.Wrap(err, "SIGTERM")
+	if p == nil {
+		return nil
 	}
 
-	err = syscall.Kill(-p.Pid, syscall.SIGINT)
-	return errors.Wrap(err, "SIGINT")
+	return syscall.Kill(-p.Pid, syscall.SIGTERM)
 }
