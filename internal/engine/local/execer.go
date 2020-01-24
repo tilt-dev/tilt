@@ -159,7 +159,6 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- c.Wait()
-		close(doneCh)
 		devlog.Logf("command exited: %s", cmd.String())
 	}()
 
@@ -186,7 +185,7 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 			case <-time.After(timeout):
 				devlog.Logf("timed out after %s, killing pg for %s", timeout.String(), cmd.String())
 				procutil.KillProcessGroup(c)
-			case <-doneCh:
+			case <-errCh:
 			}
 		}
 		statusCh <- statusAndMetadata{status: Done, spanID: spanID}
