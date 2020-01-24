@@ -8,7 +8,16 @@ jobs:
     steps:
       - checkout
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
-      - run: make integration
+      # Delete any existing clusters, for `circleci local execute` mode
+      - run: kind delete cluster --name=integration || exit 0
+      - run: docker kill portforward || exit 0
+      - run: docker rm portforward || exit 0
+      - run: /go/portforward.sh start
+      - run: kind create cluster --name=integration
+      - run: "export APISERVER_PORT=$(kubectl config view -o jsonpath='{.clusters[].cluster.server}' | cut -d: -f 3 -) &&
+             /go/portforward.sh -wait $APISERVER_PORT &&
+             kubectl get nodes &&
+             make integration"
       - store_test_results:
           path: test-results
       - slack/notify-on-failure:
