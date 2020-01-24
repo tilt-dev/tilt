@@ -13,12 +13,11 @@
 # limitations under the License.
 
 # Implements hack/lib/version.sh's kube::version::ldflags() for Bazel.
-# Modifies the version variables (stamp_vars:buildDate, gitCommit, ...)
-# Example go build command with ldflags:
-#   go install ... -ldflags -X 'k8s.io/kubernetes/pkg/kubectl/cmd/version.gitMinor=12+' ...
 def version_x_defs():
+    # This should match the list of packages in kube::version::ldflag
     stamp_pkgs = [
-        "k8s.io/kubernetes/vendor/k8s.io/kubectl/pkg/version",
+        "k8s.io/kubernetes/vendor/k8s.io/component-base/version",
+        "k8s.io/kubernetes/vendor/k8s.io/client-go/pkg/version",
     ]
 
     # This should match the list of vars in kube::version::ldflags
