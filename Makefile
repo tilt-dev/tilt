@@ -101,7 +101,11 @@ build-js:
 
 test-js:
 	cd web && yarn install
+ifneq ($(CIRCLECI),true)
 	cd web && CI=true yarn test
+else
+	cd web && CI=true yarn ci
+endif
 
 goimports:
 	goimports -w -l $(GOIMPORTS_LOCAL_ARG) $$(go list -f {{.Dir}} ./...)

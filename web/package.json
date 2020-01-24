@@ -36,6 +36,7 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "ci": "react-scripts test --runInBand --reporters=default --reporters=jest-junit",
     "test-debug": "react-scripts --inspect-brk test --runInBand --no-cache",
     "eject": "react-scripts eject",
     "check": "prettier --check \"src/**/*.ts*\" && tsc -p . && eslint 'src/**/*.ts*'",
@@ -69,6 +70,7 @@
     "eslint-plugin-jest": "^23.2.0",
     "eslint-plugin-react": "^7.17.0",
     "jest-fetch-mock": "^2.1.2",
+    "jest-junit": "^10.0.0",
     "jsdom": "^15.2.1",
     "prettier": "1.19.1",
     "react-test-renderer": "^16.9.0"
