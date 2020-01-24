@@ -125,7 +125,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		ibd.analytics.Timer("build.image", time.Since(startTime), tags)
 	}()
 
-	q, err := NewImageTargetQueue(ctx, iTargets, stateSet, ibd.ib.ImageExists)
+	q, err := buildcontrol.NewImageTargetQueue(ctx, iTargets, stateSet, ibd.ib.ImageExists)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
@@ -169,7 +169,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 
 	// (If we pass an empty list of refs here (as we will do if only deploying
 	// yaml), we just don't inject any image refs into the yaml, nbd.
-	brs, err := ibd.deploy(ctx, st, ps, iTargetMap, kTarget, q.results, anyLiveUpdate)
+	brs, err := ibd.deploy(ctx, st, ps, iTargetMap, kTarget, q.Results(), anyLiveUpdate)
 	return brs, buildcontrol.WrapDontFallBackError(err)
 }
 
