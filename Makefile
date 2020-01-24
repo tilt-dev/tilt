@@ -79,7 +79,7 @@ ifneq ($(CIRCLECI),true)
 		go test -mod vendor -v -count 300 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s -run TestLocalResourceCleanup ./integration
 else
 		mkdir -p test-results
-		gotestsum --format standard-verbose --junitfile test-results/unit-tests.xml -- ./integration -mod vendor -count 300 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s -run TestLocalResourceCleanup -failfast
+		gotestsum --format standard-verbose --junitfile test-results/unit-tests.xml -- ./integration -mod vendor -count 300 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s -run TestLocalResourceCleanup
 endif
 
 # Run the integration tests on kind
