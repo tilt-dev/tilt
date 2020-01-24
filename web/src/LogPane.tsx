@@ -147,21 +147,25 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
   }
 
   componentDidMount() {
+    if (this.props.isSnapshot) {
+      this.autoscroll = false
+    }
+
     if (
       this.props.highlight &&
       this.props.isSnapshot &&
       this.highlightRef.current
     ) {
-      this.autoscroll = false
       this.highlightRef.current.scrollIntoView()
     } else if (this.lastElement.current?.scrollIntoView) {
       this.lastElement.current.scrollIntoView()
     }
 
+    window.addEventListener("scroll", this.onScroll, {
+      passive: true,
+    })
+
     if (!this.props.isSnapshot) {
-      window.addEventListener("scroll", this.onScroll, {
-        passive: true,
-      })
       document.addEventListener("selectionchange", this.handleSelectionChange, {
         passive: true,
       })
@@ -206,6 +210,9 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       this.setState({ renderWindow: renderWindowDefault })
       this.autoscroll = true
       this.pageYOffset = -1
+      if (this.props.isSnapshot) {
+        this.autoscroll = false
+      }
 
       this.scrollLastElementIntoView()
     } else if (this.autoscroll) {
@@ -329,6 +336,10 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
   }
 
   private maybeEngageAutoscroll() {
+    if (this.props.isSnapshot) {
+      return
+    }
+
     if (this.autoscrollRafID) {
       cancelAnimationFrame(this.autoscrollRafID)
     }
