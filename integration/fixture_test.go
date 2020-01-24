@@ -213,12 +213,12 @@ func (f *fixture) StartTearDown() {
 
 	isTiltStillUp := f.activeTiltUp != nil && f.activeTiltUp.Err() == nil
 	if f.t.Failed() && isTiltStillUp {
-		//fmt.Printf("Test failed, dumping engine state\n----\n")
-		//err := f.tilt.DumpEngine(os.Stdout)
-		//if err != nil {
-		//	fmt.Printf("Error: %v", err)
-		//}
-		//fmt.Printf("\n----\n")
+		fmt.Printf("Test failed, dumping engine state\n----\n")
+		err := f.tilt.DumpEngine(os.Stdout)
+		if err != nil {
+			fmt.Printf("Error: %v", err)
+		}
+		fmt.Printf("\n----\n")
 
 		f.activeTiltUp.KillAndDumpThreads()
 	}
