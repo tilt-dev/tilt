@@ -90,7 +90,7 @@ func (ar *AnalyticsReporter) report() {
 					multiImgLU = true
 				}
 				multiContainerLU = multiContainerLU ||
-					refInjectCounts[it.ConfigurationRef.String()] > 0
+					refInjectCounts[it.Refs.ConfigurationRef.String()] > 0
 			}
 		}
 		if multiContainerLU {

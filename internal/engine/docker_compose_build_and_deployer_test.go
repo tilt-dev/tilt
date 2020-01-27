@@ -63,7 +63,7 @@ func TestTiltBuildsImage(t *testing.T) {
 
 	assert.Equal(t, 1, f.dCli.BuildCount, "expect one docker build")
 
-	expectedTag := fmt.Sprintf("%s:%s", iTarget.DeploymentRef, docker.TagLatest)
+	expectedTag := fmt.Sprintf("%s:%s", iTarget.Refs.BuildRef, docker.TagLatest)
 	assert.Equal(t, expectedTag, f.dCli.TagTarget)
 
 	if assert.Len(t, f.dcCli.UpCalls, 1, "expect one call to `docker-compose up`") {
