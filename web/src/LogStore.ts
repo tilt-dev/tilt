@@ -191,7 +191,7 @@ class LogStore {
     }
 
     // Iterate backwards and figure out which line to overwrite.
-    for (let i = span.lastLineIndex - 1; i >= span.firstLineIndex; i--) {
+    for (let i = span.lastLineIndex; i >= span.firstLineIndex; i--) {
       let cur = this.lines[i]
       if (cur.spanId != candidate.spanId) {
         // skip lines from other spans
