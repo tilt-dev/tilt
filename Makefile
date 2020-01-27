@@ -115,10 +115,10 @@ benchmark:
 
 golangci-lint:
 ifneq ($(CIRCLECI),true)
-	golangci-lint run -v
+	GOFLAGS="-mod=vendor" golangci-lint run -v --timeout 90s
 else
 	mkdir -p test-results
-	golangci-lint run -v --out-format junit-xml > test-results/lint.xml
+	GOFLAGS="-mod=vendor" golangci-lint run -v --timeout 90s --out-format junit-xml > test-results/lint.xml
 endif
 
 wire:
