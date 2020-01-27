@@ -435,7 +435,7 @@ func RunningContainersForTargetForOnePod(iTarget model.ImageTarget, runtimeState
 	var containers []ContainerInfo
 	for _, c := range pod.Containers {
 		// Only return containers matching our image
-		if c.ImageRef == nil || iTarget.DeploymentRef.Name() != c.ImageRef.Name() {
+		if c.ImageRef == nil || iTarget.Refs.DeployRef.Name() != c.ImageRef.Name() {
 			continue
 		}
 		if c.ID == "" || c.Name == "" || !c.Ready {
