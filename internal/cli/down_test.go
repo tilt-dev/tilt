@@ -5,13 +5,15 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
-	"github.com/windmilleng/tilt/internal/testutils"
-
+	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
+	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/pkg/model"
 )
@@ -50,6 +52,23 @@ func TestDownDCFails(t *testing.T) {
 	}
 }
 
+func TestDownArgs(t *testing.T) {
+	f := newDownFixture(t)
+	defer f.TearDown()
+
+	cmd := f.cmd.register()
+	cmd.SetArgs([]string{"foo", "bar"})
+	cmd.Run = func(cmd *cobra.Command, args []string) {
+		ctx, _, _ := testutils.CtxAndAnalyticsForTest()
+		err := f.cmd.run(ctx, args)
+		require.NoError(t, err)
+	}
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	require.Equal(t, []string{"foo", "bar"}, f.tfl.PassedUserConfigState().Args)
+}
+
 func newK8sManifest() []model.Manifest {
 	return []model.Manifest{model.Manifest{Name: "fe"}.WithDeployTarget(model.K8sTarget{YAML: testyaml.SanchoYAML})}
 }
@@ -79,11 +98,14 @@ func newDownFixture(t *testing.T) downFixture {
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	kCli := k8s.NewFakeK8sClient()
 	downDeps := DownDeps{tfl, dcc, kCli}
+	cmd := &downCmd{downDepsProvider: func(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics) (deps DownDeps, err error) {
+		return downDeps, nil
+	}}
 	return downFixture{
 		t:      t,
 		ctx:    ctx,
 		cancel: cancel,
-		cmd:    &downCmd{},
+		cmd:    cmd,
 		deps:   downDeps,
 		tfl:    tfl,
 		dcc:    dcc,
