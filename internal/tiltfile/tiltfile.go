@@ -77,7 +77,8 @@ type TiltfileLoader interface {
 }
 
 type FakeTiltfileLoader struct {
-	Result TiltfileLoadResult
+	Result          TiltfileLoadResult
+	userConfigState model.UserConfigState
 }
 
 var _ TiltfileLoader = &FakeTiltfileLoader{}
@@ -87,7 +88,13 @@ func NewFakeTiltfileLoader() *FakeTiltfileLoader {
 }
 
 func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, userConfigState model.UserConfigState) TiltfileLoadResult {
+	tfl.userConfigState = userConfigState
 	return tfl.Result
+}
+
+// the UserConfigState that was passed to the last invocation of Load
+func (tfl *FakeTiltfileLoader) PassedUserConfigState() model.UserConfigState {
+	return tfl.userConfigState
 }
 
 func ProvideTiltfileLoader(

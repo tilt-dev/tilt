@@ -43,7 +43,7 @@ func Execute() {
 	addCommand(rootCmd, &upCmd{})
 	addCommand(rootCmd, &dockerCmd{})
 	addCommand(rootCmd, &doctorCmd{})
-	addCommand(rootCmd, &downCmd{})
+	addCommand(rootCmd, newDownCmd())
 	addCommand(rootCmd, &versionCmd{})
 	addCommand(rootCmd, &dockerPruneCmd{})
 	addCommand(rootCmd, newArgsCmd())
