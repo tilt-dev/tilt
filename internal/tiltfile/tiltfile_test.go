@@ -2168,7 +2168,7 @@ docker_build('gcr.io/foo-fetcher', 'foo-fetcher', match_in_env_vars=True)
 	)
 }
 
-func TestExtraImageLocationDeploymentEnvVarDoesntMatchIfNotSpecified(t *testing.T) {
+func TestExtraImageLocationDeploymentEnvVarDoesNotMatchIfNotSpecified(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2352,13 +2352,105 @@ k8s_yaml('')
 	f.loadErrString("error reading yaml file")
 }
 
-func TestParseJSON(t *testing.T) {
+func TestDecodeJSON(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
 	f.setupFooAndBar()
 	f.file("Tiltfile", `
 result = decode_json('["foo", {"baz":["bar", "", 1, 2]}]')
+
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml(result[0] + '.yaml')
+
+docker_build('gcr.io/bar', 'bar')
+k8s_yaml(result[1]["baz"][0] + '.yaml')
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		db(image("gcr.io/foo")),
+		deployment("foo"))
+
+	f.assertNextManifest("bar",
+		db(image("gcr.io/bar")),
+		deployment("bar"))
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml")
+}
+
+func TestReadJSON(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFooAndBar()
+	f.file("options.json", `["foo", {"baz":["bar", "", 1, 2]}]`)
+	f.file("Tiltfile", `
+result = read_json("options.json")
+
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml(result[0] + '.yaml')
+
+docker_build('gcr.io/bar', 'bar')
+k8s_yaml(result[1]["baz"][0] + '.yaml')
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		db(image("gcr.io/foo")),
+		deployment("foo"))
+
+	f.assertNextManifest("bar",
+		db(image("gcr.io/bar")),
+		deployment("bar"))
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml", "options.json")
+}
+
+func TestJSONDoesNotExist(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFooAndBar()
+	f.file("Tiltfile", `
+result = read_json("dne.json")
+
+docker_build('gcr.io/foo', 'foo')
+k8s_resource(result[0], 'foo.yaml')
+
+docker_build('gcr.io/bar', 'bar')
+k8s_resource(result[1]["baz"][0], 'bar.yaml')
+`)
+	f.loadErrString("dne.json: no such file or directory")
+
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "dne.json")
+}
+
+func TestMalformedJSON(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFooAndBar()
+	f.file("options.json", `["foo", {"baz":["bar", "", 1, 2]}`)
+	f.file("Tiltfile", `
+result = read_json("options.json")
+
+docker_build('gcr.io/foo', 'foo')
+k8s_resource(result[0], 'foo.yaml')
+
+docker_build('gcr.io/bar', 'bar')
+k8s_resource(result[1]["baz"][0], 'bar.yaml')
+`)
+	f.loadErrString("JSON parsing error: unexpected end of JSON input")
+}
+
+func TestDecodeYAML(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFooAndBar()
+	f.file("Tiltfile", `
+result = decode_yaml('- "foo"\n- baz:\n  - "bar"\n  - ""\n  - 1\n  - 2')
 
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml(result[0] + '.yaml')
@@ -2416,7 +2508,7 @@ if result['key2']['key4'] and result['key5'] == 3:
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml", "options.yaml")
 }
 
-func TestYAMLDoesntExist(t *testing.T) {
+func TestYAMLDoesNotExist(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2461,71 +2553,6 @@ if result['key2']['key4'] and result['key5'] == 3:
 		k8s_yaml(result['key2']['key3'] + '.yaml')
 `)
 	f.loadErrString("error parsing YAML: error converting YAML to JSON: yaml: line 7: found unexpected end of stream in options.yaml")
-}
-
-func TestReadJSON(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFooAndBar()
-	f.file("options.json", `["foo", {"baz":["bar", "", 1, 2]}]`)
-	f.file("Tiltfile", `
-result = read_json("options.json")
-
-docker_build('gcr.io/foo', 'foo')
-k8s_yaml(result[0] + '.yaml')
-
-docker_build('gcr.io/bar', 'bar')
-k8s_yaml(result[1]["baz"][0] + '.yaml')
-`)
-
-	f.load()
-
-	f.assertNextManifest("foo",
-		db(image("gcr.io/foo")),
-		deployment("foo"))
-
-	f.assertNextManifest("bar",
-		db(image("gcr.io/bar")),
-		deployment("bar"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml", "options.json")
-}
-
-func TestJSONDoesntExist(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFooAndBar()
-	f.file("Tiltfile", `
-result = read_json("dne.json")
-
-docker_build('gcr.io/foo', 'foo')
-k8s_resource(result[0], 'foo.yaml')
-
-docker_build('gcr.io/bar', 'bar')
-k8s_resource(result[1]["baz"][0], 'bar.yaml')
-`)
-	f.loadErrString("dne.json: no such file or directory")
-
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "dne.json")
-}
-
-func TestMalformedJSON(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFooAndBar()
-	f.file("options.json", `["foo", {"baz":["bar", "", 1, 2]}`)
-	f.file("Tiltfile", `
-result = read_json("options.json")
-
-docker_build('gcr.io/foo', 'foo')
-k8s_resource(result[0], 'foo.yaml')
-
-docker_build('gcr.io/bar', 'bar')
-k8s_resource(result[1]["baz"][0], 'bar.yaml')
-`)
-	f.loadErrString("JSON parsing error: unexpected end of JSON input")
 }
 
 func TestTwoDefaultRegistries(t *testing.T) {
@@ -3706,7 +3733,7 @@ func TestDisableFeature(t *testing.T) {
 	f.assertFeature("testflag_enabled", false)
 }
 
-func TestEnableFeatureThatDoesntExist(t *testing.T) {
+func TestEnableFeatureThatDoesNotExist(t *testing.T) {
 	f := newFixture(t)
 	f.setupFoo()
 
@@ -3715,7 +3742,7 @@ func TestEnableFeatureThatDoesntExist(t *testing.T) {
 	f.loadErrString("Unknown feature flag: testflag")
 }
 
-func TestDisableFeatureThatDoesntExist(t *testing.T) {
+func TestDisableFeatureThatDoesNotExist(t *testing.T) {
 	f := newFixture(t)
 	f.setupFoo()
 

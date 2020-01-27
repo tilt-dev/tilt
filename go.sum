@@ -880,6 +880,7 @@ go.opentelemetry.io/otel v0.2.0 h1:s7SAglwrmzYso5kCAMwtaHgJxsghZpKm1iWEsaRnMtU=
 go.opentelemetry.io/otel v0.2.0/go.mod h1:DztlYhVA/vOw2JNr1nYhZNHXY40sm34xHavb5BDig3s=
 go.starlark.net v0.0.0-20191021185836-28350e608555 h1:FhmD1D59MmncMfRVTRa889iERZG3jdaKj/1FtOQB1G0=
 go.starlark.net v0.0.0-20191021185836-28350e608555/go.mod h1:c1/X6cHgvdXj6pUlmWKMkuqRnW4K8x2vwt6JAaaircg=
+go.starlark.net v0.0.0-20191227232015-caa3e9aa5008 h1:PUpdYMZifLwPlUnFfT/2Hkqr7p0SSpOR7xrDiPaD52k=
 go.uber.org/atomic v0.0.0-20181018215023-8dc6146f7569/go.mod h1:gD2HeocX3+yG+ygLZcrzQJaqmWj9AIm7n08wl/qW/PE=
 go.uber.org/atomic v1.4.0 h1:cxzIVoETapQEqDhQu3QfnvXAV4AlzcvUCxkVUFw3+EU=
 go.uber.org/atomic v1.4.0/go.mod h1:gD2HeocX3+yG+ygLZcrzQJaqmWj9AIm7n08wl/qW/PE=
