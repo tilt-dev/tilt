@@ -28,7 +28,7 @@ func (t liveUpdateStateTree) createResultSet() store.BuildResultSet {
 
 	resultSet := store.BuildResultSet{}
 	resultSet[iTargetID] = store.NewLiveUpdateBuildResult(
-		res.TargetID(), store.ImageFromBuildResult(res),
+		res.TargetID(),
 		liveUpdatedContainerIDs)
 
 	// Invalidate all the image builds for images we depend on.

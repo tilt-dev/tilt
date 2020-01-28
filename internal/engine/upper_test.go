@@ -193,7 +193,7 @@ func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deploy
 	var result store.BuildResult
 	containerIDs := b.nextLiveUpdateContainerIDs
 	if len(containerIDs) > 0 {
-		result = store.NewLiveUpdateBuildResult(iTarget.ID(), nt, containerIDs)
+		result = store.NewLiveUpdateBuildResult(iTarget.ID(), containerIDs)
 	} else {
 		result = store.NewImageBuildResult(iTarget.ID(), nt)
 	}
@@ -4065,7 +4065,7 @@ func deployResultSet(manifest model.Manifest, uid types.UID, hashes []k8s.PodTem
 func liveUpdateResultSet(manifest model.Manifest, id container.ID) store.BuildResultSet {
 	resultSet := store.BuildResultSet{}
 	for _, iTarget := range manifest.ImageTargets {
-		resultSet[iTarget.ID()] = store.NewLiveUpdateBuildResult(iTarget.ID(), nil, []container.ID{id})
+		resultSet[iTarget.ID()] = store.NewLiveUpdateBuildResult(iTarget.ID(), []container.ID{id})
 	}
 	return resultSet
 }
