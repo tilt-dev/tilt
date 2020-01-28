@@ -115,14 +115,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 
 	startTime := time.Now()
 	defer func() {
-		incremental := "0"
-		for _, state := range stateSet {
-			if state.HasImage() {
-				incremental = "1"
-			}
-		}
-		tags := map[string]string{"incremental": incremental}
-		ibd.analytics.Timer("build.image", time.Since(startTime), tags)
+		ibd.analytics.Timer("build.image", time.Since(startTime), nil)
 	}()
 
 	q, err := buildcontrol.NewImageTargetQueue(ctx, iTargets, stateSet, ibd.ib.ImageExists)
