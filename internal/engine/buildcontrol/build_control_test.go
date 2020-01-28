@@ -1,6 +1,7 @@
 package buildcontrol
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -26,6 +27,37 @@ func TestNextTargetToBuildDoesntReturnCurrentlyBuildingTarget(t *testing.T) {
 
 	// If target is currently building, should NOT be next-to-build
 	mt.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	f.assertNoTargetNextToBuild()
+}
+
+func TestCurrentlyBuildingK8sResourceDisablesLocalScheduling(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	k8s1 := f.upsertK8sManifest("k8s1")
+	k8s2 := f.upsertK8sManifest("k8s2")
+	f.upsertLocalManifest("local1")
+
+	f.assertNextTargetToBuild("local1")
+
+	k8s1.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	f.assertNextTargetToBuild("k8s2")
+
+	k8s2.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	f.assertNoTargetNextToBuild()
+}
+
+func TestCurrentlyBuildingLocalResourceDisablesK8sScheduling(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.upsertK8sManifest("k8s1")
+	local1 := f.upsertLocalManifest("local1")
+	f.upsertLocalManifest("local2")
+
+	f.assertNextTargetToBuild("local1")
+
+	local1.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
 	f.assertNoTargetNextToBuild()
 }
 
@@ -56,6 +88,24 @@ func (f *testFixture) assertNoTargetNextToBuild() {
 	if next != nil {
 		f.t.Fatalf("expected no next target to build, but got %s", next.Manifest.Name)
 	}
+}
+
+func (f *testFixture) upsertManifest(m model.Manifest) *store.ManifestTarget {
+	mt := store.NewManifestTarget(m)
+	f.st.UpsertManifestTarget(mt)
+	return mt
+}
+
+func (f *testFixture) upsertK8sManifest(name model.ManifestName) *store.ManifestTarget {
+	return f.upsertManifest(manifestbuilder.New(f, name).
+		WithK8sYAML(testyaml.SanchoYAML).
+		Build())
+}
+
+func (f *testFixture) upsertLocalManifest(name model.ManifestName) *store.ManifestTarget {
+	return f.upsertManifest(manifestbuilder.New(f, name).
+		WithLocalResource(fmt.Sprintf("exec-%s", name), nil).
+		Build())
 }
 
 func (f *testFixture) manifestNeedingCrashRebuild() *store.ManifestTarget {
