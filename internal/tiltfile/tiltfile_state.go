@@ -266,6 +266,7 @@ const (
 	kustomizeN  = "kustomize"
 	helmN       = "helm"
 	decodeJSONN = "decode_json"
+	decodeYAMLN = "decode_yaml"
 	readJSONN   = "read_json"
 	readYAMLN   = "read_yaml"
 
@@ -448,6 +449,7 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 		{helmN, s.helm},
 		{failN, s.fail},
 		{decodeJSONN, s.decodeJSON},
+		{decodeYAMLN, s.decodeYaml},
 		{readJSONN, s.readJson},
 		{readYAMLN, s.readYaml},
 		{triggerModeN, s.triggerModeFn},
