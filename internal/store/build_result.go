@@ -58,9 +58,6 @@ func NewImageBuildResult(id model.TargetID, image reference.NamedTagged) ImageBu
 type LiveUpdateBuildResult struct {
 	id model.TargetID
 
-	// The name+tag of the image that the pod is running.
-	Image reference.NamedTagged
-
 	// The ID of the container(s) that we live-updated in-place.
 	//
 	// The contents of the container have diverged from the image it's built on,
@@ -73,10 +70,9 @@ func (r LiveUpdateBuildResult) BuildType() model.BuildType { return model.BuildT
 func (r LiveUpdateBuildResult) Facets() []model.Facet      { return nil }
 
 // For in-place container updates.
-func NewLiveUpdateBuildResult(id model.TargetID, image reference.NamedTagged, containerIDs []container.ID) LiveUpdateBuildResult {
+func NewLiveUpdateBuildResult(id model.TargetID, containerIDs []container.ID) LiveUpdateBuildResult {
 	return LiveUpdateBuildResult{
 		id:                      id,
-		Image:                   image,
 		LiveUpdatedContainerIDs: containerIDs,
 	}
 }
@@ -147,8 +143,6 @@ func NewK8sDeployResult(id model.TargetID, uids []types.UID, hashes []k8s.PodTem
 func ImageFromBuildResult(r BuildResult) reference.NamedTagged {
 	switch r := r.(type) {
 	case ImageBuildResult:
-		return r.Image
-	case LiveUpdateBuildResult:
 		return r.Image
 	}
 	return nil
