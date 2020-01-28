@@ -3,6 +3,7 @@ package build
 import (
 	"archive/tar"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -42,6 +43,7 @@ func (a *ArchiveBuilder) Close() error {
 func clearUIDAndGID(h *tar.Header) {
 	h.Uid = 0
 	h.Gid = 0
+	fmt.Println("test")
 }
 
 func (a *ArchiveBuilder) archiveDf(ctx context.Context, df dockerfile.Dockerfile) error {
