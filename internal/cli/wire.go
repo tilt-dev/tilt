@@ -87,8 +87,7 @@ var BaseWireSet = wire.NewSet(
 	cloudurl.ProvideAddress,
 
 	provideClock,
-	hud.NewRenderer,
-	hud.ProvideHud,
+	hud.WireSet,
 
 	provideLogActions,
 	store.NewStore,

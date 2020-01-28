@@ -22,7 +22,7 @@ func TestRenderInit(t *testing.T) {
 	r := NewRenderer(clockForTest)
 	r.rty = rty.NewRTY(tcell.NewSimulationScreen(""))
 	webURL, _ := url.Parse("http://localhost:10350")
-	hud, err := ProvideHud(true, r, model.WebURL(*webURL), ta)
+	hud, err := ProvideHud(true, r, model.WebURL(*webURL), ta, NewIncrementalPrinter(logs))
 	assert.NoError(t, err)
 	hud.(*Hud).refresh(ctx)
 }
