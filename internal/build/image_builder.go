@@ -37,7 +37,6 @@ type dockerImageBuilder struct {
 
 type ImageBuilder interface {
 	BuildImage(ctx context.Context, ps *PipelineState, ref reference.Named, db model.DockerBuild, filter model.PathMatcher) (reference.NamedTagged, error)
-	DeprecatedFastBuildImage(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile, syncs []model.Sync, filter model.PathMatcher, runs []model.Run, entrypoint model.Cmd) (reference.NamedTagged, error)
 	PushImage(ctx context.Context, name reference.NamedTagged) (reference.NamedTagged, error)
 	TagImage(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
 	ImageExists(ctx context.Context, ref reference.NamedTagged) (bool, error)
@@ -67,34 +66,6 @@ func (d *dockerImageBuilder) BuildImage(ctx context.Context, ps *PipelineState, 
 		},
 	}
 	return d.buildFromDf(ctx, ps, db, paths, filter, ref)
-}
-
-func (d *dockerImageBuilder) DeprecatedFastBuildImage(ctx context.Context, ps *PipelineState, ref reference.Named, baseDockerfile dockerfile.Dockerfile,
-	syncs []model.Sync, filter model.PathMatcher,
-	runs []model.Run, entrypoint model.Cmd) (reference.NamedTagged, error) {
-
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-DeprecatedFastBuildImage")
-	defer span.Finish()
-
-	hasEntrypoint := !entrypoint.Empty()
-
-	paths := SyncsToPathMappings(syncs)
-	df := baseDockerfile
-	df, runs, err := d.addConditionalRuns(df, runs, paths)
-	if err != nil {
-		return nil, errors.Wrapf(err, "DeprecatedFastBuildImage")
-	}
-
-	df = df.AddAll()
-	df = d.addRemainingRuns(df, runs)
-	if hasEntrypoint {
-		df = df.Entrypoint(entrypoint)
-	}
-
-	df = d.applyLabels(df, BuildModeScratch)
-	return d.buildFromDf(ctx, ps, model.DockerBuild{
-		Dockerfile: string(df),
-	}, paths, filter, ref)
 }
 
 func (d *dockerImageBuilder) applyLabels(df dockerfile.Dockerfile, buildMode dockerfile.LabelValue) dockerfile.Dockerfile {

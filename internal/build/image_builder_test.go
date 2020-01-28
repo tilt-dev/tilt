@@ -1,7 +1,6 @@
 package build
 
 import (
-	"archive/tar"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -16,7 +15,6 @@ import (
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/pkg/model"
 )
 
 const simpleDockerfile = dockerfile.Dockerfile("FROM alpine")
@@ -93,76 +91,6 @@ func TestDigestFromOutputV1_23(t *testing.T) {
 	if actual != expected {
 		t.Errorf("Expected %s, got %s", expected, actual)
 	}
-}
-
-func TestConditionalRunInFakeDocker(t *testing.T) {
-	f := newFakeDockerBuildFixture(t)
-	defer f.teardown()
-
-	f.WriteFile("a.txt", "a")
-	f.WriteFile("b.txt", "b")
-
-	s := model.Sync{
-		LocalPath:     f.Path(),
-		ContainerPath: "/src",
-	}
-	run1 := model.Run{
-		Cmd:      model.ToShellCmd("cat /src/a.txt > /src/c.txt"),
-		Triggers: model.NewPathSet([]string{"a.txt"}, f.Path()),
-	}
-	run2 := model.Run{
-		Cmd: model.ToShellCmd("cat /src/b.txt > /src/d.txt"),
-	}
-
-	_, err := f.b.DeprecatedFastBuildImage(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{s}, model.EmptyMatcher, []model.Run{run1, run2}, model.Cmd{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expected := expectedFile{
-		Path: "Dockerfile",
-		Contents: `FROM alpine
-COPY /src/a.txt /src/a.txt
-RUN cat /src/a.txt > /src/c.txt
-ADD . /
-RUN cat /src/b.txt > /src/d.txt
-LABEL "tilt.buildMode"="scratch"
-LABEL "tilt.test"="1"`,
-	}
-	testutils.AssertFileInTar(f.t, tar.NewReader(f.fakeDocker.BuildOptions.Context), expected)
-}
-
-func TestAllConditionalRunsInFakeDocker(t *testing.T) {
-	f := newFakeDockerBuildFixture(t)
-	defer f.teardown()
-
-	f.WriteFile("a.txt", "a")
-	f.WriteFile("b.txt", "b")
-
-	s := model.Sync{
-		LocalPath:     f.Path(),
-		ContainerPath: "/src",
-	}
-	run1 := model.Run{
-		Cmd:      model.ToShellCmd("cat /src/a.txt > /src/c.txt"),
-		Triggers: model.NewPathSet([]string{"a.txt"}, f.Path()),
-	}
-
-	_, err := f.b.DeprecatedFastBuildImage(f.ctx, f.ps, f.getNameFromTest(), simpleDockerfile, []model.Sync{s}, model.EmptyMatcher, []model.Run{run1}, model.Cmd{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expected := expectedFile{
-		Path: "Dockerfile",
-		Contents: `FROM alpine
-COPY /src/a.txt /src/a.txt
-RUN cat /src/a.txt > /src/c.txt
-ADD . /
-LABEL "tilt.buildMode"="scratch"
-LABEL "tilt.test"="1"`,
-	}
-	testutils.AssertFileInTar(f.t, tar.NewReader(f.fakeDocker.BuildOptions.Context), expected)
 }
 
 func makeDockerBuildErrorOutput(s string) string {
