@@ -22,7 +22,7 @@ func TestTiltArgs(t *testing.T) {
 
 	f.logs.Reset()
 
-	err = f.tilt.Args([]string{"bar"}, f.logs)
+	err = f.tilt.Args([]string{"bar"}, f.LogWriter())
 	require.NoError(t, err)
 
 	err = f.logs.WaitUntilContains("bar run", time.Second)
