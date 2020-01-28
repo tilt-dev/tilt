@@ -195,7 +195,7 @@ func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deploy
 	if len(containerIDs) > 0 {
 		result = store.NewLiveUpdateBuildResult(iTarget.ID(), nt, containerIDs)
 	} else {
-		result = store.NewImageBuildResult(iTarget.ID(), nt)
+		result = store.NewImageBuildResultSingleRef(iTarget.ID(), nt)
 	}
 	return result
 }
@@ -1354,7 +1354,7 @@ func TestPodEventContainerStatus(t *testing.T) {
 	var ref reference.NamedTagged
 	f.WaitUntilManifestState("image appears", "foobar", func(ms store.ManifestState) bool {
 		result := ms.BuildStatus(manifest.ImageTargetAt(0).ID()).LastSuccessfulResult
-		ref = store.ImageFromBuildResult(result)
+		ref = store.ClusterImageRefFromBuildResult(result)
 		return ref != nil
 	})
 
@@ -1744,7 +1744,7 @@ func TestPodContainerStatus(t *testing.T) {
 	var ref reference.NamedTagged
 	f.WaitUntilManifestState("image appears", "fe", func(ms store.ManifestState) bool {
 		result := ms.BuildStatus(manifest.ImageTargetAt(0).ID()).LastSuccessfulResult
-		ref = store.ImageFromBuildResult(result)
+		ref = store.ClusterImageRefFromBuildResult(result)
 		return ref != nil
 	})
 
@@ -4055,7 +4055,7 @@ func deployResultSet(manifest model.Manifest, uid types.UID, hashes []k8s.PodTem
 	resultSet := store.BuildResultSet{}
 	for _, iTarget := range manifest.ImageTargets {
 		ref, _ := reference.WithTag(iTarget.DeploymentRef, "deadbeef")
-		resultSet[iTarget.ID()] = store.NewImageBuildResult(iTarget.ID(), ref)
+		resultSet[iTarget.ID()] = store.NewImageBuildResultSingleRef(iTarget.ID(), ref)
 	}
 	ktID := manifest.K8sTarget().ID()
 	resultSet[ktID] = store.NewK8sDeployResult(ktID, []types.UID{uid}, hashes, nil)

@@ -60,7 +60,7 @@ func NewImageTargetQueue(ctx context.Context, iTargets []model.ImageTarget, stat
 		if state[id].NeedsImageBuild() {
 			needsOwnBuild[id] = true
 		} else if state[id].LastSuccessfulResult != nil {
-			image := store.ImageFromBuildResult(state[id].LastSuccessfulResult)
+			image := store.LocalImageRefFromBuildResult(state[id].LastSuccessfulResult)
 			exists, err := imageExists(ctx, image)
 			if err != nil {
 				return nil, errors.Wrapf(err, "error looking up whether last image built for %s exists", image.String())
@@ -126,7 +126,7 @@ func (q *TargetQueue) RunBuilds(handler BuildHandler) error {
 			// Otherwise, we can re-use results from the previous build.
 			// If needsOwnBuild is false, then LastSuccessfulResult must exist if it's empty.
 			lastResult := q.state[id].LastSuccessfulResult
-			image := store.ImageFromBuildResult(lastResult)
+			image := store.LocalImageRefFromBuildResult(lastResult)
 			if image == nil {
 				return fmt.Errorf("Internal error: build marked clean but last result not found: %+v", q.state[id])
 			}

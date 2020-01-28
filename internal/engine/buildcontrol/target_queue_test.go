@@ -38,7 +38,7 @@ func TestTargetQueue_DepsBuilt(t *testing.T) {
 	f := newTargetQueueFixture(t)
 
 	fooTarget := model.NewImageTarget(container.MustParseSelector("foo"))
-	s1 := store.BuildState{LastSuccessfulResult: store.NewImageBuildResult(fooTarget.ID(), container.MustParseNamedTagged("foo:1234"))}
+	s1 := store.BuildState{LastSuccessfulResult: store.NewImageBuildResultSingleRef(fooTarget.ID(), container.MustParseNamedTagged("foo:1234"))}
 	barTarget := model.NewImageTarget(container.MustParseSelector("bar")).WithDependencyIDs([]model.TargetID{fooTarget.ID()})
 	s2 := store.BuildState{}
 
@@ -51,7 +51,7 @@ func TestTargetQueue_DepsBuilt(t *testing.T) {
 	f.run(targets, buildStateSet)
 
 	barCall := newFakeBuildHandlerCall(barTarget, s2, 1, []store.BuildResult{
-		store.NewImageBuildResult(fooTarget.ID(), store.ImageFromBuildResult(s1.LastSuccessfulResult)),
+		store.NewImageBuildResultSingleRef(fooTarget.ID(), store.LocalImageRefFromBuildResult(s1.LastSuccessfulResult)),
 	})
 
 	// foo has a valid last result, so only bar gets rebuilt
@@ -67,7 +67,7 @@ func TestTargetQueue_DepsUnbuilt(t *testing.T) {
 	fooTarget := model.NewImageTarget(container.MustParseSelector("foo"))
 	s1 := store.BuildState{}
 	barTarget := model.NewImageTarget(container.MustParseSelector("bar")).WithDependencyIDs([]model.TargetID{fooTarget.ID()})
-	var s2 = store.BuildState{LastSuccessfulResult: store.NewImageBuildResult(
+	var s2 = store.BuildState{LastSuccessfulResult: store.NewImageBuildResultSingleRef(
 		barTarget.ID(),
 		container.MustParseNamedTagged("bar:54321"),
 	)}
@@ -95,7 +95,7 @@ func TestTargetQueue_IncrementalBuild(t *testing.T) {
 
 	fooTarget := model.NewImageTarget(container.MustParseSelector("foo"))
 	s1 := store.BuildState{
-		LastSuccessfulResult: store.NewImageBuildResult(
+		LastSuccessfulResult: store.NewImageBuildResultSingleRef(
 			fooTarget.ID(),
 			container.MustParseNamedTagged("foo:1234"),
 		),
@@ -120,7 +120,7 @@ func TestTargetQueue_CachedBuild(t *testing.T) {
 
 	fooTarget := model.NewImageTarget(container.MustParseSelector("foo"))
 	s1 := store.BuildState{
-		LastSuccessfulResult: store.NewImageBuildResult(
+		LastSuccessfulResult: store.NewImageBuildResultSingleRef(
 			fooTarget.ID(),
 			container.MustParseNamedTagged("foo:1234"),
 		),
@@ -140,7 +140,7 @@ func TestTargetQueue_DepsBuiltButReaped(t *testing.T) {
 	f := newTargetQueueFixture(t)
 
 	fooTarget := model.NewImageTarget(container.MustParseSelector("foo"))
-	s1 := store.BuildState{LastSuccessfulResult: store.NewImageBuildResult(fooTarget.ID(), container.MustParseNamedTagged("foo:1234"))}
+	s1 := store.BuildState{LastSuccessfulResult: store.NewImageBuildResultSingleRef(fooTarget.ID(), container.MustParseNamedTagged("foo:1234"))}
 	barTarget := model.NewImageTarget(container.MustParseSelector("bar")).WithDependencyIDs([]model.TargetID{fooTarget.ID()})
 	s2 := store.BuildState{}
 
@@ -150,13 +150,13 @@ func TestTargetQueue_DepsBuiltButReaped(t *testing.T) {
 		barTarget.ID(): s2,
 	}
 
-	f.setMissingImage(store.ImageFromBuildResult(s1.LastSuccessfulResult))
+	f.setMissingImage(store.LocalImageRefFromBuildResult(s1.LastSuccessfulResult))
 
 	f.run(targets, buildStateSet)
 
 	fooCall := newFakeBuildHandlerCall(fooTarget, s1, 1, []store.BuildResult{})
 	barCall := newFakeBuildHandlerCall(barTarget, s2, 2, []store.BuildResult{
-		store.NewImageBuildResult(fooTarget.ID(), store.ImageFromBuildResult(fooCall.result)),
+		store.NewImageBuildResultSingleRef(fooTarget.ID(), store.LocalImageRefFromBuildResult(fooCall.result)),
 	})
 
 	// foo has a valid last result, but its image is missing, so we have to rebuild it and its deps
@@ -171,7 +171,7 @@ func newFakeBuildHandlerCall(target model.ImageTarget, state store.BuildState, n
 	return fakeBuildHandlerCall{
 		target: target,
 		state:  state,
-		result: store.NewImageBuildResult(
+		result: store.NewImageBuildResultSingleRef(
 			target.ID(),
 			container.MustParseNamedTagged(fmt.Sprintf("%s:%d", target.ConfigurationRef.String(), num)),
 		),
@@ -201,7 +201,7 @@ func (fbh *fakeBuildHandler) handle(target model.TargetSpec, state store.BuildSt
 	iTarget := target.(model.ImageTarget)
 	fbh.buildNum++
 	namedTagged := container.MustParseNamedTagged(fmt.Sprintf("%s:%d", iTarget.ConfigurationRef, fbh.buildNum))
-	result := store.NewImageBuildResult(target.ID(), namedTagged)
+	result := store.NewImageBuildResultSingleRef(target.ID(), namedTagged)
 	fbh.calls[target.ID()] = fakeBuildHandlerCall{target, state, depResults, result}
 	return result, nil
 }
