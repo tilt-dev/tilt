@@ -416,6 +416,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
           key={key}
           text={l.text}
           level={l.level}
+          fields={l.fields}
           manifestName={l.manifestName}
           isContextChange={isContextChange}
           lineId={i}
