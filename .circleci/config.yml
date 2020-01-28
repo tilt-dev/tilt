@@ -12,7 +12,14 @@ jobs:
       - setup_remote_docker
       - run: docker pull registry:2
       - run: sudo mv /usr/bin/helm3 /usr/bin/helm
+      - restore_cache:
+          keys:
+            - golangci_lint_v1
       - run: make lint
+      - save_cache:
+          paths:
+            - /home/circleci/.cache/golangci-lint
+          key: golangci_lint_v1
       - run: make wire-check
       - run: make test-go
       - store_test_results:

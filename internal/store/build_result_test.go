@@ -18,15 +18,15 @@ func imageID(s string) model.TargetID {
 
 func TestOneAndOnlyLiveUpdatedContainerID(t *testing.T) {
 	set := BuildResultSet{
-		imageID("a"): NewLiveUpdateBuildResult(imageID("a"), nil, []container.ID{"cA"}),
-		imageID("b"): NewLiveUpdateBuildResult(imageID("b"), nil, []container.ID{"cB"}),
+		imageID("a"): NewLiveUpdateBuildResult(imageID("a"), []container.ID{"cA"}),
+		imageID("b"): NewLiveUpdateBuildResult(imageID("b"), []container.ID{"cB"}),
 	}
 	assert.Equal(t, "", string(set.OneAndOnlyLiveUpdatedContainerID()))
 
 	set = BuildResultSet{
-		imageID("a"): NewLiveUpdateBuildResult(imageID("a"), nil, []container.ID{"cA"}),
-		imageID("b"): NewLiveUpdateBuildResult(imageID("b"), nil, []container.ID{"cA"}),
-		imageID("c"): NewLiveUpdateBuildResult(imageID("c"), nil, []container.ID{""}),
+		imageID("a"): NewLiveUpdateBuildResult(imageID("a"), []container.ID{"cA"}),
+		imageID("b"): NewLiveUpdateBuildResult(imageID("b"), []container.ID{"cA"}),
+		imageID("c"): NewLiveUpdateBuildResult(imageID("c"), []container.ID{""}),
 	}
 	assert.Equal(t, "cA", string(set.OneAndOnlyLiveUpdatedContainerID()))
 }
