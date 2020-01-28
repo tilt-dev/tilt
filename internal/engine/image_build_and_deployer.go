@@ -161,7 +161,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		}
 
 		anyLiveUpdate = anyLiveUpdate || !iTarget.LiveUpdateInfo().Empty()
-		return store.NewImageBuildResult(iTarget.ID(), ref), nil
+		return store.NewImageBuildResultSingleRef(iTarget.ID(), ref), nil
 	})
 	if err != nil {
 		return store.BuildResultSet{}, buildcontrol.WrapDontFallBackError(err)
@@ -302,7 +302,7 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 		}
 
 		for _, depID := range depIDs {
-			ref := store.ImageFromBuildResult(results[depID])
+			ref := store.ClusterImageRefFromBuildResult(results[depID])
 			if ref == nil {
 				return nil, fmt.Errorf("Internal error: missing image build result for dependency ID: %s", depID)
 			}
@@ -390,7 +390,7 @@ func injectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.Tar
 	}
 
 	for _, dep := range deps {
-		image := store.ImageFromBuildResult(dep)
+		image := store.LocalImageRefFromBuildResult(dep)
 		if image == nil {
 			return model.ImageTarget{}, fmt.Errorf("Internal error: image is nil")
 		}

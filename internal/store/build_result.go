@@ -37,10 +37,11 @@ func NewLocalBuildResult(id model.TargetID) LocalBuildResult {
 type ImageBuildResult struct {
 	id model.TargetID
 
-	// The name+tag of the image that the pod is running.
-	//
-	// The tag is derived from a content-addressable digest.
-	Image reference.NamedTagged
+	// Note: image tag is derived from a content-addressable digest.
+	ImageLocalRef   reference.NamedTagged // built image, as referenced from outside the cluster (in Dockerfile, docker push etc.)
+	ImageClusterRef reference.NamedTagged // built image, as referenced from the cluster (in K8s YAML, etc.)
+	// Often LocalRef and ClusterRef will be the same, but may diverge: e.g. when using KIND + local registry,
+	// LocalRef is localhost:1234/my-img:tilt-abc, ClusterRef is http://registry/my-img:tilt-abc
 }
 
 func (r ImageBuildResult) TargetID() model.TargetID   { return r.id }
@@ -48,11 +49,17 @@ func (r ImageBuildResult) BuildType() model.BuildType { return model.BuildTypeIm
 func (r ImageBuildResult) Facets() []model.Facet      { return nil }
 
 // For image targets.
-func NewImageBuildResult(id model.TargetID, image reference.NamedTagged) ImageBuildResult {
+func NewImageBuildResult(id model.TargetID, localRef, clusterRef reference.NamedTagged) ImageBuildResult {
 	return ImageBuildResult{
-		id:    id,
-		Image: image,
+		id:              id,
+		ImageLocalRef:   localRef,
+		ImageClusterRef: clusterRef,
 	}
+}
+
+// When LocalRef == ClusterRef
+func NewImageBuildResultSingleRef(id model.TargetID, ref reference.NamedTagged) ImageBuildResult {
+	return NewImageBuildResult(id, ref, ref)
 }
 
 type LiveUpdateBuildResult struct {
@@ -140,10 +147,18 @@ func NewK8sDeployResult(id model.TargetID, uids []types.UID, hashes []k8s.PodTem
 	}
 }
 
-func ImageFromBuildResult(r BuildResult) reference.NamedTagged {
+func LocalImageRefFromBuildResult(r BuildResult) reference.NamedTagged {
 	switch r := r.(type) {
 	case ImageBuildResult:
-		return r.Image
+		return r.ImageLocalRef
+	}
+	return nil
+}
+
+func ClusterImageRefFromBuildResult(r BuildResult) reference.NamedTagged {
+	switch r := r.(type) {
+	case ImageBuildResult:
+		return r.ImageClusterRef
 	}
 	return nil
 }
@@ -295,7 +310,7 @@ func (b BuildState) OneContainerInfo() ContainerInfo {
 	return b.RunningContainers[0]
 }
 func (b BuildState) LastImageAsString() string {
-	img := ImageFromBuildResult(b.LastSuccessfulResult)
+	img := LocalImageRefFromBuildResult(b.LastSuccessfulResult)
 	if img == nil {
 		return ""
 	}
@@ -320,7 +335,7 @@ func (b BuildState) IsEmpty() bool {
 }
 
 func (b BuildState) HasImage() bool {
-	return ImageFromBuildResult(b.LastSuccessfulResult) != nil
+	return LocalImageRefFromBuildResult(b.LastSuccessfulResult) != nil
 }
 
 // Whether the image represented by this state needs to be built.

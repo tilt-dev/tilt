@@ -105,7 +105,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 			return nil, err
 		}
 
-		return store.NewImageBuildResult(iTarget.ID(), ref), nil
+		return store.NewImageBuildResultSingleRef(iTarget.ID(), ref), nil
 	})
 
 	if err != nil {

@@ -41,7 +41,7 @@ func TestDeployTwinImages(t *testing.T) {
 
 	id := manifest.ImageTargetAt(0).ID()
 	expectedImage := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
-	image := store.ImageFromBuildResult(result[id])
+	image := store.ClusterImageRefFromBuildResult(result[id])
 	assert.Equal(t, expectedImage, image.String())
 	assert.Equalf(t, 2, strings.Count(f.k8s.Yaml, expectedImage),
 		"Expected image to update twice in YAML: %s", f.k8s.Yaml)
@@ -65,13 +65,13 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 	assert.Equal(t, 2, f.docker.BuildCount)
 
 	expectedSanchoRef := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
-	image := store.ImageFromBuildResult(result[iTarget1.ID()])
+	image := store.ClusterImageRefFromBuildResult(result[iTarget1.ID()])
 	assert.Equal(t, expectedSanchoRef, image.String())
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSanchoRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 
 	expectedSidecarRef := "gcr.io/some-project-162817/sancho-sidecar:tilt-11cd0b38bc3ceb95"
-	image = store.ImageFromBuildResult(result[iTarget2.ID()])
+	image = store.ClusterImageRefFromBuildResult(result[iTarget2.ID()])
 	assert.Equal(t, expectedSidecarRef, image.String())
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSidecarRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
@@ -97,13 +97,13 @@ func TestDeployPodWithMultipleLiveUpdateImages(t *testing.T) {
 	assert.Equal(t, 2, f.docker.BuildCount)
 
 	expectedSanchoRef := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
-	image := store.ImageFromBuildResult(result[iTarget1.ID()])
+	image := store.ClusterImageRefFromBuildResult(result[iTarget1.ID()])
 	assert.Equal(t, expectedSanchoRef, image.String())
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSanchoRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 
 	expectedSidecarRef := "gcr.io/some-project-162817/sancho-sidecar:tilt-11cd0b38bc3ceb95"
-	image = store.ImageFromBuildResult(result[iTarget2.ID()])
+	image = store.ClusterImageRefFromBuildResult(result[iTarget2.ID()])
 	assert.Equal(t, expectedSidecarRef, image.String())
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSidecarRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
@@ -144,7 +144,7 @@ func TestImageIsClean(t *testing.T) {
 
 	manifest := NewSanchoDockerBuildManifest(f)
 	iTargetID1 := manifest.ImageTargets[0].ID()
-	result1 := store.NewImageBuildResult(iTargetID1, container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"))
+	result1 := store.NewImageBuildResultSingleRef(iTargetID1, container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"))
 
 	f.docker.ImageListCount = 1
 
@@ -266,8 +266,8 @@ func TestMultiStageDockerBuildWithFirstImageDirty(t *testing.T) {
 	manifest := NewSanchoDockerBuildMultiStageManifest(f)
 	iTargetID1 := manifest.ImageTargets[0].ID()
 	iTargetID2 := manifest.ImageTargets[1].ID()
-	result1 := store.NewImageBuildResult(iTargetID1, container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"))
-	result2 := store.NewImageBuildResult(iTargetID2, container.MustParseNamedTagged("sancho:tilt-prebuilt2"))
+	result1 := store.NewImageBuildResultSingleRef(iTargetID1, container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"))
+	result2 := store.NewImageBuildResultSingleRef(iTargetID2, container.MustParseNamedTagged("sancho:tilt-prebuilt2"))
 
 	newFile := f.WriteFile("sancho-base/message.txt", "message")
 
@@ -302,8 +302,8 @@ func TestMultiStageDockerBuildWithSecondImageDirty(t *testing.T) {
 	manifest := NewSanchoDockerBuildMultiStageManifest(f)
 	iTargetID1 := manifest.ImageTargets[0].ID()
 	iTargetID2 := manifest.ImageTargets[1].ID()
-	result1 := store.NewImageBuildResult(iTargetID1, container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"))
-	result2 := store.NewImageBuildResult(iTargetID2, container.MustParseNamedTagged("sancho:tilt-prebuilt2"))
+	result1 := store.NewImageBuildResultSingleRef(iTargetID1, container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"))
+	result2 := store.NewImageBuildResultSingleRef(iTargetID2, container.MustParseNamedTagged("sancho:tilt-prebuilt2"))
 
 	newFile := f.WriteFile("sancho/message.txt", "message")
 
@@ -431,7 +431,7 @@ func TestDeployUsesInjectRef(t *testing.T) {
 			var observedImages []string
 			for i := range manifest.ImageTargets {
 				id := manifest.ImageTargets[i].ID()
-				image := store.ImageFromBuildResult(result[id])
+				image := store.LocalImageRefFromBuildResult(result[id])
 				observedImages = append(observedImages, image.Name())
 			}
 
