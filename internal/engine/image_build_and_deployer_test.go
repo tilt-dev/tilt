@@ -170,7 +170,6 @@ func TestImageIsDirtyAfterContainerBuild(t *testing.T) {
 	iTargetID1 := manifest.ImageTargets[0].ID()
 	result1 := store.NewLiveUpdateBuildResult(
 		iTargetID1,
-		container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"),
 		[]container.ID{container.ID("12345")})
 
 	stateSet := store.BuildStateSet{

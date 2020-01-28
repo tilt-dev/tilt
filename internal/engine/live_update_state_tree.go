@@ -27,11 +27,7 @@ func (t liveUpdateStateTree) createResultSet() store.BuildResultSet {
 	}
 
 	resultSet := store.BuildResultSet{}
-	resultSet[iTargetID] = store.NewLiveUpdateBuildResult(
-		res.TargetID(),
-		// TODO(maia): does LiveUpdateBuildResult actually need to know this?
-		store.ClusterImageRefFromBuildResult(res),
-		liveUpdatedContainerIDs)
+	resultSet[iTargetID] = store.NewLiveUpdateBuildResult(res.TargetID(), liveUpdatedContainerIDs)
 
 	// Invalidate all the image builds for images we depend on.
 	// Otherwise, the image builder will think the existing image ID

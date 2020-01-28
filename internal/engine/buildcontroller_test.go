@@ -854,9 +854,9 @@ func TestBuildControllerLocalResourcesBeforeClusterResources(t *testing.T) {
 	}
 
 	expectedBuildOrder := []string{
-		model.UnresourcedYAMLManifestName.String(),
-		"local1", // local resource comes after UnresourcedYAML but before all cluster resources
+		"local1",
 		"local2",
+		model.UnresourcedYAMLManifestName.String(),
 		"clusterUnbuilt",
 		"clusterBuilt1",
 		"clusterBuilt2",

@@ -103,6 +103,20 @@ func segmentsFromBytes(spanID SpanID, time time.Time, level logger.Level, fields
 	return segments
 }
 
+type LogLine struct {
+	Text       string
+	SpanID     SpanID
+	ProgressID string
+}
+
+func linesToString(lines []LogLine) string {
+	sb := strings.Builder{}
+	for _, line := range lines {
+		sb.WriteString(line.Text)
+	}
+	return sb.String()
+}
+
 type LogEvent interface {
 	Message() []byte
 	Time() time.Time
@@ -273,7 +287,10 @@ func (s *LogStore) tailHelper(n int, spans map[SpanID]*Span, showManifestPrefix 
 
 	if remaining > 0 {
 		// If there aren't enough lines, just return the whole store.
-		return s.logHelper(spans, showManifestPrefix)
+		return s.toLogString(logOptions{
+			spans:              spans,
+			showManifestPrefix: showManifestPrefix,
+		})
 	}
 
 	startedSpans := make(map[SpanID]bool)
@@ -295,7 +312,10 @@ func (s *LogStore) tailHelper(n int, spans map[SpanID]*Span, showManifestPrefix 
 
 	tempStore := &LogStore{spans: s.cloneSpanMap(), segments: newSegments}
 	tempStore.recomputeDerivedValues()
-	return tempStore.logHelper(tempStore.spans, showManifestPrefix)
+	return tempStore.toLogString(logOptions{
+		spans:              tempStore.spans,
+		showManifestPrefix: showManifestPrefix,
+	})
 }
 
 func (s *LogStore) cloneSpanMap() map[SpanID]*Span {
@@ -362,14 +382,24 @@ func (s *LogStore) recomputeDerivedValues() {
 // Print(store.ContinuingString(state.LastCheckpoint))
 // state.LastCheckpoint = store.Checkpoint()
 func (s *LogStore) ContinuingString(checkpoint Checkpoint) string {
+	lines := s.ContinuingLines(checkpoint)
+	sb := strings.Builder{}
+	for _, line := range lines {
+		sb.WriteString(line.Text)
+	}
+	return sb.String()
+}
+
+func (s *LogStore) ContinuingLines(checkpoint Checkpoint) []LogLine {
 	isSameSpanContinuation := false
 	isChangingSpanContinuation := false
 	checkpointIndex := s.checkpointToIndex(checkpoint)
 	precedingIndex := checkpointIndex - 1
+	var precedingSegment = LogSegment{}
 	if precedingIndex >= 0 && checkpointIndex < len(s.segments) {
 		// Check the last thing we printed. If it was wasn't complete,
 		// we have to do some extra work to properly continue the previous print.
-		precedingSegment := s.segments[precedingIndex]
+		precedingSegment = s.segments[precedingIndex]
 		currentSegment := s.segments[checkpointIndex]
 		if !precedingSegment.IsComplete() {
 			// If this is the same span id, remove the prefix from this line.
@@ -388,15 +418,25 @@ func (s *LogStore) ContinuingString(checkpoint Checkpoint) string {
 	}
 	tempLogStore.recomputeDerivedValues()
 
+	result := tempLogStore.toLogLines(logOptions{
+		spans:                       tempLogStore.spans,
+		showManifestPrefix:          true,
+		skipFirstLineManifestPrefix: isSameSpanContinuation,
+	})
+
 	if isSameSpanContinuation {
-		spanID := tempSegments[0].SpanID
-		span := s.spans[spanID]
-		return strings.TrimPrefix(tempLogStore.String(), SourcePrefix(span.ManifestName))
+		return result
 	}
 	if isChangingSpanContinuation {
-		return "\n" + tempLogStore.String()
+		return append([]LogLine{
+			LogLine{
+				Text:       "\n",
+				SpanID:     precedingSegment.SpanID,
+				ProgressID: precedingSegment.Fields[logger.FieldNameProgressID],
+			},
+		}, result...)
 	}
-	return tempLogStore.String()
+	return result
 }
 
 func (s *LogStore) ToLogList(fromCheckpoint Checkpoint) (*webview.LogList, error) {
@@ -442,7 +482,10 @@ func (s *LogStore) ToLogList(fromCheckpoint Checkpoint) (*webview.LogList, error
 }
 
 func (s *LogStore) String() string {
-	return s.logHelper(s.spans, true)
+	return s.toLogString(logOptions{
+		spans:              s.spans,
+		showManifestPrefix: true,
+	})
 }
 
 func (s *LogStore) spansForManifest(mn model.ManifestName) map[SpanID]*Span {
@@ -470,7 +513,7 @@ func (s *LogStore) SpanLog(spanID SpanID) string {
 	if !ok {
 		return ""
 	}
-	return s.logHelper(spans, false)
+	return s.toLogString(logOptions{spans: spans})
 }
 
 func (s *LogStore) Warnings(spanID SpanID) []string {
@@ -508,7 +551,7 @@ func (s *LogStore) Warnings(spanID SpanID) []string {
 
 func (s *LogStore) ManifestLog(mn model.ManifestName) string {
 	spans := s.spansForManifest(mn)
-	return s.logHelper(spans, false)
+	return s.toLogString(logOptions{spans: spans})
 }
 
 func (s *LogStore) startAndLastIndices(spans map[SpanID]*Span) (startIndex, lastIndex int) {
@@ -532,9 +575,40 @@ func (s *LogStore) startAndLastIndices(spans map[SpanID]*Span) (startIndex, last
 	return startIndex, lastIndex
 }
 
-func (s *LogStore) logHelper(spansToLog map[SpanID]*Span, showManifestPrefix bool) string {
+type logOptions struct {
+	spans                       map[SpanID]*Span
+	showManifestPrefix          bool
+	skipFirstLineManifestPrefix bool
+}
+
+func (s *LogStore) toLogString(options logOptions) string {
+	return linesToString(s.toLogLines(options))
+}
+
+// Returns a sequence of lines, including trailing newlines.
+func (s *LogStore) toLogLines(options logOptions) []LogLine {
+	result := []LogLine{}
 	sb := strings.Builder{}
+	spanID := SpanID("")
+	progressID := ""
 	lastLineCompleted := false
+
+	maybePushLine := func() {
+		// Even blank lines end in a newline, so if the stringbuilder
+		// doesn't have any data in it, we can skip this line.
+		if sb.Len() == 0 {
+			return
+		}
+		result = append(result, LogLine{
+			Text:       sb.String(),
+			SpanID:     spanID,
+			ProgressID: progressID,
+		})
+		sb = strings.Builder{}
+		lastLineCompleted = true
+		spanID = ""
+		progressID = ""
+	}
 
 	// We want to print the log line-by-line, but we don't actually store the logs
 	// line-by-line. We store them as segments.
@@ -548,9 +622,9 @@ func (s *LogStore) logHelper(spansToLog map[SpanID]*Span, showManifestPrefix boo
 	//
 	// This can have some O(n^2) perf characteristics in the worst case, but
 	// for normal inputs should be fine.
-	startIndex, lastIndex := s.startAndLastIndices(spansToLog)
+	startIndex, lastIndex := s.startAndLastIndices(options.spans)
 	if startIndex == -1 {
-		return ""
+		return nil
 	}
 
 	isFirstLine := true
@@ -560,9 +634,9 @@ func (s *LogStore) logHelper(spansToLog map[SpanID]*Span, showManifestPrefix boo
 			continue
 		}
 
-		spanID := segment.SpanID
+		spanID = segment.SpanID
 		span := s.spans[spanID]
-		if _, ok := spansToLog[spanID]; !ok {
+		if _, ok := options.spans[spanID]; !ok {
 			continue
 		}
 
@@ -570,10 +644,14 @@ func (s *LogStore) logHelper(spansToLog map[SpanID]*Span, showManifestPrefix boo
 		// logs from different sources don't blend together.
 		if !isFirstLine && !lastLineCompleted {
 			sb.WriteString("\n")
+			maybePushLine()
 		}
 
-		if showManifestPrefix && span.ManifestName != "" {
-			sb.WriteString(SourcePrefix(span.ManifestName))
+		if options.showManifestPrefix && span.ManifestName != "" {
+			shouldSkip := options.skipFirstLineManifestPrefix && isFirstLine
+			if !shouldSkip {
+				sb.WriteString(SourcePrefix(span.ManifestName))
+			}
 		}
 
 		if segment.Anchor {
@@ -587,10 +665,11 @@ func (s *LogStore) logHelper(spansToLog map[SpanID]*Span, showManifestPrefix boo
 
 		sb.WriteString(string(segment.Text))
 		isFirstLine = false
+		progressID = segment.Fields[logger.FieldNameProgressID]
 
 		// If this segment is not complete, run ahead and try to complete it.
 		if segment.IsComplete() {
-			lastLineCompleted = true
+			maybePushLine()
 			continue
 		}
 
@@ -607,12 +686,14 @@ func (s *LogStore) logHelper(spansToLog map[SpanID]*Span, showManifestPrefix boo
 
 			sb.WriteString(string(currentSeg.Text))
 			if currentSeg.IsComplete() {
-				lastLineCompleted = true
+				maybePushLine()
 				break
 			}
 		}
 	}
-	return sb.String()
+
+	maybePushLine()
+	return result
 }
 
 func (s *LogStore) computeLen() int {

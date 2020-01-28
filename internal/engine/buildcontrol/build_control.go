@@ -19,7 +19,20 @@ func NextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 		return nil
 	}
 
-	targets := RemoveCurrentlyBuildingTargets(state.Targets())
+	// Local targets aren't parallelizable with any other kind of target.
+	// So if we're already building a local target, bail immediately.
+	if IsBuildingLocalTarget(state) {
+		return nil
+	}
+
+	targets := state.Targets()
+	if IsBuildingAnything(state) {
+		// Local targets aren't parallelizable with any other kind of target.
+		// So if we're already building any targets, remove all the local ones.
+		targets = RemoveLocalTargets(targets)
+	}
+
+	targets = RemoveCurrentlyBuildingTargets(targets)
 	targets = RemoveTargetsWaitingOnDependencies(state, targets)
 
 	// If any of the manifest targets haven't been built yet, build them now.
@@ -97,17 +110,18 @@ func RemoveTargetsWaitingOnDependencies(state store.EngineState, mts []*store.Ma
 
 // Helper function for ordering targets that have never been built before.
 func NextUnbuiltTargetToBuild(unbuilt []*store.ManifestTarget) *store.ManifestTarget {
-	// unresourced YAML goes first
-	unresourced := FindUnresourcedYAML(unbuilt)
-	if unresourced != nil {
-		return unresourced
-	}
-
-	// Local resources come before all cluster resources (b/c LR's may
-	// change things on disk that cluster resources then pull in).
+	// Local resources come before all cluster resources, because they
+	// can't be parallelized. (LR's may change things on disk that cluster
+	// resources then pull in).
 	localTargets := FindLocalTargets(unbuilt)
 	if len(localTargets) > 0 {
 		return localTargets[0]
+	}
+
+	// unresourced YAML goes next
+	unresourced := FindUnresourcedYAML(unbuilt)
+	if unresourced != nil {
+		return unresourced
 	}
 
 	// If this is Kubernetes, unbuilt resources go first.
@@ -148,6 +162,36 @@ func FindLocalTargets(targets []*store.ManifestTarget) []*store.ManifestTarget {
 		}
 	}
 	return result
+}
+
+func RemoveLocalTargets(targets []*store.ManifestTarget) []*store.ManifestTarget {
+	result := []*store.ManifestTarget{}
+	for _, target := range targets {
+		if !target.Manifest.IsLocal() {
+			result = append(result, target)
+		}
+	}
+	return result
+}
+
+func IsBuildingAnything(state store.EngineState) bool {
+	mts := state.Targets()
+	for _, mt := range mts {
+		if mt.State.IsBuilding() {
+			return true
+		}
+	}
+	return false
+}
+
+func IsBuildingLocalTarget(state store.EngineState) bool {
+	mts := state.Targets()
+	for _, mt := range mts {
+		if mt.State.IsBuilding() && mt.Manifest.IsLocal() {
+			return true
+		}
+	}
+	return false
 }
 
 // Go through all the manifests, and check:
