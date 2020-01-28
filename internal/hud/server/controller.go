@@ -110,6 +110,10 @@ func (s *HeadsUpServerController) OnChange(ctx context.Context, st store.RStore)
 		return
 	}
 
+	// We need to pause for a bit to ensure the OS has a chance to free the socket
+	// from the test above (https://github.com/windmilleng/tilt/issues/2861)
+	time.Sleep(100 * time.Millisecond)
+
 	httpServer := &http.Server{
 		Addr:    network.BindAddr(string(s.host), int(s.port)),
 		Handler: http.DefaultServeMux,
