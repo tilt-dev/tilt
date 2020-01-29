@@ -75,6 +75,14 @@ func MustParseNamed(s string) reference.Named {
 	return n
 }
 
+func MustWithTag(name reference.Named, tag string) reference.NamedTagged {
+	nt, err := reference.WithTag(name, tag)
+	if err != nil {
+		panic(err)
+	}
+	return nt
+}
+
 func NewIDSet(ids ...ID) map[ID]bool {
 	result := make(map[ID]bool, len(ids))
 	for _, id := range ids {
