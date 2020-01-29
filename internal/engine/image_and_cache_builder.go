@@ -29,7 +29,7 @@ func NewImageAndCacheBuilder(ib build.ImageBuilder, custb build.CustomBuilder, u
 }
 
 func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageTarget, state store.BuildState,
-	ps *build.PipelineState) (taggedRefs container.TaggedRefs, err error) {
+	ps *build.PipelineState) (refs container.TaggedRefs, err error) {
 	userFacingRefName := container.FamiliarString(iTarget.Refs.ConfigurationRef)
 
 	switch bd := iTarget.BuildDetails.(type) {
@@ -37,7 +37,7 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", userFacingRefName)
 		defer ps.EndPipelineStep(ctx)
 
-		taggedRefs, err = icb.ib.BuildImage(ctx, ps, iTarget.Refs, bd,
+		refs, err = icb.ib.BuildImage(ctx, ps, iTarget.Refs, bd,
 			ignore.CreateBuildContextFilter(iTarget))
 
 		if err != nil {
@@ -46,7 +46,7 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 	case model.CustomBuild:
 		ps.StartPipelineStep(ctx, "Building Custom Build: [%s]", userFacingRefName)
 		defer ps.EndPipelineStep(ctx)
-		taggedRefs, err = icb.custb.Build(ctx, iTarget.Refs, bd)
+		refs, err = icb.custb.Build(ctx, iTarget.Refs, bd)
 		if err != nil {
 			return container.TaggedRefs{}, err
 		}
@@ -57,5 +57,5 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 			"DockerBuild nor CustomBuild)", iTarget.Refs.ConfigurationRef)
 	}
 
-	return taggedRefs, nil
+	return refs, nil
 }

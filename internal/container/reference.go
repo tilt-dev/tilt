@@ -33,6 +33,7 @@ func SimpleRefSet(ref RefSelector) RefSet {
 	}
 }
 
+// TagRefs tags both of the references used for build/deploy with the given tag.
 func (rs RefSet) TagRefs(tag string) (TaggedRefs, error) {
 	localTagged, err := reference.WithTag(rs.LocalRef, tag)
 	if err != nil {
@@ -48,6 +49,7 @@ func (rs RefSet) TagRefs(tag string) (TaggedRefs, error) {
 	}, nil
 }
 
+// Refs yielded by an image build
 type TaggedRefs struct {
 	LocalRef   reference.NamedTagged // Image name + tag as referenced from outside cluster
 	ClusterRef reference.NamedTagged // Image name + tag as referenced from within cluster

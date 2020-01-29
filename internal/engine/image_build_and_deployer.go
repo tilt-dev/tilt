@@ -154,7 +154,6 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		}
 
 		anyLiveUpdate = anyLiveUpdate || !iTarget.LiveUpdateInfo().Empty()
-		// 🤖 "new ibr" should probably take a TaggedRefs
 		return store.NewImageBuildResult(iTarget.ID(), refs.LocalRef, refs.ClusterRef), nil
 	})
 	if err != nil {
