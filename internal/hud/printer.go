@@ -36,7 +36,8 @@ func (p *IncrementalPrinter) Print(lines []logstore.LogLine) {
 		key := progressKey{spanID: line.SpanID, progressID: progressID}
 		if progressID != "" {
 			status, hasBeenPrinted := p.progress[key]
-			shouldPrint := !hasBeenPrinted ||
+			shouldPrint := line.ProgressMustPrint ||
+				!hasBeenPrinted ||
 				line.Time.Sub(status.lastPrinted) > status.printWait
 			if !shouldPrint {
 				continue
