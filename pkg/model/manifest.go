@@ -241,7 +241,7 @@ func (m Manifest) Empty() bool {
 	return m.Equal(Manifest{})
 }
 
-func BuildRefSelectorsForManifests(manifests []Manifest) []container.RefSelector {
+func LocalRefSelectorsForManifests(manifests []Manifest) []container.RefSelector {
 	var res []container.RefSelector
 	for _, m := range manifests {
 		for _, iTarg := range m.ImageTargets {

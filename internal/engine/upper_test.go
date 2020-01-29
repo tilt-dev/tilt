@@ -4056,6 +4056,7 @@ func dcContainerEvtForManifest(m model.Manifest, action dockercompose.Action) do
 func deployResultSet(manifest model.Manifest, uid types.UID, hashes []k8s.PodTemplateSpecHash) store.BuildResultSet {
 	resultSet := store.BuildResultSet{}
 	for _, iTarget := range manifest.ImageTargets {
+		// 🤖 make result with both refs
 		ref, _ := reference.WithTag(iTarget.Refs.ClusterRef, "deadbeef")
 		resultSet[iTarget.ID()] = store.NewImageBuildResultSingleRef(iTarget.ID(), ref)
 	}
