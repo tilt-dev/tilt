@@ -2560,8 +2560,8 @@ func TestTwoDefaultRegistries(t *testing.T) {
 	defer f.TearDown()
 
 	f.file("Tiltfile", `
-default_registry("foo")
-default_registry("bar")`)
+default_registry("gcr.io")
+default_registry("docker.io")`)
 
 	f.loadErrString("default registry already defined")
 }
@@ -2576,6 +2576,7 @@ default_registry("foo")
 docker_build('gcr.io/foo', 'foo')
 `)
 
+	f.loadErrString("Traceback ")
 	f.loadErrString("repository name must be canonical")
 }
 

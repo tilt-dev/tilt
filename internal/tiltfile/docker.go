@@ -458,6 +458,12 @@ func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Bu
 		return nil, err
 	}
 
+	fakeRef := fmt.Sprintf("%s/%s", dr, "fake")
+	_, err := reference.ParseNamed(fakeRef)
+	if err != nil {
+		return starlark.None, err
+	}
+
 	s.defaultRegistryHost = container.Registry(dr)
 
 	return starlark.None, nil
