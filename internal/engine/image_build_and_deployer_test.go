@@ -392,17 +392,22 @@ func TestCustomBuildSkipsLocalDocker(t *testing.T) {
 	assert.Equal(t, 0, f.docker.PushCount)
 }
 
-func TestDeployUsesDeploymentRef(t *testing.T) {
+func TestBuildAndDeployUsesCorrectRef(t *testing.T) {
 	expectedImages := []string{"foo.com/gcr.io_some-project-162817_sancho"}
+	expectedImagesLocalRegistry := []string{"registry:1234/gcr.io_some-project-162817_sancho"}
 	tests := []struct {
-		name           string
-		manifest       func(f Fixture) model.Manifest
-		expectBuilt    []string
-		expectDeployed []string
+		name             string
+		manifest         func(f Fixture) model.Manifest
+		useLocalRegistry bool // if true, clusterRef != localRef, i.e. ref of the built docker image != ref injected into YAML
+		expectBuilt      []string
+		expectDeployed   []string
 	}{
-		{"docker build", func(f Fixture) model.Manifest { return NewSanchoDockerBuildManifest(f) }, expectedImages, expectedImages},
-		{"custom build", NewSanchoCustomBuildManifest, expectedImages, expectedImages},
-		{"live multi stage", NewSanchoLiveUpdateMultiStageManifest, append(expectedImages, "foo.com/sancho-base"), expectedImages},
+		{"docker build", func(f Fixture) model.Manifest { return NewSanchoDockerBuildManifest(f) }, false, expectedImages, expectedImages},
+		{"docker build + local registry", func(f Fixture) model.Manifest { return NewSanchoDockerBuildManifest(f) }, true, expectedImages, expectedImagesLocalRegistry},
+		{"custom build", NewSanchoCustomBuildManifest, false, expectedImages, expectedImages},
+		{"custom build + local registry", NewSanchoCustomBuildManifest, true, expectedImages, expectedImagesLocalRegistry},
+		{"live multi stage", NewSanchoLiveUpdateMultiStageManifest, false, append(expectedImages, "foo.com/sancho-base"), expectedImages},
+		{"live multi stage + local registry", NewSanchoLiveUpdateMultiStageManifest, true, append(expectedImages, "foo.com/sancho-base"), expectedImagesLocalRegistry},
 	}
 
 	for _, test := range tests {
@@ -410,7 +415,7 @@ func TestDeployUsesDeploymentRef(t *testing.T) {
 			f := newIBDFixture(t, k8s.EnvGKE)
 			defer f.TearDown()
 
-			if test.name == "custom build" {
+			if strings.Contains(test.name, "custom build") {
 				sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 				f.docker.Images["foo.com/gcr.io_some-project-162817_sancho:tilt-build-1546304461"] = types.ImageInspect{ID: string(sha)}
 			}
@@ -418,11 +423,15 @@ func TestDeployUsesDeploymentRef(t *testing.T) {
 			manifest := test.manifest(f)
 			for i := range manifest.ImageTargets {
 				withRegistry, err := container.ReplaceRegistry("foo.com", manifest.ImageTargets[i].Refs.ConfigurationRef)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				manifest.ImageTargets[i].Refs.LocalRef = withRegistry
 				manifest.ImageTargets[i].Refs.ClusterRef = withRegistry
+
+				if test.useLocalRegistry {
+					clusterRefWithRegistry, err := container.ReplaceRegistry("registry:1234", manifest.ImageTargets[i].Refs.ConfigurationRef)
+					require.NoError(t, err)
+					manifest.ImageTargets[i].Refs.ClusterRef = clusterRefWithRegistry
+				}
 			}
 
 			result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
