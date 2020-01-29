@@ -5,6 +5,7 @@ import (
 	"regexp"
 
 	"github.com/docker/distribution/reference"
+	"github.com/pkg/errors"
 )
 
 // The Host of a container registry where we can push images.
@@ -30,7 +31,7 @@ func ReplaceRegistry(defaultRegistry Registry, rs RefSelector) (reference.Named,
 	newNs := fmt.Sprintf("%s/%s", defaultRegistry, escapeName(rs.RefFamiliarName()))
 	newN, err := reference.ParseNamed(newNs)
 	if err != nil {
-		return nil, fmt.Errorf("Error parsing %s after applying default registry %s: %w", newNs, defaultRegistry, err)
+		return nil, errors.Wrapf(err, "Error parsing %s after applying default registry %s", newNs, defaultRegistry)
 	}
 
 	return newN, nil

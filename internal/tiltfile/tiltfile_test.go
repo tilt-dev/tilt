@@ -2576,8 +2576,7 @@ default_registry("foo")
 docker_build('gcr.io/foo', 'foo')
 `)
 
-	f.loadErrString("Traceback ")
-	f.loadErrString("repository name must be canonical")
+	f.loadErrString("Traceback ", "repository name must be canonical")
 }
 
 func TestDefaultRegistryAtEndOfTiltfile(t *testing.T) {
