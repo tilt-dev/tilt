@@ -4,8 +4,8 @@ import ReactDOM from "react-dom"
 import {LogLine, SnapshotHighlight} from "./types"
 import LogPaneLine from "./LogPaneLine"
 import findLogLineID from "./findLogLine"
-import styled from "styled-components"
-import "./LogPane.scss"
+import styled, {keyframes} from "styled-components"
+import {Color, ColorAlpha, SizeUnit} from "./style-helpers"
 
 type LogPaneProps = {
   manifestName: string
@@ -31,6 +31,31 @@ const renderWindowMinStep = 50
 // Notice that log lines may have multiple visual lines of text, so
 // in practice the height is variable.
 const blankLogLineHeight = 30
+
+
+let LogPaneRoot = styled.section`
+  margin-top: ${SizeUnit(0.5)};
+  margin-bottom: ${SizeUnit(0.5)};
+  width: 100%;
+`
+const blink = keyframes`
+  0% {
+    opacity: 1;
+}
+  50% {
+    opacity: 0;
+}
+  100% {
+    opacity: 1;
+}
+`
+
+let LogEnd = styled.div`
+   animation: ${blink} 1s infinite;
+   animation-timing-function: ease;
+   margin-top: ${SizeUnit(0.5)};
+   margin-left: ${SizeUnit(0.5)};
+`
 
 class LogPane extends Component<LogPaneProps, LogPaneState> {
   highlightRef: React.RefObject<LogPaneLine> = React.createRef()
@@ -272,17 +297,15 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
   }
 
   render() {
-    let classes = `LogPane`
-
     let lines = this.props.logLines
     if (!lines || lines.length === 0) {
       return (
-        <section className={classes}>
+        <LogPaneRoot>
           <section className="Pane-empty-message">
             <LogoWordmarkSvg />
             <h2>No Logs Found</h2>
           </section>
-        </section>
+        </LogPaneRoot>
       )
     }
 
@@ -340,12 +363,12 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     }
 
     logLineEls.push(
-      <p key="logEnd" className="logEnd" ref={this.lastElement}>
+      <LogEnd key="logEnd" ref={this.lastElement}>
         &#9608;
-      </p>
+      </LogEnd>
     )
 
-    return <section className={classes}>{logLineEls}</section>
+    return <LogPaneRoot>{logLineEls}</LogPaneRoot>
   }
 }
 

@@ -59,6 +59,7 @@ export enum Height {
   resourceBar = unit * 1.5,
 }
 export enum Width {
+  logLineGutter = 6,
   sidebar = unit * 10,
   sidebarCollapsed = unit * 1.5,
   secondaryNavItem = unit * 5,
