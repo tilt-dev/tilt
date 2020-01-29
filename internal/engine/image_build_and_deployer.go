@@ -143,18 +143,19 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 			return nil, err
 		}
 
-		ref, err := ibd.icb.Build(ctx, iTarget, state, ps)
+		refs, err := ibd.icb.Build(ctx, iTarget, state, ps)
 		if err != nil {
 			return nil, err
 		}
 
-		ref, err = ibd.push(ctx, ref, ps, iTarget, kTarget)
+		err = ibd.push(ctx, refs.LocalRef, ps, iTarget, kTarget)
 		if err != nil {
 			return nil, err
 		}
 
 		anyLiveUpdate = anyLiveUpdate || !iTarget.LiveUpdateInfo().Empty()
-		return store.NewImageBuildResultSingleRef(iTarget.ID(), ref), nil
+		// 🤖 "new ibr" should probably take a TaggedRefs
+		return store.NewImageBuildResult(iTarget.ID(), refs.LocalRef, refs.ClusterRef), nil
 	})
 	if err != nil {
 		return store.BuildResultSet{}, buildcontrol.WrapDontFallBackError(err)
@@ -166,7 +167,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	return brs, buildcontrol.WrapDontFallBackError(err)
 }
 
-func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedTagged, ps *build.PipelineState, iTarget model.ImageTarget, kTarget model.K8sTarget) (reference.NamedTagged, error) {
+func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedTagged, ps *build.PipelineState, iTarget model.ImageTarget, kTarget model.K8sTarget) error {
 	ps.StartPipelineStep(ctx, "Pushing %s", container.FamiliarString(ref))
 	defer ps.EndPipelineStep(ctx)
 
@@ -179,7 +180,7 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 	// in any k8s resources! (e.g., it's consumed by another image).
 	if ibd.canAlwaysSkipPush() || !isImageDeployedToK8s(iTarget, kTarget) || cbSkip {
 		ps.Printf(ctx, "Skipping push")
-		return ref, nil
+		return nil
 	}
 
 	var err error
@@ -187,17 +188,17 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 		ps.Printf(ctx, "Pushing to KIND")
 		err := ibd.kp.PushToKIND(ps.AttachLogger(ctx), ref)
 		if err != nil {
-			return nil, fmt.Errorf("Error pushing to KIND: %v", err)
+			return fmt.Errorf("Error pushing to KIND: %v", err)
 		}
 	} else {
 		ps.Printf(ctx, "Pushing with Docker client")
-		ref, err = ibd.ib.PushImage(ps.AttachLogger(ctx), ref)
+		err = ibd.ib.PushImage(ps.AttachLogger(ctx), ref)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	return ref, nil
+	return nil
 }
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
@@ -362,8 +363,7 @@ func (ibd *ImageBuildAndDeployer) canAlwaysSkipPush() bool {
 	return ibd.env.UsesLocalDockerRegistry() && ibd.runtime == container.RuntimeDocker
 }
 
-// Create a new ImageTarget with the dockerfiles rewritten
-// with the injected images.
+// Create a new ImageTarget with the Dockerfiles rewritten with the injected images.
 func injectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.TargetID]model.ImageTarget, deps []store.BuildResult) (model.ImageTarget, error) {
 	if len(deps) == 0 {
 		return iTarget, nil

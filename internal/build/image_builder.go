@@ -17,6 +17,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/container"
 
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockerfile"
@@ -36,9 +37,9 @@ type dockerImageBuilder struct {
 }
 
 type ImageBuilder interface {
-	BuildImage(ctx context.Context, ps *PipelineState, ref reference.Named, db model.DockerBuild, filter model.PathMatcher) (reference.NamedTagged, error)
-	PushImage(ctx context.Context, name reference.NamedTagged) (reference.NamedTagged, error)
-	TagImage(ctx context.Context, name reference.Named, dig digest.Digest) (reference.NamedTagged, error)
+	BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet, db model.DockerBuild, filter model.PathMatcher) (container.TaggedRefs, error)
+	PushImage(ctx context.Context, name reference.NamedTagged) error
+	TagRefs(ctx context.Context, refs container.RefSet, dig digest.Digest) (container.TaggedRefs, error)
 	ImageExists(ctx context.Context, ref reference.NamedTagged) (bool, error)
 }
 
@@ -55,7 +56,7 @@ func NewDockerImageBuilder(dCli docker.Client, extraLabels dockerfile.Labels) *d
 	}
 }
 
-func (d *dockerImageBuilder) BuildImage(ctx context.Context, ps *PipelineState, ref reference.Named, db model.DockerBuild, filter model.PathMatcher) (reference.NamedTagged, error) {
+func (d *dockerImageBuilder) BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet, db model.DockerBuild, filter model.PathMatcher) (container.TaggedRefs, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "dib-BuildImage")
 	defer span.Finish()
 
@@ -65,7 +66,7 @@ func (d *dockerImageBuilder) BuildImage(ctx context.Context, ps *PipelineState, 
 			ContainerPath: "/",
 		},
 	}
-	return d.buildFromDf(ctx, ps, db, paths, filter, ref)
+	return d.buildFromDf(ctx, ps, db, paths, filter, refs)
 }
 
 func (d *dockerImageBuilder) applyLabels(df dockerfile.Dockerfile, buildMode dockerfile.LabelValue) dockerfile.Dockerfile {
@@ -149,31 +150,32 @@ func (d *dockerImageBuilder) addRemainingRuns(df dockerfile.Dockerfile, remainin
 }
 
 // Tag the digest with the given name and wm-tilt tag.
-func (d *dockerImageBuilder) TagImage(ctx context.Context, ref reference.Named, dig digest.Digest) (reference.NamedTagged, error) {
+func (d *dockerImageBuilder) TagRefs(ctx context.Context, refs container.RefSet, dig digest.Digest) (container.TaggedRefs, error) {
 	tag, err := digestAsTag(dig)
 	if err != nil {
-		return nil, errors.Wrap(err, "TagImage")
+		return container.TaggedRefs{}, errors.Wrap(err, "TagImage")
 	}
 
-	namedTagged, err := reference.WithTag(ref, tag)
+	tagged, err := refs.TagRefs(tag)
 	if err != nil {
-		return nil, errors.Wrap(err, "TagImage")
+		return container.TaggedRefs{}, errors.Wrap(err, "TagImage")
 	}
 
-	err = d.dCli.ImageTag(ctx, dig.String(), namedTagged.String())
+	// Docker client only needs to care about the localImage
+	err = d.dCli.ImageTag(ctx, dig.String(), tagged.LocalRef.String())
 	if err != nil {
-		return nil, errors.Wrap(err, "TagImage#ImageTag")
+		return container.TaggedRefs{}, errors.Wrap(err, "TagImage#ImageTag")
 	}
 
-	return namedTagged, nil
+	return tagged, nil
 }
 
-// Naively tag the digest and push it up to the docker registry specified in the name.
+// Push the specified ref up to the docker registry specified in the name.
 //
 // TODO(nick) In the future, I would like us to be smarter about checking if the kubernetes cluster
 // we're running in has access to the given registry. And if it doesn't, we should either emit an
 // error, or push to a registry that kubernetes does have access to (e.g., a local registry).
-func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedTagged) (reference.NamedTagged, error) {
+func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedTagged) error {
 	l := logger.Get(ctx)
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-PushImage")
@@ -181,7 +183,7 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 
 	imagePushResponse, err := d.dCli.ImagePush(ctx, ref)
 	if err != nil {
-		return nil, errors.Wrap(err, "PushImage#ImagePush")
+		return errors.Wrap(err, "PushImage#ImagePush")
 	}
 
 	defer func() {
@@ -193,10 +195,10 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 
 	_, err = readDockerOutput(ctx, imagePushResponse)
 	if err != nil {
-		return nil, errors.Wrapf(err, "pushing image %q", ref.Name())
+		return errors.Wrapf(err, "pushing image %q", ref.Name())
 	}
 
-	return ref, nil
+	return nil
 }
 
 func (d *dockerImageBuilder) ImageExists(ctx context.Context, ref reference.NamedTagged) (bool, error) {
@@ -207,7 +209,7 @@ func (d *dockerImageBuilder) ImageExists(ctx context.Context, ref reference.Name
 	return len(images) > 0, nil
 }
 
-func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState, db model.DockerBuild, paths []PathMapping, filter model.PathMatcher, ref reference.Named) (reference.NamedTagged, error) {
+func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState, db model.DockerBuild, paths []PathMapping, filter model.PathMatcher, refs container.RefSet) (container.TaggedRefs, error) {
 	logger.Get(ctx).Infof("Building Dockerfile:\n%s\n", indent(db.Dockerfile, "  "))
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildFromDf")
 	defer span.Finish()
@@ -240,7 +242,7 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 	)
 	spanBuild.Finish()
 	if err != nil {
-		return nil, err
+		return container.TaggedRefs{}, err
 	}
 
 	defer func() {
@@ -252,15 +254,15 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 
 	digest, err := d.getDigestFromBuildOutput(ps.AttachLogger(ctx), imageBuildResponse.Body)
 	if err != nil {
-		return nil, err
+		return container.TaggedRefs{}, err
 	}
 
-	nt, err := d.TagImage(ctx, ref, digest)
+	tagged, err := d.TagRefs(ctx, refs, digest)
 	if err != nil {
-		return nil, errors.Wrap(err, "PushImage")
+		return container.TaggedRefs{}, errors.Wrap(err, "PushImage")
 	}
 
-	return nt, nil
+	return tagged, nil
 }
 
 func (d *dockerImageBuilder) getDigestFromBuildOutput(ctx context.Context, reader io.Reader) (digest.Digest, error) {

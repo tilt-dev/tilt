@@ -29,7 +29,7 @@ ADD dir/c.txt .
 	f.WriteFile("dir/c.txt", "c")
 	f.WriteFile("missing.txt", "missing")
 
-	ref, err := f.b.BuildImage(f.ctx, f.ps, f.getNameFromTest(), model.DockerBuild{
+	refs, err := f.b.BuildImage(f.ctx, f.ps, f.getNameFromTest(), model.DockerBuild{
 		Dockerfile: df.String(),
 		BuildPath:  f.Path(),
 	}, model.EmptyMatcher)
@@ -37,7 +37,7 @@ ADD dir/c.txt .
 		t.Fatal(err)
 	}
 
-	f.assertImageHasLabels(ref, docker.BuiltByTiltLabel)
+	f.assertImageHasLabels(refs.LocalRef, docker.BuiltByTiltLabel)
 
 	pcs := []expectedFile{
 		expectedFile{Path: "/src/a.txt", Contents: "a"},
@@ -46,7 +46,7 @@ ADD dir/c.txt .
 		expectedFile{Path: "/src/dir/c.txt", Missing: true},
 		expectedFile{Path: "/src/missing.txt", Missing: true},
 	}
-	f.assertFilesInImage(ref, pcs)
+	f.assertFilesInImage(refs.LocalRef, pcs)
 }
 
 func TestDockerBuildWithBuildArgs(t *testing.T) {
@@ -63,7 +63,7 @@ ADD $some_variable_name /test.txt`)
 	ba := model.DockerBuildArgs{
 		"some_variable_name": "awesome_variable",
 	}
-	ref, err := f.b.BuildImage(f.ctx, f.ps, f.getNameFromTest(), model.DockerBuild{
+	refs, err := f.b.BuildImage(f.ctx, f.ps, f.getNameFromTest(), model.DockerBuild{
 		Dockerfile: df.String(),
 		BuildPath:  f.Path(),
 		BuildArgs:  ba,
@@ -75,5 +75,5 @@ ADD $some_variable_name /test.txt`)
 	expected := []expectedFile{
 		expectedFile{Path: "/test.txt", Contents: "hi im an awesome variable"},
 	}
-	f.assertFilesInImage(ref, expected)
+	f.assertFilesInImage(refs.LocalRef, expected)
 }

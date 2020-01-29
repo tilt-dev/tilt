@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/docker/distribution/reference"
-
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
@@ -30,38 +28,34 @@ func NewImageAndCacheBuilder(ib build.ImageBuilder, custb build.CustomBuilder, u
 	}
 }
 
-func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, ps *build.PipelineState) (reference.NamedTagged, error) {
-	var n reference.NamedTagged
-
+func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageTarget, state store.BuildState,
+	ps *build.PipelineState) (taggedRefs container.TaggedRefs, err error) {
 	userFacingRefName := container.FamiliarString(iTarget.Refs.ConfigurationRef)
-	refToBuild := iTarget.Refs.LocalRef
 
 	switch bd := iTarget.BuildDetails.(type) {
 	case model.DockerBuild:
 		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", userFacingRefName)
 		defer ps.EndPipelineStep(ctx)
 
-		ref, err := icb.ib.BuildImage(ctx, ps, refToBuild, bd,
+		taggedRefs, err = icb.ib.BuildImage(ctx, ps, iTarget.Refs, bd,
 			ignore.CreateBuildContextFilter(iTarget))
 
 		if err != nil {
-			return nil, err
+			return container.TaggedRefs{}, err
 		}
-		n = ref
 	case model.CustomBuild:
 		ps.StartPipelineStep(ctx, "Building Custom Build: [%s]", userFacingRefName)
 		defer ps.EndPipelineStep(ctx)
-		ref, err := icb.custb.Build(ctx, refToBuild, bd)
+		taggedRefs, err = icb.custb.Build(ctx, iTarget.Refs, bd)
 		if err != nil {
-			return nil, err
+			return container.TaggedRefs{}, err
 		}
-		n = ref
 	default:
 		// Theoretically this should never trip b/c we `validate` the manifest beforehand...?
 		// If we get here, something is very wrong.
-		return nil, fmt.Errorf("image %q has no valid buildDetails (neither "+
+		return container.TaggedRefs{}, fmt.Errorf("image %q has no valid buildDetails (neither "+
 			"DockerBuild nor CustomBuild)", iTarget.Refs.ConfigurationRef)
 	}
 
-	return n, nil
+	return taggedRefs, nil
 }
