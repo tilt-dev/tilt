@@ -17,6 +17,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tilt/internal/container"
 
 	"github.com/windmilleng/tilt/internal/docker"
