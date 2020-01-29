@@ -392,16 +392,17 @@ func TestCustomBuildSkipsLocalDocker(t *testing.T) {
 	assert.Equal(t, 0, f.docker.PushCount)
 }
 
-func TestDeployUsesInjectRef(t *testing.T) {
+func TestDeployUsesDeploymentRef(t *testing.T) {
 	expectedImages := []string{"foo.com/gcr.io_some-project-162817_sancho"}
 	tests := []struct {
 		name           string
 		manifest       func(f Fixture) model.Manifest
-		expectedImages []string
+		expectBuilt    []string
+		expectDeployed []string
 	}{
-		{"docker build", func(f Fixture) model.Manifest { return NewSanchoDockerBuildManifest(f) }, expectedImages},
-		{"custom build", NewSanchoCustomBuildManifest, expectedImages},
-		{"live multi stage", NewSanchoLiveUpdateMultiStageManifest, append(expectedImages, "foo.com/sancho-base")},
+		{"docker build", func(f Fixture) model.Manifest { return NewSanchoDockerBuildManifest(f) }, expectedImages, expectedImages},
+		{"custom build", NewSanchoCustomBuildManifest, expectedImages, expectedImages},
+		{"live multi stage", NewSanchoLiveUpdateMultiStageManifest, append(expectedImages, "foo.com/sancho-base"), expectedImages},
 	}
 
 	for _, test := range tests {
@@ -435,7 +436,11 @@ func TestDeployUsesInjectRef(t *testing.T) {
 				observedImages = append(observedImages, image.Name())
 			}
 
-			assert.ElementsMatch(t, test.expectedImages, observedImages)
+			assert.ElementsMatch(t, test.expectBuilt, observedImages)
+
+			for _, expected := range test.expectDeployed {
+				assert.Contains(t, f.k8s.Yaml, expected)
+			}
 		})
 	}
 }
