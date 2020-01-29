@@ -173,7 +173,7 @@ func newFakeBuildHandlerCall(target model.ImageTarget, state store.BuildState, n
 		state:  state,
 		result: store.NewImageBuildResultSingleRef(
 			target.ID(),
-			container.MustParseNamedTagged(fmt.Sprintf("%s:%d", target.ConfigurationRef.String(), num)),
+			container.MustParseNamedTagged(fmt.Sprintf("%s:%d", target.Refs.ConfigurationRef.String(), num)),
 		),
 		depResults: depResults,
 	}
@@ -200,7 +200,7 @@ func newFakeBuildHandler() *fakeBuildHandler {
 func (fbh *fakeBuildHandler) handle(target model.TargetSpec, state store.BuildState, depResults []store.BuildResult) (store.BuildResult, error) {
 	iTarget := target.(model.ImageTarget)
 	fbh.buildNum++
-	namedTagged := container.MustParseNamedTagged(fmt.Sprintf("%s:%d", iTarget.ConfigurationRef, fbh.buildNum))
+	namedTagged := container.MustParseNamedTagged(fmt.Sprintf("%s:%d", iTarget.Refs.ConfigurationRef, fbh.buildNum))
 	result := store.NewImageBuildResultSingleRef(target.ID(), namedTagged)
 	fbh.calls[target.ID()] = fakeBuildHandlerCall{target, state, depResults, result}
 	return result, nil

@@ -187,15 +187,16 @@ type fakeBuildAndDeployer struct {
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 
 func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deployTarget model.TargetSpec) store.BuildResult {
-	named := iTarget.DeploymentRef
-	nt, _ := reference.WithTag(named, fmt.Sprintf("tilt-%d", b.buildCount))
+	tag := fmt.Sprintf("tilt-%d", b.buildCount)
+	localRefTagged := container.MustWithTag(iTarget.Refs.LocalRef, tag)
+	clusterRefTagged := container.MustWithTag(iTarget.Refs.ClusterRef, tag)
 
 	var result store.BuildResult
 	containerIDs := b.nextLiveUpdateContainerIDs
 	if len(containerIDs) > 0 {
 		result = store.NewLiveUpdateBuildResult(iTarget.ID(), containerIDs)
 	} else {
-		result = store.NewImageBuildResultSingleRef(iTarget.ID(), nt)
+		result = store.NewImageBuildResult(iTarget.ID(), localRefTagged, clusterRefTagged)
 	}
 	return result
 }
@@ -448,7 +449,7 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 
 	call = f.nextCallComplete()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
-	assert.Equal(t, "gcr.io/some-project-162817/sancho:tilt-1", call.oneState().LastImageAsString())
+	assert.Equal(t, "gcr.io/some-project-162817/sancho:tilt-1", call.oneState().LastLocalImageAsString())
 	fileAbsPath := f.JoinPath(fileRelPath)
 	assert.Equal(t, []string{fileAbsPath}, call.oneState().FilesChanged())
 
@@ -600,7 +601,7 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("a.go"))
 
 	call = f.nextCallComplete("failed build from a.go change")
-	assert.Equal(t, "gcr.io/some-project-162817/sancho:tilt-1", call.oneState().LastImageAsString())
+	assert.Equal(t, "gcr.io/some-project-162817/sancho:tilt-1", call.oneState().LastLocalImageAsString())
 	assert.Equal(t, []string{f.JoinPath("a.go")}, call.oneState().FilesChanged())
 
 	// Simulate a change to b.go
@@ -610,7 +611,7 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 	// on the last successful result, from before a.go changed.
 	call = f.nextCallComplete("build on last successful result")
 	assert.Equal(t, []string{f.JoinPath("a.go"), f.JoinPath("b.go")}, call.oneState().FilesChanged())
-	assert.Equal(t, "gcr.io/some-project-162817/sancho:tilt-1", call.oneState().LastImageAsString())
+	assert.Equal(t, "gcr.io/some-project-162817/sancho:tilt-1", call.oneState().LastLocalImageAsString())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -701,7 +702,8 @@ k8s_yaml('snack.yaml')
 	assert.Equal(t, testyaml.SnackYAMLPostConfig, call.k8s().YAML)
 
 	// Since the manifest changed, we cleared the previous build state to force an image build
-	assert.False(t, call.oneState().HasImage())
+	// (i.e. check that we called BuildAndDeploy with no pre-existing state)
+	assert.False(t, call.oneState().HasLastSuccessfulResult())
 
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("random_file.go"))
 
@@ -710,7 +712,7 @@ k8s_yaml('snack.yaml')
 	assert.Equal(t, "FROM iron/go:dev", call.firstImgTarg().DockerBuildInfo().Dockerfile)
 
 	// Unchanged manifest --> we do NOT clear the build state
-	assert.True(t, call.oneState().HasImage())
+	assert.True(t, call.oneState().HasLastSuccessfulResult())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -769,7 +771,7 @@ k8s_resource('doggos', new_name='quux')
 	assert.ElementsMatch(t, []string{}, call.oneState().FilesChanged())
 
 	// Since the manifest changed, we cleared the previous build state to force an image build
-	assert.False(t, call.oneState().HasImage())
+	assert.False(t, call.oneState().HasLastSuccessfulResult())
 
 	// Importantly the other manifest, quux, is _not_ called -- the DF change didn't affect its manifest
 	err := f.Stop()
@@ -856,7 +858,7 @@ k8s_yaml('snack.yaml')`)
 	assert.ElementsMatch(t, []string{
 		f.JoinPath("src/main.go"),
 	}, call.oneState().FilesChanged())
-	assert.True(t, call.oneState().HasImage(), "Unchanged manifest --> we do NOT clear the build state")
+	assert.True(t, call.oneState().HasLastSuccessfulResult(), "Unchanged manifest --> we do NOT clear the build state")
 
 	err := f.Stop()
 	assert.Nil(t, err)
@@ -934,7 +936,7 @@ k8s_yaml('snack.yaml')
 	f.WriteConfigFiles("Tiltfile", tiltfileWithCmd("changed"))
 
 	call := f.nextCall("fixed broken config and rebuilt manifest")
-	assert.False(t, call.oneState().HasImage(),
+	assert.False(t, call.oneState().HasLastSuccessfulResult(),
 		"expected this call to have NO image (since we should have cleared it to force an image build)")
 
 	f.WaitUntil("tiltfile error cleared", func(state store.EngineState) bool {
@@ -1019,7 +1021,7 @@ k8s_yaml('snack.yaml')`
 	f.WriteConfigFiles("Tiltfile", triggerAutoTiltfile)
 
 	call := f.nextCall("manifest updated b/c it's now TriggerModeAuto")
-	assert.True(t, call.oneState().HasImage(),
+	assert.True(t, call.oneState().HasLastSuccessfulResult(),
 		"we did NOT clear the build state (b/c a change to Manifest.TriggerMode does NOT invalidate the build")
 	f.WaitUntilManifest("triggerMode has changed on manifest", "snack", func(mt store.ManifestTarget) bool {
 		return mt.Manifest.TriggerMode == model.TriggerModeAuto
@@ -3858,8 +3860,9 @@ func (f *testFixture) newManifestWithRef(name string, ref reference.Named) model
 	refSel := container.NewRefSelector(ref)
 
 	iTarget := NewSanchoLiveUpdateImageTarget(f)
-	iTarget.ConfigurationRef = refSel
-	iTarget.DeploymentRef = ref
+	iTarget.Refs.ConfigurationRef = refSel
+	iTarget.Refs.LocalRef = ref
+	iTarget.Refs.ClusterRef = ref
 
 	return manifestbuilder.New(f, model.ManifestName(name)).
 		WithK8sYAML(SanchoYAML).
@@ -3870,7 +3873,7 @@ func (f *testFixture) newManifestWithRef(name string, ref reference.Named) model
 func (f *testFixture) newDockerBuildManifestWithBuildPath(name string, path string) model.Manifest {
 	db := model.DockerBuild{Dockerfile: "FROM alpine", BuildPath: path}
 	iTarget := NewSanchoLiveUpdateImageTarget(f).WithBuildDetails(db)
-	iTarget.ConfigurationRef = container.MustParseSelector(strings.ToLower(name)) // each target should have a unique ID
+	iTarget.Refs.ConfigurationRef = container.MustParseSelector(strings.ToLower(name)) // each target should have a unique ID
 	return manifestbuilder.New(f, model.ManifestName(name)).
 		WithK8sYAML(SanchoYAML).
 		WithImageTarget(iTarget).
@@ -4056,9 +4059,11 @@ func dcContainerEvtForManifest(m model.Manifest, action dockercompose.Action) do
 
 func deployResultSet(manifest model.Manifest, uid types.UID, hashes []k8s.PodTemplateSpecHash) store.BuildResultSet {
 	resultSet := store.BuildResultSet{}
+	tag := "deadbeef"
 	for _, iTarget := range manifest.ImageTargets {
-		ref, _ := reference.WithTag(iTarget.DeploymentRef, "deadbeef")
-		resultSet[iTarget.ID()] = store.NewImageBuildResultSingleRef(iTarget.ID(), ref)
+		localRefTagged := container.MustWithTag(iTarget.Refs.LocalRef, tag)
+		clusterRefTagged := container.MustWithTag(iTarget.Refs.LocalRef, tag)
+		resultSet[iTarget.ID()] = store.NewImageBuildResult(iTarget.ID(), localRefTagged, clusterRefTagged)
 	}
 	ktID := manifest.K8sTarget().ID()
 	resultSet[ktID] = store.NewK8sDeployResult(ktID, []types.UID{uid}, hashes, nil)

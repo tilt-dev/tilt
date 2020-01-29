@@ -33,8 +33,8 @@ func NewImageAndCacheBuilder(ib build.ImageBuilder, custb build.CustomBuilder, u
 func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageTarget, state store.BuildState, ps *build.PipelineState) (reference.NamedTagged, error) {
 	var n reference.NamedTagged
 
-	userFacingRefName := container.FamiliarString(iTarget.ConfigurationRef)
-	refToBuild := iTarget.DeploymentRef
+	userFacingRefName := container.FamiliarString(iTarget.Refs.ConfigurationRef)
+	refToBuild := iTarget.Refs.LocalRef
 
 	switch bd := iTarget.BuildDetails.(type) {
 	case model.DockerBuild:
@@ -59,7 +59,8 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 	default:
 		// Theoretically this should never trip b/c we `validate` the manifest beforehand...?
 		// If we get here, something is very wrong.
-		return nil, fmt.Errorf("image %q has no valid buildDetails (neither DockerBuildInfo nor FastBuildInfo)", iTarget.ConfigurationRef)
+		return nil, fmt.Errorf("image %q has no valid buildDetails (neither "+
+			"DockerBuild nor CustomBuild)", iTarget.Refs.ConfigurationRef)
 	}
 
 	return n, nil

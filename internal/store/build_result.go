@@ -309,7 +309,7 @@ func (b BuildState) OneContainerInfo() ContainerInfo {
 	}
 	return b.RunningContainers[0]
 }
-func (b BuildState) LastImageAsString() string {
+func (b BuildState) LastLocalImageAsString() string {
 	img := LocalImageRefFromBuildResult(b.LastSuccessfulResult)
 	if img == nil {
 		return ""
@@ -334,8 +334,8 @@ func (b BuildState) IsEmpty() bool {
 	return b.LastSuccessfulResult == nil
 }
 
-func (b BuildState) HasImage() bool {
-	return LocalImageRefFromBuildResult(b.LastSuccessfulResult) != nil
+func (b BuildState) HasLastSuccessfulResult() bool {
+	return b.LastSuccessfulResult != nil
 }
 
 // Whether the image represented by this state needs to be built.
@@ -435,7 +435,7 @@ func RunningContainersForTargetForOnePod(iTarget model.ImageTarget, runtimeState
 	var containers []ContainerInfo
 	for _, c := range pod.Containers {
 		// Only return containers matching our image
-		if c.ImageRef == nil || iTarget.DeploymentRef.Name() != c.ImageRef.Name() {
+		if c.ImageRef == nil || iTarget.Refs.ClusterRef.Name() != c.ImageRef.Name() {
 			continue
 		}
 		if c.ID == "" || c.Name == "" || !c.Ready {

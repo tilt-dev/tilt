@@ -416,12 +416,13 @@ func TestDeployUsesDeploymentRef(t *testing.T) {
 			}
 
 			manifest := test.manifest(f)
-			var err error
 			for i := range manifest.ImageTargets {
-				manifest.ImageTargets[i].DeploymentRef, err = container.ReplaceRegistry("foo.com", manifest.ImageTargets[i].ConfigurationRef)
+				withRegistry, err := container.ReplaceRegistry("foo.com", manifest.ImageTargets[i].Refs.ConfigurationRef)
 				if err != nil {
 					t.Fatal(err)
 				}
+				manifest.ImageTargets[i].Refs.LocalRef = withRegistry
+				manifest.ImageTargets[i].Refs.ClusterRef = withRegistry
 			}
 
 			result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})

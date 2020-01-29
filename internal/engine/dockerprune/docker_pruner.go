@@ -72,7 +72,7 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 	curBuildCount := state.CompletedBuildCount
 	hasDockerBuild := state.HasDockerBuild()
 	nextToBuild := buildcontrol.NextManifestNameToBuild(state)
-	imgSelectors := model.RefSelectorsForManifests(state.Manifests())
+	imgSelectors := model.LocalRefSelectorsForManifests(state.Manifests())
 	st.RUnlockState()
 
 	if !settings.Enabled {

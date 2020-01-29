@@ -301,7 +301,7 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 			}
 
 			iTarget := iTargetMap[depID]
-			selector := iTarget.ConfigurationRef
+			selector := iTarget.Refs.ConfigurationRef
 			matchInEnvVars := iTarget.MatchInEnvVars
 
 			var replaced bool
@@ -374,7 +374,7 @@ func injectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.Tar
 	case model.DockerBuild:
 		df = dockerfile.Dockerfile(bd.Dockerfile)
 	default:
-		return model.ImageTarget{}, fmt.Errorf("image %q has no valid buildDetails", iTarget.ConfigurationRef)
+		return model.ImageTarget{}, fmt.Errorf("image %q has no valid buildDetails", iTarget.Refs.ConfigurationRef)
 	}
 
 	ast, err := dockerfile.ParseAST(df)
@@ -388,11 +388,11 @@ func injectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.Tar
 			return model.ImageTarget{}, fmt.Errorf("Internal error: image is nil")
 		}
 		id := dep.TargetID()
-		modified, err := ast.InjectImageDigest(iTargetMap[id].ConfigurationRef, image)
+		modified, err := ast.InjectImageDigest(iTargetMap[id].Refs.ConfigurationRef, image)
 		if err != nil {
 			return model.ImageTarget{}, errors.Wrap(err, "injectImageDependencies")
 		} else if !modified {
-			return model.ImageTarget{}, fmt.Errorf("Could not inject image %q into Dockerfile of image %q", image, iTarget.ConfigurationRef)
+			return model.ImageTarget{}, fmt.Errorf("Could not inject image %q into Dockerfile of image %q", image, iTarget.Refs.ConfigurationRef)
 		}
 	}
 

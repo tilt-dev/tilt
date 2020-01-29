@@ -90,7 +90,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 			return nil, err
 		}
 
-		expectedRef := iTarget.ConfigurationRef
+		expectedRef := iTarget.Refs.ConfigurationRef
 
 		// NOTE(maia): we assume that this func takes one DC target and up to one image target
 		// corresponding to that service. If this func ever supports specs for more than one

@@ -63,7 +63,7 @@ func (c *dockerPruneCmd) run(ctx context.Context, args []string) error {
 		return tlr.Error
 	}
 
-	imgSelectors := model.RefSelectorsForManifests(tlr.Manifests)
+	imgSelectors := model.LocalRefSelectorsForManifests(tlr.Manifests)
 
 	dp := dockerprune.NewDockerPruner(deps.dCli)
 
