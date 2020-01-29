@@ -2560,8 +2560,8 @@ func TestTwoDefaultRegistries(t *testing.T) {
 	defer f.TearDown()
 
 	f.file("Tiltfile", `
-default_registry("foo")
-default_registry("bar")`)
+default_registry("gcr.io/foo")
+default_registry("gcr.io/bar")`)
 
 	f.loadErrString("default registry already defined")
 }
@@ -2576,6 +2576,7 @@ default_registry("foo")
 docker_build('gcr.io/foo', 'foo')
 `)
 
+	f.loadErrString("Traceback")
 	f.loadErrString("repository name must be canonical")
 }
 
@@ -2588,13 +2589,13 @@ func TestDefaultRegistryAtEndOfTiltfile(t *testing.T) {
 	f.file("Tiltfile", `
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
-default_registry('bar.com')
+default_registry('bar.com/baz')
 `)
 
 	f.load()
 
 	f.assertNextManifest("foo",
-		db(image("gcr.io/foo").withInjectedRef("bar.com/gcr.io_foo")),
+		db(image("gcr.io/foo").withInjectedRef("bar.com/baz/gcr.io_foo")),
 		deployment("foo"))
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
@@ -2607,7 +2608,7 @@ func TestPrivateRegistry(t *testing.T) {
 
 	f.setupFoo()
 	f.file("Tiltfile", `
-default_registry('bar.com')
+default_registry('bar.com/baz')
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 `)
@@ -2661,16 +2662,16 @@ docker_build('gcr.io/foo:bar', 'bar')
 docker_build('gcr.io/foo:baz', 'baz')
 k8s_yaml('bar.yaml')
 k8s_yaml('baz.yaml')
-default_registry('example.com')
+default_registry('example.com/qux')
 `)
 
 	f.load()
 
 	f.assertNextManifest("bar",
-		db(image("gcr.io/foo:bar").withInjectedRef("example.com/gcr.io_foo")),
+		db(image("gcr.io/foo:bar").withInjectedRef("example.com/qux/gcr.io_foo")),
 		deployment("bar"))
 	f.assertNextManifest("baz",
-		db(image("gcr.io/foo:baz").withInjectedRef("example.com/gcr.io_foo")),
+		db(image("gcr.io/foo:baz").withInjectedRef("example.com/qux/gcr.io_foo")),
 		deployment("baz"))
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml", "baz/Dockerfile", "baz/.dockerignore", "baz.yaml")
 }
@@ -2683,7 +2684,7 @@ func TestDefaultRegistryWithDockerCompose(t *testing.T) {
 	f.file("docker-compose.yml", simpleConfig)
 	f.file("Tiltfile", `
 docker_compose('docker-compose.yml')
-default_registry('bar.com')
+default_registry('bar.com/baz')
 `)
 
 	f.loadErrString("default_registry is not supported with docker compose")

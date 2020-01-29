@@ -458,6 +458,11 @@ func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Bu
 		return nil, err
 	}
 
+	_, err := reference.ParseNamed(dr)
+	if err != nil {
+		return starlark.None, err
+	}
+
 	s.defaultRegistryHost = container.Registry(dr)
 
 	return starlark.None, nil
