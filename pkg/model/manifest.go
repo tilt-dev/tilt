@@ -245,7 +245,7 @@ func BuildRefSelectorsForManifests(manifests []Manifest) []container.RefSelector
 	var res []container.RefSelector
 	for _, m := range manifests {
 		for _, iTarg := range m.ImageTargets {
-			sel := container.NameSelector(iTarg.Refs.BuildRef).WithNameMatch()
+			sel := container.NameSelector(iTarg.Refs.LocalRef).WithNameMatch()
 			res = append(res, sel)
 		}
 	}

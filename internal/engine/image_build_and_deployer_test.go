@@ -421,8 +421,8 @@ func TestDeployUsesDeploymentRef(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				manifest.ImageTargets[i].Refs.BuildRef = withRegistry
-				manifest.ImageTargets[i].Refs.DeployRef = withRegistry
+				manifest.ImageTargets[i].Refs.LocalRef = withRegistry
+				manifest.ImageTargets[i].Refs.ClusterRef = withRegistry
 			}
 
 			result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})

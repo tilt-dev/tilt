@@ -62,12 +62,12 @@ func (i ImageTarget) Validate() error {
 		return fmt.Errorf("[Validate] Image target missing image ref: %+v", i.BuildDetails)
 	}
 
-	if i.Refs.BuildRef.String() == "" {
-		return fmt.Errorf("[Validate] Image %q missing BuildRef", confRef)
+	if i.Refs.LocalRef.String() == "" {
+		return fmt.Errorf("[Validate] Image %q missing LocalRef", confRef)
 	}
 
-	if i.Refs.DeployRef.String() == "" {
-		return fmt.Errorf("[Validate] Image %q missing DeployRef", confRef)
+	if i.Refs.ClusterRef.String() == "" {
+		return fmt.Errorf("[Validate] Image %q missing ClusterRef", confRef)
 	}
 
 	switch bd := i.BuildDetails.(type) {

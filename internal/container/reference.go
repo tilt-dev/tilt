@@ -8,25 +8,24 @@ type RefSet struct {
 	// user-facing name for this image.)
 	ConfigurationRef RefSelector
 
-	// What we name the image that we build. This will be the ConfigurationRef
-	// stripped of tags and (if applicable) prepended with the DefaultRegistry.
-	BuildRef reference.Named // localhost:123/my-image
+	// Image name as referenced from outside the cluster (in Dockerfile,
+	// docker push etc.). This will be the ConfigurationRef stripped of
+	// tags and (if applicable) prepended with the DefaultRegistry.
+	LocalRef reference.Named
 
-	// The image name (minus the Tilt tag) that we inject into YAML or otherwise deploy.
-	// (Often this will be the same as the BuildRef, but in some cases they diverge:
+	// The image name (minus the Tilt tag) as referenced from the cluster (in k8s YAML,
+	// etc.) (Often this will be the same as the LocalRef, but in some cases they diverge:
 	// e.g. when using a local registry with KIND, the image localhost:1234/my-image
-	// (BuildRef) is referenced in the YAML as http://registry/my-image (DeployRef).
-	DeployRef reference.Named
-
-	// ref from local vs. ref from cluster
+	// (LocalRef) is referenced in the YAML as http://registry/my-image (ClusterRef).
+	ClusterRef reference.Named
 }
 
-// SimpleRefSet makes a ref set for the given selector, assuming that BuildRef
-// and DeployRef are equal.
+// SimpleRefSet makes a ref set for the given selector, assuming that LocalRef
+// and ClusterRef are equal.
 func SimpleRefSet(ref RefSelector) RefSet {
 	return RefSet{
 		ConfigurationRef: ref,
-		BuildRef:         ref.AsNamedOnly(),
-		DeployRef:        ref.AsNamedOnly(),
+		LocalRef:         ref.AsNamedOnly(),
+		ClusterRef:       ref.AsNamedOnly(),
 	}
 }

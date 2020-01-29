@@ -4726,7 +4726,7 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 
 			// TODO(maia): also verify expectedBuildRef
 			expectedDeployRef := container.MustParseNamed(opt.image.deploymentRef)
-			if !assert.Equal(f.t, expectedDeployRef.String(), image.Refs.DeployRef.String(), "manifest %v image injected ref", m.Name) {
+			if !assert.Equal(f.t, expectedDeployRef.String(), image.Refs.ClusterRef.String(), "manifest %v image injected ref", m.Name) {
 				f.t.FailNow()
 			}
 

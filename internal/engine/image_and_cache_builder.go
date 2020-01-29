@@ -34,7 +34,7 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 	var n reference.NamedTagged
 
 	userFacingRefName := container.FamiliarString(iTarget.Refs.ConfigurationRef)
-	refToBuild := iTarget.Refs.DeployRef
+	refToBuild := iTarget.Refs.ClusterRef
 
 	switch bd := iTarget.BuildDetails.(type) {
 	case model.DockerBuild:

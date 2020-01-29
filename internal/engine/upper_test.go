@@ -188,7 +188,7 @@ var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 
 func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deployTarget model.TargetSpec) store.BuildResult {
 	// 🤖 make the build result with both refs
-	named := iTarget.Refs.DeployRef
+	named := iTarget.Refs.ClusterRef
 	nt, _ := reference.WithTag(named, fmt.Sprintf("tilt-%d", b.buildCount))
 
 	var result store.BuildResult
@@ -3857,8 +3857,8 @@ func (f *testFixture) newManifestWithRef(name string, ref reference.Named) model
 
 	iTarget := NewSanchoLiveUpdateImageTarget(f)
 	iTarget.Refs.ConfigurationRef = refSel
-	iTarget.Refs.BuildRef = ref
-	iTarget.Refs.DeployRef = ref
+	iTarget.Refs.LocalRef = ref
+	iTarget.Refs.ClusterRef = ref
 
 	return manifestbuilder.New(f, model.ManifestName(name)).
 		WithK8sYAML(SanchoYAML).
@@ -4056,7 +4056,7 @@ func dcContainerEvtForManifest(m model.Manifest, action dockercompose.Action) do
 func deployResultSet(manifest model.Manifest, uid types.UID, hashes []k8s.PodTemplateSpecHash) store.BuildResultSet {
 	resultSet := store.BuildResultSet{}
 	for _, iTarget := range manifest.ImageTargets {
-		ref, _ := reference.WithTag(iTarget.Refs.DeployRef, "deadbeef")
+		ref, _ := reference.WithTag(iTarget.Refs.ClusterRef, "deadbeef")
 		resultSet[iTarget.ID()] = store.NewImageBuildResultSingleRef(iTarget.ID(), ref)
 	}
 	ktID := manifest.K8sTarget().ID()

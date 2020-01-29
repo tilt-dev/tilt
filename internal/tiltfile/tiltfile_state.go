@@ -1071,9 +1071,9 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 		iTarget := model.ImageTarget{
 			Refs: container.RefSet{
 				ConfigurationRef: image.configurationRef,
-				// TODO(maia): BuildRef and DeployRef may be different!
-				BuildRef:  image.deploymentRef,
-				DeployRef: image.deploymentRef,
+				// TODO(maia): LocalRef and ClusterRef may be different!
+				LocalRef:   image.deploymentRef,
+				ClusterRef: image.deploymentRef,
 			},
 			MatchInEnvVars: image.matchInEnvVars,
 		}
