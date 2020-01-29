@@ -309,7 +309,7 @@ func (b BuildState) OneContainerInfo() ContainerInfo {
 	}
 	return b.RunningContainers[0]
 }
-func (b BuildState) LastImageAsString() string { // TODO(maia): verify/make precise
+func (b BuildState) LastImageAsString() string { // TODO(maia): verify/make precise 🤖
 	img := LocalImageRefFromBuildResult(b.LastSuccessfulResult)
 	if img == nil {
 		return ""
@@ -334,7 +334,7 @@ func (b BuildState) IsEmpty() bool {
 	return b.LastSuccessfulResult == nil
 }
 
-func (b BuildState) HasImage() bool { // TODO(maia): verify/make precise
+func (b BuildState) HasImage() bool { // TODO(maia): verify/make precise 🤖
 	return LocalImageRefFromBuildResult(b.LastSuccessfulResult) != nil
 }
 

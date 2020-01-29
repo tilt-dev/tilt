@@ -187,7 +187,8 @@ type fakeBuildAndDeployer struct {
 var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 
 func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deployTarget model.TargetSpec) store.BuildResult {
-	named := iTarget.DeploymentRef
+	// 🤖 make the build result with both refs
+	named := iTarget.Refs.DeployRef
 	nt, _ := reference.WithTag(named, fmt.Sprintf("tilt-%d", b.buildCount))
 
 	var result store.BuildResult
@@ -3855,8 +3856,9 @@ func (f *testFixture) newManifestWithRef(name string, ref reference.Named) model
 	refSel := container.NewRefSelector(ref)
 
 	iTarget := NewSanchoLiveUpdateImageTarget(f)
-	iTarget.ConfigurationRef = refSel
-	iTarget.DeploymentRef = ref
+	iTarget.Refs.ConfigurationRef = refSel
+	iTarget.Refs.BuildRef = ref
+	iTarget.Refs.DeployRef = ref
 
 	return manifestbuilder.New(f, model.ManifestName(name)).
 		WithK8sYAML(SanchoYAML).
@@ -3867,7 +3869,7 @@ func (f *testFixture) newManifestWithRef(name string, ref reference.Named) model
 func (f *testFixture) newDockerBuildManifestWithBuildPath(name string, path string) model.Manifest {
 	db := model.DockerBuild{Dockerfile: "FROM alpine", BuildPath: path}
 	iTarget := NewSanchoLiveUpdateImageTarget(f).WithBuildDetails(db)
-	iTarget.ConfigurationRef = container.MustParseSelector(strings.ToLower(name)) // each target should have a unique ID
+	iTarget.Refs.ConfigurationRef = container.MustParseSelector(strings.ToLower(name)) // each target should have a unique ID
 	return manifestbuilder.New(f, model.ManifestName(name)).
 		WithK8sYAML(SanchoYAML).
 		WithImageTarget(iTarget).
@@ -4054,7 +4056,7 @@ func dcContainerEvtForManifest(m model.Manifest, action dockercompose.Action) do
 func deployResultSet(manifest model.Manifest, uid types.UID, hashes []k8s.PodTemplateSpecHash) store.BuildResultSet {
 	resultSet := store.BuildResultSet{}
 	for _, iTarget := range manifest.ImageTargets {
-		ref, _ := reference.WithTag(iTarget.DeploymentRef, "deadbeef")
+		ref, _ := reference.WithTag(iTarget.Refs.DeployRef, "deadbeef")
 		resultSet[iTarget.ID()] = store.NewImageBuildResultSingleRef(iTarget.ID(), ref)
 	}
 	ktID := manifest.K8sTarget().ID()

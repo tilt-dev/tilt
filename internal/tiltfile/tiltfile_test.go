@@ -1231,9 +1231,9 @@ docker_build('gcr.io/some-project-162817/sancho-sidecar', '.')
 	m := f.assertNextManifest("sancho")
 	assert.Equal(t, 2, len(m.ImageTargets))
 	assert.Equal(t, "gcr.io/some-project-162817/sancho",
-		m.ImageTargetAt(0).ConfigurationRef.String())
+		m.ImageTargetAt(0).Refs.ConfigurationRef.String())
 	assert.Equal(t, "gcr.io/some-project-162817/sancho-sidecar",
-		m.ImageTargetAt(1).ConfigurationRef.String())
+		m.ImageTargetAt(1).Refs.ConfigurationRef.String())
 }
 
 func TestSanchoRedisSidecar(t *testing.T) {
@@ -1252,7 +1252,7 @@ docker_build('gcr.io/some-project-162817/sancho', '.')
 	m := f.assertNextManifest("sancho")
 	assert.Equal(t, 1, len(m.ImageTargets))
 	assert.Equal(t, "gcr.io/some-project-162817/sancho",
-		m.ImageTargetAt(0).ConfigurationRef.String())
+		m.ImageTargetAt(0).Refs.ConfigurationRef.String())
 }
 
 func TestExtraPodSelectors(t *testing.T) {
@@ -4714,7 +4714,7 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 		case dbHelper:
 			image := nextImageTarget()
 
-			ref := image.ConfigurationRef
+			ref := image.Refs.ConfigurationRef
 			if ref.Empty() {
 				f.t.Fatalf("manifest %v has no more image refs; expected %q", m.Name, opt.image.ref)
 			}
@@ -4724,8 +4724,9 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 				f.t.FailNow()
 			}
 
+			// TODO(maia): also verify expectedBuildRef
 			expectedDeployRef := container.MustParseNamed(opt.image.deploymentRef)
-			if !assert.Equal(f.t, expectedDeployRef.String(), image.DeploymentRef.String(), "manifest %v image injected ref", m.Name) {
+			if !assert.Equal(f.t, expectedDeployRef.String(), image.Refs.DeployRef.String(), "manifest %v image injected ref", m.Name) {
 				f.t.FailNow()
 			}
 
@@ -4757,7 +4758,7 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 			}
 		case cbHelper:
 			image := nextImageTarget()
-			ref := image.ConfigurationRef
+			ref := image.Refs.ConfigurationRef
 			expectedRef := container.MustParseNamed(opt.image.ref)
 			if !assert.Equal(f.t, expectedRef.String(), ref.String(), "manifest %v image ref", m.Name) {
 				f.t.FailNow()
