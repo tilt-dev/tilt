@@ -2579,6 +2579,24 @@ docker_build('gcr.io/foo', 'foo')
 	f.loadErrString("Traceback ", "repository name must be canonical")
 }
 
+func TestDefaultRegistryPushAndPullHost(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+default_registry(push_host="abc.io", pull_host="def.io")
+k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', 'foo')
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		db(image("gcr.io/foo").withLocalRef("abc.io/gcr.io_foo").withClusterRef("def.io/gcr.io_foo")),
+		deployment("foo"))
+}
+
 func TestDefaultRegistryAtEndOfTiltfile(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -2594,7 +2612,7 @@ default_registry('bar.com')
 	f.load()
 
 	f.assertNextManifest("foo",
-		db(image("gcr.io/foo").withInjectedRef("bar.com/gcr.io_foo")),
+		db(image("gcr.io/foo").withLocalRef("bar.com/gcr.io_foo")),
 		deployment("foo"))
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
@@ -2615,7 +2633,7 @@ k8s_yaml('foo.yaml')
 	f.load()
 
 	f.assertNextManifest("foo",
-		db(image("gcr.io/foo").withInjectedRef("localhost:32000/gcr.io_foo")),
+		db(image("gcr.io/foo").withLocalRef("localhost:32000/gcr.io_foo")),
 		deployment("foo"))
 }
 
@@ -2667,10 +2685,10 @@ default_registry('example.com')
 	f.load()
 
 	f.assertNextManifest("bar",
-		db(image("gcr.io/foo:bar").withInjectedRef("example.com/gcr.io_foo")),
+		db(image("gcr.io/foo:bar").withLocalRef("example.com/gcr.io_foo")),
 		deployment("bar"))
 	f.assertNextManifest("baz",
-		db(image("gcr.io/foo:baz").withInjectedRef("example.com/gcr.io_foo")),
+		db(image("gcr.io/foo:baz").withLocalRef("example.com/gcr.io_foo")),
 		deployment("baz"))
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml", "baz/Dockerfile", "baz/.dockerignore", "baz.yaml")
 }
@@ -4724,10 +4742,12 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 				f.t.FailNow()
 			}
 
-			// TODO(maia): also verify expectedLocalRef
-			expectedDeployRef := container.MustParseNamed(opt.image.deploymentRef)
-			if !assert.Equal(f.t, expectedDeployRef.String(), image.Refs.ClusterRef().String(), "manifest %v image injected ref", m.Name) {
-				f.t.FailNow()
+			expectedLocalRef := container.MustParseNamed(opt.image.localRef)
+			require.Equal(f.t, expectedLocalRef.String(), image.Refs.LocalRef.String(), "manifest %v localRef", m.Name)
+
+			if opt.image.clusterRef != "" {
+				expectedClusterRef := container.MustParseNamed(opt.image.clusterRef)
+				require.Equal(f.t, expectedClusterRef.String(), image.Refs.ClusterRef().String(), "manifest %v clusterRef", m.Name)
 			}
 
 			assert.Equal(f.t, opt.image.matchInEnvVars, image.MatchInEnvVars)
@@ -5125,16 +5145,22 @@ func resourceDeps(deps ...string) resourceDependenciesHelper {
 
 type imageHelper struct {
 	ref            string
-	deploymentRef  string
+	localRef       string
+	clusterRef     string
 	matchInEnvVars bool
 }
 
 func image(ref string) imageHelper {
-	return imageHelper{ref: ref, deploymentRef: ref}
+	return imageHelper{ref: ref, localRef: ref}
 }
 
-func (ih imageHelper) withInjectedRef(injectedRef string) imageHelper {
-	ih.deploymentRef = injectedRef
+func (ih imageHelper) withLocalRef(localRef string) imageHelper {
+	ih.localRef = localRef
+	return ih
+}
+
+func (ih imageHelper) withClusterRef(clusterRef string) imageHelper {
+	ih.clusterRef = clusterRef
 	return ih
 }
 

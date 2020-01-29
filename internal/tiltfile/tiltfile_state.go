@@ -60,8 +60,8 @@ type tiltfileState struct {
 	k8sResourceOptions map[string]k8sResourceOptions
 	localResources     []localResource
 
-	// ensure that any pushed images are pushed instead to this registry, rewriting names if needed
-	defaultRegistryHost container.Registry
+	// ensure that any images are pushed to/pulled from this registry, rewriting names if needed
+	defaultReg container.Registry
 
 	// JSON paths to images in k8s YAML (other than Container specs)
 	k8sImageJSONPaths map[k8sObjectSelector][]k8s.JSONPath
@@ -556,7 +556,7 @@ func (s *tiltfileState) assembleImages() error {
 }
 
 func (s *tiltfileState) assembleDC() error {
-	if len(s.dc.services) > 0 && !s.defaultRegistryHost.Empty() {
+	if len(s.dc.services) > 0 && !s.defaultReg.Empty() {
 		return errors.New("default_registry is not supported with docker compose")
 	}
 
@@ -1056,7 +1056,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 		}
 		claimStatus[id] = claimPending
 
-		registry := s.defaultRegistryHost
+		registry := s.defaultReg
 		if s.orchestrator() == model.OrchestratorK8s && !s.privateRegistry.Empty() {
 			// If we've found a private registry in the cluster at run-time,
 			// use that instead of the one in the tiltfile

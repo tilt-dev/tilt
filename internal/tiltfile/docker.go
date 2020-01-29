@@ -447,21 +447,23 @@ func (s *tiltfileState) reposForImage(image *dockerImage) []model.LocalGitRepo {
 }
 
 func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	if !s.defaultRegistryHost.Empty() {
+	if !s.defaultReg.Empty() {
 		return starlark.None, errors.New("default registry already defined")
 	}
 
-	var dr string
-	if err := s.unpackArgs(fn.Name(), args, kwargs, "name", &dr); err != nil {
+	var host, hostFromCluster string
+	if err := s.unpackArgs(fn.Name(), args, kwargs,
+		"host", &host,
+		"host_from_cluster?", &hostFromCluster); err != nil {
 		return nil, err
 	}
 
-	reg, err := container.NewRegistry(dr)
+	reg, err := container.NewRegistryWithHostFromCluster(host, hostFromCluster)
 	if err != nil {
 		return starlark.None, errors.Wrapf(err, "validating defaultRegistry")
 	}
 
-	s.defaultRegistryHost = reg
+	s.defaultReg = reg
 
 	return starlark.None, nil
 }
