@@ -107,6 +107,7 @@ type LogLine struct {
 	Text       string
 	SpanID     SpanID
 	ProgressID string
+	Time       time.Time
 }
 
 func linesToString(lines []LogLine) string {
@@ -433,6 +434,7 @@ func (s *LogStore) ContinuingLines(checkpoint Checkpoint) []LogLine {
 				Text:       "\n",
 				SpanID:     precedingSegment.SpanID,
 				ProgressID: precedingSegment.Fields[logger.FieldNameProgressID],
+				Time:       precedingSegment.Time,
 			},
 		}, result...)
 	}
@@ -590,6 +592,7 @@ func (s *LogStore) toLogLines(options logOptions) []LogLine {
 	result := []LogLine{}
 	sb := strings.Builder{}
 	spanID := SpanID("")
+	time := time.Time{}
 	progressID := ""
 	lastLineCompleted := false
 
@@ -603,6 +606,7 @@ func (s *LogStore) toLogLines(options logOptions) []LogLine {
 			Text:       sb.String(),
 			SpanID:     spanID,
 			ProgressID: progressID,
+			Time:       time,
 		})
 		sb = strings.Builder{}
 		lastLineCompleted = true
@@ -634,6 +638,7 @@ func (s *LogStore) toLogLines(options logOptions) []LogLine {
 			continue
 		}
 
+		time = segment.Time
 		spanID = segment.SpanID
 		span := s.spans[spanID]
 		if _, ok := options.spans[spanID]; !ok {

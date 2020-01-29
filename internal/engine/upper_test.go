@@ -1187,7 +1187,8 @@ func TestHudUpdated(t *testing.T) {
 }
 
 func TestDisabledHudUpdated(t *testing.T) {
-	h := hud.NewDisabledHud()
+	out := bufsync.NewThreadSafeBuffer()
+	h := hud.NewDisabledHud(hud.NewIncrementalPrinter(out))
 	f := newTestFixtureWithHud(t, h)
 	defer f.TearDown()
 
@@ -1201,12 +1202,14 @@ func TestDisabledHudUpdated(t *testing.T) {
 	time.Sleep(5 * time.Millisecond)
 	assert.True(t, f.disabledHud().ProcessedLogs > 0)
 	oldCheckpoint := f.disabledHud().ProcessedLogs
+	assert.Contains(t, out.String(), "Building:foobar")
 
-	// Log something new, make sure it's reflected in the # processed bytes
+	// Log something new, make sure it's reflected
 	msg := []byte("hello world!\n")
 	f.store.Dispatch(store.NewGlobalLogAction(logger.InfoLvl, msg))
 	time.Sleep(5 * time.Millisecond)
 
+	assert.Contains(t, out.String(), "hello world!")
 	checkpointDiff := f.disabledHud().ProcessedLogs - oldCheckpoint
 	assert.Equal(t, logstore.Checkpoint(1), checkpointDiff)
 

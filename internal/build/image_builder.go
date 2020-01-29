@@ -316,7 +316,6 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (dockerOutput, erro
 	defer span.Finish()
 
 	progressLastPrinted := make(map[dockerMessageID]time.Time)
-	progressPrintWait := make(map[dockerMessageID]time.Duration)
 
 	result := dockerOutput{}
 	decoder := json.NewDecoder(reader)
@@ -359,24 +358,17 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (dockerOutput, erro
 
 		id := dockerMessageID(message.ID)
 		if id != "" && message.Progress != nil {
-			// TODO(nick): Han and I have a plan for a more clever display
-			// algorithm, but for now just throttle the progress print a bit.
+			// Add a small 2-second backoff so that we don't overwhelm the logstore.
 			lastPrinted, hasBeenPrinted := progressLastPrinted[id]
-			waitDur := progressPrintWait[id]
 			shouldPrint := !hasBeenPrinted ||
 				message.Progress.Current == message.Progress.Total ||
-				time.Since(lastPrinted) > waitDur
+				time.Since(lastPrinted) > 2*time.Second
 			shouldSkip := message.Progress.Current == 0 &&
 				(message.Status == "Waiting" || message.Status == "Preparing")
 			if shouldPrint && !shouldSkip {
 				logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameProgressID: message.ID}).
 					Infof("%s: %s %s", id, message.Status, message.Progress.String())
 				progressLastPrinted[id] = time.Now()
-				if waitDur == 0 {
-					progressPrintWait[id] = 5 * time.Second
-				} else {
-					progressPrintWait[id] = 2 * waitDur
-				}
 			}
 		}
 
