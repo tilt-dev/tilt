@@ -66,10 +66,6 @@ func (i ImageTarget) Validate() error {
 		return fmt.Errorf("[Validate] Image %q missing LocalRef", confRef)
 	}
 
-	if i.Refs.ClusterRef.String() == "" {
-		return fmt.Errorf("[Validate] Image %q missing ClusterRef", confRef)
-	}
-
 	switch bd := i.BuildDetails.(type) {
 	case DockerBuild:
 		if bd.BuildPath == "" {

@@ -425,12 +425,12 @@ func TestBuildAndDeployUsesCorrectRef(t *testing.T) {
 				withRegistry, err := container.ReplaceRegistry("foo.com", manifest.ImageTargets[i].Refs.ConfigurationRef)
 				require.NoError(t, err)
 				manifest.ImageTargets[i].Refs.LocalRef = withRegistry
-				manifest.ImageTargets[i].Refs.ClusterRef = withRegistry
+				manifest.ImageTargets[i].Refs = manifest.ImageTargets[i].Refs.WithClusterRef(withRegistry)
 
 				if test.useLocalRegistry {
 					clusterRefWithRegistry, err := container.ReplaceRegistry("registry:1234", manifest.ImageTargets[i].Refs.ConfigurationRef)
 					require.NoError(t, err)
-					manifest.ImageTargets[i].Refs.ClusterRef = clusterRefWithRegistry
+					manifest.ImageTargets[i].Refs = manifest.ImageTargets[i].Refs.WithClusterRef(clusterRefWithRegistry)
 				}
 			}
 

@@ -189,7 +189,7 @@ var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deployTarget model.TargetSpec) store.BuildResult {
 	tag := fmt.Sprintf("tilt-%d", b.buildCount)
 	localRefTagged := container.MustWithTag(iTarget.Refs.LocalRef, tag)
-	clusterRefTagged := container.MustWithTag(iTarget.Refs.ClusterRef, tag)
+	clusterRefTagged := container.MustWithTag(iTarget.Refs.ClusterRef(), tag)
 
 	var result store.BuildResult
 	containerIDs := b.nextLiveUpdateContainerIDs
@@ -3862,7 +3862,7 @@ func (f *testFixture) newManifestWithRef(name string, ref reference.Named) model
 	iTarget := NewSanchoLiveUpdateImageTarget(f)
 	iTarget.Refs.ConfigurationRef = refSel
 	iTarget.Refs.LocalRef = ref
-	iTarget.Refs.ClusterRef = ref
+	iTarget.Refs = iTarget.Refs.WithClusterRef(ref)
 
 	return manifestbuilder.New(f, model.ManifestName(name)).
 		WithK8sYAML(SanchoYAML).

@@ -1069,12 +1069,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 		claimStatus[id] = claimPending
 
 		iTarget := model.ImageTarget{
-			Refs: container.RefSet{
-				ConfigurationRef: image.configurationRef,
-				// TODO(maia): LocalRef and ClusterRef may be different!
-				LocalRef:   image.deploymentRef,
-				ClusterRef: image.deploymentRef,
-			},
+			Refs:           container.NewRefSet(image.configurationRef, image.deploymentRef, image.deploymentRef),
 			MatchInEnvVars: image.matchInEnvVars,
 		}
 
