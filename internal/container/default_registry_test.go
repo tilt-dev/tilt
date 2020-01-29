@@ -8,7 +8,7 @@ import (
 )
 
 var namedTaggedTestCases = []struct {
-	defaultRegistry Registry
+	defaultRegistry string
 	name            string
 	expected        string
 }{
@@ -17,7 +17,7 @@ var namedTaggedTestCases = []struct {
 }
 
 var namedTestCases = []struct {
-	defaultRegistry Registry
+	defaultRegistry string
 	name            string
 	expected        string
 }{
@@ -31,8 +31,9 @@ var namedTestCases = []struct {
 func TestReplaceTaggedRefDomain(t *testing.T) {
 	for i, tc := range namedTaggedTestCases {
 		t.Run(fmt.Sprintf("Test Case #%d", i), func(t *testing.T) {
+			reg := NewRegistry(tc.defaultRegistry)
 			rs := NewRefSelector(MustParseNamedTagged(tc.name))
-			actual, err := ReplaceRegistry(tc.defaultRegistry, rs)
+			actual, err := reg.ReplaceRegistryForLocalRef(rs)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expected, actual.String())
 		})
@@ -42,8 +43,9 @@ func TestReplaceTaggedRefDomain(t *testing.T) {
 func TestReplaceNamed(t *testing.T) {
 	for i, tc := range namedTestCases {
 		t.Run(fmt.Sprintf("Test case #%d", i), func(t *testing.T) {
+			reg := NewRegistry(tc.defaultRegistry)
 			rs := NewRefSelector(MustParseNamed(tc.name))
-			actual, err := ReplaceRegistry(tc.defaultRegistry, rs)
+			actual, err := reg.ReplaceRegistryForLocalRef(rs)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expected, actual.String())
 		})

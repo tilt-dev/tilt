@@ -422,14 +422,12 @@ func TestBuildAndDeployUsesCorrectRef(t *testing.T) {
 
 			manifest := test.manifest(f)
 			for i := range manifest.ImageTargets {
-				withRegistry, err := container.ReplaceRegistry("foo.com", manifest.ImageTargets[i].Refs.ConfigurationRef)
-				require.NoError(t, err)
+				withRegistry := f.replaceRegistry("foo.com", manifest.ImageTargets[i].Refs.ConfigurationRef)
 				manifest.ImageTargets[i].Refs.LocalRef = withRegistry
 				manifest.ImageTargets[i].Refs = manifest.ImageTargets[i].Refs.WithClusterRef(withRegistry)
 
 				if test.useLocalRegistry {
-					clusterRefWithRegistry, err := container.ReplaceRegistry("registry:1234", manifest.ImageTargets[i].Refs.ConfigurationRef)
-					require.NoError(t, err)
+					clusterRefWithRegistry := f.replaceRegistry("registry:1234", manifest.ImageTargets[i].Refs.ConfigurationRef)
 					manifest.ImageTargets[i].Refs = manifest.ImageTargets[i].Refs.WithClusterRef(clusterRefWithRegistry)
 				}
 			}
@@ -753,6 +751,15 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 func (f *ibdFixture) TearDown() {
 	f.k8s.TearDown()
 	f.TempDirFixture.TearDown()
+}
+
+func (f *ibdFixture) replaceRegistry(defaultReg string, sel container.RefSelector) reference.Named {
+	reg := container.NewRegistry(defaultReg)
+	named, err := reg.ReplaceRegistryForLocalRef(sel)
+	if err != nil {
+		f.T().Fatal(err)
+	}
+	return named
 }
 
 type fakeKINDPusher struct {

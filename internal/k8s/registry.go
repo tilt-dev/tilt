@@ -94,7 +94,7 @@ func (r *registryAsync) Registry(ctx context.Context) container.Registry {
 		}
 
 		portSpec := portSpecs[0]
-		r.registry = container.Registry(fmt.Sprintf("localhost:%d", portSpec.NodePort))
+		r.registry = container.NewRegistry(fmt.Sprintf("localhost:%d", portSpec.NodePort))
 	})
 	return r.registry
 }
