@@ -1,6 +1,9 @@
 package container
 
-import "github.com/docker/distribution/reference"
+import (
+	"github.com/docker/distribution/reference"
+	"github.com/pkg/errors"
+)
 
 type RefSet struct {
 	// Ref as specified in Tiltfile; used to match a DockerBuild with
@@ -28,4 +31,26 @@ func SimpleRefSet(ref RefSelector) RefSet {
 		LocalRef:         ref.AsNamedOnly(),
 		ClusterRef:       ref.AsNamedOnly(),
 	}
+}
+
+// TagRefs tags both of the references used for build/deploy with the given tag.
+func (rs RefSet) TagRefs(tag string) (TaggedRefs, error) {
+	localTagged, err := reference.WithTag(rs.LocalRef, tag)
+	if err != nil {
+		return TaggedRefs{}, errors.Wrapf(err, "tagging LocalRef %s as %s", rs.LocalRef.String(), tag)
+	}
+	clusterTagged, err := reference.WithTag(rs.ClusterRef, tag)
+	if err != nil {
+		return TaggedRefs{}, errors.Wrapf(err, "tagging ClusterRef %s as %s", rs.ClusterRef.String(), tag)
+	}
+	return TaggedRefs{
+		LocalRef:   localTagged,
+		ClusterRef: clusterTagged,
+	}, nil
+}
+
+// Refs yielded by an image build
+type TaggedRefs struct {
+	LocalRef   reference.NamedTagged // Image name + tag as referenced from outside cluster
+	ClusterRef reference.NamedTagged // Image name + tag as referenced from within cluster
 }
