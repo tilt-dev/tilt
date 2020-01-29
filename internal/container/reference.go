@@ -95,6 +95,21 @@ func (rs RefSet) ClusterRef() reference.Named {
 	return ref
 }
 
+func (rs RefSet) WithClusterRef(ref reference.Named) RefSet {
+	rs.clusterRef = ref
+	return rs
+}
+
+// ClusterRef returns the ref by which this image is referenced in the cluster.
+// If no clusterRef is explicitly set, we return LocalRef, since in most cases
+// the image's ref from the cluster is the same as its ref locally.
+func (rs RefSet) ClusterRef() reference.Named {
+	if rs.clusterRef == nil {
+		return rs.LocalRef
+	}
+	return rs.clusterRef
+}
+
 // TagRefs tags both of the references used for build/deploy with the given tag.
 func (rs RefSet) TagRefs(tag string) (TaggedRefs, error) {
 	localTagged, err := reference.WithTag(rs.LocalRef(), tag)
