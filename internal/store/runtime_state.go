@@ -148,6 +148,8 @@ type Pod struct {
 	// i.e. Total Restarts - BaselineRestarts
 	BaselineRestarts int
 
+	Conditions []v1.PodCondition
+
 	SpanID model.LogSpanID
 }
 

@@ -25,6 +25,7 @@ import (
 	engineanalytics "github.com/windmilleng/tilt/internal/engine/analytics"
 	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
+	"github.com/windmilleng/tilt/internal/engine/k8srollout"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
 	"github.com/windmilleng/tilt/internal/engine/local"
 	"github.com/windmilleng/tilt/internal/engine/runtimelog"
@@ -85,6 +86,7 @@ var BaseWireSet = wire.NewSet(
 	engine.NewTiltVersionChecker,
 	cloud.WireSet,
 	cloudurl.ProvideAddress,
+	k8srollout.NewPodMonitor,
 
 	provideClock,
 	hud.WireSet,

@@ -39,6 +39,7 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 	podInfo.Phase = pod.Status.Phase
 	podInfo.Status = k8swatch.PodStatusToString(*pod)
 	podInfo.StatusMessages = k8swatch.PodStatusErrorMessages(*pod)
+	podInfo.Conditions = pod.Status.Conditions
 
 	prunePods(ms)
 
