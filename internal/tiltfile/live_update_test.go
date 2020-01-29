@@ -146,14 +146,14 @@ func TestLiveUpdateDockerBuildDefaultRegistry(t *testing.T) {
 	defer f.TearDown()
 
 	f.tiltfileCode = `
-default_registry('gcr.io/bar')
+default_registry('gcr.io')
 docker_build('foo', 'foo', live_update=%s)`
 	f.init()
 
 	f.load("foo")
 
 	i := image("foo")
-	i.deploymentRef = "gcr.io/bar/foo"
+	i.deploymentRef = "gcr.io/foo"
 	f.assertNextManifest("foo", db(i, f.expectedLU))
 }
 
