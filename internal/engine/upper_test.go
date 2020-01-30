@@ -3891,8 +3891,6 @@ func (f *testFixture) newManifestWithRef(name string, ref reference.Named) model
 
 	iTarget := NewSanchoLiveUpdateImageTarget(f)
 	iTarget.Refs.ConfigurationRef = refSel
-	iTarget.Refs = iTarget.Refs.WithLocalRef(ref)
-	iTarget.Refs = iTarget.Refs.WithClusterRef(ref)
 
 	return manifestbuilder.New(f, model.ManifestName(name)).
 		WithK8sYAML(SanchoYAML).
