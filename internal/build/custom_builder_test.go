@@ -18,7 +18,7 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
-var TwoURLRegistry = container.NewRegistryWithHostFromCluster("localhost:1234", "registry:1234")
+var TwoURLRegistry = container.MustNewRegistryWithHostFromCluster("localhost:1234", "registry:1234")
 
 func TestCustomBuildSuccess(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)

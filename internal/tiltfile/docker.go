@@ -456,9 +456,9 @@ func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Bu
 		return nil, err
 	}
 
-	reg := container.NewRegistry(dr)
-	if err := reg.Validate(); err != nil {
-		return starlark.None, errors.Wrapf(err, "validating defaultRegistry %q", dr)
+	reg, err := container.NewRegistry(dr)
+	if err != nil {
+		return starlark.None, errors.Wrapf(err, "validating defaultRegistry")
 	}
 
 	s.defaultRegistryHost = reg
