@@ -54,6 +54,7 @@ type actionPayload struct {
 }
 
 type HeadsUpServer struct {
+	ctx               context.Context
 	store             *store.Store
 	router            *mux.Router
 	a                 *tiltanalytics.TiltAnalytics
@@ -69,6 +70,7 @@ func ProvideHeadsUpServer(
 	uploader cloud.SnapshotUploader) (*HeadsUpServer, error) {
 	r := mux.NewRouter().UseEncodedPath()
 	s := &HeadsUpServer{
+		ctx:      ctx,
 		store:    store,
 		router:   r,
 		a:        analytics,
