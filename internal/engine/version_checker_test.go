@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/testutils"
+
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -71,7 +73,8 @@ func newVersionCheckerFixture(t *testing.T) *versionCheckerFixture {
 		if !ok {
 			t.Errorf("Expected action type LogAction. Actual: %T", action)
 		}
-		out.Write(event.Message())
+		_, err := out.Write(event.Message())
+		require.NoError(t, err)
 	}
 
 	st := store.NewStore(store.Reducer(reducer), store.LogActionsFlag(false))
@@ -79,7 +82,10 @@ func newVersionCheckerFixture(t *testing.T) *versionCheckerFixture {
 	ctx, cancel := context.WithCancel(context.Background())
 	l := logger.NewLogger(logger.DebugLvl, out)
 	ctx = logger.WithLogger(ctx, l)
-	go st.Loop(ctx)
+	go func() {
+		err := st.Loop(ctx)
+		testutils.FailOnNonCanceledErr(t, err, "store.Loop failed")
+	}()
 
 	ret := &versionCheckerFixture{
 		ctx:    ctx,

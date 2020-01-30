@@ -2230,13 +2230,14 @@ func TestUpper_ServiceEvent(t *testing.T) {
 	result := f.b.resultsByID[manifest.K8sTarget().ID()]
 	uid := result.(store.K8sBuildResult).DeployedUIDs[0]
 	svc := servicebuilder.New(t, manifest).WithUID(uid).WithPort(8080).WithIP("1.2.3.4").Build()
-	k8swatch.DispatchServiceChange(f.store, svc, manifest.Name, "")
+	err := k8swatch.DispatchServiceChange(f.store, svc, manifest.Name, "")
+	require.NoError(t, err)
 
 	f.WaitUntilManifestState("lb updated", "foobar", func(ms store.ManifestState) bool {
 		return len(ms.K8sRuntimeState().LBs) > 0
 	})
 
-	err := f.Stop()
+	err = f.Stop()
 	assert.NoError(t, err)
 
 	ms, _ := f.upper.store.RLockState().ManifestState(manifest.Name)
@@ -2263,7 +2264,8 @@ func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 	uid := result.(store.K8sBuildResult).DeployedUIDs[0]
 	sb := servicebuilder.New(t, manifest).WithUID(uid).WithPort(8080).WithIP("1.2.3.4")
 	svc := sb.Build()
-	k8swatch.DispatchServiceChange(f.store, svc, manifest.Name, "")
+	err := k8swatch.DispatchServiceChange(f.store, svc, manifest.Name, "")
+	require.NoError(t, err)
 
 	f.WaitUntilManifestState("lb url added", "foobar", func(ms store.ManifestState) bool {
 		url := ms.K8sRuntimeState().LBs[k8s.ServiceName(svc.Name)]
@@ -2274,14 +2276,15 @@ func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 	})
 
 	svc = sb.WithIP("").Build()
-	k8swatch.DispatchServiceChange(f.store, svc, manifest.Name, "")
+	err = k8swatch.DispatchServiceChange(f.store, svc, manifest.Name, "")
+	require.NoError(t, err)
 
 	f.WaitUntilManifestState("lb url removed", "foobar", func(ms store.ManifestState) bool {
 		url := ms.K8sRuntimeState().LBs[k8s.ServiceName(svc.Name)]
 		return url == nil
 	})
 
-	err := f.Stop()
+	err = f.Stop()
 	assert.NoError(t, err)
 }
 
@@ -2608,14 +2611,19 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 		assert.NotEqual(t, dockercompose.StatusCrash, st.DCRuntimeState().Status)
 	})
 
-	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionKill))
-	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionKill))
-	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionDie))
-	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionStop))
-	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionRename))
-	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionCreate))
-	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionStart))
-	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionDie))
+	for _, action := range []dockercompose.Action{
+		dockercompose.ActionKill,
+		dockercompose.ActionKill,
+		dockercompose.ActionDie,
+		dockercompose.ActionStop,
+		dockercompose.ActionRename,
+		dockercompose.ActionCreate,
+		dockercompose.ActionStart,
+		dockercompose.ActionDie,
+	} {
+		err := f.dcc.SendEvent(dcContainerEvtForManifest(m1, action))
+		require.NoError(t, err)
+	}
 
 	f.WaitUntilManifestState("is crashing", m1.ManifestName(), func(st store.ManifestState) bool {
 		return st.DCRuntimeState().Status == dockercompose.StatusCrash
@@ -2625,13 +2633,18 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 		assert.NotEqual(t, dockercompose.StatusCrash, st.DCRuntimeState().Status)
 	})
 
-	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionKill))
-	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionKill))
-	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionDie))
-	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionStop))
-	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionRename))
-	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionCreate))
-	f.dcc.SendEvent(dcContainerEvtForManifest(m1, dockercompose.ActionStart))
+	for _, action := range []dockercompose.Action{
+		dockercompose.ActionKill,
+		dockercompose.ActionKill,
+		dockercompose.ActionDie,
+		dockercompose.ActionStop,
+		dockercompose.ActionRename,
+		dockercompose.ActionCreate,
+		dockercompose.ActionStart,
+	} {
+		err := f.dcc.SendEvent(dcContainerEvtForManifest(m1, action))
+		require.NoError(t, err)
+	}
 
 	f.WaitUntilManifestState("is not crashing", m1.ManifestName(), func(st store.ManifestState) bool {
 		return st.DCRuntimeState().Status == dockercompose.StatusUp
@@ -2661,7 +2674,10 @@ func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 func TestEmptyTiltfile(t *testing.T) {
 	f := newTestFixture(t)
 	f.WriteFile("Tiltfile", "")
-	go f.upper.Start(f.ctx, []string{}, model.TiltBuild{}, false, f.JoinPath("Tiltfile"), true, analytics.OptIn, token.Token("unit test token"), "nonexistent.example.com")
+	go func() {
+		err := f.upper.Start(f.ctx, []string{}, model.TiltBuild{}, false, f.JoinPath("Tiltfile"), true, analytics.OptIn, token.Token("unit test token"), "nonexistent.example.com")
+		testutils.FailOnNonCanceledErr(t, err, "upper.Start failed")
+	}()
 	f.WaitUntil("build is set", func(st store.EngineState) bool {
 		return !st.TiltfileState.LastBuild().Empty()
 	})
@@ -2683,7 +2699,10 @@ func TestUpperStart(t *testing.T) {
 	cloudAddress := "nonexistent.example.com"
 
 	f.WriteFile("Tiltfile", "")
-	go f.upper.Start(f.ctx, []string{"foo", "bar"}, model.TiltBuild{}, false, f.JoinPath("Tiltfile"), true, analytics.OptIn, tok, cloudAddress)
+	go func() {
+		err := f.upper.Start(f.ctx, []string{"foo", "bar"}, model.TiltBuild{}, false, f.JoinPath("Tiltfile"), true, analytics.OptIn, tok, cloudAddress)
+		testutils.FailOnNonCanceledErr(t, err, "upper.Start failed")
+	}()
 	f.WaitUntil("init action processed", func(state store.EngineState) bool {
 		return !state.TiltStartTime.IsZero()
 	})
@@ -3481,7 +3500,8 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {
-		h.Run(ctx, ret.upper.Dispatch, hud.DefaultRefreshInterval)
+		err := h.Run(ctx, ret.upper.Dispatch, hud.DefaultRefreshInterval)
+		testutils.FailOnNonCanceledErr(t, err, "hud.Run failed")
 	}()
 
 	return ret

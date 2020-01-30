@@ -96,7 +96,10 @@ func newCCFixture(t *testing.T) *ccFixture {
 	cc.clock = fc.Clock()
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	st.AddSubscriber(ctx, cc)
-	go st.Loop(ctx)
+	go func() {
+		err := st.Loop(ctx)
+		testutils.FailOnNonCanceledErr(t, err, "store.Loop failed")
+	}()
 	return &ccFixture{
 		TempDirFixture: f,
 		ctx:            ctx,

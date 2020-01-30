@@ -2,8 +2,10 @@ package testutils
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
+	"testing"
 
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
@@ -40,4 +42,11 @@ func ForkedCtxAndAnalyticsWithOpterForTest(w io.Writer, o tiltanalytics.Analytic
 func ForkedCtxAndAnalyticsForTest(w io.Writer) (context.Context, *analytics.MemoryAnalytics, *tiltanalytics.TiltAnalytics) {
 	opter := tiltanalytics.NewFakeOpter(analytics.OptIn)
 	return ForkedCtxAndAnalyticsWithOpterForTest(w, opter)
+}
+
+func FailOnNonCanceledErr(t *testing.T, err error, message string) {
+	if err != nil && err != context.Canceled {
+		fmt.Printf("%s: %v\n", message, err)
+		t.Error(err)
+	}
 }

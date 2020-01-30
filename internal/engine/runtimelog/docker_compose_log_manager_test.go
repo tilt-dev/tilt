@@ -20,7 +20,8 @@ cache    | # Redis version=5.0.7, bits=64, commit=00000000, modified=0, pid=1, j
 		store:             st,
 		isStartingNewLine: true,
 	}
-	writer.Write([]byte(log))
+	_, err := writer.Write([]byte(log))
+	require.NoError(t, err)
 
 	actions := st.Actions()
 	require.Equal(t, 1, len(actions))
@@ -43,8 +44,10 @@ cache    | # Redis version=5.0.7, bits=64, commit=00000000, modified=0, pid=1, j
 		store:             st,
 		isStartingNewLine: true,
 	}
-	writer.Write([]byte(log1))
-	writer.Write([]byte(log2))
+	_, err := writer.Write([]byte(log1))
+	require.NoError(t, err)
+	_, err = writer.Write([]byte(log2))
+	require.NoError(t, err)
 
 	actions := st.Actions()
 	require.Equal(t, 2, len(actions))
