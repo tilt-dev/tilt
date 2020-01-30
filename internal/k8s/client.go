@@ -102,7 +102,7 @@ type Client interface {
 	ContainerRuntime(ctx context.Context) container.Runtime
 
 	// Some clusters support a private image registry that we can push to.
-	PrivateRegistry(ctx context.Context) (container.Registry, error)
+	PrivateRegistry(ctx context.Context) container.Registry
 
 	Exec(ctx context.Context, podID PodID, cName container.Name, n Namespace, cmd []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error
 }
