@@ -423,7 +423,7 @@ func TestBuildAndDeployUsesCorrectRef(t *testing.T) {
 			manifest := test.manifest(f)
 			for i := range manifest.ImageTargets {
 				withRegistry := f.replaceRegistry("foo.com", manifest.ImageTargets[i].Refs.ConfigurationRef)
-				manifest.ImageTargets[i].Refs.LocalRef = withRegistry
+				manifest.ImageTargets[i].Refs = manifest.ImageTargets[i].Refs.WithLocalRef(withRegistry)
 				manifest.ImageTargets[i].Refs = manifest.ImageTargets[i].Refs.WithClusterRef(withRegistry)
 
 				if test.useLocalRegistry {
