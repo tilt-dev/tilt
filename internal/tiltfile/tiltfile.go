@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pkg/errors"
 	wmanalytics "github.com/windmilleng/wmclient/pkg/analytics"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
@@ -162,7 +163,12 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 
 	tlr.TiltIgnoreContents = string(tiltIgnoreContents)
 
-	privateRegistry := tfl.kCli.PrivateRegistry(ctx)
+	privateRegistry, err := tfl.kCli.PrivateRegistry(ctx)
+	if err != nil {
+		tlr.Error = errors.Wrapf(err, "checking for k8s private registry")
+		return tlr
+	}
+
 	s := newTiltfileState(ctx, tfl.dcCli, tfl.webHost, tfl.k8sContextExt, privateRegistry, feature.FromDefaults(tfl.fDefaults))
 
 	manifests, result, err := s.loadManifests(absFilename, userConfigState)

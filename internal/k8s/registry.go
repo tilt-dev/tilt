@@ -49,7 +49,8 @@ func newRegistryAsync(env Env, core apiv1.CoreV1Interface, runtimeSource Runtime
 	}
 }
 
-func (r *registryAsync) Registry(ctx context.Context) container.Registry {
+func (r *registryAsync) Registry(ctx context.Context) (container.Registry, error) {
+	var err error
 	r.once.Do(func() {
 		// Right now, we only recognize the microk8s private registry.
 		if r.env != EnvMicroK8s {
@@ -94,15 +95,15 @@ func (r *registryAsync) Registry(ctx context.Context) container.Registry {
 		}
 
 		portSpec := portSpecs[0]
-		r.registry = container.NewRegistry(fmt.Sprintf("localhost:%d", portSpec.NodePort))
+		r.registry, err = container.NewRegistry(fmt.Sprintf("localhost:%d", portSpec.NodePort))
 	})
-	return r.registry
+	return r.registry, err
 }
 
-func (c K8sClient) PrivateRegistry(ctx context.Context) container.Registry {
+func (c K8sClient) PrivateRegistry(ctx context.Context) (container.Registry, error) {
 	return c.registryAsync.Registry(ctx)
 }
 
-func ProvideContainerRegistry(ctx context.Context, kCli Client) container.Registry {
+func ProvideContainerRegistry(ctx context.Context, kCli Client) (container.Registry, error) {
 	return kCli.PrivateRegistry(ctx)
 }

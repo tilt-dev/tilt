@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var namedTaggedTestCases = []struct {
@@ -14,6 +15,15 @@ var namedTaggedTestCases = []struct {
 }{
 	{"myreg.com", "gcr.io/foo/bar:deadbeef", "myreg.com/gcr.io_foo_bar"},
 	{"aws_account_id.dkr.ecr.region.amazonaws.com/bar", "gcr.io/baz/foo/bar:deadbeef", "aws_account_id.dkr.ecr.region.amazonaws.com/bar/gcr.io_baz_foo_bar"},
+}
+
+func TestReplaceTaggedRefDomain(t *testing.T) {
+	for i, tc := range namedTaggedTestCases {
+		t.Run(fmt.Sprintf("Test Case #%d", i), func(t *testing.T) {
+			reg := MustNewRegistry(tc.defaultRegistry)
+			assertReplaceRegistryForLocal(t, reg, tc.name, tc.expected)
+		})
+	}
 }
 
 var namedTestCases = []struct {
@@ -28,26 +38,85 @@ var namedTestCases = []struct {
 	{"gcr.io/foo", "bar", "gcr.io/foo/bar"},
 }
 
-func TestReplaceTaggedRefDomain(t *testing.T) {
-	for i, tc := range namedTaggedTestCases {
-		t.Run(fmt.Sprintf("Test Case #%d", i), func(t *testing.T) {
-			reg := NewRegistry(tc.defaultRegistry)
-			rs := NewRefSelector(MustParseNamedTagged(tc.name))
-			actual, err := reg.ReplaceRegistryForLocalRef(rs)
-			assert.NoError(t, err)
-			assert.Equal(t, tc.expected, actual.String())
+func TestReplaceNamed(t *testing.T) {
+	for i, tc := range namedTestCases {
+		t.Run(fmt.Sprintf("Test case #%d", i), func(t *testing.T) {
+			reg := MustNewRegistry(tc.defaultRegistry)
+			assertReplaceRegistryForLocal(t, reg, tc.name, tc.expected)
 		})
 	}
 }
 
-func TestReplaceNamed(t *testing.T) {
-	for i, tc := range namedTestCases {
+var refForClusterCases = []struct {
+	localReg        string
+	clusterReg      string
+	name            string
+	expectedLocal   string
+	expectedCluster string
+}{
+	{"myreg.com", "", "gcr.io/foo/bar", "myreg.com/gcr.io_foo_bar", "myreg.com/gcr.io_foo_bar"},
+	{"myreg.com", "myreg.com", "gcr.io/foo/bar", "myreg.com/gcr.io_foo_bar", "myreg.com/gcr.io_foo_bar"},
+	{"localhost:1234", "registry:1234", "gcr.io/foo/bar", "localhost:1234/gcr.io_foo_bar", "registry:1234/gcr.io_foo_bar"},
+}
+
+func TestReplaceRefForCluster(t *testing.T) {
+	for i, tc := range refForClusterCases {
 		t.Run(fmt.Sprintf("Test case #%d", i), func(t *testing.T) {
-			reg := NewRegistry(tc.defaultRegistry)
-			rs := NewRefSelector(MustParseNamed(tc.name))
-			actual, err := reg.ReplaceRegistryForLocalRef(rs)
-			assert.NoError(t, err)
-			assert.Equal(t, tc.expected, actual.String())
+			reg := MustNewRegistryWithHostFromCluster(tc.localReg, tc.clusterReg)
+			assertReplaceRegistryForLocal(t, reg, tc.name, tc.expectedLocal)
+			assertReplaceRegistryForCluster(t, reg, tc.name, tc.expectedCluster)
 		})
 	}
+}
+
+var newRegistryError = []struct {
+	defaultReg    string
+	expectedError string
+}{
+	{"", "invalid reference format"},
+	{"invalid", "repository name must be canonical"},
+	{"foo/bar/baz", "repository name must be canonical"},
+}
+
+func TestNewRegistryError(t *testing.T) {
+	for i, tc := range newRegistryError {
+		t.Run(fmt.Sprintf("Test case #%d", i), func(t *testing.T) {
+			_, err := NewRegistry(tc.defaultReg)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.expectedError)
+		})
+	}
+}
+
+var newRegistryWithHostFromClusterError = []struct {
+	localReg      string
+	clusterReg    string
+	expectedError string
+}{
+	{"invalid", "grc.io/valid", "repository name must be canonical"},
+	{"grc.io/valid", "invalid", "repository name must be canonical"},
+}
+
+func TestNewRegistryWithHostFromClusterError(t *testing.T) {
+	for i, tc := range newRegistryWithHostFromClusterError {
+		t.Run(fmt.Sprintf("Test case #%d", i), func(t *testing.T) {
+			_, err := NewRegistryWithHostFromCluster(tc.localReg, tc.clusterReg)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.expectedError)
+		})
+	}
+}
+
+func assertReplaceRegistryForLocal(t *testing.T, reg Registry, orig string, expected string) {
+	rs := NewRefSelector(MustParseNamed(orig))
+	actual, err := reg.ReplaceRegistryForLocalRef(rs)
+	require.NoError(t, err)
+	assert.Equal(t, expected, actual.String())
+}
+
+func assertReplaceRegistryForCluster(t *testing.T, reg Registry, orig string, expected string) {
+	rs := NewRefSelector(MustParseNamed(orig))
+	actual, err := reg.ReplaceRegistryForClusterRef(rs)
+	require.NoError(t, err)
+	assert.Equal(t, expected, actual.String())
 }
