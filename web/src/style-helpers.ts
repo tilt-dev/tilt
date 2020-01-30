@@ -55,8 +55,9 @@ export enum Height {
   unit = unit,
   HUDheader = unit * 3,
   secondaryNav = unit * 1.2,
-  statusbar = unit * 1.5,
+  logLineSeparator = 3,
   resourceBar = unit * 1.5,
+  statusbar = unit * 1.5,
 }
 export enum Width {
   logLineGutter = 6,

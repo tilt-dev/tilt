@@ -1,7 +1,7 @@
-import {Fields} from "./types"
+import {Fields, BuildProgress} from "./types"
 import React, {PureComponent} from "react"
 import AnsiLine from "./AnsiLine"
-import {Color, ColorRGBA, ColorAlpha, SizeUnit, Width} from "./style-helpers"
+import {Color, ColorRGBA, ColorAlpha, SizeUnit, Height, Width} from "./style-helpers"
 import styled from "styled-components"
 import Ansi from "ansi-to-react"
 
@@ -22,12 +22,20 @@ let LogPaneLineRoot = styled.span`
   &.is-highlighted {
     background-color: ${ColorRGBA(Color.blue, ColorAlpha.translucent)};
   }
+  
+  &.is-buildProgress-start {
+    margin-top: ${SizeUnit(0.25)};
+    margin-bottom: ${SizeUnit(0.25)};
+    background-color: ${Color.gray};
+    text-align: right;
+    padding-right: ${SizeUnit(1)};
+  }
 `
 let LogLinePrefixRoot = styled.span`
   user-select: none;
   width: ${Width.secondaryNavItem}px; // Match height of tab above
   box-sizing: border-box;
-  background-color: ${Color.grayDark};
+  background-color: ${Color.grayDarkest};
   color: ${Color.grayLightest};
   padding-left: ${SizeUnit(0.5)};
   padding-right: ${SizeUnit(0.5)};
@@ -39,8 +47,8 @@ let LogLinePrefixRoot = styled.span`
   white-space: nowrap;
   
   ${LogPaneLineRoot}.is-contextChange > & {
-    margin-top: -1px;
-    border-top: 1px dotted ${Color.grayLightest};
+    margin-top: -${Height.logLineSeparator}px;
+    border-top: ${Height.logLineSeparator}px solid ${Color.gray};
   }
 `
 
@@ -48,16 +56,16 @@ let LineContent = styled(AnsiLine)`
   white-space: pre-wrap;
   padding-left: ${SizeUnit(0.6)};
   flex: 1;
-  
-  ${LogLinePrefixRoot} + & {
-    border-left: 1px solid ${Color.grayLight};
-  }
-  
+    
   ${LogPaneLineRoot}.is-warning & {
     border-left: ${Width.logLineGutter}px solid ${Color.yellow};
   }
   ${LogPaneLineRoot}.is-error & {
     border-left: ${Width.logLineGutter}px solid ${Color.red};
+  }
+  ${LogPaneLineRoot}.is-buildProgress-start & {
+    padding-top: ${SizeUnit(0.15)};
+    padding-bottom: ${SizeUnit(0.15)};
   }
 `
 
@@ -102,6 +110,10 @@ class LogPaneLine extends PureComponent<LogPaneProps> {
     if (props.fields?.progressID) {
       classes.push("is-progress")
     }
+    if (props.fields?.buildProgress == BuildProgress.Start) {
+      classes.push("is-buildProgress-start")
+    }
+
     return (
       <LogPaneLineRoot
         ref={this.ref}
