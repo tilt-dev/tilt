@@ -39,6 +39,29 @@ func NewRegistryWithHostFromCluster(host, fromCluster string) Registry {
 	return Registry{Host: host, hostFromCluster: fromCluster}
 }
 
+func (r Registry) Validate() error {
+	err := validateHost(r.Host)
+	if err != nil {
+		return err
+	}
+	if r.hostFromCluster != "" {
+		err = validateHost(r.hostFromCluster)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateHost(h string) error {
+	// NOTE(dmiller): we append a fake path to the domain so that we can try and validate it _during_ Tiltfile execution
+	// rather than wait to do it when converting the data to the Engine state.
+	// As far as I can tell there's no way in Docker to validate a domain _independently_ from a canonical ref.
+	fakeRef := fmt.Sprintf("%s/%s", h, "fake")
+	_, err := reference.ParseNamed(fakeRef)
+	return err
+}
+
 // HostFromCluster returns the registry to be used from within the k8s cluster
 // (e.g. in k8s YAML). Returns hostFromCluster, if specified; otherwise the Host.
 func (r Registry) HostFromCluster() string {
