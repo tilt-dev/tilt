@@ -27,6 +27,7 @@ var upgrader = websocket.Upgrader{
 }
 
 type WebsocketSubscriber struct {
+	ctx        context.Context
 	conn       WebsocketConn
 	streamDone chan bool
 
@@ -44,8 +45,9 @@ type WebsocketConn interface {
 
 var _ WebsocketConn = &websocket.Conn{}
 
-func NewWebsocketSubscriber(conn WebsocketConn) *WebsocketSubscriber {
+func NewWebsocketSubscriber(ctx context.Context, conn WebsocketConn) *WebsocketSubscriber {
 	return &WebsocketSubscriber{
+		ctx:        ctx,
 		conn:       conn,
 		streamDone: make(chan bool),
 	}
@@ -183,16 +185,13 @@ func (s *HeadsUpServer) ViewWebsocket(w http.ResponseWriter, req *http.Request) 
 	}
 
 	atomic.AddInt32(&s.numWebsocketConns, 1)
-	ws := NewWebsocketSubscriber(conn)
-
-	// TODO(nick): Handle clean shutdown when the server shuts down
-	ctx := context.TODO()
+	ws := NewWebsocketSubscriber(s.ctx, conn)
 
 	// Fire a fake OnChange event to initialize the connection.
-	ws.OnChange(ctx, s.store)
-	s.store.AddSubscriber(ctx, ws)
+	ws.OnChange(s.ctx, s.store)
+	s.store.AddSubscriber(s.ctx, ws)
 
-	ws.Stream(ctx, s.store)
+	ws.Stream(s.ctx, s.store)
 	atomic.AddInt32(&s.numWebsocketConns, -1)
 }
 
