@@ -56,6 +56,15 @@ func MustNewRegistryWithHostFromCluster(host, fromCluster string) Registry {
 }
 
 func (r Registry) Validate() error {
+	if r.Host == "" {
+		if r.hostFromCluster != "" {
+			return fmt.Errorf("illegal registry: provided hostFromCluster %q without "+
+				"providing Host", r.hostFromCluster)
+		}
+		// Empty registry, nothing to validate
+		return nil
+	}
+
 	err := validateHost(r.Host)
 	if err != nil {
 		return errors.Wrapf(err, "validating registry host %q", r.Host)
