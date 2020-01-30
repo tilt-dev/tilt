@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -198,11 +200,14 @@ func TestK8sClient_WatchEventsUpdate(t *testing.T) {
 	tf.addObjects(event1, event2)
 	tf.assertEvents([]runtime.Object{event1, event2}, ch)
 
-	tf.tracker.Update(gvr, event1b, "")
+	err := tf.tracker.Update(gvr, event1b, "")
+	require.NoError(t, err)
 	tf.assertEvents([]runtime.Object{}, ch)
 
-	tf.tracker.Add(event3)
-	tf.tracker.Update(gvr, event2b, "")
+	err = tf.tracker.Add(event3)
+	require.NoError(t, err)
+	err = tf.tracker.Update(gvr, event2b, "")
+	require.NoError(t, err)
 	tf.assertEvents([]runtime.Object{event3, event2b}, ch)
 }
 

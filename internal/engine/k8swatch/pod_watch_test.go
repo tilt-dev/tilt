@@ -293,7 +293,10 @@ func newPWFixture(t *testing.T) *pwFixture {
 	}
 
 	st := store.NewStore(store.Reducer(ret.reducer), store.LogActionsFlag(false))
-	go st.Loop(ctx)
+	go func() {
+		err := st.Loop(ctx)
+		testutils.FailOnNonCanceledErr(t, err, "store.Loop failed")
+	}()
 
 	ret.store = st
 

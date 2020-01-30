@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 
@@ -26,7 +28,8 @@ func TestOnChange(t *testing.T) {
 func TestReportOnOptIn(t *testing.T) {
 	to := tiltanalytics.NewFakeOpter(analytics.OptIn)
 	mem, a := tiltanalytics.NewMemoryTiltAnalyticsForTest(to)
-	a.SetUserOpt(analytics.OptDefault)
+	err := a.SetUserOpt(analytics.OptDefault)
+	require.NoError(t, err)
 
 	cmdUpTags := CmdUpTags(map[string]string{"watch": "true"})
 	au := NewAnalyticsUpdater(a, cmdUpTags)

@@ -220,7 +220,10 @@ func (f *fixture) StartTearDown() {
 		}
 		fmt.Printf("\n----\n")
 
-		f.activeTiltUp.KillAndDumpThreads()
+		err = f.activeTiltUp.KillAndDumpThreads()
+		if err != nil {
+			fmt.Printf("error killing tilt: %v\n", err)
+		}
 	}
 
 	f.cancel()
@@ -230,7 +233,10 @@ func (f *fixture) StartTearDown() {
 
 func (f *fixture) KillProcs() {
 	if f.activeTiltUp != nil {
-		f.activeTiltUp.Kill()
+		err := f.activeTiltUp.Kill()
+		if err != nil {
+			fmt.Printf("error killing tilt: %v\n", err)
+		}
 	}
 }
 

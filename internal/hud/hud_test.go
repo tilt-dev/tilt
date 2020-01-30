@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/gdamore/tcell"
-	"github.com/stretchr/testify/assert"
 
 	"github.com/windmilleng/tilt/internal/rty"
 	"github.com/windmilleng/tilt/internal/testutils"
@@ -23,6 +24,7 @@ func TestRenderInit(t *testing.T) {
 	r.rty = rty.NewRTY(tcell.NewSimulationScreen(""))
 	webURL, _ := url.Parse("http://localhost:10350")
 	hud, err := ProvideHud(true, r, model.WebURL(*webURL), ta, NewIncrementalPrinter(logs))
-	assert.NoError(t, err)
-	hud.(*Hud).refresh(ctx)
+	require.NoError(t, err)
+	err = hud.(*Hud).refresh(ctx)
+	require.NoError(t, err)
 }

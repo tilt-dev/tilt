@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/testutils"
+
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -388,7 +390,8 @@ func TestHandleNewSnapshot(t *testing.T) {
 		var snapshot proto_webview.Snapshot
 		jspb := &runtime.JSONPb{OrigName: false, EmitDefaults: true}
 		decoder := jspb.NewDecoder(lastReq.Body)
-		decoder.Decode(&snapshot)
+		err := decoder.Decode(&snapshot)
+		require.NoError(t, err)
 		assert.Equal(t, "0.10.13", snapshot.View.RunningTiltBuild.Version)
 		assert.Equal(t, "43", snapshot.SnapshotHighlight.BeginningLogID)
 	}
@@ -429,7 +432,10 @@ type serverFixture struct {
 
 func newTestFixture(t *testing.T) *serverFixture {
 	st, getActions := store.NewStoreForTesting()
-	go st.Loop(context.Background())
+	go func() {
+		err := st.Loop(context.Background())
+		testutils.FailOnNonCanceledErr(t, err, "store.Loop failed")
+	}()
 	opter := tiltanalytics.NewFakeOpter(analytics.OptIn)
 	a, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(opter)
 	snapshotHTTP := &fakeHTTPClient{}

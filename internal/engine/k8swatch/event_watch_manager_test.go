@@ -69,6 +69,7 @@ func TestEventWatchManager_watchError(t *testing.T) {
 	expectedErr := errors.Wrap(err, "Error watching k8s events\n")
 	expected := store.ErrorAction{Error: expectedErr}
 	f.assertActions(expected)
+	f.storeLoopErr = nil
 }
 
 func TestEventWatchManager_eventBeforeUID(t *testing.T) {
@@ -135,14 +136,15 @@ func (f *ewmFixture) makeEvent(obj k8s.K8sEntity) *v1.Event {
 
 type ewmFixture struct {
 	*tempdir.TempDirFixture
-	t          *testing.T
-	kClient    *k8s.FakeK8sClient
-	ewm        *EventWatchManager
-	ctx        context.Context
-	cancel     func()
-	store      *store.Store
-	getActions func() []store.Action
-	clock      clockwork.FakeClock
+	t            *testing.T
+	kClient      *k8s.FakeK8sClient
+	ewm          *EventWatchManager
+	ctx          context.Context
+	cancel       func()
+	store        *store.Store
+	storeLoopErr error
+	getActions   func() []store.Action
+	clock        clockwork.FakeClock
 }
 
 func newEWMFixture(t *testing.T) *ewmFixture {
@@ -169,12 +171,15 @@ func newEWMFixture(t *testing.T) *ewmFixture {
 	state := ret.store.LockMutableStateForTesting()
 	state.TiltStartTime = clock.Now()
 	ret.store.UnlockMutableState()
-	go ret.store.Loop(ctx)
+	go func() {
+		ret.storeLoopErr = ret.store.Loop(ctx)
+	}()
 
 	return ret
 }
 
 func (f *ewmFixture) TearDown() {
+	testutils.FailOnNonCanceledErr(f.t, f.storeLoopErr, "store.Loop returned an error")
 	f.TempDirFixture.TearDown()
 	f.kClient.TearDown()
 	f.cancel()
