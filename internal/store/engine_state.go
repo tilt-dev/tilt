@@ -71,7 +71,7 @@ type EngineState struct {
 	VersionSettings model.VersionSettings
 
 	// Analytics Info
-
+	AnalyticsEnvOpt        analytics.Opt
 	AnalyticsUserOpt       analytics.Opt // changes to this field will propagate into the TiltAnalytics subscriber + we'll record them as user choice
 	AnalyticsTiltfileOpt   analytics.Opt // Set by the Tiltfile. Overrides the UserOpt.
 	AnalyticsNudgeSurfaced bool          // this flag is set the first time we show the analytics nudge to the user.
@@ -98,8 +98,8 @@ type EngineState struct {
 // Merge analytics opt-in status from different sources.
 // The Tiltfile opt-in takes precedence over the user opt-in.
 func (e *EngineState) AnalyticsEffectiveOpt() analytics.Opt {
-	if tiltanalytics.IsAnalyticsDisabledFromEnv() {
-		return analytics.OptOut
+	if e.AnalyticsEnvOpt != analytics.OptDefault {
+		return e.AnalyticsEnvOpt
 	}
 	if e.AnalyticsTiltfileOpt != analytics.OptDefault {
 		return e.AnalyticsTiltfileOpt
@@ -339,6 +339,11 @@ func NewState() *EngineState {
 	}
 	ret.MaxParallelUpdates = 1
 	ret.CurrentlyBuilding = make(map[model.ManifestName]bool)
+
+	if ok, _ := tiltanalytics.IsAnalyticsDisabledFromEnv(); ok {
+		ret.AnalyticsEnvOpt = analytics.OptOut
+	}
+
 	return ret
 }
 

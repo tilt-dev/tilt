@@ -3471,6 +3471,8 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 		tiltVersionCheckDelay: versionCheckInterval,
 	}
 
+	ret.disableEnvAnalyticsOpt()
+
 	tiltVersionCheckTimerMaker := func(d time.Duration) <-chan time.Time {
 		return time.After(ret.tiltVersionCheckDelay)
 	}
@@ -3536,6 +3538,12 @@ func (f *testFixture) setMaxParallelUpdates(n int) {
 
 	state := f.store.LockMutableStateForTesting()
 	state.MaxParallelUpdates = n
+	f.store.UnlockMutableState()
+}
+
+func (f *testFixture) disableEnvAnalyticsOpt() {
+	state := f.store.LockMutableStateForTesting()
+	state.AnalyticsEnvOpt = analytics.OptDefault
 	f.store.UnlockMutableState()
 }
 

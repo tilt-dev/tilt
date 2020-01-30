@@ -20,6 +20,7 @@ type TiltAnalytics struct {
 	a           analytics.Analytics
 	tiltVersion string
 
+	envOpt      analytics.Opt
 	userOpt     analytics.Opt
 	tiltfileOpt analytics.Opt
 }
@@ -31,15 +32,20 @@ type AnalyticsOpter interface {
 	ReadUserOpt() (analytics.Opt, error)
 }
 
-func NewTiltAnalytics(opter AnalyticsOpter, analytics analytics.Analytics, tiltVersion string) (*TiltAnalytics, error) {
+func NewTiltAnalytics(opter AnalyticsOpter, a analytics.Analytics, tiltVersion string) (*TiltAnalytics, error) {
 	userOpt, err := opter.ReadUserOpt()
 	if err != nil {
 		return nil, err
 	}
+	envOpt := analytics.OptDefault
+	if ok, _ := IsAnalyticsDisabledFromEnv(); ok {
+		envOpt = analytics.OptOut
+	}
 	return &TiltAnalytics{
 		opter:       opter,
-		a:           analytics,
+		a:           a,
 		tiltVersion: tiltVersion,
+		envOpt:      envOpt,
 		userOpt:     userOpt,
 	}, nil
 }
@@ -52,6 +58,7 @@ func NewMemoryTiltAnalyticsForTest(opter AnalyticsOpter) (*analytics.MemoryAnaly
 	if err != nil {
 		panic(err)
 	}
+	ta.envOpt = analytics.OptDefault
 	return ma, ta
 }
 
@@ -116,8 +123,8 @@ func (ta *TiltAnalytics) TiltfileOpt() analytics.Opt {
 }
 
 func (ta *TiltAnalytics) EffectiveOpt() analytics.Opt {
-	if IsAnalyticsDisabledFromEnv() {
-		return analytics.OptOut
+	if ta.envOpt != analytics.OptDefault {
+		return ta.envOpt
 	}
 	if ta.tiltfileOpt != analytics.OptDefault {
 		return ta.tiltfileOpt

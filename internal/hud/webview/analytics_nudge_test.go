@@ -14,7 +14,7 @@ import (
 )
 
 func TestNeedsNudgeK8sYaml(t *testing.T) {
-	state := store.NewState()
+	state := newState(nil)
 
 	m, err := k8s.NewK8sOnlyManifestFromYAML(testyaml.SanchoYAML)
 	assert.NoError(t, err)
@@ -28,7 +28,7 @@ func TestNeedsNudgeK8sYaml(t *testing.T) {
 }
 
 func TestNeedsNudgeRedManifest(t *testing.T) {
-	state := store.NewState()
+	state := newState(nil)
 
 	m := model.Manifest{Name: "server"}
 	targ := store.NewManifestTarget(m)
@@ -40,7 +40,7 @@ func TestNeedsNudgeRedManifest(t *testing.T) {
 }
 
 func TestNeedsNudgeGreenManifest(t *testing.T) {
-	state := store.NewState()
+	state := newState(nil)
 
 	m := model.Manifest{Name: "server"}
 	targ := store.NewManifestTarget(m)
@@ -53,7 +53,7 @@ func TestNeedsNudgeGreenManifest(t *testing.T) {
 }
 
 func TestNeedsNudgeAlreadyOpted(t *testing.T) {
-	state := store.NewState()
+	state := newState(nil)
 
 	state.AnalyticsUserOpt = analytics.OptIn
 	m := model.Manifest{Name: "server"}

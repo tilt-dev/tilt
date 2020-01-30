@@ -110,8 +110,8 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	logOutput(fmt.Sprintf("Starting Tilt (%s)…", buildStamp()))
 
-	if analytics.IsAnalyticsDisabledFromEnv() {
-		logOutput("Tilt analytics manually disabled by environment")
+	if ok, reason := analytics.IsAnalyticsDisabledFromEnv(); ok {
+		log.Printf("Tilt analytics disabled: %s", reason)
 	}
 
 	hudEnabled := c.hud && isatty.IsTerminal(os.Stdout.Fd())
