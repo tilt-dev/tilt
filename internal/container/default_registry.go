@@ -18,33 +18,34 @@ type Registry struct {
 	// The Host of a container registry where we can push images. e.g.:
 	//   - localhost:32000
 	//   - gcr.io/windmill-public-containers
-	PushHost string
+	Host string
 
-	// The prefix we use with image names when attempt to pull them from the registry.
-	// In most cases, this is equivalent to PushHost (the host of the container registry that we push to),
-	// but sometimes users will specify a pullHost separately (e.g. using a local registry with KIND:
-	// YAMLs will specify the image as `registry:5000/my-img`, so the pullHost will be `registry:5000`).
-	pullHost string
+	// The prefix we use with image names when referring to them from inside the cluster.
+	// In most cases, this is equivalent to Host (the host of the container registry that we push to),
+	// but sometimes users will specify a hostFromCluster separately (e.g. using a local registry with KIND:
+	// YAMLs will specify the image as `registry:5000/my-img`, so the hostFromCluster will be `registry:5000`).
+	hostFromCluster string
 }
 
-func (r Registry) Empty() bool { return r.PushHost == "" }
+func (r Registry) Empty() bool { return r.Host == "" }
 
 func NewRegistry(host string) Registry {
 	// TODO(maia): validate
-	return Registry{PushHost: host}
+	return Registry{Host: host}
 }
 
-func NewPushPullRegistry(push, pull string) Registry {
+func NewRegistryWithHostFromCluster(host, fromCluster string) Registry {
 	// TODO(maia): validate
-	return Registry{PushHost: push, pullHost: pull}
+	return Registry{Host: host, hostFromCluster: fromCluster}
 }
 
-// PullHost returns the pullHost, if specified; otherwise the PushHost.
-func (r Registry) PullHost() string {
-	if r.pullHost != "" {
-		return r.pullHost
+// HostFromCluster returns the registry to be used from within the k8s cluster
+// (e.g. in k8s YAML). Returns hostFromCluster, if specified; otherwise the Host.
+func (r Registry) HostFromCluster() string {
+	if r.hostFromCluster != "" {
+		return r.hostFromCluster
 	}
-	return r.PushHost
+	return r.Host
 }
 
 // replaceRegistry produces a new image name that is in the specified registry.
@@ -66,9 +67,9 @@ func replaceRegistry(defaultReg string, rs RefSelector) (reference.Named, error)
 }
 
 func (r Registry) ReplaceRegistryForLocalRef(rs RefSelector) (reference.Named, error) {
-	return replaceRegistry(r.PushHost, rs)
+	return replaceRegistry(r.Host, rs)
 }
 
 func (r Registry) ReplaceRegistryForClusterRef(rs RefSelector) (reference.Named, error) {
-	return replaceRegistry(r.PullHost(), rs)
+	return replaceRegistry(r.HostFromCluster(), rs)
 }
