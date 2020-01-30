@@ -533,20 +533,8 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 }
 
 func (s *tiltfileState) assembleImages() error {
-	registry := s.defaultRegistryHost
-	if s.orchestrator() == model.OrchestratorK8s && !s.privateRegistry.Empty() {
-		// If we've found a private registry in the cluster at run-time,
-		// use that instead of the one in the tiltfile
-		s.logger.Infof("Auto-detected private registry from environment: %s", s.privateRegistry)
-		registry = s.privateRegistry
-	}
-
 	for _, imageBuilder := range s.buildIndex.images {
 		var err error
-		imageBuilder.deploymentRef, err = registry.ReplaceRegistryForLocalRef(imageBuilder.configurationRef)
-		if err != nil {
-			return err
-		}
 
 		var depImages []reference.Named
 		if imageBuilder.dbDockerfile != "" {
@@ -1068,8 +1056,15 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 		}
 		claimStatus[id] = claimPending
 
+		registry := s.defaultRegistryHost
+		if s.orchestrator() == model.OrchestratorK8s && !s.privateRegistry.Empty() {
+			// If we've found a private registry in the cluster at run-time,
+			// use that instead of the one in the tiltfile
+			s.logger.Infof("Auto-detected private registry from environment: %s", s.privateRegistry)
+			registry = s.privateRegistry
+		}
 		iTarget := model.ImageTarget{
-			Refs:           container.NewRefSet(image.configurationRef, s.defaultRegistryHost, image.deploymentRef, image.deploymentRef),
+			Refs:           container.NewRefSet(image.configurationRef, registry),
 			MatchInEnvVars: image.matchInEnvVars,
 		}
 

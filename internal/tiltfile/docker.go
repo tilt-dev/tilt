@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
@@ -27,7 +26,6 @@ var cacheObsoleteWarning = "docker_build(cache=...) is obsolete, and currently a
 type dockerImage struct {
 	workDir          string
 	configurationRef container.RefSelector
-	deploymentRef    reference.Named
 	matchInEnvVars   bool
 	sshSpecs         []string
 	ignores          []string
