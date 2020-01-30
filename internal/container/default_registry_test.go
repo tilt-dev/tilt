@@ -48,8 +48,8 @@ func TestReplaceNamed(t *testing.T) {
 }
 
 var refForClusterCases = []struct {
-	localReg        string
-	clusterReg      string
+	host            string
+	clusterHost     string
 	name            string
 	expectedLocal   string
 	expectedCluster string
@@ -62,7 +62,7 @@ var refForClusterCases = []struct {
 func TestReplaceRefForCluster(t *testing.T) {
 	for i, tc := range refForClusterCases {
 		t.Run(fmt.Sprintf("Test case #%d", i), func(t *testing.T) {
-			reg := MustNewRegistryWithHostFromCluster(tc.localReg, tc.clusterReg)
+			reg := MustNewRegistryWithHostFromCluster(tc.host, tc.clusterHost)
 			assertReplaceRegistryForLocal(t, reg, tc.name, tc.expectedLocal)
 			assertReplaceRegistryForCluster(t, reg, tc.name, tc.expectedCluster)
 		})
@@ -89,22 +89,28 @@ func TestNewRegistryError(t *testing.T) {
 }
 
 var newRegistryWithHostFromClusterError = []struct {
-	localReg      string
-	clusterReg    string
+	host          string
+	clusterHost   string
 	expectedError string
 }{
 	{"invalid", "grc.io/valid", "repository name must be canonical"},
 	{"grc.io/valid", "invalid", "repository name must be canonical"},
+	{"", "grc.io/valid", "without providing Host"},
 }
 
 func TestNewRegistryWithHostFromClusterError(t *testing.T) {
 	for i, tc := range newRegistryWithHostFromClusterError {
 		t.Run(fmt.Sprintf("Test case #%d", i), func(t *testing.T) {
-			_, err := NewRegistryWithHostFromCluster(tc.localReg, tc.clusterReg)
+			_, err := NewRegistryWithHostFromCluster(tc.host, tc.clusterHost)
 			require.Error(t, err)
 			require.Contains(t, err.Error(), tc.expectedError)
 		})
 	}
+}
+
+func TestNewRegistyEmptyOK(t *testing.T) {
+	_, err := NewRegistryWithHostFromCluster("", "")
+	require.NoError(t, err)
 }
 
 func assertReplaceRegistryForLocal(t *testing.T, reg Registry, orig string, expected string) {
