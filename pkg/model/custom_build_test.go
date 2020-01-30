@@ -30,7 +30,7 @@ func TestValidate(t *testing.T) {
 		Command: "true",
 		Deps:    []string{"foo", "bar"},
 	}
-	it := NewImageTarget(container.MustParseSelector("gcr.io/foo/bar")).
+	it := MustNewImageTarget(container.MustParseSelector("gcr.io/foo/bar")).
 		WithBuildDetails(cb)
 
 	assert.Nil(t, it.Validate())
@@ -41,7 +41,7 @@ func TestDoesNotValidate(t *testing.T) {
 		Command: "",
 		Deps:    []string{"foo", "bar"},
 	}
-	it := NewImageTarget(container.MustParseSelector("gcr.io/foo/bar")).
+	it := MustNewImageTarget(container.MustParseSelector("gcr.io/foo/bar")).
 		WithBuildDetails(cb)
 
 	assert.Error(t, it.Validate())

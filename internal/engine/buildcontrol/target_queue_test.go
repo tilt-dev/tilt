@@ -18,7 +18,7 @@ import (
 func TestTargetQueue_Simple(t *testing.T) {
 	f := newTargetQueueFixture(t)
 
-	t1 := model.NewImageTarget(container.MustParseSelector("vigoda"))
+	t1 := model.MustNewImageTarget(container.MustParseSelector("vigoda"))
 	s1 := store.BuildState{}
 
 	targets := []model.ImageTarget{t1}
@@ -37,9 +37,9 @@ func TestTargetQueue_Simple(t *testing.T) {
 func TestTargetQueue_DepsBuilt(t *testing.T) {
 	f := newTargetQueueFixture(t)
 
-	fooTarget := model.NewImageTarget(container.MustParseSelector("foo"))
+	fooTarget := model.MustNewImageTarget(container.MustParseSelector("foo"))
 	s1 := store.BuildState{LastSuccessfulResult: store.NewImageBuildResultSingleRef(fooTarget.ID(), container.MustParseNamedTagged("foo:1234"))}
-	barTarget := model.NewImageTarget(container.MustParseSelector("bar")).WithDependencyIDs([]model.TargetID{fooTarget.ID()})
+	barTarget := model.MustNewImageTarget(container.MustParseSelector("bar")).WithDependencyIDs([]model.TargetID{fooTarget.ID()})
 	s2 := store.BuildState{}
 
 	targets := []model.ImageTarget{fooTarget, barTarget}
@@ -64,9 +64,9 @@ func TestTargetQueue_DepsBuilt(t *testing.T) {
 func TestTargetQueue_DepsUnbuilt(t *testing.T) {
 	f := newTargetQueueFixture(t)
 
-	fooTarget := model.NewImageTarget(container.MustParseSelector("foo"))
+	fooTarget := model.MustNewImageTarget(container.MustParseSelector("foo"))
 	s1 := store.BuildState{}
-	barTarget := model.NewImageTarget(container.MustParseSelector("bar")).WithDependencyIDs([]model.TargetID{fooTarget.ID()})
+	barTarget := model.MustNewImageTarget(container.MustParseSelector("bar")).WithDependencyIDs([]model.TargetID{fooTarget.ID()})
 	var s2 = store.BuildState{LastSuccessfulResult: store.NewImageBuildResultSingleRef(
 		barTarget.ID(),
 		container.MustParseNamedTagged("bar:54321"),
@@ -93,7 +93,7 @@ func TestTargetQueue_DepsUnbuilt(t *testing.T) {
 func TestTargetQueue_IncrementalBuild(t *testing.T) {
 	f := newTargetQueueFixture(t)
 
-	fooTarget := model.NewImageTarget(container.MustParseSelector("foo"))
+	fooTarget := model.MustNewImageTarget(container.MustParseSelector("foo"))
 	s1 := store.BuildState{
 		LastSuccessfulResult: store.NewImageBuildResultSingleRef(
 			fooTarget.ID(),
@@ -118,7 +118,7 @@ func TestTargetQueue_IncrementalBuild(t *testing.T) {
 func TestTargetQueue_CachedBuild(t *testing.T) {
 	f := newTargetQueueFixture(t)
 
-	fooTarget := model.NewImageTarget(container.MustParseSelector("foo"))
+	fooTarget := model.MustNewImageTarget(container.MustParseSelector("foo"))
 	s1 := store.BuildState{
 		LastSuccessfulResult: store.NewImageBuildResultSingleRef(
 			fooTarget.ID(),
@@ -139,9 +139,9 @@ func TestTargetQueue_CachedBuild(t *testing.T) {
 func TestTargetQueue_DepsBuiltButReaped(t *testing.T) {
 	f := newTargetQueueFixture(t)
 
-	fooTarget := model.NewImageTarget(container.MustParseSelector("foo"))
+	fooTarget := model.MustNewImageTarget(container.MustParseSelector("foo"))
 	s1 := store.BuildState{LastSuccessfulResult: store.NewImageBuildResultSingleRef(fooTarget.ID(), container.MustParseNamedTagged("foo:1234"))}
-	barTarget := model.NewImageTarget(container.MustParseSelector("bar")).WithDependencyIDs([]model.TargetID{fooTarget.ID()})
+	barTarget := model.MustNewImageTarget(container.MustParseSelector("bar")).WithDependencyIDs([]model.TargetID{fooTarget.ID()})
 	s2 := store.BuildState{}
 
 	targets := []model.ImageTarget{fooTarget, barTarget}

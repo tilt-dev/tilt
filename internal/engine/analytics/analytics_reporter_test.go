@@ -202,5 +202,5 @@ func (artf *analyticsReporterTestFixture) assertStats(t *testing.T, expectedTags
 func iTargetForRef(ref string) model.ImageTarget {
 	named := container.MustParseNamed(ref)
 	selector := container.NameSelector(named)
-	return model.NewImageTarget(selector)
+	return model.MustNewImageTarget(selector)
 }
