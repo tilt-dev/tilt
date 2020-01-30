@@ -351,7 +351,6 @@ it("renders without crashing", () => {
       handleSetHighlight={fakeHandleSetHighlight}
       handleClearHighlight={fakeHandleClearHighlight}
       highlight={null}
-      modalIsOpen={false}
       isSnapshot={false}
     />,
     div
@@ -370,7 +369,6 @@ it("renders logs", () => {
         handleSetHighlight={fakeHandleSetHighlight}
         handleClearHighlight={fakeHandleClearHighlight}
         highlight={null}
-        modalIsOpen={false}
         isSnapshot={false}
       />
     )
@@ -389,7 +387,6 @@ it("renders logs with leading whitespace and ANSI codes", () => {
         handleSetHighlight={fakeHandleSetHighlight}
         handleClearHighlight={fakeHandleClearHighlight}
         highlight={null}
-        modalIsOpen={false}
         isSnapshot={false}
       />
     )
@@ -413,7 +410,6 @@ it("renders highlighted lines", () => {
       handleSetHighlight={fakeHandleSetHighlight}
       handleClearHighlight={fakeHandleClearHighlight}
       highlight={highlight}
-      modalIsOpen={false}
       isSnapshot={false}
     />
   )
@@ -442,7 +438,6 @@ it("scrolls to highlighted lines in snapshot", () => {
       handleSetHighlight={fakeHandleSetHighlight}
       handleClearHighlight={fakeHandleClearHighlight}
       highlight={highlight}
-      modalIsOpen={false}
       isSnapshot={true}
     />
   )
@@ -473,7 +468,6 @@ it("does not scroll to highlighted lines if not snapshot", () => {
       handleSetHighlight={fakeHandleSetHighlight}
       handleClearHighlight={fakeHandleClearHighlight}
       highlight={highlight}
-      modalIsOpen={false}
       isSnapshot={false}
     />
   )
@@ -502,7 +496,6 @@ it("doesn't set selection event handler if snapshot", () => {
       handleSetHighlight={fakeHandleSetHighlight}
       handleClearHighlight={fakeHandleClearHighlight}
       highlight={highlight}
-      modalIsOpen={false}
       isSnapshot={true}
     />
   )

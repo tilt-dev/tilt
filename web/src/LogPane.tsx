@@ -8,6 +8,7 @@ import color from "./color"
 import { SizeUnit, Width } from "./style-helpers"
 import findLogLineID from "./findLogLine"
 import styled from "styled-components"
+import selection from "./selection"
 
 type LogPaneProps = {
   manifestName: string
@@ -17,7 +18,6 @@ type LogPaneProps = {
   handleSetHighlight: (highlight: SnapshotHighlight) => void
   handleClearHighlight: () => void
   highlight: SnapshotHighlight | null | undefined
-  modalIsOpen: boolean
   isSnapshot: boolean
 }
 
@@ -240,36 +240,27 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
   }
 
   handleSelectionChange() {
-    let selection = document.getSelection()
-    if (
-      selection &&
-      selection.focusNode &&
-      selection.anchorNode &&
-      !this.props.modalIsOpen
-    ) {
+    let sel = document.getSelection()
+    if (sel) {
       let node = ReactDOM.findDOMNode(this)
-      let beginning = selection.focusNode
-      let end = selection.anchorNode
-      let text = selection.toString()
-
-      // if end is before beginning
-      if (
-        beginning.compareDocumentPosition(end) &
-        Node.DOCUMENT_POSITION_PRECEDING
-      ) {
-        // swap beginning and end
-        ;[beginning, end] = [end, beginning]
+      if (!node) {
+        return
       }
 
-      if (selection.isCollapsed) {
-        this.props.handleClearHighlight()
-      } else if (
-        node &&
-        node.contains(beginning) &&
-        node.contains(end) &&
-        !node.isEqualNode(beginning) &&
-        !node.isEqualNode(end)
+      let beginning = selection.startNode(sel)
+      let end = selection.endNode(sel)
+      if (
+        !beginning ||
+        !end ||
+        !node.contains(beginning) ||
+        !node.contains(end)
       ) {
+        return
+      }
+
+      if (sel.isCollapsed) {
+        this.props.handleClearHighlight()
+      } else if (!node.isEqualNode(beginning) && !node.isEqualNode(end)) {
         let beginningLogLine = findLogLineID(beginning)
         let endingLogLine = findLogLineID(end)
 
@@ -277,7 +268,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
           this.props.handleSetHighlight({
             beginningLogID: beginningLogLine,
             endingLogID: endingLogLine,
-            text: text,
+            text: selection.toString(),
           })
         }
       }

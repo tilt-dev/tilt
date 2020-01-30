@@ -452,7 +452,6 @@ class HUD extends Component<HudProps, HudState> {
           handleSetHighlight={this.handleSetHighlight}
           handleClearHighlight={this.handleClearHighlight}
           highlight={snapshotHighlight}
-          modalIsOpen={showSnapshotModal}
           isSnapshot={isSnapshot}
         />
       )
@@ -497,7 +496,6 @@ class HUD extends Component<HudProps, HudState> {
           handleSetHighlight={this.handleSetHighlight}
           handleClearHighlight={this.handleClearHighlight}
           highlight={this.state.snapshotHighlight}
-          modalIsOpen={showSnapshotModal}
           isSnapshot={isSnapshot}
         />
       )
