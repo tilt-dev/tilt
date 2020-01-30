@@ -2585,7 +2585,7 @@ func TestDefaultRegistryPushAndPullHost(t *testing.T) {
 
 	f.setupFoo()
 	f.file("Tiltfile", `
-default_registry(push_host="abc.io", pull_host="def.io")
+default_registry("abc.io", host_from_cluster="def.io")
 k8s_yaml('foo.yaml')
 docker_build('gcr.io/foo', 'foo')
 `)
@@ -4743,7 +4743,7 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 			}
 
 			expectedLocalRef := container.MustParseNamed(opt.image.localRef)
-			require.Equal(f.t, expectedLocalRef.String(), image.Refs.LocalRef.String(), "manifest %v localRef", m.Name)
+			require.Equal(f.t, expectedLocalRef.String(), image.Refs.LocalRef().String(), "manifest %v localRef", m.Name)
 
 			if opt.image.clusterRef != "" {
 				expectedClusterRef := container.MustParseNamed(opt.image.clusterRef)
