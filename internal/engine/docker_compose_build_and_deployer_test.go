@@ -81,7 +81,7 @@ func TestTiltBuildsImageWithTag(t *testing.T) {
 	defer f.TearDown()
 
 	refWithTag := "gcr.io/foo:bar"
-	iTarget := model.NewImageTarget(container.MustParseSelector(refWithTag)).
+	iTarget := model.MustNewImageTarget(container.MustParseSelector(refWithTag)).
 		WithBuildDetails(model.DockerBuild{})
 	manifest := manifestbuilder.New(f, "fe").
 		WithDockerCompose().

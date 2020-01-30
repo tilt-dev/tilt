@@ -216,12 +216,12 @@ func TestMultiStageDockerBuildPreservesSyntaxDirective(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	baseImage := model.NewImageTarget(SanchoBaseRef).WithBuildDetails(model.DockerBuild{
+	baseImage := model.MustNewImageTarget(SanchoBaseRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: `FROM golang:1.10`,
 		BuildPath:  f.JoinPath("sancho-base"),
 	})
 
-	srcImage := model.NewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
+	srcImage := model.MustNewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: `# syntax = docker/dockerfile:experimental
 
 FROM sancho-base
@@ -379,7 +379,7 @@ func TestCustomBuildSkipsLocalDocker(t *testing.T) {
 
 	manifest := manifestbuilder.New(f, "sancho").
 		WithK8sYAML(SanchoYAML).
-		WithImageTarget(model.NewImageTarget(SanchoRef).WithBuildDetails(cb)).
+		WithImageTarget(model.MustNewImageTarget(SanchoRef).WithBuildDetails(cb)).
 		Build()
 
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})

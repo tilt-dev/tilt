@@ -131,7 +131,7 @@ func (f *dockerBuildFixture) teardown() {
 func (f *dockerBuildFixture) getNameFromTest() wmcontainer.RefSet {
 	x := fmt.Sprintf("windmill.build/%s", strings.ToLower(f.t.Name()))
 	sel := wmcontainer.MustParseSelector(x)
-	return wmcontainer.SimpleRefSet(sel)
+	return wmcontainer.MustSimpleRefSet(sel)
 }
 
 func (f *dockerBuildFixture) startRegistry() {

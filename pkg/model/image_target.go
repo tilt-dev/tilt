@@ -28,8 +28,8 @@ type ImageTarget struct {
 	dependencyIDs []TargetID
 }
 
-func NewImageTarget(ref container.RefSelector) ImageTarget {
-	return ImageTarget{Refs: container.SimpleRefSet(ref)}
+func MustNewImageTarget(ref container.RefSelector) ImageTarget {
+	return ImageTarget{Refs: container.MustSimpleRefSet(ref)}
 }
 
 func ImageID(ref container.RefSelector) TargetID {
