@@ -6,6 +6,7 @@ import (
 	"github.com/windmilleng/tilt/internal/engine/analytics"
 	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
+	"github.com/windmilleng/tilt/internal/engine/k8srollout"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
 	"github.com/windmilleng/tilt/internal/engine/local"
 	"github.com/windmilleng/tilt/internal/engine/runtimelog"
@@ -38,6 +39,7 @@ func ProvideSubscribers(
 	dp *dockerprune.DockerPruner,
 	tc *telemetry.Controller,
 	lc *local.Controller,
+	podm *k8srollout.PodMonitor,
 ) []store.Subscriber {
 	return []store.Subscriber{
 		hud,
@@ -62,5 +64,6 @@ func ProvideSubscribers(
 		dp,
 		tc,
 		lc,
+		podm,
 	}
 }
