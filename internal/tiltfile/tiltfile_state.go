@@ -1063,8 +1063,13 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			s.logger.Infof("Auto-detected private registry from environment: %s", s.privateRegistry)
 			registry = s.privateRegistry
 		}
+		refs, err := container.NewRefSet(image.configurationRef, registry)
+		if err != nil {
+			return nil, err
+		}
+
 		iTarget := model.ImageTarget{
-			Refs:           container.NewRefSet(image.configurationRef, registry),
+			Refs:           refs,
 			MatchInEnvVars: image.matchInEnvVars,
 		}
 

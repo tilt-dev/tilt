@@ -377,7 +377,7 @@ func (dpf *dockerPruneFixture) withDockerManifestUnbuilt() {
 func (dpf *dockerPruneFixture) withDockerManifest(alreadyBuilt bool) {
 	m := model.Manifest{Name: "some-docker-manifest"}.WithImageTarget(
 		model.ImageTarget{
-			Refs:         container.SimpleRefSet(refSel),
+			Refs:         container.MustSimpleRefSet(refSel),
 			BuildDetails: model.DockerBuild{},
 		})
 	dpf.withManifestTarget(store.NewManifestTarget(m), alreadyBuilt)

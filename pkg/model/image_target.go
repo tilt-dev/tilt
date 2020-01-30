@@ -29,7 +29,7 @@ type ImageTarget struct {
 }
 
 func MustNewImageTarget(ref container.RefSelector) ImageTarget {
-	return ImageTarget{Refs: container.SimpleRefSet(ref)}
+	return ImageTarget{Refs: container.MustSimpleRefSet(ref)}
 }
 
 func ImageID(ref container.RefSelector) TargetID {
