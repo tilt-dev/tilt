@@ -1,11 +1,11 @@
 import React, { Component, PureComponent } from "react"
 import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
 import ReactDOM from "react-dom"
-import {LogLine, SnapshotHighlight} from "./types"
+import { LogLine, SnapshotHighlight } from "./types"
 import LogPaneLine from "./LogPaneLine"
 import findLogLineID from "./findLogLine"
-import styled, {keyframes} from "styled-components"
-import {Color, ColorAlpha, SizeUnit} from "./style-helpers"
+import styled, { keyframes } from "styled-components"
+import { Color, ColorAlpha, SizeUnit } from "./style-helpers"
 
 type LogPaneProps = {
   manifestName: string
@@ -32,7 +32,6 @@ const renderWindowMinStep = 50
 // in practice the height is variable.
 const blankLogLineHeight = 30
 
-
 let LogPaneRoot = styled.section`
   margin-top: ${SizeUnit(0.5)};
   margin-bottom: ${SizeUnit(0.5)};
@@ -51,10 +50,10 @@ const blink = keyframes`
 `
 
 let LogEnd = styled.div`
-   animation: ${blink} 1s infinite;
-   animation-timing-function: ease;
-   margin-top: ${SizeUnit(0.5)};
-   margin-left: ${SizeUnit(0.5)};
+  animation: ${blink} 1s infinite;
+  animation-timing-function: ease;
+  margin-top: ${SizeUnit(0.5)};
+  margin-left: ${SizeUnit(0.5)};
 `
 
 class LogPane extends Component<LogPaneProps, LogPaneState> {
