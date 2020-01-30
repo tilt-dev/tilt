@@ -1,6 +1,8 @@
 package container
 
 import (
+	"fmt"
+
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 )
@@ -20,26 +22,13 @@ type RefSet struct {
 
 	// (Optional) registry to prepend to ConfigurationRef to yield ref to use in update and deploy
 	Registry Registry
-
-	// Image name as referenced from outside the cluster (in Dockerfile,
-	// docker push etc.). This will be the ConfigurationRef stripped of
-	// tags and (if applicable) prepended with the DefaultRegistry.
-	localRef reference.Named
-
-	// The image name (minus the Tilt tag) as referenced from the cluster (in k8s YAML,
-	// etc.) (Often this will be the same as the localRef, but in some cases they diverge:
-	// e.g. when using a local registry with KIND, the image localhost:1234/my-image
-	// (localRef) is referenced in the YAML as http://registry/my-image (clusterRef).
-	// clusterRef is optional; if not provided, we assume localRef == clusterRef.
-	clusterRef reference.Named
 }
 
-func NewRefSet(confRef RefSelector, reg Registry, localRef, clusterRef reference.Named) RefSet {
+func NewRefSet(confRef RefSelector, reg Registry) RefSet {
+	// TODO(maia): validate
 	return RefSet{
 		ConfigurationRef: confRef,
 		Registry:         reg,
-		localRef:         localRef,
-		clusterRef:       clusterRef,
 	}
 }
 
@@ -47,49 +36,54 @@ func NewRefSet(confRef RefSelector, reg Registry, localRef, clusterRef reference
 func SimpleRefSet(ref RefSelector) RefSet {
 	return RefSet{
 		ConfigurationRef: ref,
-		localRef:         ref.AsNamedOnly(),
 	}
-}
-
-func (rs RefSet) WithLocalRef(ref reference.Named) RefSet {
-	rs.localRef = ref
-	return rs
-}
-
-func (rs RefSet) WithClusterRef(ref reference.Named) RefSet {
-	rs.clusterRef = ref
-	return rs
 }
 
 // LocalRef returns the ref by which this image is referenced from outside the cluster
 // (e.g. by `docker build`, `docker push`, etc.)
 func (rs RefSet) LocalRef() reference.Named {
-	// todo: derive from registry, panic on err
-	return rs.localRef
+	if rs.Registry.Empty() {
+		return rs.ConfigurationRef.AsNamedOnly()
+	}
+	ref, err := rs.Registry.ReplaceRegistryForLocalRef(rs.ConfigurationRef)
+	if err != nil {
+		// Validation should have caught this before now :-/
+		panic(fmt.Sprintf("ERROR deriving LocalRef: %v", err))
+	}
+
+	return ref
 }
 
 // ClusterRef returns the ref by which this image is referenced in the cluster.
-// If no clusterRef is explicitly set, we return localRef, since in most cases
-// the image's ref from the cluster is the same as its ref locally.
+// In most cases the image's ref from the cluster is the same as its ref locally;
+// currently, we only allow these refs to diverge if the user provides a default registry
+// with different urls for Host and hostFromCluster.
+// If Registry.hostFromCluster is not set, we return localRef.
 func (rs RefSet) ClusterRef() reference.Named {
-	if rs.clusterRef == nil {
-		return rs.localRef
+	if rs.Registry.Empty() {
+		return rs.LocalRef()
 	}
-	return rs.clusterRef
+	ref, err := rs.Registry.ReplaceRegistryForClusterRef(rs.ConfigurationRef)
+	if err != nil {
+		// Validation should have caught this before now :-/
+		panic(fmt.Sprintf("ERROR deriving ClusterRef: %v", err))
+	}
+
+	return ref
 }
 
 // TagRefs tags both of the references used for build/deploy with the given tag.
 func (rs RefSet) TagRefs(tag string) (TaggedRefs, error) {
-	localTagged, err := reference.WithTag(rs.localRef, tag)
+	localTagged, err := reference.WithTag(rs.LocalRef(), tag)
 	if err != nil {
-		return TaggedRefs{}, errors.Wrapf(err, "tagging localRef %s as %s", rs.localRef.String(), tag)
+		return TaggedRefs{}, errors.Wrapf(err, "tagging localRef %s as %s", rs.LocalRef().String(), tag)
 	}
 
 	// TODO(maia): maybe TaggedRef should behave like RefSet, where clusterRef is optional
 	//   and if not set, the accessor returns localRef instead
 	clusterTagged, err := reference.WithTag(rs.ClusterRef(), tag)
 	if err != nil {
-		return TaggedRefs{}, errors.Wrapf(err, "tagging clusterRef %s as %s", rs.clusterRef.String(), tag)
+		return TaggedRefs{}, errors.Wrapf(err, "tagging clusterRef %s as %s", rs.ClusterRef().String(), tag)
 	}
 	return TaggedRefs{
 		LocalRef:   localTagged,
