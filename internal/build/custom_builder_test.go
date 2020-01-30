@@ -154,11 +154,15 @@ func newFakeCustomBuildFixture(t *testing.T) *fakeCustomBuildFixture {
 
 func refSetFromString(s string) container.RefSet {
 	sel := container.MustParseSelector(s)
-	return container.SimpleRefSet(sel)
+	return container.MustSimpleRefSet(sel)
 }
 
 func refSetWithRegistryFromString(ref string, reg container.Registry) container.RefSet {
-	return container.NewRefSet(container.MustParseSelector(ref), reg)
+	r, err := container.NewRefSet(container.MustParseSelector(ref), reg)
+	if err != nil {
+		panic(err)
+	}
+	return r
 }
 
 func (f *fakeCustomBuildFixture) teardown() {

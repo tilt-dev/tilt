@@ -24,19 +24,36 @@ type RefSet struct {
 	Registry Registry
 }
 
-func NewRefSet(confRef RefSelector, reg Registry) RefSet {
-	// TODO(maia): validate
-	return RefSet{
+func NewRefSet(confRef RefSelector, reg Registry) (RefSet, error) {
+	r := RefSet{
 		ConfigurationRef: confRef,
 		Registry:         reg,
 	}
+	return r, r.validate()
 }
 
-// SimpleRefSet makes a ref set (with an empty Registry, i.e. without registry substitutions) for the given selector.
-func SimpleRefSet(ref RefSelector) RefSet {
-	return RefSet{
+func MustSimpleRefSet(ref RefSelector) RefSet {
+	r := RefSet{
 		ConfigurationRef: ref,
 	}
+	if err := r.validate(); err != nil {
+		panic(err)
+	}
+	return r
+}
+
+func (rs RefSet) validate() error {
+	_, err := rs.Registry.ReplaceRegistryForLocalRef(rs.ConfigurationRef)
+	if err != nil {
+		return errors.Wrapf(err, "validating new RefSet with configuration ref %q", rs.ConfigurationRef)
+	}
+
+	_, err = rs.Registry.ReplaceRegistryForClusterRef(rs.ConfigurationRef)
+	if err != nil {
+		return errors.Wrapf(err, "validating new RefSet with configuration ref %q", rs.ConfigurationRef)
+	}
+
+	return nil
 }
 
 // LocalRef returns the ref by which this image is referenced from outside the cluster
