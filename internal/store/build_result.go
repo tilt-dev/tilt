@@ -37,6 +37,9 @@ func NewLocalBuildResult(id model.TargetID) LocalBuildResult {
 type ImageBuildResult struct {
 	id model.TargetID
 
+	// TODO(maia): it would make the most sense for the ImageBuildResult to know what it BUILT, and for us
+	//   to calculate the ClusterRef (if different from LocalRef) when we have to inject it, but
+	//   storing all the info on ImageBuildResult for now was the fastest/safest way to ship this.
 	// Note: image tag is derived from a content-addressable digest.
 	ImageLocalRef   reference.NamedTagged // built image, as referenced from outside the cluster (in Dockerfile, docker push etc.)
 	ImageClusterRef reference.NamedTagged // built image, as referenced from the cluster (in K8s YAML, etc.)
@@ -435,7 +438,7 @@ func RunningContainersForTargetForOnePod(iTarget model.ImageTarget, runtimeState
 	var containers []ContainerInfo
 	for _, c := range pod.Containers {
 		// Only return containers matching our image
-		if c.ImageRef == nil || iTarget.Refs.ClusterRef.Name() != c.ImageRef.Name() {
+		if c.ImageRef == nil || iTarget.Refs.ClusterRef().Name() != c.ImageRef.Name() {
 			continue
 		}
 		if c.ID == "" || c.Name == "" || !c.Ready {

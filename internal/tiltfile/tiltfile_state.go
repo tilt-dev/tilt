@@ -534,7 +534,7 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 
 func (s *tiltfileState) assembleImages() error {
 	registry := s.defaultRegistryHost
-	if s.orchestrator() == model.OrchestratorK8s && s.privateRegistry != "" {
+	if s.orchestrator() == model.OrchestratorK8s && !s.privateRegistry.Empty() {
 		// If we've found a private registry in the cluster at run-time,
 		// use that instead of the one in the tiltfile
 		s.logger.Infof("Auto-detected private registry from environment: %s", s.privateRegistry)
@@ -543,7 +543,7 @@ func (s *tiltfileState) assembleImages() error {
 
 	for _, imageBuilder := range s.buildIndex.images {
 		var err error
-		imageBuilder.deploymentRef, err = container.ReplaceRegistry(registry, imageBuilder.configurationRef)
+		imageBuilder.deploymentRef, err = registry.ReplaceRegistryForLocalRef(imageBuilder.configurationRef)
 		if err != nil {
 			return err
 		}
@@ -568,7 +568,7 @@ func (s *tiltfileState) assembleImages() error {
 }
 
 func (s *tiltfileState) assembleDC() error {
-	if len(s.dc.services) > 0 && s.defaultRegistryHost != "" {
+	if len(s.dc.services) > 0 && !s.defaultRegistryHost.Empty() {
 		return errors.New("default_registry is not supported with docker compose")
 	}
 
@@ -1069,12 +1069,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 		claimStatus[id] = claimPending
 
 		iTarget := model.ImageTarget{
-			Refs: container.RefSet{
-				ConfigurationRef: image.configurationRef,
-				// TODO(maia): LocalRef and ClusterRef may be different!
-				LocalRef:   image.deploymentRef,
-				ClusterRef: image.deploymentRef,
-			},
+			Refs:           container.NewRefSet(image.configurationRef, image.deploymentRef, image.deploymentRef),
 			MatchInEnvVars: image.matchInEnvVars,
 		}
 

@@ -2603,7 +2603,7 @@ func TestPrivateRegistry(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.kCli.Registry = "localhost:32000"
+	f.kCli.Registry = container.NewRegistry("localhost:32000")
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -2623,7 +2623,7 @@ func TestPrivateRegistryDockerCompose(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.kCli.Registry = "localhost:32000"
+	f.kCli.Registry = container.NewRegistry("localhost:32000")
 
 	f.setupFoo()
 	f.file("docker-compose.yml", `version: '3'
@@ -4724,9 +4724,9 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 				f.t.FailNow()
 			}
 
-			// TODO(maia): also verify expectedBuildRef
+			// TODO(maia): also verify expectedLocalRef
 			expectedDeployRef := container.MustParseNamed(opt.image.deploymentRef)
-			if !assert.Equal(f.t, expectedDeployRef.String(), image.Refs.ClusterRef.String(), "manifest %v image injected ref", m.Name) {
+			if !assert.Equal(f.t, expectedDeployRef.String(), image.Refs.ClusterRef().String(), "manifest %v image injected ref", m.Name) {
 				f.t.FailNow()
 			}
 

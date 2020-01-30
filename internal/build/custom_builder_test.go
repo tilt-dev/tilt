@@ -158,10 +158,7 @@ func refSetFromString(s string) container.RefSet {
 func refSetFromStrings(local, cluster string) container.RefSet {
 	localNamed := container.MustParseNamed(local)
 	clusterNamed := container.MustParseNamed(cluster)
-	return container.RefSet{
-		LocalRef:   localNamed,
-		ClusterRef: clusterNamed,
-	}
+	return container.NewRefSet(container.NameSelector(localNamed), localNamed, clusterNamed)
 }
 
 func (f *fakeCustomBuildFixture) teardown() {

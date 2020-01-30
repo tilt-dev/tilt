@@ -168,20 +168,6 @@ var equalitytests = []struct {
 		false,
 	},
 	{
-		"ImageTarget.ClusterRef unequal",
-		Manifest{}.WithImageTarget(ImageTarget{Refs: container.RefSet{ClusterRef: img1.AsNamedOnly()}}),
-		Manifest{}.WithImageTarget(ImageTarget{Refs: container.RefSet{ClusterRef: img2.AsNamedOnly()}}),
-		false,
-		true,
-	},
-	{
-		"ImageTarget.ClusterRef equal",
-		Manifest{}.WithImageTarget(ImageTarget{Refs: container.RefSet{ClusterRef: img1.AsNamedOnly()}}),
-		Manifest{}.WithImageTarget(ImageTarget{Refs: container.RefSet{ClusterRef: img1.AsNamedOnly()}}),
-		true,
-		false,
-	},
-	{
 		"ImageTarget.DockerIgnores unequal",
 		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{"a", "b"}}}),
 		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{"b", "a"}}}),

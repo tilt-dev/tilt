@@ -92,7 +92,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 
 	var dontFallBackErr error
 	for _, info := range liveUpdInfos {
-		ps.StartPipelineStep(ctx, "updating image %s", info.iTarget.Refs.ClusterRef.Name())
+		ps.StartPipelineStep(ctx, "updating image %s", info.iTarget.Refs.ClusterRef().Name())
 		err = lubad.buildAndDeploy(ctx, ps, containerUpdater, info.iTarget, info.state, info.changedFiles, info.runs, info.hotReload)
 		if err != nil {
 			if !buildcontrol.IsDontFallBackError(err) {
