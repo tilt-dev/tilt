@@ -29,25 +29,41 @@ type Registry struct {
 
 func (r Registry) Empty() bool { return r.Host == "" }
 
-func NewRegistry(host string) Registry {
-	// TODO(maia): validate
-	return Registry{Host: host}
+func NewRegistry(host string) (Registry, error) {
+	r := Registry{Host: host}
+	return r, r.Validate()
 }
 
-func NewRegistryWithHostFromCluster(host, fromCluster string) Registry {
-	// TODO(maia): validate
-	return Registry{Host: host, hostFromCluster: fromCluster}
+func MustNewRegistry(host string) Registry {
+	r, err := NewRegistry(host)
+	if err != nil {
+		panic(err)
+	}
+	return r
+}
+
+func NewRegistryWithHostFromCluster(host, fromCluster string) (Registry, error) {
+	r := Registry{Host: host, hostFromCluster: fromCluster}
+	return r, r.Validate()
+}
+
+func MustNewRegistryWithHostFromCluster(host, fromCluster string) Registry {
+	r, err := NewRegistryWithHostFromCluster(host, fromCluster)
+	if err != nil {
+		panic(err)
+	}
+	return r
 }
 
 func (r Registry) Validate() error {
 	err := validateHost(r.Host)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "validating registry host %q", r.Host)
 	}
 	if r.hostFromCluster != "" {
 		err = validateHost(r.hostFromCluster)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "validating registry hostFromCluster %q", r.hostFromCluster)
 		}
 	}
 	return nil

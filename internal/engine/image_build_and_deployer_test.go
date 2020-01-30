@@ -422,9 +422,9 @@ func TestBuildAndDeployUsesCorrectRef(t *testing.T) {
 
 			manifest := test.manifest(f)
 			for i := range manifest.ImageTargets {
-				reg := container.NewRegistry("foo.com")
+				reg := container.MustNewRegistry("foo.com")
 				if test.useLocalRegistry {
-					reg = container.NewRegistryWithHostFromCluster("foo.com", "registry:1234")
+					reg = container.MustNewRegistryWithHostFromCluster("foo.com", "registry:1234")
 				}
 				manifest.ImageTargets[i].Refs.Registry = reg
 			}
@@ -751,7 +751,7 @@ func (f *ibdFixture) TearDown() {
 }
 
 func (f *ibdFixture) replaceRegistry(defaultReg string, sel container.RefSelector) reference.Named {
-	reg := container.NewRegistry(defaultReg)
+	reg := container.MustNewRegistry(defaultReg)
 	named, err := reg.ReplaceRegistryForLocalRef(sel)
 	if err != nil {
 		f.T().Fatal(err)

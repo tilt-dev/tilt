@@ -2603,7 +2603,7 @@ func TestPrivateRegistry(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.kCli.Registry = container.NewRegistry("localhost:32000")
+	f.kCli.Registry = container.MustNewRegistry("localhost:32000")
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -2623,7 +2623,7 @@ func TestPrivateRegistryDockerCompose(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.kCli.Registry = container.NewRegistry("localhost:32000")
+	f.kCli.Registry = container.MustNewRegistry("localhost:32000")
 
 	f.setupFoo()
 	f.file("docker-compose.yml", `version: '3'
