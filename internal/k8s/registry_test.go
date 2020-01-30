@@ -6,8 +6,6 @@ import (
 	goruntime "runtime"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/pkg/logger"
 
@@ -43,8 +41,7 @@ func TestRegistryFound(t *testing.T) {
 	out := &bytes.Buffer{}
 	l := logger.NewLogger(logger.InfoLvl, out)
 	ctx := logger.WithLogger(context.Background(), l)
-	registry, err := registryAsync.Registry(ctx)
-	require.NoError(t, err)
+	registry := registryAsync.Registry(ctx)
 	assert.Equal(t, "localhost:32000", registry.Host)
 }
 
@@ -65,8 +62,7 @@ func TestRegistryNotFound(t *testing.T) {
 	out := &bytes.Buffer{}
 	l := logger.NewLogger(logger.InfoLvl, out)
 	ctx := logger.WithLogger(context.Background(), l)
-	registry, err := registryAsync.Registry(ctx)
-	require.NoError(t, err)
+	registry := registryAsync.Registry(ctx)
 	assert.Equal(t, "", registry.Host)
 	assert.Contains(t, out.String(), "microk8s.enable registry")
 }
