@@ -29,20 +29,20 @@ func NewRefSet(confRef RefSelector, reg Registry) (RefSet, error) {
 		ConfigurationRef: confRef,
 		Registry:         reg,
 	}
-	return r, r.validate()
+	return r, r.Validate()
 }
 
 func MustSimpleRefSet(ref RefSelector) RefSet {
 	r := RefSet{
 		ConfigurationRef: ref,
 	}
-	if err := r.validate(); err != nil {
+	if err := r.Validate(); err != nil {
 		panic(err)
 	}
 	return r
 }
 
-func (rs RefSet) validate() error {
+func (rs RefSet) Validate() error {
 	if !rs.Registry.Empty() {
 		err := rs.Registry.Validate()
 		if err != nil {
