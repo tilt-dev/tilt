@@ -38,13 +38,14 @@ type ImageBuildResult struct {
 	id model.TargetID
 
 	// TODO(maia): it would make the most sense for the ImageBuildResult to know what it BUILT, and for us
-	//   to calculate the ClusterRef (if different from localRef) when we have to inject it, but
+	//   to calculate the ClusterRef (if different from LocalRef) when we have to inject it, but
 	//   storing all the info on ImageBuildResult for now was the fastest/safest way to ship this.
 	// Note: image tag is derived from a content-addressable digest.
 	ImageLocalRef   reference.NamedTagged // built image, as referenced from outside the cluster (in Dockerfile, docker push etc.)
 	ImageClusterRef reference.NamedTagged // built image, as referenced from the cluster (in K8s YAML, etc.)
-	// Often localRef and ClusterRef will be the same, but may diverge: e.g. when using KIND + local registry,
-	// localRef is localhost:1234/my-img:tilt-abc, ClusterRef is http://registry/my-img:tilt-abc
+	// Often ImageLocalRef and ImageClusterRef will be the same, but may diverge: e.g.
+	// when using KIND + local registry, localRef is localhost:1234/my-img:tilt-abc,
+	// ClusterRef is http://registry/my-img:tilt-abc
 }
 
 func (r ImageBuildResult) TargetID() model.TargetID   { return r.id }
