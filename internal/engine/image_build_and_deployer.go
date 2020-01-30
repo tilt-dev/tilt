@@ -225,7 +225,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 
 	l.Infof("Applying via kubectl:")
 	for _, displayName := range kTarget.DisplayNames {
-		l.Infof("   %s", displayName)
+		l.Infof("→ %s", displayName)
 	}
 
 	deployed, err := ibd.k8sClient.Upsert(ctx, newK8sEntities)
@@ -255,7 +255,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 
 func (ibd *ImageBuildAndDeployer) indentLogger(ctx context.Context) context.Context {
 	l := logger.Get(ctx)
-	newL := logger.NewPrefixedLogger(logger.Blue(l).Sprint("  │ "), l)
+	newL := logger.NewPrefixedLogger(logger.Blue(l).Sprint("     "), l)
 	return logger.WithLogger(ctx, newL)
 }
 

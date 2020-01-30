@@ -585,6 +585,22 @@ func (s *LogStore) logHelper(spansToLog map[SpanID]*Span, showManifestPrefix boo
 			}
 		}
 
+		if segment.Fields[logger.FieldNameBuildProgress] == "0" {
+			// Estimate width of a "normal" Terminal
+			const lineLength = 80
+
+			// If the text exceeds lineLength, still add a short border
+			const minBorderLength = 5
+			textPadding := 2
+			borderDashCount := lineLength - len(segment.Text) - textPadding
+			if borderDashCount < minBorderLength {
+				borderDashCount = minBorderLength
+			}
+
+			border := "\n" + strings.Repeat("═", borderDashCount) + "╡ "
+			sb.WriteString(border)
+		}
+
 		sb.WriteString(string(segment.Text))
 		isFirstLine = false
 
