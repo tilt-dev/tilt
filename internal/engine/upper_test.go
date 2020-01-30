@@ -189,7 +189,7 @@ var _ BuildAndDeployer = &fakeBuildAndDeployer{}
 
 func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deployTarget model.TargetSpec) store.BuildResult {
 	tag := fmt.Sprintf("tilt-%d", b.buildCount)
-	localRefTagged := container.MustWithTag(iTarget.Refs.LocalRef, tag)
+	localRefTagged := container.MustWithTag(iTarget.Refs.LocalRef(), tag)
 	clusterRefTagged := container.MustWithTag(iTarget.Refs.ClusterRef(), tag)
 
 	var result store.BuildResult
@@ -3891,7 +3891,7 @@ func (f *testFixture) newManifestWithRef(name string, ref reference.Named) model
 
 	iTarget := NewSanchoLiveUpdateImageTarget(f)
 	iTarget.Refs.ConfigurationRef = refSel
-	iTarget.Refs.LocalRef = ref
+	iTarget.Refs = iTarget.Refs.WithLocalRef(ref)
 	iTarget.Refs = iTarget.Refs.WithClusterRef(ref)
 
 	return manifestbuilder.New(f, model.ManifestName(name)).
@@ -4091,8 +4091,8 @@ func deployResultSet(manifest model.Manifest, uid types.UID, hashes []k8s.PodTem
 	resultSet := store.BuildResultSet{}
 	tag := "deadbeef"
 	for _, iTarget := range manifest.ImageTargets {
-		localRefTagged := container.MustWithTag(iTarget.Refs.LocalRef, tag)
-		clusterRefTagged := container.MustWithTag(iTarget.Refs.LocalRef, tag)
+		localRefTagged := container.MustWithTag(iTarget.Refs.LocalRef(), tag)
+		clusterRefTagged := container.MustWithTag(iTarget.Refs.LocalRef(), tag)
 		resultSet[iTarget.ID()] = store.NewImageBuildResult(iTarget.ID(), localRefTagged, clusterRefTagged)
 	}
 	ktID := manifest.K8sTarget().ID()
