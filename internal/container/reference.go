@@ -10,7 +10,7 @@ import (
 // RefSet describes the references for a given image:
 //  1. ConfigurationRef: ref as specified in the Tiltfile
 //  2. LocalRef(): ref as used outside of the cluster (for Docker etc.)
-//  3. ClusterRef()L: ref as used inside the cluster (in k8s YAML etc.). Often equivalent to
+//  3. ClusterRef(): ref as used inside the cluster (in k8s YAML etc.). Often equivalent to
 //      LocalRef, but in some cases they diverge: e.g. when using a local registry with KIND,
 //      the image localhost:1234/my-image (localRef) is referenced in the YAML as
 //      http://registry/my-image (clusterRef).
@@ -32,7 +32,7 @@ func NewRefSet(confRef RefSelector, reg Registry) RefSet {
 	}
 }
 
-// SimpleRefSet makes a ref set for the given selector with an empty Registry.
+// SimpleRefSet makes a ref set (with an empty Registry, i.e. without registry substitutions) for the given selector.
 func SimpleRefSet(ref RefSelector) RefSet {
 	return RefSet{
 		ConfigurationRef: ref,
@@ -80,7 +80,7 @@ func (rs RefSet) TagRefs(tag string) (TaggedRefs, error) {
 	}
 
 	// TODO(maia): maybe TaggedRef should behave like RefSet, where clusterRef is optional
-	//   and if not set, the accessor returns localRef instead
+	//   and if not set, the accessor returns LocalRef instead
 	clusterTagged, err := reference.WithTag(rs.ClusterRef(), tag)
 	if err != nil {
 		return TaggedRefs{}, errors.Wrapf(err, "tagging clusterRef %s as %s", rs.ClusterRef().String(), tag)
