@@ -43,6 +43,12 @@ func MustSimpleRefSet(ref RefSelector) RefSet {
 }
 
 func (rs RefSet) validate() error {
+	if !rs.Registry.Empty() {
+		err := rs.Registry.Validate()
+		if err != nil {
+			return errors.Wrapf(err, "validating new RefSet with configuration ref %q", rs.ConfigurationRef)
+		}
+	}
 	_, err := rs.Registry.ReplaceRegistryForLocalRef(rs.ConfigurationRef)
 	if err != nil {
 		return errors.Wrapf(err, "validating new RefSet with configuration ref %q", rs.ConfigurationRef)
