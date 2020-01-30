@@ -73,7 +73,6 @@ var newRegistryError = []struct {
 	defaultReg    string
 	expectedError string
 }{
-	{"", "invalid reference format"},
 	{"invalid", "repository name must be canonical"},
 	{"foo/bar/baz", "repository name must be canonical"},
 }
@@ -108,7 +107,7 @@ func TestNewRegistryWithHostFromClusterError(t *testing.T) {
 	}
 }
 
-func TestNewRegistyEmptyOK(t *testing.T) {
+func TestNewRegistryEmptyOK(t *testing.T) {
 	_, err := NewRegistryWithHostFromCluster("", "")
 	require.NoError(t, err)
 }
