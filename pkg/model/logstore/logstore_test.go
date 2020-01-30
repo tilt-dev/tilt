@@ -375,10 +375,19 @@ func TestContinuingLines(t *testing.T) {
 		name:    "fe",
 		message: "layer 1: done\n",
 		ts:      now,
-		fields:  map[string]string{logger.FieldNameProgressID: "layer 1"},
+		fields: map[string]string{
+			logger.FieldNameProgressID:        "layer 1",
+			logger.FieldNameProgressMustPrint: "1",
+		},
 	}, nil)
 
 	assert.Equal(t, []LogLine{
-		LogLine{Text: "fe          ┊ layer 1: done\n", SpanID: "fe", ProgressID: "layer 1", Time: now},
+		LogLine{
+			Text:              "fe          ┊ layer 1: done\n",
+			SpanID:            "fe",
+			ProgressID:        "layer 1",
+			ProgressMustPrint: true,
+			Time:              now,
+		},
 	}, l.ContinuingLines(c2))
 }

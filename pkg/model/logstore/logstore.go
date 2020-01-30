@@ -107,7 +107,15 @@ type LogLine struct {
 	Text       string
 	SpanID     SpanID
 	ProgressID string
-	Time       time.Time
+
+	// Most progress lines are optional. For example, if a bunch
+	// of little upload updates come in, it's ok to skip some.
+	//
+	// ProgressMustPrint indicates that this line must appear in the
+	// output - e.g., a line that communicates that the upload finished.
+	ProgressMustPrint bool
+
+	Time time.Time
 }
 
 func linesToString(lines []LogLine) string {
@@ -431,10 +439,11 @@ func (s *LogStore) ContinuingLines(checkpoint Checkpoint) []LogLine {
 	if isChangingSpanContinuation {
 		return append([]LogLine{
 			LogLine{
-				Text:       "\n",
-				SpanID:     precedingSegment.SpanID,
-				ProgressID: precedingSegment.Fields[logger.FieldNameProgressID],
-				Time:       precedingSegment.Time,
+				Text:              "\n",
+				SpanID:            precedingSegment.SpanID,
+				ProgressID:        precedingSegment.Fields[logger.FieldNameProgressID],
+				ProgressMustPrint: precedingSegment.Fields[logger.FieldNameProgressMustPrint] == "1",
+				Time:              precedingSegment.Time,
 			},
 		}, result...)
 	}
@@ -594,6 +603,7 @@ func (s *LogStore) toLogLines(options logOptions) []LogLine {
 	spanID := SpanID("")
 	time := time.Time{}
 	progressID := ""
+	progressMustPrint := false
 	lastLineCompleted := false
 
 	maybePushLine := func() {
@@ -603,10 +613,11 @@ func (s *LogStore) toLogLines(options logOptions) []LogLine {
 			return
 		}
 		result = append(result, LogLine{
-			Text:       sb.String(),
-			SpanID:     spanID,
-			ProgressID: progressID,
-			Time:       time,
+			Text:              sb.String(),
+			SpanID:            spanID,
+			ProgressID:        progressID,
+			ProgressMustPrint: progressMustPrint,
+			Time:              time,
 		})
 		sb = strings.Builder{}
 		lastLineCompleted = true
@@ -671,6 +682,7 @@ func (s *LogStore) toLogLines(options logOptions) []LogLine {
 		sb.WriteString(string(segment.Text))
 		isFirstLine = false
 		progressID = segment.Fields[logger.FieldNameProgressID]
+		progressMustPrint = segment.Fields[logger.FieldNameProgressMustPrint] == "1"
 
 		// If this segment is not complete, run ahead and try to complete it.
 		if segment.IsComplete() {
