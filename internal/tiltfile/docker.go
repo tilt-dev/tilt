@@ -458,16 +458,12 @@ func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Bu
 		return nil, err
 	}
 
-	// NOTE(dmiller): we append a fake path to the domain so that we can try and validate it _during_ Tiltfile execution
-	// rather than wait to do it when converting the data to the Engine state.
-	// As far as I can tell there's no way in Docker to validate a domain _independently_ from a canonical ref.
-	fakeRef := fmt.Sprintf("%s/%s", dr, "fake")
-	_, err := reference.ParseNamed(fakeRef)
-	if err != nil {
-		return starlark.None, err
+	reg := container.NewRegistry(dr)
+	if err := reg.Validate(); err != nil {
+		return starlark.None, errors.Wrapf(err, "validating defaultRegistry %q", dr)
 	}
 
-	s.defaultRegistryHost = container.NewRegistry(dr)
+	s.defaultRegistryHost = reg
 
 	return starlark.None, nil
 }

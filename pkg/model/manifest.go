@@ -397,6 +397,7 @@ var k8sTargetAllowUnexported = cmp.AllowUnexported(K8sTarget{})
 var localTargetAllowUnexported = cmp.AllowUnexported(LocalTarget{})
 var selectorAllowUnexported = cmp.AllowUnexported(container.RefSelector{})
 var refSetAllowUnexported = cmp.AllowUnexported(container.RefSet{})
+var registryAllowUnexported = cmp.AllowUnexported(container.Registry{})
 
 var dockerRefEqual = cmp.Comparer(func(a, b reference.Named) bool {
 	aNil := a == nil
@@ -422,5 +423,6 @@ func DeepEqual(x, y interface{}) bool {
 		localTargetAllowUnexported,
 		selectorAllowUnexported,
 		refSetAllowUnexported,
+		registryAllowUnexported,
 		dockerRefEqual)
 }
