@@ -250,15 +250,25 @@ func (w *PodWatcher) dispatchPodChange(ctx context.Context, pod *v1.Pod, st stor
 	st.Dispatch(NewPodChangeAction(pod, mn, ancestorUID))
 }
 
-func (w *PodWatcher) dispatchPodChangesLoop(ctx context.Context, ch <-chan *v1.Pod, st store.RStore) {
+func (w *PodWatcher) dispatchPodChangesLoop(ctx context.Context, ch <-chan k8s.ObjectUpdate, st store.RStore) {
 	for {
 		select {
-		case pod, ok := <-ch:
+		case obj, ok := <-ch:
 			if !ok {
 				return
 			}
 
-			go w.dispatchPodChange(ctx, pod, st)
+			pod, ok := obj.AsPod()
+			if ok {
+				go w.dispatchPodChange(ctx, pod, st)
+				continue
+			}
+
+			namespace, name, ok := obj.AsDeletedKey()
+			if ok {
+				go st.Dispatch(NewPodDeleteAction(k8s.PodID(name), namespace))
+				continue
+			}
 		case <-ctx.Done():
 			return
 		}

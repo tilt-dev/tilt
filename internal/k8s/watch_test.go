@@ -42,6 +42,36 @@ func TestK8sClient_WatchPods(t *testing.T) {
 	tf.runPods(pods, pods)
 }
 
+func TestK8sClient_WatchPodDeletion(t *testing.T) {
+	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
+
+	podID := PodID("pod1")
+	pod := fakePod(podID, "image1")
+	ch := tf.watchPods()
+	tf.addObjects(pod)
+
+	select {
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting for pod update")
+	case obj := <-ch:
+		asPod, _ := obj.AsPod()
+		assert.Equal(t, podID, PodIDFromPod(asPod))
+	}
+
+	err := tf.tracker.Delete(PodGVR, "default", "pod1")
+	assert.NoError(t, err)
+
+	select {
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting for pod delete")
+	case obj := <-ch:
+		ns, name, _ := obj.AsDeletedKey()
+		assert.Equal(t, "pod1", name)
+		assert.Equal(t, Namespace("default"), ns)
+	}
+}
+
 func TestK8sClient_WatchPodsFilterNonPods(t *testing.T) {
 	tf := newWatchTestFixture(t)
 	defer tf.TearDown()
@@ -309,7 +339,7 @@ func (tf *watchTestFixture) TearDown() {
 	tf.cancel()
 }
 
-func (tf *watchTestFixture) watchPods() <-chan *v1.Pod {
+func (tf *watchTestFixture) watchPods() <-chan ObjectUpdate {
 	ch, err := tf.kCli.WatchPods(tf.ctx, labels.Everything())
 	if err != nil {
 		tf.t.Fatalf("watchPods: %v", err)
@@ -348,16 +378,20 @@ func (tf *watchTestFixture) runPods(input []runtime.Object, expected []runtime.O
 	tf.assertPods(expected, ch)
 }
 
-func (tf *watchTestFixture) assertPods(expectedOutput []runtime.Object, ch <-chan *v1.Pod) {
+func (tf *watchTestFixture) assertPods(expectedOutput []runtime.Object, ch <-chan ObjectUpdate) {
 	var observedPods []runtime.Object
 
 	done := false
 	for !done {
 		select {
-		case pod, ok := <-ch:
+		case obj, ok := <-ch:
 			if !ok {
 				done = true
-			} else {
+				continue
+			}
+
+			pod, ok := obj.AsPod()
+			if ok {
 				observedPods = append(observedPods, pod)
 			}
 		case <-time.After(10 * time.Millisecond):

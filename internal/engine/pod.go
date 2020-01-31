@@ -18,6 +18,16 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
+func handlePodDeleteAction(ctx context.Context, state *store.EngineState, action k8swatch.PodDeleteAction) {
+	// PodDeleteActions only have the pod id. We don't have a good way to tie them back to their ancestors.
+	// So just brute-force it.
+	for _, target := range state.ManifestTargets {
+		ms := target.State
+		runtime := ms.K8sRuntimeState()
+		delete(runtime.Pods, action.PodID)
+	}
+}
+
 func handlePodChangeAction(ctx context.Context, state *store.EngineState, action k8swatch.PodChangeAction) {
 	mt := matchPodChangeToManifest(state, action)
 	if mt == nil {

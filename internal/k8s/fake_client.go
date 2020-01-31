@@ -85,7 +85,7 @@ type fakeServiceWatch struct {
 
 type fakePodWatch struct {
 	ls labels.Selector
-	ch chan *v1.Pod
+	ch chan ObjectUpdate
 }
 
 func (c *FakeK8sClient) EmitService(ls labels.Selector, s *v1.Service) {
@@ -149,14 +149,24 @@ func (c *FakeK8sClient) EmitPod(ls labels.Selector, p *v1.Pod) {
 	defer c.podWatcherMu.Unlock()
 	for _, w := range c.podWatches {
 		if SelectorEqual(ls, w.ls) {
-			w.ch <- p
+			w.ch <- ObjectUpdate{obj: p}
 		}
 	}
 }
 
-func (c *FakeK8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan *v1.Pod, error) {
+func (c *FakeK8sClient) EmitPodDelete(ls labels.Selector, p *v1.Pod) {
 	c.podWatcherMu.Lock()
-	ch := make(chan *v1.Pod, 20)
+	defer c.podWatcherMu.Unlock()
+	for _, w := range c.podWatches {
+		if SelectorEqual(ls, w.ls) {
+			w.ch <- ObjectUpdate{obj: p, isDelete: true}
+		}
+	}
+}
+
+func (c *FakeK8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan ObjectUpdate, error) {
+	c.podWatcherMu.Lock()
+	ch := make(chan ObjectUpdate, 20)
 	c.podWatches = append(c.podWatches, fakePodWatch{ls, ch})
 	c.podWatcherMu.Unlock()
 
