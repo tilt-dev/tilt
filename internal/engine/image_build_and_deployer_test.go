@@ -426,7 +426,7 @@ func TestBuildAndDeployUsesCorrectRef(t *testing.T) {
 				if test.useLocalRegistry {
 					reg = container.MustNewRegistryWithHostFromCluster("foo.com", "registry:1234")
 				}
-				manifest.ImageTargets[i].Refs.Registry = reg
+				manifest.ImageTargets[i].Refs = manifest.ImageTargets[i].Refs.MustWithRegistry(reg)
 			}
 
 			result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
