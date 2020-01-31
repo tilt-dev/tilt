@@ -72,7 +72,9 @@ test: test-go test-js
 
 # skip some tests that are slow and not always relevant
 shorttest:
-	go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags 'skipcontainertests' -timeout 60s ./...
+	# TODO(matt) skipdockercomposetests only skips the tiltfile DC tests at the moment
+	# we might also want to skip the ones in engine
+	go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skipdockercomposetests -timeout 60s ./...
 
 integration:
 ifneq ($(CIRCLECI),true)
