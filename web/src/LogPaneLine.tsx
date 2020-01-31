@@ -75,15 +75,16 @@ let LineContent = styled(AnsiLine)`
   padding-left: ${SizeUnit(0.6)};
   flex: 1;
   
-  // Make the layout around the text a bit more generous
+  // Make spacing around "header" text more generous for legibility
+  // Padding isn't on LogLinePrefixRoot, lest we squish the LogLinePrefix
   ${LogPaneLineRoot}.is-buildEvent-init &,
   ${LogPaneLineRoot}.is-buildEvent-fallback & {
     padding-top: ${SizeUnit(0.2)};
     padding-bottom: ${SizeUnit(0.2)};
   }
 
-  // A left border draws your eye to notable logs. 
-  // It's to the right of the prefix, so its position is always near the log.
+  // A left border draws your eye to notable log lines
+  // Placed right of the prefix, so it's always just next to the log text
   ${LogPaneLineRoot}.is-warning & {
     border-left: ${Width.logLineGutter}px solid ${Color.yellow};
   }
