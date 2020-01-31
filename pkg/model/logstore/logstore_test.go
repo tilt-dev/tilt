@@ -59,7 +59,7 @@ func TestLogPrefix(t *testing.T) {
 	l := NewLogStore()
 	l.Append(newGlobalTestLogEvent("hello\n"), nil)
 	l.Append(newTestLogEvent("prefix", time.Now(), "bar\nbaz\n"), nil)
-	expected := "hello\nprefix      ┊ bar\nprefix      ┊ baz\n"
+	expected := "hello\n       prefix │ bar\n       prefix │ baz\n"
 	assert.Equal(t, expected, l.String())
 }
 
@@ -70,7 +70,7 @@ func TestLogInterleaving(t *testing.T) {
 	l.Append(newTestLogEvent("prefix", time.Now(), "START LONG MESSAGE\ngoodbye ... "), nil)
 	l.Append(newGlobalTestLogEvent("world\nnext line of global log"), nil)
 	l.Append(newTestLogEvent("prefix", time.Now(), "world\nEND LONG MESSAGE"), nil)
-	expected := "hello ... world\nprefix      ┊ START LONG MESSAGE\nprefix      ┊ goodbye ... world\nnext line of global log\nprefix      ┊ END LONG MESSAGE"
+	expected := "hello ... world\n       prefix │ START LONG MESSAGE\n       prefix │ goodbye ... world\nnext line of global log\n       prefix │ END LONG MESSAGE"
 	assert.Equal(t, expected, l.String())
 }
 
@@ -104,11 +104,11 @@ func TestLogTailPrefixes(t *testing.T) {
 	l.Append(newGlobalTestLogEvent("5\n"), nil)
 	assert.Equal(t, "", l.Tail(0))
 	assert.Equal(t, "5\n", l.Tail(1))
-	assert.Equal(t, "fe          ┊ 4\n5\n", l.Tail(2))
-	assert.Equal(t, "fe          ┊ 3\nfe          ┊ 4\n5\n", l.Tail(3))
-	assert.Equal(t, "2\nfe          ┊ 3\nfe          ┊ 4\n5\n", l.Tail(4))
-	assert.Equal(t, "1\n2\nfe          ┊ 3\nfe          ┊ 4\n5\n", l.Tail(5))
-	assert.Equal(t, "1\n2\nfe          ┊ 3\nfe          ┊ 4\n5\n", l.Tail(6))
+	assert.Equal(t, "           fe │ 4\n5\n", l.Tail(2))
+	assert.Equal(t, "           fe │ 3\n           fe │ 4\n5\n", l.Tail(3))
+	assert.Equal(t, "2\n           fe │ 3\n           fe │ 4\n5\n", l.Tail(4))
+	assert.Equal(t, "1\n2\n           fe │ 3\n           fe │ 4\n5\n", l.Tail(5))
+	assert.Equal(t, "1\n2\n           fe │ 3\n           fe │ 4\n5\n", l.Tail(6))
 }
 
 func TestLogTailSpan(t *testing.T) {
@@ -131,8 +131,8 @@ func TestLogTailParts(t *testing.T) {
 	l.Append(newTestLogEvent("fe", time.Now(), "xy"), nil)
 	l.Append(newGlobalTestLogEvent("bc\n"), nil)
 	l.Append(newTestLogEvent("fe", time.Now(), "z\n"), nil)
-	assert.Equal(t, "fe          ┊ xyz\n", l.Tail(1))
-	assert.Equal(t, "abc\nfe          ┊ xyz\n", l.Tail(2))
+	assert.Equal(t, "           fe │ xyz\n", l.Tail(1))
+	assert.Equal(t, "abc\n           fe │ xyz\n", l.Tail(2))
 }
 
 func TestContinuingString(t *testing.T) {
@@ -158,10 +158,10 @@ func TestContinuingStringOneSource(t *testing.T) {
 
 	l.Append(newTestLogEvent("fe", time.Now(), "foo"), nil)
 	c2 := l.Checkpoint()
-	assert.Equal(t, "fe          ┊ foo", l.ContinuingString(c1))
+	assert.Equal(t, "           fe │ foo", l.ContinuingString(c1))
 
 	l.Append(newTestLogEvent("fe", time.Now(), "bar\n"), nil)
-	assert.Equal(t, "fe          ┊ foobar\n", l.ContinuingString(c1))
+	assert.Equal(t, "           fe │ foobar\n", l.ContinuingString(c1))
 	assert.Equal(t, "bar\n", l.ContinuingString(c2))
 }
 
@@ -176,20 +176,20 @@ func TestContinuingStringTwoSources(t *testing.T) {
 
 	l.Append(newTestLogEvent("fe", time.Now(), "xy"), nil)
 	c3 := l.Checkpoint()
-	assert.Equal(t, "a\nfe          ┊ xy", l.ContinuingString(c1))
-	assert.Equal(t, "\nfe          ┊ xy", l.ContinuingString(c2))
+	assert.Equal(t, "a\n           fe │ xy", l.ContinuingString(c1))
+	assert.Equal(t, "\n           fe │ xy", l.ContinuingString(c2))
 
 	l.Append(newGlobalTestLogEvent("bc\n"), nil)
 	c4 := l.Checkpoint()
-	assert.Equal(t, "abc\nfe          ┊ xy", l.ContinuingString(c1))
-	assert.Equal(t, "\nfe          ┊ xy\nbc\n", l.ContinuingString(c2))
+	assert.Equal(t, "abc\n           fe │ xy", l.ContinuingString(c1))
+	assert.Equal(t, "\n           fe │ xy\nbc\n", l.ContinuingString(c2))
 	assert.Equal(t, "\nbc\n", l.ContinuingString(c3))
 
 	l.Append(newTestLogEvent("fe", time.Now(), "z\n"), nil)
-	assert.Equal(t, "abc\nfe          ┊ xyz\n", l.ContinuingString(c1))
-	assert.Equal(t, "\nfe          ┊ xyz\nbc\n", l.ContinuingString(c2))
-	assert.Equal(t, "\nbc\nfe          ┊ z\n", l.ContinuingString(c3))
-	assert.Equal(t, "fe          ┊ z\n", l.ContinuingString(c4))
+	assert.Equal(t, "abc\n           fe │ xyz\n", l.ContinuingString(c1))
+	assert.Equal(t, "\n           fe │ xyz\nbc\n", l.ContinuingString(c2))
+	assert.Equal(t, "\nbc\n           fe │ z\n", l.ContinuingString(c3))
+	assert.Equal(t, "           fe │ z\n", l.ContinuingString(c4))
 }
 
 func TestContinuingStringAfterLimit(t *testing.T) {
@@ -239,7 +239,7 @@ func TestManifestLogContinuation(t *testing.T) {
 	l.Append(newGlobalTestLogEvent("5\n6\n"), nil)
 	assert.Equal(t, "3478", l.ManifestLog("fe"))
 	assert.Equal(t, "ab", l.ManifestLog("back"))
-	assert.Equal(t, "1\n2\nfe          ┊ 3478\n5\n6\nback        ┊ ab\n5\n6\n", l.String())
+	assert.Equal(t, "1\n2\n           fe │ 3478\n5\n6\n         back │ ab\n5\n6\n", l.String())
 }
 
 func TestLogIncremental(t *testing.T) {
@@ -303,12 +303,12 @@ func TestWarnings(t *testing.T) {
 		"Warning 3 line 1\n",
 	})
 
-	assert.Equal(t, `fe          ┊ WARNING: Warning 1 line 1
-fe          ┊ Warning 1 line 2
-fe          ┊ Warning 1 line 3
-fe          ┊ WARNING: Warning 2 line 1
-fe          ┊ Warning 2 line 2Warning 3 line 1
-non-fe      ┊ WARNING: non-fe warning
+	assert.Equal(t, `           fe │ WARNING: Warning 1 line 1
+           fe │ Warning 1 line 2
+           fe │ Warning 1 line 3
+           fe │ WARNING: Warning 2 line 1
+           fe │ Warning 2 line 2Warning 3 line 1
+       non-fe │ WARNING: non-fe warning
 `, l.String())
 }
 
@@ -335,11 +335,11 @@ func TestErrors(t *testing.T) {
 		message: "non-fe warning\n",
 	}, nil)
 
-	assert.Equal(t, `fe          ┊ ERROR: Error 1 line 1
-fe          ┊ Error 1 line 2
-fe          ┊ Error 1 line 3
-fe          ┊ ERROR: Error 2 line 1
-fe          ┊ Error 2 line 2Error 3 line 1
-non-fe      ┊ ERROR: non-fe warning
+	assert.Equal(t, `           fe │ ERROR: Error 1 line 1
+           fe │ Error 1 line 2
+           fe │ Error 1 line 3
+           fe │ ERROR: Error 2 line 1
+           fe │ Error 2 line 2Error 3 line 1
+       non-fe │ ERROR: non-fe warning
 `, l.String())
 }

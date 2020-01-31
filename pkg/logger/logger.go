@@ -21,12 +21,6 @@ import (
 // messages (like Infof) append a newline to the string before passing it to
 // Write().
 type Logger interface {
-	// Warnings to show in the alert pane.
-	Warnf(format string, a ...interface{})
-
-	// Halting errors to show in the alert pane.
-	Errorf(format string, a ...interface{})
-
 	// log information that we always want to show
 	Infof(format string, a ...interface{})
 
@@ -36,6 +30,12 @@ type Logger interface {
 
 	// log information that is likely to only be of interest to tilt developers
 	Debugf(format string, a ...interface{})
+
+	// Warnings to show in the alert pane.
+	Warnf(format string, a ...interface{})
+
+	// Halting errors to show in the alert pane.
+	Errorf(format string, a ...interface{})
 
 	Write(level Level, bytes []byte)
 
@@ -77,9 +77,9 @@ func (l Level) AsSevereAs(log Level) bool {
 
 var (
 	NoneLvl    = Level{id: 0, severity: 0}
-	DebugLvl   = Level{id: 3, severity: 100}
-	VerboseLvl = Level{id: 2, severity: 200}
 	InfoLvl    = Level{id: 1, severity: 300}
+	VerboseLvl = Level{id: 2, severity: 200}
+	DebugLvl   = Level{id: 3, severity: 100}
 	WarnLvl    = Level{id: 4, severity: 400}
 	ErrorLvl   = Level{id: 5, severity: 500}
 )

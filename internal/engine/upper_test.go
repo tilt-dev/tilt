@@ -1096,7 +1096,7 @@ docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', ignor
 	})
 
 	f.withState(func(es store.EngineState) {
-		expected := fmt.Sprintf("1 changed: [%s]", f.JoinPath("Tiltfile"))
+		expected := fmt.Sprintf("Triggered by 1 change: [%s]", f.JoinPath("Tiltfile"))
 		require.Contains(t, es.LogStore.ManifestLog("snack"), expected)
 	})
 
@@ -2877,10 +2877,10 @@ ghij`)))
 	})
 
 	f.withState(func(s store.EngineState) {
-		assert.Contains(t, s.LogStore.String(), `alert-injes…┊ a
-alert-injes…┊ bc
-alert-injes…┊ def
-alert-injes…┊ ghij`)
+		assert.Contains(t, s.LogStore.String(), `alert-injest… │ a
+alert-injest… │ bc
+alert-injest… │ def
+alert-injest… │ ghij`)
 	})
 
 	err := f.Stop()
@@ -3441,28 +3441,28 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	dp.DisabledForTesting(true)
 
 	ret := &testFixture{
-		TempDirFixture:        f,
-		t:                     t,
-		ctx:                   ctx,
-		cancel:                cancel,
-		b:                     b,
-		fsWatcher:             watcher,
-		timerMaker:            &timerMaker,
-		docker:                dockerClient,
-		kClient:               kCli,
-		hud:                   h,
-		log:                   log,
-		store:                 st,
-		bc:                    bc,
-		onchangeCh:            fSub.ch,
-		fwm:                   fwm,
-		cc:                    cc,
-		dcc:                   fakeDcc,
-		tfl:                   tfl,
-		ghc:                   ghc,
-		opter:                 to,
-		dp:                    dp,
-		fe:                    fe,
+		TempDirFixture: f,
+		t:              t,
+		ctx:            ctx,
+		cancel:         cancel,
+		b:              b,
+		fsWatcher:      watcher,
+		timerMaker:     &timerMaker,
+		docker:         dockerClient,
+		kClient:        kCli,
+		hud:            h,
+		log:            log,
+		store:          st,
+		bc:             bc,
+		onchangeCh:     fSub.ch,
+		fwm:            fwm,
+		cc:             cc,
+		dcc:            fakeDcc,
+		tfl:            tfl,
+		ghc:            ghc,
+		opter:          to,
+		dp:             dp,
+		fe:             fe,
 		tiltVersionCheckDelay: versionCheckInterval,
 	}
 
