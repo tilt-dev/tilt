@@ -15,16 +15,16 @@ type PodChangeAction struct {
 
 	// The UID that we matched against to associate this pod with Tilt.
 	// Might be the Pod UID itself, or the UID of an ancestor.
-	AncestorUID types.UID
+	MatchedAncestorUID types.UID
 }
 
 func (PodChangeAction) Action() {}
 
-func NewPodChangeAction(pod *v1.Pod, mn model.ManifestName, ancestorUID types.UID) PodChangeAction {
+func NewPodChangeAction(pod *v1.Pod, mn model.ManifestName, matchedAncestorUID types.UID) PodChangeAction {
 	return PodChangeAction{
-		Pod:          pod,
-		ManifestName: mn,
-		AncestorUID:  ancestorUID,
+		Pod:                pod,
+		ManifestName:       mn,
+		MatchedAncestorUID: matchedAncestorUID,
 	}
 }
 
