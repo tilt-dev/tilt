@@ -1070,7 +1070,9 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 		}
 		refs, err := container.NewRefSet(image.configurationRef, registry)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "Something went wrong deriving "+
+				"references for your image: %q. Check the image name (and your "+
+				"`default_registry()` call, if any) for errors", image.configurationRef)
 		}
 
 		iTarget := model.ImageTarget{
