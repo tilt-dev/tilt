@@ -1040,6 +1040,14 @@ func (s *tiltfileState) imgTargetsForDependencyIDs(ids []model.TargetID) ([]mode
 }
 
 func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, claimStatus map[model.TargetID]claim) ([]model.ImageTarget, error) {
+	var usePrivateRegistry bool
+	if s.orchestrator() == model.OrchestratorK8s && !s.privateRegistry.Empty() {
+		// If we've found a private registry in the cluster at run-time,
+		// use that instead of the one in the tiltfile
+		s.logger.Infof("Auto-detected private registry from environment: %s", s.privateRegistry)
+		usePrivateRegistry = true
+	}
+
 	iTargets := make([]model.ImageTarget, 0, len(ids))
 	for _, id := range ids {
 		image := s.buildIndex.findBuilderByID(id)
@@ -1057,10 +1065,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 		claimStatus[id] = claimPending
 
 		registry := s.defaultRegistryHost
-		if s.orchestrator() == model.OrchestratorK8s && !s.privateRegistry.Empty() {
-			// If we've found a private registry in the cluster at run-time,
-			// use that instead of the one in the tiltfile
-			s.logger.Infof("Auto-detected private registry from environment: %s", s.privateRegistry)
+		if usePrivateRegistry {
 			registry = s.privateRegistry
 		}
 		refs, err := container.NewRefSet(image.configurationRef, registry)

@@ -1,7 +1,6 @@
 package container
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -77,5 +76,4 @@ func assertNewRefSetError(t *testing.T, selector RefSelector, reg Registry, expe
 	_, err := NewRefSet(selector, reg)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), expectedErr)
-	fmt.Println(err)
 }
