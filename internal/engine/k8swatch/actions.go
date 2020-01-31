@@ -6,6 +6,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -25,6 +26,20 @@ func NewPodChangeAction(pod *v1.Pod, mn model.ManifestName, matchedAncestorUID t
 		Pod:                pod,
 		ManifestName:       mn,
 		MatchedAncestorUID: matchedAncestorUID,
+	}
+}
+
+type PodDeleteAction struct {
+	PodID     k8s.PodID
+	Namespace k8s.Namespace
+}
+
+func (PodDeleteAction) Action() {}
+
+func NewPodDeleteAction(podID k8s.PodID, namespace k8s.Namespace) PodDeleteAction {
+	return PodDeleteAction{
+		PodID:     podID,
+		Namespace: namespace,
 	}
 }
 
