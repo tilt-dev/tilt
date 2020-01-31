@@ -154,20 +154,6 @@ var equalitytests = []struct {
 		false,
 	},
 	{
-		"ImageTarget.LocalRef unequal",
-		Manifest{}.WithImageTarget(ImageTarget{Refs: container.RefSet{LocalRef: img1.AsNamedOnly()}}),
-		Manifest{}.WithImageTarget(ImageTarget{Refs: container.RefSet{LocalRef: img2.AsNamedOnly()}}),
-		false,
-		true,
-	},
-	{
-		"ImageTarget.LocalRef equal",
-		Manifest{}.WithImageTarget(ImageTarget{Refs: container.RefSet{LocalRef: img1.AsNamedOnly()}}),
-		Manifest{}.WithImageTarget(ImageTarget{Refs: container.RefSet{LocalRef: img1.AsNamedOnly()}}),
-		true,
-		false,
-	},
-	{
 		"ImageTarget.DockerIgnores unequal",
 		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{"a", "b"}}}),
 		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{"b", "a"}}}),

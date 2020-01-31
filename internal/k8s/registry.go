@@ -94,7 +94,13 @@ func (r *registryAsync) Registry(ctx context.Context) container.Registry {
 		}
 
 		portSpec := portSpecs[0]
-		r.registry = container.NewRegistry(fmt.Sprintf("localhost:%d", portSpec.NodePort))
+		host := fmt.Sprintf("localhost:%d", portSpec.NodePort)
+		reg, err := container.NewRegistry(host)
+		if err != nil {
+			logger.Get(ctx).Warnf("Error validating private registry host %q: %v", host, err)
+		} else {
+			r.registry = reg
+		}
 	})
 	return r.registry
 }

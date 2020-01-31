@@ -18,6 +18,8 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
+var TwoURLRegistry = container.MustNewRegistryWithHostFromCluster("localhost:1234", "registry:1234")
+
 func TestCustomBuildSuccess(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
 	defer f.teardown()
@@ -37,13 +39,13 @@ func TestCustomBuildSuccessClusterRefTaggedWithDigest(t *testing.T) {
 	defer f.teardown()
 
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	f.dCli.Images["localhost:1234/foo/bar:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
+	f.dCli.Images["localhost:1234/foo_bar:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
 	cb := model.CustomBuild{WorkDir: f.tdf.Path(), Command: "true"}
-	refs, err := f.cb.Build(f.ctx, refSetFromStrings("localhost:1234/foo/bar", "registry:1234/foo/bar"), cb)
+	refs, err := f.cb.Build(f.ctx, refSetWithRegistryFromString("foo/bar", TwoURLRegistry), cb)
 	require.NoError(t, err)
 
-	assert.Equal(f.t, container.MustParseNamed("localhost:1234/foo/bar:tilt-11cd0eb38bc3ceb9"), refs.LocalRef)
-	assert.Equal(f.t, container.MustParseNamed("registry:1234/foo/bar:tilt-11cd0eb38bc3ceb9"), refs.ClusterRef)
+	assert.Equal(f.t, container.MustParseNamed("localhost:1234/foo_bar:tilt-11cd0eb38bc3ceb9"), refs.LocalRef)
+	assert.Equal(f.t, container.MustParseNamed("registry:1234/foo_bar:tilt-11cd0eb38bc3ceb9"), refs.ClusterRef)
 }
 
 func TestCustomBuildSuccessSkipsLocalDocker(t *testing.T) {
@@ -63,11 +65,11 @@ func TestCustomBuildSuccessClusterRefTaggedIfSkipsLocalDocker(t *testing.T) {
 	defer f.teardown()
 
 	cb := model.CustomBuild{WorkDir: f.tdf.Path(), Command: "true", SkipsLocalDocker: true}
-	refs, err := f.cb.Build(f.ctx, refSetFromStrings("localhost:1234/foo/bar", "registry:1234/foo/bar"), cb)
+	refs, err := f.cb.Build(f.ctx, refSetWithRegistryFromString("foo/bar", TwoURLRegistry), cb)
 	require.NoError(f.t, err)
 
-	assert.Equal(f.t, container.MustParseNamed("localhost:1234/foo/bar:tilt-build-1551202573"), refs.LocalRef)
-	assert.Equal(f.t, container.MustParseNamed("registry:1234/foo/bar:tilt-build-1551202573"), refs.ClusterRef)
+	assert.Equal(f.t, container.MustParseNamed("localhost:1234/foo_bar:tilt-build-1551202573"), refs.LocalRef)
+	assert.Equal(f.t, container.MustParseNamed("registry:1234/foo_bar:tilt-build-1551202573"), refs.ClusterRef)
 }
 
 func TestCustomBuildCmdFails(t *testing.T) {
@@ -152,13 +154,15 @@ func newFakeCustomBuildFixture(t *testing.T) *fakeCustomBuildFixture {
 
 func refSetFromString(s string) container.RefSet {
 	sel := container.MustParseSelector(s)
-	return container.SimpleRefSet(sel)
+	return container.MustSimpleRefSet(sel)
 }
 
-func refSetFromStrings(local, cluster string) container.RefSet {
-	localNamed := container.MustParseNamed(local)
-	clusterNamed := container.MustParseNamed(cluster)
-	return container.NewRefSet(container.NameSelector(localNamed), localNamed, clusterNamed)
+func refSetWithRegistryFromString(ref string, reg container.Registry) container.RefSet {
+	r, err := container.NewRefSet(container.MustParseSelector(ref), reg)
+	if err != nil {
+		panic(err)
+	}
+	return r
 }
 
 func (f *fakeCustomBuildFixture) teardown() {

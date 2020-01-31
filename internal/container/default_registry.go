@@ -29,14 +29,62 @@ type Registry struct {
 
 func (r Registry) Empty() bool { return r.Host == "" }
 
-func NewRegistry(host string) Registry {
-	// TODO(maia): validate
-	return Registry{Host: host}
+func NewRegistry(host string) (Registry, error) {
+	r := Registry{Host: host}
+	return r, r.Validate()
 }
 
-func NewRegistryWithHostFromCluster(host, fromCluster string) Registry {
-	// TODO(maia): validate
-	return Registry{Host: host, hostFromCluster: fromCluster}
+func MustNewRegistry(host string) Registry {
+	r, err := NewRegistry(host)
+	if err != nil {
+		panic(err)
+	}
+	return r
+}
+
+func NewRegistryWithHostFromCluster(host, fromCluster string) (Registry, error) {
+	r := Registry{Host: host, hostFromCluster: fromCluster}
+	return r, r.Validate()
+}
+
+func MustNewRegistryWithHostFromCluster(host, fromCluster string) Registry {
+	r, err := NewRegistryWithHostFromCluster(host, fromCluster)
+	if err != nil {
+		panic(err)
+	}
+	return r
+}
+
+func (r Registry) Validate() error {
+	if r.Host == "" {
+		if r.hostFromCluster != "" {
+			return fmt.Errorf("illegal registry: provided hostFromCluster %q without "+
+				"providing Host", r.hostFromCluster)
+		}
+		// Empty registry, nothing to validate
+		return nil
+	}
+
+	err := validateHost(r.Host)
+	if err != nil {
+		return errors.Wrapf(err, "validating registry host %q", r.Host)
+	}
+	if r.hostFromCluster != "" {
+		err = validateHost(r.hostFromCluster)
+		if err != nil {
+			return errors.Wrapf(err, "validating registry hostFromCluster %q", r.hostFromCluster)
+		}
+	}
+	return nil
+}
+
+func validateHost(h string) error {
+	// NOTE(dmiller): we append a fake path to the domain so that we can try and validate it _during_ Tiltfile execution
+	// rather than wait to do it when converting the data to the Engine state.
+	// As far as I can tell there's no way in Docker to validate a domain _independently_ from a canonical ref.
+	fakeRef := fmt.Sprintf("%s/%s", h, "fake")
+	_, err := reference.ParseNamed(fakeRef)
+	return err
 }
 
 // HostFromCluster returns the registry to be used from within the k8s cluster

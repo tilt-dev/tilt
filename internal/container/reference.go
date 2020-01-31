@@ -1,73 +1,121 @@
 package container
 
 import (
+	"fmt"
+
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 )
 
+// RefSet describes the references for a given image:
+//  1. ConfigurationRef: ref as specified in the Tiltfile
+//  2. LocalRef(): ref as used outside of the cluster (for Docker etc.)
+//  3. ClusterRef(): ref as used inside the cluster (in k8s YAML etc.). Often equivalent to
+//      LocalRef, but in some cases they diverge: e.g. when using a local registry with KIND,
+//      the image localhost:1234/my-image (localRef) is referenced in the YAML as
+//      http://registry/my-image (clusterRef).
 type RefSet struct {
 	// Ref as specified in Tiltfile; used to match a DockerBuild with
 	// corresponding k8s YAML. May contain tags, etc. (Also used as
 	// user-facing name for this image.)
 	ConfigurationRef RefSelector
 
-	// Image name as referenced from outside the cluster (in Dockerfile,
-	// docker push etc.). This will be the ConfigurationRef stripped of
-	// tags and (if applicable) prepended with the DefaultRegistry.
-	LocalRef reference.Named
-
-	// The image name (minus the Tilt tag) as referenced from the cluster (in k8s YAML,
-	// etc.) (Often this will be the same as the LocalRef, but in some cases they diverge:
-	// e.g. when using a local registry with KIND, the image localhost:1234/my-image
-	// (LocalRef) is referenced in the YAML as http://registry/my-image (clusterRef).
-	// clusterRef is optional; if not provided, we assume LocalRef == clusterRef.
-	clusterRef reference.Named
+	// (Optional) registry to prepend to ConfigurationRef to yield ref to use in update and deploy
+	registry Registry
 }
 
-func NewRefSet(confRef RefSelector, localRef, clusterRef reference.Named) RefSet {
-	return RefSet{
+func NewRefSet(confRef RefSelector, reg Registry) (RefSet, error) {
+	r := RefSet{
 		ConfigurationRef: confRef,
-		LocalRef:         localRef,
-		clusterRef:       clusterRef,
+		registry:         reg,
 	}
+	return r, r.validate()
 }
 
-// SimpleRefSet makes a ref set for the given selector, assuming that
-// ConfigurationRef, LocalRef, and clusterRef are all equal.
-func SimpleRefSet(ref RefSelector) RefSet {
-	return RefSet{
+func MustSimpleRefSet(ref RefSelector) RefSet {
+	r := RefSet{
 		ConfigurationRef: ref,
-		LocalRef:         ref.AsNamedOnly(),
 	}
+	if err := r.validate(); err != nil {
+		panic(err)
+	}
+	return r
 }
 
-func (rs RefSet) WithClusterRef(ref reference.Named) RefSet {
-	rs.clusterRef = ref
+func (rs RefSet) MustWithRegistry(reg Registry) RefSet {
+	rs.registry = reg
+	err := rs.validate()
+	if err != nil {
+		panic(err)
+	}
 	return rs
 }
 
-// ClusterRef returns the ref by which this image is referenced in the cluster.
-// If no clusterRef is explicitly set, we return LocalRef, since in most cases
-// the image's ref from the cluster is the same as its ref locally.
-func (rs RefSet) ClusterRef() reference.Named {
-	if rs.clusterRef == nil {
-		return rs.LocalRef
+func (rs RefSet) validate() error {
+	if !rs.registry.Empty() {
+		err := rs.registry.Validate()
+		if err != nil {
+			return errors.Wrapf(err, "validating new RefSet with configuration ref %q", rs.ConfigurationRef)
+		}
 	}
-	return rs.clusterRef
+	_, err := rs.registry.ReplaceRegistryForLocalRef(rs.ConfigurationRef)
+	if err != nil {
+		return errors.Wrapf(err, "validating new RefSet with configuration ref %q", rs.ConfigurationRef)
+	}
+
+	_, err = rs.registry.ReplaceRegistryForClusterRef(rs.ConfigurationRef)
+	if err != nil {
+		return errors.Wrapf(err, "validating new RefSet with configuration ref %q", rs.ConfigurationRef)
+	}
+
+	return nil
+}
+
+// LocalRef returns the ref by which this image is referenced from outside the cluster
+// (e.g. by `docker build`, `docker push`, etc.)
+func (rs RefSet) LocalRef() reference.Named {
+	if rs.registry.Empty() {
+		return rs.ConfigurationRef.AsNamedOnly()
+	}
+	ref, err := rs.registry.ReplaceRegistryForLocalRef(rs.ConfigurationRef)
+	if err != nil {
+		// Validation should have caught this before now :-/
+		panic(fmt.Sprintf("ERROR deriving LocalRef: %v", err))
+	}
+
+	return ref
+}
+
+// ClusterRef returns the ref by which this image is referenced in the cluster.
+// In most cases the image's ref from the cluster is the same as its ref locally;
+// currently, we only allow these refs to diverge if the user provides a default registry
+// with different urls for Host and hostFromCluster.
+// If registry.hostFromCluster is not set, we return localRef.
+func (rs RefSet) ClusterRef() reference.Named {
+	if rs.registry.Empty() {
+		return rs.LocalRef()
+	}
+	ref, err := rs.registry.ReplaceRegistryForClusterRef(rs.ConfigurationRef)
+	if err != nil {
+		// Validation should have caught this before now :-/
+		panic(fmt.Sprintf("ERROR deriving ClusterRef: %v", err))
+	}
+
+	return ref
 }
 
 // TagRefs tags both of the references used for build/deploy with the given tag.
 func (rs RefSet) TagRefs(tag string) (TaggedRefs, error) {
-	localTagged, err := reference.WithTag(rs.LocalRef, tag)
+	localTagged, err := reference.WithTag(rs.LocalRef(), tag)
 	if err != nil {
-		return TaggedRefs{}, errors.Wrapf(err, "tagging LocalRef %s as %s", rs.LocalRef.String(), tag)
+		return TaggedRefs{}, errors.Wrapf(err, "tagging localRef %s as %s", rs.LocalRef().String(), tag)
 	}
 
 	// TODO(maia): maybe TaggedRef should behave like RefSet, where clusterRef is optional
 	//   and if not set, the accessor returns LocalRef instead
 	clusterTagged, err := reference.WithTag(rs.ClusterRef(), tag)
 	if err != nil {
-		return TaggedRefs{}, errors.Wrapf(err, "tagging clusterRef %s as %s", rs.clusterRef.String(), tag)
+		return TaggedRefs{}, errors.Wrapf(err, "tagging clusterRef %s as %s", rs.ClusterRef().String(), tag)
 	}
 	return TaggedRefs{
 		LocalRef:   localTagged,

@@ -29,7 +29,7 @@ type ImageTarget struct {
 }
 
 func MustNewImageTarget(ref container.RefSelector) ImageTarget {
-	return ImageTarget{Refs: container.SimpleRefSet(ref)}
+	return ImageTarget{Refs: container.MustSimpleRefSet(ref)}
 }
 
 func ImageID(ref container.RefSelector) TargetID {
@@ -57,13 +57,14 @@ func (i ImageTarget) WithDependencyIDs(ids []TargetID) ImageTarget {
 }
 
 func (i ImageTarget) Validate() error {
+	// TODO(maia): i.Refs.Validate
 	confRef := i.Refs.ConfigurationRef
 	if confRef.Empty() {
 		return fmt.Errorf("[Validate] Image target missing image ref: %+v", i.BuildDetails)
 	}
 
-	if i.Refs.LocalRef.String() == "" {
-		return fmt.Errorf("[Validate] Image %q missing LocalRef", confRef)
+	if i.Refs.LocalRef().String() == "" {
+		return fmt.Errorf("[Validate] No localRef for image %q", confRef)
 	}
 
 	switch bd := i.BuildDetails.(type) {

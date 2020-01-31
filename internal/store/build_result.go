@@ -43,8 +43,9 @@ type ImageBuildResult struct {
 	// Note: image tag is derived from a content-addressable digest.
 	ImageLocalRef   reference.NamedTagged // built image, as referenced from outside the cluster (in Dockerfile, docker push etc.)
 	ImageClusterRef reference.NamedTagged // built image, as referenced from the cluster (in K8s YAML, etc.)
-	// Often LocalRef and ClusterRef will be the same, but may diverge: e.g. when using KIND + local registry,
-	// LocalRef is localhost:1234/my-img:tilt-abc, ClusterRef is http://registry/my-img:tilt-abc
+	// Often ImageLocalRef and ImageClusterRef will be the same, but may diverge: e.g.
+	// when using KIND + local registry, localRef is localhost:1234/my-img:tilt-abc,
+	// ClusterRef is http://registry/my-img:tilt-abc
 }
 
 func (r ImageBuildResult) TargetID() model.TargetID   { return r.id }
@@ -60,7 +61,7 @@ func NewImageBuildResult(id model.TargetID, localRef, clusterRef reference.Named
 	}
 }
 
-// When LocalRef == ClusterRef
+// When localRef == ClusterRef
 func NewImageBuildResultSingleRef(id model.TargetID, ref reference.NamedTagged) ImageBuildResult {
 	return NewImageBuildResult(id, ref, ref)
 }

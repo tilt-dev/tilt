@@ -422,14 +422,11 @@ func TestBuildAndDeployUsesCorrectRef(t *testing.T) {
 
 			manifest := test.manifest(f)
 			for i := range manifest.ImageTargets {
-				withRegistry := f.replaceRegistry("foo.com", manifest.ImageTargets[i].Refs.ConfigurationRef)
-				manifest.ImageTargets[i].Refs.LocalRef = withRegistry
-				manifest.ImageTargets[i].Refs = manifest.ImageTargets[i].Refs.WithClusterRef(withRegistry)
-
+				reg := container.MustNewRegistry("foo.com")
 				if test.useLocalRegistry {
-					clusterRefWithRegistry := f.replaceRegistry("registry:1234", manifest.ImageTargets[i].Refs.ConfigurationRef)
-					manifest.ImageTargets[i].Refs = manifest.ImageTargets[i].Refs.WithClusterRef(clusterRefWithRegistry)
+					reg = container.MustNewRegistryWithHostFromCluster("foo.com", "registry:1234")
 				}
+				manifest.ImageTargets[i].Refs = manifest.ImageTargets[i].Refs.MustWithRegistry(reg)
 			}
 
 			result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
@@ -754,7 +751,7 @@ func (f *ibdFixture) TearDown() {
 }
 
 func (f *ibdFixture) replaceRegistry(defaultReg string, sel container.RefSelector) reference.Named {
-	reg := container.NewRegistry(defaultReg)
+	reg := container.MustNewRegistry(defaultReg)
 	named, err := reg.ReplaceRegistryForLocalRef(sel)
 	if err != nil {
 		f.T().Fatal(err)

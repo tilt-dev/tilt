@@ -163,6 +163,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 	tlr.TiltIgnoreContents = string(tiltIgnoreContents)
 
 	privateRegistry := tfl.kCli.PrivateRegistry(ctx)
+
 	s := newTiltfileState(ctx, tfl.dcCli, tfl.webHost, tfl.k8sContextExt, privateRegistry, feature.FromDefaults(tfl.fDefaults))
 
 	manifests, result, err := s.loadManifests(absFilename, userConfigState)
