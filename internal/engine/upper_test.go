@@ -1096,7 +1096,7 @@ docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', ignor
 	})
 
 	f.withState(func(es store.EngineState) {
-		expected := fmt.Sprintf("Triggered by 1 change: [%s]", f.JoinPath("Tiltfile"))
+		expected := fmt.Sprintf("1 File Changed: [%s]", f.JoinPath("Tiltfile"))
 		require.Contains(t, es.LogStore.ManifestLog("snack"), expected)
 	})
 
