@@ -38,9 +38,20 @@ func (bd *LocalTargetBuildAndDeployer) BuildAndDeploy(ctx context.Context, st st
 	}
 
 	if state := stateSet[targ.ID()]; state.IsEmpty() {
-		// HACK(maia): on initial build, give the file change a little extra time to
-		// propagate through, to increase the chance that we pick it up before we start
-		// the next build (otherwise, we may build that next resource twice).
+		// HACK(maia) If target A generates file X and target B depends on file X, it was common that on Tilt startup,
+		// targets A and B would both be queued for their initial build, A would run, modify X, and then B would start
+		// running before Tilt processed the change to X, so we'd end up with this:
+		// 1. A starts building
+		// 2. A writes X
+		// 3. A finishes building
+		// 4. B starts building
+		// 5. Tilt observes change to X
+		// 6. B finishes building
+		// 7. B is dirty because there was a change to X since the last time it started building, so it starts building again
+		// Empirically, this sleep seems to suffice to ensure that step (5) precedes step (4), which eliminates step (7)
+		// At the moment (2020-01-31), local_resources will not build in parallel with other resources, so this works fine
+		// If/when we reenable parallel builds for local_resources, it will still help if the Tiltfile specifies
+		// A as a resource dependency of B (NB: both the problem and resource_dep only apply to initial builds).
 		time.Sleep(250 * time.Millisecond)
 	}
 
