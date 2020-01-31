@@ -130,7 +130,7 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 	buildReason := entry.buildReason
 	changedFiles := entry.filesChanged
 
-	l := logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameBuildProgress: "0"})
+	l := logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameBuildEvent: "0"})
 	delimiter := "•"
 	if firstBuild {
 		l.Infof("Initial Build %s %s", delimiter, name)
@@ -138,12 +138,11 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 		l.Infof("%s %s %s", buildReason, delimiter, name)
 
 		if len(changedFiles) > 0 {
-			l = logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameBuildProgress: "1"})
 			t := "change"
 			if len(changedFiles) > 1 {
 				t = "changes"
 			}
-			l.Infof("Triggered by %d %s: %v", len(changedFiles), t, ospath.FormatFileChangeList(changedFiles))
+			logger.Get(ctx).Infof("Triggered by %d %s: %v", len(changedFiles), t, ospath.FormatFileChangeList(changedFiles))
 		}
 	}
 }

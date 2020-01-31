@@ -1,24 +1,21 @@
 export enum Color {
+  // Brand Colors
   green = "#20ba31",
   blue = "#03c7d3",
-  blueLight = "#5edbe3",
   blueDark = "#007d82",
   red = "#f6685c",
   yellow = "#fcb41e",
   white = "#ffffff",
-  offWhite = "#eef1f1",
 
-  grayLightest = "#93a1a1", // Solarized base1
+
+  offWhite = "#eef1f1",
+  grayLightest = "#93a1a1", // Solarized base1  (darkest content tone)
   grayLight = "#586e75",    // Solarized base01
   gray = "#073642",         // Solarized base02
-  grayDark = "#002b36",     // Solarized base03 (Terminal BG)
-  grayDarker = "",
-  grayDarkest = "#001b20",  // Brand Gray
+  grayDark = "#002b36",     // Solarized base03 (darkest bg tone)
+  grayDarker = "#00242d",
+  grayDarkest = "#001b20",  // Brand
   black = "#000000",
-
-  greenVogue = "#25454b",
-  darkElectricBlue = "#526f76",
-
 
   text = "#073642",
 }

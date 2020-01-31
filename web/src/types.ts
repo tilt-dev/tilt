@@ -59,11 +59,12 @@ export type Snapshot = {
 
 export type Fields = {
   progressID?: string
-  buildProgress?: BuildProgress
+  buildEvent?: BuildEvent
 }
 
-export enum BuildProgress {
-  Start = 0,
+export enum BuildEvent {
+  Init = 0,
+  Fallback = 1,
 }
 
 // A plaintext representation of a line of the log,

@@ -1,4 +1,4 @@
-import { Fields, BuildProgress } from "./types"
+import {Fields, BuildEvent} from "./types"
 import React, { PureComponent } from "react"
 import AnsiLine from "./AnsiLine"
 import {
@@ -30,7 +30,7 @@ let LogPaneLineRoot = styled.span`
     background-color: ${ColorRGBA(Color.blue, ColorAlpha.translucent)};
   }
 
-  &.is-buildProgress-start {
+  &.is-buildEvent-init {
     margin-top: ${SizeUnit(0.25)};
     margin-bottom: ${SizeUnit(0.25)};
     background-color: ${Color.gray};
@@ -42,7 +42,7 @@ let LogLinePrefixRoot = styled.span`
   user-select: none;
   width: ${Width.secondaryNavItem}px; // Match height of tab above
   box-sizing: border-box;
-  background-color: ${Color.grayDarkest};
+  background-color: ${Color.grayDarker};
   color: ${Color.grayLightest};
   padding-left: ${SizeUnit(0.5)};
   padding-right: ${SizeUnit(0.5)};
@@ -63,6 +63,9 @@ let LineContent = styled(AnsiLine)`
   white-space: pre-wrap;
   padding-left: ${SizeUnit(0.6)};
   flex: 1;
+  
+  // A left border draws your eye to notable logs. 
+  // It's to the right of the prefix, so its position is always near the log.
 
   ${LogPaneLineRoot}.is-warning & {
     border-left: ${Width.logLineGutter}px solid ${Color.yellow};
@@ -73,6 +76,9 @@ let LineContent = styled(AnsiLine)`
   ${LogPaneLineRoot}.is-buildprogress-start & {
     padding-top: ${SizeUnit(0.15)};
     padding-bottom: ${SizeUnit(0.15)};
+  }
+  ${LogPaneLineRoot}.is-buildEvent-fallback & {
+    border-left: ${Width.logLineGutter}px solid ${Color.blueDark};
   }
 `
 
@@ -115,8 +121,11 @@ class LogPaneLine extends PureComponent<LogPaneProps> {
     if (props.fields?.progressID) {
       classes.push("is-progress")
     }
-    if (props.fields?.buildProgress == BuildProgress.Start) {
-      classes.push("is-buildProgress-start")
+    if (props.fields?.buildEvent == BuildEvent.Init) {
+      classes.push("is-buildEvent-init")
+    }
+    if (props.fields?.buildEvent == BuildEvent.Fallback) {
+      classes.push("is-buildEvent-fallback")
     }
 
     return (

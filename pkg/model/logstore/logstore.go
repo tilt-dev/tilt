@@ -585,7 +585,7 @@ func (s *LogStore) logHelper(spansToLog map[SpanID]*Span, showManifestPrefix boo
 			}
 		}
 
-		if segment.Fields[logger.FieldNameBuildProgress] == "0" {
+		if segment.Fields[logger.FieldNameBuildEvent] == "0" {
 			// Estimate width of a "normal" Terminal
 			const lineLength = 80
 

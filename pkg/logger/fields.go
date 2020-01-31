@@ -6,4 +6,4 @@ package logger
 type Fields map[string]string
 
 const FieldNameProgressID = "progressID"
-const FieldNameBuildProgress = "buildProgress"
+const FieldNameBuildEvent = "buildEvent"
