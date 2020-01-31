@@ -362,7 +362,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     }
 
     logLineEls.push(
-      <LogEnd key="logEnd" ref={this.lastElement}>
+      <LogEnd key="logEnd" className="logEnd" ref={this.lastElement}>
         &#9608;
       </LogEnd>
     )

@@ -14,7 +14,7 @@ exports[`renders highlighted lines 1`] = `
      
   </div>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={0}
   >
     <code
@@ -30,7 +30,7 @@ exports[`renders highlighted lines 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={1}
   >
     <code
@@ -46,7 +46,7 @@ exports[`renders highlighted lines 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz is-highlighted"
+    className="sc-bdVaJa jhYvYz logPaneLine is-highlighted"
     data-lineid={2}
   >
     <code
@@ -62,7 +62,7 @@ exports[`renders highlighted lines 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz is-highlighted"
+    className="sc-bdVaJa jhYvYz logPaneLine is-highlighted"
     data-lineid={3}
   >
     <code
@@ -78,7 +78,7 @@ exports[`renders highlighted lines 1`] = `
     </code>
   </span>
   <div
-    className="sc-ifAKCX efVTLr"
+    className="sc-ifAKCX efVTLr logEnd"
   >
     █
   </div>
@@ -99,7 +99,7 @@ exports[`renders logs 1`] = `
      
   </div>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={0}
   >
     <code
@@ -115,7 +115,7 @@ exports[`renders logs 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={1}
   >
     <code
@@ -131,7 +131,7 @@ exports[`renders logs 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={2}
   >
     <code
@@ -147,7 +147,7 @@ exports[`renders logs 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={3}
   >
     <code
@@ -163,7 +163,7 @@ exports[`renders logs 1`] = `
     </code>
   </span>
   <div
-    className="sc-ifAKCX efVTLr"
+    className="sc-ifAKCX efVTLr logEnd"
   >
     █
   </div>
@@ -184,7 +184,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
      
   </div>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={276}
   >
     <code
@@ -212,7 +212,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={277}
   >
     <code
@@ -228,7 +228,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={278}
   >
     <code
@@ -244,7 +244,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={279}
   >
     <code
@@ -284,7 +284,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={280}
   >
     <code
@@ -312,7 +312,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={281}
   >
     <code
@@ -328,7 +328,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={282}
   >
     <code
@@ -344,7 +344,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={283}
   >
     <code
@@ -360,7 +360,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={284}
   >
     <code
@@ -376,7 +376,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={285}
   >
     <code
@@ -392,7 +392,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={286}
   >
     <code
@@ -408,7 +408,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={287}
   >
     <code
@@ -424,7 +424,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={288}
   >
     <code
@@ -440,7 +440,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={289}
   >
     <code
@@ -456,7 +456,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={290}
   >
     <code
@@ -472,7 +472,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={291}
   >
     <code
@@ -488,7 +488,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={292}
   >
     <code
@@ -504,7 +504,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={293}
   >
     <code
@@ -532,7 +532,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={294}
   >
     <code
@@ -548,7 +548,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={295}
   >
     <code
@@ -576,7 +576,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={296}
   >
     <code
@@ -592,7 +592,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={297}
   >
     <code
@@ -608,7 +608,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={298}
   >
     <code
@@ -624,7 +624,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={299}
   >
     <code
@@ -640,7 +640,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={300}
   >
     <code
@@ -656,7 +656,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={301}
   >
     <code
@@ -672,7 +672,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={302}
   >
     <code
@@ -688,7 +688,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={303}
   >
     <code
@@ -704,7 +704,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={304}
   >
     <code
@@ -720,7 +720,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={305}
   >
     <code
@@ -736,7 +736,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={306}
   >
     <code
@@ -752,7 +752,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={307}
   >
     <code
@@ -768,7 +768,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={308}
   >
     <code
@@ -784,7 +784,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={309}
   >
     <code
@@ -800,7 +800,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={310}
   >
     <code
@@ -816,7 +816,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={311}
   >
     <code
@@ -832,7 +832,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={312}
   >
     <code
@@ -848,7 +848,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={313}
   >
     <code
@@ -864,7 +864,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={314}
   >
     <code
@@ -880,7 +880,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={315}
   >
     <code
@@ -896,7 +896,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={316}
   >
     <code
@@ -912,7 +912,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={317}
   >
     <code
@@ -928,7 +928,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={318}
   >
     <code
@@ -944,7 +944,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={319}
   >
     <code
@@ -960,7 +960,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={320}
   >
     <code
@@ -976,7 +976,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={321}
   >
     <code
@@ -992,7 +992,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={322}
   >
     <code
@@ -1008,7 +1008,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={323}
   >
     <code
@@ -1024,7 +1024,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={324}
   >
     <code
@@ -1040,7 +1040,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <span
-    className="sc-bdVaJa jhYvYz"
+    className="sc-bdVaJa jhYvYz logPaneLine"
     data-lineid={325}
   >
     <code
@@ -1056,7 +1056,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <div
-    className="sc-ifAKCX efVTLr"
+    className="sc-ifAKCX efVTLr logEnd"
   >
     █
   </div>

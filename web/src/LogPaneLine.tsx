@@ -100,7 +100,7 @@ class LogPaneLine extends PureComponent<LogPaneProps> {
     if (props.showManifestPrefix) {
       prefix = <LogLinePrefix name={props.manifestName} />
     }
-    let classes = []
+    let classes = ["logPaneLine"]
     if (props.shouldHighlight) {
       classes.push("is-highlighted")
     }
