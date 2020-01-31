@@ -21,13 +21,13 @@ type RefSet struct {
 	ConfigurationRef RefSelector
 
 	// (Optional) registry to prepend to ConfigurationRef to yield ref to use in update and deploy
-	Registry Registry
+	registry Registry
 }
 
 func NewRefSet(confRef RefSelector, reg Registry) (RefSet, error) {
 	r := RefSet{
 		ConfigurationRef: confRef,
-		Registry:         reg,
+		registry:         reg,
 	}
 	return r, r.validate()
 }
@@ -42,19 +42,28 @@ func MustSimpleRefSet(ref RefSelector) RefSet {
 	return r
 }
 
+func (rs RefSet) MustWithRegistry(reg Registry) RefSet {
+	rs.registry = reg
+	err := rs.validate()
+	if err != nil {
+		panic(err)
+	}
+	return rs
+}
+
 func (rs RefSet) validate() error {
-	if !rs.Registry.Empty() {
-		err := rs.Registry.Validate()
+	if !rs.registry.Empty() {
+		err := rs.registry.Validate()
 		if err != nil {
 			return errors.Wrapf(err, "validating new RefSet with configuration ref %q", rs.ConfigurationRef)
 		}
 	}
-	_, err := rs.Registry.ReplaceRegistryForLocalRef(rs.ConfigurationRef)
+	_, err := rs.registry.ReplaceRegistryForLocalRef(rs.ConfigurationRef)
 	if err != nil {
 		return errors.Wrapf(err, "validating new RefSet with configuration ref %q", rs.ConfigurationRef)
 	}
 
-	_, err = rs.Registry.ReplaceRegistryForClusterRef(rs.ConfigurationRef)
+	_, err = rs.registry.ReplaceRegistryForClusterRef(rs.ConfigurationRef)
 	if err != nil {
 		return errors.Wrapf(err, "validating new RefSet with configuration ref %q", rs.ConfigurationRef)
 	}
@@ -65,10 +74,10 @@ func (rs RefSet) validate() error {
 // LocalRef returns the ref by which this image is referenced from outside the cluster
 // (e.g. by `docker build`, `docker push`, etc.)
 func (rs RefSet) LocalRef() reference.Named {
-	if rs.Registry.Empty() {
+	if rs.registry.Empty() {
 		return rs.ConfigurationRef.AsNamedOnly()
 	}
-	ref, err := rs.Registry.ReplaceRegistryForLocalRef(rs.ConfigurationRef)
+	ref, err := rs.registry.ReplaceRegistryForLocalRef(rs.ConfigurationRef)
 	if err != nil {
 		// Validation should have caught this before now :-/
 		panic(fmt.Sprintf("ERROR deriving LocalRef: %v", err))
@@ -81,12 +90,12 @@ func (rs RefSet) LocalRef() reference.Named {
 // In most cases the image's ref from the cluster is the same as its ref locally;
 // currently, we only allow these refs to diverge if the user provides a default registry
 // with different urls for Host and hostFromCluster.
-// If Registry.hostFromCluster is not set, we return localRef.
+// If registry.hostFromCluster is not set, we return localRef.
 func (rs RefSet) ClusterRef() reference.Named {
-	if rs.Registry.Empty() {
+	if rs.registry.Empty() {
 		return rs.LocalRef()
 	}
-	ref, err := rs.Registry.ReplaceRegistryForClusterRef(rs.ConfigurationRef)
+	ref, err := rs.registry.ReplaceRegistryForClusterRef(rs.ConfigurationRef)
 	if err != nil {
 		// Validation should have caught this before now :-/
 		panic(fmt.Sprintf("ERROR deriving ClusterRef: %v", err))
