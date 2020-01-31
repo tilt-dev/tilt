@@ -135,14 +135,14 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 	if firstBuild {
 		l.Infof("Initial Build %s %s", delimiter, name)
 	} else {
-		l.Infof("%s %s %s", buildReason, delimiter, name)
-
 		if len(changedFiles) > 0 {
-			t := "change"
+			t := "File"
 			if len(changedFiles) > 1 {
-				t = "changes"
+				t = "Files"
 			}
-			logger.Get(ctx).Infof("Triggered by %d %s: %v", len(changedFiles), t, ospath.FormatFileChangeList(changedFiles))
+			l.Infof("%d %s Changed: %s %s %s", len(changedFiles), t, ospath.FormatFileChangeList(changedFiles), delimiter, name)
+		} else {
+			l.Infof("%s %s %s", buildReason, delimiter, name)
 		}
 	}
 }

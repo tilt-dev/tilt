@@ -31,11 +31,20 @@ let LogPaneLineRoot = styled.span`
   }
 
   &.is-buildEvent-init {
-    margin-top: ${SizeUnit(0.25)};
-    margin-bottom: ${SizeUnit(0.25)};
+    margin-top: ${SizeUnit(0.5)};
+    margin-bottom: ${SizeUnit(0.5)};
     background-color: ${Color.gray};
     text-align: right;
     padding-right: ${SizeUnit(1)};
+    border-top: 1px solid ${ColorRGBA(Color.grayLight, ColorAlpha.translucent)};
+    border-bottom: 1px solid ${ColorRGBA(Color.grayLight, ColorAlpha.translucent)};
+  }
+  &.is-buildEvent-fallback {
+    background-color: ${Color.grayDarker};
+    
+    // A lil' trick so bottom margin only appears after the last element
+    margin-top: -${SizeUnit(0.5)};
+    margin-bottom: ${SizeUnit(0.5)};
   }
 `
 let LogLinePrefixRoot = styled.span`
@@ -46,7 +55,9 @@ let LogLinePrefixRoot = styled.span`
   color: ${Color.grayLightest};
   padding-left: ${SizeUnit(0.5)};
   padding-right: ${SizeUnit(0.5)};
-  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: right;
   flex-shrink: 0;
   // Truncate long text:
   text-overflow: ellipsis;
@@ -64,18 +75,20 @@ let LineContent = styled(AnsiLine)`
   padding-left: ${SizeUnit(0.6)};
   flex: 1;
   
+  // Make the layout around the text a bit more generous
+  ${LogPaneLineRoot}.is-buildEvent-init &,
+  ${LogPaneLineRoot}.is-buildEvent-fallback & {
+    padding-top: ${SizeUnit(0.2)};
+    padding-bottom: ${SizeUnit(0.2)};
+  }
+
   // A left border draws your eye to notable logs. 
   // It's to the right of the prefix, so its position is always near the log.
-
   ${LogPaneLineRoot}.is-warning & {
     border-left: ${Width.logLineGutter}px solid ${Color.yellow};
   }
   ${LogPaneLineRoot}.is-error & {
     border-left: ${Width.logLineGutter}px solid ${Color.red};
-  }
-  ${LogPaneLineRoot}.is-buildprogress-start & {
-    padding-top: ${SizeUnit(0.15)};
-    padding-bottom: ${SizeUnit(0.15)};
   }
   ${LogPaneLineRoot}.is-buildEvent-fallback & {
     border-left: ${Width.logLineGutter}px solid ${Color.blueDark};
