@@ -1,3 +1,5 @@
+//+build !skipdockercomposetests
+
 package tiltfile
 
 import (
@@ -508,6 +510,106 @@ dc_resource('foo', 'gcr.io/foo')
 `)
 
 	f.loadErrString("docker_build/custom_build.entrypoint not supported for Docker Compose resources")
+}
+
+func TestDefaultRegistryWithDockerCompose(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.file("docker-compose.yml", simpleConfig)
+	f.file("Tiltfile", `
+docker_compose('docker-compose.yml')
+default_registry('bar.com')
+`)
+
+	f.loadErrString("default_registry is not supported with docker compose")
+}
+
+func TestTriggerModeDC(t *testing.T) {
+	for _, testCase := range []struct {
+		name                string
+		globalSetting       triggerMode
+		dcResourceSetting   triggerMode
+		expectedTriggerMode model.TriggerMode
+	}{
+		{"default", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
+		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, model.TriggerModeAuto},
+		{"explicit global manual", TriggerModeManual, TriggerModeUnset, model.TriggerModeManualAfterInitial},
+		{"dc auto", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
+		{"dc manual", TriggerModeUnset, TriggerModeManual, model.TriggerModeManualAfterInitial},
+		{"dc override auto", TriggerModeManual, TriggerModeAuto, model.TriggerModeAuto},
+		{"dc override manual", TriggerModeAuto, TriggerModeManual, model.TriggerModeManualAfterInitial},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+
+			f.dockerfile("foo/Dockerfile")
+			f.file("docker-compose.yml", simpleConfig)
+
+			var globalTriggerModeDirective string
+			switch testCase.globalSetting {
+			case TriggerModeUnset:
+				globalTriggerModeDirective = ""
+			case TriggerModeManual:
+				globalTriggerModeDirective = "trigger_mode(TRIGGER_MODE_MANUAL)"
+			case TriggerModeAuto:
+				globalTriggerModeDirective = "trigger_mode(TRIGGER_MODE_AUTO)"
+			}
+
+			var dcResourceDirective string
+			switch testCase.dcResourceSetting {
+			case TriggerModeUnset:
+				dcResourceDirective = ""
+			case TriggerModeManual:
+				dcResourceDirective = "dc_resource('foo', trigger_mode=TRIGGER_MODE_MANUAL)"
+			case TriggerModeAuto:
+				dcResourceDirective = "dc_resource('foo', trigger_mode=TRIGGER_MODE_AUTO)"
+			}
+
+			f.file("Tiltfile", fmt.Sprintf(`
+%s
+docker_compose('docker-compose.yml')
+%s
+`, globalTriggerModeDirective, dcResourceDirective))
+
+			f.load()
+
+			f.assertNumManifests(1)
+			f.assertNextManifest("foo", testCase.expectedTriggerMode)
+		})
+	}
+}
+
+func TestDCResourceNoImage(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("docker-compose.yml", simpleConfig)
+	f.file("Tiltfile", `
+docker_compose('docker-compose.yml')
+dc_resource('foo', trigger_mode=TRIGGER_MODE_AUTO)
+`)
+
+	f.load()
+}
+
+func TestDCDependsOn(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("foo/Dockerfile")
+	f.file("docker-compose.yml", twoServiceConfig)
+	f.file("Tiltfile", `
+docker_compose('docker-compose.yml')
+dc_resource('bar', resource_deps=['foo'])
+`)
+
+	f.load()
+	f.assertNextManifest("foo", resourceDeps())
+	f.assertNextManifest("bar", resourceDeps("foo"))
 }
 
 func (f *fixture) assertDcManifest(name model.ManifestName, opts ...interface{}) model.Manifest {
