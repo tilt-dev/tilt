@@ -48,7 +48,8 @@ func (bd *LocalTargetBuildAndDeployer) BuildAndDeploy(ctx context.Context, st st
 		// 5. Tilt observes change to X
 		// 6. B finishes building
 		// 7. B is dirty because there was a change to X since the last time it started building, so it starts building again
-		// Empirically, this sleep seems to suffice to ensure that step (5) precedes step (4), which eliminates step (7)
+		// Empirically, this sleep generally suffices to ensure that step (5) precedes step (4), which eliminates step (7)
+		// It has been observed to fail to suffice when inotify is under load.
 		// At the moment (2020-01-31), local_resources will not build in parallel with other resources, so this works fine
 		// If/when we reenable parallel builds for local_resources, it will still help if the Tiltfile specifies
 		// A as a resource dependency of B (NB: both the problem and resource_dep only apply to initial builds).
