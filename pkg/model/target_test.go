@@ -106,7 +106,7 @@ func newDepTarget(name string, deps ...string) ImageTarget {
 	for i, dep := range deps {
 		depIDs[i] = ImageID(container.MustParseSelector(dep))
 	}
-	return NewImageTarget(ref).WithDependencyIDs(depIDs)
+	return MustNewImageTarget(ref).WithDependencyIDs(depIDs)
 }
 
 func newK8sTarget(name string, deps ...string) K8sTarget {

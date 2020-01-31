@@ -364,11 +364,11 @@ func TestLiveUpdateDiffImgMultipleContainersOnlySomeSyncsMatch(t *testing.T) {
 	sanchoLU := assembleLiveUpdate(sanchoSyncs, SanchoRunSteps, false, nil, f)
 	sidecarLU := assembleLiveUpdate(sidecarSyncs, RunStepsForApp("sidecar"),
 		false, nil, f)
-	sanchoTarg := model.NewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
+	sanchoTarg := model.MustNewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: SanchoDockerfile,
 		BuildPath:  sanchoPath,
 	})
-	sidecarTarg := model.NewImageTarget(SanchoSidecarRef).WithBuildDetails(model.DockerBuild{
+	sidecarTarg := model.MustNewImageTarget(SanchoSidecarRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: SanchoDockerfile,
 		BuildPath:  sidecarPath,
 	})
@@ -405,11 +405,11 @@ func TestLiveUpdateDiffImgMultipleContainersSameContextOnlyOneLiveUpdate(t *test
 	sanchoSyncs[0].Source = buildContext
 
 	sanchoLU := assembleLiveUpdate(sanchoSyncs, SanchoRunSteps, false, nil, f)
-	sanchoTarg := model.NewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
+	sanchoTarg := model.MustNewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: SanchoDockerfile,
 		BuildPath:  buildContext,
 	})
-	sidecarTarg := model.NewImageTarget(SanchoSidecarRef).WithBuildDetails(model.DockerBuild{
+	sidecarTarg := model.MustNewImageTarget(SanchoSidecarRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: SanchoDockerfile,
 		BuildPath:  buildContext,
 	})
