@@ -1,4 +1,4 @@
-import {Fields, BuildEvent} from "./types"
+import { Fields, BuildEvent } from "./types"
 import React, { PureComponent } from "react"
 import AnsiLine from "./AnsiLine"
 import {
@@ -37,11 +37,12 @@ let LogPaneLineRoot = styled.span`
     text-align: right;
     padding-right: ${SizeUnit(1)};
     border-top: 1px solid ${ColorRGBA(Color.grayLight, ColorAlpha.translucent)};
-    border-bottom: 1px solid ${ColorRGBA(Color.grayLight, ColorAlpha.translucent)};
+    border-bottom: 1px solid
+      ${ColorRGBA(Color.grayLight, ColorAlpha.translucent)};
   }
   &.is-buildEvent-fallback {
     background-color: ${Color.grayDarker};
-    
+
     // A lil' trick so bottom margin only appears after the last element
     margin-top: -${SizeUnit(0.5)};
     margin-bottom: ${SizeUnit(0.5)};

@@ -7,14 +7,13 @@ export enum Color {
   yellow = "#fcb41e",
   white = "#ffffff",
 
-
   offWhite = "#eef1f1",
   grayLightest = "#93a1a1", // Solarized base1  (darkest content tone)
-  grayLight = "#586e75",    // Solarized base01
-  gray = "#073642",         // Solarized base02
-  grayDark = "#002b36",     // Solarized base03 (darkest bg tone)
+  grayLight = "#586e75", // Solarized base01
+  gray = "#073642", // Solarized base02
+  grayDark = "#002b36", // Solarized base03 (darkest bg tone)
   grayDarker = "#00242d",
-  grayDarkest = "#001b20",  // Brand
+  grayDarkest = "#001b20", // Brand
   black = "#000000",
 
   text = "#073642",

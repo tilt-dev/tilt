@@ -483,7 +483,9 @@ it("does not scroll to highlighted lines if not snapshot", () => {
 
   expect(root.instance().highlightRef.current).not.toBeNull()
   expect(fakeScrollIntoView.mock.instances).toHaveLength(1)
-  expect(fakeScrollIntoView.mock.instances[0].className).toEqual(logEnd.props().className)
+  expect(fakeScrollIntoView.mock.instances[0].className).toEqual(
+    logEnd.props().className
+  )
   expect(fakeScrollIntoView).toBeCalledTimes(1)
 })
 
