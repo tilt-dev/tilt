@@ -153,7 +153,7 @@ docker_build('foo', 'foo', live_update=%s)`
 	f.load("foo")
 
 	i := image("foo")
-	i.deploymentRef = "gcr.io/foo"
+	i.localRef = "gcr.io/foo"
 	f.assertNextManifest("foo", db(i, f.expectedLU))
 }
 

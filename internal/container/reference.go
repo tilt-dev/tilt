@@ -29,14 +29,14 @@ func NewRefSet(confRef RefSelector, reg Registry) (RefSet, error) {
 		ConfigurationRef: confRef,
 		registry:         reg,
 	}
-	return r, r.validate()
+	return r, r.Validate()
 }
 
 func MustSimpleRefSet(ref RefSelector) RefSet {
 	r := RefSet{
 		ConfigurationRef: ref,
 	}
-	if err := r.validate(); err != nil {
+	if err := r.Validate(); err != nil {
 		panic(err)
 	}
 	return r
@@ -44,14 +44,14 @@ func MustSimpleRefSet(ref RefSelector) RefSet {
 
 func (rs RefSet) MustWithRegistry(reg Registry) RefSet {
 	rs.registry = reg
-	err := rs.validate()
+	err := rs.Validate()
 	if err != nil {
 		panic(err)
 	}
 	return rs
 }
 
-func (rs RefSet) validate() error {
+func (rs RefSet) Validate() error {
 	if !rs.registry.Empty() {
 		err := rs.registry.Validate()
 		if err != nil {
@@ -100,7 +100,6 @@ func (rs RefSet) ClusterRef() reference.Named {
 		// Validation should have caught this before now :-/
 		panic(fmt.Sprintf("ERROR deriving ClusterRef: %v", err))
 	}
-
 	return ref
 }
 

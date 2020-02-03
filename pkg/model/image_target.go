@@ -57,14 +57,13 @@ func (i ImageTarget) WithDependencyIDs(ids []TargetID) ImageTarget {
 }
 
 func (i ImageTarget) Validate() error {
-	// TODO(maia): i.Refs.Validate
 	confRef := i.Refs.ConfigurationRef
 	if confRef.Empty() {
 		return fmt.Errorf("[Validate] Image target missing image ref: %+v", i.BuildDetails)
 	}
 
-	if i.Refs.LocalRef().String() == "" {
-		return fmt.Errorf("[Validate] No localRef for image %q", confRef)
+	if err := i.Refs.Validate(); err != nil {
+		return fmt.Errorf("[Validate] Image %q refset failed validation: %v", confRef, err)
 	}
 
 	switch bd := i.BuildDetails.(type) {
