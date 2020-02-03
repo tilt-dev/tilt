@@ -418,7 +418,7 @@ it("renders highlighted lines", () => {
   expect(tree).toMatchSnapshot()
 
   let component = mount(el)
-  let hLines = component.find("span.logPaneLine.is-highlighted")
+  let hLines = component.find("span.LogPaneLine.is-highlighted")
   expect(hLines).toHaveLength(2)
 })
 

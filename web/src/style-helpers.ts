@@ -8,7 +8,7 @@ export enum Color {
   white = "#ffffff",
 
   offWhite = "#eef1f1",
-  grayLightest = "#93a1a1", // Solarized base1  (darkest content tone)
+  grayLightest = "#93a1a1", // Solarized base1 (darkest content tone)
   grayLight = "#586e75", // Solarized base01
   gray = "#073642", // Solarized base02
   grayDark = "#002b36", // Solarized base03 (darkest bg tone)
@@ -57,12 +57,10 @@ export enum Height {
   unit = unit,
   HUDheader = unit * 3,
   secondaryNav = unit * 1.2,
-  logLineSeparator = 3,
   resourceBar = unit * 1.5,
   statusbar = unit * 1.5,
 }
 export enum Width {
-  logLineGutter = 6,
   sidebar = unit * 10,
   sidebarCollapsed = unit * 1.5,
   secondaryNavItem = unit * 5,

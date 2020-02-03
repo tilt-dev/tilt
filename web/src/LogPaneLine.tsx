@@ -1,16 +1,7 @@
 import { Fields, BuildEvent } from "./types"
 import React, { PureComponent } from "react"
 import AnsiLine from "./AnsiLine"
-import {
-  Color,
-  ColorRGBA,
-  ColorAlpha,
-  SizeUnit,
-  Height,
-  Width,
-} from "./style-helpers"
-import styled from "styled-components"
-import Ansi from "ansi-to-react"
+import "./LogPaneLine.scss"
 
 type LogPaneProps = {
   text: string
@@ -23,86 +14,12 @@ type LogPaneProps = {
   isContextChange: boolean
 }
 
-let LogPaneLineRoot = styled.span`
-  display: flex;
-
-  &.is-highlighted {
-    background-color: ${ColorRGBA(Color.blue, ColorAlpha.translucent)};
-  }
-
-  &.is-buildEvent-init {
-    margin-top: ${SizeUnit(0.5)};
-    margin-bottom: ${SizeUnit(0.5)};
-    background-color: ${Color.gray};
-    text-align: right;
-    padding-right: ${SizeUnit(1)};
-    border-top: 1px solid ${ColorRGBA(Color.grayLight, ColorAlpha.translucent)};
-    border-bottom: 1px solid
-      ${ColorRGBA(Color.grayLight, ColorAlpha.translucent)};
-  }
-  &.is-buildEvent-fallback {
-    background-color: ${Color.grayDarker};
-
-    // A lil' trick so bottom margin only appears after the last element
-    margin-top: -${SizeUnit(0.5)};
-    margin-bottom: ${SizeUnit(0.5)};
-  }
-`
-let LogLinePrefixRoot = styled.span`
-  user-select: none;
-  width: ${Width.secondaryNavItem}px; // Match height of tab above
-  box-sizing: border-box;
-  background-color: ${Color.grayDarker};
-  color: ${Color.grayLightest};
-  padding-left: ${SizeUnit(0.5)};
-  padding-right: ${SizeUnit(0.5)};
-  display: flex;
-  align-items: center;
-  justify-content: right;
-  flex-shrink: 0;
-  // Truncate long text:
-  text-overflow: ellipsis;
-  overflow: hidden;
-  white-space: nowrap;
-
-  ${LogPaneLineRoot}.is-contextchange > & {
-    margin-top: -${Height.logLineSeparator}px;
-    border-top: ${Height.logLineSeparator}px solid ${Color.gray};
-  }
-`
-
-let LineContent = styled(AnsiLine)`
-  white-space: pre-wrap;
-  padding-left: ${SizeUnit(0.6)};
-  flex: 1;
-  
-  // Make spacing around "header" text more generous for legibility
-  // Padding isn't on LogLinePrefixRoot, lest we squish the LogLinePrefix
-  ${LogPaneLineRoot}.is-buildEvent-init &,
-  ${LogPaneLineRoot}.is-buildEvent-fallback & {
-    padding-top: ${SizeUnit(0.2)};
-    padding-bottom: ${SizeUnit(0.2)};
-  }
-
-  // A left border draws your eye to notable log lines
-  // Placed right of the prefix, so it's always just next to the log text
-  ${LogPaneLineRoot}.is-warning & {
-    border-left: ${Width.logLineGutter}px solid ${Color.yellow};
-  }
-  ${LogPaneLineRoot}.is-error & {
-    border-left: ${Width.logLineGutter}px solid ${Color.red};
-  }
-  ${LogPaneLineRoot}.is-buildEvent-fallback & {
-    border-left: ${Width.logLineGutter}px solid ${Color.blueDark};
-  }
-`
-
 let LogLinePrefix = React.memo((props: { name: string }) => {
   let name = props.name
   if (!name) {
     name = "(global)"
   }
-  return <LogLinePrefixRoot title={name}>{name}</LogLinePrefixRoot>
+  return <span className="logLinePrefix" title={name}>{name}</span>
 })
 
 class LogPaneLine extends PureComponent<LogPaneProps> {
@@ -121,7 +38,7 @@ class LogPaneLine extends PureComponent<LogPaneProps> {
     if (props.showManifestPrefix) {
       prefix = <LogLinePrefix name={props.manifestName} />
     }
-    let classes = ["logPaneLine"]
+    let classes = ["LogPaneLine"]
     if (props.shouldHighlight) {
       classes.push("is-highlighted")
     }
@@ -144,14 +61,14 @@ class LogPaneLine extends PureComponent<LogPaneProps> {
     }
 
     return (
-      <LogPaneLineRoot
+      <span
         ref={this.ref}
         data-lineid={props.lineId}
         className={classes.join(" ")}
       >
         {prefix}
-        <LineContent line={text} />
-      </LogPaneLineRoot>
+        <AnsiLine className="LogPaneLine-content" line={text} />
+      </span>
     )
   }
 }
