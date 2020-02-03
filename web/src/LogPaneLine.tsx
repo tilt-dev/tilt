@@ -19,7 +19,11 @@ let LogLinePrefix = React.memo((props: { name: string }) => {
   if (!name) {
     name = "(global)"
   }
-  return <span className="logLinePrefix" title={name}>{name}</span>
+  return (
+    <span className="logLinePrefix" title={name}>
+      {name}
+    </span>
+  )
 })
 
 class LogPaneLine extends PureComponent<LogPaneProps> {
