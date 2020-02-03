@@ -50,9 +50,9 @@ type upCmd struct {
 
 func (c *upCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:                   "up [<tilt flags>] [-- <Tiltfile args>]",
+		Use: "up [<tilt flags>] [-- <Tiltfile args>]",
 		DisableFlagsInUseLine: true,
-		Short:                 "start Tilt with the given Tiltfile args",
+		Short: "start Tilt with the given Tiltfile args",
 		Long: `
 Starts Tilt and runs services defined in the Tiltfile.
 

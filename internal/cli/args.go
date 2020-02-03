@@ -26,9 +26,9 @@ func newArgsCmd() *argsCmd {
 
 func (c *argsCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:                   "args [<flags>] [-- <Tiltfile args>]",
+		Use: "args [<flags>] [-- <Tiltfile args>]",
 		DisableFlagsInUseLine: true,
-		Short:                 "Changes the Tiltfile args in use by a running Tilt",
+		Short: "Changes the Tiltfile args in use by a running Tilt",
 		Long: `Changes the Tiltfile args in use by a running Tilt.
 
 Note that this does not affect built-in Tilt args (e.g. --hud, --host), but rather the extra args that come after,
