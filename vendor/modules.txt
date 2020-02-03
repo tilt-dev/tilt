@@ -296,6 +296,7 @@ github.com/inconshreveable/mousetrap
 github.com/jonboulle/clockwork
 # github.com/json-iterator/go v1.1.8
 github.com/json-iterator/go
+github.com/json-iterator/go/extra
 # github.com/konsorten/go-windows-terminal-sequences v1.0.2
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515

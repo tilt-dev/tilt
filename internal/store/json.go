@@ -6,6 +6,7 @@ import (
 	"unsafe"
 
 	json "github.com/json-iterator/go"
+	"github.com/json-iterator/go/extra"
 	"github.com/modern-go/reflect2"
 
 	"github.com/windmilleng/tilt/pkg/model"
@@ -15,6 +16,7 @@ var defaultJSONIterator = json.Config{}.Froze()
 
 func CreateEngineStateEncoder(w io.Writer) *json.Encoder {
 	config := json.Config{SortMapKeys: true}.Froze()
+	config.RegisterExtension(&extra.BinaryAsStringExtension{})
 	config.RegisterExtension(newEngineStateExtension())
 	config.RegisterExtension(&privateFieldsExtension{})
 	return config.NewEncoder(w)
