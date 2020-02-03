@@ -5,8 +5,9 @@ import { LogLine, SnapshotHighlight } from "./types"
 import LogPaneLine from "./LogPaneLine"
 import findLogLineID from "./findLogLine"
 import styled, { keyframes } from "styled-components"
-import { Color, ColorAlpha, SizeUnit } from "./style-helpers"
+import { Color, ColorRGBA, ColorAlpha, SizeUnit } from "./style-helpers"
 import selection from "./selection"
+import "./LogPane.scss"
 
 type LogPaneProps = {
   manifestName: string
@@ -37,6 +38,7 @@ let LogPaneRoot = styled.section`
   margin-bottom: ${SizeUnit(0.5)};
   width: 100%;
 `
+
 const blink = keyframes`
   0% {
     opacity: 1;
@@ -301,7 +303,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     let lines = this.props.logLines
     if (!lines || lines.length === 0) {
       return (
-        <LogPaneRoot>
+        <LogPaneRoot className="LogPane">
           <section className="Pane-empty-message">
             <LogoWordmarkSvg />
             <h2>No Logs Found</h2>
@@ -369,7 +371,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       </LogEnd>
     )
 
-    return <LogPaneRoot>{logLineEls}</LogPaneRoot>
+    return <LogPaneRoot className="LogPane">{logLineEls}</LogPaneRoot>
   }
 }
 

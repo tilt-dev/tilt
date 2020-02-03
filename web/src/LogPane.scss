@@ -1,0 +1,6 @@
+// Using CSS here since scoped ::selection doesn't seem to work with styled-components
+@import "constants";
+
+.LogPane ::selection {
+  background-color: rgba($color-blue, $translucent);
+}

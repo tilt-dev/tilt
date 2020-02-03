@@ -5,10 +5,6 @@
   align-items: stretch;
   width: 100%;
   min-height: 100vh;
-
-  ::selection {
-    background-color: rgba($color-blue, $translucent);
-  }
 }
 
 .HUD.is-snapshot * {
