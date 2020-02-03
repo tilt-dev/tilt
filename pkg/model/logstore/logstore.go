@@ -107,6 +107,7 @@ type LogLine struct {
 	Text       string
 	SpanID     SpanID
 	ProgressID string
+	BuildEvent string
 
 	// Most progress lines are optional. For example, if a bunch
 	// of little upload updates come in, it's ok to skip some.
@@ -443,6 +444,7 @@ func (s *LogStore) ContinuingLines(checkpoint Checkpoint) []LogLine {
 				SpanID:            precedingSegment.SpanID,
 				ProgressID:        precedingSegment.Fields[logger.FieldNameProgressID],
 				ProgressMustPrint: precedingSegment.Fields[logger.FieldNameProgressMustPrint] == "1",
+				BuildEvent:        precedingSegment.Fields[logger.FieldNameBuildEvent],
 				Time:              precedingSegment.Time,
 			},
 		}, result...)
@@ -605,6 +607,7 @@ func (s *LogStore) toLogLines(options logOptions) []LogLine {
 	progressID := ""
 	progressMustPrint := false
 	lastLineCompleted := false
+	buildEvent := ""
 
 	maybePushLine := func() {
 		// Even blank lines end in a newline, so if the stringbuilder
@@ -617,12 +620,14 @@ func (s *LogStore) toLogLines(options logOptions) []LogLine {
 			SpanID:            spanID,
 			ProgressID:        progressID,
 			ProgressMustPrint: progressMustPrint,
+			BuildEvent:        buildEvent,
 			Time:              time,
 		})
 		sb = strings.Builder{}
 		lastLineCompleted = true
 		spanID = ""
 		progressID = ""
+		buildEvent = ""
 	}
 
 	// We want to print the log line-by-line, but we don't actually store the logs
@@ -679,7 +684,7 @@ func (s *LogStore) toLogLines(options logOptions) []LogLine {
 			}
 		}
 
-		if segment.Fields[logger.FieldNameBuildEvent] == "0" {
+		if buildEvent == "init" {
 			// Estimate width of a "normal" Terminal
 			const lineLength = 80
 
@@ -699,6 +704,7 @@ func (s *LogStore) toLogLines(options logOptions) []LogLine {
 		isFirstLine = false
 		progressID = segment.Fields[logger.FieldNameProgressID]
 		progressMustPrint = segment.Fields[logger.FieldNameProgressMustPrint] == "1"
+		buildEvent = segment.Fields[logger.FieldNameBuildEvent]
 
 		// If this segment is not complete, run ahead and try to complete it.
 		if segment.IsComplete() {
