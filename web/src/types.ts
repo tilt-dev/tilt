@@ -57,16 +57,6 @@ export type Snapshot = {
   snapshotHighlight?: SnapshotHighlight | null
 }
 
-export type Fields = {
-  progressID?: string
-  buildEvent?: BuildEvent
-}
-
-export enum BuildEvent {
-  Init = "init",
-  Fallback = "fallback",
-}
-
 // A plaintext representation of a line of the log,
 // with metadata to render it in isolation.
 //
@@ -77,5 +67,5 @@ export type LogLine = {
   text: string
   manifestName: string
   level: string
-  fields?: Fields | null
+  buildEvent?: string
 }

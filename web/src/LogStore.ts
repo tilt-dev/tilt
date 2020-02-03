@@ -314,7 +314,7 @@ class LogStore {
           text: text,
           level: storedLine.level,
           manifestName: span.manifestName,
-          fields: storedLine.fields,
+          buildEvent: storedLine.fields?.buildEvent,
         }
 
         this.lineCache[i] = line

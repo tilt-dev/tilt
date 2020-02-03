@@ -1,4 +1,3 @@
-import { Fields, BuildEvent } from "./types"
 import React, { PureComponent } from "react"
 import AnsiLine from "./AnsiLine"
 import "./LogPaneLine.scss"
@@ -7,7 +6,7 @@ type LogPaneProps = {
   text: string
   manifestName: string
   level: string
-  fields?: Fields | null
+  buildEvent?: string
   lineId: number
   shouldHighlight: boolean
   showManifestPrefix: boolean
@@ -54,13 +53,10 @@ class LogPaneLine extends PureComponent<LogPaneProps> {
     if (props.isContextChange) {
       classes.push("is-contextChange")
     }
-    if (props.fields?.progressID) {
-      classes.push("is-progress")
-    }
-    if (props.fields?.buildEvent == BuildEvent.Init) {
+    if (props.buildEvent == "init") {
       classes.push("is-buildEvent-init")
     }
-    if (props.fields?.buildEvent == BuildEvent.Fallback) {
+    if (props.buildEvent == "fallback") {
       classes.push("is-buildEvent-fallback")
     }
 
