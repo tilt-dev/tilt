@@ -27,6 +27,7 @@ and may change frequently.
 
 	result.AddCommand(newDumpWebviewCmd())
 	result.AddCommand(newDumpEngineCmd())
+	result.AddCommand(newDumpLogStoreCmd())
 
 	return result
 }
@@ -59,8 +60,28 @@ the build specification, build history, and deployed resources.
 
 The format of the dump state does not make any API or compatibility promises,
 and may change frequently.
+
+Excludes logs.
 `,
 		Run: dumpEngine,
+	}
+	cmd.Flags().IntVar(&webPort, "port", DefaultWebPort, "Port for the Tilt HTTP server")
+	return cmd
+}
+
+func newDumpLogStoreCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "logstore",
+		Short: "dump the log store",
+		Long: `Dumps the state of the Tilt log store to stdout.
+
+Every log of a Tilt-managed resource is aggregated into a central structured log
+store before display. Dumps the JSON representation of this store.
+
+The format of the dump state does not make any API or compatibility promises,
+and may change frequently.
+`,
+		Run: dumpLogStore,
 	}
 	cmd.Flags().IntVar(&webPort, "port", DefaultWebPort, "Port for the Tilt HTTP server")
 	return cmd
@@ -105,24 +126,80 @@ func dumpEngine(cmd *cobra.Command, args []string) {
 		cmdFail(fmt.Errorf("Error connecting to Tilt at %s: %d", url, res.StatusCode))
 	}
 
-	err = dumpJSON(res.Body)
+	result, err := decodeJSON(res.Body)
+	if err != nil {
+		cmdFail(fmt.Errorf("dump engine: %v", err))
+	}
+
+	obj, ok := result.(map[string]interface{})
+	if ok {
+		delete(obj, "LogStore")
+	}
+
+	err = encodeJSON(obj)
 	if err != nil {
 		cmdFail(fmt.Errorf("dump engine: %v", err))
 	}
 }
 
+func dumpLogStore(cmd *cobra.Command, args []string) {
+	url := fmt.Sprintf("http://localhost:%d/api/dump/engine", webPort)
+	res, err := http.Get(url)
+	if err != nil {
+		cmdFail(fmt.Errorf("Could not connect to Tilt at %s: %v", url, err))
+	}
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
+	if res.StatusCode != http.StatusOK {
+		cmdFail(fmt.Errorf("Error connecting to Tilt at %s: %d", url, res.StatusCode))
+	}
+
+	result, err := decodeJSON(res.Body)
+	if err != nil {
+		cmdFail(fmt.Errorf("dump LogStore: %v", err))
+	}
+
+	var logStore interface{}
+	obj, ok := result.(map[string]interface{})
+	if ok {
+		logStore, ok = obj["LogStore"]
+	}
+
+	if !ok {
+		cmdFail(fmt.Errorf("No LogStore in engine: %v", err))
+	}
+
+	err = encodeJSON(logStore)
+	if err != nil {
+		cmdFail(fmt.Errorf("dump LogStore: %v", err))
+	}
+}
+
 func dumpJSON(reader io.Reader) error {
+	result, err := decodeJSON(reader)
+	if err != nil {
+		return err
+	}
+	return encodeJSON(result)
+}
+
+func decodeJSON(reader io.Reader) (interface{}, error) {
 	decoder := json.NewDecoder(reader)
 
 	var result interface{}
 	err := decoder.Decode(&result)
 	if err != nil {
-		return errors.Wrap(err, "Could not decode")
+		return nil, errors.Wrap(err, "Could not decode")
 	}
+	return result, err
+}
 
+func encodeJSON(result interface{}) error {
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
-	err = encoder.Encode(result)
+	err := encoder.Encode(result)
 	if err != nil {
 		return errors.Wrap(err, "Could not print")
 	}
