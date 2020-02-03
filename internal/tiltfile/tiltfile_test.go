@@ -2579,7 +2579,7 @@ docker_build('gcr.io/foo', 'foo')
 	f.loadErrString("Traceback ", "repository name must be canonical")
 }
 
-func TestDefaultRegistryPushAndPullHost(t *testing.T) {
+func TestDefaultRegistryHostFromCluster(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
