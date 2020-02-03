@@ -57,7 +57,7 @@ func (ec *explodingClient) CreatePortForwarder(ctx context.Context, namespace Na
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) WatchPods(ctx context.Context, lps labels.Selector) (<-chan *v1.Pod, error) {
+func (ec *explodingClient) WatchPods(ctx context.Context, lps labels.Selector) (<-chan ObjectUpdate, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 

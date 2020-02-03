@@ -1447,9 +1447,11 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	defer f.TearDown()
 	f.bc.DisableForTesting()
 
+	ptsh := k8s.PodTemplateSpecHash("hash")
 	name := model.ManifestName("foobar")
 	manifest := f.newManifest(name.String())
 	f.Start([]model.Manifest{manifest}, true)
+	f.registerDeployedPodTemplateSpecHashToManifest(name, ptsh)
 
 	// Start and end a fake build to set manifestState.ExpectedContainerId
 	f.store.Dispatch(newTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a"))
@@ -1473,7 +1475,11 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 		return st.CompletedBuildCount == 1 && buildcontrol.NextManifestNameToBuild(st) == ""
 	})
 
-	f.podEvent(podbuilder.New(t, manifest).WithPodID("mypod").WithContainerID("myfunnycontainerid").Build(), manifest.Name)
+	f.podEvent(podbuilder.New(t, manifest).
+		WithPodID("mypod").
+		WithTemplateSpecHash(ptsh).
+		WithContainerID("myfunnycontainerid").
+		Build(), manifest.Name)
 
 	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {
 		return ms.NeedsRebuildFromCrash
