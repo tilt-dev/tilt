@@ -74,7 +74,7 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 		}
 
 		if redirectErr, ok := err.(buildcontrol.RedirectToNextBuilder); ok {
-			l := logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameBuildEvent: "1"})
+			l := logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameBuildEvent: "fallback"})
 			s := fmt.Sprintf("Live Update temporarily disabled…\nREASON: %v\n", err)
 			l.Write(redirectErr.Level, []byte(s))
 		} else {

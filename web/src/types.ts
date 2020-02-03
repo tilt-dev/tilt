@@ -63,8 +63,8 @@ export type Fields = {
 }
 
 export enum BuildEvent {
-  Init = 0,
-  Fallback = 1,
+  Init = "init",
+  Fallback = "fallback",
 }
 
 // A plaintext representation of a line of the log,

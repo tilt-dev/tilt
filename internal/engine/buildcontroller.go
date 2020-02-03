@@ -130,7 +130,7 @@ func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 	buildReason := entry.buildReason
 	changedFiles := entry.filesChanged
 
-	l := logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameBuildEvent: "0"})
+	l := logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameBuildEvent: "init"})
 	delimiter := "•"
 	if firstBuild {
 		l.Infof("Initial Build %s %s", delimiter, name)
