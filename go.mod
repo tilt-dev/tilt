@@ -58,7 +58,7 @@ require (
 	github.com/jinzhu/gorm v1.9.12 // indirect
 	github.com/jmespath/go-jmespath v0.0.0-20160803190731-bd40a432e4c7 // indirect
 	github.com/jonboulle/clockwork v0.1.0
-	github.com/json-iterator/go v1.1.7
+	github.com/json-iterator/go v1.1.8
 	github.com/lightstep/lightstep-tracer-go v0.15.6
 	github.com/looplab/tarjan v0.0.0-20161115091335-9cc6d6cebfb5
 	github.com/marstr/guid v1.1.0 // indirect
@@ -94,7 +94,6 @@ require (
 	github.com/windmilleng/fsevents v0.0.0-20190206153914-2ad75e5ddeed
 	github.com/windmilleng/fsnotify v1.4.7
 	github.com/windmilleng/wmclient v0.0.0-20200124175229-a66bcbc48340
-	github.com/xlab/handysort v0.0.0-20150421192137-fb3537ed64a1 // indirect
 	go.opencensus.io v0.22.2 // indirect
 	go.opentelemetry.io/otel v0.2.0
 	go.starlark.net v0.0.0-20191021185836-28350e608555
@@ -112,13 +111,13 @@ require (
 	gopkg.in/fatih/pool.v2 v2.0.0 // indirect
 	gopkg.in/gorethink/gorethink.v3 v3.0.5 // indirect
 	gopkg.in/yaml.v2 v2.2.4
-	k8s.io/api v0.0.0-20191016110408-35e52d86657a
-	k8s.io/apimachinery v0.0.0-20191004115801-a2eda9f80ab8
-	k8s.io/cli-runtime v0.0.0-20191016114015-74ad18325ed5
-	k8s.io/client-go v0.0.0-20191016111102-bec269661e48
-	k8s.io/component-base v0.0.0-20191016111319-039242c015a9
+	k8s.io/api v0.17.2
+	k8s.io/apimachinery v0.17.3-beta.0
+	k8s.io/cli-runtime v0.17.2
+	k8s.io/client-go v0.17.2
+	k8s.io/component-base v0.17.2
 	k8s.io/klog v1.0.0
-	k8s.io/kubectl v0.0.0-20191016120415-2ed914427d51
+	k8s.io/kubectl v0.17.2
 	sigs.k8s.io/kustomize v2.0.3+incompatible
 	sigs.k8s.io/yaml v1.1.0
 	vbom.ml/util v0.0.0-20180919145318-efcd4e0f9787 // indirect
@@ -129,4 +128,6 @@ replace (
 	// TODO(dmiller) remove this replace once https://github.com/moby/buildkit/pull/1297 is merged
 	github.com/moby/buildkit => github.com/zachbadgett/buildkit v0.6.2-0.20191220071605-814e2794095f
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
+
+	k8s.io/client-go => github.com/windmilleng/client-go v0.17.3-0.20200124220244-8b86781afe3b
 )

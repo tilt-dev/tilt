@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/testutils"
+
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 
@@ -264,7 +266,10 @@ func newPLMFixture(t *testing.T) *plmFixture {
 		if !ok {
 			t.Errorf("Expected action type LogAction. Actual: %T", action)
 		}
-		out.Write(event.Message())
+		_, err := out.Write(event.Message())
+		if err != nil {
+			fmt.Printf("error writing event: %v\n", err)
+		}
 	}
 
 	st := store.NewStore(store.Reducer(reducer), store.LogActionsFlag(false))
@@ -273,7 +278,10 @@ func newPLMFixture(t *testing.T) *plmFixture {
 	ctx, cancel := context.WithCancel(context.Background())
 	l := logger.NewLogger(logger.DebugLvl, out)
 	ctx = logger.WithLogger(ctx, l)
-	go st.Loop(ctx)
+	go func() {
+		err := st.Loop(ctx)
+		testutils.FailOnNonCanceledErr(t, err, "store.Loop failed")
+	}()
 
 	return &plmFixture{
 		TempDirFixture: f,

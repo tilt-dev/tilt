@@ -5,6 +5,8 @@ import (
 	"path"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
@@ -78,8 +80,14 @@ func TestTryAsCwdChildren(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Chdir(oldPWD)
-	os.Chdir(f.Path())
+	defer func() {
+		err := os.Chdir(oldPWD)
+		if err != nil {
+			t.Fatalf("error restoring pwd: %v", err)
+		}
+	}()
+	err = os.Chdir(f.Path())
+	require.NoError(t, err)
 
 	results := TryAsCwdChildren([]string{f.Path()})
 

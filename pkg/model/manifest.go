@@ -241,11 +241,11 @@ func (m Manifest) Empty() bool {
 	return m.Equal(Manifest{})
 }
 
-func RefSelectorsForManifests(manifests []Manifest) []container.RefSelector {
+func LocalRefSelectorsForManifests(manifests []Manifest) []container.RefSelector {
 	var res []container.RefSelector
 	for _, m := range manifests {
 		for _, iTarg := range m.ImageTargets {
-			sel := container.NameSelector(iTarg.DeploymentRef).WithNameMatch()
+			sel := container.NameSelector(iTarg.Refs.LocalRef()).WithNameMatch()
 			res = append(res, sel)
 		}
 	}
@@ -396,6 +396,8 @@ var labelRequirementAllowUnexported = cmp.AllowUnexported(labels.Requirement{})
 var k8sTargetAllowUnexported = cmp.AllowUnexported(K8sTarget{})
 var localTargetAllowUnexported = cmp.AllowUnexported(LocalTarget{})
 var selectorAllowUnexported = cmp.AllowUnexported(container.RefSelector{})
+var refSetAllowUnexported = cmp.AllowUnexported(container.RefSet{})
+var registryAllowUnexported = cmp.AllowUnexported(container.Registry{})
 
 var dockerRefEqual = cmp.Comparer(func(a, b reference.Named) bool {
 	aNil := a == nil
@@ -420,5 +422,7 @@ func DeepEqual(x, y interface{}) bool {
 		k8sTargetAllowUnexported,
 		localTargetAllowUnexported,
 		selectorAllowUnexported,
+		refSetAllowUnexported,
+		registryAllowUnexported,
 		dockerRefEqual)
 }

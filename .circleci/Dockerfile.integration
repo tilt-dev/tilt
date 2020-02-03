@@ -2,9 +2,10 @@ FROM golang:1.13
 
 # Install docker
 # Adapted from https://github.com/circleci/circleci-images/blob/staging/shared/images/Dockerfile-basic.template
+# Check https://download.docker.com/linux/static/stable/x86_64/ for latest versions
+ENV DOCKER_VERSION=19.03.5
 RUN set -exu \
-  && export DOCKER_VERSION=$(curl -sSf --retry 3 https://download.docker.com/linux/static/stable/x86_64/ | grep -o -e 'docker-[.0-9]*-ce\.tgz' | sort -r | head -n 1) \
-  && DOCKER_URL="https://download.docker.com/linux/static/stable/x86_64/${DOCKER_VERSION}" \
+  && DOCKER_URL="https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz" \
   && echo Docker URL: $DOCKER_URL \
   && curl --silent --show-error --location --fail --retry 3 --output /tmp/docker.tgz "${DOCKER_URL}" \
   && ls -lha /tmp/docker.tgz \

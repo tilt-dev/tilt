@@ -266,6 +266,7 @@ const (
 	kustomizeN  = "kustomize"
 	helmN       = "helm"
 	decodeJSONN = "decode_json"
+	decodeYAMLN = "decode_yaml"
 	readJSONN   = "read_json"
 	readYAMLN   = "read_yaml"
 
@@ -448,6 +449,7 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 		{helmN, s.helm},
 		{failN, s.fail},
 		{decodeJSONN, s.decodeJSON},
+		{decodeYAMLN, s.decodeYaml},
 		{readJSONN, s.readJson},
 		{readYAMLN, s.readYaml},
 		{triggerModeN, s.triggerModeFn},
@@ -531,20 +533,8 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 }
 
 func (s *tiltfileState) assembleImages() error {
-	registry := s.defaultRegistryHost
-	if s.orchestrator() == model.OrchestratorK8s && s.privateRegistry != "" {
-		// If we've found a private registry in the cluster at run-time,
-		// use that instead of the one in the tiltfile
-		s.logger.Infof("Auto-detected private registry from environment: %s", s.privateRegistry)
-		registry = s.privateRegistry
-	}
-
 	for _, imageBuilder := range s.buildIndex.images {
 		var err error
-		imageBuilder.deploymentRef, err = container.ReplaceRegistry(registry, imageBuilder.configurationRef)
-		if err != nil {
-			return err
-		}
 
 		var depImages []reference.Named
 		if imageBuilder.dbDockerfile != "" {
@@ -566,7 +556,7 @@ func (s *tiltfileState) assembleImages() error {
 }
 
 func (s *tiltfileState) assembleDC() error {
-	if len(s.dc.services) > 0 && s.defaultRegistryHost != "" {
+	if len(s.dc.services) > 0 && !s.defaultRegistryHost.Empty() {
 		return errors.New("default_registry is not supported with docker compose")
 	}
 
@@ -1050,6 +1040,14 @@ func (s *tiltfileState) imgTargetsForDependencyIDs(ids []model.TargetID) ([]mode
 }
 
 func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, claimStatus map[model.TargetID]claim) ([]model.ImageTarget, error) {
+	var usePrivateRegistry bool
+	if s.orchestrator() == model.OrchestratorK8s && !s.privateRegistry.Empty() {
+		// If we've found a private registry in the cluster at run-time,
+		// use that instead of the one in the tiltfile
+		s.logger.Infof("Auto-detected private registry from environment: %s", s.privateRegistry)
+		usePrivateRegistry = true
+	}
+
 	iTargets := make([]model.ImageTarget, 0, len(ids))
 	for _, id := range ids {
 		image := s.buildIndex.findBuilderByID(id)
@@ -1066,10 +1064,20 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 		}
 		claimStatus[id] = claimPending
 
+		registry := s.defaultRegistryHost
+		if usePrivateRegistry {
+			registry = s.privateRegistry
+		}
+		refs, err := container.NewRefSet(image.configurationRef, registry)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Something went wrong deriving "+
+				"references for your image: %q. Check the image name (and your "+
+				"`default_registry()` call, if any) for errors", image.configurationRef)
+		}
+
 		iTarget := model.ImageTarget{
-			ConfigurationRef: image.configurationRef,
-			DeploymentRef:    image.deploymentRef,
-			MatchInEnvVars:   image.matchInEnvVars,
+			Refs:           refs,
+			MatchInEnvVars: image.matchInEnvVars,
 		}
 
 		if !image.entrypoint.Empty() {

@@ -77,7 +77,8 @@ type TiltfileLoader interface {
 }
 
 type FakeTiltfileLoader struct {
-	Result TiltfileLoadResult
+	Result          TiltfileLoadResult
+	userConfigState model.UserConfigState
 }
 
 var _ TiltfileLoader = &FakeTiltfileLoader{}
@@ -87,7 +88,13 @@ func NewFakeTiltfileLoader() *FakeTiltfileLoader {
 }
 
 func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, userConfigState model.UserConfigState) TiltfileLoadResult {
+	tfl.userConfigState = userConfigState
 	return tfl.Result
+}
+
+// the UserConfigState that was passed to the last invocation of Load
+func (tfl *FakeTiltfileLoader) PassedUserConfigState() model.UserConfigState {
+	return tfl.userConfigState
 }
 
 func ProvideTiltfileLoader(
@@ -156,6 +163,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 	tlr.TiltIgnoreContents = string(tiltIgnoreContents)
 
 	privateRegistry := tfl.kCli.PrivateRegistry(ctx)
+
 	s := newTiltfileState(ctx, tfl.dcCli, tfl.webHost, tfl.k8sContextExt, privateRegistry, feature.FromDefaults(tfl.fDefaults))
 
 	manifests, result, err := s.loadManifests(absFilename, userConfigState)

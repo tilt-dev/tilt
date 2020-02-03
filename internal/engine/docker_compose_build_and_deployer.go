@@ -90,22 +90,22 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 			return nil, err
 		}
 
-		expectedRef := iTarget.ConfigurationRef
+		expectedRef := iTarget.Refs.ConfigurationRef
 
 		// NOTE(maia): we assume that this func takes one DC target and up to one image target
 		// corresponding to that service. If this func ever supports specs for more than one
 		// service at once, we'll have to match up image build results to DC target by ref.
-		ref, err := bd.icb.Build(ctx, iTarget, currentState[iTarget.ID()], ps)
+		refs, err := bd.icb.Build(ctx, iTarget, currentState[iTarget.ID()], ps)
 		if err != nil {
 			return nil, err
 		}
 
-		ref, err = bd.tagWithExpected(ctx, ref, expectedRef)
+		ref, err := bd.tagWithExpected(ctx, refs.LocalRef, expectedRef)
 		if err != nil {
 			return nil, err
 		}
 
-		return store.NewImageBuildResult(iTarget.ID(), ref), nil
+		return store.NewImageBuildResultSingleRef(iTarget.ID(), ref), nil
 	})
 
 	if err != nil {
@@ -131,6 +131,9 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	return results, nil
 }
 
+// tagWithExpected tags the given ref as whatever Docker Compose expects, i.e. as
+// the `image` value given in docker-compose.yaml. (If DC yaml specifies an image
+// with a tag, use that name + tag; otherwise, tag as latest.)
 func (bd *DockerComposeBuildAndDeployer) tagWithExpected(ctx context.Context, ref reference.NamedTagged,
 	expected container.RefSelector) (reference.NamedTagged, error) {
 	var tagAs reference.NamedTagged

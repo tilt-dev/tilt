@@ -30,9 +30,9 @@ func TestWriteAcrossNestedLoggers(t *testing.T) {
 	l := Get(CtxWithForkedOutput(ctx, out2))
 	w := NewPrefixedLogger(">", l).Writer(InfoLvl)
 
-	w.Write([]byte("a"))
-	w.Write([]byte("b\nc"))
-	w.Write([]byte("d\ne\n"))
+	_, _ = w.Write([]byte("a"))
+	_, _ = w.Write([]byte("b\nc"))
+	_, _ = w.Write([]byte("d\ne\n"))
 
 	assert.Equal(t, "|>ab\n|>cd\n|>e\n", out1.String())
 	assert.Equal(t, ">ab\n>cd\n>e\n", out2.String())

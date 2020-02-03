@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
@@ -27,7 +26,6 @@ var cacheObsoleteWarning = "docker_build(cache=...) is obsolete, and currently a
 type dockerImage struct {
 	workDir          string
 	configurationRef container.RefSelector
-	deploymentRef    reference.Named
 	matchInEnvVars   bool
 	sshSpecs         []string
 	ignores          []string
@@ -449,7 +447,7 @@ func (s *tiltfileState) reposForImage(image *dockerImage) []model.LocalGitRepo {
 }
 
 func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	if s.defaultRegistryHost != "" {
+	if !s.defaultRegistryHost.Empty() {
 		return starlark.None, errors.New("default registry already defined")
 	}
 
@@ -458,7 +456,12 @@ func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Bu
 		return nil, err
 	}
 
-	s.defaultRegistryHost = container.Registry(dr)
+	reg, err := container.NewRegistry(dr)
+	if err != nil {
+		return starlark.None, errors.Wrapf(err, "validating defaultRegistry")
+	}
+
+	s.defaultRegistryHost = reg
 
 	return starlark.None, nil
 }

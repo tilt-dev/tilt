@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"net/http"
 	"sync/atomic"
 	"time"
@@ -9,7 +11,6 @@ import (
 	"github.com/pkg/browser"
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/network"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -102,7 +103,7 @@ func (s *HeadsUpServerController) OnChange(ctx context.Context, st store.RStore)
 		return
 	}
 
-	err := network.IsBindAddrFree(network.BindAddr(string(s.host), int(s.port)))
+	l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", string(s.host), int(s.port)))
 	if err != nil {
 		st.Dispatch(
 			store.NewErrorAction(
@@ -111,7 +112,6 @@ func (s *HeadsUpServerController) OnChange(ctx context.Context, st store.RStore)
 	}
 
 	httpServer := &http.Server{
-		Addr:    network.BindAddr(string(s.host), int(s.port)),
 		Handler: http.DefaultServeMux,
 	}
 	http.Handle("/", s.hudServer.Router())
@@ -129,7 +129,7 @@ func (s *HeadsUpServerController) OnChange(ctx context.Context, st store.RStore)
 	}()
 
 	go func() {
-		err := httpServer.ListenAndServe()
+		err := httpServer.Serve(l)
 		if err != nil && err != http.ErrServerClosed && ctx.Err() == nil {
 			st.Dispatch(store.NewErrorAction(err))
 		}

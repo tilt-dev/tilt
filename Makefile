@@ -72,14 +72,16 @@ test: test-go test-js
 
 # skip some tests that are slow and not always relevant
 shorttest:
-	go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags 'skipcontainertests' -timeout 60s ./...
+	# TODO(matt) skipdockercomposetests only skips the tiltfile DC tests at the moment
+	# we might also want to skip the ones in engine
+	go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skipdockercomposetests -timeout 60s ./...
 
 integration:
 ifneq ($(CIRCLECI),true)
 		go test -mod vendor -v -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s ./integration
 else
 		mkdir -p test-results
-		gotestsum --format standard-verbose --junitfile test-results/unit-tests.xml -- ./integration -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s
+		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./integration -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s
 endif
 
 # Run the integration tests on kind
@@ -101,7 +103,11 @@ build-js:
 
 test-js:
 	cd web && yarn install
+ifneq ($(CIRCLECI),true)
 	cd web && CI=true yarn test
+else
+	cd web && CI=true yarn ci
+endif
 
 goimports:
 	goimports -w -l $(GOIMPORTS_LOCAL_ARG) $$(go list -f {{.Dir}} ./...)
@@ -111,10 +117,10 @@ benchmark:
 
 golangci-lint:
 ifneq ($(CIRCLECI),true)
-	golangci-lint run -v
+	GOFLAGS="-mod=vendor" golangci-lint run -v --timeout 90s
 else
 	mkdir -p test-results
-	golangci-lint run -v --out-format junit-xml > test-results/lint.xml
+	GOFLAGS="-mod=vendor" golangci-lint run -v --timeout 90s --out-format junit-xml > test-results/lint.xml
 endif
 
 wire:
@@ -175,9 +181,3 @@ ensure: vendor
 
 vendor:
 	go mod vendor
-	# Patch client-go with our fixes to the informers.
-	# https://github.com/windmilleng/tilt/issues/2702
-	cp scripts/patch/cache/controller.go.patch vendor/k8s.io/client-go/tools/cache/controller.go
-	cp scripts/patch/cache/patch.go.patch vendor/k8s.io/client-go/tools/cache/patch.go
-	cp scripts/patch/cache/shared_informer.go.patch vendor/k8s.io/client-go/tools/cache/shared_informer.go
-	cp scripts/patch/cache/reflector.go.patch vendor/k8s.io/client-go/tools/cache/reflector.go

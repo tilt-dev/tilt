@@ -63,7 +63,7 @@ func TestTiltBuildsImage(t *testing.T) {
 
 	assert.Equal(t, 1, f.dCli.BuildCount, "expect one docker build")
 
-	expectedTag := fmt.Sprintf("%s:%s", iTarget.DeploymentRef, docker.TagLatest)
+	expectedTag := fmt.Sprintf("%s:%s", iTarget.Refs.LocalRef(), docker.TagLatest)
 	assert.Equal(t, expectedTag, f.dCli.TagTarget)
 
 	if assert.Len(t, f.dcCli.UpCalls, 1, "expect one call to `docker-compose up`") {
@@ -81,7 +81,7 @@ func TestTiltBuildsImageWithTag(t *testing.T) {
 	defer f.TearDown()
 
 	refWithTag := "gcr.io/foo:bar"
-	iTarget := model.NewImageTarget(container.MustParseSelector(refWithTag)).
+	iTarget := model.MustNewImageTarget(container.MustParseSelector(refWithTag)).
 		WithBuildDetails(model.DockerBuild{})
 	manifest := manifestbuilder.New(f, "fe").
 		WithDockerCompose().
@@ -143,7 +143,7 @@ func TestMultiStageDockerComposeWithOnlyOneDirtyImage(t *testing.T) {
 		WithDeployTarget(defaultDockerComposeTarget(f, "sancho"))
 
 	iTargetID := manifest.ImageTargets[0].ID()
-	result := store.NewImageBuildResult(iTargetID, container.MustParseNamedTagged("sancho-base:tilt-prebuilt"))
+	result := store.NewImageBuildResultSingleRef(iTargetID, container.MustParseNamedTagged("sancho-base:tilt-prebuilt"))
 	state := store.NewBuildState(result, nil)
 	stateSet := store.BuildStateSet{iTargetID: state}
 	f.dCli.ImageListCount = 1

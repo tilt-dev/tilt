@@ -19,7 +19,7 @@ func TestWebsocketCloseOnReadErr(t *testing.T) {
 	st.SetUpSubscribersForTesting(ctx)
 
 	conn := newFakeConn()
-	ws := NewWebsocketSubscriber(conn)
+	ws := NewWebsocketSubscriber(ctx, conn)
 	st.AddSubscriber(ctx, ws)
 
 	done := make(chan bool)
@@ -45,7 +45,7 @@ func TestWebsocketReadErrDuringMsg(t *testing.T) {
 	st.SetUpSubscribersForTesting(ctx)
 
 	conn := newFakeConn()
-	ws := NewWebsocketSubscriber(conn)
+	ws := NewWebsocketSubscriber(ctx, conn)
 	st.AddSubscriber(ctx, ws)
 
 	done := make(chan bool)
@@ -77,7 +77,7 @@ func TestWebsocketNextWriterError(t *testing.T) {
 
 	conn := newFakeConn()
 	conn.nextWriterError = fmt.Errorf("fake NextWriter error")
-	ws := NewWebsocketSubscriber(conn)
+	ws := NewWebsocketSubscriber(ctx, conn)
 	st.AddSubscriber(ctx, ws)
 
 	done := make(chan bool)

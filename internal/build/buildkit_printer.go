@@ -26,6 +26,7 @@ type vertex struct {
 	startPrinted    bool
 	errorPrinted    bool
 	completePrinted bool
+	durationPrinted time.Duration
 	cached          bool
 	duration        time.Duration
 }
@@ -79,8 +80,13 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) e
 		if vl, ok := b.vData[v.digest]; ok {
 			vl.vertex.started = v.started
 			vl.vertex.completed = v.completed
-			vl.vertex.duration = v.duration
 			vl.vertex.cached = v.cached
+
+			// NOTE(nick): Fun fact! The buildkit protocol sends down multiple completion timestamps.
+			// We need to take the last one.
+			if v.duration > vl.vertex.duration {
+				vl.vertex.duration = v.duration
+			}
 
 			if v.isError() {
 				vl.vertex.error = v.error
@@ -108,11 +114,12 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) e
 			return fmt.Errorf("Expected to find digest %s in %+v", d, b.vData)
 		}
 		if vl.vertex.started && !vl.vertex.startPrinted && !vl.vertex.isInternal() {
-			cachePrefix := ""
+			cacheSuffix := ""
 			if vl.vertex.cached {
-				cachePrefix = "[cached] "
+				cacheSuffix = " [cached]"
 			}
-			b.logger.Infof("%s%s", cachePrefix, vl.vertex.name)
+			b.logger.WithFields(logger.Fields{logger.FieldNameProgressID: vl.vertex.stageName()}).
+				Infof("%s%s", vl.vertex.name, cacheSuffix)
 			vl.vertex.startPrinted = true
 		}
 
@@ -127,17 +134,21 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog) e
 		}
 
 		if vl.vertex.completed &&
-			!vl.vertex.completePrinted &&
 			!vl.vertex.isInternal() &&
 			!vl.vertex.cached &&
-			vl.vertex.duration > 200*time.Millisecond &&
+			vl.vertex.duration >= time.Millisecond &&
 			!vl.vertex.isError() {
 
-			// TODO(nick): Should this use the progress API once it's available?
-			b.logger.Infof("%s done | %s",
-				vl.vertex.stageName(),
-				vl.vertex.duration.Truncate(time.Millisecond))
-			vl.vertex.completePrinted = true
+			// NOTE(nick): Fun fact! The buildkit protocol sends down multiple completion timestamps.
+			// We need to print the longest one.
+			shouldPrint := !vl.vertex.completePrinted ||
+				vl.vertex.durationPrinted < vl.vertex.duration
+			if shouldPrint {
+				b.logger.WithFields(logger.Fields{logger.FieldNameProgressID: vl.vertex.stageName()}).
+					Infof("%s [done: %s]", vl.vertex.name, vl.vertex.duration.Truncate(time.Millisecond))
+				vl.vertex.completePrinted = true
+				vl.vertex.durationPrinted = vl.vertex.duration
+			}
 		}
 	}
 

@@ -5,6 +5,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -47,9 +49,11 @@ func TestDeferredLoggerCopiesBytes(t *testing.T) {
 
 	data := make([]byte, 0, 100)
 	data2 := append(data, []byte("Hello")...)
-	deferLogger.Writer(DebugLvl).Write(data2)
+	_, err := deferLogger.Writer(DebugLvl).Write(data2)
+	require.NoError(t, err)
 	data3 := append(data, []byte("Goodbye")...)
-	deferLogger.Writer(DebugLvl).Write(data3)
+	_, err = deferLogger.Writer(DebugLvl).Write(data3)
+	require.NoError(t, err)
 
 	assert.Equal(t, "", out.String())
 

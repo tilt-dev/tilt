@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/docker/distribution/reference"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 
@@ -17,7 +16,7 @@ import (
 )
 
 type CustomBuilder interface {
-	Build(ctx context.Context, ref reference.Named, cb model.CustomBuild) (reference.NamedTagged, error)
+	Build(ctx context.Context, refs container.RefSet, cb model.CustomBuild) (container.TaggedRefs, error)
 }
 
 type ExecCustomBuilder struct {
@@ -32,7 +31,7 @@ func NewExecCustomBuilder(dCli docker.Client, clock Clock) *ExecCustomBuilder {
 	}
 }
 
-func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, cb model.CustomBuild) (reference.NamedTagged, error) {
+func (b *ExecCustomBuilder) Build(ctx context.Context, refs container.RefSet, cb model.CustomBuild) (container.TaggedRefs, error) {
 	workDir := cb.WorkDir
 	expectedTag := cb.Tag
 	command := cb.Command
@@ -42,18 +41,19 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, cb m
 		expectedTag = fmt.Sprintf("tilt-build-%d", b.clock.Now().Unix())
 	}
 
-	expectedRef, err := reference.WithTag(ref, expectedTag)
+	expectedRefs, err := refs.TagRefs(expectedTag)
 	if err != nil {
-		return nil, errors.Wrap(err, "CustomBuilder.Build")
+		return container.TaggedRefs{}, errors.Wrap(err, "CustomBuilder.Build")
 	}
+	expectedLocal := expectedRefs.LocalRef
 
 	cmd := exec.CommandContext(ctx, "sh", "-c", command)
 	cmd.Dir = workDir
 
 	l := logger.Get(ctx)
 	l.Infof("Custom Build: Injecting Environment Variables")
-	l.Infof("EXPECTED_REF=%s", container.FamiliarString(expectedRef))
-	env := append(os.Environ(), fmt.Sprintf("EXPECTED_REF=%s", container.FamiliarString(expectedRef)))
+	l.Infof("EXPECTED_REF=%s", container.FamiliarString(expectedLocal))
+	env := append(os.Environ(), fmt.Sprintf("EXPECTED_REF=%s", container.FamiliarString(expectedLocal)))
 
 	for _, e := range b.dCli.Env().AsEnviron() {
 		env = append(env, e)
@@ -68,18 +68,18 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, cb m
 	l.Infof("Running custom build cmd %q", command)
 	err = cmd.Run()
 	if err != nil {
-		return nil, errors.Wrap(err, "Custom build command failed")
+		return container.TaggedRefs{}, errors.Wrap(err, "Custom build command failed")
 	}
 
 	// If the command skips the local docker registry, then we don't expect the image
 	// to be available (because the command has its own registry).
 	if skipsLocalDocker {
-		return expectedRef, nil
+		return expectedRefs, nil
 	}
 
-	inspect, _, err := b.dCli.ImageInspectWithRaw(ctx, expectedRef.String())
+	inspect, _, err := b.dCli.ImageInspectWithRaw(ctx, expectedLocal.String())
 	if err != nil {
-		return nil, errors.Wrap(err, "Could not find image in Docker\n"+
+		return container.TaggedRefs{}, errors.Wrap(err, "Could not find image in Docker\n"+
 			"If your custom_build doesn't use Docker, you might need to use skips_local_docker=True, "+
 			"see https://docs.tilt.dev/custom_build.html\n")
 	}
@@ -88,18 +88,19 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, ref reference.Named, cb m
 
 	tag, err := digestAsTag(dig)
 	if err != nil {
-		return nil, errors.Wrap(err, "CustomBuilder.Build")
+		return container.TaggedRefs{}, errors.Wrap(err, "CustomBuilder.Build")
 	}
 
-	namedTagged, err := reference.WithTag(ref, tag)
+	taggedWithDigest, err := refs.TagRefs(tag)
 	if err != nil {
-		return nil, errors.Wrap(err, "CustomBuilder.Build")
+		return container.TaggedRefs{}, errors.Wrap(err, "CustomBuilder.Build")
 	}
 
-	err = b.dCli.ImageTag(ctx, dig.String(), namedTagged.String())
+	// Docker client only needs to care about the localImage
+	err = b.dCli.ImageTag(ctx, dig.String(), taggedWithDigest.LocalRef.String())
 	if err != nil {
-		return nil, errors.Wrap(err, "CustomBuilder.Build")
+		return container.TaggedRefs{}, errors.Wrap(err, "CustomBuilder.Build")
 	}
 
-	return namedTagged, nil
+	return taggedWithDigest, nil
 }

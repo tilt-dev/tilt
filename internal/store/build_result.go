@@ -37,10 +37,15 @@ func NewLocalBuildResult(id model.TargetID) LocalBuildResult {
 type ImageBuildResult struct {
 	id model.TargetID
 
-	// The name+tag of the image that the pod is running.
-	//
-	// The tag is derived from a content-addressable digest.
-	Image reference.NamedTagged
+	// TODO(maia): it would make the most sense for the ImageBuildResult to know what it BUILT, and for us
+	//   to calculate the ClusterRef (if different from LocalRef) when we have to inject it, but
+	//   storing all the info on ImageBuildResult for now was the fastest/safest way to ship this.
+	// Note: image tag is derived from a content-addressable digest.
+	ImageLocalRef   reference.NamedTagged // built image, as referenced from outside the cluster (in Dockerfile, docker push etc.)
+	ImageClusterRef reference.NamedTagged // built image, as referenced from the cluster (in K8s YAML, etc.)
+	// Often ImageLocalRef and ImageClusterRef will be the same, but may diverge: e.g.
+	// when using KIND + local registry, localRef is localhost:1234/my-img:tilt-abc,
+	// ClusterRef is http://registry/my-img:tilt-abc
 }
 
 func (r ImageBuildResult) TargetID() model.TargetID   { return r.id }
@@ -48,18 +53,21 @@ func (r ImageBuildResult) BuildType() model.BuildType { return model.BuildTypeIm
 func (r ImageBuildResult) Facets() []model.Facet      { return nil }
 
 // For image targets.
-func NewImageBuildResult(id model.TargetID, image reference.NamedTagged) ImageBuildResult {
+func NewImageBuildResult(id model.TargetID, localRef, clusterRef reference.NamedTagged) ImageBuildResult {
 	return ImageBuildResult{
-		id:    id,
-		Image: image,
+		id:              id,
+		ImageLocalRef:   localRef,
+		ImageClusterRef: clusterRef,
 	}
+}
+
+// When localRef == ClusterRef
+func NewImageBuildResultSingleRef(id model.TargetID, ref reference.NamedTagged) ImageBuildResult {
+	return NewImageBuildResult(id, ref, ref)
 }
 
 type LiveUpdateBuildResult struct {
 	id model.TargetID
-
-	// The name+tag of the image that the pod is running.
-	Image reference.NamedTagged
 
 	// The ID of the container(s) that we live-updated in-place.
 	//
@@ -73,10 +81,9 @@ func (r LiveUpdateBuildResult) BuildType() model.BuildType { return model.BuildT
 func (r LiveUpdateBuildResult) Facets() []model.Facet      { return nil }
 
 // For in-place container updates.
-func NewLiveUpdateBuildResult(id model.TargetID, image reference.NamedTagged, containerIDs []container.ID) LiveUpdateBuildResult {
+func NewLiveUpdateBuildResult(id model.TargetID, containerIDs []container.ID) LiveUpdateBuildResult {
 	return LiveUpdateBuildResult{
 		id:                      id,
-		Image:                   image,
 		LiveUpdatedContainerIDs: containerIDs,
 	}
 }
@@ -144,12 +151,18 @@ func NewK8sDeployResult(id model.TargetID, uids []types.UID, hashes []k8s.PodTem
 	}
 }
 
-func ImageFromBuildResult(r BuildResult) reference.NamedTagged {
+func LocalImageRefFromBuildResult(r BuildResult) reference.NamedTagged {
 	switch r := r.(type) {
 	case ImageBuildResult:
-		return r.Image
-	case LiveUpdateBuildResult:
-		return r.Image
+		return r.ImageLocalRef
+	}
+	return nil
+}
+
+func ClusterImageRefFromBuildResult(r BuildResult) reference.NamedTagged {
+	switch r := r.(type) {
+	case ImageBuildResult:
+		return r.ImageClusterRef
 	}
 	return nil
 }
@@ -300,8 +313,8 @@ func (b BuildState) OneContainerInfo() ContainerInfo {
 	}
 	return b.RunningContainers[0]
 }
-func (b BuildState) LastImageAsString() string {
-	img := ImageFromBuildResult(b.LastSuccessfulResult)
+func (b BuildState) LastLocalImageAsString() string {
+	img := LocalImageRefFromBuildResult(b.LastSuccessfulResult)
 	if img == nil {
 		return ""
 	}
@@ -325,8 +338,8 @@ func (b BuildState) IsEmpty() bool {
 	return b.LastSuccessfulResult == nil
 }
 
-func (b BuildState) HasImage() bool {
-	return ImageFromBuildResult(b.LastSuccessfulResult) != nil
+func (b BuildState) HasLastSuccessfulResult() bool {
+	return b.LastSuccessfulResult != nil
 }
 
 // Whether the image represented by this state needs to be built.
@@ -426,7 +439,7 @@ func RunningContainersForTargetForOnePod(iTarget model.ImageTarget, runtimeState
 	var containers []ContainerInfo
 	for _, c := range pod.Containers {
 		// Only return containers matching our image
-		if c.ImageRef == nil || iTarget.DeploymentRef.Name() != c.ImageRef.Name() {
+		if c.ImageRef == nil || iTarget.Refs.ClusterRef().Name() != c.ImageRef.Name() {
 			continue
 		}
 		if c.ID == "" || c.Name == "" || !c.Ready {

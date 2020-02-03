@@ -3,6 +3,8 @@ package feature
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -46,7 +48,8 @@ func TestSetObsolete(t *testing.T) {
 
 func TestToEnabled(t *testing.T) {
 	m := FeatureSet{"foo": Value{Enabled: false}}
-	m.Set("foo", true)
+	err := m.Set("foo", true)
+	require.NoError(t, err)
 
 	assert.Equal(t, map[string]bool{"foo": true}, m.ToEnabled())
 }

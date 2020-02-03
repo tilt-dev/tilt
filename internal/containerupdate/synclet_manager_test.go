@@ -5,6 +5,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/windmilleng/tilt/internal/testutils"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/windmilleng/tilt/internal/docker"
@@ -72,7 +74,10 @@ func newSMFixture(t *testing.T) *smFixture {
 
 	l := logger.NewLogger(logger.DebugLvl, os.Stdout)
 	ctx = logger.WithLogger(ctx, l)
-	go st.Loop(ctx)
+	go func() {
+		err := st.Loop(ctx)
+		testutils.FailOnNonCanceledErr(t, err, "store.Loop failed")
+	}()
 
 	return &smFixture{
 		TempDirFixture: f,

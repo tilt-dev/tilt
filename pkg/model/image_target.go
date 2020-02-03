@@ -4,17 +4,14 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/docker/distribution/reference"
-
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/sliceutils"
 )
 
 type ImageTarget struct {
-	ConfigurationRef container.RefSelector
-	DeploymentRef    reference.Named
-	BuildDetails     BuildDetails
-	MatchInEnvVars   bool
+	Refs           container.RefSet
+	BuildDetails   BuildDetails
+	MatchInEnvVars bool
 
 	// User-supplied command to run when the container runs
 	// (i.e. overrides k8s yaml "command", container ENTRYPOINT, etc.)
@@ -31,8 +28,8 @@ type ImageTarget struct {
 	dependencyIDs []TargetID
 }
 
-func NewImageTarget(ref container.RefSelector) ImageTarget {
-	return ImageTarget{ConfigurationRef: ref, DeploymentRef: ref.AsNamedOnly()}
+func MustNewImageTarget(ref container.RefSelector) ImageTarget {
+	return ImageTarget{Refs: container.MustSimpleRefSet(ref)}
 }
 
 func ImageID(ref container.RefSelector) TargetID {
@@ -47,7 +44,7 @@ func ImageID(ref container.RefSelector) TargetID {
 }
 
 func (i ImageTarget) ID() TargetID {
-	return ImageID(i.ConfigurationRef)
+	return ImageID(i.Refs.ConfigurationRef)
 }
 
 func (i ImageTarget) DependencyIDs() []TargetID {
@@ -60,14 +57,20 @@ func (i ImageTarget) WithDependencyIDs(ids []TargetID) ImageTarget {
 }
 
 func (i ImageTarget) Validate() error {
-	if i.ConfigurationRef.Empty() {
+	// TODO(maia): i.Refs.Validate
+	confRef := i.Refs.ConfigurationRef
+	if confRef.Empty() {
 		return fmt.Errorf("[Validate] Image target missing image ref: %+v", i.BuildDetails)
+	}
+
+	if i.Refs.LocalRef().String() == "" {
+		return fmt.Errorf("[Validate] No localRef for image %q", confRef)
 	}
 
 	switch bd := i.BuildDetails.(type) {
 	case DockerBuild:
 		if bd.BuildPath == "" {
-			return fmt.Errorf("[Validate] Image %q missing build path", i.ConfigurationRef)
+			return fmt.Errorf("[Validate] Image %q missing build path", confRef)
 		}
 	case CustomBuild:
 		if bd.Command == "" {
@@ -76,7 +79,8 @@ func (i ImageTarget) Validate() error {
 			)
 		}
 	default:
-		return fmt.Errorf("[Validate] Image %q has neither DockerBuildInfo nor FastBuildInfo", i.ConfigurationRef)
+		return fmt.Errorf("[Validate] Image %q has neither DockerBuild nor "+
+			"CustomBuild details", confRef)
 	}
 
 	return nil

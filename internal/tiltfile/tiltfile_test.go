@@ -1231,9 +1231,9 @@ docker_build('gcr.io/some-project-162817/sancho-sidecar', '.')
 	m := f.assertNextManifest("sancho")
 	assert.Equal(t, 2, len(m.ImageTargets))
 	assert.Equal(t, "gcr.io/some-project-162817/sancho",
-		m.ImageTargetAt(0).ConfigurationRef.String())
+		m.ImageTargetAt(0).Refs.ConfigurationRef.String())
 	assert.Equal(t, "gcr.io/some-project-162817/sancho-sidecar",
-		m.ImageTargetAt(1).ConfigurationRef.String())
+		m.ImageTargetAt(1).Refs.ConfigurationRef.String())
 }
 
 func TestSanchoRedisSidecar(t *testing.T) {
@@ -1252,7 +1252,7 @@ docker_build('gcr.io/some-project-162817/sancho', '.')
 	m := f.assertNextManifest("sancho")
 	assert.Equal(t, 1, len(m.ImageTargets))
 	assert.Equal(t, "gcr.io/some-project-162817/sancho",
-		m.ImageTargetAt(0).ConfigurationRef.String())
+		m.ImageTargetAt(0).Refs.ConfigurationRef.String())
 }
 
 func TestExtraPodSelectors(t *testing.T) {
@@ -2168,7 +2168,7 @@ docker_build('gcr.io/foo-fetcher', 'foo-fetcher', match_in_env_vars=True)
 	)
 }
 
-func TestExtraImageLocationDeploymentEnvVarDoesntMatchIfNotSpecified(t *testing.T) {
+func TestExtraImageLocationDeploymentEnvVarDoesNotMatchIfNotSpecified(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2352,13 +2352,105 @@ k8s_yaml('')
 	f.loadErrString("error reading yaml file")
 }
 
-func TestParseJSON(t *testing.T) {
+func TestDecodeJSON(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
 	f.setupFooAndBar()
 	f.file("Tiltfile", `
 result = decode_json('["foo", {"baz":["bar", "", 1, 2]}]')
+
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml(result[0] + '.yaml')
+
+docker_build('gcr.io/bar', 'bar')
+k8s_yaml(result[1]["baz"][0] + '.yaml')
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		db(image("gcr.io/foo")),
+		deployment("foo"))
+
+	f.assertNextManifest("bar",
+		db(image("gcr.io/bar")),
+		deployment("bar"))
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml")
+}
+
+func TestReadJSON(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFooAndBar()
+	f.file("options.json", `["foo", {"baz":["bar", "", 1, 2]}]`)
+	f.file("Tiltfile", `
+result = read_json("options.json")
+
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml(result[0] + '.yaml')
+
+docker_build('gcr.io/bar', 'bar')
+k8s_yaml(result[1]["baz"][0] + '.yaml')
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		db(image("gcr.io/foo")),
+		deployment("foo"))
+
+	f.assertNextManifest("bar",
+		db(image("gcr.io/bar")),
+		deployment("bar"))
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml", "options.json")
+}
+
+func TestJSONDoesNotExist(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFooAndBar()
+	f.file("Tiltfile", `
+result = read_json("dne.json")
+
+docker_build('gcr.io/foo', 'foo')
+k8s_resource(result[0], 'foo.yaml')
+
+docker_build('gcr.io/bar', 'bar')
+k8s_resource(result[1]["baz"][0], 'bar.yaml')
+`)
+	f.loadErrString("dne.json: no such file or directory")
+
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "dne.json")
+}
+
+func TestMalformedJSON(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFooAndBar()
+	f.file("options.json", `["foo", {"baz":["bar", "", 1, 2]}`)
+	f.file("Tiltfile", `
+result = read_json("options.json")
+
+docker_build('gcr.io/foo', 'foo')
+k8s_resource(result[0], 'foo.yaml')
+
+docker_build('gcr.io/bar', 'bar')
+k8s_resource(result[1]["baz"][0], 'bar.yaml')
+`)
+	f.loadErrString("JSON parsing error: unexpected end of JSON input")
+}
+
+func TestDecodeYAML(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFooAndBar()
+	f.file("Tiltfile", `
+result = decode_yaml('- "foo"\n- baz:\n  - "bar"\n  - ""\n  - 1\n  - 2')
 
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml(result[0] + '.yaml')
@@ -2416,7 +2508,7 @@ if result['key2']['key4'] and result['key5'] == 3:
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml", "options.yaml")
 }
 
-func TestYAMLDoesntExist(t *testing.T) {
+func TestYAMLDoesNotExist(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2463,78 +2555,13 @@ if result['key2']['key4'] and result['key5'] == 3:
 	f.loadErrString("error parsing YAML: error converting YAML to JSON: yaml: line 7: found unexpected end of stream in options.yaml")
 }
 
-func TestReadJSON(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFooAndBar()
-	f.file("options.json", `["foo", {"baz":["bar", "", 1, 2]}]`)
-	f.file("Tiltfile", `
-result = read_json("options.json")
-
-docker_build('gcr.io/foo', 'foo')
-k8s_yaml(result[0] + '.yaml')
-
-docker_build('gcr.io/bar', 'bar')
-k8s_yaml(result[1]["baz"][0] + '.yaml')
-`)
-
-	f.load()
-
-	f.assertNextManifest("foo",
-		db(image("gcr.io/foo")),
-		deployment("foo"))
-
-	f.assertNextManifest("bar",
-		db(image("gcr.io/bar")),
-		deployment("bar"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml", "options.json")
-}
-
-func TestJSONDoesntExist(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFooAndBar()
-	f.file("Tiltfile", `
-result = read_json("dne.json")
-
-docker_build('gcr.io/foo', 'foo')
-k8s_resource(result[0], 'foo.yaml')
-
-docker_build('gcr.io/bar', 'bar')
-k8s_resource(result[1]["baz"][0], 'bar.yaml')
-`)
-	f.loadErrString("dne.json: no such file or directory")
-
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "dne.json")
-}
-
-func TestMalformedJSON(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFooAndBar()
-	f.file("options.json", `["foo", {"baz":["bar", "", 1, 2]}`)
-	f.file("Tiltfile", `
-result = read_json("options.json")
-
-docker_build('gcr.io/foo', 'foo')
-k8s_resource(result[0], 'foo.yaml')
-
-docker_build('gcr.io/bar', 'bar')
-k8s_resource(result[1]["baz"][0], 'bar.yaml')
-`)
-	f.loadErrString("JSON parsing error: unexpected end of JSON input")
-}
-
 func TestTwoDefaultRegistries(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
 	f.file("Tiltfile", `
-default_registry("foo")
-default_registry("bar")`)
+default_registry("gcr.io")
+default_registry("docker.io")`)
 
 	f.loadErrString("default registry already defined")
 }
@@ -2549,7 +2576,7 @@ default_registry("foo")
 docker_build('gcr.io/foo', 'foo')
 `)
 
-	f.loadErrString("repository name must be canonical")
+	f.loadErrString("Traceback ", "repository name must be canonical")
 }
 
 func TestDefaultRegistryAtEndOfTiltfile(t *testing.T) {
@@ -2576,7 +2603,7 @@ func TestPrivateRegistry(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.kCli.Registry = "localhost:32000"
+	f.kCli.Registry = container.MustNewRegistry("localhost:32000")
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -2596,7 +2623,7 @@ func TestPrivateRegistryDockerCompose(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.kCli.Registry = "localhost:32000"
+	f.kCli.Registry = container.MustNewRegistry("localhost:32000")
 
 	f.setupFoo()
 	f.file("docker-compose.yml", `version: '3'
@@ -2646,20 +2673,6 @@ default_registry('example.com')
 		db(image("gcr.io/foo:baz").withInjectedRef("example.com/gcr.io_foo")),
 		deployment("baz"))
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml", "baz/Dockerfile", "baz/.dockerignore", "baz.yaml")
-}
-
-func TestDefaultRegistryWithDockerCompose(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.dockerfile("foo/Dockerfile")
-	f.file("docker-compose.yml", simpleConfig)
-	f.file("Tiltfile", `
-docker_compose('docker-compose.yml')
-default_registry('bar.com')
-`)
-
-	f.loadErrString("default_registry is not supported with docker compose")
 }
 
 func TestDefaultReadFile(t *testing.T) {
@@ -3179,62 +3192,6 @@ k8s_yaml('foo.yaml')
 	}
 }
 
-func TestTriggerModeDC(t *testing.T) {
-	for _, testCase := range []struct {
-		name                string
-		globalSetting       triggerMode
-		dcResourceSetting   triggerMode
-		expectedTriggerMode model.TriggerMode
-	}{
-		{"default", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
-		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, model.TriggerModeAuto},
-		{"explicit global manual", TriggerModeManual, TriggerModeUnset, model.TriggerModeManualAfterInitial},
-		{"dc auto", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
-		{"dc manual", TriggerModeUnset, TriggerModeManual, model.TriggerModeManualAfterInitial},
-		{"dc override auto", TriggerModeManual, TriggerModeAuto, model.TriggerModeAuto},
-		{"dc override manual", TriggerModeAuto, TriggerModeManual, model.TriggerModeManualAfterInitial},
-	} {
-		t.Run(testCase.name, func(t *testing.T) {
-			f := newFixture(t)
-			defer f.TearDown()
-
-			f.dockerfile("foo/Dockerfile")
-			f.file("docker-compose.yml", simpleConfig)
-
-			var globalTriggerModeDirective string
-			switch testCase.globalSetting {
-			case TriggerModeUnset:
-				globalTriggerModeDirective = ""
-			case TriggerModeManual:
-				globalTriggerModeDirective = "trigger_mode(TRIGGER_MODE_MANUAL)"
-			case TriggerModeAuto:
-				globalTriggerModeDirective = "trigger_mode(TRIGGER_MODE_AUTO)"
-			}
-
-			var dcResourceDirective string
-			switch testCase.dcResourceSetting {
-			case TriggerModeUnset:
-				dcResourceDirective = ""
-			case TriggerModeManual:
-				dcResourceDirective = "dc_resource('foo', trigger_mode=TRIGGER_MODE_MANUAL)"
-			case TriggerModeAuto:
-				dcResourceDirective = "dc_resource('foo', trigger_mode=TRIGGER_MODE_AUTO)"
-			}
-
-			f.file("Tiltfile", fmt.Sprintf(`
-%s
-docker_compose('docker-compose.yml')
-%s
-`, globalTriggerModeDirective, dcResourceDirective))
-
-			f.load()
-
-			f.assertNumManifests(1)
-			f.assertNextManifest("foo", testCase.expectedTriggerMode)
-		})
-	}
-}
-
 func TestTriggerModeLocal(t *testing.T) {
 	for _, testCase := range []struct {
 		name                 string
@@ -3706,7 +3663,7 @@ func TestDisableFeature(t *testing.T) {
 	f.assertFeature("testflag_enabled", false)
 }
 
-func TestEnableFeatureThatDoesntExist(t *testing.T) {
+func TestEnableFeatureThatDoesNotExist(t *testing.T) {
 	f := newFixture(t)
 	f.setupFoo()
 
@@ -3715,7 +3672,7 @@ func TestEnableFeatureThatDoesntExist(t *testing.T) {
 	f.loadErrString("Unknown feature flag: testflag")
 }
 
-func TestDisableFeatureThatDoesntExist(t *testing.T) {
+func TestDisableFeatureThatDoesNotExist(t *testing.T) {
 	f := newFixture(t)
 	f.setupFoo()
 
@@ -4148,20 +4105,6 @@ k8s_yaml('secret.yaml')
 	assert.Equal(t, "d29ybGQ=", string(secrets["world"].ValueEncoded))
 }
 
-func TestDCResourceNoImage(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-	f.file("docker-compose.yml", simpleConfig)
-	f.file("Tiltfile", `
-docker_compose('docker-compose.yml')
-dc_resource('foo', trigger_mode=TRIGGER_MODE_AUTO)
-`)
-
-	f.load()
-}
-
 func TestDockerPruneSettings(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -4225,22 +4168,6 @@ k8s_yaml('foo.yaml')
 docker_build('gcr.io/bar', 'bar')
 k8s_yaml('bar.yaml')
 k8s_resource('bar', resource_deps=['foo'])
-`)
-
-	f.load()
-	f.assertNextManifest("foo", resourceDeps())
-	f.assertNextManifest("bar", resourceDeps("foo"))
-}
-
-func TestDCDependsOn(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.dockerfile("foo/Dockerfile")
-	f.file("docker-compose.yml", twoServiceConfig)
-	f.file("Tiltfile", `
-docker_compose('docker-compose.yml')
-dc_resource('bar', resource_deps=['foo'])
 `)
 
 	f.load()
@@ -4687,7 +4614,7 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 		case dbHelper:
 			image := nextImageTarget()
 
-			ref := image.ConfigurationRef
+			ref := image.Refs.ConfigurationRef
 			if ref.Empty() {
 				f.t.Fatalf("manifest %v has no more image refs; expected %q", m.Name, opt.image.ref)
 			}
@@ -4697,8 +4624,9 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 				f.t.FailNow()
 			}
 
+			// TODO(maia): also verify expectedLocalRef
 			expectedDeployRef := container.MustParseNamed(opt.image.deploymentRef)
-			if !assert.Equal(f.t, expectedDeployRef.String(), image.DeploymentRef.String(), "manifest %v image injected ref", m.Name) {
+			if !assert.Equal(f.t, expectedDeployRef.String(), image.Refs.ClusterRef().String(), "manifest %v image injected ref", m.Name) {
 				f.t.FailNow()
 			}
 
@@ -4730,7 +4658,7 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 			}
 		case cbHelper:
 			image := nextImageTarget()
-			ref := image.ConfigurationRef
+			ref := image.Refs.ConfigurationRef
 			expectedRef := container.MustParseNamed(opt.image.ref)
 			if !assert.Equal(f.t, expectedRef.String(), ref.String(), "manifest %v image ref", m.Name) {
 				f.t.FailNow()

@@ -41,7 +41,7 @@ func TestDeployTwinImages(t *testing.T) {
 
 	id := manifest.ImageTargetAt(0).ID()
 	expectedImage := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
-	image := store.ImageFromBuildResult(result[id])
+	image := store.ClusterImageRefFromBuildResult(result[id])
 	assert.Equal(t, expectedImage, image.String())
 	assert.Equalf(t, 2, strings.Count(f.k8s.Yaml, expectedImage),
 		"Expected image to update twice in YAML: %s", f.k8s.Yaml)
@@ -65,13 +65,13 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 	assert.Equal(t, 2, f.docker.BuildCount)
 
 	expectedSanchoRef := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
-	image := store.ImageFromBuildResult(result[iTarget1.ID()])
+	image := store.ClusterImageRefFromBuildResult(result[iTarget1.ID()])
 	assert.Equal(t, expectedSanchoRef, image.String())
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSanchoRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 
 	expectedSidecarRef := "gcr.io/some-project-162817/sancho-sidecar:tilt-11cd0b38bc3ceb95"
-	image = store.ImageFromBuildResult(result[iTarget2.ID()])
+	image = store.ClusterImageRefFromBuildResult(result[iTarget2.ID()])
 	assert.Equal(t, expectedSidecarRef, image.String())
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSidecarRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
@@ -97,13 +97,13 @@ func TestDeployPodWithMultipleLiveUpdateImages(t *testing.T) {
 	assert.Equal(t, 2, f.docker.BuildCount)
 
 	expectedSanchoRef := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
-	image := store.ImageFromBuildResult(result[iTarget1.ID()])
+	image := store.ClusterImageRefFromBuildResult(result[iTarget1.ID()])
 	assert.Equal(t, expectedSanchoRef, image.String())
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSanchoRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 
 	expectedSidecarRef := "gcr.io/some-project-162817/sancho-sidecar:tilt-11cd0b38bc3ceb95"
-	image = store.ImageFromBuildResult(result[iTarget2.ID()])
+	image = store.ClusterImageRefFromBuildResult(result[iTarget2.ID()])
 	assert.Equal(t, expectedSidecarRef, image.String())
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSidecarRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
@@ -144,7 +144,7 @@ func TestImageIsClean(t *testing.T) {
 
 	manifest := NewSanchoDockerBuildManifest(f)
 	iTargetID1 := manifest.ImageTargets[0].ID()
-	result1 := store.NewImageBuildResult(iTargetID1, container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"))
+	result1 := store.NewImageBuildResultSingleRef(iTargetID1, container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"))
 
 	f.docker.ImageListCount = 1
 
@@ -170,7 +170,6 @@ func TestImageIsDirtyAfterContainerBuild(t *testing.T) {
 	iTargetID1 := manifest.ImageTargets[0].ID()
 	result1 := store.NewLiveUpdateBuildResult(
 		iTargetID1,
-		container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"),
 		[]container.ID{container.ID("12345")})
 
 	stateSet := store.BuildStateSet{
@@ -217,12 +216,12 @@ func TestMultiStageDockerBuildPreservesSyntaxDirective(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	baseImage := model.NewImageTarget(SanchoBaseRef).WithBuildDetails(model.DockerBuild{
+	baseImage := model.MustNewImageTarget(SanchoBaseRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: `FROM golang:1.10`,
 		BuildPath:  f.JoinPath("sancho-base"),
 	})
 
-	srcImage := model.NewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
+	srcImage := model.MustNewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: `# syntax = docker/dockerfile:experimental
 
 FROM sancho-base
@@ -267,8 +266,8 @@ func TestMultiStageDockerBuildWithFirstImageDirty(t *testing.T) {
 	manifest := NewSanchoDockerBuildMultiStageManifest(f)
 	iTargetID1 := manifest.ImageTargets[0].ID()
 	iTargetID2 := manifest.ImageTargets[1].ID()
-	result1 := store.NewImageBuildResult(iTargetID1, container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"))
-	result2 := store.NewImageBuildResult(iTargetID2, container.MustParseNamedTagged("sancho:tilt-prebuilt2"))
+	result1 := store.NewImageBuildResultSingleRef(iTargetID1, container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"))
+	result2 := store.NewImageBuildResultSingleRef(iTargetID2, container.MustParseNamedTagged("sancho:tilt-prebuilt2"))
 
 	newFile := f.WriteFile("sancho-base/message.txt", "message")
 
@@ -303,8 +302,8 @@ func TestMultiStageDockerBuildWithSecondImageDirty(t *testing.T) {
 	manifest := NewSanchoDockerBuildMultiStageManifest(f)
 	iTargetID1 := manifest.ImageTargets[0].ID()
 	iTargetID2 := manifest.ImageTargets[1].ID()
-	result1 := store.NewImageBuildResult(iTargetID1, container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"))
-	result2 := store.NewImageBuildResult(iTargetID2, container.MustParseNamedTagged("sancho:tilt-prebuilt2"))
+	result1 := store.NewImageBuildResultSingleRef(iTargetID1, container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"))
+	result2 := store.NewImageBuildResultSingleRef(iTargetID2, container.MustParseNamedTagged("sancho:tilt-prebuilt2"))
 
 	newFile := f.WriteFile("sancho/message.txt", "message")
 
@@ -380,7 +379,7 @@ func TestCustomBuildSkipsLocalDocker(t *testing.T) {
 
 	manifest := manifestbuilder.New(f, "sancho").
 		WithK8sYAML(SanchoYAML).
-		WithImageTarget(model.NewImageTarget(SanchoRef).WithBuildDetails(cb)).
+		WithImageTarget(model.MustNewImageTarget(SanchoRef).WithBuildDetails(cb)).
 		Build()
 
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
@@ -393,16 +392,22 @@ func TestCustomBuildSkipsLocalDocker(t *testing.T) {
 	assert.Equal(t, 0, f.docker.PushCount)
 }
 
-func TestDeployUsesInjectRef(t *testing.T) {
+func TestBuildAndDeployUsesCorrectRef(t *testing.T) {
 	expectedImages := []string{"foo.com/gcr.io_some-project-162817_sancho"}
+	expectedImagesLocalRegistry := []string{"registry:1234/gcr.io_some-project-162817_sancho"}
 	tests := []struct {
-		name           string
-		manifest       func(f Fixture) model.Manifest
-		expectedImages []string
+		name             string
+		manifest         func(f Fixture) model.Manifest
+		useLocalRegistry bool // if true, clusterRef != localRef, i.e. ref of the built docker image != ref injected into YAML
+		expectBuilt      []string
+		expectDeployed   []string
 	}{
-		{"docker build", func(f Fixture) model.Manifest { return NewSanchoDockerBuildManifest(f) }, expectedImages},
-		{"custom build", NewSanchoCustomBuildManifest, expectedImages},
-		{"live multi stage", NewSanchoLiveUpdateMultiStageManifest, append(expectedImages, "foo.com/sancho-base")},
+		{"docker build", func(f Fixture) model.Manifest { return NewSanchoDockerBuildManifest(f) }, false, expectedImages, expectedImages},
+		{"docker build + local registry", func(f Fixture) model.Manifest { return NewSanchoDockerBuildManifest(f) }, true, expectedImages, expectedImagesLocalRegistry},
+		{"custom build", NewSanchoCustomBuildManifest, false, expectedImages, expectedImages},
+		{"custom build + local registry", NewSanchoCustomBuildManifest, true, expectedImages, expectedImagesLocalRegistry},
+		{"live multi stage", NewSanchoLiveUpdateMultiStageManifest, false, append(expectedImages, "foo.com/sancho-base"), expectedImages},
+		{"live multi stage + local registry", NewSanchoLiveUpdateMultiStageManifest, true, append(expectedImages, "foo.com/sancho-base"), expectedImagesLocalRegistry},
 	}
 
 	for _, test := range tests {
@@ -410,18 +415,18 @@ func TestDeployUsesInjectRef(t *testing.T) {
 			f := newIBDFixture(t, k8s.EnvGKE)
 			defer f.TearDown()
 
-			if test.name == "custom build" {
+			if strings.Contains(test.name, "custom build") {
 				sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 				f.docker.Images["foo.com/gcr.io_some-project-162817_sancho:tilt-build-1546304461"] = types.ImageInspect{ID: string(sha)}
 			}
 
 			manifest := test.manifest(f)
-			var err error
 			for i := range manifest.ImageTargets {
-				manifest.ImageTargets[i].DeploymentRef, err = container.ReplaceRegistry("foo.com", manifest.ImageTargets[i].ConfigurationRef)
-				if err != nil {
-					t.Fatal(err)
+				reg := container.MustNewRegistry("foo.com")
+				if test.useLocalRegistry {
+					reg = container.MustNewRegistryWithHostFromCluster("foo.com", "registry:1234")
 				}
+				manifest.ImageTargets[i].Refs = manifest.ImageTargets[i].Refs.MustWithRegistry(reg)
 			}
 
 			result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
@@ -432,11 +437,15 @@ func TestDeployUsesInjectRef(t *testing.T) {
 			var observedImages []string
 			for i := range manifest.ImageTargets {
 				id := manifest.ImageTargets[i].ID()
-				image := store.ImageFromBuildResult(result[id])
+				image := store.LocalImageRefFromBuildResult(result[id])
 				observedImages = append(observedImages, image.Name())
 			}
 
-			assert.ElementsMatch(t, test.expectedImages, observedImages)
+			assert.ElementsMatch(t, test.expectBuilt, observedImages)
+
+			for _, expected := range test.expectDeployed {
+				assert.Contains(t, f.k8s.Yaml, expected)
+			}
 		})
 	}
 }
@@ -739,6 +748,15 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 func (f *ibdFixture) TearDown() {
 	f.k8s.TearDown()
 	f.TempDirFixture.TearDown()
+}
+
+func (f *ibdFixture) replaceRegistry(defaultReg string, sel container.RefSelector) reference.Named {
+	reg := container.MustNewRegistry(defaultReg)
+	named, err := reg.ReplaceRegistryForLocalRef(sel)
+	if err != nil {
+		f.T().Fatal(err)
+	}
+	return named
 }
 
 type fakeKINDPusher struct {

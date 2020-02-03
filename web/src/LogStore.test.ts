@@ -180,7 +180,7 @@ describe("LogStore", () => {
     )
   })
 
-  it("handles progressLogs", () => {
+  it("handles progressLogs interleaved", () => {
     let logs = new LogStore()
     logs.append({
       spans: { "": {} },
@@ -190,7 +190,7 @@ describe("LogStore", () => {
         { text: "layer 3: Pending\n", fields: { progressID: "layer 3" } },
       ],
       fromCheckpoint: 0,
-      toCheckpoint: 2,
+      toCheckpoint: 3,
     })
 
     expect(logLinesToString(logs.allLog(), true)).toEqual(
@@ -201,12 +201,36 @@ describe("LogStore", () => {
       segments: [
         { text: "layer 2: Finished\n", fields: { progressID: "layer 2" } },
       ],
-      fromCheckpoint: 2,
-      toCheckpoint: 3,
+      fromCheckpoint: 3,
+      toCheckpoint: 4,
     })
 
     expect(logLinesToString(logs.allLog(), true)).toEqual(
       "layer 1: Pending\nlayer 2: Finished\nlayer 3: Pending"
     )
+  })
+
+  it("handles progressLogs adjacent", () => {
+    let logs = new LogStore()
+    logs.append({
+      spans: { "": {} },
+      segments: [
+        { text: "layer 1: Pending\n", fields: { progressID: "layer 1" } },
+      ],
+      fromCheckpoint: 0,
+      toCheckpoint: 1,
+    })
+
+    expect(logLinesToString(logs.allLog(), true)).toEqual("layer 1: Pending")
+
+    logs.append({
+      segments: [
+        { text: "layer 1: Finished\n", fields: { progressID: "layer 1" } },
+      ],
+      fromCheckpoint: 1,
+      toCheckpoint: 2,
+    })
+
+    expect(logLinesToString(logs.allLog(), true)).toEqual("layer 1: Finished")
   })
 })

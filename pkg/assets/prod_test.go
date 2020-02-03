@@ -186,9 +186,15 @@ func newProdServerFixture(t *testing.T) *fixture {
 	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		f.recvReq = req
 		if strings.HasSuffix(req.URL.Path, "index.html") {
-			res.Write([]byte(indexHTML))
+			_, err := res.Write([]byte(indexHTML))
+			if err != nil {
+				fmt.Println(err)
+			}
 		} else {
-			res.Write([]byte("some-content"))
+			_, err := res.Write([]byte("some-content"))
+			if err != nil {
+				fmt.Println(err)
+			}
 		}
 	}))
 	f.testServer = testServer

@@ -3,6 +3,8 @@ package model
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,10 +20,11 @@ func TestOneImageGraph(t *testing.T) {
 	assert.Equal(t, 1, len(g.DeployedImages()))
 
 	ids := []TargetID{}
-	g.VisitTree(kTarget, func(t TargetSpec) error {
+	err = g.VisitTree(kTarget, func(t TargetSpec) error {
 		ids = append(ids, t.ID())
 		return nil
 	})
+	require.NoError(t, err)
 	assert.Equal(t, []TargetID{iTarget.ID(), kTarget.ID()}, ids)
 }
 
@@ -39,10 +42,11 @@ func TestTwoImageGraph(t *testing.T) {
 	assert.Equal(t, 2, len(g.DeployedImages()))
 
 	ids := []TargetID{}
-	g.VisitTree(kTarget, func(t TargetSpec) error {
+	err = g.VisitTree(kTarget, func(t TargetSpec) error {
 		ids = append(ids, t.ID())
 		return nil
 	})
+	require.NoError(t, err)
 	assert.Equal(t, []TargetID{targetA.ID(), targetB.ID(), kTarget.ID()}, ids)
 }
 
@@ -60,10 +64,11 @@ func TestDependentImageGraph(t *testing.T) {
 	assert.Equal(t, 1, len(g.DeployedImages()))
 
 	ids := []TargetID{}
-	g.VisitTree(kTarget, func(t TargetSpec) error {
+	err = g.VisitTree(kTarget, func(t TargetSpec) error {
 		ids = append(ids, t.ID())
 		return nil
 	})
+	require.NoError(t, err)
 	assert.Equal(t, []TargetID{targetA.ID(), targetB.ID(), kTarget.ID()}, ids)
 }
 
@@ -85,10 +90,11 @@ func TestDiamondImageGraph(t *testing.T) {
 	assert.Equal(t, 1, len(g.DeployedImages()))
 
 	ids := []TargetID{}
-	g.VisitTree(kTarget, func(t TargetSpec) error {
+	err = g.VisitTree(kTarget, func(t TargetSpec) error {
 		ids = append(ids, t.ID())
 		return nil
 	})
+	require.NoError(t, err)
 	assert.Equal(t, []TargetID{targetA.ID(), targetB.ID(), targetC.ID(), targetD.ID(), kTarget.ID()}, ids)
 }
 

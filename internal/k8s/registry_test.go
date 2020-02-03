@@ -42,7 +42,7 @@ func TestRegistryFound(t *testing.T) {
 	l := logger.NewLogger(logger.InfoLvl, out)
 	ctx := logger.WithLogger(context.Background(), l)
 	registry := registryAsync.Registry(ctx)
-	assert.Equal(t, "localhost:32000", string(registry))
+	assert.Equal(t, "localhost:32000", registry.Host)
 }
 
 func TestRegistryNotFound(t *testing.T) {
@@ -63,6 +63,6 @@ func TestRegistryNotFound(t *testing.T) {
 	l := logger.NewLogger(logger.InfoLvl, out)
 	ctx := logger.WithLogger(context.Background(), l)
 	registry := registryAsync.Registry(ctx)
-	assert.Equal(t, "", string(registry))
+	assert.Equal(t, "", registry.Host)
 	assert.Contains(t, out.String(), "microk8s.enable registry")
 }

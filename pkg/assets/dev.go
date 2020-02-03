@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -16,7 +17,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/network"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 	"github.com/windmilleng/tilt/pkg/procutil"
@@ -139,12 +139,13 @@ func (s *devServer) start(ctx context.Context, stdout, stderr io.Writer) (*exec.
 
 func (s *devServer) Serve(ctx context.Context) error {
 	// webpack binds to 0.0.0.0
-	err := network.IsBindAddrFree(network.AllHostsBindAddr(int(s.port)))
+	l, err := net.Listen("tcp", fmt.Sprintf(":%d", int(s.port)))
 	if err != nil {
 		return errors.Wrapf(err, "Cannot start Tilt dev webpack server. "+
 			"Maybe another process is already running on port %d? "+
 			"Use --webdev-port to set a custom port", s.port)
 	}
+	_ = l.Close()
 
 	stdout := bytes.NewBuffer(nil)
 	stderr := bytes.NewBuffer(nil)

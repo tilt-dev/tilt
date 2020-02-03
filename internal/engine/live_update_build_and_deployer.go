@@ -92,7 +92,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 
 	var dontFallBackErr error
 	for _, info := range liveUpdInfos {
-		ps.StartPipelineStep(ctx, "updating image %s", info.iTarget.DeploymentRef.Name())
+		ps.StartPipelineStep(ctx, "updating image %s", info.iTarget.Refs.ClusterRef().Name())
 		err = lubad.buildAndDeploy(ctx, ps, containerUpdater, info.iTarget, info.state, info.changedFiles, info.runs, info.hotReload)
 		if err != nil {
 			if !buildcontrol.IsDontFallBackError(err) {
@@ -115,7 +115,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 
 func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps *build.PipelineState, cu containerupdate.ContainerUpdater, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "LiveUpdateBuildAndDeployer-buildAndDeploy")
-	span.SetTag("target", iTarget.ConfigurationRef.String())
+	span.SetTag("target", iTarget.Refs.ConfigurationRef.String())
 	defer span.Finish()
 
 	startTime := time.Now()

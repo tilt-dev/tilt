@@ -52,6 +52,16 @@ func (r Reader) ContinuingString(c Checkpoint) string {
 	return r.store.ContinuingString(c)
 }
 
+func (r Reader) ContinuingLines(c Checkpoint) []LogLine {
+	if r.store == nil {
+		return nil
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.store.ContinuingLines(c)
+}
+
 func (r Reader) Tail(n int) string {
 	if r.store == nil {
 		return ""

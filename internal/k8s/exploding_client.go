@@ -57,7 +57,7 @@ func (ec *explodingClient) CreatePortForwarder(ctx context.Context, namespace Na
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) WatchPods(ctx context.Context, lps labels.Selector) (<-chan *v1.Pod, error) {
+func (ec *explodingClient) WatchPods(ctx context.Context, lps labels.Selector) (<-chan ObjectUpdate, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
@@ -78,7 +78,7 @@ func (ec *explodingClient) ContainerRuntime(ctx context.Context) container.Runti
 }
 
 func (ec *explodingClient) PrivateRegistry(ctx context.Context) container.Registry {
-	return ""
+	return container.Registry{}
 }
 
 func (ec *explodingClient) Exec(ctx context.Context, podID PodID, cName container.Name, n Namespace, cmd []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {

@@ -12,7 +12,15 @@ jobs:
       - setup_remote_docker
       - run: docker pull registry:2
       - run: sudo mv /usr/bin/helm3 /usr/bin/helm
+      - restore_cache:
+          keys:
+            - golangci_lint_{{ .Revision }}
+            - golangci_lint_ # Else find the most recently generated cache
       - run: make lint
+      - save_cache:
+          paths:
+            - /home/circleci/.cache/golangci-lint
+          key: golangci_lint_{{ .Revision }}
       - run: make wire-check
       - run: make test-go
       - store_test_results:
@@ -36,7 +44,14 @@ jobs:
       - image: circleci/node:12
     steps:
       - checkout
-      - run: make check-js test-js
+      - run: make check-js
+      - run:
+          name: Run jest with JUnit Reporter
+          command: make test-js
+          environment:
+            JEST_JUNIT_OUTPUT_DIR: "reports/junit/js-test-results.xml"
+      - store_test_results:
+          path: web/reports/junit
       - slack/notify-on-failure:
           only_for_branches: master
 
@@ -63,7 +78,7 @@ jobs:
 
   build-integration:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:75e5d29da4ff2b06f5ae356b70935155499901218cdcabbbb7cebb31410c578c
+      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:da50861fa4e8caaecefbd82986e1d13ad97cd1264d24ea7c1889e1aa91728ae5
     steps:
       - checkout
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV

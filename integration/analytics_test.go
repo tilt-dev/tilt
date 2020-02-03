@@ -43,7 +43,8 @@ func (af *analyticsFixture) SetupAnalyticsServer() {
 		af.t.FailNow()
 	}
 	af.mss = mss
-	delete(af.tilt.Environ, "TILT_DISABLE_ANALYTICS")
+	af.tilt.Environ["TILT_DISABLE_ANALYTICS"] = ""
+	af.tilt.Environ["CI"] = ""
 	af.tilt.Environ[AnalyticsUrlEnvVarName] = fmt.Sprintf("http://localhost:%d/report", port)
 }
 

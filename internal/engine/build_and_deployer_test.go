@@ -43,7 +43,7 @@ var imageTargetID = model.TargetID{
 	Name: "gcr.io/some-project-162817/sancho",
 }
 
-var alreadyBuilt = store.NewImageBuildResult(imageTargetID, testImageRef)
+var alreadyBuilt = store.NewImageBuildResultSingleRef(imageTargetID, testImageRef)
 var alreadyBuiltSet = store.BuildResultSet{imageTargetID: alreadyBuilt}
 
 type expectedFile = testutils.ExpectedFile
@@ -608,7 +608,7 @@ func TestContainerBuildMultiStage(t *testing.T) {
 	// There are two image targets. The first has a build result,
 	// the second does not --> second target needs build
 	iTargetID := targets[0].ID()
-	firstResult := store.NewImageBuildResult(iTargetID, container.MustParseNamedTagged("sancho-base:tilt-prebuilt"))
+	firstResult := store.NewImageBuildResultSingleRef(iTargetID, container.MustParseNamedTagged("sancho-base:tilt-prebuilt"))
 	bs[iTargetID] = store.NewBuildState(firstResult, nil)
 
 	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
@@ -782,9 +782,9 @@ func TestOneLiveUpdateOneDockerBuildDoesImageBuild(t *testing.T) {
 		WithImageTargets(sanchoTarg, sidecarTarg).
 		Build()
 	changed := f.WriteFile("a.txt", "a")
-	sanchoState := store.NewBuildState(store.NewImageBuildResult(sanchoTarg.ID(), sanchoRef), []string{changed}).
+	sanchoState := store.NewBuildState(store.NewImageBuildResultSingleRef(sanchoTarg.ID(), sanchoRef), []string{changed}).
 		WithRunningContainers([]store.ContainerInfo{sanchoCInfo})
-	sidecarState := store.NewBuildState(store.NewImageBuildResult(sidecarTarg.ID(), sidecarRef), []string{changed})
+	sidecarState := store.NewBuildState(store.NewImageBuildResultSingleRef(sidecarTarg.ID(), sidecarRef), []string{changed})
 
 	bs := store.BuildStateSet{sanchoTarg.ID(): sanchoState, sidecarTarg.ID(): sidecarState}
 
@@ -927,9 +927,9 @@ func multiImageLiveUpdateManifestAndBuildState(f *bdFixture) (model.Manifest, st
 		Build()
 
 	changed := f.WriteFile("a.txt", "a")
-	sanchoState := store.NewBuildState(store.NewImageBuildResult(sanchoTarg.ID(), sanchoRef), []string{changed}).
+	sanchoState := store.NewBuildState(store.NewImageBuildResultSingleRef(sanchoTarg.ID(), sanchoRef), []string{changed}).
 		WithRunningContainers([]store.ContainerInfo{sanchoCInfo})
-	sidecarState := store.NewBuildState(store.NewImageBuildResult(sidecarTarg.ID(), sidecarRef), []string{changed}).
+	sidecarState := store.NewBuildState(store.NewImageBuildResultSingleRef(sidecarTarg.ID(), sidecarRef), []string{changed}).
 		WithRunningContainers([]store.ContainerInfo{sidecarCInfo})
 
 	bs := store.BuildStateSet{sanchoTarg.ID(): sanchoState, sidecarTarg.ID(): sidecarState}
