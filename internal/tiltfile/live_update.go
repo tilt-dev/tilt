@@ -2,7 +2,7 @@ package tiltfile
 
 import (
 	"fmt"
-	"path/filepath"
+	"path"
 	"strconv"
 	"strings"
 
@@ -203,7 +203,10 @@ func (s *tiltfileState) liveUpdateStepToModel(t *starlark.Thread, l liveUpdateSt
 	case liveUpdateFallBackOnStep:
 		return model.LiveUpdateFallBackOnStep{Files: x.files}, nil
 	case liveUpdateSyncStep:
-		if !filepath.IsAbs(x.remotePath) {
+		// NOTE(maia): we assume a Linux container, and so use `path` to check that
+		// the sync dest is a LINUX abs path! (`filepath.IsAbs` varies depending on
+		// OS the binary was installed for; `path` deals with Linux paths only.)
+		if !path.IsAbs(x.remotePath) {
 			return nil, fmt.Errorf("sync destination '%s' (%s) is not absolute", x.remotePath, x.position.String())
 		}
 		return model.LiveUpdateSyncStep{Source: x.localPath, Dest: x.remotePath}, nil
