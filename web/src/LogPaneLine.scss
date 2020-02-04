@@ -16,7 +16,7 @@
     text-align: right;
     padding-right: $spacing-unit;
     border-top: 1px solid rgba($color-gray-light, $translucent);
-    border-bottom: 1px solid rgba($color-gray-light, $translucent);
+    border-bottom: 1px solid $color-blue-dark;
   }
   &.is-buildEvent-fallback {
     background-color: $color-gray-darker;
@@ -45,6 +45,7 @@
   white-space: nowrap;
 
   .LogPaneLine.is-contextChange > & {
+    // Border shouldn't add height:
     margin-top: -$logLine-separator-height;
     border-top: $logLine-separator-height solid $color-gray;
   }
@@ -55,6 +56,7 @@
   white-space: pre-wrap;
   padding-left: $spacing-unit * 0.6;
   flex: 1;
+  border-left: $logLine-separator-height solid $color-gray;
 
   // Make spacing around "header" text more generous for legibility
   // We avoid padding on the parent .LogPaneLine, lest we squish .logLinePrefix
