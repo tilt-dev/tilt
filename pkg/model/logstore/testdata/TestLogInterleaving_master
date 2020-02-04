@@ -1,0 +1,5 @@
+hello ... world
+       prefix │ START LONG MESSAGE
+       prefix │ goodbye ... world
+next line of global log
+       prefix │ END LONG MESSAGE

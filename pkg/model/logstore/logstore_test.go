@@ -1,6 +1,8 @@
 package logstore
 
 import (
+	"fmt"
+	"io/ioutil"
 	"strings"
 	"testing"
 	"time"
@@ -10,6 +12,10 @@ import (
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
+
+// NOTE(dmiller): set at runtime with:
+// go test -ldflags="-X 'github.com/windmilleng/tilt/pkg/model/logstore.LogstoreWriteGoldenMaster=1'" ./pkg/model/logstore
+var LogstoreWriteGoldenMaster = "0"
 
 func TestLog_AppendUnderLimit(t *testing.T) {
 	l := NewLogStore()
@@ -59,8 +65,8 @@ func TestLogPrefix(t *testing.T) {
 	l := NewLogStore()
 	l.Append(newGlobalTestLogEvent("hello\n"), nil)
 	l.Append(newTestLogEvent("prefix", time.Now(), "bar\nbaz\n"), nil)
-	expected := "hello\nprefix      ┊ bar\nprefix      ┊ baz\n"
-	assert.Equal(t, expected, l.String())
+
+	assertSnapshot(t, l.String())
 }
 
 // Assert that when logs come from two different sources, they get interleaved correctly.
@@ -70,8 +76,8 @@ func TestLogInterleaving(t *testing.T) {
 	l.Append(newTestLogEvent("prefix", time.Now(), "START LONG MESSAGE\ngoodbye ... "), nil)
 	l.Append(newGlobalTestLogEvent("world\nnext line of global log"), nil)
 	l.Append(newTestLogEvent("prefix", time.Now(), "world\nEND LONG MESSAGE"), nil)
-	expected := "hello ... world\nprefix      ┊ START LONG MESSAGE\nprefix      ┊ goodbye ... world\nnext line of global log\nprefix      ┊ END LONG MESSAGE"
-	assert.Equal(t, expected, l.String())
+
+	assertSnapshot(t, l.String())
 }
 
 func TestScrubSecret(t *testing.T) {
@@ -283,7 +289,7 @@ func TestWarnings(t *testing.T) {
 	l.Append(testLogEvent{
 		name:    "fe",
 		level:   logger.WarnLvl,
-		message: "Warning 2 line 1\nWarning 2 line 2",
+		message: "Warning 2 line 1\nWarning 2 line 2\n",
 	}, nil)
 	l.Append(testLogEvent{
 		name:    "fe",
@@ -299,17 +305,11 @@ func TestWarnings(t *testing.T) {
 	warnings := l.Warnings("fe")
 	assert.Equal(t, warnings, []string{
 		"Warning 1 line 1\nWarning 1 line 2\nWarning 1 line 3\n",
-		"Warning 2 line 1\nWarning 2 line 2",
+		"Warning 2 line 1\nWarning 2 line 2\n",
 		"Warning 3 line 1\n",
 	})
 
-	assert.Equal(t, `fe          ┊ WARNING: Warning 1 line 1
-fe          ┊ Warning 1 line 2
-fe          ┊ Warning 1 line 3
-fe          ┊ WARNING: Warning 2 line 1
-fe          ┊ Warning 2 line 2Warning 3 line 1
-non-fe      ┊ WARNING: non-fe warning
-`, l.String())
+	assertSnapshot(t, l.String())
 }
 
 func TestErrors(t *testing.T) {
@@ -322,7 +322,7 @@ func TestErrors(t *testing.T) {
 	l.Append(testLogEvent{
 		name:    "fe",
 		level:   logger.ErrorLvl,
-		message: "Error 2 line 1\nError 2 line 2",
+		message: "Error 2 line 1\nError 2 line 2\n",
 	}, nil)
 	l.Append(testLogEvent{
 		name:    "fe",
@@ -335,13 +335,7 @@ func TestErrors(t *testing.T) {
 		message: "non-fe warning\n",
 	}, nil)
 
-	assert.Equal(t, `fe          ┊ ERROR: Error 1 line 1
-fe          ┊ Error 1 line 2
-fe          ┊ Error 1 line 3
-fe          ┊ ERROR: Error 2 line 1
-fe          ┊ Error 2 line 2Error 3 line 1
-non-fe      ┊ ERROR: non-fe warning
-`, l.String())
+	assertSnapshot(t, l.String())
 }
 
 func TestContinuingLines(t *testing.T) {
@@ -390,4 +384,23 @@ func TestContinuingLines(t *testing.T) {
 			Time:              now,
 		},
 	}, l.ContinuingLines(c2))
+}
+
+func assertSnapshot(t *testing.T, output string) {
+	d1 := []byte(output)
+	gmPath := fmt.Sprintf("testdata/%s_master", t.Name())
+	if LogstoreWriteGoldenMaster == "1" {
+		err := ioutil.WriteFile(gmPath, d1, 0644)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	expected, err := ioutil.ReadFile(gmPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if string(expected) != output {
+		t.Errorf("Expected: %s != Output: %s", expected, output)
+	}
 }
