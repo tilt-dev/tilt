@@ -2617,7 +2617,7 @@ default_registry('bar.com')
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
 
-func TestPrivateRegistry(t *testing.T) {
+func TestLocalRegistry(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2637,7 +2637,7 @@ k8s_yaml('foo.yaml')
 		deployment("foo"))
 }
 
-func TestPrivateRegistryDockerCompose(t *testing.T) {
+func TestLocalRegistryDockerCompose(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 

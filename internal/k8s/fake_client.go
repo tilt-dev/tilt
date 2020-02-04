@@ -345,7 +345,7 @@ func (c *FakeK8sClient) ContainerRuntime(ctx context.Context) container.Runtime 
 	return container.RuntimeDocker
 }
 
-func (c *FakeK8sClient) PrivateRegistry(ctx context.Context) container.Registry {
+func (c *FakeK8sClient) LocalRegistry(ctx context.Context) container.Registry {
 	return c.Registry
 }
 

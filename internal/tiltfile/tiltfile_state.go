@@ -44,12 +44,12 @@ type resourceSet struct {
 
 type tiltfileState struct {
 	// set at creation
-	ctx             context.Context
-	dcCli           dockercompose.DockerComposeClient
-	webHost         model.WebHost
-	k8sContextExt   k8scontext.Extension
-	privateRegistry container.Registry
-	features        feature.FeatureSet
+	ctx           context.Context
+	dcCli         dockercompose.DockerComposeClient
+	webHost       model.WebHost
+	k8sContextExt k8scontext.Extension
+	localRegistry container.Registry
+	features      feature.FeatureSet
 
 	// added to during execution
 	buildIndex         *buildIndex
@@ -115,14 +115,14 @@ func newTiltfileState(
 	dcCli dockercompose.DockerComposeClient,
 	webHost model.WebHost,
 	k8sContextExt k8scontext.Extension,
-	privateRegistry container.Registry,
+	localRegistry container.Registry,
 	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
 		ctx:                        ctx,
 		dcCli:                      dcCli,
 		webHost:                    webHost,
 		k8sContextExt:              k8sContextExt,
-		privateRegistry:            privateRegistry,
+		localRegistry:              localRegistry,
 		buildIndex:                 newBuildIndex(),
 		k8sByName:                  make(map[string]*k8sResource),
 		k8sImageJSONPaths:          make(map[k8sObjectSelector][]k8s.JSONPath),
@@ -1040,12 +1040,12 @@ func (s *tiltfileState) imgTargetsForDependencyIDs(ids []model.TargetID) ([]mode
 }
 
 func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, claimStatus map[model.TargetID]claim) ([]model.ImageTarget, error) {
-	var usePrivateRegistry bool
-	if s.orchestrator() == model.OrchestratorK8s && !s.privateRegistry.Empty() {
-		// If we've found a private registry in the cluster at run-time,
+	var useLocalRegistry bool
+	if s.orchestrator() == model.OrchestratorK8s && !s.localRegistry.Empty() {
+		// If we've found a local registry in the cluster at run-time,
 		// use that instead of the one in the tiltfile
-		s.logger.Infof("Auto-detected private registry from environment: %s", s.privateRegistry)
-		usePrivateRegistry = true
+		s.logger.Infof("Auto-detected local registry from environment: %s", s.localRegistry)
+		useLocalRegistry = true
 	}
 
 	iTargets := make([]model.ImageTarget, 0, len(ids))
@@ -1065,8 +1065,8 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 		claimStatus[id] = claimPending
 
 		registry := s.defaultReg
-		if usePrivateRegistry {
-			registry = s.privateRegistry
+		if useLocalRegistry {
+			registry = s.localRegistry
 		}
 		refs, err := container.NewRefSet(image.configurationRef, registry)
 		if err != nil {

@@ -105,10 +105,10 @@ func (r *registryAsync) Registry(ctx context.Context) container.Registry {
 	return r.registry
 }
 
-func (c K8sClient) PrivateRegistry(ctx context.Context) container.Registry {
+func (c K8sClient) LocalRegistry(ctx context.Context) container.Registry {
 	return c.registryAsync.Registry(ctx)
 }
 
 func ProvideContainerRegistry(ctx context.Context, kCli Client) container.Registry {
-	return kCli.PrivateRegistry(ctx)
+	return kCli.LocalRegistry(ctx)
 }
