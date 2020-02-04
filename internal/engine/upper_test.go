@@ -2908,10 +2908,10 @@ ghij`)))
 	})
 
 	f.withState(func(s store.EngineState) {
-		assert.Contains(t, s.LogStore.String(), `alert-injes…┊ a
-alert-injes…┊ bc
-alert-injes…┊ def
-alert-injes…┊ ghij`)
+		assert.Contains(t, s.LogStore.String(), `alert-injest… │ a
+alert-injest… │ bc
+alert-injest… │ def
+alert-injest… │ ghij`)
 	})
 
 	err := f.Stop()
