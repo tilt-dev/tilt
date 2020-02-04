@@ -110,11 +110,11 @@ func TestLogTailPrefixes(t *testing.T) {
 	l.Append(newGlobalTestLogEvent("5\n"), nil)
 	assert.Equal(t, "", l.Tail(0))
 	assert.Equal(t, "5\n", l.Tail(1))
-	assert.Equal(t, "fe          ┊ 4\n5\n", l.Tail(2))
-	assert.Equal(t, "fe          ┊ 3\nfe          ┊ 4\n5\n", l.Tail(3))
-	assert.Equal(t, "2\nfe          ┊ 3\nfe          ┊ 4\n5\n", l.Tail(4))
-	assert.Equal(t, "1\n2\nfe          ┊ 3\nfe          ┊ 4\n5\n", l.Tail(5))
-	assert.Equal(t, "1\n2\nfe          ┊ 3\nfe          ┊ 4\n5\n", l.Tail(6))
+	assert.Equal(t, "           fe │ 4\n5\n", l.Tail(2))
+	assert.Equal(t, "           fe │ 3\n           fe │ 4\n5\n", l.Tail(3))
+	assert.Equal(t, "2\n           fe │ 3\n           fe │ 4\n5\n", l.Tail(4))
+	assert.Equal(t, "1\n2\n           fe │ 3\n           fe │ 4\n5\n", l.Tail(5))
+	assert.Equal(t, "1\n2\n           fe │ 3\n           fe │ 4\n5\n", l.Tail(6))
 }
 
 func TestLogTailSpan(t *testing.T) {
@@ -137,8 +137,8 @@ func TestLogTailParts(t *testing.T) {
 	l.Append(newTestLogEvent("fe", time.Now(), "xy"), nil)
 	l.Append(newGlobalTestLogEvent("bc\n"), nil)
 	l.Append(newTestLogEvent("fe", time.Now(), "z\n"), nil)
-	assert.Equal(t, "fe          ┊ xyz\n", l.Tail(1))
-	assert.Equal(t, "abc\nfe          ┊ xyz\n", l.Tail(2))
+	assert.Equal(t, "           fe │ xyz\n", l.Tail(1))
+	assert.Equal(t, "abc\n           fe │ xyz\n", l.Tail(2))
 }
 
 func TestContinuingString(t *testing.T) {
@@ -164,10 +164,10 @@ func TestContinuingStringOneSource(t *testing.T) {
 
 	l.Append(newTestLogEvent("fe", time.Now(), "foo"), nil)
 	c2 := l.Checkpoint()
-	assert.Equal(t, "fe          ┊ foo", l.ContinuingString(c1))
+	assert.Equal(t, "           fe │ foo", l.ContinuingString(c1))
 
 	l.Append(newTestLogEvent("fe", time.Now(), "bar\n"), nil)
-	assert.Equal(t, "fe          ┊ foobar\n", l.ContinuingString(c1))
+	assert.Equal(t, "           fe │ foobar\n", l.ContinuingString(c1))
 	assert.Equal(t, "bar\n", l.ContinuingString(c2))
 }
 
@@ -182,20 +182,20 @@ func TestContinuingStringTwoSources(t *testing.T) {
 
 	l.Append(newTestLogEvent("fe", time.Now(), "xy"), nil)
 	c3 := l.Checkpoint()
-	assert.Equal(t, "a\nfe          ┊ xy", l.ContinuingString(c1))
-	assert.Equal(t, "\nfe          ┊ xy", l.ContinuingString(c2))
+	assert.Equal(t, "a\n           fe │ xy", l.ContinuingString(c1))
+	assert.Equal(t, "\n           fe │ xy", l.ContinuingString(c2))
 
 	l.Append(newGlobalTestLogEvent("bc\n"), nil)
 	c4 := l.Checkpoint()
-	assert.Equal(t, "abc\nfe          ┊ xy", l.ContinuingString(c1))
-	assert.Equal(t, "\nfe          ┊ xy\nbc\n", l.ContinuingString(c2))
+	assert.Equal(t, "abc\n           fe │ xy", l.ContinuingString(c1))
+	assert.Equal(t, "\n           fe │ xy\nbc\n", l.ContinuingString(c2))
 	assert.Equal(t, "\nbc\n", l.ContinuingString(c3))
 
 	l.Append(newTestLogEvent("fe", time.Now(), "z\n"), nil)
-	assert.Equal(t, "abc\nfe          ┊ xyz\n", l.ContinuingString(c1))
-	assert.Equal(t, "\nfe          ┊ xyz\nbc\n", l.ContinuingString(c2))
-	assert.Equal(t, "\nbc\nfe          ┊ z\n", l.ContinuingString(c3))
-	assert.Equal(t, "fe          ┊ z\n", l.ContinuingString(c4))
+	assert.Equal(t, "abc\n           fe │ xyz\n", l.ContinuingString(c1))
+	assert.Equal(t, "\n           fe │ xyz\nbc\n", l.ContinuingString(c2))
+	assert.Equal(t, "\nbc\n           fe │ z\n", l.ContinuingString(c3))
+	assert.Equal(t, "           fe │ z\n", l.ContinuingString(c4))
 }
 
 func TestContinuingStringAfterLimit(t *testing.T) {
@@ -245,7 +245,7 @@ func TestManifestLogContinuation(t *testing.T) {
 	l.Append(newGlobalTestLogEvent("5\n6\n"), nil)
 	assert.Equal(t, "3478", l.ManifestLog("fe"))
 	assert.Equal(t, "ab", l.ManifestLog("back"))
-	assert.Equal(t, "1\n2\nfe          ┊ 3478\n5\n6\nback        ┊ ab\n5\n6\n", l.String())
+	assert.Equal(t, "1\n2\n           fe │ 3478\n5\n6\n         back │ ab\n5\n6\n", l.String())
 }
 
 func TestLogIncremental(t *testing.T) {
@@ -356,13 +356,13 @@ func TestContinuingLines(t *testing.T) {
 		fields:  map[string]string{logger.FieldNameProgressID: "layer 2"},
 	}, nil)
 
-	assert.Equal(t, "fe          ┊ layer 1: pending\nfe          ┊ layer 2: pending\n",
+	assert.Equal(t, "           fe │ layer 1: pending\n           fe │ layer 2: pending\n",
 		l.ContinuingString(c1))
 
 	c2 := l.Checkpoint()
 	assert.Equal(t, []LogLine{
-		LogLine{Text: "fe          ┊ layer 1: pending\n", SpanID: "fe", ProgressID: "layer 1", Time: now},
-		LogLine{Text: "fe          ┊ layer 2: pending\n", SpanID: "fe", ProgressID: "layer 2", Time: now},
+		LogLine{Text: "           fe │ layer 1: pending\n", SpanID: "fe", ProgressID: "layer 1", Time: now},
+		LogLine{Text: "           fe │ layer 2: pending\n", SpanID: "fe", ProgressID: "layer 2", Time: now},
 	}, l.ContinuingLines(c1))
 
 	l.Append(testLogEvent{
@@ -377,7 +377,7 @@ func TestContinuingLines(t *testing.T) {
 
 	assert.Equal(t, []LogLine{
 		LogLine{
-			Text:              "fe          ┊ layer 1: done\n",
+			Text:              "           fe │ layer 1: done\n",
 			SpanID:            "fe",
 			ProgressID:        "layer 1",
 			ProgressMustPrint: true,
