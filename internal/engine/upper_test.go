@@ -1205,7 +1205,7 @@ func TestDisabledHudUpdated(t *testing.T) {
 	time.Sleep(5 * time.Millisecond)
 	assert.True(t, f.disabledHud().ProcessedLogs > 0)
 	oldCheckpoint := f.disabledHud().ProcessedLogs
-	assert.Contains(t, out.String(), "Building:foobar")
+	assert.Contains(t, out.String(), "Initial Build • foobar")
 
 	// Log something new, make sure it's reflected
 	msg := []byte("hello world!\n")
@@ -2908,10 +2908,10 @@ ghij`)))
 	})
 
 	f.withState(func(s store.EngineState) {
-		assert.Contains(t, s.LogStore.String(), `alert-injest… │ a
-alert-injest… │ bc
-alert-injest… │ def
-alert-injest… │ ghij`)
+		assert.Contains(t, s.LogStore.String(), `alert-injes…┊ a
+alert-injes…┊ bc
+alert-injes…┊ def
+alert-injes…┊ ghij`)
 	})
 
 	err := f.Stop()
