@@ -1039,7 +1039,7 @@ func TestLogsLongResourceName(t *testing.T) {
 	// thus, it just makes sure that we log that the manifest is building and we don't error,
 	// and tries to limit how much it checks the formatting
 	f.withState(func(state store.EngineState) {
-		expectedLine := fmt.Sprintf("%s", mn)
+		expectedLine := fmt.Sprintf("Initial Build • %s", mn)
 		assert.Contains(t, state.LogStore.String(), expectedLine)
 	})
 

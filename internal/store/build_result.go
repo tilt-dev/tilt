@@ -83,7 +83,7 @@ func (r LiveUpdateBuildResult) Facets() []model.Facet      { return nil }
 // For in-place container updates.
 func NewLiveUpdateBuildResult(id model.TargetID, containerIDs []container.ID) LiveUpdateBuildResult {
 	return LiveUpdateBuildResult{
-		id: id,
+		id:                      id,
 		LiveUpdatedContainerIDs: containerIDs,
 	}
 }
@@ -107,7 +107,7 @@ func (r DockerComposeBuildResult) Facets() []model.Facet      { return nil }
 // For docker compose deploy targets.
 func NewDockerComposeDeployResult(id model.TargetID, containerID container.ID) DockerComposeBuildResult {
 	return DockerComposeBuildResult{
-		id: id,
+		id:                       id,
 		DockerComposeContainerID: containerID,
 	}
 }
