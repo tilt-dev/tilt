@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
@@ -125,39 +124,27 @@ func (c *BuildController) buildAndDeploy(ctx context.Context, st store.RStore, e
 	return c.b.BuildAndDeploy(ctx, st, targets, entry.buildStateSet)
 }
 
-// ideally narrow enough that it doesn't wrap on "normal" resolutions
-const buildLineLength = 55
-
-// if name is long, then the whole thing won't even fit in buildLineLength. Show at least minSuffixLineLength
-// ──┤ Rebuilding: ├────────
-const minSuffixLineLength = 8
-
 func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
 	firstBuild := entry.firstBuild
 	name := entry.name
+	buildReason := entry.buildReason
 	changedFiles := entry.filesChanged
 
-	l := logger.Get(ctx)
-	var prefix string
+	l := logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameBuildEvent: "init"})
+	delimiter := "•"
 	if firstBuild {
-		prefix = "──┤ Building:"
+		l.Infof("Initial Build %s %s", delimiter, name)
 	} else {
 		if len(changedFiles) > 0 {
-			p := logger.Green(l).Sprintf("%d changed: ", len(changedFiles))
-			l.Infof("\n%s%v\n", p, ospath.FormatFileChangeList(changedFiles))
+			t := "File"
+			if len(changedFiles) > 1 {
+				t = "Files"
+			}
+			l.Infof("%d %s Changed: %s %s %s", len(changedFiles), t, ospath.FormatFileChangeList(changedFiles), delimiter, name)
+		} else {
+			l.Infof("%s %s %s", buildReason, delimiter, name)
 		}
-
-		prefix = "──┤ Rebuilding: "
 	}
-
-	p := logger.Blue(l).Sprintf("%s", prefix)
-	trailingDashCount := buildLineLength - len(name) - len(prefix) - 2
-	if trailingDashCount < minSuffixLineLength {
-		trailingDashCount = minSuffixLineLength
-	}
-	suffix := " ├" + strings.Repeat("─", trailingDashCount)
-	s := logger.Blue(l).Sprintf(suffix)
-	l.Infof("\n%s%s%s", p, name, s)
 }
 
 type BuildLogActionWriter struct {

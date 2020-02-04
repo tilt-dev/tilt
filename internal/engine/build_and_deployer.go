@@ -74,8 +74,9 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 		}
 
 		if redirectErr, ok := err.(buildcontrol.RedirectToNextBuilder); ok {
-			s := fmt.Sprintf("falling back to next update method because: %v\n", err)
-			logger.Get(ctx).Write(redirectErr.Level, []byte(s))
+			l := logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameBuildEvent: "fallback"})
+			s := fmt.Sprintf("Falling back to next update method…\nREASON: %v\n", err)
+			l.Write(redirectErr.Level, []byte(s))
 		} else {
 			lastUnexpectedErr = err
 			if i+1 < len(composite.builders) {

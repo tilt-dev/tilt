@@ -1099,7 +1099,7 @@ docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', ignor
 	})
 
 	f.withState(func(es store.EngineState) {
-		expected := fmt.Sprintf("1 changed: [%s]", f.JoinPath("Tiltfile"))
+		expected := fmt.Sprintf("1 File Changed: [%s]", f.JoinPath("Tiltfile"))
 		require.Contains(t, es.LogStore.ManifestLog("snack"), expected)
 	})
 
@@ -1205,7 +1205,7 @@ func TestDisabledHudUpdated(t *testing.T) {
 	time.Sleep(5 * time.Millisecond)
 	assert.True(t, f.disabledHud().ProcessedLogs > 0)
 	oldCheckpoint := f.disabledHud().ProcessedLogs
-	assert.Contains(t, out.String(), "Building:foobar")
+	assert.Contains(t, out.String(), "Initial Build • foobar")
 
 	// Log something new, make sure it's reflected
 	msg := []byte("hello world!\n")

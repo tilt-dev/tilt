@@ -1,5 +1,6 @@
 import React from "react"
 import Ansi from "ansi-to-react"
+import "./AnsiLine.scss"
 
 type AnsiLineProps = {
   line: string

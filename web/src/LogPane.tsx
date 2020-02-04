@@ -1,14 +1,13 @@
 import React, { Component, PureComponent } from "react"
 import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
-import AnsiLine from "./AnsiLine"
-import "./LogPane.scss"
 import ReactDOM from "react-dom"
 import { LogLine, SnapshotHighlight } from "./types"
-import color from "./color"
-import { SizeUnit, Width } from "./style-helpers"
+import LogPaneLine from "./LogPaneLine"
 import findLogLineID from "./findLogLine"
-import styled from "styled-components"
+import styled, { keyframes } from "styled-components"
+import { Color, ColorRGBA, ColorAlpha, SizeUnit } from "./style-helpers"
 import selection from "./selection"
+import "./LogPane.scss"
 
 type LogPaneProps = {
   manifestName: string
@@ -34,95 +33,33 @@ const renderWindowMinStep = 50
 // in practice the height is variable.
 const blankLogLineHeight = 30
 
-type LogLineComponentProps = {
-  text: string
-  manifestName: string
-  level: string
-  lineId: number
-  shouldHighlight: boolean
-  showManifestPrefix: boolean
-  isContextChange: boolean
-}
-
-let LogLinePrefixRoot = styled.span`
-  user-select: none;
-  width: calc(
-    ${Width.secondaryNavItem}px - ${SizeUnit(0.5)}
-  ); // Match height of tab above
-  box-sizing: border-box;
-  display: inline-block;
-  background-color: ${color.grayDark};
-  border-right: 1px solid ${color.grayLightest};
-  color: ${color.grayLightest};
-  padding-right: ${SizeUnit(0.5)};
-  margin-right: ${SizeUnit(0.5)};
-  text-align: right;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  white-space: nowrap;
-  flex-shrink: 0;
-
-  &::selection {
-    background-color: transparent;
-  }
-
-  .logLine.is-contextChange > & {
-    margin-top: -1px;
-    border-top: 1px dotted ${color.grayLightest};
-  }
+let LogPaneRoot = styled.section`
+  margin-top: ${SizeUnit(0.5)};
+  margin-bottom: ${SizeUnit(0.5)};
+  width: 100%;
 `
 
-let LogLinePrefix = React.memo((props: { name: string }) => {
-  let name = props.name
-  if (!name) {
-    name = "(global)"
-  }
-  return <LogLinePrefixRoot title={name}>{name}</LogLinePrefixRoot>
-})
-
-class LogLineComponent extends PureComponent<LogLineComponentProps> {
-  private ref: React.RefObject<HTMLSpanElement> = React.createRef()
-
-  scrollIntoView() {
-    if (this.ref.current) {
-      this.ref.current.scrollIntoView()
-    }
-  }
-
-  render() {
-    let props = this.props
-    let prefix = null
-    let text = props.text
-    if (props.showManifestPrefix) {
-      prefix = <LogLinePrefix name={props.manifestName} />
-    }
-    let classes = ["logLine"]
-    if (props.shouldHighlight) {
-      classes.push("highlighted")
-    }
-    if (props.level == "WARN") {
-      classes.push("is-warning")
-    } else if (props.level == "ERROR") {
-      classes.push("is-error")
-    }
-    if (props.isContextChange) {
-      classes.push("is-contextChange")
-    }
-    return (
-      <span
-        ref={this.ref}
-        data-lineid={props.lineId}
-        className={classes.join(" ")}
-      >
-        {prefix}
-        <AnsiLine line={text} className={"logLine-content"} />
-      </span>
-    )
-  }
+const blink = keyframes`
+  0% {
+    opacity: 1;
 }
+  50% {
+    opacity: 0;
+}
+  100% {
+    opacity: 1;
+}
+`
+
+let LogEnd = styled.div`
+  animation: ${blink} 1s infinite;
+  animation-timing-function: ease;
+  margin-top: ${SizeUnit(0.5)};
+  margin-left: ${SizeUnit(0.5)};
+`
 
 class LogPane extends Component<LogPaneProps, LogPaneState> {
-  highlightRef: React.RefObject<LogLineComponent> = React.createRef()
+  highlightRef: React.RefObject<LogPaneLine> = React.createRef()
   private lastElement: React.RefObject<HTMLParagraphElement> = React.createRef()
   private autoscrollRafID: number | null = null
   private renderWindowRafID: number | null = null
@@ -363,17 +300,15 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
   }
 
   render() {
-    let classes = `LogPane`
-
     let lines = this.props.logLines
     if (!lines || lines.length === 0) {
       return (
-        <section className={classes}>
+        <LogPaneRoot className="LogPane">
           <section className="Pane-empty-message">
             <LogoWordmarkSvg />
             <h2>No Logs Found</h2>
           </section>
-        </section>
+        </LogPaneRoot>
       )
     }
 
@@ -394,7 +329,6 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     for (let i = renderWindowStart; i < lines.length; i++) {
       const l = lines[i]
       const key = "logLine" + i
-
       let shouldHighlight = false
       let maybeHighlightRef = null
       if (highlight) {
@@ -413,11 +347,12 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 
       let isContextChange = i > 0 && l.manifestName != lastManifestName
       let el = (
-        <LogLineComponent
+        <LogPaneLine
           ref={maybeHighlightRef}
           key={key}
           text={l.text}
           level={l.level}
+          buildEvent={l.buildEvent}
           manifestName={l.manifestName}
           isContextChange={isContextChange}
           lineId={i}
@@ -431,12 +366,12 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     }
 
     logLineEls.push(
-      <p key="logEnd" className="logEnd" ref={this.lastElement}>
+      <LogEnd key="logEnd" className="logEnd" ref={this.lastElement}>
         &#9608;
-      </p>
+      </LogEnd>
     )
 
-    return <section className={classes}>{logLineEls}</section>
+    return <LogPaneRoot className="LogPane">{logLineEls}</LogPaneRoot>
   }
 }
 

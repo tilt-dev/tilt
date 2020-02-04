@@ -101,6 +101,7 @@ class LogStore {
         let time = segment.time
         let text = segment.text
         let level = segment.level
+        let fields = segment.fields
         return { spanId, time, text, level }
       }
     )
@@ -313,7 +314,9 @@ class LogStore {
           text: text,
           level: storedLine.level,
           manifestName: span.manifestName,
+          buildEvent: storedLine.fields?.buildEvent,
         }
+
         this.lineCache[i] = line
       }
 

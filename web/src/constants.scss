@@ -12,17 +12,19 @@ $font-size-icon: 24px;
 $color-white: #ffffff;
 $color-off-white: #eef1f1;
 $color-black: #000000;
-$color-gray-lightest: #93a1a1; // Solarized base1
+$color-gray-lightest: #93a1a1; // Solarized base1 (darkest content tone)
 $color-gray-light: #586e75; // Solarized base01
 $color-gray: #073642; // Solarized base02
-$color-gray-dark: #002b36; // Solarized base03
-$color-gray-darkest: #001b20;
+$color-gray-dark: #002b36; // Solarized base03 (darkest bg tone)
+$color-gray-darker: #00242d;
+$color-gray-darkest: #001b20; // Brand
 
-// Tilt Colors
+// Brand Colors
 $color-green: #20ba31;
 $color-green-light: #70d37b;
 $color-blue: #03c7d3;
 $color-blue-light: #5edbe3;
+$color-blue-dark: #007d82;
 $color-purple: #6378ba;
 $color-red: #f6685c;
 $color-pink: #ef5aa0;
@@ -48,6 +50,8 @@ $tabnav-height: $topbar-height;
 $resourceInfo-height: $spacing-unit * 1.5;
 $analyticsNudge-height: $tabnav-height * 1.5;
 
+$logLine-separator-height: 2px;
+$logLine-gutter-width: 6px;
 $modal-width: $spacing-unit * 15;
 
 $statusbar-height: $spacing-unit * 1.5;

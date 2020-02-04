@@ -1,17 +1,19 @@
 export enum Color {
+  // Brand Colors
   green = "#20ba31",
   blue = "#03c7d3",
-  blueLight = "#5edbe3",
+  blueDark = "#007d82",
   red = "#f6685c",
   yellow = "#fcb41e",
   white = "#ffffff",
-  offWhite = "#eef1f1",
 
-  grayLightest = "#93a1a1", // Solarized base1
+  offWhite = "#eef1f1",
+  grayLightest = "#93a1a1", // Solarized base1 (darkest content tone)
   grayLight = "#586e75", // Solarized base01
   gray = "#073642", // Solarized base02
-  grayDark = "#002b36", // Solarized base03
-  grayDarkest = "#001b20",
+  grayDark = "#002b36", // Solarized base03 (darkest bg tone)
+  grayDarker = "#00242d",
+  grayDarkest = "#001b20", // Brand
   black = "#000000",
 
   text = "#073642",
@@ -55,8 +57,8 @@ export enum Height {
   unit = unit,
   HUDheader = unit * 3,
   secondaryNav = unit * 1.2,
-  statusbar = unit * 1.5,
   resourceBar = unit * 1.5,
+  statusbar = unit * 1.5,
 }
 export enum Width {
   sidebar = unit * 10,

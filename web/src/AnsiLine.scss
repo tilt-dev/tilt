@@ -1,0 +1,27 @@
+@import "constants.scss";
+
+// Use Tilt brand colors
+.ansi-black {
+  color: $color-black;
+}
+.ansi-red {
+  color: $color-red;
+}
+.ansi-green {
+  color: $color-green;
+}
+.ansi-yellow {
+  color: $color-yellow;
+}
+.ansi-blue {
+  color: $color-blue;
+}
+.ansi-magenta {
+  color: $color-purple;
+}
+.ansi-cyan {
+  color: $color-blue-light;
+}
+.ansi-white {
+  color: $color-white;
+}
