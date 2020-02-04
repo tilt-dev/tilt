@@ -615,6 +615,25 @@ func (s *LogStore) toLogLines(options logOptions) []LogLine {
 		if sb.Len() == 0 {
 			return
 		}
+
+		if buildEvent == "init" {
+			// Estimate width of a "normal" Terminal
+			const lineLength = 80
+
+			// If the text exceeds lineLength, add a short border nonetheless
+			const minBorderLength = 5
+			textPadding := 2
+			borderDashCount := lineLength - len(sb.String()) - textPadding
+			if borderDashCount < minBorderLength {
+				borderDashCount = minBorderLength
+			}
+
+			s := sb.String()
+			sb = strings.Builder{}
+			border := strings.Repeat("═", borderDashCount) + "╡ "
+			sb.WriteString(fmt.Sprintf("\n%s %s", border, s))
+		}
+
 		result = append(result, LogLine{
 			Text:              sb.String(),
 			SpanID:            spanID,
@@ -623,6 +642,7 @@ func (s *LogStore) toLogLines(options logOptions) []LogLine {
 			BuildEvent:        buildEvent,
 			Time:              time,
 		})
+
 		sb = strings.Builder{}
 		lastLineCompleted = true
 		spanID = ""
@@ -682,22 +702,6 @@ func (s *LogStore) toLogLines(options logOptions) []LogLine {
 			} else if segment.Level == logger.ErrorLvl {
 				sb.WriteString("ERROR: ")
 			}
-		}
-
-		if buildEvent == "init" {
-			// Estimate width of a "normal" Terminal
-			const lineLength = 80
-
-			// If the text exceeds lineLength, still add a short border
-			const minBorderLength = 5
-			textPadding := 2
-			borderDashCount := lineLength - len(segment.Text) - textPadding
-			if borderDashCount < minBorderLength {
-				borderDashCount = minBorderLength
-			}
-
-			border := "\n" + strings.Repeat("═", borderDashCount) + "╡ "
-			sb.WriteString(border)
 		}
 
 		sb.WriteString(string(segment.Text))
