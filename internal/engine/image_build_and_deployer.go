@@ -27,20 +27,20 @@ import (
 
 var _ BuildAndDeployer = &ImageBuildAndDeployer{}
 
-type KINDPusher interface {
-	PushToKIND(ctx context.Context, ref reference.NamedTagged) error
+type KINDLoader interface {
+	LoadToKIND(ctx context.Context, ref reference.NamedTagged) error
 }
 
-type cmdKINDPusher struct {
+type cmdKINDLoader struct {
 	env         k8s.Env
 	clusterName k8s.ClusterName
 }
 
-func (p *cmdKINDPusher) PushToKIND(ctx context.Context, ref reference.NamedTagged) error {
+func (kl *cmdKINDLoader) LoadToKIND(ctx context.Context, ref reference.NamedTagged) error {
 	// In Kind5, --name specifies the name of the cluster in the kubeconfig.
 	// In Kind6, the -name parameter is prefixed with 'kind-' before being written to/read from the kubeconfig
-	kindName := string(p.clusterName)
-	if p.env == k8s.EnvKIND6 {
+	kindName := string(kl.clusterName)
+	if kl.env == k8s.EnvKIND6 {
 		kindName = strings.TrimPrefix(kindName, "kind-")
 	}
 
@@ -52,8 +52,8 @@ func (p *cmdKINDPusher) PushToKIND(ctx context.Context, ref reference.NamedTagge
 	return cmd.Run()
 }
 
-func NewKINDPusher(env k8s.Env, clusterName k8s.ClusterName) KINDPusher {
-	return &cmdKINDPusher{
+func NewKINDLoader(env k8s.Env, clusterName k8s.ClusterName) KINDLoader {
+	return &cmdKINDLoader{
 		env:         env,
 		clusterName: clusterName,
 	}
@@ -68,7 +68,7 @@ type ImageBuildAndDeployer struct {
 	analytics        *analytics.TiltAnalytics
 	injectSynclet    bool
 	clock            build.Clock
-	kp               KINDPusher
+	kl               KINDLoader
 	syncletContainer sidecar.SyncletContainer
 }
 
@@ -81,7 +81,7 @@ func NewImageBuildAndDeployer(
 	updMode buildcontrol.UpdateMode,
 	c build.Clock,
 	runtime container.Runtime,
-	kp KINDPusher,
+	kl KINDLoader,
 	syncletContainer sidecar.SyncletContainer,
 ) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
@@ -92,7 +92,7 @@ func NewImageBuildAndDeployer(
 		analytics:        analytics,
 		clock:            c,
 		runtime:          runtime,
-		kp:               kp,
+		kl:               kl,
 		syncletContainer: syncletContainer,
 	}
 }
@@ -183,9 +183,10 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 	}
 
 	var err error
-	if ibd.env == k8s.EnvKIND5 || ibd.env == k8s.EnvKIND6 {
-		ps.Printf(ctx, "Pushing to KIND")
-		err := ibd.kp.PushToKIND(ps.AttachLogger(ctx), ref)
+	isKind := ibd.env == k8s.EnvKIND5 || ibd.env == k8s.EnvKIND6
+	if isKind && !iTarget.HasDistinctClusterRef() {
+		ps.Printf(ctx, "Loading image to KIND")
+		err := ibd.kl.LoadToKIND(ps.AttachLogger(ctx), ref)
 		if err != nil {
 			return fmt.Errorf("Error pushing to KIND: %v", err)
 		}

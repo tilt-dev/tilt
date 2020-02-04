@@ -181,9 +181,9 @@ func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics3 *analy
 	imageBuilder := build.DefaultImageBuilder(dockerImageBuilder)
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, clock)
 	clusterName := k8s.ProvideClusterName(ctx, config)
-	kindPusher := engine.NewKINDPusher(env, clusterName)
+	kindLoader := engine.NewKINDLoader(env, clusterName)
 	syncletContainer := sidecar.ProvideSyncletContainer(syncletImageRef)
-	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, execCustomBuilder, client, env, analytics3, updateMode, clock, runtime, kindPusher, syncletContainer)
+	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(imageBuilder, execCustomBuilder, client, env, analytics3, updateMode, clock, runtime, kindLoader, syncletContainer)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	imageAndCacheBuilder := engine.NewImageAndCacheBuilder(imageBuilder, execCustomBuilder, updateMode)
 	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageAndCacheBuilder, clock)
@@ -449,7 +449,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebURL,
 	provideWebPort,
 	provideWebHost,
-	provideNoBrowserFlag, server.ProvideHeadsUpServer, provideAssetServer, server.ProvideHeadsUpServerController, tracer.NewSpanCollector, wire.Bind(new(trace2.SpanProcessor), new(*tracer.SpanCollector)), wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)), dirs.UseWindmillDir, token.GetOrCreateToken, provideCmdUpDeps, engine.NewKINDPusher, wire.Value(feature.MainDefaults),
+	provideNoBrowserFlag, server.ProvideHeadsUpServer, provideAssetServer, server.ProvideHeadsUpServerController, tracer.NewSpanCollector, wire.Bind(new(trace2.SpanProcessor), new(*tracer.SpanCollector)), wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)), dirs.UseWindmillDir, token.GetOrCreateToken, provideCmdUpDeps, engine.NewKINDLoader, wire.Value(feature.MainDefaults),
 )
 
 type CmdUpDeps struct {
