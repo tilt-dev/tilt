@@ -11,12 +11,12 @@ func SourcePrefix(n model.ManifestName) string {
 	if n == "" || n == model.TiltfileManifestName {
 		return ""
 	}
-	max := 12
+	max := 13
 	spaces := ""
 	if len(n) > max {
 		n = n[:max-1] + "…"
 	} else {
 		spaces = strings.Repeat(" ", max-len(n))
 	}
-	return fmt.Sprintf("%s%s┊ ", n, spaces)
+	return fmt.Sprintf("%s%s │ ", spaces, n)
 }
