@@ -94,28 +94,18 @@ dev-js:
 	cd web && yarn install && yarn run start
 
 check-js:
-ifneq ($(CIRCLECI),true)
 	cd web && yarn install --frozen-lockfile
-else
-	cd web && yarn install
-endif
-
 	cd web && yarn run check
 
 build-js:
-ifneq ($(CIRCLECI),true)
 	cd web && yarn install --frozen-lockfile
-else
-	cd web && yarn install
-endif
 	cd web && yarn build
 
 test-js:
-ifneq ($(CIRCLECI),true)
 	cd web && yarn install --frozen-lockfile
+ifneq ($(CIRCLECI),true)
 	cd web && CI=true yarn test
 else
-	cd web && yarn install
 	cd web && CI=true yarn ci
 endif
 
