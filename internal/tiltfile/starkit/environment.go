@@ -178,7 +178,7 @@ func (e *Environment) exec(t *starlark.Thread, path string) (starlark.StringDict
 		status: loadStatusExecuting,
 	}
 
-	exports, err := e.doLoad(t, path, localPath)
+	exports, err := e.doLoad(t, localPath)
 	e.loadCache[localPath] = loadCacheEntry{
 		status:  loadStatusDone,
 		exports: exports,
@@ -202,7 +202,7 @@ func (e *Environment) getPath(t *starlark.Thread, path string) (string, error) {
 	return AbsPath(t, path), nil
 }
 
-func (e *Environment) doLoad(t *starlark.Thread, path string, localPath string) (starlark.StringDict, error) {
+func (e *Environment) doLoad(t *starlark.Thread, localPath string) (starlark.StringDict, error) {
 	for _, ext := range e.extensions {
 		onExecExt, ok := ext.(OnExecExtension)
 		if ok {
