@@ -3,6 +3,8 @@ package k8s
 import (
 	"bytes"
 	"context"
+	"io"
+	"os"
 	goruntime "runtime"
 	"testing"
 
@@ -11,38 +13,81 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/kubernetes/scheme"
 	ktesting "k8s.io/client-go/testing"
 )
 
-func TestRegistryFound(t *testing.T) {
+func TestRegistryFoundMicrok8s(t *testing.T) {
 	// microk8s is linux-only
 	if goruntime.GOOS != "linux" {
 		t.SkipNow()
 	}
 
 	cs := &fake.Clientset{}
-	cs.AddReactor("*", "*", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-		return true, &v1.Service{
-			Spec: v1.ServiceSpec{
-				Ports: []v1.ServicePort{
-					v1.ServicePort{NodePort: 32000},
-				},
+	tracker := ktesting.NewObjectTracker(scheme.Scheme, scheme.Codecs.UniversalDecoder())
+	cs.AddReactor("*", "*", ktesting.ObjectReaction(tracker))
+	_ = tracker.Add(&v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      microk8sRegistryName,
+			Namespace: microk8sRegistryNamespace,
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				v1.ServicePort{NodePort: 32000},
 			},
-		}, nil
+		},
 	})
 
 	core := cs.CoreV1()
 	registryAsync := newRegistryAsync(EnvMicroK8s, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
 
-	out := &bytes.Buffer{}
-	l := logger.NewLogger(logger.InfoLvl, out)
-	ctx := logger.WithLogger(context.Background(), l)
-	registry := registryAsync.Registry(ctx)
+	registry := registryAsync.Registry(newLoggerCtx(os.Stdout))
 	assert.Equal(t, "localhost:32000", registry.Host)
+}
+
+func TestRegistryFoundInLabelsWithClusterHost(t *testing.T) {
+	cs := &fake.Clientset{}
+	tracker := ktesting.NewObjectTracker(scheme.Scheme, scheme.Codecs.UniversalDecoder())
+	cs.AddReactor("*", "*", ktesting.ObjectReaction(tracker))
+	_ = tracker.Add(&v1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "node1",
+			Annotations: map[string]string{
+				annotationRegistry:            "localhost:5000",
+				annotationRegistryFromCluster: "registry:5000",
+			},
+		},
+	})
+
+	core := cs.CoreV1()
+	registryAsync := newRegistryAsync(EnvKIND6, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
+
+	registry := registryAsync.Registry(newLoggerCtx(os.Stdout))
+	assert.Equal(t, "localhost:5000", registry.Host)
+	assert.Equal(t, "registry:5000", registry.HostFromCluster())
+}
+
+func TestRegistryFoundInLabelsWithLocalOnly(t *testing.T) {
+	cs := &fake.Clientset{}
+	tracker := ktesting.NewObjectTracker(scheme.Scheme, scheme.Codecs.UniversalDecoder())
+	cs.AddReactor("*", "*", ktesting.ObjectReaction(tracker))
+	_ = tracker.Add(&v1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "node1",
+			Annotations: map[string]string{
+				annotationRegistry: "localhost:5000",
+			},
+		},
+	})
+
+	core := cs.CoreV1()
+	registryAsync := newRegistryAsync(EnvKIND6, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
+
+	registry := registryAsync.Registry(newLoggerCtx(os.Stdout))
+	assert.Equal(t, "localhost:5000", registry.Host)
+	assert.Equal(t, "localhost:5000", registry.HostFromCluster())
 }
 
 func TestRegistryNotFound(t *testing.T) {
@@ -52,17 +97,20 @@ func TestRegistryNotFound(t *testing.T) {
 	}
 
 	cs := &fake.Clientset{}
-	cs.AddReactor("*", "*", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-		return true, nil, errors.NewNotFound(schema.GroupResource{Group: "core/v1", Resource: "service"}, "registry")
-	})
+	tracker := ktesting.NewObjectTracker(scheme.Scheme, scheme.Codecs.UniversalDecoder())
+	cs.AddReactor("*", "*", ktesting.ObjectReaction(tracker))
 
 	core := cs.CoreV1()
 	registryAsync := newRegistryAsync(EnvMicroK8s, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
 
-	out := &bytes.Buffer{}
-	l := logger.NewLogger(logger.InfoLvl, out)
-	ctx := logger.WithLogger(context.Background(), l)
-	registry := registryAsync.Registry(ctx)
+	out := bytes.NewBuffer(nil)
+	registry := registryAsync.Registry(newLoggerCtx(out))
 	assert.Equal(t, "", registry.Host)
 	assert.Contains(t, out.String(), "microk8s.enable registry")
+}
+
+func newLoggerCtx(w io.Writer) context.Context {
+	l := logger.NewLogger(logger.InfoLvl, w)
+	ctx := logger.WithLogger(context.Background(), l)
+	return ctx
 }

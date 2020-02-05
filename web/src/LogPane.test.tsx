@@ -418,7 +418,8 @@ it("renders highlighted lines", () => {
   expect(tree).toMatchSnapshot()
 
   let component = mount(el)
-  expect(component.find(".logLine.highlighted")).toHaveLength(2)
+  let hLines = component.find("span.LogPaneLine.is-highlighted")
+  expect(hLines).toHaveLength(2)
 })
 
 it("scrolls to highlighted lines in snapshot", () => {
@@ -430,7 +431,7 @@ it("scrolls to highlighted lines in snapshot", () => {
     endingLogID: "3",
     text: "foo\nbar",
   }
-  const wrapper = mount<LogPane>(
+  const root = mount<LogPane>(
     <LogPane
       manifestName={""}
       logLines={logLinesFromString(longLog)}
@@ -442,7 +443,7 @@ it("scrolls to highlighted lines in snapshot", () => {
     />
   )
 
-  expect(wrapper.instance().highlightRef.current).not.toBeNull()
+  expect(root.instance().highlightRef.current).not.toBeNull()
   expect(fakeScrollIntoView.mock.instances).toHaveLength(1)
   expect(fakeScrollIntoView.mock.instances[0]).toBeInstanceOf(HTMLSpanElement)
   expect(fakeScrollIntoView.mock.instances[0].innerHTML).toContain(
@@ -460,7 +461,7 @@ it("does not scroll to highlighted lines if not snapshot", () => {
     endingLogID: "301",
     text: "foo\nbar",
   }
-  const wrapper = mount<LogPane>(
+  const root = mount<LogPane>(
     <LogPane
       manifestName={""}
       logLines={logLinesFromString(longLog)}
@@ -472,9 +473,13 @@ it("does not scroll to highlighted lines if not snapshot", () => {
     />
   )
 
-  expect(wrapper.instance().highlightRef.current).not.toBeNull()
+  let logEnd = root.find("div.logEnd")
+
+  expect(root.instance().highlightRef.current).not.toBeNull()
   expect(fakeScrollIntoView.mock.instances).toHaveLength(1)
-  expect(fakeScrollIntoView.mock.instances[0].className).toEqual("logEnd")
+  expect(fakeScrollIntoView.mock.instances[0].className).toEqual(
+    logEnd.props().className
+  )
   expect(fakeScrollIntoView).toBeCalledTimes(1)
 })
 
@@ -488,7 +493,7 @@ it("doesn't set selection event handler if snapshot", () => {
     endingLogID: "3",
     text: "foo\nbar",
   }
-  const wrapper = mount<LogPane>(
+  const root = mount<LogPane>(
     <LogPane
       manifestName={""}
       logLines={logLinesFromString(longLog)}

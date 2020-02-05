@@ -21,21 +21,21 @@ import (
 // messages (like Infof) append a newline to the string before passing it to
 // Write().
 type Logger interface {
-	// Warnings to show in the alert pane.
-	Warnf(format string, a ...interface{})
-
-	// Halting errors to show in the alert pane.
-	Errorf(format string, a ...interface{})
-
-	// log information that we always want to show
-	Infof(format string, a ...interface{})
+	// log information that is likely to only be of interest to tilt developers
+	Debugf(format string, a ...interface{})
 
 	// log information that a tilt user might not want to see on every run, but that they might find
 	// useful when debugging their Tiltfile/docker/k8s configs
 	Verbosef(format string, a ...interface{})
 
-	// log information that is likely to only be of interest to tilt developers
-	Debugf(format string, a ...interface{})
+	// log information that we always want to show
+	Infof(format string, a ...interface{})
+
+	// Warnings to show in the alert pane.
+	Warnf(format string, a ...interface{})
+
+	// Halting errors to show in the alert pane.
+	Errorf(format string, a ...interface{})
 
 	Write(level Level, bytes []byte)
 

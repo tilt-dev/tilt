@@ -67,4 +67,5 @@ export type LogLine = {
   text: string
   manifestName: string
   level: string
+  buildEvent?: string
 }

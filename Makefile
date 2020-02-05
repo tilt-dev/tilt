@@ -94,15 +94,15 @@ dev-js:
 	cd web && yarn install && yarn run start
 
 check-js:
-	cd web && yarn install
+	cd web && yarn install --frozen-lockfile
 	cd web && yarn run check
 
 build-js:
-	cd web && yarn install
+	cd web && yarn install --frozen-lockfile
 	cd web && yarn build
 
 test-js:
-	cd web && yarn install
+	cd web && yarn install --frozen-lockfile
 ifneq ($(CIRCLECI),true)
 	cd web && CI=true yarn test
 else

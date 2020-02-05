@@ -1,0 +1,80 @@
+// We're using CSS here because thousands of `LogPaneLine` in a view can really slow rendering.
+// (styled-components wraps each React component with another, adding non-trivial overhead.)
+@import "constants";
+
+.LogPaneLine {
+  display: flex;
+
+  &.is-highlighted {
+    background-color: rgba($color-blue, $translucent);
+  }
+
+  &.is-buildEvent-init {
+    margin-top: $spacing-unit * 0.5;
+    margin-bottom: $spacing-unit * 0.5;
+    background-color: $color-gray;
+    text-align: right;
+    padding-right: $spacing-unit;
+    border-top: 1px solid rgba($color-gray-light, $translucent);
+    border-bottom: 1px solid $color-blue-dark;
+  }
+  &.is-buildEvent-fallback {
+    background-color: $color-gray-darker;
+
+    // A lil' trick so bottom margin only appears after the last element
+    margin-top: -$spacing-unit * 0.5;
+    margin-bottom: $spacing-unit * 0.5;
+  }
+}
+
+.logLinePrefix {
+  user-select: none;
+  width: $tabnav-width;
+  box-sizing: border-box;
+  background-color: $color-gray-darker;
+  color: $color-gray-lightest;
+  padding-left: $spacing-unit * 0.5;
+  padding-right: $spacing-unit * 0.5;
+  display: flex;
+  align-items: center;
+  justify-content: right;
+  flex-shrink: 0;
+  // Truncate long text:
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+
+  .LogPaneLine.is-contextChange > & {
+    // Border shouldn't add height:
+    margin-top: -$logLine-separator-height;
+    border-top: $logLine-separator-height solid $color-gray;
+  }
+}
+
+
+.LogPaneLine-content {
+  white-space: pre-wrap;
+  padding-left: $spacing-unit * 0.6;
+  flex: 1;
+  border-left: $logLine-separator-height solid $color-gray;
+
+  // Make spacing around "header" text more generous for legibility
+  // We avoid padding on the parent .LogPaneLine, lest we squish .logLinePrefix
+  .LogPaneLine.is-buildEvent-init &,
+  .LogPaneLine.is-buildEvent-fallback & {
+    padding-top: $spacing-unit * 0.2;
+    padding-bottom: $spacing-unit * 0.2;
+  }
+
+  // A left border draws your eye to notable log lines
+  // Placed right of the prefix, so it's always just next to the log text
+  .LogPaneLine.is-warning & {
+    border-left: $logLine-gutter-width solid $color-yellow;
+  }
+  .LogPaneLine.is-error & {
+    border-left: $logLine-gutter-width solid $color-red;
+  }
+  .LogPaneLine.is-buildEvent-fallback & {
+    border-left: $logLine-gutter-width solid $color-blue-dark;
+  }
+}
