@@ -10,11 +10,7 @@ const TagVersion = "version"
 const TagOS = "os"
 const TagGitRepoHash = "git.origin"
 
-// An Analytics that:
-// 1. Has `IncrIfUnopted` to report anonymous metrics only for users who have not opted in/out (or the choice that they
-//    did opt in/out).
-// 2. Ignores all other calls from users who have not opted in.
-// 3. Allows opting in/out at runtime.
+// An Analytics that allows opting in/out at runtime.
 type TiltAnalytics struct {
 	opter       AnalyticsOpter
 	a           analytics.Analytics
@@ -84,38 +80,19 @@ func (ta *TiltAnalytics) GitRepoHash() string {
 	return id
 }
 func (ta *TiltAnalytics) Count(name string, tags map[string]string, n int) {
-	if ta.EffectiveOpt() == analytics.OptIn {
+	if ta.EffectiveOpt() != analytics.OptOut {
 		ta.a.Count(name, tags, n)
 	}
 }
 
 func (ta *TiltAnalytics) Incr(name string, tags map[string]string) {
-	if ta.EffectiveOpt() == analytics.OptIn {
+	if ta.EffectiveOpt() != analytics.OptOut {
 		ta.a.Incr(name, tags)
 	}
 }
 
-func (ta *TiltAnalytics) IncrIfUnopted(name string) {
-	if ta.EffectiveOpt() == analytics.OptDefault {
-		ta.a.WithoutGlobalTags().Incr(name, map[string]string{"version": ta.tiltVersion})
-	}
-}
-
-func (ta *TiltAnalytics) IncrAnonymous(name string, tags map[string]string) {
-	// Q: This is confusing! Isn't IncrAnonymous only for OptDefault?
-	// A: ...well, that was why it was added. If you drop a random IncrAnonymous call somewhere else in the code
-	//    and nothing happens, would you be surprised? We could eliminate IncrIfUnopted and make IncrAnonymous
-	//    only run when opt == OptDefault, but then there's it feels weird that some methods only work if OptIn and
-	//    some only work if OptDefault, and it's not really clear from the names why.
-	//    By making IncrIfUnopted its own method, we go with the mental model of "IncrIfUnopted is explicit about its
-	//    relationship to opt, and all other methods only run on OptIn"
-	if ta.EffectiveOpt() == analytics.OptIn {
-		ta.a.WithoutGlobalTags().Incr(name, tags)
-	}
-}
-
 func (ta *TiltAnalytics) Timer(name string, dur time.Duration, tags map[string]string) {
-	if ta.EffectiveOpt() == analytics.OptIn {
+	if ta.EffectiveOpt() != analytics.OptOut {
 		ta.a.Timer(name, dur, tags)
 	}
 }

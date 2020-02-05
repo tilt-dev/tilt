@@ -186,7 +186,7 @@ func (s *HeadsUpServer) HandleAnalyticsOpt(w http.ResponseWriter, req *http.Requ
 
 	// only logging on opt-in, because, well, opting out means the user just told us not to report data on them!
 	if opt == analytics.OptIn {
-		s.a.IncrIfUnopted("analytics.opt.in")
+		s.a.Incr("analytics.opt.in", nil)
 	}
 
 	s.store.Dispatch(store.AnalyticsUserOptAction{Opt: opt})

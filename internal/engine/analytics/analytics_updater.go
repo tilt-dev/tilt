@@ -26,7 +26,7 @@ func NewAnalyticsUpdater(ta *analytics.TiltAnalytics, cmdUpTags CmdUpTags) *Anal
 	return &AnalyticsUpdater{
 		ta:            ta,
 		cmdUpTags:     cmdUpTags,
-		reportedCmdUp: ta.EffectiveOpt() == wmanalytics.OptIn,
+		reportedCmdUp: ta.EffectiveOpt() != wmanalytics.OptOut,
 	}
 }
 
@@ -40,7 +40,7 @@ func (sub *AnalyticsUpdater) OnChange(ctx context.Context, st store.RStore) {
 		logger.Get(ctx).Infof("error saving analytics opt (tried to record opt: '%s')", state.AnalyticsUserOpt)
 	}
 
-	if sub.ta.EffectiveOpt() == wmanalytics.OptIn && !sub.reportedCmdUp {
+	if sub.ta.EffectiveOpt() != wmanalytics.OptOut && !sub.reportedCmdUp {
 		sub.reportedCmdUp = true
 		sub.ta.Incr("cmd.up", sub.cmdUpTags.AsMap())
 	}

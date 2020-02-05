@@ -5,9 +5,10 @@ const nudgeTimeoutMs = 15000
 const nudgeElem = (): JSX.Element => {
   return (
     <p>
-      Welcome to Tilt! May we collect usage data to help us improve? (
+      Welcome to Tilt! We collect anonymized usage data to help us improve. Is
+      that OK? (
       <a
-        href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
+        href="https://docs.tilt.dev/telemetry_faq.html"
         target="_blank"
         rel="noopener noreferrer"
       >
