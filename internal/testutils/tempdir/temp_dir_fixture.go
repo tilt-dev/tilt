@@ -11,8 +11,9 @@ import (
 )
 
 type TempDirFixture struct {
-	t   testing.TB
-	dir *temp.TempDir
+	t      testing.TB
+	dir    *temp.TempDir
+	oldDir string
 }
 
 func NewTempDirFixture(t testing.TB) *TempDirFixture {
@@ -35,6 +36,20 @@ func (f *TempDirFixture) T() testing.TB {
 
 func (f *TempDirFixture) Path() string {
 	return f.dir.Path()
+}
+
+func (f *TempDirFixture) Chdir() {
+	cwd, err := os.Getwd()
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	f.oldDir = cwd
+
+	err = os.Chdir(f.Path())
+	if err != nil {
+		f.t.Fatal(err)
+	}
 }
 
 func (f *TempDirFixture) JoinPath(path ...string) string {
@@ -131,6 +146,10 @@ func (f *TempDirFixture) TempDir(prefix string) string {
 }
 
 func (f *TempDirFixture) TearDown() {
+	defer func() {
+		_ = os.Chdir(f.oldDir)
+	}()
+
 	err := f.dir.TearDown()
 	if err != nil {
 		f.t.Fatal(err)

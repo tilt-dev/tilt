@@ -76,6 +76,9 @@ shorttest:
 	# we might also want to skip the ones in engine
 	go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skipdockercomposetests -timeout 60s ./...
 
+shorttestsum:
+	gotestsum -- -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skipdockercomposetests -timeout 60s ./...
+
 integration:
 ifneq ($(CIRCLECI),true)
 		go test -mod vendor -v -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s ./integration

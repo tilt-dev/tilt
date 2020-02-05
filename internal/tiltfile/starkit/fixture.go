@@ -12,23 +12,31 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.starlark.net/starlark"
+
+	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
 // A fixture for test setup/teardown
 type Fixture struct {
-	tb         testing.TB
-	extensions []Extension
-	path       string
-	fs         map[string]string
-	out        *bytes.Buffer
-	useRealFS  bool // Use a real filesystem
+	tb               testing.TB
+	extensions       []Extension
+	path             string
+	temp             *tempdir.TempDirFixture
+	fs               map[string]string
+	out              *bytes.Buffer
+	useRealFS        bool // Use a real filesystem
+	loadInterceptors []LoadInterceptor
 }
 
 func NewFixture(tb testing.TB, extensions ...Extension) *Fixture {
+	temp := tempdir.NewTempDirFixture(tb)
+	temp.Chdir()
+
 	return &Fixture{
 		tb:         tb,
 		extensions: extensions,
-		path:       "/fake/path/to/dir",
+		path:       temp.Path(),
+		temp:       temp,
 		fs:         make(map[string]string),
 		out:        bytes.NewBuffer(nil),
 	}
@@ -47,7 +55,15 @@ func (f *Fixture) OnStart(e *Environment) error {
 
 func (f *Fixture) ExecFile(name string) (Model, error) {
 	extensions := append([]Extension{f}, f.extensions...)
-	return ExecFile(filepath.Join(f.path, name), extensions...)
+	env := newEnvironment(extensions...)
+	for _, i := range f.loadInterceptors {
+		env.AddLoadInterceptor(i)
+	}
+	return env.start(filepath.Join(f.path, name))
+}
+
+func (f *Fixture) SetLoadInterceptor(i LoadInterceptor) {
+	f.loadInterceptors = append(f.loadInterceptors, i)
 }
 
 func (f *Fixture) PrintOutput() string {
@@ -85,10 +101,5 @@ func (f *Fixture) UseRealFS() {
 }
 
 func (f *Fixture) TearDown() {
-	if f.useRealFS {
-		err := os.RemoveAll(f.path)
-		if err != nil {
-			fmt.Printf("error cleaning up temp dir: %v", err)
-		}
-	}
+	f.temp.TearDown()
 }
