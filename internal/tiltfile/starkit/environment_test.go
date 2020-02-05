@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.starlark.net/starlark"
 )
 
@@ -24,4 +25,28 @@ y = x // 0
 		assert.Contains(t, backtrace, fmt.Sprintf("%s/Tiltfile:2:1: in <toplevel>", f.Path()))
 		assert.Contains(t, backtrace, "cannot load ./foo/Tiltfile")
 	}
+}
+
+func TestLoadInterceptor(t *testing.T) {
+	f := NewFixture(t)
+	f.UseRealFS()
+
+	f.temp.WriteFile("Tiltfile", `
+load('this_path_does_not_matter', "x")
+`)
+	f.temp.WriteFile("foo/Tiltfile", `
+x = 1
+y = x +1
+`)
+
+	fi := fakeLoadInterceptor{}
+	f.SetLoadInterceptor(fi)
+	_, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+}
+
+type fakeLoadInterceptor struct{}
+
+func (fakeLoadInterceptor) LocalPath(t *starlark.Thread, path string) (string, error) {
+	return "./foo/Tiltfile", nil
 }
