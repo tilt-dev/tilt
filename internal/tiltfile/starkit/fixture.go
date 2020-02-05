@@ -32,7 +32,6 @@ func NewFixture(tb testing.TB, extensions ...Extension) *Fixture {
 	temp := tempdir.NewTempDirFixture(tb)
 	temp.Chdir()
 
-	_ = os.Chdir(temp.Path())
 	return &Fixture{
 		tb:         tb,
 		extensions: extensions,
