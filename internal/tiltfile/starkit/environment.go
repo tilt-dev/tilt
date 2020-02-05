@@ -163,6 +163,7 @@ func (e *Environment) exec(t *starlark.Thread, path string) (starlark.StringDict
 			exports: starlark.StringDict{},
 			err:     err,
 		}
+		return starlark.StringDict{}, err
 	}
 
 	entry := e.loadCache[localPath]

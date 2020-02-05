@@ -45,8 +45,31 @@ y = x +1
 	require.NoError(t, err)
 }
 
+func TestLoadInterceptorThatFails(t *testing.T) {
+	f := NewFixture(t)
+	f.File("Tiltfile", `
+load('./foo/Tiltfile', "x")
+`)
+	f.File("foo/Tiltfile", `
+x = 1
+y = x + 1
+`)
+
+	fi := failLoadInterceptor{}
+	f.SetLoadInterceptor(fi)
+	_, err := f.ExecFile("Tiltfile")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "I'm an error look at me!")
+}
+
 type fakeLoadInterceptor struct{}
 
 func (fakeLoadInterceptor) LocalPath(t *starlark.Thread, path string) (string, error) {
 	return "./foo/Tiltfile", nil
+}
+
+type failLoadInterceptor struct{}
+
+func (failLoadInterceptor) LocalPath(t *starlark.Thread, path string) (string, error) {
+	return "", fmt.Errorf("I'm an error look at me!")
 }
