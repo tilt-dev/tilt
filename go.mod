@@ -93,7 +93,7 @@ require (
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
 	github.com/windmilleng/fsevents v0.0.0-20190206153914-2ad75e5ddeed
 	github.com/windmilleng/fsnotify v1.4.7
-	github.com/windmilleng/wmclient v0.0.0-20200124175229-a66bcbc48340
+	github.com/windmilleng/wmclient v0.0.0-20200205181513-6c994672553a
 	go.opencensus.io v0.22.2 // indirect
 	go.opentelemetry.io/otel v0.2.0
 	go.starlark.net v0.0.0-20191021185836-28350e608555
