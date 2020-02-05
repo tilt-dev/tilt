@@ -185,7 +185,7 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 	var err error
 	if ibd.shouldUseKINDLoad(ctx, iTarget) {
 		ps.Printf(ctx, "Loading image to KIND")
-		err := ibd.kp.PushToKIND(ps.AttachLogger(ctx), ref)
+		err := ibd.kl.LoadToKIND(ps.AttachLogger(ctx), ref)
 		if err != nil {
 			return fmt.Errorf("Error loading image to KIND: %v", err)
 		}
@@ -206,12 +206,12 @@ func (ibd *ImageBuildAndDeployer) shouldUseKINDLoad(ctx context.Context, iTarg m
 		return false
 	}
 
-    // if we're using KIND and the image has a separate ref by which it's referred to
-    // in the cluster, that implies that we have a local registry in place, and should
-    // push to that instead of using KIND load.
-    if iTarg.HasDistinctClusterRef() {
-        return false
-    }
+	// if we're using KIND and the image has a separate ref by which it's referred to
+	// in the cluster, that implies that we have a local registry in place, and should
+	// push to that instead of using KIND load.
+	if iTarg.HasDistinctClusterRef() {
+		return false
+	}
 
 	registry := ibd.k8sClient.LocalRegistry(ctx)
 	if !registry.Empty() {
