@@ -9,28 +9,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newActionCmd() *cobra.Command {
-	result := &cobra.Command{
-		Use:   "action",
-		Short: "perform the sepcified action",
-		Long: `Perform the specified action via a call to Tilt's API server.
-`,
-	}
-
-	result.AddCommand(newTriggerCmd())
-
-	return result
-}
-
 func newTriggerCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "trigger [RESOURCE_NAME]",
 		Short: "trigger an update for the specified resource",
 		Long: `Trigger an update for the specified resource.
 
-If no file changes for the resource are pending, this will force a full rebuild.
+If the resource has Trigger Mode: Manual and has pending changes, this command will cause those pending changes to be applied.
 
-If it is a manual resource with pending file changes, this will cause a build of those pending changes.
+Otherwise, this command will force a full rebuild.
 `,
 		Args: cobra.ExactArgs(1),
 		Run:  triggerUpdate,
@@ -49,11 +36,14 @@ func triggerUpdate(cmd *cobra.Command, args []string) {
 	}
 
 	if res.StatusCode != http.StatusOK {
-		body := "<no response body"
-		b, _ := ioutil.ReadAll(res.Body)
+		body := "<no response body>"
+		b, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			cmdFail(fmt.Errorf("Error reading response body from %s: %v", url, err))
+		}
 		if string(b) != "" {
 			body = string(b)
 		}
-		cmdFail(fmt.Errorf("Request to %s failed (status code %d): %s", url, res.StatusCode, body))
+		cmdFail(fmt.Errorf("Request to %s failed with status %q: %s", url, res.Status, body))
 	}
 }
