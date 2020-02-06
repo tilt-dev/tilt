@@ -24,23 +24,27 @@ import (
 const localLogPrefix = " → "
 
 func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var command string
+	var commandValue starlark.Value
 	quiet := false
 	err := s.unpackArgs(fn.Name(), args, kwargs,
-		"command", &command,
+		"command", &commandValue,
 		"quiet?", &quiet,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	s.logger.Infof("local: %s", command)
-	out, err := s.execLocalCmd(thread, exec.Command("sh", "-c", command), !quiet)
+	cmd, err := value.ValueToCmd(commandValue)
+	if err != nil {
+		return nil, err
+	}
+	s.logger.Infof("local: %s", cmd)
+	out, err := s.execLocalCmd(thread, exec.Command(cmd.Argv[0], cmd.Argv[1:]...), !quiet)
 	if err != nil {
 		return nil, err
 	}
 
-	return tiltfile_io.NewBlob(out, fmt.Sprintf("local: %s", command)), nil
+	return tiltfile_io.NewBlob(out, fmt.Sprintf("local: %s", cmd)), nil
 }
 
 func (s *tiltfileState) execLocalCmd(t *starlark.Thread, c *exec.Cmd, logOutput bool) (string, error) {

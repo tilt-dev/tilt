@@ -70,7 +70,7 @@ func (l liveUpdateSyncStep) liveUpdateStep()        {}
 func (l liveUpdateSyncStep) declarationPos() string { return l.position.String() }
 
 type liveUpdateRunStep struct {
-	command  string
+	command  model.Cmd
 	triggers []string
 	position syntax.Position
 }
@@ -79,7 +79,7 @@ var _ starlark.Value = liveUpdateRunStep{}
 var _ liveUpdateStep = liveUpdateRunStep{}
 
 func (l liveUpdateRunStep) String() string {
-	s := fmt.Sprintf("run step: %s", strconv.Quote(l.command))
+	s := fmt.Sprintf("run step: %s", strconv.Quote(l.command.String()))
 	if len(l.triggers) > 0 {
 		s = fmt.Sprintf("%s (triggers: %s)", s, strings.Join(l.triggers, "; "))
 	}
@@ -89,10 +89,10 @@ func (l liveUpdateRunStep) String() string {
 func (l liveUpdateRunStep) Type() string { return "live_update_run_step" }
 func (l liveUpdateRunStep) Freeze()      {}
 func (l liveUpdateRunStep) Truth() starlark.Bool {
-	return len(l.command) > 0
+	return starlark.Bool(!l.command.Empty())
 }
 func (l liveUpdateRunStep) Hash() (uint32, error) {
-	t := starlark.Tuple{starlark.String(l.command)}
+	t := starlark.Tuple{starlark.String(l.command.String())}
 	for _, trigger := range l.triggers {
 		t = append(t, starlark.String(trigger))
 	}
@@ -160,9 +160,14 @@ func (s *tiltfileState) liveUpdateSync(thread *starlark.Thread, fn *starlark.Bui
 }
 
 func (s *tiltfileState) liveUpdateRun(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var command string
+	var commandVal starlark.Value
 	var triggers starlark.Value
-	if err := s.unpackArgs(fn.Name(), args, kwargs, "cmd", &command, "trigger?", &triggers); err != nil {
+	if err := s.unpackArgs(fn.Name(), args, kwargs, "cmd", &commandVal, "trigger?", &triggers); err != nil {
+		return nil, err
+	}
+
+	command, err := value.ValueToCmd(commandVal)
+	if err != nil {
 		return nil, err
 	}
 
@@ -212,7 +217,7 @@ func (s *tiltfileState) liveUpdateStepToModel(t *starlark.Thread, l liveUpdateSt
 		return model.LiveUpdateSyncStep{Source: x.localPath, Dest: x.remotePath}, nil
 	case liveUpdateRunStep:
 		return model.LiveUpdateRunStep{
-			Command: model.ToShellCmd(x.command),
+			Command: x.command,
 			Triggers: model.PathSet{
 				Paths:         x.triggers,
 				BaseDirectory: starkit.AbsWorkingDir(t),

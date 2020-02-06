@@ -3,9 +3,11 @@ package value
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 // If `v` is a `starlark.Sequence`, return a slice of its elements
@@ -111,4 +113,24 @@ func StringSliceToList(slice []string) *starlark.List {
 		v = append(v, starlark.String(s))
 	}
 	return starlark.NewList(v)
+}
+
+// provides dockerfile-style behavior of:
+// a string gets interpreted as a shell command (like, sh -c 'foo bar $X')
+// an array of strings gets interpreted as a raw argv to exec
+func ValueToCmd(v starlark.Value) (model.Cmd, error) {
+	switch x := v.(type) {
+	case nil:
+		return model.Cmd{}, nil
+	case starlark.String:
+		return model.ToShellCmd(string(x)), nil
+	case starlark.Sequence:
+		argv, err := SequenceToStringSlice(x)
+		if err != nil {
+			return model.Cmd{}, errors.Wrap(err, "a command must be a string or a list of strings")
+		}
+		return model.Cmd{Argv: argv}, nil
+	default:
+		return model.Cmd{}, fmt.Errorf("a command must be a string or list of strings. found %T", x)
+	}
 }

@@ -77,8 +77,8 @@ func (d *dockerImage) Type() dockerImageBuildType {
 }
 
 func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var dockerRef, entrypoint, targetStage string
-	var contextVal, dockerfilePathVal, buildArgs, dockerfileContentsVal, cacheVal, liveUpdateVal, ignoreVal, onlyVal, sshVal, networkVal starlark.Value
+	var dockerRef, targetStage string
+	var contextVal, dockerfilePathVal, buildArgs, dockerfileContentsVal, cacheVal, liveUpdateVal, ignoreVal, onlyVal, sshVal, networkVal, entrypoint starlark.Value
 	var matchInEnvVars bool
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
@@ -182,9 +182,9 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		}
 	}
 
-	var entrypointCmd model.Cmd
-	if entrypoint != "" {
-		entrypointCmd = model.ToShellCmd(entrypoint)
+	entrypointCmd, err := value.ValueToCmd(entrypoint)
+	if err != nil {
+		return nil, err
 	}
 
 	r := &dockerImage{
@@ -239,7 +239,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	var disablePush bool
 	var liveUpdateVal, ignoreVal starlark.Value
 	var matchInEnvVars bool
-	var entrypoint string
+	var entrypoint starlark.Value
 	var skipsLocalDocker bool
 
 	err := s.unpackArgs(fn.Name(), args, kwargs,
@@ -293,9 +293,9 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	var entrypointCmd model.Cmd
-	if entrypoint != "" {
-		entrypointCmd = model.ToShellCmd(entrypoint)
+	entrypointCmd, err := value.ValueToCmd(entrypoint)
+	if err != nil {
+		return nil, err
 	}
 
 	img := &dockerImage{
