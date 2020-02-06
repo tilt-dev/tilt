@@ -65,7 +65,9 @@ status of running services, errors, logs, and more.
 **Follow along:** [@tilt_dev](https://twitter.com/tilt_dev) on Twitter. Updates
 and announcements on the [Tilt blog](https://blog.tilt.dev).
 
-**Help us make Tilt even better:** Run `tilt analytics opt in` to enable telemetry, so we can improve Tilt on every platform. Details in ["What does Tilt send?"](http://docs.tilt.dev/telemetry_faq.html).
+**Help us make Tilt even better:** Tilt sends anonymized usage data, so we can
+improve Tilt on every platform. Details in ["What does Tilt
+send?"](http://docs.tilt.dev/telemetry_faq.html).
 
 We expect everyone in our community (users, contributors, followers, and employees alike) to abide by our [**Code of Conduct**](CODE_OF_CONDUCT.md).
 
