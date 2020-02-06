@@ -28,9 +28,9 @@ exports[`hides nudge if !needsNudge and no request made 1`] = `
   className="AnalyticsNudge"
 >
   <p>
-    Welcome to Tilt! May we collect usage data to help us improve? (
+    Welcome to Tilt! We collect anonymized usage data to help us improve. Is that OK? (
     <a
-      href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
+      href="https://docs.tilt.dev/telemetry_faq.html"
       rel="noopener noreferrer"
       target="_blank"
     >
@@ -60,9 +60,9 @@ exports[`hides nudge if dismissed, even if needsNudge = true 1`] = `
   className="AnalyticsNudge"
 >
   <p>
-    Welcome to Tilt! May we collect usage data to help us improve? (
+    Welcome to Tilt! We collect anonymized usage data to help us improve. Is that OK? (
     <a
-      href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
+      href="https://docs.tilt.dev/telemetry_faq.html"
       rel="noopener noreferrer"
       target="_blank"
     >
@@ -122,9 +122,9 @@ exports[`shows nudge if needsNudge 1`] = `
   className="AnalyticsNudge is-visible"
 >
   <p>
-    Welcome to Tilt! May we collect usage data to help us improve? (
+    Welcome to Tilt! We collect anonymized usage data to help us improve. Is that OK? (
     <a
-      href="https://github.com/windmilleng/tilt#telemetry-and-privacy"
+      href="https://docs.tilt.dev/telemetry_faq.html"
       rel="noopener noreferrer"
       target="_blank"
     >

@@ -40,12 +40,12 @@ func (os *userOptSetting) SetUserOpt(opt analytics.Opt) error {
 }
 
 func TestCount(t *testing.T) {
-	for _, test := range testCases(true, false, false) {
+	for _, test := range testCases(true, false, true) {
 		t.Run(test.name, func(t *testing.T) {
 			ma := analytics.NewMemoryAnalytics()
 			os := &userOptSetting{opt: test.opt}
 			a, _ := NewTiltAnalytics(os, ma, versionTest)
-			a.envOpt = analytics.OptDefault
+			a.opt.env = analytics.OptDefault
 			a.Count("foo", testTags, 1)
 			var expectedCounts []analytics.CountEvent
 			if test.expectRecord {
@@ -61,12 +61,12 @@ func TestCount(t *testing.T) {
 }
 
 func TestIncr(t *testing.T) {
-	for _, test := range testCases(true, false, false) {
+	for _, test := range testCases(true, false, true) {
 		t.Run(test.name, func(t *testing.T) {
 			ma := analytics.NewMemoryAnalytics()
 			os := &userOptSetting{opt: test.opt}
 			a, _ := NewTiltAnalytics(os, ma, versionTest)
-			a.envOpt = analytics.OptDefault
+			a.opt.env = analytics.OptDefault
 			a.Incr("foo", testTags)
 			var expectedCounts []analytics.CountEvent
 			if test.expectRecord {
@@ -82,12 +82,12 @@ func TestIncr(t *testing.T) {
 }
 
 func TestTimer(t *testing.T) {
-	for _, test := range testCases(true, false, false) {
+	for _, test := range testCases(true, false, true) {
 		t.Run(test.name, func(t *testing.T) {
 			ma := analytics.NewMemoryAnalytics()
 			os := &userOptSetting{opt: test.opt}
 			a, _ := NewTiltAnalytics(os, ma, versionTest)
-			a.envOpt = analytics.OptDefault
+			a.opt.env = analytics.OptDefault
 			a.Timer("foo", time.Second, testTags)
 			var expectedTimes []analytics.TimeEvent
 			if test.expectRecord {
@@ -102,32 +102,23 @@ func TestTimer(t *testing.T) {
 	}
 }
 
-func TestIncrIfUnopted(t *testing.T) {
-	for _, test := range testCases(false, false, true) {
-		t.Run(test.name, func(t *testing.T) {
-			ma := analytics.NewMemoryAnalytics()
-			os := &userOptSetting{opt: test.opt}
-			a, _ := NewTiltAnalytics(os, ma, versionTest)
-			a.envOpt = analytics.OptDefault
-			a.IncrIfUnopted("foo")
-			var expectedCounts []analytics.CountEvent
-			if test.expectRecord {
-				expectedCounts = append(expectedCounts, analytics.CountEvent{
-					Name: "foo",
-					Tags: map[string]string{"version": versionTest},
-					N:    1,
-				})
-			}
-			assert.Equal(t, expectedCounts, ma.Counts)
-		})
-	}
+func TestWithoutGlobalTags(t *testing.T) {
+	ma := analytics.NewMemoryAnalytics()
+	os := &userOptSetting{opt: analytics.OptIn}
+	a, _ := NewTiltAnalytics(os, ma, versionTest)
+	a.opt.env = analytics.OptDefault
+	a.WithoutGlobalTags().Incr("foo", testTags)
+
+	// memory analytics doesn't have global tags, so there's really
+	// nothing to test. We mainly want to make sure this doesn't crash.
+	assert.Equal(t, 1, len(ma.Counts))
 }
 
 func analyticsViaTransition(t *testing.T, initialOpt, newOpt analytics.Opt) (*TiltAnalytics, *analytics.MemoryAnalytics) {
 	ma := analytics.NewMemoryAnalytics()
 	os := &userOptSetting{opt: initialOpt}
 	a, _ := NewTiltAnalytics(os, ma, versionTest)
-	a.envOpt = analytics.OptDefault
+	a.opt.env = analytics.OptDefault
 	err := a.SetUserOpt(newOpt)
 	if !assert.NoError(t, err) {
 		assert.FailNow(t, err.Error())
@@ -165,29 +156,6 @@ func TestOptTransitionIncr(t *testing.T) {
 				expectedCounts = append(expectedCounts, analytics.CountEvent{
 					Name: "foo",
 					Tags: testTags,
-					N:    1,
-				})
-			}
-			assert.Equal(t, expectedCounts, ma.Counts)
-		})
-	}
-}
-
-func TestOptTransitionIncrIfUnopted(t *testing.T) {
-	for _, test := range []transitionTestCase{
-		{"default -> out", analytics.OptDefault, analytics.OptOut, false},
-		{"default -> in", analytics.OptDefault, analytics.OptIn, false},
-		{"in -> out", analytics.OptIn, analytics.OptOut, false},
-		{"out -> in", analytics.OptOut, analytics.OptIn, false},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			a, ma := analyticsViaTransition(t, test.initialOpt, test.newOpt)
-			a.IncrIfUnopted("foo")
-			var expectedCounts []analytics.CountEvent
-			if test.expectRecord {
-				expectedCounts = append(expectedCounts, analytics.CountEvent{
-					Name: "foo",
-					Tags: map[string]string{},
 					N:    1,
 				})
 			}

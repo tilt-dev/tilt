@@ -10,19 +10,22 @@ const TagVersion = "version"
 const TagOS = "os"
 const TagGitRepoHash = "git.origin"
 
-// An Analytics that:
-// 1. Has `IncrIfUnopted` to report anonymous metrics only for users who have not opted in/out (or the choice that they
-//    did opt in/out).
-// 2. Ignores all other calls from users who have not opted in.
-// 3. Allows opting in/out at runtime.
+// An Analytics that allows opting in/out at runtime.
 type TiltAnalytics struct {
 	opter       AnalyticsOpter
 	a           analytics.Analytics
 	tiltVersion string
 
-	envOpt      analytics.Opt
-	userOpt     analytics.Opt
-	tiltfileOpt analytics.Opt
+	// We make this a constant pointer to a struct.
+	// That way, the struct returned by WithoutGlobalTags() can
+	// point to the same opt set.
+	opt *optSet
+}
+
+type optSet struct {
+	env      analytics.Opt
+	user     analytics.Opt
+	tiltfile analytics.Opt
 }
 
 // An AnalyticsOpter can record a user's choice (opt-in or opt-out)
@@ -45,8 +48,11 @@ func NewTiltAnalytics(opter AnalyticsOpter, a analytics.Analytics, tiltVersion s
 		opter:       opter,
 		a:           a,
 		tiltVersion: tiltVersion,
-		envOpt:      envOpt,
-		userOpt:     userOpt,
+		opt: &optSet{
+			env:      envOpt,
+			user:     userOpt,
+			tiltfile: analytics.OptDefault,
+		},
 	}, nil
 }
 
@@ -58,7 +64,7 @@ func NewMemoryTiltAnalyticsForTest(opter AnalyticsOpter) (*analytics.MemoryAnaly
 	if err != nil {
 		panic(err)
 	}
-	ta.envOpt = analytics.OptDefault
+	ta.opt.env = analytics.OptDefault
 	return ma, ta
 }
 
@@ -74,38 +80,19 @@ func (ta *TiltAnalytics) GitRepoHash() string {
 	return id
 }
 func (ta *TiltAnalytics) Count(name string, tags map[string]string, n int) {
-	if ta.EffectiveOpt() == analytics.OptIn {
+	if ta.EffectiveOpt() != analytics.OptOut {
 		ta.a.Count(name, tags, n)
 	}
 }
 
 func (ta *TiltAnalytics) Incr(name string, tags map[string]string) {
-	if ta.EffectiveOpt() == analytics.OptIn {
+	if ta.EffectiveOpt() != analytics.OptOut {
 		ta.a.Incr(name, tags)
 	}
 }
 
-func (ta *TiltAnalytics) IncrIfUnopted(name string) {
-	if ta.EffectiveOpt() == analytics.OptDefault {
-		ta.a.IncrAnonymous(name, map[string]string{"version": ta.tiltVersion})
-	}
-}
-
-func (ta *TiltAnalytics) IncrAnonymous(name string, tags map[string]string) {
-	// Q: This is confusing! Isn't IncrAnonymous only for OptDefault?
-	// A: ...well, that was why it was added. If you drop a random IncrAnonymous call somewhere else in the code
-	//    and nothing happens, would you be surprised? We could eliminate IncrIfUnopted and make IncrAnonymous
-	//    only run when opt == OptDefault, but then there's it feels weird that some methods only work if OptIn and
-	//    some only work if OptDefault, and it's not really clear from the names why.
-	//    By making IncrIfUnopted its own method, we go with the mental model of "IncrIfUnopted is explicit about its
-	//    relationship to opt, and all other methods only run on OptIn"
-	if ta.EffectiveOpt() == analytics.OptIn {
-		ta.a.IncrAnonymous(name, tags)
-	}
-}
-
 func (ta *TiltAnalytics) Timer(name string, dur time.Duration, tags map[string]string) {
-	if ta.EffectiveOpt() == analytics.OptIn {
+	if ta.EffectiveOpt() != analytics.OptOut {
 		ta.a.Timer(name, dur, tags)
 	}
 }
@@ -115,33 +102,42 @@ func (ta *TiltAnalytics) Flush(timeout time.Duration) {
 }
 
 func (ta *TiltAnalytics) UserOpt() analytics.Opt {
-	return ta.userOpt
+	return ta.opt.user
 }
 
 func (ta *TiltAnalytics) TiltfileOpt() analytics.Opt {
-	return ta.tiltfileOpt
+	return ta.opt.tiltfile
 }
 
 func (ta *TiltAnalytics) EffectiveOpt() analytics.Opt {
-	if ta.envOpt != analytics.OptDefault {
-		return ta.envOpt
+	if ta.opt.env != analytics.OptDefault {
+		return ta.opt.env
 	}
-	if ta.tiltfileOpt != analytics.OptDefault {
-		return ta.tiltfileOpt
+	if ta.opt.tiltfile != analytics.OptDefault {
+		return ta.opt.tiltfile
 	}
-	return ta.userOpt
+	return ta.opt.user
 }
 
 func (ta *TiltAnalytics) SetUserOpt(opt analytics.Opt) error {
-	if opt == ta.userOpt {
+	if opt == ta.opt.user {
 		return nil
 	}
-	ta.userOpt = opt
+	ta.opt.user = opt
 	return ta.opter.SetUserOpt(opt)
 }
 
 func (ta *TiltAnalytics) SetTiltfileOpt(opt analytics.Opt) {
-	ta.tiltfileOpt = opt
+	ta.opt.tiltfile = opt
+}
+
+func (ta *TiltAnalytics) WithoutGlobalTags() analytics.Analytics {
+	return &TiltAnalytics{
+		opter:       ta.opter,
+		a:           ta.a.WithoutGlobalTags(),
+		tiltVersion: ta.tiltVersion,
+		opt:         ta.opt,
+	}
 }
 
 var _ analytics.Analytics = &TiltAnalytics{}

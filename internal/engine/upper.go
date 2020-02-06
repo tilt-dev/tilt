@@ -723,7 +723,7 @@ func handleAnalyticsUserOptAction(state *store.EngineState, action store.Analyti
 // users, so the numbers need to be as accurate as possible).
 func handleAnalyticsNudgeSurfacedAction(ctx context.Context, state *store.EngineState) {
 	if !state.AnalyticsNudgeSurfaced {
-		tiltanalytics.Get(ctx).IncrIfUnopted("analytics.nudge.surfaced")
+		tiltanalytics.Get(ctx).Incr("analytics.nudge.surfaced", nil)
 		state.AnalyticsNudgeSurfaced = true
 	}
 }

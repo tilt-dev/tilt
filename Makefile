@@ -76,6 +76,9 @@ shorttest:
 	# we might also want to skip the ones in engine
 	go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skipdockercomposetests -timeout 60s ./...
 
+shorttestsum:
+	gotestsum -- -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skipdockercomposetests -timeout 60s ./...
+
 integration:
 ifneq ($(CIRCLECI),true)
 		go test -mod vendor -v -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s ./integration
@@ -94,15 +97,15 @@ dev-js:
 	cd web && yarn install && yarn run start
 
 check-js:
-	cd web && yarn install
+	cd web && yarn install --frozen-lockfile
 	cd web && yarn run check
 
 build-js:
-	cd web && yarn install
+	cd web && yarn install --frozen-lockfile
 	cd web && yarn build
 
 test-js:
-	cd web && yarn install
+	cd web && yarn install --frozen-lockfile
 ifneq ($(CIRCLECI),true)
 	cd web && CI=true yarn test
 else
