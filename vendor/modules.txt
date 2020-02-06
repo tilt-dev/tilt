@@ -473,7 +473,7 @@ github.com/whilp/git-urls
 github.com/windmilleng/fsevents
 # github.com/windmilleng/fsnotify v1.4.7
 github.com/windmilleng/fsnotify
-# github.com/windmilleng/wmclient v0.0.0-20200124175229-a66bcbc48340
+# github.com/windmilleng/wmclient v0.0.0-20200205181513-6c994672553a
 github.com/windmilleng/wmclient/pkg/analytics
 github.com/windmilleng/wmclient/pkg/dirs
 github.com/windmilleng/wmclient/pkg/env

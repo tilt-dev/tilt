@@ -386,6 +386,33 @@ func TestContinuingLines(t *testing.T) {
 	}, l.ContinuingLines(c2))
 }
 
+func TestBuildEventInit(t *testing.T) {
+	l := NewLogStore()
+
+	now := time.Now()
+	l.Append(testLogEvent{
+		name:    "",
+		message: "starting tilt\n",
+		ts:      now,
+	}, nil)
+	l.Append(testLogEvent{
+		name:    "fe",
+		message: "init fe build\n",
+		ts:      now,
+		fields:  map[string]string{logger.FieldNameBuildEvent: "init"},
+	}, nil)
+	l.Append(testLogEvent{
+		name:    "db",
+		message: "init db build\n",
+		ts:      now,
+		fields:  map[string]string{logger.FieldNameBuildEvent: "init"},
+	}, nil)
+
+	assert.Equal(t, 5, len(l.toLogLines(logOptions{spans: l.spans})))
+
+	assertSnapshot(t, l.String())
+}
+
 func assertSnapshot(t *testing.T, output string) {
 	d1 := []byte(output)
 	gmPath := fmt.Sprintf("testdata/%s_master", t.Name())

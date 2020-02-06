@@ -20,9 +20,16 @@ type TiltAnalytics struct {
 	a           analytics.Analytics
 	tiltVersion string
 
-	envOpt      analytics.Opt
-	userOpt     analytics.Opt
-	tiltfileOpt analytics.Opt
+	// We make this a constant pointer to a struct.
+	// That way, the struct returned by WithoutGlobalTags() can
+	// point to the same opt set.
+	opt *optSet
+}
+
+type optSet struct {
+	env      analytics.Opt
+	user     analytics.Opt
+	tiltfile analytics.Opt
 }
 
 // An AnalyticsOpter can record a user's choice (opt-in or opt-out)
@@ -45,8 +52,11 @@ func NewTiltAnalytics(opter AnalyticsOpter, a analytics.Analytics, tiltVersion s
 		opter:       opter,
 		a:           a,
 		tiltVersion: tiltVersion,
-		envOpt:      envOpt,
-		userOpt:     userOpt,
+		opt: &optSet{
+			env:      envOpt,
+			user:     userOpt,
+			tiltfile: analytics.OptDefault,
+		},
 	}, nil
 }
 
@@ -58,7 +68,7 @@ func NewMemoryTiltAnalyticsForTest(opter AnalyticsOpter) (*analytics.MemoryAnaly
 	if err != nil {
 		panic(err)
 	}
-	ta.envOpt = analytics.OptDefault
+	ta.opt.env = analytics.OptDefault
 	return ma, ta
 }
 
@@ -87,7 +97,7 @@ func (ta *TiltAnalytics) Incr(name string, tags map[string]string) {
 
 func (ta *TiltAnalytics) IncrIfUnopted(name string) {
 	if ta.EffectiveOpt() == analytics.OptDefault {
-		ta.a.IncrAnonymous(name, map[string]string{"version": ta.tiltVersion})
+		ta.a.WithoutGlobalTags().Incr(name, map[string]string{"version": ta.tiltVersion})
 	}
 }
 
@@ -100,7 +110,7 @@ func (ta *TiltAnalytics) IncrAnonymous(name string, tags map[string]string) {
 	//    By making IncrIfUnopted its own method, we go with the mental model of "IncrIfUnopted is explicit about its
 	//    relationship to opt, and all other methods only run on OptIn"
 	if ta.EffectiveOpt() == analytics.OptIn {
-		ta.a.IncrAnonymous(name, tags)
+		ta.a.WithoutGlobalTags().Incr(name, tags)
 	}
 }
 
@@ -115,33 +125,42 @@ func (ta *TiltAnalytics) Flush(timeout time.Duration) {
 }
 
 func (ta *TiltAnalytics) UserOpt() analytics.Opt {
-	return ta.userOpt
+	return ta.opt.user
 }
 
 func (ta *TiltAnalytics) TiltfileOpt() analytics.Opt {
-	return ta.tiltfileOpt
+	return ta.opt.tiltfile
 }
 
 func (ta *TiltAnalytics) EffectiveOpt() analytics.Opt {
-	if ta.envOpt != analytics.OptDefault {
-		return ta.envOpt
+	if ta.opt.env != analytics.OptDefault {
+		return ta.opt.env
 	}
-	if ta.tiltfileOpt != analytics.OptDefault {
-		return ta.tiltfileOpt
+	if ta.opt.tiltfile != analytics.OptDefault {
+		return ta.opt.tiltfile
 	}
-	return ta.userOpt
+	return ta.opt.user
 }
 
 func (ta *TiltAnalytics) SetUserOpt(opt analytics.Opt) error {
-	if opt == ta.userOpt {
+	if opt == ta.opt.user {
 		return nil
 	}
-	ta.userOpt = opt
+	ta.opt.user = opt
 	return ta.opter.SetUserOpt(opt)
 }
 
 func (ta *TiltAnalytics) SetTiltfileOpt(opt analytics.Opt) {
-	ta.tiltfileOpt = opt
+	ta.opt.tiltfile = opt
+}
+
+func (ta *TiltAnalytics) WithoutGlobalTags() analytics.Analytics {
+	return &TiltAnalytics{
+		opter:       ta.opter,
+		a:           ta.a.WithoutGlobalTags(),
+		tiltVersion: ta.tiltVersion,
+		opt:         ta.opt,
+	}
 }
 
 var _ analytics.Analytics = &TiltAnalytics{}

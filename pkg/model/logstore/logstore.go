@@ -103,22 +103,6 @@ func segmentsFromBytes(spanID SpanID, time time.Time, level logger.Level, fields
 	return segments
 }
 
-type LogLine struct {
-	Text       string
-	SpanID     SpanID
-	ProgressID string
-	BuildEvent string
-
-	// Most progress lines are optional. For example, if a bunch
-	// of little upload updates come in, it's ok to skip some.
-	//
-	// ProgressMustPrint indicates that this line must appear in the
-	// output - e.g., a line that communicates that the upload finished.
-	ProgressMustPrint bool
-
-	Time time.Time
-}
-
 func linesToString(lines []LogLine) string {
 	sb := strings.Builder{}
 	for _, line := range lines {
@@ -444,7 +428,6 @@ func (s *LogStore) ContinuingLines(checkpoint Checkpoint) []LogLine {
 				SpanID:            precedingSegment.SpanID,
 				ProgressID:        precedingSegment.Fields[logger.FieldNameProgressID],
 				ProgressMustPrint: precedingSegment.Fields[logger.FieldNameProgressMustPrint] == "1",
-				BuildEvent:        precedingSegment.Fields[logger.FieldNameBuildEvent],
 				Time:              precedingSegment.Time,
 			},
 		}, result...)
@@ -601,53 +584,14 @@ func (s *LogStore) toLogString(options logOptions) string {
 // Returns a sequence of lines, including trailing newlines.
 func (s *LogStore) toLogLines(options logOptions) []LogLine {
 	result := []LogLine{}
-	sb := strings.Builder{}
-	spanID := SpanID("")
-	time := time.Time{}
-	progressID := ""
-	progressMustPrint := false
-	lastLineCompleted := false
-	buildEvent := ""
+	var lineBuilder *logLineBuilder
 
-	maybePushLine := func() {
-		// Even blank lines end in a newline, so if the stringbuilder
-		// doesn't have any data in it, we can skip this line.
-		if sb.Len() == 0 {
+	var consumeLineBuilder = func() {
+		if lineBuilder == nil {
 			return
 		}
-
-		if buildEvent == "init" {
-			// Estimate width of a "normal" Terminal
-			const lineLength = 80
-
-			// If the text exceeds lineLength, add a short border nonetheless
-			const minBorderLength = 5
-			textPadding := 2
-			borderDashCount := lineLength - len(sb.String()) - textPadding
-			if borderDashCount < minBorderLength {
-				borderDashCount = minBorderLength
-			}
-
-			s := sb.String()
-			sb = strings.Builder{}
-			border := strings.Repeat("═", borderDashCount) + "╡ "
-			sb.WriteString(fmt.Sprintf("\n%s %s", border, s))
-		}
-
-		result = append(result, LogLine{
-			Text:              sb.String(),
-			SpanID:            spanID,
-			ProgressID:        progressID,
-			ProgressMustPrint: progressMustPrint,
-			BuildEvent:        buildEvent,
-			Time:              time,
-		})
-
-		sb = strings.Builder{}
-		lastLineCompleted = true
-		spanID = ""
-		progressID = ""
-		buildEvent = ""
+		result = append(result, lineBuilder.build(options)...)
+		lineBuilder = nil
 	}
 
 	// We want to print the log line-by-line, but we don't actually store the logs
@@ -674,8 +618,7 @@ func (s *LogStore) toLogLines(options logOptions) []LogLine {
 			continue
 		}
 
-		time = segment.Time
-		spanID = segment.SpanID
+		spanID := segment.SpanID
 		span := s.spans[spanID]
 		if _, ok := options.spans[spanID]; !ok {
 			continue
@@ -683,59 +626,39 @@ func (s *LogStore) toLogLines(options logOptions) []LogLine {
 
 		// If the last segment never completed, print a newline now, so that the
 		// logs from different sources don't blend together.
-		if !isFirstLine && !lastLineCompleted {
-			sb.WriteString("\n")
-			maybePushLine()
+		if lineBuilder != nil {
+			lineBuilder.needsTrailingNewline = true
+			consumeLineBuilder()
 		}
 
-		if options.showManifestPrefix && span.ManifestName != "" {
-			shouldSkip := options.skipFirstLineManifestPrefix && isFirstLine
-			if !shouldSkip {
-				sb.WriteString(SourcePrefix(span.ManifestName))
-			}
-		}
-
-		if segment.Anchor {
-			// TODO(nick): Add Terminal colors when supported.
-			if segment.Level == logger.WarnLvl {
-				sb.WriteString("WARNING: ")
-			} else if segment.Level == logger.ErrorLvl {
-				sb.WriteString("ERROR: ")
-			}
-		}
-
-		sb.WriteString(string(segment.Text))
+		lineBuilder = newLogLineBuilder(span, segment, isFirstLine)
 		isFirstLine = false
-		progressID = segment.Fields[logger.FieldNameProgressID]
-		progressMustPrint = segment.Fields[logger.FieldNameProgressMustPrint] == "1"
-		buildEvent = segment.Fields[logger.FieldNameBuildEvent]
 
 		// If this segment is not complete, run ahead and try to complete it.
-		if segment.IsComplete() {
-			maybePushLine()
+		if lineBuilder.isComplete() {
+			consumeLineBuilder()
 			continue
 		}
 
-		lastLineCompleted = false
 		for currentIndex := i + 1; currentIndex <= span.LastSegmentIndex; currentIndex++ {
 			currentSeg := s.segments[currentIndex]
 			if currentSeg.SpanID != spanID {
 				continue
 			}
 
-			if !currentSeg.CanContinueLine(segment) {
+			if !currentSeg.CanContinueLine(lineBuilder.lastSegment()) {
 				break
 			}
 
-			sb.WriteString(string(currentSeg.Text))
-			if currentSeg.IsComplete() {
-				maybePushLine()
+			lineBuilder.addSegment(currentSeg)
+			if lineBuilder.isComplete() {
+				consumeLineBuilder()
 				break
 			}
 		}
 	}
 
-	maybePushLine()
+	consumeLineBuilder()
 	return result
 }
 

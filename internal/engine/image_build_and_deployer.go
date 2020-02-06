@@ -183,7 +183,7 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 	}
 
 	var err error
-	if ibd.env == k8s.EnvKIND5 || ibd.env == k8s.EnvKIND6 {
+	if ibd.shouldUseKINDPusher(ctx) {
 		ps.Printf(ctx, "Pushing to KIND")
 		err := ibd.kp.PushToKIND(ps.AttachLogger(ctx), ref)
 		if err != nil {
@@ -198,6 +198,20 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 	}
 
 	return nil
+}
+
+func (ibd *ImageBuildAndDeployer) shouldUseKINDPusher(ctx context.Context) bool {
+	isKIND := ibd.env == k8s.EnvKIND5 || ibd.env == k8s.EnvKIND6
+	if !isKIND {
+		return false
+	}
+
+	registry := ibd.k8sClient.LocalRegistry(ctx)
+	if !registry.Empty() {
+		return false
+	}
+
+	return true
 }
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
