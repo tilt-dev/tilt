@@ -3,7 +3,6 @@ package configs
 import (
 	"context"
 	"fmt"
-	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -126,19 +125,7 @@ func (f *ccFixture) run(m model.Manifest) ConfigsReloadedAction {
 	// configs_controller uses state.RelativeTiltfilePath, which is relative to wd
 	// sometimes the original directory was invalid (e.g., it was another test's temp dir, which was deleted,
 	// but not changed out of), and if it was already invalid, then let's not worry about it.
-	origDir, _ := os.Getwd()
-	err := os.Chdir(f.Path())
-	if err != nil {
-		f.T().Fatalf("error changing dir: %v", err)
-	}
-	defer func() {
-		if origDir != "" {
-			err = os.Chdir(origDir)
-			if err != nil {
-				f.T().Fatalf("unable to restore original wd: '%v'", err)
-			}
-		}
-	}()
+	f.Chdir()
 
 	f.st.SetUpSubscribersForTesting(f.ctx)
 

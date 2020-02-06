@@ -5,8 +5,6 @@ import (
 	"path"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 )
 
@@ -76,18 +74,7 @@ func TestDirTrailingSlash(t *testing.T) {
 func TestTryAsCwdChildren(t *testing.T) {
 	f := NewOspathFixture(t)
 	defer f.TearDown()
-	oldPWD, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		err := os.Chdir(oldPWD)
-		if err != nil {
-			t.Fatalf("error restoring pwd: %v", err)
-		}
-	}()
-	err = os.Chdir(f.Path())
-	require.NoError(t, err)
+	f.Chdir()
 
 	results := TryAsCwdChildren([]string{f.Path()})
 
