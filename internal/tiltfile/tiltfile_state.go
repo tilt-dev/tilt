@@ -899,6 +899,7 @@ func (s *tiltfileState) registry() container.Registry {
 
 func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest, error) {
 	var result []model.Manifest
+	registry := s.registry()
 	for _, r := range resources {
 		mn := model.ManifestName(r.name)
 		tm, err := starlarkTriggerModeToModel(s.triggerModeForResource(r.triggerMode), true)
@@ -924,7 +925,6 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 
 		m = m.WithDeployTarget(k8sTarget)
 
-		registry := s.registry()
 		iTargets, err := s.imgTargetsForDependencyIDs(r.dependencyIDs, registry)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting image build info for %s", r.name)
