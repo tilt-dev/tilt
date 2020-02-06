@@ -2625,7 +2625,7 @@ func TestLocalRegistry(t *testing.T) {
 
 	f.setupFoo()
 	f.file("Tiltfile", `
-default_registry('bar.com')
+default_registry('bar.com')  # localRegistry should override this
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 `)
