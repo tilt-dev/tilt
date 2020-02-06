@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 
 	"github.com/pkg/errors"
@@ -87,46 +86,22 @@ and may change frequently.
 	return cmd
 }
 
-func cmdFail(err error) {
-	_, _ = fmt.Fprintf(os.Stderr, "%v\n", err)
-	os.Exit(1)
-}
-
 func dumpWebview(cmd *cobra.Command, args []string) {
-	url := fmt.Sprintf("http://localhost:%d/api/view", webPort)
-	res, err := http.Get(url)
-	if err != nil {
-		cmdFail(fmt.Errorf("Could not connect to Tilt at %s: %v", url, err))
-	}
-	defer func() {
-		_ = res.Body.Close()
-	}()
+	body := apiGet(webPort, "view")
 
-	if res.StatusCode != http.StatusOK {
-		cmdFail(fmt.Errorf("Error connecting to Tilt at %s: %d", url, res.StatusCode))
-	}
-
-	err = dumpJSON(res.Body)
+	err := dumpJSON(body)
 	if err != nil {
 		cmdFail(fmt.Errorf("dump webview: %v", err))
 	}
 }
 
 func dumpEngine(cmd *cobra.Command, args []string) {
-	url := fmt.Sprintf("http://localhost:%d/api/dump/engine", webPort)
-	res, err := http.Get(url)
-	if err != nil {
-		cmdFail(fmt.Errorf("Could not connect to Tilt at %s: %v", url, err))
-	}
+	body := apiGet(webPort, "dump/engine")
 	defer func() {
-		_ = res.Body.Close()
+		_ = body.Close()
 	}()
 
-	if res.StatusCode != http.StatusOK {
-		cmdFail(fmt.Errorf("Error connecting to Tilt at %s: %d", url, res.StatusCode))
-	}
-
-	result, err := decodeJSON(res.Body)
+	result, err := decodeJSON(body)
 	if err != nil {
 		cmdFail(fmt.Errorf("dump engine: %v", err))
 	}
@@ -143,20 +118,12 @@ func dumpEngine(cmd *cobra.Command, args []string) {
 }
 
 func dumpLogStore(cmd *cobra.Command, args []string) {
-	url := fmt.Sprintf("http://localhost:%d/api/dump/engine", webPort)
-	res, err := http.Get(url)
-	if err != nil {
-		cmdFail(fmt.Errorf("Could not connect to Tilt at %s: %v", url, err))
-	}
+	body := apiGet(webPort, "dump/engine")
 	defer func() {
-		_ = res.Body.Close()
+		_ = body.Close()
 	}()
 
-	if res.StatusCode != http.StatusOK {
-		cmdFail(fmt.Errorf("Error connecting to Tilt at %s: %d", url, res.StatusCode))
-	}
-
-	result, err := decodeJSON(res.Body)
+	result, err := decodeJSON(body)
 	if err != nil {
 		cmdFail(fmt.Errorf("dump LogStore: %v", err))
 	}
