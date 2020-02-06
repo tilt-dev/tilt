@@ -120,6 +120,9 @@ func StringSliceToList(slice []string) *starlark.List {
 // an array of strings gets interpreted as a raw argv to exec
 func ValueToCmd(v starlark.Value) (model.Cmd, error) {
 	switch x := v.(type) {
+	// If a starlark function takes an optional command argument, then UnpackArgs will set its starlark.Value to nil
+	// we convert nils here to an empty Cmd, since otherwise every callsite would have to do a nil check with presumably
+	// the same outcome
 	case nil:
 		return model.Cmd{}, nil
 	case starlark.String:
