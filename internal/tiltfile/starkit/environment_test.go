@@ -73,3 +73,41 @@ type failLoadInterceptor struct{}
 func (failLoadInterceptor) LocalPath(t *starlark.Thread, path string) (string, error) {
 	return "", fmt.Errorf("I'm an error look at me!")
 }
+
+func NewExtensionWithIdentifier(id string) Extension {
+	return TestExtension{id}
+}
+
+type TestExtension struct {
+	identifier string
+}
+
+func (te TestExtension) OnStart(e *Environment) error {
+	return e.AddBuiltin(te.identifier, func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (value starlark.Value, err error) {
+		return starlark.None, nil
+	})
+}
+
+func TestDuplicateGlobalName(t *testing.T) {
+	e1 := NewExtensionWithIdentifier("foo")
+	e2 := NewExtensionWithIdentifier("foo")
+	f := NewFixture(t, e1, e2)
+	f.File("Tiltfile", "foo()")
+
+	_, err := f.ExecFile("Tiltfile")
+	require.Errorf(t, err, "Tiltfile exec should fail")
+	require.Contains(t, err.Error(), "multiple values added named foo")
+	require.Contains(t, err.Error(), "internal error: starkit.TestExtension")
+}
+
+func TestDuplicateNameWithinModule(t *testing.T) {
+	e1 := NewExtensionWithIdentifier("bar.foo")
+	e2 := NewExtensionWithIdentifier("bar.foo")
+	f := NewFixture(t, e1, e2)
+	f.File("Tiltfile", "bar.foo()")
+
+	_, err := f.ExecFile("Tiltfile")
+	require.Errorf(t, err, "Tiltfile exec should fail")
+	require.Contains(t, err.Error(), "multiple values added named bar.foo")
+	require.Contains(t, err.Error(), "internal error: starkit.TestExtension")
+}

@@ -81,6 +81,9 @@ func (e *Environment) AddValue(name string, val starlark.Value) error {
 
 	// Handle the simple case first.
 	if len(split) == 1 {
+		if _, ok := e.predeclared[name]; ok {
+			return fmt.Errorf("multiple values added named %s", name)
+		}
 		e.predeclared[name] = val
 		return nil
 	}
@@ -97,6 +100,9 @@ func (e *Environment) AddValue(name string, val starlark.Value) error {
 		} else {
 			currentModule = Module{name: split[0], attrs: starlark.StringDict{}}
 			e.predeclared[split[0]] = currentModule
+		}
+		if _, ok := currentModule.attrs[split[1]]; ok {
+			return fmt.Errorf("multiple values added named %s", name)
 		}
 		currentModule.attrs[split[1]] = val
 		return nil
@@ -136,7 +142,7 @@ func (e *Environment) start(path string) (Model, error) {
 	for _, ext := range e.extensions {
 		err := ext.OnStart(e)
 		if err != nil {
-			return Model{}, errors.Wrapf(err, "%T", ext)
+			return Model{}, errors.Wrapf(err, "internal error: %T", ext)
 		}
 	}
 
