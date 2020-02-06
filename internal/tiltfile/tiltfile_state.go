@@ -884,13 +884,14 @@ func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef container.Re
 	return nil
 }
 
-// registry returns the image registry we should use; if detected, a pre-configured
+// decideRegistry returns the image registry we should use; if detected, a pre-configured
 // local registry; otherwise, the registry specified by the user via default_registry.
 // Otherwise, we'll return the zero value of `s.defaultReg`, which is an empty registry.
-func (s *tiltfileState) registry() container.Registry {
+// It has side-effects (a log line) and so should only be called once.
+func (s *tiltfileState) decideRegistry() container.Registry {
 	if s.orchestrator() == model.OrchestratorK8s && !s.localRegistry.Empty() {
-		// If we've found a local registry in the cluster at run-time,
-		// use that instead of the one in the tiltfile
+		// If we've found a local registry in the cluster at run-time, use that
+		// instead of the default_registry (if any) declared in the Tiltfile
 		s.logger.Infof("Auto-detected local registry from environment: %s", s.localRegistry)
 		return s.localRegistry
 	}
@@ -899,7 +900,7 @@ func (s *tiltfileState) registry() container.Registry {
 
 func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest, error) {
 	var result []model.Manifest
-	registry := s.registry()
+	registry := s.decideRegistry()
 	for _, r := range resources {
 		mn := model.ManifestName(r.name)
 		tm, err := starlarkTriggerModeToModel(s.triggerModeForResource(r.triggerMode), true)
