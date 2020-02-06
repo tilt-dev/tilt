@@ -153,18 +153,20 @@ func TestOptDefault(t *testing.T) {
 	defer cancel()
 	f.WaitForAllPodsReady(ctx, "app=analytics")
 
-	var metricNames []string
-
+	var observedEventNames []string
 	for _, c := range f.mss.ma.Counts {
-		var tagKeys []string
-		for k := range c.Tags {
-			tagKeys = append(tagKeys, k)
-		}
-		// optdefault is not allowed to send any tags other than time & version
-		assert.ElementsMatch(t, []string{"time", "version"}, tagKeys)
-
-		metricNames = append(metricNames, c.Name)
+		observedEventNames = append(observedEventNames, c.Name)
 	}
 
-	assert.Contains(t, metricNames, "tilt.analytics.up.optdefault")
+	var observedTimerNames []string
+	for _, c := range f.mss.ma.Timers {
+		observedTimerNames = append(observedTimerNames, c.Name)
+	}
+
+	// just check that a couple metrics were successfully reported rather than asserting an exhaustive list
+	// the goal is to ensure that analytics is working in general, not to test which specific metrics are reported
+	// and we don't want to have to update this every time we change which metrics we report
+	assert.Contains(t, observedEventNames, "tilt.cmd.up")
+	assert.Contains(t, observedEventNames, "tilt.tiltfile.loaded")
+	assert.Contains(t, observedTimerNames, "tilt.tiltfile.load")
 }

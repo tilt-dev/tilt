@@ -85,6 +85,13 @@ func (i ImageTarget) Validate() error {
 	return nil
 }
 
+// HasDistinctClusterRef indicates whether the image target has a ClusterRef
+// distinct from LocalRef, i.e. if the image is addressed different from
+// inside and outside the cluster.
+func (i ImageTarget) HasDistinctClusterRef() bool {
+	return i.Refs.LocalRef().String() != i.Refs.ClusterRef().String()
+}
+
 type BuildDetails interface {
 	buildDetails()
 }

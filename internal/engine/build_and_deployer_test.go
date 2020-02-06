@@ -972,8 +972,8 @@ func newBDFixture(t *testing.T, env k8s.Env, runtime container.Runtime) *bdFixtu
 	sCli := synclet.NewTestSyncletClient(docker)
 	mode := buildcontrol.UpdateModeFlag(buildcontrol.UpdateModeAuto)
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
-	kp := &fakeKINDPusher{}
-	bd, err := provideBuildAndDeployer(ctx, docker, k8s, dir, env, mode, sCli, dcc, fakeClock{now: time.Unix(1551202573, 0)}, kp, ta)
+	kl := &fakeKINDLoader{}
+	bd, err := provideBuildAndDeployer(ctx, docker, k8s, dir, env, mode, sCli, dcc, fakeClock{now: time.Unix(1551202573, 0)}, kl, ta)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -93,7 +93,6 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		"mode":  string(updateModeFlag),
 	})
 	a.Incr("cmd.up", cmdUpTags.AsMap())
-	a.IncrIfUnopted("analytics.up.optdefault")
 	defer a.Flush(time.Second)
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Up")

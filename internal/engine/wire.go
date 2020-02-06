@@ -79,7 +79,7 @@ func provideBuildAndDeployer(
 	sCli *synclet.TestSyncletClient,
 	dcc dockercompose.DockerComposeClient,
 	clock build.Clock,
-	kp KINDPusher,
+	kp KINDLoader,
 	analytics *analytics.TiltAnalytics) (BuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
@@ -96,7 +96,7 @@ func provideImageBuildAndDeployer(
 	env k8s.Env,
 	dir *dirs.WindmillDir,
 	clock build.Clock,
-	kp KINDPusher,
+	kp KINDLoader,
 	analytics *analytics.TiltAnalytics) (*ImageBuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,

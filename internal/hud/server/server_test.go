@@ -167,7 +167,6 @@ func TestHandleAnalyticsOptIn(t *testing.T) {
 
 	assert.Equal(t, []analytics.CountEvent{{
 		Name: "analytics.opt.in",
-		Tags: map[string]string{"version": "v0.0.0"},
 		N:    1,
 	}}, f.a.Counts)
 }
