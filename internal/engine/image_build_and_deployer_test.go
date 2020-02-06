@@ -418,20 +418,20 @@ func TestCustomBuildSkipsLocalDocker(t *testing.T) {
 
 func TestBuildAndDeployUsesCorrectRef(t *testing.T) {
 	expectedImages := []string{"foo.com/gcr.io_some-project-162817_sancho"}
-	expectedImagesLocalRegistry := []string{"registry:1234/gcr.io_some-project-162817_sancho"}
+	expectedImagesClusterRef := []string{"registry:1234/gcr.io_some-project-162817_sancho"}
 	tests := []struct {
-		name             string
-		manifest         func(f Fixture) model.Manifest
-		useLocalRegistry bool // if true, clusterRef != localRef, i.e. ref of the built docker image != ref injected into YAML
-		expectBuilt      []string
-		expectDeployed   []string
+		name           string
+		manifest       func(f Fixture) model.Manifest
+		withClusterRef bool // if true, clusterRef != localRef, i.e. ref of the built docker image != ref injected into YAML
+		expectBuilt    []string
+		expectDeployed []string
 	}{
 		{"docker build", func(f Fixture) model.Manifest { return NewSanchoDockerBuildManifest(f) }, false, expectedImages, expectedImages},
-		{"docker build + local registry", func(f Fixture) model.Manifest { return NewSanchoDockerBuildManifest(f) }, true, expectedImages, expectedImagesLocalRegistry},
+		{"docker build + distinct clusterRef", func(f Fixture) model.Manifest { return NewSanchoDockerBuildManifest(f) }, true, expectedImages, expectedImagesClusterRef},
 		{"custom build", NewSanchoCustomBuildManifest, false, expectedImages, expectedImages},
-		{"custom build + local registry", NewSanchoCustomBuildManifest, true, expectedImages, expectedImagesLocalRegistry},
+		{"custom build + distinct clusterRef", NewSanchoCustomBuildManifest, true, expectedImages, expectedImagesClusterRef},
 		{"live multi stage", NewSanchoLiveUpdateMultiStageManifest, false, append(expectedImages, "foo.com/sancho-base"), expectedImages},
-		{"live multi stage + local registry", NewSanchoLiveUpdateMultiStageManifest, true, append(expectedImages, "foo.com/sancho-base"), expectedImagesLocalRegistry},
+		{"live multi stage + distinct clusterRef", NewSanchoLiveUpdateMultiStageManifest, true, append(expectedImages, "foo.com/sancho-base"), expectedImagesClusterRef},
 	}
 
 	for _, test := range tests {
@@ -447,7 +447,7 @@ func TestBuildAndDeployUsesCorrectRef(t *testing.T) {
 			manifest := test.manifest(f)
 			for i := range manifest.ImageTargets {
 				reg := container.MustNewRegistry("foo.com")
-				if test.useLocalRegistry {
+				if test.withClusterRef {
 					reg = container.MustNewRegistryWithHostFromCluster("foo.com", "registry:1234")
 				}
 				manifest.ImageTargets[i].Refs = manifest.ImageTargets[i].Refs.MustWithRegistry(reg)

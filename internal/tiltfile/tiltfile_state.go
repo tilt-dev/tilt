@@ -884,8 +884,23 @@ func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef container.Re
 	return nil
 }
 
+// decideRegistry returns the image registry we should use; if detected, a pre-configured
+// local registry; otherwise, the registry specified by the user via default_registry.
+// Otherwise, we'll return the zero value of `s.defaultReg`, which is an empty registry.
+// It has side-effects (a log line) and so should only be called once.
+func (s *tiltfileState) decideRegistry() container.Registry {
+	if s.orchestrator() == model.OrchestratorK8s && !s.localRegistry.Empty() {
+		// If we've found a local registry in the cluster at run-time, use that
+		// instead of the default_registry (if any) declared in the Tiltfile
+		s.logger.Infof("Auto-detected local registry from environment: %s", s.localRegistry)
+		return s.localRegistry
+	}
+	return s.defaultReg
+}
+
 func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest, error) {
 	var result []model.Manifest
+	registry := s.decideRegistry()
 	for _, r := range resources {
 		mn := model.ManifestName(r.name)
 		tm, err := starlarkTriggerModeToModel(s.triggerModeForResource(r.triggerMode), true)
@@ -911,7 +926,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 
 		m = m.WithDeployTarget(k8sTarget)
 
-		iTargets, err := s.imgTargetsForDependencyIDs(r.dependencyIDs)
+		iTargets, err := s.imgTargetsForDependencyIDs(r.dependencyIDs, registry)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting image build info for %s", r.name)
 		}
@@ -1034,20 +1049,12 @@ func (s *tiltfileState) validateLiveUpdate(iTarget model.ImageTarget, g model.Ta
 
 // Grabs all image targets for the given references,
 // as well as any of their transitive dependencies.
-func (s *tiltfileState) imgTargetsForDependencyIDs(ids []model.TargetID) ([]model.ImageTarget, error) {
+func (s *tiltfileState) imgTargetsForDependencyIDs(ids []model.TargetID, reg container.Registry) ([]model.ImageTarget, error) {
 	claimStatus := make(map[model.TargetID]claim, len(ids))
-	return s.imgTargetsForDependencyIDsHelper(ids, claimStatus)
+	return s.imgTargetsForDependencyIDsHelper(ids, claimStatus, reg)
 }
 
-func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, claimStatus map[model.TargetID]claim) ([]model.ImageTarget, error) {
-	var useLocalRegistry bool
-	if s.orchestrator() == model.OrchestratorK8s && !s.localRegistry.Empty() {
-		// If we've found a local registry in the cluster at run-time,
-		// use that instead of the one in the tiltfile
-		s.logger.Infof("Auto-detected local registry from environment: %s", s.localRegistry)
-		useLocalRegistry = true
-	}
-
+func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, claimStatus map[model.TargetID]claim, reg container.Registry) ([]model.ImageTarget, error) {
 	iTargets := make([]model.ImageTarget, 0, len(ids))
 	for _, id := range ids {
 		image := s.buildIndex.findBuilderByID(id)
@@ -1064,11 +1071,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 		}
 		claimStatus[id] = claimPending
 
-		registry := s.defaultReg
-		if useLocalRegistry {
-			registry = s.localRegistry
-		}
-		refs, err := container.NewRefSet(image.configurationRef, registry)
+		refs, err := container.NewRefSet(image.configurationRef, reg)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Something went wrong deriving "+
 				"references for your image: %q. Check the image name (and your "+
@@ -1119,7 +1122,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			WithTiltFilename(image.workDir).
 			WithDependencyIDs(image.dependencyIDs)
 
-		depTargets, err := s.imgTargetsForDependencyIDsHelper(image.dependencyIDs, claimStatus)
+		depTargets, err := s.imgTargetsForDependencyIDsHelper(image.dependencyIDs, claimStatus, reg)
 		if err != nil {
 			return nil, err
 		}
@@ -1141,7 +1144,7 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 			return nil, err
 		}
 
-		iTargets, err := s.imgTargetsForDependencyIDs(svc.DependencyIDs)
+		iTargets, err := s.imgTargetsForDependencyIDs(svc.DependencyIDs, container.Registry{}) // Registry not relevant to DC
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting image build info for %s", svc.Name)
 		}
