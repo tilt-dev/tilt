@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -146,10 +145,7 @@ func newWMFixture(t *testing.T) *wmFixture {
 	}()
 
 	f := tempdir.NewTempDirFixture(t)
-	err := os.Chdir(f.Path())
-	if err != nil {
-		t.Fatal(err)
-	}
+	f.Chdir()
 
 	return &wmFixture{
 		ctx:              ctx,
