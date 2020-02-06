@@ -3,7 +3,6 @@ package configs
 import (
 	"context"
 	"fmt"
-	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -78,12 +77,14 @@ func TestConfigsControllerDockerNotConnectedButNotRequired(t *testing.T) {
 type ccFixture struct {
 	*tempdir.TempDirFixture
 	ctx        context.Context
+	cancel     func()
 	cc         *ConfigsController
 	st         *store.Store
 	getActions func() []store.Action
 	tfl        *tiltfile.FakeTiltfileLoader
 	fc         *testutils.FakeClock
 	docker     *docker.FakeClient
+	loopDone   chan struct{}
 }
 
 func newCCFixture(t *testing.T) *ccFixture {
@@ -95,21 +96,43 @@ func newCCFixture(t *testing.T) *ccFixture {
 	fc := testutils.NewRandomFakeClock()
 	cc.clock = fc.Clock()
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
+	ctx, cancel := context.WithCancel(ctx)
+	loopDone := make(chan struct{})
+
 	st.AddSubscriber(ctx, cc)
 	go func() {
 		err := st.Loop(ctx)
 		testutils.FailOnNonCanceledErr(t, err, "store.Loop failed")
+		close(loopDone)
 	}()
+
+	// configs_controller uses state.RelativeTiltfilePath, which is relative to wd
+	// sometimes the original directory was invalid (e.g., it was another test's temp dir, which was deleted,
+	// but not changed out of), and if it was already invalid, then let's not worry about it.
+	f.Chdir()
+
 	return &ccFixture{
 		TempDirFixture: f,
 		ctx:            ctx,
+		cancel:         cancel,
 		cc:             cc,
 		st:             st,
 		getActions:     getActions,
 		tfl:            tfl,
 		fc:             fc,
 		docker:         d,
+		loopDone:       loopDone,
 	}
+}
+
+func (f *ccFixture) TearDown() {
+	f.cancel()
+	select {
+	case <-f.loopDone:
+	case <-time.After(2 * time.Second):
+		f.T().Fatalf("Timeout waiting for store loop")
+	}
+	f.TempDirFixture.TearDown()
 }
 
 func (f *ccFixture) addManifest(name model.ManifestName) {
@@ -123,23 +146,6 @@ func (f *ccFixture) addManifest(name model.ManifestName) {
 }
 
 func (f *ccFixture) run(m model.Manifest) ConfigsReloadedAction {
-	// configs_controller uses state.RelativeTiltfilePath, which is relative to wd
-	// sometimes the original directory was invalid (e.g., it was another test's temp dir, which was deleted,
-	// but not changed out of), and if it was already invalid, then let's not worry about it.
-	origDir, _ := os.Getwd()
-	err := os.Chdir(f.Path())
-	if err != nil {
-		f.T().Fatalf("error changing dir: %v", err)
-	}
-	defer func() {
-		if origDir != "" {
-			err = os.Chdir(origDir)
-			if err != nil {
-				f.T().Fatalf("unable to restore original wd: '%v'", err)
-			}
-		}
-	}()
-
 	f.st.SetUpSubscribersForTesting(f.ctx)
 
 	f.tfl.Result = tiltfile.TiltfileLoadResult{
