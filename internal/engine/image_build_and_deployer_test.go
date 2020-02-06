@@ -198,7 +198,7 @@ func TestMultiStageDockerBuild(t *testing.T) {
 
 	assert.Equal(t, 2, f.docker.BuildCount)
 	assert.Equal(t, 1, f.docker.PushCount)
-	assert.Equal(t, 0, f.kp.pushCount)
+	assert.Equal(t, 0, f.kl.loadCount)
 
 	expected := expectedFile{
 		Path: "Dockerfile",
@@ -244,7 +244,7 @@ ENTRYPOINT /go/bin/sancho
 
 	assert.Equal(t, 2, f.docker.BuildCount)
 	assert.Equal(t, 1, f.docker.PushCount)
-	assert.Equal(t, 0, f.kp.pushCount)
+	assert.Equal(t, 0, f.kl.loadCount)
 
 	expected := expectedFile{
 		Path: "Dockerfile",
@@ -332,7 +332,7 @@ ENTRYPOINT /go/bin/sancho
 	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
 }
 
-func TestKINDPush(t *testing.T) {
+func TestKINDLoad(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvKIND6)
 	defer f.TearDown()
 
@@ -343,8 +343,32 @@ func TestKINDPush(t *testing.T) {
 	}
 
 	assert.Equal(t, 1, f.docker.BuildCount)
-	assert.Equal(t, 1, f.kp.pushCount)
+	assert.Equal(t, 1, f.kl.loadCount)
 	assert.Equal(t, 0, f.docker.PushCount)
+}
+
+func TestDockerPushIfKINDAndClusterRef(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvKIND6)
+	defer f.TearDown()
+
+	manifest := NewSanchoDockerBuildManifest(f)
+	iTarg := manifest.ImageTargetAt(0)
+	iTarg.Refs = iTarg.Refs.MustWithRegistry(container.MustNewRegistryWithHostFromCluster("localhost:1234", "registry:1234"))
+	manifest = manifest.WithImageTarget(iTarg)
+
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 1, f.docker.BuildCount, "Docker build count")
+	assert.Equal(t, 0, f.kl.loadCount, "KIND load count")
+	assert.Equal(t, 1, f.docker.PushCount, "Docker push count")
+	assert.Equal(t, iTarg.Refs.LocalRef().String(), container.MustParseNamed(f.docker.PushImage).Name(), "image pushed to Docker as LocalRef")
+
+	yaml := f.k8s.Yaml
+	assert.Contains(t, yaml, iTarg.Refs.ClusterRef().String(), "ClusterRef was injected into applied YAML")
+	assert.NotContains(t, yaml, iTarg.Refs.LocalRef().String(), "LocalRef was NOT injected into applied YAML")
 }
 
 func TestCustomBuildDisablePush(t *testing.T) {
@@ -360,7 +384,7 @@ func TestCustomBuildDisablePush(t *testing.T) {
 	// We didn't try to build or push an image, but we did try to tag it
 	assert.Equal(t, 0, f.docker.BuildCount)
 	assert.Equal(t, 1, f.docker.TagCount)
-	assert.Equal(t, 0, f.kp.pushCount)
+	assert.Equal(t, 0, f.kl.loadCount)
 	assert.Equal(t, 0, f.docker.PushCount)
 }
 
@@ -388,7 +412,7 @@ func TestCustomBuildSkipsLocalDocker(t *testing.T) {
 	// We didn't try to build, tag, or push an image
 	assert.Equal(t, 0, f.docker.BuildCount)
 	assert.Equal(t, 0, f.docker.TagCount)
-	assert.Equal(t, 0, f.kp.pushCount)
+	assert.Equal(t, 0, f.kl.loadCount)
 	assert.Equal(t, 0, f.docker.PushCount)
 }
 
@@ -719,7 +743,7 @@ type ibdFixture struct {
 	k8s    *k8s.FakeK8sClient
 	ibd    *ImageBuildAndDeployer
 	st     *store.TestingStore
-	kp     *fakeKINDPusher
+	kl     *fakeKINDLoader
 }
 
 func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
@@ -728,9 +752,9 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 	docker := docker.NewFakeClient()
 	ctx, _, ta := testutils.CtxAndAnalyticsForTest()
 	kClient := k8s.NewFakeK8sClient()
-	kp := &fakeKINDPusher{}
+	kl := &fakeKINDLoader{}
 	clock := fakeClock{time.Date(2019, 1, 1, 1, 1, 1, 1, time.UTC)}
-	ibd, err := provideImageBuildAndDeployer(ctx, docker, kClient, env, dir, clock, kp, ta)
+	ibd, err := provideImageBuildAndDeployer(ctx, docker, kClient, env, dir, clock, kl, ta)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -741,7 +765,7 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 		k8s:            kClient,
 		ibd:            ibd,
 		st:             store.NewTestingStore(),
-		kp:             kp,
+		kl:             kl,
 	}
 }
 
@@ -759,11 +783,11 @@ func (f *ibdFixture) replaceRegistry(defaultReg string, sel container.RefSelecto
 	return named
 }
 
-type fakeKINDPusher struct {
-	pushCount int
+type fakeKINDLoader struct {
+	loadCount int
 }
 
-func (kp *fakeKINDPusher) PushToKIND(ctx context.Context, ref reference.NamedTagged) error {
-	kp.pushCount++
+func (kl *fakeKINDLoader) LoadToKIND(ctx context.Context, ref reference.NamedTagged) error {
+	kl.loadCount++
 	return nil
 }

@@ -125,7 +125,7 @@ var BaseWireSet = wire.NewSet(
 	token.GetOrCreateToken,
 
 	provideCmdUpDeps,
-	engine.NewKINDPusher,
+	engine.NewKINDLoader,
 
 	wire.Value(feature.MainDefaults),
 )
