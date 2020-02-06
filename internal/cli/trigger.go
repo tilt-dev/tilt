@@ -25,6 +25,9 @@ Otherwise, this command will force a full rebuild.
 
 func triggerUpdate(cmd *cobra.Command, args []string) {
 	resource := args[0]
+
+	// TODO(maia): this should probably be the triggerPayload struct, but seems
+	//   like a lot of code to move over (to avoid import cycles) for one call.
 	payload := []byte(fmt.Sprintf(`{"manifest_names":[%q]}`, resource))
 
 	body := apiPostJson(webPort, "trigger", payload)
