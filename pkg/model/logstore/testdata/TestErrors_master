@@ -1,0 +1,7 @@
+           fe │ ERROR: Error 1 line 1
+           fe │ Error 1 line 2
+           fe │ Error 1 line 3
+           fe │ ERROR: Error 2 line 1
+           fe │ Error 2 line 2
+           fe │ ERROR: Error 3 line 1
+       non-fe │ ERROR: non-fe warning

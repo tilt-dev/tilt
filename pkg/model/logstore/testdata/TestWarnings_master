@@ -1,0 +1,7 @@
+           fe │ WARNING: Warning 1 line 1
+           fe │ Warning 1 line 2
+           fe │ Warning 1 line 3
+           fe │ WARNING: Warning 2 line 1
+           fe │ Warning 2 line 2
+           fe │ WARNING: Warning 3 line 1
+       non-fe │ WARNING: non-fe warning
