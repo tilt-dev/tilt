@@ -18,10 +18,10 @@ func TestWrite(t *testing.T) {
 	defer f.tearDown()
 
 	path := f.writeModule(ModuleContents{
-		Name:             "test",
-		TiltfileContents: "print('hi')",
-		GitCommitHash:    "aaaaaa",
-		Source:           "https://github.com/windmill/extensions",
+		Name:              "test",
+		TiltfileContents:  "print('hi')",
+		GitCommitHash:     "aaaaaa",
+		ExtensionRegistry: "https://github.com/windmill/extensions",
 	})
 
 	f.assertPath(path)
@@ -33,10 +33,10 @@ func TestWriteAndStat(t *testing.T) {
 	defer f.tearDown()
 
 	f.writeModule(ModuleContents{
-		Name:             "test",
-		TiltfileContents: "print('hi')",
-		GitCommitHash:    "aaaaaa",
-		Source:           "https://github.com/windmill/extensions",
+		Name:              "test",
+		TiltfileContents:  "print('hi')",
+		GitCommitHash:     "aaaaaa",
+		ExtensionRegistry: "https://github.com/windmill/extensions",
 	})
 
 	f.assertExtension("test", "print('hi')", "aaaaaa", "https://github.com/windmill/extensions")

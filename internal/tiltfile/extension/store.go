@@ -22,11 +22,11 @@ type Store interface {
 
 // TODO(dmiller): should this include an integrity hash?
 type ModuleContents struct {
-	Name             string
-	TiltfileContents string
-	GitCommitHash    string
-	Source           string
-	TimeFetched      time.Time
+	Name              string
+	TiltfileContents  string
+	GitCommitHash     string
+	ExtensionRegistry string
+	TimeFetched       time.Time
 }
 
 type LocalStore struct {
