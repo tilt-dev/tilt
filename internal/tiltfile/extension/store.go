@@ -14,8 +14,9 @@ import (
 const extensionDirName = "tilt_modules"
 
 type Store interface {
-	// Stat is used to check if an extension exists before fetching it
-	Stat(ctx context.Context, moduleName string) (string, error)
+	// ModulePath is used to check if an extension exists before fetching it
+	// Returns ErrNotExist if module doesn't exist
+	ModulePath(ctx context.Context, moduleName string) (string, error)
 	Write(ctx context.Context, contents ModuleContents) (string, error)
 }
 
@@ -38,19 +39,15 @@ func NewLocalStore(baseDir string) *LocalStore {
 	}
 }
 
-func (s *LocalStore) Stat(ctx context.Context, moduleName string) (string, error) {
+func (s *LocalStore) ModulePath(ctx context.Context, moduleName string) (string, error) {
 	tiltfilePath := filepath.Join(s.baseDir, moduleName, tiltfile.FileName)
 
 	_, err := os.Stat(tiltfilePath)
-	if err == nil {
-		return tiltfilePath, nil
+	if err != nil {
+		return "", err
 	}
 
-	if os.IsNotExist(err) {
-		return "", nil
-	}
-
-	return "", err
+	return tiltfilePath, nil
 }
 
 func (s *LocalStore) Write(ctx context.Context, contents ModuleContents) (string, error) {

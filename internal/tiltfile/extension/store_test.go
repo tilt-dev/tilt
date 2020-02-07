@@ -3,6 +3,7 @@ package extension
 import (
 	"context"
 	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -40,7 +41,7 @@ func TestWriteAndStat(t *testing.T) {
 
 	f.assertExtension("test", "print('hi')", "aaaaaa", "https://github.com/windmill/extensions")
 
-	path := f.stat("test")
+	path := f.modulePath("test")
 	f.assertPath(path)
 }
 
@@ -48,7 +49,7 @@ func TestStatModuleDoesntExist(t *testing.T) {
 	f := newFixture(t)
 	defer f.tearDown()
 
-	assert.Equal(f.t, "", f.stat("test"))
+	f.assertModulePathDoesntExist("test")
 }
 
 type fixture struct {
@@ -78,11 +79,17 @@ func (f *fixture) writeModule(contents ModuleContents) string {
 	return path
 }
 
-func (f *fixture) stat(moduleName string) string {
-	path, err := f.store.Stat(f.ctx, moduleName)
+func (f *fixture) modulePath(moduleName string) string {
+	path, err := f.store.ModulePath(f.ctx, moduleName)
 	require.NoError(f.t, err)
 
 	return path
+}
+
+func (f *fixture) assertModulePathDoesntExist(moduleName string) {
+	path, err := f.store.ModulePath(f.ctx, moduleName)
+	assert.True(f.t, os.IsNotExist(err))
+	assert.Equal(f.t, "", path)
 }
 
 func (f *fixture) assertExtension(moduleName, contents, hash, source string) {
