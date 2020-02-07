@@ -26,7 +26,8 @@ type localResource struct {
 }
 
 func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var name, updateCmdStr, serveCmdStr string
+	var name string
+	var updateCmdVal, serveCmdVal starlark.Value
 	var triggerMode triggerMode
 	var deps starlark.Value
 	var resourceDepsVal starlark.Sequence
@@ -35,13 +36,13 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
-		"cmd?", &updateCmdStr,
+		"cmd?", &updateCmdVal,
 		"deps?", &deps,
 		"trigger_mode?", &triggerMode,
 		"resource_deps?", &resourceDepsVal,
 		"ignore?", &ignoresVal,
 		"auto_init?", &autoInit,
-		"serve_cmd?", &serveCmdStr,
+		"serve_cmd?", &serveCmdVal,
 	); err != nil {
 		return nil, err
 	}
@@ -68,8 +69,14 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
-	updateCmd := model.ToShellCmd(updateCmdStr)
-	serveCmd := model.ToShellCmd(serveCmdStr)
+	updateCmd, err := value.ValueToCmd(updateCmdVal)
+	if err != nil {
+		return nil, err
+	}
+	serveCmd, err := value.ValueToCmd(serveCmdVal)
+	if err != nil {
+		return nil, err
+	}
 
 	if updateCmd.Empty() && serveCmd.Empty() {
 		return nil, fmt.Errorf("local_resource must have a cmd and/or a serve_cmd, but both were empty")

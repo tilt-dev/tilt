@@ -220,6 +220,46 @@ k8s_yaml('foo.yaml')
 		db(image("gcr.io/image-b"), lu))
 }
 
+func TestLiveUpdateRun(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	for _, tc := range []struct {
+		name         string
+		tiltfileText string
+		expectedCmd  model.Cmd
+	}{
+		{"string cmd", `"echo hi"`, model.ToShellCmd("echo hi")},
+		{"array cmd", `["echo", "hi"]`, model.Cmd{Argv: []string{"echo", "hi"}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f.gitInit("")
+			f.yaml("foo.yaml", deployment("foo", image("gcr.io/image-a")))
+			f.file("imageA.dockerfile", `FROM golang:1.10`)
+			f.file("Tiltfile", fmt.Sprintf(`
+docker_build('gcr.io/image-a', 'a', dockerfile='imageA.dockerfile',
+             live_update=[
+               run(%s)
+             ])
+k8s_yaml('foo.yaml')
+`, tc.tiltfileText))
+			f.load()
+
+			lu := model.LiveUpdate{
+				Steps: []model.LiveUpdateStep{
+					model.LiveUpdateRunStep{
+						Command:  tc.expectedCmd,
+						Triggers: model.NewPathSet(nil, f.Path()),
+					},
+				},
+				BaseDir: f.Path(),
+			}
+			f.assertNextManifest("foo",
+				db(image("gcr.io/image-a"), lu))
+		})
+	}
+}
+
 func TestLiveUpdateFallBackTriggersOutsideOfDockerBuildContext(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

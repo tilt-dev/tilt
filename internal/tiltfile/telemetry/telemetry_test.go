@@ -3,19 +3,31 @@ package telemetry
 import (
 	"testing"
 
+	"github.com/windmilleng/tilt/pkg/model"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 )
 
-func TestTelemetryCmd(t *testing.T) {
+func TestTelemetryCmdString(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 	f.File("Tiltfile", "experimental_telemetry_cmd('foo.sh')")
 	result, err := f.ExecFile("Tiltfile")
 
 	assert.NoError(t, err)
-	assert.Equal(t, "foo.sh", MustState(result).Cmd.String())
+	assert.Equal(t, model.ToShellCmd("foo.sh"), MustState(result).Cmd)
+}
+
+func TestTelemetryCmdArray(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.File("Tiltfile", "experimental_telemetry_cmd(['foo.sh'])")
+	result, err := f.ExecFile("Tiltfile")
+
+	assert.NoError(t, err)
+	assert.Equal(t, model.Cmd{Argv: []string{"foo.sh"}}, MustState(result).Cmd)
 }
 
 func TestTelemetryCmdEmpty(t *testing.T) {

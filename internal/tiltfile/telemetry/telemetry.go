@@ -7,6 +7,7 @@ import (
 	"go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
+	"github.com/windmilleng/tilt/internal/tiltfile/value"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -25,13 +26,18 @@ func (Extension) OnStart(env *starkit.Environment) error {
 }
 
 func setTelemetryCmd(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var cmd string
-	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "cmd", &cmd)
+	var cmdVal starlark.Value
+	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "cmd", &cmdVal)
 	if err != nil {
 		return starlark.None, err
 	}
 
-	if len(cmd) == 0 {
+	cmd, err := value.ValueToCmd(cmdVal)
+	if err != nil {
+		return nil, err
+	}
+
+	if cmd.Empty() {
 		return starlark.None, fmt.Errorf("cmd cannot be empty")
 	}
 
@@ -40,7 +46,7 @@ func setTelemetryCmd(thread *starlark.Thread, fn *starlark.Builtin, args starlar
 			return settings, fmt.Errorf("%v called multiple times; already set to %v", fn.Name(), settings.Cmd)
 		}
 
-		settings.Cmd = model.ToShellCmd(cmd)
+		settings.Cmd = cmd
 		settings.Workdir = filepath.Dir(starkit.CurrentExecPath(thread))
 
 		return settings, nil

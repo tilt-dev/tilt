@@ -290,6 +290,17 @@ local('echo foobar', quiet=True)
 	assert.NotContains(t, f.out.String(), " → foobar")
 }
 
+func TestLocalArgvCmd(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	// this would generate a syntax error if evaluated by a shell
+	f.file("Tiltfile", `local(['echo', 'a"b'])`)
+	f.load()
+
+	assert.Contains(t, f.out.String(), `a"b`)
+}
+
 func TestReadFile(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -3717,7 +3728,7 @@ func TestDisableSnapshots(t *testing.T) {
 	f.assertFeature(feature.Snapshots, false)
 }
 
-func TestDockerBuildEntrypoint(t *testing.T) {
+func TestDockerBuildEntrypointString(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -3729,7 +3740,22 @@ k8s_yaml('foo.yaml')
 `)
 
 	f.load()
-	f.assertNextManifest("foo", db(image("gcr.io/foo"), entrypoint("/bin/the_app")))
+	f.assertNextManifest("foo", db(image("gcr.io/foo"), entrypoint(model.ToShellCmd("/bin/the_app"))))
+}
+
+func TestDockerBuildEntrypointArray(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', '.', entrypoint=["/bin/the_app"])
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	f.assertNextManifest("foo", db(image("gcr.io/foo"), entrypoint(model.Cmd{Argv: []string{"/bin/the_app"}})))
 }
 
 func TestDockerBuild_buildArgs(t *testing.T) {
@@ -3769,7 +3795,7 @@ k8s_yaml('foo.yaml')
 		image("gcr.io/foo"),
 		deps(f.JoinPath("foo")),
 		cmd("docker build -t $EXPECTED_REF foo"),
-		entrypoint("/bin/the_app")),
+		entrypoint(model.ToShellCmd("/bin/the_app"))),
 	)
 }
 
@@ -3957,6 +3983,32 @@ local_resource("test")
 `)
 
 	f.loadErrString("local_resource must have a cmd and/or a serve_cmd, but both were empty")
+}
+
+func TestLocalResourceUpdateCmdArray(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource("test", ["echo", "hi"])
+`)
+
+	f.load()
+	f.assertNumManifests(1)
+	f.assertNextManifest("test", localTarget(updateCmdArray("echo", "hi")))
+}
+
+func TestLocalResourceServeCmdArray(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource("test", serve_cmd=["echo", "hi"])
+`)
+
+	f.load()
+	f.assertNumManifests(1)
+	f.assertNextManifest("test", localTarget(serveCmdArray("echo", "hi")))
 }
 
 func TestLocalResourceWorkdir(t *testing.T) {
@@ -4510,7 +4562,7 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 func (f *fixture) load(args ...string) {
 	f.loadAllowWarnings(args...)
 	if len(f.warnings) != 0 {
-		f.t.Fatalf("Unexpected no warnings. Actual: %s", f.warnings)
+		f.t.Fatalf("Unexpected warnings. Actual: %s", f.warnings)
 	}
 }
 
@@ -4816,9 +4868,9 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 			for _, matcher := range opt.matchers {
 				switch matcher := matcher.(type) {
 				case updateCmdHelper:
-					assert.Equal(f.t, matcher.cmd, lt.UpdateCmd.String())
+					assert.Equal(f.t, matcher.cmd, lt.UpdateCmd)
 				case serveCmdHelper:
-					assert.Equal(f.t, matcher.cmd, lt.ServeCmd.String())
+					assert.Equal(f.t, matcher.cmd, lt.ServeCmd)
 				case depsHelper:
 					deps := f.JoinPaths(matcher.deps)
 					assert.ElementsMatch(f.t, deps, lt.Dependencies())
@@ -5125,8 +5177,8 @@ type entrypointHelper struct {
 	cmd model.Cmd
 }
 
-func entrypoint(command string) entrypointHelper {
-	return entrypointHelper{model.ToShellCmd(command)}
+func entrypoint(command model.Cmd) entrypointHelper {
+	return entrypointHelper{command}
 }
 
 type addHelper struct {
@@ -5196,19 +5248,27 @@ func disablePush(disable bool) disablePushHelper {
 }
 
 type updateCmdHelper struct {
-	cmd string
+	cmd model.Cmd
 }
 
 func updateCmd(cmd string) updateCmdHelper {
-	return updateCmdHelper{cmd}
+	return updateCmdHelper{model.ToShellCmd(cmd)}
+}
+
+func updateCmdArray(cmd ...string) updateCmdHelper {
+	return updateCmdHelper{model.Cmd{Argv: cmd}}
 }
 
 type serveCmdHelper struct {
-	cmd string
+	cmd model.Cmd
 }
 
 func serveCmd(cmd string) serveCmdHelper {
-	return serveCmdHelper{cmd}
+	return serveCmdHelper{model.ToShellCmd(cmd)}
+}
+
+func serveCmdArray(cmd ...string) serveCmdHelper {
+	return serveCmdHelper{model.Cmd{Argv: cmd}}
 }
 
 type localTargetHelper struct {
