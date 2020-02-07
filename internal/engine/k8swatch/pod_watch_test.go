@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
@@ -118,7 +120,7 @@ func TestPodWatchExtraSelectors(t *testing.T) {
 	f.kClient.EmitPod(ls1, p)
 
 	f.assertObservedPods(p)
-	assert.Equal(t, []model.ManifestName{manifest.Name}, f.manifestNames)
+	f.assertObservedManifests(manifest.Name)
 }
 
 func TestPodWatchHandleSelectorChange(t *testing.T) {
@@ -330,9 +332,18 @@ func (f *pwFixture) assertObservedPods(pods ...*corev1.Pod) {
 		}
 	}
 
-	if !assert.ElementsMatch(f.t, pods, f.pods) {
-		f.t.FailNow()
+	require.ElementsMatch(f.t, pods, f.pods)
+}
+
+func (f *pwFixture) assertObservedManifests(manifests ...model.ManifestName) {
+	start := time.Now()
+	for time.Since(start) < 200*time.Millisecond {
+		if len(manifests) == len(f.manifestNames) {
+			break
+		}
 	}
+
+	require.ElementsMatch(f.t, manifests, f.manifestNames)
 }
 
 func (f *pwFixture) assertWatchedSelectors(ls ...labels.Selector) {
