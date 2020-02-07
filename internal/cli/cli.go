@@ -51,6 +51,7 @@ func Execute() {
 	rootCmd.AddCommand(analytics.NewCommand())
 	rootCmd.AddCommand(newKubectlCmd())
 	rootCmd.AddCommand(newDumpCmd())
+	rootCmd.AddCommand(newTriggerCmd())
 
 	if len(os.Args) > 2 && os.Args[1] == "kubectl" {
 		// Hack in global flags from kubectl
