@@ -2,12 +2,12 @@ package extension
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 )
 
@@ -53,13 +53,13 @@ func (s *LocalStore) ModulePath(ctx context.Context, moduleName string) (string,
 func (s *LocalStore) Write(ctx context.Context, contents ModuleContents) (string, error) {
 	moduleDir := filepath.Join(s.baseDir, contents.Name)
 	if err := os.MkdirAll(moduleDir, os.FileMode(0700)); err != nil {
-		return "", fmt.Errorf("couldn't store module %s: %v", contents.Name, err)
+		return "", errors.Wrapf(err, "couldn't create module directory %s at path %s", contents.Name, moduleDir)
 	}
 
 	tiltfilePath := filepath.Join(moduleDir, tiltfile.FileName)
 	// TODO(dmiller): store hash, source, time fetched
-	if err := ioutil.WriteFile(tiltfilePath, []byte(contents.TiltfileContents), os.FileMode(0700)); err != nil {
-		return "", fmt.Errorf("couldn't store module %s: %v", contents.Name, err)
+	if err := ioutil.WriteFile(tiltfilePath, []byte(contents.TiltfileContents), os.FileMode(0600)); err != nil {
+		return "", errors.Wrapf(err, "couldn't store module %s at path %s", contents.Name, tiltfilePath)
 	}
 
 	return tiltfilePath, nil
