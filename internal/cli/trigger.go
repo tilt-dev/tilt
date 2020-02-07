@@ -32,4 +32,6 @@ func triggerUpdate(cmd *cobra.Command, args []string) {
 
 	body := apiPostJson(webPort, "trigger", payload)
 	_ = body.Close()
+
+	fmt.Printf("Successfully triggered update for resource: %q\n", resource)
 }
