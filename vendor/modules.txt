@@ -447,6 +447,8 @@ github.com/theupdateframework/notary/tuf/utils
 github.com/theupdateframework/notary/tuf/validation
 # github.com/tonistiigi/fsutil v0.0.0-20191018213012-0f039a052ca1
 github.com/tonistiigi/fsutil/types
+# github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
+github.com/tonistiigi/units
 # github.com/uber/jaeger-client-go v2.21.1+incompatible
 github.com/uber/jaeger-client-go
 github.com/uber/jaeger-client-go/config
