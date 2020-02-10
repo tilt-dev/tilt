@@ -413,9 +413,10 @@ func toBuildkitStatus(aux *json.RawMessage, b *buildkitPrinter) error {
 	return b.parseAndPrint(toVertexes(resp))
 }
 
-func toVertexes(resp controlapi.StatusResponse) ([]*vertex, []*vertexLog) {
+func toVertexes(resp controlapi.StatusResponse) ([]*vertex, []*vertexLog, []*vertexStatus) {
 	vertexes := []*vertex{}
 	logs := []*vertexLog{}
+	statuses := []*vertexStatus{}
 
 	for _, v := range resp.Vertexes {
 		duration := time.Duration(0)
@@ -441,7 +442,16 @@ func toVertexes(resp controlapi.StatusResponse) ([]*vertex, []*vertexLog) {
 			msg:    v.Msg,
 		})
 	}
-	return vertexes, logs
+	for _, s := range resp.Statuses {
+		statuses = append(statuses, &vertexStatus{
+			vertex:    s.Vertex,
+			id:        s.ID,
+			total:     s.Total,
+			current:   s.Current,
+			timestamp: s.Timestamp,
+		})
+	}
+	return vertexes, logs, statuses
 }
 
 func messageIsFromBuildkit(msg jsonmessage.JSONMessage) bool {
