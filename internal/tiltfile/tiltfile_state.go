@@ -7,10 +7,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/windmilleng/tilt/internal/tiltfile/starlarkstruct"
-	"github.com/windmilleng/tilt/internal/tiltfile/telemetry"
-	"github.com/windmilleng/tilt/internal/tiltfile/updatesettings"
-
 	"github.com/docker/distribution/reference"
 	"github.com/looplab/tarjan"
 	"github.com/pkg/errors"
@@ -26,12 +22,16 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile/analytics"
 	"github.com/windmilleng/tilt/internal/tiltfile/config"
 	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
+	"github.com/windmilleng/tilt/internal/tiltfile/encoding"
 	"github.com/windmilleng/tilt/internal/tiltfile/git"
 	"github.com/windmilleng/tilt/internal/tiltfile/include"
 	"github.com/windmilleng/tilt/internal/tiltfile/io"
 	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
 	"github.com/windmilleng/tilt/internal/tiltfile/os"
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
+	"github.com/windmilleng/tilt/internal/tiltfile/starlarkstruct"
+	"github.com/windmilleng/tilt/internal/tiltfile/telemetry"
+	"github.com/windmilleng/tilt/internal/tiltfile/updatesettings"
 	"github.com/windmilleng/tilt/internal/tiltfile/version"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -167,6 +167,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		starlarkstruct.NewExtension(),
 		telemetry.NewExtension(),
 		updatesettings.NewExtension(),
+		encoding.NewExtension(),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)
@@ -364,11 +365,9 @@ func (s *tiltfileState) OnExec(t *starlark.Thread, tiltfilePath string) error {
 	return io.RecordReadFile(t, tiltIgnorePath(tiltfilePath))
 }
 
-type builtin func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)
-
 // wrap a builtin such that it's only allowed to run when we have a known safe k8s context
 // (none (e.g., docker-compose), local, or specified by `allow_k8s_contexts`)
-func (s *tiltfileState) potentiallyK8sUnsafeBuiltin(f builtin) builtin {
+func (s *tiltfileState) potentiallyK8sUnsafeBuiltin(f starkit.Function) starkit.Function {
 	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		model, err := starkit.ModelFromThread(thread)
 		if err != nil {
@@ -427,7 +426,7 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 
 	for _, b := range []struct {
 		name    string
-		builtin builtin
+		builtin starkit.Function
 	}{
 		{localN, s.potentiallyK8sUnsafeBuiltin(s.local)},
 		{dockerBuildN, s.dockerBuild},
@@ -448,10 +447,6 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 		{kustomizeN, s.kustomize},
 		{helmN, s.helm},
 		{failN, s.fail},
-		{decodeJSONN, s.decodeJSON},
-		{decodeYAMLN, s.decodeYaml},
-		{readJSONN, s.readJson},
-		{readYAMLN, s.readYaml},
 		{triggerModeN, s.triggerModeFn},
 		{fallBackOnN, s.liveUpdateFallBackOn},
 		{syncN, s.liveUpdateSync},
