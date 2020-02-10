@@ -806,6 +806,7 @@ github.com/tmc/grpc-websocket-proxy v0.0.0-20170815181823-89b8d40f7ca8/go.mod h1
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
 github.com/tonistiigi/fsutil v0.0.0-20191018213012-0f039a052ca1 h1:WRlNtJ2whFMKo95/e6uaNuAnn5TxLcMzczqMcfbIDxo=
 github.com/tonistiigi/fsutil v0.0.0-20191018213012-0f039a052ca1/go.mod h1:hP47OZfgT1aNVDJj28EnEKaKg6mjPEoS5Tb4BsWCTPs=
+github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea h1:SXhTLE6pb6eld/v/cCndK0AMpt1wiVFb/YYmqB3/QG0=
 github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea/go.mod h1:WPnis/6cRcDZSUvVmezrxJPkiO87ThFYsoUiMwWNDJk=
 github.com/uber/jaeger-client-go v0.0.0-20180103221425-e02c85f9069e/go.mod h1:WVhlPFC8FDjOFMMWRy2pZqQJSXxYSwNYOkTr/Z6d3Kk=
 github.com/uber/jaeger-client-go v2.21.1+incompatible h1:oozboeZmWz+tyh3VZttJWlF3K73mHgbokieceqKccLo=

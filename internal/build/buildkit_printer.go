@@ -7,6 +7,7 @@ import (
 	"time"
 
 	digest "github.com/opencontainers/go-digest"
+	_ "github.com/tonistiigi/units"
 
 	"github.com/windmilleng/tilt/pkg/logger"
 )
