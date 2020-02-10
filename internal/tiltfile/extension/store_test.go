@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"github.com/windmilleng/tilt/internal/tiltfile"
 )
 
 func TestWrite(t *testing.T) {
@@ -93,7 +92,7 @@ func (f *fixture) assertModulePathDoesntExist(moduleName string) {
 }
 
 func (f *fixture) assertExtension(moduleName, contents, hash, source string) {
-	tiltfileContents, err := ioutil.ReadFile(f.tempdir.JoinPath(extensionDirName, moduleName, tiltfile.FileName))
+	tiltfileContents, err := ioutil.ReadFile(f.tempdir.JoinPath(extensionDirName, moduleName, "Tiltfile"))
 	require.NoError(f.t, err)
 
 	assert.Equal(f.t, contents, string(tiltfileContents))

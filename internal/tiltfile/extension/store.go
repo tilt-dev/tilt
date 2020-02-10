@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-
-	"github.com/windmilleng/tilt/internal/tiltfile"
 )
 
 const extensionDirName = "tilt_modules"
@@ -41,7 +39,7 @@ func NewLocalStore(baseDir string) *LocalStore {
 }
 
 func (s *LocalStore) ModulePath(ctx context.Context, moduleName string) (string, error) {
-	tiltfilePath := filepath.Join(s.baseDir, moduleName, tiltfile.FileName)
+	tiltfilePath := filepath.Join(s.baseDir, moduleName, "Tiltfile")
 
 	_, err := os.Stat(tiltfilePath)
 	if err != nil {
@@ -57,7 +55,7 @@ func (s *LocalStore) Write(ctx context.Context, contents ModuleContents) (string
 		return "", errors.Wrapf(err, "couldn't create module directory %s at path %s", contents.Name, moduleDir)
 	}
 
-	tiltfilePath := filepath.Join(moduleDir, tiltfile.FileName)
+	tiltfilePath := filepath.Join(moduleDir, "Tiltfile")
 	// TODO(dmiller): store hash, source, time fetched
 	if err := ioutil.WriteFile(tiltfilePath, []byte(contents.TiltfileContents), os.FileMode(0600)); err != nil {
 		return "", errors.Wrapf(err, "couldn't store module %s at path %s", contents.Name, tiltfilePath)
