@@ -1,6 +1,7 @@
 package starkit
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -17,6 +18,7 @@ func ExecFile(path string, extensions ...Extension) (Model, error) {
 
 const argUnpackerKey = "starkit.ArgUnpacker"
 const modelKey = "starkit.Model"
+const ctxKey = "starkit.Ctx"
 
 // Unpacks args, using the arg unpacker on the current thread.
 func UnpackArgs(t *starlark.Thread, fnName string, args starlark.Tuple, kwargs []starlark.Tuple, pairs ...interface{}) error {
@@ -29,6 +31,7 @@ func UnpackArgs(t *starlark.Thread, fnName string, args starlark.Tuple, kwargs [
 
 // A starlark execution environment.
 type Environment struct {
+	ctx              context.Context
 	unpackArgs       ArgUnpacker
 	loadCache        map[string]loadCacheEntry
 	predeclared      starlark.StringDict
@@ -115,6 +118,10 @@ func (e *Environment) SetPrint(print func(thread *starlark.Thread, msg string)) 
 	e.print = print
 }
 
+func (e *Environment) SetContext(ctx context.Context) {
+	e.ctx = ctx
+}
+
 // Set a fake file system so that we can write tests that don't
 // touch the file system. Expressed as a map from paths to contents.
 func (e *Environment) SetFakeFileSystem(files map[string]string) {
@@ -152,6 +159,7 @@ func (e *Environment) start(path string) (Model, error) {
 	}
 	t.SetLocal(argUnpackerKey, e.unpackArgs)
 	t.SetLocal(modelKey, model)
+	t.SetLocal(ctxKey, e.ctx)
 
 	_, err = e.exec(t, path)
 	return model, err

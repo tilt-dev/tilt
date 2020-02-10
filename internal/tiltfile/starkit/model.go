@@ -1,6 +1,7 @@
 package starkit
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
@@ -50,4 +51,13 @@ func ModelFromThread(t *starlark.Thread) (Model, error) {
 		return Model{}, fmt.Errorf("Internal error: Starlark not initialized correctly: starkit.Model not found")
 	}
 	return model, nil
+}
+
+func ContextFromThread(t *starlark.Thread) (context.Context, error) {
+	ctx, ok := t.Local(ctxKey).(context.Context)
+	if !ok {
+		return nil, fmt.Errorf("Internal error Starlark not initialized correctly: starkit.Ctx not found")
+	}
+
+	return ctx, nil
 }
