@@ -89,8 +89,8 @@ endif
 
 # Run the integration tests on kind
 integration-kind:
-	kind create cluster --name=integration
-	KUBECONFIG="$(kind get kubeconfig-path --name="integration")" go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s ./integration
+	KIND_CLUSTER_NAME=integration ./integration/kind-with-registry.sh
+	KUBECONFIG="$(kind get kubeconfig-path --name="integration")" go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s ./integration -count 1
 	kind delete cluster --name=integration
 
 dev-js:
