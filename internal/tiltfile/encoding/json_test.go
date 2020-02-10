@@ -93,14 +93,64 @@ func TestDecodeJSON(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.File("Tiltfile", `
-observed = decode_json('["foo", {"baz":["bar", "", 1, 2]}]')
+	for _, blob := range []bool{false, true} {
+		t.Run(fmt.Sprintf("blob: %v", blob), func(t *testing.T) {
+			d := `'["foo", {"baz":["bar", "", 1, 2]}]'`
+			if blob {
+				d = fmt.Sprintf("blob(%s)", d)
+			}
+			d = fmt.Sprintf("observed = decode_json(%s)", d)
+			tf := d + `
 expected = [
   "foo",
   {
     "baz": [ "bar", "", 1, 2],
   }
 ]
+
+def test():
+	if expected != observed:
+		print('expected: %s' % (expected))
+		print('observed: %s' % (observed))
+		fail()
+
+test()
+
+`
+			f.File("Tiltfile", tf)
+
+			_, err := f.ExecFile("Tiltfile")
+			if err != nil {
+				fmt.Println(f.PrintOutput())
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestEncodeJSON(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.File("Tiltfile", `
+expected = '''[
+  "foo",
+  {
+    "baz": [
+      "bar",
+      "",
+      1,
+      2
+    ]
+  }
+]
+'''
+observed = encode_json([
+  "foo",
+  {
+    "baz": [ "bar", "", 1, 2],
+  }
+])
 
 def test():
 	if expected != observed:
@@ -117,4 +167,28 @@ test()
 		fmt.Println(f.PrintOutput())
 	}
 	require.NoError(t, err)
+}
+
+func TestEncodeJSONNonStringMapKey(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.File("Tiltfile", `encode_json({1: 'hello'})`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "only string keys are supported in maps. found key '1' of type int64")
+}
+
+func TestEncodeJSONNonJSONable(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.File("Tiltfile", `
+encode_json(blob('hello'))
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unsupported type io.Blob")
 }
