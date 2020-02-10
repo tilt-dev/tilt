@@ -15,14 +15,12 @@ import (
 )
 
 type Extension struct {
-	ctx     context.Context
 	fetcher Fetcher
 	store   Store
 }
 
-func NewExtension(ctx context.Context, fetcher Fetcher, store Store) *Extension {
+func NewExtension(fetcher Fetcher, store Store) *Extension {
 	return &Extension{
-		ctx:     ctx,
 		fetcher: fetcher,
 		store:   store,
 	}
@@ -40,13 +38,17 @@ func (e *Extension) OnStart(env *starkit.Environment) error {
 const extensionPrefix = "ext://"
 
 func (e *Extension) LocalPath(t *starlark.Thread, arg string) (string, error) {
+	ctx, err := starkit.ContextFromThread(t)
+	if err != nil {
+		return "", err
+	}
 	if !strings.HasPrefix(arg, extensionPrefix) {
 		return "", nil
 	}
 
 	moduleName := strings.TrimPrefix(arg, extensionPrefix)
 	// If the module can't be found we fetch it below
-	localPath, err := e.store.ModulePath(e.ctx, moduleName)
+	localPath, err := e.store.ModulePath(ctx, moduleName)
 	if err != nil && !os.IsNotExist(err) {
 		return "", err
 	}
@@ -54,12 +56,12 @@ func (e *Extension) LocalPath(t *starlark.Thread, arg string) (string, error) {
 		return localPath, nil
 	}
 
-	contents, err := e.fetcher.Fetch(e.ctx, moduleName)
+	contents, err := e.fetcher.Fetch(ctx, moduleName)
 	if err != nil {
 		return "", err
 	}
 
-	return e.store.Write(e.ctx, contents)
+	return e.store.Write(ctx, contents)
 }
 
 var _ starkit.LoadInterceptor = (*Extension)(nil)

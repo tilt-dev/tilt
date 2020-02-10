@@ -424,6 +424,7 @@ func (s *tiltfileState) unpackArgs(fnname string, args starlark.Tuple, kwargs []
 func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 	e.SetArgUnpacker(s.unpackArgs)
 	e.SetPrint(s.print)
+	e.SetContext(s.ctx)
 
 	for _, b := range []struct {
 		name    string

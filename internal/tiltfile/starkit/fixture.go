@@ -2,6 +2,7 @@ package starkit
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -50,6 +51,7 @@ func (f *Fixture) OnStart(e *Environment) error {
 	e.SetPrint(func(t *starlark.Thread, msg string) {
 		_, _ = fmt.Fprintf(f.out, "%s\n", msg)
 	})
+	e.SetContext(context.Background())
 	return nil
 }
 
