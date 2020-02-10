@@ -61,6 +61,7 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 	rootCmd.AddCommand(newKubectlCmd())
 	rootCmd.AddCommand(newDumpCmd(rootCmd))
 	rootCmd.AddCommand(newTriggerCmd())
+	rootCmd.AddCommand(newAlphaCmd())
 
 	if len(os.Args) > 2 && os.Args[1] == "kubectl" {
 		// Hack in global flags from kubectl
